@@ -47,6 +47,41 @@
       ]
     },
     {
+      "repository": "phaserjs/phaser",
+      "commit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "license": "MIT",
+      "skills": [
+        "actions-and-utilities",
+        "animations",
+        "audio-and-sound",
+        "cameras",
+        "curves-and-paths",
+        "data-manager",
+        "events-system",
+        "filters-and-postfx",
+        "game-object-components",
+        "game-setup-and-config",
+        "geometry-and-math",
+        "graphics-and-shapes",
+        "groups-and-containers",
+        "input-keyboard-mouse-touch",
+        "loading-assets",
+        "particles",
+        "physics-arcade",
+        "physics-matter",
+        "render-textures",
+        "scale-and-responsive",
+        "scenes",
+        "sprites-and-images",
+        "text-and-bitmaptext",
+        "tilemaps",
+        "time-and-timers",
+        "tweens",
+        "v3-to-v4-migration",
+        "v4-new-features"
+      ]
+    },
+    {
       "repository": "vudovn/ag-kit",
       "commit": "549ba3dc2eb1d40fccb5b6d792eba4101c80cd69",
       "license": "MIT",
@@ -56,6 +91,26 @@
     }
   ],
   "files": [
+    {
+      "path": ".agents/skills/actions-and-utilities/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/actions-and-utilities/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/actions-and-utilities/SKILL.md",
+      "upstreamBlobSha": "d92b239100644eef9d4970c635988a5ef6f89d66",
+      "sha256": "afcda53523029354d59f51b4abebb2a509e2c08f0372638cd209470a2cff3bdc",
+      "size": 16789,
+      "mode": "100644"
+    },
     {
       "path": ".agents/skills/animate/LICENSE",
       "sourceRepository": "emilkowalski/skills",
@@ -84,6 +139,46 @@
       "upstreamBlobSha": "7c3b20c6ed681b2d47c9ca9e3ee0e659ed47d032",
       "sha256": "b8ede161270458e6ae2e45e8a1985373515d4c63de5568ddb0f9012d7634356c",
       "size": 11860,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/animations/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/animations/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/animations/SKILL.md",
+      "upstreamBlobSha": "3492b04b751fa1bc15b774e7f90d63136422ae58",
+      "sha256": "ea86dbfe87da895799995e36e7a3382be8a069d60f4b075077b1cdac74a68383",
+      "size": 17889,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/audio-and-sound/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/audio-and-sound/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/audio-and-sound/SKILL.md",
+      "upstreamBlobSha": "9e5b6ba34e08b7b9552c839ff53093d63785fa6d",
+      "sha256": "c17c36b104d287846157ba5aceaf64f59fb5b5700e80d74ddd2b73beb3b0700a",
+      "size": 19469,
       "mode": "100644"
     },
     {
@@ -174,6 +269,79 @@
       "upstreamBlobSha": "8dca065bd9adb9d4fa82a66acbb4176ea23259c6",
       "sha256": "6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2",
       "size": 13413,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/cameras/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/cameras/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/cameras/SKILL.md",
+      "upstreamBlobSha": "d9cd9c567cf56d4ab50f2e7e69078bfeaa8ff81f",
+      "sha256": "92165defcd69f7e0838342c3c9a92a6baca2ab989555006a9deae842064c45db",
+      "size": 15884,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: references/REFERENCE..//SKILL.md -> references/REFERENCE.md (1 occurrence)."
+      ]
+    },
+    {
+      "path": ".agents/skills/cameras/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/cameras/references/REFERENCE.md",
+      "upstreamBlobSha": "9d6a8689c2415378d1c2b734567cadd6ebb6fd37",
+      "sha256": "759b6d3e95514efe37ab3b24d9b7d1cc2cddf05fbf215f1f39bd51eac2210b1f",
+      "size": 7264,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/curves-and-paths/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/curves-and-paths/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/curves-and-paths/SKILL.md",
+      "upstreamBlobSha": "fc30828baa690e2f48cce7b94743f3e0c4def832",
+      "sha256": "5334b72730b45bcb5c3adffe68831c1890febd99e5cb41afcd4eba603f1838db",
+      "size": 16806,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/data-manager/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/data-manager/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/data-manager/SKILL.md",
+      "upstreamBlobSha": "1727de64c3d83ed0f07fc9a84c0d9a2e230f7aa4",
+      "sha256": "401f5aacb4cf6ae849267851071dd7d0ba2e47a86d50c8de664e19ee5a7e41f5",
+      "size": 16859,
       "mode": "100644"
     },
     {
@@ -407,6 +575,26 @@
       "mode": "100644"
     },
     {
+      "path": ".agents/skills/events-system/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/events-system/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/events-system/SKILL.md",
+      "upstreamBlobSha": "5c315b84a08aa93ba4068df6d9c696852ba8838f",
+      "sha256": "aa6f05286584e1301f37ff1f4e74bf26166c44d294a05a88b055d42083717957",
+      "size": 22082,
+      "mode": "100644"
+    },
+    {
       "path": ".agents/skills/executing-plans/LICENSE",
       "sourceRepository": "obra/superpowers",
       "sourceCommit": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
@@ -445,6 +633,31 @@
       "sha256": "f833693c8fce3700fc9f841562d80f8015cd40f652c168a3405ac3e46947a1fe",
       "size": 963,
       "mode": "100755"
+    },
+    {
+      "path": ".agents/skills/filters-and-postfx/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/filters-and-postfx/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/filters-and-postfx/SKILL.md",
+      "upstreamBlobSha": "970fd8c800082849ea00ef3dc0ce9e2e5fff62e6",
+      "sha256": "4fdb0f3eb406f33287e2561e62f0734e51890d80a8c37117acba809529b7260d",
+      "size": 20104,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: sprites-and-images.md -> ../sprites-and-images/SKILL.md (1 occurrence).",
+        "Repair upstream relative reference: cameras.md -> ../cameras/SKILL.md (1 occurrence).",
+        "Repair upstream relative reference: v4-new-features.md -> ../v4-new-features/SKILL.md (1 occurrence)."
+      ]
     },
     {
       "path": ".agents/skills/finishing-a-development-branch/LICENSE",
@@ -587,6 +800,261 @@
       "mode": "100644"
     },
     {
+      "path": ".agents/skills/game-object-components/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/game-object-components/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/game-object-components/SKILL.md",
+      "upstreamBlobSha": "daa5a649cdf6e3841e653c8d7963f2ad507332bd",
+      "sha256": "d3ffa6181bb765ce8616c28676cb57aa1c675837330e77688e7d5df32c750704",
+      "size": 23038,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: sprites-and-images.md -> ../sprites-and-images/SKILL.md (1 occurrence).",
+        "Remove reference to custom-game-objects.md because this companion is absent from the pinned upstream skill pack."
+      ]
+    },
+    {
+      "path": ".agents/skills/game-object-components/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/game-object-components/references/REFERENCE.md",
+      "upstreamBlobSha": "be17d6974fb9f307df5510c512be0e57816f352d",
+      "sha256": "84b98987e0bdc8470facd4a3600573e395788d812ac67003d6f4e52466d29f89",
+      "size": 3857,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: ../filters-and-postfx/SKILL.md -> ../../filters-and-postfx/SKILL.md (1 occurrence)."
+      ]
+    },
+    {
+      "path": ".agents/skills/game-setup-and-config/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/game-setup-and-config/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/game-setup-and-config/SKILL.md",
+      "upstreamBlobSha": "03cce487e45be7aeba2b173e9c386e3c94590c02",
+      "sha256": "d93abdb3123d74583a6792081c54a90cd8f0e8d3ddeee476d1e96a401b9f12a9",
+      "size": 19616,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/geometry-and-math/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/geometry-and-math/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/geometry-and-math/SKILL.md",
+      "upstreamBlobSha": "f3ee24248464ed87c5fc5cecaa5bcc6a9d972e1e",
+      "sha256": "f520e89d1dfdd2c8d23e83d7919b284b3029280b88ef9118a37f5f5d06ba675a",
+      "size": 23630,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: graphics-and-shapes.md -> ../graphics-and-shapes/SKILL.md (2 occurrences).",
+        "Repair upstream relative reference: physics-arcade.md -> ../physics-arcade/SKILL.md (1 occurrence)."
+      ]
+    },
+    {
+      "path": ".agents/skills/graphics-and-shapes/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/graphics-and-shapes/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/graphics-and-shapes/SKILL.md",
+      "upstreamBlobSha": "aeea9534610ebd720ec94be354df61f219d56e88",
+      "sha256": "6c7d93f9f6b3800aa03dda050a6622cd9c07a3e6f11cb088fec08bd4cda165eb",
+      "size": 19819,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: sprites-and-images.md -> ../sprites-and-images/SKILL.md (1 occurrence).",
+        "Repair upstream relative reference: game-object-components.md -> ../game-object-components/SKILL.md (1 occurrence)."
+      ]
+    },
+    {
+      "path": ".agents/skills/groups-and-containers/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/groups-and-containers/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/groups-and-containers/SKILL.md",
+      "upstreamBlobSha": "0add88c0c056ef3cf59db12d54eda1e109066f89",
+      "sha256": "abf1e8a02e292e22cb7e445578351a50d4e3542ae0805287ef8819b856e2f419",
+      "size": 17456,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/input-keyboard-mouse-touch/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/input-keyboard-mouse-touch/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/input-keyboard-mouse-touch/SKILL.md",
+      "upstreamBlobSha": "95753c489ca48ed53b7e1d7d5f04b9b0e2f44e1a",
+      "sha256": "ef3753ade8ec8278af1918c775e1a02cbd0005080478b8f2e5979539f58050d8",
+      "size": 18362,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/input-keyboard-mouse-touch/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/input-keyboard-mouse-touch/references/REFERENCE.md",
+      "upstreamBlobSha": "0be3f1d1bfb93a4962197569df3db660bdb5fa79",
+      "sha256": "f56106fbffe9ad0c1c9d6c2d49553f6bf62aaffab4d68e6cd3ae9c2815adf0c2",
+      "size": 17074,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/loading-assets/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/loading-assets/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/loading-assets/SKILL.md",
+      "upstreamBlobSha": "ed152b3009d29a7082679e94b57a5b128e75534c",
+      "sha256": "2ba246be24e434d3647dd62cd1b51ac70258a57c1963b97a960a80e1aca8b638",
+      "size": 16174,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/loading-assets/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/loading-assets/references/REFERENCE.md",
+      "upstreamBlobSha": "4596e4f506f75b2879df15907454aa0ae268f958",
+      "sha256": "ad41bc500a44515179bd1170f5861007b4fd2c4a38be1ba27bae2045625c5787",
+      "size": 9751,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/particles/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/particles/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/particles/SKILL.md",
+      "upstreamBlobSha": "0df5c3fb30944855170ed0b3badebe0b6052f82a",
+      "sha256": "02d3c380502ece0898933a045868d2a3e5050dc3466d7b3aba94cee0ba5cd2c1",
+      "size": 20770,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/particles/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/particles/references/REFERENCE.md",
+      "upstreamBlobSha": "0dcfc10076d6e225a79fab98c30be1d5b715d159",
+      "sha256": "c336894a050e55a5d5738e254e961f4624b7e64f6200e02b66c38a95c460b7e3",
+      "size": 1023,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/physics-arcade/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/physics-arcade/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/physics-arcade/SKILL.md",
+      "upstreamBlobSha": "dee84cf6ad78a68ed66a7b58702dcb933bded8e8",
+      "sha256": "ebee7a1c98dd6a05e393d33d9aeacf3ef6d247c9fdca0aeab212c18c22c79de7",
+      "size": 23230,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/physics-matter/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/physics-matter/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/physics-matter/SKILL.md",
+      "upstreamBlobSha": "66c821f56f396497e244842ccf43bd566fc74599",
+      "sha256": "99b889df86e68a9067ed54609d3290606bd3e957f75beb0cc334e381fe095257",
+      "size": 23771,
+      "mode": "100644"
+    },
+    {
       "path": ".agents/skills/pick-ui-library/LICENSE",
       "sourceRepository": "emilkowalski/skills",
       "sourceCommit": "2d228630ba1446365f614a108cb8252f1feda202",
@@ -630,6 +1098,26 @@
       "mode": "100644"
     },
     {
+      "path": ".agents/skills/render-textures/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/render-textures/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/render-textures/SKILL.md",
+      "upstreamBlobSha": "df1450d569390dc3c775440e6c8abdae0ad1e4d4",
+      "sha256": "9c44b258b4b69e41ff330bb504536cd45aa10be2402e76df876de9da1463f3bd",
+      "size": 17268,
+      "mode": "100644"
+    },
+    {
       "path": ".agents/skills/requesting-code-review/LICENSE",
       "sourceRepository": "obra/superpowers",
       "sourceCommit": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
@@ -657,6 +1145,89 @@
       "upstreamBlobSha": "6d358b5d7d450c83cacbe450b7dbd4e673b694ad",
       "sha256": "82e370be6b3447523816286195571e4216ba56ba1ad6ad0e87862294c4c78dcb",
       "size": 6449,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/scale-and-responsive/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/scale-and-responsive/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/scale-and-responsive/SKILL.md",
+      "upstreamBlobSha": "c52f9e3fd2eec1c1aec68dca7cabbd9bb6e78479",
+      "sha256": "32ddfb9ea66ff2a3640df7adf40d1b0173560bb94737ac79405e09a43cd70e8a",
+      "size": 18570,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/scenes/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/scenes/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/scenes/SKILL.md",
+      "upstreamBlobSha": "c90c5e8b26993e6cd726ab8c4f36e4129cbf277d",
+      "sha256": "31a07e16634d7b49e33cdb681576e158037d4856d40aaa8f7177d662da47cfa8",
+      "size": 18712,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/scenes/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/scenes/references/REFERENCE.md",
+      "upstreamBlobSha": "4c75186dbeef2b294624b1572fc562d569602b33",
+      "sha256": "448eb141648f23ce43e999f8d835a1f829d85ec9bac5d96a1e7636dff4ace045",
+      "size": 4236,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/sprites-and-images/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/sprites-and-images/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/sprites-and-images/SKILL.md",
+      "upstreamBlobSha": "9c06c463def21c4eca9be57b0b493dda05ae3671",
+      "sha256": "ed4172f11ab21a9a253021e95847ada154ed4522a48df417ea826019f0816524",
+      "size": 14933,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: references/REFERENCE..//SKILL.md -> references/REFERENCE.md (1 occurrence)."
+      ]
+    },
+    {
+      "path": ".agents/skills/sprites-and-images/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/sprites-and-images/references/REFERENCE.md",
+      "upstreamBlobSha": "fa898f790277166e7e8bbd06e35c8e0cbd856ed9",
+      "sha256": "db2b97f06293baa22bc0e42d702339be76684dec5c0edac5ade6d38c35b1daf7",
+      "size": 8770,
       "mode": "100644"
     },
     {
@@ -950,6 +1521,86 @@
       "mode": "100644"
     },
     {
+      "path": ".agents/skills/text-and-bitmaptext/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/text-and-bitmaptext/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/text-and-bitmaptext/SKILL.md",
+      "upstreamBlobSha": "cbd640562e569349c632c6fc46d4e3457cc90412",
+      "sha256": "12ce613bb1651f82e725fce7fc2d35e1b99b0b90d7a7ae78a80afd0ed8a61846",
+      "size": 20048,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/tilemaps/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/tilemaps/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/tilemaps/SKILL.md",
+      "upstreamBlobSha": "c86b9c89ce15211c4f4035fa7cecac48be3d036b",
+      "sha256": "c1754852ce72c05987c41e1e122eea8f2888cdf46f719259b252d2fda66073eb",
+      "size": 19529,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/time-and-timers/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/time-and-timers/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/time-and-timers/SKILL.md",
+      "upstreamBlobSha": "1e14edf23d269ef41b54badae93293171844c508",
+      "sha256": "f65c4f5be072e911fde9c6f1977dfd42e01e90bf19c1af7f829d7cd87ead22ff",
+      "size": 18579,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/tweens/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/tweens/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/tweens/SKILL.md",
+      "upstreamBlobSha": "ea3d092edb3f266f1bc0fa80a6b2c57973aeb670",
+      "sha256": "08bdb1c76848cae80dfc9c7720f79041d46eef2f790399a5d248b254ea87b8b4",
+      "size": 18411,
+      "mode": "100644"
+    },
+    {
       "path": ".agents/skills/using-git-worktrees/LICENSE",
       "sourceRepository": "obra/superpowers",
       "sourceCommit": "bb92a77741419a4ab5f06e711a283343f1ada0c3",
@@ -1058,6 +1709,67 @@
       "sha256": "703dbc83d23ecab9c6f388460c38abc482e9dee2fe6772a8c7a255152ad3a4d5",
       "size": 1242,
       "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/v3-to-v4-migration/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/v3-to-v4-migration/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/v3-to-v4-migration/SKILL.md",
+      "upstreamBlobSha": "aecfd05c3c5f6c4860ddc84fada6787251e289c6",
+      "sha256": "a7d2e1533ecb06874f54e4b93383e6b2c14f6c1dac13f0a10a0d7fe56b6020c3",
+      "size": 19702,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/v4-new-features/LICENSE",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "LICENSE.md",
+      "upstreamBlobSha": "33aa21b2adf01a08ca6acb55ddaf8fd2dc4b3368",
+      "sha256": "c3a9ba7e38d4ef33dccf5fdd1046655c63df06714f84776118fe406f43db5cf2",
+      "size": 1100,
+      "mode": "100644"
+    },
+    {
+      "path": ".agents/skills/v4-new-features/SKILL.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/v4-new-features/SKILL.md",
+      "upstreamBlobSha": "e06a1828337d32cfa78cd9c00b4c89c77a023b07",
+      "sha256": "9943f5b2615dbdcd6b40097b9bb80b835c26b05dc19303cf518865d51393bcdb",
+      "size": 15060,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: filters-and-postfx.md -> ../filters-and-postfx/SKILL.md (2 occurrences).",
+        "Repair upstream relative reference: game-object-components.md -> ../game-object-components/SKILL.md (1 occurrence).",
+        "Repair upstream relative reference: tilemaps.md -> ../tilemaps/SKILL.md (1 occurrence)."
+      ]
+    },
+    {
+      "path": ".agents/skills/v4-new-features/references/REFERENCE.md",
+      "sourceRepository": "phaserjs/phaser",
+      "sourceCommit": "02d8931b626d9764c133cbb3fbf99966c03c757c",
+      "sourcePath": "skills/v4-new-features/references/REFERENCE.md",
+      "upstreamBlobSha": "bd936658a630ecb184b03f3032c73f3785667ff6",
+      "sha256": "422fe2e2b2ef3479615c2389ede1379c27ffbe264b13729d1c1e05bd73cb41f8",
+      "size": 2995,
+      "mode": "100644",
+      "localChanges": [
+        "Repair upstream relative reference: ../filters-and-postfx/SKILL.md -> ../../filters-and-postfx/SKILL.md (1 occurrence).",
+        "Repair upstream relative reference: ../game-object-components/SKILL.md -> ../../game-object-components/SKILL.md (1 occurrence).",
+        "Repair upstream relative reference: ../tilemaps/SKILL.md -> ../../tilemaps/SKILL.md (1 occurrence).",
+        "Repair upstream relative reference: ../v3-to-v4-migration/SKILL.md -> ../../v3-to-v4-migration/SKILL.md (2 occurrences)."
+      ]
     },
     {
       "path": ".agents/skills/verification-before-completion/LICENSE",

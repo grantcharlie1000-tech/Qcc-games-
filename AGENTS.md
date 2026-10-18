@@ -12,6 +12,7 @@ At the beginning of a project work session, load `using-superpowers` and use its
 | Animation and interaction motion | `.agents/skills/animate/SKILL.md` |
 | UI library choices needed by an animation | `.agents/skills/pick-ui-library/SKILL.md` |
 | Game design and development | `.agents/skills/game-development/SKILL.md`, then its relevant subdirectory |
+| Phaser 4 engine setup and subsystems | `.agents/skills/game-setup-and-config/SKILL.md`, then the relevant Phaser skills such as `scenes`, `loading-assets`, `physics-arcade`, or `physics-matter` |
 | Planning, implementation, debugging and verification | `.agents/skills/using-superpowers/SKILL.md`, then the applicable Superpowers skill |
 | Independent code review | `.agents/skills/requesting-code-review/SKILL.md` |
 | Evaluating and applying review feedback | `.agents/skills/receiving-code-review/SKILL.md` |
@@ -22,6 +23,7 @@ Superpowers references such as `superpowers:systematic-debugging` name local ski
 
 - Keep the user's current request and existing project decisions authoritative when applying skill guidance.
 - Choose the application stack and game engine from the actual task; this repository does not yet select either.
+- When working with Phaser 4, load the relevant official engine skills. Their `src/...` source maps refer to the upstream `phaserjs/phaser` repository at the commit in `skills.lock.json`; they are not paths to local application files.
 - Use the game-development router's relevant platform and domain guides. Read nested guides directly when they are not separately exposed by the agent.
 - Verify SVG chart geometry against the real data and check framework-specific markup syntax. Upstream examples are illustrative.
 - Respect reduced-motion preferences and check the visual result when implementing motion.
