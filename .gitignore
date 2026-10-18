@@ -1,0 +1,20 @@
+# Local secrets and agent settings
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.codex/auth.json
+
+# Dependencies and generated output
+node_modules/
+dist/
+build/
+.next/
+coverage/
+__pycache__/
+*.pyc
+*.log
+
+# Operating-system files
+.DS_Store
+Thumbs.db
