@@ -1,0 +1,23 @@
+{
+  "siteId": "4afc912c-6802-4c18-8f2c-273fb3e771ee",
+  "siteName": "the-daily-ledger-kh16",
+  "teamSlug": "grantcharlie1000",
+  "dashboardUrl": "https://app.netlify.com/projects/the-daily-ledger-kh16",
+  "arcadePublished": false,
+  "archive": "docs/evidence/the-daily-ledger-kh16-netlify.zip",
+  "bytes": 296185,
+  "sha256": "31b3fbe8dc81482647a2f45aa5987a540988445a18a1c835626eede5e8ead87a",
+  "offlinePackVersion": "bf379fc014bf",
+  "offlineFiles": 57,
+  "blockers": [
+    "Connected Netlify toolset has no file-upload/deploy-creation operation.",
+    "Netlify CLI status returned NOT_LOGGED_IN.",
+    "Environment proxy rejected api.netlify.com with HTTP403."
+  ],
+  "requestedPublicationRoute": "Netlify connector",
+  "connectorPublicationActionAvailable": false,
+  "availableDeploymentActions": [
+    "netlify_deploy_get_deploy",
+    "netlify_deploy_get_deploy_for_site"
+  ]
+}

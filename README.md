@@ -41,7 +41,7 @@ Offline play requires a successful download on the same browser, device and orig
 - **Netlify:** import this repository. [netlify.toml](netlify.toml) sets `npm run build`, publishes `dist/`, selects Node 22 and sets security headers. No API keys or environment secrets are needed.
 - **Other static hosting:** serve `dist/` over HTTPS. No SPA rewrite is necessary because navigation uses `#/game/<id>`.
 
-No hosted deployment is claimed by this checkout. Local root/subpath tests do not establish an account's publication settings.
+A newspaper-style Netlify project, **the-daily-ledger-kh16**, has been created at the user's request. Connector publication is blocked because its available tools expose no upload/create-deploy action; the arcade is **not published** there yet. See [the deployment handoff and ready upload ZIP](docs/NETLIFY_DEPLOYMENT.md). Local root/subpath tests do not establish a hosted deployment.
 
 ## Code and artwork
 
