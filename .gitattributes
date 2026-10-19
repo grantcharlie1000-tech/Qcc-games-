@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Preserve upstream licence text verbatim, including original whitespace.
+public/THIRD_PARTY_NOTICES.txt -whitespace
