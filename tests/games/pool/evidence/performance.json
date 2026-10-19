@@ -1,0 +1,14 @@
+{
+  "engine": "System Chromium",
+  "viewport": "390x844",
+  "underShot": true,
+  "result": {
+    "frames": 120,
+    "medianMs": 16.699999999999818,
+    "p95Ms": 16.700000000000273,
+    "maxMs": 16.799999999999955,
+    "meanMs": 16.538333333332552,
+    "devicePixelRatio": 1
+  },
+  "errors": []
+}
