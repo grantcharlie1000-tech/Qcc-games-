@@ -18,20 +18,34 @@
   ],
   "repository": "grantcharlie1000-tech/Qcc-games-",
   "productionBranch": "main",
-  "automaticDeploymentsConnected": null,
-  "recordedAt": "2026-10-19T11:16:40.233305+00:00",
-  "studyPublished": false,
-  "automaticUpdateVerified": false,
+  "automaticDeploymentsConnected": true,
+  "recordedAt": "2026-10-19T11:20:00Z",
+  "studyPublished": true,
+  "automaticUpdateVerified": true,
   "publishedUrl": "https://mauri-gazette.netlify.app",
   "publishedDeploy": {
-    "id": "6ad5f146ee5b92088567adcc",
+    "id": "6ad5fcc65c43d750cebd7d5c",
+    "site_id": "4afc912c-6802-4c18-8f2c-273fb3e771ee",
     "state": "ready",
     "context": "production",
     "branch": "main",
-    "commit_ref": "d6951917923c391b522b013136f334744f3d040e",
+    "commit_ref": "2dbfce1bdf7b471bd6c510e5190b69fd0324d7a4",
     "manual_deploy": false,
-    "published_at": "2026-10-19T10:30:48.411Z"
+    "created_at": "2026-10-19T11:19:34.898Z",
+    "published_at": "2026-10-19T11:19:48.900Z",
+    "updated_at": "2026-10-19T11:19:53.047Z",
+    "ssl_url": "https://mauri-gazette.netlify.app",
+    "deploy_ssl_url": "https://main--mauri-gazette.netlify.app",
+    "error_message": null,
+    "framework": "vite"
   },
   "liveOriginBrowserVerified": false,
-  "liveOriginBrowserLimit": "Environment proxy rejects CONNECT to the Netlify origin with HTTP403. Connector deployment state is available."
+  "liveOriginBrowserLimit": "Environment proxy rejects CONNECT to the Netlify origin with HTTP403. Connector deployment state is available.",
+  "sourcePublication": {
+    "method": "Connected GitHub app; fast-forward main with expected old SHA and force false",
+    "localReviewedCommit": "c5259d6ac505586cf8fc2e270f7577f16aacf2de",
+    "githubCommit": "2dbfce1bdf7b471bd6c510e5190b69fd0324d7a4",
+    "verifiedTreeSha": "922d987c5a2a00308d822adf87eacb836da5b905",
+    "sameTreeVerified": true
+  }
 }

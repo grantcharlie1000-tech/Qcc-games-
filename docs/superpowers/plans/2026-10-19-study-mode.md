@@ -16,7 +16,7 @@
 - [x] Extend the shared Playwright fixture and production offline/update harnesses for deliberate first-visit selection; retain all existing gameplay assertions.
 - [x] Test all 20 articles, all 12 game returns, saved-state stability, repeat Escape, open dialogs, delayed imports, manual pauses, blocked storage, fresh tabs and offline root/subpath builds.
 - [x] Obtain independent review as required by AGENTS.md; fix important findings, run the full unit/browser/build checks, inspect screenshots at 390/768/1366 and record actual browser/hardware limits.
-- [ ] Update architecture, evidence and the deployment archive. Publish source to GitHub main under the existing authorization; do not claim Netlify is serving a release unless verified.
+- [x] Update architecture, evidence and the deployment archive. Publish source to GitHub main under the existing authorization; verify the automatic Netlify production deploy matches that source commit. Source `2dbfce1`, ready deploy `6ad5fcc65c43d750cebd7d5c`.
 
 ## Review focus
 

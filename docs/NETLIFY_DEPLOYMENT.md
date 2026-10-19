@@ -6,9 +6,9 @@ Project `mauri-gazette`, site ID `4afc912c-6802-4c18-8f2c-273fb3e771ee`. Product
 
 ## Observed publication
 
-The Netlify connector reports production deploy `6ad5f146ee5b92088567adcc` ready, built from GitHub main commit `d6951917923c391b522b013136f334744f3d040e` and published at 2026-10-19T10:30:48.411Z. This supersedes the earlier record that the arcade was unpublished. It is a Git build (`manual_deploy: false`).
+**Study Mode is published, and automatic updates from main are verified.** After the source update, the Netlify connector reported production deploy `6ad5fcc65c43d750cebd7d5c` ready, built from GitHub main commit [`2dbfce1`](https://github.com/grantcharlie1000-tech/Qcc-games-/commit/2dbfce1bdf7b471bd6c510e5190b69fd0324d7a4) and published at 2026-10-19T11:19:48.900Z. It is a Git build (`manual_deploy: false`), created automatically after main advanced. No manual Netlify upload or build trigger was used.
 
-Study Mode's new source is being published to main; its automatic production update is not yet claimed in this record. The connector will be checked against the new source commit before that claim is made. No account token or repository connection change is required from the user.
+The connected GitHub app published the source because shell Git credentials were unavailable. Main advanced without force, guarded by its expected previous SHA. The remote tree `922d987c5a2a00308d822adf87eacb836da5b905` exactly matches reviewed local source commit `c5259d6ac505586cf8fc2e270f7577f16aacf2de`, including the original game owners' reviewed follow-ups. Future pushes to main use the existing Netlify Git connection. No token or repository connection change is required from the user.
 
 ## Verified local build
 
