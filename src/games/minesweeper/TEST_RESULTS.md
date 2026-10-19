@@ -30,3 +30,13 @@ Fresh verification after this fix:
 - `npm run check`: **exit 0**; `git diff --check`: **exit 0**.
 
 The existing committed screenshot/performance evidence remains the original measured layout evidence; this input-only fix changes no artwork or layout. WebKit and physical touch hardware limitations remain as stated above.
+
+## Production artwork follow-up — relative CSS URL resolution
+
+I opened the parent's `/workspace/Qcc-games-/docs/evidence/release/minesweeper-root-390.png` and confirmed the missing covered tiles. Following the local systematic-debugging workflow, I added an assertion to the existing phone browser case before changing production code, built this isolated worktree with `npx vite build --outDir tests/games/minesweeper/.production --emptyOutDir`, and served that owned output on localhost:4496. The regression failed with actual `http://127.0.0.1:4496/assets/game-art/minesweeper/tile.svg` versus expected `http://127.0.0.1:4496/game-art/minesweeper/tile.svg`: the relative custom-property URL was resolved against the emitted CSS directory.
+
+The artwork directory now becomes an absolute same-origin URL using `document.baseURI` and `import.meta.env.BASE_URL` before it enters either CSS or image markup. Covered tiles also retain an opaque mint background and inset relief if their artwork cannot load. The existing phone test now checks the computed background's exact deployment-relative asset URL, actual image decoding/natural dimensions, and a visible fallback color with the image disabled. No additional test case was introduced.
+
+After rebuilding, the production phone case passed (**1 passed, 3.8 seconds**). A separate real Chromium read of the emitted build at both `/` and `/Qcc-games-/` verified the exact same-origin asset URLs (`/game-art/minesweeper/tile.svg` and `/Qcc-games-/game-art/minesweeper/tile.svg`), successful image decode, fallback `rgb(137, 184, 164)`, and **zero HTTP responses >=400** on each game load. This was this specialist's isolated production build, not a claim about the parent's full integrated build. Parent independently owns final root/subpath/offline release evidence.
+
+Fresh focused verification: `npm run check` **exit 0**; targeted rules **17 passed**; `npm test` **21 passed**; `ARCADE_URL=http://127.0.0.1:4186 npx playwright test tests/games/minesweeper --project=chromium` **6 passed (18.4 seconds)**; `git diff --check` **exit 0**. I inspected the refreshed phone screenshot and confirmed visible covered tile relief. Generated screenshot/performance output is left unstaged as requested; this corrective commit contains only game source, the existing browser regression, and these results. Cover and shared files are untouched.

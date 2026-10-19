@@ -2,7 +2,8 @@ import type {GameModule} from '../../core/types';
 import {create,reveal,flag,chord,restore as restoreBoard,LEVELS} from './model';
 import type {Level} from './model';
 import './style.css';
-const art=`${import.meta.env.BASE_URL}game-art/minesweeper/`;
+// CSS custom-property URLs otherwise resolve relative to the emitted /assets/ stylesheet.
+const art=new URL('game-art/minesweeper/',new URL(import.meta.env.BASE_URL,document.baseURI)).href;
 const title=(level:Level)=>level[0].toUpperCase()+level.slice(1);
 const game:GameModule={
   id:'minesweeper',title:'Minesweeper',cover:'game-art/minesweeper/cover.svg',

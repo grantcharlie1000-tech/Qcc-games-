@@ -48,6 +48,17 @@ test('reveal all safe cells wins; mine loss and correct chord',async({page})=>{
 });
 test('phone levels, adjustable cells, keyboard reveal and contained expert overflow',async({page,browser})=>{
   await page.setViewportSize({width:390,height:844});await fixture(page,12345);
+  const artwork=await cell(page,0).evaluate(async tile=>{
+    const background=getComputedStyle(tile).backgroundImage;
+    const asset=background.match(/^url\(["']?(.*?)["']?\)$/)?.[1]||'';
+    const expected=new URL('game-art/minesweeper/tile.svg',document.baseURI).href;
+    let decoded=false;
+    if(asset){const image=new Image();image.src=asset;try{await image.decode();decoded=image.naturalWidth>0&&image.naturalHeight>0;}catch{decoded=false;}}
+    const element=tile as HTMLElement,original=element.style.backgroundImage;
+    element.style.backgroundImage='none';const fallback=getComputedStyle(tile).backgroundColor;element.style.backgroundImage=original;
+    return {asset,expected,decoded,fallback};
+  });
+  expect(artwork.asset).toBe(artwork.expected);expect(artwork.decoded).toBe(true);expect(artwork.fallback).not.toBe('rgba(0, 0, 0, 0)');
   await cell(page,0).focus();await page.keyboard.press('Enter');await expect(cell(page,0)).toHaveAttribute('data-state','open');
   await page.locator('.ms-size').selectOption('44');expect(await cell(page,0).evaluate(el=>el.getBoundingClientRect().width)).toBe(44);
   await page.locator('.ms-level').selectOption('intermediate');await expect(page.locator('.ms-tile')).toHaveCount(256);
