@@ -1,0 +1,32 @@
+import {readFile,readdir,writeFile} from 'node:fs/promises';
+import http from 'node:http';
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright';
+import {existsSync} from 'node:fs';
+const A=new Map();async function walk(dir){for(const item of await readdir(dir,{withFileTypes:true})){const file=dir+'/'+item.name;if(item.isDirectory())await walk(file);else A.set('/'+file.slice(5),await readFile(file));}}await walk('dist');
+const manifest=JSON.parse(A.get('/.vite/manifest.json').toString()),pack=JSON.parse(A.get('/offline-manifest.json').toString());
+const oldEntry='/'+manifest['index.html'].file,oldGame='/'+manifest['src/games/fruit-merge/index.ts'].file,newEntry=oldEntry.replace('.js','-next.js'),newGame=oldGame.replace('.js','-next.js');
+const B=new Map(A),oldVersion=pack.version,newVersion=oldVersion+'-next';
+B.delete(oldEntry);B.delete(oldGame);B.set(newGame,A.get(oldGame));B.set(newEntry,Buffer.from(A.get(oldEntry).toString().replaceAll(oldGame.split('/').at(-1),newGame.split('/').at(-1))));
+B.set('/index.html',Buffer.from(A.get('/index.html').toString().replaceAll(oldEntry.slice(1),newEntry.slice(1))));
+B.set('/sw.js',Buffer.from(A.get('/sw.js').toString().replaceAll(oldVersion,newVersion).replaceAll(oldEntry.slice(1),newEntry.slice(1))));
+B.set('/offline-manifest.json',Buffer.from(JSON.stringify({version:newVersion,files:pack.files.map(file=>file===oldEntry.slice(1)?newEntry.slice(1):file===oldGame.slice(1)?newGame.slice(1):file)})));
+let release=A;const mime={js:'application/javascript',html:'text/html',css:'text/css',json:'application/json',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json'};
+const server=http.createServer((req,res)=>{const path=new URL(req.url,'http://localhost').pathname,file=path==='/'?'/index.html':path,data=release.get(file);if(!data){res.writeHead(404);res.end();return;}res.writeHead(200,{'Content-Type':mime[file.split('.').at(-1)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(data);});await new Promise(resolve=>server.listen(4280,'127.0.0.1',resolve));
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox']});
+const version=page=>page.evaluate(()=>new Promise(resolve=>{const channel=new MessageChannel();channel.port1.onmessage=e=>{channel.port1.close();resolve(e.data.version);};navigator.serviceWorker.controller.postMessage({type:'ARCADE_VERSION'},[channel.port2]);}));
+const poll=async(fn)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Service worker transition timed out');};
+try{
+ const context=await browser.newContext({viewport:{width:390,height:844}}),a=await context.newPage(),b=await context.newPage();
+ await a.goto('http://127.0.0.1:4280/');await a.getByRole('button',{name:'Open menu'}).click();await a.getByRole('button',{name:'Make all games available offline'}).click();await a.getByRole('button',{name:'Offline pack downloaded'}).waitFor();await a.getByRole('button',{name:'Close menu'}).click();await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller));assert.equal(await version(a),oldVersion);
+ await a.evaluate(()=>localStorage.setItem('pocket-arcade:v1:best:fruit-merge','1234'));await b.goto('http://127.0.0.1:4280/');await poll(()=>b.evaluate(()=>!!navigator.serviceWorker.controller));release=B;
+ const workerEvent=context.waitForEvent('serviceworker');await b.evaluate(async()=>{const registration=await navigator.serviceWorker.ready;await registration.update();});const nextWorker=await workerEvent;
+ await poll(()=>b.evaluate(async()=>!!(await navigator.serviceWorker.ready).waiting));assert.equal(await version(a),oldVersion);assert.equal((await fetch('http://127.0.0.1:4280'+oldGame)).status,404);
+ assert.ok((await a.evaluate(()=>caches.keys())).includes('pocket-arcade:/:'+oldVersion+':pack'));
+ await context.setOffline(true);await a.bringToFront();await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await a.getByRole('button',{name:'Drop fruit',exact:true}).click();await a.locator('.fm-count').filter({hasText:'1 fruit'}).waitFor();
+ await a.close();await b.close();await poll(()=>nextWorker.evaluate(()=>self.registration.active?.state==='activated'&&!self.registration.waiting));
+ await context.setOffline(false);const c=await context.newPage();await c.goto('http://127.0.0.1:4280/');await poll(()=>c.evaluate(()=>!!navigator.serviceWorker.controller));assert.equal(await version(c),newVersion);const caches=await c.evaluate(()=>globalThis.caches.keys());assert.ok(!caches.some(key=>key.includes(':'+oldVersion+':')));assert.equal(await c.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:fruit-merge')),'1234');
+ await c.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await c.locator('.fm-count').filter({hasText:'1 fruit'}).waitFor();const before=await c.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')).data.lastDrop);await c.getByRole('button',{name:'Drop fruit',exact:true}).click();await c.waitForFunction(before=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')).data.lastDrop>before,before);
+ const result={recordedAt:new Date().toISOString(),browserVersion:browser.version(),oldVersion,newVersion,oldLazyChunkRemovedFromServer:true,oldTabPlayedOffline:true,updateWaitedForBothTabsToClose:true,newVersionActivated:true,oldCachesCleaned:true,highScorePreserved:true};await writeFile('docs/evidence/release/update-results.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
+ await context.close();
+}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

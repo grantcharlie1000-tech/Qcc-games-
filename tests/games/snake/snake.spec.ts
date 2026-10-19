@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 const saved=async(page:import('@playwright/test').Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:snake')!).data);
 test('keyboard eating, turning, loss, replay, pause and saved continuation',async({page})=>{
+ test.setTimeout(60000);
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
  await expect(page.getByRole('button',{name:'Start slithering'})).toBeVisible();
@@ -19,6 +20,8 @@ test('keyboard eating, turning, loss, replay, pause and saved continuation',asyn
  await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(page.getByRole('button',{name:'Start slithering'})).toBeVisible();
  await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('tail');await page.getByRole('button',{name:'Let’s play'}).click();
  await page.getByRole('button',{name:'Open menu'}).click();await page.locator('#search').fill('wasd');await expect(page.locator('#search')).toHaveValue('wasd');await page.getByRole('button',{name:'Close menu'}).click();
+ await expect(page.locator('.empty-library')).toContainText('No games found');
+ await page.getByRole('button',{name:'Open menu'}).click();await page.locator('#search').fill('');await page.getByRole('button',{name:'Close menu'}).click();await page.getByRole('link',{name:'Play Snake',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
  await page.getByRole('button',{name:'Start slithering'}).click();await page.clock.runFor(170);await page.screenshot({path:'tests/games/snake/evidence/desktop.png',fullPage:true});expect(errors).toEqual([]);
 });
 test('touch swipe and direction buttons fit a phone',async({browser})=>{

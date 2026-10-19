@@ -59,7 +59,8 @@ test('phone levels, adjustable cells, keyboard reveal and contained expert overf
   const frames=await page.evaluate(()=>new Promise<number[]>(resolve=>{const times:number[]=[];let last=0;function tick(t:number){if(last)times.push(t-last);last=t;if(times.length===60)resolve(times);else requestAnimationFrame(tick);}requestAnimationFrame(tick);}));
   const sorted=[...frames].sort((a,b)=>a-b);writeFileSync('tests/games/minesweeper/evidence/performance.json',JSON.stringify({browser:browser.version(),viewport:'390x844',samples:frames.length,meanMs:frames.reduce((a,b)=>a+b,0)/frames.length,medianMs:sorted[30],p95Ms:sorted[57],maxMs:sorted[59],note:'Headless shared Linux host; idle active beginner board. Not physical Chromebook performance.'},null,2));
 });
-test('touch tap, long press flag and cancellation without revealing',async({browser})=>{
+test('touch tap, long press flag and cancellation without revealing',async({browser,browserName})=>{
+ test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const page=await context.newPage();
   await fixture(page);
   const target=cell(page,0),box=(await target.boundingBox())!;

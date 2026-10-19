@@ -52,6 +52,7 @@ test('keyboard creates a path; redraw trims; fast pointer movement interpolates'
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(1);
 });
 test('responsive board and genuine touch path',async({page,browserName})=>{
+ test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
  await page.setViewportSize({width:390,height:844});
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.getByRole('button',{name:'Hint',exact:true}).click();

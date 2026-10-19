@@ -50,11 +50,12 @@ test('a blocked first piece does not end the run; a genuinely blocked tray does'
 });
 test('colourblind patterns, reduced motion and malformed save are handled through the shell',async({page})=>{
  await open(page);await page.getByRole('button',{name:'Open menu'}).click();await page.locator('#colour').check();await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();await expect(page.locator('.cb-game')).toHaveClass(/cb-patterns/);await expect(page.locator('.cb-game')).toHaveClass(/cb-reduced/);
- await page.getByRole('link',{name:'Back to game library'}).click();await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({version:1,data:{board:['broken']}})),SAVE);await page.getByRole('link',{name:'Play Color Blocks',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-cell')).toHaveCount(64);
+ await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Color Blocks',exact:true})).toBeVisible();await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({version:1,data:{board:['broken']}})),SAVE);await page.getByRole('link',{name:'Play Color Blocks',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-cell')).toHaveCount(64);
 });
 test.describe('touch input',()=>{
  test.use({hasTouch:true,viewport:{width:390,height:844}});
- test('trusted touch drag has the same exact ghost and commitment, and tap-select works',async({page,context})=>{
+ test('trusted touch drag has the same exact ghost and commitment, and tap-select works',async({page,context,browserName})=>{
+  test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
   await open(page);const session=await context.newCDPSession(page);const b=await page.locator('[data-slot="0"] svg').boundingBox();if(!b)throw Error('missing');const start={x:b.x+b.width/4,y:b.y+b.height/4},end=await point(page,'[data-cell="9"]');
   await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...start,id:1}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...end,id:1}]});await expect(page.locator('.cb-ghost')).toHaveCount(4);const ghost=await page.locator('.cb-ghost').evaluateAll(el=>el.map(e=>Number((e as HTMLElement).dataset.cell)));
   await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});expect(await occupied(page)).toEqual(ghost);expect(ghost).toEqual([9,10,17,18]);

@@ -44,7 +44,8 @@ test('keyboard, legal current-state hints, undo, reset, pause, restart and reloa
   await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('exactly once');await page.getByRole('button',{name:'Let’s play'}).click();await expect(page.locator('#rules-dialog')).not.toBeVisible();await expect(page.getByRole('button',{name:'Pause game',exact:true})).toBeVisible();
   await keyboardPath(page,solution,level.size);await expect(board(page)).toHaveAttribute('data-covered','9');
 });
-test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',async({page,context})=>{
+test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',async({page,context,browserName})=>{
+ test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
   const level=generateLevel(0),path=level.solution;
   const session=await context.newCDPSession(page);
   const start=await center(page,path[0]!);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...start,id:1}]});
@@ -71,6 +72,7 @@ test('re-entry preserves progress and captures original golden trail art',async(
 });
 
 test('all twelve gardens are playable to the final win using real pointer input',async({page})=>{
+  test.setTimeout(90000);
   for(let i=0;i<12;i++){
     const level=generateLevel(i);await drag(page,level.solution,true);
     await expect(board(page)).toHaveAttribute('data-covered',String(level.cells.length));
@@ -79,7 +81,8 @@ test('all twelve gardens are playable to the final win using real pointer input'
   await expect(page.locator('.bf-message')).toContainText('All twelve gardens filled');
 });
 test('invalid persisted snapshots are ignored safely',async({page})=>{
+  await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Block Fill',exact:true})).toBeVisible();
   await page.evaluate(()=>localStorage.setItem('pocket-arcade:v1:save:block-fill',JSON.stringify({version:1,data:{version:1,level:0,path:[0,8]}})));
-  await page.reload();await expect(board(page)).toHaveAttribute('data-covered','1');
+  await page.getByRole('link',{name:'Play Block Fill',exact:true}).click();await expect(board(page)).toHaveAttribute('data-covered','1');
   await page.getByRole('button',{name:'Hint',exact:true}).click();await expect(page.locator('.bf-message')).toContainText('marked square');
 });

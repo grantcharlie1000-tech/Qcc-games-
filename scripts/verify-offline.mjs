@@ -27,8 +27,8 @@ try{
  for(const [label,path,port] of [['root','/',4275],['subpath','/Qcc-games-/',4276]]){
   const server=spawn('node',['scripts/serve-built.mjs'],{env:{...process.env,PORT:String(port),ARCADE_BASE:path},stdio:'ignore',detached:true});servers.push(server);
   const base=`http://127.0.0.1:${port}${path}`;await waitFor(async()=>{try{return (await fetch(base)).ok;}catch{return false;}},'built server');
-  const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[];
-  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
+  const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[];
+  page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.status()>=400)failedAssets.push({url:response.url(),status:response.status()});});page.on('requestfailed',request=>failedAssets.push({url:request.url(),failure:request.failure()?.errorText}));page.on('request',r=>{if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
   await page.goto(base);await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),12);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
@@ -39,6 +39,8 @@ try{
   const cacheNames=await page.evaluate(()=>caches.keys());assert.ok(!cacheNames.some(key=>key.endsWith(':stale:pack')));assert.equal(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:fruit-merge')),'4321');
   await context.setOffline(true);await page.reload();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),12);
   await page.screenshot({path:`${folder}/home-${label}-390.png`,fullPage:true});
+  if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
+  await page.setViewportSize(sizes[0]);
   for(const id of ids){
    await page.goto(base+'#/game/'+id);await page.locator('#game-title').waitFor();await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('#game-title').textContent(),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
    await action(page,id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),id+' horizontal overflow');
@@ -50,8 +52,8 @@ try{
    await page.setViewportSize(sizes[0]);await page.getByRole('link',{name:'Back to game library'}).click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),12);
    results.push({game:id,deployment:label,path,offline:true,action:true,save:true,restart:true,rafMedianMs:frames[Math.floor(frames.length/2)],rafP95Ms:frames[Math.floor(frames.length*.95)]});console.log(`OFFLINE PASS ${label} ${id}`);
   }
-  assert.deepEqual(errors,[],'page errors');assert.deepEqual(external,[],'external runtime requests');
-  results.push({deployment:label,cacheNames,externalRequests:external,pageErrors:errors,initialResourceCount:initial.length,heavyChunksLazy:true});await context.close();
+  assert.deepEqual(errors,[],'page errors');assert.deepEqual(external,[],'external runtime requests');assert.deepEqual(failedAssets,[],'failed local assets');
+  results.push({deployment:label,cacheNames,externalRequests:external,pageErrors:errors,failedAssets,initialResourceCount:initial.length,heavyChunksLazy:true});await context.close();
  }
- await writeFile(folder+'/offline-results.json',JSON.stringify({browser:'Chromium',physicalHardware:false,softwareWebGL:true,gameCount:ids.length,results},null,2));console.log(`Verified ${ids.length} games offline at both root and repository subpath.`);
+ await writeFile(folder+'/offline-results.json',JSON.stringify({recordedAt:new Date().toISOString(),browser:'Chromium',browserVersion:browser.version(),physicalHardware:false,softwareWebGL:true,rafSamplesPerGame:45,gameCount:ids.length,results},null,2));console.log(`Verified ${ids.length} games offline at both root and repository subpath.`);
 }finally{await browser.close();for(const server of servers)try{process.kill(-server.pid,'SIGTERM');}catch{}}
