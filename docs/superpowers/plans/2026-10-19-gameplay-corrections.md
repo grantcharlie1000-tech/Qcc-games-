@@ -27,7 +27,7 @@
 - [x] SOL-10: black void, indigo grid road, violet wireframe buildings, glossy magenta ball/obstacles and cyan speed gates; continuous steering, navigable ramps/dips/gaps, remove invented mandatory jumping. Preserve reliable collisions, disposal and WebGL fallback.
 - [x] Review each handoff, run independent relevant checks and integrate sequentially. Obtain fresh independent whole-change review; fix important findings.
 - [x] Run full unit/Chromium regression, actual interaction recordings, portrait/landscape captures and no-scroll/Study/offline root/subpath checks. Attempt available cross-browser checks and report unavailable hardware.
-- [ ] Update evidence/deployment bundle, publish main through the existing connector workflow and verify automatic Netlify production commit.
+- [x] Update evidence/deployment bundle, publish main through the existing connector workflow and verify automatic Netlify production commit.
 
 ## Verification commands
 

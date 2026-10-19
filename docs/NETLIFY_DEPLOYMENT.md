@@ -1,27 +1,25 @@
-# Mauri Gazette — GitHub continuous deployment
+# Mauri Gazette — verified automatic deployment
 
-[Live site](https://mauri-gazette.netlify.app) · [Netlify project](https://app.netlify.com/projects/mauri-gazette) · [GitHub source](https://github.com/grantcharlie1000-tech/Qcc-games-)
+[Published site](https://mauri-gazette.netlify.app) · [Netlify project](https://app.netlify.com/projects/mauri-gazette) · [GitHub source](https://github.com/grantcharlie1000-tech/Qcc-games-)
 
-Project `mauri-gazette`, site ID `4afc912c-6802-4c18-8f2c-273fb3e771ee`. Production branch: **main**. Build: `npm run build`; publish: `dist`; base: repository root; Node.js 22. These settings are supplied by `netlify.toml`.
+The four-game correction release is published. The requested Netlify connector reports **ready production deploy `6ad66cf8ae4cc90f7e05944e`**, built from **main commit [`fe22370`](https://github.com/grantcharlie1000-tech/Qcc-games-/commit/fe22370380d0c1f1e02de344dd64be11ec9c7ed6)**, published **2026-10-19T19:18:32.828Z**. `manual_deploy` is **false**: the existing Git connection created this build automatically after main advanced. No manual Netlify upload or build trigger was used.
 
-## Correction candidate
+Project `mauri-gazette`, site ID `4afc912c-6802-4c18-8f2c-273fb3e771ee`. Production branch **main**. Build `npm run build`, publish `dist`, Node 22, settings in `netlify.toml`. Future main pushes use the same working connection.
 
-The locally verified gameplay correction uses offline pack **d1b885f03c1f**,65files,12games and20Study chapters. The [current ZIP](evidence/mauri-gazette-netlify.zip) is340,939bytes, SHA256`13c2fefd1b4c4d03a0a9282d347d50defff2e496b2edb8a5b2e04c2148974a90`. Main publication and new production-state verification are pending. The older Study publication below is historical.
+## Source integrity
 
-## Previous observed Study publication
+The connected GitHub app advanced main without force, guarded by its expected previous SHA. Remote tree **`a300f1aaea0c57ad8f357afbcace8f9b99eed0b3`** exactly matches reviewed local snapshot **`26cf9785654eda4f0e9c9b25756f3f5c816b6e47`**. The isolated original game owners' commits were reviewed and integrated locally, then published as a consolidated source commit because shell Git authentication was unavailable. This publication route does not require a user token or connection change. [Build and review record](AGENT_BUILDS.md).
 
-**Study Mode is published, and automatic updates from main are verified.** After the source update, the Netlify connector reported production deploy `6ad5fcc65c43d750cebd7d5c` ready, built from GitHub main commit [`2dbfce1`](https://github.com/grantcharlie1000-tech/Qcc-games-/commit/2dbfce1bdf7b471bd6c510e5190b69fd0324d7a4) and published at 2026-10-19T11:19:48.900Z. It is a Git build (`manual_deploy: false`), created automatically after main advanced. No manual Netlify upload or build trigger was used.
+The release passed 252 logic tests, the 139-case full Chromium regression, 15 final Water capture cases and 4 shared viewport/Study follow-ups. All 12 games and 20 chapters passed offline at both root and repository subpath. The real two-version/two-tab update test preserved the old cached game and high score. [Full results](DELIVERY.md), [correction evidence](GAMEPLAY_CORRECTIONS.md).
 
-The connected GitHub app published the source because shell Git credentials were unavailable. Main advanced without force, guarded by its expected previous SHA. The remote tree `922d987c5a2a00308d822adf87eacb836da5b905` exactly matches reviewed local source commit `c5259d6ac505586cf8fc2e270f7577f16aacf2de`, including the original game owners' reviewed follow-ups. Future pushes to main use the existing Netlify Git connection. No token or repository connection change is required from the user.
+## Verified local deployment bundle
 
-## Verified local build
+Offline pack **d1b885f03c1f**, **65 required files**, exactly 12 games and 20 Study chapters. The [ready static ZIP](evidence/mauri-gazette-netlify.zip) is **340,939 bytes**, SHA256 **`13c2fefd1b4c4d03a0a9282d347d50defff2e496b2edb8a5b2e04c2148974a90`**. It contains every required offline file and `_headers`; sourcemaps and the internal Vite manifest are excluded. [Machine-readable deployment proof](evidence/netlify-deployment.json).
 
-Offline-pack version **43dc049b82cb**, 57 required requests, exactly 12 games and 20 Study chapters. [Static ZIP](evidence/mauri-gazette-netlify.zip) contains every required file plus `_headers`; sourcemaps and the internal Vite manifest are excluded. [Deployment state](evidence/netlify-deployment.json) records archive size and SHA256. [Release checks](DELIVERY.md) and [Study evidence](STUDY_MODE.md) describe actual testing.
-
-The same output passed production offline interaction checks at `/` and `/Qcc-games-/`. GitHub Pages remains separately configured in `.github/workflows/pages.yml`; no Pages publication is claimed here.
+The unchanged output passed production offline interactions at `/` and `/Qcc-games-/`. Relative assets, directory-scoped service worker and hash routes support both. GitHub Pages remains configured separately; no Pages publication is claimed.
 
 ## Verification limits and browser updates
 
-Netlify deployment state is read through the requested connector. This environment's proxy rejects direct browser/HTTP access to the live origin, so live pages, host headers and offline download on that origin have not been independently tested. A ready deployment is publication evidence, not a substitute for those checks.
+Direct live-origin browser/HTTP access is blocked by this environment's proxy; a fresh HEAD attempt returned CONNECT tunnel HTTP403. The ready deployment and matching source were verified through the connector. This does not independently certify live-origin headers, payload bytes or offline downloading on that origin. [Actual origin attempt](evidence/correction/live-origin-unavailable.txt).
 
-Existing offline tabs keep their old release until all arcade tabs close. Reopen to activate an available update; download the new offline pack on that browser and origin. Cache retention depends on browser/device policy and never bypasses network or device controls.
+Chromium keyboard/pointer/touch emulation is not physical Chromebook/Mac or Safari/WebKit certification. Hardware performance remains unverified. Existing offline tabs retain their old release until all arcade tabs close. Reopen to activate an available update, then download the new complete offline pack. Browser/device policy may block or evict caches; caching does not bypass controls.

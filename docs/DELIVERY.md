@@ -1,6 +1,6 @@
 # Mauri Gazette arcade delivery — referenced gameplay correction
 
-Workspace: `/workspace/Qcc-games-`, branch `work`. Repository: https://github.com/grantcharlie1000-tech/Qcc-games-. Production source branch: **main**, automatically connected to **https://mauri-gazette.netlify.app**. Publication evidence is maintained in [the deployment record](NETLIFY_DEPLOYMENT.md).
+Workspace: `/workspace/Qcc-games-`, branch `work`. Repository: https://github.com/grantcharlie1000-tech/Qcc-games-. Production source branch: **main**, automatically connected to **https://mauri-gazette.netlify.app**. The correction release is published: ready automatic Netlify deploy `6ad66cf8ae4cc90f7e05944e`, source `fe22370`. [Deployment proof and live-origin limitations](NETLIFY_DEPLOYMENT.md).
 
 This pass corrects **Animal Stack, Water Sort, Color Blocks and Ball Run**, plus shared viewport/input behavior. The other eight game source modules and all twelve library covers remain unchanged from the Study release. No game was replaced or added. The four assigned specialists actually used GPT-6.1 Sol in isolated worktrees, discovered/read installed skills and supplied reviewed game-only commits; see [handoffs](AGENT_BUILDS.md) and each module's `SKILL_USAGE.md`.
 
