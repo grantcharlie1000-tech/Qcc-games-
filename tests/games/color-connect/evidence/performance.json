@@ -1,0 +1,84 @@
+{
+  "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "viewport": [
+    390,
+    844
+  ],
+  "rafSamples": 60,
+  "medianIntervalMs": 16.699999999999932,
+  "p95IntervalMs": 16.80000000000001,
+  "solves": [
+    {
+      "name": "First light",
+      "nodes": 14,
+      "milliseconds": 0.7,
+      "result": "solved"
+    },
+    {
+      "name": "Little bends",
+      "nodes": 16,
+      "milliseconds": 0.2,
+      "result": "solved"
+    },
+    {
+      "name": "Four friends",
+      "nodes": 13,
+      "milliseconds": 0.2,
+      "result": "solved"
+    },
+    {
+      "name": "Garden paths",
+      "nodes": 22,
+      "milliseconds": 0.3,
+      "result": "solved"
+    },
+    {
+      "name": "Ribbon dance",
+      "nodes": 23,
+      "milliseconds": 0.2,
+      "result": "solved"
+    },
+    {
+      "name": "Sweet circuit",
+      "nodes": 24,
+      "milliseconds": 0.1,
+      "result": "solved"
+    },
+    {
+      "name": "Deep lagoon",
+      "nodes": 264,
+      "milliseconds": 1.5,
+      "result": "solved"
+    },
+    {
+      "name": "Interwoven",
+      "nodes": 398,
+      "milliseconds": 1.6,
+      "result": "solved"
+    },
+    {
+      "name": "Prism garden",
+      "nodes": 287,
+      "milliseconds": 1.2,
+      "result": "solved"
+    },
+    {
+      "name": "Twilight maze",
+      "nodes": 622,
+      "milliseconds": 2.8,
+      "result": "solved"
+    },
+    {
+      "name": "Seven seas",
+      "nodes": 1338,
+      "milliseconds": 6.8,
+      "result": "solved"
+    },
+    {
+      "name": "Grand tapestry",
+      "nodes": 2046,
+      "milliseconds": 5.3,
+      "result": "solved"
+    }
+  ]
+}
