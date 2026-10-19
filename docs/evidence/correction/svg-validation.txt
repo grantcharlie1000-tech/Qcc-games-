@@ -1,0 +1,33 @@
+=== svg-skill validate ===
+PASS cover.svg
+PASS cover.svg
+PASS spark.svg
+PASS cover.svg
+PASS cover.svg
+PASS cover.svg
+PASS cover.svg
+PASS sloth.svg
+PASS elephant.svg
+PASS three-sprite-preview.svg
+PASS giraffe.svg
+PASS cover.svg
+PASS capybara.svg
+PASS penguin.svg
+PASS sheep.svg
+PASS horse.svg
+PASS tapir.svg
+PASS fox.svg
+PASS turtle.svg
+PASS six-sprite-preview.svg
+PASS hippo.svg
+PASS cover.svg
+PASS skyline.svg
+PASS cover.svg
+PASS cover.svg
+PASS cover.svg
+PASS cover.svg
+PASS flag.svg
+PASS tile.svg
+PASS mine.svg
+
+Result: 30 passed, 0 failed

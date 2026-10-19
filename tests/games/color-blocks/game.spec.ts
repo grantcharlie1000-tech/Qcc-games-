@@ -56,7 +56,7 @@ test.describe('touch input',()=>{
  test.use({hasTouch:true,viewport:{width:390,height:844}});
  test('trusted touch drag has the same exact ghost and commitment, and tap-select works',async({page,context,browserName})=>{
   test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
-  await open(page);const session=await context.newCDPSession(page);const b=await page.locator('[data-slot="0"] svg').boundingBox();if(!b)throw Error('missing');const start={x:b.x+b.width/4,y:b.y+b.height/4},end=await point(page,'[data-cell="9"]');
+  await open(page);const session=await context.newCDPSession(page);const b=await page.locator('[data-slot="0"] svg').boundingBox();if(!b)throw Error('missing');const start={x:b.x+b.width/4,y:b.y+b.height/4},end=await point(page,'[data-cell="9"]');const boardBounds=await page.locator('.cb-board').boundingBox();end.y+=Math.max(26,boardBounds!.width/8*1.25);
   await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...start,id:1}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...end,id:1}]});await expect(page.locator('.cb-ghost')).toHaveCount(4);const ghost=await page.locator('.cb-ghost').evaluateAll(el=>el.map(e=>Number((e as HTMLElement).dataset.cell)));
   await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});expect(await occupied(page)).toEqual(ghost);expect(ghost).toEqual([9,10,17,18]);
   await page.locator('[data-slot="2"]').tap();await page.locator('[data-cell="63"]').tap();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','2');expect(await occupied(page)).toContain(63);await session.detach();

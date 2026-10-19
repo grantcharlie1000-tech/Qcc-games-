@@ -27,7 +27,7 @@ async function gameAction(page:Page,id:string){
     await page.keyboard.press(dy===1?'ArrowDown':dy===-1?'ArrowUp':dx===1?'ArrowRight':'ArrowLeft');
   }
   if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
-  if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.getByRole('button',{name:'Jump',exact:false}).click();}
+  if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
   if(id==='pool')await page.getByRole('button',{name:'Shoot',exact:true}).click();
   if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
   await page.clock.runFor(id==='snake'?220:id==='ball-run'?120:650);

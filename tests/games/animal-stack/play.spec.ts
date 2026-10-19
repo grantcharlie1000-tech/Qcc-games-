@@ -1,65 +1,49 @@
-import {seedStudyTopic} from '../../fixtures';
-import { test, expect } from '../../fixtures';
-import { writeFileSync } from 'node:fs';
-import { AnimalWorld } from '../../../src/games/animal-stack/model';
+import { test, expect, seedStudyTopic } from '../../fixtures';
+import type {Page} from '@playwright/test';
+import {AnimalWorld, FLOOR, HEIGHT, WIDTH, TAP_ROTATION_RADIANS} from '../../../src/games/animal-stack/model';
 const route='/#/game/animal-stack';
-test('aim, stack, pause, save, restore, keyboard and restart on a phone', async ({page}) => {
-  await page.setViewportSize({width:390,height:844});
-  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(route);
-  const game=page.locator('.animal-stack'),canvas=game.locator('canvas');
-  await expect(game).toHaveAttribute('data-ready','true');
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  // Real horizontal pointer placement, then release over the island.
-  const b=(await canvas.boundingBox())!;
-  await page.mouse.move(b.x+b.width*.42,b.y+80);await expect(game).toHaveAttribute('data-aim','151');
-  await page.mouse.click(b.x+b.width*.5,b.y+95);
-  await expect(game).toHaveAttribute('data-count','1');await expect(game).toHaveAttribute('data-balanced','1');
-  await expect(page.locator('#game-score strong')).not.toHaveText('0');
-  for(let i=2;i<=4;i++){await canvas.click({position:{x:b.width*.5,y:90}});await expect(game).toHaveAttribute('data-balanced',String(i));}
-  const intervals=await page.evaluate(()=>new Promise<number[]>(resolve=>{const samples:number[]=[];let last=performance.now();const frame=(now:number)=>{samples.push(now-last);last=now;if(samples.length===61)resolve(samples.slice(1));else requestAnimationFrame(frame);};requestAnimationFrame(frame);}));
-  const sorted=intervals.sort((a,b)=>a-b);writeFileSync('tests/games/animal-stack/evidence/performance.json',JSON.stringify({engine:'system Chromium',samples:60,medianFrameMs:sorted[30],p95FrameMs:sorted[57],note:'Headless shared Linux environment; not a Chromebook hardware measurement.'},null,2));
-  await page.screenshot({path:'tests/games/animal-stack/evidence/chromium.png',fullPage:true});
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
-  const frozen=await game.getAttribute('data-tick');
-  await page.keyboard.press('ArrowLeft');
-  await page.evaluate(()=>new Promise<void>(resolve=>{let frames=0;const next=()=>{if(++frames===15)resolve();else requestAnimationFrame(next);};requestAnimationFrame(next);}));
-  await expect(game).toHaveAttribute('data-tick',frozen!);await expect(game).toHaveAttribute('data-count','4');
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
-  await canvas.focus();await page.keyboard.press('ArrowRight');await expect(game).toHaveAttribute('data-aim','190');await page.keyboard.press('ArrowLeft');await page.keyboard.press('Space');
-  await expect(game).toHaveAttribute('data-balanced','5');
-  await page.getByRole('link',{name:'Back to game library',exact:true}).click();
-  await page.goto(route);await expect(game).toHaveAttribute('data-balanced','5');
-  await expect(game).toHaveAttribute('data-count','5');
-  for(let i=0;i<2;i++){await page.getByRole('link',{name:'Back to game library',exact:true}).click();await page.locator('a[href="#/game/animal-stack"]').click();await expect(game).toHaveAttribute('data-count','5');}
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('half a second');await page.getByRole('button',{name:'Let’s play',exact:true}).click();
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(game).toHaveAttribute('data-count','0');await expect(page.locator('#game-score strong')).toHaveText('0');
-  await expect(game).toHaveAttribute('data-ready','true');
-  expect(errors).toEqual([]);
-});
-test('touch release drops, preview is safe at the edge, and a real fall ends the run', async ({browser}) => {
-  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.goto(route);
-  const game=page.locator('.animal-stack'),canvas=game.locator('canvas');await expect(game).toHaveAttribute('data-ready','true');
-  await page.getByRole('button',{name:'Aim left',exact:true}).click();await expect(game).toHaveAttribute('data-count','0');
-  const b=(await canvas.boundingBox())!;
-  await page.touchscreen.tap(b.x+b.width*.5,b.y+90);await expect(game).toHaveAttribute('data-balanced','1');
-  await page.touchscreen.tap(b.x+b.width*.07,b.y+90);await expect(game).toHaveAttribute('data-over','true');await expect(game.locator('.animal-stack__result')).toBeVisible();
-  await expect(game.getByRole('button',{name:'Tower finished',exact:true})).toBeDisabled();await context.close();
+const game=(page:Page)=>page.locator('.animal-stack');
+async function waitingPoint(page:Page,aim=180,spawn=HEIGHT*.43){const b=(await game(page).locator('canvas').boundingBox())!,scale=Math.min(b.width/WIDTH,b.height/HEIGHT);return{x:b.x+b.width/2+(aim-WIDTH/2)*scale,y:b.y+b.height*.73-FLOOR*scale+spawn*scale,scale};}
+async function loadPose(page:Page,x=230){const world=new AnimalWorld();world.drop();for(let i=0;i<300;i++)world.step();world.nextKind='giraffe';world.aim(x);world.rotateBy(-Math.PI/2);const snapshot=world.snapshot();world.dispose();await page.goto('/');await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),snapshot);await page.goto(route);await expect(game(page)).toHaveAttribute('data-count','1');return snapshot;}
+
+test('only deliberate DROP/Space release; drag, tap, keyboard repeat, save and restart',async({page})=>{
+ await page.setViewportSize({width:390,height:844});const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');
+ const p=await waitingPoint(page);await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+40*p.scale,p.y+50*p.scale,{steps:8});await page.mouse.up();await expect(game(page)).toHaveAttribute('data-count','0');await expect(game(page)).toHaveAttribute('data-aim','220');await expect(game(page)).toHaveAttribute('data-angle','0');
+ // A canvas tap outside the waiting animal cannot act on dropped bodies or the scene.
+ await page.mouse.click(p.x,p.y+180*p.scale);await expect(game(page)).toHaveAttribute('data-count','0');
+ await page.mouse.click(p.x+40*p.scale,p.y);await expect(game(page)).toHaveAttribute('data-count','0');if(TAP_ROTATION_RADIANS===null)await expect(game(page)).toHaveAttribute('data-angle','0');else await expect(game(page)).toHaveAttribute('data-angle',String(TAP_ROTATION_RADIANS));
+ const canvas=game(page).locator('canvas');await canvas.focus();for(let i=0;i<4;i++)await page.keyboard.press('a');await expect(game(page)).toHaveAttribute('data-aim','180');await page.getByRole('button',{name:'Restart game',exact:true}).click();await canvas.focus();
+ await page.keyboard.down('Space');await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');await page.keyboard.down('Space');await expect(game(page)).toHaveAttribute('data-count','1');await page.keyboard.up('Space');
+ await page.getByRole('button',{name:'Pause game',exact:true}).click();const tick=await game(page).getAttribute('data-tick');await page.keyboard.press('ArrowRight');await page.waitForTimeout(250);await expect(game(page)).toHaveAttribute('data-tick',tick!);await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+ await page.getByRole('link',{name:'Back to game library',exact:true}).click();await page.goto(route);await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');
+ await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(game(page)).toHaveAttribute('data-count','0');await expect(page.locator('#game-score strong')).toHaveText('0');expect(errors).toEqual([]);
 });
 
-test('reload restores the seed-4 six-animal impact snapshot instead of a fresh run', async ({page}) => {
-  const world=new AnimalWorld(4);
-  for(let i=0;i<5;i++){world.aim(150);expect(world.drop()).toBe(true);for(let tick=0;tick<300;tick++)world.step();}
-  world.aim(150);expect(world.drop()).toBe(true);for(let tick=0;tick<31;tick++)world.step();
-  const snapshot=world.snapshot();world.dispose();expect(snapshot.tick).toBe(1531);expect(snapshot.score).toBe(980);
-  await page.goto('/');
-  await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),snapshot);
-  await page.goto(route);
-  const game=page.locator('.animal-stack');await expect(game).toHaveAttribute('data-count','6');
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
-  expect(await page.locator('#game-score strong').textContent()).not.toBe('0');
-  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:animal-stack')!).data);
-  expect(saved.animals).toHaveLength(6);expect(saved.tick).toBeGreaterThanOrEqual(1531);
-  await page.reload();await expect(game).toHaveAttribute('data-count','6');
-  await expect(page.locator('#game-score strong')).not.toHaveText('0');
+test('real CDP touch drag/cancel never drops; DROP button releases',async({browser,browserName})=>{
+ test.skip(browserName!=='chromium','CDP touch dispatch requires Chromium.');
+ const context=await browser.newContext({baseURL:process.env.ARCADE_URL||'http://127.0.0.1:4173',viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const p=await waitingPoint(page),cdp=await context.newCDPSession(page);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p.x+45*p.scale,y:p.y+40*p.scale,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(game(page)).toHaveAttribute('data-aim','225');await expect(game(page)).toHaveAttribute('data-count','0');await expect(game(page)).toHaveAttribute('data-angle','0');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x+45*p.scale,y:p.y,id:2}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await expect(game(page)).toHaveAttribute('data-count','0');
+ await page.getByRole('button',{name:/^Drop /}).tap();await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');const aim=await game(page).getAttribute('data-aim');const box=(await game(page).locator('canvas').boundingBox())!;const groundY=box.y+box.height*.73-30*p.scale;await page.touchscreen.tap(p.x+45*p.scale,groundY);await expect(game(page)).toHaveAttribute('data-aim',aim!);await expect(game(page)).toHaveAttribute('data-count','1');await context.close();
 });
+
+test('pause cancels a captured gesture without rotation or drop',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const p=await waitingPoint(page),canvas=game(page).locator('canvas');await canvas.evaluate(e=>e.addEventListener('pointerdown',event=>e.setAttribute('data-test-pointer',String((event as PointerEvent).pointerId))));await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+5,p.y);await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#pause-game')!.click());const pointer=Number(await canvas.getAttribute('data-test-pointer'));expect(await canvas.evaluate((e,id)=>e.hasPointerCapture(id),pointer)).toBe(false);await page.mouse.up();await expect(game(page)).toHaveAttribute('data-count','0');await expect(game(page)).toHaveAttribute('data-angle','0');await page.getByRole('button',{name:'Keep playing',exact:true}).click();await expect(game(page)).toHaveAttribute('data-ready','true');});
+
+test('neck-first restored pose really pivots, stable pose earns support, edge fall ends',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await loadPose(page,210);await expect(game(page)).toHaveAttribute('data-angle',String(-Math.PI/2));await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-count','2');await expect.poll(async()=>Math.abs(Number(await game(page).getAttribute('data-body-angle'))+Math.PI/2)).toBeGreaterThan(.4);await expect.poll(async()=>Math.abs(Number(await game(page).getAttribute('data-body-angle'))+Math.PI/2)).toBeGreaterThan(1);
+ // x180 is a restored-pose fixture that settles wholly above platform on the elephant.
+ await loadPose(page,180);await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-balanced','2',{timeout:18000});expect(Number(await game(page).getAttribute('data-body-bottom'))).toBeLessThan(FLOOR-20);
+ const world=new AnimalWorld();world.nextKind='penguin';world.aim(0);const snapshot=world.snapshot();world.dispose();await page.goto('/');await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),snapshot);await page.goto(route);await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-over','true');await expect(game(page).getByRole('button',{name:/^Drop /})).toBeDisabled();
+});
+
+for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`viewport ${viewport.width}×${viewport.height} fits without game scrolling`,async({page})=>{await page.setViewportSize(viewport);await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const rect=await game(page).boundingBox();expect(rect!.height).toBeCloseTo(viewport.height);expect(await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.scrollHeight])).toEqual([viewport.width,viewport.height]);const button=await game(page).getByRole('button',{name:/^Drop /}).boundingBox();expect(button!.y).toBeGreaterThan(viewport.height*.8);expect(button!.y+button!.height).toBeLessThan(viewport.height);});
+
+for(const key of ['Enter','Space'])test(`holding ${key} on actual DROP cannot release the next animal`,async({page})=>{
+ await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const button=game(page).getByRole('button',{name:/^Drop /});await button.focus();await page.keyboard.down(key);
+ // Every deliberate release key has the same down-transition semantics on Canvas and DROP.
+ await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');await expect(game(page)).toHaveAttribute('data-ready','true');
+ // Refocus while still holding the original key, then deliver its real repeated keydown.
+ await button.focus();await page.keyboard.down(key);await expect(game(page)).toHaveAttribute('data-count','1');await page.keyboard.up(key);
+});
+
+test('held directional keys continue positioning and focus loss stops them',async({page})=>{await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const canvas=game(page).locator('canvas');await canvas.focus();await page.keyboard.down('d');await page.waitForTimeout(500);await page.keyboard.up('d');expect(Number(await game(page).getAttribute('data-aim'))).toBeGreaterThan(210);await page.keyboard.down('ArrowLeft');await page.waitForTimeout(300);await page.getByRole('button',{name:'Game rules',exact:true}).focus();const frozen=await game(page).getAttribute('data-aim');await page.waitForTimeout(250);await expect(game(page)).toHaveAttribute('data-aim',frozen!);await page.keyboard.up('ArrowLeft');});

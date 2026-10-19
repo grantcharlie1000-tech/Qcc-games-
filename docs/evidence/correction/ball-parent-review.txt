@@ -1,0 +1,12 @@
+
+Running 3 tests using 1 worker
+
+(node:26349) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/ball-run/play.spec.ts:10:1 › real drag and held keys steer; pause, Study, restart, restore, and disposal retain their contracts (9.8s)
+BALL_RUN_RENDER { calls: '7', geometries: '3' }
+BALL_RUN_RAF_MS { median: 66.69999999999982, p95: 116.70000000000073 }
+  ✓  2 [chromium] › tests/games/ball-run/play.spec.ts:54:1 › a real restored run accelerates through cyan gates and flies then lands across a gap without jumping (8.3s)
+  ✓  3 [chromium] › tests/games/ball-run/play.spec.ts:90:1 › unsupported WebGL gives a visible useful fallback and retains an existing save (1.5s)
+
+  3 passed (20.3s)

@@ -1,0 +1,22 @@
+import {chromium} from '@playwright/test';
+import {mkdir,writeFile} from 'node:fs/promises';
+const evidence='tests/games/animal-stack/evidence';await mkdir(evidence,{recursive:true});
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader']});
+const context=await browser.newContext({viewport:{width:390,height:844},recordVideo:{dir:evidence, size:{width:390,height:844}},reducedMotion:'reduce'});
+await context.addInitScript(()=>sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading'));
+const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.goto('http://127.0.0.1:4182/#/game/animal-stack');await page.locator('.animal-stack[data-ready="true"]').waitFor();await page.waitForTimeout(500);
+await page.screenshot({path:evidence+'/gate-real-elephant.png'});
+const canvas=page.locator('.animal-stack canvas'),box=await canvas.boundingBox();
+await page.mouse.move(box.x+box.width*.5,box.y+box.height*.43);await page.mouse.down();await page.mouse.move(box.x+box.width*.64,box.y+box.height*.54,{steps:12});await page.mouse.up();await page.waitForTimeout(250);
+const dragCount=await page.locator('.animal-stack').getAttribute('data-count');
+await canvas.focus();await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowLeft');await page.keyboard.press('Space');await page.waitForSelector('.animal-stack[data-balanced="1"]');
+const fixture=await page.evaluate(async()=>{const {AnimalWorld}=await import('/src/games/animal-stack/model.ts');const w=new AnimalWorld();w.aim(150);w.drop();for(let i=0;i<300;i++)w.step();w.nextKind='giraffe';w.aim(235);w.rotateBy(-Math.PI/2);const saved=w.snapshot();w.dispose();return saved;});
+await page.addInitScript(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),fixture);
+await page.reload();await page.waitForSelector('.animal-stack[data-count="1"][data-next="giraffe"]');await page.waitForTimeout(350);
+await page.screenshot({path:evidence+'/gate-real-giraffe.png'});
+await page.locator('canvas').focus();await page.keyboard.press('c');await page.waitForSelector('.animal-stack[data-colliders="true"]');await page.waitForTimeout(150);await page.locator('canvas').evaluate(e=>e.blur());await page.screenshot({path:evidence+'/gate-real-colliders.png'});
+const sizes=[];for(const viewport of [{width:844,height:390},{width:1366,height:768}]){await page.setViewportSize(viewport);await page.waitForTimeout(150);await page.screenshot({path:evidence+`/gate-real-${viewport.width}x${viewport.height}.png`});sizes.push(await page.evaluate(()=>({width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight})));}
+await writeFile(evidence+'/gate-checks.json',JSON.stringify({dragCount,errors,sizes,source:'Actual game route with parent fixed viewport commit; arbitrary -90 degree giraffe pose fixture, not a tap-increment claim.'},null,2));
+await context.close();
+const sheet=await browser.newPage({viewport:{width:1080,height:440}});await sheet.goto('http://127.0.0.1:4182/game-art/animal-stack/three-sprite-preview.svg');await sheet.screenshot({path:evidence+'/three-sprite-preview.png'});await browser.close();

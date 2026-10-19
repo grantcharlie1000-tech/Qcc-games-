@@ -3,10 +3,10 @@
 > node scripts/verify-update.mjs
 
 {
-  "recordedAt": "2026-10-19T11:15:06.585Z",
+  "recordedAt": "2026-10-19T19:10:25.351Z",
   "browserVersion": "154.0.8037.57",
-  "oldVersion": "43dc049b82cb",
-  "newVersion": "43dc049b82cb-next",
+  "oldVersion": "d1b885f03c1f",
+  "newVersion": "d1b885f03c1f-next",
   "oldLazyChunkRemovedFromServer": true,
   "oldTabPlayedOffline": true,
   "updateWaitedForBothTabsToClose": true,

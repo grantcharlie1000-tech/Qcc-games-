@@ -1,31 +1,32 @@
 {
-  "version": "43dc049b82cb",
-  "offlineFiles": 57,
+  "recordedAt": "2026-10-19T19:08:22.457Z",
+  "version": "d1b885f03c1f",
+  "offlineFiles": 65,
   "studyTopics": 20,
   "entry": [
     {
-      "file": "assets/index-xiolePHU.js",
-      "bytes": 116203,
-      "gzipBytes": 35682
+      "file": "assets/index-Ln05rS-o.js",
+      "bytes": 118014,
+      "gzipBytes": 36365
     },
     {
-      "file": "assets/index-ErYsTArr.css",
-      "bytes": 16066,
-      "gzipBytes": 4677
+      "file": "assets/index-B2sItLiF.css",
+      "bytes": 22517,
+      "gzipBytes": 5822
     }
   ],
   "gameChunks": [
     {
       "source": "src/games/animal-stack/index.ts",
-      "file": "assets/index-1oc9xrBY.js",
-      "bytes": 17444,
-      "gzipBytes": 7178
+      "file": "assets/index-BPR-Irxc.js",
+      "bytes": 23542,
+      "gzipBytes": 9756
     },
     {
       "source": "src/games/ball-run/index.ts",
-      "file": "assets/index-CI1t8wUE.js",
-      "bytes": 491195,
-      "gzipBytes": 124793
+      "file": "assets/index-GAH4GKAK.js",
+      "bytes": 493515,
+      "gzipBytes": 125434
     },
     {
       "source": "src/games/block-fill/index.ts",
@@ -35,9 +36,9 @@
     },
     {
       "source": "src/games/color-blocks/index.ts",
-      "file": "assets/index-C_Aqd055.js",
-      "bytes": 12392,
-      "gzipBytes": 5236
+      "file": "assets/index-CaljYLRT.js",
+      "bytes": 15490,
+      "gzipBytes": 6236
     },
     {
       "source": "src/games/color-connect/index.ts",
@@ -83,10 +84,10 @@
     },
     {
       "source": "src/games/water-sort/index.ts",
-      "file": "assets/index-D_CwdJFI.js",
-      "bytes": 15811,
-      "gzipBytes": 6589
+      "file": "assets/index-DHEjU8PW.js",
+      "bytes": 18696,
+      "gzipBytes": 7823
     }
   ],
-  "totalOfflineBytes": 1159744
+  "totalOfflineBytes": 1202348
 }

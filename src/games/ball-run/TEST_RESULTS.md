@@ -1,29 +1,35 @@
-# Ball Run verification
+# Ball Run correction verification
 
-Date: 2026-10-19. Isolated worktree `.worktrees/ball-run`, browser URL `http://127.0.0.1:4190/#/game/ball-run`.
+2026-10-19, isolated worktree `.worktrees/correction-ball`. Local Vite URL `http://127.0.0.1:4194/#/game/ball-run`. Parent shared viewport commit `6e0b12d4a94b24efed18ce75ae837f31e8dc38ec` was cherry-picked locally as `a1d8e89` for integration checks; it is excluded from the game handoff.
 
-## Executed checks
+## Checks
 
-- `npm run check` — exit 0 after final lifecycle/input change; TypeScript strict check passed.
-- `npx vitest run tests/games/ball-run` — 1 file, 8 tests passed. Deterministic geometry bounds over 12 seeds × 600 section samples; center-following navigation for 1200 metres over four seeds; 30/144Hz steering equivalence; edge fall/loss; jumping vs missing a gap; block collision vs jumping; airborne continuation; valid/invalid restore.
-- `npm test` — 2 files, 12 tests passed (8 Ball Run plus 4 existing storage tests).
-- `ARCADE_URL=http://127.0.0.1:4190 npx playwright test tests/games/ball-run --project=chromium` — final run 4 passed in 14.7s using installed `/usr/bin/chromium`, software WebGL flags from shared config. Actual hash-routed game; no imported model standing in for browser gameplay.
-- `bash .agents/skills/svg-skill/scripts/validate.sh public/game-art/ball-run` — 1 SVG passed, 0 failed.
+- Focused deterministic tests: 9 passed. Traverses 1200m over four seeds without a jump action, observes airborne flight and at least 12 landings per seed, verifies continuous chunk seams over 12 seeds/99 seams, ramp takeoff and gravity landing, smooth speed boost/recovery, frame-rate-independent steering, real edge fall/loss freeze, sphere/block collision vs clear center navigation, exact airborne v2 restore, and v1 distance/best/seed migration.
+- Full unit suite: `npm test` — 17 files, 229 tests passed.
+- `npm run check`, `npm run build`, `git diff --check` — exit 0. Build manifest retains Ball Run as a dynamic game entry; no Three import added to the homepage.
+- Existing unmodified cover: SVG validator — 1 passed, 0 failed.
+- Focused Chromium: `ARCADE_URL=http://127.0.0.1:4194 npx playwright test tests/games/ball-run --project=chromium --workers=1` — 8 passed in 39.4s. After the final city depth-offset/player-relative camera refinement, the focused gap/drag/held-key/projection test and all three viewport captures passed again: 4 passed in 16.8s (`--grep 'real restored|perspective'`).
 
-Browser coverage: explicit start; instructions dialog; real arrow steering; keyboard steering after pause focus changes; pause freezes both distance and steering; jump creates airborne saved state; held pointer steering leads to falling loss; Roll again; restart while paused; exact distance restore; explicit Continue after rules on a restored run; dispose/re-entry; native Chromium touchscreen hold, drag, and Jump tap; gap crossing with actual Space key; no horizontal overflow at 390px; unsupported WebGL fallback. No page errors in lifecycle case. Disposal is checked on the retained old canvas with `WebGL2RenderingContext.isContextLost()` after leaving.
+Browser cases use the actual routed module: drag and held-key steering, pause freeze, held-key Study interruption, restart, explicit restore, old-canvas context disposal and re-entry, native Chromium touch drag/cancel followed by keyboard steering, actual acceleration and ramp gap flight/landing without jumping, full-view aspect/overflow at 390×844 / 844×390 / 1366×768, deliberate WebGL loss/save/re-entry, and unavailable-WebGL fallback preserving a seeded 58m save.
 
-Screenshot: `tests/games/ball-run/evidence/chromium.png`, 390px phone viewport, active descent at 58 metres with the upcoming warning-striped gap and an orange block visible. Screenshot inspected visually: 3D perspective road, rolling striped sphere, neon edge strips, readable distances, touch targets and no clipping.
+## Evidence
 
-## Measured rendering evidence
+`tests/games/ball-run/evidence/` contains active-running screenshots at all three requested viewport sizes and an actual Playwright VP9 WebM recording (`ramp-gap.webm`, 390×844, 9.12s). Source references are not distributed. The recording contains actual mouse drag, held keyboard steering, acceleration, ramp launch, gap crossing, landing and continued rolling.
 
-Renderer diagnostics in the actual scene report **9 draw calls, 4 geometries**. Geometry is allocated once; advancing updates fixed InstancedMesh matrices, not mesh creation. Last passing run sampled 44 consecutive RAF intervals while the game was running: median **16.7ms**, p95 **16.7ms**. Earlier passing runs under concurrent machine load measured median 33.3ms / p95 66.7ms and median 16.7ms / p95 83.3ms. These are short local observations, not hardware benchmarks or a guaranteed frame rate. Chromium uses ANGLE SwiftShader software WebGL in this container; no physical Chromebook or mobile GPU was tested.
+Current screenshots place the ball center at .6833–.6842 of viewport height. Independent pixel-mask analysis of the full magenta silhouette finds width/height .9688–.9764, consistent with a round perspective sphere; actual canvas dimensions and camera aspect are also asserted. The test projects the ball center and requires vertical position .60–.78. Final player-relative tracking adds an on-screen horizontal projection assertion after held-D input and gap traversal.
 
-## Environment issues resolved during verification
+Viewed the actual recorded gap sequence: this caught ball clipping under valid lateral steering, which centered screenshots alone missed. The final camera follows the player laterally and vertically while retaining real fall visibility. Solid city faces receive polygon depth offset so coplanar wire grids stay readable with antialiasing disabled.
 
-The first E2E attempt failed to load Three because multiple worktrees shared `node_modules/.vite`: the optimized dependency URL returned HTTP504 “Outdated Optimize Dep”. An isolated server was launched with Vite `createServer({cacheDir:'/tmp/ball-run-vite-cache', server:{port:4190,strictPort:true}})`; the parent subsequently added worktree-local `.vite-cache` in shared config. No shared config was edited by this specialist. One in-flight test encountered a full-page HMR reload during that parent config update; the clean final run passed.
+## Real failures corrected
 
-A native-touch test initially held directional input too long through slow polling, drove off the road, then tried to jump after falling. RAF-based movement predicates and an independent grounded jump check replaced the timing-sensitive sequence; actual touch path passes. A real keyboard-focus bug after pause was fixed and covered. Restored runs now retain an explicit start gate even when a rules dialog is opened and closed.
+The revised model tests first ran against the old implementation: 8 failed, 1 existing steering test passed. They passed after the terrain/kinematics change. The original mandatory-jump test is replaced by launch/airborne/landing and long-course non-jump traversal coverage.
 
-## Limits and integration ownership
+The first browser run had 6 passes / 2 failures: unavailable-WebGL fallback overwrote an existing 58m save with 0m because restore was a no-op; and the global button display rule overrode the hidden Start button after context loss. Both were reproduced and fixed, then the suite passed. Actual screenshots exposed fixed camera height raising the ball into the upper half on ramps; actual video exposed lateral clipping; both informed camera corrections. Half-metre longitudinal grid stair-steps were replaced by connected endpoints along the curved road.
 
-WebKit was not executed; this assignment required the configured Chromium project, and no claim is made about unavailable engines. Parent owns integrated root/subpath build/offline checks, shared shell, final all-game screenshots and independent code review. Parent is replacing the cover in its common SVG redesign after integration. No known gameplay blocker remains in the tested Chromium environment. WebGL2 unavailable produces a helpful visible fallback, and device/context interruptions require leaving and reopening to continue the saved run.
+## Rendering observations and limits
+
+The running scene reports **7 draw calls, 3 geometries**. Road/grid/obstacle/gate instance buffers and the city buffers are reused, not allocated per frame. No shadows, postprocessing or custom shaders.
+
+Chromium is `/usr/bin/chromium` with ANGLE SwiftShader software WebGL. Final recorded sample of 44 RAF intervals: median **66.7ms**, p95 **133.3ms**. The preceding full 8-case run recorded median50/p95116.7ms. A separate 60-interval sample without recording measured median **66.7ms**, p95 **116.7ms**. Earlier antialias-enabled samples varied from median16.7/p95133.3ms (recording) to median100/p95183.4ms (no recording). Original `antialias:false` was retained to reduce software-GPU cost. These are local observations with highly variable load, not a hardware benchmark or a promised frame rate.
+
+Only reference stills are available; original continuous timing is unverified. Native browser touch emulation is not physical-device evidence. WebKit and real mobile/Chromebook GPUs were not tested. Parent owns final all-game/offline/root/subpath checks, independent integration review, and production deployment. No runtime dependency or shared file is part of the game-only handoff.

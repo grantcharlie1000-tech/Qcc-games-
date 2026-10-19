@@ -1,0 +1,17 @@
+# Independent integration review
+
+19 October 2026. Parent reviewed each scoped diff and original-reference comparisons before sequential integration. A separate read-only reviewer audited shared viewport fitting, Study scroll restoration and the integrated Color Blocks adapter; its nested reviewer independently checked Color Blocks input/logic and ran 15 focused unit tests. No browser result is attributed to those reviewers.
+
+The first review found that fixed overflow alone clipped Pool controls (portrait and landscape) and several legacy games in landscape. A real root-bounds Playwright assertion failed for Pool. The parent implemented uniform fitting of the eight existing logical layouts, observed dynamic root/available sizes, and kept the document body untransformed for Solitaire's drag ghost. The three initial fit/scroll tests then passed (32.1s).
+
+The second review identified potential Minesweeper toolbar clipping at the supported 320px width. The title now permits shrinking with ellipsis; native button bounds/hits and menu opening are included in the final suite. Additional actual Solitaire pile-growth, large Minesweeper inner-scroll and Pool scratch/ball-in-hand tests cover changing layout and coordinate mapping.
+
+Specialist evidence checks also caught and corrected: Color Blocks resize gesture races; Animal Stack native-button held-key repeats; Ball Run fallback save loss, a CSS-hidden control override, camera elevation/lateral framing and building-grid depth fighting. Animal physical-pose fixtures are explicitly identified; a stronger supported-on-elephant case replaced a case that merely settled beside it.
+
+Final integrated suite results are separate release artifacts. Source reviews do not certify unavailable physical devices or WebKit.
+
+A late review found tall-stack waiting sprites entering the landscape HUD. The original specialist added only a rendering helper and camera clamp (`ec04354`); no model/spawn/scale edits. A real replayable five-animal save reproduces the issue. Actual Canvas scanning saw 1,239 animal pixels in the original HUD region and zero after correction, across rotations/resizing. Parent independently passed both new browser cases; reviewer confirmed the source fix preserves pointer inverse mapping.
+
+The interrupted first integrated browser run recorded 54 passes, one native article-scroll test failure and one deliberate interruption. The trace showed the key arriving before the first visible Study frame; browser foreground focus was another plausible cause. No prevented event, remaining scroll lock or asynchronous reset was found. Eight separate native PageDown runs all scrolled with defaultPrevented=false. Foreground/frame readiness was added to the test, with no Study runtime change; five repeated cases passed. The final full suite uses that readiness check and still asserts actual native scrolling and an unprevented event.
+
+The final full Chromium run on `0a0fb35` passed 139/139 in 6.8 minutes with 0 failures/retries. A subsequent explicit-requirement audit found that Water Sort’s optional retained drag lacked pointer capture. The original specialist supplied a scoped follow-up; the parent reviewed and independently passed all 15 Water cases (43.9s), including real capture/release and pending/active lost-capture cancellation. Four integrated viewport/Study cases then passed (20.8s). Rules, levels, solver and session files were unchanged. Final 252 unit/build/offline/update checks use the capture follow-up source.

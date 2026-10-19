@@ -1,0 +1,32 @@
+
+Running 1 test using 1 worker
+
+(node:25898) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [webkit] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game (3ms)
+
+
+  1) [webkit] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game 
+
+    Error: browserType.launch: Executable doesn't exist at /home/agent/.cache/ms-playwright/webkit-2370/pw_run.sh
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/e2e-viewport-Study-restore-b4d66--to-the-retained-fixed-game-webkit/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/e2e-viewport-Study-restore-b4d66--to-the-retained-fixed-game-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/e2e-viewport-Study-restore-b4d66--to-the-retained-fixed-game-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [webkit] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game 

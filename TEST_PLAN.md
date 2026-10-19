@@ -10,6 +10,8 @@
 8. Playwright browser downloads may be blocked by this environment's network policy. Use preinstalled Chromium; report a missing WebKit engine explicitly unless a supported installation succeeds. CI installs both engines with dependencies.
 9. Study Mode: first-visit 20-topic choice, session-only retention and blocked storage; Escape from every game, dialogs and delayed mounts; freeze beyond autosave/AI delays; preserve exact snapshots and instance identity; restore keyboard focus, manual pause and hidden-page safety; all local articles with accessible SVGs and zero switch requests. Repeat on production root and repository subpath after caching and disabling network.
 
+10. Referenced gameplay corrections: inspect actual sprite/scene captures and interaction WebMs for the four supplied games. Verify deliberate Animal DROP vs tap/drag, rigid neck-first pivot/support/fall, held keys and collider alignment; level Water pours with conserved volume and one commit; exact Block footprint/snap; non-jump 3D ramp traversal and renderer fallback/disposal. Test every game at portrait/landscape viewport bounds with document scroll locked; exercise dynamic Solitaire, Minesweeper and Pool layouts, 320px toolbar hits, and tall rotated Animal cutouts below the HUD. Native reading-key tests foreground the tab and wait for its first frame before testing browser scrolling.
+
 ## Executed handoff evidence
 
-See [docs/DELIVERY.md](docs/DELIVERY.md) for the original arcade release and [Study Mode evidence](docs/STUDY_MODE.md) for the expanded unit/browser/offline checks. WebKit and physical managed-device acceptance remain explicitly unverified.
+See [docs/DELIVERY.md](docs/DELIVERY.md) for the current release, [gameplay correction evidence](docs/GAMEPLAY_CORRECTIONS.md) for the four referenced games and [Study Mode evidence](docs/STUDY_MODE.md) for the expanded unit/browser/offline checks. WebKit and physical managed-device acceptance remain explicitly unverified.

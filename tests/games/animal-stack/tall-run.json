@@ -1,0 +1,81 @@
+{
+  "version": 2,
+  "legacyScore": null,
+  "seed": 3260737532,
+  "aim": 180,
+  "rotation": 0,
+  "score": 1114,
+  "height": 307,
+  "over": false,
+  "complete": false,
+  "next": "sloth",
+  "active": null,
+  "tick": 3000,
+  "animals": [
+    {
+      "kind": "elephant",
+      "x": 180.25197998362412,
+      "y": 452.8740736007002,
+      "angle": -0.01290540723217034,
+      "vx": 0,
+      "vy": 0,
+      "av": 0,
+      "age": 3000,
+      "stable": 30,
+      "scored": true,
+      "sleeping": true
+    },
+    {
+      "kind": "giraffe",
+      "x": 307.4489602983335,
+      "y": 451.5880778378591,
+      "angle": -1.4806216395913285,
+      "vx": 0,
+      "vy": 0,
+      "av": 0,
+      "age": 2400,
+      "stable": 30,
+      "scored": true,
+      "sleeping": true
+    },
+    {
+      "kind": "elephant",
+      "x": 170.99370229138853,
+      "y": 392.45657308941225,
+      "angle": -0.18394989213306345,
+      "vx": 0,
+      "vy": 0,
+      "av": 0,
+      "age": 1800,
+      "stable": 30,
+      "scored": true,
+      "sleeping": true
+    },
+    {
+      "kind": "sloth",
+      "x": 170.49837846956265,
+      "y": 335.741561999797,
+      "angle": 0.09290700358248855,
+      "vx": 0,
+      "vy": 0,
+      "av": 0,
+      "age": 1200,
+      "stable": 30,
+      "scored": true,
+      "sleeping": true
+    },
+    {
+      "kind": "giraffe",
+      "x": 159.89543475947036,
+      "y": 257.13141697117334,
+      "angle": 0.005498563218607102,
+      "vx": 0,
+      "vy": 0,
+      "av": 0,
+      "age": 600,
+      "stable": 30,
+      "scored": true,
+      "sleeping": true
+    }
+  ]
+}

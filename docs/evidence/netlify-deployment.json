@@ -3,27 +3,22 @@
   "siteName": "mauri-gazette",
   "teamSlug": "grantcharlie1000",
   "dashboardUrl": "https://app.netlify.com/projects/mauri-gazette",
-  "arcadePublished": true,
-  "archive": "docs/evidence/mauri-gazette-netlify.zip",
-  "bytes": 326667,
-  "sha256": "d9c9859602a3b9e6c7d2976dbda2252b3c08877addb9245459231aafe3937302",
-  "offlinePackVersion": "43dc049b82cb",
-  "offlineFiles": 57,
-  "blockers": [],
-  "requestedPublicationRoute": "Netlify connector",
-  "connectorPublicationActionAvailable": false,
-  "availableDeploymentActions": [
-    "netlify_deploy_get_deploy",
-    "netlify_deploy_get_deploy_for_site"
-  ],
   "repository": "grantcharlie1000-tech/Qcc-games-",
   "productionBranch": "main",
-  "automaticDeploymentsConnected": true,
-  "recordedAt": "2026-10-19T11:20:00Z",
-  "studyPublished": true,
-  "automaticUpdateVerified": true,
   "publishedUrl": "https://mauri-gazette.netlify.app",
-  "publishedDeploy": {
+  "recordedAt": "2026-10-19T19:17:59.115228+00:00",
+  "archive": "docs/evidence/mauri-gazette-netlify.zip",
+  "bytes": 340939,
+  "sha256": "13c2fefd1b4c4d03a0a9282d347d50defff2e496b2edb8a5b2e04c2148974a90",
+  "offlinePackVersion": "d1b885f03c1f",
+  "offlineFiles": 65,
+  "allRequiredFilesPresent": true,
+  "sourcemapsExcluded": true,
+  "internalViteManifestExcluded": true,
+  "automaticDeploymentsConnected": true,
+  "correctionPublished": false,
+  "correctionStatus": "Verified locally; awaiting main publication and connector verification",
+  "priorStudyDeployment": {
     "id": "6ad5fcc65c43d750cebd7d5c",
     "site_id": "4afc912c-6802-4c18-8f2c-273fb3e771ee",
     "state": "ready",
@@ -39,13 +34,8 @@
     "error_message": null,
     "framework": "vite"
   },
+  "localReviewedSource": "17440fb",
+  "localReviewedSnapshot": "b2f5abe414187330dfbff1adcfda9dde5998fabd",
   "liveOriginBrowserVerified": false,
-  "liveOriginBrowserLimit": "Environment proxy rejects CONNECT to the Netlify origin with HTTP403. Connector deployment state is available.",
-  "sourcePublication": {
-    "method": "Connected GitHub app; fast-forward main with expected old SHA and force false",
-    "localReviewedCommit": "c5259d6ac505586cf8fc2e270f7577f16aacf2de",
-    "githubCommit": "2dbfce1bdf7b471bd6c510e5190b69fd0324d7a4",
-    "verifiedTreeSha": "922d987c5a2a00308d822adf87eacb836da5b905",
-    "sameTreeVerified": true
-  }
+  "liveOriginBrowserLimit": "Environment proxy previously rejected direct live-origin access; production-state verification uses the Netlify connector."
 }

@@ -1,34 +1,27 @@
-# Skills and concrete application
+# Correction skills — 19 October 2026
 
-Independent discovery: `rg --files .agents/skills -g SKILL.md` in this worktree. No skills were installed and no other game implementation was imported. Exact local files below were read; upstream repository/commit provenance comes from the existing `skills.lock.json`.
+Independent discovery used `rg --files .agents/skills -g SKILL.md` in the isolated correction worktree (57 installed entries), plus the project registry in AGENTS.md, docs/WORKSPACE_SKILLS.md and docs/SKILL_INVENTORY.md. No new skill or runtime dependency was installed. Paths below are actual files read in this correction session; upstream provenance remains in the unchanged skills.lock.json.
 
-| Local skill/source | Application |
+| Exact local source | Concrete application |
 | --- | --- |
-| `.agents/skills/using-superpowers/SKILL.md` | Read first workflow entry. Its subagent stop clause applies to this specialist. No nested agent was started, matching the explicit scope restriction. |
-| `.agents/skills/game-development/SKILL.md` | Routed to web, 2D, design and art. Separated action input, pure state transitions and rendering; no continuous simulation for a turn-based puzzle. |
-| `.agents/skills/game-development/web-games/SKILL.md` | Browser-native DOM/SVG is sufficient for 64 cells, avoiding an unnecessary engine; pause belongs to host lifecycle, no external assets or autoplay audio. |
-| `.agents/skills/game-development/2d-games/SKILL.md` | One logical cell size, layered board/gems/ghosts and simplified integer collision checks for clear silhouettes. |
-| `.agents/skills/game-development/game-design/SKILL.md` | Observe–place–clear loop, rewarding consecutive clearing choices, accessible input alternatives and balanced shuffle-bag variety instead of punishing random rerolls. |
-| `.agents/skills/game-development/game-art/SKILL.md` | Approachable soft vector palette, dark rim, gem bevels and value contrast; seven redundant marks plus shape names prevent reliance on hue. |
-| `.agents/skills/geometry-and-math/SKILL.md` | Pure-data geometry, integer floor snapping and saved deterministic RNG. This is a Phaser-specific skill; its API examples were not treated as standalone browser APIs and Phaser is not used. |
-| `.agents/skills/input-keyboard-mouse-touch/SKILL.md` | Unified pointer actions, explicit drag start/move/end, hit bounds, per-action keyboard handling and pausing input. Adapted principles to DOM Pointer Events rather than calling Phaser APIs. |
-| `.agents/skills/scale-and-responsive/SKILL.md` | Logical versus displayed dimensions; every pointer event uses live display bounds. No canvas or pixel-ratio renderer is needed for resolution-independent SVG. |
-| `.agents/skills/graphics-and-shapes/SKILL.md` | Simple grouped primitives for gem silhouettes, lighting and marks. Renderer uses DOM/SVG rather than Phaser Graphics. |
-| `.agents/skills/svg-skill/SKILL.md` and `scenarios.md` illustration section | Directly authored original SVG, fixed viewBox, unique gradient IDs, reusable gem composition, decorative accessibility, explicit XML validation. The parent requested ownership of cover regeneration, so only gameplay art and `spark.svg` were authored. |
-| `.agents/skills/test-driven-development/SKILL.md` and `writing-good-tests.md` | Wrote pure-rule fixtures before the model; first run failed because the model did not exist, followed by nine passing rule tests. Hand-checked crossing-line expectations, actual browser input and later seeded-run tests exercise real state rather than mocks. |
-| `.agents/skills/verification-before-completion/SKILL.md` | Fresh scoped unit, full unit, TypeScript and real Chromium checks; counts and screenshot in TEST_RESULTS.md. |
-| `.agents/skills/requesting-code-review/SKILL.md` | Read review workflow; the explicit parent instruction forbids extra agents. Requested independent integration review from the parent, who owns that review. No fabricated review result. |
+| `.agents/skills/using-superpowers/SKILL.md` | Loaded entry point; its dispatched-subagent stop clause applies. Parent owns independent review/integration. |
+| `.agents/skills/systematic-debugging/SKILL.md` | Traced the old card composition and missing floating piece to adapter/CSS; identified cancellation leaving a selected piece armed before editing. |
+| `.agents/skills/svg-skill/SKILL.md`, `scenarios.md`, `scripts/validate.sh` | Original flat SVG cube with straight faces, explicit 32×32 viewBox, separate light top/left and dark right/bottom bevels. Shared `gem` geometry for board/tray/drag. Decorative SVG is aria-hidden; colourblind marks remain. Generated seven SVG variants and invoked the real validator, followed by XML parsing. |
+| `.agents/skills/animate/SKILL.md` | Feedback and spatial consistency only: instant direct manipulation; 180ms invalid return, 250ms line streaks, 280ms small score/combo feedback. WAAPI transform/opacity, existing strong ease-out curve, cancellable on pause/resize/dispose. System and product reduced-motion settings suppress motion; keyboard placement is immediate. No idle decorative movement. |
+| `.agents/skills/pick-ui-library/SKILL.md` | Checked current dependencies. Puzzle coordinate manipulation is outside its React sortable UI use case; retained native Pointer Events/WAAPI within the frozen no-framework/no-dependency architecture. No library installation claimed. |
+| `.agents/skills/game-development/SKILL.md`, `game-development/web-games/SKILL.md`, `game-development/2d-games/SKILL.md`, `game-development/game-art/SKILL.md` | Retained turn-based deterministic model and DOM/SVG renderer, one cell unit across layers, original saturated flat shapes, no simulation loop or rigid-body system. |
+| `.agents/skills/input-keyboard-mouse-touch/SKILL.md` | Unified actions, actual occupied-cell grabbing, stable-root pointer capture, explicit cancellation, one active primary pointer and held-key placement guard. This skill describes Phaser; no Phaser API was copied into DOM code. |
+| `.agents/skills/geometry-and-math/SKILL.md`, `.agents/skills/scale-and-responsive/SKILL.md` | Pure logical grid versus display bounds, integer snapping, current bounding rectangles and responsive square board. Phaser geometry/ScaleManager APIs are inapplicable; `input.ts` performs the small native mapping. |
+| `.agents/skills/test-driven-development/SKILL.md`, `writing-good-tests.md` | Five hand-derived coordinate/footprint tests were written and run before the mapping helper existed (missing-module red), then passed. Existing rules tests unchanged; new browser tests exercise actual input and interrupted gestures rather than source-string checks. |
+| `.agents/skills/verification-before-completion/SKILL.md` | Fresh complete unit suite, TypeScript, SVG validation and recorded browser results in TEST_RESULTS.md. |
+| `.agents/skills/requesting-code-review/SKILL.md` | Read review handoff requirements. Parent explicitly owns sequential independent review; no extra subagent was created. |
 
-Provenance: game-development family: `vudovn/ag-kit` at `549ba3dc2eb1d40fccb5b6d792eba4101c80cd69`; Phaser skills: `phaserjs/phaser` at `02d8931b626d9764c133cbb3fbf99966c03c757c`; SVG: `linyaosky/svg-skill` at `2103b92cb47f588a97a6c38aa6c40571fadbd4f8`; workflow: `obra/superpowers` at `bb92a77741419a4ab5f06e711a283343f1ada0c3`. All retain upstream MIT licensing in the untouched skills tree.
+The installed animation skill recommends springs for momentum gestures, but these pieces have no inertia: pointer tracking and valid snapping are immediate; only the invalid return is eased. No physics simulation or unsupported performance claim is appropriate for integer polyomino placement.
 
-## Gaps and documentation actually read
+No specialised standalone DOM input, polyomino geometry, or Playwright testing skill exists in the project registry. The Phaser input/geometry skills provide principles, not DOM documentation. The official MDN Pointer Events source was fetched and read in this session:
 
-No local specialist skill for polyomino placement algorithms, row/column reconciliation, puzzle generators or standalone DOM drag/drop was discovered. These gaps were addressed with the explicit rules in SPEC.md, exhaustive integer-anchor legal-move scanning, simultaneous line-union removal, shuffle-bag invariants and deterministic/browser tests. Phaser math/input guides informed structure, not unsupported API use.
+https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/pointer_events/index.md
 
-Read official browser documentation from MDN's source repository:
+Its capture, implicit release, pointercancel and touch-action sections inform stable-root capture, explicit loss/cancel handling and gesture suppression confined to board/tray. This is documentation research, not an invented skill invocation. The live board rectangle supplies viewport coordinates to the same lift/snap mapping on movement and release.
 
-- https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/element/setpointercapture/index.md — capture target owns subsequent pointer events until release or pointerup; stable root capture keeps a drag alive while tray SVG is redrawn; touch-action none on actual drag surfaces.
-- https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/element/getboundingclientrect/index.md — bounds are viewport-relative and include border/padding; board has neither, and client coordinates share that coordinate space. Bounds are read each event, including after scroll or resize.
-- https://raw.githubusercontent.com/RisticDjordje/BlockBlast-Game-AI-Agent/main/README.md — secondary rules reference for 8×8, three pieces, completed rows/columns and successive-clear combos. Original algorithm, score policy and visuals are independently authored. Documentation research is not skill invocation.
-
-Network policy blocked the App Store listing. No official scoring claim or official balance parity is made. Trackpad-equivalent input means the browser's normal mouse Pointer Events; no physical trackpad or phone was available. WebKit was not installed and is not claimed tested.
+Actual visual references inspected: `blocks_and_ball_reference_sheet.jpg`, `11_blocks_board.png`, `12_blocks_combo.png` from `/tmp/arcade-gameplay-refs/arcade_visual_references/`. Reference stills are comparison-only and are not bundled as product art. No MP4 was supplied, so continuous original timing cannot be verified. Native Chromium CDP touch is browser emulation, not physical phone testing.

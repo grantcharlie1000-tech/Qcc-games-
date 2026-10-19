@@ -1,0 +1,22 @@
+
+Running 15 tests using 1 worker
+
+(node:44954) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/games/water-sort/correction.spec.ts:8:1 › travelling glass pours level liquid into destination, pause retains the same transaction, and returns once (2.5s)
+  ✓   2 [chromium] › tests/games/water-sort/correction.spec.ts:38:1 › native keyboard source and destination selection ignores held Enter and survives a cancelled pointer (962ms)
+  ✓   3 [chromium] › tests/games/water-sort/correction.spec.ts:54:3 › open scene and all seven tubes fit 390x844 (699ms)
+  ✓   4 [chromium] › tests/games/water-sort/correction.spec.ts:54:3 › open scene and all seven tubes fit 844x390 (608ms)
+  ✓   5 [chromium] › tests/games/water-sort/correction.spec.ts:54:3 › open scene and all seven tubes fit 1366x768 (764ms)
+  ✓   6 [chromium] › tests/games/water-sort/correction.spec.ts:66:1 › reduced motion transfers legal volume gently without moving glass (1.0s)
+  ✓   7 [chromium] › tests/games/water-sort/correction.spec.ts:74:1 › Study retains a partially transferred pour and resumes the same game instance (1.9s)
+  ✓   8 [chromium] › tests/games/water-sort/correction.spec.ts:87:1 › optional drag captures real pointer moves and release outside the source before pouring (4.4s)
+  ✓   9 [chromium] › tests/games/water-sort/correction.spec.ts:107:1 › cancel, lost capture, blur, resize, pause and disposal release drag capture without pouring (4.9s)
+  ✓  10 [chromium] › tests/games/water-sort/game.spec.ts:23:1 › real illegal pour, winning hints, undo, next level and restart (9.3s)
+  ✓  11 [chromium] › tests/games/water-sort/game.spec.ts:49:1 › pending animation freezes under pause and commits only once on resume (1.5s)
+  ✓  12 [chromium] › tests/games/water-sort/game.spec.ts:71:1 › legal progress and undo history survive reload and repeated navigation (8.4s)
+  ✓  13 [chromium] › tests/games/water-sort/game.spec.ts:95:1 › all level controls and rules work, keyboard can select and pour (1.4s)
+  ✓  14 [chromium] › tests/games/water-sort/game.spec.ts:117:1 › actual mouse drag pours; malformed saved data starts safely (2.6s)
+  ✓  15 [chromium] › tests/games/water-sort/game.spec.ts:128:1 › touch, colour labels, patterns, phone fit and screenshot (1.7s)
+
+  15 passed (43.9s)

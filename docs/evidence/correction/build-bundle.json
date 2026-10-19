@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-10-19T19:08:22.595034+00:00",
+  "archive": "docs/evidence/mauri-gazette-netlify.zip",
+  "bytes": 340939,
+  "sha256": "13c2fefd1b4c4d03a0a9282d347d50defff2e496b2edb8a5b2e04c2148974a90",
+  "offlinePackVersion": "d1b885f03c1f",
+  "offlineFiles": 65,
+  "allRequiredFilesPresent": true,
+  "sourcemapsExcluded": true,
+  "internalViteManifestExcluded": true
+}

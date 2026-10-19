@@ -1,52 +1,50 @@
 import Matter from 'matter-js';
-const { Bodies, Body, Composite, Engine, Events, Sleeping, Query } = Matter;
-export const WIDTH = 360, HEIGHT = 480, FLOOR = 422, LIMIT = 40;
-export const KINDS = ['hippo', 'capybara', 'turtle', 'sheep', 'fox'] as const;
+import { SHAPES } from './shapes';
+const { Bodies, Body, Composite, Engine, Events, Sleeping, Query, Vertices } = Matter;
+export const WIDTH = 360, HEIGHT = 2000/3, FLOOR = HEIGHT*.73, LIMIT = 40;
+export const KINDS = ['elephant', 'giraffe', 'horse', 'tapir', 'penguin', 'sloth'] as const;
 export type Kind = typeof KINDS[number];
+/** Explicit adaptation:45° per tap/Q/E; source videos absent, original increment unverified. */
+export const TAP_ROTATION_RADIANS: number = Math.PI/4;
 export const ANIMALS: Record<Kind, { name: string; width: number; height: number; mass: number; color: string }> = {
-  hippo: { name:'Hippo', width:104, height:54, mass:5.8, color:'#a9a0de' },
-  capybara: { name:'Capybara', width:94, height:48, mass:4.2, color:'#dca26c' },
-  turtle: { name:'Turtle', width:86, height:40, mass:3.6, color:'#9bc86d' },
-  sheep: { name:'Sheep', width:76, height:52, mass:2.6, color:'#fff3d6' },
-  fox: { name:'Fox', width:80, height:44, mass:2.2, color:'#f49b5e' },
+ elephant:{name:'Elephant',width:88,height:63,mass:5.8,color:'#929495'},
+ giraffe:{name:'Giraffe',width:94,height:132,mass:3.5,color:'#ffc541'},
+ horse:{name:'Horse',width:98,height:92,mass:3.8,color:'#b96c41'},
+ tapir:{name:'Tapir',width:103,height:64,mass:4.8,color:'#373d44'},
+ sloth:{name:'Sloth',width:106,height:70,mass:2.1,color:'#95918a'},
+ penguin:{name:'Penguin',width:54,height:64,mass:1.4,color:'#292a36'},
 };
 export interface Animal { kind: Kind; body: Matter.Body; offset: {x:number;y:number}; age:number; stable:number; scored:boolean; impact:number }
 export function createAnimal(kind: Kind, x: number, y: number): Animal {
-  const a = ANIMALS[kind];
-  // Broad convex torsos provide readable contact surfaces; side heads and ears remain physical.
-  const parts = [Bodies.rectangle(0, 0, a.width, a.height, {chamfer:{radius:kind==='turtle'?12:8}})];
-  if (kind === 'hippo') parts.push(Bodies.rectangle(a.width/2-4, -6, 25, 32, {chamfer:{radius:8}}));
-  if (kind === 'capybara') parts.push(Bodies.rectangle(a.width/2-4, -8, 25, 28, {chamfer:{radius:6}}));
-  if (kind === 'turtle') parts.push(Bodies.circle(a.width/2+3, 5, 12));
-  if (kind === 'sheep') parts.push(Bodies.circle(a.width/2-1, 2, 15));
-  if (kind === 'fox') {
-    parts.push(Bodies.trapezoid(a.width/2-1, -6, 28, 30, 0.3));
-    parts.push(Bodies.polygon(a.width/2-5, -25, 3, 10));
-  }
-  const body = Body.create({parts, label:kind, friction:0.85, frictionStatic:1.5, frictionAir:0.018, restitution:0.025, sleepThreshold:90, slop:0.025});
-  const offset = {x:-body.position.x, y:-body.position.y};
-  Body.setMass(body, a.mass); Body.setPosition(body,{x,y});
-  return {kind,body,offset,age:0,stable:0,scored:false,impact:0};
+ const parts=SHAPES[kind].map((points,index)=>{
+  if(!Vertices.isConvex(points))throw new Error(`${kind} part ${index} must be convex`);
+  const centre=Vertices.centre(points);
+  return Body.create({position:centre,vertices:points.map(p=>({...p})),label:`${kind}:${index}`});
+ });
+ const body=Body.create({parts,label:kind,friction:.85,frictionStatic:1.5,frictionAir:.018,restitution:.025,sleepThreshold:90,slop:.025});
+ const offset={x:-body.position.x,y:-body.position.y};
+ Body.setMass(body,ANIMALS[kind].mass);Body.setPosition(body,{x,y});
+ return {kind,body,offset,age:0,stable:0,scored:false,impact:0};
 }
 interface SavedAnimal { kind:Kind; x:number;y:number;angle:number;vx:number;vy:number;av:number;age:number;stable:number;scored:boolean;sleeping:boolean }
-export interface Snapshot {version:1;seed:number;aim:number;score:number;height:number;over:boolean;complete:boolean;next:Kind;active:number|null;tick:number;animals:SavedAnimal[]}
+export interface Snapshot {version:2;legacyScore:number|null;seed:number;aim:number;rotation:number;score:number;height:number;over:boolean;complete:boolean;next:Kind;active:number|null;tick:number;animals:SavedAnimal[]}
 const finite = (v:unknown, min:number,max:number): v is number => typeof v==='number' && Number.isFinite(v) && v>=min && v<=max;
 const kindValid = (v:unknown):v is Kind => KINDS.includes(v as Kind);
 export function parseSnapshot(data: unknown): Snapshot | null {
   if (!data || typeof data!=='object') return null;
   const s=data as Snapshot;
-  if (s.version!==1 || !finite(s.seed,1,0xffffffff) || !Number.isInteger(s.seed) || !finite(s.aim,24,336) || !finite(s.score,0,1000000) || !finite(s.height,0,6000) || !finite(s.tick,0,1e9) || !kindValid(s.next) || typeof s.over!=='boolean' || typeof s.complete!=='boolean' || !Array.isArray(s.animals) || s.animals.length>LIMIT || !(s.active===null || (Number.isInteger(s.active)&&s.active>=0&&s.active<s.animals.length))) return null;
+  if ((s.legacyScore!==null&&s.legacyScore!==undefined&&!finite(s.legacyScore,0,1000000)) || s.version!==2 || !finite(s.seed,1,0xffffffff) || !Number.isInteger(s.seed) || !finite(s.aim,0,360) || !finite(s.rotation,-Math.PI*2,Math.PI*2) || !finite(s.score,0,1000000) || !finite(s.height,0,6000) || !finite(s.tick,0,1e9) || !kindValid(s.next) || typeof s.over!=='boolean' || typeof s.complete!=='boolean' || !Array.isArray(s.animals) || s.animals.length>LIMIT || !(s.active===null || (Number.isInteger(s.active)&&s.active>=0&&s.active<s.animals.length))) return null;
   for (const a of s.animals) {
     if (!a || !kindValid(a.kind) || !finite(a.x,-500,860) || !finite(a.y,-6500,1500) || !finite(a.angle,-1e5,1e5) || !finite(a.vx,-40,40) || !finite(a.vy,-40,40) || !finite(a.av,-1,1) || !finite(a.age,0,1e9) || !finite(a.stable,0,1e9) || typeof a.scored!=='boolean' || typeof a.sleeping!=='boolean') return null;
   }
   const count=s.animals.filter(a=>a.scored).length;
   if(s.score!==count*100+s.height*2 || (s.complete && (count!==LIMIT || s.active!==null || s.over)))return null;
-  return {version:1,seed:s.seed,aim:s.aim,score:s.score,height:s.height,over:s.over,complete:s.complete,next:s.next,active:s.active,tick:s.tick,animals:s.animals.map(a=>({kind:a.kind,x:a.x,y:a.y,angle:a.angle,vx:a.vx,vy:a.vy,av:a.av,age:a.age,stable:a.stable,scored:a.scored,sleeping:a.sleeping}))};
+  return {version:2,legacyScore:s.legacyScore??null,seed:s.seed,aim:s.aim,rotation:s.rotation,score:s.score,height:s.height,over:s.over,complete:s.complete,next:s.next,active:s.active,tick:s.tick,animals:s.animals.map(a=>({kind:a.kind,x:a.x,y:a.y,angle:a.angle,vx:a.vx,vy:a.vy,av:a.av,age:a.age,stable:a.stable,scored:a.scored,sleeping:a.sleeping}))};
 }
 export class AnimalWorld {
   readonly engine = Engine.create({enableSleeping:true,positionIterations:12,velocityIterations:10});
-  readonly platform = Bodies.rectangle(180,FLOOR+15,210,30,{isStatic:true,friction:0.9,frictionStatic:1.5,restitution:0,label:'island'});
-  animals: Animal[]=[]; seed:number; aimX=180; score=0; height=0; over=false; complete=false; nextKind:Kind='hippo'; active:number|null=null; tick=0;
+  readonly platform = Bodies.rectangle(180,FLOOR+5,324,10,{isStatic:true,friction:0.9,frictionStatic:1.5,restitution:0,label:'island'});
+  animals: Animal[]=[]; seed:number; aimX=180; rotation=0; legacyScore:number|null=null; score=0; height=0; over=false; complete=false; nextKind:Kind='elephant'; active:number|null=null; tick=0;
   constructor(seed=173) {
     this.seed=(seed>>>0)||173; this.engine.gravity.y=0.9; Composite.add(this.engine.world,this.platform);
     Events.on(this.engine,'collisionStart', event => {
@@ -59,12 +57,13 @@ export class AnimalWorld {
   get ready() { return !this.over && !this.complete && this.active===null && this.animals.length<LIMIT; }
   get top() { return Math.min(FLOOR,...this.animals.filter(a=>a.body.position.y<FLOOR+40).map(a=>a.body.bounds.min.y)); }
   get cameraTop() { return Math.min(FLOOR,...this.animals.filter(a=>a.scored).map(a=>a.body.bounds.min.y)); }
-  get spawnY() { return Math.min(110,this.top-96); }
-  aim(x:number) { if (Number.isFinite(x)) this.aimX=Math.max(24,Math.min(336,x)); }
+  get spawnY() { return Math.min(HEIGHT*.43,this.top-110); }
+  aim(x:number) { if (Number.isFinite(x)) this.aimX=Math.max(0,Math.min(WIDTH,x)); }
+  rotateBy(angle:number) { if(this.ready&&Number.isFinite(angle))this.rotation=(this.rotation+angle)%(Math.PI*2); }
   private random() { let x=this.seed; x^=x<<13;x^=x>>>17;x^=x<<5;this.seed=x>>>0 || 173;return this.seed/4294967296; }
   drop() {
     if (!this.ready) return false;
-    const a=createAnimal(this.nextKind,this.aimX,this.spawnY); Composite.add(this.engine.world,a.body);this.animals.push(a);this.active=this.animals.length-1;
+    const a=createAnimal(this.nextKind,this.aimX,this.spawnY); Body.setAngle(a.body,this.rotation);this.rotation=0; Composite.add(this.engine.world,a.body);this.animals.push(a);this.active=this.animals.length-1;
     this.nextKind=KINDS[(KINDS.indexOf(this.nextKind)+1+Math.floor(this.random()*(KINDS.length-1)))%KINDS.length]; return true;
   }
   step() {
@@ -102,9 +101,21 @@ export class AnimalWorld {
     }
     if (this.animals.length>=LIMIT && this.active===null && this.supportedCount===LIMIT) this.complete=true;
   }
-  snapshot():Snapshot { return {version:1,seed:this.seed,aim:this.aimX,score:this.score,height:this.height,over:this.over,complete:this.complete,next:this.nextKind,active:this.active,tick:this.tick,animals:this.animals.map(a=>({kind:a.kind,x:a.body.position.x,y:a.body.position.y,angle:a.body.angle,vx:a.body.velocity.x,vy:a.body.velocity.y,av:a.body.angularVelocity,age:a.age,stable:a.stable,scored:a.scored,sleeping:a.body.isSleeping}))}; }
+  snapshot():Snapshot { return {version:2,legacyScore:this.legacyScore,seed:this.seed,aim:this.aimX,rotation:this.rotation,score:this.score,height:this.height,over:this.over,complete:this.complete,next:this.nextKind,active:this.active,tick:this.tick,animals:this.animals.map(a=>({kind:a.kind,x:a.body.position.x,y:a.body.position.y,angle:a.body.angle,vx:a.body.velocity.x,vy:a.body.velocity.y,av:a.body.angularVelocity,age:a.age,stable:a.stable,scored:a.scored,sleeping:a.body.isSleeping}))}; }
   restore(data:unknown) {
-    const s=parseSnapshot(data);if (!s) return false;
+    let s=parseSnapshot(data);
+    if(!s && data && typeof data==='object' && (data as {version?:unknown}).version===1){
+      const old=data as {animals?:unknown[];next?:unknown;score?:unknown;aim?:unknown};
+      const legacyKinds=['hippo','capybara','turtle','sheep','fox'];
+      if(!Array.isArray(old.animals)||!legacyKinds.includes(String(old.next))||!finite(old.aim,24,336))return false;
+      if(old.animals.some(a=>!a||typeof a!=='object'||!legacyKinds.includes(String((a as {kind?:unknown}).kind))))return false;
+      // Validate every old field and the old score formula through the same bounded schema.
+      // This temporary kind mapping is validation only; old geometry is never reconstructed.
+      const checked=parseSnapshot({...data,version:2,rotation:0,legacyScore:null,next:'elephant',animals:old.animals.map(a=>({...a as object,kind:'elephant'}))});
+      if(!checked)return false;
+      s={...checked,legacyScore:checked.score,score:0,height:0,tick:0,rotation:0,next:'elephant',over:false,complete:false,active:null,animals:[]};
+    }
+    if(!s)return false;
     const restored=s.animals.map(v=> {const a=createAnimal(v.kind,v.x,v.y);Body.setAngle(a.body,v.angle);Body.setVelocity(a.body,{x:v.vx,y:v.vy});Body.setAngularVelocity(a.body,v.av);Sleeping.set(a.body,v.sleeping);a.age=v.age;a.stable=v.stable;a.scored=v.scored;return a;});
     // Contact penetration is transient solver state, not evidence of corruption. Even ordinary
     // island impacts can overlap by more than 5px. All shapes, masses and body counts are rebuilt
@@ -116,7 +127,7 @@ export class AnimalWorld {
       poses.add(pose);
     }
     Composite.clear(this.engine.world,false);Engine.clear(this.engine);Composite.add(this.engine.world,this.platform);this.animals=restored;
-    Composite.add(this.engine.world,this.animals.map(a=>a.body));Object.assign(this,{seed:s.seed,aimX:s.aim,score:s.score,height:s.height,over:s.over,complete:s.complete,nextKind:s.next,active:s.active,tick:s.tick});return true;
+    Composite.add(this.engine.world,this.animals.map(a=>a.body));Object.assign(this,{seed:s.seed,legacyScore:s.legacyScore,aimX:s.aim,rotation:s.rotation,score:s.score,height:s.height,over:s.over,complete:s.complete,nextKind:s.next,active:s.active,tick:s.tick});return true;
   }
   dispose() { Events.off(this.engine,'collisionStart');Composite.clear(this.engine.world,false);Engine.clear(this.engine); }
 }

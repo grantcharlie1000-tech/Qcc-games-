@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Animal Stack · live module review harness</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#55c3ec;font-family:Arial,sans-serif}#stage{height:100dvh;width:100%;--scene-width:min(100vw,calc(100dvh * .54))}header{position:fixed;z-index:3;top:12px;left:50%;transform:translateX(-50%);width:min(90vw,400px);display:flex;justify-content:space-between;align-items:center;color:white;font-weight:bold}header span{background:#4188a7;border-radius:6px;padding:6px 10px;font-size:11px;text-align:center}header button{border:0;color:white;background:#4188a7;border-radius:50%;width:34px;height:34px;font-size:22px}aside{position:fixed;z-index:4;bottom:3px;left:3px;font-size:9px;background:#ffffffc9;color:#16485b;padding:3px}aside button,aside select{font-size:10px}</style>
+<header><button id="reset" aria-label="Restart">↻</button><span>LIVE MODULE HARNESS<br>score <b id="score">0</b></span><span>RECORD<br>0</span><button id="pause" aria-label="Pause">Ⅱ</button></header><div id="stage"></div><aside>Isolated harness; parent shell not included. <label><input id="collider" type="checkbox">colliders</label><select id="species"><option>elephant</option><option>giraffe</option><option>penguin</option><option>horse</option><option>tapir</option><option>sloth</option></select><button id="neck">neck-first pose (90° fixture)</button></aside>
+<script type="module">
+import game from '/src/games/animal-stack/index.ts';
+const stage=document.querySelector('#stage');
+let paused=false;
+const instance=await game.mount(stage,{id:'animal-stack',settings:{reducedMotion:true,sound:false,colorBlind:false},highScore:0,setScore(n){document.querySelector('#score').textContent=n},setLevel(){},setStatus(){},announce(){},sound(){},save(){}});
+window.animalHarness=instance;
+document.querySelector('#reset').onclick=()=>instance.restart();document.querySelector('#pause').onclick=()=>{paused=!paused;instance[paused?'pause':'resume']()};
+document.querySelector('#collider').onchange=()=>{const canvas=stage.querySelector('canvas');canvas.focus();canvas.dispatchEvent(new KeyboardEvent('keydown',{key:'c',bubbles:true}));canvas.dispatchEvent(new KeyboardEvent('keyup',{key:'c',bubbles:true}));};
+document.querySelector('#species').onchange=e=>{instance.restart();const s=instance.serialize();s.next=e.target.value;instance.restore(s);};
+document.querySelector('#neck').onclick=()=>{instance.restart();const s=instance.serialize();s.next='giraffe';s.rotation=-Math.PI/2;instance.restore(s);};
+</script></html>

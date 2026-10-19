@@ -1,0 +1,20 @@
+
+Running 5 tests using 1 worker
+
+(node:32983) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game (5.8s)
+(node:33122) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game (6.0s)
+(node:33258) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game (5.7s)
+(node:33395) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game (7.8s)
+(node:34081) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game (6.3s)
+
+  5 passed (35.5s)

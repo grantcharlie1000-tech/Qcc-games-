@@ -39,3 +39,16 @@ Each new game test checks zero repeated Canvas drawing while paused, one loop on
 - SOL-02 reviewed Block Fill and Color Connect. Block Fill had no concrete defect. SOL-09 corrected gesture snapshot transactions, sparse snapshots and pointer-to-keyboard focus; the reviewer checked the corrective handoff.
 
 No review result substitutes for a test result. Native Chromium touch-protocol cases are explicitly Chromium-only. Other browser interactions are configured for both engines. **WebKit could not be run locally:** browser download hosts returned policy 403, and launch reported a missing executable. The CI workflow installs both engines; future CI results are not claimed as completed local verification.
+
+## Referenced gameplay correction pass — 19 October 2026
+
+Four assigned specialists were actually spawned with `gpt-6.1-sol`, in isolated worktrees from frozen contract `6861106`. Each independently discovered/read installed skills and official API sources; exact usage/gaps are in its updated `SKILL_USAGE.md`. The parent owns shared viewport/input and integration. No other eight game source modules changed.
+
+| Specialist | Worktree / branch | Reviewed game-only handoff(s) | Parent integration |
+|---|---|---|---|
+| SOL-12 Animal Stack | `.worktrees/correction-animal` / `correction/animal-stack` | `4eb4d3e`, `5b3b46a`, `2e32d8d`, `00ddbb8`, `42fbafa` | `16bb286`, `1019a2c`, `a6fdd13`, `38d6a94`, `ec04354` |
+| SOL-02 Water Sort | `.worktrees/correction-water` / `correction/water-sort` | `7a2035c`, `dd711b8` | `c2ea48e`, `17440fb` |
+| SOL-03 Color Blocks | `.worktrees/correction-blocks` / `correction/color-blocks` | `458f115`, `b12193d` | `a2b080e`, `f7f4263` |
+| SOL-10 Ball Run | `.worktrees/correction-ball` / `correction/ball-run` | `1bdadbd` | `fdbc2ff` |
+
+Duplicate local shell cherry-picks were excluded. Parent independently ran focused pure-logic and actual browser input checks before each integration, inspected sprite/portrait/landscape/interaction evidence, and obtained read-only reviews of shared fitting and all four adapters. Review findings led to actual fixes, including dynamic layout bounds, 320px control clipping, held native DROP keys and tall Animal HUD overlap. See [correction evidence](evidence/correction/independent-review.md) and [current release report](DELIVERY.md).

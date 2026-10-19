@@ -1,0 +1,35 @@
+{
+  "drag": {
+    "count": "0",
+    "aim": "215",
+    "angle": "0"
+  },
+  "tap": {
+    "count": "0",
+    "angle": "0.7853981633974483"
+  },
+  "tippedAngle": "-0.07909580218243378",
+  "stableBottom": "441.4115150910461",
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "scrollWidth": 844,
+      "scrollHeight": 390
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "scrollHeight": 768
+    }
+  ],
+  "errors": [],
+  "note": "Actual mounted game; x210 neck-first pivot and x180 above-elephant support are explicit restored -90° fixtures, not original tap timing.45° tap is documented adaptation."
+}

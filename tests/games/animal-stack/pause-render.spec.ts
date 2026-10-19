@@ -30,7 +30,7 @@ test('shared pause stops Canvas rendering and repeated resumes keep one animatio
   const game = page.locator('.animal-stack');
   await expect(game).toHaveAttribute('data-ready', 'true');
   await expect.poll(() => page.evaluate(() => window.animalPauseProbe.paints)).toBeGreaterThan(0);
-  await game.getByRole('button', { name: 'Drop Hippo', exact: true }).click();
+  await game.getByRole('button', { name: /^Drop / }).click();
   await expect(game).toHaveAttribute('data-count', '1');
 
   for (let cycle = 0; cycle < 3; cycle++) {

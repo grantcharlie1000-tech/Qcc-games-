@@ -1,0 +1,11 @@
+
+Running 4 tests using 1 worker
+
+(node:27050) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/viewport.spec.ts:66:1 › legacy fit follows a growing Solitaire pile and preserves real card hits (1.6s)
+  ✓  2 [chromium] › tests/e2e/viewport.spec.ts:86:1 › Minesweeper keeps its intentional board scrolling inside the fitted game (2.3s)
+  ✓  3 [chromium] › tests/e2e/viewport.spec.ts:102:1 › all legacy toolbar controls remain reachable at the supported 320px width (1.2s)
+  ✓  4 [chromium] › tests/games/pool/play.spec.ts:22:1 › scratch gives ball-in-hand and a trackpad click places a non-overlapping cue (7.8s)
+
+  4 passed (13.9s)

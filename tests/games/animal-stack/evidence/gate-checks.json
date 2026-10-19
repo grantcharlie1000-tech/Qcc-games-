@@ -1,0 +1,19 @@
+{
+  "dragCount": "0",
+  "errors": [],
+  "sizes": [
+    {
+      "width": 844,
+      "height": 390,
+      "scrollWidth": 844,
+      "scrollHeight": 390
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "scrollHeight": 768
+    }
+  ],
+  "source": "Actual game route with parent fixed viewport commit; arbitrary -90 degree giraffe pose fixture, not a tap-increment claim."
+}

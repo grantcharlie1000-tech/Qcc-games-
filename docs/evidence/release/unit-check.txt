@@ -1,5 +1,36 @@
 
 > pocket-offline-arcade@1.0.0 test
-> vitest run --reporter=json --outputFile=docs/evidence/release/unit-results.json
+> vitest run --reporter=default --reporter=json --outputFile=docs/evidence/release/unit-results.json
+
+
+ RUN  v3.2.7 /workspace/Qcc-games-
+
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 315ms
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 402ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 428ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 208ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 163ms
+ ✓ tests/games/ball-run/model.test.ts (9 tests) 203ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 146ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 169ms
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 84ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 64ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 125ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 64ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 40ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 24ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 22ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 10ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 22ms
+ ✓ tests/core/study.test.ts (5 tests) 6ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 4ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 32ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 6ms
+ ✓ tests/core/storage.test.ts (5 tests) 13ms
+
+ Test Files  22 passed (22)
+      Tests  252 passed (252)
+   Start at  19:07:20
+   Duration  3.23s (transform 823ms, setup 0ms, collect 1.47s, tests 2.55s, environment 5ms, prepare 1.52s)
 
 JSON report written to /workspace/Qcc-games-/docs/evidence/release/unit-results.json

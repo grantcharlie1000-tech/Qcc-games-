@@ -4,7 +4,11 @@
 
 Project `mauri-gazette`, site ID `4afc912c-6802-4c18-8f2c-273fb3e771ee`. Production branch: **main**. Build: `npm run build`; publish: `dist`; base: repository root; Node.js 22. These settings are supplied by `netlify.toml`.
 
-## Observed publication
+## Correction candidate
+
+The locally verified gameplay correction uses offline pack **d1b885f03c1f**,65files,12games and20Study chapters. The [current ZIP](evidence/mauri-gazette-netlify.zip) is340,939bytes, SHA256`13c2fefd1b4c4d03a0a9282d347d50defff2e496b2edb8a5b2e04c2148974a90`. Main publication and new production-state verification are pending. The older Study publication below is historical.
+
+## Previous observed Study publication
 
 **Study Mode is published, and automatic updates from main are verified.** After the source update, the Netlify connector reported production deploy `6ad5fcc65c43d750cebd7d5c` ready, built from GitHub main commit [`2dbfce1`](https://github.com/grantcharlie1000-tech/Qcc-games-/commit/2dbfce1bdf7b471bd6c510e5190b69fd0324d7a4) and published at 2026-10-19T11:19:48.900Z. It is a Git build (`manual_deploy: false`), created automatically after main advanced. No manual Netlify upload or build trigger was used.
 

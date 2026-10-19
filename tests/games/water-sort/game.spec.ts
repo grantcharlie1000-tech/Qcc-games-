@@ -60,7 +60,7 @@ test('pending animation freezes under pause and commits only once on resume',asy
   expect(await readBoard(page)).toEqual(initial);
   await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeDisabled();
   await page.getByRole('button',{name:'Keep playing',exact:true}).click();
-  await page.clock.runFor(350);
+  await page.clock.runFor(1500);
   await expect(root(page)).toHaveAttribute('data-moves','1');
   await expect(root(page)).toHaveAttribute('data-phase','ready');
   await page.clock.runFor(1000);
@@ -139,7 +139,7 @@ test('touch, colour labels, patterns, phone fit and screenshot',async({browser})
   await page.getByRole('combobox',{name:'Level',exact:true}).selectOption('4');
   await page.getByRole('button',{name:'Hint',exact:true}).tap();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  expect(await root(page).evaluate(el=>el.getBoundingClientRect().width)).toBeLessThanOrEqual(366);
+  expect(await root(page).evaluate(el=>el.getBoundingClientRect().width)).toBeLessThanOrEqual(390);
   await expect(tube(page,0)).toHaveAccessibleName(/bottom to top/);
   await page.screenshot({path:'tests/games/water-sort/evidence/chromium.png',fullPage:true});
   await context.close();

@@ -1,0 +1,138 @@
+[
+  {
+    "run": 0,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  },
+  {
+    "run": 1,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  },
+  {
+    "run": 3,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  },
+  {
+    "run": 4,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  },
+  {
+    "run": 5,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  },
+  {
+    "run": 6,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  },
+  {
+    "run": 7,
+    "y": 738,
+    "htmlClass": "",
+    "htmlOverflow": "visible",
+    "bodyOverflow": "visible",
+    "htmlHeight": 2802,
+    "bodyHeight": 2802,
+    "focus": "study-title",
+    "events": [
+      {
+        "key": "PageDown",
+        "prevented": false,
+        "target": "study-title"
+      }
+    ]
+  }
+]

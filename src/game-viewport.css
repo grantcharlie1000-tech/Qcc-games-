@@ -1,0 +1,62 @@
+/* A browser viewport layer, independent of native fullscreen. */
+html.game-viewport,html.game-viewport body{height:100%;overflow:hidden;overscroll-behavior:none}
+body.in-game .topbar{display:none}
+body.in-game .game-view{position:fixed;inset:0;width:100%;height:100dvh;max-width:none;margin:0;padding:8px 12px;display:flex;flex-direction:column;overflow:hidden;background:#191d1c}
+body.in-game .game-toolbar{flex:0 0 46px;min-height:0;gap:5px;max-width:1080px;width:100%;margin:0 auto}
+body.in-game .game-toolbar h1{font-size:21px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.in-game .game-toolbar .icon-button{min-width:34px;min-height:36px;padding:5px}
+body.in-game .game-toolbar .icon-button svg{width:24px;height:24px}
+body.in-game .game-menu-button{margin-left:2px}
+body.in-game .game-metrics{flex:0 0 34px;min-height:0;width:min(100%,1080px);margin:2px auto 7px;padding:5px 10px;font-size:12px;align-items:center}
+body.in-game .game-metrics strong{font-size:18px}
+.record-crown{display:none}
+body.in-game .stage-wrap{flex:1 1 auto;min-height:0;width:100%;display:grid;place-items:center}
+body.in-game #game-stage{min-height:0;width:100%;max-height:100%;outline:none}
+body.in-game #game-stage.viewport-fitted{position:absolute;left:50%;top:50%;max-height:none;transform-origin:center;overflow:visible}
+body.in-game #game-status{flex:0 0 auto;min-height:0;max-height:32px;overflow:hidden;font:12px/1.3 system-ui,sans-serif;margin:6px auto 0}
+body.in-game #pause-overlay{border-radius:0}
+
+/* Referenced games reserve their whole surface; the compact HUD overlays it. */
+.game-view[data-game-id=animal-stack]{--scene-width:min(100vw,calc(100dvh * .54));--scene-bg:#55c3ec}
+.game-view[data-game-id=water-sort]{--scene-width:min(100vw,calc(100dvh * .58));--scene-bg:#221b2e}
+.game-view[data-game-id=color-blocks]{--scene-width:min(100vw,calc(100dvh * .72));--scene-bg:#30223b}
+.game-view[data-game-id=ball-run]{--scene-width:100vw;--scene-bg:#000}
+body.in-game .game-view[data-reference-game=true]{padding:0;background:var(--scene-bg);display:block}
+body.in-game .game-view[data-reference-game=true] .stage-wrap,
+body.in-game .game-view[data-reference-game=true] #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
+body.in-game .game-view[data-reference-game=true] .game-toolbar{position:absolute;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:var(--scene-width);height:40px;padding:0 12px;display:flex;justify-content:space-between;z-index:25;pointer-events:none}
+body.in-game .game-view[data-reference-game=true] .game-toolbar .icon-button{pointer-events:auto;width:36px;height:36px;min-height:36px;min-width:36px;border-radius:50%;background:#0003;color:white;padding:7px}
+body.in-game .game-view[data-reference-game=true] .game-toolbar .icon-button svg{width:25px;height:25px}
+.game-view[data-reference-game=true] #game-title,
+.game-view[data-reference-game=true] #game-level,
+.game-view[data-reference-game=true] #game-status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}
+body.in-game .game-view[data-reference-game=true] .game-metrics{position:absolute;top:max(15px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:24;margin:0;padding:0;display:flex;justify-content:center;gap:12px;background:none;width:calc(var(--scene-width) - 116px);height:34px;pointer-events:none}
+.game-view[data-reference-game=true] #game-score,
+.game-view[data-reference-game=true] #game-best{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;width:85px;max-width:calc(50% - 4px);height:34px;border-radius:4px;background:#0004;font-family:Arcade,sans-serif;line-height:1}
+.game-view[data-reference-game=true] .metric-label{font-size:clamp(8px,1.3dvh,10px);font-weight:800;color:white;white-space:nowrap}
+body.in-game .game-view[data-reference-game=true] .game-metrics strong{font:800 clamp(13px,2.2dvh,18px)/1 Arcade,sans-serif;color:#fff;margin:2px 0 0}
+.game-view[data-reference-game=true] #game-best .metric-label,
+body.in-game .game-view[data-reference-game=true] #game-best strong{color:#37e2b3}
+.game-view[data-reference-game=true] .record-crown{position:absolute;width:30px;height:13px;display:block;top:-9px;left:calc(50% - 15px);color:#0004}
+/* Secondary shared controls stay small and away from the central game action. */
+body.in-game .game-view[data-reference-game=true] #pause-game,
+body.in-game .game-view[data-reference-game=true] #rules-game,
+body.in-game .game-view[data-reference-game=true] #favourite-game,
+body.in-game .game-view[data-reference-game=true] #game-menu{position:fixed;top:auto;bottom:max(7px,env(safe-area-inset-bottom));width:28px;height:28px;min-width:28px;min-height:28px;padding:5px;background:#0002;color:#ffffffc9}
+body.in-game .game-view[data-reference-game=true] #game-menu{right:10px;margin:0}
+body.in-game .game-view[data-reference-game=true] #rules-game{right:44px}
+body.in-game .game-view[data-reference-game=true] #pause-game{right:78px}
+body.in-game .game-view[data-reference-game=true] #favourite-game{right:112px}
+body.in-game .game-view[data-reference-game=true] #pause-game svg,
+body.in-game .game-view[data-reference-game=true] #rules-game svg,
+body.in-game .game-view[data-reference-game=true] #favourite-game svg,
+body.in-game .game-view[data-reference-game=true] #game-menu svg{width:18px;height:18px}
+/* Fixed descendants must not use the transformed header as their containing block. */
+body.in-game .game-view[data-reference-game=true] .game-toolbar{transform:none;left:calc((100vw - var(--scene-width)) / 2)}
+body.in-game .game-view[data-game-id=water-sort] .game-metrics,
+body.in-game .game-view[data-game-id=ball-run] .game-metrics{display:none}
+body.in-game .game-view[data-game-id=ball-run] #pause-game{position:static;width:36px;height:36px;min-width:36px;min-height:36px;margin-left:auto;background:#0003}
+body.in-game .game-view[data-game-id=ball-run] #pause-game svg{width:25px;height:25px}
+body.in-game .game-view[data-game-id=ball-run] #restart-game{position:fixed;bottom:7px;right:78px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px}
+body.in-game .game-view[data-game-id=ball-run] #restart-game svg{width:18px;height:18px}
+@media(max-height:480px){body.in-game .game-view:not([data-reference-game=true]){padding:3px 10px}body.in-game .game-view:not([data-reference-game=true]) .game-toolbar{flex-basis:38px}body.in-game .game-view:not([data-reference-game=true]) .game-metrics{margin:0 auto 3px;flex-basis:28px}body.in-game .game-view:not([data-reference-game=true]) #game-status{font-size:10px;max-height:15px;margin-top:3px}}

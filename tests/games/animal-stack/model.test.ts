@@ -1,94 +1,19 @@
+import Matter from 'matter-js';
 import { describe, expect, it } from 'vitest';
-import { AnimalWorld, createAnimal, parseSnapshot } from '../../../src/games/animal-stack/model';
-const run = (world: AnimalWorld, frames = 240) => { for (let i = 0; i < frames; i++) world.step(); };
-describe('Animal Stack rules and real physics', () => {
-  it('keeps preview outside physics and never loses while aiming', () => {
-    const w = new AnimalWorld(17); w.aim(0); run(w, 1000);
-    expect(w.animals).toHaveLength(0); expect(w.over).toBe(false); expect(w.score).toBe(0); w.dispose();
-  });
-  it('awards supported animals once and rewards actual height', () => {
-    const w = new AnimalWorld(17); expect(w.drop()).toBe(true); expect(w.drop()).toBe(false);
-    run(w); expect(w.supportedCount).toBe(1); expect(w.score).toBeGreaterThan(150);
-    const score = w.score; run(w, 600); expect(w.score).toBe(score); expect(w.over).toBe(false); w.dispose();
-  });
-  it('stacks five centered distinct animals without spontaneous energy', () => {
-    const w = new AnimalWorld(17);
-    for (let i = 0; i < 5; i++) { w.aim(180); expect(w.drop()).toBe(true); run(w, 300); expect(w.over).toBe(false); }
-    run(w, 1800); expect(w.supportedCount).toBe(5); expect(w.height).toBeGreaterThan(190);
-    expect(Math.max(...w.animals.map(a => a.body.speed))).toBeLessThan(0.5);
-    expect(new Set(w.animals.map(a => a.kind)).size).toBeGreaterThan(2); w.dispose();
-  });
-  it('physically rotates an overhanging animal and ends when it tumbles away', () => {
-    const w = new AnimalWorld(17); w.aim(65); w.drop(); run(w, 400);
-    expect(Math.abs(w.animals[0].body.angle)).toBeGreaterThan(0.2);
-    expect(w.over).toBe(true); expect(w.supportedCount).toBe(0); w.dispose();
-  });
-  it('uses compound silhouettes with different finite masses', () => {
-    const bodies = ['hippo','fox','sheep','turtle','capybara'].map(k => createAnimal(k as 'hippo', 180, 100).body);
-    expect(bodies.every(b => b.parts.length > 1 && Number.isFinite(b.inertia))).toBe(true);
-    expect(new Set(bodies.map(b => b.mass.toFixed(2))).size).toBeGreaterThan(3);
-  });
-  it('continues a saved live simulation deterministically', () => {
-    const a = new AnimalWorld(123); a.drop(); run(a, 32); const save = a.snapshot();
-    const b = new AnimalWorld(1); expect(b.restore(save)).toBe(true); run(a, 240); run(b, 240);
-    expect(b.score).toBe(a.score); expect(b.nextKind).toBe(a.nextKind); expect(b.animals[0].body.position.y).toBeCloseTo(a.animals[0].body.position.y, 1);
-    a.dispose(); b.dispose();
-  });
-  it('rejects corrupt snapshots atomically', () => {
-    const w = new AnimalWorld(4); w.drop(); const before = w.snapshot();
-    for (const bad of [null, {}, {...before, animals:[{kind:'fox',x:NaN}]}, {...before,seed:Infinity}, {...before,complete:true}, {...before,score:9999}, {...before,animals:Array(100).fill(before.animals[0])}]) {
-      expect(parseSnapshot(bad)).toBeNull(); expect(w.restore(bad)).toBe(false);
-    }
-    expect(w.animals).toHaveLength(1); w.dispose();
-  });
-  it('starts every body clear of the highest existing geometry', () => {
-    const w = new AnimalWorld(17); for (let i = 0; i < 4; i++) { w.drop(); run(w, 240); }
-    const top = Math.min(...w.animals.map(a => a.body.bounds.min.y)); w.drop();
-    expect(w.animals.at(-1)!.body.bounds.max.y).toBeLessThan(top - 25); w.dispose();
-  });
-  it('replays the seed and queue exactly', () => {
-    const a = new AnimalWorld(17), b = new AnimalWorld(17); a.drop(); b.drop(); run(a); run(b);
-    expect(a.nextKind).toBe(b.nextKind); expect(a.snapshot()).toEqual(b.snapshot()); a.dispose(); b.dispose();
-  });
-  it('rejects exact duplicated body records without mutating the run', () => {
-    const w=new AnimalWorld(17);w.drop();run(w);const save=w.snapshot();
-    const duplicated={...save,score:save.score+100,animals:[save.animals[0],save.animals[0]]};
-    expect(parseSnapshot(duplicated)).not.toBeNull();
-    expect(w.restore(duplicated)).toBe(false);
-    expect(w.animals).toHaveLength(1);expect(w.supportedCount).toBe(1);w.dispose();
-  });
-  it('caps the population and completes only when forty animals have earned support', () => {
-    const w=new AnimalWorld(17);w.drop();run(w);const base=w.snapshot();
-    const animals=Array.from({length:40},(_,i)=>({...base.animals[0],y:base.animals[0].y-i*54.1}));
-    expect(w.restore({...base,active:null,animals,score:8400,height:2200})).toBe(true);
-    expect(w.drop()).toBe(false);expect(w.animals).toHaveLength(40);w.step();expect(w.complete).toBe(true);w.dispose();
-  });
-
-  it('lets an off-centre load tip from a supported tower under real gravity', () => {
-    const w=new AnimalWorld(17);for(let i=0;i<3;i++){w.aim(180);w.drop();run(w,240);}
-    w.aim(230);w.drop();const dropped=w.animals.at(-1)!;let rotation=0;
-    for(let i=0;i<300&&!w.over;i++){w.step();rotation=Math.max(rotation,Math.abs(dropped.body.angle));}
-    expect(rotation).toBeGreaterThan(0.25);w.dispose();
-  });
-
-  it('never counts an airborne newcomer in a different animal height reward', () => {
-    const w=new AnimalWorld(17);w.drop();run(w,240);w.drop();const save=w.snapshot();
-    save.animals[0].scored=false;save.animals[0].stable=29;save.score=0;save.height=0;
-    expect(w.restore(save)).toBe(true);w.step();expect(w.height).toBeLessThan(70);expect(w.score).toBeLessThan(240);w.dispose();
-  });
-
-  it('restores the valid seed-4 sixth-drop impact at world tick 1531', () => {
-    const original=new AnimalWorld(4);
-    for(let i=0;i<5;i++){original.aim(150);expect(original.drop()).toBe(true);run(original,300);}
-    original.aim(150);expect(original.drop()).toBe(true);run(original,31);
-    const save=original.snapshot();
-    expect(save.tick).toBe(1531);expect(save.over).toBe(false);expect(save.score).toBe(980);
-    expect(parseSnapshot(save)).not.toBeNull();
-    const restored=new AnimalWorld(1);expect(restored.restore(save)).toBe(true);
-    expect(restored.snapshot()).toEqual(save);
-    run(restored,300);
-    expect(restored.animals.every(a=>[a.body.position.x,a.body.position.y,a.body.angle,a.body.velocity.x,a.body.velocity.y].every(Number.isFinite))).toBe(true);
-    original.dispose();restored.dispose();
-  });
-
+import { AnimalWorld, createAnimal, parseSnapshot, KINDS, FLOOR } from '../../../src/games/animal-stack/model';
+const run=(w:AnimalWorld,n=300)=>{for(let i=0;i<n;i++)w.step();};
+describe('Animal Stack scoring, rigid bodies and saves',()=>{
+ it('keeps the waiting preview out of physics and safe indefinitely',()=>{const w=new AnimalWorld(17);w.aim(0);run(w,1000);expect(w.animals).toHaveLength(0);expect(w.over).toBe(false);expect(w.score).toBe(0);w.dispose();});
+ it('awards platform-connected stillness once using the existing score formula',()=>{const w=new AnimalWorld(17);expect(w.drop()).toBe(true);expect(w.drop()).toBe(false);run(w);expect(w.supportedCount).toBe(1);expect(w.score).toBe(100+w.height*2);expect(w.height).toBeGreaterThan(55);const score=w.score;run(w,600);expect(w.score).toBe(score);expect(w.over).toBe(false);w.dispose();});
+ it('contains only platform and rigid animals, with finite distinct masses/inertias',()=>{const w=new AnimalWorld();for(const kind of KINDS){const a=createAnimal(kind,180,200);expect(a.body.parts.length).toBeGreaterThan(2);expect(Number.isFinite(a.body.inertia)).toBe(true);expect(a.body.inverseInertia).toBeGreaterThan(0);expect(a.body.isStatic).toBe(false);}expect(Matter.Composite.allBodies(w.engine.world)).toEqual([w.platform]);expect(Matter.Composite.allConstraints(w.engine.world)).toHaveLength(0);w.dispose();});
+ it('lets an animal fall freely beyond either end of the platform',()=>{for(const x of [0,360]){const w=new AnimalWorld();w.aim(x);w.nextKind='penguin';w.drop();run(w,500);expect(w.over).toBe(true);expect(w.supportedCount).toBe(0);w.dispose();}});
+ it('continues a saved live drop with deterministic score and close trajectory',()=>{const a=new AnimalWorld(123);a.drop();run(a,20);const save=a.snapshot();const b=new AnimalWorld(1);expect(b.restore(save)).toBe(true);expect(b.snapshot()).toEqual(save);run(a);run(b);expect(b.score).toBe(a.score);expect(b.nextKind).toBe(a.nextKind);expect(b.animals[0].body.position.y).toBeCloseTo(a.animals[0].body.position.y,1);a.dispose();b.dispose();});
+ it('rejects invalid snapshots atomically',()=>{const w=new AnimalWorld();w.drop();const save=w.snapshot();for(const bad of [null,{}, {...save,score:9999},{...save,rotation:NaN},{...save,complete:true},{...save,animals:[{kind:'penguin',x:NaN}]},{...save,animals:Array(100).fill(save.animals[0])}]){expect(parseSnapshot(bad)).toBeNull();expect(w.restore(bad)).toBe(false);}expect(w.snapshot()).toEqual(save);w.dispose();});
+ it('rejects exact duplicate bodies atomically',()=>{const w=new AnimalWorld();w.drop();run(w);const save=w.snapshot();expect(w.restore({...save,score:save.score+100,animals:[save.animals[0],save.animals[0]]})).toBe(false);expect(w.snapshot()).toEqual(save);w.dispose();});
+ it('preserves limb positions around the compound centre of mass at every angle',()=>{for(const kind of KINDS){const a=createAnimal(kind,170,200);const v=a.body.parts[1].vertices[0];const before={x:v.x-a.body.position.x,y:v.y-a.body.position.y};Matter.Body.setAngle(a.body,Math.PI/2);expect(v.x).toBeCloseTo(170-before.y);expect(v.y).toBeCloseTo(200+before.x);}});
+ it('leaves room beneath the platform and starts a tall body above current geometry',()=>{const w=new AnimalWorld();w.drop();run(w);w.nextKind='giraffe';w.drop();expect(w.animals[1].body.bounds.max.y).toBeLessThan(w.animals[0].body.bounds.min.y-20);expect(FLOOR).toBeCloseTo(486.6667,3);w.dispose();});
+ it('pivots as one rigid body after a head-first giraffe contact, without correction forces',()=>{const w=new AnimalWorld();w.drop();run(w);w.nextKind='giraffe';w.aim(210);w.rotateBy(-Math.PI/2);w.drop();let first:string[]=[];Matter.Events.on(w.engine,'collisionStart',e=>{if(!first.length)first=e.pairs.flatMap(p=>[p.bodyA.label,p.bodyB.label]);});let turn=0;for(let i=0;i<600&&!w.over;i++){w.step();turn=Math.max(turn,Math.abs(w.animals[1].body.angle+Math.PI/2));}expect(first).toContain('giraffe:2');expect(turn).toBeGreaterThan(1);expect(w.over).toBe(true);w.dispose();});
+ it('can settle a rotated giraffe on an elephant under gravity',()=>{const w=new AnimalWorld();w.drop();run(w);w.nextKind='giraffe';w.aim(180);w.rotateBy(-Math.PI/2);w.drop();run(w,900);expect(w.over).toBe(false);expect(w.supportedCount).toBe(2);expect(w.animals[1].body.bounds.max.y).toBeLessThan(FLOOR-20);expect(w.score).toBe(200+w.height*2);w.dispose();});
+ it('archives a validated legacy score while resetting incompatible body geometry',()=>{const w=new AnimalWorld();const legacy={version:1,seed:173,aim:180,score:238,height:69,over:false,complete:false,next:'capybara',active:null,tick:300,animals:[{kind:'hippo',x:180,y:390,angle:0,vx:0,vy:0,av:0,age:300,stable:60,scored:true,sleeping:true}]};expect(w.restore(legacy)).toBe(true);expect(w.animals).toHaveLength(0);expect(w.score).toBe(0);expect(w.snapshot()).toMatchObject({version:2,legacyScore:238});const b=new AnimalWorld();expect(b.restore(w.snapshot())).toBe(true);expect(b.snapshot().legacyScore).toBe(238);expect(w.restore({...legacy,score:9999})).toBe(false);w.dispose();b.dispose();});
+ it('never rewards a slowly moving airborne body',()=>{const w=new AnimalWorld();w.drop();const a=w.animals[0];a.stable=29;Matter.Body.setVelocity(a.body,{x:0,y:0});w.step();expect(w.score).toBe(0);expect(a.stable).toBe(0);w.dispose();});
 });

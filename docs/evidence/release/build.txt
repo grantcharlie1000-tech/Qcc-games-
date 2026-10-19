@@ -4,38 +4,38 @@
 
 vite v7.3.7 building client environment for production...
 transforming...
-✓ 84 modules transformed.
+✓ 92 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                         0.67 kB │ gzip:   0.41 kB
 dist/.vite/manifest.json                3.78 kB │ gzip:   0.69 kB
 dist/assets/arcade-bold-DWEPn4H6.ttf   28.09 kB
-dist/assets/index-T5QwZ4HG.css          1.44 kB │ gzip:   0.68 kB
+dist/assets/index-IARKlvG8.css          1.26 kB │ gzip:   0.63 kB
 dist/assets/index-D3FOw6fh.css          1.75 kB │ gzip:   0.73 kB
 dist/assets/index-CZRqK-Aq.css          2.10 kB │ gzip:   0.90 kB
-dist/assets/index-CiOXW92W.css          2.14 kB │ gzip:   0.92 kB
+dist/assets/index-DaZD4Dj_.css          2.23 kB │ gzip:   0.86 kB
 dist/assets/index-BXNEfCEi.css          2.26 kB │ gzip:   0.97 kB
 dist/assets/index-kKxGdlo1.css          2.37 kB │ gzip:   0.99 kB
 dist/assets/index-DjVo3RM_.css          3.43 kB │ gzip:   1.21 kB
+dist/assets/index-DpmFnkgf.css          3.52 kB │ gzip:   1.30 kB
 dist/assets/index-BdQv1M3b.css          3.88 kB │ gzip:   1.48 kB
-dist/assets/index-DgiywVwM.css          3.93 kB │ gzip:   1.47 kB
 dist/assets/index-Ca_sMq3C.css          4.45 kB │ gzip:   1.62 kB
 dist/assets/index-CL4koYVJ.css          5.45 kB │ gzip:   1.96 kB
-dist/assets/index-yFA4NEoY.css          5.89 kB │ gzip:   2.03 kB
-dist/assets/index-ErYsTArr.css         16.07 kB │ gzip:   4.68 kB
+dist/assets/index-DvtE1cdD.css          6.04 kB │ gzip:   1.98 kB
+dist/assets/index-B2sItLiF.css         22.52 kB │ gzip:   5.82 kB
 dist/assets/index-B3iry_sq.js           9.88 kB │ gzip:   4.16 kB │ map:    25.10 kB
 dist/assets/index-CitFEkQK.js          10.71 kB │ gzip:   4.55 kB │ map:    31.34 kB
 dist/assets/index-DVV_K4eE.js          10.84 kB │ gzip:   4.67 kB │ map:    30.46 kB
-dist/assets/index-C_Aqd055.js          12.39 kB │ gzip:   5.24 kB │ map:    33.59 kB
 dist/assets/index-BniN2mis.js          12.81 kB │ gzip:   4.99 kB │ map:    34.28 kB
 dist/assets/index-DqLtyPWP.js          14.43 kB │ gzip:   5.53 kB │ map:    35.99 kB
-dist/assets/index-D_CwdJFI.js          15.81 kB │ gzip:   6.59 kB │ map:    44.48 kB
+dist/assets/index-CaljYLRT.js          15.49 kB │ gzip:   6.24 kB │ map:    43.81 kB
 dist/assets/index-BQ0YBnm3.js          16.59 kB │ gzip:   6.71 kB │ map:    44.00 kB
-dist/assets/index-1oc9xrBY.js          17.44 kB │ gzip:   7.18 kB │ map:    42.94 kB
+dist/assets/index-DHEjU8PW.js          18.70 kB │ gzip:   7.82 kB │ map:    58.55 kB
 dist/assets/index-Bm1LrEy8.js          19.85 kB │ gzip:   8.04 kB │ map:    58.33 kB
+dist/assets/index-BPR-Irxc.js          23.54 kB │ gzip:   9.76 kB │ map:    62.09 kB
 dist/assets/index-we4rTY2V.js          24.61 kB │ gzip:   9.58 kB │ map:    66.22 kB
 dist/assets/matter-PU4lz4QA.js         84.54 kB │ gzip:  26.80 kB │ map:   520.35 kB
-dist/assets/index-xiolePHU.js         116.20 kB │ gzip:  35.68 kB │ map:   163.77 kB
-dist/assets/index-CI1t8wUE.js         491.20 kB │ gzip: 124.79 kB │ map: 2,713.09 kB
-✓ built in 2.04s
-Offline pack: 57 files, version 43dc049b82cb
+dist/assets/index-Ln05rS-o.js         118.01 kB │ gzip:  36.37 kB │ map:   169.22 kB
+dist/assets/index-GAH4GKAK.js         493.52 kB │ gzip: 125.43 kB │ map: 2,721.18 kB
+✓ built in 3.11s
+Offline pack: 65 files, version d1b885f03c1f

@@ -1,0 +1,64 @@
+{
+  "recordedAt": "2026-10-19T19:12:17.420448+00:00",
+  "finalReviewedSource": "17440fb7606b38a005b43215d750465abd077f7f",
+  "fullRegressionSource": "0a0fb35c6a4d5678df970b5ff94b7b01ca7dd8b7",
+  "unit": {
+    "passed": 252,
+    "files": 22,
+    "failed": 0
+  },
+  "fullChromium": {
+    "startTime": "2026-10-19T18:56:43.352Z",
+    "duration": 409222.548,
+    "expected": 139,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "finalWaterChromium": {
+    "startTime": "2026-10-19T19:06:18.247Z",
+    "duration": 43915.502,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "finalIntegratedViewportStudy": {
+    "passed": 4,
+    "failed": 0,
+    "evidence": "final-shared-input-check.txt"
+  },
+  "offline": {
+    "version": "d1b885f03c1f",
+    "requiredFiles": 65,
+    "gamesPerPath": 12,
+    "paths": [
+      "/",
+      "/Qcc-games-/"
+    ],
+    "studyTopicsPerPath": 20,
+    "externalRequests": 0,
+    "failedAssets": 0,
+    "pageErrors": 0,
+    "studySwitchRequests": 0
+  },
+  "workerUpdate": {
+    "recordedAt": "2026-10-19T19:10:25.351Z",
+    "browserVersion": "154.0.8037.57",
+    "oldVersion": "d1b885f03c1f",
+    "newVersion": "d1b885f03c1f-next",
+    "oldLazyChunkRemovedFromServer": true,
+    "oldTabPlayedOffline": true,
+    "updateWaitedForBothTabsToClose": true,
+    "newVersionActivated": true,
+    "oldCachesCleaned": true,
+    "highScorePreserved": true
+  },
+  "svgValidator": {
+    "passed": 30,
+    "failed": 0
+  },
+  "physicalHardware": false,
+  "webkitAvailable": false,
+  "liveOriginBrowserVerified": false
+}

@@ -2,6 +2,8 @@
 
 A static, private browser arcade with twelve playable games: **Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool and Animal Stack**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No accounts, advertisements, currency, tracking or gameplay server.
 
+The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
+
 ![The arcade library](docs/evidence/home-1366.png)
 
 ## Run and build

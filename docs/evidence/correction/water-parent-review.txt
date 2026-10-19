@@ -1,0 +1,10 @@
+
+Running 3 tests using 1 worker
+
+(node:24827) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/water-sort/correction.spec.ts:8:1 › travelling glass pours level liquid into destination, pause retains the same transaction, and returns once (3.2s)
+  ✓  2 [chromium] › tests/games/water-sort/correction.spec.ts:38:1 › native keyboard source and destination selection ignores held Enter and survives a cancelled pointer (1.1s)
+  ✓  3 [chromium] › tests/games/water-sort/correction.spec.ts:74:1 › Study retains a partially transferred pour and resumes the same game instance (1.5s)
+
+  3 passed (6.9s)

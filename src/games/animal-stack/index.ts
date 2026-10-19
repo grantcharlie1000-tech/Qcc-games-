@@ -1,98 +1,81 @@
 import Matter from 'matter-js';
 import type { GameModule } from '../../core/types';
-import { AnimalWorld, ANIMALS, KINDS, WIDTH, HEIGHT, FLOOR, createAnimal } from './model';
+import { AnimalWorld, ANIMALS, KINDS, WIDTH, HEIGHT, FLOOR, createAnimal, TAP_ROTATION_RADIANS } from './model';
 import type { Animal, Kind } from './model';
-import { animalSvg } from './art';
+import { animalSvg, ART_BOX } from './art';
+import { AnimalGesture } from './input';
+import { frameCamera } from './framing';
 import './style.css';
 const module:GameModule={
-  id:'animal-stack',title:'Animal Stack',cover:'game-art/animal-stack/cover.svg',
-  rules:'Build a woodland tower on the little island. Move the pointer left or right, then click or lift your finger to drop an animal. You can also use the arrow buttons or Left/Right keys and Space to drop. Wait for each animal to settle before the next drop. Each animal connected to the island and still for half a second earns 100 points, plus 2 points for every centimetre of your best tower height. Different shapes and weights can tip the tower. If any dropped animal tumbles below the island, the run ends. The waiting preview is safe. Balance 40 friends to complete the sanctuary.',
-  mount(container,context) {
-    container.innerHTML='<div class="animal-stack"><div class="animal-stack__hud"><span data-friends>0 friends balanced</span><span data-height>Height 0 cm</span></div><div class="animal-stack__board"><canvas tabindex="0" aria-label="Animal tower. Move left or right to aim. Click, tap or press Space to drop."></canvas><div class="animal-stack__result" hidden><strong></strong><p></p></div></div><p class="animal-stack__next"></p><div class="animal-stack__controls"><button class="game-button secondary" aria-label="Aim left">←</button><button class="game-button" data-drop>Drop Hippo</button><button class="game-button secondary" aria-label="Aim right">→</button></div><p class="animal-stack__help">Move to aim · tap / release to drop<br>Keyboard: ← → to aim · Space to drop</p></div>';
-    const root=container.firstElementChild as HTMLElement,canvas=root.querySelector('canvas')!,draw=canvas.getContext('2d')!;
-    const dropButton=root.querySelector<HTMLButtonElement>('[data-drop]')!,left=root.querySelector<HTMLButtonElement>('[aria-label="Aim left"]')!,right=root.querySelector<HTMLButtonElement>('[aria-label="Aim right"]')!;
-    const result=root.querySelector<HTMLElement>('.animal-stack__result')!,friends=root.querySelector<HTMLElement>('[data-friends]')!,height=root.querySelector<HTMLElement>('[data-height]')!,next=root.querySelector<HTMLElement>('.animal-stack__next')!;
-    let world=new AnimalWorld(),paused=false,disposed=false,raf:number|null=null,last=0,accumulator=0,camera=0,previousScore=-1,previousEnd=false,pointer:number|null=null,lastUI='';
-    let preview=createAnimal(world.nextKind,world.aimX,world.spawnY);
-    const sprites={} as Record<Kind,HTMLImageElement>;
-    for (const kind of KINDS) { const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(animalSvg(kind));sprites[kind]=image; }
-    const ratio=Math.min(2,window.devicePixelRatio||1);canvas.width=WIDTH*ratio;canvas.height=HEIGHT*ratio;
-    function sync() {
-      root.dataset.tick=String(world.tick);
-      const signature=[world.animals.length,world.supportedCount,world.height,world.ready,world.aimX,world.score,world.over,world.complete,paused,world.nextKind].join('|');
-      if(signature===lastUI)return;lastUI=signature;
-      const info=ANIMALS[world.nextKind];
-      root.dataset.count=String(world.animals.length);root.dataset.balanced=String(world.supportedCount);root.dataset.ready=String(world.ready);root.dataset.aim=String(Math.round(world.aimX));root.dataset.tick=String(world.tick);root.dataset.over=String(world.over);
-      friends.textContent=`${world.supportedCount} ${world.supportedCount===1?'friend':'friends'} balanced`;height.textContent=`Height ${world.height} cm`;
-      next.textContent=world.over?'A brave little tower. Shall we build another?':world.complete?'All 40 friends have a home!':world.ready?`Next up: ${info.name} · ${info.mass.toFixed(1)} kg`:'Easy now… let your friend find their feet.';
-      dropButton.textContent=world.over?'Tower finished':world.complete?'Sanctuary complete':world.ready?`Drop ${info.name}`:'Settling…';
-      dropButton.disabled=paused || !world.ready;left.disabled=right.disabled=paused || !world.ready;
-      result.hidden=!world.over&&!world.complete;result.querySelector('strong')!.textContent=world.complete?'Sanctuary complete!':'Timber… and a tumble!';result.querySelector('p')!.textContent=`${world.supportedCount} friends · ${world.height} cm · ${world.score} points. Use Restart above to build again.`;
-      context.setLevel(`${world.supportedCount}/40 friends`);
-      if(previousScore!==world.score) { if(previousScore>=0&&world.score>previousScore){context.sound('success');context.announce(`${world.supportedCount} friends balanced. Height ${world.height} centimetres.`);}context.setScore(world.score);previousScore=world.score; }
-      if((world.over||world.complete)&&!previousEnd) {context.sound(world.over?'lose':'success');context.announce(world.over?'An animal tumbled. Tower finished.':'All forty friends balanced!');context.save(world.snapshot());}
-      previousEnd=world.over||world.complete;
-      context.setStatus(world.over?'The tower tumbled. Restart to try again.':world.complete?'Forty friends balanced. Beautiful building!':world.ready?'Aim carefully, then drop your next friend.':'Let the animal settle onto the tower.');
-    }
-    function animal(a:Animal,preview=false) {
-      const b=a.body,img=sprites[a.kind];draw.save();draw.translate(b.position.x,b.position.y);draw.rotate(b.angle);
-      if(preview)draw.globalAlpha=.88;
-      draw.translate(a.offset.x,a.offset.y);
-      if(img.complete&&img.naturalWidth)draw.drawImage(img,-72,-55,144,110);
-      else {draw.fillStyle=ANIMALS[a.kind].color;draw.fillRect(-ANIMALS[a.kind].width/2,-ANIMALS[a.kind].height/2,ANIMALS[a.kind].width,ANIMALS[a.kind].height);}
-      // Collision feedback is paint-only: physics geometry never changes on impact.
-      if(!context.settings.reducedMotion && a.impact>.12) {draw.strokeStyle=`rgba(255,255,255,${a.impact*.8})`;draw.lineWidth=2;draw.beginPath();draw.arc(-20,-35,6,Math.PI,Math.PI*1.8);draw.stroke();}
-      draw.restore();
-    }
-    function render() {
-      draw.setTransform(ratio,0,0,ratio,0,0);
-      const gradient=draw.createLinearGradient(0,0,0,HEIGHT);gradient.addColorStop(0,'#c9edf2');gradient.addColorStop(1,'#eff7d2');draw.fillStyle=gradient;draw.fillRect(0,0,WIDTH,HEIGHT);
-      draw.fillStyle='#ffffff8c';for(const [x,y] of [[42,70],[285,155],[80,290]]) {draw.beginPath();draw.ellipse(x,y,39,10,0,0,Math.PI*2);draw.fill();}
-      draw.fillStyle='#78a6a0';draw.font='11px sans-serif';draw.textAlign='center';draw.fillText('THE WOODLAND BALANCING CLUB',180,22);
-      const target=Math.max(0,202-world.cameraTop);camera=context.settings.reducedMotion?target:camera+(target-camera)*.09;
-      draw.save();draw.translate(0,camera);
-      // Height ruler travels with the world, making the camera follow legible.
-      draw.strokeStyle='#84ada17a';draw.lineWidth=1;draw.fillStyle='#658d82';draw.font='10px sans-serif';draw.textAlign='left';
-      for(let cm=0;cm<=6000;cm+=50) {const y=FLOOR-cm;if(y+camera<35||y+camera>HEIGHT)continue;draw.beginPath();draw.moveTo(17,y);draw.lineTo(28,y);draw.stroke();draw.fillText(String(cm),32,y+3);}
-      draw.fillStyle='#c0dca2';draw.beginPath();draw.ellipse(180,FLOOR+50,177,36,0,0,Math.PI*2);draw.fill();
-      draw.fillStyle='#a97b53';draw.beginPath();draw.roundRect(75,FLOOR,210,37,12);draw.fill();draw.strokeStyle='#4d6250';draw.lineWidth=3;draw.stroke();
-      draw.fillStyle='#7fb663';draw.beginPath();draw.roundRect(74,FLOOR-2,212,12,6);draw.fill();draw.stroke();
-      draw.strokeStyle='#c79b6c';draw.lineWidth=3;for(let x=94;x<270;x+=27){draw.beginPath();draw.moveTo(x,FLOOR+22);draw.lineTo(x+12,FLOOR+22);draw.stroke();}
-      for(const a of world.animals) animal(a);
-      if(world.ready&&!world.over) {
-        if(preview.kind!==world.nextKind)preview=createAnimal(world.nextKind,world.aimX,world.spawnY);
-        Matter.Body.setPosition(preview.body,{x:world.aimX,y:world.spawnY});const p=preview;
-        draw.setLineDash([3,7]);draw.strokeStyle='#5e828d8c';draw.lineWidth=1.5;draw.beginPath();draw.moveTo(world.aimX,p.body.bounds.max.y+7);draw.lineTo(world.aimX,FLOOR-8);draw.stroke();draw.setLineDash([]);animal(p,true);
-        // Preview is a drawing, never added to the physics world.
-        draw.fillStyle='#3e6571';draw.beginPath();draw.moveTo(world.aimX-5,p.body.bounds.min.y-12);draw.lineTo(world.aimX+5,p.body.bounds.min.y-12);draw.lineTo(world.aimX,p.body.bounds.min.y-6);draw.fill();
-      }
-      draw.restore();
-    }
-    function drop() {if(paused||disposed)return;if(world.drop()){context.sound('tap');context.save(world.snapshot());sync();}}
-    function aim(clientX:number) {if(paused||!world.ready)return;const r=canvas.getBoundingClientRect();world.aim((clientX-r.left)/r.width*WIDTH);sync();}
-    const controller=new AbortController(),options={signal:controller.signal};
-    canvas.addEventListener('pointerdown',e=>{if(paused||!world.ready||e.button!==0)return;pointer=e.pointerId;canvas.setPointerCapture(e.pointerId);aim(e.clientX);canvas.focus({preventScroll:true});},options);
-    canvas.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'||pointer===e.pointerId)aim(e.clientX);},options);
-    canvas.addEventListener('pointerup',e=>{if(pointer!==e.pointerId)return;aim(e.clientX);pointer=null;drop();},options);
-    canvas.addEventListener('pointercancel',()=>{pointer=null;},options);
-    left.addEventListener('click',()=>{if(!paused&&world.ready){world.aim(world.aimX-12);sync();}},options);right.addEventListener('click',()=>{if(!paused&&world.ready){world.aim(world.aimX+12);sync();}},options);dropButton.addEventListener('click',drop,options);
-    // Listener belongs to the stage: shell dialogs, text fields and toolbar keep their native keys.
-    container.addEventListener('keydown',e=>{const t=e.target as HTMLElement;if(paused||disposed||t.matches('input,textarea,select,button')||document.querySelector('dialog[open]'))return;if(['ArrowLeft','ArrowRight',' ','Enter'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft'||e.key==='ArrowRight'){if(world.ready)world.aim(world.aimX+(e.key==='ArrowLeft'?-10:10));sync();}else if(!e.repeat)drop();}},options);
-    function scheduleFrame() {if(!disposed&&!paused&&raf===null)raf=requestAnimationFrame(frame);}
-    function frame(time:number) {
-      raf=null;if(disposed||paused)return;
-      if(!last)last=time;const elapsed=Math.min(80,time-last);last=time;
-      accumulator+=elapsed;while(accumulator>=1000/60){world.step();accumulator-=1000/60;}sync();
-      if(!disposed&&!paused)render();scheduleFrame();
-    }
-    sync();scheduleFrame();
-    return {
-      pause(){if(disposed||paused)return;paused=true;pointer=null;accumulator=0;last=0;if(raf!==null){cancelAnimationFrame(raf);raf=null;}sync();},
-      resume(){if(disposed||!paused)return;paused=false;last=0;accumulator=0;sync();scheduleFrame();},
-      restart(){world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;pointer=null;lastUI='';sync();if(paused)render();context.save(world.snapshot());},
-      serialize(){return world.snapshot();},restore(data){if(world.restore(data)){camera=Math.max(0,202-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();}},
-      dispose(){disposed=true;if(raf!==null){cancelAnimationFrame(raf);raf=null;}controller.abort();world.dispose();container.replaceChildren();},
-    };
-  },
+ id:'animal-stack',title:'Animal Stack',cover:'game-art/animal-stack/cover.svg',
+ rules:'Drag only the waiting animal left or right. A short tap rotates it 45°. Press DROP, Space or Enter to release. A/D or Left/Right move; Q/E rotate. Wait for each animal to settle. Each animal connected to the platform and still for half a second earns 100 points, plus 2 points per centimetre of your best tower height. Whole animals can tip and tumble. An animal falling off ends the run. Balance 40 animals to complete the stack.',
+ mount(container,context){
+  container.innerHTML='<div class="animal-stack"><canvas tabindex="0" aria-label="Animal Stack. Drag the waiting animal horizontally; tap to rotate 45°. Press DROP or Space to release."></canvas><div class="animal-stack__bubble" hidden aria-hidden="true"></div><button class="animal-stack__drop" data-drop>DROP</button><p class="animal-stack__status" role="status"></p></div>';
+  const root=container.firstElementChild as HTMLElement,canvas=root.querySelector('canvas')!,draw=canvas.getContext('2d')!,dropButton=root.querySelector<HTMLButtonElement>('[data-drop]')!,bubble=root.querySelector<HTMLElement>('.animal-stack__bubble')!,status=root.querySelector<HTMLElement>('.animal-stack__status')!;
+  let world=new AnimalWorld(),paused=false,disposed=false,raf:number|null=null,last=0,accumulator=0,camera=0,previousScore=-1,previousEnd=false,lastUI='',bubbleUntil=0,heldAimAt=0;
+  let preview=createAnimal(world.nextKind,world.aimX,world.spawnY);
+  const gesture=new AnimalGesture(),keys=new Set<string>();
+  let colliderOverlay=new URLSearchParams(location.search).has('animal-colliders');
+  const sprites={} as Record<Kind,HTMLImageElement>;
+  for(const kind of KINDS){const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(animalSvg(kind));sprites[kind]=image;}
+  let scale=1,left=0,top=0,ratio=1;
+  function resize(){const box=canvas.getBoundingClientRect();ratio=Math.min(2,devicePixelRatio||1);canvas.width=Math.max(1,Math.round(box.width*ratio));canvas.height=Math.max(1,Math.round(box.height*ratio));scale=Math.min(box.width/WIDTH,box.height/HEIGHT);left=(box.width-WIDTH*scale)/2;top=box.height*.73-FLOOR*scale;clearInput();if(paused)render();}
+  function sync(){
+   root.dataset.tick=String(world.tick);
+   const lastAnimal=world.animals.at(-1);root.dataset.bodyAngle=String(lastAnimal?.body.angle??0);root.dataset.bodyBottom=String(lastAnimal?.body.bounds.max.y??0);
+   const signature=[world.animals.length,world.supportedCount,world.height,world.ready,world.aimX,world.rotation,world.score,world.over,world.complete,paused,world.nextKind,colliderOverlay].join('|');if(signature===lastUI)return;lastUI=signature;
+   Object.assign(root.dataset,{count:String(world.animals.length),balanced:String(world.supportedCount),ready:String(world.ready),aim:String(Math.round(world.aimX)),angle:String(world.rotation),over:String(world.over),next:world.nextKind,colliders:String(colliderOverlay),rotationAdaptation:'45deg'});
+   dropButton.disabled=paused||!world.ready;dropButton.textContent='DROP';dropButton.setAttribute('aria-label',`Drop ${ANIMALS[world.nextKind].name}`);
+   status.textContent=world.over?'The stack tumbled. Restart to try again.':world.complete?'All 40 animals balanced!':'';
+   context.setLevel(`${world.supportedCount}/40 animals`);
+   if(previousScore!==world.score){if(previousScore>=0&&world.score>previousScore){context.sound('success');context.announce(`${world.supportedCount} animals balanced. Height ${world.height} centimetres.`);bubbleUntil=performance.now()+600;}context.setScore(world.score);previousScore=world.score;}
+   if((world.over||world.complete)&&!previousEnd){context.sound(world.over?'lose':'success');context.announce(status.textContent);context.save(world.snapshot());}previousEnd=world.over||world.complete;
+   context.setStatus(world.over?status.textContent:world.ready?`Drag ${ANIMALS[world.nextKind].name} horizontally, tap to rotate, then press DROP.`:'Let the animal settle.');
+  }
+  function drawAnimal(a:Animal){const b=a.body,img=sprites[a.kind];draw.save();draw.translate(b.position.x,b.position.y);draw.rotate(b.angle);draw.translate(a.offset.x,a.offset.y);if(img.complete&&img.naturalWidth)draw.drawImage(img,ART_BOX.x,ART_BOX.y,ART_BOX.width,ART_BOX.height);draw.restore();
+   if(colliderOverlay){draw.save();draw.strokeStyle='#ed176b';draw.fillStyle='#ff1c6422';draw.lineWidth=.8;for(const part of b.parts.slice(1)){draw.beginPath();part.vertices.forEach((v,i)=>i?draw.lineTo(v.x,v.y):draw.moveTo(v.x,v.y));draw.closePath();draw.fill();draw.stroke();}draw.strokeStyle='#fff';draw.lineWidth=1.3;draw.beginPath();draw.moveTo(b.position.x-4,b.position.y);draw.lineTo(b.position.x+4,b.position.y);draw.moveTo(b.position.x,b.position.y-4);draw.lineTo(b.position.x,b.position.y+4);draw.stroke();draw.restore();}
+  }
+  function preparePreview(){if(preview.kind!==world.nextKind)preview=createAnimal(world.nextKind,world.aimX,world.spawnY);Matter.Body.setPosition(preview.body,{x:world.aimX,y:world.spawnY});Matter.Body.setAngle(preview.body,world.rotation);}
+  function render(){
+   draw.setTransform(ratio,0,0,ratio,0,0);draw.fillStyle='#55c3ec';draw.fillRect(0,0,canvas.width/ratio,canvas.height/ratio);draw.save();draw.translate(left,top);draw.scale(scale,scale);
+   if(world.ready)preparePreview();
+   const current=world.ready?preview:world.active!==null?world.animals[world.active]:null;
+   camera=frameCamera({previous:camera,stackTop:world.cameraTop,cutoutTop:current?.body.bounds.min.y??Infinity,top,scale,immediate:context.settings.reducedMotion});
+   draw.save();draw.translate(0,camera);
+   draw.fillStyle='#779b25';draw.strokeStyle='#161719';draw.lineWidth=3;draw.beginPath();draw.roundRect(18,FLOOR,324,10,1);draw.fill();draw.stroke();draw.fillStyle='#a0cf31';draw.fillRect(20,FLOOR+1,320,5);
+   for(const a of world.animals)drawAnimal(a);if(world.ready)drawAnimal(preview);draw.restore();draw.restore();
+   // The platform camera can rise with a very tall tower; the release button remains fixed.
+   bubble.hidden=performance.now()>=bubbleUntil;const active=world.animals.at(-1);if(active){bubble.style.left=`${(left+active.body.position.x*scale)/(canvas.width/ratio)*100}%`;bubble.style.top=`${(top+(active.body.bounds.min.y+camera-10)*scale)/(canvas.height/ratio)*100}%`;}
+  }
+  function clearInput(){heldAimAt=0;const id=gesture.pointer;gesture.clear();keys.clear();if(id!==null&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);}
+  function rotate(direction=1){if(paused||disposed||!world.ready)return;world.rotateBy(TAP_ROTATION_RADIANS*direction);sync();context.save(world.snapshot());}
+  function drop(){if(paused||disposed)return;clearInput();if(world.drop()){context.sound('tap');context.save(world.snapshot());sync();}}
+  function local(e:PointerEvent){const box=canvas.getBoundingClientRect();return{x:(e.clientX-box.left-left)/scale,y:(e.clientY-box.top-top)/scale-camera};}
+  function releaseKey(e:KeyboardEvent){const key=e.key.toLowerCase();if(key!==' '&&key!=='enter')return;e.preventDefault();if(paused||disposed||e.repeat||keys.has(key))return;drop();keys.add(key);}
+  const controller=new AbortController(),options={signal:controller.signal};
+  dropButton.addEventListener('keydown',releaseKey,options);
+  root.addEventListener('focusout',e=>{if(!root.contains(e.relatedTarget as Node|null))clearInput();},options);
+  canvas.addEventListener('pointerdown',e=>{if(paused||!world.ready||e.button!==0||gesture.pointer!==null)return;preparePreview();const p=local(e);if(!Matter.Query.point(preview.body.parts.slice(1),p).length)return;keys.clear();if(gesture.begin(e.pointerId,p.x,p.y,world.aimX,e.timeStamp)){canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});e.preventDefault();}},options);
+  canvas.addEventListener('pointermove',e=>{if(paused||gesture.pointer!==e.pointerId)return;const p=local(e),x=gesture.move(e.pointerId,p.x,p.y);if(x!==null){world.aim(x);sync();}},options);
+  canvas.addEventListener('pointerup',e=>{if(gesture.pointer!==e.pointerId)return;const p=local(e),x=gesture.move(e.pointerId,p.x,p.y);if(x!==null)world.aim(x);const tap=gesture.end(e.pointerId,p.x,p.y,e.timeStamp);if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(tap)rotate();sync();context.save(world.snapshot());},options);
+  canvas.addEventListener('pointercancel',clearInput,options);canvas.addEventListener('lostpointercapture',()=>gesture.clear(),options);window.addEventListener('blur',clearInput,options);dropButton.addEventListener('click',drop,options);
+  container.addEventListener('keydown',e=>{const target=e.target as HTMLElement;if(paused||disposed||target.matches('input,textarea,select,button')||document.querySelector('dialog[open]')||e.altKey||e.ctrlKey||e.metaKey)return;const key=e.key.toLowerCase();if(key==='escape'){clearInput();return;}if(!['arrowleft','arrowright','a','d','q','e',' ','enter','c'].includes(key))return;e.preventDefault();if(key===' '||key==='enter'){releaseKey(e);return;}if(e.repeat||keys.has(key))return;keys.add(key);if(key==='c'){colliderOverlay=!colliderOverlay;sync();return;}if(key==='q'||key==='e'){rotate(key==='q'?-1:1);return;}if(world.ready)world.aim(world.aimX+(['arrowleft','a'].includes(key)?-10:10));heldAimAt=performance.now()+180;sync();},options);
+  window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()),options);
+  function schedule(){if(!disposed&&!paused&&raf===null)raf=requestAnimationFrame(frame);}
+  function frame(time:number){
+   raf=null;if(disposed||paused)return;if(!last)last=time;const elapsed=Math.min(80,time-last);last=time;
+   if(world.ready&&time>=heldAimAt){const direction=Number(keys.has('arrowright')||keys.has('d'))-Number(keys.has('arrowleft')||keys.has('a'));if(direction)world.aim(world.aimX+direction*elapsed*.13);}
+   accumulator+=elapsed;while(accumulator>=1000/60){world.step();accumulator-=1000/60;}sync();render();schedule();
+  }
+  const observer=new ResizeObserver(resize);observer.observe(root);resize();sync();schedule();
+  return {
+   pause(){if(disposed||paused)return;paused=true;clearInput();accumulator=0;last=0;if(raf!==null){cancelAnimationFrame(raf);raf=null;}sync();},
+   resume(){if(disposed||!paused)return;paused=false;last=0;accumulator=0;sync();schedule();},
+   restart(){clearInput();world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;lastUI='';bubbleUntil=0;sync();if(paused)render();context.save(world.snapshot());},
+   serialize(){return world.snapshot();},
+   restore(data){clearInput();if(world.restore(data)){if(world.legacyScore!==null)context.setScore(world.legacyScore);camera=Math.max(0,220-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();if(data&&typeof data==='object'&&(data as {version?:number}).version===1){status.textContent='New shapes reset the stack. Score kept in Record.';context.announce(status.textContent);context.save(world.snapshot());}}},
+   dispose(){disposed=true;clearInput();if(raf!==null)cancelAnimationFrame(raf);observer.disconnect();controller.abort();world.dispose();container.replaceChildren();},
+  };
+ },
 };
 export default module;

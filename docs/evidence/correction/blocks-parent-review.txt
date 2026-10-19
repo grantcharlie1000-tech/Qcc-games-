@@ -1,0 +1,10 @@
+
+Running 3 tests using 1 worker
+
+(node:17544) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 390x844 (5.0s)
+  ✓  2 [chromium] › tests/games/color-blocks/correction.spec.ts:51:1 › pointer crossing clear shows short row/column feedback without changing scoring (1.5s)
+  ✓  3 [chromium] › tests/games/color-blocks/correction.spec.ts:60:2 › native touch evidence › trusted touch pickup, lifted preview, snap, invalid return and cancel (4.0s)
+
+  3 passed (11.4s)

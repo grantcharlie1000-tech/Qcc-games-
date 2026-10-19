@@ -1,10 +1,12 @@
 import './style.css';
+import './game-viewport.css';
 import {games, artUrl, loadGame} from './core/catalog';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';
 import {playSound} from './core/audio';
 import {cacheAll, registerOffline} from './core/offline';
 import {StudyView} from './study/view';
+import {fitGameStage} from './core/viewport-fit';
 
 const icon=(name:string)=>{
   const paths:Record<string,string>={menu:'<path d="M4 7h16M4 12h10"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
@@ -22,6 +24,13 @@ let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:G
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
 let focusLabelBeforeStudy:string|null=null;
+let libraryScroll={x:0,y:0};
+let stopFitting:(()=>void)|undefined;
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run']);
+
+function syncViewportLock(){
+  document.documentElement.classList.toggle('game-viewport',!!activeId&&!document.body.classList.contains('study-active'));
+}
 
 const study=new StudyView(()=>{
   updateStudySummary();
@@ -44,9 +53,11 @@ function save():boolean {
   catch {announce('This game could not save this time.');return false;}
 }
 function leave(){
+  stopFitting?.();stopFitting=undefined;
   save();instance?.dispose();instance=undefined;activeId=undefined;
   clearInterval(autosave);paused=false;pausedForDialog=false;
   document.body.classList.remove('in-game');
+  syncViewportLock();
 }
 function library(){
   const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
@@ -71,10 +82,12 @@ function updateStudySummary(){
 }
 function showArcade(){
   app.inert=false;app.removeAttribute('aria-hidden');document.body.classList.remove('study-active');
+  syncViewportLock();
 }
 function hideArcade(){
   // Visibility preserves the game's layout/canvas dimensions; inert removes all input.
   document.body.classList.add('study-active');app.inert=true;app.setAttribute('aria-hidden','true');
+  syncViewportLock();
 }
 function studyMessage(saved:boolean):string {
   if(!activeId)return 'Your chapter is ready to read offline.';
@@ -110,11 +123,26 @@ async function route(){
   if(!initialized)return;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
+  const requested=location.hash.match(/^#\/game\/([a-z-]+)/)?.[1] as GameId|undefined;
+  const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
+  const wasInGame=!!activeId;
+  if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
   const token=++generation;leave();
-  const id=location.hash.match(/^#\/game\/([a-z-]+)/)?.[1] as GameId|undefined;
-  if(!id||!games.some(g=>g.id===id)){library();return;}
-  const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');
-  content.innerHTML=`<section class="game-view" aria-label="${info.title}"><div class="game-toolbar"><a class="icon-button" href="#/" aria-label="Back to game library">${icon('back')}</a><h1 id="game-title">${info.title}</h1><button id="favourite-game" class="icon-button" aria-label="Favourite ${info.title}" aria-pressed="${store.favourites().includes(id)}">${icon('star')}</button><button id="pause-game" class="icon-button" aria-label="Pause game">${icon('pause')}</button><button id="restart-game" class="icon-button" aria-label="Restart game">${icon('restart')}</button><button id="rules-game" class="icon-button" aria-label="Game rules">${icon('rules')}</button></div><div class="game-metrics"><span id="game-score">Score <strong>0</strong></span><span id="game-level"></span><span id="game-best">Best <strong>${store.highScore(id)}</strong></span></div><div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div><p id="game-status" role="status"></p></section>`;
+  if(!id){library();if(wasInGame)requestAnimationFrame(()=>{if(!activeId)window.scrollTo(libraryScroll.x,libraryScroll.y);});return;}
+  const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
+  content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
+    <div class="game-toolbar">
+      <a class="icon-button" href="#/" aria-label="Back to game library">${icon('back')}</a><h1 id="game-title">${info.title}</h1>
+      <button id="favourite-game" class="icon-button" aria-label="Favourite ${info.title}" aria-pressed="${store.favourites().includes(id)}">${icon('star')}</button>
+      <button id="pause-game" class="icon-button" aria-label="Pause game">${icon('pause')}</button>
+      <button id="restart-game" class="icon-button" aria-label="Restart game">${icon('restart')}</button>
+      <button id="rules-game" class="icon-button" aria-label="Game rules">${icon('rules')}</button>
+      <button id="game-menu" class="icon-button game-menu-button" aria-label="Open menu">${icon('menu')}</button>
+    </div>
+    <div class="game-metrics"><span id="game-score"><span class="metric-label">${referenceGames.has(id)?id==='animal-stack'?'SOLO':'SCORE':'Score'}</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">${referenceGames.has(id)?'RECORD':'Best'}</span><strong>${store.highScore(id)}</strong><svg class="record-crown" viewBox="0 0 28 12" aria-hidden="true"><path d="m2 9-1-7 7 4 6-6 6 6 7-4-1 7z" fill="currentColor"/></svg></span></div>
+    <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
+    <p id="game-status" role="status"></p></section>`;
+  document.querySelector('#game-menu')!.addEventListener('click',openMenu);
   try {
     const loaded=await loadGame(id);if(token!==generation)return;
     const stage=document.querySelector<HTMLElement>('#game-stage')!;stage.replaceChildren();
@@ -122,9 +150,9 @@ async function route(){
       id,settings:preferences,highScore:store.highScore(id),
       setScore(score){
         if(token!==generation)return;
-        document.querySelector('#game-score')!.innerHTML=`Score <strong>${Math.floor(score)}</strong>`;
+        document.querySelector('#game-score strong')!.textContent=String(Math.floor(score));
         const next=store.recordScore(id,score);
-        document.querySelector('#game-best')!.innerHTML=`Best <strong>${Math.floor(next)}</strong>`;
+        document.querySelector('#game-best strong')!.textContent=String(Math.floor(next));
       },
       setLevel(level){if(token===generation)document.querySelector('#game-level')!.textContent=String(level);},
       setStatus(text){if(token===generation)document.querySelector('#game-status')!.textContent=text;},
@@ -136,6 +164,7 @@ async function route(){
     instance=mounted;
     const saved=store.savedGame(id);
     if(saved!==undefined){try{instance.restore(saved);}catch{announce('The previous save was not compatible. Starting a fresh game.');}}
+    if(!referenceGames.has(id))stopFitting=fitGameStage(stage,stage.parentElement!);
     document.querySelector('#pause-game')!.addEventListener('click',()=>setPaused(!paused));
     document.querySelector('#resume-game')!.addEventListener('click',()=>setPaused(false));
     document.querySelector('#restart-game')!.addEventListener('click',()=>{instance?.restart();setPaused(false);save();});
@@ -162,9 +191,10 @@ async function route(){
   }
 }
 
-document.querySelector('.hamburger')!.addEventListener('click',()=>{
+function openMenu(){
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);menu.showModal();
-});
+}
+document.querySelector('.hamburger')!.addEventListener('click',openMenu);
 function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);

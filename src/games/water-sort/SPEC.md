@@ -75,20 +75,47 @@ root/window listeners, and removes the game root. No own storage, audio engine,
 global keyboard listener, or external runtime request is used. All lifecycle,
 score, level, status, sound and save calls use the frozen GameModule contract.
 
-## Presentation and input
+## Presentation and input — 19 October correction
 
-Original glass/liquid artwork uses inline SVG with rounded clipping, separate
-bands, surface highlights and graduations. A brief lift/tilt and curved liquid
-stream explain the transfer before its legal result commits. Normal pours take
-260ms; reduced-motion and keyboard pours take 50ms without glass movement.
-Desktop fits seven tubes in one row; narrow phones wrap them in centred rows.
+The shared shell supplies the fixed viewport and corner back/restart controls.
+The module fills its height on a flat aubergine background with open, evenly
+spaced rows. Actual levels have four to seven tubes, arranged in two balanced
+rows; no invented ad-locked slot is added. A small native difficulty control
+sits above the bold Level N heading; activating the heading's native level
+select chooses any shipped level. Round gold Undo and Hint remain in the bottom
+corners. The selected source uses an outline/underline rather than a card.
 
-Native tube buttons support click/tap, real pointer dragging, Tab, arrow focus,
-Enter and Space. Visible A–E letters and accessible bottom-to-top names are
-always present; the shell's colour-blind setting adds distinct SVG patterns.
-Undo, Hint, Difficulty, Level and Next level are semantic controls. There is no
-duplicate shell pause/restart toolbar. The game fits 366px available width.
+Original SVG glass has a narrow neck, slightly flared lip, thin pale lavender
+outline, rounded bottom and restrained highlights. Empty glass is transparent.
+Flat saturated colour bands are clipped to the interior. Colour-blind mode adds
+letter/pattern marks, and each button always has an accessible bottom-to-top
+colour description. Existing levels/colour counts are preserved.
 
-Per the parent's later instruction, the parent owns the replacement cover at
-`public/game-art/water-sort/cover.svg`; this specialist supplies the original
-in-game SVGs and does not overwrite that coordinated cover work.
+`geometry.ts` conserves liquid volume as polygon area. It intersects the rotated
+rounded-bottom interior with horizontal half-planes and transforms each band
+back into glass coordinates. Glass rotation therefore does not rotate painted
+stripes. The round bottom is sampled in 32 segments for area solving and given
+a smooth SVG clip. `spillAngle` chooses the tilt at which the remaining liquid
+reaches the low lip. This is controlled vector liquid, not hydrodynamic physics.
+
+A normal 1.4-second transaction travels/lifts, tips, streams, returns upright
+and travels back to the original slot. The source drains and destination rises
+together during the flow phase. A narrow continuous stream joins the actual low
+lip to the receiving tube. Only completion commits the already-validated pure
+move and one undo entry. Pause and Study retain the pending transaction and its
+elapsed animation time; resize refits the scene without committing a move.
+Reduced-motion and keyboard selection use a gentle 160ms transfer without glass
+travel or stream. Brief bubbles identify a completed single-colour tube; the
+whole puzzle gets a brief victory overlay and an accessible next-level button.
+
+Native buttons support source-then-destination clicks/taps, Tab, arrow focus,
+Enter and Space. Repeated held Enter/Space is suppressed. Optional old
+pointer-drag input remains compatible but is never required; pointercancel,
+blur, resize and pause clear a pending gesture. Optional drags actually capture
+the primary pointer on the source button; release/lost-capture cleanup occurs
+before rerender or disposal. Only tube targets disable native touch panning. There is no separate Pour button,
+large dashboard, duplicated parent toolbar, or new runtime dependency.
+
+Reference stills and continuous-motion limits are recorded in SKILL_USAGE.md.
+No original MP4 was provided, so timing is an implementation choice. Evidence
+and exact observed checks are in TEST_RESULTS.md and the owned test directory.

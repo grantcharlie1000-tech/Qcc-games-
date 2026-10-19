@@ -1,0 +1,33 @@
+{
+  "recordedAt": "2026-10-19T19:02:29.553515+00:00",
+  "baseline": "8ca109b",
+  "correctedGames": [
+    "animal-stack",
+    "water-sort",
+    "color-blocks",
+    "ball-run"
+  ],
+  "unchangedOtherGameModules": [
+    "fruit-merge",
+    "tower",
+    "snake",
+    "minesweeper",
+    "solitaire",
+    "block-fill",
+    "color-connect",
+    "pool"
+  ],
+  "unchangedModuleDiff": [],
+  "catalogGameCount": 12,
+  "svgFilesParsed": 30,
+  "referenceArchiveSha256": "5917ccf836243a1ff00b0abc259f1525c638385c281b035bfd3d9dd8910ec54e",
+  "referenceArchiveExtensions": {
+    ".png": 14,
+    ".txt": 1,
+    ".jpg": 4
+  },
+  "referenceMP4Count": 0,
+  "fullRegressionSourceHead": "0a0fb35c6a4d5678df970b5ff94b7b01ca7dd8b7",
+  "finalReviewedSourceHead": "17440fb7606b38a005b43215d750465abd077f7f",
+  "finalWaterCaptureFollowup": "17440fb"
+}
