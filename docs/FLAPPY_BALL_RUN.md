@@ -23,10 +23,10 @@ Review deterministic model timing and restart, seed variation and fairness, circ
 ## Final checks
 
 - `npm test`: 23 files, **266 passed**. Includes 23 focused physics/generation/restore tests, 64 Ball Run seeds × 2.5km, 6,400 Flappy gate constraints, 100-gate pilots, frame-rate equivalence, exact corner/tangent contacts and malformed snapshots.
-- `npm run build`: **passed**, including strict TypeScript and an offline manifest with 69 local files. Final build version `0696ed8f47bd` (compact small-screen overlay is the only change after the final physics offline run).
+- `npm run build`: **passed**, including strict TypeScript and an offline manifest with 69 local files. Final build version `0696ed8f47bd`.
 - `PLAYWRIGHT_BROWSERS_PATH=/tmp/qcc-playwright npx playwright test tests/games/flappy-bird tests/games/ball-run --project=chromium --workers=1 --output=/tmp/qcc-green-browser`: **17 passed**, 1.2 minutes. Chromium 154.0.8037.57. Actual keyboard/mouse/touch actions, score and state restoration, pause/Study, restart, renderer loss/fallback/disposal, procedural block contact, stable geometry allocation, controlled resize, DPR cap, 44px action buttons and viewport hits at 320×568, 390×844, 844×390 and 1366×768.
 - `ARCADE_EVIDENCE_DIR=/tmp/qcc-offline-final npm run verify:offline`: **all 13 games passed at root and repository subpath**, with no external runtime requests, page errors or failed local assets. This run preceded the final collision refinement.
-- `ARCADE_GAMES=flappy-bird,ball-run ARCADE_EVIDENCE_DIR=/tmp/qcc-offline-physics npm run verify:offline`: **both changed games passed at both paths on the final physics build**, including retained Study instances, offline actions, pause/save and restart. Its manifest version is `edaed86ff932`; the later compact overlay CSS is covered by the final browser checks and build.
+- `ARCADE_GAMES=flappy-bird,ball-run ARCADE_EVIDENCE_DIR=/tmp/qcc-offline-checkpoint npm run verify:offline`: **both changed games passed at both paths on the exact frozen checkpoint build** (`0696ed8f47bd`), including retained Study instances, offline actions, pause/save and restart. No external runtime requests, page errors or failed local assets.
 - SVG validator: **2 passed**, 0 failures. `git diff --check`: passed.
 
 The broad Chromium suite completed **147 passed / 3 failed**. Every failure also reproduced against unchanged base main in `/tmp/qcc-baseline`: `tests/games/block-fill/block-fill.spec.ts:19` (fast actual drag), `:74` (all twelve gardens via pointer), and `tests/games/tower/tower.spec.ts:47` (30-second tall-tower timeout). Their production files and tests were preserved. These are remaining pre-existing regression failures; the whole broad suite is not green. The baseline and broad outputs are included beside the focused passing output.
@@ -42,4 +42,6 @@ The resized-input regression was made independent of software-rendering frame ra
 - Ball screenshots: `tests/games/ball-run/evidence/{390x844,844x390,1366x768,procedural-restart}.png`.
 - Library captures, offline phone captures, JSON results, before-fix reproductions and exact test outputs: `docs/evidence/flappy-ball-run/`.
 
-The checkpoint is local and awaits the parent's publication decision. Independent Astra audit is recorded in the subsequent audit handoff. No existing Study functionality was expanded.
+Evidence text preserves test output with trailing whitespace normalized.
+
+The checkpoint is local and awaits the parent's publication decision. The [independent Astra audit](FLAPPY_BALL_RUN_AUDIT.md) found no Critical or Important issues and declared the implementation ready from code review. No existing Study functionality was expanded.

@@ -172,7 +172,7 @@ BALL_RUN_RAF_MS { median: 16.700000000000728, p95: 266.6999999999998 }
   ✓  150 [chromium] › tests/games/ball-run/play.spec.ts:98:1 › procedural rendered blocks collide and repeated restarts release held input and reuse resources (8.0s)
 
 
-  1) [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden 
+  1) [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden
 
     Test timeout of 30000ms exceeded.
 
@@ -204,7 +204,7 @@ BALL_RUN_RAF_MS { median: 16.700000000000728, p95: 266.6999999999998 }
 
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
-  2) [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input 
+  2) [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input
 
     Error: expect(locator).toHaveAttribute(expected) failed
 
@@ -243,7 +243,7 @@ BALL_RUN_RAF_MS { median: 16.700000000000728, p95: 266.6999999999998 }
 
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
-  3) [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size 
+  3) [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size
 
     Test timeout of 30000ms exceeded.
 
@@ -273,9 +273,9 @@ BALL_RUN_RAF_MS { median: 16.700000000000728, p95: 266.6999999999998 }
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
   3 failed
-    [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden 
-    [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input 
-    [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size 
+    [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden
+    [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input
+    [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size
   147 passed (7.0m)
 npm notice
 npm notice New major version of npm available! 11.9.0 -> 12.2.0

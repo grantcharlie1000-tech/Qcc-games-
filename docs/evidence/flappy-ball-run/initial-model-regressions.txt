@@ -26,7 +26,7 @@ Error: Cannot find module '../../../src/games/flappy-bird/model' imported from '
       1| import {describe,it,expect} from 'vitest';
       2| import {createFlight,flap,advance,restoreFlight,gateAt,visibleGates,ST…
        | ^
-      3| 
+      3|
       4| describe('Flappy Bird original reed flight',()=>{
 
 Caused by: Error: Failed to load url ../../../src/games/flappy-bird/model (resolved id: ../../../src/games/flappy-bird/model) in /workspace/Qcc-games-/tests/games/flappy-bird/model.test.ts. Does the file exist?

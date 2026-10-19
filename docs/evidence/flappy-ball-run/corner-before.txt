@@ -25,7 +25,7 @@ Received: "over"
      50|   s.tick=270;s.y=gate.top+4;s.vy=300;advance(s,STEP);expect(s.phase).t…
        |                                                                      ^
      51| });
-     52| 
+     52|
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
 
