@@ -1,0 +1,74 @@
+{
+  "browser": "Chromium",
+  "physicalHardware": false,
+  "softwareWebGL": true,
+  "gameCount": 2,
+  "results": [
+    {
+      "game": "fruit-merge",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 83.30000000000018,
+      "rafP95Ms": 166.70000000000073
+    },
+    {
+      "game": "ball-run",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 16.799999999999272
+    },
+    {
+      "deployment": "root",
+      "cacheNames": [
+        "pocket-arcade:/:5023f01d336c:shell",
+        "pocket-arcade:/:5023f01d336c:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "initialResourceCount": 16,
+      "heavyChunksLazy": true
+    },
+    {
+      "game": "fruit-merge",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.700000000000045,
+      "rafP95Ms": 33.299999999999955
+    },
+    {
+      "game": "ball-run",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.699999999999818,
+      "rafP95Ms": 16.700000000000273
+    },
+    {
+      "deployment": "subpath",
+      "cacheNames": [
+        "pocket-arcade:/Qcc-games-/:5023f01d336c:shell",
+        "pocket-arcade:/Qcc-games-/:5023f01d336c:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "initialResourceCount": 16,
+      "heavyChunksLazy": true
+    }
+  ]
+}
