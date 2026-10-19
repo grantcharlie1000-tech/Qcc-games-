@@ -1,0 +1,27 @@
+{
+  "name": "pocket-offline-arcade",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build && node scripts/offline-manifest.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "matter-js": "0.20.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/matter-js": "^0.20.0",
+    "@types/node": "^26.6.5",
+    "@types/three": "^0.180.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
+  }
+}

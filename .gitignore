@@ -18,3 +18,9 @@ __pycache__/
 # Operating-system files
 .DS_Store
 Thumbs.db
+
+.worktrees/
+.netlify/
+playwright-report/
+test-results/
+dist-pages/

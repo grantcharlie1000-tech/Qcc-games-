@@ -1,0 +1,3 @@
+import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+const files=[];async function walk(dir){for(const entry of await readdir(dir,{withFileTypes:true})){const path=dir+'/'+entry.name;if(entry.isDirectory()){if(entry.name!=='.vite')await walk(path);}else if(!entry.name.endsWith('.map')&&entry.name!=='offline-manifest.json'&&entry.name!=='_headers'){files.push(path.slice(5));}}}await walk('dist');files.sort();const hash=createHash('sha256');for(const file of files)hash.update(await readFile('dist/'+file));const version=hash.digest('hex').slice(0,12);await writeFile('dist/offline-manifest.json',JSON.stringify({version,files:['./',...files]}));console.log(`Offline pack: ${files.length+1} files, version ${version}`);
