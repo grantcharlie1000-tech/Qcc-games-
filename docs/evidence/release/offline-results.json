@@ -1,8 +1,11 @@
 {
+  "recordedAt": "2026-10-19T09:49:31.017Z",
   "browser": "Chromium",
+  "browserVersion": "154.0.8037.57",
   "physicalHardware": false,
   "softwareWebGL": true,
-  "gameCount": 2,
+  "rafSamplesPerGame": 45,
+  "gameCount": 12,
   "results": [
     {
       "game": "fruit-merge",
@@ -12,11 +15,22 @@
       "action": true,
       "save": true,
       "restart": true,
-      "rafMedianMs": 83.30000000000018,
-      "rafP95Ms": 166.70000000000073
+      "rafMedianMs": 16.699999999999818,
+      "rafP95Ms": 33.399999999999636
     },
     {
-      "game": "ball-run",
+      "game": "water-sort",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 66.70000000000073
+    },
+    {
+      "game": "color-blocks",
       "deployment": "root",
       "path": "/",
       "offline": true,
@@ -27,13 +41,113 @@
       "rafP95Ms": 16.799999999999272
     },
     {
+      "game": "tower",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 16.700000000000728
+    },
+    {
+      "game": "snake",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.700000000000728
+    },
+    {
+      "game": "minesweeper",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.799999999999272
+    },
+    {
+      "game": "solitaire",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.799999999999272
+    },
+    {
+      "game": "block-fill",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 16.80000000000291
+    },
+    {
+      "game": "color-connect",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 50
+    },
+    {
+      "game": "ball-run",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.799999999995634
+    },
+    {
+      "game": "pool",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.80000000000291
+    },
+    {
+      "game": "animal-stack",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.80000000000291
+    },
+    {
       "deployment": "root",
       "cacheNames": [
-        "pocket-arcade:/:5023f01d336c:shell",
-        "pocket-arcade:/:5023f01d336c:pack"
+        "pocket-arcade:/:bf379fc014bf:shell",
+        "pocket-arcade:/:bf379fc014bf:pack"
       ],
       "externalRequests": [],
       "pageErrors": [],
+      "failedAssets": [],
       "initialResourceCount": 16,
       "heavyChunksLazy": true
     },
@@ -46,7 +160,95 @@
       "save": true,
       "restart": true,
       "rafMedianMs": 16.700000000000045,
-      "rafP95Ms": 33.299999999999955
+      "rafP95Ms": 33.399999999999636
+    },
+    {
+      "game": "water-sort",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.699999999999818,
+      "rafP95Ms": 33.40000000000009
+    },
+    {
+      "game": "color-blocks",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.699999999999818,
+      "rafP95Ms": 16.799999999999272
+    },
+    {
+      "game": "tower",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.699999999999818,
+      "rafP95Ms": 16.799999999999272
+    },
+    {
+      "game": "snake",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 16.700000000000728
+    },
+    {
+      "game": "minesweeper",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 16.799999999999272
+    },
+    {
+      "game": "solitaire",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 16.700000000000728
+    },
+    {
+      "game": "block-fill",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 16.80000000000109
+    },
+    {
+      "game": "color-connect",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 16.80000000000109
     },
     {
       "game": "ball-run",
@@ -56,17 +258,40 @@
       "action": true,
       "save": true,
       "restart": true,
-      "rafMedianMs": 16.699999999999818,
-      "rafP95Ms": 16.700000000000273
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 16.700000000000728
+    },
+    {
+      "game": "pool",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 16.799999999999272
+    },
+    {
+      "game": "animal-stack",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.700000000000728
     },
     {
       "deployment": "subpath",
       "cacheNames": [
-        "pocket-arcade:/Qcc-games-/:5023f01d336c:shell",
-        "pocket-arcade:/Qcc-games-/:5023f01d336c:pack"
+        "pocket-arcade:/Qcc-games-/:bf379fc014bf:shell",
+        "pocket-arcade:/Qcc-games-/:bf379fc014bf:pack"
       ],
       "externalRequests": [],
       "pageErrors": [],
+      "failedAssets": [],
       "initialResourceCount": 16,
       "heavyChunksLazy": true
     }

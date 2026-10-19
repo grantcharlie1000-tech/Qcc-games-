@@ -1,20 +1,31 @@
 # Specialist build record
 
-All specialists are dispatched through actual spawn_agent calls with `model: gpt-6.1-sol`, `fork_turns: none`, `reasoning_effort: high`. Six concurrent child slots require staged dispatch. All worktrees branch from frozen baseline 3a5206508ee9c53458f70d946239f3d5a755d5b0. Parent-owned shared config changes are not committed by specialists. Parent reviews code and independently reruns focused tests before sequential cherry-picks. The release SVG covers are parent revisions made with the installed SVG skill.
+All twelve distinct specialists were created through actual `spawn_agent` calls with **model `gpt-6.1-sol`, `fork_turns: none`, `reasoning_effort: high`**. Six concurrent child slots required staged dispatch. Every worktree branched from frozen shell baseline `3a5206508ee9c53458f70d946239f3d5a755d5b0`. Each specialist independently searched the installed skill registry, read and applied appropriate real skills, researched rules and wrote its own spec, engine, adapter, tests and evidence. Shared configuration remained parent-owned.
 
-| Specialist | Game | Worktree / branch | Original handoff | Parent status |
-|---|---|---|---|---|
-| SOL-01 | Fruit Merge | .worktrees/fruit-merge · game/fruit-merge | 1443021 | Integrated, 16 unit + 4 Chromium checks independently passed |
-| SOL-02 | Water Sort | .worktrees/water-sort · game/water-sort | pending | Final verification |
-| SOL-03 | Color Blocks | .worktrees/color-blocks · game/color-blocks | pending | Final verification |
-| SOL-04 | Tower | .worktrees/tower · game/tower | pending | Testing |
-| SOL-05 | Snake | .worktrees/snake · game/snake | pending | Testing |
-| SOL-06 | Minesweeper | .worktrees/minesweeper · game/minesweeper | pending | Building |
-| SOL-07 | Solitaire | .worktrees/solitaire · game/solitaire | 69b6d8b | Integrated, 12 unit + 7 Chromium checks independently passed |
-| SOL-08 | Block Fill | .worktrees/block-fill · game/block-fill | pending | Building |
-| SOL-09 | Color Connect | .worktrees/color-connect · game/color-connect | pending | Awaiting dispatch slot |
-| SOL-10 | Ball Run | .worktrees/ball-run · game/ball-run | f602303 | Integrated, 8 unit + 4 Chromium checks independently passed |
-| SOL-11 | Pool | .worktrees/pool · game/pool | d3e339a | Integrated, 40 unit + 6 Chromium checks independently passed |
-| SOL-12 | Animal Stack | .worktrees/animal-stack · game/animal-stack | 1693702 | Integrated, 13 unit + 2 Chromium checks independently passed |
+The parent reviewed code, independently reran focused checks and cherry-picked each isolated handoff sequentially. Later corrections went back to the original specialist. The release SVG covers are parent revisions made with the installed SVG skill at the user's request; integration retained those covers.
 
-Source rules, loaded skill provenance, specs and fresh specialist test results live in each game's `SPEC.md`, `SKILL_USAGE.md`, and `TEST_RESULTS.md`. Parent integration evidence and browser limitations are recorded separately. WebKit is not available in this environment: download hosts returned policy403 and launch reported a missing executable. The CI configuration installs Chromium and WebKit; its future results are not claimed as completed local verification.
+| Specialist | Game | Worktree / branch | Original handoff | Integrated corrections | Logic / browser cases |
+|---|---|---|---|---|---|
+| SOL-01 | Fruit Merge | `.worktrees/fruit-merge` · `game/fruit-merge` | `1443021` | — | 16 / 4 |
+| SOL-02 | Water Sort | `.worktrees/water-sort` · `game/water-sort` | `e72d306` | `a8b1515`: homogeneous partial tubes, bounded solver queue | 52 / 6 |
+| SOL-03 | Color Blocks | `.worktrees/color-blocks` · `game/color-blocks` | `c25e919` | — | 10 / 9 |
+| SOL-04 | Tower | `.worktrees/tower` · `game/tower` | `5c11fbf` | — | 15 / 4 |
+| SOL-05 | Snake | `.worktrees/snake` · `game/snake` | `aa0d7ad` | Parent test follows working library search | 10 / 3 |
+| SOL-06 | Minesweeper | `.worktrees/minesweeper` · `game/minesweeper` | `8182168` | `2fb13d3`: long-hold release; `5a3057d`: production tile URL/fallback | 17 / 6 |
+| SOL-07 | Solitaire | `.worktrees/solitaire` · `game/solitaire` | `69b6d8b` | `79b8e94`: legal foundation withdrawal hint | 14 / 8 |
+| SOL-08 | Block Fill | `.worktrees/block-fill` · `game/block-fill` | `4c39c86` | Parent budgets time for twelve-level playthrough and isolates invalid-save fixture | 8 / 6 |
+| SOL-09 | Color Connect | `.worktrees/color-connect` · `game/color-connect` | `bbb5840` | `09102a5`: transactional saves, sparse-input validation, keyboard focus | 11 / 10 |
+| SOL-10 | Ball Run | `.worktrees/ball-run` · `game/ball-run` | `f602303` | — | 8 / 4 |
+| SOL-11 | Pool | `.worktrees/pool` · `game/pool` | `d3e339a` | Parent controls clock for exact restore assertion and waits for library before injecting endgame fixtures | 40 / 6 |
+| SOL-12 | Animal Stack | `.worktrees/animal-stack` · `game/animal-stack` | `1693702` | `4355d9c`: valid transient impact snapshots restore | 14 / 3 |
+
+Counts above describe the final test inventory; the [delivery report](DELIVERY.md) records the final integrated results. The shell adds eight logic and six browser cases. Source rules, skill provenance, specs and specialist test history live in each game's `SPEC.md`, `SKILL_USAGE.md` and `TEST_RESULTS.md`.
+
+## Independent review
+
+- SOL-10 reviewed shared storage, lifecycle and service-worker code. Parent fixed stale disk reads after quota errors, cache failures breaking online responses, premature worker activation, and late mounts running behind open dialogs. Focused regressions plus production offline/update scripts exercise these paths.
+- SOL-01 reviewed Pool, Solitaire and Animal Stack. Pool had no concrete defect; Solitaire's hint fallback and Animal Stack's impact restore were fixed by their original specialists, then independently checked.
+- SOL-05 reviewed Color Blocks, Tower and Minesweeper. The first two had no concrete defect; Minesweeper's long-touch release fix was returned to SOL-06 and independently verified.
+- SOL-02 reviewed Block Fill and Color Connect. Block Fill had no concrete defect. SOL-09 corrected gesture snapshot transactions, sparse snapshots and pointer-to-keyboard focus; the reviewer checked the corrective handoff.
+
+No review result substitutes for a test result. Native Chromium touch-protocol cases are explicitly Chromium-only. Other browser interactions are configured for both engines. **WebKit could not be run locally:** browser download hosts returned policy 403, and launch reported a missing executable. The CI workflow installs both engines; future CI results are not claimed as completed local verification.

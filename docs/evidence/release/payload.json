@@ -1,0 +1,91 @@
+{
+  "version": "bf379fc014bf",
+  "offlineFiles": 57,
+  "entry": [
+    {
+      "file": "assets/index-DRuONEWi.js",
+      "bytes": 17058,
+      "gzipBytes": 6527
+    },
+    {
+      "file": "assets/index-ru8TJyCq.css",
+      "bytes": 7957,
+      "gzipBytes": 2700
+    }
+  ],
+  "gameChunks": [
+    {
+      "source": "src/games/animal-stack/index.ts",
+      "file": "assets/index-BUXlr_gh.js",
+      "bytes": 17309,
+      "gzipBytes": 7138
+    },
+    {
+      "source": "src/games/ball-run/index.ts",
+      "file": "assets/index-CI1t8wUE.js",
+      "bytes": 491195,
+      "gzipBytes": 124793
+    },
+    {
+      "source": "src/games/block-fill/index.ts",
+      "file": "assets/index-DVV_K4eE.js",
+      "bytes": 10842,
+      "gzipBytes": 4671
+    },
+    {
+      "source": "src/games/color-blocks/index.ts",
+      "file": "assets/index-C_Aqd055.js",
+      "bytes": 12392,
+      "gzipBytes": 5236
+    },
+    {
+      "source": "src/games/color-connect/index.ts",
+      "file": "assets/index-Bm1LrEy8.js",
+      "bytes": 19846,
+      "gzipBytes": 8043
+    },
+    {
+      "source": "src/games/fruit-merge/index.ts",
+      "file": "assets/index-_QRyCOkn.js",
+      "bytes": 16500,
+      "gzipBytes": 6682
+    },
+    {
+      "source": "src/games/minesweeper/index.ts",
+      "file": "assets/index-BniN2mis.js",
+      "bytes": 12812,
+      "gzipBytes": 4991
+    },
+    {
+      "source": "src/games/pool/index.ts",
+      "file": "assets/index-we4rTY2V.js",
+      "bytes": 24605,
+      "gzipBytes": 9580
+    },
+    {
+      "source": "src/games/snake/index.ts",
+      "file": "assets/index-B3iry_sq.js",
+      "bytes": 9880,
+      "gzipBytes": 4156
+    },
+    {
+      "source": "src/games/solitaire/index.ts",
+      "file": "assets/index-DstXki2Z.js",
+      "bytes": 14410,
+      "gzipBytes": 5526
+    },
+    {
+      "source": "src/games/tower/index.ts",
+      "file": "assets/index-CitFEkQK.js",
+      "bytes": 10705,
+      "gzipBytes": 4549
+    },
+    {
+      "source": "src/games/water-sort/index.ts",
+      "file": "assets/index-D_CwdJFI.js",
+      "bytes": 15811,
+      "gzipBytes": 6589
+    }
+  ],
+  "totalOfflineBytes": 1052240
+}

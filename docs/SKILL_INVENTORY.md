@@ -8,11 +8,12 @@ Parent read and applied:
 - `.agents/skills/brainstorming/SKILL.md` — complete supplied design requires no speculative questions.
 - `.agents/skills/writing-plans/SKILL.md` — ARCHITECTURE.md, TEST_PLAN.md and task plan.
 - `.agents/skills/game-development/SKILL.md` and `web-games/SKILL.md` — lazy loads, fixed updates, input abstraction and cleanup.
-- `.agents/skills/svg-skill/SKILL.md` — original cover geometry, explicit viewBoxes, local assets.
+- `.agents/skills/svg-skill/SKILL.md`, `scenarios.md` and `scripts/validate.sh` — actual skill invocation for all twelve replacement covers after the user rejected the initial posters; original layered geometry, explicit viewBoxes, local assets, and 22 validated SVG files. See ARTWORK.md.
 - `.agents/skills/animate/SKILL.md`, RECIPES.md and `pick-ui-library/SKILL.md` — 140ms transform-only card press/hover, reduced-motion/fine-pointer gating. Native dialog provides browser focus management without adding a framework.
 - `.agents/skills/using-git-worktrees/SKILL.md` — user-authorized twelve isolated worktrees, ignored directory, frozen baseline.
 - `.agents/skills/dispatching-parallel-agents/SKILL.md` — per-game ownership and actual supported concurrency/model.
 - `.agents/skills/requesting-code-review/SKILL.md` and reviewer template — independent cross-review after implementation.
+- `.agents/skills/systematic-debugging/SKILL.md` and `.agents/skills/receiving-code-review/SKILL.md` — inspect concrete failures before corrections; review feedback returned to the original specialists; browser test timing separated from game-state defects.
 - `.agents/skills/verification-before-completion/SKILL.md` — fresh check/test/build evidence before completion claims.
 
 Cloud registry was queried at session start; cloud-runtime and Netlify config/deploy skills were read through skills tools before a later registry update reported no cloud skills. Cloud-runtime guided environment readiness/network-policy inspection. Netlify skills guided static build/publish config and no-secret handling. These loads are actual session tool results, not locally installed skill files.

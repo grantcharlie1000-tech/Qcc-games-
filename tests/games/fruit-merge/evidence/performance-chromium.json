@@ -5,8 +5,8 @@
     "height": 844
   },
   "frames": 60,
-  "meanMs": 54.719999999999985,
-  "p95Ms": 149.89999999999964,
-  "maxMs": 250.10000000000036,
+  "meanMs": 70.83166666666666,
+  "p95Ms": 133.3000000000011,
+  "maxMs": 183.3000000000011,
   "note": "Headless Chromium in a shared Linux execution container; not a physical Chromebook measurement."
 }

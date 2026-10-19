@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-19",
+  "os": "Debian GNU/Linux 13 container",
+  "node": "24.19.0",
+  "chromium": "154.0.8037.57",
+  "chromiumBinary": "/usr/bin/chromium",
+  "webgl": "ANGLE SwiftShader software rendering",
+  "physicalChromebook": false,
+  "physicalManagedMac": false,
+  "physicalTrackpad": false,
+  "screenReader": false,
+  "webkit": {
+    "verified": false,
+    "reason": "Executable webkit-2370/pw_run.sh is absent; official Playwright browser download hosts returned policy HTTP403."
+  },
+  "deployment": {
+    "published": false,
+    "localRootAndSubpathTests": true
+  }
+}

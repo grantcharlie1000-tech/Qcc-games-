@@ -8,3 +8,7 @@
 6. Offline: production build at root and `/Qcc-games-/`; download pack while online, disable browser network, reload and interact with all twelve. Verify no external runtime calls and shell loads without Matter.js/Three.js.
 7. Record test command/output and actual screenshots, not assumptions. Performance measured from RAF intervals on this environment with hardware limitations stated; no claim about physical Chromebook performance without that hardware.
 8. Playwright browser downloads may be blocked by this environment's network policy. Use preinstalled Chromium; report a missing WebKit engine explicitly unless a supported installation succeeds. CI installs both engines with dependencies.
+
+## Executed handoff evidence
+
+See [docs/DELIVERY.md](docs/DELIVERY.md) for 223 passing rules/storage tests, the passing 75-case Chromium suite, six final production Minesweeper regressions, 24 offline gameplay actions at both paths, zero failed local assets/external requests/page errors, update lifecycle verification, screenshots and measured RAF intervals. WebKit and physical managed-device acceptance remain unverified.

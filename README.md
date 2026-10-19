@@ -1,37 +1,52 @@
-# Qcc-games-
-Shen
+# Pocket Arcade
 
-Project workspace with SVG, animation, game development, Phaser engine, Superpowers, and code review skills prepared for coding agents.
+A static, private browser arcade with twelve playable games: **Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool and Animal Stack**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No accounts, advertisements, currency, tracking or gameplay server.
 
-## Included skills
+![The arcade library](docs/evidence/home-1366.png)
 
-| Area | Skill package | Source |
-| --- | --- | --- |
-| SVG assets | `svg-skill` | [linyaosky/svg-skill](https://github.com/linyaosky/svg-skill) |
-| Animation | `animate`, with its `pick-ui-library` companion | [emilkowalski/skills](https://github.com/emilkowalski/skills) |
-| Game development | `game-development` and its platform/domain guides | [vudovn/ag-kit](https://github.com/vudovn/ag-kit) |
-| Game engine | Official Phaser 4 skill pack: 28 subsystem skills | [phaserjs/phaser](https://github.com/phaserjs/phaser/tree/02d8931b626d9764c133cbb3fbf99966c03c757c/skills) |
-| Development workflow | The Superpowers skill collection | [obra/superpowers](https://github.com/obra/superpowers) |
-| Code review | Superpowers `requesting-code-review` and `receiving-code-review`, including the reviewer template | [obra/superpowers](https://github.com/obra/superpowers) |
+## Run and build
 
-## Use
+Node.js 22 is recommended.
 
-Open a checkout of this repository in your coding agent. Skill files are included in the repository; there is no separate download step.
+```sh
+npm ci
+npm run dev
+```
 
-- **Codex:** project skills are in `.agents/skills/`.
-- **Claude Code:** matching copies are in `.claude/skills/`. These are ordinary files so Windows checkouts do not need symlink support.
-- **Other agents:** read `AGENTS.md` and the relevant `SKILL.md` directly if native skill discovery is unavailable.
+```sh
+npm run check
+npm test
+npx playwright install --with-deps chromium webkit
+npm run test:e2e
+npm run build
+npm run verify:update
+npm run verify:offline
+```
 
-Start a new session after initially adding these directories if the agent does not discover them. Skills provide instructions and supporting resources; they do not install a game engine or an application framework.
+The last two commands test the real production output using Chromium. `verify:offline` downloads the pack, disables network access, reloads and plays every game at both `/` and `/Qcc-games-/`, saves screenshots and records rendering intervals. `verify:update` checks that an open pair of older tabs retains its cached game while a new release waits, then activates safely after both close. Set `CHROMIUM_PATH` to use a system Chromium binary when needed. Game tests and shell tests are under `tests/`; the [release report](docs/DELIVERY.md) distinguishes actual results from unavailable checks.
 
-For Phaser 4 work, start with `game-setup-and-config` and load the relevant subsystem skills for scenes, assets, input, physics, cameras, audio, or rendering. The full official pack is included so its cross-references remain available. Its `src/...` source maps refer to the upstream Phaser repository at the commit recorded in `skills.lock.json`, not to application files in this repository.
+## Play and save
 
-This is a project-local copy of the Superpowers skills. Its global plugin and startup hooks are not installed. `AGENTS.md` supplies the project entry point and explains how to resolve its skill names.
+Open the library directly. Use the hamburger for search, sound, motion, colour-blind settings and **Make all games available offline**. Sound starts muted. Games offer a shared back, pause, restart and rules toolbar, plus their own controls. Mouse and trackpad use the same pointer controls; suitable games also accept keyboard and touch input.
 
-## Maintenance
+Scores, settings, favourites and compact game snapshots stay in this browser's local storage. If storage is blocked or full, play continues in memory and the menu explains that progress cannot be retained. There is no cloud sync. Restart starts a new run; leaving a game saves its current state. A hidden tab pauses real-time play.
 
-`skills.lock.json` records the exact upstream commits, source paths, and file hashes. The source files retain their original MIT licenses. `.agents/skills/` is the canonical copy; keep `.claude/skills/` identical when deliberately updating a skill and update the lock file in the same commit.
+Offline play requires a successful download on the same browser, device and origin, using HTTPS or localhost. Browser eviction, private browsing, managed-device policies and network controls can prevent retention. The app cannot bypass them. After an update, close older arcade tabs so the new worker can activate; download the new pack to make all of that release available offline.
 
-Recorded local adjustments enable the animation skill to invoke its UI-library companion automatically, repair Phaser documentation references to match the installed layout, and remove a reference to a companion absent from the upstream pack. The lock file preserves upstream blob hashes and records installed hashes and the exact adjustments. Other upstream skill content is unchanged.
+## Deploy the same output
 
-Official discovery documentation: [Codex skills](https://learn.chatgpt.com/docs/build-skills) · [Claude Code skills](https://code.claude.com/docs/en/skills).
+`npm run build` creates `dist/` with relative asset paths, hash routes and a service worker scoped to the directory in which it is served. The unchanged build supports an origin root and a repository subpath.
+
+- **GitHub Pages:** enable GitHub Actions as the Pages source. The included [workflow](.github/workflows/pages.yml) runs verification and publishes `dist/` on pushes to `main` or `work`, or a manual dispatch. Repository Pages settings and account access are required.
+- **Netlify:** import this repository. [netlify.toml](netlify.toml) sets `npm run build`, publishes `dist/`, selects Node 22 and sets security headers. No API keys or environment secrets are needed.
+- **Other static hosting:** serve `dist/` over HTTPS. No SPA rewrite is necessary because navigation uses `#/game/<id>`.
+
+No hosted deployment is claimed by this checkout. Local root/subpath tests do not establish an account's publication settings.
+
+## Code and artwork
+
+Vite + strict TypeScript, semantic DOM/SVG/Canvas, Matter.js for the two stacking games, and Three.js loaded only by Ball Run. The library loads no game engines. Each game has a separate deterministic rules model and implements the shared [module contract](src/core/types.ts). See [architecture](ARCHITECTURE.md), [test plan](TEST_PLAN.md) and the [twelve specialist build record](docs/AGENT_BUILDS.md).
+
+All twelve cover illustrations were remade with the installed [SVG generation skill](.agents/skills/svg-skill/SKILL.md). The authored sources are in `public/game-art/<id>/cover.svg`; `scripts/generate-covers.py` reproduces the cover set. See [artwork notes](docs/ARTWORK.md). Fonts are locally bundled with their OFL licence; [dependency and font notices](public/THIRD_PARTY_NOTICES.txt) also ship in the static build. No original reference screenshots or proprietary game artwork are distributed.
+
+The repository's pre-existing agent skill collection remains intact; its original README is preserved in [workspace skill notes](docs/WORKSPACE_SKILLS.md). Each game records its actual loaded skills, documentation sources and gaps in its own `SKILL_USAGE.md`.

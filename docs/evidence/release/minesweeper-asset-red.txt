@@ -1,0 +1,99 @@
+
+> pocket-offline-arcade@1.0.0 verify:offline
+> node scripts/verify-offline.mjs
+
+OFFLINE PASS root minesweeper
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: failed local assets
++ actual - expected
+
++ [
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   },
++   {
++     status: 503,
++     url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg'
++   }
++ ]
+- []
+
+    at file:///workspace/Qcc-games-/scripts/verify-offline.mjs:55:110 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    },
+    {
+      url: 'http://127.0.0.1:4275/assets/game-art/minesweeper/tile.svg',
+      status: 503
+    }
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0
