@@ -106,10 +106,14 @@ export class AnimalWorld {
   restore(data:unknown) {
     const s=parseSnapshot(data);if (!s) return false;
     const restored=s.animals.map(v=> {const a=createAnimal(v.kind,v.x,v.y);Body.setAngle(a.body,v.angle);Body.setVelocity(a.body,{x:v.vx,y:v.vy});Body.setAngularVelocity(a.body,v.av);Sleeping.set(a.body,v.sleeping);a.age=v.age;a.stable=v.stable;a.scored=v.scored;return a;});
-    // Reject deep intersections before touching a live run; solver recovery from corrupt overlapping saves is unsafe.
-    for(let i=0;i<restored.length;i++) {
-      const others=[this.platform,...restored.slice(0,i).map(a=>a.body)];
-      if(restored[i].body.parts.slice(1).some(part=>Query.collides(part,others).some(c=>c.depth>5)))return false;
+    // Contact penetration is transient solver state, not evidence of corruption. Even ordinary
+    // island impacts can overlap by more than 5px. All shapes, masses and body counts are rebuilt
+    // from bounded validated data; reject exact duplicated geometry rather than a depth threshold.
+    const poses=new Set<string>();
+    for(const a of s.animals) {
+      const pose=JSON.stringify([a.kind,a.x,a.y,a.angle]);
+      if(poses.has(pose))return false;
+      poses.add(pose);
     }
     Composite.clear(this.engine.world,false);Engine.clear(this.engine);Composite.add(this.engine.world,this.platform);this.animals=restored;
     Composite.add(this.engine.world,this.animals.map(a=>a.body));Object.assign(this,{seed:s.seed,aimX:s.aim,score:s.score,height:s.height,over:s.over,complete:s.complete,nextKind:s.next,active:s.active,tick:s.tick});return true;

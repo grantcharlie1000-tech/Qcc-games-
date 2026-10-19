@@ -50,9 +50,11 @@ describe('Animal Stack rules and real physics', () => {
     const a = new AnimalWorld(17), b = new AnimalWorld(17); a.drop(); b.drop(); run(a); run(b);
     expect(a.nextKind).toBe(b.nextKind); expect(a.snapshot()).toEqual(b.snapshot()); a.dispose(); b.dispose();
   });
-  it('rejects deeply overlapping body saves without mutating the run', () => {
+  it('rejects exact duplicated body records without mutating the run', () => {
     const w=new AnimalWorld(17);w.drop();run(w);const save=w.snapshot();
-    expect(w.restore({...save,animals:[save.animals[0],save.animals[0]]})).toBe(false);
+    const duplicated={...save,score:save.score+100,animals:[save.animals[0],save.animals[0]]};
+    expect(parseSnapshot(duplicated)).not.toBeNull();
+    expect(w.restore(duplicated)).toBe(false);
     expect(w.animals).toHaveLength(1);expect(w.supportedCount).toBe(1);w.dispose();
   });
   it('caps the population and completes only when forty animals have earned support', () => {
@@ -73,6 +75,20 @@ describe('Animal Stack rules and real physics', () => {
     const w=new AnimalWorld(17);w.drop();run(w,240);w.drop();const save=w.snapshot();
     save.animals[0].scored=false;save.animals[0].stable=29;save.score=0;save.height=0;
     expect(w.restore(save)).toBe(true);w.step();expect(w.height).toBeLessThan(70);expect(w.score).toBeLessThan(240);w.dispose();
+  });
+
+  it('restores the valid seed-4 sixth-drop impact at world tick 1531', () => {
+    const original=new AnimalWorld(4);
+    for(let i=0;i<5;i++){original.aim(150);expect(original.drop()).toBe(true);run(original,300);}
+    original.aim(150);expect(original.drop()).toBe(true);run(original,31);
+    const save=original.snapshot();
+    expect(save.tick).toBe(1531);expect(save.over).toBe(false);expect(save.score).toBe(980);
+    expect(parseSnapshot(save)).not.toBeNull();
+    const restored=new AnimalWorld(1);expect(restored.restore(save)).toBe(true);
+    expect(restored.snapshot()).toEqual(save);
+    run(restored,300);
+    expect(restored.animals.every(a=>[a.body.position.x,a.body.position.y,a.body.angle,a.body.velocity.x,a.body.velocity.y].every(Number.isFinite))).toBe(true);
+    original.dispose();restored.dispose();
   });
 
 });

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
+import { AnimalWorld } from '../../../src/games/animal-stack/model';
 const route='/#/game/animal-stack';
 test('aim, stack, pause, save, restore, keyboard and restart on a phone', async ({page}) => {
   await page.setViewportSize({width:390,height:844});
@@ -43,4 +44,21 @@ test('touch release drops, preview is safe at the edge, and a real fall ends the
   await page.touchscreen.tap(b.x+b.width*.5,b.y+90);await expect(game).toHaveAttribute('data-balanced','1');
   await page.touchscreen.tap(b.x+b.width*.07,b.y+90);await expect(game).toHaveAttribute('data-over','true');await expect(game.locator('.animal-stack__result')).toBeVisible();
   await expect(game.getByRole('button',{name:'Tower finished',exact:true})).toBeDisabled();await context.close();
+});
+
+test('reload restores the seed-4 six-animal impact snapshot instead of a fresh run', async ({page}) => {
+  const world=new AnimalWorld(4);
+  for(let i=0;i<5;i++){world.aim(150);expect(world.drop()).toBe(true);for(let tick=0;tick<300;tick++)world.step();}
+  world.aim(150);expect(world.drop()).toBe(true);for(let tick=0;tick<31;tick++)world.step();
+  const snapshot=world.snapshot();world.dispose();expect(snapshot.tick).toBe(1531);expect(snapshot.score).toBe(980);
+  await page.goto('/');
+  await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),snapshot);
+  await page.goto(route);
+  const game=page.locator('.animal-stack');await expect(game).toHaveAttribute('data-count','6');
+  await page.getByRole('button',{name:'Pause game',exact:true}).click();
+  expect(await page.locator('#game-score strong').textContent()).not.toBe('0');
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:animal-stack')!).data);
+  expect(saved.animals).toHaveLength(6);expect(saved.tick).toBeGreaterThanOrEqual(1531);
+  await page.reload();await expect(game).toHaveAttribute('data-count','6');
+  await expect(page.locator('#game-score strong')).not.toHaveText('0');
 });
