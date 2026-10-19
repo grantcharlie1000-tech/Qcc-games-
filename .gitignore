@@ -24,3 +24,5 @@ Thumbs.db
 playwright-report/
 test-results/
 dist-pages/
+
+.vite-cache/
