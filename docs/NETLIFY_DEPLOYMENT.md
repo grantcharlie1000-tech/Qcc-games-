@@ -1,24 +1,29 @@
-# Netlify publication handoff
+# Mauri Gazette — GitHub continuous deployment
 
-The requested newspaper-style name was `the-daily-ledger`. It was already taken, so Netlify created **the-daily-ledger-kh16** in the connected `grantcharlie1000` team.
+Netlify project: **Mauri Gazette**, slug `mauri-gazette`. The existing project was renamed through the connected Netlify app; the site ID is unchanged. Local `.netlify/` linkage is excluded from Git.
 
-- Project dashboard: https://app.netlify.com/projects/the-daily-ledger-kh16
+- [Netlify project](https://app.netlify.com/projects/mauri-gazette)
 - Site ID: `4afc912c-6802-4c18-8f2c-273fb3e771ee`
-- Prepared upload: [the-daily-ledger-kh16-netlify.zip](evidence/the-daily-ledger-kh16-netlify.zip)
-- Artifact/deployment status: [netlify-deployment.json](evidence/netlify-deployment.json)
+- [GitHub repository](https://github.com/grantcharlie1000-tech/Qcc-games-), production branch **main**
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Base directory: repository root
+- Node.js: 22, set in `netlify.toml`
+- [Prepared static ZIP](evidence/mauri-gazette-netlify.zip), for review or manual upload
+- [Recorded deployment state](evidence/netlify-deployment.json)
 
-**The arcade has not been published to this project.** Creating the project does not establish that it serves the arcade. No deployed-page or live offline verification is claimed.
+## One-time repository connection
 
-## Publication blocker
+The requested update policy is Netlify Git continuous deployment: each push to GitHub `main` builds the repository and publishes the resulting `dist/` to this same Netlify site. This does not require an application token or a backend in the arcade.
 
-The connected Netlify tools can create and inspect a project, but expose no operation for uploading a deployment. The installed official Netlify CLI reported `NOT_LOGGED_IN`, and the environment has no configured `NETLIFY_AUTH_TOKEN`. A request to `https://api.netlify.com/api/v1/sites` failed at the environment proxy with HTTP403. The enforced cloud policy currently permits package hosts, not Netlify's API or this site's origin.
+**The Git connection is not configured yet, and the arcade is not published on this Netlify project.** The connector successfully creates, renames and inspects projects, but its available actions omit repository linking, build-setting updates, build triggering and deployment uploads. It cannot establish Git continuous deployment in this session. No claim is made that the automatic update policy is already active.
 
-The user subsequently specified **use the connector**. That is the selected publication route. Its actual available deployment actions are `netlify_deploy_get_deploy` and `netlify_deploy_get_deploy_for_site`, both read-only. The new-project action explicitly creates an empty project. There is no available connector operation for uploading files, creating a deploy, connecting a source repository, or triggering a build. The available tool inventory was checked again after that instruction; plugin discovery did not reveal another Netlify deployment connector. No additional project was created and no unrelated site was modified.
+In the project dashboard, link the GitHub repository `grantcharlie1000-tech/Qcc-games-`, choose `main` as the production branch, and use the build/publish settings above. The checked-in `netlify.toml` already supplies the command, output directory, Node version and headers. Once that one-time connection is saved, Netlify handles subsequent `main` pushes automatically. The agent can then inspect deployment status through the connector.
 
-No token is requested for this connector-only route. A connector upload/create-deploy action must be available before the agent can finish publication through it. The earlier CLI checks establish a separate fallback's limitations, not a missing authorization for the connected Netlify account. Local `.netlify/state.json` identifies the created site and is excluded from Git by the existing `.netlify/` rule.
+No token is requested for this connector-based setup. GitHub Pages deployment remains separately configured by `.github/workflows/pages.yml`; enabling Netlify does not require changing the game routes or assets.
 
-Alternatively, open the project dashboard's Deploys tab and upload the prepared static folder (extract the ZIP first if the upload control requests a folder). The ZIP contains `index.html` at its root, all required chunks, local graphics/font, licence notices, manifest, service worker and Netlify `_headers`. It excludes sourcemaps and the internal Vite manifest. The `_headers` file matches the existing `netlify.toml` security and service-worker caching rules for manual uploads.
+## Verified build
 
-## Build evidence
+The ready build is offline-pack version `bf379fc014bf`, with 57 required requests and all twelve games. The upload ZIP contains the required files plus Netlify `_headers`, and excludes sourcemaps and the internal Vite manifest. Header values match `netlify.toml`. See [the full game verification report](DELIVERY.md) for actual logic/browser/offline results and the outstanding WebKit/physical-device checks.
 
-A fresh strict TypeScript/Vite build passed for this request. The prepared pack remains version `bf379fc014bf` with all 57 required requests accounted for; host header configuration is deliberately excluded from the offline manifest. All earlier gameplay/offline verification still refers to that same game build; see [DELIVERY.md](DELIVERY.md). The archive was checked for every required manifest file and for exact header values from `netlify.toml`. Those local checks do not replace verification of a successfully published Netlify origin.
+A future Netlify build's first published URL, headers, all twelve routes and offline download still need live-origin verification. Existing offline tabs activate a waiting game release after those tabs close; each release's complete offline pack must be downloaded on that origin.
