@@ -1,0 +1,15 @@
+import { SIZE,type SnakeState } from './model';
+/** Original procedural garden illustration, drawn in logical 480px coordinates. */
+export function drawGarden(canvas:HTMLCanvasElement,s:SnakeState){
+ const g=canvas.getContext('2d')!,dpr=Math.min(window.devicePixelRatio||1,2),pixels=Math.round(480*dpr);
+ if(canvas.width!==pixels)canvas.width=canvas.height=pixels;g.setTransform(dpr,0,0,dpr,0,0);
+ const circle=(x:number,y:number,r:number,color:string)=>{g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();};
+ const grass=g.createLinearGradient(0,0,480,480);grass.addColorStop(0,'#c5d981');grass.addColorStop(1,'#86b75d');g.fillStyle=grass;g.fillRect(0,0,480,480);
+ for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){g.fillStyle=(x+y)%2?'#ffffff09':'#284d1b0d';g.fillRect(x*30,y*30,30,30);}
+ g.strokeStyle='#638c4430';g.lineWidth=2;for(let y=15;y<480;y+=90)for(let x=16;x<480;x+=90){g.beginPath();g.moveTo(x,y+5);g.quadraticCurveTo(x-5,y,x-3,y-4);g.moveTo(x,y+5);g.quadraticCurveTo(x+4,y+1,x+5,y-1);g.stroke();}
+ if(s.food){const x=s.food.x*30+15,y=s.food.y*30+15;g.save();g.translate(x,y);g.fillStyle='#294a282b';g.beginPath();g.ellipse(0,10,12,5,0,0,Math.PI*2);g.fill();g.lineCap='round';g.strokeStyle='#6a4329';g.lineWidth=3;g.beginPath();g.moveTo(0,-7);g.quadraticCurveTo(-2,-15,3,-15);g.stroke();g.fillStyle='#2c753b';g.beginPath();g.ellipse(6,-12,6,3,-.5,0,Math.PI*2);g.fill();const red=g.createRadialGradient(-5,-5,1,0,0,16);red.addColorStop(0,'#ffb76e');red.addColorStop(.4,'#f45b42');red.addColorStop(1,'#b92e38');g.fillStyle=red;g.beginPath();g.moveTo(0,-8);g.bezierCurveTo(-15,-16,-18,3,-8,12);g.quadraticCurveTo(-3,15,0,12);g.quadraticCurveTo(5,15,10,9);g.bezierCurveTo(19,-2,10,-16,0,-8);g.fill();g.strokeStyle='#ffe2b5b0';g.lineWidth=2;g.beginPath();g.moveTo(-7,-6);g.quadraticCurveTo(-11,-3,-9,2);g.stroke();g.restore();}
+ g.lineCap='round';g.lineJoin='round';g.strokeStyle='#244c2c';g.lineWidth=26;g.beginPath();s.body.forEach((p,i)=>i?g.lineTo(p.x*30+15,p.y*30+17):g.moveTo(p.x*30+15,p.y*30+17));g.stroke();
+ for(let i=s.body.length-1;i>=0;i--){const p=s.body[i],x=p.x*30+15,y=p.y*30+15;const green=g.createRadialGradient(x-5,y-7,1,x,y,17);green.addColorStop(0,i===0?'#eff89a':'#c8ed70');green.addColorStop(.45,i===0?'#a9d859':'#80be4c');green.addColorStop(1,'#3d823e');g.fillStyle=green;g.beginPath();g.roundRect(x-13,y-13,26,26,11);g.fill();if(i>0){g.fillStyle='#edfaac80';g.beginPath();g.ellipse(x-3,y-7,6,2.3,-.2,0,Math.PI*2);g.fill();circle(x+5,y+5,2,'#4e923c70');}}
+ const h=s.body[0];g.save();g.translate(h.x*30+15,h.y*30+15);g.rotate(({right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2})[s.direction]);circle(6,-9,5.5,'#f8ffdc');circle(6,9,5.5,'#f8ffdc');circle(8,-9,2.7,'#173e2c');circle(8,9,2.7,'#173e2c');circle(8.5,-10,1,'white');circle(8.5,8,1,'white');g.strokeStyle='#315c2b';g.lineWidth=1.6;g.beginPath();g.arc(7,0,4,-.9,.9);g.stroke();g.restore();
+ canvas.setAttribute('aria-label',`Snake garden. Head column ${h.x+1}, row ${h.y+1}. Length ${s.body.length}. ${s.food?`Apple column ${s.food.x+1}, row ${s.food.y+1}.`:''} Use arrow keys, WASD or swipe.`);
+}

@@ -1,0 +1,14 @@
+# Snake verification — 2026-10-19
+
+Worktree: `/workspace/Qcc-games-/.worktrees/snake`, isolated Vite origin `http://127.0.0.1:4185`. Shared configuration/dependencies were not changed or staged by this specialist.
+
+- `npx vitest run tests/games/snake`: **10 passed**, 1 file. Growth, bounded queue and reversal rejection, vacating tail, self/wall loss, equal 30/60 FPS outcomes, seeded food/body exclusion, clock/queue/seed snapshot continuation, malformed-save rejection and alias isolation, full-board victory, inactive clocks.
+- `npm test`: **14 passed**, 2 files (10 Snake + 4 shared storage).
+- `npm run check`: **exit 0**, strict TypeScript, including tests.
+- `ARCADE_URL=http://127.0.0.1:4185 npx playwright test tests/games/snake --project=chromium`: **3 passed**. Actual hash route and shell; keyboard feeding/growth/turns/wall loss/replay; pause input/board freeze; exact board restoration after reload; WASD; restart while paused; rules; typing in menu; real Chromium touch dispatch swipe and native button taps; invalid saves and three exit/re-entry cycles with one tick per clock advance and no page errors.
+- Screenshots: `tests/games/snake/evidence/chromium.png` (390×844 touch/reduced-motion gameplay) and `desktop.png` (desktop gameplay). Phone image visually inspected: board, apple/head/body, readable controls/status and no horizontal overflow. The parent owns final 12-game library comparisons.
+- Real-time RAF sample: **120 intervals**, system Chromium **154.0.8037.57**, median **16.7ms**, p95 **16.8ms**, max **50ms**, 390×844. Raw result in `tests/games/snake/evidence/performance.json`. Headless shared cloud-container measurement spans gameplay and its end state; it does not establish physical Chromebook performance or full-board rendering performance.
+
+Initial red run failed because the rules module did not yet exist. The first touch browser run exposed missing compatibility click delivery after a swipe; event tracing confirmed pointerdown/up arrived while click did not, so directions now activate on pointerdown and preserve keyboard click handling. Initial fake-clock tests drifted because install alone keeps time advancing; explicit pauseAt plus runFor fixed synchronization. A repeated-entry test also needed one first-RAF interval beyond the 160ms tick, so it advances 190ms and still asserts exactly one cell/tick.
+
+Known limitations: WebKit is unavailable in the supplied environment and was not claimed or run. No physical touch device or Chromebook was used. Parent integration owns offline/root/subpath deployment checks, final cross-game library artwork, and final independent review. No known gameplay defects remain in the exercised scenarios. Sound is delegated to the shell (default off); there are no decorative motion effects to disable. Cover untouched at the parent's explicit request.

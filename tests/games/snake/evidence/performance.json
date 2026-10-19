@@ -1,0 +1,9 @@
+{
+  "browser": "154.0.8037.57",
+  "viewport": "390x844",
+  "samples": 120,
+  "medianMs": 16.699999999999818,
+  "p95Ms": 16.800000000000182,
+  "maxMs": 50,
+  "environment": "Headless system Chromium in shared cloud container; no physical Chromebook claim"
+}
