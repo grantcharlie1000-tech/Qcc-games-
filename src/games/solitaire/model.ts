@@ -69,6 +69,12 @@ export function hint(s:State):Action|null {
  for(const from of sources){if(from.kind==='tableau'&&from.index===0)continue;for(let pile=0;pile<7;pile++){const to:Target={kind:'tableau',pile};if(move(s,from,to))return {kind:'move',from,to};}}
  if(s.stock.length||s.waste.length)return {kind:'draw'};
  for(const from of sources)for(let pile=0;pile<7;pile++){const to:Target={kind:'tableau',pile};if(s.tableau[pile].length&&move(s,from,to))return {kind:'move',from,to};}
+ // Returning a foundation top is legal, but prefer progress and stock actions first.
+ for(let foundation=0;foundation<4;foundation++){
+  const cards=s.foundations[foundation];if(!cards.length)continue;
+  const from:Source={kind:'foundation',pile:foundation,index:cards.length-1};
+  for(let pile=0;pile<7;pile++){const to:Target={kind:'tableau',pile};if(move(s,from,to))return {kind:'move',from,to};}
+ }
  return null;
 }
 export function act(session:Session,action:Action):Session|null {

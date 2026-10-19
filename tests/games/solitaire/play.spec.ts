@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { deal, type State } from '../../../src/games/solitaire/model';
+import { foundationWithdrawalState } from './fixtures';
 const key='pocket-arcade:v1:save:solitaire';
 async function open(page:Page,state:State=deal(123)){
  await page.addInitScript(({key,state})=>{if(!sessionStorage.getItem('sol-test-init')){localStorage.setItem(key,JSON.stringify({version:1,data:{version:1,state,history:[]},updated:0}));sessionStorage.setItem('sol-test-init','1');}},{key,state});
@@ -52,4 +53,16 @@ test('a long tableau sequence stays within its column at desktop and phone sizes
  const s=deal(33);const sequence=Array.from({length:13},(_,i)=>12-i+(i%2?13:0));s.tableau=[sequence.map(id=>({id,up:true})),[],[],[],[],[],[]];s.stock=Array.from({length:52},(_,i)=>i).filter(id=>!sequence.includes(id));await page.setViewportSize({width:1366,height:900});await open(page,s);
  const fits=async()=>{const card=(await page.getByRole('button',{name:'Ace of clubs, column 1',exact:true}).boundingBox())!;const column=(await page.locator('.sol-column').first().boundingBox())!;const message=(await page.locator('.sol-message').boundingBox())!;expect(card.y+card.height).toBeLessThanOrEqual(column.y+column.height+1);expect(message.y).toBeGreaterThan(card.y+card.height);};
  await fits();await page.setViewportSize({width:390,height:844});await fits();
+});
+
+test('hint highlights and executes a foundation withdrawal when no other move exists',async({page})=>{
+ await open(page,foundationWithdrawalState());
+ await page.getByRole('button',{name:'Hint',exact:true}).click();
+ await expect(page.locator('.sol-message')).toHaveText('Hint: move 2 of clubs to column 1.');
+ await expect(page.getByRole('button',{name:'2 of clubs, foundation',exact:true})).toHaveClass(/sol-hint/);
+ await expect(page.locator('.sol-column').first()).toHaveClass(/sol-hint-target/);
+ await page.getByRole('button',{name:'3 of hearts, column 1',exact:true}).click();
+ await expect(page.getByRole('button',{name:'2 of clubs, column 1',exact:true})).toBeVisible();
+ const after=(await saved(page)).state;expect(after.foundations[0]).toEqual([0]);expect(after.tableau[0].slice(-2).map((c:{id:number})=>c.id)).toEqual([15,1]);
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'2 of clubs, foundation',exact:true})).toBeVisible();
 });

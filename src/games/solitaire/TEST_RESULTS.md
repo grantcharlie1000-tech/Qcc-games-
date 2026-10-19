@@ -31,3 +31,17 @@ A separate actual system-Chromium measurement collected **89 RAF intervals**, me
 Failures found and corrected: initial stub model produced seven expected rule-test failures before implementation; first browser pass found a zero-height drag-preview wrapper, an incorrect close-button locator and a save fixture overwritten by shell pagehide persistence. A later review added a regression showing a 13-card desktop column extending 48px beyond its destination area; responsive flow sizing fixed it. Targeted regression failed before fix and passed afterward; full suite subsequently rerun.
 
 Limits: **WebKit was not executed**; no physical touch hardware tested. Rule site Solitaired returned proxy 403; verified accessible PySolFC rule docs and MDN pointer-capture docs instead (see SPEC/SKILL_USAGE). No solver or guaranteed-solvable deals; Hint provides a legal immediate action, not a winning strategy. Undo retains the latest 200 actions, explicitly stated in rules. Root/subpath production build, integrated offline pack and final homepage/cover review are parent integration responsibilities. No known gameplay defects remain from these checks.
+
+## Review correction: foundation withdrawal hints
+
+Independent review identified that Hint omitted foundation-top withdrawals and could report no immediate move when one was legal. The supplied fixture was independently rebuilt with Clubs A–2, Spades A–K, Diamonds A–9, seven specified tableau tops, all remaining 21 cards covered, and empty Stock/Waste. All **52 unique IDs** validate. Before the fix, the new unit regression returned null and the new actual UI regression displayed “No immediate move”; both failed as expected.
+
+The fallback now searches each nonempty foundation's top card against all seven tableau destinations only after the existing foundation/tableau/stock hint choices have been exhausted. No other move priority changed. The regression proves the suggested 2♣ → 3♥ move is legal and conserves cards; another proves tableau progress and stock draws still precede foundation withdrawals. The UI test checks source/destination highlighting, executes the hint and undoes the withdrawal.
+
+Correction verification executed on system Chromium, isolated port 4187:
+
+- `npx vitest run tests/games/solitaire`: **14 passed**.
+- `npm test`: **18 passed** (14 Solitaire + 4 core storage).
+- `npm run check`: exit **0**.
+- `ARCADE_URL=http://127.0.0.1:4187 npx playwright test tests/games/solitaire --project=chromium --grep 'hint highlights'`: **1 passed** (3.3s); the other seven scenarios retain their earlier recorded results and were not rerun for this correction.
+- Original cover, screenshots, shared files and the parent's Chromium-specific CDP guard were untouched.

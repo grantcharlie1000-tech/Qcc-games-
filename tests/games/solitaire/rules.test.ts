@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { foundationWithdrawalState } from './fixtures';
 import { deal, move, draw, validState, won, hint, act, undo, restore, type State } from '../../../src/games/solitaire/model';
 const ids=(s:State)=>[...s.stock,...s.waste,...s.foundations.flat(),...s.tableau.flat().map(c=>c.id)];
 function fixture(columns:number[][], foundations:number[][]=[[],[],[],[]], waste:number[]=[]):State {
@@ -18,5 +19,15 @@ describe('Klondike rules',()=>{
  it('permits only the exposed waste/foundation top and can return a foundation card',()=>{const s=fixture([[14]],[[0,1],[],[],[]],[26,39]);expect(move(s,{kind:'waste',pile:0,index:0},{kind:'foundation',pile:2})).toBeNull();expect(move(s,{kind:'foundation',pile:0,index:0},{kind:'tableau',pile:0})).toBeNull();const next=move(s,{kind:'foundation',pile:0,index:1},{kind:'tableau',pile:0});expect(next).toBeNull();const dest=fixture([[15]],[[0,1],[],[],[]]);const legal=move(dest,{kind:'foundation',pile:0,index:1},{kind:'tableau',pile:0})!;expect(legal.tableau[0].map(c=>c.id)).toEqual([15,1]);expect(legal.foundations[0]).toEqual([0]);});
  it('undoes a reveal and recycle as indivisible actions',()=>{const s=fixture([[10,19,5],[7]]);s.tableau[0][0].up=false;const session={version:1 as const,state:s,history:[]};const next=act(session,{kind:'move',from:{kind:'tableau',pile:0,index:1},to:{kind:'tableau',pile:1}})!;expect(undo(next)).toEqual(session);let cycle={version:1 as const,state:deal(7),history:[] as State[]};for(let i=0;i<24;i++)cycle=act(cycle,{kind:'draw'})!;expect(undo(act(cycle,{kind:'draw'})!)).toEqual(cycle);});
  it('rejects incompatible histories, illegal foundations, hidden tops and invalid counters',()=>{const s=deal(22);const envelope={version:1,state:s,history:[]};expect(restore({...envelope,version:2})).toBeNull();expect(restore({...envelope,history:[deal(23)]})).toBeNull();const top=structuredClone(s);top.tableau[0][0].up=false;expect(validState(top)).toBe(false);expect(validState({...s,moves:-1})).toBe(false);expect(validState({...s,seed:Infinity})).toBe(false);const f=fixture([],[[1],[],[],[]]);expect(validState(f)).toBe(false);expect(draw(fixture([],Array.from({length:4},(_,i)=>Array.from({length:13},(_,j)=>i*13+j))))).toBeNull();});
+
+ it('hints a legal foundation withdrawal when it is the only available move',()=>{
+  const s=foundationWithdrawalState();expect(validState(s)).toBe(true);expect(ids(s)).toHaveLength(52);expect(new Set(ids(s)).size).toBe(52);
+  const action=hint(s);expect(action).toEqual({kind:'move',from:{kind:'foundation',pile:0,index:1},to:{kind:'tableau',pile:0}});
+  const next=act({version:1,state:s,history:[]},action!)!;expect(next.state.foundations[0]).toEqual([0]);expect(next.state.tableau[0].slice(-2).map(c=>c.id)).toEqual([15,1]);expect(validState(next.state)).toBe(true);
+ });
+ it('prefers tableau progress and stock draws before withdrawing a foundation',()=>{
+  const drawState=foundationWithdrawalState();drawState.stock.push(drawState.tableau[0].shift()!.id);expect(validState(drawState)).toBe(true);expect(hint(drawState)).toEqual({kind:'draw'});
+  const tableauState=foundationWithdrawalState();const hiddenSix=tableauState.tableau.flat().find(c=>c.id===18)!;hiddenSix.id=19;tableauState.tableau[2].at(-1)!.id=18;expect(validState(tableauState)).toBe(true);expect(hint(tableauState)).toEqual({kind:'move',from:{kind:'tableau',pile:1,index:3},to:{kind:'tableau',pile:2}});
+ });
 
 });
