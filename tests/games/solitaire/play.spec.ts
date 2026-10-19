@@ -40,7 +40,8 @@ test('complete legal foundations show a win; invalid saves safely start fresh',a
  await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.locator('.solitaire')).toHaveCount(0);await page.evaluate(key=>{localStorage.setItem(key,JSON.stringify({version:1,data:{version:1,state:{stock:[1,1]},history:[]}}));},key);await page.goto('/#/game/solitaire');await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();
 });
 
-test('touch pointer drag uses the same legal move path on a phone',async({browser})=>{
+test('touch pointer drag uses the same legal move path on a phone',async({browser,browserName})=>{
+ test.skip(browserName!=='chromium','Native touch drag uses Chromium CDP; the other Solitaire interactions run in both engines.');
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});const page=await context.newPage();await open(page,state());const cdp=await context.newCDPSession(page);
  const from=(await page.getByRole('button',{name:'6 of hearts, column 2',exact:true}).boundingBox())!;const to=(await page.getByRole('button',{name:'7 of clubs, column 1',exact:true}).boundingBox())!;
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x+15,y:from.y+12}]});
