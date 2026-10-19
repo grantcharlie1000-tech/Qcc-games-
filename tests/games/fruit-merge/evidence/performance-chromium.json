@@ -1,0 +1,12 @@
+{
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "frames": 60,
+  "meanMs": 54.719999999999985,
+  "p95Ms": 149.89999999999964,
+  "maxMs": 250.10000000000036,
+  "note": "Headless Chromium in a shared Linux execution container; not a physical Chromebook measurement."
+}
