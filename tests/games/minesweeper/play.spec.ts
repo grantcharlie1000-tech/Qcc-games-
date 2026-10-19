@@ -91,3 +91,30 @@ test('wrong chord loses; repeated exit and malformed save recover cleanly',async
   await page.goto(url);await expect(page.locator('.ms-tile')).toHaveCount(81);await expect(page.locator('.ms-outcome')).toHaveText('Your first move is safe.');
   expect(errors).toEqual([]);
 });
+
+test('a trusted touch hold over two seconds in Flag mode consumes only its release click',async({browser,browserName})=>{
+  test.skip(browserName!=='chromium','Trusted CDP touch input requires Chromium.');
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+  const page=await context.newPage();await fixture(page);
+  await page.getByRole('button',{name:'Flag mode',exact:true}).tap();
+  await page.evaluate(()=>document.addEventListener('click',e=>{
+    if(e.isTrusted&&(e.target as Element).closest('.ms-tile'))document.documentElement.dataset.msTouchClicks=String(Number(document.documentElement.dataset.msTouchClicks||0)+1);
+  }));
+  const target=cell(page,0),box=(await target.boundingBox())!,cdp=await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+17,y:box.y+17}]});
+  await expect(target).toHaveAttribute('data-state','flagged');
+  // Deliberately exceed the old 480 + 1400 ms suppression expiry.
+  await page.waitForTimeout(2200);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await expect(page.locator('html')).toHaveAttribute('data-ms-touch-clicks','1');
+  await expect(target).toHaveAttribute('data-state','flagged');
+  await target.tap();await expect(target).toHaveAttribute('data-state','hidden');
+  await target.focus();await page.keyboard.press('f');await expect(target).toHaveAttribute('data-state','flagged');
+  await target.click({button:'right'});await expect(target).toHaveAttribute('data-state','hidden');
+  const canceled=cell(page,1),cancelBox=(await canceled.boundingBox())!;
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cancelBox.x+17,y:cancelBox.y+17}]});
+  await expect(canceled).toHaveAttribute('data-state','flagged');
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+  await canceled.tap();await expect(canceled).toHaveAttribute('data-state','hidden');
+  await context.close();
+});

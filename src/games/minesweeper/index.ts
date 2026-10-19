@@ -9,7 +9,7 @@ const game:GameModule={
   rules:'Reveal all safe cells to clear the field. Numbers count mines in the eight neighboring cells. Empty cells open a connected area. Your first reveal and its neighbors are always safe.\n\nRight-click, hold a tile, use Flag mode, or press F to flag or unflag a covered cell. Flags are reminders; placing flags alone never wins. Click a revealed number (or press C) to open its neighbors when the flag count matches. Wrong flags can detonate a mine.\n\nUse arrow keys to move, Home/End to move across a row, Enter/Space to reveal. Choose larger cells for easier tapping; wide fields scroll inside the board. The timer starts on your first reveal and pauses with the game. Use Restart above for a new field.',
   mount(container,context){
     let board=create('beginner',newSeed()),paused=false,disposed=false,flagMode=false,focus=0,size=34;
-    let last=performance.now(),hold:number|undefined,press:{i:number;x:number;y:number}|undefined,suppress:{i:number;until:number}|undefined;
+    let last=performance.now(),hold:number|undefined,press:{i:number;pointerId:number;x:number;y:number;consumed:boolean}|undefined,suppress:{i:number;pointerId:number}|undefined;
     const events=new AbortController();
     const root=document.createElement('section');root.className='ms';root.setAttribute('aria-label','Minefield');
     root.innerHTML=`<div class="ms-heading"><div><span class="ms-eyebrow">POCKET EXPEDITION</span><h2>Clear the field</h2></div><img src="${art}flag.svg" alt="" width="50" height="50"></div>
@@ -24,7 +24,8 @@ const game:GameModule={
     const mode=root.querySelector<HTMLButtonElement>('.ms-mode')!;
     let buttons:HTMLButtonElement[]=[];
     function newSeed(){return crypto.getRandomValues(new Uint32Array(1))[0];}
-    function stopHold(){window.clearTimeout(hold);hold=undefined;press=undefined;}
+    function clearHoldTimer(){window.clearTimeout(hold);hold=undefined;}
+    function stopHold(){clearHoldTimer();press=undefined;suppress=undefined;}
     function syncTime(){const now=performance.now();if(!paused&&board.status==='playing')board.elapsedMs=Math.min(31536000000,board.elapsedMs+Math.max(0,now-last));last=now;}
     function clock(){const s=Math.floor(board.elapsedMs/1000);root.querySelector('.ms-time')!.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}
     function snapshot(){syncTime();return {...board,cells:[...board.cells],flags:[...board.flags],revealed:[...board.revealed],cellSize:size};}
@@ -74,14 +75,36 @@ const game:GameModule={
     }
     function target(e:Event):number|null {const t=(e.target as Element).closest<HTMLButtonElement>('.ms-tile');return t&&grid.contains(t)?Number(t.dataset.index):null;}
     function setFocus(i:number,move=false){if(!buttons[i])return;buttons[focus].tabIndex=-1;focus=i;buttons[focus].tabIndex=0;if(move)buttons[focus].focus({preventScroll:false});}
-    root.addEventListener('click',e=>{const i=target(e);if(i===null)return;setFocus(i);if(suppress?.i===i&&Date.now()<suppress.until){suppress=undefined;return;}action(i,flagMode?'flag':'reveal');},{signal:events.signal});
+    root.addEventListener('click',e=>{const i=target(e);if(i===null)return;setFocus(i);if(suppress?.i===i&&suppress.pointerId===(e as PointerEvent).pointerId){suppress=undefined;return;}action(i,flagMode?'flag':'reveal');},{signal:events.signal});
     grid.addEventListener('focusin',e=>{const i=target(e);if(i!==null)setFocus(i);},{signal:events.signal});
-    grid.addEventListener('contextmenu',e=>{e.preventDefault();const i=target(e);if(i!==null){if(suppress?.i===i&&Date.now()<suppress.until)return;stopHold();action(i,'flag');}},{signal:events.signal});
-    grid.addEventListener('pointerdown',e=>{const i=target(e);stopHold();if(i===null||paused||e.button!==0)return;suppress=undefined;if(e.pointerType==='touch'||e.pointerType==='pen'){
-      press={i,x:e.clientX,y:e.clientY};hold=window.setTimeout(()=>{suppress={i,until:Date.now()+1400};action(i,'flag');hold=undefined;},480);
-    }},{signal:events.signal});
-    grid.addEventListener('pointermove',e=>{if(press&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>10){suppress={i:press.i,until:Date.now()+1400};stopHold();}},{signal:events.signal});
-    grid.addEventListener('pointerup',stopHold,{signal:events.signal});grid.addEventListener('pointercancel',stopHold,{signal:events.signal});grid.addEventListener('pointerleave',stopHold,{signal:events.signal});
+    grid.addEventListener('contextmenu',e=>{
+      e.preventDefault();const i=target(e);if(i===null)return;
+      if((press?.i===i&&press.consumed)||(suppress?.i===i&&suppress.pointerId===(e as PointerEvent).pointerId))return;
+      // A native touch context menu can precede our hold timer. Consume that gesture once.
+      if(press?.i===i){clearHoldTimer();press.consumed=true;}else stopHold();
+      action(i,'flag');
+    },{signal:events.signal});
+    grid.addEventListener('pointerdown',e=>{
+      const i=target(e);stopHold();if(i===null||paused||e.button!==0)return;
+      if(e.pointerType==='touch'||e.pointerType==='pen'){
+        const gesture={i,pointerId:e.pointerId,x:e.clientX,y:e.clientY,consumed:false};press=gesture;
+        hold=window.setTimeout(()=>{
+          if(press!==gesture)return;
+          gesture.consumed=true;hold=undefined;action(i,'flag');
+        },480);
+      }
+    },{signal:events.signal});
+    grid.addEventListener('pointermove',e=>{
+      if(press?.pointerId===e.pointerId&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>10){clearHoldTimer();press.consumed=true;}
+    },{signal:events.signal});
+    grid.addEventListener('pointerup',e=>{
+      if(press?.pointerId!==e.pointerId)return;
+      // Keep only this pointer's pending click, regardless of how long the finger was down.
+      if(press.consumed)suppress={i:press.i,pointerId:press.pointerId};
+      clearHoldTimer();press=undefined;
+    },{signal:events.signal});
+    grid.addEventListener('pointercancel',e=>{if(press?.pointerId===e.pointerId||suppress?.pointerId===e.pointerId)stopHold();},{signal:events.signal});
+    grid.addEventListener('pointerleave',e=>{if(press?.pointerId===e.pointerId)stopHold();},{signal:events.signal});
     grid.addEventListener('keydown',e=>{
       const i=target(e);if(i===null||paused||e.altKey||e.ctrlKey||e.metaKey)return;
       const {width}=LEVELS[board.level],row=Math.floor(i/width),col=i%width;

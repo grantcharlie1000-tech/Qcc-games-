@@ -15,3 +15,18 @@ Screenshot `tests/games/minesweeper/evidence/chromium.png` is an actual full-pag
 The initial model stub produced 10 expected assertion failures before implementation. Early browser attempts failed due to starting before the server/UI existed and editing source while a run was active (Vite HMR reset that run). Subsequent failures exposed two test-fixture mistakes: a tile intentionally flagged by F was incorrectly expected hidden during pause, and injecting malformed storage while the game was mounted was overwritten by the shell's pagehide save. Those fixtures were corrected by comparing the pre-pause state and injecting after leaving the route. A later restore regression first demonstrated acceptance of an impossible all-safe loss, then passed after atomic chord hazard resolution and terminal validation were tightened. The final runs above are green.
 
 A WebKit-only phone case was attempted separately. It could not launch because the Playwright WebKit browser executable is not installed; no WebKit interactions or rendering are claimed. Touch was tested through Chromium emulation/CDP, not physical iOS hardware. No physical screen reader was available. Parent still owns root/subpath production/offline and integrated-library checks, shared toolbar behavior and independent review. No outstanding gameplay defect was observed in the exercised paths.
+
+## Independent review follow-up — long touch holds
+
+The parent reviewer found a real P2 defect after the original verification: in Flag mode a sufficiently long hold placed a flag, but the 1.4-second suppression window expired before release and the release click removed it. A new Chromium-only trusted CDP regression reproduced the exact failure (flagged during hold, hidden after release). The initial regression attempt also found the isolated server stopped; after restarting port 4186, the observed assertion failure demonstrated the actual defect.
+
+The fix tracks the active pointer's consumed state until pointerup and suppresses the one subsequent click with that same pointerId and tile. Suppression has no elapsed-time expiry. Pointer cancellation, board rebuild, pause, restart and dispose clear gesture state; a new pointer gesture starts cleanly. Native touch context-menu handling consumes its active gesture once. The regression holds for 2.2 seconds after the flag appears, waits for a trusted release click to reach the document, and verifies the flag remains. It then checks that the next short tap, keyboard F, right-click, and touchCancel followed by a short tap still work.
+
+Fresh verification after this fix:
+
+- Focused long-hold Chromium regression: **1 passed (7.3 seconds)** after observing it fail before the fix.
+- Full owned Chromium suite: **6 passed (17.7 seconds)** using `ARCADE_URL=http://127.0.0.1:4186 npx playwright test tests/games/minesweeper --project=chromium`.
+- `npx vitest run tests/games/minesweeper`: **17 passed**; `npm test`: **21 passed**.
+- `npm run check`: **exit 0**; `git diff --check`: **exit 0**.
+
+The existing committed screenshot/performance evidence remains the original measured layout evidence; this input-only fix changes no artwork or layout. WebKit and physical touch hardware limitations remain as stated above.
