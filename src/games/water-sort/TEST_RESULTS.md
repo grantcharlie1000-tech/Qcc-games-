@@ -8,11 +8,11 @@ configuration, dependencies or lockfile is included in the specialist commit.
 
 | Command | Observed result |
 | --- | --- |
-| `npx vitest run tests/games/water-sort` | **51 passed**, 3 files: rules 10, solver/level construction 20, session/restore/hints 21. |
-| `npm test` | **55 passed**, 4 files, including the shell's 4 storage tests. |
+| `npx vitest run tests/games/water-sort` | **52 passed**, 3 files: rules 10, solver/level construction 21, session/restore/hints 21. |
+| `npm test` | **56 passed**, 4 files, including the shell's 4 storage tests. |
 | `npm run check` | `tsc --noEmit`, exit 0. |
 | `npm run dev -- --port 4182` | Vite served this worktree at `http://127.0.0.1:4182`. |
-| `ARCADE_URL=http://127.0.0.1:4182 npx playwright test tests/games/water-sort --project=chromium` | **6 passed**, using `/usr/bin/chromium`; final full run **29.6s**, after the keyboard-motion guard. |
+| `ARCADE_URL=http://127.0.0.1:4182 npx playwright test tests/games/water-sort --project=chromium` | **6 passed**, using `/usr/bin/chromium`; corrected-goal full run **23.9s**. |
 | `ARCADE_URL=http://127.0.0.1:4182 npx playwright test tests/games/water-sort --project=chromium -g 'keyboard'` | **1 passed**, 7.0s, after the keyboard motion guard. |
 | `ARCADE_URL=http://127.0.0.1:4182 node tests/games/water-sort/measure.mjs` | Wrote desktop screenshot, serialized real tube SVG and `measurements.json`; results below. |
 | `bash .agents/skills/svg-skill/scripts/validate.sh tests/games/water-sort/evidence` | **1 SVG passed, 0 failed** (`tube.svg`, extracted from the actual rendered tube). |
@@ -22,7 +22,9 @@ configuration, dependencies or lockfile is included in the specialist commit.
 
 - Literal pure-rule checks for contiguous top-run pours, partial transfer into
   remaining capacity, immutable input, mismatched tops, empty sources, full
-  targets, invalid/self indices, strict homogeneous/full wins and false wins.
+  targets, invalid/self indices, homogeneous partial-tube wins, mixed-tube false
+  wins and an empty-board false win. The queue-budget regression proves child
+  generation stops once the admitted-state budget is full.
 - Reproducible reverse construction, colour-volume conservation, nine distinct
   levels, and replayable reverse witnesses. A separate test BFS independently
   solves **every shipped level**, without production move, goal or search calls.
@@ -34,7 +36,7 @@ configuration, dependencies or lockfile is included in the specialist commit.
   rejects malformed data, colour/volume violations, forged transitions,
   unearned victories and forged moves after victory.
 - Browser test 1: genuinely click an illegal destination, use visible hints to
-  solve the puzzle, verify full single-colour tubes, undo the win, win again,
+  solve the puzzle, verify single-colour tubes including a partial tube, undo the win, win again,
   advance a level, change a level and restart real progress.
 - Browser test 2: start a real animated pour, pause before commit using a
   controlled Playwright clock, advance paused time, verify no board change,
@@ -52,7 +54,8 @@ configuration, dependencies or lockfile is included in the specialist commit.
 
 The core suites were observed red against stubs before implementation. A later
 restore-after-victory regression was observed failing (1 failure / 20 passes),
-then fixed and rerun as part of the 51/55 passing totals. One initial browser
+then fixed and rerun. The corrected partial-tube goal and queue-budget regressions
+were also observed red before the 52/56 passing totals. One initial browser
 pause test used an advancing clock and allowed the pour to finish before the
 pause click; freezing virtual time removed that test race. A later verification
 attempt encountered six `ERR_CONNECTION_REFUSED` navigation failures after the
@@ -69,9 +72,9 @@ isolated server and rerunning produced the successful results above.
   validated with the local SVG skill's validator.
 - `tests/games/water-sort/evidence/measurements.json`: actual Chromium
   `HeadlessChrome/154.0.0.0` measurements. Shortest BFS routes:
-  **3, 5, 5, 7, 9, 12, 14, 14, 14**. Latest per-level search times ranged
-  **0.5–82.6ms** while other specialists shared the machine. Forty observed RAF
-  intervals averaged **17.085ms**, maximum **33.3ms**. This measures this headless
+  **2, 4, 4, 6, 8, 10, 12, 12, 12**. Latest per-level search times ranged
+  **0.4–16.2ms** while other specialists shared the machine. Forty observed RAF
+  intervals averaged **16.66675ms**, maximum **16.8ms**. This measures this headless
   environment and does not claim physical Chromebook or phone performance.
 
 WebKit was **not run**: `webkit.executablePath()` resolved to

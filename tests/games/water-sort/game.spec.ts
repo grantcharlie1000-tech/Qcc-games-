@@ -29,7 +29,8 @@ test('real illegal pour, winning hints, undo, next level and restart', async({pa
   for(let i=0;i<10 && await root(page).getAttribute('data-phase')!=='won';i++) await hintPour(page);
   await expect(root(page)).toHaveAttribute('data-phase','won');
   const solved=await readBoard(page);
-  expect(solved.every(t=>!t.length||(t.length===4&&new Set(t).size===1))).toBe(true);
+  expect(solved.every(t=>new Set(t).size<=1)).toBe(true);
+  expect(solved.some(t=>t.length>0&&t.length<4)).toBe(true);
   await expect(page.locator('.ws-victory')).toBeVisible();
   await page.getByRole('button',{name:'Undo',exact:true}).click();
   await expect(root(page)).toHaveAttribute('data-phase','ready');

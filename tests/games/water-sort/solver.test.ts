@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as rules from '../../../src/games/water-sort/rules';
 import { LEVELS, constructLevel } from '../../../src/games/water-sort/levels';
 import { solve } from '../../../src/games/water-sort/solver';
 import { boardKey, cloneBoard, pour, won } from '../../../src/games/water-sort/rules';
@@ -11,7 +12,7 @@ export function independentSolve(input: Board): [number, number][] | null {
   const seen = new Set<string>();
   for (let at = 0; at < queue.length && at < 150000; at++) {
     const { board, path } = queue[at];
-    if (board.every(t => !t.length || (t.length === 4 && new Set(t).size === 1))) return path;
+    if (board.some(t => t.length) && board.every(t => new Set(t).size <= 1)) return path;
     for (let a = 0; a < board.length; a++) {
       if (!board[a].length) continue;
       const c = board[a].at(-1)!;
@@ -32,6 +33,15 @@ export function independentSolve(input: Board): [number, number][] | null {
 }
 
 describe('soluble level construction and search', () => {
+  it('stops generating children once the queued-state budget is full', () => {
+    const expansions = vi.spyOn(rules, 'legalPours');
+    try {
+      expect(solve([[0,1],[1],[0],[]], 1)).toBeNull();
+      expect(expansions).not.toHaveBeenCalled();
+      expect(solve([[0],[1],[]], 1)).toEqual([]);
+      expect(solve([[0],[1],[]], 0)).toBeNull();
+    } finally { expansions.mockRestore(); }
+  });
   it('constructs deterministic full-volume mixed boards without mutation', () => {
     const a = constructLevel(4, 29, 5), b = constructLevel(4, 29, 5);
     expect(a).toEqual(b);

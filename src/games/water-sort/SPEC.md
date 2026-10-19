@@ -10,15 +10,16 @@ The research source was the public Water Sort implementation and explanation at
 https://github.com/tanjuntao/water-sort-puzzle, specifically its `README.md`,
 `bottle.py` and `board.py`, read through raw.githubusercontent.com on 2026-10-19.
 It establishes bottom-to-top stacks, capacity four, exposed contiguous runs,
-matching destination tops, spare bottles, and a homogeneous/full goal.
+matching destination tops, spare bottles, and its original homogeneous/full goal.
 
 This game's explicitly requested variant permits a partial run when the target
 has less free capacity than the exposed run. That differs from the source's
 all-or-nothing `Bottle.push`; none of its code is copied. A legal pour moves
 `min(exposed top run, destination free capacity)` units. An empty source, self
 pour, out-of-range tube, full target or mismatching target top changes nothing.
-Every occupied tube must be homogeneous **and full** to win. Separating one
-colour among several partial tubes does not count as completion.
+The user's requested goal takes precedence: **every nonempty tube contains only
+one colour**. Partial tubes count, including one colour split among two tubes.
+An entirely empty board does not win. Capacity remains four during all pours.
 
 ## Construction and independent verification
 
@@ -37,14 +38,17 @@ resulting level has a solution. Fixed seeds give reproducible original boards.
 Every one of the nine shipped levels is additionally solved in tests by a
 separate breadth-first implementation that calls none of the production rules,
 goal, canonicalizer or search. Its plan and the reverse witness are replayed
-through the player rules. Measured shortest routes are 3, 5, 5, 7, 9, 12, 14, 14,
-and 14 pours. No unchecked random board is shipped or generated during play.
+through the player rules. Actual shortest routes for the relaxed goal are
+recorded in TEST_RESULTS.md and evidence/measurements.json. The constructor's
+fully consolidated witness is a sufficient solution to this goal too; play
+stops as soon as the nonempty tubes are homogeneous. No unchecked random board
+is shipped or generated during play.
 
 `solver.ts` performs breadth-first graph search from the **current** board.
 Sorted tube encodings remove equivalent tube permutations; nodes preserve real
 indices for a usable route. A visited set prevents cycles. Repeatedly taking
 the first shortest-path hint strictly decreases remaining distance. If a route
-is not found within the 100,000-node budget, the hint offers a finite number of
+is not found within the 100,000-state budget (including queued boards), the hint offers a finite number of
 undos to a searched solvable ancestor. It does not invent a pour or automatically
 oscillate between pour and undo.
 

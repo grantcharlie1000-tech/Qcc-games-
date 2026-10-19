@@ -21,7 +21,7 @@ export function pour(board: Board, from: number, to: number): Pour | null {
   return { board: next, from, to, colour, amount };
 }
 export function won(board: Board): boolean {
-  return board.some(tube => tube.length) && board.every(tube => tube.length === 0 || (tube.length === CAPACITY && tube.every(colour => colour === tube[0])));
+  return board.some(tube => tube.length) && board.every(tube => tube.every(colour => colour === tube[0]));
 }
 export function legalPours(board: Board): Pour[] {
   const moves: Pour[] = [];

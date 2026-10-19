@@ -11,7 +11,7 @@ claimed as skills.
 | `.agents/skills/using-superpowers/SKILL.md` | obra/superpowers @ bb92a77741419a4ab5f06e711a283343f1ada0c3 | Read at start; its SUBAGENT-STOP exempts dispatched specialists from its orchestration. Used relevant local domain/workflow guides under project instructions. |
 | `.agents/skills/game-development/SKILL.md` | vudovn/ag-kit @ 549ba3dc2eb1d40fccb5b6d792eba4101c80cd69 | Router selected web, 2D, design, art and mobile guides; separates input, model and rendering; finite guarded phases. |
 | `.agents/skills/game-development/2d-games/SKILL.md` | same ag-kit source | Clear silhouettes and separated decorative glass/liquid layers; no unnecessary physics engine. |
-| `.agents/skills/game-development/game-design/SKILL.md` | same ag-kit source | Observe/pour/feedback/reward loop, selectable difficulty, early three-pour win, gradual 3–14 pour progression. |
+| `.agents/skills/game-development/game-design/SKILL.md` | same ag-kit source | Observe/pour/feedback/reward loop, selectable difficulty and an early easy win. The corrected goal counts homogeneous partial tubes; measured puzzle depths are recorded in TEST_RESULTS.md. |
 | `.agents/skills/game-development/game-art/SKILL.md` | same ag-kit source | Consistent purple glass setting, high-contrast liquid palette, redundant letters and patterns rather than colour alone. |
 | `.agents/skills/game-development/web-games/SKILL.md` | same ag-kit source | Small DOM/SVG implementation, no runtime network, no continuous idle loop, shell-managed visibility/audio/storage. |
 | `.agents/skills/game-development/mobile-games/SKILL.md` | same ag-kit source | Tube hit widths at least 64px, native controls at least 44px, centred wrapping rows, cancellation on interruption. |

@@ -25,7 +25,7 @@ function tubeArt(values: readonly number[], index: number): string {
 
 const module: GameModule = {
   id:'water-sort', title:'Water Sort', cover:'game-art/water-sort/cover.svg',
-  rules:'Sort the liquids into full tubes of one colour. Select a tube, then select an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Tap, drag between tubes, or use Tab and arrow keys to focus a tube and Enter or Space to select. Letters identify colours. Undo reverses a completed pour; Hint shows a winning next pour from your current board, or how many moves to undo if you are stuck. Choose Gentle, Flow or Deep difficulty and any of nine verified-soluble levels. Restart resets the current level.',
+  rules:'Sort the liquids so every nonempty tube contains only one colour. Partial tubes count as sorted. Select a tube, then select an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Tap, drag between tubes, or use Tab and arrow keys to focus a tube and Enter or Space to select. Letters identify colours. Undo reverses a completed pour; Hint shows a winning next pour from your current board, or how many moves to undo if you are stuck. Choose Gentle, Flow or Deep difficulty and any of nine verified-soluble levels. Restart resets the current level.',
   mount(container, context) {
     const session = new Session();
     const abort = new AbortController();
@@ -59,11 +59,12 @@ const module: GameModule = {
       root.querySelector('.ws-level-name')!.textContent = level.name;
       root.querySelector('.ws-level-pill')!.textContent = `${level.difficulty} ${state.level+1} / 9`;
       root.querySelector('.ws-moves')!.textContent = String(state.history.length);
-      root.querySelector('.ws-sorted')!.textContent = `${state.tubes.filter(t=>t.length===4&&t.every(c=>c===t[0])).length} / ${level.colours}`;
+      const separated = Array.from({length:level.colours},(_,colour)=>state.tubes.filter(t=>t.includes(colour)).every(t=>t.every(c=>c===colour))).filter(Boolean).length;
+      root.querySelector('.ws-sorted')!.textContent = `${separated} / ${level.colours}`;
       levelSelect.value = String(state.level); difficulty.value = level.difficulty;
       levelSelect.disabled = difficulty.disabled = session.paused || busy;
       tubes.innerHTML = state.tubes.map((values,i) => {
-        const finished = values.length === 4 && values.every(c=>c===values[0]);
+        const finished = values.length > 0 && values.every(c=>c===values[0]);
         const legal = selected !== null && i !== selected && !!pour(state.tubes,selected,i);
         const hintClass = hint?.kind === 'pour' ? hint.from === i ? ' ws-hint-from' : hint.to === i ? ' ws-hint-to' : '' : '';
         const label = `Tube ${i+1}, ${values.length ? 'bottom to top: '+values.map(c=>COLOURS[c].name).join(', ') : 'empty'}`;

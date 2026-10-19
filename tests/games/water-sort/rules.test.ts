@@ -22,9 +22,10 @@ describe('Water Sort pours', () => {
   ] as const)('rejects illegal pour %#', (board, from, to) => {
     expect(pour(board, from, to)).toBeNull();
   });
-  it('requires every occupied tube to be homogeneous and full', () => {
+  it('wins when every occupied tube is homogeneous, including partial split tubes', () => {
     expect(won([[0, 0, 0, 0], [], [1, 1, 1, 1]])).toBe(true);
-    expect(won([[0, 0], [0, 0], []])).toBe(false);
+    expect(won([[0, 0], [0, 0], [1, 1, 1, 1], []])).toBe(true);
+    expect(won([[0, 0], [0, 0], []])).toBe(true);
     expect(won([[0, 0, 0, 1], [], [1, 1, 1, 0]])).toBe(false);
     expect(won([[], []])).toBe(false);
   });
