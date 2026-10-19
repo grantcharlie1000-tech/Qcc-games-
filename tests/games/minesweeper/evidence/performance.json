@@ -1,0 +1,10 @@
+{
+  "browser": "154.0.8037.57",
+  "viewport": "390x844",
+  "samples": 60,
+  "meanMs": 17.22166666666667,
+  "medianMs": 16.699999999999818,
+  "p95Ms": 16.799999999999955,
+  "maxMs": 33.39999999999998,
+  "note": "Headless shared Linux host; idle active beginner board. Not physical Chromebook performance."
+}
