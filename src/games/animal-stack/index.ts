@@ -12,7 +12,7 @@ const module:GameModule={
     const root=container.firstElementChild as HTMLElement,canvas=root.querySelector('canvas')!,draw=canvas.getContext('2d')!;
     const dropButton=root.querySelector<HTMLButtonElement>('[data-drop]')!,left=root.querySelector<HTMLButtonElement>('[aria-label="Aim left"]')!,right=root.querySelector<HTMLButtonElement>('[aria-label="Aim right"]')!;
     const result=root.querySelector<HTMLElement>('.animal-stack__result')!,friends=root.querySelector<HTMLElement>('[data-friends]')!,height=root.querySelector<HTMLElement>('[data-height]')!,next=root.querySelector<HTMLElement>('.animal-stack__next')!;
-    let world=new AnimalWorld(),paused=false,disposed=false,raf=0,last=0,accumulator=0,camera=0,previousScore=-1,previousEnd=false,pointer:number|null=null,lastUI='';
+    let world=new AnimalWorld(),paused=false,disposed=false,raf:number|null=null,last=0,accumulator=0,camera=0,previousScore=-1,previousEnd=false,pointer:number|null=null,lastUI='';
     let preview=createAnimal(world.nextKind,world.aimX,world.spawnY);
     const sprites={} as Record<Kind,HTMLImageElement>;
     for (const kind of KINDS) { const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(animalSvg(kind));sprites[kind]=image; }
@@ -78,13 +78,20 @@ const module:GameModule={
     left.addEventListener('click',()=>{if(!paused&&world.ready){world.aim(world.aimX-12);sync();}},options);right.addEventListener('click',()=>{if(!paused&&world.ready){world.aim(world.aimX+12);sync();}},options);dropButton.addEventListener('click',drop,options);
     // Listener belongs to the stage: shell dialogs, text fields and toolbar keep their native keys.
     container.addEventListener('keydown',e=>{const t=e.target as HTMLElement;if(paused||disposed||t.matches('input,textarea,select,button')||document.querySelector('dialog[open]'))return;if(['ArrowLeft','ArrowRight',' ','Enter'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft'||e.key==='ArrowRight'){if(world.ready)world.aim(world.aimX+(e.key==='ArrowLeft'?-10:10));sync();}else if(!e.repeat)drop();}},options);
-    function frame(time:number) {if(disposed)return;if(!last)last=time;const elapsed=Math.min(80,time-last);last=time;if(!paused){accumulator+=elapsed;while(accumulator>=1000/60){world.step();accumulator-=1000/60;}sync();}render();raf=requestAnimationFrame(frame);}
-    sync();raf=requestAnimationFrame(frame);
+    function scheduleFrame() {if(!disposed&&!paused&&raf===null)raf=requestAnimationFrame(frame);}
+    function frame(time:number) {
+      raf=null;if(disposed||paused)return;
+      if(!last)last=time;const elapsed=Math.min(80,time-last);last=time;
+      accumulator+=elapsed;while(accumulator>=1000/60){world.step();accumulator-=1000/60;}sync();
+      if(!disposed&&!paused)render();scheduleFrame();
+    }
+    sync();scheduleFrame();
     return {
-      pause(){paused=true;pointer=null;accumulator=0;sync();},resume(){paused=false;last=0;sync();},
-      restart(){world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;pointer=null;lastUI='';sync();context.save(world.snapshot());},
-      serialize(){return world.snapshot();},restore(data){if(world.restore(data)){camera=Math.max(0,202-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();}},
-      dispose(){disposed=true;cancelAnimationFrame(raf);controller.abort();world.dispose();container.replaceChildren();},
+      pause(){if(disposed||paused)return;paused=true;pointer=null;accumulator=0;last=0;if(raf!==null){cancelAnimationFrame(raf);raf=null;}sync();},
+      resume(){if(disposed||!paused)return;paused=false;last=0;accumulator=0;sync();scheduleFrame();},
+      restart(){world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;pointer=null;lastUI='';sync();if(paused)render();context.save(world.snapshot());},
+      serialize(){return world.snapshot();},restore(data){if(world.restore(data)){camera=Math.max(0,202-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();}},
+      dispose(){disposed=true;if(raf!==null){cancelAnimationFrame(raf);raf=null;}controller.abort();world.dispose();container.replaceChildren();},
     };
   },
 };

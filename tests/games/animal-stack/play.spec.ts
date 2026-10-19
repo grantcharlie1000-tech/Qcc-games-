@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import {seedStudyTopic} from '../../fixtures';
+import { test, expect } from '../../fixtures';
 import { writeFileSync } from 'node:fs';
 import { AnimalWorld } from '../../../src/games/animal-stack/model';
 const route='/#/game/animal-stack';
@@ -37,7 +38,7 @@ test('aim, stack, pause, save, restore, keyboard and restart on a phone', async 
   expect(errors).toEqual([]);
 });
 test('touch release drops, preview is safe at the edge, and a real fall ends the run', async ({browser}) => {
-  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});const page=await context.newPage();await page.goto(route);
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.goto(route);
   const game=page.locator('.animal-stack'),canvas=game.locator('canvas');await expect(game).toHaveAttribute('data-ready','true');
   await page.getByRole('button',{name:'Aim left',exact:true}).click();await expect(game).toHaveAttribute('data-count','0');
   const b=(await canvas.boundingBox())!;

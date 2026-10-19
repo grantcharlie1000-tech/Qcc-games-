@@ -4,7 +4,7 @@
 
 vite v7.3.7 building client environment for production...
 transforming...
-✓ 60 modules transformed.
+✓ 84 modules transformed.
 rendering chunks...
 computing gzip size...
 dist/index.html                         0.67 kB │ gzip:   0.41 kB
@@ -22,20 +22,20 @@ dist/assets/index-DgiywVwM.css          3.93 kB │ gzip:   1.47 kB
 dist/assets/index-Ca_sMq3C.css          4.45 kB │ gzip:   1.62 kB
 dist/assets/index-CL4koYVJ.css          5.45 kB │ gzip:   1.96 kB
 dist/assets/index-yFA4NEoY.css          5.89 kB │ gzip:   2.03 kB
-dist/assets/index-ru8TJyCq.css          7.96 kB │ gzip:   2.70 kB
+dist/assets/index-ErYsTArr.css         16.07 kB │ gzip:   4.68 kB
 dist/assets/index-B3iry_sq.js           9.88 kB │ gzip:   4.16 kB │ map:    25.10 kB
 dist/assets/index-CitFEkQK.js          10.71 kB │ gzip:   4.55 kB │ map:    31.34 kB
 dist/assets/index-DVV_K4eE.js          10.84 kB │ gzip:   4.67 kB │ map:    30.46 kB
 dist/assets/index-C_Aqd055.js          12.39 kB │ gzip:   5.24 kB │ map:    33.59 kB
 dist/assets/index-BniN2mis.js          12.81 kB │ gzip:   4.99 kB │ map:    34.28 kB
-dist/assets/index-DstXki2Z.js          14.41 kB │ gzip:   5.53 kB │ map:    35.97 kB
+dist/assets/index-DqLtyPWP.js          14.43 kB │ gzip:   5.53 kB │ map:    35.99 kB
 dist/assets/index-D_CwdJFI.js          15.81 kB │ gzip:   6.59 kB │ map:    44.48 kB
-dist/assets/index-_QRyCOkn.js          16.50 kB │ gzip:   6.68 kB │ map:    43.69 kB
-dist/assets/index-DRuONEWi.js          17.06 kB │ gzip:   6.53 kB │ map:    29.54 kB
-dist/assets/index-BUXlr_gh.js          17.31 kB │ gzip:   7.14 kB │ map:    42.32 kB
+dist/assets/index-BQ0YBnm3.js          16.59 kB │ gzip:   6.71 kB │ map:    44.00 kB
+dist/assets/index-1oc9xrBY.js          17.44 kB │ gzip:   7.18 kB │ map:    42.94 kB
 dist/assets/index-Bm1LrEy8.js          19.85 kB │ gzip:   8.04 kB │ map:    58.33 kB
 dist/assets/index-we4rTY2V.js          24.61 kB │ gzip:   9.58 kB │ map:    66.22 kB
 dist/assets/matter-PU4lz4QA.js         84.54 kB │ gzip:  26.80 kB │ map:   520.35 kB
+dist/assets/index-xiolePHU.js         116.20 kB │ gzip:  35.68 kB │ map:   163.77 kB
 dist/assets/index-CI1t8wUE.js         491.20 kB │ gzip: 124.79 kB │ map: 2,713.09 kB
-✓ built in 1.86s
-Offline pack: 57 files, version bf379fc014bf
+✓ built in 2.04s
+Offline pack: 57 files, version 43dc049b82cb

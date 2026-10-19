@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import {seedStudyTopic} from '../../fixtures';
+import { test, expect } from '../../fixtures';
 const saved=async(page:import('@playwright/test').Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:snake')!).data);
 test('keyboard eating, turning, loss, replay, pause and saved continuation',async({page})=>{
  test.setTimeout(60000);
@@ -25,7 +26,7 @@ test('keyboard eating, turning, loss, replay, pause and saved continuation',asyn
  await page.getByRole('button',{name:'Start slithering'}).click();await page.clock.runFor(170);await page.screenshot({path:'tests/games/snake/evidence/desktop.png',fullPage:true});expect(errors).toEqual([]);
 });
 test('touch swipe and direction buttons fit a phone',async({browser})=>{
- const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});const page=await context.newPage();await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
+ const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
  await page.getByRole('button',{name:'Start slithering'}).tap();await page.clock.runFor(170);
  const box=(await page.locator('.snake-canvas').boundingBox())!;
  const cdp=await context.newCDPSession(page);

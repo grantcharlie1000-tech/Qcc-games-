@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import {seedStudyTopic} from '../../fixtures';
+import { test, expect } from '../../fixtures';
 
 test('real 3D run steers, pauses, jumps, loses, restarts, restores and disposes', async ({page}) => {
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -69,7 +70,7 @@ test('unsupported WebGL produces a visible useful fallback',async({page})=>{
 
 test('native phone touch hold and drag steer, and touch jumps',async({browser,browserName})=>{
   test.skip(browserName!=='chromium','This native touch case uses Chromium CDP. Other Ball Run interactions run in both engines.');
-  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});await seedStudyTopic(context);
   const page=await context.newPage();await page.goto('/#/game/ball-run');
   await page.getByRole('button',{name:'Start rolling'}).tap();
   await page.getByRole('button',{name:'Jump',exact:false}).tap();

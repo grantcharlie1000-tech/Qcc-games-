@@ -1,24 +1,25 @@
 {
-  "version": "bf379fc014bf",
+  "version": "43dc049b82cb",
   "offlineFiles": 57,
+  "studyTopics": 20,
   "entry": [
     {
-      "file": "assets/index-DRuONEWi.js",
-      "bytes": 17058,
-      "gzipBytes": 6527
+      "file": "assets/index-xiolePHU.js",
+      "bytes": 116203,
+      "gzipBytes": 35682
     },
     {
-      "file": "assets/index-ru8TJyCq.css",
-      "bytes": 7957,
-      "gzipBytes": 2700
+      "file": "assets/index-ErYsTArr.css",
+      "bytes": 16066,
+      "gzipBytes": 4677
     }
   ],
   "gameChunks": [
     {
       "source": "src/games/animal-stack/index.ts",
-      "file": "assets/index-BUXlr_gh.js",
-      "bytes": 17309,
-      "gzipBytes": 7138
+      "file": "assets/index-1oc9xrBY.js",
+      "bytes": 17444,
+      "gzipBytes": 7178
     },
     {
       "source": "src/games/ball-run/index.ts",
@@ -46,9 +47,9 @@
     },
     {
       "source": "src/games/fruit-merge/index.ts",
-      "file": "assets/index-_QRyCOkn.js",
-      "bytes": 16500,
-      "gzipBytes": 6682
+      "file": "assets/index-BQ0YBnm3.js",
+      "bytes": 16593,
+      "gzipBytes": 6707
     },
     {
       "source": "src/games/minesweeper/index.ts",
@@ -70,9 +71,9 @@
     },
     {
       "source": "src/games/solitaire/index.ts",
-      "file": "assets/index-DstXki2Z.js",
-      "bytes": 14410,
-      "gzipBytes": 5526
+      "file": "assets/index-DqLtyPWP.js",
+      "bytes": 14432,
+      "gzipBytes": 5533
     },
     {
       "source": "src/games/tower/index.ts",
@@ -87,5 +88,5 @@
       "gzipBytes": 6589
     }
   ],
-  "totalOfflineBytes": 1052240
+  "totalOfflineBytes": 1159744
 }

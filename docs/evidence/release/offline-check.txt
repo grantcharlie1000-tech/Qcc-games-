@@ -2,28 +2,28 @@
 > pocket-offline-arcade@1.0.0 verify:offline
 > node scripts/verify-offline.mjs
 
-OFFLINE PASS root fruit-merge
-OFFLINE PASS root water-sort
-OFFLINE PASS root color-blocks
-OFFLINE PASS root tower
-OFFLINE PASS root snake
-OFFLINE PASS root minesweeper
-OFFLINE PASS root solitaire
-OFFLINE PASS root block-fill
-OFFLINE PASS root color-connect
-OFFLINE PASS root ball-run
-OFFLINE PASS root pool
-OFFLINE PASS root animal-stack
-OFFLINE PASS subpath fruit-merge
-OFFLINE PASS subpath water-sort
-OFFLINE PASS subpath color-blocks
-OFFLINE PASS subpath tower
-OFFLINE PASS subpath snake
-OFFLINE PASS subpath minesweeper
-OFFLINE PASS subpath solitaire
-OFFLINE PASS subpath block-fill
-OFFLINE PASS subpath color-connect
-OFFLINE PASS subpath ball-run
-OFFLINE PASS subpath pool
-OFFLINE PASS subpath animal-stack
+OFFLINE PASS root fruit-merge + Study
+OFFLINE PASS root water-sort + Study
+OFFLINE PASS root color-blocks + Study
+OFFLINE PASS root tower + Study
+OFFLINE PASS root snake + Study
+OFFLINE PASS root minesweeper + Study
+OFFLINE PASS root solitaire + Study
+OFFLINE PASS root block-fill + Study
+OFFLINE PASS root color-connect + Study
+OFFLINE PASS root ball-run + Study
+OFFLINE PASS root pool + Study
+OFFLINE PASS root animal-stack + Study
+OFFLINE PASS subpath fruit-merge + Study
+OFFLINE PASS subpath water-sort + Study
+OFFLINE PASS subpath color-blocks + Study
+OFFLINE PASS subpath tower + Study
+OFFLINE PASS subpath snake + Study
+OFFLINE PASS subpath minesweeper + Study
+OFFLINE PASS subpath solitaire + Study
+OFFLINE PASS subpath block-fill + Study
+OFFLINE PASS subpath color-connect + Study
+OFFLINE PASS subpath ball-run + Study
+OFFLINE PASS subpath pool + Study
+OFFLINE PASS subpath animal-stack + Study
 Verified 12 games offline at both root and repository subpath.

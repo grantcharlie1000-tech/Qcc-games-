@@ -1,0 +1,5 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run --reporter=json --outputFile=docs/evidence/release/unit-results.json
+
+JSON report written to /workspace/Qcc-games-/docs/evidence/release/unit-results.json

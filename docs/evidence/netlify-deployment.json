@@ -3,15 +3,13 @@
   "siteName": "mauri-gazette",
   "teamSlug": "grantcharlie1000",
   "dashboardUrl": "https://app.netlify.com/projects/mauri-gazette",
-  "arcadePublished": false,
+  "arcadePublished": true,
   "archive": "docs/evidence/mauri-gazette-netlify.zip",
-  "bytes": 296185,
-  "sha256": "31b3fbe8dc81482647a2f45aa5987a540988445a18a1c835626eede5e8ead87a",
-  "offlinePackVersion": "bf379fc014bf",
+  "bytes": 326667,
+  "sha256": "d9c9859602a3b9e6c7d2976dbda2252b3c08877addb9245459231aafe3937302",
+  "offlinePackVersion": "43dc049b82cb",
   "offlineFiles": 57,
-  "blockers": [
-    "The connected Netlify toolset has no repository-link or production-build-configuration operation."
-  ],
+  "blockers": [],
   "requestedPublicationRoute": "Netlify connector",
   "connectorPublicationActionAvailable": false,
   "availableDeploymentActions": [
@@ -20,5 +18,20 @@
   ],
   "repository": "grantcharlie1000-tech/Qcc-games-",
   "productionBranch": "main",
-  "automaticDeploymentsConnected": false
+  "automaticDeploymentsConnected": null,
+  "recordedAt": "2026-10-19T11:16:40.233305+00:00",
+  "studyPublished": false,
+  "automaticUpdateVerified": false,
+  "publishedUrl": "https://mauri-gazette.netlify.app",
+  "publishedDeploy": {
+    "id": "6ad5f146ee5b92088567adcc",
+    "state": "ready",
+    "context": "production",
+    "branch": "main",
+    "commit_ref": "d6951917923c391b522b013136f334744f3d040e",
+    "manual_deploy": false,
+    "published_at": "2026-10-19T10:30:48.411Z"
+  },
+  "liveOriginBrowserVerified": false,
+  "liveOriginBrowserLimit": "Environment proxy rejects CONNECT to the Netlify origin with HTTP403. Connector deployment state is available."
 }

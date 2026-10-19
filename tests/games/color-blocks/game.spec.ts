@@ -1,4 +1,4 @@
-import {test,expect,type Page} from '@playwright/test';
+import {test,expect,type Page} from '../../fixtures';
 import {createGame,type State} from '../../../src/games/color-blocks/model';
 const SAVE='pocket-arcade:v1:save:color-blocks';
 const fixture=():State=>({...createGame(42),tray:[5,12,0],board:Array(64).fill(0)});

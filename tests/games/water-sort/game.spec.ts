@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import {seedStudyTopic} from '../../fixtures';
+import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
 
 const root = (page:Page) => page.locator('.ws-game');
@@ -125,7 +126,7 @@ test('actual mouse drag pours; malformed saved data starts safely',async({page})
 });
 
 test('touch, colour labels, patterns, phone fit and screenshot',async({browser})=>{
-  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);
   const page=await context.newPage();
   await open(page);
   await tube(page,0).tap(); await tube(page,2).tap();

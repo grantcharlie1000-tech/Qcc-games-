@@ -1,0 +1,16 @@
+
+> pocket-offline-arcade@1.0.0 verify:update
+> node scripts/verify-update.mjs
+
+{
+  "recordedAt": "2026-10-19T11:15:06.585Z",
+  "browserVersion": "154.0.8037.57",
+  "oldVersion": "43dc049b82cb",
+  "newVersion": "43dc049b82cb-next",
+  "oldLazyChunkRemovedFromServer": true,
+  "oldTabPlayedOffline": true,
+  "updateWaitedForBothTabsToClose": true,
+  "newVersionActivated": true,
+  "oldCachesCleaned": true,
+  "highScorePreserved": true
+}

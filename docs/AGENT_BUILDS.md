@@ -21,6 +21,16 @@ The parent reviewed code, independently reran focused checks and cherry-picked e
 
 Counts above describe the final test inventory; the [delivery report](DELIVERY.md) records the final integrated results. The shell adds eight logic and six browser cases. Source rules, skill provenance, specs and specialist test history live in each game's `SPEC.md`, `SKILL_USAGE.md` and `TEST_RESULTS.md`.
 
+## Study Mode follow-up
+
+The parent implements the shared Study feature. Its 28 browser cases and five unit cases are additional to the original shell's six browser/eight unit cases. The original SOL-01 and SOL-12 owners supplied minimal paused-render fixes on separate branches based on `d695191`, using new tests rather than editing shared files:
+
+- Fruit Merge: `study/fruit-pause`, source handoff `e3317b0`, integrated as `7a740f1`; navigation-test follow-up `903a770`, integrated as `4d30edc`. Source review, 16 independent game units and an actual isolated Chromium draw-count test passed before integration.
+- Animal Stack: `study/animal-pause`, source handoff `0c83aca`, integrated as `7a45342`; navigation-test follow-up `074c296`, integrated as `9b6c2cc`. Source review, 14 independent game units and an actual isolated Chromium draw-count test passed before integration.
+- Solitaire: original SOL-07 supplied the text-only handoff `a232e5c` on `study/solitaire-rules`, integrated as `265a4c2`. Rules now explain selecting the same card again to clear a selection, since Esc opens Study. No rule engine or input handler changed. All eight Solitaire cases and four affected Study cases passed against the final production output.
+
+Each new game test checks zero repeated Canvas drawing while paused, one loop on resume and no drawing after actual route disposal. These add one browser case per game (Fruit Merge five, Animal Stack four). The other game case counts are unchanged. A separate actual read-only review covered all Study source, content and diagrams; [findings and fixes](evidence/study-review.md).
+
 ## Independent review
 
 - SOL-10 reviewed shared storage, lifecycle and service-worker code. Parent fixed stale disk reads after quota errors, cache failures breaking online responses, premature worker activation, and late mounts running behind open dialogs. Focused regressions plus production offline/update scripts exercise these paths.

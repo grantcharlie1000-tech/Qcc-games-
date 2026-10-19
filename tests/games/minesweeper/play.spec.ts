@@ -1,4 +1,5 @@
-import {test,expect} from '@playwright/test';
+import {seedStudyTopic} from '../../fixtures';
+import {test,expect} from '../../fixtures';
 import {writeFileSync} from 'node:fs';
 import type {Page} from '@playwright/test';
 import {create,reveal} from '../../../src/games/minesweeper/model';
@@ -72,7 +73,7 @@ test('phone levels, adjustable cells, keyboard reveal and contained expert overf
 });
 test('touch tap, long press flag and cancellation without revealing',async({browser,browserName})=>{
  test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
-  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const page=await context.newPage();
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});await seedStudyTopic(context);const page=await context.newPage();
   await fixture(page);
   const target=cell(page,0),box=(await target.boundingBox())!;
   const cdp=await context.newCDPSession(page);
@@ -106,7 +107,7 @@ test('wrong chord loses; repeated exit and malformed save recover cleanly',async
 
 test('a trusted touch hold over two seconds in Flag mode consumes only its release click',async({browser,browserName})=>{
   test.skip(browserName!=='chromium','Trusted CDP touch input requires Chromium.');
-  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});await seedStudyTopic(context);
   const page=await context.newPage();await fixture(page);
   await page.getByRole('button',{name:'Flag mode',exact:true}).tap();
   await page.evaluate(()=>document.addEventListener('click',e=>{

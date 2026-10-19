@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../../fixtures';
 const errorsByPage=new WeakMap<Page,string[]>();
 const board = (page:Page) => page.locator('.cc-grid');
 async function center(page:Page, cell:number) {const box=await page.locator(`[data-cc-cell="${cell}"]`).boundingBox(); if(!box) throw new Error('Cell not displayed');return {x:box.x+box.width/2,y:box.y+box.height/2};}

@@ -48,9 +48,9 @@ const module:GameModule={
    if(flash){c.globalAlpha=Math.min(1,flash.life/200);c.font='bold 21px sans-serif';c.textAlign='center';c.strokeStyle='#fff9e8';c.lineWidth=5;c.strokeText(flash.text,flash.x,flash.y);c.fillStyle='#975c39';c.fillText(flash.text,flash.x,flash.y);c.globalAlpha=1;}
   }
   function frame(now:number){
-   if(disposed)return;if(!last)last=now;const elapsed=Math.min(100,Math.max(0,now-last));last=now;
+   raf=0;if(disposed||paused)return;if(!last)last=now;const elapsed=Math.min(100,Math.max(0,now-last));last=now;
    if(!paused){accumulator+=elapsed;while(accumulator>=STEP){physics.step();for(const p of sparks){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=STEP;}sparks=sparks.filter(p=>p.life>0);if(flash){flash.life-=STEP;flash.y-=.35;if(flash.life<=0)flash=undefined;}accumulator-=STEP;}report();if(dirty){dirty=false;context.save(physics.snapshot());}}
-   draw();raf=requestAnimationFrame(frame);
+   draw();if(!paused&&!disposed)raf=requestAnimationFrame(frame);
   }
   function doDrop(){if(paused||disposed)return;if(physics.drop()){context.sound('tap');report();context.save(physics.snapshot());draw();}else if(!physics.lost){context.announce('Wait for room at the top of the basket.');}}
   function aim(event:PointerEvent){if(paused||disposed)return;const box=canvas.getBoundingClientRect();physics.setAim((event.clientX-box.left)*WIDTH/box.width);draw();}
@@ -63,8 +63,8 @@ const module:GameModule={
   canvas.addEventListener('pointerdown',pointerDown);canvas.addEventListener('pointermove',pointerMove);canvas.addEventListener('pointerup',pointerUp);canvas.addEventListener('pointercancel',pointerCancel);canvas.addEventListener('keydown',key);drop.addEventListener('click',doDrop);
   report();draw();raf=requestAnimationFrame(frame);
   return {
-   pause(){paused=true;pointer=undefined;last=0;accumulator=0;drop.disabled=true;},
-   resume(){paused=false;last=0;report();},
+   pause(){if(paused||disposed)return;paused=true;cancelAnimationFrame(raf);raf=0;pointer=undefined;last=0;accumulator=0;drop.disabled=true;},
+   resume(){if(!paused||disposed)return;paused=false;last=0;accumulator=0;report();raf=requestAnimationFrame(frame);},
    restart(){physics.restart();sparks=[];flash=undefined;didLose=false;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();context.save(physics.snapshot());},
    serialize(){return physics.snapshot();},
    restore(data:unknown){if(physics.restore(data)){sparks=[];flash=undefined;didLose=physics.lost;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();}},

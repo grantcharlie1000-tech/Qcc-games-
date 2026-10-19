@@ -2,6 +2,6 @@
   "engine": "system Chromium",
   "samples": 60,
   "medianFrameMs": 50,
-  "p95FrameMs": 100,
+  "p95FrameMs": 116.60000000000036,
   "note": "Headless shared Linux environment; not a Chromebook hardware measurement."
 }

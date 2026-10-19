@@ -13,13 +13,17 @@ The nine supplied reference images were inspected before the shell contract and 
 - Each game: production screenshots at 390×844, 768×1024 and 1366×768 under [release evidence](evidence/release/). Phone screenshots also come from the completely offline repository-subpath run. Full-page images may be taller than the viewport because the game controls scroll vertically.
 - [All twelve phone screens](evidence/release/games-390.jpg) [tablet screens](evidence/release/games-768.jpg) and [desktop screen contact sheet](evidence/release/games-1366.jpg).
 
+## Study Mode
+
+The first visit in a tab offers 20 NCEA-related topics across eight subjects. The choice survives reload through sessionStorage. Esc pauses and saves the current game synchronously, then opens an original full-page textbook chapter; Return restores the retained game instance. Native reading keys, modal dialogs, late imports, interrupted drags, manual pause and hidden-page return are covered. Articles and all 20 labelled SVG diagrams are in the shell bundle, with no switch-time requests. See [topics, sources, implementation and screenshots](STUDY_MODE.md).
+
 ## Twelve-game status
 
 “Playable” below means actual Chromium gameplay and integrated checks; it does not imply unperformed WebKit or physical-device certification. All games implement shared pause, restart, rules, local save/restore and disposal. Logic/browser columns count the final game-specific tests; shell tests are additional.
 
 | Game | Status and implemented gameplay | Engine | Logic / browser cases | Offline root / subpath |
 |---|---|---|---|---|
-| Fruit Merge | Playable: aim/drop, physical equal-fruit merges and chains, next fruit, settled danger grace and best score | Canvas + Matter.js | 16 / 4 | Passed / passed |
+| Fruit Merge | Playable: aim/drop, physical equal-fruit merges and chains, next fruit, settled danger grace and best score | Canvas + Matter.js | 16 / 5 | Passed / passed |
 | Water Sort | Playable: legal contiguous pours, nine solver-verified levels in three difficulties, undo/hint, homogeneous-tube win | Pure stacks + SVG | 52 / 6 | Passed / passed |
 | Color Blocks | Playable: three-piece 8×8 placement, exact drag ghost, simultaneous row/column clears and combos, legal-move loss | Integer grid + DOM/SVG | 10 / 9 | Passed / passed |
 | Tower | Playable: timed alternating-axis drops, overlap cropping, falling overhangs, perfect combos and follow camera | Geometry + Canvas | 15 / 4 | Passed / passed |
@@ -30,7 +34,7 @@ The nine supplied reference images were inspected before the shell contract and 
 | Color Connect | Playable: twelve verified pair puzzles, no crossing, required full coverage, redraw/erase/undo/hint and redundant shapes | CSP + SVG/DOM | 11 / 10 | Passed / passed |
 | Ball Run | Playable: real 3D descent, steering/jump, navigable recycled track, gaps/obstacles, falls, distance and best run | Lazy Three.js/WebGL2 | 8 / 4 | Passed / passed |
 | Pool | Playable: physical rack/break, solids/stripes, turns/fouls/ball-in-hand, called 8, local computer and pass-and-play | Fixed-step circles + Canvas | 40 / 6 | Passed / passed |
-| Animal Stack | Playable: distinct compound animals, mass/rotation/balance, height/support scoring and physical toppling | Canvas + Matter.js | 14 / 3 | Passed / passed |
+| Animal Stack | Playable: distinct compound animals, mass/rotation/balance, height/support scoring and physical toppling | Canvas + Matter.js | 14 / 4 | Passed / passed |
 
 Pool's coherent local simplifications from WPA are disclosed in its visible rules and [spec](../src/games/pool/SPEC.md): only the 8 pocket is called; fixed opening rack/breaker; simplified break foul choices and automatic break-8 respot; no spin or tournament conduct rules. Solitaire uses standard seeded deals, which are not promised to be winnable. Ball Run displays a useful fallback if WebGL2 is unavailable. These are stated product limits, not hidden placeholders.
 
@@ -38,53 +42,56 @@ Pool's coherent local simplifications from WPA are disclosed in its visible rule
 
 | Check | Actual result | Evidence |
 |---|---|---|
-| Strict TypeScript + production Vite build | Passed; complete 57-file offline manifest | [build output](evidence/release/build.txt) |
-| Integrated Vitest rules/storage | **223 passed, 0 failed**, 16 files | [JSON results](evidence/release/unit-results.json) |
-| Integrated Chromium gameplay suite | **75 passed, 0 failed**, 3.0 minutes | [run output](evidence/release/chromium-e2e.txt) |
-| Final Minesweeper production interaction suite | **6 passed, 0 failed**, 19.6 seconds | [production run](evidence/release/minesweeper-production-e2e.txt) |
-| Original SVG validation | **22 passed, 0 failed** | Installed skill validator; [art notes](ARTWORK.md) |
+| Strict TypeScript + Vite production build | Passed; pack `43dc049b82cb` | [build output](evidence/release/build.txt) |
+| Integrated Vitest logic/storage/catalogue | **228 passed, 0 failed**, 17 files | [JSON](evidence/release/unit-results.json) |
+| Full Chromium gameplay/Study suite | **105 passed, 0 failed, 0 flaky**, 3.8 minutes | [run output](evidence/release/chromium-e2e.txt), [JSON](evidence/release/chromium-results.json) |
+| Final production Solitaire interactions | **8 passed, 0 failed** | [output](evidence/release/solitaire-study-production.txt) |
+| Final production Study keyboard/restoration | **4 passed, 0 failed** | [output](evidence/release/study-final-production.txt) |
+| Production offline gameplay + Study | **24/24 game checks**, **20 articles at each of two paths** | [results](evidence/release/offline-results.json) |
+| Two-release/two-tab worker update | Passed; scores preserved | [results](evidence/release/update-results.json) |
+| Study SVG validation | **20 passed, 0 failed** | [skill/generator notes](../src/study/SKILL_USAGE.md) |
 
-The 75-case suite preceded the final Minesweeper CSS asset-only correction. All six Minesweeper cases, including the new image URL/decode assertion, were then independently rerun against the final emitted production output. Other game implementations were unchanged. The stricter production offline asset gate was observed failing on the old output with `/assets/game-art/minesweeper/tile.svg` HTTP503; that [expected red result](evidence/release/minesweeper-asset-red.txt) is retained.
+The full 105-case run includes all 75 existing game/shell cases, 28 new Study cases and two paused-render cases. It preceded a final **text-only** Solitaire instruction correction: selecting the same card again clears selection, since Esc now opens Study. All eight Solitaire cases and four affected Study cases then passed against the final emitted production build; final unit/offline/update checks also use that build. No gameplay engine changed after the full run. The original cover-art validator separately passed 22 SVG assets.
 
-Game interactions cover mouse/trackpad-equivalent pointer input, keyboard, native Chromium touch, genuine wins/losses, undo/hints, pause/restart, local restore, malformed snapshots and exit/re-entry. They are not screenshot-only smoke tests. Examples include a twelve-garden pointer playthrough; actual 8-ball winning and losing pots; legal card moves and full foundations; a real keyboard jump across a 3D gap; merge/danger behavior; a six-animal transient-impact restore; and a touch flag held longer than two seconds.
-
-The parent also independently cross-reviewed all games and shared services. Corrected defects included storage quota fallback reading stale disk data, cache write failures disrupting successful online requests, premature worker activation, games mounting behind open dialogs, a legal Solitaire hint fallback, Animal Stack impact restoration, Minesweeper long-hold release, Water Sort's exact homogeneous goal, Color Connect gesture save transactions/focus, and a production CSS asset URL that hid covered Minesweeper tiles. Browser fixture writes now wait for route disposal, and the Pool restore assertion uses a paused test clock to compare exact ball state.
+Interactions use real mouse/trackpad-equivalent pointer, keyboard and native Chromium touch input, with genuine legal moves, wins/losses, undo/hints, saves and restoration. Study tests verify every game's serialized state remains frozen through the six-second autosave window, same-instance return, all topic choices, first visit/fresh tabs, blocked storage, menus/rules, a delayed import, native Space scrolling, keyboard topic changes, a live card drag and focus restoration. The [independent review](evidence/study-review.md) caught and resolved retained game keyboard handlers, reading offsets, hidden Canvas work and a queued menu-close rebuild. Original game owners supplied isolated adapter and text fixes; see [handoffs](AGENT_BUILDS.md).
 
 ## Production offline and updates
 
-**24/24 offline gameplay checks passed**: twelve games at `/`, then the same twelve at `/Qcc-games-/`, on two separate local origins. Each fresh browser context downloaded the complete 57-file pack, disabled network access, reloaded the library and performed real in-game input, pause/save/restart and library navigation. Final pack version: `bf379fc014bf`. All tested viewports fit without horizontal document overflow. Required local requests had **zero HTTP errors or failed fetches**, external runtime requests were **zero**, and page errors were **zero**. Both initial menus kept heavy game chunks lazy. Stale scope caches were removed while an existing high score survived. See [offline results](evidence/release/offline-results.json) and [run output](evidence/release/offline-check.txt).
+A fresh browser context cached all 57 required files, disabled network access, reloaded and played all 12 games at `/`, then repeated on a separate origin under `/Qcc-games-/`. Each game performed actual input, pause/save/restart and Study return. All 20 chapters were switched at each path. Study switches made **zero requests**; external requests, failed assets and page errors were also **zero**. Initial menus kept Matter.js/Three.js and game chunks lazy. Offline pack: **43dc049b82cb**. See [results](evidence/release/offline-results.json) and [run output](evidence/release/offline-check.txt).
 
-The real two-version/two-tab update test also passed: the deployed old lazy chunk was deliberately removed from the server, yet the old tab still played it offline from its pack. The new worker waited until both old tabs closed, then activated, cleaned old caches, preserved the high score and loaded the new lazy chunk. See [update results](evidence/release/update-results.json).
+The real two-version/two-tab update test removed an old lazy chunk from the server. An old tab still played it offline from its complete pack. The next worker waited until both old tabs closed, then activated, removed stale caches and preserved the high score. [Update evidence](evidence/release/update-results.json).
 
-A completed download is specific to that browser, device, storage partition and origin. It does not transfer between GitHub Pages and Netlify. Browser eviction, private mode or managed-device policy may remove or disable storage. Cached play does not bypass device/network controls. A fresh version requires its own pack download. Waiting updates retain older tabs' chunks until all those tabs close; scores live separately and survive cache cleanup.
+Downloads are specific to browser, device, storage partition and origin. Private browsing, eviction or managed policy may prevent retention. Cache cleanup does not delete scores. Offline caching cannot bypass device/network controls. New releases require a fresh complete pack.
 
 ## Measurements and payload
 
-Forty-five consecutive RAF intervals were sampled after one interaction in each game, with one browser active. Puzzle boards may be idle after that interaction; these are scheduler samples, not simulation throughput or sustained FPS.
+One synthetic Escape was synchronously dispatched inside each cached game at each path: 24 samples, **13.8ms median**, 7.9–36.7ms range. This measures the handler including pause/serialization/render setup; it excludes input delivery and paint. Trusted keyboard events are tested separately. These are container measurements, not hardware response guarantees.
+
+Forty-five consecutive RAF intervals were sampled after one interaction in each game, with one browser active. Puzzle games may be idle: these are scheduler samples, not simulation throughput or sustained FPS.
 
 | Game | Root median / p95 (ms) | Subpath median / p95 (ms) |
 |---|---|---|
-| Fruit Merge | 16.7 / 33.4 | 16.7 / 33.4 |
-| Water Sort | 16.7 / 66.7 | 16.7 / 33.4 |
-| Color Blocks | 16.7 / 16.8 | 16.7 / 16.8 |
-| Tower | 16.7 / 16.7 | 16.7 / 16.8 |
-| Snake | 16.7 / 16.7 | 16.7 / 16.7 |
-| Minesweeper | 16.7 / 16.8 | 16.7 / 16.8 |
-| Solitaire | 16.7 / 16.8 | 16.7 / 16.7 |
-| Block Fill | 16.7 / 16.8 | 16.7 / 16.8 |
-| Color Connect | 16.7 / 50.0 | 16.7 / 16.8 |
-| Ball Run | 16.7 / 16.8 | 16.7 / 16.7 |
-| Pool | 16.7 / 16.8 | 16.7 / 16.8 |
-| Animal Stack | 16.7 / 16.8 | 16.7 / 16.7 |
+| animal-stack | 16.7 / 33.3 | 16.7 / 16.7 |
+| ball-run | 16.7 / 16.7 | 16.7 / 16.8 |
+| block-fill | 16.7 / 16.8 | 16.7 / 16.8 |
+| color-blocks | 16.7 / 116.7 | 16.7 / 16.8 |
+| color-connect | 16.7 / 16.8 | 16.7 / 50.0 |
+| fruit-merge | 16.7 / 33.4 | 16.7 / 33.4 |
+| minesweeper | 16.7 / 16.8 | 16.7 / 16.8 |
+| pool | 16.7 / 16.8 | 16.7 / 16.8 |
+| snake | 16.7 / 16.7 | 16.7 / 16.7 |
+| solitaire | 16.7 / 16.8 | 16.7 / 16.8 |
+| tower | 16.7 / 16.8 | 16.7 / 16.8 |
+| water-sort | 16.7 / 66.7 | 16.7 / 66.7 |
 
-These short RAF samples describe frame scheduling in this shared headless Linux container, using software WebGL; they are not sustained game benchmarks or measurements on a school Chromebook, managed Mac, touch device or physical trackpad. Concurrent browser runs produced slower samples too; individual game evidence retains those results. No universal 60 FPS claim is made. Ball Run reports nine draw calls and four geometries, and its lifecycle test verifies the old WebGL context is lost after disposal.
+The headless Linux Chromium run uses software WebGL. These figures do not certify a physical Chromebook, managed Mac, GPU, trackpad or sustained 60 FPS. Ball Run's existing lifecycle test checks renderer disposal and its in-game unsupported-WebGL fallback.
 
-The build payload is recorded in [payload.json](evidence/release/payload.json). Entry JavaScript is 17,058 bytes (6,527 gzip), entry CSS 7,957 bytes (2,700 gzip); the bundled font is approximately 28KB. The full offline manifest contains 57 requests, 1,052,240 bytes uncompressed including repeated root/index content and bundled third-party notices. Matter.js and Three.js are lazy game dependencies; initial-menu requests were checked to exclude heavy game chunks. Ball Run's Three.js-containing chunk is approximately 491KB raw / 125KB gzip. Gzip figures are calculated from built files; actual host compression depends on hosting configuration. Sourcemaps are excluded from the required offline pack. The distributed [third-party notices](../public/THIRD_PARTY_NOTICES.txt) include the dependency and font licences.
+[Payload](evidence/release/payload.json): entry JavaScript **116,203 bytes / 35,682 gzip**, entry CSS **16,066 / 4,677 gzip**, plus a local font of approximately 28KB. The larger entry includes every original chapter and inline diagram so reading never loads another file. Total required offline bytes: **1,159,744**, counting repeated root/index responses and licence notices, across 57 requests. Matter.js and Three.js remain lazy. Gzip sizes are calculated from built files, not measured host transfers. Third-party/font licences ship in `THIRD_PARTY_NOTICES.txt`.
 
 ## Deployment and remaining verification
 
-`npm ci`, `npm run dev` for local development; `npm run build` produces `dist/`. The same output serves at `/` and `/Qcc-games-/`. Hash routes need no SPA rewrite. Service workers require HTTPS or localhost. [Pages Actions](../.github/workflows/pages.yml) runs unit/browser/build/production checks before publishing; [Netlify config](../netlify.toml) builds and publishes the static output with local-only CSP. No application secrets are required. See [README](../README.md) for all commands.
+`npm ci`, `npm run dev`; `npm run build` produces `dist/`. The same build serves at root and repository subpath using hash routes and relative assets. Service workers require HTTPS or localhost. [Netlify configuration](../netlify.toml) and [Pages Actions](../.github/workflows/pages.yml) are checked in. No application secrets or backend are needed.
 
-**No hosted arcade deployment was performed or verified, and no live game URL is claimed.** The user-authorized Netlify project is now named `mauri-gazette`, with GitHub `main` selected as the requested source. Its one-time repository connection remains blocked because the available Netlify actions omit Git linking/build settings. Automatic Netlify deploys are not yet active. See [the project and publication handoff](NETLIFY_DEPLOYMENT.md). GitHub Pages remains configuration-only. Local static-server verification is not a substitute for checking a published origin.
+Mauri Gazette is published at **https://mauri-gazette.netlify.app**, verified through the requested Netlify connector. [Publication evidence](NETLIFY_DEPLOYMENT.md) identifies the exact published source commit and whether this Study release has automatically deployed from main. Direct live-origin browser/HTTP access is blocked by this environment's proxy; host headers and live-origin offline behavior remain unverified. GitHub Pages publication is not claimed.
 
-**WebKit remains unverified.** Its Playwright executable is absent (`webkit-2370/pw_run.sh`); attempts to download from the official Playwright hosts were rejected with policy HTTP403. Actual launch failed before page interaction. Chromium 154.0.8037.57 is available and used. CI is configured to install Chromium and WebKit; those future results are not claimed. Seven native CDP touch cases are explicitly Chromium-only; the other interactions target both engines. Physical managed-device, screen-reader and sustained hardware-performance validation remain outstanding. Cross-browser acceptance is therefore incomplete even though all twelve games are playable in the verified Chromium environment.
+**WebKit and physical devices remain unverified.** The actual WebKit attempt failed before launch because `webkit-2370/pw_run.sh` is missing; official download hosts previously returned policy403. [Launch evidence](evidence/study-webkit-unavailable.txt). Chromium 154.0.8037.57 keyboard, pointer and viewport checks passed, including 390×844, 768×1024 and 1366×768. No physical Chromebook, managed Mac, screen-reader or sustained hardware-performance test was available. Cross-browser/hardware acceptance therefore remains incomplete; no unavailable check is labelled passed.

@@ -1,0 +1,40 @@
+[WebServer] (node:98184) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 28 tests using 1 worker
+
+(node:98202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/28] [webkit] › tests/e2e/study.spec.ts:36:1 › first visit offers exactly 20 topics and remembers the choice for this tab only
+  1) [webkit] › tests/e2e/study.spec.ts:36:1 › first visit offers exactly 20 topics and remembers the choice for this tab only 
+
+    Error: browserType.launch: Executable doesn't exist at /home/agent/.cache/ms-playwright/webkit-2370/pw_run.sh
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: ../../tmp/study-webkit-output/e2e-study-first-visit-offe-3a78a-he-choice-for-this-tab-only-webkit/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../tmp/study-webkit-output/e2e-study-first-visit-offe-3a78a-he-choice-for-this-tab-only-webkit/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../tmp/study-webkit-output/e2e-study-first-visit-offe-3a78a-he-choice-for-this-tab-only-webkit/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+Testing stopped early after 1 maximum allowed failures.
+
+  1 failed
+    [webkit] › tests/e2e/study.spec.ts:36:1 › first visit offers exactly 20 topics and remembers the choice for this tab only 
+  27 did not run
+  1 error was not a part of any test, see above for details

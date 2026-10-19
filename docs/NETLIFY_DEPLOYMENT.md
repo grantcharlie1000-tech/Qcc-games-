@@ -1,29 +1,23 @@
 # Mauri Gazette — GitHub continuous deployment
 
-Netlify project: **Mauri Gazette**, slug `mauri-gazette`. The existing project was renamed through the connected Netlify app; the site ID is unchanged. Local `.netlify/` linkage is excluded from Git.
+[Live site](https://mauri-gazette.netlify.app) · [Netlify project](https://app.netlify.com/projects/mauri-gazette) · [GitHub source](https://github.com/grantcharlie1000-tech/Qcc-games-)
 
-- [Netlify project](https://app.netlify.com/projects/mauri-gazette)
-- Site ID: `4afc912c-6802-4c18-8f2c-273fb3e771ee`
-- [GitHub repository](https://github.com/grantcharlie1000-tech/Qcc-games-), production branch **main**
-- Build command: `npm run build`
-- Publish directory: `dist`
-- Base directory: repository root
-- Node.js: 22, set in `netlify.toml`
-- [Prepared static ZIP](evidence/mauri-gazette-netlify.zip), for review or manual upload
-- [Recorded deployment state](evidence/netlify-deployment.json)
+Project `mauri-gazette`, site ID `4afc912c-6802-4c18-8f2c-273fb3e771ee`. Production branch: **main**. Build: `npm run build`; publish: `dist`; base: repository root; Node.js 22. These settings are supplied by `netlify.toml`.
 
-## One-time repository connection
+## Observed publication
 
-The requested update policy is Netlify Git continuous deployment: each push to GitHub `main` builds the repository and publishes the resulting `dist/` to this same Netlify site. This does not require an application token or a backend in the arcade.
+The Netlify connector reports production deploy `6ad5f146ee5b92088567adcc` ready, built from GitHub main commit `d6951917923c391b522b013136f334744f3d040e` and published at 2026-10-19T10:30:48.411Z. This supersedes the earlier record that the arcade was unpublished. It is a Git build (`manual_deploy: false`).
 
-**The Git connection is not configured yet, and the arcade is not published on this Netlify project.** The connector successfully creates, renames and inspects projects, but its available actions omit repository linking, build-setting updates, build triggering and deployment uploads. It cannot establish Git continuous deployment in this session. No claim is made that the automatic update policy is already active.
+Study Mode's new source is being published to main; its automatic production update is not yet claimed in this record. The connector will be checked against the new source commit before that claim is made. No account token or repository connection change is required from the user.
 
-In the project dashboard, link the GitHub repository `grantcharlie1000-tech/Qcc-games-`, choose `main` as the production branch, and use the build/publish settings above. The checked-in `netlify.toml` already supplies the command, output directory, Node version and headers. Once that one-time connection is saved, Netlify handles subsequent `main` pushes automatically. The agent can then inspect deployment status through the connector.
+## Verified local build
 
-No token is requested for this connector-based setup. GitHub Pages deployment remains separately configured by `.github/workflows/pages.yml`; enabling Netlify does not require changing the game routes or assets.
+Offline-pack version **43dc049b82cb**, 57 required requests, exactly 12 games and 20 Study chapters. [Static ZIP](evidence/mauri-gazette-netlify.zip) contains every required file plus `_headers`; sourcemaps and the internal Vite manifest are excluded. [Deployment state](evidence/netlify-deployment.json) records archive size and SHA256. [Release checks](DELIVERY.md) and [Study evidence](STUDY_MODE.md) describe actual testing.
 
-## Verified build
+The same output passed production offline interaction checks at `/` and `/Qcc-games-/`. GitHub Pages remains separately configured in `.github/workflows/pages.yml`; no Pages publication is claimed here.
 
-The ready build is offline-pack version `bf379fc014bf`, with 57 required requests and all twelve games. The upload ZIP contains the required files plus Netlify `_headers`, and excludes sourcemaps and the internal Vite manifest. Header values match `netlify.toml`. See [the full game verification report](DELIVERY.md) for actual logic/browser/offline results and the outstanding WebKit/physical-device checks.
+## Verification limits and browser updates
 
-A future Netlify build's first published URL, headers, all twelve routes and offline download still need live-origin verification. Existing offline tabs activate a waiting game release after those tabs close; each release's complete offline pack must be downloaded on that origin.
+Netlify deployment state is read through the requested connector. This environment's proxy rejects direct browser/HTTP access to the live origin, so live pages, host headers and offline download on that origin have not been independently tested. A ready deployment is publication evidence, not a substitute for those checks.
+
+Existing offline tabs keep their old release until all arcade tabs close. Reopen to activate an available update; download the new offline pack on that browser and origin. Cache retention depends on browser/device policy and never bypasses network or device controls.

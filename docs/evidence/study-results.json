@@ -1,0 +1,102 @@
+{
+  "recordedAt": "2026-10-19T11:15:53.656795+00:00",
+  "sourceBaseline": "d6951917923c391b522b013136f334744f3d040e",
+  "offlinePackVersion": "43dc049b82cb",
+  "topicCount": 20,
+  "gameCount": 12,
+  "unit": {
+    "command": "npm test",
+    "passed": 228,
+    "failed": 0,
+    "files": 17,
+    "observedAt": "2026-10-19T11:15:22.454000+00:00",
+    "evidence": "release/unit-results.json"
+  },
+  "chromium": {
+    "command": "npx playwright test --project=chromium --workers=2",
+    "browserVersion": "154.0.8037.57",
+    "startTime": "2026-10-19T11:01:51.651Z",
+    "duration": 225423.811,
+    "expected": 105,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0,
+    "evidence": "release/chromium-results.json",
+    "scope": "Full functional Study release. Followed by a rules-text-only Solitaire correction; final production checks below cover that correction."
+  },
+  "studyBrowserCases": 28,
+  "existingGameAndShellCases": 75,
+  "newPausedRenderCases": 2,
+  "offline": {
+    "deployments": [
+      "/",
+      "/Qcc-games-/"
+    ],
+    "gameReturns": 24,
+    "articlesPerDeployment": 20,
+    "sameInstanceRestoration": true,
+    "switchRequests": 0,
+    "pageErrors": 0,
+    "externalRequests": 0,
+    "failedAssets": 0,
+    "recordedAt": "2026-10-19T11:14:56.633Z"
+  },
+  "synchronousEscapeHandlerMs": {
+    "samples": 24,
+    "min": 7.9,
+    "median": 13.8,
+    "max": 36.7,
+    "method": "One synthetic Escape dispatched synchronously in each real cached game; excludes input delivery and paint. Actual trusted keyboard input is covered by Playwright."
+  },
+  "serviceWorkerUpdate": {
+    "recordedAt": "2026-10-19T11:15:06.585Z",
+    "browserVersion": "154.0.8037.57",
+    "oldVersion": "43dc049b82cb",
+    "newVersion": "43dc049b82cb-next",
+    "oldLazyChunkRemovedFromServer": true,
+    "oldTabPlayedOffline": true,
+    "updateWaitedForBothTabsToClose": true,
+    "newVersionActivated": true,
+    "oldCachesCleaned": true,
+    "highScorePreserved": true
+  },
+  "entryAssets": [
+    {
+      "file": "assets/index-xiolePHU.js",
+      "bytes": 116203,
+      "gzipBytes": 35682
+    },
+    {
+      "file": "assets/index-ErYsTArr.css",
+      "bytes": 16066,
+      "gzipBytes": 4677
+    }
+  ],
+  "offlineBytes": 1159744,
+  "svgValidation": {
+    "passed": 20,
+    "failed": 0,
+    "command": "bash .agents/skills/svg-skill/scripts/validate.sh src/study/diagrams"
+  },
+  "limits": {
+    "physicalChromebookTested": false,
+    "physicalMacTested": false,
+    "webKitAvailable": false,
+    "webKitError": "Executable missing: webkit-2370/pw_run.sh",
+    "liveNetlifyBrowserTested": false,
+    "liveBrowserBlock": "Environment proxy rejects CONNECT to mauri-gazette.netlify.app with403; Netlify deployment state is inspected using the connector."
+  },
+  "finalProductionChecks": {
+    "solitaire": {
+      "passed": 8,
+      "failed": 0,
+      "evidence": "release/solitaire-study-production.txt"
+    },
+    "studyKeyboardAndRestoration": {
+      "passed": 4,
+      "failed": 0,
+      "evidence": "release/study-final-production.txt"
+    },
+    "scope": "Final emitted production build after Solitaire rules-text correction, followed by final 24-game/40-article offline checks."
+  }
+}

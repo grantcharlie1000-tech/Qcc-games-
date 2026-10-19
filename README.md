@@ -27,7 +27,9 @@ The last two commands test the real production output using Chromium. `verify:of
 
 ## Play and save
 
-Open the library directly. Use the hamburger for search, sound, motion, colour-blind settings and **Make all games available offline**. Sound starts muted. Games offer a shared back, pause, restart and rules toolbar, plus their own controls. Mouse and trackpad use the same pointer controls; suitable games also accept keyboard and touch input.
+Choose one of **20 NCEA study topics** on the first visit in a tab, then open the game library. During any game, press **Esc** to pause/save and read your selected textbook chapter. **Return to Arcade** restores the same game; change topics from the article selector. The choice lasts for this browser session, and all chapters are bundled locally. See [Study Mode and its verification evidence](docs/STUDY_MODE.md).
+
+Use the hamburger for Study Mode, search, sound, motion, colour-blind settings and **Make all games available offline**. Sound starts muted. Games offer a shared back, pause, restart and rules toolbar, plus their own controls. Mouse and trackpad use the same pointer controls; suitable games also accept keyboard and touch input.
 
 Scores, settings, favourites and compact game snapshots stay in this browser's local storage. If storage is blocked or full, play continues in memory and the menu explains that progress cannot be retained. There is no cloud sync. Restart starts a new run; leaving a game saves its current state. A hidden tab pauses real-time play.
 
@@ -41,7 +43,7 @@ Offline play requires a successful download on the same browser, device and orig
 - **Netlify:** import this repository. [netlify.toml](netlify.toml) sets `npm run build`, publishes `dist/`, selects Node 22 and sets security headers. No API keys or environment secrets are needed.
 - **Other static hosting:** serve `dist/` over HTTPS. No SPA rewrite is necessary because navigation uses `#/game/<id>`.
 
-The Netlify project is **Mauri Gazette** (`mauri-gazette`). The requested deployment source is this repository's **main** branch. Its one-time Git connection still needs to be made in Netlify because the available connector exposes no repository-link action; the arcade is **not published** there yet. See [the continuous-deployment settings and ready upload ZIP](docs/NETLIFY_DEPLOYMENT.md).
+The Netlify project is **[Mauri Gazette](https://mauri-gazette.netlify.app)** (`mauri-gazette`), built from this repository's **main** branch. Publication is inspected through the Netlify connector; [deployment evidence and update status](docs/NETLIFY_DEPLOYMENT.md) distinguish published commits from local verification. The ready static ZIP is included there too.
 
 ## Code and artwork
 

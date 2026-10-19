@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import {seedStudyTopic} from '../../fixtures';
+import { test, expect, type Page } from '../../fixtures';
 import { deal, type State } from '../../../src/games/solitaire/model';
 import { foundationWithdrawalState } from './fixtures';
 const key='pocket-arcade:v1:save:solitaire';
@@ -43,7 +44,7 @@ test('complete legal foundations show a win; invalid saves safely start fresh',a
 
 test('touch pointer drag uses the same legal move path on a phone',async({browser,browserName})=>{
  test.skip(browserName!=='chromium','Native touch drag uses Chromium CDP; the other Solitaire interactions run in both engines.');
- const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});const page=await context.newPage();await open(page,state());const cdp=await context.newCDPSession(page);
+ const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await open(page,state());const cdp=await context.newCDPSession(page);
  const from=(await page.getByRole('button',{name:'6 of hearts, column 2',exact:true}).boundingBox())!;const to=(await page.getByRole('button',{name:'7 of clubs, column 1',exact:true}).boundingBox())!;
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x+15,y:from.y+12}]});
  for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:from.x+15+(to.x-from.x)*i/8,y:from.y+12+(to.y-from.y+20)*i/8}]});

@@ -1,0 +1,283 @@
+import {test,expect} from '@playwright/test';
+import type {Page} from '@playwright/test';
+
+const topicKey='pocket-arcade:study:v1:topic';
+const choose=async(page:import('@playwright/test').Page,id='close-reading')=>page.locator(`[data-study-topic="${id}"]`).click();
+const returnToGame=async(page:import('@playwright/test').Page)=>page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+const snapshot=(page:Page,id:string)=>page.evaluate(id=>JSON.parse(localStorage.getItem(`pocket-arcade:v1:save:${id}`)!).data,id);
+
+async function gameAction(page:Page,id:string){
+  if(id==='fruit-merge')await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  if(id==='water-sort'){
+    await page.getByRole('button',{name:'Hint',exact:true}).click();
+    const from=await page.locator('.ws-hint-from').getAttribute('data-tube'),to=await page.locator('.ws-hint-to').getAttribute('data-tube');
+    await page.locator(`[data-tube="${from}"]`).click();await page.locator(`[data-tube="${to}"]`).click();
+  }
+  if(id==='color-blocks'){await page.locator('.cb-cell').first().focus();await page.keyboard.press('1');await page.keyboard.press('Enter');}
+  if(id==='tower'){await page.clock.runFor(900);await page.getByRole('button',{name:'Drop block',exact:true}).click();}
+  if(id==='snake')await page.getByRole('button',{name:'Start slithering',exact:true}).click();
+  if(id==='minesweeper')await page.getByRole('gridcell').first().click();
+  if(id==='solitaire')await page.getByRole('button',{name:/^Draw from stock/}).click();
+  if(id==='block-fill'){
+    await page.getByRole('button',{name:'Hint',exact:true}).click();
+    const match=(await page.locator('.bf-message').textContent())!.match(/row (\d+), column (\d+)/)!;
+    const board=page.locator('.bf-board');await board.focus();
+    const head=(await board.getAttribute('aria-label'))!.match(/Head row (\d+), column (\d+)/)!;
+    const dy=Number(match[1])-Number(head[1]),dx=Number(match[2])-Number(head[2]);
+    await page.keyboard.press(dy===1?'ArrowDown':dy===-1?'ArrowUp':dx===1?'ArrowRight':'ArrowLeft');
+  }
+  if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
+  if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.getByRole('button',{name:'Jump',exact:false}).click();}
+  if(id==='pool')await page.getByRole('button',{name:'Shoot',exact:true}).click();
+  if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
+  await page.clock.runFor(id==='snake'?220:id==='ball-run'?120:650);
+}
+
+test('first visit offers exactly 20 topics and remembers the choice for this tab only',async({page,context})=>{
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
+  await expect(page.locator('[data-study-topic]')).toHaveCount(20);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
+  await choose(page,'quadratics');
+  await expect(page.locator('.game-card')).toHaveCount(12);
+  expect(await page.evaluate(key=>sessionStorage.getItem(key),topicKey)).toBe('quadratics');
+  await page.reload();
+  await expect(page.locator('.game-card').first()).toBeVisible();
+  await expect(page.locator('#study-view')).toBeHidden();
+  const another=await context.newPage();await another.goto('/');
+  await expect(another.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
+});
+
+test('reading keeps native Space scrolling and keyboard controls isolated from Tower',async({page})=>{
+  await page.addInitScript(()=>window.addEventListener('keydown',event=>{
+    if(event.code==='Space')setTimeout(()=>{document.documentElement.dataset.studySpacePrevented=String(event.defaultPrevented);},0);
+  },{capture:true}));
+  await page.goto('/#/game/tower');await choose(page);
+  await expect(page.getByRole('button',{name:'Drop block',exact:true})).toBeVisible();
+  await page.keyboard.press('Escape');
+  // Native scrolling needs browser focus, which another parallel page can take.
+  // Re-focus and perform the real input; a game preventing Space still fails.
+  await expect(async()=>{
+    await page.bringToFront();await page.locator('#study-title').focus();
+    await page.keyboard.press('Space');
+    expect(await page.evaluate(()=>scrollY)).toBeGreaterThan(0);
+  }).toPass({timeout:7000});
+  await expect(page.locator('html')).toHaveAttribute('data-study-space-prevented','false');
+  await page.bringToFront();
+  await page.locator('#study-topic').focus();await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#study-title')).toHaveText('Building a convincing argument');
+  await returnToGame(page);
+  await expect(page.locator('.tower-height')).toHaveText('0');
+});
+
+test('Escape immediately saves and pauses; article changes never load or replace the game',async({page})=>{
+  await page.goto('/#/game/fruit-merge');await choose(page);
+  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  await page.evaluate(()=>{(window as unknown as {retainedStage:Element|null}).retainedStage=document.querySelector('#game-stage > *');});
+  const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#study-title')).toHaveText('Reading between the lines');
+  await expect(page.locator('#game-stage')).toBeHidden();
+  const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data);
+  expect(before.fruits).toHaveLength(1);
+  const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>(o as HTMLOptionElement).value));
+  expect(topics).toHaveLength(20);
+  for(const id of topics){
+    await page.getByLabel('Study topic',{exact:true}).selectOption(id);
+    await expect(page.locator('#study-title')).not.toBeEmpty();
+    await expect(page.locator('.study-figure svg')).toBeVisible();
+    await expect(page.locator('.study-chapter h2')).toHaveCount(5);
+  }
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#study-view')).toBeVisible();
+  const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data);
+  expect(after).toEqual(before);
+  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+  await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  expect(await page.evaluate(()=>(window as unknown as {retainedStage:Element|null}).retainedStage===document.querySelector('#game-stage > *'))).toBe(true);
+  await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
+  expect(requests).toEqual([]);
+});
+
+test.describe('all twelve retained game instances',()=>{
+  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack']){
+    test(`${id}: gameplay, Escape, frozen autosave and exact return`,async({page})=>{
+      test.setTimeout(60000);
+      const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+      await page.clock.install({time:new Date('2026-10-19T12:00:00Z')});
+      await page.clock.pauseAt(new Date('2026-10-19T12:00:01Z'));
+      await page.goto(`/#/game/${id}`);await choose(page,'forces');
+      await expect(page.locator('.loading')).toHaveCount(0);
+      await expect(page.locator('.game-error')).toHaveCount(0);
+      await gameAction(page,id);
+      const root=await page.locator('#game-stage > *').first().elementHandle();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#study-title')).toHaveText('Why motion changes');
+      await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
+      const saved=await snapshot(page,id);expect(saved).toBeTruthy();
+      // Advance beyond the 5-second autosave and any AI/animation delays.
+      await page.clock.runFor(6100);
+      await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');
+      await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
+      await page.keyboard.down('Escape');await page.keyboard.down('Escape');await page.keyboard.up('Escape');
+      expect(await snapshot(page,id)).toEqual(saved);
+      await returnToGame(page);
+      expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
+      await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
+      await page.keyboard.press('Escape');
+      expect(await snapshot(page,id)).toEqual(saved);
+      await returnToGame(page);
+      expect(errors).toEqual([]);
+    });
+  }
+});
+
+for(const modal of ['menu','rules']){
+  test(`Escape from the ${modal} cannot resume gameplay behind the chapter`,async({page})=>{
+    await page.goto('/#/game/fruit-merge');await choose(page);
+    await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+    await page.getByRole('button',{name:modal==='menu'?'Open menu':'Game rules',exact:true}).click();
+    if(modal==='menu')await page.getByRole('searchbox').focus();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#study-view')).toBeVisible();
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
+    const saved=await snapshot(page,'fruit-merge');
+    await page.getByLabel('Study topic',{exact:true}).selectOption('te-tiriti');
+    expect(await snapshot(page,'fruit-merge')).toEqual(saved);
+    await returnToGame(page);
+    await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
+    await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+    await expect(page.locator('.fm-count')).toContainText('2 fruits');
+  });
+}
+
+test('manual pause survives Study and contents navigation keeps the game route intact',async({page})=>{
+  await page.goto('/#/game/minesweeper');await choose(page);
+  await page.getByRole('gridcell').first().click();
+  await page.getByRole('button',{name:'Pause game',exact:true}).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('navigation',{name:'Chapter contents'}).getByRole('link').first().click();
+  expect(new URL(page.url()).hash).toBe('#/game/minesweeper');
+  await returnToGame(page);
+  await expect(page.locator('#pause-overlay')).toBeVisible();
+  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await expect(page.locator('#pause-overlay')).toBeHidden();
+});
+
+test('Escape during a delayed import opens instantly and the late game mounts paused',async({page})=>{
+  await page.goto('/');await choose(page);
+  let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
+  await page.route('**/src/games/fruit-merge/index.ts*',async route=>{await gate;await route.continue();});
+  await page.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();
+  await expect(page.locator('.loading')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#study-title')).toHaveText('Reading between the lines');
+  release();
+  await expect(page.locator('.fm')).toBeAttached();
+  await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
+  expect((await snapshot(page,'fruit-merge')).fruits).toHaveLength(0);
+  await returnToGame(page);
+  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  await expect(page.locator('.fm-count')).toContainText('1 fruit');
+});
+
+test('Study remains usable when both storage APIs are blocked',async({page})=>{
+  await page.addInitScript(()=>{
+    for(const key of ['sessionStorage','localStorage'])Object.defineProperty(window,key,{get(){throw new DOMException('Blocked','SecurityError');}});
+  });
+  await page.goto('/#/game/solitaire');
+  await expect(page.locator('.study-session-note')).toContainText('unavailable');
+  await choose(page,'historical-evidence');
+  await page.getByRole('button',{name:/^Draw from stock/}).click();
+  const cards=await page.locator('.sol-card').count();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.study-save-note')).toContainText('memory');
+  await page.getByLabel('Study topic',{exact:true}).selectOption('hauora');
+  await returnToGame(page);
+  expect(await page.locator('.sol-card').count()).toBe(cards);
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
+});
+
+test('library menu opens a chapter without remaking cards or requesting assets',async({page})=>{
+  await page.goto('/');await choose(page);
+  await page.locator('.game-card img').last().evaluate((image:HTMLImageElement)=>image.decode());
+  const card=await page.locator('.game-card').first().elementHandle();
+  await page.getByRole('button',{name:'Open menu'}).click();
+  const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
+  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  await expect(page.locator('#study-title')).toBeVisible();
+  await returnToGame(page);
+  expect(await card!.evaluate(node=>node===document.querySelector('.game-card'))).toBe(true);
+  expect(requests).toEqual([]);
+});
+
+test('a partially dragged Solitaire card is cleaned up without changing the deal',async({page})=>{
+  await page.goto('/#/game/solitaire');await choose(page);
+  const card=page.locator('[data-source="tableau"]').first();
+  const box=(await card.boundingBox())!;
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();
+  await page.mouse.move(box.x+box.width/2+35,box.y+box.height/2+35,{steps:3});
+  await expect(page.locator('.sol-drag-ghost')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.sol-drag-ghost')).toHaveCount(0);
+  const saved=await snapshot(page,'solitaire');
+  await page.mouse.up();await returnToGame(page);await page.keyboard.press('Escape');
+  expect(await snapshot(page,'solitaire')).toEqual(saved);
+});
+
+test('return restores keyboard focus even when a card game re-renders its controls on pause',async({page})=>{
+  await page.goto('/#/game/solitaire');await choose(page);
+  const card=page.locator('[data-source="tableau"]').last();await card.focus();
+  const label=(await card.getAttribute('aria-label'))!;
+  await page.keyboard.press('Escape');await returnToGame(page);
+  await expect(page.getByRole('button',{name:label,exact:true})).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button',{name:label,exact:true})).toHaveAttribute('aria-pressed','true');
+});
+
+test('returning while the page is hidden leaves the game safely paused',async({page})=>{
+  await page.goto('/#/game/fruit-merge');await choose(page);
+  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  await page.keyboard.press('Escape');
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+  await returnToGame(page);
+  await expect(page.locator('#pause-overlay')).toBeVisible();
+  await page.evaluate(()=>{Reflect.deleteProperty(document,'hidden');document.dispatchEvent(new Event('visibilitychange'));});
+  await expect(page.locator('#pause-overlay')).toBeVisible();
+  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await expect(page.locator('#pause-overlay')).toBeHidden();
+});
+
+for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,height:768}]){
+  test(`topic picker and textbook at ${size.width}`,async({page})=>{
+    await page.setViewportSize(size);await page.goto('/');
+    await page.screenshot({path:`docs/evidence/study-picker-${size.width}.png`,fullPage:true});
+    await choose(page,'inheritance');await page.getByRole('button',{name:'Open menu'}).click();
+    await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+    await expect(page.locator('#study-title')).toHaveText('From DNA to inherited variation');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:`docs/evidence/study-article-${size.width}.png`,fullPage:true});
+    await page.getByText('Read the explanation',{exact:true}).click();
+    await expect(page.locator('details')).toHaveAttribute('open','');
+    await returnToGame(page);
+    await expect(page.locator('.game-card')).toHaveCount(12);
+  });
+}
+
+test('all twenty original diagrams render as a review contact sheet',async({page})=>{
+  await page.goto('/');await choose(page);await page.getByRole('button',{name:'Open menu'}).click();
+  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>(o as HTMLOptionElement).value));
+  const figures:string[]=[];
+  for(const id of topics){
+    await page.getByLabel('Study topic',{exact:true}).selectOption(id);
+    figures.push(`<figure><h2>${await page.locator('.study-subtitle').textContent()}</h2>${await page.locator('.study-diagram').innerHTML()}</figure>`);
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  await page.setContent(`<html><head><style>body{margin:20px;color:#263e38;background:#f8f6ef;font:14px system-ui}main{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}figure{margin:0;padding:12px;background:#edf1e5;border:1px solid #cbd4c2;border-radius:6px}h1{font-size:25px}h2{font-size:12px;min-height:30px;margin:0 0 10px}svg{width:100%;height:auto}</style></head><body><h1>Study Mode · 20 original textbook diagrams</h1><main>${figures.join('')}</main></body></html>`);
+  await page.screenshot({path:'docs/evidence/study-diagrams-contact.png',fullPage:true});
+});

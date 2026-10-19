@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-19T09:49:31.017Z",
+  "recordedAt": "2026-10-19T11:14:56.633Z",
   "browser": "Chromium",
   "browserVersion": "154.0.8037.57",
   "physicalHardware": false,
@@ -8,6 +8,11 @@
   "gameCount": 12,
   "results": [
     {
+      "deployment": "root",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
       "game": "fruit-merge",
       "deployment": "root",
       "path": "/",
@@ -15,6 +20,11 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 14.099999999627471,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.699999999999818,
       "rafP95Ms": 33.399999999999636
     },
@@ -26,8 +36,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 15.300000000745058,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 66.70000000000073
+      "rafP95Ms": 66.69999999999891
     },
     {
       "game": "color-blocks",
@@ -37,8 +52,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 13.700000001117587,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 16.799999999999272
+      "rafP95Ms": 116.67199999999866
     },
     {
       "game": "tower",
@@ -48,8 +68,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 8.400000000372529,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 16.700000000000728
+      "rafP95Ms": 16.799999999999272
     },
     {
       "game": "snake",
@@ -59,6 +84,11 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 8.400000000372529,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.700000000000728
     },
@@ -70,6 +100,11 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 25.699999999254942,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.799999999999272
     },
@@ -81,6 +116,11 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 33.100000001490116,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.799999999999272
     },
@@ -92,7 +132,12 @@
       "action": true,
       "save": true,
       "restart": true,
-      "rafMedianMs": 16.700000000000728,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 17.59999999962747,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.80000000000291
     },
     {
@@ -103,8 +148,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 14.400000000372529,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 50
+      "rafP95Ms": 16.80000000000291
     },
     {
       "game": "ball-run",
@@ -114,8 +164,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 22.40000000037253,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.799999999995634
+      "rafP95Ms": 16.700000000004366
     },
     {
       "game": "pool",
@@ -125,6 +180,11 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 14.199999999254942,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.80000000000291
     },
@@ -136,14 +196,19 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 7.900000000372529,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.80000000000291
+      "rafP95Ms": 33.30000000000291
     },
     {
       "deployment": "root",
       "cacheNames": [
-        "pocket-arcade:/:bf379fc014bf:shell",
-        "pocket-arcade:/:bf379fc014bf:pack"
+        "pocket-arcade:/:43dc049b82cb:shell",
+        "pocket-arcade:/:43dc049b82cb:pack"
       ],
       "externalRequests": [],
       "pageErrors": [],
@@ -152,6 +217,11 @@
       "heavyChunksLazy": true
     },
     {
+      "deployment": "subpath",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
       "game": "fruit-merge",
       "deployment": "subpath",
       "path": "/Qcc-games-/",
@@ -159,7 +229,12 @@
       "action": true,
       "save": true,
       "restart": true,
-      "rafMedianMs": 16.700000000000045,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 10.600000001490116,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.699999999999818,
       "rafP95Ms": 33.399999999999636
     },
     {
@@ -170,8 +245,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 13.800000000745058,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.699999999999818,
-      "rafP95Ms": 33.40000000000009
+      "rafP95Ms": 66.70000000000027
     },
     {
       "game": "color-blocks",
@@ -181,8 +261,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 9.699999999254942,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.699999999999818,
-      "rafP95Ms": 16.799999999999272
+      "rafP95Ms": 16.800000000000182
     },
     {
       "game": "tower",
@@ -192,7 +277,12 @@
       "action": true,
       "save": true,
       "restart": true,
-      "rafMedianMs": 16.699999999999818,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 11.299999998882413,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999891,
       "rafP95Ms": 16.799999999999272
     },
     {
@@ -203,6 +293,11 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 8.299999998882413,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999891,
       "rafP95Ms": 16.700000000000728
     },
@@ -214,8 +309,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 34.09999999962747,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 16.799999999999272
+      "rafP95Ms": 16.80000000000109
     },
     {
       "game": "solitaire",
@@ -225,8 +325,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 36.70000000111759,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 16.700000000000728
+      "rafP95Ms": 16.80000000000109
     },
     {
       "game": "block-fill",
@@ -236,8 +341,13 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 11.199999999254942,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 16.80000000000109
+      "rafP95Ms": 16.799999999999272
     },
     {
       "game": "color-connect",
@@ -247,8 +357,13 @@
       "action": true,
       "save": true,
       "restart": true,
-      "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 16.80000000000109
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 13.799999998882413,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 50
     },
     {
       "game": "ball-run",
@@ -258,8 +373,13 @@
       "action": true,
       "save": true,
       "restart": true,
-      "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 16.700000000000728
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 10.099999999627471,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.799999999999272
     },
     {
       "game": "pool",
@@ -269,6 +389,11 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 12,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.700000000000728,
       "rafP95Ms": 16.799999999999272
     },
@@ -280,14 +405,19 @@
       "action": true,
       "save": true,
       "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 13.200000001117587,
+      "articleVisible": true,
+      "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.700000000000728
     },
     {
       "deployment": "subpath",
       "cacheNames": [
-        "pocket-arcade:/Qcc-games-/:bf379fc014bf:shell",
-        "pocket-arcade:/Qcc-games-/:bf379fc014bf:pack"
+        "pocket-arcade:/Qcc-games-/:43dc049b82cb:shell",
+        "pocket-arcade:/Qcc-games-/:43dc049b82cb:pack"
       ],
       "externalRequests": [],
       "pageErrors": [],

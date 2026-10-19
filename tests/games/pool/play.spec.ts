@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from '../../fixtures';
 test.beforeEach(async({page})=>{await page.goto('/#/game/pool');await expect(page.locator('.pool-game')).toBeVisible();});
 test('trackpad aim, power, real break, pause, mode and restart at phone width',async({page})=>{
  test.setTimeout(45000);await page.setViewportSize({width:390,height:844});await page.getByLabel('Players').selectOption('two');const root=page.locator('.pool-game'),canvas=page.getByRole('img',{name:/Billiards table/});

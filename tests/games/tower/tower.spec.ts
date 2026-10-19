@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import {seedStudyTopic} from '../../fixtures';
+import { test, expect } from '../../fixtures';
 const fixed=new Date('2026-01-01T12:00:00Z');
 async function start(page:import('@playwright/test').Page){
   await page.clock.install({time:fixed});await page.clock.pauseAt(fixed);
@@ -34,7 +35,7 @@ test('a complete keyboard miss ends the run and the play-again action resets it'
   await expect(page.locator('.tower-height')).toHaveText('1');await expect(page.locator('.tower-combo')).toHaveText('1');
 });
 test('touch input drops a slab on a phone and leaving releases input',async({browser})=>{
-  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});const page=await context.newPage();
+  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});await seedStudyTopic(context);const page=await context.newPage();
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await start(page);
   await page.clock.runFor(1450);await page.locator('.tower-canvas').tap();await expect(page.locator('.tower-height')).toHaveText('1');
   await page.getByRole('link',{name:'Back to game library'}).click();await page.keyboard.press('Space');

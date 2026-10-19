@@ -30,7 +30,7 @@ try{
   const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.status()>=400)failedAssets.push({url:response.url(),status:response.status()});});page.on('requestfailed',request=>failedAssets.push({url:request.url(),failure:request.failure()?.errorText}));page.on('request',r=>{if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
-  await page.goto(base);await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),12);
+  await page.goto(base);assert.equal(await page.locator('[data-study-topic]').count(),20);await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),12);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
   const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')).map(([,v])=>v.file);
   assert.ok(!initial.some(url=>heavy.some(file=>url.endsWith(file))),'heavy game chunks must remain lazy');
@@ -38,6 +38,14 @@ try{
   await waitFor(()=>page.evaluate(()=>navigator.serviceWorker.controller!==null),'service worker control');
   const cacheNames=await page.evaluate(()=>caches.keys());assert.ok(!cacheNames.some(key=>key.endsWith(':stale:pack')));assert.equal(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:fruit-merge')),'4321');
   await context.setOffline(true);await page.reload();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),12);
+  // All chapters are bundled in the shell: offline reading never fetches assets.
+  await page.getByRole('button',{name:'Open menu'}).click();
+  const readingRequests=[];const recordReading=request=>readingRequests.push(request.url());page.on('request',recordReading);
+  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>o.value));assert.equal(topics.length,20);
+  for(const topic of topics){await page.getByLabel('Study topic',{exact:true}).selectOption(topic);assert.ok(await page.locator('#study-title').textContent());assert.equal(await page.locator('.study-figure svg').count(),1);assert.equal(await page.locator('.study-chapter h2').count(),5);}
+  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();page.off('request',recordReading);assert.deepEqual(readingRequests,[],'Study switching must not request any files');
+  results.push({deployment:label,studyArticlesOffline:topics.length,studySwitchRequests:readingRequests});
   await page.screenshot({path:`${folder}/home-${label}-390.png`,fullPage:true});
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
   await page.setViewportSize(sizes[0]);
@@ -46,11 +54,22 @@ try{
    await action(page,id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),id+' horizontal overflow');
    const frames=await page.evaluate(()=>new Promise(resolve=>{const values=[];let prev;const tick=t=>{if(prev!==undefined)values.push(t-prev);prev=t;if(values.length===45)resolve(values);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));frames.sort((a,b)=>a-b);
    await page.screenshot({path:`${folder}/${id}-${label}-390.png`,fullPage:true});
+   const retained=await page.locator('#game-stage > *').first().elementHandle();
+   const switchRequests=[];const recordSwitch=request=>switchRequests.push(request.url());page.on('request',recordSwitch);
+   const switchTiming=await page.evaluate(()=>{const start=performance.now();window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));return {synchronousHandlerMs:performance.now()-start,articleVisible:!document.querySelector('#study-view').hidden,arcadeInert:document.querySelector('#app').inert};});
+   assert.ok(switchTiming.articleVisible&&switchTiming.arcadeInert,id+' immediate Study switch');
+   const frozen=await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id);
+   await page.getByLabel('Study topic',{exact:true}).selectOption('quadratics');
+   assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id),frozen,id+' study snapshot');
+   await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();page.off('request',recordSwitch);
+   assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
+   assert.deepEqual(switchRequests,[],id+' no files requested while switching');
+   assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');
    await page.getByRole('button',{name:'Pause game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');
    await page.getByRole('button',{name:'Restart game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),false);
    if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.getByRole('button',{name:'Restart game',exact:true}).click();await action(page,id);await page.screenshot({path:`${folder}/${id}-${size.width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${id} overflow at ${size.width}`);}
    await page.setViewportSize(sizes[0]);await page.getByRole('link',{name:'Back to game library'}).click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),12);
-   results.push({game:id,deployment:label,path,offline:true,action:true,save:true,restart:true,rafMedianMs:frames[Math.floor(frames.length/2)],rafP95Ms:frames[Math.floor(frames.length*.95)]});console.log(`OFFLINE PASS ${label} ${id}`);
+   results.push({game:id,deployment:label,path,offline:true,action:true,save:true,restart:true,studyRestoration:true,studySwitchRequests:switchRequests.length,...switchTiming,rafMedianMs:frames[Math.floor(frames.length/2)],rafP95Ms:frames[Math.floor(frames.length*.95)]});console.log(`OFFLINE PASS ${label} ${id} + Study`);
   }
   assert.deepEqual(errors,[],'page errors');assert.deepEqual(external,[],'external runtime requests');assert.deepEqual(failedAssets,[],'failed local assets');
   results.push({deployment:label,cacheNames,externalRequests:external,pageErrors:errors,failedAssets,initialResourceCount:initial.length,heavyChunksLazy:true});await context.close();

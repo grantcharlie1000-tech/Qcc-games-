@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../../fixtures';
 import { generateLevel, solve } from '../../../src/games/block-fill/logic';
 
 test.use({viewport:{width:390,height:844},reducedMotion:'reduce'});

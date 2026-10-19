@@ -8,7 +8,8 @@
 6. Offline: production build at root and `/Qcc-games-/`; download pack while online, disable browser network, reload and interact with all twelve. Verify no external runtime calls and shell loads without Matter.js/Three.js.
 7. Record test command/output and actual screenshots, not assumptions. Performance measured from RAF intervals on this environment with hardware limitations stated; no claim about physical Chromebook performance without that hardware.
 8. Playwright browser downloads may be blocked by this environment's network policy. Use preinstalled Chromium; report a missing WebKit engine explicitly unless a supported installation succeeds. CI installs both engines with dependencies.
+9. Study Mode: first-visit 20-topic choice, session-only retention and blocked storage; Escape from every game, dialogs and delayed mounts; freeze beyond autosave/AI delays; preserve exact snapshots and instance identity; restore keyboard focus, manual pause and hidden-page safety; all local articles with accessible SVGs and zero switch requests. Repeat on production root and repository subpath after caching and disabling network.
 
 ## Executed handoff evidence
 
-See [docs/DELIVERY.md](docs/DELIVERY.md) for 223 passing rules/storage tests, the passing 75-case Chromium suite, six final production Minesweeper regressions, 24 offline gameplay actions at both paths, zero failed local assets/external requests/page errors, update lifecycle verification, screenshots and measured RAF intervals. WebKit and physical managed-device acceptance remain unverified.
+See [docs/DELIVERY.md](docs/DELIVERY.md) for the original arcade release and [Study Mode evidence](docs/STUDY_MODE.md) for the expanded unit/browser/offline checks. WebKit and physical managed-device acceptance remain explicitly unverified.

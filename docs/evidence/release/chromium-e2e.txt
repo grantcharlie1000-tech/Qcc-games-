@@ -1,102 +1,119 @@
-
-> pocket-offline-arcade@1.0.0 test:e2e
-> playwright test --project=chromium --reporter=line --output=/tmp/arcade-chromium-verified
-
-[WebServer] (node:76161) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (node:102725) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 [WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
 
+Running 105 tests using 2 workers
 
-Running 75 tests using 2 workers
-
-(node:76180) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:102746) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-
-
-(node:76179) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:102745) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-
-
-[1/75] [chromium] › tests/e2e/shell.spec.ts:2:93 › library at 390
-[2/75] [chromium] › tests/games/animal-stack/play.spec.ts:5:1 › aim, stack, pause, save, restore, keyboard and restart on a phone
-[3/75] [chromium] › tests/e2e/shell.spec.ts:2:93 › library at 768
-[4/75] [chromium] › tests/e2e/shell.spec.ts:2:93 › library at 1366
-[5/75] [chromium] › tests/e2e/shell.spec.ts:3:1 › menu searches, settings start muted and empty favourites explain next action
-[6/75] [chromium] › tests/e2e/shell.spec.ts:4:1 › a game whose module finishes loading behind an open menu remains paused
-[7/75] [chromium] › tests/e2e/shell.spec.ts:5:1 › blocked browser storage leaves gameplay working and reports memory-only progress
-[8/75] [chromium] › tests/games/ball-run/play.spec.ts:3:1 › real 3D run steers, pauses, jumps, loses, restarts, restores and disposes
-[9/75] [chromium] › tests/games/animal-stack/play.spec.ts:39:1 › touch release drops, preview is safe at the edge, and a real fall ends the run
-[chromium] › tests/games/ball-run/play.spec.ts:3:1 › real 3D run steers, pauses, jumps, loses, restarts, restores and disposes
+  ✓    1 [chromium] › tests/e2e/shell.spec.ts:2:93 › library at 390 (4.0s)
+  ✓    2 [chromium] › tests/e2e/study.spec.ts:36:1 › first visit offers exactly 20 topics and remembers the choice for this tab only (5.1s)
+  ✓    3 [chromium] › tests/e2e/shell.spec.ts:2:93 › library at 768 (2.3s)
+  ✓    4 [chromium] › tests/e2e/study.spec.ts:52:1 › reading keeps native Space scrolling and keyboard controls isolated from Tower (1.9s)
+  ✓    5 [chromium] › tests/e2e/shell.spec.ts:2:93 › library at 1366 (1.7s)
+  ✓    7 [chromium] › tests/e2e/shell.spec.ts:3:1 › menu searches, settings start muted and empty favourites explain next action (1.9s)
+  ✓    6 [chromium] › tests/e2e/study.spec.ts:74:1 › Escape immediately saves and pauses; article changes never load or replace the game (3.7s)
+  ✓    8 [chromium] › tests/e2e/shell.spec.ts:4:1 › a game whose module finishes loading behind an open menu remains paused (1.9s)
+  ✓    9 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › fruit-merge: gameplay, Escape, frozen autosave and exact return (3.3s)
+  ✓   10 [chromium] › tests/e2e/shell.spec.ts:5:1 › blocked browser storage leaves gameplay working and reports memory-only progress (2.9s)
+  ✓   11 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › water-sort: gameplay, Escape, frozen autosave and exact return (3.6s)
+  ✓   13 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › color-blocks: gameplay, Escape, frozen autosave and exact return (1.9s)
+  ✓   12 [chromium] › tests/games/animal-stack/pause-render.spec.ts:14:1 › shared pause stops Canvas rendering and repeated resumes keep one animation loop (6.0s)
+  ✓   14 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › tower: gameplay, Escape, frozen autosave and exact return (4.4s)
+  ✓   16 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › snake: gameplay, Escape, frozen autosave and exact return (3.8s)
+  ✓   17 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › minesweeper: gameplay, Escape, frozen autosave and exact return (2.0s)
+  ✓   18 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › solitaire: gameplay, Escape, frozen autosave and exact return (2.8s)
+  ✓   19 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › block-fill: gameplay, Escape, frozen autosave and exact return (2.3s)
+  ✓   15 [chromium] › tests/games/animal-stack/play.spec.ts:6:1 › aim, stack, pause, save, restore, keyboard and restart on a phone (16.5s)
+  ✓   20 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › color-connect: gameplay, Escape, frozen autosave and exact return (2.4s)
+  ✓   22 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › ball-run: gameplay, Escape, frozen autosave and exact return (2.3s)
+  ✓   23 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › pool: gameplay, Escape, frozen autosave and exact return (2.9s)
+  ✓   21 [chromium] › tests/games/animal-stack/play.spec.ts:40:1 › touch release drops, preview is safe at the edge, and a real fall ends the run (5.8s)
+  ✓   25 [chromium] › tests/games/animal-stack/play.spec.ts:50:1 › reload restores the seed-4 six-animal impact snapshot instead of a fresh run (2.3s)
+  ✓   24 [chromium] › tests/e2e/study.spec.ts:106:5 › all twelve retained game instances › animal-stack: gameplay, Escape, frozen autosave and exact return (2.8s)
+  ✓   27 [chromium] › tests/e2e/study.spec.ts:138:3 › Escape from the menu cannot resume gameplay behind the chapter (2.3s)
+  ✓   28 [chromium] › tests/e2e/study.spec.ts:138:3 › Escape from the rules cannot resume gameplay behind the chapter (1.9s)
+  ✓   29 [chromium] › tests/e2e/study.spec.ts:157:1 › manual pause survives Study and contents navigation keeps the game route intact (2.1s)
 BALL_RUN_RENDER {"drawCalls":"9","geometries":"4"}
-
-BALL_RUN_RAF_MS {"median":16.700000000000045,"p95":33.40000000000009}
-
-[10/75] [chromium] › tests/games/ball-run/play.spec.ts:65:1 › unsupported WebGL produces a visible useful fallback
-[11/75] [chromium] › tests/games/ball-run/play.spec.ts:70:1 › native phone touch hold and drag steer, and touch jumps
-[12/75] [chromium] › tests/games/animal-stack/play.spec.ts:49:1 › reload restores the seed-4 six-animal impact snapshot instead of a fresh run
-[13/75] [chromium] › tests/games/ball-run/play.spec.ts:95:1 › restored course remains traversable and a real keyboard jump crosses its gap
-[14/75] [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden
-[15/75] [chromium] › tests/games/color-blocks/game.spec.ts:11:31 › real mouse drag preview equals placement at 390px
-[16/75] [chromium] › tests/games/block-fill/block-fill.spec.ts:32:1 › keyboard, legal current-state hints, undo, reset, pause, restart and reload save
-[17/75] [chromium] › tests/games/color-blocks/game.spec.ts:11:31 › real mouse drag preview equals placement at 1000px
-[18/75] [chromium] › tests/games/color-blocks/game.spec.ts:23:1 › grab offset is maintained and invalid overlap or off-board drop cannot place
-[19/75] [chromium] › tests/games/block-fill/block-fill.spec.ts:47:1 › touch trace, deliberate reverse drag and genuine dead-end recovery hint
-[20/75] [chromium] › tests/games/color-blocks/game.spec.ts:31:1 › keyboard aims, places and shows rules; pause blocks input, save reloads, restart resets
-[21/75] [chromium] › tests/games/block-fill/block-fill.spec.ts:66:1 › re-entry preserves progress and captures original golden trail art
-[22/75] [chromium] › tests/games/color-blocks/game.spec.ts:43:1 › line crossing clears together and the board survives when a later tray piece fits
-[23/75] [chromium] › tests/games/color-blocks/game.spec.ts:47:1 › a blocked first piece does not end the run; a genuinely blocked tray does
-[24/75] [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input
-[25/75] [chromium] › tests/games/color-blocks/game.spec.ts:51:1 › colourblind patterns, reduced motion and malformed save are handled through the shell
-[26/75] [chromium] › tests/games/color-blocks/game.spec.ts:57:2 › touch input › trusted touch drag has the same exact ghost and commitment, and tap-select works
-[27/75] [chromium] › tests/games/color-blocks/game.spec.ts:66:1 › mid-run artwork, lifecycle cleanup and measured browser frame intervals
-[chromium] › tests/games/color-blocks/game.spec.ts:66:1 › mid-run artwork, lifecycle cleanup and measured browser frame intervals
+  ✓   30 [chromium] › tests/e2e/study.spec.ts:170:1 › Escape during a delayed import opens instantly and the late game mounts paused (2.2s)
+BALL_RUN_RAF_MS {"median":33.29999999999973,"p95":50.09999999999991}
+  ✓   26 [chromium] › tests/games/ball-run/play.spec.ts:4:1 › real 3D run steers, pauses, jumps, loses, restarts, restores and disposes (9.8s)
+  ✓   32 [chromium] › tests/games/ball-run/play.spec.ts:66:1 › unsupported WebGL produces a visible useful fallback (805ms)
+  ✓   31 [chromium] › tests/e2e/study.spec.ts:187:1 › Study remains usable when both storage APIs are blocked (2.3s)
+  ✓   33 [chromium] › tests/games/ball-run/play.spec.ts:71:1 › native phone touch hold and drag steer, and touch jumps (3.0s)
+  ✓   34 [chromium] › tests/e2e/study.spec.ts:205:1 › library menu opens a chapter without remaking cards or requesting assets (3.6s)
+  ✓   35 [chromium] › tests/games/ball-run/play.spec.ts:96:1 › restored course remains traversable and a real keyboard jump crosses its gap (2.5s)
+  ✓   36 [chromium] › tests/e2e/study.spec.ts:218:1 › a partially dragged Solitaire card is cleaned up without changing the deal (1.9s)
+  ✓   38 [chromium] › tests/e2e/study.spec.ts:232:1 › return restores keyboard focus even when a card game re-renders its controls on pause (2.2s)
+  ✓   39 [chromium] › tests/e2e/study.spec.ts:242:1 › returning while the page is hidden leaves the game safely paused (1.6s)
+  ✓   37 [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden (4.5s)
+  ✓   40 [chromium] › tests/e2e/study.spec.ts:256:3 › topic picker and textbook at 390 (3.1s)
+  ✓   41 [chromium] › tests/games/block-fill/block-fill.spec.ts:32:1 › keyboard, legal current-state hints, undo, reset, pause, restart and reload save (4.2s)
+  ✓   42 [chromium] › tests/e2e/study.spec.ts:256:3 › topic picker and textbook at 768 (4.4s)
+  ✓   43 [chromium] › tests/games/block-fill/block-fill.spec.ts:47:1 › touch trace, deliberate reverse drag and genuine dead-end recovery hint (4.2s)
+  ✓   45 [chromium] › tests/games/block-fill/block-fill.spec.ts:66:1 › re-entry preserves progress and captures original golden trail art (2.3s)
+  ✓   44 [chromium] › tests/e2e/study.spec.ts:256:3 › topic picker and textbook at 1366 (4.1s)
+  ✓   47 [chromium] › tests/e2e/study.spec.ts:271:1 › all twenty original diagrams render as a review contact sheet (4.3s)
+  ✓   48 [chromium] › tests/games/color-blocks/game.spec.ts:11:31 › real mouse drag preview equals placement at 390px (2.0s)
+  ✓   49 [chromium] › tests/games/color-blocks/game.spec.ts:11:31 › real mouse drag preview equals placement at 1000px (1.8s)
+  ✓   50 [chromium] › tests/games/color-blocks/game.spec.ts:23:1 › grab offset is maintained and invalid overlap or off-board drop cannot place (2.4s)
+  ✓   51 [chromium] › tests/games/color-blocks/game.spec.ts:31:1 › keyboard aims, places and shows rules; pause blocks input, save reloads, restart resets (3.4s)
+  ✓   52 [chromium] › tests/games/color-blocks/game.spec.ts:43:1 › line crossing clears together and the board survives when a later tray piece fits (1.1s)
+  ✓   53 [chromium] › tests/games/color-blocks/game.spec.ts:47:1 › a blocked first piece does not end the run; a genuinely blocked tray does (1.3s)
+  ✓   54 [chromium] › tests/games/color-blocks/game.spec.ts:51:1 › colourblind patterns, reduced motion and malformed save are handled through the shell (2.9s)
+  ✓   55 [chromium] › tests/games/color-blocks/game.spec.ts:57:2 › touch input › trusted touch drag has the same exact ghost and commitment, and tap-select works (1.4s)
 Color Blocks headless Chromium: 45 idle RAF intervals; median 16.70 ms, p95 16.70 ms.
+  ✓   56 [chromium] › tests/games/color-blocks/game.spec.ts:66:1 › mid-run artwork, lifecycle cleanup and measured browser frame intervals (5.8s)
+  ✓   46 [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input (28.3s)
+  ✓   58 [chromium] › tests/games/block-fill/block-fill.spec.ts:83:1 › invalid persisted snapshots are ignored safely (2.9s)
+  ✓   57 [chromium] › tests/games/color-connect/play.spec.ts:8:1 › draw, erase, undo, pause, restart and reload saved paths (4.1s)
+  ✓   59 [chromium] › tests/games/color-connect/play.spec.ts:27:1 › actual pointer paths fill the entire board, award a win and advance (6.6s)
+  ✓   60 [chromium] › tests/games/fruit-merge/pause-render.spec.ts:9:1 › shared pause stops Fruit Merge drawing and repeated resumes keep one physics loop (10.2s)
+  ✓   61 [chromium] › tests/games/color-connect/play.spec.ts:38:1 › keyboard creates a path; redraw trims; fast pointer movement interpolates (4.6s)
+  ✓   63 [chromium] › tests/games/color-connect/play.spec.ts:54:1 › responsive board and genuine touch path (3.9s)
+  ✓   62 [chromium] › tests/games/fruit-merge/play.spec.ts:4:1 › mouse aim, real drops and merge, pause, keyboard, saved return and restart (5.1s)
+  ✓   64 [chromium] › tests/games/color-connect/play.spec.ts:78:1 › wrong endpoints are blocked and legal backtracking removes the traversed suffix (3.1s)
+  ✓   66 [chromium] › tests/games/color-connect/play.spec.ts:86:1 › module lifecycle rejects corrupted snapshots, gates paused input, restarts while paused and disposes handlers (2.6s)
+  ✓   67 [chromium] › tests/games/color-connect/play.spec.ts:112:1 › rules explain full coverage and returning from the dialog resumes play (2.0s)
+  ✓   68 [chromium] › tests/games/color-connect/play.spec.ts:121:1 › current-board hint respects an alternative completed path and truthfully requests a required backtrack (4.2s)
+  ✓   65 [chromium] › tests/games/fruit-merge/play.spec.ts:25:1 › responsive touch aim, accessible fruit tiers and a real merge (14.8s)
+  ✓   69 [chromium] › tests/games/color-connect/play.spec.ts:134:1 › a save during the held final gesture restores its move, undo record and one completion award (4.9s)
+  ✓   71 [chromium] › tests/games/color-connect/play.spec.ts:157:1 › pointer release synchronizes the trail-tip keyboard focus without stealing toolbar focus (2.3s)
+  ✓   70 [chromium] › tests/games/fruit-merge/play.spec.ts:43:1 › invalid saved data is ignored and navigation disposes stale controls (5.5s)
+  ✓   72 [chromium] › tests/games/minesweeper/play.spec.ts:12:1 › mouse, keyboard, flags, pause, restart and saved progress (5.1s)
+  ✓   73 [chromium] › tests/games/fruit-merge/play.spec.ts:50:1 › restores a full supported pile, ends after settled grace, and restarts (4.3s)
+  ✓   74 [chromium] › tests/games/minesweeper/play.spec.ts:35:1 › reveal all safe cells wins; mine loss and correct chord (4.1s)
+  ✓   76 [chromium] › tests/games/minesweeper/play.spec.ts:50:1 › phone levels, adjustable cells, keyboard reveal and contained expert overflow (3.2s)
+  ✓   75 [chromium] › tests/games/pool/play.spec.ts:3:1 › trackpad aim, power, real break, pause, mode and restart at phone width (7.7s)
+  ✓   77 [chromium] › tests/games/minesweeper/play.spec.ts:74:1 › touch tap, long press flag and cancellation without revealing (2.2s)
+  ✓   79 [chromium] › tests/games/minesweeper/play.spec.ts:94:1 › wrong chord loses; repeated exit and malformed save recover cleanly (2.5s)
+  ✓   78 [chromium] › tests/games/pool/play.spec.ts:16:1 › save preserves an aimed live shot through exit and restores without duplicate input (4.6s)
+  ✓   81 [chromium] › tests/games/pool/play.spec.ts:21:1 › computer opponent takes a genuine offline reply after a deliberately missed break (4.3s)
+  ✓   80 [chromium] › tests/games/minesweeper/play.spec.ts:108:1 › a trusted touch hold over two seconds in Flag mode consumes only its release click (5.4s)
+  ✓   82 [chromium] › tests/games/pool/play.spec.ts:22:1 › scratch gives ball-in-hand and a trackpad click places a non-overlapping cue (4.1s)
+  ✓   83 [chromium] › tests/games/snake/snake.spec.ts:4:1 › keyboard eating, turning, loss, replay, pause and saved continuation (6.6s)
+  ✓   84 [chromium] › tests/games/pool/play.spec.ts:27:66 › actual 8-ball pot with called pocket 2 awards Player 1 (4.5s)
+  ✓   85 [chromium] › tests/games/snake/snake.spec.ts:28:1 › touch swipe and direction buttons fit a phone (2.1s)
+  ✓   87 [chromium] › tests/games/snake/snake.spec.ts:41:1 › invalid saves recover and repeated exit/reentry has no stale controls (4.2s)
+  ✓   86 [chromium] › tests/games/pool/play.spec.ts:27:66 › actual 8-ball pot with called pocket 0 awards Player 2 (4.6s)
+  ✓   89 [chromium] › tests/games/tower/tower.spec.ts:8:1 › timed mouse and keyboard build a real tower, pause freezes it, save restores and restart resets (5.2s)
+  ✓   88 [chromium] › tests/games/solitaire/play.spec.ts:12:1 › stock draw, hint, undo, restart, pause and save restore operate through the shell (6.7s)
+  ✓   90 [chromium] › tests/games/tower/tower.spec.ts:29:1 › a complete keyboard miss ends the run and the play-again action resets it (3.4s)
+  ✓   91 [chromium] › tests/games/solitaire/play.spec.ts:25:1 › click and keyboard move real cards and undo restores a revealed card (2.9s)
+  ✓   93 [chromium] › tests/games/solitaire/play.spec.ts:31:1 › pointer drag moves a sequence and rejects an illegal drop (2.1s)
+  ✓   94 [chromium] › tests/games/solitaire/play.spec.ts:37:1 › phone layout remains readable and fits, with actual screenshot evidence (1.3s)
+  ✓   92 [chromium] › tests/games/tower/tower.spec.ts:37:1 › touch input drops a slab on a phone and leaving releases input (5.3s)
+  ✓   95 [chromium] › tests/games/solitaire/play.spec.ts:40:1 › complete legal foundations show a win; invalid saves safely start fresh (2.5s)
+  ✓   97 [chromium] › tests/games/solitaire/play.spec.ts:45:1 › touch pointer drag uses the same legal move path on a phone (2.0s)
+  ✓   98 [chromium] › tests/games/solitaire/play.spec.ts:53:1 › a long tableau sequence stays within its column at desktop and phone sizes (1.4s)
+  ✓   99 [chromium] › tests/games/solitaire/play.spec.ts:59:1 › hint highlights and executes a foundation withdrawal when no other move exists (1.8s)
+  ✓  100 [chromium] › tests/games/water-sort/game.spec.ts:23:1 › real illegal pour, winning hints, undo, next level and restart (8.5s)
+  ✓  101 [chromium] › tests/games/water-sort/game.spec.ts:49:1 › pending animation freezes under pause and commits only once on resume (2.6s)
+  ✓  102 [chromium] › tests/games/water-sort/game.spec.ts:71:1 › legal progress and undo history survive reload and repeated navigation (6.4s)
+  ✓   96 [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size (26.4s)
+  ✓  103 [chromium] › tests/games/water-sort/game.spec.ts:95:1 › all level controls and rules work, keyboard can select and pour (2.3s)
+  ✓  104 [chromium] › tests/games/water-sort/game.spec.ts:117:1 › actual mouse drag pours; malformed saved data starts safely (1.8s)
+  ✓  105 [chromium] › tests/games/water-sort/game.spec.ts:128:1 › touch, colour labels, patterns, phone fit and screenshot (3.0s)
 
-[28/75] [chromium] › tests/games/color-connect/play.spec.ts:8:1 › draw, erase, undo, pause, restart and reload saved paths
-[29/75] [chromium] › tests/games/color-connect/play.spec.ts:27:1 › actual pointer paths fill the entire board, award a win and advance
-[30/75] [chromium] › tests/games/color-connect/play.spec.ts:38:1 › keyboard creates a path; redraw trims; fast pointer movement interpolates
-[31/75] [chromium] › tests/games/color-connect/play.spec.ts:54:1 › responsive board and genuine touch path
-[32/75] [chromium] › tests/games/block-fill/block-fill.spec.ts:83:1 › invalid persisted snapshots are ignored safely
-[33/75] [chromium] › tests/games/color-connect/play.spec.ts:78:1 › wrong endpoints are blocked and legal backtracking removes the traversed suffix
-[34/75] [chromium] › tests/games/fruit-merge/play.spec.ts:4:1 › mouse aim, real drops and merge, pause, keyboard, saved return and restart
-[35/75] [chromium] › tests/games/color-connect/play.spec.ts:86:1 › module lifecycle rejects corrupted snapshots, gates paused input, restarts while paused and disposes handlers
-[36/75] [chromium] › tests/games/color-connect/play.spec.ts:112:1 › rules explain full coverage and returning from the dialog resumes play
-[37/75] [chromium] › tests/games/color-connect/play.spec.ts:121:1 › current-board hint respects an alternative completed path and truthfully requests a required backtrack
-[38/75] [chromium] › tests/games/fruit-merge/play.spec.ts:25:1 › responsive touch aim, accessible fruit tiers and a real merge
-[39/75] [chromium] › tests/games/color-connect/play.spec.ts:134:1 › a save during the held final gesture restores its move, undo record and one completion award
-[40/75] [chromium] › tests/games/color-connect/play.spec.ts:157:1 › pointer release synchronizes the trail-tip keyboard focus without stealing toolbar focus
-[41/75] [chromium] › tests/games/minesweeper/play.spec.ts:11:1 › mouse, keyboard, flags, pause, restart and saved progress
-[42/75] [chromium] › tests/games/minesweeper/play.spec.ts:34:1 › reveal all safe cells wins; mine loss and correct chord
-[43/75] [chromium] › tests/games/fruit-merge/play.spec.ts:43:1 › invalid saved data is ignored and navigation disposes stale controls
-[44/75] [chromium] › tests/games/minesweeper/play.spec.ts:49:1 › phone levels, adjustable cells, keyboard reveal and contained expert overflow
-[45/75] [chromium] › tests/games/fruit-merge/play.spec.ts:50:1 › restores a full supported pile, ends after settled grace, and restarts
-[46/75] [chromium] › tests/games/minesweeper/play.spec.ts:62:1 › touch tap, long press flag and cancellation without revealing
-[47/75] [chromium] › tests/games/minesweeper/play.spec.ts:82:1 › wrong chord loses; repeated exit and malformed save recover cleanly
-[48/75] [chromium] › tests/games/pool/play.spec.ts:3:1 › trackpad aim, power, real break, pause, mode and restart at phone width
-[49/75] [chromium] › tests/games/minesweeper/play.spec.ts:96:1 › a trusted touch hold over two seconds in Flag mode consumes only its release click
-[50/75] [chromium] › tests/games/snake/snake.spec.ts:3:1 › keyboard eating, turning, loss, replay, pause and saved continuation
-[51/75] [chromium] › tests/games/pool/play.spec.ts:16:1 › save preserves an aimed live shot through exit and restores without duplicate input
-[52/75] [chromium] › tests/games/pool/play.spec.ts:21:1 › computer opponent takes a genuine offline reply after a deliberately missed break
-[53/75] [chromium] › tests/games/snake/snake.spec.ts:27:1 › touch swipe and direction buttons fit a phone
-[54/75] [chromium] › tests/games/snake/snake.spec.ts:40:1 › invalid saves recover and repeated exit/reentry has no stale controls
-[55/75] [chromium] › tests/games/pool/play.spec.ts:22:1 › scratch gives ball-in-hand and a trackpad click places a non-overlapping cue
-[56/75] [chromium] › tests/games/solitaire/play.spec.ts:11:1 › stock draw, hint, undo, restart, pause and save restore operate through the shell
-[57/75] [chromium] › tests/games/pool/play.spec.ts:27:66 › actual 8-ball pot with called pocket 2 awards Player 1
-[58/75] [chromium] › tests/games/pool/play.spec.ts:27:66 › actual 8-ball pot with called pocket 0 awards Player 2
-[59/75] [chromium] › tests/games/solitaire/play.spec.ts:24:1 › click and keyboard move real cards and undo restores a revealed card
-[60/75] [chromium] › tests/games/tower/tower.spec.ts:7:1 › timed mouse and keyboard build a real tower, pause freezes it, save restores and restart resets
-[61/75] [chromium] › tests/games/solitaire/play.spec.ts:30:1 › pointer drag moves a sequence and rejects an illegal drop
-[62/75] [chromium] › tests/games/solitaire/play.spec.ts:36:1 › phone layout remains readable and fits, with actual screenshot evidence
-[63/75] [chromium] › tests/games/solitaire/play.spec.ts:39:1 › complete legal foundations show a win; invalid saves safely start fresh
-[64/75] [chromium] › tests/games/tower/tower.spec.ts:28:1 › a complete keyboard miss ends the run and the play-again action resets it
-[65/75] [chromium] › tests/games/solitaire/play.spec.ts:44:1 › touch pointer drag uses the same legal move path on a phone
-[66/75] [chromium] › tests/games/solitaire/play.spec.ts:52:1 › a long tableau sequence stays within its column at desktop and phone sizes
-[67/75] [chromium] › tests/games/tower/tower.spec.ts:36:1 › touch input drops a slab on a phone and leaving releases input
-[68/75] [chromium] › tests/games/solitaire/play.spec.ts:58:1 › hint highlights and executes a foundation withdrawal when no other move exists
-[69/75] [chromium] › tests/games/water-sort/game.spec.ts:22:1 › real illegal pour, winning hints, undo, next level and restart
-[70/75] [chromium] › tests/games/tower/tower.spec.ts:46:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size
-[71/75] [chromium] › tests/games/water-sort/game.spec.ts:48:1 › pending animation freezes under pause and commits only once on resume
-[72/75] [chromium] › tests/games/water-sort/game.spec.ts:70:1 › legal progress and undo history survive reload and repeated navigation
-[73/75] [chromium] › tests/games/water-sort/game.spec.ts:94:1 › all level controls and rules work, keyboard can select and pour
-[74/75] [chromium] › tests/games/water-sort/game.spec.ts:116:1 › actual mouse drag pours; malformed saved data starts safely
-[75/75] [chromium] › tests/games/water-sort/game.spec.ts:127:1 › touch, colour labels, patterns, phone fit and screenshot
-  75 passed (3.0m)
+  105 passed (3.8m)

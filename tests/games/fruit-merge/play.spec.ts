@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from '../../fixtures';
 import {writeFile} from 'node:fs/promises';
 test.use({hasTouch:true});
 test('mouse aim, real drops and merge, pause, keyboard, saved return and restart',async({page})=>{

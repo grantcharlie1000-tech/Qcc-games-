@@ -1,0 +1,15 @@
+
+Running 8 tests using 1 worker
+
+(node:107771) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/solitaire/play.spec.ts:12:1 › stock draw, hint, undo, restart, pause and save restore operate through the shell (4.1s)
+  ✓  2 [chromium] › tests/games/solitaire/play.spec.ts:25:1 › click and keyboard move real cards and undo restores a revealed card (1.3s)
+  ✓  3 [chromium] › tests/games/solitaire/play.spec.ts:31:1 › pointer drag moves a sequence and rejects an illegal drop (1.4s)
+  ✓  4 [chromium] › tests/games/solitaire/play.spec.ts:37:1 › phone layout remains readable and fits, with actual screenshot evidence (851ms)
+  ✓  5 [chromium] › tests/games/solitaire/play.spec.ts:40:1 › complete legal foundations show a win; invalid saves safely start fresh (3.4s)
+  ✓  6 [chromium] › tests/games/solitaire/play.spec.ts:45:1 › touch pointer drag uses the same legal move path on a phone (1.2s)
+  ✓  7 [chromium] › tests/games/solitaire/play.spec.ts:53:1 › a long tableau sequence stays within its column at desktop and phone sizes (964ms)
+  ✓  8 [chromium] › tests/games/solitaire/play.spec.ts:59:1 › hint highlights and executes a foundation withdrawal when no other move exists (1.3s)
+
+  8 passed (15.5s)

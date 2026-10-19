@@ -1,0 +1,23 @@
+=== svg-skill validate ===
+PASS inheritance.svg
+PASS historical-evidence.svg
+PASS film-language.svg
+PASS probability.svg
+PASS forces.svg
+PASS trigonometry.svg
+PASS algorithms.svg
+PASS energy.svg
+PASS hauora.svg
+PASS rivers-flooding.svg
+PASS quadratics.svg
+PASS close-reading.svg
+PASS supply-demand.svg
+PASS poetry.svg
+PASS wwi-causes.svg
+PASS te-tiriti.svg
+PASS essay-writing.svg
+PASS ecosystems.svg
+PASS linear-relationships.svg
+PASS acids-bases.svg
+
+Result: 20 passed, 0 failed
