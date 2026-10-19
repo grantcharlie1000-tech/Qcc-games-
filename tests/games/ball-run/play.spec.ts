@@ -67,7 +67,8 @@ test('unsupported WebGL produces a visible useful fallback',async({page})=>{
   await page.goto('/#/game/ball-run');await expect(page.getByRole('heading',{name:'3D graphics unavailable'})).toBeVisible();await expect(page.getByRole('link',{name:'Choose another game'})).toBeVisible();
 });
 
-test('native phone touch hold and drag steer, and touch jumps',async({browser})=>{
+test('native phone touch hold and drag steer, and touch jumps',async({browser,browserName})=>{
+  test.skip(browserName!=='chromium','This native touch case uses Chromium CDP. Other Ball Run interactions run in both engines.');
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
   const page=await context.newPage();await page.goto('/#/game/ball-run');
   await page.getByRole('button',{name:'Start rolling'}).tap();
