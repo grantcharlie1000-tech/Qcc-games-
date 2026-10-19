@@ -1,0 +1,117 @@
+
+ RUN  v3.2.7 /workspace/Qcc-games-
+
+ ❯ tests/games/ball-run/model.test.ts (12 tests | 3 failed) 98ms
+   ✓ Ball Run continuous steering and gravity course > crosses every generated ramp gap without a jump action over 1200 metres 38ms
+   ✓ Ball Run continuous steering and gravity course > joins chunks continuously and leaves a clear center corridor through narrow obstacle sections 43ms
+   ✓ Ball Run continuous steering and gravity course > rises up the launch ramp, flies across the gap, then lands by gravity 0ms
+   ✓ Ball Run continuous steering and gravity course > cyan acceleration sections increase forward speed then return to normal progression 0ms
+   ✓ Ball Run continuous steering and gravity course > steering integrates independently of display frame rate 0ms
+   ✓ Ball Run continuous steering and gravity course > edge departure falls and loss freezes the distance 0ms
+   ✓ Ball Run continuous steering and gravity course > sphere collision with a magenta block ends the run while the center route stays clear 2ms
+   ✓ Ball Run continuous steering and gravity course > restores an airborne run with identical future motion and rejects inconsistent snapshots 2ms
+   ✓ Ball Run continuous steering and gravity course > migrates legacy saves to the new terrain while preserving distance, score, and seed 0ms
+   × Ball Run procedural regression cases > detects contact along the lateral path even if the final position misses the block 6ms
+     → expected 'running' to be 'over' // Object.is equality
+   × Ball Run procedural regression cases > does not corrupt physics on nonfinite input 4ms
+     → expected { version: 2, seed: 8, run: 1, …(10) } to deeply equal { version: 2, seed: 8, run: 1, …(10) }
+   × Ball Run procedural regression cases > varies obstacles beyond a parity pattern for reproducible seeds 0ms
+     → expected 2 to be greater than 16
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/flappy-bird/model.test.ts [ tests/games/flappy-bird/model.test.ts ]
+Error: Cannot find module '../../../src/games/flappy-bird/model' imported from '/workspace/Qcc-games-/tests/games/flappy-bird/model.test.ts'
+ ❯ tests/games/flappy-bird/model.test.ts:2:1
+      1| import {describe,it,expect} from 'vitest';
+      2| import {createFlight,flap,advance,restoreFlight,gateAt,visibleGates,ST…
+       | ^
+      3| 
+      4| describe('Flappy Bird original reed flight',()=>{
+
+Caused by: Error: Failed to load url ../../../src/games/flappy-bird/model (resolved id: ../../../src/games/flappy-bird/model) in /workspace/Qcc-games-/tests/games/flappy-bird/model.test.ts. Does the file exist?
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/config.js:22907:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/ball-run/model.test.ts > Ball Run procedural regression cases > detects contact along the lateral path even if the final position misses the block
+AssertionError: expected 'running' to be 'over' // Object.is equality
+
+Expected: "over"
+Received: "running"
+
+ ❯ tests/games/ball-run/model.test.ts:82:21
+     80|     const s=createRun(8);s.phase='running';s.distance=83.2;s.height=tr…
+     81|     s.x=trackAt(8,84).center+section(8,3).obstacle+.55;s.vx=6;step(s,1…
+     82|     expect(s.phase).toBe('over');expect(s.reason).toContain('block');
+       |                     ^
+     83|   });
+     84|   it('does not corrupt physics on nonfinite input',()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/games/ball-run/model.test.ts > Ball Run procedural regression cases > does not corrupt physics on nonfinite input
+AssertionError: expected { version: 2, seed: 8, run: 1, …(10) } to deeply equal { version: 2, seed: 8, run: 1, …(10) }
+
+- Expected
++ Received
+
+  {
+    "best": 0,
+-   "distance": 0,
+-   "elapsed": 0,
+-   "grounded": true,
+-   "height": 0.38,
++   "distance": 0.1,
++   "elapsed": 0.008333333333333333,
++   "grounded": false,
++   "height": 0.36730555555555555,
+    "phase": "running",
+    "reason": "",
+    "run": 1,
+    "seed": 8,
+    "version": 2,
+-   "vx": 0,
+-   "vy": 0,
+-   "x": 0,
++   "vx": NaN,
++   "vy": -1.6066666666666667,
++   "x": NaN,
+  }
+
+ ❯ tests/games/ball-run/model.test.ts:85:92
+     83|   });
+     84|   it('does not corrupt physics on nonfinite input',()=>{
+     85|     const s=createRun(8);s.phase='running';const before={...s};step(s,…
+       |                                                                                            ^
+     86|   });
+     87|   it('varies obstacles beyond a parity pattern for reproducible seeds'…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/games/ball-run/model.test.ts > Ball Run procedural regression cases > varies obstacles beyond a parity pattern for reproducible seeds
+AssertionError: expected 2 to be greater than 16
+ ❯ tests/games/ball-run/model.test.ts:89:27
+     87|   it('varies obstacles beyond a parity pattern for reproducible seeds'…
+     88|     const patterns=new Set(Array.from({length:32},(_,i)=>JSON.stringif…
+     89|     expect(patterns.size).toBeGreaterThan(16);
+       |                           ^
+     90|   });
+     91| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  3 failed | 9 passed (12)
+   Start at  23:03:15
+   Duration  501ms (transform 117ms, setup 0ms, collect 90ms, tests 98ms, environment 0ms, prepare 181ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

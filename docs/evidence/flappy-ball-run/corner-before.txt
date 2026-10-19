@@ -1,0 +1,42 @@
+
+ RUN  v3.2.7 /workspace/Qcc-games-
+
+ ❯ tests/games/flappy-bird/model.test.ts (7 tests | 1 failed) 1110ms
+   ✓ Flappy Bird original reed flight > starts on an explicit flap, rises, falls, and freezes after loss 14ms
+   ✓ Flappy Bird original reed flight > replays the same actions at 30, 60 and 144 render Hz 2ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  797ms
+   ✓ Flappy Bird original reed flight > a simple timed pilot clears 100 seeded gates using the real simulation 281ms
+   ✓ Flappy Bird original reed flight > collides with both gate ends and scores only fully cleared gates once 0ms
+   ✓ Flappy Bird original reed flight > round trips a fractional frame and rejects malformed or contradictory saves 2ms
+   × lets a diagonal near miss pass the rounded reed corner without a false collision 9ms
+     → expected 'over' to be 'running' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/flappy-bird/model.test.ts > lets a diagonal near miss pass the rounded reed corner without a false collision
+AssertionError: expected 'over' to be 'running' // Object.is equality
+
+Expected: "running"
+Received: "over"
+
+ ❯ tests/games/flappy-bird/model.test.ts:50:70
+     48|   // The center moves from (407.75, top+4) to (408.875, top+6.53125).
+     49|   // Both the endpoints and the entire segment stay >12px from the cor…
+     50|   s.tick=270;s.y=gate.top+4;s.vy=300;advance(s,STEP);expect(s.phase).t…
+       |                                                                      ^
+     51| });
+     52| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 passed (7)
+   Start at  23:11:56
+   Duration  2.16s (transform 200ms, setup 0ms, collect 188ms, tests 1.11s, environment 0ms, prepare 207ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

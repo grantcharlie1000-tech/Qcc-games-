@@ -94,3 +94,28 @@ test('unsupported WebGL gives a visible useful fallback and retains an existing 
   await page.getByRole('link',{name:'Choose another game'}).click();
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:ball-run')!).data.distance)).toBe(58);
 });
+
+test('procedural rendered blocks collide and repeated restarts release held input and reuse resources',async({page})=>{
+  const {createRun,trackAt,section,RADIUS}=await import('../../../src/games/ball-run/model');
+  const seed=42,hazard=section(seed,7).obstacles[0],d=7*24+hazard.local;
+  const state=createRun(seed);state.phase='running';state.distance=d-3;state.best=200;state.elapsed=10;state.x=trackAt(seed,d).center+hazard.x;state.height=trackAt(seed,state.distance).elevation+RADIUS;
+  await page.addInitScript(state=>localStorage.setItem('pocket-arcade:v1:save:ball-run',JSON.stringify({version:1,data:state})),state);
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Continue rolling',exact:true}).click();
+  await expect(page.locator('.ball-run')).toHaveAttribute('data-phase','over');await expect(page.locator('.br-heading')).toHaveText('You hit a block');
+  await page.getByRole('button',{name:'Restart game',exact:true}).click();const geometries=await page.locator('.ball-run').getAttribute('data-geometries');
+  for(let i=0;i<3;i++){
+    await page.getByRole('button',{name:'Start rolling',exact:true}).click();await page.keyboard.down('ArrowRight');
+    await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.2);
+    await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();await page.keyboard.up('ArrowRight');
+    await expect(page.locator('.ball-run')).toHaveAttribute('data-x','0.000');await expect(page.locator('.ball-run')).toHaveAttribute('data-geometries',geometries!);
+  }
+  await page.getByRole('button',{name:'Start rolling',exact:true}).click();await waitDistance(page,2);await expect(page.locator('.ball-run')).toHaveAttribute('data-x','0.000');
+  await page.screenshot({path:'tests/games/ball-run/evidence/procedural-restart.png'});
+});
+
+test('resizing during a held steering key retains keyboard control',async({page})=>{
+  await page.clock.install({time:new Date('2026-10-19T12:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T12:00:01Z'));
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Start rolling',exact:true}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(160);
+  expect(Number(await page.locator('.ball-run').getAttribute('data-x'))).toBeGreaterThan(.2);await page.setViewportSize({width:768,height:844});await expect(page.locator('.ball-run')).toHaveAttribute('data-aspect',(768/844).toFixed(5));await page.clock.runFor(200);
+  const x=Number(await page.locator('.ball-run').getAttribute('data-x'));await page.clock.runFor(120);const after=Number(await page.locator('.ball-run').getAttribute('data-x'));await page.keyboard.up('ArrowRight');expect(after-x).toBeGreaterThan(.3);
+});

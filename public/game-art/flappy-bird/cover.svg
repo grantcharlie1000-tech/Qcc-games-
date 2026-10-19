@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="title desc">
+<title id="title">Marsh swift in flight</title><desc id="desc">An original teal bird glides between copper reeds over a warm peach wetland.</desc>
+<rect width="320" height="410" fill="#f9d9a7"/><circle cx="247" cy="138" r="43" fill="#fff0cc"/>
+<path d="M0 310Q80 244 166 316T340 294V410H0" fill="#b9c99e"/><path d="M0 351Q100 290 196 347T340 321V410H0" fill="#6fab9c"/>
+<g fill="#fff2d9"><ellipse cx="74" cy="160" rx="51" ry="12"/><ellipse cx="58" cy="149" rx="24" ry="18"/></g>
+<g stroke="#613f38" stroke-width="4" stroke-linejoin="round"><path d="M252 0H314V214H252Z" fill="#b75f47"/><path d="M259 0H272V211H259" fill="#e39b67" stroke="none"/><rect x="247" y="202" width="73" height="20" rx="4" fill="#e6b478"/><path d="M-6 334H58V416H-6Z" fill="#b75f47"/><path d="M3 337H16V410H3" fill="#e39b67" stroke="none"/><rect x="-10" y="323" width="73" height="20" rx="4" fill="#e6b478"/></g>
+<path d="M0 391H320V410H0" fill="#326d70"/><path d="M0 391H320" stroke="#c9ddb0" stroke-width="6"/>
+<g transform="translate(145 267) rotate(-12)" stroke="#224b50" stroke-width="4" stroke-linejoin="round"><path d="m-27-3-32-17 8 34 29-7" fill="#f3b359"/><ellipse rx="39" ry="30" fill="#258b8b"/><ellipse cx="10" cy="12" rx="22" ry="14" fill="#fff0c8" stroke="none"/><ellipse cx="-13" cy="4" rx="23" ry="13" transform="rotate(-20)" fill="#126f75"/><path d="m34-4 25 10-26 9" fill="#f6b448"/><circle cx="22" cy="-10" r="11" fill="#fff8dc" stroke="none"/><circle cx="26" cy="-10" r="5" fill="#224b50" stroke="none"/></g>
+<g fill="none" stroke="#fff0cc" stroke-width="5" stroke-linecap="round"><path d="m57 265 23 4m-32 8 25 3m-12 9 19 2"/></g>
+</svg>

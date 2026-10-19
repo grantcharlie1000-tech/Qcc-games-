@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRun, restoreRun, step, trackAt, section, steer, speedAt, RADIUS } from '../../../src/games/ball-run/model';
+import { createRun, restoreRun, step, trackAt, section, steer, speedAt, RADIUS, sweepSphereBox } from '../../../src/games/ball-run/model';
 
 function drive(seed:number, until:number) {
   const s=createRun(seed);s.phase='running';let airborne=0,landings=0;
@@ -70,7 +70,52 @@ describe('Ball Run continuous steering and gravity course', () => {
   });
   it('migrates legacy saves to the new terrain while preserving distance, score, and seed',()=>{
     const legacy={version:1,seed:8,run:2,phase:'running',distance:58,x:0,vx:0,height:.38,vy:0,grounded:true,elapsed:4.5,best:143,reason:''};
-    const s=restoreRun(legacy)!;expect(s.version).toBe(2);expect(s.distance).toBe(58);expect(s.best).toBe(143);expect(s.seed).toBe(8);
+    const s=restoreRun(legacy)!;expect(s.version).toBe(3);expect(s.distance).toBe(58);expect(s.best).toBe(143);expect(s.seed).toBe(8);
     expect(s.height).toBeCloseTo(trackAt(8,58).elevation+RADIUS);expect(restoreRun({...legacy,height:-100})).toBeNull();
   });
+});
+
+describe('Ball Run procedural regression cases',()=>{
+  it('detects contact along the lateral path even if the final position misses the block',()=>{
+    const s=createRun(8);s.phase='running';s.distance=83.2;s.height=trackAt(8,s.distance).elevation+RADIUS;
+    s.x=trackAt(8,84).center+section(8,3).obstacle+.55;s.vx=6;step(s,1,.05);
+    expect(s.phase).toBe('over');expect(s.reason).toContain('block');
+  });
+  it('does not corrupt physics on nonfinite input',()=>{
+    const s=createRun(8);s.phase='running';const before={...s};step(s,NaN,1/120);expect(s).toEqual(before);
+  });
+  it('varies obstacles beyond a parity pattern for reproducible seeds',()=>{
+    const patterns=new Set(Array.from({length:32},(_,i)=>JSON.stringify(section(i+1,7))));
+    expect(patterns.size).toBeGreaterThan(16);
+  });
+});
+
+it('keeps seeded hazards inside the road with a generous continuous safe corridor',()=>{
+  for(let seed=1;seed<=64;seed++)for(let index=0;index<150;index++){
+    const generated=section(seed,index);expect(section(seed,index)).toEqual(generated);
+    for(const obstacle of generated.obstacles){
+      expect(generated.gap).toBe(0);expect(generated.acceleration).toBe(false);
+      const track=trackAt(seed,index*24+obstacle.local);
+      expect(Math.abs(obstacle.x)+obstacle.width/2).toBeLessThan(track.width/2);
+      expect(Math.abs(obstacle.x)-obstacle.width/2-RADIUS).toBeGreaterThanOrEqual(.21);
+      expect(obstacle.local-obstacle.depth/2).toBeGreaterThan(6);expect(obstacle.local+obstacle.depth/2).toBeLessThan(18);
+    }
+  }
+});
+it('a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision',()=>{
+  for(let seed=1;seed<=64;seed++){
+    const {s}=drive(seed,2500);expect(s.phase,`seed ${seed} stopped at ${s.distance}: ${s.reason}`).toBe('running');expect(s.distance).toBeGreaterThanOrEqual(2500);
+  }
+});
+it('retains the original obstacle layout when loading a version 2 flight',()=>{
+  const legacy={...createRun(8),version:2};delete (legacy as {course?:number}).course;
+  const s=restoreRun(legacy)!;expect(s.course).toBe(1);expect(s.version).toBe(3);expect(section(s.seed,7,s.course).obstacles).toEqual([{local:12,x:-1.05,width:.9,height:1,depth:.9}]);
+});
+
+it('swept sphere box collision includes tangent contact but excludes rounded-corner misses',()=>{
+  const center=[0,0,0],half=[.5,.5,.5];
+  expect(sweepSphereBox([-2,0,0],[2,0,0],center,half,.38)).toBe(true);
+  expect(sweepSphereBox([-2,.88,0],[2,.88,0],center,half,.38)).toBe(true);
+  expect(sweepSphereBox([-2,.8,.8],[2,.8,.8],center,half,.38)).toBe(false);
+  expect(sweepSphereBox([0,0,0],[0,0,0],center,half,.38)).toBe(true);
 });

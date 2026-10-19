@@ -14,3 +14,7 @@ bash .agents/skills/svg-skill/scripts/validate.sh public/game-art
 ```
 
 The Fruit Merge authored source is preserved in `scripts/art-sources/fruit-merge.svg`; the generator writes the other authored illustrations and copies that source. These are designed SVGs, not random procedural thumbnails. See the [390px library](evidence/home-390.png), [768px library](evidence/home-768.png), [1366px library](evidence/home-1366.png) and [twelve-cover ZIP](evidence/arcade-cover-art.zip).
+
+## Flappy Bird addition
+
+`public/game-art/flappy-bird/cover.svg` and `src/games/flappy-bird/art.ts` are original vector compositions: a teal marsh swift, copper reeds, pale sun and layered wetland hills. They use no proprietary sprites, artwork downloads or original game branding. The cover reserves the upper title area for the shared card label. Canvas uses the same palette and bird design. The original twelve-cover generator remains unchanged; this additional authored SVG is maintained directly.

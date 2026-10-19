@@ -28,7 +28,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance{
   function instances(count:number,material:THREE.Material,parent:THREE.Object3D=road){
     const mesh=new THREE.InstancedMesh(box,material,count);mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;parent.add(mesh);instanceMeshes.push(mesh);return mesh;
   }
-  const tiles=instances(320,basic(0x30365f)),grid=instances(1900,basic(0x999df5)),obstacles=instances(9,basic(0xd317c1)),cyan=instances(100,basic(0x30e9f4));
+  const tiles=instances(320,basic(0x30365f)),grid=instances(1900,basic(0x999df5)),obstacles=instances(20,basic(0xd317c1)),cyan=instances(100,basic(0x30e9f4));
   const projection=new THREE.Vector3(),transform=new THREE.Object3D(),lineDirection=new THREE.Vector3(),zAxis=new THREE.Vector3(0,0,1);
   function gridLine(index:number,ax:number,ay:number,az:number,bx:number,by:number,bz:number){
     lineDirection.set(bx-ax,by-ay,bz-az);const length=lineDirection.length();
@@ -75,8 +75,11 @@ function mount(container:HTMLElement,context:GameContext):GameInstance{
     tiles.count=tileIndex;grid.count=gridIndex;
     const first=Math.max(0,Math.floor((origin-6)/LENGTH));let obstacleIndex=0;
     for(let i=0;i<8;i++){
-      const index=first+i,s=section(state.seed,index),d=index*LENGTH+12,t=trackAt(state.seed,d),z=-(d-origin),y=t.elevation+origin*SLOPE;
-      if(s.obstacle)put(obstacles,obstacleIndex++,t.center+s.obstacle,y+.5,z,.9,1,.9);
+      const index=first+i,s=section(state.seed,index,state.course);
+      for(const obstacle of s.obstacles){
+        const od=index*LENGTH+obstacle.local,ot=trackAt(state.seed,od);
+        put(obstacles,obstacleIndex++,ot.center+obstacle.x,ot.elevation+origin*SLOPE+obstacle.height/2,-(od-origin),obstacle.width,obstacle.height,obstacle.depth);
+      }
       if(s.acceleration){
         for(const local of [4,12]){
           const gd=index*LENGTH+local,gt=trackAt(state.seed,gd),gy=gt.elevation+origin*SLOPE,gz=-(gd-origin);
@@ -142,7 +145,7 @@ function mount(container:HTMLElement,context:GameContext):GameInstance{
   canvas.addEventListener('pointermove',e=>{if(drag!==e.pointerId||paused)return;pointerTarget=ballStart+(e.clientX-pointerStart)/Math.max(1,canvas.clientWidth)*6;},{signal});
   for(const event of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(event,e=>{if((e as PointerEvent).pointerId===drag)releasePointer();},{signal});
   canvas.addEventListener('webglcontextlost',e=>{if(disposed)return;e.preventDefault();contextLost=true;paused=true;cancelAnimationFrame(frame);frame=0;clearInput();overlay.hidden=false;heading.textContent='Graphics interrupted';copy.textContent='Your run is saved. Leave and reopen Ball Run to restore the graphics.';start.hidden=true;boostLabel.hidden=true;save();context.setStatus('Graphics context lost. Leave and reopen the game.');},{signal});
-  const resize=new ResizeObserver(()=>{if(disposed||contextLost)return;clearInput();const w=canvas.clientWidth,h=canvas.clientHeight;if(w<1||h<1)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();draw();});resize.observe(canvas);
+  const resize=new ResizeObserver(()=>{if(disposed||contextLost)return;releasePointer();pointerTarget=state.x;const w=canvas.clientWidth,h=canvas.clientHeight;if(w<1||h<1)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();draw();});resize.observe(canvas);
   screen();context.setStatus('Ready. Drag to steer or use Left / Right and A / D.');
   return {
     pause(){paused=true;clearInput();cancelAnimationFrame(frame);frame=0;},

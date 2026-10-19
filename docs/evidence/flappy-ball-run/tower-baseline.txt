@@ -1,0 +1,44 @@
+
+Running 1 test using 1 worker
+
+(node:15206) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size (31.4s)
+
+
+  1) [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: keyboard.press: Target page, context or browser has been closed
+
+      50 |   for(let height=0;height<9;height++){
+      51 |     await page.clock.runFor((height?200:0)+Math.round(145/(95+height*4)*1000));
+    > 52 |     await page.keyboard.press('Space');await expect(page.locator('.tower-height')).toHaveText(String(height+1));
+         |                         ^
+      53 |   }
+      54 |   await expect(page.locator('.tower-combo')).toHaveText('9');
+      55 |   await page.clock.runFor(200);
+        at /tmp/qcc-baseline/tests/games/tower/tower.spec.ts:52:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../qcc-baseline-tower/games-tower-tower-camera-f-996bf-nputs-preserve-perfect-size-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../qcc-baseline-tower/games-tower-tower-camera-f-996bf-nputs-preserve-perfect-size-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../qcc-baseline-tower/games-tower-tower-camera-f-996bf-nputs-preserve-perfect-size-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../qcc-baseline-tower/games-tower-tower-camera-f-996bf-nputs-preserve-perfect-size-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -1,0 +1,9 @@
+.flappy-bird{width:min(100%,420px);margin:auto;display:flex;flex-direction:column;align-items:center;gap:12px;color:#244e50}
+.fb-scene{position:relative;width:min(100%,360px,calc((100dvh - 254px)*2/3));aspect-ratio:2/3;border:3px solid #284e50;border-radius:22px;overflow:hidden;background:#f9d9a7;box-shadow:0 5px 0 #0c2429}
+.fb-scene canvas{display:block;width:100%;height:100%;touch-action:none;outline-offset:-6px}
+.fb-card{position:absolute;left:5%;right:5%;top:34%;padding:20px 14px;text-align:center;border:2px solid #315c58;border-radius:18px;background:#fff3d9f5;box-shadow:0 5px 0 #315c5840}
+.fb-card[hidden]{display:none}.fb-card h2{font:24px/1.1 Arcade,system-ui,sans-serif;margin:8px 0 12px}.fb-eyebrow{font:800 10px/1 system-ui,sans-serif;letter-spacing:2px;margin:0}.fb-copy{font:600 13px/1.5 system-ui,sans-serif;margin:0 0 16px}
+.flappy-bird .game-button{background:#275e60;color:#fff3d9;border:2px solid #194044;box-shadow:0 3px 0 #173538;font-size:19px;min-height:44px;padding:9px 18px}
+.fb-actions{width:100%;text-align:center}.fb-flap{min-width:160px}.fb-flap span{margin-left:22px}.fb-help{font:500 12px/1.6 system-ui,sans-serif;color:#d8e9dc;margin:10px 0 0}.flappy-bird button:disabled{opacity:.55}
+@media(max-height:700px){.fb-card{top:28%;padding:14px 10px}.fb-card h2{font-size:21px;margin:8px 0 14px}.fb-copy{display:none}}
+@media(max-height:480px){.flappy-bird{width:min(100%,520px);display:grid;grid-template-columns:1fr 170px;gap:20px}.fb-scene{justify-self:center;width:min(100%,calc((100dvh - 142px)*2/3))}.fb-card{top:24%;padding:10px 5px;border-radius:12px}.fb-card h2{font-size:18px;margin:6px 0 10px}.fb-copy,.fb-eyebrow{display:none}.flappy-bird .fb-start{font-size:14px;padding:8px}.fb-help{font-size:12px}}
