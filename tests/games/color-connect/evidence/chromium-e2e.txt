@@ -1,14 +1,15 @@
 
-Running 9 tests using 1 worker
+Running 10 tests using 1 worker
 
-  ✓  1 [chromium] › tests/games/color-connect/play.spec.ts:8:1 › draw, erase, undo, pause, restart and reload saved paths (5.2s)
-  ✓  2 [chromium] › tests/games/color-connect/play.spec.ts:27:1 › actual pointer paths fill the entire board, award a win and advance (4.5s)
-  ✓  3 [chromium] › tests/games/color-connect/play.spec.ts:38:1 › keyboard creates a path; redraw trims; fast pointer movement interpolates (3.3s)
-  ✓  4 [chromium] › tests/games/color-connect/play.spec.ts:54:1 › responsive board and genuine touch path (2.5s)
-  ✓  5 [chromium] › tests/games/color-connect/play.spec.ts:77:1 › wrong endpoints are blocked and legal backtracking removes the traversed suffix (2.2s)
-  ✓  6 [chromium] › tests/games/color-connect/play.spec.ts:85:1 › module lifecycle rejects corrupted snapshots, gates paused input, restarts while paused and disposes handlers (1.9s)
-  ✓  7 [chromium] › tests/games/color-connect/play.spec.ts:111:1 › rules explain full coverage and returning from the dialog resumes play (1.4s)
-  ✓  8 [chromium] › tests/games/color-connect/play.spec.ts:120:1 › current-board hint respects an alternative completed path and truthfully requests a required backtrack (2.6s)
-  ✓  9 [chromium] › tests/games/color-connect/play.spec.ts:133:1 › a save during the held final gesture restores its move, undo record and one completion award (2.7s)
+  ✓   1 [chromium] › tests/games/color-connect/play.spec.ts:8:1 › draw, erase, undo, pause, restart and reload saved paths (4.4s)
+  ✓   2 [chromium] › tests/games/color-connect/play.spec.ts:27:1 › actual pointer paths fill the entire board, award a win and advance (4.9s)
+  ✓   3 [chromium] › tests/games/color-connect/play.spec.ts:38:1 › keyboard creates a path; redraw trims; fast pointer movement interpolates (3.0s)
+  ✓   4 [chromium] › tests/games/color-connect/play.spec.ts:54:1 › responsive board and genuine touch path (2.6s)
+  ✓   5 [chromium] › tests/games/color-connect/play.spec.ts:77:1 › wrong endpoints are blocked and legal backtracking removes the traversed suffix (2.0s)
+  ✓   6 [chromium] › tests/games/color-connect/play.spec.ts:85:1 › module lifecycle rejects corrupted snapshots, gates paused input, restarts while paused and disposes handlers (1.7s)
+  ✓   7 [chromium] › tests/games/color-connect/play.spec.ts:111:1 › rules explain full coverage and returning from the dialog resumes play (1.3s)
+  ✓   8 [chromium] › tests/games/color-connect/play.spec.ts:120:1 › current-board hint respects an alternative completed path and truthfully requests a required backtrack (2.5s)
+  ✓   9 [chromium] › tests/games/color-connect/play.spec.ts:133:1 › a save during the held final gesture restores its move, undo record and one completion award (2.4s)
+  ✓  10 [chromium] › tests/games/color-connect/play.spec.ts:156:1 › pointer release synchronizes the trail-tip keyboard focus without stealing toolbar focus (1.4s)
 
-  9 passed (27.3s)
+  10 passed (27.1s)

@@ -182,7 +182,7 @@ export function restoreSnapshot(value: unknown): Snapshot | null {
   const data = value as Partial<Snapshot>;
   if (data.version !== 1 || !Number.isInteger(data.level) || data.level! < 0 || data.level! >= LEVELS.length || !Number.isInteger(data.moves) || data.moves! < 0 || data.moves! > 1000000) return null;
   const level = LEVELS[data.level!];
-  if (!validatePaths(level, data.paths) || !Array.isArray(data.completed) || data.completed.length > LEVELS.length || new Set(data.completed).size !== data.completed.length || !data.completed.every(index => Number.isInteger(index) && index >= 0 && index < LEVELS.length)) return null;
-  if (!Array.isArray(data.history) || data.history.length > 100 || !data.history.every(paths => validatePaths(level, paths))) return null;
+  if (!validatePaths(level, data.paths) || !Array.isArray(data.completed) || data.completed.length > LEVELS.length || new Set(data.completed).size !== data.completed.length || !Array.from(data.completed).every(index => Number.isInteger(index) && index >= 0 && index < LEVELS.length)) return null;
+  if (!Array.isArray(data.history) || data.history.length > 100 || !Array.from(data.history).every(paths => validatePaths(level, paths))) return null;
   return {version:1,level:data.level!,paths:copyPaths(data.paths),completed:[...data.completed],moves:data.moves!,history:data.history.map(copyPaths)};
 }

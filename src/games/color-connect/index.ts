@@ -123,9 +123,13 @@ const game: GameModule = {
    render();save();
   }
   function finish(){
+   const focusWasInGrid=grid.contains(document.activeElement);
    if(pointerId!==null){try{grid.releasePointerCapture(pointerId)}catch{/* capture may already be released */}}
    pointerId=null;lastPoint=null;active=-1;keyboardDrawing=false;
    const before=gesture;gesture=null;if(before)record(before);else render();
+   // Pointer traversal updates the roving origin; keep actual focus in sync,
+   // but never pull focus back from a toolbar, picker or dialog.
+   if(focusWasInGrid)buttons[focusCell]?.focus({preventScroll:true});
   }
   function start(cell:number){
    if(paused||disposed)return false;

@@ -153,3 +153,11 @@ test('a save during the held final gesture restores its move, undo record and on
  const final=await page.evaluate(()=>{const h=window as unknown as {ccSnapshotInstance:any;ccSnapshotScore:number};const result={score:h.ccSnapshotScore,completed:h.ccSnapshotInstance.serialize().completed};h.ccSnapshotInstance.dispose();document.querySelector('#cc-snapshot-test')?.remove();return result});
  expect(final).toEqual({score:100,completed:[0]});
 });
+test('pointer release synchronizes the trail-tip keyboard focus without stealing toolbar focus',async({page})=>{
+ await draw(page,[9,5]);
+ await expect(page.locator('[data-cc-cell="5"]')).toBeFocused();
+ await page.keyboard.press('ArrowRight');
+ await expect(page.locator('[data-cc-cell="6"]')).toBeFocused();
+ await page.getByRole('button',{name:'Hint',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeFocused();
+});
