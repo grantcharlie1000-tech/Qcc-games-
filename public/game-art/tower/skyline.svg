@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 470" aria-hidden="true">
+ <defs><linearGradient id="tw-sky" x2="0" y2="1"><stop stop-color="#b88fce"/><stop offset="1" stop-color="#f0c5cd"/></linearGradient><linearGradient id="tw-hill" x2="0" y2="1"><stop stop-color="#9f86bb"/><stop offset="1" stop-color="#b4a0c6"/></linearGradient></defs>
+ <path fill="url(#tw-sky)" d="M0 0h400v470H0z"/>
+ <circle cx="310" cy="88" r="36" fill="#ffe6be" opacity=".85"/>
+ <circle cx="310" cy="88" r="48" fill="none" stroke="#ffe6be" opacity=".17" stroke-width="12"/>
+ <g fill="#fff1e3" opacity=".3"><path d="M22 119h89a14 14 0 0 0-22-11 22 22 0 0 0-41-4 13 13 0 0 0-26 15Z"/><path d="M236 181h72a10 10 0 0 0-16-10 18 18 0 0 0-33-4 11 11 0 0 0-23 14Z"/></g>
+ <path d="m0 310 47-35 52 24 73-71 65 61 72-45 91 55v171H0Z" fill="#c0a1c8"/>
+ <path d="m0 362 68-40 57 26 87-43 77 44 65-31 46 28v124H0Z" fill="url(#tw-hill)"/>
+ <path d="m0 419 76-39 69 32 59-15 70 25 72-28 54 18v58H0Z" fill="#a98fb8"/>
+ <g fill="#ead2d9" opacity=".4"><path d="m27 257 2-5 2 5 5 2-5 2-2 5-2-5-5-2Z"/><path d="m157 80 1-4 1 4 4 1-4 1-1 4-1-4-4-1Z"/></g>
+</svg>

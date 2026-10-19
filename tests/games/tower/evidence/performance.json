@@ -1,0 +1,10 @@
+{
+  "browser": "154.0.8037.57",
+  "viewport": "390×844",
+  "samples": 90,
+  "medianMs": 16.69999999999999,
+  "p95Ms": 16.700000000000045,
+  "maxMs": 16.799999999999955,
+  "externalRequests": [],
+  "pageErrors": []
+}
