@@ -1,5 +1,4 @@
 import type {GameContext, GameInstance, GameModule} from '../../core/types';
-import {COUNTRIES} from './countries';
 import {
   BAND_LABEL, applyGuess, aucklandDate, band, createState, distanceKm, evaluate, guessColour, legend, liveStreak, nameOf,
   mergeState, newPractice, proximity, refreshDaily, restoreState, serializeState, type GameState, type Mode
@@ -21,7 +20,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       </div>
       <form class="gl-form" novalidate>
         <label class="sr-only" for="gl-input">Country name</label>
-        <input id="gl-input" class="gl-input" type="text" name="country" list="gl-names" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="Type a country…" maxlength="60">
+        <input id="gl-input" class="gl-input" type="text" name="country" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="Type a country…" maxlength="60">
         <button type="submit" class="game-button gl-submit">Guess</button>
       </form>
     </div>
@@ -43,8 +42,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
           <label class="gl-option"><input type="checkbox" class="gl-cb"> Colour-blind palette</label>
         </details>
       </aside>
-    </div>
-    <datalist id="gl-names">${COUNTRIES.map(c => `<option value="${escapeHtml(c.name)}"></option>`).join('')}</datalist>`;
+    </div>`;
   container.append(root);
 
   const $ = <T extends Element>(selector: string) => root.querySelector<T>(selector)!;

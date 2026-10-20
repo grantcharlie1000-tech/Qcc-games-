@@ -37,7 +37,7 @@ async function gameAction(page:Page,id:string){
     await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
   }
   if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
-  if(id==='globle'){await page.getByRole('combobox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');}
+  if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');}
   await page.clock.runFor(id==='snake'?220:id==='ball-run'?120:650);
 }
 
