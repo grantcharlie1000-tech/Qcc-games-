@@ -1,0 +1,12 @@
+{
+  "executed_checkpoint": "06929e0ce8775a0ba2df51da3e77c42bcd4c3180",
+  "final_reviewed_checkpoint": "db633ac9f23c6c2f0777315b6cdb6cdd5a89491e",
+  "only_changed_path": [
+    "tests/games/neon-coil/play.spec.ts"
+  ],
+  "only_comment_change": true,
+  "executed_test_sha256": "a5a5ef443b9d9859ab4ca2ae57b7fc708f3a83e3e9781d3ad16881d51a3c4f87",
+  "final_test_sha256": "85a89ccf004c98817cf97691cb9e1440a791b7b22f1276a0a293304f7800a3a6",
+  "final_status_porcelain": "",
+  "runtime_sha256": "9c486637cf124d09b922113bb0ac201ed667827bfdf8099ee6ec005144ce4f44"
+}

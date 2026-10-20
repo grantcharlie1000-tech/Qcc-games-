@@ -1,0 +1,138 @@
+{
+  "recordedAt": "2026-10-20T10:06:10.469Z",
+  "browser": "154.0.8037.57",
+  "cases": [
+    {
+      "transition": "pause",
+      "before": {
+        "gesture": "idle",
+        "shots": 0
+      },
+      "after": {
+        "gesture": "idle",
+        "shots": 0
+      },
+      "fresh": {
+        "gesture": "pull",
+        "shots": 1
+      },
+      "events": [
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "touch",
+          "id": 2
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "touch",
+          "id": 2
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        }
+      ],
+      "passed": true
+    },
+    {
+      "transition": "Study",
+      "before": {
+        "gesture": "idle",
+        "shots": 0
+      },
+      "after": {
+        "gesture": "idle",
+        "shots": 0
+      },
+      "fresh": {
+        "gesture": "pull",
+        "shots": 1
+      },
+      "events": [
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "touch",
+          "id": 2
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "touch",
+          "id": 2
+        },
+        {
+          "type": "pointerdown",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        },
+        {
+          "type": "pointerup",
+          "trusted": true,
+          "pointerType": "mouse",
+          "id": 1
+        }
+      ],
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "localChromium": {
+    "passed": 165,
+    "failed": 2,
+    "skipped": 0,
+    "duration": "6.1m",
+    "poolAndStudyCases": "all passed",
+    "failures": [
+      {
+        "test": "tests/games/ball-run/play.spec.ts:18",
+        "failure": "original x>.5 timeout reproduced",
+        "cause": "unclassified; trace render gap is circumstantial, no failed native-event/RAF record"
+      },
+      {
+        "test": "tests/games/solitaire/play.spec.ts:45",
+        "failure": "native touch move did not put 6 of hearts in column1",
+        "cause": "not fully classified; parent extracted frames show layout moving from clipped x185 to x12"
+      }
+    ]
+  },
+  "focusedBallRun": {
+    "passed": 4,
+    "failed": 0,
+    "workers": 2,
+    "duration": "31.4s",
+    "assertions": "unchanged",
+    "instrumentation": "scratch-only native events plus before/after game RAF callbacks; failed initial-press capture never occurred; passing tests reload before final capture",
+    "rootCause": "unclassified; passes do not erase full-suite RED"
+  },
+  "units": {
+    "passed": 282,
+    "failed": 0
+  },
+  "typeScript": "passed",
+  "build": {
+    "status": "passed",
+    "offlinePack": "d443f708b79d"
+  },
+  "sourceDiff": {
+    "poolModel": "unchanged",
+    "ballRunRuntimeAndTest": "unchanged",
+    "solitaireRuntimeAndTest": "unchanged"
+  },
+  "files": [
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/artifacts/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/error-context.md",
+      "bytes": 15731,
+      "sha256": "57e31bdf695b73c7aac420380545485b236f2da8423ad43f5ee33372e8e01db0"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/artifacts/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/test-failed-1.png",
+      "bytes": 56591,
+      "sha256": "3f7d24d4158936aa9029e589602726b6021afba73fa12d6975a808090a50d094"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/artifacts/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/trace.zip",
+      "bytes": 9009706,
+      "sha256": "e05553471c315e4c39ba02b5cf79b80581cdc09ab3a4e7375f78383e77671db6"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/artifacts/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm",
+      "bytes": 4797899,
+      "sha256": "07c121d413d941cadc80ea7c48cd111496eb48b69b2414c463e38493dc0bfba6"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/artifacts/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium/error-context.md",
+      "bytes": 14718,
+      "sha256": "a7f21285050b2590253b5c44780ea90ed176b9c262e6602316450891b6e5997a"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/artifacts/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium/test-failed-1.png",
+      "bytes": 149227,
+      "sha256": "70eee4b413d283943019b60b05d2a92d227f1626ebfd8de737b5be9cc47aa17d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/artifacts/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium/trace.zip",
+      "bytes": 574124,
+      "sha256": "1fc3453c17b9058b2fa94295b40c980ecf9fe72570362a84cf9e3bd34caa7e1e"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/ball-run-focused-native-summary.json",
+      "bytes": 1111,
+      "sha256": "7bbe18d0afaf344b80acd04abbb125ff4f3fb7f3cc052a328a216036ff7d4c0b"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/ball-run-focused.log",
+      "bytes": 1406,
+      "sha256": "430ceb13720d8e8e7b24edb9367a6d8654821252c1e22845bf12fee52633a833"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/ball-run-scratch-diagnostic.spec.ts",
+      "bytes": 16015,
+      "sha256": "23307bcbeab0c9e21250d64f1bb62fe8b5be52a36b324809b387cef514cc2f32"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/build.log",
+      "bytes": 3082,
+      "sha256": "8f582a7b2492021cc910b999947a879ef62faca3d27902481594367c5d17252a"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/full-chromium.log",
+      "bytes": 33308,
+      "sha256": "d2040a2fbc97f538d4f6fa7a65da7888b580a375bda6e0a57f09b5ea6dc0ae23"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/study-local-red-raw.txt",
+      "bytes": 3458,
+      "sha256": "03c03aadecbab2d9e6024462582842bb42af0404a419ffb253861585ff8b2038"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/local-followup/units.log",
+      "bytes": 2829,
+      "sha256": "ffcf4695ce7fe700a1b035863ac26790d0460b4786ae897b925643144acc356a"
+    }
+  ]
+}

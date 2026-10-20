@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import type {Page} from '@playwright/test';
+import {directShot} from '../games/pool/helpers';
 
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>page.locator(`[data-study-topic="${id}"]`).click();
@@ -29,7 +30,12 @@ async function gameAction(page:Page,id:string){
   if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
   if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
   if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
-  if(id==='pool')await page.getByRole('button',{name:'Shoot',exact:true}).click();
+  if(id==='pool'){
+    await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','0');
+    await directShot(page);
+    await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','1');
+    await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
+  }
   if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
   if(id==='globle'){await page.getByRole('combobox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');}
   await page.clock.runFor(id==='snake'?220:id==='ball-run'?120:650);
@@ -42,7 +48,7 @@ test('first visit offers exactly 20 topics and remembers the choice for this tab
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
   await choose(page,'quadratics');
-  await expect(page.locator('.game-card')).toHaveCount(14);
+  await expect(page.locator('.game-card')).toHaveCount(15);
   expect(await page.evaluate(key=>sessionStorage.getItem(key),topicKey)).toBe('quadratics');
   await page.reload();
   await expect(page.locator('.game-card').first()).toBeVisible();
@@ -266,7 +272,7 @@ for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,he
     await page.getByText('Read the explanation',{exact:true}).click();
     await expect(page.locator('details')).toHaveAttribute('open','');
     await returnToGame(page);
-    await expect(page.locator('.game-card')).toHaveCount(14);
+    await expect(page.locator('.game-card')).toHaveCount(15);
   });
 }
 

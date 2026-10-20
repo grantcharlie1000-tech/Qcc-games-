@@ -1,57 +1,118 @@
 import type {GameModule} from '../../core/types';
 import {createGame,step,shoot,restoreGame,POCKETS,groupOf,legalTargets,chooseAI,placeAICue,placeCue,validCuePosition,DT,type PoolState} from './model';
 import {drawTable} from './render';
+import {tablePoint,onFelt,beginDrag,moveDrag,releaseDrag,type Drag} from './input';
 import './style.css';
-export const rules='Eight-ball: click or tap the table to aim, choose power, then Shoot. The dotted line previews the first collision, not a guaranteed pot. Arrow keys on the table adjust aim; up/down change power. Pocket your solids (1–7) or stripes (9–15), then pocket the 8 in your selected numbered pocket. A legal pot keeps your turn; a legal miss passes it. Hit your group first (any colored ball on an open table), then pocket a ball or reach a cushion. A scratch, wrong first hit or no rail/pot gives the opponent ball-in-hand: click a clear spot and press Place cue. Groups are assigned by the first legal colored pot after the break. The 8 before your group is gone, in the wrong pocket, or on a foul loses. Local simplifications from WPA: only the 8 pocket is called; player 1 always breaks from the fixed head spot with a repeatable rack; every break foul or illegal break gives ball-in-hand anywhere, with no re-rack choice; a break 8 is automatically re-spotted. A break needs a pot or four object balls reaching cushions. No safety calls, temporary open-table group claims, spin, jumps or tournament/referee fouls. Play against the offline computer or pass the device to Player 2. Changing Players starts a new rack.';
+export const rules='Eight-ball: drag on the felt to aim, then drag the white ball backwards and release to shoot. Return to your starting point before releasing to cancel, or press C. A second finger cancels. The dotted line previews the first collision, not a guaranteed pot. Arrow keys on the table adjust aim; up/down change power; Enter or Space shoots. C cancels a drag. Escape opens Study and cancels. Pocket your solids (1–7) or stripes (9–15), then pocket the 8 in your selected numbered pocket. A legal pot keeps your turn; a legal miss passes it. Hit your group first (any colored ball on an open table), then pocket a ball or reach a cushion. A scratch, wrong first hit or no rail/pot gives the opponent ball-in-hand: tap or drag to a clear spot and release (keyboard: arrows then Enter). Groups are assigned by the first legal colored pot after the break. The 8 before your group is gone, in the wrong pocket, or on a foul loses. Local simplifications from WPA: only the 8 pocket is called; player 1 always breaks from the fixed head spot with a repeatable rack; every break foul or illegal break gives ball-in-hand anywhere, with no re-rack choice; a break 8 is automatically re-spotted. A break needs a pot or four object balls reaching cushions. No safety calls, temporary open-table group claims, spin, jumps or tournament/referee fouls. Play against the offline computer or pass the device to Player 2. Changing Players starts a new rack.';
 const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',rules,mount(container,context){
  let state=createGame(),paused=false,disposed=false,frame=0,last=0,accumulator=0,aiPlan:ReturnType<typeof chooseAI>|null=null;
  let ghost:{x:number;y:number;valid:boolean}|null=null;
  const abort=new AbortController(),root=document.createElement('div');root.className='pool-game';
- root.innerHTML=`<div class="pool-topline"><span class="pool-brand">THE POCKET CLUB</span><label class="pool-mode">Players <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option></select></label></div><div class="pool-players"><div class="pool-player"></div><div class="pool-player"></div></div><p class="pool-message" role="status"></p><div class="pool-table-wrap"><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Click to aim. Arrow keys adjust aim and power." width="440" height="840"></canvas></div><div class="pool-inhand" hidden><span>Ball-in-hand. Tap a clear spot, then confirm. Arrow keys move the cue.</span><button type="button" class="pool-place">Place cue</button></div><div class="pool-controls"><div class="pool-control-line"><label for="pool-angle">Aim</label><input id="pool-angle" aria-label="Aim angle" type="range" min="0" max="359" step="0.5" value="0"><output class="pool-angle-value">0°</output></div><div class="pool-control-line"><label for="pool-power">Power</label><input id="pool-power" aria-label="Shot power" type="range" min="5" max="100" value="95"><output class="pool-power-value">95%</output></div><div class="pool-actions"><button type="button" class="pool-left" aria-label="Aim left">↶</button><button type="button" class="pool-shoot">Shoot</button><button type="button" class="pool-right" aria-label="Aim right">↷</button></div><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((p,i)=>`<option value="${i}">${i+1} · ${p.label}</option>`).join('')}</select></div></div><div class="pool-under"><button type="button" class="pool-assist">Line up a shot</button><span class="pool-shot-count">Shot 0</span></div><p class="pool-tip">Tap to aim • slider for power • gold ring = called 8 pocket.<br>Solids have full color; stripes have a white band. Every ball is numbered.</p><p class="pool-live"></p>`;
+ root.innerHTML=`<div class="pool-topline"><span class="pool-brand">THE POCKET CLUB <small> / EIGHT BALL</small></span><label class="pool-mode">Players <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option></select></label></div><div class="pool-players"><div class="pool-player"></div><div class="pool-player"></div></div><p class="pool-message" role="status"></p><div class="pool-table-area"><div class="pool-cue-meter" aria-hidden="true"><span>POWER</span><div><i></i></div><b>‹</b></div><div class="pool-table-wrap"><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Drag felt to aim; pull white ball back and release to shoot. Arrow keys aim and change power; Enter shoots; C cancels." aria-describedby="pool-tip" width="840" height="440"></canvas></div></div><div class="pool-inhand" hidden>Ball-in-hand: tap or drag to a clear spot and release. Keyboard: arrows to move, Enter to place.</div><div class="pool-under"><div class="pool-pull"><span class="pool-gesture-label" role="status">Drag felt to aim · pull white ball back to shoot</span><div class="pool-power-track"><span></span></div><output class="pool-power-value" aria-live="off">Ready</output></div><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((_,i)=>`<option value="${i}">${i+1} · ${['Top right','Bottom right','Top middle','Bottom middle','Top left','Bottom left'][i]}</option>`).join('')}</select></div><span class="pool-shot-count">Shot 0</span></div><p class="pool-tip" id="pool-tip">1 · Drag the felt to aim. 2 · Pull back from the white ball, then release.<br>Cancel: return to your starting point, add a second finger, or press C. Keyboard: ← → aim · ↑ ↓ power · Enter shoot.</p><p class="pool-live"></p>`;
  container.append(root);
  const $=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
- const canvas=$<HTMLCanvasElement>('.pool-table'),power=$<HTMLInputElement>('#pool-power'),angle=$<HTMLInputElement>('#pool-angle'),pocket=$<HTMLSelectElement>('#pool-pocket'),mode=$<HTMLSelectElement>('[aria-label="Players"]'),fire=$<HTMLButtonElement>('.pool-shoot');
+ const canvas=$<HTMLCanvasElement>('.pool-table'),pocket=$<HTMLSelectElement>('#pool-pocket'),mode=$<HTMLSelectElement>('[aria-label="Players"]');
+ let drag:Drag|null=null,pointer:number|null=null,placing=false,keyboardPower=false;
+ let dragRect:DOMRect|null=null;
+ const contacts=new Set<number>();
+ const cue=()=>state.balls.find(b=>b.id===0)!;
  const human=()=>state.mode==='two'||state.turn===0;
  const canAim=()=>!paused&&!disposed&&state.phase==='aim'&&human()&&!state.ballInHand;
+ let lastStatus='';
+ const setText=(selector:string,value:string)=>{const el=$(selector);if(el.textContent!==value)el.textContent=value;};
  const name=(player:number)=>state.mode==='ai'?(player===0?'You':'Computer'):`Player ${player+1}`;
  function save(){context.save(instance.serialize());}
- function draw(){root.dataset.table=state.balls.map(b=>`${b.id}:${b.x.toFixed(2)},${b.y.toFixed(2)},${b.pocketed?1:0}`).join(';');drawTable(canvas,state,ghost,paused);}
+ function draw(){root.dataset.table=state.balls.map(b=>`${b.id}:${b.x.toFixed(2)},${b.y.toFixed(2)},${b.pocketed?1:0}`).join(';');drawTable(canvas,state,ghost,paused,drag);}
  function refresh(announce=false){
   root.dataset.phase=state.phase;root.dataset.shots=String(state.shots);root.dataset.turn=String(state.turn);root.dataset.table=state.balls.map(b=>`${b.id}:${b.x.toFixed(2)},${b.y.toFixed(2)},${b.pocketed?1:0}`).join(';');root.setAttribute('aria-busy',String(state.phase==='moving'));
   for(let i=0;i<2;i++){const el=root.querySelectorAll<HTMLElement>('.pool-player')[i],g=state.groups[i],remaining=g?state.balls.filter(b=>!b.pocketed&&groupOf(b.id)===g).length:0;el.classList.toggle('pool-current',state.turn===i&&state.phase!=='over');el.innerHTML=`<strong>${state.turn===i&&state.phase!=='over'?'▸ ':''}${name(i)}</strong><span>${g?`${g==='solids'?'● Solids 1–7':'◒ Stripes 9–15'} · ${remaining} left`:'Open table · no group yet'}</span><small>${g&&remaining===0?'ON THE 8':g?state.balls.filter(b=>!b.pocketed&&groupOf(b.id)===g).map(b=>b.id).join(' · '):'Pot after the break to choose'}</small>`;}
-  const text=state.phase==='over'?`${name(state.winner!)} won. ${state.message}`:state.phase==='moving'?`${name(state.turn)} · balls rolling…`:`${name(state.turn)} to play. ${state.message}`;$('.pool-message').textContent=text;
+  const text=state.phase==='over'?`${name(state.winner!)} won. ${state.message}`:state.phase==='moving'?`${name(state.turn)} · balls rolling…`:`${name(state.turn)} to play. ${state.message}`;setText('.pool-message',text);
   $('.pool-shot-count').textContent=`${state.shots} shot${state.shots===1?'':'s'}`;mode.value=state.mode;mode.disabled=paused;
-  angle.value=String((((state.angle+Math.PI/2)*180/Math.PI)%360+360)%360);power.value=String(Math.round(state.power*100));pocket.value=String(state.calledPocket);
-  $('.pool-angle-value').textContent=`${Math.round(Number(angle.value))}°`;$('.pool-power-value').textContent=`${Math.round(state.power*100)}%`;
-  fire.disabled=!canAim();angle.disabled=!canAim();power.disabled=!canAim();pocket.disabled=!canAim()||state.break;
-  for(const selector of ['.pool-left','.pool-right','.pool-assist'])$<HTMLButtonElement>(selector).disabled=!canAim();
-  const inHand=state.ballInHand&&human()&&state.phase==='aim';$('.pool-inhand').hidden=!inHand;$<HTMLButtonElement>('.pool-place').disabled=paused||!ghost?.valid;
-  $('.pool-live').textContent=state.phase==='over'?'Restart in the top toolbar to play again.':state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';
-  context.setScore(state.balls.filter(b=>b.id!==0&&!b.pocketed).length===15?0:state.balls.filter(b=>b.id!==0&&b.id!==8&&b.pocketed).length*100+(state.phase==='over'&&state.winner===0?1000:0));context.setLevel(state.phase==='over'?'Rack complete':`Shot ${state.shots+1}`);context.setStatus(text);if(announce)context.announce(text);
+  pocket.value=String(state.calledPocket);pocket.disabled=!canAim()||state.break;
+  const activePower=drag?.kind==='pull'?drag.power:keyboardPower?state.power:0;
+  root.dataset.gesture=placing?'place':drag?.kind||'idle';
+  $('.pool-power-value').textContent=activePower?`${Math.round(activePower*100)}%`:'Ready';
+  $('.pool-power-track span').style.width=`${activePower*100}%`;
+  $('.pool-cue-meter i').style.height=`${activePower*100}%`;
+  const gestureText=drag?.kind==='pull'?(drag.power>=.08?'Release to shoot · return to start to cancel':'Pull away from the aim line to build power'):drag?'Release to set aim · then pull white ball back':keyboardPower?`Aim ${Math.round(((state.angle+Math.PI/2)*180/Math.PI+360)%360)}° · ${Math.round(state.power*100)}% power · Enter to shoot`:'Drag felt to aim · pull white ball back to shoot';
+  setText('.pool-gesture-label',gestureText);
+  const inHand=state.ballInHand&&human()&&state.phase==='aim';$('.pool-inhand').hidden=!inHand;
+  const liveText=state.phase==='over'?'Restart in the top toolbar to play again.':state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';setText('.pool-live',liveText);
+  context.setScore(state.balls.filter(b=>b.id!==0&&!b.pocketed).length===15?0:state.balls.filter(b=>b.id!==0&&b.id!==8&&b.pocketed).length*100+(state.phase==='over'&&state.winner===0?1000:0));context.setLevel(state.phase==='over'?'Rack complete':`Shot ${state.shots+1}`);if(lastStatus!==text){context.setStatus(text);lastStatus=text;}if(announce)context.announce(text);
   draw();
  }
  function updated(){aiPlan=null;refresh();save();}
- function aimChange(degrees:number){if(!canAim())return;const radians=state.angle+degrees*Math.PI/180;state.angle=Math.atan2(Math.sin(radians),Math.cos(radians));updated();}
+ function aimChange(degrees:number){if(!canAim())return;keyboardPower=true;const radians=state.angle+degrees*Math.PI/180;state.angle=Math.atan2(Math.sin(radians),Math.cos(radians));updated();}
  function doShoot(){if(!canAim())return;if(shoot(state,state.angle,state.power,state.calledPocket)){context.sound('tap');ghost=null;updated();}}
- function point(event:PointerEvent){if(paused||disposed||state.phase!=='aim'||!human()||event.button!==0)return;const b=canvas.getBoundingClientRect(),x=(event.clientX-b.left)*440/b.width,y=(event.clientY-b.top)*840/b.height;
-  if(state.ballInHand){ghost={x,y,valid:validCuePosition(state,x,y)};refresh();return;}const cue=state.balls.find(b=>b.id===0)!;if(Math.hypot(x-cue.x,y-cue.y)<3)return;state.angle=Math.atan2(y-cue.y,x-cue.x);updated();canvas.focus({preventScroll:true});
+ function cancelDrag(){
+  const id=pointer;drag=null;pointer=null;placing=false;dragRect=null;
+  if(id!==null&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
  }
- function reset(next:PoolState['mode']=state.mode){state=createGame(next);ghost=null;aiPlan=null;last=0;accumulator=0;refresh(true);save();}
- const on=(el:HTMLElement,event:string,fn:EventListener)=>el.addEventListener(event,fn,{signal:abort.signal});
- on(canvas,'pointerdown',point as EventListener);on(fire,'click',doShoot);
- on(power,'input',()=>{if(canAim()){state.power=Number(power.value)/100;updated();}});on(angle,'input',()=>{if(canAim()){const a=(Number(angle.value)-90)*Math.PI/180;state.angle=Math.atan2(Math.sin(a),Math.cos(a));updated();}});on(pocket,'change',()=>{if(canAim()){state.calledPocket=Number(pocket.value);updated();}});on(mode,'change',()=>{if(!paused)reset(mode.value==='two'?'two':'ai');});on($('.pool-left'),'click',()=>aimChange(-1));on($('.pool-right'),'click',()=>aimChange(1));
- on($('.pool-assist'),'click',()=>{if(!canAim())return;const p=chooseAI(state);state.angle=p.angle;state.power=p.power;state.calledPocket=p.pocket;updated();});
- on($('.pool-place'),'click',()=>{if(!paused&&ghost?.valid&&placeCue(state,ghost.x,ghost.y)){ghost=null;context.sound('tap');updated();}});
- on(canvas,'keydown',((event:KeyboardEvent)=>{if(paused||disposed||!human()||state.phase!=='aim')return;if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Enter'].includes(event.key))return;event.preventDefault();
-  if(state.ballInHand){if(event.key==='Enter'&&ghost?.valid&&placeCue(state,ghost.x,ghost.y)){ghost=null;updated();return;}const cue=state.balls.find(b=>b.id===0)!;ghost=ghost||{x:cue.x,y:cue.y,valid:true};ghost.x+=event.key==='ArrowLeft'?-8:event.key==='ArrowRight'?8:0;ghost.y+=event.key==='ArrowUp'?-8:event.key==='ArrowDown'?8:0;ghost.valid=validCuePosition(state,ghost.x,ghost.y);refresh();return;}
-  if(event.key===' '||event.key==='Enter')doShoot();else if(event.key==='ArrowLeft'||event.key==='ArrowRight')aimChange((event.key==='ArrowLeft'?-1:1)*(event.shiftKey?.2:1));else{state.power=Math.max(.05,Math.min(1,state.power+(event.key==='ArrowUp'?.05:-.05)));updated();}
+ function changedLayout(){if(pointer!==null){cancelDrag();refresh();}}
+ function reset(next:PoolState['mode']=state.mode){cancelDrag();state=createGame(next);ghost=null;keyboardPower=false;aiPlan=null;last=0;accumulator=0;refresh(true);save();}
+ const on=(el:EventTarget,event:string,fn:EventListener,capture=false)=>el.addEventListener(event,fn,{signal:abort.signal,capture});
+ function sameLayout(){const r=canvas.getBoundingClientRect();return !!dragRect&&Math.abs(r.left-dragRect.left)<.5&&Math.abs(r.top-dragRect.top)<.5&&Math.abs(r.width-dragRect.width)<.5&&Math.abs(r.height-dragRect.height)<.5;}
+ on(window,'pointerdown',((event:PointerEvent)=>{
+  contacts.add(event.pointerId);
+  if(pointer!==null&&event.pointerId!==pointer){cancelDrag();refresh();}
+ }) as EventListener,true);
+ on(canvas,'pointerdown',((event:PointerEvent)=>{
+  if(pointer!==null||contacts.size>1||event.isPrimary===false||event.button!==0||paused||disposed||state.phase!=='aim'||!human())return;
+  const rect=canvas.getBoundingClientRect(),p=tablePoint(event.clientX,event.clientY,rect);
+  if(!onFelt(p))return;
+  if(state.ballInHand){placing=true;ghost={...p,valid:validCuePosition(state,p.x,p.y)};}
+  else {drag=beginDrag(p,cue(),state.angle,Math.min(55,Math.max(18,22*840/rect.width)));if(!drag)return;state.angle=drag.angle;keyboardPower=false;}
+  pointer=event.pointerId;dragRect=rect;canvas.setPointerCapture(pointer);canvas.focus({preventScroll:true});event.preventDefault();refresh();
+ }) as EventListener);
+ on(canvas,'pointermove',((event:PointerEvent)=>{
+  if(event.pointerId!==pointer)return;
+  event.preventDefault();if(!sameLayout()){changedLayout();return;}
+  const p=tablePoint(event.clientX,event.clientY,canvas.getBoundingClientRect());
+  if(placing)ghost={...p,valid:validCuePosition(state,p.x,p.y)};
+  else if(drag){moveDrag(drag,p,cue());state.angle=drag.angle;}
+  refresh();
+ }) as EventListener);
+ on(canvas,'pointerup',((event:PointerEvent)=>{
+  if(event.pointerId!==pointer)return;
+  event.preventDefault();if(!sameLayout()){changedLayout();return;}
+  const p=tablePoint(event.clientX,event.clientY,canvas.getBoundingClientRect());
+  if(placing){const valid=onFelt(p)&&validCuePosition(state,p.x,p.y);cancelDrag();if(valid&&placeCue(state,p.x,p.y)){ghost=null;context.sound('tap');}updated();return;}
+  if(drag)moveDrag(drag,p,cue());const shot=drag?releaseDrag(drag):null;cancelDrag();
+  if(shot&&canAim()){state.angle=shot.angle;state.power=shot.power;doShoot();}else updated();
+ }) as EventListener);
+ for(const event of ['pointercancel','lostpointercapture'])on(canvas,event,((e:PointerEvent)=>{if(e.pointerId===pointer){cancelDrag();refresh();}}) as EventListener);
+ for(const event of ['pointerup','pointercancel'])on(window,event,((e:PointerEvent)=>{contacts.delete(e.pointerId);}) as EventListener,true);
+ on(window,'resize',changedLayout);on(window,'blur',()=>{contacts.clear();changedLayout();});
+ if(window.visualViewport){on(window.visualViewport,'resize',changedLayout);on(window.visualViewport,'scroll',changedLayout);}
+ const resizeObserver=new ResizeObserver(changedLayout);resizeObserver.observe(canvas);
+ on(pocket,'change',()=>{if(canAim()){cancelDrag();state.calledPocket=Number(pocket.value);updated();}});
+ on(mode,'change',()=>{if(!paused)reset(mode.value==='two'?'two':'ai');});
+ on(canvas,'contextmenu',event=>{event.preventDefault();cancelDrag();refresh();});
+ on(canvas,'keydown',((event:KeyboardEvent)=>{
+  if(['c','C','Escape','Backspace'].includes(event.key)){event.preventDefault();cancelDrag();refresh();return;}
+  if(paused||disposed||!human()||state.phase!=='aim'||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Enter'].includes(event.key))return;
+  event.preventDefault();if(event.repeat&&(event.key===' '||event.key==='Enter'))return;
+  // A keyboard adjustment interrupts a pointer stroke; no stale release can fire it.
+  cancelDrag();
+  if(state.ballInHand){
+   if(event.key==='Enter'&&ghost?.valid&&placeCue(state,ghost.x,ghost.y)){ghost=null;updated();return;}
+   ghost=ghost||{x:cue().x,y:cue().y,valid:validCuePosition(state,cue().x,cue().y)};
+   // Screen axes are the clockwise rotation of model axes.
+   ghost.y+=event.key==='ArrowLeft'?8:event.key==='ArrowRight'?-8:0;
+   ghost.x+=event.key==='ArrowUp'?-8:event.key==='ArrowDown'?8:0;
+   ghost.valid=validCuePosition(state,ghost.x,ghost.y);refresh();return;
+  }
+  if(event.key===' '||event.key==='Enter')doShoot();
+  else if(event.key==='ArrowLeft'||event.key==='ArrowRight')aimChange((event.key==='ArrowLeft'?-1:1)*(event.shiftKey?.2:1));
+  else{keyboardPower=true;state.power=Math.max(.05,Math.min(1,state.power+(event.key==='ArrowUp'?.05:-.05)));updated();}
  }) as EventListener);
  function tick(now:number){if(paused||disposed)return;const elapsed=last?Math.min(.25,(now-last)/1000):0;last=now;
   const previous=state.phase;if(state.phase==='moving'){accumulator+=elapsed;while(accumulator>=DT&&state.phase==='moving'){step(state);accumulator-=DT;}if(state.phase!=='moving'){accumulator=0;aiPlan=null;if(state.ballInHand){const cue=state.balls.find(b=>b.id===0)!;ghost={x:cue.x,y:cue.y,valid:validCuePosition(state,cue.x,cue.y)};}refresh(true);context.sound(state.phase==='over'?'lose':'success');save();}}
   else if(state.phase==='aim'&&!human()){if(!aiPlan){if(state.ballInHand)placeAICue(state);aiPlan=chooseAI(state);state.angle=aiPlan.angle;state.power=aiPlan.power;state.calledPocket=aiPlan.pocket;refresh();}state.aiWait+=elapsed;if(state.aiWait>=.95){shoot(state,aiPlan.angle,aiPlan.power,aiPlan.pocket);aiPlan=null;context.sound('tap');save();}}
   if(previous!==state.phase)refresh();else if(state.phase==='moving')draw();frame=requestAnimationFrame(tick);
  }
- const instance={pause(){if(paused||disposed)return;paused=true;cancelAnimationFrame(frame);last=0;refresh();},resume(){if(!paused||disposed)return;paused=false;last=0;refresh();frame=requestAnimationFrame(tick);},restart(){reset();},serialize(){return JSON.parse(JSON.stringify(state)) as PoolState;},restore(data:unknown){const restored=restoreGame(data);if(!restored)return;state=restored;aiPlan=null;accumulator=0;last=0;const cue=state.balls.find(b=>b.id===0)!;ghost=state.ballInHand?{x:cue.x,y:cue.y,valid:validCuePosition(state,cue.x,cue.y)}:null;refresh();},dispose(){disposed=true;cancelAnimationFrame(frame);abort.abort();root.remove();}};
+ // Pausing cancels the stroke, but physical contacts end only on pointerup/cancel.
+ const instance={pause(){if(paused||disposed)return;cancelDrag();paused=true;cancelAnimationFrame(frame);last=0;refresh();},resume(){if(!paused||disposed)return;paused=false;last=0;refresh();frame=requestAnimationFrame(tick);},restart(){reset();},serialize(){return JSON.parse(JSON.stringify(state)) as PoolState;},restore(data:unknown){const restored=restoreGame(data);if(!restored)return;cancelDrag();state=restored;aiPlan=null;accumulator=0;last=0;const cue=state.balls.find(b=>b.id===0)!;ghost=state.ballInHand?{x:cue.x,y:cue.y,valid:validCuePosition(state,cue.x,cue.y)}:null;refresh();},dispose(){cancelDrag();resizeObserver.disconnect();disposed=true;cancelAnimationFrame(frame);abort.abort();root.remove();}};
  refresh();frame=requestAnimationFrame(tick);return instance;
 }};
 export default module;

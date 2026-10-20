@@ -1,0 +1,14 @@
+{
+  "browserVersion": "154.0.8037.57",
+  "gameCount": 14,
+  "deployments": [
+    "/",
+    "/Qcc-games-/"
+  ],
+  "gameDeploymentChecks": 28,
+  "allOfflineActionSaveRestartStudyRestoration": true,
+  "externalRequests": 0,
+  "pageErrors": 0,
+  "failedAssets": 0,
+  "rawReport": "/tmp/neon-coil-ci-fix/green/offline/offline-results.json"
+}

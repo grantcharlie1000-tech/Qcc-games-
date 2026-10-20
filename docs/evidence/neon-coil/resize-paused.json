@@ -1,0 +1,54 @@
+{
+  "lifecycle": "paused",
+  "before": {
+    "sha256": "7a3922b8f198a68fc8c1cce0f42cdee2298518717df3d01382cdc8a9f1edd3b4",
+    "phase": "running",
+    "ticks": 7,
+    "mass": 30
+  },
+  "resizes": [
+    {
+      "width": 390,
+      "height": 844,
+      "rows": 5,
+      "world": {
+        "sha256": "7a3922b8f198a68fc8c1cce0f42cdee2298518717df3d01382cdc8a9f1edd3b4",
+        "phase": "running",
+        "ticks": 7,
+        "mass": 30
+      }
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "rows": 10,
+      "world": {
+        "sha256": "7a3922b8f198a68fc8c1cce0f42cdee2298518717df3d01382cdc8a9f1edd3b4",
+        "phase": "running",
+        "ticks": 7,
+        "mass": 30
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "rows": 5,
+      "world": {
+        "sha256": "7a3922b8f198a68fc8c1cce0f42cdee2298518717df3d01382cdc8a9f1edd3b4",
+        "phase": "running",
+        "ticks": 7,
+        "mass": 30
+      }
+    }
+  ],
+  "after": {
+    "sha256": "7a3922b8f198a68fc8c1cce0f42cdee2298518717df3d01382cdc8a9f1edd3b4",
+    "phase": "running",
+    "ticks": 7,
+    "mass": 30
+  },
+  "errors": [],
+  "announcements": "0",
+  "bestBefore": "30",
+  "bestAfter": "30"
+}

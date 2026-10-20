@@ -1,0 +1,38 @@
+[WebServer] (node:16847) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:16860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 18 tests using 1 worker
+
+(node:16880) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/games/ball-run/play.spec.ts:10:1 › real drag and held keys steer; pause, Study, restart, restore, and disposal retain their contracts (6.9s)
+  ✓   2 [chromium] › tests/games/ball-run/play.spec.ts:50:1 › native phone touch drag steers continuously and cancel releases capture (3.9s)
+BALL_RUN_RENDER { calls: '7', geometries: '3' }
+BALL_RUN_RAF_MS { median: 50, p95: 100 }
+  ✓   3 [chromium] › tests/games/ball-run/play.spec.ts:65:1 › a real restored run accelerates through cyan gates and flies then lands across a gap without jumping (6.8s)
+  ✓   4 [chromium] › tests/games/ball-run/play.spec.ts:82:95 › perspective keeps a round ball and fills 390x844 (1.3s)
+  ✓   5 [chromium] › tests/games/ball-run/play.spec.ts:82:95 › perspective keeps a round ball and fills 844x390 (1.1s)
+  ✓   6 [chromium] › tests/games/ball-run/play.spec.ts:82:95 › perspective keeps a round ball and fills 1366x768 (1.6s)
+  ✓   7 [chromium] › tests/games/ball-run/play.spec.ts:92:1 › lost WebGL visibly saves and remains stopped until exit and re-entry (2.5s)
+  ✓   8 [chromium] › tests/games/ball-run/play.spec.ts:101:1 › unsupported WebGL gives a visible useful fallback and retains an existing save (792ms)
+  ✓   9 [chromium] › tests/games/ball-run/play.spec.ts:109:1 › procedural rendered blocks collide and repeated restarts release held input and reuse resources (3.2s)
+  ✓  10 [chromium] › tests/games/ball-run/play.spec.ts:127:1 › resizing during a held steering key retains keyboard control (2.1s)
+(node:17426) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 390x844 (1.2s)
+  ✓  12 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 844x390 (863ms)
+  ✓  13 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 1366x768 (1.3s)
+  ✓  14 [chromium] › tests/games/color-blocks/correction.spec.ts:30:1 › Escape, resize and lost capture cancel a gesture without arming a later board click (1.1s)
+  ✓  15 [chromium] › tests/games/color-blocks/correction.spec.ts:41:1 › a fresh keyboard selection can be placed by a board click after restore (570ms)
+  ✓  16 [chromium] › tests/games/color-blocks/correction.spec.ts:45:1 › held placement key cannot place a freshly selected second piece (469ms)
+  ✓  17 [chromium] › tests/games/color-blocks/correction.spec.ts:51:1 › pointer crossing clear shows short row/column feedback without changing scoring (1.4s)
+  ✓  18 [chromium] › tests/games/color-blocks/correction.spec.ts:60:2 › native touch evidence › trusted touch pickup, lifted preview, snap, invalid return and cancel (3.2s)
+
+  18 passed (41.8s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -26,7 +26,7 @@ let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null
 let focusLabelBeforeStudy:string|null=null;
 let libraryScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run']);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil']);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
 const fillGames=new Set<GameId>(['globle']);
 

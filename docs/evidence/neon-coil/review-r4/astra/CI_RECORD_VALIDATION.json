@@ -1,0 +1,86 @@
+[
+  {
+    "path": "SCOPE_SCAN.json",
+    "expected": "1a6224a0a8fae7407c4873b124ab86a101e3b9d5c1969c679b519a3aeec93041",
+    "actual": "1a6224a0a8fae7407c4873b124ab86a101e3b9d5c1969c679b519a3aeec93041",
+    "matches": true
+  },
+  {
+    "path": "ARTIFACTS.json",
+    "expected": "2323b77b2d8a4bf16eabbc900853e8444eda997604de98ae8d9dd4579564f773",
+    "actual": "2323b77b2d8a4bf16eabbc900853e8444eda997604de98ae8d9dd4579564f773",
+    "matches": true
+  },
+  {
+    "path": "CI_JOB.log",
+    "expected": "b847a407dcbcb0e300af92063793ed1f023e9648cfbcc2938a5065a30ed7a0c6",
+    "actual": "b847a407dcbcb0e300af92063793ed1f023e9648cfbcc2938a5065a30ed7a0c6",
+    "matches": true
+  },
+  {
+    "path": "INTEGRATION_QUEUE.md",
+    "expected": "d35f43f2b501d24977919962ee5997df96f99359d2fc1c89f43c3182ce96d398",
+    "actual": "d35f43f2b501d24977919962ee5997df96f99359d2fc1c89f43c3182ce96d398",
+    "matches": true
+  },
+  {
+    "path": "PUBLICATION_CHECKPOINT.md",
+    "expected": "2ef8ce2f61650b5eced3d0d0890d46f04aee2f7fc0f4dbf4d5e99389089a02cf",
+    "actual": "2ef8ce2f61650b5eced3d0d0890d46f04aee2f7fc0f4dbf4d5e99389089a02cf",
+    "matches": true
+  },
+  {
+    "path": "INITIAL_STATUSES.json",
+    "expected": "15e6000869bee3a22c33e4469e24deae666935e0127d72c8b10d1732c16a6039",
+    "actual": "15e6000869bee3a22c33e4469e24deae666935e0127d72c8b10d1732c16a6039",
+    "matches": true
+  },
+  {
+    "path": "FAILURE_EXCERPT.log",
+    "expected": "149c2df205302c45eb96e67bd0f1b0d4ac3a20d52cda1a0fe0c75cc067da8ad7",
+    "actual": "149c2df205302c45eb96e67bd0f1b0d4ac3a20d52cda1a0fe0c75cc067da8ad7",
+    "matches": true
+  },
+  {
+    "path": "INITIAL_RUN.json",
+    "expected": "c8608b1a7defefa82f44c835440e04f6a6fc14d63cb0766ea23e82135d5a4e5b",
+    "actual": "c8608b1a7defefa82f44c835440e04f6a6fc14d63cb0766ea23e82135d5a4e5b",
+    "matches": true
+  },
+  {
+    "path": "INITIAL_PR.json",
+    "expected": "9f346707010cf67a4ee6e26631ee4de3b82a937fcc7fb0608675d5ab6469d3d5",
+    "actual": "9f346707010cf67a4ee6e26631ee4de3b82a937fcc7fb0608675d5ab6469d3d5",
+    "matches": true
+  },
+  {
+    "path": "TERMINAL_JOBS.json",
+    "expected": "e8abd7d44f2dc0ee9bfffe041a8f609951e8c0925e70667d8cfe6a01c8692420",
+    "actual": "e8abd7d44f2dc0ee9bfffe041a8f609951e8c0925e70667d8cfe6a01c8692420",
+    "matches": true
+  },
+  {
+    "path": "TERMINAL_RUN.json",
+    "expected": "12a8efa3108e2555f84dfbc51c96841fa23234ead7f7909a4e1c588b46b6102b",
+    "actual": "12a8efa3108e2555f84dfbc51c96841fa23234ead7f7909a4e1c588b46b6102b",
+    "matches": true
+  },
+  {
+    "path": "FRESH_BASE_CHECK.json",
+    "expected": "58750ee0b265864e829d62a328b243a774eca34e901f3f530b00f6461913ff4b",
+    "actual": "58750ee0b265864e829d62a328b243a774eca34e901f3f530b00f6461913ff4b",
+    "matches": true
+  },
+  {
+    "path": "TRACE_SCOPE_SCAN.json",
+    "expected": "2fda48cf4d223f9668d5dfe58350c159a37885dadc0406e03187552967384c7c",
+    "actual": "2fda48cf4d223f9668d5dfe58350c159a37885dadc0406e03187552967384c7c",
+    "matches": true
+  },
+  {
+    "path": "TEST_MERGE.json",
+    "expected": "03851cef558b6f390291e8c1cfdab5b1ffa2a56ab0c73f7cfbe0c9c972c4df75",
+    "actual": "03851cef558b6f390291e8c1cfdab5b1ffa2a56ab0c73f7cfbe0c9c972c4df75",
+    "matches": true
+  }
+]

@@ -1,0 +1,419 @@
+{
+  "browser": "Chromium 154.0.8037.57",
+  "physicalHardware": false,
+  "webKitNativeEventsAvailable": false,
+  "cases": [
+    {
+      "case": "gesture feedback preserves table geometry at 768\u00d71024",
+      "project": "chromium",
+      "passed": true,
+      "events": [
+        {
+          "type": "pointermove",
+          "clientX": 405,
+          "clientY": 571.5499877929688,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 245.75,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointerdown",
+          "clientX": 245.75,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 236.5625,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 227.375,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 218.1875,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 209,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 199.8125,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 190.625,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 181.4375,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 172.25,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointerup",
+          "clientX": 172.25,
+          "clientY": 571.5546875,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        }
+      ],
+      "expectedPower": 0.75,
+      "expectedDisplay": "75%"
+    },
+    {
+      "case": "gesture feedback preserves table geometry at 1366\u00d7768",
+      "project": "chromium",
+      "passed": true,
+      "events": [
+        {
+          "type": "pointermove",
+          "clientX": 698.719970703125,
+          "clientY": 437.05999755859375,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 521.0651245117188,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointerdown",
+          "clientX": 521.0651245117188,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 510.81549072265625,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 500.56585693359375,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 490.31622314453125,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 480.06658935546875,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 469.81695556640625,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 459.56732177734375,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 449.31768798828125,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointermove",
+          "clientX": 439.06805419921875,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        },
+        {
+          "type": "pointerup",
+          "clientX": 439.06805419921875,
+          "clientY": 437.06158447265625,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 316.07244873046875,
+          "top": 236.62623596191406,
+          "width": 765.3059692382812,
+          "height": 400.8707275390625
+        }
+      ],
+      "expectedPower": 0.750000019938155,
+      "expectedDisplay": "75%"
+    },
+    {
+      "case": "integer native pointer positions preserve displayed and committed pull power",
+      "project": "chromium",
+      "passed": true,
+      "events": [
+        {
+          "type": "pointermove",
+          "clientX": 245,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointerdown",
+          "clientX": 245,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 235.875,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 226.75,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 217.625,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 208.5,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 199.375,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 190.25,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 181.125,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointermove",
+          "clientX": 172,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        },
+        {
+          "type": "pointerup",
+          "clientX": 172,
+          "clientY": 571,
+          "pointerId": 1,
+          "trusted": true,
+          "left": 62,
+          "top": 391.890625,
+          "width": 686,
+          "height": 359.328125
+        }
+      ],
+      "expectedPower": 0.7448979591836734,
+      "expectedDisplay": "74%"
+    }
+  ]
+}
