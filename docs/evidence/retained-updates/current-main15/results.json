@@ -1,0 +1,79 @@
+{
+  "sourceCodeCommit": "dc98dcc202bc03a1d48abfd019653ad41baa2844",
+  "browser": "Chromium154.0.8037.57",
+  "scope": "owned local persistent profiles; root and repository subpath",
+  "results": [
+    {
+      "scope": "/",
+      "baselineRequirementFailed": {
+        "message": "existing visitor must receive new 15-game baseline content\n\n13 !== 15\n",
+        "actual": 13,
+        "expected": 15,
+        "stack": "AssertionError [ERR_ASSERTION]: existing visitor must receive new 15-game baseline content\n\n13 !== 15\n\n    at file:///workspace/qcc-worktrees/update-integration/scripts/verify-retained-live.mjs:39:539"
+      },
+      "baselineGameCount": 15,
+      "candidateNewTabCount": 15,
+      "requiredCandidateGamesVisible": [
+        "Play Neon Coil",
+        "Play Globle"
+      ],
+      "oldGameDocumentRetainedDuringActivation": true,
+      "noOldTabsClosedBeforeCandidate": true,
+      "oldAssets": [
+        {
+          "file": "assets/index-C_SjeUHA.js",
+          "availableOffline": true,
+          "absentFromCandidateServer": true
+        },
+        {
+          "file": "assets/index-AGfafP1n.js",
+          "availableOffline": true,
+          "absentFromCandidateServer": true
+        }
+      ],
+      "actualProfileRestartBeforeAndAfter": true,
+      "progressSettingsBestFavouriteCookiePreserved": true,
+      "ordinaryOldGameReloadUpgraded": true,
+      "oldEntry": "assets/index-C_SjeUHA.js",
+      "baselineEntry": "assets/index-UE6I1vKs.js",
+      "candidateEntry": "assets/index-OtXyNVjA.js",
+      "candidateVersion": "075bc0982680"
+    },
+    {
+      "scope": "/Qcc-games-/",
+      "baselineRequirementFailed": {
+        "message": "existing visitor must receive new 15-game baseline content\n\n13 !== 15\n",
+        "actual": 13,
+        "expected": 15,
+        "stack": "AssertionError [ERR_ASSERTION]: existing visitor must receive new 15-game baseline content\n\n13 !== 15\n\n    at file:///workspace/qcc-worktrees/update-integration/scripts/verify-retained-live.mjs:39:539"
+      },
+      "baselineGameCount": 15,
+      "candidateNewTabCount": 15,
+      "requiredCandidateGamesVisible": [
+        "Play Neon Coil",
+        "Play Globle"
+      ],
+      "oldGameDocumentRetainedDuringActivation": true,
+      "noOldTabsClosedBeforeCandidate": true,
+      "oldAssets": [
+        {
+          "file": "assets/index-C_SjeUHA.js",
+          "availableOffline": true,
+          "absentFromCandidateServer": true
+        },
+        {
+          "file": "assets/index-AGfafP1n.js",
+          "availableOffline": true,
+          "absentFromCandidateServer": true
+        }
+      ],
+      "actualProfileRestartBeforeAndAfter": true,
+      "progressSettingsBestFavouriteCookiePreserved": true,
+      "ordinaryOldGameReloadUpgraded": true,
+      "oldEntry": "assets/index-C_SjeUHA.js",
+      "baselineEntry": "assets/index-UE6I1vKs.js",
+      "candidateEntry": "assets/index-OtXyNVjA.js",
+      "candidateVersion": "075bc0982680"
+    }
+  ]
+}
