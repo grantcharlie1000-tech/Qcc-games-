@@ -1,0 +1,157 @@
+
+ RUN  v3.2.7 /tmp/qcc-fair-hand
+
+ ❯ tests/games/color-blocks/fair-deal.test.ts (8 tests | 6 failed) 85ms
+   × fair three-piece deals > offers a complete hand, rather than only one fitting piece, without mutating its input 14ms
+     → expected null not to be null
+   × fair three-piece deals > accounts for a line clear that unlocks a piece that cannot fit initially 7ms
+     → expected 4 to be 3 // Object.is equality
+   × fair three-piece deals > uses a validated dot fallback when all deferred bag shapes are blocked 4ms
+     → expected [ 18, 16, 17 ] to deeply equal [ +0, +0, +0 ]
+   × fair three-piece deals > does not manufacture an impossible hand for an already full board 6ms
+     → expected { version: 1, …(8) } to deeply equal { version: 1, …(8) }
+   ✓ fair three-piece deals > preserves a restored or partly used trapped tray instead of rerolling it 1ms
+   ✓ fair three-piece deals > still allows a poor placement to strand the remaining pieces 2ms
+   × fair three-piece deals > has a complete independently verified hand across reproducible sparse and dense boards 9ms
+     → Target cannot be null or undefined.
+   × fair three-piece deals > retains reproducible saves through thirty complete chosen hands per seed 39ms
+     → Target cannot be null or undefined.
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/color-blocks/fair-deal.test.ts > fair three-piece deals > offers a complete hand, rather than only one fitting piece, without mutating its input
+AssertionError: expected null not to be null
+ ❯ tests/games/color-blocks/fair-deal.test.ts:10:47
+      8|   const before=state(checker(),[18,16,17,0]),copy=structuredClone(befo…
+      9|   expect(next.tray).toHaveLength(3);expect(next.tray.every(p=>p!==null…
+     10|   expect(solveHand(next.board,next.tray)).not.toBeNull();expect(before…
+       |                                               ^
+     11|   expect(next.board).toEqual(before.board);expect(next.score).toBe(bef…
+     12|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  tests/games/color-blocks/fair-deal.test.ts > fair three-piece deals > accounts for a line clear that unlocks a piece that cannot fit initially
+AssertionError: expected 4 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 4
+
+ ❯ tests/games/color-blocks/fair-deal.test.ts:19:55
+     17|   const next=deal(state(board,[4,18,5])),witness=solveHand(board,next.…
+     18|   expect(next.tray).toContain(18);expect(witness).not.toBeNull();expec…
+     19|   expect(place({...next,tray:[4,18,5]},0,0,0)!.lines).toBe(3);
+       |                                                       ^
+     20|  });
+     21|  it('uses a validated dot fallback when all deferred bag shapes are bl…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  tests/games/color-blocks/fair-deal.test.ts > fair three-piece deals > uses a validated dot fallback when all deferred bag shapes are blocked
+AssertionError: expected [ 18, 16, 17 ] to deeply equal [ +0, +0, +0 ]
+
+- Expected
++ Received
+
+  [
+-   0,
+-   0,
+-   0,
++   18,
++   16,
++   17,
+  ]
+
+ ❯ tests/games/color-blocks/fair-deal.test.ts:23:21
+     21|  it('uses a validated dot fallback when all deferred bag shapes are bl…
+     22|   const before=state(checker(),[18,16,17]),next=deal(before);
+     23|   expect(next.tray).toEqual([0,0,0]);expect(next.bag).toEqual(before.b…
+       |                     ^
+     24|  });
+     25|  it('does not manufacture an impossible hand for an already full board…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  tests/games/color-blocks/fair-deal.test.ts > fair three-piece deals > does not manufacture an impossible hand for an already full board
+AssertionError: expected { version: 1, …(8) } to deeply equal { version: 1, …(8) }
+
+- Expected
++ Received
+
+@@ -1,11 +1,7 @@
+  {
+-   "bag": [
+-     18,
+-     16,
+-     17,
+-   ],
++   "bag": [],
+    "board": [
+      1,
+      1,
+      1,
+      1,
+@@ -74,11 +70,11 @@
+    "lines": 0,
+    "moves": 0,
+    "rng": 43795860,
+    "score": 0,
+    "tray": [
+-     null,
+-     null,
+-     null,
++     18,
++     16,
++     17,
+    ],
+    "version": 1,
+  }
+
+ ❯ tests/games/color-blocks/fair-deal.test.ts:26:73
+     24|  });
+     25|  it('does not manufacture an impossible hand for an already full board…
+     26|   const before=state(Array(64).fill(1),[18,16,17]);expect(deal(before)…
+       |                                                                         ^
+     27|  });
+     28|  it('preserves a restored or partly used trapped tray instead of rerol…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  tests/games/color-blocks/fair-deal.test.ts > fair three-piece deals > has a complete independently verified hand across reproducible sparse and dense boards
+AssertionError: Target cannot be null or undefined.
+ ❯ tests/games/color-blocks/fair-deal.test.ts:43:102
+     41|    let rng=seed;const board=clearReference(Array.from({length:64},()=>…
+     42|    const before=state(board,[...createGame(seed).bag],seed),a=deal(bef…
+     43|    expect(a).toEqual(b);expect(a.tray.every(p=>p!==null)).toBe(true);e…
+       |                                                                                                      ^
+     44|    expect(restoreGame(a)).toEqual(a);seen.add(a.tray.join(','));
+     45|   }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  tests/games/color-blocks/fair-deal.test.ts > fair three-piece deals > retains reproducible saves through thirty complete chosen hands per seed
+AssertionError: Target cannot be null or undefined.
+ ❯ tests/games/color-blocks/fair-deal.test.ts:53:61
+     51|    let s=createGame(seed);
+     52|    for(let hand=0;hand<30;hand++){
+     53|     const witness=solveHand(s.board,s.tray);expect(witness).toHaveLeng…
+       |                                                             ^
+     54|     for(const move of witness!){
+     55|      const restored=restoreGame(JSON.parse(JSON.stringify(s)))!;const …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 2 passed (8)
+   Start at  01:46:32
+   Duration  651ms (transform 114ms, setup 0ms, collect 119ms, tests 85ms, environment 0ms, prepare 142ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -19,16 +19,30 @@ export function canPlace(board:readonly number[],shape:number,x:number,y:number)
 }
 export function fits(board:readonly number[],shape:number):boolean{for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++)if(canPlace(board,shape,x,y))return true;return false;}
 export function hasMove(s:Pick<State,'board'|'tray'>):boolean{return s.tray.some(shape=>shape!==null&&fits(s.board,shape));}
+function anchors(board:readonly number[],shape:number):[number,number][]{
+ const options:[number,number][]=[];for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++)if(canPlace(board,shape,x,y))options.push([x,y]);return options;
+}
 export function deal(input:State):State{
  const s=structuredClone(input);if(s.tray.some(p=>p!==null))return s;
- if(!s.bag.length)refillBag(s);
- // Keep every shape in the shuffle bag, but move a fitting shape into an otherwise
- // entirely unplayable next deal. No extra random rolls and no discarded shapes.
- if(!s.bag.slice(0,3).some(shape=>fits(s.board,shape))){
-  const i=s.bag.findIndex(shape=>fits(s.board,shape));
-  if(i>0)s.bag.unshift(s.bag.splice(i,1)[0]);
+ // Construct a three-move witness on a private board. Each step scans at most
+ // nineteen shapes and sixty-four anchors; there are no retry/search loops.
+ let board=[...s.board];const hand:number[]=[];
+ for(let slot=0;slot<3;slot++){
+  if(!s.bag.length)refillBag(s);
+  let shape=0,index=-1,options:[number,number][]=[];
+  for(let i=0;i<s.bag.length;i++){
+   options=anchors(board,s.bag[i]);if(options.length){shape=s.bag[i];index=i;break;}
+  }
+  // Preserve blocked bag entries for later. A dot is the bounded fallback,
+  // accepted only with an actual legal anchor on this intermediate board.
+  if(index<0)options=anchors(board,0);
+  if(!options.length)return structuredClone(input);
+  if(index>=0)s.bag.splice(index,1);
+  const [x,y]=options[Math.floor(random(s)*options.length)];
+  for(const [dx,dy] of SHAPES[shape])board[(y+dy)*SIZE+x+dx]=colorOf(shape);
+  board=clearLines(board).board;hand.push(shape);
  }
- s.tray=Array.from({length:3},()=>{if(!s.bag.length)refillBag(s);return s.bag.shift()!;});
+ s.tray=hand;
  return s;
 }
 export function createGame(seed=0x43b10c):State{return deal({version:1,board:Array(64).fill(0),tray:[null,null,null],bag:[],rng:(seed>>>0)||1,score:0,combo:0,moves:0,lines:0});}
