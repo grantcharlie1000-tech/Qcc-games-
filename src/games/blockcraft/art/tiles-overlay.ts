@@ -21,8 +21,9 @@ const crackOrder:{index:number;colour:RGBA}[]=(()=>{
     }
   };
   mark(7,8,0,rgb(0x141414));mark(8,7,.02,rgb(0x141414));
+  // Main arms run from the centre most of the way to the edges, so the last stages cover the whole face.
   const arms=6;
-  for(let a=0;a<arms;a++)branch(7.5,7.5,a/arms*Math.PI*2+random()*.6,.04+a*.07,6+Math.floor(random()*4),0);
+  for(let a=0;a<arms;a++)branch(7.5,7.5,a/arms*Math.PI*2+random()*.6,.04+a*.07,8+Math.floor(random()*3),0);
   const order:{index:number;colour:RGBA}[]=[];
   for(let i=0;i<T*T;i++)if(Number.isFinite(time[i]))order.push({index:i,colour:colour[i]});
   order.sort((a,b)=>time[a.index]-time[b.index]||a.index-b.index);

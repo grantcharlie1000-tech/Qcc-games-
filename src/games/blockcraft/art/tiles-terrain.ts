@@ -197,8 +197,10 @@ const ORE_STYLES:Record<string,OreStyle>={
   diamond:{dark:0x1a9890,mid:0x4fdcd3,light:0xc2fffa,clusters:6,size:7},
   emerald:{dark:0x0d7a2e,mid:0x1cbf55,light:0x8ef4ae,clusters:6,size:6}
 };
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1]] as const;
 /** Ore cluster mask: 0 none, 1 dark lower-right rim, 2 body, 3 upper-left highlight, 4 accent. Each cluster grows
- *  from a 2×2 core by adding random edge neighbours, so ores read as chunky nuggets embedded in the stone. */
+ *  from a 2×2 core by adding edge neighbours, preferring cells that touch more of the cluster, so ores read as
+ *  chunky nuggets embedded in the stone rather than thin worms. */
 function oreMask(style:OreStyle,salt:number):Uint8Array{
   const mask=new Uint8Array(T*T),random=rng(salt),centres:[number,number][]=[];
   for(let tries=0;centres.length<style.clusters&&tries<300;tries++){
@@ -206,14 +208,21 @@ function oreMask(style:OreStyle,salt:number):Uint8Array{
     if(centres.some(([x,y])=>Math.max(Math.abs(x-cx),Math.abs(y-cy))<4))continue;
     centres.push([cx,cy]);
     const blob=[[cx,cy],[cx+1,cy],[cx,cy+1],[cx+1,cy+1]];
+    const has=(x:number,y:number)=>blob.some(([bx,by])=>bx===x&&by===y);
     while(blob.length<style.size){
-      const [bx,by]=blob[Math.floor(random()*blob.length)],dir=Math.floor(random()*4);
-      const nx=bx+[1,-1,0,0][dir],ny=by+[0,0,1,-1][dir];
-      if(nx<0||ny<0||nx>15||ny>15||blob.some(([x,y])=>x===nx&&y===ny))continue;
-      blob.push([nx,ny]);
+      const candidates:[number,number,number][]=[];let total=0;
+      for(const [bx,by] of blob)for(const [dx,dy] of DIRS){
+        const nx=bx+dx,ny=by+dy;
+        if(nx<0||ny<0||nx>15||ny>15||has(nx,ny)||candidates.some(([x,y])=>x===nx&&y===ny))continue;
+        const touching=DIRS.filter(([ex,ey])=>has(nx+ex,ny+ey)).length,weight=touching*touching+1;
+        candidates.push([nx,ny,weight]);total+=weight;
+      }
+      if(!candidates.length)break;
+      let r=random()*total,chosen=candidates[candidates.length-1];
+      for(const c of candidates){r-=c[2];if(r<0){chosen=c;break;}}
+      blob.push([chosen[0],chosen[1]]);
     }
     // Body everywhere, a dark rim where the nugget ends below and to the right, one highlight on its upper-left pixel.
-    const has=(x:number,y:number)=>blob.some(([bx,by])=>bx===x&&by===y);
     let lit=blob[0];
     for(const [x,y] of blob){
       mask[y*T+x]=!has(x,y+1)&&!has(x+1,y)?1:style.accent&&hash(x,y,salt+9)<.25?4:2;
@@ -232,9 +241,12 @@ export function ore(name:string,base:Painter,salt:number,darken=1):Painter{
 const DEEP=ramp(0x393940,0x414148,0x494950,0x515159,0x5a5a62,0x64646c);
 /** Deepslate side: dark slate with a strong vertical grain. */
 export const deepslate:Painter=cached((x,y)=>{
-  const v=contrast(valueNoise(x,y,2,16,301)*.5+valueNoise(x,y,1,8,302)*.35+valueNoise(x,y,1,2,303)*.15,1.8);
-  if(hash(x,y>>2,304)<.08)return DEEP[0];
-  return pick(DEEP,v);
+  // Each column is cut into vertical streaks of 3-5 px with their own tone; a few streaks are dark grain lines.
+  const len=3+Math.floor(hash(x,2,303)*3),seg=Math.floor(((y+Math.floor(hash(x,1,302)*16))%T)/len);
+  const v=contrast(hash(x,0,301)*.4+hash(x,seg,304)*.45+hash(x,y,305)*.15,1.6);
+  if(hash(x,seg,306)<.13)return DEEP[0];
+  if(hash(x,seg,307)>.93)return DEEP[5];
+  return pick(DEEP.slice(1,5),v);
 },300);
 /** Deepslate top: the cut face shows rough concentric layers instead of grain. */
 export const deepslateTop:Painter=cached((x,y)=>{
@@ -302,12 +314,16 @@ export const lavaStill=lava(401,1,1);
 export const lavaFlow=lava(411,.5,2);
 
 // ---- Farmland ---------------------------------------------------------------------------------------
-function farmland(p:RGBA[],salt:number):Painter{
+/** Tilled soil: grainy earth raked into four wavering furrows (a dark trough under a lighter ridge), broken by clods. */
+function farmland(p:RGBA[],clod:RGBA,salt:number):Painter{
   return cached((x,y)=>{
-    const wobble=Math.round(valueNoise(x,y,8,16,salt)*1.4),row=(y+wobble)%4,h=hash(x,y,salt+1);
-    const k=row===0?3+(h<.3?1:0):row===3?0:1+(h<.5?1:0);
-    return x===0||y===0||x===15||y===15?shade(p[Math.min(4,k)],.88):p[Math.min(4,k)];
+    const wobble=Math.round(valueNoise(x,y,4,16,salt)*2-.5),row=((y+wobble)%4+4)%4,h=hash(x,y,salt+1);
+    const soil=contrast(fbm(x,y,salt+2,1,1,.7),1.5);
+    if(h<.045)return clod;
+    if(row===3)return h<.75?pick(p.slice(0,2),soil):p[2];
+    if(row===0)return pick(p.slice(2),soil*.7+h*.3);
+    return pick(p.slice(1,4),soil);
   },salt);
 }
-export const farmlandDry=farmland(ramp(0x5c3e25,0x6d4a2d,0x7b5535,0x89603d,0x976c47),421);
-export const farmlandMoist=farmland(ramp(0x2b190d,0x372113,0x422918,0x4e311d,0x5a3923),431);
+export const farmlandDry=farmland(ramp(0x553923,0x664530,0x74503a,0x815b41,0x91694b),rgb(0x9e7956),421);
+export const farmlandMoist=farmland(ramp(0x24150a,0x301c0f,0x3b2314,0x472b19,0x553420),rgb(0x5f3d26),431);
