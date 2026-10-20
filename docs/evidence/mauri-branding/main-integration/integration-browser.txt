@@ -1,0 +1,16 @@
+
+Running 4 tests using 1 worker
+
+(node:27099) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 320 (5.0s)
+  ✓  2 [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 390 (1.8s)
+  ✓  3 [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 1366 (4.1s)
+  ✓  4 [chromium] › tests/e2e/branding.spec.ts:10:1 › pre-brand game keys still restore progress, settings, favourites and topic (2.6s)
+
+  4 passed (14.5s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

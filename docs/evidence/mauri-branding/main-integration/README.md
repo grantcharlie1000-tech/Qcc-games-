@@ -1,0 +1,9 @@
+# Main integration of reviewed branding
+
+Merged `0cec65902d85570640ec7e1b7a3c817a6b59f2aa` (main with direct-cue Pool) into reviewed branding `55df52c6a4b8cd6ff48dd4d33be3d3d2fea2cbb6`. Conflict-free merge checkpoint: `34f667c66805994a3bba40a0d1f4efdf7983bf0f`; existing commits/ancestry retained. No product edits were needed.
+
+`integration-proof.json` confirms all48 original branding paths byte-identical to reviewed55df, all278 tracked main game/core/SW/test/offline-script paths byte-identical to0cec, and the merge's diff against main exactly equal to the reviewed48-path branding change. The two added branding test files are the only test additions versus main; the captured-state fixture is also unchanged. Proof names the product merge checkpoint; this subsequent evidence-only commit adds this directory.
+
+On frozen merged source: `npm test` passed283 units; `npm run build` passed TypeScript and produced pack`d297cf0f4166`; `ARCADE_URL=http://127.0.0.1:4194 PLAYWRIGHT_BROWSERS_PATH=/tmp/qcc-playwright npx playwright test tests/e2e/branding.spec.ts --project=chromium --workers=1` passed4/4 in14.5s. Existing tests/assertions were unchanged. One regenerated library1366 screenshot was copied to scratch and restored to its reviewed bytes. Raw logs and SHA256 fingerprints are adjacent. No duplicate broad game/offline run was performed: earlier d59d offline/root-subpath metadata evidence remains explicitly prior-checkpoint evidence.
+
+This is a local integration/evidence checkpoint for parent-coordinated draft publication and full CI. No external write, installed-PWA update or automatic-update reliability claim. PR4 diagnostics and the separate article/photo branch remain untouched. Future article-header integration still needs the brand preserved in Study view/style. No photos were consumed here.

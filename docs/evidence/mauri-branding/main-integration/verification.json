@@ -1,0 +1,21 @@
+{
+  "reviewedBrandHead": "55df52c6a4b8cd6ff48dd4d33be3d3d2fea2cbb6",
+  "main": "0cec65902d85570640ec7e1b7a3c817a6b59f2aa",
+  "mergeHead": "34f667c66805994a3bba40a0d1f4efdf7983bf0f",
+  "units": 283,
+  "brandingBrowserCases": 4,
+  "browserWorkers": 1,
+  "typescriptAndBuild": "pass",
+  "pack": "d297cf0f4166",
+  "offlineRerun": false,
+  "sourceUnchangedDuringChecks": true,
+  "browserScreenshotRestored": "library-1366.png; regenerated copy retained in scratch",
+  "reviewedBrandPathsUnchanged": 48,
+  "mainGameCoreSwTestOfflinePathsUnchanged": 278,
+  "artifactSha256": {
+    "integration-proof.json": "ebca628ce804436dafdeed8f5bd0fdf48dd6f342e25364c45865ab424c10f22c",
+    "integration-units.txt": "6b1893cedad198273b5ef641ce9e21e09df6fa93184a1bcb65cabebb9a68a21b",
+    "integration-build.txt": "60038cb845675fdd2d820167925fc0da26f5e75e40f3ab0d82e6666279cdd981",
+    "integration-browser.txt": "52ca18e98eb3abda65371d36078bd3f90020fde3996c0f759def13254e38300a"
+  }
+}
