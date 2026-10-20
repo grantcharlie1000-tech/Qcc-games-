@@ -1,3 +1,4 @@
+import { writeFile } from 'node:fs/promises';
 import { test, expect, seedStudyTopic, type Page } from '../../fixtures';
 const evidence = process.env.NEON_COIL_EVIDENCE_DIR || 'docs/evidence/neon-coil';
 const game = (page: Page) => page.locator('.nc-game');
@@ -236,3 +237,52 @@ test('short narrow viewport keeps intro and Boost within the supported 320px wid
   }
   await page.screenshot({ path: `${evidence}/intro-320.png` });
 });
+
+for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
+  test(`resize synchronizes ranking without advancing ${lifecycle} arena`, async ({ page }) => {
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize({ width: 1280, height: 720 }); await open(page);
+    if (lifecycle !== 'ready') await page.locator('.nc-start').click();
+    if (lifecycle === 'paused') {
+      await page.clock.runFor(150); await page.locator('#pause-game').click();
+    } else if (lifecycle === 'dead') {
+      await page.keyboard.down('ArrowLeft');
+      for (let n = 0; n < 44; n++) await page.clock.fastForward(250);
+      await page.keyboard.up('ArrowLeft'); await expect(game(page)).toHaveAttribute('data-phase', 'dead');
+    }
+    await expect(page.locator('.nc-ranking li')).toHaveCount(10);
+    await page.evaluate(() => {
+      const announcer = document.querySelector<HTMLElement>('#announcer')!;
+      announcer.dataset.resizeAnnouncements = '0';
+      new MutationObserver(records => { announcer.dataset.resizeAnnouncements = String(Number(announcer.dataset.resizeAnnouncements) + records.length); }).observe(announcer, { childList: true, subtree: true });
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    const before = await saved(page);
+    const resizes: { width: number; height: number; rows: number; world: typeof before }[] = [];
+    const bestBefore = await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'));
+    // No fake-clock advancement: canvas and HUD must synchronize in the same native resize delivery.
+    for (const size of [{ width: 390, height: 844, rows: 5 }, { width: 1280, height: 720, rows: 10 }, { width: 844, height: 390, rows: 5 }]) {
+      await page.setViewportSize(size);
+      await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+      expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      const world = await saved(page); resizes.push({ ...size, world });
+      expect(world).toEqual(before);
+    }
+    if (lifecycle !== 'running') {
+      await page.clock.runFor(300); await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      expect(await saved(page)).toEqual(before);
+      expect.soft(await page.locator('.nc-ranking li').count(), 'Stopped simulation cannot leave stale ranking indefinitely').toBe(5);
+    }
+    expect(await page.locator('#announcer').getAttribute('data-resize-announcements')).toBe('0');
+    expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'))).toBe(bestBefore);
+    expect(errors).toEqual([]);
+    await page.screenshot({ path: `${evidence}/resize-${lifecycle}.png` });
+    await writeFile(`${evidence}/resize-${lifecycle}.json`, JSON.stringify({ lifecycle, before, resizes, after: await saved(page), errors, announcements: await page.locator('#announcer').getAttribute('data-resize-announcements'), bestBefore, bestAfter: await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil')) }, null, 2));
+    if (lifecycle === 'paused') await page.locator('#pause-game').click();
+    if (lifecycle === 'running' || lifecycle === 'paused') {
+      await page.clock.runFor(200);
+      expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(before.ticks);
+    }
+  });
+}

@@ -39,7 +39,12 @@ const module: GameModule = {
       if (touchId !== null && canvas.hasPointerCapture(touchId)) canvas.releasePointerCapture(touchId);
       if (boostId !== null && boost.hasPointerCapture(boostId)) boost.releasePointerCapture(boostId);
       boostId = null; keys.clear(); keyBoost = buttonBoost = false; touchId = null; pointer = null; keyboardAngle = undefined; state.snakes[0].boosting = false; }
-    function resize() { const rect = root.getBoundingClientRect(); renderer.resize(rect.width, rect.height); renderer.draw(state, 1, context.settings.reducedMotion); }
+    function resize() {
+      const rect = root.getBoundingClientRect(); renderer.resize(rect.width, rect.height);
+      // Layout-dependent HUD must follow the canvas even when simulation is stopped.
+      uiAt = -Infinity; update(performance.now());
+      renderer.draw(state, 1, context.settings.reducedMotion);
+    }
     const observer = new ResizeObserver(resize); observer.observe(root);
     window.addEventListener('resize', resize, { signal });
     function persist() { context.save(snapshot(state)); }
