@@ -1,6 +1,6 @@
 # Neon Coil verification — 20 October 2026
 
-Local implementation is ready for the parent-allocated Astra review. No push, public PR, merge, release or deployment was performed.
+The original local checkpoint below was reviewed by the parent-allocated Astra seat. Review findings, retained failures, and subsequent Sol 6.1 verification are appended under **Review R1**. No push, public PR, merge, release or deployment was performed.
 
 ## Completed checks
 
@@ -49,3 +49,21 @@ Run the browser suite with `npx playwright test tests/games/neon-coil/play.spec.
 - **WebKit was not executed.** The installed browser executable is absent at `/tmp/neon-coil-browsers/webkit-2370/pw_run.sh`. The normal Playwright `install ffmpeg webkit` setup stopped while downloading ffmpeg with HTTP **403**, body **`Domain forbidden`**, beginning at `https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1013/ffmpeg-linux.zip`. The installer failed before WebKit installation. No manual alternate-network or direct-curl workaround was attempted. System Chromium and system ffmpeg completed the authorized local checks and recording.
 - **Reference PDF/video were not opened here.** The required Library transfer-helper resource returned **`skill package is not available`**. The parent-supplied safely inspected brief/manifest was used. No ZIP was executed; no ZIP HTTP 403 response occurred in this environment.
 - Mouse and multi-touch inputs are browser-generated. Physical trackpad/mobile hardware testing is not claimed.
+
+## Review R1 — Sol 6.1 fixes awaiting exact-checkpoint Astra re-review
+
+Astra reviewed `cc08465d3cf015ca842f8de80d9c92e6f77f953e` and found no Critical issues, with two Important findings: Boost-first touch ordering could not steer, and short landscape layouts obscured the YOU row/clipped the intro. Its complete initial report and independent reproduction/model/browser evidence are preserved in `docs/evidence/neon-coil/review-r1/astra-initial/`.
+
+Sol 6.1 fixed independently owned touch pointers, capture cleanup, height-aware ranking, and compact short-screen cards. An adjacent 320×568 check reproduced a clipped card, offscreen Boost, and footer overlap; narrow cards/Boost now stay within the available viewport. Only arena UI/input and its browser tests changed. The simulation, renderer, existing game/study sources, original screenshots, recording, benchmark and offline results remain unchanged.
+
+Before fixes, the corrected targeted regressions produced **four expected failures and one pass**. The separate 320×568 regression also failed before its fix. Raw failed logs, screenshots, traces, test-helper corrections and intermediate attempts remain under `review-r1/sol61/red/` and `green/`; `verification-results.json` identifies authoritative final runs. Earlier pre-audit failures are recorded in `review-r1/prior-verification-failures.md`, including the limitation that initial overwritten traces were not retained.
+
+Final Sol 6.1 checks on the fixed source passed:
+
+- **14 Chromium browser cases** in the complete arena suite, including both touch orders, steering reacquisition during held Boost, real collision/death, pause/Study/save/restart/disposal, actual intro/ranking/footer bounds, and 320×568, 740×360 and 844×390 layouts.
+- Strict TypeScript, **288 model/core tests across 25 files**, and production build.
+- Offline root and repository-subpath checks with **zero external requests, page errors or failed assets**, final pack `544fc4c6a30b` with 72 files.
+
+Authoritative outputs are `review-r1/sol61/green/{final14,typescript-final14,unit-final14,build-final14,offline-final14}.log`, screenshots in `green/final14/`, and offline evidence in `offline/final14/`. New runs use the optional `NEON_COIL_EVIDENCE_DIR` variable so the frozen original evidence is preserved.
+
+No new performance benchmark is claimed for the UI-only correction. Original default-Canvas and slower forced-SwiftShader results remain above and in their original JSON. Reference PDF/video, WebKit, physical trackpad/hardware limitations remain open. Exact-checkpoint Astra re-review is the remaining local review step; no publication is authorized.

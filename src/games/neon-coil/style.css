@@ -33,4 +33,21 @@ body.in-game .game-view[data-game-id=neon-coil] #game-menu{bottom:max(20px,env(s
 @media(max-width:700px){.nc-score em{display:none}}
 @media(max-width:700px){.nc-ranking{right:14px;top:94px;width:156px;padding:11px 10px 7px}.nc-ranking li,.nc-you{grid-template-columns:14px 5px minmax(0,1fr) auto;gap:5px;font-size:10px;min-height:24px}.nc-ranking h2{font-size:9px;margin-bottom:7px}.nc-score{top:20px}.nc-score>strong{font-size:34px}.nc-score em{font-size:8px}.nc-score>span{font-size:8px}.nc-hint{font-size:9px;margin-bottom:10px}.nc-hint>span{padding:0 3px}.nc-bottom{bottom:86px}.nc-boost{height:48px;min-width:180px}.nc-card{padding:25px 25px 22px}.nc-card h2{font-size:37px}.nc-card h2 span{font-size:27px}.nc-overlay{padding:90px 18px 88px}.nc-ranking:has(~.nc-overlay:not([hidden])){visibility:hidden}}
 @media(max-height:600px){.nc-card{padding:20px 28px}.nc-card h2{font-size:32px}.nc-card h2 span{font-size:24px;margin-bottom:12px}.nc-eyebrow{margin-bottom:12px}.nc-copy{margin-bottom:12px;font-size:12px}.nc-guide{gap:7px;margin-bottom:14px;font-size:11px}.nc-footnote{margin-top:10px;font-size:9px}.nc-overlay{padding-top:67px;padding-bottom:60px}.nc-ranking{top:88px;padding-top:10px}.nc-ranking li{min-height:20px}.nc-bottom{bottom:18px}.nc-hint{display:none}.nc-score em{display:none}}
-@media(max-width:700px) and (max-height:600px){.nc-bottom{left:25%;bottom:14px}.nc-ranking{width:145px;top:80px}.nc-card{width:370px}.nc-guide{display:none}}
+@media(max-width:700px) and (max-height:600px){.nc-bottom{left:25%;bottom:14px}.nc-ranking{width:145px;top:80px}.nc-card{width:min(370px,100%)}.nc-guide{display:none}}
+
+/* Keep the full intro and actual player rank above the host footer in landscape. */
+@media(min-width:701px) and (max-height:600px){
+  .nc-overlay{padding:66px 24px 78px}
+  .nc-card{width:min(580px,100%);padding:16px 24px;display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
+  .nc-eyebrow{display:none}
+  .nc-card h2{grid-column:1;grid-row:1;font-size:28px}
+  .nc-card h2 span{font-size:21px;margin:5px 0 0}
+  .nc-copy{grid-column:1;grid-row:2;font-size:11px;line-height:1.6;margin:0}
+  .nc-guide,.nc-result{grid-column:2;grid-row:1;align-self:center;margin:0;font-size:11px;gap:6px}
+  .nc-guide b{margin-right:7px}
+  .nc-start{grid-column:2;grid-row:2;align-self:center;min-height:44px}
+  .nc-footnote{grid-column:1 / -1;margin:0;font-size:9px;line-height:1.5}
+  .nc-ranking:has(~.nc-overlay:not([hidden])){visibility:hidden}
+}
+
+@media(max-width:500px) and (max-height:600px){.nc-bottom{left:50%;bottom:86px}}

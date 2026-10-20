@@ -1,4 +1,5 @@
 import { test, expect, seedStudyTopic, type Page } from '../../fixtures';
+const evidence = process.env.NEON_COIL_EVIDENCE_DIR || 'docs/evidence/neon-coil';
 const game = (page: Page) => page.locator('.nc-game');
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pocket-arcade:v1:save:neon-coil')!).data);
 async function open(page: Page) {
@@ -45,7 +46,7 @@ test('rim death creates real food, exposes death reason, and replay has one loop
   await expect(page.locator('.nc-copy')).toContainText(/rim|body|Head-on/);
   expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
   await expect(page.getByRole('button', { name: 'Play again', exact: true })).toBeVisible();
-  await page.screenshot({ path: 'docs/evidence/neon-coil/death-browser.png' });
+  await page.screenshot({ path: `${evidence}/death-browser.png` });
   await page.getByRole('button', { name: 'Play again', exact: true }).click(); await page.clock.runFor(1000);
   const ticks = Number(await game(page).getAttribute('data-tick')); expect(ticks).toBeGreaterThan(50); expect(ticks).toBeLessThanOrEqual(60);
   await expect(page.locator('.nc-canvas')).toHaveCount(1);
@@ -57,7 +58,7 @@ test('real hover steering into a local bot body causes death and collectible pel
   await expect(game(page)).toHaveAttribute('data-phase', 'dead');
   await expect(page.locator('.nc-copy')).toContainText('body');
   expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
-  await page.screenshot({ path: 'docs/evidence/neon-coil/body-collision-browser.png' });
+  await page.screenshot({ path: `${evidence}/body-collision-browser.png` });
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
   const ended = await saved(page); expect(ended.snakes[0].alive).toBe(false); expect(ended.snakes[0].body).toHaveLength(0);
   expect(ended.food.some((food: { trail: boolean }) => food.trail)).toBe(true);
@@ -86,6 +87,7 @@ test('resize, high DPI, reduced motion and controls fit desktop, ultrawide and t
       await page.clock.runFor(34);
       return page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }));
     }).toEqual({ w: size.width * 2, h: size.height * 2 });
+    expect(await page.locator('.nc-ranking li').count()).toBe(size.width < 600 || size.height < 600 ? 5 : 10);
     for (const selector of ['#pause-game', '#restart-game', '.nc-boost']) {
       const box = (await page.locator(selector).boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(size.width); expect(box.y + box.height).toBeLessThanOrEqual(size.height);
@@ -111,7 +113,7 @@ test('touch drag and a second finger on the boost control steer without scrollin
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
   await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-boosting', 'false');
   expect(await page.evaluate(() => [scrollX, scrollY])).toEqual([0, 0]);
-  await page.screenshot({ path: 'docs/evidence/neon-coil/touch-390.png' }); await context.close();
+  await page.screenshot({ path: `${evidence}/touch-390.png` }); await context.close();
 });
 test('focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message)); await open(page);
@@ -149,4 +151,72 @@ test('the library retains original grid Snake and opens Neon Coil separately', a
   await page.getByRole('link', { name: 'Play Neon Coil', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); await expect(page.locator('.snake-game')).toHaveCount(0);
+});
+
+for (const order of ['steering-first', 'boost-first', 'reacquire'] as const) {
+  test(`native touch ownership: ${order}`, async ({ browser, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Native multi-touch requires Chromium CDP.');
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    await seedStudyTopic(context); const page = await context.newPage(); await open(page); await page.locator('.nc-start').tap();
+    const cdp = await context.newCDPSession(page);
+    const b = (await page.locator('.nc-boost').boundingBox())!;
+    const boost = { x: b.x + b.width / 2, y: b.y + b.height / 2, id: 1 };
+    const steer = { x: 195, y: 422, id: 2 };
+    const send = (type: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel', touchPoints: { x: number; y: number; id: number }[]) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+    try {
+      await send('touchStart', [order === 'boost-first' ? boost : steer]);
+      await send('touchStart', [boost, steer]);
+      if (order === 'reacquire') {
+        // CDP touchEnd identifies the contact to release; Boost stays down.
+        await send('touchEnd', [steer]);
+        steer.id = 3;
+        await send('touchStart', [boost, steer]);
+      }
+      steer.y = 200; await send('touchMove', [boost, steer]); await page.clock.runFor(500);
+      await page.screenshot({ path: `${evidence}/touch-${order}.png` });
+      await expect(game(page)).toHaveAttribute('data-boosting', 'true');
+      expect(Number(await game(page).getAttribute('data-angle'))).toBeLessThan(-1);
+      expect(Number(await game(page).getAttribute('data-y'))).toBeLessThan(-40);
+      // A further arena finger cannot steal the tracked steering pointer.
+      await send('touchStart', [boost, steer, { x: 195, y: 600, id: 4 }]);
+      await page.clock.runFor(150);
+      expect(Number(await game(page).getAttribute('data-angle'))).toBeLessThan(-1);
+      await send('touchCancel', []); await page.clock.runFor(150);
+      await expect(game(page)).toHaveAttribute('data-boosting', 'false');
+    } finally { await context.close(); }
+  });
+}
+for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }]) {
+  test(`short landscape bounds and unobscured player ranking ${size.width}x${size.height}`, async ({ page }) => {
+    await page.setViewportSize(size); await open(page);
+    const bounds = async (selector: string) => (await page.locator(selector).boundingBox())!;
+    const card = await bounds('.nc-card'), enter = await bounds('.nc-start');
+    const footer = await bounds('#restart-game');
+    await page.screenshot({ path: `${evidence}/intro-${size.width}.png` });
+    expect.soft(card.y).toBeGreaterThanOrEqual(62);
+    expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+    expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+    expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+    await page.locator('.nc-start').click(); await page.clock.runFor(150);
+    await expect(page.locator('.nc-you')).toBeVisible();
+    const you = await bounds('.nc-you');
+    await page.screenshot({ path: `${evidence}/running-${size.width}.png` });
+    expect.soft(await page.locator('.nc-ranking li').count()).toBe(5);
+    expect.soft(you.y + you.height).toBeLessThanOrEqual(footer.y - 8);
+    for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.nc-boost']) {
+      const control = await bounds(selector);
+      const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+      expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+    }
+  });
+}
+test('short narrow viewport keeps intro and Boost within the supported 320px width', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 }); await open(page);
+  for (const selector of ['.nc-card', '.nc-start', '.nc-boost']) {
+    const box = (await page.locator(selector).boundingBox())!;
+    expect.soft(box.x, selector).toBeGreaterThanOrEqual(0);
+    expect.soft(box.x + box.width, selector).toBeLessThanOrEqual(320);
+    expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(498);
+  }
+  await page.screenshot({ path: `${evidence}/intro-320.png` });
 });

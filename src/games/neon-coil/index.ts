@@ -27,6 +27,7 @@ const module: GameModule = {
     let state = createArena(), paused = false, disposed = false, savedRun = false, frame = 0, last: number | null = null;
     let uiAt = -Infinity, lastScore = -1, lastPhase = '', seed = state.seed, keyBoost = false, buttonBoost = false;
     let steering: 'pointer' | 'keyboard' = 'keyboard', pointer: { x: number; y: number } | null = null, touchId: number | null = null;
+    let boostId: number | null = null;
     let best = context.highScore, keyboardAngle: number | undefined;
     const keys = new Set<string>(), frameCosts: number[] = [];
     const directions: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
@@ -34,7 +35,10 @@ const module: GameModule = {
       let x = 0, y = 0; for (const key of keys) { const d = directions[key]; if (d) { x += d[0]; y += d[1]; } }
       if (x || y) keyboardAngle = Math.atan2(y, x);
     }
-    function clearInput() { keys.clear(); keyBoost = buttonBoost = false; touchId = null; pointer = null; keyboardAngle = undefined; state.snakes[0].boosting = false; }
+    function clearInput() {
+      if (touchId !== null && canvas.hasPointerCapture(touchId)) canvas.releasePointerCapture(touchId);
+      if (boostId !== null && boost.hasPointerCapture(boostId)) boost.releasePointerCapture(boostId);
+      boostId = null; keys.clear(); keyBoost = buttonBoost = false; touchId = null; pointer = null; keyboardAngle = undefined; state.snakes[0].boosting = false; }
     function resize() { const rect = root.getBoundingClientRect(); renderer.resize(rect.width, rect.height); renderer.draw(state, 1, context.settings.reducedMotion); }
     const observer = new ResizeObserver(resize); observer.observe(root);
     window.addEventListener('resize', resize, { signal });
@@ -45,7 +49,7 @@ const module: GameModule = {
       best = Math.max(best, score); mass.textContent = String(score);
       if (score !== lastScore) { context.setScore(score); lastScore = score; }
       context.setLevel(`Classic · #${place} · ${BOT_COUNT} local bots`);
-      const limit = renderer.view.width < 600 ? 5 : 10;
+      const limit = renderer.view.width < 600 || renderer.view.height < 600 ? 5 : 10;
       const entries = ranks.slice(0, limit);
       const row = (name: string, value: number, rank: number, color: string) => `<span class="nc-place">${rank}</span><i style="background:${color}" aria-hidden="true"></i><span class="nc-name">${name}</span><strong>${Math.floor(value)}</strong>`;
       // Names and colors are fixed local constants, never data from storage or the network.
@@ -85,17 +89,19 @@ const module: GameModule = {
     function setPointer(event: PointerEvent) { const rect = canvas.getBoundingClientRect(); pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top }; steering = 'pointer'; }
     canvas.addEventListener('pointermove', event => {
       if (paused || state.phase !== 'running') return;
-      if (event.pointerType === 'mouse' || event.pointerId === touchId) { setPointer(event); if (event.pointerType !== 'mouse') event.preventDefault(); }
+      if ((event.pointerType === 'mouse' && touchId === null) || event.pointerId === touchId) { setPointer(event); if (event.pointerType !== 'mouse') event.preventDefault(); }
     }, { signal });
     canvas.addEventListener('pointerdown', event => {
-      if (paused || state.phase !== 'running' || !event.isPrimary || event.button !== 0) return;
+      if (paused || state.phase !== 'running' || event.button !== 0) return;
+      // Touch primary status belongs to the whole device, including a held Boost finger.
+      if (touchId !== null || (event.pointerType === 'mouse' && !event.isPrimary)) return;
       canvas.focus({ preventScroll: true }); setPointer(event);
       if (event.pointerType !== 'mouse') { touchId = event.pointerId; canvas.setPointerCapture(event.pointerId); event.preventDefault(); }
     }, { signal });
     const releaseTouch = (event: PointerEvent) => { if (event.pointerId === touchId) { touchId = null; pointer = null; } };
     canvas.addEventListener('pointerup', releaseTouch, { signal }); canvas.addEventListener('pointercancel', releaseTouch, { signal }); canvas.addEventListener('lostpointercapture', releaseTouch, { signal });
-    boost.addEventListener('pointerdown', event => { if (boost.disabled || event.button !== 0) return; event.preventDefault(); buttonBoost = true; boost.setPointerCapture(event.pointerId); }, { signal });
-    for (const name of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) boost.addEventListener(name, () => { buttonBoost = false; }, { signal });
+    boost.addEventListener('pointerdown', event => { if (boost.disabled || event.button !== 0 || boostId !== null) return; event.preventDefault(); boostId = event.pointerId; buttonBoost = true; boost.setPointerCapture(event.pointerId); }, { signal });
+    for (const name of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) boost.addEventListener(name, event => { if (event.pointerId === boostId) { boostId = null; buttonBoost = false; } }, { signal });
     boost.addEventListener('keydown', event => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); buttonBoost = !boost.disabled; } }, { signal });
     boost.addEventListener('keyup', event => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); buttonBoost = false; } }, { signal });
     boost.addEventListener('blur', () => { buttonBoost = false; }, { signal });
@@ -145,7 +151,7 @@ const module: GameModule = {
         state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
         if (savedRun) state.phase = 'ready'; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion);
       },
-      dispose() { disposed = true; events.abort(); observer.disconnect(); cancelAnimationFrame(frame); root.remove(); }
+      dispose() { disposed = true; clearInput(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); root.remove(); }
     };
   }
 };

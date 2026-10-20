@@ -1,0 +1,67 @@
+{
+  "baseHead": "cc08465d3cf015ca842f8de80d9c92e6f77f953e",
+  "codeSha256": {
+    "src/games/neon-coil/index.ts": "cd0ebf9f7a0a9471f1a977d0adbb69f01276b5968d1152bdfe66ec2b750e7f81",
+    "src/games/neon-coil/style.css": "1f646e43bb529288f7ac17464e6227ca8551f547b4829357161427af5df551f0",
+    "tests/games/neon-coil/play.spec.ts": "a0aabbde01934ee52a18fd58fc5b2ef1232a1664afd7e273e0e2aa7641bd44b8"
+  },
+  "red": {
+    "correctedOriginalUI": {
+      "passed": 1,
+      "failed": 4,
+      "log": "red/corrected.log"
+    },
+    "narrow320": {
+      "failed": 1,
+      "log": "red/narrow.log"
+    }
+  },
+  "green": {
+    "targeted": {
+      "passed": 5,
+      "log": "green/targeted-final.log"
+    },
+    "narrow320": {
+      "passed": 1,
+      "log": "green/narrow.log"
+    },
+    "completeArena": {
+      "passed": 14,
+      "log": "green/final14.log"
+    },
+    "strictTypeScript": "green/typescript-final14.log",
+    "unitTests": {
+      "passed": 288,
+      "files": 25,
+      "log": "green/unit-final14.log"
+    },
+    "productionBuild": {
+      "version": "544fc4c6a30b",
+      "offlineFiles": 72,
+      "log": "green/build-final14.log"
+    },
+    "offline": {
+      "deployments": [
+        "/",
+        "/Qcc-games-/"
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "failedAssets": 0,
+      "report": "offline/final14/offline-results.json",
+      "log": "green/offline-final14.log"
+    }
+  },
+  "preservedIntermediateFailures": [
+    "red/reporter.log: initial reacquisition helper released the wrong CDP contact; corrected baseline rerun is authoritative",
+    "green/targeted.log and green/targeted2.log: pre-correction reacquisition helper; first run also overlapped a source edit causing HMR; subsequent browser runs used frozen files",
+    "green/typescript.log and green/build.log: new CDP helper initially typed event type as string; corrected to protocol union"
+  ],
+  "limitations": [
+    "Chromium-generated mouse/touch input; no physical trackpad or mobile hardware claim",
+    "WebKit absent; no download retry or bypass attempted",
+    "Reference PDF/video not opened; inherited Library helper failure unchanged",
+    "No engine benchmark repeated; UI-only fixes preserve prior performance evidence",
+    "Uncommitted; coordinator owns exact-checkpoint Astra re-review and documentation append; no publication"
+  ]
+}
