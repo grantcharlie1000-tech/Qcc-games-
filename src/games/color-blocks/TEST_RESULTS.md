@@ -33,3 +33,14 @@ All three layout tests assert a square board, top HUD clearance, tray bounds and
 The existing lifecycle test sampled 45 **idle** RAF intervals (median 16.70ms, p95 16.80ms). This is only browser idle cadence, not active game performance or physical-device performance.
 
 References are stills only; no supplied MP4 exists. No physical phone/trackpad, original timing parity, or measured device-performance claim is made. Parent owns independent review, full integration and deployment.
+
+## Fair three-piece follow-up — 20 October 2026
+
+Separate local branch `feat/fair-color-blocks`. The complete unit suite passes
+274 tests; Color Blocks has 23 passing model/input cases and 18 passing Chromium
+browser cases. The new native-input case fails on the original dealer and passes
+on the bounded constructive dealer. New trays were independently solved on 384
+seeded boards and through 300 complete trays. Root/subpath offline play and the
+69-file production build pass. See `docs/FAIR_COLOR_BLOCKS.md` and its raw
+evidence folder for bounds, fallback, measurements, save compatibility and
+the local WebKit limitation. Exact-checkpoint Astra review precedes publication.
