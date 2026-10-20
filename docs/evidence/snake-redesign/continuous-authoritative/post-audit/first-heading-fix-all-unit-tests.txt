@@ -1,0 +1,53 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/qcc-snake
+
+ ✓ tests/games/color-blocks/fair-deal.test.ts (8 tests) 774ms
+   ✓ fair three-piece deals > has a complete independently verified hand across reproducible sparse and dense boards  407ms
+   ✓ fair three-piece deals > retains reproducible saves through thirty complete chosen hands per seed  339ms
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 695ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 1837ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  1110ms
+   ✓ Flappy Bird original reed flight > a simple timed pilot clears 100 seeded gates using the real simulation  704ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 794ms
+   ✓ long seeded runs > keeps valid saves and deterministic future deals across many tray boundaries  698ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 1160ms
+   ✓ pool physics > breaks the fifteen-ball triangle, settles finitely and remains deterministic  379ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 4529ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  857ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  3414ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 523ms
+ ✓ tests/games/snake/model.test.ts (34 tests) 1210ms
+   ✓ Snake continuous authoritative model > completes a full-garden cycle at all 256 earned segments with large and mixed frame partitions  1003ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 344ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 500ms
+   ✓ render-only tall-stack framing > restores a real seed51 five-animal settled run without geometry changes  348ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 399ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 276ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 172ms
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 184ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 96ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 45ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 45ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 36ms
+ ✓ tests/core/study.test.ts (5 tests) 9ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 14ms
+ ✓ tests/games/snake/presentation.test.ts (5 tests) 12ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 17ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 38ms
+ ✓ tests/core/storage.test.ts (5 tests) 6ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 4ms
+
+ Test Files  25 passed (25)
+      Tests  303 passed (303)
+   Start at  11:38:35
+   Duration  9.96s (transform 1.59s, setup 0ms, collect 3.11s, tests 13.72s, environment 34ms, prepare 3.85s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

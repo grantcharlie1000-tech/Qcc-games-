@@ -1,4 +1,6 @@
-# Continuous Snake — coordinator verification
+# Continuous Snake — initial coordinator verification
+
+**Historical source-specific run:** final post-audit results and exact-runtime independent review are in [final verification](post-audit/effect-version-final/verification.md). Art, sizing and contact code are unchanged by the later save-validation/effect corrections, so captures and profiling below retain their stated provenance.
 
 Source checkpoint: `511ed3bc51e47dd4b1f53b32c072b0ae4c95174d`, isolated branch `redesign/snake-smooth`. All checks below ran after the final junction-rounding fix. Source/test files remained identical to that commit; this evidence is an additional local commit. Independent Astra review is next. Nothing was published or deployed.
 

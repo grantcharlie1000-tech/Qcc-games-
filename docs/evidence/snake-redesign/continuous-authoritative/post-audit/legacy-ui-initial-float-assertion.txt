@@ -1,0 +1,23 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
+    x: 5,
++   y: 5.500000000000001
+-   y: 5.5
+  }
+
+    at file:///tmp/qcc-snake-post-audit-ui.mjs:21:681 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: { x: 5, y: 5.500000000000001 },
+  expected: { x: 5, y: 5.5 },
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

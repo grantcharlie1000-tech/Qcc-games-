@@ -1,0 +1,12 @@
+
+> pocket-offline-arcade@1.0.0 verify:offline
+> node scripts/verify-offline.mjs
+
+OFFLINE PASS root snake + Study
+OFFLINE PASS subpath snake + Study
+Verified 1 games offline at both root and repository subpath.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

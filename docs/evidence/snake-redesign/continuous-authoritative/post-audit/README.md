@@ -1,4 +1,8 @@
-# Post-audit legacy heading correction
+# Post-audit correction history
+
+**Final status:** exact runtime `ffa5e45` passes broad coordinator verification and narrow independent re-review. [Final evidence](effect-version-final/verification.md), [narrow Astra review](effect-version-final/astra-review.md). Earlier rounds below retain their original source/check timing.
+
+## Legacy heading correction
 
 Astra’s audit of exact candidate `c4156180c1f590212cbeb47f25245dbfe78605c5` identified one minor validation gap: malformed ready/running v1 saves could face back through their own neck, convert successfully, then produce an invalid v2 trail after continuation. Production v1 nonterminal saves did not generate that heading.
 
@@ -8,7 +12,7 @@ The minimal migration guard rejects a negative head-to-neck/heading dot product 
 - [Focused units](unit-tests.txt): **39 passed / 2 files**, including explicit perpendicular running/lost and reverse fatal-lost migration, exact v2 reload, continuation and frozen-loss checks.
 - [Strict TypeScript](typecheck.txt): pass.
 
-This is a local corrective checkpoint pending independent re-review. Earlier audit/browser logs and screenshots remain historical evidence for their exact source, and no external publication occurred.
+This initial local corrective checkpoint was pending independent re-review at that stage. Earlier audit/browser logs and screenshots remain historical evidence for their exact source, and no external publication occurred.
 
 ## Related first-leg cases from 8ef re-review
 
@@ -20,7 +24,7 @@ A shared departure check now validates both the stored live heading and first qu
 - [Second focused units](second-heading-unit-tests.txt): **43 passed / 2 files**. Tests cover immutable failure and safe retry for v2 ready/held states, safe perpendicular continuation, and valid saved-turn priority through later movement and v2 reload.
 - [Second strict TypeScript](second-heading-typecheck.txt): pass.
 
-Broader verification of the initial 8ef fix remains historical to that source. No broad/browser rerun was performed for this extension before the requested targeted independent re-review.
+Broader verification of the initial 8ef fix remains historical to that source. No broad/browser rerun preceded the targeted independent re-review. Exact 03d4 then passed Astra, 307 repository units, nine Chromium cases and root/subpath offline checks; those source-specific raw logs remain in this directory.
 
 ## Version-gated effect import correction
 
@@ -34,4 +38,4 @@ A later actual-UI check of 03d4 exposed a separate presentation roundtrip issue:
 - [Strict TypeScript](effect-version-typecheck.txt): pass.
 - [Targeted Chromium](effect-version-browser-tests.txt): **2 passed (20.6 s)**. The existing continuous growth-save pixel case and a new six-scenario raw-v1 → time-zero-v2 reload matrix pass exact complete snapshots and canvas pixel equality for held/lost × null/active(80/30)/expired(200) ages.
 
-Earlier 03d4 broad results retain their exact-source provenance. Independent re-review of this narrow effect-version correction remains pending; no external publication occurred.
+Earlier 03d4 broad results retain their exact-source provenance. Independent re-review subsequently cleared exact ffa5e45; final broad verification and the narrow review are linked above. No external publication occurred.

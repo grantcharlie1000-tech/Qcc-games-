@@ -1,6 +1,6 @@
 # Snake — continuous authoritative candidate
 
-This local candidate replaces the reviewed discrete checkpoint with continuous travel and an explicitly changed turn cutoff. No deployment or acceptance is implied before independent review. Historical versions and evidence remain in `docs/evidence/snake-redesign/`; current evidence belongs in `continuous-authoritative/`.
+This local candidate replaces the reviewed discrete checkpoint with continuous travel and an explicitly changed turn cutoff. Runtime `ffa5e45` has passed local verification and independent review; no publication or deployment occurred. Historical versions and evidence remain in `docs/evidence/snake-redesign/`; current evidence belongs in `continuous-authoritative/`.
 
 - Garden: 16 × 16 grid centers. Initial head `(5,6)`, three earned segments, first fruit `(9,6)`, seeded reproducible food, ten points per fruit. Travel speed is one cell per 160 ms; there is no speed selector.
 - A leg is a straight horizontal/vertical journey between grid centers. Its heading locks when it starts. Up to two legal turns queue for future centers, relative to the executing/last queued heading; duplicates and reversals are rejected. The initial direction input can select the first leg. Input after a junction cannot redirect the already-started leg, including a leg going toward a wall.

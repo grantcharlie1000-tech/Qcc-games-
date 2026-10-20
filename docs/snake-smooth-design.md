@@ -1,6 +1,6 @@
 # Continuous authoritative Snake — local candidate
 
-The current candidate moves continuously along grid-aligned legs. Model and renderer use the **same current head and body trail**, so contact feedback has no intentional display offset. This is a new local redesign authorized after the reviewed discrete checkpoint; its post-audit legacy validation correction still awaits independent re-review and acceptance.
+The current candidate moves continuously along grid-aligned legs. Model and renderer use the **same current head and body trail**, so contact feedback has no intentional display offset. This is a new local redesign authorized after the reviewed discrete checkpoint; its final runtime `ffa5e45` is locally tested and independently reviewed. No publication or deployment occurred.
 
 ## Turn timing and causal event clock
 
@@ -17,7 +17,7 @@ Before input, pause or save, the module advances active simulation to `performan
 
 ## Visible contact geometry
 
-One set of constants defines rendering and physics: head/body radius 0.40 cell and fruit-flesh radius 0.33. Body ink is a round tube on the authoritative orthogonal trail; head and fruit solids are disks. Stem, leaf, highlight and shadow are decorative. Their shared dimensions make the solid silhouettes readable on the smallest board: a 278 px canvas gives approximately 13.9 px head/body diameter and 11.5 px fruit diameter.
+One set of constants defines rendering and physics: head/body radius 0.40 cell and fruit-flesh radius 0.33. Body ink is a round tube on the authoritative orthogonal trail; head and fruit solids are disks. Stem, leaf, highlight and shadow are decorative. Their shared dimensions make the solid silhouettes readable on the smallest board: the smallest sampled 274 px canvas gives approximately 13.7 px head/body diameter and 11.3 px fruit diameter.
 
 Eating occurs when head and fruit disks touch (center distance 0.73); body collision uses 0.80. The first connected 1.20 arc cells are excluded from head/self contact, which is long enough for ordinary 90° bends. Walls lie half a cell beyond the outer grid centers, so a head radius reaches them at model coordinate −0.10 / 15.10. An outward leg may collide before its next junction; a late queued turn cannot rescue it.
 
@@ -35,7 +35,7 @@ Core travel remains continuous with reduced motion because it communicates gamep
 
 ## Evidence and history
 
-Current logs, failure history and later coordinator checks live in `docs/evidence/snake-redesign/continuous-authoritative/`. The earlier `89b4dee` delayed continuous prototype and reviewed `e5a0cd9` discrete checkpoint remain historical fallback artifacts. Their logs/screenshots are not presented as verification of this candidate. See the new evidence README for current checks and `coordinator-verification.md` when supplied by the coordinator.
+Current logs, failure history and later coordinator checks live in `docs/evidence/snake-redesign/continuous-authoritative/`. The earlier `89b4dee` delayed continuous prototype and reviewed `e5a0cd9` discrete checkpoint remain historical fallback artifacts. Their logs/screenshots are not presented as verification of this candidate. See the [current evidence](evidence/snake-redesign/continuous-authoritative/README.md) and [final exact-runtime verification](evidence/snake-redesign/continuous-authoritative/post-audit/effect-version-final/verification.md) for checks, review provenance and retained failures.
 
 No Google artwork/logo is used. Google reference navigation and WebKit installation were blocked earlier; no exact-reference, WebKit or physical-device performance claim is made. No publication/deployment or unrelated game/shared-shell/package change is authorized by this local candidate.
 

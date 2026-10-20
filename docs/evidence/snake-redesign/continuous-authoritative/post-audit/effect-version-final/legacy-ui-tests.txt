@@ -1,0 +1,1 @@
+PASS five actual browser legacy validation/continuation/reload scenarios; real keyboard input, unchanged state after unsafe input, safe retry and preserved fatal direction

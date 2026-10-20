@@ -1,0 +1,77 @@
+{
+  "recordedAt": "2026-10-20T11:48:20.137Z",
+  "browser": "Chromium",
+  "browserVersion": "154.0.8037.57",
+  "physicalHardware": false,
+  "softwareWebGL": true,
+  "rafSamplesPerGame": 45,
+  "gameCount": 1,
+  "results": [
+    {
+      "deployment": "root",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "snake",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 12.200000000186265,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 33.29999999999927,
+      "rafP95Ms": 50.100000000000364
+    },
+    {
+      "deployment": "root",
+      "cacheNames": [
+        "pocket-arcade:/:762a28146d19:shell",
+        "pocket-arcade:/:762a28146d19:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 17,
+      "heavyChunksLazy": true
+    },
+    {
+      "deployment": "subpath",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "snake",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 13.599999999627471,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 33.29999999999973,
+      "rafP95Ms": 50
+    },
+    {
+      "deployment": "subpath",
+      "cacheNames": [
+        "pocket-arcade:/Qcc-games-/:762a28146d19:shell",
+        "pocket-arcade:/Qcc-games-/:762a28146d19:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 17,
+      "heavyChunksLazy": true
+    }
+  ]
+}
