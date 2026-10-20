@@ -1,0 +1,58 @@
+{
+  "recordedAt": "2026-10-20T19:36:46.161240+00:00",
+  "head": "713c62dad26746ac8bdc2bd4b3f1ef00a1691b36",
+  "productChanged": false,
+  "trackedChanges": [],
+  "command": "ARCADE_UPDATE_SCOPE=/ ARCADE_UPDATE_EVIDENCE_DIR=/workspace/scratch/qcc-update-resume-713/native-trace node /workspace/scratch/qcc-update-resume-713/verify-update-native-trace.mjs",
+  "exitCode": 0,
+  "scope": "/",
+  "allOriginalAssertionsAnd15sBoundsRetained": true,
+  "nativeTraceContexts": 9,
+  "nativeEvents": 47906,
+  "allTraceDataLossFalse": true,
+  "resultFile": "/workspace/scratch/qcc-update-resume-713/native-trace/update-results.json",
+  "workerBytes": "Original713 scripts/update-fixtures.mjs; no extra inline observer prefix",
+  "capture": "Browser-level Tracing ServiceWorker category only; no added Network or ServiceWorker CDP agents, worker-console listeners, body reads/clones/drains, or extra worker event lifetimes.",
+  "controlLimit": "Native tracing and trace-flush delays can alter timing. This is a passing control, not a cause or product fix. Failure-native history is still absent for the original713 W failure and hosted713 D stall.",
+  "newEvidence": [
+    "Native event capability confirmed: Request/RequestCompleted, event types, status transitions, worker stopping, and response body completion.",
+    "Nine traces have no reported data loss and all recorded native Request flow spans paired by trace end. This does not prove every native lifecycle condition was observed.",
+    "Controlled W: native redundant/activating about21/25ms after release, activated about1046ms. Release alignment uses native clock-sync and Playwright wall/monotonic origin (approximate).",
+    "Two old-B asset probes have adjacent native OnBodyReadingComplete and CommitCompleted(net::OK) records within about4.4ms; header-only JS reads did not prevent body completion in this successful run. This does not classify the historical failures."
+  ],
+  "remainingBlockers": [
+    "Original unmodified fresh W RED and hosted subpath D RED lack native request/body history at the failure.",
+    "No concrete product root cause or justified product fix established.",
+    "Astra slot is unavailable; parent sequences reviewed publication and CI. Reviewed publication/full CI are authorized in scope; exact review and parent resource sequencing are pending."
+  ],
+  "smallestNextStep": "Parent-coordinated exact review and main reconciliation before an authorized hosted diagnostic run. No product fix has been identified.",
+  "stage": "Local diagnostic-only candidate prepared; review and parent sequencing pending; no new publication or CI",
+  "helperValidation": {
+    "nodeTestsPassed": 7,
+    "typeScript": "passed",
+    "syntaxChecks": "passed",
+    "actualWorkerCapability": {
+      "recordedAt": "2026-10-20T19:36:08.116Z",
+      "browser": "154.0.8037.57",
+      "kind": "extracted diagnostic helper, tiny owned two-version worker; not application reproduction",
+      "bodyVersions": [
+        "A",
+        "B"
+      ],
+      "completion": {
+        "at": "2026-10-20T19:36:08.070Z",
+        "kind": "complete",
+        "index": 0,
+        "result": {
+          "dataLossOccurred": false
+        },
+        "eventCount": 419,
+        "nativeEventCount": 391,
+        "usable": true
+      },
+      "events": 419,
+      "requestEvents": 7,
+      "bodyCompletionEvents": 2
+    }
+  }
+}
