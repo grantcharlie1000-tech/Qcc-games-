@@ -13,7 +13,7 @@ async function open(page: Page) {
 }
 test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
   // Allow 60s cumulatively for this ~180-frame software-rendered flow, while
-  // retaining the original 30s maximum per action/navigation and 7s assertions.
+  // retaining 30s auto-wait/navigation caps and 7s retrying assertions.
   test.setTimeout(60_000);
   page.setDefaultTimeout(30_000);
   page.setDefaultNavigationTimeout(30_000);
