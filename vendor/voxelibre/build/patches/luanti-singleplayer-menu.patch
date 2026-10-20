@@ -1,0 +1,44 @@
+diff --git a/builtin/mainmenu/init.lua b/builtin/mainmenu/init.lua
+index eca3c40..727de7a 100644
+--- a/builtin/mainmenu/init.lua
++++ b/builtin/mainmenu/init.lua
+@@ -111,8 +111,10 @@ local function init_globals()
+ 
+ 	tv_main:set_autosave_tab(true)
+ 	tv_main:add(tabs.local_game)
+-	tv_main:add(tabs.play_online)
+-	tv_main:add(tabs.content)
++	if not core.settings:get_bool("qcc_singleplayer") then
++		tv_main:add(tabs.play_online)
++		tv_main:add(tabs.content)
++	end
+ 	tv_main:add(tabs.about)
+ 
+ 	tv_main:set_global_event_handler(main_event_handler)
+diff --git a/builtin/mainmenu/tab_local.lua b/builtin/mainmenu/tab_local.lua
+index 1c318fd..451666f 100644
+--- a/builtin/mainmenu/tab_local.lua
++++ b/builtin/mainmenu/tab_local.lua
+@@ -114,8 +114,10 @@ function singleplayer_refresh_gamebar()
+ 		btnbar:add_button(btn_name, text, image, tooltip)
+ 	end
+ 
+-	local plus_image = core.formspec_escape(defaulttexturedir .. "plus.png")
+-	btnbar:add_button("game_open_cdb", "", plus_image, fgettext("Install games from ContentDB"))
++	if not core.settings:get_bool("qcc_singleplayer") then
++		local plus_image = core.formspec_escape(defaulttexturedir .. "plus.png")
++		btnbar:add_button("game_open_cdb", "", plus_image, fgettext("Install games from ContentDB"))
++	end
+ 	return true
+ end
+ 
+@@ -142,6 +144,9 @@ local function get_disabled_settings(game)
+ 			end
+ 		end
+ 	end
++	if core.settings:get_bool("qcc_singleplayer") then
++		disabled_settings.enable_server = false
++	end
+ 	return disabled_settings
+ end
+ 

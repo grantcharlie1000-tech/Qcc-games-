@@ -1,0 +1,87 @@
+diff --git a/build_libarchive.sh b/build_libarchive.sh
+index 9cb7c3d..9ef94b7 100755
+--- a/build_libarchive.sh
++++ b/build_libarchive.sh
+@@ -10,7 +10,7 @@ pushd "$BUILD_DIR/libarchive"
+ export CPPFLAGS="${CPPFLAGS-} -I${INSTALL_DIR}/include --use-port=zlib"
+ export CFLAGS="$CFLAGS --use-port=zlib"
+ export LDFLAGS="$LDFLAGS -L${INSTALL_DIR}/lib --use-port=zlib"
+-emconfigure ./configure \
++ac_cv_header_localcharset_h=no emconfigure ./configure \
+   --enable-static \
+   --disable-shared \
+   --disable-bsdtar \
+diff --git a/build_libzip.sh b/build_libzip.sh
+index 7fa8dbc..1877000 100755
+--- a/build_libzip.sh
++++ b/build_libzip.sh
+@@ -12,7 +12,11 @@ export CFLAGS="$CFLAGS --use-port=zlib"
+ export LDFLAGS="$LDFLAGS -L${INSTALL_DIR}/lib --use-port=zlib"
+ 
+ emcmake cmake \
+-    -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR"
++    -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++    -DBUILD_SHARED_LIBS=OFF -DBUILD_TOOLS=OFF -DBUILD_REGRESS=OFF \
++    -DBUILD_EXAMPLES=OFF -DBUILD_DOC=OFF \
++    -DENABLE_OPENSSL=OFF -DENABLE_GNUTLS=OFF -DENABLE_MBEDTLS=OFF \
++    -DENABLE_BZIP2=OFF -DENABLE_LZMA=OFF -DENABLE_ZSTD=OFF
+ 
+ emmake make
+ emmake make install
+diff --git a/build_luanti.sh b/build_luanti.sh
+index 38bb0a7..65cff58 100755
+--- a/build_luanti.sh
++++ b/build_luanti.sh
+@@ -17,7 +17,7 @@ export EMSDK_MODULE="-sINCOMING_MODULE_JS_API=mainScriptUrlOrBlob,canvas,monitor
+ export EMSDK_EXTRA="-sUSE_SDL=2 $EMSDK_PORTS $EMSDK_CANVAS $EMSDK_MODULE"
+ export CFLAGS="$CFLAGS $EMSDK_EXTRA"
+ export CXXFLAGS="$CXXFLAGS $EMSDK_EXTRA"
+-export LDFLAGS="$LDFLAGS $EMSDK_EXTRA -sPTHREAD_POOL_SIZE=22 -s EXPORTED_RUNTIME_METHODS=ccall,cwrap -s INITIAL_MEMORY=2013265920 -sMIN_WEBGL_VERSION=2 -sUSE_WEBGL2 -sWASMFS=1"
++export LDFLAGS="$LDFLAGS $EMSDK_EXTRA -sPTHREAD_POOL_SIZE=8 -s EXPORTED_RUNTIME_METHODS=ccall,cwrap -s INITIAL_MEMORY=536870912 -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=2147483648 -sMIN_WEBGL_VERSION=2 -sUSE_WEBGL2 -sWASMFS=1"
+ export LDFLAGS="$LDFLAGS -L$INSTALL_DIR/lib -larchive -lssl -lcrypto -lemsocket -lwebsocket.js"
+ 
+ # Create a dummy .o file to use as a substitute for the OpenGLES2 / EGL libraries,
+diff --git a/build_zstd.sh b/build_zstd.sh
+index 2a89096..e02fc7f 100755
+--- a/build_zstd.sh
++++ b/build_zstd.sh
+@@ -15,6 +15,7 @@ export CFLAGS="$CFLAGS -D_POSIX_SOURCE=1"
+ export CXXFLAGS="$CXXFLAGS -D_POSIX_SOURCE=1"
+ emcmake cmake \
+   -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
++  -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF \
+   "$SOURCES_DIR/zstd/build/cmake"
+ 
+ emmake make
+diff --git a/common.sh b/common.sh
+index e456147..85734ee 100644
+--- a/common.sh
++++ b/common.sh
+@@ -43,7 +43,7 @@ INSTALL_DIR="$BUILD_DIR/install"
+ WWW_DIR="$BASE_DIR/www"
+ mkdir -p "$SOURCES_DIR" "$BUILD_DIR" "$INSTALL_DIR"
+ 
+-export MAKEFLAGS="-j$(nproc)"
++export MAKEFLAGS="-j${QCC_BUILD_JOBS:-8}"
+ 
+ export CFLAGS="$COMMON_CFLAGS -pthread -fwasm-exceptions -sJSPI"
+ export CXXFLAGS="$COMMON_CFLAGS -pthread -fwasm-exceptions -sJSPI"
+diff --git a/static/launcher.js b/static/launcher.js
+index ae484f5..0ed8fbb 100644
+--- a/static/launcher.js
++++ b/static/launcher.js
+@@ -1833,11 +1833,12 @@ async function openStorageRoot() {
+ // release id and are served immutable, so the path identifies the contents.
+ // The origin is left out, so that a pack stays installed when the same release
+ // is later fetched from a different mirror.
++const QCC_PACK_BUILD_ID = "%__QCC_PACK_BUILD_ID__%";
+ function packVersion(packUrl) {
+     try {
+-        return new URL(packUrl, window.location.href).pathname;
++        return new URL(packUrl, window.location.href).pathname + "|" + QCC_PACK_BUILD_ID;
+     } catch (err) {
+-        return packUrl;
++        return packUrl + "|" + QCC_PACK_BUILD_ID;
+     }
+ }
+ 

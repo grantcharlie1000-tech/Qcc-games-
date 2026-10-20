@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Compile the pinned native runtime in an isolated directory. No site credentials.
+set -euo pipefail
+QCC_RECIPE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+QCC_BUILD_DIR=$(realpath -m -- "${1:?Usage: build-runtime.sh BUILD_DIRECTORY}")
+python3 "$QCC_RECIPE_DIR/fetch-pinned.py" luanti-wasm "$QCC_BUILD_DIR"
+for input in luanti webshims zstd; do
+  python3 "$QCC_RECIPE_DIR/fetch-pinned.py" "$input" "$QCC_BUILD_DIR/sources/$input"
+done
+python3 "$QCC_RECIPE_DIR/fetch-pinned.py" emsdk "$QCC_BUILD_DIR/emsdk"
+apply_git_patch() {
+  local checkout=$1 patch_file=$2
+  if git -C "$checkout" apply --check "$patch_file"; then
+    git -C "$checkout" apply "$patch_file"
+  elif git -C "$checkout" apply --reverse --check "$patch_file"; then
+    printf 'Patch already applied: %s\n' "$patch_file"
+  else
+    printf 'Patch does not match pinned source: %s\n' "$patch_file" >&2
+    exit 1
+  fi
+}
+apply_git_patch "$QCC_BUILD_DIR" "$QCC_RECIPE_DIR/patches/luanti-wasm-qcc.patch"
+apply_git_patch "$QCC_BUILD_DIR/sources/webshims" "$QCC_RECIPE_DIR/patches/webshims-local-only.patch"
+apply_git_patch "$QCC_BUILD_DIR/sources/luanti" "$QCC_RECIPE_DIR/patches/luanti-singleplayer-menu.patch"
+cd "$QCC_BUILD_DIR/emsdk"
+if [ ! -f upstream/emscripten/emcc.py ]; then
+  ./emsdk install 6.0.8
+fi
+./emsdk activate 6.0.8
+# SDK archives can retain private extraction modes; all these inputs are public.
+chmod -R a+rX upstream node
+for qcc_patch in emsdk_dirperms emsdk_openat emsdk_libegl emsdk_jspi emsdk_wasmfs_opfs emsdk_wasmfs_opfs_subdir; do
+  if patch --batch --dry-run --forward -p1 < "$QCC_BUILD_DIR/$qcc_patch.patch"; then
+    patch --batch --forward -p1 < "$QCC_BUILD_DIR/$qcc_patch.patch"
+  elif patch --batch --dry-run --reverse -p1 < "$QCC_BUILD_DIR/$qcc_patch.patch"; then
+    printf 'SDK patch already applied: %s\n' "$qcc_patch"
+  else
+    printf 'SDK patch does not match: %s\n' "$qcc_patch" >&2
+    exit 1
+  fi
+done
+cd "$QCC_BUILD_DIR"
+./build_all.sh
+printf 'Native build complete: %s\n' "$QCC_BUILD_DIR/www"

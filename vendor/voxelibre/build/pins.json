@@ -1,0 +1,24 @@
+{
+  "luanti-wasm": {
+    "repository": "https://github.com/paradust7/luanti-wasm.git",
+    "commit": "5bfae52b53605b39667dfc29cddd59c861e38111"
+  },
+  "luanti": {
+    "repository": "https://github.com/paradust7/luanti.git",
+    "commit": "6f532b5ed03a6aa70091412114b5dde3d33c6f87"
+  },
+  "webshims": {
+    "repository": "https://github.com/paradust7/webshims.git",
+    "commit": "70653a91c974aa2b20df09a39f858d92e663c1a7"
+  },
+  "zstd": {
+    "repository": "https://github.com/facebook/zstd.git",
+    "commit": "f8745da6ff1ad1e7bab384bd1f9d742439278e99"
+  },
+  "emsdk": {
+    "repository": "https://github.com/emscripten-core/emsdk.git",
+    "commit": "35659964bc2762fffec0d257997fb61475f765b7",
+    "sdk_version": "6.0.8",
+    "emscripten_revision": "aeb67926e7de656da38bc807d83050af93578758"
+  }
+}
