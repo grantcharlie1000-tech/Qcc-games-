@@ -13,7 +13,8 @@ export const games: GameInfo[] = [
 {id:'solitaire',title:'Solitaire',color:'#108746',ink:'#053f22',accent:'#07512a'},
 {id:'block-fill',title:'Block Fill',color:'#303638',ink:'#c1c3c9',accent:'#c1c3c9'},
 {id:'color-connect',title:'Color Connect',color:'#54405f',ink:'#ffcd46',accent:'#ffcd46'},
-{id:'pool',title:'Pool',color:'#007b49',ink:'#e4edb3',accent:'#e4edb3'}
+{id:'pool',title:'Pool',color:'#007b49',ink:'#e4edb3',accent:'#e4edb3'},
+{id:'blockcraft',title:'Blockcraft',color:'#8fd0f7',ink:'#1f4a1a',accent:'#2c6b22'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {

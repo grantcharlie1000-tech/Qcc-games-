@@ -3,7 +3,7 @@ import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const titles={'fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird'};
+const titles={'fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',blockcraft:'Blockcraft'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
@@ -22,6 +22,7 @@ async function action(page,id){
  else if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling|Roll again/}).click();const before=await page.locator('.ball-run').getAttribute('data-distance');await page.keyboard.down('ArrowRight');try{await waitFor(async()=>Number(await page.locator('.ball-run').getAttribute('data-distance'))>Number(before)&&Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline Ball Run forward movement and steering');}finally{await page.keyboard.up('ArrowRight');}assert.ok(Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline held steering must move the ball');}
  else if(id==='flappy-bird'){await page.getByRole('button',{name:/Take flight|Continue flight|Fly again/}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.flappy-bird').getAttribute('data-tick'))>5,'offline Flappy Bird movement');}
  else if(id==='pool'){await page.getByRole('button',{name:'Shoot',exact:true}).click();assert.equal(await page.locator('.pool-game').getAttribute('data-shots'),'1');}
+ else if(id==='blockcraft'){const root=page.locator('.blockcraft');await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Blockcraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Blockcraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();}
  else if(id==='animal-stack'){await page.getByRole('button',{name:/^Drop /}).click();await page.waitForTimeout(650);}
 }
 try{
