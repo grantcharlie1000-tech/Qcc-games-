@@ -1,0 +1,34 @@
+
+Running 7 tests using 1 worker
+
+(node:28441) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/animal-stack/play.spec.ts:49:1 › held directional keys continue through resize and focus loss stops them (3.9s)
+POOL_NATIVE_PLACEMENT {
+  requested: { x: 180, y: 600 },
+  delivered: {
+    clientX: 414,
+    clientY: 226,
+    left: 381.3684997558594,
+    top: 115.30540466308594,
+    width: 81.26300048828125,
+    height: 155.13539123535156,
+    trusted: true
+  },
+  expected: { x: 176.68385392060915, y: 599.3697462750148 }
+}
+  ✓  2 [chromium] › tests/games/pool/play.spec.ts:22:1 › scratch gives ball-in-hand and a trackpad click places a non-overlapping cue (8.0s)
+  ✓  3 [chromium] › tests/games/solitaire/play.spec.ts:53:1 › a long tableau sequence stays within its column at desktop and phone sizes (2.9s)
+  ✓  4 [chromium] › tests/games/water-sort/correction.spec.ts:107:1 › cancel, lost capture, blur, resize, pause and disposal release drag capture without pouring (7.0s)
+(node:28791) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 390x844 (3.6s)
+  ✓  6 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 844x390 (2.6s)
+  ✓  7 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 1366x768 (3.4s)
+
+  7 passed (34.8s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

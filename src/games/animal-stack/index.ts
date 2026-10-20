@@ -19,7 +19,7 @@ const module:GameModule={
   const sprites={} as Record<Kind,HTMLImageElement>;
   for(const kind of KINDS){const image=new Image();image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(animalSvg(kind));sprites[kind]=image;}
   let scale=1,left=0,top=0,ratio=1;
-  function resize(){const box=canvas.getBoundingClientRect();ratio=Math.min(2,devicePixelRatio||1);canvas.width=Math.max(1,Math.round(box.width*ratio));canvas.height=Math.max(1,Math.round(box.height*ratio));scale=Math.min(box.width/WIDTH,box.height/HEIGHT);left=(box.width-WIDTH*scale)/2;top=box.height*.73-FLOOR*scale;clearInput();if(paused)render();}
+  function resize(){const box=canvas.getBoundingClientRect();ratio=Math.min(2,devicePixelRatio||1);canvas.width=Math.max(1,Math.round(box.width*ratio));canvas.height=Math.max(1,Math.round(box.height*ratio));scale=Math.min(box.width/WIDTH,box.height/HEIGHT);left=(box.width-WIDTH*scale)/2;top=box.height*.73-FLOOR*scale;clearPointer();if(paused)render();}
   function sync(){
    root.dataset.tick=String(world.tick);
    const lastAnimal=world.animals.at(-1);root.dataset.bodyAngle=String(lastAnimal?.body.angle??0);root.dataset.bodyBottom=String(lastAnimal?.body.bounds.max.y??0);
@@ -47,7 +47,10 @@ const module:GameModule={
    // The platform camera can rise with a very tall tower; the release button remains fixed.
    bubble.hidden=performance.now()>=bubbleUntil;const active=world.animals.at(-1);if(active){bubble.style.left=`${(left+active.body.position.x*scale)/(canvas.width/ratio)*100}%`;bubble.style.top=`${(top+(active.body.bounds.min.y+camera-10)*scale)/(canvas.height/ratio)*100}%`;}
   }
-  function clearInput(){heldAimAt=0;const id=gesture.pointer;gesture.clear();keys.clear();if(id!==null&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);}
+  function clearPointer(){const id=gesture.pointer;gesture.clear();if(id!==null&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);}
+  // Layout changes cancel pointer coordinates but keep physically held keys.
+  // Blur, pause, restart and disposal still release every input source.
+  function clearInput(){heldAimAt=0;clearPointer();keys.clear();}
   function rotate(direction=1){if(paused||disposed||!world.ready)return;world.rotateBy(TAP_ROTATION_RADIANS*direction);sync();context.save(world.snapshot());}
   function drop(){if(paused||disposed)return;clearInput();if(world.drop()){context.sound('tap');context.save(world.snapshot());sync();}}
   function local(e:PointerEvent){const box=canvas.getBoundingClientRect();return{x:(e.clientX-box.left-left)/scale,y:(e.clientY-box.top-top)/scale-camera};}

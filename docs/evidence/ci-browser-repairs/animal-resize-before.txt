@@ -1,0 +1,45 @@
+
+Running 1 test using 1 worker
+
+(node:25199) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/animal-stack/play.spec.ts:49:1 › held directional keys continue through resize and focus loss stops them (3.5s)
+
+
+  1) [chromium] › tests/games/animal-stack/play.spec.ts:49:1 › held directional keys continue through resize and focus loss stops them 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 210
+    Received:   190
+
+      52 |  const canvas=game(page).locator('canvas');await canvas.focus();await page.keyboard.down('d');
+      53 |  await page.setViewportSize({width:1200,height:800});await page.clock.runFor(500);await page.keyboard.up('d');
+    > 54 |  const right=Number(await game(page).getAttribute('data-aim'));expect(right).toBeGreaterThan(210);
+         |                                                                              ^
+      55 |  await page.keyboard.down('ArrowLeft');await page.clock.runFor(300);expect(Number(await game(page).getAttribute('data-aim'))).toBeLessThan(right);
+      56 |  await page.getByRole('button',{name:'Game rules',exact:true}).focus();const frozen=await game(page).getAttribute('data-aim');
+      57 |  await page.clock.runFor(250);await expect(game(page)).toHaveAttribute('data-aim',frozen!);await page.keyboard.up('ArrowLeft');
+        at /tmp/qcc-webkit-repair/tests/games/animal-stack/play.spec.ts:54:78
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../qcc-animal-red/games-animal-stack-play-he-82b03-e-and-focus-loss-stops-them-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../qcc-animal-red/games-animal-stack-play-he-82b03-e-and-focus-loss-stops-them-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../qcc-animal-red/games-animal-stack-play-he-82b03-e-and-focus-loss-stops-them-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../qcc-animal-red/games-animal-stack-play-he-82b03-e-and-focus-loss-stops-them-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/games/animal-stack/play.spec.ts:49:1 › held directional keys continue through resize and focus loss stops them 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

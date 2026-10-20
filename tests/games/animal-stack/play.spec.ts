@@ -46,4 +46,13 @@ for(const key of ['Enter','Space'])test(`holding ${key} on actual DROP cannot re
  await button.focus();await page.keyboard.down(key);await expect(game(page)).toHaveAttribute('data-count','1');await page.keyboard.up(key);
 });
 
-test('held directional keys continue positioning and focus loss stops them',async({page})=>{await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const canvas=game(page).locator('canvas');await canvas.focus();await page.keyboard.down('d');await page.waitForTimeout(500);await page.keyboard.up('d');expect(Number(await game(page).getAttribute('data-aim'))).toBeGreaterThan(210);await page.keyboard.down('ArrowLeft');await page.waitForTimeout(300);await page.getByRole('button',{name:'Game rules',exact:true}).focus();const frozen=await game(page).getAttribute('data-aim');await page.waitForTimeout(250);await expect(game(page)).toHaveAttribute('data-aim',frozen!);await page.keyboard.up('ArrowLeft');});
+test('held directional keys continue through resize and focus loss stops them',async({page})=>{
+ const fixed=new Date('2026-10-20T00:00:00Z');await page.clock.install({time:fixed});await page.clock.pauseAt(fixed);
+ await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');await page.clock.runFor(32);
+ const canvas=game(page).locator('canvas');await canvas.focus();await page.keyboard.down('d');
+ await page.setViewportSize({width:1200,height:800});await page.clock.runFor(500);await page.keyboard.up('d');
+ const right=Number(await game(page).getAttribute('data-aim'));expect(right).toBeGreaterThan(210);
+ await page.keyboard.down('ArrowLeft');await page.clock.runFor(300);expect(Number(await game(page).getAttribute('data-aim'))).toBeLessThan(right);
+ await page.getByRole('button',{name:'Game rules',exact:true}).focus();const frozen=await game(page).getAttribute('data-aim');
+ await page.clock.runFor(250);await expect(game(page)).toHaveAttribute('data-aim',frozen!);await page.keyboard.up('ArrowLeft');
+});

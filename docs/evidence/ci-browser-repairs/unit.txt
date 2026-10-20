@@ -1,0 +1,45 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /tmp/qcc-webkit-repair
+
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 89ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 619ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 189ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 70ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 141ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 32ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 254ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 109ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 463ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 432ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 3401ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  909ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  2207ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 67ms
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 559ms
+ ✓ tests/core/study.test.ts (5 tests) 29ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 22ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 18ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 1030ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  669ms
+   ✓ Flappy Bird original reed flight > a simple timed pilot clears 100 seeded gates using the real simulation  347ms
+ ✓ tests/core/storage.test.ts (5 tests) 8ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 34ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 8ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 253ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 6ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 8ms
+
+ Test Files  23 passed (23)
+      Tests  266 passed (266)
+   Start at  00:42:36
+   Duration  6.67s (transform 1.20s, setup 0ms, collect 2.47s, tests 7.84s, environment 19ms, prepare 2.62s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

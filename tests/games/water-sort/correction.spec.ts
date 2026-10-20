@@ -106,7 +106,7 @@ test('optional drag captures real pointer moves and release outside the source b
 
 test('cancel, lost capture, blur, resize, pause and disposal release drag capture without pouring',async({page})=>{
   await open(page);
-  for(const reason of ['cancel','pending','lost','blur','resize','pause','dispose']){
+  for(const reason of ['cancel','pending','lost','blur','resize','resize-same-field','pause','dispose']){
     const source=await tube(page,0).elementHandle(),a=(await tube(page,0).boundingBox())!,b=(await tube(page,2).boundingBox())!;
     await source!.evaluate(el=>el.addEventListener('pointerdown',event=>{(window as unknown as {waterPointerId:number}).waterPointerId=(event as PointerEvent).pointerId;},{once:true}));
     await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();
@@ -117,6 +117,10 @@ test('cancel, lost capture, blur, resize, pause and disposal release drag captur
     if(reason==='lost'||reason==='pending')await source!.evaluate((el,id)=>el.releasePointerCapture(id),id);
     if(reason==='blur')await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
     if(reason==='resize')await page.setViewportSize({width:1200,height:800});
+    if(reason==='resize-same-field')await page.setViewportSize({width:1210,height:800});
+    // Viewport changes and ResizeObserver notifications are asynchronous. Wait
+    // for cancellation before sending the next native move/up sequence.
+    if(reason.startsWith('resize'))await expect.poll(()=>source!.evaluate((el,id)=>el.hasPointerCapture(id),id),{message:reason}).toBe(false);
     if(reason==='pause')await page.getByRole('button',{name:'Pause game',exact:true}).evaluate(el=>(el as HTMLButtonElement).click());
     if(reason==='dispose')await page.evaluate(()=>{location.hash='#/';});
     await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:3});

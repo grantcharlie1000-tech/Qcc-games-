@@ -25,7 +25,19 @@ test('scratch gives ball-in-hand and a trackpad click places a non-overlapping c
  await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Pool',exact:true})).toBeVisible();await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:pool',JSON.stringify({version:1,data})),fixture);await page.getByRole('link',{name:'Play Pool',exact:true}).click();await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','0');await page.getByLabel('Aim angle').fill('270');await page.getByLabel('Shot power').fill('35');await page.getByRole('button',{name:'Shoot',exact:true}).click();await expect(page.locator('.pool-inhand')).toBeVisible();await expect(page.locator('.pool-message')).toContainText('Scratch');await expect(page.locator('.pool-game')).toHaveAttribute('data-turn','1');
  await expect.poll(async()=>{const r=(await page.locator('.pool-game').boundingBox())!;return r.y>=0&&r.y+r.height<=391;}).toBe(true);
  const place=page.getByRole('button',{name:'Place cue',exact:true});await expect.poll(()=>place.evaluate(button=>{const r=button.getBoundingClientRect();return button.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
- const canvas=page.locator('.pool-table'),box=(await canvas.boundingBox())!;await canvas.click({position:{x:180/440*box.width,y:600/840*box.height}});await page.getByRole('button',{name:'Place cue',exact:true}).click();await expect(page.locator('.pool-inhand')).toBeHidden();await expect(page.getByRole('button',{name:'Shoot',exact:true})).toBeEnabled();const state=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:pool')!).data);expect(state.balls[0].x).toBeCloseTo(180,0);expect(state.balls[0].y).toBeCloseTo(600,0);
+ const canvas=page.locator('.pool-table');await canvas.hover();const box=(await canvas.boundingBox())!;
+ // Check mapping against the trusted event actually delivered by the engine:
+ // a CSS pixel can span several logical units in this fitted landscape table.
+ await canvas.evaluate(el=>el.addEventListener('pointerdown',event=>{
+  const p=event as PointerEvent,r=el.getBoundingClientRect();el.setAttribute('data-test-placement',JSON.stringify({clientX:p.clientX,clientY:p.clientY,left:r.left,top:r.top,width:r.width,height:r.height,trusted:p.isTrusted}));
+ },{capture:true,once:true}));
+ const point={x:Math.floor(box.x+180/440*box.width),y:Math.floor(box.y+600/840*box.height)};
+ await page.mouse.click(point.x,point.y);
+ const delivered=JSON.parse((await canvas.getAttribute('data-test-placement'))!);expect(delivered.trusted).toBe(true);
+ expect(delivered.clientX).toBe(point.x);expect(delivered.clientY).toBe(point.y);
+ const expected={x:(delivered.clientX-delivered.left)*440/delivered.width,y:(delivered.clientY-delivered.top)*840/delivered.height};
+ console.log('POOL_NATIVE_PLACEMENT',{requested:{x:180,y:600},delivered,expected});
+ await page.getByRole('button',{name:'Place cue',exact:true}).click();await expect(page.locator('.pool-inhand')).toBeHidden();await expect(page.getByRole('button',{name:'Shoot',exact:true})).toBeEnabled();const state=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:pool')!).data);expect(state.balls[0].x).toBeCloseTo(expected.x,0);expect(state.balls[0].y).toBeCloseTo(expected.y,0);
 });
 for(const [pocket,winner] of [['2','Player 1'],['0','Player 2']])test(`actual 8-ball pot with called pocket ${pocket} awards ${winner}`,async({page})=>{
  const {createGame}=await import('../../../src/games/pool/model');const fixture=createGame('two');fixture.break=false;fixture.groups=['solids','stripes'];for(const b of fixture.balls)if(b.id!==0&&b.id!==8)b.pocketed=true;fixture.balls[0].x=220;fixture.balls[0].y=420;fixture.balls[8].x=110;fixture.balls[8].y=420;

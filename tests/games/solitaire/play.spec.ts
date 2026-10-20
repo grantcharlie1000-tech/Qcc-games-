@@ -52,7 +52,13 @@ test('touch pointer drag uses the same legal move path on a phone',async({browse
 });
 test('a long tableau sequence stays within its column at desktop and phone sizes',async({page})=>{
  const s=deal(33);const sequence=Array.from({length:13},(_,i)=>12-i+(i%2?13:0));s.tableau=[sequence.map(id=>({id,up:true})),[],[],[],[],[],[]];s.stock=Array.from({length:52},(_,i)=>i).filter(id=>!sequence.includes(id));await page.setViewportSize({width:1366,height:900});await open(page,s);
- const fits=async()=>{const card=(await page.getByRole('button',{name:'Ace of clubs, column 1',exact:true}).boundingBox())!;const column=(await page.locator('.sol-column').first().boundingBox())!;const message=(await page.locator('.sol-message').boundingBox())!;expect(card.y+card.height).toBeLessThanOrEqual(column.y+column.height+1);expect(message.y).toBeGreaterThan(card.y+card.height);};
+ const fits=async()=>{
+  const ace=page.getByRole('button',{name:'Ace of clubs, column 1',exact:true});await ace.hover();
+  // Read all bounds in one layout after native actionability has waited for
+  // fitting, rather than comparing rectangles sampled across resize frames.
+  const bounds=await ace.evaluate(el=>{const card=el.getBoundingClientRect(),column=el.closest('.sol-column')!.getBoundingClientRect(),message=document.querySelector('.sol-message')!.getBoundingClientRect();return {cardBottom:card.bottom,columnBottom:column.bottom,messageTop:message.top};});
+  expect(bounds.cardBottom).toBeLessThanOrEqual(bounds.columnBottom+1);expect(bounds.messageTop).toBeGreaterThan(bounds.cardBottom);
+ };
  await fits();await page.setViewportSize({width:390,height:844});await fits();
 });
 
