@@ -1,0 +1,109 @@
+{
+  "recordedAt": "2026-10-20T02:37:21.590Z",
+  "browser": "Chromium",
+  "browserVersion": "154.0.8037.57",
+  "physicalHardware": false,
+  "softwareWebGL": true,
+  "rafSamplesPerGame": 45,
+  "gameCount": 2,
+  "results": [
+    {
+      "deployment": "root",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "color-blocks",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 91.90000000037253,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 50
+    },
+    {
+      "game": "flappy-bird",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 23.200000001117587,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 116.79999999999927
+    },
+    {
+      "deployment": "root",
+      "cacheNames": [
+        "pocket-arcade:/:d18ca7b8ad5a:shell",
+        "pocket-arcade:/:d18ca7b8ad5a:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 17,
+      "heavyChunksLazy": true
+    },
+    {
+      "deployment": "subpath",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "color-blocks",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 40.09999999962747,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.699999999999818,
+      "rafP95Ms": 33.399999999999636
+    },
+    {
+      "game": "flappy-bird",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 22.90000000037253,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.799999999999272,
+      "rafP95Ms": 66.69999999999891
+    },
+    {
+      "deployment": "subpath",
+      "cacheNames": [
+        "pocket-arcade:/Qcc-games-/:d18ca7b8ad5a:shell",
+        "pocket-arcade:/Qcc-games-/:d18ca7b8ad5a:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 17,
+      "heavyChunksLazy": true
+    }
+  ]
+}

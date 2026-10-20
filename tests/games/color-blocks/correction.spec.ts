@@ -34,7 +34,7 @@ test('Escape, resize and lost capture cancel a gesture without arming a later bo
   if(kind==='escape')await page.keyboard.press('Escape');
   if(kind==='resize')await page.setViewportSize({width:400,height:844});
   if(kind==='capture')await page.evaluate(()=>{const root=document.querySelector('.cb-game')!;root.dispatchEvent(new PointerEvent('lostpointercapture',{pointerId:1,bubbles:true}));});
-  await page.mouse.up();if(kind==='escape'){await expect(page.locator('.study-return')).toBeVisible();await page.getByRole('button',{name:'Return to Arcade'}).click();}await page.locator('[data-cell="18"]').click();
+  await page.mouse.up();if(kind==='escape'){await expect(page.locator('.study-return')).toBeVisible();await page.getByRole('link',{name:'Games'}).click();}await page.locator('[data-cell="18"]').click();
   await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-drag-art')).toBeHidden();
  }
 });
@@ -69,7 +69,7 @@ test.describe('native touch evidence',()=>{
   await page.waitForTimeout(250);await start(1);await page.waitForTimeout(200);await move(18);await page.waitForTimeout(300);expect(await ghost(page)).toEqual([]);await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.locator('.cb-drag-art')).toBeHidden();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');
   await page.waitForTimeout(250);await start(1);await move(40);await page.waitForTimeout(300);expect(await ghost(page)).toEqual([40,41,42,49]);await session.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
   await page.locator('[data-cell="40"]').tap();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');await expect(page.locator('.cb-drag-art')).toBeHidden();
-  await start(1);await move(40);await page.keyboard.press('Escape');await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.locator('.study-return')).toBeVisible();await page.getByRole('button',{name:'Return to Arcade'}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');
+  await start(1);await move(40);await page.keyboard.press('Escape');await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.locator('.study-return')).toBeVisible();await page.getByRole('link',{name:'Games'}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');
   await start(1);await move(40);await page.getByRole('button',{name:'Pause game',exact:true}).focus();await page.keyboard.press('Enter');await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');await expect(page.locator('#pause-overlay')).toBeVisible();await page.getByRole('button',{name:'Keep playing'}).click();
   await page.locator('#game-stage').focus();await page.keyboard.press('3');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','2');
   await session.detach();const video=page.video()!;await page.close();await video.saveAs('tests/games/color-blocks/evidence/touch-drag.webm');await testInfo.attach('touch-drag-recording',{path:'tests/games/color-blocks/evidence/touch-drag.webm',contentType:'video/webm'});

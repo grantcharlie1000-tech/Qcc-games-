@@ -1,0 +1,130 @@
+
+Running 72 tests using 2 workers
+
+(node:42890) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42891) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › tests/e2e/study.spec.ts:37:1 › first visit offers exactly 20 topics and remembers the choice for this tab only (10.6s)
+  ✓   1 [chromium] › tests/e2e/study-editorial.spec.ts:2:96 › editorial notes, fictional contributors and visible Games navigation fit 320 (12.2s)
+  ✓   3 [chromium] › tests/e2e/study.spec.ts:53:1 › reading keeps native Space scrolling and keyboard controls isolated from Tower (3.4s)
+  ✓   5 [chromium] › tests/e2e/study.spec.ts:75:1 › Escape immediately saves and pauses; article changes never load or replace the game (6.0s)
+  ✓   6 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › fruit-merge: gameplay, Escape, frozen autosave and exact return (3.8s)
+  ✓   4 [chromium] › tests/e2e/study-editorial.spec.ts:2:96 › editorial notes, fictional contributors and visible Games navigation fit 768 (11.8s)
+  ✓   7 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › water-sort: gameplay, Escape, frozen autosave and exact return (3.6s)
+  ✓   9 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › color-blocks: gameplay, Escape, frozen autosave and exact return (2.7s)
+  ✓   8 [chromium] › tests/e2e/study-editorial.spec.ts:2:96 › editorial notes, fictional contributors and visible Games navigation fit 1366 (8.8s)
+  ✓  10 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › tower: gameplay, Escape, frozen autosave and exact return (4.5s)
+  ✓  12 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › snake: gameplay, Escape, frozen autosave and exact return (4.7s)
+  ✓  13 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › minesweeper: gameplay, Escape, frozen autosave and exact return (2.7s)
+  ✓  11 [chromium] › tests/e2e/viewport.spec.ts:8:3 › all games fill 390×844 without scrolling the document (10.5s)
+  ✓  14 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › solitaire: gameplay, Escape, frozen autosave and exact return (4.8s)
+  ✓  16 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › block-fill: gameplay, Escape, frozen autosave and exact return (2.9s)
+  ✓  17 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › color-connect: gameplay, Escape, frozen autosave and exact return (3.6s)
+  ✓  15 [chromium] › tests/e2e/viewport.spec.ts:8:3 › all games fill 844×390 without scrolling the document (11.1s)
+  ✓  18 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › ball-run: gameplay, Escape, frozen autosave and exact return (5.6s)
+  ✓  20 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › pool: gameplay, Escape, frozen autosave and exact return (3.4s)
+  ✘  19 [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game (9.9s)
+(node:44742) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  21 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › animal-stack: gameplay, Escape, frozen autosave and exact return (3.6s)
+  ✓  22 [chromium] › tests/e2e/viewport.spec.ts:71:1 › legacy fit follows a growing Solitaire pile and preserves real card hits (3.8s)
+  ✓  23 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › flappy-bird: gameplay, Escape, frozen autosave and exact return (4.2s)
+  ✓  25 [chromium] › tests/e2e/study.spec.ts:139:3 › Escape from the menu cannot resume gameplay behind the chapter (3.2s)
+  ✓  26 [chromium] › tests/e2e/study.spec.ts:139:3 › Escape from the rules cannot resume gameplay behind the chapter (3.3s)
+  ✓  24 [chromium] › tests/e2e/viewport.spec.ts:91:1 › Minesweeper keeps its intentional board scrolling inside the fitted game (7.4s)
+  ✓  27 [chromium] › tests/e2e/study.spec.ts:158:1 › manual pause survives Study and contents navigation keeps the game route intact (3.9s)
+  ✓  28 [chromium] › tests/e2e/viewport.spec.ts:107:1 › all legacy toolbar controls remain reachable at the supported 320px width (3.1s)
+  ✓  29 [chromium] › tests/e2e/study.spec.ts:171:1 › Escape during a delayed import opens instantly and the late game mounts paused (4.8s)
+  ✓  31 [chromium] › tests/e2e/study.spec.ts:188:1 › Study remains usable when both storage APIs are blocked (3.6s)
+  ✓  32 [chromium] › tests/e2e/study.spec.ts:206:1 › library menu opens a chapter without remaking cards or requesting assets (3.7s)
+  ✓  30 [chromium] › tests/games/flappy-bird/play.spec.ts:20:1 › keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up (14.3s)
+  ✓  33 [chromium] › tests/e2e/study.spec.ts:219:1 › a partially dragged Solitaire card is cleaned up without changing the deal (2.4s)
+  ✓  35 [chromium] › tests/e2e/study.spec.ts:233:1 › return restores keyboard focus even when a card game re-renders its controls on pause (3.4s)
+  ✓  36 [chromium] › tests/e2e/study.spec.ts:243:1 › returning while the page is hidden leaves the game safely paused (2.5s)
+  ✓  37 [chromium] › tests/e2e/study.spec.ts:257:3 › topic picker and textbook at 390 (4.0s)
+  ✓  38 [chromium] › tests/e2e/study.spec.ts:257:3 › topic picker and textbook at 768 (7.2s)
+  ✓  34 [chromium] › tests/games/flappy-bird/play.spec.ts:36:1 › a real scored flight persists its record and ignores held repeat and dialog keys (19.3s)
+  ✓  40 [chromium] › tests/games/flappy-bird/play.spec.ts:51:1 › native phone touch is a single flap and pointer cancellation does not leave input held (3.9s)
+  ✓  39 [chromium] › tests/e2e/study.spec.ts:257:3 › topic picker and textbook at 1366 (7.6s)
+  ✓  41 [chromium] › tests/games/flappy-bird/play.spec.ts:60:114 › original scene and controls fit 320x568 (1.7s)
+  ✓  43 [chromium] › tests/games/flappy-bird/play.spec.ts:60:114 › original scene and controls fit 390x844 (2.9s)
+  ✓  44 [chromium] › tests/games/flappy-bird/play.spec.ts:60:114 › original scene and controls fit 844x390 (2.5s)
+  ✓  42 [chromium] › tests/e2e/study.spec.ts:272:1 › all twenty original diagrams render as a review contact sheet (7.0s)
+  ✓  45 [chromium] › tests/games/flappy-bird/play.spec.ts:60:114 › original scene and controls fit 1366x768 (2.6s)
+(node:45848) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  46 [chromium] › tests/games/water-sort/correction.spec.ts:8:1 › travelling glass pours level liquid into destination, pause retains the same transaction, and returns once (3.6s)
+  ✓  48 [chromium] › tests/games/water-sort/correction.spec.ts:38:1 › native keyboard source and destination selection ignores held Enter and survives a cancelled pointer (2.3s)
+  ✓  49 [chromium] › tests/games/water-sort/correction.spec.ts:54:3 › open scene and all seven tubes fit 390x844 (1.6s)
+  ✓  50 [chromium] › tests/games/water-sort/correction.spec.ts:54:3 › open scene and all seven tubes fit 844x390 (2.0s)
+  ✓  51 [chromium] › tests/games/water-sort/correction.spec.ts:54:3 › open scene and all seven tubes fit 1366x768 (1.7s)
+  ✓  52 [chromium] › tests/games/water-sort/correction.spec.ts:66:1 › reduced motion transfers legal volume gently without moving glass (2.3s)
+  ✓  53 [chromium] › tests/games/water-sort/correction.spec.ts:74:1 › Study retains a partially transferred pour and resumes the same game instance (3.6s)
+  ✓  54 [chromium] › tests/games/water-sort/correction.spec.ts:87:1 › optional drag captures real pointer moves and release outside the source before pouring (3.4s)
+  ✓  47 [chromium] › tests/games/ball-run/play.spec.ts:10:1 › real drag and held keys steer; pause, Study, restart, restore, and disposal retain their contracts (24.4s)
+  ✓  55 [chromium] › tests/games/water-sort/correction.spec.ts:107:1 › cancel, lost capture, blur, resize, pause and disposal release drag capture without pouring (8.6s)
+(node:46388) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  57 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 390x844 (6.0s)
+  ✓  58 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 844x390 (4.0s)
+  ✓  56 [chromium] › tests/games/ball-run/play.spec.ts:50:1 › native phone touch drag steers continuously and cancel releases capture (14.1s)
+  ✓  59 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 1366x768 (5.5s)
+  ✓  61 [chromium] › tests/games/color-blocks/correction.spec.ts:30:1 › Escape, resize and lost capture cancel a gesture without arming a later board click (5.8s)
+BALL_RUN_RENDER { calls: '7', geometries: '3' }
+  ✓  62 [chromium] › tests/games/color-blocks/correction.spec.ts:41:1 › a fresh keyboard selection can be placed by a board click after restore (2.2s)
+  ✓  63 [chromium] › tests/games/color-blocks/correction.spec.ts:45:1 › held placement key cannot place a freshly selected second piece (2.0s)
+  ✓  64 [chromium] › tests/games/color-blocks/correction.spec.ts:51:1 › pointer crossing clear shows short row/column feedback without changing scoring (4.1s)
+BALL_RUN_RAF_MS { median: 183.39999999999782, p95: 416.7000000000007 }
+  ✓  60 [chromium] › tests/games/ball-run/play.spec.ts:65:1 › a real restored run accelerates through cyan gates and flies then lands across a gap without jumping (21.0s)
+  ✓  66 [chromium] › tests/games/ball-run/play.spec.ts:82:95 › perspective keeps a round ball and fills 390x844 (3.8s)
+  ✓  65 [chromium] › tests/games/color-blocks/correction.spec.ts:60:2 › native touch evidence › trusted touch pickup, lifted preview, snap, invalid return and cancel (8.3s)
+  ✓  67 [chromium] › tests/games/ball-run/play.spec.ts:82:95 › perspective keeps a round ball and fills 844x390 (4.1s)
+  ✓  68 [chromium] › tests/games/ball-run/play.spec.ts:82:95 › perspective keeps a round ball and fills 1366x768 (4.1s)
+  ✓  69 [chromium] › tests/games/ball-run/play.spec.ts:92:1 › lost WebGL visibly saves and remains stopped until exit and re-entry (5.8s)
+  ✓  70 [chromium] › tests/games/ball-run/play.spec.ts:101:1 › unsupported WebGL gives a visible useful fallback and retains an existing save (2.2s)
+  ✓  71 [chromium] › tests/games/ball-run/play.spec.ts:109:1 › procedural rendered blocks collide and repeated restarts release held input and reuse resources (8.1s)
+  ✓  72 [chromium] › tests/games/ball-run/play.spec.ts:127:1 › resizing during a held steering key retains keyboard control (4.8s)
+
+
+  1) [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+    Call Log:
+    - Timeout 7000ms exceeded while waiting on the predicate
+
+      56 |   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+      57 |   await page.keyboard.press('PageDown');
+    > 58 |   await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(0);
+         |                                                     ^
+      59 |   await expect(page.locator('html')).toHaveAttribute('data-study-page-down-prevented','false');
+      60 |   await page.getByRole('link',{name:'Games',exact:true}).click();
+      61 |   expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
+        at /tmp/qcc-study-editorial/tests/e2e/viewport.spec.ts:58:53
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/e2e-viewport-Study-restore-b4d66--to-the-retained-fixed-game-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/e2e-viewport-Study-restore-b4d66--to-the-retained-fixed-game-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/e2e-viewport-Study-restore-b4d66--to-the-retained-fixed-game-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/e2e-viewport-Study-restore-b4d66--to-the-retained-fixed-game-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/e2e/viewport.spec.ts:40:1 › Study restores normal reading scroll and returns to the retained fixed game 
+  71 passed (3.8m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

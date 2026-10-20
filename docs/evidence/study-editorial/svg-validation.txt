@@ -1,0 +1,28 @@
+=== svg-skill validate ===
+PASS nell.svg
+PASS leo.svg
+PASS mina.svg
+PASS ari.svg
+PASS wwi-causes.svg
+PASS trigonometry.svg
+PASS te-tiriti.svg
+PASS supply-demand.svg
+PASS rivers-flooding.svg
+PASS quadratics.svg
+PASS probability.svg
+PASS poetry.svg
+PASS linear-relationships.svg
+PASS inheritance.svg
+PASS historical-evidence.svg
+PASS hauora.svg
+PASS forces.svg
+PASS film-language.svg
+PASS essay-writing.svg
+PASS energy.svg
+PASS ecosystems.svg
+PASS close-reading.svg
+PASS algorithms.svg
+PASS acids-bases.svg
+
+Result: 24 passed, 0 failed
+Independent XML parse: 24 SVG files valid. xmllint is unavailable locally.

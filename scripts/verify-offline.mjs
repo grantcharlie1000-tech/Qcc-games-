@@ -45,7 +45,7 @@ try{
   await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>o.value));assert.equal(topics.length,20);
   for(const topic of topics){await page.getByLabel('Study topic',{exact:true}).selectOption(topic);assert.ok(await page.locator('#study-title').textContent());assert.equal(await page.locator('.study-figure svg').count(),1);assert.equal(await page.locator('.study-chapter h2').count(),5);}
-  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();page.off('request',recordReading);assert.deepEqual(readingRequests,[],'Study switching must not request any files');
+  await page.getByRole('link',{name:'Games',exact:true}).click();page.off('request',recordReading);assert.deepEqual(readingRequests,[],'Study switching must not request any files');
   results.push({deployment:label,studyArticlesOffline:topics.length,studySwitchRequests:readingRequests});
   await page.screenshot({path:`${folder}/home-${label}-390.png`,fullPage:true});
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
@@ -62,7 +62,7 @@ try{
    const frozen=await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id);
    await page.getByLabel('Study topic',{exact:true}).selectOption('quadratics');
    assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id),frozen,id+' study snapshot');
-   await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();page.off('request',recordSwitch);
+   await page.getByRole('link',{name:'Games',exact:true}).click();page.off('request',recordSwitch);
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
    assert.deepEqual(switchRequests,[],id+' no files requested while switching');
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');

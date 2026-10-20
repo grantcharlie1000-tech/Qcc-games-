@@ -57,7 +57,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   await page.keyboard.press('PageDown');
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(0);
   await expect(page.locator('html')).toHaveAttribute('data-study-page-down-prevented','false');
-  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+  await page.getByRole('link',{name:'Games',exact:true}).click();
   expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
   await expect(page.locator('.game-view')).toHaveCSS('position','fixed');

@@ -3,7 +3,7 @@ import type {Page} from '@playwright/test';
 
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>page.locator(`[data-study-topic="${id}"]`).click();
-const returnToGame=async(page:import('@playwright/test').Page)=>page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+const returnToGame=async(page:import('@playwright/test').Page)=>page.getByRole('link',{name:'Games',exact:true}).click();
 const snapshot=(page:Page,id:string)=>page.evaluate(id=>JSON.parse(localStorage.getItem(`pocket-arcade:v1:save:${id}`)!).data,id);
 
 async function gameAction(page:Page,id:string){
@@ -95,7 +95,7 @@ test('Escape immediately saves and pauses; article changes never load or replace
   await expect(page.locator('#study-view')).toBeVisible();
   const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data);
   expect(after).toEqual(before);
-  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+  await page.getByRole('link',{name:'Games',exact:true}).click();
   await expect(page.locator('.fm-count')).toContainText('1 fruit');
   expect(await page.evaluate(()=>(window as unknown as {retainedStage:Element|null}).retainedStage===document.querySelector('#game-stage > *'))).toBe(true);
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
