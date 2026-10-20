@@ -38,3 +38,7 @@ Official source locations: https://github.com/mrdoob/three.js/blob/r180/src/obje
 No installed standalone Three.js, procedural runner/track, or custom 3D solver skill was found. Generic 3D/web guides cover principles; official installed API documentation resolves the Three boundary. Deterministic fixed-step tests establish ramp momentum, ballistic gap crossing, landing, speed regions and sphere/AABB collision.
 
 Viewed `blocks_and_ball_reference_sheet.jpg`, `13_ball_track.png`, and `14_ball_obstacles.png` with the image tool. They establish composition and palette; no source MP4 is available, so continuous camera or speed timing cannot be claimed matched. Physical touch hardware and mobile GPU performance are unverified. Parent owns shared viewport/HUD integration and independent review.
+
+## Seeded procedural follow-up (2026-10-19)
+
+The delegated Flappy/Ball Run session read the same repository router, web/3D/design/art, systematic-debugging, SVG, animation, test-driven-development and verification skills plus their test-writing reference. Failing tests reproduced missed lateral contact, NaN steering corruption and only two obstacle variants. The follow-up shares each obstacle definition between rendering and collision and proves traversal across 64 seeds. No Three API or dependency upgrade was needed. Parent coordinates independent Astra review; no review agent was spawned here.

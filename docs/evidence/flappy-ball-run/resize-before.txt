@@ -1,0 +1,48 @@
+
+Running 1 test using 1 worker
+
+(node:9154) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/ball-run/play.spec.ts:116:1 › resizing during a held steering key retains keyboard control (15.4s)
+
+
+  1) [chromium] › tests/games/ball-run/play.spec.ts:116:1 › resizing during a held steering key retains keyboard control
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0.3
+    Received:   0
+
+      117 |   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Start rolling',exact:true}).click();await page.keyboard.down('ArrowRight');
+      118 |   await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.2);await page.setViewportSize({width:768,height:844});await frames(page,24);
+    > 119 |   const x=Number(await page.locator('.ball-run').getAttribute('data-x'));await frames(page,12);const after=Number(await page.locator('.ball-run').getAttribute('data-x'));await page.keyboard.up('ArrowRight');expect(after-x).toBeGreaterThan(.3);
+          |                                                                                                                                                                                                                                ^
+      120 | });
+      121 |
+        at /workspace/Qcc-games-/tests/games/ball-run/play.spec.ts:119:224
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../tmp/qcc-resize-red/games-ball-run-play-resizi-20e27-ey-retains-keyboard-control-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../../tmp/qcc-resize-red/games-ball-run-play-resizi-20e27-ey-retains-keyboard-control-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../tmp/qcc-resize-red/games-ball-run-play-resizi-20e27-ey-retains-keyboard-control-chromium/error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../tmp/qcc-resize-red/games-ball-run-play-resizi-20e27-ey-retains-keyboard-control-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../tmp/qcc-resize-red/games-ball-run-play-resizi-20e27-ey-retains-keyboard-control-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/games/ball-run/play.spec.ts:116:1 › resizing during a held steering key retains keyboard control
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -1,0 +1,7 @@
+# Flappy Bird — Reed flight
+
+One-button endless flight: a teal marsh swift flies between copper reed gates over peach wetlands. All illustration is original authored Canvas geometry and SVG. Space, Up, W, mouse, touch, and the semantic Flap button invoke the same action. One press gives one beat; held keys do not repeat. A circle collider stays inside the bird silhouette. Sky, water, and reeds end the run; one point is awarded after each entire gate clears the bird.
+
+A pure seeded model runs at 120Hz in logical 360×540 coordinates. Gate spacing is 224px with bounded center movement and an opening that gradually narrows from 182px to 150px. Four generated gates bound memory regardless of score. Frame remainder, seed, tick, position, velocity, run, score, and best are validated on restore. Saved flights wait for Continue flight; pause, dialogs, hidden pages, and Study freeze time. Restart clears the frame accumulator and all run state; disposal aborts listeners and cancels RAF. The shell owns persistent scores, toolbar, status, audio preferences, offline packaging, and route lifecycle.
+
+The scene keeps its aspect ratio at phone, landscape, and desktop widths, while the action controls retain a 44px target. Reduced motion removes scenic parallax and bird rotation/wing beats, retaining essential flight movement. Instructions and end states are semantic DOM; score and loss use the shell announcer.

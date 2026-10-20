@@ -48,10 +48,16 @@ test('camera follows a tall tower while genuine keyboard inputs preserve perfect
   await page.setViewportSize({width:390,height:844});await start(page);
   await page.locator('.tower-canvas').focus();
   for(let height=0;height<9;height++){
-    await page.clock.runFor((height?200:0)+Math.round(145/(95+height*4)*1000));
+    // Motion is analytical in elapsed time. Jump to each alignment rather than
+    // painting every intermediate frame on the CI software renderer.
+    await page.clock.fastForward((height?200:0)+Math.round(145/(95+height*4)*1000));
     await page.keyboard.press('Space');await expect(page.locator('.tower-height')).toHaveText(String(height+1));
   }
   await expect(page.locator('.tower-combo')).toHaveText('9');
   await page.clock.runFor(200);
   await page.screenshot({path:'tests/games/tower/evidence/tall-tower.png',fullPage:true});
+  await page.getByRole('button',{name:'Pause game',exact:true}).click();
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:tower')!).data);
+  expect(saved.blocks).toHaveLength(10);
+  for(const block of saved.blocks){expect(block.w).toBe(110);expect(block.d).toBe(110);}
 });

@@ -25,14 +25,22 @@ test('keyboard eating, turning, loss, replay, pause and saved continuation',asyn
  await page.getByRole('button',{name:'Open menu'}).click();await page.locator('#search').fill('');await page.getByRole('button',{name:'Close menu'}).click();await page.getByRole('link',{name:'Play Snake',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
  await page.getByRole('button',{name:'Start slithering'}).click();await page.clock.runFor(170);await page.screenshot({path:'tests/games/snake/evidence/desktop.png',fullPage:true});expect(errors).toEqual([]);
 });
-test('touch swipe and direction buttons fit a phone',async({browser})=>{
+test('pointer swipe and touch direction buttons fit a phone',async({browser,browserName})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
  await page.getByRole('button',{name:'Start slithering'}).tap();await page.clock.runFor(170);
  const box=(await page.locator('.snake-canvas').boundingBox())!;
- const cdp=await context.newCDPSession(page);
- await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2}]});
- await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2-65}]});
- await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.clock.runFor(170);
+ const x=box.x+box.width/2,y=box.y+box.height/2;
+ if(browserName==='chromium'){
+  const cdp=await context.newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-65}]});
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ }else{
+  // CDP is Chromium-only. WebKit exercises the same captured pointer gesture
+  // with native mouse events, then the real touchscreen direction buttons below.
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y-65,{steps:4});await page.mouse.up();
+ }
+ await page.clock.runFor(170);
  await page.getByRole('button',{name:'Turn left',exact:true}).tap();await page.clock.runFor(170);
  await page.getByRole('button',{name:'Pause game',exact:true}).tap();const state=await saved(page);expect(state.direction).toBe('left');expect(state.body[0].x).toBeLessThan(6);expect(state.body[0].y).toBeLessThan(6);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.screenshot({path:'tests/games/snake/evidence/chromium.png',fullPage:true});await context.close();

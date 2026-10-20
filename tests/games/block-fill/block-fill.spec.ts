@@ -5,6 +5,11 @@ test.use({viewport:{width:390,height:844},reducedMotion:'reduce'});
 const board=(page:Page)=>page.locator('.bf-board');
 async function center(page:Page,cell:number){const level=generateLevel(Number(await board(page).getAttribute('data-level'))-1),box=(await board(page).boundingBox())!;const s=level.size*64+24;return{x:box.x+(44+cell%level.size*64)/s*box.width,y:box.y+(44+Math.floor(cell/level.size)*64)/s*box.height};}
 async function drag(page:Page,path:number[],fast=false){
+  // A mounted SVG can be measured before the stage applies its first fit after
+  // reload, or while the next garden is being laid out. Hover waits for the
+  // actual board to be stable before we derive native pointer coordinates.
+  await expect(page.locator('#game-stage')).toHaveAttribute('data-viewport-scale',/./);
+  await board(page).hover();
   const first=await center(page,path[0]!);await page.mouse.move(first.x,first.y);await page.mouse.down();
   for(let i=1;i<path.length;i++){
     // Straight runs are sent as a single large movement, forcing interpolation.
@@ -25,6 +30,7 @@ test('fast actual drag fills every square and unlocks the larger next garden',as
   await expect(page.locator('#game-score')).toContainText('1000');
   await page.reload();await expect(page.locator('#game-score')).toContainText('1000');
   await drag(page,generateLevel(0).solution,true);
+  await expect(board(page)).toHaveAttribute('data-covered','9');
   await page.getByRole('button',{name:'Next garden'}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
   await expect(page.locator('#game-level')).toContainText('2 / 12');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);

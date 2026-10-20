@@ -30,7 +30,20 @@ test('real CDP touch drag/cancel never drops; DROP button releases',async({brows
 test('pause cancels a captured gesture without rotation or drop',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const p=await waitingPoint(page),canvas=game(page).locator('canvas');await canvas.evaluate(e=>e.addEventListener('pointerdown',event=>e.setAttribute('data-test-pointer',String((event as PointerEvent).pointerId))));await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+5,p.y);await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#pause-game')!.click());const pointer=Number(await canvas.getAttribute('data-test-pointer'));expect(await canvas.evaluate((e,id)=>e.hasPointerCapture(id),pointer)).toBe(false);await page.mouse.up();await expect(game(page)).toHaveAttribute('data-count','0');await expect(game(page)).toHaveAttribute('data-angle','0');await page.getByRole('button',{name:'Keep playing',exact:true}).click();await expect(game(page)).toHaveAttribute('data-ready','true');});
 
 test('neck-first restored pose really pivots, stable pose earns support, edge fall ends',async({page})=>{
- await page.setViewportSize({width:390,height:844});await loadPose(page,210);await expect(game(page)).toHaveAttribute('data-angle',String(-Math.PI/2));await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-count','2');await expect.poll(async()=>Math.abs(Number(await game(page).getAttribute('data-body-angle'))+Math.PI/2)).toBeGreaterThan(.4);await expect.poll(async()=>Math.abs(Number(await game(page).getAttribute('data-body-angle'))+Math.PI/2)).toBeGreaterThan(1);
+ await page.setViewportSize({width:390,height:844});await loadPose(page,210);await expect(game(page)).toHaveAttribute('data-angle',String(-Math.PI/2));
+ // Observe every rendered angle in the browser: the pivot can peak and settle
+ // between test-driver polls, especially under concurrent CI rendering.
+ await game(page).evaluate(root=>{
+  let peak=0;const observer=new MutationObserver(()=>{
+   if(root.getAttribute('data-count')!=='2')return;
+   peak=Math.max(peak,Math.abs(Number(root.getAttribute('data-body-angle'))+Math.PI/2));root.setAttribute('data-test-peak-pivot',String(peak));
+  });observer.observe(root,{attributes:true,attributeFilter:['data-body-angle']});
+  (window as unknown as {stopAnimalPivotProbe:()=>void}).stopAnimalPivotProbe=()=>observer.disconnect();
+ });
+ await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-count','2');
+ await expect.poll(async()=>Number(await game(page).getAttribute('data-test-peak-pivot'))).toBeGreaterThan(.4);
+ await expect.poll(async()=>Number(await game(page).getAttribute('data-test-peak-pivot'))).toBeGreaterThan(1);
+ await page.evaluate(()=>(window as unknown as {stopAnimalPivotProbe:()=>void}).stopAnimalPivotProbe());
  // x180 is a restored-pose fixture that settles wholly above platform on the elephant.
  await loadPose(page,180);await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-balanced','2',{timeout:18000});expect(Number(await game(page).getAttribute('data-body-bottom'))).toBeLessThan(FLOOR-20);
  const world=new AnimalWorld();world.nextKind='penguin';world.aim(0);const snapshot=world.snapshot();world.dispose();await page.goto('/');await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),snapshot);await page.goto(route);await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-over','true');await expect(game(page).getByRole('button',{name:/^Drop /})).toBeDisabled();
@@ -46,4 +59,13 @@ for(const key of ['Enter','Space'])test(`holding ${key} on actual DROP cannot re
  await button.focus();await page.keyboard.down(key);await expect(game(page)).toHaveAttribute('data-count','1');await page.keyboard.up(key);
 });
 
-test('held directional keys continue positioning and focus loss stops them',async({page})=>{await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const canvas=game(page).locator('canvas');await canvas.focus();await page.keyboard.down('d');await page.waitForTimeout(500);await page.keyboard.up('d');expect(Number(await game(page).getAttribute('data-aim'))).toBeGreaterThan(210);await page.keyboard.down('ArrowLeft');await page.waitForTimeout(300);await page.getByRole('button',{name:'Game rules',exact:true}).focus();const frozen=await game(page).getAttribute('data-aim');await page.waitForTimeout(250);await expect(game(page)).toHaveAttribute('data-aim',frozen!);await page.keyboard.up('ArrowLeft');});
+test('held directional keys continue through resize and focus loss stops them',async({page})=>{
+ const fixed=new Date('2026-10-20T00:00:00Z');await page.clock.install({time:fixed});await page.clock.pauseAt(fixed);
+ await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');await page.clock.runFor(32);
+ const canvas=game(page).locator('canvas');await canvas.focus();await page.keyboard.down('d');
+ await page.setViewportSize({width:1200,height:800});await page.clock.runFor(500);await page.keyboard.up('d');
+ const right=Number(await game(page).getAttribute('data-aim'));expect(right).toBeGreaterThan(210);
+ await page.keyboard.down('ArrowLeft');await page.clock.runFor(300);expect(Number(await game(page).getAttribute('data-aim'))).toBeLessThan(right);
+ await page.getByRole('button',{name:'Game rules',exact:true}).focus();const frozen=await game(page).getAttribute('data-aim');
+ await page.clock.runFor(250);await expect(game(page)).toHaveAttribute('data-aim',frozen!);await page.keyboard.up('ArrowLeft');
+});

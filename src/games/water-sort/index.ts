@@ -201,6 +201,9 @@ const module:GameModule={
     window.addEventListener('pointercancel',event=>{if(pointer?.id===event.pointerId)clearPointer(true);},{signal:abort.signal});
     root.addEventListener('lostpointercapture',event=>{if(pointer?.id===event.pointerId&&pointer.target===event.target)clearPointer(true);},{signal:abort.signal});
     window.addEventListener('blur',()=>clearPointer(true),{signal:abort.signal});
+    // The scene can keep the same size when a wide browser window resizes, so
+    // field ResizeObserver notifications alone cannot cancel every gesture.
+    window.addEventListener('resize',()=>clearPointer(true),{signal:abort.signal});
     difficulty.addEventListener('change',()=>reset(LEVELS.findIndex(l=>l.difficulty===difficulty.value)),{signal:abort.signal});
     levelSelect.addEventListener('change',()=>reset(Number(levelSelect.value)),{signal:abort.signal});
     const observer=new ResizeObserver(()=>{clearPointer(true);fit();});observer.observe(field);

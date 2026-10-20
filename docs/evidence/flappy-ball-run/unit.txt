@@ -1,0 +1,46 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/Qcc-games-
+
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 494ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 842ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  583ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 700ms
+   ✓ offline opponent game progression > plays both sides through a full deterministic rack with real legal shots  331ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 570ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 387ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 321ms
+   ✓ long seeded runs > keeps valid saves and deterministic future deals across many tray boundaries  306ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 2770ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  533ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  2049ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 149ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 179ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 78ms
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 90ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 85ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 116ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 39ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 20ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 28ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 16ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 17ms
+ ✓ tests/core/storage.test.ts (5 tests) 7ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 6ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 7ms
+ ✓ tests/core/study.test.ts (5 tests) 10ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 3ms
+
+ Test Files  23 passed (23)
+      Tests  266 passed (266)
+   Start at  23:17:24
+   Duration  5.18s (transform 1.01s, setup 0ms, collect 1.75s, tests 6.94s, environment 4ms, prepare 1.86s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

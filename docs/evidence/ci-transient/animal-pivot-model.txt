@@ -1,0 +1,8 @@
+{"delay":0,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}
+{"delay":1,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}
+{"delay":2,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}
+{"delay":3,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}
+{"delay":5,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}
+{"delay":10,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}
+{"delay":30,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}
+{"delay":60,"peak":1.76710611853367,"peakTick":54,"finalDelta":0.0981304317809677,"over":false}

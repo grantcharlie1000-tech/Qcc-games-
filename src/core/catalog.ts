@@ -5,6 +5,7 @@ export const games: GameInfo[] = [
 {id:'water-sort',title:'Water Sort',color:'#594263',ink:'#e4b5f7',accent:'#dca8ed'},
 {id:'fruit-merge',title:'Fruit Merge',color:'#ffe7ac',ink:'#d34c37',accent:'#df4e37'},
 {id:'tower',title:'Tower',color:'#c78dcd',ink:'#254b68',accent:'#345e7c'},
+{id:'flappy-bird',title:'Flappy Bird',color:'#f9d9a7',ink:'#245f60',accent:'#258b8b'},
 {id:'ball-run',title:'Ball Run',color:'#080b20',ink:'#e448b3',accent:'#e448b3'},
 {id:'animal-stack',title:'Animal Stack',color:'#08b6d5',ink:'#203d42',accent:'#213d44'},
 {id:'snake',title:'Snake',color:'#f9dda2',ink:'#dc624b',accent:'#dc624b'},

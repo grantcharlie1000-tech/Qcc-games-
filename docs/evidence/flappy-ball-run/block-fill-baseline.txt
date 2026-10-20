@@ -1,0 +1,97 @@
+
+Running 2 tests using 1 worker
+
+(node:12925) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden (12.4s)
+(node:13206) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input (12.8s)
+
+
+  1) [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('.bf-board')
+    Expected: "9"
+    Received: "1"
+    Timeout:  7000ms
+
+    Call log:
+      - Expect "toHaveAttribute" locator('.bf-board') with timeout 7000ms
+      - waiting for locator('.bf-board')
+        18 × locator resolved to <svg role="img" tabindex="0" data-total="9" data-level="1" class="bf-board" data-covered="1" viewBox="0 0 216 216" xmlns="http://www.w3.org/2000/svg" aria-label="Block Fill board, garden 1. 1 of 9 covered. Head row 2, column 2. Arrow keys trace, Backspace undoes, H hints.">…</svg>
+           - unexpected value "1"
+
+
+      20 |   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+      21 |   await drag(page,generateLevel(0).solution,true);
+    > 22 |   await expect(board(page)).toHaveAttribute('data-covered','9');await expect(page.getByRole('button',{name:'Next garden'})).toBeVisible();
+         |                             ^
+      23 |   await expect(page.locator('#game-score')).toContainText('1000');
+      24 |   await page.getByRole('button',{name:'Reset path',exact:true}).click();
+      25 |   await expect(page.locator('#game-score')).toContainText('1000');
+        at /tmp/qcc-baseline/tests/games/block-fill/block-fill.spec.ts:22:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../qcc-baseline-browser/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../qcc-baseline-browser/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../qcc-baseline-browser/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../qcc-baseline-browser/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input
+
+    Error: expect(locator).toHaveAttribute(expected) failed
+
+    Locator:  locator('.bf-board')
+    Expected: "9"
+    Received: "1"
+    Timeout:  7000ms
+
+    Call log:
+      - Expect "toHaveAttribute" locator('.bf-board') with timeout 7000ms
+      - waiting for locator('.bf-board')
+        17 × locator resolved to <svg role="img" tabindex="0" data-total="9" data-level="1" class="bf-board" data-covered="1" viewBox="0 0 216 216" xmlns="http://www.w3.org/2000/svg" aria-label="Block Fill board, garden 1. 1 of 9 covered. Head row 2, column 2. Arrow keys trace, Backspace undoes, H hints.">…</svg>
+           - unexpected value "1"
+
+
+      76 |   for(let i=0;i<12;i++){
+      77 |     const level=generateLevel(i);await drag(page,level.solution,true);
+    > 78 |     await expect(board(page)).toHaveAttribute('data-covered',String(level.cells.length));
+         |                               ^
+      79 |     if(i<11)await page.getByRole('button',{name:'Next garden'}).click();
+      80 |   }
+      81 |   await expect(page.locator('.bf-message')).toContainText('All twelve gardens filled');
+        at /tmp/qcc-baseline/tests/games/block-fill/block-fill.spec.ts:78:31
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../qcc-baseline-browser/games-block-fill-block-fil-c771f-in-using-real-pointer-input-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../qcc-baseline-browser/games-block-fill-block-fil-c771f-in-using-real-pointer-input-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../qcc-baseline-browser/games-block-fill-block-fil-c771f-in-using-real-pointer-input-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../qcc-baseline-browser/games-block-fill-block-fil-c771f-in-using-real-pointer-input-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden
+    [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

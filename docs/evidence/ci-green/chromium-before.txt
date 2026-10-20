@@ -1,0 +1,52 @@
+
+Running 3 tests using 1 worker
+
+(node:20270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden (30.2s)
+(node:20412) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › tests/games/block-fill/block-fill.spec.ts:74:1 › all twelve gardens are playable to the final win using real pointer input (22.0s)
+  ✓  3 [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size (15.9s)
+
+
+  1) [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Next garden' })
+
+
+      26 |   await page.reload();await expect(page.locator('#game-score')).toContainText('1000');
+      27 |   await drag(page,generateLevel(0).solution,true);
+    > 28 |   await page.getByRole('button',{name:'Next garden'}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
+         |                                                       ^
+      29 |   await expect(page.locator('#game-level')).toContainText('2 / 12');
+      30 |   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
+      31 | });
+        at /workspace/Qcc-games-/tests/games/block-fill/block-fill.spec.ts:28:55
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../tmp/qcc-merge-baseline/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../tmp/qcc-merge-baseline/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../tmp/qcc-merge-baseline/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../tmp/qcc-merge-baseline/games-block-fill-block-fil-22748-ocks-the-larger-next-garden-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/games/block-fill/block-fill.spec.ts:19:1 › fast actual drag fills every square and unlocks the larger next garden 
+  2 passed (1.2m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

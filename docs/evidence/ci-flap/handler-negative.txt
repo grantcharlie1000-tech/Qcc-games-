@@ -1,0 +1,1 @@
+{"negativeControl":"canvas flap handler removed","observed":{"trusted":true,"phase":"running","vy":-52.5},"revisedExactLiftAssertion":false}

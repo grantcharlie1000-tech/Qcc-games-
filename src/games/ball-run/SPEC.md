@@ -13,3 +13,9 @@ Pause/blur/cancel/resize clear input and capture. Restored runs require explicit
 The city uses fixed instanced boxes plus one combined grid-line buffer. Road/grid/obstacle/gate buffers are reused. Disposal releases geometry, materials, instances, observers, events, RAF, renderer and context. Missing WebGL shows a visible exit; context loss saves the run and requires exit/re-entry.
 
 Stills support composition, not exact continuous motion or original timing. See TEST_RESULTS.md for actual evidence and limits.
+
+## Procedural obstacle correction (2026-10-19)
+
+New runs use a strong seed/section hash to vary block side, longitudinal placement, dimensions, and occasional paired gates. Opening sections, gap ramps and cyan speed gates stay clear. All generated blocks remain inside the road and leave at least 0.22m beyond a centered sphere's radius; sections meet continuously. A 64-seed driver traverses 2.5km per seed including maximum base speed. Generation uses section indices, so no mutable obstacle queue can leak across restart.
+
+The renderer consumes the exact width/height/depth/position data used by the sphere collider. Collision tests minimize the distance along the full three-dimensional motion segment to an AABB, including lateral contact, tangents, rounded-corner misses, and zero-length motion. Nonfinite input is ignored. Version 3 snapshots carry course 1 (original obstacle layout) or course 2 (procedural layout). Versions 1 and 2 migrate with the original hazards and retain seed, progress, best score and terrain height; restarting chooses a fresh procedural course.

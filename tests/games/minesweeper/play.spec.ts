@@ -61,7 +61,11 @@ test('phone levels, adjustable cells, keyboard reveal and contained expert overf
   });
   expect(artwork.asset).toBe(artwork.expected);expect(artwork.decoded).toBe(true);expect(artwork.fallback).not.toBe('rgba(0, 0, 0, 0)');
   await cell(page,0).focus();await page.keyboard.press('Enter');await expect(cell(page,0)).toHaveAttribute('data-state','open');
-  await page.locator('.ms-size').selectOption('44');expect(await cell(page,0).evaluate(el=>el.getBoundingClientRect().width)).toBe(44);
+  await page.locator('.ms-size').selectOption('44');await expect(cell(page,0)).toHaveCSS('width','44px');
+  // The setting is in logical CSS pixels; the shared stage can scale the entire
+  // game to keep its controls on a phone. Verify both the requested cell size
+  // and its rendered size under that transform.
+  await expect.poll(()=>cell(page,0).evaluate(el=>Math.abs(el.getBoundingClientRect().width-44*Number(document.querySelector<HTMLElement>('#game-stage')!.dataset.viewportScale)))).toBeLessThan(.1);
   await page.locator('.ms-level').selectOption('intermediate');await expect(page.locator('.ms-tile')).toHaveCount(256);
   await page.locator('.ms-level').selectOption('expert');await expect(page.locator('.ms-tile')).toHaveCount(480);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

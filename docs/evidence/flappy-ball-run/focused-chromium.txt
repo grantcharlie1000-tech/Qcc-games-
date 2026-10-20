@@ -1,0 +1,37 @@
+[WebServer] (node:18231) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:18257) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 17 tests using 1 worker
+
+(node:18291) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/games/ball-run/play.spec.ts:10:1 › real drag and held keys steer; pause, Study, restart, restore, and disposal retain their contracts (13.2s)
+  ✓   2 [chromium] › tests/games/ball-run/play.spec.ts:39:1 › native phone touch drag steers continuously and cancel releases capture (5.5s)
+BALL_RUN_RENDER { calls: '7', geometries: '3' }
+BALL_RUN_RAF_MS { median: 66.60000000000036, p95: 116.69999999999982 }
+  ✓   3 [chromium] › tests/games/ball-run/play.spec.ts:54:1 › a real restored run accelerates through cyan gates and flies then lands across a gap without jumping (8.4s)
+  ✓   4 [chromium] › tests/games/ball-run/play.spec.ts:71:95 › perspective keeps a round ball and fills 390x844 (2.6s)
+  ✓   5 [chromium] › tests/games/ball-run/play.spec.ts:71:95 › perspective keeps a round ball and fills 844x390 (1.8s)
+  ✓   6 [chromium] › tests/games/ball-run/play.spec.ts:71:95 › perspective keeps a round ball and fills 1366x768 (2.7s)
+  ✓   7 [chromium] › tests/games/ball-run/play.spec.ts:81:1 › lost WebGL visibly saves and remains stopped until exit and re-entry (3.5s)
+  ✓   8 [chromium] › tests/games/ball-run/play.spec.ts:90:1 › unsupported WebGL gives a visible useful fallback and retains an existing save (1.2s)
+  ✓   9 [chromium] › tests/games/ball-run/play.spec.ts:98:1 › procedural rendered blocks collide and repeated restarts release held input and reuse resources (4.3s)
+  ✓  10 [chromium] › tests/games/ball-run/play.spec.ts:116:1 › resizing during a held steering key retains keyboard control (3.0s)
+(node:18863) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [chromium] › tests/games/flappy-bird/play.spec.ts:6:1 › keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up (8.2s)
+  ✓  12 [chromium] › tests/games/flappy-bird/play.spec.ts:22:1 › a real scored flight persists its record and ignores held repeat and dialog keys (6.8s)
+  ✓  13 [chromium] › tests/games/flappy-bird/play.spec.ts:37:1 › native phone touch is a single flap and pointer cancellation does not leave input held (2.6s)
+  ✓  14 [chromium] › tests/games/flappy-bird/play.spec.ts:45:114 › original scene and controls fit 320x568 (877ms)
+  ✓  15 [chromium] › tests/games/flappy-bird/play.spec.ts:45:114 › original scene and controls fit 390x844 (876ms)
+  ✓  16 [chromium] › tests/games/flappy-bird/play.spec.ts:45:114 › original scene and controls fit 844x390 (911ms)
+  ✓  17 [chromium] › tests/games/flappy-bird/play.spec.ts:45:114 › original scene and controls fit 1366x768 (1.1s)
+
+  17 passed (1.2m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

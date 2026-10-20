@@ -1,0 +1,16 @@
+
+Running 4 tests using 1 worker
+
+(node:21114) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/block-fill/block-fill.spec.ts:24:1 › fast actual drag fills every square and unlocks the larger next garden (4.7s)
+  ✓  2 [chromium] › tests/games/block-fill/block-fill.spec.ts:80:1 › all twelve gardens are playable to the final win using real pointer input (23.3s)
+  ✓  3 [chromium] › tests/games/snake/snake.spec.ts:28:1 › pointer swipe and touch direction buttons fit a phone (2.5s)
+  ✓  4 [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size (1.9s)
+
+  4 passed (34.0s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
