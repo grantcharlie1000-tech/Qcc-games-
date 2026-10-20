@@ -1,0 +1,44 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/qcc-snake
+
+ ✓ tests/games/color-blocks/fair-deal.test.ts (8 tests) 691ms
+   ✓ fair three-piece deals > has a complete independently verified hand across reproducible sparse and dense boards  386ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 1004ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  590ms
+   ✓ Flappy Bird original reed flight > a simple timed pilot clears 100 seeded gates using the real simulation  392ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 931ms
+   ✓ long seeded runs > keeps valid saves and deterministic future deals across many tray boundaries  890ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 433ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 681ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 3337ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  720ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  2299ms
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 951ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 340ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 496ms
+   ✓ render-only tall-stack framing > restores a real seed51 five-animal settled run without geometry changes  412ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 176ms
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 164ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 220ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 114ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 63ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 171ms
+ ✓ tests/games/snake/presentation.test.ts (9 tests) 22ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 50ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 64ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 43ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 23ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 10ms
+ ✓ tests/core/study.test.ts (5 tests) 15ms
+ ✓ tests/core/storage.test.ts (5 tests) 7ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 6ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 17ms
+
+ Test Files  25 passed (25)
+      Tests  283 passed (283)
+   Start at  10:02:28
+   Duration  8.69s (transform 1.59s, setup 0ms, collect 3.05s, tests 10.03s, environment 7ms, prepare 4.01s)

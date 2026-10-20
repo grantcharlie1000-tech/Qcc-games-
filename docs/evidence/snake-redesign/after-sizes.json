@@ -1,0 +1,363 @@
+{
+  "recordedAt": "2026-10-20T09:54:37.364Z",
+  "browser": "154.0.8037.57",
+  "base": "a7f7631d4f606667f23b016ad6091cb3899365e8",
+  "sizes": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1200,
+        "dpr": 2
+      },
+      "garden": {
+        "x": 356,
+        "y": 190.203125,
+        "width": 728,
+        "height": 728,
+        "bottom": 918.203125
+      },
+      "canvas": {
+        "x": 372.796875,
+        "y": 207,
+        "width": 694.40625,
+        "height": 694.40625,
+        "bottom": 901.40625
+      },
+      "backing": {
+        "width": 1389,
+        "height": 1389
+      },
+      "controls": [
+        {
+          "direction": "up",
+          "width": 54,
+          "height": 48,
+          "bottom": 1001.203125
+        },
+        {
+          "direction": "left",
+          "width": 54,
+          "height": 48,
+          "bottom": 1054.203125
+        },
+        {
+          "direction": "down",
+          "width": 54,
+          "height": 48,
+          "bottom": 1054.203125
+        },
+        {
+          "direction": "right",
+          "width": 54,
+          "height": 48,
+          "bottom": 1054.203125
+        }
+      ],
+      "sideways": false,
+      "page": {
+        "width": 1440,
+        "height": 1200
+      },
+      "input": [
+        {
+          "key": "ArrowRight",
+          "trusted": true
+        },
+        {
+          "key": "ArrowUp",
+          "trusted": true
+        },
+        {
+          "key": "ArrowLeft",
+          "trusted": true
+        }
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768,
+        "dpr": 2
+      },
+      "garden": {
+        "x": 263,
+        "y": 99.703125,
+        "width": 636,
+        "height": 636,
+        "bottom": 735.703125
+      },
+      "canvas": {
+        "x": 279.796875,
+        "y": 116.5,
+        "width": 602.40625,
+        "height": 602.40625,
+        "bottom": 718.90625
+      },
+      "backing": {
+        "width": 1205,
+        "height": 1205
+      },
+      "controls": [
+        {
+          "direction": "up",
+          "width": 54,
+          "height": 48,
+          "bottom": 418.203125
+        },
+        {
+          "direction": "left",
+          "width": 54,
+          "height": 48,
+          "bottom": 471.203125
+        },
+        {
+          "direction": "down",
+          "width": 54,
+          "height": 48,
+          "bottom": 471.203125
+        },
+        {
+          "direction": "right",
+          "width": 54,
+          "height": 48,
+          "bottom": 471.203125
+        }
+      ],
+      "sideways": true,
+      "page": {
+        "width": 1366,
+        "height": 768
+      },
+      "input": [
+        {
+          "key": "ArrowRight",
+          "trusted": true
+        },
+        {
+          "key": "ArrowUp",
+          "trusted": true
+        },
+        {
+          "key": "ArrowLeft",
+          "trusted": true
+        }
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390,
+        "dpr": 2
+      },
+      "garden": {
+        "x": 173,
+        "y": 74.5,
+        "width": 294,
+        "height": 294,
+        "bottom": 368.5
+      },
+      "canvas": {
+        "x": 189.796875,
+        "y": 91.296875,
+        "width": 260.40625,
+        "height": 260.40625,
+        "bottom": 351.703125
+      },
+      "backing": {
+        "width": 521,
+        "height": 521
+      },
+      "controls": [
+        {
+          "direction": "up",
+          "width": 54,
+          "height": 48,
+          "bottom": 222
+        },
+        {
+          "direction": "left",
+          "width": 54,
+          "height": 48,
+          "bottom": 275
+        },
+        {
+          "direction": "down",
+          "width": 54,
+          "height": 48,
+          "bottom": 275
+        },
+        {
+          "direction": "right",
+          "width": 54,
+          "height": 48,
+          "bottom": 275
+        }
+      ],
+      "sideways": true,
+      "page": {
+        "width": 844,
+        "height": 390
+      },
+      "input": [
+        {
+          "key": "ArrowRight",
+          "trusted": true
+        },
+        {
+          "key": "ArrowUp",
+          "trusted": true
+        },
+        {
+          "key": "ArrowLeft",
+          "trusted": true
+        }
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 3
+      },
+      "garden": {
+        "x": 12,
+        "y": 193.203125,
+        "width": 366,
+        "height": 366,
+        "bottom": 559.203125
+      },
+      "canvas": {
+        "x": 21,
+        "y": 202.203125,
+        "width": 348,
+        "height": 348,
+        "bottom": 550.203125
+      },
+      "backing": {
+        "width": 1044,
+        "height": 1044
+      },
+      "controls": [
+        {
+          "direction": "up",
+          "width": 54,
+          "height": 48,
+          "bottom": 642.203125
+        },
+        {
+          "direction": "left",
+          "width": 54,
+          "height": 48,
+          "bottom": 695.203125
+        },
+        {
+          "direction": "down",
+          "width": 54,
+          "height": 48,
+          "bottom": 695.203125
+        },
+        {
+          "direction": "right",
+          "width": 54,
+          "height": 48,
+          "bottom": 695.203125
+        }
+      ],
+      "sideways": false,
+      "page": {
+        "width": 390,
+        "height": 844
+      },
+      "input": [
+        {
+          "key": "ArrowRight",
+          "trusted": true
+        },
+        {
+          "key": "ArrowUp",
+          "trusted": true
+        },
+        {
+          "key": "ArrowLeft",
+          "trusted": true
+        }
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 568,
+        "dpr": 2
+      },
+      "garden": {
+        "x": 12,
+        "y": 102.703125,
+        "width": 296,
+        "height": 296,
+        "bottom": 398.703125
+      },
+      "canvas": {
+        "x": 21,
+        "y": 111.703125,
+        "width": 278,
+        "height": 278,
+        "bottom": 389.703125
+      },
+      "backing": {
+        "width": 556,
+        "height": 556
+      },
+      "controls": [
+        {
+          "direction": "up",
+          "width": 54,
+          "height": 48,
+          "bottom": 479.703125
+        },
+        {
+          "direction": "left",
+          "width": 54,
+          "height": 48,
+          "bottom": 532.703125
+        },
+        {
+          "direction": "down",
+          "width": 54,
+          "height": 48,
+          "bottom": 532.703125
+        },
+        {
+          "direction": "right",
+          "width": 54,
+          "height": 48,
+          "bottom": 532.703125
+        }
+      ],
+      "sideways": false,
+      "page": {
+        "width": 320,
+        "height": 568
+      },
+      "input": [
+        {
+          "key": "ArrowRight",
+          "trusted": true
+        },
+        {
+          "key": "ArrowUp",
+          "trusted": true
+        },
+        {
+          "key": "ArrowLeft",
+          "trusted": true
+        }
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    }
+  ],
+  "errors": []
+}

@@ -31,3 +31,10 @@ The timing/input/scaling specialty guides target Phaser. They do not specify nat
 No grid-Snake solver skill exists in the inventory. The project brief defines the classic rule variant; pure invariant tests cover its edge cases. A Wikipedia genre-page fetch returned no usable content and was not treated as evidence. No external rule text or art was copied.
 
 The parent explicitly retained cover.svg ownership for a new SVG-skill art pass. This specialist did not create or edit that cover and does not claim SVG-skill use; gameplay illustration is original Canvas code in `art.ts`.
+
+
+# Smooth redesign — 2026-10-20
+
+Read the canonical local `using-superpowers` (dispatched-subagent exemption), `animate`, `game-development`, `game-development/web-games`, `game-development/2d-games`, `scale-and-responsive`, `input-keyboard-mouse-touch`, `time-and-timers`, and `verification-before-completion` skills. Applied animation purpose (spatial consistency/state feedback), native Canvas fixed simulation/interpolated render, reduced-motion gating, no new library, bounded input queue, responsive logical/display/backing separation, pause clock reset and fresh verification. The Phaser guides informed principles only; no Phaser API is used. The existing `--ease-out` tokens are untouched; continuous gameplay follows the model's linear clock.
+
+The brief explicitly requests gameplay motion; it governs this frequent-input game over `animate`'s general UI shortcut-frequency gate. No UI shortcut entrance animation was added. Geometry and input tests plus actual routed browser checks replace any invented Snake-specific skill. Independent coordinator review and browser/performance evidence are part of the handoff. See `docs/snake-smooth-design.md` for the projection sketch, sizing arithmetic, save compatibility and reference-access limitation.
