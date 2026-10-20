@@ -65,7 +65,7 @@ for(const def of BLOCKS){
   const iconState=def.facing?stateFor(def.family,{facing:'south',lit:false})??def:def.slab?stateFor(def.family,{slab:'bottom'})??def:def;
   const icon:ItemIcon=FLAT_ICON.has(def.shape)?{kind:'tile',tile:def.tiles[0]}:{kind:'block',block:iconState.name};
   const wooden=/_(planks|log)$/.test(def.family)||['crafting_table','chest','bookshelf','ladder','barrel','oak_stairs'].includes(def.family);
-  const fuel=wooden?15:def.family==='oak_slab'?7.5:def.family.endsWith('_sapling')||def.family.endsWith('_wool')?5:def.family==='coal_block'?800:undefined;
+  const fuel=wooden?15:def.family==='oak_slab'?7.5:def.family.endsWith('_sapling')||def.family.endsWith('_wool')||def.family==='dead_bush'?5:def.family==='coal_block'?800:undefined;
   add({id:def.family,displayName:def.displayName,maxStack:64,icon,places:def.family,fuel});
 }
 add({id:'oak_door',displayName:'Oak Door',maxStack:64,icon:sprite('oak_door'),places:'oak_door',fuel:10});ITEM_SPRITES.push('oak_door');
@@ -106,7 +106,7 @@ spriteItem('bow',{maxStack:1,durability:384,use:'bow',fuel:15});
 spriteItem('bucket',{maxStack:16,use:'bucket'});
 spriteItem('water_bucket',{maxStack:1,use:'water_bucket',remainder:'bucket'});
 spriteItem('lava_bucket',{maxStack:1,use:'lava_bucket',fuel:1000,remainder:'bucket'});
-spriteItem('shield',{maxStack:1,durability:336,use:'shield',fuel:15});
+spriteItem('shield',{maxStack:1,durability:336,use:'shield'});
 spriteItem('compass');spriteItem('clock');
 /** Every mob kind with a spawn egg (also the full mob roster; see the shared entity kinds in engine/contracts.ts). */
 export const MOB_KINDS=['cow','pig','sheep','chicken','rabbit','wolf','squid','zombie','husk','drowned','skeleton','stray','creeper','spider','enderman','slime'] as const;

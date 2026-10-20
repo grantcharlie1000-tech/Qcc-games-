@@ -131,7 +131,8 @@ export class Engine implements Game{
   get reducedMotion(){return this.context.settings.reducedMotion;}
   get spawning(){return this.spawnPending;}
   get shellPaused(){return this.paused;}
-  random(){return this.rng();}
+  /** An arrow so it also works unbound (`const r=game.random`). */
+  readonly random=()=>this.rng();
   private setState(to:EngineState){const from=this.state;if(from===to)return;this.state=to;this.root.dataset.phase=to;this.events.emit('stateChanged',{from,to});this.schedule();}
 
   // ---- State transitions --------------------------------------------------------------------

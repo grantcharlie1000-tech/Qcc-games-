@@ -631,7 +631,8 @@ export type MobSoundKind='ambient'|'hurt'|'death'|'step';
  *  pop → entities (pickup); click/chest/door/craft → ui and interaction; explode/fuse/ignite → ticks and creepers;
  *  splash/swim → player and entities; fizz/lava/fire → ticks; bow/arrow_hit/throw → interaction and projectiles;
  *  tool_break/equip → inventory; thunder/rain → weather; attack_* /crit/sweep → interaction; toast → advancements;
- *  bucket_*, shear, milk → interaction; teleport → monsters (enderman) and pearls; mob:* → entities.
+ *  bucket_*, shear, milk → interaction; teleport → monsters (enderman) and pearls; furnace → blockEntities (lit furnace crackle near
+ *  the player); mob:* → entities.
  *  Unknown names must not throw. */
 export type SoundName=`break:${SoundKind}`|`place:${SoundKind}`|`step:${SoundKind}`|`hit:${SoundKind}`|`fall:${SoundKind}`|
   'hurt'|'death'|'eat'|'burp'|'drink'|'pop'|'levelup'|'orb'|'click'|'door_open'|'door_close'|'chest_open'|'chest_close'|'craft'|
