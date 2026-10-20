@@ -12,9 +12,11 @@ async function open(page: Page) {
   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
 }
 test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
-  // This ~180-frame software-rendered flow exceeded 30s under controlled CPU load.
-  // Keep its full input/assertion sequence; allow headroom only for this long flow.
+  // Allow 60s cumulatively for this ~180-frame software-rendered flow, while
+  // retaining the original 30s maximum per action/navigation and 7s assertions.
   test.setTimeout(60_000);
+  page.setDefaultTimeout(30_000);
+  page.setDefaultNavigationTimeout(30_000);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 900 }); await open(page);
   await page.getByRole('button', { name: 'Enter arena', exact: true }).click();
