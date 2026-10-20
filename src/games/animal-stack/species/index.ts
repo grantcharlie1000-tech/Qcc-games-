@@ -1,0 +1,27 @@
+import type { SpeciesDef } from './types';
+import { elephant } from './elephant';
+import { giraffe } from './giraffe';
+import { horse } from './horse';
+import { tapir } from './tapir';
+import { penguin } from './penguin';
+import { sloth } from './sloth';
+import { lion } from './lion';
+import { panda } from './panda';
+import { cow } from './cow';
+import { ostrich } from './ostrich';
+import { gorilla } from './gorilla';
+import { capybara } from './capybara';
+import { camel } from './camel';
+import { moose } from './moose';
+import { peacock } from './peacock';
+import { wolf } from './wolf';
+import { fox } from './fox';
+import { koala } from './koala';
+import { alpaca } from './alpaca';
+import { rhino } from './rhino';
+import { turtle } from './turtle';
+import { redPanda } from './redPanda';
+import { hippo } from './hippo';
+import { sheep } from './sheep';
+/** Drop rotation order follows key order; the original six stay first for save compatibility. */
+export const SPECIES = { elephant, giraffe, horse, tapir, penguin, sloth, lion, panda, cow, ostrich, gorilla, capybara, camel, moose, peacock, wolf, fox, koala, alpaca, rhino, turtle, redPanda, hippo, sheep } satisfies Record<string, SpeciesDef>;

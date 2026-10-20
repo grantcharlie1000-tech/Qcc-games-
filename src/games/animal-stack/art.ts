@@ -1,24 +1,7 @@
 import type { Kind } from './model';
-import { ELEPHANT_Y_SCALE } from './shapes';
-export const ART_BOX={x:-58,y:-82,width:116,height:148};
-const outline:Record<Kind,string>={
- elephant:'M-43-21Q-42-27-34-24Q-17-42 14-35Q34-32 40-12L40 31 37 34 36 29 36 16 34 40 27 40 26 25 25 16 17 22 14 29 14 40 6 40 2 24-5 18-14 27-20 40-27 40-23 23-25 12-33 17-35 24-38 35-44 36-45 31-41 18-43 8Z',
- giraffe:'M-35-66-34-75-30-75-29-66-27-64-23-70-18-67-25-58-12-10-9-16 24-13 32-8 37-5 43 11 46 23 42 25 39 13 36 10 39 28 49 50 43 54 31 31 28 19 20 30 28 51 23 55 14 34 13 18 3 17-2 33 1 56-6 57-13 35-14 20-22 25-27 51-32 55-37 52-29 7-25-11-38-54-41-54-44-61-38-68Z',
- horse:'M-35-9-20-16 5-13 18-33 21-35 19-47 25-44 28-40 32-48 37-42 37-37 43-29 37-21 28-22 24-3 23 0 27 23 38 38 32 43 20 27 17 18 21 27 22 44 13 44 12 31 5 16-7 16-13 28-6 43-14 44-21 30-22 22-28 28-39 44-47 44-44 36-31 18-35 8-39 2-43 13-49 20-55 17-51 4-43-6Z',
- tapir:'M-39-18-41-27-36-26-32-22-28-22-27-29-22-27-22-25-7-28 21-27 40-20 47-6 44 9 44 18 42 34 33 34 35 21 32 15 25 17 23 24 15 35 6 35 9 29 16 20 7 18-2 18-2 23 5 30 3 35-4 35-12 25-14 16-18 22-25 34-34 34-31 27-25 17-28 10-35 6-41 7-52 16-56 11-51-3Z',
- sloth:'M-40-23-29-28-20-22-5-23 21-20 31-15 36-9 44 2 50 12 48 19 42 15 37 6 35 3 27 10 33 20 44 28 49 32 48 37 43 36 33 32 24 23 17 11 6 12-3 14-11 28-19 36-23 42-29 42-30 39-28 37-21 25-14 12-21 9-34 21-44 29-50 34-56 35-55 31-52 28-43 17-29 3-28-3-40-10-45-17Z',
- penguin:'M-18-29-29-28-30-25-18-20-18-4-16 12-10 23-14 23-16 26-14 29-2 29 0 30 13 28 9 24 16 23 24 24 15 0 8-18 4-22 3-29-4-34-12-34Z',
-};
-const spot=(x:number,y:number,r=4)=>`<path d="M${x-r} ${y-2}l${r-1} -3 ${r+2} 1 1 5 -${r+1} 3 -${r+1} -2z"/>`;
-export function animalMarkup(kind:Kind):string {
- const fill:Record<Kind,string>={elephant:'#929495',giraffe:'#ffc541',horse:'#b96c41',tapir:'#373d44',sloth:'#95918a',penguin:'#292a36'};
- let detail='';
- if(kind==='elephant')detail='<path d="M-30-22Q-16-31-16-15L-20 6Q-30 11-35-5Z" fill="#7b7d7e"/><path d="M-36 10-31 23-28 14" fill="#eee9d8" stroke="#161719" stroke-width="1.8"/><path d="M-21 34h6m21 1h8m14 0h7" stroke="#66686a" stroke-width="1.7"/><circle cx="-37" cy="-9" r="2" fill="#111214"/>';
- if(kind==='giraffe')detail=`<g clip-path="url(#clip-giraffe)" fill="#d58d21">${[[-33,-52],[-31,-40],[-27,-29],[-24,-17],[-20,-4],[-10,-8],[2,-10],[17,-7],[28,-2],[-20,7],[-7,5],[7,4],[22,9],[-27,21],[-29,35],[-9,25],[-6,41],[18,27],[23,42],[36,31],[42,45]].map(([x,y])=>spot(x,y)).join('')}</g><path d="M-30-55-17-11" stroke="#e29a22" stroke-width="2.5"/><path d="m-36 50 7 2m23 2 7-1m22-1 4-3m20 2 4-3" stroke="#795020" stroke-width="3"/><circle cx="-39" cy="-61" r="1.5" fill="#151619"/>`;
- if(kind==='horse')detail='<path d="M18-34 21-41 27-37 24-32 15-7 9-8Z" fill="#70452f"/><path d="M-35-7Q-43-2-49 13" fill="none" stroke="#70452f" stroke-width="4"/><path d="m-45 39 7 3m25-4 6 3m20-3h8m13-1 5-3" stroke="#402b24" stroke-width="5"/><path d="M32-35 28-28 33-25" fill="none" stroke="#db9d71" stroke-width="4"/><circle cx="34" cy="-33" r="1.8" fill="#161719"/><circle cx="39" cy="-26" r="1.1" fill="#161719"/>';
- if(kind==='tapir')detail='<path d="M-9-29Q-3-11-13 12Q2 21 25 17Q15-3 24-28Z" fill="#e9edf3" clip-path="url(#clip-tapir)"/><path d="M-52 8-49 9" stroke="#161719" stroke-width="2"/><circle cx="-40" cy="-7" r="1.7" fill="#111214"/><path d="m-31 30 6 1m23 0 5 1m7-1 6 1m20-2 6 1" stroke="#22252b" stroke-width="3"/>';
- if(kind==='sloth')detail='<path d="M-40-22Q-31-28-22-20L-25-10Q-34-3-40-14Z" fill="#ede4ce"/><path d="m-39-19 8 2-6 5m13-8-7 4 6 3" fill="#504b43"/><circle cx="-36" cy="-17" r="1.2" fill="#111214"/><circle cx="-27" cy="-17" r="1.2" fill="#111214"/><path d="m-35-11 4 2 3-2" fill="none" stroke="#161719" stroke-width="1.5"/><path d="M-10-16 11-17M-23 1-38 20M25 7 31 21" fill="none" stroke="#aaa59c" stroke-width="3"/><path d="m-54 31 4 1m22 7 4-1m67-4 2-3m-1-16 3-3" stroke="#f4eddb" stroke-width="2"/>';
- if(kind==='penguin')detail='<path d="M-12-13Q-20 2-9 19Q1 28 7 19Q5 4-5-9Z" fill="#fffdf6"/><path d="M-8-9Q-6 10 4 21" fill="none" stroke="#292a36" stroke-width="3"/><path d="M-19-29-29-28-30-25-19-21Z" fill="#f3a039" stroke="#161719" stroke-width="1.5"/><path d="M-10 24-15 26-13 28 0 28M2 25 9 25 12 28 0 29" fill="#f3a039" stroke="#161719" stroke-width="1.5"/><ellipse cx="-9" cy="-25" rx="8" ry="8.5" fill="#f8f6f0"/><circle cx="-11" cy="-27" r="1.7" fill="#161719"/>';
- return `<g${kind==='elephant'?` transform="scale(1 ${ELEPHANT_Y_SCALE})"`:''}><defs><clipPath id="clip-${kind}"><path d="${outline[kind]}"/></clipPath></defs><g stroke-linecap="round" stroke-linejoin="round"><path d="${outline[kind]}" fill="${fill[kind]}" stroke="#161719" stroke-width="3"/>${detail}</g></g>`;
-}
-export const animalSvg=(kind:Kind)=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${ART_BOX.x} ${ART_BOX.y} ${ART_BOX.width} ${ART_BOX.height}" role="img" aria-label="${kind} toy cutout">${animalMarkup(kind)}</svg>`;
+import { SPECIES } from './species';
+import { speciesBox } from './species/types';
+export const artBox=(kind:Kind)=>speciesBox(SPECIES[kind]);
+export const animalMarkup=(kind:Kind)=>`<g>${SPECIES[kind].art}</g>`;
+/** Rasterised at 3× logical size so sprites stay crisp on high-density displays. */
+export const animalSvg=(kind:Kind)=>{const b=artBox(kind);return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.x} ${b.y} ${b.width} ${b.height}" width="${b.width*3}" height="${b.height*3}" role="img" aria-label="${SPECIES[kind].name} toy cutout">${animalMarkup(kind)}</svg>`;};

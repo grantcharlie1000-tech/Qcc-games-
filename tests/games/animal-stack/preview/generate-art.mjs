@@ -1,6 +1,8 @@
-import {transform} from 'esbuild';import{readFile,writeFile}from'node:fs/promises';
-const shapes=await transform(await readFile('src/games/animal-stack/shapes.ts','utf8'),{loader:'ts',format:'esm'});const shapesURL='data:text/javascript;base64,'+Buffer.from(shapes.code).toString('base64');
-const source=(await readFile('src/games/animal-stack/art.ts','utf8')).replace("'./shapes'",JSON.stringify(shapesURL));const {code}=await transform(source,{loader:'ts',format:'esm'});const art=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
-const kinds=['elephant','giraffe','horse','tapir','penguin','sloth'];for(const kind of kinds)await writeFile('public/game-art/animal-stack/'+kind+'.svg',art.animalSvg(kind));
-const sheet=(species,width,height)=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><title>Original toy cutouts at in-game relative scale</title><rect width="${width}" height="${height}" fill="#55c3ec"/>${species.map((kind,i)=>{const x=100+(i%3)*175,y=140+Math.floor(i/3)*220;return `<g transform="translate(${x} ${y})">${art.animalMarkup(kind)}</g><text x="${x}" y="${y+90}" font-family="sans-serif" font-size="15" fill="#153e51" text-anchor="middle">${kind[0].toUpperCase()+kind.slice(1)}</text>`;}).join('')}</svg>`;
-await writeFile('public/game-art/animal-stack/three-sprite-preview.svg',sheet(['elephant','giraffe','penguin'],540,240));await writeFile('public/game-art/animal-stack/six-sprite-preview.svg',sheet(kinds,540,460));
+import {writeFile} from 'node:fs/promises';import {loadArt} from './load-art.mjs';import {coverSvg} from './cover.mjs';
+const art=await loadArt();const kinds=Object.keys(art.SPECIES);
+for(const kind of kinds)await writeFile('public/game-art/animal-stack/'+kind+'.svg',art.animalSvg(kind));
+const cols=4,cellW=150,cellH=190;
+const sheet=(species,title)=>{const rows=Math.ceil(species.length/cols),width=cols*cellW,height=rows*cellH+20;return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><title>${title}</title><rect width="${width}" height="${height}" fill="#5ec8f2"/>${species.map((kind,i)=>{const x=cellW/2+(i%cols)*cellW,y=100+Math.floor(i/cols)*cellH;return `<g transform="translate(${x} ${y})">${art.animalMarkup(kind)}</g><text x="${x}" y="${y+82}" font-family="sans-serif" font-size="14" font-weight="700" fill="#153e51" text-anchor="middle">${art.SPECIES[kind].name}</text>`;}).join('')}</svg>`;};
+await writeFile('public/game-art/animal-stack/species-sheet.svg',sheet(kinds,'Animal Stack toy cutouts at in-game relative scale'));
+await writeFile('public/game-art/animal-stack/cover.svg',coverSvg(art.SPECIES));
+console.log('wrote',kinds.length,'species');
