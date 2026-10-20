@@ -1,8 +1,10 @@
 # Neon Coil verification — 20 October 2026
 
-The original local checkpoint below was reviewed by the parent-allocated Astra seat. Review findings, retained failures, and subsequent Sol 6.1 verification are appended under **Review R1**. No push, public PR, merge, release or deployment was performed.
+Final runtime checkpoint **`9e187e8a23c5df263092dc27ec3b7b6ac5ad837f` is ready for parent review**. The parent-allocated Astra seat found no remaining Critical, Important or Minor issues after the fixes below. All 16 Chromium cases passed independently; Sol 6.1's final strict TypeScript, 288 unit/core tests, build and root/subpath offline checks passed. Final review evidence is in `docs/evidence/neon-coil/review-final/astra/`.
 
-## Completed checks
+The original checkpoint results and all later findings, retained failures and corrections remain below. No push, public PR, merge, release or deployment was performed.
+
+## Original checkpoint checks
 
 | Check | Actual result |
 | --- | --- |
@@ -76,4 +78,14 @@ Sol 6.1 removed the desktop-width cutoff from the short-landscape layout, tighte
 
 Final fixed-source verification passed **16 Chromium cases**, strict TypeScript, **288 unit/core tests across 25 files**, build, and sequential root/subpath offline checks. Final offline pack is `0c14d99f6084` with 72 files and zero external requests, page errors or failed assets. Tested-source hashes and exact commands are in `review-r2/sol61/verification-results.json`; failed and passing artifacts remain separately under `red/`, `green/` and `offline/`.
 
-This correction changes only arena CSS and its browser tests. Input handling, simulation, renderer, existing games/study and original evidence are unchanged. No new renderer benchmark or physical-device/WebKit/reference-media verification is claimed. The final exact-checkpoint Astra re-review remains pending; publication is still unauthorized.
+This correction changes only arena CSS and its browser tests. Input handling, simulation, renderer, existing games/study and original evidence are unchanged. No new renderer benchmark or physical-device/WebKit/reference-media verification is claimed. The following final exact-checkpoint review completes the local audit sequence; publication is still unauthorized.
+
+## Final Astra review — 9e187e8
+
+The same allocated Astra seat independently re-reviewed the clean checkpoint `9e187e8a23c5df263092dc27ec3b7b6ac5ad837f` against `62f995e0e3d8f041815487f61340f8f76802f26b`. **No Critical, Important or Minor findings remain. Ready for parent review: Yes.** No further implementation changes were requested.
+
+Independent strict TypeScript and the complete **16-case Chromium suite** passed (72.99 seconds; zero skipped, flaky or unexpected cases). Additional probes verified the rotated 568×320 Enter, saved Continue and death/Play again cards. Every card fits above the footer and all nine sampled action-button hit-tests pass for each state, with zero runtime errors. Source hashes match the final Sol 6.1 manifest.
+
+Astra inspected the final 288-test, build and sequential offline evidence (pack `0c14d99f6084`, 72 files, zero external/page/asset errors); it did not repeat those completed runs at this checkpoint. The prior review independently ran the same unchanged model/core unit suite. The final report, raw browser JSON, TypeScript output, exact probe script/results, screenshots and copied browser test/configuration are preserved in `docs/evidence/neon-coil/review-final/astra/`, with checksums for copied artifacts.
+
+The original negative reviews, red runs, intermediate failures, slower SwiftShader measurements, original recording and all unavailable-check limitations remain preserved. Final documentation/evidence may be committed after this reviewed runtime checkpoint without changing application sources. The final verdict grants no publication, push, merge or deployment authorization.
