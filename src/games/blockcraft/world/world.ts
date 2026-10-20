@@ -1,4 +1,4 @@
-import {AIR,B,BLOCK_COUNT,OPAQUE} from '../data/blocks';
+import {AIR,B,BLOCK_COUNT,LIGHT_OPACITY,LIGHT_EMISSION} from '../data/blocks';
 import {CS,CH,LAYER,CHUNK_VOLUME,chunkKey,keyX,keyZ} from '../engine/constants';
 import type {Chunk,ChunkData,ChangeCause,World,BlockId,GameEvents} from '../engine/contracts';
 import type {EventBus} from '../engine/events';
@@ -14,13 +14,20 @@ export function computeHeightmap(blocks:Uint8Array,out=new Int16Array(LAYER)):In
 export class VoxelWorld implements World{
   readonly chunks=new Map<number,Chunk>();
   readonly edits=new Map<number,Map<number,number>>();
+  /** Generated ids of edited voxels in loaded chunks: an edit that restores its original is dropped. */
+  private originals=new Map<number,Map<number,number>>();
+  /** Chunks that have been generated at least once in this world (entity packs, structures). */
+  readonly populated=new Set<number>();
   private editTotal=0;
-  /** Chunks whose mesh must be rebuilt (consumed by engine/streaming.ts). */
+  /** Chunks whose mesh must be rebuilt now: the edited chunk and neighbours sharing its border (AO, culling, tint). */
   readonly dirty=new Set<number>();
-  /** Returns the daylight darkening 0..11 (set by the engine from the time of day). */
+  /** Neighbours that only need relighting (light reaches 15 blocks); rebuilt when `dirty` is empty. */
+  readonly lightDirty=new Set<number>();
+  /** Sky darkening 0..15 from time of day and weather (set by the engine every tick). */
   skyDarkening=0;
   constructor(private events?:EventBus<GameEvents>,private biomeFallback:(x:number,z:number)=>number=()=>0){}
   get editCount(){return this.editTotal;}
+  get editsFull(){return this.editTotal>=MAX_EDITS;}
   chunk(cx:number,cz:number){return this.chunks.get(chunkKey(cx,cz));}
   isLoaded(x:number,z:number){return this.chunks.has(chunkKey(Math.floor(x/CS),Math.floor(z/CS)));}
   /** Block id, or -1 when the chunk is not loaded. Below the world is bedrock, above is air. */
@@ -36,27 +43,32 @@ export class VoxelWorld implements World{
     if(!chunk)return false;
     const lx=wx-cx*CS,lz=wz-cz*CS,index=lx+lz*CS+wy*LAYER,from=chunk.blocks[index];
     if(from===id)return false;
-    let edits=this.edits.get(chunk.key);
+    let edits=this.edits.get(chunk.key),originals=this.originals.get(chunk.key);
     if(!edits){edits=new Map();this.edits.set(chunk.key,edits);}
-    if(!edits.has(index)){if(this.editTotal>=MAX_EDITS)return false;this.editTotal++;}
-    edits.set(index,id);chunk.blocks[index]=id;
-    // Heightmap
+    if(!originals){originals=new Map();this.originals.set(chunk.key,originals);}
+    if(!edits.has(index)){
+      if(this.editTotal>=MAX_EDITS)return false;
+      this.editTotal++;if(!originals.has(index))originals.set(index,from);
+    }
+    if(originals.get(index)===id){edits.delete(index);originals.delete(index);this.editTotal--;}
+    else edits.set(index,id);
+    chunk.blocks[index]=id;
     const column=lx+lz*CS;
     if(id!==AIR&&wy>chunk.heightmap[column])chunk.heightmap[column]=wy;
     else if(id===AIR&&wy===chunk.heightmap[column]){let y=wy;while(y>=0&&chunk.blocks[column+y*LAYER]===AIR)y--;chunk.heightmap[column]=y;}
-    this.markAround(cx,cz,lx,lz,OPAQUE[from]!==OPAQUE[id]||from!==id);
+    this.markAround(cx,cz,lx,lz,LIGHT_OPACITY[from]!==LIGHT_OPACITY[id]||LIGHT_EMISSION[from]!==LIGHT_EMISSION[id]);
     this.events?.emit('blockChanged',{x:wx,y:wy,z:wz,from,to:id,cause});
     return true;
   }
-  /** Marks the chunk dirty and neighbours whose padded border, AO or light can see this voxel. */
   private markAround(cx:number,cz:number,lx:number,lz:number,lightChange:boolean){
     this.dirty.add(chunkKey(cx,cz));
-    // Light can travel up to 15 blocks, so a light-affecting edit reaches every neighbour.
-    const reach=lightChange?15:1;
     for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
       if(!dx&&!dz)continue;
-      if(dx===-1&&lx>=reach||dx===1&&lx<CS-reach||dz===-1&&lz>=reach||dz===1&&lz<CS-reach)continue;
-      const key=chunkKey(cx+dx,cz+dz);if(this.chunks.has(key))this.dirty.add(key);
+      const key=chunkKey(cx+dx,cz+dz);if(!this.chunks.has(key))continue;
+      const border=!(dx===-1&&lx!==0||dx===1&&lx!==CS-1||dz===-1&&lz!==0||dz===1&&lz!==CS-1);
+      if(border)this.dirty.add(key);
+      // Light reaches 15 blocks, so a light change can alter any neighbour's border light.
+      else if(lightChange)this.lightDirty.add(key);
     }
   }
   invalidate(x:number,_y:number,z:number){
@@ -81,16 +93,24 @@ export class VoxelWorld implements World{
   brightnessAt(x:number,y:number,z:number){
     const l=this.lightAt(x,y,z);return Math.max(l&15,(l>>4)-this.skyDarkening);
   }
-  /** Adds generated chunk contents, replaying any edits recorded for it. */
+  /** Adds generated chunk contents, replaying edits (and dropping edits that equal the generated block). */
   insert(cx:number,cz:number,data:ChunkData):Chunk{
-    const key=chunkKey(cx,cz),edits=this.edits.get(key);
-    if(edits)for(const [index,id] of edits)data.blocks[index]=id;
+    const key=chunkKey(cx,cz),edits=this.edits.get(key),originals=new Map<number,number>();
+    if(edits)for(const [index,id] of edits){
+      const generated=data.blocks[index];
+      if(generated===id){edits.delete(index);this.editTotal--;continue;}
+      originals.set(index,generated);data.blocks[index]=id;
+    }
+    this.originals.set(key,originals);
+    const fresh=!this.populated.has(key);this.populated.add(key);
     const chunk:Chunk={cx,cz,key,blocks:data.blocks,biomes:data.biomes,light:null,heightmap:computeHeightmap(data.blocks)};
-    this.chunks.set(key,chunk);this.events?.emit('chunkLoaded',{cx,cz});
+    this.chunks.set(key,chunk);this.events?.emit('chunkLoaded',{cx,cz,fresh});
     return chunk;
   }
-  remove(key:number){if(this.chunks.delete(key)){this.dirty.delete(key);this.events?.emit('chunkUnloaded',{cx:keyX(key),cz:keyZ(key)});}}
-  clear(){for(const key of [...this.chunks.keys()])this.remove(key);this.edits.clear();this.editTotal=0;this.dirty.clear();}
+  remove(key:number){
+    if(this.chunks.delete(key)){this.dirty.delete(key);this.lightDirty.delete(key);this.originals.delete(key);this.events?.emit('chunkUnloaded',{cx:keyX(key),cz:keyZ(key)});}
+  }
+  clear(){for(const key of [...this.chunks.keys()])this.remove(key);this.edits.clear();this.originals.clear();this.populated.clear();this.editTotal=0;this.dirty.clear();this.lightDirty.clear();}
   /** Flat list: cx, cz, count, then index/id pairs. */
   serializeEdits():number[]{
     const out:number[]=[];
@@ -100,6 +120,13 @@ export class VoxelWorld implements World{
       for(const [index,id] of edits)out.push(index,id);
     }
     return out;
+  }
+  /** Flat list of populated chunk coordinates: cx, cz, cx, cz... */
+  serializePopulated():number[]{const out:number[]=[];for(const key of this.populated)out.push(keyX(key),keyZ(key));return out;}
+  restorePopulated(list:unknown){
+    if(!Array.isArray(list)||list.length%2||list.length>2e5)return;
+    this.populated.clear();
+    for(let i=0;i<list.length;i+=2){const x=list[i],z=list[i+1];if(Number.isInteger(x)&&Number.isInteger(z)&&Math.abs(x)<0x7fff&&Math.abs(z)<0x7fff)this.populated.add(chunkKey(x,z));}
   }
   /** Validates the whole list before replacing current edits. */
   restoreEdits(list:unknown):boolean{

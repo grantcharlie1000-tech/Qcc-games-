@@ -19,3 +19,16 @@ export const TPS=20;
 export const DAY_TICKS=24000;
 /** Player movement / collision simulation rate. */
 export const PHYSICS_HZ=60;
+
+/** Taxicab steps through leaves (any wood) to the nearest log beyond which non-persistent leaves decay (vanilla distance). */
+export const LEAF_DECAY_DISTANCE=6;
+/** Upper bound of quads per mesh part; the mesher drops further faces. */
+export const MAX_PART_QUADS=1<<17;
+/** One shared quad index pattern covers every mesh part: triangles (0,1,2),(2,1,3) per quad. */
+export function quadIndices(quads=MAX_PART_QUADS):Uint32Array{
+  const index=new Uint32Array(quads*6);
+  for(let q=0,v=0,i=0;q<quads;q++,v+=4){index[i++]=v;index[i++]=v+1;index[i++]=v+2;index[i++]=v+2;index[i++]=v+1;index[i++]=v+3;}
+  return index;
+}
+/** `game.root.dataset` flags owned by the input service (F1 hides HUD and hand, F3 debug overlay). Values 'true' or ''. */
+export const ROOT_FLAGS={hudHidden:'hudHidden',debug:'debug'} as const;

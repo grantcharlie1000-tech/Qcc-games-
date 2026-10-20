@@ -8,6 +8,7 @@ export function createCrafting(_game:Game):CraftingService{
     match:()=>null,
     smelt:()=>null,
     fuelSeconds:id=>itemDef(id)?.fuel??0,
-    recipesFor:()=>[]
+    recipesFor:()=>[],
+    allRecipes:()=>[]
   };
 }

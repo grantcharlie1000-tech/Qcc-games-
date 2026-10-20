@@ -38,6 +38,7 @@ export class ChunkStreamer{
   }
   get workerCount(){return this.workers.length;}
   get meshedCount(){return this.meshed.size;}
+  isMeshed(cx:number,cz:number){return this.meshed.has(chunkKey(cx,cz));}
   private centre={cx:0,cz:0,view:5};
   setCentre(x:number,z:number,view:number){this.centre={cx:Math.floor(x/CS),cz:Math.floor(z/CS),view};}
   private inRange(cx:number,cz:number,extra:number){const c=this.centre,r=c.view+extra;return (cx-c.cx)**2+(cz-c.cz)**2<=r*r;}
@@ -59,7 +60,7 @@ export class ChunkStreamer{
     chunk.light??=new Uint8Array(CHUNK_VOLUME);
     for(let y=0;y<CH;y++)for(let z=0;z<CS;z++){const src=1+(z+1)*PAD_X+(y+1)*PAD_LAYER;chunk.light.set(this.lightBuffer.subarray(src,src+CS),z*CS+y*LAYER);}
     this.render.setChunkMesh(cx,cz,mesh);
-    const key=chunkKey(cx,cz);this.meshed.add(key);this.world.dirty.delete(key);
+    const key=chunkKey(cx,cz);this.meshed.add(key);this.world.dirty.delete(key);this.world.lightDirty.delete(key);
   }
   /** Per frame: unload, request, generate (fallback) and mesh within budget. Returns meshes built. */
   update():number{
@@ -73,6 +74,13 @@ export class ChunkStreamer{
       const cx=keyX(key),cz=keyZ(key);
       if(!this.world.chunks.has(key)||!this.meshed.has(key)){this.world.dirty.delete(key);continue;}
       if(built&&performance.now()-begin>MESH_BUDGET_MS){this.busy=true;break;}
+      if(this.hasNeighbours(cx,cz)){this.build(cx,cz);built++;}
+    }
+    // Neighbours whose light may have changed, after the edited chunks.
+    for(const key of this.world.lightDirty){
+      if(!this.world.chunks.has(key)||!this.meshed.has(key)){this.world.lightDirty.delete(key);continue;}
+      if(built&&performance.now()-begin>MESH_BUDGET_MS){this.busy=true;break;}
+      const cx=keyX(key),cz=keyZ(key);
       if(this.hasNeighbours(cx,cz)){this.build(cx,cz);built++;}
     }
     for(const [dx,dz,d] of OFFSETS){

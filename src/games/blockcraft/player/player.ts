@@ -12,7 +12,7 @@ const STEP=1/PHYSICS_HZ;
 
 export function createPlayerState(x=.5,y=CH,z=.5):PlayerState{
   return{x,y,z,vx:0,vy:0,vz:0,yaw:0,pitch:-.25,onGround:false,inWater:false,inLava:false,headInWater:false,onLadder:false,
-    sneaking:false,sprinting:false,flying:false,fallDistance:0,spawn:{x,y,z},bedSpawn:null};
+    sneaking:false,sprinting:false,flying:false,swimming:false,fallDistance:0,spawn:{x,y,z},bedSpawn:null};
 }
 export function createPlayer(game:Game):PlayerService{
   const p=createPlayerState();let acc=0,lastSpace=0,peakY=0;

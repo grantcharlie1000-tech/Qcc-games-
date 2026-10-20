@@ -3,7 +3,7 @@
 // layer, flat per-face light from the light volume, ambient occlusion and biome tints.
 import {AIR,OPAQUE,FACE_TILE,LAYER as BLOCK_LAYER,BLOCKS,LIQUID} from '../data/blocks';
 import {biomeDef} from '../data/biomes';
-import {CS,CH,LAYER,CHUNK_VOLUME,PAD_X,PAD_LAYER,PAD_Y,PAD_VOLUME} from '../engine/constants';
+import {CS,CH,LAYER,CHUNK_VOLUME,PAD_X,PAD_LAYER,PAD_Y,PAD_VOLUME,MAX_PART_QUADS,voxelIndex} from '../engine/constants';
 import type {ChunkData,ChunkMesh,MeshPart,Mesher} from '../engine/contracts';
 
 const OP=OPAQUE,PX=PAD_X,PL=PAD_LAYER,PY=PAD_Y;
@@ -40,12 +40,7 @@ for(const b of BLOCKS)for(let f=0;f<6;f++)TINT_KIND[b.id*6+f]=b.tintFaces[f]?{no
 const CULL_SAME=new Uint8Array(256),FAMILY_ID=new Uint16Array(256);
 {const fam=new Map<string,number>();for(const b of BLOCKS){CULL_SAME[b.id]=+b.cullSame;if(!fam.has(b.family))fam.set(b.family,fam.size);FAMILY_ID[b.id]=fam.get(b.family)!;}}
 
-export const MAX_QUADS=CS*CS*CH*3;
-export function quadIndices(quads=MAX_QUADS):Uint32Array{
-  const index=new Uint32Array(quads*6);
-  for(let q=0,v=0,i=0;q<quads;q++,v+=4){index[i++]=v;index[i++]=v+1;index[i++]=v+2;index[i++]=v+2;index[i++]=v+1;index[i++]=v+3;}
-  return index;
-}
+const MAX_QUADS=MAX_PART_QUADS;
 class Buffers{quads=0;position=new Uint16Array(MAX_QUADS*16);uvt=new Uint16Array(MAX_QUADS*16);tint=new Uint8Array(MAX_QUADS*16);}
 const layers=[new Buffers(),new Buffers(),new Buffers()];
 // Face key: tile (bits 0-7), light (8-15), AO 4×2 bits (16-23), layer 1..3 (24-25), biome (26-31).
@@ -148,4 +143,12 @@ function fillPadded(n:readonly (ChunkData|null)[]){
   }
   const cb=pick(4).biomes;for(let pz=0;pz<PX;pz++)for(let px=0;px<PX;px++)padBiome[px+pz*PX]=cb[Math.min(CS-1,Math.max(0,px-1))+Math.min(CS-1,Math.max(0,pz-1))*CS];
 }
-export function createMesher():Mesher{return{meshChunk};}
+/** A lone block: meshed at (1,1,1) of an empty chunk in full light, then moved to the origin. */
+function meshBlock(id:number):ChunkMesh{
+  const chunk={blocks:new Uint8Array(CHUNK_VOLUME),biomes:new Uint8Array(LAYER)};chunk.blocks[voxelIndex(1,1,1)]=id;
+  const mesh=meshChunk([null,null,null,null,chunk,null,null,null,null],new Uint8Array(PAD_VOLUME).fill(0xf0));
+  for(const part of [mesh.opaque,mesh.cutout,mesh.translucent])for(let v=0;v<part.quads*4;v++){part.position[v*4]-=16;part.position[v*4+1]-=16;part.position[v*4+2]-=16;}
+  mesh.minY=0;mesh.maxY=1;
+  return mesh;
+}
+export function createMesher():Mesher{return{meshChunk,meshBlock};}

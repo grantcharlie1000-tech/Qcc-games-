@@ -2,16 +2,16 @@
 // stages, loot tables, placement rules and orientations, block use (doors, beds, tables,
 // furnaces, chests, TNT), item use (food, buckets, hoes, bone meal, bows), melee with cooldown).
 // This version: timed mining, simple drops, block placement with facing, opening screens.
-import {blockDef,BLOCKS,stateFor,REPLACEABLE,AIR,isLiquid,type Facing} from '../data/blocks';
+import {blockDef,BLOCKS,stateFor,facingFromYaw,REPLACEABLE,AIR,isLiquid,OUTLINE_BOX,type BlockId,type Facing} from '../data/blocks';
 import {itemDef,stack} from '../data/items';
 import {raycast} from '../engine/physics';
-import type {Entity,Game,InteractionService,RayHit} from '../engine/contracts';
+import type {Entity,Game,InteractionService,ItemStack,RayHit} from '../engine/contracts';
 
 export const REACH=4.5,CREATIVE_REACH=5;
-export function facingFromYaw(yaw:number):Facing{
-  // Yaw 0 looks north (-z). The block faces back toward the player.
-  const a=((yaw%(Math.PI*2))+Math.PI*2)%(Math.PI*2),q=Math.round(a/(Math.PI/2))%4;
-  return (['south','east','north','west'] as Facing[])[q];
+function blockDrops(id:BlockId,tool:ItemStack|null):ItemStack[]{
+  const def=blockDef(id),stats=tool?itemDef(tool.id)?.tool:undefined;
+  const harvest=!def.requiresTool||!!stats&&stats.kind===def.tool&&stats.level>=def.harvestLevel;
+  return harvest&&def.item&&itemDef(def.item)?[stack(def.item)]:[];
 }
 export function createInteraction(game:Game):InteractionService{
   let target:RayHit|null=null,entityTarget:Entity|null=null,breaking:{x:number;y:number;z:number;progress:number}|null=null,cooldown=0,placeCooldown=0;
@@ -20,7 +20,8 @@ export function createInteraction(game:Game):InteractionService{
     target=raycast(game.world,eye.x,eye.y,eye.z,l.x,l.y,l.z,reach);
     const hit=game.entities.raycast(eye,l,Math.min(3,reach));
     entityTarget=hit&&(!target||hit.distance<target.distance)?hit.entity:null;
-    game.render.setSelection(entityTarget?null:target);
+    const box=target&&!entityTarget?OUTLINE_BOX[target.id]:null;
+    game.render.setSelection(box&&target&&box.length?{minX:target.x+box[0],minY:target.y+box[1],minZ:target.z+box[2],maxX:target.x+box[3],maxY:target.y+box[4],maxZ:target.z+box[5]}:null);
   }
   function mineTime(id:number){
     const def=blockDef(id),held=game.inventory.held(),tool=held?itemDef(held.id)?.tool:undefined;
@@ -33,11 +34,9 @@ export function createInteraction(game:Game):InteractionService{
     game.world.set(x,y,z,AIR,'player');game.stats.mined++;
     game.events.emit('blockBroken',{x,y,z,id,byPlayer:true});game.sounds.play(`break:${def.sound}`,{x,y,z});
     if(!creative){
-      const held=game.inventory.held(),tool=held?itemDef(held.id)?.tool:undefined;
-      const harvest=!def.requiresTool||!!tool&&tool.kind===def.tool&&tool.level>=def.harvestLevel;
-      if(harvest&&def.item&&itemDef(def.item))game.entities.dropItem(stack(def.item),x+.5,y+.3,z+.5);
-      if(def.blockEntity)for(const s of game.blockEntities.remove(x,y,z))game.entities.dropItem(s,x+.5,y+.5,z+.5);
-      if(tool)game.inventory.damageHeld(1);
+      const held=game.inventory.held();
+      for(const s of blockDrops(id,held))game.entities.dropItem(s,x+.5,y+.3,z+.5);
+      if(held&&itemDef(held.id)?.tool)game.inventory.damageHeld(1);
     }
   }
   function place():boolean{
@@ -55,13 +54,12 @@ export function createInteraction(game:Game):InteractionService{
     }else if(state.facing)state=stateFor(family,{facing:facingFromYaw(p.yaw)})??state;
     if(state.solid&&x+1>p.x-.3&&x<p.x+.3&&z+1>p.z-.3&&z<p.z+.3&&y+1>p.y&&y<p.y+1.8)return false;
     if(!game.world.set(x,y,z,state.id,'player'))return false;
-    if(state.blockEntity)game.blockEntities.create(x,y,z,state.blockEntity);
     game.stats.placed++;game.inventory.consumeHeld(1);game.render.swing();
     game.events.emit('blockPlaced',{x,y,z,id:state.id});game.sounds.play(`place:${state.sound}`,{x,y,z});
     return true;
   }
   function use(){
-    if(entityTarget){const k=game.entities.kinds().find(k=>k.kind===entityTarget!.kind);if(k?.interact?.(entityTarget,game,game.inventory.held()))return;}
+    if(entityTarget){const k=game.entities.kind(entityTarget.kind);if(k?.interact?.(entityTarget,game,game.inventory.held()))return;}
     if(target&&!game.player.state.sneaking){
       const def=blockDef(target.id);
       if(def.family==='crafting_table'){game.ui.open('crafting_table',target);return;}
@@ -71,7 +69,7 @@ export function createInteraction(game:Game):InteractionService{
     place();
   }
   const service:InteractionService={
-    get target(){return target;},get entityTarget(){return entityTarget;},attackCharge:1,using:null,
+    get target(){return target;},get entityTarget(){return entityTarget;},attackCharge:1,using:null,get breaking(){return breaking;},blockDrops,
     frame(dt){
       if(game.state!=='playing'){breaking=null;game.render.setBreaking(null,0);return;}
       update();const input=game.input;cooldown=Math.max(0,cooldown-dt);placeCooldown=Math.max(0,placeCooldown-dt);
@@ -79,12 +77,14 @@ export function createInteraction(game:Game):InteractionService{
         const id=blockDef(target.id).item;if(id){const i=game.inventory.slots.findIndex(s=>s?.id===id);if(i>=0&&i<9)game.inventory.select(i);else game.inventory.setSlot(game.inventory.selected,stack(id,64));}
       }
       if(input.pressed('drop'))game.inventory.dropHeld(false);
-      if(input.pressed('inventory'))game.ui.open(game.settings.mode==='creative'?'creative':'inventory');
-      if(input.down('use')&&placeCooldown<=0){use();placeCooldown=.25;}
-      if(input.down('attack')){
+      if(input.pressed('dropStack'))game.inventory.dropHeld(true);
+      if(input.pressed('swapHands'))game.inventory.swapHands();
+      // Press edges catch clicks shorter than a frame on slow devices.
+      if((input.pressed('use')||input.down('use'))&&placeCooldown<=0){use();placeCooldown=.25;}
+      if(input.pressed('attack')||input.down('attack')){
         if(entityTarget&&cooldown<=0){
           const held=game.inventory.held(),dmg=held?itemDef(held.id)?.tool?.damage??1:1,l=game.player.look();
-          game.entities.damage(entityTarget,dmg,{kind:'player',knockback:{x:l.x,z:l.z,strength:5}});game.render.swing();cooldown=.5;return;
+          game.entities.damage(entityTarget,dmg,{kind:'player',byPlayer:true,knockback:{x:l.x,z:l.z,strength:5}});game.render.swing();cooldown=.5;return;
         }
         if(!target){breaking=null;game.render.setBreaking(null,0);return;}
         if(game.settings.mode==='creative'){if(cooldown<=0){finishBreak(target.x,target.y,target.z,target.id);game.render.swing();cooldown=.2;}return;}

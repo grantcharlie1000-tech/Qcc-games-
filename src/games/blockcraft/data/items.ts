@@ -1,5 +1,5 @@
 // Item registry. Items are identified by string ids; block items share the block family name.
-import {BLOCKS,WOOD_TYPES,WOOL_COLOURS,type ToolKind,blockDef} from './blocks';
+import {BLOCKS,WOOD_TYPES,WOOL_COLOURS,type ToolKind,blockDef,stateFor} from './blocks';
 
 export type ItemId=string;
 export type ArmorSlot='head'|'chest'|'legs'|'feet';
@@ -16,20 +16,30 @@ export interface ToolStats{readonly kind:ToolKind;readonly tier:ToolTier;
   /** Attacks per second at full charge (modern attack cooldown). */
   readonly attackSpeed:number}
 export interface ArmorStats{readonly slot:ArmorSlot;readonly material:ArmorMaterial;readonly points:number;readonly toughness:number;readonly durability:number}
+export type EffectName='regeneration'|'absorption'|'hunger'|'poison'|'saturation'|'speed'|'slowness'|'night_vision'|'fire_resistance';
 export interface FoodStats{readonly hunger:number;readonly saturation:number;readonly seconds:number;
-  /** Status effects as [effect, seconds, chance]. */
-  readonly effects?:readonly (readonly [string,number,number])[];
+  /** Status effects as [effect, seconds, chance 0..1, level (1-based, default 1)]. */
+  readonly effects?:readonly (readonly [EffectName,number,number,number?])[];
   /** Can be eaten with a full hunger bar. */
-  readonly always?:boolean}
+  readonly always?:boolean;
+  /** Drinking removes every status effect (milk). */
+  readonly clearsEffects?:boolean}
 export interface ItemDef{
   readonly id:ItemId;readonly displayName:string;readonly maxStack:number;readonly icon:ItemIcon;
   /** Block family placed by using this item (state chosen by the placer: facing, door halves...). */
   readonly places?:string;
   readonly tool?:ToolStats;readonly armor?:ArmorStats;readonly food?:FoodStats;
-  /** Seconds a furnace burns on one of this item. */
+  /** Seconds a furnace burns on one of this item. At runtime always ask game.crafting.fuelSeconds(); this is its data source. */
   readonly fuel?:number;
+  /** Wear before breaking (tools, armour, bow, shears, flint and steel). */
+  readonly durability?:number;
+  /** Container left after use/crafting/fuel (buckets → bucket, stew → bowl). */
+  readonly remainder?:ItemId;
   /** Special use behaviour, interpreted by interact/. */
-  readonly use?:'bucket'|'water_bucket'|'lava_bucket'|'milk_bucket'|'flint_and_steel'|'shears'|'bow'|'bone_meal'|'hoe'|'seeds'|'egg'|'snowball';
+  readonly use?:'bucket'|'water_bucket'|'lava_bucket'|'milk_bucket'|'flint_and_steel'|'shears'|'bow'|'bone_meal'|'hoe'|'seeds'|'egg'|'snowball'|'ender_pearl'|
+    'spawn_egg'|'shield';
+  /** Entity kind created by a spawn egg (creative tab, or used on a block). */
+  readonly spawns?:string;
 }
 
 export const ITEMS=new Map<ItemId,ItemDef>();
@@ -41,33 +51,37 @@ export const ITEM_SPRITES:string[]=[];
 function spriteItem(id:string,extra:Partial<ItemDef>={}){ITEM_SPRITES.push(id);return add({id,displayName:title(id),maxStack:64,icon:sprite(id),...extra});}
 
 // ---- Block items -----------------------------------------------------------------------------
-const FLAT_ICON=new Set(['cross','crop','torch','ladder','flat']);
+const FLAT_ICON=new Set(['cross','crop','torch','ladder','flat','lantern']);
 const SPRITE_BLOCK_ITEMS:Record<string,string>={oak_door:'oak_door',bed:'red_bed'};
 // Every placeable block family has an item (used by creative mode and pick-block), even when
 // mining it drops something else (stone drops cobblestone: see interact/loot.ts).
-const NO_ITEM=new Set(['air','water','lava','wall_torch','farmland']);
+const NO_ITEM=new Set(['air','water','lava','wall_torch','farmland','fire']);
 for(const def of BLOCKS){
   if(NO_ITEM.has(def.family)||ITEMS.has(def.family))continue;
   // Crops are planted from seeds / produce, which are items in their own right.
   if(def.shape==='crop')continue;
   if(SPRITE_BLOCK_ITEMS[def.family])continue;
-  const icon:ItemIcon=FLAT_ICON.has(def.shape)?{kind:'tile',tile:def.tiles[0]}:{kind:'block',block:def.name};
-  const wooden=/_(planks|log)$/.test(def.family)||['crafting_table','chest','bookshelf','ladder','oak_slab'].includes(def.family);
-  const sapling=def.family.endsWith('_sapling');
-  add({id:def.family,displayName:def.displayName,maxStack:def.family==='snow'?64:64,icon,places:def.family,fuel:wooden?15:sapling?5:undefined});
+  // Isometric icons show +y, +z (left) and +x (right): use the south-facing, unlit state so fronts show.
+  const iconState=def.facing?stateFor(def.family,{facing:'south',lit:false})??def:def.slab?stateFor(def.family,{slab:'bottom'})??def:def;
+  const icon:ItemIcon=FLAT_ICON.has(def.shape)?{kind:'tile',tile:def.tiles[0]}:{kind:'block',block:iconState.name};
+  const wooden=/_(planks|log)$/.test(def.family)||['crafting_table','chest','bookshelf','ladder','barrel','oak_stairs'].includes(def.family);
+  const fuel=wooden?15:def.family==='oak_slab'?7.5:def.family.endsWith('_sapling')||def.family.endsWith('_wool')?5:def.family==='coal_block'?800:undefined;
+  add({id:def.family,displayName:def.displayName,maxStack:64,icon,places:def.family,fuel});
 }
 add({id:'oak_door',displayName:'Oak Door',maxStack:64,icon:sprite('oak_door'),places:'oak_door',fuel:10});ITEM_SPRITES.push('oak_door');
 add({id:'red_bed',displayName:'Red Bed',maxStack:1,icon:sprite('red_bed'),places:'bed'});ITEM_SPRITES.push('red_bed');
 
 // ---- Materials --------------------------------------------------------------------------------
 for(const id of ['stick','coal','charcoal','iron_ingot','gold_ingot','copper_ingot','raw_iron','raw_gold','raw_copper','diamond','emerald','redstone','lapis_lazuli',
-  'flint','leather','feather','string','gunpowder','bone','wheat','sugar','paper','book','clay_ball','brick','bowl','arrow','iron_nugget','gold_nugget','glowstone_dust','ink_sac'])
-  spriteItem(id,{fuel:id==='stick'?5:id==='coal'||id==='charcoal'?80:undefined});
+  'flint','leather','feather','string','gunpowder','bone','wheat','sugar','paper','book','clay_ball','brick','bowl','arrow','iron_nugget','gold_nugget','glowstone_dust','ink_sac',
+  'cocoa_beans','rabbit_hide','rabbit_foot','slime_ball'])
+  spriteItem(id,{fuel:id==='stick'||id==='bowl'?5:id==='coal'||id==='charcoal'?80:undefined});
+spriteItem('ender_pearl',{maxStack:16,use:'ender_pearl'});
 spriteItem('bone_meal',{use:'bone_meal'});
 spriteItem('wheat_seeds',{places:'wheat',use:'seeds'});
 spriteItem('egg',{maxStack:16,use:'egg'});
 spriteItem('snowball',{maxStack:16,use:'snowball'});
-for(const colour of WOOL_COLOURS.filter(c=>c!=='white'))spriteItem(`${colour}_dye`);
+for(const colour of WOOL_COLOURS)spriteItem(`${colour}_dye`);
 
 // ---- Tools, weapons and utilities ------------------------------------------------------------
 export const TOOL_TIERS:Record<ToolTier,{level:number;speed:number;durability:number;bonus:number}>={
@@ -84,15 +98,20 @@ const TIERS:ToolTier[]=['wooden','stone','iron','golden','diamond'];
 for(const [kind,base] of Object.entries(TOOL_BASE))TIERS.forEach((tier,t)=>{
   const stats=TOOL_TIERS[tier];
   spriteItem(`${tier}_${kind}`,{maxStack:1,tool:{kind:kind as ToolKind,tier,level:stats.level,speed:kind==='sword'?1.5:stats.speed,durability:stats.durability,damage:base.damage[t],attackSpeed:base.attackSpeed[t]},
-    fuel:tier==='wooden'?10:undefined,use:kind==='hoe'?'hoe':undefined});
+    durability:stats.durability,fuel:tier==='wooden'?10:undefined,use:kind==='hoe'?'hoe':undefined});
 });
-spriteItem('shears',{maxStack:1,tool:{kind:'shears',tier:'iron',level:0,speed:5,durability:238,damage:1,attackSpeed:4},use:'shears'});
-spriteItem('flint_and_steel',{maxStack:1,tool:{kind:'pickaxe',tier:'iron',level:-1,speed:1,durability:64,damage:1,attackSpeed:4},use:'flint_and_steel'});
-spriteItem('bow',{maxStack:1,tool:{kind:'sword',tier:'wooden',level:-1,speed:1,durability:384,damage:1,attackSpeed:4},use:'bow'});
+spriteItem('shears',{maxStack:1,tool:{kind:'shears',tier:'iron',level:0,speed:5,durability:238,damage:1,attackSpeed:4},durability:238,use:'shears'});
+spriteItem('flint_and_steel',{maxStack:1,durability:64,use:'flint_and_steel'});
+spriteItem('bow',{maxStack:1,durability:384,use:'bow',fuel:15});
 spriteItem('bucket',{maxStack:16,use:'bucket'});
-spriteItem('water_bucket',{maxStack:1,use:'water_bucket'});
-spriteItem('lava_bucket',{maxStack:1,use:'lava_bucket',fuel:1000});
-spriteItem('milk_bucket',{maxStack:1,use:'milk_bucket',food:{hunger:0,saturation:0,seconds:1.6,always:true}});
+spriteItem('water_bucket',{maxStack:1,use:'water_bucket',remainder:'bucket'});
+spriteItem('lava_bucket',{maxStack:1,use:'lava_bucket',fuel:1000,remainder:'bucket'});
+spriteItem('shield',{maxStack:1,durability:336,use:'shield',fuel:15});
+spriteItem('compass');spriteItem('clock');
+/** Every mob kind with a spawn egg (also the full mob roster; see the shared entity kinds in engine/contracts.ts). */
+export const MOB_KINDS=['cow','pig','sheep','chicken','rabbit','wolf','squid','zombie','husk','drowned','skeleton','stray','creeper','spider','enderman','slime'] as const;
+for(const mob of MOB_KINDS)spriteItem(`${mob}_spawn_egg`,{use:'spawn_egg',spawns:mob});
+spriteItem('milk_bucket',{maxStack:1,use:'milk_bucket',remainder:'bucket',food:{hunger:0,saturation:0,seconds:1.6,always:true,clearsEffects:true}});
 
 // ---- Armour -----------------------------------------------------------------------------------
 const ARMOR:Record<ArmorMaterial,{points:[number,number,number,number];toughness:number;durability:number}>={
@@ -100,16 +119,17 @@ const ARMOR:Record<ArmorMaterial,{points:[number,number,number,number];toughness
   iron:{points:[2,6,5,2],toughness:0,durability:15},diamond:{points:[3,8,6,3],toughness:2,durability:33}};
 const PIECES:[string,ArmorSlot,number][]=[['helmet','head',11],['chestplate','chest',16],['leggings','legs',15],['boots','feet',13]];
 for(const [material,stats] of Object.entries(ARMOR) as [ArmorMaterial,typeof ARMOR.leather][])PIECES.forEach(([piece,slot,mult],i)=>
-  spriteItem(`${material}_${piece}`,{maxStack:1,armor:{slot,material,points:stats.points[i],toughness:stats.toughness,durability:stats.durability*mult}}));
+  spriteItem(`${material}_${piece}`,{maxStack:1,armor:{slot,material,points:stats.points[i],toughness:stats.toughness,durability:stats.durability*mult},durability:stats.durability*mult}));
 
 // ---- Food -------------------------------------------------------------------------------------
 const FOOD:[string,number,number,FoodStats['effects']?][]=[
   ['apple',4,2.4],['bread',5,6],['beef',3,1.8],['cooked_beef',8,12.8],['porkchop',3,1.8],['cooked_porkchop',8,12.8],
   ['chicken',2,1.2,[['hunger',30,.3]]],['cooked_chicken',6,7.2],['mutton',2,1.2],['cooked_mutton',6,9.6],['carrot',3,3.6],['potato',1,.6],
   ['baked_potato',5,6],['rotten_flesh',4,.8,[['hunger',30,.8]]],['mushroom_stew',6,7.2],['pumpkin_pie',8,4.8],['melon_slice',2,1.2],
-  ['cookie',2,.4],['golden_apple',4,9.6,[['regeneration',5,1],['absorption',120,1]]],['golden_carrot',6,14.4]];
+  ['cookie',2,.4],['golden_apple',4,9.6,[['regeneration',5,1,2],['absorption',120,1,1]]],['golden_carrot',6,14.4],
+  ['rabbit',3,1.8],['cooked_rabbit',5,6],['spider_eye',2,3.2,[['poison',5,1]]]];
 for(const [id,hunger,saturation,effects] of FOOD)
-  spriteItem(id,{maxStack:id==='mushroom_stew'?1:64,food:{hunger,saturation,seconds:1.6,effects,always:id==='golden_apple'},
+  spriteItem(id,{maxStack:id==='mushroom_stew'?1:64,remainder:id==='mushroom_stew'?'bowl':undefined,food:{hunger,saturation,seconds:1.6,effects,always:id==='golden_apple'},
     places:id==='carrot'?'carrots':id==='potato'?'potatoes':undefined,use:id==='carrot'||id==='potato'?'seeds':undefined});
 
 export function itemDef(id:ItemId):ItemDef|undefined{return ITEMS.get(id);}
@@ -130,7 +150,7 @@ export function parseStack(value:unknown):ItemStack|null{
   if(!value||typeof value!=='object')return null;
   const v=value as Partial<ItemStack>,def=typeof v.id==='string'?ITEMS.get(v.id):undefined;
   if(!def||!Number.isInteger(v.count)||v.count!<1||v.count!>def.maxStack)return null;
-  const durability=def.tool?.durability??def.armor?.durability??0;
+  const durability=def.durability??0;
   if(v.damage!==undefined&&(!Number.isInteger(v.damage)||v.damage<0||v.damage>=Math.max(1,durability)))return null;
   return stack(def.id,v.count!,v.damage);
 }

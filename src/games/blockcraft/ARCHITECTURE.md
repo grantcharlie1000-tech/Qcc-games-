@@ -21,7 +21,9 @@ example with a small local adapter or a fallback).
 | Renderer and sky | `render/renderer.ts`, `render/sky*.ts`, `render/particles*.ts`, `render/hand*.ts`, `render/overlay*.ts` | `renderer*.test.ts`, `render*.spec.ts` |
 | Entity framework | `entity/entities.ts`, `entity/model*.ts`, `entity/spawning*.ts`, `entity/items*.ts` (item/xp entities), `entity/ai*.ts` (shared AI helpers) | `entities*.test.ts`, `entities*.spec.ts` |
 | Passive mobs | `entity/passive.ts`, `entity/passive-*.ts` | `passive*.test.ts` |
+| Companion mobs | `entity/companions.ts`, `entity/companions-*.ts` | `companions*.test.ts` |
 | Hostile mobs | `entity/hostile.ts`, `entity/hostile-*.ts`, `entity/projectiles*.ts` | `hostile*.test.ts` |
+| Monsters | `entity/monsters.ts`, `entity/monsters-*.ts` | `monsters*.test.ts` |
 | Player and controls | `player/player.ts`, `player/input.ts`, `player/touch.css`, `player/controls-*.ts` | `player*.test.ts`, `controls*.spec.ts` |
 | Survival | `player/survival.ts`, `player/survival-*.ts`, `player/effects*.ts` | `survival*.test.ts` |
 | Inventory and screens | `items/inventory.ts`, `ui/screens.ts`, `ui/screens.css`, `ui/screen-*.ts`, `ui/slots*.ts` | `inventory*.test.ts`, `screens*.spec.ts` |
@@ -35,20 +37,31 @@ example with a small local adapter or a fallback).
 | Block art | `art/atlas.ts`, `art/tiles-*.ts`, `scripts/generate-blockcraft-cover.py`, `public/game-art/blockcraft/*` | `art*.test.ts` |
 | Item art | `art/items.ts`, `art/sprites-*.ts` | `item-art*.test.ts` |
 
-Paths are relative to `src/games/blockcraft/`; tests go in `tests/games/blockcraft/`.
+Paths are relative to `src/games/blockcraft/`; tests go in `tests/games/blockcraft/`. Shared test helpers live in
+`tests/games/blockcraft/helpers/` (integrator-owned; `fake-game.ts` builds a DOM-free `Game` whose services you replace with yours).
 
 ## Rules
 
 - **Keep the contract.** Implement your service's interface exactly as declared. You may add
   internal helpers and exported pure functions for tests. Do not change another area's
   behaviour by monkey-patching `game`.
+- **Wiring rules** (also in the `contracts.ts` header):
+  - A factory only stores `game` and builds private state; reach other services in `init()` or later. Entity kinds are registered by the
+    `register*` calls in `engine/game.ts`, before any `init()`.
+  - Tick order is survival, player, entities, ticks, blockEntities, weather, then the rest; frame order is input, player, interaction,
+    render, entities, weather, ui, hud, then the rest, and finally `render.render()`.
+  - Each input action has one consumer (see `InputAction`). Change settings only through `game.updateSettings` / `setMode` /
+    `setViewDistance`; time only through `skipTime`.
+  - Every sound name is in the closed `SoundName` union; its docs say which area plays it.
+  - Engine-owned flows: death screen and `respawn()`, sleeping's `skipTime`, pause/resume, `restored` after a load, sky darkening.
 - **Use the registries.** Block ids come from `data/blocks.ts` (`blockId('name')`, `B.*`, lookup
   tables like `SOLID`/`OPAQUE`). Items are string ids from `data/items.ts`. Biomes come from `data/biomes.ts`.
   Never hard-code numeric block ids.
 - **Performance budget:**
   - The main thread has about 16 ms per frame on a low-end Chromebook. Chunk work is budgeted in `engine/streaming.ts`.
   - Light per chunk should be ≤ 3 ms and meshing ≤ 2 ms (both in Node).
-  - Entity rendering must stay at ≤ 3 draw calls total, with ≤ 1 ms CPU for 60 entities.
+  - Entity rendering must stay at ≤ 3 draw calls total, with ≤ 1 ms CPU for 60 entities. Mob AI ≤ 0.05 ms per mob per tick.
+  - Block ticks ≤ 1 ms per tick on average; weather precipitation ≤ 2 draw calls; particles 1 draw call.
   - No per-frame allocation in hot loops.
   - No shadows or post-processing.
 - **Determinism.** World generation is a pure function of seed and chunk position (it runs in Web
@@ -75,6 +88,9 @@ Paths are relative to `src/games/blockcraft/`; tests go in `tests/games/blockcra
 - **Ticks** run at 20 per second; `dayTime` is 0..23999 (6000 = noon).
 - **Light** values are 0..15, packed as `sky<<4 | block`.
 - **Vertex layout:** see `MeshPart` in `contracts.ts`.
+- **Facing:** block `facing` points toward the placer (`facingFromYaw`); see `BlockDef.facing` for chests, furnaces, torches, ladders, doors,
+  beds and stairs.
+- **Units:** velocities in blocks/second, health and damage in half-hearts, entity `moveX/moveZ` in blocks/second.
 - **Debugging:** in development (`npm run dev`), `window.blockcraft` is the running engine.
 
 ## Testing

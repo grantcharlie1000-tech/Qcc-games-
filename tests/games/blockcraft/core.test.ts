@@ -94,3 +94,13 @@ describe('pipeline stubs',()=>{
   });
   test('daylight peaks at noon and is dark at midnight',()=>{expect(daylightAt(6000)).toBe(1);expect(daylightAt(18000)).toBe(0);expect(daylightAt(0)).toBeGreaterThan(.2);});
 });
+
+describe('fake game helper',()=>{
+  test('builds a flat world, records sounds and advances time',async()=>{
+    const {createFakeGame}=await import('./helpers/fake-game');
+    const game=createFakeGame();game.flat(60);
+    expect(game.world.get(0,59,0)).toBe(B.stone);expect(game.world.get(0,60,0)).toBe(0);
+    game.sounds.play('click');expect(game.sounds.played[0].name).toBe('click');
+    const before=game.time.dayTime;game.runTicks(20);expect(game.time.dayTime).toBe(before+20);
+  });
+});

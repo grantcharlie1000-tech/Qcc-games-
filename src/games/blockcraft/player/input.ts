@@ -1,10 +1,15 @@
 // STUB input (owned by the player & controls agent). Keyboard, mouse with pointer lock (or drag to
 // look), wheel/digit hotbar and a touch stick, look-drag, tap/hold and jump button.
 import './touch.css';
-import type {Game,InputAction,InputService} from '../engine/contracts';
+import type {Game,InputAction,InputBinding,InputService} from '../engine/contracts';
 
 const KEYS:Record<string,InputAction>={KeyW:'forward',ArrowUp:'forward',KeyS:'back',ArrowDown:'back',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',
-  Space:'jump',ShiftLeft:'sneak',ShiftRight:'sneak',KeyR:'sprint',KeyQ:'drop',KeyE:'inventory',F3:'debug',F5:'perspective'};
+  Space:'jump',ShiftLeft:'sneak',ShiftRight:'sneak',KeyR:'sprint',KeyQ:'drop',KeyF:'swapHands',KeyE:'inventory',KeyL:'advancements'};
+const LABELS:Record<InputAction,string>={forward:'Walk forward',back:'Walk backward',left:'Strafe left',right:'Strafe right',jump:'Jump / swim up',
+  sneak:'Sneak',sprint:'Sprint',attack:'Attack / mine',use:'Use item / place block',pick:'Pick block',drop:'Drop item',dropStack:'Drop stack',
+  swapHands:'Swap item with offhand',inventory:'Inventory',advancements:'Advancements'};
+const BINDINGS:InputBinding[]=(Object.keys(LABELS) as InputAction[]).map(action=>({action,label:LABELS[action],
+  keys:[...Object.entries(KEYS).filter(([,a])=>a===action).map(([k])=>k),...(action==='attack'?['Mouse0']:action==='use'?['Mouse2']:action==='pick'?['Mouse1']:[])]}));
 
 export function createInput(game:Game):InputService{
   const canvas=game.canvas,abort=new AbortController(),signal=abort.signal;
@@ -98,6 +103,7 @@ export function createInput(game:Game):InputService{
       try{const r=canvas.requestPointerLock() as unknown;if(r instanceof Promise)r.catch(()=>{});}catch{/* drag-to-look remains */}
     },
     release(){if(document.pointerLockElement===canvas)document.exitPointerLock();},
+    bindings:()=>BINDINGS,
     clear(){held.clear();edges.clear();stick={x:0,y:0};knob.style.transform='';if(drag){clearTimeout(drag.timer);drag=null;}},
     dispose(){service.clear();abort.abort();touchLayer.remove();service.release();}
   };

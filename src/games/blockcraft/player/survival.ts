@@ -1,7 +1,7 @@
 // STUB survival (owned by the survival agent: hunger, saturation, exhaustion, regeneration,
 // starvation, fall/lava/fire/drowning damage, armour, XP, effects, death and respawn).
 // This version: health and death only; creative ignores damage.
-import type {DamageSource,FoodStats,Game,StatusEffect,SurvivalService} from '../engine/contracts';
+import type {DamageSource,EffectName,FoodStats,Game,StatusEffect,SurvivalService} from '../engine/contracts';
 
 export function createSurvival(game:Game):SurvivalService{
   let health=20,dead=false,invulnerable=0;
@@ -17,14 +17,15 @@ export function createSurvival(game:Game):SurvivalService{
       return amount;
     },
     heal(n){if(!dead)health=Math.min(20,health+n);},
-    addExhaustion(){},eat(_f:FoodStats){},canEat:()=>false,addXp(){},addEffect(){},effects:():StatusEffect[]=>[],ignite(){},
+    addExhaustion(){},eat(_f:FoodStats){},canEat:()=>false,addXp(){},addEffect(){},removeEffect(_n:EffectName){},clearEffects(){},
+    effects:():StatusEffect[]=>[],hasEffect:()=>false,ignite(){},extinguish(){},
     land(distance){if(distance>3.5)s.damage(Math.floor(distance-3),{kind:'fall'});},
-    respawn(){dead=false;health=20;const p=game.player.state,sp=p.bedSpawn??p.spawn;game.player.teleport(sp.x,sp.y,sp.z);game.events.emit('playerRespawned',{});},
+    respawn(){dead=false;health=20;invulnerable=0;},
     kill(message){if(dead)return;dead=true;health=0;game.events.emit('playerDied',{message});},
     tick(){if(invulnerable>0)invulnerable--;},
     reset(){dead=false;health=20;invulnerable=0;},
-    serialize:()=>({health}),
-    restore(v){const h=(v as {health?:unknown})?.health;if(typeof h==='number'&&h>0&&h<=20)health=h;}
+    serialize:()=>({health,dead}),
+    restore(v){const d=v as {health?:unknown;dead?:unknown};if(typeof d?.health==='number'&&d.health>0&&d.health<=20)health=d.health;}
   };
   return s;
 }

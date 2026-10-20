@@ -4,9 +4,9 @@
 import * as THREE from 'three';
 import {ATLAS_COLUMNS,ATLAS_ROWS} from '../data/blocks';
 import {CS,CH,chunkKey} from '../engine/constants';
-import {quadIndices,MAX_QUADS} from './mesher';
+import {quadIndices,MAX_PART_QUADS} from '../engine/constants';
 import {paintAtlasTexture,paintClouds} from '../art/atlas';
-import type {ChunkMesh,Game,MeshPart,RenderService,ItemStack,Vec3,ParticleKind} from '../engine/contracts';
+import type {ChunkMesh,Game,MeshPart,RenderService,SharedUniforms,Vec3,ParticleKind} from '../engine/contracts';
 
 const VERTEX=`precision highp float;
 uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;uniform float daylight;
@@ -37,12 +37,16 @@ void main(){
 }`;
 export const DAY_SKY=0x8fc6ff,NIGHT_SKY=0x05070f,UNDERWATER=0x1d4a8f;
 
-export function voxelMaterial(atlas:THREE.Texture,layer:'opaque'|'cutout'|'translucent'){
+export function sharedUniforms():SharedUniforms{
+  return{daylight:{value:1},skyDarkening:{value:0},fogColor:{value:new THREE.Color()},fogNear:{value:60},fogFar:{value:90},time:{value:0},flash:{value:0}};
+}
+/** Chunk material; the uniform objects in `shared` are shared by reference with every other world material. */
+export function voxelMaterial(atlas:THREE.Texture,layer:'opaque'|'cutout'|'translucent',shared:SharedUniforms){
   const translucent=layer==='translucent';
   return new THREE.RawShaderMaterial({
     glslVersion:THREE.GLSL3,vertexShader:VERTEX,fragmentShader:FRAGMENT,
     uniforms:{atlas:{value:atlas},opacity:{value:translucent?.78:1},alphaTest:{value:layer==='cutout'?.5:translucent?.01:0},
-      daylight:{value:1},fogColor:{value:new THREE.Color()},fogNear:{value:60},fogFar:{value:90}},
+      daylight:shared.daylight,fogColor:shared.fogColor,fogNear:shared.fogNear,fogFar:shared.fogFar},
     transparent:translucent,depthWrite:!translucent,side:layer==='opaque'?THREE.FrontSide:THREE.DoubleSide
   });
 }
@@ -67,11 +71,12 @@ export function createRenderer(game:Game):RenderService{
   const scene=new THREE.Scene();scene.background=new THREE.Color(DAY_SKY);
   const camera=new THREE.PerspectiveCamera(70,1,.05,200);camera.rotation.order='YXZ';scene.add(camera);
   const atlas=paintAtlasTexture();
-  const materials={opaque:voxelMaterial(atlas,'opaque'),cutout:voxelMaterial(atlas,'cutout'),translucent:voxelMaterial(atlas,'translucent')};
-  const sharedIndex=new THREE.BufferAttribute(quadIndices(MAX_QUADS),1);
+  const uniforms=sharedUniforms();
+  const materials={opaque:voxelMaterial(atlas,'opaque',uniforms),cutout:voxelMaterial(atlas,'cutout',uniforms),translucent:voxelMaterial(atlas,'translucent',uniforms)};
+  const sharedIndex=new THREE.BufferAttribute(quadIndices(MAX_PART_QUADS),1);
   const chunks=new Map<number,ChunkRender>();
   const chunkGroup=new THREE.Group();chunkGroup.matrixAutoUpdate=false;scene.add(chunkGroup);
-  const outline=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004,1.004,1.004)),new THREE.LineBasicMaterial({color:0x111111,transparent:true,opacity:.6}));
+  const outline=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),new THREE.LineBasicMaterial({color:0x111111,transparent:true,opacity:.6}));
   outline.visible=false;scene.add(outline);
   const clouds=new THREE.Mesh(cloudLayer(),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,depthWrite:false,side:THREE.DoubleSide,fog:false}));
   clouds.position.y=CH+40;clouds.renderOrder=3;scene.add(clouds);
@@ -111,7 +116,7 @@ export function createRenderer(game:Game):RenderService{
     windowStart=now;frames=0;time=0;
   }
   const service:RenderService={
-    renderer,scene,camera,
+    renderer,scene,camera,atlas,uniforms,
     get resolutionScale(){return scale;},
     setChunkMesh(cx,cz,mesh:ChunkMesh|null){
       const key=chunkKey(cx,cz);release(chunks.get(key));chunks.delete(key);
@@ -125,11 +130,15 @@ export function createRenderer(game:Game):RenderService{
       }
       chunks.set(key,render);
     },
-    setSelection(box){outline.visible=!!box;if(box)outline.position.set(box.x+.5,box.y+.5,box.z+.5);},
+    setSelection(box){
+      outline.visible=!!box;if(!box)return;
+      const g=.004;outline.position.set((box.minX+box.maxX)/2,(box.minY+box.maxY)/2,(box.minZ+box.maxZ)/2);
+      outline.scale.set(box.maxX-box.minX+g,box.maxY-box.minY+g,box.maxZ-box.minZ+g);
+    },
     setBreaking(_pos:Vec3|null,_stage:number){},
     spawnParticles(_kind:ParticleKind,_x:number,_y:number,_z:number){},
-    setHeldItem(_stack:ItemStack|null){},
     swing(){},
+    setOverlay(){},
     setViewDistance(n){viewChunks=n;camera.far=(n+1)*CS+32;camera.updateProjectionMatrix();},
     setFovScale(s){fovScale=s;},
     frame(dt){
@@ -142,10 +151,9 @@ export function createRenderer(game:Game):RenderService{
       (scene.background as THREE.Color).copy(fogColor);
       const far=viewChunks*CS,near=under?1:far*.6,farFog=under?20:far*.95;
       const srgb={r:0,g:0,b:0};fogColor.getRGB(srgb,THREE.SRGBColorSpace);
-      for(const m of Object.values(materials)){
-        m.uniforms.daylight.value=.2+.8*daylight;m.uniforms.fogColor.value.setRGB(srgb.r,srgb.g,srgb.b);
-        m.uniforms.fogNear.value=near;m.uniforms.fogFar.value=farFog;
-      }
+      uniforms.daylight.value=.2+.8*Math.max(0,(11-game.time.skyDarkening)/11);uniforms.skyDarkening.value=game.time.skyDarkening;
+      uniforms.fogColor.value.setRGB(srgb.r,srgb.g,srgb.b);uniforms.fogNear.value=near;uniforms.fogFar.value=farFog;
+      if(!game.reducedMotion)uniforms.time.value+=dt;uniforms.flash.value=game.weather.flash;
       const drift=(performance.now()/1000*1.2)%CLOUD_SPAN;
       clouds.position.x=Math.round((p.x-drift)/CLOUD_SPAN)*CLOUD_SPAN+drift;clouds.position.z=Math.round(p.z/CLOUD_SPAN)*CLOUD_SPAN;
       (clouds.material as THREE.MeshBasicMaterial).color.setScalar(.25+.75*daylight);

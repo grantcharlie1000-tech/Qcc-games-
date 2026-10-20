@@ -1,19 +1,22 @@
 # Blockcraft feature briefs
 
 Modern Minecraft (Java/Bedrock 1.20-style) feature targets, one section per feature area. Each area is implemented by
-one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTURE.md`. "Must" items are required.
-"Should" items are expected unless they would compromise performance or correctness.
+one agent against `engine/contracts.ts` (read its header: units, conventions, tick and frame order, ownership notes on
+each interface); ownership and rules are in `ARCHITECTURE.md`. "Must" items are required. "Should" items are expected
+unless they would compromise performance or correctness. Unit tests can build services on the DOM-free
+`tests/games/blockcraft/helpers/fake-game.ts`.
 
 ---
 
 ## terrain — Terrain and biomes
-- **Must:** a multi-noise biome map (temperature, humidity, continentalness, erosion, weirdness) placing all 22 biomes in `data/biomes.ts` in believable regions:
+- **Must:** a multi-noise biome map (temperature, humidity, continentalness, erosion, weirdness) placing all 23 biomes in `data/biomes.ts` in believable regions:
   - oceans and deep oceans
   - beaches between land and ocean
   - stony shores beside steep coasts
   - rivers carved down to sea level (frozen rivers in cold regions)
   - snowy biomes in the cold, deserts, savanna and badlands in the hot and dry
   - jungles hot and wet; mushroom fields rare and isolated in the ocean
+  - cherry groves on temperate hillsides (pink cherry trees)
 - **Must:** heights for 128-high chunks with sea level 62:
   - plains about 63–72 with gentle hills
   - forests rolling
@@ -40,6 +43,8 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - diamond 0–16 (rare)
   - emerald only in mountains
 - **Must:** stone variety: granite, diorite and andesite blobs, plus gravel and dirt blobs underground.
+- **Must:** deepslate (1.17+): stone below y≈8 is `deepslate`, blending to stone over y 8–16 with a dithered boundary; ores inside it use the
+  `deepslate_<ore>_ore` variants; `tuff` blobs in the deepslate layer; moss patches (`moss_block`) on some cave floors.
 - **Must:** trees per biome from the biome's weighted `trees`, all deterministic across chunk borders (generate trees from a margin of neighbouring columns):
   - oak and big_oak
   - birch
@@ -49,6 +54,7 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - jungle_bush
   - acacia (bent trunk, flat canopy)
   - dark_oak (2×2 trunk, wide canopy)
+  - cherry (curved branching trunk, wide pink canopy)
 - **Must:** vegetation from the biome's `vegetation` list:
   - short grass, ferns, flowers, dead bushes
   - cacti 1–3 tall with no adjacent solid blocks
@@ -78,7 +84,8 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
 - **Must:** correct across chunk borders: compute using the full 3×3 neighbourhood (light within 15 blocks can enter the padded volume). Missing neighbours are opaque. The padded border values must equal what the neighbour chunk would compute for itself.
 - **Must:** ≤ 3 ms per chunk on average for generated terrain (measure in tests on real `createTerrain` chunks), with no per-call allocation (reuse scratch typed arrays, queue as a typed ring buffer).
 - **Must:** tests against a brute-force BFS reference on small random worlds; torch falloff; cave darkness; shade under trees; border continuity; water attenuation.
-- **Should:** an incremental update path exported for the engine (for example `relightAround`); the engine currently recomputes per remesh.
+- **Should:** the optional `relightPadded` incremental path; the engine currently recomputes per remesh, and relights neighbours via `world.lightDirty`.
+- **Must:** light emission from the new blocks (lantern 15, fire 15) comes from `LIGHT_EMISSION`; no special cases.
 
 ## mesher — Meshing
 - **Must:** every `Shape` in `data/blocks.ts`:
@@ -99,6 +106,9 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - **door:** a 3/16 panel placed by facing and open state, upper and lower halves
   - **bed:** 9/16 high box
   - **flat:** lily pad 1/16 above the surface
+  - **stairs:** the bottom slab plus the upper back half (`stairsBoxes(facing)` in `data/blocks.ts`), greedy-safe, faces culled against neighbours
+  - **lantern:** a 6×7 px body with a 4×2 px cap and handle (`lantern` tile), emissive
+  - **fire:** four inward-leaning planes on the block sides plus two crossed planes, emissive, animated by the renderer
 - **Must:**
   - Culling: opaque neighbours hide faces, and `cullSame` families hide shared faces.
   - Partial shapes never hide neighbours' faces.
@@ -108,7 +118,10 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - Biome tint blended over a 3×3 column neighbourhood, using neighbour chunks' biome arrays at chunk borders.
   - Grass block sides untinted.
   - **Should:** draw the tinted `grass_block_side_overlay` in the cutout layer.
-- **Must:** set the sway flag on leaves, plants and crops, and the liquid surface flag on liquid tops. Assign each layer from the registry `layer`.
+- **Must:** set the sway flag on leaves, plants and crops, the liquid surface flag on liquid tops and the emissive flag on lava, fire, lantern,
+  torches and glowstone. Assign each layer from the registry `layer`.
+- **Must:** `meshBlock(id,tint?)` for held blocks, dropped block items, falling blocks and primed TNT (every face, full light, no AO).
+- **Must:** follow the UV convention in `MeshPart` (side faces: v up; top/bottom: u along +x, v along -z) so painted tiles appear upright.
 - **Must:**
   - ≤ 2 ms per chunk on average for generated terrain in Node.
   - No allocation in hot loops.
@@ -116,7 +129,9 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - Tests for every shape, culling, smooth light, tint blending, border continuity and performance.
 
 ## renderer — Renderer and sky
-- **Must:** keep the `RenderService` contract and the `MeshPart` vertex layout; extend the shaders.
+- **Must:** keep the `RenderService` contract and the `MeshPart` vertex layout; extend the shaders. Expose `atlas` and the `SharedUniforms`
+  objects (shared by reference) so entity, particle and weather shaders match chunk light and fog. Position the camera in `frame()` (engine
+  frame order: input, player, interaction, render, entities...), so entities can billboard against it.
 - **Must:** the sky:
   - a gradient dome (zenith and horizon colours by time of day and the biome `sky` colour)
   - sunrise and sunset glow near the horizon
@@ -124,14 +139,19 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - stars at night
   - fog colour matches the horizon
   - clouds fade with distance and darken at night and in rain (`game.weather.intensity`)
-- **Must:** underwater (blue fog, short range) and in-lava (orange fog, very short) views. Darkness from `daylight` and `weather.intensity`. Block light warm.
+- **Must:** underwater (blue fog, short range) and in-lava (orange fog, very short) views, plus `setOverlay` screen tints (water, lava, hurt,
+  fire flames at the screen bottom, portal shimmer for ender pearls). Darkness from `time.skyDarkening` (includes weather) and lightning
+  `weather.flash`. Block light warm. Emissive vertices ignore light.
 - **Must:** animated water and lava textures (scroll or frame-cycle in the shader). Leaves and plants sway via the vertex flag, disabled when `game.reducedMotion`.
-- **Must:** a breaking crack overlay (`destroy_stage_*` tiles on a slightly inflated cube with polygon offset) and a thin black selection outline.
-- **Must:** particles in one batched draw call, capped at about 2 000:
-  - block-break debris (from the block's tile)
-  - smoke, explosion, splash, bubble, crit, heart, flame and xp
-- **Must:** the first-person hand and held item:
-  - a blocky arm, or the held item: blocks as small cubes; items as extruded sprites using `art/items.ts` `spritePixels`
+- **Must:** a breaking crack overlay (`destroy_stage_*` tiles on a slightly inflated cube with polygon offset) and a thin black selection outline
+  sized to the box passed to `setSelection` (interaction passes `OUTLINE_BOX` of the block state).
+- **Must:** particles (`render/particles.ts`) in one batched draw call, capped at about 2 000, for every `ParticleKind`:
+  - block debris from the block's tile and item crumbs from the item sprite (eating, snowballs, eggs)
+  - smoke, large smoke, explosion, splash, bubble, drip, crit, heart, angry, happy (bone meal), flame, lava, portal (endermen), poof (death),
+    slime, damage, sweep, note, spell; `ParticleOptions` velocity, colour, count and spread
+- **Must:** the first-person hand and held item (polled from `game.inventory.held()` and `offhand` every frame):
+  - a blocky arm, or the held item: blocks via `game.mesher.meshBlock`; items as extruded sprites using `art/items.ts` `spritePixels`
+  - the offhand item (shield raised while blocking: `interaction.using?.item==='shield'`)
   - swing animation (`swing()`)
   - walk bob from player velocity and onGround (off with reduced motion)
   - eating and bow-draw poses from `game.interaction.using`
@@ -144,12 +164,21 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
 
 ## entities — Entity framework
 - **Must:** implement `EntityService` completely:
-  - **Physics:** gravity, `moveBody` collision, a 0.6-block step-up for walking mobs, water buoyancy and drag, lava, friction.
+  - **Physics:** per-kind `physics` options (or 'none'); gravity, `moveBody` collision with `stepHeight` (0.6 for walking mobs), water buoyancy
+    and drag (aquatic kinds swim freely), lava, friction with `SLIPPERINESS`; flowing water pushes (`flowAt`). AI steers through
+    `moveX/moveZ/jump` (the service accelerates toward the intent and turns the body); set `collidedH/collidedV`.
   - **Combat:** knockback, hurt flash and invulnerability (10 ticks), fall damage (unless `noFallDamage`), fire ticks and damage, burning in daylight (`burnsInDaylight`; not in water, shade or rain).
-  - **Death:** death animation (tip over, 20 ticks, then remove); drops and xp via the kind.
-- **Must:** spawning rules (`entity/spawning.ts`):
-  - **Passive:** packs from the biome `animals` weights when a chunk first generates in a new world, plus rare respawn on grass in daylight. Cap 20 near the player.
-  - **Hostile:** at night or in darkness (block light 0 and `brightnessAt` ≤ 7) on solid opaque ground, 24–64 blocks from the player, groups from the kind's `spawn.group`. Cap 40.
+  - **Death:** death animation (tip over, 20 ticks, `poof` particles, then remove); drops always, xp only when `source.byPlayer`; the kind's
+    `hurt` hook may cancel damage (returns false). Sounds from `kind.sounds` (`mob:<name>:ambient|hurt|death|step`).
+  - **Lifecycle:** `spawn` calls `kind.init(entity, game, reason)` and emits `entitySpawned` with the reason; spawning an unknown kind returns null.
+  - **Render modes:** 'model' box models, 'item' (dropped items and thrown items as sprites from `item(e)`), 'block' (`block(e)` via
+    `game.mesher.meshBlock`: falling blocks, primed TNT with white flash).
+- **Must:** spawning rules (`entity/spawning.ts`), off when `settings.mobSpawning` is false:
+  - **Passive:** packs from the biome `animals` weights (or a kind's `spawn.biomes`) when a chunk loads with `fresh: true`, plus rare respawn on grass in daylight. Cap 20 near the player.
+  - **Hostile:** at night or in darkness (block light 0 and `brightnessAt` ≤ 7) on solid opaque ground, 24–64 blocks from the player, groups
+    from the kind's `spawn.group`, weighted by `spawn.weight`, biome filters and `replaces` substitutions (husk for zombie in deserts, stray for
+    skeleton in snowy biomes, drowned in water). Cap 40.
+  - **Water:** squid in water columns of oceans and rivers (`spawn.light 'water'`). Cap 8.
   - Peaceful removes hostiles.
   - Hostiles despawn beyond 128 blocks, or randomly beyond 32.
 - **Must:** entities in unloaded chunks are frozen and saved with the snapshot (cap 200 persistent entities; hostiles are not persisted).
@@ -161,21 +190,23 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - Write one dynamic buffer of CPU-transformed boxes per frame with standard cuboid UVs (Java model layout; `mirror`, `inflate`).
   - Interpolate between ticks for smooth 60 fps motion.
   - Lighting from `world.brightnessAt` × daylight; red hurt tint; baby scale.
-- **Must:** shared AI helpers in `entity/ai.ts` for the mob areas, using only contracts and `engine/physics`:
+- **Must:** the `EntityAI` helpers in `entity/ai.ts` (exposed as `game.entities.ai`; a straight-line stub exists), using only contracts and `engine/physics`:
   - wander, look at, move toward with jump-when-blocked
-  - avoid cliffs (more than 3 drop), lava and water
+  - avoid cliffs (more than 3 drop), lava, fire and cacti
   - flee
-  - line of sight
-  - a small A* path over the voxel grid (≤ 200 nodes)
+  - line of sight (`canSee`)
+  - `navigate`: bounded A* over standable cells (≤ 200 nodes, cached per entity, re-planned when blocked or the goal moves > 2 blocks)
 - **Must:**
   - Mobs push each other and the player slightly.
   - Collisions use the entity box.
-  - Raycast ignores item and xp entities.
+  - Raycast honours `pickable` (items, xp and projectiles are not) and skips the dying.
+  - `near(..., out)` fills a caller array without allocating.
   - Persistence validates everything.
 - **Tests:** physics, step-up, knockback, death and drops, spawning rules, caps, pickup and merge, persistence; draw-call count in a browser spec with 60 entities.
 
 ## passive — Passive mobs
-- **Must:** cow, pig, sheep and chicken registered in `registerPassiveMobs`:
+- **Must:** cow (with the mooshroom variant in mushroom fields: red with mushrooms, shears → cow + 5 red mushrooms, bowl → mushroom stew), pig,
+  sheep, chicken and rabbit registered in `registerPassiveMobs`:
   - Original procedural box models and textures in Java proportions.
   - Walk animation (legs swing with speed); head looks around and at nearby players.
 - **Must:** AI:
@@ -191,21 +222,28 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - **Cow:** milking with a bucket → milk_bucket.
   - **Sheep:** wool colour weighted by vanilla odds (mostly white, some grey, black, brown, rare pink); shearing → 1–3 wool of its colour; regrows by eating grass (grass_block → dirt).
   - **Chicken:** lays eggs every 5–10 minutes; flaps and falls slowly; no fall damage.
+  - **Rabbit:** hops; coat by biome (brown, white in snow, gold in deserts); flees players; eats carrots crops; bred with carrots or
+    dandelions; drops 0–1 rabbit hide, 0–1 rabbit (cooked when burning), 10% rabbit foot.
 - **Must:**
   - **Drops:** cow 0–2 leather and 1–3 beef; pig 1–3 porkchop; sheep 1 wool and 1–2 mutton; chicken 0–2 feathers and 1 chicken. Meat drops cooked when the mob died burning. 1–3 xp when killed by the player.
-  - Sounds via `game.sounds` (`mob:<kind>:ambient|hurt|death|step`).
+  - Sounds via `kind.sounds` (played by the entity service) and `game.sounds` for actions (shear, milk).
+  - Emit `animalBred` on a birth.
 - **Tests:** AI decisions, breeding, shearing and regrowth, milking, drops, model part sanity.
 
 ## hostile — Hostile mobs and projectiles
-- **Must:** zombie, skeleton, creeper and spider registered in `registerHostileMobs`, with original models and textures and `spawn` settings:
+- **Must:** zombie, husk, drowned, skeleton, stray, creeper and spider registered in `registerHostileMobs`, with original models and textures and `spawn` settings:
   - **Zombie:**
     - Chases players within 35 blocks; melee 2.5/3/4.5 damage (easy/normal/hard) with knockback.
     - Burns in daylight; 5% babies (fast, small).
     - Drops 0–2 rotten flesh, rarely an iron ingot, carrot or potato.
     - Arms raised when chasing.
+  - **Husk:** desert zombie (`spawn.replaces 'zombie'` in desert biomes); does not burn; hits inflict Hunger for 7 s per difficulty level.
+  - **Drowned:** spawns in rivers and oceans in darkness; swims (aquatic movement, chases swimmers); burns in daylight out of water;
+    drops 0–2 rotten flesh and rarely copper; a zombie submerged for 30 s converts to a drowned (`convert` reason).
   - **Skeleton:**
     - Keeps range 6–12 and strafes; shoots arrows every 2–3 s with spread by difficulty.
     - Burns in daylight; drops 0–2 bones and 0–2 arrows.
+  - **Stray:** snowy-biome skeleton (`spawn.replaces 'skeleton'`); its arrows add Slowness for 30 s.
   - **Creeper:**
     - Approaches silently; within 3 blocks hisses (`fuse` sound) and swells for 1.5 s, then `game.ticks.explode(x,y,z,3)`.
     - Defuses if the player escapes beyond 7 blocks; does not burn; drops 0–2 gunpowder.
@@ -214,12 +252,41 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
     - Neutral in daylight unless attacked; drops 0–2 string.
 - **Must:** projectile kinds in `entity/projectiles.ts` (contracts list their data):
   - **arrow:** gravity, drag, damage scaled by speed, sticks into blocks, the player can pick it up if `pickup`, hits mobs and the player with knockback, falls in water.
-  - **snowball and egg:** break on impact; an egg has a 1/8 chance to hatch a chicken.
+  - **snowball and egg:** break on impact with item particles; an egg has a 1/8 chance to hatch a baby chicken; snowballs knock back but deal no damage.
+  - **ender_pearl:** thrown by the player (`use:'ender_pearl'`); on impact teleports the player (`player.teleport`), 5 'fall' damage, `portal` particles and `teleport` sound.
+  - The player's shield (`interaction.using?.item==='shield'`, facing the arrow within 90°) blocks arrows: they bounce off and wear the shield.
 - **Must:**
   - Peaceful: no hostile spawns.
-  - Damage to the player via `game.survival.damage` with `{kind:'mob' or 'projectile', attacker, knockback}`.
+  - Damage to the player via `game.survival.damage` with base (normal difficulty) amounts and `{kind:'mob' or 'projectile', attacker, projectile, knockback}`;
+    survival applies the difficulty scaling. A raised shield in front of the player blocks melee (survival or interaction: check `using.item==='shield'`).
   - Sounds; AI with line of sight; no walking into lava.
 - **Tests:** AI decisions, fuse/explode/defuse, arrow ballistics and hits, daylight burning, drops, difficulty scaling.
+
+## companions — Wolves and squid
+- **Must:** `wolf` and `squid` registered in `registerCompanionMobs` (`entity/companions.ts`, `entity/companions-*.ts`), original models and textures:
+  - **Wolf:** spawns in packs of 4 in forests, taigas and snowy taigas (biome `animals`).
+    - Wild: wanders; neutral; attacks sheep, rabbits and skeletons nearby; a pack turns angry (red eyes) on the attacker when one is hit.
+    - Taming: right click with a bone, 1/3 chance per bone (smoke on failure, hearts on success); emit `entityTamed`; owner stored in data.
+    - Tamed: red collar (`tinted` part + `appearance().tint`), tail height shows health, follows the owner and teleports to them beyond 12 blocks,
+      sits / stands on right click (empty hand), attacks what the owner attacks or what attacks the owner, never creepers;
+      heals by feeding meat; breeds with meat when tamed (puppies are tamed).
+    - Sounds: bark, growl, whine at low health, pant.
+  - **Squid:** category 'water', `aquatic`, no gravity in water; drifts and propels with tentacle pulses; flees when hurt with black ink
+    particles; suffocates on land; drops 1–3 ink sacs.
+- **Tests:** taming odds, follow/teleport, sit, owner defence, squid movement in water and drops.
+
+## monsters — Endermen and slimes
+- **Must:** `enderman` and `slime` registered in `registerMonsters` (`entity/monsters.ts`, `entity/monsters-*.ts`):
+  - **Enderman:** 2.9 tall, black with emissive purple eyes, `portal` particles.
+    - Neutral; becomes angry (open jaw, shaking) when the player looks at its head within 64 blocks (`player.look()` ray against the head box,
+      not through blocks), or when hit; then teleports near and attacks for 7 damage.
+    - Teleports randomly at times, away from water, rain (`weather.isRainingOn`) and projectiles (its `hurt` hook cancels projectile damage).
+    - Picks up and places grass, dirt, sand, gravel, flowers, mushrooms, cacti, pumpkins, melons and clay (`data.carried` BlockId; held between its hands).
+    - Spawns rarely in darkness everywhere; drops 0–1 ender pearl; 5 xp.
+  - **Slime:** sizes 1, 2 and 4 (`appearance().scale`, `width/height` 0.52 × size); translucent outer box with an inner core; hops toward the player;
+    sizes 2 and 4 deal 2 and 4 damage on contact, size 1 none; on death splits into 2–4 slimes of half size; size 1 drops 0–2 slime balls.
+    - Spawns in swamps at night at light ≤ 7 between y 50 and 70, and in slime chunks below y 40 (a deterministic 1-in-10 hash of seed and chunk).
+- **Tests:** stare detection geometry, teleport target safety, block carrying, slime splitting and spawn rules.
 
 ## player — Player movement and controls
 - **Must:** vanilla-feeling movement at 60 Hz:
@@ -229,7 +296,7 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - ground friction with ice slipperiness
   - sneaking never walks off edges
   - automatic step-up of 0.6 blocks (slabs, snow layers)
-  - swimming with buoyancy; flowing water pushes the player
+  - swimming with buoyancy; flowing water pushes the player; sprint in water = swimming pose (`state.swimming`, 0.6 high)
   - ladder climbing (forward or jump up, sneak holds position)
   - lava slowness
   - creative flight (double-tap Space; Space up, sneak down; sprint-fly)
@@ -238,12 +305,16 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - Report `fallDistance` and call `game.survival.land(distance)` on landing.
   - Keep `headInWater`, `inLava` and `onLadder` current.
   - Expose eye height for sneaking.
-  - Respawn on `playerRespawned`.
+  - The engine's `respawn()` teleports the player; `teleport` zeroes velocity and fall distance.
   - Never fall into unloaded chunks.
+  - Exhaustion: sprint 0.1/block, jump 0.05, sprint-jump 0.2, swim 0.01/block via `survival.addExhaustion`. Speed and Slowness effects scale movement.
+  - Footsteps (`step:<sound of the block below>`) every ~1.7 blocks walked on ground, fall sounds, `splash` on entering water, `swim` strokes.
 - **Must:** input bindings:
   - WASD and arrows; Space; Shift sneak; double-tap W or hold R to sprint
-  - E inventory; Q drop (Shift+Q drops the stack); 1–9 and the wheel
-  - F3 debug; F1 hides the HUD (emit through a DOM class on `game.root`)
+  - E inventory (consumed by ui); Q drop, Ctrl+Q drops the stack (`dropStack`); F swap hands; L advancements; 1–9 and the wheel; hold
+    Ctrl to sprint (and double-tap W)
+  - F3 debug and F1 hide-HUD flags on `game.root.dataset` (`ROOT_FLAGS` in `engine/constants.ts`); the HUD reads them
+  - `bindings()` lists every action with its keys for the controls help
   - left/right/middle mouse
   - a sensitivity setting
   - pointer lock with drag-to-look fallback
@@ -285,11 +356,16 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - **Knockback:** via `player.push`.
   - **Mob damage scales by difficulty:** easy ×0.5+1, normal ×1, hard ×1.5.
   - Creative is immune except void.
-- **Must:** effects (regeneration, absorption, hunger, poison, saturation, speed) tick with `effects()`. `eat()` applies hunger, saturation and effects; milk clears effects (via `eat` of `milk_bucket` stats or `addEffect` clearing — document).
+- **Must:** every `EffectName` (regeneration, absorption, hunger, poison, saturation, speed, slowness, night vision, fire resistance) ticks with
+  `effects()` and 1-based levels. `eat()` applies hunger, saturation and the food's effects (with their chances); `clearsEffects` (milk) calls
+  `clearEffects()`. Emit `itemConsumed` from interaction when finished.
+- **Must:** `setOverlay` each frame (water, lava, fire, hurt flash) and fire damage from standing in `fire` blocks.
+- **Must:** shield blocking: while `interaction.using?.item==='shield'` and the attacker is within 90° of the look direction, melee and
+  projectile damage is fully blocked (shield wear via inventory, knockback reduced).
 - **Must:**
   - **XP:** vanilla level formula; orbs give points.
   - **Death:** drops inventory unless keepInventory; drops xp (7 × level, up to 100).
-  - **Respawn** at the bed or world spawn with full health and food.
+  - **Respawn:** `respawn()` resets health, food, air, fire and effects (the engine's `game.respawn()` handles the teleport and state).
   - Emit `playerDamaged` and `playerDied` with a vanilla-style death message ("fell from a high place", "drowned", "tried to swim in lava", "was slain by Zombie", "was blown up by Creeper", "starved to death", "was shot by Skeleton").
 - **Tests:** all formulas and timers with deterministic tick stepping; persistence.
 
@@ -299,12 +375,15 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - **Stacking:** max stacks; tools and armour stack 1; equal damage stacks merge.
   - Durability bars.
   - Hotbar selection events; `onChange`; persistence.
+- **Must:** the 'inventory' input action (E) is consumed in `ui.frame`: it opens the inventory while playing and closes any open screen.
 - **Must:** screens, opened via `game.ui.open`; call `game.screenChanged(true/false)`:
   - **Survival inventory:** armour slots (typed), offhand, 2×2 crafting grid with result via `game.crafting.match`.
   - **Creative inventory:** tabs (Building, Natural, Functional, Tools, Combat, Food and Drinks, Ingredients, Search) listing every item; take infinite stacks; a delete slot; the survival inventory tab.
   - **Crafting table:** 3×3.
   - **Furnace:** input, fuel, output, with flame and arrow progress from the furnace block entity; taking output gives its stored xp via `game.survival.addXp`.
-  - **Chest:** 27 slots from the chest block entity.
+  - **Chest:** 27 slots from the chest block entity (barrels use the same chest entity and screen); a large chest (54) when two chests are side by side.
+  - **Advancements:** opened by the 'advancements' action (L) or the pause menu; the screen body comes from `game.advancements.mountScreen`.
+  - Offhand slot in the survival inventory (shield, torches); emit `itemCrafted` when a crafting or furnace result is taken.
 - **Must:** vanilla slot interactions:
   - left click picks up, places, swaps or merges
   - right click picks up half or places one
@@ -325,7 +404,8 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - sticks, crafting table, furnace, chest, torches (coal or charcoal), ladder, slabs, stone bricks, bricks, bookshelf, book, paper, sugar
   - bread, cookie, pumpkin pie, mushroom stew, golden apple, golden carrot
   - all tools and armour
-  - shears, flint and steel, bucket, bow, arrows, bed, door
+  - shears, flint and steel, bucket, bow, arrows, bed, door, shield, compass, clock
+  - stairs (6 → 4), lantern, barrel, copper block ↔ 9 copper ingots, cobbled deepslate tools/furnace like cobblestone (stone tool and furnace recipes accept it)
   - wool from string; dyes from flowers and bone meal; dyed wool
   - TNT, glowstone, metal and gem blocks ↔ items, nuggets ↔ ingots, sandstone, snow block, clay block, bone meal, melon
 - **Must:**
@@ -338,8 +418,10 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - **Fuels:** coal and charcoal 80 s, planks and logs 15 s, stick 5 s, coal block 800 s, lava bucket 1000 s (leaves a bucket), wooden tools 10 s, saplings 5 s, wool 5 s, wooden blocks 15 s, slabs 7.5 s.
 - **Must:**
   - **Block entities:** chest (27 slots) and furnace ticking at 20 TPS — 10 s per item, consumes fuel only when it can smelt, lit/unlit block swap preserving facing via `game.world.set`.
-  - **Persistence** by position; `remove` returns contents.
-  - Only loaded chunks tick.
+  - **Lifecycle** from `blockChanged` (see `BlockEntityService`): create on placement, keep across same-family state swaps, drop contents
+    (`entities.dropItem`) when the block is replaced or exploded; contents survive chunk unloads. Barrels are chest entities.
+  - **Persistence** by position. Only loaded chunks tick.
+  - Expose `allRecipes()` / `recipesFor()` as `RecipeView`s (shaped, shapeless, smelting) for the recipe book.
 - **Tests:** a recipe for every craftable item, mirroring, groups, the furnace timeline, the fuel rule, persistence.
 
 ## interaction — Mining, placing, using and combat
@@ -360,8 +442,10 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - snow → snowball; snow block → 4 snowballs
   - ice → water if above a solid block
   - mature crops → produce plus seeds; younger crops → seeds
-  - both door halves break
-  - chests and furnaces drop their contents
+  - deepslate → cobbled deepslate; deepslate ores drop like their stone ores
+  - doors and beds drop from one half only (see `InteractionService` docs); the other half pops via its support rule
+  - block entity contents drop through the block entity service, not here
+  - `blockDrops(id, tool)` is the single loot entry point (explosions call it with no tool)
   - xp from ores: coal 0–2, diamond and emerald 3–7, lapis 2–5, redstone 1–5
 - **Must:** placement:
   - into replaceable blocks; not inside entities or the player
@@ -374,7 +458,7 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - open the crafting table, furnace and chest screens
   - toggle doors (both halves)
   - beds: sleep at night when no monsters are within 8 blocks → time to morning; set the bed spawn; toasts otherwise
-  - TNT plus flint and steel → a `primed_tnt` entity
+  - TNT plus flint and steel → a `primed_tnt` entity (data `byPlayer: true`); flint and steel on other blocks places `fire` on top
   - eat food: hold for 1.6 s with particles and sound; only when hungry unless `always`
   - drink milk: clears effects
   - buckets: pick up water/lava sources, place sources, return empty buckets
@@ -383,13 +467,19 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - bone meal: grows crops 2–5 stages, saplings 45% via `game.terrain.growTree`, grass spawns flowers and grass
   - shears via entity interaction
   - bow: hold to draw for 1 s, release to spawn an `arrow`
-  - throw snowballs and eggs
+  - throw snowballs, eggs and ender pearls (`throw` sound)
+  - spawn eggs place their mob (`spawns`) on the clicked face (reason 'egg')
+  - shield: hold use to raise it (`using = {item:'shield'}`), slows walking
+  - compass and clock: the HUD shows direction to spawn / time of day while held (no interaction needed)
+  - place stairs facing the player, lanterns on top of blocks, barrels like chests
 - **Must:** combat:
   - entity raycast within 3 blocks; weapon damage
   - modern attack cooldown (charge = time since last attack × attackSpeed; damage × (0.2 + charge² × 0.8))
   - critical hits when falling (+50%, crit particles); sprint knockback
   - `attackCharge` and `using` exposed for the HUD and renderer
 - **Must:** creative middle-click pick block into the hotbar.
+- **Must:** act on `input.pressed()` edges as well as `down()` so clicks shorter than one frame still register on slow devices.
+- **Must:** emit `itemConsumed` after eating/drinking and `blockBroken`/`blockPlaced`; play break/place/hit sounds; selection box from `OUTLINE_BOX`.
 - **Tests:** break times, loot tables, placement rules, every use action, cooldown math.
 
 ## ticks — World simulation
@@ -400,13 +490,15 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - farmland hydrates within 4 of water, else dries and reverts when empty
   - sugar cane and cactus grow to 3
   - ice and snow layers melt at block light ≥ 12
-  - leaves decay when no log is within 4 blocks, but only leaves left disconnected after a log is removed
+  - leaves decay when no log is within `LEAF_DECAY_DISTANCE` (6) taxicab steps through leaves; persistent leaves never decay
+  - copper oxidises one stage (copper_block → exposed → weathered → oxidized) with a small chance per random tick
+  - fire burns out, spreads to flammable blocks nearby (destroying them), is put out by rain; lava ignites flammable blocks nearby
 - **Must:** scheduled ticks:
   - **Fluids:** vanilla-like water (spreads every 5 ticks to level 7, flows toward the nearest drop within 4, infinite source from 2 adjacent sources) and lava (every 30 ticks, level step 2).
   - **Lava–water reactions:** obsidian, cobblestone and stone.
   - Removing a source drains the flow.
   - **Falling blocks** (sand, gravel) as `falling_block` entities that land as blocks or drop as items.
-  - **Support checks:** plants, torches, ladders, doors and crops pop off as items when unsupported.
+  - **Support checks:** `canSurvive` from `engine/support.ts`; unsupported blocks pop off with `interaction.blockDrops(id, null)` items.
   - React to `blockChanged` events by scheduling neighbour updates.
 - **Must:** `explode`:
   - vanilla-style 16×16×16 ray algorithm with resistance
@@ -414,7 +506,8 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - entity and player damage with exposure and knockback
   - particles and sound
   - chain-prime nearby TNT
-- **Must:** a `primed_tnt` entity kind (flashing white, 80-tick fuse) and `falling_block` (cube of the block's tiles).
+- **Must:** a `primed_tnt` entity kind (render 'block', flashing white via the model appearance flash, 80-tick fuse) and `falling_block`
+  (render 'block'), both with physics; `explode(..., byPlayer)` attributes kills.
 - **Must:**
   - Budget ≤ 1 ms per tick on average; cap fluid updates per tick.
   - Updates are deterministic given `game.random`.
@@ -428,15 +521,17 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - Master gain follows `game.context.settings.sound` live (default off).
   - Suspend while the engine is paused, lost or disposed.
   - At most 16 voices; reuse noise buffers.
-- **Must:** every sound name in the contract, synthesised to evoke vanilla sound families:
+- **Must:** `play` only (no other API); master volume from `settings.volume` and the shell toggle; every `SoundName` in the contract,
+  synthesised to evoke vanilla sound families (callers listed in the `SoundName` docs):
   - block break/place/step/hit per material: stone, wood, gravel, grass, sand, cloth, glass, snow, metal, liquid, plant
   - hurt, death, eat, burp, drink, pop, levelup (arpeggio), orb (random-pitch ding), click
   - door and chest open/close, explode, fuse, splash, swim, fizz, bow, arrow_hit, tool_break, equip
-  - mob voices for cow, pig, sheep, chicken, zombie, skeleton, creeper and spider
+  - craft, ignite, lava, fire crackle, throw, thunder, rain loop, attack weak/strong, crit, sweep, toast, bucket fill/empty, shear, milk, teleport, furnace
+  - mob voices for every kind in `MOB_KINDS` (ambient, hurt, death, step)
 - **Must:**
   - Positional attenuation (linear to 16 blocks) and stereo pan from player yaw.
-  - Footsteps every ~0.6 blocks on ground from the block below (in `frame`).
-  - Swimming sounds; occasional cave ambience in darkness underground.
+  - Footsteps are played by the player and entity services (`step:<kind>`); audio only synthesises them.
+  - Occasional cave ambience in darkness underground; rain ambience follows `weather.intensity` (weather calls `play('rain')`).
 - **Should:** sparse generative music (calm pads every few minutes) at low volume when sound is on.
 - **Tests:** name → synth mapping, voice cap, attenuation math (mock AudioContext).
 
@@ -446,14 +541,16 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - **Hunger shanks:** shake when saturation is 0.
   - **Armour points** above the hearts; **air bubbles** under water.
   - **XP bar** with the level number.
-  - **Hotbar:** icons, counts, durability bars, selected frame.
+  - **Hotbar:** icons, counts, durability bars, selected frame; the offhand slot beside it.
+  - **Compass/clock readouts** while held: arrow toward spawn, sun/moon dial.
   - **Held item name** fades after selection.
   - **Crosshair** with an attack-charge indicator.
   - **Effects:** damage red flash, low-health vignette.
   - All icons are original procedural pixel art; colour-blind setting respected (shape cues).
 - **Must:** menus (`showMenu`):
-  - **Start/pause:** Play/Resume; World options (game mode, difficulty, view distance, mouse sensitivity, keep inventory, daylight cycle); a Controls help panel (keyboard, touch, gamepad).
-  - **Death screen:** "You died!", death message, score, Respawn.
+  - **Start/pause:** Play/Resume; World options through `game.updateSettings` (game mode, difficulty, view distance, FOV, mouse
+    sensitivity, volume, keep inventory, daylight cycle, weather cycle, mob spawning); Advancements; a Controls help panel from `input.bindings()`.
+  - **Death screen:** "You died!", death message, score, Respawn (`game.respawn()`).
   - **Lost-context screen.**
   - Overlay copy differs for touch.
 - **Must:** F3 debug overlay:
@@ -461,7 +558,8 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - xyz, facing, biome, light at the feet (sky/block)
   - day time and day, weather
   - chunk, entity and mob counts
-- **Must:** F1 hides the HUD; toasts styling; fits 320×568 to desktop; no overlap with the arcade toolbar (top 56 px reserved, bottom-right 150 px reserved for shell buttons).
+- **Must:** F1 hides the HUD (`ROOT_FLAGS.hudHidden`); action-bar toast styling; layer z-indexes and reserved zones from the `Game` docs;
+  fits 320×568 to desktop; no overlap with the arcade toolbar (top 56 px reserved, bottom-right 150 px reserved for shell buttons).
 - **Tests:** heart and hunger rendering from state, menu option effects (spec), layout at 390×844 and 1366×768.
 
 ## advancements — Advancements and statistics
@@ -470,11 +568,15 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - Suit Up (any armour), Hot Stuff (lava bucket), Isn't It Iron Pick, Diamonds!, Cover Me with Diamonds
   - Monster Hunter, Sweet Dreams (sleep), The Parrots and the Bats (breed two animals), A Seedy Place (plant seeds)
   - Bake Bread, Hot Topic (furnace), Getting Wood (log), Benchmarking (craft with planks), Time to Mine!, Time to Strike! (sword)
+  - Best Friends Forever (tame a wolf), The End? (pick up an ender pearl), Sticky Situation (slime ball), Oh Shiny (copper),
+    Into the Deep (mine deepslate), A Balanced Diet (eat 10 different foods, with progress), Monsters Hunted (kill one of each hostile, with progress)
 - **Must:**
-  - An Advancements screen (button in the pause menu) showing locked/unlocked with progress.
+  - `mountScreen`: the Advancements screen body (tree with parents, locked/unlocked, progress, plus statistics) opened by L or the pause menu.
+  - Toasts in the top-right zone ("Advancement Made!", icon, title) with the `toast` sound; they never cover the shell toolbar.
   - Statistics: blocks mined/placed, mobs killed, deaths, distance walked, days survived, items crafted.
   - Persistence via `serialize`/`restore`.
-  - Hook only via `game.events` and polling services.
+  - Hook only via `game.events` (blockBroken, blockPlaced, itemPickedUp, itemCrafted, itemConsumed, entityDied, animalBred, entityTamed,
+    playerSlept, playerDied...) and polling services (inventory armour).
   - Respect reduced motion for toast animation.
 - **Tests:** unlock conditions from simulated events; persistence.
 
@@ -483,10 +585,13 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - Vanilla-like cycles: clear 0.5–7.5 days, rain 0.5–1 day, thunder chance.
   - `intensity` eases in and out.
   - Rain or snow particles around the camera by biome `precipitationAt` (snow in cold biomes, none in deserts, savannas and badlands), drawn in ≤ 2 draw calls with a cap of about 1 500 drops; never inside covered spaces (use `world.topY`).
-  - Splashes on ground; darker sky and light (the renderer reads `intensity`).
-  - Thunder: lightning flash (brief sky light boost) and an occasional strike bolt near the player with `explode`-free fire-less damage.
-  - Persistence.
-- **Must:** `isRainingOn` checks sky exposure; sleeping through a thunderstorm clears weather (listen for time jumps).
+  - Splashes on ground; darker sky and light: the engine computes `time.skyDarkening` from `intensity` and `thunder`.
+  - Thunder: `flash` (brief sky light boost read by the renderer), a bolt mesh, `thunder` sound delayed by distance, strikes near the player:
+    5 'lightning' damage around the strike, `fire` on flammable ground, creepers become charged (`data.charged`), pigs are unaffected.
+  - Cold biomes: while it snows, `snow` layers accumulate on exposed tops and sea-level water freezes to `ice` (a few random columns per tick).
+  - Rain ambience loop via `sounds.play('rain')` at intervals, quieter when covered.
+  - `settings.weatherCycle` false freezes the current weather. Persistence.
+- **Must:** `isRainingOn` checks sky exposure; the engine's `skipTime` (sleeping) calls `set('clear')`.
 - **Tests:** cycle timing, precipitation by biome, exposure.
 
 ## blockart — Block art
@@ -503,6 +608,8 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
   - ladder, door top and bottom (with windows), bed, torch
   - crops in every stage, flowers, mushrooms, cactus, pumpkin, melon, sandstone variants, farmland (dry and moist), snow, ice
   - `destroy_stage_0..9` crack overlays (transparent, progressively more cracks)
+  - modern blocks: cherry wood (pink leaves pre-coloured), deepslate (dark grey, vertical grain; distinct top) and its ores, tuff, moss, the four
+    copper oxidation stages (orange → teal), lantern (cutout), fire (cutout flames), barrel (top, bottom, side)
 - **Transparency:** cutout tiles use alpha 0 outside the shape.
 - **Also update** the cover `public/game-art/blockcraft/cover.svg` via `scripts/generate-blockcraft-cover.py`: add a cow, a sheep and a creeper, and two biomes (snowy and desert edge). Keep the 320×410 frame and the clear top 95 px.
 - **Tests:** every tile is painted (no placeholder); cutout tiles have transparency; tinted tiles are low-saturation.
@@ -510,10 +617,12 @@ one agent against `engine/contracts.ts`; ownership and rules are in `ARCHITECTUR
 ## itemart — Item art and icons
 - **Must:** paint every name in `ITEM_SPRITES` as original 16×16 pixel art with transparent backgrounds and a vanilla-like dark outline:
   - tools by tier palette, swords, armour by material
-  - food, materials, dyes in 15 colours
+  - food, materials, dyes in 16 colours
   - buckets (empty, water, lava, milk)
   - bow, arrow, shears, flint and steel
   - seeds, wheat, sugar, paper, book, bowl, stew, egg, snowball, bone, bone meal, string, feather, leather, gunpowder, clay ball, brick, red bed, oak door, ink sac, nuggets, dusts, raw ores
+  - shield, compass, clock, cocoa beans, rabbit hide and foot, slime ball, ender pearl, rabbit (raw, cooked), spider eye
+  - spawn eggs for every kind in `MOB_KINDS` (two-tone speckled eggs in each mob's colours)
 - **Must:**
   - Fix and polish `iconUrl` isometric block icons: top, left and right faces, shaded, with the plains tint applied to tinted faces, and cutout tiles respected.
   - Export `spritePixels` for held and dropped item rendering; cache data URLs.

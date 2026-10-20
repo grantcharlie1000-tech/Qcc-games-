@@ -15,15 +15,19 @@ export function createUI(game:Game):UIService{
     layer.innerHTML=`<div class="bc-panel" role="dialog" aria-label="${screen}"><h2>${screen==='creative'?'Creative':'Inventory'}</h2><div class="bc-grid">${slots}</div><button type="button" class="game-button bc-close">Done</button></div>`;
     layer.querySelector('.bc-close')!.addEventListener('click',()=>service.close());
   }
-  const keydown=(e:KeyboardEvent)=>{if(screen&&e.code==='KeyE'){e.preventDefault();service.close();}};
-  window.addEventListener('keydown',keydown);
   const service:UIService={
     get screen(){return screen;},
     open(id:ScreenId,_at?:Vec3){screen=id;render();layer.hidden=false;game.screenChanged(true);},
     close(){if(!screen)return;screen=null;layer.hidden=true;layer.innerHTML='';game.screenChanged(false);},
     toast(message){toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=window.setTimeout(()=>toast.classList.remove('show'),2000);},
+    frame(){
+      // The 'inventory' action (E) opens the inventory while playing and closes any open screen.
+      if(!game.input.pressed('inventory'))return;
+      if(screen)service.close();
+      else if(game.state==='playing')service.open(game.settings.mode==='creative'?'creative':'inventory');
+    },
     reset(){service.close();},
-    dispose(){window.removeEventListener('keydown',keydown);clearTimeout(toastTimer);layer.remove();toast.remove();}
+    dispose(){clearTimeout(toastTimer);layer.remove();toast.remove();}
   };
   return service;
 }

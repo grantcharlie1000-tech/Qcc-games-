@@ -23,10 +23,13 @@ test('boots, plays, opens the inventory, switches mode, pauses for Study and res
   await expect.poll(()=>data(page,'target')).not.toBe('');
   await page.mouse.down();await page.waitForTimeout(120);await page.mouse.up();
   await expect.poll(()=>num(page,'mined')).toBeGreaterThan(0);
-  // With that block gone, look further down until another block is in reach, then place.
-  for(let i=0;i<10&&!(await data(page,'target'));i++)await page.mouse.move(640,600+i*20);
-  await expect.poll(()=>data(page,'target')).not.toBe('');
-  await page.mouse.down({button:'right'});await page.waitForTimeout(80);await page.mouse.up({button:'right'});
+  // With that block gone, look further down until another block is in reach, then place. data-target can lag a
+  // frame behind the mined block, so retry the click (placement has a 0.25 s cooldown).
+  for(let i=0;i<12&&await num(page,'placed')===0;i++){
+    if(!(await data(page,'target')))await page.mouse.move(640,600+i*20);
+    await page.mouse.down({button:'right'});await page.waitForTimeout(80);await page.mouse.up({button:'right'});
+    await page.waitForTimeout(300);
+  }
   await expect.poll(()=>num(page,'placed')).toBeGreaterThan(0);
   await page.keyboard.press('Digit3');await expect(root).toHaveAttribute('data-slot','2');
   // Walk.

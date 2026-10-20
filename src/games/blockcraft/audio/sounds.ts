@@ -5,7 +5,6 @@ import type {Game,SoundService} from '../engine/contracts';
 
 export function createSounds(game:Game):SoundService{
   return{
-    play(name){if(name.startsWith('break:')||name.startsWith('place:'))game.context.sound('tap');else if(name==='levelup')game.context.sound('success');else if(name==='death')game.context.sound('lose');},
-    stepSound(){}
+    play(name){if(name.startsWith('break:')||name.startsWith('place:'))game.context.sound('tap');else if(name==='levelup')game.context.sound('success');else if(name==='death')game.context.sound('lose');}
   };
 }

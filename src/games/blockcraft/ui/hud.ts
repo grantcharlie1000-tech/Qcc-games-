@@ -38,7 +38,7 @@ export function createHud(game:Game):HudService{
   hotbar.addEventListener('pointerdown',e=>e.stopPropagation(),{signal});
   view.addEventListener('click',()=>{game.setViewDistance((game.settings.view+1)%VIEW_DISTANCES.length);},{signal});
   mode.addEventListener('click',()=>game.setMode(game.settings.mode==='survival'?'creative':'survival'),{signal});
-  start.addEventListener('click',()=>{if(game.survival.dead)game.survival.respawn();game.play();},{signal});
+  start.addEventListener('click',()=>{if(game.state==='dead')game.respawn();else game.play();},{signal});
   window.addEventListener('keydown',e=>{if(e.code==='F3'&&(game.state==='playing'||game.state==='screen')){debug.hidden=!debug.hidden;e.preventDefault();}},{signal});
   let last=0;
   const service:HudService={
