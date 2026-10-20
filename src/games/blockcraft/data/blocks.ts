@@ -35,7 +35,8 @@ export interface BlockDef{
   readonly lightEmission:number;
   /** Tile names per face (+x,-x,+y,-y,+z,-z). Painted by art/atlas.ts. Empty for air. */
   readonly tiles:readonly string[];
-  /** Biome tint applied to tiles (grass top, leaves, water). Grass sides tint only their overlay: see `tintFaces`. */
+  /** Biome tint applied to tiles (grass top, leaves, water). Grass block sides carry a painted green band and are not tinted
+   *  (the mesher may add the tinted `grass_block_side_overlay` on top); see `tintFaces`. */
   readonly tint:TintKind;
   /** Which faces receive the tint (same order as tiles). */
   readonly tintFaces:readonly boolean[];
@@ -141,7 +142,7 @@ define('mossy_cobblestone',{hardness:2,blast:6,...stone});
 define('bedrock',{hardness:-1,blast:3600000,sound:'stone',item:null});
 define('dirt',{hardness:.5,tool:'shovel',sound:'gravel'});
 define('coarse_dirt',{hardness:.5,tool:'shovel',sound:'gravel'});
-define('grass_block',{tiles:{top:'grass_block_top',bottom:'dirt',side:'grass_block_side'},tint:'grass',tintFaces:[true,true,true,false,true,true],hardness:.6,tool:'shovel',sound:'grass',item:'grass_block'});
+define('grass_block',{tiles:{top:'grass_block_top',bottom:'dirt',side:'grass_block_side'},tint:'grass',tintFaces:[false,false,true,false,false,false],hardness:.6,tool:'shovel',sound:'grass',item:'grass_block'});
 define('podzol',{tiles:{top:'podzol_top',bottom:'dirt',side:'podzol_side'},hardness:.5,tool:'shovel',sound:'gravel'});
 define('mycelium',{tiles:{top:'mycelium_top',bottom:'dirt',side:'mycelium_side'},hardness:.6,tool:'shovel',sound:'grass'});
 define('sand',{hardness:.5,tool:'shovel',gravity:true,sound:'sand'});

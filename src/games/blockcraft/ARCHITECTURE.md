@@ -19,7 +19,7 @@ example with a small local adapter or a fallback).
 | Lighting | `world/light.ts`, `world/light-*.ts` | `light*.test.ts` |
 | Meshing | `render/mesher.ts`, `render/mesher-*.ts`, `render/shapes*.ts` | `mesher*.test.ts` |
 | Renderer and sky | `render/renderer.ts`, `render/sky*.ts`, `render/particles*.ts`, `render/hand*.ts`, `render/overlay*.ts` | `renderer*.test.ts`, `render*.spec.ts` |
-| Entity framework | `entity/entities.ts`, `entity/model*.ts`, `entity/spawning*.ts`, `entity/items*.ts` (item/xp entities) | `entities*.test.ts`, `entities*.spec.ts` |
+| Entity framework | `entity/entities.ts`, `entity/model*.ts`, `entity/spawning*.ts`, `entity/items*.ts` (item/xp entities), `entity/ai*.ts` (shared AI helpers) | `entities*.test.ts`, `entities*.spec.ts` |
 | Passive mobs | `entity/passive.ts`, `entity/passive-*.ts` | `passive*.test.ts` |
 | Hostile mobs | `entity/hostile.ts`, `entity/hostile-*.ts`, `entity/projectiles*.ts` | `hostile*.test.ts` |
 | Player and controls | `player/player.ts`, `player/input.ts`, `player/touch.css`, `player/controls-*.ts` | `player*.test.ts`, `controls*.spec.ts` |
@@ -29,6 +29,8 @@ example with a small local adapter or a fallback).
 | Interaction | `interact/interaction.ts`, `interact/loot*.ts`, `interact/placement*.ts`, `interact/use*.ts`, `interact/combat*.ts` | `interaction*.test.ts`, `interaction*.spec.ts` |
 | World simulation | `world/ticks.ts`, `world/fluids*.ts`, `world/explosion*.ts`, `world/growth*.ts` | `ticks*.test.ts` |
 | Audio | `audio/sounds.ts`, `audio/*.ts` | `sounds*.test.ts` |
+| Weather | `world/weather.ts`, `world/weather-*.ts`, `render/weather*.ts` | `weather*.test.ts` |
+| Advancements and statistics | `ui/advancements.ts`, `ui/advancements-*.ts`, `ui/advancements.css` | `advancements*.test.ts` |
 | HUD and menus | `ui/hud.ts`, `ui/hud.css`, `ui/hud-*.ts`, `ui/menus*.ts` | `hud*.test.ts`, `hud*.spec.ts` |
 | Block art | `art/atlas.ts`, `art/tiles-*.ts`, `scripts/generate-blockcraft-cover.py`, `public/game-art/blockcraft/*` | `art*.test.ts` |
 | Item art | `art/items.ts`, `art/sprites-*.ts` | `item-art*.test.ts` |

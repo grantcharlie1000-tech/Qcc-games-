@@ -5,7 +5,7 @@ import {CH,CS,DAY_TICKS,TPS,chunkKey} from './constants';
 import {EventBus} from './events';
 import {VIEW_DISTANCES,type BlockEntityService,type CraftingService,type Difficulty,type EngineState,type EntityService,type Game,type GameEvents,
   type GameMode,type GameSettings,type GameTime,type HudService,type InputService,type InteractionService,type PlayerService,type RenderService,
-  type SoundService,type SurvivalService,type System,type TerrainService,type UIService,type BlockTickService,type InventoryService} from './contracts';
+  type SoundService,type SurvivalService,type System,type TerrainService,type UIService,type BlockTickService,type InventoryService,type WeatherService} from './contracts';
 import {ChunkStreamer} from './streaming';
 import {bodyCollides} from './physics';
 import {mulberry32} from '../world/noise';
@@ -28,6 +28,8 @@ import {createInteraction} from '../interact/interaction';
 import {createSounds} from '../audio/sounds';
 import {createUI} from '../ui/screens';
 import {createHud} from '../ui/hud';
+import {createWeather} from '../world/weather';
+import {createAdvancements} from '../ui/advancements';
 
 export const SNAPSHOT_VERSION=2;
 const DEFAULT_SEED=0x51ab1e;
@@ -48,7 +50,7 @@ export class Engine implements Game{
   state:EngineState='loading';
   world:VoxelWorld;terrain:TerrainService;render:RenderService;input:InputService;player:PlayerService;survival:SurvivalService;
   inventory:InventoryService;crafting:CraftingService;blockEntities:BlockEntityService;entities:EntityService;interaction:InteractionService;
-  ticks:BlockTickService;ui:UIService;hud:HudService;sounds:SoundService;
+  ticks:BlockTickService;ui:UIService;hud:HudService;sounds:SoundService;weather:WeatherService;private advancements:System;
   private streamer:ChunkStreamer;private systems:[string,System][];
   private seed=DEFAULT_SEED;private rng=mulberry32(DEFAULT_SEED);
   private frameId=0;private last=0;private tickAcc=0;private shellPaused=false;private disposed=false;
@@ -64,12 +66,12 @@ export class Engine implements Game{
     this.render=createRenderer(this);// throws without WebGL 2
     this.input=createInput(this);this.player=createPlayer(this);this.survival=createSurvival(this);this.inventory=createInventory(this);
     this.crafting=createCrafting(this);this.blockEntities=createBlockEntities(this);this.entities=createEntities(this);
-    this.interaction=createInteraction(this);this.ticks=createBlockTicks(this);this.sounds=createSounds(this);
-    this.ui=createUI(this);this.hud=createHud(this);
+    this.interaction=createInteraction(this);this.ticks=createBlockTicks(this);this.sounds=createSounds(this);this.weather=createWeather(this);
+    this.ui=createUI(this);this.hud=createHud(this);this.advancements=createAdvancements(this);
     registerPassiveMobs(this);registerHostileMobs(this);
     // Tick order: survival, entities, block ticks, block entities, then the rest.
     this.systems=[['survival',this.survival],['entities',this.entities],['ticks',this.ticks],['blockEntities',this.blockEntities],['crafting',this.crafting],
-      ['inventory',this.inventory],['interaction',this.interaction],['player',this.player],['terrain',this.terrain],['input',this.input],['ui',this.ui],['hud',this.hud],['sounds',this.sounds],['render',this.render]];
+      ['inventory',this.inventory],['interaction',this.interaction],['player',this.player],['weather',this.weather],['advancements',this.advancements],['terrain',this.terrain],['input',this.input],['ui',this.ui],['hud',this.hud],['sounds',this.sounds],['render',this.render]];
     this.streamer=new ChunkStreamer(this.world,()=>this.terrain,createLightEngine(),createMesher(),this.render,()=>this.schedule());
     this.root.dataset.workers=String(this.streamer.workerCount);
     const signal=this.abort.signal;
@@ -134,7 +136,7 @@ export class Engine implements Game{
       this.tickAcc+=dt;
       while(this.tickAcc>=1/TPS){this.tickAcc-=1/TPS;this.tick();}
     }else this.tickAcc=0;
-    for(const s of [this.input,this.player,this.interaction,this.entities,this.survival,this.blockEntities,this.ticks,this.ui,this.hud,this.sounds,this.render])s.frame?.(dt);
+    for(const s of [this.input,this.player,this.interaction,this.entities,this.survival,this.blockEntities,this.ticks,this.weather,this.ui,this.hud,this.advancements,this.sounds,this.render])s.frame?.(dt);
     this.render.render();
     this.report(built);
     if(running||this.streamer.busy||this.spawnPending||built)this.schedule();

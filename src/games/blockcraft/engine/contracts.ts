@@ -410,6 +410,29 @@ export interface SoundService extends System{
   stepSound(kind:SoundKind):void;
 }
 
+// ---- Weather ----------------------------------------------------------------------------------
+export type WeatherState='clear'|'rain'|'thunder';
+export interface WeatherService extends System{
+  readonly state:WeatherState;
+  /** 0..1, eased while weather changes. Sky and light darken with it. */
+  readonly intensity:number;
+  /** Precipitation at a column: 'rain', 'snow' (cold biomes) or null (clear, deserts, savannas, covered). */
+  precipitationAt(x:number,z:number):'rain'|'snow'|null;
+  /** Is it raining on this block (exposed to sky)? Used to extinguish fire and by mobs. */
+  isRainingOn(x:number,y:number,z:number):boolean;
+  set(state:WeatherState,ticks?:number):void;
+}
+
+// ---- Shared entity kinds -------------------------------------------------------------------------
+// Several areas spawn entity kinds registered by another area. Their data contracts:
+//  - 'item'      (entity framework) data {stack:ItemStack, pickup:number ticks before pickup}
+//  - 'xp_orb'    (entity framework) data {points:number}
+//  - 'arrow'     (hostile mobs, entity/projectiles.ts) data {owner:'player'|'mob', damage:number, pickup:boolean}; set vx/vy/vz after spawn
+//  - 'snowball', 'egg' (hostile mobs, entity/projectiles.ts) data {owner:'player'|'mob'}; set velocity after spawn
+//  - 'primed_tnt' (world simulation, world/explosion*.ts) data {fuse:number ticks}
+//  - 'falling_block' (world simulation) data {block:BlockId}
+// Mob kinds: 'cow','pig','sheep','chicken' (passive); 'zombie','skeleton','creeper','spider' (hostile).
+
 // ---- The game object ---------------------------------------------------------------------------
 export interface GameSettings{mode:GameMode;difficulty:Difficulty;
   /** Index into VIEW_DISTANCES. */
@@ -467,6 +490,7 @@ export interface Game{
   readonly ui:UIService;
   readonly hud:HudService;
   readonly sounds:SoundService;
+  readonly weather:WeatherService;
   /** Seeded random for gameplay (not world generation). */
   random():number;
   /** Start / resume play from the start or pause menu (a user gesture: captures the mouse). */
