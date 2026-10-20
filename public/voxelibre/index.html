@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>VoxeLibre · QCC Games</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./client.js"></script>
+</head>
+<body>
+  <main id="launcher" class="launcher">
+    <section class="welcome" aria-labelledby="game-title">
+      <div class="landscape" aria-hidden="true"><span class="sun"></span><span class="ridge far"></span><span class="ridge near"></span><span class="tree one"></span><span class="tree two"></span></div>
+      <div class="intro">
+        <p class="eyebrow">A whole world to explore</p>
+        <h1 id="game-title">VoxeLibre<span class="title-dot">.</span></h1>
+        <p class="description">Build a home. Brave the night. Find what lies underground.</p>
+        <p class="modes">Survival <span aria-hidden="true">·</span> Creative <span aria-hidden="true">·</span> Your own worlds</p>
+        <p class="hint">About 100 MB to download. Preparing your first world can take several minutes; keep QCC open while it loads.</p>
+        <div class="actions">
+          <button id="play" class="primary" type="button">Play VoxeLibre <span aria-hidden="true">↗</span></button>
+          <button id="backups" class="secondary" type="button">World backups</button>
+        </div>
+        <p class="hint">Choose Survival or Creative in the world's menu. Press I for inventory. Use the arcade's Study button or press Esc to take a break.</p>
+      </div>
+    </section>
+
+    <section id="progress-panel" class="card" aria-labelledby="progress-title" hidden>
+      <div class="card-heading"><h2 id="progress-title">Preparing VoxeLibre</h2><span id="progress-percent"></span></div>
+      <progress id="download-progress" max="1" aria-label="Game loading progress"></progress>
+      <p id="progress-message" class="muted" role="status">Opening the game engine…</p>
+      <p class="small">The first launch downloads and prepares the full game. Keep this page open while it loads.</p>
+    </section>
+
+    <section id="notice-panel" class="card notice" hidden>
+      <h2 id="notice-title">Unable to launch</h2>
+      <p id="notice-message" role="alert"></p>
+      <button id="reload" type="button" class="secondary">Check again</button>
+    </section>
+
+    <section id="storage-panel" class="storage" hidden><span class="storage-dot" aria-hidden="true"></span><p id="storage-message" role="status"></p></section>
+
+    <section id="world-panel" class="card" aria-labelledby="world-title" hidden>
+      <div class="card-heading"><div><p class="eyebrow">Keep a copy</p><h2 id="world-title">World backups</h2></div><button id="import" class="secondary" type="button">Import ZIP</button></div>
+      <input id="world-file" type="file" accept=".zip,application/zip" hidden>
+      <p class="muted">Download a world to keep it safe or move it to another device. Imported worlds are added as new copies.</p>
+      <div id="world-list" class="world-list"></div>
+      <p id="world-message" class="small" role="status"></p>
+    </section>
+
+    <footer><span>VoxeLibre is a free, open-source game.</span><a href="./SOURCES.md" target="_blank" rel="noopener">Source &amp; credits</a></footer>
+  </main>
+</body>
+</html>

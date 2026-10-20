@@ -26,3 +26,11 @@ test-results/
 dist-pages/
 
 .vite-cache/
+
+# Generated native game payload and corresponding-source downloads
+public/voxelibre/runtime/
+public/voxelibre/sources/
+.cache/voxelibre-source/
+
+# Checked-in instructions for rebuilding the native browser engine
+!vendor/voxelibre/build/

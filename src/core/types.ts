@@ -1,4 +1,4 @@
-export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird'] as const;
+export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','voxelibre'] as const;
 export type GameId = typeof GAME_IDS[number];
 export interface Settings { sound: boolean; reducedMotion: boolean; colorBlind: boolean }
 export interface GameContext {
@@ -11,14 +11,17 @@ export interface GameContext {
   announce(message: string): void;
   save(data: unknown): void;
   sound(kind?: 'tap' | 'success' | 'lose'): void;
+  openStudy?(): void;
 }
 export interface GameInstance {
   pause(): void;
   resume(): void;
-  restart(): void;
+  restart(): void | Promise<void>;
   serialize(): unknown;
   restore(data: unknown): void;
   dispose(): void;
+  beforeLeave?(): Promise<void>;
+  studyStatus?(): string;
 }
 export interface GameModule {
   readonly id: GameId;

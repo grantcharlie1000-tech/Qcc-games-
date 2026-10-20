@@ -60,3 +60,13 @@ body.in-game .game-view[data-game-id=ball-run] #pause-game svg{width:25px;height
 body.in-game .game-view[data-game-id=ball-run] #restart-game{position:fixed;bottom:7px;right:78px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px}
 body.in-game .game-view[data-game-id=ball-run] #restart-game svg{width:18px;height:18px}
 @media(max-height:480px){body.in-game .game-view:not([data-reference-game=true]){padding:3px 10px}body.in-game .game-view:not([data-reference-game=true]) .game-toolbar{flex-basis:38px}body.in-game .game-view:not([data-reference-game=true]) .game-metrics{margin:0 auto 3px;flex-basis:28px}body.in-game .game-view:not([data-reference-game=true]) #game-status{font-size:10px;max-height:15px;margin-top:3px}}
+
+/* Native VoxeLibre owns the entire stage and draws its own in-game HUD. */
+body.in-game .game-view[data-game-id="voxelibre"]{background:#101c17;color:#edf3de;gap:0;padding:0}
+.game-view[data-game-id="voxelibre"] .game-toolbar{max-width:none;padding:4px 12px;gap:8px;min-height:48px}
+.game-view[data-game-id="voxelibre"] .game-metrics{display:none}
+.game-view[data-game-id="voxelibre"] .stage-wrap{min-height:0;padding:0;overflow:hidden}
+.game-view[data-game-id="voxelibre"] #game-stage{display:block;width:100%;height:100%;min-height:0;padding:0;overflow:hidden;transform:none}
+.game-view[data-game-id="voxelibre"] #game-status{font-size:12px;line-height:1.5;min-height:26px;padding:4px 12px;margin:0;text-align:center;background:#14251b;color:#dfedc6}
+.game-study-button{border:1px solid #586e35;border-radius:6px;background:#263b25;color:#e1f3b9;font-family:inherit;font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer}
+@media(max-width:500px){.game-view[data-game-id="voxelibre"] #favourite-game{display:none}.game-view[data-game-id="voxelibre"] .game-toolbar{padding-inline:6px;gap:3px}.game-study-button{padding:8px}}

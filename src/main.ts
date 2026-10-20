@@ -7,6 +7,7 @@ import {playSound} from './core/audio';
 import {cacheAll, registerOffline} from './core/offline';
 import {StudyView} from './study/view';
 import {fitGameStage} from './core/viewport-fit';
+import {disposeGame} from './core/lifecycle';
 
 const icon=(name:string)=>{
   const paths:Record<string,string>={menu:'<path d="M4 7h16M4 12h10"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
@@ -14,14 +15,14 @@ const icon=(name:string)=>{
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header class="topbar"><button class="hamburger icon-button" aria-label="Open menu">${icon('menu')}</button><div class="count-pill" aria-label="${games.length} games">${icon('grid')}<strong>${games.length}</strong></div><button class="favourites-pill" aria-pressed="false">${icon('star')}<span>FAVOURITES</span></button></header><main id="content"></main>
-<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Pocket Arcade</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. No accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Pocket Arcade</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">About 100 MB, including VoxeLibre. Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. No accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog"><form method="dialog" class="dialog-head"><h2>How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
 const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const preferences=store.settings();
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
-let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
+let paused=false, generation=0, activeGeneration=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
 let focusLabelBeforeStudy:string|null=null;
 let libraryScroll={x:0,y:0};
@@ -52,9 +53,12 @@ function save():boolean {
   try {store.saveGame(activeId,instance.serialize());storageStatus();return true;}
   catch {announce('This game could not save this time.');return false;}
 }
-function leave(){
+async function leave(){
+  const leaving=instance;
+  save();if(leaving)await disposeGame(leaving);
+  if(instance!==leaving)return;
   stopFitting?.();stopFitting=undefined;
-  save();instance?.dispose();instance=undefined;activeId=undefined;
+  instance=undefined;activeId=undefined;activeGeneration=0;
   clearInterval(autosave);paused=false;pausedForDialog=false;
   document.body.classList.remove('in-game');
   syncViewportLock();
@@ -92,6 +96,7 @@ function hideArcade(){
 function studyMessage(saved:boolean):string {
   if(!activeId)return 'Your chapter is ready to read offline.';
   if(!instance)return 'Your game will remain paused while you read.';
+  if(instance.studyStatus)return instance.studyStatus();
   if(!saved)return 'Game paused. This save failed, but your game remains open.';
   return store.canRetain()?'Game paused. Progress saved on this device.':'Game paused. Progress is held in memory for this visit.';
 }
@@ -127,12 +132,21 @@ async function route(){
   const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
   const wasInGame=!!activeId;
   if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
-  const token=++generation;leave();
+  const token=++generation;
+  try{await leave();}catch(error){
+    if(token!==generation)return;
+    if(activeId)history.replaceState(history.state,'',`#/game/${activeId}`);
+    const status=document.querySelector('#game-status');
+    if(status)status.textContent=error instanceof Error?error.message:'The game could not finish saving. Please try Back again.';
+    return;
+  }
+  if(token!==generation)return;
   if(!id){library();if(wasInGame)requestAnimationFrame(()=>{if(!activeId)window.scrollTo(libraryScroll.x,libraryScroll.y);});return;}
-  const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
+  const info=games.find(g=>g.id===id)!;activeId=id;activeGeneration=token;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-toolbar">
       <a class="icon-button" href="#/" aria-label="Back to game library">${icon('back')}</a><h1 id="game-title">${info.title}</h1>
+      ${id==='voxelibre'?'<button id="study-game" class="game-study-button" aria-label="Open Study Mode">Study</button>':''}
       <button id="favourite-game" class="icon-button" aria-label="Favourite ${info.title}" aria-pressed="${store.favourites().includes(id)}">${icon('star')}</button>
       <button id="pause-game" class="icon-button" aria-label="Pause game">${icon('pause')}</button>
       <button id="restart-game" class="icon-button" aria-label="Restart game">${icon('restart')}</button>
@@ -143,31 +157,37 @@ async function route(){
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
     <p id="game-status" role="status"></p></section>`;
   document.querySelector('#game-menu')!.addEventListener('click',openMenu);
+  document.querySelector('#study-game')?.addEventListener('click',openStudy);
   try {
     const loaded=await loadGame(id);if(token!==generation)return;
     const stage=document.querySelector<HTMLElement>('#game-stage')!;stage.replaceChildren();
     const mounted=await loaded.mount(stage,{
       id,settings:preferences,highScore:store.highScore(id),
       setScore(score){
-        if(token!==generation)return;
+        if(token!==activeGeneration)return;
         document.querySelector('#game-score strong')!.textContent=String(Math.floor(score));
         const next=store.recordScore(id,score);
         document.querySelector('#game-best strong')!.textContent=String(Math.floor(next));
       },
-      setLevel(level){if(token===generation)document.querySelector('#game-level')!.textContent=String(level);},
-      setStatus(text){if(token===generation)document.querySelector('#game-status')!.textContent=text;},
-      announce,
-      save(data){if(token!==generation)return;store.saveGame(id,data);storageStatus();},
-      sound(kind){if(token===generation&&!paused&&!study.isOpen)playSound(preferences.sound,kind);}
+      setLevel(level){if(token===activeGeneration)document.querySelector('#game-level')!.textContent=String(level);},
+      setStatus(text){if(token===activeGeneration)document.querySelector('#game-status')!.textContent=text;},
+      announce,openStudy,
+      save(data){if(token!==activeGeneration)return;store.saveGame(id,data);storageStatus();},
+      sound(kind){if(token===activeGeneration&&!paused&&!study.isOpen)playSound(preferences.sound,kind);}
     });
-    if(token!==generation){mounted.dispose();return;}
+    if(token!==generation){await disposeGame(mounted);return;}
     instance=mounted;
     const saved=store.savedGame(id);
     if(saved!==undefined){try{instance.restore(saved);}catch{announce('The previous save was not compatible. Starting a fresh game.');}}
-    if(!referenceGames.has(id))stopFitting=fitGameStage(stage,stage.parentElement!);
+    if(!referenceGames.has(id)&&id!=='voxelibre')stopFitting=fitGameStage(stage,stage.parentElement!);
     document.querySelector('#pause-game')!.addEventListener('click',()=>setPaused(!paused));
     document.querySelector('#resume-game')!.addEventListener('click',()=>setPaused(false));
-    document.querySelector('#restart-game')!.addEventListener('click',()=>{instance?.restart();setPaused(false);save();});
+    document.querySelector('#restart-game')!.addEventListener('click',async event=>{
+      const button=event.currentTarget as HTMLButtonElement,current=instance;button.disabled=true;
+      try{await current?.restart();if(instance===current){setPaused(false);save();}}
+      catch(error){if(instance===current)document.querySelector('#game-status')!.textContent=error instanceof Error?error.message:'Could not restart. Please try again.';}
+      finally{if(button.isConnected)button.disabled=false;}
+    });
     document.querySelector('#rules-game')!.addEventListener('click',()=>{
       pausedForDialog=!paused;setPaused(true);
       document.querySelector('#rules-text')!.textContent=loaded.rules;rulesDialog.showModal();

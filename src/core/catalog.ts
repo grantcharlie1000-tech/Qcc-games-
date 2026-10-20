@@ -1,6 +1,7 @@
 import type { GameId, GameModule } from './types';
 export interface GameInfo { id: GameId; title: string; color: string; ink: string; accent: string }
 export const games: GameInfo[] = [
+{id:'voxelibre',title:'VoxeLibre',color:'#172c27',ink:'#e9edbe',accent:'#b4db6d'},
 {id:'color-blocks',title:'Color Blocks',color:'#382841',ink:'#ffd04c',accent:'#ffca3a'},
 {id:'water-sort',title:'Water Sort',color:'#594263',ink:'#e4b5f7',accent:'#dca8ed'},
 {id:'fruit-merge',title:'Fruit Merge',color:'#ffe7ac',ink:'#d34c37',accent:'#df4e37'},

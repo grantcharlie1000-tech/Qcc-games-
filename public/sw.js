@@ -8,12 +8,20 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=aw
 self.addEventListener('activate',event=>event.waitUntil((async()=>{try{for(const key of await caches.keys())if(key.startsWith(PREFIX)&&key!==SHELL&&key!==PACK)await caches.delete(key);}catch{}await self.clients.claim();})()));
 self.addEventListener('message',event=>{if(event.data?.type==='ARCADE_VERSION')event.ports[0]?.postMessage({version:VERSION});});
 async function find(request){try{const shell=await caches.open(SHELL),pack=await caches.open(PACK);return await shell.match(request)||await pack.match(request);}catch{return undefined;}}
+function isolated(response){
+ const headers=new Headers(response.headers);headers.set('Cross-Origin-Opener-Policy','same-origin');headers.set('Cross-Origin-Embedder-Policy','require-corp');headers.set('Cross-Origin-Resource-Policy','same-origin');
+ return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
 async function remember(request,response){try{const cache=await caches.open(SHELL);await cache.put(request,response);}catch{/* Caching must never prevent online gameplay. */}}
 self.addEventListener('fetch',event=>{const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.href.startsWith(self.registration.scope))return;
  event.respondWith((async()=>{let hit=await find(event.request);
  // Keep a client's HTML, manifest and worker version coherent until the waiting update activates.
- if(event.request.mode==='navigate'&&!hit)hit=await find(new URL('index.html',self.registration.scope));
- if(hit)return hit;
- try{const response=await fetch(event.request);if(response.ok)event.waitUntil(remember(event.request,response.clone()));return response;}
+ if(event.request.mode==='navigate'&&!hit){
+  const documentUrl=new URL(url);documentUrl.search='';documentUrl.hash='';
+  if(documentUrl.pathname===new URL(self.registration.scope).pathname)documentUrl.pathname+='index.html';
+  hit=await find(documentUrl);
+ }
+ if(hit)return isolated(hit);
+ try{const response=await fetch(event.request);if(response.ok)event.waitUntil(remember(event.request,response.clone()));return isolated(response);}
  catch{return new Response('This file has not been downloaded on this device.',{status:503});}
  })());});

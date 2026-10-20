@@ -3,8 +3,8 @@ import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const titles={'fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird'};
-const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
+const titles={voxelibre:'VoxeLibre','fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird'};
+const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles).filter(id=>id!=='voxelibre'); // Native worlds have separate, longer verification.
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});

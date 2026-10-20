@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "archiveRoot": "qcc-voxelibre-runtime-source",
+  "inputs": [
+    {
+      "name": "luanti-wasm",
+      "url": "https://codeload.github.com/paradust7/luanti-wasm/tar.gz/5bfae52b53605b39667dfc29cddd59c861e38111",
+      "archive": "luanti-wasm.tar.gz",
+      "destination": "luanti-wasm",
+      "commit": "5bfae52b53605b39667dfc29cddd59c861e38111",
+      "bytes": 20352590,
+      "sha256": "bd2cf0666b443687eccc7bcc42dd066ac47af4195b93fd000f886a750853220c"
+    },
+    {
+      "name": "luanti",
+      "url": "https://codeload.github.com/paradust7/luanti/tar.gz/6f532b5ed03a6aa70091412114b5dde3d33c6f87",
+      "archive": "luanti.tar.gz",
+      "destination": "luanti-wasm/sources/luanti",
+      "commit": "6f532b5ed03a6aa70091412114b5dde3d33c6f87",
+      "bytes": 15963277,
+      "sha256": "7262be3327c3f39135f825001146f138b3a2341efb3f506cf17f89ef027077bd"
+    },
+    {
+      "name": "webshims",
+      "url": "https://codeload.github.com/paradust7/webshims/tar.gz/70653a91c974aa2b20df09a39f858d92e663c1a7",
+      "archive": "webshims.tar.gz",
+      "destination": "luanti-wasm/sources/webshims",
+      "commit": "70653a91c974aa2b20df09a39f858d92e663c1a7",
+      "bytes": 20822,
+      "sha256": "8844274dcd1f8d0a0aa40670d587962a875a082074634bb18f713d854f01141e"
+    },
+    {
+      "name": "zstd",
+      "url": "https://codeload.github.com/facebook/zstd/tar.gz/f8745da6ff1ad1e7bab384bd1f9d742439278e99",
+      "archive": "zstd.tar.gz",
+      "destination": "luanti-wasm/sources/zstd",
+      "commit": "f8745da6ff1ad1e7bab384bd1f9d742439278e99",
+      "bytes": 2453329,
+      "sha256": "4b0bd1f0cfb25e61b9103c35f27395530ff5b4c0d2513a00fd745849e85ea52c"
+    },
+    {
+      "name": "emsdk",
+      "url": "https://codeload.github.com/emscripten-core/emsdk/tar.gz/35659964bc2762fffec0d257997fb61475f765b7",
+      "archive": "emsdk.tar.gz",
+      "destination": "luanti-wasm/emsdk",
+      "commit": "35659964bc2762fffec0d257997fb61475f765b7",
+      "bytes": 178410,
+      "sha256": "e3ef5e4a46753aecc700ec72f81abda6d0601a262c5afe2669323ce2721a22b8"
+    },
+    {
+      "name": "emscripten",
+      "url": "https://codeload.github.com/emscripten-core/emscripten/tar.gz/aeb67926e7de656da38bc807d83050af93578758",
+      "archive": "emscripten.tar.gz",
+      "destination": "luanti-wasm/emsdk/upstream/emscripten",
+      "commit": "aeb67926e7de656da38bc807d83050af93578758",
+      "bytes": 32863764,
+      "sha256": "0ce9586eb7c02a47921bf2a5395f151eed0bf9430c28f84864fac75a7a878dff"
+    },
+    {
+      "name": "port-sdl2",
+      "url": "https://github.com/libsdl-org/SDL/archive/release-2.32.10.zip",
+      "archive": "port-sdl2.zip",
+      "destination": "ports/sdl2/SDL-release-2.32.10",
+      "sha512": "001738b610b42a8f8badfd6af3402f0a1a8601034adef0b8c702dd2b1951dc1b71b733a6779d97499b6f7314d226ec0c8dcffeb753f35a5c51e995ca20bdd459",
+      "root": "SDL-release-2.32.10",
+      "bytes": 9111739,
+      "sha256": "7a3c207b8509edc487d658df357ad764cd852d68fe248d307b25c0741d52fdf0"
+    },
+    {
+      "name": "port-zlib",
+      "url": "https://github.com/madler/zlib/archive/refs/tags/v1.3.2.tar.gz",
+      "archive": "port-zlib.tar.gz",
+      "destination": "ports/zlib/zlib-1.3.2",
+      "sha512": "16fea4df307a68cf0035858abe2fd550250618a97590e202037acd18a666f57afc10f8836cbbd472d54a0e76539d0e558cb26f059d53de52ff90634bbf4f47d4",
+      "root": "zlib-1.3.2",
+      "bytes": 1566911,
+      "sha256": "b99a0b86c0ba9360ec7e78c4f1e43b1cbdf1e6936c8fa0f6835c0cd694a495a1"
+    },
+    {
+      "name": "port-libjpeg",
+      "url": "https://storage.googleapis.com/webassembly/emscripten-ports/jpegsrc.v9f.tar.gz",
+      "archive": "port-libjpeg.tar.gz",
+      "destination": "ports/libjpeg/jpeg-9f",
+      "sha512": "7f733d79cf176c690dcf127352f9aa7ec48000455944f286faae606cdeada6f6865b4a3f9f01bda8947b5b1089bb3e52d2b56879b6e871279ec5cbd1829304dc",
+      "root": "jpeg-9f",
+      "bytes": 1081470,
+      "sha256": "04705c110cb2469caa79fb71fba3d7bf834914706e9641a4589485c1f832565b"
+    },
+    {
+      "name": "port-libpng",
+      "url": "https://storage.googleapis.com/webassembly/emscripten-ports/libpng-1.6.58.tar.gz",
+      "archive": "port-libpng.tar.gz",
+      "destination": "ports/libpng/libpng-1.6.58",
+      "sha512": "177d81fd1ba1a46ff64da7f24260814876bd0a27ee5bed6dc9dbdd1fe28f3a67cb6f11c74a68f8380a9a7ab0d95c0022b847b1a3e4d939f2a562274627205789",
+      "root": "libpng-1.6.58",
+      "bytes": 1582074,
+      "sha256": "8c9b05b675ca7301a458df2c2e46f26e1d41ff36b8863f8c33530bc58c2e6225"
+    },
+    {
+      "name": "port-freetype",
+      "url": "https://github.com/freetype/freetype/archive/VER-2-14-3.zip",
+      "archive": "port-freetype.zip",
+      "destination": "ports/freetype/freetype-VER-2-14-3",
+      "sha512": "460ea4dc9cc879822556d801341a1cf3efcd57a13cd4da64169603ea98873337dd19e3c8c6d9054b27d10acbbaa8d5c59b7f560c697b98dc2640bcd88f57554a",
+      "root": "freetype-VER-2-14-3",
+      "bytes": 2976010,
+      "sha256": "3f624983444f9e9149707853a792dc5a897f3afc9f23a9b8669c03ac564779d1"
+    },
+    {
+      "name": "port-ogg",
+      "url": "https://github.com/xiph/ogg/releases/download/v1.3.5/libogg-1.3.5.zip",
+      "archive": "port-ogg.zip",
+      "destination": "ports/ogg/libogg-1.3.5",
+      "sha512": "e7b5f5d469090b66dbb33634591ae6de41af3a5644c10488e59ba7428ed78912e208a2c0fbb5003ec5b7eb2a0102a2f85cecb21fa9512d790139ecc45b6d03f4",
+      "root": "libogg-1.3.5",
+      "bytes": 665108,
+      "sha256": "fd4e5ba7e93b84b3ec41cdf01494cc586ef6e912b313dbab25512dd02665dfaf"
+    },
+    {
+      "name": "port-vorbis",
+      "url": "https://github.com/xiph/vorbis/releases/download/v1.3.7/libvorbis-1.3.7.zip",
+      "archive": "port-vorbis.zip",
+      "destination": "ports/vorbis/libvorbis-1.3.7",
+      "sha512": "10edd193f44f2b2d6085672e257b5be11066f5db27348d4cab53789bf9e8739c2df2cd7f42b83e4edbab53e10b5dc84320d6aab1deac0d8e18196a8a88b19b77",
+      "root": "libvorbis-1.3.7",
+      "bytes": 1924556,
+      "sha256": "57c8bc92d2741934b8dc939af49c2639edc44b8879cba2ec14ad3189e2814582"
+    },
+    {
+      "name": "port-sqlite3",
+      "url": "https://www.sqlite.org/2022/sqlite-amalgamation-3390000.zip",
+      "archive": "port-sqlite3.zip",
+      "destination": "ports/sqlite3/sqlite-amalgamation-3390000",
+      "sha512": "cbaf4adb3e404d9aa403b34f133c5beca5f641ae1e23f84dbb021da1fb9efdc7c56b5922eb533ae5cb6d26410ac60cb3f026085591bc83ebc1c225aed0cf37ca",
+      "root": "sqlite-amalgamation-3390000",
+      "bytes": 2556736,
+      "sha256": "35109dd6e4f062f4d76b48bd7614eec35abae9d2da70351c7ef936876b064b5f"
+    }
+  ]
+}

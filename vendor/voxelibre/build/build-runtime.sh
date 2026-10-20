@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # Compile the pinned native runtime in an isolated directory. No site credentials.
 set -euo pipefail
+for qcc_tool in git python3 node cmake make gcc g++ perl patch zstd; do
+  if ! command -v "$qcc_tool" >/dev/null; then
+    printf 'Missing native build prerequisite: %s\n' "$qcc_tool" >&2
+    exit 1
+  fi
+done
 QCC_RECIPE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 QCC_BUILD_DIR=$(realpath -m -- "${1:?Usage: build-runtime.sh BUILD_DIRECTORY}")
+QCC_NODE_BIN=$(command -v node)
 python3 "$QCC_RECIPE_DIR/fetch-pinned.py" luanti-wasm "$QCC_BUILD_DIR"
 for input in luanti webshims zstd; do
   python3 "$QCC_RECIPE_DIR/fetch-pinned.py" "$input" "$QCC_BUILD_DIR/sources/$input"
@@ -27,6 +34,12 @@ if [ ! -f upstream/emscripten/emcc.py ]; then
   ./emsdk install 6.0.8
 fi
 ./emsdk activate 6.0.8
+# Match upstream's install_emsdk.sh: use the host's supported Node installation.
+python3 - "$QCC_NODE_BIN" <<'PY'
+import pathlib, re, sys
+config = pathlib.Path('.emscripten')
+config.write_text(re.sub(r'^NODE_JS = .*$', 'NODE_JS = ' + repr(sys.argv[1]), config.read_text(), flags=re.M))
+PY
 # SDK archives can retain private extraction modes; all these inputs are public.
 chmod -R a+rX upstream node
 for qcc_patch in emsdk_dirperms emsdk_openat emsdk_libegl emsdk_jspi emsdk_wasmfs_opfs emsdk_wasmfs_opfs_subdir; do

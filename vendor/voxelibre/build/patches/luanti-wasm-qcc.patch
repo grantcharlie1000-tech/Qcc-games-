@@ -67,7 +67,7 @@ index e456147..85734ee 100644
  export CFLAGS="$COMMON_CFLAGS -pthread -fwasm-exceptions -sJSPI"
  export CXXFLAGS="$COMMON_CFLAGS -pthread -fwasm-exceptions -sJSPI"
 diff --git a/static/launcher.js b/static/launcher.js
-index ae484f5..0ed8fbb 100644
+index ae484f5..fd0b329 100644
 --- a/static/launcher.js
 +++ b/static/launcher.js
 @@ -1833,11 +1833,12 @@ async function openStorageRoot() {
@@ -85,3 +85,12 @@ index ae484f5..0ed8fbb 100644
      }
  }
  
+@@ -2143,7 +2144,7 @@ class LuantiLauncher {
+         // 'kind:name' -> a promise settled once the module has installed it
+         // from a zip.
+         this.zipInstalls = new Map();
+-        this.proxyUrl = "wss://luanti.dustlabs.io/proxy";
++        this.proxyUrl = ""; // QCC uses the engine's local single-player loopback.
+         this.packsDir = DEFAULT_PACKS_DIR;
+         this.packsDirIsCors = false;
+         this.conf = new Map();
