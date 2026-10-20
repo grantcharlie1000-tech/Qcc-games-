@@ -8,7 +8,6 @@
 .gl-input{flex:1;min-width:0;min-height:44px;border-radius:12px;border:2px solid #626169;background:#11161a;color:#fff;padding:8px 12px;font:16px system-ui,sans-serif}
 .gl-input:focus{border-color:#ffe0a4;outline:none}
 .gl-input:disabled{opacity:.6}
-.gl-input::-webkit-calendar-picker-indicator{display:none!important}
 .gl-submit{min-width:84px}
 .gl-message{margin:0;min-height:19px;font-size:14px;color:var(--gl-muted)}
 .gl-message[data-tone=error]{color:#ffb4a8}

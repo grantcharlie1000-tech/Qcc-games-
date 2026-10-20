@@ -6,7 +6,7 @@ import {COUNTRIES} from '../../../src/games/globle/countries';
 test.describe.configure({timeout: 120000});
 const url = '/#/game/globle';
 const KEY = 'pocket-arcade:v1:save:globle';
-const input = (page: Page) => page.getByRole('combobox', {name: 'Country name'});
+const input = (page: Page) => page.getByRole('textbox', {name: 'Country name'});
 const globe = (page: Page) => page.locator('.gl-globe');
 const count = (page: Page) => page.locator('.globle').getAttribute('data-guesses');
 
