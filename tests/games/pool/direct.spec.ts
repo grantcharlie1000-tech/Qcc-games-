@@ -1,6 +1,36 @@
 import {test,expect,type Page} from '../../fixtures';
 async function table(page:Page){const canvas=page.locator('.pool-table');await expect(canvas).toBeVisible();return (await canvas.boundingBox())!;}
 async function cueDrag(page:Page,pull=90){await page.locator('.pool-table').hover();const b=await table(page);await page.mouse.move(b.x+225/840*b.width,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+(225-pull)/840*b.width,b.y+b.height/2,{steps:8});}
+type NativePullPoint={type:string;clientX:number;clientY:number;pointerId:number;trusted:boolean;left:number;top:number;width:number;height:number};
+async function recordNativePull(page:Page){
+ await page.locator('.pool-table').evaluate(canvas=>{
+  const events:NativePullPoint[]=[];
+  for(const type of ['pointerdown','pointermove','pointerup'])canvas.addEventListener(type,event=>{
+   const p=event as PointerEvent,r=canvas.getBoundingClientRect();
+   events.push({type,clientX:p.clientX,clientY:p.clientY,pointerId:p.pointerId,trusted:p.isTrusted,left:r.left,top:r.top,width:r.width,height:r.height});
+   canvas.setAttribute('data-test-native-pull',JSON.stringify(events));
+  },{capture:true});
+ });
+}
+async function nativePull(page:Page){return JSON.parse((await page.locator('.pool-table').getAttribute('data-test-native-pull'))!) as NativePullPoint[];}
+function observedPower(down:NativePullPoint,end:NativePullPoint){
+ // The initial cue aims screen-right: a backwards pull is horizontal left.
+ // Derive model distance directly from native screen pixels, independent of input.ts.
+ return (down.clientX-end.clientX)*840/end.width/120;
+}
+async function expectNativePower(page:Page,endType:'pointermove'|'pointerup'){
+ const events=await nativePull(page),down=events.find(e=>e.type==='pointerdown')!,end=events.filter(e=>e.type===endType).at(-1)!;
+ expect(down).toBeDefined();expect(end).toBeDefined();expect(down.trusted&&end.trusted).toBe(true);expect(end.pointerId).toBe(down.pointerId);
+ expect({left:end.left,top:end.top,width:end.width,height:end.height}).toEqual({left:down.left,top:down.top,width:down.width,height:down.height});
+ const power=observedPower(down,end);expect(power).toBeGreaterThan(.7);expect(power).toBeLessThan(.8);
+ await test.info().attach(`native-pull-${endType}`,{body:JSON.stringify({events,expectedPower:power,expectedDisplay:`${Math.round(power*100)}%`},null,2),contentType:'application/json'});
+ if(endType==='pointermove')await expect(page.locator('.pool-power-value')).toHaveText(`${Math.round(power*100)}%`);
+ else{
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:pool')!).data);
+  expect(saved.angle).toBe(-Math.PI/2);expect(saved.power).toBeCloseTo(power,12);
+ }
+ return {down,end,power};
+}
 test.beforeEach(async({page})=>{await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');});
 test('horizontal direct break separates aim, pull, cancel and release',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});await expect.poll(async()=> (await table(page)).width).toBeGreaterThan(800);const b=await table(page),root=page.locator('.pool-game');expect(b.width/b.height).toBeCloseTo(840/440,1);expect(b.width).toBeGreaterThan(800);
@@ -54,10 +84,10 @@ test('native touch captures at high DPI, rejects a second finger outside the tab
 for(const size of [{width:768,height:1024},{width:1366,height:768}])test(`gesture feedback preserves table geometry at ${size.width}×${size.height}`,async({page})=>{
  await page.setViewportSize(size);await expect.poll(async()=>{const b=await table(page);return Math.abs(b.width/(b.height||1)-840/440)<.001;}).toBe(true);
  await page.evaluate(()=>new Promise<void>(r=>requestAnimationFrame(()=>requestAnimationFrame(()=>r()))));
- const b=await table(page),root=page.locator('.pool-game');await cueDrag(page);
- await expect(root).toHaveAttribute('data-gesture','pull');await expect(page.locator('.pool-power-value')).toContainText('75%');
+ const b=await table(page),root=page.locator('.pool-game');await recordNativePull(page);await cueDrag(page);
+ await expect(root).toHaveAttribute('data-gesture','pull');await expectNativePower(page,'pointermove');
  const held=await table(page);expect(held.x).toBeCloseTo(b.x,1);expect(held.y).toBeCloseTo(b.y,1);expect(held.width).toBeCloseTo(b.width,1);expect(held.height).toBeCloseTo(b.height,1);
- await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');
+ await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');await expectNativePower(page,'pointerup');
 });
 test('a contact already held outside the table blocks a new mouse stroke',async({page})=>{
  await page.evaluate(()=>window.dispatchEvent(new PointerEvent('pointerdown',{pointerId:99,pointerType:'pen',isPrimary:true,button:0})));
@@ -89,4 +119,13 @@ for(const transition of ['pause','Study'] as const)test(`native held touch remai
   await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});expect(await root.getAttribute('data-shots')).toBe('0');
   await cueDrag(page);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');
  }finally{await context.close();}
+});
+
+test('integer native pointer positions preserve displayed and committed pull power',async({page})=>{
+ await page.setViewportSize({width:768,height:1024});const canvas=page.locator('.pool-table');await canvas.hover();const b=(await canvas.boundingBox())!;
+ await recordNativePull(page);
+ const y=Math.floor(b.y+b.height/2),start=Math.floor(b.x+225/840*b.width),end=Math.floor(b.x+135/840*b.width);
+ await page.mouse.move(start,y);await page.mouse.down();await page.mouse.move(end,y,{steps:8});
+ const loaded=await expectNativePower(page,'pointermove');expect(loaded.down.clientX).toBe(start);expect(loaded.end.clientX).toBe(end);
+ await page.mouse.up();await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','1');await expectNativePower(page,'pointerup');
 });
