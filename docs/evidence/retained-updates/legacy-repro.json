@@ -1,0 +1,120 @@
+{
+  "oldVersion": "d18ca7b8ad5a",
+  "newVersion": "d18ca7b8ad5a-next",
+  "results": [
+    {
+      "scope": "/",
+      "profile": "/tmp/qcc-retained-profile-CXHHUs",
+      "activeVersion": "d18ca7b8ad5a",
+      "waiting": true,
+      "releaseMarker": "A",
+      "BHtmlRequests": 0,
+      "storedBefore": {
+        "score": "1234",
+        "settings": "{\"sound\":false,\"reducedMotion\":true,\"colorBlind\":true}",
+        "save": {
+          "version": 1,
+          "seed": 3578957065,
+          "bag": [
+            3,
+            1,
+            1,
+            0,
+            0
+          ],
+          "current": 2,
+          "next": 2,
+          "score": 0,
+          "time": 50,
+          "lastDrop": 33.333333333333336,
+          "lastMerge": -10000,
+          "combo": 0,
+          "aim": 180,
+          "nextId": 2,
+          "lost": false,
+          "fruits": [
+            {
+              "id": 1,
+              "tier": 3,
+              "x": 180,
+              "y": 58.27777777777778,
+              "vx": 0,
+              "vy": 0.27777777777777857,
+              "angle": 0,
+              "av": 0,
+              "age": 16.666666666666668,
+              "danger": 0,
+              "sleeping": false
+            }
+          ]
+        },
+        "cookie": "retainedCookie=unchanged"
+      },
+      "storedAfter": {
+        "score": "1234",
+        "settings": "{\"sound\":false,\"reducedMotion\":true,\"colorBlind\":true}",
+        "cookie": "retainedCookie=unchanged"
+      },
+      "oldDocumentRetained": true,
+      "oldLazyChunkAbsentOnServer": true,
+      "oldGamePlayedOffline": true
+    },
+    {
+      "scope": "/Qcc-games-/",
+      "profile": "/tmp/qcc-retained-profile-dPu4RE",
+      "activeVersion": "d18ca7b8ad5a",
+      "waiting": true,
+      "releaseMarker": "A",
+      "BHtmlRequests": 0,
+      "storedBefore": {
+        "score": "1234",
+        "settings": "{\"sound\":false,\"reducedMotion\":true,\"colorBlind\":true}",
+        "save": {
+          "version": 1,
+          "seed": 3578957065,
+          "bag": [
+            3,
+            1,
+            1,
+            0,
+            0
+          ],
+          "current": 2,
+          "next": 2,
+          "score": 0,
+          "time": 33.333333333333336,
+          "lastDrop": 33.333333333333336,
+          "lastMerge": -10000,
+          "combo": 0,
+          "aim": 180,
+          "nextId": 2,
+          "lost": false,
+          "fruits": [
+            {
+              "id": 1,
+              "tier": 3,
+              "x": 180,
+              "y": 58,
+              "vx": 0,
+              "vy": 0,
+              "angle": 0,
+              "av": 0,
+              "age": 0,
+              "danger": 0,
+              "sleeping": false
+            }
+          ]
+        },
+        "cookie": "retainedCookie=unchanged"
+      },
+      "storedAfter": {
+        "score": "1234",
+        "settings": "{\"sound\":false,\"reducedMotion\":true,\"colorBlind\":true}",
+        "cookie": "retainedCookie=unchanged"
+      },
+      "oldDocumentRetained": true,
+      "oldLazyChunkAbsentOnServer": true,
+      "oldGamePlayedOffline": true
+    }
+  ]
+}

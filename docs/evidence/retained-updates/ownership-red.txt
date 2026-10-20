@@ -1,0 +1,48 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-updates.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-updates.test.ts (3 tests | 1 failed) 102ms
+   ✓ ACK and comparison use the running module URL even if HTML points at another entry 37ms
+   ✓ online recovery retries initial registration failure while preserving the controller 54ms
+   × running module ownership is acknowledged even while a future registration job is unsettled 9ms
+     → expected [] to deep equally contain { type: 'ARCADE_CLIENT_READY', …(1) }
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-updates.test.ts > running module ownership is acknowledged even while a future registration job is unsettled
+AssertionError: expected [] to deep equally contain { type: 'ARCADE_CLIENT_READY', …(1) }
+
+- Expected: 
+{
+  "entry": "https://arcade.test/assets/running.js",
+  "type": "ARCADE_CLIENT_READY",
+}
+
++ Received: 
+[]
+
+ ❯ tests/core/offline-updates.test.ts:34:47
+     32|  sw.register.mockImplementationOnce(()=>new Promise(resolve=>release=r…
+     33|  module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());…
+     34|  try{await Promise.resolve();expect(messages).toContainEqual({type:'AR…
+       |                                               ^
+     35| });
+     36| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  04:44:00
+   Duration  451ms (transform 63ms, setup 0ms, collect 38ms, tests 102ms, environment 0ms, prepare 84ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

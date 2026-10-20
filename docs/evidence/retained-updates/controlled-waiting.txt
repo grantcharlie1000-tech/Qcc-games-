@@ -1,0 +1,27 @@
+
+> pocket-offline-arcade@1.0.0 verify:update
+> node scripts/verify-update.mjs
+
+CONTROLLED WAITING START /
+CONTROLLED TOPIC CANCELLATION PASS /
+CONTROLLED RESUME CANCELLATION PASS /
+CONTROLLED WAITING PASS /
+CONTROLLED WAITING START /Qcc-games-/
+CONTROLLED TOPIC CANCELLATION PASS /Qcc-games-/
+CONTROLLED RESUME CANCELLATION PASS /Qcc-games-/
+CONTROLLED WAITING PASS /Qcc-games-/
+[
+  {
+    "scope": "/",
+    "controlledWaiting": true
+  },
+  {
+    "scope": "/Qcc-games-/",
+    "controlledWaiting": true
+  }
+]
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

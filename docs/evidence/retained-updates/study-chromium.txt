@@ -1,0 +1,49 @@
+
+> pocket-offline-arcade@1.0.0 test:e2e
+> playwright test tests/e2e/study.spec.ts tests/e2e/study-editorial.spec.ts --project=chromium --workers=1 --output=/tmp/qcc-update-study-results
+
+
+Running 33 tests using 1 worker
+
+(node:94321) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/e2e/study-editorial.spec.ts:2:96 › editorial notes, fictional contributors and visible Games navigation fit 320 (7.1s)
+  ✓   2 [chromium] › tests/e2e/study-editorial.spec.ts:2:96 › editorial notes, fictional contributors and visible Games navigation fit 768 (5.7s)
+  ✓   3 [chromium] › tests/e2e/study-editorial.spec.ts:2:96 › editorial notes, fictional contributors and visible Games navigation fit 1366 (6.9s)
+  ✓   4 [chromium] › tests/e2e/study-editorial.spec.ts:25:1 › modified Games clicks reach the browser without returning the retained game (2.8s)
+  ✓   5 [chromium] › tests/e2e/study.spec.ts:37:1 › first visit offers exactly 20 topics and remembers the choice for this tab only (3.1s)
+  ✓   6 [chromium] › tests/e2e/study.spec.ts:53:1 › reading keeps native Space scrolling and keyboard controls isolated from Tower (2.0s)
+  ✓   7 [chromium] › tests/e2e/study.spec.ts:75:1 › Escape immediately saves and pauses; article changes never load or replace the game (4.0s)
+  ✓   8 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › fruit-merge: gameplay, Escape, frozen autosave and exact return (3.0s)
+  ✓   9 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › water-sort: gameplay, Escape, frozen autosave and exact return (2.3s)
+  ✓  10 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › color-blocks: gameplay, Escape, frozen autosave and exact return (1.3s)
+  ✓  11 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › tower: gameplay, Escape, frozen autosave and exact return (3.2s)
+  ✓  12 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › snake: gameplay, Escape, frozen autosave and exact return (4.3s)
+  ✓  13 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › minesweeper: gameplay, Escape, frozen autosave and exact return (2.0s)
+  ✓  14 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › solitaire: gameplay, Escape, frozen autosave and exact return (2.6s)
+  ✓  15 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › block-fill: gameplay, Escape, frozen autosave and exact return (2.0s)
+  ✓  16 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › color-connect: gameplay, Escape, frozen autosave and exact return (2.2s)
+  ✓  17 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › ball-run: gameplay, Escape, frozen autosave and exact return (2.8s)
+  ✓  18 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › pool: gameplay, Escape, frozen autosave and exact return (2.4s)
+  ✓  19 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › animal-stack: gameplay, Escape, frozen autosave and exact return (1.9s)
+  ✓  20 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › flappy-bird: gameplay, Escape, frozen autosave and exact return (2.3s)
+  ✓  21 [chromium] › tests/e2e/study.spec.ts:139:3 › Escape from the menu cannot resume gameplay behind the chapter (1.9s)
+  ✓  22 [chromium] › tests/e2e/study.spec.ts:139:3 › Escape from the rules cannot resume gameplay behind the chapter (1.9s)
+  ✓  23 [chromium] › tests/e2e/study.spec.ts:158:1 › manual pause survives Study and contents navigation keeps the game route intact (1.9s)
+  ✓  24 [chromium] › tests/e2e/study.spec.ts:171:1 › Escape during a delayed import opens instantly and the late game mounts paused (1.7s)
+  ✓  25 [chromium] › tests/e2e/study.spec.ts:188:1 › Study remains usable when both storage APIs are blocked (1.4s)
+  ✓  26 [chromium] › tests/e2e/study.spec.ts:206:1 › library menu opens a chapter without remaking cards or requesting assets (2.1s)
+  ✓  27 [chromium] › tests/e2e/study.spec.ts:219:1 › a partially dragged Solitaire card is cleaned up without changing the deal (1.4s)
+  ✓  28 [chromium] › tests/e2e/study.spec.ts:233:1 › return restores keyboard focus even when a card game re-renders its controls on pause (1.2s)
+  ✓  29 [chromium] › tests/e2e/study.spec.ts:243:1 › returning while the page is hidden leaves the game safely paused (1.5s)
+  ✓  30 [chromium] › tests/e2e/study.spec.ts:257:3 › topic picker and textbook at 390 (2.4s)
+  ✓  31 [chromium] › tests/e2e/study.spec.ts:257:3 › topic picker and textbook at 768 (3.6s)
+  ✓  32 [chromium] › tests/e2e/study.spec.ts:257:3 › topic picker and textbook at 1366 (4.0s)
+  ✓  33 [chromium] › tests/e2e/study.spec.ts:272:1 › all twenty original diagrams render as a review contact sheet (3.6s)
+
+  33 passed (1.6m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

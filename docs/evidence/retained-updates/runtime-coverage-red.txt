@@ -1,0 +1,61 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-worker.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-worker.test.ts (17 tests | 1 failed) 137ms
+   ✓ online gameplay survives a full response cache 11ms
+   ✓ online gameplay survives completely blocked cache storage 3ms
+   ✓ installing an update never navigates documents or deletes their game caches 5ms
+   ✓ a coherent update can activate without waiting for legacy documents to close 5ms
+   ✓ an inconsistent deployment cannot activate over the retained version 3ms
+   ✓ old cached chunks remain usable after the worker process restarts 4ms
+   ✓ cleanup only deletes the captured stale set, preserving future installs and other scopes 3ms
+   ✓ a live unacknowledged legacy document prevents stale cache deletion 3ms
+   ✓ missing persisted retention metadata fails closed after a restart 4ms
+   ✓ legacy migration pins old caches even when an execution-unready navigation is absent 3ms
+   ✓ an absent current navigation retains its own generation and settles only its source ACK 8ms
+   ✓ activation imports late predecessor reservations and an old-module ACK retains its dependencies 14ms
+   ✓ an unresolved old navigation protects its generation across restart and a later update 13ms
+   ✓ navigation never emits HTML before its reservation is durably stored 25ms
+   ✓ normal multi-generation cleanup accepts legitimately absent old asset mappings 16ms
+   ✓ one evicted legacy pinned cache does not turn unrelated future generations into permanent pins 6ms
+   × an update cannot activate when its manifest needs a runtime chunk outside its atomic precache 11ms
+     → promise resolved "undefined" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-worker.test.ts > an update cannot activate when its manifest needs a runtime chunk outside its atomic precache
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:138:71
+    136| 
+    137| test('an update cannot activate when its manifest needs a runtime chun…
+    138|  const w=worker({uncachedRuntime:true});await expect(w.emit('install')…
+       |                                                                       ^
+    139| });
+    140| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  04:40:42
+   Duration  546ms (transform 70ms, setup 0ms, collect 79ms, tests 137ms, environment 0ms, prepare 94ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

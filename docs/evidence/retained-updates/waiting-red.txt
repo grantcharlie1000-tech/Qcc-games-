@@ -1,0 +1,79 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-updates.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-updates.test.ts (5 tests | 2 failed) 1217ms
+   ✓ ACK and comparison use the running module URL even if HTML points at another entry 50ms
+   ✓ online recovery retries initial registration failure while preserving the controller 53ms
+   ✓ running module ownership is acknowledged even while a future registration job is unsettled 6ms
+   × a coherent waiting worker is offered even while the running controller matches this document 13ms
+     → expected last "spy" call to have been called with [ Array(1) ]
+   × an installing worker reaching installed updates the notice without a document navigation 1092ms
+     → expected last "spy" call to have been called with [ Array(1) ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-updates.test.ts > a coherent waiting worker is offered even while the running controller matches this document
+AssertionError: expected last "spy" call to have been called with [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+-   ObjectContaining {
+-     "available": true,
++   {
++     "available": false,
++     "message": "",
+    },
+  ]
+
+ ❯ tests/core/offline-updates.test.ts:43:17
+     41|  const {module,registration}=await setup();registration.waiting=waitin…
+     42|  module.watchUpdates('https://arcade.test/assets/running.js',status);a…
+     43|  expect(status).toHaveBeenLastCalledWith(expect.objectContaining({avai…
+       |                 ^
+     44| });
+     45| test('an installing worker reaching installed updates the notice witho…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/core/offline-updates.test.ts > an installing worker reaching installed updates the notice without a document navigation
+AssertionError: expected last "spy" call to have been called with [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+-   ObjectContaining {
+-     "available": true,
++   {
++     "available": false,
++     "message": "",
+    },
+  ]
+
+ ❯ tests/core/offline-updates.test.ts:49:38
+     47|  module.watchUpdates('https://arcade.test/assets/running.js',status);a…
+     48|  next.state='installed';registration.waiting=next;next.dispatchEvent(n…
+     49|  await vi.waitFor(()=>expect(status).toHaveBeenLastCalledWith(expect.o…
+       |                                      ^
+     50| });
+     51| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 3 passed (5)
+   Start at  04:51:41
+   Duration  1.63s (transform 117ms, setup 0ms, collect 63ms, tests 1.22s, environment 0ms, prepare 120ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

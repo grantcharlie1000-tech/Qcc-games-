@@ -1,0 +1,25 @@
+{
+  "base": "a7f7631d4f606667f23b016ad6091cb3899365e8",
+  "files": [
+    {
+      "source": "src/main.ts",
+      "fixture": "main.ts.fixture",
+      "sha256": "925683b95a7e3ec36e643b5e36e3787355c882fc84b4184250032478339d4c7e"
+    },
+    {
+      "source": "src/core/offline.ts",
+      "fixture": "offline.ts.fixture",
+      "sha256": "d22fb92f1e538f572b5554598bdc6468d3fbfcc5c034bd551a1508e62db8a0b4"
+    },
+    {
+      "source": "public/sw.js",
+      "fixture": "sw.js.fixture",
+      "sha256": "5e29733a44b8f20187141c1075816fb465e2aecc2be6a86198cc467b2c7da743"
+    },
+    {
+      "source": "scripts/offline-manifest.mjs",
+      "fixture": "offline-manifest.mjs.fixture",
+      "sha256": "c512a50082287af86d383757236ce9d31d7a6545ff8ff7aa54e1007bf7834a63"
+    }
+  ]
+}
