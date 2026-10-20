@@ -1,0 +1,10 @@
+Head: 8c9f3008761aefa7f319c3522ef4c07c286b6321
+Run: https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39351461047
+Job: 118396346330
+266 unit tests passed; 291 browser cases passed; 10 existing native-touch skips.
+1 failed: [webkit] tests/games/flappy-bird/play.spec.ts:6:1
+keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up
+Expected saved.vy < 0; received 157.5 at line 12 after snapshot(page) clicked Pause.
+Browser duration: 10.7 minutes.
+Build, update and offline verification skipped after the browser failure.
+PR Pages configure/upload/deploy steps skipped.

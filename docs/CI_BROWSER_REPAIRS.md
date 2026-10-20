@@ -98,3 +98,31 @@ The production tree remains the one verified by hosted `06ac970` and the local
 13-game offline/update runs. Evidence is in `docs/evidence/ci-transient/`.
 The final test-only commit still requires an exact-commit Astra review before
 upload and a fresh green hosted run before merge.
+
+## Flappy pointer response and snapshot timing
+
+The exact-head `8c9f300` hosted run
+[39351461047](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39351461047)
+passed **266 unit tests** and **291 browser cases**, with the **10 existing touch
+skips**, but failed the WebKit Flappy mouse lifecycle case. It sampled saved
+velocity **157.5** after clicking Pause and expected it to remain negative.
+Build, update and offline steps consequently did not run; merge remained blocked.
+
+A local native-input probe demonstrates the timing error: the pointer event
+sets velocity to **-300**, but a 550 ms driver delay before the original pause
+snapshot allows 77 physics steps and yields **277.5**. Gravity is **900 units/s²**,
+so upward velocity lasts only one third of a second after a flap. A later paused
+snapshot cannot reliably assert the immediate input response.
+
+The mouse and native-touch checks now observe the trusted pointer event after
+the game's listener in the same event task and require the exact **-300** lift
+and running phase. They first wait for gravity to change the starting lift, so
+a missing handler cannot pass. A negative control replaced the canvas with a
+clone to remove its handler: the trusted input recorded **-52.5**, correctly
+failing the new lift condition. Existing pause, Study, restore, restart, repeat,
+score and disposal checks remain. No product source or test configuration changed.
+
+Both revised cases passed three Chromium repeats (**6/6**, 32.6 seconds), and
+TypeScript and whitespace checks passed. Raw results are in
+`docs/evidence/ci-flap/`. Exact-checkpoint Astra review and a fresh fully green
+hosted run are required before upload and merge respectively.

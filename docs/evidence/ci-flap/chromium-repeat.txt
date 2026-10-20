@@ -1,0 +1,22 @@
+
+Running 6 tests using 2 workers
+
+(node:37342) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37348) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › tests/games/flappy-bird/play.spec.ts:20:1 › keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up (11.8s)
+  ✓  1 [chromium] › tests/games/flappy-bird/play.spec.ts:20:1 › keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up (12.6s)
+  ✓  3 [chromium] › tests/games/flappy-bird/play.spec.ts:51:1 › native phone touch is a single flap and pointer cancellation does not leave input held (4.5s)
+(node:37825) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [chromium] › tests/games/flappy-bird/play.spec.ts:51:1 › native phone touch is a single flap and pointer cancellation does not leave input held (4.5s)
+  ✓  5 [chromium] › tests/games/flappy-bird/play.spec.ts:20:1 › keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up (10.1s)
+  ✓  6 [chromium] › tests/games/flappy-bird/play.spec.ts:51:1 › native phone touch is a single flap and pointer cancellation does not leave input held (3.1s)
+
+  6 passed (32.6s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

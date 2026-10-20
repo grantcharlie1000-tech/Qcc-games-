@@ -2,6 +2,20 @@ import {test,expect,seedStudyTopic} from '../../fixtures';
 import type {Page} from '../../fixtures';
 async function frames(page:Page,count=10){await page.evaluate(n=>new Promise<void>(resolve=>{let i=0;function next(){if(++i>=n)resolve();else requestAnimationFrame(next);}requestAnimationFrame(next);}),count);}
 async function snapshot(page:Page){await page.getByRole('button',{name:'Pause game',exact:true}).click();return page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:flappy-bird')!).data);}
+async function observePointerFlap(page:Page){
+  // Let gravity change the starting lift so a missing handler cannot pass.
+  await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.flappy-bird')!.dataset.vy)>-200);
+  // This listener is installed after the game's listener, so it observes the
+  // native input response in the same event task, before gravity resumes.
+  await page.locator('.flappy-bird canvas').evaluate(el=>el.addEventListener('pointerdown',event=>{
+    const root=el.closest<HTMLElement>('.flappy-bird')!;
+    el.setAttribute('data-test-flap',JSON.stringify({trusted:event.isTrusted,phase:root.dataset.phase,vy:Number(root.dataset.vy)}));
+  },{once:true}));
+}
+async function expectPointerFlap(page:Page){
+  const flap=JSON.parse((await page.locator('.flappy-bird canvas').getAttribute('data-test-flap'))!);
+  expect(flap).toEqual({trusted:true,phase:'running',vy:-300});
+}
 
 test('keyboard and mouse flap, pause and Study freeze, restore waits, restart and disposal clean up',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/#/game/flappy-bird');
@@ -9,7 +23,7 @@ test('keyboard and mouse flap, pause and Study freeze, restore waits, restart an
   await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('Space');await page.getByRole('button',{name:'Let’s play'}).click();await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
   await root.locator('canvas').focus();await page.keyboard.press('Space');await expect(root).toHaveAttribute('data-phase','running');
   await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.flappy-bird')!.dataset.tick)>12);
-  await root.locator('canvas').click({position:{x:170,y:240}});const saved=await snapshot(page);expect(saved.vy).toBeLessThan(0);
+  await observePointerFlap(page);await root.locator('canvas').click({position:{x:170,y:240}});await expectPointerFlap(page);const saved=await snapshot(page);
   await root.locator('canvas').focus();await page.keyboard.press('Space');await frames(page);expect(await root.getAttribute('data-tick')).toBe(String(saved.tick));
   await page.reload();await expect(page.getByRole('button',{name:'Continue flight',exact:true})).toBeVisible();const tick=await root.getAttribute('data-tick');await frames(page);expect(await root.getAttribute('data-tick')).toBe(tick);
   await page.getByRole('button',{name:'Continue flight',exact:true}).click();await page.keyboard.press('Escape');const studyTick=await root.getAttribute('data-tick');await page.keyboard.press('Space');await frames(page);expect(await root.getAttribute('data-tick')).toBe(studyTick);
@@ -38,8 +52,9 @@ test('native phone touch is a single flap and pointer cancellation does not leav
   test.skip(browserName!=='chromium','Native CDP touch uses Chromium');const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});await seedStudyTopic(context);const page=await context.newPage();await page.goto('/#/game/flappy-bird');await page.getByRole('button',{name:'Take flight',exact:true}).tap();
   await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('width','720');await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('height','1080');
   const canvas=page.locator('.flappy-bird canvas'),box=(await canvas.boundingBox())!,cdp=await context.newCDPSession(page);
+  await observePointerFlap(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
-  const saved=await snapshot(page);expect(saved.vy).toBeLessThan(0);await page.getByRole('button',{name:'Keep playing'}).tap();await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','over');await context.close();
+  await expectPointerFlap(page);await snapshot(page);await page.getByRole('button',{name:'Keep playing'}).tap();await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','over');await context.close();
 });
 
 for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`original scene and controls fit ${size.width}x${size.height}`,async({page})=>{
