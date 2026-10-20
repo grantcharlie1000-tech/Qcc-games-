@@ -1,0 +1,117 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-worker.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-worker.test.ts (35 tests | 3 failed) 430ms
+   ✓ online gameplay survives a full response cache 10ms
+   ✓ online gameplay survives completely blocked cache storage 3ms
+   ✓ installing an update never navigates documents or deletes their game caches 6ms
+   ✓ a coherent update can activate without waiting for legacy documents to close 7ms
+   ✓ an inconsistent deployment cannot activate over the retained version 10ms
+   ✓ old cached chunks remain usable after the worker process restarts 8ms
+   ✓ cleanup only deletes the captured stale set, preserving future installs and other scopes 7ms
+   ✓ a live unacknowledged legacy document prevents stale cache deletion 6ms
+   ✓ missing persisted retention metadata fails closed after a restart 11ms
+   ✓ legacy migration pins old caches even when an execution-unready navigation is absent 5ms
+   ✓ an absent current navigation retains its own generation and settles only its source ACK 13ms
+   ✓ activation imports late predecessor reservations and an old-module ACK retains its dependencies 7ms
+   ✓ an unresolved old navigation protects its generation across restart and a later update 16ms
+   ✓ navigation never emits HTML before its reservation is durably stored 30ms
+   ✓ normal multi-generation cleanup accepts legitimately absent old asset mappings 27ms
+   ✓ one evicted legacy pinned cache does not turn unrelated future generations into permanent pins 8ms
+   ✓ an update cannot activate when its manifest needs a runtime chunk outside its atomic precache 3ms
+   ✓ waiting activation accepts only its own exact build and entry 2ms
+   ✓ a ready module ACK already sent before its tab closes can settle that source reservation 7ms
+   ✓ a known ready owner omitted by enumeration remains protected via clients.get across handover 18ms
+   ✓ a reclaimed cache name is retired before a later same-version install recreates it 19ms
+   ✓ rollback cache reuse waits for predecessor in-flight deletion and durable retirement before opening 104ms
+   ✓ failed predecessor retirement persistence refuses installation before opening successor caches 21ms
+   ✓ a distinct waiting D refuses cache reuse and wrong-predecessor installation before opening 3ms
+   ✓ D changing the active predecessor during retirement ACK refuses installation before opening 5ms
+   ✓ losing the installing worker identity during retirement ACK refuses opening successor caches 12ms
+   ✓ legacy A with an already-waiting legacy D remains a supported migration state 7ms
+   ✓ legacy waiting D activation during B install cannot delete the v2 candidate 5ms
+   ✓ a live modern predecessor cache pair can never be reused by an installer with the same version 6ms
+   ✓ the same active ACK target becoming activating also refuses successor cache access 4ms
+   ✓ legacy active A with a modern waiting D refuses the mixed predecessor case 3ms
+   × a ready source received before activate is durable across worker restart and settles its inherited reservation 15ms
+     → expected [ { id: 'early-ready', …(1) } ] to deeply equal []
+   × a durably queued early source that closes before activation settles its reservation 6ms
+     → expected [ { id: 'early-ready', …(1) } ] to deeply equal []
+   ✓ failed early ACK persistence cannot authorize releasing an unacknowledged reservation 8ms
+   × a crash after activation initialization preserves early ACKs for idempotent later drain 6ms
+     → expected undefined to deeply equal []
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a ready source received before activate is durable across worker restart and settles its inherited reservation
+AssertionError: expected [ { id: 'early-ready', …(1) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "entry": "https://arcade.test/assets/old-entry.js",
++     "id": "early-ready",
++   },
++ ]
+
+ ❯ tests/core/offline-worker.test.ts:226:24
+    224|  const restarted=worker({backend:w.backend});restarted.clients.splice(…
+    225|  const state=await restarted.backend.get('pocket-arcade-v2:/:new:shell…
+    226|  expect(state.pending).toEqual([]);expect(state.owners).toContainEqual…
+       |                        ^
+    227| });
+    228| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a durably queued early source that closes before activation settles its reservation
+AssertionError: expected [ { id: 'early-ready', …(1) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "entry": "https://arcade.test/assets/old-entry.js",
++     "id": "early-ready",
++   },
++ ]
+
+ ❯ tests/core/offline-worker.test.ts:233:148
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a crash after activation initialization preserves early ACKs for idempotent later drain
+AssertionError: expected undefined to deeply equal []
+
+- Expected: 
+[]
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:243:320
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 32 passed (35)
+   Start at  05:51:05
+   Duration  1.04s (transform 120ms, setup 0ms, collect 128ms, tests 430ms, environment 0ms, prepare 114ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

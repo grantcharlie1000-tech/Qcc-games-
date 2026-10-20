@@ -1,0 +1,146 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-worker.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-worker.test.ts (26 tests | 5 failed) 236ms
+   ✓ online gameplay survives a full response cache 8ms
+   ✓ online gameplay survives completely blocked cache storage 2ms
+   ✓ installing an update never navigates documents or deletes their game caches 5ms
+   ✓ a coherent update can activate without waiting for legacy documents to close 4ms
+   ✓ an inconsistent deployment cannot activate over the retained version 3ms
+   ✓ old cached chunks remain usable after the worker process restarts 4ms
+   ✓ cleanup only deletes the captured stale set, preserving future installs and other scopes 3ms
+   ✓ a live unacknowledged legacy document prevents stale cache deletion 3ms
+   ✓ missing persisted retention metadata fails closed after a restart 4ms
+   ✓ legacy migration pins old caches even when an execution-unready navigation is absent 3ms
+   ✓ an absent current navigation retains its own generation and settles only its source ACK 6ms
+   ✓ activation imports late predecessor reservations and an old-module ACK retains its dependencies 5ms
+   ✓ an unresolved old navigation protects its generation across restart and a later update 11ms
+   ✓ navigation never emits HTML before its reservation is durably stored 25ms
+   ✓ normal multi-generation cleanup accepts legitimately absent old asset mappings 15ms
+   ✓ one evicted legacy pinned cache does not turn unrelated future generations into permanent pins 6ms
+   ✓ an update cannot activate when its manifest needs a runtime chunk outside its atomic precache 2ms
+   ✓ waiting activation accepts only its own exact build and entry 1ms
+   ✓ a ready module ACK already sent before its tab closes can settle that source reservation 3ms
+   ✓ a known ready owner omitted by enumeration remains protected via clients.get across handover 9ms
+   ✓ a reclaimed cache name is retired before a later same-version install recreates it 6ms
+   × rollback cache reuse waits for predecessor in-flight deletion and durable retirement before opening 87ms
+     → expected true to be false // Object.is equality
+   × failed predecessor retirement persistence refuses installation before opening successor caches 12ms
+     → promise resolved "undefined" instead of rejecting
+   × a distinct waiting D refuses cache reuse and wrong-predecessor installation before opening 2ms
+     → promise resolved "undefined" instead of rejecting
+   × D changing the active predecessor during retirement ACK refuses installation before opening 2ms
+     → promise resolved "undefined" instead of rejecting
+   × losing the installing worker identity during retirement ACK refuses opening successor caches 2ms
+     → promise resolved "undefined" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-worker.test.ts > rollback cache reuse waits for predecessor in-flight deletion and durable retirement before opening
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/core/offline-worker.test.ts:177:74
+    175|  const gc=c.emit('message',{data:{type:'ARCADE_CLIENT_READY',entry:ori…
+    176|  const b=worker({version:'old',previous:'new',backend:c.backend});conn…
+    177|  try{await new Promise(resolve=>setTimeout(resolve,20));expect(finishe…
+       |                                                                          ^
+    178|  expect(b.backend.has(oldShell)).toBe(true);expect(b.skipWaiting).toHa…
+    179| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > failed predecessor retirement persistence refuses installation before opening successor caches
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:182:32
+    180| test('failed predecessor retirement persistence refuses installation b…
+    181|  const c=worker();await c.emit('install');await c.emit('activate');con…
+    182|  await expect(b.emit('install')).rejects.toThrow();expect(b.backend.ha…
+       |                                ^
+    183| });
+    184| test('a distinct waiting D refuses cache reuse and wrong-predecessor i…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a distinct waiting D refuses cache reuse and wrong-predecessor installation before opening
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:186:32
+    184| test('a distinct waiting D refuses cache reuse and wrong-predecessor i…
+    185|  const b=worker();b.self.registration.waiting={state:'installed',scrip…
+    186|  await expect(b.emit('install')).rejects.toThrow();expect(b.backend.ha…
+       |                                ^
+    187| });
+    188| test('D changing the active predecessor during retirement ACK refuses …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > D changing the active predecessor during retirement ACK refuses installation before opening
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:190:32
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > losing the installing worker identity during retirement ACK refuses opening successor caches
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:194:32
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 21 passed (26)
+   Start at  05:31:41
+   Duration  616ms (transform 88ms, setup 0ms, collect 83ms, tests 236ms, environment 0ms, prepare 79ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

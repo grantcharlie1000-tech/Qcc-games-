@@ -1,0 +1,23 @@
+
+> pocket-offline-arcade@1.0.0 verify:update
+> node scripts/verify-update.mjs
+
+LEGACY ACTIVATED DURING MODERN INSTALL {"scope":"/","legacy":{"versionId":"1","registrationId":"0","scriptURL":"http://127.0.0.1:4181/sw.js","runningStatus":"running","status":"activated","scriptLastModified":0,"scriptResponseTime":1792474871.586499,"controlledClients":[],"targetId":"D033C14E735468FEE42305F2323A8C2D"},"successor":{"versionId":"2","registrationId":"0","scriptURL":"http://127.0.0.1:4181/sw.js","runningStatus":"running","status":"installing","scriptLastModified":0,"scriptResponseTime":1792474873.99639,"controlledClients":[],"targetId":"CA02A396CFDCCE30A2A180AD682D3748"},"caches":["pocket-arcade:/:1f2bcac8fa53-L:shell","pocket-arcade-v2:/:15d9a0b82d48-B:shell"]}
+LEGACY TRANSITION MIGRATION PASS /
+LEGACY ACTIVATED DURING MODERN INSTALL {"scope":"/Qcc-games-/","legacy":{"versionId":"1","registrationId":"0","scriptURL":"http://127.0.0.1:4181/Qcc-games-/sw.js","runningStatus":"running","status":"activated","scriptLastModified":0,"scriptResponseTime":1792474882.421438,"controlledClients":[],"targetId":"C1A472401186210D50DB5CC75F1686D6"},"successor":{"versionId":"2","registrationId":"0","scriptURL":"http://127.0.0.1:4181/Qcc-games-/sw.js","runningStatus":"running","status":"installing","scriptLastModified":0,"scriptResponseTime":1792474884.832694,"controlledClients":[],"targetId":"A9E5090223FBFBB8E8AAF785C9FF86D1"},"caches":["pocket-arcade:/Qcc-games-/:1f2bcac8fa53-L:shell","pocket-arcade-v2:/Qcc-games-/:15d9a0b82d48-B:shell"]}
+LEGACY TRANSITION MIGRATION PASS /Qcc-games-/
+[
+  {
+    "scope": "/",
+    "legacyWaitingActivatedDuringInstall": true
+  },
+  {
+    "scope": "/Qcc-games-/",
+    "legacyWaitingActivatedDuringInstall": true
+  }
+]
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
