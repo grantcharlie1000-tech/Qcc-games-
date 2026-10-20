@@ -1,6 +1,6 @@
 # Optional native activation diagnostics
 
-This checkpoint adds diagnostics only. It does not fix or classify the activation failures. Product code and fixture bytes remain those of `713c62dad26746ac8bdc2bd4b3f1ef00a1691b36`.
+The original diagnostic checkpoint adds diagnostics only. It does not fix or classify the activation failures. Its product code and fixture bytes remain those of `713c62dad26746ac8bdc2bd4b3f1ef00a1691b36`. The later [PR-only CI integration](native-ci-integration/README.md) preserves that ancestry and incorporates current main's Animal Stack changes.
 
 The fresh unmodified local run failed the original fifteen-second assertion `W activates after topic away and back`. W was installed/waiting with `skipCalls:1/skipDone:0`. The earlier hosted run [39382534520](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39382534520) failed the subpath main-D explicit update with `skipCalls:2/skipDone:1`. These are distinct observations; a shared cause is unproven. Historical B-entry404 and Ball input failures remain separate.
 
