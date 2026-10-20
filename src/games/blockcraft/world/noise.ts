@@ -59,3 +59,23 @@ export class Simplex{
     return 32*n;
   }
 }
+
+/** Integer hash of a lattice point and seed to an unsigned 32-bit value (same mixing as hash3). */
+export function hashInt(x:number,y:number,z:number,seed:number):number{
+  let h=Math.imul(x,0x27d4eb2d)^Math.imul(y,0x165667b1)^Math.imul(z,0x1b873593)^Math.imul(seed,0x85ebca6b);
+  h=Math.imul(h^(h>>>15),0x2c1b3c6d);h=Math.imul(h^(h>>>12),0x297a2d39);h^=h>>>15;
+  return h>>>0;
+}
+export const clamp=(v:number,lo:number,hi:number)=>v<lo?lo:v>hi?hi:v;
+export const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
+/** Hermite smoothstep from e0 to e1 (e1 may be below e0 for a falling edge). */
+export function smoothstep(e0:number,e1:number,x:number):number{
+  let t=(x-e0)/(e1-e0);t=t<0?0:t>1?1:t;return t*t*(3-2*t);
+}
+/** Fractal 2D simplex: `octaves` doublings of frequency at half amplitude, normalised by the amplitude sum.
+ *  Each octave is offset so octaves do not share their zero at the origin. */
+export function fbm2(n:Simplex,x:number,z:number,octaves:number):number{
+  let sum=0,amp=1,norm=0,f=1;
+  for(let i=0;i<octaves;i++){sum+=amp*n.noise2(x*f+i*31.71,z*f-i*17.37);norm+=amp;amp*=.5;f*=2;}
+  return sum/norm;
+}
