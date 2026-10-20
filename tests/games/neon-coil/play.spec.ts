@@ -50,6 +50,18 @@ test('rim death creates real food, exposes death reason, and replay has one loop
   const ticks = Number(await game(page).getAttribute('data-tick')); expect(ticks).toBeGreaterThan(50); expect(ticks).toBeLessThanOrEqual(60);
   await expect(page.locator('.nc-canvas')).toHaveCount(1);
 });
+test('real hover steering into a local bot body causes death and collectible pellets', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 }); await open(page); await page.locator('.nc-start').click();
+  await page.mouse.move(640, 180); // Pure pointer motion, without clicking or setting game state.
+  for (let n = 0; n < 24; n++) await page.clock.fastForward(250);
+  await expect(game(page)).toHaveAttribute('data-phase', 'dead');
+  await expect(page.locator('.nc-copy')).toContainText('body');
+  expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
+  await page.screenshot({ path: 'docs/evidence/neon-coil/body-collision-browser.png' });
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  const ended = await saved(page); expect(ended.snakes[0].alive).toBe(false); expect(ended.snakes[0].body).toHaveLength(0);
+  expect(ended.food.some((food: { trail: boolean }) => food.trail)).toBe(true);
+});
 test('Escape preserves host study, saves exactly, and saved continuation waits for user', async ({ page }) => {
   await open(page); await page.locator('.nc-start').click(); await page.clock.runFor(650);
   await page.keyboard.press('Escape'); await expect(page.locator('#study-view')).toBeVisible();

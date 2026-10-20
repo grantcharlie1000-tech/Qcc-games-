@@ -21,6 +21,8 @@ const module: GameModule = {
     const mass = root.querySelector<HTMLElement>('.nc-mass')!, board = root.querySelector<HTMLOListElement>('.nc-ranking ol')!;
     const you = root.querySelector<HTMLElement>('.nc-you')!, boost = root.querySelector<HTMLButtonElement>('.nc-boost')!;
     const boostNote = root.querySelector<HTMLElement>('.nc-boost-note')!;
+    const touchInput = matchMedia('(pointer: coarse)').matches;
+    if (touchInput) root.querySelector<HTMLElement>('.nc-hint')!.textContent = 'Drag anywhere to steer · Hold BOOST with a second finger';
     const events = new AbortController(), signal = events.signal;
     let state = createArena(), paused = false, disposed = false, savedRun = false, frame = 0, last: number | null = null;
     let uiAt = -Infinity, lastScore = -1, lastPhase = '', seed = state.seed, keyBoost = false, buttonBoost = false;
@@ -54,7 +56,7 @@ const module: GameModule = {
       root.dataset.boosting = String(player.boosting); root.dataset.trails = String(state.food.filter(food => food.trail).length);
       root.dataset.rank = String(place); root.dataset.eaten = String(state.eaten); root.dataset.defeated = String(state.defeated);
       boost.disabled = paused || state.phase !== 'running'; boost.setAttribute('aria-pressed', String(player.boosting));
-      boostNote.textContent = player.mass <= MIN_MASS + 1e-6 ? 'Eat more glow to boost' : player.boosting ? '1.7× SPEED · −6 MASS / SEC' : 'Hold SPACE · spends mass';
+      boostNote.textContent = player.mass <= MIN_MASS + 1e-6 ? 'Eat more glow to boost' : player.boosting ? '1.7× SPEED · −6 MASS / SEC' : touchInput ? 'Hold here · spends mass' : 'Hold SPACE · spends mass';
       overlay.hidden = state.phase === 'running'; start.disabled = paused;
       if (lastPhase !== state.phase || force) {
         lastPhase = state.phase;
