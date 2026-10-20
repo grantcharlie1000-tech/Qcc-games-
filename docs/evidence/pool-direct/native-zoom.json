@@ -1,0 +1,12 @@
+{
+  "recordedAt": "2026-10-20T09:54:48.889Z",
+  "browser": "154.0.8037.57",
+  "method": "native CDP Emulation.setPageScaleFactor",
+  "duringZoom": {
+    "scale": 1.25,
+    "gesture": "idle",
+    "shots": "0"
+  },
+  "freshShotAfterZoomReset": true,
+  "passed": true
+}

@@ -1,0 +1,40 @@
+# Pool: horizontal table and direct cue gestures
+
+Pool now uses a wide blue table with substantial wood rails, a visible cue, collision preview and a vertical power meter. The supplied reference informed the composition; the table is drawn with the existing original canvas artwork. Navigation, pause, restart, player mode and the called 8-ball pocket remain separate from play. There are no gameplay buttons or aim/power sliders.
+
+Drag the felt to aim, then start a new drag on the white ball and pull backwards along the cue. Release to shoot. An aiming drag never shoots. Return to the white ball or the starting point to cancel; C, Backspace, a second pointer, pointer cancellation, lost capture, pause, restart, blur or changed table geometry also discard a loaded stroke. A screen-scaled deadzone prevents small finger movements from loading power. Pointer capture supports release outside the canvas.
+
+For ball-in-hand, tap a clear felt position or drag there and release. Invalid placement leaves the cue unplaced. Keyboard access remains on the table: left/right adjust aim (Shift for fine adjustment), up/down change power, Enter/Space shoot, C cancels. During ball-in-hand, arrows move the placement in screen directions and Enter places it. Escape opens Study and pauses/cancels through the existing shell. Live instructions report keyboard aim and power without repeating identical live-region text during pointer moves.
+
+The renderer rotates the existing 440 × 840 physics table clockwise into an 840 × 440 canvas; saved model coordinates and the version-1 save format are unchanged. Screen input is mapped back through the measured canvas rectangle. Ball numbers, pocket labels and the end-of-rack message remain upright. No physics, rule, AI or save migration changes were needed.
+
+## Reproducible checks
+
+Final verification on 2026-10-20: full units **282/282**, Pool units **48/48**, combined Chromium Pool/shared-viewport tests **20/20**, TypeScript check and production build passed (offline pack `2a6de054fe3f`). Independent native checks passed **12/12**, plus visual-viewport pinch-scale cancellation/recovery. Pool offline play passed at both root and `/Qcc-games-/`, including saves, restart, retained Study restoration, all 20 offline Study topics, no external requests and no page errors. No remote publication, deployment or merge was performed.
+
+- `npm test`: full unit suite, including the original 40 Pool physics/rules/save tests and 8 direct-input tests.
+- `npm run check` and `npm run build`: TypeScript and production build.
+- `npx playwright test tests/games/pool tests/e2e/viewport.spec.ts --project=chromium --workers=1`: direct mouse gestures, native CDP touch, interruptions, captured release, keyboard, save, AI, scratch/placement, called 8 outcomes, and shared viewport/Study regressions. Native touch is Chromium-only; the remaining cases can also run with `--project=webkit` when its browser is available.
+- `ARCADE_GAMES=pool ARCADE_EVIDENCE_DIR=docs/evidence/pool-direct/offline npm run verify:offline`: real offline interaction, saves, restart and Study restoration at root and repository subpath. The Pool action uses a native mouse pull/release.
+
+The native touch regression uses trusted browser input at device pixel ratio 3, rejects a second contact outside the canvas, cancels and recovers, and asserts capture plus zero document scrolling. Placement checks compare saved model positions against the coordinates actually delivered by the browser, preserving precision at small landscape sizes.
+
+## Regression findings
+
+The off-centre cancellation test initially released 12.5% power when a pull returned to the white ball; the finger-jitter test also fired at 12.5%. Both now pass with a deadzone around the cue and the original contact, scaled to screen pixels. A held pen contact outside the table initially allowed a fresh mouse stroke to fire (expected 0 shots, observed 1). Global capture-phase contact tracking now rejects that stroke; a fresh stroke succeeds after all contacts end. The native touch test covers the same cancellation path with trusted second-finger input.
+
+The first offline runner failed its strict one-shot assertion after a viewport transition. Instrumentation measured the canvas at y=454.89, then the delivered pointerdown found it at y=391.89 with the same 686 × 359.33 dimensions and shell scale 1. This started an aiming drag instead of a pull. A separate instrumented run passed, exposing an intermittent pre-input layout-settling race rather than gesture-feedback resizing. The Pool runner now uses native canvas hover actionability/stability before recording coordinates. The shot assertion and runtime geometry-change cancellation remain strict. Direct 768 × 1024 and 1366 × 768 regressions also assert that gesture feedback preserves the table rectangle.
+
+## Visual and interaction evidence
+
+Evidence is isolated under [evidence/pool-direct](evidence/pool-direct/):
+
+- [Before desktop](evidence/pool-direct/before-desktop.png), [before touch viewport](evidence/pool-direct/before-touch.png), [baseline geometry](evidence/pool-direct/before.json).
+- [After desktop](evidence/pool-direct/after-desktop.png), [after touch viewport during a pull](evidence/pool-direct/after-touch.png), [after landscape touch viewport](evidence/pool-direct/after-touch-landscape.png).
+- [Native interaction log](evidence/pool-direct/native-interaction.json): trusted mouse/touch capture and cancellation events, DPR 2 desktop and DPR 3 touch viewports, release outside the table, pause/restart/resize/scaling and fresh-touch recovery. The committed native test also changes the browser visual viewport scale to 1.25 while loaded, verifies cancellation, restores scale 1 and completes a fresh touch shot.
+- [Native viewport zoom cancellation](evidence/pool-direct/native-zoom.json): loaded shot cancels when the browser visual viewport scale changes to 1.25; restoring scale 1 permits a fresh shot.
+- [Zoom/scaling coordinates](evidence/pool-direct/zoom-scaling.json): exact input mapping under CSS zoom 1.25 and DPR 1.5. This tests coordinate mapping; it does not establish global layout fitting under HTML CSS zoom or physical browser zoom.
+
+These are automated Chromium browser viewports and trusted CDP touch events, not physical touch hardware or a physical trackpad. Mouse events exercise the same pointer path used by a trackpad. High-DPI canvas rendering is capped at DPR 2; input is independent of the backing resolution. Historical shared release screenshots are preserved. WebKit remains unverified in this environment: its browser binary is absent, and the browser-only download returned HTTP 403. No platform dependency installation or escalation was performed.
+
+Repository workflow followed the local [game-development](../.agents/skills/game-development/SKILL.md), [web-games](../.agents/skills/game-development/web-games/SKILL.md), [2d-games](../.agents/skills/game-development/2d-games/SKILL.md), [test-driven-development](../.agents/skills/test-driven-development/SKILL.md), and [verification-before-completion](../.agents/skills/verification-before-completion/SKILL.md) guidance. Independent Astra review is coordinated separately before any publication.

@@ -1,0 +1,77 @@
+{
+  "recordedAt": "2026-10-20T09:55:44.367Z",
+  "browser": "Chromium",
+  "browserVersion": "154.0.8037.57",
+  "physicalHardware": false,
+  "softwareWebGL": true,
+  "rafSamplesPerGame": 45,
+  "gameCount": 1,
+  "results": [
+    {
+      "deployment": "root",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "pool",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 44.70000000006985,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 50
+    },
+    {
+      "deployment": "root",
+      "cacheNames": [
+        "pocket-arcade:/:2a6de054fe3f:shell",
+        "pocket-arcade:/:2a6de054fe3f:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 17,
+      "heavyChunksLazy": true
+    },
+    {
+      "deployment": "subpath",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "pool",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 22.100000000093132,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.699999999999818,
+      "rafP95Ms": 33.400000000000546
+    },
+    {
+      "deployment": "subpath",
+      "cacheNames": [
+        "pocket-arcade:/Qcc-games-/:2a6de054fe3f:shell",
+        "pocket-arcade:/Qcc-games-/:2a6de054fe3f:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 17,
+      "heavyChunksLazy": true
+    }
+  ]
+}
