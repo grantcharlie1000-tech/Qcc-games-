@@ -23,7 +23,9 @@ or deployed. Publishing the workflow change requires parent approval.
 
 The local `.github/workflows/pages.yml` diff adds `pull_request` for `main` and
 guards configure-pages, upload-pages-artifact and the deployment job so they do
-not run on a PR. Every existing verification command remains, including the full
+not run on a PR. Each PR gets its own concurrency group, so a PR cannot replace a
+pending main/work run; non-PR runs retain the existing `pages` group. Every
+existing verification command remains, including the full
 Chromium and WebKit suite, build, update and offline checks. Existing permissions,
 push behavior and action versions are unchanged. No test exclusions, retries,
 continue-on-error or relaxed merge conditions are added.
@@ -62,8 +64,13 @@ completion assertions, plus an explicit completion check after reload.
 - Minesweeper targeted Chromium case: **1/1 passed** in 5.4 seconds; output:
   `docs/evidence/ci-green/chromium-minesweeper-after.txt`.
 - `npm run check`: **passed**; output: `docs/evidence/ci-green/typescript.txt`.
+- Repeated all five repaired Chromium cases three times: **15/15 passed** in
+  1.8 minutes; output: `docs/evidence/ci-green/chromium-repeat-after.txt`.
 - Workflow YAML parsed with PyYAML; unchanged permissions, push triggers and
-  verification commands plus all three PR deployment guards were checked.
+  verification commands, all three PR deployment guards and isolated PR
+  concurrency groups were checked. Astra identified the initial shared pending
+  queue risk; the local proposal now isolates each PR and preserves the `pages`
+  queue for non-PR runs.
   The full suite has not been declared green.
 - WebKit is unavailable in this environment. The previous browser installer was
   rejected by the network proxy with HTTP 403 `Domain forbidden` while fetching

@@ -1,0 +1,31 @@
+
+Running 15 tests using 1 worker
+
+(node:21706) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/games/block-fill/block-fill.spec.ts:24:1 › fast actual drag fills every square and unlocks the larger next garden (4.8s)
+  ✓   2 [chromium] › tests/games/block-fill/block-fill.spec.ts:80:1 › all twelve gardens are playable to the final win using real pointer input (23.2s)
+  ✓   3 [chromium] › tests/games/minesweeper/play.spec.ts:50:1 › phone levels, adjustable cells, keyboard reveal and contained expert overflow (2.4s)
+  ✓   4 [chromium] › tests/games/snake/snake.spec.ts:28:1 › pointer swipe and touch direction buttons fit a phone (2.4s)
+  ✓   5 [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size (2.1s)
+(node:22142) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [chromium] › tests/games/block-fill/block-fill.spec.ts:24:1 › fast actual drag fills every square and unlocks the larger next garden (4.7s)
+  ✓   7 [chromium] › tests/games/block-fill/block-fill.spec.ts:80:1 › all twelve gardens are playable to the final win using real pointer input (23.0s)
+  ✓   8 [chromium] › tests/games/minesweeper/play.spec.ts:50:1 › phone levels, adjustable cells, keyboard reveal and contained expert overflow (2.7s)
+  ✓   9 [chromium] › tests/games/snake/snake.spec.ts:28:1 › pointer swipe and touch direction buttons fit a phone (3.2s)
+  ✓  10 [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size (2.0s)
+(node:22543) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [chromium] › tests/games/block-fill/block-fill.spec.ts:24:1 › fast actual drag fills every square and unlocks the larger next garden (4.5s)
+  ✓  12 [chromium] › tests/games/block-fill/block-fill.spec.ts:80:1 › all twelve gardens are playable to the final win using real pointer input (23.6s)
+  ✓  13 [chromium] › tests/games/minesweeper/play.spec.ts:50:1 › phone levels, adjustable cells, keyboard reveal and contained expert overflow (2.4s)
+  ✓  14 [chromium] › tests/games/snake/snake.spec.ts:28:1 › pointer swipe and touch direction buttons fit a phone (2.6s)
+  ✓  15 [chromium] › tests/games/tower/tower.spec.ts:47:1 › camera follows a tall tower while genuine keyboard inputs preserve perfect size (2.3s)
+
+  15 passed (1.8m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
