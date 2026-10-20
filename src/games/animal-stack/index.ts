@@ -2,7 +2,7 @@ import Matter from 'matter-js';
 import type { GameModule } from '../../core/types';
 import { AnimalWorld, ANIMALS, KINDS, WIDTH, HEIGHT, FLOOR, createAnimal, TAP_ROTATION_RADIANS } from './model';
 import type { Animal, Kind } from './model';
-import { animalSvg, ART_BOX } from './art';
+import { animalSvg, artBox } from './art';
 import { AnimalGesture } from './input';
 import { frameCamera } from './framing';
 import './style.css';
@@ -32,7 +32,7 @@ const module:GameModule={
    if((world.over||world.complete)&&!previousEnd){context.sound(world.over?'lose':'success');context.announce(status.textContent);context.save(world.snapshot());}previousEnd=world.over||world.complete;
    context.setStatus(world.over?status.textContent:world.ready?`Drag ${ANIMALS[world.nextKind].name} horizontally, tap to rotate, then press DROP.`:'Let the animal settle.');
   }
-  function drawAnimal(a:Animal){const b=a.body,img=sprites[a.kind];draw.save();draw.translate(b.position.x,b.position.y);draw.rotate(b.angle);draw.translate(a.offset.x,a.offset.y);if(img.complete&&img.naturalWidth)draw.drawImage(img,ART_BOX.x,ART_BOX.y,ART_BOX.width,ART_BOX.height);draw.restore();
+  function drawAnimal(a:Animal){const b=a.body,img=sprites[a.kind];draw.save();draw.translate(b.position.x,b.position.y);draw.rotate(b.angle);draw.translate(a.offset.x,a.offset.y);if(img.complete&&img.naturalWidth){const box=artBox(a.kind);draw.drawImage(img,box.x,box.y,box.width,box.height);}draw.restore();
    if(colliderOverlay){draw.save();draw.strokeStyle='#ed176b';draw.fillStyle='#ff1c6422';draw.lineWidth=.8;for(const part of b.parts.slice(1)){draw.beginPath();part.vertices.forEach((v,i)=>i?draw.lineTo(v.x,v.y):draw.moveTo(v.x,v.y));draw.closePath();draw.fill();draw.stroke();}draw.strokeStyle='#fff';draw.lineWidth=1.3;draw.beginPath();draw.moveTo(b.position.x-4,b.position.y);draw.lineTo(b.position.x+4,b.position.y);draw.moveTo(b.position.x,b.position.y-4);draw.lineTo(b.position.x,b.position.y+4);draw.stroke();draw.restore();}
   }
   function preparePreview(){if(preview.kind!==world.nextKind)preview=createAnimal(world.nextKind,world.aimX,world.spawnY);Matter.Body.setPosition(preview.body,{x:world.aimX,y:world.spawnY});Matter.Body.setAngle(preview.body,world.rotation);}
