@@ -1,0 +1,21 @@
+
+Running 9 tests using 1 worker
+
+(node:31555) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › snake: gameplay, Escape, frozen autosave and exact return (8.3s)
+  ✓  2 [chromium] › tests/games/snake/smooth.spec.ts:22:1 › continuous authoritative travel, junction-buffered turn, frozen v2 save and growth reload (5.9s)
+  ✓  3 [chromium] › tests/games/snake/smooth.spec.ts:48:1 › a dropped RAF catches up to the same final grid and committed edge (3.8s)
+  ✓  4 [chromium] › tests/games/snake/smooth.spec.ts:92:1 › real input after stalled RAF cannot retarget a past junction or escape an earlier collision (1.5s)
+  ✓  5 [chromium] › tests/games/snake/smooth.spec.ts:114:1 › resize during a turn preserves the grid and renders at the actual high-DPI display size (5.7s)
+  ✓  6 [chromium] › tests/games/snake/smooth.spec.ts:169:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (2.3s)
+  ✓  7 [chromium] › tests/games/snake/snake.spec.ts:5:1 › keyboard eating, turning, loss, replay, pause and saved continuation (12.3s)
+  ✓  8 [chromium] › tests/games/snake/snake.spec.ts:29:1 › pointer swipe and touch direction buttons fit a phone (2.3s)
+  ✓  9 [chromium] › tests/games/snake/snake.spec.ts:60:1 › invalid saves recover and repeated exit/reentry has no stale controls (4.9s)
+
+  9 passed (49.6s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

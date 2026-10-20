@@ -1,0 +1,1 @@
+PASS five responsive viewports, smooth pixel frames, exact fractional reload, native touch cancellation/steering, wall contact and v1→v2 conversion/reload
