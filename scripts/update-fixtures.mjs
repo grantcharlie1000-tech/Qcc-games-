@@ -26,7 +26,7 @@ export function release(build,label){
  map.set('/index.html',Buffer.from(build.get('/index.html').toString().replace('<head>',`<head><meta name="arcade-release" content="${label}">`).replaceAll(oldEntry,entry).replaceAll(oldGame,game)));
  // Test-only response gate leaves legacy fetch/cache/lifecycle logic intact.
  const gate=String.raw`const observe=self.addEventListener.bind(self),debug={pending:{},done:[],skipCalls:0,skipDone:0};let eventId=0;
-observe('message',event=>{if(event.data?.type==='ARCADE_DIAGNOSTIC')event.ports[0]?.postMessage(debug);});
+observe('message',event=>{if(event.data?.type==='ARCADE_DIAGNOSTIC')event.ports[0]?.postMessage(debug);if(event.data?.type==='ARCADE_DIAGNOSTIC_CLIENT')event.ports[0]?.postMessage({id:event.source?.id,url:event.source?.url});});
 const skip=self.skipWaiting.bind(self);self.skipWaiting=()=>{debug.skipCalls++;return skip().then(value=>{debug.skipDone++;return value;});};
 self.addEventListener=(name,handler)=>observe(name,event=>{
  if(name==='fetch')event.handled.then(()=>debug.done.push({name:'handled',url:event.request.url}),error=>debug.done.push({name:'handled',url:event.request.url,error:String(error)}));

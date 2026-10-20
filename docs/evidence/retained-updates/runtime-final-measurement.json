@@ -1,0 +1,131 @@
+{
+  "pack": "7d27d2663c4f",
+  "filter": "^assets/.*.(m?js|css)$",
+  "runtimeFiles": 30,
+  "runtimeBytes": 982382,
+  "entryCssBytes": 174370,
+  "additionalRuntimeBytes": 808012,
+  "workerScriptBytesSeparateFromRuntime": 17562,
+  "files": [
+    {
+      "path": "assets/collision-CgH4Kjrs.js",
+      "bytes": 823
+    },
+    {
+      "path": "assets/index-AGfafP1n.js",
+      "bytes": 494749
+    },
+    {
+      "path": "assets/index-B3iry_sq.js",
+      "bytes": 9880
+    },
+    {
+      "path": "assets/index-BQ0YBnm3.js",
+      "bytes": 16593
+    },
+    {
+      "path": "assets/index-BXNEfCEi.css",
+      "bytes": 2259
+    },
+    {
+      "path": "assets/index-BdQv1M3b.css",
+      "bytes": 3881
+    },
+    {
+      "path": "assets/index-BfML26zK.css",
+      "bytes": 3530
+    },
+    {
+      "path": "assets/index-Bm1LrEy8.js",
+      "bytes": 19846
+    },
+    {
+      "path": "assets/index-BniN2mis.js",
+      "bytes": 12812
+    },
+    {
+      "path": "assets/index-CL4koYVJ.css",
+      "bytes": 5450
+    },
+    {
+      "path": "assets/index-CWQOKeE4.js",
+      "bytes": 18758
+    },
+    {
+      "path": "assets/index-CZRqK-Aq.css",
+      "bytes": 2101
+    },
+    {
+      "path": "assets/index-Ca_sMq3C.css",
+      "bytes": 4445
+    },
+    {
+      "path": "assets/index-CbJnjlHd.js",
+      "bytes": 15906
+    },
+    {
+      "path": "assets/index-CitFEkQK.js",
+      "bytes": 10705
+    },
+    {
+      "path": "assets/index-CmnIRI4Q.js",
+      "bytes": 23562
+    },
+    {
+      "path": "assets/index-Cq-D2tST.css",
+      "bytes": 26154
+    },
+    {
+      "path": "assets/index-CxYMXy0X.js",
+      "bytes": 9482
+    },
+    {
+      "path": "assets/index-D0ozSXMY.js",
+      "bytes": 148216
+    },
+    {
+      "path": "assets/index-D3FOw6fh.css",
+      "bytes": 1753
+    },
+    {
+      "path": "assets/index-DVV_K4eE.js",
+      "bytes": 10842
+    },
+    {
+      "path": "assets/index-DaZD4Dj_.css",
+      "bytes": 2232
+    },
+    {
+      "path": "assets/index-DjVo3RM_.css",
+      "bytes": 3434
+    },
+    {
+      "path": "assets/index-DqLtyPWP.js",
+      "bytes": 14432
+    },
+    {
+      "path": "assets/index-Dso3XaJW.css",
+      "bytes": 1733
+    },
+    {
+      "path": "assets/index-DvtE1cdD.css",
+      "bytes": 6037
+    },
+    {
+      "path": "assets/index-IARKlvG8.css",
+      "bytes": 1256
+    },
+    {
+      "path": "assets/index-kKxGdlo1.css",
+      "bytes": 2365
+    },
+    {
+      "path": "assets/index-we4rTY2V.js",
+      "bytes": 24605
+    },
+    {
+      "path": "assets/matter-PU4lz4QA.js",
+      "bytes": 84541
+    }
+  ]
+}

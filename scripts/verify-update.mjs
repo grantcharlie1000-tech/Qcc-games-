@@ -9,7 +9,7 @@ const legacy=await legacyBuild();
 const A=release(legacy,'A'),L=release(legacy,'L'),B=release(current,'B'),C=release(current,'C'),D=release(current,'D'),W=waitingRelease(current,'W'),X=waitingRelease(current,'X'),Y=waitingRelease(current,'Y'),broken=release(current,'broken');
 const evidence=process.env.ARCADE_UPDATE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(evidence,{recursive:true});
 let deployed=A,scope='/',gate,holdManifest=false,manifestGate;
-const requests=[],contexts=[],profiles=[],results=[];
+const requests=[],contexts=[],profiles=[],results=[],startupInventories=[],retainedPageEvidence=[];const primaryPages=new WeakMap();
 const mime={js:'application/javascript',html:'text/html',css:'text/css',json:'application/json',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json'};
 const server=http.createServer((req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname,relative=pathname.startsWith(scope)?'/'+pathname.slice(scope.length):'/missing',file=relative==='/'?'/index.html':relative;
@@ -30,6 +30,14 @@ async function home(page,base){await page.goto(base);await page.locator('[data-s
 async function menu(page){await page.getByRole('button',{name:'Open menu',exact:true}).click();}
 async function closeMenu(page){await page.getByRole('button',{name:'Close menu',exact:true}).click();}
 async function download(page){await menu(page);await page.getByRole('button',{name:'Make all games available offline',exact:true}).click();await page.getByRole('button',{name:'Offline pack downloaded',exact:true}).waitFor();await closeMenu(page);}
+const primaryPage=context=>primaryPages.get(context);
+async function sourceClient(page){return await bounded(page.evaluate(()=>new Promise((resolve,reject)=>{
+ const worker=navigator.serviceWorker.controller;if(!worker){resolve(undefined);return;}const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();reject(new Error('Source client probe timed out'));},3000);c.port1.onmessage=event=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(event.data);};worker.postMessage({type:'ARCADE_DIAGNOSTIC_CLIENT'},[c.port2]);
+})),3000,'source client probe (Node deadline)');}
+async function durableOwner(page,target){
+ const client=await sourceClient(page);assert.ok(client?.id,'ready document has an authenticated source client');
+ await poll(()=>page.evaluate(async({id,version,entry})=>{const r=await navigator.serviceWorker.getRegistration(),cache=await caches.open('pocket-arcade-v2:'+new URL(r.scope).pathname+':'+version+':shell'),response=await cache.match(new URL('.arcade-update-state',r.scope));if(!response)return false;const state=await response.json();return !state.pending.some(item=>item.id===id)&&state.owners.some(item=>item.id===id&&item.entry===new URL(entry,r.scope).href);},{id:client.id,version:target.version,entry:target.entry}),'actual module/source client ownership is durable');return client;
+}
 async function launch(profile){
  const context=await chromium.launchPersistentContext(profile,{executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),viewport:{width:390,height:844},args:['--no-sandbox']});contexts.push(context);
  await context.addInitScript(()=>{
@@ -38,7 +46,14 @@ async function launch(profile){
   record('document-start');navigator.serviceWorker?.addEventListener('controllerchange',()=>record('controllerchange'));
  });
  context.on('page',page=>page.on('response',response=>{if(response.status()>=400&&response.url().includes('/assets/')){console.error('ASSET FAILURE',JSON.stringify({url:response.url(),status:response.status(),fromServiceWorker:response.fromServiceWorker()}));void diagnostic(page).then(value=>console.error('ASSET FAILURE STATE',JSON.stringify(value))).catch(()=>{});}}));
- await context.tracing.start({screenshots:true,snapshots:true});return context;
+ await context.tracing.start({screenshots:true,snapshots:true});
+ const initial=context.pages();for(const page of initial)await page.waitForLoadState('load',{timeout:15000});
+ const base=`http://127.0.0.1:4181${scope}`,appPages=initial.filter(page=>page.url().startsWith(base));
+ assert.ok(initial.every(page=>page.url()==='about:blank'||appPages.includes(page)),'persistent test profile contains only owned pages');
+ const primary=appPages[0]||initial[0];assert.ok(primary,'persistent context has a primary page');primaryPages.set(context,primary);
+ const inventory={scope,initial:await Promise.all(initial.map(async page=>({url:page.url(),primary:page===primary,client:appPages.includes(page)?await sourceClient(page):undefined}))),closedUnusedBlankPages:0};
+ if(appPages.length)for(const page of initial)if(page!==primary&&page.url()==='about:blank'){await page.close();inventory.closedUnusedBlankPages++;}
+ startupInventories.push(inventory);console.log('STARTUP PAGE INVENTORY',JSON.stringify(inventory));return context;
 }
 async function drop(page,count){await page.bringToFront();const box=await page.locator('.fm-board').boundingBox();if(box)await page.mouse.move(box.x+box.width*(count===1?.2:count===2?.8:.5),box.y+20);await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await page.locator('.fm-count').filter({hasText:count===1?'1 fruit':`${count} fruits`}).waitFor();}
 async function data(page){return await page.evaluate(()=>({score:localStorage.getItem('pocket-arcade:v1:best:fruit-merge'),settings:localStorage.getItem('pocket-arcade:v1:settings'),cookie:document.cookie}));}
@@ -79,7 +94,7 @@ async function acceptVersion(page,target){
  await poll(async()=>await version(page)===target.version,'expected controller '+target.label);
 }
 async function cancelledCase(path,base){
- deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),page=context.pages()[0];
+ deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),page=primaryPage(context);
  await home(page,base);await download(page);await poll(async()=>await version(page)===B.version,'fixed B controls canceled-navigation fixture');
  const cancelled=await context.newPage(),attempt=cancelled.goto(base+'?delayed-navigation=1');attempt.catch(()=>{});await poll(()=>!!gate,'canceled B reservation response held');
  await cancelled.close();await settleGate();await attempt.catch(()=>{});console.log('CANCELED B NAVIGATION',path);
@@ -106,7 +121,7 @@ async function progress(page){return await page.evaluate(()=>{
  const data=JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')).data;return {seed:data.seed,bag:data.bag,current:data.current,next:data.next,score:data.score,fruits:data.fruits.map(({id,tier})=>({id,tier}))};
 });}
 async function controlledWaitingCase(path,base){
- console.log('CONTROLLED WAITING START',path);deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=context.pages()[0];await home(a,base);await download(a);
+ console.log('CONTROLLED WAITING START',path);deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);
  await menu(a);await a.locator('#motion').check();await closeMenu(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='waiting-B';});
  const c=await context.newPage();await home(c,base);deployed=W;await menu(c);await closeMenu(c);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();
  await holdActivation(a,W);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit W activation held after first save');
@@ -121,7 +136,7 @@ async function controlledWaitingCase(path,base){
  await context.tracing.stop({path:`${evidence}/update-controlled-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('CONTROLLED WAITING PASS',path);
 }
 async function legacyWaitingCase(path,base,transition=false){
- deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=context.pages()[0];await home(a,base);await download(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A-with-waiting-L';});
+ deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A-with-waiting-L';});
  const b=await context.newPage();await home(b,base);deployed=L;await b.reload();
  await poll(()=>b.evaluate(expected=>new Promise(resolve=>{navigator.serviceWorker.getRegistration().then(r=>{if(r?.waiting?.state!=='installed'){resolve(false);return;}const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();resolve(false);},1000);c.port1.onmessage=e=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(e.data.version===expected);};r.waiting.postMessage({type:'ARCADE_VERSION'},[c.port2]);});}),L.version),'legacy L already waiting over active A');
  assert.equal(await version(b),A.version);
@@ -144,7 +159,7 @@ async function legacyWaitingCase(path,base,transition=false){
  assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'));await context.tracing.stop({path:`${evidence}/update-legacy-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('LEGACY ALREADY WAITING MIGRATION PASS',path);
 }
 async function legacyNavigationCase(path,base){
- deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),page=context.pages()[0];await home(page,base);await download(page);
+ deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),page=primaryPage(context);await home(page,base);await download(page);
  const observed=await delayedNavigation(context,base,async()=>{deployed=B;await page.reload();});
  assert.equal(await observed.delayed.locator('meta[name="arcade-release"]').getAttribute('content'),'A');
  await page.reload();await poll(async()=>await version(page)===B.version,'legacy delayed-navigation fixture activation after response release');
@@ -158,9 +173,9 @@ try{
   if(process.env.ARCADE_UPDATE_CASE==='legacy-waiting'){await legacyWaitingCase(path,base);results.push({scope:path,legacyAlreadyWaitingMigration:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='waiting'){await controlledWaitingCase(path,base);results.push({scope:path,controlledWaiting:true});continue;}
   if(!process.env.ARCADE_UPDATE_CASE){await legacyWaitingCase(path,base);await legacyWaitingCase(path,base,true);deployed=A;}
-  console.log('SEED LEGACY',path);let context=await launch(profile),a=context.pages()[0];await home(a,base);await download(a);await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller),'legacy control');assert.equal(await version(a),A.version);
+  console.log('SEED LEGACY',path);let context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller),'legacy control');assert.equal(await version(a),A.version);
   await a.evaluate(()=>{localStorage.setItem('pocket-arcade:v1:best:fruit-merge','1234');localStorage.setItem('pocket-arcade:v1:settings',JSON.stringify({sound:false,reducedMotion:true,colorBlind:true}));document.cookie='retainedCookie=unchanged; path=/';});await context.close();
-  context=await launch(profile);a=context.pages()[0];await home(a,base);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A';});const before=await data(a);
+  context=await launch(profile);a=primaryPage(context);await home(a,base);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A';});const before=await data(a);
   const b=await context.newPage();await home(b,base);
   console.log('DEPLOY FIXED B',path);deployed=B;await b.reload();
   await poll(async()=>await version(b)===B.version,'B activation with legacy tabs retained');
@@ -170,9 +185,14 @@ try{
   assert.equal(await a.evaluate(url=>fetch(url).then(r=>r.ok),new URL(A.game,base).href),true,'old lazy asset survives removed server copy while offline');await context.setOffline(false);
   await b.reload();assert.equal(await b.locator('meta[name="arcade-release"]').getAttribute('content'),'B');await menu(b);assert.match(await b.locator('.menu-note').textContent(),/Release B/);await closeMenu(b);
   assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A');assert.deepEqual(await data(b),before);await a.close();await b.close();await context.close();
-  context=await launch(profile);a=context.pages()[0];await home(a,base);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await a.locator('.fm-count').filter({hasText:'2 fruits'}).waitFor();assert.equal(await version(a),B.version);await download(a);
+  context=await launch(profile);a=primaryPage(context);await home(a,base);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await a.locator('.fm-count').filter({hasText:'2 fruits'}).waitFor();assert.equal(await version(a),B.version);await download(a);
   assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'),'one-time legacy pack is deliberately pinned across profile restart');
   await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='modern-B';});
+  // Preserve/adopt every restored app page and deliberately seed one extra B
+  // document. Its live dependency must block reclamation until explicit update.
+  const retainedBPages=context.pages().filter(page=>page!==a&&page.url().startsWith(base));retainedBPages.push(await context.newPage());
+  const retainedB=[];for(const [i,page] of retainedBPages.entries()){await home(page,base);const client=await durableOwner(page,B),marker='retained-extra-B-'+i;await page.evaluate(marker=>window.retainedExtraDocument=marker,marker);retainedB.push({page,client,marker});}
+  console.log('RETAINED B PAGE INVENTORY',JSON.stringify(retainedB.map(({client,marker})=>({client,marker}))));
   const c=await context.newPage();await home(c,base);
   // A mismatched installation must leave B navigation/gameplay working and must
   // not seal the active worker or change any retained document.
@@ -188,7 +208,9 @@ try{
   assert.equal(await a.evaluate(()=>document.activeElement?.id),'study-title','update notice does not steal focus');
   await a.screenshot({path:`${evidence}/update-study-${tag}-390.png`,fullPage:false});await a.setViewportSize({width:1366,height:768});await a.screenshot({path:`${evidence}/update-study-${tag}-1366.png`,fullPage:false});await a.setViewportSize({width:390,height:844});
   const oldPack='pocket-arcade-v2:'+path+':'+B.version+':pack';assert.ok((await cacheKeys(a)).includes(oldPack));assert.equal(C.map.has('/'+B.game),false);
-  console.log('OFFLINE MODERN RETENTION',path);await bounded(context.setOffline(true),5000,'Playwright offline transition');assert.equal(await a.evaluate(url=>fetch(url).then(r=>r.ok),new URL(B.game,base).href),true);await context.setOffline(false);
+  console.log('OFFLINE MODERN RETENTION',path);await bounded(context.setOffline(true),5000,'Playwright offline transition');assert.equal(await a.evaluate(url=>fetch(url).then(r=>r.ok),new URL(B.game,base).href),true);
+  for(const {page,marker} of retainedB){assert.equal(await page.evaluate(()=>window.retainedExtraDocument),marker,'extra B document survives C activation');assert.ok((await cacheKeys(page)).includes(oldPack));assert.equal(await page.evaluate(url=>fetch(url).then(response=>response.ok),new URL(B.game,base).href),true,'extra B can read its removed immutable asset offline');}
+  await context.setOffline(false);
   // Fill actual browser localStorage, without replacing its methods. Only this
   // test-owned key is removed for recovery; no user storage is cleared.
   console.log('ACTUAL QUOTA TEST',path);await a.getByRole('link',{name:'Games',exact:true}).click();const quota=await a.evaluate(()=>{
@@ -199,12 +221,19 @@ try{
   // Hold an actual future install while C reclaims B. A C runtime cleanup must
   // never enumerate/delete the newly-created D cache.
   console.log('FUTURE INSTALL DURING CLEANUP',path);deployed=D;holdManifest=true;await menu(c);await poll(()=>!!manifestGate,'future D manifest fetch held');await closeMenu(c);const futureShell='pocket-arcade-v2:'+path+':'+D.version+':shell';assert.ok((await cacheKeys(c)).includes(futureShell));
+  await c.evaluate(async()=>{window.futureInstallerBeforeGc=(await navigator.serviceWorker.getRegistration()).installing;});const beforeGc=await diagnostic(c);assert.equal(beforeGc.installing?.version,D.version,'exact future D installer is present before GC');assert.equal(beforeGc.installing?.state,'installing');
   await a.evaluate(()=>localStorage.removeItem('update-test-quota'));await a.getByRole('button',{name:'Reload to update',exact:true}).click();await a.locator('.fm-count').filter({hasText:'3 fruits'}).waitFor();assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'C');assert.equal(JSON.parse((await data(a)).settings).reducedMotion,false);
-  await c.bringToFront();await c.evaluate(()=>window.dispatchEvent(new Event('online')));try{await poll(async()=>!(await cacheKeys(c)).includes(oldPack),'modern B caches reclaimed after old document safely reloads');}catch(error){console.error('RECLAMATION DIAGNOSTIC C',JSON.stringify(await diagnostic(c)));console.error('RECLAMATION DIAGNOSTIC GAME',JSON.stringify(await diagnostic(a)));throw error;}assert.ok((await cacheKeys(c)).includes(futureShell));assert.ok((await cacheKeys(c)).includes('pocket-arcade:'+path+':'+A.version+':pack'),'legacy pins propagated through C');
+  for(const {page,client,marker} of retainedB){
+   assert.equal(await page.evaluate(()=>window.retainedExtraDocument),marker,'extra B document was not automatically navigated');assert.equal(await page.locator('meta[name="arcade-release"]').getAttribute('content'),'B');assert.ok((await cacheKeys(page)).includes(oldPack),'live extra B dependency keeps B assets');
+   await menu(page);await page.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(async()=>{const marker=await page.locator('meta[name="arcade-release"]').getAttribute('content'),entry=await page.locator('script[type="module"][src]').getAttribute('src');return marker==='C'&&!!entry&&new URL(entry,base).href===new URL(C.entry,base).href;},'extra B explicit reload reaches C document and module');const current=await durableOwner(page,C);retainedPageEvidence.push({scope,oldClient:client,currentClient:current,marker,retainedUntilExplicitReload:true,oldImmutableAssetWorkedOffline:true});
+  }
+  for(const page of context.pages().filter(page=>page.url().startsWith(base)))await durableOwner(page,C);
+  console.log('ALL OWNED PAGES CURRENT BEFORE GC',path);
+  await c.bringToFront();await c.evaluate(()=>window.dispatchEvent(new Event('online')));try{await poll(async()=>!(await cacheKeys(c)).includes(oldPack),'modern B caches reclaimed after old document safely reloads');}catch(error){console.error('RECLAMATION DIAGNOSTIC C',JSON.stringify(await diagnostic(c)));console.error('RECLAMATION DIAGNOSTIC GAME',JSON.stringify(await diagnostic(a)));throw error;}assert.ok((await cacheKeys(c)).includes(futureShell));assert.equal(await c.evaluate(async()=>(await navigator.serviceWorker.getRegistration()).installing===window.futureInstallerBeforeGc),true,'native future installer identity is unchanged across GC');const afterGc=await diagnostic(c);assert.equal(afterGc.installing?.version,D.version,'same future D installation survives GC');assert.equal(afterGc.installing?.state,'installing');assert.ok((await cacheKeys(c)).includes('pocket-arcade:'+path+':'+A.version+':pack'),'legacy pins propagated through C');
   holdManifest=false;manifestGate.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});manifestGate.end(D.map.get('/offline-manifest.json'));manifestGate=undefined;await acceptVersion(c,D);
   assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'C','future activation still does not reload an active game');
   await a.keyboard.press('Escape');await a.getByRole('button',{name:'Reload to update',exact:true}).click();await a.locator('.fm-count').filter({hasText:'3 fruits'}).waitFor();assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'D');
-  await a.close();await c.close();await context.close();context=await launch(profile);const restored=context.pages()[0];await home(restored,base);await restored.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await restored.locator('.fm-count').filter({hasText:'3 fruits'}).waitFor();assert.equal(await version(restored),D.version);await poll(async()=>!(await cacheKeys(restored)).includes('pocket-arcade-v2:'+path+':'+C.version+':shell'),'next generation C reclaimed without re-pinning already removed B');assert.equal(JSON.parse((await data(restored)).settings).reducedMotion,false);assert.equal((await data(restored)).score,before.score);assert.equal((await data(restored)).cookie,before.cookie);
+  await a.close();await c.close();for(const {page} of retainedB)await page.close();await context.close();context=await launch(profile);const restored=primaryPage(context);await home(restored,base);await restored.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await restored.locator('.fm-count').filter({hasText:'3 fruits'}).waitFor();assert.equal(await version(restored),D.version);await poll(async()=>!(await cacheKeys(restored)).includes('pocket-arcade-v2:'+path+':'+C.version+':shell'),'next generation C reclaimed without re-pinning already removed B');assert.equal(JSON.parse((await data(restored)).settings).reducedMotion,false);assert.equal((await data(restored)).score,before.score);assert.equal((await data(restored)).cookie,before.cookie);
   await context.tracing.stop({path:`${evidence}/update-${tag}.zip`});await context.close();
   results.push({scope:path,oldVersion:A.version,versions:[B.version,C.version,D.version],persistentProfileRestarted:true,naturalReloadDiscovery:true,noAutomaticDocumentReload:true,legacyDelayedNavigation:false,modernDelayedNavigation:true,legacyPackPinned:true,oldLazyChunkRemovedFromServer:true,oldGamePlayedOffline:true,persistentProfileWorkerRestart:true,forcedLiveWorkerRestart:false,visibleNewContent:true,scoreSettingsCookiePreserved:true,actualProgressRestored:true,quotaBlockedUserReload:true,pendingPreferenceRecovered:true,inconsistentInstallRecovery:true,modernCachesCleaned:true,futureInstallCachePreserved:true});console.log('MIGRATION PASS',path);await controlledWaitingCase(path,base);Object.assign(results.at(-1),{waitingUpdateAccepted:true,resumeCancelsPendingReload:true,lateQuotaBlocksActualReload:true});await cancelledCase(path,base);const legacyNavigation=await legacyNavigationCase(path,base);Object.assign(results.at(-1),{cancelledReservationAllowsLaterGc:true,legacyDelayedNavigation:true,legacyDelayedNavigationWorkerState:legacyNavigation});
  }
@@ -212,6 +241,6 @@ try{
  console.error(error);await settleGate();manifestGate?.end();console.error('REQUESTS AT FAILURE',JSON.stringify(requests.slice(-40)));for(const [i,context] of contexts.entries()){for(const page of context.pages()){if(!page.isClosed())console.error('FAILURE WORKER',JSON.stringify(await diagnostic(page)));console.error('FAILURE PAGE',page.url(),await page.evaluate(()=>({marker:document.querySelector('meta[name="arcade-release"]')?.getAttribute('content'),focus:document.activeElement?.id,body:document.body.className,status:document.querySelector('#update-status')?.textContent,disabled:document.querySelector('#reload-update')?.disabled})).catch(()=>null));}await Promise.race([context.tracing.stop({path:`${evidence}/update-failure-${i}.zip`}).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);}throw error;
 }finally{
  gate?.end('stop');manifestGate?.end();for(const context of contexts)await context.close().catch(()=>{});server.closeAllConnections();await new Promise(resolve=>server.close(resolve));for(const profile of profiles)await rm(profile,{recursive:true,force:true});
- await writeFile(evidence+'/update-results.json',JSON.stringify({recordedAt:new Date().toISOString(),results,requests},null,2));
+ await writeFile(evidence+'/update-results.json',JSON.stringify({recordedAt:new Date().toISOString(),results,requests,startupInventories,retainedPageEvidence},null,2));
 }
 console.log(JSON.stringify(results,null,2));
