@@ -4,8 +4,16 @@
 import {COLLISION_BOXES,LIQUID,SOLID} from '../data/blocks';
 import {biomeDef,coldAt} from '../data/biomes';
 import {liquidHeight} from '../engine/physics';
-import {SEA_LEVEL} from '../engine/constants';
+import {CS,SEA_LEVEL} from '../engine/constants';
 import type {World} from '../engine/contracts';
+
+/** Weather ticks a chunk (lightning, snow, ice) only while the player is within this many blocks of its centre,
+ *  like vanilla ChunkMap.anyPlayerCloseEnoughForSpawning (128 blocks, about 200 chunks). */
+export const TICKING_RANGE=128;
+export function isTickingChunk(cx:number,cz:number,px:number,pz:number):boolean{
+  const dx=cx*CS+CS/2-px,dz=cz*CS+CS/2-pz;
+  return dx*dx+dz*dz<TICKING_RANGE*TICKING_RANGE;
+}
 
 /** Rain and snow cannot fall through this block (solid blocks such as stone, glass and leaves, and liquids). */
 export const blocksPrecipitation=(id:number)=>id>0&&(SOLID[id]===1||LIQUID[id]!==0);

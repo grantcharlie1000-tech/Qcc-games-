@@ -1,12 +1,14 @@
 import {describe,expect,test} from 'vitest';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import {createWeather,type WeatherController} from '../../../src/games/blockcraft/world/weather';
-import {precipitationHeight} from '../../../src/games/blockcraft/world/weather-columns';
-import {precipitateColumn} from '../../../src/games/blockcraft/world/weather-snow';
+import {isTickingChunk,precipitationHeight} from '../../../src/games/blockcraft/world/weather-columns';
+import {WEATHER_EDIT_SHARE,precipitateColumn} from '../../../src/games/blockcraft/world/weather-snow';
+import {LIGHTNING_CHANCE,rollStrikeColumn} from '../../../src/games/blockcraft/world/weather-lightning';
+import {MAX_EDITS} from '../../../src/games/blockcraft/world/world';
 import {RAIN_DELAY} from '../../../src/games/blockcraft/world/weather-cycle';
 import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
-import {CHUNK_VOLUME,voxelIndex} from '../../../src/games/blockcraft/engine/constants';
+import {CHUNK_VOLUME,CS,voxelIndex} from '../../../src/games/blockcraft/engine/constants';
 import type {DamageSource,Entity,EntityCategory,EntityKind,SoundName,Vec3} from '../../../src/games/blockcraft/engine/contracts';
 
 const FIRE=blockId('fire');
@@ -204,6 +206,36 @@ describe('snow layers and ice',()=>{
     const warm=setup('plains');warm.game.world.set(0,63,0,B.water);expect(precipitateColumn(warm.game.world,0,0)).toBeNull();
     expect(weather.state).toBe('rain');
   });
+  test('cold water freezes in any weather like vanilla, but snow only falls while it snows',()=>{
+    const {game,weather}=setup('snowy_plains');
+    for(let x=-30;x<30;x++)for(let z=-30;z<30;z++)game.world.set(x,63,z,B.water);
+    tick(game,4000);
+    let ice=0,snow=0,edgeIce=0;
+    for(let x=-30;x<30;x++)for(let z=-30;z<30;z++){
+      if(game.world.get(x,63,z)===B.ice){ice++;if(x===-30||x===29||z===-30||z===29)edgeIce++;}
+      if(game.world.get(x,64,z)===B.snow)snow++;
+    }
+    expect(weather.state).toBe('clear');
+    expect(ice).toBeGreaterThan(100);expect(edgeIce).toBeGreaterThan(20);expect(snow).toBe(0);
+    expect(precipitateColumn(game.world,-20,-20,false)).not.toBe('snow');
+  });
+  test('only chunks within 128 blocks of the player get snow and ice',()=>{
+    const {game,weather}=setup('snowy_plains');
+    game.player.teleport(300.5,64,.5);
+    startRain(game,weather);tick(game,3000);
+    let changed=0;for(let x=-40;x<40;x++)for(let z=-40;z<40;z++)if(game.world.get(x,64,z)===B.snow)changed++;
+    expect(changed).toBe(0);
+  });
+  test('natural snow and ice leave the last quarter of the edit budget to the player',()=>{
+    const {game,weather}=setup('snowy_plains');
+    Object.defineProperty(game.world,'editCount',{configurable:true,get:()=>MAX_EDITS*WEATHER_EDIT_SHARE});
+    startRain(game,weather);tick(game,2000);
+    const snowAt=()=>{let n=0;for(let x=-40;x<40;x++)for(let z=-40;z<40;z++)if(game.world.get(x,64,z)===B.snow)n++;return n;};
+    expect(snowAt()).toBe(0);
+    Object.defineProperty(game.world,'editCount',{configurable:true,get:()=>MAX_EDITS*WEATHER_EDIT_SHARE-1});
+    tick(game,2000);
+    expect(snowAt()).toBeGreaterThan(100);
+  });
   test('snow needs an air cell on an opaque block (or leaves) with block light below 10',()=>{
     const {game}=setup('snowy_plains');
     expect(precipitateColumn(game.world,3,3)).toBe('snow');expect(game.world.get(3,64,3)).toBe(B.snow);
@@ -264,6 +296,21 @@ describe('lightning',()=>{
     expect(weather.flash).toBeGreaterThan(.5);expect(weather.bolts.length).toBe(1);
     tick(game,40);for(let i=0;i<30;i++)weather.frame?.(1/60);
     expect(weather.flash).toBeLessThan(.05);expect(weather.bolts.length).toBe(0);
+  });
+  test('lightning ticks the chunks whose centre is within 128 blocks of the player (vanilla), each at 1/100000 per tick',()=>{
+    expect(isTickingChunk(0,0,.5,.5)).toBe(true);expect(isTickingChunk(-8,0,.5,.5)).toBe(true);
+    expect(isTickingChunk(7,0,.5,.5)).toBe(true);expect(isTickingChunk(8,0,.5,.5)).toBe(false);
+    expect(isTickingChunk(5,5,.5,.5)).toBe(true);expect(isTickingChunk(6,6,.5,.5)).toBe(false);
+    let ticking=0;for(let cz=-10;cz<=10;cz++)for(let cx=-10;cx<=10;cx++)if(isTickingChunk(cx,cz,.5,.5))ticking++;
+    expect(ticking).toBeGreaterThan(190);expect(ticking).toBeLessThan(215);
+    let seed=99;const random=()=>{seed=(Math.imul(seed^seed>>>15,0x2c1b3c6d)+0x6d2b79f5)>>>0;return seed/0x100000000;};
+    const rolls=2000000;let strikes=0;
+    for(let i=0;i<rolls;i++){
+      const c=rollStrikeColumn(.5,.5,random);if(!c)continue;strikes++;
+      expect(isTickingChunk(Math.floor(c.x/CS),Math.floor(c.z/CS),.5,.5)).toBe(true);
+    }
+    const expected=rolls*ticking*LIGHTNING_CHANCE;
+    expect(strikes).toBeGreaterThan(expected*.85);expect(strikes).toBeLessThan(expected*1.15);
   });
   test('thunderstorms strike near the player at the vanilla rate; never in snowy biomes or plain rain',()=>{
     const count=(biome:string,state:'rain'|'thunder')=>{

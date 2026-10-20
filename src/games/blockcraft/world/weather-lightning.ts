@@ -1,18 +1,18 @@
 // Lightning, after vanilla Java ServerLevel.tickChunk / findLightningTargetAround and LightningBolt.tick:
-// during a thunderstorm every ticking chunk has a 1/100000 chance per tick of a strike at a random column (or at a
-// living entity under open sky within 3 blocks of it). A bolt lives 2 ticks plus 1-3 re-flashes; while visible it
+// during a thunderstorm every ticking chunk (centre within 128 blocks of the player) has a 1/100000 chance per tick
+// of a strike at a random column (or at a living entity under open sky within 3 blocks of it). A bolt lives 2 ticks plus 1-3 re-flashes; while visible it
 // hurts every living entity in a box 3 blocks around it (6 up) for 5 'lightning' damage and sets it on fire for
 // 8 seconds; creepers become charged and pigs are left alone. Fire starts at the strike on normal and hard.
 import {AIR,blockId} from '../data/blocks';
 import {CS} from '../engine/constants';
 import {canSurvive} from '../engine/support';
 import type {Entity,Game,Vec3} from '../engine/contracts';
-import {precipitationHeight} from './weather-columns';
+import {isTickingChunk,precipitationHeight,TICKING_RANGE} from './weather-columns';
 
 /** Strike chance per ticking chunk per tick. */
 export const LIGHTNING_CHANCE=1/100000;
-/** Chunks within this Chebyshev distance of the player's chunk tick lightning (when loaded). */
-export const LIGHTNING_RADIUS=8;
+/** Chunks around the player's chunk that may tick lightning: the square holding the TICKING_RANGE circle. */
+const LIGHTNING_RADIUS=Math.ceil(TICKING_RANGE/CS);
 export const LIGHTNING_DAMAGE=5;
 export const LIGHTNING_FIRE_SECONDS=8;
 /** Thunder travels at 40 blocks per second (vanilla distance-delayed sounds). */
@@ -62,12 +62,14 @@ export function findStrikeTarget(game:Game,x:number,z:number,random:()=>number,s
   return{x,y:h,z};
 }
 
-/** Random column for this tick's strike roll: one chunk among the (2R+1)² around the player, or null (no strike). */
+/** Random column for this tick's strike roll, or null (no strike). Each ticking chunk has LIGHTNING_CHANCE: one roll
+ *  for the square of chunks around the player picks a chunk, which only strikes when it is ticking. */
 export function rollStrikeColumn(px:number,pz:number,random:()=>number):{x:number;z:number}|null{
   const side=LIGHTNING_RADIUS*2+1,area=side*side;
   if(random()>=area*LIGHTNING_CHANCE)return null;
   const cell=Math.min(area-1,Math.floor(random()*area));
   const cx=Math.floor(px/CS)+cell%side-LIGHTNING_RADIUS,cz=Math.floor(pz/CS)+Math.floor(cell/side)-LIGHTNING_RADIUS;
+  if(!isTickingChunk(cx,cz,px,pz))return null;
   return{x:cx*CS+Math.floor(random()*CS),z:cz*CS+Math.floor(random()*CS)};
 }
 

@@ -1,5 +1,5 @@
 // Weather service: the vanilla clear / rain / thunder cycle (world/weather-cycle.ts), precipitation by biome and sky
-// exposure (world/weather-columns.ts), snow layers and ice while it snows (world/weather-snow.ts), lightning with
+// exposure (world/weather-columns.ts), snow layers while it snows and ice on cold water (world/weather-snow.ts), lightning with
 // fire, damage, charged creepers and distance-delayed thunder (world/weather-lightning.ts), rain ambience, and the
 // rain/snow/bolt visuals (render/weather.ts) when the game has a real renderer. Sky darkening is computed by the
 // engine from `intensity` and `thunder`; the renderer reads `flash`.
@@ -111,7 +111,7 @@ export function createWeather(game:Game):WeatherController{
           if(target&&isRainingOn(target.x,target.y,target.z))addBolt(target.x,target.y,target.z);
         }
       }
-      if(raining())precipitationTick(game.world,p.x,p.z,game.random);
+      precipitationTick(game.world,p.x,p.z,game.random,raining());
       for(let i=0;i<bolts.length;)if(tickBolt(game,bolts[i],game.random,scratch,boltEvents))i++;else bolts.splice(i,1);
       if(flashing())flash=Math.max(flash,flashPeak());
       for(const t of thunder)if(t.due>=0&&t.due<=ticks){t.due=-1;playThunder(t);}

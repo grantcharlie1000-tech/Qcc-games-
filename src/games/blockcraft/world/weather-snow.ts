@@ -1,18 +1,19 @@
-// Snow layers and ice while it snows (vanilla ServerLevel.tickPrecipitation with Biome.shouldFreeze / shouldSnow):
-// each tick, every loaded chunk within PRECIPITATION_RADIUS of the player has a 1/16 chance to pick one random
-// column. Its top water source freezes when cold, dim and at the edge of the water; its first open cell gets a
-// snow layer when cold, dim and resting on an opaque block (or leaves).
+// Snow layers and ice (vanilla ServerLevel.tickPrecipitation with Biome.shouldFreeze / shouldSnow): each tick, every
+// loaded chunk within TICKING_RANGE of the player has a 1/16 chance to pick one random column. Its top water source
+// freezes when cold, dim and at the edge of the water (in any weather, like vanilla); while it snows, its first open
+// cell also gets a snow layer when cold, dim and resting on an opaque block (or leaves).
 import {AIR,B,blockDef,isWater} from '../data/blocks';
 import {biomeDef,coldAt} from '../data/biomes';
 import {CH,CS} from '../engine/constants';
 import {canSurvive} from '../engine/support';
 import type {World} from '../engine/contracts';
-import {precipitationHeight} from './weather-columns';
+import {MAX_EDITS} from './world';
+import {isTickingChunk,precipitationHeight} from './weather-columns';
 
 /** Chance per chunk per tick of a precipitation update (vanilla random.nextInt(16) == 0). */
 export const PRECIPITATION_CHANCE=1/16;
-/** Chunks (Chebyshev distance from the player's chunk) that receive updates, like random ticks. */
-export const PRECIPITATION_RADIUS=8;
+/** Natural snow and ice stop once this share of the world's edit budget is used, keeping the rest for the player. */
+export const WEATHER_EDIT_SHARE=.75;
 /** Snow and ice only form where block light is below this (vanilla). */
 const MAX_BLOCK_LIGHT=10;
 
@@ -38,23 +39,30 @@ export function shouldSnow(world:World,x:number,y:number,z:number):boolean{
 }
 const SIDES=[[1,0],[-1,0],[0,1],[0,-1]] as const;
 
-/** One precipitation update of a column while it snows: freezes its top water or lays snow on it.
+/** One precipitation update of a column: freezes its top water, or (while `snowing`) lays snow on it.
  *  Writes with cause 'tick'; returns what changed. */
-export function precipitateColumn(world:World,x:number,z:number):'ice'|'snow'|null{
+export function precipitateColumn(world:World,x:number,z:number,snowing=true):'ice'|'snow'|null{
   const h=precipitationHeight(world,x,z);
   if(h<=0||h>=CH)return null;
   if(shouldFreeze(world,x,h-1,z)&&world.set(x,h-1,z,B.ice,'tick'))return 'ice';
-  if(shouldSnow(world,x,h,z)&&world.set(x,h,z,B.snow,'tick'))return 'snow';
+  if(snowing&&shouldSnow(world,x,h,z)&&world.set(x,h,z,B.snow,'tick'))return 'snow';
   return null;
 }
 
-/** The per-tick pass over loaded chunks near (px,pz): each gets a 1/16 chance of one random column update. */
-export function precipitationTick(world:World,px:number,pz:number,random:()=>number):void{
-  const pcx=Math.floor(px/CS),pcz=Math.floor(pz/CS);
+/** Voxels edited in the world, when the world tells (VoxelWorld.editCount; the World contract has only editsFull). */
+function editCount(world:World):number{
+  const count=(world as Partial<{editCount:unknown}>).editCount;
+  return typeof count==='number'&&Number.isFinite(count)?count:0;
+}
+
+/** The per-tick pass over loaded chunks near (px,pz): each ticking chunk gets a 1/16 chance of one random column
+ *  update. `snowing` = it is raining (vanilla isRaining); water freezes in any weather. */
+export function precipitationTick(world:World,px:number,pz:number,random:()=>number,snowing:boolean):void{
+  if(world.editsFull||editCount(world)>=MAX_EDITS*WEATHER_EDIT_SHARE)return;
   for(const chunk of world.chunks.values()){
-    if(Math.abs(chunk.cx-pcx)>PRECIPITATION_RADIUS||Math.abs(chunk.cz-pcz)>PRECIPITATION_RADIUS)continue;
+    if(!isTickingChunk(chunk.cx,chunk.cz,px,pz))continue;
     if(random()>=PRECIPITATION_CHANCE)continue;
     const r=random(),x=chunk.cx*CS+Math.floor(r*CS)%CS,z=chunk.cz*CS+Math.floor(r*CS*CS)%CS;
-    precipitateColumn(world,x,z);
+    precipitateColumn(world,x,z,snowing);
   }
 }
