@@ -1,3 +1,11 @@
+# Direct-input redesign — 2026-10-20
+
+Review feedback also used the local receiving-code-review skill: the native pause/contact finding was reproduced before the minimal fix, with fresh input recovery checked afterward.
+
+The horizontal redesign read and applied the repository's game-development router, web-games and 2d-games guides, test-driven-development (including writing-good-tests) and verification-before-completion. Their concrete influence was separating input math from the unchanged physics model, mapping measured screen coordinates into saved coordinates, regression-testing cancellation before fixes, and reporting fresh browser/unit evidence with explicit limits. The using-superpowers router was read and its dispatched-subagent exclusion respected. No new skill or third-party dependency was installed. Current details and evidence: [POOL_DIRECT_DRAG.md](../../../docs/POOL_DIRECT_DRAG.md).
+
+The original 2026-10-19 skill record follows; its references to sliders, gameplay buttons and the optional aim aid describe the earlier interface.
+
 # Actual skill and documentation usage
 
 Inventory command: `rg --files .agents/skills -g SKILL.md`. No third-party skill was installed. No additional agent was spawned. Exact local skills below were read; reading documentation is listed separately.
