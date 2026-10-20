@@ -59,4 +59,8 @@ body.in-game .game-view[data-game-id=ball-run] #pause-game{position:static;width
 body.in-game .game-view[data-game-id=ball-run] #pause-game svg{width:25px;height:25px}
 body.in-game .game-view[data-game-id=ball-run] #restart-game{position:fixed;bottom:7px;right:78px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px}
 body.in-game .game-view[data-game-id=ball-run] #restart-game svg{width:18px;height:18px}
+/* Globle lays itself out responsively inside the whole stage. */
+body.in-game .game-view[data-game-id=globle] .stage-wrap{display:block}
+body.in-game .game-view[data-game-id=globle] #game-stage{height:100%;max-height:none;min-height:0}
+body.in-game .game-view[data-game-id=globle] .game-metrics{display:none}
 @media(max-height:480px){body.in-game .game-view:not([data-reference-game=true]){padding:3px 10px}body.in-game .game-view:not([data-reference-game=true]) .game-toolbar{flex-basis:38px}body.in-game .game-view:not([data-reference-game=true]) .game-metrics{margin:0 auto 3px;flex-basis:28px}body.in-game .game-view:not([data-reference-game=true]) #game-status{font-size:10px;max-height:15px;margin-top:3px}}

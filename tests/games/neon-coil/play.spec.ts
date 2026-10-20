@@ -148,7 +148,7 @@ test('focusable boost, lost focus, frame stalls, disposal and invalid saves reco
 });
 test('the library retains original grid Snake and opens Neon Coil separately', async ({ page }) => {
   await open(page); await page.getByRole('link', { name: 'Back to game library', exact: true }).click();
-  await expect(page.locator('.game-card')).toHaveCount(14);
+  await expect(page.locator('.game-card')).toHaveCount(15);
   await expect(page.getByRole('link', { name: 'Play Snake', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Play Snake', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Start slithering', exact: true })).toBeVisible();

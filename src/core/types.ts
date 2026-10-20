@@ -1,4 +1,4 @@
-export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird'] as const;
+export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle'] as const;
 export type GameId = typeof GAME_IDS[number];
 export interface Settings { sound: boolean; reducedMotion: boolean; colorBlind: boolean }
 export interface GameContext {

@@ -19,7 +19,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  expect(formats.size).toBe(3);expect(authors.size).toBe(4);expect(requests).toEqual([]);
  await page.screenshot({path:`docs/evidence/study-editorial/article-${viewport.width}.png`,fullPage:true});
  const bounds=(await games.boundingBox())!;expect(bounds.height).toBeGreaterThanOrEqual(44);expect(bounds.width).toBeGreaterThanOrEqual(44);
- await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-card')).toHaveCount(14);await expect(page.locator('#study-view')).toBeHidden();
+ await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-card')).toHaveCount(15);await expect(page.locator('#study-view')).toBeHidden();
 });
 
 test('modified Games clicks reach the browser without returning the retained game',async({page,context})=>{
