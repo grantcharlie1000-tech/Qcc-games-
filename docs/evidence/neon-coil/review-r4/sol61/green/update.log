@@ -1,0 +1,21 @@
+
+> pocket-offline-arcade@1.0.0 verify:update
+> node scripts/verify-update.mjs
+
+{
+  "recordedAt": "2026-10-20T19:38:04.310Z",
+  "browserVersion": "154.0.8037.57",
+  "oldVersion": "1c58baf3fab5",
+  "newVersion": "1c58baf3fab5-next",
+  "oldLazyChunkRemovedFromServer": true,
+  "oldTabPlayedOffline": true,
+  "updateWaitedForBothTabsToClose": true,
+  "newVersionActivated": true,
+  "oldCachesCleaned": true,
+  "highScorePreserved": true
+}
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

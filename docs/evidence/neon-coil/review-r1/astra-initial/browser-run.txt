@@ -1,0 +1,13 @@
+Preserved summary of the actual audit runner stdout (not a generated Playwright JSON reporter).
+Checkpoint: cc08465d3cf015ca842f8de80d9c92e6f77f953e
+Working directory: /tmp/neon-review-suite-J0l7vV
+Command: ARCADE_URL=http://127.0.0.1:4173 ./node_modules/.bin/playwright test tests/games/neon-coil/play.spec.ts --project=chromium --timeout=60000 --reporter=list
+8 tests, 1 worker, exit code 0, 8 passed (58.2s)
+1 pointer movement without click, earned growth, Space boost, P pause, keyboard and restart: passed 15.6s
+2 rim death creates real food, exposes death reason, and replay has one loop: passed 8.2s
+3 real hover steering into a local bot body causes death and collectible pellets: passed 3.5s
+4 Escape preserves host study, saves exactly, and saved continuation waits for user: passed 5.6s
+5 resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths: passed 8.9s
+6 touch drag and a second finger on the boost control steer without scrolling: passed 2.6s
+7 focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely: passed 10.6s
+8 the library retains original grid Snake and opens Neon Coil separately: passed 2.3s

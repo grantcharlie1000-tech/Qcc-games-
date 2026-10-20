@@ -1,0 +1,51 @@
+{
+  "rate": 1,
+  "timings": [
+    {
+      "name": "load and begin",
+      "ms": 1462.995026,
+      "complete": true
+    },
+    {
+      "name": "900ms forward growth",
+      "ms": 2997.097852,
+      "complete": true
+    },
+    {
+      "name": "450ms turn",
+      "ms": 1250.7710229999993,
+      "complete": true
+    },
+    {
+      "name": "250ms boost and pause",
+      "ms": 1622.3488419999994,
+      "complete": true
+    },
+    {
+      "name": "1000ms paused input and exact frozen save",
+      "ms": 384.03037999999924,
+      "complete": true
+    },
+    {
+      "name": "200ms resume",
+      "ms": 547.6796960000011,
+      "complete": true
+    },
+    {
+      "name": "700ms keyboard right",
+      "ms": 2763.8848749999997,
+      "complete": true
+    },
+    {
+      "name": "450ms quick tap down",
+      "ms": 1831.8150069999992,
+      "complete": true
+    },
+    {
+      "name": "restart and final assertions",
+      "ms": 163.46432800000002,
+      "complete": true
+    }
+  ],
+  "totalMs": 13024.087028999998
+}

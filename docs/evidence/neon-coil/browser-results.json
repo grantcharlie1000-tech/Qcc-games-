@@ -1,0 +1,109 @@
+{
+  "recordedAt": "2026-10-20T10:42:07.126Z",
+  "stats": {
+    "startTime": "2026-10-20T10:38:42.068Z",
+    "duration": 72034.595,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "pointer movement without click, earned growth, Space boost, P pause, keyboard and restart",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 23037,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "rim death creates real food, exposes death reason, and replay has one loop",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 13303,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "real hover steering into a local bot body causes death and collectible pellets",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3321,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "Escape preserves host study, saves exactly, and saved continuation waits for user",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 6133,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 8792,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "touch drag and a second finger on the boost control steer without scrolling",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2627,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 10640,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "the library retains original grid Snake and opens Neon Coil separately",
+      "project": "chromium",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2866,
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

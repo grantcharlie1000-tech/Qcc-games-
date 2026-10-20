@@ -1,0 +1,16 @@
+{
+  "local_integration_head": "3773b5e926b487bc9e8b6eb75dea4e3972b3b977",
+  "parents": [
+    "421a8d388be7e54c7cb7611122335a0cfa8fffcf",
+    "fbac0a58aa23b953ff9ed382d2cd4bd80c817008"
+  ],
+  "tree": "cc58ac055ee3076d982bef8a572bb2710380cd17",
+  "main": "fbac0a58aa23b953ff9ed382d2cd4bd80c817008",
+  "old_feature": "421a8d388be7e54c7cb7611122335a0cfa8fffcf",
+  "feature_paths_preserved": 431,
+  "main_paths_preserved": 72,
+  "overlap": [],
+  "main_relative_feature_scope_unchanged": true,
+  "conflict_resolutions": 0,
+  "main_branch_modified": false
+}

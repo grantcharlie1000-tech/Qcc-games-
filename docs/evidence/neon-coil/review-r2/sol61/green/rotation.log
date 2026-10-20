@@ -1,0 +1,17 @@
+
+Running 5 tests using 1 worker
+
+(node:20322) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 844x390 (1.8s)
+  ✓  2 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 740x360 (1.1s)
+  ✓  3 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 568x320 (1.2s)
+  ✓  4 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 667x375 (1.1s)
+  ✓  5 [chromium] › tests/games/neon-coil/play.spec.ts:229:1 › short narrow viewport keeps intro and Boost within the supported 320px width (787ms)
+
+  5 passed (6.8s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

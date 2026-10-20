@@ -1,0 +1,54 @@
+[
+  {
+    "file": "resize-dead.json",
+    "all_world_hashes_equal": true,
+    "rows": [
+      5,
+      10,
+      5
+    ],
+    "errors": [],
+    "announcements": "0",
+    "best_unchanged": true,
+    "bytes": 1182
+  },
+  {
+    "file": "resize-paused.json",
+    "all_world_hashes_equal": true,
+    "rows": [
+      5,
+      10,
+      5
+    ],
+    "errors": [],
+    "announcements": "0",
+    "best_unchanged": true,
+    "bytes": 1189
+  },
+  {
+    "file": "resize-ready.json",
+    "all_world_hashes_equal": true,
+    "rows": [
+      5,
+      10,
+      5
+    ],
+    "errors": [],
+    "announcements": "0",
+    "best_unchanged": true,
+    "bytes": 1178
+  },
+  {
+    "file": "resize-running.json",
+    "all_world_hashes_equal": true,
+    "rows": [
+      5,
+      10,
+      5
+    ],
+    "errors": [],
+    "announcements": "0",
+    "best_unchanged": true,
+    "bytes": 1190
+  }
+]

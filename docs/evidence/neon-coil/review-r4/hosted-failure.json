@@ -1,0 +1,57 @@
+{
+  "run_id": 39479986705,
+  "url": "https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39479986705",
+  "attempt": 1,
+  "status": "completed",
+  "conclusion": "failure",
+  "created_at": "2026-10-20T19:02:19Z",
+  "completed_at": "2026-10-20T19:17:17Z",
+  "head": "421a8d388be7e54c7cb7611122335a0cfa8fffcf",
+  "checkout": "fa2b57331fb9a88d11d134b2da4345a74d964401",
+  "base": "a7f7631d4f606667f23b016ad6091cb3899365e8",
+  "tree": "70611ebee2aa3f975a9925d164c533f69f5a5e05",
+  "unit_passed": 288,
+  "browser": {
+    "passed": 333,
+    "failed": 5,
+    "skipped": 14
+  },
+  "failures": [
+    {
+      "project": "chromium",
+      "test": "pointer movement without click, earned growth, Space boost, P pause, keyboard and restart",
+      "kind": "default 30000ms test budget exceeded; exact hosted await unavailable"
+    },
+    {
+      "project": "webkit",
+      "tests": [
+        "resize ready",
+        "resize paused",
+        "resize dead",
+        "resize running"
+      ],
+      "kind": "DPR1 backing-store assumption; expected390x844,received780x1688"
+    }
+  ],
+  "original_resize_high_dpi": {
+    "chromium": "passed",
+    "webkit": "passed"
+  },
+  "not_run": [
+    "build",
+    "verify:update",
+    "verify:offline"
+  ],
+  "pages_deploy": "skipped",
+  "local_raw_job_log": {
+    "bytes": 227656,
+    "sha256": "b847a407dcbcb0e300af92063793ed1f023e9648cfbcc2938a5065a30ed7a0c6"
+  },
+  "artifact": {
+    "id": 12291702294,
+    "bytes": 57691583,
+    "sha256": "befe2774ec0d071f06e128364c1f09c75699cceaf774b7b9d86a5db8d3a1f2f3",
+    "url": "https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39479986705/artifacts/12291702294",
+    "local_trace_inspected": false
+  }
+}

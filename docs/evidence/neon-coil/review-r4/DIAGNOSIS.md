@@ -1,0 +1,27 @@
+# Current-main integration and hosted test corrections
+
+## Preserved hosted failure
+
+[Run 39479986705](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39479986705) completed **failure** at 2026-10-20 19:17:17 UTC, attempt 1. Its head was `421a8d388be7e54c7cb7611122335a0cfa8fffcf`; checkout was test merge `fa2b57331fb9a88d11d134b2da4345a74d964401` onto old main `a7f7631d4f606667f23b016ad6091cb3899365e8`. That merge tree equals the published feature head. The run began two seconds before Animal Stack entered main, so it does not establish current-main integration.
+
+The 288 unit tests passed. Browser results were **333 passed, 5 failed, 14 skipped**. Build, update and offline verification did not run after the browser failure; Pages deployment was skipped. Both engines passed the original resize/high-DPI case, including the previously failing WebKit ranking check. The reviewed production resize correction is therefore covered by that hosted WebKit result.
+
+Four new lifecycle regressions assumed a DPR of 1 when waiting for canvas backing dimensions. Desktop Safari uses DPR 2: a 390 × 844 CSS viewport correctly produced a 780 × 1688 backing canvas. The test now derives expected backing pixels from the actual browser DPR, capped at 2 and rounded exactly as the renderer does. Strict 5 → 10 → 5 ranking assertions, exact world equality, best score, announcements and resume checks remain intact. The browser profile is unchanged.
+
+The remaining Chromium failure exceeded the default 30-second budget in the long pointer/growth/boost/pause/keyboard/restart flow. The hosted log does not identify the interrupted await, and the hosted trace was not inspected locally. Local timing probes retained every original input and assertion: normal, 4× and 20× CPU throttling completed below 30 seconds; 40× exceeded that budget after earlier gameplay assertions passed. With a timeout scoped to this one test at 60 seconds, the 40× probe completed every original assertion in about 46 seconds. This demonstrates a budget problem under controlled load; it does not prove the hosted machine's CPU load or exact interrupted operation. No global timeout, product physics or fake-clock stepping changed.
+
+Astra's initial review found that this also extended implicit UI wait allowances. Sol corrected that at `06929e0` with first-test-only 30-second auto-wait/navigation caps; retrying assertions retain seven seconds. Raw synthetic input, evaluation and clock calls share the cumulative orchestration deadline, and are not independent product-response thresholds. The capped revision passed normally in 12.3 seconds and at 40× in 39.4 seconds. That variation is not a product speed improvement. Astra independently passed the actual flow and four resize lifecycles at DPR 2 (five cases, 34.7 seconds), verified the final `db633ac` comment-only cleanup, and reports no remaining findings. Its initial finding and final verdict remain separate in `astra/`; the verdict is readiness for fresh PR CI, not merge eligibility.
+
+New lifecycle diagnostic JSON stores SHA256 world fingerprints plus phase, tick and mass instead of repeated full worlds. The actual equality assertions still compare the full in-memory worlds. Existing snapshots, failures, screenshots, traces and recordings are preserved.
+
+## Main integration
+
+The parent authorized a non-destructive merge of current main into the feature branch. Local merge `3773b5e926b487bc9e8b6eb75dea4e3972b3b977` has parents `421a8d388be7e54c7cb7611122335a0cfa8fffcf` and `fbac0a58aa23b953ff9ed382d2cd4bd80c817008`, tree `cc58ac055ee3076d982bef8a572bb2710380cd17`. There were no conflicts or manual resolutions. All 431 feature paths and all 72 main paths were preserved exactly. Their changes from common base `a7f7631` are disjoint. The follow-up correction changes only the arena browser tests; it does not change either game's production code.
+
+The existing 431-file feature diff contains 410 intentional evidence files (83,126,335 bytes), accounting for 1,541,913 of its 1,543,106 added lines. The large records are primarily repeated full-world snapshots from earlier red/green and independent review runs. No dependency/build directory was accidentally added. A targeted credential-pattern scan found no matches in changed files or 584 entries from 24 trace archives; trace network records only contained local `127.0.0.1` requests. This limited scan is not an exhaustive proof that no sensitive data exists. New evidence is concise.
+
+## Access limits and authorization
+
+The old run's [verification artifact 12291702294](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39479986705/artifacts/12291702294) remains hosted (57,691,583 bytes; SHA256 `befe2774ec0d071f06e128364c1f09c75699cceaf774b7b9d86a5db8d3a1f2f3`). Supported local materialization was denied by `Tunnel connection failed: 403 Forbidden`; no retry or bypass occurred. The raw terminal job log and API metadata were preserved locally before integration. Local WebKit remains unavailable; the earlier installer denial is retained and was not retried.
+
+The parent subsequently authorized ordinary PR updates and their automatic Netlify previews on the existing setup, withdrawing the earlier Free-tier prerequisite. No billing, plan, account or security setting changed. The old authorization holds in frozen earlier reports are historical. Main merges remain the parent's responsibility. This checkpoint requires independent review and fresh full CI before merge eligibility.

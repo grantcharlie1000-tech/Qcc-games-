@@ -1,0 +1,9 @@
+{
+  "statuses": [
+    {
+      "context": "netlify/mauri-gazette/deploy-preview",
+      "state": "success",
+      "target_url": "https://deploy-preview-5--mauri-gazette.netlify.app"
+    }
+  ]
+}

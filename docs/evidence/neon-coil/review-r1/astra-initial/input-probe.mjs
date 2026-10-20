@@ -1,0 +1,25 @@
+// Read-only reproduction. Writes screenshots only under /tmp.
+import { chromium } from '/workspace/Qcc-games-/node_modules/playwright/index.mjs';
+const b = await chromium.launch({ executablePath: '/usr/bin/chromium', args: ['--no-sandbox'] });
+const c = await b.newContext({ viewport: { width: 844, height: 390 } });
+await c.addInitScript(() => sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading'));
+const p = await c.newPage(); await p.goto('http://127.0.0.1:4173/#/game/neon-coil');
+await p.locator('.nc-start').waitFor();
+console.log('intro', await p.locator('.nc-start').boundingBox(), await p.locator('.nc-card').boundingBox());
+await p.screenshot({ path: '/tmp/neon-review-landscape-intro.png' });
+await p.locator('.nc-start').click(); await p.waitForTimeout(100);
+for (const s of ['.nc-ranking', '.nc-you', '.nc-boost', '#restart-game']) console.log(s, await p.locator(s).boundingBox());
+await p.screenshot({ path: '/tmp/neon-review-landscape-running.png' });
+await p.setViewportSize({ width: 740, height: 360 }); await p.locator('#restart-game').click();
+console.log('740x360start', await p.locator('.nc-start').boundingBox());
+await p.screenshot({ path: '/tmp/neon-review-landscape-360.png' }); await c.close();
+const tc = await b.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+await tc.addInitScript(() => sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading'));
+const t = await tc.newPage(); await t.goto('http://127.0.0.1:4173/#/game/neon-coil'); await t.locator('.nc-start').tap();
+const cd = await tc.newCDPSession(t), box = await t.locator('.nc-boost').boundingBox();
+const x = box.x + box.width / 2, y = box.y + box.height / 2;
+await cd.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }] });
+await cd.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1 }, { x: 195, y: 422, id: 2 }] });
+await cd.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y, id: 1 }, { x: 195, y: 200, id: 2 }] });
+await t.waitForTimeout(500); console.log('boostFirst', await t.locator('.nc-game').evaluate(e => ({ ...e.dataset })));
+await tc.close(); await b.close();

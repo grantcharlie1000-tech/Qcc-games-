@@ -1,0 +1,23 @@
+{
+  "artifacts": [
+    {
+      "id": 12261214108,
+      "name": "arcade-verification",
+      "size_in_bytes": 39135530,
+      "url": "https://api.github.com/repos/grantcharlie1000-tech/Qcc-games-/actions/artifacts/12261214108",
+      "archive_download_url": "https://api.github.com/repos/grantcharlie1000-tech/Qcc-games-/actions/artifacts/12261214108/zip",
+      "expired": false,
+      "created_at": "2026-10-20T11:47:48Z",
+      "expires_at": "2027-01-18T11:37:40Z",
+      "updated_at": "2026-10-20T11:47:48Z",
+      "digest": "sha256:5ef27e9b22303545ddd7f7feda3eac652ba15124c108e0bf58c88ac972e9c85b",
+      "workflow_run": {
+        "id": 39416296107,
+        "repository_id": 1424840632,
+        "head_repository_id": 1424840632,
+        "head_branch": "feat/neon-coil-arena",
+        "head_sha": "1e08484b890bb2d60ced32989bfc139d075acc44"
+      }
+    }
+  ]
+}

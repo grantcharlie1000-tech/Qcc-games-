@@ -1,0 +1,105 @@
+{
+  "sol61": {
+    "checked": 76,
+    "mismatches": []
+  },
+  "ci": {
+    "checked": 12,
+    "mismatches": []
+  },
+  "source": {
+    "checked": 2,
+    "mismatches": []
+  },
+  "allExistingBrowserTestsUnchanged": true,
+  "red/snapshots/ready": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/targeted/ready": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/full/ready": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "red/snapshots/paused": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/targeted/paused": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/full/paused": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "red/snapshots/dead": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/targeted/dead": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/full/dead": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "red/snapshots/running": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/targeted/running": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "green/full/running": {
+    "worldsEqual": true,
+    "errors": [],
+    "announcements": "0",
+    "bestUnchanged": true
+  },
+  "worldComparisons": {
+    "ready": {
+      "redGreenWorldsEqual": true,
+      "snapshotsChecked": 15
+    },
+    "paused": {
+      "redGreenWorldsEqual": true,
+      "snapshotsChecked": 15
+    },
+    "dead": {
+      "redGreenWorldsEqual": true,
+      "snapshotsChecked": 15
+    },
+    "running": {
+      "redGreenWorldsEqual": true,
+      "snapshotsChecked": 15
+    }
+  }
+}
