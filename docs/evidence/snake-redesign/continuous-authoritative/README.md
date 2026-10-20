@@ -13,7 +13,7 @@ The [current specification](../../../../src/games/snake/SPEC.md) and [design](..
 
 ## Post-audit validation correction
 
-The exact `c4156180c1f590212cbeb47f25245dbfe78605c5` audit found one minor malformed-v1 validation gap. The correction rejects reverse-facing ready/running legacy saves while preserving perpendicular and fatal lost directions; no geometry, clock, input or rendering change was needed. Fresh focused verification passes **39 unit tests / 2 files** and TypeScript. [Red/green evidence and scope](post-audit/README.md). Independent re-review of this correction is pending; prior browser/audit results retain their original source provenance.
+The exact `c4156180c1f590212cbeb47f25245dbfe78605c5` audit found one minor malformed-v1 validation gap. The correction rejects reverse-facing ready/running legacy saves while preserving perpendicular and fatal lost directions; no geometry, clock, input or rendering change was needed. Fresh focused verification passes **39 unit tests / 2 files** and TypeScript. [Red/green evidence and scope](post-audit/README.md). The 8ef re-review found related unsafe saved-first-turn and startup-input cases. A shared actual-neck check now validates the effective first leg before mutating ready/held state and preserves saved queue priority. Fresh focused verification passes **43 tests / 2 files** and TypeScript; [second-pass red/green details](post-audit/README.md) retain the failure history. Targeted re-review of this extension remains pending; prior browser/audit results retain their original source provenance.
 
 ## Preserved development failures and corrections
 

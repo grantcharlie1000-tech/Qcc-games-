@@ -24,13 +24,18 @@ export function enqueue(s:SnakeState,d:Direction):boolean{
  if(d===opposite[previous]||d===previous)return false;
  s.queue.push(d);return true;
 }
+function canDepart(s:Pick<SnakeState,'body'>,d:Direction):boolean{
+ const head=s.body[0],neck=s.body[1],v=vector[d];
+ return (head.x-neck.x)*v.x+(head.y-neck.y)*v.y>=0;
+}
 /** Initial input can choose the first leg; migrated queued turns retain priority at the held junction. */
 export function start(s:SnakeState,d?:Direction):boolean{
  if(s.phase==='lost'||s.phase==='won')return false;
  if(s.phase==='running'&&!s.migration?.held){if(d)enqueue(s,d);return true;}
  if(d&&s.queue.length===0&&d===opposite[s.direction])return false;
- if(d)enqueue(s,d);
- s.direction=s.queue.shift()??s.direction;s.phase='running';if(s.migration)s.migration.held=false;
+ const candidate={...s,queue:[...s.queue]};if(d)enqueue(candidate,d);
+ const first=candidate.queue[0]??s.direction;if(!canDepart(s,first))return false;
+ s.queue=candidate.queue.slice(1);s.direction=first;s.phase='running';if(s.migration)s.migration.held=false;
  return true;
 }
 export function pointSegment(p:Cell,a:Cell,b:Cell):number{
@@ -144,8 +149,7 @@ function migrate(v:Record<string,unknown>):SnakeState|null{
  if(!Array.isArray(old.body)||old.body.length<3||old.body.length>SIZE*SIZE||!old.body.every(grid)||!validDirection(old.direction)||!queueValid(old)||!['ready','running','lost','won'].includes(old.phase)||!Number.isInteger(old.seed)||old.seed<0||old.seed>0xffffffff||old.score!==(old.body.length-3)*10||!Number.isFinite(old.elapsed)||old.elapsed<0||old.elapsed>=TICK_MS||!Number.isSafeInteger(old.ticks)||old.ticks<0)return null;
  if(new Set(old.body.map(p=>p.x+SIZE*p.y)).size!==old.body.length||old.body.slice(1).some((p,i)=>distance(p,old.body[i])!==1))return null;
  // A live v1 heading cannot point back through its neck. Lost saves may retain the fatal attempted turn.
- const heading=vector[old.direction],head=old.body[0],neck=old.body[1];
- if((old.phase==='ready'||old.phase==='running')&&((head.x-neck.x)*heading.x+(head.y-neck.y)*heading.y)<0)return null;
+ if((old.phase==='ready'||old.phase==='running')&&(!canDepart(old,old.direction)||(old.queue[0]&&!canDepart(old,old.queue[0]))))return null;
  if(old.phase==='won'){if(old.body.length!==SIZE*SIZE||old.food!==null)return null;}
  else if(!grid(old.food)||old.body.some(p=>distance(p,old.food!)<EPS))return null;
  const s=createState(old.seed);Object.assign(s,{body:old.body.map(copy),food:old.food&&copy(old.food),direction:old.direction,queue:[...old.queue],phase:old.phase,score:old.score,segments:old.body.length,ticks:old.ticks,legStart:copy(old.body[0]),migration:{elapsed:old.elapsed,held:old.phase==='running'}});
