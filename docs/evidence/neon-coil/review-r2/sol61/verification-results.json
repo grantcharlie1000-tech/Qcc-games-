@@ -1,0 +1,80 @@
+{
+  "baseHead": "62f995e0e3d8f041815487f61340f8f76802f26b",
+  "codeSha256": {
+    "src/games/neon-coil/style.css": "0cf9cfbd15512ff501682076741326d080260b528e02516862f176e85e5bf640",
+    "tests/games/neon-coil/play.spec.ts": "e085406ae66ac6f6af4aee8c3bbd8706187f5393cf197fe2760ab49abb31f5ca",
+    "src/games/neon-coil/index.ts": "cd0ebf9f7a0a9471f1a977d0adbb69f01276b5968d1152bdfe66ec2b750e7f81"
+  },
+  "changedFiles": [
+    "src/games/neon-coil/style.css",
+    "tests/games/neon-coil/play.spec.ts"
+  ],
+  "red": {
+    "initialDirectViewport": {
+      "failed": 2,
+      "log": "red/reporter.log"
+    },
+    "finalRotationRegressionAgainstOriginalCSS": {
+      "failed": 2,
+      "log": "red/rotation.log"
+    }
+  },
+  "green": {
+    "initialTargeted": {
+      "passed": 5,
+      "log": "green/targeted.log"
+    },
+    "finalTargetedRotation": {
+      "passed": 5,
+      "log": "green/rotation.log"
+    },
+    "completeArena": {
+      "passed": 16,
+      "log": "green/full.log",
+      "runsAgainstSettledSource": 1
+    },
+    "strictTypeScript": "green/typescript.log",
+    "unitTests": {
+      "passed": 288,
+      "files": 25,
+      "log": "green/unit.log"
+    },
+    "productionBuild": {
+      "version": "0c14d99f6084",
+      "offlineFiles": 72,
+      "log": "green/build.log"
+    },
+    "offline": {
+      "deployments": [
+        "/",
+        "/Qcc-games-/"
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "failedAssets": 0,
+      "report": "offline/offline-results.json",
+      "log": "green/offline.log"
+    }
+  },
+  "commands": [
+    "NEON_COIL_EVIDENCE_DIR=docs/evidence/neon-coil/review-r2/sol61/red/rotation npx playwright test tests/games/neon-coil/play.spec.ts --project=chromium --workers=1 --grep 'ranking 568x320|ranking 667x375' --output=docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright --reporter=list",
+    "NEON_COIL_EVIDENCE_DIR=docs/evidence/neon-coil/review-r2/sol61/green/rotation npx playwright test tests/games/neon-coil/play.spec.ts --project=chromium --workers=1 --grep 'short landscape bounds|short narrow viewport' --output=docs/evidence/neon-coil/review-r2/sol61/green/rotation-playwright --reporter=list",
+    "NEON_COIL_EVIDENCE_DIR=docs/evidence/neon-coil/review-r2/sol61/green/full npx playwright test tests/games/neon-coil/play.spec.ts --project=chromium --workers=1 --timeout=60000 --output=docs/evidence/neon-coil/review-r2/sol61/green/full-playwright --reporter=list",
+    "npm run check",
+    "npm test -- --reporter=dot",
+    "npm run build",
+    "ARCADE_GAMES=neon-coil ARCADE_EVIDENCE_DIR=docs/evidence/neon-coil/review-r2/sol61/offline npm run verify:offline"
+  ],
+  "assertions": [
+    "Rotate open320x568 intro to568x320; also667x375 and retained844x390/740x360",
+    "Full card and Enter clear footer; Enter height>=44px; no Enter/footer intersections;9 sampled Enter hit-tests all reach Enter",
+    "ActualYOU row visible and clear of toolbar/Boost; no document scrolling; retained320x568 fit"
+  ],
+  "limitations": [
+    "Chromium-generated mouse/touch; no physical hardware claim",
+    "WebKit absent; no download retry or bypass attempted",
+    "Reference PDF/video not opened; prior Library helper limitation unchanged",
+    "Unchanged renderer benchmark was not repeated",
+    "Uncommitted and frozen for coordinator checkpoint commit and same-seat Astra re-review; no external/public action"
+  ]
+}

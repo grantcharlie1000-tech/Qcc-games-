@@ -45,12 +45,12 @@ Run the browser suite with `npx playwright test tests/games/neon-coil/play.spec.
 
 ## Remaining review and unavailable checks
 
-- **Astra audit is pending parent slot allocation.** No Astra agent has started. The repository asks for independent review of substantial changes; the task explicitly requires waiting for the parent's allocated slot. Code and evidence are ready to review.
+- At the initial `cc08465` checkpoint, **Astra audit was pending parent slot allocation** and no Astra agent had started. The subsequently allocated audit/re-review sequence is preserved below.
 - **WebKit was not executed.** The installed browser executable is absent at `/tmp/neon-coil-browsers/webkit-2370/pw_run.sh`. The normal Playwright `install ffmpeg webkit` setup stopped while downloading ffmpeg with HTTP **403**, body **`Domain forbidden`**, beginning at `https://cdn.playwright.dev/dbazure/download/playwright/builds/ffmpeg/1013/ffmpeg-linux.zip`. The installer failed before WebKit installation. No manual alternate-network or direct-curl workaround was attempted. System Chromium and system ffmpeg completed the authorized local checks and recording.
 - **Reference PDF/video were not opened here.** The required Library transfer-helper resource returned **`skill package is not available`**. The parent-supplied safely inspected brief/manifest was used. No ZIP was executed; no ZIP HTTP 403 response occurred in this environment.
 - Mouse and multi-touch inputs are browser-generated. Physical trackpad/mobile hardware testing is not claimed.
 
-## Review R1 — Sol 6.1 fixes awaiting exact-checkpoint Astra re-review
+## Review R1 — Sol 6.1 fixes and independent re-review
 
 Astra reviewed `cc08465d3cf015ca842f8de80d9c92e6f77f953e` and found no Critical issues, with two Important findings: Boost-first touch ordering could not steer, and short landscape layouts obscured the YOU row/clipped the intro. Its complete initial report and independent reproduction/model/browser evidence are preserved in `docs/evidence/neon-coil/review-r1/astra-initial/`.
 
@@ -66,4 +66,14 @@ Final Sol 6.1 checks on the fixed source passed:
 
 Authoritative outputs are `review-r1/sol61/green/{final14,typescript-final14,unit-final14,build-final14,offline-final14}.log`, screenshots in `green/final14/`, and offline evidence in `offline/final14/`. New runs use the optional `NEON_COIL_EVIDENCE_DIR` variable so the frozen original evidence is preserved.
 
-No new performance benchmark is claimed for the UI-only correction. Original default-Canvas and slower forced-SwiftShader results remain above and in their original JSON. Reference PDF/video, WebKit, physical trackpad/hardware limitations remain open. Exact-checkpoint Astra re-review is the remaining local review step; no publication is authorized.
+No new performance benchmark is claimed for the UI-only correction. Original default-Canvas and slower forced-SwiftShader results remain above and in their original JSON. Reference PDF/video, WebKit, physical trackpad/hardware limitations remain open. The following re-review outcome and correction preserve the full local review sequence; no publication is authorized.
+
+## Review R2 — narrow-landscape residual
+
+Astra independently re-reviewed `62f995e0e3d8f041815487f61340f8f76802f26b`. The touch finding and the reported 844×390, 740×360 and 320×568 layouts were corrected. Independent TypeScript, 288 unit tests, and all 14 Chromium cases passed. It nevertheless reproduced an Important residual: rotating 320×568 to 568×320 clipped the intro and overlapped Enter with Restart/Favourite; hit-testing a point inside Enter returned Restart. That negative verdict, measurements, screenshot, full browser report and probes are retained in `review-r2/astra-rereview/`.
+
+Sol 6.1 removed the desktop-width cutoff from the short-landscape layout, tightened the card grid, and kept the actual YOU row clear of the footer. The original CSS produced **two expected failures** at 568×320 and 667×375. Targeted final checks then passed, including rotation of an already-open intro, full-card bounds, Enter/footer intersections and nine Enter hit-test points.
+
+Final fixed-source verification passed **16 Chromium cases**, strict TypeScript, **288 unit/core tests across 25 files**, build, and sequential root/subpath offline checks. Final offline pack is `0c14d99f6084` with 72 files and zero external requests, page errors or failed assets. Tested-source hashes and exact commands are in `review-r2/sol61/verification-results.json`; failed and passing artifacts remain separately under `red/`, `green/` and `offline/`.
+
+This correction changes only arena CSS and its browser tests. Input handling, simulation, renderer, existing games/study and original evidence are unchanged. No new renderer benchmark or physical-device/WebKit/reference-media verification is claimed. The final exact-checkpoint Astra re-review remains pending; publication is still unauthorized.

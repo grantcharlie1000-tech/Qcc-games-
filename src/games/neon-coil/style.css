@@ -36,17 +36,19 @@ body.in-game .game-view[data-game-id=neon-coil] #game-menu{bottom:max(20px,env(s
 @media(max-width:700px) and (max-height:600px){.nc-bottom{left:25%;bottom:14px}.nc-ranking{width:145px;top:80px}.nc-card{width:min(370px,100%)}.nc-guide{display:none}}
 
 /* Keep the full intro and actual player rank above the host footer in landscape. */
-@media(min-width:701px) and (max-height:600px){
+@media(max-height:600px) and (orientation:landscape){
   .nc-overlay{padding:66px 24px 78px}
-  .nc-card{width:min(580px,100%);padding:16px 24px;display:grid;grid-template-columns:1fr 1fr;gap:8px 24px}
+  .nc-card{width:min(580px,100%);padding:12px 18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 18px}
   .nc-eyebrow{display:none}
   .nc-card h2{grid-column:1;grid-row:1;font-size:28px}
   .nc-card h2 span{font-size:21px;margin:5px 0 0}
   .nc-copy{grid-column:1;grid-row:2;font-size:11px;line-height:1.6;margin:0}
   .nc-guide,.nc-result{grid-column:2;grid-row:1;align-self:center;margin:0;font-size:11px;gap:6px}
+  .nc-guide:not([hidden]){display:grid}
   .nc-guide b{margin-right:7px}
   .nc-start{grid-column:2;grid-row:2;align-self:center;min-height:44px}
   .nc-footnote{grid-column:1 / -1;margin:0;font-size:9px;line-height:1.5}
+  .nc-ranking{top:72px}
   .nc-ranking:has(~.nc-overlay:not([hidden])){visibility:hidden}
 }
 

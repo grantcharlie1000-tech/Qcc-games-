@@ -186,17 +186,33 @@ for (const order of ['steering-first', 'boost-first', 'reacquire'] as const) {
     } finally { await context.close(); }
   });
 }
-for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }]) {
+for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { width: 568, height: 320 }, { width: 667, height: 375 }]) {
   test(`short landscape bounds and unobscured player ranking ${size.width}x${size.height}`, async ({ page }) => {
-    await page.setViewportSize(size); await open(page);
+    // Reproduce rotating the supported small portrait phone while the intro is open.
+    await page.setViewportSize(size.width === 568 ? { width: 320, height: 568 } : size); await open(page);
+    if (size.width === 568) await page.setViewportSize(size);
     const bounds = async (selector: string) => (await page.locator(selector).boundingBox())!;
     const card = await bounds('.nc-card'), enter = await bounds('.nc-start');
     const footer = await bounds('#restart-game');
     await page.screenshot({ path: `${evidence}/intro-${size.width}.png` });
+    expect.soft(card.x).toBeGreaterThanOrEqual(0);
+    expect.soft(card.x + card.width).toBeLessThanOrEqual(size.width);
     expect.soft(card.y).toBeGreaterThanOrEqual(62);
     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+    for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu']) {
+      const control = await bounds(selector);
+      const overlap = enter.x < control.x + control.width && enter.x + enter.width > control.x && enter.y < control.y + control.height && enter.y + enter.height > control.y;
+      expect.soft(overlap, `Enter overlaps ${selector}`).toBe(false);
+    }
+    // Cover the whole actionable button, including its bottom-right area where Restart covered it.
+    const hits = await page.locator('.nc-start').evaluate(button => {
+      const b = button.getBoundingClientRect();
+      return [.1, .5, .9].flatMap(x => [.1, .5, .9].map(y => button.contains(document.elementFromPoint(b.x + b.width * x, b.y + b.height * y))));
+    });
+    expect.soft(hits, 'Every sampled Enter point reaches Enter').toEqual(Array(9).fill(true));
+    expect.soft(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight])).toEqual([size.width, size.height]);
     await page.locator('.nc-start').click(); await page.clock.runFor(150);
     await expect(page.locator('.nc-you')).toBeVisible();
     const you = await bounds('.nc-you');
