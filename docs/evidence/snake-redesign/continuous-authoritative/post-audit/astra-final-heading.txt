@@ -1,6 +1,0 @@
-{
-  "sha": "03d4a1c4c800bf803999d4859431e98d1c2982ce",
-  "assertions": 291,
-  "rotations": 4,
-  "result": "PASS: queued reverse legacy rejected; rejected start immutable; safe retry/Continue/priority/terminal/v2 preserved; active-leg queue semantics unchanged"
-}

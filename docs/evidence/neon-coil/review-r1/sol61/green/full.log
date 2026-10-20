@@ -1,0 +1,25 @@
+
+Running 13 tests using 1 worker
+
+(node:13916) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/games/neon-coil/play.spec.ts:11:1 › pointer movement without click, earned growth, Space boost, P pause, keyboard and restart (17.6s)
+  ✓   2 [chromium] › tests/games/neon-coil/play.spec.ts:37:1 › rim death creates real food, exposes death reason, and replay has one loop (10.0s)
+  ✓   3 [chromium] › tests/games/neon-coil/play.spec.ts:54:1 › real hover steering into a local bot body causes death and collectible pellets (3.5s)
+  ✓   4 [chromium] › tests/games/neon-coil/play.spec.ts:66:1 › Escape preserves host study, saves exactly, and saved continuation waits for user (6.1s)
+  ✓   5 [chromium] › tests/games/neon-coil/play.spec.ts:79:1 › resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths (9.5s)
+  ✓   6 [chromium] › tests/games/neon-coil/play.spec.ts:98:1 › touch drag and a second finger on the boost control steer without scrolling (2.8s)
+  ✓   7 [chromium] › tests/games/neon-coil/play.spec.ts:118:1 › focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely (14.1s)
+  ✓   8 [chromium] › tests/games/neon-coil/play.spec.ts:141:1 › the library retains original grid Snake and opens Neon Coil separately (2.6s)
+  ✓   9 [chromium] › tests/games/neon-coil/play.spec.ts:157:3 › native touch ownership: steering-first (2.4s)
+  ✓  10 [chromium] › tests/games/neon-coil/play.spec.ts:157:3 › native touch ownership: boost-first (2.2s)
+  ✓  11 [chromium] › tests/games/neon-coil/play.spec.ts:157:3 › native touch ownership: reacquire (2.4s)
+  ✓  12 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 844x390 (1.2s)
+  ✓  13 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 740x360 (1.3s)
+
+  13 passed (1.3m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -1,0 +1,50 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ✓ tests/games/color-blocks/fair-deal.test.ts (8 tests) 670ms
+   ✓ fair three-piece deals > has a complete independently verified hand across reproducible sparse and dense boards  344ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 1004ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  662ms
+   ✓ Flappy Bird original reed flight > a simple timed pilot clears 100 seeded gates using the real simulation  319ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 460ms
+ ✓ tests/core/offline-updates.test.ts (10 tests) 455ms
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 398ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 354ms
+   ✓ long seeded runs > keeps valid saves and deterministic future deals across many tray boundaries  337ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 2557ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  656ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  1622ms
+ ✓ tests/core/offline-worker.test.ts (31 tests) 247ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 175ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 318ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 157ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 99ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 108ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 72ms
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 76ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 37ms
+ ✓ tests/core/study.test.ts (5 tests) 10ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 37ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 14ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 24ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 29ms
+ ✓ tests/core/update.test.ts (4 tests) 16ms
+ ✓ tests/core/storage.test.ts (7 tests) 8ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 5ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 5ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 3ms
+
+ Test Files  26 passed (26)
+      Tests  318 passed (318)
+   Start at  05:38:30
+   Duration  5.53s (transform 1.23s, setup 0ms, collect 1.95s, tests 7.34s, environment 5ms, prepare 2.16s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

@@ -1,9 +1,0 @@
-{
-  "sourceCommit": "c4156180c1f590212cbeb47f25245dbfe78605c5",
-  "fractionalStart": true,
-  "oracle": "Independent polyline advection/tail trimming and axis-aligned signed distances, dense sweep plus bisection; food disabled to isolate solids",
-  "fixtures": 2790,
-  "contacts": 70,
-  "maxContactDistanceDelta": 2.8095581416920368e-14,
-  "failures": []
-}

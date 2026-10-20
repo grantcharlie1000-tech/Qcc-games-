@@ -1,0 +1,21 @@
+{
+  "reviewed_head": "06929e0ce8775a0ba2df51da3e77c42bcd4c3180",
+  "scratch": "/tmp/neon-coil-r4-astra-33m2evq4",
+  "status_porcelain": "",
+  "rereview_changed_paths": [
+    "tests/games/neon-coil/play.spec.ts"
+  ],
+  "copied_file_sha256": {
+    "tests/fixtures.ts": "01a070bc5eb12d183648b0f1b4c44089858e7c391fada38fe89fd9f0e7b24537",
+    "tests/games/neon-coil/play.spec.ts": "a5a5ef443b9d9859ab4ca2ae57b7fc708f3a83e3e9781d3ad16881d51a3c4f87",
+    "playwright.config.ts": "05185d3d7a0aa2366aeb03b44ad5276c213ca88a573145827e6bb9aa33dca754",
+    "package.json": "528ebad868868c951b97a5d8ecab7fbdd4021d0abd57e274f1da4f6a6e3d5874"
+  },
+  "runtime_sha256": "9c486637cf124d09b922113bb0ac201ed667827bfdf8099ee6ec005144ce4f44",
+  "first_flow_original_sequence_unchanged": true,
+  "explicit_expect_timeout_ms": 7000,
+  "explicit_action_timeout_ms": 30000,
+  "explicit_navigation_timeout_ms": 30000,
+  "outer_first_test_timeout_ms": 60000,
+  "all_other_test_bodies_unchanged_from_b1fc": true
+}

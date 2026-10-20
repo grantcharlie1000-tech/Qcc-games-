@@ -1,0 +1,167 @@
+{
+  "baseHead": "1e08484b890bb2d60ced32989bfc139d075acc44",
+  "changedSourceSha256": {
+    "src/games/neon-coil/index.ts": "9c486637cf124d09b922113bb0ac201ed667827bfdf8099ee6ec005144ce4f44",
+    "tests/games/neon-coil/play.spec.ts": "2dcdc5d559d80162c0c0ea4a369a2f70d993c2369ea8858c09c2d126966520c0"
+  },
+  "diagnosis": {
+    "confirmed": "Canvas/renderer dimensions updated in resize(), but ranking was refreshed only by the running-loop 100ms-throttled update. Ready/paused/dead could retain the old ranking indefinitely; running could expose the new canvas before the next permitted HUD update.",
+    "fiveRowsStillCorrect": "The unchanged rule uses viewport width<600 OR height<600. Both390x844 and844x390 require5;1280x720 requires10.",
+    "ciInference": "Confirmed local synchronization defect is consistent with hosted WebKit expected5/got10 failure. Exact hosted timing is unverified because the trace/screenshot transfer remains unavailable.",
+    "fix": "Resize bypasses HUD throttling and calls non-forced update immediately after renderer.resize, retaining existing phase guards and avoiding repeated death announcements."
+  },
+  "red": {
+    "initial": "red/reporter.log: ready reproduced ranking defect; paused/dead/running failed with ERR_CONNECTION_REFUSED and are environment failures, not valid ranking red cases.",
+    "authoritative": {
+      "log": "red/snapshots.log",
+      "failed": 4,
+      "reason": "Each lifecycle reproduced expected5/got10 at390x844 and844x390, after canvas dimensions were ready. Stopped phases remained stale after300ms.",
+      "recovery": "Subsequent Playwright invocation used its configured Vite webServer; no manual or concurrent duplicate server launched. Initial server disappearance cause not established."
+    }
+  },
+  "green": {
+    "targeted": {
+      "passed": 5,
+      "log": "green/targeted.log"
+    },
+    "completeArenaChromium": {
+      "passed": 20,
+      "log": "green/full.log",
+      "runsAgainstSettledSource": 1
+    },
+    "strictTypeScript": "green/typescript.log",
+    "unitTests": {
+      "passed": 288,
+      "files": 25,
+      "log": "green/unit.log"
+    },
+    "productionBuild": {
+      "version": "24046d9a038d",
+      "offlineFiles": 72,
+      "log": "green/build.log"
+    },
+    "offline": "Not rerun: HUD synchronization only; no new offline concern. Prior offline evidence preserved; no new offline verification claimed."
+  },
+  "snapshotValidation": {
+    "completeBeforeResizeAfterWorldsIdentical": true,
+    "greenWorldsMatchRed": true,
+    "pageErrors": 0,
+    "announcerMutations": 0,
+    "bestScoreStorageUnchanged": true,
+    "canonicalWorldSha256": {
+      "red/snapshots": {
+        "ready": "774c9a73e751644ddee1ce0d50583b66a66c37c4453c966caa1bf03c60e5fd18",
+        "paused": "5465f53ead9a790839795575a8f62b0081b6b2709cb0762b6732924af39a9a8b",
+        "dead": "c1230844a27e954d92e4be5ca6d674e1cbdd7710096865e7eecf9185ca67b6f0",
+        "running": "bf3151965beae4a00b6b40b875b7bfcc0ef2e5ae0eceb5e4f5dbd1814340b9cf"
+      },
+      "green/targeted": {
+        "ready": "774c9a73e751644ddee1ce0d50583b66a66c37c4453c966caa1bf03c60e5fd18",
+        "paused": "5465f53ead9a790839795575a8f62b0081b6b2709cb0762b6732924af39a9a8b",
+        "dead": "c1230844a27e954d92e4be5ca6d674e1cbdd7710096865e7eecf9185ca67b6f0",
+        "running": "bf3151965beae4a00b6b40b875b7bfcc0ef2e5ae0eceb5e4f5dbd1814340b9cf"
+      },
+      "green/full": {
+        "ready": "774c9a73e751644ddee1ce0d50583b66a66c37c4453c966caa1bf03c60e5fd18",
+        "paused": "5465f53ead9a790839795575a8f62b0081b6b2709cb0762b6732924af39a9a8b",
+        "dead": "c1230844a27e954d92e4be5ca6d674e1cbdd7710096865e7eecf9185ca67b6f0",
+        "running": "bf3151965beae4a00b6b40b875b7bfcc0ef2e5ae0eceb5e4f5dbd1814340b9cf"
+      }
+    }
+  },
+  "commands": [
+    "NEON_COIL_EVIDENCE_DIR=docs/evidence/neon-coil/review-r3/sol61/red/snapshots npx playwright test tests/games/neon-coil/play.spec.ts --project=chromium --workers=1 --timeout=60000 --grep 'resize synchronizes ranking' --output=docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright --reporter=list",
+    "NEON_COIL_EVIDENCE_DIR=docs/evidence/neon-coil/review-r3/sol61/green/targeted npx playwright test tests/games/neon-coil/play.spec.ts --project=chromium --workers=1 --timeout=60000 --grep 'resize synchronizes ranking|resize, high DPI' --output=docs/evidence/neon-coil/review-r3/sol61/green/targeted-playwright --reporter=list",
+    "NEON_COIL_EVIDENCE_DIR=docs/evidence/neon-coil/review-r3/sol61/green/full npx playwright test tests/games/neon-coil/play.spec.ts --project=chromium --workers=1 --timeout=60000 --output=docs/evidence/neon-coil/review-r3/sol61/green/full-playwright --reporter=list",
+    "npm run check",
+    "npm test -- --reporter=dot",
+    "npm run build",
+    "git diff --check"
+  ],
+  "limits": [
+    "Local WebKit executable absent; availability read only, no launch/install/download retry or bypass",
+    "Hosted CI artifact transfer denied previously; not retried; hosted CI not rerun",
+    "Chromium-generated input only; no physical hardware verification",
+    "No model/renderer/style/gameplay-input/other-game/study edits",
+    "No commit/push/PR/CI/deployment/hosting/workflow/settings/external writes; no new automatic preview triggered",
+    "Source frozen for coordinator inspection and parent-allocated Astra review; no review agent started"
+  ],
+  "files": {
+    "green/build.log": "eac0f92b03c62500c3db978a71cd31a0dc61fea5e100f77b2db7c8c0b7d0af65",
+    "green/full/body-collision-browser.png": "f557e10e918c928904e82f40526ac725b3c6727d24dd9abde65e947eec45bb54",
+    "green/full/death-browser.png": "7a1c2ed5e2fa7b2d61adc4c3338043206e4d1f1ebd5fcdce3e45379cd38a3b3d",
+    "green/full/intro-320.png": "28aa68cc891ebf39596cd93c0f8175eaa9e7364a917913ca80317c61fa07d41f",
+    "green/full/intro-568.png": "9ec209fafc4aa4700d8cd847adb30da97688cbe129ffde331827febbe93cf699",
+    "green/full/intro-667.png": "decc0f2cebe4d079048831d260aae2786a15da5cf11c9f18bec0c87da6f97963",
+    "green/full/intro-740.png": "f59db032a47ecdc1f7b1caf842885ebedae7bfbe4b969d52966647ee45211e7a",
+    "green/full/intro-844.png": "be7b14620aa1f854ca965561d34f6854548b4c10f74d9552d57dde57ded2f4a3",
+    "green/full/resize-dead.json": "f0625042257e58db33a44d4bf4da0f07e3b40843a3b8566eaccafab8328ec435",
+    "green/full/resize-dead.png": "26d21fbc51e5543f8c1d5985ea3ccf3b3cf10fd66213ad85452f69ce477964f2",
+    "green/full/resize-paused.json": "9da74f0e607f633f43e2b78b1131fcb0bb119aeb0085893133cdd8076b2c7bdb",
+    "green/full/resize-paused.png": "8a6e90db57d736426b91f1760a116c40a8b6eacf5b635f96a1d5dfe948f53b7d",
+    "green/full/resize-ready.json": "06c7486e063a5c120aea08fd8cc612780e4e4a4aceccda2827baf9fdcab72581",
+    "green/full/resize-ready.png": "480adc80a7725a27f06408d0b691c97dd6d5f81943b218d6348e739ad8a98e9c",
+    "green/full/resize-running.json": "55530febf68b8334759817623cca9906c9fd40560b86050fee8037ee387313a8",
+    "green/full/resize-running.png": "1c28d9dcf45c4215a53b6a1d15560153ea21a6a895ab125decdcd5fd22164312",
+    "green/full/running-568.png": "c5551a9e5b7db5a0994507e32856300b01c068f98360663ca9c82d35ffdeb3ed",
+    "green/full/running-667.png": "9f5b25a349a0188a2006bb588be954ee2f7a58736166505cc29d4d7575d38481",
+    "green/full/running-740.png": "aa87bd0ba8f52be972fa0e615d1c0e29038f6491cd5ff0ee588d6f0ae0959c70",
+    "green/full/running-844.png": "78e3a4f5a6e46b13aecbf84a946d481a22ead1430b5683119b67a4de1aaadad0",
+    "green/full/touch-390.png": "72668646caf7cae1b80d404ca11b5d678b0e142c2a326e3b12f56e0df286de9f",
+    "green/full/touch-boost-first.png": "04ea679a8b9694d4efe571f4d25ee3287fd867080771a2fa47c5ab9f106325a8",
+    "green/full/touch-reacquire.png": "04ea679a8b9694d4efe571f4d25ee3287fd867080771a2fa47c5ab9f106325a8",
+    "green/full/touch-steering-first.png": "04ea679a8b9694d4efe571f4d25ee3287fd867080771a2fa47c5ab9f106325a8",
+    "green/full-playwright/.last-run.json": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+    "green/full.log": "3fb5745097ba05640ae0b9a7e9e53317ac56821889dd62adbadba0a530ea503d",
+    "green/targeted/resize-dead.json": "f0625042257e58db33a44d4bf4da0f07e3b40843a3b8566eaccafab8328ec435",
+    "green/targeted/resize-dead.png": "26d21fbc51e5543f8c1d5985ea3ccf3b3cf10fd66213ad85452f69ce477964f2",
+    "green/targeted/resize-paused.json": "9da74f0e607f633f43e2b78b1131fcb0bb119aeb0085893133cdd8076b2c7bdb",
+    "green/targeted/resize-paused.png": "7c9a9e37ae42d93a550517faccd5ab429cefdea1effd1b06ada59f0f1864ac6c",
+    "green/targeted/resize-ready.json": "06c7486e063a5c120aea08fd8cc612780e4e4a4aceccda2827baf9fdcab72581",
+    "green/targeted/resize-ready.png": "be7b14620aa1f854ca965561d34f6854548b4c10f74d9552d57dde57ded2f4a3",
+    "green/targeted/resize-running.json": "55530febf68b8334759817623cca9906c9fd40560b86050fee8037ee387313a8",
+    "green/targeted/resize-running.png": "1c28d9dcf45c4215a53b6a1d15560153ea21a6a895ab125decdcd5fd22164312",
+    "green/targeted-playwright/.last-run.json": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+    "green/targeted.log": "2d322c03c08f9203b02b34bc3746e49c8a4d2f2d095948970069e193841368a4",
+    "green/typescript.log": "c359783c07fdd6d3337edee0cd03ca5bfd332bd1cc9e746f6d442a71fc896327",
+    "green/unit.log": "3ba91f9b4baa22456ca08f7fcde8ba711497a1e9da4637e8bde959483b237775",
+    "red/playwright/.last-run.json": "2432da161f8ecb06af0e67447bd26e2e82cbb47d87852bcaa6336d15979640d7",
+    "red/playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/error-context.md": "8a70f28ca008ab8814af312f85f88f3e6580dfc27ec5d478fa994ec443bf777e",
+    "red/playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/test-failed-1.png": "7040929c3858182f83a3e9d3898fc255a8aa413baa86c8ddbbb1640c2f98628a",
+    "red/playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/trace.zip": "d9b27cbefe78a042dda7b6e902b2abeeadccf740c447e5aa56a735b23db8eb93",
+    "red/playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/error-context.md": "997fecbca7d2d8c79d752acdb79de4882de61cef3a5dd03778f9a04d0d6f1589",
+    "red/playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/test-failed-1.png": "7040929c3858182f83a3e9d3898fc255a8aa413baa86c8ddbbb1640c2f98628a",
+    "red/playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/trace.zip": "4c297bf7e8f9fead9a526f521cb2a7ecbe335ec15b3a4b36bd85efd4808cda9e",
+    "red/playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/error-context.md": "e538d13fa49a98a06825cb36ab798cbeb4184c4e00265ab868ca273d9a906966",
+    "red/playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/test-failed-1.png": "7040929c3858182f83a3e9d3898fc255a8aa413baa86c8ddbbb1640c2f98628a",
+    "red/playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/trace.zip": "9a5ceba6b4ed5309d5274f4be13c219aa5f2a076580268a41b58e52fb684972b",
+    "red/playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/error-context.md": "76aed71f223e2f33a43753192361c26f81fb4d7c790ee3c2619a0c11f8e8e7c3",
+    "red/playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/test-failed-1.png": "480adc80a7725a27f06408d0b691c97dd6d5f81943b218d6348e739ad8a98e9c",
+    "red/playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/trace.zip": "cb806f0263cc2520a4615bd5b9672a0f2ac5afb01c422a79e41675855dac38bb",
+    "red/reporter.log": "4c2cfcca942e538fb40cc17f006f3bd25fbb696bc400b955c7c120830e12ff4e",
+    "red/resize-ready.png": "480adc80a7725a27f06408d0b691c97dd6d5f81943b218d6348e739ad8a98e9c",
+    "red/snapshot-playwright/.last-run.json": "2432da161f8ecb06af0e67447bd26e2e82cbb47d87852bcaa6336d15979640d7",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/error-context.md": "d1ab6bee444345de66273a6563800f407d9155771e015e47cf2c10f6d982f611",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/test-failed-1.png": "50cfcee3fd0fb6e20aaa458d50f1850d8de2c98da7b72de792354445133ce372",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/trace.zip": "744a16dcc36ca172d44884413bda40a5ce61d090e524c16507b2c5b536fe1dff",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/error-context.md": "6b35ec34647c2a4a4b5ef27e635375dad4ef596647a219f61e52fe330ae8c9ae",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/test-failed-1.png": "e3fc2b3f95ee6e839f917f0512a1c45e17062ff923ac63ae956a3f136c57b032",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/trace.zip": "2e1f2cff280eb05ebcd1e26c9a2d8b1b035baf32049130f8a0d0b9862d5b353f",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/error-context.md": "cc42488c5cdefbba757f8faa5c5ad9105cc0411a5351ee30f0e70babdf7c2387",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/test-failed-1.png": "26d21fbc51e5543f8c1d5985ea3ccf3b3cf10fd66213ad85452f69ce477964f2",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/trace.zip": "e8706deec212aa9862f7422195887792d9f2cedd9345f14368c6eb3186d4a109",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/error-context.md": "0e9751652bc19af1cb4af319bca894507f2533fe281c80ddbec3907cf0a835b4",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/test-failed-1.png": "480adc80a7725a27f06408d0b691c97dd6d5f81943b218d6348e739ad8a98e9c",
+    "red/snapshot-playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/trace.zip": "1edb0d7148eecbb5bcb138950cd06bae564f9acfce0290503222e1cecd80e6fe",
+    "red/snapshots/resize-dead.json": "f0625042257e58db33a44d4bf4da0f07e3b40843a3b8566eaccafab8328ec435",
+    "red/snapshots/resize-dead.png": "26d21fbc51e5543f8c1d5985ea3ccf3b3cf10fd66213ad85452f69ce477964f2",
+    "red/snapshots/resize-paused.json": "9da74f0e607f633f43e2b78b1131fcb0bb119aeb0085893133cdd8076b2c7bdb",
+    "red/snapshots/resize-paused.png": "c807ccc7c9db33fc2cd8563692ff3c4ffa440a9a2209f5069ac565958618e32f",
+    "red/snapshots/resize-ready.json": "06c7486e063a5c120aea08fd8cc612780e4e4a4aceccda2827baf9fdcab72581",
+    "red/snapshots/resize-ready.png": "480adc80a7725a27f06408d0b691c97dd6d5f81943b218d6348e739ad8a98e9c",
+    "red/snapshots/resize-running.json": "55530febf68b8334759817623cca9906c9fd40560b86050fee8037ee387313a8",
+    "red/snapshots/resize-running.png": "e2eedd5ba4a3e0d3735a78f4fe539ad73d9b0b8d6137dcbcc978983e2d63df79",
+    "red/snapshots.log": "17c33290fed9d655f5f4916d4f5fe583839935430fc5a43ccb3bb37149d36afd",
+    "webkit-availability.json": "347d42fb08c56af8110a557448de561a89c38f0bbd762090e96c0def44077090"
+  }
+}

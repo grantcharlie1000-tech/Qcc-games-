@@ -1,0 +1,113 @@
+{
+  "results": [
+    {
+      "label": "Enter arena",
+      "phase": "ready",
+      "card": {
+        "x": 24,
+        "y": 70.109375,
+        "width": 520,
+        "height": 167.78125,
+        "bottom": 237.890625
+      },
+      "button": {
+        "x": 293,
+        "y": 147.890625,
+        "width": 232,
+        "height": 44,
+        "bottom": 191.890625
+      },
+      "footer": {
+        "x": 350,
+        "y": 258,
+        "width": 42,
+        "height": 42,
+        "bottom": 300
+      },
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "label": "Continue arena",
+      "phase": "ready",
+      "card": {
+        "x": 24,
+        "y": 70.78125,
+        "width": 520,
+        "height": 166.421875,
+        "bottom": 237.203125
+      },
+      "button": {
+        "x": 293,
+        "y": 147.203125,
+        "width": 232,
+        "height": 44,
+        "bottom": 191.203125
+      },
+      "footer": {
+        "x": 350,
+        "y": 258,
+        "width": 42,
+        "height": 42,
+        "bottom": 300
+      },
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    {
+      "label": "Play again",
+      "phase": "dead",
+      "card": {
+        "x": 24,
+        "y": 70.78125,
+        "width": 520,
+        "height": 166.421875,
+        "bottom": 237.203125
+      },
+      "button": {
+        "x": 293,
+        "y": 147.203125,
+        "width": 232,
+        "height": 44,
+        "bottom": 191.203125
+      },
+      "footer": {
+        "x": 350,
+        "y": 258,
+        "width": 42,
+        "height": 42,
+        "bottom": 300
+      },
+      "hits": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ]
+    }
+  ],
+  "errors": []
+}

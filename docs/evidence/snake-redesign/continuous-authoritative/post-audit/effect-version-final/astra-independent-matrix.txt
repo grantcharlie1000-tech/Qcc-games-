@@ -1,7 +1,0 @@
-{
-  "sha": "ffa5e45e18764ea07681dfc2f0d44b8887d0a3e0",
-  "v2cases": 216,
-  "legacycases": 24,
-  "invalidAuthoritativeTimestampCases": 10,
-  "result": "PASS: time-zero nullable/active/expired model timestamps preserved, malformed metadata cannot override v2, legacy valid fields import once, invalid authoritative timestamps rejected"
-}

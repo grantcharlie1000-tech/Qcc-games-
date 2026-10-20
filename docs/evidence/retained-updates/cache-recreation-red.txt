@@ -1,0 +1,63 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-worker.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-worker.test.ts (21 tests | 1 failed) 175ms
+   ✓ online gameplay survives a full response cache 10ms
+   ✓ online gameplay survives completely blocked cache storage 3ms
+   ✓ installing an update never navigates documents or deletes their game caches 5ms
+   ✓ a coherent update can activate without waiting for legacy documents to close 4ms
+   ✓ an inconsistent deployment cannot activate over the retained version 4ms
+   ✓ old cached chunks remain usable after the worker process restarts 7ms
+   ✓ cleanup only deletes the captured stale set, preserving future installs and other scopes 5ms
+   ✓ a live unacknowledged legacy document prevents stale cache deletion 5ms
+   ✓ missing persisted retention metadata fails closed after a restart 6ms
+   ✓ legacy migration pins old caches even when an execution-unready navigation is absent 4ms
+   ✓ an absent current navigation retains its own generation and settles only its source ACK 6ms
+   ✓ activation imports late predecessor reservations and an old-module ACK retains its dependencies 7ms
+   ✓ an unresolved old navigation protects its generation across restart and a later update 11ms
+   ✓ navigation never emits HTML before its reservation is durably stored 26ms
+   ✓ normal multi-generation cleanup accepts legitimately absent old asset mappings 19ms
+   ✓ one evicted legacy pinned cache does not turn unrelated future generations into permanent pins 7ms
+   ✓ an update cannot activate when its manifest needs a runtime chunk outside its atomic precache 5ms
+   ✓ waiting activation accepts only its own exact build and entry 2ms
+   ✓ a ready module ACK already sent before its tab closes can settle that source reservation 5ms
+   ✓ a known ready owner omitted by enumeration remains protected via clients.get across handover 12ms
+   × a reclaimed cache name is retired before a later same-version install recreates it 19ms
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a reclaimed cache name is retired before a later same-version install recreates it
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/core/offline-worker.test.ts:165:34
+    163|  await w.emit('message',ack);expect(w.backend.has(oldShell)).toBe(fals…
+    164|  w.backend.set(oldShell,new Map([[origin+'future-install',new Response…
+    165|  expect(w.backend.has(oldShell)).toBe(true);expect(await w.backend.get…
+       |                                  ^
+    166| });
+    167| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 20 passed (21)
+   Start at  05:19:28
+   Duration  608ms (transform 78ms, setup 0ms, collect 85ms, tests 175ms, environment 0ms, prepare 99ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

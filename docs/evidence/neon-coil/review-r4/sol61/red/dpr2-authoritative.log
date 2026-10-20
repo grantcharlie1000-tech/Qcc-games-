@@ -1,0 +1,59 @@
+[WebServer] (node:2128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:2141) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:2162) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium-dpr2] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing ready arena (8.2s)
+
+
+  1) [chromium-dpr2] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing ready arena 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "h": 844,
+    -   "w": 390,
+    +   "h": 1688,
+    +   "w": 780,
+      }
+
+    Call Log:
+    - Timeout 7000ms exceeded while waiting on the predicate
+
+      264 |     for (const size of [{ width: 390, height: 844, rows: 5 }, { width: 1280, height: 720, rows: 10 }, { width: 844, height: 390, rows: 5 }]) {
+      265 |       await page.setViewportSize(size);
+    > 266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+          |                                                                                                                                                      ^
+      267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:266:150
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../tmp/neon-coil-ci-fix/red/dpr2-authoritative-output/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium-dpr2/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../tmp/neon-coil-ci-fix/red/dpr2-authoritative-output/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium-dpr2/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../tmp/neon-coil-ci-fix/red/dpr2-authoritative-output/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium-dpr2/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../tmp/neon-coil-ci-fix/red/dpr2-authoritative-output/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium-dpr2/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium-dpr2] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing ready arena 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

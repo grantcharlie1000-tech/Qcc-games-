@@ -1,0 +1,15 @@
+✔ disabled diagnostics do not access or decorate the context (7.633671ms)
+✔ native capture records failure before cleanup and retains the original assertion (22.30156ms)
+✔ end failure cannot replace an assertion or prevent context cleanup (4.610311ms)
+✔ unsupported setup leaves ordinary context cleanup intact (2.333555ms)
+✔ reported data loss is marked unusable rather than treated as complete evidence (4.001434ms)
+✔ metadata alone is not marked usable native service-worker evidence (3.462742ms)
+✔ a stalled optional browser session is bounded without changing cleanup (3.0529ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 161.633336

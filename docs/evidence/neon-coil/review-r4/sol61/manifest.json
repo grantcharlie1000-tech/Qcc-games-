@@ -1,0 +1,320 @@
+{
+  "baseIntegration": "3773b5e926b487bc9e8b6eb75dea4e3972b3b977",
+  "currentHead": "db633ac9f23c6c2f0777315b6cdb6cdd5a89491e",
+  "identities": {
+    "fullSuite": {
+      "checkpoint": "b1fc9768f834c5486993d4aa327221fd93f37fea",
+      "testSha256": "ea85e851bfa37b0b43ba5f13b4f93a6389bac2d971692350aa6d19645ff54e27",
+      "preservedSource": "/tmp/neon-coil-ci-fix/full-suite-source.play.spec.ts"
+    },
+    "cappedFocusedAndVideoRecovery": {
+      "checkpoint": "06929e0ce8775a0ba2df51da3e77c42bcd4c3180",
+      "testSha256": "a5a5ef443b9d9859ab4ca2ae57b7fc708f3a83e3e9781d3ad16881d51a3c4f87"
+    },
+    "finalCommentOnly": {
+      "checkpoint": "db633ac9f23c6c2f0777315b6cdb6cdd5a89491e",
+      "testSha256": "85a89ccf004c98817cf97691cb9e1440a791b7b22f1276a0a293304f7800a3a6"
+    }
+  },
+  "changedFile": "tests/games/neon-coil/play.spec.ts",
+  "runtime219FilesByteIdentical": true,
+  "protectedImplementationsUnchanged": true,
+  "originalFirstFlowActionsAssertionsByteIdentical": true,
+  "fixes": [
+    "Lifecycle backing-size assertion uses actual browser DPR capped at2 with Math.round; 5/10ranking checks unchanged",
+    "Only long firstflow cumulative budget60s; explicit30s auto-wait/navigation ceilings and unchanged7s retrying assertions; original simulated durations/actions/turning/growth/boost/frozen-world/pause/resume/tap/restart checks retained",
+    "New resize diagnostic files use hashes/phase/ticks/mass while exact full-world in-memory equality remains"
+  ],
+  "dpr": {
+    "confirmedInstalledSafariProfileDpr": 2,
+    "oldAssertionChromiumDpr2Red": 1,
+    "greenDpr1AllLifecycles": 4,
+    "greenDpr2AllLifecycles": 4,
+    "fractionalDpr1_25Ready": 1,
+    "cappedDpr3Ready": 1
+  },
+  "controlledTimingSeconds": {
+    "baseline": 13.024087,
+    "rate4": 13.610777,
+    "rate20": 22.420732,
+    "rate40Budget30Timeout": 31.106213,
+    "rate40Budget60Uncapped": 45.16037,
+    "rate40Budget60With30sOperationCaps": 38.750907,
+    "actualCappedFirstFlowNormalTest": 12.3
+  },
+  "interpretation": "Baseline/4x/20x do not reproduce30s timeout.40x reproduces total-budget exhaustion without an assertion failure;60s completes all original checks, including explicit operation caps. This is synthetic test-orchestration/rendering-load evidence, NOT a product responsiveness threshold, exact hosted failing await/cause, regression diagnosis, or performance improvement. Run-to-run variation prevents interpreting38.75vs45.16as product improvement.",
+  "decompositionAlternative": "Disjoint smaller tests improve attribution but must recreate the grown/curved/boosted/paused world and heading with equivalent real inputs before keyboard handoff; naive fresh keyboard tests lose cross-input lifecycle coverage. Current choice retains one coherent lifecycle and bounds auto-wait/navigation/assertion retries separately.",
+  "validation": {
+    "fullChromium": {
+      "passed": 159,
+      "environmentFailures": 17,
+      "total": 176,
+      "all20NeonAndHostAnimalStackPassed": true,
+      "failure": "All17 fail before game assertions because bundled ffmpeg executable absent"
+    },
+    "videoRecovery": {
+      "passed": 18,
+      "previouslyBlockedRecovered": 17,
+      "alreadyPassingCaseRepeatedWithinSameTwoFiles": 1,
+      "configuration": "Supported PLAYWRIGHT_BROWSERS_PATH privatecache ffmpeg-1013/ffmpeg-linux symlink to installed/usr/bin/ffmpeg; no download/globalcache changes"
+    },
+    "cappedFocusedNormal": 1,
+    "cappedFocusedRate40": 1,
+    "strictTypeScript": {
+      "fullSource": true,
+      "finalCappedCommentSource": true
+    },
+    "unitTests": {
+      "passed": 288,
+      "files": 25
+    },
+    "build": {
+      "passed": true,
+      "offlineFiles": 84,
+      "version": "1c58baf3fab5"
+    },
+    "update": {
+      "recordedAt": "2026-10-20T19:38:04.310Z",
+      "browserVersion": "154.0.8037.57",
+      "oldVersion": "1c58baf3fab5",
+      "newVersion": "1c58baf3fab5-next",
+      "oldLazyChunkRemovedFromServer": true,
+      "oldTabPlayedOffline": true,
+      "updateWaitedForBothTabsToClose": true,
+      "newVersionActivated": true,
+      "oldCachesCleaned": true,
+      "highScorePreserved": true
+    },
+    "offline": {
+      "browserVersion": "154.0.8037.57",
+      "gameCount": 14,
+      "deployments": [
+        "/",
+        "/Qcc-games-/"
+      ],
+      "gameDeploymentChecks": 28,
+      "allOfflineActionSaveRestartStudyRestoration": true,
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "failedAssets": 0,
+      "rawReport": "/tmp/neon-coil-ci-fix/green/offline/offline-results.json"
+    },
+    "uniqueChromiumCasesPassedAcrossRuns": 176
+  },
+  "preservedSetupFailures": [
+    "red/dpr2.log and red/timing-rate1.log: temporary-config webServer cwd incorrectly/tmp; ENOENT before browsertest. Corrected only private config cwd; authoritative later logs separate",
+    "green/capped-normal.log: anchored title grep selected no tests. Corrected filename+unanchored title; authoritative actualgameplay run separate",
+    "All17original missing-ffmpeg failures and prior30s failure traces remain raw outside handoff"
+  ],
+  "limits": [
+    "Local WebKit remains absent; no installer/artifact retry/access bypass",
+    "HostedCI not rerun; original hostedtrace unavailable; no claim hostedCIgreen",
+    "No product source/latency threshold change; no dedicated renderer benchmark repeated",
+    "All historical canonical evidence unchanged; fulltests/evidence writes isolated",
+    "No stable server handed off; Playwright-managed development servers and verifier-owned local servers exited. Auditor may start one own controlledserver; no further browser runs planned",
+    "No commit/push/PR/CI/deploy/settings/billing/security changes by thisagent; root owns local checkpoints/publication"
+  ],
+  "rawEvidenceRoot": "/tmp/neon-coil-ci-fix",
+  "excludedFromCompactHandoff": [
+    "combined-checkout",
+    "node_modules",
+    "raw videos/traces/screenshots",
+    "all historic full world snapshots"
+  ],
+  "commands": [
+    "NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/red/dpr2-authoritative npx playwright test --config=/tmp/neon-coil-ci-fix/dpr2.config.ts tests/games/neon-coil/play.spec.ts --grep 'resize synchronizes ranking without advancing ready' --output=/tmp/neon-coil-ci-fix/red/dpr2-authoritative-output",
+    "NEON_CPU_RATE=1 NEON_TIMING_REPORT=/tmp/neon-coil-ci-fix/red/timing-rate1-authoritative.json npx playwright test --config=/tmp/neon-coil-ci-fix/timing.config.ts --output=/tmp/neon-coil-ci-fix/red/timing-rate1-authoritative-output",
+    "NEON_CPU_RATE=4 NEON_TIMING_REPORT=/tmp/neon-coil-ci-fix/red/timing-rate4.json npx playwright test --config=/tmp/neon-coil-ci-fix/timing.config.ts --output=/tmp/neon-coil-ci-fix/red/timing-rate4-output",
+    "NEON_CPU_RATE=20 NEON_TIMING_REPORT=/tmp/neon-coil-ci-fix/red/timing-rate20.json npx playwright test --config=/tmp/neon-coil-ci-fix/timing.config.ts --output=/tmp/neon-coil-ci-fix/red/timing-rate20-output",
+    "NEON_CPU_RATE=40 NEON_TIMING_REPORT=/tmp/neon-coil-ci-fix/red/timing-rate40-budget30.json npx playwright test --config=/tmp/neon-coil-ci-fix/timing.config.ts --output=/tmp/neon-coil-ci-fix/red/timing-rate40-budget30-output",
+    "NEON_CPU_RATE=40 NEON_TIMING_BUDGET=60000 NEON_TIMING_REPORT=/tmp/neon-coil-ci-fix/green/timing-rate40-budget60.json npx playwright test --config=/tmp/neon-coil-ci-fix/timing.config.ts --output=/tmp/neon-coil-ci-fix/green/timing-rate40-budget60-output",
+    "NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/dpr1 npx playwright test --config=/tmp/neon-coil-ci-fix/dpr.config.ts tests/games/neon-coil/play.spec.ts --project=chromium-dpr1 --grep 'resize synchronizes ranking' --output=/tmp/neon-coil-ci-fix/green/dpr1-output",
+    "NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/dpr2 npx playwright test --config=/tmp/neon-coil-ci-fix/dpr.config.ts tests/games/neon-coil/play.spec.ts --project=chromium-dpr2 --grep 'resize synchronizes ranking' --output=/tmp/neon-coil-ci-fix/green/dpr2-output",
+    "NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/dpr1.25 npx playwright test --config=/tmp/neon-coil-ci-fix/dpr.config.ts tests/games/neon-coil/play.spec.ts --project=chromium-dpr1.25 --grep 'resize synchronizes ranking without advancing ready' --output=/tmp/neon-coil-ci-fix/green/dpr1.25-output",
+    "NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/dpr3 npx playwright test --config=/tmp/neon-coil-ci-fix/dpr.config.ts tests/games/neon-coil/play.spec.ts --project=chromium-dpr3 --grep 'resize synchronizes ranking without advancing ready' --output=/tmp/neon-coil-ci-fix/green/dpr3-output",
+    "NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/full-neon npx playwright test --config=/tmp/neon-coil-ci-fix/combined.config.ts --project=chromium --workers=1 --output=/tmp/neon-coil-ci-fix/green/full-output --reporter=list",
+    "npm run check",
+    "npm test -- --reporter=dot",
+    "npm run build",
+    "npm run verify:update",
+    "ARCADE_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/offline npm run verify:offline",
+    "NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/capped-normal-authoritative npx playwright test --config=/tmp/neon-coil-ci-fix/combined.config.ts tests/games/neon-coil/play.spec.ts --project=chromium --workers=1 --grep 'pointer movement without click' --output=/tmp/neon-coil-ci-fix/green/capped-normal-authoritative-output --reporter=list",
+    "NEON_CPU_RATE=40 NEON_TIMING_BUDGET=60000 NEON_TIMING_REPORT=/tmp/neon-coil-ci-fix/green/capped-rate40-budget60.json npx playwright test --config=/tmp/neon-coil-ci-fix/timing-capped.config.ts --output=/tmp/neon-coil-ci-fix/green/capped-rate40-output",
+    "PLAYWRIGHT_BROWSERS_PATH=/tmp/neon-coil-ci-fix/private-browser-cache NEON_COIL_EVIDENCE_DIR=/tmp/neon-coil-ci-fix/green/video-recovery npx playwright test --config=/tmp/neon-coil-ci-fix/combined.config.ts tests/games/ball-run/play.spec.ts tests/games/color-blocks/correction.spec.ts --project=chromium --workers=1 --output=/tmp/neon-coil-ci-fix/green/video-recovery-output --reporter=list",
+    "npm run check"
+  ],
+  "artifacts": {
+    "combined.config.ts": {
+      "bytes": 275,
+      "sha256": "4e0cd545f98991400dc794438affbd517466091616f2e8780c4d393a3a16e7b7"
+    },
+    "comment-only-proof.json": {
+      "bytes": 304,
+      "sha256": "4dfaecd3db1a0f421e21cd7597b9112801b6f0a1968c679b3c1339abb50fbabe"
+    },
+    "device-profiles.json": {
+      "bytes": 796,
+      "sha256": "58e6bc10f3c4c1bd1173e8a413970e61aa54d24483a3e21a21144d3e6850b8a7"
+    },
+    "dpr.config.ts": {
+      "bytes": 380,
+      "sha256": "576e67f346ba1374aa39447d75edba4308434c24d736dd26601bbc35bd629028"
+    },
+    "green/build.log": {
+      "bytes": 3239,
+      "sha256": "03c6f513cd3d73854b49213b0db3fde00b69ce37abe465ea7c8aa1fee2678fdc"
+    },
+    "green/capped-normal-authoritative.log": {
+      "bytes": 966,
+      "sha256": "f51dd62398be51983b3dc9535371fdd4996ac1ec9d7fe5905ba06c536c6c7c14"
+    },
+    "green/capped-normal.log": {
+      "bytes": 607,
+      "sha256": "11b7e6cf4f691e4c98f5d8d2f06b7209779452ae26d24fe9cfda40cef02db15a"
+    },
+    "green/capped-rate40-budget60.json": {
+      "bytes": 1015,
+      "sha256": "7f7dc0ce1ee61587cd60eb972f42ce25a2af280704114704ec1f9c9af26a56d9"
+    },
+    "green/capped-rate40.log": {
+      "bytes": 962,
+      "sha256": "339c15d2b3137f67401703c0899d35125c26a19a722869861721c3905d1632ae"
+    },
+    "green/dpr1.25.log": {
+      "bytes": 938,
+      "sha256": "2b48893b88d466f82e373819d0c17ad3d4e59aa45e1b766ba761abaa8c663ae9"
+    },
+    "green/dpr1.log": {
+      "bytes": 1356,
+      "sha256": "72cf17a6d0c2dc883f2ba34d4e65819b5a606ffb51100cdd28249ee638516520"
+    },
+    "green/dpr2.log": {
+      "bytes": 1356,
+      "sha256": "b5b4d87de9d1811d52b9786422dfe7dd8dc3a66e1e38c66b20249628f875fc36"
+    },
+    "green/dpr3.log": {
+      "bytes": 935,
+      "sha256": "52cbf2896794a34cf2be85f7332e24bd2a31b5fe78e0609b743f887c3aa9ee65"
+    },
+    "green/full.log": {
+      "bytes": 67853,
+      "sha256": "87e94e1bd0f6753afdf0a28d58a8a986fe276c848732ea760b34b27fcc8af48f"
+    },
+    "green/timing-rate40-budget60.json": {
+      "bytes": 1015,
+      "sha256": "caeb8809e2a29038929b2c8465bdad2129e59b57c41f6f51692ebbf48301fe8e"
+    },
+    "green/timing-rate40-budget60.log": {
+      "bytes": 945,
+      "sha256": "ca1e6750523948ffbd8a87367c582018626e5c968bcb7fd2f5ad9845c0518a39"
+    },
+    "green/typescript-capped-final.log": {
+      "bytes": 261,
+      "sha256": "c359783c07fdd6d3337edee0cd03ca5bfd332bd1cc9e746f6d442a71fc896327"
+    },
+    "green/typescript-full-source.log": {
+      "bytes": 261,
+      "sha256": "c359783c07fdd6d3337edee0cd03ca5bfd332bd1cc9e746f6d442a71fc896327"
+    },
+    "green/unit.log": {
+      "bytes": 1095,
+      "sha256": "507a2381e8da42a9d3cd8f7719ff389973d18d9e8cbb520b803dc64157b86a37"
+    },
+    "green/update.log": {
+      "bytes": 643,
+      "sha256": "7978b5ed705f2990866557ba1483c0b739a2e892273f419e5f53c69632f5d70c"
+    },
+    "green/video-recovery.log": {
+      "bytes": 3741,
+      "sha256": "cbf1ff4831e43014091806b7624b4aef0e1d817b6b7b1c46a98b72cd22123d6e"
+    },
+    "isolation-proof.json": {
+      "bytes": 377,
+      "sha256": "d4619054d98122ae998d1776fc4a10c2471c0d200b7756c4d09fdaf5ee4651cf"
+    },
+    "offline-summary.json": {
+      "bytes": 336,
+      "sha256": "260b3f4c7eec3dea69db8d0836a0fbd5dbba884584149c5647c311f38a4661a2"
+    },
+    "red/dpr2-authoritative.log": {
+      "bytes": 4108,
+      "sha256": "96ad03da932fc8acdf561aff48ff1eadf1e4f0978c1b0feb0ddb5500a16eb6a6"
+    },
+    "red/dpr2.log": {
+      "bytes": 1108,
+      "sha256": "386cc85c5fa696134ab0007ce2a4c12dc196b23f62fc8757683b9aa0f8f94edb"
+    },
+    "red/timing-rate1-authoritative.json": {
+      "bytes": 1012,
+      "sha256": "88d977241520dd7475556784ebe8612d11c2824aaa02d16149cdb437c21d0322"
+    },
+    "red/timing-rate1-authoritative.log": {
+      "bytes": 945,
+      "sha256": "10ff8286d1aab4d1e6f417ea0fac5d9d507e87f4df36f33675b9a064c7991c21"
+    },
+    "red/timing-rate1.log": {
+      "bytes": 1108,
+      "sha256": "9752cb3e724132fda83a238ad47fc608a9955e13e407b59e35f269668928ccea"
+    },
+    "red/timing-rate20.json": {
+      "bytes": 1012,
+      "sha256": "6865295cc5a5e852f7d879a0ce4c4d680a1c9fd0daa255047c84d0d9d12d4fe5"
+    },
+    "red/timing-rate20.log": {
+      "bytes": 945,
+      "sha256": "36d066bbdbaddaf4daca1c4d69369720e5accf66e934fb65b5778d00c7b8f0eb"
+    },
+    "red/timing-rate4.json": {
+      "bytes": 1017,
+      "sha256": "0b17750e2afe4c23e411ad2c3bc3c4cb5ea2f05a4ec082e9f2f75a9c9c5d70b2"
+    },
+    "red/timing-rate4.log": {
+      "bytes": 945,
+      "sha256": "1ddecb010b9196189ff548ff55c32ad7a6d40bd7e7a8fa35357bd14a82776369"
+    },
+    "red/timing-rate40-budget30.json": {
+      "bytes": 594,
+      "sha256": "feade85fe4f2135985120364b3e27719f79eacf788513ea8a0dbc56330092805"
+    },
+    "red/timing-rate40-budget30.log": {
+      "bytes": 3761,
+      "sha256": "cbf097f772dad8e3979dde867ad4e39c8c11d18e544583996b24f98a4aa1db6a"
+    },
+    "system-ffmpeg-version.txt": {
+      "bytes": 1872,
+      "sha256": "b241942a091ee91966e5b04017a34f1f2a3bcfb1cf80a195e274db03874459d9"
+    },
+    "timing-capped-source.spec.ts": {
+      "bytes": 3819,
+      "sha256": "eea4ad927d9c3deb52c87f7df452ad55bd265295c1d9afd9a8997619b9bbfa90"
+    },
+    "timing-capped.config.ts": {
+      "bytes": 390,
+      "sha256": "74a1f80e70f398ac765ebd31d1b67cee71d17ed647f4037a1a4a2542d6061505"
+    },
+    "timing.config.ts": {
+      "bytes": 376,
+      "sha256": "acf85174755c158640f9f3db1c36f63e2b19324a21c00483e348114facd5acd7"
+    },
+    "timing.spec.ts": {
+      "bytes": 3741,
+      "sha256": "5696f854d0b5f7006469f99571787ac23e6ef14d6edb23f05fe91d7165f83e67"
+    },
+    "update-results.json": {
+      "bytes": 356,
+      "sha256": "b3e64f4f82eb8b1dd14c4d0a9def8263137b991226e9ef6d075730a5a3659ee1"
+    },
+    "versions.json": {
+      "bytes": 76,
+      "sha256": "c7ce3267ef2d89551f66101935407b73cf607d5cba66efecb1dd5b299f6f28d9"
+    },
+    "world-summary-checks.json": {
+      "bytes": 4443,
+      "sha256": "978de1f17418a4d2e3106fa770e711ea855ec37bacd2b687cc217294aaeae2a0"
+    }
+  },
+  "commandWorkingDirectories": {
+    "combinedSuiteUnitCheckBuildUpdateOfflineFocusedNormalVideoRecovery": "/tmp/neon-coil-ci-fix/combined-checkout",
+    "privateDprAndCpuProfiles": "/workspace/Qcc-games-"
+  }
+}

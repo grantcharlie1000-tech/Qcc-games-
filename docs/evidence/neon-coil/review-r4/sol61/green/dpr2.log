@@ -1,0 +1,20 @@
+[WebServer] (node:3776) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:3789) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:3809) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium-dpr2] › tests/games/neon-coil/play.spec.ts:247:3 › resize synchronizes ranking without advancing ready arena (3.1s)
+  ✓  2 [chromium-dpr2] › tests/games/neon-coil/play.spec.ts:247:3 › resize synchronizes ranking without advancing paused arena (3.1s)
+  ✓  3 [chromium-dpr2] › tests/games/neon-coil/play.spec.ts:247:3 › resize synchronizes ranking without advancing dead arena (6.6s)
+  ✓  4 [chromium-dpr2] › tests/games/neon-coil/play.spec.ts:247:3 › resize synchronizes ranking without advancing running arena (1.9s)
+
+  4 passed (15.7s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

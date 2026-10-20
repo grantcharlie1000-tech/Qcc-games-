@@ -1,0 +1,23 @@
+{
+  "recordedAt": "2026-10-20T19:36:08.116Z",
+  "browser": "154.0.8037.57",
+  "kind": "extracted diagnostic helper, tiny owned two-version worker; not application reproduction",
+  "bodyVersions": [
+    "A",
+    "B"
+  ],
+  "completion": {
+    "at": "2026-10-20T19:36:08.070Z",
+    "kind": "complete",
+    "index": 0,
+    "result": {
+      "dataLossOccurred": false
+    },
+    "eventCount": 419,
+    "nativeEventCount": 391,
+    "usable": true
+  },
+  "events": 419,
+  "requestEvents": 7,
+  "bodyCompletionEvents": 2
+}

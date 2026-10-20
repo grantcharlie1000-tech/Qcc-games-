@@ -1,0 +1,43 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/storage.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/storage.test.ts (6 tests | 1 failed) 12ms
+   ✓ library contains every registered game including Flappy Bird 3ms
+   ✓ high scores cannot decrease 0ms
+   ✓ versioned progress and favourite toggle round trip 1ms
+   ✓ blocked storage allows memory play and reports retention truthfully 0ms
+   ✓ quota failures keep the newest save and best score in memory when older values remain readable 1ms
+   × durable save result distinguishes memory fallback and a later successful write 7ms
+     → expected undefined to be false // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/storage.test.ts > durable save result distinguishes memory fallback and a later successful write
+AssertionError: expected undefined to be false // Object.is equality
+
+- Expected: 
+false
+
++ Received: 
+undefined
+
+ ❯ tests/core/storage.test.ts:14:44
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  04:05:45
+   Duration  387ms (transform 98ms, setup 0ms, collect 103ms, tests 12ms, environment 0ms, prepare 80ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

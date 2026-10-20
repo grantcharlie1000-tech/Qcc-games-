@@ -1,0 +1,46 @@
+{
+  "checkpoint": "62f995e0e3d8f041815487f61340f8f76802f26b",
+  "priorCheckpoint": "cc08465d3cf015ca842f8de80d9c92e6f77f953e",
+  "typescript": "passed (observed tool stdout)",
+  "vitest": {
+    "files": 25,
+    "tests": 288,
+    "durationSeconds": 5.12,
+    "source": "observed tool stdout"
+  },
+  "browser": {
+    "startTime": "2026-10-20T11:03:54.366Z",
+    "duration": 74756.991,
+    "expected": 14,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "remainingFinding": {
+    "viewport": {
+      "width": 568,
+      "height": 320
+    },
+    "cardBottom": 351.875,
+    "enter": {
+      "x": 128,
+      "y": 243.28125,
+      "width": 312,
+      "height": 47
+    },
+    "restart": {
+      "x": 350,
+      "y": 258,
+      "width": 42,
+      "height": 42
+    },
+    "hitTest": {
+      "x": 370,
+      "y": 275,
+      "actualButton": "restart-game"
+    },
+    "screenshot": "intro-568.png"
+  },
+  "probe": "extra-probe.mjs",
+  "probeOutput": "extra-probe.json"
+}

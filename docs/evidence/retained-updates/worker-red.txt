@@ -1,0 +1,108 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-worker.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-worker.test.ts (9 tests | 5 failed) 42ms
+   ✓ online gameplay survives a full response cache 8ms
+   ✓ online gameplay survives completely blocked cache storage 2ms
+   ✓ installing an update never navigates documents or deletes their game caches 2ms
+   × a coherent update can activate without waiting for legacy documents to close 7ms
+     → expected "spy" to be called once, but got 0 times
+   × an inconsistent deployment cannot activate over the retained version 6ms
+     → promise resolved "undefined" instead of rejecting
+   × old cached chunks remain usable after the worker process restarts 6ms
+     → expected 'gone from deployment' to be 'retained old lazy chunk' // Object.is equality
+   ✓ cleanup only deletes the captured stale set, preserving future installs and other scopes 2ms
+   × a live unacknowledged legacy document prevents stale cache deletion 3ms
+     → expected false to be true // Object.is equality
+   × missing persisted retention metadata fails closed after a restart 3ms
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a coherent update can activate without waiting for legacy documents to close
+AssertionError: expected "spy" to be called once, but got 0 times
+ ❯ tests/core/offline-worker.test.ts:53:158
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > an inconsistent deployment cannot activate over the retained version
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:54:149
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > old cached chunks remain usable after the worker process restarts
+AssertionError: expected 'gone from deployment' to be 'retained old lazy chunk' // Object.is equality
+
+Expected: "retained old lazy chunk"
+Received: "gone from deployment"
+
+ ❯ tests/core/offline-worker.test.ts:55:258
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a live unacknowledged legacy document prevents stale cache deletion
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/core/offline-worker.test.ts:68:33
+     66|  w.clients.push({id:'new-page',url:origin});
+     67|  await w.emit('message',{data:{type:'ARCADE_CLIENT_READY',entry:origin…
+     68|  expect(w.backend.has(oldPack)).toBe(true);
+       |                                 ^
+     69|  await w.emit('message',{data:{type:'ARCADE_CLIENT_READY',entry:origin…
+     70|  expect(w.backend.has(oldPack)).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > missing persisted retention metadata fails closed after a restart
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/core/offline-worker.test.ts:76:33
+     74|  const restarted=worker({backend:w.backend});restarted.clients.splice(…
+     75|  await restarted.emit('message',{data:{type:'ARCADE_CLIENT_READY',entr…
+     76|  expect(w.backend.has(oldPack)).toBe(true);
+       |                                 ^
+     77| });
+     78| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 4 passed (9)
+   Start at  04:05:33
+   Duration  445ms (transform 58ms, setup 0ms, collect 62ms, tests 42ms, environment 0ms, prepare 92ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

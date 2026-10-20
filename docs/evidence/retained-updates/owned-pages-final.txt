@@ -1,0 +1,138 @@
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+LEGACY ALREADY WAITING MIGRATION PASS /
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+LEGACY ACTIVATED DURING MODERN INSTALL {"scope":"/","legacy":{"versionId":"1","registrationId":"0","scriptURL":"http://127.0.0.1:4181/sw.js","runningStatus":"running","status":"activated","scriptLastModified":0,"scriptResponseTime":1792478466.686313,"controlledClients":[],"targetId":"EB93C7561B37D7978FE35069CD127795"},"successor":{"versionId":"2","registrationId":"0","scriptURL":"http://127.0.0.1:4181/sw.js","runningStatus":"running","status":"installing","scriptLastModified":0,"scriptResponseTime":1792478469.006602,"controlledClients":[],"targetId":"05D403B44FF63091DC5E6F99FB3A6520"},"caches":["pocket-arcade:/:1f2bcac8fa53-L:shell","pocket-arcade-v2:/:7d27d2663c4f-B:shell"]}
+LEGACY TRANSITION MIGRATION PASS /
+SEED LEGACY /
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":false},{"url":"http://127.0.0.1:4181/","primary":true,"client":{"id":"107f9edb-37f0-4195-85b1-f8d6158bd837","url":"http://127.0.0.1:4181/"}}],"closedUnusedBlankPages":1}
+DEPLOY FIXED B /
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+RETAINED B PAGE INVENTORY [{"client":{"id":"468bd679-4074-4664-8ec9-837aae1062b9","url":"http://127.0.0.1:4181/"},"marker":"retained-extra-B-0"}]
+DEPLOY C WITH MODERN NAVIGATION PENDING /
+DELAYED NAVIGATION OBSERVED {"state":{"active":"activated","waiting":true,"installing":false},"discoveryDeferred":false}
+DELAYED BOOTSTRAP VERIFIED {"scope":"http://127.0.0.1:4181/","requestedEntry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js","entryHits":[{"cache":"pocket-arcade:/:1f2bcac8fa53-A:shell"},{"cache":"pocket-arcade:/:1f2bcac8fa53-A:pack"},{"cache":"pocket-arcade-v2:/:7d27d2663c4f-B:shell","status":200},{"cache":"pocket-arcade-v2:/:7d27d2663c4f-B:pack","status":200},{"cache":"pocket-arcade-v2:/:7d27d2663c4f-C:shell"},{"cache":"pocket-arcade-v2:/:7d27d2663c4f-C:pack"}],"controllerTimeline":[{"label":"document-start","time":372.5999999977648,"script":"http://127.0.0.1:4181/sw.js","state":"activated"},{"label":"controllerchange","time":382,"script":"http://127.0.0.1:4181/sw.js","state":"activating","build":{"version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js","cacheNamespace":2,"cacheRetirement":1}}],"controller":{"state":"activated","version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js","cacheNamespace":2,"cacheRetirement":1},"active":{"state":"activated","version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js","cacheNamespace":2,"cacheRetirement":1},"waiting":null,"installing":null,"activeEvents":{"state":"activated","pending":{},"done":[{"name":"install"},{"name":"handled","url":"http://127.0.0.1:4181/manifest.webmanifest"},{"name":"handled","url":"http://127.0.0.1:4181/assets/index-Cq-D2tST.css"},{"name":"ready-source","id":"ad6d0843-3859-48d7-a48f-4316def6d7f1","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"56858162-e56c-407e-9bf9-7d8aedac11d4","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"468bd679-4074-4664-8ec9-837aae1062b9","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"handled","url":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"6913a82d-db1e-427d-ae8d-a8d22cb04605","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"6913a82d-db1e-427d-ae8d-a8d22cb04605","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"handled","url":"http://127.0.0.1:4181/assets/arcade-bold-DWEPn4H6.ttf"},{"name":"ready-source","id":"6913a82d-db1e-427d-ae8d-a8d22cb04605","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"6913a82d-db1e-427d-ae8d-a8d22cb04605","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"56858162-e56c-407e-9bf9-7d8aedac11d4","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"56858162-e56c-407e-9bf9-7d8aedac11d4","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"56858162-e56c-407e-9bf9-7d8aedac11d4","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"activate"},{"name":"ready-source","id":"56858162-e56c-407e-9bf9-7d8aedac11d4","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"468bd679-4074-4664-8ec9-837aae1062b9","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"ad6d0843-3859-48d7-a48f-4316def6d7f1","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"}],"skipCalls":1,"skipDone":1},"waitingEvents":null,"states":{"pocket-arcade-v2:/:7d27d2663c4f-B:shell":{"version":"7d27d2663c4f-B","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js","stale":[],"pinned":["pocket-arcade:/:1f2bcac8fa53-A:shell","pocket-arcade:/:1f2bcac8fa53-A:pack"],"previous":{"version":"1f2bcac8fa53-A","shell":"pocket-arcade:/:1f2bcac8fa53-A:shell","pack":"pocket-arcade:/:1f2bcac8fa53-A:pack"},"unknownPrevious":false,"legacy":[],"current":["ad6d0843-3859-48d7-a48f-4316def6d7f1","56858162-e56c-407e-9bf9-7d8aedac11d4","468bd679-4074-4664-8ec9-837aae1062b9"],"pending":[{"id":"6913a82d-db1e-427d-ae8d-a8d22cb04605","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"}],"early":[],"owners":[{"id":"ad6d0843-3859-48d7-a48f-4316def6d7f1","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"id":"56858162-e56c-407e-9bf9-7d8aedac11d4","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"id":"468bd679-4074-4664-8ec9-837aae1062b9","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"}],"assets":[{"entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js","keys":["pocket-arcade-v2:/:7d27d2663c4f-B:shell","pocket-arcade-v2:/:7d27d2663c4f-B:pack"]}]},"pocket-arcade-v2:/:7d27d2663c4f-C:shell":{"version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js","stale":["pocket-arcade-v2:/:7d27d2663c4f-B:shell","pocket-arcade-v2:/:7d27d2663c4f-B:pack"],"pinned":["pocket-arcade:/:1f2bcac8fa53-A:shell","pocket-arcade:/:1f2bcac8fa53-A:pack"],"previous":{"version":"7d27d2663c4f-B","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js","shell":"pocket-arcade-v2:/:7d27d2663c4f-B:shell","pack":"pocket-arcade-v2:/:7d27d2663c4f-B:pack"},"unknownPrevious":false,"legacy":["6913a82d-db1e-427d-ae8d-a8d22cb04605","56858162-e56c-407e-9bf9-7d8aedac11d4","468bd679-4074-4664-8ec9-837aae1062b9","ad6d0843-3859-48d7-a48f-4316def6d7f1"],"current":[],"pending":[],"early":[],"owners":[{"id":"6913a82d-db1e-427d-ae8d-a8d22cb04605","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"id":"56858162-e56c-407e-9bf9-7d8aedac11d4","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"id":"468bd679-4074-4664-8ec9-837aae1062b9","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"},{"id":"ad6d0843-3859-48d7-a48f-4316def6d7f1","entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"}],"assets":[{"entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js","keys":["pocket-arcade-v2:/:7d27d2663c4f-C:shell","pocket-arcade-v2:/:7d27d2663c4f-C:pack"]},{"entry":"http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js","keys":["pocket-arcade-v2:/:7d27d2663c4f-B:shell","pocket-arcade-v2:/:7d27d2663c4f-B:pack"]}]}}}
+OFFLINE MODERN RETENTION /
+ACTUAL QUOTA TEST /
+FUTURE INSTALL DURING CLEANUP /
+ALL OWNED PAGES CURRENT BEFORE GC /
+EXPLICIT WAITING UPDATE ACCEPTED D
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+MIGRATION PASS /
+CONTROLLED WAITING START /
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+CONTROLLED TOPIC CANCELLATION PASS /
+CONTROLLED RESUME CANCELLATION PASS /
+CONTROLLED WAITING PASS /
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+CANCELED B NAVIGATION /
+EXPLICIT WAITING UPDATE ACCEPTED C
+EXPLICIT WAITING UPDATE ACCEPTED D
+STARTUP PAGE INVENTORY {"scope":"/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+DELAYED NAVIGATION OBSERVED {"state":{"active":"activated","waiting":false,"installing":false},"discoveryDeferred":true}
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+LEGACY ALREADY WAITING MIGRATION PASS /Qcc-games-/
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+LEGACY ACTIVATED DURING MODERN INSTALL {"scope":"/Qcc-games-/","legacy":{"versionId":"1","registrationId":"0","scriptURL":"http://127.0.0.1:4181/Qcc-games-/sw.js","runningStatus":"running","status":"activated","scriptLastModified":0,"scriptResponseTime":1792478556.365459,"controlledClients":[],"targetId":"F77234A26068D7CE1D4D8D7ED47AAC1D"},"successor":{"versionId":"2","registrationId":"0","scriptURL":"http://127.0.0.1:4181/Qcc-games-/sw.js","runningStatus":"running","status":"installing","scriptLastModified":0,"scriptResponseTime":1792478558.750927,"controlledClients":[],"targetId":"8B7DFAB335BDF20F04C9702642E763ED"},"caches":["pocket-arcade:/Qcc-games-/:1f2bcac8fa53-L:shell","pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:shell"]}
+LEGACY TRANSITION MIGRATION PASS /Qcc-games-/
+SEED LEGACY /Qcc-games-/
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"http://127.0.0.1:4181/Qcc-games-/","primary":true,"client":{"id":"063e6c31-1ab8-44f1-b4fe-aeecc6795cc7","url":"http://127.0.0.1:4181/Qcc-games-/"}},{"url":"about:blank","primary":false}],"closedUnusedBlankPages":1}
+DEPLOY FIXED B /Qcc-games-/
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+RETAINED B PAGE INVENTORY [{"client":{"id":"0a150b3e-b649-450a-8293-a928549885e9","url":"http://127.0.0.1:4181/Qcc-games-/"},"marker":"retained-extra-B-0"}]
+DEPLOY C WITH MODERN NAVIGATION PENDING /Qcc-games-/
+DELAYED NAVIGATION OBSERVED {"state":{"active":"activated","waiting":true,"installing":false},"discoveryDeferred":false}
+DELAYED BOOTSTRAP VERIFIED {"scope":"http://127.0.0.1:4181/Qcc-games-/","requestedEntry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js","entryHits":[{"cache":"pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:shell"},{"cache":"pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:pack"},{"cache":"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:shell","status":200},{"cache":"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:pack","status":200},{"cache":"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-C:shell"},{"cache":"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-C:pack"}],"controllerTimeline":[{"label":"document-start","time":395.69999999925494,"script":"http://127.0.0.1:4181/Qcc-games-/sw.js","state":"activated"},{"label":"controllerchange","time":425.80000000074506,"script":"http://127.0.0.1:4181/Qcc-games-/sw.js","state":"activating","build":{"version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-C.js","cacheNamespace":2,"cacheRetirement":1}}],"controller":{"state":"activated","version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-C.js","cacheNamespace":2,"cacheRetirement":1},"active":{"state":"activated","version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-C.js","cacheNamespace":2,"cacheRetirement":1},"waiting":null,"installing":null,"activeEvents":{"state":"activated","pending":{},"done":[{"name":"install"},{"name":"handled","url":"http://127.0.0.1:4181/Qcc-games-/assets/index-Cq-D2tST.css"},{"name":"ready-source","id":"95fff700-fc8f-4fa8-8c64-1880197a6ef7","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"0a150b3e-b649-450a-8293-a928549885e9","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"68142ac4-53cd-4c1b-bab7-0e160fdfa5a6","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"handled","url":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"0f6a00ce-2c6c-4f1a-a398-054d09db72a1","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"0f6a00ce-2c6c-4f1a-a398-054d09db72a1","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"handled","url":"http://127.0.0.1:4181/Qcc-games-/assets/arcade-bold-DWEPn4H6.ttf"},{"name":"ready-source","id":"0f6a00ce-2c6c-4f1a-a398-054d09db72a1","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"0f6a00ce-2c6c-4f1a-a398-054d09db72a1","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"95fff700-fc8f-4fa8-8c64-1880197a6ef7","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"95fff700-fc8f-4fa8-8c64-1880197a6ef7","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"ready-source","id":"95fff700-fc8f-4fa8-8c64-1880197a6ef7","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"activate"},{"name":"ready-source","id":"68142ac4-53cd-4c1b-bab7-0e160fdfa5a6","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"95fff700-fc8f-4fa8-8c64-1880197a6ef7","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"ready-source","id":"0a150b3e-b649-450a-8293-a928549885e9","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"},{"name":"message","type":"ARCADE_CLIENT_READY"}],"skipCalls":1,"skipDone":1},"waitingEvents":null,"states":{"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:shell":{"version":"7d27d2663c4f-B","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js","stale":[],"pinned":["pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:shell","pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:pack"],"previous":{"version":"1f2bcac8fa53-A","shell":"pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:shell","pack":"pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:pack"},"unknownPrevious":false,"legacy":[],"current":["68142ac4-53cd-4c1b-bab7-0e160fdfa5a6","0a150b3e-b649-450a-8293-a928549885e9","95fff700-fc8f-4fa8-8c64-1880197a6ef7"],"pending":[{"id":"0f6a00ce-2c6c-4f1a-a398-054d09db72a1","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"}],"early":[],"owners":[{"id":"68142ac4-53cd-4c1b-bab7-0e160fdfa5a6","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"id":"0a150b3e-b649-450a-8293-a928549885e9","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"id":"95fff700-fc8f-4fa8-8c64-1880197a6ef7","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"}],"assets":[{"entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js","keys":["pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:shell","pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:pack"]}]},"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-C:shell":{"version":"7d27d2663c4f-C","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-C.js","stale":["pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:shell","pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:pack"],"pinned":["pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:shell","pocket-arcade:/Qcc-games-/:1f2bcac8fa53-A:pack"],"previous":{"version":"7d27d2663c4f-B","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js","shell":"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:shell","pack":"pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:pack"},"unknownPrevious":false,"legacy":["0f6a00ce-2c6c-4f1a-a398-054d09db72a1","68142ac4-53cd-4c1b-bab7-0e160fdfa5a6","95fff700-fc8f-4fa8-8c64-1880197a6ef7","0a150b3e-b649-450a-8293-a928549885e9"],"current":[],"pending":[],"early":[],"owners":[{"id":"0f6a00ce-2c6c-4f1a-a398-054d09db72a1","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"id":"68142ac4-53cd-4c1b-bab7-0e160fdfa5a6","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"id":"95fff700-fc8f-4fa8-8c64-1880197a6ef7","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"},{"id":"0a150b3e-b649-450a-8293-a928549885e9","entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js"}],"assets":[{"entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-C.js","keys":["pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-C:shell","pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-C:pack"]},{"entry":"http://127.0.0.1:4181/Qcc-games-/assets/index-D0ozSXMY-B.js","keys":["pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:shell","pocket-arcade-v2:/Qcc-games-/:7d27d2663c4f-B:pack"]}]}}}
+OFFLINE MODERN RETENTION /Qcc-games-/
+ACTUAL QUOTA TEST /Qcc-games-/
+FUTURE INSTALL DURING CLEANUP /Qcc-games-/
+ALL OWNED PAGES CURRENT BEFORE GC /Qcc-games-/
+EXPLICIT WAITING UPDATE ACCEPTED D
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+MIGRATION PASS /Qcc-games-/
+CONTROLLED WAITING START /Qcc-games-/
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+CONTROLLED TOPIC CANCELLATION PASS /Qcc-games-/
+CONTROLLED RESUME CANCELLATION PASS /Qcc-games-/
+CONTROLLED WAITING PASS /Qcc-games-/
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+CANCELED B NAVIGATION /Qcc-games-/
+EXPLICIT WAITING UPDATE ACCEPTED C
+EXPLICIT WAITING UPDATE ACCEPTED D
+STARTUP PAGE INVENTORY {"scope":"/Qcc-games-/","initial":[{"url":"about:blank","primary":true}],"closedUnusedBlankPages":0}
+DELAYED NAVIGATION OBSERVED {"state":{"active":"activated","waiting":false,"installing":false},"discoveryDeferred":true}
+[
+  {
+    "scope": "/",
+    "oldVersion": "1f2bcac8fa53-A",
+    "versions": [
+      "7d27d2663c4f-B",
+      "7d27d2663c4f-C",
+      "7d27d2663c4f-D"
+    ],
+    "persistentProfileRestarted": true,
+    "naturalReloadDiscovery": true,
+    "noAutomaticDocumentReload": true,
+    "legacyDelayedNavigation": true,
+    "modernDelayedNavigation": true,
+    "legacyPackPinned": true,
+    "oldLazyChunkRemovedFromServer": true,
+    "oldGamePlayedOffline": true,
+    "persistentProfileWorkerRestart": true,
+    "forcedLiveWorkerRestart": false,
+    "visibleNewContent": true,
+    "scoreSettingsCookiePreserved": true,
+    "actualProgressRestored": true,
+    "quotaBlockedUserReload": true,
+    "pendingPreferenceRecovered": true,
+    "inconsistentInstallRecovery": true,
+    "modernCachesCleaned": true,
+    "futureInstallCachePreserved": true,
+    "waitingUpdateAccepted": true,
+    "resumeCancelsPendingReload": true,
+    "lateQuotaBlocksActualReload": true,
+    "cancelledReservationAllowsLaterGc": true,
+    "legacyDelayedNavigationWorkerState": {
+      "active": "activated",
+      "waiting": false,
+      "installing": false
+    }
+  },
+  {
+    "scope": "/Qcc-games-/",
+    "oldVersion": "1f2bcac8fa53-A",
+    "versions": [
+      "7d27d2663c4f-B",
+      "7d27d2663c4f-C",
+      "7d27d2663c4f-D"
+    ],
+    "persistentProfileRestarted": true,
+    "naturalReloadDiscovery": true,
+    "noAutomaticDocumentReload": true,
+    "legacyDelayedNavigation": true,
+    "modernDelayedNavigation": true,
+    "legacyPackPinned": true,
+    "oldLazyChunkRemovedFromServer": true,
+    "oldGamePlayedOffline": true,
+    "persistentProfileWorkerRestart": true,
+    "forcedLiveWorkerRestart": false,
+    "visibleNewContent": true,
+    "scoreSettingsCookiePreserved": true,
+    "actualProgressRestored": true,
+    "quotaBlockedUserReload": true,
+    "pendingPreferenceRecovered": true,
+    "inconsistentInstallRecovery": true,
+    "modernCachesCleaned": true,
+    "futureInstallCachePreserved": true,
+    "waitingUpdateAccepted": true,
+    "resumeCancelsPendingReload": true,
+    "lateQuotaBlocksActualReload": true,
+    "cancelledReservationAllowsLaterGc": true,
+    "legacyDelayedNavigationWorkerState": {
+      "active": "activated",
+      "waiting": false,
+      "installing": false
+    }
+  }
+]

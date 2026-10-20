@@ -1,0 +1,77 @@
+{
+  "recordedAt": "2026-10-20T10:39:16.597Z",
+  "browser": "Chromium",
+  "browserVersion": "154.0.8037.57",
+  "physicalHardware": false,
+  "softwareWebGL": true,
+  "rafSamplesPerGame": 45,
+  "gameCount": 1,
+  "results": [
+    {
+      "deployment": "root",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "neon-coil",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 13.5,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 33.400000000001455,
+      "rafP95Ms": 66.69999999999891
+    },
+    {
+      "deployment": "root",
+      "cacheNames": [
+        "pocket-arcade:/:a6ae5711eb16:shell",
+        "pocket-arcade:/:a6ae5711eb16:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 18,
+      "heavyChunksLazy": true
+    },
+    {
+      "deployment": "subpath",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "game": "neon-coil",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 15.399999999906868,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 33.40000000000009,
+      "rafP95Ms": 83.30000000000018
+    },
+    {
+      "deployment": "subpath",
+      "cacheNames": [
+        "pocket-arcade:/Qcc-games-/:a6ae5711eb16:shell",
+        "pocket-arcade:/Qcc-games-/:a6ae5711eb16:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 18,
+      "heavyChunksLazy": true
+    }
+  ]
+}

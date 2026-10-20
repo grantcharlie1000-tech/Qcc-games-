@@ -1,0 +1,45 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-updates.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-updates.test.ts (10 tests | 1 failed) 1404ms
+   ✓ ACK and comparison use the running module URL even if HTML points at another entry 51ms
+   ✓ online recovery retries initial registration failure while preserving the controller 55ms
+   ✓ running module ownership is acknowledged even while a future registration job is unsettled 54ms
+   ✓ a coherent waiting worker is offered even while the running controller matches this document 4ms
+   ✓ an installing worker reaching installed updates the notice without a document navigation 54ms
+   ✓ explicit activation targets the offered version and waits for its controller 62ms
+   ✓ replacement of the offered waiting worker refuses activation safely 5ms
+   ✓ unresponsive activation fails within the deadline without changing the current controller 56ms
+   ✓ a late old-controller inspection cannot clear the newer controller update notice 54ms
+   × online recovery hooks exist even when the initial inspection fails before registration 1009ms
+     → expected "spy" to be called once, but got 0 times
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-updates.test.ts > online recovery hooks exist even when the initial inspection fails before registration
+AssertionError: expected "spy" to be called once, but got 0 times
+ ❯ tests/core/offline-updates.test.ts:84:93
+     82|  const {module,sw,registration}=await setup();const initial=sw.control…
+     83|  module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());…
+     84|  window.dispatchEvent(new Event('online'));await vi.waitFor(()=>expect…
+       |                                                                                             ^
+     85| });
+     86| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 passed (10)
+   Start at  05:01:53
+   Duration  1.77s (transform 89ms, setup 0ms, collect 50ms, tests 1.40s, environment 0ms, prepare 79ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

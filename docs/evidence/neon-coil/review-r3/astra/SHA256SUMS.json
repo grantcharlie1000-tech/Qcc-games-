@@ -1,0 +1,21 @@
+{
+  "browser-stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "browser.json": "b4c893e3b8000b92ec2af0c1c4d32e7854b29110e6bc8e2a00cb98cf723e0e57",
+  "evidence/resize-dead.json": "f0625042257e58db33a44d4bf4da0f07e3b40843a3b8566eaccafab8328ec435",
+  "evidence/resize-dead.png": "26d21fbc51e5543f8c1d5985ea3ccf3b3cf10fd66213ad85452f69ce477964f2",
+  "evidence/resize-paused.json": "9da74f0e607f633f43e2b78b1131fcb0bb119aeb0085893133cdd8076b2c7bdb",
+  "evidence/resize-paused.png": "7c9a9e37ae42d93a550517faccd5ab429cefdea1effd1b06ada59f0f1864ac6c",
+  "evidence/resize-ready.json": "06c7486e063a5c120aea08fd8cc612780e4e4a4aceccda2827baf9fdcab72581",
+  "evidence/resize-ready.png": "be7b14620aa1f854ca965561d34f6854548b4c10f74d9552d57dde57ded2f4a3",
+  "evidence/resize-running.json": "55530febf68b8334759817623cca9906c9fd40560b86050fee8037ee387313a8",
+  "evidence/resize-running.png": "1c28d9dcf45c4215a53b6a1d15560153ea21a6a895ab125decdcd5fd22164312",
+  "index.html": "b20b8fdc6248880a679c07fda6e8d3c6ae63041c1a2d3350aeffbaaec3326f71",
+  "package.json": "528ebad868868c951b97a5d8ecab7fbdd4021d0abd57e274f1da4f6a6e3d5874",
+  "playwright.config.ts": "05185d3d7a0aa2366aeb03b44ad5276c213ca88a573145827e6bb9aa33dca754",
+  "record-validation.json": "d132d6a51695ae61b8475150193e6ac7dc0fda62c182a9026408ed7d2dbd13de",
+  "summary.json": "1c5e4cd690709cf3393fbee3aad617fa71014b9d22450bbca1ca6d689f5e25b9",
+  "tests/fixtures.ts": "01a070bc5eb12d183648b0f1b4c44089858e7c391fada38fe89fd9f0e7b24537",
+  "tests/games/neon-coil/play.spec.ts": "2dcdc5d559d80162c0c0ea4a369a2f70d993c2369ea8858c09c2d126966520c0",
+  "tsconfig.json": "ab384ee95a59a8d82e427a99374b3976df2074b5d046f222f20c56232bc5fcb0",
+  "vite.config.ts": "d721e958b9f237042967243061d483d15588c68bb687804327c3d20e147becc3"
+}

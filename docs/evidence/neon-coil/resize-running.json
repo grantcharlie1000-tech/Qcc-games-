@@ -1,0 +1,54 @@
+{
+  "lifecycle": "running",
+  "before": {
+    "sha256": "a773676ec5d4a248ccd307e0473f57e9164f0f96b2346937754f9b076026a6a7",
+    "phase": "running",
+    "ticks": 0,
+    "mass": 30
+  },
+  "resizes": [
+    {
+      "width": 390,
+      "height": 844,
+      "rows": 5,
+      "world": {
+        "sha256": "a773676ec5d4a248ccd307e0473f57e9164f0f96b2346937754f9b076026a6a7",
+        "phase": "running",
+        "ticks": 0,
+        "mass": 30
+      }
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "rows": 10,
+      "world": {
+        "sha256": "a773676ec5d4a248ccd307e0473f57e9164f0f96b2346937754f9b076026a6a7",
+        "phase": "running",
+        "ticks": 0,
+        "mass": 30
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "rows": 5,
+      "world": {
+        "sha256": "a773676ec5d4a248ccd307e0473f57e9164f0f96b2346937754f9b076026a6a7",
+        "phase": "running",
+        "ticks": 0,
+        "mass": 30
+      }
+    }
+  ],
+  "after": {
+    "sha256": "a773676ec5d4a248ccd307e0473f57e9164f0f96b2346937754f9b076026a6a7",
+    "phase": "running",
+    "ticks": 0,
+    "mass": 30
+  },
+  "errors": [],
+  "announcements": "0",
+  "bestBefore": "30",
+  "bestAfter": "30"
+}

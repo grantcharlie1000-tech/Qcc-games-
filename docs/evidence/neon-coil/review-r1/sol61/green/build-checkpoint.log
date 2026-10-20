@@ -1,0 +1,51 @@
+
+> pocket-offline-arcade@1.0.0 build
+> tsc --noEmit && vite build && node scripts/offline-manifest.mjs
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 106 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                         0.67 kB │ gzip:   0.41 kB
+dist/.vite/manifest.json                4.52 kB │ gzip:   0.79 kB
+dist/assets/arcade-bold-DWEPn4H6.ttf   28.09 kB
+dist/assets/index-IARKlvG8.css          1.26 kB │ gzip:   0.63 kB
+dist/assets/index-Dso3XaJW.css          1.73 kB │ gzip:   0.80 kB
+dist/assets/index-D3FOw6fh.css          1.75 kB │ gzip:   0.73 kB
+dist/assets/index-CZRqK-Aq.css          2.10 kB │ gzip:   0.90 kB
+dist/assets/index-DaZD4Dj_.css          2.23 kB │ gzip:   0.86 kB
+dist/assets/index-BXNEfCEi.css          2.26 kB │ gzip:   0.97 kB
+dist/assets/index-kKxGdlo1.css          2.37 kB │ gzip:   0.99 kB
+dist/assets/index-DjVo3RM_.css          3.43 kB │ gzip:   1.21 kB
+dist/assets/index-BfML26zK.css          3.53 kB │ gzip:   1.31 kB
+dist/assets/index-BdQv1M3b.css          3.88 kB │ gzip:   1.48 kB
+dist/assets/index-Ca_sMq3C.css          4.45 kB │ gzip:   1.62 kB
+dist/assets/index-CL4koYVJ.css          5.45 kB │ gzip:   1.96 kB
+dist/assets/index-DvtE1cdD.css          6.04 kB │ gzip:   1.98 kB
+dist/assets/index-BDNl8E2m.css          8.28 kB │ gzip:   2.28 kB
+dist/assets/index-ClAxANv0.css         25.64 kB │ gzip:   6.46 kB
+dist/assets/collision-CgH4Kjrs.js       0.82 kB │ gzip:   0.47 kB │ map:     3.55 kB
+dist/assets/index-CxYMXy0X.js           9.48 kB │ gzip:   4.11 kB │ map:    25.58 kB
+dist/assets/index-B3iry_sq.js           9.88 kB │ gzip:   4.16 kB │ map:    25.10 kB
+dist/assets/index-CitFEkQK.js          10.71 kB │ gzip:   4.55 kB │ map:    31.34 kB
+dist/assets/index-DVV_K4eE.js          10.84 kB │ gzip:   4.67 kB │ map:    30.46 kB
+dist/assets/index-BniN2mis.js          12.81 kB │ gzip:   4.99 kB │ map:    34.28 kB
+dist/assets/index-DqLtyPWP.js          14.43 kB │ gzip:   5.53 kB │ map:    35.99 kB
+dist/assets/index-CbJnjlHd.js          15.91 kB │ gzip:   6.42 kB │ map:    45.29 kB
+dist/assets/index-BQ0YBnm3.js          16.59 kB │ gzip:   6.71 kB │ map:    44.00 kB
+dist/assets/index-CWQOKeE4.js          18.76 kB │ gzip:   7.83 kB │ map:    58.86 kB
+dist/assets/index-Bm1LrEy8.js          19.85 kB │ gzip:   8.04 kB │ map:    58.33 kB
+dist/assets/index-DN5cEftd.js          21.82 kB │ gzip:   9.04 kB │ map:    68.21 kB
+dist/assets/index-CmnIRI4Q.js          23.56 kB │ gzip:   9.76 kB │ map:    62.34 kB
+dist/assets/index-we4rTY2V.js          24.61 kB │ gzip:   9.58 kB │ map:    66.22 kB
+dist/assets/matter-PU4lz4QA.js         84.54 kB │ gzip:  26.80 kB │ map:   520.35 kB
+dist/assets/index-DMosB7Aj.js         141.67 kB │ gzip:  44.89 kB │ map:   197.19 kB
+dist/assets/index-AGfafP1n.js         494.75 kB │ gzip: 126.37 kB │ map: 2,730.56 kB
+✓ built in 2.50s
+Offline pack: 72 files, version e921faad4e73
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

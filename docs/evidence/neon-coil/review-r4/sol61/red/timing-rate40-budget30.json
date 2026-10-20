@@ -1,0 +1,31 @@
+{
+  "rate": 40,
+  "timings": [
+    {
+      "name": "load and begin",
+      "ms": 9070.415335000002,
+      "complete": true
+    },
+    {
+      "name": "900ms forward growth",
+      "ms": 9250.074380000002,
+      "complete": true
+    },
+    {
+      "name": "450ms turn",
+      "ms": 4651.843004000002,
+      "complete": true
+    },
+    {
+      "name": "250ms boost and pause",
+      "ms": 6699.07545,
+      "complete": true
+    },
+    {
+      "name": "1000ms paused input and exact frozen save",
+      "ms": 1434.8050980000007,
+      "complete": false
+    }
+  ],
+  "totalMs": 31106.213267000006
+}

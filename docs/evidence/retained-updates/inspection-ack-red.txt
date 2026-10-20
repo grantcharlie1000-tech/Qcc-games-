@@ -1,0 +1,86 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-updates.test.ts tests/core/offline-worker.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-worker.test.ts (19 tests | 1 failed) 178ms
+   ✓ online gameplay survives a full response cache 22ms
+   ✓ online gameplay survives completely blocked cache storage 2ms
+   ✓ installing an update never navigates documents or deletes their game caches 7ms
+   ✓ a coherent update can activate without waiting for legacy documents to close 5ms
+   ✓ an inconsistent deployment cannot activate over the retained version 4ms
+   ✓ old cached chunks remain usable after the worker process restarts 5ms
+   ✓ cleanup only deletes the captured stale set, preserving future installs and other scopes 5ms
+   ✓ a live unacknowledged legacy document prevents stale cache deletion 4ms
+   ✓ missing persisted retention metadata fails closed after a restart 5ms
+   ✓ legacy migration pins old caches even when an execution-unready navigation is absent 4ms
+   ✓ an absent current navigation retains its own generation and settles only its source ACK 7ms
+   ✓ activation imports late predecessor reservations and an old-module ACK retains its dependencies 12ms
+   ✓ an unresolved old navigation protects its generation across restart and a later update 18ms
+   ✓ navigation never emits HTML before its reservation is durably stored 30ms
+   ✓ normal multi-generation cleanup accepts legitimately absent old asset mappings 26ms
+   ✓ one evicted legacy pinned cache does not turn unrelated future generations into permanent pins 5ms
+   ✓ an update cannot activate when its manifest needs a runtime chunk outside its atomic precache 3ms
+   ✓ waiting activation accepts only its own exact build and entry 2ms
+   × a ready module ACK already sent before its tab closes can settle that source reservation 12ms
+     → expected true to be false // Object.is equality
+ ❯ tests/core/offline-updates.test.ts (9 tests | 1 failed) 463ms
+   ✓ ACK and comparison use the running module URL even if HTML points at another entry 94ms
+   ✓ online recovery retries initial registration failure while preserving the controller 56ms
+   ✓ running module ownership is acknowledged even while a future registration job is unsettled 55ms
+   ✓ a coherent waiting worker is offered even while the running controller matches this document 6ms
+   ✓ an installing worker reaching installed updates the notice without a document navigation 55ms
+   ✓ explicit activation targets the offered version and waits for its controller 60ms
+   ✓ replacement of the offered waiting worker refuses activation safely 4ms
+   ✓ unresponsive activation fails within the deadline without changing the current controller 62ms
+   × a late old-controller inspection cannot clear the newer controller update notice 69ms
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-updates.test.ts > a late old-controller inspection cannot clear the newer controller update notice
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/core/offline-updates.test.ts:78:75
+     76|  await vi.waitFor(()=>expect(status).toHaveBeenLastCalledWith(expect.o…
+     77|  delayed!.postMessage({version:'new',entry:'https://arcade.test/assets…
+     78|  expect(status.mock.calls.slice(start).every(([value])=>value.availabl…
+       |                                                                           ^
+     79| });
+     80| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a ready module ACK already sent before its tab closes can settle that source reservation
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/core/offline-worker.test.ts:149:151
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 26 passed (28)
+   Start at  04:55:53
+   Duration  886ms (transform 167ms, setup 0ms, collect 148ms, tests 641ms, environment 1ms, prepare 190ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
