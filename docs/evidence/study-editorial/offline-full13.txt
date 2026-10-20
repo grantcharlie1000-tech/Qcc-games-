@@ -1,0 +1,36 @@
+
+> pocket-offline-arcade@1.0.0 verify:offline
+> node scripts/verify-offline.mjs
+
+OFFLINE PASS root fruit-merge + Study
+OFFLINE PASS root water-sort + Study
+OFFLINE PASS root color-blocks + Study
+OFFLINE PASS root tower + Study
+OFFLINE PASS root snake + Study
+OFFLINE PASS root minesweeper + Study
+OFFLINE PASS root solitaire + Study
+OFFLINE PASS root block-fill + Study
+OFFLINE PASS root color-connect + Study
+OFFLINE PASS root ball-run + Study
+OFFLINE PASS root pool + Study
+OFFLINE PASS root animal-stack + Study
+OFFLINE PASS root flappy-bird + Study
+OFFLINE PASS subpath fruit-merge + Study
+OFFLINE PASS subpath water-sort + Study
+OFFLINE PASS subpath color-blocks + Study
+OFFLINE PASS subpath tower + Study
+OFFLINE PASS subpath snake + Study
+OFFLINE PASS subpath minesweeper + Study
+OFFLINE PASS subpath solitaire + Study
+OFFLINE PASS subpath block-fill + Study
+OFFLINE PASS subpath color-connect + Study
+OFFLINE PASS subpath ball-run + Study
+OFFLINE PASS subpath pool + Study
+OFFLINE PASS subpath animal-stack + Study
+OFFLINE PASS subpath flappy-bird + Study
+Verified 13 games offline at both root and repository subpath.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

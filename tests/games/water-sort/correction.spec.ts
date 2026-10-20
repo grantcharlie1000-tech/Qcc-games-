@@ -79,7 +79,7 @@ test('Study retains a partially transferred pour and resumes the same game insta
   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
   await page.clock.runFor(5000);
   expect(await volume(page,2)).toBeCloseTo(before,4);
-  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+  await page.getByRole('link',{name:'Games',exact:true}).click();
   expect(await retained!.evaluate(node=>node===document.querySelector('.ws-game'))).toBe(true);
   await page.clock.runFor(1000);await expect(root(page)).toHaveAttribute('data-moves','1');
 });

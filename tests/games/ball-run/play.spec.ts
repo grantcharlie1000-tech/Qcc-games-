@@ -34,7 +34,7 @@ test('real drag and held keys steer; pause, Study, restart, restore, and disposa
   await page.getByRole('button',{name:'Keep playing'}).click();
   await page.keyboard.down('ArrowLeft');await page.keyboard.press('Escape');const studyDistance=await game.getAttribute('data-distance');
   await page.keyboard.down('d');await frames(page);expect(await game.getAttribute('data-distance')).toBe(studyDistance);await page.keyboard.up('d');await page.keyboard.up('ArrowLeft');
-  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+  await page.getByRole('link',{name:'Games',exact:true}).click();
   await expect(game).toHaveAttribute('data-phase','running');
   await page.keyboard.down('ArrowRight');await expect(game).toHaveAttribute('data-phase','over',{timeout:10000});await page.keyboard.up('ArrowRight');
   await page.getByRole('button',{name:'Roll again'}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
