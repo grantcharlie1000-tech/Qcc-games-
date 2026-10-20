@@ -12,11 +12,22 @@ test('real drag and held keys steer; pause, Study, restart, restore, and disposa
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const game=page.locator('.ball-run'),canvas=game.locator('canvas');
   await page.getByRole('button',{name:'Game rules'}).click();await expect(page.locator('#rules-text')).toContainText('ramps');await page.getByRole('button',{name:'Let’s play'}).click();
-  await page.getByRole('button',{name:'Start rolling'}).click();
-  await page.keyboard.down('ArrowRight');await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.5);await page.keyboard.up('ArrowRight');
-  const bounds=(await canvas.boundingBox())!;
-  await page.mouse.move(bounds.x+bounds.width*.55,bounds.y+bounds.height*.65);await page.mouse.down();await page.mouse.move(bounds.x+bounds.width*.35,bounds.y+bounds.height*.65,{steps:8});
+  await page.getByRole('button',{name:'Start rolling'}).click();await waitDistance(page,.2);
+  // Release the native key before polling its result: a slow driver must not
+  // keep steering right while it waits for the first threshold observation.
+  await page.keyboard.press('ArrowRight',{delay:250});await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.5);
+  await canvas.hover();const bounds=(await canvas.boundingBox())!;
+  await canvas.evaluate(el=>el.addEventListener('pointerdown',event=>{
+    const p=event as PointerEvent;el.setAttribute('data-test-drag',JSON.stringify({id:p.pointerId,x:Number(el.closest<HTMLElement>('.ball-run')!.dataset.x),clientX:p.clientX,clientY:p.clientY,width:el.clientWidth,trusted:p.isTrusted}));
+  },{capture:true,once:true}));
+  await page.mouse.move(bounds.x+bounds.width*.55,bounds.y+bounds.height*.65);await page.mouse.down();
+  const anchor=JSON.parse((await canvas.getAttribute('data-test-drag'))!);expect(anchor.trusted).toBe(true);
+  expect(await canvas.evaluate((el,id)=>el.hasPointerCapture(id),anchor.id)).toBe(true);
+  // Aim inside the road from the actual native down-event position, rather
+  // than assuming the preceding held key stopped at exactly x=.5.
+  await page.mouse.move(anchor.clientX+(-.3-anchor.x)/6*anchor.width,anchor.clientY,{steps:8});
   await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)<.1);await page.mouse.up();
+  expect(await canvas.evaluate((el,id)=>el.hasPointerCapture(id),anchor.id)).toBe(false);
   await page.getByRole('button',{name:'Pause game',exact:true}).click();
   const distance=await game.getAttribute('data-distance'),x=await game.getAttribute('data-x');await page.keyboard.press('ArrowLeft');await frames(page);
   expect(await game.getAttribute('data-distance')).toBe(distance);expect(await game.getAttribute('data-x')).toBe(x);

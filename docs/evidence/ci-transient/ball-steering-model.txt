@@ -1,0 +1,2 @@
+{"duration":200,"afterKey":0.6812011699419679,"target":-0.5187988300580321,"afterDrag":-0.7205231137566817,"phase":"running"}
+{"duration":400,"afterKey":1.8109893833332407,"target":0.6109893833332407,"afterDrag":0.4045576176279124,"phase":"running"}

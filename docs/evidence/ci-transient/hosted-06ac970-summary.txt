@@ -1,0 +1,14 @@
+2026-10-20T00:50:07.5229252Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3f650ab92c7bf3f98e049d111b4047489ca11612:refs/remotes/pull/1/merge
+2026-10-20T00:50:09.1879238Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1/merge
+2026-10-20T00:50:09.2662158Z Note: switching to 'refs/remotes/pull/1/merge'.
+2026-10-20T00:50:09.2665561Z HEAD is now at 3f650ab Merge 06ac970ca3393f92ff5ad7b7db5d625242eff4dd into 375e2501dcd8241cdacb7b3b4f3af5eae2f84f41
+2026-10-20T00:50:15.9153950Z  Test Files  23 passed (23)
+2026-10-20T00:50:15.9154929Z       Tests  266 passed (266)
+2026-10-20T00:58:08.1726331Z   10 skipped
+2026-10-20T00:58:08.1726620Z   292 passed (7.2m)
+2026-10-20T00:58:13.0046918Z Offline pack: 69 files, version 54f621187775
+2026-10-20T00:58:31.3563752Z   "oldTabPlayedOffline": true,
+2026-10-20T00:58:31.3563921Z   "updateWaitedForBothTabsToClose": true,
+2026-10-20T00:58:31.3564092Z   "newVersionActivated": true,
+2026-10-20T00:58:31.3564458Z   "highScorePreserved": true
+2026-10-20T00:59:52.2687248Z Verified 13 games offline at both root and repository subpath.

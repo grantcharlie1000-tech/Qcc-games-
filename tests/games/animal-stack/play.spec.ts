@@ -30,7 +30,20 @@ test('real CDP touch drag/cancel never drops; DROP button releases',async({brows
 test('pause cancels a captured gesture without rotation or drop',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const p=await waitingPoint(page),canvas=game(page).locator('canvas');await canvas.evaluate(e=>e.addEventListener('pointerdown',event=>e.setAttribute('data-test-pointer',String((event as PointerEvent).pointerId))));await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+5,p.y);await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#pause-game')!.click());const pointer=Number(await canvas.getAttribute('data-test-pointer'));expect(await canvas.evaluate((e,id)=>e.hasPointerCapture(id),pointer)).toBe(false);await page.mouse.up();await expect(game(page)).toHaveAttribute('data-count','0');await expect(game(page)).toHaveAttribute('data-angle','0');await page.getByRole('button',{name:'Keep playing',exact:true}).click();await expect(game(page)).toHaveAttribute('data-ready','true');});
 
 test('neck-first restored pose really pivots, stable pose earns support, edge fall ends',async({page})=>{
- await page.setViewportSize({width:390,height:844});await loadPose(page,210);await expect(game(page)).toHaveAttribute('data-angle',String(-Math.PI/2));await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-count','2');await expect.poll(async()=>Math.abs(Number(await game(page).getAttribute('data-body-angle'))+Math.PI/2)).toBeGreaterThan(.4);await expect.poll(async()=>Math.abs(Number(await game(page).getAttribute('data-body-angle'))+Math.PI/2)).toBeGreaterThan(1);
+ await page.setViewportSize({width:390,height:844});await loadPose(page,210);await expect(game(page)).toHaveAttribute('data-angle',String(-Math.PI/2));
+ // Observe every rendered angle in the browser: the pivot can peak and settle
+ // between test-driver polls, especially under concurrent CI rendering.
+ await game(page).evaluate(root=>{
+  let peak=0;const observer=new MutationObserver(()=>{
+   if(root.getAttribute('data-count')!=='2')return;
+   peak=Math.max(peak,Math.abs(Number(root.getAttribute('data-body-angle'))+Math.PI/2));root.setAttribute('data-test-peak-pivot',String(peak));
+  });observer.observe(root,{attributes:true,attributeFilter:['data-body-angle']});
+  (window as unknown as {stopAnimalPivotProbe:()=>void}).stopAnimalPivotProbe=()=>observer.disconnect();
+ });
+ await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-count','2');
+ await expect.poll(async()=>Number(await game(page).getAttribute('data-test-peak-pivot'))).toBeGreaterThan(.4);
+ await expect.poll(async()=>Number(await game(page).getAttribute('data-test-peak-pivot'))).toBeGreaterThan(1);
+ await page.evaluate(()=>(window as unknown as {stopAnimalPivotProbe:()=>void}).stopAnimalPivotProbe());
  // x180 is a restored-pose fixture that settles wholly above platform on the elephant.
  await loadPose(page,180);await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-balanced','2',{timeout:18000});expect(Number(await game(page).getAttribute('data-body-bottom'))).toBeLessThan(FLOOR-20);
  const world=new AnimalWorld();world.nextKind='penguin';world.aim(0);const snapshot=world.snapshot();world.dispose();await page.goto('/');await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:animal-stack',JSON.stringify({version:1,data,updated:Date.now()})),snapshot);await page.goto(route);await game(page).getByRole('button',{name:/^Drop /}).click();await expect(game(page)).toHaveAttribute('data-over','true');await expect(game(page).getByRole('button',{name:/^Drop /})).toBeDisabled();
