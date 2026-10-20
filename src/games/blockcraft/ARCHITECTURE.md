@@ -29,7 +29,7 @@ example with a small local adapter or a fallback).
 | Inventory and screens | `items/inventory.ts`, `ui/screens.ts`, `ui/screens.css`, `ui/screen-*.ts`, `ui/slots*.ts` | `inventory*.test.ts`, `screens*.spec.ts` |
 | Crafting and smelting | `items/crafting.ts`, `items/recipes*.ts`, `world/blockentities.ts` | `crafting*.test.ts` |
 | Interaction | `interact/interaction.ts`, `interact/loot*.ts`, `interact/placement*.ts`, `interact/use*.ts`, `interact/combat*.ts` | `interaction*.test.ts`, `interaction*.spec.ts` |
-| World simulation | `world/ticks.ts`, `world/fluids*.ts`, `world/explosion*.ts`, `world/growth*.ts` | `ticks*.test.ts` |
+| World simulation | `world/ticks.ts`, `world/ticks-*.ts`, `world/fluids*.ts`, `world/explosion*.ts`, `world/growth*.ts`, `world/fire*.ts` (registers `primed_tnt` and `falling_block` in `registerWorldEntities`) | `ticks*.test.ts` |
 | Audio | `audio/sounds.ts`, `audio/*.ts` | `sounds*.test.ts` |
 | Weather | `world/weather.ts`, `world/weather-*.ts`, `render/weather*.ts` | `weather*.test.ts` |
 | Advancements and statistics | `ui/advancements.ts`, `ui/advancements-*.ts`, `ui/advancements.css` | `advancements*.test.ts` |
@@ -47,7 +47,8 @@ Paths are relative to `src/games/blockcraft/`; tests go in `tests/games/blockcra
   behaviour by monkey-patching `game`.
 - **Wiring rules** (also in the `contracts.ts` header):
   - A factory only stores `game` and builds private state; reach other services in `init()` or later. Entity kinds are registered by the
-    `register*` calls in `engine/game.ts`, before any `init()`.
+    `register*` calls in `engine/game.ts` (passive, companions, hostile, monsters, world entities), before any `init()`; the entity
+    framework registers 'item' and 'xp_orb' itself.
   - Tick order is survival, player, entities, ticks, blockEntities, weather, then the rest; frame order is input, player, interaction,
     render, entities, weather, ui, hud, then the rest, and finally `render.render()`.
   - Each input action has one consumer (see `InputAction`). Change settings only through `game.updateSettings` / `setMode` /

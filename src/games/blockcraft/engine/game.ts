@@ -15,7 +15,7 @@ import {VoxelWorld} from '../world/world';
 import {createTerrain} from '../world/terrain';
 import {createLightEngine} from '../world/light';
 import {createBlockEntities} from '../world/blockentities';
-import {createBlockTicks} from '../world/ticks';
+import {createBlockTicks,registerWorldEntities} from '../world/ticks';
 import {createMesher} from '../render/mesher';
 import {createRenderer} from '../render/renderer';
 import {createInput} from '../player/input';
@@ -94,7 +94,7 @@ export class Engine implements Game{
     this.crafting=createCrafting(this);this.blockEntities=createBlockEntities(this);this.entities=createEntities(this);
     this.interaction=createInteraction(this);this.ticks=createBlockTicks(this);this.sounds=createSounds(this);this.weather=createWeather(this);
     this.ui=createUI(this);this.hud=createHud(this);this.advancements=createAdvancements(this);
-    registerPassiveMobs(this);registerCompanionMobs(this);registerHostileMobs(this);registerMonsters(this);
+    registerPassiveMobs(this);registerCompanionMobs(this);registerHostileMobs(this);registerMonsters(this);registerWorldEntities(this);
     this.created=[['terrain',this.terrain],['render',this.render],['input',this.input],['player',this.player],['survival',this.survival],
       ['inventory',this.inventory],['crafting',this.crafting],['blockEntities',this.blockEntities],['entities',this.entities],
       ['interaction',this.interaction],['ticks',this.ticks],['sounds',this.sounds],['weather',this.weather],['ui',this.ui],['hud',this.hud],
