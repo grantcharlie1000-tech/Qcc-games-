@@ -3,14 +3,15 @@ import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {mkdir,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-const titles={'fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird'};
+const titles={'neon-coil':'Neon Coil','fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
 async function action(page,id){
- if(id==='fruit-merge'){await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await page.waitForTimeout(650);}
+ if(id==='neon-coil'){await page.getByRole('button',{name:/Enter arena|Continue arena/}).click();await page.mouse.move(240,300);await waitFor(async()=>Number(await page.locator('.nc-game').getAttribute('data-tick'))>10,'offline Neon Coil continuous movement');}
+ else if(id==='fruit-merge'){await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await page.waitForTimeout(650);}
  else if(id==='water-sort'){await page.getByRole('button',{name:'Hint',exact:true}).click();const from=await page.locator('.ws-hint-from').getAttribute('data-tube'),to=await page.locator('.ws-hint-to').getAttribute('data-tube');await page.locator(`[data-tube="${from}"]`).click();await page.locator(`[data-tube="${to}"]`).click();await waitFor(async()=>await page.locator('.ws-game').getAttribute('data-phase')!=='pouring','pour');}
  else if(id==='color-blocks'){await page.locator('.cb-cell').first().focus();await page.keyboard.press('1');await page.keyboard.press('Enter');assert.equal(await page.locator('.cb-game').getAttribute('data-moves'),'1');}
  else if(id==='tower'){await page.waitForTimeout(1100);await page.getByRole('button',{name:'Drop block',exact:true}).click();}
@@ -21,7 +22,7 @@ async function action(page,id){
  else if(id==='color-connect'){await page.getByRole('button',{name:'Hint',exact:true}).click();}
  else if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling|Roll again/}).click();const before=await page.locator('.ball-run').getAttribute('data-distance');await page.keyboard.down('ArrowRight');try{await waitFor(async()=>Number(await page.locator('.ball-run').getAttribute('data-distance'))>Number(before)&&Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline Ball Run forward movement and steering');}finally{await page.keyboard.up('ArrowRight');}assert.ok(Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline held steering must move the ball');}
  else if(id==='flappy-bird'){await page.getByRole('button',{name:/Take flight|Continue flight|Fly again/}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.flappy-bird').getAttribute('data-tick'))>5,'offline Flappy Bird movement');}
- else if(id==='pool'){await page.getByRole('button',{name:'Shoot',exact:true}).click();assert.equal(await page.locator('.pool-game').getAttribute('data-shots'),'1');}
+ else if(id==='pool'){const canvas=page.locator('.pool-table');await canvas.hover();const b=await canvas.boundingBox();await page.mouse.move(b.x+b.width*225/840,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width*135/840,b.y+b.height/2,{steps:8});await page.mouse.up();assert.equal(await page.locator('.pool-game').getAttribute('data-shots'),'1');}
  else if(id==='animal-stack'){await page.getByRole('button',{name:/^Drop /}).click();await page.waitForTimeout(650);}
 }
 try{

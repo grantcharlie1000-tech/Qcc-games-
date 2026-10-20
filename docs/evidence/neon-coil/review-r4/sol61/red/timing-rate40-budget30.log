@@ -1,0 +1,50 @@
+[WebServer] (node:3002) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:3015) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:3035) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium-timing] › ../../tmp/neon-coil-ci-fix/timing.spec.ts:12:5 › unchanged pointer gameplay flow with per-step wall timing (31.3s)
+
+
+  1) [chromium-timing] › ../../tmp/neon-coil-ci-fix/timing.spec.ts:12:5 › unchanged pointer gameplay flow with per-step wall timing 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: mouse.move: Target page, context or browser has been closed
+
+      33 |   });
+      34 |   await timed('1000ms paused input and exact frozen save', async () => {
+    > 35 |     await page.clock.runFor(1000); await page.mouse.move(100, 200); await page.keyboard.press('ArrowDown'); expect(await saved()).toEqual(before);
+         |                                                     ^
+      36 |   });
+      37 |   await timed('200ms resume', async () => {
+      38 |     await page.keyboard.up('Space'); await page.keyboard.press('p'); await page.clock.runFor(200); await expect(game).toHaveAttribute('data-boosting', 'false');
+        at /tmp/neon-coil-ci-fix/timing.spec.ts:35:53
+        at timed (/tmp/neon-coil-ci-fix/timing.spec.ts:9:9)
+        at /tmp/neon-coil-ci-fix/timing.spec.ts:34:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../tmp/neon-coil-ci-fix/red/timing-rate40-budget30-output/timing-unchanged-pointer-g-547b1-w-with-per-step-wall-timing-chromium-timing/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../tmp/neon-coil-ci-fix/red/timing-rate40-budget30-output/timing-unchanged-pointer-g-547b1-w-with-per-step-wall-timing-chromium-timing/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../tmp/neon-coil-ci-fix/red/timing-rate40-budget30-output/timing-unchanged-pointer-g-547b1-w-with-per-step-wall-timing-chromium-timing/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../tmp/neon-coil-ci-fix/red/timing-rate40-budget30-output/timing-unchanged-pointer-g-547b1-w-with-per-step-wall-timing-chromium-timing/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium-timing] › ../../tmp/neon-coil-ci-fix/timing.spec.ts:12:5 › unchanged pointer gameplay flow with per-step wall timing 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

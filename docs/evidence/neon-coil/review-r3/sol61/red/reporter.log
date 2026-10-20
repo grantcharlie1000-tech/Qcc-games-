@@ -1,0 +1,184 @@
+
+Running 4 tests using 1 worker
+
+(node:24979) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing ready arena (3.5s)
+(node:25123) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing paused arena (579ms)
+(node:25261) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing dead arena (612ms)
+(node:25395) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing running arena (693ms)
+
+
+  1) [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing ready arena 
+
+    Error: ready 390x844
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      263 |       await page.setViewportSize(size);
+      264 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 265 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      266 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      267 |       expect(await saved(page)).toEqual(before);
+      268 |     }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:265:110
+
+    Error: ready 844x390
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      263 |       await page.setViewportSize(size);
+      264 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 265 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      266 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      267 |       expect(await saved(page)).toEqual(before);
+      268 |     }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:265:110
+
+    Error: Stopped simulation cannot leave stale ranking indefinitely
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      270 |       await page.clock.runFor(300); await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      271 |       expect(await saved(page)).toEqual(before);
+    > 272 |       expect.soft(await page.locator('.nc-ranking li').count(), 'Stopped simulation cannot leave stale ranking indefinitely').toBe(5);
+          |                                                                                                                               ^
+      273 |     }
+      274 |     expect(await page.locator('#announcer').getAttribute('data-resize-announcements')).toBe('0');
+      275 |     expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'))).toBe(bestBefore);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:272:127
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing paused arena 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4173/#/game/neon-coil
+    Call log:
+      - navigating to "http://127.0.0.1:4173/#/game/neon-coil", waiting until "load"
+
+
+       6 |   await page.clock.install({ time: new Date('2026-10-20T10:00:00Z') });
+       7 |   await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
+    >  8 |   await page.goto('/#/game/neon-coil');
+         |              ^
+       9 |   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+      10 | }
+      11 | test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
+        at open (/workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:8:14)
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:243:63
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing dead arena 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4173/#/game/neon-coil
+    Call log:
+      - navigating to "http://127.0.0.1:4173/#/game/neon-coil", waiting until "load"
+
+
+       6 |   await page.clock.install({ time: new Date('2026-10-20T10:00:00Z') });
+       7 |   await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
+    >  8 |   await page.goto('/#/game/neon-coil');
+         |              ^
+       9 |   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+      10 | }
+      11 | test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
+        at open (/workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:8:14)
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:243:63
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing running arena 
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:4173/#/game/neon-coil
+    Call log:
+      - navigating to "http://127.0.0.1:4173/#/game/neon-coil", waiting until "load"
+
+
+       6 |   await page.clock.install({ time: new Date('2026-10-20T10:00:00Z') });
+       7 |   await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
+    >  8 |   await page.goto('/#/game/neon-coil');
+         |              ^
+       9 |   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+      10 | }
+      11 | test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
+        at open (/workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:8:14)
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:243:63
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing ready arena 
+    [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing paused arena 
+    [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing dead arena 
+    [chromium] › tests/games/neon-coil/play.spec.ts:241:3 › resize synchronizes ranking without advancing running arena 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

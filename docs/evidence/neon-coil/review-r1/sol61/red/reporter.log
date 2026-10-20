@@ -1,0 +1,361 @@
+
+Running 5 tests using 1 worker
+
+(node:9858) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: steering-first (3.0s)
+  ✘  2 [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: boost-first (1.5s)
+(node:10027) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: reacquire (2.4s)
+(node:10162) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 844x390 (1.8s)
+(node:10302) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  5 [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 740x360 (1.7s)
+
+
+  1) [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: boost-first ───
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < -1
+    Received:   0
+
+      174 |       await page.screenshot({ path: `${evidence}/touch-${order}.png` });
+      175 |       await expect(game(page)).toHaveAttribute('data-boosting', 'true');
+    > 176 |       expect(Number(await game(page).getAttribute('data-angle'))).toBeLessThan(-1);
+          |                                                                   ^
+      177 |       expect(Number(await game(page).getAttribute('data-y'))).toBeLessThan(-40);
+      178 |       // A further arena finger cannot steal the tracked steering pointer.
+      179 |       await send('touchStart', [boost, steer, { x: 195, y: 600, id: 4 }]);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:176:67
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-boost-first-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-boost-first-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-boost-first-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-boost-first-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: reacquire ─────
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < -1
+    Received:   0
+
+      174 |       await page.screenshot({ path: `${evidence}/touch-${order}.png` });
+      175 |       await expect(game(page)).toHaveAttribute('data-boosting', 'true');
+    > 176 |       expect(Number(await game(page).getAttribute('data-angle'))).toBeLessThan(-1);
+          |                                                                   ^
+      177 |       expect(Number(await game(page).getAttribute('data-y'))).toBeLessThan(-40);
+      178 |       // A further arena finger cannot steal the tracked steering pointer.
+      179 |       await send('touchStart', [boost, steer, { x: 195, y: 600, id: 4 }]);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:176:67
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 844x390 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 320
+    Received:    426.65625
+
+      193 |     await page.screenshot({ path: `${evidence}/intro-${size.width}.png` });
+      194 |     expect.soft(card.y).toBeGreaterThanOrEqual(62);
+    > 195 |     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                       ^
+      196 |     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+      197 |     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+      198 |     await page.locator('.nc-start').click(); await page.clock.runFor(150);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:195:39
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 320
+    Received:    365.0625
+
+      195 |     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+      196 |     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+    > 197 |     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                         ^
+      198 |     await page.locator('.nc-start').click(); await page.clock.runFor(150);
+      199 |     await expect(page.locator('.nc-you')).toBeVisible();
+      200 |     const you = await bounds('.nc-you');
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:197:41
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      200 |     const you = await bounds('.nc-you');
+      201 |     await page.screenshot({ path: `${evidence}/running-${size.width}.png` });
+    > 202 |     expect.soft(await page.locator('.nc-ranking li').count()).toBe(5);
+          |                                                               ^
+      203 |     expect.soft(you.y + you.height).toBeLessThanOrEqual(footer.y - 8);
+      204 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.nc-boost']) {
+      205 |       const control = await bounds(selector);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:202:63
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 320
+    Received:    369
+
+      201 |     await page.screenshot({ path: `${evidence}/running-${size.width}.png` });
+      202 |     expect.soft(await page.locator('.nc-ranking li').count()).toBe(5);
+    > 203 |     expect.soft(you.y + you.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                     ^
+      204 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.nc-boost']) {
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:203:37
+
+    Error: YOU overlaps #restart-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    Error: YOU overlaps #favourite-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    Error: YOU overlaps #rules-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    Error: YOU overlaps #game-menu
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-ca5da-ured-player-ranking-844x390-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-ca5da-ured-player-ranking-844x390-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-ca5da-ured-player-ranking-844x390-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-ca5da-ured-player-ranking-844x390-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 740x360 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 290
+    Received:    426.65625
+
+      193 |     await page.screenshot({ path: `${evidence}/intro-${size.width}.png` });
+      194 |     expect.soft(card.y).toBeGreaterThanOrEqual(62);
+    > 195 |     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                       ^
+      196 |     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+      197 |     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+      198 |     await page.locator('.nc-start').click(); await page.clock.runFor(150);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:195:39
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 290
+    Received:    365.0625
+
+      195 |     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+      196 |     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+    > 197 |     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                         ^
+      198 |     await page.locator('.nc-start').click(); await page.clock.runFor(150);
+      199 |     await expect(page.locator('.nc-you')).toBeVisible();
+      200 |     const you = await bounds('.nc-you');
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:197:41
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      200 |     const you = await bounds('.nc-you');
+      201 |     await page.screenshot({ path: `${evidence}/running-${size.width}.png` });
+    > 202 |     expect.soft(await page.locator('.nc-ranking li').count()).toBe(5);
+          |                                                               ^
+      203 |     expect.soft(you.y + you.height).toBeLessThanOrEqual(footer.y - 8);
+      204 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.nc-boost']) {
+      205 |       const control = await bounds(selector);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:202:63
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 290
+    Received:    364
+
+      201 |     await page.screenshot({ path: `${evidence}/running-${size.width}.png` });
+      202 |     expect.soft(await page.locator('.nc-ranking li').count()).toBe(5);
+    > 203 |     expect.soft(you.y + you.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                     ^
+      204 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.nc-boost']) {
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:203:37
+
+    Error: YOU overlaps #restart-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    Error: YOU overlaps #favourite-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    Error: YOU overlaps #rules-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    Error: YOU overlaps #game-menu
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+    > 207 |       expect.soft(overlap, `YOU overlaps ${selector}`).toBe(false);
+          |                                                        ^
+      208 |     }
+      209 |   });
+      210 | }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:56
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-b9f69-ured-player-ranking-740x360-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-b9f69-ured-player-ranking-740x360-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-b9f69-ured-player-ranking-740x360-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r1/sol61/red/playwright/games-neon-coil-play-short-b9f69-ured-player-ranking-740x360-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: boost-first ────
+    [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: reacquire ──────
+    [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 844x390 
+    [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 740x360 
+  1 passed (13.3s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

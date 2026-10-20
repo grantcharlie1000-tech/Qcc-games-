@@ -1,0 +1,95 @@
+
+Running 1 test using 1 worker
+
+(node:15517) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/neon-coil/play.spec.ts:213:1 › short narrow viewport keeps intro and Boost within the supported 320px width (1.5s)
+
+
+  1) [chromium] › tests/games/neon-coil/play.spec.ts:213:1 › short narrow viewport keeps intro and Boost within the supported 320px width 
+
+    Error: .nc-card
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 320
+    Received:    388
+
+      216 |     const box = (await page.locator(selector).boundingBox())!;
+      217 |     expect.soft(box.x, selector).toBeGreaterThanOrEqual(0);
+    > 218 |     expect.soft(box.x + box.width, selector).toBeLessThanOrEqual(320);
+          |                                              ^
+      219 |     expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(498);
+      220 |   }
+      221 |   await page.screenshot({ path: `${evidence}/intro-320.png` });
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:218:46
+
+    Error: .nc-start
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 320
+    Received:    359
+
+      216 |     const box = (await page.locator(selector).boundingBox())!;
+      217 |     expect.soft(box.x, selector).toBeGreaterThanOrEqual(0);
+    > 218 |     expect.soft(box.x + box.width, selector).toBeLessThanOrEqual(320);
+          |                                              ^
+      219 |     expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(498);
+      220 |   }
+      221 |   await page.screenshot({ path: `${evidence}/intro-320.png` });
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:218:46
+
+    Error: .nc-boost
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 0
+    Received:    -10
+
+      215 |   for (const selector of ['.nc-card', '.nc-start', '.nc-boost']) {
+      216 |     const box = (await page.locator(selector).boundingBox())!;
+    > 217 |     expect.soft(box.x, selector).toBeGreaterThanOrEqual(0);
+          |                                  ^
+      218 |     expect.soft(box.x + box.width, selector).toBeLessThanOrEqual(320);
+      219 |     expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(498);
+      220 |   }
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:217:34
+
+    Error: .nc-boost
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 498
+    Received:    554
+
+      217 |     expect.soft(box.x, selector).toBeGreaterThanOrEqual(0);
+      218 |     expect.soft(box.x + box.width, selector).toBeLessThanOrEqual(320);
+    > 219 |     expect.soft(box.y + box.height, selector).toBeLessThanOrEqual(498);
+          |                                               ^
+      220 |   }
+      221 |   await page.screenshot({ path: `${evidence}/intro-320.png` });
+      222 | });
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:219:47
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/narrow-playwright/games-neon-coil-play-short-c912e-n-the-supported-320px-width-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r1/sol61/red/narrow-playwright/games-neon-coil-play-short-c912e-n-the-supported-320px-width-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/red/narrow-playwright/games-neon-coil-play-short-c912e-n-the-supported-320px-width-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r1/sol61/red/narrow-playwright/games-neon-coil-play-short-c912e-n-the-supported-320px-width-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/games/neon-coil/play.spec.ts:213:1 › short narrow viewport keeps intro and Boost within the supported 320px width 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

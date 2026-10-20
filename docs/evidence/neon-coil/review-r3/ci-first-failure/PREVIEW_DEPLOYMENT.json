@@ -1,0 +1,14 @@
+{
+  "id": "6ad7528435ea96f481471e54",
+  "site_id": "4afc912c-6802-4c18-8f2c-273fb3e771ee",
+  "state": "ready",
+  "commit_ref": "1e08484b890bb2d60ced32989bfc139d075acc44",
+  "branch": "feat/neon-coil-arena",
+  "context": "deploy-preview",
+  "review_id": 5,
+  "created_at": "2026-10-20T11:37:40.627Z",
+  "updated_at": "2026-10-20T11:38:02.321Z",
+  "published_at": null,
+  "deploy_ssl_url": "https://deploy-preview-5--mauri-gazette.netlify.app",
+  "manual_deploy": false
+}

@@ -1,0 +1,61 @@
+{
+  "blockedBeforePause": {
+    "gesture": "idle",
+    "shots": "0"
+  },
+  "allowedAfterPause": {
+    "gesture": "pull",
+    "shots": "1"
+  },
+  "events": [
+    {
+      "type": "pointerdown",
+      "trusted": true,
+      "id": 2,
+      "pointerType": "touch",
+      "target": "STRONG"
+    },
+    {
+      "type": "pointerdown",
+      "trusted": true,
+      "id": 1,
+      "pointerType": "mouse",
+      "target": "CANVAS"
+    },
+    {
+      "type": "pointerup",
+      "trusted": true,
+      "id": 1,
+      "pointerType": "mouse",
+      "target": "CANVAS"
+    },
+    {
+      "type": "pointerdown",
+      "trusted": true,
+      "id": 1,
+      "pointerType": "mouse",
+      "target": "CANVAS"
+    },
+    {
+      "type": "gotpointercapture",
+      "trusted": true,
+      "id": 1,
+      "pointerType": "mouse",
+      "target": "CANVAS"
+    },
+    {
+      "type": "pointerup",
+      "trusted": true,
+      "id": 1,
+      "pointerType": "mouse",
+      "target": "CANVAS"
+    },
+    {
+      "type": "lostpointercapture",
+      "trusted": true,
+      "id": 1,
+      "pointerType": "mouse",
+      "target": "CANVAS"
+    }
+  ]
+}

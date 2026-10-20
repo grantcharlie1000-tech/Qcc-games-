@@ -1,0 +1,31 @@
+{
+  "cwd": "/tmp/neon-coil-r4-astra-33m2evq4",
+  "server_command": [
+    "node",
+    "/tmp/neon-coil-r4-astra-33m2evq4/node_modules/vite/bin/vite.js",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "4179",
+    "--strictPort"
+  ],
+  "test_command": [
+    "node",
+    "/tmp/neon-coil-r4-astra-33m2evq4/node_modules/@playwright/test/cli.js",
+    "test",
+    "--config",
+    "/tmp/neon-coil-r4-astra-33m2evq4/audit.config.ts",
+    "--grep",
+    "pointer movement without click|resize synchronizes ranking"
+  ],
+  "explicit_environment": {
+    "ARCADE_URL": "http://127.0.0.1:4179",
+    "CHROMIUM_PATH": "/usr/bin/chromium",
+    "NEON_COIL_EVIDENCE_DIR": "/workspace/neon-coil-integration-audit-r4/browser-evidence"
+  },
+  "start_utc": "2026-10-20T19:43:34Z",
+  "server_pid": 18033,
+  "exit_code": 0,
+  "owned_server_stopped": true,
+  "end_utc": "2026-10-20T19:44:09Z"
+}

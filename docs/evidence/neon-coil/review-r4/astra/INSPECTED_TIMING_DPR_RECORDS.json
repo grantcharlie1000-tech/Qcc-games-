@@ -1,0 +1,67 @@
+[
+  {
+    "path": "/tmp/neon-coil-ci-fix/red/timing-rate40-budget30.json",
+    "bytes": 594,
+    "sha256": "feade85fe4f2135985120364b3e27719f79eacf788513ea8a0dbc56330092805"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/red/timing-rate20.json",
+    "bytes": 1012,
+    "sha256": "6865295cc5a5e852f7d879a0ce4c4d680a1c9fd0daa255047c84d0d9d12d4fe5"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/red/timing-rate4.json",
+    "bytes": 1017,
+    "sha256": "0b17750e2afe4c23e411ad2c3bc3c4cb5ea2f05a4ec082e9f2f75a9c9c5d70b2"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/red/timing-rate1-authoritative.json",
+    "bytes": 1012,
+    "sha256": "88d977241520dd7475556784ebe8612d11c2824aaa02d16149cdb437c21d0322"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/red/dpr2-authoritative.log",
+    "bytes": 4108,
+    "sha256": "96ad03da932fc8acdf561aff48ff1eadf1e4f0978c1b0feb0ddb5500a16eb6a6"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/timing.spec.ts",
+    "bytes": 3741,
+    "sha256": "5696f854d0b5f7006469f99571787ac23e6ef14d6edb23f05fe91d7165f83e67"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/timing.config.ts",
+    "bytes": 376,
+    "sha256": "acf85174755c158640f9f3db1c36f63e2b19324a21c00483e348114facd5acd7"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/green/dpr3.log",
+    "bytes": 935,
+    "sha256": "52cbf2896794a34cf2be85f7332e24bd2a31b5fe78e0609b743f887c3aa9ee65"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/green/dpr1.25.log",
+    "bytes": 938,
+    "sha256": "2b48893b88d466f82e373819d0c17ad3d4e59aa45e1b766ba761abaa8c663ae9"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/green/dpr2.log",
+    "bytes": 1356,
+    "sha256": "b5b4d87de9d1811d52b9786422dfe7dd8dc3a66e1e38c66b20249628f875fc36"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/green/dpr1.log",
+    "bytes": 1356,
+    "sha256": "72cf17a6d0c2dc883f2ba34d4e65819b5a606ffb51100cdd28249ee638516520"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/green/timing-rate40-budget60.json",
+    "bytes": 1015,
+    "sha256": "caeb8809e2a29038929b2c8465bdad2129e59b57c41f6f51692ebbf48301fe8e"
+  },
+  {
+    "path": "/tmp/neon-coil-ci-fix/green/timing-rate40-budget60.log",
+    "bytes": 945,
+    "sha256": "ca1e6750523948ffbd8a87367c582018626e5c968bcb7fd2f5ad9845c0518a39"
+  }
+]

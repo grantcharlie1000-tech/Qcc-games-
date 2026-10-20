@@ -1,0 +1,644 @@
+[
+  {
+    "sampled": {
+      "from": {
+        "x": 71.28125,
+        "y": 298.015625,
+        "width": 46.28125,
+        "height": 64.78125
+      },
+      "to": {
+        "x": 21,
+        "y": 298.015625,
+        "width": 46.28125,
+        "height": 64.78125
+      }
+    },
+    "actualTrustedDown": {
+      "type": "pointerdown",
+      "trusted": true,
+      "x": 86.28125,
+      "y": 310.015625,
+      "hit": "6 of hearts, column 2",
+      "sample": {
+        "at": 1853.600000000035,
+        "fonts": "loaded",
+        "stage": {
+          "scale": "1",
+          "transform": "translate(-50%, -50%) scale(1)",
+          "width": "366px"
+        },
+        "root": {
+          "x": 12,
+          "y": 152.203125,
+          "width": 366,
+          "height": 606.8125
+        },
+        "from": {
+          "x": 71.28125,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        },
+        "to": {
+          "x": 21,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        }
+      }
+    },
+    "geometryChanges": [
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 678.8000000000466,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 195,
+            "y": 236.703125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 254.28125,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 204,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      },
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 742.7000000000116,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 12,
+            "y": 152.203125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 71.28125,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 21,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      },
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 3063,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 12,
+            "y": 152.203125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 21,
+            "y": 325.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 21,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      }
+    ],
+    "fontEvents": [
+      {
+        "type": "fonts-ready",
+        "sample": {
+          "at": 88.90000000002328,
+          "fonts": "loaded",
+          "stage": {},
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loading",
+        "sample": {
+          "at": 511.6000000000349,
+          "fonts": "loading",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loadingdone",
+        "sample": {
+          "at": 528.1000000000349,
+          "fonts": "loaded",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      }
+    ]
+  },
+  {
+    "sampled": {
+      "from": {
+        "x": 71.28125,
+        "y": 298.015625,
+        "width": 46.28125,
+        "height": 64.78125
+      },
+      "to": {
+        "x": 21,
+        "y": 298.015625,
+        "width": 46.28125,
+        "height": 64.78125
+      }
+    },
+    "actualTrustedDown": {
+      "type": "pointerdown",
+      "trusted": true,
+      "x": 86.28125,
+      "y": 310.015625,
+      "hit": "6 of hearts, column 2",
+      "sample": {
+        "at": 2051.9000000000233,
+        "fonts": "loaded",
+        "stage": {
+          "scale": "1",
+          "transform": "translate(-50%, -50%) scale(1)",
+          "width": "366px"
+        },
+        "root": {
+          "x": 12,
+          "y": 152.203125,
+          "width": 366,
+          "height": 606.8125
+        },
+        "from": {
+          "x": 71.28125,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        },
+        "to": {
+          "x": 21,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        }
+      }
+    },
+    "geometryChanges": [
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 723.2999999999884,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 195,
+            "y": 236.703125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 254.28125,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 204,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      },
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 768,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 12,
+            "y": 152.203125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 71.28125,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 21,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      }
+    ],
+    "fontEvents": [
+      {
+        "type": "fonts-ready",
+        "sample": {
+          "at": 112.40000000002328,
+          "fonts": "loaded",
+          "stage": {},
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loading",
+        "sample": {
+          "at": 515,
+          "fonts": "loading",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loadingdone",
+        "sample": {
+          "at": 526.7000000000116,
+          "fonts": "loaded",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      }
+    ]
+  },
+  {
+    "sampled": {
+      "from": {
+        "x": 254.28125,
+        "y": 382.515625,
+        "width": 46.28125,
+        "height": 64.78125
+      },
+      "to": {
+        "x": 204,
+        "y": 382.515625,
+        "width": 46.28125,
+        "height": 64.78125
+      }
+    },
+    "actualTrustedDown": {
+      "type": "pointerdown",
+      "trusted": true,
+      "x": 269.28125,
+      "y": 394.515625,
+      "hit": "Move selected cards to column 5, empty, Kings only",
+      "sample": {
+        "at": 1496.1999999999534,
+        "fonts": "loaded",
+        "stage": {
+          "scale": "1",
+          "transform": "translate(-50%, -50%) scale(1)",
+          "width": "366px"
+        },
+        "root": {
+          "x": 12,
+          "y": 152.203125,
+          "width": 366,
+          "height": 606.8125
+        },
+        "from": {
+          "x": 71.28125,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        },
+        "to": {
+          "x": 21,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        }
+      }
+    },
+    "geometryChanges": [
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 498.29999999998836,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 195,
+            "y": 236.703125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 254.28125,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 204,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      },
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 1488.899999999965,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 12,
+            "y": 152.203125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 71.28125,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 21,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      }
+    ],
+    "fontEvents": [
+      {
+        "type": "fonts-ready",
+        "sample": {
+          "at": 35.399999999965075,
+          "fonts": "loaded",
+          "stage": {},
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loading",
+        "sample": {
+          "at": 238.69999999995343,
+          "fonts": "loading",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loadingdone",
+        "sample": {
+          "at": 246.09999999997672,
+          "fonts": "loaded",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      }
+    ]
+  },
+  {
+    "sampled": {
+      "from": {
+        "x": 254.28125,
+        "y": 382.515625,
+        "width": 46.28125,
+        "height": 64.78125
+      },
+      "to": {
+        "x": 21,
+        "y": 298.015625,
+        "width": 46.28125,
+        "height": 64.78125
+      }
+    },
+    "actualTrustedDown": {
+      "type": "pointerdown",
+      "trusted": true,
+      "x": 269.28125,
+      "y": 394.515625,
+      "hit": "Move selected cards to column 5, empty, Kings only",
+      "sample": {
+        "at": 1315.7999999999884,
+        "fonts": "loaded",
+        "stage": {
+          "scale": "1",
+          "transform": "translate(-50%, -50%) scale(1)",
+          "width": "366px"
+        },
+        "root": {
+          "x": 12,
+          "y": 152.203125,
+          "width": 366,
+          "height": 606.8125
+        },
+        "from": {
+          "x": 71.28125,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        },
+        "to": {
+          "x": 21,
+          "y": 298.015625,
+          "width": 46.28125,
+          "height": 64.78125
+        }
+      }
+    },
+    "geometryChanges": [
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 411.3999999999651,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 195,
+            "y": 236.703125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 254.28125,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 204,
+            "y": 382.515625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      },
+      {
+        "type": "geometry",
+        "sample": {
+          "at": 560.5,
+          "fonts": "loaded",
+          "stage": {
+            "scale": "1",
+            "transform": "translate(-50%, -50%) scale(1)",
+            "width": "366px"
+          },
+          "root": {
+            "x": 12,
+            "y": 152.203125,
+            "width": 366,
+            "height": 606.8125
+          },
+          "from": {
+            "x": 71.28125,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          },
+          "to": {
+            "x": 21,
+            "y": 298.015625,
+            "width": 46.28125,
+            "height": 64.78125
+          }
+        }
+      }
+    ],
+    "fontEvents": [
+      {
+        "type": "fonts-ready",
+        "sample": {
+          "at": 40.199999999953434,
+          "fonts": "loaded",
+          "stage": {},
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loading",
+        "sample": {
+          "at": 306.3999999999651,
+          "fonts": "loading",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      },
+      {
+        "type": "fonts-loadingdone",
+        "sample": {
+          "at": 318.19999999995343,
+          "fonts": "loaded",
+          "stage": {
+            "transform": "",
+            "width": ""
+          },
+          "root": null,
+          "from": null,
+          "to": null
+        }
+      }
+    ]
+  }
+]

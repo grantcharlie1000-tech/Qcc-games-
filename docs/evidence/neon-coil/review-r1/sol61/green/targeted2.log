@@ -1,0 +1,52 @@
+
+Running 5 tests using 1 worker
+
+(node:11005) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: steering-first (2.9s)
+  ✓  2 [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: boost-first (2.2s)
+  ✘  3 [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: reacquire (2.6s)
+(node:11253) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 844x390 (3.7s)
+  ✓  5 [chromium] › tests/games/neon-coil/play.spec.ts:188:3 › short landscape bounds and unobscured player ranking 740x360 (2.2s)
+
+
+  1) [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: reacquire ─────
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < -1
+    Received:   0
+
+      174 |       await page.screenshot({ path: `${evidence}/touch-${order}.png` });
+      175 |       await expect(game(page)).toHaveAttribute('data-boosting', 'true');
+    > 176 |       expect(Number(await game(page).getAttribute('data-angle'))).toBeLessThan(-1);
+          |                                                                   ^
+      177 |       expect(Number(await game(page).getAttribute('data-y'))).toBeLessThan(-40);
+      178 |       // A further arena finger cannot steal the tracked steering pointer.
+      179 |       await send('touchStart', [boost, steer, { x: 195, y: 600, id: 4 }]);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:176:67
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/green/targeted2-playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r1/sol61/green/targeted2-playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r1/sol61/green/targeted2-playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r1/sol61/green/targeted2-playwright/games-neon-coil-play-native-touch-ownership-reacquire-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/games/neon-coil/play.spec.ts:156:3 › native touch ownership: reacquire ──────
+  4 passed (15.2s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
