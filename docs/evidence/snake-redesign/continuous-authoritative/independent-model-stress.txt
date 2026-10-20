@@ -1,0 +1,5 @@
+{"label":"Independent model stress","recordedAt":"2026-10-20T11:20:24.650Z","sourceHashes":{"model.ts":"5c9bce695a6be7ddd88c898674af587474f2287dc4465a5ef3a4384410c622e0","presentation.ts":"efbc497eabef7f916edc343edc934d79251838f35f1b972dc3da22815b03fb70","art.ts":"0930c8eb3c485532e60961481f80bca8c25f585210bd86ab5e95d0e36d3cb3eb","index.ts":"d9937e883083176de6f8485415a42e29f8abb822154940ac0d2fc94fafe427d9","style.css":"f1be0cb64c115f549073a11ef8cd2e5797d380d995a694e64cdb58701d4b7b76"}}
+{"case":"Randomized input windows: large update versus 1ms partitions; exact JSON restoration; geometric clearance","seeds":1000,"windows":88674,"lossContactsVerified":323,"pass":true}
+{"case":"Complete seeded Hamiltonian garden;160ms versus mixed partitions; legacy migration and periodic restore","legs":16924,"phase":"won","score":2530,"segments":256,"growth":1,"elapsed":43.20000000000167,"head":{"x":7,"y":8.73},"pass":true}
+{"case":"Near-junction positive time and rejected invalid full-leg snapshot","pass":true}
+PASS all independent model checks

@@ -1,4 +1,4 @@
-import {SIZE, type SnakeState} from './model';
+import {SIZE,HEAD_RADIUS,BODY_RADIUS,FOOD_RADIUS, type SnakeState} from './model';
 import {projectSnake, type SnakePresentation} from './presentation';
 const BOARD = 480, CELL = BOARD / SIZE;
 
@@ -9,7 +9,7 @@ export function drawGarden(canvas: HTMLCanvasElement, state: SnakeState, view: S
   const pixels = Math.max(1, Math.round(display * (window.devicePixelRatio || 1)));
   if (canvas.width !== pixels || canvas.height !== pixels) canvas.width = canvas.height = pixels;
   g.setTransform(pixels / BOARD, 0, 0, pixels / BOARD, 0, 0);
-  const circle = (x:number,y:number,r:number,color:string) => {
+  const circle = (x:number,y:number,r:number,color:string|CanvasGradient) => {
     g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();
   };
   const grass = g.createLinearGradient(0,0,BOARD,BOARD);
@@ -25,49 +25,45 @@ export function drawGarden(canvas: HTMLCanvasElement, state: SnakeState, view: S
     g.moveTo(x,y+4);g.quadraticCurveTo(x+3,y+1,x+4,y-2);g.stroke();
   }
   if(state.food) {
-    const age=view.time-view.foodAt;
-    // A single restrained settling motion, never an idle pulse.
-    const spawn=reducedMotion?1:Math.min(1,Math.max(0,age/200));
-    const scale=.94+.06*spawn;
-    g.save();g.translate(state.food.x*CELL+15,state.food.y*CELL+15);g.scale(scale,scale);
-    g.fillStyle='#25472425';g.beginPath();g.ellipse(0,11,11,4,0,0,Math.PI*2);g.fill();
-    g.strokeStyle='#70462e';g.lineWidth=2.8;g.beginPath();g.moveTo(0,-7);g.quadraticCurveTo(-2,-14,2,-16);g.stroke();
-    g.fillStyle='#36783e';g.beginPath();g.ellipse(6,-12,6,3,-.5,0,Math.PI*2);g.fill();
-    const red=g.createRadialGradient(-5,-6,1,0,1,17);red.addColorStop(0,'#ffb386');red.addColorStop(.4,'#ef6552');red.addColorStop(1,'#c43842');
-    g.fillStyle=red;g.beginPath();g.moveTo(0,-8);g.bezierCurveTo(-15,-15,-17,3,-8,12);
-    g.quadraticCurveTo(-3,15,0,12);g.quadraticCurveTo(5,15,10,9);g.bezierCurveTo(18,-2,11,-15,0,-8);g.fill();
-    g.strokeStyle='#ffe4c8c0';g.lineWidth=2;g.beginPath();g.moveTo(-7,-6);g.quadraticCurveTo(-11,-3,-9,1);g.stroke();g.restore();
+    const r=FOOD_RADIUS*CELL;
+    g.save();g.globalAlpha=reducedMotion?1:.85+.15*Math.min(1,Math.max(0,(view.time-view.foodAt)/200));g.translate(state.food.x*CELL+15,state.food.y*CELL+15);
+    g.fillStyle='#25472425';g.beginPath();g.ellipse(0,r+2,r,2,0,0,Math.PI*2);g.fill();
+    // Stem/leaf and shadow are decorative; the solid fruit disk is exactly FOOD_RADIUS.
+    g.strokeStyle='#70462e';g.lineWidth=1.8;g.beginPath();g.moveTo(0,-r+1);g.lineTo(1,-r-4);g.stroke();
+    g.fillStyle='#36783e';g.beginPath();g.ellipse(4,-r-2,3,1.8,-.4,0,Math.PI*2);g.fill();
+    const red=g.createRadialGradient(-r*.3,-r*.4,0,0,0,r);red.addColorStop(0,'#ffb386');red.addColorStop(.4,'#ef6552');red.addColorStop(1,'#bd303c');
+    circle(0,0,r,red);circle(-r*.35,-r*.35,1,'#ffe4c8');g.restore();
   }
   const pose=projectSnake(state,view,reducedMotion);
   const path=()=>{g.beginPath();pose.path.forEach((p,i)=>i?g.lineTo(p.x*CELL+15,p.y*CELL+15):g.moveTo(p.x*CELL+15,p.y*CELL+15));};
   g.lineJoin='round';g.lineCap='round';
-  g.save();g.translate(0,2.5);path();g.strokeStyle='#31552e40';g.lineWidth=25;g.stroke();g.restore();
-  path();g.strokeStyle='#36733d';g.lineWidth=26;g.stroke();
+  g.save();g.translate(0,2.5);path();g.strokeStyle='#31552e40';g.lineWidth=BODY_RADIUS*CELL*2;g.stroke();g.restore();
+  path();g.strokeStyle='#36733d';g.lineWidth=BODY_RADIUS*CELL*2;g.stroke();
   const body=g.createLinearGradient(0,0,BOARD,BOARD);body.addColorStop(0,'#92ce69');body.addColorStop(1,'#68ae53');
-  path();g.strokeStyle=body;g.lineWidth=22;g.stroke();
+  path();g.strokeStyle=body;g.lineWidth=BODY_RADIUS*CELL*2-2;g.stroke();
   // Continuous inset highlight follows the same corners as the body, without bead-like seams.
-  g.save();g.translate(-1,-3);path();g.strokeStyle='#c5e99545';g.lineWidth=10;g.stroke();g.restore();
+  g.save();g.translate(-.5,-1.5);path();g.strokeStyle='#c5e99545';g.lineWidth=5;g.stroke();g.restore();
   const hx=pose.head.x*CELL+15,hy=pose.head.y*CELL+15;
   g.save();g.translate(hx,hy);g.rotate(Math.atan2(pose.tangent.y,pose.tangent.x));
   const eatAge=view.time-view.ateAt;
   const appetite=reducedMotion?0:Math.max(0,1-eatAge/200);
-  const head=g.createRadialGradient(-3,-5,1,1,0,18);head.addColorStop(0,'#c8e98a');head.addColorStop(.65,'#9bd367');head.addColorStop(1,'#66a94e');
-  g.fillStyle=head;g.beginPath();g.ellipse(1,0,14+appetite,13,0,0,Math.PI*2);g.fill();
+  const head=g.createRadialGradient(-2,-3,1,0,0,HEAD_RADIUS*CELL);head.addColorStop(0,'#c8e98a');head.addColorStop(.65,'#9bd367');head.addColorStop(1,'#66a94e');
+  g.fillStyle=head;g.beginPath();g.arc(0,0,HEAD_RADIUS*CELL,0,Math.PI*2);g.fill();
   const lost=state.phase==='lost';
   if(lost) {
     // A calm facial change communicates collision without a flash or screen shake.
     g.strokeStyle='#274d32';g.lineWidth=2;
-    for(const y of [-8,8]){g.beginPath();g.moveTo(3,y-2);g.lineTo(9,y+2);g.moveTo(3,y+2);g.lineTo(9,y-2);g.stroke();}
+    for(const y of [-6,6]){g.beginPath();g.moveTo(1,y-1.5);g.lineTo(6,y+1.5);g.moveTo(1,y+1.5);g.lineTo(6,y-1.5);g.stroke();}
   } else {
-    for(const y of [-8.5,8.5]) {
-      circle(6,y,5.8,'#fbffe8');circle(8,y,2.8,'#244734');circle(8.6,y-1,1,'#fff');
+    for(const y of [-6,6]) {
+      circle(4,y,4.5,'#fbffe8');circle(6,y,2.2,'#244734');circle(6.5,y-.8,.8,'#fff');
     }
   }
   g.strokeStyle='#396137';g.lineWidth=1.6;g.beginPath();
-  if(lost){g.moveTo(10,-2);g.lineTo(10,2);}else {g.arc(8,0,3.8,-.7,.7);}g.stroke();g.restore();
+  if(lost){g.moveTo(7,-1.5);g.lineTo(7,1.5);}else {g.arc(5,0,2.8+appetite*.5,-.7,.7);}g.stroke();g.restore();
   if(!reducedMotion && view.eaten && eatAge>=0 && eatAge<200) {
     // Opacity-only feedback at the consumed cell; no particles or repeated pulsing.
     g.globalAlpha=(1-eatAge/200)*.35;g.strokeStyle='#fff4c0';g.lineWidth=2;g.beginPath();
-    g.arc(view.eaten.x*CELL+15,view.eaten.y*CELL+15,17,0,Math.PI*2);g.stroke();g.globalAlpha=1;
+    g.arc(view.eaten.x*CELL+15,view.eaten.y*CELL+15,FOOD_RADIUS*CELL+3,0,Math.PI*2);g.stroke();g.globalAlpha=1;
   }
 }

@@ -41,3 +41,8 @@ The brief explicitly requests gameplay motion; it governs this frequent-input ga
 
 
 The post-commit Astra correction pass read `receiving-code-review` and `systematic-debugging`: checked each finding against the actual model/presentation and RAF invalidation paths, retained the independent failure evidence, and replaced the clock assumption with delivered-timestamp accounting. It preserves the parent’s timing decision and uses focused regressions instead of broad unrelated changes.
+
+
+# Continuous authoritative candidate
+
+The later explicit authorization supersedes the original all-input-deadlines constraint. Applied the already-read game-development fixed-clock/path principles, animation purpose/reduced-motion guidance, responsive/input lifecycle skills, receiving-code-review and systematic debugging to a pure version-2 leg/contact model. Native Canvas remains the renderer; no new engine/library/skill installation was needed. Two actual red→green regression records are retained for save invariants and numerical event boundaries. Core continuous travel is essential in both motion modes; only cosmetics are reduced. Current contact dimensions, changed turn cutoff and safe old-save conversion are specified in `SPEC.md`. Independent review is requested only through the coordinator’s allocated slot.

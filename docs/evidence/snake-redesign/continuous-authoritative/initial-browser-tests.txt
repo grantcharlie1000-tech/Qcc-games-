@@ -1,0 +1,58 @@
+[WebServer] (node:26622) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:26635) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 7 tests using 1 worker
+
+(node:26655) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/snake/smooth.spec.ts:16:1 › continuous authoritative travel, junction-buffered turn, frozen v2 save and growth reload (4.4s)
+(node:26824) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium] › tests/games/snake/smooth.spec.ts:42:1 › a dropped RAF catches up to the same final grid and committed edge (4.8s)
+  ✓  3 [chromium] › tests/games/snake/smooth.spec.ts:85:1 › resize during a turn preserves the grid and renders at the actual high-DPI display size (5.0s)
+  ✓  4 [chromium] › tests/games/snake/smooth.spec.ts:136:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (2.3s)
+  ✓  5 [chromium] › tests/games/snake/snake.spec.ts:4:1 › keyboard eating, turning, loss, replay, pause and saved continuation (12.3s)
+  ✓  6 [chromium] › tests/games/snake/snake.spec.ts:28:1 › pointer swipe and touch direction buttons fit a phone (2.2s)
+  ✓  7 [chromium] › tests/games/snake/snake.spec.ts:49:1 › invalid saves recover and repeated exit/reentry has no stale controls (4.6s)
+
+
+  1) [chromium] › tests/games/snake/smooth.spec.ts:16:1 › continuous authoritative travel, junction-buffered turn, frozen v2 save and growth reload
+
+    Error: expect(received).toBeLessThan(expected)
+
+    Expected: < 6
+    Received:   6
+
+      30 |  await page.clock.runFor(180-snapshot.elapsed);
+      31 |  const turned=await pause(page);expect(turned.direction).toBe('up');expect(turned.queue).toEqual(['left']);
+    > 32 |  expect(turned.body[0].x).toBe(6);expect(turned.body[0].y).toBeLessThan(6);expect(turned.body[0].y).toBeGreaterThan(5);expect(await pixels(page)).not.toBe(restoredFrozen);
+         |                                                            ^
+      33 |  // Save inside the apple/growth interval, including the active 200 ms feedback.
+      34 |  await page.getByRole('button',{name:'Restart game',exact:true}).click();
+      35 |  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
+        at /workspace/qcc-snake/tests/games/snake/smooth.spec.ts:32:60
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/games-snake-smooth-continu-583a3-n-v2-save-and-growth-reload-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/games-snake-smooth-continu-583a3-n-v2-save-and-growth-reload-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/games-snake-smooth-continu-583a3-n-v2-save-and-growth-reload-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/games-snake-smooth-continu-583a3-n-v2-save-and-growth-reload-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/games/snake/smooth.spec.ts:16:1 › continuous authoritative travel, junction-buffered turn, frozen v2 save and growth reload
+  6 passed (38.7s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

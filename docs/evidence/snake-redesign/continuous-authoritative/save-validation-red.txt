@@ -1,0 +1,87 @@
+
+ RUN  v3.2.7 /workspace/qcc-snake
+
+ ❯ tests/games/snake/model.test.ts (19 tests | 1 failed | 18 skipped) 12ms
+   ↓ Snake continuous authoritative model > moves during the leg at exactly one cell per 160 ms, with no render offset
+   ↓ Snake continuous authoritative model > locks each executing leg and buffers late turns for the next junction, forbidding reversal and overflow
+   ↓ Snake continuous authoritative model > lets initial input select the first leg but never retargets a leg after it starts
+   ↓ Snake continuous authoritative model > eats at visible disk contact halfway into an adjacent leg and grows by holding the actual tail
+   ↓ Snake continuous authoritative model > eats the first apple at 560ms and updates food before the 640ms junction
+   ↓ Snake continuous authoritative model > stops at the exact wall radius rather than a delayed outside cell
+   ↓ Snake continuous authoritative model > sweeps into a body capsule at contact and preserves fatal perpendicular facing
+   ↓ Snake continuous authoritative model > does not invent a neck collision after a short turning frame followed by a dropped frame
+   ↓ Snake continuous authoritative model > handles repeated corners and growth-end boundaries independently of 30/60/120Hz and large frames
+   ↓ Snake continuous authoritative model > distinguishes approaching moving caps, tangency moving away and held caps
+   ↓ Snake continuous authoritative model > respects a tail that clears before the head reaches its former cell, but detects held-tail contact
+   ↓ Snake continuous authoritative model > gives loss priority when food and wall contact share a timestamp
+   ↓ Snake continuous authoritative model > never spawns fruit intersecting head/body solids, with seeded reproducibility
+   ↓ Snake continuous authoritative model > wins on the 256th earned segment, retaining documented final growth credit
+   ↓ Snake continuous authoritative model > migrates every valid v1 field safely, archives old fractional time once, and holds until explicit continuation
+   ↓ Snake continuous authoritative model > preserves fractional v2 travel, trail, queue, effects and growth exactly across save and continuation
+   ↓ Snake continuous authoritative model > rejects malformed/crossed/reverse-facing v2 and invalid v1 without aliasing valid saves
+   × Snake continuous authoritative model > rejects fake wins and non-junction bends in v2 saves 11ms
+     → expected { version: 2, seed: 7, …(16) } to be null
+   ↓ Snake continuous authoritative model > freezes ready, lost, won and migrated-held states under arbitrary elapsed time
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/snake/model.test.ts > Snake continuous authoritative model > rejects fake wins and non-junction bends in v2 saves
+AssertionError: expected { version: 2, seed: 7, …(16) } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "ateAt": null,
+  "body": [
+    {
+      "x": 5.25,
+      "y": 6,
+    },
+    {
+      "x": 4,
+      "y": 6,
+    },
+    {
+      "x": 3.25,
+      "y": 6,
+    },
+  ],
+  "direction": "right",
+  "eaten": null,
+  "elapsed": 40,
+  "food": null,
+  "foodAt": null,
+  "growth": 0,
+  "legStart": {
+    "x": 5,
+    "y": 6,
+  },
+  "migration": null,
+  "phase": "won",
+  "queue": [],
+  "score": 0,
+  "seed": 7,
+  "segments": 3,
+  "ticks": 0,
+  "time": 40,
+  "version": 2,
+}
+
+ ❯ tests/games/snake/model.test.ts:24:144
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 skipped (19)
+   Start at  10:58:12
+   Duration  328ms (transform 94ms, setup 0ms, collect 104ms, tests 12ms, environment 0ms, prepare 63ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

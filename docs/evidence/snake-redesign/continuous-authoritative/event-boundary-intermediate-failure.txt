@@ -1,0 +1,112 @@
+
+ RUN  v3.2.7 /workspace/qcc-snake
+
+ ✓ tests/games/snake/presentation.test.ts (5 tests) 11ms
+ ❯ tests/games/snake/model.test.ts (29 tests | 1 failed) 62ms
+   ✓ Snake continuous authoritative model > moves during the leg at exactly one cell per 160 ms, with no render offset 3ms
+   ✓ Snake continuous authoritative model > locks each executing leg and buffers late turns for the next junction, forbidding reversal and overflow 1ms
+   ✓ Snake continuous authoritative model > lets initial input select the first leg but never retargets a leg after it starts 0ms
+   ✓ Snake continuous authoritative model > eats at visible disk contact halfway into an adjacent leg and grows by holding the actual tail 1ms
+   ✓ Snake continuous authoritative model > eats the first apple at physical contact before the next junction 1ms
+   ✓ Snake continuous authoritative model > stops at the exact wall radius rather than a delayed outside cell 1ms
+   ✓ Snake continuous authoritative model > sweeps into a body capsule at contact and preserves fatal perpendicular facing 0ms
+   ✓ Snake continuous authoritative model > does not invent a neck collision after a short turning frame followed by a dropped frame 1ms
+   ✓ Snake continuous authoritative model > handles repeated corners and growth-end boundaries independently of 30/60/120Hz and large frames 3ms
+   ✓ Snake continuous authoritative model > distinguishes approaching moving caps, tangency moving away and held caps 0ms
+   ✓ Snake continuous authoritative model > respects a tail that clears before the head reaches its former cell, but detects held-tail contact 0ms
+   ✓ Snake continuous authoritative model > gives loss priority when food and wall contact share a timestamp 0ms
+   ✓ Snake continuous authoritative model > never spawns fruit intersecting head/body solids, with seeded reproducibility 21ms
+   ✓ Snake continuous authoritative model > wins on the 256th earned segment, retaining documented final growth credit 6ms
+   × Snake continuous authoritative model > completes a full-garden cycle at all 256 earned segments with large and mixed frame partitions 12ms
+     → expected null to deeply equal { version: 2, seed: 1025555898, …(16) }
+   ✓ Snake continuous authoritative model > migrates every valid v1 field safely, archives old fractional time once, and holds until explicit continuation 1ms
+   ✓ Snake continuous authoritative model > preserves fractional v2 travel, trail, queue, effects and growth exactly across save and continuation 1ms
+   ✓ Snake continuous authoritative model > rejects malformed/crossed/reverse-facing v2 and invalid v1 without aliasing valid saves 1ms
+   ✓ Snake continuous authoritative model > rejects fake wins and non-junction bends in v2 saves 0ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'junction' event boundaries (1e-7 ms) 2ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'neck' event boundaries (1e-7 ms) 1ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'tail corner' event boundaries (1e-7 ms) 1ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'growth' event boundaries (1e-7 ms) 1ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'junction' event boundaries (1e-8 ms) 1ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'neck' event boundaries (1e-8 ms) 1ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'tail corner' event boundaries (1e-8 ms) 1ms
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'growth' event boundaries (1e-8 ms) 1ms
+   ✓ Snake continuous authoritative model > rejects elapsed 160 and greater before any zero-limit advancement can corrupt v2 state 0ms
+   ✓ Snake continuous authoritative model > freezes ready, lost, won and migrated-held states under arbitrary elapsed time 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/snake/model.test.ts > Snake continuous authoritative model > completes a full-garden cycle at all 256 earned segments with large and mixed frame partitions
+AssertionError: expected null to deeply equal { version: 2, seed: 1025555898, …(16) }
+
+- Expected:
+{
+  "ateAt": 9483.2,
+  "body": [
+    {
+      "x": 1.0000000000000004,
+      "y": 1,
+    },
+    {
+      "x": 1,
+      "y": 1,
+    },
+    {
+      "x": 1,
+      "y": 4.0000000000000036,
+    },
+  ],
+  "direction": "right",
+  "eaten": {
+    "x": 9,
+    "y": 6,
+  },
+  "elapsed": 5.3290705182007514e-14,
+  "food": {
+    "x": 2,
+    "y": 4,
+  },
+  "foodAt": 9483.2,
+  "growth": 0,
+  "legStart": {
+    "x": 1,
+    "y": 1,
+  },
+  "migration": {
+    "elapsed": 93,
+    "held": false,
+  },
+  "phase": "running",
+  "queue": [],
+  "score": 10,
+  "seed": 1025555898,
+  "segments": 4,
+  "ticks": 702,
+  "time": 32160,
+  "version": 2,
+}
+
++ Received:
+null
+
+ ❯ tests/games/snake/model.test.ts:30:77
+     28|    const next={x:a.legStart.x+vector[a.direction].x,y:a.legStart.y+vec…
+     29|    const turn=directionAt(next.x,next.y);enqueue(a,turn);enqueue(b,tur…
+     30|    if(n%200===0){expect(restoreState(a)).toEqual(a);expect(restoreStat…
+       |                                                                             ^
+     31|   }
+     32|   near(a,b);expect(a.phase).toBe('won');expect(a.score).toBe(2530);exp…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 33 passed (34)
+   Start at  11:11:49
+   Duration  363ms (transform 109ms, setup 0ms, collect 173ms, tests 73ms, environment 0ms, prepare 135ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

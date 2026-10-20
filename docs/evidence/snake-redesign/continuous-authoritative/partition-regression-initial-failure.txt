@@ -1,0 +1,22 @@
+{"label":"Independent final-model stress","recordedAt":"2026-10-20T11:15:33.084Z","sourceHashes":{"model.ts":"2f4029c57db6e4fe1070ac2e5c52f78dd47c08acb1cf990804ffb4cb3e2a863b","presentation.ts":"efbc497eabef7f916edc343edc934d79251838f35f1b972dc3da22815b03fb70","art.ts":"0930c8eb3c485532e60961481f80bca8c25f585210bd86ab5e95d0e36d3cb3eb","index.ts":"d9937e883083176de6f8485415a42e29f8abb822154940ac0d2fc94fafe427d9","style.css":"f1be0cb64c115f549073a11ef8cd2e5797d380d995a694e64cdb58701d4b7b76"}}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: state.direction
+
+'down' !== 'left'
+
+    at near (file:///workspace/qcc-snake/[eval1]:6:329)
+    at near (file:///workspace/qcc-snake/[eval1]:6:281)
+    at file:///workspace/qcc-snake/[eval1]:8:450
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'down',
+  expected: 'left',
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

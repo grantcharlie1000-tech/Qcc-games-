@@ -1,0 +1,117 @@
+
+ RUN  v3.2.7 /workspace/qcc-snake
+
+ ❯ tests/games/snake/model.test.ts (29 tests | 5 failed | 20 skipped) 24ms
+   ↓ Snake continuous authoritative model > moves during the leg at exactly one cell per 160 ms, with no render offset
+   ↓ Snake continuous authoritative model > locks each executing leg and buffers late turns for the next junction, forbidding reversal and overflow
+   ↓ Snake continuous authoritative model > lets initial input select the first leg but never retargets a leg after it starts
+   ↓ Snake continuous authoritative model > eats at visible disk contact halfway into an adjacent leg and grows by holding the actual tail
+   ↓ Snake continuous authoritative model > eats the first apple at physical contact before the next junction
+   ↓ Snake continuous authoritative model > stops at the exact wall radius rather than a delayed outside cell
+   ↓ Snake continuous authoritative model > sweeps into a body capsule at contact and preserves fatal perpendicular facing
+   ↓ Snake continuous authoritative model > does not invent a neck collision after a short turning frame followed by a dropped frame
+   ↓ Snake continuous authoritative model > handles repeated corners and growth-end boundaries independently of 30/60/120Hz and large frames
+   ↓ Snake continuous authoritative model > distinguishes approaching moving caps, tangency moving away and held caps
+   ↓ Snake continuous authoritative model > respects a tail that clears before the head reaches its former cell, but detects held-tail contact
+   ↓ Snake continuous authoritative model > gives loss priority when food and wall contact share a timestamp
+   ↓ Snake continuous authoritative model > never spawns fruit intersecting head/body solids, with seeded reproducibility
+   ↓ Snake continuous authoritative model > wins on the 256th earned segment, retaining documented final growth credit
+   ↓ Snake continuous authoritative model > completes a full-garden cycle at all 256 earned segments with large and mixed frame partitions
+   ↓ Snake continuous authoritative model > migrates every valid v1 field safely, archives old fractional time once, and holds until explicit continuation
+   ↓ Snake continuous authoritative model > preserves fractional v2 travel, trail, queue, effects and growth exactly across save and continuation
+   ↓ Snake continuous authoritative model > rejects malformed/crossed/reverse-facing v2 and invalid v1 without aliasing valid saves
+   ↓ Snake continuous authoritative model > rejects fake wins and non-junction bends in v2 saves
+   × Snake continuous authoritative model > preserves sub-nanocell time across 'junction' event boundaries (1e-7 ms) 11ms
+     → expected [Function] to not throw an error but 'Error: Snake event made no progress' was thrown
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'neck' event boundaries (1e-7 ms) 2ms
+   × Snake continuous authoritative model > preserves sub-nanocell time across 'tail corner' event boundaries (1e-7 ms) 1ms
+     → expected [Function] to not throw an error but 'Error: Snake event made no progress' was thrown
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'growth' event boundaries (1e-7 ms) 2ms
+   × Snake continuous authoritative model > preserves sub-nanocell time across 'junction' event boundaries (1e-8 ms) 1ms
+     → expected [Function] to not throw an error but 'Error: Snake event made no progress' was thrown
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'neck' event boundaries (1e-8 ms) 1ms
+   × Snake continuous authoritative model > preserves sub-nanocell time across 'tail corner' event boundaries (1e-8 ms) 1ms
+     → expected [Function] to not throw an error but 'Error: Snake event made no progress' was thrown
+   ✓ Snake continuous authoritative model > preserves sub-nanocell time across 'growth' event boundaries (1e-8 ms) 2ms
+   × Snake continuous authoritative model > rejects elapsed 160 and greater before any zero-limit advancement can corrupt v2 state 3ms
+     → expected { version: 2, seed: 7, …(16) } to be null
+   ↓ Snake continuous authoritative model > freezes ready, lost, won and migrated-held states under arbitrary elapsed time
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/snake/model.test.ts > Snake continuous authoritative model > preserves sub-nanocell time across 'junction' event boundaries (1e-7 ms)
+ FAIL  tests/games/snake/model.test.ts > Snake continuous authoritative model > preserves sub-nanocell time across 'tail corner' event boundaries (1e-7 ms)
+ FAIL  tests/games/snake/model.test.ts > Snake continuous authoritative model > preserves sub-nanocell time across 'junction' event boundaries (1e-8 ms)
+ FAIL  tests/games/snake/model.test.ts > Snake continuous authoritative model > preserves sub-nanocell time across 'tail corner' event boundaries (1e-8 ms)
+AssertionError: expected [Function] to not throw an error but 'Error: Snake event made no progress' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: Snake event made no progress"
+
+ ❯ tests/games/snake/model.test.ts:48:33
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/games/snake/model.test.ts > Snake continuous authoritative model > rejects elapsed 160 and greater before any zero-limit advancement can corrupt v2 state
+AssertionError: expected { version: 2, seed: 7, …(16) } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "ateAt": null,
+  "body": [
+    {
+      "x": 6,
+      "y": 6,
+    },
+    {
+      "x": 4,
+      "y": 6,
+    },
+  ],
+  "direction": "right",
+  "eaten": null,
+  "elapsed": 160,
+  "food": {
+    "x": 9,
+    "y": 6,
+  },
+  "foodAt": null,
+  "growth": 0,
+  "legStart": {
+    "x": 5,
+    "y": 6,
+  },
+  "migration": null,
+  "phase": "running",
+  "queue": [],
+  "score": 0,
+  "seed": 7,
+  "segments": 3,
+  "ticks": 1,
+  "time": 159.99999999999997,
+  "version": 2,
+}
+
+ ❯ tests/games/snake/model.test.ts:50:225
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 4 passed | 20 skipped (29)
+   Start at  11:11:12
+   Duration  313ms (transform 77ms, setup 0ms, collect 86ms, tests 24ms, environment 0ms, prepare 62ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
