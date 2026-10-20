@@ -1,0 +1,683 @@
+{
+  "note": "Scratch diagnostic used Playwright clock builtins only for native timing; Node console buffer survives reload and timeout. Original hosted stall remains unclassified.",
+  "events": [
+    {
+      "type": "blur",
+      "at": 782.1000000000931,
+      "phase": "ready",
+      "target": "DISTANCE0ALL TIME012.0 m/sSpee"
+    },
+    {
+      "type": "click",
+      "at": 783.1000000000931,
+      "phase": "ready",
+      "target": ""
+    },
+    {
+      "type": "blur",
+      "at": 787.6000000000931,
+      "phase": "ready",
+      "target": "Game rules"
+    },
+    {
+      "type": "blur",
+      "at": 870.6999999999534,
+      "phase": "ready",
+      "target": "Close rules"
+    },
+    {
+      "type": "click",
+      "at": 871.8999999999069,
+      "phase": "ready",
+      "target": "Let\u2019s play"
+    },
+    {
+      "type": "blur",
+      "at": 873.3000000000466,
+      "phase": "ready",
+      "target": "Let\u2019s play"
+    },
+    {
+      "type": "blur",
+      "at": 1171,
+      "phase": "ready",
+      "target": "Game rules"
+    },
+    {
+      "type": "click",
+      "at": 1172,
+      "phase": "ready",
+      "target": "Start rolling"
+    },
+    {
+      "type": "blur",
+      "at": 1173.8000000000466,
+      "phase": "running",
+      "target": "Start rolling"
+    },
+    {
+      "type": "keydown",
+      "at": 1216.3999999999069,
+      "phase": "running",
+      "target": "3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."
+    },
+    {
+      "type": "keyup",
+      "at": 1330.8999999999069,
+      "phase": "running",
+      "target": "3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."
+    },
+    {
+      "type": "click",
+      "at": 2854.600000000093,
+      "phase": "running",
+      "target": "3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."
+    },
+    {
+      "type": "keyup",
+      "at": 2875.600000000093,
+      "phase": "running",
+      "target": "3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."
+    },
+    {
+      "type": "blur",
+      "at": 3750.1999999999534,
+      "phase": "running",
+      "target": "3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."
+    },
+    {
+      "type": "click",
+      "at": 3750.6999999999534,
+      "phase": "running",
+      "target": ""
+    },
+    {
+      "type": "keydown",
+      "at": 3777.600000000093,
+      "phase": "running",
+      "target": "Resume game"
+    },
+    {
+      "type": "keyup",
+      "at": 3780.600000000093,
+      "phase": "running",
+      "target": "Resume game"
+    },
+    {
+      "at": 5531.699999999953,
+      "fakeTime": 3474,
+      "nativeFrames": 37,
+      "fakeFrames": 115,
+      "maxNativeGap": 1795.5999999998603,
+      "maxFakeElapsed": 3.800000000046566,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 134.546875,
+        "y": 433.5,
+        "width": 120.90625,
+        "height": 42,
+        "top": 433.5,
+        "right": 255.453125,
+        "bottom": 475.5,
+        "left": 134.546875
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "at": 7621.199999999953,
+      "fakeTime": 5564,
+      "nativeFrames": 38,
+      "fakeFrames": 115,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 3.800000000046566,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 134.546875,
+        "y": 433.5,
+        "width": 120.90625,
+        "height": 42,
+        "top": 433.5,
+        "right": 255.453125,
+        "bottom": 475.5,
+        "left": 134.546875
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "type": "blur",
+      "at": 7637.199999999953,
+      "phase": "running",
+      "target": "Resume game"
+    },
+    {
+      "type": "click",
+      "at": 7637.600000000093,
+      "phase": "running",
+      "target": "Keep playing"
+    },
+    {
+      "type": "blur",
+      "at": 7638.899999999907,
+      "phase": "running",
+      "target": "Keep playing"
+    },
+    {
+      "type": "keydown",
+      "at": 7644.800000000047,
+      "phase": "running",
+      "target": "13FAVOURITES\n    \n      Ball R"
+    },
+    {
+      "at": 7884.100000000093,
+      "fakeTime": 5827,
+      "nativeFrames": 46,
+      "fakeFrames": 123,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 3.800000000046566,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 134.546875,
+        "y": 433.5,
+        "width": 120.90625,
+        "height": 42,
+        "top": 433.5,
+        "right": 255.453125,
+        "bottom": 475.5,
+        "left": 134.546875
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "type": "blur",
+      "at": 8006.600000000093,
+      "phase": "running",
+      "target": "Reading between the lines"
+    },
+    {
+      "type": "click",
+      "at": 8006.899999999907,
+      "phase": "running",
+      "target": "Games"
+    },
+    {
+      "type": "blur",
+      "at": 8007.300000000047,
+      "phase": "running",
+      "target": "Games"
+    },
+    {
+      "type": "keydown",
+      "at": 8024.300000000047,
+      "phase": "running",
+      "target": "13FAVOURITES\n    \n      Ball R"
+    },
+    {
+      "at": 8222.800000000047,
+      "fakeTime": 6165,
+      "nativeFrames": 58,
+      "fakeFrames": 141,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 3.800000000046566,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "at": 8856.800000000047,
+      "fakeTime": 6799,
+      "nativeFrames": 61,
+      "fakeFrames": 179,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 3.800000000046566,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "at": 9465.300000000047,
+      "fakeTime": 7408,
+      "nativeFrames": 62,
+      "fakeFrames": 216,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 4.399999999906868,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "type": "keyup",
+      "at": 9853.199999999953,
+      "phase": "over",
+      "target": "13FAVOURITES\n    \n      Ball R"
+    },
+    {
+      "at": 11037.100000000093,
+      "fakeTime": 8980,
+      "nativeFrames": 64,
+      "fakeFrames": 232,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 4.399999999906868,
+      "phase": "over",
+      "start": {
+        "x": 139.375,
+        "y": 489.9375,
+        "width": 111.234375,
+        "height": 48,
+        "top": 489.9375,
+        "right": 250.609375,
+        "bottom": 537.9375,
+        "left": 139.375
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "at": 13071.300000000047,
+      "fakeTime": 11014,
+      "nativeFrames": 65,
+      "fakeFrames": 232,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 4.399999999906868,
+      "phase": "over",
+      "start": {
+        "x": 139.375,
+        "y": 489.9375,
+        "width": 111.234375,
+        "height": 48,
+        "top": 489.9375,
+        "right": 250.609375,
+        "bottom": 537.9375,
+        "left": 139.375
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "type": "click",
+      "at": 13089.100000000093,
+      "phase": "over",
+      "target": "Roll again"
+    },
+    {
+      "type": "blur",
+      "at": 13091,
+      "phase": "running",
+      "target": "Start rolling"
+    },
+    {
+      "at": 13417.800000000047,
+      "fakeTime": 11360,
+      "nativeFrames": 66,
+      "fakeFrames": 250,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 4.399999999906868,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "type": "blur",
+      "at": 13433.699999999953,
+      "phase": "running",
+      "target": "3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."
+    },
+    {
+      "type": "click",
+      "at": 13434.300000000047,
+      "phase": "running",
+      "target": ""
+    },
+    {
+      "at": 14083.399999999907,
+      "fakeTime": 12026,
+      "nativeFrames": 68,
+      "fakeFrames": 251,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 4.399999999906868,
+      "phase": "ready",
+      "start": {
+        "x": 131.03125,
+        "y": 512.328125,
+        "width": 127.921875,
+        "height": 48,
+        "top": 512.328125,
+        "right": 258.953125,
+        "bottom": 560.328125,
+        "left": 131.03125
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "type": "blur",
+      "at": 14112.699999999953,
+      "phase": "ready",
+      "target": "Restart game"
+    },
+    {
+      "type": "click",
+      "at": 14113,
+      "phase": "ready",
+      "target": "Start rolling"
+    },
+    {
+      "type": "blur",
+      "at": 14113.800000000047,
+      "phase": "running",
+      "target": "Start rolling"
+    },
+    {
+      "at": 15289.300000000047,
+      "fakeTime": 13232,
+      "nativeFrames": 70,
+      "fakeFrames": 322,
+      "maxNativeGap": 2089.5,
+      "maxFakeElapsed": 10.200000000186265,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "at": 19562.100000000093,
+      "fakeTime": 17505,
+      "nativeFrames": 72,
+      "fakeFrames": 584,
+      "maxNativeGap": 4218.100000000093,
+      "maxFakeElapsed": 22.5,
+      "phase": "running",
+      "start": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "resume": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "restart": {
+        "x": 284,
+        "y": 809,
+        "width": 28,
+        "height": 28,
+        "top": 809,
+        "right": 312,
+        "bottom": 837,
+        "left": 284
+      }
+    },
+    {
+      "type": "blur",
+      "at": 19578.800000000047,
+      "phase": "running",
+      "target": "3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."
+    },
+    {
+      "type": "click",
+      "at": 19579.300000000047,
+      "phase": "running",
+      "target": ""
+    }
+  ]
+}
