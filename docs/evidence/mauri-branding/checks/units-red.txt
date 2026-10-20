@@ -1,0 +1,64 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /workspace/qcc-mauri-branding
+
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 158ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 793ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 192ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 67ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 90ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 33ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 339ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 508ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 3706ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  825ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  2484ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 441ms
+   ✓ long seeded runs > keeps valid saves and deterministic future deals across many tray boundaries  410ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 420ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 33ms
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 552ms
+ ✓ tests/games/color-blocks/fair-deal.test.ts (8 tests) 629ms
+   ✓ fair three-piece deals > has a complete independently verified hand across reproducible sparse and dense boards  352ms
+ ✓ tests/core/study.test.ts (5 tests) 12ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 16ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 14ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 838ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  523ms
+ ✓ tests/core/storage.test.ts (5 tests) 9ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 27ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 9ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 15ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 385ms
+ ❯ tests/core/branding.test.ts (1 test | 1 failed) 19ms
+   × public branding changes without changing the existing installation identity 17ms
+     → expected 'Pocket Arcade · Offline Games' to be 'Mauri Study Notes' // Object.is equality
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/branding.test.ts > public branding changes without changing the existing installation identity
+AssertionError: expected 'Pocket Arcade · Offline Games' to be 'Mauri Study Notes' // Object.is equality
+
+Expected: "Mauri Study Notes"
+Received: "Pocket Arcade · Offline Games"
+
+ ❯ tests/core/branding.test.ts:6:24
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 24 passed (25)
+      Tests  1 failed | 274 passed (275)
+   Start at  19:58:49
+   Duration  7.56s (transform 1.64s, setup 0ms, collect 3.08s, tests 9.31s, environment 7ms, prepare 2.80s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

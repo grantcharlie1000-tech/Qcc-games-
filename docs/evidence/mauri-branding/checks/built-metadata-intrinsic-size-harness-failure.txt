@@ -1,0 +1,18 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+150 !== 32
+
+    at file:///workspace/scratch/qcc-mauri-branding/check-built-metadata.mjs:12:375 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 150,
+  expected: 32,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

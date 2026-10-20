@@ -1,0 +1,56 @@
+{
+  "base": "fbac0a58aa23b953ff9ed382d2cd4bd80c817008",
+  "browser": {
+    "red": {
+      "failed": 4
+    },
+    "green": {
+      "passed": 4,
+      "workers": 1
+    }
+  },
+  "pack": "d59d585cb145",
+  "unit": {
+    "red": {
+      "passed": 274,
+      "failed": 1
+    },
+    "green": {
+      "passed": 275,
+      "failed": 0
+    }
+  },
+  "typescriptAndBuild": "pass",
+  "svgValidation": {
+    "passed": 2
+  },
+  "offline": {
+    "games": [
+      "fruit-merge",
+      "animal-stack"
+    ],
+    "gameCases": 4,
+    "chaptersPerScope": 20,
+    "scopes": [
+      "/",
+      "/Qcc-games-/"
+    ],
+    "failedAssets": 0,
+    "pageErrors": 0,
+    "externalRequests": 0
+  },
+  "actualPreBrandProfile": {
+    "sameDocumentGotoResponse": null,
+    "ordinaryReloadStatus": 200,
+    "ordinaryReloadFromServiceWorker": false,
+    "savedGameAndPreferencesPreserved": true,
+    "automaticUpdateTested": false,
+    "installedPwaUpdateTested": false
+  },
+  "screenshots": "Current main article layout; separate article-reading-layout branch not integrated",
+  "review": "Awaiting parent-coordinated exact review; local only",
+  "futureIntegrationOverlap": [
+    "src/study/view.ts",
+    "src/study/style.css"
+  ]
+}

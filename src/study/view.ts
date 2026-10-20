@@ -1,3 +1,4 @@
+import mauriMark from '../assets/mauri-mark.svg?raw';
 import './style.css';
 import {studyTopics} from './topics';
 import {createTopicSession} from './session';
@@ -44,7 +45,7 @@ export class StudyView {
 
   showPicker(){
     this.mode='choose';this.root.hidden=false;
-    this.root.innerHTML=`<main class="study-picker study-page"><div class="study-wordmark">MAURI <span>/</span> STUDY NOTES</div>
+    this.root.innerHTML=`<main class="study-picker study-page"><div class="study-wordmark">${mauriMark}<span>Mauri Study Notes</span></div>
       <div class="study-picker-intro"><p class="study-eyebrow">The reading collection</p><h1 id="study-title" tabindex="-1">Choose your study topic</h1>
       <p>Twenty original chapters. Eight subjects. A little room to follow an idea. Choose a topic for this session.</p><p class="study-picker-hint">During a game, press <kbd>Esc</kbd> to pause, save and open your chapter. You can change topics while reading.</p></div>
       <div class="study-collection-label"><span>Browse the collection</span><span>01 — 20</span></div><div class="study-topic-groups">${subjects.map(subject=>`<section aria-label="${html(subject)}"><h2>${html(subject)}</h2><div class="study-topic-list">${studyTopics.filter(t=>t.subject===subject).map((topic,i)=>`<button class="study-topic" data-study-topic="${topic.id}"><span>${String(i+1).padStart(2,'0')}</span><strong>${html(topic.title)}</strong>${arrow}</button>`).join('')}</div></section>`).join('')}</div>
@@ -78,7 +79,7 @@ export class StudyView {
         ? `<div class="study-opening">${section(0)}${figure}</div>${section(1)}${section(2)}`
         : `${section(0)}${section(1)}<div class="study-field-observation">${figure}${section(2)}</div>`;
     this.root.innerHTML=`<div class="study-page">
-      <header class="study-header"><div class="study-wordmark">MAURI <span>/</span> STUDY NOTES</div><nav aria-label="Site navigation"><a class="study-return" href="${html(window.location.hash || '#/')}" data-study-return>Games</a></nav></header>
+      <header class="study-header"><div class="study-wordmark">${mauriMark}<span>Mauri Study Notes</span></div><nav aria-label="Site navigation"><a class="study-return" href="${html(window.location.hash || '#/')}" data-study-return>Games</a></nav></header>
       <div class="study-reader-layout"><aside class="study-sidebar"><p class="study-eyebrow">Your reading desk</p>
         <label for="study-topic">Study topic</label><select id="study-topic">${subjects.map(subject=>`<optgroup label="${html(subject)}">${studyTopics.filter(t=>t.subject===subject).map(t=>`<option value="${t.id}"${t.id===topic.id?' selected':''}>${html(t.subtitle)}</option>`).join('')}</optgroup>`).join('')}</select>
         <nav aria-label="Chapter contents"><p>In this chapter</p><ol>${topic.sections.map((s,i)=>`<li><a href="#study-section-${i}" data-study-anchor="study-section-${i}">${html(s.heading)}</a></li>`).join('')}<li><a href="#study-example" data-study-anchor="study-example">Worked example</a></li><li><a href="#study-check" data-study-anchor="study-check">Check your understanding</a></li></ol></nav>

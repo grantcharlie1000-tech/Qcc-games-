@@ -1,0 +1,49 @@
+{
+  "title": "Pocket Arcade · Offline Games",
+  "menu": "Pocket Arcade",
+  "local": {
+    "pocket-arcade:v1:save:fruit-merge": "{\"version\":1,\"data\":{\"version\":1,\"seed\":3578957065,\"bag\":[3,1,1,0,0],\"current\":2,\"next\":2,\"score\":0,\"time\":183.33333333333331,\"lastDrop\":33.333333333333336,\"lastMerge\":-10000,\"combo\":0,\"aim\":180,\"nextId\":2,\"lost\":false,\"fruits\":[{\"id\":1,\"tier\":3,\"x\":180,\"y\":70.23703106451103,\"vx\":0,\"vy\":2.421475555931366,\"angle\":0,\"av\":0,\"age\":150,\"danger\":0,\"sleeping\":false}]},\"updated\":1792526270956}",
+    "pocket-arcade:v1:favourites": "[\"fruit-merge\"]",
+    "pocket-arcade:v1:settings": "{\"sound\":false,\"reducedMotion\":true,\"colorBlind\":true}",
+    "pocket-arcade:v1:best:fruit-merge": "2468"
+  },
+  "topic": "forces",
+  "cookie": "brandMigration=retained",
+  "serviceWorkerControlled": false,
+  "progress": {
+    "version": 1,
+    "seed": 3578957065,
+    "bag": [
+      3,
+      1,
+      1,
+      0,
+      0
+    ],
+    "current": 2,
+    "next": 2,
+    "score": 0,
+    "time": 183.33333333333331,
+    "lastDrop": 33.333333333333336,
+    "lastMerge": -10000,
+    "combo": 0,
+    "aim": 180,
+    "nextId": 2,
+    "lost": false,
+    "fruits": [
+      {
+        "id": 1,
+        "tier": 3,
+        "x": 180,
+        "y": 70.23703106451103,
+        "vx": 0,
+        "vy": 2.421475555931366,
+        "angle": 0,
+        "av": 0,
+        "age": 150,
+        "danger": 0,
+        "sleeping": false
+      }
+    ]
+  }
+}

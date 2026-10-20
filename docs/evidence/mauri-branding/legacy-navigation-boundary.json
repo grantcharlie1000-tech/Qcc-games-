@@ -1,0 +1,40 @@
+{
+  "inventory": [
+    {
+      "url": "about:blank",
+      "title": ""
+    },
+    {
+      "url": "http://127.0.0.1:4194/#/game/fruit-merge",
+      "title": "Pocket Arcade · Offline Games"
+    },
+    {
+      "url": "about:blank",
+      "title": ""
+    }
+  ],
+  "initial": {
+    "url": "http://127.0.0.1:4194/#/game/fruit-merge",
+    "title": "Pocket Arcade · Offline Games",
+    "controller": null
+  },
+  "afterGoto": {
+    "response": null,
+    "title": "Pocket Arcade · Offline Games"
+  },
+  "afterReload": {
+    "response": {
+      "url": "http://127.0.0.1:4194/",
+      "status": 200,
+      "fromServiceWorker": false
+    },
+    "title": "Mauri Study Notes · Games & Revision"
+  },
+  "navigation": [
+    {
+      "url": "http://127.0.0.1:4194/",
+      "status": 200,
+      "fromServiceWorker": false
+    }
+  ]
+}

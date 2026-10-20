@@ -1,4 +1,4 @@
-Pocket Arcade — bundled third-party notices
+Mauri Study Notes — bundled third-party notices
 
 Matter.js 0.20.0
 node_modules/matter-js/LICENSE

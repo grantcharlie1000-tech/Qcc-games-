@@ -1,0 +1,5 @@
+=== svg-skill validate ===
+PASS icon.svg
+PASS mauri-mark.svg
+
+Result: 2 passed, 0 failed

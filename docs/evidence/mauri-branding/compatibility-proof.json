@@ -1,0 +1,37 @@
+{
+  "src/core/storage.ts": {
+    "unchangedFromBase": true,
+    "sha256": "fb8184bb5c7e0b1f644a811bdbdab152b6d002e2babe2ff128bf731159c0d4ba"
+  },
+  "src/core/offline.ts": {
+    "unchangedFromBase": true,
+    "sha256": "d22fb92f1e538f572b5554598bdc6468d3fbfcc5c034bd551a1508e62db8a0b4"
+  },
+  "public/sw.js": {
+    "unchangedFromBase": true,
+    "sha256": "5e29733a44b8f20187141c1075816fb465e2aecc2be6a86198cc467b2c7da743"
+  },
+  "src/study/session.ts": {
+    "unchangedFromBase": true,
+    "sha256": "b1ed7b318f28dadbc2484eb4c448781f3c7fe302c648c8452acbe97271e7e27c"
+  },
+  "package.json": {
+    "unchangedFromBase": true,
+    "sha256": "528ebad868868c951b97a5d8ecab7fbdd4021d0abd57e274f1da4f6a6e3d5874"
+  },
+  "package-lock.json": {
+    "unchangedFromBase": true,
+    "sha256": "916a56f5752846e61475a211374a40b8efab95abad74b8a6208fcb2d6643b901"
+  },
+  "manifest": {
+    "unchangedExcept": [
+      "name",
+      "short_name",
+      "description"
+    ],
+    "explicitIdAdded": false,
+    "start_url": "./",
+    "scope": "./",
+    "iconsUnchanged": true
+  }
+}

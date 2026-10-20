@@ -1,0 +1,175 @@
+
+Running 4 tests using 1 worker
+
+(node:22536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 320 (8.5s)
+(node:23160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 390 (7.8s)
+(node:23293) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 1366 (7.9s)
+(node:23433) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [chromium] › tests/e2e/branding.spec.ts:10:1 › pre-brand game keys still restore progress, settings, favourites and topic (9.4s)
+
+
+  1) [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 320 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected: "Mauri Study Notes · Games & Revision"
+    Received: "Pocket Arcade · Offline Games"
+    Timeout:  7000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 7000ms
+        9 × locator resolved to <html lang="en">…</html>
+          - unexpected value "Pocket Arcade · Offline Games"
+
+
+      3 |
+      4 | for(const width of [320,390,1366])test(`Mauri branding keeps the game collection explicit at ${width}`,async({page})=>{
+    > 5 |  await page.setViewportSize({width,height:844});await page.goto('/');await expect(page).toHaveTitle('Mauri Study Notes · Games & Revision');await expect(page.locator('.site-brand')).toBeVisible();await expect(page.locator('.site-brand')).toHaveText('Mauri Study Notes');await expect(page.locator('.site-brand .mauri-mark')).toBeVisible();await expect(page.getByRole('heading',{name:'Mauri Study Notes · Games',exact:true})).toBeAttached();
+        |                                                                                         ^
+      6 |  const count=await page.locator('.game-card').count();expect(count).toBeGreaterThan(0);await expect(page.locator('.count-pill')).toHaveAttribute('aria-label',`${count} games`);await expect(page.locator('.count-pill')).toContainText('Games');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`docs/evidence/mauri-branding/library-${width}.png`});
+      7 |  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.getByRole('heading',{name:'Mauri Study Notes',exact:true})).toBeVisible();await expect(page.getByLabel('Find a game',{exact:true})).toBeVisible();await expect(page.locator('#menu')).not.toContainText('Pocket Arcade');await page.screenshot({path:`docs/evidence/mauri-branding/menu-${width}.png`});await page.getByRole('button',{name:'Study Mode',exact:true}).click();await expect(page.locator('.study-wordmark')).toHaveText('Mauri Study Notes');await expect(page.locator('.study-wordmark .mauri-mark')).toBeVisible();await expect(page.getByRole('link',{name:'Games',exact:true})).toBeVisible();await page.screenshot({path:`docs/evidence/mauri-branding/study-${width}.png`});
+      8 | });
+        at /workspace/qcc-mauri-branding/tests/e2e/branding.spec.ts:5:89
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-27b5e--collection-explicit-at-320-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-27b5e--collection-explicit-at-320-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-27b5e--collection-explicit-at-320-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-27b5e--collection-explicit-at-320-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 390 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected: "Mauri Study Notes · Games & Revision"
+    Received: "Pocket Arcade · Offline Games"
+    Timeout:  7000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 7000ms
+        12 × locator resolved to <html lang="en">…</html>
+           - unexpected value "Pocket Arcade · Offline Games"
+
+
+      3 |
+      4 | for(const width of [320,390,1366])test(`Mauri branding keeps the game collection explicit at ${width}`,async({page})=>{
+    > 5 |  await page.setViewportSize({width,height:844});await page.goto('/');await expect(page).toHaveTitle('Mauri Study Notes · Games & Revision');await expect(page.locator('.site-brand')).toBeVisible();await expect(page.locator('.site-brand')).toHaveText('Mauri Study Notes');await expect(page.locator('.site-brand .mauri-mark')).toBeVisible();await expect(page.getByRole('heading',{name:'Mauri Study Notes · Games',exact:true})).toBeAttached();
+        |                                                                                         ^
+      6 |  const count=await page.locator('.game-card').count();expect(count).toBeGreaterThan(0);await expect(page.locator('.count-pill')).toHaveAttribute('aria-label',`${count} games`);await expect(page.locator('.count-pill')).toContainText('Games');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`docs/evidence/mauri-branding/library-${width}.png`});
+      7 |  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.getByRole('heading',{name:'Mauri Study Notes',exact:true})).toBeVisible();await expect(page.getByLabel('Find a game',{exact:true})).toBeVisible();await expect(page.locator('#menu')).not.toContainText('Pocket Arcade');await page.screenshot({path:`docs/evidence/mauri-branding/menu-${width}.png`});await page.getByRole('button',{name:'Study Mode',exact:true}).click();await expect(page.locator('.study-wordmark')).toHaveText('Mauri Study Notes');await expect(page.locator('.study-wordmark .mauri-mark')).toBeVisible();await expect(page.getByRole('link',{name:'Games',exact:true})).toBeVisible();await page.screenshot({path:`docs/evidence/mauri-branding/study-${width}.png`});
+      8 | });
+        at /workspace/qcc-mauri-branding/tests/e2e/branding.spec.ts:5:89
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-99a26--collection-explicit-at-390-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-99a26--collection-explicit-at-390-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-99a26--collection-explicit-at-390-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-99a26--collection-explicit-at-390-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 1366 
+
+    Error: expect(page).toHaveTitle(expected) failed
+
+    Expected: "Mauri Study Notes · Games & Revision"
+    Received: "Pocket Arcade · Offline Games"
+    Timeout:  7000ms
+
+    Call log:
+      - Expect "toHaveTitle" with timeout 7000ms
+        12 × locator resolved to <html lang="en">…</html>
+           - unexpected value "Pocket Arcade · Offline Games"
+
+
+      3 |
+      4 | for(const width of [320,390,1366])test(`Mauri branding keeps the game collection explicit at ${width}`,async({page})=>{
+    > 5 |  await page.setViewportSize({width,height:844});await page.goto('/');await expect(page).toHaveTitle('Mauri Study Notes · Games & Revision');await expect(page.locator('.site-brand')).toBeVisible();await expect(page.locator('.site-brand')).toHaveText('Mauri Study Notes');await expect(page.locator('.site-brand .mauri-mark')).toBeVisible();await expect(page.getByRole('heading',{name:'Mauri Study Notes · Games',exact:true})).toBeAttached();
+        |                                                                                         ^
+      6 |  const count=await page.locator('.game-card').count();expect(count).toBeGreaterThan(0);await expect(page.locator('.count-pill')).toHaveAttribute('aria-label',`${count} games`);await expect(page.locator('.count-pill')).toContainText('Games');expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`docs/evidence/mauri-branding/library-${width}.png`});
+      7 |  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.getByRole('heading',{name:'Mauri Study Notes',exact:true})).toBeVisible();await expect(page.getByLabel('Find a game',{exact:true})).toBeVisible();await expect(page.locator('#menu')).not.toContainText('Pocket Arcade');await page.screenshot({path:`docs/evidence/mauri-branding/menu-${width}.png`});await page.getByRole('button',{name:'Study Mode',exact:true}).click();await expect(page.locator('.study-wordmark')).toHaveText('Mauri Study Notes');await expect(page.locator('.study-wordmark .mauri-mark')).toBeVisible();await expect(page.getByRole('link',{name:'Games',exact:true})).toBeVisible();await page.screenshot({path:`docs/evidence/mauri-branding/study-${width}.png`});
+      8 | });
+        at /workspace/qcc-mauri-branding/tests/e2e/branding.spec.ts:5:89
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-8fdbd-collection-explicit-at-1366-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-8fdbd-collection-explicit-at-1366-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-8fdbd-collection-explicit-at-1366-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../scratch/qcc-mauri-branding/red-results/e2e-branding-Mauri-brandin-8fdbd-collection-explicit-at-1366-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests/e2e/branding.spec.ts:10:1 › pre-brand game keys still restore progress, settings, favourites and topic 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('heading', { name: 'Mauri Study Notes', exact: true })
+    Expected: visible
+    Timeout: 7000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByRole('heading', { name: 'Mauri Study Notes', exact: true }) with timeout 7000ms
+      - waiting for getByRole('heading', { name: 'Mauri Study Notes', exact: true })
+
+
+      11 |  const legacy=JSON.parse(readFileSync('tests/fixtures/mauri-legacy-state.json','utf8'));
+      12 |  await page.addInitScript(legacy=>{if(!window.name){for(const [key,value] of Object.entries(legacy.local))localStorage.setItem(key,value as string);sessionStorage.setItem('pocket-arcade:study:v1:topic',legacy.topic);window.name='legacy-brand-state';}},legacy);
+    > 13 |  await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-count')).toContainText('1 fruit');await expect(page.locator('#favourite-game')).toHaveAttribute('aria-pressed','true');await expect(page.locator('#game-best')).toContainText('2468');await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#motion')).toBeChecked();await expect(page.locator('#colour')).toBeChecked();await expect(page.locator('#sound')).not.toBeChecked();await expect(page.getByRole('heading',{name:'Mauri Study Notes',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close menu',exact:true}).click();
+         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ^
+      14 |  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await expect(page.locator('.fm-count')).toContainText('2 fruits');await page.keyboard.press('Escape');await expect(page.locator('#study-title')).toHaveText('Why motion changes');await page.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.fm-count')).toContainText('2 fruits');await page.reload();await expect(page.locator('.fm-count')).toContainText('2 fruits');expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:fruit-merge'))).toBe('2468');expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual(['fruit-merge']);
+      15 | });
+      16 |
+        at /workspace/qcc-mauri-branding/tests/e2e/branding.spec.ts:13:560
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-pre-brand-gam-89236-ttings-favourites-and-topic-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../scratch/qcc-mauri-branding/red-results/e2e-branding-pre-brand-gam-89236-ttings-favourites-and-topic-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../scratch/qcc-mauri-branding/red-results/e2e-branding-pre-brand-gam-89236-ttings-favourites-and-topic-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../scratch/qcc-mauri-branding/red-results/e2e-branding-pre-brand-gam-89236-ttings-favourites-and-topic-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 320 
+    [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 390 
+    [chromium] › tests/e2e/branding.spec.ts:4:35 › Mauri branding keeps the game collection explicit at 1366 
+    [chromium] › tests/e2e/branding.spec.ts:10:1 › pre-brand game keys still restore progress, settings, favourites and topic 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
