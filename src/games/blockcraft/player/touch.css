@@ -1,0 +1,10 @@
+.bc-touch{position:absolute;inset:0;pointer-events:none;z-index:6}
+.bc-touch>*{pointer-events:auto}
+.bc-touch[hidden]{display:none}
+.bc-stick{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:max(96px,calc(env(safe-area-inset-bottom) + 92px));width:116px;height:116px;border-radius:50%;background:#0003;border:2px solid #fff5;touch-action:none}
+.bc-stick span{position:absolute;left:33px;top:33px;width:46px;height:46px;border-radius:50%;background:#fffa;box-shadow:0 2px 6px #0005}
+.bc-jump,.bc-sneak,.bc-inv{position:absolute;right:max(18px,env(safe-area-inset-right));width:60px;height:60px;border-radius:50%;border:2px solid #fff6;background:#0003;color:#fff;font-size:22px;touch-action:none}
+.bc-jump{bottom:max(150px,calc(env(safe-area-inset-bottom) + 146px))}
+.bc-sneak{bottom:max(84px,calc(env(safe-area-inset-bottom) + 80px));right:max(86px,calc(env(safe-area-inset-right) + 86px))}
+.bc-inv{top:max(64px,calc(env(safe-area-inset-top) + 58px));width:44px;height:44px}
+@media(max-height:460px){.bc-stick{bottom:60px;width:96px;height:96px}.bc-stick span{left:25px;top:25px}.bc-jump{bottom:100px}.bc-sneak{bottom:40px}}

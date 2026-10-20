@@ -1,30 +1,5 @@
-.blockcraft{position:absolute;inset:0;overflow:hidden;background:#9fd3ff;color:#fff;font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+/* Base layer (engine). Module styles live beside their modules: ui/hud.css, ui/screens.css, player/touch.css. */
+.blockcraft{position:absolute;inset:0;overflow:hidden;background:#000;color:#fff;font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none}
 .blockcraft canvas{display:block;width:100%;height:100%;touch-action:none;outline:none;cursor:crosshair}
-.bc-crosshair{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;pointer-events:none;mix-blend-mode:difference}
-.bc-crosshair::before,.bc-crosshair::after{content:"";position:absolute;background:#fff}
-.bc-crosshair::before{left:8px;top:0;width:2px;height:18px}
-.bc-crosshair::after{left:0;top:8px;width:18px;height:2px}
-.bc-debug{position:absolute;left:10px;top:max(60px,calc(env(safe-area-inset-top) + 52px));font:11px/1.3 ui-monospace,monospace;background:#0007;padding:4px 7px;border-radius:4px;pointer-events:none}
-.bc-hotbar{position:absolute;left:50%;bottom:max(42px,calc(env(safe-area-inset-bottom) + 38px));transform:translateX(-50%);display:flex;gap:3px;padding:3px;background:#0006;border-radius:6px;z-index:5}
-.bc-slot{position:relative;width:min(40px,calc((100vw - 60px) / 9));aspect-ratio:1;padding:3px;border:2px solid #fff3;border-radius:4px;background:#0004;cursor:pointer;touch-action:manipulation}
-.bc-slot img{display:block;width:100%;height:100%;image-rendering:pixelated}
-.bc-slot small{position:absolute;right:2px;bottom:0;font:700 9px/1 system-ui,sans-serif;color:#fff;text-shadow:0 1px 1px #000}
-.bc-slot[aria-pressed=true]{border-color:#fff;background:#fff3;box-shadow:0 0 0 1px #000}
-.bc-slot:focus-visible,.bc-view:focus-visible{outline:2px solid #ffd84a;outline-offset:2px}
-.bc-view{position:absolute;left:10px;bottom:max(8px,env(safe-area-inset-bottom));height:28px;padding:0 10px;border:0;border-radius:14px;background:#0004;color:#fffd;font:700 11px/1 system-ui,sans-serif;cursor:pointer;z-index:11}
-.bc-touch{position:absolute;inset:0;pointer-events:none;z-index:6}
-.bc-touch>*{pointer-events:auto}
-.bc-touch[hidden],.bc-overlay[hidden],.bc-debug[hidden]{display:none}
-.bc-stick{position:absolute;left:max(18px,env(safe-area-inset-left));bottom:max(96px,calc(env(safe-area-inset-bottom) + 92px));width:116px;height:116px;border-radius:50%;background:#0003;border:2px solid #fff5;touch-action:none;z-index:6}
-.bc-stick span{position:absolute;left:33px;top:33px;width:46px;height:46px;border-radius:50%;background:#fffa;box-shadow:0 2px 6px #0005}
-.bc-jump{position:absolute;right:max(18px,env(safe-area-inset-right));bottom:max(112px,calc(env(safe-area-inset-bottom) + 108px));width:68px;height:68px;border-radius:50%;border:2px solid #fff6;background:#0003;color:#fff;font-size:26px;touch-action:none;z-index:6}
-.bc-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px 90px;background:linear-gradient(#0d2a4a66,#0d1a2acc);z-index:10}
-.bc-eyebrow{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:2.5px;color:#cfe8ff}
-.bc-heading{margin:0 0 12px;font-family:Arcade,system-ui,sans-serif;font-size:clamp(28px,6vw,46px);line-height:1.05;color:#fff;text-shadow:0 3px 0 #2b5a1c}
-.bc-copy{max-width:420px;margin:0 0 20px;font-size:14px;line-height:1.65;color:#e6f1ff}
-.blockcraft .bc-start{min-width:150px;min-height:48px;background:#5aa83a;color:#fff;box-shadow:0 4px 0 #2e5d1c}
-.blockcraft .bc-start:disabled{opacity:.6}
-.bc-loading{min-height:1.4em;margin:12px 0 0;font-size:12px;color:#cfe0f5}
 .bc-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;line-height:1.6;background:#10243a}
 .bc-fallback p{max-width:360px}
-@media(max-height:460px){.bc-overlay{padding:56px 16px 60px}.bc-copy{font-size:12px;margin-bottom:12px}.bc-eyebrow{display:none}.bc-stick{bottom:60px;width:96px;height:96px}.bc-stick span{left:25px;top:25px}.bc-jump{bottom:70px}.bc-hotbar{bottom:38px}}
