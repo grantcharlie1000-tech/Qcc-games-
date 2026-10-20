@@ -1,0 +1,15 @@
+import { poly, type SpeciesDef } from './types';
+// Upright king-penguin cutout. The single flat base (belly, feet and tail tripod) is deliberate: a split
+// foot pair lets fast landings rock the tall light body over, while this trapezoid lands standing.
+export const penguin:SpeciesDef={
+ name:'Penguin',mass:1.4,color:'#252733',
+ shapes:[
+  poly(-13,-25,-10,-31,-3,-34,4,-33,8,-27,8,-19,-12,-17),
+  poly(-13,-25,-27,-21,-13,-20),
+  poly(-12,-18,8,-20,12,-10,16,0,18,6,-21,6,-18,-5,-15,-12),
+  poly(-21,6,18,6,20,14,20,18,-21,18),
+  poly(-20,17,20,17,21,30,-21,30),
+  poly(8,-8,21,2,26,13,15,6),
+ ],
+ art:`<defs><clipPath id="penguin-clip"><path d="M-13-25C-13-31-9-34-3-34C4-34 8-30 8-24C8-18 10-14 13-8C17 0 20 8 20 16L20 23Q20 27 23 30L-16 30Q-21 29-21 24C-23 14-22 2-18-6C-16-10-13-13-13-18Q-13-22-13-25Z"/></clipPath></defs><g stroke="#1d1b22" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M-13-25C-13-31-9-34-3-34C4-34 8-30 8-24C8-18 10-14 13-8C17 0 20 8 20 16L20 23Q20 27 23 30L-16 30Q-21 29-21 24C-23 14-22 2-18-6C-16-10-13-13-13-18Q-13-22-13-25Z" fill="#252733"/><g clip-path="url(#penguin-clip)" stroke="none"><path d="M-14-19Q-4-18-2-6Q2 10 12 30L-24 30-24-19Z" fill="#fbfaf3"/><path d="M-14-19Q-4-18-2-6Q-10-2-24 0L-24-19Z" fill="#ffd23f"/><path d="M0.5-28Q6-24 3.5-16.5Q1-11.5-3.5-8Q-1.5-15-2.5-21.5Z" fill="#ff9f1c"/></g><path d="M-13-26Q-21-26-27-21.5Q-21-18.5-13-19Z" fill="#f47b20"/><path d="M6-9Q15-6 21 2Q26 9 26 14Q20 12 15 6Q9 0 5-3Z" fill="#30333f"/><path d="M-7 25.2H8Q11.5 25.2 11.5 30H-7Z" fill="#c9661c"/><path d="M-19 30Q-22.5 30-21.8 27Q-21 23.8-16 23.8H-1Q3.5 24 3.5 30Z" fill="#f2902a"/></g><path d="M-22.5-21.4-15.5-22.2M-16.5 30v-3M-11.5 30v-3M-6.5 30v-3" fill="none" stroke="#1d1b22" stroke-width="1.2" stroke-linecap="round"/><circle cx="-6" cy="-26" r="1.9" fill="#1d1b22"/><circle cx="-6.6" cy="-26.6" r=".6" fill="#fff"/>`,
+};

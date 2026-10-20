@@ -1,29 +1,18 @@
 import Matter from 'matter-js';
 import { SHAPES } from './shapes';
+import { SPECIES } from './species';
+import { compoundBody } from './body';
 const { Bodies, Body, Composite, Engine, Events, Sleeping, Query, Vertices } = Matter;
 export const WIDTH = 360, HEIGHT = 2000/3, FLOOR = HEIGHT*.73, LIMIT = 40;
-export const KINDS = ['elephant', 'giraffe', 'horse', 'tapir', 'penguin', 'sloth'] as const;
-export type Kind = typeof KINDS[number];
+export const KINDS = Object.keys(SPECIES) as (keyof typeof SPECIES)[];
+export type Kind = keyof typeof SPECIES;
 /** Explicit adaptation:45° per tap/Q/E; source videos absent, original increment unverified. */
 export const TAP_ROTATION_RADIANS: number = Math.PI/4;
-export const ANIMALS: Record<Kind, { name: string; width: number; height: number; mass: number; color: string }> = {
- elephant:{name:'Elephant',width:88,height:63,mass:5.8,color:'#929495'},
- giraffe:{name:'Giraffe',width:94,height:132,mass:3.5,color:'#ffc541'},
- horse:{name:'Horse',width:98,height:92,mass:3.8,color:'#b96c41'},
- tapir:{name:'Tapir',width:103,height:64,mass:4.8,color:'#373d44'},
- sloth:{name:'Sloth',width:106,height:70,mass:2.1,color:'#95918a'},
- penguin:{name:'Penguin',width:54,height:64,mass:1.4,color:'#292a36'},
-};
+export const ANIMALS: Record<Kind, { name: string; mass: number; color: string }> = Object.fromEntries(KINDS.map(k=>[k,{name:SPECIES[k].name,mass:SPECIES[k].mass,color:SPECIES[k].color}])) as Record<Kind,{name:string;mass:number;color:string}>;
 export interface Animal { kind: Kind; body: Matter.Body; offset: {x:number;y:number}; age:number; stable:number; scored:boolean; impact:number }
 export function createAnimal(kind: Kind, x: number, y: number): Animal {
- const parts=SHAPES[kind].map((points,index)=>{
-  if(!Vertices.isConvex(points))throw new Error(`${kind} part ${index} must be convex`);
-  const centre=Vertices.centre(points);
-  return Body.create({position:centre,vertices:points.map(p=>({...p})),label:`${kind}:${index}`});
- });
- const body=Body.create({parts,label:kind,friction:.85,frictionStatic:1.5,frictionAir:.018,restitution:.025,sleepThreshold:90,slop:.025});
- const offset={x:-body.position.x,y:-body.position.y};
- Body.setMass(body,ANIMALS[kind].mass);Body.setPosition(body,{x,y});
+ const {body,offset}=compoundBody(kind,SHAPES[kind],ANIMALS[kind].mass);
+ Body.setPosition(body,{x,y});
  return {kind,body,offset,age:0,stable:0,scored:false,impact:0};
 }
 interface SavedAnimal { kind:Kind; x:number;y:number;angle:number;vx:number;vy:number;av:number;age:number;stable:number;scored:boolean;sleeping:boolean }
