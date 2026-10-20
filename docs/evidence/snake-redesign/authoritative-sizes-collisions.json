@@ -1,0 +1,170 @@
+{
+  "recordedAt": "2026-10-20T10:36:55.582Z",
+  "status": "Local correctness checkpoint; discrete travel does not satisfy the smooth-movement goal",
+  "errors": [],
+  "sizes": [
+    {
+      "viewport": [
+        1440,
+        1200
+      ],
+      "dpr": 2,
+      "garden": 728,
+      "canvas": 694.40625,
+      "backing": 1389,
+      "page": [
+        1440,
+        1200
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "dpr": 2,
+      "garden": 636,
+      "canvas": 602.40625,
+      "backing": 1205,
+      "page": [
+        1366,
+        768
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": [
+        844,
+        390
+      ],
+      "dpr": 2,
+      "garden": 294,
+      "canvas": 260.40625,
+      "backing": 521,
+      "page": [
+        844,
+        390
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "dpr": 3,
+      "garden": 366,
+      "canvas": 348,
+      "backing": 1044,
+      "page": [
+        390,
+        844
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    },
+    {
+      "viewport": [
+        320,
+        568
+      ],
+      "dpr": 2,
+      "garden": 296,
+      "canvas": 278,
+      "backing": 556,
+      "page": [
+        320,
+        568
+      ],
+      "head": "Snake garden. Head column 10, row 6. Length 4. Apple column 14, row 16. Use arrow keys, WASD or swipe."
+    }
+  ],
+  "collisions": [
+    {
+      "name": "wall",
+      "rotate": -1.5707963267948966,
+      "saved": {
+        "version": 1,
+        "seed": 334414,
+        "body": [
+          {
+            "x": 5,
+            "y": 0
+          },
+          {
+            "x": 4,
+            "y": 0
+          },
+          {
+            "x": 3,
+            "y": 0
+          }
+        ],
+        "food": {
+          "x": 9,
+          "y": 6
+        },
+        "direction": "up",
+        "queue": [],
+        "phase": "lost",
+        "score": 0,
+        "elapsed": 0,
+        "ticks": 1,
+        "presentation": {
+          "previous": null,
+          "grew": false,
+          "foodAge": 200,
+          "eatAge": 200,
+          "eaten": null
+        }
+      }
+    },
+    {
+      "name": "body",
+      "rotate": -1.5707963267948966,
+      "saved": {
+        "version": 1,
+        "seed": 334414,
+        "body": [
+          {
+            "x": 5,
+            "y": 5
+          },
+          {
+            "x": 4,
+            "y": 5
+          },
+          {
+            "x": 4,
+            "y": 4
+          },
+          {
+            "x": 5,
+            "y": 4
+          },
+          {
+            "x": 6,
+            "y": 4
+          }
+        ],
+        "food": {
+          "x": 9,
+          "y": 6
+        },
+        "direction": "up",
+        "queue": [],
+        "phase": "lost",
+        "score": 20,
+        "elapsed": 0,
+        "ticks": 1,
+        "presentation": {
+          "previous": null,
+          "grew": false,
+          "foodAge": 200,
+          "eatAge": 200,
+          "eaten": null
+        }
+      }
+    }
+  ]
+}

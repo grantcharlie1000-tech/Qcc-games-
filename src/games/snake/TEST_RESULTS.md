@@ -1,3 +1,9 @@
+# Post-audit local checkpoint — 2026-10-20
+
+Astra audited `89b4dee` and identified fatal perpendicular collision facing, paused DPR-only backing invalidation and a nominal elapsed-time browser-test assumption. These are corrected without changing the grid model. The coordinator additionally chose authoritative discrete head/body geometry following the parent’s priority for truthful responsive collisions to remove the prototype’s one-interval arrival offset; cosmetics remain. Fresh `npm run check` passed; Snake unit tests pass **21/21** across two files, including two valid fatal-turn regressions. Corrected smooth browser checks pass **4/4** (20.9s); serial dropped-RAF repetitions pass **5/5** (28.5s), and serial DPR/resize repetitions pass **3/3** (29.1s). Coordinator final checkpoint checks pass: **285 unit tests / 25 files**, strict TypeScript/build, **8 Snake + retained-Study Chromium cases** (51.2s), and built Snake offline at root/subpath. New `authoritative-*` screenshots, traces, measurements and logs are stored separately from the historical prototype evidence. Both valid fatal upward turns rotate −π/2 with unchanged lost grids; no errors or overflow were recorded. Exact-commit Astra re-review remains pending. Detailed initial failures, correction history, retained traces and access limits: `docs/evidence/snake-redesign/astra-audit.md`. This discrete-travel correction is a local correctness checkpoint; the original smooth-movement goal remains unaccepted. Historical implementation results below are preserved.
+
+---
+
 # Smooth redesign verification — 2026-10-20
 
 Worktree `/workspace/qcc-snake`, branch `redesign/snake-smooth`, base `a7f7631d4f606667f23b016ad6091cb3899365e8`. No model/rule, package, shared shell or unrelated-game files changed.

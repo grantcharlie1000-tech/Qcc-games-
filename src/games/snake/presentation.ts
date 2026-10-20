@@ -1,6 +1,6 @@
-import {advance, TICK_MS, type Cell, type SnakeState} from './model';
+import {advance, TICK_MS, type Cell, type Direction, type SnakeState} from './model';
 
-/** Presentation history is independent of the deterministic grid and its save version. */
+/** Effect time and legacy presentation history are independent of the deterministic grid and its save version. */
 export interface SnakePresentation {
   previous: Cell[] | null;
   grew: boolean;
@@ -11,12 +11,13 @@ export interface SnakePresentation {
   endedAt: number;
 }
 export interface SnakePose {path: Cell[]; head: Cell; tangent: Cell; progress: number}
+const facing: Record<Direction,Cell> = {up:{x:0,y:-1},right:{x:1,y:0},down:{x:0,y:1},left:{x:-1,y:0}};
 const copy = (body: Cell[]) => body.map(p => ({...p}));
 export function createPresentation(): SnakePresentation {
   return {previous:null, grew:false, time:0, foodAt:-Infinity, ateAt:-Infinity, eaten:null, endedAt:-Infinity};
 }
 
-/** Split only at existing model ticks, retaining the final committed edge after a dropped frame. */
+/** Split only at existing model ticks, retaining compatible save history and effect ages after a dropped frame. */
 export function advancePresentation(state: SnakeState, view: SnakePresentation, ms: number): void {
   if (state.phase !== 'running' || !Number.isFinite(ms) || ms < 0) return;
   let remaining = ms;
@@ -45,28 +46,11 @@ export function advancePresentation(state: SnakeState, view: SnakePresentation, 
   }
 }
 
-function pointAt(path: Cell[], distance: number): Cell {
-  const index = Math.min(Math.floor(distance), path.length - 2);
-  const fraction = distance - index;
-  return {x:path[index].x + (path[index+1].x-path[index].x)*fraction,
-    y:path[index].y + (path[index+1].y-path[index].y)*fraction};
-}
-
-/** Keep the corner vertices! Joining interpolated segment centres cuts diagonally across bends. */
-export function projectSnake(state: SnakeState, view: SnakePresentation, reducedMotion = false): SnakePose {
-  const fraction = state.elapsed / TICK_MS;
-  if (!view.previous || reducedMotion || state.phase !== 'running') {
-    const path = copy(state.body), head = path[0], neck = path[1];
-    return {path, head, tangent:{x:head.x-neck.x,y:head.y-neck.y}, progress:1};
-  }
-  const trail = [state.body[0], ...view.previous];
-  const start = 1 - fraction;
-  const end = view.grew ? trail.length - 1 : trail.length - 1 - fraction;
-  const head = pointAt(trail, start), path = [head];
-  for (let i = Math.floor(start)+1; i < end; i++) path.push({...trail[i]});
-  path.push(pointAt(trail, end));
-  // The committed edge sets facing as soon as a queued turn is consumed.
-  return {path, head, tangent:{x:trail[0].x-trail[1].x,y:trail[0].y-trail[1].y}, progress:fraction};
+/** Display the authoritative cells on their consuming tick, without a visual arrival offset. */
+export function projectSnake(state: SnakeState, _view: SnakePresentation, _reducedMotion = false): SnakePose {
+  const path = copy(state.body), head = path[0];
+  // A fatal perpendicular turn updates direction while retaining the last valid body.
+  return {path, head, tangent:{...facing[state.direction]}, progress:1};
 }
 
 export interface SavedPresentation {

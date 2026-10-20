@@ -1,39 +1,41 @@
-# Snake smooth presentation — 2026-10-20
+# Snake authoritative presentation checkpoint — 2026-10-20
 
-The 16 × 16 seeded grid and its 160 ms tick are unchanged (`model.ts` has no diff). Grid positions, collision timing, score, food selection, queue capacity, reversal rejection, tail legality and the save version remain authoritative.
+The local checkpoint displays every head/body cell from the authoritative 16 × 16 grid on the tick that commits it. It removes the original redesign's one-interval arrival offset. Cell travel is now **discrete**, with rounded original artwork and small food/facial effects retained. The parent prioritized responsive, truthful collision feedback over delayed continuous travel. The coordinator selected this reversible checkpoint for verification; the parent then clarified that discrete travel does not satisfy the smooth-movement goal. This is not completed redesign acceptance.
 
-## Motion sketch
+`model.ts` remains byte-identical to main `a7f7631d4f606667f23b016ad6091cb3899365e8`: seeded food, one cell per 160 ms, two queued turns, reversal rejection, ten points per apple, held-tail growth, vacating-tail legality and collision timing are unchanged. No prediction, early input cutoff, speed selector or rule change is introduced.
 
-A render interval displays the most recently committed edge, from the previous head cell to the current head cell, at `elapsed / 160`. This is standard fixed-step interpolation: its visible position can be one grid interval behind the authoritative grid. It does not predict a future move. A buffered turn changes the visible head's facing and begins its new edge on the first simulation tick that consumes that turn. No extra queued tick, easing, input throttle or variable game speed is added.
+## Position and feedback
 
 ```text
-Committed path after right → up:
-
-        new head (6,5)
-             |
-        rendered head (6,5.5) at 80 ms
-             |
-  tail —— (5,6) —— corner (6,6)
+159 ms: model head (5,6) → displayed head (5,6)
+160 ms, queued up consumed:
+        model head (5,5) → displayed head (5,5)
+240 ms: model head (5,5) → displayed head (5,5)
 ```
 
-The drawing retains every original corner between the fractional head and tail. Joining individually interpolated segment centres would form diagonal chords at turns; this implementation samples a single shared orthogonal path instead. Round stroke joins form the connected body silhouette. Growth holds the old tail and increases the visible path length over that interval. Each dropped-frame update splits at the existing model tick boundaries and retains only the final committed edge, producing the same model state as `advance`.
+Every displayed body vertex equals the corresponding grid cell, including on turning, eating and collision ticks. Body joins remain rounded and connected. If a fatal perpendicular turn is consumed, the last valid body remains intact while head facing uses the attempted model direction. This avoids a stale right-facing face after an upward collision.
 
-Pause withholds active simulation time and retains the fractional accumulator and presentation history. Resume/start/restore set a fresh RAF timestamp. Optional, separately validated `presentation` metadata stores the previous body, whether that step grew, and independently validated finite food/eating ages (0–200 ms) with the eaten cell, preserving the exact fractional pose and active feedback across reload. Legacy version-1 saves remain accepted and display their current grid until the next committed step. Invalid presentation metadata is ignored independently of valid grid data.
+Food settles once from 94% to 100% scale over 200 ms. Eating has a restrained 200 ms head/mouth response and fading ring. These effects do not displace grid positions. Collision changes the face and opens the replay card on the authoritative tick. There are no flashes, particles, idle pulses or screen shakes. Live OS or app reduced motion suppresses the small food/eating effects; geometry is authoritative in both modes.
 
-## Art and feedback
+## Clock and compatibility
 
-Original Canvas artwork uses a continuous shaded green body, direction-facing eyes, a red apple with leaf/stem and stationary quiet checker grass. No external artwork, Google logo or Google asset is used. Reference navigation to Google Search Snake and the Google fbx game was blocked in this environment; these pages were not visually inspected, and no exact-reference-match claim is made.
+The existing fixed-step presentation updater still delegates all state changes to `model.advance`, splitting large frame gaps at model tick boundaries to retain effect ages and compatible save history. Rendering no longer interpolates that history. Optional previous-body/growth metadata from `89b4dee` remains accepted, but it cannot pull the displayed snake behind its saved authoritative cells. Finite relative effect ages (0–200 ms) and a validated eaten cell preserve active feedback across reload.
 
-The animation purpose is spatial consistency and readable state feedback. Canvas/RAF uses linear fixed-step travel, without easing or rotation tweening. Food settles once from 94% to 100% scale over 200 ms; eating has a restrained 200 ms mouth/head response and fading ring. Collision changes the face and opens the replay card on the authoritative collision tick. There are no flashes, particles, idle pulses or screen shakes. Both live OS reduced-motion preference and the app setting use exact discrete grid poses and suppress these small food/eating effects. The controls themselves have immediate feedback.
+Pause withholds active time, retains the fractional model accumulator and freezes effects. Resume/start/restore reset the wall-clock baseline. Dropped-frame tests account for actual delivered active RAF timestamps and compare the complete grid state against pure `model.advance`, instead of assuming identical nominal browser frame phases.
 
 ## Layout and resolution
 
-At sufficient viewport width **and height**, the garden's outer box is exactly 728 px, up 40% from 520 px. Desktop padding 14.8 px and a real 2 px border yield a 694.4 px canvas, up 40% from 496 px (Chromium measures 694.40625 because CSS geometry uses fractional units). Shorter screens compare a below-board control arrangement with controls beside the board, selecting the latter when it permits a meaningfully larger square. The board alone shrinks; the 48 px direction targets do not scale down. Phone padding stays 7 px with a 2 px border, preserving the previous full-width playable cap.
+At sufficient width and height, the garden is 728 px outer and approximately 694.4 px playable, 40% larger per axis than the original 520 / 496 px. Shorter screens compare controls below versus beside the board, keeping 48 px minimum direction targets. Phone padding stays 7 px with a 2 px border. Only Snake bypasses the shared whole-stage fit transform.
 
-Only Snake overrides the shared stage transform fit. No global shell/game layout is changed. A ResizeObserver measures both available stage dimensions and the controls. Canvas backing pixels follow the actual displayed canvas width times the complete device pixel ratio, including paused resize, rather than a fixed logical 480 px image or a capped DPR. All geometry remains in 480 board units, so resize cannot affect a turn, queue, clock or collision.
+Canvas backing pixels follow actual displayed width × full DPR. ResizeObserver handles CSS layout changes; the existing RAF loop detects DPR-only changes even while paused. The browser test changes DPR 2 → 3 without changing CSS dimensions, then checks exact backing resolution and a five-second paused autosave. Subsequent resize assertions await stable viewport, CSS, DPR, backing and control coherence after CDP resets.
 
-## Verification scope
+## Historical continuous prototype and verification
 
-Focused pure tests cover orthogonal midpoint bends, consecutive turns, queue/reversal rules, identical 30/60/120 Hz and dropped-frame outcomes, authoritative model equivalence including collision, held-tail growth, exact fractional save/restore including active food/eating feedback, invalid presentation recovery, inactive time/reduced motion and resize-independent geometry. Browser tests use the actual shell route, clock-driven continuous frames, mid-tick keyboard buffering, pixel-identical paused/reloaded canvas, `fastForward` dropped RAF catch-up, resizing at five viewport sizes, actual backing resolution, 48 px controls, live OS/app reduced motion and real Chromium touch cancellation with page-error assertions.
+Commit `89b4dee` remains a local historical artifact of continuous previous-to-current committed-edge travel. Its original screenshots, trace archives, size data and logs remain labelled as historical evidence. The coordinator-selected current revision, following the parent’s stated priority, intentionally trades continuous cell travel for zero added visual arrival offset. See `docs/evidence/snake-redesign/astra-audit.md` for the independent findings, concrete options, selected consequence and all failed-run history.
 
-There is no speed selector. Frame-cadence changes and browser clock jumps exercise timing variation without changing the fixed 160 ms rule. Physical touch hardware and physical Chromebook performance require device checks. The coordinator owns independent review, full-suite/offline verification, final screenshots and measured performance evidence. Existing baseline and legacy evidence files are preserved.
+Current focused tests cover exact authoritative geometry before/on committed turns, instant scoring-tick growth, perpendicular wall/body loss, unchanged rule/model equivalence, 30/60/120 Hz and dropped frames, old-save acceptance, effect restoration, pause/reduced motion, resize and DPR changes. The corrected four-case browser run, five serial dropped-RAF repetitions and three serial DPR/resize repetitions pass. Coordinator final checks pass (285 all-unit tests, TypeScript/build, 8 Snake/Study Chromium cases and root/subpath Snake offline). Exact-commit independent re-review remains pending and is tracked separately from historical `89b4dee` results.
+
+Artwork is original Canvas code with no Google assets/logos. Real Google reference navigation was blocked and those pages were not visually inspected. WebKit installation was blocked by CDN HTTP 403. No physical touch hardware or Chromebook was used.
+
+
+Smooth movement remains unresolved. The verified checkpoint must be reviewed before comparing smaller post-tick offsets, an earlier leg/input deadline, the historical full-interval offset, or continuous simulation. Each has a different movement/input/collision consequence; none is silently implemented here.

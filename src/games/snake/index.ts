@@ -16,12 +16,12 @@ const module:GameModule={
   const available=container.parentElement!;
   const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
   let state=createState(),view=createPresentation(),paused=false,disposed=false,frame:number|null=null,last:number|null=null;
-  let lastReduced=false,dirty=true;
+  let lastReduced=false,lastDpr=window.devicePixelRatio||1,dirty=true;
   const events=new AbortController();
   let gesture:{x:number;y:number;id:number}|null=null;
   const reduced=()=>context.settings.reducedMotion||motionQuery.matches;
   function render(){
-   const reduce=reduced();lastReduced=reduce;dirty=false;
+   const reduce=reduced();lastReduced=reduce;lastDpr=window.devicePixelRatio||1;dirty=false;
    root.dataset.reducedMotion=String(reduce);
    drawGarden(canvas,state,view,reduce);
   }
@@ -104,7 +104,7 @@ const module:GameModule={
     }
     dirty=true;
    }else last=null;
-   if(dirty||lastReduced!==reduced())render();
+   if(dirty||lastReduced!==reduced()||lastDpr!==(window.devicePixelRatio||1))render();
    frame=requestAnimationFrame(loop);
   }
   update();resize();render();frame=requestAnimationFrame(loop);

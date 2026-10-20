@@ -1,0 +1,20 @@
+
+Running 8 tests using 1 worker
+
+(node:23220) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › snake: gameplay, Escape, frozen autosave and exact return (5.1s)
+  ✓  2 [chromium] › tests/games/snake/smooth.spec.ts:16:1 › authoritative tick frames, mid-tick buffered turn, frozen fractional save and reload (9.3s)
+  ✓  3 [chromium] › tests/games/snake/smooth.spec.ts:42:1 › a dropped RAF catches up to the same final grid and committed edge (5.1s)
+  ✓  4 [chromium] › tests/games/snake/smooth.spec.ts:81:1 › resize during a turn preserves the grid and renders at the actual high-DPI display size (7.5s)
+  ✓  5 [chromium] › tests/games/snake/smooth.spec.ts:132:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.1s)
+  ✓  6 [chromium] › tests/games/snake/snake.spec.ts:4:1 › keyboard eating, turning, loss, replay, pause and saved continuation (12.2s)
+  ✓  7 [chromium] › tests/games/snake/snake.spec.ts:28:1 › pointer swipe and touch direction buttons fit a phone (2.4s)
+  ✓  8 [chromium] › tests/games/snake/snake.spec.ts:49:1 › invalid saves recover and repeated exit/reentry has no stale controls (4.3s)
+
+  8 passed (51.2s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
