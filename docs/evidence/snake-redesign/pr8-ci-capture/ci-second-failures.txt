@@ -1,0 +1,74 @@
+  1) [chromium] › tests/games/ball-run/play.spec.ts:10:1 › real drag and held keys steer; pause, Study, restart, restore, and disposal retain their contracts
+2026-10-20T19:45:31.1109973Z
+2026-10-20T19:45:31.1110170Z     Test timeout of 30000ms exceeded.
+2026-10-20T19:45:31.1110448Z
+2026-10-20T19:45:31.1110736Z     Error: page.waitForFunction: Test timeout of 30000ms exceeded.
+2026-10-20T19:45:31.1111086Z
+2026-10-20T19:45:31.1111452Z       16 |   // Release the native key before polling its result: a slow driver must not
+2026-10-20T19:45:31.1112255Z       17 |   // keep steering right while it waits for the first threshold observation.
+2026-10-20T19:45:31.1113452Z     > 18 |   await page.keyboard.press('ArrowRight',{delay:250});await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.5);
+2026-10-20T19:45:31.1114492Z          |                                                                  ^
+2026-10-20T19:45:31.1115039Z       19 |   await canvas.hover();const bounds=(await canvas.boundingBox())!;
+2026-10-20T19:45:31.1115648Z       20 |   await canvas.evaluate(el=>el.addEventListener('pointerdown',event=>{
+2026-10-20T19:45:31.1117508Z       21 |     const p=event as PointerEvent;el.setAttribute('data-test-drag',JSON.stringify({id:p.pointerId,x:Number(el.closest<HTMLElement>('.ball-run')!.dataset.x),clientX:p.clientX,clientY:p.clientY,width:el.clientWidth,trusted:p.isTrusted}));
+2026-10-20T19:45:31.1118492Z         at /home/runner/work/Qcc-games-/Qcc-games-/tests/games/ball-run/play.spec.ts:18:66
+2026-10-20T19:45:31.1118776Z
+2026-10-20T19:45:31.1119262Z     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1119904Z     test-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/test-failed-1.png
+2026-10-20T19:45:31.1120734Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1120977Z
+2026-10-20T19:45:31.1121321Z     attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1121898Z     test-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm
+2026-10-20T19:45:31.1122566Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1122801Z
+2026-10-20T19:45:31.1123173Z     Error Context: test-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/error-context.md
+2026-10-20T19:45:31.1123575Z
+2026-10-20T19:45:31.1123924Z     attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1124560Z     test-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/trace.zip
+2026-10-20T19:45:31.1124995Z     Usage:
+2026-10-20T19:45:31.1125107Z
+2026-10-20T19:45:31.1125522Z         npx playwright show-trace test-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/trace.zip
+2026-10-20T19:45:31.1125945Z
+2026-10-20T19:45:31.1126271Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1126721Z
+2026-10-20T19:45:31.1127315Z   2) [webkit] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn
+2026-10-20T19:45:31.1127750Z
+2026-10-20T19:45:31.1127928Z     Error: expect(received).toEqual(expected) // deep equality
+2026-10-20T19:45:31.1128147Z
+2026-10-20T19:45:31.1128249Z     - Expected  - 1
+2026-10-20T19:45:31.1128465Z     + Received  + 3
+2026-10-20T19:45:31.1128579Z
+2026-10-20T19:45:31.1128667Z     - Array []
+2026-10-20T19:45:31.1128860Z     + Array [
+2026-10-20T19:45:31.1129047Z     +   "up",
+2026-10-20T19:45:31.1129233Z     + ]
+2026-10-20T19:45:31.1129333Z
+2026-10-20T19:45:31.1129530Z       208 |   await page.mouse.move(x,y-60);await page.mouse.up();
+2026-10-20T19:45:31.1129827Z       209 |  }
+2026-10-20T19:45:31.1130268Z     > 210 |  const snapshot=await pause(page);expect(snapshot.queue).toEqual([]);expect(snapshot.direction).toBe('right');
+2026-10-20T19:45:31.1130848Z           |                                                          ^
+2026-10-20T19:45:31.1131254Z       211 |  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+2026-10-20T19:45:31.1131827Z       212 |  await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();
+2026-10-20T19:45:31.1132515Z       213 |  await page.clock.runFor(32);await expect(page.locator('.snake-game')).toHaveAttribute('data-reduced-motion','true');
+2026-10-20T19:45:31.1133142Z         at /home/runner/work/Qcc-games-/Qcc-games-/tests/games/snake/smooth.spec.ts:210:58
+2026-10-20T19:45:31.1133427Z
+2026-10-20T19:45:31.1133859Z     attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1134471Z     test-results/games-snake-smooth-OS-and--c11fe-swipes-never-enqueue-a-turn-webkit/test-failed-1.png
+2026-10-20T19:45:31.1135142Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1135385Z
+2026-10-20T19:45:31.1135748Z     Error Context: test-results/games-snake-smooth-OS-and--c11fe-swipes-never-enqueue-a-turn-webkit/error-context.md
+2026-10-20T19:45:31.1136138Z
+2026-10-20T19:45:31.1136673Z     attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1137255Z     test-results/games-snake-smooth-OS-and--c11fe-swipes-never-enqueue-a-turn-webkit/trace.zip
+2026-10-20T19:45:31.1137665Z     Usage:
+2026-10-20T19:45:31.1137774Z
+2026-10-20T19:45:31.1138151Z         npx playwright show-trace test-results/games-snake-smooth-OS-and--c11fe-swipes-never-enqueue-a-turn-webkit/trace.zip
+2026-10-20T19:45:31.1138563Z
+2026-10-20T19:45:31.1138907Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-20T19:45:31.1139141Z
+2026-10-20T19:45:31.1139228Z   2 failed
+2026-10-20T19:45:31.1139875Z     [chromium] › tests/games/ball-run/play.spec.ts:10:1 › real drag and held keys steer; pause, Study, restart, restore, and disposal retain their contracts
+2026-10-20T19:45:31.1140826Z     [webkit] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn
+2026-10-20T19:45:31.1141325Z   10 skipped
+2026-10-20T19:45:31.1141524Z   312 passed (11.5m)
+2026-10-20T19:45:31.5264699Z

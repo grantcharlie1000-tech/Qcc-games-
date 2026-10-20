@@ -1,0 +1,40 @@
+
+Running 5 tests using 1 worker
+
+(node:15553) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":267},"frames":[{"matches":true,"rendered":"true","time":283}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":283},"frames":[{"matches":false,"rendered":"false","time":299}]}
+Snake capture cancellation {"browserName":"chromium","pointer":{"id":1,"trusted":true},"got":"{\"id\":1,\"trusted\":true}","lost":"{\"id\":1,\"trusted\":true}"}
+  ✓  1 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (8.8s)
+(node:16310) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":270},"frames":[{"matches":true,"rendered":"true","time":286}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":286},"frames":[{"matches":false,"rendered":"false","time":302}]}
+Snake capture cancellation {"browserName":"chromium","pointer":{"id":1,"trusted":true},"got":"{\"id\":1,\"trusted\":true}","lost":"{\"id\":1,\"trusted\":true}"}
+  ✓  2 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.4s)
+(node:16448) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":267},"frames":[{"matches":true,"rendered":"true","time":283}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":283},"frames":[{"matches":false,"rendered":"false","time":299}]}
+Snake capture cancellation {"browserName":"chromium","pointer":{"id":1,"trusted":true},"got":"{\"id\":1,\"trusted\":true}","lost":"{\"id\":1,\"trusted\":true}"}
+  ✓  3 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.3s)
+(node:16588) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":266},"frames":[{"matches":true,"rendered":"true","time":282}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":282},"frames":[{"matches":false,"rendered":"false","time":298}]}
+Snake capture cancellation {"browserName":"chromium","pointer":{"id":1,"trusted":true},"got":"{\"id\":1,\"trusted\":true}","lost":"{\"id\":1,\"trusted\":true}"}
+  ✓  4 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.3s)
+(node:16725) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":272},"frames":[{"matches":true,"rendered":"true","time":288}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":288},"frames":[{"matches":false,"rendered":"false","time":304}]}
+Snake capture cancellation {"browserName":"chromium","pointer":{"id":1,"trusted":true},"got":"{\"id\":1,\"trusted\":true}","lost":"{\"id\":1,\"trusted\":true}"}
+  ✓  5 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.6s)
+
+  5 passed (26.9s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

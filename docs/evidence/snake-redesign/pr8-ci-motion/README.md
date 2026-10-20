@@ -29,3 +29,7 @@ The initial native diagnostic attempt omitted the repository’s Study-topic see
 Each OS transition now emits one bounded JSON line and an attachment containing engine, request, query/rendered values and fake time before frames and for at most 12 subsequent frames. This makes the next actual WebKit transition inspectable in the terminal job log even if artifact access remains blocked. No extra permanent test case, runtime logging, timeout extension, skip or engine-specific assertion was introduced. The controlled diagnostics remain ad-hoc evidence outside the permanent suite.
 
 A fresh full CI run and queued narrow independent test review remain pending. The coordinator owns PR updates; no push, PR creation, merge, deployment or settings change was performed by this corrective task.
+
+## Follow-up actual WebKit observation
+
+The later [CI run 39484399211](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39484399211) confirms this synchronization correction at the actual query/render boundary: reduce required two fake frame slices, and no-preference required three. The test then reached a separate native pointer-capture fallback failure. The [follow-up diagnosis](../pr8-ci-capture/README.md) preserves original logs, distinguishes the confirmed timing observation from the earlier inference, and records the capture-fixture correction. The original failure/history above remains unchanged.

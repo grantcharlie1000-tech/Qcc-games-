@@ -196,17 +196,28 @@ test('OS and app reduced motion change the presentation live; cancelled swipes n
   }
  }
  await emulateMotion('reduce');await emulateMotion('no-preference');
- const box=(await page.locator('canvas').boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
+ const canvas=page.locator('canvas'),box=(await canvas.boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
  if(browserName==='chromium'){
   const cdp=await context.newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y-60}]});
   await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
- }else {
-  await page.mouse.move(x,y);await page.mouse.down();
-  await page.locator('canvas').evaluate(canvas=>canvas.releasePointerCapture(1));
-  await page.mouse.move(x,y-60);await page.mouse.up();
  }
+ await canvas.evaluate(canvas=>{
+  for(const type of ['pointerdown','gotpointercapture','lostpointercapture'])canvas.addEventListener(type,event=>{
+   const pointer=event as PointerEvent;canvas.setAttribute(`data-test-${type}`,JSON.stringify({id:pointer.pointerId,trusted:pointer.isTrusted}));
+  },{capture:true,once:true});
+ });
+ await page.mouse.move(x,y);await page.mouse.down();
+ await expect(canvas).toHaveAttribute('data-test-pointerdown',/.+/);
+ const pointer=JSON.parse((await canvas.getAttribute('data-test-pointerdown'))!) as {id:number;trusted:boolean};expect(pointer.trusted).toBe(true);
+ // A small native move processes pending capture before release, without completing a swipe.
+ await page.mouse.move(x+1,y);await expect(canvas).toHaveAttribute('data-test-gotpointercapture',JSON.stringify(pointer));
+ expect(await canvas.evaluate((canvas,id)=>canvas.hasPointerCapture(id),pointer.id)).toBe(true);
+ await canvas.evaluate((canvas,id)=>canvas.releasePointerCapture(id),pointer.id);
+ await page.mouse.move(x+2,y);await expect(canvas).toHaveAttribute('data-test-lostpointercapture',JSON.stringify(pointer));
+ console.info(`Snake capture cancellation ${JSON.stringify({browserName,pointer,got:await canvas.getAttribute('data-test-gotpointercapture'),lost:await canvas.getAttribute('data-test-lostpointercapture')})}`);
+ await page.mouse.move(x,y-60);await page.mouse.up();
  const snapshot=await pause(page);expect(snapshot.queue).toEqual([]);expect(snapshot.direction).toBe('right');
  await page.getByRole('button',{name:'Open menu',exact:true}).click();
  await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();
