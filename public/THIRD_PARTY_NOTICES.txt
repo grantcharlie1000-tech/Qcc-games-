@@ -1,5 +1,10 @@
 Pocket Arcade — bundled third-party notices
 
+VoxeLibre and its Luanti WebAssembly engine
+See voxelibre/SOURCES.md for component versions, full notices, game credits,
+and the complete game and corresponding runtime source downloads.
+The native game and its dependencies retain their upstream licenses.
+
 Matter.js 0.20.0
 node_modules/matter-js/LICENSE
 

@@ -68,7 +68,7 @@ test('only the game frame can invoke Study and the frame survives the chapter',a
   await frame.locator('#study').click();
   await expect(page.locator('#study-view')).toBeVisible();
   await expect(page.locator('#study-view')).toContainText('Worlds save separately');
-  await page.getByRole('button',{name:'Return to Arcade',exact:true}).click();
+  await page.getByRole('link',{name:'Games',exact:true}).click();
   expect(await original!.evaluate(element=>element===document.querySelector('.voxelibre-frame'))).toBe(true);
 });
 

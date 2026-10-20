@@ -1,3 +1,16 @@
+diff --git a/build_fsroot.sh b/build_fsroot.sh
+index e8d9410..af08493 100755
+--- a/build_fsroot.sh
++++ b/build_fsroot.sh
+@@ -40,7 +40,7 @@ popd
+ rm -rf certsroot
+ mkdir -p certsroot/etc/ssl/certs
+ # May be a symlink, use cat to copy contents
+-cat /etc/ssl/certs/ca-certificates.crt > certsroot/etc/ssl/certs/ca-certificates.crt
++cat "${QCC_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}" > certsroot/etc/ssl/certs/ca-certificates.crt
+ 
+ 
+ # Make fsroot.tar
 diff --git a/build_libarchive.sh b/build_libarchive.sh
 index 9cb7c3d..9ef94b7 100755
 --- a/build_libarchive.sh
@@ -29,10 +42,15 @@ index 7fa8dbc..1877000 100755
  emmake make
  emmake make install
 diff --git a/build_luanti.sh b/build_luanti.sh
-index 38bb0a7..65cff58 100755
+index 38bb0a7..52602ab 100755
 --- a/build_luanti.sh
 +++ b/build_luanti.sh
-@@ -17,7 +17,7 @@ export EMSDK_MODULE="-sINCOMING_MODULE_JS_API=mainScriptUrlOrBlob,canvas,monitor
+@@ -13,11 +13,11 @@ pushd luanti
+ 
+ export EMSDK_PORTS="--use-port=zlib --use-port=libjpeg --use-port=libpng --use-port=freetype --use-port=ogg --use-port=vorbis --use-port=sqlite3"
+ export EMSDK_CANVAS="-sPROXY_TO_PTHREAD=1 -sOFFSCREENCANVAS_SUPPORT=1 -sJSPI"
+-export EMSDK_MODULE="-sINCOMING_MODULE_JS_API=mainScriptUrlOrBlob,canvas,monitorRunDependencies,preRun,postRun,print,printErr,setStatus,onFullScreen"
++export EMSDK_MODULE="-sINCOMING_MODULE_JS_API=mainScriptUrlOrBlob,canvas,monitorRunDependencies,preRun,postRun,print,printErr,setStatus,onFullScreen,onAbort"
  export EMSDK_EXTRA="-sUSE_SDL=2 $EMSDK_PORTS $EMSDK_CANVAS $EMSDK_MODULE"
  export CFLAGS="$CFLAGS $EMSDK_EXTRA"
  export CXXFLAGS="$CXXFLAGS $EMSDK_EXTRA"

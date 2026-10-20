@@ -4,6 +4,7 @@ set -euo pipefail
 QCC_BUNDLE_DIR=$(cd -- "${1:-$(dirname -- "${BASH_SOURCE[0]}")/..}" && pwd)
 QCC_NATIVE_DIR="$QCC_BUNDLE_DIR/luanti-wasm"
 QCC_NODE_BIN=$(command -v node)
+export QCC_CA_BUNDLE="$QCC_BUNDLE_DIR/qcc-build/ca-certificates.crt"
 test -f "$QCC_NATIVE_DIR/build_all.sh"
 test -d "$QCC_BUNDLE_DIR/ports"
 cd "$QCC_NATIVE_DIR/emsdk"
@@ -44,4 +45,5 @@ PY
 for stage in zstd libarchive webshims openssl curl libzip luanti fsroot www; do
   "./build_${stage}.sh"
 done
+"$QCC_NODE_BIN" --input-type=module -e "import{readFile}from'node:fs/promises';await WebAssembly.compile(await readFile(process.argv[1]));" "$QCC_NATIVE_DIR/build/luanti/bin/luanti.wasm"
 printf 'Native output: %s/www\n' "$QCC_NATIVE_DIR"

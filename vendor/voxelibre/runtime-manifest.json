@@ -1,0 +1,258 @@
+{
+  "format": 1,
+  "engine": "Luanti",
+  "game": "VoxeLibre 0.92.4",
+  "packBuildId": "qcc-voxelibre-0.92.4-a67834f5ec7f6215d4da2790",
+  "buildPins": "build/pins.json",
+  "buildInputs": {
+    "pinsSha256": "ee6a7631871add4b6c247095d02d2764025ad8ac2cf146a3b8eccb0f3ae83254",
+    "patches": [
+      {
+        "file": "build/patches/luanti-singleplayer-menu.patch",
+        "sha256": "da7a0c960fc30566fbb165dba6ea76ddef366ba3b6efec5f4766210b6fe0e944"
+      },
+      {
+        "file": "build/patches/luanti-wasm-qcc.patch",
+        "sha256": "63de1fa6f506d3b8ce32478f6019e8b50894ed74ad209c968de03b0444725598"
+      },
+      {
+        "file": "build/patches/webshims-local-only.patch",
+        "sha256": "cf7d1310df051b0633fb26c44a667ddffd76d928097d3f8960665f30cc4c83e4"
+      }
+    ]
+  },
+  "archive": {
+    "name": "runtime.tar.gz",
+    "bytes": 9832202,
+    "sha256": "697e033ba9a458a7dc6b9b4a2e46d8bbc524645614bf84b3dc0d903cb48b42df",
+    "parts": [
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-000",
+        "bytes": 300000,
+        "sha256": "b30a7a613c3ffa72ecf0bdead7a741ac8f70e63aec1313a2fce02c08943ad927"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-001",
+        "bytes": 300000,
+        "sha256": "582feb0aab39fad6c64e1b341b377f154fd7b8c0d3961da83a734ec977518009"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-002",
+        "bytes": 300000,
+        "sha256": "5c8900aec9c50672636fd38da470a8ede3ac1d47fd11b4b204b8fd9f5b941417"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-003",
+        "bytes": 300000,
+        "sha256": "5805085014c64ddfac0fc6b86050496697182b5cc9d49037bb07671730403af1"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-004",
+        "bytes": 300000,
+        "sha256": "1fab45708fb42c5fb5c37c0ad52e9387ef2f5b362da60cb329ac651102c93a74"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-005",
+        "bytes": 300000,
+        "sha256": "32cc9e594f18ade4096040eb468b16972d6a1a9036c2bcf2c8881a260484382e"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-006",
+        "bytes": 300000,
+        "sha256": "c3c9aeea04a44872e69b54d9c7a42fe41397a3ee2222c0c03209adf5e9d6b8a9"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-007",
+        "bytes": 300000,
+        "sha256": "05da073d07069d9725ba2330d58a2fa3ca73e2f2638e715a46b948bdd189c038"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-008",
+        "bytes": 300000,
+        "sha256": "77da10ebc8c8cbd3e7c8b506671606a5e69da333efc6e3cb8f5ffd59b97c1c46"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-009",
+        "bytes": 300000,
+        "sha256": "3595c6e39cda0a1df00d744ae7cf0c2ae0222b84c9e5332c412c28e3c23b2724"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-010",
+        "bytes": 300000,
+        "sha256": "7857cbe980128d993cdb7b1ace7832b0e0099f62028b882f3344b43259c8d964"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-011",
+        "bytes": 300000,
+        "sha256": "01c60b36fa9517be428a1ef976160beea1c0849b6ac82c19add17c1153111b68"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-012",
+        "bytes": 300000,
+        "sha256": "5ddc7021e15cafae4ba04a8dc0eeb585027b9725506325f84c3f634aab9e3b98"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-013",
+        "bytes": 300000,
+        "sha256": "d5746a425c8f091771265aa3baed922f8ead603d3c1d1a8dbdc27da17ae4bb15"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-014",
+        "bytes": 300000,
+        "sha256": "51f2fc02d2033457b24743e2827a09339e1c1efc22776248ea37dd29d89758fd"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-015",
+        "bytes": 300000,
+        "sha256": "f9507558f4c00867eace63051ccbd0b4ed66f8706b48062420d3fb4a86138af6"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-016",
+        "bytes": 300000,
+        "sha256": "c8b53d93326985c2e06094753173853b0640bbc5ff7cef4d46feac7ba986a6b6"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-017",
+        "bytes": 300000,
+        "sha256": "ff19ea117eaf63802cc1606ee910dd557cae35a1582de42af659acef432ba80a"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-018",
+        "bytes": 300000,
+        "sha256": "a19481828fdc7d1362dae571632d573b0bac00fca7fe122cd3ea6f43f6ac1570"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-019",
+        "bytes": 300000,
+        "sha256": "24d713e631c33a7996cd89d589e9a9bfdbd9848121f44eb20776a7f44204a754"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-020",
+        "bytes": 300000,
+        "sha256": "0b994a12deccfdc6e7bc08f1e2866e4e662f6ad9abc677b850cbdaa4388c114f"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-021",
+        "bytes": 300000,
+        "sha256": "7aae6ba0b62170f7508f47b9e7af9ea980bb06c5e033c8d9a69123a0e3266338"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-022",
+        "bytes": 300000,
+        "sha256": "c21124f7e39d83ac8f1155202e0d6875bd8803a8d28c8d0c7a6e125662cf052e"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-023",
+        "bytes": 300000,
+        "sha256": "2dba9e9590f6f1ea588554b492ba004080c95d60f215b2c4fc4217dc7f1e0aab"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-024",
+        "bytes": 300000,
+        "sha256": "bab6a2f75d89ad42d60fe64afe0c043bf324a6c1cb0303a870aaafd9374f4c61"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-025",
+        "bytes": 300000,
+        "sha256": "233d3a64c028a2887ad2fbd2e2ef5f0abc4c7b85f21c2966f0b07e2b39db810d"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-026",
+        "bytes": 300000,
+        "sha256": "d59495c948a329e8fb0881dc56564d15e0c34ab0f7f9102fedda3c6f5a70e170"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-027",
+        "bytes": 300000,
+        "sha256": "6e33c42b769f7fae152cc1eebdf1f2a6a274e6bc77f8e2e142ce9c75e497d05f"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-028",
+        "bytes": 300000,
+        "sha256": "e43aeef1c4095269c6e283abe08530dcc99972de96392d323f5241ad90d53d60"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-029",
+        "bytes": 300000,
+        "sha256": "d4b82a00980c8276c754ab6f4c6e7aaccb032f4881c1de1c60622a8cd29d9153"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-030",
+        "bytes": 300000,
+        "sha256": "6a37987db0d8e42972f531c11ce1cdc7021fc326bbf5004c340c11e8a3b2a860"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-031",
+        "bytes": 300000,
+        "sha256": "87948114dfcb19fea5b11f61a12b59a6a6ebe5daa095042d0860db1710bbb5b5"
+      },
+      {
+        "file": "runtime-parts/runtime.tar.gz.part-032",
+        "bytes": 232202,
+        "sha256": "facc1e1a7298d19744dc90abf7d502552476be686c9534fc82ca4d5d2eae1d1e"
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "runtime/launcher.js",
+      "bytes": 106562,
+      "sha256": "36d99a3bbeaa4cd7c786d16363d8600a91c34a1a13e18525b030adddc900271e"
+    },
+    {
+      "path": "runtime/lockworker.js",
+      "bytes": 1673,
+      "sha256": "91a5f8735bf944affec0b055d17645b208037cc14b68145c893e926ab5a136fb"
+    },
+    {
+      "path": "runtime/luanti.js",
+      "bytes": 253975,
+      "sha256": "ae7df385a1dfe4921953374dcef3f8fdba2faaee23231489a965ebd5b850364f"
+    },
+    {
+      "path": "runtime/luanti.wasm",
+      "bytes": 13924792,
+      "sha256": "ec47cfe35447c74847fb4fba010545512c62c738fa66c28d40ebd297d3987a9e"
+    },
+    {
+      "path": "runtime/packs/base.pack",
+      "bytes": 4608607,
+      "sha256": "a67834f5ec7fb13423bab2f6465e5d76a6e842ee48533eb7eaa1accd3ec6bf54"
+    },
+    {
+      "path": "runtime/packs/certs.pack",
+      "bytes": 105809,
+      "sha256": "95e5139be16b2217550d92c4f53567b8bae386e3722398a92224f18d1bd3846f"
+    },
+    {
+      "path": "runtime/worker.js",
+      "bytes": 346,
+      "sha256": "9cf6755f99a716a03bbe7a79564737b0ec96c545d4cfa5d308e35dfe8988b731"
+    },
+    {
+      "path": "runtime/xterm/LICENSE.addon-fit",
+      "bytes": 1103,
+      "sha256": "e256f01188af527e4d06d21d06fbf785ae9c50d4b328bf03cbe0ba7f0aa4228f"
+    },
+    {
+      "path": "runtime/xterm/LICENSE.xterm",
+      "bytes": 1261,
+      "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd"
+    },
+    {
+      "path": "runtime/xterm/addon-fit.js",
+      "bytes": 1521,
+      "sha256": "ba3ea256ce0620a0992a197d6c9baea64823fc93d8da07a9e366ca9943c18527"
+    },
+    {
+      "path": "runtime/xterm/xterm.css",
+      "bytes": 7112,
+      "sha256": "854a7c0fb70e8b1a083c16797ab827299fb18744f5ad34f227b48337e33293c6"
+    },
+    {
+      "path": "runtime/xterm/xterm.js",
+      "bytes": 488663,
+      "sha256": "14903579ff54664cd72f8e8699e6961a6272c21863ec1c3b118cdc8af5d4a972"
+    }
+  ]
+}

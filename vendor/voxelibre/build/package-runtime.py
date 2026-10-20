@@ -6,6 +6,7 @@ import hashlib
 import io
 import json
 import pathlib
+import subprocess
 import tarfile
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -18,6 +19,9 @@ releases = [path for path in (build / 'www').iterdir() if path.is_dir() and (pat
 if len(releases) != 1:
     raise SystemExit('Expected exactly one completed native runtime under www/.')
 release = releases[0]
+subprocess.run(['node', '--input-type=module', '-e',
+                "import{readFile}from'node:fs/promises';await WebAssembly.compile(await readFile(process.argv[1]));",
+                str(release / 'luanti.wasm')], check=True)
 
 names = ['luanti.js', 'luanti.wasm', 'launcher.js', 'worker.js', 'lockworker.js',
          'packs/base.pack', 'packs/certs.pack', 'xterm/xterm.js', 'xterm/xterm.css',

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit && vite build && node scripts/offline-manifest.mjs",
+    "build": "npm run prepare:voxelibre && tsc --noEmit && vite build && node scripts/offline-manifest.mjs",
+    "prepare:voxelibre": "node scripts/prepare-voxelibre-runtime.mjs && node scripts/prepare-voxelibre.mjs && python3 vendor/voxelibre/build/prepare-runtime-sources.py",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:e2e": "playwright test",

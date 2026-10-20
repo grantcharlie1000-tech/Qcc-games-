@@ -136,5 +136,11 @@
       "bytes": 2556736,
       "sha256": "35109dd6e4f062f4d76b48bd7614eec35abae9d2da70351c7ef936876b064b5f"
     }
-  ]
+  ],
+  "certificateBundle": {
+    "file": "ca-certificates.crt",
+    "bytes": 187940,
+    "sha256": "a491bd3f853f9e03376786d1ef525d7421aa42aa378ef189b40f468b8619123c",
+    "provenance": "Public CA certificate bundle captured from the original build environment at /etc/ssl/certs/ca-certificates.crt; contains no private keys."
+  }
 }

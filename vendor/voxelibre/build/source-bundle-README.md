@@ -24,14 +24,17 @@ VoxeLibre game itself is provided in the separate `voxelibre-0.92.4.zip` downloa
 - `ports/`: the exact SDL2, zlib, libjpeg, libpng, FreeType, Ogg, Vorbis and SQLite
   port sources. Emscripten's four configuration-header substitutions are applied.
 - `qcc-build/`: QCC's pins, patches, compiler build wrapper, source packager and
-  runtime packaging script.
+  runtime packaging script. `ca-certificates.crt` is the recorded public CA
+  certificate data used to create `certs.pack`; its hash is in `source-recipe.json`.
+- `licenses/`: the public license and attribution notices, including the full
+  LGPL/GPL texts and the notices from runtime, font and library components.
 - `SOURCE-MANIFEST.json`: SHA256 and size for every regular file, symbolic-link
   targets, upstream download checksums and the deliberate SDK exclusions.
 
 ## Build or modify the engine
 
 Use a Linux environment with Bash, Python 3, Git, Make, CMake, a C/C++ compiler,
-Perl, Tcl, GNU patch, zstd and Node.js 24.18 or newer. The QCC build used Node
+Perl, GNU patch, zstd and Node.js 24.18 or newer. The QCC build used Node
 24.19.0, CMake 3.31.6 and Emscripten 6.0.8. The first build downloads the pinned
 SDK's public compiler binaries; no service account or game server is required.
 

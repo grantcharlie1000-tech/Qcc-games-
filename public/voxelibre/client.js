@@ -16,6 +16,10 @@ let activeWorldTask = null;
 let prelaunchClosing = false;
 let quitTask = null;
 let nativeQuitRequested = false;
+// A visible error is not evidence that native main() has stopped. Keep this
+// lifecycle separate from launcher UI phases so Back cannot discard a live world.
+let nativeStarted = false;
+let nativeStopped = false;
 let rejectPreparation = null;
 let engineFailure = '';
 let reportedSaveFailure = null;
@@ -134,9 +138,15 @@ function acknowledgeExit() {
   } else emit('exited', {persistent:persistence});
 }
 
-function failRuntime(error) {
+function failRuntime(error, confirmedStopped = false) {
   if (disposed) return;
   const message = messageText(error);
+  if (confirmedStopped) nativeStopped = true;
+  if (nativeStarted && !nativeStopped) {
+    pause();
+    showProblem(message, 'Game paused after a problem');
+    return;
+  }
   engineFailure = message;
   phase = 'failed';
   paused = true;
@@ -153,6 +163,7 @@ function failRuntime(error) {
 
 function nativeExited(status) {
   if (disposed) return;
+  nativeStopped = true;
   phase = 'exited';
   paused = true;
   updateAudio();
@@ -201,14 +212,15 @@ async function prepareRuntime() {
       const nativeReady = new Promise(resolve => { resolveReady = resolve; });
       const runtimeFailure = new Promise((_, reject) => { rejectPreparation = reject; });
       // Install the abort handler before the launcher's RAF starts luanti.js.
-      globalThis.Module.onAbort = reason => failRuntime(new Error(`The game engine stopped: ${messageText(reason)}`));
+      globalThis.Module.onAbort = reason => failRuntime(new Error(`The game engine stopped: ${messageText(reason)}`), true);
       launcher = new LuantiLauncher();
       launcher.setProxy('');
       launcher.onprogress = progress;
       launcher.onerror = failRuntime;
       launcher.onprint = output => { reportedSaveFailure ||= nativeSaveProblem(output); };
       launcher.onexit = nativeExited;
-      launcher.oncancel = () => failRuntime(new Error('The game could not take its saved-world lock. Close other game tabs, then choose Check again.'));
+      // The pinned launcher's cancel callback runs only before native main().
+      launcher.oncancel = () => failRuntime(new Error('The game could not take its saved-world lock. Close other game tabs, then choose Check again.'), true);
       launcher.onready = resolveReady;
       if (launcher.isReady()) resolveReady();
       // onready means the native filesystem is mounted. Every pack has its
@@ -277,9 +289,10 @@ async function play() {
     args.gameid = 'mineclone2';
     args.packs = ['mineclone2'];
     phase = 'running';
+    nativeStarted = true;
     engine.launch(args);
     emit('running', {persistent:persistence, message:persistence ? 'VoxeLibre · worlds stored in this browser' : 'VoxeLibre · temporary worlds, lost when this game closes'});
-  } catch (error) { failRuntime(error); }
+  } catch (error) { failRuntime(error, true); }
 }
 
 function setWorldBusy(busy) {
@@ -378,7 +391,7 @@ async function importWorld(file) {
 function pause() {
   paused = true;
   updateAudio();
-  if (phase === 'running') {
+  if (nativeStarted && !nativeStopped) {
     // Focus loss invokes native pause_on_lost_focus. Synthesizing Escape here
     // could toggle an already-open pause menu back into live gameplay.
     document.exitPointerLock?.();
@@ -389,7 +402,7 @@ function pause() {
 
 function quit(requestId) {
   quitRequests.add(requestId);
-  if (phase === 'running') {
+  if (nativeStarted && !nativeStopped) {
     if (!nativeQuitRequested) {
       nativeQuitRequested = true;
       try {

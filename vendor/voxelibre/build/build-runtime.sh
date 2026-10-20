@@ -10,6 +10,7 @@ done
 QCC_RECIPE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 QCC_BUILD_DIR=$(realpath -m -- "${1:?Usage: build-runtime.sh BUILD_DIRECTORY}")
 QCC_NODE_BIN=$(command -v node)
+export QCC_CA_BUNDLE="$QCC_RECIPE_DIR/ca-certificates.crt"
 python3 "$QCC_RECIPE_DIR/fetch-pinned.py" luanti-wasm "$QCC_BUILD_DIR"
 for input in luanti webshims zstd; do
   python3 "$QCC_RECIPE_DIR/fetch-pinned.py" "$input" "$QCC_BUILD_DIR/sources/$input"
@@ -54,4 +55,5 @@ for qcc_patch in emsdk_dirperms emsdk_openat emsdk_libegl emsdk_jspi emsdk_wasmf
 done
 cd "$QCC_BUILD_DIR"
 ./build_all.sh
+node --input-type=module -e "import{readFile}from'node:fs/promises';await WebAssembly.compile(await readFile(process.argv[1]));" "$QCC_BUILD_DIR/build/luanti/bin/luanti.wasm"
 printf 'Native build complete: %s\n' "$QCC_BUILD_DIR/www"
