@@ -1,8 +1,8 @@
-# Parent review handoff — R3 audit slot requested
+# Parent review handoff — R3 local audit complete
 
-Please allocate an Astra slot for the new **local-only R3 resize correction** against published head `1e08484b890bb2d60ced32989bfc139d075acc44`. No review of this correction has started. The earlier allocated review and two re-reviews finished at runtime `9e187e8a23c5df263092dc27ec3b7b6ac5ad837f` with no remaining findings; their results remain in `review-final/astra/REVIEW.md`.
+The newly allocated Astra review of the **local-only R3 resize correction** is complete at exact checkpoint `f8df8003c773246984a200cf8a4b48c7578579c5` against published head `1e08484b890bb2d60ced32989bfc139d075acc44`. **Locally ready for parent review: Yes; no findings.** The slot can be released. See `review-r3/astra/REVIEW.md`. The earlier allocated review and two re-reviews finished at runtime `9e187e8a23c5df263092dc27ec3b7b6ac5ad837f`; their results remain in `review-final/astra/REVIEW.md`.
 
-R3 diagnosis and evidence: `review-r3/DIAGNOSIS.md`, `review-r3/sol61/manifest.json` and the full chronological `src/games/neon-coil/TEST_RESULTS.md`. Check synchronization of canvas and ranking in ready/paused/dead/running phases, exact frozen snapshots, preserved phase announcements, unchanged input/simulation and strict five/ten-row assertions. Sol 6.1's local checks passed 20 Chromium cases, 288 unit tests, TypeScript and build. The original failed hosted WebKit result is retained; corrected WebKit verification remains unavailable.
+R3 diagnosis and evidence: `review-r3/DIAGNOSIS.md`, `review-r3/sol61/manifest.json` and the full chronological `src/games/neon-coil/TEST_RESULTS.md`. Astra independently passed five focused cases covering synchronization of canvas and ranking in ready/paused/dead/running phases, exact frozen snapshots, preserved phase announcements and strict five/ten-row assertions. Sol 6.1's inspected local checks passed all 20 arena Chromium cases, 288 unit tests, TypeScript and build. The original failed hosted WebKit result is retained; corrected WebKit/full-CI verification remains outstanding. A later documentation-only commit preserves the review without changing the audited runtime.
 
 Repository: `/workspace/Qcc-games-`.
 Base: `a7f7631d4f606667f23b016ad6091cb3899365e8` (current main at task start).
