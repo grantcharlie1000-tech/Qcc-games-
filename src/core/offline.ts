@@ -122,7 +122,7 @@ export async function cacheAll(progress:(done:number,total:number)=>void):Promis
   if(!ready.active)throw new Error('Offline caching is not ready. Try again when online.');
   const active=await build(ready.active);
   if(active.version!==manifest.version||active.entry&&active.entry!==runningEntry)throw new Error('An update is ready. Reload from the menu before downloading the new offline pack.');
-  const cache=await caches.open('pocket-arcade:'+address.pathname+':'+manifest.version+':pack');let done=0;
+  const cache=await caches.open('pocket-arcade-v2:'+address.pathname+':'+manifest.version+':pack');let done=0;
   for(const file of manifest.files){const url=new URL(file,address);const result=await fetch(url,{cache:'reload'});if(!result.ok)throw new Error('Could not download '+file+'. Try again when online.');await cache.put(url,result);progress(++done,manifest.files.length);}
   return done;
 }

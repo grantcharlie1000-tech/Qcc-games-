@@ -21,3 +21,13 @@ New app checks startup/online/foreground; controller changes only show an explic
 ## Review checkpoint
 
 Worker protects per-entry modern navigation/ownership, exact legacy pins, own-version mutable shell, all runtime assets and durable saves. Startup/waiting/cancellation UI is implemented. Tests308/308 and build pass. Parent affected Study33/33 and full13-game offline94b193 passed; isolated controlled waiting passes bothpaths; canonical root migration passes then combined waiting W activation times out. Historical delayed bootstrap404 and concurrent first-deletion same-name reinstall remain unresolved. This is a frozen **not-ready** checkpoint for exact Astra review and any authorized draft PR/hosted CI, not approval to merge/deploy. See evidence README for qualified raw logs and tradeoffs.
+
+## Reviewed design follow-up
+
+Astra/root selected permanent top-level v2 namespace plus modern serialized retirement/identity guards. Strict legacy A + waiting legacy D remains supported; actual legacy D activation during B install cannot touch v2. No staging/copy architecture.318unit/build15d pass; both-path targeted legacy waiting, real legacy transition during install, and modern waiting/cancellation/quota/continuation cases pass. Exact new-head review pending; historical native stall/404 causes remain unclassified. Draft PR creation was denied by automatic approval review; no PR created and no retry/alternate route. Only local follow-up work is authorized here.
+
+## Final local follow-up
+
+Permanent v2 namespace and predecessor retirement guards address the reviewed first-delete/reused-name and changing-predecessor hazards. The canonical 15d run then proved an independent pre-activate source-ACK loss; durable early ACK persistence, inheritance and atomic drain now cover it.324 units, TypeScript and build7d27d2663c4f pass. Root migration/cleanup/progress passes in the new combined run, followed by the unresolved native W activation timeout; the combined run remains RED and subpath is not reached. Both-path targeted legacy/modern waiting and real legacy transition cases passed on15d. Parent full13-game/20-chapter v2 offline and final7d representative2-game/20-chapter offline checks pass both scopes. See evidence README for exact qualifications and raw logs.
+
+The earlier draft-PR denial was followed by fresh explicit user approval; parent created draft PR4 at975214e and started CI. This local follow-up requires exact review before parent pushes it. No child external writes; no merge/deploy approval. Source is frozen for checkpoint review; native control experiments may continue only in scratch.

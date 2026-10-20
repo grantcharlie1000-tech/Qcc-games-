@@ -1,0 +1,4934 @@
+{
+  "recordedAt": "2026-10-20T05:54:32.144Z",
+  "results": [
+    {
+      "scope": "/",
+      "oldVersion": "1f2bcac8fa53-A",
+      "versions": [
+        "7d27d2663c4f-B",
+        "7d27d2663c4f-C",
+        "7d27d2663c4f-D"
+      ],
+      "persistentProfileRestarted": true,
+      "naturalReloadDiscovery": true,
+      "noAutomaticDocumentReload": true,
+      "legacyDelayedNavigation": false,
+      "modernDelayedNavigation": true,
+      "legacyPackPinned": true,
+      "oldLazyChunkRemovedFromServer": true,
+      "oldGamePlayedOffline": true,
+      "persistentProfileWorkerRestart": true,
+      "forcedLiveWorkerRestart": false,
+      "visibleNewContent": true,
+      "scoreSettingsCookiePreserved": true,
+      "actualProgressRestored": true,
+      "quotaBlockedUserReload": true,
+      "pendingPreferenceRecovered": true,
+      "inconsistentInstallRecovery": true,
+      "modernCachesCleaned": true,
+      "futureInstallCachePreserved": true
+    }
+  ],
+  "requests": [
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "document"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "style"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxEl94if-A.js",
+      "destination": "script"
+    },
+    {
+      "release": "A",
+      "file": "/manifest.webmanifest",
+      "destination": "manifest"
+    },
+    {
+      "release": "A",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxEl94if-A.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "font"
+    },
+    {
+      "release": "A",
+      "file": "/icon.svg",
+      "destination": "image"
+    },
+    {
+      "release": "A",
+      "file": "/THIRD_PARTY_NOTICES.txt",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CrTYe8In.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-vIlsxmnM-A.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-wfoilZQz.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/sw.js",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "L",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/assets/index-CxEl94if-L.js",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D0ozSXMY-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BQ0YBnm3-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "document"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "style"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxEl94if-A.js",
+      "destination": "script"
+    },
+    {
+      "release": "A",
+      "file": "/manifest.webmanifest",
+      "destination": "manifest"
+    },
+    {
+      "release": "A",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxEl94if-A.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "font"
+    },
+    {
+      "release": "A",
+      "file": "/icon.svg",
+      "destination": "image"
+    },
+    {
+      "release": "A",
+      "file": "/THIRD_PARTY_NOTICES.txt",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CrTYe8In.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-vIlsxmnM-A.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-wfoilZQz.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/sw.js",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "L",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/assets/index-CxEl94if-L.js",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "L",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D0ozSXMY-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BQ0YBnm3-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "document"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "style"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxEl94if-A.js",
+      "destination": "script"
+    },
+    {
+      "release": "A",
+      "file": "/manifest.webmanifest",
+      "destination": "manifest"
+    },
+    {
+      "release": "A",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxEl94if-A.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "font"
+    },
+    {
+      "release": "A",
+      "file": "/icon.svg",
+      "destination": "image"
+    },
+    {
+      "release": "A",
+      "file": "/THIRD_PARTY_NOTICES.txt",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CrTYe8In.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-vIlsxmnM-A.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/index-wfoilZQz.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/sw.js",
+      "destination": "empty"
+    },
+    {
+      "release": "A",
+      "file": "/index.html",
+      "destination": "document"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D0ozSXMY-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BQ0YBnm3-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "document"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/THIRD_PARTY_NOTICES.txt",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "broken",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-D0ozSXMY-broken.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BQ0YBnm3-broken.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "broken",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-D0ozSXMY-broken.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BQ0YBnm3-broken.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "broken",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "broken",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-D0ozSXMY-broken.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/test-navigation-gate",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-D0ozSXMY-C.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-BQ0YBnm3-C.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "C",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "D",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "D",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-D0ozSXMY-D.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-BQ0YBnm3-D.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "D",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "D",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "D",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "D",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "D",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "D",
+      "file": "/index.html",
+      "destination": "document"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "document"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "style"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D0ozSXMY-B.js",
+      "destination": "script"
+    },
+    {
+      "release": "B",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "font"
+    },
+    {
+      "release": "B",
+      "file": "/icon.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/manifest.webmanifest",
+      "destination": "manifest"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D0ozSXMY-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BQ0YBnm3-B.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "image"
+    },
+    {
+      "release": "B",
+      "file": "/THIRD_PARTY_NOTICES.txt",
+      "destination": "empty"
+    },
+    {
+      "release": "B",
+      "file": "/sw.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "W",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/index.html",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/icon.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/manifest.webmanifest",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/offline-manifest.json",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-D0ozSXMY-W.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-Cq-D2tST.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/collision-CgH4Kjrs.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-AGfafP1n.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-B3iry_sq.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-BQ0YBnm3-W.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-BXNEfCEi.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-BdQv1M3b.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-BfML26zK.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-Bm1LrEy8.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-BniN2mis.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-CL4koYVJ.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-CWQOKeE4.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-CZRqK-Aq.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-Ca_sMq3C.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-CbJnjlHd.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-CitFEkQK.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-CmnIRI4Q.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-CxYMXy0X.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-D3FOw6fh.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-DVV_K4eE.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-DaZD4Dj_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-DjVo3RM_.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-DqLtyPWP.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-Dso3XaJW.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-DvtE1cdD.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-IARKlvG8.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/matter-PU4lz4QA.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-kKxGdlo1.css",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/index-we4rTY2V.js",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/assets/arcade-bold-DWEPn4H6.ttf",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/capybara.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/elephant.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/fox.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/giraffe.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/hippo.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/sheep.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/penguin.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/horse.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/six-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/sloth.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/tapir.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/three-sprite-preview.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/animal-stack/turtle.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/ball-run/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/block-fill/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/color-blocks/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/color-blocks/spark.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/color-connect/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/flappy-bird/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/fruit-merge/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/minesweeper/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/minesweeper/flag.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/minesweeper/mine.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/minesweeper/tile.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/pool/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/snake/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/solitaire/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/tower/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/tower/skyline.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/game-art/water-sort/cover.svg",
+      "destination": "empty"
+    },
+    {
+      "release": "W",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    },
+    {
+      "release": "W",
+      "file": "/sw.js",
+      "destination": "serviceworker"
+    }
+  ]
+}
