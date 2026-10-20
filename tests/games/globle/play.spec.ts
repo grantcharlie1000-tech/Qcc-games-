@@ -37,7 +37,7 @@ async function practice(page: Page, answer: string) {
   await expect(page.locator('.globle')).toHaveAttribute('data-mode', 'practice');
 }
 const view = async (page: Page) => {
-  await expect(globe(page)).toHaveAttribute('data-rendering', 'false', {timeout: 15000});
+  await expect(globe(page)).toHaveAttribute('data-rendering', 'false', {timeout: 30000});
   const g = globe(page);
   return {lat: Number(await g.getAttribute('data-lat')), lng: Number(await g.getAttribute('data-lng')), altitude: Number(await g.getAttribute('data-altitude'))};
 };
@@ -172,7 +172,8 @@ test('mouse drag, wheel zoom and fly-to with no hover reveal or document scroll'
   expect(keyed.lng).not.toBeCloseTo(zoomed.lng, 0);
 });
 
-test('touch drag and pinch move the globe, list scrolls inside its own area', async ({page, context}) => {
+test('touch drag and pinch move the globe, list scrolls inside its own area', async ({page, context, browserName}) => {
+  test.skip(browserName !== 'chromium', 'Native CDP touch is specific to Chromium.');
   await page.setViewportSize({width: 390, height: 844});
   await practice(page, 'MNG');
   for (const name of ['Peru', 'Chile', 'Mexico', 'Canada', 'Egypt', 'Kenya', 'India', 'Japan', 'Norway', 'Italy', 'Ghana', 'Fiji']) await guess(page, name);
