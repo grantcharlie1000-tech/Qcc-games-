@@ -32,6 +32,15 @@ describe('Snake continuous authoritative model',()=>{
   near(a,b);expect(a.phase).toBe('won');expect(a.score).toBe(2530);expect(a.segments).toBe(256);expect(a.food).toBeNull();expect(restoreState(a)).toEqual(a);
  });
  it('migrates every valid v1 field safely, archives old fractional time once, and holds until explicit continuation',()=>{const old={...legacy(),queue:['up'],presentation:{previous:[],foodAge:80}};const s=restoreState(old)!;expect(s.version).toBe(2);for(const key of ['body','seed','food','score','phase','queue','direction','ticks'] as const)expect(s[key]).toEqual(old[key]);expect(s.elapsed).toBe(0);expect(s.migration).toEqual({elapsed:93,held:true});advance(s,10000);expect(s.body).toEqual(old.body);expect(start(s,'left')).toBe(true);expect(s.direction).toBe('up');expect(s.queue).toEqual(['left']);expect(s.migration?.held).toBe(false);expect(restoreState(s)?.migration?.held).toBe(false);});
+ it.each(['ready','running'] as const)('rejects reverse-facing nonterminal v1 %s saves before conversion',phase=>{expect(restoreState({...legacy(),phase,direction:'left',ticks:1})).toBeNull();});
+ it('preserves perpendicular legacy headings and fatal attempted directions through migration and v2 reload',()=>{
+  for(const [phase,direction] of [['running','up'],['lost','up'],['lost','left']] as const){
+   const old={...legacy(),phase,direction,ticks:1},s=restoreState(old)!;expect(s).not.toBeNull();
+   expect(s.body).toEqual(old.body);expect(s.direction).toBe(direction);expect(s.phase).toBe(phase);expect(restoreState(JSON.parse(JSON.stringify(s)))).toEqual(s);
+   if(phase==='running'){start(s);advance(s,80);expect(s.phase).toBe('running');expect(pathLength(s.body)).toBeCloseTo(2);expect(restoreState(JSON.parse(JSON.stringify(s)))).toEqual(s);}
+   else {const before=structuredClone(s);advance(s,10000);expect(s).toEqual(before);}
+  }
+ });
  it('preserves fractional v2 travel, trail, queue, effects and growth exactly across save and continuation',()=>{const s=run();s.food={x:6,y:6};advance(s,110);enqueue(s,'up');const restored=restoreState(JSON.parse(JSON.stringify(s)))!;expect(restored).toEqual(s);advance(s,333);advance(restored,333);expect(restored).toEqual(s);restored.body[0].x=99;expect(s.body[0].x).not.toBe(99);});
  it('rejects malformed/crossed/reverse-facing v2 and invalid v1 without aliasing valid saves',()=>{const s=run();advance(s,40);for(const bad of [null,{}, {...s,version:99},{...s,elapsed:Infinity},{...s,growth:-1},{...s,foodAt:Infinity},{...s,body:[{x:5.25,y:6},{x:6,y:6},{x:7.25,y:6}]},{...s,queue:['left']},{...s,segments:99},{...legacy(),seed:-1},{...legacy(),body:[{x:0,y:0},{x:3,y:3},{x:4,y:3}]}])expect(restoreState(bad)).toBeNull();expect(restoreState(s)).toEqual(s);});
  it('rejects fake wins and non-junction bends in v2 saves',()=>{const s=run();advance(s,40);expect(restoreState({...s,phase:'won',food:null})).toBeNull();expect(restoreState({...s,body:[{x:8,y:6},{x:5,y:6},{x:6,y:6}],segments:5,score:20,legStart:{x:8,y:6},elapsed:0})).toBeNull();expect(restoreState({...s,body:[{x:5.25,y:6},{x:5,y:6},{x:5,y:5.5},{x:3.75,y:5.5}]})).toBeNull();});

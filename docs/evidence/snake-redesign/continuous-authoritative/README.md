@@ -1,6 +1,6 @@
 # Continuous authoritative Snake — local review candidate
 
-This candidate restores smooth movement while aligning model, visible position and physical contact. It deliberately changes the turn cutoff: the current leg is locked, and later input queues for the next square’s center. It is locally tested work pending independent review and acceptance; no publication or deployment occurred.
+This candidate restores smooth movement while aligning model, visible position and physical contact. It deliberately changes the turn cutoff: the current leg is locked, and later input queues for the next square’s center. It is locally tested work pending independent correction re-review and acceptance; no publication or deployment occurred.
 
 The [current specification](../../../../src/games/snake/SPEC.md) and [design](../../../snake-smooth-design.md) define exact contact shapes, swept events, growth, win semantics, version-1 conversion and the new event-time input clock. Shared radii are 0.40 cell for head/body and 0.33 for fruit flesh; the rendered solids use those dimensions. Essential core travel remains continuous under reduced motion; only decorative effects are suppressed.
 
@@ -9,7 +9,11 @@ The [current specification](../../../../src/games/snake/SPEC.md) and [design](..
 - [Unit output](unit-tests.txt): **36 passed / 2 files**. Continuous mid-leg/junction positions, late turn cutoff, queue/reversal limits, eating at contact, actual held-tail growth, wall/self sweeps, moving/held tail, collision priority, deterministic spawning, full 256-earned-segment victory, mixed/30/60/120 Hz partitions, inactive states, exact fractional v2 continuation, legacy hold/conversion/effect reload, malformed saves and near-boundary numerical regressions.
 - [Strict TypeScript](typecheck.txt): pass.
 - [Final local browser output](browser-tests.txt): **8/8 passed (41.0 s)** after event-clock, corner-clip and exact native-touch reference corrections, immediately before the final pure-model floating-point partition fix. The final-source coordinator run now passes all nine Snake/Study cases; see [coordinator verification](coordinator-verification.md). The suite checks continuous pixels, event-time turns/pause/save, growth reload, real input after stalled/stale RAF, actual-time model equivalence for native touch, OS/app reduced motion and cancellation, DPR-only paused resize, five responsive viewports, corner clipping/rim exclusion, replay and repeated disposal/re-entry.
-- Coordinator verification now passes: **300 all-unit tests**, production build, **9 final-source Chromium cases**, root/subpath built offline, five viewport captures and independent model stress. See [the complete verification](coordinator-verification.md). The parent has allocated an Astra review slot after final coordinator verification; that review has not run yet.
+- Coordinator verification now passes: **300 all-unit tests**, production build, **9 final-source Chromium cases**, root/subpath built offline, five viewport captures and independent model stress. See [the complete verification](coordinator-verification.md). Astra subsequently audited exact `c4156180c1f590212cbeb47f25245dbfe78605c5`; its minor legacy-validation finding and corrective re-review status are recorded below.
+
+## Post-audit validation correction
+
+The exact `c4156180c1f590212cbeb47f25245dbfe78605c5` audit found one minor malformed-v1 validation gap. The correction rejects reverse-facing ready/running legacy saves while preserving perpendicular and fatal lost directions; no geometry, clock, input or rendering change was needed. Fresh focused verification passes **39 unit tests / 2 files** and TypeScript. [Red/green evidence and scope](post-audit/README.md). Independent re-review of this correction is pending; prior browser/audit results retain their original source provenance.
 
 ## Preserved development failures and corrections
 

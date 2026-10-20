@@ -143,6 +143,9 @@ function migrate(v:Record<string,unknown>):SnakeState|null{
  const old=v as unknown as {seed:number;body:Cell[];food:Cell|null;direction:Direction;queue:Direction[];phase:SnakeState['phase'];score:number;elapsed:number;ticks:number};
  if(!Array.isArray(old.body)||old.body.length<3||old.body.length>SIZE*SIZE||!old.body.every(grid)||!validDirection(old.direction)||!queueValid(old)||!['ready','running','lost','won'].includes(old.phase)||!Number.isInteger(old.seed)||old.seed<0||old.seed>0xffffffff||old.score!==(old.body.length-3)*10||!Number.isFinite(old.elapsed)||old.elapsed<0||old.elapsed>=TICK_MS||!Number.isSafeInteger(old.ticks)||old.ticks<0)return null;
  if(new Set(old.body.map(p=>p.x+SIZE*p.y)).size!==old.body.length||old.body.slice(1).some((p,i)=>distance(p,old.body[i])!==1))return null;
+ // A live v1 heading cannot point back through its neck. Lost saves may retain the fatal attempted turn.
+ const heading=vector[old.direction],head=old.body[0],neck=old.body[1];
+ if((old.phase==='ready'||old.phase==='running')&&((head.x-neck.x)*heading.x+(head.y-neck.y)*heading.y)<0)return null;
  if(old.phase==='won'){if(old.body.length!==SIZE*SIZE||old.food!==null)return null;}
  else if(!grid(old.food)||old.body.some(p=>distance(p,old.food!)<EPS))return null;
  const s=createState(old.seed);Object.assign(s,{body:old.body.map(copy),food:old.food&&copy(old.food),direction:old.direction,queue:[...old.queue],phase:old.phase,score:old.score,segments:old.body.length,ticks:old.ticks,legStart:copy(old.body[0]),migration:{elapsed:old.elapsed,held:old.phase==='running'}});

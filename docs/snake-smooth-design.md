@@ -1,6 +1,6 @@
 # Continuous authoritative Snake — local candidate
 
-The current candidate moves continuously along grid-aligned legs. Model and renderer use the **same current head and body trail**, so contact feedback has no intentional display offset. This is a new local redesign authorized after the reviewed discrete checkpoint; it still awaits independent review and acceptance.
+The current candidate moves continuously along grid-aligned legs. Model and renderer use the **same current head and body trail**, so contact feedback has no intentional display offset. This is a new local redesign authorized after the reviewed discrete checkpoint; its post-audit legacy validation correction still awaits independent re-review and acceptance.
 
 ## Turn timing and causal event clock
 
