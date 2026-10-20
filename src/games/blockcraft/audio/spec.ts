@@ -41,13 +41,19 @@ export interface NoiseLayer extends Envelope{
 }
 export type Layer=ToneLayer|NoiseLayer;
 export interface SoundSpec{
-  /** Vanilla volume: the gain is min(1, volume) and the attenuation range 16 × max(1, volume) blocks. */
+  /** Vanilla event volume (the default when play() gets no volume): the gain is min(1, volume) and the attenuation
+   *  range 16 × max(1, volume) blocks. */
   volume:number;
-  /** Vanilla pitch (playback rate, clamped to 0.5..2 when played): multiplies frequencies and divides durations. */
+  /** Vanilla event pitch, including its random spread (the default when play() gets no pitch). The played rate is
+   *  basePitch × pitch clamped to 0.5..2: it multiplies frequencies and divides durations. */
   pitch:number;
+  /** Timbre factor of the sample set that applies whatever pitch the caller asks for (vanilla SoundType pitch: metal 1.5). */
+  basePitch?:number;
   layers:Layer[];
   /** Interface sound: never positional. */
   ui?:boolean;
+  /** Heard everywhere (thunder, vanilla volume 10000): not attenuated by distance, still panned toward its source. */
+  global?:boolean;
   /** Looping bed (rain): layers sustain at their gain until the bed is released. */
   loop?:boolean;
 }
@@ -94,10 +100,25 @@ export function hits(times:readonly number[],decay:number,gain:number):Burst[]{
   return out;
 }
 
-export function spec(volume:number,pitch:number,layers:Layer[],extra?:{ui?:boolean;loop?:boolean}):SoundSpec{
+export function spec(volume:number,pitch:number,layers:Layer[],extra?:{ui?:boolean;loop?:boolean;global?:boolean;basePitch?:number}):SoundSpec{
   const s:SoundSpec={volume,pitch,layers:layers.slice(0,12)};
-  if(extra?.ui)s.ui=true;if(extra?.loop)s.loop=true;
+  if(extra?.ui)s.ui=true;if(extra?.loop)s.loop=true;if(extra?.global)s.global=true;
+  if(extra?.basePitch!==undefined&&extra.basePitch!==1)s.basePitch=extra.basePitch;
   return s;
+}
+
+/** Shortest and longest playback rate (vanilla clamps pitch to 0.5..2). */
+export const MIN_PITCH=.5;export const MAX_PITCH=2;
+const validVolume=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
+const validPitch=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>0;
+/** The volume and playback rate a play() call resolves to. As in vanilla playSound(sound, volume, pitch), a given
+ *  volume or pitch replaces the recipe's event default; the sample set's basePitch still applies. Invalid options
+ *  are ignored. */
+export function resolveLevels(s:SoundSpec,options?:{volume?:number;pitch?:number}|null,out:{volume:number;pitch:number}={volume:0,pitch:1}){
+  const volume=options&&validVolume(options.volume)?options.volume:s.volume;
+  const pitch=(s.basePitch??1)*(options&&validPitch(options.pitch)?options.pitch:s.pitch);
+  out.volume=volume;out.pitch=Math.min(MAX_PITCH,Math.max(MIN_PITCH,pitch));
+  return out;
 }
 
 /** 1 ± amount, uniformly. */

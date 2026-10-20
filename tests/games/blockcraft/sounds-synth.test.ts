@@ -1,5 +1,6 @@
 import {describe,expect,test} from 'vitest';
 import {soundSpec,specDuration,SOUND_MATERIALS,MOB_SOUND_KINDS,type SoundSpec,type Layer} from '../../../src/games/blockcraft/audio/synth';
+import {resolveLevels} from '../../../src/games/blockcraft/audio/spec';
 import {MOB_KINDS} from '../../../src/games/blockcraft/data/items';
 import type {SoundName} from '../../../src/games/blockcraft/engine/contracts';
 import type {SoundKind} from '../../../src/games/blockcraft/data/blocks';
@@ -68,11 +69,15 @@ describe('block sounds follow vanilla levels',()=>{
   // Vanilla: break/place (v+1)/2 at pitch ×0.8, step v×0.15, mining hit (v+1)/8 at pitch ×0.5, fall v×0.5 at pitch ×0.75.
   const levels={break:[1,.8],place:[1,.8],step:[.15,1],hit:[.25,.5],fall:[.5,.75]} as const;
   test.each(MATERIALS)('%s',material=>{
+    // SoundType pitch: metal 1.5, everything else 1 (it stays when a caller passes the event pitch).
     const base=material==='metal'?1.5:1;
     for(const action of ACTIONS){
       const s=must(`${action}:${material}`);
       expect(s.volume).toBeCloseTo(levels[action][0],5);
-      expect(s.pitch).toBeCloseTo(levels[action][1]*base,5);
+      expect(s.pitch).toBeCloseTo(levels[action][1],5);
+      expect(s.basePitch??1).toBe(base);
+      expect(resolveLevels(s).pitch).toBeCloseTo(Math.min(2,levels[action][1]*base),5);
+      expect(resolveLevels(s,{pitch:levels[action][1]}).pitch).toBeCloseTo(Math.min(2,levels[action][1]*base),5);
       expect(s.ui).toBeFalsy();
     }
   });
@@ -93,6 +98,30 @@ describe('block sounds follow vanilla levels',()=>{
   });
 });
 
+describe('play options (vanilla playSound semantics)',()=>{
+  test('a given volume or pitch replaces the event default; invalid ones are ignored',()=>{
+    const burp=must('burp');
+    expect(resolveLevels(burp).volume).toBeCloseTo(.5,5);
+    expect(resolveLevels(burp,{volume:.3}).volume).toBeCloseTo(.3,5);
+    expect(resolveLevels(burp,{pitch:.95}).pitch).toBeCloseTo(.95,5);
+    expect(resolveLevels(burp,{pitch:.95}).volume).toBeCloseTo(.5,5);
+    for(const bad of [{volume:Number.NaN},{volume:-1},{volume:Infinity},{pitch:0},{pitch:-2},{pitch:Number.NaN}])
+      expect(resolveLevels(burp,bad)).toEqual(resolveLevels(burp));
+    expect(resolveLevels(burp,null)).toEqual(resolveLevels(burp));
+  });
+  test('playback rate is clamped to 0.5..2 like vanilla',()=>{
+    expect(resolveLevels(must('fizz')).pitch).toBe(2);
+    expect(resolveLevels(must('click'),{pitch:9}).pitch).toBe(2);
+    expect(resolveLevels(must('click'),{pitch:.1}).pitch).toBe(.5);
+    expect(resolveLevels(must('step:metal'),{pitch:1.5}).pitch).toBe(2);
+  });
+  test('mob voices take the caller pitch (babies 1.5) and volume (big slimes)',()=>{
+    expect(resolveLevels(must('mob:cow:hurt'),{pitch:1.5}).pitch).toBeCloseTo(1.5,5);
+    expect(resolveLevels(must('mob:slime:step'),{volume:1}).volume).toBe(1);
+    expect(resolveLevels(must('mob:slime:step')).volume).toBeCloseTo(.15,5);
+  });
+});
+
 describe('event sounds',()=>{
   test('level up is a rising arpeggio',()=>{
     const notes=must('levelup').layers.filter(l=>l.kind==='tone'&&l.delay>=0).sort((a,b)=>a.delay-b.delay||a.freq-b.freq);
@@ -110,6 +139,8 @@ describe('event sounds',()=>{
   test('explosions and thunder carry far; interface sounds are not positional',()=>{
     expect(must('explode').volume).toBe(4);
     expect(must('thunder').volume).toBeGreaterThanOrEqual(1000);
+    expect(must('thunder').global).toBe(true);
+    expect(must('explode').global).toBeFalsy();
     for(const name of ['click','toast','craft'])expect(must(name).ui).toBe(true);
     for(const name of ['explode','door_open','mob:cow:ambient','step:grass'])expect(must(name).ui).toBeFalsy();
   });

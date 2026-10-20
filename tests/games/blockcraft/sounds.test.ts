@@ -6,7 +6,7 @@ import {CHUNK_VOLUME,LAYER} from '../../../src/games/blockcraft/engine/constants
 import type {SoundName} from '../../../src/games/blockcraft/engine/contracts';
 import type {VoxelWorld} from '../../../src/games/blockcraft/world/world';
 import type {Settings} from '../../../src/core/types';
-import {MockAudioContext,MockGain,MockPanner,MockSource,gestureTarget,seeded} from './sounds-mock';
+import {MockAudioContext,MockFilter,MockGain,MockPanner,MockSource,gestureTarget,seeded} from './sounds-mock';
 
 let game:FakeGame,shell:Settings,engine:SoundEngine,gestures:ReturnType<typeof gestureTarget>;
 const ctx=()=>engine.audioContext as unknown as MockAudioContext;
@@ -46,6 +46,30 @@ describe('audio context lifecycle',()=>{
     gestures.gesture();
     expect(MockAudioContext.created).toHaveLength(0);
     shell.sound=true;gestures.gesture();
+    expect(MockAudioContext.created).toHaveLength(1);
+  });
+  test('sound switched on after an earlier gesture starts on the next frame, without waiting for another gesture',()=>{
+    engine.dispose?.();build(false);
+    engine.frame?.(1/60);
+    expect(MockAudioContext.created).toHaveLength(0);
+    gestures.gesture('keydown');
+    engine.frame?.(1/60);
+    expect(MockAudioContext.created).toHaveLength(0);
+    shell.sound=true;engine.frame?.(1/60);
+    expect(MockAudioContext.created).toHaveLength(1);
+    expect(ctx().state).toBe('running');
+    engine.play('click');
+    expect(engine.voiceCount).toBe(1);
+  });
+  test('without any gesture, switching sound on never creates a context',()=>{
+    engine.dispose?.();build(false);
+    shell.sound=true;
+    for(let i=0;i<10;i++){engine.frame?.(1/60);engine.tick?.();}
+    game.updateSettings({volume:.9});
+    expect(MockAudioContext.created).toHaveLength(0);
+  });
+  test.each(['pointerup','click','touchend','mousedown'])('%s counts as a user gesture',type=>{
+    gestures.gesture(type);
     expect(MockAudioContext.created).toHaveLength(1);
   });
   test('the master gain follows settings.volume and the shell sound toggle live',()=>{
@@ -138,6 +162,26 @@ describe('play',()=>{
     engine.play('click',at(100,0,0));
     expect(engine.voiceNames()).toContain('click');
   });
+  test('options replace the vanilla event volume, like playSound(sound, volume, pitch)',()=>{
+    start();
+    engine.play('burp');
+    expect(engine.voiceLevels()[0]).toBeCloseTo(.5,5);
+    engine.play('burp',null,{volume:.5,pitch:.95});
+    expect(engine.voiceLevels()[1]).toBeCloseTo(.5,5);
+    engine.play('mob:slime:step',at(4,0,0),{volume:.8});
+    expect(engine.voiceLevels()[2]).toBeCloseTo(.8*.75,5);
+    engine.play('levelup',null,{volume:.25});
+    expect(engine.voiceLevels()[3]).toBeCloseTo(.25,5);
+  });
+  test('thunder is heard everywhere, panned toward the strike',()=>{
+    const c=start();game.player.state.yaw=0;
+    engine.play('thunder',at(300,0,0));
+    expect(engine.voiceLevels()[0]).toBe(1);
+    expect(c.all<MockPanner>('panner').at(-1)!.pan.value).toBeGreaterThan(.5);
+    engine.play('thunder',at(-200,0,0),{volume:.4});
+    expect(engine.voiceLevels()[1]).toBeCloseTo(.4,5);
+    expect(c.all<MockPanner>('panner').at(-1)!.pan.value).toBeLessThan(-.5);
+  });
   test('pitch scales the synth frequencies (vanilla playback rate), clamped to 0.5..2',()=>{
     const c=start();
     const first=(fn:()=>void)=>{const n=c.nodes.length;fn();return c.nodes.slice(n).find(x=>x.kind==='oscillator') as unknown as {frequency:{events:{value:number}[]}};};
@@ -162,7 +206,7 @@ describe('voice cap',()=>{
     const c=start();
     for(let i=0;i<16;i++)engine.play('step:stone');
     const sources=c.nodes.filter((n):n is MockSource=>n instanceof MockSource);
-    engine.play('step:grass',null,{volume:.5});
+    engine.play('step:grass',null,{volume:.05});
     expect(engine.voiceNames().filter(n=>n==='step:grass')).toHaveLength(0);
     engine.play('explode');
     expect(engine.voiceCount).toBe(16);
@@ -184,27 +228,85 @@ describe('voice cap',()=>{
     start();
     for(let i=0;i<5;i++)engine.play('fire');
     engine.play('rain');
+    game.player.state.headInWater=true;engine.tick?.();
+    expect(engine.voiceNames()).toContain('underwater');
     engine.reset?.();
     expect(engine.voiceCount).toBe(0);
+    expect(engine.underwaterLevel).toBe(0);
   });
 });
 
 describe('ambience',()=>{
-  test('rain is one bed that follows weather intensity and fades when the weather stops calling',()=>{
+  test('rain is one bed: the call volume capped by weather intensity, fading when the weather stops calling',()=>{
     const c=start();
     const weather=game.weather as {intensity:number};weather.intensity=1;
     for(let i=0;i<30;i++){engine.play('rain',null,{volume:.8});engine.frame?.(.05);c.currentTime+=.05;}
     expect(engine.voiceNames().filter(n=>n==='rain')).toHaveLength(1);
-    const full=engine.rainLevel;
-    expect(full).toBeGreaterThan(0);
+    expect(engine.rainLevel).toBeCloseTo(.8,5);
+    // The weather passes its eased rain level as the volume; intensity also caps a constant-volume caller.
     weather.intensity=.25;engine.frame?.(.05);
-    expect(engine.rainLevel).toBeCloseTo(full/4,5);
-    engine.play('rain',null,{volume:.4});engine.frame?.(.05);
-    expect(engine.rainLevel).toBeCloseTo(full/8,5);
+    expect(engine.rainLevel).toBeCloseTo(.25,5);
+    engine.play('rain',null,{volume:.1});engine.frame?.(.05);
+    expect(engine.rainLevel).toBeCloseTo(.1,5);
+    weather.intensity=.6;engine.play('rain');engine.frame?.(.05);
+    expect(engine.rainLevel).toBeCloseTo(.6,5);
     c.currentTime+=30;engine.frame?.(.05);
     expect(engine.rainLevel).toBe(0);
     c.currentTime+=30;engine.frame?.(.05);
     expect(engine.voiceNames()).not.toContain('rain');
+  });
+  test('rain heard under a roof (pitch below 1) is muffled; raining columns lean the bed softly toward them',()=>{
+    const c=start();game.player.state.yaw=0;
+    const weather=game.weather as {intensity:number};weather.intensity=1;
+    engine.play('rain',at(0,0,-2),{volume:1});
+    const rain=c.all<MockFilter>('filter').find(f=>f.type==='lowpass'&&[...f.outputs].some(o=>o instanceof MockPanner))!;
+    expect(rain).toBeDefined();
+    expect(engine.rainCutoff).toBeGreaterThan(8000);
+    expect(engine.rainLevel).toBeGreaterThan(.9);
+    for(let i=0;i<20;i++){engine.play('rain',at(8,0,0),{volume:.5,pitch:.5});c.currentTime+=1;engine.frame?.(.05);}
+    expect(engine.rainCutoff).toBeLessThan(1000);
+    expect(rain.frequency.events.at(-1)!.value).toBeLessThan(1000);
+    expect(engine.rainPan).toBeGreaterThan(.2);
+    expect(engine.rainPan).toBeLessThanOrEqual(.5);
+    // A column 8 blocks away is half attenuated as a point source; as a bed it only softens.
+    expect(engine.rainLevel).toBeGreaterThan(.5*.6);
+    expect(engine.rainLevel).toBeLessThan(.5);
+    engine.play('rain',at(-1,0,0),{volume:1,pitch:1});
+    expect(engine.rainCutoff).toBeGreaterThan(8000);
+  });
+  test('underwater: a loop fades in over 2 s while the eyes are in water, with enter, exit and bubble additions',()=>{
+    const c=start();
+    const step=(n:number)=>{for(let i=0;i<n;i++){engine.tick?.();c.currentTime+=.05;engine.frame?.(.05);}};
+    step(5);
+    expect(engine.voiceNames()).not.toContain('underwater');
+    game.player.state.headInWater=true;
+    step(1);
+    expect(engine.voiceNames()).toContain('underwater');
+    expect(engine.voiceNames()).toContain('underwater_enter');
+    expect(engine.underwaterLevel).toBeGreaterThan(0);
+    expect(engine.underwaterLevel).toBeLessThan(.1);
+    step(39);
+    const full=engine.underwaterLevel;
+    step(10);
+    expect(engine.underwaterLevel).toBe(full);
+    let bubbles=0;
+    for(let i=0;i<3000;i++){step(1);if(engine.voiceNames().some(n=>n.startsWith('underwater_')&&n!=='underwater_enter'))bubbles++;}
+    expect(bubbles).toBeGreaterThan(10);
+    expect(engine.voiceNames().filter(n=>n==='underwater')).toHaveLength(1);
+    game.player.state.headInWater=false;
+    step(1);
+    expect(engine.voiceNames()).toContain('underwater_exit');
+    expect(engine.underwaterLevel).toBeLessThan(full);
+    step(20);
+    expect(engine.voiceNames()).not.toContain('underwater');
+  });
+  test('no underwater sounds on dry land or while silent',()=>{
+    const c=start();
+    for(let i=0;i<2000;i++){engine.tick?.();c.currentTime+=.05;}
+    expect(engine.voiceNames().some(n=>n.startsWith('underwater'))).toBe(false);
+    game.setState('paused');game.player.state.headInWater=true;
+    for(let i=0;i<100;i++)engine.tick?.();
+    expect(engine.voiceNames().some(n=>n.startsWith('underwater'))).toBe(false);
   });
   function cave(){
     const air=(y:number)=>y>=20&&y<40;

@@ -1,23 +1,28 @@
 // Sound service: procedural Web Audio for every SoundName (no audio files).
 //
-//  - One AudioContext, created on the first user gesture (pointer, key or touch) while the shell's sound
-//    setting is on. Master gain = MASTER_LEVEL × settings.volume, 0 while game.context.settings.sound is off
-//    (read live every frame and every play, since the shell does not announce changes).
+//  - One AudioContext, created on the first user gesture (pointer, key, touch or click) while the shell's sound
+//    setting is on, or on the next frame once the setting is switched on after a gesture. Master gain =
+//    MASTER_LEVEL × settings.volume, 0 while game.context.settings.sound is off (read live on every frame, play
+//    and event, since the shell does not announce changes; settingsChanged, stateChanged and shellPaused re-sync).
 //  - The context is suspended while the engine is paused or lost, while the shell pauses the game, while the
 //    sound setting is off or the volume is 0, and closed on dispose. Sounds requested while silent are dropped.
 //  - At most MAX_VOICES voices (each play() is one voice whatever its layers). A full pool drops a new sound
-//    quieter than every playing one, otherwise the quietest voice is faded out and replaced. Beds (rain, music)
-//    count toward the cap but are never stolen.
+//    quieter than every playing one, otherwise the quietest voice is faded out and replaced. Beds (rain,
+//    underwater, music) count toward the cap but are never stolen.
 //  - Positional sounds use vanilla's linear falloff (16 × max(1, volume) blocks) from game.player.eye() and a
-//    stereo pan from the player's yaw; interface sounds are never positional.
+//    stereo pan from the player's yaw; interface sounds are never positional and thunder is never attenuated.
 //  - Ambience: vanilla's cave mood (ambience.ts) plays eerie cave sounds after minutes in darkness; rain is a
-//    looping bed refreshed by the weather's play('rain') calls whose level follows weather.intensity; sparse
+//    looping bed refreshed by the weather's play('rain') calls (level = the call's volume capped by
+//    weather.intensity, softly panned toward the raining column and low-passed when the call's pitch is below 1,
+//    as for rain on the roof); the underwater loop and its additions follow the player's eyes in water; sparse
 //    generative music plays a calm piece every few minutes at low volume.
-// Recipes carry vanilla volume and pitch (synth.ts); `options` multiply them. Unknown names are ignored.
+// Recipes carry vanilla's event volume and pitch as defaults; as in vanilla playSound(sound, volume, pitch), a
+// caller's volume or pitch replaces them (resolveLevels). Unknown names are ignored, nothing here ever throws.
 import type {Game,SoundName,SoundService,System,Vec3} from '../engine/contracts';
-import {composePiece,caveSpec,moodSoundPosition,moodStep,MUSIC_FIRST_DELAY,MUSIC_GAP,type Piece} from './ambience';
-import {rangeFor,spatialize,type Spatial} from './spatial';
-import {mulberry,type Layer,type Rand,type SoundSpec} from './spec';
+import {composePiece,caveSpec,moodSoundPosition,moodStep,underwaterLoopSpec,underwaterSpec,MUSIC_FIRST_DELAY,MUSIC_GAP,
+  UNDERWATER_CHANCES,UNDERWATER_FADE_TICKS,type Piece,type UnderwaterSound} from './ambience';
+import {ATTENUATION_DISTANCE,rangeFor,spatialize,type Spatial} from './spatial';
+import {mulberry,resolveLevels,type Layer,type Rand,type SoundSpec} from './spec';
 import {soundSpec} from './synth';
 import {createNoiseBank,renderLayers,type NoiseBank} from './voice';
 
@@ -26,11 +31,19 @@ export const MAX_VOICES=16;
 export const MASTER_LEVEL=.7;
 /** Music bus level relative to the master (calm and low). */
 export const MUSIC_LEVEL=.45;
+/** Underwater loop level at full fade. */
+export const UNDERWATER_LEVEL=.8;
 /** Voices quieter than this after attenuation are not started. */
 const MIN_LEVEL=.002;
-/** Seconds the rain bed keeps sounding after the weather's last play('rain'), and its fade time constant. */
-const RAIN_HOLD=4;const RAIN_FADE=.6;const RAIN_RELEASE=3;
-const GESTURES=['pointerdown','keydown','touchend','mousedown'] as const;
+/** Seconds the rain bed keeps sounding after the weather's last play('rain'), its level time constant, and how long
+ *  it lingers silent before it is released. */
+const RAIN_HOLD=4;const RAIN_FADE=.8;const RAIN_RELEASE=3;
+/** Rain is a bed, not a point source: the raining column's distance only softens it (to this floor) and its
+ *  direction only half pans it, both averaged over recent calls. */
+const RAIN_NEAR_FLOOR=.6;const RAIN_PAN=.5;const RAIN_AVERAGE=.3;
+/** Rain low-pass cutoff when unmuffled; a call pitch p < 1 muffles it to RAIN_OPEN × p⁴ (p = 0.5 → 750 Hz). */
+const RAIN_OPEN=12000;
+const GESTURES=['pointerdown','pointerup','mousedown','touchend','keydown','click'] as const;
 
 export interface SoundOptions{
   /** Builds the AudioContext (default: the browser's AudioContext). Returning null or throwing means no audio. */
@@ -42,13 +55,14 @@ export interface SoundOptions{
 }
 
 interface Voice{
-  name:string;out:GainNode;pan:StereoPannerNode|null;sources:AudioScheduledSourceNode[];
+  name:string;out:GainNode;filter:BiquadFilterNode|null;pan:StereoPannerNode|null;sources:AudioScheduledSourceNode[];
   /** Audio time the voice is silent (Infinity for beds until released). */
   end:number;
   /** Effective gain after volume and attenuation (stealing priority). */
   level:number;bed:boolean;
 }
-interface RainBed{voice:Voice;volume:number;until:number;target:number;silentSince:number}
+interface RainBed{voice:Voice;volume:number;until:number;target:number;silentSince:number;near:number;pan:number;cutoff:number}
+interface UnderwaterBed{voice:Voice;target:number}
 interface Music{voice:Voice;piece:Piece;next:number;start:number}
 
 function defaultContext():AudioContext|null{
@@ -63,12 +77,15 @@ export class SoundEngine implements SoundService{
   private ctx:AudioContext|null=null;private master:GainNode|null=null;private limiter:DynamicsCompressorNode|null=null;
   private bank:NoiseBank|null=null;
   private voices:Voice[]=[];private dying:Voice[]=[];
-  private rain:RainBed|null=null;private music:Music|null=null;
+  private rain:RainBed|null=null;private underwater:UnderwaterBed|null=null;private music:Music|null=null;
   private live=false;private masterTarget=-1;private disposed=false;private unavailable=false;private initialised=false;
-  private mood=0;private musicDelay=0;
+  /** A user gesture has been seen (the page may start audio from now on). */
+  private activated=false;
+  private mood=0;private musicDelay=0;private submerged=false;private fade=0;
   private offs:(()=>void)[]=[];
   private readonly rand:Rand;private readonly spatial:Spatial={gain:0,pan:0,distance:0};
-  private readonly sample:Vec3={x:0,y:0,z:0};private readonly moodAt:Vec3={x:0,y:0,z:0};
+  private readonly levels={volume:0,pitch:1};
+  private readonly sample:Vec3={x:0,y:0,z:0};private readonly moodAt:Vec3={x:0,y:0,z:0};private readonly moodEye:Vec3={x:0,y:0,z:0};
   private reportedState='';private reportedVoices=-1;
 
   constructor(private readonly game:Game,private readonly options:SoundOptions={}){
@@ -81,8 +98,12 @@ export class SoundEngine implements SoundService{
   get voiceCount():number{return this.voices.length;}
   voiceNames():string[]{return this.voices.map(v=>v.name);}
   voiceLevels():number[]{return this.voices.map(v=>v.level);}
-  /** Current rain bed target gain (0 when silent or absent). */
+  /** Rain bed: target gain (0 when silent or absent), smoothed pan and low-pass cutoff in Hz. */
   get rainLevel():number{return this.rain?this.rain.target:0;}
+  get rainPan():number{return this.rain?this.rain.pan:0;}
+  get rainCutoff():number{return this.rain?this.rain.cutoff:RAIN_OPEN;}
+  /** Underwater loop target gain (0 when absent). */
+  get underwaterLevel():number{return this.underwater?this.underwater.target:0;}
 
   // ---- Lifecycle ------------------------------------------------------------------------------
   init(){
@@ -101,7 +122,7 @@ export class SoundEngine implements SoundService{
   }
   tick(){
     if(this.disposed)return;
-    try{this.moodTick();this.musicTick();}catch{/* audio is optional */}
+    try{this.moodTick();this.underwaterTick();this.musicTick();}catch{/* audio is optional */}
   }
   frame(_dt:number){
     if(this.disposed)return;
@@ -113,7 +134,7 @@ export class SoundEngine implements SoundService{
   }
   reset(){
     this.stopAll();
-    this.mood=0;this.musicDelay=this.delay(MUSIC_FIRST_DELAY);
+    this.mood=0;this.fade=0;this.submerged=false;this.musicDelay=this.delay(MUSIC_FIRST_DELAY);
   }
   dispose(){
     if(this.disposed)return;
@@ -134,45 +155,50 @@ export class SoundEngine implements SoundService{
     if(!this.ctx||this.disposed||typeof name!=='string')return;
     this.sync();
     if(!this.live)return;
-    const vol=options&&typeof options.volume==='number'&&options.volume>=0&&Number.isFinite(options.volume)?options.volume:1;
-    const pitch=options&&typeof options.pitch==='number'&&options.pitch>0&&Number.isFinite(options.pitch)?options.pitch:1;
     const pos=finiteVec(at)?at:null;
     let distance:number|null=null,eye:Vec3|null=null;
     if(pos){eye=this.game.player.eye();const dx=pos.x-eye.x,dy=pos.y-eye.y,dz=pos.z-eye.z;distance=Math.sqrt(dx*dx+dy*dy+dz*dz);}
     const s=soundSpec(name,this.rand,distance);
     if(!s)return;
-    if(s.loop){this.refreshBed(name,s,vol);return;}
-    this.playSpec(name,s,vol,pitch,pos,eye);
+    const {volume,pitch}=resolveLevels(s,options&&typeof options==='object'?options:null,this.levels);
+    if(s.loop){this.refreshRain(name,s,volume,pitch,pos,eye);return;}
+    this.playSpec(name,s,volume,pitch,pos,eye);
   }
-  /** Starts a one-shot voice for a spec; returns false when it was dropped. */
-  private playSpec(name:string,s:SoundSpec,vol:number,pitch:number,pos:Vec3|null,eye:Vec3|null):boolean{
-    const volume=s.volume*vol;
+  /** Starts a one-shot voice at a resolved volume and playback rate; returns false when it was dropped. */
+  private playSpec(name:string,s:SoundSpec,volume:number,pitch:number,pos:Vec3|null,eye:Vec3|null):boolean{
     if(!(volume>0))return false;
     let level=Math.min(1,volume),pan=0;
     if(pos&&eye&&!s.ui){
       spatialize(pos,eye,this.game.player.state.yaw,rangeFor(volume),this.spatial);
-      level*=this.spatial.gain;pan=this.spatial.pan;
+      if(!s.global)level*=this.spatial.gain;
+      pan=this.spatial.pan;
     }
     if(level<MIN_LEVEL||!this.claim(level))return false;
-    const p=Math.min(2,Math.max(.5,s.pitch*pitch));
-    this.voices.push(this.startVoice(name,s.layers,p,level,pan,false));
+    this.voices.push(this.startVoice(name,s.layers,pitch,level,pan,false));
     return true;
   }
-  private startVoice(name:string,layers:readonly Layer[],pitch:number,level:number,pan:number,bed:boolean,loop=false):Voice{
+  /** Builds a voice: layers → gain (level) → optional low-pass (beds) → stereo pan → master. */
+  private startVoice(name:string,layers:readonly Layer[],pitch:number,level:number,pan:number,bed:boolean,loop=false,lowpass=0):Voice{
     const c=this.ctx!,now=c.currentTime;
     const out=c.createGain();out.gain.setValueAtTime(level,now);
-    let panner:StereoPannerNode|null=null;
+    let tail:AudioNode=out,filter:BiquadFilterNode|null=null,panner:StereoPannerNode|null=null;
+    if(lowpass>0){
+      filter=c.createBiquadFilter();filter.type='lowpass';
+      filter.frequency.setValueAtTime(Math.min(lowpass,c.sampleRate*.45),now);filter.Q.setValueAtTime(.5,now);
+      tail.connect(filter);tail=filter;
+    }
     if(typeof c.createStereoPanner==='function'){
       panner=c.createStereoPanner();panner.pan.setValueAtTime(pan,now);
-      out.connect(panner).connect(this.master!);
-    }else out.connect(this.master!);
+      tail.connect(panner);tail=panner;
+    }
+    tail.connect(this.master!);
     const sources:AudioScheduledSourceNode[]=[];
     const end=layers.length?renderLayers(c,this.bank!,layers,pitch,now,out,sources,this.rand,loop):now;
-    return{name,out,pan:panner,sources,end:bed?Infinity:end+.05,level,bed};
+    return{name,out,filter,pan:panner,sources,end:bed?Infinity:end+.05,level,bed};
   }
 
   // ---- Voice pool ------------------------------------------------------------------------------
-  /** Makes room for a voice of `level`: true when it may start. */
+  /** Makes room for a voice of `level`: true when it may start. Beds always get a slot unless every voice is a bed. */
   private claim(level:number,bed=false):boolean{
     this.prune();
     if(this.voices.length<MAX_VOICES)return true;
@@ -194,7 +220,7 @@ export class SoundEngine implements SoundService{
     v.end=now+fade*5+.02;
     this.dying.push(v);
   }
-  private disconnect(v:Voice){try{v.out.disconnect();v.pan?.disconnect();}catch{/* ignore */}}
+  private disconnect(v:Voice){try{v.out.disconnect();v.filter?.disconnect();v.pan?.disconnect();}catch{/* ignore */}}
   /** Drops finished voices (in place, no allocation). */
   private prune(){
     const c=this.ctx;if(!c)return;
@@ -206,18 +232,19 @@ export class SoundEngine implements SoundService{
     for(let i=0;i<this.dying.length;i++){const v=this.dying[i];if(now>=v.end)this.disconnect(v);else this.dying[w++]=v;}
     this.dying.length=w;
   }
-  private removeVoice(v:Voice){
+  private removeVoice(v:Voice,fade=.2){
     const i=this.voices.indexOf(v);if(i>=0)this.voices.splice(i,1);
-    this.release(v,.2);
+    this.release(v,fade);
   }
   private stopAll(){
     for(const v of this.voices)this.release(v,.01);
-    this.voices.length=0;this.rain=null;this.music=null;
+    this.voices.length=0;this.rain=null;this.underwater=null;this.music=null;
   }
 
   // ---- Context and master gain ----------------------------------------------------------------
   private gesture(){
     if(this.disposed)return;
+    this.activated=true;
     try{
       if(!this.ctx){if(this.game.context.settings.sound&&!this.unavailable)this.create();}
       else if(this.ctx.state==='suspended'&&this.audible())void this.ctx.resume().catch(()=>{});
@@ -252,8 +279,12 @@ export class SoundEngine implements SoundService{
   }
   /** Applies the audible state and master level (cheap when nothing changed). */
   private sync(){
+    if(this.disposed)return;
+    // Sound switched on after the page was already activated: start now (a later gesture resumes it if the browser
+    // still holds it suspended).
+    if(!this.ctx&&this.activated&&!this.unavailable&&this.game.context.settings.sound)this.create();
     const c=this.ctx,m=this.master;
-    if(!c||!m||this.disposed)return;
+    if(!c||!m)return;
     const want=this.audible();
     const target=want?MASTER_LEVEL*clamp01(this.game.settings.volume):0;
     const now=c.currentTime,g=m.gain;
@@ -282,17 +313,30 @@ export class SoundEngine implements SoundService{
   }
 
   // ---- Beds: rain ------------------------------------------------------------------------------
-  private refreshBed(name:string,s:SoundSpec,vol:number){
+  private refreshRain(name:string,s:SoundSpec,volume:number,pitch:number,pos:Vec3|null,eye:Vec3|null){
     if(name!=='rain')return;
     const c=this.ctx!,now=c.currentTime;
-    if(!this.rain){
+    // Where it rains relative to the listener: nearer columns sound fuller, the direction leans the bed.
+    let near=1,pan=0;
+    if(pos&&eye){
+      spatialize(pos,eye,this.game.player.state.yaw,ATTENUATION_DISTANCE,this.spatial);
+      near=RAIN_NEAR_FLOOR+(1-RAIN_NEAR_FLOOR)*this.spatial.gain;pan=this.spatial.pan*RAIN_PAN;
+    }
+    const cutoff=pitch>=1?RAIN_OPEN:Math.max(300,RAIN_OPEN*pitch*pitch*pitch*pitch);
+    let rain=this.rain;
+    if(!rain){
       if(!this.claim(1,true))return;
-      const voice=this.startVoice(name,s.layers,1,0,0,true,true);
+      const voice=this.startVoice(name,s.layers,1,0,pan,true,true,cutoff);
       voice.out.gain.cancelScheduledValues(now);voice.out.gain.setValueAtTime(0,now);
       this.voices.push(voice);
-      this.rain={voice,volume:0,until:0,target:0,silentSince:-1};
+      rain=this.rain={voice,volume:0,until:0,target:0,silentSince:-1,near,pan,cutoff};
+    }else{
+      rain.near+=(near-rain.near)*RAIN_AVERAGE;
+      const p=rain.pan+(pan-rain.pan)*RAIN_AVERAGE;
+      if(Math.abs(p-rain.pan)>.005){rain.pan=p;rain.voice.pan?.pan.setTargetAtTime(p,now,RAIN_FADE);}
+      if(cutoff!==rain.cutoff){rain.cutoff=cutoff;rain.voice.filter?.frequency.setTargetAtTime(Math.min(cutoff,c.sampleRate*.45),now,.3);}
     }
-    this.rain.volume=clamp01(s.volume*vol);this.rain.until=now+RAIN_HOLD;
+    rain.volume=clamp01(volume);rain.until=now+RAIN_HOLD;
     this.updateRain();
   }
   private updateRain(){
@@ -301,8 +345,8 @@ export class SoundEngine implements SoundService{
     const now=c.currentTime;
     const wi=(this.game.weather as {intensity?:unknown}|undefined)?.intensity;
     const intensity=typeof wi==='number'&&Number.isFinite(wi)?clamp01(wi):1;
-    const target=now<rain.until?rain.volume*intensity:0;
-    if(Math.abs(target-rain.target)>1e-6){
+    const target=now<rain.until?Math.min(rain.volume,intensity)*rain.near:0;
+    if(Math.abs(target-rain.target)>1e-4||(target===0&&rain.target!==0)){
       rain.target=target;rain.voice.level=target;
       rain.voice.out.gain.setTargetAtTime(target,now,RAIN_FADE);
     }
@@ -311,18 +355,58 @@ export class SoundEngine implements SoundService{
     else if(now-rain.silentSince>RAIN_RELEASE){this.rain=null;this.removeVoice(rain.voice);}
   }
 
+  // ---- Beds: underwater ------------------------------------------------------------------------
+  private underwaterTick(){
+    const under=!!this.game.player.state.headInWater;
+    const changed=under!==this.submerged;
+    this.submerged=under;
+    this.fade=under?Math.min(UNDERWATER_FADE_TICKS,this.fade+1):Math.max(0,this.fade-2);
+    const c=this.ctx;
+    if(!c)return;
+    this.sync();
+    const bed=this.underwater;
+    if(!this.live){
+      if(bed&&this.fade===0){this.underwater=null;this.removeVoice(bed.voice,.05);}
+      return;
+    }
+    if(changed)this.playUnderwater(under?'enter':'exit');
+    if(this.fade>0){
+      const target=this.fade/UNDERWATER_FADE_TICKS*UNDERWATER_LEVEL,now=c.currentTime;
+      if(!bed){
+        if(!this.claim(1,true))return;
+        const voice=this.startVoice('underwater',underwaterLoopSpec().layers,1,0,0,true,true);
+        voice.out.gain.cancelScheduledValues(now);voice.out.gain.setValueAtTime(0,now);
+        this.voices.push(voice);
+        this.underwater={voice,target:-1};
+      }
+      const u=this.underwater!;
+      if(target!==u.target){u.target=target;u.voice.level=target;u.voice.out.gain.setTargetAtTime(target,now,.05);}
+    }else if(bed){this.underwater=null;this.removeVoice(bed.voice,.05);}
+    if(under){
+      const f=this.rand();
+      if(f<UNDERWATER_CHANCES.ultraRare)this.playUnderwater('ultra_rare');
+      else if(f<UNDERWATER_CHANCES.rare)this.playUnderwater('rare');
+      else if(f<UNDERWATER_CHANCES.additions)this.playUnderwater('additions');
+    }
+  }
+  private playUnderwater(kind:UnderwaterSound){
+    const s=underwaterSpec(kind,this.rand);
+    this.playSpec(`underwater_${kind}`,s,s.volume,s.pitch,null,null);
+  }
+
   // ---- Cave mood -------------------------------------------------------------------------------
   private moodTick(){
-    const g=this.game,p=g.player.state,ey=p.y+g.player.eyeHeight();
-    this.mood=moodStep(this.mood,g.world,p.x,ey,p.z,this.rand,this.sample);
+    const g=this.game,p=g.player.state,e=this.moodEye;
+    e.x=p.x;e.y=p.y+g.player.eyeHeight();e.z=p.z;
+    this.mood=moodStep(this.mood,g.world,e.x,e.y,e.z,this.rand,this.sample);
     if(this.mood<1){if(this.mood<0)this.mood=0;return;}
     this.mood=0;
     if(!this.ctx)return;
     this.sync();
     if(!this.live)return;
-    const eye={x:p.x,y:ey,z:p.z};
-    moodSoundPosition(eye,this.sample,this.moodAt);
-    this.playSpec('cave',caveSpec(this.rand),1,1,this.moodAt,eye);
+    moodSoundPosition(e,this.sample,this.moodAt);
+    const s=caveSpec(this.rand);
+    this.playSpec('cave',s,s.volume,s.pitch,this.moodAt,e);
   }
 
   // ---- Music -----------------------------------------------------------------------------------
@@ -348,7 +432,7 @@ export class SoundEngine implements SoundService{
     if(--this.musicDelay>0)return;
     if(!this.claim(1,true)){this.musicDelay=this.delay(MUSIC_FIRST_DELAY);return;}
     const out=c.createGain();out.gain.setValueAtTime(MUSIC_LEVEL,now);out.connect(this.master!);
-    const voice:Voice={name:'music',out,pan:null,sources:[],end:Infinity,level:MUSIC_LEVEL,bed:true};
+    const voice:Voice={name:'music',out,filter:null,pan:null,sources:[],end:Infinity,level:MUSIC_LEVEL,bed:true};
     this.voices.push(voice);
     this.music={voice,piece:composePiece(this.rand),next:0,start:now+.1};
   }

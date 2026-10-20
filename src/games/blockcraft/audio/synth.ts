@@ -1,7 +1,8 @@
 // Name → synth mapping for every SoundName. Each recipe evokes the vanilla sound family with
-// original procedural layers and carries vanilla's volume and pitch (including the random pitch
-// spread vanilla applies when that event plays), so callers may pass options only for per-event
-// variation: options multiply these values.
+// original procedural layers and carries vanilla's event volume and pitch (including the random pitch
+// spread vanilla applies when that event plays) as defaults. As in vanilla playSound(sound, volume,
+// pitch), a caller's volume or pitch replaces the default (resolveLevels in spec.ts); the sample set's
+// own pitch (basePitch: metal 1.5) still applies.
 import type {SoundKind} from '../data/blocks';
 import type {MobSoundKind,SoundName} from '../engine/contracts';
 import {grains,hits,noise,rumble,spec,tone,vanillaPitch,vary,type Layer,type Rand,type SoundSpec} from './spec';
@@ -117,7 +118,7 @@ function blockSpec(action:Action,material:string,r:Rand):SoundSpec{
   const m=Object.prototype.hasOwnProperty.call(MATERIALS,material)?MATERIALS[material as SoundKind]:MATERIALS.stone;
   const a=ACTIONS[action];
   const layers=action==='break'&&m.shatter?m.shatter(r):a.set==='dig'?m.dig(r):m.step(r);
-  return spec(a.volume,a.pitch*(m.pitch??1),layers);
+  return spec(a.volume,a.pitch,layers,{basePitch:m.pitch??1});
 }
 
 // ---- Events ------------------------------------------------------------------------------------
@@ -238,8 +239,8 @@ const SIMPLE:Record<SimpleName,Recipe>={
     noise('bandpass',1800*f,{q:.8,decay:.07,gain:.35,bursts:grains(r,2,.08,.07,.4)}),
     tone('sine',1300*f,{delay:.02,attack:.001,decay:.12,gain:.08}),
     tone('sine',2100*f,{delay:.05,attack:.001,decay:.08,gain:.06})]);},
-  // Thunder: volume 10000 (heard everywhere), pitch 0.8 + r × 0.2. The lightning impact crack (volume 2, 32 blocks)
-  // is folded in when the strike is near; far strikes lose their high end.
+  // Thunder: volume 10000 (heard everywhere, so never attenuated; panned toward the strike), pitch 0.8 + r × 0.2.
+  // The lightning impact crack (volume 2, 32 blocks) is folded in when the strike is near; far strikes lose their high end.
   thunder:(r,distance)=>{
     const p=.8+r()*.2,near=distance===null?1:Math.max(0,1-distance/32),far=distance===null?0:Math.min(1,distance/160);
     const layers:Layer[]=[];
@@ -247,7 +248,7 @@ const SIMPLE:Record<SimpleName,Recipe>={
     layers.push(rumble(900*(1-.6*far),{freqEnd:180,attack:.04,hold:.3,decay:3.6,gain:.7}),
       rumble(320,{delay:.3,decay:.4,gain:.5,bursts:grains(r,4,2.6,.6,.55,.4,.5)}),
       tone('sine',45,{freqEnd:30,delay:.2,attack:.3,hold:.5,decay:2,gain:.25}));
-    return spec(10000,p,layers);},
+    return spec(10000,p,layers,{global:true});},
   // Rain: a looping bed; weather refreshes it with play('rain') and the engine follows weather.intensity.
   rain:()=>spec(1,1,[
     noise('bandpass',2600,{q:.5,attack:1.5,decay:2,gain:.4}),

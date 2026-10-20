@@ -61,6 +61,55 @@ export function caveSpec(r:Rand):SoundSpec{
   return spec(1,1,layers);
 }
 
+// ---- Underwater ----------------------------------------------------------------------------------
+// Vanilla UnderwaterAmbientSoundHandler: while the eyes are in water a loop fades in over 40 ticks (out at
+// twice that rate), entering and leaving play their own sounds, and every tick brings additions: bubbles 1%,
+// rare distant creaks 0.1%, ultra rare eerie calls 0.01%. All are heard inside the head (not positional).
+export const UNDERWATER_FADE_TICKS=40;
+export const UNDERWATER_CHANCES={additions:.01,rare:.001,ultraRare:.0001} as const;
+export type UnderwaterSound='enter'|'exit'|'additions'|'rare'|'ultra_rare';
+
+/** The underwater loop: a deep, pressing hum with slow currents. */
+export function underwaterLoopSpec():SoundSpec{
+  return spec(1,1,[
+    rumble(240,{attack:1,decay:2,gain:.42,tremolo:{rate:.23,depth:.35}}),
+    tone('sine',52,{attack:1,decay:2,gain:.12,vibrato:{rate:.15,depth:.04}}),
+    noise('bandpass',520,{q:3,attack:1.5,decay:2,gain:.05,tremolo:{rate:.37,depth:.6}})],{loop:true,ui:true});
+}
+function bubbleRun(r:Rand,count:number,span:number,low:number,high:number,gain:number):Layer[]{
+  const layers:Layer[]=[];
+  for(let i=0;i<count;i++){
+    const f=low+r()*(high-low);
+    layers.push(tone('sine',f,{freqEnd:f*(1.8+r()*.8),delay:r()*span,attack:.003,decay:.04+r()*.05,gain:gain*(.6+r()*.4)}));
+  }
+  return layers;
+}
+/** One-shot underwater sounds (volume 1, pitch 1, heard inside the head). */
+export function underwaterSpec(kind:UnderwaterSound,r:Rand):SoundSpec{
+  const f=vary(r,.08);
+  let layers:Layer[];
+  if(kind==='enter')layers=[
+    rumble(700*f,{freqEnd:160*f,attack:.01,decay:.55,gain:.55}),
+    noise('bandpass',900*f,{freqEnd:300*f,q:1.2,attack:.005,decay:.3,gain:.25}),
+    ...bubbleRun(r,5,.5,260,700,.14)];
+  else if(kind==='exit')layers=[
+    noise('bandpass',800*f,{freqEnd:2600*f,q:1,attack:.01,decay:.28,gain:.32}),
+    rumble(420*f,{attack:.005,decay:.15,gain:.25}),
+    tone('sine',900*f,{freqEnd:1700*f,delay:.12,attack:.003,decay:.05,gain:.1})];
+  else if(kind==='additions')layers=[
+    ...bubbleRun(r,3+Math.floor(r()*4),.7,240,900,.16),
+    rumble(300*f,{attack:.05,decay:.3,gain:.12})];
+  else if(kind==='rare')layers=[
+    tone('sawtooth',150*f,{freqEnd:105*f,attack:.6,hold:.6,decay:1.6,gain:.1,vibrato:{rate:.8,depth:.03},filter:{type:'lowpass',freq:420,q:4}}),
+    rumble(180*f,{attack:.5,hold:.5,decay:1.5,gain:.25}),
+    ...bubbleRun(r,3,1.5,200,500,.08)];
+  else layers=[
+    tone('sine',310*f,{freqEnd:240*f,attack:1.2,hold:.8,decay:2.4,gain:.12,vibrato:{rate:.4,depth:.02}}),
+    tone('sine',328*f,{freqEnd:236*f,attack:1.4,hold:.6,decay:2.4,gain:.1,vibrato:{rate:.3,depth:.025}}),
+    noise('bandpass',600*f,{freqEnd:380*f,q:9,attack:1,hold:.6,decay:2.2,gain:.18})];
+  return spec(1,1,layers,{ui:true});
+}
+
 // ---- Music -------------------------------------------------------------------------------------
 // Sparse calm pieces (original, generated): slow major-key pad chords with a few soft plucked notes,
 // 30-70 s long, the first 30 s - 2 min into play and then 3-6 min apart, at low volume.
