@@ -15,15 +15,13 @@ The final actual rectangle supplies the same native225/840→135/840 horizontal 
 - A fixture-only target-move listener shifts the table after targeting; the helper must fail before down without retargeting.
 - A capture-only, one-release suppressor records an actual accepted pull/75% power, then blocks only that native release from reaching the product handler. The shared verifier must still throw immediate strict0≠1. No model or shot counter is mocked to a success.
 
-Animations/suppression are disposable regression fixtures, not claims about the exact original mechanism. There are no product callback wrappers or response/source patches. The focused paired driver is kept separately under scratch, outside this publication delta, and imports the same preparation helper for candidate567 and main1fb; it retains the reviewed Pool lifecycle and passive diagnostics while omitting prior unrelated routes. One paired outcome cannot establish intermittent update-specificity or full acceptance.
+Animations/suppression are disposable regression fixtures, not claims about the exact original mechanism. There are no product callback wrappers or response/source patches. A focused comparison that omits prior unrelated routes cannot establish their influence, intermittent update-specificity, or full acceptance.
 
-Preparation checks are static only. New browser/helper-negative execution is held for exact Astra review. Proposed commands after review:
+Run the regression cases through the existing browser suite, then the original offline verifier against a built application:
 
 ```bash
-npx playwright test tests/games/pool/verifier-readiness.spec.ts --project=chromium
-# Hosted normal browser suite also runs these cases in WebKit; no installer retry.
-node /workspace/scratch/qcc-update-validation/main1fb/pool-readiness-focused-driver.mjs
-# Parent then coordinates full original offline/update/browser validation.
+npx playwright test tests/games/pool/verifier-readiness.spec.ts
+npm run verify:offline
 ```
 
-Use the established XDG browser directories for local execution and a new exclusive evidence directory. Preserve all prior logs, JSON, PNGs and profiles. Passing fixtures or focused actions do not erase prior failures or authorize merging.
+Preserve prior failure artifacts when collecting new results. Passing fixtures or focused actions do not erase earlier failures or establish their individual causes.
