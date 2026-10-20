@@ -176,13 +176,26 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
  }
 });
 
-test('OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn',async({page,context,browserName})=>{
+test('OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn',async({page,context,browserName},testInfo)=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await setup(page);await page.clock.runFor(240);
- await page.emulateMedia({reducedMotion:'reduce'});await page.clock.runFor(16);
- await expect(page.locator('.snake-game')).toHaveAttribute('data-reduced-motion','true');
- await page.emulateMedia({reducedMotion:'no-preference'});await page.clock.runFor(16);
- await expect(page.locator('.snake-game')).toHaveAttribute('data-reduced-motion','false');
+ async function emulateMotion(reducedMotion:'reduce'|'no-preference'){
+  await page.emulateMedia({reducedMotion});
+  // Native media publication can follow the first fake RAF. Keep rendering while waiting for both boundaries.
+  const observe=()=>page.evaluate(()=>({matches:matchMedia('(prefers-reduced-motion: reduce)').matches,rendered:document.querySelector<HTMLElement>('.snake-game')!.dataset.reducedMotion,time:performance.now()}));
+  const beforeFrame=await observe(),frames:Awaited<ReturnType<typeof observe>>[]=[];
+  try{
+   await expect.poll(async()=>{
+    await page.clock.runFor(16);const sample=await observe();if(frames.length<12)frames.push(sample);
+    return {matches:sample.matches,rendered:sample.rendered};
+   }).toEqual({matches:reducedMotion==='reduce',rendered:String(reducedMotion==='reduce')});
+  }finally{
+   const diagnostic=JSON.stringify({browserName,requested:reducedMotion,beforeFrame,frames});
+   console.info(`Snake media transition ${diagnostic}`);
+   await testInfo.attach(`media-${reducedMotion}-transition`,{body:diagnostic,contentType:'application/json'});
+  }
+ }
+ await emulateMotion('reduce');await emulateMotion('no-preference');
  const box=(await page.locator('canvas').boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
  if(browserName==='chromium'){
   const cdp=await context.newCDPSession(page);

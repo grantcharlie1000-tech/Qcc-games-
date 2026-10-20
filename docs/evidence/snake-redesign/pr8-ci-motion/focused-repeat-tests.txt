@@ -1,0 +1,35 @@
+
+Running 5 tests using 1 worker
+
+(node:12539) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":276},"frames":[{"matches":true,"rendered":"true","time":292}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":292},"frames":[{"matches":false,"rendered":"false","time":308}]}
+  ✓  1 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (8.6s)
+(node:13317) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":267},"frames":[{"matches":true,"rendered":"true","time":283}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":283},"frames":[{"matches":false,"rendered":"false","time":299}]}
+  ✓  2 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.5s)
+(node:13450) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":266},"frames":[{"matches":true,"rendered":"true","time":282}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":282},"frames":[{"matches":false,"rendered":"false","time":298}]}
+  ✓  3 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.6s)
+(node:13585) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":264},"frames":[{"matches":true,"rendered":"true","time":280}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":280},"frames":[{"matches":false,"rendered":"false","time":296}]}
+  ✓  4 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.2s)
+(node:13717) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Snake media transition {"browserName":"chromium","requested":"reduce","beforeFrame":{"matches":true,"rendered":"false","time":265},"frames":[{"matches":true,"rendered":"true","time":281}]}
+Snake media transition {"browserName":"chromium","requested":"no-preference","beforeFrame":{"matches":false,"rendered":"true","time":281},"frames":[{"matches":false,"rendered":"false","time":297}]}
+  ✓  5 [chromium] › tests/games/snake/smooth.spec.ts:179:1 › OS and app reduced motion change the presentation live; cancelled swipes never enqueue a turn (3.2s)
+
+  5 passed (26.3s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

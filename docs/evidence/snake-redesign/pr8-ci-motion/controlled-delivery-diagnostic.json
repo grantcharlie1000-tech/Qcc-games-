@@ -1,0 +1,37 @@
+{
+  "kind": "controlled delayed media publication; not a WebKit execution",
+  "rows": [
+    {
+      "scenario": "single-slice",
+      "afterSoleSlice": {
+        "query": false,
+        "rendered": "false",
+        "time": 280
+      },
+      "afterDelivery": {
+        "query": true,
+        "rendered": "false",
+        "time": 280
+      },
+      "afterCondition": null
+    },
+    {
+      "scenario": "condition-driven",
+      "afterSoleSlice": {
+        "query": false,
+        "rendered": "false",
+        "time": 278
+      },
+      "afterDelivery": {
+        "query": true,
+        "rendered": "false",
+        "time": 278
+      },
+      "afterCondition": {
+        "query": true,
+        "rendered": "true",
+        "time": 294
+      }
+    }
+  ]
+}
