@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { test, expect, seedStudyTopic, type Page } from '../../fixtures';
 const evidence = process.env.NEON_COIL_EVIDENCE_DIR || 'docs/evidence/neon-coil';
 const game = (page: Page) => page.locator('.nc-game');
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pocket-arcade:v1:save:neon-coil')!).data);
+const worldSummary = (world: Awaited<ReturnType<typeof saved>>) => ({ sha256: createHash('sha256').update(JSON.stringify(world)).digest('hex'), phase: world.phase, ticks: world.ticks, mass: world.snakes[0].mass });
 async function open(page: Page) {
   await page.clock.install({ time: new Date('2026-10-20T10:00:00Z') });
   await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
@@ -10,6 +12,9 @@ async function open(page: Page) {
   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
 }
 test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
+  // This ~180-frame software-rendered flow exceeded 30s under controlled CPU load.
+  // Keep its full input/assertion sequence; allow headroom only for this long flow.
+  test.setTimeout(60_000);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 900 }); await open(page);
   await page.getByRole('button', { name: 'Enter arena', exact: true }).click();
@@ -258,15 +263,17 @@ for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
       window.dispatchEvent(new Event('pagehide'));
     });
     const before = await saved(page);
-    const resizes: { width: number; height: number; rows: number; world: typeof before }[] = [];
+    const resizes: { width: number; height: number; rows: number; world: ReturnType<typeof worldSummary> }[] = [];
     const bestBefore = await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'));
     // No fake-clock advancement: canvas and HUD must synchronize in the same native resize delivery.
     for (const size of [{ width: 390, height: 844, rows: 5 }, { width: 1280, height: 720, rows: 10 }, { width: 844, height: 390, rows: 5 }]) {
       await page.setViewportSize(size);
-      await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+      // Backing pixels use the browser's DPR, capped at 2 and rounded by the renderer.
+      const dpr = await page.evaluate(() => Math.min(2, window.devicePixelRatio || 1));
+      await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: Math.round(size.width * dpr), h: Math.round(size.height * dpr) });
       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-      const world = await saved(page); resizes.push({ ...size, world });
+      const world = await saved(page); resizes.push({ ...size, world: worldSummary(world) });
       expect(world).toEqual(before);
     }
     if (lifecycle !== 'running') {
@@ -278,7 +285,7 @@ for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
     expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'))).toBe(bestBefore);
     expect(errors).toEqual([]);
     await page.screenshot({ path: `${evidence}/resize-${lifecycle}.png` });
-    await writeFile(`${evidence}/resize-${lifecycle}.json`, JSON.stringify({ lifecycle, before, resizes, after: await saved(page), errors, announcements: await page.locator('#announcer').getAttribute('data-resize-announcements'), bestBefore, bestAfter: await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil')) }, null, 2));
+    await writeFile(`${evidence}/resize-${lifecycle}.json`, JSON.stringify({ lifecycle, before: worldSummary(before), resizes, after: worldSummary(await saved(page)), errors, announcements: await page.locator('#announcer').getAttribute('data-resize-announcements'), bestBefore, bestAfter: await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil')) }, null, 2));
     if (lifecycle === 'paused') await page.locator('#pause-game').click();
     if (lifecycle === 'running' || lifecycle === 'paused') {
       await page.clock.runFor(200);
