@@ -1,5 +1,28 @@
 # Local study editorial checkpoint
 
+## Combined integration checkpoint
+
+Fresh main was fetched and independently read back as `a62152e4507c60d8d350a5c083a246936f28fee7`. A conflict-free local merge at `e1db8859f69eb9476571110e1d82b764cd31fa3d` preserves reviewed study head `5499e8f8b4eae5cb4bc8a33cbeb09db47cbac5f9` and fresh main as its two parents. No product changes were made during integration.
+
+Before evidence refresh, the complete binary diff from fresh main to the merged tree was byte-for-byte the original reviewed 41-file study diff from `e78dbff` to `5499e8f`; both patches had SHA-256 `9487cec56755a2b322a0513f4cddbf7bf3ccc0e40409697f6991721f2df53463`. After evidence refresh, the diff retains exactly those 41 paths, and the `src scripts tests` binary patch remains byte-for-byte identical (SHA-256 `7b869a38a6156506ba7884a6d2b12f6d2b84b21bf9ec17fa88b8c2fb970abe80`). All 17 files introduced or changed by the fair-dealing main update remain byte-identical to fresh main, including the dealer, tests, oracle and fair-hand evidence.
+
+**Combined local results: 274/274 unit tests, 156/156 Chromium browser tests with configured two workers, TypeScript and production build passed.** Integrated offline pack `d18ca7b8ad5a` contains 69 files. Color Blocks + Flappy Bird, all twenty study chapters and retained-game return passed offline at both `/` and `/Qcc-games-/`, with zero external or chapter-change requests. Product/test sources stayed frozen throughout these runs. Unrelated regenerated images, video and performance JSON were restored.
+
+The current `unit.txt`, `build.txt`, `browser-final.txt`, `offline-final.txt` and `offline-final-results.json` are the combined integration results. Earlier sections and `modified-link/` retain the historical individual checkpoints. Raw integration logs also remain at `/tmp/qcc-study-integration-{unit,build,browser,offline}.txt`.
+
+```sh
+npm test
+npm run build
+PLAYWRIGHT_BROWSERS_PATH=/tmp/qcc-playwright ARCADE_URL=http://127.0.0.1:4178 npx playwright test --project=chromium
+PLAYWRIGHT_BROWSERS_PATH=/tmp/qcc-playwright ARCADE_GAMES=color-blocks,flappy-bird ARCADE_EVIDENCE_DIR=/tmp/qcc-study-integration-offline npm run verify:offline
+```
+
+A transient execution transport failure rejected process creation before the merge command started (`exec-server transport disconnected`). A later harmless status read succeeded and confirmed clean reviewed HEAD `5499e8f`; only then did one local merge execute successfully. No merge with an uncertain outcome was replayed. This was an infrastructure failure, not an approval-policy denial.
+
+No external push, PR, merge, deployment, account/provider operation or local hosting/workflow configuration change was performed by this integration task. Real ads remain disabled; AdSense sign-in and personal-details entry remain paused. Parent-reported Pages setup is now authorized but its read-only inspection returned `Forbidden`; no Pages setting change was attempted here. No denied public/installer targets or alternate routes were retried. Local Chromium evidence does not claim WebKit, physical-device or public-production testing. The parent coordinates exact integration review and the approved publication pipeline.
+
+## Original study checkpoint history
+
 Implemented only in `/tmp/qcc-study-editorial`, branch `feat/study-editorial`, based on merged main `e78dbff0133a4e3b4158fc5c8b194962bdbdc3a2`. No publication or external integration.
 
 - The 20 existing topic IDs, article titles, three section headings, worked examples, checks and diagrams remain intact. `topics.ts`, `session.ts` and `src/main.ts` are unchanged.

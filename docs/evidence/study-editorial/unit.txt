@@ -5,41 +5,38 @@
 
  RUN  v3.2.7 /tmp/qcc-study-editorial
 
- ✓ tests/games/pool/model.test.ts (40 tests) 1158ms
-   ✓ offline opponent game progression > plays both sides through a full deterministic rack with real legal shots  354ms
- ✓ tests/games/flappy-bird/model.test.ts (7 tests) 2221ms
-   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  1374ms
-   ✓ Flappy Bird original reed flight > a simple timed pilot clears 100 seeded gates using the real simulation  805ms
- ✓ tests/games/water-sort/solver.test.ts (21 tests) 1217ms
- ✓ tests/games/water-sort/session.test.ts (21 tests) 915ms
-   ✓ Water Sort finite-state lifecycle > offers a valid solution or finite recovery from reachable level 7 states  344ms
- ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 328ms
- ✓ tests/games/animal-stack/model.test.ts (13 tests) 392ms
- ✓ tests/games/solitaire/rules.test.ts (14 tests) 187ms
- ✓ tests/games/ball-run/model.test.ts (16 tests) 6058ms
-   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  1405ms
-   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  4187ms
- ✓ tests/games/block-fill/logic.test.ts (8 tests) 186ms
- ✓ tests/games/color-blocks/model.test.ts (10 tests) 456ms
-   ✓ long seeded runs > keeps valid saves and deterministic future deals across many tray boundaries  430ms
- ✓ tests/games/minesweeper/model.test.ts (17 tests) 150ms
- ✓ tests/games/animal-stack/framing.test.ts (5 tests) 348ms
- ✓ tests/games/color-connect/model.test.ts (11 tests) 142ms
- ✓ tests/games/snake/model.test.ts (10 tests) 86ms
- ✓ tests/games/water-sort/geometry.test.ts (5 tests) 83ms
- ✓ tests/games/tower/model.test.ts (15 tests) 24ms
- ✓ tests/core/study.test.ts (5 tests) 41ms
- ✓ tests/games/animal-stack/correction.test.ts (5 tests) 72ms
- ✓ tests/core/offline-worker.test.ts (3 tests) 14ms
- ✓ tests/games/water-sort/rules.test.ts (10 tests) 6ms
- ✓ tests/games/color-blocks/input.test.ts (5 tests) 10ms
- ✓ tests/games/animal-stack/input.test.ts (4 tests) 9ms
- ✓ tests/core/storage.test.ts (5 tests) 6ms
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 499ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 536ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 156ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 333ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 146ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 296ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 82ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 81ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 2244ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  503ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  1481ms
+ ✓ tests/games/color-blocks/fair-deal.test.ts (8 tests) 512ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 169ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 679ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  417ms
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 85ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 58ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 25ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 33ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 21ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 13ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 51ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 6ms
+ ✓ tests/core/study.test.ts (5 tests) 9ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 8ms
+ ✓ tests/core/storage.test.ts (5 tests) 5ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 3ms
 
- Test Files  23 passed (23)
-      Tests  266 passed (266)
-   Start at  02:08:39
-   Duration  11.33s (transform 1.96s, setup 0ms, collect 4.30s, tests 14.11s, environment 7ms, prepare 4.39s)
+ Test Files  24 passed (24)
+      Tests  274 passed (274)
+   Start at  02:35:46
+   Duration  4.61s (transform 963ms, setup 0ms, collect 1.68s, tests 6.05s, environment 5ms, prepare 1.73s)
 
 npm notice
 npm notice New major version of npm available! 11.9.0 -> 12.2.0

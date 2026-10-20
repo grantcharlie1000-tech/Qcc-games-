@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-10-20T02:09:35.908Z",
+  "recordedAt": "2026-10-20T02:37:21.590Z",
   "browser": "Chromium",
   "browserVersion": "154.0.8037.57",
   "physicalHardware": false,
@@ -22,11 +22,11 @@
       "restart": true,
       "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 73.30000000074506,
+      "synchronousHandlerMs": 91.90000000037253,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 33.29999999999927
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 50
     },
     {
       "game": "flappy-bird",
@@ -38,17 +38,17 @@
       "restart": true,
       "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 14.900000000372529,
+      "synchronousHandlerMs": 23.200000001117587,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 183.40000000000146
+      "rafP95Ms": 116.79999999999927
     },
     {
       "deployment": "root",
       "cacheNames": [
-        "pocket-arcade:/:a32ee8f2f48e:shell",
-        "pocket-arcade:/:a32ee8f2f48e:pack"
+        "pocket-arcade:/:d18ca7b8ad5a:shell",
+        "pocket-arcade:/:d18ca7b8ad5a:pack"
       ],
       "externalRequests": [],
       "pageErrors": [],
@@ -71,11 +71,11 @@
       "restart": true,
       "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 64.80000000074506,
+      "synchronousHandlerMs": 40.09999999962747,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.699999999999818,
-      "rafP95Ms": 16.800000000000182
+      "rafP95Ms": 33.399999999999636
     },
     {
       "game": "flappy-bird",
@@ -87,17 +87,17 @@
       "restart": true,
       "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 56,
+      "synchronousHandlerMs": 22.90000000037253,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 150
+      "rafMedianMs": 16.799999999999272,
+      "rafP95Ms": 66.69999999999891
     },
     {
       "deployment": "subpath",
       "cacheNames": [
-        "pocket-arcade:/Qcc-games-/:a32ee8f2f48e:shell",
-        "pocket-arcade:/Qcc-games-/:a32ee8f2f48e:pack"
+        "pocket-arcade:/Qcc-games-/:d18ca7b8ad5a:shell",
+        "pocket-arcade:/Qcc-games-/:d18ca7b8ad5a:pack"
       ],
       "externalRequests": [],
       "pageErrors": [],
