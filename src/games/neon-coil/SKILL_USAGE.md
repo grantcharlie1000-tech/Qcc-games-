@@ -1,0 +1,10 @@
+# Skill usage
+
+- Read the root `AGENTS.md` and `.agents/skills/using-superpowers/SKILL.md`. The latter explicitly exempts dispatched subagents from its conversational workflow; the existing delegated requirements supplied the approved design scope.
+- Applied `.agents/skills/game-development/SKILL.md` and its `web-games`, `2d-games`, and `game-design` guides: fixed-step simulation, input actions, lightweight canvas, measured performance, clear player loop and honest local opponents.
+- Read `.agents/skills/animate/SKILL.md`: use essential spatial motion; avoid decorative animation on frequent controls; respect reduced motion by removing boost glow. The mandated delegated task takes precedence over the skill's unrelated canned initial greeting.
+- Applied `.agents/skills/svg-skill/SKILL.md` for the original vector cover.
+- Read `.agents/skills/requesting-code-review/SKILL.md` and `.agents/skills/verification-before-completion/SKILL.md`. The parent requested an allocated Astra audit slot; no Astra review starts before allocation. Results are reported from completed commands.
+- Applied the connected Library skill's supported materialization instructions. Its required transfer helper resource returned `skill package is not available`; the parent-provided inspected textual reference was used without a download workaround.
+
+No third-party runtime assets, copied reference screenshots, new packages, paid APIs, secrets, publication or deployment operations were used for this feature.
