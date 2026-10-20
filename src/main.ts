@@ -27,6 +27,8 @@ let focusLabelBeforeStudy:string|null=null;
 let libraryScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run']);
+// Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
+const fillGames=new Set<GameId>(['globle']);
 
 function syncViewportLock(){
   document.documentElement.classList.toggle('game-viewport',!!activeId&&!document.body.classList.contains('study-active'));
@@ -164,7 +166,7 @@ async function route(){
     instance=mounted;
     const saved=store.savedGame(id);
     if(saved!==undefined){try{instance.restore(saved);}catch{announce('The previous save was not compatible. Starting a fresh game.');}}
-    if(!referenceGames.has(id))stopFitting=fitGameStage(stage,stage.parentElement!);
+    if(!referenceGames.has(id)&&!fillGames.has(id))stopFitting=fitGameStage(stage,stage.parentElement!);
     document.querySelector('#pause-game')!.addEventListener('click',()=>setPaused(!paused));
     document.querySelector('#resume-game')!.addEventListener('click',()=>setPaused(false));
     document.querySelector('#restart-game')!.addEventListener('click',()=>{instance?.restart();setPaused(false);save();});

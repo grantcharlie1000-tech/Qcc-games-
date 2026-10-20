@@ -1,12 +1,12 @@
 # Pocket Arcade architecture
 
-Thirteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird. No factory game, currency, accounts, ads, tracking, backend, runtime CDN, or external runtime requests.
+Fourteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle. No factory game, currency, accounts, ads, tracking, backend, runtime CDN, or external runtime requests.
 
 ## Static shell
 
 Vite 7, strict TypeScript, semantic DOM/CSS; no application framework. Hash routes `#/game/<id>` work at the origin root and any repository subpath. Vite's relative base `./` is authoritative. All assets use `import.meta.env.BASE_URL` or relative imports. Locally bundled Lilita One (OFL) supplies the bold, playful lettering. The nine user-provided images, inspected as the contact sheet and detailed originals under `/workspace/arcade-references`, set portrait proportions, dark rims, two-column mobile layout, saturated artwork and minimal header. The header replaces the original wallet and advertising control with a catalog-driven game count and working favourites filter.
 
-`src/core/catalog.ts` contains thirteen cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
+`src/core/catalog.ts` contains fourteen cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run and Globle; globe.gl only by Globle. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
 
 ## Study Mode
 
@@ -41,3 +41,7 @@ Parent branch `work` owns shared files, lockfile and deployment. Each SOL specia
 ## Referenced gameplay corrections
 
 The four corrected games, isolated specialist handoffs, original cutout/art geometry, interaction recordings, compatibility changes and verification limits are documented in [the correction record](docs/GAMEPLAY_CORRECTIONS.md). Animal Stack uses a rendering-only camera safety floor for rotated/tall cutouts; world coordinates and pointer inverse mapping remain consistent.
+
+## Globle
+
+`src/games/globle/` is a globe.gl country-guessing game (see its [SPEC](src/games/globle/SPEC.md)). It fills `#game-stage` directly (`fillGames` in `src/main.ts`) instead of the uniform scale fit, because a CSS transform would break WebGL pointer mapping. Distances between the 197 playable countries are precomputed from Natural Earth 1:10m boundaries by `scripts/build-globle-data.mjs` and bundled with separately simplified 1:50m display outlines; regenerate both with `node scripts/build-globle-data.mjs` (then `node scripts/build-globle-cover.mjs` for the cover). Land is drawn as one merged vertex-coloured mesh plus one border mesh, built in 10 ms slices.
