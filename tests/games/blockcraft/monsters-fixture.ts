@@ -22,7 +22,10 @@ export function createHarness(options:{seed?:number;mode?:'survival'|'creative';
   const queue:number[]=[];
   let state=options.seed??7;
   const base=()=>{state=(Math.imul(state^state>>>15,0x2c1b3c6d)+0x6d2b79f5)>>>0;return state/0x100000000;};
-  const game=createFakeGame({mode:options.mode,random:()=>queue.length?queue.shift()!:base()});
+  const draw=()=>queue.length?queue.shift()!:base();
+  const game=createFakeGame({mode:options.mode,random:draw});
+  // The engine's random() is a class method reading `this`: fail loudly on a detached call (`const r=game.random; r()`).
+  game.random=function(this:unknown){if(this!==game)throw new Error('game.random() called without its game');return draw();};
   game.flat(options.flat??60);
   const kinds=new Map<string,EntityKind>(),list:Entity[]=[],dropped:ItemStack[]=[],xp:number[]=[];
   const particles:MonsterHarness['particles']=[],playerHits:MonsterHarness['playerHits']=[],navigations:Vec3[]=[];

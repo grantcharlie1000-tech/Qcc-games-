@@ -14,7 +14,7 @@ import {CH} from '../engine/constants';
 import {boxCollides,rayBox,raycast} from '../engine/physics';
 import {canSurvive} from '../engine/support';
 import type {BlockSource,DamageSource,Entity,EntityKind,Game,ParticleOptions,Vec3} from '../engine/contracts';
-import {meleeSource,noise,playerDistanceSq,playerTargetable,randInt,uniformCount} from './monsters-common';
+import {gameRandom,meleeSource,noise,playerDistanceSq,playerTargetable,randInt,uniformCount} from './monsters-common';
 import {ENDERMAN_HEAD_PX,createEndermanModel} from './monsters-models';
 
 export const ENDERMAN_WIDTH=.6,ENDERMAN_HEIGHT=2.9,ENDERMAN_HEALTH=40,ENDERMAN_DAMAGE=7,ENDERMAN_XP=5;
@@ -125,12 +125,12 @@ export function teleportTo(game:Game,e:Entity,x:number,y:number,z:number):boolea
 }
 /** One vanilla random teleport attempt: up to 32 blocks away horizontally and vertically. */
 export function teleportRandomly(game:Game,e:Entity):boolean{
-  const r=game.random;
+  const r=gameRandom(game);
   return teleportTo(game,e,e.x+(r()-.5)*64,e.y+randInt(r,64)-32,e.z+(r()-.5)*64);
 }
 /** One vanilla attempt to teleport about 16 blocks toward a point (the player's eyes). */
 export function teleportTowards(game:Game,e:Entity,x:number,y:number,z:number):boolean{
-  const r=game.random;
+  const r=gameRandom(game);
   let vx=e.x-x,vy=e.y+e.height/2-y,vz=e.z-z;const l=Math.sqrt(vx*vx+vy*vy+vz*vz)||1;vx/=l;vy/=l;vz/=l;
   return teleportTo(game,e,e.x+(r()-.5)*8-vx*16,e.y+randInt(r,16)-8-vy*16,e.z+(r()-.5)*8-vz*16);
 }
@@ -138,7 +138,7 @@ export function teleportTowards(game:Game,e:Entity,x:number,y:number,z:number):b
 // ---- Block carrying -----------------------------------------------------------------------------
 /** Vanilla take-block goal: one random cell up to 2 blocks around and 0–2 above the feet; takes it when holdable and the first
  *  block on a straight line from its own column at that height. */
-export function tryTakeBlock(game:Game,e:Entity,random:()=>number=game.random):boolean{
+export function tryTakeBlock(game:Game,e:Entity,random:()=>number=gameRandom(game)):boolean{
   const d=data(e);
   if(d.carried!==undefined)return false;
   const x=Math.floor(e.x-2+random()*4),y=Math.floor(e.y+random()*3),z=Math.floor(e.z-2+random()*4);
@@ -167,7 +167,7 @@ function cellOccupied(game:Game,x:number,y:number,z:number):boolean{
 }
 /** Vanilla leave-block goal: one random cell within a block around and 0–1 above the feet; places the carried block into air on
  *  top of a full block (not bedrock) when the block can survive there and no entity or player is in the way. */
-export function tryPlaceBlock(game:Game,e:Entity,random:()=>number=game.random):boolean{
+export function tryPlaceBlock(game:Game,e:Entity,random:()=>number=gameRandom(game)):boolean{
   const d=data(e),id=d.carried;
   if(!isHoldable(id))return false;
   const x=Math.floor(e.x-1+random()*2),y=Math.floor(e.y+random()*2),z=Math.floor(e.z-1+random()*2);
@@ -199,7 +199,7 @@ function setAngry(e:Entity,on:boolean){
 export function provoke(e:Entity,game:Game){
   const d=data(e),fresh=!d.angry;
   setAngry(e,true);
-  d.anger=ANGER_MIN+randInt(game.random,ANGER_SPREAD);d.stare=0;
+  d.anger=ANGER_MIN+randInt(gameRandom(game),ANGER_SPREAD);d.stare=0;
   if(fresh)game.sounds.play('mob:enderman:ambient',{x:e.x,y:e.y+ENDERMAN_EYE,z:e.z},{volume:2,pitch:1.4});
 }
 function chase(e:Entity,game:Game,distSq:number){
@@ -212,7 +212,7 @@ function chase(e:Entity,game:Game,distSq:number){
 }
 
 export function tickEnderman(e:Entity,game:Game){
-  const d=data(e),r=game.random,p=game.player.state,ai=game.entities.ai;
+  const d=data(e),r=gameRandom(game),p=game.player.state,ai=game.entities.ai;
   const distSq=playerDistanceSq(e,game);
   if(distSq<PARTICLE_RANGE_SQ)game.render.spawnParticles('portal',e.x,e.y+noise(e.id,e.age,3)*e.height-.25,e.z,AMBIENT_PORTAL);
   // Water and rain hurt it; every attempt (even while invulnerable) may teleport it away, as in vanilla.
@@ -293,7 +293,7 @@ export function createEndermanKind():EntityKind{
     tick:tickEnderman,
     hurt:(e,game,source)=>hurtEnderman(e,game,source),
     drops(e,game){
-      const out:ItemStack[]=[],pearls=uniformCount(game.random,0,1);
+      const out:ItemStack[]=[],pearls=uniformCount(gameRandom(game),0,1);
       if(pearls>0)out.push(stack('ender_pearl',pearls));
       const carried=data(e).carried;
       if(isHoldable(carried)){const item=itemForBlock(carried);if(item)out.push(stack(item.id));}

@@ -6,8 +6,17 @@ import type {DamageSource,Entity,Game} from '../engine/contracts';
 export const MOB_KNOCKBACK=8;
 /** Random.nextInt(n): 0..n-1. */
 export const randInt=(random:()=>number,n:number)=>Math.floor(random()*n);
-/** Loot count of UniformGenerator.between(min, max): a uniform float rounded to the nearest integer. */
-export const uniformCount=(random:()=>number,min:number,max:number)=>Math.round(min+random()*(max-min));
+/** Loot count of UniformGenerator.between(min, max) (Mth.nextInt): every integer from min to max equally likely. */
+export const uniformCount=(random:()=>number,min:number,max:number)=>min+Math.floor(random()*(max-min+1));
+
+const RANDOMS=new WeakMap<Game,()=>number>();
+/** `game.random` as a free function. The engine's random() is a method (it reads `this`), so it must never be detached as
+ *  `const r=game.random`; this returns one cached wrapper per game, so hot paths do not allocate a closure every tick. */
+export function gameRandom(game:Game):()=>number{
+  let r=RANDOMS.get(game);
+  if(!r){r=()=>game.random();RANDOMS.set(game,r);}
+  return r;
+}
 
 /** Can monsters target the player: survival mode, alive and not peaceful (creative players are never targeted). */
 export function playerTargetable(game:Game):boolean{

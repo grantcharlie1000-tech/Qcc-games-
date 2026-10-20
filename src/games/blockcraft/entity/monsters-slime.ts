@@ -7,7 +7,7 @@ import {BIOMES,biomeDef} from '../data/biomes';
 import {stack,type ItemStack} from '../data/items';
 import {CS} from '../engine/constants';
 import type {Entity,EntityKind,Game,ParticleOptions} from '../engine/contracts';
-import {hashInts,meleeSource,noise,playerTargetable,randInt,uniformCount} from './monsters-common';
+import {gameRandom,hashInts,meleeSource,noise,playerTargetable,randInt,uniformCount} from './monsters-common';
 import {createSlimeModel} from './monsters-models';
 
 export const SLIME_SIZES=[1,2,4] as const;
@@ -44,7 +44,7 @@ export function isSlimeChunk(seed:number,cx:number,cz:number):boolean{
   return hashInts(seed^0x3ad8025f,cx,cz^0x3ad8f3df)%10===0;
 }
 /** Vanilla natural-spawn rule for a slime at block (x, y, z) (feet cell); draws from `random` like vanilla. */
-export function slimeCanSpawn(game:Game,x:number,y:number,z:number,random:()=>number=game.random):boolean{
+export function slimeCanSpawn(game:Game,x:number,y:number,z:number,random:()=>number=gameRandom(game)):boolean{
   if(game.settings.difficulty==='peaceful')return false;
   if(SURFACE_SLIME_BIOMES.has(biomeDef(game.world.biomeAt(x,z)).name)&&y>50&&y<70&&random()<.5&&random()<moonBrightness(game.time.day)
     &&game.world.brightnessAt(x,y,z)<=randInt(random,8))return true;
@@ -65,7 +65,7 @@ export function applySlimeSize(e:Entity,size:SlimeSize,heal:boolean){
 export function splitSlime(game:Game,e:Entity):Entity[]{
   const size=data(e).size,out:Entity[]=[];
   if(!isSlimeSize(size)||size<=1)return out;
-  const r=game.random,child=size/2 as SlimeSize,n=2+randInt(r,3),f=size/4;
+  const r=gameRandom(game),child=size/2 as SlimeSize,n=2+randInt(r,3),f=size/4;
   for(let i=0;i<n;i++){
     const s=game.entities.spawn('slime',e.x+((i%2)-.5)*f,e.y+.5,e.z+((i>>1)-.5)*f,{data:{size:child},reason:'event',yaw:r()*Math.PI*2});
     if(s)out.push(s);
@@ -81,7 +81,7 @@ function touchesPlayer(e:Entity,game:Game):boolean{
 const LANDING=new Map<number,ParticleOptions>(SLIME_SIZES.map(s=>[s,Object.freeze({count:Math.min(32,s*8),spread:.26*s})]));
 
 export function tickSlime(e:Entity,game:Game){
-  const d=data(e),r=game.random,ai=game.entities.ai,p=game.player.state,size=d.size;
+  const d=data(e),r=gameRandom(game),ai=game.entities.ai,p=game.player.state,size=d.size;
   const dx=p.x-e.x,dy=p.y-e.y,dz=p.z-e.z,distSq=dx*dx+dy*dy+dz*dz,eyeY=p.y+game.player.eyeHeight();
   const targetable=playerTargetable(game);
   if(d.chase){if(!targetable||distSq>FOLLOW_SQ)d.chase=false;}
@@ -120,7 +120,7 @@ export function createSlimeKind():EntityKind{
     // Vanilla monster entry: weight 100 in groups of 4 everywhere monsters spawn; init() applies the slime rules.
     spawn:{light:'dark',group:[4,4],weight:100,biomes:BIOMES.filter(b=>b.name!=='mushroom_fields').map(b=>[b.name,100] as const)},
     init(e,game,reason){
-      const d=e.data,r=game.random,natural=reason==='natural'||reason==='chunk';
+      const d=e.data,r=gameRandom(game),natural=reason==='natural'||reason==='chunk';
       const size:SlimeSize=!natural&&isSlimeSize(d.size)?d.size:randomSlimeSize(r);
       // Natural spawns that break the slime rules are dropped at once.
       if(natural&&!slimeCanSpawn(game,Math.floor(e.x),Math.floor(e.y),Math.floor(e.z),r)){e.removed=true;return;}
@@ -133,7 +133,7 @@ export function createSlimeKind():EntityKind{
     tick:tickSlime,
     drops(e,game){
       const out:ItemStack[]=[];
-      if(data(e).size===1){const n=uniformCount(game.random,0,2);if(n>0)out.push(stack('slime_ball',n));}
+      if(data(e).size===1){const n=uniformCount(gameRandom(game),0,2);if(n>0)out.push(stack('slime_ball',n));}
       return out;
     },
     restoreData(raw){
