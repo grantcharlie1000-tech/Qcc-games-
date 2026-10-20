@@ -25,3 +25,16 @@ https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/pointer_e
 Its capture, implicit release, pointercancel and touch-action sections inform stable-root capture, explicit loss/cancel handling and gesture suppression confined to board/tray. This is documentation research, not an invented skill invocation. The live board rectangle supplies viewport coordinates to the same lift/snap mapping on movement and release.
 
 Actual visual references inspected: `blocks_and_ball_reference_sheet.jpg`, `11_blocks_board.png`, `12_blocks_combo.png` from `/tmp/arcade-gameplay-refs/arcade_visual_references/`. Reference stills are comparison-only and are not bundled as product art. No MP4 was supplied, so continuous original timing cannot be verified. Native Chromium CDP touch is browser emulation, not physical phone testing.
+
+## Fair-hand follow-up — 20 October 2026
+
+Read AGENTS.md, using-superpowers (dispatched-task stop clause), brainstorming,
+game-development and its web-games/2d-games guides, test-driven-development,
+and this game's existing specification before changing the model. The user's
+requested three-piece guarantee and bounded deterministic generation are the
+design constraints. The native DOM/SVG adapter, inputs, art and scoring remain.
+Construction advances a private logical board through three valid placements;
+an independent occupancy-only depth-three test solver checks the resulting
+hand, including line clears. No new library, external API, runtime worker or
+retry loop is used. The parent coordinates one independent Astra review of the
+concrete local checkpoint before publication. PR #1's reviewed head is preserved.

@@ -1,0 +1,33 @@
+
+Running 18 tests using 2 workers
+
+(node:40241) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40240) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 390x844 (7.8s)
+  ✓   1 [chromium] › tests/games/color-blocks/fair-deal.spec.ts:7:1 › a fresh full hand plays through native touch, mouse and keyboard, then survives reload and restart (9.2s)
+  ✓   3 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 844x390 (2.5s)
+  ✓   4 [chromium] › tests/games/color-blocks/game.spec.ts:11:31 › real mouse drag preview equals placement at 390px (2.7s)
+  ✓   5 [chromium] › tests/games/color-blocks/correction.spec.ts:16:95 › square board and full footprint 1366x768 (4.0s)
+  ✓   6 [chromium] › tests/games/color-blocks/game.spec.ts:11:31 › real mouse drag preview equals placement at 1000px (3.5s)
+  ✓   8 [chromium] › tests/games/color-blocks/game.spec.ts:23:1 › grab offset is maintained and invalid overlap or off-board drop cannot place (3.8s)
+  ✓   7 [chromium] › tests/games/color-blocks/correction.spec.ts:30:1 › Escape, resize and lost capture cancel a gesture without arming a later board click (4.3s)
+  ✓  10 [chromium] › tests/games/color-blocks/correction.spec.ts:41:1 › a fresh keyboard selection can be placed by a board click after restore (2.1s)
+  ✓  11 [chromium] › tests/games/color-blocks/correction.spec.ts:45:1 › held placement key cannot place a freshly selected second piece (1.4s)
+  ✓  12 [chromium] › tests/games/color-blocks/correction.spec.ts:51:1 › pointer crossing clear shows short row/column feedback without changing scoring (1.9s)
+  ✓   9 [chromium] › tests/games/color-blocks/game.spec.ts:31:1 › keyboard aims, places and shows rules; pause blocks input, save reloads, restart resets (8.8s)
+  ✓  14 [chromium] › tests/games/color-blocks/game.spec.ts:43:1 › line crossing clears together and the board survives when a later tray piece fits (1.3s)
+  ✓  13 [chromium] › tests/games/color-blocks/correction.spec.ts:60:2 › native touch evidence › trusted touch pickup, lifted preview, snap, invalid return and cancel (6.0s)
+  ✓  15 [chromium] › tests/games/color-blocks/game.spec.ts:47:1 › a blocked first piece does not end the run; a genuinely blocked tray does (1.5s)
+  ✓  16 [chromium] › tests/games/color-blocks/game.spec.ts:51:1 › colourblind patterns, reduced motion and malformed save are handled through the shell (2.4s)
+  ✓  17 [chromium] › tests/games/color-blocks/game.spec.ts:57:2 › touch input › trusted touch drag has the same exact ghost and commitment, and tap-select works (1.5s)
+Color Blocks headless Chromium: 45 idle RAF intervals; median 16.70 ms, p95 16.70 ms.
+  ✓  18 [chromium] › tests/games/color-blocks/game.spec.ts:66:1 › mid-run artwork, lifecycle cleanup and measured browser frame intervals (4.1s)
+
+  18 passed (42.1s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

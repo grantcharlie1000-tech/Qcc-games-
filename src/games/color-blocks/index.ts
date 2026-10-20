@@ -5,7 +5,7 @@ import {mapDrag,grabCell,type Point,type Bounds} from './input';
 import './style.css';
 const module:GameModule={
  id:'color-blocks',title:'Color Blocks',cover:'game-art/color-blocks/cover.svg',
- rules:'Place the three fixed-orientation pieces onto the 8 by 8 board. Drag a piece, or select one and tap its top-left destination. Full rows and columns clear together. Each placed block earns 1 point; each cleared line earns 20 times your current clear streak. Consecutive clearing moves build the streak; a move without a clear resets it. Use all three pieces to get a new tray. The game ends only when none of your remaining pieces fits. No rotation and no timer. Keyboard: select with 1, 2 or 3, use arrow keys to aim, and Enter or Space to place.',
+ rules:'Place the three fixed-orientation pieces onto the 8 by 8 board. Drag a piece, or select one and tap its top-left destination. Full rows and columns clear together. Each placed block earns 1 point; each cleared line earns 20 times your current clear streak. Consecutive clearing moves build the streak; a move without a clear resets it. Use all three pieces to get a new tray. Every new tray has a way to place all three pieces, including any line clears along the way. Plan carefully: other placements can leave the remaining pieces stuck. The game ends only when none of your remaining pieces fits. No rotation and no timer. Keyboard: select with 1, 2 or 3, use arrow keys to aim, and Enter or Space to place.',
  mount(container,context){
   let state=createGame(),paused=false,disposed=false,selected:number|null=null,cursor={x:0,y:0},preview=false;
   let drag:{id:number;slot:number;anchor:Point;start:Point;pointer:Point;pointerType:string;moved:boolean;bounds:Bounds}|null=null;

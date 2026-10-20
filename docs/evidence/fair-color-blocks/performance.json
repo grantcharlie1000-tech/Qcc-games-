@@ -1,0 +1,10 @@
+{
+  "runtime": "v24.19.0",
+  "scenario": "fragmented board, every deferred shape blocked, validated dots",
+  "runs": 1000,
+  "meanMs": 0.10899446299999943,
+  "p95Ms": 0.2365869999999859,
+  "maxMs": 0.9624219999999752,
+  "maxAnchorChecks": 3840,
+  "maxShapeCellsPerAnchor": 9
+}
