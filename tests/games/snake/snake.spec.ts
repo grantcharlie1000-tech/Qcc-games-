@@ -2,6 +2,11 @@ import {advance,createState,start,enqueue} from '../../../src/games/snake/model'
 import {seedStudyTopic} from '../../fixtures';
 import { test, expect } from '../../fixtures';
 const saved=async(page:import('@playwright/test').Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:snake')!).data);
+async function waitForPhoneControls(page:import('@playwright/test').Page){
+ await expect(page.locator('.snake-canvas')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Start slithering',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Turn left',exact:true})).toBeVisible();
+}
 test('keyboard eating, turning, loss, replay, pause and saved continuation',async({page})=>{
  test.setTimeout(60000);
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -28,6 +33,7 @@ test('keyboard eating, turning, loss, replay, pause and saved continuation',asyn
 });
 test('pointer swipe and touch direction buttons fit a phone',async({browser,browserName})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
+ await waitForPhoneControls(page);
  await page.evaluate(()=>{
   const times:Record<string,number>={};(window as unknown as {snakeTouchTimes:Record<string,number>}).snakeTouchTimes=times;
   document.addEventListener('click',event=>{const target=(event.target as HTMLElement).closest('button');if(target?.classList.contains('snake-start'))times.start=performance.now();if(target?.id==='pause-game')times.pause=performance.now();},true);
@@ -55,6 +61,20 @@ test('pointer swipe and touch direction buttons fit a phone',async({browser,brow
  expect(state.time).toBeCloseTo(times.pause-times.start,8);expect(state.direction).toBe(reference.direction);expect(state.queue).toEqual(reference.queue);expect(state.ticks).toBe(reference.ticks);
  expect(state.body.length).toBe(reference.body.length);state.body.forEach((p:{x:number;y:number},i:number)=>{expect(p.x).toBeCloseTo(reference.body[i].x,8);expect(p.y).toBeCloseTo(reference.body[i].y,8);});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.getByRole('button',{name:'Resume game',exact:true}).tap();await page.screenshot({path:'tests/games/snake/evidence/chromium.png',fullPage:true});await context.close();
+});
+
+test('phone instrumentation waits for the actual controls while the lazy Snake import is held',async({page})=>{
+ let release!:()=>void,requested!:()=>void;
+ const gate=new Promise<void>(resolve=>{release=resolve;}),held=new Promise<void>(resolve=>{requested=resolve;});
+ await page.route('**/src/games/snake/index.ts*',async route=>{requested();await gate;await route.continue();});
+ const navigation=page.goto('/#/game/snake');
+ try{
+  await held;await expect(page.locator('#game-stage .loading')).toBeVisible();
+  let ready=false;const controls=waitForPhoneControls(page).then(()=>{ready=true;});
+  expect(await page.locator('.snake-canvas').count()).toBe(0);expect(ready).toBe(false);
+  release();await navigation;await controls;
+  expect(ready).toBe(true);
+ }finally{release();}
 });
 
 test('invalid saves recover and repeated exit/reentry has no stale controls',async({page})=>{
