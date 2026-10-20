@@ -1,0 +1,48 @@
+{
+  "game_deployment_cases": 28,
+  "unique_games": 14,
+  "deployments": [
+    "/",
+    "/Qcc-games-/"
+  ],
+  "all_required_flags_true": true,
+  "game_study_switch_requests": 0,
+  "non_game_summaries": [
+    {
+      "deployment": "root",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "deployment": "root",
+      "cacheNames": [
+        "pocket-arcade:/:1c58baf3fab5:shell",
+        "pocket-arcade:/:1c58baf3fab5:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 18,
+      "heavyChunksLazy": true
+    },
+    {
+      "deployment": "subpath",
+      "studyArticlesOffline": 20,
+      "studySwitchRequests": []
+    },
+    {
+      "deployment": "subpath",
+      "cacheNames": [
+        "pocket-arcade:/Qcc-games-/:1c58baf3fab5:shell",
+        "pocket-arcade:/Qcc-games-/:1c58baf3fab5:pack"
+      ],
+      "externalRequests": [],
+      "pageErrors": [],
+      "failedAssets": [],
+      "initialResourceCount": 18,
+      "heavyChunksLazy": true
+    }
+  ],
+  "private_runtime_files_checked_against_final_commit": 219,
+  "private_runtime_final_mismatches": []
+}

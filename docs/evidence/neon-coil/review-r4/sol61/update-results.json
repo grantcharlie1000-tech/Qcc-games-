@@ -1,0 +1,12 @@
+{
+  "recordedAt": "2026-10-20T19:38:04.310Z",
+  "browserVersion": "154.0.8037.57",
+  "oldVersion": "1c58baf3fab5",
+  "newVersion": "1c58baf3fab5-next",
+  "oldLazyChunkRemovedFromServer": true,
+  "oldTabPlayedOffline": true,
+  "updateWaitedForBothTabsToClose": true,
+  "newVersionActivated": true,
+  "oldCachesCleaned": true,
+  "highScorePreserved": true
+}

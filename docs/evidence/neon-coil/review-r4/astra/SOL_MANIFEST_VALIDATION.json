@@ -1,0 +1,225 @@
+{
+  "manifest_sha256": "0dc0bdad9adbe9f9a5c1943522ec98ca07f8cc5c66288146df11d075bc0b9f46",
+  "artifact_count": 42,
+  "checks": [
+    {
+      "path": "combined.config.ts",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "comment-only-proof.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "device-profiles.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "dpr.config.ts",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/build.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/capped-normal-authoritative.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/capped-normal.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/capped-rate40-budget60.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/capped-rate40.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/dpr1.25.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/dpr1.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/dpr2.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/dpr3.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/full.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/timing-rate40-budget60.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/timing-rate40-budget60.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/typescript-capped-final.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/typescript-full-source.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/unit.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/update.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "green/video-recovery.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "isolation-proof.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "offline-summary.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/dpr2-authoritative.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/dpr2.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate1-authoritative.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate1-authoritative.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate1.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate20.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate20.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate4.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate4.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate40-budget30.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "red/timing-rate40-budget30.log",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "system-ffmpeg-version.txt",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "timing-capped-source.spec.ts",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "timing-capped.config.ts",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "timing.config.ts",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "timing.spec.ts",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "update-results.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "versions.json",
+      "hash_matches": true,
+      "bytes_match": true
+    },
+    {
+      "path": "world-summary-checks.json",
+      "hash_matches": true,
+      "bytes_match": true
+    }
+  ],
+  "full_passed_titles": 159,
+  "recovery_passed_titles": 18,
+  "overlap_titles": [
+    "tests/games/ball-run/play.spec.ts:50:1 \u203a native phone touch drag steers continuously and cancel releases capture"
+  ],
+  "unique_passed_titles": 176,
+  "missing_ffmpeg_error_count": 17,
+  "manifest_bytes": 16250,
+  "command_count": 20
+}

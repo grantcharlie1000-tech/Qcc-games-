@@ -1,0 +1,18 @@
+[WebServer] (node:1987) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] npm error code ENOENT
+[WebServer] npm error syscall open
+[WebServer] npm error path /tmp/neon-coil-ci-fix/package.json
+[WebServer] npm error errno -2
+[WebServer] npm error enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/tmp/neon-coil-ci-fix/package.json'
+[WebServer] npm error enoent This is related to npm not being able to find a file.
+[WebServer] npm error enoent
+[WebServer] npm error Log files were not written due to an error writing to the directory: /home/agent/.npm/_logs
+[WebServer] npm error You can rerun the command with `--loglevel=verbose` to see the logs in your terminal
+Error: Process from config.webServer was not able to start. Exit code: 254
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
