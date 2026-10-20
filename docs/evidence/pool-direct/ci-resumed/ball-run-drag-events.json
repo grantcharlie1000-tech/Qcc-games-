@@ -1,0 +1,918 @@
+[
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 332,
+    "y": 823,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointerdown",
+    "trusted": true,
+    "x": 332,
+    "y": 823,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "blur",
+    "trusted": true,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointerup",
+    "trusted": true,
+    "x": 332,
+    "y": 823,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "blur",
+    "trusted": true,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 92.97000122070312,
+    "y": 624.1199951171875,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointerdown",
+    "trusted": true,
+    "x": 92.97000122070312,
+    "y": 624.1199951171875,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "blur",
+    "trusted": true,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointerup",
+    "trusted": true,
+    "x": 92.97000122070312,
+    "y": 624.1199951171875,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "blur",
+    "trusted": true,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 194.99000549316406,
+    "y": 536.3200073242188,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointerdown",
+    "trusted": true,
+    "x": 194.99000549316406,
+    "y": 536.3200073242188,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "blur",
+    "trusted": true,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointerup",
+    "trusted": true,
+    "x": 194.99000549316406,
+    "y": 536.3200073242188,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "ready",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "blur",
+    "trusted": true,
+    "sample": {
+      "at": 8,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "0.000",
+        "distance": "0.000",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "keydown",
+    "trusted": true,
+    "key": "ArrowRight",
+    "sample": {
+      "at": 72,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "0.000",
+        "distance": "0.500",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "keyup",
+    "trusted": true,
+    "key": "ArrowRight",
+    "sample": {
+      "at": 322,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "0.995",
+        "distance": "3.606",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 195,
+    "y": 422,
+    "sample": {
+      "at": 585,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "1.508",
+        "distance": "6.722",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 214.5,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 1983,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "1.550",
+        "distance": "23.675",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointerdown",
+    "trusted": true,
+    "x": 214.5,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 2010,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "1.550",
+        "distance": "24.084",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "gotpointercapture",
+    "trusted": true,
+    "x": 199.46875,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 2109,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "1.550",
+        "distance": "25.211",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 199.46875,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 2109,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "1.550",
+        "distance": "25.211",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 184.4375,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 2453,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "1.278",
+        "distance": "29.451",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 169.40625,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 7213,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "1.087",
+        "distance": "91.667",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": true,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "lostpointercapture",
+    "trusted": true,
+    "x": 154.375,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 10339,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "over",
+        "x": "0.856",
+        "distance": "108.164",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 154.375,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 10339,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "over",
+        "x": "0.856",
+        "distance": "108.164",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 139.34375,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 14135,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "over",
+        "x": "0.856",
+        "distance": "108.164",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 124.3125,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 19144,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "over",
+        "x": "0.856",
+        "distance": "108.164",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 109.28125,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 24149,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "over",
+        "x": "0.856",
+        "distance": "108.164",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  },
+  {
+    "type": "pointermove",
+    "trusted": true,
+    "x": 94.25,
+    "y": 548.5999755859375,
+    "sample": {
+      "at": 25422,
+      "data": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "over",
+        "x": "0.856",
+        "distance": "108.164",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "capture": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844,
+        "top": 0,
+        "right": 390,
+        "bottom": 844,
+        "left": 0
+      }
+    }
+  }
+]

@@ -1,0 +1,458 @@
+{
+  "localBase": "d40611ffe27346b38a10e80d6e4ea7c46dc7d201",
+  "integrationMain": "fbac0a58aa23b953ff9ed382d2cd4bd80c817008",
+  "computedMergedBaseTree": "09d8fa880275861f2de6b114cec48d9f2879a213",
+  "integrationDirectory": "/tmp/pool-current-integration",
+  "inputFingerprint": {
+    "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-before-tests.json",
+    "sha256": "332dc32444171845b6294ad83c471a921dc14a9c323a3e7ceacccf8d1155f81d",
+    "files": 289,
+    "changedDuringRun": []
+  },
+  "scopeProof": {
+    "ballRunOtherNineCasesUnchanged": true,
+    "ballRunOtherCasesSha256": "164200a88462af5907985a614c0d5f596939028c71c74e9746d0015c5dfa9293",
+    "solitaireOtherCasesUnchanged": true,
+    "runtimesUnchanged": true
+  },
+  "checks": {
+    "units": {
+      "passed": 282,
+      "files": 25
+    },
+    "typescript": "passed",
+    "build": {
+      "passed": true,
+      "offlinePack": "ffcdb1e5c685"
+    },
+    "ballRunFocused": {
+      "passed": 10,
+      "duration": "49.0s",
+      "fullLifecycleSeconds": 16.6
+    },
+    "chromiumFull": {
+      "passed": 167,
+      "failed": 0,
+      "skipped": 0,
+      "duration": "5.9m",
+      "ballRunLifecycleSeconds": 27.8
+    },
+    "update": {
+      "passed": true,
+      "oldPack": "ffcdb1e5c685",
+      "newPack": "ffcdb1e5c685-next"
+    },
+    "offline": {
+      "passed": true,
+      "games": 13,
+      "gamePathChecks": 26,
+      "paths": [
+        "/",
+        "/Qcc-games-/"
+      ],
+      "studyArticlesPerPath": 20,
+      "pageErrors": [],
+      "externalRequests": [],
+      "failedAssets": []
+    }
+  },
+  "verifierTimingNote": "Update and offline checks used the identical ffcdb1e5c685 built pack before the final browser-test-only clock correction; game source, public assets and verifier scripts did not change.",
+  "limits": [
+    "Local WebKit unavailable: binary absent; prior download returned HTTP403 and was not retried.",
+    "Original hosted Ball Run stall exact cause remains unclassified; controlled evidence demonstrates the harness wall-time assumption and later mixed-clock defect.",
+    "Physical hardware not exercised.",
+    "Independent Astra review and hosted two-engine CI still required before parent publication/merge sequencing."
+  ],
+  "rawArtifacts": [
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-controlled.json",
+      "bytes": 16057,
+      "sha256": "1f9058fdd4124dde48f15802c3097dcb5d8c1e95104b5c3c28732e8c8787145c"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-controlled.mjs",
+      "bytes": 3897,
+      "sha256": "e8d36575a5a22f0be5e62a7d8fc05cc3c6679d26aab7036ffda2696c5fce87cd"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-drag-diagnostic.log",
+      "bytes": 4414,
+      "sha256": "db4024b0cab69e00089274bb0bbba5af06fb7834461e429018f9447371b83909"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-drag-diagnostic2-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/error-context.md",
+      "bytes": 18264,
+      "sha256": "52d3b46d915fbb4da3905ce092844407bc428894b989f263721807059c253e66"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-drag-diagnostic2-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/test-failed-1.png",
+      "bytes": 57378,
+      "sha256": "20404a21650c025e7ae5f5e0f1b078ef28325b5db0b15ed4906198bd0f798a0d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-drag-diagnostic2-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/trace.zip",
+      "bytes": 5145338,
+      "sha256": "1c5daa9e75ce11467665bf0cdd3e64baba7c6ca1ee8739907f76726aae883cc1"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-drag-diagnostic2-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm",
+      "bytes": 3924788,
+      "sha256": "7ab63e439bf9207e3c54f1d50d8aee3708fa45bf3421332328adc48c6dc0f39b"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-drag-diagnostic2.log",
+      "bytes": 4150,
+      "sha256": "20528ad9d968bf4d025093c3248203392f6a431da5197e5eb1868ed5b5721c9b"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-drag-events.json",
+      "bytes": 18461,
+      "sha256": "f6033f2696f9e6b9173e929a48eb0e0a5ec971a29dd47a01d4742c2052682d32"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-a-real-fa26e-cross-a-gap-without-jumping-chromium/video.webm",
+      "bytes": 2046171,
+      "sha256": "d9c46ca5f54535949a81194577b1745690e7a2a769b28aa0b70f4634d4dadd2d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-lost-W-d21df-ped-until-exit-and-re-entry-chromium/video.webm",
+      "bytes": 260645,
+      "sha256": "71892e5605744af70f4ce0d46ad52a238a89cbe6befc303484423916a8180857"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-perspe-165e4-ound-ball-and-fills-390x844-chromium/video.webm",
+      "bytes": 594260,
+      "sha256": "2a98487eda990cc647c252cc94fa6946652ddd7cd728f144bbc2141d18048eed"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-perspe-faa50-und-ball-and-fills-1366x768-chromium/video.webm",
+      "bytes": 297522,
+      "sha256": "5d8ebf643496ce3c7cf15a27940d6f32562e6c9ac0041b0a92ff4d21383ae890"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-perspe-fea1e-ound-ball-and-fills-844x390-chromium/video.webm",
+      "bytes": 157241,
+      "sha256": "70f2db6edb814f8534eae4244e62a3cb455fde0ac11e1e4c75c87074bb076c99"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-proced-1debb-d-input-and-reuse-resources-chromium/video.webm",
+      "bytes": 1220439,
+      "sha256": "07938fbd45a7a28ae14b6f6ac1409d4be3c12a08b3f48bf611ccce2355aff8bf"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/error-context.md",
+      "bytes": 17244,
+      "sha256": "5a21091fc6dfc00106b445ec0ef38cab3605f710c35bf54917bb84db89ffec8d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/test-failed-1.png",
+      "bytes": 52379,
+      "sha256": "a2b8c93374025191e5052d3ed12186b46948bcdeca358423af4916d89a7ee3bb"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/trace.zip",
+      "bytes": 4813586,
+      "sha256": "1f24639d28f4b533e8674c5627ef89baacafe8d033496ccbc83aab19cbd34a70"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm",
+      "bytes": 3672081,
+      "sha256": "4189f91f7be644f4d1bb9a821cc9ec05660872ea04210631666a74b457e4c85c"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-resizi-20e27-ey-retains-keyboard-control-chromium/video.webm",
+      "bytes": 561995,
+      "sha256": "c0cc935ee23c2db70c3b756295d89ae3997986a6581d84a3cd3ea223e4a9fc66"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green-results/games-ball-run-play-unsupp-e0bb8-nd-retains-an-existing-save-chromium/video.webm",
+      "bytes": 92087,
+      "sha256": "bbdf317a2372b2df81b2eeccb5bb16bea7b0bcf6cf3117110608b0b55b80074a"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/ball-run-green.log",
+      "bytes": 5560,
+      "sha256": "d960e4ff7fdfa80d3a78492bca2f21a3367b005929ec0f9bf29c2cd7fb564813"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/controlled-final-focused-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm",
+      "bytes": 3017518,
+      "sha256": "078f5d7870d8e4edf7dc43d27444362b8116eaac64159c7f581d671ed07b5bd1"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/controlled-final-focused.log",
+      "bytes": 1806,
+      "sha256": "d4775f09e8c1748f48b6fac642e2bbe685a19fbb5f87e02da8973fe1ff84463f"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-before-tests.json",
+      "bytes": 31576,
+      "sha256": "332dc32444171845b6294ad83c471a921dc14a9c323a3e7ceacccf8d1155f81d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-build-final.log",
+      "bytes": 3082,
+      "sha256": "59b92e0322e902441ab6db79367e4ca71e3e644d40c0b954bef2a5e3c5cd9071"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-build.log",
+      "bytes": 3082,
+      "sha256": "ab0a4b34c4a798ae093a4633c9ae8d9e2df055effa9861bffa02e9ba123621b1"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-check-final.log",
+      "bytes": 261,
+      "sha256": "c359783c07fdd6d3337edee0cd03ca5bfd332bd1cc9e746f6d442a71fc896327"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-check.log",
+      "bytes": 261,
+      "sha256": "c359783c07fdd6d3337edee0cd03ca5bfd332bd1cc9e746f6d442a71fc896327"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-chromium-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm",
+      "bytes": 3776630,
+      "sha256": "f7d8a8256b1c1abe54ffe884ae569e500c4d40bcd44c33cc98c3bcb13b80f9cd"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-chromium.log",
+      "bytes": 25494,
+      "sha256": "76c317eca142d7bbc8a6bde97b29182da8bb2926feaf25be3caa7d4bddc4550e"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-offline/offline-results.json",
+      "bytes": 12193,
+      "sha256": "9bebbb929a7be09cc611bf405f1e845e5adef5a5d9656dec1f1fe9b75e7b34e6"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-offline.log",
+      "bytes": 1335,
+      "sha256": "2a69b8ca0da7b2ef5f6698e39a3d21d122a440351a99bdea794b4e4cb2cdab15"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-units.log",
+      "bytes": 2244,
+      "sha256": "c27d5bfd9a32ac53f3050bec49679a9eda14980f55bbf8a7aaf77a39df3e592a"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-update-results.json",
+      "bytes": 356,
+      "sha256": "b978d1f8d7984d2d9abb3810567652874587f71325d9c4053816bd31a52a61e5"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/current-integration-update.log",
+      "bytes": 643,
+      "sha256": "a578deb927e4936d413ed700fe2f7381692e40e0e2fd45d1b3d7ddc1aa25d1cb"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/final-build.log",
+      "bytes": 3082,
+      "sha256": "7ef1f264964e0ff74d8e2e2cee42f128c74f4d9c7e69988c4fd224dcd3ec9e3a"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/final-check.log",
+      "bytes": 261,
+      "sha256": "c359783c07fdd6d3337edee0cd03ca5bfd332bd1cc9e746f6d442a71fc896327"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/final-units.log",
+      "bytes": 2246,
+      "sha256": "ed652b5791e757f34166e81c11ef75c02295d52206410a9622efa593a62f47b5"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/focused-final.log",
+      "bytes": 3158,
+      "sha256": "184be9f3db42128dfa7e8bf8cd52c093ec76fa0bd887a926f549b0a2cc95f992"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-before-tests.json",
+      "bytes": 31576,
+      "sha256": "e22e6019d379fb9f33a85cc7a63ebb21828fe30d3ff696d8aeb449e7d52c187b"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-a-real-fa26e-cross-a-gap-without-jumping-chromium/video.webm",
+      "bytes": 2093301,
+      "sha256": "bcb66705a5aa31c9f3ec76ca657b61c5bf43f2679af3a18a27e5a5beee5f2dab"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-lost-W-d21df-ped-until-exit-and-re-entry-chromium/video.webm",
+      "bytes": 248257,
+      "sha256": "f43513a1eb45cab37bfaf887c3244d0d0337b2133e5c185881c9d1c1222bccdd"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-perspe-165e4-ound-ball-and-fills-390x844-chromium/video.webm",
+      "bytes": 748009,
+      "sha256": "08557a81f566efe371dccd6953cf63b16cad51b16570540521ccb313259384ae"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-perspe-faa50-und-ball-and-fills-1366x768-chromium/video.webm",
+      "bytes": 293074,
+      "sha256": "2aa0dcf14956a22b378b986fc29dc90eabfbe575cdd3d4f9e569c17d881f80e5"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-perspe-fea1e-ound-ball-and-fills-844x390-chromium/video.webm",
+      "bytes": 206746,
+      "sha256": "91bfa51b12a5244a54b095b93e4c2426814b662d1a8ed931db5a53eddb677c99"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-proced-1debb-d-input-and-reuse-resources-chromium/video.webm",
+      "bytes": 1289678,
+      "sha256": "bd96beb8789761ce078eef263a79c90dd09351319a3f7d3ddaa259e5d42c5fc5"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/error-context.md",
+      "bytes": 18404,
+      "sha256": "67f18287bc8dc87d3519e02d33307b307e6a0fd47408d334fb8d2d88cfd14752"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/trace.zip",
+      "bytes": 5158817,
+      "sha256": "5685f91f354c25a61b131bd218ed3790e5ad9ced11f62f9b0abe8a3a4a22b605"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm",
+      "bytes": 3678049,
+      "sha256": "2f6ec0cfe0c3c7055a22702ed4505a1cd9d1897f56370ced66f926ec556d3502"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-resizi-20e27-ey-retains-keyboard-control-chromium/video.webm",
+      "bytes": 588695,
+      "sha256": "c97446fd9b6c50d534a596d2091ef41c44c7964e6e2eb5f2f931790f5ce522e5"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-ball-run-play-unsupp-e0bb8-nd-retains-an-existing-save-chromium/video.webm",
+      "bytes": 80952,
+      "sha256": "4d905697c57fe9315070d42b93b6f780f2c24898ac7b1e37571efdc377aecfd6"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-2f263-p-invalid-return-and-cancel-chromium/video.webm",
+      "bytes": 247278,
+      "sha256": "8ed6ecfb00fd8e57ba8bd85cb27caf8d363bba2fd837fbe3f7d694d2e2b631af"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-4bb6d--and-full-footprint-390x844-chromium/video.webm",
+      "bytes": 107805,
+      "sha256": "717e6280de0a0d5febeccabf10f39cd754221be96bf56085d943bb77824e3ac3"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-8b8c7-eshly-selected-second-piece-chromium/video.webm",
+      "bytes": 17443,
+      "sha256": "64fe4656878d5ffcd3df5e4a63e26a62bbe80b73f6f335636fbde229e26af2db"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-9a659-a-board-click-after-restore-chromium/video.webm",
+      "bytes": 19426,
+      "sha256": "8c88aca8f45a91d57537b2b17692fcd334f28d45387d2217e804f2b2d71c340d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-afcad--arming-a-later-board-click-chromium/video.webm",
+      "bytes": 194129,
+      "sha256": "c2cd305a9e647797d784d65eec68c9ab9828e36e3f323c4de5009e386312223e"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-c7719--and-full-footprint-844x390-chromium/video.webm",
+      "bytes": 30671,
+      "sha256": "fa3c92787a1bba9f444e986fd00f1c1cd8d5641054e38294a8bfdccba815881c"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-cccd3-ck-without-changing-scoring-chromium/video.webm",
+      "bytes": 38331,
+      "sha256": "1ab2284185ef5b6943c4faf1bf51da6eb0121e23484ee9e1552a23a46a7d7cdc"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium-results/games-color-blocks-correct-f97f1-and-full-footprint-1366x768-chromium/video.webm",
+      "bytes": 49727,
+      "sha256": "9bf66f893f65518c82ce17ea7394c5a3db604b7c173cb13842322e7709c69b97"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/mixed-clock-current-integration-chromium.log",
+      "bytes": 29219,
+      "sha256": "a7cf7cf050cf19f89ff8e3e859c1fc463c556c4733e94063c00168dbb5da02c6"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/resume-clock-native-frames.json",
+      "bytes": 19378,
+      "sha256": "34044e2ff2583a8498b4eead88b4e1ec53a4f32e61c336977ec9548c3a164e22"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/resume-diagnostic-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/error-context.md",
+      "bytes": 20379,
+      "sha256": "a44b45423dcb0964ec383f30b7d9a2c2be54daf1f43a8047979443c7fd18034c"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/resume-diagnostic-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/test-failed-1.png",
+      "bytes": 2740,
+      "sha256": "fb32313e11bc8ffbd5310a1660e630b64cedb4622f8462a5eae2d5464ac8279e"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/resume-diagnostic-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/trace.zip",
+      "bytes": 6694702,
+      "sha256": "42267d42b2bb27d717b3a28ce7690941e4bb6ea093e5bb5bcf089da44e32252a"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/resume-diagnostic-results/games-ball-run-play-real-d-f9a31-osal-retain-their-contracts-chromium/video.webm",
+      "bytes": 4632400,
+      "sha256": "3c59c6256a9ef5c4dd09223626c32fc29fb502f6720d976944d66796055da1a2"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/resume-diagnostic.log",
+      "bytes": 4292,
+      "sha256": "54be831c7c0b59e88c772be30b92aadb5b9703ef3961f8503b1820eafc836e08"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/resume-diagnostic.spec.ts",
+      "bytes": 16832,
+      "sha256": "0f05226d8fac381738accd81043927e2d9ba071493768dda944557de69f57208"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/scope-proof.json",
+      "bytes": 211,
+      "sha256": "2673d0b366b5fec8cdca63f54e23dcfc190794bec9bbcfc7980187a5aaf57764"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-green.log",
+      "bytes": 1245,
+      "sha256": "968888ef851c0725af63c6b25d81f6f339871abb680192e611a9b35d63fee92d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-native-red.json",
+      "bytes": 36544,
+      "sha256": "22283189689791b05aad6aea8266d496f4e586870582fe57c223c302e1281bee"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-red-results/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium-repeat2/error-context.md",
+      "bytes": 16665,
+      "sha256": "71f70c27c0c8f4ab9ee78ed58052a06131efeb3f627b4112678deb397f9251e6"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-red-results/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium-repeat2/test-failed-1.png",
+      "bytes": 149227,
+      "sha256": "70eee4b413d283943019b60b05d2a92d227f1626ebfd8de737b5be9cc47aa17d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-red-results/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium-repeat2/trace.zip",
+      "bytes": 303403,
+      "sha256": "baf5f69a4fc20ea9d4fba8ebf94589549a1ff4b2191c568fd6615e5f2dc3e82f"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-red-results/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium-repeat3/error-context.md",
+      "bytes": 16665,
+      "sha256": "71f70c27c0c8f4ab9ee78ed58052a06131efeb3f627b4112678deb397f9251e6"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-red-results/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium-repeat3/test-failed-1.png",
+      "bytes": 149227,
+      "sha256": "70eee4b413d283943019b60b05d2a92d227f1626ebfd8de737b5be9cc47aa17d"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-red-results/games-solitaire-play-touch-1d649--legal-move-path-on-a-phone-chromium-repeat3/trace.zip",
+      "bytes": 384265,
+      "sha256": "275890d92cf2a2c7f7c858aee66d3816d5d7b5a6430b6b32c3811d29e2fef09b"
+    },
+    {
+      "path": "/workspace/pool-ci-evidence/resume-d406/solitaire-red.log",
+      "bytes": 10766,
+      "sha256": "38d9e8ddfe0d69adc164dc48e9ffbcd6e1b9bfb6922b3cbe864e0ff653626383"
+    }
+  ]
+}
