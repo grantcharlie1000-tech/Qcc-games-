@@ -1,0 +1,36 @@
+import { poly, type SpeciesDef } from './types';
+/** Holstein silhouette: torso, neck, head, near legs and udder in one outline (facing right). */
+const BODY='M-41-15-34-19.5H14Q22-20 29-24L36-25.5Q41-24 48-14Q54-8 52.5-3Q51 .5 45 .5L37 0Q30 1 27 8L23 13V39H15V17H-12Q-13 23-18.5 23-24 23-25 17H-26V39H-35V29Q-41 22-42.5 10-44-6-41-15Z';
+const O='stroke="#1d1b22" stroke-width="2.6"';
+export const cow:SpeciesDef={
+ name:'Cow',mass:4.6,color:'#f6f3ec',
+ shapes:[
+  poly(-42.5,-8,-41,-15,-34,-19.5,14,-19.5,23,-14,23,17,-26,17,-35,15,-42,8),
+  poly(14,-19.5,29,-24,31,2.5,27,8,23,13),
+  poly(29,-24,36,-25.5,41.5,-21.9,48,-14,51.8,-8.5,52.5,-3,50,-.4,45,.5,37,0,32,-1),
+  poly(15,15,23,13,23,39,15,39),
+  poly(-26,16,-26,26,-35,29,-40,21,-42,10),
+  poly(-26,24,-26,39,-35,39,-35,27),
+  poly(-12,17,-13,21,-16,23,-21,23,-24,21,-25,17),
+  poly(8,17,16,17,16,39,8,39),
+  poly(-25,17,-17,17,-17,39,-25,39),
+  poly(32.5,-24,34.2,-29.6,40,-33.5,38.5,-25),
+  poly(17.5,-24.5,23.7,-24.5,31.5,-21,30.5,-16.5,22,-19.2),
+  poly(-50,1.5,-45,1.5,-44.8,8.5,-47,14.5,-50,8.5),
+ ],
+ art:`<defs><clipPath id="cow-clip"><path d="${BODY}"/></clipPath></defs><g stroke-linecap="round" stroke-linejoin="round">`
+ // tail and far side (behind the body)
+ +`<path d="M-41-14Q-47-11-47.5 3" fill="none" stroke="#1d1b22" stroke-width="5.2"/><path d="M-41-14Q-47-11-47.5 3" fill="none" stroke="#f6f3ec" stroke-width="2.2"/><path d="M-50 1.5Q-51.5 9-47 14.5-43.5 9-45 1.5Z" fill="#2a2630" ${O}/>`
+ +`<path d="M28.5-23.5Q28-29.5 34-31.5 32-28 33.5-24Z" fill="#d8c89c" ${O}/>`
+ +`<path d="M8 14H16V39H8Z" fill="#cfcac0" ${O}/><path d="M-25 14H-17V39H-25Z" fill="#cfcac0" ${O}/><path d="M8 35H16V39H8ZM-25 35H-17V39H-25Z" fill="#3a3540" ${O}/>`
+ +`<path d="M32.5-24Q32-31.5 40-33.5 37.5-29 38.5-25Z" fill="#f3e6c2" ${O}/>`
+ // body fill, clipped markings, then the outline on top
+ +`<path d="${BODY}" fill="#f6f3ec"/><g clip-path="url(#cow-clip)" fill="#24212a">`
+ +`<path d="M-46-22-28-22Q-23-12-30-4-36 2-46 0Z"/><path d="M-17-22H3Q6-10-1-4-9 4-17-1-23-8-17-22Z"/><path d="M9-14Q15-18 21-13 26-8 23-1 19 6 13 4 9 8 6 2 3-5 9-14Z"/><path d="M-6 9Q1 7 2 13 0 20-6 18-9 12-6 9Z"/>`
+ +`<path d="M45-12Q53-13 55-5 54 3 46 2 42-5 45-12Z" fill="#f4a3b2"/><path d="M-11 16.5Q-13 23-18.5 23-24 23-26 16.5Z" fill="#f4a3b2"/><path d="M14 35H24V40H14ZM-36 35H-25V40H-36Z" fill="#3a3540"/></g>`
+ +`<path d="${BODY}" fill="none" ${O}/>`
+ // details
+ +`<path d="M-12 17Q-18.5 18.5-25 17M46-1Q48-.4 50-1.2" fill="none" stroke="#1d1b22" stroke-width="1.4"/><path d="M-15 23.5V25.5M-21.5 23.5V25.5" stroke="#d97f92" stroke-width="2.2"/>`
+ +`<ellipse cx="50.3" cy="-6.2" rx="1.1" ry="1.5" fill="#1d1b22"/><circle cx="41" cy="-16" r="1.9" fill="#1d1b22"/><circle cx="41.6" cy="-16.6" r=".6" fill="#fff"/>`
+ +`<path d="M31.5-21Q23-26.5 17.5-24.5 20-18 30.5-16.5Z" fill="#24212a" ${O}/><path d="M29.5-20Q24-23.5 20.5-23 23-19.5 29-18.5Z" fill="#f4a3b2"/></g>`,
+};

@@ -1,0 +1,48 @@
+
+Running 1 test using 1 worker
+
+(node:17430) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › pool: gameplay, Escape, frozen autosave and exact return (1.0m)
+
+
+  1) [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › pool: gameplay, Escape, frozen autosave and exact return
+
+    Test timeout of 60000ms exceeded.
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Shoot', exact: true })
+
+
+      30 |   if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
+      31 |   if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
+    > 32 |   if(id==='pool')await page.getByRole('button',{name:'Shoot',exact:true}).click();
+         |                                                                           ^
+      33 |   if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
+      34 |   await page.clock.runFor(id==='snake'?220:id==='ball-run'?120:650);
+      35 | }
+        at gameAction (/workspace/Qcc-games-/tests/e2e/study.spec.ts:32:75)
+        at /workspace/Qcc-games-/tests/e2e/study.spec.ts:115:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../../tmp/pool-ci-study-red/e2e-study-all-retained-gam-cc698-n-autosave-and-exact-return-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../../tmp/pool-ci-study-red/e2e-study-all-retained-gam-cc698-n-autosave-and-exact-return-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    ../../tmp/pool-ci-study-red/e2e-study-all-retained-gam-cc698-n-autosave-and-exact-return-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace ../../tmp/pool-ci-study-red/e2e-study-all-retained-gam-cc698-n-autosave-and-exact-return-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › tests/e2e/study.spec.ts:107:5 › all retained game instances › pool: gameplay, Escape, frozen autosave and exact return
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

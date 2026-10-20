@@ -1,0 +1,22 @@
+import { poly, type SpeciesDef } from './types';
+export const koala:SpeciesDef={
+ name:'Koala',mass:1.6,color:'#8f9aa8',
+ shapes:[
+  // one broad head-and-back piece keeps the rotational inertia high so the light koala settles
+  poly(-19.5,-19,-14,-24.6,-6,-26.5,2,-24.6,8,-21,15,-14.2,22,-6.5,26,1.5,28.5,10.5,29,20,27.8,25.5,24,28,-4,28,-9.5,24,-13.8,17.4,-16.1,9),
+  poly(-23.5,-10,-21.5,-16,-16,-16,-16,-4,-21.5,-4),
+  poly(21,-25,18.9,-18.5,13.4,-14.5,6.6,-14.5,1.1,-18.5,-1,-25,1.1,-31.5,6.6,-35.5,13.4,-35.5,18.9,-31.5),
+  poly(-11,-26,-13.6,-19.6,-20,-17,-26.4,-19.6,-29,-26,-26.4,-32.4,-20,-35,-13.6,-32.4),
+  poly(-10,13,-6,15,-7,24,-10,25.5,-16,25.5,-21,23,-21,18,-16,14),
+  poly(-22,24,-18,21,0,21,2.5,24.5,1,28,-18,28,-22,26.5),
+ ],
+ art:`<g stroke="#1d1b22" stroke-linecap="round" stroke-linejoin="round"><defs><clipPath id="koala-body"><path d="M-16 0C-14-10 0-18 10-16C22-12 30 4 29 20Q29 27 24 28L-4 28C-12 25-18 12-16 0Z"/></clipPath></defs>`
+ // far ear: darker, with a white tuft
+ +`<path d="M-12.7-22A2.3 2.3 0 0 1-16.4-18.5A2.3 2.3 0 0 1-21.5-17.8A2.3 2.3 0 0 1-26-20.3A2.3 2.3 0 0 1-28.2-24.9A2.3 2.3 0 0 1-27.3-30A2.3 2.3 0 0 1-23.6-33.5A2.3 2.3 0 0 1-18.5-34.2A2.3 2.3 0 0 1-14-31.7A2.3 2.3 0 0 1-11.8-27.1A2.3 2.3 0 0 1-12.7-22Z" fill="#6f7987" stroke-width="2.6"/><path d="M-16.6-25.1A1.6 1.6 0 0 1-19.7-22.4A1.6 1.6 0 0 1-23.8-23.1A1.6 1.6 0 0 1-25.8-26.8A1.6 1.6 0 0 1-24.2-30.6A1.6 1.6 0 0 1-20.2-31.7A1.6 1.6 0 0 1-16.8-29.3A1.6 1.6 0 0 1-16.6-25.1Z" fill="#d9d4cb" stroke="none"/>`
+ // body, cream chest, hind foot
+ +`<path d="M-16 0C-14-10 0-18 10-16C22-12 30 4 29 20Q29 27 24 28L-4 28C-12 25-18 12-16 0Z" fill="#8f9aa8" stroke-width="2.6"/><ellipse cx="-12" cy="9" rx="7.5" ry="13" fill="#efe7d6" stroke="none" clip-path="url(#koala-body)"/><path d="M9 27.5Q6 15 16 12Q24 11 26.5 19" fill="none" stroke="#5d6674" stroke-width="1.5"/><path d="M2 21Q5 25 1 28L-18 28Q-23 27.5-22 24Q-19 20 2 21Z" fill="#8f9aa8" stroke-width="2.6"/>`
+ // near ear with a white tuft, then the head
+ +`<path d="M19.7-22A2.6 2.6 0 0 1 16.6-17.2A2.6 2.6 0 0 1 11.3-14.9A2.6 2.6 0 0 1 5.6-15.8A2.6 2.6 0 0 1 1.3-19.6A2.6 2.6 0 0 1-.2-25.1A2.6 2.6 0 0 1 1.5-30.6A2.6 2.6 0 0 1 5.9-34.3A2.6 2.6 0 0 1 11.6-35.1A2.6 2.6 0 0 1 16.8-32.6A2.6 2.6 0 0 1 19.8-27.7A2.6 2.6 0 0 1 19.7-22Z" fill="#8f9aa8" stroke-width="2.6"/><path d="M16.9-24.3A1.8 1.8 0 0 1 14.3-20.5A1.8 1.8 0 0 1 9.8-19.6A1.8 1.8 0 0 1 6-22.2A1.8 1.8 0 0 1 5.1-26.7A1.8 1.8 0 0 1 7.7-30.5A1.8 1.8 0 0 1 12.2-31.4A1.8 1.8 0 0 1 16-28.8A1.8 1.8 0 0 1 16.9-24.3Z" fill="#fbf8f1" stroke="none"/><ellipse cx="-6" cy="-12" rx="16" ry="14.5" fill="#8f9aa8" stroke-width="2.6"/>`
+ // chunky near arm with claws, then the face
+ +`<path d="M0-1Q12-2 12 8Q11 17 0 22Q-10 26-16 25Q-22 24-20 19Q-18 15-8 12Q-4 6 0-1Z" fill="#8f9aa8" stroke-width="2.6"/><path d="M-19 19.5-21 21.5M-16 20.5-17.5 23.5" fill="none" stroke-width="1.3"/><ellipse cx="-18.5" cy="-10" rx="5" ry="6.8" fill="#2b2730" stroke-width="2"/><ellipse cx="-19.8" cy="-13" rx="1.3" ry="2" fill="#5f5a66" stroke="none"/><circle cx="-8.5" cy="-16.5" r="2.2" fill="#1d1b22" stroke="none"/><circle cx="-9.2" cy="-17.3" r=".6" fill="#fff" stroke="none"/><path d="M-17.5-1.5Q-15.5 0-13.5-1.5" fill="none" stroke-width="1.3"/></g>`,
+};

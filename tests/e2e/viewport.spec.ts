@@ -26,8 +26,8 @@ for(const size of [{width:390,height:844},{width:844,height:390}]){
           const box=await page.locator('#game-stage > *').first().boundingBox();
           return !!box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=size.width+1&&box.y+box.height<=size.height+1;
         },{message:`${id}: the entire game, including controls, must fit`}).toBe(true);
-        const names:Record<string,string|RegExp>={'fruit-merge':'Drop fruit',tower:'Drop block',snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','color-connect':'Hint',pool:'Shoot','flappy-bird':'Flap'};
-        const control=page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
+        const names:Record<string,string|RegExp>={'fruit-merge':'Drop fruit',tower:'Drop block',snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','color-connect':'Hint','flappy-bird':'Flap'};
+        const control=id==='pool'?page.locator('.pool-table'):page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
         await expect.poll(()=>control.evaluate(button=>{
           const r=button.getBoundingClientRect(),under=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
           return !!under&&(under===button||button.contains(under));
