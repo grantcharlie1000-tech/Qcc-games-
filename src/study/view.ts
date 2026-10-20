@@ -22,7 +22,10 @@ export class StudyView {
       if(target?.dataset.studyTopic){
         if(this.session.choose(target.dataset.studyTopic))onInitialChoice();
       }
-      if(target?.hasAttribute('data-study-return')){event.preventDefault();onReturn();}
+      if(target?.hasAttribute('data-study-return') && event.button===0
+        && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey){
+        event.preventDefault();onReturn();
+      }
     });
     this.root.addEventListener('change',event=>{
       if((event.target as Element).id!=='study-topic')return;

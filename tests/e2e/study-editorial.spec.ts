@@ -21,3 +21,31 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  const bounds=(await games.boundingBox())!;expect(bounds.height).toBeGreaterThanOrEqual(44);expect(bounds.width).toBeGreaterThanOrEqual(44);
  await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-card')).toHaveCount(13);await expect(page.locator('#study-view')).toBeHidden();
 });
+
+test('modified Games clicks reach the browser without returning the retained game',async({page,context})=>{
+ await page.goto('/#/game/minesweeper');await page.locator('[data-study-topic="close-reading"]').click();
+ await expect(page.locator('.ms')).toBeVisible();
+ const retained=await page.locator('#game-stage > *').elementHandle();
+ await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
+ // Observe after Study's delegated handler without cancelling the browser action.
+ // Browser/platform choices of a tab, window or download are deliberately native.
+ await page.evaluate(()=>window.addEventListener('click',event=>{
+  if(!(event.target as Element).closest('[data-study-return]'))return;
+  document.documentElement.dataset.gamesClickPrevented=String(event.defaultPrevented);
+  document.documentElement.dataset.gamesClickTrusted=String(event.isTrusted);
+ }));
+ const closeOpenedPage=(opened:import('@playwright/test').Page)=>{void opened.close();};
+ context.on('page',closeOpenedPage);
+ const games=page.getByRole('navigation',{name:'Site navigation'}).getByRole('link',{name:'Games',exact:true});
+ for(const modifier of ['Control','Meta','Shift','Alt'] as const){
+  await games.click({modifiers:[modifier]});
+  await expect(page.locator('html')).toHaveAttribute('data-games-click-trusted','true');
+  await expect(page.locator('html')).toHaveAttribute('data-games-click-prevented','false');
+  await expect(page.locator('#study-view')).toBeVisible();
+  expect(await retained!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
+ }
+ context.off('page',closeOpenedPage);
+ // Ordinary primary clicks still use the existing lifecycle callback.
+ await games.click();await expect(page.locator('#study-view')).toBeHidden();
+ expect(await retained!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
+});

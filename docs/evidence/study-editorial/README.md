@@ -38,3 +38,7 @@ bash .agents/skills/svg-skill/scripts/validate.sh src/study/portraits src/study/
 ```
 
 No local implementation blockers remain. WebKit and physical/public production testing are outside the local evidence. Publication remains unperformed; the parent owns independent review and further approval.
+
+## Review follow-up: modified Games clicks
+
+Astra's review of `43c8a31` identified one minor: modified Games clicks were intercepted. The subsequent local correction preserves native Control/Meta/Shift/Alt clicks and only intercepts unmodified primary activation. [Follow-up evidence](modified-link/README.md) records a failing pre-fix trusted-click test, its passing result after the fix, **73/73 browser cases**, **266 unit tests**, TypeScript/build and refreshed two-path offline evidence for pack `0499990a7779`. The earlier sections remain the original checkpoint's history; the follow-up evidence describes the current handler and bundle. No publication occurred.

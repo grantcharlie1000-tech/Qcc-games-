@@ -1,0 +1,44 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /tmp/qcc-study-editorial
+
+ ✓ tests/games/water-sort/solver.test.ts (21 tests) 551ms
+ ✓ tests/games/flappy-bird/model.test.ts (7 tests) 961ms
+   ✓ Flappy Bird original reed flight > generates reproducible bounded gates with enough travel time and variation  697ms
+ ✓ tests/games/pool/model.test.ts (40 tests) 457ms
+ ✓ tests/games/water-sort/session.test.ts (21 tests) 335ms
+ ✓ tests/games/color-blocks/model.test.ts (10 tests) 181ms
+ ✓ tests/games/animal-stack/model.test.ts (13 tests) 148ms
+ ✓ tests/games/animal-stack/framing.test.ts (5 tests) 251ms
+ ✓ tests/games/fruit-merge/engine.test.ts (16 tests) 166ms
+ ✓ tests/games/solitaire/rules.test.ts (14 tests) 78ms
+ ✓ tests/games/ball-run/model.test.ts (16 tests) 2794ms
+   ✓ keeps seeded hazards inside the road with a generous continuous safe corridor  547ms
+   ✓ a continuous driver traverses 64 seeds at maximum speed without an unavoidable collision  1943ms
+ ✓ tests/games/block-fill/logic.test.ts (8 tests) 77ms
+ ✓ tests/games/minesweeper/model.test.ts (17 tests) 41ms
+ ✓ tests/games/color-connect/model.test.ts (11 tests) 65ms
+ ✓ tests/games/snake/model.test.ts (10 tests) 27ms
+ ✓ tests/games/water-sort/geometry.test.ts (5 tests) 14ms
+ ✓ tests/games/animal-stack/correction.test.ts (5 tests) 28ms
+ ✓ tests/core/study.test.ts (5 tests) 8ms
+ ✓ tests/games/tower/model.test.ts (15 tests) 27ms
+ ✓ tests/core/offline-worker.test.ts (3 tests) 16ms
+ ✓ tests/games/color-blocks/input.test.ts (5 tests) 5ms
+ ✓ tests/games/animal-stack/input.test.ts (4 tests) 3ms
+ ✓ tests/games/water-sort/rules.test.ts (10 tests) 5ms
+ ✓ tests/core/storage.test.ts (5 tests) 5ms
+
+ Test Files  23 passed (23)
+      Tests  266 passed (266)
+   Start at  02:23:04
+   Duration  4.43s (transform 884ms, setup 0ms, collect 1.52s, tests 6.24s, environment 4ms, prepare 1.63s)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice
