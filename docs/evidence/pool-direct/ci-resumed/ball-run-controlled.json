@@ -1,0 +1,637 @@
+{
+  "recordedAt": "2026-10-20T19:03:24.382Z",
+  "browser": "154.0.8037.57",
+  "controlledStall": true,
+  "cases": [
+    {
+      "case": "original wall-clock press under controlled game-RAF stall",
+      "before": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "0.000",
+        "distance": "1.301",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "after": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "0.000",
+        "distance": "1.301",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "heldCallbacks": 0,
+      "diagnostic": {
+        "events": [
+          {
+            "type": "blur",
+            "trusted": true,
+            "at": 786.5999999999767,
+            "state": {
+              "x": "0.000",
+              "distance": "0.000",
+              "phase": "ready",
+              "focused": true
+            },
+            "accepted": false
+          },
+          {
+            "type": "blur",
+            "trusted": true,
+            "at": 789.2000000000116,
+            "state": {
+              "x": "0.000",
+              "distance": "0.000",
+              "phase": "running",
+              "focused": true
+            },
+            "accepted": false
+          },
+          {
+            "type": "keydown",
+            "key": "ArrowRight",
+            "trusted": true,
+            "at": 1012.5,
+            "state": {
+              "x": "0.000",
+              "distance": "1.301",
+              "phase": "running",
+              "focused": true
+            },
+            "accepted": true
+          },
+          {
+            "type": "keyup",
+            "key": "ArrowRight",
+            "trusted": true,
+            "at": 1276.0999999999767,
+            "state": {
+              "x": "0.000",
+              "distance": "1.301",
+              "phase": "running",
+              "focused": true
+            },
+            "accepted": false
+          }
+        ],
+        "frames": [
+          {
+            "before": {
+              "at": 842.5999999999767,
+              "time": 836.464,
+              "state": {
+                "x": "0.000",
+                "distance": "0.000",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 843.4000000000233,
+              "state": {
+                "x": "0.000",
+                "distance": "0.000",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 853.4000000000233,
+              "time": 853.1,
+              "state": {
+                "x": "0.000",
+                "distance": "0.000",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 854.0999999999767,
+              "state": {
+                "x": "0.000",
+                "distance": "0.100",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 972.7999999999884,
+              "time": 969.7,
+              "state": {
+                "x": "0.000",
+                "distance": "0.100",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 977.4000000000233,
+              "state": {
+                "x": "0.000",
+                "distance": "1.301",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          }
+        ],
+        "blocked": 11
+      },
+      "originalThresholdPasses": false
+    },
+    {
+      "case": "bounded simulation clock",
+      "before": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "0.000",
+        "distance": "0.500",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "after": {
+        "ballScreenY": "0.68258",
+        "ballScreenX": "0.50000",
+        "phase": "running",
+        "x": "0.904",
+        "distance": "3.406",
+        "grounded": "true",
+        "drawCalls": "7",
+        "geometries": "3",
+        "aspect": "0.46209"
+      },
+      "heldCallbacks": 15,
+      "diagnostic": {
+        "events": [
+          {
+            "type": "blur",
+            "trusted": true,
+            "at": 3,
+            "state": {
+              "x": "0.000",
+              "distance": "0.000",
+              "phase": "ready",
+              "focused": true
+            },
+            "accepted": false
+          },
+          {
+            "type": "blur",
+            "trusted": true,
+            "at": 3,
+            "state": {
+              "x": "0.000",
+              "distance": "0.000",
+              "phase": "running",
+              "focused": true
+            },
+            "accepted": false
+          },
+          {
+            "type": "keydown",
+            "key": "ArrowRight",
+            "trusted": true,
+            "at": 67,
+            "state": {
+              "x": "0.000",
+              "distance": "0.500",
+              "phase": "running",
+              "focused": true
+            },
+            "accepted": true
+          },
+          {
+            "type": "keyup",
+            "key": "ArrowRight",
+            "trusted": true,
+            "at": 317,
+            "state": {
+              "x": "0.904",
+              "distance": "3.406",
+              "phase": "running",
+              "focused": true
+            },
+            "accepted": false
+          }
+        ],
+        "frames": [
+          {
+            "before": {
+              "at": 16,
+              "time": 16,
+              "state": {
+                "x": "0.000",
+                "distance": "0.000",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 16,
+              "state": {
+                "x": "0.000",
+                "distance": "0.000",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 32,
+              "time": 32,
+              "state": {
+                "x": "0.000",
+                "distance": "0.000",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 32,
+              "state": {
+                "x": "0.000",
+                "distance": "0.100",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 48,
+              "time": 48,
+              "state": {
+                "x": "0.000",
+                "distance": "0.100",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 48,
+              "state": {
+                "x": "0.000",
+                "distance": "0.300",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 64,
+              "time": 64,
+              "state": {
+                "x": "0.000",
+                "distance": "0.300",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 64,
+              "state": {
+                "x": "0.000",
+                "distance": "0.500",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 80,
+              "time": 80,
+              "state": {
+                "x": "0.000",
+                "distance": "0.500",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 80,
+              "state": {
+                "x": "0.008",
+                "distance": "0.700",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 96,
+              "time": 96,
+              "state": {
+                "x": "0.008",
+                "distance": "0.700",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 96,
+              "state": {
+                "x": "0.030",
+                "distance": "0.900",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 112,
+              "time": 112,
+              "state": {
+                "x": "0.030",
+                "distance": "0.900",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 112,
+              "state": {
+                "x": "0.064",
+                "distance": "1.101",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 128,
+              "time": 128,
+              "state": {
+                "x": "0.064",
+                "distance": "1.101",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 128,
+              "state": {
+                "x": "0.108",
+                "distance": "1.301",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 144,
+              "time": 144,
+              "state": {
+                "x": "0.108",
+                "distance": "1.301",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 144,
+              "state": {
+                "x": "0.161",
+                "distance": "1.501",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 160,
+              "time": 160,
+              "state": {
+                "x": "0.161",
+                "distance": "1.501",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 160,
+              "state": {
+                "x": "0.221",
+                "distance": "1.701",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 176,
+              "time": 176,
+              "state": {
+                "x": "0.221",
+                "distance": "1.701",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 176,
+              "state": {
+                "x": "0.287",
+                "distance": "1.902",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 192,
+              "time": 192,
+              "state": {
+                "x": "0.287",
+                "distance": "1.902",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 192,
+              "state": {
+                "x": "0.358",
+                "distance": "2.102",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 208,
+              "time": 208,
+              "state": {
+                "x": "0.358",
+                "distance": "2.102",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 208,
+              "state": {
+                "x": "0.434",
+                "distance": "2.303",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 224,
+              "time": 224,
+              "state": {
+                "x": "0.434",
+                "distance": "2.303",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 224,
+              "state": {
+                "x": "0.473",
+                "distance": "2.403",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 240,
+              "time": 240,
+              "state": {
+                "x": "0.473",
+                "distance": "2.403",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 240,
+              "state": {
+                "x": "0.554",
+                "distance": "2.603",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 256,
+              "time": 256,
+              "state": {
+                "x": "0.554",
+                "distance": "2.603",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 256,
+              "state": {
+                "x": "0.638",
+                "distance": "2.804",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 272,
+              "time": 272,
+              "state": {
+                "x": "0.638",
+                "distance": "2.804",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 272,
+              "state": {
+                "x": "0.725",
+                "distance": "3.004",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 288,
+              "time": 288,
+              "state": {
+                "x": "0.725",
+                "distance": "3.004",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 288,
+              "state": {
+                "x": "0.813",
+                "distance": "3.205",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          },
+          {
+            "before": {
+              "at": 304,
+              "time": 304,
+              "state": {
+                "x": "0.813",
+                "distance": "3.205",
+                "phase": "running",
+                "focused": true
+              }
+            },
+            "after": {
+              "at": 304,
+              "state": {
+                "x": "0.904",
+                "distance": "3.406",
+                "phase": "running",
+                "focused": true
+              }
+            }
+          }
+        ],
+        "blocked": 0
+      },
+      "originalThresholdPasses": true
+    }
+  ]
+}
