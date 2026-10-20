@@ -65,3 +65,28 @@ test('a contact already held outside the table blocks a new mouse stroke',async(
  await page.evaluate(()=>window.dispatchEvent(new PointerEvent('pointerup',{pointerId:99,pointerType:'pen'})));
  await cueDrag(page);await page.mouse.up();await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','1');
 });
+for(const transition of ['pause','Study'] as const)test(`native held touch remains a contact through ${transition} and blocks a new mouse stroke`,async({browser,browserName})=>{
+ test.skip(browserName!=='chromium','CDP supplies native mixed touch and mouse input in Chromium.');
+ const context=await browser.newContext({viewport:{width:1366,height:768},hasTouch:true});
+ try{
+  await context.addInitScript(()=>{
+   sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
+   const events:{type:string;trusted:boolean;pointerType:string}[]=[];Object.assign(window,{poolHeldContactEvents:events});
+   for(const type of ['pointerdown','pointerup','pointercancel'])window.addEventListener(type,event=>{const e=event as PointerEvent;events.push({type,trusted:e.isTrusted,pointerType:e.pointerType});},{capture:true});
+  });
+  const page=await context.newPage();await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');
+  const root=page.locator('.pool-game'),session=await context.newCDPSession(page),brand=(await page.locator('.pool-brand').boundingBox())!;
+  await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:brand.x+5,y:brand.y+brand.height/2,id:7}]});
+  await cueDrag(page);await page.mouse.up();expect(await root.getAttribute('data-shots')).toBe('0');
+  if(transition==='pause'){
+   await page.getByRole('button',{name:'Pause game',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Keep playing',exact:true}).focus();await page.keyboard.press('Enter');
+  }else{
+   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.getByRole('link',{name:'Games',exact:true}).focus();await page.keyboard.press('Enter');await expect(root).toBeVisible();
+  }
+  await cueDrag(page);await page.mouse.up();expect(await root.getAttribute('data-shots')).toBe('0');
+  const heldEvents=await page.evaluate(()=>(window as unknown as {poolHeldContactEvents:{type:string;trusted:boolean;pointerType:string}[]}).poolHeldContactEvents);
+  expect(heldEvents.every(e=>e.trusted)).toBe(true);expect(heldEvents.filter(e=>e.pointerType==='touch').map(e=>e.type)).toEqual(['pointerdown']);
+  await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});expect(await root.getAttribute('data-shots')).toBe('0');
+  await cueDrag(page);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');
+ }finally{await context.close();}
+});
