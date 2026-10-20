@@ -21,3 +21,17 @@ A shared departure check now validates both the stored live heading and first qu
 - [Second strict TypeScript](second-heading-typecheck.txt): pass.
 
 Broader verification of the initial 8ef fix remains historical to that source. No broad/browser rerun was performed for this extension before the requested targeted independent re-review.
+
+## Version-gated effect import correction
+
+A later actual-UI check of 03d4 exposed a separate presentation roundtrip issue: a converted lost save at time zero correctly had `foodAt: null`, but its v2 reload reimported serialized presenter age 200 and changed the model timestamp to −200. Pixels and semantic age were unchanged, but exact model restoration was violated. The retained migration marker is not the original save version.
+
+`index.restore` now passes whether the original raw data is version 1. `restorePresentation` defaults that authorization to false and imports optional legacy ages only when explicitly authorized. Version 2 always owns model timestamps, including null, active and expired values at time zero. Model/contact/input/geometry code is unchanged.
+
+- [Original UI whole-state failure](legacy-ui-v2-effect-reimport-failure.txt) is copied verbatim from the coordinator’s failed run; earlier initial analytic-coordinate harness strictness remains separately recorded by the coordinator.
+- [Unit red regression](effect-version-red.txt): **2 failed / 43 passed**, covering held and lost time-zero effect ownership.
+- [Focused units](effect-version-unit-tests.txt): **45 passed / 2 files**, including raw-v1 active/expired ages, nulls, ignored optional v2 metadata, exact model/view/pose restoration and retained previous migration/contact regressions.
+- [Strict TypeScript](effect-version-typecheck.txt): pass.
+- [Targeted Chromium](effect-version-browser-tests.txt): **2 passed (20.6 s)**. The existing continuous growth-save pixel case and a new six-scenario raw-v1 → time-zero-v2 reload matrix pass exact complete snapshots and canvas pixel equality for held/lost × null/active(80/30)/expired(200) ages.
+
+Earlier 03d4 broad results retain their exact-source provenance. Independent re-review of this narrow effect-version correction remains pending; no external publication occurred.

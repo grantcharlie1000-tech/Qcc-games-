@@ -120,7 +120,7 @@ const module:GameModule={
    resume(){paused=false;last=state.phase==='running'&&!state.migration?.held?performance.now():null;update();},restart(){reset();},serialize,
    restore(data){
     const valid=restoreState(data);
-    if(valid){state=valid;view=restorePresentation(state,(data as {presentation?:unknown}).presentation);last=state.phase==='running'&&!state.migration?.held?performance.now():null;gesture=null;update();render();}
+    if(valid){state=valid;view=restorePresentation(state,(data as {presentation?:unknown}).presentation,(data as {version?:unknown}).version===1);last=state.phase==='running'&&!state.migration?.held?performance.now():null;gesture=null;update();render();}
    },
    dispose(){disposed=true;events.abort();observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);container.replaceChildren();}
   };

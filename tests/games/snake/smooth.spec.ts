@@ -45,6 +45,16 @@ test('continuous authoritative travel, junction-buffered turn, frozen v2 save an
  await page.getByRole('button',{name:'Pause game',exact:true}).click();expect(await saved(page)).toEqual(grown);
 });
 
+test('raw legacy effect ages import once and time-zero v2 held/lost reload preserves exact state and pixels',async({page})=>{
+ await page.clock.install({time:new Date('2026-10-20T10:00:00Z')});await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
+ for(const phase of ['running','lost'])for(const presentation of [undefined,{foodAge:80,eatAge:30,eaten:{x:6,y:6}},{foodAge:200,eatAge:200,eaten:{x:6,y:6}}]){
+  const data={version:1,seed:7,body:[{x:5,y:phase==='lost'?0:6},{x:4,y:phase==='lost'?0:6},{x:3,y:phase==='lost'?0:6}],food:{x:9,y:9},direction:'up',queue:[],phase,score:0,elapsed:0,ticks:1,presentation};
+  await page.goto('/');await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:snake',JSON.stringify({version:1,data})),data);await page.goto('/#/game/snake');
+  const snapshot=await pause(page),frozen=await pixels(page);expect(snapshot.time).toBe(0);expect(snapshot.foodAt).toBe(presentation?-presentation.foodAge:null);expect(snapshot.ateAt).toBe(presentation?-presentation.eatAge:null);
+  await page.reload();await pause(page);expect(await saved(page)).toEqual(snapshot);expect(await pixels(page)).toBe(frozen);
+ }
+});
+
 test('a dropped RAF catches up to the same final grid and committed edge',async({page,browser})=>{
  async function scenario(target:Page,droppedFrame:boolean){
   await setup(target);await target.getByRole('button',{name:'Restart game',exact:true}).click();

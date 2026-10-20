@@ -1,0 +1,73 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+... Skipped lines
+
+  {
+    ateAt: null,
+    body: [
+      {
+        x: 5,
+...
+    },
++   foodAt: -200,
+-   foodAt: null,
+    growth: 0,
+    legStart: {
+      x: 5,
+      y: 0
+    },
+
+    at file:///tmp/qcc-snake-post-audit-ui.mjs:28:431 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: {
+    version: 2,
+    seed: 7,
+    body: [ { x: 5, y: 0 }, { x: 4, y: 0 }, { x: 3, y: 0 } ],
+    food: { x: 9, y: 9 },
+    direction: 'up',
+    queue: [],
+    phase: 'lost',
+    score: 0,
+    segments: 3,
+    elapsed: 0,
+    ticks: 1,
+    legStart: { x: 5, y: 0 },
+    growth: 0,
+    time: 0,
+    foodAt: -200,
+    ateAt: null,
+    eaten: null,
+    migration: { elapsed: 0, held: false },
+    presentation: { foodAge: 200, eatAge: 200, eaten: null }
+  },
+  expected: {
+    version: 2,
+    seed: 7,
+    body: [ { x: 5, y: 0 }, { x: 4, y: 0 }, { x: 3, y: 0 } ],
+    food: { x: 9, y: 9 },
+    direction: 'up',
+    queue: [],
+    phase: 'lost',
+    score: 0,
+    segments: 3,
+    elapsed: 0,
+    ticks: 1,
+    legStart: { x: 5, y: 0 },
+    growth: 0,
+    time: 0,
+    foodAt: null,
+    ateAt: null,
+    eaten: null,
+    migration: { elapsed: 0, held: false },
+    presentation: { foodAge: 200, eatAge: 200, eaten: null }
+  },
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

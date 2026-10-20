@@ -1,0 +1,17 @@
+
+ RUN  v3.2.7 /workspace/qcc-snake
+
+ ✓ tests/games/snake/presentation.test.ts (7 tests) 19ms
+ ✓ tests/games/snake/model.test.ts (38 tests) 461ms
+   ✓ Snake continuous authoritative model > completes a full-garden cycle at all 256 earned segments with large and mixed frame partitions  375ms
+
+ Test Files  2 passed (2)
+      Tests  45 passed (45)
+   Start at  11:51:29
+   Duration  785ms (transform 148ms, setup 0ms, collect 211ms, tests 479ms, environment 0ms, prepare 133ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

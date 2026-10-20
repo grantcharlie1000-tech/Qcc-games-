@@ -9,9 +9,9 @@ export function savePresentation(view:SnakePresentation):{foodAge:number;eatAge:
  const age=(at:number)=>Number.isFinite(at)?Math.min(200,Math.max(0,view.time-at)):200;
  return {foodAge:age(view.foodAt),eatAge:age(view.ateAt),eaten:age(view.ateAt)<200&&view.eaten?{...view.eaten}:null};
 }
-export function restorePresentation(s:SnakeState,value:unknown):SnakePresentation{
- // v2 owns effects. Legacy metadata is optional and cannot change geometry/progress.
- if(s.migration&&value&&typeof value==='object'&&s.time===0){
+export function restorePresentation(s:SnakeState,value:unknown,legacy=false):SnakePresentation{
+ // Only the original raw v1 discriminator authorizes import; v2 owns effects even at time zero.
+ if(legacy&&s.migration&&value&&typeof value==='object'&&s.time===0){
   const p=value as {foodAge?:unknown;eatAge?:unknown;eaten?:Cell};
   const age=(n:unknown):n is number=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=200;
   if(age(p.foodAge))s.foodAt=-p.foodAge;

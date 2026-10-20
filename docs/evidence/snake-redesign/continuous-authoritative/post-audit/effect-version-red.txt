@@ -1,0 +1,55 @@
+
+ RUN  v3.2.7 /workspace/qcc-snake
+
+ ❯ tests/games/snake/presentation.test.ts (7 tests | 2 failed) 25ms
+   ✓ Snake authoritative continuous presentation > uses exactly the moving model path in both motion policies, retaining orthogonal corners 4ms
+   ✓ Snake authoritative continuous presentation > reports contacts and effect ages even when no junction tick was crossed 1ms
+   ✓ Snake authoritative continuous presentation > freezes fractional position/effects when no active time is delivered and restores v2 effects 2ms
+   ✓ Snake authoritative continuous presentation > accepts legacy optional effects without using old interpolation history as position 0ms
+   × Snake authoritative continuous presentation > keeps v2 time-zero running model effects exact instead of reimporting optional presenter metadata 12ms
+     → expected { version: 2, seed: 334414, …(16) } to deeply equal { version: 2, seed: 334414, …(16) }
+   × Snake authoritative continuous presentation > keeps v2 time-zero lost model effects exact instead of reimporting optional presenter metadata 3ms
+     → expected { version: 2, seed: 334414, …(16) } to deeply equal { version: 2, seed: 334414, …(16) }
+   ✓ Snake authoritative continuous presentation > round-trips migrated legacy active/expired effect ages through a v2 save 1ms
+ ✓ tests/games/snake/model.test.ts (38 tests) 477ms
+   ✓ Snake continuous authoritative model > completes a full-garden cycle at all 256 earned segments with large and mixed frame partitions  391ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/games/snake/presentation.test.ts > Snake authoritative continuous presentation > keeps v2 time-zero running model effects exact instead of reimporting optional presenter metadata
+ FAIL  tests/games/snake/presentation.test.ts > Snake authoritative continuous presentation > keeps v2 time-zero lost model effects exact instead of reimporting optional presenter metadata
+AssertionError: expected { version: 2, seed: 334414, …(16) } to deeply equal { version: 2, seed: 334414, …(16) }
+
+- Expected
++ Received
+
+@@ -19,11 +19,11 @@
+    "elapsed": 0,
+    "food": {
+      "x": 9,
+      "y": 6,
+    },
+-   "foodAt": null,
++   "foodAt": -200,
+    "growth": 0,
+    "legStart": {
+      "x": 5,
+      "y": 6,
+    },
+
+ ❯ tests/games/snake/presentation.test.ts:15:22
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 43 passed (45)
+   Start at  11:50:51
+   Duration  803ms (transform 202ms, setup 0ms, collect 223ms, tests 502ms, environment 0ms, prepare 168ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

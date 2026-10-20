@@ -4,6 +4,8 @@ The later authorization allows locked-leg continuous travel and a changed input 
 
 Post-audit legacy validation correction: **39 focused unit tests / 2 files** and strict TypeScript pass. The red run reproduced both ready/running reverse-heading v1 acceptance failures. The minimal migration guard rejects those malformed live saves while preserving perpendicular headings and fatal lost directions through v2 reload; no contact/input/render behavior changed. See `docs/evidence/snake-redesign/continuous-authoritative/post-audit/README.md`. That initial 8ef correction’s re-review found related first-queued-turn/startup cases. The subsequent guard checks the prospective first executed heading before mutating ready/held state; stored unsafe first turns are rejected and later queued turns retain priority. Fresh verification passes **43 focused unit tests / 2 files** and TypeScript; the second red run records 3 failures / 40 passes. Targeted re-review of this extension remains pending.
 
+A subsequent actual-UI check found time-zero v2 presentation metadata was being reimported via the retained migration marker. The restore boundary now imports optional legacy ages only for original raw v1 saves. Fresh focused verification: **45 unit tests / 2 files**, strict TypeScript and **2 targeted Chromium cases (20.6 s)** pass, including six held/lost × null/active/expired whole-state and pixel reload cases. The original UI failure and red regression are retained under `post-audit/effect-version-*` and `legacy-ui-v2-effect-reimport-failure.txt`. Model/contact/input/geometry code is unchanged; narrow independent re-review remains pending.
+
 ---
 
 # Post-audit local checkpoint — 2026-10-20
