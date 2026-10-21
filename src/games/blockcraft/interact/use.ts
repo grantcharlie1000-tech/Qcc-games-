@@ -59,7 +59,8 @@ export function releaseItemUse(game:Game,u:ItemUse):void{
 
 // ---- Projectiles --------------------------------------------------------------------------------------------------
 /** Spawns a player projectile from the eye (vanilla Projectile.shootFromRotation): direction plus triangular spread,
- *  `speed` blocks/second, plus the player's motion (vertical only while airborne). */
+ *  `speed` blocks/second, plus the player's motion (vertical only while airborne). It faces its spread direction, as
+ *  Projectile.shoot turns it (yaw 0 looks -z, pitch up-positive). Data follows the shared kinds' contract (owner 'player'). */
 export function launchProjectile(game:Game,kind:string,speed:number,inaccuracy:number,data:Record<string,unknown>):Entity|null{
   const p=game.player.state,eye=game.player.eye(),l=game.player.look(),r=rng(game);
   const spread=()=>(r()-r())*.0172275*inaccuracy;
@@ -68,7 +69,8 @@ export function launchProjectile(game:Game,kind:string,speed:number,inaccuracy:n
   const e=game.entities.spawn(kind,eye.x,eye.y-.1,eye.z,{data:{owner:'player',...data},reason:'event',yaw:p.yaw});
   if(!e)return null;
   e.vx=dx*speed+p.vx;e.vy=dy*speed+(p.onGround?0:p.vy);e.vz=dz*speed+p.vz;
-  e.yaw=p.yaw;e.pitch=p.pitch;
+  const h=Math.hypot(dx,dz);
+  e.yaw=h>1e-9?Math.atan2(-dx,-dz):p.yaw;e.headYaw=e.yaw;e.pitch=Math.atan2(dy,h);
   return e;
 }
 /** Snowballs, eggs and ender pearls: 1.5 blocks/tick (30 blocks/second). */
@@ -185,7 +187,7 @@ export function useItemOn(game:Game,hand:Hand,hit:Hit,s:ItemStack):Result{
     case 'hoe':{
       const to=TILLABLE[block.family];
       if(!to||hit.ny===-1||w.get(x,y+1,z)!==AIR||!w.set(x,y,z,blockId(to),'player'))return 'pass';
-      game.sounds.play('place:gravel',{x:x+.5,y:y+1,z:z+.5});
+      game.sounds.play('till',{x:x+.5,y:y+.5,z:z+.5});
       hand.damage(1);return 'success';
     }
     case 'bone_meal':{
@@ -196,7 +198,8 @@ export function useItemOn(game:Game,hand:Hand,hit:Hit,s:ItemStack):Result{
   }
   if(def.tool?.kind==='axe'&&SCRAPE[block.family]){
     if(!w.set(x,y,z,blockId(SCRAPE[block.family]),'player'))return 'pass';
-    game.sounds.play('hit:metal',{x:x+.5,y:y+.5,z:z+.5});
+    // AxeItem: AXE_SCRAPE and the scrape particles of level event 3005.
+    game.sounds.play('scrape',{x:x+.5,y:y+.5,z:z+.5});
     game.render.spawnParticles('spell',x+.5,y+.5,z+.5,{count:12,spread:.55,color:0xd8f0e8});
     hand.damage(1);return 'success';
   }
@@ -282,7 +285,8 @@ export function boneMeal(game:Game,x:number,y:number,z:number):boolean{
   }else if(d.family==='moss_block'&&w.get(x,y+1,z)===AIR){
     growMoss(game,x,y,z);used=true;
   }
-  if(used)game.render.spawnParticles('happy',x+.5,y+.5,z+.5,{count:15,spread:.6});
+  // Level event 1505: growth particles and the bone meal sound.
+  if(used){game.render.spawnParticles('happy',x+.5,y+.5,z+.5,{count:15,spread:.6});game.sounds.play('bone_meal',{x:x+.5,y:y+.5,z:z+.5});}
   return used;
 }
 /** GrassBlock.performBonemeal: 128 random walks over grass from the block above, planting short grass and 1 in 8 flowers. */
