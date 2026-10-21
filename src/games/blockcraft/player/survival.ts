@@ -71,7 +71,7 @@ export function createSurvival(game:Game):SurvivalSystem{
   /** LivingEntity.lastClimbablePos: climbed a ladder since last standing on the ground ("fell off a ladder"). */
   let climbed=false;
   const effects=new StatusEffects();
-  let offRestored:(()=>void)|null=null;
+  let offRestored:(()=>void)|null=null,offWorldReset:(()=>void)|null=null;
 
   const creative=()=>game.settings.mode==='creative';
   const state=()=>game.player.state;
@@ -456,15 +456,19 @@ export function createSurvival(game:Game):SurvivalSystem{
     },
     kill,
     init(){
-      // A world saved on the death screen shows it again once loaded (the drops already happened).
-      offRestored=game.events.on('restored',()=>{if(dead)game.events.emit('playerDied',{message:lastMessage||'You died'});});
+      // Joining a world (ServerPlayer.spawnInvulnerableTime) protects for 3 seconds of play, like respawning. A world saved
+      // on the death screen shows it again once loaded instead (the drops already happened).
+      offRestored=game.events.on('restored',()=>{
+        if(dead)game.events.emit('playerDied',{message:lastMessage||'You died'});else spawnProtection=SPAWN_PROTECTION_TICKS;
+      });
+      offWorldReset=game.events.on('worldReset',()=>{if(!dead)spawnProtection=SPAWN_PROTECTION_TICKS;});
     },
     tick,frame,
     reset(){fresh();xpLevel=0;xpPoints=0;xpTotal=0;spawnProtection=0;age=0;lastLevelUp=-1000;},
     serialize:()=>({health,food,saturation,exhaustion,foodTimer,air,absorption,xpLevel,xpPoints,xpTotal,fire:fireTicks,
       effects:effects.serialize(),dead,...(dead?{deathMessage:lastMessage}:{})}),
     restore,
-    dispose(){offRestored?.();offRestored=null;}
+    dispose(){offRestored?.();offWorldReset?.();offRestored=offWorldReset=null;}
   };
   return service;
 }

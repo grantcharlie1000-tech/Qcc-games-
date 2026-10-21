@@ -436,6 +436,13 @@ describe('persistence',()=>{
     b.game.events.emit('restored',{});
     expect(b.died).toEqual(['You drowned']);expect(b.dropAll).not.toHaveBeenCalled();
   });
+  it('joining a loaded or new world gives the 3-second spawn protection (ServerPlayer.spawnInvulnerableTime)',()=>{
+    const loaded=calm();loaded.game.events.emit('restored',{});
+    expect(loaded.died).toEqual([]);expect(loaded.s.damage(5,{kind:'mob'})).toBe(0);expect(loaded.s.damage(4,{kind:'void'})).toBe(4);
+    loaded.tick(60);expect(loaded.s.damage(5,{kind:'mob'})).toBe(5);
+    const fresh=calm();fresh.s.reset();fresh.game.events.emit('worldReset',{});expect(fresh.s.spawnProtection).toBe(60);
+    fresh.s.dispose();fresh.s.reset();fresh.game.events.emit('worldReset',{});expect(fresh.s.spawnProtection).toBe(0);// listeners freed
+  });
   it('reset starts a fresh world',()=>{
     const {s}=calm();s.addXp(100);s.damage(4,{kind:'mob'});s.reset();
     expect([s.health,s.food,s.xpLevel,s.dead]).toEqual([20,20,0,false]);expect(s.damage(3,{kind:'mob'})).toBe(3);
