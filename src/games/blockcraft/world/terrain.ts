@@ -93,7 +93,7 @@ const POOR_SPAWN=new Set(['beach','mushroom_fields'].map(biomeId));
 const DESERT=biomeId('desert');
 const NO_PORTAL=new Set(['ocean','deep_ocean','river','frozen_river','beach','swamp','mushroom_fields'].map(biomeId));
 /** Chance per chunk of a desert well (in deserts) and a ruined portal (on dry land). */
-export const WELL_CHANCE=1/80,PORTAL_CHANCE=1/300;
+export const WELL_CHANCE=1/64,PORTAL_CHANCE=1/300;
 const COLUMN_CACHE=1<<15,CACHE_LIMIT=40000;
 const columnKey=(x:number,z:number)=>(x+0x100000)*0x200000+(z+0x100000);
 
@@ -200,7 +200,7 @@ export class TerrainGenerator implements TerrainService{
     if(roll<WELL_CHANCE){
       const x=x0+3+Math.floor(r(1)*10),z=z0+3+Math.floor(r(2)*10),y=this.heightAt(x,z);
       const spread=range(x-2,x+2,z-2,z+2,(h,b)=>b===DESERT&&h>SEA_LEVEL);
-      return spread>=0&&spread<=1?desertWell(x,y,z,hashInt(cx,0x3e11,cz,seed)):null;
+      return spread>=0&&spread<=3?desertWell(x,y,z,hashInt(cx,0x3e11,cz,seed)):null;
     }
     if(roll<WELL_CHANCE+PORTAL_CHANCE){
       const alongX=r(3)<.5,x=x0+3+Math.floor(r(4)*(alongX?7:10)),z=z0+3+Math.floor(r(5)*(alongX?10:7));

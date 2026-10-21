@@ -33,10 +33,46 @@ function region(t:TerrainGenerator,cx:number,cz:number,r=1){
 }
 const TREE_BIOMES=['forest','birch_forest','dark_forest','taiga','snowy_taiga','jungle','savanna','cherry_grove','plains','swamp','mountains'];
 
+describe('tree shapes',()=>{
+  const shapes:[TreeKind,boolean][]=[['oak',false],['big_oak',false],['birch',false],['spruce',false],['mega_spruce',true],['jungle',false],['jungle',true],
+    ['jungle_bush',false],['acacia',false],['dark_oak',true],['dark_oak',false],['cherry',false]];
+  test('every shape stays within reach, keeps every leaf within decay distance and connects every log to the trunk',()=>{
+    const key=(x:number,y:number,z:number)=>(x+64)*16384+(y+64)*128+(z+64);
+    const problems:string[]=[];
+    for(const [kind,wide] of shapes)for(let seed=1;seed<=100;seed++){
+      const name=`${kind}${wide?' (2x2)':''} seed ${seed}`,logs=new Set<number>(),leaves=new Set<number>();
+      let reach=0,low=0,high=0;
+      const note=(x:number,y:number,z:number)=>{reach=Math.max(reach,Math.abs(x),Math.abs(z));low=Math.min(low,y);high=Math.max(high,y);};
+      planTree(kind,0,0,0,mulberry32(seed*7919),{log:(x,y,z)=>{logs.add(key(x,y,z));note(x,y,z);},leaf:(x,y,z)=>{leaves.add(key(x,y,z));note(x,y,z);}},wide);
+      if(!logs.has(key(0,0,0)))problems.push(`${name}: no log at the base`);
+      if(reach>TREE_REACH)problems.push(`${name}: reach ${reach}`);
+      if(low<0||high>=40)problems.push(`${name}: height ${low}..${high}`);
+      // Leaf distance: taxicab steps through the tree's own leaves from the nearest log.
+      for(const k of logs)leaves.delete(k);
+      const dist=new Map<number,number>(),queue:number[]=[];
+      for(const k of logs){dist.set(k,0);queue.push(k);}
+      for(let q=0;q<queue.length;q++){
+        const k=queue[q],d=dist.get(k)!;
+        for(const n of [k+16384,k-16384,k+128,k-128,k+1,k-1])if(leaves.has(n)&&!dist.has(n)){dist.set(n,d+1);queue.push(n);}
+      }
+      let far=0;for(const k of leaves)far=Math.max(far,dist.get(k)??99);
+      if(far>LEAF_DECAY_DISTANCE)problems.push(`${name}: leaf ${far} from a log`);
+      // Logs: one 26-connected piece containing the trunk base.
+      const seen=new Set([key(0,0,0)]),stack=[key(0,0,0)];
+      while(stack.length){const k=stack.pop()!;
+        for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++){const n=k+dx*16384+dy*128+dz;if(logs.has(n)&&!seen.has(n)){seen.add(n);stack.push(n);}}}
+      if(seen.size!==logs.size)problems.push(`${name}: ${logs.size-seen.size} detached logs`);
+      if(wide&&![[1,0],[0,1],[1,1]].every(([x,z])=>logs.has(key(x,0,z))))problems.push(`${name}: no 2x2 trunk`);
+    }
+    expect(problems.slice(0,10)).toEqual([]);
+  });
+});
+
 describe('generated trees',()=>{
   test('every tree kind of every biome is generated',()=>{
     const kinds=new Set<string>();
-    for(const b of BIOMES)for(const [cx,cz] of b.trees.length?chunksIn(b.name,6):[])
+    // Sparse biomes (savanna, plains) need more chunks to show every kind.
+    for(const b of BIOMES)for(const [cx,cz] of b.trees.length?chunksIn(b.name,Math.max(6,Math.ceil(30/b.treeDensity))):[])
       for(let z=0;z<CS;z++)for(let x=0;x<CS;x++){const tree=T.treeAt(cx*CS+x,cz*CS+z);if(tree)kinds.add(tree.kind);}
     for(const kind of ['oak','big_oak','birch','spruce','mega_spruce','jungle','jungle_bush','acacia','dark_oak','cherry'])expect(kinds.has(kind),kind).toBe(true);
   });

@@ -48,7 +48,7 @@ const list:Omit<BiomeDef,'id'|'precipitation'>[]=[
     vegetation:[['short_grass',.02]],animals:[['sheep',4],['rabbit',10]],sky:0x7fa1ff,snowy:true},
   {name:'desert',displayName:'Desert',temperature:2,downfall:0,grass:0xbfb755,foliage:0xaea42a,water:0x32a598,top:'sand',filler:'sand',underwater:'sand',treeDensity:0,trees:[],
     vegetation:[['dead_bush',.008],['cactus',.025],['sugar_cane',.15]],animals:[['rabbit',4]],sky:0x6eb1ff,snowy:false},
-  {name:'savanna',displayName:'Savanna',temperature:1.2,downfall:0,grass:0xbfb755,foliage:0xaea42a,water:0x2c8b9c,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:.8,trees:[['acacia',1],['oak',.2]],
+  {name:'savanna',displayName:'Savanna',temperature:1.2,downfall:0,grass:0xbfb755,foliage:0xaea42a,water:0x2c8b9c,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:1.2,trees:[['acacia',1],['oak',.2]],
     vegetation:[['short_grass',.3],['sugar_cane',.06]],animals:[['cow',8],['sheep',8],['chicken',6]],sky:0x6eb1ff,snowy:false},
   {name:'jungle',displayName:'Jungle',temperature:.95,downfall:.9,grass:0x59c93c,foliage:0x30bb0b,water:0x14a2c5,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:14,trees:[['jungle',2],['jungle_bush',3],['oak',.5]],
     vegetation:[['short_grass',.25],['fern',.1],['melon',.004],['sugar_cane',.12]],animals:[['chicken',8],['pig',4]],sky:0x77a8ff,snowy:false},
