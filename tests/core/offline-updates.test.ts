@@ -129,3 +129,33 @@ test('a stale offered-build reply cannot authorize reload after another controll
  await expect(module.activateUpdate()).rejects.toThrow('changed');
 });
 
+
+test('activation does not wake the already-checked predecessor after requesting its replacement',async()=>{
+ const {module,registration,sw}=await setup();const initial=sw.controller,next=waitingWorker();registration.waiting=next;
+ module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());await module.checkForUpdates();
+ let requested=false,oldQueriesAfterRequest=0;const oldSend=initial.postMessage,nextSend=next.postMessage;
+ initial.postMessage=(message,ports)=>{if(requested&&message.type==='ARCADE_VERSION')oldQueriesAfterRequest++;oldSend(message,ports);};
+ next.postMessage=vi.fn((message,ports)=>{if(message.type==='ARCADE_ACTIVATE')requested=true;nextSend(message,ports);});
+ const activation=module.activateUpdate();await vi.waitFor(()=>expect(requested).toBe(true));
+ const observed=oldQueriesAfterRequest;
+ next.state='activated';sw.controller=next as any;registration.waiting=undefined;sw.dispatchEvent(new Event('controllerchange'));await activation;
+ expect(observed).toBe(0);
+});
+
+test('a redundant offered worker rejects while the original controller remains unchanged',async()=>{
+ const {module,registration,sw}=await setup();const initial=sw.controller,next=waitingWorker();registration.waiting=next;
+ module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());await module.checkForUpdates();
+ const activation=module.activateUpdate(),failure=expect(activation).rejects.toThrow('changed');
+ await vi.waitFor(()=>expect(next.postMessage.mock.calls.some(([m])=>m.type==='ARCADE_ACTIVATE')).toBe(true));
+ next.state='redundant';next.dispatchEvent(new Event('statechange'));await failure;expect(sw.controller).toBe(initial);
+});
+
+test('a stale controller reply after explicit activation does not authorize a reload',async()=>{
+ const {module,registration,sw}=await setup();const next=waitingWorker();registration.waiting=next;
+ module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());await module.checkForUpdates();
+ const activation=module.activateUpdate(),failure=expect(activation).rejects.toThrow('changed');
+ await vi.waitFor(()=>expect(next.postMessage.mock.calls.some(([m])=>m.type==='ARCADE_ACTIVATE')).toBe(true));
+ const send=next.postMessage.getMockImplementation()!;
+ next.postMessage.mockImplementation((message,ports)=>{if(message.type==='ARCADE_VERSION'){const replacement=waitingWorker('https://arcade.test/assets/replacement.js');replacement.state='activated';sw.controller=replacement as any;}send(message,ports);});
+ next.state='activated';sw.controller=next as any;registration.waiting=undefined;sw.dispatchEvent(new Event('controllerchange'));await failure;
+});

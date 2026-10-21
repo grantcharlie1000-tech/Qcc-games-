@@ -71,7 +71,9 @@ export async function activateUpdate():Promise<void>{
     const finish=(error?:Error)=>{if(finished)return;finished=true;clearTimeout(timer);navigator.serviceWorker.removeEventListener('controllerchange',verify);target.worker.removeEventListener('statechange',verify);error?reject(error):resolve();};
     const verify=()=>{void (async()=>{
       const controller=navigator.serviceWorker.controller;
-      if(controller){const active=await build(controller);if(active.version===target.version&&active.entry===target.entry){finish();return;}}
+      // The initial worker was already checked and cannot change its build.
+      // Do not wake a retiring predecessor while waiting for its replacement.
+      if(controller&&controller!==initial){const active=await build(controller);if(navigator.serviceWorker.controller===controller&&active.version===target.version&&active.entry===target.entry){finish();return;}}
       if(target.worker.state==='redundant'||controller!==initial)finish(new Error('The update changed. Try again when online.'));
     })().catch(()=>{});};
     const timer=setTimeout(()=>finish(new Error('The update could not start. Try again when online.')),12000);
