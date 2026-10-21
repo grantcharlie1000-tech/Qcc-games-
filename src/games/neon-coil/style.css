@@ -1,5 +1,5 @@
 /* This arena owns its viewport. All host overrides are scoped to its separate ID. */
-body.in-game .game-view[data-game-id=neon-coil]{display:block;padding:0;background:#0c1727;--scene-width:100vw}
+body.in-game .game-view[data-game-id=neon-coil]{display:block;padding:0;background:#0c1727;--scene-width:var(--play-width,100vw)}
 body.in-game .game-view[data-game-id=neon-coil] .stage-wrap,
 body.in-game .game-view[data-game-id=neon-coil] #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:block}
 body.in-game .game-view[data-game-id=neon-coil] .game-metrics{display:none}

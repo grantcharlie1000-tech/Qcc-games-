@@ -3,6 +3,8 @@ import {scoredGame,validName,validScore,readBoard,type Board} from './shared';
 interface Storage {read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean}
 interface Profile {token:string;name:string}
 export class LeaderboardSync {
+ private listeners=new Set<(game:string)=>void>();
+ onSynced(listener:(game:string)=>void){this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
  private pending:Record<string,number>={};private sent:Record<string,number>={};
  private timer:ReturnType<typeof setTimeout>|undefined;private inFlight:Promise<void>|null=null;
  readonly endpoint='/.netlify/functions/leaderboard';
@@ -39,6 +41,7 @@ export class LeaderboardSync {
    this.sent[game]=Math.max(score,this.sent[game]??0);this.storage.write('leaderboard:sent',this.sent);
    if(this.pending[game]===score&&this.profile()?.name===profile.name)delete this.pending[game];
    this.storage.write('leaderboard:pending',this.pending);
+   for(const listener of this.listeners)listener(game);
   }
  }
  async load(game:string):Promise<Board>{
