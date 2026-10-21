@@ -5,11 +5,11 @@
 import {AIR,B,OUTLINE_BOX,SOLID,blockDef,isLiquid,type BlockId} from '../data/blocks';
 import {ITEMS,itemDef,stack,type ItemStack} from '../data/items';
 import type {BlockSource,Entity,Game,InteractionService,RayHit} from '../engine/contracts';
-export {traceOutline};
 import {createCombat} from './combat';
 import {blockXp,canHarvest,lootDrops} from './loot';
 import {acted,mainHand,offHand,traceOutline,type Hand,type Hit,type Result} from './use-hands';
 import {bowPower,releaseItemUse,tickItemUse,useBlock,useItem,useItemOn,useOnEntity,useProgress,type ItemUse} from './use';
+export {traceOutline};
 
 export const REACH=4.5,CREATIVE_REACH=5,ENTITY_REACH=3;
 /** Delay ticks after a break: survival waits 5 ticks after a mined block (vanilla); creative repeats every 4 ticks (200 ms)
@@ -83,6 +83,7 @@ export function createInteraction(game:Game):InteractionService{
   let using:ItemUse|null=null;const usingView={item:'',progress:0};
   let fovScaled=false,editToast=false;
   const creative=()=>game.settings.mode==='creative';
+  const random=()=>game.random();
   const heldId=()=>game.inventory.held()?.id??null;
   const isSword=(s:ItemStack|null)=>!!s&&itemDef(s.id)?.tool?.kind==='sword';
 
@@ -122,8 +123,8 @@ export function createInteraction(game:Game):InteractionService{
     const def=blockDef(id),held=game.inventory.held(),survival=!creative();
     const partner=partnerOf(w,x,y,z,def);
     if(!w.set(x,y,z,AIR,'player')){if(w.editsFull&&!editToast){editToast=true;game.ui.toast('This world cannot hold more changes');}return;}
-    const drops=survival?lootDrops(id,held,game.random):[];
-    if(partner&&w.set(partner.x,partner.y,partner.z,AIR,'player')&&survival)drops.push(...lootDrops(partner.id,null,game.random));
+    const drops=survival?lootDrops(id,held,random):[];
+    if(partner&&w.set(partner.x,partner.y,partner.z,AIR,'player')&&survival)drops.push(...lootDrops(partner.id,null,random));
     if(survival&&def.family==='ice'){const below=w.get(x,y-1,z);if(below>0&&(SOLID[below]||isLiquid(below)))w.set(x,y,z,B.water,'player');}
     const centre={x:x+.5,y:y+.5,z:z+.5};
     if(def.family==='fire')game.sounds.play('fizz',centre,{volume:.5,pitch:2.6});
@@ -132,7 +133,7 @@ export function createInteraction(game:Game):InteractionService{
     game.stats.mined++;
     game.events.emit('blockBroken',{x,y,z,id,byPlayer:true});
     if(!survival)return;
-    const r=game.random;
+    const r=random;
     for(const s of drops)game.entities.dropItem(s,x+.5+(r()-.5)*.5,y+.5+(r()-.5)*.5-.125,z+.5+(r()-.5)*.5,{x:(r()*.2-.1)*20,y:4,z:(r()*.2-.1)*20});
     const xp=canHarvest(id,held)?blockXp(id,r):0;
     if(xp>0)game.entities.dropXp(xp,centre.x,centre.y,centre.z);
@@ -260,7 +261,7 @@ export function createInteraction(game:Game):InteractionService{
     get attackCharge(){return combat.charge(partial);},
     get using(){return using?usingView:null;},
     get breaking(){return breaking;},
-    blockDrops:(id,tool)=>lootDrops(id,tool,game.random),
+    blockDrops:(id,tool)=>lootDrops(id,tool,random),
     frame(dt){
       partial=Math.min(1,partial+dt*20);
       updateTarget();showSelection();

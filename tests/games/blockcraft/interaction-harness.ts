@@ -118,6 +118,9 @@ export interface Harness{
 }
 export function createHarness(options:{mode?:'survival'|'creative';ground?:number;block?:number;seed?:number}={}):Harness{
   const game=createFakeGame({mode:options.mode,random:seeded(options.seed??1)});
+  // The engine's random() is a method that needs its `this`: catch callers that pass it around unbound.
+  const rng=seeded(options.seed??1);
+  game.random=function(this:unknown){if(this!==game)throw new Error('game.random called unbound');return rng();};
   game.flat(options.ground??60,options.block,1);
   const inv=createTestInventory(game);game.inventory=inv;
   const ents=createTestEntities(game);game.entities=ents;

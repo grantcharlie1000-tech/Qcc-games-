@@ -11,6 +11,9 @@ import {between,lootDrops} from './loot';
 import {applyPlan,obstructed,placeBlock,type Cell} from './placement';
 import {fillHand,isSource,lookHit,type Hand,type Hit,type Result} from './use-hands';
 
+/** game.random as a free function (the engine's random() is a method). */
+const rng=(game:Game)=>()=>game.random();
+
 // ---- Using items over time (eating, drinking, drawing a bow, raising a shield) --------------------------------------
 export type UseKind='eat'|'drink'|'bow'|'shield';
 export interface ItemUse{item:string;hand:Hand;kind:UseKind;ticks:number;duration:number}
@@ -36,7 +39,7 @@ export function tickItemUse(game:Game,u:ItemUse):boolean{
 }
 function mouth(game:Game):Vec3{const e=game.player.eye(),l=game.player.look();return{x:e.x+l.x*.5,y:e.y+l.y*.5-.15,z:e.z+l.z*.5};}
 function useEffects(game:Game,u:ItemUse,particles:number){
-  const at=mouth(game),r=game.random;
+  const at=mouth(game),r=rng(game);
   if(u.kind==='drink'){game.sounds.play('drink',at,{volume:.5,pitch:r()*.1+.9});return;}
   game.sounds.play('eat',at,{volume:.5+.5*(r()<.5?0:1),pitch:(r()-r())*.2+1});
   game.render.spawnParticles('item',at.x,at.y,at.z,{item:u.item,count:particles,spread:.1,velocity:{x:0,y:1,z:0}});
@@ -58,7 +61,7 @@ export function releaseItemUse(game:Game,u:ItemUse):void{
 /** Spawns a player projectile from the eye (vanilla Projectile.shootFromRotation): direction plus triangular spread,
  *  `speed` blocks/second, plus the player's motion (vertical only while airborne). */
 export function launchProjectile(game:Game,kind:string,speed:number,inaccuracy:number,data:Record<string,unknown>):Entity|null{
-  const p=game.player.state,eye=game.player.eye(),l=game.player.look(),r=game.random;
+  const p=game.player.state,eye=game.player.eye(),l=game.player.look(),r=rng(game);
   const spread=()=>(r()-r())*.0172275*inaccuracy;
   const len=Math.hypot(l.x,l.y,l.z)||1;
   const dx=l.x/len+spread(),dy=l.y/len+spread(),dz=l.z/len+spread();
@@ -245,7 +248,7 @@ function weighted(list:readonly (readonly [string,number])[],r:()=>number):strin
   return list[list.length-1]?.[0];
 }
 function saplingTree(game:Game,x:number,y:number,z:number,d:BlockDef):boolean{
-  const w=game.world,wood=d.family.replace(/_sapling$/,'') as WoodType,r=game.random;
+  const w=game.world,wood=d.family.replace(/_sapling$/,'') as WoodType,r=rng(game);
   // 2×2 saplings grow mega spruce and dark oak (dark oak only grows from 2×2).
   if(wood==='spruce'||wood==='dark_oak'){
     for(const [ox,oz] of [[0,0],[-1,0],[0,-1],[-1,-1]]){
@@ -265,7 +268,7 @@ function saplingTree(game:Game,x:number,y:number,z:number,d:BlockDef):boolean{
 /** BoneMealItem.useOn: returns true when the bone meal is used up (a valid target, even if a sapling does not grow). */
 export function boneMeal(game:Game,x:number,y:number,z:number):boolean{
   const w=game.world,id=w.get(x,y,z);if(id<=0)return false;
-  const d=blockDef(id),r=game.random;
+  const d=blockDef(id),r=rng(game);
   let used=false;
   if(d.shape==='crop'&&d.age!==undefined&&d.age<(d.maxAge??7)){
     const age=bonemealAge(d,between(r,2,5));
@@ -283,7 +286,7 @@ export function boneMeal(game:Game,x:number,y:number,z:number):boolean{
 }
 /** GrassBlock.performBonemeal: 128 random walks over grass from the block above, planting short grass and 1 in 8 flowers. */
 function growGrass(game:Game,x:number,y:number,z:number){
-  const w=game.world,r=game.random,grass=B.grass,biome=BIOMES[w.biomeAt(x,z)];
+  const w=game.world,r=rng(game),grass=B.grass,biome=BIOMES[w.biomeAt(x,z)];
   const flowers=(biome?.vegetation??[]).filter(([n])=>FLOWERS.has(n));
   const pool=flowers.length?flowers:[['dandelion',2],['poppy',1]] as const;
   attempts:for(let i=0;i<128;i++){
@@ -300,7 +303,7 @@ function growGrass(game:Game,x:number,y:number,z:number){
 }
 /** MossBlock.performBonemeal: spreads moss over stone, dirt and grass around it with some short grass on top. */
 function growMoss(game:Game,x:number,y:number,z:number){
-  const w=game.world,r=game.random,moss=blockId('moss_block'),grass=blockId('short_grass'),radius=between(r,1,2)+.5;
+  const w=game.world,r=rng(game),moss=blockId('moss_block'),grass=blockId('short_grass'),radius=between(r,1,2)+.5;
   for(let dz=-3;dz<=3;dz++)for(let dx=-3;dx<=3;dx++){
     if(dx*dx+dz*dz>radius*radius+(r()<.5?1:0))continue;
     for(let dy=1;dy>=-1;dy--){
@@ -336,7 +339,7 @@ function useBucket(game:Game,hand:Hand,content:'water'|'lava'|null):Result{
   // Emptying into a source of the same fluid changes nothing but still empties the bucket (vanilla).
   const fluid=content==='water'?B.water:B.lava;
   if(here!==fluid&&!w.set(x,y,z,fluid,'player'))return 'fail';
-  if(here!==AIR&&here!==fluid&&!hd.liquid)for(const s of lootDrops(here,null,game.random))game.entities.dropItem(s,x+.5,y+.25,z+.5);
+  if(here!==AIR&&here!==fluid&&!hd.liquid)for(const s of lootDrops(here,null,rng(game)))game.entities.dropItem(s,x+.5,y+.25,z+.5);
   game.sounds.play('bucket_empty',{x:x+.5,y:y+.5,z:z+.5},{pitch:content==='lava'?.8:1});
   hand.consume(1);
   return 'success';
