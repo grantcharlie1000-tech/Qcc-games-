@@ -169,11 +169,23 @@ export class SlotMenu{
     if(slot.section==='catalog'){this.catalogClick(slot,0,true);return;}
     if(slot.section==='destroy'){if(this.host.creative)this.host.inventory.clear();return;}
     if(slot.take){this.quickCraft(slot);return;}
+    const first=slot.get();if(!first)return;
+    const group=containerGroup(slot.section),before=this.groupCount(group,first);
     for(let guard=0;guard<64;guard++){
-      const before=slot.get();if(!before)break;
+      const prev=slot.get();if(!prev)break;
       if(!this.rule(this,index))break;
-      const after=slot.get();if(!after||after.id!==before.id)break;
+      const after=slot.get();if(!after||after.id!==prev.id)break;
     }
+    if(slot.get()!==first)this.quickMoveLeftGroup=this.groupCount(group,first)<before;
+  }
+  /** Whether the last quick-move that moved anything took the items out of their container (into a chest, a grid or a
+   *  furnace) rather than between its own sections (main ⇄ hotbar). Shift+double-click uses it. */
+  quickMoveLeftGroup=false;
+  /** Items like `like` held by the slots of one container group. */
+  groupCount(group:string,like:ItemStack):number{
+    let n=0;
+    for(const t of this.slots){const s=t.get();if(s&&containerGroup(t.section)===group&&canPickAll(t)&&sameItem(s,like))n+=s.count;}
+    return n;
   }
   /** Shift-click on a result: crafts as many times as the results fit in the inventory (vanilla drops a partial last one). */
   private quickCraft(slot:MenuSlot){
@@ -252,14 +264,18 @@ export class SlotMenu{
     }
     this.cursor=cur;
   }
-  /** Shift + double-click: quick-moves every stack like `like` from the clicked slot's container. */
+  /** Shift + double-click (vanilla AbstractContainerScreen): quick-moves every stack like `like` from the clicked slot's
+   *  container. The slots are chosen before anything moves, so stacks never bounce back; when quick-moves stay inside
+   *  the container (main ⇄ hotbar in the inventory screen) only the clicked section moves. */
   shiftCollect(index:number,like:ItemStack){
     const slot=this.slots[index];if(!slot||!canPickAll(slot))return;
-    const group=containerGroup(slot.section);
+    const group=containerGroup(slot.section),cross=this.quickMoveLeftGroup;
+    const sources:number[]=[];
     this.slots.forEach((t,j)=>{
       const s=t.get();
-      if(s&&containerGroup(t.section)===group&&canPickAll(t)&&sameItem(s,like))this.shiftClick(j);
+      if(s&&containerGroup(t.section)===group&&(cross||t.section===slot.section)&&canPickAll(t)&&sameItem(s,like))sources.push(j);
     });
+    for(const j of sources){const s=this.slots[j].get();if(s&&sameItem(s,like))this.shiftClick(j);}
   }
   /** Which of `indexes` a drag of the cursor would fill (vanilla adds a slot only while the cursor has items for it). */
   dragTargets(indexes:readonly number[],type:DragType):number[]{

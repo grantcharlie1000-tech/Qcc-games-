@@ -28,7 +28,7 @@ const METAL_BLOCKS=['coal_block','iron_block','gold_block','redstone_block','eme
 const FUNCTIONAL=['torch','lantern','glowstone','crafting_table','furnace','chest','barrel','bookshelf','ladder','red_bed','tnt'];
 const REDSTONE=['redstone','redstone_block','tnt','oak_door','lantern'];
 const NATURAL_EXTRA=['wheat_seeds','cocoa_beans','bone_meal','pumpkin','melon','snow','snow_block','ice','packed_ice','obsidian','clay','moss_block','glowstone'];
-const UTILITIES=['bucket','water_bucket','lava_bucket','milk_bucket','flint_and_steel','bone_meal','shears','compass','clock','ender_pearl','book'];
+const UTILITIES=['bucket','water_bucket','lava_bucket','milk_bucket','flint_and_steel','bone_meal','shears','compass','clock','ender_pearl'];
 const COMBAT_EXTRA=['shield','bow','arrow','snowball','egg','ender_pearl','tnt'];
 const TOOL_ORDER=['shovel','pickaxe','axe','hoe'],TIER_ORDER=['wooden','stone','iron','golden','diamond'];
 const ARMOR_ORDER=['leather','golden','iron','diamond'],PIECE_ORDER=['helmet','chestplate','leggings','boots'];
@@ -63,16 +63,18 @@ function tabsOf(d:ItemDef):CreativeTabId[]{
   if(!out.length)out.push('ingredients');
   return [...new Set(out)];
 }
-/** Sort key inside a tab: tools by tier then kind, armour by material then piece, dyes and wool by colour, else registry order. */
+/** Sort key inside a tab: tools by tier then kind, armour by material then piece, dyes and wool by colour, utilities and
+ *  combat extras and ingredients in their vanilla order, else registry order. */
 function sortKey(tab:CreativeTabId,d:ItemDef,index:number):number{
   const colour=WOOL_COLOURS.findIndex(c=>d.id===`${c}_dye`||d.id===`${c}_wool`);
-  if(d.tool&&(tab==='tools'||tab==='combat')){
+  if(d.tool&&d.tool.kind!=='shears'&&(tab==='tools'||tab==='combat')){
     const kind=d.tool.kind==='sword'?-1:TOOL_ORDER.indexOf(d.tool.kind);
     return 1000+(tab==='combat'?(kind===-1?0:500):0)+TIER_ORDER.indexOf(d.tool.tier)*10+kind;
   }
   if(d.armor)return 2000+ARMOR_ORDER.indexOf(d.armor.material)*10+PIECE_ORDER.indexOf(d.id.slice(d.armor.material.length+1));
   if(colour>=0)return 3000+colour+(d.id.endsWith('_dye')?100:0);
-  if(tab==='ingredients'){const i=INGREDIENTS.indexOf(d.id);if(i>=0)return 4000+i;}
+  const listed=tab==='ingredients'?INGREDIENTS:tab==='tools'?UTILITIES:tab==='combat'?COMBAT_EXTRA:null;
+  const i=listed?listed.indexOf(d.id):-1;if(i>=0)return 4000+i;
   return 10000+index;
 }
 
