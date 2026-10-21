@@ -99,8 +99,10 @@ describe('light',()=>{
 });
 
 describe('fog by medium',()=>{
-  test('air fog ends before the loaded chunk edge and starts well before it',()=>{
-    const r=fogRange('air',5,{});expect(r.far).toBeLessThanOrEqual(5*16);expect(r.far).toBeGreaterThan(4*16);expect(r.near).toBeLessThan(r.far*.75);
+  test('air fog ends before the loaded chunk edge after a short vanilla band (far/10, 4..64 blocks), cylindrical',()=>{
+    const r=fogRange('air',5,{});expect(r.far).toBeLessThanOrEqual(5*16);expect(r.far).toBeGreaterThan(4*16);
+    expect(r.far-r.near).toBeCloseTo(r.far/10);expect(r.cylinder).toBe(true);
+    expect(fogRange('air',3,{}).far-fogRange('air',3,{}).near).toBeCloseTo(4);
     expect(fogRange('air',12,{}).far).toBeGreaterThan(r.far);
   });
   test('underwater fog is short and grows with water vision; swamps are murkier',()=>{
@@ -108,6 +110,7 @@ describe('fog by medium',()=>{
     expect(fresh.far).toBeCloseTo(24);expect(adapted.far).toBeCloseTo(96);expect(fresh.near).toBe(-8);
     expect(fogRange('water',12,{waterVision:1,swamp:true}).far).toBeCloseTo(96*.85);
     expect(fogRange('water',3,{waterVision:1}).far).toBeLessThanOrEqual(fogRange('air',3,{}).far);
+    expect(fresh.cylinder).toBe(false);expect(fogRange('water',3,{waterVision:1}).cylinder).toBe(true);
   });
   test('lava fog is very short; fire resistance lets you see a little further',()=>{
     const lava=fogRange('lava',5,{});expect(lava.near).toBeCloseTo(.25);expect(lava.far).toBe(1);

@@ -111,13 +111,25 @@ export function underwaterFogColor(hex:number,vision:number,light:number,out:RGB
   brighten(hexToRgb(hex,out),vision);const k=.25+.75*clamp01(light);return set(out,out.r*k,out.g*k,out.b*k);
 }
 export const LAVA_FOG:RGB={r:.6,g:.1,b:0};
-/** Fog start and end distance in blocks. Air fog hides the edge of the meshed chunks (the view radius, in chunks). */
-export function fogRange(medium:Medium,viewChunks:number,o:{waterVision?:number;swamp?:boolean;fireResistance?:boolean},out={near:0,far:0}):{near:number;far:number}{
+/** Fog start and end distance in blocks and its shape (vanilla FogRenderer.setupFog). Air fog ends at the edge of the
+ *  meshed chunks (the view radius, in chunks) after a short smooth band and is cylindrical; liquid fog is spherical. */
+export function fogRange(medium:Medium,viewChunks:number,o:{waterVision?:number;swamp?:boolean;fireResistance?:boolean},
+  out={near:0,far:0,cylinder:true}):{near:number;far:number;cylinder:boolean}{
   const air=Math.max(24,(viewChunks-.5)*16);
-  if(medium==='lava'){out.near=o.fireResistance?0:.25;out.far=o.fireResistance?3:1;return out;}
-  if(medium==='water'){out.near=-8;out.far=Math.min(air,96*Math.max(.25,o.waterVision??0)*(o.swamp?.85:1));return out;}
-  out.far=air;out.near=air*.6;return out;
+  if(medium==='lava'){out.near=o.fireResistance?0:.25;out.far=o.fireResistance?3:1;out.cylinder=false;return out;}
+  if(medium==='water'){
+    out.near=-8;out.far=96*Math.max(.25,o.waterVision??0)*(o.swamp?.85:1);out.cylinder=false;
+    if(out.far>air){out.far=air;out.cylinder=true;}
+    return out;
+  }
+  out.far=air;out.near=air-Math.min(64,Math.max(4,air/10));out.cylinder=true;return out;
 }
+/** Vanilla getNightVisionScale: full strength, flickering during the last 10 seconds. */
+export function nightVisionScale(ticksLeft:number):number{
+  return ticksLeft>200?1:.7+Math.sin(ticksLeft*Math.PI*.2)*.3;
+}
+/** Which side of the sky glows: -1 west at sunset (the sun is setting), +1 east at sunrise. */
+export const sunriseSide=(angle:number)=>Math.sin(angle*TAU)>0?-1:1;
 
 // ---- GLSL shared by every renderer shader -------------------------------------------------------
 /** Lightmap and fog helpers; identical to lightmap() and fogRange() use above. */
@@ -148,4 +160,6 @@ export interface RenderUniforms extends SharedUniforms{
   nightVision:{value:number};
   /** Block light flicker added to the 1.5 block light factor (vanilla torch flicker). */
   flicker:{value:number};
+  /** 1 = leaves and plants sway, 0 with reduced motion. */
+  sway:{value:number};
 }
