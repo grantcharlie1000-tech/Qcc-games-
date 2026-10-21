@@ -133,6 +133,39 @@ describe('audio context lifecycle',()=>{
     resolve();
     expect(c.state).toBe('running');
   });
+  test('a gesture also resumes a context in a non-standard paused state (iOS "interrupted")',()=>{
+    const c=start();
+    (c as unknown as {state:string}).state='interrupted';
+    engine.play('click');
+    expect(engine.voiceCount).toBe(0);
+    gestures.gesture();
+    expect(c.state).toBe('running');
+    engine.play('click');
+    expect(engine.voiceCount).toBe(1);
+  });
+  test('gestures are heard in the capture and the bubble phase, including the shell sound checkbox change',()=>{
+    engine.dispose?.();build(false);
+    const added:{type:string;capture:boolean}[]=[],removed:{type:string;capture:boolean}[]=[];
+    const capture=(o?:boolean|AddEventListenerOptions)=>typeof o==='boolean'?o:!!o?.capture;
+    const target={
+      addEventListener(type:string,_l:unknown,o?:boolean|AddEventListenerOptions){added.push({type,capture:capture(o)});},
+      removeEventListener(type:string,_l:unknown,o?:boolean|EventListenerOptions){removed.push({type,capture:capture(o)});},
+      dispatchEvent:()=>true
+    } as EventTarget;
+    const recorded=createSoundEngine(game,{createContext:()=>new MockAudioContext() as unknown as AudioContext,gestureTarget:target});
+    recorded.init?.();
+    for(const type of ['pointerdown','keydown','click','change'])for(const phase of [true,false])
+      expect(added).toContainEqual({type,capture:phase});
+    recorded.dispose?.();
+    expect(removed.length).toBe(added.length);
+    for(const a of added)expect(removed).toContainEqual(a);
+  });
+  test('a settings change that switches the shell sound on starts audio within that gesture',()=>{
+    engine.dispose?.();build(false);
+    shell.sound=true;gestures.gesture('change');
+    expect(MockAudioContext.created).toHaveLength(1);
+    expect(ctx().state).toBe('running');
+  });
   test('dispose closes the context and removes every listener',()=>{
     const c=start();engine.play('click');
     engine.dispose?.();

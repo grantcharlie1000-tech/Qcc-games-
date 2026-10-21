@@ -1,7 +1,9 @@
 // Sound service: procedural Web Audio for every SoundName (no audio files).
 //
-//  - One AudioContext, created on the first user gesture (pointer, key, touch or click) while the shell's sound
-//    setting is on, or on the next frame once the setting is switched on after a gesture. Master gain =
+//  - One AudioContext, created on the first user gesture (pointer, key, touch, click, or the change of a form control
+//    such as the shell's sound checkbox, heard in the capture and the bubble phase so a gesture that switches sound on
+//    starts it at once) while the shell's sound setting is on, or on the next frame once the setting is switched on
+//    after a gesture. Master gain =
 //    MASTER_LEVEL × settings.volume, 0 while game.context.settings.sound is off (read live on every frame, play
 //    and event, since the shell does not announce changes; settingsChanged, stateChanged and shellPaused re-sync).
 //  - The context is suspended while the engine is paused or lost, while the shell pauses the game, while the
@@ -49,7 +51,7 @@ const RAIN_OPEN=12000;
 const RESUME_GRACE=1;
 /** Seconds between two music ticks beyond which the world stood still (death screen) and the piece waits. */
 const MUSIC_STALL=.5;
-const GESTURES=['pointerdown','pointerup','mousedown','touchend','keydown','click'] as const;
+const GESTURES=['pointerdown','pointerup','mousedown','touchend','keydown','click','change'] as const;
 
 export interface SoundOptions{
   /** Builds the AudioContext (default: the browser's AudioContext). Returning null or throwing means no audio. */
@@ -125,9 +127,11 @@ export class SoundEngine implements SoundService{
     this.offs.push(ev.on('settingsChanged',sync),ev.on('stateChanged',sync),ev.on('shellPaused',sync));
     const target=this.options.gestureTarget!==undefined?this.options.gestureTarget:(typeof window!=='undefined'?window:null);
     if(target){
+      // Capture: before any handler can stop the event. Bubble: after the page's own handlers ran, so a click or change
+      // that switched the shell's sound on is seen with the new setting while it is still a user gesture.
       const onGesture=()=>this.gesture();
-      for(const type of GESTURES)target.addEventListener(type,onGesture,{capture:true,passive:true});
-      this.offs.push(()=>{for(const type of GESTURES)target.removeEventListener(type,onGesture,{capture:true});});
+      for(const type of GESTURES)for(const capture of [true,false])target.addEventListener(type,onGesture,{capture,passive:true});
+      this.offs.push(()=>{for(const type of GESTURES)for(const capture of [true,false])target.removeEventListener(type,onGesture,{capture});});
     }
     this.musicDelay=this.delay(MUSIC_FIRST_DELAY);
   }
@@ -259,7 +263,7 @@ export class SoundEngine implements SoundService{
     this.activated=true;
     try{
       if(!this.ctx){if(this.game.context.settings.sound&&!this.unavailable)this.create();}
-      else if(this.ctx.state==='suspended'&&this.audible())this.resumeContext();
+      else if(this.ctx.state!=='running'&&this.audible())this.resumeContext();
       this.sync();
     }catch{/* audio is optional */}
   }
@@ -290,12 +294,12 @@ export class SoundEngine implements SoundService{
     const c=this.ctx;
     return this.live&&!!c&&(c.state==='running'||(this.pending==='resume'&&this.resumeAge<RESUME_GRACE));
   }
-  /** Asks a suspended context (or one we are suspending) to resume; one request at a time, though a stalled resume
-   *  may be retried by a later gesture. */
+  /** Asks a context that is not running (suspended, or Safari's 'interrupted') or that we are suspending to resume;
+   *  one request at a time, though a stalled resume may be retried by a later gesture. */
   private resumeContext(){
     const c=this.ctx;
     if(!c||c.state==='closed'||(this.pending==='resume'&&this.resumeAge<RESUME_GRACE))return;
-    if(c.state==='suspended'||this.pending==='suspend')this.request(c,'resume');
+    if(c.state!=='running'||this.pending==='suspend')this.request(c,'resume');
   }
   /** Suspends a running context (or one we are resuming); one request at a time. */
   private suspendContext(){
