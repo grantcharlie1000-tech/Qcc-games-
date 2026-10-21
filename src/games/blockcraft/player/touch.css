@@ -48,9 +48,10 @@
 }
 .bc-hold-ring[hidden]{display:none}
 
-/* Landscape phones and tablets: the centred hotbar leaves the bottom corners free. */
+/* Landscape phones and tablets: the centred hotbar leaves the bottom corners free (above the shell's and HUD's
+   small corner buttons). */
 @media (orientation:landscape) and (min-width:560px){
-  .bc-touch{--bc-touch-bottom:max(14px,env(safe-area-inset-bottom,0px))}
+  .bc-touch{--bc-touch-bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 46px)}
 }
 /* Very short landscape screens: a smaller stick and buttons. */
 @media (orientation:landscape) and (max-height:420px){
