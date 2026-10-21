@@ -5,7 +5,7 @@
 //    8×8 half-resolution tiles of every block it can carry; vanilla draws the carried block with the block atlas, so here each
 //    holdable block is its own part (a cube of six planes, or two crossed planes for flowers and mushrooms) held half size
 //    between the hands, tipped 20° toward the viewer and turned 45°, and animate() shows the one in data.carried.
-//  - Slime: the vanilla 64×32 layout: a translucent green outer cube (lighter rim, shine on the upper corner) around an opaque
+//  - Slime: the vanilla 64×32 layout: a translucent green outer cube with a lighter, more opaque rim around an opaque
 //    darker core with black eyes and mouth; appearance().scale is the slime size.
 // Model space follows the contract (pixels, +y up from the feet, the mob faces -z). x keeps Java's sign (right limbs at -x),
 // which mirrors the whole model; both mobs are symmetric, so only the texture placement matters and it follows vanilla.
@@ -224,7 +224,7 @@ export function createEndermanModel():EntityModel{
 }
 
 // ---- Slime --------------------------------------------------------------------------------------
-const SLIME_RIM=0x8ad377,SLIME_JELLY=0x6fbf5b,SLIME_SHINE=0xc4f2b4,SLIME_CORE=[0x4b8f3d,0x579e47,0x62ad51,0x70bb5e] as const,SLIME_DARK=0x1b2e17;
+const SLIME_RIM=0x8ad377,SLIME_JELLY=0x6fbf5b,SLIME_CORE=[0x4b8f3d,0x579e47,0x62ad51,0x70bb5e] as const,SLIME_DARK=0x1b2e17;
 /** Alpha of the outer jelly between the rim pixels: translucent, but above 0.5 so an alpha-tested renderer still draws it. */
 export const SLIME_OUTER_ALPHA=140;
 /** Alpha of the outer rim pixels. */
@@ -247,8 +247,6 @@ export function createSlimeModel():EntityModel{
     paint(px,w,h){
       paintBox(px,w,h,0,0,8,8,8,(face,x,y,fw,fh)=>{
         const rim=x===0||y===0||x===fw-1||y===fh-1,n=noise(face*13+x,y,21);
-        // A shine on the upper corner of every side face (the light catching the jelly).
-        if(face>=FACE.west&&(x===1&&(y===1||y===2)||x===2&&y===1))return shade(SLIME_SHINE,1,200);
         return rim?shade(SLIME_RIM,.96+n*.08,SLIME_RIM_ALPHA):shade(SLIME_JELLY,.94+n*.1,SLIME_OUTER_ALPHA);
       });
       paintBox(px,w,h,0,16,6,6,6,(face,x,y)=>{

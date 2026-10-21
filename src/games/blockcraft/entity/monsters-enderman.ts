@@ -5,6 +5,7 @@
 //    a player who looks away;
 //  - teleports at random in bright daylight under the open sky, when hurt by the environment (water and rain hurt it) and
 //    always dodges projectiles (its hurt hook cancels them), only onto safe dry ground (findTeleportTarget);
+//  - strolls calmly to dry spots only (vanilla WaterAvoidingRandomStrollGoal) and looks at players within 8 blocks;
 //  - picks up and puts down earth, sand, gravel, clay, plants, cacti, pumpkins, melons and TNT (data.carried holds the BlockId);
 //  - drops 0–1 ender pearl (and its carried block) and gives 5 xp.
 import {AIR,B,COLLISION_BOXES,FULL_CUBE,LIQUID,SOLID,blockId,type BlockId} from '../data/blocks';
@@ -119,7 +120,7 @@ export function teleportTo(game:Game,e:Entity,x:number,y:number,z:number):boolea
   if(!t)return false;
   teleportEffects(game,e.x,e.y,e.z,e.height);
   e.x=t.x;e.y=t.y;e.z=t.z;e.vx=e.vy=e.vz=0;e.onGround=true;
-  game.entities.ai.stop(e);
+  game.entities.ai.stop(e);STROLLS.delete(e);
   teleportEffects(game,e.x,e.y,e.z,e.height);
   return true;
 }
@@ -176,6 +177,54 @@ export function tryPlaceBlock(game:Game,e:Entity,random:()=>number=gameRandom(ga
   if(cellOccupied(game,x,y,z)||!w.set(x,y,z,id,'entity'))return false;
   delete d.carried;
   return true;
+}
+
+// ---- Water-avoiding stroll ----------------------------------------------------------------------
+/** Can its body stand with the feet in cell (x, y, z): a solid dry floor (not a cactus), no liquid around the body, room for
+ *  the whole height, and no hazard (the shared AI's safety test)? */
+function dryStandable(game:Game,e:Entity,x:number,y:number,z:number):boolean{
+  const w=game.world,below=w.get(x,y-1,z);
+  if(below<=0||SOLID[below]!==1||LIQUID[below]||below===CACTUS)return false;
+  const top=Math.ceil(e.height)-1;
+  for(let dy=0;dy<=top;dy++){const id=w.get(x,y+dy,z);if(id<0||LIQUID[id])return false;}
+  const hw=e.width/2;
+  if(boxCollides(w,x+.5-hw,y,z+.5-hw,x+.5+hw,y+e.height,z+.5+hw))return false;
+  return game.entities.ai.isSafe(x+.5,y,z+.5,e.width,e.height);
+}
+const STROLL_CHANCE=1/120,STROLL_TIMEOUT=400;
+/** Vanilla WaterAvoidingRandomStrollGoal target: the darkest of ten random dry standable spots within 10 blocks
+ *  horizontally and 7 vertically (monsters prefer darkness), each column searched 3 blocks up and down; null if none. */
+export function strollTarget(game:Game,e:Entity,random:()=>number=gameRandom(game)):Vec3|null{
+  const fx=Math.floor(e.x),fy=Math.floor(e.y+.01),fz=Math.floor(e.z);
+  let best=-Infinity,bx=0,by=0,bz=0;
+  for(let i=0;i<10;i++){
+    const x=fx+randInt(random,21)-10,z=fz+randInt(random,21)-10,y0=fy+randInt(random,15)-7;
+    for(let k=0;k<=6;k++){
+      const y=y0+(k&1?-(k+1)/2:k/2);
+      if(y<1||y>=CH-3||!dryStandable(game,e,x,y,z))continue;
+      const v=.5-game.world.brightnessAt(x,y,z)/15;
+      if(v>best){best=v;bx=x;by=y;bz=z;}
+      break;
+    }
+  }
+  return best===-Infinity?null:{x:bx+.5,y:by,z:bz+.5};
+}
+interface Stroll{x:number;y:number;z:number;ticks:number}
+const STROLLS=new WeakMap<Entity,Stroll>();
+/** Calm wandering: now and then walks (path-finding) to a dry stroll target; gives up after 20 s or on reaching it. */
+function stroll(e:Entity,game:Game,random:()=>number){
+  const ai=game.entities.ai,s=STROLLS.get(e);
+  if(s){
+    const arrived=Math.hypot(s.x-e.x,s.z-e.z)<.9&&Math.abs(s.y-e.y)<1.5;
+    if(arrived||++s.ticks>STROLL_TIMEOUT){STROLLS.delete(e);ai.stop(e);}
+    else ai.navigate(e,s.x,s.y,s.z,WALK_SPEED);
+    return;
+  }
+  if(random()>=STROLL_CHANCE)return;
+  const t=strollTarget(game,e,random);
+  if(!t)return;
+  STROLLS.set(e,{x:t.x,y:t.y,z:t.z,ticks:0});
+  ai.navigate(e,t.x,t.y,t.z,WALK_SPEED);
 }
 
 // ---- Behaviour ----------------------------------------------------------------------------------
@@ -236,6 +285,7 @@ export function tickEnderman(e:Entity,game:Game){
       ai.stop(e);ai.lookAt(e,p.x,eyeY,p.z);
     }else d.stare=0;
   }
+  if(d.angry||d.stare)STROLLS.delete(e);
   if(d.angry){
     ai.lookAt(e,p.x,eyeY,p.z);
     if(stared){
@@ -248,7 +298,7 @@ export function tickEnderman(e:Entity,game:Game){
       chase(e,game,playerDistanceSq(e,game));
     }
   }else if(!d.stare){
-    ai.wander(e,WALK_SPEED);
+    stroll(e,game,r);
     if(d.look>0){d.look--;ai.lookAt(e,p.x,eyeY,p.z);}
     else if(distSq<LOOK_RANGE_SQ&&r()<.02)d.look=40+randInt(r,40);
   }

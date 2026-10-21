@@ -2,7 +2,7 @@ import {describe,expect,test} from 'vitest';
 import {AIR,B,blockId,isLiquid,SOLID} from '../../../src/games/blockcraft/data/blocks';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {collidesAt} from '../../../src/games/blockcraft/engine/physics';
-import {ENDERMAN_HEAD,findTeleportTarget,isHoldable,isStaredAt,stareDistance,teleportRandomly,tryPlaceBlock,tryTakeBlock}
+import {ENDERMAN_HEAD,findTeleportTarget,isHoldable,isStaredAt,stareDistance,strollTarget,teleportRandomly,tryPlaceBlock,tryTakeBlock}
   from '../../../src/games/blockcraft/entity/monsters-enderman';
 import type {Entity,PartPose} from '../../../src/games/blockcraft/engine/contracts';
 import {createHarness,lookAt,type MonsterHarness} from './monsters-fixture';
@@ -289,6 +289,34 @@ describe('water and rain',()=>{
     expect(ok).toBe(true);
     expect(h.sounds('teleport')).toBe(2);
     expect(h.particles.filter(p=>p.kind==='portal'&&(p.count??0)>=16).length).toBe(2);
+  });
+});
+
+describe('water-avoiding stroll',()=>{
+  test('stroll targets are dry spots with room for its 2.9 block body, within 10 blocks; never water',()=>{
+    const h=createHarness({seed:5}),e=enderman(h,.5,60,.5);
+    // A lake (water in the top layer) with dry stone islands, and a low roof over part of it.
+    fill(h,-12,59,-12,12,59,12,B.water);
+    const islands:[number,number][]=[[4,4],[-6,2],[3,-7],[-8,-8],[9,-1]];
+    for(const [x,z] of islands)h.game.world.set(x,59,z,B.stone,'player');
+    fill(h,8,62,-3,10,62,1,B.stone);// two blocks of headroom over the island at (9,-1)
+    const seen=new Set<string>();
+    for(let i=0;i<400;i++){
+      const t=strollTarget(h.game,e);
+      if(!t)continue;
+      const key=`${Math.floor(t.x)},${t.y},${Math.floor(t.z)}`;seen.add(key);
+      expect(h.game.world.get(Math.floor(t.x),t.y-1,Math.floor(t.z))).toBe(B.stone);
+      expect(Math.abs(t.x-e.x)).toBeLessThanOrEqual(10.5);expect(Math.abs(t.z-e.z)).toBeLessThanOrEqual(10.5);
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(2);
+    expect(seen.has('9,60,-1')).toBe(false);
+  });
+  test('a calm enderman strolls now and then and walks to its target',()=>{
+    const h=createHarness(),e=enderman(h,.5,60,.5);
+    h.game.player.teleport(30.5,60,30.5);h.game.player.state.pitch=-1.5;
+    let moving=0;
+    for(let i=0;i<600;i++){h.entities.tick();if(Math.hypot(e.moveX,e.moveZ)>1)moving++;}
+    expect(h.navigations.length).toBeGreaterThan(0);expect(moving).toBeGreaterThan(5);
   });
 });
 
