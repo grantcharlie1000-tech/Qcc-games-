@@ -161,8 +161,15 @@ test.describe('touch',()=>{
     await sneak.tap();await expect(sneak).toHaveAttribute('aria-pressed','false');
     await expect.poll(()=>state(page,'sneaking')).toBe(false);
 
-    // A still finger on the world shows the hold ring, then holds attack (mining) until lifted.
+    // A still finger on the world shows the hold ring filling up, then holds attack (mining) until lifted. The ring is
+    // only up for the 300 ms hold delay (a frame or two of software WebGL), so an observer records it.
+    await page.evaluate(()=>{
+      const ring=document.querySelector<HTMLElement>('.bc-hold-ring')!,w=window as unknown as {ringProgress:number};w.ringProgress=-1;
+      new MutationObserver(()=>{if(!ring.hidden)w.ringProgress=Math.max(w.ringProgress,Number(ring.style.getPropertyValue('--p'))||0);})
+        .observe(ring,{attributes:true,attributeFilter:['hidden','style']});
+    });
     await touch('touchStart',[{x:195,y:420,id:4}]);
+    await expect.poll(()=>page.evaluate(()=>(window as unknown as {ringProgress:number}).ringProgress),{timeout:10000}).toBeGreaterThan(0);
     await expect.poll(()=>down(page,'attack'),{timeout:10000}).toBe(true);
     await touch('touchEnd',[]);await expect.poll(()=>down(page,'attack')).toBe(false);
     await expect(page.locator('.bc-hold-ring')).toBeHidden();
@@ -184,7 +191,8 @@ test('gamepad: A starts from the menu, left stick moves, right stick looks, A ju
   });
   await boot(page);
   const root=page.locator('.blockcraft');
-  await page.evaluate(()=>window.dispatchEvent(new Event('gamepadconnected')));
+  // No gamepadconnected event: the pad was exposed to the page before Blockcraft mounted (as when coming back to the
+  // game), so input must find it through navigator.getGamepads() on its own.
   const set=(axes:number[],buttons:Record<number,number>={})=>page.evaluate(([a,b])=>{
     const pad=(window as unknown as {testPad:{axes:number[];buttons:{pressed:boolean;value:number}[]}}).testPad;
     pad.axes=a as number[];pad.buttons.forEach((btn,i)=>{const v=(b as Record<number,number>)[i]??0;btn.value=v;btn.pressed=v>.5;});

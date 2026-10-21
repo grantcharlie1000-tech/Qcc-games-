@@ -62,8 +62,10 @@ export class ControlState{
     if(phase==='screen'&&!SCREEN_ACTIONS.includes(action))return NOT_HANDLED;
     const source='key:'+code;
     if(e.repeat){
-      // Auto-repeat only restores a hold lost to clear() (a screen closed while the key stayed down); never an edge.
+      // Auto-repeat restores a hold lost to clear() (a screen closed while the key stayed down) without an edge, except
+      // for dropping: vanilla clicks the drop key on every repeat, so holding Q throws items one after another.
       if(!this.sources.get(action)?.has(source))this.press(action,source,false);
+      if(phase==='playing'&&(action==='drop'||action==='dropStack'))this.tap(action);
       return HANDLED;
     }
     if(action==='forward'&&!this.down('forward')){

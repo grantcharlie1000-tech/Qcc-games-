@@ -6,8 +6,10 @@ import type {ControlState,InputPhase} from './controls-core';
 
 /** Standard-mapping button indices. */
 export const PAD={A:0,B:1,X:2,Y:3,LB:4,RB:5,LT:6,RT:7,BACK:8,START:9,LS:10,RS:11} as const;
-const HELD:readonly (readonly [number,InputAction])[]=[[PAD.A,'jump'],[PAD.B,'sneak'],[PAD.X,'drop'],[PAD.Y,'inventory'],
+const HELD_BUTTONS:readonly (readonly [number,InputAction])[]=[[PAD.A,'jump'],[PAD.B,'sneak'],[PAD.X,'drop'],[PAD.Y,'inventory'],
   [PAD.RT,'attack'],[PAD.LT,'use'],[PAD.LS,'sprint'],[PAD.RS,'pick']];
+/** Button index, action and ControlState source id, built once so polling every frame allocates nothing. */
+const HELD:readonly (readonly [number,InputAction,string])[]=HELD_BUTTONS.map(([i,action])=>[i,action,'pad:'+i] as const);
 const DEAD_ZONE=.15,TRIGGER=.3;
 /** Radians per second at full right-stick deflection (sensitivity 1). */
 export const PAD_LOOK_SPEED=3.2;
@@ -41,18 +43,19 @@ export class PadMapper{
   /** `dt` seconds since the last frame; sensitivity from the settings. The returned object is reused. */
   apply(frame:PadFrame,state:ControlState,phase:InputPhase,dt:number,sensitivity:number){
     const out=this.out;out.hotbar=0;out.dyaw=out.dpitch=0;
-    const b=frame.buttons,was=(i:number)=>!!this.prev[i],is=(i:number)=>!!b[i];
+    const b=frame.buttons,prev=this.prev;
     if(phase!=='playing'){
       state.releaseAll('pad:');state.setPadMove(0,0);
-      if(phase==='screen'&&(is(PAD.Y)&&!was(PAD.Y)||is(PAD.B)&&!was(PAD.B)))state.tap('inventory');
+      if(phase==='screen'&&(b[PAD.Y]&&!prev[PAD.Y]||b[PAD.B]&&!prev[PAD.B]))state.tap('inventory');
     }else{
       // Level-based holds (a button kept down through a screen is held again), edges only on a new press.
-      for(const [i,action] of HELD){
-        if(is(i)){if(!state.holds(action,'pad:'+i))state.press(action,'pad:'+i,!was(i));}
-        else state.release(action,'pad:'+i);
+      for(let k=0;k<HELD.length;k++){
+        const held=HELD[k],i=held[0],action=held[1],source=held[2];
+        if(b[i]){if(!state.holds(action,source))state.press(action,source,!prev[i]);}
+        else state.release(action,source);
       }
-      if(is(PAD.RB)&&!was(PAD.RB))out.hotbar++;
-      if(is(PAD.LB)&&!was(PAD.LB))out.hotbar--;
+      if(b[PAD.RB]&&!prev[PAD.RB])out.hotbar++;
+      if(b[PAD.LB]&&!prev[PAD.LB])out.hotbar--;
       state.setPadMove(frame.moveX,-frame.moveY);
       // Quadratic response: fine aim near the centre, fast turns at full tilt. Stick up (negative y) looks up.
       const k=PAD_LOOK_SPEED*sensitivity*dt;

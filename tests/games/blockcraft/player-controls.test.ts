@@ -45,8 +45,18 @@ describe('keyboard',()=>{
     const c=new ControlState();
     expect(c.keyDown(key('KeyQ'),'playing',0).handled).toBe(true);
     expect(c.pressed('drop')).toBe(true);expect(c.pressed('drop')).toBe(false);
-    c.keyDown(key('KeyQ',{repeat:true}),'playing',50);expect(c.pressed('drop')).toBe(false);
+    for(const [code,action] of [['KeyF','swapHands'],['KeyE','inventory'],['Space','jump'],['KeyL','advancements']] as const){
+      c.keyDown(key(code),'playing',10);expect(c.pressed(action)).toBe(true);
+      c.keyDown(key(code,{repeat:true}),'playing',50);expect(c.pressed(action)).toBe(false);expect(c.down(action)).toBe(true);c.keyUp(code);
+    }
     c.keyUp('KeyQ');c.keyDown(key('KeyQ'),'playing',100);expect(c.pressed('drop')).toBe(true);
+  });
+  test('holding Q keeps dropping on every key repeat (vanilla), Ctrl+Q whole stacks; not with a screen open',()=>{
+    const c=new ControlState();c.keyDown(key('KeyQ'),'playing',0);expect(c.pressed('drop')).toBe(true);
+    let drops=0;for(let i=1;i<=3;i++){c.keyDown(key('KeyQ',{repeat:true}),'playing',500+i*33);if(c.pressed('drop'))drops++;}
+    expect(drops).toBe(3);
+    c.keyDown(key('KeyQ',{ctrlKey:true,repeat:true}),'playing',700);expect(c.pressed('dropStack')).toBe(true);expect(c.pressed('drop')).toBe(false);
+    c.keyDown(key('KeyQ',{repeat:true}),'screen',800);expect(c.pressed('drop')).toBe(false);
   });
   test(`double-tapping forward within ${DOUBLE_TAP_MS} ms holds sprint until forward is released`,()=>{
     const c=new ControlState();
@@ -91,7 +101,8 @@ describe('keyboard',()=>{
     const c=new ControlState();c.keyDown(key('KeyW'),'playing',0);c.keyDown(key('KeyE'),'playing',0);c.setStick(1,0);
     c.clear();expect(c.down('forward')).toBe(false);expect(c.pressed('inventory')).toBe(false);expect(c.move()).toEqual({forward:0,strafe:0});
     // A key still physically held after clear() (a screen closed) is held again by its auto-repeat, without a new edge.
-    c.keyDown(key('KeyQ',{repeat:true}),'playing',10);expect(c.down('drop')).toBe(true);expect(c.pressed('drop')).toBe(false);
+    c.keyDown(key('KeyF',{repeat:true}),'playing',10);expect(c.down('swapHands')).toBe(true);expect(c.pressed('swapHands')).toBe(false);
+    c.keyDown(key('KeyW',{repeat:true}),'playing',10);expect(c.down('forward')).toBe(true);expect(c.down('sprint')).toBe(false);
   });
   test('wheel: one slot per notch, trackpad deltas accumulate, line mode counts events',()=>{
     const c=new ControlState();

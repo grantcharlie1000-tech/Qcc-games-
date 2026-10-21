@@ -324,14 +324,21 @@ describe('falling, landing and safety',()=>{
 });
 
 describe('sounds and exhaustion',()=>{
-  test('footsteps every ~1.7 blocks walked (sneaking too, at its slower pace); none while standing still',()=>{
+  test('footsteps every ~1.7 blocks walked; sneaking on the ground is silent (vanilla); none while standing still',()=>{
     const r=rig();hold(r,'forward');run(r,3);
     const steps=r.game.sounds.played.filter(s=>s.name==='step:stone').length;
     const walked=4.317*3;expect(steps).toBeGreaterThanOrEqual(Math.floor(walked/1.667)-1);expect(steps).toBeLessThanOrEqual(Math.ceil(walked/1.667)+1);
-    const s=rig();hold(s,'forward','sneak');run(s,6);
-    const sneakSteps=s.game.sounds.played.filter(x=>x.name==='step:stone').length;
-    expect(sneakSteps).toBeGreaterThanOrEqual(Math.floor(1.295*6/1.667)-1);expect(sneakSteps).toBeLessThanOrEqual(Math.ceil(1.295*6/1.667)+1);
+    const s=rig();hold(s,'forward','sneak');run(s,6);expect(s.player.state.z).toBeLessThan(-6);
+    expect(s.game.sounds.played.filter(x=>x.name.startsWith('step:')).length).toBe(0);
+    // Standing up again does not burst out the steps saved while sneaking.
+    release(s,'sneak');run(s,.3);expect(s.game.sounds.played.filter(x=>x.name.startsWith('step:')).length).toBeLessThanOrEqual(1);
     const still=rig();run(still,3);expect(still.game.sounds.played.length).toBe(0);
+  });
+  test('walking on the bottom of shallow water plays footsteps, not swim strokes (vanilla 1.20)',()=>{
+    const r=rig();fill(r,-3,60,-30,3,61,3,B.water);hold(r,'forward');run(r,4);
+    expect(r.player.state.inWater).toBe(true);expect(r.player.state.onGround).toBe(true);
+    const names=r.game.sounds.played.map(s=>s.name);
+    expect(names.filter(n=>n==='step:stone').length).toBeGreaterThanOrEqual(3);expect(names).not.toContain('swim');
   });
   test('footsteps use the sound of the block underfoot',()=>{
     const r=rig();fill(r,-3,59,-30,3,59,3,B.grass);hold(r,'forward');run(r,2);
@@ -407,6 +414,48 @@ describe('vanilla details',()=>{
   test('nothing moves while the engine is not running (dead, paused); the world keeps running behind screens',()=>{
     const r=rig();r.player.teleport(.5,70,.5);r.game.setState('dead');run(r,1);expect(r.player.state.y).toBe(70);
     r.game.setState('screen');run(r,1);expect(r.player.state.y).toBeLessThan(70);
+  });
+  test('beds bounce a landing player (not a sneaking one) and halve the fall for its sound; the dust still shows',()=>{
+    const bed=blockId('bed_foot_north'),top=60+9/16;
+    const bounce=(sneak:boolean,from:number)=>{
+      const r=rig();fill(r,-2,60,-2,2,60,2,bed);if(sneak)hold(r,'sneak');r.player.teleport(.5,from,.5);
+      let landedAt=-1,rise=0;
+      for(let i=0;i<180;i++){run(r,STEP);if(landedAt<0&&r.lands.length)landedAt=i;else if(landedAt>=0)rise=Math.max(rise,r.player.state.y-top);}
+      return{r,rise};
+    };
+    const a=bounce(false,70);expect(a.rise).toBeGreaterThan(1);expect(a.r.lands[0]).toBeGreaterThan(8);
+    expect(a.r.game.sounds.played.some(s=>s.name==='fall:cloth')).toBe(true);
+    const b=bounce(true,70);expect(b.rise).toBeLessThan(.01);
+    // About 5 blocks onto a bed: halved to 2.5, no fall sound, but the landing dust shows.
+    const c=bounce(false,66);expect(c.r.lands[0]).toBeGreaterThan(4);expect(c.r.lands[0]).toBeLessThan(6);
+    expect(c.r.game.sounds.played.some(s=>s.name.startsWith('fall:'))).toBe(false);expect(c.r.particles).toContain('block');
+  });
+  test('sprinting on the ground kicks up block dust every tick; walking and sneaking do not',()=>{
+    const r=rig();hold(r,'forward','sprint');run(r,.5);const before=r.particles.length;run(r,1);
+    const dust=r.particles.slice(before).filter(k=>k==='block').length;expect(dust).toBeGreaterThanOrEqual(18);expect(dust).toBeLessThanOrEqual(21);
+    const w=rig();hold(w,'forward');run(w,1);expect(w.particles).toEqual([]);
+    const s=rig();hold(s,'forward','sneak','sprint');run(s,1);expect(s.particles).toEqual([]);
+  });
+  test('touch controls auto-jump onto 1-block steps (Bedrock), but not walls, not while sneaking and not with keys',()=>{
+    const step=(touch:boolean,height:number,sneak=false)=>{
+      const r=rig();(r.game.input as {touch:boolean}).touch=touch;fill(r,-2,60,-12,2,59+height,-3,B.stone);
+      hold(r,'forward');if(sneak)hold(r,'sneak');run(r,sneak?6:2);return r.player.state;
+    };
+    const t=step(true,1);expect(t.y).toBeCloseTo(61,3);expect(t.z).toBeLessThan(-4);
+    const k=step(false,1);expect(k.y).toBeCloseTo(60,3);expect(k.z).toBeGreaterThan(-2.4);
+    const wall=step(true,2);expect(wall.y).toBeCloseTo(60,3);
+    const sneaking=step(true,1,true);expect(sneaking.y).toBeCloseTo(60,3);
+    // A slab is stepped up without jumping.
+    const r=rig();(r.game.input as {touch:boolean}).touch=true;fill(r,-2,60,-12,2,60,-3,blockId('stone_slab'));hold(r,'forward');
+    let peak=0;for(let i=0;i<120;i++){run(r,STEP);peak=Math.max(peak,r.player.state.y);}expect(peak).toBeLessThan(60.55);
+  });
+  test('restore rejects spawn points outside the world (a void spawn would kill on every respawn)',()=>{
+    const r=rig();const spawn={...r.player.state.spawn};
+    r.player.restore!({spawn:{x:.5,y:-4000,z:.5},bedSpawn:{x:3,y:500,z:4}});
+    expect(r.player.state.spawn).toEqual(spawn);expect(r.player.state.bedSpawn).toBeNull();
+    r.player.restore!({spawn:{x:.5,y:200,z:.5},bedSpawn:{x:3,y:-1,z:4}});expect(r.player.state.spawn).toEqual(spawn);expect(r.player.state.bedSpawn).toBeNull();
+    r.player.restore!({spawn:{x:8.5,y:64,z:-3.5},bedSpawn:{x:3,y:127,z:4}});
+    expect(r.player.state.spawn).toEqual({x:8.5,y:64,z:-3.5});expect(r.player.state.bedSpawn).toEqual({x:3,y:127,z:4});
   });
   test('the allocation-free liquid flow matches the engine rule',()=>{
     const r=rig();for(let i=0;i<7;i++)fill(r,i-3,60,-1,i-3,60,1,blockId(`water_${i+1}`));fill(r,4,59,0,4,59,0,0);

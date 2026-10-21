@@ -5,10 +5,10 @@
 // ladders, creative flight and the Speed/Slowness effects. It tracks fall distance (survival.land on landing), keeps
 // the liquid and ladder flags current, plays footsteps, falls, splashes and swim strokes, charges food exhaustion and
 // sets the field-of-view scale. The camera position (eye()) is interpolated between physics steps.
-import {blockDef} from '../data/blocks';
+import {LIQUID,blockDef} from '../data/blocks';
 import {CH,TPS} from '../engine/constants';
 import {boxCollides,collidesAt,moveBody,type MoveResult} from '../engine/physics';
-import type {Game,PlayerService,PlayerState,Vec3} from '../engine/contracts';
+import type {Game,ParticleOptions,PlayerService,PlayerState,Vec3} from '../engine/contracts';
 import {
   AIR_ACCEL,AIR_ACCEL_SPRINT,AIR_RETAIN,BASE_SPEED,FALL_RETAIN,FALL_STEP,FLIGHT_TOGGLE_TICKS,FLUID_JUMP_THRESHOLD,FLY_ACCEL,
   FLY_VERTICAL,FLY_VERTICAL_RETAIN,GROUND_FACTOR,INPUT_SCALE,JUMP_DELAY_TICKS,JUMP_VELOCITY,LADDER_CLIMB,LADDER_CLIMB_WATER,
@@ -39,6 +39,11 @@ const MINOR_COLLISION_ANGLE=.13962634;
 /** Most physics steps run in one frame (frames are capped at 0.1 s by the engine). */
 const MAX_LAG=.12;
 const ESCAPE_DIRS=[[1,0,0],[-1,0,0],[0,0,1],[0,0,-1],[0,1,0]] as const;
+/** Beds bounce a landing player back up with 0.66 of the speed (BedBlock.bounceUp) unless sneaking. */
+const BED_BOUNCE=.66;
+/** Touch auto-jump looks this far ahead (blocks) along the movement input for a 1-block step. */
+const AUTO_JUMP_REACH=.25;
+const isBed=(id:number)=>id>0&&blockDef(id).shape==='bed';
 const clampPitch=(v:number)=>Math.max(-1.55,Math.min(1.55,v));
 
 export function createPlayerState(x=.5,y=CH,z=.5):PlayerState{
@@ -118,25 +123,38 @@ export function createPlayer(game:Game):PlayerService{
     game.survival.land(distance);
     if(distance<=3||game.settings.mode==='creative')return;
     const id=supportBlock(game.world,p.x,p.y,p.z,HALF_WIDTH,.2);if(id<=0)return;
-    game.sounds.play(`fall:${blockDef(id).sound}`,null,{volume:.5,pitch:.75});
+    // The fall sound comes with fall damage, which a bed halves (survival applies the same rule); the dust does not.
+    if((isBed(id)?distance*.5:distance)>3)game.sounds.play(`fall:${blockDef(id).sound}`,null,{volume:.5,pitch:.75});
     game.render.spawnParticles('block',p.x,p.y+.05,p.z,{block:id,count:Math.min(40,Math.round(6+distance*2)),spread:.4});
   }
-  function sounds(mx:number,my:number,mz:number,horizontal:number){
+  const dust:ParticleOptions&{velocity:Vec3}={block:0,count:1,spread:.2,velocity:{x:0,y:30,z:0}};
+  /** Vanilla spawnSprintParticle: a fleck of the block underfoot kicked up behind a sprinting player every tick. */
+  function sprintDust(){
+    const id=supportBlock(game.world,p.x,p.y,p.z,HALF_WIDTH,.2);if(id<=0||LIQUID[id])return;
+    dust.block=id;dust.velocity.x=-4*p.vx;dust.velocity.z=-4*p.vz;
+    game.render.spawnParticles('block',p.x,p.y+.25,p.z,dust);
+  }
+  /** Bedrock's touch auto-jump: moving into a step one block high (too high to step up) with room on top hops onto it. */
+  function autoJumpAhead(dirX:number,dirZ:number,h:number){
+    const len=Math.hypot(dirX,dirZ);if(len<1e-4)return false;
+    const w=game.world,ax=p.x+dirX/len*AUTO_JUMP_REACH,az=p.z+dirZ/len*AUTO_JUMP_REACH,top=p.y+1+1e-3;
+    return collidesAt(w,ax,p.y+STEP_HEIGHT,az,HALF_WIDTH,h)&&!collidesAt(w,ax,top,az,HALF_WIDTH,h)&&!collidesAt(w,p.x,top,p.z,HALF_WIDTH,h);
+  }
+  function sounds(my:number,horizontal:number){
+    // Vanilla Player.getMovementEmission: flying, or sneaking on the ground, is silent and walks no step distance.
+    if(p.flying||p.sneaking&&p.onGround)return;
     // Vanilla Entity.move: distance × 0.6 per step sound; ladders count vertical movement; sounds wait for a block underfoot.
     moveDist+=Math.sqrt(horizontal*horizontal+(p.onLadder?my*my:0))*STEP_DISTANCE_SCALE;
     if(moveDist<=nextStep)return;
-    const w=game.world;
-    if(p.inWater&&!p.flying){
-      nextStep=Math.floor(moveDist)+1;
-      const t=1/TPS,v=Math.min(1,Math.sqrt(p.vx*p.vx*t*t*.2+p.vy*p.vy*t*t+p.vz*p.vz*t*t*.2)*.35);
-      game.sounds.play('swim',null,{volume:Math.min(1,.25+v*2),pitch:1+(game.random()-game.random())*.4});
-      if(p.onGround){const id=stepSoundBlock(w,p.x,p.y,p.z,HALF_WIDTH,false);if(id>0)game.sounds.play(`step:${blockDef(id).sound}`,null,{volume:.3});}
-      return;
+    // Footsteps on the ground or a ladder (not in the swimming pose), in water too; otherwise strokes while in water.
+    if((p.onGround||p.onLadder)&&!swimming){
+      const id=stepSoundBlock(game.world,p.x,p.y,p.z,HALF_WIDTH,p.onLadder);
+      if(id>0){nextStep=Math.floor(moveDist)+1;game.sounds.play(`step:${blockDef(id).sound}`,null);return;}
     }
-    if(!p.onGround&&!p.onLadder||swimming)return;
-    const id=stepSoundBlock(w,p.x,p.y,p.z,HALF_WIDTH,p.onLadder);if(id<=0)return;
+    if(!p.inWater)return;
     nextStep=Math.floor(moveDist)+1;
-    game.sounds.play(`step:${blockDef(id).sound}`,null,p.sneaking?{volume:.6}:undefined);
+    const t=1/TPS,v=Math.min(1,Math.sqrt(p.vx*p.vx*t*t*.2+p.vy*p.vy*t*t+p.vz*p.vz*t*t*.2)*.35);
+    game.sounds.play('swim',null,{volume:Math.min(1,.25+v*2),pitch:1+(game.random()-game.random())*.4});
   }
 
   function step(){
@@ -174,9 +192,17 @@ export function createPlayer(game:Game):PlayerService{
     }else if(!hasForward||!enoughFood||collidedHard||p.inWater&&!underwater||slow||using)p.sprinting=false;
     const attribute=BASE_SPEED*speedFactor*(p.sprinting?SPRINT_MULTIPLIER:1);
 
+    // Input vector: impulses × 0.98 (× 0.2 using an item, × 0.3 sneaking or crawling), normalised above length 1.
+    const k=INPUT_SCALE*(using?USE_INPUT:1)*(slow?SNEAK_INPUT:1);
+    let is=mv.strafe*k,iz=mv.forward*k;const l2=is*is+iz*iz;if(l2>1){const l=Math.sqrt(l2);is/=l;iz/=l;}
+    const sin=Math.sin(p.yaw),cos=Math.cos(p.yaw),dirX=-sin*iz+cos*is,dirZ=-cos*iz-sin*is;
+
     // ---- Jumping (LivingEntity.aiStep) ----------------------------------------------------------
     const tickStart=tickStep===0;tickStep=(tickStep+1)%STEPS_PER_TICK;
-    if(tickStart){boostX=boostZ=0;fallAtTick=p.fallDistance;}
+    if(tickStart){
+      boostX=boostZ=0;fallAtTick=p.fallDistance;
+      if(p.sprinting&&p.onGround&&!p.inWater&&!p.inLava&&!p.sneaking)sprintDust();
+    }
     if(jumpDelay>0)jumpDelay--;
     const threshold=POSE_EYE[pose]<FLUID_JUMP_THRESHOLD?0:FLUID_JUMP_THRESHOLD;
     let swimUp=0,jumped=false;
@@ -184,13 +210,12 @@ export function createPlayer(game:Game):PlayerService{
       const depth=p.inLava?fluid.lavaDepth:fluid.waterDepth,wet=p.inWater&&depth>0,wading=p.onGround&&!(depth>threshold);
       if(wet&&!wading||p.inLava&&!wading)swimUp=LIQUID_JUMP;
       else if(tickStart&&(p.onGround||wet&&depth<=threshold)&&jumpDelay===0){jump();jumped=true;}
-    }else jumpDelay=0;
+    }else{
+      jumpDelay=0;
+      if(tickStart&&input.touch&&p.onGround&&!p.sneaking&&!p.flying&&!p.inWater&&!p.inLava&&autoJumpAhead(dirX,dirZ,h)){jump();jumped=true;}
+    }
 
     // ---- Horizontal travel ---------------------------------------------------------------------
-    // Input vector: impulses × 0.98 (× 0.2 using an item, × 0.3 sneaking or crawling), normalised above length 1.
-    const k=INPUT_SCALE*(using?USE_INPUT:1)*(slow?SNEAK_INPUT:1);
-    let is=mv.strafe*k,iz=mv.forward*k;const l2=is*is+iz*iz;if(l2>1){const l=Math.sqrt(l2);is/=l;iz/=l;}
-    const sin=Math.sin(p.yaw),cos=Math.cos(p.yaw),dirX=-sin*iz+cos*is,dirZ=-cos*iz-sin*is;
     if(tickStart){
       let retain:number;
       if(p.flying){retain=AIR_RETAIN;tickAccel=FLY_ACCEL*(p.sprinting?2:1);}
@@ -247,8 +272,10 @@ export function createPlayer(game:Game):PlayerService{
       }
       p.vx=dx/STEP;p.vz=dz/STEP;
     }
-    const x0=p.x,y0=p.y,z0=p.z;splashVx=svx;splashVy=p.vy;splashVz=svz;
+    const x0=p.x,y0=p.y,z0=p.z,vy0=p.vy;splashVx=svx;splashVy=p.vy;splashVz=svz;
     moveBody(w,p,HALF_WIDTH,h,STEP,move,STEP_HEIGHT);
+    // Landing on a bed bounces (BedBlock.updateEntityAfterFallOn); sneaking suppresses it.
+    if(move.hitY&&vy0<0&&p.onGround&&!p.sneaking&&isBed(supportBlock(w,p.x,p.y,p.z,HALF_WIDTH,.2)))p.vy=-vy0*BED_BOUNCE;
     // Holding back at an edge is not a collision: the velocity stays.
     p.vx=move.hitX?0:svx;p.vz=move.hitZ?0:svz;
     const mx=p.x-x0,my=p.y-y0,mz=p.z-z0,horizontal=Math.sqrt(mx*mx+mz*mz);
@@ -269,7 +296,7 @@ export function createPlayer(game:Game):PlayerService{
     if(p.inWater||p.flying||p.onLadder)p.fallDistance=fallAtTick=0;
     else{if(p.inLava){p.fallDistance*=LAVA_FALL_RETAIN;fallAtTick*=LAVA_FALL_RETAIN;}if(my<0)p.fallDistance-=my;}
     if(p.onGround){if(fallAtTick>0)landed(fallAtTick);p.fallDistance=fallAtTick=0;}
-    sounds(mx,my,mz,horizontal);
+    sounds(my,horizontal);
     if(!creative){
       if(swimming||p.headInWater)exhaust+=.01*Math.sqrt(horizontal*horizontal+my*my);
       else if(p.inWater)exhaust+=.01*horizontal;
@@ -338,12 +365,14 @@ export function createPlayer(game:Game):PlayerService{
       if(yaw!==null&&Math.abs(yaw)<1e6)p.yaw=yaw;
       if(pitch!==null)p.pitch=clampPitch(pitch);
       p.flying=d.flying===true&&game.settings.mode==='creative';
-      const vec=(o:unknown,integer:boolean):Vec3|null=>{
+      // Respawning teleports straight to these, so their height must be inside the world: a spawn in the void would
+      // kill the player again after every respawn.
+      const vec=(o:unknown,integer:boolean,maxY:number):Vec3|null=>{
         if(!o||typeof o!=='object')return null;
         const r=o as Record<string,unknown>,ok=(k:string)=>typeof r[k]==='number'&&(integer?Number.isInteger(r[k]):Number.isFinite(r[k]))&&Math.abs(r[k] as number)<5e5;
-        return ok('x')&&ok('y')&&ok('z')?{x:r.x as number,y:r.y as number,z:r.z as number}:null;
+        return ok('x')&&ok('y')&&ok('z')&&(r.y as number)>=0&&(r.y as number)<=maxY?{x:r.x as number,y:r.y as number,z:r.z as number}:null;
       };
-      p.spawn=vec(d.spawn,false)??p.spawn;p.bedSpawn=vec(d.bedSpawn,true);
+      p.spawn=vec(d.spawn,false,CH)??p.spawn;p.bedSpawn=vec(d.bedSpawn,true,CH-1);
     },
     dispose(){for(const f of off.splice(0))f();}
   };

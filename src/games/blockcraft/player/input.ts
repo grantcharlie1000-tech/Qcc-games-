@@ -17,6 +17,8 @@ import {createTouchControls,type TouchControls,type TouchRing} from './controls-
 export const MOUSE_RADIANS_PER_PX=.15*Math.PI/180;
 /** Radians per touch pixel at sensitivity 1 (a 360 px drag turns about 120°). */
 export const TOUCH_RADIANS_PER_PX=.0058;
+/** While no gamepad is known, look for one this often (milliseconds). */
+const PAD_CHECK_MS=1000;
 /** Larger pointer-lock jumps are browser glitches (the first event after locking can carry a huge delta). */
 const MAX_MOUSE_JUMP=400;
 const TEXT_ENTRY='input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="searchbox"]';
@@ -26,7 +28,7 @@ export function createInput(game:Game):InputService{
   const padFrame:PadFrame={connected:false,moveX:0,moveY:0,lookX:0,lookY:0,buttons:[]};
   const abort=new AbortController(),signal=abort.signal;
   const coarse=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches;
-  let touchMode=coarse,lockFailures=0,padsKnown=0,padMenuA=false,padMenuStart=false,padStarting=false,menuFrame=0,lastPoll=0;
+  let touchMode=coarse,lockFailures=0,padsKnown=0,padMenuA=false,padMenuStart=false,padStarting=false,menuFrame=0,lastPoll=0,lastPadCheck=0;
   let gestureKind:PointerKind='touch',touchUI:TouchControls|null=null,offState:(()=>void)|null=null;
   const ring:TouchRing={x:0,y:0,progress:0};
 
@@ -56,8 +58,15 @@ export function createInput(game:Game):InputService{
     if(r.release)controls.release(r.release,'gesture');
     if(r.tap&&phase()==='playing')controls.tap(r.tap);
   }
+  /** navigator.getGamepads(), or nothing where the API is missing or blocked (permissions policy throws). */
+  function gamepads():readonly (Gamepad|null)[]{
+    try{return typeof navigator.getGamepads==='function'?navigator.getGamepads():[];}catch{return [];}
+  }
+  /** Connected pads, leaving out one being disconnected. */
+  function countPads(skip=-1){let n=0;for(const g of gamepads())if(g&&g.connected&&g.index!==skip)n++;return n;}
+  function padsLost(){controls.releaseAll('pad:');controls.setPadMove(0,0);pad.reset();padMenuA=padMenuStart=false;}
   function pollPad(dt:number){
-    const list=typeof navigator.getGamepads==='function'?navigator.getGamepads():[];
+    const list=gamepads();
     let found:Gamepad|null=null;
     for(const g of list){if(!g||!g.connected)continue;if(!found||g.mapping==='standard'&&found.mapping!=='standard')found=g;}
     readPad(found,padFrame);
@@ -161,17 +170,21 @@ export function createInput(game:Game):InputService{
       canvas.addEventListener('lostpointercapture',e=>endGesture(e,true),{signal});
 
       // ---- Gamepads ----------------------------------------------------------------------------------
-      window.addEventListener('gamepadconnected',()=>{padsKnown++;watchMenus();},{signal});
-      window.addEventListener('gamepaddisconnected',()=>{
-        padsKnown=Math.max(0,padsKnown-1);
-        if(!padsKnown){controls.releaseAll('pad:');controls.setPadMove(0,0);pad.reset();padMenuA=padMenuStart=false;}
+      // gamepadconnected fires once per pad when it is first exposed to the page, so a pad exposed before this mount
+      // (leaving Blockcraft and coming back) sends none: count the connected pads now, and recount on every event.
+      window.addEventListener('gamepadconnected',()=>{padsKnown=Math.max(1,countPads());watchMenus();},{signal});
+      window.addEventListener('gamepaddisconnected',e=>{
+        padsKnown=countPads((e as GamepadEvent).gamepad?.index??-1);
+        if(!padsKnown)padsLost();
       },{signal});
+      padsKnown=countPads();lastPadCheck=performance.now();watchMenus();
       refreshTouch();
     },
     frame(dt){
       const now=performance.now(),playing=phase()==='playing';
       const hold=gesture.update(now);if(hold&&playing)controls.press(hold,'gesture');
       if(padsKnown>0)pollPad(dt);
+      else if(now-lastPadCheck>PAD_CHECK_MS){lastPadCheck=now;padsKnown=countPads();watchMenus();}// a missed connection event
       if(!touchUI)return;
       let shown:TouchRing|null=null;
       if(playing&&gesture.active&&gestureKind==='touch'){
