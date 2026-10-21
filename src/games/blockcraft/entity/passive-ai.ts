@@ -6,7 +6,7 @@
 // Persistent state lives in entity.data (JSON-safe, saved): `growth` (vanilla Age: < 0 baby ticks to adulthood,
 // > 0 breeding cool-down) and `love` (love-mode ticks). Transient state (targets, timers, animation) lives in a
 // per-entity Brain kept in a WeakMap.
-import {SOLID,isLava,isWater,blockDef,blockId} from '../data/blocks';
+import {SOLID,isLava,isWater,blockId} from '../data/blocks';
 import {itemDef} from '../data/items';
 import type {DamageKind,DamageSource,Entity,Game,ItemId,ItemStack,SpawnReason} from '../engine/contracts';
 
@@ -24,8 +24,8 @@ export interface Brain{
   hasTarget:boolean;tx:number;ty:number;tz:number;targetTicks:number;stuck:number;
   panic:number;calm:number;partner:number;loveTime:number;parent:number;
   look:number;lookPlayer:boolean;lookX:number;lookY:number;lookZ:number;
-  /** Point to run from (avoid). */
-  fleeX:number;fleeZ:number;threat:number;
+  /** Point to run from (avoid), the threat (-1 the player, else an entity id, 0 none) and ticks to its next re-check. */
+  fleeX:number;fleeZ:number;threat:number;avoidCheck:number;
   /** Sheep grazing timer (40..0), the vanilla eat animation tick. */
   eat:number;
   /** Rabbit hop: ticks into the current hop (0 = not hopping), landing delay, previous ground state. */
@@ -40,7 +40,7 @@ export function brainOf(e:Entity):Brain{
   let b=BRAINS.get(e);
   if(!b){
     b={mode:'idle',hasTarget:false,tx:0,ty:0,tz:0,targetTicks:0,stuck:0,panic:0,calm:0,partner:0,loveTime:0,parent:0,
-      look:0,lookPlayer:false,lookX:0,lookY:0,lookZ:0,fleeX:0,fleeZ:0,threat:0,eat:0,hop:0,jumpDelay:0,wasOnGround:true,
+      look:0,lookPlayer:false,lookX:0,lookY:0,lookZ:0,fleeX:0,fleeZ:0,threat:0,avoidCheck:0,eat:0,hop:0,jumpDelay:0,wasOnGround:true,
       hasCrop:false,cropX:0,cropY:0,cropZ:0,raid:0,raidTicks:0,flap:0,oFlap:0,flapSpeed:0,oFlapSpeed:0,flapping:1};
     BRAINS.set(e,b);
   }
@@ -113,21 +113,25 @@ export function standable(world:Game['world'],x:number,y:number,z:number,height:
   }
   return true;
 }
-/** Would a step in direction (dx,dz) take a mob of half width `halfWidth` at feet (x,y,z) over a drop of more than 3 blocks,
- *  into lava or fire, or against a cactus? Water below counts as a safe landing. Unloaded cells are dangerous. */
-export function dangerAhead(world:Game['world'],x:number,y:number,z:number,dx:number,dz:number,halfWidth:number):boolean{
-  const len=Math.hypot(dx,dz);if(len<1e-6)return false;
-  const reach=halfWidth+.45,ax=Math.floor(x+dx/len*reach),az=Math.floor(z+dz/len*reach),fy=Math.floor(y+.5);
-  const feet=world.get(ax,fy,az);
+/** Is the column at (x, z) dangerous to walk into from feet level fy: lava, fire or a cactus at or just above the feet, a
+ *  drop of more than 3 blocks, or an unloaded cell? Water below counts as a safe landing. */
+function columnDanger(world:Game['world'],x:number,fy:number,z:number):boolean{
+  const feet=world.get(x,fy,z);
   if(feet<0||harmful(feet))return true;
-  if(SOLID[feet])return harmful(world.get(ax,fy+1,az));
+  if(SOLID[feet])return harmful(world.get(x,fy+1,z));
   for(let d=1;d<=4;d++){
-    const id=world.get(ax,fy-d,az);
+    const id=world.get(x,fy-d,z);
     if(id<0||harmful(id))return true;
-    if(isWater(id))return false;
-    if(SOLID[id])return false;
+    if(isWater(id)||SOLID[id])return false;
   }
   return true;
+}
+/** Would moving in direction (dx,dz) take a mob of half width `halfWidth` at feet (x,y,z) over a drop of more than 3 blocks,
+ *  into lava or fire, or against a cactus? Checks the column under its leading edge and the one a step beyond. */
+export function dangerAhead(world:Game['world'],x:number,y:number,z:number,dx:number,dz:number,halfWidth:number):boolean{
+  const len=Math.hypot(dx,dz);if(len<1e-6)return false;
+  const ux=dx/len,uz=dz/len,fy=Math.floor(y+.5),edge=halfWidth-1e-3,step=halfWidth+.45;
+  return columnDanger(world,Math.floor(x+ux*edge),fy,Math.floor(z+uz*edge))||columnDanger(world,Math.floor(x+ux*step),fy,Math.floor(z+uz*step));
 }
 
 // ---- Steering helpers -----------------------------------------------------------------------------
@@ -158,8 +162,9 @@ const arrived=(e:Entity,b:Brain,r:number)=>(e.x-(b.tx+.5))**2+(e.z-(b.tz+.5))**2
 const playerEye=(game:Game)=>game.player.state.y+game.player.eyeHeight();
 
 // ---- Behaviours -----------------------------------------------------------------------------------
-/** Damage kinds that make animals panic (vanilla panic_causes: attacks, projectiles, explosions, fire, lava, cacti, lightning, magic). */
-export const PANIC_CAUSES:ReadonlySet<DamageKind>=new Set<DamageKind>(['player','mob','projectile','explosion','fire','lava','cactus','lightning','magic']);
+/** Damage kinds that make animals panic (vanilla panic_causes: attacks, projectiles, explosions, fire, lava, cacti, lightning).
+ *  Falls, drowning and starving do not. */
+export const PANIC_CAUSES:ReadonlySet<DamageKind>=new Set<DamageKind>(['player','mob','projectile','explosion','fire','lava','cactus','lightning']);
 /** Kind `hurt` hook: panic for 5 seconds and lose love mode (vanilla Animal.hurt resets love). */
 export function hurtAnimal(e:Entity,source:DamageSource):void{
   const b=brainOf(e);if(PANIC_CAUSES.has(source.kind))b.panic=PANIC_TICKS;
@@ -248,7 +253,9 @@ export function spawnEggOnAnimal(e:Entity,game:Game,cfg:AnimalConfig,held:ItemSt
 }
 
 function ageing(e:Entity,game:Game,cfg:AnimalConfig):void{
-  const growth=growthOf(e);
+  let growth=growthOf(e);
+  // Someone else grew the baby up (the entity service's own baby timer): adopt it.
+  if(growth<0&&!e.baby){growth=0;e.data.growth=0;setBaby(e,false,cfg);}
   if(growth<0){e.data.growth=growth+1;if(growth+1===0)setBaby(e,false,cfg);}
   else if(growth>0)e.data.growth=growth-1;
   const love=loveOf(e);
@@ -314,11 +321,12 @@ function runBreed(e:Entity,game:Game,cfg:AnimalConfig,b:Brain){
     else b.loveTime=0;
   }
 }
+/** Vanilla TemptGoal: walk to the player, stop within 2.5 blocks, keep looking at them. */
 function runTempt(e:Entity,game:Game,cfg:AnimalConfig){
   const p=game.player.state,ai=game.entities.ai;
-  ai.lookAt(e,p.x,playerEye(game),p.z);
   if(dist2(e,p.x,p.y,p.z)<6.25)ai.stop(e);
-  else{ai.navigate(e,p.x,p.y,p.z,cfg.speeds.tempt);ai.lookAt(e,p.x,playerEye(game),p.z);}
+  else ai.navigate(e,p.x,p.y,p.z,cfg.speeds.tempt);
+  ai.lookAt(e,p.x,playerEye(game),p.z);
 }
 function runFollow(e:Entity,game:Game,cfg:AnimalConfig,b:Brain){
   const p=game.entities.byId(b.parent);if(!p)return;
@@ -327,7 +335,7 @@ function runFollow(e:Entity,game:Game,cfg:AnimalConfig,b:Brain){
 
 /** Vanilla LookAtPlayerGoal (2% per tick, 2-4 s) and RandomLookAroundGoal (idle only, 1-2 s). */
 function look(e:Entity,game:Game,cfg:AnimalConfig,b:Brain,mode:Mode){
-  if(mode==='panic'||mode==='tempt'||mode==='breed'||mode==='custom'&&b.eat>0){b.look=0;return;}
+  if(mode==='panic'||mode==='tempt'||mode==='breed'||mode==='custom'){b.look=0;return;}
   const p=game.player.state,ai=game.entities.ai,range2=cfg.lookRange*cfg.lookRange;
   if(b.look>0){
     b.look--;
@@ -370,5 +378,3 @@ export function tickAnimal(e:Entity,game:Game,cfg:AnimalConfig):void{
   }
   cfg.move?.(e,game,b);
 }
-
-export {blockDef};

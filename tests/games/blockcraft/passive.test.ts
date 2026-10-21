@@ -202,11 +202,12 @@ describe('breeding',()=>{
     expect(cow.interact!(a,h.game,h.game.inventory.held())).toBe(false);
     expect(cow.interact!(b,h.game,h.game.inventory.held())).toBe(true);
     tick(h,59);expect(h.bred).toHaveLength(0);
-    tick(h,5);
+    // Three seconds (60 ticks) of courting next to each other, then the calf.
+    tick(h,1);
     expect(h.bred).toHaveLength(1);expect(h.bred[0].kind).toBe('cow');
     const babies=h.list.filter(e=>e.baby);expect(babies).toHaveLength(1);
-    expect(babies[0].data.growth).toBe(-24000);
-    expect(a.data.growth).toBe(6000);expect(b.data.growth).toBe(6000);expect(a.data.love).toBe(0);expect(b.data.love).toBe(0);
+    expect(babies[0].data.growth).toBeGreaterThanOrEqual(-24000);expect(babies[0].data.growth).toBeLessThanOrEqual(-23999);
+    for(const parent of [a,b]){expect(parent.data.growth).toBeGreaterThanOrEqual(5999);expect(parent.data.growth).toBeLessThanOrEqual(6000);}expect(a.data.love).toBe(0);expect(b.data.love).toBe(0);
     expect(h.xp).toHaveLength(1);expect(h.xp[0]).toBeGreaterThanOrEqual(1);expect(h.xp[0]).toBeLessThanOrEqual(7);
     // Cooldown: food is refused (and not consumed).
     h.hold(stack('wheat'));expect(cow.interact!(a,h.game,h.game.inventory.held())).toBe(false);expect(h.game.inventory.held()?.count).toBe(1);
@@ -387,13 +388,37 @@ describe('rabbits',()=>{
     expect(setup({biome:'desert'}).spawn('rabbit',.5,60,.5,{reason:'chunk'}).data.variant).toBe('gold');
     expect(RABBIT_VARIANTS).toContain('salt');
   });
-  test('hop: they only move in jumps',()=>{
+  test('hop: they only move in jumps, pausing on landing (10 ticks walking, 1 in a panic)',()=>{
     const h=setup({mode:'creative'}),r=h.spawn('rabbit');
     h.game.entities.ai.navigate=(e,_x,_y,_z,speed)=>{e.moveX=speed;e.moveZ=0;return true;};
+    /** Simulated physics: a hop keeps the rabbit airborne for 7 ticks. Returns the ticks on which it hopped. */
+    const run=(ticks:number)=>{
+      const hops:number[]=[];let air=0;
+      for(let i=0;i<ticks;i++){
+        r.onGround=air===0;tick(h,1);
+        if(r.onGround){
+          if(r.vy>0){hops.push(i);expect(r.vx).toBeCloseTo(r.moveX);air=7;}
+          else expect([r.moveX,r.moveZ]).toEqual([0,0]);
+        }else air--;
+        r.vy=0;
+      }
+      return hops;
+    };
     hurt(h,r);
-    let hops=0;
-    for(let i=0;i<60;i++){tick(h,1);if(r.vy>0){hops++;r.onGround=false;}else r.onGround=true;if(r.onGround)expect(r.moveX).toBe(0);r.vy=0;}
-    expect(hops).toBeGreaterThan(3);
+    const panic=run(60);
+    expect(panic.length).toBeGreaterThan(5);
+    expect(panic[1]-panic[0]).toBe(9);// 7 ticks in the air, the landing tick, then 1 tick of delay
+    expect(r.vy).toBe(0);
+    expect(brainOf(r).hop).toBeGreaterThanOrEqual(0);
+    // After the panic (5 s) it strolls with the long landing delay.
+    const calm=run(200).filter(t=>t>60);
+    for(let i=1;i<calm.length;i++)expect(calm[i]-calm[i-1]).toBeGreaterThanOrEqual(18);
+  });
+  test('a rabbit blocked by a wall hops higher to climb it',()=>{
+    const h=setup({mode:'creative'}),r=h.spawn('rabbit');
+    h.game.entities.ai.navigate=(e,_x,_y,_z,speed)=>{e.moveX=speed;e.moveZ=0;return true;};
+    hurt(h,r);r.collidedH=true;tick(h,1);
+    expect(r.vy).toBe(10);
   });
   test('raid mature carrots, nibbling them down one stage',()=>{
     const h=setup({mode:'creative'}),carrots3=stateFor('carrots',{age:3})!.id;
