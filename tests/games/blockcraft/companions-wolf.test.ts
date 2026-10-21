@@ -3,7 +3,7 @@ import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
 import type {Entity} from '../../../src/games/blockcraft/engine/contracts';
 import {DYE_COLOURS,newWolfLook} from '../../../src/games/blockcraft/entity/companions-art';
 import {BABY_TICKS,BREED_COOLDOWN,FOLLOW_STOP,LOVE_TICKS,TAME_CHANCE,TAME_HEALTH,WILD_HEALTH,WOLF_DAMAGE,angerOf,canTeleportTo,isSitting,isTame,
-  lookOfWolf,ownerGround,restoreWolfData,tailAngle,tame,teleportToOwner,variantForBiome,wolfBrain} from '../../../src/games/blockcraft/entity/companions-wolf';
+  lookOfWolf,ownerGround,restoreWolfData,tailAngle,tame,teleportToOwner,variantForBiome,wolfBrain,wolfDeathMessage} from '../../../src/games/blockcraft/entity/companions-wolf';
 import {createHarness,dist,fill,sequence,until,type Harness} from './companions-harness';
 
 function tamedWolf(h:Harness,x:number,z:number,sitting=false):Entity{
@@ -319,6 +319,18 @@ describe('looks and sounds',()=>{
     h.game.entities.damage(w,1,{kind:'fire'});
     const start={x:w.x,y:w.y,z:w.z};h.run(20);
     expect(dist(w,start)).toBeGreaterThan(3);
+  });
+});
+
+describe('death',()=>{
+  it('tells the owner how their wolf died',()=>{
+    const h=createHarness(),w=tamedWolf(h,2.5,.5),z=h.spawn('zombie',4.5,60,.5),wild=h.spawn('wolf',8.5,60,.5);
+    h.game.entities.damage(w,50,{kind:'mob',attacker:z});
+    expect(h.game.toasts).toEqual(['Wolf was slain by Zombie']);
+    h.game.entities.damage(wild,50,{kind:'player',byPlayer:true});
+    expect(h.game.toasts.length).toBe(1);
+    expect(wolfDeathMessage({kind:'fall'})).toBe('Wolf hit the ground too hard');
+    expect(wolfDeathMessage({kind:'projectile',byPlayer:true})).toBe('Wolf was shot by Player');
   });
 });
 

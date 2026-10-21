@@ -634,7 +634,30 @@ export function wireOwnerEvents(game:Game):(()=>void)[]{
     }),
     game.events.on('playerDied',()=>{
       for(const e of game.entities.all())if(e.kind==='wolf'){const b=BRAINS.get(e);if(b?.targetPlayer)clearTarget(b);}
-    })
+    }),
+    // TamableAnimal.die: the owner is told how their wolf died (vanilla chat message; here the action bar).
+    game.events.on('entityDied',({entity,source})=>{if(entity.kind==='wolf'&&isTame(entity))game.ui.toast(wolfDeathMessage(source));})
   ];
+}
+const nameOf=(e:Entity|null|undefined)=>e?e.kind.split('_').map(w=>w[0].toUpperCase()+w.slice(1)).join(' '):'';
+/** Vanilla death messages for a pet wolf. */
+export function wolfDeathMessage(source:DamageSource):string{
+  const by=source.attacker?nameOf(source.attacker):source.byPlayer||source.kind==='player'?'Player':'';
+  switch(source.kind){
+    case 'player':case 'mob':return by?`Wolf was slain by ${by}`:'Wolf died';
+    case 'projectile':return by?`Wolf was shot by ${by}`:'Wolf was shot';
+    case 'explosion':return by?`Wolf was blown up by ${by}`:'Wolf blew up';
+    case 'fall':return 'Wolf hit the ground too hard';
+    case 'lava':return 'Wolf tried to swim in lava';
+    case 'fire':return 'Wolf burned to death';
+    case 'drown':return 'Wolf drowned';
+    case 'cactus':return 'Wolf was pricked to death';
+    case 'suffocate':return 'Wolf suffocated in a wall';
+    case 'void':return 'Wolf fell out of the world';
+    case 'lightning':return 'Wolf was struck by lightning';
+    case 'magic':return 'Wolf was killed by magic';
+    case 'starve':return 'Wolf starved to death';
+  }
+  return 'Wolf died';
 }
 export {newWolfLook};
