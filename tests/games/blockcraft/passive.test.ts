@@ -618,14 +618,24 @@ describe('rabbits',()=>{
     }
     expect(hops).toBeGreaterThan(3);
   });
-  test('rabbits spread their garden searches instead of all searching on their first tick',()=>{
-    const h=setup({mode:'creative'}),world=w(h),get=world.get.bind(world);
-    for(let i=0;i<20;i++)h.spawn('rabbit',-9.5+i,60,(i%5)-2,{reason:'chunk'});
-    let reads=0;world.get=(x,y,z)=>{reads++;return get(x,y,z);};
-    let worst=0;
-    for(let t=0;t<200;t++){reads=0;tick(h,1);worst=Math.max(worst,reads);}
-    // One full search reads about 2,900 cells; never more than a few rabbits search in the same tick.
-    expect(worst).toBeLessThan(4*2900);
+  test('garden searches are cheap and spread out: rabbits spawned together do not all search on their first tick',()=>{
+    const h=setup({mode:'creative'}),world=w(h),rabbits=Array.from({length:20},(_,i)=>h.spawn('rabbit',-9.5+i,60,(i%5)-2,{reason:'chunk'}));
+    expect(new Set(rabbits.map(r=>brainOf(r).raid)).size).toBeGreaterThan(10);
+    // All 20 forced to search (31×31 columns on 3 levels each) in one tick: the scan reads chunk arrays, not ~2,900 single cells.
+    const get=world.get.bind(world);let reads=0;world.get=(x,y,z)=>{reads++;return get(x,y,z);};
+    for(const r of rabbits){const b=brainOf(r);b.raid=0;b.hasCrop=false;}
+    tick(h,1);
+    expect(reads).toBeLessThan(20*300);
+    // Still finds the nearest ripe carrot on farmland at the feet level.
+    const ripe=stateFor('carrots',{age:3})!.id;
+    for(const [x,z] of [[6,0],[3,1]]){world.set(x,59,z,B.farmland);world.set(x,60,z,ripe);}
+    world.set(0,60,-1,B.farmland);world.set(0,61,-1,ripe);// one level up and nearer, but the feet level comes first
+    const r=rabbits[10],b=brainOf(r);b.raid=0;b.hasCrop=false;r.data.carrotTicks=0;// at (0.5, 60, -2)
+    h.kind('rabbit').tick!(r,h.game);
+    expect([b.hasCrop,b.cropX,b.cropY,b.cropZ]).toEqual([true,3,60,1]);
+    for(const [x,z] of [[6,0],[3,1]])world.set(x,60,z,0);
+    b.raid=0;b.hasCrop=false;h.kind('rabbit').tick!(r,h.game);
+    expect([b.hasCrop,b.cropX,b.cropY,b.cropZ]).toEqual([true,0,61,-1]);
   });
   test('raid mature carrots, nibbling them down one stage',()=>{
     const h=setup({mode:'creative'}),carrots3=stateFor('carrots',{age:3})!.id;

@@ -9,6 +9,7 @@
 import {AIR,B,SOLID,WOOL_COLOURS,blockDef,blockId,familyStates,stateFor} from '../data/blocks';
 import {BIOME_BY_NAME,biomeDef} from '../data/biomes';
 import {stack} from '../data/items';
+import {CH,CS,voxelIndex} from '../engine/constants';
 import {brainOf,dangerMoving,feedAnimal,hurtAnimal,initAnimal,mobSpeed,restoreAnimalData,spawnEggOnAnimal,tickAnimal,ageUp,
   type AnimalConfig,type AnimalSpeeds,type Brain,type CustomBehaviour} from './passive-ai';
 import {RABBIT_VARIANTS,chickenModel,cowModel,pigModel,rabbitModel,sheepModel,type RabbitVariant} from './passive-art';
@@ -349,18 +350,27 @@ function matureCarrot(game:Game,x:number,y:number,z:number):boolean{
 }
 /** The first garden search waits 0-199 ticks, so rabbits spawned or loaded together do not all search in one tick. */
 const FIRST_RAID=200;
-const SEARCH_LEVELS=[0,1,-1];
-/** Vanilla MoveToBlockGoal search (range 16, the feet level then one above and below), nearest rings first. */
+const SEARCH_LEVELS=[0,1,-1],SEARCH_RANGE=15;
+/** Vanilla MoveToBlockGoal search (range 16: the feet level first, then one above, then one below; nearest ring first).
+ *  Scans the loaded chunks' block arrays directly (about 2,900 cells), so a search costs a few microseconds. */
 function findCarrot(e:Entity,game:Game,b:Brain):boolean{
-  const fx=Math.floor(e.x),fy=feetY(e),fz=Math.floor(e.z);
-  for(const dy of SEARCH_LEVELS)for(let r=0;r<16;r++)for(let dz=-r;dz<=r;dz++){
-    const edge=dz===-r||dz===r,step=edge?1:2*r;
-    for(let dx=-r;dx<=r;dx+=Math.max(1,step)){
-      const x=fx+dx,y=fy+dy,z=fz+dz;
-      if(matureCarrot(game,x,y,z)){b.hasCrop=true;b.cropX=x;b.cropY=y;b.cropZ=z;b.raidTicks=0;return true;}
+  const fx=Math.floor(e.x),fy=feetY(e),fz=Math.floor(e.z),R=SEARCH_RANGE;
+  let best=Infinity;
+  for(let cz=(fz-R)>>4;cz<=(fz+R)>>4;cz++)for(let cx=(fx-R)>>4;cx<=(fx+R)>>4;cx++){
+    const chunk=game.world.chunk(cx,cz);if(!chunk)continue;
+    const bx=cx*CS,bz=cz*CS,x0=Math.max(fx-R,bx),x1=Math.min(fx+R,bx+CS-1),z0=Math.max(fz-R,bz),z1=Math.min(fz+R,bz+CS-1);
+    for(let level=0;level<SEARCH_LEVELS.length;level++){
+      const y=fy+SEARCH_LEVELS[level];if(y<1||y>=CH)continue;
+      for(let z=z0;z<=z1;z++)for(let x=x0;x<=x1;x++){
+        if(MATURE_CARROT[chunk.blocks[voxelIndex(x-bx,y,z-bz)]]!==1)continue;
+        const rank=level*CS*2+Math.max(Math.abs(x-fx),Math.abs(z-fz));
+        if(rank<best&&FARMLAND.has(game.world.get(x,y-1,z))){best=rank;b.cropX=x;b.cropY=y;b.cropZ=z;}
+      }
     }
   }
-  return false;
+  if(best===Infinity)return false;
+  b.hasCrop=true;b.raidTicks=0;
+  return true;
 }
 /** Vanilla RaidGardenGoal: a rabbit that wants food walks to a ripe carrot and nibbles it down one growth stage. */
 const raidGarden:CustomBehaviour={
