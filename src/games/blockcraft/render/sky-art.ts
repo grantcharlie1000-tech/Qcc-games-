@@ -63,8 +63,8 @@ function valueNoise(x:number,y:number,size:number,period:number,salt:number){
 export function paintCloudMap(size=CLOUD_CELLS,seed=7):Uint8Array{
   const out=new Uint8Array(size*size);
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-    const v=valueNoise(x,y,size,8,seed)*.62+valueNoise(x,y,size,16,seed+1)*.28+valueNoise(x,y,size,24,seed+2)*.1;
-    out[x+y*size]=v>.53?1:0;
+    const v=valueNoise(x,y,size,12,seed)*.55+valueNoise(x,y,size,24,seed+1)*.3+valueNoise(x,y,size,48,seed+2)*.15;
+    out[x+y*size]=v>.58?1:0;
   }
   return out;
 }
