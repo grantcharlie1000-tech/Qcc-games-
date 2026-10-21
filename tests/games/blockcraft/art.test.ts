@@ -106,6 +106,34 @@ describe('biome tinting',()=>{
   });
 });
 
+describe('vanilla look',()=>{
+  test('common blocks average close to their vanilla colours',()=>{
+    // Approximate average colours of the vanilla (1.14+) textures; each tile must stay within a small distance.
+    const VANILLA:Record<string,[number,number,number]>={
+      stone:[125,125,125],cobblestone:[127,127,127],granite:[149,103,85],diorite:[188,188,188],andesite:[136,136,136],
+      dirt:[134,96,67],sand:[219,207,163],red_sand:[190,102,33],gravel:[131,127,126],clay:[160,166,179],snow:[249,254,254],
+      deepslate:[80,80,82],tuff:[108,109,102],obsidian:[15,10,24],oak_log:[109,85,50],oak_planks:[162,130,78],birch_log:[216,215,210],
+      birch_planks:[192,175,121],spruce_log:[58,37,16],spruce_planks:[114,84,48],acacia_planks:[168,90,50],dark_oak_planks:[66,43,20],
+      cherry_planks:[226,178,172],bricks:[150,97,83],stone_bricks:[122,121,122],iron_block:[220,220,220],gold_block:[246,208,61],
+      redstone_block:[175,24,5],lapis_block:[30,67,140],coal_block:[16,15,15],copper_block:[192,107,79],oxidized_copper:[82,162,132],
+      white_wool:[234,236,237],orange_wool:[241,118,20],light_blue_wool:[58,175,217],yellow_wool:[249,198,40],lime_wool:[112,185,26],
+      gray_wool:[63,68,72],red_wool:[161,39,35],black_wool:[21,21,26],pumpkin_side:[198,118,24]
+    };
+    for(const [name,colour] of Object.entries(VANILLA))expect(dist(mean(px(name)),colour),name).toBeLessThan(26);
+  });
+  test('cobblestone stones are lit from the upper left, with dark mortar between them',()=>{
+    const p=px('cobblestone'),l=(x:number,y:number)=>luma(...at(p,x,y).slice(0,3) as [number,number,number]);
+    let darkest=255,lightest=0;for(let y=0;y<TILE;y++)for(let x=0;x<TILE;x++){darkest=Math.min(darkest,l(x,y));lightest=Math.max(lightest,l(x,y));}
+    expect(lightest-darkest).toBeGreaterThan(70);
+    // A pixel whose upper-left neighbour is brighter than it is (light from the upper left) is clearly more common than the reverse.
+    for(const name of ['cobblestone','cobbled_deepslate']){
+      const q=px(name),m=(x:number,y:number)=>luma(...at(q,x,y).slice(0,3) as [number,number,number]);
+      let lit=0,unlit=0;for(let y=1;y<TILE;y++)for(let x=1;x<TILE;x++){const d=m(x-1,y-1)-m(x,y);if(d>8)lit++;else if(d<-8)unlit++;}
+      expect(lit,name).toBeGreaterThan(unlit*1.25);
+    }
+  });
+});
+
 describe('tile groups',()=>{
   test('ores carry distinct colours on their stone or deepslate base',()=>{
     const ores=['coal','iron','copper','gold','redstone','lapis','diamond','emerald'];
