@@ -142,9 +142,10 @@ describe('item icons',()=>{
     for(const id of ids){
       const p=iconPixels(id);expect(p.length,id).toBe(ICON_SIZE*ICON_SIZE*4);
       expect(opaque(p),id).toBeGreaterThan(40);
-      expect(opaque(p),id).toBeLessThan(ICON_SIZE*ICON_SIZE*.9);
-      // Flat block tiles (plants, torch, ladder) may reach the tile border; sprites and cubes never touch the corners.
+      // Flat block tiles (plants, torch, ladder) show the atlas tile as painted by the block art; sprites and cubes
+      // always leave the corners and a good share of the slot transparent.
       if(itemDef(id)?.icon.kind==='tile')continue;
+      expect(opaque(p),id).toBeLessThan(ICON_SIZE*ICON_SIZE*.9);
       expect(rgbAt(p,ICON_SIZE,0,0)[3],`${id} corner`).toBe(0);
       expect(rgbAt(p,ICON_SIZE,ICON_SIZE-1,ICON_SIZE-1)[3],`${id} corner`).toBe(0);
     }
