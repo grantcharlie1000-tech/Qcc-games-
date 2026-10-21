@@ -2,6 +2,7 @@
 // survival damage, and a few test kinds. Not a test file itself (vitest only runs *.test.ts).
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import {createEntities} from '../../../src/games/blockcraft/entity/entities';
+import type {VoxelWorld} from '../../../src/games/blockcraft/world/world';
 import {B} from '../../../src/games/blockcraft/data/blocks';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {CHUNK_VOLUME,LAYER} from '../../../src/games/blockcraft/engine/constants';
@@ -42,7 +43,7 @@ export function harness(options:HarnessOptions={}):EntityHarness{
   for(let cz=-r;cz<=r;cz++)for(let cx=-r;cx<=r;cx++){
     const blocks=new Uint8Array(CHUNK_VOLUME);blocks.fill(options.block??B.stone,0,height*LAYER);
     for(const [id,y0,y1] of options.layers??[])blocks.fill(id,y0*LAYER,(y1+1)*LAYER);
-    game.world.insert(cx,cz,{blocks,biomes:new Uint8Array(LAYER).fill(biome)});
+    (game.world as VoxelWorld).insert(cx,cz,{blocks,biomes:new Uint8Array(LAYER).fill(biome)});
   }
   if(options.light!==undefined)for(const c of game.world.chunks.values())c.light=new Uint8Array(CHUNK_VOLUME).fill(options.light);
   const p=game.player.state;p.x=.5;p.y=options.height??60;p.z=.5;
