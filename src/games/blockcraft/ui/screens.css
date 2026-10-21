@@ -1,10 +1,155 @@
-.bc-screen{position:absolute;inset:0;display:grid;place-items:center;background:#0008;z-index:8}
+/* Inventory-like screens (ui/screens.ts): layer z-index 20, toast 25. Slot size --s follows the game area (container
+   query units) so every screen fits from 320×568 phones to desktop; the top 56 px stay clear for the arcade toolbar. */
+.bc-screen{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:56px 8px 8px;box-sizing:border-box;
+  background:rgba(16,16,20,.62);container-type:size;overflow:hidden;touch-action:none;overscroll-behavior:contain;
+  --s:clamp(24px,min(calc((100cqw - 40px)/9.3),calc((100cqh - 96px)/12.4)),42px);
+  --bc-panel:#c6c6c6;--bc-hi:#fff;--bc-lo:#555;--bc-slot:#8b8b8b;--bc-slot-lo:#373737;--bc-text:#3f3f3f;
+  font:13px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--bc-text);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .bc-screen[hidden]{display:none}
-.bc-panel{max-width:min(94vw,520px);max-height:86dvh;overflow:auto;padding:14px;border-radius:8px;background:#c6c6c6;color:#333;box-shadow:0 0 0 3px #555}
-.bc-panel h2{margin:0 0 8px;font-size:16px}
-.bc-grid{display:grid;grid-template-columns:repeat(9,minmax(0,40px));gap:2px;margin-bottom:10px}
-.bc-inv-slot{position:relative;aspect-ratio:1;padding:3px;border:0;background:#8b8b8b;box-shadow:inset 2px 2px #373737,inset -2px -2px #fff}
-.bc-inv-slot img{width:100%;height:100%;image-rendering:pixelated}
-.bc-inv-slot small{position:absolute;right:2px;bottom:1px;font:700 10px/1 system-ui;color:#fff;text-shadow:1px 1px #000}
-.bc-toast{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);padding:4px 10px;border-radius:4px;background:#0009;color:#fff;font:13px/1.3 system-ui;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+.bc-wrap{position:relative;display:flex;align-items:flex-start;gap:8px;max-width:100%;max-height:100%}
+.bc-panel{position:relative;box-sizing:border-box;padding:6px 8px 8px;max-height:calc(100cqh - 64px);overflow:auto;background:var(--bc-panel);border-radius:3px;
+  box-shadow:0 0 0 2px #000,inset 2px 2px var(--bc-hi),inset -2px -2px var(--bc-lo);outline:none;scrollbar-width:thin}
+.bc-head{display:flex;align-items:center;gap:6px;min-height:24px;margin-bottom:2px}
+.bc-title{flex:1;margin:0;font-size:13px;font-weight:600;color:var(--bc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bc-tools{display:flex;gap:4px}
+.bc-tool{display:grid;place-items:center;width:26px;height:24px;padding:0;border:0;border-radius:2px;background:#a9a9a9;color:#2b2b2b;cursor:pointer;
+  box-shadow:inset 1px 1px #fff,inset -1px -1px #555}
+.bc-tool svg{width:15px;height:15px}
+.bc-tool[aria-pressed="true"]{background:#7fa86a;color:#fff;box-shadow:inset 1px 1px #375a2a,inset -1px -1px #c4e6b4}
+.bc-tool:focus-visible,.bc-tab:focus-visible,.bc-recipe:focus-visible,.bc-book-filter:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px #1d4fa3}
+.bc-screen:not(.bc-touch) .bc-quick{display:none}
+.bc-label{margin:4px 0 2px;font-size:12px;font-weight:600;color:var(--bc-text)}
+.bc-body{position:relative}
+
+/* ---- Slots ---------------------------------------------------------------------------------------------------- */
+.bc-grid{display:grid;grid-template-columns:repeat(var(--cols),var(--s));grid-auto-rows:var(--s);width:max-content}
+.bc-hotbar-row{margin-top:4px}
+.bc-s{position:relative;display:block;box-sizing:border-box;width:var(--s);height:var(--s);margin:0;padding:calc(var(--s)*.1);border:0;border-radius:0;
+  background:var(--bc-slot) no-repeat center/62%;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi);cursor:pointer;color:#fff;touch-action:none}
+.bc-s::after{content:"";position:absolute;inset:1px;pointer-events:none}
+@media (hover:hover){.bc-s:hover::after{background:rgba(255,255,255,.42)}}
+.bc-s:focus{outline:none}
+.bc-s:focus-visible{z-index:1;outline:2px solid #fff;outline-offset:-2px;box-shadow:0 0 0 2px #1d4fa3}
+.bc-s:focus-visible::after{background:rgba(255,255,255,.3)}
+.bc-i{display:block;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
+.bc-i[hidden]{display:none}
+.bc-n{position:absolute;right:2px;bottom:1px;font:700 calc(var(--s)*.34)/1 system-ui,sans-serif;color:#fff;text-shadow:1px 1px 0 #3f3f3f;pointer-events:none;font-variant-numeric:tabular-nums}
+.bc-d{position:absolute;left:calc(var(--s)*.12);right:calc(var(--s)*.12);bottom:calc(var(--s)*.1);height:max(2px,calc(var(--s)*.08));background:#000;pointer-events:none}
+.bc-d[hidden]{display:none}
+.bc-d i{display:block;height:100%;width:100%}
+.bc-s.is-drag::after{background:rgba(255,255,255,.35)}
+.bc-s.is-carried .bc-i{opacity:.35}
+.bc-s.is-ghost .bc-i{opacity:.4;filter:grayscale(.3)}
+.bc-s.is-ghost::after{background:rgba(160,40,40,.25)}
+.bc-s-big{width:calc(var(--s)*1.4);height:calc(var(--s)*1.4)}
+.bc-s-big .bc-n{font-size:calc(var(--s)*.4)}
+/* Empty armour and offhand slots show an outline of what fits there. */
+.bc-s[data-empty]:not(.is-filled){background-size:68%}
+.bc-s[data-empty="head"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 4h10v7h-3V7H6v4H3z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
+.bc-s[data-empty="chest"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3h4l2 2 2-2h4v5h-2v6H4V8H2z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
+.bc-s[data-empty="legs"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 2h10v12H9V7H7v7H3z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
+.bc-s[data-empty="feet"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 6h4v6H2zM10 6h4v6h-4z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
+.bc-s[data-empty="offhand"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 2h10v6c0 3-2.5 5-5 6-2.5-1-5-3-5-6z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
+
+/* ---- Survival inventory, crafting table, furnace ------------------------------------------------------------- */
+.bc-inv-top{display:flex;align-items:stretch;gap:calc(var(--s)*.12);height:calc(var(--s)*4);margin:2px 0 4px}
+.bc-figure{flex:0 0 calc(var(--s)*2.3);display:grid;place-items:center;background:#000;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi);overflow:hidden}
+.bc-figure svg{height:88%;width:auto}
+.bc-offhand{align-self:flex-end}
+.bc-craft{margin-left:auto;display:flex;flex-direction:column;justify-content:center}
+.bc-craft .bc-label{margin-top:0}
+.bc-craft-row{display:flex;align-items:center;gap:calc(var(--s)*.15)}
+.bc-arrow{position:relative;display:block;flex:none;width:calc(var(--s)*.9);height:calc(var(--s)*.5);background:#8b8b8b;
+  clip-path:polygon(0 35%,62% 35%,62% 0,100% 50%,62% 100%,62% 65%,0 65%)}
+.bc-arrow i{position:absolute;left:0;top:0;bottom:0;width:0;background:#fff;transition:width .1s linear}
+.bc-arrow:not(.bc-progress) i{display:none}
+.bc-table{display:flex;flex-direction:column;align-items:center;margin-bottom:4px}
+.bc-table .bc-craft-row{gap:calc(var(--s)*.4)}
+.bc-furnace{display:flex;align-items:center;justify-content:center;gap:calc(var(--s)*.5);margin:4px 0 6px}
+.bc-furnace-in{display:flex;flex-direction:column;align-items:center;gap:2px}
+.bc-flame{position:relative;display:block;width:calc(var(--s)*.55);height:calc(var(--s)*.6);background:#8b8b8b;
+  clip-path:polygon(50% 0,80% 35%,100% 70%,85% 100%,15% 100%,0 70%,20% 35%)}
+.bc-flame i{position:absolute;left:0;right:0;bottom:0;height:0;
+  background:linear-gradient(0deg,#c3290a,#f2711c 45%,#ffe36b) bottom/100% calc(var(--s)*.6) no-repeat}
+.bc-furnace .bc-arrow{width:calc(var(--s)*1.1)}
+
+/* ---- Chests -------------------------------------------------------------------------------------------------- */
+.bc-container{margin-bottom:2px}
+
+/* ---- Creative -------------------------------------------------------------------------------------------------- */
+.bc-tabs{display:flex;gap:2px;margin:0 0 4px}
+.bc-tabs-bottom{margin:4px 0 0}
+.bc-tab{display:grid;place-items:center;width:calc(var(--s)*1.4);height:calc(var(--s)*1.05);padding:0;border:0;border-radius:3px 3px 0 0;cursor:pointer;
+  background:#a9a9a9;box-shadow:inset 1px 1px #e8e8e8,inset -1px -1px #555}
+.bc-tabs-bottom .bc-tab{border-radius:0 0 3px 3px}
+.bc-tab[aria-selected="true"]{background:var(--bc-panel);box-shadow:inset 1px 1px #fff,inset -1px -1px #6b6b6b,0 0 0 1px #000}
+.bc-tab img{width:62%;height:auto;image-rendering:pixelated;pointer-events:none}
+.bc-search{display:block;margin:0 0 4px}
+.bc-search-input{box-sizing:border-box;width:100%;height:24px;padding:2px 6px;border:0;border-radius:0;background:#000;color:#fff;font:13px/1 system-ui,sans-serif;
+  box-shadow:inset 0 0 0 1px #a0a0a0;-webkit-user-select:text;user-select:text;touch-action:manipulation}
+.bc-search-input:focus{outline:2px solid #fff;outline-offset:-2px}
+.bc-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.bc-catalog{max-height:calc(var(--s)*5);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin}
+.bc-catalog .bc-s{touch-action:pan-y}
+.bc-empty{margin:8px 4px;color:#555}
+.bc-hotbar-wrap{display:flex;align-items:flex-end;gap:calc(var(--s)*.2)}
+.bc-s-destroy{background:#8b8b8b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='%23a01818' stroke-width='2'/%3E%3C/svg%3E") no-repeat center/55%}
+.bc-creative-inv{height:calc(var(--s)*4)}
+.bc-panel-creative .bc-hotbar-wrap .bc-hotbar-row{margin-top:4px}
+
+/* ---- Recipe book --------------------------------------------------------------------------------------------- */
+.bc-book{box-sizing:border-box;width:calc(var(--s)*5 + 20px);max-height:calc(100cqh - 64px);display:flex;flex-direction:column;padding:6px 8px 8px;background:var(--bc-panel);
+  border-radius:3px;box-shadow:0 0 0 2px #000,inset 2px 2px var(--bc-hi),inset -2px -2px var(--bc-lo)}
+.bc-book[hidden]{display:none}
+.bc-book-head{display:flex;align-items:center;gap:4px}
+.bc-book-head h3{flex:1;margin:0;font-size:12px;font-weight:600}
+.bc-book-filter{padding:2px 6px;border:0;border-radius:2px;background:#a9a9a9;color:#222;font:600 11px/1.4 system-ui,sans-serif;cursor:pointer;box-shadow:inset 1px 1px #fff,inset -1px -1px #555}
+.bc-book-filter[aria-pressed="true"]{background:#7fa86a;color:#fff}
+.bc-book-hint{margin:4px 0;font-size:11px;color:#555}
+.bc-book-list{display:grid;grid-template-columns:repeat(5,var(--s));grid-auto-rows:var(--s);overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain;scrollbar-width:thin}
+.bc-book-list .bc-empty{grid-column:1/-1}
+.bc-recipe{position:relative;box-sizing:border-box;width:var(--s);height:var(--s);padding:calc(var(--s)*.1);border:0;background:#9a6a6a;cursor:pointer;
+  box-shadow:inset 1px 1px #5a3030,inset -1px -1px #d6b0b0;touch-action:pan-y}
+.bc-recipe.is-craftable{background:#8b8b8b;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi)}
+.bc-recipe:not(.is-craftable) img{opacity:.55}
+.bc-recipe img{display:block;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
+@media (hover:hover){.bc-recipe:hover{filter:brightness(1.15)}}
+.bc-book-close{display:none}
+@container (max-width:600px){
+  .bc-book{position:absolute;inset:0;z-index:2;width:auto}
+  .bc-book-close{display:grid}
+}
+
+/* ---- Advancements ---------------------------------------------------------------------------------------------- */
+.bc-panel-advancements{width:min(calc(100cqw - 16px),720px);height:min(calc(100cqh - 64px),560px);display:flex;flex-direction:column}
+.bc-panel-advancements .bc-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.bc-adv-body{flex:1;min-height:0;overflow:auto;touch-action:pan-x pan-y;-webkit-user-select:text;user-select:text}
+
+/* ---- Carried stack and tooltips ------------------------------------------------------------------------------ */
+.bc-cursor{position:absolute;left:0;top:0;z-index:3;width:var(--s);height:var(--s);pointer-events:none;will-change:transform}
+.bc-cursor[hidden]{display:none}
+.bc-cursor img{display:block;width:80%;height:80%;margin:10%;image-rendering:pixelated}
+.bc-cursor .bc-n{right:0;bottom:0}
+.bc-tip{position:absolute;left:0;top:0;z-index:4;max-width:min(240px,70cqw);padding:4px 6px;border-radius:2px;background:rgba(16,0,16,.94);
+  box-shadow:inset 0 0 0 1px #2a0b5e,inset 0 0 0 2px #5000ff40;color:#aaa;font-size:12px;line-height:1.35;pointer-events:none}
+.bc-tip[hidden]{display:none}
+.bc-tip-name{color:#fff;font-weight:600}
+.bc-tip-plus{color:#6b6bff}
+.bc-tip-stat{color:#2fbf2f}
+.bc-tip-info{color:#aaa}
+
+/* ---- Action bar ------------------------------------------------------------------------------------------------ */
+.bc-toast{position:absolute;left:50%;bottom:clamp(92px,16%,132px);z-index:25;max-width:min(90%,520px);transform:translateX(-50%);padding:3px 10px;border-radius:3px;
+  background:rgba(0,0,0,.45);color:#fff;font:600 14px/1.35 system-ui,sans-serif;text-align:center;text-shadow:1px 1px 0 #3f3f3f;opacity:0;transition:opacity .25s;pointer-events:none}
 .bc-toast.show{opacity:1}
+.bc-toast:empty{display:none}
+/* F1 hides the action bar with the rest of the HUD (ROOT_FLAGS.hudHidden). */
+[data-hud-hidden="true"] .bc-toast{visibility:hidden}
+
+/* ---- Small screens ------------------------------------------------------------------------------------------- */
+@container (max-width:360px){
+  .bc-panel{padding:4px 5px 6px}
+  .bc-tool{width:24px;height:22px}
+}
+.bc-reduced .bc-arrow i,.bc-toast.bc-reduced{transition:none}
+@media (prefers-reduced-motion:reduce){.bc-arrow i,.bc-toast{transition:none}}
