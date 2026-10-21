@@ -14,20 +14,24 @@
 //    quieter than every playing one, otherwise the quietest voice is faded out and replaced. Beds (rain,
 //    underwater, music) count toward the cap but are never stolen.
 //  - Positional sounds use vanilla's linear falloff (16 × max(1, volume) blocks) from game.player.eye() and a
-//    stereo pan from the player's yaw; interface sounds are never positional and thunder is never attenuated.
+//    stereo pan from the player's yaw, re-applied every frame while they play (the listener is the camera, as in
+//    OpenAL); interface sounds are never positional and thunder is never attenuated (it keeps the direction it came
+//    from and turns with the head; its timbre follows thunderDistance()).
 //  - Ambience: vanilla's cave mood (ambience.ts) plays eerie cave sounds after minutes in darkness; rain is a
 //    looping bed refreshed by the weather's play('rain') calls (level = the call's volume capped by
 //    weather.intensity, softly panned toward the raining column and low-passed when the call's pitch is below 1,
-//    as for rain on the roof); the underwater loop and its additions follow the player's eyes in water; sparse
-//    generative music plays a calm piece every few minutes at low volume.
+//    as for rain on the roof; level, muffling, nearness and pan are averaged over recent calls, as vanilla's
+//    overlapping rain samples average out); the underwater loop and its additions follow the player's eyes in water;
+//    sparse generative music plays a calm piece every few minutes at low volume, waiting while the world stands still
+//    (death screen, loading).
 // Recipes carry vanilla's event volume and pitch as defaults; as in vanilla playSound(sound, volume, pitch), a
 // caller's volume or pitch replaces them (resolveLevels). Unknown names are ignored, nothing here ever throws.
 import type {Game,SoundName,SoundService,System,Vec3} from '../engine/contracts';
 import {composePiece,caveSpec,moodSoundPosition,moodStep,underwaterLoopSpec,underwaterSpec,MUSIC_FIRST_DELAY,MUSIC_GAP,
   UNDERWATER_CHANCES,UNDERWATER_FADE_TICKS,type Piece,type UnderwaterSound} from './ambience';
-import {ATTENUATION_DISTANCE,rangeFor,spatialize,type Spatial} from './spatial';
+import {ATTENUATION_DISTANCE,rangeFor,spatialize,stereoPan,type Spatial} from './spatial';
 import {mulberry,resolveLevels,type Layer,type Rand,type SoundSpec} from './spec';
-import {soundSpec} from './synth';
+import {soundSpec,thunderDistance} from './synth';
 import {createNoiseBank,renderLayers,type NoiseBank} from './voice';
 
 export const MAX_VOICES=16;
@@ -45,12 +49,21 @@ const RAIN_HOLD=4;const RAIN_FADE=.8;const RAIN_RELEASE=3;
 /** Rain is a bed, not a point source: the raining column's distance only softens it (to this floor) and its
  *  direction only half pans it, both averaged over recent calls. */
 const RAIN_NEAR_FLOOR=.6;const RAIN_PAN=.5;const RAIN_AVERAGE=.3;
-/** Rain low-pass cutoff when unmuffled; a call pitch p < 1 muffles it to RAIN_OPEN × p⁴ (p = 0.5 → 750 Hz). */
-const RAIN_OPEN=12000;
+/** Rain low-pass cutoff when unmuffled; a call pitch p < 1 muffles it to RAIN_OPEN × p⁴ (p = 0.5 → 750 Hz, 4 octaves). */
+const RAIN_OPEN=12000;const RAIN_MAX_MUFFLE=Math.log2(RAIN_OPEN/300);
+/** Weight of each play('rain') in the averaged level and muffling (in octaves). The weather picks a random column every
+ *  ~1 s, on the roof above or on open ground nearby: averaged, a canopy or a house by open ground settles in between
+ *  instead of jumping between 750 Hz and 12 kHz with every call; going indoors muffles it over a few seconds. */
+const RAIN_SMOOTH=.25;
+/** Octaves a call's pitch muffles the rain bed by. */
+const muffleOf=(pitch:number)=>pitch>=1?0:Math.min(RAIN_MAX_MUFFLE,-4*Math.log2(pitch));
 /** Seconds a pending resume() keeps accepting sounds (and blocks further resume calls) before it counts as stalled. */
 const RESUME_GRACE=1;
-/** Seconds between two music ticks beyond which the world stood still (death screen) and the piece waits. */
-const MUSIC_STALL=.5;
+/** Music notes are scheduled this many seconds ahead; one more than MUSIC_LATE seconds overdue (after a main-thread
+ *  hitch) is skipped rather than stacked onto the notes due now. */
+const MUSIC_LOOKAHEAD=1.5;const MUSIC_LATE=.25;
+/** Playing voices with less than this many seconds left are not re-spatialised; time constant of those updates. */
+const FOLLOW_MIN=.1;const FOLLOW_TC=.05;
 const GESTURES=['pointerdown','pointerup','mousedown','touchend','keydown','click','change'] as const;
 
 export interface SoundOptions{
@@ -68,8 +81,13 @@ interface Voice{
   end:number;
   /** Effective gain after volume and attenuation (stealing priority). */
   level:number;bed:boolean;
+  /** Follows the listener: 0 no, 1 a source at (x,y,z) attenuated over `range`, 2 a global sound (thunder) from the
+   *  direction (x,y,z) relative to the listener, panned only. `base` is the gain before attenuation, `panned` the pan. */
+  follow:0|1|2;x:number;y:number;z:number;range:number;base:number;panned:number;
 }
-interface RainBed{voice:Voice;volume:number;until:number;target:number;silentSince:number;near:number;pan:number;cutoff:number}
+interface RainBed{voice:Voice;volume:number;until:number;target:number;silentSince:number;near:number;pan:number;
+  /** Averaged muffling in octaves below RAIN_OPEN, and the cutoff it gives. */
+  muffle:number;cutoff:number}
 interface UnderwaterBed{voice:Voice;target:number}
 interface Music{voice:Voice;piece:Piece;next:number;start:number}
 
@@ -90,8 +108,9 @@ export class SoundEngine implements SoundService{
   /** Our latest resume()/suspend() request while it is in flight, its sequence number, and how long a resume has been
    *  pending (seconds of frames). */
   private pending:'resume'|'suspend'|null=null;private pendingSeq=0;private resumeAge=0;
-  /** Audio time of the last music tick (-1 = none yet). */
-  private musicClock=-1;
+  /** Audio time the world stopped running (death screen, loading; -1 while it runs): the piece waits that long. */
+  private musicAway=-1;
+  private readonly noteLayer:Layer[]=[];
   /** A user gesture has been seen (the page may start audio from now on). */
   private activated=false;
   private mood=0;private musicDelay=0;private submerged=false;private fade=0;
@@ -117,6 +136,8 @@ export class SoundEngine implements SoundService{
   get rainCutoff():number{return this.rain?this.rain.cutoff:RAIN_OPEN;}
   /** Underwater loop target gain (0 when absent). */
   get underwaterLevel():number{return this.underwater?this.underwater.target:0;}
+  /** Seconds into the playing music piece (-1 when none). */
+  get musicTime():number{return this.music&&this.ctx?this.ctx.currentTime-this.music.start:-1;}
 
   // ---- Lifecycle ------------------------------------------------------------------------------
   init(){
@@ -145,12 +166,12 @@ export class SoundEngine implements SoundService{
       if(this.pending==='resume')this.resumeAge+=Number.isFinite(_dt)&&_dt>0?_dt:0;
       this.sync();
       if(!this.ctx)return;
-      this.prune();this.updateRain();this.report();
+      this.prune();this.followListener();this.updateRain();this.report();
     }catch{/* audio is optional */}
   }
   reset(){
     this.stopAll();
-    this.mood=0;this.fade=0;this.submerged=false;this.musicClock=-1;this.musicDelay=this.delay(MUSIC_FIRST_DELAY);
+    this.mood=0;this.fade=0;this.submerged=false;this.musicAway=-1;this.musicDelay=this.delay(MUSIC_FIRST_DELAY);
   }
   dispose(){
     if(this.disposed)return;
@@ -174,23 +195,33 @@ export class SoundEngine implements SoundService{
     const pos=finiteVec(at)?at:null;
     let distance:number|null=null,eye:Vec3|null=null;
     if(pos){eye=this.game.player.eye();const dx=pos.x-eye.x,dy=pos.y-eye.y,dz=pos.z-eye.z;distance=Math.sqrt(dx*dx+dy*dy+dz*dz);}
+    const opts=options&&typeof options==='object'?options:null;
+    if(name==='thunder')distance=thunderDistance(distance,opts?.volume);
     const s=soundSpec(name,this.rand,distance);
     if(!s)return;
-    const {volume,pitch}=resolveLevels(s,options&&typeof options==='object'?options:null,this.levels);
+    const {volume,pitch}=resolveLevels(s,opts,this.levels);
     if(s.loop){this.refreshRain(name,s,volume,pitch,pos,eye);return;}
     this.playSpec(name,s,volume,pitch,pos,eye);
   }
   /** Starts a one-shot voice at a resolved volume and playback rate; returns false when it was dropped. */
   private playSpec(name:string,s:SoundSpec,volume:number,pitch:number,pos:Vec3|null,eye:Vec3|null):boolean{
     if(!(volume>0))return false;
-    let level=Math.min(1,volume),pan=0;
-    if(pos&&eye&&!s.ui){
-      spatialize(pos,eye,this.game.player.state.yaw,rangeFor(volume),this.spatial);
+    const base=Math.min(1,volume),range=rangeFor(volume);
+    let level=base,pan=0;
+    const positional=pos&&eye&&!s.ui?pos:null;
+    if(positional){
+      spatialize(positional,eye!,this.game.player.state.yaw,range,this.spatial);
       if(!s.global)level*=this.spatial.gain;
       pan=this.spatial.pan;
     }
     if(level<MIN_LEVEL||!this.claim(level))return false;
-    this.voices.push(this.startVoice(name,s.layers,pitch,level,pan,false));
+    const v=this.startVoice(name,s.layers,pitch,level,pan,false);
+    if(positional){
+      v.base=base;v.range=range;
+      if(s.global){v.follow=2;v.x=positional.x-eye!.x;v.y=positional.y-eye!.y;v.z=positional.z-eye!.z;}
+      else{v.follow=1;v.x=positional.x;v.y=positional.y;v.z=positional.z;}
+    }
+    this.voices.push(v);
     return true;
   }
   /** Builds a voice: layers → gain (level) → optional low-pass (beds) → stereo pan → master. */
@@ -210,7 +241,27 @@ export class SoundEngine implements SoundService{
     tail.connect(this.master!);
     const sources:AudioScheduledSourceNode[]=[];
     const end=layers.length?renderLayers(c,this.bank!,layers,pitch,now,out,sources,this.rand,loop):now;
-    return{name,out,filter,pan:panner,sources,end:bed?Infinity:end+.05,level,bed};
+    return{name,out,filter,pan:panner,sources,end:bed?Infinity:end+.05,level,bed,follow:0,x:0,y:0,z:0,range:0,base:level,panned:pan};
+  }
+  /** Re-spatialises playing positional voices from the current eye and yaw (no allocation; nothing is rescheduled
+   *  while the listener stands still). */
+  private followListener(){
+    const c=this.ctx;if(!c)return;
+    const now=c.currentTime,yaw=this.game.player.state.yaw;
+    let eye:Vec3|null=null;
+    for(let i=0;i<this.voices.length;i++){
+      const v=this.voices[i];
+      if(!v.follow||v.end-now<FOLLOW_MIN)continue;
+      let level=v.base,pan:number;
+      if(v.follow===2)pan=stereoPan(v.x,v.y,v.z,yaw);
+      else{
+        if(!eye)eye=this.game.player.eye();
+        spatialize(v,eye,yaw,v.range,this.spatial);
+        level*=this.spatial.gain;pan=this.spatial.pan;
+      }
+      if(Math.abs(level-v.level)>.002){v.level=level;v.out.gain.setTargetAtTime(level,now,FOLLOW_TC);}
+      if(v.pan&&Math.abs(pan-v.panned)>.01){v.panned=pan;v.pan.pan.setTargetAtTime(pan,now,FOLLOW_TC);}
+    }
   }
 
   // ---- Voice pool ------------------------------------------------------------------------------
@@ -350,6 +401,9 @@ export class SoundEngine implements SoundService{
     // Silent: keep the context suspended (also when a resume completed after sound went away). A context the browser
     // suspended while audible is left alone until a gesture resumes it.
     if(!want)this.suspendContext();
+    // The world stopped (death screen, loading): the music piece waits from now until ticks come back.
+    const st=this.game.state;
+    if(this.musicAway<0&&st!=='playing'&&st!=='screen')this.musicAway=now;
     this.report();
   }
   /** Root data attributes for browser checks: data-audio (none, running, suspended, closed) and data-audio-voices. */
@@ -370,21 +424,25 @@ export class SoundEngine implements SoundService{
       spatialize(pos,eye,this.game.player.state.yaw,ATTENUATION_DISTANCE,this.spatial);
       near=RAIN_NEAR_FLOOR+(1-RAIN_NEAR_FLOOR)*this.spatial.gain;pan=this.spatial.pan*RAIN_PAN;
     }
-    const cutoff=pitch>=1?RAIN_OPEN:Math.max(300,RAIN_OPEN*pitch*pitch*pitch*pitch);
+    const muffle=muffleOf(pitch),level=clamp01(volume);
     let rain=this.rain;
     if(!rain){
       if(!this.claim(1,true))return;
+      const cutoff=RAIN_OPEN*Math.pow(2,-muffle);
       const voice=this.startVoice(name,s.layers,1,0,pan,true,true,cutoff);
       voice.out.gain.cancelScheduledValues(now);voice.out.gain.setValueAtTime(0,now);
       this.voices.push(voice);
-      rain=this.rain={voice,volume:0,until:0,target:0,silentSince:-1,near,pan,cutoff};
+      rain=this.rain={voice,volume:level,until:0,target:0,silentSince:-1,near,pan,muffle,cutoff};
     }else{
       rain.near+=(near-rain.near)*RAIN_AVERAGE;
       const p=rain.pan+(pan-rain.pan)*RAIN_AVERAGE;
       if(Math.abs(p-rain.pan)>.005){rain.pan=p;rain.voice.pan?.pan.setTargetAtTime(p,now,RAIN_FADE);}
-      if(cutoff!==rain.cutoff){rain.cutoff=cutoff;rain.voice.filter?.frequency.setTargetAtTime(Math.min(cutoff,c.sampleRate*.45),now,.3);}
+      rain.volume+=(level-rain.volume)*RAIN_SMOOTH;
+      rain.muffle+=(muffle-rain.muffle)*RAIN_SMOOTH;
+      const cutoff=RAIN_OPEN*Math.pow(2,-rain.muffle);
+      if(Math.abs(cutoff/rain.cutoff-1)>.01){rain.cutoff=cutoff;rain.voice.filter?.frequency.setTargetAtTime(Math.min(cutoff,c.sampleRate*.45),now,RAIN_FADE);}
     }
-    rain.volume=clamp01(volume);rain.until=now+RAIN_HOLD;
+    rain.until=now+RAIN_HOLD;
     this.updateRain();
   }
   private updateRain(){
@@ -465,15 +523,19 @@ export class SoundEngine implements SoundService{
     this.sync();
     if(!this.ready())return;
     const now=c.currentTime,m=this.music;
-    const gap=this.musicClock>=0?now-this.musicClock:0;
-    this.musicClock=now;
+    if(this.musicAway>=0){
+      // Ticks stopped while the audio clock ran on (death screen): the piece waits instead of bursting out missed notes.
+      if(m&&now>this.musicAway)m.start+=now-this.musicAway;
+      this.musicAway=-1;
+    }
     if(m){
-      // Ticks stop while the audio clock runs on (death screen): the piece waits instead of bursting out missed notes.
-      if(gap>MUSIC_STALL)m.start+=gap;
-      const notes=m.piece.notes;
-      while(m.next<notes.length&&m.start+notes[m.next].t<now+1.5){
-        const n=notes[m.next++];
-        renderLayers(c,this.bank!,[n.layer],1,Math.max(now,m.start+n.t),m.voice.out,m.voice.sources,this.rand);
+      const notes=m.piece.notes,layer=this.noteLayer;
+      while(m.next<notes.length&&m.start+notes[m.next].t<now+MUSIC_LOOKAHEAD){
+        const n=notes[m.next++],t=m.start+n.t;
+        // Overdue after a main-thread hitch: skipped, so missed notes never pile up at once.
+        if(t<now-MUSIC_LATE)continue;
+        layer[0]=n.layer;
+        renderLayers(c,this.bank!,layer,1,Math.max(now,t),m.voice.out,m.voice.sources,this.rand);
       }
       if(m.voice.sources.length>64)m.voice.sources.splice(0,m.voice.sources.length-64);
       if(now>=m.start+m.piece.length){
@@ -484,7 +546,8 @@ export class SoundEngine implements SoundService{
     if(--this.musicDelay>0)return;
     if(!this.claim(1,true)){this.musicDelay=this.delay(MUSIC_FIRST_DELAY);return;}
     const out=c.createGain();out.gain.setValueAtTime(MUSIC_LEVEL,now);out.connect(this.master!);
-    const voice:Voice={name:'music',out,filter:null,pan:null,sources:[],end:Infinity,level:MUSIC_LEVEL,bed:true};
+    const voice:Voice={name:'music',out,filter:null,pan:null,sources:[],end:Infinity,level:MUSIC_LEVEL,bed:true,
+      follow:0,x:0,y:0,z:0,range:0,base:MUSIC_LEVEL,panned:0};
     this.voices.push(voice);
     this.music={voice,piece:composePiece(this.rand),next:0,start:now+.1};
   }

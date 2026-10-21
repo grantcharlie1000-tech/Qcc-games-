@@ -1,6 +1,7 @@
 // Mob voices for every kind in MOB_KINDS (data/items.ts): ambient, hurt, death and step, played by the
 // entity service as `mob:<name>:<kind>`. Vanilla levels: voices at the mob's getSoundVolume() (1 for most;
 // 0.4 for cows, wolves, squid and small slimes; rabbits quieter) with pitch (r - r) × 0.2 + 1, steps at 0.15.
+// Companion wolves also play the wolf_growl, wolf_whine, wolf_pant and wolf_shake ambient variants.
 // Unknown creatures get a stable generic voice derived from their name.
 import type {MobSoundKind} from '../engine/contracts';
 import {grains,hashString,hits,louder,mulberry,noise,rumble,spec,tone,vanillaPitch,vary,type Layer,type Rand,type SoundSpec} from './spec';
@@ -15,6 +16,12 @@ interface Voice{
 type Filter={type:BiquadFilterType;freq:number;q:number};
 const bp=(freq:number,q=1.5):Filter=>({type:'bandpass',freq,q});
 const lp=(freq:number,q=1):Filter=>({type:'lowpass',freq,q});
+
+const wolfHurt=(_r:Rand,f:number)=>[tone('sawtooth',900*f,{freqEnd:620*f,attack:.008,hold:.05,decay:.12,gain:.25,filter:bp(1400)}),
+  noise('bandpass',1500*f,{q:1,decay:.08,gain:.1})];
+const wolfDeath=(_r:Rand,f:number)=>[tone('sawtooth',820*f,{freqEnd:300*f,attack:.01,hold:.2,decay:.4,gain:.24,vibrato:{rate:7,depth:.04},filter:bp(1200)}),
+  noise('bandpass',1200*f,{q:1,attack:.02,decay:.3,gain:.08})];
+const wolfStep=(_r:Rand,f:number)=>[noise('bandpass',1400*f,{q:1.3,decay:.03,gain:.4}),rumble(240*f,{attack:.003,decay:.04,gain:.25})];
 
 const VOICES:Record<string,Voice>={
   // Low, drawn-out moo with a vocal formant.
@@ -65,20 +72,44 @@ const VOICES:Record<string,Voice>={
     death:(_r,f)=>[tone('sine',2400*f,{freqEnd:1200*f,attack:.006,hold:.15,decay:.25,gain:.25,vibrato:{rate:14,depth:.05}}),
       tone('sine',4800*f,{freqEnd:2400*f,attack:.006,hold:.1,decay:.2,gain:.05})],
     step:(_r,f)=>[rumble(300*f,{attack:.003,decay:.06,gain:.4}),noise('bandpass',1300*f,{q:1,decay:.025,gain:.15})]},
-  // Barks (a third of the time pants, as vanilla's untamed or healthy wolves); yelps when hurt, whimpers when dying.
+  // Two-note bark (companions pick growls, whines and pants themselves, see the wolf_* variants below); yelps when
+  // hurt, whimpers when dying.
   wolf:{volume:.4,trim:{ambient:2,hurt:1.3,step:1.4},
-    ambient:(r,f)=>r()<1/3?[
-      noise('bandpass',1700*f,{q:1,decay:.07,gain:.3,bursts:hits([0,.16,.32,.48],.08,.3)}),
-      noise('bandpass',900*f,{q:1,decay:.05,gain:.12,bursts:hits([.08,.24,.4,.56],.05,.12)})]:[
+    ambient:(_r,f)=>[
       noise('bandpass',620*f,{q:1.5,attack:.008,decay:.11,gain:.4}),
       tone('sawtooth',430*f,{freqEnd:260*f,attack:.008,decay:.13,gain:.25,filter:lp(1400)}),
       noise('bandpass',600*f,{q:1.5,delay:.27,attack:.008,decay:.1,gain:.35}),
       tone('sawtooth',410*f,{freqEnd:250*f,delay:.27,attack:.008,decay:.12,gain:.22,filter:lp(1300)})],
-    hurt:(_r,f)=>[tone('sawtooth',900*f,{freqEnd:620*f,attack:.008,hold:.05,decay:.12,gain:.25,filter:bp(1400)}),
-      noise('bandpass',1500*f,{q:1,decay:.08,gain:.1})],
-    death:(_r,f)=>[tone('sawtooth',820*f,{freqEnd:300*f,attack:.01,hold:.2,decay:.4,gain:.24,vibrato:{rate:7,depth:.04},filter:bp(1200)}),
-      noise('bandpass',1200*f,{q:1,attack:.02,decay:.3,gain:.08})],
-    step:(_r,f)=>[noise('bandpass',1400*f,{q:1.3,decay:.03,gain:.4}),rumble(240*f,{attack:.003,decay:.04,gain:.25})]},
+    hurt:wolfHurt,death:wolfDeath,step:wolfStep},
+  // Companion wolves' own ambient sounds (vanilla Wolf.getAmbientSound: growl when angry, else a third of the time a
+  // pant, or a whine when tamed below half health; the fur shake after getting wet). Hurt, death and steps are the wolf's.
+  // A low, rough, rolling growl.
+  wolf_growl:{volume:.4,trim:{hurt:1.3,step:1.4},
+    ambient:(_r,f)=>[
+      tone('sawtooth',150*f,{freqEnd:118*f,attack:.07,hold:.42,decay:.32,gain:.34,fm:{ratio:.5,depth:.35},tremolo:{rate:22,depth:.55},filter:lp(700)}),
+      rumble(380*f,{attack:.06,hold:.42,decay:.3,gain:.28,tremolo:{rate:22,depth:.6}}),
+      noise('bandpass',900*f,{q:1.2,attack:.08,hold:.35,decay:.25,gain:.08})],
+    hurt:wolfHurt,death:wolfDeath,step:wolfStep},
+  // A high, nasal whimper that rises and falls.
+  wolf_whine:{volume:.4,trim:{ambient:1.2,hurt:1.3,step:1.4},
+    ambient:(_r,f)=>[
+      tone('sawtooth',720*f,{freqEnd:920*f,attack:.04,hold:.12,decay:.1,gain:.24,vibrato:{rate:7,depth:.025},filter:bp(1300,2.5)}),
+      tone('sawtooth',930*f,{freqEnd:640*f,delay:.27,attack:.03,hold:.22,decay:.3,gain:.24,vibrato:{rate:6,depth:.03},filter:bp(1200,2.5)}),
+      tone('sine',1860*f,{freqEnd:1280*f,delay:.27,attack:.03,hold:.18,decay:.25,gain:.05,vibrato:{rate:6,depth:.03}})],
+    hurt:wolfHurt,death:wolfDeath,step:wolfStep},
+  // Quick breathy pants.
+  wolf_pant:{volume:.4,trim:{ambient:2,hurt:1.3,step:1.4},
+    ambient:(_r,f)=>[
+      noise('bandpass',1700*f,{q:1,decay:.07,gain:.3,bursts:hits([0,.16,.32,.48],.08,.3)}),
+      noise('bandpass',900*f,{q:1,decay:.05,gain:.12,bursts:hits([.08,.24,.4,.56],.05,.12)})],
+    hurt:wolfHurt,death:wolfDeath,step:wolfStep},
+  // Shaking water out of the fur: a flapping rattle of short noise grains.
+  wolf_shake:{volume:.4,trim:{ambient:1.5,hurt:1.3,step:1.4},
+    ambient:(r,f)=>[
+      noise('bandpass',1300*f,{q:.9,decay:.035,gain:.45,bursts:grains(r,12,.62,.035,.5,.3,.35)}),
+      noise('lowpass',650*f,{attack:.05,hold:.35,decay:.22,gain:.16,tremolo:{rate:15,depth:.7}}),
+      noise('highpass',3200*f,{q:.7,delay:.04,decay:.012,gain:.12,bursts:grains(r,8,.55,.012,.15,.5)})],
+    hurt:wolfHurt,death:wolfDeath,step:wolfStep},
   // Wet, squishy burbles.
   squid:{volume:.4,trim:{death:.45},
     ambient:(_r,f)=>[rumble(500*f,{freqEnd:300*f,attack:.05,decay:.4,gain:.5,tremolo:{rate:9,depth:.6}}),

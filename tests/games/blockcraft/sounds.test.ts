@@ -243,6 +243,48 @@ describe('play',()=>{
     expect(engine.voiceLevels()[1]).toBeCloseTo(.4,5);
     expect(c.all<MockPanner>('panner').at(-1)!.pan.value).toBeLessThan(-.5);
   });
+  test('thunder played next to the listener for panning takes its timbre from the caller distance fade',()=>{
+    const c=start();
+    const cracks=()=>c.all<MockFilter>('filter').filter(f=>f.type==='highpass').length;
+    // Weather plays it at most 2 blocks from the eye toward the strike, at volume max(0.35, 1.15 - d/160).
+    engine.play('thunder',at(2,0,0),{volume:Math.max(.35,1.15-150/160),pitch:.9});
+    expect(engine.voiceNames()).toEqual(['thunder']);
+    expect(cracks()).toBe(0);
+    engine.play('thunder',at(2,0,0),{volume:1,pitch:.9});
+    expect(cracks()).toBeGreaterThan(0);
+    const near=cracks();
+    // At the strike itself the distance decides.
+    engine.play('thunder',at(150,0,0),{pitch:.9});
+    expect(cracks()).toBe(near);
+  });
+  test('playing sounds follow the listener: turning and walking move them between the ears and fade them',()=>{
+    const c=start();game.player.state.yaw=0;
+    engine.play('explode',at(8,0,0));
+    const pan=c.all<MockPanner>('panner').at(-1)!,out=[...pan.inputs][0] as MockGain;
+    expect(pan.pan.value).toBeGreaterThan(.5);
+    expect(lastValue(out)).toBeCloseTo(1-8/64,5);
+    game.player.state.yaw=Math.PI;c.currentTime+=.1;engine.frame?.(.1);
+    expect(pan.pan.value).toBeLessThan(-.5);
+    // Walking 40 blocks away: 48 of the explosion's 64 blocks.
+    game.player.state.x-=40;c.currentTime+=.1;engine.frame?.(.1);
+    expect(lastValue(out)).toBeCloseTo(1-48/64,5);
+    expect(engine.voiceLevels()[0]).toBeCloseTo(1-48/64,5);
+    // Nothing is rescheduled while the listener stands still.
+    const events=out.gain.events.length+pan.pan.events.length;
+    for(let i=0;i<5;i++){c.currentTime+=.05;engine.frame?.(.05);}
+    expect(out.gain.events.length+pan.pan.events.length).toBe(events);
+  });
+  test('thunder keeps its direction while the listener walks, and turns with the head',()=>{
+    const c=start();game.player.state.yaw=0;
+    engine.play('thunder',at(2,0,0),{volume:.6});
+    const pan=c.all<MockPanner>('panner').at(-1)!,out=[...pan.inputs][0] as MockGain;
+    expect(pan.pan.value).toBeGreaterThan(.5);
+    game.player.state.x+=4;c.currentTime+=.1;engine.frame?.(.1);
+    expect(pan.pan.value).toBeGreaterThan(.5);
+    expect(lastValue(out)).toBeCloseTo(.6,5);
+    game.player.state.yaw=Math.PI;c.currentTime+=.1;engine.frame?.(.1);
+    expect(pan.pan.value).toBeLessThan(-.5);
+  });
   test('pitch scales the synth frequencies (vanilla playback rate), clamped to 0.5..2',()=>{
     const c=start();
     const first=(fn:()=>void)=>{const n=c.nodes.length;fn();return c.nodes.slice(n).find(x=>x.kind==='oscillator') as unknown as {frequency:{events:{value:number}[]}};};
@@ -307,9 +349,11 @@ describe('ambience',()=>{
     // The weather passes its eased rain level as the volume; intensity also caps a constant-volume caller.
     weather.intensity=.25;engine.frame?.(.05);
     expect(engine.rainLevel).toBeCloseTo(.25,5);
-    engine.play('rain',null,{volume:.1});engine.frame?.(.05);
-    expect(engine.rainLevel).toBeCloseTo(.1,5);
-    weather.intensity=.6;engine.play('rain');engine.frame?.(.05);
+    // A quieter caller brings the bed down over a few calls (the level is averaged, like overlapping rain samples).
+    for(let i=0;i<20;i++){engine.play('rain',null,{volume:.1});engine.frame?.(.05);}
+    expect(engine.rainLevel).toBeCloseTo(.1,2);
+    weather.intensity=.6;
+    for(let i=0;i<20;i++){engine.play('rain');engine.frame?.(.05);}
     expect(engine.rainLevel).toBeCloseTo(.6,5);
     c.currentTime+=30;engine.frame?.(.05);
     expect(engine.rainLevel).toBe(0);
@@ -332,8 +376,33 @@ describe('ambience',()=>{
     // A column 8 blocks away is half attenuated as a point source; as a bed it only softens.
     expect(engine.rainLevel).toBeGreaterThan(.5*.6);
     expect(engine.rainLevel).toBeLessThan(.5);
-    engine.play('rain',at(-1,0,0),{volume:1,pitch:1});
+    // Back in the open the bed opens up over a few calls, not at the first open column.
+    engine.play('rain',at(-1,0,0),{volume:1,pitch:1});c.currentTime+=1;engine.frame?.(.05);
+    expect(engine.rainCutoff).toBeLessThan(2000);
+    for(let i=0;i<8;i++){engine.play('rain',at(-1,0,0),{volume:1,pitch:1});c.currentTime+=1;engine.frame?.(.05);}
     expect(engine.rainCutoff).toBeGreaterThan(8000);
+  });
+  test('rain does not pump when muffled and open columns alternate (under a canopy, in a house by open ground)',()=>{
+    const c=start();game.player.state.yaw=0;
+    const weather=game.weather as {intensity:number};weather.intensity=1;
+    const cutoffs:number[]=[],levels:number[]=[];
+    // Weather picks a random column every 16-24 ticks: rain on the roof above (muffled) or on open ground nearby.
+    for(let i=0;i<24;i++){
+      const muffled=i%2===0;
+      engine.play('rain',muffled?at(3,3,0):at(3,-1,0),muffled?{volume:.5,pitch:.5}:{volume:1,pitch:1});
+      c.currentTime+=1;engine.frame?.(.05);
+      // Once it has settled from the first call (which starts the bed muffled).
+      if(i>=12){cutoffs.push(engine.rainCutoff);levels.push(engine.rainLevel);}
+    }
+    const spread=(v:number[])=>Math.max(...v)/Math.min(...v);
+    expect(spread(cutoffs)).toBeLessThan(1.6);
+    expect(spread(levels)).toBeLessThan(1.2);
+    // It settles between rain on the roof (750 Hz) and rain in the open (12 kHz).
+    expect(Math.min(...cutoffs)).toBeGreaterThan(1500);
+    expect(Math.max(...cutoffs)).toBeLessThan(6000);
+    const filter=c.all<MockFilter>('filter').find(f=>f.type==='lowpass'&&[...f.outputs].some(o=>o instanceof MockPanner))!;
+    const late=filter.frequency.events.slice(-8).map(e=>e.value);
+    expect(spread(late)).toBeLessThan(1.6);
   });
   test('underwater: a loop fades in over 2 s while the eyes are in water, with enter, exit and bubble additions',()=>{
     const c=start();
@@ -403,18 +472,49 @@ describe('ambience',()=>{
     const notes=c.all<MockGain>('gain').filter(g=>g.gain.events.some(e=>e.value>0)&&g.gain.peak()<=.12);
     expect(notes.length).toBeGreaterThan(5);
   });
-  test('music does not burst out notes it missed while the world stood still (death screen)',()=>{
-    const c=start();
+  const startMusic=(c:MockAudioContext)=>{
     for(let t=1;t<=2400&&!engine.voiceNames().includes('music');t++){engine.tick?.();c.currentTime+=.05;}
     expect(engine.voiceNames()).toContain('music');
     for(let t=0;t<40;t++){engine.tick?.();c.currentTime+=.05;}
-    // Ticks stop on the death screen while the audio clock keeps running.
+  };
+  const lateNotes=(c:MockAudioContext,from:number)=>
+    c.nodes.slice(from).filter((n):n is MockSource=>n instanceof MockSource&&n.kind==='oscillator'&&n.startTime===c.currentTime).length;
+  test('music waits on the death screen: no burst of missed notes, and the piece goes on where it was',()=>{
+    const c=start();startMusic(c);
+    const position=engine.musicTime;
+    expect(position).toBeGreaterThan(1.9);
+    // Ticks stop on the death screen while the audio clock keeps running (frames still come).
+    game.setState('dead');
+    for(let i=0;i<250;i++){c.currentTime+=.1;engine.frame?.(.1);}
+    game.setState('playing');
+    const before=c.nodes.length;
+    engine.tick?.();
+    expect(lateNotes(c,before)).toBeLessThanOrEqual(5);
+    expect(Math.abs(engine.musicTime-position)).toBeLessThan(.2);
+  });
+  test('a main-thread hitch neither bursts out the notes it missed nor holds the piece back',()=>{
+    const c=start();startMusic(c);
+    const position=engine.musicTime;
     c.currentTime+=25;
     const before=c.nodes.length;
     engine.tick?.();
-    const late=c.nodes.slice(before).filter((n):n is MockSource=>n instanceof MockSource&&n.kind==='oscillator'&&n.startTime===c.currentTime);
-    // At most one chord (four pad tones) and a pluck may fall in the short grace window.
-    expect(late.length).toBeLessThanOrEqual(5);
+    // Notes that should have started during the hitch are skipped, except those just due.
+    expect(lateNotes(c,before)).toBeLessThanOrEqual(10);
+    expect(engine.musicTime).toBeGreaterThan(position+24);
+  });
+  test('slow frames (below 2 fps) do not freeze the music: the piece plays on and ends',()=>{
+    const c=start();startMusic(c);
+    const before=c.all('oscillator').length;
+    // The engine caps dt at 0.1 s: two ticks per frame while the audio clock runs 0.6 s.
+    let ended=-1;
+    for(let f=0;f<500&&ended<0;f++){
+      c.currentTime+=.6;engine.tick?.();engine.tick?.();engine.frame?.(.1);
+      if(!engine.voiceNames().includes('music'))ended=f;
+    }
+    expect(ended).toBeGreaterThan(0);
+    // Pieces are at most ~80 s long.
+    expect(ended*.6).toBeLessThan(90);
+    expect(c.all('oscillator').length-before).toBeGreaterThan(20);
   });
   test('no music when the shell sound is off',()=>{
     engine.dispose?.();build(false);

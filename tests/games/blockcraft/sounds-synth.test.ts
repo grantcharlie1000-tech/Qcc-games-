@@ -1,5 +1,5 @@
 import {describe,expect,test} from 'vitest';
-import {soundSpec,specDuration,SOUND_MATERIALS,MOB_SOUND_KINDS,type SoundSpec,type Layer} from '../../../src/games/blockcraft/audio/synth';
+import {soundSpec,specDuration,thunderDistance,SOUND_MATERIALS,MOB_SOUND_KINDS,type SoundSpec,type Layer} from '../../../src/games/blockcraft/audio/synth';
 import {hits,louder,noise,resolveLevels,tone,type NoiseLayer} from '../../../src/games/blockcraft/audio/spec';
 import {MOB_KINDS} from '../../../src/games/blockcraft/data/items';
 import type {SoundName} from '../../../src/games/blockcraft/engine/contracts';
@@ -13,9 +13,12 @@ const SIMPLE=['hurt','death','eat','burp','drink','pop','levelup','orb','click',
   'explode','fuse','ignite','splash','swim','fizz','lava','fire','bow','arrow_hit','throw','tool_break','equip','thunder','rain',
   'attack_weak','attack_strong','crit','sweep','toast','bucket_fill','bucket_empty','shear','milk','teleport','furnace'] as const satisfies readonly SoundName[];
 const MOB_SOUNDS=['ambient','hurt','death','step'] as const;
+/** Ambient variants companion wolves play themselves (vanilla Wolf.getAmbientSound, and the fur shake). */
+const WOLF_VARIANTS=['wolf_growl','wolf_whine','wolf_pant','wolf_shake'] as const;
 const ALL:SoundName[]=[
   ...MATERIALS.flatMap(m=>ACTIONS.map(a=>`${a}:${m}` as SoundName)),...SIMPLE,
-  ...MOB_KINDS.flatMap(k=>MOB_SOUNDS.map(s=>`mob:${k}:${s}` as SoundName))];
+  ...MOB_KINDS.flatMap(k=>MOB_SOUNDS.map(s=>`mob:${k}:${s}` as SoundName)),
+  ...WOLF_VARIANTS.map(v=>`mob:${v}:ambient` as SoundName)];
 
 const fixed=(v:number)=>()=>v;
 const spec=(name:string,r:()=>number=fixed(.5),distance:number|null=null)=>soundSpec(name,r,distance);
@@ -149,6 +152,17 @@ describe('event sounds',()=>{
     expect(bright(spec('thunder',fixed(.5),4)!)).toBeGreaterThan(0);
     expect(bright(spec('thunder',fixed(.5),200)!)).toBe(0);
   });
+  test('thunder timbre distance: the farther of the source distance and the one the caller volume fade implies',()=>{
+    // Weather fades thunder with volume max(0.35, 1.15 - d/160) and may play it 2 blocks from the eye for panning.
+    expect(thunderDistance(2,undefined)).toBe(2);
+    expect(thunderDistance(2,1)).toBe(2);
+    expect(thunderDistance(2,1.15-100/160)).toBeCloseTo(100,5);
+    expect(thunderDistance(2,.35)).toBeCloseTo(128,5);
+    expect(thunderDistance(150,.35)).toBe(150);
+    expect(thunderDistance(null,.6)).toBeCloseTo(88,5);
+    expect(thunderDistance(null,undefined)).toBeNull();
+    for(const bad of [Number.NaN,-1,Infinity,'loud'])expect(thunderDistance(2,bad)).toBe(2);
+  });
   test('rain is a looping bed; the explosion has a low boom',()=>{
     expect(must('rain').loop).toBe(true);
     expect(must('explode').layers.some(l=>l.kind==='tone'&&l.freq<100)).toBe(true);
@@ -184,6 +198,27 @@ describe('mob voices',()=>{
     const creeper=must('mob:creeper:ambient');
     expect(creeper.volume*Math.max(...creeper.layers.map(l=>l.gain))).toBeLessThan(.1);
     expect(must('mob:enderman:ambient').layers.some(l=>l.kind==='tone'&&(l.fm||l.vibrato))).toBe(true);
+  });
+  test('companion wolves have designed growl, whine, pant and shake voices; the plain ambient is a bark',()=>{
+    const names=['wolf',...WOLF_VARIANTS];
+    expect(new Set(names.map(n=>signature(must(`mob:${n}:ambient`)))).size).toBe(names.length);
+    // Companions choose the variant, so the bark never turns into a pant by chance.
+    const shape=(r:()=>number)=>must('mob:wolf:ambient',r).layers.map(l=>`${l.kind}:${l.delay}`).join();
+    expect(shape(fixed(0))).toBe(shape(fixed(.99)));
+    const growl=must('mob:wolf_growl:ambient');
+    expect(growl.layers.some(l=>l.kind==='tone'&&l.freq<200&&!!l.fm)).toBe(true);
+    expect(growl.layers.some(l=>l.kind==='noise'&&l.color==='brown')).toBe(true);
+    expect(specDuration(growl)).toBeGreaterThan(.6);
+    const whine=must('mob:wolf_whine:ambient');
+    expect(whine.layers.some(l=>l.kind==='tone'&&l.freq>600&&!!l.vibrato)).toBe(true);
+    expect(must('mob:wolf_pant:ambient').layers.every(l=>l.kind==='noise'&&!!l.bursts&&l.bursts.length>=4)).toBe(true);
+    const shake=must('mob:wolf_shake:ambient',seeded(2));
+    expect(shake.layers.some(l=>l.kind==='noise'&&!!l.bursts&&l.bursts.length>=8)).toBe(true);
+    expect(specDuration(shake)).toBeGreaterThan(.5);
+    for(const n of names)expect(must(`mob:${n}:ambient`).volume).toBeCloseTo(.4,5);
+    // The variants share the wolf's hurt, death and step.
+    for(const v of WOLF_VARIANTS)for(const k of ['hurt','death','step'])
+      expect(signature(must(`mob:${v}:${k}`))).toBe(signature(must(`mob:wolf:${k}`)));
   });
   test('unknown creatures get a stable generic voice',()=>{
     expect(signature(must('mob:villager:hurt'))).toBe(signature(must('mob:villager:hurt')));

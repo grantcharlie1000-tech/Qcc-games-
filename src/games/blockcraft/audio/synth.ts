@@ -246,7 +246,8 @@ const SIMPLE:Record<SimpleName,Recipe>={
     tone('sine',1300*f,{delay:.02,attack:.001,decay:.12,gain:.08}),
     tone('sine',2100*f,{delay:.05,attack:.001,decay:.08,gain:.06})]);}),
   // Thunder: volume 10000 (heard everywhere, so never attenuated; panned toward the strike), pitch 0.8 + r × 0.2.
-  // The lightning impact crack (volume 2, 32 blocks) is folded in when the strike is near; far strikes lose their high end.
+  // The lightning impact crack (volume 2, 32 blocks) is folded in when the strike is near; far strikes lose their high end
+  // (the distance is thunderDistance(): the strike's, or the one a caller's volume fade implies).
   thunder:(r,distance)=>{
     const p=.8+r()*.2,near=distance===null?1:Math.max(0,1-distance/32),far=distance===null?0:Math.min(1,distance/160);
     const layers:Layer[]=[];
@@ -304,6 +305,15 @@ const SIMPLE:Record<SimpleName,Recipe>={
     rumble(300,{attack:.1,hold:.3,decay:.4,gain:.15})])
 };
 const SIMPLE_MAP=new Map<string,Recipe>(Object.entries(SIMPLE));
+
+/** Distance (blocks) that shapes thunder's timbre. Thunder is never attenuated, so a caller fades distant strikes with
+ *  its volume (weather: max(0.35, 1.15 - d/160)) and may play the sound right next to the listener only for panning;
+ *  the timbre then follows the farther of the source distance and the distance that a volume below 1 implies. */
+export function thunderDistance(distance:number|null,volume:unknown):number|null{
+  if(typeof volume!=='number'||!(volume>=0)||!(volume<1))return distance;
+  const implied=(1.15-volume)*160;
+  return distance===null||distance<implied?implied:distance;
+}
 
 /** The synth for a sound name, or null for names outside the SoundName union. `distance` (blocks from the
  *  listener, null when not positional) shapes sounds whose timbre depends on it (thunder). Never throws. */
