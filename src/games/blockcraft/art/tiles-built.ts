@@ -17,11 +17,11 @@ export const bricks:Painter=cached((x,y)=>{
   const k=Math.floor(brick*2)+1+(inner===0?1:inner===2&&h<.5?-1:0)+(h<.08?-1:0);
   return BRICK[Math.max(0,Math.min(4,k))];
 },700);
-const STONE_BRICK=ramp(0x5c5c5c,0x686868,0x737373,0x7e7e7e,0x898989,0x959595);
+const STONE_BRICK=ramp(0x666666,0x737373,0x808080,0x8c8c8c,0x989898,0xa5a5a5);
 /** Two courses of bevelled stone bricks with dark mortar; the courses are offset by half a brick. */
 export const stoneBricks:Painter=cached((x,y)=>{
   const course=y>>3,cy=y&7,cx=(x+(course?8:0))&15,h=hash(x,y,711);
-  if(cy===7||cx===15)return rgb(h<.5?0x474747:0x4f4f4f);
+  if(cy===7||cx===15)return rgb(h<.5?0x4f4f4f:0x585858);
   let k=2+(h<.25?-1:h>.85?1:0)+Math.round(valueNoise(x,y,8,8,712)-.4);
   if(cy===0||cx===0)k=4+(h>.7?1:0);else if(cy===6||cx===14)k=1;
   return STONE_BRICK[Math.max(0,Math.min(5,k))];
@@ -36,13 +36,15 @@ export const mossyStoneBricks=mossy(cracked(stoneBricks,721),723,.54);
 
 // ---- Workstations ---------------------------------------------------------------------------------
 const FRAME_DARK=rgb(0x3e2a12),IRON_TOOL=ramp(0x5a5a5e,0x8a8a90,0xb8b8be),HANDLE=ramp(0x4a2e12,0x6a4420);
-/** Table top: plank surface with a dark rim, a 3×3 working grid and iron corner plates. */
+/** Table top: a bevelled plank rim (dark outline, light inner edge) around a 3×3 working grid of lighter squares
+ *  divided by dark grooves. */
 export const craftingTableTop:Painter=cached((x,y,n,m)=>{
   if(x===0||y===0||x===15||y===15)return FRAME_DARK;
-  if((x<=2&&y<=2)||(x>=13&&y<=2)||(x<=2&&y>=13)||(x>=13&&y>=13))return(x+y)%3===0?IRON_TOOL[2]:IRON_TOOL[1];
-  if((x===5||x===10)&&y>2&&y<13)return shade(oakPlanks(x,y,n,m),.62);
-  if((y===5||y===10)&&x>2&&x<13)return shade(oakPlanks(x,y,n,m),.62);
-  return shade(oakPlanks(x,y,n,m),1.05);
+  if(x===1||y===1)return shade(oakPlanks(x,y,n,m),1.18);
+  // Grooves at 2, 6, 10 and 14 leave three 3-px squares per row; each square catches light on its upper-left lip.
+  if((x-2)%4===0||(y-2)%4===0)return shade(oakPlanks(x,y,n,m),.62);
+  if((x-3)%4===0||(y-3)%4===0)return shade(oakPlanks(x,y,n,m),1.16);
+  return shade(oakPlanks(x,y,n,m),1.03);
 },730);
 const tableSide=(tools:(r:import('./tiles-core').Raster)=>void):Painter=>{
   const toolLayer=drawn(tools);
@@ -66,7 +68,7 @@ export const craftingTableFront=tableSide(r=>{
   r.rect(3,5,3,13,rgb(0xd8c08a));r.rect(3,13,8,13,rgb(0xd8c08a));for(let y=6;y<13;y+=2)r.set(4,y,rgb(0x5a4424));for(let x=5;x<9;x+=2)r.set(x,12,rgb(0x5a4424));
   r.rect(11,5,12,9,HANDLE[1]);r.rect(12,5,12,9,HANDLE[0]);r.rect(11,10,12,12,IRON_TOOL[1]);r.rect(11,13,11,13,IRON_TOOL[2]);r.set(12,13,IRON_TOOL[0]);
 });
-const FURNACE=ramp(0x515151,0x5e5e5e,0x6b6b6b,0x787878,0x868686,0x949494);
+const FURNACE=ramp(0x5b5b5b,0x696969,0x787878,0x878787,0x969696,0xa6a6a6);
 /** Furnace masonry: a smooth cap band over two courses of blocks. */
 export const furnaceSide:Painter=cached((x,y)=>{
   const h=hash(x,y,751);
@@ -102,7 +104,7 @@ export const furnaceFrontOff=furnaceFront(false);
 export const furnaceFrontOn=furnaceFront(true);
 
 // ---- Containers -------------------------------------------------------------------------------------
-const CHEST=ramp(0x5c3a16,0x6c461c,0x7c5224,0x8c5e2c,0x9a6a34);
+const CHEST=ramp(0x74491c,0x8a5a24,0x9c682c,0xae7634,0xbd843e);
 const CHEST_FRAME=rgb(0x2a1a0a);
 const chestWood=(x:number,y:number,salt:number)=>{
   const row=y%5,h=hash(x,y,salt);
@@ -144,7 +146,7 @@ const barrelEnd=(hole:boolean,salt:number):Painter=>cached((x,y)=>{
   if(hole&&d<2.6)return d>1.6?BAND[1]:rgb(0x1c1208);
   const board=Math.floor((y-2)/3);
   if((y-2)%3===2)return STAVE[1];
-  return pick(STAVE.slice(2),contrast(valueNoise(x,y,4,1,salt+board)*.6+hash(x,y,salt)*.4,1.3)*(hole?1:.85));
+  return shade(pick(STAVE.slice(2),contrast(valueNoise(x,y,4,1,salt+board)*.6+hash(x,y,salt)*.4,1.3)*(hole?1:.85)),1.22);
 },salt);
 export const barrelTop=barrelEnd(true,841);
 export const barrelBottom=barrelEnd(false,851);
@@ -217,11 +219,11 @@ export const tntTop=tntEnd(true,881);
 export const tntBottom=tntEnd(false,891);
 
 // ---- Light sources --------------------------------------------------------------------------------
-const GLOW=ramp(0xc8873a,0xe0a648,0xf2c660,0xfbdb82,0xfff0b6);
+const GLOW=ramp(0xa8703a,0xc28a48,0xd6a85e,0xe6c47c,0xf4dea6);
 export const glowstone:Painter=(()=>{
   const cells=voronoi(12,901,1);
   return cached((x,y)=>{
-    if(cells.gap(x,y)<.8)return hash(x,y,902)<.5?rgb(0x7a4c1e):rgb(0x8e5c24);
+    if(cells.gap(x,y)<.8)return hash(x,y,902)<.5?rgb(0x6e4420):rgb(0x80522a);
     const k=hash(cells.id(x,y),1,903)*.5+(1-Math.min(1,cells.centre(x,y)/3.5))*.5;
     return pick(GLOW,k);
   },900);
@@ -298,17 +300,17 @@ function plate(p:RGBA[],motif:(x:number,y:number)=>number,salt:number):Painter{
     return pick(p.slice(1,-1),Math.max(0,Math.min(.999,motif(x,y)+(hash(x,y,salt)-.5)*.12)));
   },salt);
 }
-export const ironBlock=plate(ramp(0x9a9a9a,0xb0b0b0,0xc4c4c4,0xd4d4d4,0xe4e4e4,0xf2f2f2),
+export const ironBlock=plate(ramp(0xa8a8a8,0xbdbdbd,0xd0d0d0,0xdedede,0xececec,0xf8f8f8),
   (x,y)=>x===7||y===7?.05:x===8||y===8?.95:.55+valueNoise(x,y,16,2,921)*.2,920);
 export const goldBlock=plate(ramp(0xb07e0c,0xd29e16,0xeebe28,0xf9d444,0xfde56a,0xfff4a6),
   (x,y)=>{const d=(x+y)%12;return d<2?.95:d<4?.7:.4+valueNoise(x,y,4,4,931)*.2;},930);
-export const diamondBlock=plate(ramp(0x1e968e,0x32b8b0,0x52d0c8,0x7adfd8,0xa4ece8,0xd2faf8),
+export const diamondBlock=plate(ramp(0x22b0a6,0x3ad2c8,0x5ce6dd,0x84f2ea,0xb0faf4,0xdcfefc),
   (x,y)=>{const d=(Math.abs(x-7.5)+Math.abs(y-7.5))%5;return d<1?.95:d<2?.2:.5+(x<y?.15:-.05);},940);
-export const emeraldBlock=plate(ramp(0x0a7429,0x118e38,0x1aa848,0x2bbd5b,0x50d27b,0x8ae8a6),
+export const emeraldBlock=plate(ramp(0x09812a,0x0e9c36,0x16b745,0x22cd55,0x45e070,0x7cf09e),
   (x,y)=>{const gx=(x-2)%4,gy=(y-2+((x-2)>>2&1)*2)%4;return gx===0||gy===0?.92:gx===3||gy===3?.1:.5;},950);
-export const lapisBlock:Painter=over(plate(ramp(0x122c78,0x193890,0x2044a4,0x2852b6,0x3460c6,0x4876d2),
-  (x,y)=>contrast(fbm(x,y,961,1,1,.5),1.5),960),(x,y)=>x>1&&y>1&&x<14&&y<14&&hash(x,y,962)<.04?rgb(0xd8b040):CLEAR);
-export const coalBlock=plate(ramp(0x0b0b0b,0x131313,0x1b1b1b,0x242424,0x2f2f2f,0x3e3e3e),
+export const lapisBlock:Painter=over(plate(ramp(0x0b2462,0x102d76,0x143786,0x1a4295,0x214da2,0x2e5fac),
+  (x,y)=>contrast(fbm(x,y,961,1,1,.5),1.5),960),(x,y)=>x>1&&y>1&&x<14&&y<14&&hash(x,y,962)<.04?rgb(0x5a86d8):CLEAR);
+export const coalBlock=plate(ramp(0x080808,0x0c0c0c,0x111111,0x161616,0x1d1d1d,0x2a2a2a),
   (x,y)=>contrast(fbm(x,y,971,1,1,.6),1.6),970);
 export const redstoneBlock=plate(ramp(0x760804,0x920c06,0xac1208,0xc4190d,0xdc2a18,0xee4a30),
   (x,y)=>(x%4===2&&y%4===2)?.95:(x%4===2||y%4===2)?.6:.3+hash(x,y,981)*.2,980);

@@ -210,7 +210,7 @@ export const redMushroom:Painter=bitmap([
   '......sWWs......'],{r:rgb(0xa8140e),R:rgb(0xd82a1e),o:rgb(0xf2ece6),k:rgb(0x6a0c08),...MUSHROOM_STEM});
 
 // ---- Cactus, pumpkin, melon and moss ----------------------------------------------------------------
-const CACTUS=ramp(0x0d4b14,0x125e19,0x17711e,0x1e8726,0x289b30,0x34ad3c);
+const CACTUS=ramp(0x244c12,0x305f17,0x3d731d,0x4b8623,0x59982a,0x6aaa34);
 export const cactusSide:Painter=cached((x,y)=>{
   const col=x%4,h=hash(x,y,521);
   if(x===0||x===15)return CACTUS[0];
@@ -241,8 +241,8 @@ export const pumpkinTop:Painter=cached((x,y)=>{
   const seg=(a*10)%1,groove=seg<.12||seg>.94;
   return groove?PUMPKIN[0]:pick(PUMPKIN.slice(2),contrast(1-d/11+hash(x,y,561)*.3,1.2));
 },560);
-const MELON=ramp(0x2c5a10,0x386d14,0x45801a,0x529420,0x5ea626);
-const STRIPE=ramp(0x93b136,0xaac646);
+const MELON=ramp(0x4a6a10,0x587c14,0x678e19,0x76a01e,0x84b024);
+const STRIPE=ramp(0xa8c03e,0xbcd052);
 export const melonSide:Painter=cached((x,y)=>{
   const wave=Math.round(valueNoise(x,y,16,4,571)*2.5),s=(x+wave+16)%5;
   if(s===0)return pick(STRIPE,hash(x,y,572));
@@ -253,7 +253,7 @@ export const melonTop:Painter=cached((x,y)=>{
   if(d<1.3)return rgb(0x7a8a2c);
   if(d<2.3)return MELON[1];
   const s=(a*12+d*.15)%1;
-  return s<.2?pick(STRIPE,hash(x,y,581)):pick(MELON.slice(1),hash(x,y,582));
+  return shade(s<.2?pick(STRIPE,hash(x,y,581)):pick(MELON.slice(1),hash(x,y,582)),.88);
 },580);
 const MOSS=ramp(0x3a581b,0x46681f,0x537925,0x608a2c,0x6f9c35,0x82ad41);
 export const mossBlock:Painter=cached((x,y)=>{

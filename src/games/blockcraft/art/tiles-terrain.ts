@@ -9,10 +9,10 @@ export const stone:Painter=cached((x,y)=>{
   if(f<.045)return STONE[0];
   return pick(STONE.slice(1),v);
 },10);
-const GRANITE=ramp(0x7a5141,0x8c5d4b,0x9a6855,0xa77461,0xb5816d,0xc6978a);
+const GRANITE=ramp(0x6c4636,0x7c503e,0x895946,0x946450,0xa16f5a,0xb08272);
 export const granite:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,21,1,1,.5),1.8),h=hash(x,y,22);
-  if(h>.95)return rgb(0xd9bcb0);if(h<.05)return rgb(0x684235);
+  if(h>.95)return rgb(0xc0a191);if(h<.05)return rgb(0x5c392c);
   return pick(GRANITE,v);
 },20);
 const DIORITE=ramp(0xaeaeb0,0xbcbcbe,0xc8c8ca,0xd3d3d5,0xdfdfe1,0xebebed);
@@ -30,7 +30,7 @@ export const andesite:Painter=cached((x,y)=>{
   return pick(ANDESITE,v);
 },40);
 
-const COBBLE=ramp(0x575757,0x646464,0x717171,0x7e7e7e,0x8b8b8b,0x989898,0xa6a6a6);
+const COBBLE=ramp(0x686868,0x767676,0x848484,0x929292,0xa0a0a0,0xaeaeae,0xbcbcbc);
 /** Rounded stones: Voronoi cells outlined by dark mortar; each stone is lit from the upper left (a light rim
  *  there, a shadowed rim on the lower right) so it reads as a domed cobble rather than a flat patch. */
 function cobbles(palette:RGBA[],mortar:RGBA[],count:number,salt:number):Painter{
@@ -46,8 +46,8 @@ function cobbles(palette:RGBA[],mortar:RGBA[],count:number,salt:number):Painter{
     return palette[Math.max(0,Math.min(palette.length-1,k))];
   },salt);
 }
-export const cobblestone=cobbles(COBBLE,ramp(0x464646,0x4f4f4f),14,51);
-const MOSS=ramp(0x3a561d,0x456623,0x51772a,0x5e8831,0x6c9939,0x7ca843);
+export const cobblestone=cobbles(COBBLE,ramp(0x505050,0x5a5a5a),14,51);
+const MOSS=ramp(0x425a22,0x4e6b29,0x5c7c31,0x6b8e3a,0x7aa043,0x8daf4f);
 /** Moss creeping over a base texture, thicker where `amount` noise is high. */
 export function mossy(base:Painter,salt:number,amount=.56):Painter{
   return cached((x,y,n,m)=>{
@@ -57,20 +57,20 @@ export function mossy(base:Painter,salt:number,amount=.56):Painter{
   },salt);
 }
 export const mossyCobblestone=mossy(cobblestone,61);
-const BEDROCK=ramp(0x1c1c1c,0x303030,0x454545,0x585858,0x6c6c6c,0x838383,0x9a9a9a);
+const BEDROCK=ramp(0x191919,0x2b2b2b,0x3e3e3e,0x4f4f4f,0x616161,0x767676,0x8b8b8b);
 export const bedrock:Painter=cached((x,y)=>pick(BEDROCK,contrast(fbm(x,y,71,1,1,.55),1.9)),70);
-const OBSIDIAN=ramp(0x0e0a15,0x140e1d,0x1a1327,0x221832,0x2c2040,0x3a2b55);
+const OBSIDIAN=ramp(0x040207,0x08050d,0x0d0815,0x130c1d,0x1a1127,0x231833);
 export const obsidian:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,81,1,1,.4),1.7),streak=valueNoise(x+y,y,4,4,82);
-  if(streak>.78&&hash(x,y,83)<.6)return hash(x,y,84)<.5?rgb(0x4b3870):rgb(0x5e4787);
+  if(streak>.78&&hash(x,y,83)<.6)return hash(x,y,84)<.5?rgb(0x3a2a57):rgb(0x4a3770);
   return pick(OBSIDIAN,v);
 },80);
 
 // ---- Earth --------------------------------------------------------------------------------------
-const DIRT=ramp(0x593c27,0x684730,0x755239,0x825c41,0x8f684a);
+const DIRT=ramp(0x65452d,0x765237,0x855f42,0x946a4b,0xa27855);
 export const dirt:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,91,1,1,.6),1.5),h=hash(x,y,92);
-  if(h<.06)return rgb(0x4a311f);if(h>.955)return rgb(0xa27a58);
+  if(h<.06)return rgb(0x543924);if(h>.955)return rgb(0xb88d66);
   return pick(DIRT,v);
 },90);
 export const coarseDirt:Painter=cached((x,y,n,m)=>{
@@ -97,10 +97,10 @@ export const grassBlockSide:Painter=cached((x,y,n,m)=>{
 },120);
 /** The band alone in grey for the biome-tinted overlay drawn on top of the grass block side. */
 export const grassBlockSideOverlay:Painter=(x,y)=>inBand(x,y)?grey(Math.round(bandGrey(x,y))):CLEAR;
-const SNOW=ramp(0xd6e3e9,0xe2ecf1,0xebf3f6,0xf3f9fb,0xfbfdfe);
+const SNOW=ramp(0xe6eef2,0xeef5f8,0xf5fafc,0xfafdfe,0xffffff);
 export const snow:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,131,1,1,.5),1.3);
-  return hash(x,y,132)<.04?rgb(0xc8d8e2):pick(SNOW,v);
+  return hash(x,y,132)<.04?rgb(0xd8e4ea):pick(SNOW,v);
 },130);
 const SNOW_BAND=[3,3,4,3,2,3,4,4,3,3,2,3,4,3,3,4];
 export const grassBlockSnow:Painter=cached((x,y,n,m)=>{
@@ -121,21 +121,21 @@ const sideBand=(top:Painter,depth:readonly number[]):Painter=>cached((x,y,n,m)=>
   return dirt(x,y,n,m);
 },depth[0]*7+depth[3]);
 export const podzolSide=sideBand(podzolTop,[2,3,2,2,3,3,2,2,3,2,2,3,2,3,2,2]);
-const MYCELIUM=ramp(0x564d55,0x645a63,0x716671,0x7e727e,0x8b7f8b);
+const MYCELIUM=ramp(0x4e4446,0x5b4f52,0x675a5e,0x736568,0x7e7073);
 export const myceliumTop:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,161,1,1,.6),1.4),h=hash(x,y,162);
-  return h>.93?rgb(0xb4a8b6):h>.86?rgb(0x9d90a0):pick(MYCELIUM,v);
+  return h>.93?rgb(0xa49497):h>.86?rgb(0x8f7f84):pick(MYCELIUM,v);
 },160);
 export const myceliumSide=sideBand(myceliumTop,[3,2,3,4,3,2,3,3,4,3,2,3,3,4,2,3]);
 
-const SAND=ramp(0xcdbc85,0xd5c58f,0xdbcc98,0xe1d3a1,0xe7daab);
+const SAND=ramp(0xd0c292,0xd8cb9d,0xded2a7,0xe4d9b1,0xeae1bc);
 const grainy=(palette:RGBA[],dark:RGBA,salt:number):Painter=>cached((x,y)=>{
   const v=contrast(hash(x,y,salt)*.55+valueNoise(x,y,4,4,salt+1)*.45,1.5);
   return hash(x,y,salt+2)<.05?dark:pick(palette,v);
 },salt);
-export const sand=grainy(SAND,rgb(0xbca973),171);
-const RED_SAND=ramp(0x9c4c1b,0xa85420,0xb35c25,0xbd652a,0xc77031);
-export const redSand=grainy(RED_SAND,rgb(0x8a4116),181);
+export const sand=grainy(SAND,rgb(0xbfae7f),171);
+const RED_SAND=ramp(0xa75317,0xb35c1c,0xbf6520,0xca6f24,0xd47b2b);
+export const redSand=grainy(RED_SAND,rgb(0x934713),181);
 /** Sandstone side: a smooth cap band, wavy strata in the middle and a chipped base band. */
 function sandstoneSide(p:RGBA[],line:RGBA,salt:number):Painter{
   return cached((x,y)=>{
@@ -154,20 +154,20 @@ const smoothSand=(p:RGBA[],line:RGBA,salt:number,pits:number):Painter=>cached((x
   if(h<pits)return p[1];
   return pick(p.slice(2),v*.7+h*.3);
 },salt);
-const SANDSTONE=ramp(0xb9a76e,0xc9b77d,0xd6c68c,0xdccd96,0xe4d6a2,0xebdeae);
-export const sandstone=sandstoneSide(SANDSTONE,rgb(0xa9965f),191);
-export const sandstoneTop=smoothSand(SANDSTONE,rgb(0xc4b27a),192,.03);
-export const sandstoneBottom=smoothSand(SANDSTONE.map(c=>shade(c,.95)),rgb(0xae9b64),193,.12);
-const RED_SANDSTONE=ramp(0x8f4519,0x9e4e1d,0xad5822,0xb76027,0xc0692d,0xc97434);
-export const redSandstone=sandstoneSide(RED_SANDSTONE,rgb(0x7e3b14),201);
-export const redSandstoneTop=smoothSand(RED_SANDSTONE,rgb(0xa45220),202,.03);
-export const redSandstoneBottom=smoothSand(RED_SANDSTONE.map(c=>shade(c,.95)),rgb(0x8a4118),203,.12);
+const SANDSTONE=ramp(0xc0b17e,0xd1c190,0xded1a1,0xe4d9ac,0xede2ba,0xf4ebc8);
+export const sandstone=sandstoneSide(SANDSTONE,rgb(0xb09f6d),191);
+export const sandstoneTop=smoothSand(SANDSTONE.map(c=>shade(c,.97)),rgb(0xccbc8c),192,.03);
+export const sandstoneBottom=smoothSand(SANDSTONE.map(c=>shade(c,.95)),rgb(0xb5a473),193,.12);
+const RED_SANDSTONE=ramp(0x9b4f17,0xab591b,0xbc6420,0xc66e25,0xd0782a,0xda8431);
+export const redSandstone=sandstoneSide(RED_SANDSTONE,rgb(0x894313),201);
+export const redSandstoneTop=smoothSand(RED_SANDSTONE.map(c=>shade(c,.9)),rgb(0xa45220),202,.03);
+export const redSandstoneBottom=smoothSand(RED_SANDSTONE.map(c=>shade(c,.87)),rgb(0x8a4118),203,.12);
 
-const GRAVEL=[0x6b6462,0x7f7774,0x948b86,0xa79e98,0x5d5755,0x857a70,0x9c8f84].map(h=>rgb(h));
+const GRAVEL=[0x7f7d7f,0x979497,0xb0adae,0xc7c5c5,0x6f6c6e,0x9e9891,0xbab2ab].map(h=>rgb(h));
 export const gravel:Painter=(()=>{
   const cells=voronoi(25,211,1);
   return cached((x,y)=>{
-    if(cells.gap(x,y)<.75)return rgb(0x4a4442);
+    if(cells.gap(x,y)<.75)return rgb(0x585556);
     const c=GRAVEL[Math.floor(hash(cells.id(x,y),3,212)*GRAVEL.length)],edge=cells.dx(x,y)+cells.dy(x,y);
     return edge<-1.2?shade(c,1.12):edge>1.4?shade(c,.88):c;
   },210);
@@ -178,15 +178,15 @@ export const clay:Painter=cached((x,y)=>{
   return hash(x,y,222)<.04?rgb(0xb8c0cc):pick(CLAY,v);
 },220);
 // Ice: translucent blue with brighter frost streaks; packed ice is the opaque, denser version.
-const ICE=ramp(0x7da6ee,0x88aff1,0x93b8f3,0x9fc1f6,0xaccbf8);
+const ICE=ramp(0x729ef6,0x7ca7f9,0x86affb,0x91b8fe,0x9dc1ff);
 const frost=(x:number,y:number,salt:number)=>{const d=(x+y*2+Math.round(valueNoise(x,y,4,4,salt)*3))%11;return d===0||(d===1&&hash(x,y,salt+1)<.5);};
 export const ice:Painter=cached((x,y)=>{
-  if(frost(x,y,231))return withAlpha(rgb(0xdbe9ff),215);
+  if(frost(x,y,231))return withAlpha(rgb(0xc8deff),215);
   return withAlpha(pick(ICE,contrast(fbm(x,y,232,1,1,.3),1.4)),165);
 },230);
-const PACKED_ICE=ramp(0x7c9ddb,0x87a8e2,0x93b3e8,0x9fbeee,0xabc8f2);
+const PACKED_ICE=ramp(0x749cec,0x7ea7f4,0x89b2fa,0x94bdff,0xa0c7ff);
 export const packedIce:Painter=cached((x,y)=>{
-  if(frost(x,y,241))return rgb(0xc6daf8);
+  if(frost(x,y,241))return rgb(0xb9d9ff);
   return pick(PACKED_ICE,contrast(fbm(x,y,242,1,1,.35),1.5));
 },240);
 
@@ -266,7 +266,7 @@ export const deepslateTop:Painter=cached((x,y)=>{
   const v=hash(x,y,312);
   return ring===0?pick(DEEP.slice(0,3),v):ring===1?pick(DEEP.slice(2,5),v):pick(DEEP.slice(1,4),v);
 },310);
-export const cobbledDeepslate=cobbles(ramp(0x323238,0x3a3a41,0x43434a,0x4b4b53,0x55555d,0x606068,0x6b6b73),ramp(0x222226,0x29292e),16,321);
+export const cobbledDeepslate=cobbles(ramp(0x424245,0x4d4d50,0x59595b,0x646466,0x717172,0x7f7f80,0x8e8e8e),ramp(0x2d2d2f,0x363639),16,321);
 const TUFF=ramp(0x4e504a,0x585a53,0x63655d,0x6d7067,0x787b71,0x84877c);
 export const tuff:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,331,1,1,.55),1.6),h=hash(x,y,332),pore=valueNoise(x,y,2,2,333);
@@ -291,7 +291,7 @@ function copper(base:RGBA[],patina:RGBA[]|null,threshold:number,salt:number):Pai
 }
 const COPPER=ramp(0x8c4a2e,0xa65838,0xbb6743,0xcc764f,0xdc8a62,0xe9a07a);
 const EXPOSED=ramp(0x8f6250,0xa1705b,0xb07e66,0xbd8b72,0xc89a80,0xd3aa92);
-const WEATHERED=ramp(0x4b8669,0x569577,0x62a384,0x70b092,0x7ebb9e,0x8fc6ab);
+const WEATHERED=ramp(0x4c7b54,0x578960,0x63956a,0x71a175,0x7fab7f,0x90b589);
 const OXIDIZED=ramp(0x3b856d,0x44947b,0x4ea388,0x59b195,0x67bea3,0x79caaf);
 export const copperBlock=copper(COPPER,null,1,341);
 export const exposedCopper=copper(EXPOSED,ramp(0x4f9479,0x5aa186,0x67ad92),.66,351);
@@ -311,14 +311,14 @@ export const waterFlow:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,392,.5,2,.3),1.3),g=streak===0?0xcf:WATER[Math.floor(v*WATER.length)];
   return grey(g,streak===0?200:176);
 },390);
-const LAVA=ramp(0xd04a0c,0xe0600e,0xef7814,0xf98f1e,0xffa72e,0xffc250);
+const LAVA=ramp(0xb83a0a,0xcc4a0c,0xdc5c10,0xe87016,0xf28a20,0xfaa430);
 /** Bright molten rock with dark cooling veins along a noise contour. */
 function lava(salt:number,sx:number,sy:number):Painter{
   return cached((x,y)=>{
     const vein=valueNoise(x,y,Math.min(16,8*sx),Math.min(16,8*sy),salt)*.65+valueNoise(x,y,Math.min(16,4*sx),Math.min(16,4*sy),salt+1)*.35;
-    if(Math.abs(vein-.5)<.05)return hash(x,y,salt+2)<.5?rgb(0x9c3008):rgb(0xb43e0a);
+    if(Math.abs(vein-.5)<.05)return hash(x,y,salt+2)<.5?rgb(0x8a2606):rgb(0xa03008);
     const v=contrast(fbm(x,y,salt+3,sx,sy,.3),1.5);
-    if(v>.9&&hash(x,y,salt+4)<.5)return rgb(0xffe07a);
+    if(v>.9&&hash(x,y,salt+4)<.5)return rgb(0xffc84a);
     return pick(LAVA,v);
   },salt);
 }
@@ -337,5 +337,5 @@ function farmland(p:RGBA[],clod:RGBA,salt:number):Painter{
     return pick(p.slice(1,4),soil);
   },salt);
 }
-export const farmlandDry=farmland(ramp(0x553923,0x664530,0x74503a,0x815b41,0x91694b),rgb(0x9e7956),421);
+export const farmlandDry=farmland(ramp(0x6a492c,0x7f583c,0x906648,0xa07451,0xb4865e),rgb(0xc49a6c),421);
 export const farmlandMoist=farmland(ramp(0x24150a,0x301c0f,0x3b2314,0x472b19,0x553420),rgb(0x5f3d26),431);
