@@ -25,6 +25,8 @@ describe('slime sizes',()=>{
     expect(k.category).toBe('hostile');expect(k.width).toBeCloseTo(2.08);expect(k.height).toBeCloseTo(2.08);
     expect(k.spawn).toMatchObject({light:'dark',group:[4,4],weight:100});
     expect(k.spawn!.biomes!.map(([n])=>n)).not.toContain('mushroom_fields');
+    // Vanilla slimes take no fall damage and despawn like other monsters.
+    expect(k.noFallDamage).toBe(true);expect(k.despawns).toBe(true);
   });
   test.each([[1,.52,1],[2,1.04,4],[4,2.08,16]])('size %i: box %f, health %i, model scale and xp follow the size',(size,box,health)=>{
     const h=createHarness(),e=slime(h,size),k=h.entities.kind('slime')!;
