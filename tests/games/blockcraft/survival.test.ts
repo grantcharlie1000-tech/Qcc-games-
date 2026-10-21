@@ -115,6 +115,22 @@ describe('damage',()=>{
     s.addEffect('absorption',120,1);expect(s.absorption).toBe(4);
     expect(s.damage(6,{kind:'mob'})).toBe(6);expect(s.absorption).toBe(0);expect(s.health).toBe(18);
   });
+  it('the absorption effect ends once its hearts are used up (1.20.2+), not while some remain',()=>{
+    const {s,tick}=calm();
+    s.addEffect('absorption',120,2);s.damage(3,{kind:'mob'});tick();
+    expect(s.absorption).toBe(5);expect(s.hasEffect('absorption')).toBe(true);
+    tick(10);s.damage(9,{kind:'mob'});expect(s.absorption).toBe(0);expect(s.health).toBe(16);
+    tick();expect(s.hasEffect('absorption')).toBe(false);
+    // Another golden apple refills the hearts of a running effect (onEffectStarted on every application).
+    s.addEffect('absorption',120,1);tick(10);s.damage(.5,{kind:'magic'});expect(s.absorption).toBe(3.5);
+    s.addEffect('absorption',60,1);expect(s.absorption).toBe(4);
+  });
+  it('an infinite hit kills (/kill style) without throwing; NaN and negative hits do nothing',()=>{
+    const {s,died}=calm();
+    expect(s.damage(Number.NEGATIVE_INFINITY,{kind:'void'})).toBe(0);
+    expect(s.damage(Number.POSITIVE_INFINITY,{kind:'void'})).toBe(20);
+    expect(s.dead).toBe(true);expect(died).toEqual(['You fell out of the world']);
+  });
   it('fire resistance prevents lava and fire damage',()=>{
     const {s}=calm();s.addEffect('fire_resistance',60);
     expect(s.damage(4,{kind:'lava'})).toBe(0);expect(s.damage(1,{kind:'fire'})).toBe(0);expect(s.damage(2,{kind:'mob'})).toBe(2);
@@ -184,6 +200,14 @@ describe('hunger, saturation and exhaustion',()=>{
   it('peaceful heals 1 every 20 ticks and restores food every 10 ticks',()=>{
     const {s,tick}=setup({difficulty:'peaceful',state:{health:10,food:10,saturation:0}});
     tick(20);expect(s.health).toBe(11);expect(s.food).toBe(12);
+  });
+  it('peaceful restores saturation by 1 every 20 ticks up to the food level',()=>{
+    const {s,tick}=setup({difficulty:'peaceful',state:{food:20,saturation:0}});
+    tick(19);expect(s.saturation).toBe(0);tick(1);expect(s.saturation).toBe(1);tick(40);expect(s.saturation).toBe(3);
+    tick(20*40);expect(s.saturation).toBe(20);
+    const starving=setup({difficulty:'peaceful',state:{food:0,saturation:0}});
+    starving.tick(20);expect(starving.s.food).toBe(2);expect(starving.s.saturation).toBe(1);
+    const normal=setup({state:{saturation:0}});normal.tick(40);expect(normal.s.saturation).toBe(0);
   });
   it('starvation hurts every 80 ticks down to 10 on easy, 1 on normal, and kills on hard',()=>{
     const normal=setup({state:{health:5,food:0,saturation:0}});

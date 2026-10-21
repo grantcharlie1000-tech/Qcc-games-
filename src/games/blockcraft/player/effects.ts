@@ -27,14 +27,15 @@ export const MAX_EFFECT_LEVEL=255;
 /** Longest duration accepted, in ticks (about 14 hours). */
 export const MAX_EFFECT_TICKS=1_000_000;
 
-/** MobEffect.isDurationEffectTick: does the effect act on this tick, given the ticks remaining before it counts down?
- *  Regeneration every 50 >> amplifier ticks, poison every 25 >> amplifier, hunger and saturation every tick. */
+/** MobEffect.shouldApplyEffectTickThisTick: does the effect act on this tick, given the ticks remaining before it counts down?
+ *  Regeneration every 50 >> amplifier ticks, poison every 25 >> amplifier; hunger, saturation and absorption (which ends
+ *  once its hearts are used up, 1.20.2+) every tick. Speed, slowness, night vision and fire resistance are passive. */
 export function effectFires(name:EffectName,level:number,ticks:number):boolean{
   const amplifier=level-1;
   switch(name){
     case 'regeneration':{const k=50>>amplifier;return k>0?ticks%k===0:true;}
     case 'poison':{const k=25>>amplifier;return k>0?ticks%k===0:true;}
-    case 'hunger':case 'saturation':return true;
+    case 'hunger':case 'saturation':case 'absorption':return true;
     default:return false;
   }
 }

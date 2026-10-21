@@ -40,7 +40,17 @@ const BASE_KNOCKBACK=8;
 /** Knockback kept when a shield blocks the hit (vanilla keeps the base push, not the attacker's bonus). */
 const SHIELD_KNOCKBACK=.5;
 const EPS=1e-4,MAX_XP=0x7fffffff,MAX_LEVEL=1_000_000;
+/** Largest single hit accepted (an infinite /kill-style hit becomes this). */
+const MAX_HIT=1e9;
 const TOUCH_FIRE=1,TOUCH_CACTUS=2;
+
+/** Environmental damage sources, shared so ticking allocates nothing. Event listeners must treat them as read-only. */
+const SOURCES={
+  burn:Object.freeze<DamageSource>({kind:'fire'}),lava:Object.freeze<DamageSource>({kind:'lava'}),
+  void:Object.freeze<DamageSource>({kind:'void'}),wall:Object.freeze<DamageSource>({kind:'suffocate'}),
+  drown:Object.freeze<DamageSource>({kind:'drown'}),starve:Object.freeze<DamageSource>({kind:'starve'}),
+  cactus:Object.freeze<DamageSource>({kind:'cactus'}),poison:Object.freeze<DamageSource>({kind:'magic'}),
+  fall:Object.freeze<DamageSource>({kind:'fall'})};
 
 const FIRE=new Uint8Array(256),CACTUS=new Uint8Array(256),BED=new Uint8Array(256),SUFFOCATES=new Uint8Array(256);
 for(const d of BLOCKS){
@@ -95,7 +105,7 @@ export function createSurvival(game:Game):SurvivalSystem{
       if(++foodTimer>=SLOW_REGEN_TICKS){heal(1);addExhaustion(REGEN_EXHAUSTION);foodTimer=0;}
     }else if(food<=0){
       if(++foodTimer>=STARVE_TICKS){
-        if(health>10||difficulty==='hard'||health>1&&difficulty==='normal')hurt(STARVE_DAMAGE,{kind:'starve'},'starve');
+        if(health>10||difficulty==='hard'||health>1&&difficulty==='normal')hurt(STARVE_DAMAGE,SOURCES.starve,'starve');
         foodTimer=0;
       }
     }else foodTimer=0;
@@ -154,7 +164,8 @@ export function createSurvival(game:Game):SurvivalSystem{
 
   // ---- Damage ------------------------------------------------------------------------------
   function hurt(amount:number,source:DamageSource,type:DamageType,fallDistance=state().fallDistance):number{
-    if(dead||!Number.isFinite(amount)||amount<0)return 0;
+    if(dead||Number.isNaN(amount)||amount<0)return 0;
+    amount=Math.min(amount,MAX_HIT);
     const info=DAMAGE_TYPES[type];
     if(type==='fall'&&source.projectile?.kind==='ender_pearl')portalFlash=PORTAL_SECONDS;
     if(!info.bypassCreative&&(creative()||spawnProtection>0))return 0;
@@ -221,10 +232,12 @@ export function createSurvival(game:Game):SurvivalSystem{
   function applyEffect(e:StatusEffect){
     switch(e.name){
       case 'regeneration':if(health<MAX_HEALTH)heal(1);break;
-      case 'poison':if(health>1)hurt(1,{kind:'magic'},'magic');break;
+      case 'poison':if(health>1)hurt(1,SOURCES.poison,'magic');break;
+      // AbsorptionMobEffect.applyEffectTick (1.20.2+): the effect ends once its extra hearts are used up.
+      case 'absorption':if(absorption<=0)effects.remove('absorption');break;
       case 'hunger':addExhaustion(.005*e.level);break;
       case 'saturation':feed(e.level,e.level*2);break;
-      default:break;// speed, slowness, night vision and fire resistance are read by other systems
+      default:break;// speed and slowness (player movement), night vision (renderer) and fire resistance (damage) are passive
     }
   }
   function addEffect(name:EffectName,seconds:number,level=1){
@@ -325,20 +338,20 @@ export function createSurvival(game:Game):SurvivalSystem{
     if(p.inWater&&fireTicks>0)fireTicks=0;
     if(isCreative){if(fireTicks>0)fireTicks=0;}
     else if(fireTicks>0){
-      if(fireTicks%20===0&&!p.inLava)hurt(BURN_DAMAGE,{kind:'fire'},'on_fire');
+      if(fireTicks%20===0&&!p.inLava)hurt(BURN_DAMAGE,SOURCES.burn,'on_fire');
       fireTicks--;
       if(dead)return;
     }
-    if(p.inLava&&!isCreative){setOnFire(LAVA_FIRE_SECONDS);hurt(LAVA_DAMAGE,{kind:'lava'},'lava');if(dead)return;}
-    if(p.y<VOID_Y){hurt(VOID_DAMAGE,{kind:'void'},'void');if(dead)return;}
-    if(!isCreative&&eyesInWall()){hurt(SUFFOCATION_DAMAGE,{kind:'suffocate'},'suffocate');if(dead)return;}
+    if(p.inLava&&!isCreative){setOnFire(LAVA_FIRE_SECONDS);hurt(LAVA_DAMAGE,SOURCES.lava,'lava');if(dead)return;}
+    if(p.y<VOID_Y){hurt(VOID_DAMAGE,SOURCES.void,'void');if(dead)return;}
+    if(!isCreative&&eyesInWall()){hurt(SUFFOCATION_DAMAGE,SOURCES.wall,'suffocate');if(dead)return;}
     // Air: 300 ticks underwater, then 2 damage each time it reaches -20; refills 4 per tick.
     if(p.headInWater&&!isCreative){
       air--;
       if(air<=DROWN_AIR){
         air=0;
         game.render.spawnParticles('bubble',p.x,p.y+game.player.eyeHeight(),p.z,{count:8,spread:.3});
-        hurt(DROWN_DAMAGE,{kind:'drown'},'drown');if(dead)return;
+        hurt(DROWN_DAMAGE,SOURCES.drown,'drown');if(dead)return;
       }
     }else if(air<MAX_AIR)air=Math.min(MAX_AIR,air+AIR_REFILL);
     effects.tick(applyEffect,clampAbsorption,clampAbsorption);
@@ -348,14 +361,15 @@ export function createSurvival(game:Game):SurvivalSystem{
     if(touch&TOUCH_FIRE&&!isCreative){
       // BaseFireBlock.entityInside: catches fire after FIRE_IMMUNE_TICKS in the flames, 1 damage per hit.
       fireTicks++;if(fireTicks===0)setOnFire(FIRE_BLOCK_SECONDS);
-      hurt(FIRE_BLOCK_DAMAGE,{kind:'fire'},'in_fire');if(dead)return;
+      hurt(FIRE_BLOCK_DAMAGE,SOURCES.burn,'in_fire');if(dead)return;
     }
-    if(touch&TOUCH_CACTUS){hurt(CACTUS_DAMAGE,{kind:'cactus'},'cactus');if(dead)return;}
+    if(touch&TOUCH_CACTUS){hurt(CACTUS_DAMAGE,SOURCES.cactus,'cactus');if(dead)return;}
     if(!(touch&TOUCH_FIRE)&&!p.inLava&&fireTicks<=0)fireTicks=-FIRE_IMMUNE_TICKS;
     if(fireTicks>0&&(p.inWater||rainingOnPlayer()))fireTicks=-FIRE_IMMUNE_TICKS;
-    // Peaceful (Player.aiStep): 1 health every 20 ticks and 1 food every 10 ticks.
+    // Peaceful (Player.aiStep): 1 health and 1 saturation every 20 ticks, 1 food every 10 ticks. Saturation never exceeds food.
     if(game.settings.difficulty==='peaceful'){
       if(health<MAX_HEALTH&&age%20===0)heal(1);
+      if(saturation<MAX_FOOD&&age%20===0)saturation=Math.max(saturation,Math.min(saturation+1,food));
       if(food<MAX_FOOD&&age%10===0)food++;
     }
     foodTick();
@@ -432,7 +446,7 @@ export function createSurvival(game:Game):SurvivalSystem{
       // BedBlock.fallOn halves the fall.
       const below=game.world.get(Math.floor(p.x),Math.floor(p.y-.2),Math.floor(p.z));
       const damage=fallDamage(below>0&&BED[below]?distance*.5:distance);
-      if(damage>0)hurt(damage,{kind:'fall'},'fall',distance);
+      if(damage>0)hurt(damage,SOURCES.fall,'fall',distance);
     },
     respawn(){
       const keep=game.settings.keepInventory;

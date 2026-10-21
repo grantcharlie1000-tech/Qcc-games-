@@ -62,6 +62,7 @@ describe('effect timing (isDurationEffectTick)',()=>{
     expect(effectFires('poison',1,25)).toBe(true);expect(effectFires('poison',1,24)).toBe(false);expect(effectFires('poison',2,12)).toBe(true);
     expect(effectFires('hunger',1,17)).toBe(true);expect(effectFires('saturation',1,3)).toBe(true);
     expect(effectFires('speed',1,40)).toBe(false);expect(effectFires('fire_resistance',1,20)).toBe(false);
+    expect(effectFires('absorption',1,7)).toBe(true);// checks every tick whether its hearts are gone
   });
   it('a golden apple regeneration II (5 s) fires 4 times',()=>{
     const fx=new StatusEffects();fx.add('regeneration',100,2);
