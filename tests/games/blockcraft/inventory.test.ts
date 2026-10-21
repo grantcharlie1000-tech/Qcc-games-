@@ -164,7 +164,7 @@ describe('inventory model',()=>{
   test('serialize and restore round-trip and ignore invalid data',()=>{
     const {inv}=setup();
     inv.setSlot(0,st('dirt',3));inv.setSlot(9,st('iron_pickaxe',1,12));inv.setArmor('head',st('iron_helmet'));inv.setOffhand(st('shield'));inv.select(4);
-    const data=JSON.parse(JSON.stringify(inv.serialize()));
+    const data=JSON.parse(JSON.stringify(inv.serialize!()));
     const {inv:copy}=setup();copy.restore?.(data);
     expect(copy.slots).toEqual(inv.slots);expect(copy.armor).toEqual(inv.armor);expect(copy.offhand).toEqual(inv.offhand);expect(copy.selected).toBe(4);
     const {inv:bad}=setup();
