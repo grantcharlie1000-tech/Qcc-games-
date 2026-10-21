@@ -5,7 +5,7 @@ import {describe,expect,test} from 'vitest';
 import {AIR,B,BLOCKS,COLLISION_BOXES,LIGHT_EMISSION,LIGHT_OPACITY,OPAQUE,OUTLINE_BOX,blockId} from '../../../src/games/blockcraft/data/blocks';
 import {CH,CHUNK_VOLUME,LAYER,PAD_VOLUME,padIndex,voxelIndex} from '../../../src/games/blockcraft/engine/constants';
 import type {ChunkData,LightEngine,Vec3} from '../../../src/games/blockcraft/engine/contracts';
-import {createLightEngine} from '../../../src/games/blockcraft/world/light';
+import {QUEUE_BOUND,createLightEngine} from '../../../src/games/blockcraft/world/light';
 import {changesLight} from '../../../src/games/blockcraft/world/light-shapes';
 import {createTerrain} from '../../../src/games/blockcraft/world/terrain';
 
@@ -337,6 +337,20 @@ describe('incremental relight',()=>{
       }
     }
   });
+  test('relightPadded recomputes everything for edits outside the centre-local 3×3 frame',()=>{
+    // A caller passing world coordinates (here for chunk (2,-3)) or a voxel outside the world must still get exact light.
+    for(const frame of ['world','outside'] as const){
+      const h=new Hood();h.fill(-16,0,-16,31,80,31,B.stone);h.fill(2,30,2,12,35,12,AIR);
+      const e=createLightEngine(),out=light(h,e);
+      h.fill(5,36,5,5,80,5,AIR);h.set(9,32,9,B.torch);
+      const changed:Vec3[]=frame==='world'
+        ?[...Array.from({length:45},(_,k)=>({x:5+32,y:36+k,z:5-48})),{x:9+32,y:32,z:9-48}]
+        :[{x:5,y:CH,z:5}];
+      e.relightPadded!(h.chunks,out,changed);
+      expect(firstDifference(out,light(h)),frame).toBeNull();
+      expect(sky(out,5,30,5),frame).toBe(15);expect(blk(out,9,32,9),frame).toBe(14);
+    }
+  });
   test('relightPadded with nothing changed leaves the volume alone',()=>{
     const h=randomHood(31),out=light(h),copy=out.slice();
     engine.relightPadded!(h.chunks,out,[]);
@@ -417,17 +431,31 @@ describe('performance',()=>{
     expect(peak).toBeLessThan(capacity/2);
     expect(e.queueCapacity).toBe(capacity);
   });
-  test('grows the queue pool once for a world dense with emitters and stays exact',()=>{
+  test('grows the queue pool exactly once, straight to its bound, for a world dense with emitters and stays exact',()=>{
     // A checkerboard of torches fills the whole neighbourhood: more seeds than the initial pool holds.
     const h=new Hood();
     for(let y=0;y<CH;y++)for(let z=-16;z<32;z++)for(let x=-16;x<32;x++)if((x+y+z)%2===0)h.set(x,y,z,B.torch);
     const e=createLightEngine(),capacity=e.queueCapacity;
+    expect(capacity).toBeLessThan(QUEUE_BOUND);
     const out=light(h,e);
-    expect(e.queueCapacity).toBeGreaterThan(capacity);
+    expect(e.queueCapacity).toBe(QUEUE_BOUND);
+    expect(e.queuePeak).toBeGreaterThan(capacity);
+    expect(e.queuePeak).toBeLessThanOrEqual(QUEUE_BOUND);
     expect(firstDifference(out,reference(h))).toBeNull();
-    const grown=e.queueCapacity;
     expect(light(h,e)).toEqual(out);
-    expect(e.queueCapacity).toBe(grown);
+    expect(e.queueCapacity).toBe(QUEUE_BOUND);
+  });
+  test('the queue bound holds for neighbourhoods packed with every kind of emitter',()=>{
+    // Mixed emission levels re-queue dimmer emitters lit brighter by their neighbours: the worst case for the pool.
+    const emitters=BLOCKS.filter(d=>d.lightEmission>1&&!OPAQUE[d.id]).map(d=>d.id),r=rng(5),e=createLightEngine();
+    for(const density of [.5,.9,1]){
+      const h=new Hood();
+      for(let y=0;y<CH;y++)for(let z=-16;z<32;z++)for(let x=-16;x<32;x++)if(r()<density)h.set(x,y,z,emitters[Math.floor(r()*emitters.length)]);
+      const out=light(h,e);
+      expect(e.queuePeak,`density ${density}`).toBeLessThanOrEqual(QUEUE_BOUND);
+      expect(e.queueCapacity,`density ${density}`).toBe(QUEUE_BOUND);
+      if(density===1)expect(firstDifference(out,reference(h))).toBeNull();
+    }
   });
 });
 

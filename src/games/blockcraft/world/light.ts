@@ -24,7 +24,8 @@
 //  one list per light level, threaded through one reused typed pool (Int32Array cell + next).
 //  The fill runs from level 15 down; a step's cost depends only on the cell entered, so a voxel's
 //  first push during the fill already carries its final level. Each voxel is therefore queued at
-//  most once per channel, plus once more as an emitter seed, and the pool is reset per call.
+//  most once per channel, plus once more as an emitter seed, and the pool is reset per call; the
+//  block channel reuses the sky channel's entries, so a call never needs more than QUEUE_BOUND.
 import {LIGHT_EMISSION,LIGHT_OPACITY,OPAQUE} from '../data/blocks';
 import * as constants from '../engine/constants';
 import type {ChunkData,LightEngine,Vec3} from '../engine/contracts';
@@ -76,9 +77,12 @@ for(let z=0,n=0;z<R;z++)for(let x=0;x<R;x++){
 /** Changes beyond this count are relit with a full recompute. */
 export const MAX_RELIGHT_CHANGES=256;
 const WORDS_PER_LAYER=LAYER>>2;
-/** Initial bucket queue pool (entries, 1 MB). Generated terrain stays well below it (see light.test.ts); a world dense
- *  with emitters or open caves grows it once, and the larger pool is then kept. */
+/** Initial bucket queue pool (entries, 1 MB). Generated terrain stays well below it (see light.test.ts). */
 const INITIAL_QUEUE=1<<17;
+/** Most entries one call can queue: every inner cell of the window (layers 0..CH) once as an emitter seed (at most one
+ *  per cell) and once more in the channel being flooded. A world that overflows the initial pool (one dense with
+ *  emitters) grows it once, straight to this bound (about 4.4 MB with the links), and the larger pool is then kept. */
+export const QUEUE_BOUND=2*(R-2)*(R-2)*(CH+1);
 
 /** 32-bit views of chunk block arrays for the emitter scan (one per array, made once and kept while the array lives). */
 const WORDS=new WeakMap<Uint8Array,Uint32Array|null>();
@@ -114,8 +118,8 @@ export function createLightEngine():LightEngineWithStats{
 
   function push(head:Int32Array,i:number,level:number){
     if(queued===queueCell.length){
-      // Bounded by about twice the volume (see the header); only a world dense with emitters gets here.
-      const cells=new Int32Array(queued*2),next=new Int32Array(queued*2);
+      // Only a world dense with emitters gets here. QUEUE_BOUND is never exceeded; doubling beyond it is a safety net.
+      const size=Math.max(QUEUE_BOUND,queued*2),cells=new Int32Array(size),next=new Int32Array(size);
       cells.set(queueCell);next.set(queueNext);queueCell=cells;queueNext=next;
     }
     queueCell[queued]=i;queueNext[queued]=head[level];head[level]=queued++;
@@ -318,13 +322,15 @@ export function createLightEngine():LightEngineWithStats{
     computePadded(neighbours,out){run(neighbours,out,0,CH,-1,CH);},
     /** `changed` lists every voxel edited since `out` was computed for this same neighbourhood, in centre-chunk local
      *  coordinates (x,z in -16..31, laid out like the 3×3 neighbourhood; world x - 16*cx). Recomputes only the band of
-     *  layers those edits can reach, including sky light falling further down a column that was opened or closed. */
+     *  layers those edits can reach, including sky light falling further down a column that was opened or closed.
+     *  An edit outside that frame or outside the world (a caller passing world coordinates) cannot be placed, so the
+     *  whole volume is recomputed: slower, but never stale. */
     relightPadded(neighbours,out,changed){
       if(changed.length>MAX_RELIGHT_CHANGES){run(neighbours,out,0,CH,-1,CH);return;}
       let writeLo=CH+1,writeHi=-1;
       for(let k=0;k<changed.length;k++){
         const c=changed[k],x=Math.floor(c.x),y=Math.floor(c.y),z=Math.floor(c.z);
-        if(!(x>=-CS&&x<2*CS&&z>=-CS&&z<2*CS&&y>=0&&y<CH))continue;
+        if(!(x>=-CS&&x<2*CS&&z>=-CS&&z<2*CS&&y>=0&&y<CH)){run(neighbours,out,0,CH,-1,CH);return;}
         // Horizontal steps to the padded volume (x,z in -1..CS): edits further away cannot reach it.
         if(Math.max(0,-1-x,x-CS)+Math.max(0,-1-z,z-CS)>LIGHT_REACH)continue;
         writeLo=Math.min(writeLo,Math.min(y,lowestSkyTop(neighbours,x,z,changed))-LIGHT_REACH);
