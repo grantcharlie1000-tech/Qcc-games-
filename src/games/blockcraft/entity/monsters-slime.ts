@@ -1,9 +1,10 @@
 // Slime (Java 1.20 behaviour): sizes 1, 2 and 4 with a 0.52 × size box and size² health; hops in a direction (toward the player
 // within 16 blocks until it has been out of sight for 3 seconds, otherwise one that changes every 2–5 seconds), pausing 10–29
 // ticks between hops (a third of that for big slimes chasing) at vanilla speed 0.2 + 0.1 × size; sizes 2 and 4 hurt a touching
-// player for 2 and 4 (at most every 10 ticks); on death splits into 2–4 slimes of half size; size 1
-// drops 0–2 slime balls; xp equals the size. Natural spawning: swamps between y 50 and 70 at night (brightness ≤ a random
-// 0..7, scaled by the moon phase) and slime chunks (a deterministic 1-in-10 hash of the world seed and chunk) below y 40.
+// player for 2 and 4 (at most every 10 ticks); once the 20-tick death animation ends (entityRemoved) splits into 2–4 slimes
+// of half size; size 1 drops 0–2 slime balls; xp equals the size. Natural spawning (spawn.check, which replaces the
+// framework's monster darkness): swamps between y 50 and 70 at night (brightness ≤ a random 0..7, scaled by the moon
+// phase) and slime chunks (a deterministic 1-in-10 hash of the world seed and chunk) below y 40, at any light.
 import {BIOMES,biomeDef} from '../data/biomes';
 import {stack,type ItemStack} from '../data/items';
 import {CS} from '../engine/constants';
@@ -76,7 +77,7 @@ export function applySlimeSize(e:Entity,size:SlimeSize,heal:boolean){
   e.health=heal||!(e.health>0)?e.maxHealth:Math.min(e.health,e.maxHealth);
 }
 
-/** On death: 2–4 slimes of half the size around the body (vanilla offsets). Returns the new slimes. */
+/** After death (vanilla Slime.remove): 2–4 slimes of half the size around the body (vanilla offsets). Returns the new slimes. */
 export function splitSlime(game:Game,e:Entity):Entity[]{
   const size=data(e).size,out:Entity[]=[];
   if(!isSlimeSize(size)||size<=1)return out;
@@ -142,12 +143,11 @@ export function createSlimeKind():EntityKind{
     // Slimes bounce: no fall damage (vanilla).
     despawns:true,noFallDamage:true,
     sounds:{name:'slime',ambient:false,step:false},
-    // Vanilla monster entry: weight 100 in groups of 4 everywhere monsters spawn; init() applies the slime rules.
-    spawn:{light:'dark',group:[4,4],weight:100,biomes:BIOMES.filter(b=>b.name!=='mushroom_fields').map(b=>[b.name,100] as const)},
+    // Vanilla monster entry: weight 100 in groups of 4 everywhere monsters spawn; the slime rules replace the darkness test.
+    spawn:{light:'dark',group:[4,4],weight:100,biomes:BIOMES.filter(b=>b.name!=='mushroom_fields').map(b=>[b.name,100] as const),
+      check:(game,x,y,z)=>slimeCanSpawn(game,x,y,z)},
     init(e,game,reason){
       const d=e.data,r=gameRandom(game),natural=reason==='natural'||reason==='chunk';
-      // Natural spawns that break the slime rules are dropped at once (removed before they ever tick).
-      if(natural&&!slimeCanSpawn(game,Math.floor(e.x),Math.floor(e.y),Math.floor(e.z),r)){e.removed=true;return;}
       // Spawn eggs, spawners and natural spawns roll a size (vanilla finalizeSpawn); splits and restores keep theirs.
       const size:SlimeSize=!natural&&isSlimeSize(d.size)?d.size:randomSlimeSize(r);
       applySlimeSize(e,size,reason!=='restore');

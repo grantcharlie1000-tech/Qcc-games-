@@ -56,9 +56,12 @@ describe('squid',()=>{
     const s=h.spawn('squid',2.5,64,.5);
     h.run(2);
     h.game.entities.damage(s,1,{kind:'player',byPlayer:true});
-    const ink=h.particles.filter(x=>x.kind==='large_smoke');
-    expect(ink.reduce((n,x)=>n+(x.options?.count??0),0)).toBe(30);
+    // Vanilla Squid.spawnInk: 30 'ink' particles, each with its own direction (mostly down the tentacles, below the body).
+    const ink=h.particles.filter(x=>x.kind==='ink');
+    expect(ink.reduce((n,x)=>n+(x.options?.count??0),0)).toBe(30);expect(ink).toHaveLength(30);
     expect(ink.every(x=>x.options?.color===INK_COLOUR)).toBe(true);
+    expect(new Set(ink.map(x=>x.options?.velocity?.x)).size).toBeGreaterThan(20);
+    expect(h.particles.filter(x=>x.kind==='large_smoke')).toEqual([]);
     expect(h.sounds()).toContain('mob:squid_squirt:ambient');
     const before=dist(s,p);
     h.run(30);
@@ -70,7 +73,7 @@ describe('squid',()=>{
     const h=createHarness();pool(h);
     const s=h.spawn('squid',2.5,64,.5);
     h.game.entities.damage(s,2,{kind:'drown'});
-    expect(h.particles.filter(x=>x.kind==='large_smoke')).toEqual([]);
+    expect(h.particles.filter(x=>x.kind==='ink')).toEqual([]);
   });
   it('drops 1-3 ink sacs and 1-3 experience',()=>{
     const h=createHarness();pool(h);

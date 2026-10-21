@@ -8,6 +8,8 @@ import {findPath} from '../../../src/games/blockcraft/entity/ai-path';
 import {DEATH_TICKS,PLAYER_KILL_MEMORY} from '../../../src/games/blockcraft/entity/entities';
 import {isDarkEnoughToSpawn} from '../../../src/games/blockcraft/entity/spawning';
 import type {DamageSource,Entity,EntityKind,SpawnReason} from '../../../src/games/blockcraft/engine/contracts';
+import {registerHostileMobs} from '../../../src/games/blockcraft/entity/hostile';
+import {registerMonsters} from '../../../src/games/blockcraft/entity/monsters';
 import {fill,harness,monster,walker} from './entities-helpers';
 
 const settle=(h:ReturnType<typeof harness>)=>h.tick(3);
@@ -218,5 +220,44 @@ describe('aquatic land mobs climb out',()=>{
     swim(h,d,80,0,3);
     expect(fish.x).toBeLessThan(1);expect(fish.inWater).toBe(true);
     expect(d.x).toBeLessThan(1);expect(d.inWater).toBe(true);
+  });
+});
+
+describe('with the real mob kinds',()=>{
+  test('a slime splits only when its death animation ends',()=>{
+    const h=harness();registerMonsters(h.game);
+    const big=h.game.entities.spawn('slime',4.5,60,4.5,{data:{size:4}})!;settle(h);
+    h.game.entities.damage(big,100,{kind:'player',byPlayer:true});
+    const slimes=()=>h.game.entities.all().filter(e=>e.kind==='slime'&&e!==big);
+    h.tick(DEATH_TICKS-2);expect(slimes()).toHaveLength(0);
+    h.tick(1);expect(big.removed).toBe(true);
+    expect(slimes().length).toBeGreaterThanOrEqual(2);expect(slimes().every(e=>e.data.size===2)).toBe(true);
+    // Removed without dying (despawn, peaceful): no split.
+    const before=slimes().length,other=h.game.entities.spawn('slime',-4.5,60,-4.5,{data:{size:4}})!;
+    h.game.entities.remove(other);h.tick(1);
+    expect(slimes()).toHaveLength(before);
+  });
+  test('a thrown snowball lands a zero-damage hit: flash, knockback, the hurt sound and no damage',()=>{
+    const h=harness({kinds:[walker({sounds:{name:'cow'}})]});registerHostileMobs(h.game);
+    h.game.player.state.x=-20;
+    const cow=h.game.entities.spawn('walker',.5,60,-4.5)!;settle(h);
+    const ball=h.game.entities.spawn('snowball',.5,61,.5,{data:{owner:'player'}})!;ball.vz=-30;
+    let flashed=false;for(let i=0;i<10;i++){h.tick(1);if(cow.hurtTime>0)flashed=true;}
+    expect(ball.removed).toBe(true);expect(flashed).toBe(true);expect(cow.health).toBe(20);
+    expect(h.sounds()).toContain('mob:cow:hurt');
+  });
+  test('an enderman holding a block stays when far away; snowballs make it teleport',()=>{
+    const h=harness({r:3});registerMonsters(h.game);registerHostileMobs(h.game);
+    const carrying=h.game.entities.spawn('enderman',.5,60,40.5,{data:{carried:blockId('dirt')}})!;
+    expect(carrying.data.carried).toBe(blockId('dirt'));
+    h.game.player.state.x=200;h.tick(1);
+    expect(carrying.removed).toBe(false);
+    h.game.player.state.x=.5;
+    const e=h.game.entities.spawn('enderman',.5,60,-6.5)!;settle(h);
+    const at={x:e.x,z:e.z};
+    const ball=h.game.entities.spawn('snowball',.5,62,.5,{data:{owner:'player'}})!;ball.vz=-30;
+    h.tick(6);
+    expect(ball.removed).toBe(true);expect(Math.hypot(e.x-at.x,e.z-at.z)).toBeGreaterThan(1);expect(e.health).toBe(40);
+    expect(h.sounds()).toContain('teleport');
   });
 });

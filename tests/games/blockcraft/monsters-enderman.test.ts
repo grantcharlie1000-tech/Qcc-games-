@@ -24,7 +24,10 @@ describe('enderman registration',()=>{
     const h=createHarness(),k=h.entities.kind('enderman')!;
     expect(k).toBeDefined();
     expect(k.category).toBe('hostile');expect(k.height).toBeCloseTo(2.9);expect(k.width).toBeCloseTo(.6);expect(k.maxHealth).toBe(40);
-    expect(k.xp).toBe(5);expect(k.despawns).toBe(true);
+    expect(k.xp).toBe(5);expect(k.avoidsWater).toBe(true);
+    // Despawns unless it holds a block (vanilla requiresCustomPersistence).
+    const despawns=k.despawns as (e:Entity)=>boolean;
+    expect(despawns(enderman(h))).toBe(true);expect(despawns(enderman(h,3.5,60,3.5,{carried:blockId('dirt')}))).toBe(false);
     expect(k.spawn?.light).toBe('dark');expect(k.spawn?.weight).toBe(10);expect(k.spawn?.group).toEqual([1,4]);
     const names=k.spawn!.biomes!.map(([n])=>n);
     expect(names).toContain('plains');expect(names).toContain('desert');expect(names).not.toContain('mushroom_fields');
@@ -106,6 +109,10 @@ describe('anger',()=>{
     expect(Math.hypot(other.x-before.x,other.z-before.z)).toBeGreaterThan(0);
     expect(h.sounds('teleport')).toBeGreaterThan(0);
     expect(other.data.angry).toBeFalsy();
+    // A snowball (a zero-damage hit) makes it teleport away too.
+    const third=enderman(h,-10.5,60,-10.5),at={x:third.x,z:third.z},sounds=h.sounds('teleport');
+    expect(h.entities.damage(third,0,{kind:'projectile',byPlayer:true,projectile:third})).toBe(false);
+    expect(Math.hypot(third.x-at.x,third.z-at.z)).toBeGreaterThan(0);expect(h.sounds('teleport')).toBeGreaterThan(sounds);
   });
   test('angry: chases, then hits the player for 7 with a one-second cooldown',()=>{
     const h=createHarness(),e=enderman(h,.5,60,-6.5);

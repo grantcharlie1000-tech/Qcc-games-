@@ -54,10 +54,16 @@ describe('slime sizes',()=>{
   });
 });
 
+/** Runs the 20-tick death animation; the split comes when the body leaves the world. */
+const dieOut=(h:MonsterHarness)=>{for(let i=0;i<20;i++)h.entities.tick();};
 describe('slime splitting',()=>{
-  test('a big slime splits into 2–4 medium slimes around it',()=>{
+  test('a big slime splits into 2–4 medium slimes around it once its death animation ends',()=>{
     const h=createHarness(),e=slime(h,4,.5,60,.5);
     h.entities.damage(e,100,{kind:'player',byPlayer:true});
+    expect(live(h)).toHaveLength(0);// still dying: no split yet (vanilla Slime.remove)
+    for(let i=0;i<18;i++)h.entities.tick();
+    expect(live(h)).toHaveLength(0);expect(e.removed).toBe(false);
+    dieOut(h);expect(e.removed).toBe(true);
     const kids=live(h);
     expect(kids.length).toBeGreaterThanOrEqual(2);expect(kids.length).toBeLessThanOrEqual(4);
     for(const k of kids){
@@ -70,7 +76,7 @@ describe('slime splitting',()=>{
     const h=createHarness({seed:11}),counts=new Set<number>();
     for(let i=0;i<120;i++){
       const before=live(h).length,e=slime(h,2,(i%10)*3-15,60,Math.floor(i/10)*3-15);
-      h.entities.damage(e,100,{kind:'player'});
+      h.entities.damage(e,100,{kind:'player'});dieOut(h);
       const kids=live(h).slice(before);
       counts.add(kids.length);
       for(const k of kids){expect(k.data.size).toBe(1);expect(k.width).toBeCloseTo(.52);}
@@ -82,7 +88,7 @@ describe('slime splitting',()=>{
     const h=createHarness({seed:4}),totals=new Set<number>();let balls=0;
     for(let i=0;i<400;i++){
       h.dropped.length=0;const e=slime(h,1,(i%20)-9.5,60,Math.floor(i/20)-9.5);
-      h.entities.damage(e,5,{kind:'player',byPlayer:true});
+      h.entities.damage(e,5,{kind:'player',byPlayer:true});dieOut(h);
       const n=h.dropped.filter(s=>s.id==='slime_ball').reduce((a,s)=>a+s.count,0);
       totals.add(n);balls+=n;
       expect(live(h).length).toBe(0);
@@ -237,12 +243,21 @@ describe('slime spawn rules',()=>{
     h.game.updateSettings({difficulty:'peaceful'});
     expect(slimeCanSpawn(h.game,5,30,5,seq(.05))).toBe(false);
   });
-  test('natural spawns that break the rules are dropped; valid ones get a random size',()=>{
+  test('spawn.check holds the slime rules (no darkness needed in slime chunks); natural spawns get a random size',()=>{
     const h=createHarness();h.game.terrain={...h.game.terrain,seed:seedFor(true)};
-    const surface=slime(h,undefined,5.5,60,5.5,'natural');
-    expect(surface.removed).toBe(true);
-    h.queueRandom(.05,.9);// the slime chunk roll, then the size roll (→ 4)
+    const check=h.entities.kind('slime')!.spawn!.check!;
+    // A cave lit to 15: the slime chunk rule needs no darkness (the framework's monster darkness test is replaced).
+    const c=h.game.world.chunk(0,0)!;c.light=new Uint8Array(c.blocks.length).fill(0xff);
+    expect(h.game.world.brightnessAt(5,30,5)).toBe(15);
+    h.queueRandom(.05);expect(check(h.game,5,30,5)).toBe(true);
+    h.queueRandom(.05);expect(check(h.game,5,60,5)).toBe(false);
+    h.queueRandom(.9);// the size roll (→ 4)
     const deep=slime(h,undefined,5.5,30,5.5,'natural');
     expect(deep.removed).toBe(false);expect(deep.data.size).toBe(4);expect(deep.width).toBeCloseTo(2.08);
+  });
+  test('a despawned or removed slime does not split',()=>{
+    const h=createHarness(),e=slime(h,4);
+    h.entities.remove(e);
+    expect(live(h)).toHaveLength(0);
   });
 });

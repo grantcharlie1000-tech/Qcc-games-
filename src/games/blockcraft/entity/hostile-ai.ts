@@ -1,18 +1,17 @@
 // Shared behaviour of the hostile mobs (entity/hostile-*.ts), after the Java 1.20 goals: vanilla movement speeds,
 // player and revenge targeting with cached line of sight (NearestAttackableTargetGoal, HurtByTargetGoal with
 // alertOthers, TargetGoal's 60-tick unseen memory), MeleeAttackGoal chasing and 20-tick hits with the 1.20.5 attack box,
-// shield blocking, FloatGoal swimming, hazard braking, idle looking and peaceful removal. Steering goes through
-// game.entities.ai; this module only sets moveX/moveZ/jump/yaw/headYaw (and velocity for leaps and swimming).
-// Burning in daylight, fire and drowning are applied by the entity service from the kind flags.
+// FloatGoal swimming, hazard braking, idle looking, peaceful removal and the natural spawn rules (monster darkness,
+// open sky). Steering goes through game.entities.ai; this module only sets moveX/moveZ/jump/yaw/headYaw (and velocity
+// for leaps and swimming). Burning in daylight, fire and drowning (the undead never drown) are applied by the entity
+// service from the kind flags. Shields are survival's: a blocked hit on the player returns 0 from survival.damage,
+// which also wears the shield and pushes a melee attacker back.
 import {SOLID,blockDef,isLava} from '../data/blocks';
-import {itemDef} from '../data/items';
 import type {DamageSource,Difficulty,Entity,Game} from '../engine/contracts';
 
 export const DIFFICULTY_ID:Readonly<Record<Difficulty,number>>={peaceful:0,easy:1,normal:2,hard:3};
 /** Vanilla knockback strength 0.4 blocks/tick, in blocks/second. */
 export const KNOCKBACK=8;
-/** A raised shield pushes the attacker back 0.5 blocks/tick (LivingEntity.blockUsingShield). */
-export const SHIELD_REPEL=10;
 /** Melee reach added around the attacker's box (vanilla 1.20.5 DEFAULT_ATTACK_REACH = √2.04 − 0.6). */
 export const MELEE_REACH=Math.sqrt(2.04)-.6;
 /** Ticks between melee hits (MeleeAttackGoal). */
@@ -31,7 +30,7 @@ export const triangle=(random:()=>number,centre:number,deviation:number)=>centre
 export const difficultyId=(game:Game)=>DIFFICULTY_ID[game.settings.difficulty]??2;
 /** Base regional difficulty (DifficultyInstance without moon phase and inhabited time): easy 0.75, normal 1.5, hard 2.25. */
 export const localDifficulty=(game:Game)=>difficultyId(game)*.75;
-/** The difficulty-scaled amount survival applies to mob damage (used for shield wear): easy min(a, a/2+1), hard ×1.5. */
+/** The difficulty-scaled amount survival applies to mob damage: easy min(a, a/2+1), hard ×1.5. */
 export function difficultyScaled(game:Game,amount:number):number{
   switch(game.settings.difficulty){
     case 'peaceful':return 0;
@@ -185,43 +184,13 @@ export function chase(game:Game,e:Entity,b:Brain,t:TargetPos,speed:number):void{
   else ai.navigate(e,b.lastX,b.lastY,b.lastZ,speed);
 }
 
-/** A raised shield blocks a hit coming from (x,z) when that point is in front of the player (vanilla
- *  isDamageSourceBlocked: the horizontal vector from the source to the player opposes the view direction). */
-export function shieldBlocks(game:Game,fromX:number,fromZ:number):boolean{
-  if(game.interaction.using?.item!=='shield'||game.settings.mode!=='survival')return false;
-  const p=game.player.state,dx=p.x-fromX,dz=p.z-fromZ;
-  if(dx*dx+dz*dz<1e-8)return false;
-  return dx*-Math.sin(p.yaw)+dz*-Math.cos(p.yaw)<0;
-}
-/** Shield wear after blocking `damage` (vanilla hurtCurrentlyUsedShield: 1 + floor(damage) when the hit is at least 3). */
-export function wearShield(game:Game,damage:number):void{
-  if(damage<3)return;
-  const n=1+Math.floor(damage),inv=game.inventory;
-  if(inv.held()?.id==='shield'){inv.damageHeld(n);return;}
-  const off=inv.offhand;
-  if(off?.id==='shield'){
-    const wear=(off.damage??0)+n,max=itemDef('shield')?.durability??336;
-    inv.setOffhand(wear>=max?null:{...off,damage:wear});
-  }
-}
-/** Vanilla LivingEntity.knockback applied to an entity: halve the velocity and push `strength` along (dx,dz). */
-export function knockEntity(e:Entity,dx:number,dz:number,strength:number){
-  const len=Math.hypot(dx,dz);if(len<1e-7)return;
-  e.vx=e.vx/2+dx/len*strength;e.vz=e.vz/2+dz/len*strength;
-  if(e.onGround)e.vy=Math.min(KNOCKBACK,e.vy/2+strength);
-}
-
 /** One melee swing at the target: base (normal difficulty) damage to the player through survival (which scales it by
- *  difficulty and armour) or to another entity. A raised shield facing the attacker blocks it, wears the shield and
- *  pushes the attacker back. Returns true when the hit landed. */
+ *  difficulty and armour, and lets a raised shield block it: 0 lost, shield worn, attacker pushed back) or to another
+ *  entity. Returns true when the hit landed. */
 export function meleeHit(game:Game,e:Entity,b:Brain,base:number):boolean{
   e.data.swing=SWING_TICKS;
   if(b.targetPlayer){
     const p=game.player.state;
-    if(shieldBlocks(game,e.x,e.z)){
-      wearShield(game,difficultyScaled(game,base));knockEntity(e,e.x-p.x,e.z-p.z,SHIELD_REPEL);
-      return false;
-    }
     return game.survival.damage(base,{kind:'mob',attacker:e,knockback:{x:p.x-e.x,z:p.z-e.z,strength:KNOCKBACK}})>0;
   }
   const t=b.target;
@@ -289,6 +258,21 @@ export function walkToSpot(game:Game,e:Entity,b:Brain,speed:number):boolean{
 }
 /** Can the sky be seen from this cell (no block above it)? */
 export const underSky=(game:Game,x:number,y:number,z:number)=>game.world.topY(x,z)<y;
+
+// ---- Natural spawn rules (EntityKind.spawn.check) --------------------------------------------------
+/** Vanilla Level.canSeeSky for a spawn cell: full sky light (snow layers, plants and torches let it through). */
+export const seesSky=(game:Game,x:number,y:number,z:number)=>(game.world.lightAt(x,y,z)>>4)>=15;
+/** Vanilla Monster.isDarkEnoughToSpawn at a feet cell (the entity framework's default dark-spawn rule): sky light at most a
+ *  random 0..31, no block light, brightness at most a random 0..7. A kind's spawn.check replaces that default, so the
+ *  hostile checks call it first. */
+export function monsterDark(game:Game,x:number,y:number,z:number):boolean{
+  const l=game.world.lightAt(x,y,z);
+  if((l>>4)>Math.floor(game.random()*32))return false;
+  if((l&15)>0)return false;
+  return game.world.brightnessAt(x,y,z)<=Math.floor(game.random()*8);
+}
+/** Husk and stray spawn rule (checkHuskSpawnRules, checkStraySpawnRules): monster darkness and open sky. */
+export const darkUnderOpenSky=(game:Game,x:number,y:number,z:number)=>monsterDark(game,x,y,z)&&seesSky(game,x,y,z);
 
 // ---- Validation ------------------------------------------------------------------------------
 const isInt=(v:unknown,min:number,max:number):v is number=>Number.isInteger(v)&&(v as number)>=min&&(v as number)<=max;

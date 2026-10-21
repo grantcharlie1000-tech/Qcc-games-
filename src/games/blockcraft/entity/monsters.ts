@@ -4,9 +4,10 @@ import type {Game} from '../engine/contracts';
 import {createEndermanKind} from './monsters-enderman';
 import {createSlimeKind,splitSlime} from './monsters-slime';
 
-/** Registers 'enderman' and 'slime' (called by engine/game.ts before init()). Slimes split when they die. */
+/** Registers 'enderman' and 'slime' (called by engine/game.ts before init()). A dead slime splits when it leaves the world
+ *  at the end of its death animation (entityRemoved), as vanilla Slime.remove; despawned or removed slimes do not. */
 export function registerMonsters(game:Game):void{
   game.entities.register(createEndermanKind());
   game.entities.register(createSlimeKind());
-  game.events.on('entityDied',({entity})=>{if(entity.kind==='slime')splitSlime(game,entity);});
+  game.events.on('entityRemoved',p=>{const e=p?.entity;if(e&&e.kind==='slime'&&(e.deathTime>0||e.health<=0))splitSlime(game,e);});
 }

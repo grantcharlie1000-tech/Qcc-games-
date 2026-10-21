@@ -5,9 +5,11 @@
 //    a player who looks away;
 //  - teleports at random in bright daylight under the open sky, when hurt by the environment (water and rain hurt it) and
 //    always dodges projectiles (its hurt hook cancels them), only onto safe dry ground (findTeleportTarget);
-//  - strolls calmly to dry spots only (vanilla WaterAvoidingRandomStrollGoal), never walks into water or lava (vanilla water
-//    path malus -1: it stops at the edge, strolling or chasing), and looks at players within 8 blocks;
+//  - strolls calmly to dry spots only (vanilla WaterAvoidingRandomStrollGoal), never walks into water or lava: its paths never
+//    enter water (EntityKind.avoidsWater, vanilla water path malus -1) and it still stops at the edge when it steers
+//    straight (no path found), and looks at players within 8 blocks;
 //  - picks up and puts down earth, sand, gravel, clay, plants, cacti, pumpkins, melons and TNT (data.carried holds the BlockId);
+//    one holding a block never despawns (the despawns predicate);
 //  - drops 0–1 ender pearl (and its carried block) and gives 5 xp.
 import {AIR,B,COLLISION_BOXES,FULL_CUBE,LIQUID,SOLID,blockId,type BlockId} from '../data/blocks';
 import {BIOMES} from '../data/biomes';
@@ -225,10 +227,11 @@ export function liquidAhead(game:Game,e:Entity,reach:number):boolean{
   }
   return false;
 }
-/** Vanilla endermen never path into water or lava (water path malus -1); the shared path-finder only makes water costlier.
- *  So each tick, before stepping: if it kept its intent this tick and braked from the next, would it still stop with its
- *  body short of any liquid (0.1 block margin)? On normal ground it slides v / 20 / (1 − 0.546) blocks from velocity v, and
- *  this tick's step adds intent / 20. If not, it stops now (and creeps no closer than that). Returns true when it stopped. */
+/** Vanilla endermen never path into water or lava (water path malus -1). Its paths avoid water (avoidsWater), but a mob that
+ *  steers straight (no path found, the last stretch to the goal) could still slip in. So each tick, before stepping: if it
+ *  kept its intent this tick and braked from the next, would it still stop with its body short of any liquid (0.1 block
+ *  margin)? On normal ground it slides v / 20 / (1 − 0.546) blocks from velocity v, and this tick's step adds intent / 20.
+ *  If not, it stops now (and creeps no closer than that). Returns true when it stopped. */
 export function holdAtLiquid(game:Game,e:Entity):boolean{
   const intent=Math.hypot(e.moveX,e.moveZ),v=Math.hypot(e.vx,e.vz);
   if(!(intent>1e-6))return false;
@@ -388,7 +391,10 @@ export function createEndermanKind():EntityKind{
     model:createEndermanModel(),
     // Endermen step up a full block (vanilla maxUpStep 1).
     physics:{stepHeight:1},
-    xp:ENDERMAN_XP,despawns:true,
+    xp:ENDERMAN_XP,
+    // Vanilla EnderMan.requiresCustomPersistence: one holding a block never despawns.
+    despawns:e=>e.data.carried===undefined,
+    avoidsWater:true,
     sounds:{name:'enderman',ambient:true,step:true},
     // Vanilla monster spawn entry: weight 10, groups of 1–4, in every biome with monsters (not mushroom fields).
     spawn:{light:'dark',group:[1,4],weight:10,biomes:BIOMES.filter(b=>b.name!=='mushroom_fields').map(b=>[b.name,10] as const)},
