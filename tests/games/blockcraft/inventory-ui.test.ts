@@ -201,7 +201,7 @@ describe('tooltips, labels and durability bars',()=>{
     expect(durabilityBar(st('iron_pickaxe'))).toBeNull();expect(durabilityBar(st('dirt',5))).toBeNull();
     expect(durabilityBar({id:'iron_pickaxe',count:1,damage:125})).toEqual({width:7/13,color:'#ffff00'});
     expect(durabilityBar({id:'iron_pickaxe',count:1,damage:249})).toEqual({width:0,color:'#ff0200'});
-    expect(durabilityBar({id:'iron_pickaxe',count:1,damage:1})!.color).toBe('#00ff00');
+    expect(durabilityBar({id:'iron_pickaxe',count:1,damage:1})!.color).toBe('#02ff00');
   });
 });
 
