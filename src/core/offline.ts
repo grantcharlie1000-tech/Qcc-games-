@@ -53,7 +53,17 @@ export async function activateUpdate():Promise<void>{
   }
   if(initial){const active=await build(initial);if(active.version===target.version&&active.entry===target.entry)return;}
   const current=await currentRegistration();
-  if(current?.waiting!==target.worker||target.worker.state!=='installed')throw new Error('The update changed. Try again when online.');
+  if(current?.waiting!==target.worker||target.worker.state!=='installed'){
+    // Automatic activation may win while the predecessor query is in flight.
+    // Accept only the offered build and a controller identity still current
+    // after the asynchronous reply; a stale reply cannot authorize a reload.
+    const controller=navigator.serviceWorker.controller;
+    if(controller){
+      const active=await build(controller);
+      if(navigator.serviceWorker.controller===controller&&active.version===target.version&&active.entry===target.entry)return;
+    }
+    throw new Error('The update changed. Try again when online.');
+  }
   const expected=await build(target.worker);
   if(expected.version!==target.version||expected.entry!==target.entry)throw new Error('The update changed. Try again when online.');
   await new Promise<void>((resolve,reject)=>{
@@ -126,3 +136,4 @@ export async function cacheAll(progress:(done:number,total:number)=>void):Promis
   for(const file of manifest.files){const url=new URL(file,address);const result=await fetch(url,{cache:'reload'});if(!result.ok)throw new Error('Could not download '+file+'. Try again when online.');await cache.put(url,result);progress(++done,manifest.files.length);}
   return done;
 }
+
