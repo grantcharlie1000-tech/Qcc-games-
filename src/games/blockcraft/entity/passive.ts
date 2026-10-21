@@ -9,7 +9,7 @@
 import {AIR,B,WOOL_COLOURS,blockDef,blockId,stateFor} from '../data/blocks';
 import {BIOME_BY_NAME,biomeDef} from '../data/biomes';
 import {stack} from '../data/items';
-import {brainOf,feedAnimal,hurtAnimal,initAnimal,mobSpeed,restoreAnimalData,spawnEggOnAnimal,tickAnimal,ageUp,
+import {brainOf,dangerAhead,feedAnimal,hurtAnimal,initAnimal,mobSpeed,restoreAnimalData,spawnEggOnAnimal,tickAnimal,ageUp,
   type AnimalConfig,type AnimalSpeeds,type Brain,type CustomBehaviour} from './passive-ai';
 import {RABBIT_VARIANTS,chickenModel,cowModel,pigModel,rabbitModel,sheepModel,type RabbitVariant} from './passive-art';
 import type {Entity,EntityKind,EntityModel,Game,ItemId,ItemStack,SpawnReason} from '../engine/contracts';
@@ -374,16 +374,27 @@ const raidGarden:CustomBehaviour={
 };
 const DELAY_FAST=1,DELAY_WALK=10;
 /** Vanilla rabbit movement: it only moves while airborne. On the ground it waits out its landing delay (10 ticks, 1 when
- *  running at panic speed), then hops: 0.3 blocks/tick up (0.5 to climb) with the steering speed as launch velocity. */
-function rabbitMove(e:Entity,_game:Game,b:Brain){
+ *  running at panic speed), then hops: 0.3 blocks/tick up (0.5 to climb) with the steering speed as launch velocity, kept
+ *  until it lands. A hop that would end over a drop, lava, fire or a cactus is not taken. */
+const HOP_UP=6,HOP_CLIMB=10,GRAVITY=32;
+function rabbitMove(e:Entity,game:Game,b:Brain){
   if(e.inWater||e.inLava){b.hop=0;b.wasOnGround=false;return;}
   if(b.jumpDelay>0)b.jumpDelay--;
   if(e.onGround){
     if(!b.wasOnGround){b.hop=0;b.jumpDelay=b.mode==='panic'||b.mode==='avoid'?DELAY_FAST:DELAY_WALK;}
-    if((e.moveX!==0||e.moveZ!==0)&&b.jumpDelay===0){
-      e.vy=e.collidedH?10:6;e.vx=e.moveX;e.vz=e.moveZ;e.jump=false;b.hop=1;
+    let speed=Math.hypot(e.moveX,e.moveZ);
+    const up=e.collidedH?HOP_CLIMB:HOP_UP;
+    // The whole hop must land somewhere safe, not just the next step: airtime 2·up/g at the launch speed, plus a margin.
+    if(speed>0&&b.jumpDelay===0&&dangerAhead(game.world,e.x,e.y,e.z,e.moveX,e.moveZ,e.width/2,speed*2*up/GRAVITY+.3)){
+      game.entities.ai.stop(e);b.hasTarget=false;speed=0;
+    }
+    if(speed>0&&b.jumpDelay===0){
+      e.vy=up;e.vx=b.hopX=e.moveX;e.vz=b.hopZ=e.moveZ;e.jump=false;b.hop=1;
     }else{e.moveX=0;e.moveZ=0;b.hop=0;}
-  }else if(b.hop>0)b.hop++;
+  }else if(b.hop>0){
+    // A hop is ballistic: no steering in the air, so a new goal cannot swerve it into what the launch check avoided.
+    b.hop++;e.moveX=b.hopX;e.moveZ=b.hopZ;
+  }
   b.wasOnGround=e.onGround;
 }
 function rabbitKind(game:Game):EntityKind{

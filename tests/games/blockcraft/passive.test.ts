@@ -3,7 +3,8 @@
 // drop recording) and a recording AI, so the tests exercise the kinds' own logic, not the entity framework.
 import {describe,expect,test} from 'vitest';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
-import {B,blockId,blockDef,stateFor,WOOL_COLOURS} from '../../../src/games/blockcraft/data/blocks';
+import {B,blockId,blockDef,isLava,isWater,stateFor,WOOL_COLOURS} from '../../../src/games/blockcraft/data/blocks';
+import {moveBody} from '../../../src/games/blockcraft/engine/physics';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {stack} from '../../../src/games/blockcraft/data/items';
 import {registerPassiveMobs,PASSIVE_SPEEDS,randomWoolColour,mixWoolColours,rabbitVariantFor,RABBIT_VARIANTS} from '../../../src/games/blockcraft/entity/passive';
@@ -20,8 +21,8 @@ interface Harness{
   kind(name:string):EntityKind;
 }
 
-function setup(options:{biome?:string;random?:()=>number;mode?:'survival'|'creative'}={}):Harness{
-  const game=createFakeGame({seed:11,random:options.random,mode:options.mode});
+function setup(options:{biome?:string;random?:()=>number;mode?:'survival'|'creative';seed?:number}={}):Harness{
+  const game=createFakeGame({seed:options.seed??11,random:options.random,mode:options.mode});
   game.flat(60,B.grass,1);
   if(options.biome)for(const chunk of game.world.chunks.values())chunk.biomes.fill(biomeId(options.biome));
   const kinds=new Map<string,EntityKind>(),list:Entity[]=[],drops:Harness['drops']=[],xp:number[]=[],calls:Call[]=[],particles:Harness['particles']=[];
@@ -190,6 +191,53 @@ describe('AI decisions',()=>{
   });
 });
 const w=(h:Harness)=>h.game.world;
+
+/** Simple entity physics for simulations: accelerate toward the move intent, jump, gravity, voxel collision with step-up. */
+function physics(h:Harness){
+  const world=h.game.world;
+  for(const e of h.list){
+    if(e.removed)continue;
+    const id=world.get(Math.floor(e.x),Math.floor(e.y+.1),Math.floor(e.z));
+    e.inWater=isWater(id);e.inLava=isLava(id);
+    if(e.moveX||e.moveZ){e.vx+=(e.moveX-e.vx)*.5;e.vz+=(e.moveZ-e.vz)*.5;}
+    if(e.jump&&(e.onGround||e.inWater))e.vy=8.4;
+    e.jump=false;e.vy=Math.max(-40,e.vy-1.6);
+    const r=moveBody(world,e,e.width/2,e.height,1/20,undefined,.6);
+    e.collidedH=r.hitX||r.hitZ;e.collidedV=r.hitY;
+    if(e.onGround&&!e.moveX&&!e.moveZ){e.vx*=.6;e.vz*=.6;}
+  }
+}
+describe('simulation',()=>{
+  // Seed 19 once let a rabbit swerve mid-hop into the lava.
+  test.each([11,19])('a herd on a plateau ringed by a 10-deep pit, with a lava pool, never falls or walks into lava, within the AI budget (seed %i)',seed=>{
+    const h=setup({seed}),world=w(h),cheb=(x:number,z:number)=>Math.max(Math.abs(x-8),Math.abs(z-8));
+    // Plateau of grass at y 60 within 6 of (8, 8); a pit ring (air from y 50) from 7 to 12; grass again beyond.
+    for(let x=-4;x<=20;x++)for(let z=-4;z<=20;z++)if(cheb(x,z)>=7)for(let y=50;y<60;y++)world.set(x,y,z,0);
+    for(const [x,z] of [[5,10],[6,10],[5,11],[6,11]])world.set(x,59,z,B.lava);
+    const kinds=['cow','cow','cow','pig','pig','pig','sheep','sheep','sheep','chicken','chicken','chicken','rabbit','rabbit'];
+    const herd=kinds.map((k,i)=>h.spawn(k,3.5+(i%5)*2.4,60,3.5+[0,3,10][Math.floor(i/5)]));
+    for(const e of herd)expect(world.get(Math.floor(e.x),59,Math.floor(e.z))).toBe(B.grass);
+    const kindOf=new Map(herd.map(e=>[e,h.kind(e.kind)]));
+    let aiTime=0,aiTicks=0,moved=0;
+    const start=new Map(herd.map(e=>[e,[e.x,e.z]]));
+    for(let t=0;t<3000;t++){
+      if(t%300===0)for(const e of herd)hurt(h,e);
+      h.game.time.tick++;
+      const t0=performance.now();
+      for(const e of h.list)if(!e.removed&&e.deathTime===0){e.age++;kindOf.get(e)?.tick?.(e,h.game);aiTicks++;}
+      aiTime+=performance.now()-t0;
+      physics(h);
+      for(const e of herd){
+        expect(e.y,`${e.kind} ${e.id} fell at tick ${t}`).toBeGreaterThan(59.5);
+        expect(isLava(world.get(Math.floor(e.x),Math.floor(e.y+.1),Math.floor(e.z))),`${e.kind} ${e.id} in lava at tick ${t}`).toBe(false);
+      }
+    }
+    for(const e of herd){const [x,z]=start.get(e)!;if(Math.hypot(e.x-x,e.z-z)>1)moved++;}
+    expect(moved).toBeGreaterThan(herd.length/2);
+    // Budget: 0.05 ms per mob per tick (generous here: this includes the test harness' entity queries).
+    expect(aiTime/aiTicks).toBeLessThan(.05);
+  });
+});
 
 describe('breeding',()=>{
   test('feeding enters love mode with hearts; two lovers breed a baby, then cool down for 5 minutes',()=>{

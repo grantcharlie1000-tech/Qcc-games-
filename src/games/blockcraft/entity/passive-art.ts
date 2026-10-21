@@ -129,9 +129,9 @@ const PIG_RUMP=['SSSSSSSSSS','SSSSDDSSSS','SSSSSDSSSS','SSSSDDSSSS',...fill(4,'S
 function paintPig(c:Canvas){
   const p=PIG,pal:Pal={S:p.S,L:p.L,D:p.D,N:p.N,E:p.E,K:p.K};
   const skin=(f:Face,x:number,y:number)=>{
-    const n=noise(f,x,y,p.seed),freckle=hash(x,y,p.seed+FACE_SEED[f]*3)>.965;
+    const n=noise(f,x,y,p.seed),freckle=hash(x,y,p.seed+FACE_SEED[f]*3)>.985;
     const base=f==='top'?mix(p.S,p.L,.35):f==='bottom'?mix(p.S,p.D,.3):p.S;
-    return vary(freckle?p.D:base,n,.04);
+    return vary(freckle?mix(p.S,p.D,.6):base,n,.04);
   };
   c.box(PIG_UV.head.uv,PIG_UV.head.size,(f,x,y)=>{
     const n=noise(f,x,y,p.seed);
@@ -304,7 +304,7 @@ function paintRabbit(c:Canvas,p:RabbitPalette){
   /** Coat colour at a texel: the variant's pattern over a base colour. */
   const coat=(f:Face,x:number,y:number,base:number,off:number)=>{
     const n=noise(f,x,y,p.seed);
-    if(p.pattern==='splotch'&&blob(x+off*11,y+off*5,3,p.seed+off)>.58)return vary(p.D,n,.05);
+    if(p.pattern==='splotch'&&blob(x+off*11,y+off*5,4,p.seed+off)>.6)return vary(p.D,n,.05);
     if(p.pattern==='salt'){const s=hash(x,y,p.seed*7+off+FACE_SEED[f]);if(s>.78)return vary(p.L,n,.04);if(s<.18)return vary(p.D,n,.04);}
     return vary(base,n,.05);
   };

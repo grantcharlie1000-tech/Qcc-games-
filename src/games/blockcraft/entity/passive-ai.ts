@@ -28,8 +28,8 @@ export interface Brain{
   fleeX:number;fleeZ:number;threat:number;avoidCheck:number;
   /** Sheep grazing timer (40..0), the vanilla eat animation tick. */
   eat:number;
-  /** Rabbit hop: ticks into the current hop (0 = not hopping), landing delay, previous ground state. */
-  hop:number;jumpDelay:number;wasOnGround:boolean;
+  /** Rabbit hop: ticks into the current hop (0 = not hopping), landing delay, previous ground state, launch velocity. */
+  hop:number;jumpDelay:number;wasOnGround:boolean;hopX:number;hopZ:number;
   /** Rabbit garden raid: crop target and search timer. */
   hasCrop:boolean;cropX:number;cropY:number;cropZ:number;raid:number;raidTicks:number;
   /** Chicken wing flap (vanilla flap, flapSpeed and their previous values). */
@@ -40,7 +40,7 @@ export function brainOf(e:Entity):Brain{
   let b=BRAINS.get(e);
   if(!b){
     b={mode:'idle',hasTarget:false,tx:0,ty:0,tz:0,targetTicks:0,stuck:0,panic:0,calm:0,partner:0,loveTime:0,parent:0,
-      look:0,lookPlayer:false,lookX:0,lookY:0,lookZ:0,fleeX:0,fleeZ:0,threat:0,avoidCheck:0,eat:0,hop:0,jumpDelay:0,wasOnGround:true,
+      look:0,lookPlayer:false,lookX:0,lookY:0,lookZ:0,fleeX:0,fleeZ:0,threat:0,avoidCheck:0,eat:0,hop:0,jumpDelay:0,wasOnGround:true,hopX:0,hopZ:0,
       hasCrop:false,cropX:0,cropY:0,cropZ:0,raid:0,raidTicks:0,flap:0,oFlap:0,flapSpeed:0,oFlapSpeed:0,flapping:1};
     BRAINS.set(e,b);
   }
@@ -126,12 +126,17 @@ function columnDanger(world:Game['world'],x:number,fy:number,z:number):boolean{
   }
   return true;
 }
-/** Would moving in direction (dx,dz) take a mob of half width `halfWidth` at feet (x,y,z) over a drop of more than 3 blocks,
- *  into lava or fire, or against a cactus? Checks the column under its leading edge and the one a step beyond. */
-export function dangerAhead(world:Game['world'],x:number,y:number,z:number,dx:number,dz:number,halfWidth:number):boolean{
+/** Would moving `distance` blocks in direction (dx,dz) take a mob of half width `halfWidth` at feet (x,y,z) over a drop of
+ *  more than 3 blocks, into lava or fire, or against a cactus? Checks the column under its leading edge, then every half
+ *  block up to `distance` beyond it (one step by default; rabbits check a whole hop). */
+export function dangerAhead(world:Game['world'],x:number,y:number,z:number,dx:number,dz:number,halfWidth:number,distance=.45):boolean{
   const len=Math.hypot(dx,dz);if(len<1e-6)return false;
-  const ux=dx/len,uz=dz/len,fy=Math.floor(y+.5),edge=halfWidth-1e-3,step=halfWidth+.45;
-  return columnDanger(world,Math.floor(x+ux*edge),fy,Math.floor(z+uz*edge))||columnDanger(world,Math.floor(x+ux*step),fy,Math.floor(z+uz*step));
+  const ux=dx/len,uz=dz/len,fy=Math.floor(y+.5),edge=halfWidth-1e-3;
+  for(let d=0;;d=Math.min(distance,d+.5)){
+    const r=edge+d;
+    if(columnDanger(world,Math.floor(x+ux*r),fy,Math.floor(z+uz*r)))return true;
+    if(d>=distance)return false;
+  }
 }
 
 // ---- Steering helpers -----------------------------------------------------------------------------
@@ -373,8 +378,9 @@ export function tickAnimal(e:Entity,game:Game,cfg:AnimalConfig):void{
   look(e,game,cfg,b,mode);
   // Vanilla FloatGoal: jump (swim up) 80% of ticks in water or lava; grazing sheep hold still.
   if((e.inWater||e.inLava)&&b.eat<=0&&game.random()<.8)e.jump=true;
+  // Cliff, lava, fire and cactus guard: stop dead at the edge (also cancelling the run-up, which would slide it over).
   if(e.onGround&&!e.inWater&&(e.moveX||e.moveZ)&&dangerAhead(game.world,e.x,e.y,e.z,e.moveX,e.moveZ,e.width/2)){
-    ai.stop(e);b.hasTarget=false;
+    ai.stop(e);e.vx=0;e.vz=0;b.hasTarget=false;
   }
   cfg.move?.(e,game,b);
 }
