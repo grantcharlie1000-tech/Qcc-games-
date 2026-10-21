@@ -11,17 +11,17 @@ const A=release(legacy,'A'),L=release(legacy,'L'),B=release(current,'B'),C=relea
 const evidence=process.env.ARCADE_UPDATE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(evidence,{recursive:true});
 const nativeTraceEnabled=process.env.ARCADE_UPDATE_NATIVE_TRACE==='1';
 const nativeTrace=nativeTraceEnabled?createUpdateNativeTrace({enabled:true,directory:evidence+'/native-trace'}):undefined;
-let deployed=A,scope='/',gate,holdManifest=false,manifestGate;
+let deployed=A,scope='/',gate,holdManifest=false,manifestGate,failed=false;
 const requests=[],contexts=[],profiles=[],results=[],startupInventories=[],retainedPageEvidence=[];const primaryPages=new WeakMap();
 const mime={js:'application/javascript',html:'text/html',css:'text/css',json:'application/json',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json'};
 const server=http.createServer((req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname,relative=pathname.startsWith(scope)?'/'+pathname.slice(scope.length):'/missing',file=relative==='/'?'/index.html':relative;
- requests.push({release:deployed.label,file,destination:req.headers['sec-fetch-dest']});
+ requests.push({release:deployed.label,file,destination:req.headers['sec-fetch-dest']});nativeTrace?.observeResponse(req,res,{release:deployed.label,file,scope});
  if(file==='/test-navigation-gate'){gate=res;return;}
  if(holdManifest&&file==='/offline-manifest.json'){manifestGate=res;return;}
  const data=deployed.map.get(file);res.writeHead(data?200:404,{'Content-Type':mime[file.split('.').at(-1)]||'application/octet-stream','Cache-Control':'no-store'});res.end(data);
 });await new Promise(resolve=>server.listen(4181,'127.0.0.1',resolve));
-async function bounded(task,milliseconds,label){let timer;try{return await Promise.race([task,new Promise((_,reject)=>timer=setTimeout(()=>reject(new Error('Timed out: '+label)),milliseconds))]);}finally{clearTimeout(timer);}}
+async function bounded(task,milliseconds,label){let timer;try{return await Promise.race([task,new Promise((_,reject)=>timer=setTimeout(()=>{const error=new Error('Timed out: '+label);reject(error);nativeTrace?.mark('original-deadline',{label,milliseconds,heldGate:!!gate,heldManifest:!!manifestGate});},milliseconds))]);}finally{clearTimeout(timer);}}
 const poll=(fn,label)=>bounded((async()=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+label);})(),15000,label);
 async function version(page){return await bounded(page.evaluate(()=>new Promise((resolve,reject)=>{
  const worker=navigator.serviceWorker.controller;if(!worker||worker.state!=='activated'){resolve(undefined);return;}
@@ -126,9 +126,9 @@ async function progress(page){return await page.evaluate(()=>{
 async function controlledWaitingCase(path,base){
  console.log('CONTROLLED WAITING START',path);deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);
  await menu(a);await a.locator('#motion').check();await closeMenu(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='waiting-B';});
- const c=await context.newPage();await home(c,base);deployed=W;await menu(c);await closeMenu(c);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();
- await holdActivation(a,W);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit W activation held after first save');
- await a.getByLabel('Study topic',{exact:true}).selectOption('quadratics');await a.getByLabel('Study topic',{exact:true}).selectOption('close-reading');await releaseActivation(a);await poll(async()=>await version(a)===W.version,'W activates after topic away and back');
+ const c=await context.newPage();if(nativeTraceEnabled)await nativeTrace.ready(c);await home(c,base);deployed=W;await menu(c);await closeMenu(c);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();
+ await holdActivation(a,W);nativeTrace?.mark('W-click-before-hold');await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit W activation held after first save');nativeTrace?.mark('W-held-after-first-save');
+ await a.getByLabel('Study topic',{exact:true}).selectOption('quadratics');await a.getByLabel('Study topic',{exact:true}).selectOption('close-reading');nativeTrace?.mark('W-release-request',{heldGate:!!gate,heldManifest:!!manifestGate});await releaseActivation(a);nativeTrace?.mark('W-release-returned');await poll(async()=>await version(a)===W.version,'W activates after topic away and back');
  await poll(async()=>!await a.locator('#reload-update').isDisabled(),'topic cancellation flow settled');assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','topic away/back cancels pending reload');await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);
  console.log('CONTROLLED TOPIC CANCELLATION PASS',path);await c.reload();deployed=X;await menu(c);await closeMenu(c);await a.keyboard.press('Escape');await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();await holdActivation(a,X);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit X activation held');
  await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,3);await releaseActivation(a);await poll(async()=>await version(a)===X.version,'X activates without reloading resumed game');await a.getByRole('button',{name:'Pause game',exact:true}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B');
@@ -241,9 +241,10 @@ try{
   results.push({scope:path,oldVersion:A.version,versions:[B.version,C.version,D.version],persistentProfileRestarted:true,naturalReloadDiscovery:true,noAutomaticDocumentReload:true,legacyDelayedNavigation:false,modernDelayedNavigation:true,legacyPackPinned:true,oldLazyChunkRemovedFromServer:true,oldGamePlayedOffline:true,persistentProfileWorkerRestart:true,forcedLiveWorkerRestart:false,visibleNewContent:true,scoreSettingsCookiePreserved:true,actualProgressRestored:true,quotaBlockedUserReload:true,pendingPreferenceRecovered:true,inconsistentInstallRecovery:true,modernCachesCleaned:true,futureInstallCachePreserved:true});console.log('MIGRATION PASS',path);await controlledWaitingCase(path,base);Object.assign(results.at(-1),{waitingUpdateAccepted:true,resumeCancelsPendingReload:true,lateQuotaBlocksActualReload:true});await cancelledCase(path,base);const legacyNavigation=await legacyNavigationCase(path,base);Object.assign(results.at(-1),{cancelledReservationAllowsLaterGc:true,legacyDelayedNavigation:true,legacyDelayedNavigationWorkerState:legacyNavigation});
  }
 }catch(error){
+ failed=true;console.error('LOCAL FAILURE PROFILES RETAINED',JSON.stringify(profiles));
  console.error(error);if(nativeTraceEnabled)await nativeTrace.failure(error,{scope,heldGate:!!gate,heldManifest:!!manifestGate});await settleGate();manifestGate?.end();console.error('REQUESTS AT FAILURE',JSON.stringify(requests.slice(-40)));for(const [i,context] of contexts.entries()){for(const page of context.pages()){if(!page.isClosed())console.error('FAILURE WORKER',JSON.stringify(await diagnostic(page)));console.error('FAILURE PAGE',page.url(),await page.evaluate(()=>({marker:document.querySelector('meta[name="arcade-release"]')?.getAttribute('content'),focus:document.activeElement?.id,body:document.body.className,status:document.querySelector('#update-status')?.textContent,disabled:document.querySelector('#reload-update')?.disabled})).catch(()=>null));}await Promise.race([context.tracing.stop({path:`${evidence}/update-failure-${i}.zip`}).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);}throw error;
 }finally{
- gate?.end('stop');manifestGate?.end();for(const context of contexts)await context.close().catch(()=>{});server.closeAllConnections();await new Promise(resolve=>server.close(resolve));for(const profile of profiles)await rm(profile,{recursive:true,force:true});
- await writeFile(evidence+'/update-results.json',JSON.stringify({recordedAt:new Date().toISOString(),results,requests,startupInventories,retainedPageEvidence},null,2));
+ gate?.end('stop');manifestGate?.end();for(const context of contexts)await context.close().catch(()=>{});server.closeAllConnections();await new Promise(resolve=>server.close(resolve));if(!failed)for(const profile of profiles)await rm(profile,{recursive:true,force:true});
+ await writeFile(evidence+'/update-results.json',JSON.stringify({recordedAt:new Date().toISOString(),results,requests,startupInventories,retainedPageEvidence,retainedProfiles:failed?profiles:[]},null,2));
 }
 console.log(JSON.stringify(results,null,2));
