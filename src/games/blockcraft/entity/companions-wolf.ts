@@ -511,8 +511,14 @@ function followOwner(e:Entity,game:Game,b:WolfBrain):boolean{
     b.recalc=10;
     if(d2>=TELEPORT_DISTANCE*TELEPORT_DISTANCE&&teleportToOwner(e,game))return true;
   }
-  ai.navigate(e,p.x,p.y,p.z,WOLF_SPEED);
+  ai.navigate(e,p.x,ownerGround(game),p.z,WOLF_SPEED);
   return true;
+}
+/** The floor under an airborne owner (jumping, flying, falling: up to 6 blocks down) so the path goal is reachable. */
+export function ownerGround(game:Game):number{
+  const p=game.player.state,w=game.world,x=Math.floor(p.x),z=Math.floor(p.z),y0=Math.floor(p.y+1e-3);
+  for(let y=y0;y>y0-6;y--){const below=w.get(x,y-1,z);if(below<0)break;if(SOLID[below])return y;}
+  return p.y;
 }
 /** BreedGoal for tamed wolves in love. */
 function breeding(e:Entity,game:Game,b:WolfBrain):boolean{

@@ -3,7 +3,7 @@ import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
 import type {Entity} from '../../../src/games/blockcraft/engine/contracts';
 import {DYE_COLOURS,newWolfLook} from '../../../src/games/blockcraft/entity/companions-art';
 import {BABY_TICKS,BREED_COOLDOWN,FOLLOW_STOP,LOVE_TICKS,TAME_CHANCE,TAME_HEALTH,WILD_HEALTH,WOLF_DAMAGE,angerOf,canTeleportTo,isSitting,isTame,
-  lookOfWolf,restoreWolfData,tailAngle,tame,teleportToOwner,variantForBiome,wolfBrain} from '../../../src/games/blockcraft/entity/companions-wolf';
+  lookOfWolf,ownerGround,restoreWolfData,tailAngle,tame,teleportToOwner,variantForBiome,wolfBrain} from '../../../src/games/blockcraft/entity/companions-wolf';
 import {createHarness,dist,fill,sequence,until,type Harness} from './companions-harness';
 
 function tamedWolf(h:Harness,x:number,z:number,sitting=false):Entity{
@@ -113,6 +113,12 @@ describe('following the owner',()=>{
     expect(Math.max(Math.abs(dx),Math.abs(dz))).toBeGreaterThanOrEqual(2);
     expect(Math.max(Math.abs(dx),Math.abs(dz))).toBeLessThanOrEqual(3);
     expect(w.y).toBe(60);
+  });
+  it('heads for the ground under an owner who is jumping or flying',()=>{
+    const h=createHarness();
+    player(h).y=63.4;expect(ownerGround(h.game)).toBe(60);
+    player(h).y=60;expect(ownerGround(h.game)).toBe(60);
+    player(h).y=90;expect(ownerGround(h.game)).toBe(90);
   });
   it('never teleports onto leaves, into water or lava, or inside blocks',()=>{
     const h=createHarness(),g=h.game,leaves=blockId('oak_leaves');
