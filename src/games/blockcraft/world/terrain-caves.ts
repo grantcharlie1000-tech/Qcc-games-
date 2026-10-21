@@ -74,14 +74,8 @@ export class CaveField{
       for(let f=0;f<FIELDS;f++)l[o+f]=n[a+f]*w00+n[b+f]*w10+n[c+f]*w01+n[d+f]*w11;
     }
   }
-  /** Cave kind at height y of the prepared column (y below the filled top). */
-  kindAt(y:number):number{
-    const k=y>>3,t=(y&7)/CELL_Y,l=this.levels,o=k*FIELDS,p=this.point;
-    for(let f=0;f<FIELDS;f++)p[f]=l[o+f]+(l[o+FIELDS+f]-l[o+f])*t;
-    return classify(p,0,y);
-  }
   /** Fills kinds[y] for y in 1..top of the prepared column (top below the filled levels); caverns only up to cheeseTop.
-   *  Same values as kindAt, interpolated incrementally. */
+   *  The fields are interpolated incrementally through each 8-high cell. */
   carveColumn(kinds:Uint8Array,top:number,cheeseTop:number){
     const l=this.levels;
     let y=1;

@@ -66,7 +66,6 @@ export function hashInt(x:number,y:number,z:number,seed:number):number{
   h=Math.imul(h^(h>>>15),0x2c1b3c6d);h=Math.imul(h^(h>>>12),0x297a2d39);h^=h>>>15;
   return h>>>0;
 }
-export const clamp=(v:number,lo:number,hi:number)=>v<lo?lo:v>hi?hi:v;
 export const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
 /** Hermite smoothstep from e0 to e1 (e1 may be below e0 for a falling edge). */
 export function smoothstep(e0:number,e1:number,x:number):number{
