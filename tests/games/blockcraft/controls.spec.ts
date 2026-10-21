@@ -174,7 +174,7 @@ test.describe('touch',()=>{
   });
 });
 
-test('gamepad: left stick moves, right stick looks, A jumps, RB selects the next slot',async({page})=>{
+test('gamepad: A starts from the menu, left stick moves, right stick looks, A jumps, RB selects the next slot',async({page})=>{
   test.setTimeout(120000);
   await page.addInitScript(()=>{
     const pad={id:'Test pad',index:0,connected:true,mapping:'standard',timestamp:0,axes:[0,0,0,0],
@@ -184,13 +184,13 @@ test('gamepad: left stick moves, right stick looks, A jumps, RB selects the next
   });
   await boot(page);
   const root=page.locator('.blockcraft');
-  await page.getByRole('button',{name:'Play',exact:true}).click();
-  await expect(root).toHaveAttribute('data-phase','playing');
   await page.evaluate(()=>window.dispatchEvent(new Event('gamepadconnected')));
   const set=(axes:number[],buttons:Record<number,number>={})=>page.evaluate(([a,b])=>{
     const pad=(window as unknown as {testPad:{axes:number[];buttons:{pressed:boolean;value:number}[]}}).testPad;
     pad.axes=a as number[];pad.buttons.forEach((btn,i)=>{const v=(b as Record<number,number>)[i]??0;btn.value=v;btn.pressed=v>.5;});
   },[axes,buttons] as const);
+  await expect(root).toHaveAttribute('data-phase','ready');
+  await set([0,0,0,0],{0:1});await expect(root).toHaveAttribute('data-phase','playing');await set([0,0,0,0]);
   const x=await num(page,'x'),z=await num(page,'z'),yaw=await num(page,'yaw');
   await set([0,-1,1,0]);
   await expect.poll(()=>moved(page,x,z),{timeout:15000}).toBeGreaterThan(.5);

@@ -26,7 +26,7 @@ export function createInput(game:Game):InputService{
   const padFrame:PadFrame={connected:false,moveX:0,moveY:0,lookX:0,lookY:0,buttons:[]};
   const abort=new AbortController(),signal=abort.signal;
   const coarse=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches;
-  let touchMode=coarse,lockFailures=0,padsKnown=0,padMenuA=false,padMenuStart=false,padStarting=false;
+  let touchMode=coarse,lockFailures=0,padsKnown=0,padMenuA=false,padMenuStart=false,padStarting=false,menuFrame=0,lastPoll=0;
   let gestureKind:PointerKind='touch',touchUI:TouchControls|null=null,offState:(()=>void)|null=null;
   const ring:TouchRing={x:0,y:0,progress:0};
 
@@ -70,8 +70,16 @@ export function createInput(game:Game):InputService{
       padStarting=true;
       try{if(game.state==='dead')game.respawn();else if(game.state==='ready'||game.state==='paused')game.play();}finally{padStarting=false;}
     }
-    padMenuA=a;padMenuStart=start;
+    padMenuA=a;padMenuStart=start;lastPoll=performance.now();
   }
+  /** The engine stops drawing frames on its menus, so a connected gamepad is polled here meanwhile (A / Start). */
+  function menuPoll(){
+    menuFrame=0;
+    if(signal.aborted||!padsKnown||game.state==='playing'||game.state==='screen'||game.state==='lost')return;
+    if(performance.now()-lastPoll>30)pollPad(1/60);
+    menuFrame=requestAnimationFrame(menuPoll);
+  }
+  function watchMenus(){if(!menuFrame&&padsKnown)menuFrame=requestAnimationFrame(menuPoll);}
 
   const service:InputService={
     get captured(){return locked();},
@@ -94,7 +102,7 @@ export function createInput(game:Game):InputService{
     init(){
       const root=game.root.dataset;root[ROOT_FLAGS.hudHidden]='';root[ROOT_FLAGS.debug]='';
       touchUI=createTouchControls(game,controls,signal);
-      offState=game.events.on('stateChanged',refreshTouch);
+      offState=game.events.on('stateChanged',()=>{refreshTouch();watchMenus();});
 
       // ---- Keyboard --------------------------------------------------------------------------------
       window.addEventListener('keydown',e=>{
@@ -153,7 +161,7 @@ export function createInput(game:Game):InputService{
       canvas.addEventListener('lostpointercapture',e=>endGesture(e,true),{signal});
 
       // ---- Gamepads ----------------------------------------------------------------------------------
-      window.addEventListener('gamepadconnected',()=>{padsKnown++;},{signal});
+      window.addEventListener('gamepadconnected',()=>{padsKnown++;watchMenus();},{signal});
       window.addEventListener('gamepaddisconnected',()=>{
         padsKnown=Math.max(0,padsKnown-1);
         if(!padsKnown){controls.releaseAll('pad:');controls.setPadMove(0,0);pad.reset();padMenuA=padMenuStart=false;}
@@ -173,7 +181,7 @@ export function createInput(game:Game):InputService{
       }
       touchUI.update(shown);
     },
-    dispose(){service.clear();abort.abort();offState?.();offState=null;touchUI?.dispose();touchUI=null;service.release();}
+    dispose(){service.clear();abort.abort();cancelAnimationFrame(menuFrame);menuFrame=0;offState?.();offState=null;touchUI?.dispose();touchUI=null;service.release();}
   };
   return service;
 }
