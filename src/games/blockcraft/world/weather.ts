@@ -33,6 +33,8 @@ export function createWeather(game:Game):WeatherController{
   const bolts:Bolt[]=[],scratch:Entity[]=[];
   const thunder:PendingThunder[]=Array.from({length:MAX_THUNDER},()=>({due:-1,x:0,y:0,z:0,volume:0,pitch:1}));
   const ambience=visualRandom(0xa11ce);
+  /** Gameplay randomness, called as a method so it works whether or not the engine binds game.random. */
+  const random=()=>game.random();
   let flash=0,ticks=0,rainSoundIn=0,visuals:WeatherVisuals|null=null;
 
   const raining=()=>cycle.rainLevel>RAINING_LEVEL;
@@ -43,7 +45,7 @@ export function createWeather(game:Game):WeatherController{
 
   function addBolt(x:number,y:number,z:number){
     if(bolts.length>=MAX_BOLTS)bolts.shift();
-    bolts.push(createBolt(x,y,z,game.random));
+    bolts.push(createBolt(x,y,z,random));
   }
   function isRainingOn(x:number,y:number,z:number):boolean{
     if(!raining())return false;
@@ -94,7 +96,7 @@ export function createWeather(game:Game):WeatherController{
       return precipitationKind(game.world,bx,bz,y===undefined||!Number.isFinite(y)?surfaceY(game.world,bx,bz):Math.floor(y));
     },
     isRainingOn,
-    set(state,duration){if(state==='clear'||state==='rain'||state==='thunder')setCycle(cycle,state,duration,game.random);},
+    set(state,duration){if(state==='clear'||state==='rain'||state==='thunder')setCycle(cycle,state,duration,random);},
     strike(x,y,z){if([x,y,z].every(Number.isFinite))addBolt(Math.floor(x),Math.floor(y),Math.floor(z));},
     init(){
       const scene=(game.render as Partial<typeof game.render>|undefined)?.scene;
@@ -102,17 +104,17 @@ export function createWeather(game:Game):WeatherController{
     },
     tick(){
       ticks++;
-      advanceCycle(cycle,game.random,game.settings.weatherCycle);
+      advanceCycle(cycle,random,game.settings.weatherCycle);
       const p=game.player.state;
       if(raining()&&thunderStrength()>THUNDERING_LEVEL){
-        const column=rollStrikeColumn(p.x,p.z,game.random);
+        const column=rollStrikeColumn(p.x,p.z,random);
         if(column){
-          const target=findStrikeTarget(game,column.x,column.z,game.random,scratch);
+          const target=findStrikeTarget(game,column.x,column.z,random,scratch);
           if(target&&isRainingOn(target.x,target.y,target.z))addBolt(target.x,target.y,target.z);
         }
       }
-      precipitationTick(game.world,p.x,p.z,game.random,raining());
-      for(let i=0;i<bolts.length;)if(tickBolt(game,bolts[i],game.random,scratch,boltEvents))i++;else bolts.splice(i,1);
+      precipitationTick(game.world,p.x,p.z,random,raining());
+      for(let i=0;i<bolts.length;)if(tickBolt(game,bolts[i],random,scratch,boltEvents))i++;else bolts.splice(i,1);
       if(flashing())flash=Math.max(flash,flashPeak());
       for(const t of thunder)if(t.due>=0&&t.due<=ticks){t.due=-1;playThunder(t);}
       rainSound();

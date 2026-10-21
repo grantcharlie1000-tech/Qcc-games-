@@ -101,6 +101,16 @@ describe('weather service: state and cycle',()=>{
       expect(s.weather.state).toBe('rain');
     }
   });
+  test('calls game.random as a method of the game, never unbound',()=>{
+    const {game,weather}=setup('snowy_plains');
+    const base=game.random;
+    game.random=function(this:unknown){if(this!==game)throw new Error('game.random called unbound');return base();};
+    expect(()=>{
+      weather.set('thunder');tick(game,300);
+      weather.strike(1,64,1);tick(game,20);
+      weather.set('clear');weather.set('rain');tick(game,5);
+    }).not.toThrow();
+  });
   test('works with the fake renderer stub: frames run without a scene',()=>{
     const {game,weather}=setup();startRain(game,weather,'thunder');
     expect(()=>{for(let i=0;i<5;i++)weather.frame?.(1/60);weather.dispose?.();}).not.toThrow();
