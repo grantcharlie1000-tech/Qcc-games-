@@ -22,7 +22,7 @@ export const BREAK_EXHAUSTION=.005;
 
 // ---- Break times ----------------------------------------------------------------------------------------------------
 export interface MiningConditions{onGround:boolean;underwater:boolean}
-const SWORD_EFFICIENT=new Set(['pumpkin','melon','cactus']);
+const SWORD_EFFICIENT=new Set(['pumpkin','melon']);
 /** Tool speed against a block (vanilla getDestroySpeed): the tier speed for the matching tool, shears on leaves 15 and wool 5,
  *  swords 1.5 on leaves, plants and gourds, hoes on leaves; 1 otherwise. */
 export function toolSpeed(id:BlockId,held:ItemStack|null):number{
@@ -97,9 +97,14 @@ export function createInteraction(game:Game):InteractionService{
     else if(target&&sameHit(target,hit))Object.assign(target,hit);
     else target={...hit};
   }
+  /** Sends the outline box of the target state to the renderer when it changes (no allocation while it stays). */
+  let shownId=-1,shownX=0,shownY=0,shownZ=0;
   function showSelection(){
-    const box=target&&game.state!=='dead'?OUTLINE_BOX[target.id]:null;
-    game.render.setSelection(box&&target&&box.length===6?{minX:target.x+box[0],minY:target.y+box[1],minZ:target.z+box[2],maxX:target.x+box[3],maxY:target.y+box[4],maxZ:target.z+box[5]}:null);
+    const box=target?OUTLINE_BOX[target.id]:null;
+    if(!target||!box||box.length!==6){if(shownId!==-1){shownId=-1;game.render.setSelection(null);}return;}
+    if(shownId===target.id&&shownX===target.x&&shownY===target.y&&shownZ===target.z)return;
+    shownId=target.id;shownX=target.x;shownY=target.y;shownZ=target.z;
+    game.render.setSelection({minX:target.x+box[0],minY:target.y+box[1],minZ:target.z+box[2],maxX:target.x+box[3],maxY:target.y+box[4],maxZ:target.z+box[5]});
   }
 
   // ---- Mining ------------------------------------------------------------------------------------------------------
@@ -261,11 +266,12 @@ export function createInteraction(game:Game):InteractionService{
     get attackCharge(){return combat.charge(partial);},
     get using(){return using?usingView:null;},
     get breaking(){return breaking;},
-    blockDrops:(id,tool)=>lootDrops(id,tool,random),
+    // `explosion` (beyond the contract, see loot.ts): explosions drop tool-gated blocks like vanilla.
+    blockDrops:(id,tool,explosion?:boolean)=>lootDrops(id,tool,random,!!explosion),
     frame(dt){
       partial=Math.min(1,partial+dt*20);
       updateTarget();showSelection();
-      if(game.state!=='playing'&&(breaking||destroying))stopDestroy();
+      if(game.state!=='playing'){if(breaking||destroying)stopDestroy();if(using)stopUsing();}
       if(using?.kind==='bow'){
         const f=Math.min(1,(using.ticks+partial)/20);
         game.render.setFovScale(1-f*f*.15);fovScaled=true;
@@ -296,7 +302,7 @@ export function createInteraction(game:Game):InteractionService{
       showSelection();
     },
     reset(){
-      target=null;entityTarget=null;breaking=null;destroying=false;destroyTicks=0;destroyDelay=0;missTime=0;rightClickDelay=0;
+      target=null;entityTarget=null;if(shownId!==-1){shownId=-1;game.render.setSelection(null);}breaking=null;destroying=false;destroyTicks=0;destroyDelay=0;missTime=0;rightClickDelay=0;
       using=null;cooldowns.clear();combat.reset();lastHeld=null;editToast=false;
       if(fovScaled){fovScaled=false;game.render.setFovScale(1);}
     },

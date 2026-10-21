@@ -129,6 +129,12 @@ describe('eating and drinking',()=>{
     expect(h.surv.cleared).toBe(1);expect(h.inv.slots[0]).toEqual(stack('bucket'));
     expect(consumed).toEqual([{stack:stack('milk_bucket')}]);expect(h.sounds()).toContain('drink');
   });
+  it('opening a screen or dying stops eating',()=>{
+    const h=createHarness();h.hold('bread');h.lookAt(.5,70,-10);h.press('use');h.down('use');h.step(5);
+    expect(h.interaction.using?.item).toBe('bread');
+    h.game.setState('screen');h.game.input.clear();h.interaction.frame?.(.05);expect(h.interaction.using).toBeNull();
+    h.game.setState('playing');h.step(40);expect(h.surv.eaten).toHaveLength(0);
+  });
   it('switching items stops eating',()=>{
     const h=createHarness();h.hold('bread');h.lookAt(.5,70,-10);h.press('use');h.down('use');h.step(5);
     h.inv.select(3);h.step(40);
@@ -272,6 +278,20 @@ describe('spawn eggs',()=>{
     h.aimFace(0,60,-2,0,0,1);h.lookAt(cow.entity.x,cow.entity.y+.7,cow.entity.z);h.step();
     expect(h.interaction.entityTarget).toBe(cow.entity);
     h.click('use');expect(h.ents.spawned[1].entity).toMatchObject({kind:'cow',baby:true});
+  });
+});
+
+describe('service surface',()=>{
+  it('blockDrops is the loot entry point; explosions may ignore tool requirements',()=>{
+    const h=createHarness(),drops=h.interaction.blockDrops as (id:number,tool:null,explosion?:boolean)=>unknown;
+    expect(h.interaction.blockDrops(B.stone,null)).toEqual([]);
+    expect(h.interaction.blockDrops(B.stone,stack('wooden_pickaxe'))).toEqual([stack('cobblestone')]);
+    expect(drops(B.stone,null,true)).toEqual([stack('cobblestone')]);
+  });
+  it('hides the selection when looking at the sky and shows it again on a block',()=>{
+    const h=createHarness();h.aimFace(0,59,-2,0,1,0);h.step();expect(h.log.selection).not.toBeNull();
+    h.lookAt(.5,90,-1);h.step();expect(h.log.selection).toBeNull();expect(h.interaction.target).toBeNull();
+    h.aimFace(0,59,-2,0,1,0);h.step();expect(h.log.selection).toEqual({minX:0,minY:59,minZ:-2,maxX:1,maxY:60,maxZ:-1});
   });
 });
 

@@ -1,7 +1,7 @@
 // Hands and results shared by placement, item use and the interaction service. Vanilla tries the main hand, then
 // the offhand, for every right click: a hand that passes lets the other hand act.
 import {OUTLINE_BOX,blockDef,isLiquid} from '../data/blocks';
-import {itemDef,maxStack,stack,type ItemStack} from '../data/items';
+import {itemDef,stack,type ItemStack} from '../data/items';
 import type {BlockSource,Game,RayHit} from '../engine/contracts';
 
 /** A block hit with the exact point the ray met the block's outline (world space). */
@@ -51,7 +51,7 @@ export function give(game:Game,s:ItemStack):void{
 export function fillHand(game:Game,hand:Hand,filled:string):void{
   if(game.settings.mode==='creative'){if(game.inventory.count(filled)===0)give(game,stack(filled));return;}
   const s=hand.get();if(!s)return;
-  if(s.count<=1&&maxStack(filled)>=1){hand.set(stack(filled));return;}
+  if(s.count<=1){hand.set(stack(filled));return;}
   hand.set({...s,count:s.count-1});give(game,stack(filled));
 }
 

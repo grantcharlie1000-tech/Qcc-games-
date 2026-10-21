@@ -97,7 +97,7 @@ function shootBow(game:Game,hand:Hand,ticks:number){
 }
 
 // ---- Block use ----------------------------------------------------------------------------------------------------
-/** Is block light sky night for sleeping: dayTime 12542..23459, or a thunderstorm. */
+/** Can the player sleep now: dayTime 12542..23459 (night), or during a thunderstorm. */
 export const canSleepNow=(game:Game)=>{const t=game.time.dayTime%DAY_TICKS;return t>=12542&&t<=23459||game.weather.state==='thunder';};
 export const SLEEP_MESSAGES={day:'You can sleep only at night',monsters:'You may not rest now; there are monsters nearby',
   far:'You may not rest now; the bed is too far away',obstructed:'This bed is obstructed',spawn:'Respawn point set'} as const;
