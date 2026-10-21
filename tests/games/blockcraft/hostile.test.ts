@@ -1,5 +1,6 @@
 import {describe,expect,test} from 'vitest';
 import {AIR,B} from '../../../src/games/blockcraft/data/blocks';
+import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {KNOCKBACK,difficultyScaled,mobSpeed} from '../../../src/games/blockcraft/entity/hostile-ai';
 import {CREEPER_FUSE,creeperSwellDir,explosionPower} from '../../../src/games/blockcraft/entity/hostile-creeper';
 import {STRAFE_SPEED,bowInterval,bowPower,skeletonInaccuracy} from '../../../src/games/blockcraft/entity/hostile-skeletons';
@@ -288,6 +289,15 @@ describe('conversion',()=>{
     expect(husk.removed).toBe(true);expect(k.spawned.filter(s=>s.reason==='convert').map(s=>s.entity.kind)).toEqual(['zombie']);
     expect(drowned.removed).toBe(false);
   });
+  test('the undead breathe under water (their hurt hooks cancel drowning) while a creeper drowns',()=>{
+    const h=createHarness({mode:'creative'});night(h.game);
+    fill(h,-12,60,-3,12,62,3,B.water);fill(h,-12,63,-3,12,63,3,B.stone);// a flooded tunnel: no one can surface
+    const undead=['zombie','husk','skeleton','stray'].map((n,i)=>h.spawn(n,-10.5+i*5,60,.5)),creeper=h.spawn('creeper',10.5,60,.5);
+    h.game.runTicks(560);
+    for(const e of undead){expect(e.health,e.kind).toBe(20);expect(e.removed,e.kind).toBe(false);}
+    expect(creeper.deathTime>0||creeper.removed).toBe(true);
+    expect(h.hits.filter(x=>x.entity===creeper).every(x=>x.source.kind==='drown')).toBe(true);
+  });
 });
 
 describe('drowned',()=>{
@@ -304,6 +314,55 @@ describe('drowned',()=>{
     fill(pool,-4,60,-4,4,72,4,B.water);pool.game.player.teleport(.5,69,.5);pool.game.player.state.inWater=true;
     const c=pool.spawn('drowned',2.5,60,2.5);pool.game.runTicks(60);
     expect(c.data.aggressive).toBe(true);expect(c.y).toBeGreaterThan(62);
+  });
+  test('at night it climbs out of a pool level with the ground and hits a player on land',()=>{
+    const h=createHarness();night(h.game);
+    fill(h,-3,57,-3,3,59,3,B.water);h.game.player.teleport(.5,60,7.5);
+    const d=h.spawn('drowned',.5,57,.5);
+    until(h,()=>h.hurt.length>0,600);
+    expect(d.data.aggressive).toBe(true);expect(h.hurt.length).toBeGreaterThan(0);
+    expect(d.inWater).toBe(false);expect(d.y).toBeGreaterThanOrEqual(60);
+  });
+  test('at night one without a target walks ashore; by day it stays in the water',()=>{
+    const h=createHarness({mode:'creative'});night(h.game);
+    fill(h,-3,57,-3,3,59,3,B.water);
+    const d=h.spawn('drowned',.5,57,.5);
+    until(h,()=>!d.inWater&&d.onGround,600);
+    expect(d.inWater).toBe(false);expect(d.y).toBeGreaterThanOrEqual(60);
+    const day=createHarness({mode:'creative'});noon(day.game);
+    fill(day,-3,57,-3,3,59,3,B.water);
+    const w=day.spawn('drowned',.5,57,.5);let left=false;
+    for(let i=0;i<400;i++){day.game.runTicks(1);if(!w.inWater)left=true;}
+    expect(left).toBe(false);
+  });
+});
+
+describe('natural spawn rules',()=>{
+  const spawn=(h:Harness,kind:string,x:number,y:number,z:number,reason:'natural'|'egg'='natural')=>h.game.entities.spawn(kind,x,y,z,{reason});
+  function deepWater(h:Harness){fill(h,-2,40,-2,2,61,2,B.water);}
+  test('drowned: water below the feet, 1 in 40 and below sea level − 5 outside rivers, 1 in 15 in rivers',()=>{
+    // The harness world is all ocean (biome 0). The first random() is the baby roll, the second the spawn chance.
+    const lucky=createHarness({random:sequence([],.02)});deepWater(lucky);
+    expect(spawn(lucky,'drowned',.5,50,.5)).not.toBeNull();
+    expect(spawn(lucky,'drowned',.5,58,.5)).toBeNull();// too shallow below sea level
+    expect(spawn(lucky,'drowned',.5,40,.5)).toBeNull();// stone below the feet
+    const unlucky=createHarness({random:sequence([],.03)});deepWater(unlucky);
+    expect(spawn(unlucky,'drowned',.5,50,.5)).toBeNull();
+    expect(spawn(unlucky,'drowned',.5,58,.5,'egg')).not.toBeNull();// only natural spawns are gated
+    for(const c of unlucky.game.world.chunks.values())c.biomes.fill(biomeId('river'));
+    expect(spawn(unlucky,'drowned',.5,58,.5)).not.toBeNull();// .03 < 1/15
+    const dry=createHarness({random:sequence([],.1)});deepWater(dry);
+    for(const c of dry.game.world.chunks.values())c.biomes.fill(biomeId('river'));
+    expect(spawn(dry,'drowned',.5,58,.5)).toBeNull();
+  });
+  test('husks and strays spawn naturally only under open sky; zombies and skeletons anywhere',()=>{
+    const h=createHarness();fill(h,-2,66,-2,2,66,2,B.stone);// a roof
+    for(const n of ['husk','stray']){
+      expect(spawn(h,n,.5,60,.5),n).toBeNull();
+      expect(spawn(h,n,8.5,60,8.5),n).not.toBeNull();
+      expect(spawn(h,n,.5,60,.5,'egg'),n).not.toBeNull();
+    }
+    for(const n of ['zombie','skeleton'])expect(spawn(h,n,.5,60,.5),n).not.toBeNull();
   });
 });
 
@@ -467,6 +526,17 @@ describe('drops',()=>{
     expect(tally(h,'spider',false).per.get('string')).toBe(2);
     expect(tally(h,'stray',false).per.get('bone')).toBe(2);
     expect(tally(h,'husk',false).per.get('rotten_flesh')).toBe(2);
+  });
+  test('skeletons and strays killed by the player drop their worn bow 8.5% of the time',()=>{
+    const h=createHarness();
+    for(const name of ['skeleton','stray']){
+      expect(tally(h,name,false).out.get('bow'),name).toBeUndefined();
+      const k=kind(h,name),e=h.spawn(name,0,60,0),wear=new Set<number>();let bows=0;
+      for(let i=0;i<4000;i++)for(const s of k.drops!(e,h.game,true))if(s.id==='bow'){
+        bows++;expect(s.count).toBe(1);expect(s.damage).toBeGreaterThan(0);expect(s.damage).toBeLessThan(384);wear.add(s.damage!);
+      }
+      expect(bows/4000,name).toBeGreaterThan(.065);expect(bows/4000,name).toBeLessThan(.105);expect(wear.size).toBeGreaterThan(10);
+    }
   });
   test('a mob killed in the harness drops its loot through the entity service',()=>{
     const h=createHarness({mode:'creative'}),c=h.spawn('creeper',0,60,0);

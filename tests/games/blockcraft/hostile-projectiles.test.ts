@@ -185,6 +185,22 @@ describe('thrown items',()=>{
     expect(s.removed).toBe(true);expect(h.hits).toHaveLength(0);expect(z.health).toBe(20);
     expect(z.vz).toBeLessThan(-2);expect(z.data.aggressive).toBe(true);
   });
+  test('a mob nudged by a snowball ignores further zero-damage hits for 10 ticks (vanilla invulnerability)',()=>{
+    // One snowball hits at about tick 4; a second one thrown from 3 blocks in front lands two ticks after it is thrown.
+    const run=(second:number|null,pair=false)=>{
+      const h=createHarness({mode:'creative'}),z=h.spawn('zombie',.5,60,-4.5);
+      fire(h,'snowball',.5,61,.5,0,0,-30,{owner:'player'});
+      if(pair)fire(h,'snowball',.5,61.3,.5,0,0,-30,{owner:'player'});
+      for(let t=0;t<30;t++){if(t===second)fire(h,'snowball',z.x,61,z.z+3,0,0,-30,{owner:'player'});h.game.runTicks(1);}
+      expect(h.hits).toHaveLength(0);
+      return z.z;
+    };
+    const once=run(null);
+    expect(once).toBeLessThan(-5);
+    expect(run(null,true)).toBeCloseTo(once,6);// two at once push once
+    expect(run(5)).toBeCloseTo(once,6);// lands inside the 10 ticks: ignored
+    expect(run(14)).toBeLessThan(once-.5);// after them: pushed again
+  });
   test('eggs hatch a baby chicken one time in eight',()=>{
     const lucky=createHarness({random:sequence([.05,.5])});
     fire(lucky,'egg',.5,61,.5,0,-10,0,{owner:'player'});lucky.game.runTicks(3);

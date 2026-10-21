@@ -6,8 +6,10 @@
 //    14 − 4 × difficulty), then waits 40 ticks (20 on hard): one arrow every 3 s, 2 s on hard.
 //  - Runs from wolves within 6 blocks; when burning in daylight without a target it looks for shade (FleeSunGoal).
 //  - Stray: the snowy-biome skeleton (replaces 80 of 100 skeletons in snowy plains); its arrows add Slowness for 30 s.
-// Drops: 0–2 bones and 0–2 arrows; 5 xp.
-import {stack} from '../data/items';
+//    Natural strays need open sky (Stray.checkStraySpawnRules): init removes one spawned under a roof.
+//  - Undead breathe under water: the hurt hook cancels 'drown' damage.
+// Drops: 0–2 bones and 0–2 arrows; player kills drop the held bow 8.5% of the time, worn as in vanilla; 5 xp.
+import {itemDef,stack} from '../data/items';
 import type {Difficulty,Entity,EntityKind,Game,ItemStack} from '../engine/contracts';
 import {DIFFICULTY_ID,avoidHazards,brain,cleanData,difficultyId,idle,isDay,mobSpeed,newTarget,peacefulRemove,pickSpot,retaliate,
   setAggressive,tickTimers,triangle,underSky,updateTarget,walkToSpot,type Brain,type TargetPos} from './hostile-ai';
@@ -25,6 +27,8 @@ export const STRAFE_SPEED=.25*.25*Math.SQRT1_2/(1-.6*.91)*20;
 /** A blocked strafe walks straight at the target at the strafe speed with full forward input. */
 const STRAFE_FORWARD=.25*.25/(1-.6*.91)*20;
 export const WOLF_RANGE=6;
+/** Mob.dropCustomDeathLoot: chance that the bow in hand drops on a player kill (handDropChances 0.085). */
+export const BOW_DROP=.085;
 /** Vanilla spread of skeleton arrows: 14 − 4 × difficulty id. */
 export const skeletonInaccuracy=(d:Difficulty)=>14-DIFFICULTY_ID[d]*4;
 /** Ticks between the end of one draw and the start of the next (Skeleton.reassessWeaponGoal). */
@@ -51,13 +55,13 @@ function strafe(game:Game,e:Entity,t:TargetPos,forward:number,right:number){
 }
 /** Skeleton.performRangedAttack. */
 export function shootArrow(game:Game,e:Entity,t:TargetPos,power:number,stray:boolean):Entity|null{
-  const y=e.y+SKELETON_EYE-.1,diff=difficultyId(game);
-  const data:Record<string,unknown>={owner:'mob',ownerId:e.id,damage:power*2+triangle(game.random,diff*.11,.57425),pickup:false,crit:false,inGround:false};
+  const y=e.y+SKELETON_EYE-.1,diff=difficultyId(game),random=()=>game.random();// bound: Game.random is a method
+  const data:Record<string,unknown>={owner:'mob',ownerId:e.id,damage:power*2+triangle(random,diff*.11,.57425),pickup:false,crit:false,inGround:false};
   if(stray){data.effect='slowness';data.effectSeconds=30;}
   const arrow=game.entities.spawn('arrow',e.x,y,e.z,{data,reason:'event',yaw:e.yaw});
   if(!arrow)return null;
   const dx=t.x-e.x,dz=t.z-e.z,dy=t.y+t.height/3-y,h=Math.hypot(dx,dz);
-  shoot(arrow,dx,dy+h*.2,dz,SKELETON_ARROW_SPEED,skeletonInaccuracy(game.settings.difficulty),game.random);
+  shoot(arrow,dx,dy+h*.2,dz,SKELETON_ARROW_SPEED,skeletonInaccuracy(game.settings.difficulty),random);
   game.sounds.play('bow',{x:e.x,y,z:e.z},{pitch:1/(game.random()*.4+.8)});
   return arrow;
 }
@@ -128,10 +132,16 @@ function tickSkeleton(e:Entity,game:Game,stray:boolean){
   avoidHazards(game,e);
 }
 
-function skeletonDrops(game:Game):ItemStack[]{
+function skeletonDrops(game:Game,byPlayer:boolean):ItemStack[]{
   const out:ItemStack[]=[],bones=Math.floor(game.random()*3),arrows=Math.floor(game.random()*3);
   if(arrows>0)out.push(stack('arrow',arrows));
   if(bones>0)out.push(stack('bone',bones));
+  if(byPlayer&&game.random()<BOW_DROP){
+    // Worn maxDamage − nextInt(1 + nextInt(maxDamage − 3)), kept one use short of breaking.
+    const max=itemDef('bow')?.durability??384,inner=Math.floor(game.random()*Math.max(max-3,1));
+    const wear=max-Math.floor(game.random()*(1+inner));
+    out.push(stack('bow',1,Math.max(1,Math.min(max-1,wear))));
+  }
   return out;
 }
 function skeletonKind(kind:SkeletonKind):EntityKind{
@@ -140,10 +150,16 @@ function skeletonKind(kind:SkeletonKind):EntityKind{
     kind,category:'hostile',width:.6,height:1.99,maxHealth:20,model:skeletonModels[kind](),
     sounds:{name:kind},despawns:true,burnsInDaylight:true,xp:5,
     spawn:stray?{light:'dark',group:[4,4],biomes:[['snowy_plains',80]],replaces:'skeleton'}:{light:'dark',group:[4,4],weight:100},
-    init(e,_game,reason){if(reason==='restore'){for(const k of Object.keys(e.data))delete e.data[k];}},
+    init(e,game,reason){
+      if(reason==='natural'&&stray&&!underSky(game,Math.floor(e.x),Math.floor(e.y+.01),Math.floor(e.z))){game.entities.remove(e);return;}
+      if(reason==='restore'){for(const k of Object.keys(e.data))delete e.data[k];}
+    },
     tick:(e,game)=>tickSkeleton(e,game,stray),
-    hurt(e,game,source){retaliate(e,game,source);},
-    drops:(_e,game)=>skeletonDrops(game),
+    hurt(e,game,source){
+      if(source.kind==='drown')return false;// undead breathe under water (vanilla canBreatheUnderwater)
+      retaliate(e,game,source);
+    },
+    drops:(_e,game,byPlayer)=>skeletonDrops(game,byPlayer),
     restoreData:data=>cleanData(data,{})
   };
 }

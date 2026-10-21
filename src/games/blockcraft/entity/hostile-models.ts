@@ -378,6 +378,7 @@ export function creeperLook(swell:number,out:{flash:number;scale:number}):{flash
   out.flash=Math.floor(f*10)%2===0?0:Math.max(.5,Math.min(1,f));
   return out;
 }
+const AURA_PARTS=['aura_head','aura_body','aura_leg_front_right','aura_leg_front_left','aura_leg_back_right','aura_leg_back_left'] as const;
 export function creeperModel():EntityModel{
   const head=creeperHead(),body=camo(89),foot=creeperFoot();
   const legs:[string,number,number][]=[['leg_front_right',2,-4],['leg_front_left',-2,-4],['leg_back_right',2,4],['leg_back_left',-2,4]];
@@ -396,9 +397,7 @@ export function creeperModel():EntityModel{
       setPose(pose,'leg_back_right',c,0,0);setPose(pose,'leg_back_left',-c,0,0);
       setPose(pose,'leg_front_right',-c,0,0);setPose(pose,'leg_front_left',c,0,0);
       const drift=state.reducedMotion?0:Math.sin(state.time*2.4)*.35;
-      for(const n of ['aura_head','aura_body','aura_leg_front_right','aura_leg_front_left','aura_leg_back_right','aura_leg_back_left']){
-        const p=setPose(pose,n,0,0,0,charged);p.px=drift;p.pz=-drift;
-      }
+      for(let i=0;i<AURA_PARTS.length;i++){const p=setPose(pose,AURA_PARTS[i],0,0,0,charged);p.px=drift;p.pz=-drift;}
     },
     appearance(e){
       const s=typeof e.data.swell==='number'?e.data.swell:0;
@@ -425,14 +424,16 @@ export function spiderModel():EntityModel{
   }
   const t=buildTexture(parts,64);
   const phases=[0,Math.PI,Math.PI/2,Math.PI*1.5];
+  // Leg part names resolved once (animate runs per spider per frame and must not build strings).
+  const rightLegs=legSpec.map(l=>l[0]),leftLegs=rightLegs.map(n=>n.replace('right','left'));
   return{textureWidth:t.width,textureHeight:t.height,paint:t.paint,parts:t.parts,
     animate(e,pose,state){
       setPose(pose,'head',clampPitch(state.headPitch),clampYaw(state.headYaw),0);
       const s=state.limbSwing,a=state.limbAmount;
-      legSpec.forEach(([name],i)=>{
+      for(let i=0;i<rightLegs.length;i++){
         const swing=-Math.cos(s*2+phases[i])*.4*a,lift=Math.abs(Math.sin(s+phases[i])*.4)*a;
-        setPose(pose,name,0,swing,lift);setPose(pose,name.replace('right','left'),0,-swing,-lift);
-      });
+        setPose(pose,rightLegs[i],0,swing,lift);setPose(pose,leftLegs[i],0,-swing,-lift);
+      }
     }};
 }
 

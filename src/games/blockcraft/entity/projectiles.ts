@@ -8,7 +8,8 @@
 //    for 7 ticks; they fall again when the block goes, despawn after 1200 ticks in the ground, and the player picks up
 //    their own (`pickup`) arrows. A failed hit (shield, invulnerability, creative) bounces them back at a tenth of the
 //    speed; a mob that dodged out of the way (endermen) lets them fly on. A raised shield facing the arrow blocks it.
-//  - Snowballs and eggs break on impact with item particles and knock mobs back without damage; an egg hatches a baby
+//  - Snowballs and eggs break on impact with item particles and knock mobs back without damage (a mob nudged this way
+//    ignores further zero-damage hits for 10 ticks, like vanilla's invulnerability after hurt(0)); an egg hatches a baby
 //    chicken one time in eight (four chicks one time in 32 of those). Ender pearls teleport the player who threw them to
 //    the impact, with 5 'fall' damage, portal particles and the teleport sound.
 // Data contracts (engine/contracts shared entity kinds): arrow {owner:'player'|'mob', ownerId?, damage, pickup, crit,
@@ -16,7 +17,7 @@
 import {COLLISION_BOXES,blockDef,isLava,isWater} from '../data/blocks';
 import {stack} from '../data/items';
 import {boxCollides,collidesAt,rayBox} from '../engine/physics';
-import type {BlockSource,DamageSource,EffectName,Entity,EntityKind,Game,ItemStack} from '../engine/contracts';
+import type {BlockSource,DamageSource,EffectName,Entity,EntityKind,Game,ItemStack,ParticleOptions} from '../engine/contracts';
 import {KNOCKBACK,difficultyScaled,knockEntity,shieldBlocks,triangle,wearShield} from './hostile-ai';
 import {arrowModel} from './hostile-models';
 
@@ -30,7 +31,11 @@ export const ARROW_SHAKE=7;
 /** Vanilla Projectile.shoot spread per unit of inaccuracy. */
 export const SPREAD=.0172275;
 export const PROJECTILE_KINDS=['arrow','snowball','egg','ender_pearl'] as const;
+/** Ticks a mob ignores zero-damage hits after one (vanilla: hurt within invulnerableTime > 10 needs a bigger amount). */
+export const NUDGE_TICKS=10;
 const TICK=1/20;
+/** Particle options reused every tick (bubbles in water, the critical arrow trail): no allocation per projectile. */
+const TRAIL:Readonly<ParticleOptions>={count:2,spread:.1};
 const EFFECTS:readonly EffectName[]=['regeneration','absorption','hunger','poison','saturation','speed','slowness','night_vision','fire_resistance'];
 
 /** Arrow damage (AbstractArrow.onHitEntity): ceil(speed × base), plus random(n/2 + 2) for a critical arrow. */
@@ -209,11 +214,13 @@ function fly(game:Game,e:Entity,physics:{gravity:number;drag:number;waterDrag:nu
   const drag=water?physics.waterDrag:physics.drag;
   vx*=drag;vy*=drag;vz*=drag;vy-=physics.gravity;
   e.vx=vx/TICK;e.vy=vy/TICK;e.vz=vz/TICK;
-  if(water)game.render.spawnParticles('bubble',e.x,e.y+e.height/2,e.z,{count:2,spread:.1});
+  if(water)game.render.spawnParticles('bubble',e.x,e.y+e.height/2,e.z,TRAIL);
   // Lava and fire set the projectile alight (Entity.lavaHurt 15 s, fire blocks 8 s).
   const id=game.world.get(Math.floor(e.x),Math.floor(e.y+e.height/2),Math.floor(e.z));
   if(id>0&&!water){if(isLava(id))e.fire=Math.max(e.fire,300);else if(blockDef(id).family==='fire')e.fire=Math.max(e.fire,160);}
 }
+/** Game tick of each mob's last zero-damage hit (NUDGE_TICKS of immunity to the next one). */
+const nudged=new WeakMap<Entity,number>();
 /** A thrown item's or arrow's zero-damage hit (snowballs, eggs, pearls): knockback and the hurt reaction, no damage. */
 function nudge(game:Game,e:Entity,target:Entity|null,player:boolean,ux:number,uz:number){
   const owner=ownerOf(game,e),source:DamageSource={kind:'projectile',attacker:owner,projectile:e,byPlayer:isPlayerOwned(e),
@@ -222,6 +229,9 @@ function nudge(game:Game,e:Entity,target:Entity|null,player:boolean,ux:number,uz
   if(!target||game.entities.damage(target,0,source))return;
   // The entity service applies no zero-damage hits: knock the mob back and let it react (panic, retaliate) here.
   if(target.hurtTime>0||target.deathTime>0)return;
+  const now=game.time.tick,last=nudged.get(target);
+  if(last!==undefined&&now>=last&&now-last<NUDGE_TICKS)return;
+  nudged.set(target,now);
   let cancelled=false;
   try{cancelled=game.entities.kind(target.kind)?.hurt?.(target,game,source,0)===false;}catch{cancelled=false;}
   if(!cancelled)knockEntity(target,ux,uz,KNOCKBACK);
@@ -231,7 +241,7 @@ function nudge(game:Game,e:Entity,target:Entity|null,player:boolean,ux:number,uz
 /** Vanilla shouldFall: nothing solid within 0.06 blocks of the arrow's tip. */
 const loose=(game:Game,e:Entity)=>!boxCollides(game.world,e.x-.06,e.y-.06,e.z-.06,e.x+.06,e.y+.06,e.z+.06);
 function arrowHitEntity(game:Game,e:Entity,d:ArrowData,hit:{x:number;y:number;z:number;entity:Entity|null;player:boolean},ux:number,uy:number,uz:number,speed:number):boolean{
-  const damage=arrowDamage(speed,d.damage,d.crit,game.random);
+  const damage=arrowDamage(speed,d.damage,d.crit,()=>game.random());// bound: Game.random is a method
   const owner=ownerOf(game,e),byPlayer=d.owner==='player';
   const source:DamageSource={kind:'projectile',attacker:owner,projectile:e,byPlayer,knockback:{x:ux,z:uz,strength:KNOCKBACK}};
   let landed=false,dodged=false;
@@ -297,7 +307,7 @@ function tickArrow(e:Entity,game:Game){
     // The block went: fall (AbstractArrow.startFalling).
     d.inGround=false;f.life=0;delete d.shake;
   }
-  if(d.crit)game.render.spawnParticles('crit',e.x,e.y+e.height/2,e.z,{count:2,spread:.1});
+  if(d.crit)game.render.spawnParticles('crit',e.x,e.y+e.height/2,e.z,TRAIL);
   fly(game,e,ARROW_PHYSICS,arrowImpact);
 }
 const arrowImpact:HitHandler=(game,e,hit,ux,uy,uz,speed)=>{

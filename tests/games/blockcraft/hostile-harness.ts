@@ -3,8 +3,11 @@
 // steady ground speed, ground acceleration s², friction 0.546, air 0.02 s, water 0.8 drag and slow sinking, aquatic
 // mobs swimming freely with 0.9 drag, jumps 0.42 blocks/tick, gravity after the move), 'none' physics kinds moving
 // themselves, damage with invulnerability frames (only a bigger hit lands, for the difference), zero-damage hits
-// refused, the kind's hurt hook, knockback and loot. Steering is straight-line (no path-finding). Survival, explosions,
-// particles, effects and held-item wear are recorded. Not a test file itself (vitest only runs *.test.ts).
+// refused, the kind's hurt hook, knockback and loot, and drowning (300 ticks of air with the eyes under water, then 2
+// 'drown' damage per second). Drowning follows the first framework version, where only aquatic kinds breathe water; the
+// later one also spares the undead, so the hostile kinds cancel 'drown' damage themselves and work with both. Steering is
+// straight-line (no path-finding). Survival, explosions, particles, effects and held-item wear are recorded. game.random
+// throws when called unbound, as the engine's method did. Not a test file itself (vitest only runs *.test.ts).
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import {boxCollides,moveBody,raycast} from '../../../src/games/blockcraft/engine/physics';
 import {AIR,SOLID,isLava,isWater} from '../../../src/games/blockcraft/data/blocks';
@@ -32,7 +35,8 @@ export interface Harness{
   sounds():string[];
 }
 
-const TICK=1/20;
+const TICK=1/20,AIR_SUPPLY=300;
+const DROWN:DamageSource={kind:'drown'};
 const living=(k:EntityKind|undefined)=>k?.category==='passive'||k?.category==='hostile'||k?.category==='water';
 function fluids(game:FakeGame,e:Entity){
   const hw=e.width/2;let water=false,lava=false;
@@ -62,7 +66,16 @@ function stepLiving(game:FakeGame,e:Entity,aquatic:boolean){
 }
 
 export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'hits'|'drops'>):EntityService{
-  const kinds=new Map<string,EntityKind>(),list:Entity[]=[],lastHurt=new WeakMap<Entity,number>();
+  const kinds=new Map<string,EntityKind>(),list:Entity[]=[],lastHurt=new WeakMap<Entity,number>(),air=new WeakMap<Entity,number>();
+  /** entities.ts environment step: non-aquatic mobs with the eyes under water lose air, then drown. */
+  function breathe(e:Entity,k:EntityKind){
+    if(k.aquatic)return;
+    const eye=game.world.get(Math.floor(e.x),Math.floor(e.y+e.height*.85),Math.floor(e.z));
+    let a=air.get(e)??AIR_SUPPLY;
+    if(eye>0&&isWater(eye)){if(--a<=-20){a=0;service.damage(e,2,DROWN);}}
+    else a=Math.min(AIR_SUPPLY,a+4);
+    air.set(e,a);
+  }
   let nextId=1;
   const ai:EntityAI={
     wander(){},
@@ -138,6 +151,7 @@ export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'
         if(e.deathTime>0){if(++e.deathTime>20)e.removed=true;continue;}
         fluids(game,e);
         if(living(k)&&e.fire>0)e.fire=e.inWater?0:e.fire-1;
+        if(k&&living(k)){breathe(e,k);if(e.deathTime>0)continue;}
         k?.tick?.(e,game);
         if(e.removed||k?.physics==='none')continue;
         if(living(k))stepLiving(game,e,!!k?.aquatic);
@@ -152,6 +166,9 @@ export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'
 export function createHarness(options:{random?:()=>number;mode?:'survival'|'creative'}={}):Harness{
   const game=createFakeGame({random:options.random,mode:options.mode});
   game.flat(60);
+  // The base engine's random() is a method that reads `this`: catch callers that pass it around unbound.
+  const rng=game.random;
+  game.random=function(this:unknown){if(this!==game)throw new TypeError('game.random called unbound');return rng();};
   const h:Harness={game,spawned:[],hurt:[],effects:[],ignited:[],explosions:[],particles:[],hits:[],drops:[],wear:[],teleports:[],
     spawn(kind,x,y,z,o){const e=game.entities.spawn(kind,x,y,z,o);if(!e)throw new Error(`cannot spawn ${kind}`);return e;},
     setUsing(item){(game.interaction as {using:unknown}).using=item?{item,progress:0}:null;},
