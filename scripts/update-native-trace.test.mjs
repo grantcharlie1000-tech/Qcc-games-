@@ -163,3 +163,18 @@ test('an oversized native batch and late completion cannot displace the retained
  const raw=await readFile(f.directory+'/service-worker-0.jsonl','utf8');assert.match(raw,/boundary/);assert.doesNotMatch(raw,/oversized|late/);
  const rows=(await readFile(f.directory+'/observations.jsonl','utf8')).trim().split('\n').map(JSON.parse);assert.equal(rows.find(row=>row.kind==='complete').traceDroppedEvents,1);assert.equal(rows.find(row=>row.kind==='complete').usable,false);
 });
+
+
+test('a timed-out unregistered start discards buffers and ignores late trace data',async t=>{
+ const f=await fixture(t),send=f.cdp.send;let requested,finishStart,ended;
+ const startRequested=new Promise(resolve=>requested=resolve),endObserved=new Promise(resolve=>ended=resolve);
+ f.cdp.send=(method,params)=>{if(method==='Tracing.start'){requested();return new Promise(resolve=>finishStart=resolve);}const result=send(method,params);if(method==='Tracing.end')ended();return result;};
+ t.mock.timers.enable({apis:['setTimeout']});const observing=f.trace.observe(f.context,{scope:'/'});await startRequested;
+ f.cdp.emit('Tracing.dataCollected',{value:[{name:'before-setup-timeout',cat:'ServiceWorker'}]});
+ t.mock.timers.tick(5000);await observing;finishStart();await endObserved;t.mock.timers.reset();
+ await f.trace.failure(new Error('original'),{});await f.context.close();
+ const snapshot=JSON.parse(await readFile(f.directory+'/failure-timeline.json','utf8'));
+ const discard=snapshot.events.find(row=>row.kind==='unregistered-trace-buffer-discarded');assert.equal(discard.events,1);assert.ok(discard.bytes>0);assert.deepEqual(snapshot.workers,[]);
+ assert.ok(snapshot.events.some(row=>row.kind==='late-native-batch-ignored'));assert.equal(f.calls.filter(call=>call.method==='Tracing.end').length,1);
+ await assert.rejects(readFile(f.directory+'/service-worker-0.jsonl'),{code:'ENOENT'});
+});

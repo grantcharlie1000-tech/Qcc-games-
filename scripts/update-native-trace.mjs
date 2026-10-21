@@ -116,7 +116,7 @@ export function createUpdateNativeTrace({enabled=false,directory,log=console.err
     const close=context.close.bind(context);context.close=async(...args)=>{try{await stop(trace,'context-close');}finally{context.off('page',onPage);return close(...args);}};
     await bounded(cdp.send('Tracing.recordClockSyncMarker',{syncId:'qcc-native-start-'+Date.now()+'-'+index}),5000,'native trace clock marker exceeded diagnostic bound');
     report('start',{index,...details,phase,metadata:runMetadata,limits,metadataFiltered:true,retention:'tail timeline; native metadata buffered as recent chunks until stop; oldest completed native files may be evicted at total cap',directory:output,qualification:'Native tracing can alter timing. Category events are not proof of universal native quiescence.'});
-   }catch(error){if(trace)trace.finalized=true;report('setup-unavailable',{index,...details,error:error.message});}
+   }catch(error){if(trace){trace.finalized=true;if(!traces.includes(trace)){trace.captureEnded=true;record('unregistered-trace-buffer-discarded',{index,bytes:trace.bytes,events:trace.retainedEvents});trace.batches=[];trace.bytes=0;trace.retainedEvents=0;}}report('setup-unavailable',{index,...details,error:error.message});}
   },
   async failure(error,details){
    if(!enabled)return;

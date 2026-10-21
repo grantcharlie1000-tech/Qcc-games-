@@ -2,7 +2,7 @@
 
 The existing pull-request workflow enables `ARCADE_UPDATE_NATIVE_TRACE=1` for the full update verifier and always uploads `docs/evidence/release`. Main runs remain uninstrumented. No workflow or product behavior changes are required.
 
-The collector records actual checkout/tree, allowlisted CI identity, Node/browser version, executable, scope, semantic phase and context/profile IDs. Context IDs scope native registration/version IDs; version IDs are not worker-global epochs. Observers finish setup before owned navigation. There is no worker debugger attachment, body read, response interception, lifecycle command or added diagnostic RPC.
+The collector records actual checkout/tree, allowlisted CI identity, Node/browser version, configured/reported executable selection (actual process path unverified), scope, semantic phase and context/profile IDs. Context IDs scope native registration/version IDs; version IDs are not worker-global epochs. Observers finish setup before owned navigation. There is no worker debugger attachment, body read, response interception, lifecycle command or added diagnostic RPC.
 
 The original assertions, native input, polling and 15000 ms gates remain intact. W release adds no awaited marker before its original poll. The first failed assertion snapshots cached state before existing error-handler RPCs or cleanup. Subsequent error handlers reuse that capture and retain the original error and failed disposable profiles.
 
