@@ -20,7 +20,7 @@ export interface SurvivalDebug{
   readonly exhaustion:number;
   /** Hurt cooldown ticks left. */
   readonly invulnerableTicks:number;
-  /** Damage-free ticks left after respawning. */
+  /** Damage-free ticks left after respawning or joining a world. */
   readonly spawnProtection:number;
 }
 /** The service with every lifecycle hook it implements. */

@@ -9,7 +9,7 @@ export const START_SATURATION=5;
 export const MAX_EXHAUSTION=40,EXHAUSTION_PER_POINT=4;
 /** Hurt cooldown after a hit (vanilla invulnerableTime 20 compared against 10). */
 export const INVULNERABLE_TICKS=10;
-/** Damage-free time after respawning (ServerPlayer.spawnInvulnerableTime). */
+/** Damage-free ticks of play after respawning or joining a world (ServerPlayer.spawnInvulnerableTime); the void still hurts. */
 export const SPAWN_PROTECTION_TICKS=60;
 /** Feet below this y take void damage (min build height − 64). */
 export const VOID_Y=-64;
