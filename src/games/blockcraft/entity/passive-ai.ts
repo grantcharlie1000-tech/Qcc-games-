@@ -70,7 +70,11 @@ export interface AnimalConfig{
   custom?:CustomBehaviour;
   /** Movement post-processing after steering and the cliff guard (rabbit hops). */
   move?(e:Entity,game:Game,b:Brain):void;
+  /** Seconds a step jump keeps it in the air, for the jump's landing check (default JUMP_AIRTIME; chickens fall slowly). */
+  jumpAirtime?:number;
 }
+/** Airtime in seconds of a vanilla jump (0.42 blocks/tick) up onto a 1-block step, with a margin. */
+export const JUMP_AIRTIME=.6;
 
 // ---- Persistent data ----------------------------------------------------------------------------
 const isInt=(v:unknown,min:number,max:number):v is number=>typeof v==='number'&&Number.isInteger(v)&&v>=min&&v<=max;
@@ -137,6 +141,14 @@ export function dangerAhead(world:Game['world'],x:number,y:number,z:number,dx:nu
     if(columnDanger(world,Math.floor(x+ux*r),fy,Math.floor(z+uz*r)))return true;
     if(d>=distance)return false;
   }
+}
+/** dangerAhead for a mob that may slide along a wall: the move direction and, when moving diagonally, each axis on its own
+ *  (blocked on one axis, it keeps going along the other, which the diagonal check alone would miss). */
+export function dangerMoving(world:Game['world'],x:number,y:number,z:number,dx:number,dz:number,halfWidth:number,distance=.45):boolean{
+  if(dangerAhead(world,x,y,z,dx,dz,halfWidth,distance))return true;
+  if(Math.abs(dx)<1e-6||Math.abs(dz)<1e-6)return false;
+  const len=Math.hypot(dx,dz),along=(u:number)=>Math.min(distance,Math.max(.45,distance*Math.abs(u)/len));
+  return dangerAhead(world,x,y,z,dx,0,halfWidth,along(dx))||dangerAhead(world,x,y,z,0,dz,halfWidth,along(dz));
 }
 
 // ---- Steering helpers -----------------------------------------------------------------------------
@@ -378,9 +390,24 @@ export function tickAnimal(e:Entity,game:Game,cfg:AnimalConfig):void{
   look(e,game,cfg,b,mode);
   // Vanilla FloatGoal: jump (swim up) 80% of ticks in water or lava; grazing sheep hold still.
   if((e.inWater||e.inLava)&&b.eat<=0&&game.random()<.8)e.jump=true;
-  // Cliff, lava, fire and cactus guard: stop dead at the edge (also cancelling the run-up, which would slide it over).
-  if(e.onGround&&!e.inWater&&(e.moveX||e.moveZ)&&dangerAhead(game.world,e.x,e.y,e.z,e.moveX,e.moveZ,e.width/2)){
-    ai.stop(e);e.vx=0;e.vz=0;b.hasTarget=false;
-  }
+  guardHazards(e,game,cfg,b);
   cfg.move?.(e,game,b);
+}
+/** Cliff, lava, fire and cactus guard after steering. Swimming animals are left alone so they can always climb out.
+ *  - On the ground it stops dead at the edge, cancelling the run-up (it would slide over) and any step jump.
+ *  - A step jump must land safely too: from the step's top, over the distance the jump carries it. Steering jumps 1-block
+ *    steps, and the jump would otherwise fly over a lip into the lava or pit behind it, with no check in the air.
+ *  - In the air, steering must not push it on into a hazard.
+ *  Every check also covers sliding along a wall (dangerMoving). */
+function guardHazards(e:Entity,game:Game,cfg:AnimalConfig,b:Brain):void{
+  if(e.inWater||e.inLava||!e.moveX&&!e.moveZ)return;
+  const w=game.world,hw=e.width/2;
+  if(!e.onGround){
+    if(dangerMoving(w,e.x,e.y,e.z,e.moveX,e.moveZ,hw)){e.moveX=0;e.moveZ=0;}
+    return;
+  }
+  const reach=Math.hypot(e.moveX,e.moveZ)*(cfg.jumpAirtime??JUMP_AIRTIME)+.3;
+  if(dangerMoving(w,e.x,e.y,e.z,e.moveX,e.moveZ,hw)||e.jump&&dangerMoving(w,e.x,e.y+1,e.z,e.moveX,e.moveZ,hw,reach)){
+    game.entities.ai.stop(e);e.vx=0;e.vz=0;e.jump=false;b.hasTarget=false;
+  }
 }

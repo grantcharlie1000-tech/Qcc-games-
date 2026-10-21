@@ -349,6 +349,9 @@ export function rabbitModel():EntityModel{
       part('head',[0,8,-2],[box([-2.5,0,-5],u.head),box([-2.5,4,-1],u.earR),box([.5,4,-1],u.earL),box([-.5,1.5,-5.5],u.nose)]),
       ...side('r',-1),...side('l',1)
     ],
+    // Kits have a big head like the Java baby rabbit (drawn at 0.57 scale against the adult's 0.6), sitting on the front of
+    // the half-size body.
+    babyHead:{parts:['head'],pivot:[0,4,-1]},
     pose(e,pose,state){
       pose.head.x=clampHeadPitch(state.headPitch);pose.head.y=clampHeadYaw(state.headYaw);
       const jump=hopProgress(e,state.partial),kick=-50*DEG*jump,reach=(11+40*jump)*DEG;

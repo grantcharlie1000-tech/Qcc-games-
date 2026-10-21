@@ -6,10 +6,10 @@
 //    garden raids, loot tables (cooked when burning, nothing from babies), experience, sounds and spawn settings.
 // Sounds of the mobs themselves (`mob:<name>:ambient|hurt|death|step`) are played by the entity service from `kind.sounds`;
 // action sounds (shear, milk) go through game.sounds here.
-import {AIR,B,WOOL_COLOURS,blockDef,blockId,stateFor} from '../data/blocks';
+import {AIR,B,SOLID,WOOL_COLOURS,blockDef,blockId,familyStates,stateFor} from '../data/blocks';
 import {BIOME_BY_NAME,biomeDef} from '../data/biomes';
 import {stack} from '../data/items';
-import {brainOf,dangerAhead,feedAnimal,hurtAnimal,initAnimal,mobSpeed,restoreAnimalData,spawnEggOnAnimal,tickAnimal,ageUp,
+import {brainOf,dangerMoving,feedAnimal,hurtAnimal,initAnimal,mobSpeed,restoreAnimalData,spawnEggOnAnimal,tickAnimal,ageUp,
   type AnimalConfig,type AnimalSpeeds,type Brain,type CustomBehaviour} from './passive-ai';
 import {RABBIT_VARIANTS,chickenModel,cowModel,pigModel,rabbitModel,sheepModel,type RabbitVariant} from './passive-art';
 import type {Entity,EntityKind,EntityModel,Game,ItemId,ItemStack,SpawnReason} from '../engine/contracts';
@@ -47,11 +47,11 @@ function give(game:Game,s:ItemStack){
   if(left>0){const p=game.player.state;game.entities.dropItem(stack(s.id,left),p.x,p.y+.5,p.z);}
 }
 /** Vanilla ItemUtils.createFilledResult: one of the held containers becomes `result` (the stack in hand when it was the last one).
- *  Creative players keep the container and get the result only if they have none yet. */
-export function fillHeld(game:Game,result:ItemId):void{
+ *  Creative players keep the container and get the result, only if they have none yet when `preventDuplicates` (milk). */
+export function fillHeld(game:Game,result:ItemId,preventDuplicates=true):void{
   const inv=game.inventory,held=inv.held();
   if(!held)return;
-  if(game.settings.mode==='creative'){if(inv.count(result)===0)give(game,stack(result));return;}
+  if(game.settings.mode==='creative'){if(!preventDuplicates||inv.count(result)===0)give(game,stack(result));return;}
   if(held.count<=1){inv.setSlot(inv.selected,stack(result));return;}
   inv.consumeHeld(1);give(game,stack(result));
 }
@@ -129,7 +129,8 @@ function cowKind(game:Game):EntityKind{
       if(e.baby)return false;
       if(held.id==='bucket'){g.sounds.play('milk',e);fillHeld(g,'milk_bucket');return true;}
       if(variantOf(e)!=='mooshroom')return false;
-      if(held.id==='bowl'){g.sounds.play('milk',e);fillHeld(g,'mushroom_stew');return true;}
+      // Vanilla MushroomCow fills the bowl without the creative duplicate check.
+      if(held.id==='bowl'){g.sounds.play('milk',e);fillHeld(g,'mushroom_stew',false);return true;}
       if(held.id==='shears'){shearMooshroom(e,g);return true;}
       return false;
     },
@@ -181,6 +182,13 @@ function shearSheep(e:Entity,game:Game){
   for(let i=between(game,1,3);i>0;i--)popOut(game,e,wool,1);
   game.inventory.damageHeld(1);
 }
+/** Vanilla level event 2001 for a block an animal eats: break particles and the block's break sound. */
+function eatBlockEffect(game:Game,id:number,x:number,y:number,z:number){
+  const d=blockDef(id);
+  // Crumbs on top of a grass block, around the stems of a plant or crop.
+  game.render.spawnParticles('block',x+.5,y+(d.shape==='cube'?1:.3),z+.5,{block:id,count:12});
+  game.sounds.play(`break:${d.sound}`,{x:x+.5,y:y+.5,z:z+.5});
+}
 /** Feet cell of a mob (tolerant of a feet position a hair below a block top). */
 const feetY=(e:Entity)=>Math.floor(e.y+.05);
 function grassUnder(e:Entity,game:Game):'plant'|'block'|null{
@@ -203,10 +211,10 @@ const graze:CustomBehaviour={
     const where=grassUnder(e,game);if(!where)return;
     const x=Math.floor(e.x),y=feetY(e),z=Math.floor(e.z),w=game.world;
     if(where==='plant'){
-      game.render.spawnParticles('block',x+.5,y+.3,z+.5,{block:B.shortGrass,count:12});
+      eatBlockEffect(game,B.shortGrass,x,y,z);
       w.set(x,y,z,AIR,'entity');
     }else{
-      game.render.spawnParticles('block',x+.5,y,z+.5,{block:B.grass,count:12});
+      eatBlockEffect(game,B.grass,x,y-1,z);
       w.set(x,y-1,z,B.dirt,'entity');
     }
     // Sheep.ate(): the wool grows back; lambs grow up a minute sooner.
@@ -273,7 +281,9 @@ function chickenTick(e:Entity,game:Game){
   e.data.eggTime=t;
 }
 function chickenKind(game:Game):EntityKind{
-  const cfg:AnimalConfig={kind:'chicken',width:.4,height:.7,speeds:PASSIVE_SPEEDS.chicken,isFood:id=>id==='wheat_seeds',followParent:true,lookRange:6};
+  // Chickens fall slowly, so a step jump keeps them in the air for longer.
+  const cfg:AnimalConfig={kind:'chicken',width:.4,height:.7,speeds:PASSIVE_SPEEDS.chicken,isFood:id=>id==='wheat_seeds',followParent:true,lookRange:6,
+    jumpAirtime:.9};
   return animalKind(game,{cfg,maxHealth:4,model:chickenModel(),spawn:pack(),sounds:{name:'chicken',ambient:true,step:true},noFallDamage:true,
     init(e,g){if(!isInt(e.data.eggTime,1,EGG_MIN+EGG_SPREAD))e.data.eggTime=nextEgg(g);},
     tick:chickenTick,
@@ -330,11 +340,15 @@ function rabbitAvoid(e:Entity,game:Game,b:Brain):boolean{
 }
 
 const FARMLAND=new Set([blockId('farmland'),blockId('farmland_wet')]);
+/** 1 for the fully grown carrot states, so the garden search costs one world read per cell. */
+const MATURE_CARROT=new Uint8Array(256);
+for(const d of familyStates('carrots'))if(d.age===d.maxAge)MATURE_CARROT[d.id]=1;
 /** A fully grown carrot crop on farmland at (x,y,z). */
 function matureCarrot(game:Game,x:number,y:number,z:number):boolean{
-  const d=blockDef(game.world.get(x,y,z));
-  return d.family==='carrots'&&d.age===d.maxAge&&FARMLAND.has(game.world.get(x,y-1,z));
+  return MATURE_CARROT[game.world.get(x,y,z)]===1&&FARMLAND.has(game.world.get(x,y-1,z));
 }
+/** The first garden search waits 0-199 ticks, so rabbits spawned or loaded together do not all search in one tick. */
+const FIRST_RAID=200;
 const SEARCH_LEVELS=[0,1,-1];
 /** Vanilla MoveToBlockGoal search (range 16, the feet level then one above and below), nearest rings first. */
 function findCarrot(e:Entity,game:Game,b:Brain):boolean{
@@ -365,7 +379,7 @@ const raidGarden:CustomBehaviour={
     if((e.x-cx)**2+(e.y-(cy+.5))**2+(e.z-cz)**2>=1){ai.navigate(e,cx,cy,cz,RABBIT_RAID_SPEED);return;}
     ai.stop(e);
     const id=game.world.get(b.cropX,cy,b.cropZ),age=blockDef(id).age??0;
-    game.render.spawnParticles('block',cx,cy+.3,cz,{block:id,count:10});
+    eatBlockEffect(game,id,b.cropX,cy,b.cropZ);
     const next=age>0?stateFor('carrots',{age:age-1}):undefined;
     game.world.set(b.cropX,cy,b.cropZ,next?next.id:AIR,'entity');
     e.data.carrotTicks=40;
@@ -375,23 +389,37 @@ const raidGarden:CustomBehaviour={
 };
 const DELAY_FAST=1,DELAY_WALK=10;
 /** Vanilla rabbit movement: it only moves while airborne. On the ground it waits out its landing delay (10 ticks, 1 when
- *  running at panic speed), then hops: 0.3 blocks/tick up (0.5 to climb) with the steering speed as launch velocity, kept
- *  until it lands. A hop that would end over a drop, lava, fire or a cactus is not taken. */
-const HOP_UP=6,HOP_CLIMB=10,GRAVITY=32;
+ *  running at panic speed), then hops with the steering speed as launch velocity, kept until it lands. Launch speeds up are
+ *  vanilla Rabbit.getJumpPower: 0.5 blocks/tick to climb, 0.2 when strolling (speed modifier 0.6), else 0.3. A hop that
+ *  would end over a drop, lava, fire or a cactus is not taken. */
+const HOP_STROLL=4,HOP_UP=6,HOP_CLIMB=10,GRAVITY=32;
+/** A block to climb right ahead in the hop direction: solid at the feet, with room above it. Needed because collidedH is
+ *  stale after a landing pause (no movement intent while waiting, so physics reports no collision). */
+function stepAhead(game:Game,e:Entity,speed:number):boolean{
+  const r=e.width/2+.3,x=Math.floor(e.x+e.moveX/speed*r),y=Math.floor(e.y+.01),z=Math.floor(e.z+e.moveZ/speed*r);
+  if(x===Math.floor(e.x)&&z===Math.floor(e.z))return false;
+  return SOLID[game.world.get(x,y,z)]===1&&SOLID[game.world.get(x,y+1,z)]!==1;
+}
 function rabbitMove(e:Entity,game:Game,b:Brain){
   if(e.inWater||e.inLava){b.hop=0;b.wasOnGround=false;return;}
+  // Out of liquids a rabbit only leaves the ground through its own checked hop: a step jump asked for by steering becomes
+  // a climbing hop instead of a plain jump that would skip the landing check.
+  const asked=e.jump;e.jump=false;
   if(b.jumpDelay>0)b.jumpDelay--;
   if(e.onGround){
     if(!b.wasOnGround){b.hop=0;b.jumpDelay=b.mode==='panic'||b.mode==='avoid'?DELAY_FAST:DELAY_WALK;}
-    let speed=Math.hypot(e.moveX,e.moveZ);
-    const up=e.collidedH?HOP_CLIMB:HOP_UP;
-    // The whole hop must land somewhere safe, not just the next step: airtime 2·up/g at the launch speed, plus a margin.
-    if(speed>0&&b.jumpDelay===0&&dangerAhead(game.world,e.x,e.y,e.z,e.moveX,e.moveZ,e.width/2,speed*2*up/GRAVITY+.3)){
-      game.entities.ai.stop(e);b.hasTarget=false;speed=0;
-    }
+    const speed=Math.hypot(e.moveX,e.moveZ);
     if(speed>0&&b.jumpDelay===0){
-      e.vy=up;e.vx=b.hopX=e.moveX;e.vz=b.hopZ=e.moveZ;e.jump=false;b.hop=1;
-    }else{e.moveX=0;e.moveZ=0;b.hop=0;}
+      const climb=asked||e.collidedH||stepAhead(game,e,speed),up=climb?HOP_CLIMB:b.mode==='stroll'?HOP_STROLL:HOP_UP;
+      // The whole hop must land somewhere safe (on the step's top when climbing), not just the next step, also if a wall
+      // turns it into a slide: airtime 2·up/g at the launch speed, plus a margin.
+      if(!dangerMoving(game.world,e.x,climb?e.y+1:e.y,e.z,e.moveX,e.moveZ,e.width/2,speed*2*up/GRAVITY+.3)){
+        e.vy=up;e.vx=b.hopX=e.moveX;e.vz=b.hopZ=e.moveZ;b.hop=1;b.wasOnGround=true;
+        return;
+      }
+      game.entities.ai.stop(e);b.hasTarget=false;
+    }
+    e.moveX=0;e.moveZ=0;b.hop=0;
   }else if(b.hop>0){
     // A hop is ballistic: no steering in the air, so a new goal cannot swerve it into what the launch check avoided.
     b.hop++;e.moveX=b.hopX;e.moveZ=b.hopZ;
@@ -411,6 +439,7 @@ function rabbitKind(game:Game):EntityKind{
     init(e,g){
       if(!isRabbitVariant(e.data.variant))e.data.variant=rabbitVariantFor(biomeNameAt(g,e),()=>g.random());
       if(!isInt(e.data.carrotTicks,0,MAX_CARROT_TICKS))e.data.carrotTicks=0;
+      brainOf(e).raid=Math.floor(g.random()*FIRST_RAID);
     },
     tick(e,g){const t=carrotTicks(e);if(t>0)e.data.carrotTicks=Math.max(0,t-Math.floor(g.random()*3));},
     loot(e,g,byPlayer){

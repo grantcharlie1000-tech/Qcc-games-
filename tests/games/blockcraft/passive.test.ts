@@ -3,12 +3,12 @@
 // drop recording) and a recording AI, so the tests exercise the kinds' own logic, not the entity framework.
 import {describe,expect,test} from 'vitest';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
-import {B,blockId,blockDef,isLava,isWater,stateFor,WOOL_COLOURS} from '../../../src/games/blockcraft/data/blocks';
+import {B,SOLID,blockId,blockDef,isLava,isWater,stateFor,WOOL_COLOURS} from '../../../src/games/blockcraft/data/blocks';
 import {moveBody} from '../../../src/games/blockcraft/engine/physics';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {stack} from '../../../src/games/blockcraft/data/items';
 import {registerPassiveMobs,PASSIVE_SPEEDS,randomWoolColour,mixWoolColours,rabbitVariantFor,RABBIT_VARIANTS} from '../../../src/games/blockcraft/entity/passive';
-import {dangerAhead,standable,brainOf} from '../../../src/games/blockcraft/entity/passive-ai';
+import {dangerAhead,dangerMoving,standable,brainOf} from '../../../src/games/blockcraft/entity/passive-ai';
 import {faceRect,FACES} from '../../../src/games/blockcraft/entity/passive-model';
 import type {AnimationState,DamageSource,Entity,EntityAI,EntityKind,EntityModel,GameEvents,ItemStack,PartPose,SpawnReason} from '../../../src/games/blockcraft/engine/contracts';
 
@@ -200,6 +200,14 @@ describe('AI decisions',()=>{
     w.set(-2,59,0,B.lava);expect(dangerAhead(w,-1.5,60,.5,-1,0,.45)).toBe(true);
     w.set(0,60,-2,blockId('cactus'));expect(dangerAhead(w,.5,60,-1.5,0,-1,.45)).toBe(true);
   });
+  test('walking diagonally into a wall counts the slide along it: a hole beside the wall is dangerous',()=>{
+    const h=setup(),w=h.game.world;
+    for(let x=-1;x<=3;x++){w.set(x,60,-6,B.stone);w.set(x,61,-6,B.stone);}// a wall north of row z=-5
+    for(let y=50;y<60;y++)w.set(1,y,-5,0);// a deep hole east, beside the wall
+    expect(dangerAhead(w,.5,60,-4.5,1,-1,.3)).toBe(false);
+    expect(dangerMoving(w,.5,60,-4.5,1,-1,.3)).toBe(true);
+    expect(dangerMoving(w,.5,60,-4.5,-1,-1,.3)).toBe(false);
+  });
   test('animals walking into a cliff stop instead of falling',()=>{
     const h=setup(),cow=h.spawn('cow',1.3,60,.5);
     for(let y=40;y<60;y++)for(let z=-1;z<=1;z++)w(h).set(2,y,z,0);
@@ -216,15 +224,16 @@ describe('AI decisions',()=>{
 });
 const w=(h:Harness)=>h.game.world;
 
-/** Simple entity physics for simulations: accelerate toward the move intent, jump, gravity, voxel collision with step-up. */
-function physics(h:Harness){
+/** Simple entity physics for simulations: accelerate toward the move intent, jump, gravity, voxel collision with step-up.
+ *  `jump` is the jump speed in blocks/second (10 clears a 1-block step, as the contract's step jumps must). */
+function physics(h:Harness,jump=8.4){
   const world=h.game.world;
   for(const e of h.list){
     if(e.removed)continue;
     const id=world.get(Math.floor(e.x),Math.floor(e.y+.1),Math.floor(e.z));
     e.inWater=isWater(id);e.inLava=isLava(id);
     if(e.moveX||e.moveZ){e.vx+=(e.moveX-e.vx)*.5;e.vz+=(e.moveZ-e.vz)*.5;}
-    if(e.jump&&(e.onGround||e.inWater))e.vy=8.4;
+    if(e.jump&&(e.onGround||e.inWater))e.vy=jump;
     e.jump=false;e.vy=Math.max(-40,e.vy-1.6);
     const r=moveBody(world,e,e.width/2,e.height,1/20,undefined,.6);
     e.collidedH=r.hitX||r.hitZ;e.collidedV=r.hitY;
@@ -261,7 +270,59 @@ describe('simulation',()=>{
     // Budget: 0.05 ms per mob per tick (generous here: this includes the test harness' entity queries).
     expect(aiTime/aiTicks).toBeLessThan(.05);
   });
+  const inLava=(h:Harness,e:Entity)=>isLava(w(h).get(Math.floor(e.x),Math.floor(e.y+.1),Math.floor(e.z)));
+  test.each(['cow','pig','sheep','chicken','rabbit'])('a %s driven at a 1-block lip with lava or a pit right behind it never jumps over into it',kind=>{
+    for(const hazard of ['lava','pit'] as const)for(const panic of [true,false]){
+      const h=setup({mode:'creative'}),world=w(h);
+      for(let z=-3;z<=3;z++){
+        world.set(2,60,z,B.stone);// the lip
+        for(let x=3;x<=8;x++)if(hazard==='lava')world.set(x,60,z,B.lava);else for(let y=48;y<60;y++)world.set(x,y,z,0);
+      }
+      contractSteering(h,()=>[20,.5]);// every goal lies east, across the lip
+      const k=h.kind(kind),e=h.spawn(kind,2-k.width/2-.01,60,.5);
+      for(let t=0;t<400;t++){
+        if(panic&&t%100===0)hurt(h,e);
+        h.game.time.tick++;e.age++;k.tick!(e,h.game);physics(h,10);
+        const where=`${kind} ${hazard} ${panic?'panicking':'strolling'} at tick ${t} (${e.x.toFixed(2)}, ${e.y.toFixed(2)})`;
+        expect(inLava(h,e),`in lava: ${where}`).toBe(false);expect(e.y,`fell: ${where}`).toBeGreaterThan(59.5);
+      }
+    }
+  });
+  test.each(['cow','pig','sheep','chicken','rabbit'])('a panicking %s in a pen with a lava moat behind a 1-block lip stays out of the lava',kind=>{
+    // Seeds 5 (chicken) and 11 (rabbit) slide along the south wall over the lip when only the diagonal is checked.
+    for(const seed of [1,5,11]){
+      const h=setup({mode:'creative',seed}),world=w(h);
+      // 2-high walls west, north and south; on the east a 1-high lip with a lava moat (x 3..5) and grass beyond.
+      for(let z=-3;z<=3;z++)for(let x=-3;x<=2;x++){
+        if(x===-3||z===-3||z===3){world.set(x,60,z,B.stone);world.set(x,61,z,B.stone);}else if(x===2)world.set(x,60,z,B.stone);
+      }
+      for(let z=-3;z<=3;z++)for(let x=3;x<=5;x++){world.set(x,59,z,B.lava);world.set(x,60,z,B.lava);}
+      contractSteering(h);
+      const k=h.kind(kind),e=h.spawn(kind,.5,60,.5);
+      for(let t=0;t<1000;t++){
+        if(t%100===0)hurt(h,e);
+        h.game.time.tick++;e.age++;k.tick!(e,h.game);physics(h,10);
+        expect(inLava(h,e),`${kind} seed ${seed} in lava at tick ${t} (${e.x.toFixed(2)}, ${e.y.toFixed(2)})`).toBe(false);
+      }
+    }
+  });
 });
+/** Contract-style steering for simulations, like entity/ai.ts: straight lines toward the goal (or `goal(e)` instead) that
+ *  jump 1-block steps when blocked or when one is right ahead. */
+function contractSteering(h:Harness,goal?:(e:Entity)=>[number,number]){
+  const ai=h.game.entities.ai,world=w(h);
+  const steer=(e:Entity,x:number,z:number,speed:number)=>{
+    const dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);
+    if(d<.5){e.moveX=e.moveZ=0;return true;}
+    e.moveX=dx/d*speed;e.moveZ=dz/d*speed;
+    const r=e.width/2+.25,ahead=world.get(Math.floor(e.x+dx/d*r),Math.floor(e.y+.01),Math.floor(e.z+dz/d*r));
+    if(e.onGround&&(e.collidedH||ahead>0&&SOLID[ahead]===1))e.jump=true;
+    return false;
+  };
+  ai.moveToward=(e,x,_y,z,speed)=>steer(e,x,z,speed);
+  ai.navigate=(e,x,_y,z,speed)=>{const g=goal?.(e);steer(e,g?g[0]:x,g?g[1]:z,speed);return false;};
+  ai.flee=(e,fx,fz,speed)=>{const dx=e.x-fx,dz=e.z-fz,d=Math.hypot(dx,dz)||1;steer(e,e.x+dx/d*8,e.z+dz/d*8,speed);};
+}
 
 describe('breeding',()=>{
   test('feeding enters love mode with hearts; two lovers breed a baby, then cool down for 5 minutes',()=>{
@@ -372,12 +433,15 @@ describe('sheep',()=>{
     expect(brainOf(sheep).eat).toBeGreaterThan(0);
     tick(h,40);
     expect(w(h).get(0,59,0)).toBe(B.dirt);expect(sheep.data.sheared).toBe(false);
+    // The munch sounds like the grass block breaking (vanilla level event 2001).
+    expect(h.game.sounds.played.filter(s=>s.name==='break:grass')).toHaveLength(1);
   });
   test('a sheep standing in short grass eats the grass plant instead',()=>{
     const h=setup({random:()=>0});w(h).set(0,60,0,B.shortGrass);
     const sheep=h.spawn('sheep',.5,60,.5,{data:{color:'white',sheared:true}});
     tick(h,41);
     expect(w(h).get(0,60,0)).toBe(0);expect(w(h).get(0,59,0)).toBe(B.grass);expect(sheep.data.sheared).toBe(false);
+    expect(h.game.sounds.played.some(s=>s.name==='break:plant')).toBe(true);
   });
   test('a grazing lamb grows up a minute sooner',()=>{
     const h=setup({random:()=>0}),lamb=h.spawn('sheep',.5,60,.5,{baby:true,reason:'breed',data:{color:'white'}});
@@ -437,6 +501,11 @@ describe('cows and mooshrooms',()=>{
     expect(h.game.inventory.held()).toEqual(stack('mushroom_stew'));
     const c=h.spawn('cow',.5,60,.5,{data:{variant:'cow'}});h.hold(stack('bowl'));
     expect(h.kind('cow').interact!(c,h.game,h.game.inventory.held())).toBe(false);
+  });
+  test('creative players keep the bowl and get a stew every time (vanilla does not deduplicate stew)',()=>{
+    const h=setup({mode:'creative'}),m=h.spawn('cow',.5,60,.5,{data:{variant:'mooshroom'}});h.hold(stack('bowl'));
+    for(let i=0;i<2;i++)expect(h.kind('cow').interact!(m,h.game,h.game.inventory.held())).toBe(true);
+    expect(h.game.inventory.held()).toEqual(stack('bowl'));expect(h.game.inventory.count('mushroom_stew')).toBe(2);
   });
   test('shearing a mooshroom turns it into a cow and drops 5 red mushrooms',()=>{
     const h=setup(),m=h.spawn('cow',.5,60,.5,{data:{variant:'mooshroom'}});h.hold(stack('shears'));
@@ -515,6 +584,49 @@ describe('rabbits',()=>{
     hurt(h,r);r.collidedH=true;tick(h,1);
     expect(r.vy).toBe(10);
   });
+  test('strolling rabbits hop low (vanilla 0.2 blocks/tick), faster ones at 0.3',()=>{
+    const h=setup({mode:'creative'}),stroller=h.spawn('rabbit',.5,60,.5),runner=h.spawn('rabbit',.5,60,4.5);
+    h.game.entities.ai.navigate=(e,_x,_y,_z,speed)=>{e.moveX=speed;e.moveZ=0;return true;};
+    const b=brainOf(stroller);b.mode='stroll';b.hasTarget=true;b.tx=20;b.ty=60;b.tz=0;
+    hurt(h,runner);tick(h,1);
+    expect(stroller.vy).toBe(4);expect(stroller.vx).toBeCloseTo(PASSIVE_SPEEDS.rabbit.walk);
+    expect(runner.vy).toBe(6);expect(runner.vx).toBeCloseTo(PASSIVE_SPEEDS.rabbit.panic);
+  });
+  test('rabbits climb a 1-block step with a climbing hop even when steering never asks them to jump',()=>{
+    const h=setup({mode:'creative'}),world=w(h),r=h.spawn('rabbit',1.5,60,.5),k=h.kind('rabbit');
+    for(let x=2;x<=9;x++)for(let z=-3;z<=3;z++)world.set(x,60,z,B.stone);// a plateau one block up, east
+    h.game.entities.ai.navigate=(e,_x,_y,_z,speed)=>{e.moveX=speed;e.moveZ=0;return true;};
+    for(const panic of [true,false]){
+      r.x=1.5;r.y=60;r.vx=r.vy=r.vz=0;r.onGround=true;
+      const b=brainOf(r);
+      if(panic)hurt(h,r);else{b.panic=0;b.mode='stroll';b.hasTarget=true;b.tx=8;b.ty=61;b.tz=0;}
+      let top=0;
+      for(let t=0;t<80;t++){h.game.time.tick++;r.age++;k.tick!(r,h.game);physics(h);top=Math.max(top,r.y);}
+      expect(top,panic?'panicking':'strolling').toBeGreaterThanOrEqual(61);
+    }
+  });
+  test('rabbits on the ground only leave it through their own hop: a steering jump request is dropped',()=>{
+    const h=setup({mode:'creative'}),r=h.spawn('rabbit');
+    h.game.entities.ai.navigate=(e,_x,_y,_z,speed)=>{e.moveX=speed;e.moveZ=0;e.jump=true;return true;};
+    hurt(h,r);
+    let air=0,hops=0;
+    for(let t=0;t<40;t++){
+      r.onGround=air===0;tick(h,1);
+      expect(r.jump,`tick ${t}`).toBe(false);
+      if(r.onGround&&r.vy>0){air=5;hops++;}else if(!r.onGround)air--;
+      r.vy=0;
+    }
+    expect(hops).toBeGreaterThan(3);
+  });
+  test('rabbits spread their garden searches instead of all searching on their first tick',()=>{
+    const h=setup({mode:'creative'}),world=w(h),get=world.get.bind(world);
+    for(let i=0;i<20;i++)h.spawn('rabbit',-9.5+i,60,(i%5)-2,{reason:'chunk'});
+    let reads=0;world.get=(x,y,z)=>{reads++;return get(x,y,z);};
+    let worst=0;
+    for(let t=0;t<200;t++){reads=0;tick(h,1);worst=Math.max(worst,reads);}
+    // One full search reads about 2,900 cells; never more than a few rabbits search in the same tick.
+    expect(worst).toBeLessThan(4*2900);
+  });
   test('raid mature carrots, nibbling them down one stage',()=>{
     const h=setup({mode:'creative'}),carrots3=stateFor('carrots',{age:3})!.id;
     w(h).set(4,59,0,B.farmland);w(h).set(4,60,0,carrots3);
@@ -525,6 +637,7 @@ describe('rabbits',()=>{
     expect(reached).toBe(true);
     expect(blockDef(w(h).get(4,60,0)).family).toBe('carrots');expect(blockDef(w(h).get(4,60,0)).age).toBe(2);
     expect(r.data.carrotTicks).toBeGreaterThanOrEqual(0);
+    expect(h.game.sounds.played.some(s=>s.name==='break:plant')).toBe(true);
   });
 });
 
@@ -610,7 +723,7 @@ describe('models',()=>{
     const again:Record<string,PartPose>={...pose};model.animate!(e,again,{time:2,partial:0,limbSwing:2,limbAmount:1,headYaw:0,headPitch:0,attack:0,reducedMotion:false});
     for(const part of model.parts)expect(again[part.name]).toBe(pose[part.name]);
   });
-  test.each(['cow','pig','sheep','chicken'])('%s: babies show the big baby head instead of the adult one',name=>{
+  test.each(['cow','pig','sheep','chicken','rabbit'])('%s: babies show the big baby head instead of the adult one',name=>{
     const model=h.kind(name).model!,adult=h.spawn(name),baby=h.spawn(name,.5,60,.5,{baby:true,reason:'breed'});
     const shown=(e:Entity)=>{const p=animate(model,e);return model.parts.filter(x=>p[x.name].visible!==false).map(x=>x.name);};
     expect(shown(adult).some(n=>n.includes('baby'))).toBe(false);
