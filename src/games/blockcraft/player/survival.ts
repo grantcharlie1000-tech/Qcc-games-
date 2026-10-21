@@ -35,6 +35,8 @@ const HURT_FLASH_SECONDS=.5;
 const PORTAL_SECONDS=1;
 /** Vertical knockback cap (vanilla 0.4 blocks per tick) and the attacker push when a shield blocks (0.5 per tick), blocks/second. */
 const KNOCKBACK_LIFT=8,SHIELD_REPEL=10;
+/** LivingEntity.hurt's base knockback (0.4 blocks per tick) away from an attacker whose source gave no knockback, blocks/second. */
+const BASE_KNOCKBACK=8;
 /** Knockback kept when a shield blocks the hit (vanilla keeps the base push, not the attacker's bonus). */
 const SHIELD_KNOCKBACK=.5;
 const EPS=1e-4,MAX_XP=0x7fffffff,MAX_LEVEL=1_000_000;
@@ -54,7 +56,10 @@ export function createSurvival(game:Game):SurvivalSystem{
   let fireTicks=-FIRE_IMMUNE_TICKS;
   let dead=false,lastMessage='';
   let invul=0,lastHurt=0,spawnProtection=0,age=0,lastLevelUp=-1000,hurtFlash=0,portalFlash=0;
-  let lastAttacker:{name:string;age:number}|null=null,lastEntry:CombatEntry|null=null;
+  /** The mob that last hurt the player (LivingEntity.lastHurtByMob), credited for environmental deaths for 100 ticks. */
+  let lastAttacker:{name:string;entity:Entity;age:number}|null=null,lastEntry:CombatEntry|null=null;
+  /** LivingEntity.lastClimbablePos: climbed a ladder since last standing on the ground ("fell off a ladder"). */
+  let climbed=false;
   const effects=new StatusEffects();
   let offRestored:(()=>void)|null=null;
 
@@ -121,13 +126,24 @@ export function createSurvival(game:Game):SurvivalSystem{
     const wear=(off.damage??0)+amount,max=itemDef('shield')?.durability??336;
     inv.setOffhand(wear>=max?null:{...off,damage:wear});
   }
-  /** LivingEntity.knockback scaled from blocks/second: halves the current velocity, then pushes away (and up when grounded). */
+  /** LivingEntity.knockback scaled from blocks/second: halves the current velocity, then pushes away (and up when grounded).
+   *  Uses the source's knockback; without one, a mob (or a mob's projectile) pushes 0.4 blocks/tick away from the attacker. */
   function knockback(source:DamageSource,factor:number){
-    const k=source.knockback;
-    if(!k||!(k.strength>0)||!Number.isFinite(k.strength)||!Number.isFinite(k.x)||!Number.isFinite(k.z))return;
-    const len=Math.hypot(k.x,k.z);if(len<1e-9)return;
-    const p=state(),s=k.strength*factor,vy=p.onGround?Math.min(KNOCKBACK_LIFT,p.vy/2+s):p.vy;
-    game.player.push(k.x/len*s-p.vx/2,vy-p.vy,k.z/len*s-p.vz/2);
+    const k=source.knockback,p=state();
+    let x:number,z:number,strength:number;
+    if(k){
+      if(!(k.strength>0)||!Number.isFinite(k.strength)||!Number.isFinite(k.x)||!Number.isFinite(k.z))return;
+      x=k.x;z=k.z;strength=k.strength;
+    }else{
+      const from=source.attacker;
+      if(!from||!(source.kind==='mob'||source.kind==='player'||source.kind==='projectile')||!Number.isFinite(from.x)||!Number.isFinite(from.z))return;
+      x=p.x-from.x;z=p.z-from.z;strength=BASE_KNOCKBACK;
+      // Vanilla picks a random direction when the attacker stands right on the player.
+      if(x*x+z*z<1e-4){const a=game.random()*Math.PI*2;x=Math.cos(a);z=Math.sin(a);}
+    }
+    const len=Math.hypot(x,z);if(len<1e-9)return;
+    const s=strength*factor,vy=p.onGround?Math.min(KNOCKBACK_LIFT,p.vy/2+s):p.vy;
+    game.player.push(x/len*s-p.vx/2,vy-p.vy,z/len*s-p.vz/2);
   }
   /** A blocked melee attacker is pushed back (LivingEntity.blockUsingShield). */
   function repel(attacker:Entity){
@@ -143,15 +159,15 @@ export function createSurvival(game:Game):SurvivalSystem{
     if(type==='fall'&&source.projectile?.kind==='ender_pearl')portalFlash=PORTAL_SECONDS;
     if(!info.bypassCreative&&(creative()||spawnProtection>0))return 0;
     if(info.fire&&effects.has('fire_resistance'))return 0;
-    if(amount>0&&scalesWithDifficulty(source)){amount=scaleForDifficulty(amount,game.settings.difficulty);if(amount<=0)return 0;}
+    if(amount>0&&scalesWithDifficulty(source))amount=scaleForDifficulty(amount,game.settings.difficulty);
+    // Player.hurt: a hit worth nothing (peaceful mobs, snowballs, eggs) does nothing at all, not even knockback.
+    if(!(amount>0))return 0;
     if(info.blockable&&shieldFacing(source)){
       wearShield(shieldWear(amount));
       if((type==='mob'||type==='player')&&isLiving(source.attacker))repel(source.attacker);
       if(invul===0){invul=INVULNERABLE_TICKS;lastHurt=0;knockback(source,SHIELD_KNOCKBACK);}
       return 0;
     }
-    // Zero-damage hits (snowballs, eggs) only push.
-    if(amount===0){knockback(source,1);return 0;}
     let applied:number,fresh:boolean;
     if(invul>0){if(amount<=lastHurt)return 0;applied=amount-lastHurt;lastHurt=amount;fresh=false;}
     else{lastHurt=amount;invul=INVULNERABLE_TICKS;applied=amount;fresh=true;}
@@ -166,19 +182,25 @@ export function createSurvival(game:Game):SurvivalSystem{
     const lost=before-health+absorbed;
     // Combat tracking for death messages.
     const prev=lastEntry&&age-lastEntry.age<=(lastEntry.combat?COMBAT_MEMORY_ENTITY_TICKS:COMBAT_MEMORY_TICKS)?lastEntry:null;
-    const credit=lastAttacker&&age-lastAttacker.age<=KILL_CREDIT_TICKS?lastAttacker.name:null;
+    const credit=creditName();
     const attacker=isLiving(source.attacker)?entityName(source.attacker):null;
     lastEntry={type,attacker,age,combat:!!attacker||!!prev?.combat};
-    if(attacker)lastAttacker={name:attacker,age};
-    if(fresh)knockback(source,1);
-    if(lost>0)hurtFlash=1;
+    if(attacker)lastAttacker={name:attacker,entity:source.attacker!,age};
+    if(fresh){knockback(source,1);hurtFlash=1;}
     game.events.emit('playerDamaged',{amount:lost,source});
     if(health<=0){
       kill(deathMessage({type,attacker,credit:attacker?null:credit,fallDistance,
         projectile:source.projectile?entityName(source.projectile):null,
-        fallAssist:type==='fall'&&prev&&prev.type!=='fall'?{attacker:prev.attacker}:null}));
+        fallAssist:type==='fall'&&prev&&prev.type!=='fall'?{attacker:prev.attacker}:null,
+        fallLocation:type==='fall'&&climbed?'ladder':null}));
     }else if(fresh)game.sounds.play('hurt');
     return lost;
+  }
+  /** LivingEntity.getKillCredit: the last mob to hurt the player, while it lives and for 100 ticks. */
+  function creditName():string|null{
+    const a=lastAttacker;
+    if(!a||age-a.age>KILL_CREDIT_TICKS||a.entity.removed||a.entity.deathTime>0||!(a.entity.health>0))return null;
+    return a.name;
   }
   function kill(message:string){
     if(dead)return;
@@ -290,7 +312,7 @@ export function createSurvival(game:Game):SurvivalSystem{
   function fresh(){
     health=MAX_HEALTH;food=MAX_FOOD;saturation=START_SATURATION;exhaustion=0;foodTimer=0;air=MAX_AIR;absorption=0;
     fireTicks=-FIRE_IMMUNE_TICKS;effects.clear();dead=false;lastMessage='';invul=0;lastHurt=0;hurtFlash=0;portalFlash=0;
-    lastAttacker=null;lastEntry=null;
+    lastAttacker=null;lastEntry=null;climbed=false;
   }
   function tick(){
     if(dead)return;
@@ -298,6 +320,7 @@ export function createSurvival(game:Game):SurvivalSystem{
     if(invul>0)invul--;
     if(spawnProtection>0)spawnProtection--;
     const p=state(),isCreative=creative();
+    if(p.onLadder)climbed=true;else if(p.onGround||p.inWater||p.flying)climbed=false;
     // Water puts out fire; burning hurts once a second (not while in lava, which hurts more).
     if(p.inWater&&fireTicks>0)fireTicks=0;
     if(isCreative){if(fireTicks>0)fireTicks=0;}

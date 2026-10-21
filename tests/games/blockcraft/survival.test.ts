@@ -29,7 +29,7 @@ function setup({difficulty='normal',mode='survival',random,state}:Options={}){
 /** A survival with no natural regeneration in the way (food 17, no saturation). */
 const calm=(o:Options={})=>setup({...o,state:{food:17,saturation:0,...o.state}});
 const entity=(kind:string,x:number,y:number,z:number,category='hostile')=>
-  ({id:1,kind,category,x,y,z,vx:0,vy:0,vz:0,onGround:true,data:{}} as unknown as Entity);
+  ({id:1,kind,category,x,y,z,vx:0,vy:0,vz:0,onGround:true,health:20,maxHealth:20,deathTime:0,removed:false,data:{}} as unknown as Entity);
 const wear=(armor:readonly (ItemStack|null)[],ids:string[])=>ids.forEach((id,i)=>{(armor as (ItemStack|null)[])[i]={id,count:1};});
 
 describe('damage',()=>{
@@ -64,6 +64,9 @@ describe('damage',()=>{
     expect(calm({difficulty:'hard'}).s.damage(4,{kind:'projectile',attacker:skeleton})).toBe(6);
     expect(calm({difficulty:'hard'}).s.damage(4,{kind:'projectile',byPlayer:true})).toBe(4);
     expect(calm({difficulty:'hard'}).s.damage(4,{kind:'cactus'})).toBe(4);
+    expect(calm({difficulty:'hard'}).s.damage(10,{kind:'explosion',attacker:entity('creeper',0,60,2)})).toBe(15);// the creeper's own blast
+    expect(calm({difficulty:'easy'}).s.damage(10,{kind:'explosion',attacker:entity('primed_tnt',0,60,2,'misc')})).toBe(10);// TNT does not scale
+    expect(calm({difficulty:'hard'}).s.damage(4,{kind:'mob',attacker:entity('wolf',0,60,1,'passive'),byPlayer:true})).toBe(4);
     const peaceful=calm({difficulty:'peaceful'});
     expect(peaceful.s.damage(6,{kind:'mob',knockback:{x:1,z:0,strength:8}})).toBe(0);
     expect(peaceful.damaged).toEqual([]);expect(peaceful.p.vx).toBe(0);
@@ -90,10 +93,22 @@ describe('damage',()=>{
     s.damage(1,{kind:'mob',knockback:{x:0,z:-1,strength:4}});expect(p.vz).toBeCloseTo(-4);expect(p.vy).toBe(-3);
     const creative=calm({mode:'creative'});creative.s.damage(2,{kind:'mob',knockback:{x:1,z:0,strength:8}});expect(creative.p.vx).toBe(0);
   });
-  it('lets a zero-damage hit (snowball) knock back without hurting',()=>{
+  it('ignores a zero-damage hit (snowball) entirely, like Player.hurt: no knockback, sound or cooldown',()=>{
     const {s,p,sounds,damaged}=calm();
     expect(s.damage(0,{kind:'projectile',projectile:entity('snowball',0,61,-3,'projectile'),knockback:{x:0,z:1,strength:4}})).toBe(0);
-    expect(p.vz).toBeCloseTo(4);expect(sounds()).toEqual([]);expect(damaged).toEqual([]);expect(s.health).toBe(20);
+    expect(p.vz).toBe(0);expect(sounds()).toEqual([]);expect(damaged).toEqual([]);expect(s.health).toBe(20);
+    expect(s.invulnerableTicks).toBe(0);expect(s.damage(2,{kind:'mob'})).toBe(2);
+  });
+  it('a mob that gives no knockback pushes 0.4 blocks/tick (8 blocks/s) away from itself',()=>{
+    const {s,p}=calm();
+    s.damage(2,{kind:'mob',attacker:entity('enderman',.5,60,-1.5)});
+    expect(p.vz).toBeCloseTo(8);expect(p.vx).toBeCloseTo(0);expect(p.vy).toBeCloseTo(8);
+    const shot=calm();shot.s.damage(2,{kind:'projectile',attacker:entity('skeleton',8.5,60,.5),projectile:entity('arrow',1,61,.5,'projectile')});
+    expect(shot.p.vx).toBeCloseTo(-8);
+    const env=calm();env.s.damage(2,{kind:'cactus'});env.s.damage(9,{kind:'explosion',attacker:entity('creeper',.5,60,-1)});
+    expect([env.p.vx,env.p.vy,env.p.vz]).toEqual([0,0,0]);// explosions push through the explosion itself
+    const stacked=calm();stacked.s.damage(2,{kind:'mob',attacker:entity('slime',.5,60,.5)});
+    expect(Math.hypot(stacked.p.vx,stacked.p.vz)).toBeCloseTo(8);
   });
   it('absorption hearts take damage first',()=>{
     const {s}=calm();
@@ -329,6 +344,19 @@ describe('death and respawn',()=>{
     expect(assisted.died).toEqual(['You were doomed to fall by Spider']);
     const drown=calm({state:{health:2,air:-19}});drown.s.damage(1,{kind:'mob',attacker:entity('drowned',0,60,1)});
     drown.p.headInWater=true;drown.tick(10);drown.tick();expect(drown.died).toEqual(['You drowned whilst trying to escape Drowned']);
+    const ladder=calm();ladder.p.onLadder=true;ladder.p.onGround=false;ladder.tick();ladder.p.onLadder=false;ladder.tick(3);ladder.s.land(25);
+    expect(ladder.died).toEqual(['You fell off a ladder']);
+    const walked=calm();walked.p.onLadder=true;walked.tick();walked.p.onLadder=false;walked.p.onGround=true;walked.tick();walked.s.land(25);
+    expect(walked.died).toEqual(['You fell from a high place']);
+  });
+  it('credits the last mob for an environmental death only while it lives and for 100 ticks',()=>{
+    const fresh=calm({state:{health:3}});const zombie=entity('zombie',0,60,1);
+    fresh.s.damage(1,{kind:'mob',attacker:zombie});fresh.tick(10);fresh.s.damage(4,{kind:'cactus'});
+    expect(fresh.died).toEqual(['You walked into a cactus whilst trying to escape Zombie']);
+    const late=calm({state:{health:3}});late.s.damage(1,{kind:'mob',attacker:entity('zombie',0,60,1)});late.tick(101);late.s.damage(4,{kind:'cactus'});
+    expect(late.died).toEqual(['You were pricked to death']);
+    const gone=calm({state:{health:3}});const spider=entity('spider',0,60,1);gone.s.damage(1,{kind:'mob',attacker:spider});gone.tick(10);
+    (spider as {removed:boolean}).removed=true;gone.s.damage(4,{kind:'starve'});expect(gone.died).toEqual(['You starved to death']);
   });
   it('respawn resets health, food, air, fire, effects and xp, then protects for 3 seconds (not from the void)',()=>{
     const {s,p,tick}=calm({state:{health:5,air:-5}});

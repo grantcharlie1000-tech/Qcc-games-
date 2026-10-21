@@ -59,10 +59,12 @@ export function damageTypeOf(source:DamageSource):DamageType{
     default:return source.kind;
   }
 }
-/** Mob melee and projectiles shot by a mob scale with difficulty (vanilla when_caused_by_living_non_player). */
+/** Damage caused by a living mob scales with difficulty (vanilla when_caused_by_living_non_player): melee, projectiles a
+ *  mob shot, and a mob's own explosion (creepers). Player-caused and environmental damage (TNT, lava, falls) does not. */
 export function scalesWithDifficulty(source:DamageSource):boolean{
-  if(source.byPlayer)return false;
-  return source.kind==='mob'||source.kind==='projectile'&&!!source.attacker;
+  if(source.byPlayer||source.kind==='player')return false;
+  if(source.kind==='mob')return true;
+  return isLiving(source.attacker);
 }
 /** Player.hurt difficulty scaling: peaceful 0, easy min(amount/2 + 1, amount), normal ×1, hard ×1.5. */
 export function scaleForDifficulty(amount:number,difficulty:Difficulty):number{
@@ -123,6 +125,8 @@ export interface DeathInfo{
   fallDistance?:number;
   /** The hit before a deadly fall more than 5 blocks high (vanilla CombatTracker "doomed to fall"); attacker null for blocks. */
   fallAssist?:{attacker:string|null}|null;
+  /** Where the deadly fall started (vanilla FallLocation): 'ladder' after climbing one. */
+  fallLocation?:'ladder'|null;
 }
 /** Vanilla en_us death message, e.g. "You were slain by Zombie". The subject defaults to "You" ("was" becomes "were"). */
 export function deathMessage(info:DeathInfo,subject='You'):string{
@@ -138,7 +142,7 @@ export function deathMessage(info:DeathInfo,subject='You'):string{
     case 'fall':{
       const distance=info.fallDistance??0;
       if(distance>5&&info.fallAssist)text=info.fallAssist.attacker?`was doomed to fall by ${info.fallAssist.attacker}`:'was doomed to fall';
-      else if(distance>5)text='fell from a high place';
+      else if(distance>5)text=info.fallLocation==='ladder'?'fell off a ladder':'fell from a high place';
       else text=pick('hit the ground too hard','hit the ground too hard whilst trying to escape %2');
       break;
     }
