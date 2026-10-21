@@ -6,7 +6,7 @@ import type {ChunkMesh,MeshPart} from '../engine/contracts';
 import * as tables from './mesher-tables';
 // Module-local aliases: hot loops read plain constants rather than live import bindings.
 const {OPAQUE}=blocks;
-const {CS,LAYER,CHUNK_VOLUME,PAD_VOLUME,MAX_PART_QUADS}=constants;
+const {CH,LAYER,CHUNK_VOLUME,PAD_VOLUME,MAX_PART_QUADS}=constants;
 const {AO_CURVE,AO_OFF,CU,CV,FACE_SHADE,FLAG_EMISSIVE,FLIP_ORDER,N_AXIS,N_SIGN,OPPOSITE_FACE,PAD_NB,PROFILE,U_AXIS,U_SIGN,V_AXIS,V_FLIP,V_SIGN}=tables;
 
 const INITIAL_QUADS=4096;
@@ -51,7 +51,8 @@ export class MeshBuilder{
   readonly layers=[new LayerBuffer(),new LayerBuffer(),new LayerBuffer()];
   /** Greedy face keys (0 = no mergeable face), keys[f*CHUNK_VOLUME + voxelIndex]. */
   readonly keys=new Uint32Array(6*CHUNK_VOLUME);
-  keyMinY=CS*16;keyMaxY=-1;
+  /** Block y range of the keyed faces (greedy scans only these layers). */
+  keyMinY=CH;keyMaxY=-1;
   /** Vertical extent of everything written, in 1/16 blocks. */
   minPy=Infinity;maxPy=-Infinity;
   // Scratch quad (corner order c0..c3, see mesher-tables): positions in 1/16 blocks, uv in pixels, light byte, shade, flags.
@@ -69,7 +70,7 @@ export class MeshBuilder{
   begin(blocks:Uint8Array,light:Uint8Array,iso:boolean){
     this.blocks=blocks;this.light=light;this.iso=iso;
     for(const l of this.layers)l.quads=0;
-    this.minPy=Infinity;this.maxPy=-Infinity;this.keyMinY=CS*16;this.keyMaxY=-1;
+    this.minPy=Infinity;this.maxPy=-Infinity;this.keyMinY=CH;this.keyMaxY=-1;
   }
   finish():ChunkMesh{
     const [o,c,t]=this.layers,empty=this.maxPy<this.minPy;

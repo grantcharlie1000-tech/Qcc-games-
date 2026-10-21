@@ -81,7 +81,7 @@ export const DOOR_BOX=new Uint8Array(256*6),DOOR_FRONT=new Uint8Array(256),DOOR_
 export const STAIRS_BACK=new Uint8Array(256*6);
 /** Grass, podzol and mycelium show the snowy side when snow or a snow block is on top. */
 export const SNOWY_DIRT=new Uint8Array(256),SNOW_COVER=new Uint8Array(256);
-/** Shape code of the cube blocks in the translucent layer (ice): liquids do not draw against them. */
+/** Cubes in the translucent layer (ice): liquids draw no side face against them (the cube face covers that plane). */
 export const TRANSLUCENT_CUBE=new Uint8Array(256);
 
 /** Boundary face profiles: two partial shapes whose touching faces have the same non-zero profile hide both faces

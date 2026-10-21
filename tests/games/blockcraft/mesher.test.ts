@@ -140,6 +140,22 @@ describe('cubes',()=>{
     const top=qs.find(q=>faceOf(q)===2)!;
     expect(Math.max(...top.map(v=>v.u))).toBe(64);expect(Math.max(...top.map(v=>v.v))).toBe(64);
   });
+  test('vertical faces merge along both axes with tiled UVs',()=>{
+    const m=meshChunk(hood(put=>{for(let x=2;x<6;x++)for(let y=10;y<13;y++)put(x,y,8,'stone');}),fullLight());
+    const qs=quads(m.opaque);
+    expect(qs).toHaveLength(6);
+    for(const f of [4,5]){
+      const q=qs.find(q=>faceOf(q)===f)!;
+      expect(Math.max(...q.map(v=>v.u))).toBe(64);expect(Math.max(...q.map(v=>v.v))).toBe(48);
+      expect(bounds([q])).toMatchObject({minX:32,maxX:96,minY:160,maxY:208});
+    }
+  });
+  test('side faces get AO from the floor they stand on',()=>{
+    const m=meshChunk(hood(put=>{for(let x=0;x<16;x++)for(let z=0;z<16;z++)put(x,10,z,'stone');put(8,11,8,'stone');}),fullLight());
+    const side=quads(m.opaque).find(q=>faceOf(q)===0&&q.every(v=>v.x===144&&v.y>=176))!;
+    // Bottom vertices: the floor is both the side cell below and the diagonal corner cell → two occluders (0.6).
+    for(const v of side)expect(v.shade).toBe(Math.round(255*.6*(v.y===176?.6:1)));
+  });
   test('opaque neighbours hide faces, cullSame families hide shared faces',()=>{
     const pair=(a:string,b:string)=>meshChunk(hood(put=>{put(8,10,8,a);put(9,10,8,b);}),fullLight());
     expect(quads(pair('stone','stone').opaque)).toHaveLength(6);
