@@ -1,4 +1,4 @@
-import {FIELD,POCKETS,R,preview,legalTargets,groupOf,type PoolState} from './model';
+import {FIELD,POCKETS,RAILS,POCKET_RADIUS,POCKET_CAPTURE_RADIUS,R,preview,legalTargets,groupOf,type PoolState} from './model';
 import type {Drag} from './input';
 const backdrops=new WeakMap<HTMLCanvasElement,HTMLCanvasElement>();
 const COLORS=['#faf6e7','#efbc25','#2781d1','#e7484d','#9868ce','#ed802f','#33a481','#a64445','#162330'];
@@ -20,16 +20,34 @@ export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y
  const felt=c.createRadialGradient(205,330,30,220,420,450);felt.addColorStop(0,'#197cba');felt.addColorStop(1,'#074b83');
  c.fillStyle=felt;c.fillRect(FIELD.left,FIELD.top,360,720);
  c.save();c.beginPath();c.rect(40,60,360,720);c.clip();c.fillStyle='#fff';c.globalAlpha=.04;for(let y=64;y<780;y+=6)for(let x=44+(y%12?0:3);x<400;x+=7)c.fillRect(x,y,1,1);c.restore();
- // Raised cushion noses; pockets interrupt the border visually and capture before collision.
- c.lineWidth=10;c.strokeStyle='#083d65';c.beginPath();for(const x of [35,405]){c.moveTo(x,88);c.lineTo(x,390);c.moveTo(x,450);c.lineTo(x,752);}for(const y of [55,785]){c.moveTo(70,y);c.lineTo(370,y);}c.stroke();
- c.strokeStyle='#64b5df';c.lineWidth=2;c.beginPath();for(const x of [42,398]){c.moveTo(x,87);c.lineTo(x,393);c.moveTo(x,447);c.lineTo(x,753);}for(const y of [62,778]){c.moveTo(69,y);c.lineTo(371,y);}c.stroke();
+ // Broad, bevelled cushions stop at the exact physical jaw endpoints.
+ for(const rail of RAILS){
+  const length=Math.hypot(rail.bx-rail.ax,rail.by-rail.ay),tx=(rail.bx-rail.ax)/length,ty=(rail.by-rail.ay)/length;
+  c.beginPath();c.moveTo(rail.ax,rail.ay);c.lineTo(rail.bx,rail.by);
+  c.lineTo(rail.bx-rail.nx*14-tx*8,rail.by-rail.ny*14-ty*8);
+  c.lineTo(rail.ax-rail.nx*14+tx*8,rail.ay-rail.ny*14+ty*8);c.closePath();
+  c.fillStyle='#082e46';c.fill();c.strokeStyle='#031824';c.lineWidth=2;c.stroke();
+  c.beginPath();c.moveTo(rail.ax-rail.nx*6+tx*5,rail.ay-rail.ny*6+ty*5);
+  c.lineTo(rail.bx-rail.nx*6-tx*5,rail.by-rail.ny*6-ty*5);c.strokeStyle='#205b76';c.lineWidth=4;c.stroke();
+  c.beginPath();c.moveTo(rail.ax,rail.ay);c.lineTo(rail.bx,rail.by);
+  c.strokeStyle='#9adbf1';c.lineWidth=2.5;c.stroke();
+ }
  c.fillStyle='#f2d6a0';for(const x of [23,417])for(const y of [150,240,330,510,600,690]){c.beginPath();c.moveTo(x,y-4);c.lineTo(x+3,y);c.lineTo(x,y+4);c.lineTo(x-3,y);c.closePath();c.fill();}for(const y of [31,805])for(const x of [130,220,310]){c.beginPath();c.arc(x,y,2.6,0,Math.PI*2);c.fill();}
- for(let i=0;i<POCKETS.length;i++){const p=POCKETS[i];c.fillStyle='#c49257';c.beginPath();c.arc(p.x,p.y,23,0,Math.PI*2);c.fill();c.fillStyle='#091b20';c.beginPath();c.arc(p.x,p.y,19.5,0,Math.PI*2);c.fill();c.strokeStyle='#ffffff12';c.lineWidth=2;c.stroke();c.fillStyle='#f8e3b2';c.font='bold 10px system-ui';c.textAlign='center';text(String(i+1),p.x,p.y+3);}
+ for(let i=0;i<POCKETS.length;i++){
+  const p=POCKETS[i];
+  c.fillStyle='#d2a76a';c.beginPath();c.arc(p.x,p.y,POCKET_RADIUS+3,0,Math.PI*2);c.fill();
+  const well=c.createRadialGradient(p.x-5,p.y-5,2,p.x,p.y,POCKET_RADIUS);
+  well.addColorStop(0,'#182e3b');well.addColorStop(.6,'#06121c');well.addColorStop(1,'#010509');
+  c.fillStyle=well;c.beginPath();c.arc(p.x,p.y,POCKET_RADIUS,0,Math.PI*2);c.fill();
+  // The inner rim outlines the capture region; the outer bevel gives it depth.
+  c.strokeStyle='#7899a6';c.lineWidth=1.5;c.beginPath();c.arc(p.x,p.y,POCKET_CAPTURE_RADIUS,0,Math.PI*2);c.stroke();
+  c.fillStyle='#fff0c9';c.font='bold 12px system-ui';c.textAlign='center';text(String(i+1),p.x,p.y+4);
+ }
  c.fillStyle='#afd9f0aa';for(const y of [240,600]){c.beginPath();c.arc(220,y,2,0,Math.PI*2);c.fill();}
  c.save();c.font='bold 16px system-ui';c.textAlign='center';c.fillStyle='#a9d7f024';text('POCKET CLUB',220,420);c.font='10px system-ui';text('E I G H T  B A L L',238,420);c.restore();
  const backdrop=document.createElement('canvas');backdrop.width=canvas.width;backdrop.height=canvas.height;backdrop.getContext('2d')!.drawImage(canvas,0,0);backdrops.set(canvas,backdrop);
  }
- if(!s.break){const p=POCKETS[s.calledPocket];c.strokeStyle='#f8dd7b';c.lineWidth=3;c.beginPath();c.arc(p.x,p.y,25,0,Math.PI*2);c.stroke();}
+ if(!s.break){const p=POCKETS[s.calledPocket];c.strokeStyle='#f8dd7b';c.lineWidth=3;c.beginPath();c.arc(p.x,p.y,POCKET_RADIUS+6,0,Math.PI*2);c.stroke();}
  const cue=s.balls.find(b=>b.id===0)!;
  if(s.phase==='aim'&&!s.ballInHand&&!paused){const p=preview(s,s.angle),targets=legalTargets(s),legal=p.hit===null||targets.some(b=>b.id===p.hit),dx=Math.cos(s.angle),dy=Math.sin(s.angle);
   c.save();c.beginPath();c.rect(40,60,360,720);c.clip();c.setLineDash([6,6]);c.strokeStyle=legal?'#e9ffcebc':'#ffad9bcc';c.lineWidth=1.8;c.beginPath();c.moveTo(cue.x,cue.y);c.lineTo(p.x,p.y);c.stroke();c.setLineDash([]);c.strokeStyle=legal?'#f1ffdf':'#ff9c82';c.beginPath();c.arc(p.x,p.y,R,0,Math.PI*2);c.stroke();

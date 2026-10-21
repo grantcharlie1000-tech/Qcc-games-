@@ -14,7 +14,8 @@ export interface GameState {
   colorBlind: boolean | null; // null follows the arcade setting
 }
 export type GuessOutcome =
-  | {kind: 'empty' | 'unknown' | 'not-playable' | 'ambiguous' | 'duplicate' | 'finished'; message: string}
+  | {kind: 'unknown'; message: string; suggestion?: string}
+  | {kind: 'empty' | 'not-playable' | 'ambiguous' | 'duplicate' | 'finished'; message: string}
   | {kind: 'guess'; id: string; km: number; correct: boolean};
 
 export const IDS: readonly string[] = table.ids;
@@ -120,7 +121,7 @@ export function evaluate(round: Round, input: string): GuessOutcome {
     if (ambiguous.has(key)) return {kind: 'ambiguous', message: ambiguous.get(key)!};
     if (notPlayable.has(key)) return {kind: 'not-playable', message: notPlayable.get(key)!};
     const near = suggestion(input);
-    return {kind: 'unknown', message: `“${input.trim()}” isn’t a country in this game.${near ? ` Did you mean ${nameOf(near)}?` : ' Check the spelling.'}`};
+    return {kind: 'unknown', suggestion: near, message: `“${input.trim()}” isn’t a country in this game.${near ? ` Did you mean ${nameOf(near)}?` : ' Check the spelling.'}`};
   }
   const previous = round.guesses.indexOf(id);
   if (previous >= 0) return {kind: 'duplicate', message: `You already guessed ${nameOf(id)} (guess ${previous + 1}). It doesn’t count again.`};

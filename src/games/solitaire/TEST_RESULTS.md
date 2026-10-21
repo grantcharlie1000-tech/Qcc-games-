@@ -45,3 +45,26 @@ Correction verification executed on system Chromium, isolated port 4187:
 - `npm run check`: exit **0**.
 - `ARCADE_URL=http://127.0.0.1:4187 npx playwright test tests/games/solitaire --project=chromium --grep 'hint highlights'`: **1 passed** (3.3s); the other seven scenarios retain their earlier recorded results and were not rerun for this correction.
 - Original cover, screenshots, shared files and the parent's Chromium-specific CDP guard were untouched.
+
+## Hint cycles — 21 October 2026
+
+- Before implementation, reproduced a pointless foundation withdrawal, stock-loop
+  recommendation, missed column-clearing setup and a repeated seeded-deal position.
+- Replaced the earlier legal-withdrawal-only hint expectation with a stalled-state
+  result. Manual withdrawal remains legal; a new complete 52-card fixture checks
+  Queen of spades → red King, then Jack of hearts → Queen, exposing a covered card.
+- `npm test`: **415 passed across 30 files**, including **18 Solitaire model tests**.
+  Five deterministic deals followed for up to 180 hints each never repeated a
+  position; card conservation and legality remain checked after each action.
+- `npx playwright test tests/games/solitaire --project=chromium --workers=1
+  --output=/workspace/work/solitaire-evidence/browser`: **9 passed (42.6s)**.
+  Includes hint-loop stop before/after reload, manual withdrawal and Undo,
+  productive foundation setup, pointer/touch/keyboard moves, pause, restore and win.
+- `npm run build`: **passed**, with the existing large-chunk size advisory.
+- Independent review found **no blocking issues** in history handling, bounded
+  search, hidden-card handling or UI integration; reviewer reran all 18 model tests.
+
+The planner is intentionally bounded to three card moves and 300 expanded states.
+“No new useful move found” does not prove a deal unwinnable. Repeat prevention uses
+up to 200 saved prior positions. Manual legal moves, unlimited recycling and Undo
+remain available.

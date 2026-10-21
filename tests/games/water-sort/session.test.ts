@@ -68,7 +68,7 @@ describe('Water Sort finite-state lifecycle', () => {
     const extra = legalPours(session.state.tubes)[0];
     expect(readSnapshot({...session.state,history:[...session.state.history,session.state.tubes],tubes:extra.board})).toBeNull();
   });
-  it.each(Array.from({length:9},(_,i)=>i))('offers a valid solution or finite recovery from reachable level %i states', level => {
+  it.each(Array.from({length:LEVELS.length},(_,i)=>i))('offers a valid solution or finite recovery from reachable level %i states', level => {
     const session = new Session(level);
     let seed = level + 1;
     for (let step = 0; step < 20; step++) {
@@ -89,4 +89,8 @@ describe('Water Sort finite-state lifecycle', () => {
       expect(readSnapshot(session.state)).toEqual(session.state);
     }
   });
+});
+it('keeps the original ninth level compatible with its previously saved board',()=>{
+ const tubes=[[0,1,3,4],[1,0,0,2],[2,4,2,0],[3,3,1,1],[4,2,4,3],[],[]];
+ expect(readSnapshot({version:1,level:8,tubes,history:[]})).toEqual({version:1,level:8,tubes,history:[]});
 });

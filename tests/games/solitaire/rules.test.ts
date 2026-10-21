@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { foundationWithdrawalState } from './fixtures';
+import { foundationWithdrawalState, productiveWithdrawalState } from './fixtures';
 import { deal, move, draw, validState, won, hint, act, undo, restore, type State } from '../../../src/games/solitaire/model';
 const ids=(s:State)=>[...s.stock,...s.waste,...s.foundations.flat(),...s.tableau.flat().map(c=>c.id)];
 function fixture(columns:number[][], foundations:number[][]=[[],[],[],[]], waste:number[]=[]):State {
@@ -15,19 +15,53 @@ describe('Klondike rules',()=>{
  it('draws one and recycles without changing the waste order or losing cards',()=>{let s=deal(7);const first=s.stock.at(-1);for(let i=0;i<24;i++)s=draw(s)!;expect(s.waste[0]).toBe(first);expect(s.stock).toHaveLength(0);s=draw(s)!;expect(s.waste).toHaveLength(0);expect(s.recycles).toBe(1);s=draw(s)!;expect(s.waste).toEqual([first]);expect(new Set(ids(s)).size).toBe(52);});
  it('undo restores exact cards and rejects malformed restored snapshots',()=>{const original={version:1 as const,state:deal(71),history:[]};const next=act(original,{kind:'draw'})!;expect(undo(next)).toEqual(original);expect(restore(JSON.parse(JSON.stringify(next)))).toEqual(next);const bad=structuredClone(next);bad.state.stock[0]=bad.state.stock[1];expect(restore(bad)).toBeNull();expect(restore({version:1,state:{},history:[]})).toBeNull();expect(restore(null)).toBeNull();});
  it('validates all piles and recognizes only a complete legitimate win',()=>{const s=fixture([],Array.from({length:4},(_,suit)=>Array.from({length:13},(_,r)=>suit*13+r)));expect(validState(s)).toBe(true);expect(won(s)).toBe(true);s.foundations[0].reverse();expect(validState(s)).toBe(false);expect(won(s)).toBe(false);expect(won(deal(2))).toBe(false);});
- it('returns a legal actionable hint and maintains card conservation over many actions',()=>{let session={version:1 as const,state:deal(11),history:[] as State[]};expect(hint(session.state)).not.toBeNull();for(let i=0;i<250;i++){const h=hint(session.state);if(!h)break;const next=act(session,h);expect(next).not.toBeNull();session=next!;expect(validState(session.state)).toBe(true);expect(new Set(ids(session.state)).size).toBe(52);}});
+ it('returns a legal actionable hint and maintains card conservation over many actions',()=>{let session={version:1 as const,state:deal(11),history:[] as State[]};expect(hint(session.state)).not.toBeNull();for(let i=0;i<250;i++){const h=hint(session.state,session.history);if(!h)break;const next=act(session,h);expect(next).not.toBeNull();session=next!;expect(validState(session.state)).toBe(true);expect(new Set(ids(session.state)).size).toBe(52);}});
  it('permits only the exposed waste/foundation top and can return a foundation card',()=>{const s=fixture([[14]],[[0,1],[],[],[]],[26,39]);expect(move(s,{kind:'waste',pile:0,index:0},{kind:'foundation',pile:2})).toBeNull();expect(move(s,{kind:'foundation',pile:0,index:0},{kind:'tableau',pile:0})).toBeNull();const next=move(s,{kind:'foundation',pile:0,index:1},{kind:'tableau',pile:0});expect(next).toBeNull();const dest=fixture([[15]],[[0,1],[],[],[]]);const legal=move(dest,{kind:'foundation',pile:0,index:1},{kind:'tableau',pile:0})!;expect(legal.tableau[0].map(c=>c.id)).toEqual([15,1]);expect(legal.foundations[0]).toEqual([0]);});
  it('undoes a reveal and recycle as indivisible actions',()=>{const s=fixture([[10,19,5],[7]]);s.tableau[0][0].up=false;const session={version:1 as const,state:s,history:[]};const next=act(session,{kind:'move',from:{kind:'tableau',pile:0,index:1},to:{kind:'tableau',pile:1}})!;expect(undo(next)).toEqual(session);let cycle={version:1 as const,state:deal(7),history:[] as State[]};for(let i=0;i<24;i++)cycle=act(cycle,{kind:'draw'})!;expect(undo(act(cycle,{kind:'draw'})!)).toEqual(cycle);});
  it('rejects incompatible histories, illegal foundations, hidden tops and invalid counters',()=>{const s=deal(22);const envelope={version:1,state:s,history:[]};expect(restore({...envelope,version:2})).toBeNull();expect(restore({...envelope,history:[deal(23)]})).toBeNull();const top=structuredClone(s);top.tableau[0][0].up=false;expect(validState(top)).toBe(false);expect(validState({...s,moves:-1})).toBe(false);expect(validState({...s,seed:Infinity})).toBe(false);const f=fixture([],[[1],[],[],[]]);expect(validState(f)).toBe(false);expect(draw(fixture([],Array.from({length:4},(_,i)=>Array.from({length:13},(_,j)=>i*13+j))))).toBeNull();});
 
- it('hints a legal foundation withdrawal when it is the only available move',()=>{
-  const s=foundationWithdrawalState();expect(validState(s)).toBe(true);expect(ids(s)).toHaveLength(52);expect(new Set(ids(s)).size).toBe(52);
-  const action=hint(s);expect(action).toEqual({kind:'move',from:{kind:'foundation',pile:0,index:1},to:{kind:'tableau',pile:0}});
-  const next=act({version:1,state:s,history:[]},action!)!;expect(next.state.foundations[0]).toEqual([0]);expect(next.state.tableau[0].slice(-2).map(c=>c.id)).toEqual([15,1]);expect(validState(next.state)).toBe(true);
+ it('does not hint a pointless foundation withdrawal whose only continuation undoes it',()=>{
+  const s=foundationWithdrawalState();expect(validState(s)).toBe(true);
+  expect(hint(s)).toBeNull();
  });
  it('prefers tableau progress and stock draws before withdrawing a foundation',()=>{
   const drawState=foundationWithdrawalState();drawState.stock.push(drawState.tableau[0].shift()!.id);expect(validState(drawState)).toBe(true);expect(hint(drawState)).toEqual({kind:'draw'});
   const tableauState=foundationWithdrawalState();const hiddenSix=tableauState.tableau.flat().find(c=>c.id===18)!;hiddenSix.id=19;tableauState.tableau[2].at(-1)!.id=18;expect(validState(tableauState)).toBe(true);expect(hint(tableauState)).toEqual({kind:'move',from:{kind:'tableau',pile:1,index:3},to:{kind:'tableau',pile:2}});
  });
 
+});
+
+describe('hints make progress without repeating positions',()=>{
+ const position=(s:State)=>JSON.stringify([s.stock,s.waste,s.foundations,s.tableau.map(p=>p.map(c=>[c.id,c.up])).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))]);
+ it('stops after a stock pass with no useful move, including after restore',()=>{
+  const s=foundationWithdrawalState();const pile=s.tableau.find(p=>p.some(c=>c.id===3))!;pile.splice(pile.findIndex(c=>c.id===3),1);s.stock.push(3);
+  let session={version:1 as const,state:s,history:[] as State[]};
+  expect(validState(s)).toBe(true);expect(hint(session.state,session.history)).toEqual({kind:'draw'});session=act(session,{kind:'draw'})!;
+  const loaded=restore(session)!;expect(loaded).not.toBeNull();
+  expect(hint(loaded.state,loaded.history)).toBeNull();
+ });
+ it('moves an exposed stack to free space for a King that reveals a covered card',()=>{
+  const s=fixture([[6,18],[20],[40,12]]);s.tableau[2][0].up=false;
+  // Other empty columns would make freeing the first column unnecessary.
+  for(let pile=3;pile<7;pile++){const id=[4,8,10,21][pile-3];s.stock.splice(s.stock.indexOf(id),1);s.tableau[pile]=[{id,up:true}];}
+  expect(validState(s)).toBe(true);
+  expect(hint(s)).toEqual({kind:'move',from:{kind:'tableau',pile:0,index:0},to:{kind:'tableau',pile:1}});
+ });
+ it('uses a foundation withdrawal when it sets up a covered-card reveal',()=>{
+  const s=productiveWithdrawalState();expect(validState(s)).toBe(true);
+  const h=hint(s);expect(h).toEqual({kind:'move',from:{kind:'foundation',pile:2,index:11},to:{kind:'tableau',pile:6}});
+  const next=act({version:1,state:s,history:[]},h!)!;
+  expect(hint(next.state,next.history)).toEqual({kind:'move',from:{kind:'tableau',pile:4,index:3},to:{kind:'tableau',pile:6}});
+ });
+ it('never revisits a position while following hints on seeded deals',()=>{
+  for(const seed of [1,7,11,71,123]){
+   let session={version:1 as const,state:deal(seed),history:[] as State[]};const seen=new Set([position(session.state)]);
+   for(let i=0;i<180;i++){
+    const h=hint(session.state,session.history);if(!h)break;
+    const next=act(session,h)!;expect(next).not.toBeNull();
+    const key=position(next.state);expect(seen.has(key),`seed ${seed}, hint ${i}`).toBe(false);
+    seen.add(key);session=next;expect(validState(session.state)).toBe(true);
+   }
+  }
+ });
 });

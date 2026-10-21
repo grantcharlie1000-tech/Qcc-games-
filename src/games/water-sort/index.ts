@@ -10,7 +10,7 @@ const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-6 5 6 
 const hintIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M8 13a6 6 0 1 1 8 0l-1 3H9zM12 1V0M3 5 1 4m20 0-2 1M2 13H0m24 0h-2"/></svg>';
 const module:GameModule={
   id:'water-sort',title:'Water Sort',cover:'game-art/water-sort/cover.svg',
-  rules:'Sort the liquids so every nonempty tube contains only one colour. Partial tubes count as sorted. Tap a source tube, then an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Use Tab or arrow keys to focus and Enter or Space to select. Colour-blind mode adds letters to the bands. Undo reverses a completed pour; Hint shows a winning next pour or how many pours to undo if stuck. The compact difficulty and Level controls select any of nine verified-soluble levels. Restart resets the current level.',
+  rules:'Sort the liquids so every nonempty tube contains only one colour. Partial tubes count as sorted. Tap a source tube, then an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Use Tab or arrow keys to focus and Enter or Space to select. Colour-blind mode adds letters to the bands. Undo reverses a completed pour; Hint shows a winning next pour or how many pours to undo if stuck. The compact difficulty and Level controls select any of 27 verified-soluble levels. Restart resets the current level.',
   mount(container,context) {
     const session=new Session(),abort=new AbortController(),root=document.createElement('section');
     root.className='ws-game';root.setAttribute('aria-label','Water Sort puzzle');
