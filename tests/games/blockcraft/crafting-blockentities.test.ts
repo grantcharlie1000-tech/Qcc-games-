@@ -70,6 +70,20 @@ describe('block entity lifecycle',()=>{
     place('chest_north',2,2);
     expect((be.get(2,FLOOR,2) as ChestEntity).items.every(s=>s===null)).toBe(true);
   });
+  test('each slot stack scatters from one spot and can be picked up at once (vanilla Containers.dropItemStack)',()=>{
+    const {game,be,place}=setup();
+    const spawned:{id:string;x:number;y:number;z:number;delay:number|undefined}[]=[];
+    game.entities.dropItem=(stack,x,y,z,_velocity,delay)=>{spawned.push({id:stack.id,x,y,z,delay});};
+    place('chest_north',2,2);
+    const chest=be.get(2,FLOOR,2) as ChestEntity;chest.items[0]={id:'cobblestone',count:64};chest.items[9]={id:'dirt',count:64};
+    game.world.set(2,FLOOR,2,AIR,'player');
+    for(const id of ['cobblestone','dirt']){
+      const pieces=spawned.filter(s=>s.id===id);
+      expect(pieces.length).toBeGreaterThanOrEqual(3);// 64 split into pieces of 10..30
+      for(const p of pieces)expect([p.x,p.y,p.z]).toEqual([pieces[0].x,pieces[0].y,pieces[0].z]);
+    }
+    expect(spawned.map(s=>s.delay)).toEqual(spawned.map(()=>0));
+  });
   test('calls game.random as a method, as the engine binds it to its own generator',()=>{
     const {game,be,drops,xp,place,furnace}=setup();
     let seed=7;
@@ -229,6 +243,28 @@ describe('furnace',()=>{
     game.player.teleport(.5,FLOOR,40.5);
     tick(1000);
     expect(particles).toEqual([]);expect(game.sounds.played).toEqual([]);
+  });
+  test('a burning furnace looks up its recipe only when the input item changes',()=>{
+    const {game,tick,furnace}=setup();
+    let lookups=0;const smelt=game.crafting.smelt;game.crafting.smelt=id=>{lookups++;return smelt(id);};
+    const f=furnace();f.input={id:'cobblestone',count:64};f.fuel={id:'coal',count:8};
+    tick(400);
+    expect(f.output).toEqual({id:'stone',count:2});expect(lookups).toBe(1);
+    f.output=null;f.input={id:'raw_iron',count:1};
+    tick(200);
+    expect(f.output).toEqual({id:'iron_ingot',count:1});expect(lookups).toBe(2);
+  });
+  test('lit-furnace effects reuse their option objects instead of allocating per tick',()=>{
+    const {game,tick,furnace}=setup();
+    const particleOptions=new Set<unknown>(),soundOptions=new Set<unknown>();
+    game.render.spawnParticles=(_kind,_x,_y,_z,options)=>{particleOptions.add(options);};
+    const play=game.sounds.play.bind(game.sounds);
+    game.sounds.play=(name,at,options)=>{soundOptions.add(options);play(name,at,options);};
+    const f=furnace('furnace_south');f.input={id:'cobblestone',count:64};f.fuel={id:'coal_block',count:1};
+    game.player.teleport(.5,FLOOR,4.5);
+    tick(2000);
+    expect(particleOptions.size).toBe(1);expect([...particleOptions][0]).toEqual({count:1,spread:.02});
+    expect(soundOptions.size).toBe(1);expect([...soundOptions][0]).toEqual({volume:1,pitch:1});
   });
   test('only furnaces in loaded chunks tick',()=>{
     const {game,be,tick,furnace}=setup();

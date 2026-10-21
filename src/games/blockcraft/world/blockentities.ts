@@ -2,13 +2,14 @@
 // Lifecycle follows `blockChanged`: a block whose def has `blockEntity` gets an empty entity when placed, keeps it across
 // state changes of the same family (furnace ⇄ furnace_lit, facings) and while its chunk is unloaded, and drops its
 // contents (vanilla scatter, stacks split into 10-30) plus a furnace's stored experience when replaced by another family
-// (broken, exploded, overwritten). Furnaces follow vanilla AbstractFurnaceBlockEntity.serverTick: 200 ticks per item,
-// fuel is consumed only when the input can be smelted into the output slot, unlit progress falls back 2 ticks per tick,
-// and the block swaps between lit and unlit states keeping its facing. Only furnaces in loaded chunks tick.
+// (broken, exploded, overwritten); as in vanilla the dropped items can be picked up at once. Furnaces follow vanilla
+// AbstractFurnaceBlockEntity.serverTick: 200 ticks per item, fuel is consumed only when the input can be smelted into the
+// output slot, unlit progress falls back 2 ticks per tick, and the block swaps between lit and unlit states keeping its
+// facing. Only furnaces in loaded chunks tick.
 // Entities persist by position; empty ones are not saved (get() recreates them on demand).
 import {CH,CS,chunkKey} from '../engine/constants';
 import {FACING_VECTOR,blockDef,stateFor} from '../data/blocks';
-import {itemDef,maxStack,parseStack,type ItemStack} from '../data/items';
+import {itemDef,maxStack,parseStack,type ItemId,type ItemStack} from '../data/items';
 import type {BlockEntity,BlockEntityService,ChestEntity,FurnaceEntity,Game,SmeltResult} from '../engine/contracts';
 
 export const CHEST_SLOTS=27;
@@ -22,10 +23,14 @@ const DROP_SPREAD=.11485*20,DROP_LIFT=.2*20;
 const MAX_COORD=30_000_000;
 /** Longest burn accepted from a save, seconds (a lava bucket burns 1000). */
 const MAX_BURN=100_000;
+/** Shared (read-only) options for the lit-furnace effects, so ticking allocates nothing. */
+const AMBIENT_PARTICLES={count:1,spread:.02},CRACKLE={volume:1,pitch:1};
 
 interface Holder{readonly x:number;readonly y:number;readonly z:number;readonly key:string;readonly chunk:number;entity:BlockEntity;
   /** Furnace input id seen at the end of the previous tick: a different item resets cooking (vanilla setItem). */
-  lastInput:string|null}
+  lastInput:string|null;
+  /** Smelting lookup cached for `recipeInput`, so a burning furnace does not query (and allocate) every tick. */
+  recipeInput:ItemId|null;recipe:SmeltResult|null}
 
 const posKey=(x:number,y:number,z:number)=>`${x},${y},${z}`;
 const emptyChest=():ChestEntity=>({kind:'chest',items:new Array(CHEST_SLOTS).fill(null)});
@@ -74,7 +79,7 @@ export function createBlockEntities(game:Game):BlockEntityService{
   function add(x:number,y:number,z:number,entity:BlockEntity):Holder{
     const key=posKey(x,y,z),old=holders.get(key);if(old)discard(old);
     const holder:Holder={x,y,z,key,chunk:chunkKey(Math.floor(x/CS),Math.floor(z/CS)),entity,
-      lastInput:entity.kind==='furnace'?entity.input?.id??null:null};
+      lastInput:entity.kind==='furnace'?entity.input?.id??null:null,recipeInput:null,recipe:null};
     holders.set(key,holder);
     let set=byChunk.get(holder.chunk);if(!set){set=new Set();byChunk.set(holder.chunk,set);}set.add(holder);
     if(entity.kind==='furnace')furnaces.add(holder);
@@ -87,16 +92,18 @@ export function createBlockEntities(game:Game):BlockEntityService{
     const set=byChunk.get(h.chunk);if(set){set.delete(h);if(!set.size)byChunk.delete(h.chunk);}
   }
   function clear(){holders.clear();byChunk.clear();furnaces.clear();}
-  /** Vanilla Containers.dropContents: random spot inside the block, stacks split into 10..30, small upward toss. */
+  /** Vanilla Containers.dropContents: one random spot inside the block per slot stack, split into 10..30, small upward
+   *  toss, no pickup delay (dropItemStack never sets one). */
   function dropContents(h:Holder){
     const r=()=>game.random(),e=h.entity;
     for(const slot of contents(e)){
       if(!slot)continue;
+      const px=h.x+.125+r()*.75,py=h.y+r()*.75,pz=h.z+.125+r()*.75;
       let left=slot.count;
       while(left>0){
         const n=Math.min(left,10+Math.floor(r()*21));left-=n;
-        game.entities.dropItem({...slot,count:n},h.x+.125+r()*.75,h.y+r()*.75,h.z+.125+r()*.75,
-          {x:DROP_SPREAD*(r()-r()),y:DROP_LIFT+DROP_SPREAD*(r()-r()),z:DROP_SPREAD*(r()-r())});
+        game.entities.dropItem({...slot,count:n},px,py,pz,
+          {x:DROP_SPREAD*(r()-r()),y:DROP_LIFT+DROP_SPREAD*(r()-r()),z:DROP_SPREAD*(r()-r())},0);
       }
     }
     if(e.kind==='furnace'&&e.xp>0){
@@ -125,6 +132,10 @@ export function createBlockEntities(game:Game):BlockEntityService{
   }
 
   // ---- Furnaces ---------------------------------------------------------------------------------
+  function recipeFor(h:Holder,id:ItemId){
+    if(h.recipeInput!==id){h.recipeInput=id;h.recipe=game.crafting.smelt(id);}
+    return h.recipe;
+  }
   function tickFurnace(h:Holder,f:FurnaceEntity){
     const crafting=game.crafting;
     let burn=ticksOf(f.burn),burnTotal=ticksOf(f.burnTotal),cook=Math.min(COOK_TICKS,ticksOf(f.cook));
@@ -133,7 +144,7 @@ export function createBlockEntities(game:Game):BlockEntityService{
     if(burn>0)burn--;
     const hasInput=!!f.input,fuel=f.fuel;
     if(burn>0||fuel&&hasInput){
-      const recipe=f.input?crafting.smelt(f.input.id):null;
+      const recipe=f.input?recipeFor(h,f.input.id):null;
       if(burn<=0&&fuel&&canBurn(f,recipe)){
         burn=ticksOf(crafting.fuelSeconds(fuel.id));burnTotal=burn;
         if(burn>0){
@@ -170,9 +181,9 @@ export function createBlockEntities(game:Game):BlockEntityService{
     const def=blockDef(game.world.get(h.x,h.y,h.z));if(!def.lit||!def.facing)return;
     const [fx,fz]=FACING_VECTOR[def.facing],side=game.random()*.6-.3;
     const x=h.x+.5+fx*.52+(fx?0:side),y=h.y+game.random()*6/16,z=h.z+.5+fz*.52+(fz?0:side);
-    game.render.spawnParticles('smoke',x,y,z,{count:1,spread:.02});
-    game.render.spawnParticles('flame',x,y,z,{count:1,spread:.02});
-    if(game.random()<.1)game.sounds.play('furnace',{x:h.x+.5,y:h.y+.5,z:h.z+.5},{volume:1,pitch:1});
+    game.render.spawnParticles('smoke',x,y,z,AMBIENT_PARTICLES);
+    game.render.spawnParticles('flame',x,y,z,AMBIENT_PARTICLES);
+    if(game.random()<.1)game.sounds.play('furnace',{x:h.x+.5,y:h.y+.5,z:h.z+.5},CRACKLE);
   }
 
   return{
