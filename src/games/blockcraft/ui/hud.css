@@ -69,9 +69,15 @@
 .blockcraft[data-hud-hidden=true] .bc-debug{display:none!important}
 
 /* ---- Action bar (the ui's toast) above the hotbar and bars, at the vanilla height ------------------------- */
+/* Vanilla draws the overlay message in the GUI font with its drop shadow and no backdrop. hud.ts draws the text in the
+   pixel font through --bc-actionbar-* (art, size, and transparent CSS text kept for assistive technology); text
+   outside the pixel font falls back to the CSS font, sized to its content (absolutely positioned at left:50%, an
+   auto width would stop at half the game's width). */
 .blockcraft .bc-toast{left:50%;bottom:calc(var(--bc-hud-actionbar,128px) + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:25;
-  max-width:min(92%,560px);padding:2px 8px;border-radius:2px;background:#00000059;color:#fff;
-  font:700 clamp(13px,calc(7px * var(--bc-gui,2)),21px)/1.3 system-ui,sans-serif;text-shadow:1px 1px 0 #3f3f3f;text-align:center}
+  box-sizing:content-box;width:var(--bc-actionbar-w,max-content);height:var(--bc-actionbar-h,auto);max-width:var(--bc-actionbar-max,min(92%,560px));
+  padding:0;border-radius:0;overflow:hidden;background:var(--bc-actionbar-art,none) 0 0/100% 100% no-repeat;
+  color:var(--bc-actionbar-ink,#fff);text-shadow:var(--bc-actionbar-shadow,1px 1px 0 #3f3f3f);
+  font:700 clamp(13px,calc(7px * var(--bc-gui,2)),21px)/1.3 system-ui,sans-serif;text-align:center}
 
 /* ---- F3 debug overlay (top-left, under the arcade toolbar) ------------------------------------------------- */
 .bc-debug{position:absolute;left:max(6px,env(safe-area-inset-left,0px));right:6px;top:max(60px,calc(env(safe-area-inset-top,0px) + 56px));z-index:10;display:none;

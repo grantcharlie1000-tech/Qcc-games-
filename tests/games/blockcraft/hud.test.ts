@@ -3,7 +3,7 @@ import {heartIcons,foodIcons,armorIcons,airBubbles,xpFill,durabilityBar,attackIn
   regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,barsView,stackHeights,stackInsets,
   type HeartInput,type BarsOptions} from '../../../src/games/blockcraft/ui/hud-model';
 import {ICON_NAMES,iconGrid,iconSvg,iconPalette,digitsSvg,DIGIT_GLYPHS,hotbarSvg,xpBarSvg,compassGrid,clockGrid,dialFrame,COMPASS_FRAMES,CLOCK_FRAMES,
-  selectionFrameSvg,offhandSvg,FONT_GLYPHS,hasGlyphs,textWidth,textSvg,shadowColour} from '../../../src/games/blockcraft/ui/hud-art';
+  selectionFrameSvg,offhandSvg,FONT_GLYPHS,hasGlyphs,textWidth,textSvg,shadowColour,wrapText,textLinesSvg} from '../../../src/games/blockcraft/ui/hud-art';
 import {optionLabel,nextDifficulty,keyLabel,controlRows,fovLabel,sensitivityFromSlider,sensitivityToSlider,deathScore} from '../../../src/games/blockcraft/ui/menus-options';
 import {ITEMS} from '../../../src/games/blockcraft/data/items';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
@@ -342,6 +342,23 @@ describe('pixel art',()=>{
     expect(shadowColour('#ffffff')).toBe('#3f3f3f');expect(shadowColour('#55ffff')).toBe('#153f3f');
     const svg=textSvg('Dirt');expect(svg).toContain(`width="${textWidth('Dirt')}" height="9"`);expect(svg).toContain('#3f3f3f');
     expect(new Set(Object.values(FONT_GLYPHS).map(gl=>gl.join('/'))).size).toBeGreaterThan(70);
+  });
+  test('the action bar wraps words to the room it has and centres each line',()=>{
+    const text='You may not rest now; there are monsters nearby';
+    expect(wrapText(text,400)).toEqual([text]);
+    const lines=wrapText(text,120);
+    expect(lines.length).toBeGreaterThan(1);expect(lines.join(' ')).toBe(text);
+    for(const l of lines)expect(textWidth(l),l).toBeLessThanOrEqual(120);
+    // Greedy: each line but the last could not take the next word.
+    lines.slice(0,-1).forEach((l,i)=>expect(textWidth(`${l} ${lines[i+1].split(' ')[0]}`)).toBeGreaterThan(120));
+    // A word longer than the room keeps its own line; extra spaces collapse.
+    expect(wrapText('Hi  Supercalifragilistic  yo',30)).toEqual(['Hi','Supercalifragilistic','yo']);
+    expect(wrapText('',50)).toEqual([]);
+    const svg=textLinesSvg(['Dirt','Iron Pickaxe']),w=textWidth('Iron Pickaxe');
+    expect(svg).toContain(`width="${w}" height="18"`);
+    // 'Dirt' is centred on the second line's width: its first glyph starts at floor((w - width) / 2).
+    expect(svg).toContain(`x="${Math.floor((w-textWidth('Dirt'))/2)}" y="0"`);
+    expect(svg).toContain('#3f3f3f');
   });
   test('hotbar and experience bar textures have vanilla sizes',()=>{
     expect(hotbarSvg()).toContain('width="182" height="22"');

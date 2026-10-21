@@ -256,19 +256,44 @@ export function shadowColour(colour:string){
   const n=parseInt(colour.slice(1,7),16);
   return`#${(((n&0xfcfcfc)>>2)>>>0).toString(16).padStart(6,'0')}`;
 }
-/** Text as a 9 px tall SVG in the pixel font with the GUI drop shadow (1 px right and down). */
-export function textSvg(text:string,colour='#ffffff'):string{
-  const chars=[...text],w=Math.max(1,textWidth(text)),shadow=shadowColour(colour);
-  let x=0,back='',front='';
-  for(const ch of chars){
+/** One line of pixel-font text at (ox, oy): the shadow layer (1 px right and down) and the text layer. */
+function textLayers(text:string,colour:string,ox:number,oy:number){
+  const shadow=shadowColour(colour);
+  let x=ox,back='',front='';
+  for(const ch of text){
     const glyph=FONT_GLYPHS[ch];if(!glyph){x+=6;continue;}
-    back+=gridSvg(glyph,{'#':shadow},x+1,1);front+=gridSvg(glyph,{'#':colour},x,0);
+    back+=gridSvg(glyph,{'#':shadow},x+1,oy+1);front+=gridSvg(glyph,{'#':colour},x,oy);
     x+=glyph[0].length+1;
   }
-  return`${open(w,9)}${back}${front}</svg>`;
+  return{back,front};
+}
+/** Text as a 9 px tall SVG in the pixel font with the GUI drop shadow (1 px right and down). */
+export function textSvg(text:string,colour='#ffffff'):string{
+  const {back,front}=textLayers(text,colour,0,0);
+  return`${open(Math.max(1,textWidth(text)),9)}${back}${front}</svg>`;
 }
 /** Data URL of pixel-font text (cached). */
 export const textUrl=(text:string,colour='#ffffff')=>cached(`text:${colour}:${text}`,()=>textSvg(text,colour));
+/** Greedy word wrap to `room` GUI pixels (the action bar on narrow screens; vanilla draws one line). A word wider than
+ *  the room keeps a line of its own. */
+export function wrapText(text:string,room:number):string[]{
+  const lines:string[]=[];let line='';
+  for(const word of text.split(' ')){
+    if(!word)continue;
+    const next=line?`${line} ${word}`:word;
+    if(line&&textWidth(next)>room){lines.push(line);line=word;}else line=next;
+  }
+  if(line)lines.push(line);
+  return lines;
+}
+/** Lines of pixel-font text, each centred, 9 px apart (the font's line height). */
+export function textLinesSvg(lines:readonly string[],colour='#ffffff'):string{
+  const w=Math.max(1,...lines.map(textWidth));
+  let back='',front='';
+  lines.forEach((l,i)=>{const t=textLayers(l,colour,Math.floor((w-textWidth(l))/2),i*9);back+=t.back;front+=t.front;});
+  return`${open(w,Math.max(1,lines.length*9))}${back}${front}</svg>`;
+}
+export const textLinesUrl=(lines:readonly string[],colour='#ffffff')=>cached(`lines:${colour}:${lines.join('\n')}`,()=>textLinesSvg(lines,colour));
 
 // ---- Hotbar, slots and experience bar ------------------------------------------------------------------
 const rect=(x:number,y:number,w:number,h:number,c:string)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" ${colour(c)}/>`;

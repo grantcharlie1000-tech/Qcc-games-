@@ -10,8 +10,9 @@
 //    (ROOT_FLAGS.hudHidden) hides it all.
 //  - Menus (z-index 30, ui/menus.ts): start, game menu, death and lost-graphics screens.
 // The layout publishes CSS variables on game.root: --bc-gui (GUI scale), --bc-hud-bottom (hotbar lift, clear of the
-// shell's corner buttons), --bc-hud-bars (top of the bars), --bc-hud-top (top of the whole stack) and
+// shell's corner buttons), --bc-hud-bars (top of the bars as drawn), --bc-hud-top (top of the whole stack) and
 // --bc-hud-actionbar (the ui's action-bar toast, placed by hud.css). Each is in CSS px above the safe-area inset.
+// The action bar's text is drawn in the pixel font through the --bc-actionbar-* variables (see hud.css).
 import './hud.css';
 import {iconUrl} from '../art/items';
 import {itemDef} from '../data/items';
@@ -19,14 +20,16 @@ import {ROOT_FLAGS} from '../engine/constants';
 import type {Game,HudService,ItemStack} from '../engine/contracts';
 import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,heldName,HealthTracker,HeldNameTimer,hudLayout,
   RARITY_COLOURS,stackHeights,stackInsets,sunAngle,type BarIcon,type HudLayout} from './hud-model';
-import {clockUrl,compassUrl,CLOCK_FRAMES,COMPASS_FRAMES,dialFrame,digitsUrl,hasGlyphs,hotbarUrl,hudIconUrl,offhandUrl,selectionUrl,textUrl,
-  textWidth,xpBarUrl} from './hud-art';
+import {clockUrl,compassUrl,CLOCK_FRAMES,COMPASS_FRAMES,dialFrame,digitsUrl,hasGlyphs,hotbarUrl,hudIconUrl,offhandUrl,selectionUrl,textLinesUrl,
+  textUrl,textWidth,wrapText,xpBarUrl} from './hud-art';
 import {createMenus} from './menus';
 
 /** Readout dial size in GUI pixels (the 16 px dial art at 1.5×). */
 const DIAL=24;
 const SHOWN_STATES=new Set(['playing','screen','paused','dead']);
-const ROOT_VARS=['--bc-gui','--bc-hud-bottom','--bc-hud-bars','--bc-hud-top','--bc-hud-actionbar'];
+/** The pixel-font action bar: its art, size, and the CSS text it replaces (kept for assistive technology). */
+const ACTIONBAR_VARS=['--bc-actionbar-art','--bc-actionbar-w','--bc-actionbar-h','--bc-actionbar-max','--bc-actionbar-ink','--bc-actionbar-shadow'];
+const ROOT_VARS=['--bc-gui','--bc-hud-bottom','--bc-hud-bars','--bc-hud-top','--bc-hud-actionbar',...ACTIONBAR_VARS];
 /** Vanilla ItemStack.popTime after a pickup: 5 ticks. */
 const POP_MS=250;
 
@@ -131,7 +134,8 @@ export function createHud(game:Game):HudService{
   const heldTimer=new HeldNameTimer();
   let lastTick=-1,lastHurtTick=-1000,heldId='\u0000',heldOpacity=-1,selected=-1,barsLabel='',level=-1;
   let fpsFrames=0,fpsStart=0,fps=0,debugAt=0,barsTop=49,stackKey='',state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'slots'='slots';
-  let readoutKey='',lowHealth=false,pickedUp:string|null=null;
+  let readoutKey='',lowHealth=false,pickedUp:string|null=null,toastEl:HTMLElement|null=null,toastObserver:MutationObserver|null=null,toastKey='',toastSearch=0;
+  const warmed=new Set<string>();
   const cur=new Float64Array(18),prev=new Float64Array(18).fill(NaN);
   let resize:ResizeObserver|null=null;
 
@@ -148,7 +152,7 @@ export function createHud(game:Game):HudService{
     const right=w/2+(91+layout.shift+4+DIAL*2+2)*s;
     readoutMode=right<=w-8&&(right<=w-150||layout.bottom>=40)?'right':'slots';
     readouts.dataset.place=readoutMode;
-    stackKey='';placeStack();
+    stackKey='';placeStack();drawActionBar();
   }
   function setVisibility(){
     const s=game.state;if(s===state)return;state=s;
@@ -295,6 +299,39 @@ export function createHud(game:Game):HudService{
     lines.forEach((l,i)=>{const span=col.children[i] as HTMLElement;if(span.textContent!==l)span.textContent=l;setHidden(span,!l);});
   }
 
+  // ---- Action bar ------------------------------------------------------------------------------------------
+  /** The ui owns the action-bar toast; the HUD draws its text in the pixel font, like the held item name, by
+   *  publishing the art on game.root (hud.css paints it on the toast). Text outside the font keeps the CSS font. */
+  function watchToast(){
+    if(toastEl||typeof MutationObserver!=='function')return;
+    toastEl=game.root.querySelector<HTMLElement>('.bc-toast');if(!toastEl)return;
+    toastObserver=new MutationObserver(()=>drawActionBar());
+    toastObserver.observe(toastEl,{childList:true,characterData:true,subtree:true});
+    toastKey='';drawActionBar();
+  }
+  function drawActionBar(){
+    if(!toastEl)return;
+    const text=(toastEl.textContent??'').trim(),s=layout.scale,st=game.root.style;
+    // Vanilla draws one line; narrow screens wrap at 92 % of the width.
+    const room=Math.max(40,Math.floor((game.root.clientWidth||window.innerWidth)*.92/s));
+    const key=`${s}|${room}|${text}`;if(key===toastKey)return;toastKey=key;
+    if(!text||!hasGlyphs(text)){for(const v of ACTIONBAR_VARS)st.removeProperty(v);return;}
+    const lines=wrapText(text,room),w=Math.max(...lines.map(textWidth));
+    st.setProperty('--bc-actionbar-art',url(textLinesUrl(lines)));
+    st.setProperty('--bc-actionbar-w',`${(w*s).toFixed(2)}px`);st.setProperty('--bc-actionbar-h',`${(lines.length*9*s).toFixed(2)}px`);
+    st.setProperty('--bc-actionbar-max','none');st.setProperty('--bc-actionbar-ink','transparent');st.setProperty('--bc-actionbar-shadow','none');
+  }
+  /** While the HUD is hidden (loading, start menu) paint one new item icon per frame, hotbar first, so the first frame
+   *  of play does not stall generating every icon at once. */
+  function warmIcons(){
+    const inv=game.inventory;
+    // Hotbar, then the offhand, then the main inventory.
+    for(let k=0;k<=inv.slots.length;k++){
+      const id=(k<9?inv.slots[k]:k===9?inv.offhand:inv.slots[k-1])?.id;
+      if(id&&!warmed.has(id)){warmed.add(id);iconUrl(id);return;}
+    }
+  }
+
   // ---- Input on the HUD --------------------------------------------------------------------------------
   hotbar.addEventListener('click',e=>{const b=(e.target as HTMLElement).closest<HTMLButtonElement>('.bc-slot');if(b)game.inventory.select(Number(b.dataset.slot));},{signal});
   // Taps on the hotbar must not reach the canvas's touch look / mining.
@@ -318,7 +355,7 @@ export function createHud(game:Game):HudService{
         game.events.on('restored',resetHealth),
         game.events.on('worldReset',resetHealth)
       );
-      hud.dataset.mode=game.settings.mode;setVisibility();resetHealth();applyLayout();
+      hud.dataset.mode=game.settings.mode;setVisibility();resetHealth();applyLayout();watchToast();
     },
     frame(){
       // Frame counter for F3: frames per real second (dt is capped, so it cannot measure slow frames).
@@ -330,7 +367,8 @@ export function createHud(game:Game):HudService{
       if(layoutDirty)applyLayout();
       setVisibility();
       updateDebug(now);
-      if(hud.dataset.shown!=='true')return;
+      if(!toastEl&&now-toastSearch>1000){toastSearch=now;watchToast();}
+      if(hud.dataset.shown!=='true'){warmIcons();return;}
       const tick=game.time.tick;
       if(tick!==lastTick){
         lastTick=tick;
@@ -347,7 +385,7 @@ export function createHud(game:Game):HudService{
       resetHealth();
     },
     dispose(){
-      abort.abort();resize?.disconnect();for(const off of offs.splice(0))off();
+      abort.abort();resize?.disconnect();toastObserver?.disconnect();toastObserver=null;toastEl=null;warmed.clear();for(const off of offs.splice(0))off();
       menus.dispose();fx.remove();crosshair.remove();hud.remove();debug.remove();
       for(const v of ROOT_VARS)game.root.style.removeProperty(v);
     }
