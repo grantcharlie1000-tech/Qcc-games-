@@ -73,7 +73,7 @@ interface BlockQuads{count:number;pos:Float32Array;uv:Float32Array;shade:Float32
 
 const DEFAULT_TINT={grass:0x91bd59,foliage:0x77ab2f,water:0x3f76e4,none:0xffffff} as const;
 const ANIM:AnimationState={time:0,partial:0,limbSwing:0,limbAmount:0,headYaw:0,headPitch:0,attack:0,reducedMotion:false};
-const BASE=mat();
+const BASE=mat(),PAINT={tint:-1};
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
 const lerpAngle=(a:number,b:number,t:number)=>a+wrapAngle(b-a)*t;
 /** Deterministic small offsets for stacked item copies. */
@@ -226,7 +226,8 @@ export function createEntityRenderer(game:Game):EntityRenderer{
     ANIM.headYaw=wrapAngle(lerpAngle(r.phead,e.headYaw,partial)-yaw);ANIM.headPitch=lerp(r.ppitch,e.pitch,partial);
     const sw=e.data.swing;ANIM.attack=typeof sw==='number'&&sw>0?Math.max(0,Math.min(1,1-sw/10)):0;
     try{k.model!.animate?.(e,pose,ANIM);}catch{/* keep the rest pose */}
-    writeModel(w,m,BASE,pose,{tint:app&&Number.isInteger(app.tint)?app.tint!&0xffffff:-1});
+    PAINT.tint=app&&Number.isInteger(app.tint)?app.tint!&0xffffff:-1;
+    writeModel(w,m,BASE,pose,PAINT);
     w.hurt=0;w.flash=0;
   }
   function drawItem(r:RenderRec,x:number,y:number,z:number,partial:number,light:number,reduced:boolean){
