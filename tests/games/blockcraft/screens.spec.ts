@@ -249,6 +249,10 @@ test('creative picker and the survival inventory fit a 320×568 phone',async({pa
   await engine(page,g=>g.ui.open('inventory'));
   await expect(page.locator('.bc-panel')).toHaveAttribute('aria-label','Inventory');
   await fits();
+  const chests=await placeBlocks(page,[{dx:2,dz:0,family:'chest',facing:'west'},{dx:2,dz:1,family:'chest',facing:'west'}]);
+  await engine(page,(g,a)=>g.ui.open('chest',a),chests[0]);
+  await expect(page.locator('.bc-panel')).toHaveAttribute('aria-label','Large Chest');
+  await fits();
   await engine(page,g=>g.ui.close());
   // Creative: tabs, search, infinite stacks and the hotbar row.
   await engine(page,g=>g.setMode('creative'));
