@@ -1,11 +1,16 @@
 // Liquids, after vanilla LiquidBlockRenderer: per-corner surface heights averaged with the neighbours, the still tile on
 // a level surface and the flowing tile turned along the flow elsewhere, faces only toward air or non-liquid
 // transparent blocks, and the liquid-surface vertex flag on the top.
-import {LAYER,LIQUID,OPAQUE,SOLID} from '../data/blocks';
-import {CS,PAD_LAYER,PAD_X} from '../engine/constants';
-import {M_NOCULL,M_SHADE,M_SMOOTH,type MeshBuilder} from './mesher-builder';
-import {CU,CV,EMISSIVE,FACE_DX,FACE_DZ,FACE_SHADE,FLAG_EMISSIVE,FLAG_LIQUID,LIQUID_FLOW_TILE,LIQUID_HEIGHT,LIQUID_STILL_TILE,
-  N_AXIS,N_SIGN,PAD_NB,TINT_KIND,TRANSLUCENT_CUBE,U_AXIS,U_SIGN} from './mesher-tables';
+import * as blocks from '../data/blocks';
+import * as constants from '../engine/constants';
+import type {MeshBuilder} from './mesher-builder';
+import * as builder from './mesher-builder';
+import * as tables from './mesher-tables';
+// Module-local aliases: hot loops read plain constants rather than live import bindings.
+const {LAYER,LIQUID,OPAQUE,SOLID}=blocks;
+const {CS,PAD_LAYER,PAD_X}=constants;
+const {M_NOCULL,M_SHADE,M_SMOOTH}=builder;
+const {CU,CV,EMISSIVE,FACE_DX,FACE_DZ,FACE_SHADE,FLAG_EMISSIVE,FLAG_LIQUID,LIQUID_FLOW_TILE,LIQUID_HEIGHT,LIQUID_STILL_TILE,N_AXIS,N_SIGN,PAD_NB,TINT_KIND,TRANSLUCENT_CUBE,U_AXIS,U_SIGN}=tables;
 
 /** Vanilla getHeight for a neighbour cell: 1 under the same liquid, its own height, 0 for a non-solid cell (pulls the
  *  surface down) and -1 for a solid one (ignored). */

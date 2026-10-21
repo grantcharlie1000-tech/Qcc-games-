@@ -1,9 +1,13 @@
 // Mesh builder: the padded block volume, light, biome tints, the three growable layer buffers and the quad writers
 // shared by the cube path (mesher.ts) and the shape emitters (shapes*.ts). One instance is reused for every chunk.
-import {OPAQUE} from '../data/blocks';
-import {CS,LAYER,CHUNK_VOLUME,PAD_VOLUME,MAX_PART_QUADS} from '../engine/constants';
+import * as blocks from '../data/blocks';
+import * as constants from '../engine/constants';
 import type {ChunkMesh,MeshPart} from '../engine/contracts';
-import {AO_CURVE,AO_OFF,CU,CV,FACE_SHADE,FLAG_EMISSIVE,FLIP_ORDER,N_AXIS,N_SIGN,OPPOSITE_FACE,PAD_NB,PROFILE,U_AXIS,U_SIGN,V_AXIS,V_FLIP,V_SIGN} from './mesher-tables';
+import * as tables from './mesher-tables';
+// Module-local aliases: hot loops read plain constants rather than live import bindings.
+const {OPAQUE}=blocks;
+const {CS,LAYER,CHUNK_VOLUME,PAD_VOLUME,MAX_PART_QUADS}=constants;
+const {AO_CURVE,AO_OFF,CU,CV,FACE_SHADE,FLAG_EMISSIVE,FLIP_ORDER,N_AXIS,N_SIGN,OPPOSITE_FACE,PAD_NB,PROFILE,U_AXIS,U_SIGN,V_AXIS,V_FLIP,V_SIGN}=tables;
 
 const INITIAL_QUADS=4096;
 /** One render layer's vertex data; grows by doubling up to MAX_PART_QUADS, after which further quads are dropped. */

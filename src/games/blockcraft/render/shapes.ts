@@ -1,12 +1,17 @@
 // Block shapes other than cubes and liquids, modelled on the vanilla Java block models (pixel units, 16 = one block).
 // Every emitter writes through the shared MeshBuilder; positions stay on the 1/16 grid of the MeshPart layout.
-import {FACE_TILE,LAYER} from '../data/blocks';
-import {CS} from '../engine/constants';
-import {M_KEEP,M_MIRROR,M_NOCULL,M_ROT,M_SHADE,M_SOLID,M_UV,type MeshBuilder} from './mesher-builder';
-import {DOOR_BOX,DOOR_FRONT,DOOR_UPPER,EMISSIVE,FACE_DX,FACE_DZ,FACING_FACE,FLAG_EMISSIVE,FLAG_SWAY,N_AXIS,N_SIGN,OPPOSITE_FACE,
-  PLANT_OFFSET,SH_BED,SH_CACTUS,SH_CROP,SH_CROSS,SH_DOOR,SH_FARMLAND,SH_FIRE,SH_FLAT,SH_LADDER,SH_LANTERN,SH_LIQUID,SH_SLAB,
-  SH_SNOW,SH_STAIRS,SH_TORCH,SLAB_TOP,STAIRS_BACK,SWAY,TINT_KIND} from './mesher-tables';
-import {liquid} from './shapes-liquid';
+import * as blocks from '../data/blocks';
+import * as constants from '../engine/constants';
+import type {MeshBuilder} from './mesher-builder';
+import * as builder from './mesher-builder';
+import * as tables from './mesher-tables';
+import * as liquidModule from './shapes-liquid';
+// Module-local aliases: hot loops read plain constants rather than live import bindings.
+const {FACE_TILE,LAYER}=blocks;
+const {CS}=constants;
+const {M_KEEP,M_MIRROR,M_NOCULL,M_ROT,M_SHADE,M_SOLID,M_UV}=builder;
+const {DOOR_BOX,DOOR_FRONT,DOOR_UPPER,EMISSIVE,FACE_DX,FACE_DZ,FACING_FACE,FLAG_EMISSIVE,FLAG_SWAY,N_AXIS,N_SIGN,OPPOSITE_FACE,PLANT_OFFSET,SH_BED,SH_CACTUS,SH_CROP,SH_CROSS,SH_DOOR,SH_FARMLAND,SH_FIRE,SH_FLAT,SH_LADDER,SH_LANTERN,SH_LIQUID,SH_SLAB,SH_SNOW,SH_STAIRS,SH_TORCH,SLAB_TOP,STAIRS_BACK,SWAY,TINT_KIND}=tables;
+const {liquid}=liquidModule;
 
 /** Deterministic 32-bit hash of a world column (plant offsets, lily pad rotation). */
 export function positionHash(x:number,z:number):number{

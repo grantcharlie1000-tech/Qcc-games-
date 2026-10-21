@@ -7,15 +7,21 @@
 //  - culling: opaque neighbours and `cullSame` families hide faces, partial shapes never hide a neighbour's face
 //    (only identical partial faces facing each other, like snow beside snow, are both dropped), liquids never draw
 //    against liquids.
-import {AIR,B,LAYER as BLOCK_LAYER,OPAQUE,FACE_TILE} from '../data/blocks';
-import {biomeDef} from '../data/biomes';
-import {CS,CH,LAYER,CHUNK_VOLUME,PAD_X,PAD_LAYER,PAD_Y,padIndex} from '../engine/constants';
+import * as blocks from '../data/blocks';
+import * as biomes from '../data/biomes';
+import * as constants from '../engine/constants';
 import type {BlockId,ChunkData,ChunkMesh,Mesher} from '../engine/contracts';
-import {MeshBuilder,type LayerBuffer} from './mesher-builder';
-import {AO_OFF,AVG,CORNER,CU,CULL_SAME,CV,EMISSIVE,FAMILY_ID,FLAG_EMISSIVE,FLAG_SWAY,FLIP_ORDER,GRASS_ID,GRASS_OVERLAY_TILE,
-  GRASS_SIDE_TILE,N_AXIS,N_SIGN,PAD_NB,SHADE,SHAPE,SH_AIR,SH_CUBE,SIDE_FACE,SNOWY_DIRT,SNOWY_SIDE_TILE,SNOW_COVER,SWAY,TINT_KIND,
-  U_AXIS,V_AXIS,V_FLIP} from './mesher-tables';
-import {emitShape} from './shapes';
+import type {LayerBuffer} from './mesher-builder';
+import * as builder from './mesher-builder';
+import * as tables from './mesher-tables';
+import * as shapesModule from './shapes';
+// Module-local aliases: hot loops read plain constants rather than live import bindings.
+const {AIR,B,LAYER:BLOCK_LAYER,OPAQUE,FACE_TILE}=blocks;
+const {biomeDef}=biomes;
+const {CS,CH,LAYER,CHUNK_VOLUME,PAD_X,PAD_LAYER,PAD_Y,padIndex}=constants;
+const {MeshBuilder}=builder;
+const {AO_OFF,AVG,CORNER,CU,CULL_SAME,CV,EMISSIVE,FAMILY_ID,FLAG_EMISSIVE,FLAG_SWAY,FLIP_ORDER,GRASS_ID,GRASS_OVERLAY_TILE,GRASS_SIDE_TILE,N_AXIS,N_SIGN,PAD_NB,SHADE,SHAPE,SH_AIR,SH_CUBE,SIDE_FACE,SNOWY_DIRT,SNOWY_SIDE_TILE,SNOW_COVER,SWAY,TINT_KIND,U_AXIS,V_AXIS,V_FLIP}=tables;
+const {emitShape}=shapesModule;
 
 export {plantOffset} from './shapes';
 const PL=PAD_LAYER,PX=PAD_X;
@@ -28,14 +34,19 @@ const PY_TOP=PAD_Y-1;
 /** Copies the centre chunk and a one-voxel rim of its neighbours into the padded volume (stone below y=0, air above
  *  the top). Returns the highest non-air y of the centre chunk (-1 when empty). */
 function fillBlocks(n:readonly (ChunkData|null)[],pad:Uint8Array):number{
-  const pick=(i:number)=>(n[i]??SOLID_CHUNK).blocks;
-  const c=pick(4),w=pick(3),e=pick(5),north=pick(1),south=pick(7),nw=pick(0),ne=pick(2),sw=pick(6),se=pick(8),L=CS-1;
-  pad.fill(B.stone,0,PL);pad.fill(AIR,(PY_TOP)*PL);
+  const c=(n[4]??SOLID_CHUNK).blocks,w=(n[3]??SOLID_CHUNK).blocks,e=(n[5]??SOLID_CHUNK).blocks;
+  const north=(n[1]??SOLID_CHUNK).blocks,south=(n[7]??SOLID_CHUNK).blocks,nw=(n[0]??SOLID_CHUNK).blocks,ne=(n[2]??SOLID_CHUNK).blocks;
+  const sw=(n[6]??SOLID_CHUNK).blocks,se=(n[8]??SOLID_CHUNK).blocks,L=CS-1;
+  pad.fill(B.stone,0,PL);pad.fill(AIR,PY_TOP*PL);
   for(let y=0;y<CH;y++){
     const py=(y+1)*PL,src=y*LAYER;
-    for(let z=0;z<CS;z++){const row=py+(z+1)*PX,s=src+z*CS;pad.set(c.subarray(s,s+CS),row+1);pad[row]=w[s+L];pad[row+CS+1]=e[s];}
+    for(let z=0;z<CS;z++){
+      const row=py+(z+1)*PX,s=src+z*CS;
+      for(let x=0;x<CS;x++)pad[row+1+x]=c[s+x];
+      pad[row]=w[s+L];pad[row+CS+1]=e[s];
+    }
     const top=py,bottom=py+(CS+1)*PX,last=src+L*CS;
-    pad.set(north.subarray(last,last+CS),top+1);pad.set(south.subarray(src,src+CS),bottom+1);
+    for(let x=0;x<CS;x++){pad[top+1+x]=north[last+x];pad[bottom+1+x]=south[src+x];}
     pad[top]=nw[last+L];pad[top+CS+1]=ne[last];pad[bottom]=sw[src+L];pad[bottom+CS+1]=se[src];
   }
   for(let y=CH-1;y>=0;y--){const s=y*LAYER;for(let i=0;i<LAYER;i++)if(c[s+i]!==AIR)return y;}
