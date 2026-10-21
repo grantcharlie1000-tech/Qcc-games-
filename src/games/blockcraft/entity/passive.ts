@@ -335,10 +335,11 @@ function matureCarrot(game:Game,x:number,y:number,z:number):boolean{
   const d=blockDef(game.world.get(x,y,z));
   return d.family==='carrots'&&d.age===d.maxAge&&FARMLAND.has(game.world.get(x,y-1,z));
 }
+const SEARCH_LEVELS=[0,1,-1];
 /** Vanilla MoveToBlockGoal search (range 16, the feet level then one above and below), nearest rings first. */
 function findCarrot(e:Entity,game:Game,b:Brain):boolean{
   const fx=Math.floor(e.x),fy=feetY(e),fz=Math.floor(e.z);
-  for(const dy of [0,1,-1])for(let r=0;r<16;r++)for(let dz=-r;dz<=r;dz++){
+  for(const dy of SEARCH_LEVELS)for(let r=0;r<16;r++)for(let dz=-r;dz<=r;dz++){
     const edge=dz===-r||dz===r,step=edge?1:2*r;
     for(let dx=-r;dx<=r;dx+=Math.max(1,step)){
       const x=fx+dx,y=fy+dy,z=fz+dz;

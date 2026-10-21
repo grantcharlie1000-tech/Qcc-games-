@@ -161,6 +161,30 @@ describe('AI decisions',()=>{
     expect(h.calls.some(x=>x.fn==='flee')).toBe(false);
     expect(navigations(h,rabbit).at(-1)?.speed).toBeCloseTo(PASSIVE_SPEEDS.rabbit.tempt);
   });
+  test('falls and drowning do not cause panic',()=>{
+    const h=setup(),cow=h.spawn('cow');
+    hurt(h,cow,{kind:'fall'});hurt(h,cow,{kind:'drown'});tick(h,1);
+    expect(navigations(h,cow).some(c=>c.speed===PASSIVE_SPEEDS.cow.panic)).toBe(false);
+  });
+  test('rabbits flee monsters within 4 blocks and wolves within 10',()=>{
+    const h=setup({mode:'creative'}),rabbit=h.spawn('rabbit',.5,60,.5);
+    const other=(kind:string,category:Entity['category'],x:number):Entity=>{
+      const e={...rabbit,id:100+h.list.length,kind,category,x,z:.5,data:{}};h.list.push(e);return e;
+    };
+    const zombie=other('zombie','hostile',5.5);
+    tick(h,5);expect(h.calls.some(c=>c.fn==='flee'&&c.id===rabbit.id)).toBe(false);
+    zombie.x=3.5;h.calls.length=0;tick(h,5);
+    const flee=h.calls.find(c=>c.fn==='flee'&&c.id===rabbit.id);
+    expect(flee?.x).toBeCloseTo(3.5);expect(flee?.speed).toBeCloseTo(PASSIVE_SPEEDS.rabbit.panic);
+    zombie.removed=true;other('wolf','passive',9.5);h.calls.length=0;tick(h,6);
+    expect(h.calls.filter(c=>c.fn==='flee'&&c.id===rabbit.id).at(-1)?.x).toBeCloseTo(9.5);
+  });
+  test('animals in love show hearts every half second',()=>{
+    const h=setup(),pig=h.spawn('pig');h.hold(stack('potato'));h.kind('pig').interact!(pig,h.game,h.game.inventory.held());
+    h.particles.length=0;tick(h,100);
+    expect(h.particles.filter(p=>p.kind==='heart').length).toBe(10);
+    tick(h,500);expect(pig.data.love).toBe(0);
+  });
   test('animals swim: they jump while in water',()=>{
     const h=setup(),cow=h.spawn('cow');cow.inWater=true;cow.onGround=false;
     let jumps=0;for(let i=0;i<50;i++){cow.jump=false;tick(h,1);if(cow.jump)jumps++;}
@@ -274,6 +298,17 @@ describe('breeding',()=>{
     expect(chick.data.growth).toBe(-24000+2400);expect(h.game.inventory.held()).toBeNull();
     expect(h.particles.some(p=>p.kind==='happy')).toBe(true);
   });
+  test('a restored baby keeps its growth, size and remaining time',()=>{
+    const h=setup(),k=h.kind('pig'),data=k.restoreData!({growth:-50,love:0})!;
+    const piglet=h.spawn('pig',.5,60,.5,{data,reason:'restore'});
+    expect(piglet.baby).toBe(true);expect(piglet.height).toBeCloseTo(.45);
+    tick(h,50);expect(piglet.baby).toBe(false);expect(piglet.height).toBeCloseTo(.9);
+  });
+  test('a baby grown up by someone else stays grown up',()=>{
+    const h=setup(),calf=h.spawn('cow',.5,60,.5,{baby:true,reason:'breed'});
+    calf.baby=false;tick(h,1);
+    expect(calf.data.growth).toBe(0);expect(calf.width).toBeCloseTo(.9);
+  });
   test('mooshrooms breed only with mooshrooms and their calves are mooshrooms',()=>{
     const h=setup(),m=h.spawn('cow',.5,60,.5,{data:{variant:'mooshroom'}}),c=h.spawn('cow',2,60,.5,{data:{variant:'cow'}}),cow=h.kind('cow');
     h.hold(stack('wheat',4));cow.interact!(m,h.game,h.game.inventory.held());cow.interact!(c,h.game,h.game.inventory.held());
@@ -343,6 +378,18 @@ describe('sheep',()=>{
     const sheep=h.spawn('sheep',.5,60,.5,{data:{color:'white',sheared:true}});
     tick(h,41);
     expect(w(h).get(0,60,0)).toBe(0);expect(w(h).get(0,59,0)).toBe(B.grass);expect(sheep.data.sheared).toBe(false);
+  });
+  test('a grazing lamb grows up a minute sooner',()=>{
+    const h=setup({random:()=>0}),lamb=h.spawn('sheep',.5,60,.5,{baby:true,reason:'breed',data:{color:'white'}});
+    // Lambs follow adults first; with none around it grazes.
+    tick(h,41);
+    expect(w(h).get(0,59,0)).toBe(B.dirt);
+    expect(lamb.data.growth).toBe(-24000+41+1200);
+  });
+  test('sheep do not graze on dirt or stone',()=>{
+    const h=setup({random:()=>0});w(h).set(0,59,0,B.dirt);
+    const sheep=h.spawn('sheep',.5,60,.5,{data:{color:'white',sheared:true}});
+    tick(h,50);expect(brainOf(sheep).eat).toBe(0);expect(sheep.data.sheared).toBe(true);
   });
   test('dye recolours an unsheared sheep',()=>{
     const h=setup(),sheep=h.spawn('sheep',.5,60,.5,{data:{color:'white'}});

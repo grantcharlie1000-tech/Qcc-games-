@@ -193,13 +193,14 @@ function eatAngle(t:number,partial:number):number{
 /** Sheep: skin model plus tinted wool layers (hidden when sheared). */
 export function sheepModel(tintOf:(e:Entity)=>number):EntityModel{
   const u=SHEEP_UV,legs:[string,number,number][]=[['leg_rh',-3,7],['leg_lh',3,7],['leg_rf',-3,-5],['leg_lf',3,-5]];
+  const woolLegs=legs.map(([name])=>`wool_${name}`);
   const parts:ModelPart[]=[
     part('head',[0,18,-8],[box([-3,-2,-6],u.head)]),
     part('wool_head',[0,18,-8],[box([-3,-2,-4],u.woolHead,.6)],{tinted:true}),
     part('body',[0,12,0],[box([-4,0,-8],u.body)]),
     part('wool_body',[0,12,0],[box([-4,0,-8],u.woolBody,1.75)],{tinted:true}),
     ...legs.map(([name,x,z])=>part(name,[x,12,z],[box([-2,-12,-2],u.leg)])),
-    ...legs.map(([name,x,z])=>part(`wool_${name}`,[x,12,z],[box([-2,-6,-2],u.woolLeg,.5)],{tinted:true}))
+    ...legs.map(([,x,z],i)=>part(woolLegs[i],[x,12,z],[box([-2,-6,-2],u.woolLeg,.5)],{tinted:true}))
   ];
   const appearance=new Map<number,{tint:number}>();
   return buildModel({width:64,height:70,variants:[{id:'sheep',paint:paintSheep}],parts,
@@ -209,10 +210,9 @@ export function sheepModel(tintOf:(e:Entity)=>number):EntityModel{
       const t=brainOf(e).eat;
       if(t>0){pose.head.py=-9*eatPosition(t,state.partial);pose.head.x=-eatAngle(t,state.partial);}
       copyRotation(pose.wool_head,pose.head);
-      for(const [name] of legs)copyRotation(pose[`wool_${name}`],pose[name]);
       const sheared=e.data.sheared===true;
       pose.wool_head.visible=pose.wool_body.visible=!sheared;
-      for(const [name] of legs)pose[`wool_${name}`].visible=!sheared;
+      for(let i=0;i<woolLegs.length;i++){const wool=pose[woolLegs[i]];copyRotation(wool,pose[legs[i][0]]);wool.visible=!sheared;}
     },
     appearance(e){
       const tint=tintOf(e);let a=appearance.get(tint);
