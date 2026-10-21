@@ -1,6 +1,6 @@
 import {describe,expect,test} from 'vitest';
 import {soundSpec,specDuration,SOUND_MATERIALS,MOB_SOUND_KINDS,type SoundSpec,type Layer} from '../../../src/games/blockcraft/audio/synth';
-import {resolveLevels} from '../../../src/games/blockcraft/audio/spec';
+import {hits,louder,noise,resolveLevels,tone,type NoiseLayer} from '../../../src/games/blockcraft/audio/spec';
 import {MOB_KINDS} from '../../../src/games/blockcraft/data/items';
 import type {SoundName} from '../../../src/games/blockcraft/engine/contracts';
 import type {SoundKind} from '../../../src/games/blockcraft/data/blocks';
@@ -188,5 +188,30 @@ describe('mob voices',()=>{
   test('unknown creatures get a stable generic voice',()=>{
     expect(signature(must('mob:villager:hurt'))).toBe(signature(must('mob:villager:hurt')));
     expect(signature(must('mob:villager:hurt'))).not.toBe(signature(must('mob:pillager:hurt')));
+  });
+});
+
+describe('loudness trims',()=>{
+  test('louder scales envelope and grain gains in place, capped at 1; bad factors change nothing',()=>{
+    const build=()=>[tone('sine',440,{decay:.1,gain:.3}),noise('bandpass',900,{decay:.02,gain:.4,bursts:hits([0,.1],.02,.5)})];
+    const layers=build();
+    expect(louder(layers,2)).toBe(layers);
+    expect(layers[0].gain).toBeCloseTo(.6,6);
+    expect(layers[1].gain).toBeCloseTo(.8,6);
+    expect((layers[1] as NoiseLayer).bursts!.map(b=>b.gain)).toEqual([1,1]);
+    for(const k of [1,0,-2,Number.NaN,Infinity]){
+      const fresh=build();louder(fresh,k);
+      expect(fresh.map(l=>l.gain)).toEqual([.3,.4]);
+    }
+  });
+  test('trimmed recipes keep every gain within 0..1 and boost the quiet sample sets',()=>{
+    for(const name of ['chest_open','mob:pig:ambient','mob:skeleton:ambient','mob:spider:hurt','break:snow'])
+      for(const r of [fixed(0),fixed(.999),seeded(3)])for(const l of must(name,r).layers){
+        expect(l.gain).toBeLessThanOrEqual(1);
+        if(l.kind==='noise'&&l.bursts)for(const b of l.bursts)expect(b.gain).toBeLessThanOrEqual(1);
+      }
+    // Opening a chest is no longer a whisper next to closing it.
+    const peak=(name:string)=>Math.max(...must(name).layers.map(l=>l.gain));
+    expect(peak('chest_open')).toBeGreaterThan(.6*peak('chest_close'));
   });
 });
