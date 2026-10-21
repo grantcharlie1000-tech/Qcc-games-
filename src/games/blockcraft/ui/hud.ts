@@ -22,14 +22,18 @@ import {createMenus} from './menus';
 /** Readout dial size in GUI pixels (the 16 px dial art at 1.5×). */
 const DIAL=24;
 const SHOWN_STATES=new Set(['playing','screen','paused','dead']);
-const ROOT_VARS=['--bc-gui','--bc-hud-bottom','--bc-hud-bars','--bc-hud-top'];
+const ROOT_VARS=['--bc-gui','--bc-hud-bottom','--bc-hud-bars','--bc-hud-top','--bc-hud-actionbar'];
 
 function box(el:HTMLElement,left:number,bottom:number,width?:number,height?:number){
   const s=el.style;s.left=`${left}px`;s.bottom=`${bottom}px`;if(width!==undefined)s.width=`${width}px`;if(height!==undefined)s.height=`${height}px`;
 }
-/** Sets an element's background layers (top first) only when they change. */
-function layers(el:HTMLElement,urls:string){if(el.dataset.bg!==urls){el.dataset.bg=urls;el.style.backgroundImage=urls;}}
 const url=(u:string)=>`url("${u}")`;
+/** Sets an element's icon layers (top first, hud-art icon names) only when they change; `data-icon` names them. */
+function layers(el:HTMLElement,names:readonly string[],patterns:boolean){
+  const key=names.join(' ')+(patterns?' +patterns':'');
+  if(el.dataset.icon===key)return;
+  el.dataset.icon=key;el.style.backgroundImage=names.map(n=>url(hudIconUrl(n,patterns))).join(',');
+}
 
 /** One item stack drawn like a vanilla slot: 16×16 icon, durability bar and count. */
 class StackView{
@@ -112,7 +116,7 @@ export function createHud(game:Game):HudService{
   const tracker=new HealthTracker();
   let layout:HudLayout=hudLayout(1280,720,false),layoutDirty=true,touch=false,colorBlind=false,reduced=false;
   let lastTick=-1,lastHurtTick=-1000,heldTimer=0,prevHeld:ItemStack|null=null,heldId='\u0000',selected=-1,barsLabel='';
-  let fpsFrames=0,fpsTime=0,fps=0,debugAt=0,state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'above'='above';
+  let fpsFrames=0,fpsStart=0,fps=0,debugAt=0,barsTop=49,stackKey='',state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'above'='above';
   const cur=new Float64Array(20),prev=new Float64Array(20).fill(NaN);
   let resize:ResizeObserver|null=null;
 
@@ -128,7 +132,7 @@ export function createHud(game:Game):HudService{
     const right=w/2+(91+layout.shift+4+DIAL*2+2)*s;
     readoutMode=right<=w-8&&(right<=w-150||layout.bottom>=40)?'right':'above';
     readouts.dataset.place=readoutMode;
-    if(readoutMode==='right')box(readouts,95,0);else box(readouts,0,78);
+    stackKey='';placeStack();
   }
   function setVisibility(){
     const s=game.state;if(s===state)return;state=s;
@@ -151,32 +155,33 @@ export function createHud(game:Game):HudService{
     heartEls.forEach((e,i)=>{
       const h=hearts.icons[i];e.hidden=!h;if(!h)return;
       const kind=h.type==='poison'?'heart_poison':'heart',list:string[]=[];
-      if(h.fill)list.push(url(hudIconUrl(iconName(kind,h.fill),colorBlind)));
-      if(h.lost)list.push(url(hudIconUrl(`${iconName(kind,h.lost)}_blink`,colorBlind)));
-      if(h.absorb)list.push(url(hudIconUrl(iconName('heart_absorb',h.absorb),colorBlind)));
-      list.push(url(hudIconUrl(h.blinkContainer?'heart_container_blink':'heart_container',false)));
-      layers(e,list.join(','));box(e,-91+h.x,30+h.up);
+      if(h.fill)list.push(iconName(kind,h.fill));
+      if(h.lost)list.push(`${iconName(kind,h.lost)}_blink`);
+      if(h.absorb)list.push(iconName('heart_absorb',h.absorb));
+      list.push(h.blinkContainer?'heart_container_blink':'heart_container');
+      layers(e,list,colorBlind);box(e,-91+h.x,30+h.up);
     });
     const armour=armorIcons(s.armorPoints()),armorBottom=40+(hearts.rows-1)*hearts.rowHeight;
+    barsTop=Math.max(49,armour.length?armorBottom+9:30+(hearts.rows-1)*hearts.rowHeight+9);placeStack();
     armorIconsEls.forEach((e,j)=>{
       const a=armour[j];e.hidden=!a;if(!a)return;
-      layers(e,a==='empty'?url(hudIconUrl('armor_empty',false)):`${url(hudIconUrl(`armor_${a}`,false))},${url(hudIconUrl('armor_empty',false))}`);
+      layers(e,a==='empty'?['armor_empty']:[`armor_${a}`,'armor_empty'],false);
       box(e,-91+j*8,armorBottom);
     });
     const hunger=s.hasEffect('hunger');
     foodIcons(s.food,s.saturation,hunger,tick,random).forEach((f,k)=>{
-      const e=foodEls[k],container=url(hudIconUrl(hunger?'food_hunger_container':'food_container',false));
-      layers(e,f.fill?`${url(hudIconUrl(`food_${hunger?'hunger_':''}${f.fill}`,colorBlind))},${container}`:container);
+      const e=foodEls[k],container=hunger?'food_hunger_container':'food_container';
+      layers(e,f.fill?[`food_${hunger?'hunger_':''}${f.fill}`,container]:[container],colorBlind);
       box(e,-91+f.x,30+f.up);
     });
     const air=airBubbles(s.air,s.maxAir,p.headInWater);
     airEls.forEach((e,j)=>{
       const kind=!air?null:j<air.full?'air':j<air.full+air.popping?'air_bursting':null;
-      e.hidden=!kind;if(kind)layers(e,url(hudIconUrl(kind,false)));
+      e.hidden=!kind;if(kind)layers(e,[kind],false);
     });
     const fill=xpFill(s.xpProgress);xpFillEl.style.width=`${fill}px`;
     levelEl.hidden=s.xpLevel<=0;
-    if(s.xpLevel>0){const t=String(s.xpLevel);layers(levelEl,url(digitsUrl(t,'level')));box(levelEl,-3*t.length-1,27,6*t.length+1,9);}
+    if(s.xpLevel>0){const t=String(s.xpLevel);levelEl.style.backgroundImage=url(digitsUrl(t,'level'));levelEl.dataset.level=t;box(levelEl,-3*t.length-1,27,6*t.length+1,9);}
     const label=`Health ${Math.ceil(s.health)/2} of ${s.maxHealth/2} hearts${s.absorption>0?`, ${Math.ceil(s.absorption)/2} absorption`:''}, food ${s.food/2} of 10`
       +`${armour.length?`, armour ${s.armorPoints()}`:''}${air?`, air ${air.full} of 10`:''}, experience level ${s.xpLevel}`;
     if(label!==barsLabel){barsLabel=label;bars.setAttribute('aria-label',label);}
@@ -217,10 +222,18 @@ export function createHud(game:Game):HudService{
       if(held){const n=heldName(held);heldEl.textContent=n.text;heldEl.style.color=RARITY_COLOURS[n.rarity];}else heldEl.textContent='';
     }
   }
+  /** Held item name, action bar and readouts above the bars: the vanilla heights (59 and 68 px from the bottom),
+   *  lifted when extra heart rows push the armour row up so they never overlap it. */
+  function placeStack(){
+    const creative=game.settings.mode==='creative',name=creative?36:Math.max(50,barsTop+1),action=Math.max(64,name+14);
+    const key=`${name}:${action}:${readoutMode}:${layout.scale}:${layout.bottom}`;if(key===stackKey)return;stackKey=key;
+    heldEl.style.bottom=`${name}px`;
+    game.root.style.setProperty('--bc-hud-actionbar',`${(layout.bottom+action*layout.scale).toFixed(1)}px`);
+    if(readoutMode==='right')box(readouts,95,0);else box(readouts,0,action+14);
+  }
   function updateHeldName(){
     const o=heldId?heldNameOpacity(heldTimer):0;
     heldEl.style.opacity=o.toFixed(3);heldEl.hidden=o<=0;
-    heldEl.style.bottom=game.settings.mode==='creative'?'36px':'50px';
   }
   function updateCrosshair(){
     const it=game.interaction,target=it.entityTarget,held=game.inventory.held();
@@ -282,7 +295,7 @@ export function createHud(game:Game):HudService{
       offs.push(
         game.events.on('stateChanged',()=>{setVisibility();menus.refresh();}),
         game.events.on('settingsChanged',()=>{menus.refresh();hud.dataset.mode=game.settings.mode;crossKey='-';}),
-        game.events.on('modeChanged',({mode})=>{hud.dataset.mode=mode;}),
+        game.events.on('modeChanged',({mode})=>{hud.dataset.mode=mode;placeStack();}),
         game.events.on('playerDamaged',({amount})=>{if(amount>0){lastHurtTick=game.time.tick;damageFlash();}}),
         game.events.on('playerDied',({message})=>menus.setDeathMessage(message)),
         game.events.on('playerRespawned',resetHealth),
@@ -291,15 +304,15 @@ export function createHud(game:Game):HudService{
       );
       hud.dataset.mode=game.settings.mode;setVisibility();resetHealth();applyLayout();
     },
-    frame(dt){
-      // Frame counter for F3 (frames in the last second).
-      fpsFrames++;fpsTime+=dt;if(fpsTime>=1){fps=fpsFrames/fpsTime;fpsFrames=0;fpsTime=0;}
+    frame(){
+      // Frame counter for F3: frames per real second (dt is capped, so it cannot measure slow frames).
+      const now=performance.now();fpsFrames++;
+      if(!fpsStart)fpsStart=now;else if(now-fpsStart>=1000||!fps&&now-fpsStart>=250){fps=fpsFrames*1000/(now-fpsStart);fpsFrames=0;fpsStart=now;}
       if(game.input.touch!==touch){touch=game.input.touch;layoutDirty=true;menus.refresh();}
       const cb=game.context.settings.colorBlind,rm=game.reducedMotion;
       if(cb!==colorBlind||rm!==reduced){colorBlind=cb;reduced=rm;fx.dataset.reduced=String(rm);}
       if(layoutDirty)applyLayout();
       setVisibility();
-      const now=performance.now();
       updateDebug(now);
       if(hud.dataset.shown!=='true')return;
       const tick=game.time.tick;

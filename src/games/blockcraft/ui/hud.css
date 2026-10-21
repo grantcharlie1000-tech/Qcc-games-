@@ -56,7 +56,7 @@
 .blockcraft[data-hud-hidden=true] .bc-hud,.blockcraft[data-hud-hidden=true] .bc-crosshair,.blockcraft[data-hud-hidden=true] .bc-toast{visibility:hidden}
 
 /* ---- Action bar (the ui's toast) above the hotbar and bars, at the vanilla height ------------------------- */
-.blockcraft .bc-toast{left:50%;bottom:calc(var(--bc-hud-bottom,0px) + env(safe-area-inset-bottom,0px) + 64px * var(--bc-gui,2));
+.blockcraft .bc-toast{left:50%;bottom:calc(var(--bc-hud-actionbar,128px) + env(safe-area-inset-bottom,0px));
   max-width:min(92%,560px);padding:2px 8px;border-radius:2px;background:#00000059;color:#fff;
   font:700 clamp(13px,calc(7px * var(--bc-gui,2)),21px)/1.3 system-ui,sans-serif;text-shadow:1px 1px 0 #3f3f3f;text-align:center}
 

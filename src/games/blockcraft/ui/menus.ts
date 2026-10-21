@@ -79,6 +79,8 @@ export function createMenus(game:Game):Menus{
   function setPanel(p:Panel|'dead',focus=true){
     if(p!=='dead')panel=p;
     for(const page of pages)page.hidden=page.dataset.panel!==p;
+    // The options and controls pages replace the menu's introduction.
+    message.hidden=p==='options'||p==='controls';
     if(p==='controls')buildControls();
     if(focus)(pages.find(page=>!page.hidden)?.querySelector<HTMLElement>('button:not(:disabled),input'))?.focus({preventScroll:true});
   }
