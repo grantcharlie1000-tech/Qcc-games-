@@ -216,7 +216,7 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
           x+=rand(5)-rand(5);z+=rand(5)-rand(5);
           for(let guard=0;guard<8&&(x<cx*CS||x>=cx*CS+CS||z<cz*CS||z>=cz*CS+CS);guard++){x=x0+rand(5)-rand(5);z=z0+rand(5)-rand(5);}
           if(x<cx*CS||x>=cx*CS+CS||z<cz*CS||z>=cz*CS+CS){x=x0;z=z0;}
-          if(ok)break;
+          if(ok){if(full('passive'))return;break;}
         }
       }
     }
