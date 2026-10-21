@@ -94,7 +94,7 @@ const DESERT=biomeId('desert');
 const NO_PORTAL=new Set(['ocean','deep_ocean','river','frozen_river','beach','swamp','mushroom_fields'].map(biomeId));
 /** Chance per chunk of a desert well (in deserts) and a ruined portal (on dry land). */
 export const WELL_CHANCE=1/64,PORTAL_CHANCE=1/300;
-const COLUMN_CACHE=1<<15,CACHE_LIMIT=40000;
+const COLUMN_CACHE=1<<15,CACHE_LIMIT=16384;
 const columnKey=(x:number,z:number)=>(x+0x100000)*0x200000+(z+0x100000);
 
 /** Collects a planned tree's blocks (reused). */

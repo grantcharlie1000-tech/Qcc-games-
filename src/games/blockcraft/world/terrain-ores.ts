@@ -96,7 +96,7 @@ function sampleY(c:CompiledRule,random:Stream):number{
 }
 
 /** Per vein: segment ends [ax, ay, az, bx, by, bz] and the radius amplitude. */
-const VEIN=7,SOURCE_CACHE=512;
+const VEIN=7,SOURCE_CACHE=128;
 /** Veins of one source chunk: rule r's `count[r]` veins (-1 until built) start at vein OFFSET[r] of `data`. */
 interface SourceVeins{data:Float64Array;count:Int16Array}
 const OFFSET=new Int32Array(COMPILED.length);
