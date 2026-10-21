@@ -137,6 +137,13 @@ test('first-person hand, held items, selection, breaking crack, screen overlays,
   await expect.poll(()=>page.evaluate(()=>{const g=(window as unknown as {blockcraft:Engine}).blockcraft;return g.render.scene.getObjectByName('hand').geometry.drawRange.count;}),{timeout:20000}).toBeGreaterThan(36);
   await page.waitForTimeout(1500);await settle(page,4);
   await shot(page,'hand-items');
+  // A held ice block: its translucent faces blend in the (single, blended) hand draw call.
+  const before=await page.evaluate(()=>{const g=(window as unknown as {blockcraft:Engine}).blockcraft;
+    g.inventory.setSlot(g.inventory.selected,{id:'ice',count:1});return g.render.scene.getObjectByName('hand').geometry.drawRange.count;});
+  await expect.poll(()=>page.evaluate(()=>{const g=(window as unknown as {blockcraft:Engine}).blockcraft;return g.render.scene.getObjectByName('hand').geometry.drawRange.count;}),{timeout:20000}).not.toBe(before);
+  await page.waitForTimeout(1500);await settle(page,4);
+  await shot(page,'hand-ice');
+  await page.evaluate(()=>{const g=(window as unknown as {blockcraft:Engine}).blockcraft;g.inventory.setSlot(g.inventory.selected,{id:'diamond_sword',count:1});});
 
   // Selection outline and crack on the targeted block, flames on screen, debris, smoke and an explosion.
   const target=await page.evaluate(()=>{const g=(window as unknown as {blockcraft:Engine}).blockcraft;return g.interaction.target;});
@@ -150,6 +157,19 @@ test('first-person hand, held items, selection, breaking crack, screen overlays,
   },target);
   await settle(page,4);
   await shot(page,'crack');
+  // F1 hides the outline but not the crack. Blended order: block overlay before translucent chunks (2), clouds before
+  // particles, the hand after them.
+  const order=await page.evaluate(async()=>{
+    const g=(window as unknown as {blockcraft:Engine}).blockcraft,r=g.render,root=document.querySelector('.blockcraft') as HTMLElement;
+    const frames=()=>new Promise<void>(done=>requestAnimationFrame(()=>requestAnimationFrame(()=>done())));
+    root.dataset.hudHidden='true';await frames();
+    const u=r.scene.getObjectByName('block-overlay').material.uniforms,hidden={outline:u.showOutline.value,crack:u.showCrack.value};
+    root.dataset.hudHidden='';await frames();
+    const at=(n:string)=>r.scene.getObjectByName(n).renderOrder;
+    return{hidden,shown:u.showOutline.value,overlay:at('block-overlay'),clouds:at('clouds'),particles:at('particles'),hand:at('hand')};
+  });
+  expect(order.hidden).toEqual({outline:0,crack:1});expect(order.shown).toBe(1);
+  expect(order.overlay).toBeLessThan(2);expect(order.clouds).toBeLessThan(order.particles);expect(order.hand).toBeGreaterThan(order.particles);
   await page.evaluate(t=>{
     const g=(window as unknown as {blockcraft:Engine}).blockcraft,p=g.player.state,e=g.player.eye(),r=g.render;
     const at=t??{id:1};
