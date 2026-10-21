@@ -26,10 +26,11 @@ export function splitXp(points:number):number[]{
   while(left>0&&out.length<512){const v=xpOrbValue(left);out.push(v);left-=v;}
   return out;
 }
-/** Orb icon 0..10 for a value (vanilla ExperienceOrb.getIcon). */
+/** Orb icon thresholds, largest first (vanilla ExperienceOrb.getIcon). */
+const XP_ICON_THRESHOLDS=[2477,1237,617,307,149,73,37,17,7,3] as const;
+/** Orb icon 0..10 for a value (vanilla ExperienceOrb.getIcon). Called per orb per frame: no allocation. */
 export function xpIcon(points:number):number{
-  const t=[2477,1237,617,307,149,73,37,17,7,3];
-  for(let i=0;i<t.length;i++)if(points>=t[i])return 10-i;
+  for(let i=0;i<XP_ICON_THRESHOLDS.length;i++)if(points>=XP_ICON_THRESHOLDS[i])return 10-i;
   return 0;
 }
 
@@ -46,6 +47,10 @@ export function touchesPlayer(game:Game,e:Entity):boolean{
 export function createItemKinds(game:Game,service:()=>EntityService):{item:EntityKind;xp:EntityKind}{
   const scratch:Entity[]=[];
   let lastOrbPickup=-1e9;
+  // near() filters without per-call closures: the entity being ticked and its orb value.
+  let self:Entity|null=null,selfPoints=0;
+  const otherItem=(o:Entity)=>o!==self&&o.kind==='item';
+  const sameOrb=(o:Entity)=>o!==self&&o.kind==='xp_orb'&&(o.data as unknown as OrbData).points===selfPoints;
   const playerReady=()=>!game.survival.dead&&game.state!=='dead';
   function mergeable(e:Entity){
     const d=e.data as unknown as ItemData;
@@ -53,7 +58,7 @@ export function createItemKinds(game:Game,service:()=>EntityService):{item:Entit
   }
   function mergeItems(e:Entity){
     if(!mergeable(e))return;
-    const list=service().near(e.x,e.y+e.height/2,e.z,1,o=>o!==e&&o.kind==='item',scratch);
+    self=e;const list=service().near(e.x,e.y+e.height/2,e.z,1,otherItem,scratch);self=null;
     for(let i=0;i<list.length;i++){
       const o=list[i];
       if(Math.abs(o.x-e.x)>.5+e.width||Math.abs(o.z-e.z)>.5+e.width||Math.abs(o.y-e.y)>e.height||!mergeable(o))continue;
@@ -114,7 +119,8 @@ export function createItemKinds(game:Game,service:()=>EntityService):{item:Entit
       if(e.age>=ITEM_DESPAWN_AGE){service().remove(e);return;}
       // Same-value orbs close together merge into one (ExperienceOrb.scanForEntities, every 20 ticks).
       if(e.age%20===1){
-        const list=service().near(e.x,e.y+e.height/2,e.z,.75,o=>o!==e&&o.kind==='xp_orb'&&(o.data as unknown as OrbData).points===d.points,scratch);
+        self=e;selfPoints=d.points;
+        const list=service().near(e.x,e.y+e.height/2,e.z,.75,sameOrb,scratch);self=null;
         for(let i=0;i<list.length;i++){
           const o=list[i],od=o.data as unknown as OrbData;
           if(Math.abs(o.x-e.x)>.5+e.width||Math.abs(o.z-e.z)>.5+e.width||Math.abs(o.y-e.y)>e.height)continue;

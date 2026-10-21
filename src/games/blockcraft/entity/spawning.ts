@@ -116,9 +116,12 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
     while(y>=0){const id=game.world.get(x,y,z);if(id<0)return -1;if(SOLID[id]||LIQUID[id])break;y--;}
     return y<0?-1:y+1;
   }
+  /** Distance to the player of a candidate spawn position (squared 3D, horizontal), written to `dist` (no allocation). */
+  const dist={d2:0,h:0};
   function playerDistance(x:number,y:number,z:number){
-    const p=game.player.state;return{d2:(x-p.x)**2+(y-p.y)**2+(z-p.z)**2,h:Math.hypot(x-p.x,z-p.z)};
+    const p=game.player.state,dx=x-p.x,dy=y-p.y,dz=z-p.z;dist.d2=dx*dx+dy*dy+dz*dz;dist.h=Math.sqrt(dx*dx+dz*dz);
   }
+  const inSpawnRing=()=>dist.d2>MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE&&dist.h<=MAX_SPAWN_DISTANCE;
   function roomFor(k:EntityKind,x:number,y:number,z:number,water:boolean):boolean{
     if(collidesAt(game.world,x+.5,y,z+.5,k.width/2,k.height))return false;
     const feet=game.world.get(x,y,z),head=game.world.get(x,y+1,z);
@@ -156,8 +159,8 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
       let x=x0,z=z0,kind:EntityKind|null=null,tries=Math.ceil(game.random()*4),spawned=0;
       for(let t=0;t<tries;t++){
         x+=rand(6)-rand(6);z+=rand(6)-rand(6);
-        const {d2,h}=playerDistance(x+.5,y,z+.5);
-        if(d2<=MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE||h>MAX_SPAWN_DISTANCE||!game.world.isLoaded(x,z))continue;
+        playerDistance(x+.5,y,z+.5);
+        if(!inSpawnRing()||!game.world.isLoaded(x,z))continue;
         if(!kind){
           kind=pick(biomeDef(game.world.biomeAt(x,z)),light);
           if(!kind)break;
@@ -203,8 +206,8 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
     for(let i=0;i<n*2&&n>0;i++){
       const y=surfaceY(x,z);
       if(y>0){
-        const {d2,h}=playerDistance(x+.5,y,z+.5);
-        if(d2>MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE&&h<=MAX_SPAWN_DISTANCE&&game.world.brightnessAt(x,y,z)>8&&canSpawn(kind,'grass',x,y,z)){
+        playerDistance(x+.5,y,z+.5);
+        if(inSpawnRing()&&game.world.brightnessAt(x,y,z)>8&&canSpawn(kind,'grass',x,y,z)){
           host.spawn(kind.kind,x+.5,y,z+.5,{reason:'natural',yaw:game.random()*Math.PI*2});
           if(full('passive'))return;
         }

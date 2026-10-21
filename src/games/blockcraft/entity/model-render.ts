@@ -15,7 +15,7 @@ import {ITEM_SPRITES,itemDef} from '../data/items';
 import {CH,quadIndices} from '../engine/constants';
 import {spritePixels} from '../art/items';
 import type {AnimationState,ChunkMesh,Entity,EntityKind,Game,PartPose} from '../engine/contracts';
-import {FLAG_EMISSIVE,QuadWriter,compileModel,diffuse,entityMatrix,mat,packAtlas,paintOrb,writeModel,type AtlasLayout,type CompiledModel} from './model';
+import {FLAG_EMISSIVE,QuadWriter,compileModel,diffuse,entityMatrix,mat,packAtlas,paintOrb,writeModel,type AtlasLayout,type CompiledModel,type Region} from './model';
 import {xpIcon} from './items';
 import {wrapAngle} from './ai';
 
@@ -72,6 +72,9 @@ interface Layer{writer:QuadWriter;geometry:THREE.BufferGeometry;mesh:THREE.Mesh;
 interface BlockQuads{count:number;pos:Float32Array;uv:Float32Array;shade:Float32Array;tint:Uint8Array}
 
 const DEFAULT_TINT={grass:0x91bd59,foliage:0x77ab2f,water:0x3f76e4,none:0xffffff} as const;
+/** Components per vertex of the position, uv, color and extra attributes. */
+const ATTR_SIZES=[3,2,4,4] as const;
+const ORB_ICONS=11;
 const ANIM:AnimationState={time:0,partial:0,limbSwing:0,limbAmount:0,headYaw:0,headPitch:0,attack:0,reducedMotion:false};
 const BASE=mat(),PAINT={tint:-1};
 const lerp=(a:number,b:number,t:number)=>a+(b-a)*t;
@@ -85,6 +88,8 @@ export function createEntityRenderer(game:Game):EntityRenderer{
   let atlasTexture:THREE.DataTexture|null=null,layout:AtlasLayout|null=null,dirty=true,animTime=0;
   const models=new Map<string,CompiledModel>(),poses=new Map<string,Record<string,PartPose>>();
   const blockMeshes=new Map<number,BlockQuads>();
+  /** Atlas regions looked up per frame without building key strings: item sprites by sprite name, orbs by icon. */
+  const spriteRegions=new Map<string,Region>(),orbRegions:Region[]=[];
   const stats:RenderStats={entities:0,quads:0,blockQuads:0,drawCalls:0,cpuMs:0};
   const placeholder=new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1,THREE.RGBAFormat);placeholder.needsUpdate=true;
 
@@ -116,8 +121,9 @@ export function createEntityRenderer(game:Game):EntityRenderer{
       // Reallocated: replace the GPU buffers.
       l.geometry.dispose();bind(l);
     }
-    const sizes=[3,2,4,4];
-    l.attrs.forEach((a,i)=>{a.clearUpdateRanges();if(w.quads)a.addUpdateRange(0,w.quads*4*sizes[i]);a.needsUpdate=w.quads>0;});
+    for(let i=0;i<l.attrs.length;i++){
+      const a=l.attrs[i];a.clearUpdateRanges();if(w.quads)a.addUpdateRange(0,w.quads*4*ATTR_SIZES[i]);a.needsUpdate=w.quads>0;
+    }
     l.geometry.setDrawRange(0,w.quads*6);
     l.mesh.position.set(w.ox,w.oy,w.oz);
     l.mesh.visible=w.quads>0;
@@ -126,11 +132,11 @@ export function createEntityRenderer(game:Game):EntityRenderer{
 
   // ---- Atlas -----------------------------------------------------------------------------------
   function rebuildAtlas(){
-    dirty=false;models.clear();poses.clear();
+    dirty=false;models.clear();poses.clear();spriteRegions.clear();orbRegions.length=0;
     const kinds=game.entities.kinds().filter(k=>k.model&&Number.isInteger(k.model.textureWidth)&&Number.isInteger(k.model.textureHeight)
       &&k.model.textureWidth>0&&k.model.textureHeight>0&&k.model.textureWidth<=1024&&k.model.textureHeight<=1024);
     const items=[...kinds.map(k=>({key:'kind:'+k.kind,w:k.model!.textureWidth,h:k.model!.textureHeight})),
-      ...ITEM_SPRITES.map(s=>({key:'sprite:'+s,w:16,h:16})),...Array.from({length:11},(_,i)=>({key:'orb:'+i,w:16,h:16}))];
+      ...ITEM_SPRITES.map(s=>({key:'sprite:'+s,w:16,h:16})),...Array.from({length:ORB_ICONS},(_,i)=>({key:'orb:'+i,w:16,h:16}))];
     const l=packAtlas(items,512),pixels=new Uint8ClampedArray(l.width*l.height*4);
     for(const k of kinds){
       const r=l.regions.get('kind:'+k.kind)!,tw=r.w,th=r.h,tmp=new Uint8ClampedArray(tw*th*4);
@@ -142,8 +148,9 @@ export function createEntityRenderer(game:Game):EntityRenderer{
     for(const s of ITEM_SPRITES){
       const r=l.regions.get('sprite:'+s)!,px=spritePixels(s);
       for(let y=0;y<16;y++)pixels.set(px.subarray(y*64,(y+1)*64),((r.y+y)*l.width+r.x)*4);
+      spriteRegions.set(s,r);
     }
-    for(let i=0;i<11;i++){const r=l.regions.get('orb:'+i)!;paintOrb(pixels,l.width,r.x,r.y,i);}
+    for(let i=0;i<ORB_ICONS;i++){const r=l.regions.get('orb:'+i)!;paintOrb(pixels,l.width,r.x,r.y,i);orbRegions[i]=r;}
     atlasTexture?.dispose();
     atlasTexture=new THREE.DataTexture(new Uint8Array(pixels.buffer),l.width,l.height,THREE.RGBAFormat);
     atlasTexture.magFilter=THREE.NearestFilter;atlasTexture.minFilter=THREE.NearestFilter;atlasTexture.generateMipmaps=false;atlasTexture.needsUpdate=true;
@@ -254,7 +261,7 @@ export function createEntityRenderer(game:Game):EntityRenderer{
       const nx=thrown?0:Math.sin(spin)*.06*i,nz=thrown?0:Math.cos(spin)*.06*i;
       const cx=x+jx*.4-nx,cy=y+(thrown?e.height/2:.25+bob)+jy*.3,cz=z+jz*.4-nz;
       if(icon.kind==='sprite'){
-        const reg=layout?.regions.get('sprite:'+icon.sprite);if(!reg||!layout)return;
+        const reg=spriteRegions.get(icon.sprite);if(!reg||!layout)return;
         const w=entityLayer.writer;w.light=light;
         const e1=1/64;
         w.rect(cx,cy,cz,ux,uy,uz,vx,vy,vz,(reg.x+e1)/layout.width,(reg.y+e1)/layout.height,(reg.x+16-e1)/layout.width,(reg.y+16-e1)/layout.height,1,0);
@@ -275,7 +282,7 @@ export function createEntityRenderer(game:Game):EntityRenderer{
     return c;
   }
   function drawOrb(r:RenderRec,x:number,y:number,z:number,partial:number,light:number){
-    const e=r.e,points=e.data.points,reg=layout?.regions.get('orb:'+xpIcon(typeof points==='number'?points:1));if(!reg||!layout)return;
+    const e=r.e,points=e.data.points,reg=orbRegions[xpIcon(typeof points==='number'?points:1)];if(!reg||!layout)return;
     const w=entityLayer.writer,f=(e.age+partial)/2;
     w.light=light;w.tintR=Math.round((Math.sin(f)+1)*.5*255);w.tintG=255;w.tintB=Math.round((Math.sin(f+4.18879)+1)*.1*255);
     const s=.15,e1=1/64;
@@ -349,7 +356,7 @@ export function createEntityRenderer(game:Game):EntityRenderer{
     },
     dispose(){
       for(const l of [entityLayer,blockLayer]){scene.remove(l.mesh);l.geometry.dispose();l.material.dispose();}
-      atlasTexture?.dispose();atlasTexture=null;placeholder.dispose();blockMeshes.clear();models.clear();
+      atlasTexture?.dispose();atlasTexture=null;placeholder.dispose();blockMeshes.clear();models.clear();spriteRegions.clear();orbRegions.length=0;
     }
   };
   return renderer;
