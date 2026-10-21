@@ -12,6 +12,7 @@ function tamedWolf(h:Harness,x:number,z:number,sitting=false):Entity{
   return w;
 }
 const player=(h:Harness)=>h.game.player.state;
+const setDead=(h:Harness,dead:boolean)=>{(h.game.survival as {dead:boolean}).dead=dead;};
 
 describe('wolf kind',()=>{
   it('registers the wolf and squid with vanilla sizes, health and spawning',()=>{
@@ -224,6 +225,69 @@ describe('wild wolves',()=>{
     h.run(1);
     expect(angerOf(w)).toBe(0);
   });
+  it('forgives a player who dies nearby (vanilla forgiveDeadPlayers): no target and no new attack after respawning',()=>{
+    const h=createHarness(),pack=[h.spawn('wolf',4.5,60,.5),h.spawn('wolf',6.5,60,2.5),h.spawn('wolf',5.5,60,-2.5)];
+    const far=h.spawn('wolf',.5,60,36.5);
+    h.game.entities.damage(pack[0],1,{kind:'player',byPlayer:true});
+    h.game.entities.damage(far,1,{kind:'player',byPlayer:true});
+    until(h,()=>h.hurt.length>0,100);
+    expect(h.hurt.length).toBeGreaterThan(0);
+    setDead(h,true);
+    h.game.events.emit('playerDied',{message:'Player was slain by Wolf'});
+    for(const w of pack){
+      const b=wolfBrain(w);
+      expect(w.data.angerAt).toBeUndefined();expect(b.targetPlayer).toBe(false);expect(b.target).toBe(null);
+      // NeutralMob.forgetCurrentTargetAndRefreshUniversalAnger restarts the anger timer without a target.
+      expect(angerOf(w)).toBeGreaterThanOrEqual(400);
+    }
+    // Beyond 32 blocks the wolf is not told.
+    expect(far.data.angerAt).toBe('player');
+    setDead(h,false);
+    const bites=h.hurt.length;
+    h.run(300);
+    expect(h.hurt.slice(bites).filter(x=>pack.includes(x.source.attacker!))).toEqual([]);
+  });
+});
+
+describe('a goal that ends stops the wolf (the movement intent outlives the AI call that set it)',()=>{
+  const speed=(w:Entity)=>Math.hypot(w.moveX,w.moveZ);
+  it('after a panic',()=>{
+    const h=createHarness(),w=h.spawn('wolf',.5,60,.5);
+    player(h).x=-20.5;
+    h.game.entities.damage(w,1,{kind:'lightning'});
+    expect(until(h,()=>wolfBrain(w).panic===0,60)).toBeLessThan(60);
+    expect(speed(w)).toBeGreaterThan(1);
+    h.run(1);
+    expect(speed(w)).toBe(0);
+    h.run(20);const at={x:w.x,y:w.y,z:w.z};h.run(20);
+    expect(dist(w,at)).toBeLessThan(1e-3);
+  });
+  it('after a kill',()=>{
+    const h=createHarness(),w=h.spawn('wolf',.5,60,.5),rabbit=h.spawn('rabbit',6.5,60,.5);
+    rabbit.health=1;player(h).x=-20.5;
+    until(h,()=>rabbit.deathTime>0,400);
+    expect(rabbit.deathTime).toBeGreaterThan(0);
+    h.run(1);
+    expect(speed(w)).toBe(0);
+  });
+  it('when the breeding partner is lost',()=>{
+    const h=createHarness(),a=tamedWolf(h,1.5,.5),b=tamedWolf(h,7.5,.5);
+    h.hold('beef',2);h.use(a);h.use(b);
+    h.run(3);
+    expect(speed(a)).toBeGreaterThan(1);
+    b.data.sitting=true;
+    h.run(1);
+    expect(speed(a)).toBe(0);
+  });
+  it('when the owner dies while it follows',()=>{
+    const h=createHarness(),w=tamedWolf(h,.5,.5);
+    player(h).x=11.5;
+    h.run(3);
+    expect(speed(w)).toBeGreaterThan(1);
+    setDead(h,true);
+    h.run(1);
+    expect(speed(w)).toBe(0);
+  });
 });
 
 describe('feeding and breeding',()=>{
@@ -286,6 +350,21 @@ describe('looks and sounds',()=>{
     const wild=h.spawn('wolf',6.5,60,.5);
     expect(tailAngle(wild)).toBeCloseTo(Math.PI/5);
     expect(model.appearance!(wild).tint).toBeUndefined();
+    // Called every frame for every wolf: cached objects, no allocation.
+    expect(model.appearance!(w)).toBe(model.appearance!(w));
+    expect(model.appearance!(wild)).toBe(model.appearance!(wild));
+  });
+  it('begs (head tilt) for meat; for a bone only when tamed (vanilla BegGoal since 1.9)',()=>{
+    const interest=(tamed:boolean,item:string)=>{
+      const h=createHarness(),w=tamed?tamedWolf(h,3.5,.5):h.spawn('wolf',3.5,60,.5);
+      h.hold(item);h.run(10);
+      return wolfBrain(w).interest;
+    };
+    expect(interest(true,'bone')).toBeGreaterThan(.9);
+    expect(interest(false,'bone')).toBe(0);
+    expect(interest(true,'beef')).toBeGreaterThan(.9);
+    expect(interest(false,'beef')).toBeGreaterThan(.9);
+    expect(interest(true,'stick')).toBe(0);
   });
   it('growls when angry, whines when a tamed wolf is badly hurt, barks or pants otherwise',()=>{
     const ambient=(setup:(w:Entity,h:Harness)=>void,rolls:number[])=>{
@@ -342,9 +421,12 @@ describe('persistence',()=>{
     expect(restoreWolfData({variant:'woods',owner:'player',collar:'mauve'})).toEqual({variant:'woods',owner:'player',sitting:false,collar:'red'});
   });
   it('a restored tamed wolf keeps its health and owner and a restored angry wolf remembers the player',()=>{
-    const h=createHarness(),w=h.spawn('wolf',3.5,60,.5,{data:restoreWolfData({variant:'woods',owner:'player',sitting:true}),reason:'restore'});
-    expect(w.maxHealth).toBe(TAME_HEALTH);
-    const angry=h.spawn('wolf',5.5,60,.5,{data:restoreWolfData({anger:300,angerAt:'player'}),reason:'restore'});
+    const h=createHarness(),w=h.restore('wolf',3.5,60,.5,{data:{variant:'woods',owner:'player',sitting:true},health:23});
+    expect(w.maxHealth).toBe(TAME_HEALTH);expect(w.health).toBe(23);
+    expect(isTame(w)).toBe(true);expect(w.data.variant).toBe('woods');
+    const wild=h.restore('wolf',8.5,60,.5,{data:{variant:'ashen'},health:5});
+    expect(wild.maxHealth).toBe(WILD_HEALTH);expect(wild.health).toBe(5);
+    const angry=h.restore('wolf',5.5,60,.5,{data:{anger:300,angerAt:'player'}});
     until(h,()=>h.hurt.length>0,200);
     expect(h.hurt[0]?.source.attacker).toBe(angry);
     expect(isSitting(w)).toBe(true);

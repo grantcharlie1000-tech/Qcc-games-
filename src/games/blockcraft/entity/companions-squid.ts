@@ -121,7 +121,8 @@ export function tickSquid(e:Entity,game:Game):void{
 }
 /** Squid.spawnInk: 30 ink puffs from the tentacle end (one block "below" the body in its own frame). */
 export function spawnInk(e:Entity,game:Game,b:SquidBrain){
-  game.sounds.play('splash',{x:e.x,y:e.y+e.height/2,z:e.z},{volume:.4,pitch:(game.random()-game.random())*.2+1});
+  // SoundEvents.SQUID_SQUIRT at the squid's volume (0.4) and voice pitch.
+  game.sounds.play('mob:squid_squirt:ambient',{x:e.x,y:e.y+e.height/2,z:e.z},{volume:.4,pitch:(game.random()-game.random())*.2+1});
   // Body frame → world: Ry(yaw) · Rx(pitch), as the model is drawn.
   const cp=Math.cos(b.pitch),sp=Math.sin(b.pitch),cy=Math.cos(e.yaw),sy=Math.sin(e.yaw);
   const rotate=(x:number,y:number,z:number,out:number[])=>{

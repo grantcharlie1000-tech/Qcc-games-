@@ -14,6 +14,9 @@
 //    Puppies grow up in 20 minutes; meat speeds that by 10%.
 //  - Melee: 4 damage every second, a 0.4 blocks/tick leap from 2-4 blocks. A tamed wolf's kills count as the owner's.
 //  - Wet wolves shake themselves dry (2 s, splashes) once on dry ground; panics on fire, lava, cacti and lightning.
+//  - Begs (head tilt) at a player within 8 blocks holding meat, or a bone when tamed. A player who dies is forgiven by the
+//    wolves within 32 blocks that were angry at them (forgiveDeadPlayers).
+//  - A goal that ends (panic over, target dead or lost, owner dead, partner gone) stops the wolf before it strolls again.
 //  - Sounds: bark, pant, growl (angry), whine (tamed, hurt) at vanilla volume 0.4, plus the shake.
 // Persistent state is in entity.data (variant, owner, sitting, collar, growth, love, anger, angerAt); transient AI state
 // lives in a per-entity brain.
@@ -117,14 +120,18 @@ export interface WolfBrain{
   happy:number;
   /** Drawn sitting this tick (ordered to sit, on the ground, out of water). */
   sitPose:boolean;
+  /** The behaviour run last tick (GOAL_*). The movement intent outlives the AI call that set it, so a wolf whose goal
+   *  ended (vanilla Goal.stop → navigation.stop) is stopped before it goes back to strolling. */
+  goal:number;
 }
+export const GOAL_IDLE=0,GOAL_PANIC=1,GOAL_SIT=2,GOAL_FIGHT=3,GOAL_FOLLOW=4,GOAL_BREED=5;
 const BRAINS=new WeakMap<Entity,WolfBrain>();
 export function wolfBrain(e:Entity):WolfBrain{
   let b=BRAINS.get(e);
   if(!b){
     b={target:null,targetPlayer:false,priority:99,unseen:0,angerKey:e.data.angerAt==='player'&&angerOf(e)>0?-1:0,cooldown:0,leap:0,
       panic:0,panicX:0,panicZ:0,ambient:-80,look:0,lookMode:0,lookX:0,lookY:0,lookZ:0,beg:0,interest:0,interestO:0,following:false,recalc:0,
-      wet:false,shaking:false,shake:0,shakeO:0,partner:0,loveTime:0,happy:0,sitPose:isSitting(e)};
+      wet:false,shaking:false,shake:0,shakeO:0,partner:0,loveTime:0,happy:0,sitPose:isSitting(e),goal:GOAL_IDLE};
     BRAINS.set(e,b);
   }
   return b;
@@ -422,14 +429,15 @@ function ambientSound(e:Entity,game:Game,b:WolfBrain){
   else if(game.random()<1/3)name=isTame(e)&&e.health<e.maxHealth/2?'mob:wolf_whine:ambient':'mob:wolf_pant:ambient';
   game.sounds.play(name,centre(e),{volume:.4,pitch:voice(game,e)});
 }
-/** Is the player within 8 blocks holding something the wolf begs for (a bone if wild, meat)? */
+/** BegGoal.playerHoldingInteresting: meat, or a bone when tamed (wild wolves stopped begging for bones in 1.9). */
+const begsFor=(s:ItemStack|null,tame:boolean)=>!!s&&(WOLF_FOOD.has(s.id)||tame&&s.id==='bone');
+/** Is the player within 8 blocks holding something the wolf begs for? */
 function begTarget(e:Entity,game:Game):boolean{
   if(game.survival.dead)return false;
   const p=game.player.state;
   if((p.x-e.x)**2+(p.y-e.y)**2+(p.z-e.z)**2>64)return false;
   const tame=isTame(e),inv=game.inventory;
-  const wants=(s:ItemStack|null)=>!!s&&(WOLF_FOOD.has(s.id)||!tame&&s.id==='bone');
-  return wants(inv.held())||wants(inv.offhand);
+  return begsFor(inv.held(),tame)||begsFor(inv.offhand,tame);
 }
 /** BegGoal, LookAtPlayerGoal (8 blocks) and RandomLookAroundGoal. */
 function looking(e:Entity,game:Game,b:WolfBrain){
@@ -545,19 +553,22 @@ export function tickWolf(e:Entity,game:Game):void{
   // FloatGoal.
   if((e.inWater||e.inLava)&&game.random()<.8)e.jump=true;
   b.sitPose=false;
-  if(b.panic>0){panic(e,game,b);return;}
+  if(b.panic>0){b.goal=GOAL_PANIC;panic(e,game,b);return;}
   if(tame&&d.sitting===true){
     // SitWhenOrderedToGoal: stays put (and drops any target); only sits down on dry ground.
     if(hasTarget(b))clearTarget(b);
-    b.following=false;ai.stop(e);
+    b.following=false;ai.stop(e);b.goal=GOAL_SIT;
     b.sitPose=e.onGround&&!e.inWater&&!e.inLava;
     looking(e,game,b);
     return;
   }
   if(!hasTarget(b))findTarget(e,game,b);
-  if(hasTarget(b)){b.following=false;fight(e,game,b);return;}
-  if(tame&&followOwner(e,game,b))return;
-  if(breeding(e,game,b))return;
+  if(hasTarget(b)){b.following=false;b.goal=GOAL_FIGHT;fight(e,game,b);return;}
+  if(tame&&followOwner(e,game,b)){b.goal=GOAL_FOLLOW;return;}
+  if(breeding(e,game,b)){b.goal=GOAL_BREED;return;}
+  // The panic, fight, follow or breeding goal ended (run out, target dead or lost, owner dead, partner gone): stop
+  // before strolling, or the wolf keeps its last velocity over ledges and into lava.
+  if(b.goal!==GOAL_IDLE){b.goal=GOAL_IDLE;ai.stop(e);}
   ai.wander(e,WOLF_SPEED);
   looking(e,game,b);
 }
@@ -621,8 +632,23 @@ export function wolfKind(game:Game):EntityKind{
     spawn:{light:'grass',group:[4,4]}
   };
 }
-/** Event wiring: owner defence (what hurts the player, what the player hits in melee or with arrows), forgetting a dead
- *  player as a target, and the pet death message. Returns the unsubscribers. */
+/** ServerPlayer.tellNeutralMobsThatIDied with forgiveDeadPlayers (on by default): wolves angry at the player within the
+ *  player's block box grown by 32, 10 and 32 run NeutralMob.forgetCurrentTargetAndRefreshUniversalAnger: target and anger
+ *  target are dropped and the anger timer restarts (red eyes stay for a while, but without universalAnger nobody is
+ *  targeted). Wolves further away are not told; every wolf drops the dead player as its current target. */
+export function forgiveDeadPlayer(game:Game):void{
+  const p=game.player.state,bx=Math.floor(p.x),by=Math.floor(p.y),bz=Math.floor(p.z),list=game.entities.all();
+  for(let i=0;i<list.length;i++){
+    const e=list[i];
+    if(e.kind!=='wolf'||e.removed)continue;
+    const b=wolfBrain(e),hw=e.width/2;
+    if(e.data.angerAt==='player'&&e.x+hw>bx-32&&e.x-hw<bx+33&&e.y+e.height>by-10&&e.y<by+11&&e.z+hw>bz-32&&e.z-hw<bz+33){
+      stopBeingAngry(e,b);data(e).anger=between(game,ANGER_MIN,ANGER_MAX);
+    }else if(b.targetPlayer)clearTarget(b);
+  }
+}
+/** Event wiring: owner defence (what hurts the player, what the player hits in melee or with arrows), forgiving a dead
+ *  player, and the pet death message. Returns the unsubscribers. */
 export function wireOwnerEvents(game:Game):(()=>void)[]{
   return[
     game.events.on('playerDamaged',({source})=>{
@@ -633,9 +659,7 @@ export function wireOwnerEvents(game:Game):(()=>void)[]{
       if(!source.byPlayer||source.kind!=='player'&&source.kind!=='projectile')return;
       defendOwner(game,entity,PRIORITY.ownerHurt);
     }),
-    game.events.on('playerDied',()=>{
-      for(const e of game.entities.all())if(e.kind==='wolf'){const b=BRAINS.get(e);if(b?.targetPlayer)clearTarget(b);}
-    }),
+    game.events.on('playerDied',()=>forgiveDeadPlayer(game)),
     // TamableAnimal.die: the owner is told how their wolf died (vanilla chat message; here the action bar).
     game.events.on('entityDied',({entity,source})=>{if(entity.kind==='wolf'&&isTame(entity))game.ui.toast(wolfDeathMessage(source));})
   ];

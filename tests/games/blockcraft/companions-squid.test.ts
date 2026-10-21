@@ -59,7 +59,7 @@ describe('squid',()=>{
     const ink=h.particles.filter(x=>x.kind==='large_smoke');
     expect(ink.reduce((n,x)=>n+(x.options?.count??0),0)).toBe(30);
     expect(ink.every(x=>x.options?.color===INK_COLOUR)).toBe(true);
-    expect(h.sounds()).toContain('splash');
+    expect(h.sounds()).toContain('mob:squid_squirt:ambient');
     const before=dist(s,p);
     h.run(30);
     expect(dist(s,p)).toBeGreaterThan(before+2);

@@ -287,7 +287,8 @@ export function wolfModel(look:(e:Entity,partial:number,out:WolfLook)=>void):Ent
     paint(pixels,width,height){
       WOLF_VARIANTS.forEach((v,i)=>paintParts(pixels,width,height,[skins[i]],wolfShader(FURS[v])));
     },
-    appearance(e){look(e,1,L);return L.tamed?{tint:collarColour(e.data.collar)}:{};},
+    // Called every frame for every wolf: shared immutable results, no allocation.
+    appearance(e){look(e,1,L);return L.tamed?collarLook(e.data.collar):NO_TINT;},
     animate(e,pose,s){
       look(e,s.partial,L);
       const vi=L.variant>=0&&L.variant<NAMES.length?L.variant:0;
@@ -326,7 +327,11 @@ export function poseWolf(n:WolfNames,pose:Record<string,PartPose>,s:AnimationSta
 export const DYE_COLOURS:Readonly<Record<string,number>>={
   white:0xf9fffe,orange:0xf9801d,magenta:0xc74ebd,light_blue:0x3ab3da,yellow:0xfed83d,lime:0x80c71f,pink:0xf38baa,gray:0x474f52,
   light_gray:0x9d9d97,cyan:0x169c9c,purple:0x8932b8,blue:0x3c44aa,brown:0x835432,green:0x5e7c16,red:0xb02e26,black:0x1d1d21};
-export const collarColour=(name:unknown)=>typeof name==='string'&&name in DYE_COLOURS?DYE_COLOURS[name]:DYE_COLOURS.red;
+export const collarColour=(name:unknown)=>typeof name==='string'&&Object.hasOwn(DYE_COLOURS,name)?DYE_COLOURS[name]:DYE_COLOURS.red;
+const COLLAR_LOOKS=new Map<string,Readonly<{tint:number}>>(Object.entries(DYE_COLOURS).map(([name,tint])=>[name,Object.freeze({tint})]));
+const NO_TINT:Readonly<{tint?:number}>=Object.freeze({});
+/** The wolf model's appearance for a collar colour name (one frozen object per colour; red for anything else). */
+export const collarLook=(name:unknown)=>(typeof name==='string'?COLLAR_LOOKS.get(name):undefined)??COLLAR_LOOKS.get('red')!;
 
 // ---- Squid -----------------------------------------------------------------------------------------
 /** Per-entity state the squid model draws. */

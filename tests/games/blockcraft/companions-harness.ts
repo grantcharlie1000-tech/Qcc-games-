@@ -23,6 +23,9 @@ export interface Harness{
   /** Items consumed from the held stack. */
   consumed:number;
   spawn(kind:string,x:number,y:number,z:number,options?:{data?:Record<string,unknown>;baby?:boolean;reason?:SpawnReason;yaw?:number}):Entity;
+  /** Loads a saved entity as entities.ts restoreOne does: the kind's restoreData on the saved data, the saved health set
+   *  before init (reason 'restore'), then health clamped to maxHealth. */
+  restore(kind:string,x:number,y:number,z:number,saved:{data?:Record<string,unknown>;health?:number;baby?:boolean}):Entity;
   /** Puts a stack in the selected hotbar slot (null empties the hand). */
   hold(id:string|null,count?:number):void;
   /** Right click on an entity with the held stack, as the interaction service does. */
@@ -61,7 +64,12 @@ function stepLiving(game:FakeGame,e:Entity,k:EntityKind){
   e.vx=ux/TICK;e.vy=uy/TICK;e.vz=uz/TICK;
 }
 
-export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'hits'|'drops'|'xp'>):EntityService{
+type SpawnOptions={data?:Record<string,unknown>;baby?:boolean;reason?:SpawnReason;yaw?:number};
+export interface TestEntities extends EntityService{
+  /** spawn() with a preset health applied before init, as entities.ts create() does for restored entities. */
+  create(kind:string,x:number,y:number,z:number,options?:SpawnOptions,preset?:{health:number}):Entity|null;
+}
+export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'hits'|'drops'|'xp'>):TestEntities{
   const kinds=new Map<string,EntityKind>(),list:Entity[]=[],lastHurt=new WeakMap<Entity,number>();
   let nextId=1;
   const ai:EntityAI={
@@ -87,20 +95,23 @@ export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'
     },
     stop(e){e.moveX=0;e.moveZ=0;}
   };
-  function spawn(kind:string,x:number,y:number,z:number,options:{data?:Record<string,unknown>;baby?:boolean;reason?:SpawnReason;yaw?:number}={}):Entity|null{
+  function spawn(kind:string,x:number,y:number,z:number,options:SpawnOptions={},preset?:{health:number}):Entity|null{
     const k=kinds.get(kind);if(!k)return null;
     const reason=options.reason??'event',yaw=options.yaw??0;
     const e:Entity={id:nextId++,kind,category:k.category,x,y,z,vx:0,vy:0,vz:0,yaw,pitch:0,headYaw:yaw,moveX:0,moveZ:0,jump:false,width:k.width,height:k.height,
       onGround:false,inWater:false,inLava:false,collidedH:false,collidedV:false,health:k.maxHealth,maxHealth:k.maxHealth,age:0,hurtTime:0,deathTime:0,
       removed:false,fire:0,baby:!!options.baby,data:{...(options.data??{})}};
+    if(preset)e.health=preset.health;
     k.init?.(e,game,reason);
     if(e.removed)return null;
+    if(!Number.isFinite(e.health)||e.health<=0)e.health=e.maxHealth;
+    if(e.health>e.maxHealth)e.health=e.maxHealth;
     list.push(e);record.spawned.push({entity:e,reason});
     game.events.emit('entitySpawned',{entity:e,reason});
     return e;
   }
-  const service:EntityService={
-    ai,register(k){kinds.set(k.kind,k);},kinds:()=>[...kinds.values()],kind:n=>kinds.get(n),spawn,
+  const service:TestEntities={
+    ai,register(k){kinds.set(k.kind,k);},kinds:()=>[...kinds.values()],kind:n=>kinds.get(n),spawn:(kind,x,y,z,o)=>spawn(kind,x,y,z,o),create:spawn,
     remove(e){e.removed=true;},all:()=>list,byId:id=>list.find(e=>e.id===id&&!e.removed),
     near(x,y,z,r,filter,out=[]){
       out.length=0;
@@ -160,13 +171,22 @@ export function createHarness(options:{random?:()=>number;mode?:'survival'|'crea
   const game=createFakeGame({random:options.random,mode:options.mode});
   game.flat(60);
   const p=game.player.state;p.x=.5;p.y=60;p.z=.5;
+  let entities!:TestEntities;
   const h:Harness={game,spawned:[],hurt:[],particles:[],hits:[],drops:[],xp:[],consumed:0,
     spawn(kind,x,y,z,o){const e=game.entities.spawn(kind,x,y,z,o);if(!e)throw new Error(`cannot spawn ${kind}`);return e;},
+    restore(kind,x,y,z,saved){
+      const k=entities.kind(kind);if(!k)throw new Error(`cannot restore ${kind}`);
+      const data=k.restoreData?k.restoreData(saved.data??{}):{...(saved.data??{})};
+      if(!data)throw new Error(`${kind} refused its saved data`);
+      const e=entities.create(kind,x,y,z,{data,baby:saved.baby,reason:'restore'},{health:saved.health??k.maxHealth});
+      if(!e)throw new Error(`cannot restore ${kind}`);
+      return e;
+    },
     hold(id,count=1){game.inventory.setSlot(0,id?{id,count}:null);},
     use(e){return !!game.entities.kind(e.kind)?.interact?.(e,game,game.inventory.held());},
     sounds:()=>game.sounds.played.map(s=>s.name),
     run(ticks){game.runTicks(ticks);}};
-  game.entities=createTestEntities(game,h);
+  entities=createTestEntities(game,h);game.entities=entities;
   game.survival.damage=(amount,source)=>{
     if(game.settings.mode==='creative'&&source.kind!=='void')return 0;
     if(!(amount>0))return 0;
