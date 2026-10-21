@@ -12,16 +12,23 @@
 //  5. small structures (terrain-structures.ts) inside their own chunk;
 //  6. trees (terrain-trees.ts) planned per trunk column (treeAt) from a TREE_REACH margin of neighbouring columns;
 //  7. vegetation from the biome lists, pumpkin patches, then snow layers and ice where coldAt() holds.
-import {hash3,hashInt,mulberry32,Simplex} from './noise';
+import {Simplex} from './noise';
+import * as noise from './noise';
 import {Climate} from './terrain-climate';
 import {CaveField,CHEESE_MIN_DEPTH} from './terrain-caves';
 import {OrePlacer} from './terrain-ores';
 import {planTree,TREE_REACH,treeLeaves,treeLog,treeWood,type TreeSink} from './terrain-trees';
 import {desertWell,placeStructure,ruinedPortal,type Structure} from './terrain-structures';
-import {AIR,B,BLOCK_BY_NAME,blockId,LIQUID,OPAQUE,REPLACEABLE,SOLID} from '../data/blocks';
-import {BIOMES,biomeId,coldAt,type BiomeDef} from '../data/biomes';
-import {CS,CH,LAYER,CHUNK_VOLUME,SEA_LEVEL} from '../engine/constants';
+import * as registry from '../data/blocks';
+import {BIOMES,biomeId,type BiomeDef} from '../data/biomes';
+import * as biomeRegistry from '../data/biomes';
+import * as constants from '../engine/constants';
 import type {BlockWriter,ChunkData,TerrainService,TreeKind,Vec3} from '../engine/contracts';
+
+// Imported values used in hot loops are bound to module-local constants (plain reads; module bindings can be
+// accessors under test transforms).
+const {hash3,hashInt,mulberry32}=noise,{coldAt}=biomeRegistry,{CS,CH,LAYER,CHUNK_VOLUME,SEA_LEVEL}=constants;
+const {AIR,B,BLOCK_BY_NAME,blockId,LIQUID,OPAQUE,REPLACEABLE,SOLID}=registry;
 
 export type {Structure} from './terrain-structures';
 /** A generated tree: kind, trunk base (the first log; the -x/-z corner of a 2×2 trunk) and the seed of its shape. */
@@ -80,7 +87,9 @@ const INFO:BiomeInfo[]=BIOMES.map(def=>{
     plants,cane,lily,pumpkin};
 });
 const MAX_TREE_P=Math.max(...INFO.map(i=>i.treeP));
+/** Never spawn in water or on bare peaks; prefer grassland (beaches and mushroom islands only as a last resort). */
 const NO_SPAWN=new Set(['ocean','deep_ocean','river','frozen_river','stony_shore','snowy_peaks','swamp'].map(biomeId));
+const POOR_SPAWN=new Set(['beach','mushroom_fields'].map(biomeId));
 const DESERT=biomeId('desert');
 const NO_PORTAL=new Set(['ocean','deep_ocean','river','frozen_river','beach','swamp','mushroom_fields'].map(biomeId));
 /** Chance per chunk of a desert well (in deserts) and a ruined portal (on dry land). */
@@ -150,6 +159,7 @@ export class TerrainGenerator implements TerrainService{
       let floor=info.underwater;
       if(info.rule===R_OCEAN&&h>=55)floor=SAND;
       if(info.rule===R_SWAMP)floor=patch>.05?CLAY:DIRT;
+      else if(info.rule===R_BEACH){/* beaches stay sandy below the waterline */}
       else if(patch>.55)floor=CLAY;
       else if(patch<-.5)floor=floor===GRAVEL?SAND:GRAVEL;
       top=floor;filler=floor===CLAY?CLAY:floor;if(floor===CLAY)depth=2;
@@ -158,7 +168,7 @@ export class TerrainGenerator implements TerrainService{
       case R_DESERT:under=SANDSTONE;underDepth=depth+1;break;
       case R_BEACH:under=SANDSTONE;underDepth=2;break;
       case R_BADLANDS:depth+=2;break;
-      case R_PEAKS:if(slope>=3)top=STONE;break;
+      case R_PEAKS:if(slope>=3||slope===2&&patch>.1)top=STONE;break;
       case R_HILLS:if(slope>=3){top=STONE;filler=STONE;}else if(h>=100&&patch>.35){top=GRAVEL;filler=GRAVEL;}break;
       case R_SHORE:if(patch<-.4){top=GRAVEL;filler=GRAVEL;}break;
       case R_SAVANNA:if(h>=85&&slope>=3){top=STONE;filler=STONE;}else if(h>=80&&patch>.5)top=COARSE;break;
@@ -318,8 +328,8 @@ export class TerrainGenerator implements TerrainService{
       const entrance=h>SEA_LEVEL+1&&this.entranceNoise.noise2(wx/40,wz/40)>.45;
       const top=Math.min(limit,entrance?h:h-6),cheeseTop=Math.min(limit,h-CHEESE_MIN_DEPTH);
       if(top<1)continue;
-      caves.prepareColumn(x,z);caves.carveColumn(kinds,top,cheeseTop);
-      const moss=this.mossNoise.noise2(wx/48,wz/48)>.2;
+      caves.prepareColumn(x,z,top);caves.carveColumn(kinds,top,cheeseTop);
+      let moss=-1;
       let open=false;
       for(let y=1;y<=top;y++){
         if(!kinds[y]){open=false;continue;}
@@ -330,7 +340,10 @@ export class TerrainGenerator implements TerrainService{
         if(!open){
           // Floor of a cave: moss patches and the odd mushroom.
           const f=i-LAYER;
-          if(moss&&y<h-8&&MOSS_FLOOR[blocks[f]]&&hash3(wx,y,wz,seed^0x305)<.75)blocks[f]=MOSS;
+          if(y<h-8&&MOSS_FLOOR[blocks[f]]){
+            if(moss<0)moss=this.mossNoise.noise2(wx/48,wz/48)>.2?1:0;
+            if(moss&&hash3(wx,y,wz,seed^0x305)<.75)blocks[f]=MOSS;
+          }
           if(y<h-10&&OPAQUE[blocks[f]]){const m=hash3(wx,y,wz,seed^0x6d);if(m<.012)blocks[i]=m<.008?BROWN_MUSHROOM:RED_MUSHROOM;}
         }
         open=true;
@@ -439,11 +452,11 @@ export class TerrainGenerator implements TerrainService{
       if(!c){if(chunks.size>=32)chunks.clear();c=this.generate(cx,cz);chunks.set(key,c);}
       return c.blocks[(x-cx*CS)+(z-cz*CS)*CS+y*LAYER];
     };
-    for(let r=0;r<=1024;r+=4){
+    for(const fussy of [true,false])for(let r=0;r<=1024;r+=4){
       const n=r===0?1:Math.ceil(Math.PI*2*r/6);
       for(let a=0;a<n;a++){
-        const angle=a/n*Math.PI*2,x=Math.round(Math.cos(angle)*r),z=Math.round(Math.sin(angle)*r),h=this.heightAt(x,z);
-        if(h<=SEA_LEVEL+1||h>=96||NO_SPAWN.has(this.biomeAt(x,z))||this.slopeAt(x,z,h)>1)continue;
+        const angle=a/n*Math.PI*2,x=Math.round(Math.cos(angle)*r),z=Math.round(Math.sin(angle)*r),h=this.heightAt(x,z),b=this.biomeAt(x,z);
+        if(h<=SEA_LEVEL+1||h>=96||NO_SPAWN.has(b)||fussy&&POOR_SPAWN.has(b)||this.slopeAt(x,z,h)>1)continue;
         if(this.spawnClear(get,x,h,z)){this.spawn={x:x+.5,y:h+1,z:z+.5};return{...this.spawn};}
       }
     }

@@ -7,7 +7,9 @@
 // which keeps a chunk to about 3 000 noise evaluations. Pure: the terrain generator decides where
 // carving is allowed (surface, water and lava rules) and asks for a column's cave kinds with `carveColumn`.
 import {Simplex} from './noise';
-import {CS,CH} from '../engine/constants';
+import * as constants from '../engine/constants';
+
+const {CS,CH}=constants;
 
 export const CAVE_NONE=0,CAVE_CHEESE=1,CAVE_SPAGHETTI=2,CAVE_NOODLE=3;
 const CELL_XZ=4,CELL_Y=8,NXZ=CS/CELL_XZ+1,NY=CH/CELL_Y+1;
@@ -41,7 +43,6 @@ export class CaveField{
   private readonly corner=new Float64Array(FIELDS*4);
   private readonly scratch=new Float64Array(FIELDS*2);
   private readonly point=new Float64Array(FIELDS);
-  private readonly step=new Float64Array(FIELDS);
   private levelsTop=0;
   constructor(seed:number){
     const s=seed>>>0;
@@ -64,11 +65,11 @@ export class CaveField{
       this.evalNode(cx*CS+i*CELL_XZ,k*CELL_Y,cz*CS+j*CELL_XZ,n,((k*NXZ+j)*NXZ+i)*FIELDS);
     this.levelsTop=top;
   }
-  /** Bilinear values for local column (x,z) at every filled y level. */
-  prepareColumn(x:number,z:number){
+  /** Bilinear values for local column (x,z) at the y levels needed up to `maxY` (default: every filled level). */
+  prepareColumn(x:number,z:number,maxY=CH){
     const i=x>>2,j=z>>2,fx=(x&3)/CELL_XZ,fz=(z&3)/CELL_XZ,n=this.nodes,l=this.levels;
-    const w00=(1-fx)*(1-fz),w10=fx*(1-fz),w01=(1-fx)*fz,w11=fx*fz;
-    for(let k=0;k<=this.levelsTop;k++){
+    const w00=(1-fx)*(1-fz),w10=fx*(1-fz),w01=(1-fx)*fz,w11=fx*fz,top=Math.min(this.levelsTop,(maxY>>3)+1);
+    for(let k=0;k<=top;k++){
       const a=((k*NXZ+j)*NXZ+i)*FIELDS,b=a+FIELDS,c=a+NXZ*FIELDS,d=c+FIELDS,o=k*FIELDS;
       for(let f=0;f<FIELDS;f++)l[o+f]=n[a+f]*w00+n[b+f]*w10+n[c+f]*w01+n[d+f]*w11;
     }
@@ -82,14 +83,24 @@ export class CaveField{
   /** Fills kinds[y] for y in 1..top of the prepared column (top below the filled levels); caverns only up to cheeseTop.
    *  Same values as kindAt, interpolated incrementally. */
   carveColumn(kinds:Uint8Array,top:number,cheeseTop:number){
-    const l=this.levels,p=this.point,d=this.step;
+    const l=this.levels;
     let y=1;
     while(y<=top){
-      const k=y>>3,o=k*FIELDS,end=Math.min(top,k*CELL_Y+CELL_Y-1),t=(y&7)/CELL_Y;
-      for(let f=0;f<FIELDS;f++){const a=l[o+f],b=l[o+FIELDS+f];d[f]=(b-a)/CELL_Y;p[f]=a+(b-a)*t;}
+      const k=y>>3,o=k*FIELDS,n=o+FIELDS,end=Math.min(top,k*CELL_Y+CELL_Y-1),t=(y&7)/CELL_Y;
+      // The seven fields as locals, stepped linearly through the cell (same rules as classify()).
+      const d0=(l[n]-l[o])/CELL_Y,d1=(l[n+1]-l[o+1])/CELL_Y,d2=(l[n+2]-l[o+2])/CELL_Y,d3=(l[n+3]-l[o+3])/CELL_Y;
+      const d4=(l[n+4]-l[o+4])/CELL_Y,d5=(l[n+5]-l[o+5])/CELL_Y,d6=(l[n+6]-l[o+6])/CELL_Y,s=t*CELL_Y;
+      let cheese=l[o]+d0*s,a=l[o+1]+d1*s,b=l[o+2]+d2*s,r=l[o+3]+d3*s,na=l[o+4]+d4*s,nb=l[o+5]+d5*s,toggle=l[o+6]+d6*s;
       for(;y<=end;y++){
-        kinds[y]=classify(p,0,y,y<=cheeseTop);
-        for(let f=0;f<FIELDS;f++)p[f]+=d[f];
+        let kind=CAVE_NONE;
+        if(y<=cheeseTop&&cheese>CHEESE_T[y])kind=CAVE_CHEESE;
+        else{
+          const rr=.075+.035*r;
+          if(a*a+b*b<rr*rr)kind=CAVE_SPAGHETTI;
+          else if(toggle>.2){const w=.045+.01*r;if(na<w&&na>-w&&nb<w&&nb>-w)kind=CAVE_NOODLE;}
+        }
+        kinds[y]=kind;
+        cheese+=d0;a+=d1;b+=d2;r+=d3;na+=d4;nb+=d5;toggle+=d6;
       }
     }
   }
