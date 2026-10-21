@@ -1,6 +1,6 @@
 // Lighting engine: vanilla-style (Java 1.20) flood-fill sky and block light for one chunk's
 // padded volume. Pure and allocation-free per call; engine/streaming.ts runs it for every chunk
-// build with the 3×3 neighbourhood.
+// build with the 3×3 neighbourhood and keeps the centre as chunk.light.
 //
 // Rules
 //  - Sky light is 15 straight down each column until the first block with light opacity (leaves,
@@ -18,9 +18,11 @@
 //  sentinel: light from there needs at least 15 steps to reach the padded rim (x,z in -1..16), so
 //  the padded border equals what each neighbour computes for itself. Cells start unknown and are
 //  decoded from the chunk only when the sky scan or the flood reaches them, so solid rock costs
-//  nothing. Emitters are found by a word-wise scan. Sky columns seed a bucket queue (one linked list
-//  per light level in typed arrays); the fill runs from level 15 down so each voxel settles on its
-//  first visit.
+//  nothing. Emitters are found by a word-wise scan. Emitters and sky columns seed a bucket queue:
+//  one list per light level, threaded through one reused typed pool (Int32Array cell + next).
+//  The fill runs from level 15 down; a step's cost depends only on the cell entered, so a voxel's
+//  first push during the fill already carries its final level. Each voxel is therefore queued at
+//  most once per channel, plus once more as an emitter seed, and the pool is reset per call.
 import {LIGHT_EMISSION,LIGHT_OPACITY,OPAQUE} from '../data/blocks';
 import * as constants from '../engine/constants';
 import type {ChunkData,LightEngine,Vec3} from '../engine/contracts';
@@ -38,7 +40,7 @@ const R=3*CS,RL=R*R;
 /** Layers: floor sentinel, y = 0..CH-1, open air above the world (y = CH), ceiling sentinel. */
 const MAX_LAYERS=CH+3,VOLUME=RL*MAX_LAYERS;
 /** Light travels at most 14 steps from a level-15 source before reaching 0 (each step costs at least 1). */
-const REACH=14;
+export const LIGHT_REACH=14;
 /** Working cell byte: low nibble = cost of entering (max(1, opacity); 15 blocks light), high nibble = light class.
  *  0 = not decoded yet. */
 const UNKNOWN=0,SENTINEL=0xff;
@@ -70,10 +72,13 @@ for(let z=0,n=0;z<R;z++)for(let x=0;x<R;x++){
   if(inner)INNER_COLUMNS[n++]=col;
 }
 /** Changes beyond this count are relit with a full recompute. */
-const MAX_RELIGHT_CHANGES=256;
+export const MAX_RELIGHT_CHANGES=256;
 const WORDS_PER_LAYER=LAYER>>2;
+/** Initial bucket queue pool (entries, 1 MB). Generated terrain stays well below it (see light.test.ts); a world dense
+ *  with emitters or open caves grows it once, and the larger pool is then kept. */
+const INITIAL_QUEUE=1<<17;
 
-/** 32-bit views of chunk block arrays for the emitter scan (one per array, kept while the array lives). */
+/** 32-bit views of chunk block arrays for the emitter scan (one per array, made once and kept while the array lives). */
 const WORDS=new WeakMap<Uint8Array,Uint32Array|null>();
 function wordsOf(blocks:Uint8Array):Uint32Array|null{
   let words=WORDS.get(blocks);
@@ -85,20 +90,29 @@ function wordsOf(blocks:Uint8Array):Uint32Array|null{
 }
 const blocksVertically=(above:number,below:number)=>(CLASS_FACES[above*6+DOWN]|CLASS_FACES[below*6+UP])===15;
 
-export function createLightEngine():LightEngine{
+/** The light engine plus diagnostics for tests and the debug overlay. */
+export interface LightEngineWithStats extends LightEngine{
+  /** Bucket queue pool capacity in entries (it only grows when a call needs more; unchanged = no allocation). */
+  readonly queueCapacity:number;
+  /** Most entries the last call queued. */
+  readonly queuePeak:number;
+}
+
+export function createLightEngine():LightEngineWithStats{
   // Scratch state reused by every call.
   const cell=new Uint8Array(VOLUME),sky=new Uint8Array(VOLUME),block=new Uint8Array(VOLUME);
   const aboveClass=new Uint8Array(RL),skyTop=new Int16Array(RL),openColumns=new Int32Array(RL);
   const skyHead=new Int32Array(16),blockHead=new Int32Array(16);
   const chunks:(Uint8Array|null)[]=new Array(9).fill(null);
   const marks=new Uint8Array(CH);
-  /** Bucket queue pool: voxel index and next entry per pushed item; grows (rarely, once) when full. */
-  let queueCell=new Int32Array(1<<16),queueNext=new Int32Array(1<<16),queued=0;
+  /** Bucket queue pool: voxel index and next entry of each pushed item. */
+  let queueCell=new Int32Array(INITIAL_QUEUE),queueNext=new Int32Array(INITIAL_QUEUE),queued=0,peak=0;
   /** The current window: layers lo..hi of the world (see run). */
   let lo=0,hi=CH;
 
   function push(head:Int32Array,i:number,level:number){
     if(queued===queueCell.length){
+      // Bounded by about twice the volume (see the header); only a world dense with emitters gets here.
       const cells=new Int32Array(queued*2),next=new Int32Array(queued*2);
       cells.set(queueCell);next.set(queueNext);queueCell=cells;queueNext=next;
     }
@@ -166,6 +180,7 @@ export function createLightEngine():LightEngine{
     let open=0,allPresent=true;
     for(let k=0;k<INNER_COLUMNS.length;k++){
       const col=INNER_COLUMNS[k],blocks=chunks[COLUMN_CHUNK[col]];
+      // A missing chunk: only the open air above the world is known to see the sky.
       if(!blocks){skyTop[col]=Math.min(hi+1,CH);allPresent=false;continue;}
       if(hi<CH){
         // Columns above a partial window.
@@ -232,7 +247,7 @@ export function createLightEngine():LightEngine{
       while(k>=0){
         const i=queueCell[k];k=queueNext[k];
         if(level[i]!==l)continue; // a superseded seed: an emitter lit brighter by another source
-        const from=cell[i];
+        const from=cell[i],fromFaces=(from>>4)*6;
         for(let face=0;face<6;face++){
           const n=i+OFFSET[face];
           if(level[n]>=l-1)continue;
@@ -240,7 +255,7 @@ export function createLightEngine():LightEngine{
           if(to===UNKNOWN)to=decode(n);
           const next=l-(to&15);
           if(next<=level[n])continue;
-          if((from|to)>=16&&(CLASS_FACES[(from>>4)*6+face]|CLASS_FACES[(to>>4)*6+(face^1)])===15)continue;
+          if((from|to)>=16&&(CLASS_FACES[fromFaces+face]|CLASS_FACES[(to>>4)*6+(face^1)])===15)continue;
           level[n]=next;
           if(next>1)push(head,n,next);
         }
@@ -259,17 +274,19 @@ export function createLightEngine():LightEngine{
   }
 
   /** Lights world layers from..to (0 ≤ from ≤ to ≤ CH; sentinels outside) and writes padded rows writeLo..writeHi.
-   *  Values are exact for rows at least REACH inside the window, or at the world's floor and ceiling. */
+   *  Values are exact for rows at least LIGHT_REACH inside the window, or at the world's floor and ceiling. */
   function run(neighbours:Neighbours,out:Uint8Array,from:number,to:number,writeLo:number,writeHi:number){
     lo=from;hi=to;
-    const T=(globalThis as any).__lightTimes as number[]|undefined;let t=performance.now();const lap=(k:number)=>{if(T){const n=performance.now();T[k]=(T[k]??0)+n-t;t=n;}};
-    reset(neighbours);lap(0);
-    const highest=scanEmitters();lap(1);
-    skyColumns(highest);lap(2);
-    seedSkyColumns();lap(3);
-    flood(sky,skyHead);lap(4);
-    flood(block,blockHead);lap(5);
-    writeOut(out,writeLo,writeHi);lap(6);
+    reset(neighbours);
+    const highest=scanEmitters(),emitterEntries=queued;
+    skyColumns(highest);
+    seedSkyColumns();
+    flood(sky,skyHead);
+    // Sky entries are spent: the block channel reuses the pool after its emitter seeds.
+    peak=queued;queued=emitterEntries;
+    flood(block,blockHead);
+    if(queued>peak)peak=queued;
+    writeOut(out,writeLo,writeHi);
     for(let k=0;k<9;k++)chunks[k]=null;
   }
 
@@ -277,7 +294,10 @@ export function createLightEngine():LightEngine{
   function lowestSkyTop(neighbours:Neighbours,x:number,z:number,changed:readonly Vec3[]):number{
     const blocks=neighbours[(Math.floor(z/CS)+1)*3+Math.floor(x/CS)+1]?.blocks;
     if(!blocks)return CH;
-    for(const c of changed)if(Math.floor(c.x)===x&&Math.floor(c.z)===z){const y=Math.floor(c.y);if(y>=0&&y<CH)marks[y]=1;}
+    for(let k=0;k<changed.length;k++){
+      const c=changed[k];
+      if(Math.floor(c.x)===x&&Math.floor(c.z)===z){const y=Math.floor(c.y);if(y>=0&&y<CH)marks[y]=1;}
+    }
     const local=(x&15)+(z&15)*CS;
     let above=0,y=CH-1;
     for(;y>=0;y--){
@@ -291,24 +311,26 @@ export function createLightEngine():LightEngine{
   }
 
   return{
+    get queueCapacity(){return queueCell.length;},
+    get queuePeak(){return peak;},
     computePadded(neighbours,out){run(neighbours,out,0,CH,-1,CH);},
     /** `changed` lists every voxel edited since `out` was computed for this same neighbourhood, in centre-chunk local
-     *  coordinates (x,z in -16..31, laid out like the 3×3 neighbourhood). Recomputes only the band of layers those edits
-     *  can reach, including sky light falling further down a column that was opened or closed. */
+     *  coordinates (x,z in -16..31, laid out like the 3×3 neighbourhood; world x - 16*cx). Recomputes only the band of
+     *  layers those edits can reach, including sky light falling further down a column that was opened or closed. */
     relightPadded(neighbours,out,changed){
       if(changed.length>MAX_RELIGHT_CHANGES){run(neighbours,out,0,CH,-1,CH);return;}
       let writeLo=CH+1,writeHi=-1;
-      for(const c of changed){
-        const x=Math.floor(c.x),y=Math.floor(c.y),z=Math.floor(c.z);
+      for(let k=0;k<changed.length;k++){
+        const c=changed[k],x=Math.floor(c.x),y=Math.floor(c.y),z=Math.floor(c.z);
         if(!(x>=-CS&&x<2*CS&&z>=-CS&&z<2*CS&&y>=0&&y<CH))continue;
         // Horizontal steps to the padded volume (x,z in -1..CS): edits further away cannot reach it.
-        if(Math.max(0,-1-x,x-CS)+Math.max(0,-1-z,z-CS)>REACH)continue;
-        writeLo=Math.min(writeLo,Math.min(y,lowestSkyTop(neighbours,x,z,changed))-REACH);
-        writeHi=Math.max(writeHi,y+REACH);
+        if(Math.max(0,-1-x,x-CS)+Math.max(0,-1-z,z-CS)>LIGHT_REACH)continue;
+        writeLo=Math.min(writeLo,Math.min(y,lowestSkyTop(neighbours,x,z,changed))-LIGHT_REACH);
+        writeHi=Math.max(writeHi,y+LIGHT_REACH);
       }
       if(writeLo>writeHi)return;
       writeLo=Math.max(0,writeLo);writeHi=Math.min(CH,writeHi);
-      run(neighbours,out,Math.max(0,writeLo-REACH),Math.min(CH,writeHi+REACH),writeLo,writeHi);
+      run(neighbours,out,Math.max(0,writeLo-LIGHT_REACH),Math.min(CH,writeHi+LIGHT_REACH),writeLo,writeHi);
     }
   };
 }

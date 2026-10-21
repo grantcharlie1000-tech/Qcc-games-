@@ -7,7 +7,7 @@
 // Faces are reduced to quadrant masks (2×2 grid per face), which is exact for the half-block shapes
 // in the registry; partial strips (a snow layer's 2px side, farmland's 15/16 side) count only the
 // quadrants they cover completely. Derived from the registry geometry, never hard-coded per block.
-import {BLOCKS,COLLISION_BOXES,OPAQUE,OUTLINE_BOX,type Shape} from '../data/blocks';
+import {BLOCKS,COLLISION_BOXES,LIGHT_EMISSION,LIGHT_OPACITY,OPAQUE,OUTLINE_BOX,type BlockId,type Shape} from '../data/blocks';
 
 /** Shapes whose geometry occludes light by face. */
 export const LIGHT_OCCLUDING_SHAPES:ReadonlySet<Shape>=new Set<Shape>(['slab','stairs','snow_layer','farmland']);
@@ -65,4 +65,11 @@ export function facesOcclude(from:number,to:number,face:number):boolean{
     }
     LIGHT_CLASS[d.id]=cls;
   }
+}
+
+/** True when replacing block `from` by `to` can change light anywhere: opacity, emission, opaqueness or the face shape
+ *  that occludes light differ. (A bottom slab placed in open air has the same opacity as air but shades the cells below.)
+ *  World edits use it to decide whether neighbours beyond the shared border need relighting. */
+export function changesLight(from:BlockId,to:BlockId):boolean{
+  return LIGHT_OPACITY[from]!==LIGHT_OPACITY[to]||LIGHT_EMISSION[from]!==LIGHT_EMISSION[to]||OPAQUE[from]!==OPAQUE[to]||LIGHT_CLASS[from]!==LIGHT_CLASS[to];
 }
