@@ -143,6 +143,8 @@
   background:rgba(0,0,0,.45);color:#fff;font:600 14px/1.35 system-ui,sans-serif;text-align:center;text-shadow:1px 1px 0 #3f3f3f;opacity:0;transition:opacity .25s;pointer-events:none}
 .bc-toast.show{opacity:1}
 .bc-toast:empty{display:none}
+/* F1 hides the action bar with the rest of the HUD (ROOT_FLAGS.hudHidden). */
+[data-hud-hidden="true"] .bc-toast{visibility:hidden}
 
 /* ---- Small screens ------------------------------------------------------------------------------------------- */
 @container (max-width:360px){
