@@ -5,7 +5,7 @@
 // otherwise the mood changes by (1 - block light) / 6000. At 1 a cave sound plays toward the sample and the
 // mood resets, so about five minutes in complete darkness bring one eerie sound.
 import type {Vec3} from '../engine/contracts';
-import {hits,layerEnd,noise,rumble,spec,tone,vary,type Layer,type Rand,type SoundSpec} from './spec';
+import {hits,layerEnd,louder,noise,rumble,spec,tone,vary,type Layer,type Rand,type SoundSpec} from './spec';
 
 export const MOOD_TICK_DELAY=6000;
 export const MOOD_EXTENT=8;
@@ -31,6 +31,8 @@ export function moodSoundPosition(eye:Vec3,sample:Vec3,out:Vec3):Vec3{
   return out;
 }
 
+/** Loudness trim per cave variant (rumble, wind, drips, drone, growl), evened out by rendering them. */
+const CAVE_TRIM=[.4,1.3,1.3,.5,1];
 /** Eerie cave sounds: distant rumbles, hollow wind, echoing drips and dissonant drones. Volume 1, pitch 1 (vanilla). */
 export function caveSpec(r:Rand):SoundSpec{
   const f=vary(r,.12);
@@ -58,7 +60,7 @@ export function caveSpec(r:Rand):SoundSpec{
     tone('sawtooth',90*f,{freqEnd:60*f,attack:1.2,hold:.6,decay:2.4,gain:.12,fm:{ratio:1.41,depth:.4},filter:{type:'lowpass',freq:400,q:3}}),
     noise('bandpass',420*f,{freqEnd:260*f,q:8,attack:1.4,hold:.4,decay:2.4,gain:.3}),
     rumble(140*f,{delay:.6,attack:.8,decay:2,gain:.3})];
-  return spec(1,1,layers);
+  return spec(1,1,louder(layers,CAVE_TRIM[variant]));
 }
 
 // ---- Underwater ----------------------------------------------------------------------------------

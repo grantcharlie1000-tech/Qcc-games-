@@ -36,7 +36,7 @@ export const MASTER_LEVEL=.7;
 /** Music bus level relative to the master (calm and low). */
 export const MUSIC_LEVEL=.45;
 /** Underwater loop level at full fade. */
-export const UNDERWATER_LEVEL=.8;
+export const UNDERWATER_LEVEL=.5;
 /** Voices quieter than this after attenuation are not started. */
 const MIN_LEVEL=.002;
 /** Seconds the rain bed keeps sounding after the weather's last play('rain'), its level time constant, and how long

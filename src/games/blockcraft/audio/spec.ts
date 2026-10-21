@@ -100,6 +100,17 @@ export function hits(times:readonly number[],decay:number,gain:number):Burst[]{
   return out;
 }
 
+/** Scales the loudness of freshly built layers in place (envelope and grain gains, capped at 1). Recipes use it to even
+ *  out their sample sets, measured by rendering them, so vanilla's event volumes set the balance between sounds. */
+export function louder(layers:Layer[],k:number):Layer[]{
+  if(k===1||!(k>0)||!Number.isFinite(k))return layers;
+  for(const l of layers){
+    l.gain=clampGain(l.gain*k);
+    if(l.kind==='noise'&&l.bursts)for(const b of l.bursts)b.gain=clampGain(b.gain*k);
+  }
+  return layers;
+}
+
 export function spec(volume:number,pitch:number,layers:Layer[],extra?:{ui?:boolean;loop?:boolean;global?:boolean;basePitch?:number}):SoundSpec{
   const s:SoundSpec={volume,pitch,layers:layers.slice(0,12)};
   if(extra?.ui)s.ui=true;if(extra?.loop)s.loop=true;if(extra?.global)s.global=true;

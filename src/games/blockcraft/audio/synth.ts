@@ -5,7 +5,7 @@
 // own pitch (basePitch: metal 1.5) still applies.
 import type {SoundKind} from '../data/blocks';
 import type {MobSoundKind,SoundName} from '../engine/contracts';
-import {grains,hits,noise,rumble,spec,tone,vanillaPitch,vary,type Layer,type Rand,type SoundSpec} from './spec';
+import {grains,hits,louder,noise,rumble,spec,tone,vanillaPitch,vary,type Layer,type Rand,type SoundSpec} from './spec';
 import {mobSpec} from './mobs';
 
 export {specDuration} from './spec';
@@ -17,7 +17,10 @@ export const MOB_SOUND_KINDS=['ambient','hurt','death','step'] as const satisfie
 // ---- Blocks ------------------------------------------------------------------------------------
 // Vanilla plays one sample set for breaking and placing ("dig") and another for stepping, mining hits
 // and landing ("step"), at different volumes and pitches. SoundType volume and pitch are 1 except metal (pitch 1.5).
-interface Material{dig(r:Rand):Layer[];step(r:Rand):Layer[];shatter?(r:Rand):Layer[];pitch?:number}
+type SampleSet='dig'|'step'|'shatter';
+interface Material{dig(r:Rand):Layer[];step(r:Rand):Layer[];shatter?(r:Rand):Layer[];pitch?:number;
+  /** Loudness trim per sample set (rendered levels evened out across materials). */
+  trim?:Partial<Record<SampleSet,number>>}
 const stoneDig=(r:Rand)=>{const f=vary(r,.1);return[
   noise('bandpass',1700*f,{q:.9,decay:.05,gain:.55,bursts:grains(r,4,.09,.045,.6)}),
   rumble(420*f,{attack:.002,decay:.12,gain:.45}),
@@ -36,21 +39,21 @@ const MATERIALS:Record<SoundKind,Material>={
     step:r=>{const f=vary(r,.1);return[
       tone('triangle',175*f,{freqEnd:150*f,decay:.06,gain:.25}),
       noise('bandpass',480*f,{q:3,attack:.002,decay:.055,gain:.38})];}},
-  gravel:{
+  gravel:{trim:{dig:1.3},
     dig:r=>{const f=vary(r,.1);return[
       noise('lowpass',1500*f,{q:.7,decay:.03,gain:.55,bursts:grains(r,6,.16,.026,.6)}),
       rumble(300*f,{attack:.003,decay:.15,gain:.3})];},
     step:r=>{const f=vary(r,.1);return[
       noise('lowpass',1700*f,{q:.7,decay:.03,gain:.5,bursts:grains(r,3,.07,.022,.55)}),
       rumble(260*f,{decay:.05,gain:.2})];}},
-  grass:{
+  grass:{trim:{dig:1.3},
     dig:r=>{const f=vary(r,.1);return[
       noise('bandpass',2700*f,{q:.7,decay:.04,gain:.5,bursts:grains(r,4,.12,.035,.55)}),
       noise('bandpass',700*f,{q:1,attack:.004,decay:.1,gain:.22})];},
     step:r=>{const f=vary(r,.1);return[
       noise('highpass',1900*f,{q:.7,decay:.04,gain:.4,bursts:grains(r,2,.04,.035,.45)}),
       noise('bandpass',650*f,{q:1,decay:.05,gain:.15})];}},
-  sand:{
+  sand:{trim:{dig:.6},
     dig:r=>{const f=vary(r,.1);return[
       noise('lowpass',2300*f,{q:.6,attack:.02,hold:.04,decay:.15,gain:.45}),
       noise('bandpass',4200*f,{q:1,decay:.02,gain:.2,bursts:grains(r,4,.12,.018,.25)})];},
@@ -65,13 +68,13 @@ const MATERIALS:Record<SoundKind,Material>={
       noise('lowpass',520*f,{q:.6,attack:.01,decay:.09,gain:.5}),
       rumble(180*f,{attack:.008,decay:.07,gain:.25})];}},
   // Vanilla glass only has its own breaking sound; it steps, is hit and is placed like stone.
-  glass:{dig:stoneDig,step:stoneStep,shatter:r=>{const f=vary(r,.08);const layers:Layer[]=[
+  glass:{dig:stoneDig,step:stoneStep,trim:{shatter:.7},shatter:r=>{const f=vary(r,.08);const layers:Layer[]=[
     noise('highpass',3600*f,{q:.7,attack:.001,decay:.32,gain:.45}),
     noise('bandpass',6200*f,{q:1.5,decay:.03,gain:.3,bursts:grains(r,5,.2,.03,.35)}),
     rumble(500*f,{decay:.06,gain:.2})];
     for(let i=0;i<5;i++)layers.push(tone('sine',2600+r()*3800,{delay:r()*.18,attack:.001,decay:.12+r()*.25,gain:.12+r()*.08}));
     return layers;}},
-  snow:{
+  snow:{trim:{dig:1.6},
     dig:r=>{const f=vary(r,.1);return[
       noise('bandpass',2200*f,{q:1.6,decay:.04,gain:.5,bursts:grains(r,4,.13,.035,.55)}),
       noise('lowpass',800*f,{q:.7,attack:.01,decay:.1,gain:.25})];},
@@ -117,13 +120,16 @@ const isAction=(v:string):v is Action=>Object.prototype.hasOwnProperty.call(ACTI
 function blockSpec(action:Action,material:string,r:Rand):SoundSpec{
   const m=Object.prototype.hasOwnProperty.call(MATERIALS,material)?MATERIALS[material as SoundKind]:MATERIALS.stone;
   const a=ACTIONS[action];
-  const layers=action==='break'&&m.shatter?m.shatter(r):a.set==='dig'?m.dig(r):m.step(r);
-  return spec(a.volume,a.pitch,layers,{basePitch:m.pitch??1});
+  const set:SampleSet=action==='break'&&m.shatter?'shatter':a.set;
+  const layers=set==='shatter'?m.shatter!(r):set==='dig'?m.dig(r):m.step(r);
+  return spec(a.volume,a.pitch,louder(layers,m.trim?.[set]??1),{basePitch:m.pitch??1});
 }
 
 // ---- Events ------------------------------------------------------------------------------------
 type SimpleName=Exclude<SoundName,`${string}:${string}`>;
 type Recipe=(r:Rand,distance:number|null)=>SoundSpec;
+/** A recipe with its rendered loudness trimmed to sit with its family (open with close, fill with empty). */
+const trim=(k:number,recipe:Recipe):Recipe=>(r,distance)=>{const s=recipe(r,distance);louder(s.layers,k);return s;};
 const bubbles=(r:Rand,times:readonly number[],freq:number,gain:number)=>times.map(t=>
   tone('sine',freq*vary(r,.2),{freqEnd:freq*2.2*vary(r,.2),delay:t,attack:.003,decay:.05,gain}));
 
@@ -160,19 +166,19 @@ const SIMPLE:Record<SimpleName,Recipe>={
   click:()=>spec(.25,1,[
     noise('bandpass',3500,{q:1.5,attack:.001,decay:.012,gain:.6}),
     tone('sine',1100,{attack:.001,decay:.03,gain:.3})],{ui:true}),
-  door_open:r=>{const p=r()*.1+.9,f=vary(r,.05);return spec(1,p,[
+  door_open:trim(1.6,r=>{const p=r()*.1+.9,f=vary(r,.05);return spec(1,p,[
     noise('bandpass',2500*f,{q:1.2,attack:.001,decay:.02,gain:.4}),
     tone('sawtooth',135*f,{freqEnd:190*f,delay:.02,attack:.03,hold:.08,decay:.12,gain:.18,fm:{ratio:3.1,depth:.4},filter:{type:'bandpass',freq:950,q:3}}),
     tone('triangle',210*f,{delay:.2,decay:.08,gain:.25}),
-    noise('bandpass',520*f,{q:2,delay:.2,decay:.07,gain:.3})]);},
+    noise('bandpass',520*f,{q:2,delay:.2,decay:.07,gain:.3})]);}),
   door_close:r=>{const p=r()*.1+.9,f=vary(r,.05);return spec(1,p,[
     tone('triangle',180*f,{freqEnd:148*f,attack:.002,decay:.12,gain:.4}),
     noise('bandpass',480*f,{q:2,attack:.002,decay:.1,gain:.42}),
     noise('bandpass',2400*f,{q:1.2,delay:.05,decay:.018,gain:.35})]);},
-  chest_open:r=>{const p=r()*.1+.9,f=vary(r,.05);return spec(.5,p,[
+  chest_open:trim(2.5,r=>{const p=r()*.1+.9,f=vary(r,.05);return spec(.5,p,[
     noise('bandpass',2200*f,{q:1.2,decay:.02,gain:.35}),
     tone('sawtooth',105*f,{freqEnd:170*f,delay:.02,attack:.08,hold:.22,decay:.2,gain:.22,fm:{ratio:2.7,depth:.45},filter:{type:'bandpass',freq:800,q:4}}),
-    noise('lowpass',900*f,{delay:.04,attack:.05,decay:.3,gain:.15})]);},
+    noise('lowpass',900*f,{delay:.04,attack:.05,decay:.3,gain:.15})]);}),
   chest_close:r=>{const p=r()*.1+.9,f=vary(r,.05);return spec(.5,p,[
     tone('triangle',150*f,{freqEnd:118*f,attack:.002,decay:.16,gain:.42}),
     rumble(650*f,{attack:.002,decay:.13,gain:.45}),
@@ -187,9 +193,9 @@ const SIMPLE:Record<SimpleName,Recipe>={
     noise('bandpass',900,{q:.7,attack:.002,decay:.35,gain:.4}),
     tone('sine',68,{freqEnd:32,attack:.004,decay:.9,gain:.6}),
     noise('highpass',1800,{q:.7,delay:.1,decay:.05,gain:.25,bursts:grains(r,6,.8,.05,.3,.5,.6)})]);},
-  fuse:r=>spec(1,1,[
+  fuse:trim(.55,r=>spec(1,1,[
     noise('highpass',2800,{q:.7,attack:.08,hold:1.15,decay:.3,gain:.35}),
-    noise('bandpass',5200,{q:1,delay:.05,decay:.03,gain:.2,bursts:grains(r,8,1.3,.03,.25)})]),
+    noise('bandpass',5200,{q:1,delay:.05,decay:.03,gain:.2,bursts:grains(r,8,1.3,.03,.25)})])),
   // Flint and steel: pitch r × 0.4 + 0.8.
   ignite:r=>{const p=r()*.4+.8;return spec(1,p,[
     noise('highpass',4500,{q:.8,attack:.001,decay:.09,gain:.5}),
@@ -204,9 +210,9 @@ const SIMPLE:Record<SimpleName,Recipe>={
     noise('bandpass',480,{freqEnd:1150,q:1,attack:.12,decay:.32,gain:.38}),
     rumble(420,{attack:.1,decay:.28,gain:.28})]);},
   // Lava meeting water: volume 0.5, pitch 2.6 + (r - r) × 0.8 (the engine clamps pitch to 2).
-  fizz:r=>{const p=2.6+(r()-r())*.8;return spec(.5,p,[
+  fizz:trim(.6,r=>{const p=2.6+(r()-r())*.8;return spec(.5,p,[
     noise('highpass',3000,{q:.7,attack:.01,hold:.2,decay:.6,gain:.4}),
-    noise('bandpass',5000,{q:1.2,decay:.03,gain:.25,bursts:grains(r,6,.6,.03,.3)})]);},
+    noise('bandpass',5000,{q:1.2,decay:.03,gain:.25,bursts:grains(r,6,.6,.03,.3)})]);}),
   // Lava pop: volume 0.2 + r × 0.2, pitch 0.9 + r × 0.15.
   lava:r=>{const volume=.2+r()*.2,p=.9+r()*.15;return spec(volume,p,[
     tone('sine',150,{freqEnd:520,attack:.003,decay:.07,gain:.42}),
@@ -222,23 +228,23 @@ const SIMPLE:Record<SimpleName,Recipe>={
     tone('triangle',230,{freqEnd:160,attack:.003,decay:.18,gain:.3}),
     noise('bandpass',1200,{freqEnd:600,q:1.2,attack:.02,decay:.25,gain:.35}),
     tone('sine',115,{attack:.002,decay:.08,gain:.15})]);},
-  arrow_hit:r=>{const p=1.2/(r()*.2+.9);return spec(1,p,[
+  arrow_hit:trim(1.4,r=>{const p=1.2/(r()*.2+.9);return spec(1,p,[
     noise('bandpass',900,{q:1.5,attack:.001,decay:.05,gain:.5}),
     tone('triangle',320,{freqEnd:160,attack:.001,decay:.07,gain:.3}),
-    tone('triangle',620,{delay:.01,decay:.2,gain:.06,tremolo:{rate:40,depth:.8}})]);},
+    tone('triangle',620,{delay:.01,decay:.2,gain:.06,tremolo:{rate:40,depth:.8}})]);}),
   // Throwing a snowball, egg or pearl: volume 0.5, pitch 0.4 / (r × 0.4 + 0.8).
-  throw:r=>{const p=.4/(r()*.4+.8);return spec(.5,p,[
-    noise('bandpass',700,{freqEnd:1900,q:1.5,attack:.04,decay:.14,gain:.45})]);},
+  throw:trim(1.6,r=>{const p=.4/(r()*.4+.8);return spec(.5,p,[
+    noise('bandpass',700,{freqEnd:1900,q:1.5,attack:.04,decay:.14,gain:.45})]);}),
   tool_break:r=>{const p=.8+r()*.4;return spec(.8,p,[
     noise('highpass',2000,{q:.7,attack:.001,decay:.06,gain:.55}),
     noise('bandpass',4500,{q:1.5,delay:.03,decay:.03,gain:.3,bursts:grains(r,4,.22,.03,.35)}),
     tone('sine',2800*vary(r,.05),{delay:.02,attack:.001,decay:.15,gain:.09}),
     tone('sine',3700*vary(r,.05),{delay:.06,attack:.001,decay:.12,gain:.07}),
     tone('triangle',400,{freqEnd:190,attack:.001,decay:.05,gain:.25})]);},
-  equip:r=>{const f=vary(r,.05);return spec(1,1,[
+  equip:trim(1.5,r=>{const f=vary(r,.05);return spec(1,1,[
     noise('bandpass',1800*f,{q:.8,decay:.07,gain:.35,bursts:grains(r,2,.08,.07,.4)}),
     tone('sine',1300*f,{delay:.02,attack:.001,decay:.12,gain:.08}),
-    tone('sine',2100*f,{delay:.05,attack:.001,decay:.08,gain:.06})]);},
+    tone('sine',2100*f,{delay:.05,attack:.001,decay:.08,gain:.06})]);}),
   // Thunder: volume 10000 (heard everywhere, so never attenuated; panned toward the strike), pitch 0.8 + r × 0.2.
   // The lightning impact crack (volume 2, 32 blocks) is folded in when the strike is near; far strikes lose their high end.
   thunder:(r,distance)=>{
@@ -250,13 +256,13 @@ const SIMPLE:Record<SimpleName,Recipe>={
       tone('sine',45,{freqEnd:30,delay:.2,attack:.3,hold:.5,decay:2,gain:.25}));
     return spec(10000,p,layers,{global:true});},
   // Rain: a looping bed; weather refreshes it with play('rain') and the engine follows weather.intensity.
-  rain:()=>spec(1,1,[
+  rain:trim(.6,()=>spec(1,1,[
     noise('bandpass',2600,{q:.5,attack:1.5,decay:2,gain:.4}),
     rumble(500,{attack:1.5,decay:2,gain:.35}),
-    noise('highpass',6000,{q:.6,attack:1.5,decay:2,gain:.12})],{loop:true}),
-  attack_weak:()=>spec(1,1,[
+    noise('highpass',6000,{q:.6,attack:1.5,decay:2,gain:.12})],{loop:true})),
+  attack_weak:trim(1.8,()=>spec(1,1,[
     noise('lowpass',900,{q:.7,attack:.004,decay:.1,gain:.35}),
-    rumble(250,{attack:.003,decay:.06,gain:.3})]),
+    rumble(250,{attack:.003,decay:.06,gain:.3})])),
   attack_strong:()=>spec(1,1,[
     noise('bandpass',1400,{q:.7,attack:.002,decay:.12,gain:.5}),
     tone('sine',110,{freqEnd:58,attack:.002,decay:.12,gain:.5}),
@@ -273,10 +279,10 @@ const SIMPLE:Record<SimpleName,Recipe>={
     tone('sine',1318.5,{delay:.12,attack:.004,decay:.6,gain:.2}),
     tone('sine',1975.5,{delay:.24,attack:.004,decay:.8,gain:.18}),
     tone('triangle',659.25,{delay:.12,attack:.01,decay:.7,gain:.08})],{ui:true}),
-  bucket_fill:r=>spec(1,1,[
+  bucket_fill:trim(1.8,r=>spec(1,1,[
     noise('bandpass',400,{freqEnd:1300,q:2,attack:.03,decay:.35,gain:.42}),
     ...bubbles(r,[.05,.15,.26],340,.15),
-    tone('sine',900,{attack:.001,decay:.08,gain:.08})]),
+    tone('sine',900,{attack:.001,decay:.08,gain:.08})])),
   bucket_empty:()=>spec(1,1,[
     noise('bandpass',1500,{freqEnd:400,q:1.5,attack:.02,hold:.1,decay:.35,gain:.42}),
     rumble(520,{delay:.12,attack:.01,decay:.3,gain:.32}),
@@ -285,10 +291,10 @@ const SIMPLE:Record<SimpleName,Recipe>={
     noise('highpass',3500,{q:.8,decay:.03,gain:.5,bursts:hits([0,.13],.03,.55)}),
     tone('sine',3100,{attack:.001,decay:.04,gain:.14}),
     tone('sine',2900,{delay:.13,attack:.001,decay:.04,gain:.14})]),
-  milk:r=>{const times=[0,.12,.24,.36];return spec(1,1,[
+  milk:trim(1.8,r=>{const times=[0,.12,.24,.36];return spec(1,1,[
     noise('bandpass',520,{q:4,decay:.06,gain:.35,bursts:hits(times,.06,.35)}),
     ...times.map(t=>tone('sine',300*vary(r,.1),{freqEnd:560*vary(r,.1),delay:t,attack:.004,decay:.05,gain:.18})),
-    tone('sine',950,{attack:.001,decay:.08,gain:.07})]);},
+    tone('sine',950,{attack:.001,decay:.08,gain:.07})]);}),
   teleport:()=>spec(1,1,[
     tone('sawtooth',180,{freqEnd:900,attack:.01,decay:.35,gain:.22,fm:{ratio:1.5,depth:1.2},filter:{type:'bandpass',freq:1200,q:2}}),
     tone('sine',900,{freqEnd:150,delay:.25,attack:.02,decay:.4,gain:.2}),
