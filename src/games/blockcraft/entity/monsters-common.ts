@@ -4,10 +4,12 @@ import type {DamageSource,Entity,Game} from '../engine/contracts';
 
 /** Vanilla mob melee knockback: 0.4 blocks/tick, expressed in blocks/second. */
 export const MOB_KNOCKBACK=8;
+/** Fraction of ground speed kept per tick on normal ground (slipperiness 0.6 × 0.91, vanilla LivingEntity.travel). */
+export const GROUND_KEEP=.6*.91;
 /** The movement intent (moveX/moveZ: the steady ground speed, blocks/second) for a vanilla input speed `s` (the
  *  MOVEMENT_SPEED attribute): on normal ground speed per tick settles at s² / (1 − 0.6 × 0.91). The entity framework maps the
  *  intent back to s, so ground and air acceleration match vanilla (air 0.02 × s per tick). */
-export const groundSpeed=(s:number)=>s*s/(1-.6*.91)*20;
+export const groundSpeed=(s:number)=>s*s/(1-GROUND_KEEP)*20;
 /** Random.nextInt(n): 0..n-1. */
 export const randInt=(random:()=>number,n:number)=>Math.floor(random()*n);
 /** Loot count of UniformGenerator.between(min, max) (Mth.nextInt): every integer from min to max equally likely. */

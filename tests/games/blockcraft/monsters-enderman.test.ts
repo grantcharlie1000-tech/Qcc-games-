@@ -2,8 +2,8 @@ import {describe,expect,test} from 'vitest';
 import {AIR,B,blockId,isLiquid,SOLID} from '../../../src/games/blockcraft/data/blocks';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {collidesAt} from '../../../src/games/blockcraft/engine/physics';
-import {ANGRY_SPEED,ENDERMAN_HEAD,WALK_SPEED,findTeleportTarget,isHoldable,isStaredAt,stareDistance,strollTarget,teleportRandomly,tryPlaceBlock,
-  tryTakeBlock} from '../../../src/games/blockcraft/entity/monsters-enderman';
+import {ANGRY_SPEED,ENDERMAN_HEAD,WALK_SPEED,findTeleportTarget,isHoldable,isStaredAt,liquidAhead,stareDistance,strollTarget,teleportRandomly,
+  tryPlaceBlock,tryTakeBlock} from '../../../src/games/blockcraft/entity/monsters-enderman';
 import type {Entity,PartPose} from '../../../src/games/blockcraft/engine/contracts';
 import {createHarness,lookAt,type MonsterHarness} from './monsters-fixture';
 
@@ -166,11 +166,40 @@ describe('calming down',()=>{
 });
 
 describe('keeping out of water (vanilla endermen never path into water)',()=>{
-  /** Ticks with a crude stand-in for physics: moves the body by its intent (blocks/second), 20 ticks per second. */
+  /** Ticks with a stand-in for the framework's ground physics (vanilla LivingEntity.travel on normal ground): the intent
+   *  adds intent / 20 × (1 − 0.546) blocks per tick, then 0.546 of the speed is kept, so a mob slides after it stops. */
   function walk(h:MonsterHarness,e:Entity,ticks:number,each:()=>void){
-    for(let i=0;i<ticks;i++){h.entities.tick();e.x+=e.moveX/20;e.z+=e.moveZ/20;each();}
+    const keep=.6*.91;
+    for(let i=0;i<ticks;i++){
+      h.entities.tick();
+      const ux=e.vx/20+e.moveX/20*(1-keep),uz=e.vz/20+e.moveZ/20*(1-keep);
+      e.x+=ux;e.z+=uz;e.vx=ux*keep*20;e.vz=uz*keep*20;each();
+    }
   }
-  const overWater=(h:MonsterHarness,e:Entity)=>isLiquid(Math.max(0,h.game.world.get(Math.floor(e.x),Math.floor(e.y)-1,Math.floor(e.z))));
+  /** Does any corner of its body hang over a liquid (at the feet or the floor below)? */
+  const overWater=(h:MonsterHarness,e:Entity)=>{
+    const hw=e.width/2,y=Math.floor(e.y),w=h.game.world;
+    for(const [dx,dz] of [[-hw,-hw],[hw,-hw],[-hw,hw],[hw,hw]]){
+      const x=Math.floor(e.x+dx),z=Math.floor(e.z+dz);
+      if(isLiquid(Math.max(0,w.get(x,y,z)))||isLiquid(Math.max(0,w.get(x,y-1,z))))return true;
+    }
+    return false;
+  };
+  test('liquid detection along the movement intent: floor, feet, head height and the bottom of a drop; walls hide it',()=>{
+    const h=createHarness(),e=enderman(h,.5,60,.5),w=h.game.world;
+    e.moveX=4;
+    const at=(x:number,y:number,z:number,id:number)=>w.set(x,y,z,id,'player');
+    expect(liquidAhead(h.game,e,3)).toBe(false);
+    at(1,59,0,B.water);// the floor of the next cell
+    expect(liquidAhead(h.game,e,.6)).toBe(true);expect(liquidAhead(h.game,e,.45)).toBe(false);
+    at(1,60,0,B.stone);expect(liquidAhead(h.game,e,.6)).toBe(false);// a wall in front hides it
+    at(1,60,0,AIR);at(1,59,0,B.stone);at(1,62,0,B.water);expect(liquidAhead(h.game,e,.6)).toBe(true);// at head height
+    at(1,62,0,AIR);at(1,60,0,B.lava);expect(liquidAhead(h.game,e,.6)).toBe(true);// lava at the feet
+    at(1,60,0,AIR);at(2,59,0,AIR);at(2,58,0,AIR);at(2,57,0,B.water);// a drop of 3 onto water, one cell further
+    expect(liquidAhead(h.game,e,1.2)).toBe(false);expect(liquidAhead(h.game,e,1.6)).toBe(true);
+    e.moveX=0;e.moveZ=-4;expect(liquidAhead(h.game,e,3)).toBe(false);// none that way
+    e.moveX=4;e.moveZ=0;e.inWater=true;expect(liquidAhead(h.game,e,3)).toBe(false);// already wet: free to walk out
+  });
   test('a calm enderman on an island never strolls into the moat around it',()=>{
     const h=createHarness({seed:5}),e=enderman(h,.5,60,.5);
     fill(h,-4,59,-4,4,59,4,B.water);fill(h,-1,59,-1,1,59,1,B.stone);// a 3x3 island in a 3-wide moat

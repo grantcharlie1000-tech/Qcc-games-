@@ -1,6 +1,7 @@
 // Slime (Java 1.20 behaviour): sizes 1, 2 and 4 with a 0.52 × size box and size² health; hops in a direction (toward the player
-// within 16 blocks, otherwise one that changes every 2–5 seconds), pausing 10–29 ticks between hops (a third of that for big
-// slimes chasing); sizes 2 and 4 hurt a touching player for 2 and 4; on death splits into 2–4 slimes of half size; size 1
+// within 16 blocks until it has been out of sight for 3 seconds, otherwise one that changes every 2–5 seconds), pausing 10–29
+// ticks between hops (a third of that for big slimes chasing) at vanilla speed 0.2 + 0.1 × size; sizes 2 and 4 hurt a touching
+// player for 2 and 4 (at most every 10 ticks); on death splits into 2–4 slimes of half size; size 1
 // drops 0–2 slime balls; xp equals the size. Natural spawning: swamps between y 50 and 70 at night (brightness ≤ a random
 // 0..7, scaled by the moon phase) and slime chunks (a deterministic 1-in-10 hash of the world seed and chunk) below y 40.
 import {BIOMES,biomeDef} from '../data/biomes';

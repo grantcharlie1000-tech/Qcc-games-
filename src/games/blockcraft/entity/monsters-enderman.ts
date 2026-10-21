@@ -16,7 +16,7 @@ import {CH} from '../engine/constants';
 import {boxCollides,rayBox,raycast} from '../engine/physics';
 import {canSurvive} from '../engine/support';
 import type {BlockSource,DamageSource,Entity,EntityKind,Game,ParticleOptions,Vec3} from '../engine/contracts';
-import {gameRandom,groundSpeed,meleeSource,noise,playerDistanceSq,playerTargetable,randInt,uniformCount} from './monsters-common';
+import {GROUND_KEEP,gameRandom,groundSpeed,meleeSource,noise,playerDistanceSq,playerTargetable,randInt,uniformCount} from './monsters-common';
 import {ENDERMAN_HEAD_PX,createEndermanModel} from './monsters-models';
 
 export const ENDERMAN_WIDTH=.6,ENDERMAN_HEIGHT=2.9,ENDERMAN_HEALTH=40,ENDERMAN_DAMAGE=7,ENDERMAN_XP=5;
@@ -196,17 +196,10 @@ function dryStandable(game:Game,e:Entity,x:number,y:number,z:number):boolean{
   if(boxCollides(w,x+.5-hw,y,z+.5-hw,x+.5+hw,y+e.height,z+.5+hw))return false;
   return game.entities.ai.isSafe(x+.5,y,z+.5,e.width,e.height);
 }
-/** Would its movement intent take it into a liquid next: does the next cell along moveX/moveZ hold water or lava anywhere
- *  from its head height down to the first floor (up to 4 blocks below the feet)? Vanilla endermen treat water as
- *  impassable (path malus -1), but the shared path-finder only makes it costlier. Never true once it is in a liquid
- *  already, so it can walk out. */
-export function liquidAhead(game:Game,e:Entity):boolean{
-  const speed=Math.hypot(e.moveX,e.moveZ);
-  if(!(speed>1e-6)||e.inWater||e.inLava)return false;
-  const reach=e.width/2+.35,x=Math.floor(e.x+e.moveX/speed*reach),z=Math.floor(e.z+e.moveZ/speed*reach);
-  if(x===Math.floor(e.x)&&z===Math.floor(e.z))return false;
-  const w=game.world,y=Math.floor(e.y+.01);
-  for(let dy=Math.ceil(e.height);dy>=-4;dy--){
+/** Does the column of cell (x, z) hold a liquid from `top` blocks above the feet level y down to the first floor (up to 4 blocks
+ *  below the feet): water or lava at the body, the floor, or the bottom of a drop? */
+function liquidColumn(w:BlockSource,x:number,y:number,z:number,top:number):boolean{
+  for(let dy=top;dy>=-4;dy--){
     const id=w.get(x,y+dy,z);
     if(id<0)continue;
     if(LIQUID[id])return true;
@@ -214,9 +207,33 @@ export function liquidAhead(game:Game,e:Entity):boolean{
   }
   return false;
 }
-/** Holds still this tick instead of stepping into a liquid; true when it had to. */
-function holdAtLiquid(game:Game,e:Entity):boolean{
-  if(!liquidAhead(game,e))return false;
+/** Is there a liquid along its movement intent within `reach` blocks of the body centre? Walks the cells the centre line
+ *  crosses (2D grid traversal) and checks each column from head height (one step up included) down to the first floor.
+ *  Never true once it is in a liquid already, so it can walk out. */
+export function liquidAhead(game:Game,e:Entity,reach:number):boolean{
+  const intent=Math.hypot(e.moveX,e.moveZ);
+  if(!(intent>1e-6)||!(reach>0)||e.inWater||e.inLava)return false;
+  const nx=e.moveX/intent,nz=e.moveZ/intent,sx=nx>0?1:-1,sz=nz>0?1:-1;
+  const dtx=nx!==0?1/Math.abs(nx):Infinity,dtz=nz!==0?1/Math.abs(nz):Infinity;
+  let x=Math.floor(e.x),z=Math.floor(e.z);
+  let tx=nx!==0?(nx>0?x+1-e.x:e.x-x)*dtx:Infinity,tz=nz!==0?(nz>0?z+1-e.z:e.z-z)*dtz:Infinity;
+  const y=Math.floor(e.y+.01),top=Math.ceil(e.height),w=game.world;
+  for(let i=0;i<8;i++){
+    if(tx<tz){if(tx>reach)return false;x+=sx;tx+=dtx;}
+    else{if(tz>reach)return false;z+=sz;tz+=dtz;}
+    if(liquidColumn(w,x,y,z,top))return true;
+  }
+  return false;
+}
+/** Vanilla endermen never path into water or lava (water path malus -1); the shared path-finder only makes water costlier.
+ *  So each tick, before stepping: if it kept its intent this tick and braked from the next, would it still stop with its
+ *  body short of any liquid (0.1 block margin)? On normal ground it slides v / 20 / (1 − 0.546) blocks from velocity v, and
+ *  this tick's step adds intent / 20. If not, it stops now (and creeps no closer than that). Returns true when it stopped. */
+export function holdAtLiquid(game:Game,e:Entity):boolean{
+  const intent=Math.hypot(e.moveX,e.moveZ),v=Math.hypot(e.vx,e.vz);
+  if(!(intent>1e-6))return false;
+  const reach=e.width/2+.1+(Number.isFinite(v)?v:0)/20/(1-GROUND_KEEP)+intent/20;
+  if(!liquidAhead(game,e,reach))return false;
   e.moveX=e.moveZ=0;e.jump=false;
   return true;
 }
@@ -245,7 +262,7 @@ function endStroll(e:Entity,game:Game){STROLLS.delete(e);game.entities.ai.stop(e
 /** Follows the stroll path one tick; ends the stroll when no path is found (as the shared wander does) or the next step is
  *  into a liquid. */
 function strollStep(e:Entity,game:Game,s:Stroll){
-  if(!game.entities.ai.navigate(e,s.x,s.y,s.z,WALK_SPEED)||liquidAhead(game,e))endStroll(e,game);
+  if(!game.entities.ai.navigate(e,s.x,s.y,s.z,WALK_SPEED)||holdAtLiquid(game,e))endStroll(e,game);
 }
 /** Calm wandering: now and then walks (path-finding) to a dry stroll target; gives up after 20 s, on reaching it, when no
  *  path is found, or at the edge of water or lava. */
@@ -294,7 +311,7 @@ export function provoke(e:Entity,game:Game){
 function chase(e:Entity,game:Game,distSq:number){
   const d=data(e),p=game.player.state,ai=game.entities.ai;
   ai.navigate(e,p.x,p.y,p.z,ANGRY_SPEED);
-  // Stops at the edge of water or lava (keeping its path, so it does not re-plan every tick).
+  // Stops short of water or lava (keeping its path, so it does not re-plan every tick).
   holdAtLiquid(game,e);
   if(distSq<=ATTACK_REACH_SQ&&d.cooldown===0&&ai.canSee(e,p.x,p.y+game.player.eyeHeight(),p.z)){
     d.cooldown=ATTACK_COOLDOWN;d.swing=10;
