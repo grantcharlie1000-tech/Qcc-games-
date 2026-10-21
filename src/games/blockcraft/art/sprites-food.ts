@@ -58,20 +58,22 @@ const STEAK=[
   '.......DDD......',
   '................',
   '................'];
+/** An asymmetric chop: round meaty lobe at the top right tapering to the bottom left, a pale fat rim (f) along the
+ *  left and bottom edges. */
 const CHOP=[
   '................',
   '................',
   '................',
-  '.......ffff.....',
-  '.....ffLLLLf....',
-  '....fLLHHLLMf...',
-  '...fLLHLLLMMMf..',
-  '...fLLLLLMMMMf..',
-  '...fLLLLMMMMMf..',
-  '....fLMMMMMMf...',
-  '.....fMMMMMf....',
-  '......fMMMf.....',
-  '.......fff......',
+  '.......LLLLM....',
+  '.....fLHHLLMMM..',
+  '....fLHLLLMMMMD.',
+  '...fLLLLLMMMMMD.',
+  '...fLLLLMMMMMDD.',
+  '..fLLLMMMMMMMD..',
+  '..fLMMMMMMMDD...',
+  '.fLMMMMMDDD.....',
+  '.ffMMMDD........',
+  '..ffff..........',
   '................',
   '................',
   '................'];
@@ -150,8 +152,8 @@ const meat=(rows:string[],raw:Record<string,number>,cooked:Record<string,number>
 
 const [beef,cookedBeef]=meat(STEAK,{...tones(0xff8a84,0xe8443c,0xc22a24,0x8e1a16,0x4a0a08),f:0xf2c8c0},
   {...tones(0xc8946a,0x9e6238,0x7a4422,0x52280e,0x2a1406),f:0x5a3418},edgesOf('HLMDf','O'));
-const [porkchop,cookedPorkchop]=meat(CHOP,{H:0xffc8c4,L:0xf5a09c,M:0xe07c7a,f:0xffe4e0,O:0x7a3a3a},
-  {H:0xe0aa78,L:0xc4844a,M:0xa0622e,f:0xecd0a4,O:0x4a2a10},edgesOf('HLMf','O'));
+const [porkchop,cookedPorkchop]=meat(CHOP,{H:0xffc8c4,L:0xf5a09c,M:0xe07c7a,D:0xc05e5e,f:0xffe4e0,O:0x7a3a3a},
+  {H:0xe0aa78,L:0xc4844a,M:0xa0622e,D:0x7c4818,f:0xecd0a4,O:0x4a2a10},edgesOf('HLMDf','O'));
 const [chicken,cookedChicken]=meat(BIRD,{...tones(0xfff6f0,0xf6dccf,0xe8bcac,0xc08a7a,0x7a4a40),b:0xf2cbbb,B:0xe0a592},
   {...tones(0xf6cc8c,0xdc9e52,0xbc7832,0x8a5018,0x3e220a),b:0xe6ae66,B:0xb47a38},edgesOf('HLMDbB','O'));
 const [mutton,cookedMutton]=meat(LEG,{...tones(0xff9a8e,0xe8524a,0xc83a34,0x902420,0x4a0e0a),w:0xf6f2e2,W:0xd0c8b0},

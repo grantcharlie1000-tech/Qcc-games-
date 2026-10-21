@@ -11,17 +11,18 @@ const MATERIALS:Record<string,{O:number;D:number;M:number;L:number;H:number}>={
   golden:TIER_COLOURS.golden,iron:TIER_COLOURS.iron,diamond:TIER_COLOURS.diamond
 };
 const PIECES:Record<string,string[]>={
+  // A rounded cap 12 wide and 4 rows deep, then cheek guards either side of the face opening.
   helmet:[
     '................',
     '................',
     '................',
-    '................',
-    '.....HLLLLLM....',
-    '....HLMMMMMMD...',
-    '...LMMMMMMMMMD..',
-    '...LMD.....LMD..',
-    '...LMD.....LMD..',
-    '...DDD.....DDD..',
+    '...HLLLLLLLLM...',
+    '..HLLLLLLLLLMD..',
+    '..LMMMMMMMMMMD..',
+    '..LMMMMMMMMMDD..',
+    '..LMD......LMD..',
+    '..LMD......LMD..',
+    '..DDD......DDD..',
     '................',
     '................',
     '................',

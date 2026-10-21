@@ -113,23 +113,25 @@ for(const [tier,colours] of Object.entries(TIER_COLOURS)){
   for(const [kind,rows] of Object.entries(SHAPES))TOOL_SPRITES[`${tier}_${kind}`]=sprite(rows,palette,TOOL_EDGES);
 }
 
+// Shears: two light blades crossing at the pivot (P) and opening toward the top right, two loop handles (k, with
+// a lighter K top edge) at the bottom left. The handle holes are ' ' so they stay see-through instead of outlined.
 TOOL_SPRITES.shears=sprite([
   '................',
-  '............HL..',
-  '...........HLMD.',
-  '..........HLMD..',
-  '.........HLMD...',
-  '........HLMD....',
-  '.......HLMD.....',
-  '.kkkkkkPPD......',
-  '.k..k..k........',
-  '.k..k..k........',
-  '.kkkk..k........',
-  '.....kkkk.......',
-  '.....k..k.......',
-  '.....k..k.......',
-  '.....kkkk.......',
-  '................'],{...IRON,P:0x4a4a4a,k:0x9a9a9a},edgesOf('HLMPk','O'));
+  '................',
+  '............HM..',
+  '...........HM...',
+  '..........HM..L.',
+  '.........HM..LD.',
+  '........HM.LLD..',
+  '.......HMLLDD...',
+  '......PPDD......',
+  '....KkPkk.......',
+  '..KKkk..k.......',
+  '..K  k.KKkk.....',
+  '..k  k.K  k.....',
+  '..kkkk.k  k.....',
+  '.......kkkk.....',
+  '................'],{...IRON,P:0x4a4a4a,k:0x8e8e8e,K:0xb8b8b8},edgesOf('HMLDPkK','O'));
 
 TOOL_SPRITES.flint_and_steel=sprite([
   '................',
@@ -166,6 +168,58 @@ TOOL_SPRITES.bow=sprite([
   '.M..............',
   '................',
   '................'],{L:0xa27a42,M:0x7a5a2e,D:0x5c4321,g:0x4a3417,s:0xdcdcdc,O:0x2a1b0b},edgesOf('LMDg','O'));
+
+// ---- Bow pull stages: what a held bow shows while drawn (vanilla bow_pulling_0, _1, _2). They are sprites, not
+// items. The string is pulled back into a V toward the bottom-right, the limb tips bend toward it and the nocked
+// arrow lies on the other diagonal with its head at the upper left, sliding back by one pixel per stage.
+const BOW_LIMBS=[
+  '................',
+  '..........LLMM..',
+  '.......LLMMM....',
+  '.....LLMMD......',
+  '....LMMD........',
+  '...gggg.........',
+  '...LMD..........',
+  '..LMD...........',
+  '..LMD...........',
+  '..LM............',
+  '.LMM............',
+  '.LM.............',
+  '.M..............',
+  '.M..............',
+  '................',
+  '................'];
+/** The nocked arrow: head (x y z) at the top-left, shaft (a light, A dark), fletching (w); the nock is at (9,9). */
+const NOCKED_ARROW=[
+  'xy.........',
+  'yyz........',
+  '.za........',
+  '..Aa.......',
+  '...Aa......',
+  '....Aa.....',
+  '.....Aa....',
+  '......Aaw..',
+  '.......Aaw.',
+  '.......wAaw',
+  '........ww.'];
+function pulledBow(stage:number):Sprite{
+  const g=BOW_LIMBS.map(r=>[...r]);
+  const set=(x:number,y:number,c:string)=>{if(x>=0&&y>=0&&x<16&&y<16)g[y][x]=c;};
+  // Limb tips bend toward the string: one tip pixel per stage moves a pixel toward the archer.
+  const tips:[number,number,number,number][]=[[13,1,13,2],[1,13,2,13],[12,1,12,2],[1,12,2,12]];
+  for(let i=0;i<stage*2;i++){const [x,y,nx,ny]=tips[i];const c=g[y][x];set(x,y,'.');set(nx,ny,c);}
+  // The string runs from each tip to the nock (Bresenham lines over empty pixels only).
+  const nock=9+stage,line=(x0:number,y0:number,x1:number,y1:number)=>{
+    const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx-dy,x=x0,y=y0;
+    for(;;){if(g[y][x]==='.')g[y][x]='s';if(x===x1&&y===y1)break;const e2=2*e;if(e2>-dy){e-=dy;x+=sx;}if(e2<dx){e+=dx;y+=sy;}}
+  };
+  const top=stage?[12,3]:[12,2],bottom=stage?[3,12]:[2,12];
+  line(top[0],top[1],nock,nock);line(bottom[0],bottom[1],nock,nock);
+  NOCKED_ARROW.forEach((row,y)=>[...row].forEach((c,x)=>{if(c!=='.')set(x+stage,y+stage,c);}));
+  return sprite(g.map(r=>r.join('')),{L:0xa27a42,M:0x7a5a2e,D:0x5c4321,g:0x4a3417,s:0xdcdcdc,O:0x2a1b0b,
+    x:0xe0e0e0,y:0xb4b4b4,z:0x5a5a5a,a:0x8a6a3a,A:0x5c4422,w:0xf0f0f0,F:0x8c8c8c},{...edgesOf('LMDgxyz','O'),w:'F'});
+}
+for(let stage=0;stage<3;stage++)TOOL_SPRITES[`bow_pulling_${stage}`]=pulledBow(stage);
 
 TOOL_SPRITES.arrow=sprite([
   '................',

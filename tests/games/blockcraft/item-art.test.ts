@@ -124,6 +124,54 @@ describe('item sprites',()=>{
     const [lr,lg,lb]=inside('lava_bucket');expect(lr).toBeGreaterThan(lb+100);expect(lr).toBeGreaterThan(lg);
     expect(luma(inside('milk_bucket'))).toBeGreaterThan(luma(inside('bucket'))+30);
   });
+  test('vanilla silhouettes: chunky ingots, lumpy raw ores, deep helmets with a face opening',()=>{
+    const solid=(p:Px,x:number,y:number)=>x>=0&&y>=0&&x<S&&y<S&&p[(y*S+x)*4+3]>0;
+    // Ingots are chunky bars, not thin blades: a solid core survives eroding 2 px from every transparent pixel.
+    const core=(p:Px)=>{let n=0;for(let y=0;y<S;y++)for(let x=0;x<S;x++){let ok=true;
+      for(let dy=-2;dy<=2&&ok;dy++)for(let dx=-2;dx<=2;dx++)if(!solid(p,x+dx,y+dy)){ok=false;break;}if(ok)n++;}return n;};
+    for(const id of ['iron_ingot','gold_ingot','copper_ingot','brick'])expect(core(spritePixels(id)),id).toBeGreaterThanOrEqual(18);
+    // Raw ores are knobbly nuggets: dark outline crevices run into the body between the bumps (round discs such as
+    // the potato and cookie have none).
+    const crevices=(p:Px)=>{
+      // The first opaque pixel in reading order is on the top edge, so it has the outline colour.
+      const first=p.findIndex((v,i)=>i%4===3&&v>0)-3,outline=hexOf(p.subarray(first,first+3));let n=0;
+      for(let y=0;y<S;y++)for(let x=0;x<S;x++){
+        if(!solid(p,x,y)||!solid(p,x-1,y)||!solid(p,x+1,y)||!solid(p,x,y-1)||!solid(p,x,y+1))continue;
+        if(hexOf(rgbAt(p,S,x,y))===outline)n++;
+      }return n;};
+    for(const id of ['raw_iron','raw_gold','raw_copper'])expect(crevices(spritePixels(id)),id).toBeGreaterThanOrEqual(2);
+    for(const id of ['potato','cookie'])expect(crevices(spritePixels(id)),id).toBe(0);
+    // Helmets: a dome at least 4 rows deep (7 rows at least 10 px wide with the outline and brow), then cheek guards
+    // around a transparent face opening.
+    for(const m of ['leather','golden','iron','diamond']){
+      const p=spritePixels(`${m}_helmet`);let wide=0,opening=0;
+      for(let y=0;y<S;y++){let n=0;for(let x=0;x<S;x++)if(solid(p,x,y))n++;if(n>=10)wide++;}
+      for(let y=1;y<S;y++)for(let x=1;x<S-1;x++){
+        if(solid(p,x,y))continue;
+        const hit=(dx:number,dy:number)=>{for(let k=1;k<S;k++)if(solid(p,x+dx*k,y+dy*k))return true;return false;};
+        if(hit(-1,0)&&hit(1,0)&&hit(0,-1))opening++;
+      }
+      expect(wide,`${m}_helmet depth`).toBeGreaterThanOrEqual(7);expect(opening,`${m}_helmet opening`).toBeGreaterThanOrEqual(6);
+    }
+  });
+  test('bow pull stages are painted (not items): string pulled back, arrow nocked, head at the upper left',()=>{
+    const STRING=0xdcdcdc,SHAFT=0x8a6a3a,HEAD=0xe0e0e0;
+    const reach=(p:Px,c:number)=>{let m=-1;for(let i=0;i<S*S;i++)if(p[i*4+3]&&hexOf(p.subarray(i*4,i*4+3))===c)m=Math.max(m,i%S+(i/S|0));return m;};
+    let lastString=reach(spritePixels('bow'),STRING),lastNock=-1;
+    const seen=new Set([key(spritePixels('bow'))]);
+    for(let stage=0;stage<3;stage++){
+      const name=`bow_pulling_${stage}`,p=spritePixels(name);
+      expect(hasSprite(name),name).toBe(true);expect(ITEM_SPRITES).not.toContain(name);
+      for(let i=3;i<p.length;i+=4)expect(p[i]===0||p[i]===255,`${name} alpha`).toBe(true);
+      expect(seen.has(key(p)),`${name} is its own image`).toBe(false);seen.add(key(p));
+      // The string is drawn further back toward the bottom-right corner, and the arrow's nock with it.
+      const s=reach(p,STRING),n=reach(p,SHAFT);
+      expect(s,`${name} string`).toBeGreaterThan(lastString);expect(n,`${name} nock`).toBeGreaterThan(lastNock);
+      lastString=s;lastNock=n;
+      let head=0;for(let y=0;y<8;y++)for(let x=0;x<8;x++){const c=rgbAt(p,S,x,y);if(c[3]&&hexOf(c)===HEAD)head++;}
+      expect(head,`${name} arrowhead`).toBeGreaterThanOrEqual(1);
+    }
+  });
   test('colour cues match the vanilla items',()=>{
     const m=(id:string)=>mean(spritePixels(id),S);
     const isRed=([r,g,b]:number[])=>r>g+50&&r>b+50,isGreen=([r,g,b]:number[])=>g>r+20&&g>b+10;
