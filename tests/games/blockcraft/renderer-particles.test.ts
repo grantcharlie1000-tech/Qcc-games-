@@ -4,7 +4,8 @@ import {createFakeGame} from './helpers/fake-game';
 import {createParticles,MAX_PARTICLES,PARTICLE_KINDS} from '../../../src/games/blockcraft/render/particles';
 import {paintParticleSheet,PARTICLE_SPRITES,SHEET_WIDTH,SHEET_HEIGHT,ITEM_SLOT_BASE,ITEM_SLOTS,SHEET_COLUMNS} from '../../../src/games/blockcraft/render/particles-art';
 import {sharedUniforms} from '../../../src/games/blockcraft/render/renderer';
-import {B,FACE_TILE,TILE_INDEX,ATLAS_COLUMNS,ATLAS_ROWS,blockId,LAYER} from '../../../src/games/blockcraft/data/blocks';
+import {B,FACE_TILE,TILE_INDEX,ATLAS_COLUMNS,ATLAS_ROWS,blockId} from '../../../src/games/blockcraft/data/blocks';
+import {LAYER} from '../../../src/games/blockcraft/engine/constants';
 import {biomeDef} from '../../../src/games/blockcraft/data/biomes';
 import type {ParticleKind} from '../../../src/games/blockcraft/engine/contracts';
 

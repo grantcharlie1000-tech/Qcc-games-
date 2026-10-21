@@ -42,14 +42,18 @@ const dripHang:Painter=(x,y)=>x>=7&&x<=8&&y>=6&&y<=9?(y===6?[255,255,255,170]:WH
 const dripFall:Painter=(x,y)=>x>=7&&x<=8&&y>=7&&y<=8?WHITE:null;
 const dripLand:Painter=(x,y)=>y===9&&x>=5&&x<=10?WHITE:y===8&&x>=6&&x<=9?[255,255,255,190]:null;
 const explosion=(frame:number):Painter=>{
-  const life=frame/15,r=4+frame*.25;
+  // A puffy light-grey cloud of overlapping billows, shaded darker toward the lower right, that thins out and breaks up
+  // into scattered wisps as the frame advances (never fully gone, so every frame shows something).
+  const life=frame/15,r=7.4-frame*.12;
+  const billows:[number,number,number][]=[[7.5,7.5,r*.72],[5,5.5,r*.5],[10,5,r*.48],[5.2,10,r*.5],[10.2,10.2,r*.46],[7.5,3.6,r*.4],[3.6,7.6,r*.4],[11.6,7.8,r*.38]];
   return(x,y)=>{
-    const d=Math.hypot(x-7.5,y-7.5);if(d>r)return null;
-    // Billows dissolve from the outside in as the frame advances.
-    const n=hash(x>>1,y>>1,frame%4)*.5+hash(x,y,7)*.5;
-    if(n<life*.95+(d/r)*.35-.05)return null;
-    const core=1-d/r,v=Math.round(150+core*90+n*15);
-    return[v,v,Math.round(v*.96),255];
+    let inside=0,edge=1;
+    for(const [bx,by,br] of billows){const d=Math.hypot(x-bx,y-by)/br;if(d<1){inside++;edge=Math.min(edge,d);}}
+    if(!inside)return null;
+    const n=hash(x,y,frame%5+1)*.6+hash(x>>1,y>>1,frame%3+9)*.4;
+    if(n<life*.72-.04)return null;
+    const shade=(x+y-15)/30,v=Math.round(Math.max(120,Math.min(235,214-shade*70-edge*28+n*18)));
+    return[v,v,Math.round(v*.97),255];
   };
 };
 const sweep=(frame:number):Painter=>{
