@@ -2,9 +2,10 @@
 // the numbers): walking 4.317, sprinting 5.612 and sneaking 1.295 m/s, 1.25-block jumps with the sprint-jump boost,
 // weak air control, ground friction (ice), sneaking that never walks off edges, 0.6 step-up, standing/crouching/
 // swimming poses (also crawling under 1-block gaps), buoyancy and look-directed swimming, water currents, lava,
-// ladders, creative flight and the Speed/Slowness effects. It tracks fall distance (survival.land on landing), keeps
-// the liquid and ladder flags current, plays footsteps, falls, splashes and swim strokes, charges food exhaustion and
-// sets the field-of-view scale. The camera position (eye()) is interpolated between physics steps.
+// ladders, creative flight and the Speed/Slowness effects, bed bounces and Bedrock's touch auto-jump. It tracks fall
+// distance (survival.land on landing, leaving out the landing tick like vanilla), keeps the liquid and ladder flags
+// current, plays footsteps (silent while sneaking), falls, splashes and swim strokes, kicks up sprint dust, charges food
+// exhaustion and sets the field-of-view scale. The camera position (eye()) is interpolated between physics steps.
 import {LIQUID,blockDef} from '../data/blocks';
 import {CH,TPS} from '../engine/constants';
 import {boxCollides,collidesAt,moveBody,type MoveResult} from '../engine/physics';
