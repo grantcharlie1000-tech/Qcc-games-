@@ -4,6 +4,7 @@ import {createInventory} from '../../../src/games/blockcraft/items/inventory';
 import {ScreenController,type ScreenView} from '../../../src/games/blockcraft/ui/screen-controller';
 import type {ScreenBuild} from '../../../src/games/blockcraft/ui/screen-common';
 import {stateFor} from '../../../src/games/blockcraft/data/blocks';
+import {durabilityBar,slotLabel,tooltipLines} from '../../../src/games/blockcraft/ui/screen-tooltip';
 import type {BlockEntity,CraftingService,FurnaceEntity,ItemStack,RecipeView} from '../../../src/games/blockcraft/engine/contracts';
 
 const st=(id:string,count=1):ItemStack=>({id,count});
@@ -182,6 +183,25 @@ describe('creative tabs and search',()=>{
     expect(all.length).toBeGreaterThan(250);expect(all.filter(id=>!seen.has(id))).toEqual([]);
     expect(all.filter(id=>id.endsWith('_spawn_egg'))).toHaveLength(16);
     void game;
+  });
+});
+
+describe('tooltips, labels and durability bars',()=>{
+  test('tooltips name the item and show attack, armour, food and durability',()=>{
+    expect(tooltipLines({id:'diamond_sword',count:1,damage:61})).toEqual(['Diamond Sword','When in Main Hand:',' 7 Attack Damage',' 1.6 Attack Speed','Durability: 1500 / 1561']);
+    expect(tooltipLines(st('diamond_chestplate'))).toEqual(['Diamond Chestplate','When on Body:',' +8 Armor',' +2 Armor Toughness','Durability: 528 / 528']);
+    expect(tooltipLines(st('golden_apple'))).toEqual(['Golden Apple','Restores 4 hunger (2 shanks)','Saturation 9.6','Regeneration II (0:05)','Absorption (2:00)']);
+    expect(tooltipLines(st('rotten_flesh'))).toContain('Hunger (0:30), 80% chance');
+    expect(tooltipLines(st('cow_spawn_egg'))).toEqual(['Cow Spawn Egg','Spawns a Cow']);
+  });
+  test('slot labels read the position and contents; the bar follows vanilla width and colour',()=>{
+    expect(slotLabel('Hotbar slot 1',st('oak_planks',64))).toBe('Hotbar slot 1: Oak Planks, 64');
+    expect(slotLabel('Helmet slot',null)).toBe('Helmet slot: empty');
+    expect(slotLabel('Hotbar slot 2',{id:'iron_pickaxe',count:1,damage:125})).toBe('Hotbar slot 2: Iron Pickaxe, durability 125 of 250');
+    expect(durabilityBar(st('iron_pickaxe'))).toBeNull();expect(durabilityBar(st('dirt',5))).toBeNull();
+    expect(durabilityBar({id:'iron_pickaxe',count:1,damage:125})).toEqual({width:7/13,color:'#ffff00'});
+    expect(durabilityBar({id:'iron_pickaxe',count:1,damage:249})).toEqual({width:0,color:'#ff0200'});
+    expect(durabilityBar({id:'iron_pickaxe',count:1,damage:1})!.color).toBe('#00ff00');
   });
 });
 
