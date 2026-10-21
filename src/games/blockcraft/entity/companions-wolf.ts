@@ -22,7 +22,7 @@ import {biomeDef} from '../data/biomes';
 import {itemDef} from '../data/items';
 import {boxCollides} from '../engine/physics';
 import type {DamageKind,DamageSource,Entity,EntityKind,Game,ItemStack,SpawnReason,Vec3} from '../engine/contracts';
-import {WOLF_VARIANTS,newWolfLook,wolfModel,type WolfLook,type WolfVariant} from './companions-art';
+import {WOLF_VARIANTS,wolfModel,type WolfLook,type WolfVariant} from './companions-art';
 
 // ---- Vanilla numbers ---------------------------------------------------------------------------------
 export const WOLF_WIDTH=.6,WOLF_HEIGHT=.85,WILD_HEALTH=8,TAME_HEALTH=40,WOLF_DAMAGE=4;
@@ -621,7 +621,8 @@ export function wolfKind(game:Game):EntityKind{
     spawn:{light:'grass',group:[4,4]}
   };
 }
-/** Owner defence wiring: what hurts the player, and what the player hits (melee or arrows). Returns the unsubscribers. */
+/** Event wiring: owner defence (what hurts the player, what the player hits in melee or with arrows), forgetting a dead
+ *  player as a target, and the pet death message. Returns the unsubscribers. */
 export function wireOwnerEvents(game:Game):(()=>void)[]{
   return[
     game.events.on('playerDamaged',({source})=>{
@@ -660,4 +661,3 @@ export function wolfDeathMessage(source:DamageSource):string{
   }
   return 'Wolf died';
 }
-export {newWolfLook};
