@@ -56,6 +56,6 @@ test('a score earned in a real game is published after joining',async({page,cont
  await expect(page.getByRole('button',{name:'Save nickname',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close leaderboards'}).click();
  await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
  await open();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('minesweeper');
- await expect(page.locator('.lb-you')).toContainText('Active Player');
+ await expect(page.locator('#leaderboard-dialog .lb-you')).toContainText('Active Player');
  const score=await page.locator('#game-score strong').textContent();await expect(page.locator('.lb-personal')).toContainText(`Best: ${Number(score).toLocaleString()}`);
 });

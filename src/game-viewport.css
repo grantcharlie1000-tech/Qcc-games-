@@ -69,3 +69,5 @@ body.in-game .game-view[data-game-id=globle] .game-metrics{display:none}
 .lb-sidebar{position:fixed;left:12px;top:16px;bottom:16px;width:240px;overflow:auto;overscroll-behavior:contain;padding:16px;background:#25282a;border:1px solid #444951;border-radius:16px;font:14px/1.4 system-ui,sans-serif;z-index:26}
 .lb-sidebar[hidden]{display:none}.lb-sidebar h2{font-size:18px;margin:0 0 12px}.lb-sidebar .game-button{width:100%;margin-top:12px}.lb-sidebar .lb-table{table-layout:fixed}.lb-sidebar th:first-child{width:38px}.lb-sidebar th:last-child{width:65px}
 @media(min-width:1100px){body.in-game .game-view:not([data-game-id=pool]){left:264px;width:calc(100% - 264px);--play-width:calc(100vw - 264px)}body.in-game .game-view[data-reference-game=true]:not([data-game-id=pool]) .game-toolbar{left:calc((var(--play-width) - var(--scene-width)) / 2)}}
+
+@media(max-width:1099px){.lb-sidebar{display:none}}

@@ -23,7 +23,7 @@ export class LeaderboardSidebar {
  }
  private visibility=()=>{this.root.hidden=!this.desktop.matches;clearTimeout(this.timer);if(this.active())void this.refresh();else{this.request++;if(this.desktop.matches&&!document.hidden)this.offline();}};
  private offline(){this.paint(this.sync.cached(this.game));this.root.querySelector('.lb-status')!.textContent=scoredGame(this.game)?'Offline · showing saved rankings when available.':'This game does not publish ranked scores yet.';}
- private active(){return !this.disposed&&this.desktop.matches&&!document.hidden&&navigator.onLine;}
+ private active(){return !this.disposed&&this.desktop.matches&&window.innerWidth>=1100&&!document.hidden&&navigator.onLine;}
  private schedule(){clearTimeout(this.timer);if(this.active())this.timer=setTimeout(()=>void this.refresh(),30000);}
  private online=()=>{if(this.desktop.matches)void this.refresh();};
  private paint(board:Board|null){
