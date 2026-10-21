@@ -4,7 +4,9 @@ import {describe,expect,test} from 'vitest';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import {createPlayer,createPlayerState,HALF_WIDTH,HEIGHT} from '../../../src/games/blockcraft/player/player';
 import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
-import {bodyCollides} from '../../../src/games/blockcraft/engine/physics';
+import {bodyCollides,flowAt} from '../../../src/games/blockcraft/engine/physics';
+import {FLY_SPEED,FLY_VERTICAL_SPEED,JUMP_VELOCITY,SNEAK_SPEED,SPRINT_SPEED,WALK_SPEED,effectSpeedFactor,jumpPeak,liquidFlow,vanillaJumpPeak}
+  from '../../../src/games/blockcraft/player/controls-physics';
 import type {InputAction,PlayerService,StatusEffect} from '../../../src/games/blockcraft/engine/contracts';
 
 const STEP=1/60;
@@ -315,5 +317,61 @@ describe('persistence',()=>{
   test('rotate clamps pitch and reset restores a fresh state',()=>{
     const r=rig();r.player.rotate(.5,5);expect(r.player.state.pitch).toBe(1.55);r.player.rotate(0,-10);expect(r.player.state.pitch).toBe(-1.55);
     r.player.reset!();expect(r.player.state.vx).toBe(0);expect(r.player.state.flying).toBe(false);
+  });
+});
+
+describe('vanilla details',()=>{
+  function pool(depth=9){const r=rig();fill(r,-6,60-depth,-6,6,59,6,B.water);r.player.teleport(.5,57,.5);return r;}
+  test('sneaking in water dives (an extra 0.04 per tick) instead of sinking slowly',()=>{
+    const sink=pool();run(sink,1);const y=sink.player.state.y;run(sink,1);const slow=y-sink.player.state.y;
+    const dive=pool();run(dive,1);hold(dive,'sneak');const y2=dive.player.state.y;run(dive,1);const fast=y2-dive.player.state.y;
+    expect(slow).toBeLessThan(.6);expect(fast).toBeGreaterThan(slow*3);
+  });
+  test('using an item (eating, drawing a bow) slows walking to a fifth and stops sprinting',()=>{
+    const r=rig();hold(r,'forward','sprint');run(r,1);expect(r.player.state.sprinting).toBe(true);
+    (r.game.interaction as {using:unknown}).using={item:'bread',progress:.3};
+    expect(speed(r,1,2)).toBeCloseTo(4.317*.2,1);expect(r.player.state.sprinting).toBe(false);
+  });
+  test('drawing a bow narrows the field of view; reduced motion keeps it at 1',()=>{
+    const r=rig();(r.game.interaction as {using:unknown}).using={item:'bow',progress:1};run(r,.1);expect(r.fov.at(-1)).toBeCloseTo(.85,5);
+    const m=rig();(m.game as {reducedMotion:boolean}).reducedMotion=true;hold(m,'forward','sprint');run(m,1);
+    expect(m.player.state.sprinting).toBe(true);expect(m.fov.at(-1)).toBe(1);
+  });
+  test('a second jump press later than 7 ticks does not toggle flight',()=>{
+    const r=rig({mode:'creative'});run(r,.1);tap(r,'jump');run(r,STEP);run(r,.5);tap(r,'jump');run(r,STEP);
+    expect(r.player.state.flying).toBe(false);
+  });
+  test('small falls are silent; creative falls make no fall sound',()=>{
+    const r=rig();r.player.teleport(.5,62.5,.5);run(r,1.5);expect(r.lands.length).toBe(1);expect(r.lands[0]).toBeCloseTo(2.5,2);
+    expect(r.game.sounds.played.some(s=>s.name.startsWith('fall:'))).toBe(false);
+    const c=rig({mode:'creative'});c.player.teleport(.5,70,.5);run(c,2);expect(c.game.sounds.played.some(s=>s.name.startsWith('fall:'))).toBe(false);
+    const big=rig();big.player.teleport(.5,66,.5);run(big,2);expect(big.particles).toContain('block');
+  });
+  test('climbing a ladder plays its wood steps and walking through snow plays snow',()=>{
+    const r=rig();fill(r,0,60,-3,0,70,-3,B.stone);fill(r,0,60,-2,0,68,-2,blockId('ladder_south'));r.player.teleport(.5,60,-1.5);
+    hold(r,'forward');run(r,3);expect(r.game.sounds.played.some(s=>s.name==='step:wood')).toBe(true);
+    const s=rig();fill(s,-2,60,-20,2,60,2,B.snow);hold(s,'forward');run(s,2);expect(s.game.sounds.played.some(x=>x.name==='step:snow')).toBe(true);
+  });
+  test('the camera eye is interpolated between physics steps and eases into the crouch',()=>{
+    const r=rig();hold(r,'forward');run(r,1);const p=r.player.state;
+    r.player.frame!(STEP/2);const e=r.player.eye();expect(e.z).toBeGreaterThan(p.z);expect(e.z-p.z).toBeLessThan(.08);
+    hold(r,'sneak');run(r,STEP);expect(r.player.eyeHeight()).toBeCloseTo(1.27,5);
+    expect(r.player.eye().y-p.y).toBeGreaterThan(1.27);run(r,.5);expect(r.player.eye().y-p.y).toBeCloseTo(1.27,2);
+  });
+  test('nothing moves while the engine is not running (dead, paused); the world keeps running behind screens',()=>{
+    const r=rig();r.player.teleport(.5,70,.5);r.game.setState('dead');run(r,1);expect(r.player.state.y).toBe(70);
+    r.game.setState('screen');run(r,1);expect(r.player.state.y).toBeLessThan(70);
+  });
+  test('the allocation-free liquid flow matches the engine rule',()=>{
+    const r=rig();for(let i=0;i<7;i++)fill(r,i-3,60,-1,i-3,60,1,blockId(`water_${i+1}`));fill(r,4,59,0,4,59,0,0);
+    for(let x=-3;x<=4;x++)for(const z of [-1,0,1]){
+      const a=liquidFlow(r.game.world,x,60,z,{x:0,y:0,z:0}),b=flowAt(r.game.world,x,60,z);
+      expect(a.x).toBeCloseTo(b.x,9);expect(a.z).toBeCloseTo(b.z,9);
+    }
+  });
+  test('vanilla constants: walking 4.317, sprinting 5.612, sneaking 1.295, flying 10.89 and 7.5 up, jumps 1.2522 high',()=>{
+    expect(WALK_SPEED).toBeCloseTo(4.317,3);expect(SPRINT_SPEED).toBeCloseTo(5.612,3);expect(SNEAK_SPEED).toBeCloseTo(1.295,3);
+    expect(FLY_SPEED).toBeCloseTo(10.889,3);expect(FLY_VERTICAL_SPEED).toBeCloseTo(7.5,9);expect(jumpPeak(JUMP_VELOCITY)).toBeCloseTo(vanillaJumpPeak(),6);
+    expect(vanillaJumpPeak()).toBeCloseTo(1.2522,4);expect(effectSpeedFactor(2,1)).toBeCloseTo(1.4*.85,9);
   });
 });

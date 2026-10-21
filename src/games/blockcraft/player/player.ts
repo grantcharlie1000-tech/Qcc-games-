@@ -13,7 +13,7 @@ import {
   AIR_ACCEL,AIR_ACCEL_SPRINT,AIR_RETAIN,BASE_SPEED,FALL_RETAIN,FALL_STEP,FLIGHT_TOGGLE_TICKS,FLUID_JUMP_THRESHOLD,FLY_ACCEL,
   FLY_VERTICAL,FLY_VERTICAL_RETAIN,GROUND_FACTOR,INPUT_SCALE,JUMP_DELAY_TICKS,JUMP_VELOCITY,LADDER_CLIMB,LADDER_CLIMB_WATER,
   LADDER_LIMIT,LAVA_PUSH,LAVA_RETAIN,LAVA_SINK,LEDGE_HOP,LIQUID_ACCEL,LIQUID_JUMP,LIQUID_VERTICAL_RETAIN,SNEAK_INPUT,SPRINT_JUMP_BOOST,
-  SPRINT_MULTIPLIER,STEP,STEPS_PER_TICK,STEP_HEIGHT,SWIM_FOLLOW,SWIM_FOLLOW_STEEP,USE_INPUT,WATER_PUSH,WATER_RETAIN,
+  SPRINT_MULTIPLIER,STEP,STEPS_PER_TICK,STEP_HEIGHT,SWIM_FOLLOW,SWIM_FOLLOW_STEEP,USE_INPUT,WATER_DIVE,WATER_PUSH,WATER_RETAIN,
   WATER_RETAIN_SPRINT,WATER_SINK,climbableAt,createFluidSample,effectSpeedFactor,eyeLiquid,liquidAt,perStep,sampleFluids,
   slipperinessAt,stepSoundBlock,supportBlock
 } from './controls-physics';
@@ -215,8 +215,8 @@ export function createPlayer(game:Game):PlayerService{
       // aiStep adds ±0.15 per tick (jump up, sneak down), travel keeps 0.6 of it: 7.5 m/s.
       p.vy=approach(p.vy,FLY_VERTICAL_RETAIN,((jumpHeld?1:0)-(sneakKey?1:0))*FLY_VERTICAL);
     }else if(p.inWater){
-      // d' = 0.8·d + swimUp − 0.005 (not when sprinting); swimming pulls toward the look direction first.
-      let a=LIQUID_VERTICAL_RETAIN,b=swimUp-(p.sprinting?0:WATER_SINK);
+      // d' = 0.8·d + swimUp − dive (sneaking) − 0.005 (not when sprinting); swimming pulls toward the look direction first.
+      let a=LIQUID_VERTICAL_RETAIN,b=swimUp-(sneakKey?WATER_DIVE:0)-(p.sprinting?0:WATER_SINK);
       if(swimming){
         const ly=Math.sin(p.pitch),f=ly<-.2?SWIM_FOLLOW_STEEP:SWIM_FOLLOW;
         if(ly<=0||jumpHeld||liquidAt(w,p.x,p.y+.9,p.z)!==0){a*=1-f;b=b*(1-f)+f*ly;}

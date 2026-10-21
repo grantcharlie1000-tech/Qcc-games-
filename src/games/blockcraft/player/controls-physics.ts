@@ -4,9 +4,9 @@
 // d' = A·d + B. Its terminal rate B/(1-A) and its per-tick retention A are kept exactly: each 60 Hz step
 // retains A^(1/3) and approaches the same terminal speed, so walking still settles at 4.317 m/s with the
 // vanilla response time and a jump still peaks at vanilla's 1.252 blocks.
-import {CLIMBABLE,COLLISION_BOXES,LIQUID,SLIPPERINESS,blockDef} from '../data/blocks';
+import {AIR,CLIMBABLE,COLLISION_BOXES,LIQUID,SLIPPERINESS,blockDef} from '../data/blocks';
 import {PHYSICS_HZ,TPS} from '../engine/constants';
-import {flowAt,liquidHeight} from '../engine/physics';
+import {liquidHeight} from '../engine/physics';
 import type {BlockSource,Vec3} from '../engine/contracts';
 
 /** Physics steps per game tick, and the step length in seconds. */
@@ -29,8 +29,9 @@ export const AIR_RETAIN=.91,AIR_ACCEL=.02,AIR_ACCEL_SPRINT=.026;
 /** Creative flight: horizontal acceleration (doubled when sprinting), vertical impulse per tick and its retention. */
 export const FLY_ACCEL=.05,FLY_VERTICAL=.15,FLY_VERTICAL_RETAIN=.6;
 export const WATER_RETAIN=.8,WATER_RETAIN_SPRINT=.9,LIQUID_ACCEL=.02,LAVA_RETAIN=.5,LIQUID_VERTICAL_RETAIN=.8;
-/** Swimming up in a liquid (per tick while jump is held) and sinking (gravity/16 in water, gravity/4 extra in lava). */
-export const LIQUID_JUMP=.04,WATER_SINK=.005,LAVA_SINK=.02;
+/** Swimming up in a liquid (per tick while jump is held), diving while sneaking in water (goDownInWater) and
+ *  sinking (gravity/16 in water, gravity/4 extra in lava). */
+export const LIQUID_JUMP=.04,WATER_DIVE=.04,WATER_SINK=.005,LAVA_SINK=.02;
 /** Current push per tick: water flow 0.014, lava 0.0023333 (overworld). */
 export const WATER_PUSH=.014,LAVA_PUSH=.0023333333;
 /** Fluid depth above the feet that still counts as wading (jumps work), vanilla getFluidJumpThreshold. */
@@ -99,7 +100,21 @@ export interface FluidSample{
   waterFlowX:number;waterFlowZ:number;lavaFlowX:number;lavaFlowZ:number;
 }
 export const createFluidSample=():FluidSample=>({water:false,lava:false,waterDepth:0,lavaDepth:0,waterFlowX:0,waterFlowZ:0,lavaFlowX:0,lavaFlowZ:0});
-const flow:Vec3={x:0,y:0,z:0};
+const flow:Vec3={x:0,y:0,z:0},SIDE_X=[1,-1,0,0],SIDE_Z=[0,0,1,-1];
+/** Normalised horizontal flow of the liquid at a voxel, toward lower levels and drops: the rule of engine/physics flowAt,
+ *  without its per-call allocations (the player samples it every step while in a liquid). */
+export function liquidFlow(world:BlockSource,x:number,y:number,z:number,out:Vec3):Vec3{
+  out.x=out.y=out.z=0;const id=world.get(x,y,z);if(id<0||!LIQUID[id])return out;
+  const kind=LIQUID[id],own=blockDef(id).liquid!,level=own.falling?0:own.level;
+  for(let i=0;i<4;i++){
+    const dx=SIDE_X[i],dz=SIDE_Z[i],n=world.get(x+dx,y,z+dz);
+    if(n===AIR){const below=world.get(x+dx,y-1,z+dz);if(below===AIR||LIQUID[below]===kind){out.x+=dx*8;out.z+=dz*8;continue;}}
+    if(n<0||LIQUID[n]!==kind)continue;
+    const other=blockDef(n).liquid!,diff=(other.falling?0:other.level)-level;out.x+=dx*diff;out.z+=dz*diff;
+  }
+  const len=Math.hypot(out.x,out.z);if(len>0){out.x/=len;out.z/=len;}
+  return out;
+}
 /** Liquids touching a feet-centred box (deflated by 0.001 like vanilla), with depth and averaged flow. */
 export function sampleFluids(world:BlockSource,x:number,y:number,z:number,halfWidth:number,height:number,out:FluidSample):FluidSample{
   out.water=out.lava=false;out.waterDepth=out.lavaDepth=0;out.waterFlowX=out.waterFlowZ=out.lavaFlowX=out.lavaFlowZ=0;
@@ -109,7 +124,7 @@ export function sampleFluids(world:BlockSource,x:number,y:number,z:number,halfWi
     for(let cx=Math.floor(minX),x1=Math.ceil(maxX);cx<x1;cx++){
       const id=world.get(cx,cy,cz);if(id<0)continue;const kind=LIQUID[id];if(!kind)continue;
       const top=cy+liquidSurface(world,cx,cy,cz,id);if(top<minY)continue;
-      const depth=top-minY;flowAt(world,cx,cy,cz,flow);
+      const depth=top-minY;liquidFlow(world,cx,cy,cz,flow);
       // Shallow liquid pushes less (vanilla scales the flow by the depth below 0.4).
       const k=depth<.4?depth:1;
       if(kind===1){out.water=true;out.waterDepth=Math.max(out.waterDepth,depth);out.waterFlowX+=flow.x*k;out.waterFlowZ+=flow.z*k;waterCells++;}
