@@ -203,6 +203,39 @@ test('a large chest keeps items between openings; armour equips by shift-click, 
   expect(errors).toEqual([]);
 });
 
+test.describe('touch',()=>{
+  test.use({hasTouch:true});
+  test('a tap picks up and places, a long press takes half, quick move turns taps into shift-clicks',async({page})=>{
+    test.setTimeout(150000);
+    const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+    await boot(page,{width:390,height:844});
+    await give(page,9,'dirt',10);
+    await engine(page,g=>g.ui.open('inventory'));
+    const centre=async(label:string)=>{const b=(await slot(page,label).boundingBox())!;return{x:b.x+b.width/2,y:b.y+b.height/2};};
+    let p=await centre('Inventory slot 1');await page.touchscreen.tap(p.x,p.y);
+    await expect.poll(()=>engine(page,g=>g.ui.menu.cursor)).toEqual({id:'dirt',count:10});
+    p=await centre('Inventory slot 5');await page.touchscreen.tap(p.x,p.y);
+    await expect(slot(page,'Inventory slot 5')).toHaveAttribute('aria-label','Inventory slot 5: Dirt, 10');
+    // Hold a finger on the stack: half of it comes up.
+    const cdp=await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:p.x,y:p.y}]});
+    await page.waitForTimeout(1200);
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    await expect.poll(()=>engine(page,g=>g.ui.menu.cursor)).toEqual({id:'dirt',count:5});
+    await expect(slot(page,'Inventory slot 5')).toHaveAttribute('aria-label','Inventory slot 5: Dirt, 5');
+    p=await centre('Inventory slot 5');await page.touchscreen.tap(p.x,p.y);
+    await expect(slot(page,'Inventory slot 5')).toHaveAttribute('aria-label','Inventory slot 5: Dirt, 10');
+    // The quick-move toggle is shown for touch and sends a tapped stack to the hotbar.
+    await page.locator('.bc-screen [data-quick]').tap();
+    await expect(page.locator('.bc-screen [data-quick]')).toHaveAttribute('aria-pressed','true');
+    p=await centre('Inventory slot 5');await page.touchscreen.tap(p.x,p.y);
+    await expect(slot(page,'Hotbar slot 1')).toHaveAttribute('aria-label','Hotbar slot 1: Dirt, 10');
+    await page.locator('.bc-screen [data-close]').tap();
+    await expect(page.locator('.bc-screen')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+});
+
 test('creative picker and the survival inventory fit a 320×568 phone',async({page})=>{
   test.setTimeout(150000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
