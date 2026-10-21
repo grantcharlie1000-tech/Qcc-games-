@@ -3,7 +3,7 @@
 // weak air control, ground friction (ice), sneaking that never walks off edges, 0.6 step-up, standing/crouching/
 // swimming poses (also crawling under 1-block gaps), buoyancy and look-directed swimming, water currents, lava,
 // ladders, creative flight and the Speed/Slowness effects, bed bounces and Bedrock's touch auto-jump. It tracks fall
-// distance (survival.land on landing, leaving out the landing tick like vanilla), keeps the liquid and ladder flags
+// distance (survival.land and the playerLanded event on landing, leaving out the landing tick like vanilla), keeps the liquid and ladder flags
 // current, plays footsteps (silent while sneaking), falls, splashes and swim strokes, kicks up sprint dust, charges food
 // exhaustion and sets the field-of-view scale. The camera position (eye()) is interpolated between physics steps.
 import {LIQUID,blockDef} from '../data/blocks';
@@ -94,6 +94,14 @@ export function createPlayer(game:Game):PlayerService{
     game.render.spawnParticles('bubble',p.x,surface-.3,p.z,{count:13,spread:HALF_WIDTH*2,velocity:{x:0,y:-splashVy*.1,z:0}});
     game.render.spawnParticles('splash',p.x,surface,p.z,{count:13,spread:HALF_WIDTH*2});
   }
+  /** Liquid and ladder flags for the current position and pose, at once (teleports, respawns): survival ticks before the
+   *  player's next physics step and must not see the flags of the old position. Waits for the next step when the
+   *  column is not loaded yet. */
+  function resense(){
+    senseFluids(false);
+    p.onLadder=!p.flying&&climbableAt(game.world,p.x,p.y,p.z);
+    sensed=game.world.isLoaded(p.x,p.z);
+  }
   /** Pushes a body stuck inside blocks to the nearest free spot within a block (sideways first, then up). */
   function escape(h:number){
     const w=game.world;
@@ -121,6 +129,8 @@ export function createPlayer(game:Game):PlayerService{
     jumpDelay=JUMP_DELAY_STEPS;
   }
   function landed(distance:number){
+    // Block.fallOn order: the block landed on reacts first (farmland trampling, world ticks), then fall damage.
+    game.events.emit('playerLanded',{fallDistance:distance,x:p.x,y:p.y,z:p.z});
     game.survival.land(distance);
     if(distance<=3||game.settings.mode==='creative')return;
     const id=supportBlock(game.world,p.x,p.y,p.z,HALF_WIDTH,.2);if(id<=0)return;
@@ -332,14 +342,14 @@ export function createPlayer(game:Game):PlayerService{
     teleport(x,y,z){
       p.x=x;p.y=y;p.z=z;p.vx=p.vy=p.vz=0;p.fallDistance=fallAtTick=0;
       p.onGround=boxCollides(game.world,x-HALF_WIDTH,y-.02,z-HALF_WIDTH,x+HALF_WIDTH,y,z+HALF_WIDTH);
-      tickStep=0;boostX=boostZ=0;collidedH=collidedHard=false;moveDist=0;nextStep=1;sensed=false;
-      eyeSmooth=POSE_EYE[pose];syncPrev();
+      tickStep=0;boostX=boostZ=0;collidedH=collidedHard=false;moveDist=0;nextStep=1;
+      eyeSmooth=POSE_EYE[pose];syncPrev();resense();
     },
     push(vx,vy,vz){if(p.flying)return;p.vx+=vx;p.vy+=vy;p.vz+=vz;},
     rotate(dyaw,dpitch){if(!Number.isFinite(dyaw)||!Number.isFinite(dpitch))return;p.yaw+=dyaw;p.pitch=clampPitch(p.pitch+dpitch);},
     init(){
       off.push(game.events.on('modeChanged',({mode})=>{if(mode!=='creative')p.flying=false;}));
-      off.push(game.events.on('playerRespawned',()=>{p.sprinting=p.flying=false;swimming=false;setPose(STAND);eyeSmooth=POSE_EYE[pose];syncPrev();}));
+      off.push(game.events.on('playerRespawned',()=>{p.sprinting=p.flying=false;swimming=false;setPose(STAND);eyeSmooth=POSE_EYE[pose];syncPrev();resense();}));
     },
     tick(){if(p.y<VOID_Y)game.survival.damage(4,{kind:'void'});},
     frame(dt){

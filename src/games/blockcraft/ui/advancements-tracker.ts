@@ -26,6 +26,8 @@ const HOSTILE=new Set(HUNTED_MOBS);
 /** Categories that count as mobs for kills (not items, xp orbs, projectiles). */
 const MOB_CATEGORIES=new Set(['passive','hostile','water']);
 const MOB_KIND_SET=new Set<string>(MOB_KINDS);
+/** The damage came from a mob (directly or through its projectile), not primed TNT or another non-living entity. */
+const byMob=(source:DamageSource|undefined)=>!!source?.attacker&&MOB_CATEGORIES.has(source.attacker.category);
 /** Vanilla credits a kill to the player for 100 ticks after their last hit. */
 export const PLAYER_KILL_MEMORY=100;
 /** Movement beyond this many blocks in one tick is a teleport (respawn, ender pearl), not travel. */
@@ -78,11 +80,12 @@ export class AdvancementTracker{
     on('playerSlept',()=>{this.counters.slept++;this.trigger(BY_EVENT.get('slept'));});
     on('playerDamaged',e=>{
       this.counters.damageTaken+=Math.round(e.amount*10);
-      if(e.source.attacker)this.lastHurtByMob=this.game.time.tick;
+      if(byMob(e.source))this.lastHurtByMob=this.game.time.tick;
     });
-    on('playerDied',()=>{
+    on('playerDied',e=>{
       this.counters.deaths++;this.counters.sinceDeath=0;this.counters.survived=0;
-      if(this.game.time.tick-this.lastHurtByMob<=PLAYER_KILL_MEMORY)this.trigger(BY_EVENT.get('killed_by_mob'));
+      // Killed by a mob (playerDied.source), or with a mob's kill credit: hurt by one within 100 ticks (a fall after a hit).
+      if(byMob(e.source)||this.game.time.tick-this.lastHurtByMob<=PLAYER_KILL_MEMORY)this.trigger(BY_EVENT.get('killed_by_mob'));
       this.lastHurtByMob=-Infinity;this.changed();
     });
     on('playerRespawned',()=>{this.hasPrev=false;});

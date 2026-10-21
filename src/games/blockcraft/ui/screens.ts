@@ -31,6 +31,9 @@ const TOUCH_MOUSE_GUARD_MS=800;
 /** How long a touch tooltip stays up. */
 const TOUCH_TIP_MS=1600;
 const TOAST_MS=2500;
+/** The screen layer's touch-mode class. Not `.bc-touch`: that is the player's touch-controls layer (touch.css styles it
+ *  as a click-through layer under the screens). Screen markup also avoids the HUD's class names (.bc-armor, .bc-offhand). */
+export const SCREEN_TOUCH='bc-screen-touch';
 
 interface SlotEl{
   btn:HTMLButtonElement;img:HTMLImageElement;n:HTMLElement;bar:HTMLElement;fill:HTMLElement;
@@ -146,7 +149,7 @@ class DomScreens implements ScreenView{
     const mount=this.body.querySelector<HTMLElement>('[data-mount]');
     if(build.mount&&mount)this.unmount=build.mount(mount);
     this.layer.classList.toggle('bc-reduced',this.game.reducedMotion);
-    this.layer.classList.toggle('bc-touch',touch);
+    this.layer.classList.toggle(SCREEN_TOUCH,touch);
     this.layer.hidden=false;
     this.renderBook(true);
     if(!search){
@@ -385,7 +388,7 @@ class DomScreens implements ScreenView{
   private touchDown(e:PointerEvent){
     if(e.pointerType==='mouse'||!this.open())return;
     this.lastTouch=this.performanceNow();
-    this.layer.classList.add('bc-touch');
+    this.layer.classList.add(SCREEN_TOUCH);
     if(this.isControl(e.target)||this.c.screen==='advancements'||this.touchId!==null)return;
     this.keyboard=false;this.hideTip();this.tipTouch=false;
     this.touchId=e.pointerId;this.touchX=e.clientX;this.touchY=e.clientY;this.local(e.clientX,e.clientY);

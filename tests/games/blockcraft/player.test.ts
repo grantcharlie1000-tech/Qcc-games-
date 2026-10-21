@@ -298,6 +298,27 @@ describe('falling, landing and safety',()=>{
     expect(vanillaFall(2,.42)).toBeCloseTo(2.6725,3);expect(Math.abs(worst-vanillaFall(2,.42))).toBeLessThan(.15);
     expect(r.game.sounds.played.some(s=>s.name.startsWith('fall:'))).toBe(false);
   });
+  test('landing emits playerLanded with the fall distance and the feet position, in creative too, before survival.land',()=>{
+    for(const mode of ['survival','creative'] as const){
+      const r=rig({mode}),order:string[]=[],landed:{fallDistance:number;x:number;y:number;z:number}[]=[];
+      r.game.events.on('playerLanded',e=>{if(e){landed.push({...e});order.push('event');}});
+      const land=r.game.survival.land;r.game.survival.land=d=>{order.push('land');land(d);};
+      r.player.teleport(.5,64,.5);run(r,3);
+      expect(landed).toHaveLength(1);expect(landed[0].fallDistance).toBe(r.lands[0]);
+      expect(landed[0].fallDistance).toBeGreaterThan(3);expect(landed[0]).toMatchObject({x:.5,z:.5});expect(landed[0].y).toBeCloseTo(60,5);
+      expect(order).toEqual(['event','land']);
+      // Walking about on the ground is not a landing.
+      hold(r,'forward');run(r,1);expect(landed).toHaveLength(1);
+    }
+  });
+  test('teleport senses liquids and ladders at once, before the next physics step',()=>{
+    const r=rig();fill(r,-6,55,-6,6,59,6,B.water);fill(r,10,60,10,10,62,10,blockId('ladder_north'));
+    const p=r.player.state;
+    r.player.teleport(.5,56,.5);expect(p.inWater).toBe(true);expect(p.headInWater).toBe(true);
+    r.player.teleport(.5,62,.5);expect(p.inWater).toBe(false);expect(p.headInWater).toBe(false);
+    r.player.teleport(10.5,60,10.5);expect(p.onLadder).toBe(true);
+    r.player.teleport(3.5,60,3.5);expect(p.onLadder).toBe(false);
+  });
   test('landing in water negates fall damage',()=>{
     const r=rig();fill(r,-3,57,-3,3,59,3,B.water);r.player.teleport(.5,80,.5);run(r,4);
     expect(r.player.state.inWater).toBe(true);expect(Math.max(0,...r.lands)).toBeLessThan(1);

@@ -28,9 +28,9 @@ export function buildInventory(game:Game,menu:SlotMenu):ScreenBuild{
   menu.setup([grid.resultSlot(),...grid.cellSlots(),...armorSlots(inv),...playerSlots(inv),offhandSlot(inv)],screenRule(equipRule));
   const armor=menu.indexes('armor'),[result]=menu.indexes('result'),[offhand]=menu.indexes('offhand');
   const html=`<div class="bc-inv-top">
-    ${slotGrid(menu,armor,1,'bc-armor','Armor')}
+    ${slotGrid(menu,armor,1,'bc-armor-slots','Armor')}
     <div class="bc-figure" data-figure>${figureSvg(inv.armor)}</div>
-    <div class="bc-offhand">${slotHtml(menu,offhand)}</div>
+    <div class="bc-offhand-slot">${slotHtml(menu,offhand)}</div>
     <div class="bc-craft"><h3 class="bc-label">Crafting</h3><div class="bc-craft-row">${slotGrid(menu,menu.indexes('grid'),2,'bc-craft-grid','Crafting grid')}${arrowHtml()}${slotHtml(menu,result,'bc-s-big')}</div></div>
   </div>${playerInventoryHtml(menu)}`;
   return{id:'inventory',title:'Inventory',kind:'inventory',html,grid,leftovers:()=>grid.clear()};

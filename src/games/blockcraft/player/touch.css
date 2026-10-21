@@ -48,6 +48,11 @@
 }
 .bc-hold-ring[hidden]{display:none}
 
+/* Portrait: the stick and buttons sit above the HUD bars as drawn (the HUD publishes --bc-hud-bars on the game root:
+   higher with armour or extra heart rows, lower in creative), so they never cover the hearts, armour or shanks. */
+@media (orientation:portrait){
+  .bc-touch{--bc-touch-bottom:calc(var(--bc-hud-bars,92px) + env(safe-area-inset-bottom,0px) + 12px)}
+}
 /* Landscape phones and tablets: the centred hotbar leaves the bottom corners free (above the shell's and HUD's
    small corner buttons). */
 @media (orientation:landscape) and (min-width:560px){

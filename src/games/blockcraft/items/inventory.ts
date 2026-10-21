@@ -137,6 +137,11 @@ export function createInventory(game:Game):InventoryService{
       if(using&&h?.id!==using&&offhand?.id===using&&itemDef(offhand.id)?.durability){offhand=wear(offhand,n);changed();return;}
       if(h&&itemDef(h.id)?.durability){slots[selected]=wear(h,n);changed();}
     },
+    damageOffhand(amount){
+      // A raised offhand shield (vanilla hurtCurrentlyUsedShield): wears and breaks with tool_break like a held tool.
+      const n=Math.floor(amount);if(creative()||!(n>0))return;
+      if(offhand&&itemDef(offhand.id)?.durability){offhand=wear(offhand,n);changed();}
+    },
     damageArmor(amount){
       if(creative()||!(amount>0))return;
       const w=Math.max(1,Math.floor(amount/4));let any=false;

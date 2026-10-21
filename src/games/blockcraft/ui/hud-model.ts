@@ -63,6 +63,11 @@ export function heartIcons(o:HeartInput):HeartLayout{
 /** Index of the heart lifted by the regeneration wave this tick (tickCount % ceil(maxHealth + 5)). */
 export const regenIndex=(tick:number,maxHealth:number)=>tick%Math.ceil(maxHealth+5);
 
+/** Ticks a hit keeps the player's invulnerableTime above 0 (vanilla 20). */
+export const INVULNERABLE_TICKS=20;
+/** Gui.renderPlayerHealth's invulnerableTime > 0: health changes blink only within 20 ticks of a hit (playerDamaged),
+ *  never for health set some other way. */
+export const hurtRecently=(tick:number,lastHurtTick:number)=>tick-lastHurtTick>=0&&tick-lastHurtTick<INVULNERABLE_TICKS;
 /** Gui's health bookkeeping: blinks 20 ticks after damage (10 after healing while still invulnerable) and keeps the
  *  previous value for one second (the white "lost" layer). Ticks replace vanilla's milliseconds (20 ticks = 1 s). */
 export class HealthTracker{

@@ -93,6 +93,18 @@ describe('inventory model',()=>{
     (game.interaction as {using:unknown}).using=null;
     inv.damageHeld(2);expect(inv.held()).toEqual(st('iron_sword',1,2));expect(inv.offhand).toEqual(st('shield',1,5));
   });
+  test('damageOffhand wears the offhand item and breaks it with tool_break; creative and unworn items are untouched',()=>{
+    const {game,inv}=setup();
+    inv.setSlot(0,st('iron_sword'));inv.setOffhand(st('shield',1,330));game.sounds.played.length=0;
+    let changes=0;inv.onChange(()=>changes++);
+    inv.damageOffhand!(4);expect(inv.offhand).toEqual(st('shield',1,334));expect(changes).toBe(1);
+    expect(inv.held()).toEqual(st('iron_sword'));expect(game.sounds.played).toEqual([]);
+    inv.damageOffhand!(2);expect(inv.offhand).toBeNull();
+    expect(game.sounds.played.map(s=>s.name)).toEqual(['tool_break']);
+    inv.setOffhand(st('torch',8));inv.damageOffhand!(5);expect(inv.offhand).toEqual(st('torch',8));
+    inv.setOffhand(st('shield'));inv.damageOffhand!(0);inv.damageOffhand!(Number.NaN);expect(inv.offhand).toEqual(st('shield'));
+    const {inv:c}=setup('creative');c.setOffhand(st('shield'));c.damageOffhand!(50);expect(c.offhand).toEqual(st('shield'));
+  });
   test('damageArmor wears each piece by max(1, floor(amount/4)) and breaks worn-out pieces',()=>{
     const {game,inv}=setup();
     expect(inv.setArmor('head',st('leather_helmet'))).toBe(true);

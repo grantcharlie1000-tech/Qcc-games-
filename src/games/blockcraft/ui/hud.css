@@ -3,9 +3,8 @@
    The HUD is drawn in GUI pixels: .bc-gui sits at the bottom centre and is scaled by the GUI scale (--bc-gui).
    Reserved: top 56 px for the arcade toolbar, the bottom-right corner for the shell's small buttons. */
 .bc-hud [hidden],.bc-crosshair [hidden],.bc-menu [hidden],.bc-debug [hidden]{display:none!important}
-/* The layer z-indexes (menus 30, toasts 25...) are relative to the game: keep them under the arcade shell's toolbar,
-   corner buttons and pause overlay, which sit in the page around the game root. */
-.blockcraft{isolation:isolate}
+/* The layer z-indexes (menus 30, toasts 25...) are relative to the game: style.css isolates .blockcraft, which keeps
+   them under the arcade shell's toolbar, corner buttons and pause overlay. */
 
 /* ---- World overlays ---------------------------------------------------------------------------------- */
 .bc-hud-fx{position:absolute;inset:0;z-index:5;pointer-events:none}

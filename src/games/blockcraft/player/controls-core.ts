@@ -1,6 +1,8 @@
 // DOM-free input state shared by every device (keyboard, mouse, touch, gamepad). Each held action
 // remembers which sources hold it (two keys, a key and a touch button...), so releasing one source
-// never cancels another. pressed() edges follow the single-consumer rule: true once, cleared on read.
+// never cancels another. pressed() edges follow the single-consumer rule: true once per press, cleared on read.
+// Presses are counted like vanilla KeyMapping.clickCount, so two presses between two frames (a fast double tap
+// when frames are slow) still read as two.
 import {KEY_ACTIONS,SCREEN_ACTIONS} from './controls-bindings';
 import type {InputAction} from '../engine/contracts';
 
@@ -21,11 +23,15 @@ export const DOUBLE_TAP_MS=350;
 export const STICK_SPRINT=.95;
 const WHEEL_STEP_PX=50,WHEEL_IDLE_MS=250;
 const NOT_HANDLED:KeyOutcome=Object.freeze({handled:false}),HANDLED:KeyOutcome=Object.freeze({handled:true});
+/** Unread presses kept per action: enough for a double tap (creative flight) within one frame, while a backlog of
+ *  key repeats (holding Q) cannot build up behind a consumer that reads once per tick. */
+export const MAX_PENDING_PRESSES=2;
 const FLAGS:Readonly<Record<string,'hudHidden'|'debug'>>={F1:'hudHidden',F3:'debug'};
 
 export class ControlState{
   private readonly sources=new Map<InputAction,Set<string>>();
-  private readonly edges=new Set<InputAction>();
+  /** Unread presses per action (1..MAX_PENDING_PRESSES; absent = none). */
+  private readonly edges=new Map<InputAction,number>();
   private lastForward=-Infinity;
   private stickX=0;private stickY=0;private padX=0;private padY=0;
   private wheelAcc=0;private wheelAt=-Infinity;
@@ -33,12 +39,17 @@ export class ControlState{
 
   /** Held by any source. */
   down(action:InputAction):boolean{const s=this.sources.get(action);return!!s&&s.size>0;}
-  /** One edge per press; reading clears it. */
-  pressed(action:InputAction):boolean{const had=this.edges.has(action);this.edges.delete(action);return had;}
+  /** One edge per press; reading consumes one. */
+  pressed(action:InputAction):boolean{
+    const n=this.edges.get(action);if(!n)return false;
+    if(n>1)this.edges.set(action,n-1);else this.edges.delete(action);
+    return true;
+  }
+  private edge(action:InputAction){this.edges.set(action,Math.min(MAX_PENDING_PRESSES,(this.edges.get(action)??0)+1));}
   /** Hold an action from a source; the first source to hold it creates the edge. */
   press(action:InputAction,source:string,edge=true){
     let s=this.sources.get(action);if(!s){s=new Set();this.sources.set(action,s);}
-    if(s.size===0&&edge)this.edges.add(action);
+    if(s.size===0&&edge)this.edge(action);
     s.add(source);
   }
   release(action:InputAction,source:string){this.sources.get(action)?.delete(source);}
@@ -47,7 +58,7 @@ export class ControlState{
   /** Releases everything held by sources starting with `prefix` (e.g. 'pad:' when the gamepad disconnects). */
   releaseAll(prefix:string){for(const s of this.sources.values())for(const id of s)if(id.startsWith(prefix))s.delete(id);}
   /** An edge without holding (taps). */
-  tap(action:InputAction){this.edges.add(action);}
+  tap(action:InputAction){this.edge(action);}
 
   keyDown(e:KeyInput,phase:InputPhase,now:number):KeyOutcome{
     if(phase==='other'||e.metaKey||e.altKey)return NOT_HANDLED;

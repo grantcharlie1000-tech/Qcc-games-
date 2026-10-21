@@ -186,6 +186,14 @@ describe('unlocks from game events',()=>{
     game.events.emit('playerDied',{message:'Player was slain by Zombie'});
     expect(adv.has('adventure')).toBe(true);
   });
+  test('Adventure root: playerDied.source names the mob; primed TNT is not a mob',()=>{
+    const tnt=mob('primed_tnt','misc');
+    game.events.emit('playerDamaged',{amount:4,source:{kind:'explosion',attacker:tnt}});
+    game.events.emit('playerDied',{message:'Player blew up',source:{kind:'explosion',attacker:tnt}});
+    expect(adv.has('adventure')).toBe(false);
+    game.events.emit('playerDied',{message:'Player was shot by Skeleton',source:{kind:'projectile',attacker:mob('skeleton'),projectile:mob('arrow','projectile')}});
+    expect(adv.has('adventure')).toBe(true);
+  });
   test('Monsters Hunted tracks one of every hostile kind with progress',()=>{
     for(const kind of ['zombie','zombie','husk','skeleton'])game.events.emit('entityDied',{entity:mob(kind),source:melee});
     expect(adv.progress('monsters_hunted')).toEqual([3,9]);

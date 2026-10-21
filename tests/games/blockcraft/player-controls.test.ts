@@ -2,7 +2,7 @@
 // screens), wheel, touch stick, look/hold/tap gestures and the gamepad mapping. DOM-free.
 import {describe,expect,test} from 'vitest';
 import {BINDINGS,KEY_ACTIONS,MOUSE_ACTIONS} from '../../../src/games/blockcraft/player/controls-bindings';
-import {ControlState,DOUBLE_TAP_MS} from '../../../src/games/blockcraft/player/controls-core';
+import {ControlState,DOUBLE_TAP_MS,MAX_PENDING_PRESSES} from '../../../src/games/blockcraft/player/controls-core';
 import {LookGesture,HOLD_MS} from '../../../src/games/blockcraft/player/controls-gesture';
 import {PAD,PadMapper,readPad,type PadFrame} from '../../../src/games/blockcraft/player/controls-gamepad';
 import type {InputAction} from '../../../src/games/blockcraft/engine/contracts';
@@ -50,6 +50,15 @@ describe('keyboard',()=>{
       c.keyDown(key(code,{repeat:true}),'playing',50);expect(c.pressed(action)).toBe(false);expect(c.down(action)).toBe(true);c.keyUp(code);
     }
     c.keyUp('KeyQ');c.keyDown(key('KeyQ'),'playing',100);expect(c.pressed('drop')).toBe(true);
+  });
+  test('two presses before a read count twice (a double tap within one slow frame); unread presses are capped',()=>{
+    const c=new ControlState();
+    c.keyDown(key('Space'),'playing',0);c.keyUp('Space');c.keyDown(key('Space'),'playing',120);c.keyUp('Space');
+    expect(c.pressed('jump')).toBe(true);expect(c.pressed('jump')).toBe(true);expect(c.pressed('jump')).toBe(false);
+    for(let i=0;i<5;i++){c.keyDown(key('KeyE'),'playing',200+i);c.keyUp('KeyE');}
+    let n=0;while(c.pressed('inventory'))n++;
+    expect(n).toBe(MAX_PENDING_PRESSES);
+    c.tap('attack');c.tap('attack');c.clear();expect(c.pressed('attack')).toBe(false);
   });
   test('holding Q keeps dropping on every key repeat (vanilla), Ctrl+Q whole stacks; not with a screen open',()=>{
     const c=new ControlState();c.keyDown(key('KeyQ'),'playing',0);expect(c.pressed('drop')).toBe(true);
