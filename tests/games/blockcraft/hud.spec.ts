@@ -69,6 +69,8 @@ test.describe('desktop 1366x768',()=>{
     await expect(page.locator('.bc-slot[data-slot="1"] .bc-count')).toBeVisible();
     await expect(page.locator('.bc-offhand')).toBeVisible();
     await expect(page.locator('.bc-held-name')).toHaveText('Diamond Pickaxe');
+    // The name is drawn in the pixel font (the text stays available to assistive technology).
+    await expect(page.locator('.bc-held-text')).toBeVisible();await expect(page.locator('.bc-held-label')).toHaveClass(/bc-sr/);
     // Clock in the offhand: its readout; selecting the compass adds the compass readout.
     await expect(page.locator('[data-dial=clock]')).toBeVisible();await expect(page.locator('[data-dial=compass]')).toBeHidden();
     await page.keyboard.press('Digit3');
@@ -99,10 +101,12 @@ test.describe('desktop 1366x768',()=>{
     await expect(dbg).toContainText('Biome:');await expect(dbg).toContainText('Weather:');await expect(dbg).toContainText('Mobs:');
     const d=(await dbg.boundingBox())!;expect(d.y).toBeGreaterThanOrEqual(56);expect(overlaps(d,bar)).toBe(false);
     await page.screenshot({path:evidence('hud-f3-1366x768')});
-    await page.evaluate(()=>{const r=(document.querySelector('.blockcraft') as HTMLElement).dataset;r.debug='';r.hudHidden='true';});
+    // F1 hides the whole GUI, the F3 screen included; F3 alone again shows it.
+    await page.evaluate(()=>{(document.querySelector('.blockcraft') as HTMLElement).dataset.hudHidden='true';});
     await expect(page.locator('.bc-hud')).toBeHidden();await expect(page.locator('.bc-crosshair')).toBeHidden();await expect(dbg).toBeHidden();
-    await page.evaluate(()=>{(document.querySelector('.blockcraft') as HTMLElement).dataset.hudHidden='';});
-    await expect(page.locator('.bc-hotbar-bg')).toBeVisible();
+    await expect(page.locator('.bc-vignette')).toBeHidden();
+    await page.evaluate(()=>{const r=(document.querySelector('.blockcraft') as HTMLElement).dataset;r.hudHidden='';r.debug='';});
+    await expect(page.locator('.bc-hotbar-bg')).toBeVisible();await expect(dbg).toBeHidden();
     expect(errors).toEqual([]);
   });
 });

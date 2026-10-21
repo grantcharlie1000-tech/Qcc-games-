@@ -56,8 +56,11 @@
 .bc-readouts[data-place=above]{transform:translateX(-50%)}
 .bc-dial{position:relative;width:24px;height:24px;filter:drop-shadow(1px 1px 0 #0006)}
 
-/* F1 hides the HUD, the crosshair and the action bar (the flags are set by the input service). */
-.blockcraft[data-hud-hidden=true] .bc-hud,.blockcraft[data-hud-hidden=true] .bc-crosshair,.blockcraft[data-hud-hidden=true] .bc-toast{visibility:hidden}
+/* F1 hides the whole GUI like vanilla: HUD, crosshair, vignette, action bar and the F3 screen (the flags are set by
+   the input service). Menus and screens stay. */
+.blockcraft[data-hud-hidden=true] .bc-hud,.blockcraft[data-hud-hidden=true] .bc-crosshair,.blockcraft[data-hud-hidden=true] .bc-hud-fx,
+.blockcraft[data-hud-hidden=true] .bc-toast{visibility:hidden}
+.blockcraft[data-hud-hidden=true] .bc-debug{display:none!important}
 
 /* ---- Action bar (the ui's toast) above the hotbar and bars, at the vanilla height ------------------------- */
 .blockcraft .bc-toast{left:50%;bottom:calc(var(--bc-hud-actionbar,128px) + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:25;
@@ -82,7 +85,9 @@
 .bc-menu[data-kind=resume]{background:#101010a6}
 .bc-menu[data-kind=dead]{background:linear-gradient(#50000060,#803030a0)}
 .bc-menu[data-kind=lost]{background:#10243a}
-.bc-menu-panel{width:min(100%,400px);margin:auto}
+.bc-menu-panel{width:min(100%,480px);margin:auto}
+/* Vanilla proportions: the main buttons are 200 GUI px wide, the option buttons 150 in two columns. */
+.bc-menu-page[data-panel=main],.bc-menu-page[data-panel=dead],.bc-menu-page[data-panel=controls]{max-width:400px;margin:0 auto}
 .bc-menu-title{margin:0 0 12px;font:800 clamp(24px,5vw,34px)/1.1 system-ui,sans-serif;color:#fff;text-shadow:3px 3px 0 #3f3f3f}
 .bc-menu[data-kind=start] .bc-menu-title{margin-bottom:10px;font:900 clamp(34px,10vw,58px)/1 Arcade,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;
   color:#d4d4d4;text-shadow:0 2px 0 #8b8b8b,0 4px 0 #555,0 6px 0 #2b2b2b,0 8px 12px #0009}
