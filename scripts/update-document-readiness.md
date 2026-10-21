@@ -4,6 +4,8 @@ The quota-recovery C and later D reloads arm a real main-document navigation bef
 
 The click, navigation and restored-label prerequisites share one 30000 ms budget, matching the previous implicit Playwright action/count wait. There are no retry clicks or sleeps, and activation/RPC deadlines are unchanged. In-flight browser commands cannot be cancelled by the Node bound; expiry guards prevent further helper steps after it fires.
 
-Disposable root/subpath browser fixtures hold a genuine reload before commit while old B already displays three fruits, and separately serve a NEW wrong B document which must still fail strict C. They do not patch product callbacks or activation logic. The observed historical B-versus-C failure demonstrates a readiness gap; post-cleanup C snapshots do not establish its exact original document identity or cause.
+Disposable root/subpath browser fixtures hold an asynchronous fetch until the trusted click completes, prove the old three-fruit predicate already passes in B, then hold the genuine reload before commit until the shared navigation-readiness deadline expires. They assert the timeout category and elapsed budget, and separately serve a NEW wrong B document which must still fail strict C. They do not patch product callbacks or activation logic. The observed historical B-versus-C failure demonstrates a readiness gap; post-cleanup C snapshots do not establish its exact original document identity or cause.
 
 Run the focused cases with `npx playwright test tests/core/update-document-readiness.spec.ts` and the existing built-app update verifier with `npm run verify:update`.
+
+The optional synchronous `onClickComplete` observer is used only by the disposable regression to record completion of the original native click; the verifier supplies no observer. It does not evaluate or modify the application.
