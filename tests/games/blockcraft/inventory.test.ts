@@ -187,4 +187,19 @@ describe('inventory model',()=>{
     const before=inv.slots;game.setMode('creative');expect(inv.slots).toBe(before);
     inv.dispose?.();
   });
+  test('the starter hotbar comes only with a switch from survival, never with the modeChanged a restore emits',()=>{
+    // A creative world whose player emptied the inventory, reloaded: Engine.restore applies the saved settings, restores
+    // every system, then emits modeChanged. A fresh engine may have started in either mode.
+    for(const start of ['survival','creative'] as const){
+      const {game,inv}=setup(start);
+      game.settings.mode='creative';
+      inv.restore!({slots:new Array(36).fill(null),armor:[null,null,null,null],offhand:null,selected:0});
+      game.events.emit('modeChanged',{mode:'creative'});
+      expect(inv.slots.every(s=>!s),start).toBe(true);
+      // A repeated creative modeChanged without a switch does not stock it either.
+      game.events.emit('modeChanged',{mode:'creative'});expect(inv.slots.every(s=>!s)).toBe(true);
+      game.setMode('survival');game.setMode('creative');
+      expect(inv.slots.slice(0,9).map(s=>s?.id)).toEqual(CREATIVE_STARTER);
+    }
+  });
 });

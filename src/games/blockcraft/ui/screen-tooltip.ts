@@ -15,7 +15,8 @@ export function durabilityOf(stack:ItemStack):{left:number;max:number}|null{
 export function tooltipLines(stack:ItemStack):string[]{
   const def=itemDef(stack.id);if(!def)return[title(stack.id)];
   const lines=[def.displayName];
-  if(def.tool){
+  // Weapons and digging tools carry attack modifiers; shears have none in vanilla.
+  if(def.tool&&def.tool.kind!=='shears'){
     lines.push('When in Main Hand:',` ${num(def.tool.damage)} Attack Damage`,` ${num(def.tool.attackSpeed)} Attack Speed`);
   }
   if(def.armor){

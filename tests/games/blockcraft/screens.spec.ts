@@ -198,6 +198,13 @@ test('a large chest keeps items between openings; armour equips by shift-click, 
   // Hovering shows a tooltip with the armour points.
   await slot(page,'Chestplate slot').hover();
   await expect(page.locator('.bc-tip')).toContainText('+6 Armor');
+  // A worn tool keeps its durability bar while carried, and a save made meanwhile keeps the carried stack.
+  await engine(page,g=>g.inventory.setSlot(12,{id:'iron_pickaxe',count:1,damage:125}));
+  await slot(page,'Inventory slot 4').click();
+  await expect(page.locator('.bc-cursor .bc-d')).toBeVisible();
+  expect(await engine(page,g=>g.serialize().systems.ui)).toEqual({stacks:[{id:'iron_pickaxe',count:1,damage:125}]});
+  await slot(page,'Inventory slot 4').click();
+  await expect(page.locator('.bc-cursor')).toBeHidden();
   await page.keyboard.press('KeyE');
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
   expect(errors).toEqual([]);

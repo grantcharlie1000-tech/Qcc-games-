@@ -1,10 +1,11 @@
 // Screen controller (inventory & screens area): the DOM-free half of the UI service. It owns which screen is
 // open, the slot menu behind it, the cursor stack, the creative tab and search, the recipe book, the hovered
 // slot for number keys / Q / F, and the open/close flow (screenChanged, items returned on close, chest sounds,
-// closing when the block goes away). ui/screens.ts draws it and feeds it pointer and key input through a
+// closing when the block goes away, saving the cursor and grid items of an open screen). ui/screens.ts draws it and feeds it pointer and key input through a
 // ScreenView; unit tests drive it with a fake view.
 import type {ItemId,ItemStack} from '../data/items';
 import type {Game,ScreenId,UIService,Vec3} from '../engine/contracts';
+import {cleanStack} from '../items/inventory';
 import {SlotMenu} from './slots';
 import {SlotPointer} from './slots-input';
 import {giveBack,menuHost,type ScreenBuild} from './screen-common';
@@ -20,6 +21,9 @@ import {availableItems,bookEntries,fillFromBook,fitsGrid,planRecipe,type BookEnt
 export const SCREEN_IDS:readonly ScreenId[]=['inventory','creative','crafting_table','furnace','chest','advancements'];
 /** Longest creative search query kept (vanilla's search box holds 50 characters). */
 export const MAX_QUERY=50;
+/** Most stacks a save hands back: the cursor and a 3×3 grid. */
+export const MAX_SAVED_STACKS=10;
+const plainStack=(s:ItemStack):ItemStack=>s.damage?{id:s.id,count:s.count,damage:s.damage}:{id:s.id,count:s.count};
 
 /** What the controller needs from its renderer. */
 export interface ScreenView{
@@ -53,7 +57,7 @@ export class ScreenController implements UIService{
   private current:ScreenId|null=null;
   private build:ScreenBuild|null=null;
   private position:Vec3|null=null;
-  private entries:BookEntry[]|null=null;
+  private entries:BookEntry[]|null=null;private entriesGrid=-1;
   private unsubscribe:(()=>void)[]=[];
 
   constructor(readonly game:Game,private view:ScreenView){
@@ -118,6 +122,24 @@ export class ScreenController implements UIService{
     if(!this.current)return;
     if(this.build?.valid&&!this.build.valid()){this.close();return;}
     this.view.draw(dt);
+  }
+  /** While a screen is open the cursor and crafting grid items live only here. The shell saves and then disposes
+   *  without closing the screen (leaving the game), and the 5 s autosave may be the last one before a tab dies, so a
+   *  save carries them; undefined when there are none. */
+  serialize():{stacks:ItemStack[]}|undefined{
+    if(!this.current)return undefined;
+    const stacks:ItemStack[]=[];
+    const c=this.menu.cursor;if(c)stacks.push(plainStack(c));
+    for(const s of this.build?.grid?.cells??[])if(s)stacks.push(plainStack(s));
+    return stacks.length?{stacks}:undefined;
+  }
+  /** Saved cursor and grid items go into the restored inventory (thrown when it is full), as closing would have done.
+   *  The engine restores the inventory before the ui (creation order). */
+  restore(data:unknown){
+    const list=data&&typeof data==='object'?(data as {stacks?:unknown}).stacks:undefined;
+    if(!Array.isArray(list))return;
+    const stacks=list.slice(0,MAX_SAVED_STACKS).map(s=>cleanStack(s)).filter((s):s is ItemStack=>!!s);
+    if(stacks.length)giveBack(this.game,stacks);
   }
   reset(){
     // A new world: nothing is handed back (the inventory was cleared too).
@@ -186,12 +208,14 @@ export class ScreenController implements UIService{
     this.rebuild();
   }
   toggleCraftable(on=!this.book.craftableOnly){this.book.craftableOnly=on;this.entries=null;}
-  /** Entries for the open grid, craftable first (only craftable ones with the filter on). Cached until the inventory changes. */
+  /** Entries for the open grid, craftable first (only craftable ones with the filter on). Items in the grid count as
+   *  available. Cached until the inventory or the grid changes. */
   bookList():readonly BookEntry[]{
     const grid=this.build?.grid;if(!grid||!this.book.open)return[];
-    if(!this.entries){
-      const all=bookEntries(this.game.crafting,grid.width,grid.height,availableItems(this.game.inventory));
+    if(!this.entries||this.entriesGrid!==grid.version){
+      const all=bookEntries(this.game.crafting,grid.width,grid.height,availableItems(this.game.inventory,grid.cells));
       this.entries=this.book.craftableOnly?all.filter(e=>e.craftable):all;
+      this.entriesGrid=grid.version;
     }
     return this.entries;
   }

@@ -64,6 +64,9 @@ export class SlotPointer{
     const m=this.menu,slot=hit.slot;
     this.doubleClick=slot!==null&&slot===this.lastSlot&&time-this.lastTime<DOUBLE_CLICK_MS&&button===this.lastButton;
     this.skipRelease=false;
+    // Vanilla mouseClicked: while a drag is in progress another button's press starts nothing; its release cancels the
+    // drag in up(). (A press of the drag's own button means its release was lost, e.g. outside the window: start over.)
+    if(this.drag&&this.drag.button!==button){this.lastSlot=slot;this.lastTime=time;this.lastButton=button;return;}
     if(slot!==null||hit.outside){
       if(!m.cursor){
         if(button===MOUSE_MIDDLE){if(slot!==null)m.middle(slot);}

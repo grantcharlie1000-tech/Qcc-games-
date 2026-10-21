@@ -6,13 +6,14 @@
 // (`slots`, `armor`, `offhand`, `held()`) are frozen snapshots rebuilt only after a change, so
 // readers never allocate per frame and can never edit the inventory behind its back.
 import {ITEMS,itemDef,maxStack,parseStack,sameItem,type ItemStack} from '../data/items';
-import type {ArmorSlot,Game,InventoryService,Vec3} from '../engine/contracts';
+import type {ArmorSlot,Game,GameMode,InventoryService,Vec3} from '../engine/contracts';
 
 export const HOTBAR_SIZE=9,INVENTORY_SIZE=36;
 export const ARMOR_SLOTS:readonly ArmorSlot[]=['head','chest','legs','feet'];
 /** Ticks before the player can pick up an item they dropped (vanilla Player.drop). */
 export const DROP_PICKUP_DELAY=40;
-/** Hotbar given when an empty inventory switches to creative, so building can start without the menu. */
+/** Hotbar given when an empty inventory switches from survival to creative, so building can start without the menu.
+ *  Not on the modeChanged a restore emits: a creative world reloads exactly as it was saved. */
 export const CREATIVE_STARTER=['grass_block','dirt','stone','cobblestone','oak_planks','oak_log','glass','torch','crafting_table'];
 
 const freeze=(s:ItemStack|null):ItemStack|null=>s&&Object.freeze(s);
@@ -57,6 +58,8 @@ export function createInventory(game:Game):InventoryService{
   const armor:(ItemStack|null)[]=[null,null,null,null];
   let offhand:ItemStack|null=null,selected=0;
   let version=0,viewVersion=-1;
+  /** Mode the inventory last saw, so only a real switch to creative stocks the starter hotbar. */
+  let lastMode:GameMode='survival';
   let slotView:readonly (ItemStack|null)[]=[],armorView:readonly (ItemStack|null)[]=[];
   const listeners=new Set<()=>void>();
   const unsubscribe:(()=>void)[]=[];
@@ -190,11 +193,17 @@ export function createInventory(game:Game):InventoryService{
     clear(){clearAll();changed();},
     onChange(listener){listeners.add(listener);return()=>{listeners.delete(listener);};},
     init(){
-      unsubscribe.push(game.events.on('modeChanged',({mode})=>{if(mode==='creative')stockCreativeHotbar();}));
+      lastMode=game.settings.mode;
+      unsubscribe.push(game.events.on('modeChanged',({mode})=>{
+        const was=lastMode;lastMode=mode;
+        if(mode==='creative'&&was!=='creative')stockCreativeHotbar();
+      }));
     },
     reset(){clearAll();selected=0;changed();},
     serialize(){views();return{slots:slotView,armor:armorView,offhand,selected};},
     restore(value){
+      // Engine.restore applies the saved settings before restoring systems, then emits modeChanged for them.
+      lastMode=game.settings.mode;
       if(!value||typeof value!=='object')return;
       const d=value as {slots?:unknown;armor?:unknown;offhand?:unknown;selected?:unknown};
       if(Array.isArray(d.slots)&&d.slots.length===INVENTORY_SIZE)d.slots.forEach((s,i)=>{slots[i]=freeze(parseStack(s));});

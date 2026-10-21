@@ -123,6 +123,29 @@ describe('opening and closing',()=>{
     game.player.teleport(.5,61,2.5);ui.open('chest',{x:0,y:61,z:0});
     game.world.set(0,61,0,0);ui.frame(.016);expect(ui.screen).toBeNull();
   });
+  test('a save made with a screen open keeps the cursor and grid items, and restoring puts them in the inventory',()=>{
+    const {inv,ui}=setup();
+    expect(ui.serialize()).toBeUndefined();
+    inv.setSlot(0,st('diamond',5));inv.setSlot(1,st('oak_log',3));
+    ui.open('inventory');expect(ui.serialize()).toBeUndefined();
+    const cell=ui.menu.indexes('grid')[0];
+    ui.menu.click(invIndex(ui,1),0);ui.menu.click(cell,0);ui.menu.click(invIndex(ui,0),0);
+    expect(ui.menu.cursor).toEqual(st('diamond',5));expect(inv.count('diamond')+inv.count('oak_log')).toBe(0);
+    // The shell saves and then disposes the game without closing the screen first (leaving, or an autosave before the tab dies).
+    const saved=JSON.parse(JSON.stringify({inventory:inv.serialize!(),ui:ui.serialize()}));
+    ui.dispose();
+    const next=setup();next.inv.restore!(saved.inventory);next.ui.restore(saved.ui);
+    expect(next.inv.count('diamond')).toBe(5);expect(next.inv.count('oak_log')).toBe(3);expect(next.ui.screen).toBeNull();
+  });
+  test('restoring returned items validates them, takes at most a cursor and a 3×3 grid, and throws what does not fit',()=>{
+    const {inv,ui,drops}=setup();
+    for(const v of [null,7,'x',[],{stacks:'no'},{stacks:[1,null,{id:'nope',count:1},{id:'dirt',count:-1},{id:'dirt',count:NaN}]}])expect(()=>ui.restore(v)).not.toThrow();
+    expect(inv.slots.every(s=>!s)).toBe(true);
+    ui.restore({stacks:new Array(20).fill({id:'dirt',count:1})});expect(inv.count('dirt')).toBe(10);
+    for(let i=0;i<36;i++)inv.setSlot(i,st('stone',64));
+    ui.restore({stacks:[{id:'torch',count:999},{id:'iron_pickaxe',count:1,damage:12}]});
+    expect(drops.map(d=>d.stack)).toEqual([st('torch',64),{id:'iron_pickaxe',count:1,damage:12}]);
+  });
   test('reset discards an open screen and dispose frees the view',()=>{
     const {inv,ui,view}=setup();
     ui.open('inventory');ui.menu.cursor=st('dirt',4);ui.reset();
@@ -193,6 +216,9 @@ describe('tooltips, labels and durability bars',()=>{
     expect(tooltipLines(st('golden_apple'))).toEqual(['Golden Apple','Restores 4 hunger (2 shanks)','Saturation 9.6','Regeneration II (0:05)','Absorption (2:00)']);
     expect(tooltipLines(st('rotten_flesh'))).toContain('Hunger (0:30), 80% chance');
     expect(tooltipLines(st('cow_spawn_egg'))).toEqual(['Cow Spawn Egg','Spawns a Cow']);
+    // Shears have no attribute modifiers in vanilla, so no attack lines.
+    expect(tooltipLines(st('shears'))).toEqual(['Shears','Durability: 238 / 238']);
+    expect(tooltipLines(st('stone_hoe'))[1]).toBe('When in Main Hand:');
   });
   test('slot labels read the position and contents; the bar follows vanilla width and colour',()=>{
     expect(slotLabel('Hotbar slot 1',st('oak_planks',64))).toBe('Hotbar slot 1: Oak Planks, 64');
@@ -231,6 +257,21 @@ describe('recipe book',()=>{
     expect(inv.count('oak_planks')).toBe(10);// the grid went back first
     expect(ui.ghost?.result).toEqual(st('furnace'));expect(ui.ghost?.cells.filter(Boolean)).toHaveLength(8);
     ui.layout!.grid!.cells[0]=st('dirt');ui.afterChange();expect(ui.ghost).toBeNull();
+  });
+  test('items already in the grid count as available (vanilla StackedContents), and the list follows the grid',()=>{
+    const {inv,ui}=setup();ui.open('inventory');ui.toggleBook(true);ui.toggleCraftable(true);
+    inv.setSlot(0,st('oak_planks',4));
+    expect(ui.bookList().map(e=>e.result.id)).toEqual(['crafting_table']);
+    const grid=ui.menu.indexes('grid'),[result]=ui.menu.indexes('result');
+    ui.menu.click(invIndex(ui,0),0);for(const cell of grid)ui.menu.click(cell,1);
+    expect(inv.count('oak_planks')).toBe(0);expect(ui.menu.slots[result].get()).toEqual(st('crafting_table'));
+    expect(ui.bookList().map(e=>[e.result.id,e.craftable])).toEqual([['crafting_table',true]]);
+    // Choosing it takes the grid back first, then fills it again.
+    expect(ui.chooseRecipe(0,false)).toBe(true);expect(ui.layout!.grid!.cells).toEqual([st('oak_planks'),st('oak_planks'),st('oak_planks'),st('oak_planks')]);
+    expect(ui.bookList().map(e=>e.result.id)).toEqual(['crafting_table']);
+    // Taking the result changes only the grid (the inventory is untouched): the cached list must not go stale.
+    ui.menu.click(result,0);expect(ui.menu.cursor).toEqual(st('crafting_table'));
+    expect(ui.bookList()).toEqual([]);
   });
   test('screens without a grid have no recipe book',()=>{
     const {game,ui}=setup();

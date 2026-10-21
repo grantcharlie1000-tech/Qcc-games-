@@ -6,7 +6,7 @@ import {menuHost,giveBack} from '../../../src/games/blockcraft/ui/screen-common'
 import {buildInventory} from '../../../src/games/blockcraft/ui/screen-inventory';
 import {buildCraftingTable} from '../../../src/games/blockcraft/ui/screen-crafting';
 import {buildFurnace} from '../../../src/games/blockcraft/ui/screen-furnace';
-import {buildChest,chestPositions} from '../../../src/games/blockcraft/ui/screen-chest';
+import {buildChest,chestBlocked,chestPositions} from '../../../src/games/blockcraft/ui/screen-chest';
 import {buildCreative} from '../../../src/games/blockcraft/ui/screen-creative';
 import {blockId,stateFor} from '../../../src/games/blockcraft/data/blocks';
 import type {BlockEntity,CraftingService,FurnaceEntity,GameEvents,ItemStack,RecipeMatch,Vec3} from '../../../src/games/blockcraft/engine/contracts';
@@ -300,6 +300,19 @@ describe('chests',()=>{
     const barrel:BlockEntity={kind:'chest',items:new Array(27).fill(null)};
     const get=game.blockEntities.get;game.blockEntities={get:(x,y,z)=>x===5?barrel:get(x,y,z)};
     expect(buildChest(game,menu,{x:5,y:61,z:0})?.title).toBe('Barrel');
+  });
+  test('stacked chests open one by one; only redstone conductors hold a lid shut (vanilla isRedstoneConductor)',()=>{
+    const {game,menu}=chestGame([{x:0,y:61,z:0},{x:0,y:62,z:0}]);
+    expect(chestBlocked(game.world,{x:0,y:61,z:0})).toBe(false);
+    expect(buildChest(game,menu,{x:0,y:61,z:0})?.title).toBe('Chest');
+    expect(buildChest(game,menu,{x:0,y:62,z:0})?.title).toBe('Chest');
+    for(const name of ['glowstone','redstone_block','glass']){
+      game.world.set(0,63,0,blockId(name));expect(buildChest(game,menu,{x:0,y:62,z:0})?.title,name).toBe('Chest');
+    }
+    for(const name of ['oak_planks','crafting_table','barrel','stone']){
+      game.world.set(0,63,0,blockId(name));expect(buildChest(game,menu,{x:0,y:62,z:0}),name).toBeNull();
+    }
+    game.world.set(0,63,0,stateFor('furnace',{facing:'south',lit:false})!.id);expect(buildChest(game,menu,{x:0,y:62,z:0})).toBeNull();
   });
 });
 

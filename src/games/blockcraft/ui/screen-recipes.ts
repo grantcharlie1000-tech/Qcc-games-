@@ -13,10 +13,11 @@ export function fitsGrid(r:RecipeView,width:number,height:number):boolean{
   if(r.kind==='shapeless')return cellsOf(r).filter(Boolean).length<=width*height;
   return r.width<=width&&r.height<=height;
 }
-/** Items available to the recipe book: the 36 inventory slots. */
-export function availableItems(inv:InventoryService):Map<ItemId,number>{
+/** Items available to the recipe book: the 36 inventory slots plus `extra` (the crafting grid's cells, as vanilla
+ *  StackedContents counts the craft slots too). Worn items are left out. */
+export function availableItems(inv:InventoryService,extra:readonly (ItemStack|null)[]=[]):Map<ItemId,number>{
   const out=new Map<ItemId,number>();
-  for(const s of inv.slots)if(s&&!s.damage)out.set(s.id,(out.get(s.id)??0)+s.count);
+  for(const list of [inv.slots,extra])for(const s of list)if(s&&!s.damage)out.set(s.id,(out.get(s.id)??0)+s.count);
   return out;
 }
 /** Item per grid cell (row-major width×height) for `times` crafts, or null when the items are missing.

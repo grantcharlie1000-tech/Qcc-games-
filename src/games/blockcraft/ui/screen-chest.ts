@@ -2,7 +2,7 @@
 // large chest. Two chests with the same facing side by side (along the axis across their fronts)
 // form a large chest; in a longer row chests pair from the row's start, so every chest finds the
 // same partner. The left half (seen from the front) is the top three rows, as in vanilla.
-// A chest (either half) under a full opaque block cannot open (vanilla ChestBlock.isChestBlockedAt); barrels can.
+// A chest (either half) under a redstone-conducting block cannot open (vanilla ChestBlock.isChestBlockedAt); barrels can.
 import {blockDef,FACING_VECTOR,FULL_CUBE,OPAQUE,rotateCW,type Facing} from '../data/blocks';
 import type {BlockSource,ChestEntity,Game,Vec3} from '../engine/contracts';
 import {SlotMenu,arraySlot,playerSlots,screenRule,type MenuSlot} from './slots';
@@ -25,10 +25,13 @@ export function chestPositions(world:BlockSource,at:Vec3):Vec3[]{
   // The chest further toward the viewer's left is the top half.
   return partner>0?[other,at]:[at,other];
 }
-/** A full opaque block right above the chest keeps its lid shut. */
+/** Full opaque blocks that vanilla marks isRedstoneConductor(never), and chests (their real shape is not a full
+ *  block), so they leave a lid free: stacked chests and a chest under a lamp block both open. */
+const LID_FREE=new Set(['chest','glowstone','redstone_block']);
+/** A redstone conductor right above the chest keeps its lid shut: here a full opaque cube, except LID_FREE. */
 export function chestBlocked(world:BlockSource,at:Vec3):boolean{
   const id=world.get(at.x,at.y+1,at.z);
-  return id>0&&OPAQUE[id]===1&&FULL_CUBE[id]===1;
+  return id>0&&OPAQUE[id]===1&&FULL_CUBE[id]===1&&!LID_FREE.has(blockDef(id).family);
 }
 function containerSlots(entity:ChestEntity,offset:number):MenuSlot[]{
   if(entity.items.length<27)for(let i=entity.items.length;i<27;i++)entity.items.push(null);

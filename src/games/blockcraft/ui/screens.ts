@@ -60,6 +60,9 @@ class DomScreens implements ScreenView{
   private readonly cursorEl:HTMLDivElement;
   private readonly cursorImg:HTMLImageElement;
   private readonly cursorN:HTMLElement;
+  /** Durability bar of the carried stack (vanilla draws item decorations on it too). */
+  private readonly cursorBar:HTMLElement;
+  private readonly cursorFill:HTMLElement;
   private readonly tip:HTMLDivElement;
   private readonly toastEl:HTMLDivElement;
   private slots:(SlotEl|undefined)[]=[];
@@ -81,12 +84,13 @@ class DomScreens implements ScreenView{
     const layer=document.createElement('div');layer.className='bc-screen';layer.hidden=true;
     layer.innerHTML=`<div class="bc-wrap"><aside class="bc-book" aria-label="Recipe book" hidden></aside>
       <section class="bc-panel" role="dialog" aria-modal="true" tabindex="-1"><header class="bc-head"><h2 class="bc-title"></h2><div class="bc-tools"></div></header><div class="bc-body"></div></section></div>
-      <div class="bc-cursor" aria-hidden="true" hidden><img alt="" draggable="false"><span class="bc-n"></span></div>
+      <div class="bc-cursor" aria-hidden="true" hidden><img alt="" draggable="false"><span class="bc-n"></span><span class="bc-d" hidden><i></i></span></div>
       <div class="bc-tip" role="tooltip" hidden></div>`;
     this.layer=layer;
     const q=<T extends Element>(s:string)=>layer.querySelector<T>(s)! as T;
     this.wrap=q('.bc-wrap');this.panel=q('.bc-panel');this.title=q('.bc-title');this.tools=q('.bc-tools');this.body=q('.bc-body');
     this.bookEl=q('.bc-book');this.cursorEl=q('.bc-cursor');this.cursorImg=q('.bc-cursor img');this.cursorN=q('.bc-cursor .bc-n');this.tip=q('.bc-tip');
+    this.cursorBar=q('.bc-cursor .bc-d');this.cursorFill=q('.bc-cursor .bc-d i');
     const toast=document.createElement('div');toast.className='bc-toast';toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');
     this.toastEl=toast;
     game.root.append(layer,toast);
@@ -249,6 +253,11 @@ class DomScreens implements ScreenView{
     if(!stack&&carrying!==null){stack=m.slots[carrying]?.get()??null;count=stack?.count??0;}
     if(!stack||count<=0){el.hidden=true;this.lastCursor=null;return;}
     if(stack!==this.lastCursor||count!==this.lastCursorCount){
+      if(stack!==this.lastCursor){
+        const bar=durabilityBar(stack);
+        this.cursorBar.hidden=!bar;
+        if(bar){this.cursorFill.style.width=`${(bar.width*100).toFixed(1)}%`;this.cursorFill.style.background=bar.color;}
+      }
       this.lastCursor=stack;this.lastCursorCount=count;
       this.cursorImg.src=iconUrl(stack.id);this.cursorN.textContent=count>1?String(count):'';
     }

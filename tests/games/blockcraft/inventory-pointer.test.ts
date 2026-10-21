@@ -93,10 +93,20 @@ describe('mouse drags',()=>{
   test('pressing the other button cancels a drag and its release is ignored',()=>{
     const {inv,menu,pointer,at}=setup();menu.cursor=st('dirt',6);
     pointer.down(at(9),LEFT,false,'mouse',0);pointer.move(at(9));pointer.move(at(10));
+    // The browser reports the second button's press too: it must not start a drag of its own.
+    pointer.down(at(10),RIGHT,false,'mouse',40);
+    expect(pointer.dragging!.slots).toEqual([at(9).slot,at(10).slot]);
     pointer.up(at(10),RIGHT,false,50);
     expect(pointer.dragging).toBeNull();expect(inv.slots[9]).toBeNull();expect(inv.slots[10]).toBeNull();
     pointer.up(at(10),LEFT,false,60);
     expect(inv.slots[10]).toBeNull();expect(menu.cursor).toEqual(st('dirt',6));
+    // A middle press during a right drag cancels it the same way.
+    pointer.down(at(11),RIGHT,false,'mouse',1000);pointer.move(at(11));pointer.move(at(12));
+    pointer.down(at(12),MIDDLE,false,'mouse',1040);pointer.up(at(12),MIDDLE,false,1050);pointer.up(at(12),RIGHT,false,1060);
+    expect(inv.slots[11]).toBeNull();expect(inv.slots[12]).toBeNull();expect(menu.cursor).toEqual(st('dirt',6));
+    // The next plain click works again.
+    pointer.down(at(13),LEFT,false,'mouse',2000);pointer.up(at(13),LEFT,false,2020);
+    expect(inv.slots[13]).toEqual(st('dirt',6));expect(menu.cursor).toBeNull();
   });
   test('a one-slot drag is a plain click',()=>{
     const {inv,menu,pointer,at}=setup();menu.cursor=st('dirt',6);

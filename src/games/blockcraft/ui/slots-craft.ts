@@ -9,12 +9,15 @@ import type {MenuSlot} from './slots';
 export class CraftingGrid{
   readonly cells:(ItemStack|null)[];
   private cached:RecipeMatch|null|undefined;
+  private changes=0;
+  /** Bumped by every change of the cells (invalidate), for caches that depend on the grid. */
+  get version():number{return this.changes;}
   constructor(private game:Game,readonly width:number,readonly height:number,readonly station:CraftingStation,
     /** Puts a remainder that cannot stay in its cell into the inventory (or drops it). */
     private give:(stack:ItemStack)=>void){
     this.cells=new Array(width*height).fill(null);
   }
-  invalidate(){this.cached=undefined;}
+  invalidate(){this.cached=undefined;this.changes++;}
   match():RecipeMatch|null{
     if(this.cached===undefined){
       let m:RecipeMatch|null=null;
