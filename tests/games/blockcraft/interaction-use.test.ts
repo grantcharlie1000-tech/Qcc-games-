@@ -233,14 +233,15 @@ describe('bows and throwing',()=>{
     const h=createHarness();h.hold('bow');h.inv.slots[5]=stack('arrow',4);h.lookAt(.5,62,-10);h.step();
     h.press('use');h.down('use');h.step(20);
     expect(h.interaction.using).toEqual({item:'bow',progress:1});
-    expect(h.log.fov.at(-1)).toBeCloseTo(.85);
+    // The player area owns the FOV (flight, speed, bow draw from interaction.using, reduced motion): interaction never sets it.
+    expect(h.log.fov).toEqual([]);
     h.down('use',false);h.step();
     const arrow=h.ents.spawned.find(s=>s.entity.kind==='arrow')!.entity;
     expect(speed(arrow)).toBeGreaterThan(58);expect(speed(arrow)).toBeLessThan(62);expect(arrow.vz).toBeLessThan(-55);
     expect(arrow.data).toMatchObject({owner:'player',damage:2,pickup:true,crit:true,inGround:false});
     expect(arrow.y).toBeCloseTo(61.52);
     expect(h.inv.count('arrow')).toBe(3);expect(h.inv.damaged).toBe(1);expect(h.sounds()).toContain('bow');
-    expect(h.log.fov.at(-1)).toBe(1);expect(h.interaction.using).toBeNull();
+    expect(h.log.fov).toEqual([]);expect(h.interaction.using).toBeNull();
   });
   it('a tap does not shoot; no arrows means no draw in survival; creative needs none and its arrows stay',()=>{
     const h=createHarness();h.hold('bow');h.inv.slots[5]=stack('arrow',4);h.lookAt(.5,62,-10);

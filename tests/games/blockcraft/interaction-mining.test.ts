@@ -144,6 +144,51 @@ describe('mining in the service',()=>{
     h.click('attack');
     expect(h.game.world.get(0,60,-2)).toBe(AIR);expect(h.game.world.get(0,59,-2)).toBe(B.stone);expect(h.sounds()).toContain('fizz');
   });
+  it('after a swing at air, holding attack mines again once the 10-tick miss lock runs out (vanilla missTime)',()=>{
+    const h=createHarness();h.game.world.set(0,60,-2,B.dirt);
+    h.lookAt(.5,90,-2);h.press('attack');h.down('attack');h.step();
+    expect(h.interaction.target).toBeNull();
+    h.aimFace(0,60,-2,0,0,1);
+    // 9 more locked ticks, a start tick, then 15 ticks of progress.
+    h.step(9);expect(h.interaction.breaking).toBeNull();
+    h.step(15);expect(h.game.world.get(0,60,-2)).toBe(B.dirt);
+    h.step();expect(h.game.world.get(0,60,-2)).toBe(AIR);
+  });
+  it('a click during the miss lock is ignored, releasing attack lifts the lock',()=>{
+    const h=createHarness();h.game.world.set(0,60,-2,blockId('poppy'));
+    // A tick that sees attack released lifts the lock (vanilla continueAttack(false)).
+    h.lookAt(.5,90,-2);h.click('attack');h.step();
+    h.aimFace(0,60,-2,0,1,0);h.press('attack');h.step();
+    expect(h.game.world.get(0,60,-2)).toBe(AIR);
+    h.game.world.set(0,60,-2,blockId('poppy'));
+    h.lookAt(.5,90,-2);h.press('attack');h.down('attack');h.step();
+    h.aimFace(0,60,-2,0,1,0);h.press('attack');h.step();
+    expect(h.game.world.get(0,60,-2)).toBe(blockId('poppy'));
+  });
+  it('changing the held item mid-mine restarts the block with the new tool (vanilla sameDestroyTarget)',()=>{
+    const h=createHarness();h.hold('wooden_pickaxe');h.game.world.set(0,60,-2,B.stone);h.aimFace(0,60,-2,0,0,1);
+    h.press('attack');h.down('attack');h.step(5);
+    expect(h.interaction.breaking?.progress).toBeGreaterThan(.2);
+    h.hold('stone_pickaxe');h.step();
+    expect(h.interaction.breaking).toMatchObject({x:0,y:60,z:-2,progress:0});
+    // Stone pickaxe on stone: 12 ticks of progress after the restart tick.
+    h.step(11);expect(h.game.world.get(0,60,-2)).toBe(B.stone);
+    h.step();expect(h.game.world.get(0,60,-2)).toBe(AIR);
+    expect(h.ents.drops.map(d=>d.stack)).toEqual([stack('cobblestone')]);
+  });
+  it('the arm swings and the face cracks on every mining tick, including the delay and creative repeat ticks',()=>{
+    const h=createHarness({mode:'creative'});const w=h.game.world;w.set(0,60,-2,B.stone);h.aimFace(0,60,-2,0,0,1);
+    h.press('attack');h.down('attack');
+    for(let i=0;i<20;i++){const before=h.log.swings;h.step();expect(h.log.swings,`tick ${i}`).toBeGreaterThan(before);if(w.get(0,60,-2)===AIR)w.set(0,60,-2,B.stone);}
+    expect(h.game.stats.mined).toBe(5);
+    const s=createHarness();s.hold('golden_pickaxe');s.game.world.set(0,60,-2,B.stone);s.game.world.set(0,60,-3,B.stone);s.aimFace(0,60,-2,0,0,1);
+    s.press('attack');s.down('attack');s.step(4);expect(s.game.world.get(0,60,-2)).toBe(AIR);
+    // The 5 delay ticks after the break, aimed at the next block.
+    s.aimFace(0,60,-3,0,0,1);
+    for(let i=0;i<5;i++){const swings=s.log.swings,cracks=s.log.particles.length;s.step();
+      expect(s.log.swings).toBeGreaterThan(swings);expect(s.log.particles.slice(cracks).some(p=>p.kind==='block'&&p.options?.count===1)).toBe(true);}
+    expect(s.interaction.breaking).toBeNull();
+  });
   it('mining stops when a screen opens',()=>{
     const h=createHarness();h.game.world.set(0,60,-2,B.dirt);h.aimFace(0,60,-2,0,0,1);
     h.press('attack');h.down('attack');h.step(5);h.game.setState('screen');h.step();

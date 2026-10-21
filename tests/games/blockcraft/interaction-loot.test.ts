@@ -2,7 +2,8 @@ import {describe,expect,it} from 'vitest';
 import {BLOCKS,blockId} from '../../../src/games/blockcraft/data/blocks';
 import {ITEMS,stack,type ItemStack} from '../../../src/games/blockcraft/data/items';
 import {lootDrops,blockXp,canHarvest} from '../../../src/games/blockcraft/interact/loot';
-import {seeded} from './interaction-harness';
+import type {ChangeCause} from '../../../src/games/blockcraft/engine/contracts';
+import {createHarness,seeded} from './interaction-harness';
 
 const tool=(id:string)=>stack(id);
 const total=(drops:ItemStack[],id:string)=>drops.filter(s=>s.id===id).reduce((n,s)=>n+s.count,0);
@@ -95,9 +96,13 @@ describe('loot tables',()=>{
     expect([...seeds].sort()).toEqual([1,2,3,4]);
     expect(lootDrops(blockId('carrots_1'),null,Math.random)).toEqual([stack('carrot')]);
     expect(lootDrops(blockId('potatoes_0'),null,Math.random)).toEqual([stack('potato')]);
-    const carrots=new Set<number>();
-    for(let i=0;i<300;i++)carrots.add(total(lootDrops(blockId('carrots_3'),null,random),'carrot'));
-    expect([...carrots].sort()).toEqual([1,2,3,4]);
+    // Vanilla carrots and potatoes: one item, plus 1 + B(3, 4/7) more when mature (2-5 in all).
+    const carrots=new Set<number>(),potatoes=new Set<number>();
+    for(let i=0;i<300;i++){
+      carrots.add(total(lootDrops(blockId('carrots_3'),null,random),'carrot'));
+      potatoes.add(total(lootDrops(blockId('potatoes_3'),null,random),'potato'));
+    }
+    expect([...carrots].sort()).toEqual([2,3,4,5]);expect([...potatoes].sort()).toEqual([2,3,4,5]);
   });
   it('doors drop from the lower half, beds from the foot, double slabs two slabs',()=>{
     expect(lootDrops(blockId('oak_door_lower_closed_north'),null,Math.random)).toEqual([stack('oak_door')]);
@@ -124,6 +129,16 @@ describe('loot tables',()=>{
   it('explosions drop tool-gated blocks as vanilla does when asked to',()=>{
     expect(lootDrops(blockId('stone'),null,Math.random,true)).toEqual([stack('cobblestone')]);
     expect(lootDrops(blockId('iron_ore'),null,Math.random,true)).toEqual([stack('raw_iron')]);
+  });
+  it('blockDrops: no cause keeps the contract (requiresTool applies); a non-player cause drops like vanilla world loot',()=>{
+    const {interaction}=createHarness(),drops=interaction.blockDrops as (id:number,tool:ItemStack|null,cause?:ChangeCause)=>ItemStack[];
+    expect(drops(blockId('stone'),null)).toEqual([]);
+    expect(drops(blockId('stone'),null,'player')).toEqual([]);
+    expect(drops(blockId('stone'),null,'explosion')).toEqual([stack('cobblestone')]);
+    expect(drops(blockId('deepslate_diamond_ore'),null,'explosion')).toEqual([stack('diamond')]);
+    expect(drops(blockId('lantern'),null,'tick')).toEqual([stack('lantern')]);
+    expect(drops(blockId('lantern'),tool('wooden_pickaxe'))).toEqual([stack('lantern')]);
+    expect(drops(blockId('glass'),null,'explosion')).toEqual([]);
   });
   it('every block state drops only registered items and never throws',()=>{
     const random=seeded(9);

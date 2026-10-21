@@ -4,7 +4,7 @@
 // pressed() edges as well as down() so clicks shorter than a frame or a tick still register.
 import {AIR,B,OUTLINE_BOX,SOLID,blockDef,isLiquid,type BlockId} from '../data/blocks';
 import {ITEMS,itemDef,stack,type ItemStack} from '../data/items';
-import type {BlockSource,Entity,Game,InteractionService,RayHit} from '../engine/contracts';
+import type {BlockSource,ChangeCause,Entity,Game,InteractionService,ParticleOptions,RayHit,Vec3} from '../engine/contracts';
 import {createCombat} from './combat';
 import {blockXp,canHarvest,lootDrops} from './loot';
 import {acted,mainHand,offHand,traceOutline,type Hand,type Hit,type Result} from './use-hands';
@@ -81,7 +81,10 @@ export function createInteraction(game:Game):InteractionService{
   let breaking:{x:number;y:number;z:number;progress:number}|null=null,destroying=false,destroyTicks=0,destroyItem:string|null=null,destroyDelay=0;
   let missTime=0,rightClickDelay=0,lastHeld:string|null=null,partial=0;
   let using:ItemUse|null=null;const usingView={item:'',progress:0};
-  let fovScaled=false,editToast=false;
+  let editToast=false;
+  // Scratch objects reused every mining tick (no per-tick allocation).
+  const mining:MiningConditions={onGround:true,underwater:false};
+  const crackOptions:ParticleOptions={block:0,count:1,spread:.1},hitAt:Vec3={x:0,y:0,z:0},hitSound={volume:.25,pitch:.5};
   const creative=()=>game.settings.mode==='creative';
   const random=()=>game.random();
   const heldId=()=>game.inventory.held()?.id??null;
@@ -108,7 +111,7 @@ export function createInteraction(game:Game):InteractionService{
   }
 
   // ---- Mining ------------------------------------------------------------------------------------------------------
-  function conditions(){const p=game.player.state;return{onGround:p.onGround||p.flying,underwater:p.headInWater};}
+  function conditions():MiningConditions{const p=game.player.state;mining.onGround=p.onGround||p.flying;mining.underwater=p.headInWater;return mining;}
   /** Aborting a block also restarts the attack cooldown (vanilla stopDestroyBlock). */
   function stopDestroy(){
     if(!destroying&&!breaking)return;
@@ -150,31 +153,40 @@ export function createInteraction(game:Game):InteractionService{
     const stage=breaking.progress>0?Math.min(9,Math.floor(breaking.progress*10)):-1;
     game.render.setBreaking(stage>=0?breaking:null,Math.max(0,stage));
   }
+  /** Vanilla sameDestroyTarget: the block being mined, still with the item it was started with. */
+  const sameTarget=(t:Hit)=>destroying&&!!breaking&&breaking.x===t.x&&breaking.y===t.y&&breaking.z===t.z&&destroyItem===heldId();
   function startDestroy(t:Hit):void{
     if(creative()){breakBlock(t.x,t.y,t.z);destroyDelay=CREATIVE_DESTROY_DELAY;return;}
-    if(destroying&&breaking&&breaking.x===t.x&&breaking.y===t.y&&breaking.z===t.z)return;
+    // A new block or a new item in hand aborts the current block and starts over.
+    if(sameTarget(t))return;
     stopDestroy();
     if(destroyProgress(t.id,game.inventory.held(),conditions())>=1){breakBlock(t.x,t.y,t.z);return;}
     destroying=true;breaking={x:t.x,y:t.y,z:t.z,progress:0};destroyTicks=0;destroyItem=heldId();
   }
-  function continueDestroy(t:Hit):void{
-    if(destroyDelay>0){destroyDelay--;return;}
-    if(creative()){destroyDelay=CREATIVE_DESTROY_DELAY;breakBlock(t.x,t.y,t.z);return;}
-    if(!(destroying&&breaking&&breaking.x===t.x&&breaking.y===t.y&&breaking.z===t.z&&destroyItem===heldId())){startDestroy(t);return;}
-    const id=game.world.get(t.x,t.y,t.z);if(id<=0){stopDestroy();return;}
-    breaking.progress+=destroyProgress(id,game.inventory.held(),conditions());
-    const def=blockDef(id);
+  /** Vanilla continueDestroyBlock: true while the player keeps working on a block (delay ticks, the creative repeat,
+   *  progress, or a restart on a new block), so the caller swings the arm and cracks the face. */
+  function continueDestroy(t:Hit):boolean{
+    if(destroyDelay>0){destroyDelay--;return true;}
+    if(creative()){destroyDelay=CREATIVE_DESTROY_DELAY;breakBlock(t.x,t.y,t.z);return true;}
+    if(!sameTarget(t)){startDestroy(t);return true;}
+    const b=breaking!,id=game.world.get(t.x,t.y,t.z);if(id<=0){stopDestroy();return false;}
+    b.progress+=destroyProgress(id,game.inventory.held(),conditions());
     if(destroyTicks%4===0){
-      game.sounds.play(`hit:${def.sound}`,{x:t.x+.5,y:t.y+.5,z:t.z+.5},{volume:.25,pitch:.5});
-      game.render.swing();
+      hitAt.x=t.x+.5;hitAt.y=t.y+.5;hitAt.z=t.z+.5;
+      game.sounds.play(`hit:${blockDef(id).sound}`,hitAt,hitSound);
     }
     destroyTicks++;
-    // One crack particle on the hit face each tick.
-    game.render.spawnParticles('block',t.px+t.nx*.05,t.py+t.ny*.05,t.pz+t.nz*.05,{block:id,count:1,spread:.1});
-    if(breaking.progress>=1-1e-6){
+    if(b.progress>=1-1e-6){
       destroying=false;breaking=null;game.render.setBreaking(null,0);
       breakBlock(t.x,t.y,t.z);destroyDelay=DESTROY_DELAY;
     }else setStage();
+    return true;
+  }
+  /** One crack particle on the hit face (vanilla ParticleEngine.crack); nothing once the block is gone. */
+  function crack(t:Hit){
+    const id=game.world.get(t.x,t.y,t.z);if(id<=0)return;
+    crackOptions.block=id;
+    game.render.spawnParticles('block',t.px+t.nx*.05,t.py+t.ny*.05,t.pz+t.nz*.05,crackOptions);
   }
   /** A click of attack: hit the entity, start mining the block, or swing at air. Returns true if a block broke. */
   function startAttack():boolean{
@@ -192,16 +204,16 @@ export function createInteraction(game:Game):InteractionService{
   function continueAttack(down:boolean){
     if(!down)missTime=0;
     if(missTime>0||using)return;
-    if(down&&target&&!entityTarget&&!(creative()&&isSword(game.inventory.held())))continueDestroy(target);
-    else stopDestroy();
+    if(down&&target&&!entityTarget&&!(creative()&&isSword(game.inventory.held()))){
+      const t=target;
+      if(continueDestroy(t)){crack(t);game.render.swing();}
+    }else stopDestroy();
   }
 
   // ---- Using -------------------------------------------------------------------------------------------------------
   function startUsing(u:ItemUse){using=u;usingView.item=u.item;usingView.progress=0;}
-  function stopUsing(){
-    using=null;
-    if(fovScaled){fovScaled=false;game.render.setFovScale(1);}
-  }
+  /** The FOV while drawing a bow belongs to the player area, which reads `using` every frame. */
+  function stopUsing(){using=null;}
   const finishSwing=(r:Result)=>{if(r==='success')game.render.swing();};
   /** A right click: vanilla startUseItem with both hands. */
   function startUse(){
@@ -266,16 +278,13 @@ export function createInteraction(game:Game):InteractionService{
     get attackCharge(){return combat.charge(partial);},
     get using(){return using?usingView:null;},
     get breaking(){return breaking;},
-    // `explosion` (beyond the contract, see loot.ts): explosions drop tool-gated blocks like vanilla.
-    blockDrops:(id,tool,explosion?:boolean)=>lootDrops(id,tool,random,!!explosion),
+    // `cause` (beyond the contract, see the report's contract requests): requiresTool applies to player harvests only
+    // (no cause = the contract's default); explosions, support pop-offs and fluids drop like vanilla world loot.
+    blockDrops:(id,tool,cause?:ChangeCause)=>lootDrops(id,tool,random,cause!==undefined&&cause!=='player'),
     frame(dt){
       partial=Math.min(1,partial+dt*20);
       updateTarget();showSelection();
       if(game.state!=='playing'){if(breaking||destroying)stopDestroy();if(using)stopUsing();}
-      if(using?.kind==='bow'){
-        const f=Math.min(1,(using.ticks+partial)/20);
-        game.render.setFovScale(1-f*f*.15);fovScaled=true;
-      }
     },
     tick(){
       partial=0;combat.tick();
@@ -299,12 +308,13 @@ export function createInteraction(game:Game):InteractionService{
       if(input.down('use')&&rightClickDelay===0&&!using)startUse();
       if(using)tickUsing();
       continueAttack(input.down('attack')&&!broke);
+      // Vanilla counts the miss lock down after handling the keys, so holding attack mines again 10 ticks after a miss.
+      if(missTime>0)missTime--;
       showSelection();
     },
     reset(){
       target=null;entityTarget=null;if(shownId!==-1){shownId=-1;game.render.setSelection(null);}breaking=null;destroying=false;destroyTicks=0;destroyDelay=0;missTime=0;rightClickDelay=0;
       using=null;cooldowns.clear();combat.reset();lastHeld=null;editToast=false;
-      if(fovScaled){fovScaled=false;game.render.setFovScale(1);}
     },
     dispose(){using=null;breaking=null;}
   };

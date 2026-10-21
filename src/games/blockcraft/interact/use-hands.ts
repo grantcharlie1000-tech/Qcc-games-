@@ -72,16 +72,14 @@ export function traceOutline(world:BlockSource,ox:number,oy:number,oz:number,dx:
       const b=OUTLINE_BOX[id];
       if(b.length===6&&b[0]===0&&b[1]===0&&b[2]===0&&b[3]===1&&b[4]===1&&b[5]===1)return fill(out,x,y,z,nx,ny,nz,id,t,ox+dx*t,oy+dy*t,oz+dz*t);
       if(b.length===6){
-        // Slab test against the outline box; the entry face is the axis entered last.
-        let t0=0,t1=Infinity,ax=-1;const o=[ox,oy,oz],d=[dx,dy,dz],lo=[x+b[0],y+b[1],z+b[2]],hi=[x+b[3],y+b[4],z+b[5]];
-        for(let a=0;a<3&&t0<=t1;a++){
-          if(Math.abs(d[a])<1e-12){if(o[a]<lo[a]||o[a]>hi[a])t0=Infinity;continue;}
-          let n=(lo[a]-o[a])/d[a],f=(hi[a]-o[a])/d[a];if(n>f){const s=n;n=f;f=s;}
-          if(n>t0){t0=n;ax=a;}if(f<t1)t1=f;
-        }
-        if(t0<=t1&&t0<=max){
-          const fn=[0,0,0];if(ax>=0)fn[ax]=-Math.sign(d[ax]);else{fn[0]=nx;fn[1]=ny;fn[2]=nz;}
-          return fill(out,x,y,z,fn[0],fn[1],fn[2],id,t0,ox+dx*t0,oy+dy*t0,oz+dz*t0);
+        // Slab test against the outline box (scalar locals: this runs every frame); the entry face is the axis entered last.
+        slab.t0=0;slab.t1=Infinity;slab.axis=-1;
+        slabAxis(0,ox,dx,x+b[0],x+b[3]);slabAxis(1,oy,dy,y+b[1],y+b[4]);slabAxis(2,oz,dz,z+b[2],z+b[5]);
+        const t0=slab.t0;
+        if(t0<=slab.t1&&t0<=max){
+          const a=slab.axis;
+          const fx=a===0?-Math.sign(dx):a<0?nx:0,fy=a===1?-Math.sign(dy):a<0?ny:0,fz=a===2?-Math.sign(dz):a<0?nz:0;
+          return fill(out,x,y,z,fx,fy,fz,id,t0,ox+dx*t0,oy+dy*t0,oz+dz*t0);
         }
       }
     }
@@ -90,6 +88,14 @@ export function traceOutline(world:BlockSource,ox:number,oy:number,oz:number,dx:
     else{z+=sz;t=tz;tz+=tdz;nx=0;ny=0;nz=-sz;}
   }
   return null;
+}
+/** Ray/box slab state shared by traceOutline calls (single-threaded, never held across calls). */
+const slab={t0:0,t1:Infinity,axis:-1};
+function slabAxis(axis:number,o:number,d:number,lo:number,hi:number){
+  if(slab.t0>slab.t1)return;
+  if(Math.abs(d)<1e-12){if(o<lo||o>hi)slab.t0=Infinity;return;}
+  let n=(lo-o)/d,f=(hi-o)/d;if(n>f){const s=n;n=f;f=s;}
+  if(n>slab.t0){slab.t0=n;slab.axis=axis;}if(f<slab.t1)slab.t1=f;
 }
 function fill(o:Hit,x:number,y:number,z:number,nx:number,ny:number,nz:number,id:number,distance:number,px:number,py:number,pz:number):Hit{
   o.x=x;o.y=y;o.z=z;o.nx=nx;o.ny=ny;o.nz=nz;o.id=id;o.distance=distance;o.px=px;o.py=py;o.pz=pz;return o;

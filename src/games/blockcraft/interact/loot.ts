@@ -1,5 +1,6 @@
 // Block loot tables (vanilla Java 1.20, no enchantments). lootDrops is the single source of block drops: the
-// interaction service exposes it as blockDrops, which world ticks (support pop-offs) and explosions call with no tool.
+// interaction service exposes it as blockDrops, which world ticks (support pop-offs) and explosions call with no tool
+// (and, once the contract carries it, a cause so that only player harvests apply requiresTool).
 import {blockDef,WOOD_TYPES,type BlockDef,type BlockId} from '../data/blocks';
 import {ITEMS,itemDef,stack,type ItemStack} from '../data/items';
 
@@ -55,11 +56,12 @@ for(const wood of WOOD_TYPES)table([`${wood}_leaves`],(def,held,r)=>{
 table(['short_grass','fern'],(def,held,r)=>shears(held)?one(def.family):r()<.125?one('wheat_seeds'):[]);
 table(['dead_bush'],(def,held,r)=>shears(held)?one(def.family):one('stick',between(r,0,2)));
 table(['melon'],(_d,_h,r)=>one('melon_slice',between(r,3,7)));
-// Crops: mature wheat drops wheat plus 1 + B(3, 4/7) seeds; carrots and potatoes are their own seeds.
+// Crops: mature wheat drops wheat plus 1 + B(3, 4/7) seeds. Carrots and potatoes are their own seeds: one item, plus a
+// second pool of 1 + B(3, 4/7) when mature (2-5 in all). Poisonous potatoes are not in the item registry.
 const mature=(d:BlockDef)=>d.age!==undefined&&d.age>=(d.maxAge??7);
 table(['wheat'],(def,_h,r)=>mature(def)?[stack('wheat'),stack('wheat_seeds',1+binomial(r,3,4/7))]:one('wheat_seeds'));
-table(['carrots'],(def,_h,r)=>one('carrot',mature(def)?1+binomial(r,3,4/7):1));
-table(['potatoes'],(def,_h,r)=>one('potato',mature(def)?1+binomial(r,3,4/7):1));
+table(['carrots'],(def,_h,r)=>one('carrot',mature(def)?2+binomial(r,3,4/7):1));
+table(['potatoes'],(def,_h,r)=>one('potato',mature(def)?2+binomial(r,3,4/7):1));
 // Built blocks.
 table(['bookshelf'],()=>one('book',3));
 table(['glowstone'],(_d,_h,r)=>one('glowstone_dust',between(r,2,4)));
@@ -67,12 +69,13 @@ table(['glowstone'],(_d,_h,r)=>one('glowstone_dust',between(r,2,4)));
 table(['oak_door'],def=>def.door?.half==='lower'?one('oak_door'):[]);
 table(['bed'],def=>def.bed?.part==='foot'?one('red_bed'):[]);
 
-/** Items dropped when block `id` is broken with `held` (null = bare hand). `explosion` ignores tool requirements, as vanilla
- *  explosions drop cobblestone and ores; support pop-offs pass no tool and respect them like a bare hand. */
-export function lootDrops(id:BlockId,held:ItemStack|null,random:Random,explosion=false):ItemStack[]{
+/** Items dropped when block `id` is broken with `held` (null = bare hand). `anyTool` skips the tool requirement: vanilla only
+ *  checks requiresCorrectToolForDrops when a player harvests, so explosions, support pop-offs and fluids drop cobblestone,
+ *  ores and lanterns. */
+export function lootDrops(id:BlockId,held:ItemStack|null,random:Random,anyTool=false):ItemStack[]{
   const def=blockDef(id);
   if(def.shape==='air'||def.liquid)return [];
-  if(!explosion&&!canHarvest(id,held))return [];
+  if(!anyTool&&!canHarvest(id,held))return [];
   const t=TABLES.get(def.family);
   if(t)return t(def,held,random);
   if(!def.item||!ITEMS.has(def.item))return [];
