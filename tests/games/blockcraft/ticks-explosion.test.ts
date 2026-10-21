@@ -16,16 +16,20 @@ function countAir(g:ReturnType<typeof createTickGame>,r:number){
 describe('explode',()=>{
   test('blasts a crater by blast resistance and drops a share of the blocks',()=>{
     const g=createTickGame({block:B.dirt});
+    const volumes:number[]=[],play=g.sounds.play.bind(g.sounds);
+    g.sounds.play=(name,at,o)=>{if(name==='explode')volumes.push(o?.volume??1);play(name,at,o);};
     for(let x=-1;x<=1;x++)g.set(x,Y-3,2,'obsidian');
     g.ticks.explode(.5,Y,.5,4,null,false);
     const removed=countAir(g,6);
     expect(removed).toBeGreaterThan(20);
     expect(g.get(0,Y-1,0)).toBe('air');
     expect(g.get(0,Y-3,2)).toBe('obsidian');
-    expect(g.dropCalls.every(c=>c.tool===null)).toBe(true);
+    expect(g.dropCalls.every(c=>c.tool===null&&c.cause==='explosion')).toBe(true);
     expect(g.drops.length).toBeGreaterThan(0);
     expect(g.drops.length).toBeLessThan(removed*.5);
     expect(g.sounds.played.some(s=>s.name==='explode')).toBe(true);
+    // Vanilla GENERIC_EXPLODE at volume 4 (heard 64 blocks away); blown blocks make no break sounds of their own.
+    expect(volumes).toEqual([4]);expect(g.sounds.played.some(s=>s.name.startsWith('break:'))).toBe(false);
   });
 
   test('TNT drops every block it breaks (vanilla tntExplosionDropDecay false); other blasts drop one in power',()=>{

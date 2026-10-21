@@ -127,8 +127,17 @@ describe('loot tables',()=>{
     for(const b of ['air','water','lava_3','fire','bedrock'])expect(lootDrops(blockId(b),tool('diamond_pickaxe'),Math.random)).toEqual([]);
   });
   it('explosions drop tool-gated blocks as vanilla does when asked to',()=>{
-    expect(lootDrops(blockId('stone'),null,Math.random,true)).toEqual([stack('cobblestone')]);
-    expect(lootDrops(blockId('iron_ore'),null,Math.random,true)).toEqual([stack('raw_iron')]);
+    expect(lootDrops(blockId('stone'),null,Math.random,'explosion')).toEqual([stack('cobblestone')]);
+    expect(lootDrops(blockId('iron_ore'),null,Math.random,'explosion')).toEqual([stack('raw_iron')]);
+  });
+  it('snow layers drop only when an entity breaks them: a player with a shovel or an explosion, not melting, pop-offs or water',()=>{
+    const snow=blockId('snow');
+    expect(lootDrops(snow,tool('wooden_shovel'),Math.random)).toEqual([stack('snowball')]);
+    expect(lootDrops(snow,null,Math.random)).toEqual([]);
+    expect(lootDrops(snow,null,Math.random,'explosion')).toEqual([stack('snowball')]);
+    for(const cause of ['tick','fluid','growth','entity'] as const)expect(lootDrops(snow,null,Math.random,cause)).toEqual([]);
+    // Other world loot is unaffected.
+    expect(lootDrops(blockId('torch'),null,Math.random,'fluid')).toEqual([stack('torch')]);
   });
   it('blockDrops: no cause keeps the contract (requiresTool applies); a non-player cause drops like vanilla world loot',()=>{
     const {interaction}=createHarness(),drops=interaction.blockDrops as (id:number,tool:ItemStack|null,cause?:ChangeCause)=>ItemStack[];

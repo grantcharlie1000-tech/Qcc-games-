@@ -284,10 +284,10 @@ describe('spawn eggs',()=>{
 
 describe('service surface',()=>{
   it('blockDrops is the loot entry point; explosions may ignore tool requirements',()=>{
-    const h=createHarness(),drops=h.interaction.blockDrops as (id:number,tool:null,explosion?:boolean)=>unknown;
+    const h=createHarness();
     expect(h.interaction.blockDrops(B.stone,null)).toEqual([]);
     expect(h.interaction.blockDrops(B.stone,stack('wooden_pickaxe'))).toEqual([stack('cobblestone')]);
-    expect(drops(B.stone,null,true)).toEqual([stack('cobblestone')]);
+    expect(h.interaction.blockDrops(B.stone,null,'explosion')).toEqual([stack('cobblestone')]);
   });
   it('hides the selection when looking at the sky and shows it again on a block',()=>{
     const h=createHarness();h.aimFace(0,59,-2,0,1,0);h.step();expect(h.log.selection).not.toBeNull();

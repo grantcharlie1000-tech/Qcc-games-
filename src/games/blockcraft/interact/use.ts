@@ -340,7 +340,8 @@ function useBucket(game:Game,hand:Hand,content:'water'|'lava'|null):Result{
   // Emptying into a source of the same fluid changes nothing but still empties the bucket (vanilla).
   const fluid=content==='water'?B.water:B.lava;
   if(here!==fluid&&!w.set(x,y,z,fluid,'player'))return 'fail';
-  if(here!==AIR&&here!==fluid&&!hd.liquid)for(const s of lootDrops(here,null,rng(game)))game.entities.dropItem(s,x+.5,y+.25,z+.5);
+  // The fluid washes the block away like flowing water (BucketItem.emptyContents → destroyBlock with drops, no entity).
+  if(here!==AIR&&here!==fluid&&!hd.liquid)for(const s of lootDrops(here,null,rng(game),'fluid'))game.entities.dropItem(s,x+.5,y+.25,z+.5);
   game.sounds.play('bucket_empty',{x:x+.5,y:y+.5,z:z+.5},{pitch:content==='lava'?.8:1});
   hand.consume(1);
   return 'success';

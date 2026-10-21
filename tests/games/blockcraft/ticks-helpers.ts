@@ -6,15 +6,15 @@ import {BLOCKS,blockDef,B} from '../../../src/games/blockcraft/data/blocks';
 import {stack} from '../../../src/games/blockcraft/data/items';
 import {CHUNK_VOLUME} from '../../../src/games/blockcraft/engine/constants';
 import {createBlockTicks,registerWorldEntities,type BlockTicks} from '../../../src/games/blockcraft/world/ticks';
-import type {DamageSource,Entity,EntityKind,EntityService,ItemStack,Vec3} from '../../../src/games/blockcraft/engine/contracts';
+import type {ChangeCause,DamageSource,Entity,EntityKind,EntityService,ItemStack,Vec3} from '../../../src/games/blockcraft/engine/contracts';
 
 export interface Drop{stack:ItemStack;x:number;y:number;z:number}
 export interface TickGame extends FakeGame{
   ticks:BlockTicks;
   /** Items passed to entities.dropItem. */
   drops:Drop[];
-  /** Calls to interaction.blockDrops (id, tool). */
-  dropCalls:{id:number;tool:ItemStack|null}[];
+  /** Calls to interaction.blockDrops (id, tool, cause). */
+  dropCalls:{id:number;tool:ItemStack|null;cause?:ChangeCause}[];
   /** Calls to survival.damage. */
   playerHits:{amount:number;source:DamageSource}[];
   /** Calls to player.push. */
@@ -77,7 +77,7 @@ export function createTickGame(o:{height?:number;block?:number;r?:number;seed?:n
   game.flat(o.height??60,o.block??B.stone,o.r??2);
   game.drops=[];game.dropCalls=[];game.playerHits=[];game.pushes=[];game.entityHits=[];game.trees=[];
   const dropFn=o.drops??((id:number)=>{const item=blockDef(id).item;return item?[stack(item)]:[];});
-  game.interaction={...game.interaction,blockDrops(id,tool){game.dropCalls.push({id,tool});return dropFn(id);}};
+  game.interaction={...game.interaction,blockDrops(id,tool,cause){game.dropCalls.push({id,tool,cause});return dropFn(id);}};
   game.survival={...game.survival,damage(amount,source){game.playerHits.push({amount,source});return amount;}};
   const push=game.player.push;game.player={...game.player,push(vx,vy,vz){game.pushes.push({x:vx,y:vy,z:vz});push(vx,vy,vz);}};
   game.terrain={...game.terrain,growTree(_w,x,y,z,kind){game.trees.push({x,y,z,kind});return true;}};

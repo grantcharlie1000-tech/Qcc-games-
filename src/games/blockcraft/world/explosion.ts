@@ -83,7 +83,7 @@ export function explode(sim:Sim,x:number,y:number,z:number,power:number,source:E
     const drop=!LIQUID[id]&&(chance>=1||sim.rand()<chance);
     if(!sim.set(bx,by,bz,AIR,'explosion'))continue;
     destroyed++;
-    if(drop)sim.dropLoot(id,bx,by,bz);
+    if(drop)sim.dropLoot(id,bx,by,bz,'explosion');
   }
   if(fire)for(const key of keys){
     const bx=keyX(key),by=keyY(key),bz=keyZ(key);
@@ -91,7 +91,8 @@ export function explode(sim:Sim,x:number,y:number,z:number,power:number,source:E
   }
   const c=sim.cosmetic;
   game.render.spawnParticles('explosion',x,y,z,{count:power>=2?12:4,spread:power>=2?Math.min(2,power/2):.3});
-  game.sounds.play('explode',{x,y,z},{volume:1,pitch:(1+(c()-c())*.2)*.7});
+  // Vanilla Explosion plays GENERIC_EXPLODE at volume 4: heard 64 blocks away.
+  game.sounds.play('explode',{x,y,z},{volume:4,pitch:(1+(c()-c())*.2)*.7});
   return destroyed;
 }
 

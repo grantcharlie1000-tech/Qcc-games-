@@ -7,7 +7,8 @@
 //  - grass and mycelium (SpreadingSnowyDirtBlock): turn to dirt when covered (a full cube, slab or stairs above, or a liquid
 //    source or fall); at light ≥ 9 above try four random spots in x±1, y-3..+1, z±1 and convert uncovered dirt not under water.
 //  - farmland (FarmBlock): moist within 4 blocks of water (same level or one above) or in rain; otherwise it dries over about
-//    seven random ticks (1 in 7 here), and dry farmland with no crop on it turns back to dirt.
+//    seven random ticks (1 in 7 here), and dry farmland with no crop on it turns back to dirt. Landing on it tramples it
+//    (FarmBlock.fallOn, farmlandFallOn below).
 //  - sugar cane and cactus: grow one block into air above while the column is under 3 tall, after 16 random ticks (1 in 16).
 //  - ice melts to water when block light ≥ 12 reaches it (in or beside the ice: a torch up to 3 blocks away, as in vanilla)
 //    and snow layers vanish (with their no-tool loot) at block light ≥ 12 in their cell.
@@ -117,6 +118,23 @@ function farmlandTick(sim:Sim,x:number,y:number,z:number,id:BlockId){
   if(above>=0&&!IS_CROP[above])sim.set(x,y,z,B.dirt,'tick');
 }
 
+/** FarmBlock.fallOn: a player landing on farmland after falling `fallDistance` blocks turns it to dirt with chance
+ *  fallDistance - 0.5, when their box is big enough (width² × height > 0.512: not crawling or swimming). The block landed on
+ *  is the one 0.2 below the feet under the box (vanilla getOnPosLegacy with its main supporting block: the nearest to the
+ *  centre). Returns true when it trampled. The crop on top pops off (it loses its farmland). */
+export function farmlandFallOn(sim:Sim,fallDistance:number,x:number,y:number,z:number,width:number,height:number):boolean{
+  if(!(fallDistance>.5)||!(width*width*height>.512)||!Number.isFinite(x+y+z))return false;
+  const by=Math.floor(y-.2),hw=width/2;if(by<0||by>=CH)return false;
+  let best=-1,bx=0,bz=0,bestD=Infinity;
+  for(let cz=Math.floor(z-hw+1e-4);cz<=Math.floor(z+hw-1e-4);cz++)for(let cx=Math.floor(x-hw+1e-4);cx<=Math.floor(x+hw-1e-4);cx++){
+    const id=sim.blocks.get(cx,by,cz);if(id<=0)continue;
+    const d=(cx+.5-x)**2+(cz+.5-z)**2;
+    if(d<bestD){bestD=d;best=id;bx=cx;bz=cz;}
+  }
+  if(best!==FARMLAND&&best!==FARMLAND_WET)return false;
+  if(!(sim.rand()<fallDistance-.5))return false;
+  return sim.set(bx,by,bz,B.dirt,'entity');
+}
 function columnTick(sim:Sim,x:number,y:number,z:number,id:BlockId){
   const w=sim.blocks;
   if(y+1>=CH||w.get(x,y+1,z)!==AIR)return;

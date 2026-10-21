@@ -116,7 +116,7 @@ function spreadTo(sim:Sim,kind:number,x:number,y:number,z:number,target:number,d
   if(!state||!sim.set(x,y,z,fluidBlock(kind,state),'fluid'))return;
   // beforeDestroyingBlock: water pops what it washes away, lava burns it.
   if(target!==AIR&&!LIQUID[target]){
-    if(kind===WATER)sim.dropLoot(target,x,y,z);else sim.fizz(x,y,z);
+    if(kind===WATER)sim.dropLoot(target,x,y,z,'fluid');else sim.fizz(x,y,z);
   }
 }
 function sourceNeighbours(sim:Sim,kind:number,x:number,y:number,z:number){

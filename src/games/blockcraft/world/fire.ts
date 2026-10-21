@@ -11,6 +11,7 @@
 import {AIR,BLOCKS,OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
 import {biomeDef} from '../data/biomes';
 import {CH} from '../engine/constants';
+import {canSurvive} from '../engine/support';
 import type {BlockSource,Difficulty,WeatherService} from '../engine/contracts';
 import {KIND_FIRE,NEIGHBOURS,posKey,type Sim} from './ticks-core';
 
@@ -38,9 +39,12 @@ function validLocation(w:BlockSource,x:number,y:number,z:number){
   return canBurn(w.get(x+1,y,z))||canBurn(w.get(x-1,y,z))||canBurn(w.get(x,y+1,z))||canBurn(w.get(x,y-1,z))||canBurn(w.get(x,y,z+1))||canBurn(w.get(x,y,z-1));
 }
 /** FireBlock.canSurvive: a sturdy block below or a flammable neighbour (fire also clings to the sides of burning blocks).
- *  Next to an unloaded chunk it is given the benefit of the doubt. */
+ *  Everything the shared rule (engine/support.ts SupportRule 'fire', used by flint and steel and lightning) accepts stays,
+ *  so fire placed by another area is never put out on its first tick; on top of it, the vanilla cases that rule leaves
+ *  out: top and double slabs below, and neighbours with FireBlock ignite odds (short grass, flowers). Next to an unloaded
+ *  chunk it is given the benefit of the doubt. */
 export function fireCanSurvive(w:BlockSource,x:number,y:number,z:number):boolean{
-  if(sturdy(w.get(x,y-1,z))||validLocation(w,x,y,z))return true;
+  if(canSurvive(w,FIRE,x,y,z)||sturdy(w.get(x,y-1,z))||validLocation(w,x,y,z))return true;
   for(let i=0;i<6;i++){const n=NEIGHBOURS[i];if(w.get(x+n[0],y+n[1],z+n[2])<0)return true;}
   return false;
 }
@@ -95,8 +99,8 @@ export function fireTick(sim:Sim,x:number,y:number,z:number):void{
 function burnOut(sim:Sim,x:number,y:number,z:number,chance:number,age:number){
   const id=sim.blocks.get(x,y,z);if(id<=0)return;
   const burn=FIRE_ODDS.burn[id];if(!burn||sim.randInt(chance)>=burn)return;
-  if(sim.randInt(age+10)<5&&!sim.game.weather.isRainingOn(x,y,z))sim.placeFire(x,y,z,Math.min(age+(sim.randInt(5)>>2),15));
-  else sim.set(x,y,z,AIR,'tick');
+  // The burnt block becomes fire (where fire can stay) or air.
+  if(!(sim.randInt(age+10)<5&&!sim.game.weather.isRainingOn(x,y,z)&&sim.placeFire(x,y,z,Math.min(age+(sim.randInt(5)>>2),15))))sim.set(x,y,z,AIR,'tick');
   if(id===TNT&&sim.primeTnt(x,y,z,80,false))sim.game.sounds.play('fuse',{x:x+.5,y:y+.5,z:z+.5});
 }
 

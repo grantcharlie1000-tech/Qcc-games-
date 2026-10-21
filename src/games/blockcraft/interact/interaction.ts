@@ -278,9 +278,9 @@ export function createInteraction(game:Game):InteractionService{
     get attackCharge(){return combat.charge(partial);},
     get using(){return using?usingView:null;},
     get breaking(){return breaking;},
-    // `cause` (beyond the contract, see the report's contract requests): requiresTool applies to player harvests only
-    // (no cause = the contract's default); explosions, support pop-offs and fluids drop like vanilla world loot.
-    blockDrops:(id,tool,cause?:ChangeCause)=>lootDrops(id,tool,random,cause!==undefined&&cause!=='player'),
+    // requiresTool applies to player harvests only (no cause, or 'player'); explosions, support pop-offs and fluids drop
+    // like vanilla world loot.
+    blockDrops:(id,tool,cause?:ChangeCause)=>lootDrops(id,tool,random,cause),
     frame(dt){
       partial=Math.min(1,partial+dt*20);
       updateTarget();showSelection();

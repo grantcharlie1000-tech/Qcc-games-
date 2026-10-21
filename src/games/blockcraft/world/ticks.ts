@@ -25,7 +25,7 @@ import {mulberry32} from './noise';
 import type {BlockTickService,Game,GameEvents,ItemStack} from '../engine/contracts';
 import {FastBlocks,KIND_BLOCK,KIND_FIRE,KIND_FLUID,KIND_LEAF,NEIGHBOURS,TICK_KINDS,TickQueue,keyX,keyY,keyZ,posKey,validKey,type Sim,type TickEntry} from './ticks-core';
 import {fluidNeighbourChanged,fluidTick} from './fluids';
-import {IS_LEAVES,IS_LOG,MAX_ORPHANS,RANDOM_TICK,RT_FIRE,RT_LAVA,growthRandomTick,leafCheck,leafSourceRemoved} from './growth';
+import {IS_LEAVES,IS_LOG,MAX_ORPHANS,RANDOM_TICK,RT_FIRE,RT_LAVA,farmlandFallOn,growthRandomTick,leafCheck,leafSourceRemoved} from './growth';
 import {FIRE,fireCanSurvive,fireDelay,fireTick,lavaRandomTick} from './fire';
 import {explode as runExplosion} from './explosion';
 import {EXPLOSION_BUDGET,PRIMED_TNT_KIND,isFree,landFallingBlock,registerWorldEntities} from './ticks-entities';
@@ -127,17 +127,22 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     cosmetic,
     schedule:(x,y,z,delay,kind=KIND_BLOCK)=>schedule(x,y,z,delay,kind),
     set:(x,y,z,id,cause)=>game.world.set(x,y,z,id,cause),
-    dropLoot(id,x,y,z){
-      let drops:readonly ItemStack[];try{drops=game.interaction.blockDrops(id,null);}catch{drops=[];}
+    dropLoot(id,x,y,z,cause){
+      let drops:readonly ItemStack[];try{drops=game.interaction.blockDrops(id,null,cause);}catch{drops=[];}
       for(const s of drops)game.entities.dropItem(s,x+.25+game.random()*.5,y+.25+game.random()*.5,z+.25+game.random()*.5,
         {x:(game.random()-.5)*2,y:4,z:(game.random()-.5)*2});
     },
     destroy(x,y,z,id,cause,particles=true,loot=true){
       if(!game.world.set(x,y,z,AIR,cause))return;
-      if(particles)game.render.spawnParticles('block',x+.5,y+.5,z+.5,{block:id,count:12,spread:.4});
-      if(loot)sim.dropLoot(id,x,y,z);
+      if(particles){
+        // Level.destroyBlock's level event 2001: break particles and the block's break sound.
+        game.render.spawnParticles('block',x+.5,y+.5,z+.5,{block:id,count:12,spread:.4});
+        game.sounds.play(`break:${blockDef(id).sound}`,{x:x+.5,y:y+.5,z:z+.5},{pitch:.8});
+      }
+      if(loot)sim.dropLoot(id,x,y,z,cause);
     },
     placeFire(x,y,z,age){
+      if(!fireCanSurvive(blocks,x,y,z))return false;
       const key=posKey(x,y,z),had=fireAge.get(key);
       fireAge.set(key,age);
       if(game.world.set(x,y,z,FIRE,'tick'))return true;
@@ -430,7 +435,12 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
       unsubscribe=[
         game.events.on('blockChanged',onBlockChanged),
         game.events.on('chunkLoaded',({cx,cz})=>{blocks.invalidate();ready.clear();const k=chunkKey(cx,cz);sections.delete(k);unpark(k);}),
-        game.events.on('chunkUnloaded',({cx,cz})=>{blocks.invalidate();ready.clear();sections.delete(chunkKey(cx,cz));})
+        game.events.on('chunkUnloaded',({cx,cz})=>{blocks.invalidate();ready.clear();sections.delete(chunkKey(cx,cz));}),
+        // Landing on farmland tramples it (FarmBlock.fallOn).
+        game.events.on('playerLanded',e=>{
+          if(!e)return;
+          blocks.invalidate();farmlandFallOn(sim,e.fallDistance,e.x,e.y,e.z,game.player.width,game.player.height);
+        })
       ];
     },
     tick(){
