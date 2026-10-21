@@ -232,18 +232,28 @@ describe('isometric block icons',()=>{
     const oak=renderBlockIcon(def('oak_leaves'),N,grey);expect(mean(oak,N,left)[1]).toBeCloseTo(200*f[1]/255*FACE_SHADE.left,-1);
     const birch=renderBlockIcon(def('birch_leaves'),N,grey);expect(mean(birch,N,left)[1]).toBeCloseTo(200*FACE_SHADE.left,-1);
   });
-  test('cutout tiles are respected: a glass-like frame shows the back faces through its holes',()=>{
+  test('cutout tiles are respected: a glass-like frame shows only its front faces, the slot through its holes',()=>{
+    // Vanilla draws block items with back faces culled, so a glass icon is the three front faces' frames only.
     const p=renderBlockIcon(def('glass'),N,()=>flat([180,220,230],true));
-    let holes=0,back=0;
+    let holes=0,frame=0;
     for(let y=0;y<N;y++)for(let x=0;x<N;x++){
       const c=rgbAt(p,N,x,y),inside=Math.abs(x-N/2)<N/4&&Math.abs(y-N/2)<N/4;
-      if(!inside)continue;if(!c[3])holes++;else back++;
+      if(!inside)continue;if(!c[3])holes++;else frame++;
     }
-    expect(holes).toBeGreaterThan(20);expect(back).toBeGreaterThan(20);
+    expect(holes).toBeGreaterThan(N*N/8);expect(frame).toBeGreaterThan(20);
+    // Every drawn pixel is a front face (top, left or right shade): no far face shows through.
+    const front=[FACE_SHADE.top,FACE_SHADE.left,FACE_SHADE.right].map(s=>Math.round(180*s));
+    for(let i=0;i<p.length;i+=4)if(p[i+3])expect(front.some(v=>Math.abs(p[i]-v)<=1),`pixel ${i/4} red ${p[i]}`).toBe(true);
+    // The middles of the top, left and right faces are holes (the far edges behind them are culled).
+    for(const [x,y] of [[N/2,N/4],[N/4,40],[.75*N,40]])expect(rgbAt(p,N,x,y)[3],`hole at ${x},${y}`).toBe(0);
   });
-  test('translucent tiles blend (ice is see-through, not opaque)',()=>{
+  test('translucent tiles blend: ice coverage is the tile alpha (one front face, slot shows through)',()=>{
     const p=renderBlockIcon(def('ice'),N,()=>{const t=flat([150,190,255]);for(let i=3;i<t.length;i+=4)t[i]=140;return t;});
-    const c=rgbAt(p,N,N/2,N/2);expect(c[3]).toBeGreaterThan(140);expect(c[3]).toBeLessThan(255);
+    for(const [x,y] of [[N/2,N/4],[N/4,40],[.75*N,40],[N/2,N/2]]){
+      const c=rgbAt(p,N,x,y);expect(Math.abs(c[3]-140),`alpha at ${x},${y} is ${c[3]}`).toBeLessThanOrEqual(1);
+    }
+    // Colour is the face's own shaded tile colour, not a blend with far faces.
+    expect(Math.abs(rgbAt(p,N,N/4,40)[2]-Math.round(255*FACE_SHADE.left))).toBeLessThanOrEqual(1);
   });
   test('shapes: bottom slab is half height, snow layer thin, stairs notched, cactus inset',()=>{
     const cube=renderBlockIcon(def('stone'),N,grey),slab=renderBlockIcon(def('stone_slab'),N,grey);
