@@ -5,16 +5,18 @@
 //  2. Block atlas layer (game.render.atlas): block-rendered entities (falling blocks, primed TNT with its white flash and
 //     swell) via game.mesher.meshBlock, dropped block items as small spinning cubes, flat block-tile items, and the
 //     flames drawn over burning entities.
-// Both share one shader: lit like chunks (sky light × the shared daylight uniform, block light, warm torchlight) from the
-// entity's eye cell, vanilla diffuse face shading, 30% red hurt overlay (also while dying), white flash (× 0.75 like the
-// vanilla overlay), tinted and emissive parts, fog. Positions are interpolated between ticks; items bob and spin unless
-// reduced motion is preferred. Vertices are written relative to a floating origin near the camera.
+// Both share one shader: lit exactly like chunks (the renderer's lightmap, render/sky.ts LIGHT_GLSL bcLightmap, with the
+// shared daylight, lightning flash, torch flicker and night vision) from the entity's eye cell, vanilla diffuse face
+// shading, 30% red hurt overlay (also while dying), white flash (× 0.75 like the vanilla overlay), tinted and emissive
+// parts, and the chunks' fog (cylindrical in air, spherical in liquids). Positions are interpolated between ticks; items
+// bob and spin unless reduced motion is preferred. Vertices are written relative to a floating origin near the camera.
 import * as THREE from 'three';
 import {ATLAS_COLUMNS,ATLAS_ROWS,BLOCK_COUNT,FACE_TILE,TILE_INDEX,TINTED_TILES,blockDef,BLOCK_BY_NAME} from '../data/blocks';
 import {ITEM_SPRITES,itemDef} from '../data/items';
 import {CH,quadIndices} from '../engine/constants';
 import {spritePixels} from '../art/items';
-import type {AnimationState,ChunkMesh,Entity,EntityKind,Game,PartPose} from '../engine/contracts';
+import {LIGHT_GLSL,type RenderUniforms} from '../render/sky';
+import type {AnimationState,ChunkMesh,Entity,EntityKind,Game,PartPose,SharedUniforms} from '../engine/contracts';
 import {FLAG_EMISSIVE,QuadWriter,compileModel,diffuse,entityMatrix,mat,packAtlas,paintOrb,writeModel,type AtlasLayout,type CompiledModel,type Region} from './model';
 import {xpIcon} from './items';
 import {wrapAngle} from './ai';
@@ -40,22 +42,23 @@ export interface EntityRenderer{
 }
 
 const VERTEX=`precision highp float;
-uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;uniform float daylight;
+uniform mat4 modelViewMatrix;uniform mat4 viewMatrix;uniform mat4 projectionMatrix;
+uniform float daylight;uniform float flash;uniform float flicker;uniform float nightVision;
 in vec3 position;in vec2 uv;in vec4 color;in vec4 extra;
-out vec2 vUv;out vec3 vColor;out vec3 vLight;out float vHurt;out float vFlash;out float vDepth;
+out vec2 vUv;out vec3 vColor;out vec3 vLight;out float vHurt;out float vFlash;out vec3 vRel;
+${LIGHT_GLSL}
 void main(){
   float sky=floor(extra.x/16.),block=mod(extra.x,16.);
-  float skyLevel=sky*daylight,level=max(skyLevel,block);
-  float bright=max(pow(.8,15.-level),.04);
-  vec3 warm=mix(vec3(1.),vec3(1.,.86,.66),clamp((block-skyLevel)/8.,0.,1.));
-  vLight=mod(extra.w,2.)>=1.?vec3(1.):bright*warm;
+  vLight=mod(extra.w,2.)>=1.?vec3(1.):bcLightmap(sky,block,daylight,flash,flicker,nightVision);
   vColor=color.rgb;vHurt=extra.y/255.;vFlash=extra.z/255.;vUv=uv;
-  vec4 mv=modelViewMatrix*vec4(position,1.);vDepth=-mv.z;gl_Position=projectionMatrix*mv;
+  // The fog vector is the view-space position turned back to world axes (as the chunk shader does).
+  vec4 mv=modelViewMatrix*vec4(position,1.);vRel=transpose(mat3(viewMatrix))*mv.xyz;gl_Position=projectionMatrix*mv;
 }`;
 const FRAGMENT=`precision highp float;
-uniform sampler2D map;uniform float alphaTest;uniform vec3 fogColor;uniform float fogNear;uniform float fogFar;
-in vec2 vUv;in vec3 vColor;in vec3 vLight;in float vHurt;in float vFlash;in float vDepth;
+uniform sampler2D map;uniform float alphaTest;uniform vec3 fogColor;uniform float fogNear;uniform float fogFar;uniform float fogShape;
+in vec2 vUv;in vec3 vColor;in vec3 vLight;in float vHurt;in float vFlash;in vec3 vRel;
 out vec4 colour;
+${LIGHT_GLSL}
 void main(){
   vec4 t=texture(map,vUv);
   if(t.a<alphaTest)discard;
@@ -63,8 +66,13 @@ void main(){
   c=mix(c,vec3(1.,0.,0.),vHurt*.3);
   c=mix(c,vec3(1.),vFlash);
   c*=vLight;
-  colour=vec4(mix(c,fogColor,smoothstep(fogNear,fogFar,vDepth)),t.a);
+  colour=vec4(mix(c,fogColor,bcFog(bcFogDistance(vRel,fogShape),fogNear,fogFar)),t.a);
 }`;
+/** The renderer's extra light uniforms when it has them (render/sky.ts RenderUniforms), else neutral values. */
+export function lightUniforms(shared:SharedUniforms):{flicker:{value:number};nightVision:{value:number};fogShape:{value:number}}{
+  const u=shared as SharedUniforms&Partial<RenderUniforms>;
+  return{flicker:u.flicker??{value:0},nightVision:u.nightVision??{value:0},fogShape:u.fogShape??{value:1}};
+}
 
 interface Layer{writer:QuadWriter;geometry:THREE.BufferGeometry;mesh:THREE.Mesh;material:THREE.RawShaderMaterial;version:number;
   attrs:THREE.BufferAttribute[]}
@@ -93,10 +101,12 @@ export function createEntityRenderer(game:Game):EntityRenderer{
   const stats:RenderStats={entities:0,quads:0,blockQuads:0,drawCalls:0,cpuMs:0};
   const placeholder=new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1,THREE.RGBAFormat);placeholder.needsUpdate=true;
 
+  const extraLight=lightUniforms(shared);
   function makeLayer(texture:THREE.Texture,order:number):Layer{
     const writer=new QuadWriter(512),geometry=new THREE.BufferGeometry();
     const material=new THREE.RawShaderMaterial({glslVersion:THREE.GLSL3,vertexShader:VERTEX,fragmentShader:FRAGMENT,
-      uniforms:{map:{value:texture},alphaTest:{value:.1},daylight:shared.daylight,fogColor:shared.fogColor,fogNear:shared.fogNear,fogFar:shared.fogFar},
+      uniforms:{map:{value:texture},alphaTest:{value:.1},daylight:shared.daylight,flash:shared.flash,...extraLight,
+        fogColor:shared.fogColor,fogNear:shared.fogNear,fogFar:shared.fogFar},
       side:THREE.DoubleSide,transparent:false,depthWrite:true,blending:THREE.CustomBlending,
       blendSrc:THREE.SrcAlphaFactor,blendDst:THREE.OneMinusSrcAlphaFactor,blendSrcAlpha:THREE.OneFactor,blendDstAlpha:THREE.OneMinusSrcAlphaFactor});
     const mesh=new THREE.Mesh(geometry,material);

@@ -1,8 +1,10 @@
 // Weather visuals in game.render.scene: one instanced draw call for every rain streak, snowflake and splash droplet
-// (simulated in render/weather-drops.ts), plus one additive draw call for lightning bolts while one exists. Both use the
-// renderer's shared uniforms (daylight after weather, lightning flash, fog) so they match the world's light and fog.
+// (simulated in render/weather-drops.ts), plus one additive draw call for lightning bolts while one exists. Precipitation
+// is lit by the renderer's lightmap at full sky light (render/sky.ts LIGHT_GLSL: drops only fall through open sky) with
+// the shared daylight, flash, flicker and night vision, and fogged like the chunks, so it matches the world.
 import * as THREE from 'three';
-import type {Game} from '../engine/contracts';
+import type {Game,SharedUniforms} from '../engine/contracts';
+import {LIGHT_GLSL,type RenderUniforms} from './sky';
 import type {Bolt} from '../world/weather-lightning';
 import {DROP_ABOVE,DROP_CAP,DROP_RADIUS,DropSim,INSTANCE_FLOATS,PrecipitationField,SPLASH_CAP,visualRandom,type DropFrame} from './weather-drops';
 import {BOLT_ALPHA,BOLT_COLOR,BOLT_VERTICES,writeBolt} from './weather-bolt';
@@ -11,9 +13,11 @@ import {BOLT_ALPHA,BOLT_COLOR,BOLT_VERTICES,writeBolt} from './weather-bolt';
 export const MAX_DRAWN_BOLTS=2;
 
 const PRECIPITATION_VERTEX=`precision highp float;
-uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;uniform vec3 eye;uniform float daylight;uniform float flash;
+uniform mat4 modelViewMatrix;uniform mat4 viewMatrix;uniform mat4 projectionMatrix;uniform vec3 eye;
+uniform float daylight;uniform float flash;uniform float flicker;uniform float nightVision;
 in vec3 position;in vec4 iPos;in vec4 iInfo;
-out vec3 vColor;out float vAlpha;out float vDepth;out vec2 vUv;out float vKind;
+out vec3 vColor;out float vAlpha;out vec3 vRel;out vec2 vUv;out float vKind;
+${LIGHT_GLSL}
 void main(){
   vec3 p=iPos.xyz;float kind=iPos.w;vec2 corner=position.xy;vec4 mv;
   if(kind<.5){
@@ -28,14 +32,15 @@ void main(){
   float edge=(1.-smoothstep(${DROP_RADIUS-3}.,${DROP_RADIUS}.,d))*(1.-smoothstep(${DROP_ABOVE-4}.,${DROP_ABOVE}.,p.y-eye.y));
   vAlpha=iInfo.z*edge*(kind<.5?mix(1.,.3,corner.y):1.);
   vec3 base=kind<.5?vec3(.62,.7,.9):kind<1.5?vec3(.96,.97,1.):vec3(.66,.74,.94);
-  vColor=base*min(1.25,.16+.84*daylight+flash*.9);
-  vDepth=-mv.z;vUv=vec2(corner.x+.5,corner.y);vKind=kind;
+  vColor=base*bcLightmap(15.,0.,daylight,flash,flicker,nightVision);
+  vRel=transpose(mat3(viewMatrix))*mv.xyz;vUv=vec2(corner.x+.5,corner.y);vKind=kind;
   gl_Position=projectionMatrix*mv;
 }`;
 const PRECIPITATION_FRAGMENT=`precision highp float;
-uniform vec3 fogColor;uniform float fogNear;uniform float fogFar;
-in vec3 vColor;in float vAlpha;in float vDepth;in vec2 vUv;in float vKind;
+uniform vec3 fogColor;uniform float fogNear;uniform float fogFar;uniform float fogShape;
+in vec3 vColor;in float vAlpha;in vec3 vRel;in vec2 vUv;in float vKind;
 out vec4 colour;
+${LIGHT_GLSL}
 void main(){
   float a=vAlpha;
   if(vKind>.5&&vKind<1.5){
@@ -44,7 +49,7 @@ void main(){
     if(cell.x!=1.&&cell.y!=1.)a*=.3;
   }
   if(a<.004)discard;
-  colour=vec4(mix(vColor,fogColor,smoothstep(fogNear,fogFar,vDepth)),a);
+  colour=vec4(mix(vColor,fogColor,bcFog(bcFogDistance(vRel,fogShape),fogNear,fogFar)),a);
 }`;
 const BOLT_VERTEX=`precision highp float;
 uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;in vec3 position;
@@ -77,8 +82,10 @@ export function createWeatherVisuals(game:Game):WeatherVisuals{
   geometry.setAttribute('iInfo',new THREE.InterleavedBufferAttribute(instances,4,4));
   geometry.instanceCount=0;
   const eye=new THREE.Vector3();
+  const extra=u as SharedUniforms&Partial<RenderUniforms>;
   const material=new THREE.RawShaderMaterial({glslVersion:THREE.GLSL3,vertexShader:PRECIPITATION_VERTEX,fragmentShader:PRECIPITATION_FRAGMENT,
-    uniforms:{eye:{value:eye},daylight:u.daylight,flash:u.flash,fogColor:u.fogColor,fogNear:u.fogNear,fogFar:u.fogFar},
+    uniforms:{eye:{value:eye},daylight:u.daylight,flash:u.flash,flicker:extra.flicker??{value:0},nightVision:extra.nightVision??{value:0},
+      fogColor:u.fogColor,fogNear:u.fogNear,fogFar:u.fogFar,fogShape:extra.fogShape??{value:1}},
     transparent:true,depthWrite:false,side:THREE.DoubleSide});
   const precipitation=new THREE.Mesh(geometry,material);
   precipitation.frustumCulled=false;precipitation.renderOrder=4;precipitation.visible=false;precipitation.name='weather-precipitation';

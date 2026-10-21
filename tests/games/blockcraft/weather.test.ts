@@ -4,6 +4,7 @@ import {createWeather,type WeatherController} from '../../../src/games/blockcraf
 import {isTickingChunk,precipitationHeight} from '../../../src/games/blockcraft/world/weather-columns';
 import {WEATHER_EDIT_SHARE,precipitateColumn} from '../../../src/games/blockcraft/world/weather-snow';
 import {LIGHTNING_CHANCE,rollStrikeColumn} from '../../../src/games/blockcraft/world/weather-lightning';
+import {canSurvive} from '../../../src/games/blockcraft/engine/support';
 import {MAX_EDITS} from '../../../src/games/blockcraft/world/world';
 import {RAIN_DELAY} from '../../../src/games/blockcraft/world/weather-cycle';
 import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
@@ -316,29 +317,37 @@ describe('lightning',()=>{
       expect(game.world.get(6,64,6)===FIRE,difficulty).toBe(fire);
     }
   });
-  test('fire takes hold where vanilla fire can stay: on a sturdy top or beside something flammable',()=>{
+  test('fire takes hold where vanilla fire can stay (SupportRule fire): on a sturdy top or beside something flammable',()=>{
     const {game,weather}=setup('plains');startRain(game,weather);game.player.teleport(60.5,64,.5);
     // A tree canopy: the strike lands on leaves with nothing sturdy below the fire cell.
     for(let x=4;x<=8;x++)for(let z=4;z<=8;z++)game.world.set(x,70,z,B.oakLeaves);
     weather.strike(6,71,6);tick(game,1);
     expect(game.world.get(6,71,6)).toBe(FIRE);
-    // A glass roof is neither sturdy for fire nor flammable.
+    // A glass roof has a sturdy top face (vanilla isFaceSturdy): fire rests on it.
     for(let x=14;x<=18;x++)for(let z=14;z<=18;z++)game.world.set(x,70,z,B.glass);
     weather.strike(16,71,16);tick(game,1);
-    for(let x=15;x<=17;x++)for(let y=70;y<=72;y++)for(let z=15;z<=17;z++)expect(game.world.get(x,y,z)).not.toBe(FIRE);
+    expect(game.world.get(16,71,16)).toBe(FIRE);
+    // A bottom slab is not a full top face and does not burn: no fire on a stone slab floor in mid-air.
+    for(let x=34;x<=38;x++)for(let z=34;z<=38;z++)game.world.set(x,70,z,blockId('stone_slab'));
+    weather.strike(36,71,36);tick(game,1);
+    for(let x=35;x<=37;x++)for(let y=70;y<=72;y++)for(let z=35;z<=37;z++)expect(game.world.get(x,y,z)).not.toBe(FIRE);
     // A plank wall: fire clings beside it in mid-air.
     for(let y=64;y<=72;y++)game.world.set(24,y,24,B.oakPlanks);
     weather.strike(25,70,24);tick(game,1);
     expect(game.world.get(25,70,24)).toBe(FIRE);
   });
-  test('lightning fire uses the fire odds families (world/fire.ts): not beside crafting tables or barrels, beside coal and moss blocks',()=>{
+  test('lightning fire clings beside flammable blocks exactly where the shared fire rule lets fire stay',()=>{
     const {game,weather}=setup('plains');startRain(game,weather);game.player.teleport(90.5,64,.5);
     const column=(x:number,z:number,id:number)=>{for(let y=64;y<=72;y++)game.world.set(x,y,z,id);};
-    const cases:[string,boolean][]=[['crafting_table',false],['barrel',false],['coal_block',true],['moss_block',true],['bookshelf',true],['white_wool',true]];
-    cases.forEach(([name,burns],i)=>{
-      const x=-30+i*12;column(x,-20,blockId(name));
+    const names=['crafting_table','barrel','coal_block','moss_block','bookshelf','white_wool','oak_planks','stone'];
+    names.forEach((name,i)=>{
+      const x=-30+i*8;column(x,-20,blockId(name));
+      expect(game.world.isLoaded(x+1,-20)).toBe(true);
+      const stays=canSurvive(game.world,FIRE,x+1,70,-20);
       weather.strike(x+1,70,-20);tick(game,1);
-      expect(game.world.get(x+1,70,-20)===FIRE,name).toBe(burns);
+      expect(game.world.get(x+1,70,-20)===FIRE,name).toBe(stays);
+      if(['bookshelf','white_wool','oak_planks'].includes(name))expect(stays,name).toBe(true);
+      if(name==='stone')expect(stays).toBe(false);
     });
   });
   test('thunder is heard after a delay of 1 second per 40 blocks',()=>{
@@ -349,6 +358,9 @@ describe('lightning',()=>{
     tick(game,3);
     const thunder=sounds.filter(s=>s.name==='thunder');
     expect(thunder).toHaveLength(1);expect(thunder[0].pitch).toBeGreaterThanOrEqual(.8);expect(thunder[0].pitch).toBeLessThanOrEqual(1);
+    // Played at the strike (the bolt's bottom centre); the volume is the distance fade.
+    expect(thunder[0].at).toEqual({x:30.5,y:64,z:40.5});
+    expect(thunder[0].volume).toBeCloseTo(Math.max(.35,Math.min(1,1.15-Math.hypot(30,64-game.player.eye().y,40)/160)),2);
   });
   test('the flash decays over a few frames and bolts disappear',()=>{
     const {game,weather}=setup('plains');startRain(game,weather);game.player.teleport(40.5,64,.5);

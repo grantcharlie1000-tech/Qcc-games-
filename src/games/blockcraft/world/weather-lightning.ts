@@ -3,9 +3,12 @@
 // of a strike at a random column (or at a living entity under open sky within 3 blocks of it). A bolt lives 2 ticks plus 1-3 re-flashes; while visible it
 // hurts every living entity in a box 3 blocks around it (6 up) for 5 'lightning' damage and sets it on fire for
 // 8 seconds; creepers become charged, pigs are left alone, and dropped items and experience orbs burn up. Fire starts
-// at the strike on normal and hard, wherever vanilla fire can stay (a sturdy top below or a flammable neighbour).
-import {AIR,BLOCKS,OPAQUE,blockId} from '../data/blocks';
+// at the strike on normal and hard, wherever fire can stay: the shared support rule (engine/support canSurvive, rule
+// 'fire', vanilla FireBlock.canSurvive: a sturdy top below that is not leaves, or a flammable neighbour), the same rule
+// the fire ticks use, so lightning fire is never put out on its first fire tick.
+import {AIR,blockId} from '../data/blocks';
 import {CS} from '../engine/constants';
+import {canSurvive} from '../engine/support';
 import type {Entity,Game,Vec3} from '../engine/contracts';
 import {isTickingChunk,precipitationHeight,TICKING_RANGE} from './weather-columns';
 
@@ -75,27 +78,8 @@ export function rollStrikeColumn(px:number,pz:number,random:()=>number):{x:numbe
   return{x:cx*CS+Math.floor(random()*CS),z:cz*CS+Math.floor(random()*CS)};
 }
 
-/** Block families fire can burn (vanilla FireBlock.bootStrap ignite odds above 0). This is the same table as the fire
- *  owner's (world/fire.ts in the ticks area): planks, logs, leaves, wool and these families. Crafting tables and barrels
- *  only catch from lava, so fire does not cling to them; a fire placed there would go out on its first fire tick. */
-const BURNING_FAMILIES=new Set(['bookshelf','tnt','short_grass','fern','dead_bush','coal_block','moss_block','dandelion','poppy',
-  'blue_orchid','allium','cornflower','oxeye_daisy','oak_slab','oak_stairs']);
-const BURNING_SUFFIXES=['_planks','_log','_leaves','_wool'];
-const BURNS=new Uint8Array(256);
-/** A full top face fire can rest on: an opaque cube, or a top or double slab (the fire owner's rule). */
-const STURDY=new Uint8Array(256);
-for(const d of BLOCKS){
-  BURNS[d.id]=+(BURNING_FAMILIES.has(d.family)||BURNING_SUFFIXES.some(s=>d.family.endsWith(s)));
-  STURDY[d.id]=+(OPAQUE[d.id]===1||d.slab==='top'||d.slab==='double');
-}
-const SIX=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]] as const;
-/** Vanilla FireBlock.canSurvive for an air cell: a sturdy block below, or a neighbour fire can burn. */
-export function fireCanStay(world:Game['world'],x:number,y:number,z:number):boolean{
-  const below=world.get(x,y-1,z);
-  if(below>0&&STURDY[below])return true;
-  for(const [dx,dy,dz] of SIX){const n=world.get(x+dx,y+dy,z+dz);if(n>0&&BURNS[n])return true;}
-  return false;
-}
+/** Can fire stay in this cell? The shared support rule for fire (SupportRule 'fire'). */
+export const fireCanStay=(world:Game['world'],x:number,y:number,z:number):boolean=>canSurvive(world,FIRE,x,y,z);
 
 /** Places fire at the bolt and at `extra` random cells around it (vanilla spawnFire): only into air where fire can stay. */
 export function spawnFire(game:Game,bolt:Bolt,extra:number,random:()=>number):number{

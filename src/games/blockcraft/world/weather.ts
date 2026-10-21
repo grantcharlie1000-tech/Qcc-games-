@@ -70,10 +70,10 @@ export function createWeather(game:Game):WeatherController{
       slot.volume=Math.max(.35,Math.min(1,1.15-distance/160));slot.pitch=.8+ambience()*.2;
     }
   };
-  /** Thunder is loud everywhere (vanilla volume 10000): play it close to the listener, toward the strike, for panning. */
+  /** Thunder at the strike point (vanilla playLocalSound at the bolt): the sound service never attenuates thunder, takes its
+   *  direction from `at` and its timbre from the distance, and reads a volume below 1 as this distance fade. */
   function playThunder(t:PendingThunder){
-    const eye=game.player.eye(),dx=t.x-eye.x,dy=t.y-eye.y,dz=t.z-eye.z,d=Math.hypot(dx,dy,dz)||1,near=Math.min(2,d);
-    const at:Vec3={x:eye.x+dx/d*near,y:eye.y+dy/d*near,z:eye.z+dz/d*near};
+    const at:Vec3={x:t.x,y:t.y,z:t.z};
     game.sounds.play('thunder',at,{volume:t.volume,pitch:t.pitch});
   }
   /** Vanilla LevelRenderer.tickRain: a random rain-hit column near the camera; muffled when it rains on the roof above. */

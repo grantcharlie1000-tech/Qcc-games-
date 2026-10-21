@@ -5,6 +5,7 @@ import {stack} from '../../../src/games/blockcraft/data/items';
 import {createMesher} from '../../../src/games/blockcraft/render/mesher';
 import {sharedUniforms} from '../../../src/games/blockcraft/render/renderer';
 import {createEntities} from '../../../src/games/blockcraft/entity/entities';
+import {lightUniforms} from '../../../src/games/blockcraft/entity/model-render';
 import {QuadWriter,compileModel,diffuse,entityMatrix,faceRects,identity,mat,packAtlas,writeModel} from '../../../src/games/blockcraft/entity/model';
 import type {EntityModel,ModelPart,PartPose,RenderService} from '../../../src/games/blockcraft/engine/contracts';
 import {createFakeGame} from './helpers/fake-game';
@@ -111,6 +112,21 @@ describe('entity rendering',()=>{
     // CPU budget (≤ 1 ms for 60 entities in the brief); generous here for a shared test machine.
     const t0=performance.now();for(let i=0;i<30;i++)entities.frame?.(1/60);
     expect((performance.now()-t0)/30).toBeLessThan(4);
+  });
+  test('entity materials light and fog like the chunks: the renderer lightmap and the shared light and fog uniforms',()=>{
+    const {game,entities,s}=scene();
+    entities.spawn('walker',.5,60,-1.5);entities.frame?.(1/60);
+    const u=game.render.uniforms as ReturnType<typeof sharedUniforms>;
+    for(const m of s.children.filter(c=>c.name==='entities') as THREE.Mesh[]){
+      const mat=m.material as THREE.RawShaderMaterial;
+      for(const k of ['daylight','flash','flicker','nightVision','fogColor','fogNear','fogFar','fogShape'] as const)expect(mat.uniforms[k],k).toBe(u[k]);
+      expect(mat.vertexShader).toContain('bcLightmap(sky,block,daylight,flash,flicker,nightVision)');
+      expect(mat.fragmentShader).toContain('bcFog(bcFogDistance(vRel,fogShape),fogNear,fogFar)');
+    }
+  });
+  test('without the renderer\'s extra uniforms the entity shader gets neutral flicker, night vision and fog shape',()=>{
+    expect(lightUniforms({daylight:{value:1},skyDarkening:{value:0},fogColor:{value:new THREE.Color()},fogNear:{value:1},fogFar:{value:2},time:{value:0},flash:{value:0}}))
+      .toEqual({flicker:{value:0},nightVision:{value:0},fogShape:{value:1}});
   });
   test('thrown items face the camera; primed blocks flash white',()=>{
     const {entities,s}=scene();
