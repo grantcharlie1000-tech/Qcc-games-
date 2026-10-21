@@ -19,6 +19,7 @@ const TERRAIN_SOLIDS=new Set(['stone','granite','diorite','andesite','dirt','coa
   'sandstone','red_sandstone','gravel','clay','snow_block','deepslate','tuff','bedrock','moss_block'].map(id));
 const isOre=(b:number)=>family(b).endsWith('_ore');
 const isTerrain=(b:number)=>TERRAIN_SOLIDS.has(b)||isOre(b);
+const LIQUID_OF=(b:number)=>!!blockDef(b).liquid;
 
 /** A biome map sampled on a grid: index (i + j*n) for world (x0 + i*step, z0 + j*step). */
 function biomeMap(t:TerrainGenerator,half:number,step:number){
@@ -70,6 +71,26 @@ describe('terrain determinism',()=>{
     }
     // Only occasional cave mouths remove the surface block.
     expect(surface/columns).toBeGreaterThan(.97);
+  });
+});
+
+describe('border continuity',()=>{
+  test('caves, ore veins and blobs continue across chunk borders as they do inside a chunk',()=>{
+    // Compare voxel pairs straddling the seam between two chunks (x 15 | 0) with pairs in the middle (x 7 | 8).
+    const kind=(b:number)=>b===AIR?0:LIQUID_OF(b)?1:isOre(b)?2:3;
+    const tally={seam:{same:0,n:0,ore:0,oreSame:0},mid:{same:0,n:0,ore:0,oreSame:0}};
+    const count=(t:typeof tally.seam,a:number,b:number)=>{t.n++;if(kind(a)===kind(b))t.same++;if(isOre(a)){t.ore++;if(b===a)t.oreSame++;}};
+    for(let row=0;row<16;row++){
+      const cx=row*3-20,cz=(row*7)%19-9,a=T1.generate(cx,cz),b=T1.generate(cx+1,cz);
+      for(let z=0;z<CS;z++)for(let y=1;y<64;y++){
+        count(tally.seam,at(a,15,y,z),at(b,0,y,z));count(tally.seam,at(b,0,y,z),at(a,15,y,z));
+        count(tally.mid,at(a,7,y,z),at(a,8,y,z));count(tally.mid,at(a,8,y,z),at(a,7,y,z));
+      }
+    }
+    const same=(t:typeof tally.seam)=>t.same/t.n,ore=(t:typeof tally.seam)=>t.oreSame/t.ore;
+    expect(Math.abs(same(tally.seam)-same(tally.mid))).toBeLessThan(.02);
+    expect(tally.seam.ore).toBeGreaterThan(100);
+    expect(ore(tally.seam)).toBeGreaterThan(ore(tally.mid)*.75);
   });
 });
 
