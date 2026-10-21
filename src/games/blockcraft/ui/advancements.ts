@@ -22,19 +22,32 @@ const STATS_REFRESH=.5;
 const canUseDom=(root:unknown)=>typeof document!=='undefined'&&!!root&&typeof (root as HTMLElement).append==='function';
 
 export function createAdvancements(game:Game):AdvancementsController{
-  let layer:ToastLayer|null=null,screen:MountedScreen|null=null,tab:ScreenTab='minecraft',sinceStats=0;
+  let layer:ToastLayer|null=null,screen:MountedScreen|null=null,tab:ScreenTab='minecraft',sinceStats=0,disposed=false;
+  let pumpId=0,pumpLast=0;
   const toasts=new ToastQueue(defs=>{
     game.sounds.play('toast',null,defs.some(d=>d.frame==='challenge')?{pitch:1.25}:undefined);
     game.context.announce(defs.map(d=>`${TOAST_HEADINGS[d.frame]} ${d.title}.`).join(' '));
   });
-  const tracker=new AdvancementTracker(game,{granted:def=>toasts.push(def),changed:()=>screen?.refresh('tree')});
   const view=()=>layer??=canUseDom(game.root)?new ToastLayer(game.root):null;
+  // In the browser toasts run on their own animation frames and wall-clock time, like vanilla: the engine stops drawing
+  // frames in its menus (pause, death) and caps its frame dt. The loop only runs while toasts exist. Without
+  // requestAnimationFrame (unit tests) the engine's frame() drives them instead.
+  const hasRaf=typeof requestAnimationFrame==='function';
+  const pump=(now:number)=>{
+    pumpId=0;
+    toasts.update(pumpLast?Math.min(now-pumpLast,250):0,view(),game.reducedMotion);pumpLast=now;
+    if(!toasts.idle&&!disposed)pumpId=requestAnimationFrame(pump);else pumpLast=0;
+  };
+  const stopPump=()=>{if(pumpId)cancelAnimationFrame(pumpId);pumpId=0;pumpLast=0;};
+  const tracker=new AdvancementTracker(game,{
+    granted:def=>{toasts.push(def);if(hasRaf&&!pumpId&&!disposed)pumpId=requestAnimationFrame(pump);},
+    changed:()=>screen?.refresh('tree')});
   return{
     toasts,
     init(){tracker.attach();},
     tick(){tracker.tick();},
     frame(dt){
-      if(!toasts.idle)toasts.update(dt*1000,view(),game.reducedMotion);
+      if(!hasRaf&&!toasts.idle)toasts.update(dt*1000,view(),game.reducedMotion);
       if(screen&&(sinceStats+=dt)>=STATS_REFRESH){sinceStats=0;screen.refresh('stats');}
     },
     list:():AdvancementView[]=>tracker.list(),
@@ -48,9 +61,9 @@ export function createAdvancements(game:Game):AdvancementsController{
       screen=mounted;sinceStats=0;
       return()=>{mounted.unmount();if(screen===mounted)screen=null;};
     },
-    reset(){toasts.clear(layer);tracker.reset();},
+    reset(){stopPump();toasts.clear(layer);tracker.reset();},
     serialize:()=>tracker.serialize(),
     restore(data){tracker.restore(data);},
-    dispose(){tracker.detach();toasts.clear(layer);layer?.dispose();layer=null;screen?.unmount();screen=null;}
+    dispose(){disposed=true;stopPump();tracker.detach();toasts.clear(layer);layer?.dispose();layer=null;screen?.unmount();screen=null;}
   };
 }

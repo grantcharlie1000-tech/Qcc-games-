@@ -178,8 +178,14 @@ describe('unlocks from game events',()=>{
     expect(xp).toBe(100);
   });
   test('grant() and has() ignore unknown ids; granting twice is harmless',()=>{
-    adv.grant('nope');expect(adv.has('nope')).toBe(false);
+    adv.grant('nope');expect(adv.has('nope')).toBe(false);expect(adv.toasts.waiting).toHaveLength(0);
     adv.grant('diamonds');adv.grant('diamonds');expect(adv.list().filter(a=>a.done)).toHaveLength(1);
+    let xp=0;game.survival.addXp=p=>{xp+=p;};adv.grant('two_by_two');adv.grant('two_by_two');expect(xp).toBe(100);
+    expect(adv.toasts.waiting.map(d=>d.id)).toEqual(['diamonds','two_by_two']);
+  });
+  test('holding an item for many ticks toasts once',()=>{
+    give('diamond');tick(40);
+    expect(adv.toasts.waiting.map(d=>d.id)).toEqual(['diamonds']);
   });
   test('dispose unsubscribes from events and the inventory',()=>{
     adv.dispose?.();game.events.emit('playerSlept',{});expect(adv.has('sweet_dreams')).toBe(false);

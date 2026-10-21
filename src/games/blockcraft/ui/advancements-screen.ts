@@ -106,7 +106,8 @@ export function mountAdvancementsScreen(container:HTMLElement,o:ScreenOptions):M
 }
 
 class TreeView{
-  private readonly scroller:HTMLElement;private readonly canvas:HTMLElement;private readonly tip:HTMLElement;
+  /** scroller (overflow) > canvas (background, at least the scroller's size) > stage (the tree, centred like vanilla). */
+  private readonly scroller:HTMLElement;private readonly stage:HTMLElement;private readonly tip:HTMLElement;
   private readonly cells:TreeCell[];private readonly nodes=new Map<string,HTMLButtonElement>();
   private readonly abort=new AbortController();
   private tipFor:string|null=null;private drag:{id:number;x:number;y:number;moved:boolean}|null=null;
@@ -116,9 +117,10 @@ class TreeView{
     const cols=Math.max(...this.cells.map(c=>c.x))+1,rows=Math.max(...this.cells.map(c=>c.y))+1;
     const w=MARGIN*2+(cols-1)*COLUMN+NODE,h=MARGIN*2+(rows-1)*ROW+NODE;
     this.scroller=el('div','bc-adv-tree');this.scroller.dataset.tab=tabId;
-    this.canvas=el('div','bc-adv-canvas');this.canvas.style.width=`${w}px`;this.canvas.style.height=`${h}px`;
+    const canvas=el('div','bc-adv-canvas');
+    this.stage=el('div','bc-adv-stage');this.stage.style.width=`${w}px`;this.stage.style.height=`${h}px`;
     const bg=tileUrl(tabDef.background);if(bg)this.scroller.style.setProperty('--bc-adv-bg',`url("${bg}")`);
-    this.canvas.append(this.lines(w,h));
+    this.stage.append(this.lines(w,h));
     for(const c of this.cells){
       const b=el('button',`bc-adv-node is-${c.def.frame}`);b.type='button';b.dataset.id=c.def.id;
       b.style.left=`${this.px(c.x,COLUMN)}px`;b.style.top=`${this.px(c.y,ROW)}px`;
@@ -128,11 +130,11 @@ class TreeView{
       b.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')this.showTip(c.def.id);},{signal});
       b.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&document.activeElement!==b)this.hideTip();},{signal});
       b.addEventListener('click',()=>this.showTip(c.def.id),{signal});
-      this.nodes.set(c.def.id,b);this.canvas.append(b);
+      this.nodes.set(c.def.id,b);this.stage.append(b);
     }
     this.tip=el('div','bc-adv-tip');this.tip.id=`bc-adv-tip-${++uid}`;this.tip.setAttribute('role','tooltip');this.tip.hidden=true;
-    this.canvas.append(this.tip);this.scroller.append(this.canvas);panel.append(this.scroller);
-    this.canvas.addEventListener('keydown',e=>this.key(e),{signal});
+    this.stage.append(this.tip);canvas.append(this.stage);this.scroller.append(canvas);panel.append(this.scroller);
+    this.stage.addEventListener('keydown',e=>this.key(e),{signal});
     this.scroller.addEventListener('pointerdown',e=>this.pointerDown(e),{signal});
     this.scroller.addEventListener('pointermove',e=>this.pointerMove(e),{signal});
     for(const type of ['pointerup','pointercancel'] as const)this.scroller.addEventListener(type,e=>{if(this.drag?.id===e.pointerId)this.drag=null;},{signal});
@@ -179,12 +181,18 @@ class TreeView{
       ?`Follows ${ADVANCEMENT_BY_ID.get(def.parent)!.title}`:'Not made yet'));
     tip.append(bar,body);tip.hidden=false;
     node.setAttribute('aria-describedby',tip.id);
-    // Beside the node, kept inside the visible part of the tree.
+    // Beside the node, kept inside the visible part of the tree (stage coordinates).
     const nx=node.offsetLeft,ny=node.offsetTop,tw=tip.offsetWidth,th=tip.offsetHeight,s=this.scroller;
-    const minX=s.scrollLeft+4,maxX=s.scrollLeft+s.clientWidth-tw-4,minY=s.scrollTop+4,maxY=s.scrollTop+s.clientHeight-th-4;
-    let x=nx+NODE+6;if(x>maxX)x=nx-tw-6;
-    x=Math.max(minX,Math.min(maxX,x));const y=Math.max(minY,Math.min(maxY,ny-2));
-    tip.style.left=`${Math.max(0,x)}px`;tip.style.top=`${Math.max(0,y)}px`;
+    const left=s.scrollLeft-this.stage.offsetLeft,top=s.scrollTop-this.stage.offsetTop;
+    const minX=left+4,maxX=left+s.clientWidth-tw-4,minY=top+4,maxY=top+s.clientHeight-th-4;
+    let x=nx+NODE+6,y=ny-2;
+    if(x>maxX){
+      x=nx-tw-6;
+      // No room on either side (narrow screens): below the node, or above it near the bottom edge.
+      if(x<minX){x=nx+NODE/2-tw/2;y=ny+NODE+6;if(y>maxY)y=ny-th-6;}
+    }
+    x=Math.max(minX,Math.min(maxX,x));y=Math.max(minY,Math.min(maxY,y));
+    tip.style.left=`${x}px`;tip.style.top=`${y}px`;
   }
   private hideTip(){
     if(this.tipFor)this.nodes.get(this.tipFor)?.removeAttribute('aria-describedby');
