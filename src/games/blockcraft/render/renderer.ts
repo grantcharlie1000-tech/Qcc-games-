@@ -19,7 +19,7 @@ import {LAVA_FOG,LIGHT_GLSL,celestialAngle,cloudColor,fogColor,fogRange,hexToRgb
   starBrightness,sunriseColor,sunriseSide,underwaterFogColor,waterFogColor,waterVision,type Medium,type RGB,type RenderUniforms} from './sky';
 import {createSky,createSkyFrame} from './sky-dome';
 import {createParticles} from './particles';
-import {createHand,hurtBob,viewBob} from './hand';
+import {createHand,createViewMotion} from './hand';
 import {createBlockOverlay,createScreenOverlay,type OverlayKind} from './overlay';
 
 // ---- Chunk shaders ------------------------------------------------------------------------------------------------------
@@ -123,7 +123,6 @@ export function governScale(scale:number,average:number,good:number,max:number,m
 }
 
 interface ChunkRender{meshes:THREE.Mesh[]}
-const DEG=Math.PI/180;
 const OVERLAYS=new Set(['water','lava','hurt','fire','portal']);
 
 export function createRenderer(game:Game):RenderService{
@@ -181,21 +180,17 @@ export function createRenderer(game:Game):RenderService{
   }
 
   // ---- Per-tick state (20 Hz) ---------------------------------------------------------------------------------------
-  let acc=0,ticks=0,lastX=NaN,lastZ=NaN,walk=0,oWalk=0,bob=0,oBob=0,xBob=0,oXBob=0,yBob=0,oYBob=0,waterTicks=0,deathTicks=0,flicker=0;
+  let acc=0,ticks=0,waterTicks=0,flicker=0;
   const flickerRandom=Math.random;
+  // View bob, the hand's lag behind the view, the hurt tilt (on every playerDamaged) and the death roll.
+  const motion=createViewMotion();
+  const unsubscribe:(()=>void)[]=[];
   function tick(){
     ticks++;
     particles.tick();hand.tick();
-    const p=game.player.state;
-    // Player.walkDist / bob (blocks per tick, at most 0.1 of bob, only on the ground and not swimming).
-    const moved=Number.isFinite(lastX)?Math.min(1,Math.hypot(p.x-lastX,p.z-lastZ)):0;lastX=p.x;lastZ=p.z;
-    oWalk=walk;oBob=bob;walk+=moved*.6;
-    bob+=((p.onGround&&!p.swimming&&!game.survival.dead?Math.min(.1,moved):0)-bob)*.4;
-    // LocalPlayer.xBob / yBob: the hand lags half way to the view each tick.
-    oXBob=xBob;oYBob=yBob;xBob+=(-p.pitch/DEG-xBob)*.5;yBob+=(-p.yaw/DEG-yBob)*.5;
+    motion.tick(game.player.state,game.survival.dead);
     const eye=game.player.eye();
     waterTicks=mediumAt(game.world,eye.x,eye.y,eye.z)==='water'?Math.min(600,waterTicks+1):Math.max(0,waterTicks-10);
-    deathTicks=game.survival.dead?deathTicks+1:0;
     // LightTexture.tick: the block light red flicker random walk.
     flicker=game.reducedMotion?0:(flicker+(flickerRandom()-flickerRandom())*flickerRandom()*flickerRandom()*.1)*.9;
   }
@@ -234,19 +229,15 @@ export function createRenderer(game:Game):RenderService{
     uniforms.sway.value=reduced?0:1;
 
     const p=game.player.state,eye=game.player.eye(),medium=mediumAt(game.world,eye.x,eye.y,eye.z);
-    // Camera: eye, then the hurt tilt and view bob applied in view space (vanilla bobHurt / bobView on the projection).
-    prefix.identity();
-    if(!reduced){
-      const over=screenOverlay.kind==='hurt'?screenOverlay.strength:0;
-      hurtBob(prefix,over,deathTicks>0?deathTicks+partial:0);
-      viewBob(prefix,oWalk+(walk-oWalk)*partial,oBob+(bob-oBob)*partial);
-    }
+    // Camera: eye, then the death roll, hurt tilt and view bob applied in view space (vanilla bobHurt / bobView).
+    motion.frame(d,game.survival.dead);
+    motion.camera(prefix.identity(),partial,reduced);
     euler.set(p.pitch,p.yaw,0,'YXZ');q.setFromEuler(euler);
     view.compose(pos.set(eye.x,eye.y,eye.z),q,scl.set(1,1,1)).multiply(tmp.copy(prefix).invert());
     view.decompose(camera.position,camera.quaternion,scl);camera.updateMatrixWorld();
     // Eased FOV (vanilla fovModifier += (target - modifier) * 0.5 per tick).
     fovModifier+=(fovTarget-fovModifier)*(1-Math.pow(.5,d*20));
-    const fov=fieldOfView(game.settings.fov||70,fovModifier,medium,deathTicks);
+    const fov=fieldOfView(game.settings.fov||70,fovModifier,medium,motion.deathTime);
     if(Math.abs(camera.fov-fov)>.01){camera.fov=fov;camera.updateProjectionMatrix();}
 
     // Light and sky.
@@ -295,11 +286,7 @@ export function createRenderer(game:Game):RenderService{
     const hide=game.root.dataset?.[ROOT_FLAGS.hudHidden]==='true'||game.state==='loading';
     hand.mesh.visible=!hide;
     if(!hide){
-      handPrefix.copy(prefix);
-      if(!reduced){
-        const xb=oXBob+(xBob-oXBob)*partial,yb=oYBob+(yBob-oYBob)*partial;
-        handPrefix.multiply(tmp.makeRotationX((-p.pitch/DEG-xb)*.1*DEG)).multiply(tmp.makeRotationY((-p.yaw/DEG-yb)*.1*DEG));
-      }
+      motion.lag(handPrefix.copy(prefix),p.yaw,p.pitch,partial,reduced);
       lightmap(eyeSky,eyeBlock,uniforms.daylight.value,{flash,flicker,nightVision},handLight);
       hand.update(partial,handPrefix,camera.aspect,handLight);
     }
@@ -334,6 +321,12 @@ export function createRenderer(game:Game):RenderService{
       viewChunks=n;camera.far=Math.max(512,n*CS*4);camera.updateProjectionMatrix();
     },
     setFovScale(s){if(Number.isFinite(s)&&s>0)fovTarget=Math.max(.1,Math.min(2,s));},
+    init(){
+      // The hurt tilt follows every hit (fire and lava too, whose screen overlays hide the 'hurt' one); a load or a
+      // respawn may turn the view far from where the hand's lag was.
+      unsubscribe.push(game.events.on('playerDamaged',()=>motion.hurt()),game.events.on('restored',()=>motion.resync()),
+        game.events.on('playerRespawned',()=>motion.resync()));
+    },
     frame,tick,
     // Resize before drawing: resizing after would clear the presented frame.
     render(){if(disposed)return;govern();renderer.render(scene,camera);},
@@ -341,10 +334,11 @@ export function createRenderer(game:Game):RenderService{
     reset(){
       for(const r of chunks.values())release(r);chunks.clear();
       particles.reset();hand.reset();blockOverlay.setSelection(null);blockOverlay.setBreaking(null,0,0);screenOverlay.set(null,0);
-      fovModifier=fovTarget=1;waterTicks=deathTicks=0;lastX=lastZ=NaN;walk=oWalk=bob=oBob=0;waterFog.r=-1;
+      fovModifier=fovTarget=1;waterTicks=0;motion.reset();waterFog.r=-1;
     },
     dispose(){
       if(disposed)return;disposed=true;
+      for(const off of unsubscribe.splice(0))off();
       resize.disconnect();for(const r of chunks.values())release(r);chunks.clear();
       sky.dispose();particles.dispose();hand.dispose();blockOverlay.dispose();screenOverlay.dispose();
       for(const m of Object.values(materials))m.dispose();atlas.dispose();

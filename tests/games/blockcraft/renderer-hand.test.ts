@@ -1,7 +1,7 @@
 import {describe,expect,test} from 'vitest';
 import * as THREE from 'three';
 import {createFakeGame} from './helpers/fake-game';
-import {applyDisplay,armPose,bowPose,createHand,eatPose,heldDisplay,hurtBob,itemSwingPose,viewBob,SWING_TICKS} from '../../../src/games/blockcraft/render/hand';
+import {applyDisplay,armPose,bowPose,createHand,createViewMotion,eatPose,heldDisplay,hurtBob,itemSwingPose,viewBob,DEATH_TICKS,HURT_TICKS,SWING_TICKS} from '../../../src/games/blockcraft/render/hand';
 import {HandBuffer,addArm,addSprite,paintArmSkin,HAND_SLOT} from '../../../src/games/blockcraft/render/hand-art';
 import type {ChunkMesh} from '../../../src/games/blockcraft/engine/contracts';
 
@@ -56,6 +56,65 @@ describe('vanilla first-person poses',()=>{
     expect(heldDisplay({id:'torch',count:1})).toMatchObject({display:'item',icon:{kind:'tile'}});
     expect(heldDisplay({id:'shield',count:1})?.display).toBe('shield');
     expect(heldDisplay(null)).toBeNull();expect(heldDisplay({id:'nope',count:1})).toBeNull();
+  });
+});
+
+describe('view motion',()=>{
+  const player=(yaw:number,pitch=0,x=0,z=0)=>({x,z,yaw,pitch,onGround:true,swimming:false});
+  /** Angle in degrees between the identity and a rotation matrix. */
+  const turn=(m:THREE.Matrix4)=>new THREE.Quaternion().setFromRotationMatrix(m).angleTo(new THREE.Quaternion())/Math.PI*180;
+  test('the hand lags half way behind a turn each tick and catches up',()=>{
+    const v=createViewMotion();
+    for(let i=0;i<3;i++)v.tick(player(0),false);
+    expect(turn(v.lag(new THREE.Matrix4(),0,0,1,false))).toBeCloseTo(0,6);
+    v.tick(player(1),false);
+    const lag=[turn(v.lag(new THREE.Matrix4(),1,0,1,false))];
+    for(let i=0;i<4;i++){v.tick(player(1),false);lag.push(turn(v.lag(new THREE.Matrix4(),1,0,1,false)));}
+    // 0.1 × half of 57.3° after the first tick, then halving.
+    expect(lag[0]).toBeCloseTo(57.2958*.5*.1,3);
+    for(let i=1;i<lag.length;i++)expect(lag[i]).toBeCloseTo(lag[i-1]/2,3);
+    expect(turn(v.lag(new THREE.Matrix4(),1,0,1,true))).toBe(0);
+  });
+  test('a restart or a load snaps the lag to the new view instead of spinning the hand',()=>{
+    // Ten full turns, then reset: the player comes back at yaw 0.
+    const v=createViewMotion();
+    for(let i=0;i<=100;i++)v.tick(player(i*.2*Math.PI),false);
+    v.reset();
+    // In the start menu no ticks run: the first frame snaps.
+    expect(turn(v.lag(new THREE.Matrix4(),0,0,.5,false))).toBeCloseTo(0,6);
+    v.tick(player(0),false);expect(turn(v.lag(new THREE.Matrix4(),0,0,.5,false))).toBeCloseTo(0,6);
+    // Loading a save turns the view to yaw 3 after a frame at yaw 0: 'restored' resyncs.
+    v.resync();
+    expect(turn(v.lag(new THREE.Matrix4(),3,-.4,.5,false))).toBeCloseTo(0,6);
+    v.tick(player(3,-.4),false);expect(turn(v.lag(new THREE.Matrix4(),3,-.4,.5,false))).toBeCloseTo(0,6);
+    // A jump of more than half a turn (an unwrapped yaw restored without the event) snaps too.
+    v.tick(player(3+4*Math.PI,-.4),false);expect(turn(v.lag(new THREE.Matrix4(),3+4*Math.PI,-.4,.5,false))).toBeCloseTo(0,6);
+  });
+  test('every hit tilts the view for 10 ticks, rising from and falling back to level',()=>{
+    const v=createViewMotion(),roll=()=>Math.abs(new THREE.Euler().setFromRotationMatrix(v.camera(new THREE.Matrix4(),0,false)).z)/Math.PI*180;
+    expect(roll()).toBeCloseTo(0,6);
+    v.hurt();expect(v.hurtTime).toBe(HURT_TICKS);expect(roll()).toBeCloseTo(0,4);
+    const seen:number[]=[];
+    for(let i=0;i<12;i++){v.frame(.05,false);seen.push(roll());}
+    expect(Math.max(...seen)).toBeGreaterThan(13);expect(seen[seen.length-1]).toBeCloseTo(0,6);expect(v.hurtTime).toBe(0);
+    // Reduced motion: no tilt.
+    v.hurt();v.frame(.025,false);expect(roll()).toBeGreaterThan(1);expect(turn(v.camera(new THREE.Matrix4(),0,true))).toBe(0);
+  });
+  test('the death roll grows on frame time, since the engine runs no ticks while dead',()=>{
+    const v=createViewMotion();
+    v.frame(.5,true);expect(v.deathTime).toBeCloseTo(10);
+    v.frame(.1,true);v.frame(.1,true);v.frame(.1,true);v.frame(.1,true);v.frame(.1,true);v.frame(.1,true);
+    expect(v.deathTime).toBe(DEATH_TICKS);
+    const roll=new THREE.Euler().setFromRotationMatrix(v.camera(new THREE.Matrix4(),0,false)).z/Math.PI*180;
+    expect(Math.abs(roll)).toBeCloseTo(40-8000/220,3);
+    v.frame(.016,false);expect(v.deathTime).toBe(0);
+  });
+  test('walking bobs the view on the ground only',()=>{
+    const v=createViewMotion(),offset=()=>new THREE.Vector3().setFromMatrixPosition(v.camera(new THREE.Matrix4(),1,false)).length();
+    for(let i=0;i<10;i++)v.tick({...player(0,0,0,i*.2)},false);
+    expect(offset()).toBeGreaterThan(.01);
+    for(let i=0;i<30;i++)v.tick({...player(0,0,0,2+i*.2),onGround:false},false);
+    expect(offset()).toBeLessThan(.001);
   });
 });
 

@@ -96,6 +96,66 @@ export function hurtBob(m:THREE.Matrix4,hurt:number,deathTicks:number):THREE.Mat
   if(hurt>0){const f=Math.sin(hurt*hurt*hurt*hurt*Math.PI);RZ(m,-f*14);}
   return m;
 }
+/** Vanilla hurtDuration: the hurt tilt lasts 10 ticks. */
+export const HURT_TICKS=10;
+/** The death roll and FOV narrowing reach their end after 20 ticks (vanilla deathTime). */
+export const DEATH_TICKS=20;
+/** Camera and hand motion (vanilla Player.walkDist / bob, LocalPlayer.xBob / yBob, LivingEntity.hurtTime / deathTime). */
+export interface ViewMotion{
+  /** 20 Hz: walk distance and bob amount from the player's movement, and the hand lagging half way to the view. */
+  tick(p:{x:number;z:number;yaw:number;pitch:number;onGround:boolean;swimming:boolean},dead:boolean):void;
+  /** Every frame: the hurt tilt and the death time run on frame time, because the engine runs no ticks once dead. */
+  frame(dt:number,dead:boolean):void;
+  /** A hit (playerDamaged): restart the hurt tilt, whatever screen overlay shows. */
+  hurt():void;
+  /** Forget the hand lag so it snaps to the view on the next tick or frame (restart, load, respawn). */
+  resync():void;
+  reset():void;
+  /** Death roll, hurt tilt and view bob for the partial tick, appended to `m` (nothing with reduced motion). */
+  camera(m:THREE.Matrix4,partial:number,reduced:boolean):THREE.Matrix4;
+  /** The hand's lag behind fast turns (yaw / pitch in radians), appended to `m` (nothing with reduced motion). */
+  lag(m:THREE.Matrix4,yaw:number,pitch:number,partial:number,reduced:boolean):THREE.Matrix4;
+  /** Ticks since death, 0..20 (0 while alive), and hurt ticks left 0..10. */
+  readonly deathTime:number;readonly hurtTime:number;
+}
+export function createViewMotion():ViewMotion{
+  let lastX=NaN,lastZ=NaN,walk=0,oWalk=0,bob=0,oBob=0,xBob=NaN,oXBob=NaN,yBob=NaN,oYBob=NaN,hurtTime=0,deathTime=0;
+  /** Snap the lag to the view when it is unset or stale: a jump of more than half a turn is a restore or a teleport of
+   *  the view (the yaw is never wrapped), not a turn to ease through, which would spin the hand. */
+  const sync=(yaw:number,pitch:number)=>{
+    const tx=-pitch/DEG,ty=-yaw/DEG;
+    if(!Number.isFinite(xBob)||!Number.isFinite(yBob)||Math.abs(ty-yBob)>180||Math.abs(tx-xBob)>180){xBob=oXBob=tx;yBob=oYBob=ty;return true;}
+    return false;
+  };
+  return{
+    get deathTime(){return deathTime;},get hurtTime(){return hurtTime;},
+    tick(p,dead){
+      const moved=Number.isFinite(lastX)?Math.min(1,Math.hypot(p.x-lastX,p.z-lastZ)):0;lastX=p.x;lastZ=p.z;
+      oWalk=walk;oBob=bob;walk+=moved*.6;
+      bob+=((p.onGround&&!p.swimming&&!dead?Math.min(.1,moved):0)-bob)*.4;
+      if(!sync(p.yaw,p.pitch)){oXBob=xBob;oYBob=yBob;xBob+=(-p.pitch/DEG-xBob)*.5;yBob+=(-p.yaw/DEG-yBob)*.5;}
+    },
+    frame(dt,dead){
+      const d=Number.isFinite(dt)&&dt>0?dt:0;
+      hurtTime=Math.max(0,hurtTime-d*20);
+      deathTime=dead?Math.min(DEATH_TICKS,deathTime+d*20):0;
+    },
+    hurt(){hurtTime=HURT_TICKS;},
+    resync(){xBob=oXBob=yBob=oYBob=NaN;},
+    reset(){lastX=lastZ=NaN;walk=oWalk=bob=oBob=0;hurtTime=deathTime=0;xBob=oXBob=yBob=oYBob=NaN;},
+    camera(m,partial,reduced){
+      if(reduced)return m;
+      hurtBob(m,hurtTime/HURT_TICKS,deathTime);
+      return viewBob(m,oWalk+(walk-oWalk)*partial,oBob+(bob-oBob)*partial);
+    },
+    lag(m,yaw,pitch,partial,reduced){
+      if(reduced)return m;
+      sync(yaw,pitch);
+      const xb=oXBob+(xBob-oXBob)*partial,yb=oYBob+(yBob-oYBob)*partial;
+      return RY(RX(m,(-pitch/DEG-xb)*.1),(-yaw/DEG-yb)*.1);
+    }
+  };
+}
 /** How an item is drawn in hand. */
 export function heldDisplay(stack:ItemStack|null):{display:Display;icon:ItemIcon}|null{
   const def=stack?itemDef(stack.id):undefined;if(!def)return null;
