@@ -172,8 +172,8 @@ vec4 fire(vec2 s){
   vec4 c=vec4(0.);
   for(int i=0;i<2;i++){
     float side=i==0?-1.:1.;
-    vec2 centre=vec2(side*.48/.7002/aspect.x,-.6/.7002),half=vec2(1./.7002/aspect.x,1./.7002);
-    vec2 q=(s-centre)/(2.*half)+.5;
+    vec2 centre=vec2(side*.48/.7002/aspect.x,-.6/.7002),extent=vec2(1./.7002/aspect.x,1./.7002);
+    vec2 q=(s-centre)/(2.*extent)+.5;
     if(q.x<0.||q.x>1.||q.y<0.||q.y>1.)continue;
     if(i==1)q.x=1.-q.x;
     vec2 f=vec2(q.x,fract(q.y-time*1.2));

@@ -26,7 +26,8 @@ interface ItemTransform{rotation:[number,number,number];translation:[number,numb
 export const DISPLAY:Record<Display,{right:ItemTransform;left:ItemTransform}>={
   block:{right:{rotation:[0,45,0],translation:[0,0,0],scale:.4},left:{rotation:[0,225,0],translation:[0,0,0],scale:.4}},
   item:{right:{rotation:[0,-90,25],translation:[1.13,3.2,1.13],scale:.68},left:{rotation:[0,-90,25],translation:[1.13,3.2,1.13],scale:.68}},
-  shield:{right:{rotation:[0,180,5],translation:[-4,2,-6],scale:1.1},left:{rotation:[0,180,5],translation:[-4,2,-6],scale:1.1}}
+  // The shield sprite faces the camera, mostly below the screen edge until raised.
+  shield:{right:{rotation:[0,10,0],translation:[0,-2,0],scale:.9},left:{rotation:[0,10,0],translation:[0,-2,0],scale:.9}}
 };
 const scratch=new THREE.Matrix4();
 const T=(m:THREE.Matrix4,x:number,y:number,z:number)=>m.multiply(scratch.makeTranslation(x,y,z));

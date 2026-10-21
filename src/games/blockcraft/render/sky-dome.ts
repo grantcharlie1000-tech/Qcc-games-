@@ -11,8 +11,8 @@ import type {Vec3} from '../engine/contracts';
 import {LIGHT_GLSL,type RGB,type RenderUniforms} from './sky';
 import {CELESTIAL_CELL,CELESTIAL_CELLS,CELESTIAL_WIDTH,CLOUD_CELLS,buildCloudGeometry,paintCelestial,paintCloudMap} from './sky-art';
 
-/** Cloud layer: bottom height, box height, cell size (blocks), drift speed (blocks per second, vanilla 0.03 per tick). */
-export const CLOUD_Y=128.33,CLOUD_THICKNESS=4,CLOUD_CELL=12,CLOUD_SPEED=.6;
+/** Cloud layer (vanilla 1.18+): bottom height 192, 4 blocks thick, 12-block cells, drifting 0.03 blocks per tick east. */
+export const CLOUD_Y=192,CLOUD_THICKNESS=4,CLOUD_CELL=12,CLOUD_SPEED=.6;
 /** Cloud map period in blocks: the mesh is 2×2 periods, re-centred on the camera every period. */
 export const CLOUD_PERIOD=CLOUD_CELLS*CLOUD_CELL;
 /** Stars per cube-face grid cell side and the chance of a star in a cell (about 1 500 stars like vanilla). */
