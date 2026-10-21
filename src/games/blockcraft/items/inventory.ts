@@ -129,10 +129,10 @@ export function createInventory(game:Game):InventoryService{
     },
     damageHeld(amount=1){
       const n=Math.floor(amount);if(creative()||!(n>0))return;
-      const h=slots[selected];
-      if(h&&itemDef(h.id)?.durability){slots[selected]=wear(h,n);changed();return;}
-      // A raised shield in the offhand wears instead when the main hand holds nothing that wears.
-      if(offhand&&itemDef(offhand.id)?.durability&&game.interaction?.using?.item===offhand.id){offhand=wear(offhand,n);changed();}
+      const h=slots[selected],using=game.interaction?.using?.item;
+      // The item in use wears (a shield raised or a bow drawn from the offhand); the main hand wins when both match.
+      if(using&&h?.id!==using&&offhand?.id===using&&itemDef(offhand.id)?.durability){offhand=wear(offhand,n);changed();return;}
+      if(h&&itemDef(h.id)?.durability){slots[selected]=wear(h,n);changed();}
     },
     damageArmor(amount){
       if(creative()||!(amount>0))return;

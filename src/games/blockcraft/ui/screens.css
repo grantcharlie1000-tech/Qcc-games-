@@ -149,5 +149,5 @@
   .bc-panel{padding:4px 5px 6px}
   .bc-tool{width:24px;height:22px}
 }
-.bc-reduced .bc-arrow i,.bc-reduced .bc-toast{transition:none}
+.bc-reduced .bc-arrow i,.bc-toast.bc-reduced{transition:none}
 @media (prefers-reduced-motion:reduce){.bc-arrow i,.bc-toast{transition:none}}

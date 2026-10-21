@@ -71,6 +71,7 @@ class DomScreens implements ScreenView{
   private mousePressed=false;private lastTouch=-Infinity;
   private touchId:number|null=null;private touchX=0;private touchY=0;private longTimer=0;
   private toastTimer=0;private tipTimer=0;private tipFor:ItemStack|null=null;private tipTouch=false;
+  private tipSlot=-1;private tipX=NaN;private tipY=NaN;
   private flame=-1;private arrow=-1;
   private figureArmor:readonly (ItemStack|null)[]|null=null;
   private bookEntries:readonly unknown[]|null=null;private bookOpen=false;
@@ -172,7 +173,7 @@ class DomScreens implements ScreenView{
   }
   toast(message:string){
     const t=this.toastEl;clearTimeout(this.toastTimer);
-    t.textContent=message;t.classList.toggle('show',!!message);
+    t.textContent=message;t.classList.toggle('show',!!message);t.classList.toggle('bc-reduced',this.game.reducedMotion);
     if(message)this.toastTimer=window.setTimeout(()=>t.classList.remove('show'),TOAST_MS);
   }
   dispose(){
@@ -268,6 +269,9 @@ class DomScreens implements ScreenView{
   }
   private showTip(s:ItemStack,index:number){
     const tip=this.tip;
+    // Only lay the tooltip out again when its item, slot or the pointer changed.
+    if(s===this.tipFor&&index===this.tipSlot&&this.px===this.tipX&&this.py===this.tipY&&!tip.hidden)return;
+    this.tipSlot=index;this.tipX=this.px;this.tipY=this.py;
     if(s!==this.tipFor){
       this.tipFor=s;
       tip.innerHTML=tooltipLines(s).map((line,k)=>`<div class="${k===0?'bc-tip-name':line.startsWith(' +')?'bc-tip-plus':line.startsWith(' ')?'bc-tip-stat':'bc-tip-info'}">${esc(line)}</div>`).join('');
@@ -282,7 +286,7 @@ class DomScreens implements ScreenView{
     y=Math.max(4,Math.min(y,l.height-h-4));
     tip.style.transform=`translate(${Math.round(x)}px,${Math.round(y)}px)`;
   }
-  private hideTip(){if(!this.tip.hidden)this.tip.hidden=true;this.tipFor=null;}
+  private hideTip(){if(!this.tip.hidden)this.tip.hidden=true;this.tipFor=null;this.tipSlot=-1;}
   private drawProgress(){
     const p=this.build?.progress?.();if(!p)return;
     if(p.flame!==this.flame){
@@ -438,6 +442,7 @@ class DomScreens implements ScreenView{
   private keyDown(e:KeyboardEvent){
     if(!this.open()||e.defaultPrevented||e.altKey||e.metaKey)return;
     const t=e.target;
+    if(e.key==='Tab'){this.trapFocus(e);return;}
     if(t instanceof HTMLElement&&(t.isContentEditable||t.closest('input,textarea,select')))return;
     if(t instanceof Element&&t!==document.body&&!this.game.root.contains(t)&&t!==document.documentElement)return;
     const c=this.c;
@@ -452,6 +457,14 @@ class DomScreens implements ScreenView{
     }
     if(/^Digit[1-9]$/.test(e.code)&&e.ctrlKey)return;// browser tab switching
     if(c.key(e.code,e.ctrlKey)){e.preventDefault();this.draw(0);}
+  }
+  /** Tab cycles through the screen's controls only (the dialog is modal). */
+  private trapFocus(e:KeyboardEvent){
+    const all=[...this.wrap.querySelectorAll<HTMLElement>('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])')]
+      .filter(el=>!(el as HTMLButtonElement).disabled&&el.getClientRects().length>0);
+    if(!all.length)return;
+    const i=all.indexOf(document.activeElement as HTMLElement);
+    if(e.shiftKey?i<=0:i===-1||i===all.length-1){e.preventDefault();(e.shiftKey?all[all.length-1]:all[0]).focus();}
   }
   /** Arrow keys: focus the nearest slot in that direction. */
   private moveFocus(from:HTMLElement|null,dir:'up'|'down'|'left'|'right'){

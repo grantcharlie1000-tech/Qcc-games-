@@ -84,10 +84,14 @@ describe('inventory model',()=>{
     inv.setSlot(0,st('dirt',4));inv.damageHeld(3);expect(inv.held()).toEqual(st('dirt',4));
     const {inv:c}=setup('creative');c.setSlot(0,st('wooden_pickaxe'));c.damageHeld(100);expect(c.held()).toEqual(st('wooden_pickaxe'));
   });
-  test('damageHeld wears a raised shield in the offhand when the main hand has no durability',()=>{
+  test('damageHeld wears the item in use from the offhand (a raised shield), else the main hand',()=>{
     const {game,inv}=setup();
     inv.setOffhand(st('shield'));(game.interaction as {using:unknown}).using={item:'shield',progress:1};
     inv.damageHeld(3);expect(inv.offhand).toEqual(st('shield',1,3));
+    inv.setSlot(0,st('iron_sword'));inv.damageHeld(2);
+    expect(inv.offhand).toEqual(st('shield',1,5));expect(inv.held()).toEqual(st('iron_sword'));
+    (game.interaction as {using:unknown}).using=null;
+    inv.damageHeld(2);expect(inv.held()).toEqual(st('iron_sword',1,2));expect(inv.offhand).toEqual(st('shield',1,5));
   });
   test('damageArmor wears each piece by max(1, floor(amount/4)) and breaks worn-out pieces',()=>{
     const {game,inv}=setup();
