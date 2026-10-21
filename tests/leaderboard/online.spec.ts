@@ -16,7 +16,7 @@ async function connect(context:BrowserContext,score:number){
 }
 async function join(page:Page,name:string){
  await page.goto('/#/');await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
- await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(14);
+ await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(13);
  await page.getByLabel('Game',{exact:true}).selectOption('snake');await page.getByLabel('Your public nickname').fill(name);await page.getByRole('button',{name:'Join leaderboard',exact:true}).click();
  await expect(page.locator('.lb-table tbody')).toContainText(name);
 }
@@ -56,6 +56,6 @@ test('a score earned in a real game is published after joining',async({page,cont
  await expect(page.getByRole('button',{name:'Save nickname',exact:true})).toBeVisible();await page.getByRole('button',{name:'Close leaderboards'}).click();
  await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
  await open();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('minesweeper');
- await expect(page.locator('.lb-you')).toContainText('Active Player');
+ await expect(page.locator('#leaderboard-dialog .lb-you')).toContainText('Active Player');
  const score=await page.locator('#game-score strong').textContent();await expect(page.locator('.lb-personal')).toContainText(`Best: ${Number(score).toLocaleString()}`);
 });

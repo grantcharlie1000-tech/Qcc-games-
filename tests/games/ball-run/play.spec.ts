@@ -74,8 +74,20 @@ test('native phone touch drag steers continuously and cancel releases capture',a
 
 test('a real restored run accelerates through cyan gates and flies then lands across a gap without jumping',async({page})=>{
   await page.setViewportSize({width:390,height:844});await seedCourse(page,24);await page.goto('/#/game/ball-run');
-  const game=page.locator('.ball-run');await page.getByRole('button',{name:'Continue rolling'}).click();
-  await expect(game.locator('.br-boost')).toBeVisible();
+  const game=page.locator('.ball-run'),boost=game.locator('.br-boost');
+  // The real boost window can fall entirely between Playwright assertion polls.
+  // Observe its actual computed visibility before starting, without slowing the game.
+  await boost.evaluate(element=>{
+    const observer=new MutationObserver(()=>{
+      const rect=element.getBoundingClientRect();
+      if(!(element as HTMLElement).hidden&&rect.width>0&&rect.height>0&&getComputedStyle(element).visibility==='visible'){
+        element.setAttribute('data-test-observed-visible','true');observer.disconnect();
+      }
+    });
+    observer.observe(element,{attributes:true,attributeFilter:['hidden']});
+  });
+  await page.getByRole('button',{name:'Continue rolling'}).click();
+  await expect(boost).toHaveAttribute('data-test-observed-visible','true');
   const bounds=(await game.locator('canvas').boundingBox())!;
   await page.mouse.move(bounds.width*.55,bounds.height*.65);await page.mouse.down();await page.mouse.move(bounds.width*.49,bounds.height*.65,{steps:4});
   await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)<-.08);await page.mouse.up();
@@ -92,8 +104,9 @@ test('a real restored run accelerates through cyan gates and flies then lands ac
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`perspective keeps a round ball and fills ${viewport.width}x${viewport.height}`,async({page})=>{
   await page.setViewportSize(viewport);await seedCourse(page,58);await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Continue rolling'}).click();await frames(page,5);
   const canvas=page.locator('.ball-run canvas'),box=(await canvas.boundingBox())!;
-  expect(box.width).toBeCloseTo(viewport.width,0);expect(box.height).toBeCloseTo(viewport.height,0);
-  expect(Number(await page.locator('.ball-run').getAttribute('data-aspect'))).toBeCloseTo(viewport.width/viewport.height,4);
+  const playWidth=viewport.width>=1100?viewport.width-264:viewport.width;
+  expect(box.x).toBeCloseTo(viewport.width-playWidth,0);expect(box.width).toBeCloseTo(playWidth,0);expect(box.height).toBeCloseTo(viewport.height,0);
+  expect(Number(await page.locator('.ball-run').getAttribute('data-aspect'))).toBeCloseTo(playWidth/viewport.height,4);
   const ballY=Number(await page.locator('.ball-run').getAttribute('data-ball-screen-y'));expect(ballY).toBeGreaterThan(.60);expect(ballY).toBeLessThan(.78);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await page.screenshot({path:`tests/games/ball-run/evidence/${viewport.width}x${viewport.height}.png`});

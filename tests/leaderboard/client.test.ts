@@ -28,3 +28,10 @@ it('ignores malformed saved rankings instead of breaking the offline dialog',()=
  const storage=memory();storage.write('leaderboard:cache:snake',{entries:'corrupt',player:null});
  const sync=new LeaderboardSync(storage);expect(sync.cached('snake')).toBeNull();sync.dispose();
 });
+it('notifies visible ranking consumers only after a successful score sync and supports unsubscribe',async()=>{
+ let available=false;const sync=new LeaderboardSync(memory(),vi.fn(async()=>{if(!available)throw Error('offline');return Response.json({});}) as typeof fetch);
+ const changed=vi.fn();expect(typeof sync.onSynced).toBe('function');const unsubscribe=sync.onSynced(changed);
+ sync.join('Ada');sync.queue('snake',10);await expect(sync.flush()).rejects.toThrow();expect(changed).not.toHaveBeenCalled();
+ available=true;await sync.flush();expect(changed).toHaveBeenCalledWith('snake');
+ unsubscribe();sync.queue('snake',20);await sync.flush();expect(changed).toHaveBeenCalledTimes(1);sync.dispose();
+});

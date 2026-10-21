@@ -12,7 +12,7 @@ export class LeaderboardView {
   this.root.id='leaderboard-dialog';this.root.setAttribute('aria-labelledby','leaderboard-title');
   this.root.innerHTML=`<form method="dialog" class="dialog-head"><h2 id="leaderboard-title">Leaderboards</h2><button class="icon-button" aria-label="Close leaderboards">×</button></form>
    <p class="muted">Best scores from players online. One personal best per player, per game.</p>
-   <label for="leaderboard-game">Game</label><select id="leaderboard-game" class="game-select">${games.filter(g=>scoredGame(g.id)).map(g=>`<option value="${g.id}">${g.title}</option>`).join('')}</select>
+   <label for="leaderboard-game">Game</label><select id="leaderboard-game" class="game-select">${games.filter(g=>g.id!=='pool'&&scoredGame(g.id)).map(g=>`<option value="${g.id}">${g.title}</option>`).join('')}</select>
    <p class="lb-status muted" role="status"></p>
    <table class="lb-table"><caption class="sr-only">Top 25 scores</caption><thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Score</th></tr></thead><tbody></tbody></table>
    <p class="lb-personal muted"></p>
@@ -29,7 +29,7 @@ export class LeaderboardView {
  private get select(){return this.root.querySelector<HTMLSelectElement>('#leaderboard-game')!;}
  private status(text:string){this.root.querySelector('.lb-status')!.textContent=text;}
  open(game?:GameId){
-  if(game&&scoredGame(game))this.select.value=game;
+  if(game&&game!=='pool'&&scoredGame(game))this.select.value=game;
   const profile=this.sync.profile();this.root.querySelector<HTMLInputElement>('#leaderboard-name')!.value=profile?.name??'';
   this.root.querySelector('.lb-profile button')!.textContent=profile?'Save nickname':'Join leaderboard';
   this.root.showModal();void this.refresh();
