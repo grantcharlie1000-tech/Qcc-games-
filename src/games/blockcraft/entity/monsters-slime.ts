@@ -43,11 +43,15 @@ const data=(e:Entity)=>e.data as unknown as SlimeData;
 export function isSlimeChunk(seed:number,cx:number,cz:number):boolean{
   return hashInts(seed^0x3ad8025f,cx,cz^0x3ad8f3df)%10===0;
 }
-/** Vanilla natural-spawn rule for a slime at block (x, y, z) (feet cell); draws from `random` like vanilla. */
+/** Night as vanilla's Level.isNight() sees it: sky darkening of 4 or more (after dusk, or under a thunderstorm). */
+export const isNight=(game:Game)=>game.time.skyDarkening>=4;
+/** Vanilla natural-spawn rule (checkSlimeSpawnRules) for a slime at block (x, y, z) (feet cell), drawing from `random` in
+ *  vanilla order: in swamps between y 50 and 70 at night, half the time, scaled by the moon phase, where the light is at most
+ *  a random 0..7; or one roll in ten below y 40 in a slime chunk. */
 export function slimeCanSpawn(game:Game,x:number,y:number,z:number,random:()=>number=gameRandom(game)):boolean{
   if(game.settings.difficulty==='peaceful')return false;
-  if(SURFACE_SLIME_BIOMES.has(biomeDef(game.world.biomeAt(x,z)).name)&&y>50&&y<70&&random()<.5&&random()<moonBrightness(game.time.day)
-    &&game.world.brightnessAt(x,y,z)<=randInt(random,8))return true;
+  if(SURFACE_SLIME_BIOMES.has(biomeDef(game.world.biomeAt(x,z)).name)&&y>50&&y<70&&isNight(game)&&random()<.5
+    &&random()<moonBrightness(game.time.day)&&game.world.brightnessAt(x,y,z)<=randInt(random,8))return true;
   return randInt(random,10)===0&&y<40&&isSlimeChunk(game.terrain.seed,Math.floor(x/CS),Math.floor(z/CS));
 }
 /** Vanilla random size: 1, 2 or 4 with equal odds. */
@@ -121,9 +125,10 @@ export function createSlimeKind():EntityKind{
     spawn:{light:'dark',group:[4,4],weight:100,biomes:BIOMES.filter(b=>b.name!=='mushroom_fields').map(b=>[b.name,100] as const)},
     init(e,game,reason){
       const d=e.data,r=gameRandom(game),natural=reason==='natural'||reason==='chunk';
-      const size:SlimeSize=!natural&&isSlimeSize(d.size)?d.size:randomSlimeSize(r);
-      // Natural spawns that break the slime rules are dropped at once.
+      // Natural spawns that break the slime rules are dropped at once (removed before they ever tick).
       if(natural&&!slimeCanSpawn(game,Math.floor(e.x),Math.floor(e.y),Math.floor(e.z),r)){e.removed=true;return;}
+      // Spawn eggs, spawners and natural spawns roll a size (vanilla finalizeSpawn); splits and restores keep theirs.
+      const size:SlimeSize=!natural&&isSlimeSize(d.size)?d.size:randomSlimeSize(r);
       applySlimeSize(e,size,reason!=='restore');
       if(!int(d.jump,0,30))d.jump=randInt(r,20)+10;
       if(typeof d.dir!=='number'||!Number.isFinite(d.dir))d.dir=e.yaw;

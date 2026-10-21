@@ -16,6 +16,8 @@ const seq=(...values:number[])=>()=>values.length?values.shift()!:.5;
 /** A seed whose chunk (0, 0) is (or is not) a slime chunk. */
 function seedFor(slimy:boolean){for(let s=1;s<5000;s++)if(isSlimeChunk(s,0,0)===slimy)return s;throw new Error('no seed');}
 function swamp(h:MonsterHarness){for(let cz=-2;cz<=2;cz++)for(let cx=-2;cx<=2;cx++)h.game.world.chunk(cx,cz)!.biomes.fill(biomeId('swamp'));}
+/** Midnight sky: 11 levels of darkening (sky brightness 4 in the open). */
+function night(h:MonsterHarness){h.game.time.skyDarkening=11;(h.game.world as VoxelWorld).skyDarkening=11;}
 
 describe('slime sizes',()=>{
   test('registered as a hostile with the vanilla spawn entry and the large spawn box',()=>{
@@ -164,10 +166,9 @@ describe('slime spawn rules',()=>{
   });
   test('swamps allow surface spawns between y 50 and 70 at night, more under a full moon',()=>{
     const h=createHarness();swamp(h);h.game.terrain={...h.game.terrain,seed:seedFor(false)};
-    const world=h.game.world as VoxelWorld;
-    // Noon: sky light 15 is never at or below the random 0..7.
+    // Noon: day, and sky light 15 is never at or below the random 0..7.
     expect(slimeCanSpawn(h.game,5,60,5,seq(.1,.1,.99,.9))).toBe(false);
-    world.skyDarkening=11;// night: brightness 4
+    night(h);// brightness 4
     expect(slimeCanSpawn(h.game,5,60,5,seq(.1,.1,.99))).toBe(true);
     expect(slimeCanSpawn(h.game,5,60,5,seq(.1,.1,.4,.9))).toBe(false);// brightness 4 > random 3
     expect(slimeCanSpawn(h.game,5,60,5,seq(.6,.9))).toBe(false);// the 50 % roll
@@ -179,9 +180,19 @@ describe('slime spawn rules',()=>{
     h.game.time.day=9;expect(moonBrightness(9)).toBe(1);
     expect(slimeCanSpawn(h.game,5,60,5,seq(.1,.1,.99))).toBe(true);
   });
+  test('a dark swamp in daytime is not night: no surface slimes there',()=>{
+    const h=createHarness();swamp(h);h.game.terrain={...h.game.terrain,seed:seedFor(false)};
+    // A roofed-over swamp at noon: brightness 0, but it is day.
+    for(let z=0;z<=10;z++)for(let x=0;x<=10;x++)h.game.world.set(x,63,z,B.stone,'player');
+    expect(h.game.world.brightnessAt(5,60,5)).toBeLessThanOrEqual(7);
+    expect(slimeCanSpawn(h.game,5,60,5,seq(.1,.1,.99,.9))).toBe(false);
+    // Dusk darkening of 4 counts as night (vanilla Level.isNight), so do thunderstorms.
+    h.game.time.skyDarkening=4;
+    expect(slimeCanSpawn(h.game,5,60,5,seq(.1,.1,.99))).toBe(true);
+  });
   test('other biomes do not allow surface slimes; peaceful allows none',()=>{
     const h=createHarness();h.game.terrain={...h.game.terrain,seed:seedFor(true)};
-    (h.game.world as VoxelWorld).skyDarkening=11;
+    night(h);
     expect(slimeCanSpawn(h.game,5,60,5,seq(.1,.1,.99,.9))).toBe(false);
     h.game.updateSettings({difficulty:'peaceful'});
     expect(slimeCanSpawn(h.game,5,30,5,seq(.05))).toBe(false);
@@ -190,7 +201,7 @@ describe('slime spawn rules',()=>{
     const h=createHarness();h.game.terrain={...h.game.terrain,seed:seedFor(true)};
     const surface=slime(h,undefined,5.5,60,5.5,'natural');
     expect(surface.removed).toBe(true);
-    h.queueRandom(.9,.05);// size roll (→ 4), then the slime chunk roll
+    h.queueRandom(.05,.9);// the slime chunk roll, then the size roll (→ 4)
     const deep=slime(h,undefined,5.5,30,5.5,'natural');
     expect(deep.removed).toBe(false);expect(deep.data.size).toBe(4);expect(deep.width).toBeCloseTo(2.08);
   });

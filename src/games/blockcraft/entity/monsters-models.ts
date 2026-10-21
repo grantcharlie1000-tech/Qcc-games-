@@ -39,15 +39,16 @@ const skin=(salt:number,base=SKIN):FacePainter=>(face,x,y)=>{
   return shade(base,.8+n*.4);
 };
 const endermanParts:ModelPart[]=[
-  {name:'body',pivot:[0,27,0],boxes:[{from:[-4,0,-2],size:[8,12,4],uv:[32,16]}]},
+  // Vanilla layout: legs 0–30 px, body 26–38, arms hang from the shoulders (8–38), head 38–46; no coplanar faces between parts.
+  {name:'body',pivot:[0,26,0],boxes:[{from:[-4,0,-2],size:[8,12,4],uv:[32,16]}]},
   {name:'head',pivot:[0,38,0],boxes:[{from:[-4,0,-4],size:[8,8,8],uv:[0,0]}]},
   // The jaw is a slightly smaller copy of the head: hidden inside it until the head lifts.
   {name:'jaw',pivot:[0,38,0],boxes:[{from:[-4,0,-4],size:[8,8,8],uv:[0,16],inflate:-.5}]},
   {name:'eyes',pivot:[0,38,0],emissive:true,boxes:[
     {from:[-3.5,3,-4.25],size:[3,1,1],uv:[32,0]},
     {from:[.5,3,-4.25],size:[3,1,1],uv:[32,0],mirror:true}]},
-  {name:'right_arm',pivot:[-5,37,0],boxes:[{from:[-1,-28,-1],size:[2,30,2],uv:[56,0]}]},
-  {name:'left_arm',pivot:[5,37,0],boxes:[{from:[-1,-28,-1],size:[2,30,2],uv:[56,0],mirror:true}]},
+  {name:'right_arm',pivot:[-5,36,0],boxes:[{from:[-1,-28,-1],size:[2,30,2],uv:[56,0]}]},
+  {name:'left_arm',pivot:[5,36,0],boxes:[{from:[-1,-28,-1],size:[2,30,2],uv:[56,0],mirror:true}]},
   {name:'right_leg',pivot:[-2,30,0],boxes:[{from:[-1,-30,-1],size:[2,30,2],uv:[56,0]}]},
   {name:'left_leg',pivot:[2,30,0],boxes:[{from:[-1,-30,-1],size:[2,30,2],uv:[56,0],mirror:true}]},
   // A half-size block held between the hands, turned 45° and tipped toward the viewer (vanilla's carried block pose).
