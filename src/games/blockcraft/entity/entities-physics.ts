@@ -4,7 +4,9 @@
 //    ground acceleration s² × 0.216 / slipperiness³ then friction slipperiness × 0.91, air 0.02 s with 0.91, water 0.02 s
 //    with 0.8 and gravity / 16 (slow sinking, climbing out at ledges), lava 0.02 s with 0.5 and gravity / 4. Jumps are
 //    0.42 blocks/tick (8.4 blocks/second), 0.04 upward per tick when swimming. Water mobs (aquatic) swim freely toward
-//    the intent in water with 0.9 drag. Ladders clamp the speed to 0.15 and climb at 0.2.
+//    the intent in water with 0.9 drag; aquatic mobs outside category 'water' (drowned) also climb out at a ledge like
+//    land mobs when their intent points at the bank (vanilla drowned use normal water travel when they do not want to
+//    swim). Ladders clamp the speed to 0.15 and climb at 0.2.
 //  - dropped items (ItemEntity): gravity 0.04, buoyant in water and lava, 0.98 drag, ground friction × 0.98.
 //  - experience orbs (ExperienceOrb): gravity 0.03, float up in water, hop out of lava, bounce on the ground.
 //  - other bodies (falling blocks, primed TNT, thrown items): gravity, move, drag, 0.7 ground friction.
@@ -133,6 +135,18 @@ function push(f:FluidState){
   if(len>1e-6){PUSH.x=f.flowX/len*.014;PUSH.z=f.flowZ/len*.014;}else PUSH.x=PUSH.z=0;
 }
 
+/** Vanilla LivingEntity.travel climb-out: after a blocked move in a liquid, the box raised 0.6 above the start (and moved
+ *  by the remaining motion) is free of blocks and liquid. */
+function canClimbOut(world:BlockSource,e:Entity,ux:number,uy:number,uz:number,y0:number):boolean{
+  const hw=e.width/2,ny=e.y+uy+.6-(e.y-y0);
+  const minX=e.x+ux-hw,minZ=e.z+uz-hw,maxX=e.x+ux+hw,maxZ=e.z+uz+hw;
+  return !boxCollides(world,minX,ny,minZ,maxX,ny+e.height,maxZ)&&!liquidIn(world,minX,ny,minZ,maxX,ny+e.height,maxZ);
+}
+/** The move was blocked along an axis the movement intent pushes into (the mob wants to go that way). */
+function intentBlocked(r:MoveResult,dirX:number,dirZ:number):boolean{
+  return r.hitX&&Math.abs(dirX)>.1||r.hitZ&&Math.abs(dirZ)>.1;
+}
+
 /** One tick of a living mob's motion. */
 export function stepLiving(world:BlockSource,e:Entity,p:ResolvedPhysics,f:FluidState,aquatic:boolean,m:Motion):void{
   let ux=e.vx*TICK,uy=e.vy*TICK,uz=e.vz*TICK;
@@ -149,8 +163,10 @@ export function stepLiving(world:BlockSource,e:Entity,p:ResolvedPhysics,f:FluidS
   const y0=e.y;
   if(f.water&&aquatic){
     const a=target*.1;ux+=dirX*a;uz+=dirZ*a;
-    move(world,e,ux,uy,uz,p.stepHeight,m,LIVING_BOUNCE);
+    const hit=move(world,e,ux,uy,uz,p.stepHeight,m,LIVING_BOUNCE);
     ux=e.vx*TICK*.9;uz=e.vz*TICK*.9;uy=(e.vy*TICK-g/16)*.9;
+    // Aquatic land-dwellers (drowned) heading for the bank climb out like any mob in water.
+    if(e.category!=='water'&&e.collidedH&&target>1e-9&&intentBlocked(hit,dirX,dirZ)&&canClimbOut(world,e,ux,uy,uz,y0))uy=.3;
   }else if(f.water||f.lava){
     const a=.02*s;ux+=dirX*a;uz+=dirZ*a;
     move(world,e,ux,uy,uz,p.stepHeight,m,LIVING_BOUNCE);
@@ -164,11 +180,7 @@ export function stepLiving(world:BlockSource,e:Entity,p:ResolvedPhysics,f:FluidS
       if(g>0)uy-=g/4;
     }
     // Climb out at a ledge (vanilla: the box raised 0.6 above the start is free of blocks and liquid).
-    if(e.collidedH){
-      const hw=e.width/2,ny=e.y+uy+.6-(e.y-y0);
-      const minX=e.x+ux-hw,minZ=e.z+uz-hw,maxX=e.x+ux+hw,maxZ=e.z+uz+hw;
-      if(!boxCollides(world,minX,ny,minZ,maxX,ny+e.height,maxZ)&&!liquidIn(world,minX,ny,minZ,maxX,ny+e.height,maxZ))uy=.3;
-    }
+    if(e.collidedH&&canClimbOut(world,e,ux,uy,uz,y0))uy=.3;
     m.fallDistance=0;
   }else{
     const f2=slipperinessBelow(world,e),f3=e.onGround?f2*.91:.91;

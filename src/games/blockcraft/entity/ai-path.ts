@@ -9,7 +9,8 @@
 //  - Moves: the 8 neighbours at the same level (diagonals only without cutting corners), one block up (a jump, with
 //    headroom above the mob), or down by up to MAX_DROP blocks; deeper drops are cliffs and are never taken.
 //  - Lava, fire and cacti are never entered nor stood on; cells next to them cost 8 more (vanilla DANGER malus),
-//    water costs 8 more for land mobs (vanilla WATER malus).
+//    water costs 8 more for land mobs (vanilla WATER malus) and is never entered by kinds that avoid water (endermen,
+//    vanilla WATER malus -1); a path may still start in water so such a mob can walk out.
 // A search reads the same cells many times (8 neighbours per node, danger rings, diagonal checks), so block ids and the
 // per-cell answers (body clear, floor, near danger) are memoised in a window around the start for the duration of one
 // search, stamped with a search generation so nothing is cleared in between. Each world cell is read about once.
@@ -49,6 +50,8 @@ export interface PathRequest{
   width:number;height:number;
   /** Water mobs: no water malus. */
   aquatic?:boolean;
+  /** Never enter water cells (EntityKind.avoidsWater). */
+  avoidWater?:boolean;
   maxNodes?:number;maxDrop?:number;
 }
 export interface PathResult{
@@ -212,7 +215,7 @@ export function findPath(source:BlockSource,sx:number,sy:number,sz:number,tx:num
   try{return search(sx,sy,sz,tx,ty,tz,req,out,result);}finally{memo=false;}
 }
 function search(sx:number,sy:number,sz:number,tx:number,ty:number,tz:number,req:PathRequest,out:Int32Array,result:PathResult):PathResult{
-  const maxNodes=req.maxNodes??MAX_NODES,maxDrop=req.maxDrop??MAX_DROP,waterCost=req.aquatic?0:8;
+  const maxNodes=req.maxNodes??MAX_NODES,maxDrop=req.maxDrop??MAX_DROP,waterCost=req.aquatic?0:8,avoidWater=!!req.avoidWater&&!req.aquatic;
   INDEX.clear();count=0;heapSize=0;ox=sx;oz=sz;gx=tx;gy=ty;gz=tz;
   const start=count++;setNode(sx,sy,sz,start);
   NX[start]=sx;NY[start]=sy;NZ[start]=sz;PARENT[start]=-1;G[start]=0;H[start]=dist(sx,sy,sz);F[start]=H[start];CLOSED[start]=0;heapPush(start);
@@ -245,7 +248,7 @@ function search(sx:number,sy:number,sz:number,tx:number,ty:number,tz:number,req:
       }else continue;
       let cost=diagonal?Math.SQRT2:1;
       if(ny>y)cost+=.5;else if(ny<y)cost+=.25*(y-ny);
-      if(inWater(nx,ny,nz))cost+=waterCost;
+      if(inWater(nx,ny,nz)){if(avoidWater)continue;cost+=waterCost;}
       if(nearDanger(nx,ny,nz))cost+=8;
       visit(n,nx,ny,nz,cost);
     }
