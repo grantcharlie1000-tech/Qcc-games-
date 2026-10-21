@@ -1,7 +1,8 @@
 import {describe,expect,test} from 'vitest';
 import {heartIcons,foodIcons,armorIcons,airBubbles,xpFill,durabilityBar,attackIndicator,heldNameFade,heldNameOpacity,HealthTracker,
-  regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,heldName,hsvToRgb,type HeartInput} from '../../../src/games/blockcraft/ui/hud-model';
-import {ICON_NAMES,iconGrid,iconSvg,iconPalette,digitsSvg,DIGIT_GLYPHS,hotbarSvg,xpBarSvg} from '../../../src/games/blockcraft/ui/hud-art';
+  regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,type HeartInput} from '../../../src/games/blockcraft/ui/hud-model';
+import {ICON_NAMES,iconGrid,iconSvg,iconPalette,digitsSvg,DIGIT_GLYPHS,hotbarSvg,xpBarSvg,compassGrid,clockGrid,dialFrame,COMPASS_FRAMES,CLOCK_FRAMES,
+  selectionFrameSvg,offhandSvg} from '../../../src/games/blockcraft/ui/hud-art';
 import {optionLabel,nextDifficulty,keyLabel,controlRows,fovLabel,sensitivityFromSlider,sensitivityToSlider} from '../../../src/games/blockcraft/ui/menus-options';
 import {createFakeGame} from './helpers/fake-game';
 import type {InputBinding} from '../../../src/games/blockcraft/engine/contracts';
@@ -189,6 +190,13 @@ describe('debug overlay',()=>{
     for(const part of ['58 fps','scale 1.00','Draw calls: 0','XYZ: 12.500 / 60.000 / -3.250','Block: 12 60 -4','Chunk: 0 -1','Facing: north','Biome: Ocean','sky','block',
       'Day 4','13000','Weather: rain','Entities: 0','Mobs: 3 passive, 2 hostile, 1 water'])expect(text).toContain(part);
   });
+  test('the right column shows the display, the targeted block and the held item',()=>{
+    const game=createFakeGame();game.flat(60);
+    game.interaction={...game.interaction,target:{x:3,y:59,z:-2,nx:0,ny:1,nz:0,id:1,distance:2}};
+    game.inventory.setSlot(0,{id:'dirt',count:5});
+    const text=debugRightLines(game,1366,768,3).join('\n');
+    for(const part of ['Display: 1366x768','GUI scale 3.00','Targeted Block: 3, 59, -2','Held: dirt x5'])expect(text).toContain(part);
+  });
 });
 
 describe('pixel art',()=>{
@@ -235,6 +243,40 @@ describe('pixel art',()=>{
   });
 });
 
+describe('compass and clock dials',()=>{
+  const find=(grid:readonly string[],ch:string)=>grid.flatMap((row,y)=>[...row].map((c,x)=>c===ch?{x,y}:null)).filter(Boolean) as {x:number;y:number}[];
+  test('the compass needle tip turns clockwise with the frame',()=>{
+    const tip=(frame:number)=>{const n=find(compassGrid(frame),'N');return n.reduce((a,b)=>Math.hypot(b.x-7.5,b.y-7.5)>Math.hypot(a.x-7.5,a.y-7.5)?b:a);};
+    expect(tip(0).y).toBeLessThan(4);expect(Math.abs(tip(0).x-7.5)).toBeLessThan(1.5);
+    expect(tip(COMPASS_FRAMES/4).x).toBeGreaterThan(11);
+    expect(tip(COMPASS_FRAMES/2).y).toBeGreaterThan(11);
+    expect(tip(COMPASS_FRAMES*3/4).x).toBeLessThan(4);
+  });
+  test('the clock shows the sun on top at noon and the moon on top at midnight',()=>{
+    const mean=(pts:{y:number}[])=>pts.reduce((n,p)=>n+p.y,0)/pts.length;
+    const noon=clockGrid(dialFrame(sunAngle(6000),CLOCK_FRAMES)),midnight=clockGrid(dialFrame(sunAngle(18000),CLOCK_FRAMES));
+    expect(mean(find(noon,'S'))).toBeLessThan(7);expect(mean(find(noon,'M'))).toBeGreaterThan(8);
+    expect(mean(find(midnight,'M'))).toBeLessThan(7);expect(mean(find(midnight,'S'))).toBeGreaterThan(8);
+    expect(find(noon,'D').filter(p=>p.y<6).length).toBeGreaterThan(find(noon,'N').filter(p=>p.y<6).length);
+  });
+  test('dial frames wrap around',()=>{
+    expect(dialFrame(0,32)).toBe(0);expect(dialFrame(-Math.PI/2,32)).toBe(24);expect(dialFrame(Math.PI*2,32)).toBe(0);expect(dialFrame(Math.PI,64)).toBe(32);
+  });
+  test('slot art has vanilla sizes and the selection frame leaves the item visible',()=>{
+    expect(offhandSvg()).toContain('width="22" height="22"');
+    const sel=selectionFrameSvg();expect(sel).toContain('width="24" height="24"');expect(sel).not.toContain('x="4" y="4" width="16" height="16"');
+  });
+});
+
+describe('per-tick randomness',()=>{
+  test('is deterministic per tick, varies between ticks and stays in [0, 1)',()=>{
+    const a=tickRandom(42),b=tickRandom(42),c=tickRandom(43);
+    const sa=[a(),a(),a()],sb=[b(),b(),b()],sc=[c(),c(),c()];
+    expect(sa).toEqual(sb);expect(sa).not.toEqual(sc);
+    for(const v of [...sa,...sc])expect(v>=0&&v<1).toBe(true);
+  });
+});
+
 describe('menu options',()=>{
   test('labels use vanilla wording',()=>{
     const s={mode:'survival',difficulty:'normal',view:1,sensitivity:1,fov:70,volume:0,keepInventory:false,daylightCycle:true,mobSpawning:true,weatherCycle:true} as const;
@@ -263,5 +305,6 @@ describe('menu options',()=>{
     const rows=controlRows(bindings);
     expect(rows.slice(0,2)).toEqual([{label:'Walk forward',keys:'W / Up Arrow'},{label:'Attack / mine',keys:'Left Click'}]);
     expect(rows.map(r=>r.label)).toEqual(expect.arrayContaining(['Select hotbar slot','Hide HUD','Debug screen']));
+    expect(controlRows([{action:'dropStack',keys:['ControlLeft+KeyQ'],label:'Drop the whole stack'}])[0].keys).toBe('Left Ctrl + Q');
   });
 });
