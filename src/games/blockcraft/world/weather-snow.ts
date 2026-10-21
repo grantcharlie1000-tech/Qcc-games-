@@ -1,7 +1,7 @@
 // Snow layers and ice (vanilla ServerLevel.tickPrecipitation with Biome.shouldFreeze / shouldSnow): each tick, every
-// loaded chunk within TICKING_RANGE of the player has a 1/16 chance to pick one random column. Its top water source
-// freezes when cold, dim and at the edge of the water (in any weather, like vanilla); while it snows, its first open
-// cell also gets a snow layer when cold, dim and resting on an opaque block (or leaves).
+// loaded chunk within TICKING_RANGE of the player has a 1/16 chance to pick one random column. While it snows (the
+// WeatherService contract; vanilla also freezes in clear weather), its top water source freezes when cold, dim and at
+// the edge of the water, and its first open cell gets a snow layer when cold, dim and resting on an opaque block (or leaves).
 import {AIR,B,blockDef,isWater} from '../data/blocks';
 import {biomeDef,coldAt} from '../data/biomes';
 import {CH,CS} from '../engine/constants';
@@ -39,13 +39,14 @@ export function shouldSnow(world:World,x:number,y:number,z:number):boolean{
 }
 const SIDES=[[1,0],[-1,0],[0,1],[0,-1]] as const;
 
-/** One precipitation update of a column: freezes its top water, or (while `snowing`) lays snow on it.
+/** One precipitation update of a column while `snowing`: freezes its top water or lays snow on it; nothing otherwise.
  *  Writes with cause 'tick'; returns what changed. */
 export function precipitateColumn(world:World,x:number,z:number,snowing=true):'ice'|'snow'|null{
+  if(!snowing)return null;
   const h=precipitationHeight(world,x,z);
   if(h<=0||h>=CH)return null;
   if(shouldFreeze(world,x,h-1,z)&&world.set(x,h-1,z,B.ice,'tick'))return 'ice';
-  if(snowing&&shouldSnow(world,x,h,z)&&world.set(x,h,z,B.snow,'tick'))return 'snow';
+  if(shouldSnow(world,x,h,z)&&world.set(x,h,z,B.snow,'tick'))return 'snow';
   return null;
 }
 
@@ -56,9 +57,9 @@ function editCount(world:World):number{
 }
 
 /** The per-tick pass over loaded chunks near (px,pz): each ticking chunk gets a 1/16 chance of one random column
- *  update. `snowing` = it is raining (vanilla isRaining); water freezes in any weather. */
+ *  update. `snowing` = it is raining (vanilla isRaining); cold columns then get snow and ice, nothing changes otherwise. */
 export function precipitationTick(world:World,px:number,pz:number,random:()=>number,snowing:boolean):void{
-  if(world.editsFull||editCount(world)>=MAX_EDITS*WEATHER_EDIT_SHARE)return;
+  if(!snowing||world.editsFull||editCount(world)>=MAX_EDITS*WEATHER_EDIT_SHARE)return;
   for(const chunk of world.chunks.values()){
     if(!isTickingChunk(chunk.cx,chunk.cz,px,pz))continue;
     if(random()>=PRECIPITATION_CHANCE)continue;

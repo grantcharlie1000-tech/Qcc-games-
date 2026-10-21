@@ -230,18 +230,24 @@ describe('snow layers and ice',()=>{
     const warm=setup('plains');warm.game.world.set(0,63,0,B.water);expect(precipitateColumn(warm.game.world,0,0)).toBeNull();
     expect(weather.state).toBe('rain');
   });
-  test('cold water freezes in any weather like vanilla, but snow only falls while it snows',()=>{
+  test('cold water freezes and snow falls only while it snows (WeatherService contract)',()=>{
     const {game,weather}=setup('snowy_plains');
     for(let x=-30;x<30;x++)for(let z=-30;z<30;z++)game.world.set(x,63,z,B.water);
+    const count=()=>{
+      let ice=0,snow=0,edgeIce=0;
+      for(let x=-30;x<30;x++)for(let z=-30;z<30;z++){
+        if(game.world.get(x,63,z)===B.ice){ice++;if(x===-30||x===29||z===-30||z===29)edgeIce++;}
+        if(game.world.get(x,64,z)===B.snow)snow++;
+      }
+      return{ice,snow,edgeIce};
+    };
     tick(game,4000);
-    let ice=0,snow=0,edgeIce=0;
-    for(let x=-30;x<30;x++)for(let z=-30;z<30;z++){
-      if(game.world.get(x,63,z)===B.ice){ice++;if(x===-30||x===29||z===-30||z===29)edgeIce++;}
-      if(game.world.get(x,64,z)===B.snow)snow++;
-    }
-    expect(weather.state).toBe('clear');
-    expect(ice).toBeGreaterThan(100);expect(edgeIce).toBeGreaterThan(20);expect(snow).toBe(0);
-    expect(precipitateColumn(game.world,-20,-20,false)).not.toBe('snow');
+    expect(weather.state).toBe('clear');expect(count()).toEqual({ice:0,snow:0,edgeIce:0});
+    expect(precipitateColumn(game.world,-30,-20,false)).toBeNull();
+    expect(game.world.get(-30,63,-20)).toBe(B.water);
+    startRain(game,weather);tick(game,4000);
+    const {ice,edgeIce}=count();
+    expect(ice).toBeGreaterThan(100);expect(edgeIce).toBeGreaterThan(20);
   });
   test('only chunks within 128 blocks of the player get snow and ice',()=>{
     const {game,weather}=setup('snowy_plains');
@@ -322,6 +328,16 @@ describe('lightning',()=>{
     weather.strike(25,70,24);tick(game,1);
     expect(game.world.get(25,70,24)).toBe(FIRE);
   });
+  test('lightning fire uses the fire odds families (world/fire.ts): not beside crafting tables or barrels, beside coal and moss blocks',()=>{
+    const {game,weather}=setup('plains');startRain(game,weather);game.player.teleport(90.5,64,.5);
+    const column=(x:number,z:number,id:number)=>{for(let y=64;y<=72;y++)game.world.set(x,y,z,id);};
+    const cases:[string,boolean][]=[['crafting_table',false],['barrel',false],['coal_block',true],['moss_block',true],['bookshelf',true],['white_wool',true]];
+    cases.forEach(([name,burns],i)=>{
+      const x=-30+i*12;column(x,-20,blockId(name));
+      weather.strike(x+1,70,-20);tick(game,1);
+      expect(game.world.get(x+1,70,-20)===FIRE,name).toBe(burns);
+    });
+  });
   test('thunder is heard after a delay of 1 second per 40 blocks',()=>{
     const {game,weather,sounds}=setup('plains');startRain(game,weather);
     game.player.teleport(.5,64,.5);
@@ -337,6 +353,16 @@ describe('lightning',()=>{
     expect(weather.flash).toBeGreaterThan(.5);expect(weather.bolts.length).toBe(1);
     tick(game,40);for(let i=0;i<30;i++)weather.frame?.(1/60);
     expect(weather.flash).toBeLessThan(.05);expect(weather.bolts.length).toBe(0);
+  });
+  test('the flash holds between ticks but fades once the world stops ticking (death screen, pause) with a bolt alive',()=>{
+    const {game,weather}=setup('plains');startRain(game,weather,'thunder');game.player.teleport(40.5,64,.5);
+    weather.strike(2,64,2);tick(game,1);
+    for(let i=0;i<3;i++)weather.frame?.(1/60);
+    expect(weather.flash).toBe(1);
+    game.setState('dead');
+    for(let i=0;i<600;i++)weather.frame?.(1/60);
+    expect(weather.bolts.length).toBe(1);expect(weather.bolts[0].life).toBeGreaterThanOrEqual(0);
+    expect(weather.flash).toBe(0);
   });
   test('lightning ticks the chunks whose centre is within 128 blocks of the player (vanilla), each at 1/100000 per tick',()=>{
     expect(isTickingChunk(0,0,.5,.5)).toBe(true);expect(isTickingChunk(-8,0,.5,.5)).toBe(true);
@@ -430,5 +456,13 @@ describe('rain sound',()=>{
     expect(rain.length).toBeGreaterThan(0);
     expect(rain.some(r=>r.volume<.6&&r.pitch<.6)).toBe(true);
     expect(rain.every(r=>r.volume<1)).toBe(true);
+  });
+  test('rain is quieter under a low roof right above the head (a 2-high room)',()=>{
+    const {game,weather,sounds}=setup('plains');
+    for(let x=-12;x<=12;x++)for(let z=-12;z<=12;z++)game.world.set(x,66,z,B.stone);
+    startRain(game,weather);sounds.length=0;tick(game,200);
+    const rain=sounds.filter(s=>s.name==='rain');
+    expect(rain.length).toBeGreaterThan(0);
+    for(const r of rain){expect(r.volume).toBeLessThanOrEqual(.5);expect(r.pitch).toBe(1);}// vanilla rain-above pitch needs a higher roof
   });
 });

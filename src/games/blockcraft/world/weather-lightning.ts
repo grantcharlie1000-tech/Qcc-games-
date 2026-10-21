@@ -75,13 +75,17 @@ export function rollStrikeColumn(px:number,pz:number,random:()=>number):{x:numbe
   return{x:cx*CS+Math.floor(random()*CS),z:cz*CS+Math.floor(random()*CS)};
 }
 
-/** Blocks fire can burn (vanilla FireBlock odds): the registry's flammable blocks plus grass, ferns, dead bushes and flowers. */
+/** Block families fire can burn (vanilla FireBlock.bootStrap ignite odds above 0). This is the same table as the fire
+ *  owner's (world/fire.ts in the ticks area): planks, logs, leaves, wool and these families. Crafting tables and barrels
+ *  only catch from lava, so fire does not cling to them; a fire placed there would go out on its first fire tick. */
+const BURNING_FAMILIES=new Set(['bookshelf','tnt','short_grass','fern','dead_bush','coal_block','moss_block','dandelion','poppy',
+  'blue_orchid','allium','cornflower','oxeye_daisy','oak_slab','oak_stairs']);
+const BURNING_SUFFIXES=['_planks','_log','_leaves','_wool'];
 const BURNS=new Uint8Array(256);
-const BURNING_PLANTS=new Set(['short_grass','fern','dead_bush','dandelion','poppy','blue_orchid','allium','cornflower','oxeye_daisy']);
-/** A full top face fire can rest on: an opaque cube, or a top or double slab. */
+/** A full top face fire can rest on: an opaque cube, or a top or double slab (the fire owner's rule). */
 const STURDY=new Uint8Array(256);
 for(const d of BLOCKS){
-  BURNS[d.id]=+(d.flammable||BURNING_PLANTS.has(d.family));
+  BURNS[d.id]=+(BURNING_FAMILIES.has(d.family)||BURNING_SUFFIXES.some(s=>d.family.endsWith(s)));
   STURDY[d.id]=+(OPAQUE[d.id]===1||d.slab==='top'||d.slab==='double');
 }
 const SIX=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]] as const;
