@@ -26,7 +26,9 @@ export const DOUBLE_TAP_MS=300;
 /** Hold time of a touch long press (right click). */
 export const LONG_PRESS_MS=450;
 
-interface Drag{button:number;type:DragType;slots:number[]}
+interface Drag{button:number;type:DragType;slots:number[];
+  /** Slot pressed on: it joins the drag with the first movement (a press without movement stays a click). */
+  start:number|null;moved:boolean}
 interface Touch{hit:SlotHit;long:boolean;moved:boolean;
   /** Drag-and-drop of the start slot's stack (empty cursor when the finger started moving). */
   carry:boolean}
@@ -74,7 +76,7 @@ export class SlotPointer{
         else if(slot!==null)m.click(slot,button===MOUSE_RIGHT?1:0);
         this.skipRelease=true;
       }else{
-        this.drag={button,type:button===MOUSE_LEFT?0:button===MOUSE_RIGHT?1:2,slots:[]};
+        this.drag={button,type:button===MOUSE_LEFT?0:button===MOUSE_RIGHT?1:2,slots:[],start:slot,moved:false};
       }
     }
     this.lastSlot=slot;this.lastTime=time;this.lastButton=button;
@@ -89,13 +91,18 @@ export class SlotPointer{
         t.moved=true;
         const start=t.hit.slot,c=this.menu.cursor;
         if(c){
-          this.drag={button:MOUSE_LEFT,type:t.long?1:0,slots:[]};
+          this.drag={button:MOUSE_LEFT,type:t.long?1:0,slots:[],start:null,moved:true};
           // A long press already placed one item in the start slot.
           if(!t.long&&start!==null)this.addDragSlot(start);
         }else if(start!==null&&!t.long&&this.menu.slots[start]?.get())t.carry=true;
       }
     }
-    if(this.drag&&hit.slot!==null)this.addDragSlot(hit.slot);
+    const d=this.drag;
+    if(d&&hit.slot!==null){
+      // A real mouse reports the start slot as it leaves it; a jump straight to another slot must not skip it.
+      if(!d.moved){d.moved=true;if(d.start!==null)this.addDragSlot(d.start);}
+      this.addDragSlot(hit.slot);
+    }
   }
 
   private addDragSlot(index:number){

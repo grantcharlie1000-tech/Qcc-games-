@@ -102,6 +102,17 @@ describe('mouse drags',()=>{
     const {inv,menu,pointer,at}=setup();menu.cursor=st('dirt',6);
     pointer.down(at(9),RIGHT,false,'mouse',0);pointer.move(at(9));pointer.up(at(9),RIGHT,false,50);
     expect(inv.slots[9]).toEqual(st('dirt',1));expect(menu.cursor).toEqual(st('dirt',5));
+    // A press on a different item with a wobble still swaps like a click.
+    inv.setSlot(12,st('stone',2));
+    pointer.down(at(12),LEFT,false,'mouse',500);pointer.move(at(12));pointer.up(at(12),LEFT,false,560);
+    expect(inv.slots[12]).toEqual(st('dirt',5));expect(menu.cursor).toEqual(st('stone',2));
+  });
+  test('the pressed slot joins the drag even when the first move report is already over another slot',()=>{
+    const {inv,menu,pointer,at}=setup();menu.cursor=st('dirt',8);
+    pointer.down(at(9),LEFT,false,'mouse',0);pointer.move(at(11));
+    expect(pointer.dragging!.slots).toEqual([at(9).slot,at(11).slot]);
+    pointer.up(at(11),LEFT,false,90);
+    expect(inv.slots[9]).toEqual(st('dirt',4));expect(inv.slots[11]).toEqual(st('dirt',4));expect(menu.cursor).toBeNull();
   });
   test('creative middle click clones a full stack and a middle drag fills each slot with a full stack',()=>{
     const {game,inv,menu,pointer,at}=setup('creative');buildInventory(game,menu);

@@ -107,6 +107,7 @@
 .bc-book-filter[aria-pressed="true"]{background:#7fa86a;color:#fff}
 .bc-book-hint{margin:4px 0;font-size:11px;color:#555}
 .bc-book-list{display:grid;grid-template-columns:repeat(5,var(--s));grid-auto-rows:var(--s);overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain;scrollbar-width:thin}
+.bc-book-list .bc-empty{grid-column:1/-1}
 .bc-recipe{position:relative;box-sizing:border-box;width:var(--s);height:var(--s);padding:calc(var(--s)*.1);border:0;background:#9a6a6a;cursor:pointer;
   box-shadow:inset 1px 1px #5a3030,inset -1px -1px #d6b0b0;touch-action:pan-y}
 .bc-recipe.is-craftable{background:#8b8b8b;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi)}

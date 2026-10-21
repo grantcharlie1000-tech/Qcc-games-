@@ -177,6 +177,7 @@ test('a large chest keeps items between openings; armour equips by shift-click, 
   await slot(page,'Chest slot 30').click({modifiers:['Shift']});
   await expect.poll(()=>engine(page,g=>[g.inventory.count('diamond'),g.inventory.count('cobblestone')])).toEqual([5,64]);
   await page.keyboard.press('KeyE');
+  await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
   // Armour: shift-click equips into the matching slot, a click puts a helmet on, number keys swap a focused slot.
   await give(page,9,'iron_chestplate',1);await give(page,10,'leather_helmet',1);await give(page,11,'diamond_boots',1);
   await page.keyboard.press('KeyE');
