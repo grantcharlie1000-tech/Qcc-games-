@@ -7,6 +7,8 @@
 //  - biome-tinted tiles (grass top and overlay, short grass, fern, sugar cane, lily pad, oak/jungle/acacia/dark oak
 //    leaves, water) are grey; birch, spruce and cherry leaves and the grass block side band are pre-coloured.
 //  - side tiles are upright (row 0 is the top of the block face); top tiles have north up.
+//  - natural tiles (stone, earth, sand, ice, leaves, water, lava...) repeat every 16 px: greedy quads and the
+//    renderer's fract() repeat them across many blocks, so every pattern period divides the tile (tested via `raw`).
 //  - special layouts: the torch is a 2×10 stick in columns 7-8 / rows 6-15; the lantern follows the lantern model's
 //    UV layout (see tiles-built.ts); bed tops have the head end on row 0.
 import * as THREE from 'three';

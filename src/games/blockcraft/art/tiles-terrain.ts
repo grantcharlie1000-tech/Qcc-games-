@@ -318,7 +318,7 @@ export const waterFlow:Painter=cached((x,y)=>{
   return grey(g,streak===0?200:faint?190:176);
 },390);
 const LAVA=ramp(0xb83a0a,0xcc4a0c,0xdc5c10,0xe87016,0xf28a20,0xfaa430);
-/** Bright molten rock with dark cooling veins along a noise contour. */
+/** Flowing lava: bright molten rock with dark cooling veins along a noise contour, stretched by sx/sy along the flow. */
 function lava(salt:number,sx:number,sy:number):Painter{
   return cached((x,y)=>{
     const vein=valueNoise(x,y,Math.min(16,8*sx),Math.min(16,8*sy),salt)*.65+valueNoise(x,y,Math.min(16,4*sx),Math.min(16,4*sy),salt+1)*.35;
