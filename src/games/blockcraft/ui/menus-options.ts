@@ -1,6 +1,6 @@
 // Menu option model (no DOM): vanilla-worded labels for the world options, value steps for the buttons and sliders,
 // and the controls help rows built from the input service's bindings.
-import {VIEW_DISTANCES,type Difficulty,type GameSettings,type InputBinding} from '../engine/contracts';
+import {VIEW_DISTANCES,type Difficulty,type Game,type GameSettings,type InputBinding} from '../engine/contracts';
 
 export type OptionKey=keyof GameSettings;
 export const DIFFICULTIES:readonly Difficulty[]=['peaceful','easy','normal','hard'];
@@ -34,6 +34,8 @@ export const OPTION_HINTS:Partial<Record<OptionKey,string>>={
   weatherCycle:'Change the weather.',
   mobSpawning:'Let mobs spawn naturally.'
 };
+/** The death screen's "Score": like vanilla Player.getScore, the experience collected (kept with keepInventory). */
+export function deathScore(game:Game){const xp=game.survival.xpTotal;return Number.isFinite(xp)?Math.max(0,Math.floor(xp)):0;}
 /** The difficulty button cycles like vanilla: peaceful → easy → normal → hard → peaceful. */
 export function nextDifficulty(d:Difficulty):Difficulty{return DIFFICULTIES[(DIFFICULTIES.indexOf(d)+1)%DIFFICULTIES.length];}
 /** Mouse sensitivity slider in percent (10..400) ⇄ the settings multiplier (0.1..4). */

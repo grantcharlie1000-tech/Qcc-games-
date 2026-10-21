@@ -17,8 +17,8 @@ import {iconUrl} from '../art/items';
 import {itemDef} from '../data/items';
 import {ROOT_FLAGS} from '../engine/constants';
 import type {Game,HudService,ItemStack} from '../engine/contracts';
-import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,heldName,heldNameFade,heldNameOpacity,
-  HealthTracker,hudLayout,RARITY_COLOURS,stackHeights,sunAngle,type BarIcon,type HudLayout} from './hud-model';
+import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,heldName,HealthTracker,HeldNameTimer,hudLayout,
+  RARITY_COLOURS,stackHeights,stackInsets,sunAngle,type BarIcon,type HudLayout} from './hud-model';
 import {clockUrl,compassUrl,CLOCK_FRAMES,COMPASS_FRAMES,dialFrame,digitsUrl,hasGlyphs,hotbarUrl,hudIconUrl,offhandUrl,selectionUrl,textUrl,
   textWidth,xpBarUrl} from './hud-art';
 import {createMenus} from './menus';
@@ -128,7 +128,8 @@ export function createHud(game:Game):HudService{
   // ---- State --------------------------------------------------------------------------------------------
   const tracker=new HealthTracker();
   let layout:HudLayout=hudLayout(1280,720,false),layoutDirty=true,touch=false,colorBlind=false,reduced=false;
-  let lastTick=-1,lastHurtTick=-1000,heldTimer=0,prevHeld:ItemStack|null=null,heldId='\u0000',heldOpacity=-1,selected=-1,barsLabel='',level=-1;
+  const heldTimer=new HeldNameTimer();
+  let lastTick=-1,lastHurtTick=-1000,heldId='\u0000',heldOpacity=-1,selected=-1,barsLabel='',level=-1;
   let fpsFrames=0,fpsStart=0,fps=0,debugAt=0,barsTop=49,stackKey='',state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'slots'='slots';
   let readoutKey='',lowHealth=false,pickedUp:string|null=null;
   const cur=new Float64Array(18),prev=new Float64Array(18).fill(NaN);
@@ -140,7 +141,6 @@ export function createHud(game:Game):HudService{
     layout=hudLayout(w,h,touch);
     const st=game.root.style,s=layout.scale;
     st.setProperty('--bc-gui',String(s));st.setProperty('--bc-hud-bottom',`${layout.bottom}px`);
-    st.setProperty('--bc-hud-bars',`${layout.bars}px`);st.setProperty('--bc-hud-top',`${layout.top}px`);
     gui.style.transform=`translateX(${(layout.shift*s).toFixed(2)}px) scale(${s})`;
     // Large readout dials sit right of the hotbar when there is room (clear of the shell's corner buttons). Narrow
     // screens have no free space beside or above the bars (touch controls, action bar), so there the animated slot
@@ -211,9 +211,9 @@ export function createHud(game:Game):HudService{
     const off=inv.offhand;setHidden(offhandEl,!off);
     if(offhandView.update(off,dialIcon(off?.id)))offhandEl.setAttribute('aria-label',off?`Offhand: ${stackLabel(off)}`:'Offhand: empty');
   }
-  function tickHeldName(){
+  function tickHeldName(tick:number){
     const held=game.inventory.held();
-    heldTimer=heldNameFade(prevHeld,held,heldTimer);prevHeld=held;
+    heldTimer.update(held,tick);
     const id=held?.id??'';
     if(id===heldId)return;
     heldId=id;
@@ -224,16 +224,19 @@ export function createHud(game:Game):HudService{
     setHidden(heldText,!pixel);
     if(n&&pixel){const s=heldText.style;s.backgroundImage=url(textUrl(n.text,RARITY_COLOURS[n.rarity]));s.width=`${textWidth(n.text)}px`;}
   }
-  /** Held item name, action bar and readouts above the bars at the vanilla heights. */
+  /** Held item name, action bar and readouts above the bars at the vanilla heights; publishes the bars top, the
+   *  action bar and the stack top for other layers (they follow armour and extra heart rows, and creative). */
   function placeStack(){
-    const {name,action}=stackHeights(barsTop,game.settings.mode==='creative');
-    const key=`${name}:${action}:${readoutMode}:${layout.scale}:${layout.bottom}`;if(key===stackKey)return;stackKey=key;
+    const creative=game.settings.mode==='creative',{name}=stackHeights(barsTop,creative);
+    const key=`${barsTop}:${creative}:${readoutMode}:${layout.scale}:${layout.bottom}`;if(key===stackKey)return;stackKey=key;
     heldEl.style.bottom=`${name}px`;
-    game.root.style.setProperty('--bc-hud-actionbar',`${(layout.bottom+action*layout.scale).toFixed(1)}px`);
+    const inset=stackInsets(layout,barsTop,creative),st=game.root.style;
+    st.setProperty('--bc-hud-bars',`${inset.bars.toFixed(1)}px`);st.setProperty('--bc-hud-actionbar',`${inset.actionbar.toFixed(1)}px`);
+    st.setProperty('--bc-hud-top',`${inset.top.toFixed(1)}px`);
     box(readouts,readoutMode==='right'?95:0,0);
   }
   function updateHeldName(){
-    const o=heldId?heldNameOpacity(heldTimer):0;
+    const o=heldId?heldTimer.opacity:0;
     if(o===heldOpacity)return;heldOpacity=o;
     heldEl.style.opacity=o.toFixed(3);setHidden(heldEl,o<=0);
   }
@@ -333,13 +336,13 @@ export function createHud(game:Game):HudService{
         lastTick=tick;
         const h=game.survival.health;
         tracker.update(h,tick,Math.ceil(h)<tracker.renderHealth||tick-lastHurtTick<10);
-        tickHeldName();
+        tickHeldName(tick);
       }
       if(game.settings.mode==='survival')updateBars(tick);
       updateReadouts(now);updateHotbar();updateHeldName();updateCrosshair();updateEffects();
     },
     reset(){
-      prevHeld=null;heldTimer=0;heldId='\u0000';heldOpacity=-1;selected=-1;crossKey='-';compassFrame=clockFrame=-1;lastTick=-1;level=-1;readoutKey='';pickedUp=null;
+      heldTimer.reset();heldId='\u0000';heldOpacity=-1;selected=-1;crossKey='-';compassFrame=clockFrame=-1;lastTick=-1;level=-1;readoutKey='';pickedUp=null;
       for(const v of [...slotViews,offhandView])v.invalidate();
       resetHealth();
     },

@@ -1,10 +1,10 @@
 import {describe,expect,test} from 'vitest';
-import {heartIcons,foodIcons,armorIcons,airBubbles,xpFill,durabilityBar,attackIndicator,heldNameFade,heldNameOpacity,HealthTracker,
-  regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,barsView,stackHeights,
+import {heartIcons,foodIcons,armorIcons,airBubbles,xpFill,durabilityBar,attackIndicator,heldNameFade,heldNameOpacity,HealthTracker,HeldNameTimer,
+  regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,barsView,stackHeights,stackInsets,
   type HeartInput,type BarsOptions} from '../../../src/games/blockcraft/ui/hud-model';
 import {ICON_NAMES,iconGrid,iconSvg,iconPalette,digitsSvg,DIGIT_GLYPHS,hotbarSvg,xpBarSvg,compassGrid,clockGrid,dialFrame,COMPASS_FRAMES,CLOCK_FRAMES,
   selectionFrameSvg,offhandSvg,FONT_GLYPHS,hasGlyphs,textWidth,textSvg,shadowColour} from '../../../src/games/blockcraft/ui/hud-art';
-import {optionLabel,nextDifficulty,keyLabel,controlRows,fovLabel,sensitivityFromSlider,sensitivityToSlider} from '../../../src/games/blockcraft/ui/menus-options';
+import {optionLabel,nextDifficulty,keyLabel,controlRows,fovLabel,sensitivityFromSlider,sensitivityToSlider,deathScore} from '../../../src/games/blockcraft/ui/menus-options';
 import {ITEMS} from '../../../src/games/blockcraft/data/items';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import type {InputBinding} from '../../../src/games/blockcraft/engine/contracts';
@@ -140,6 +140,17 @@ describe('bars drawn from the game state',()=>{
     expect(stackHeights(59,false)).toEqual({name:60,action:74});
     expect(stackHeights(59,true)).toEqual({name:36,action:64});
   });
+  test('the published insets follow the bars as drawn: armour and extra heart rows raise them, creative lowers them to the hotbar',()=>{
+    const layout=hudLayout(1366,768,false);// GUI scale 3, hotbar on the bottom edge
+    expect(stackInsets(layout,49,false)).toEqual({bars:147,actionbar:192,top:225});
+    // 7 armour points: the bars top is 59 GUI px, the action bar moves up with the held name.
+    expect(stackInsets(layout,59,false)).toEqual({bars:177,actionbar:222,top:255});
+    expect(stackInsets(layout,59,true)).toEqual({bars:69,actionbar:192,top:225});
+    // The hotbar lift above the shell buttons is included.
+    const phone=hudLayout(390,844,true);
+    expect(stackInsets(phone,49,false).bars).toBeCloseTo(phone.bottom+49*phone.scale);
+    expect(stackInsets(phone,49,false).top).toBeCloseTo(phone.top);
+  });
 });
 
 describe('hunger, armour, air and experience',()=>{
@@ -205,6 +216,26 @@ describe('hotbar helpers',()=>{
     expect(heldNameOpacity(40)).toBe(1);expect(heldNameOpacity(10)).toBe(1);expect(heldNameOpacity(5)).toBeCloseTo(128/255,3);expect(heldNameOpacity(0)).toBe(0);
     expect(heldName({id:'golden_apple',count:1})).toEqual({text:'Golden Apple',rarity:'rare'});
     expect(heldName({id:'dirt',count:1})).toEqual({text:'Dirt',rarity:'common'});
+    // Several ticks in one frame count down together.
+    expect(heldNameFade(pick,pick,30,3)).toBe(27);expect(heldNameFade(pick,pick,2,5)).toBe(0);expect(heldNameFade(null,pick,0,3)).toBe(40);
+  });
+  test('the held name stays up two seconds whatever the frame rate',()=>{
+    const pick={id:'iron_pickaxe',count:1};
+    for(const fps of [60,30,20,10,7,4]){
+      const timer=new HeldNameTimer();let visible=0;
+      for(let frame=0;frame<fps*4;frame++){
+        const t=frame/fps,tick=Math.floor(t*20);
+        timer.update(pick,tick);
+        if(timer.opacity>0)visible=t;
+      }
+      // Vanilla: 40 ticks, the last frame with the name is within one frame of 2 s.
+      expect(visible,`${fps} fps`).toBeGreaterThanOrEqual(2-1/fps-1e-9);expect(visible,`${fps} fps`).toBeLessThan(2);
+    }
+    // A different item restarts it; no item clears it; reset forgets the previous item.
+    const timer=new HeldNameTimer();timer.update(pick,0);timer.update(pick,30);expect(timer.timer).toBe(10);
+    timer.update({id:'dirt',count:1},31);expect(timer.timer).toBe(40);
+    timer.update(null,32);expect(timer.timer).toBe(0);expect(timer.opacity).toBe(0);
+    timer.reset();timer.update(pick,5);expect(timer.timer).toBe(40);
   });
 });
 
@@ -257,7 +288,7 @@ describe('debug overlay',()=>{
     game.interaction={...game.interaction,target:{x:3,y:59,z:-2,nx:0,ny:1,nz:0,id:1,distance:2}};
     game.inventory.setSlot(0,{id:'dirt',count:5});
     const text=debugRightLines(game,1366,768,3).join('\n');
-    for(const part of ['Display: 1366x768','GUI scale 3.00','Targeted Block: 3, 59, -2','Held: dirt x5'])expect(text).toContain(part);
+    for(const part of ['Display: 1366x768','GUI scale 3.00','Render distance: 5 chunks','FOV 70','Targeted Block: 3, 59, -2','Held: dirt x5'])expect(text).toContain(part);
   });
 });
 
@@ -367,6 +398,12 @@ describe('menu options',()=>{
     expect(optionLabel('daylightCycle',s)).toBe('Daylight Cycle: ON');
     expect(optionLabel('weatherCycle',s)).toBe('Weather Cycle: ON');
     expect(optionLabel('mobSpawning',s)).toBe('Mob Spawning: ON');
+  });
+  test('the death screen score is the experience collected (Player.getScore), not the blocks mined',()=>{
+    const game=createFakeGame();game.stats.mined=40;
+    game.survival={...game.survival,xpTotal:0};expect(deathScore(game)).toBe(0);
+    game.survival={...game.survival,xpTotal:37.6};expect(deathScore(game)).toBe(37);
+    game.survival={...game.survival,xpTotal:NaN};expect(deathScore(game)).toBe(0);
   });
   test('difficulty cycles like the vanilla button and sensitivity maps to a 10..400 % slider',()=>{
     expect(['peaceful','easy','normal','hard'].map(d=>nextDifficulty(d as 'easy'))).toEqual(['easy','normal','hard','peaceful']);

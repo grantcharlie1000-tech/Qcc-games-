@@ -5,7 +5,7 @@ import {CS} from '../engine/constants';
 import {itemDef,type ItemStack} from '../data/items';
 import {biomeDef} from '../data/biomes';
 import {blockDef} from '../data/blocks';
-import type {Game} from '../engine/contracts';
+import {VIEW_DISTANCES,type Game} from '../engine/contracts';
 
 export type Fill='full'|'half'|null;
 export type HeartType='normal'|'poison';
@@ -162,6 +162,15 @@ export function stackHeights(barsTop:number,creative:boolean):{name:number;actio
   const name=creative?36:Math.max(50,barsTop+1);
   return{name,action:Math.max(64,name+14)};
 }
+/** GUI pixels: the hotbar with its selection frame (the top of the HUD in creative), and one action-bar line. */
+const HOTBAR_TOP=23,ACTION_LINE=11;
+/** What the HUD publishes on game.root for other layers, in CSS px above the safe-area inset: the top of the bars as
+ *  drawn (--bc-hud-bars; the hotbar in creative), the action bar's bottom (--bc-hud-actionbar) and the top of the whole
+ *  stack including one action-bar line (--bc-hud-top). */
+export function stackInsets(layout:HudLayout,barsTop:number,creative:boolean):{bars:number;actionbar:number;top:number}{
+  const {action}=stackHeights(barsTop,creative),s=layout.scale,b=layout.bottom;
+  return{bars:b+(creative?HOTBAR_TOP:barsTop)*s,actionbar:b+action*s,top:b+(action+ACTION_LINE)*s};
+}
 
 // ---- Hotbar decorations ------------------------------------------------------------------------------
 /** Mth.hsvToRgb (channels truncated like the game). */
@@ -185,14 +194,28 @@ export function attackIndicator(charge:number,targetLiving:boolean,attackSpeed:n
   if(charge<1)return{kind:'bar',width:Math.max(0,Math.floor(charge*17))};
   return null;
 }
-/** Gui.tick's toolHighlightTimer: 40 ticks after a different item is selected, counting down while it stays. */
-export function heldNameFade(previous:ItemStack|null,current:ItemStack|null,timer:number):number{
+/** Gui.tick's toolHighlightTimer: 40 ticks after a different item is selected, counting down while it stays
+ *  (`elapsed` ticks at once when several passed since the last frame). */
+export function heldNameFade(previous:ItemStack|null,current:ItemStack|null,timer:number,elapsed=1):number{
   if(!current)return 0;
-  if(previous&&previous.id===current.id)return Math.max(0,timer-1);
+  if(previous&&previous.id===current.id)return Math.max(0,timer-elapsed);
   return 40;
 }
 /** Text alpha of the held item name: full until the last 10 ticks, then fading. */
 export function heldNameOpacity(timer:number){return Math.min(255,Math.floor(timer*256/10))/255;}
+/** The held item name timer driven by the game tick seen each frame: slow frames may see several ticks at once,
+ *  which all count, so the name shows for 40 ticks (2 s) at any frame rate. */
+export class HeldNameTimer{
+  timer=0;private previous:ItemStack|null=null;private lastTick=-1;
+  update(held:ItemStack|null,tick:number){
+    if(tick===this.lastTick)return;
+    const elapsed=this.lastTick>=0&&tick>this.lastTick?tick-this.lastTick:1;
+    this.lastTick=tick;
+    this.timer=heldNameFade(this.previous,held,this.timer,elapsed);this.previous=held;
+  }
+  get opacity(){return heldNameOpacity(this.timer);}
+  reset(){this.timer=0;this.previous=null;this.lastTick=-1;}
+}
 export type Rarity='common'|'uncommon'|'rare'|'epic';
 export const RARITY_COLOURS:Record<Rarity,string>={common:'#ffffff',uncommon:'#ffff55',rare:'#55ffff',epic:'#ff55ff'};
 const RARITY:Record<string,Rarity>={golden_apple:'rare'};
@@ -230,7 +253,7 @@ export interface HudLayout{
   bottom:number;
   /** CSS px from the screen bottom to the top of the hotbar, bars and action bar. */
   top:number;
-  /** CSS px from the screen bottom to the top of the bars (armour and air rows). */
+  /** CSS px from the screen bottom to the top of the bars with one row each (stackInsets follows the bars as drawn). */
   bars:number;
 }
 function place(w:number,scale:number):{shift:number;bottom:number}{
@@ -253,7 +276,7 @@ export function hudLayout(w:number,h:number,touch:boolean):HudLayout{
     scale=Math.min(scale,fit);
   }
   const {shift,bottom}=place(w,scale);
-  return{scale,shift,bottom,top:bottom+HUD_STACK*scale,bars:bottom+50*scale};
+  return{scale,shift,bottom,top:bottom+HUD_STACK*scale,bars:bottom+49*scale};
 }
 
 // ---- Debug overlay (F3) ----------------------------------------------------------------------------------
@@ -292,7 +315,7 @@ export function debugLines(game:Game,fps:number,mobs:MobCounts):string[]{
 /** Right column of the F3 screen: display, target and held item. */
 export function debugRightLines(game:Game,width:number,height:number,guiScale:number):string[]{
   const lines=[`Display: ${Math.round(width)}x${Math.round(height)}, GUI scale ${guiScale.toFixed(2)}`,
-    `Render distance setting: ${game.settings.view}, FOV ${game.settings.fov}`];
+    `Render distance: ${VIEW_DISTANCES[game.settings.view]??'?'} chunks, FOV ${game.settings.fov}`];
   const t=game.interaction.target;
   if(t){
     const def=blockDef(t.id);

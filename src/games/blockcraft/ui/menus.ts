@@ -3,7 +3,7 @@
 // ui's advancements screen; the controls panel lists game.input.bindings(). Copy differs for touch.
 import type {Game,GameSettings} from '../engine/contracts';
 import {VIEW_DISTANCES} from '../engine/contracts';
-import {controlRows,nextDifficulty,optionLabel,sensitivityFromSlider,sensitivityToSlider,OPTION_HINTS,TOUCH_ROWS,type OptionKey} from './menus-options';
+import {controlRows,deathScore,nextDifficulty,optionLabel,sensitivityFromSlider,sensitivityToSlider,OPTION_HINTS,TOUCH_ROWS,type OptionKey} from './menus-options';
 
 export type MenuKind='start'|'resume'|'dead'|'lost';
 type Panel='main'|'options'|'controls';
@@ -119,7 +119,7 @@ export function createMenus(game:Game):Menus{
     }else if(next==='dead'){
       title.textContent='You died!';message.textContent=deathMessage;
       score.hidden=false;score.innerHTML='Score: <span class="bc-score-value"></span>';
-      score.querySelector('span')!.textContent=String(game.stats.mined);
+      score.querySelector('span')!.textContent=String(deathScore(game));
       setPanel('dead',false);loading.textContent='';
       respawn.disabled=true;
       respawnTimer=window.setTimeout(()=>{respawn.disabled=false;if(focusInside)respawn.focus({preventScroll:true});},RESPAWN_DELAY_MS);
