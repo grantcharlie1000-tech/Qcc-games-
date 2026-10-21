@@ -9,8 +9,9 @@
 //  - experience orbs (ExperienceOrb): gravity 0.03, float up in water, hop out of lava, bounce on the ground.
 //  - other bodies (falling blocks, primed TNT, thrown items): gravity, move, drag, 0.7 ground friction.
 // Flowing water pushes everything by 0.014 blocks/tick along engine/physics flowAt. Collision uses moveBody with the
-// entity box and the kind's step height.
-import {CLIMBABLE,LIQUID,SLIPPERINESS} from '../data/blocks';
+// entity box and the kind's step height. Beds bounce falling mobs back up at 0.66 × the landing speed and dropped items
+// at 0.8 of that (vanilla BedBlock.bounceUp).
+import {BLOCKS,CLIMBABLE,LIQUID,SLIPPERINESS} from '../data/blocks';
 import {boxCollides,flowAt,liquidHeight,moveBody,type MoveResult} from '../engine/physics';
 import type {BlockSource,Entity,EntityCategory,PhysicsOptions,Vec3} from '../engine/contracts';
 
@@ -89,6 +90,11 @@ export interface Motion{
 }
 export const newMotion=():Motion=>({fallDistance:0,landed:0,moved:0,wasInWater:false});
 const RESULT:MoveResult={hitX:false,hitY:false,hitZ:false,stepped:false};
+/** 1 for blocks that bounce what falls on them (beds). */
+const BOUNCY=new Uint8Array(256);
+for(const d of BLOCKS)if(d.family==='bed')BOUNCY[d.id]=1;
+/** Bounce factors (vanilla: 1 for living entities, 0.8 for others). */
+const LIVING_BOUNCE=1,ITEM_BOUNCE=.8;
 /** Vanilla steady ground speed fraction: speed per tick = s² / (1 − 0.6 × 0.91). */
 const GROUND_KEEP=.6*.91;
 
@@ -103,12 +109,17 @@ function liquidIn(world:BlockSource,minX:number,minY:number,minZ:number,maxX:num
   }
   return false;
 }
-/** Moves by (ux,uy,uz) blocks this tick; returns the new per-tick velocity components via the entity (blocks/second). */
-function move(world:BlockSource,e:Entity,ux:number,uy:number,uz:number,stepHeight:number,m:Motion):MoveResult{
+/** Moves by (ux,uy,uz) blocks this tick; returns the new per-tick velocity components via the entity (blocks/second).
+ *  `bounce` > 0: landing on a bed sends the entity back up at -uy × 0.66 × bounce (Block.updateEntityAfterFallOn). */
+function move(world:BlockSource,e:Entity,ux:number,uy:number,uz:number,stepHeight:number,m:Motion,bounce=0):MoveResult{
   const sx=e.x,sy=e.y,sz=e.z;
   e.vx=ux/TICK;e.vy=uy/TICK;e.vz=uz/TICK;
   moveBody(world,e,e.width/2,e.height,TICK,RESULT,stepHeight);
   e.collidedH=RESULT.hitX||RESULT.hitZ;e.collidedV=RESULT.hitY;
+  if(bounce>0&&RESULT.hitY&&uy<0&&e.onGround){
+    const below=world.get(Math.floor(e.x),Math.floor(e.y-.2),Math.floor(e.z));
+    if(below>=0&&BOUNCY[below])e.vy=-uy*.66*bounce/TICK;
+  }
   m.moved=Math.hypot(e.x-sx,e.z-sz);
   const dy=e.y-sy;
   if(e.onGround){m.landed=m.fallDistance;m.fallDistance=0;}
@@ -138,11 +149,11 @@ export function stepLiving(world:BlockSource,e:Entity,p:ResolvedPhysics,f:FluidS
   const y0=e.y;
   if(f.water&&aquatic){
     const a=target*.1;ux+=dirX*a;uz+=dirZ*a;
-    move(world,e,ux,uy,uz,p.stepHeight,m);
+    move(world,e,ux,uy,uz,p.stepHeight,m,LIVING_BOUNCE);
     ux=e.vx*TICK*.9;uz=e.vz*TICK*.9;uy=(e.vy*TICK-g/16)*.9;
   }else if(f.water||f.lava){
     const a=.02*s;ux+=dirX*a;uz+=dirZ*a;
-    move(world,e,ux,uy,uz,p.stepHeight,m);
+    move(world,e,ux,uy,uz,p.stepHeight,m,LIVING_BOUNCE);
     ux=e.vx*TICK;uy=e.vy*TICK;uz=e.vz*TICK;
     if(f.climbable&&e.collidedH)uy=.2;
     if(f.water){
@@ -166,7 +177,7 @@ export function stepLiving(world:BlockSource,e:Entity,p:ResolvedPhysics,f:FluidS
     if(f.climbable){
       m.fallDistance=0;ux=Math.max(-.15,Math.min(.15,ux));uz=Math.max(-.15,Math.min(.15,uz));uy=Math.max(uy,-.15);
     }
-    move(world,e,ux,uy,uz,p.stepHeight,m);
+    move(world,e,ux,uy,uz,p.stepHeight,m,LIVING_BOUNCE);
     ux=e.vx*TICK;uy=e.vy*TICK;uz=e.vz*TICK;
     if(f.climbable&&e.collidedH)uy=.2;
     uy=(uy-g)*p.drag;ux*=f3;uz*=f3;
@@ -183,7 +194,7 @@ export function stepItem(world:BlockSource,e:Entity,p:ResolvedPhysics,f:FluidSta
   else if(f.lava&&f.lavaHeight>.1){ux*=.95;uz*=.95;if(uy<.06)uy+=5e-4;}
   else uy-=p.gravity/400;
   e.jump=false;
-  move(world,e,ux,uy,uz,p.stepHeight,m);
+  move(world,e,ux,uy,uz,p.stepHeight,m,ITEM_BOUNCE);
   ux=e.vx*TICK;uy=e.vy*TICK;uz=e.vz*TICK;
   const fr=e.onGround?slipperinessBelow(world,e)*.98:p.drag;
   ux*=fr;uz*=fr;uy*=p.drag;

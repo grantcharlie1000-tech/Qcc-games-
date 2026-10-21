@@ -1,12 +1,18 @@
 import {describe,expect,test} from 'vitest';
 import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
 import {MAX_NODES,findPath,standableCell} from '../../../src/games/blockcraft/entity/ai-path';
+import {NODES_PER_TICK} from '../../../src/games/blockcraft/entity/ai';
+import type {EntityDebug} from '../../../src/games/blockcraft/entity/entities';
 import type {Entity,EntityKind} from '../../../src/games/blockcraft/engine/contracts';
 import {fill,harness,walker} from './entities-helpers';
 
 const path=new Int32Array(64*3);
 const cells=(n:number)=>Array.from({length:n},(_,i)=>[path[i*3],path[i*3+1],path[i*3+2]]);
 const size={width:.6,height:1.8};
+/** Unique cells a node's neighbourhood adds, generously (each cell is read from the world once per search). */
+const READS_PER_NODE=20;
+/** World reads per mob per tick allowed when 60 mobs chase an unreachable goal (physics and steering included). */
+const READS_PER_MOB_TICK=150;
 
 describe('bounded A*',()=>{
   test('finds a way around a wall and only uses standable cells',()=>{
@@ -48,6 +54,20 @@ describe('bounded A*',()=>{
     const h=harness();fill(h.game,-32,60,3,47,62,3,B.stone);fill(h.game,0,60,3,0,62,3,0);// a wall across the world with a 1-wide gap
     expect(findPath(h.game.world,0,60,0,0,60,6,size,path).complete).toBe(true);
     expect(findPath(h.game.world,-1,60,0,-1,60,6,{width:1.4,height:.9},path).complete).toBe(false);
+  });
+  test('a failed 200-node search reads each world cell about once (memoised per search)',()=>{
+    const h=harness({r:3});
+    fill(h.game,8,60,-2,12,62,2,B.stone);fill(h.game,9,60,-1,11,61,1,0);// a hollow box with no door
+    for(const [width,height] of [[.6,1.8],[1.4,.9]]){
+      let reads=0;const counted={get:(x:number,y:number,z:number)=>{reads++;return h.game.world.get(x,y,z);}};
+      const r=findPath(counted,0,60,0,10,60,0,{width,height},path);
+      expect(r.complete).toBe(false);expect(r.expanded).toBe(MAX_NODES);
+      expect(reads).toBeLessThan(MAX_NODES*READS_PER_NODE);
+    }
+    // The memo never outlives a search: a changed world is seen by the next one.
+    const before=findPath(h.game.world,0,60,0,4,60,0,size,path).complete;
+    fill(h.game,2,60,-40,2,62,40,B.stone);
+    expect(before).toBe(true);expect(findPath(h.game.world,0,60,0,4,60,0,size,path).complete).toBe(false);
   });
 });
 
@@ -128,5 +148,45 @@ describe('steering helpers',()=>{
     const t0=performance.now();h.tick(100);const ms=(performance.now()-t0)/100/40;
     // Generous bound for a shared CI machine: the whole entity tick (physics included) per mob.
     expect(ms).toBeLessThan(.2);
+  });
+  test('unreachable goals stay within the node budget per tick, read few cells and keep the AI time budget',()=>{
+    const goal:[number,number,number]=[10.5,60,.5];
+    const h=harness({kinds:[navigator(()=>goal),walker({kind:'wide',width:1.4,height:.9,tick:(e,game)=>{game.entities.ai.navigate(e,goal[0],goal[1],goal[2],2.3);}})],r:3});
+    fill(h.game,8,60,-2,12,62,2,B.stone);fill(h.game,9,60,-1,11,61,1,0);// a sealed hut around the goal
+    for(let i=0;i<60;i++)h.game.entities.spawn(i%4===3?'wide':'nav',-30.5+(i%12)*2.5,60,-15.5+Math.floor(i/12)*6);
+    h.tick(20);
+    const world=h.game.world as {get(x:number,y:number,z:number):number},get=world.get.bind(world);let reads=0;
+    world.get=(x,y,z)=>{reads++;return get(x,y,z);};
+    const debug=()=>(h.game.entities as unknown as {debug:EntityDebug}).debug;
+    const ticks=200,n0=debug().nodes;let worst=0;
+    const t0=performance.now();
+    for(let i=0;i<ticks;i++){const before=debug().nodes;h.tick();worst=Math.max(worst,debug().nodes-before);}
+    const ms=(performance.now()-t0)/ticks/60;
+    expect((debug().nodes-n0)/ticks).toBeLessThanOrEqual(NODES_PER_TICK);
+    expect(worst).toBeLessThan(NODES_PER_TICK+MAX_NODES);
+    // Deterministic cost measure: world reads per mob per tick, physics and steering included.
+    expect(reads/ticks/60).toBeLessThan(READS_PER_MOB_TICK);
+    // Generous bound for a shared machine (the budget is 0.05 ms per mob).
+    expect(ms).toBeLessThan(.1);
+  });
+  test('navigate reports success when the mob already stands at the goal',()=>{
+    const h=harness({kinds:[walker()]});const e=h.game.entities.spawn('walker',.5,60,.5)!;h.tick(2);
+    expect(h.game.entities.ai.navigate(e,.5,60,.5,2)).toBe(true);
+    expect(h.game.entities.ai.navigate(e,.7,60,.7,2)).toBe(true);
+  });
+  test('non-finite goals and speeds are ignored by every helper',()=>{
+    const h=harness({kinds:[walker()]}),ai=h.game.entities.ai,e=h.game.entities.spawn('walker',.5,60,.5)!;h.tick(2);
+    const finite=()=>[e.moveX,e.moveZ,e.yaw,e.headYaw,e.pitch].every(Number.isFinite);
+    const searches=(h.game.entities as unknown as {debug:EntityDebug}).debug.searches;
+    expect(ai.navigate(e,NaN,60,NaN,2)).toBe(false);expect(finite()).toBe(true);
+    expect((h.game.entities as unknown as {debug:EntityDebug}).debug.searches).toBe(searches);
+    expect(ai.moveToward(e,NaN,60,4,2)).toBe(false);expect(finite()).toBe(true);
+    ai.moveToward(e,6.5,60,.5,NaN);expect(finite()).toBe(true);
+    ai.navigate(e,6.5,60,.5,Infinity);expect(finite()).toBe(true);
+    ai.flee(e,NaN,0,2);expect(finite()).toBe(true);
+    ai.lookAt(e,NaN,61,Infinity);expect(finite()).toBe(true);
+    ai.wander(e,NaN,1);expect(finite()).toBe(true);
+    expect(ai.canSee(e,NaN,61,0)).toBe(false);expect(ai.isSafe(NaN,60,0)).toBe(false);
+    h.tick(5);expect(finite()).toBe(true);
   });
 });

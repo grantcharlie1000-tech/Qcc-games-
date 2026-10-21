@@ -3,7 +3,10 @@
 //  - wander: vanilla RandomStrollGoal (1/120 per tick by default) toward the best of ten random standable spots within 10
 //    blocks horizontally and 7 vertically (animals prefer grass and light, monsters darkness: getWalkTargetValue).
 //  - navigate: bounded A* (entity/ai-path.ts, ≤ 200 nodes) cached per entity, re-planned when the goal moves more than
-//    2 blocks, the mob is stuck or the path runs out; at most a few searches per tick across all mobs.
+//    2 blocks, the mob is stuck or the path runs out. Searches share a budget of NODES_PER_TICK expanded nodes per tick
+//    across all mobs (a search may overdraw it; the debt is paid back over the next ticks), and a goal that could not be
+//    reached is retried only after 40–60 ticks unless it moves (vanilla delays path recalculation after a failed moveTo).
+//  - Every helper ignores non-finite goals and speeds (a NaN intent would otherwise reach the physics).
 //  - moveToward: straight steering that jumps 1-block steps and stops at cliffs (drops > 3), lava, fire and cacti.
 //  - flee: vanilla PanicGoal / AvoidEntityGoal: a standable spot 5–12 blocks away from the threat, then navigate there.
 //  - lookAt: head turns up to 30°/tick (pitch 40°), the body follows when the head is beyond 75°.
@@ -14,17 +17,18 @@ import {DANGER,MAX_PATH,cellTop,findPath,footprint,standableCell,type PathResult
 
 /** Head turn speed (vanilla LookControl in melee goals) and pitch speed per tick. */
 const LOOK_YAW=30*Math.PI/180,LOOK_PITCH=40*Math.PI/180,MAX_HEAD=75*Math.PI/180;
-/** A* searches allowed per game tick across all mobs (the rest steer straight and retry next tick). */
-export const SEARCHES_PER_TICK=4;
-/** Ticks between re-plans of one mob's path toward the same goal. */
-const REPLAN_TICKS=10;
+/** A* nodes expanded per game tick across all mobs, on average (mobs that find the budget spent steer straight and
+ *  retry on a later tick). A failed 200-node search costs about 0.3 ms in Node. */
+export const NODES_PER_TICK=400;
+/** Ticks between re-plans of one mob's path toward the same goal, and after a search that found nothing (+ jitter). */
+const REPLAN_TICKS=10,FAIL_BACKOFF=40,FAIL_JITTER=20;
 const GRASS=blockId('grass_block');
 
 interface AIState{
   path:Int32Array;len:number;index:number;
   goalX:number;goalY:number;goalZ:number;
-  /** Tick of the last search, and whether it found nothing. */
-  planned:number;failed:boolean;
+  /** Tick of the last search, whether it found nothing, and the tick from which the same goal may be searched again. */
+  planned:number;failed:boolean;retry:number;
   /** Progress watch: ticks without getting closer to the current waypoint. */
   stuck:number;best:number;
   wandering:boolean;wx:number;wy:number;wz:number;wanderTicks:number;
@@ -37,6 +41,9 @@ export const wrapAngle=(a:number)=>{a%=Math.PI*2;if(a>Math.PI)a-=Math.PI*2;else 
 export const rotateTowards=(from:number,to:number,max:number)=>{const d=wrapAngle(to-from);return from+Math.max(-max,Math.min(max,d));};
 /** Line of sight passes air and non-colliding blocks (plants, water, torches); leaves, glass and every solid block stop it. */
 const seeThrough=(id:number)=>id===AIR||!SOLID[id];
+const finite3=(x:number,y:number,z:number)=>Number.isFinite(x)&&Number.isFinite(y)&&Number.isFinite(z);
+/** A usable speed: non-finite speeds stop the mob. */
+const speedOf=(v:number)=>Number.isFinite(v)?v:0;
 
 export interface EntityAIInternal extends EntityAI{
   /** Was lookAt called for this entity during the current tick? */
@@ -44,18 +51,18 @@ export interface EntityAIInternal extends EntityAI{
   /** Drops cached state (entity removed). */
   forget(e:Entity):void;
   reset():void;
-  /** Searches run so far (tests and the debug overlay). */
-  readonly searches:number;
+  /** Searches run and nodes expanded so far (tests and the debug overlay). */
+  readonly searches:number;readonly nodes:number;
 }
 
 export function createEntityAI(game:Game):EntityAIInternal{
   const states=new WeakMap<Entity,AIState>();
   const result:PathResult={length:0,complete:false,expanded:0};
-  let budgetTick=-1,budget=0,searches=0;
+  let creditTick=-1,credit=0,searches=0,nodes=0;
   function state(e:Entity):AIState{
     let s=states.get(e);
     if(!s){
-      s={path:new Int32Array(MAX_PATH*3),len:0,index:0,goalX:NaN,goalY:NaN,goalZ:NaN,planned:-1e9,failed:false,stuck:0,best:Infinity,
+      s={path:new Int32Array(MAX_PATH*3),len:0,index:0,goalX:NaN,goalY:NaN,goalZ:NaN,planned:-1e9,failed:false,retry:-1e9,stuck:0,best:Infinity,
         wandering:false,wx:0,wy:0,wz:0,wanderTicks:0,fleeing:false,fx:0,fy:0,fz:0,fleeTicks:0,threatX:0,threatZ:0,lookTick:-1};
       states.set(e,s);
     }
@@ -99,6 +106,8 @@ export function createEntityAI(game:Game):EntityAIInternal{
   }
   function steer(e:Entity,x:number,z:number,speed:number):boolean{
     const dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);
+    if(!Number.isFinite(d)){e.moveX=0;e.moveZ=0;return false;}
+    speed=speedOf(speed);
     if(d<.5){e.moveX=0;e.moveZ=0;return true;}
     const nx=dx/d,nz=dz/d;
     if(hazardAhead(e,nx,nz)){e.moveX=0;e.moveZ=0;return false;}
@@ -114,14 +123,21 @@ export function createEntityAI(game:Game):EntityAIInternal{
     const tx=Math.floor(x-half+.5),ty=Math.floor(y+.01),tz=Math.floor(z-half+.5);
     const k=game.entities.kind(e.kind);
     findPath(game.world,sx,sy,sz,tx,ty,tz,{width:e.width,height:e.height,aquatic:!!k?.aquatic},s.path,result);
-    searches++;budget--;
+    searches++;nodes+=result.expanded;credit-=Math.max(1,result.expanded);
     s.planned=now();s.goalX=x;s.goalY=y;s.goalZ=z;s.index=0;s.stuck=0;s.best=Infinity;
-    s.len=result.length;s.failed=result.length===0;
+    // A complete search with no waypoints means the mob already stands at the goal.
+    s.len=result.length;s.failed=result.length===0&&!result.complete;
+    s.retry=s.planned+(s.failed?FAIL_BACKOFF+Math.floor(game.random()*FAIL_JITTER):REPLAN_TICKS);
     return !s.failed;
   }
+  /** Node credit: refilled by NODES_PER_TICK each tick (at most one tick's worth banked), spent by searches. */
   function canSearch(){
-    const t=now();if(t!==budgetTick){budgetTick=t;budget=SEARCHES_PER_TICK;}
-    return budget>0;
+    const t=now();
+    if(t!==creditTick){
+      const elapsed=t>creditTick?Math.min(t-creditTick,4):1;creditTick=t;
+      credit=Math.min(NODES_PER_TICK,credit+NODES_PER_TICK*elapsed);
+    }
+    return credit>0;
   }
   /** Follows the cached path, then heads for the current goal (x, z); returns true when it is reached. */
   function follow(e:Entity,s:AIState,x:number,z:number,speed:number):boolean{
@@ -130,7 +146,7 @@ export function createEntityAI(game:Game):EntityAIInternal{
       const i=s.index*3,wx=s.path[i]+half,wy=s.path[i+1],wz=s.path[i+2]+half;
       if(Math.abs(e.x-wx)<maxDist&&Math.abs(e.z-wz)<maxDist&&Math.abs(e.y-wy)<1){s.index++;s.best=Infinity;s.stuck=0;continue;}
       const d=Math.hypot(wx-e.x,wz-e.z);
-      if(d<s.best-.05){s.best=d;s.stuck=0;}else if(++s.stuck>30){clearPath(s);s.planned=-1e9;return false;}
+      if(d<s.best-.05){s.best=d;s.stuck=0;}else if(++s.stuck>30){clearPath(s);s.retry=-1e9;return false;}
       steer(e,wx,wz,speed);
       // Waypoint above: jump when close (or blocked).
       if(wy>e.y+.5&&d<1.6&&(e.onGround||e.inWater))e.jump=true;
@@ -161,8 +177,9 @@ export function createEntityAI(game:Game):EntityAIInternal{
   }
   const ai:EntityAIInternal={
     get searches(){return searches;},
+    get nodes(){return nodes;},
     wander(e,speed,chance=1/120){
-      const s=state(e);
+      const s=state(e);speed=speedOf(speed);
       if(s.wandering){
         const arrived=Math.hypot(s.wx-e.x,s.wz-e.z)<.9&&Math.abs(s.wy-e.y)<1.5;
         if(arrived||++s.wanderTicks>400||!ai.navigate(e,s.wx,s.wy,s.wz,speed)){s.wandering=false;ai.stop(e);}
@@ -182,6 +199,7 @@ export function createEntityAI(game:Game):EntityAIInternal{
       ai.navigate(e,s.wx,s.wy,s.wz,speed);
     },
     lookAt(e,x,y,z){
+      if(!finite3(x,y,z))return;
       const dx=x-e.x,dz=z-e.z,dy=y-(e.y+e.height*.85),h=Math.hypot(dx,dz);
       if(h>1e-6)e.headYaw=rotateTowards(e.headYaw,Math.atan2(-dx,-dz),LOOK_YAW);
       e.pitch=rotateTowards(e.pitch,Math.atan2(dy,Math.max(h,1e-6)),LOOK_PITCH);
@@ -191,12 +209,14 @@ export function createEntityAI(game:Game):EntityAIInternal{
     },
     moveToward(e,x,_y,z,speed){return steer(e,x,z,speed);},
     navigate(e,x,y,z,speed){
+      if(!finite3(x,y,z)){e.moveX=0;e.moveZ=0;return false;}
+      speed=speedOf(speed);
       const s=state(e);
       // NaN-safe: a cleared goal (NaN) always counts as moved.
       const moved=!(Math.hypot(x-s.goalX,y-s.goalY,z-s.goalZ)<=2);
       const exhausted=s.len>0&&s.index>=s.len&&Math.hypot(x-e.x,z-e.z)>1.5;
       if(s.len===0||moved||exhausted){
-        if((moved||now()-s.planned>=REPLAN_TICKS)&&canSearch())plan(e,s,x,y,z);
+        if((moved||now()>=s.retry)&&canSearch())plan(e,s,x,y,z);
         else if(moved){steer(e,x,z,speed);return true;}
       }
       if(s.len===0){steer(e,x,z,speed);return !s.failed;}
@@ -204,6 +224,8 @@ export function createEntityAI(game:Game):EntityAIInternal{
       return true;
     },
     flee(e,fromX,fromZ,speed){
+      if(!Number.isFinite(fromX)||!Number.isFinite(fromZ))return;
+      speed=speedOf(speed);
       const s=state(e);
       const d=Math.hypot(e.x-fromX,e.z-fromZ),targetD=Math.hypot(s.fx-fromX,s.fz-fromZ);
       const reached=Math.hypot(s.fx-e.x,s.fz-e.z)<1;
@@ -228,6 +250,7 @@ export function createEntityAI(game:Game):EntityAIInternal{
       ai.navigate(e,s.fx,s.fy,s.fz,speed);
     },
     canSee(e,x,y,z){
+      if(!finite3(x,y,z))return false;
       const ox=e.x,oy=e.y+e.height*.85,oz=e.z,dx=x-ox,dy=y-oy,dz=z-oz,d=Math.hypot(dx,dy,dz);
       if(d<1e-6)return true;
       return !raycast(game.world,ox,oy,oz,dx/d,dy/d,dz/d,d,seeThrough);
@@ -238,11 +261,11 @@ export function createEntityAI(game:Game):EntityAIInternal{
     },
     stop(e){
       e.moveX=0;e.moveZ=0;
-      const s=states.get(e);if(s){clearPath(s);s.wandering=false;s.fleeing=false;s.failed=false;s.goalX=s.goalY=s.goalZ=NaN;}
+      const s=states.get(e);if(s){clearPath(s);s.wandering=false;s.fleeing=false;s.failed=false;s.retry=-1e9;s.goalX=s.goalY=s.goalZ=NaN;}
     },
     lookedAt(e){return states.get(e)?.lookTick===now();},
     forget(e){states.delete(e);},
-    reset(){budgetTick=-1;searches=0;}
+    reset(){creditTick=-1;credit=0;searches=0;nodes=0;}
   };
   return ai;
 }

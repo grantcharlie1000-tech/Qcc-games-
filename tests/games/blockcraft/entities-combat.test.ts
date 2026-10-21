@@ -2,6 +2,7 @@ import {describe,expect,test} from 'vitest';
 import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
 import {stack} from '../../../src/games/blockcraft/data/items';
 import type {Entity,SpawnReason} from '../../../src/games/blockcraft/engine/contracts';
+import {sunBrightness} from '../../../src/games/blockcraft/entity/entities';
 import {fill,harness,monster,walker} from './entities-helpers';
 
 const settle=(h:ReturnType<typeof harness>)=>h.tick(3);
@@ -143,5 +144,57 @@ describe('lifecycle',()=>{
     expect(res).toBe(out);expect(out).toContain(g);expect(out).not.toContain(a);
     h.game.entities.near(.5,60,-1.5,1,e=>e.kind==='walker',out);expect(out).toHaveLength(0);
     expect(h.game.entities.count('passive')).toBe(1);
+  });
+});
+
+describe('environment edge cases',()=>{
+  test('no fall damage when landing in water, even in a one-block-deep pool',()=>{
+    const h=harness({kinds:[walker()],layers:[[B.water,60,60]]});
+    const mobs:Entity[]=[];
+    for(let i=0;i<24;i++)mobs.push(h.game.entities.spawn('walker',-9.5+(i%6)*4,70+i*.37,-9.5+Math.floor(i/6)*4)!);
+    h.tick(120);
+    expect(mobs.map(e=>e.health)).toEqual(mobs.map(()=>20));
+    expect(mobs.every(e=>e.inWater&&e.onGround)).toBe(true);
+  });
+  test('beds halve the fall distance before the 3-block allowance and bounce the mob back up',()=>{
+    const bed=blockId('bed_foot_north');
+    const drop=(y:number)=>{
+      const h=harness({kinds:[walker()]});fill(h.game,-1,60,-1,1,60,1,bed);
+      const e=h.game.entities.spawn('walker',.5,y,.5)!;
+      let landed=-1,peak=-Infinity;
+      for(let t=0;t<200;t++){h.tick();if(landed<0){if(e.onGround)landed=t;}else if(t<landed+40)peak=Math.max(peak,e.y);}
+      return{damage:20-e.health,peak};
+    };
+    // Vanilla BedBlock.fallOn: ceil(fallDistance × 0.5 − 3). Dropped from 66 and 71 onto the bed top (9/16), the fall
+    // distance before the landing tick (as vanilla counts it) is 4.84 and 9.67 blocks: 0 and 2 damage.
+    const low=drop(66),high=drop(71);
+    expect(low.damage).toBe(0);expect(high.damage).toBe(2);
+    // BedBlock.bounceUp: -vy × 0.66 for living entities.
+    expect(high.peak).toBeGreaterThan(60.5625+2);
+  });
+  test('sun burn uses the vanilla brightness curve f / (4 − 3f) and its burn chance',()=>{
+    // Vanilla DimensionType.getBrightness values (Java floats give 0.50000006 at 12, so it still passes the > 0.5 test).
+    expect(sunBrightness(12)).toBeCloseTo(.5,6);expect(sunBrightness(12)).toBeGreaterThan(.5);
+    expect(sunBrightness(13)).toBeCloseTo(.6190,4);expect(sunBrightness(14)).toBeCloseTo(.7778,4);expect(sunBrightness(15)).toBe(1);
+    const rate=(darkening:number)=>{
+      const h=harness({kinds:[monster({burnsInDaylight:true,physics:'none'})],light:0xf0});h.game.time.dayTime=6000;
+      (h.game.weather as {intensity:number}).intensity=darkening/3;// rain darkens the sky (isRainingOn stays false in the fake)
+      const e=h.game.entities.spawn('monster',.5,60,.5)!;
+      let burns=0;const n=20000;
+      for(let i=0;i<n;i++){h.tick();if(e.fire===160)burns++;e.fire=0;}
+      return burns/n;
+    };
+    // Mob.isSunBurnTick: random × 30 < (magic − 0.4) × 2, i.e. 0.67% per tick at brightness 12 and 4% at 15.
+    const dusk=rate(3),noon=rate(0);
+    expect(dusk).toBeGreaterThan(.004);expect(dusk).toBeLessThan(.0095);
+    expect(noon).toBeGreaterThan(.033);expect(noon).toBeLessThan(.047);
+  });
+  test('undead mobs (burnsInDaylight) and the kinds that replace them never drown; land mobs still do',()=>{
+    const h=harness({kinds:[monster({kind:'zombie',burnsInDaylight:true,physics:'none'}),
+      monster({kind:'husk',physics:'none',spawn:{light:'dark',group:[1,1],biomes:[['desert',80]],replaces:'zombie'}}),walker({physics:'none'})]});
+    fill(h.game,-6,60,-2,6,64,2,B.water);
+    const z=h.game.entities.spawn('zombie',-3.5,60,.5)!,k=h.game.entities.spawn('husk',.5,60,.5)!,w=h.game.entities.spawn('walker',3.5,60,.5)!;
+    h.tick(1000);
+    expect(z.health).toBe(20);expect(k.health).toBe(20);expect(w.health).toBeLessThan(20);
   });
 });

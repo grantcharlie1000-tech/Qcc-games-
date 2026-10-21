@@ -1,5 +1,6 @@
 import {describe,expect,test} from 'vitest';
 import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
+import {stack} from '../../../src/games/blockcraft/data/items';
 import {fill,harness,walker} from './entities-helpers';
 
 const SLAB=blockId('stone_slab'),WATER=B.water;
@@ -107,5 +108,20 @@ describe('entity physics',()=>{
     h.tick(1);
     expect(c.vx).toBeGreaterThan(0);
     expect(h.pushes.some(([x])=>x<0)).toBe(true);
+  });
+  test('non-finite intents, velocities and positions are reset instead of hanging the tick',()=>{
+    const h=harness({kinds:[walker(),walker({kind:'lost',tick:(e,game)=>{game.entities.ai.moveToward(e,NaN,60,NaN,2);}})]});
+    const e=h.game.entities.spawn('walker',.5,60,.5)!,lost=h.game.entities.spawn('lost',4.5,60,.5)!;
+    h.game.entities.dropItem(stack('stick'),8.5,61,.5);
+    const item=h.game.entities.all().find(o=>o.kind==='item')!;
+    h.tick(2);
+    e.moveX=NaN;e.moveZ=Infinity;h.tick();
+    e.vx=NaN;e.vy=Infinity;e.vz=-Infinity;item.vx=NaN;item.vy=-Infinity;h.tick();
+    e.vx=1e308;item.vz=1e300;h.tick();
+    e.x=NaN;e.yaw=NaN;e.headYaw=Infinity;e.pitch=NaN;h.tick(3);
+    for(const o of [e,lost,item])for(const v of [o.x,o.y,o.z,o.vx,o.vy,o.vz,o.moveX,o.moveZ,o.yaw,o.headYaw,o.pitch])expect(Number.isFinite(v)).toBe(true);
+    // Clamped to MAX_SPEED (5 blocks a tick) the mob and the item slide a few blocks, staying in the loaded area.
+    expect(Math.abs(e.x)).toBeLessThan(32);expect(e.y).toBeGreaterThanOrEqual(60-1e-3);
+    expect(Math.abs(item.z)).toBeLessThan(32);
   });
 });

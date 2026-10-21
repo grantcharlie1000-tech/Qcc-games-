@@ -4,8 +4,14 @@
 //  - Tick (per entity, frozen while its chunk is unloaded): despawn check, age, hurt timer, environment (fire ticks with
 //    1 damage per second, lava 4 and 15 s of fire, fire blocks, cacti, burning in daylight, drowning / drying out,
 //    suffocation, the void), the kind's tick (AI), body rotation toward the movement intent (head within 75°), physics
-//    (entity/entities-physics.ts), fall damage ceil(distance − 3) (halved on beds, none into water), sounds. Then mobs
-//    push each other and the player (vanilla 0.05 blocks/tick), and the spawner runs.
+//    (entity/entities-physics.ts), fall damage ceil(distance − 3) (ceil(distance / 2 − 3) on beds, which also bounce;
+//    none when the mob lands in water, re-checked at landing like vanilla checkFallDamage), sounds. Then mobs push each
+//    other and the player (vanilla 0.05 blocks/tick), and the spawner runs.
+//  - Breathing (vanilla canBreatheUnderwater): aquatic kinds and undead never drown. The contract has no undead flag, so
+//    undead are the kinds that burn in daylight (zombie, skeleton, stray, drowned) or replace such a kind (husk).
+//  - Non-finite positions, angles, velocities and intents set by a kind or another area are reset before physics
+//    (positions to the last tick's, the rest to 0) and velocities are clamped to ±MAX_SPEED, so a NaN never reaches
+//    the collision loop.
 //  - damage(): the kind's hurt hook may cancel; 10 ticks of hurt flash and invulnerability during which only a bigger
 //    hit lands (for the difference, without knockback); knockback halves the velocity and adds the push (vertical
 //    min(8, vy / 2 + strength) on the ground); death tips the body over for 20 ticks, then 20 `poof` particles and removal.
@@ -29,6 +35,8 @@ export const HURT_TICKS=10,DEATH_TICKS=20,MAX_SAVED=200,AIR_SUPPLY=300;
 export const PLAYER_KILL_MEMORY=100;
 /** Vanilla knockback 0.4 blocks/tick (blocks/second here), also the cap of the vertical part. */
 export const KNOCKBACK=8;
+/** Largest velocity component the integrator accepts, blocks/second (vanilla arrows fly at about 60). */
+export const MAX_SPEED=100;
 const SAVE_VERSION=1;
 const DEG=Math.PI/180,MAX_HEAD=75*DEG;
 const CACTUS=blockId('cactus'),FIRE=blockId('fire');
@@ -62,13 +70,17 @@ export function cleanJson(v:unknown,depth=0):unknown{
   for(const k of keys){if(k==='__proto__')continue;const c=cleanJson((v as Record<string,unknown>)[k],depth+1);if(c!==undefined)out[k]=c;}
   return out;
 }
+/** Overworld light-dependent brightness of a 0..15 light level (vanilla DimensionType.getBrightness: f / (4 − 3f)). */
+export function sunBrightness(level:number):number{const f=level/15;return f/(4-3*f);}
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const r3=(v:number)=>Math.round(v*1000)/1000;
 const finiteIn=(v:unknown,min:number,max:number):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
 const isLivingCategory=(c:EntityCategory)=>c==='passive'||c==='hostile'||c==='water';
 const CATEGORIES:readonly EntityCategory[]=['passive','hostile','water','item','projectile','xp','misc'];
 
-export interface EntityDebug{readonly render:RenderStats|null;readonly frozen:number;readonly searches:number}
+export interface EntityDebug{readonly render:RenderStats|null;readonly frozen:number;readonly searches:number;
+  /** A* nodes expanded so far. */
+  readonly nodes:number}
 
 export function createEntities(game:Game):EntityService&{readonly debug:EntityDebug}{
   const kinds=new Map<string,EntityKind>();let kindList:EntityKind[]=[];
@@ -84,7 +96,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
   function register(kind:EntityKind){
     if(!kind||typeof kind.kind!=='string'||!kind.kind||!CATEGORIES.includes(kind.category))return;
     if(!(kind.width>0)||!(kind.height>0)||!(kind.maxHealth>0))return;
-    kinds.set(kind.kind,kind);kindList=[...kinds.values()];
+    kinds.set(kind.kind,kind);kindList=[...kinds.values()];breathing.clear();
     spawner.invalidate();renderer?.invalidate();
   }
   function create(name:string,x:number,y:number,z:number,options:SpawnOptions={},preset?:Preset):Entity|null{
@@ -208,11 +220,11 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     }
     return found;
   }
-  /** Vanilla Mob.isSunBurnTick. */
+  /** Vanilla Mob.isSunBurnTick; the light curve is the overworld's DimensionType.getBrightness, f / (4 − 3f). */
   function sunBurns(e:Entity,f:FluidState):boolean{
     if(game.time.skyDarkening>=4)return false;
     const x=Math.floor(e.x),y=Math.min(CH-1,Math.max(0,Math.floor(e.y+e.height*.85))),z=Math.floor(e.z);
-    const l=game.world.brightnessAt(x,y,z)/15,magic=l/(3-2*l);
+    const magic=sunBrightness(game.world.brightnessAt(x,y,z));
     if(magic<=.5||game.random()*30>=(magic-.4)*2)return false;
     if(f.water||game.weather.isRainingOn(x,y,z))return false;
     return(game.world.lightAt(x,y,z)>>4)>=15;
@@ -230,14 +242,22 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(touch&1&&!k.fireImmune){e.fire=e.fire===0?160:e.fire+1;damage(e,1,FIRE_SOURCE);}
     if(touch&2)damage(e,1,CACTUS_SOURCE);
     if(k.burnsInDaylight&&!k.fireImmune&&e.deathTime===0&&sunBurns(e,f))e.fire=Math.max(e.fire,160);
-    // Air: water mobs dry out on land; other aquatic mobs never drown; land mobs drown with the eyes under water.
-    if(k.aquatic){
-      if(e.category==='water'){if(f.water)r.air=AIR_SUPPLY;else if(--r.air<=-20){r.air=0;damage(e,2,DROWN_SOURCE);}}
-    }else if(f.eyeInWater){if(--r.air<=-20){r.air=0;damage(e,2,DROWN_SOURCE);}}
+    // Air: water mobs dry out on land; other aquatic mobs and undead never drown; the rest drown with the eyes under water.
+    if(k.aquatic&&e.category==='water'){if(f.water)r.air=AIR_SUPPLY;else if(--r.air<=-20){r.air=0;damage(e,2,DROWN_SOURCE);}}
+    else if(f.eyeInWater&&!breathes(k)){if(--r.air<=-20){r.air=0;damage(e,2,DROWN_SOURCE);}}
     else r.air=Math.min(AIR_SUPPLY,r.air+4);
     const eye=game.world.get(Math.floor(e.x),Math.floor(e.y+e.height*.85),Math.floor(e.z));
     if(eye>0&&OPAQUE[eye]&&SOLID[eye])damage(e,1,WALL_SOURCE);
     if(e.y<-64)damage(e,4,VOID_SOURCE);
+  }
+  /** Never drowns (vanilla canBreatheUnderwater): aquatic, undead (burnsInDaylight), or replacing such a kind (husk). */
+  const breathing=new Map<string,boolean>();
+  function breathes(k:EntityKind,depth=0):boolean{
+    const known=breathing.get(k.kind);if(known!==undefined)return known;
+    let v=!!k.aquatic||!!k.burnsInDaylight;
+    const replaced=k.spawn?.replaces;
+    if(!v&&depth<4&&typeof replaced==='string'){const t=kinds.get(replaced);if(t&&t!==k)v=breathes(t,depth+1);}
+    breathing.set(k.kind,v);return v;
   }
   function itemEnvironment(r:Rec){
     const e=r.e;
@@ -273,6 +293,23 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
   }
 
   // ---- Per-tick -------------------------------------------------------------------------------
+  const speed=(v:number)=>Number.isFinite(v)?(v>MAX_SPEED?MAX_SPEED:v<-MAX_SPEED?-MAX_SPEED:v):0;
+  /** Position and angles back to the last tick's when a kind or another area made them non-finite. */
+  function saneTransform(r:Rec){
+    const e=r.e;
+    if(!Number.isFinite(e.x)||!Number.isFinite(e.y)||!Number.isFinite(e.z)){e.x=r.px;e.y=r.py;e.z=r.pz;e.vx=e.vy=e.vz=0;}
+    if(!Number.isFinite(e.yaw))e.yaw=r.pyaw;
+    if(!Number.isFinite(e.headYaw))e.headYaw=r.phead;
+    if(!Number.isFinite(e.pitch))e.pitch=r.ppitch;
+  }
+  /** Everything physics reads: finite, bounded velocities and intents, a valid box. */
+  function sane(r:Rec){
+    const e=r.e,k=r.kind;
+    saneTransform(r);
+    e.vx=speed(e.vx);e.vy=speed(e.vy);e.vz=speed(e.vz);e.moveX=speed(e.moveX);e.moveZ=speed(e.moveZ);
+    if(!(e.width>0&&e.width<64))e.width=k.width;
+    if(!(e.height>0&&e.height<64))e.height=k.height;
+  }
   const ORB_TARGET:Vec3={x:0,y:0,z:0};
   function physics(r:Rec){
     const e=r.e,p=r.phys,f=r.fluids,m=r.motion,w=game.world;
@@ -298,11 +335,16 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(below>0)game.sounds.play(`step:${blockDef(below).sound}`,at(e),{volume:.15});
   }
   function land(r:Rec){
-    const e=r.e,fall=r.motion.landed;
-    if(fall<=0||e.inWater)return;
+    const e=r.e,m=r.motion,fall=m.landed;
+    if(fall<=0)return;
+    // Vanilla LivingEntity.checkFallDamage updates the water state first: landing in water (even a one-deep pool
+    // entered during this tick) deals no damage.
+    if(!e.inWater){sampleFluids(game.world,e,e.height*.85,r.fluids);e.inWater=r.fluids.water;e.inLava=r.fluids.lava;}
+    if(e.inWater){m.landed=0;m.fallDistance=0;return;}
     const below=game.world.get(Math.floor(e.x),Math.floor(e.y-.2),Math.floor(e.z));
     const bed=below>0&&blockDef(below).family===BED_FAMILY;
-    const amount=Math.ceil((fall-3)*(bed?.5:1));
+    // BedBlock.fallOn halves the distance before the 3-block allowance.
+    const amount=Math.ceil((bed?fall*.5:fall)-3);
     if(amount<=0||r.kind.noFallDamage)return;
     if(below>0)game.sounds.play(`fall:${blockDef(below).sound}`,at(e));
     damage(e,amount,FALL_SOURCE);
@@ -327,7 +369,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(e.deathTime>0){
       e.moveX=e.moveZ=0;e.jump=false;
       sampleFluids(game.world,e,e.height*.85,r.fluids);e.inWater=r.fluids.water;e.inLava=r.fluids.lava;
-      physics(r);walkAnimation(r);
+      sane(r);physics(r);walkAnimation(r);
       if(++e.deathTime>=DEATH_TICKS){
         game.render.spawnParticles('poof',e.x,e.y+e.height/2,e.z,{count:20,spread:Math.max(.25,e.width/2)});
         remove(e);
@@ -340,6 +382,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(e.removed)return;
     if(e.deathTime===0){try{k.tick?.(e,game);}catch{/* a failing AI tick must not stop the world */}}
     if(e.removed)return;
+    sane(r);
     if(r.phys)turnBody(r);
     physics(r);
     r.lastYaw=e.yaw;
@@ -353,6 +396,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     else if(e.y<-64){remove(e);return;}
     try{k.tick?.(e,game);}catch{/* keep ticking the others */}
     if(e.removed)return;
+    sane(r);
     physics(r);
     if(e.removed)return;
     splash(r);
@@ -485,7 +529,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     count(category){let n=0;for(const r of recs){const e=r.e;if(!e.removed&&e.deathTime===0&&e.category===category)n++;}return n;},
     get debug():EntityDebug{
       let frozen=0;for(const r of recs)if(r.frozen&&!r.e.removed)frozen++;
-      return{render:renderer?{...renderer.stats}:null,frozen,searches:ai.searches};
+      return{render:renderer?{...renderer.stats}:null,frozen,searches:ai.searches,nodes:ai.nodes};
     },
     init(){
       unsubscribe.push(game.events.on('chunkLoaded',({cx,cz,fresh})=>spawner.chunkLoaded(cx,cz,fresh)));
@@ -506,6 +550,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
           if(verdict==='remove'){remove(e);continue;}
           if(verdict==='near')r.idle=0;
         }
+        saneTransform(r);
         r.frozen=!game.world.isLoaded(e.x,e.z);
         r.px=e.x;r.py=e.y;r.pz=e.z;r.pyaw=e.yaw;r.phead=e.headYaw;r.ppitch=e.pitch;r.walkSpeedOld=r.walkSpeed;
         if(r.frozen)continue;
