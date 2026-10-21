@@ -5,12 +5,11 @@ import {AIR,B,COLLISION_BOXES,FACING_VECTOR,FULL_CUBE,OPAQUE,blockDef,blockId,fa
 import {BIOMES} from '../data/biomes';
 import {itemDef,stack,type ItemDef,type ItemStack} from '../data/items';
 import {DAY_TICKS} from '../engine/constants';
-import {raycast} from '../engine/physics';
 import {canSurvive} from '../engine/support';
 import type {Entity,Game,TreeKind,Vec3} from '../engine/contracts';
 import {between,lootDrops} from './loot';
 import {applyPlan,obstructed,placeBlock,type Cell} from './placement';
-import {fillHand,type Hand,type Hit,type Result} from './use-hands';
+import {fillHand,isSource,lookHit,type Hand,type Hit,type Result} from './use-hands';
 
 // ---- Using items over time (eating, drinking, drawing a bow, raising a shield) --------------------------------------
 export type UseKind='eat'|'drink'|'bow'|'shield';
@@ -315,14 +314,12 @@ function growMoss(game:Game,x:number,y:number,z:number){
 }
 
 // ---- Item use in the air ------------------------------------------------------------------------------------------
-const isSource=(id:number)=>{const l=blockDef(id).liquid;return!!l&&l.level===0&&!l.falling;};
-function reach(game:Game){return game.settings.mode==='creative'?5:4.5;}
 /** BucketItem.use: an empty bucket picks up a source block (rays stop only at sources); a full one empties against the
  *  face it points at, washing away plants and torches. */
 function useBucket(game:Game,hand:Hand,content:'water'|'lava'|null):Result{
-  const w=game.world,e=game.player.eye(),l=game.player.look();
+  const w=game.world;
   if(!content){
-    const hit=raycast(w,e.x,e.y,e.z,l.x,l.y,l.z,reach(game),id=>id===AIR||isLiquid(id)&&!isSource(id));
+    const hit=lookHit(game,true);
     if(!hit)return 'pass';
     const d=blockDef(hit.id);
     if(!d.liquid||!isSource(hit.id)||!w.set(hit.x,hit.y,hit.z,AIR,'player'))return 'fail';
@@ -330,7 +327,7 @@ function useBucket(game:Game,hand:Hand,content:'water'|'lava'|null):Result{
     fillHand(game,hand,d.liquid.kind==='lava'?'lava_bucket':'water_bucket');
     return 'success';
   }
-  const hit=raycast(w,e.x,e.y,e.z,l.x,l.y,l.z,reach(game));
+  const hit=lookHit(game);
   if(!hit)return 'pass';
   const x=hit.x+hit.nx,y=hit.y+hit.ny,z=hit.z+hit.nz,here=w.get(x,y,z);
   if(here<0)return 'fail';
@@ -346,8 +343,7 @@ function useBucket(game:Game,hand:Hand,content:'water'|'lava'|null):Result{
 }
 /** PlaceOnWaterBlockItem (lily pads): placed on top of the water source the player looks at. */
 function placeOnWater(game:Game,hand:Hand,family:string):Result{
-  const w=game.world,e=game.player.eye(),l=game.player.look();
-  const hit=raycast(w,e.x,e.y,e.z,l.x,l.y,l.z,reach(game),id=>id===AIR||isLiquid(id)&&!isSource(id));
+  const w=game.world,hit=lookHit(game,true);
   if(!hit||!blockDef(hit.id).liquid||blockDef(hit.id).liquid!.kind!=='water'||!isSource(hit.id))return 'pass';
   const id=familyStates(family)[0]?.id;if(id===undefined)return 'pass';
   const cell:Cell={x:hit.x,y:hit.y+1,z:hit.z,id};
@@ -367,8 +363,7 @@ export function useItem(game:Game,hand:Hand,s:ItemStack,start:(u:ItemUse)=>void,
     case 'snowball':case 'egg':case 'ender_pearl':return throwItem(game,hand,def.use,cooldowns);
     case 'spawn_egg':{
       // Spawn eggs aimed at water spawn in it (squid).
-      const w=game.world,e=game.player.eye(),l=game.player.look();
-      const hit=raycast(w,e.x,e.y,e.z,l.x,l.y,l.z,reach(game),id=>id===AIR||isLiquid(id)&&!isSource(id));
+      const hit=lookHit(game,true);
       if(!hit||!blockDef(hit.id).liquid)return 'pass';
       return spawnMob(game,hand,def,hit.x+.5,hit.y,hit.z+.5);
     }

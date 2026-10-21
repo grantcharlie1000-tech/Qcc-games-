@@ -5,9 +5,10 @@
 import {AIR,B,OUTLINE_BOX,SOLID,blockDef,isLiquid,type BlockId} from '../data/blocks';
 import {ITEMS,itemDef,stack,type ItemStack} from '../data/items';
 import type {BlockSource,Entity,Game,InteractionService,RayHit} from '../engine/contracts';
+export {traceOutline};
 import {createCombat} from './combat';
 import {blockXp,canHarvest,lootDrops} from './loot';
-import {acted,mainHand,offHand,type Hand,type Hit,type Result} from './use-hands';
+import {acted,mainHand,offHand,traceOutline,type Hand,type Hit,type Result} from './use-hands';
 import {bowPower,releaseItemUse,tickItemUse,useBlock,useItem,useItemOn,useOnEntity,useProgress,type ItemUse} from './use';
 
 export const REACH=4.5,CREATIVE_REACH=5,ENTITY_REACH=3;
@@ -47,43 +48,6 @@ export function breakTicks(id:BlockId,held:ItemStack|null,c:MiningConditions):nu
   return p>=1?0:p<=0?Infinity:Math.ceil(1/p-1e-9);
 }
 
-// ---- Crosshair ray -----------------------------------------------------------------------------------------------
-/** Block ray against outline shapes (slabs, plants, torches...): voxel traversal, then the outline box of each candidate.
- *  Air, liquids and unloaded voxels are passed. Writes into `out`. */
-export function traceOutline(world:BlockSource,ox:number,oy:number,oz:number,dx:number,dy:number,dz:number,max:number,out:Hit):Hit|null{
-  let x=Math.floor(ox),y=Math.floor(oy),z=Math.floor(oz);
-  const sx=Math.sign(dx),sy=Math.sign(dy),sz=Math.sign(dz);
-  const tdx=dx?Math.abs(1/dx):Infinity,tdy=dy?Math.abs(1/dy):Infinity,tdz=dz?Math.abs(1/dz):Infinity;
-  let tx=dx?(sx>0?x+1-ox:ox-x)*tdx:Infinity,ty=dy?(sy>0?y+1-oy:oy-y)*tdy:Infinity,tz=dz?(sz>0?z+1-oz:oz-z)*tdz:Infinity;
-  let nx=0,ny=0,nz=0,t=0;
-  for(let steps=0;t<=max&&steps<256;steps++){
-    const id=world.get(x,y,z);
-    if(id>0&&!isLiquid(id)){
-      const b=OUTLINE_BOX[id];
-      if(b.length===6&&b[0]===0&&b[1]===0&&b[2]===0&&b[3]===1&&b[4]===1&&b[5]===1)return fill(out,x,y,z,nx,ny,nz,id,t,ox+dx*t,oy+dy*t,oz+dz*t);
-      if(b.length===6){
-        // Slab test against the outline box; the entry face is the axis entered last.
-        let t0=0,t1=Infinity,ax=-1;const o=[ox,oy,oz],d=[dx,dy,dz],lo=[x+b[0],y+b[1],z+b[2]],hi=[x+b[3],y+b[4],z+b[5]];
-        for(let a=0;a<3&&t0<=t1;a++){
-          if(Math.abs(d[a])<1e-12){if(o[a]<lo[a]||o[a]>hi[a])t0=Infinity;continue;}
-          let n=(lo[a]-o[a])/d[a],f=(hi[a]-o[a])/d[a];if(n>f){const s=n;n=f;f=s;}
-          if(n>t0){t0=n;ax=a;}if(f<t1)t1=f;
-        }
-        if(t0<=t1&&t0<=max){
-          const fn=[0,0,0];if(ax>=0)fn[ax]=-Math.sign(d[ax]);else{fn[0]=nx;fn[1]=ny;fn[2]=nz;}
-          return fill(out,x,y,z,fn[0],fn[1],fn[2],id,t0,ox+dx*t0,oy+dy*t0,oz+dz*t0);
-        }
-      }
-    }
-    if(tx<ty&&tx<tz){x+=sx;t=tx;tx+=tdx;nx=-sx;ny=0;nz=0;}
-    else if(ty<tz){y+=sy;t=ty;ty+=tdy;nx=0;ny=-sy;nz=0;}
-    else{z+=sz;t=tz;tz+=tdz;nx=0;ny=0;nz=-sz;}
-  }
-  return null;
-}
-function fill(o:Hit,x:number,y:number,z:number,nx:number,ny:number,nz:number,id:number,distance:number,px:number,py:number,pz:number):Hit{
-  o.x=x;o.y=y;o.z=z;o.nx=nx;o.ny=ny;o.nz=nz;o.id=id;o.distance=distance;o.px=px;o.py=py;o.pz=pz;return o;
-}
 const sameHit=(a:RayHit|null,b:RayHit)=>!!a&&a.x===b.x&&a.y===b.y&&a.z===b.z&&a.nx===b.nx&&a.ny===b.ny&&a.nz===b.nz&&a.id===b.id;
 
 /** Item a pick-block on this state gives: the item placing its family, else its own item (seeds for crops, dirt for farmland). */
