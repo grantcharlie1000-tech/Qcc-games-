@@ -68,8 +68,8 @@ describe('hearts from survival state',()=>{
     expect(t.renderHealth).toBe(14);expect(t.lagHealth).toBe(20);
     const phases=[];for(let k=101;k<=122;k++)phases.push(t.blinking(k));
     expect(phases.filter(Boolean).length).toBeGreaterThan(5);expect(t.blinking(121)).toBe(false);
-    // Blink phase toggles every 3 ticks.
-    expect([t.blinking(102),t.blinking(103),t.blinking(104),t.blinking(105),t.blinking(106),t.blinking(107)]).toEqual([true,false,false,false,true,true]);
+    // Blink phase toggles every 3 ticks: (blinkUntil - tick) / 3 % 2 == 1, as in Gui.renderPlayerHealth.
+    expect([t.blinking(102),t.blinking(103),t.blinking(104),t.blinking(105),t.blinking(106),t.blinking(107)]).toEqual([false,false,true,true,true,false]);
     for(let k=102;k<=121;k++)t.update(14,k,false);
     expect(t.lagHealth).toBe(20);
     t.update(14,122,false);expect(t.lagHealth).toBe(14);
