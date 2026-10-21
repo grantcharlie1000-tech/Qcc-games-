@@ -1,1 +1,33 @@
-.snake-game{width:min(100%,520px);margin:0 auto;color:#f4f8db}.snake-garden{position:relative;padding:10px;border:2px solid #779d35;border-radius:26px;background:linear-gradient(145deg,#426d35,#203e2b);box-shadow:0 7px 0 #112a20,0 15px 30px #071d2140;overflow:hidden}.snake-canvas{width:100%;height:auto;aspect-ratio:1;display:block;border-radius:16px;touch-action:none;outline-offset:-4px}.snake-garden::after{content:'';position:absolute;inset:11px;border:2px solid #193c26;border-radius:16px;pointer-events:none}.snake-card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#122d278a;text-align:center;padding:18px;backdrop-filter:blur(2px)}.snake-card[hidden]{display:none}.snake-card strong{font-family:'Lilita One',sans-serif;font-size:clamp(27px,7vw,43px);letter-spacing:.3px;text-shadow:0 3px #183322}.snake-card p{margin:0 0 4px;max-width:240px;font-weight:650;font-size:15px;line-height:1.4}.snake-card .game-button{background:#ebef92;color:#1c3925;min-height:48px}.snake-instructions{display:flex;justify-content:center;gap:12px;margin:17px 0 9px;font-size:13px;font-weight:700;color:#c7d6c0}.snake-instructions span+span::before{content:'·';margin-right:12px;color:#a6c26e}.snake-pad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,49px);gap:6px;justify-content:center;margin:0 auto}.snake-pad button{border:1px solid #718766;border-bottom:4px solid #172b20;border-radius:13px;background:linear-gradient(#42583b,#2b402e);color:#f0f4d0;font-weight:900;font-size:23px;touch-action:manipulation;cursor:pointer;min-width:48px;min-height:48px}.snake-pad button:active{transform:translateY(2px);border-bottom-width:2px}.snake-pad button:disabled{opacity:.45}.snake-pad button:focus-visible,.snake-card button:focus-visible{outline:3px solid #fff4a4;outline-offset:3px}.snake-pad [data-direction=up]{grid-column:2}.snake-pad [data-direction=left]{grid-column:1;grid-row:2}.snake-pad [data-direction=down]{grid-column:2;grid-row:2}.snake-pad [data-direction=right]{grid-column:3;grid-row:2}.snake-note{text-align:center;font-size:12px;color:#b6c9ac;margin:10px 0 0}@media(max-width:420px){.snake-garden{padding:7px;border-radius:21px}.snake-garden::after{inset:8px}.snake-instructions{gap:8px;font-size:12px}.snake-instructions span+span::before{margin-right:8px}}
+/* Snake sizes its board, keeping controls at their actual CSS target size. */
+body.in-game .game-view[data-game-id=snake] #game-stage.viewport-fitted{position:static!important;transform:none!important;width:100%!important;height:100%!important;max-height:none;display:grid;place-items:center}
+.snake-game{--snake-board-size:728px;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#f4f8db}
+.snake-garden{position:relative;flex:none;width:var(--snake-board-size);height:var(--snake-board-size);padding:14.8px;border:2px solid #779d46;border-radius:32px;background:linear-gradient(145deg,#486c38,#294c32);box-shadow:0 5px 0 #142e22,0 12px 28px #071d2135;overflow:hidden}
+.snake-canvas{width:100%;height:100%;display:block;border-radius:min(19px,3.125%);touch-action:none;outline-offset:2px;box-shadow:0 0 0 2px #315b35}
+.snake-garden::after{display:none}
+.snake-card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#14372696;text-align:center;padding:16px}
+.snake-card[hidden]{display:none}
+.snake-card strong{font-family:Arcade,sans-serif;font-size:clamp(25px,4.5vw,43px);letter-spacing:.3px;text-shadow:0 3px #183322}
+.snake-card p{margin:0 0 4px;max-width:260px;font:650 15px/1.4 system-ui,sans-serif}
+.snake-card .game-button{background:#edf1a8;color:#23402c;min-height:48px}
+.snake-controls{flex:none;display:flex;flex-direction:column;align-items:center;gap:7px}
+.snake-instructions{display:flex;justify-content:center;gap:12px;font:700 12px/18px system-ui,sans-serif;color:#c7d6c0}
+.snake-instructions span+span::before{content:'·';margin-right:12px;color:#a6c26e}
+.snake-pad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,48px);gap:5px;justify-content:center}
+.snake-pad button{border:1px solid #718766;border-bottom:3px solid #172b20;border-radius:13px;background:linear-gradient(#425b40,#2d4634);color:#f0f4d0;font-weight:900;font-size:23px;touch-action:manipulation;cursor:pointer;min-width:48px;min-height:48px}
+.snake-pad button:active{background:#557547;border-bottom-color:#557547}
+.snake-pad button:disabled{opacity:.45}
+.snake-pad button:focus-visible,.snake-card button:focus-visible{outline:3px solid #fff4a4;outline-offset:3px}
+.snake-pad [data-direction=up]{grid-column:2}
+.snake-pad [data-direction=left]{grid-column:1;grid-row:2}
+.snake-pad [data-direction=down]{grid-column:2;grid-row:2}
+.snake-pad [data-direction=right]{grid-column:3;grid-row:2}
+.snake-note{text-align:center;font:12px/16px system-ui,sans-serif;color:#b6c9ac;margin:0}
+.snake-sideways{flex-direction:row;gap:24px}
+.snake-sideways .snake-controls{width:180px;gap:14px}
+.snake-sideways .snake-instructions{flex-direction:column;align-items:center;gap:2px}
+.snake-sideways .snake-instructions span+span::before{display:none}
+.snake-sideways .snake-card{gap:6px;padding:12px}
+.snake-sideways .snake-card strong{font-size:26px}
+.snake-sideways .snake-card p{font-size:13px}
+@media(max-height:600px){.snake-game:not(.snake-sideways) .snake-note{display:none}.snake-controls{gap:5px}}
+@media(max-width:420px){.snake-garden{padding:7px;border-width:2px;border-radius:24px}.snake-garden::after{inset:7px;border-radius:15px}.snake-canvas{border-radius:min(15px,3.125%)}.snake-note{font-size:11px}}
