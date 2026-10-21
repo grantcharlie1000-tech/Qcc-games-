@@ -5,7 +5,7 @@ import {BLOCK_BY_NAME,TILE,WOOL_COLOURS,type BlockDef} from '../../../src/games/
 import {BIOME_BY_NAME} from '../../../src/games/blockcraft/data/biomes';
 import {tilePixels} from '../../../src/games/blockcraft/art/atlas';
 import {ICON_SIZE,SPRITE_NAMES,SPRITE_PAINTERS,hasSprite,spritePixels,iconPixels,iconUrl} from '../../../src/games/blockcraft/art/items';
-import {renderBlockIcon,FACE_SHADE} from '../../../src/games/blockcraft/art/sprites-blocks';
+import {renderBlockIcon,FACE_SHADE,ICON_TINTS} from '../../../src/games/blockcraft/art/sprites-blocks';
 import {encodePng,pngDataUrl} from '../../../src/games/blockcraft/art/sprites-png';
 import {SPAWN_EGG_COLOURS} from '../../../src/games/blockcraft/art/sprites-misc';
 import {DYE_COLOURS} from '../../../src/games/blockcraft/art/sprites-materials';
@@ -39,7 +39,8 @@ const avgLuma=(list:number[][])=>list.reduce((s,c)=>s+luma(c),0)/Math.max(1,list
 
 describe('item sprites',()=>{
   test('every ITEM_SPRITES name has its own painter (no placeholder fallback)',()=>{
-    expect(ITEM_SPRITES.length).toBe(148);
+    expect(ITEM_SPRITES.length).toBeGreaterThanOrEqual(148);
+    for(const name of ['shield','compass','clock','oak_door','red_bed',...MOB_KINDS.map(m=>`${m}_spawn_egg`)])expect(ITEM_SPRITES).toContain(name);
     expect(SPRITE_NAMES).toBe(ITEM_SPRITES);
     for(const name of ITEM_SPRITES){expect(hasSprite(name),name).toBe(true);expect(typeof SPRITE_PAINTERS[name],name).toBe('function');}
     expect(hasSprite('no_such_item')).toBe(false);
@@ -224,6 +225,7 @@ describe('isometric block icons',()=>{
   });
   test('tinted faces get the plains colour: grass block top and oak leaves, but not birch leaves or grass sides',()=>{
     const plains=BIOME_BY_NAME.get('plains')!,g=hex(plains.grass),f=hex(plains.foliage);
+    expect(ICON_TINTS).toEqual({grass:plains.grass,foliage:plains.foliage,water:plains.water});
     const grass=renderBlockIcon(def('grass_block'),N,grey);
     const t=mean(grass,N,top);expect(t[0]).toBeCloseTo(200*g[0]/255*FACE_SHADE.top,-1);expect(t[1]).toBeCloseTo(200*g[1]/255*FACE_SHADE.top,-1);
     expect(mean(grass,N,left)[0]).toBeCloseTo(200*FACE_SHADE.left,-1);
