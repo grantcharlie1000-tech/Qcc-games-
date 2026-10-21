@@ -209,9 +209,9 @@ const CREEPER_FACE=pixelMap([
   '.ee..ee.',
   '.ek..ke.',
   '...mm...',
-  '...mm...',
+  '..mmmm..',
   '..m..m..',
-  '.mm..mm.'],{e:0x101010,k:0x262f22,m:0x141414});
+  '.m....m.'],{e:0x101010,k:0x262f22,m:0x141414});
 /** Blotchy camouflage: 2×2 cells of the palette with single-texel speckle. */
 function camo(seed:number):Painter{
   return(face,x,y)=>{

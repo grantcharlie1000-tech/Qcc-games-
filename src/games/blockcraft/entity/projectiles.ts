@@ -131,8 +131,11 @@ export function shoot(e:Entity,dx:number,dy:number,dz:number,speed:number,inaccu
 const CANDIDATES:Entity[]=[];
 interface EntityHit{entity:Entity|null;player:boolean;t:number}
 const EHIT:EntityHit={entity:null,player:false,t:Infinity};
-const living=(game:Game,o:Entity)=>{
-  const k=game.entities.kind(o.kind);
+/** The sweep's projectile and game, read by the reusable candidate filter (no closure per tick). */
+let sweeping:Entity|null=null,sweepGame:Game|null=null;
+const candidate=(o:Entity)=>{
+  if(o===sweeping||o.removed||o.deathTime>0)return false;
+  const k=sweepGame!.entities.kind(o.kind);
   return k?.pickable??(o.category==='passive'||o.category==='hostile'||o.category==='water');
 };
 /** Projectile.checkLeftOwner: the owner no longer touches the projectile's swept box grown by 1. */
@@ -155,7 +158,9 @@ function clearedOwner(game:Game,e:Entity,f:Flight,mx:number,my:number,mz:number)
 function sweepEntities(game:Game,e:Entity,dx:number,dy:number,dz:number,max:number,left:boolean):EntityHit{
   EHIT.entity=null;EHIT.player=false;EHIT.t=Infinity;
   const ox=e.x,oy=e.y,oz=e.z,ownerId=e.data.ownerId;
-  const list=game.entities.near(ox+dx*max/2,oy+dy*max/2,oz+dz*max/2,max/2+2,o=>o!==e&&!o.removed&&o.deathTime===0&&living(game,o),CANDIDATES);
+  sweeping=e;sweepGame=game;
+  const list=game.entities.near(ox+dx*max/2,oy+dy*max/2,oz+dz*max/2,max/2+2,candidate,CANDIDATES);
+  sweeping=null;sweepGame=null;
   for(const o of list){
     if(!left&&o.id===ownerId)continue;
     const hw=o.width/2+.3,t=rayBox(ox,oy,oz,dx,dy,dz,o.x-hw,o.y-.3,o.z-hw,o.x+hw,o.y+o.height+.3,o.z+hw);
@@ -271,9 +276,8 @@ function pickup(game:Game,e:Entity,d:ArrowData){
   const p=game.player.state,reach=game.player.width/2+1+e.width/2;
   if(Math.abs(p.x-e.x)>reach||Math.abs(p.z-e.z)>reach||e.y+e.height<p.y-.5||e.y>p.y+game.player.height+.5)return;
   if(!d.pickup){if(game.settings.mode==='creative')game.entities.remove(e);return;}
-  const item=stack('arrow',1);
-  if(game.inventory.add(item)>0)return;
-  game.events.emit('itemPickedUp',{stack:item});
+  if(game.inventory.add(stack('arrow',1))>0)return;
+  game.events.emit('itemPickedUp',{stack:stack('arrow',1)});
   game.sounds.play('pop',at(e.x,e.y,e.z),{volume:.2,pitch:((game.random()-game.random())*.7+1)*2});
   game.entities.remove(e);
 }
