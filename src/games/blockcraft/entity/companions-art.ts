@@ -73,15 +73,27 @@ function mul(a:Mat,b:Mat):Mat{
   return o;
 }
 const IDENTITY:Mat=[1,0,0,0,0,1,0,0,0,0,1,0];
-/** The rest transform (part → entity space) of every part, by name. */
-export function restTransforms(parts:readonly ModelPart[]):Map<string,Mat>{
+/** Part → entity transforms (3×4 row-major) under a pose, by the entity renderer's rule: translate(pivot + pose offset) ·
+ *  rest rotation · pose rotation. Hidden parts and their children are left out. */
+export function posedTransforms(parts:readonly ModelPart[],pose:Readonly<Record<string,PartPose>>):Map<string,number[]>{
   const out=new Map<string,Mat>();
   const walk=(list:readonly ModelPart[],parent:Mat)=>{for(const p of list){
-    const r=p.rotation??[0,0,0],m=mul(parent,trs(p.pivot[0],p.pivot[1],p.pivot[2],r[0],r[1],r[2]));
-    out.set(p.name,m);if(p.children)walk(p.children,m);
+    const q=pose[p.name];
+    if(q&&q.visible===false)continue;
+    const r=p.rotation??[0,0,0];
+    let m=trs(p.pivot[0]+(q?.px??0),p.pivot[1]+(q?.py??0),p.pivot[2]+(q?.pz??0),r[0],r[1],r[2]);
+    if(q&&(q.x||q.y||q.z))m=mul(m,trs(0,0,0,q.x||0,q.y||0,q.z||0));
+    m=mul(parent,m);out.set(p.name,m);
+    if(p.children)walk(p.children,m);
   }};
   walk(parts,IDENTITY);
   return out;
+}
+/** The rest transform (part → entity space) of every part, by name. */
+export const restTransforms=(parts:readonly ModelPart[])=>posedTransforms(parts,{});
+/** Applies a part transform to a point (pixels). */
+export function transformPoint(m:readonly number[],x:number,y:number,z:number):[number,number,number]{
+  return[m[0]*x+m[1]*y+m[2]*z+m[3],m[4]*x+m[5]*y+m[6]*z+m[7],m[8]*x+m[9]*y+m[10]*z+m[11]];
 }
 /** Paints every face of every box of `parts` (and their children) with `shader`; later boxes overwrite shared regions. */
 export function paintParts(pixels:Uint8ClampedArray,width:number,height:number,parts:readonly ModelPart[],shader:Shader):void{
