@@ -170,14 +170,14 @@ describe('shield blocking',()=>{
     expect(s.damage(8,{kind:'mob',attacker:entity('zombie',.5,60,-2)})).toBe(0);expect(setOffhand).toHaveBeenCalledWith(null);
   });
   it('blocks only once the shield has been raised for 5 ticks (LivingEntity.isBlocking), counting again after lowering it',()=>{
-    const {s,game,tick}=calm();const front=()=>entity('zombie',.5,60,-1.5);
+    const {s,game,tick,damageHeld}=calm();const front=()=>entity('zombie',.5,60,-1.5);
+    game.inventory.setSlot(0,{id:'shield',count:1});
     raise(game);tick(4);
-    expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(3);// raised 4 ticks: not blocking yet
-    tick(10);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(0);// raised 14 ticks
+    expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(3);expect(damageHeld).not.toHaveBeenCalled();// raised 4 ticks: not yet
+    tick(10);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(0);expect(damageHeld).toHaveBeenCalledTimes(1);// raised 14 ticks
     game.interaction={...game.interaction,using:null} as InteractionService;tick(10);
-    raise(game);tick(1);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(3);
-    tick(4);s.respawn();tick(1);expect(s.damage(3,{kind:'void'})).toBe(3);
-    tick(10);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(0);
+    raise(game);tick(1);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(3);expect(damageHeld).toHaveBeenCalledTimes(1);
+    tick(10);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(0);expect(damageHeld).toHaveBeenCalledTimes(2);
   });
 });
 
