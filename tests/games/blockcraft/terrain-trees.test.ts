@@ -132,6 +132,47 @@ describe('generated trees',()=>{
     }
     expect(mega).toBeGreaterThan(0);expect(podzol).toBeGreaterThan(mega*4);
   });
+  test('swamps have their oaks: on dry ground at the waterline and in water up to two deep, rooted in dirt',()=>{
+    const swamp=biomeId('swamp');let columns=0,trees=0,wet=0,waterline=0;
+    for(const [cx,cz] of chunksIn('swamp',12)){
+      const w=region(T,cx,cz,1);
+      for(let z=cz*CS;z<cz*CS+CS;z++)for(let x=cx*CS;x<cx*CS+CS;x++){
+        if(T.biomeAt(x,z)!==swamp)continue;columns++;
+        const tree=T.treeAt(x,z);if(!tree)continue;trees++;
+        const h=T.heightAt(x,z);
+        expect(tree.y).toBe(h+1);expect(tree.y).toBeGreaterThanOrEqual(SEA_LEVEL-1);
+        expect(w.get(x,tree.y-1,z),`ground under the swamp oak at ${x},${z}`).toBe(B.dirt);
+        for(let y=tree.y;y<=Math.max(tree.y,SEA_LEVEL+1);y++)expect(isLog(w.get(x,y,z)),`trunk at ${x},${y},${z}`).toBe(true);
+        if(tree.y<=SEA_LEVEL)wet++;if(h===SEA_LEVEL)waterline++;
+      }
+    }
+    // The registry asks for 2 trees per chunk.
+    expect(columns).toBeGreaterThan(1000);expect(trees/columns*LAYER).toBeGreaterThan(1.2);
+    expect(wet).toBeGreaterThan(0);expect(waterline).toBeGreaterThan(0);
+  });
+  test('2x2 trunks also stand on uneven ground, reaching down to it: dark forests are dense under a closed canopy',()=>{
+    const dark=biomeId('dark_forest');let chunks=0,trees=0,uneven=0,canopy=0;
+    for(const [cx,cz] of chunksIn('dark_forest',40)){
+      if(![0,CS-1].every(x=>[0,CS-1].every(z=>T.biomeAt(cx*CS+x,cz*CS+z)===dark)))continue;
+      chunks++;const w=region(T,cx,cz,1);
+      for(let z=cz*CS;z<cz*CS+CS;z++)for(let x=cx*CS;x<cx*CS+CS;x++){
+        let y=CH-1;while(y>0&&w.get(x,y,z)===AIR)y--;if(w.get(x,y,z)===B.snow)y--;
+        if(isLeaves(w.get(x,y,z)))canopy++;
+        const tree=T.treeAt(x,z);if(!tree)continue;trees++;
+        if(!tree.wide)continue;
+        const feet=[[0,0],[1,0],[0,1],[1,1]].map(([dx,dz])=>[x+dx,z+dz,T.heightAt(x+dx,z+dz)]);
+        if(feet.some(([,,g])=>g!==feet[0][2]))uneven++;
+        for(const [fx,fz,g] of feet){
+          // Logs from the trunk column's ground (or the base, over higher ground) up through the first trunk layers.
+          const ground=Math.min(g,tree.y-1);
+          expect(w.get(fx,ground,fz),`ground under the 2x2 trunk at ${fx},${fz}`).toBe(B.dirt);
+          for(let ly=ground+1;ly<=tree.y+1;ly++)expect(isLog(w.get(fx,ly,fz)),`trunk at ${fx},${ly},${fz}`).toBe(true);
+        }
+      }
+    }
+    expect(chunks).toBeGreaterThan(5);expect(uneven).toBeGreaterThan(0);
+    expect(trees/chunks).toBeGreaterThan(7.5);expect(canopy/(chunks*LAYER)).toBeGreaterThan(.75);
+  });
 });
 
 describe('vegetation',()=>{
@@ -150,7 +191,11 @@ describe('vegetation',()=>{
     for(const name of decorated)for(const [cx,cz] of chunksIn(name,name==='swamp'||name==='jungle'||name==='desert'?8:3)){
       const c=T.generate(cx,cz);for(const b of c.blocks)seen.add(blockDef(b).family);
     }
-    for(const [cx,cz] of [...chunksIn('plains',40),...chunksIn('forest',30)]){if(seen.has('pumpkin'))break;for(const b of T.generate(cx,cz).blocks)seen.add(blockDef(b).family);}
+    // Pumpkin patches are rare (about one per 100 grassland chunks): look in chunks that roll one.
+    for(let i=0;i<40000&&!seen.has('pumpkin');i++){
+      const cx=(i%200)-100,cz=Math.floor(i/200)-100;if(T.pumpkinPatchIn(cx,cz)<0)continue;
+      for(const b of T.generate(cx,cz).blocks)seen.add(blockDef(b).family);
+    }
     for(const name of ['short_grass','fern','dandelion','poppy','allium','oxeye_daisy','dead_bush','cactus','sugar_cane','melon','lily_pad','brown_mushroom','red_mushroom','pumpkin'])
       expect(seen.has(name),name).toBe(true);
   });
@@ -207,6 +252,18 @@ describe('growTree',()=>{
       expect(T.growTree(top,0,CH-1,0,kind,mulberry32(9)),kind+' at the build limit').toBe(false);
     }
   });
+  test('an oak sapling grows a big oak about one time in ten',()=>{
+    let big=0;
+    for(let seed=1;seed<=60;seed++){
+      const {world}=garden();world.set(0,64,0,id('oak_sapling'),'player');
+      expect(T.growTree(world,0,64,0,'oak',mulberry32(seed*31))).toBe(true);
+      // Big oaks have branch logs off the trunk column; small oaks never do.
+      let branch=false;
+      for(let y=64;y<CH&&!branch;y++)for(let z=-5;z<=5;z++)for(let x=-5;x<=5;x++)if((x||z)&&isLog(world.get(x,y,z)))branch=true;
+      if(branch)big++;
+    }
+    expect(big).toBeGreaterThan(0);expect(big).toBeLessThan(20);
+  });
   test('2x2 dark oak and spruce saplings grow giant trees; a single one falls back to a single trunk',()=>{
     for(const [kind,wood] of [['dark_oak','dark_oak'],['mega_spruce','spruce'],['spruce','spruce'],['jungle','jungle']] as const){
       const {world}=garden();for(const [x,z] of [[0,0],[1,0],[0,1],[1,1]])world.set(x,64,z,id(`${wood}_sapling`),'player');
@@ -222,8 +279,9 @@ describe('growTree',()=>{
 describe('structures',()=>{
   test('desert wells and ruined portals are placed whole on the surface',()=>{
     const found=new Map<string,number>();
-    for(let i=0;i<4000&&found.size<2;i++){
-      const cx=(i%80)-40,cz=Math.floor(i/80)-25,s=T.structureIn(cx,cz);if(!s||found.has(s.kind))continue;
+    // Wells are rare (about one per 500 desert chunks), so search a wide area.
+    for(let i=0;i<90000&&found.size<2;i++){
+      const cx=(i%300)-150,cz=Math.floor(i/300)-150,s=T.structureIn(cx,cz);if(!s||found.has(s.kind))continue;
       const c=T.generate(cx,cz),get=(x:number,y:number,z:number)=>c.blocks[(x-cx*CS)+(z-cz*CS)*CS+y*LAYER];
       if(s.kind==='desert_well'){
         expect(biomeDef(T.biomeAt(s.x,s.z)).name).toBe('desert');
@@ -237,5 +295,17 @@ describe('structures',()=>{
       found.set(s.kind,i);
     }
     expect([...found.keys()].sort()).toEqual(['desert_well','ruined_portal']);
+  });
+  test('desert wells and pumpkin patches are rare',()=>{
+    let desert=0,wells=0,grassland=0,patches=0;
+    for(let cz=-120;cz<120;cz++)for(let cx=-120;cx<120;cx++){
+      const b=biomeDef(T.biomeAt(cx*CS+8,cz*CS+8));
+      if(b.name==='desert')desert++;
+      if(T.structureIn(cx,cz)?.kind==='desert_well')wells++;
+      if(b.vegetation.some(([n])=>n==='pumpkin')){grassland++;if(T.pumpkinPatchIn(cx,cz)>=0)patches++;}
+    }
+    // Vanilla: a well per 1000 desert chunks, a pumpkin patch per 300 chunks.
+    expect(desert).toBeGreaterThan(1000);expect(wells).toBeGreaterThan(0);expect(wells/desert).toBeLessThan(1/250);
+    expect(grassland).toBeGreaterThan(5000);expect(patches).toBeGreaterThan(0);expect(patches/grassland).toBeLessThan(.02);
   });
 });

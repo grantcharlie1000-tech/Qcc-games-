@@ -33,6 +33,10 @@ export const RIVER_REACH=12;
 export const SPAWN_LAND_RADIUS=1024;
 /** Mushroom islands need deep ocean this far out all round. */
 export const ISLE_MOAT=192;
+/** Mean height of a mushroom island's rolling hills; its shelf shallower than ISLE_SHELF is ocean, not deep ocean. */
+const ISLE_HEIGHT=68,ISLE_SHELF=44;
+/** Island noise where an island's flank starts rising; it reaches full height .25 higher, a gentle underwater slope. */
+const ISLE_RAMP=.4;
 /** Worlds start on a continent: continentalness rises smoothly within SPAWN_LAND_RADIUS of the origin (a gentle
  *  stand-in for vanilla's search for an inland spawn climate). */
 function spawnLand(x:number,z:number):number{
@@ -114,13 +118,13 @@ export class Climate{
     // (8 samples ISLE_MOAT blocks away), so the islands stand alone far from any coast.
     let isle=0;
     const raw=this.isle.noise2(x/400,z/400),cont=v[o+CONT]+spawnLand(wx,wz);
-    if(raw>.5&&cont<-.36){
+    if(raw>ISLE_RAMP&&cont<-.36){
       let ring=-1;
       for(let i=0;i<8;i++){
         const ax=Math.cos(i*Math.PI/4)*ISLE_MOAT,az=Math.sin(i*Math.PI/4)*ISLE_MOAT;
         ring=Math.max(ring,fbm2(this.c,(x+ax)/1000,(z+az)/1000,4)+spawnLand(wx+ax,wz+az));
       }
-      isle=smoothstep(.5,.6,raw)*smoothstep(-.36,-.44,cont)*smoothstep(-.17,-.24,ring);
+      isle=smoothstep(ISLE_RAMP,ISLE_RAMP+.25,raw)*smoothstep(-.36,-.44,cont)*smoothstep(-.1,-.24,ring);
     }
     v[o+ISLE]=isle;
     this.keys[k]=gx;this.keys[k+1]=gz;
@@ -151,8 +155,8 @@ export class Climate{
     // Very high erosion in mild, humid climates flattens to sea level: swamps.
     const wet=smoothstep(.32,.46,E)*smoothstep(-.18,0,H)*smoothstep(-.45,-.35,T)*smoothstep(.4,.3,T)*smoothstep(-.12,-.04,C);
     height=lerp(height,61.7+2.3*d1,wet);
-    // Rare mushroom islands rise out of the deep ocean.
-    height=lerp(height,64.5+2.5*d1,isle);
+    // Rare mushroom islands rise out of the deep ocean as low rolling hills.
+    height=lerp(height,ISLE_HEIGHT+7*d1+1.5*d2,isle);
     const beforeRiver=height;
     // Rivers follow weirdness zero crossings: a bed below sea level within about 3 blocks of the zero line, then banks
     // rising 0.9 blocks per block until they meet the land, so river sides never form cliffs. The distance to the line
@@ -167,13 +171,16 @@ export class Climate{
     // Biome.
     const tz=zone(T,TEMPERATURE_ZONES),hz=zone(H,HUMIDITY_ZONES);
     let biome:BiomeId;
-    if(isle>.6)biome=MUSHROOM;
-    else if(C<COAST_LO&&beforeRiver<SEA_LEVEL)biome=C<DEEP_OCEAN?DEEP:OCEAN;
+    // Mushroom fields are the island above the waterline; its submerged shelf is ocean (deep ocean where deep).
+    if(isle>.6&&h>=SEA_LEVEL-1)biome=MUSHROOM;
+    else if(C<COAST_LO&&beforeRiver<SEA_LEVEL)biome=C<DEEP_OCEAN&&(isle===0||h<ISLE_SHELF)?DEEP:OCEAN;
     else if(river>.25&&h<SEA_LEVEL&&beforeRiver>=SEA_LEVEL-1)biome=tz===0?FROZEN_RIVER:RIVER;
     else if(C<COAST_HI&&h<SEA_LEVEL-5)biome=OCEAN;
     else if(C<COAST_HI&&(h<=SEA_LEVEL+3||E<-.25&&h<=SEA_LEVEL+12))biome=E<-.25?STONY:BEACH;
     else if(wet>.5)biome=SWAMP;
-    else if(h>=PEAK_HEIGHT+Math.round(2*d2)&&tz<=2)biome=tz<=1?PEAKS:HILLS;
+    // Peaks: snowy in the cold, bare windswept hills in temperate and warm climates (vanilla's stony peaks); hot
+    // peaks stay badlands (from the highland table).
+    else if(h>=PEAK_HEIGHT+Math.round(2*d2)&&tz<=3)biome=tz<=1?PEAKS:HILLS;
     else if(h>=82+Math.round(2*d2)||(E<-.12&&h>=74))biome=HIGHLAND[tz][hz];
     else{
       biome=MIDDLE[tz][hz];

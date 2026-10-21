@@ -14,7 +14,8 @@ export interface BiomeDef{
   /** Trees per 16×16 chunk on average and the weighted wood types used. */
   readonly treeDensity:number;readonly trees:readonly (readonly [WoodType|'big_oak'|'mega_spruce'|'jungle_bush',number])[];
   /** Ground cover per column chance: short grass, ferns, flowers, dead bushes, cacti (on even columns), melons, mushrooms.
-   *  Sugar cane and lily pads: chance per column beside / on water; pumpkin: chance per column of a patch. */
+   *  Sugar cane and lily pads: chance per column beside / on water; pumpkin: chance per column of a patch (a chunk
+   *  rolls one patch with 256 times this chance, so .00004 gives about one patch per 100 chunks). */
   readonly vegetation:readonly (readonly [string,number])[];
   /** Passive mob kinds that may spawn here, weighted. */
   readonly animals:readonly (readonly [string,number])[];
@@ -31,17 +32,17 @@ const list:Omit<BiomeDef,'id'|'precipitation'>[]=[
   {name:'deep_ocean',displayName:'Deep Ocean',temperature:.5,downfall:.5,grass:0x8eb971,foliage:0x71a74d,water:0x3d57d6,top:'gravel',filler:'gravel',underwater:'gravel',treeDensity:0,trees:[],vegetation:[],animals:[],sky:0x7ba4ff,snowy:false},
   {name:'beach',displayName:'Beach',temperature:.8,downfall:.4,grass:0x91bd59,foliage:0x77ab2f,water:0x3f76e4,top:'sand',filler:'sand',underwater:'sand',treeDensity:0,trees:[],vegetation:[['sugar_cane',.12]],animals:[],sky:0x78a7ff,snowy:false},
   {name:'plains',displayName:'Plains',temperature:.8,downfall:.4,grass:0x91bd59,foliage:0x77ab2f,water:0x3f76e4,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:.15,trees:[['oak',1],['big_oak',.5]],
-    vegetation:[['short_grass',.22],['dandelion',.012],['poppy',.01],['oxeye_daisy',.006],['cornflower',.006],['sugar_cane',.12],['pumpkin',.0003]],animals:[['cow',10],['pig',10],['sheep',12],['chicken',10],['rabbit',2]],sky:0x78a7ff,snowy:false},
+    vegetation:[['short_grass',.22],['dandelion',.012],['poppy',.01],['oxeye_daisy',.006],['cornflower',.006],['sugar_cane',.12],['pumpkin',.00004]],animals:[['cow',10],['pig',10],['sheep',12],['chicken',10],['rabbit',2]],sky:0x78a7ff,snowy:false},
   {name:'sunflower_plains',displayName:'Flower Plains',temperature:.8,downfall:.4,grass:0x91bd59,foliage:0x77ab2f,water:0x3f76e4,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:.1,trees:[['oak',1],['big_oak',.5]],
-    vegetation:[['short_grass',.15],['dandelion',.04],['poppy',.04],['allium',.02],['oxeye_daisy',.03],['cornflower',.03],['blue_orchid',.01],['sugar_cane',.12],['pumpkin',.0003]],animals:[['cow',8],['sheep',12],['pig',8],['chicken',8],['rabbit',4]],sky:0x78a7ff,snowy:false},
+    vegetation:[['short_grass',.15],['dandelion',.04],['poppy',.04],['allium',.02],['oxeye_daisy',.03],['cornflower',.03],['blue_orchid',.01],['sugar_cane',.12],['pumpkin',.00004]],animals:[['cow',8],['sheep',12],['pig',8],['chicken',8],['rabbit',4]],sky:0x78a7ff,snowy:false},
   {name:'forest',displayName:'Forest',temperature:.7,downfall:.8,grass:0x79c05a,foliage:0x59ae30,water:0x3f76e4,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:6,trees:[['oak',4],['birch',1],['big_oak',.55]],
-    vegetation:[['short_grass',.12],['poppy',.004],['dandelion',.004],['brown_mushroom',.002],['red_mushroom',.001],['sugar_cane',.06],['pumpkin',.0003]],animals:[['pig',8],['chicken',6],['cow',4],['sheep',4],['wolf',5]],sky:0x79a6ff,snowy:false},
+    vegetation:[['short_grass',.12],['poppy',.004],['dandelion',.004],['brown_mushroom',.002],['red_mushroom',.001],['sugar_cane',.06],['pumpkin',.00004]],animals:[['pig',8],['chicken',6],['cow',4],['sheep',4],['wolf',5]],sky:0x79a6ff,snowy:false},
   {name:'birch_forest',displayName:'Birch Forest',temperature:.6,downfall:.6,grass:0x88bb67,foliage:0x6ba941,water:0x3f76e4,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:6,trees:[['birch',1]],
-    vegetation:[['short_grass',.14],['allium',.004],['oxeye_daisy',.004],['sugar_cane',.06],['pumpkin',.0003]],animals:[['pig',6],['chicken',6],['sheep',6],['cow',6],['rabbit',2]],sky:0x7aa5ff,snowy:false},
+    vegetation:[['short_grass',.14],['allium',.004],['oxeye_daisy',.004],['sugar_cane',.06],['pumpkin',.00004]],animals:[['pig',6],['chicken',6],['sheep',6],['cow',6],['rabbit',2]],sky:0x7aa5ff,snowy:false},
   {name:'dark_forest',displayName:'Dark Forest',temperature:.7,downfall:.8,grass:0x507a32,foliage:0x59ae30,water:0x3f76e4,top:'grass_block',filler:'dirt',underwater:'dirt',treeDensity:12,trees:[['dark_oak',3],['oak',1]],
     vegetation:[['short_grass',.06],['brown_mushroom',.01],['red_mushroom',.008]],animals:[['chicken',4]],sky:0x79a6ff,snowy:false},
   {name:'taiga',displayName:'Taiga',temperature:.25,downfall:.8,grass:0x86b783,foliage:0x68a464,water:0x3d57d6,top:'grass_block',filler:'dirt',underwater:'gravel',treeDensity:7,trees:[['spruce',1],['mega_spruce',.15]],
-    vegetation:[['fern',.12],['short_grass',.06],['brown_mushroom',.002],['sugar_cane',.05],['pumpkin',.0003]],animals:[['sheep',8],['pig',6],['chicken',6],['cow',6],['wolf',8],['rabbit',4]],sky:0x7da3ff,snowy:false},
+    vegetation:[['fern',.12],['short_grass',.06],['brown_mushroom',.002],['sugar_cane',.05],['pumpkin',.00004]],animals:[['sheep',8],['pig',6],['chicken',6],['cow',6],['wolf',8],['rabbit',4]],sky:0x7da3ff,snowy:false},
   {name:'snowy_taiga',displayName:'Snowy Taiga',temperature:-.5,downfall:.4,grass:0x80b497,foliage:0x60a17b,water:0x3d57d6,top:'grass_block',filler:'dirt',underwater:'gravel',treeDensity:5,trees:[['spruce',1]],
     vegetation:[['fern',.08]],animals:[['sheep',6],['chicken',4],['wolf',8],['rabbit',6]],sky:0x839eff,snowy:true},
   {name:'snowy_plains',displayName:'Snowy Plains',temperature:0,downfall:.5,grass:0x80b497,foliage:0x60a17b,water:0x3d57d6,top:'grass_block',filler:'dirt',underwater:'gravel',treeDensity:.08,trees:[['spruce',1]],

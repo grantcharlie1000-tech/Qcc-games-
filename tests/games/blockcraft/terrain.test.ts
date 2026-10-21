@@ -2,7 +2,8 @@
 // bedrock/deepslate layers, ores, spawn point and the per-chunk generation budget.
 import {describe,expect,test} from 'vitest';
 import {createTerrain,TerrainGenerator} from '../../../src/games/blockcraft/world/terrain';
-import {ORE_RULES} from '../../../src/games/blockcraft/world/terrain-ores';
+import {ORE_RULES,OrePlacer} from '../../../src/games/blockcraft/world/terrain-ores';
+import {PEAK_HEIGHT} from '../../../src/games/blockcraft/world/terrain-climate';
 import {CaveField,CAVE_CHEESE,CAVE_SPAGHETTI,CAVE_NOODLE} from '../../../src/games/blockcraft/world/terrain-caves';
 import {BIOMES,biomeDef,biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {AIR,B,blockDef,blockId,isWater,SOLID} from '../../../src/games/blockcraft/data/blocks';
@@ -71,6 +72,20 @@ describe('terrain determinism',()=>{
     }
     // Only occasional cave mouths remove the surface block.
     expect(surface/columns).toBeGreaterThan(.97);
+  });
+});
+
+describe('robustness',()=>{
+  test('NaN, infinite or out-of-range coordinates never change later results',()=>{
+    for(const seed of [1234,7]){
+      const clean=createTerrain(seed),dirty=createTerrain(seed) as TerrainGenerator;
+      for(const [x,z] of [[NaN,NaN],[Infinity,-Infinity],[1e12,3e9],[-1e15,.5]]){
+        expect(Number.isFinite(dirty.heightAt(x,z))).toBe(true);expect(BIOMES[dirty.biomeAt(x,z)]).toBeDefined();
+        dirty.treeAt(x,z);dirty.structureIn(x,z);dirty.pumpkinPatchIn(x,z);
+      }
+      expect(dirty.heightAt(0,0)).toBe(clean.heightAt(0,0));expect(dirty.biomeAt(0,0)).toBe(clean.biomeAt(0,0));
+      expect(dirty.generate(0,0).blocks).toEqual(clean.generate(0,0).blocks);
+    }
   });
 });
 
@@ -154,6 +169,30 @@ describe('heights',()=>{
     const peaks=stats('snowy_peaks');expect(peaks.q05).toBeGreaterThanOrEqual(95);
     const hills=stats('mountains');expect(hills.q50).toBeGreaterThanOrEqual(76);
     const cherry=stats('cherry_grove');expect(cherry.q50).toBeGreaterThanOrEqual(70);
+  });
+  test('peaks are snowy peaks or bare windswept hills, never jungle or savanna; hot peaks are badlands',()=>{
+    const m=map(),warm=new Set(['jungle','savanna'].map(biomeId));let hot=0,high=0;
+    for(let k=0;k<m.biomes.length;k++){
+      if(m.heights[k]<PEAK_HEIGHT+2)continue;high++;
+      expect(warm.has(m.biomes[k]),`${biomeDef(m.biomes[k]).name} at height ${m.heights[k]}`).toBe(false);
+      if(m.biomes[k]===biomeId('badlands'))hot++;
+    }
+    expect(high).toBeGreaterThan(100);expect(hot).toBeGreaterThan(0);
+  });
+  test('mushroom islands are rolling hills above the sea, ringed by ocean',()=>{
+    const M=biomeId('mushroom_fields'),heights:number[]=[],rim=new Set<string>(),islands:[number,number][]=[];
+    for(let z=-8192;z<8192&&islands.length<3;z+=64)for(let x=-8192;x<8192&&islands.length<3;x+=64){
+      if(T1.biomeAt(x,z)!==M||islands.some(([a,b])=>Math.abs(a-x)<400&&Math.abs(b-z)<400))continue;
+      islands.push([x,z]);
+      for(let dz=-160;dz<160;dz+=2)for(let dx=-160;dx<160;dx+=2){
+        const b=T1.biomeAt(x+dx,z+dz);
+        if(b===M)heights.push(T1.heightAt(x+dx,z+dz));else if(T1.biomeAt(x+dx+2,z+dz)===M)rim.add(biomeDef(b).name);
+      }
+    }
+    expect(islands.length).toBeGreaterThan(0);expect(heights.length).toBeGreaterThan(300);
+    expect(heights.filter(h=>h>=SEA_LEVEL).length/heights.length).toBeGreaterThan(.85);
+    expect(Math.min(...heights)).toBeGreaterThanOrEqual(SEA_LEVEL-1);expect(Math.max(...heights)).toBeGreaterThanOrEqual(68);
+    expect([...rim].filter(n=>n!=='ocean'&&n!=='deep_ocean')).toEqual([]);
   });
   test('neighbouring columns change smoothly, also across biome borders',()=>{
     const steep=new Set(['mountains','snowy_peaks','stony_shore','cherry_grove','badlands','mushroom_fields'].map(biomeId));
@@ -257,6 +296,21 @@ describe('caves and layers',()=>{
       }
     }
   });
+  test('sand and gravel surface layers never rest on cave air, lava or plants (sandstone and stone ceilings)',()=>{
+    let stacks=0,overCaves=0;
+    const chunks=[...chunksIn('ocean',6),...chunksIn('deep_ocean',6),...chunksIn('river',6),...chunksIn('frozen_river',3),...chunksIn('beach',6),
+      ...chunksIn('desert',6),...chunksIn('badlands',3),...chunksIn('mountains',3),...sample];
+    for(const [cx,cz] of chunks){
+      const c=T1.generate(cx,cz);
+      for(let z=0;z<CS;z++)for(let x=0;x<CS;x++){
+        const h=T1.heightAt(cx*CS+x,cz*CS+z);let g=h;while(g>0&&blockDef(at(c,x,g,z)).gravity)g--;
+        if(g===h)continue;stacks++;
+        const below=at(c,x,g,z);if(below===id('sandstone')||below===id('red_sandstone')||below===B.stone)overCaves++;
+        expect(SOLID[below],`${blockDef(at(c,x,g+1,z)).name} over ${blockDef(below).name} at ${cx*CS+x},${g},${cz*CS+z}`).toBe(1);
+      }
+    }
+    expect(stacks).toBeGreaterThan(5000);expect(overCaves).toBeGreaterThan(0);
+  });
   test('jagged bedrock at y 0-4 and deepslate below y 8 blending into stone by y 16',()=>{
     const count=new Map<string,number>(),inc=(k:string)=>count.set(k,(count.get(k)??0)+1);
     for(const [cx,cz] of sample){
@@ -332,6 +386,16 @@ describe('ores',()=>{
       for(let i=0;i<c.blocks.length;i++){const b=c.blocks[i],y=Math.floor(i/LAYER);if(!isOre(b))continue;
         if(y<8)expect(blockDef(b).name.startsWith('deepslate_'),blockDef(b).name).toBe(true);
         if(y>=16)expect(blockDef(b).name.startsWith('deepslate_'),blockDef(b).name).toBe(false);}}
+  });
+  test('tiny veins are vanilla-sized: emerald (size 3) places about half a block per attempt',()=>{
+    // Solid stone mountain chunks: 30 size-3 emerald attempts per chunk; vanilla's size-3 vein places 0.45 blocks on
+    // average (a capsule through block centres would place about 1.9).
+    const placer=new OrePlacer(99),biomes=new Uint8Array(LAYER).fill(biomeId('mountains')),N=40;let emerald=0;
+    for(let i=0;i<N;i++){
+      const blocks=new Uint8Array(CS*CS*CH);blocks.fill(B.stone,LAYER);placer.place(blocks,biomes,i*5,7,CH-1);
+      for(const b of blocks)if(b===id('emerald_ore'))emerald++;
+    }
+    expect(emerald/N).toBeGreaterThan(6);expect(emerald/N).toBeLessThan(20);
   });
   test('emeralds only in mountains',()=>{
     let found=0;

@@ -31,7 +31,8 @@ const {hash3,hashInt,mulberry32}=noise,{coldAt}=biomeRegistry,{CS,CH,LAYER,CHUNK
 const {AIR,B,BLOCK_BY_NAME,blockId,LIQUID,OPAQUE,REPLACEABLE,SOLID}=registry;
 
 export type {Structure} from './terrain-structures';
-/** A generated tree: kind, trunk base (the first log; the -x/-z corner of a 2×2 trunk) and the seed of its shape. */
+/** A generated tree: kind, trunk base (the first planned log, one above the origin column's ground; the -x/-z corner
+ *  of a 2×2 trunk, whose columns over ground one lower reach a block further down) and the seed of its shape. */
 export interface TreeInfo{kind:TreeKind;x:number;y:number;z:number;seed:number;wide:boolean}
 
 const id=(name:string)=>blockId(name);
@@ -56,6 +57,13 @@ for(const d of BLOCK_BY_NAME.values()){
 }
 /** Ground a tree turns to dirt under its trunk (vanilla keeps podzol and dirt). */
 const TO_DIRT=table(['grass_block','mycelium','farmland','farmland_wet']);
+/** The supporting block a falling surface block becomes over a cave (vanilla's sandstone and stone ceilings); 0 =
+ *  not a falling block. */
+const CEILING=new Uint8Array(256);
+for(const d of BLOCK_BY_NAME.values())if(d.gravity)CEILING[d.id]=d.name==='sand'?id('sandstone'):d.name==='red_sand'?id('red_sandstone'):B.stone;
+/** Falling blocks whose stack reaches this close to the surface are surface layers (deeper gravel blobs keep
+ *  vanilla's loose cave ceilings). */
+const SURFACE_LAYERS=12;
 
 // ---- Per-biome generation data -----------------------------------------------------------------------
 /** Surface rule families. */
@@ -92,8 +100,10 @@ const NO_SPAWN=new Set(['ocean','deep_ocean','river','frozen_river','stony_shore
 const POOR_SPAWN=new Set(['beach','mushroom_fields'].map(biomeId));
 const DESERT=biomeId('desert');
 const NO_PORTAL=new Set(['ocean','deep_ocean','river','frozen_river','beach','swamp','mushroom_fields'].map(biomeId));
-/** Chance per chunk of a desert well (in deserts) and a ruined portal (on dry land). */
-export const WELL_CHANCE=1/64,PORTAL_CHANCE=1/300;
+/** Chance per chunk of a desert well (in deserts; vanilla's is 1/1000) and a ruined portal (on dry land). */
+export const WELL_CHANCE=1/500,PORTAL_CHANCE=1/300;
+/** Share of oak saplings that grow a big oak. */
+export const OAK_SAPLING_BIG=.1;
 const COLUMN_CACHE=1<<15,CACHE_LIMIT=16384;
 const columnKey=(x:number,z:number)=>(x+0x100000)*0x200000+(z+0x100000);
 
@@ -134,8 +144,11 @@ export class TerrainGenerator implements TerrainService{
   }
 
   // ---- Columns ------------------------------------------------------------------------------------------
-  /** Cache slot of column (x,z), computing its climate on a miss. */
+  /** Cache slot of column (x,z), computing its climate on a miss. Coordinates are taken as int32 (like every
+   *  integer path of the climate), so NaN, ±Infinity or out-of-range input reads a real column instead of
+   *  caching bogus values under another column's key. */
   private slot(x:number,z:number):number{
+    x|=0;z|=0;
     const s=((Math.imul(x,0x9e3779b1)^Math.imul(z,0x85ebca6b))>>>17)&(COLUMN_CACHE-1);
     if(this.cacheX[s]!==x||this.cacheZ[s]!==z){
       const c=this.climate.column(x,z);
@@ -180,6 +193,7 @@ export class TerrainGenerator implements TerrainService{
   // ---- Structures -----------------------------------------------------------------------------------------
   /** The structure generated in chunk (cx,cz), if any (pure; it lies entirely inside the chunk). */
   structureIn(cx:number,cz:number):Structure|null{
+    cx|=0;cz|=0;
     const key=columnKey(cx,cz),cached=this.structureCache.get(key);
     if(cached!==undefined)return cached;
     const s=this.findStructure(cx,cz);
@@ -212,6 +226,14 @@ export class TerrainGenerator implements TerrainService{
     }
     return null;
   }
+  /** Local centre column (x + z*16) of chunk (cx,cz)'s pumpkin patch, or -1 (pure). A chunk rolls a patch with
+   *  chance 256 × the biome's pumpkin value at the centre. */
+  pumpkinPatchIn(cx:number,cz:number):number{
+    cx|=0;cz|=0;
+    const seed=this.seed,px=4+Math.floor(hash3(cx,0x70,cz,seed)*8),pz=4+Math.floor(hash3(cx,0x71,cz,seed)*8);
+    const info=INFO[this.biomeAt(cx*CS+px,cz*CS+pz)];
+    return info.pumpkin>0&&hash3(cx,0x72,cz,seed)<info.pumpkin*LAYER?px+pz*CS:-1;
+  }
   /** True when a structure footprint (grown by one) comes within TREE_REACH of column (x,z). */
   private nearStructure(x:number,z:number){
     const r=TREE_REACH+2;
@@ -225,6 +247,7 @@ export class TerrainGenerator implements TerrainService{
   // ---- Trees -----------------------------------------------------------------------------------------------
   /** The tree whose trunk origin is column (x,z), or null. Pure: every chunk that reaches the tree agrees. */
   treeAt(x:number,z:number):TreeInfo|null{
+    x|=0;z|=0;
     const roll=hashInt(x,0x7ee5,z,this.seed)/4294967296;
     if(roll>=MAX_TREE_P)return null;
     const key=columnKey(x,z),cached=this.treeCache.get(key);
@@ -235,9 +258,13 @@ export class TerrainGenerator implements TerrainService{
   }
   private findTree(x:number,z:number,roll:number):TreeInfo|null{
     const seed=this.seed,s=this.slot(x,z),h=this.cacheH[s],info=INFO[this.cacheB[s]];
-    if(roll>=info.treeP||h<=SEA_LEVEL||h>=CH-6)return null;
+    if(roll>=info.treeP||h>=CH-6)return null;
+    // Dry ground from the waterline (y = SEA_LEVEL) up; swamp oaks also stand in water up to two deep (vanilla's
+    // swamp trees), rooted in the dirt or clay floor.
+    const wet=h<SEA_LEVEL;
+    if(wet&&(info.rule!==R_SWAMP||h<SEA_LEVEL-2))return null;
     const slope=this.slopeAt(x,z,h);if(slope>2)return null;
-    this.surface(x,z,h,info,slope);if(!TREE_SOIL[this.sTop])return null;
+    this.surface(x,z,h,info,slope);if(!TREE_SOIL[this.sTop]&&!(wet&&this.sTop===CLAY))return null;
     // One trunk per neighbourhood: the lowest roll wins.
     for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
       if(!dx&&!dz)continue;
@@ -248,21 +275,30 @@ export class TerrainGenerator implements TerrainService{
     for(const [k,w] of info.trees){pick-=w;if(pick<0){kind=k;break;}}
     let wide=kind==='dark_oak'||kind==='mega_spruce'||kind==='jungle'&&hash3(x,0x52,z,seed)<.3;
     if(wide){
-      const flat=this.heightAt(x+1,z)===h&&this.heightAt(x,z+1)===h&&this.heightAt(x+1,z+1)===h&&this.slopeAt(x+1,z+1,h)<=2;
-      if(!flat){if(kind!=='jungle')return null;wide=false;}
+      // A 2×2 trunk stands on dry ground whose other three columns are within a block of this one: its base
+      // replaces the top of a higher column and reaches down into a lower one (see footprint()).
+      let fits=!wet&&this.slopeAt(x+1,z+1,this.heightAt(x+1,z+1))<=2;
+      for(let k=1;k<4&&fits;k++){const g=this.heightAt(x+(k&1),z+(k>>1));if(g<h-1||g>h+1||g<SEA_LEVEL)fits=false;}
+      // Without room a giant spruce or jungle tree becomes its single-trunk form; dark oaks only grow 2×2.
+      if(!fits){if(kind==='dark_oak')return null;if(kind==='mega_spruce')kind='spruce';wide=false;}
     }
     if(this.nearStructure(x,z))return null;
     const y=h+1,treeSeed=hashInt(x,0x5eed,z,seed),plan=this.plan;
     plan.reset();planTree(kind,x,y,z,mulberry32(treeSeed),plan,wide);
     if(plan.maxY>=CH)return null;
-    // Logs (trunk, branches, stubs) must all stand above the terrain surface.
+    // Logs (trunk, branches, stubs) must all stand above the terrain surface, but for a 2×2 base sunk into a
+    // column one block higher.
     const logs=plan.logs;
-    for(let i=0;i<logs.length;i+=3)if(this.heightAt(logs[i],logs[i+2])>=logs[i+1])return null;
+    for(let i=0;i<logs.length;i+=3){
+      const lx=logs[i],ly=logs[i+1],lz=logs[i+2],g=this.heightAt(lx,lz);
+      if(g>=ly&&!(wide&&ly===y&&g===y&&lx-x>>>0<=1&&lz-z>>>0<=1))return null;
+    }
     return{kind,x,y,z,seed:treeSeed,wide};
   }
 
   // ---- Chunk generation ---------------------------------------------------------------------------------
   generate(cx:number,cz:number):ChunkData{
+    cx|=0;cz|=0;
     const blocks=new Uint8Array(CHUNK_VOLUME),biomes=new Uint8Array(LAYER);
     const x0=cx*CS,z0=cz*CS,rim=this.rim,seed=this.seed;
     let maxH=0;
@@ -330,11 +366,12 @@ export class TerrainGenerator implements TerrainService{
       if(top<1)continue;
       caves.prepareColumn(x,z,top);caves.carveColumn(kinds,top,cheeseTop);
       let moss=-1;
-      let open=false;
+      let open=false,carved=false;
       for(let y=1;y<=top;y++){
         if(!kinds[y]){open=false;continue;}
         const i=col+y*LAYER,b=blocks[i];
         if(b===BEDROCK||LIQUID[b]){open=false;continue;}
+        carved=true;
         if(y<LAVA_LEVEL){blocks[i]=LAVA;open=true;continue;}
         blocks[i]=AIR;
         if(!open){
@@ -347,6 +384,16 @@ export class TerrainGenerator implements TerrainService{
           if(y<h-10&&OPAQUE[blocks[f]]){const m=hash3(wx,y,wz,seed^0x6d);if(m<.012)blocks[i]=m<.008?BROWN_MUSHROOM:RED_MUSHROOM;}
         }
         open=true;
+      }
+      if(!carved)continue;
+      // Sand and gravel of the surface layers never hang over a cave: the lowest block of such a stack becomes its
+      // supporting stone, so a sea, river or beach floor cannot fall in (and flood the cave) on a later update.
+      for(let y=Math.min(top+1,CH-1);y>=2;y--){
+        const i=col+y*LAYER,to=CEILING[blocks[i]];
+        if(!to)continue;
+        if(SOLID[blocks[i-LAYER]])continue;
+        let stackTop=y;while(stackTop+1<CH&&CEILING[blocks[col+(stackTop+1)*LAYER]])stackTop++;
+        if(stackTop>=h-SURFACE_LAYERS)blocks[i]=to;
       }
     }
   }
@@ -362,8 +409,14 @@ export class TerrainGenerator implements TerrainService{
         const x=leaves[i],z=leaves[i+2];if(!inside(x,z))continue;
         const index=(x-x0)+(z-z0)*CS+leaves[i+1]*LAYER;if(blocks[index]===AIR)blocks[index]=leaf;
       }
+      // Dirt under each trunk column; a 2×2 trunk column over ground one block lower reaches down to it.
       const w=t.wide?1:0;
-      for(let dz=0;dz<=w;dz++)for(let dx=0;dx<=w;dx++)if(inside(t.x+dx,t.z+dz))blocks[(t.x+dx-x0)+(t.z+dz-z0)*CS+(t.y-1)*LAYER]=DIRT;
+      for(let dz=0;dz<=w;dz++)for(let dx=0;dx<=w;dx++){
+        const lx=t.x+dx-x0,lz=t.z+dz-z0;if(lx<0||lz<0||lx>=CS||lz>=CS)continue;
+        const col=lx+lz*CS,ground=Math.min(this.rim[(lx+1)+(lz+1)*RIM],t.y-1);
+        for(let y=ground+1;y<t.y;y++)blocks[col+y*LAYER]=log;
+        blocks[col+ground*LAYER]=DIRT;
+      }
       if(t.kind==='mega_spruce'&&t.wide){
         // Podzol spreads round giant spruces (vanilla alter-ground decorator).
         for(let z=t.z-4;z<=t.z+5;z++)for(let x=t.x-4;x<=t.x+5;x++){
@@ -422,9 +475,10 @@ export class TerrainGenerator implements TerrainService{
       }
     }
     // Rare pumpkin patches.
-    {
-      const px=4+Math.floor(hash3(cx,0x70,cz,seed)*8),pz=4+Math.floor(hash3(cx,0x71,cz,seed)*8),info=INFO[biomes[px+pz*CS]];
-      if(info.pumpkin>0&&hash3(cx,0x72,cz,seed)<info.pumpkin*LAYER)for(let k=0;k<8;k++){
+    const patch=this.pumpkinPatchIn(cx,cz);
+    if(patch>=0){
+      const px=patch&(CS-1),pz=patch>>4;
+      for(let k=0;k<8;k++){
         const x=px+Math.floor(hash3(cx,0x80+k,cz,seed)*7)-3,z=pz+Math.floor(hash3(cx,0x90+k,cz,seed)*7)-3,col=x+z*CS;
         if(keep[col])continue;
         const h=rim[(x+1)+(z+1)*RIM];if(h<SEA_LEVEL||h+1>=CH)continue;
@@ -479,6 +533,8 @@ export class TerrainGenerator implements TerrainService{
   // ---- Growth -----------------------------------------------------------------------------------------------
   growTree(world:BlockWriter,x:number,y:number,z:number,kind:TreeKind,random:()=>number):boolean{
     let wide=false,ox=x,oz=z,shape=kind;
+    // An oak sapling grows a big (fancy) oak one time in ten, as in vanilla.
+    if(kind==='oak'&&random()<OAK_SAPLING_BIG)shape='big_oak';
     if(kind==='dark_oak'||kind==='mega_spruce'||kind==='spruce'||kind==='jungle'){
       // Four saplings in a square grow the giant form.
       const sapling=id(`${treeWood(kind)}_sapling`);

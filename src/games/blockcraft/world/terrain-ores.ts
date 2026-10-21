@@ -4,6 +4,10 @@
 // uniform, triangular or bottom-heavy distribution. Height ranges are vanilla's scaled to a 128-high world with the
 // deepslate layer below y 8-16. Stone ores in deepslate or tuff become their deepslate variants.
 //
+// Tiny veins (size <= SMALL_VEIN: emerald, small iron and diamond) are vanilla's own chain of `size` spheres along a
+// segment centred on a block corner with whole-number y ends: at that scale the capsule would place several times
+// vanilla's blocks (about 1.9 against 0.45 for size 3), while from size 7 up the two agree within about 7%.
+//
 // Veins centred in neighbouring chunks spill across borders: every chunk replays the attempts of its 3×3
 // neighbourhood from per-(chunk, rule) seeds and writes only its own voxels, so borders always match.
 import {blockId,BLOCK_BY_NAME} from '../data/blocks';
@@ -65,9 +69,13 @@ export const ORE_RULES:readonly OreRule[]=[
 
 const id=(name:string)=>blockId(name);
 const STONES=['stone','granite','diorite','andesite'].map(id),DEEP=['deepslate','tuff'].map(id);
+/** Veins up to this size use vanilla's sphere chain (see the header). */
+export const SMALL_VEIN=4;
 interface CompiledRule{rule:OreRule;salt:number;replace:Uint8Array;biomes:Uint8Array|null;maxReach:number;
   /** 0 uniform, 1 triangle, 2 bottom-heavy. */
-  dist:number}
+  dist:number;
+  /** A vanilla sphere chain (size <= SMALL_VEIN) instead of a capsule. */
+  small:boolean}
 const COMPILED:CompiledRule[]=ORE_RULES.map((rule,i)=>{
   const replace=new Uint8Array(256),put=(from:number[],to:string)=>{const t=BLOCK_BY_NAME.get(to);if(t)for(const f of from)replace[f]=t.id;};
   if(ORE_NAMES.has(rule.ore)){put(STONES,`${rule.ore}_ore`);put(DEEP,`deepslate_${rule.ore}_ore`);}
@@ -77,7 +85,8 @@ const COMPILED:CompiledRule[]=ORE_RULES.map((rule,i)=>{
   let biomes:Uint8Array|null=null;
   if(rule.biomes){biomes=new Uint8Array(256);for(const b of rule.biomes)biomes[biomeId(b)]=1;}
   // Half length size/8, radius at most size/16 + 1/2, plus a block of rounding.
-  return{rule,salt:0x9e37+i*0x1f1,replace,biomes,maxReach:rule.size/8+rule.size/16+1.5,dist:rule.dist==='uniform'?0:rule.dist==='triangle'?1:2};
+  return{rule,salt:0x9e37+i*0x1f1,replace,biomes,maxReach:rule.size/8+rule.size/16+1.5,dist:rule.dist==='uniform'?0:rule.dist==='triangle'?1:2,
+    small:rule.size<=SMALL_VEIN};
 });
 
 /** mulberry32 as an object, so each (chunk, rule) stream needs no closure. Same sequence as noise.mulberry32. */
@@ -95,7 +104,7 @@ function sampleY(c:CompiledRule,random:Stream):number{
   return c.rule.minY+(c.dist===0?random.next():c.dist===1?(random.next()+random.next())*.5:1-Math.sqrt(random.next()))*span;
 }
 
-/** Per vein: segment ends [ax, ay, az, bx, by, bz] and the radius amplitude. */
+/** Per vein: segment ends [ax, ay, az, bx, by, bz] and the radius amplitude (a sphere chain's radius seed). */
 const VEIN=7,SOURCE_CACHE=128;
 /** Veins of one source chunk: rule r's `count[r]` veins (-1 until built) start at vein OFFSET[r] of `data`. */
 interface SourceVeins{data:Float64Array;count:Int16Array}
@@ -109,6 +118,8 @@ export class OrePlacer{
   /** Vein lists per source chunk, each rule's built on first use (pure, so caching never changes results). */
   private readonly cache=new Map<number,SourceVeins>();
   private readonly stream=new Stream();
+  /** Radii of a sphere-chain vein. */
+  private readonly radii=new Stream();
   constructor(private readonly seed:number){}
   /** The veins of chunk (sx,sz), with rule r's filled in. */
   private veins(sx:number,sz:number,r:number):SourceVeins{
@@ -121,11 +132,14 @@ export class OrePlacer{
     if(entry.count[r]>=0)return entry;
     const c=COMPILED[r],rule=c.rule,random=this.stream.reset(hashInt(sx,c.salt,sz,this.seed));
     const whole=Math.floor(rule.count),attempts=whole+(random.next()<rule.count-whole?1:0),g=rule.size/8;
-    const out=entry.data;
+    // Capsules are centred on block centres; sphere chains on a block corner with whole-number y ends (vanilla).
+    const out=entry.data,centre=c.small?0:.5;
     for(let a=0,o=OFFSET[r]*VEIN;a<attempts;a++,o+=VEIN){
-      const ox=Math.floor(sx*CS+random.next()*CS)+.5,oz=Math.floor(sz*CS+random.next()*CS)+.5,oy=Math.floor(sampleY(c,random));
-      const angle=random.next()*Math.PI,y1=oy+Math.floor(random.next()*3)-2+.5,y2=oy+Math.floor(random.next()*3)-2+.5;
-      const amp=(.5+.5*random.next())*rule.size/16,sin=Math.sin(angle)*g,cos=Math.cos(angle)*g;
+      const ox=Math.floor(sx*CS+random.next()*CS)+centre,oz=Math.floor(sz*CS+random.next()*CS)+centre,oy=Math.floor(sampleY(c,random));
+      const angle=random.next()*Math.PI,y1=oy+Math.floor(random.next()*3)-2+centre,y2=oy+Math.floor(random.next()*3)-2+centre;
+      // Capsule radius amplitude, or the seed of a sphere chain's radii.
+      const last=random.next(),amp=c.small?Math.floor(last*4294967296):(.5+.5*last)*rule.size/16;
+      const sin=Math.sin(angle)*g,cos=Math.cos(angle)*g;
       out[o]=ox+sin;out[o+1]=y1;out[o+2]=oz+cos;out[o+3]=ox-sin;out[o+4]=y2;out[o+5]=oz-cos;out[o+6]=amp;
     }
     entry.count[r]=attempts;return entry;
@@ -142,7 +156,30 @@ export class OrePlacer{
         for(let o=first;o<last;o+=VEIN){
           const mx=(veins[o]+veins[o+3])*.5,mz=(veins[o+2]+veins[o+5])*.5;
           if(mx+reach<x0||mx-reach>x0+CS||mz+reach<z0||mz-reach>z0+CS)continue;
-          this.vein(blocks,biomes,c,x0,z0,veins,o);
+          if(c.small)this.spheres(blocks,biomes,c,x0,z0,veins,o);else this.vein(blocks,biomes,c,x0,z0,veins,o);
+        }
+      }
+    }
+  }
+  /** A tiny vein as vanilla's OreFeature places it: `size` spheres along the segment at t = k/size, radius
+   *  ((sin(pi t) + 1) * h + 1) / 2 with h random in [0, size/16), filling the voxels whose centres lie inside. */
+  private spheres(blocks:Uint8Array,biomes:Uint8Array,c:CompiledRule,x0:number,z0:number,v:Float64Array,o:number){
+    const ax=v[o],ay=v[o+1],az=v[o+2],dx=v[o+3]-ax,dy=v[o+4]-ay,dz=v[o+5]-az,size=c.rule.size,random=this.radii.reset(v[o+6]);
+    const minY=Math.max(c.rule.minY,1),maxY=Math.min(c.rule.maxY,CH-1),replace=c.replace,allowed=c.biomes;
+    for(let k=0;k<size;k++){
+      const t=k/size,px=ax+dx*t,py=ay+dy*t,pz=az+dz*t,r=((Math.sin(Math.PI*t)+1)*random.next()*size/16+1)*.5,r2=r*r;
+      const xa=Math.max(x0,Math.floor(px-r)),xb=Math.min(x0+CS-1,Math.floor(px+r));
+      const za=Math.max(z0,Math.floor(pz-r)),zb=Math.min(z0+CS-1,Math.floor(pz+r));
+      const ya=Math.max(minY,Math.floor(py-r)),yb=Math.min(maxY,Math.floor(py+r));
+      for(let z=za;z<=zb;z++)for(let x=xa;x<=xb;x++){
+        const column=(x-x0)+(z-z0)*CS;
+        if(allowed&&!allowed[biomes[column]])continue;
+        const qx=x+.5-px,qz=z+.5-pz,horizontal=qx*qx+qz*qz;
+        if(horizontal>=r2)continue;
+        for(let y=ya;y<=yb;y++){
+          const qy=y+.5-py;if(horizontal+qy*qy>=r2)continue;
+          const index=column+y*LAYER,to=replace[blocks[index]];
+          if(to)blocks[index]=to;
         }
       }
     }
