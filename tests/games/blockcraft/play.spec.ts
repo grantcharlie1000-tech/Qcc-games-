@@ -1,5 +1,6 @@
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
+import {blockId} from '../../../src/games/blockcraft/data/blocks';
 
 // Engine smoke tests: boot, controls, screens, modes, Study, persistence and disposal.
 // Feature specs live beside this file (one per feature area).
@@ -62,6 +63,12 @@ test('survival mining takes time and drops the block',async({page})=>{
   await page.getByRole('button',{name:'Play',exact:true}).click();
   for(let i=0;i<8;i++)await page.mouse.move(640,360+(i+1)*40);
   await expect.poll(()=>data(page,'target')).not.toBe('');
+  // Real terrain often puts short grass (instant to break) under the crosshair: make the target dirt (0.75 s by hand).
+  const at=(await data(page,'target'))!;
+  const dirt=blockId('dirt');
+  await page.evaluate(([x,y,z,id])=>{const g=(window as unknown as {blockcraft:{world:{set(x:number,y:number,z:number,id:number):boolean}}}).blockcraft;
+    g.world.set(x,y,z,id);},[...at.split(',').map(Number),dirt]);
+  await expect.poll(()=>page.evaluate(([x,y,z])=>(window as unknown as {blockcraft:{world:{get(x:number,y:number,z:number):number}}}).blockcraft.world.get(x,y,z),at.split(',').map(Number))).toBe(dirt);
   await page.mouse.down();await page.waitForTimeout(200);
   expect(await num(page,'mined')).toBe(0);
   await expect.poll(()=>num(page,'mined'),{timeout:8000}).toBe(1);await page.mouse.up();

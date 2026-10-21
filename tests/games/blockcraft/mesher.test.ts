@@ -1,5 +1,5 @@
 import {describe,expect,test} from 'vitest';
-import {BLOCKS,LAYER as BLOCK_LAYER,blockId,blockDef,doorPanelBox,stairsBoxes,tileIndex,TILE_NAMES,type Shape} from '../../../src/games/blockcraft/data/blocks';
+import {BLOCKS,OPAQUE,LAYER as BLOCK_LAYER,blockId,blockDef,doorPanelBox,stairsBoxes,tileIndex,TILE_NAMES,type Shape} from '../../../src/games/blockcraft/data/blocks';
 import {biomeDef,biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {CS,CH,CHUNK_VOLUME,LAYER,PAD_VOLUME,MAX_PART_QUADS,padIndex,voxelIndex} from '../../../src/games/blockcraft/engine/constants';
 import {createTerrain} from '../../../src/games/blockcraft/world/terrain';
@@ -592,7 +592,14 @@ describe('meshBlock',()=>{
 describe('chunk borders',()=>{
   test('vertices on a shared border get the same light and AO from both chunks, and tints follow one world-space blend',()=>{
     // Generated terrain with a varied world-space biome pattern, so the tint blend changes across the border.
-    const t=createTerrain(5),cache=new Map<string,ChunkData>(),pattern=['plains','swamp','jungle','desert'].map(biomeId);
+    // Real terrain varies by seed: use the first seed whose border chunks have grass tops on both border lines.
+    const grassId=id('grass_block');
+    const hasGrassOnBorders=(seed:number)=>{
+      const tt=createTerrain(seed);
+      return [-1,0,1].every(cx=>{const c=tt.generate(cx,0);let n=0;for(let z=0;z<CS;z++)for(const x of [0,CS-1]){let y=127;while(y>0&&c.blocks[x+z*CS+y*LAYER]===0)y--;if(c.blocks[x+z*CS+y*LAYER]===grassId)n++;}return n>=8;});
+    };
+    let seed=5;while(seed<60&&!hasGrassOnBorders(seed))seed++;
+    const t=createTerrain(seed),cache=new Map<string,ChunkData>(),pattern=['plains','swamp','jungle','desert'].map(biomeId);
     const biomeAt=(wx:number,wz:number)=>pattern[(Math.floor(wx/3)*5+Math.floor(wz/2)*3)&3];
     const gen=(x:number,z:number)=>{
       const k=`${x},${z}`;
@@ -604,11 +611,27 @@ describe('chunk borders',()=>{
     // Two borders: chunk -1 | 0 and chunk 0 | 1.
     const meshes=[-1,0,1].map(meshAt);let shared=0,checked=0;const sharedFaces=new Set<string>(),colours=new Set<number>();
     // Light and AO: every cube face direction with vertices on the border line (tops, bottoms and the z-facing sides).
-    const border=(m:ChunkMesh,x:number)=>{
+    // Smooth light is per face (vanilla): two faces meeting at a corner where an opaque block sits in one of the four cells in
+    // front of the vertex use different front cells and may differ. Only vertices with four open cells are compared.
+    const opaqueAt=(wx:number,y:number,wz:number)=>{
+      const cx=Math.floor(wx/CS),cz=Math.floor(wz/CS);if(y<0||y>=CH)return y<0;
+      return OPAQUE[gen(cx,cz).blocks[(wx-cx*CS)+(wz-cz*CS)*CS+y*LAYER]]===1;
+    };
+    const openAround=(f:number,wx:number,v:Vert)=>{
+      const bx=wx,by=v.y/16,bz=v.z/16;
+      const cells:[number,number,number][]=[];
+      for(const a of [-1,0])for(const b of [-1,0]){
+        if(f===2)cells.push([bx+a,by,bz+b]);else if(f===3)cells.push([bx+a,by-1,bz+b]);
+        else if(f===4)cells.push([bx+a,by+b,bz]);else cells.push([bx+a,by+b,bz-1]);
+      }
+      return cells.every(([x,y,z])=>!opaqueAt(x,y,z));
+    };
+    const border=(m:ChunkMesh,x:number,wx:number)=>{
       const map=new Map<string,Set<string>>();
       for(const q of quads(m.opaque)){
         const f=faceOf(q);if(f<2)continue;
-        for(const v of q)if(v.x===x){const k=`${f},${v.y},${v.z}`;const s=map.get(k)??new Set();s.add(`${v.light},${v.shade}`);map.set(k,s);}
+        // Emissive vertices (lava, fire) carry full light by design, so they are not comparable with a neighbouring face.
+        for(const v of q)if(v.x===x&&!(v.flags&4)&&openAround(f,wx,v)){const k=`${f},${v.y},${v.z}`;const s=map.get(k)??new Set();s.add(`${v.light},${v.shade}`);map.set(k,s);}
       }
       return map;
     };
@@ -630,7 +653,7 @@ describe('chunk borders',()=>{
       }
     };
     for(let i=0;i<2;i++){
-      const ma=border(meshes[i],256),mb=border(meshes[i+1],0);
+      const ma=border(meshes[i],256,i*CS),mb=border(meshes[i+1],0,i*CS);
       for(const [k,s] of ma){const o=mb.get(k);if(!o)continue;shared++;sharedFaces.add(k.split(',')[0]);expect([...o].sort()).toEqual([...s].sort());}
       tints(meshes[i],256,i-1);tints(meshes[i+1],0,i);
     }

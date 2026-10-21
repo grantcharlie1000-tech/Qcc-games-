@@ -1,4 +1,5 @@
-import {AIR,B,BLOCK_COUNT,LIGHT_OPACITY,LIGHT_EMISSION} from '../data/blocks';
+import {AIR,B,BLOCK_COUNT} from '../data/blocks';
+import {changesLight} from './light-shapes';
 import {CS,CH,LAYER,CHUNK_VOLUME,chunkKey,keyX,keyZ} from '../engine/constants';
 import type {Chunk,ChunkData,ChangeCause,World,BlockId,GameEvents} from '../engine/contracts';
 import type {EventBus} from '../engine/events';
@@ -56,7 +57,8 @@ export class VoxelWorld implements World{
     const column=lx+lz*CS;
     if(id!==AIR&&wy>chunk.heightmap[column])chunk.heightmap[column]=wy;
     else if(id===AIR&&wy===chunk.heightmap[column]){let y=wy;while(y>=0&&chunk.blocks[column+y*LAYER]===AIR)y--;chunk.heightmap[column]=y;}
-    this.markAround(cx,cz,lx,lz,LIGHT_OPACITY[from]!==LIGHT_OPACITY[id]||LIGHT_EMISSION[from]!==LIGHT_EMISSION[id]);
+    // Shapes count too: slabs, stairs, snow layers and farmland block light through their full faces.
+    this.markAround(cx,cz,lx,lz,changesLight(from,id));
     this.events?.emit('blockChanged',{x:wx,y:wy,z:wz,from,to:id,cause});
     return true;
   }

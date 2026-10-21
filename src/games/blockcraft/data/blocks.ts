@@ -185,7 +185,7 @@ define('gravel',{hardness:.6,tool:'shovel',gravity:true,sound:'gravel'});
 define('clay',{hardness:.6,tool:'shovel',sound:'gravel'});
 define('snow_block',{hardness:.2,tool:'shovel',requiresTool:true,sound:'snow',tiles:'snow'});
 define('snow',{shape:'snow_layer',hardness:.1,tool:'shovel',requiresTool:true,replaceable:true,sound:'snow',display:'Snow',solid:false,support:'opaque_below'});
-define('ice',{layer:'translucent',opaque:false,cullSame:true,lightOpacity:2,hardness:.5,tool:'pickaxe',sound:'glass'});
+define('ice',{layer:'translucent',opaque:false,cullSame:true,lightOpacity:1,hardness:.5,tool:'pickaxe',sound:'glass'});
 define('packed_ice',{hardness:.5,tool:'pickaxe',sound:'glass'});
 define('obsidian',{hardness:50,blast:1200,tool:'pickaxe',level:3,requiresTool:true,sound:'stone'});
 
@@ -244,7 +244,7 @@ define('farmland_wet',{family:'farmland',shape:'farmland',tiles:{top:'farmland_m
 // 7 is the thinnest edge; source and falling liquid are full height (see engine/physics liquidHeight).
 for(const kind of ['water','lava'] as const){
   const base={shape:'liquid' as const,layer:kind==='water'?'translucent' as const:'opaque' as const,cullSame:true,solid:false,opaque:false,
-    lightOpacity:kind==='water'?2:15,lightEmission:kind==='lava'?15:0,hardness:-1,blast:100,replaceable:true,sound:'liquid' as const,item:null,
+    lightOpacity:kind==='water'?1:15,lightEmission:kind==='lava'?15:0,hardness:-1,blast:100,replaceable:true,sound:'liquid' as const,item:null,
     tiles:kind==='water'?'water_still':'lava_still',tint:kind==='water'?'water' as const:'none' as const,family:kind};
   define(kind,{...base,liquid:{kind,level:0,falling:false}});
   for(let level=1;level<8;level++)define(`${kind}_${level}`,{...base,liquid:{kind,level,falling:false},tiles:kind==='water'?'water_flow':'lava_flow'});

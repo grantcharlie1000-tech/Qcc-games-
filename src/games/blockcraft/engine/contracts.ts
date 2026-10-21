@@ -113,7 +113,9 @@ export interface LightEngine{
    *  Writes sky<<4|block for every padded voxel (padIndex) into `out` (PAD_VOLUME bytes). Light spreads up to
    *  15 blocks across the 3×3 neighbourhood so the centre chunk's rim matches its neighbours. */
   computePadded(neighbours:readonly (ChunkData|null)[],out:Uint8Array):void;
-  /** Optional faster path when only a few voxels changed since `out` was computed for the same neighbourhood. */
+  /** Optional faster path when only a few voxels changed since `out` was computed for the same neighbourhood.
+   *  `changed`: every voxel edited since then, in centre-chunk local coordinates laid out like the 3×3 neighbourhood
+   *  (x = worldX - 16*cx and z = worldZ - 16*cz, each -16..31; y = world y). Edits outside that frame force a full recompute. */
   relightPadded?(neighbours:readonly (ChunkData|null)[],out:Uint8Array,changed:readonly Vec3[]):void;
 }
 
