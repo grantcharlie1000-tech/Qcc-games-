@@ -200,7 +200,8 @@ void main(){
 }`;
 
 export interface HandState{
-  /** Visual identity of what each hand shows ('' = nothing / the bare arm). */
+  /** Visual identity of what each hand shows: the item id ('' = nothing / the bare arm), plus '#<sprite>' for a bow's
+   *  pull stage once item art paints bow_pulling_0..2. */
   readonly main:string;readonly off:string;
   /** Equip heights 0..1 (1 = raised) and swing progress 0..1. */
   readonly mainHeight:number;readonly offHeight:number;readonly swing:number;readonly swinging:boolean;
