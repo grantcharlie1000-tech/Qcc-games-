@@ -243,8 +243,8 @@ export class SoundEngine implements SoundService{
     const end=layers.length?renderLayers(c,this.bank!,layers,pitch,now,out,sources,this.rand,loop):now;
     return{name,out,filter,pan:panner,sources,end:bed?Infinity:end+.05,level,bed,follow:0,x:0,y:0,z:0,range:0,base:level,panned:pan};
   }
-  /** Re-spatialises playing positional voices from the current eye and yaw (no allocation; nothing is rescheduled
-   *  while the listener stands still). */
+  /** Re-spatialises playing positional voices from the current eye and yaw: one player.eye() per frame and only while
+   *  a positional voice plays; nothing is rescheduled while the listener stands still. */
   private followListener(){
     const c=this.ctx;if(!c)return;
     const now=c.currentTime,yaw=this.game.player.state.yaw;

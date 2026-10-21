@@ -84,7 +84,7 @@ const VOICES:Record<string,Voice>={
   // Companion wolves' own ambient sounds (vanilla Wolf.getAmbientSound: growl when angry, else a third of the time a
   // pant, or a whine when tamed below half health; the fur shake after getting wet). Hurt, death and steps are the wolf's.
   // A low, rough, rolling growl.
-  wolf_growl:{volume:.4,trim:{hurt:1.3,step:1.4},
+  wolf_growl:{volume:.4,trim:{ambient:.55,hurt:1.3,step:1.4},
     ambient:(_r,f)=>[
       tone('sawtooth',150*f,{freqEnd:118*f,attack:.07,hold:.42,decay:.32,gain:.34,fm:{ratio:.5,depth:.35},tremolo:{rate:22,depth:.55},filter:lp(700)}),
       rumble(380*f,{attack:.06,hold:.42,decay:.3,gain:.28,tremolo:{rate:22,depth:.6}}),
@@ -98,13 +98,13 @@ const VOICES:Record<string,Voice>={
       tone('sine',1860*f,{freqEnd:1280*f,delay:.27,attack:.03,hold:.18,decay:.25,gain:.05,vibrato:{rate:6,depth:.03}})],
     hurt:wolfHurt,death:wolfDeath,step:wolfStep},
   // Quick breathy pants.
-  wolf_pant:{volume:.4,trim:{ambient:2,hurt:1.3,step:1.4},
+  wolf_pant:{volume:.4,trim:{ambient:3.5,hurt:1.3,step:1.4},
     ambient:(_r,f)=>[
       noise('bandpass',1700*f,{q:1,decay:.07,gain:.3,bursts:hits([0,.16,.32,.48],.08,.3)}),
       noise('bandpass',900*f,{q:1,decay:.05,gain:.12,bursts:hits([.08,.24,.4,.56],.05,.12)})],
     hurt:wolfHurt,death:wolfDeath,step:wolfStep},
   // Shaking water out of the fur: a flapping rattle of short noise grains.
-  wolf_shake:{volume:.4,trim:{ambient:1.5,hurt:1.3,step:1.4},
+  wolf_shake:{volume:.4,trim:{ambient:2.6,hurt:1.3,step:1.4},
     ambient:(r,f)=>[
       noise('bandpass',1300*f,{q:.9,decay:.035,gain:.45,bursts:grains(r,12,.62,.035,.5,.3,.35)}),
       noise('lowpass',650*f,{attack:.05,hold:.35,decay:.22,gain:.16,tremolo:{rate:15,depth:.7}}),
