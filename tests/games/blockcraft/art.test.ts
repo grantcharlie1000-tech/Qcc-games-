@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
-import {describe,expect,test} from 'vitest';
+import {describe,expect,test,vi} from 'vitest';
 import {TILE,TILE_NAMES,TILE_ALPHA,TINTED_TILES,ATLAS_COLUMNS,ATLAS_ROWS,WOOL_COLOURS,WOOD_TYPES} from '../../../src/games/blockcraft/data/blocks';
-import {PAINTERS,placeholder,paintAtlas,atlasPixels,tilePixels,paintTile,paintAtlasTexture,paintClouds,ATLAS_WIDTH,ATLAS_HEIGHT} from '../../../src/games/blockcraft/art/atlas';
+import {type Painter,PAINTERS,placeholder,paintAtlas,atlasPixels,tilePixels,paintTile,paintAtlasTexture,paintClouds,ATLAS_WIDTH,ATLAS_HEIGHT} from '../../../src/games/blockcraft/art/atlas';
 
 type Px=Uint8ClampedArray;
 const N=TILE*TILE;
@@ -51,8 +51,11 @@ describe('block atlas',()=>{
     expect(Array.from(data.subarray(0,row))).toEqual(Array.from(atlas.subarray((ATLAS_HEIGHT-1)*row)));
     texture.dispose();
   });
-  test('painting the whole atlas is quick',()=>{
-    const start=performance.now();paintAtlas();expect(performance.now()-start).toBeLessThan(400);
+  test('painting the whole atlas is quick, even the first time',async()=>{
+    // The renderer pays the first paint, when every painter still fills its cache, so time it in a fresh module.
+    vi.resetModules();
+    const fresh=await import('../../../src/games/blockcraft/art/atlas');
+    const start=performance.now();fresh.paintAtlas();expect(performance.now()-start).toBeLessThan(200);
   });
   test('every tile is distinct',()=>{
     const seen=new Map<string,string>();
@@ -120,6 +123,61 @@ describe('vanilla look',()=>{
       gray_wool:[63,68,72],red_wool:[161,39,35],black_wool:[21,21,26],pumpkin_side:[198,118,24]
     };
     for(const [name,colour] of Object.entries(VANILLA))expect(dist(mean(px(name)),colour),name).toBeLessThan(26);
+  });
+  test('natural tiles repeat every 16 px, so hillsides, lakes and lava pools show no block grid',()=>{
+    // Greedy quads repeat these tiles across many blocks (the renderer samples them through fract()), so every pattern
+    // must have a period that divides the tile. The uncached painter is evaluated one tile past each edge: a ripple
+    // every 6 rows or a streak every 5 columns lands on different pixels there, a seamless pattern on the same ones.
+    const NATURAL=['stone','granite','diorite','andesite','cobblestone','cobbled_deepslate','bedrock','obsidian','dirt','coarse_dirt',
+      'grass_block_top','mycelium_top','sand','red_sand','gravel','clay','snow','ice','packed_ice','deepslate','tuff','moss_block',
+      ...WOOD_TYPES.map(wood=>`${wood}_leaves`),'water_still','water_flow','lava_still','lava_flow'];
+    for(const name of NATURAL){
+      const raw=(PAINTERS[name] as Painter&{raw?:Painter}).raw;
+      expect(raw,`${name} exposes its uncached painter`).toBeTypeOf('function');
+      const seams:string[]=[];
+      for(let y=0;y<TILE;y++)for(let x=0;x<TILE;x++){
+        const c=raw!(x,y,.37,.61).join();
+        if(raw!(x+TILE,y,.37,.61).join()!==c)seams.push(`x ${x},${y}`);
+        if(raw!(x,y+TILE,.37,.61).join()!==c)seams.push(`y ${x},${y}`);
+      }
+      expect(seams.slice(0,6),`${name} breaks at the tile edge in ${seams.length} pixels`).toEqual([]);
+    }
+  });
+  test('still lava shows scattered crust, not one ring repeated in every block',()=>{
+    // Dark crust pixels grouped 8-connected on the torus (the tile repeats); the molten pixels 4-connected. A closed
+    // vein loop would cut the molten surface into an inside and an outside.
+    const p=px('lava_still'),c=mean(p),limit=.7*luma(c[0],c[1],c[2]);
+    const dark=(x:number,y:number)=>{const q=at(p,(x+TILE)%TILE,(y+TILE)%TILE);return luma(q[0],q[1],q[2])<limit;};
+    const groups=(want:boolean,dirs:readonly [number,number][])=>{
+      const seen=new Uint8Array(N);let count=0;
+      for(let i=0;i<N;i++){
+        if(seen[i]||dark(i%TILE,Math.floor(i/TILE))!==want)continue;
+        count++;const stack=[i];seen[i]=1;
+        while(stack.length){const j=stack.pop()!,x=j%TILE,y=Math.floor(j/TILE);
+          for(const [dx,dy] of dirs){const k=((y+dy+TILE)%TILE)*TILE+(x+dx+TILE)%TILE;if(!seen[k]&&dark(k%TILE,Math.floor(k/TILE))===want){seen[k]=1;stack.push(k);}}}
+      }
+      return count;
+    };
+    const FOUR=[[1,0],[-1,0],[0,1],[0,-1]] as const,EIGHT=[...FOUR,[1,1],[1,-1],[-1,1],[-1,-1]] as const;
+    expect(groups(true,EIGHT)).toBeGreaterThanOrEqual(3);
+    expect(groups(false,FOUR)).toBe(1);
+  });
+  test('farmland tops show nested square rims stepping in from the edge, not straight furrows',()=>{
+    for(const name of ['farmland','farmland_moist']){
+      const p=px(name),l=(x:number,y:number)=>luma(...at(p,x,y).slice(0,3) as [number,number,number]);
+      // Brightness across the middle band, column by column and row by row: concentric rims make the two profiles alike.
+      const across=[...Array(TILE).keys()].map(k=>{let s=0;for(let j=5;j<=10;j++)s+=l(k,j);return s/6;});
+      const down=[...Array(TILE).keys()].map(k=>{let s=0;for(let j=5;j<=10;j++)s+=l(j,k);return s/6;});
+      const outer=[0,1,2,3,4,11,12,13,14,15],pa=outer.map(k=>across[k]),pd=outer.map(k=>down[k]);
+      const avg=(v:number[])=>v.reduce((a,b)=>a+b)/v.length,ma=avg(pa),md=avg(pd);
+      const cov=pa.reduce((s,v,i)=>s+(v-ma)*(pd[i]-md),0),sa=Math.hypot(...pa.map(v=>v-ma)),sd=Math.hypot(...pd.map(v=>v-md));
+      expect(cov/(sa*sd),`${name} rims match across and down`).toBeGreaterThan(.5);
+      expect(Math.max(...pa)-Math.min(...pa),`${name} rims show across`).toBeGreaterThan(8);
+      expect(Math.max(...pd)-Math.min(...pd),`${name} rims show down`).toBeGreaterThan(8);
+      // The outermost 1-px rim is a dark furrow, darker than the ring inside it.
+      const ring=(r:number)=>luma(...mean(p,(x,y)=>Math.max(Math.abs(x-7.5),Math.abs(y-7.5))===r+.5) as [number,number,number]);
+      expect(ring(7),name).toBeLessThan(ring(6)-4);
+    }
   });
   test('cobblestone stones are lit from the upper left, with dark mortar between them',()=>{
     const p=px('cobblestone'),l=(x:number,y:number)=>luma(...at(p,x,y).slice(0,3) as [number,number,number]);
@@ -364,6 +422,14 @@ describe('clouds',()=>{
       let cover=0;const alphas=new Set<number>();
       for(let i=0;i<size*size;i++){alphas.add(c[i*4+3]);if(c[i*4+3])cover++;expect(c[i*4]).toBe(255);}
       expect(alphas.size).toBe(2);expect(cover/(size*size)).toBeGreaterThan(.2);expect(cover/(size*size)).toBeLessThan(.6);
+      // The renderer scrolls and repeats the mask, so the wrap from the last column (row) to the first changes between
+      // cloud and sky no more often than neighbouring columns (rows) inside the mask do.
+      const on=(x:number,y:number)=>c[(y*size+x)*4+3]>0;
+      const flips=(a:number,b:number,axis:'x'|'y')=>{let n=0;for(let j=0;j<size;j++)if(axis==='x'?on(a,j)!==on(b,j):on(j,a)!==on(j,b))n++;return n;};
+      for(const axis of ['x','y'] as const){
+        const inner=[...Array(size-1).keys()].map(k=>flips(k,k+1,axis));
+        expect(flips(size-1,0,axis),`${size} ${axis} wrap`).toBeLessThanOrEqual(Math.max(...inner));
+      }
     }
   });
 });

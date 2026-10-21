@@ -5,7 +5,7 @@ import {type Painter,type RGBA,T,CLEAR,rgb,grey,shade,ramp,pick,hash,valueNoise,
 const STONE=ramp(0x5f5f5f,0x6b6b6b,0x747474,0x7c7c7c,0x848484,0x8d8d8d,0x989898);
 /** Smooth grey stone: soft mottled blotches, faint horizontal strata and sparse darker flecks. */
 export const stone:Painter=cached((x,y)=>{
-  const v=contrast(valueNoise(x,y,8,4,11)*.36+valueNoise(x,y,4,2,12)*.3+hash(x,y,13)*.34,1.6),f=hash(x>>1,y,14);
+  const v=contrast(valueNoise(x,y,8,4,11)*.36+valueNoise(x,y,4,2,12)*.3+hash(x,y,13)*.34,1.6),f=hash(x&~1,y,14);
   if(f<.045)return STONE[0];
   return pick(STONE.slice(1),v);
 },10);
@@ -177,9 +177,13 @@ export const clay:Painter=cached((x,y)=>{
   const v=contrast(fbm(x,y,221,1,1,.3),1.4);
   return hash(x,y,222)<.04?rgb(0xb8c0cc):pick(CLAY,v);
 },220);
-// Ice: translucent blue with brighter frost streaks; packed ice is the opaque, denser version.
+// Ice: translucent blue with brighter frost streaks; packed ice is the opaque, denser version. The streaks repeat
+// every 16 px along x+2y, with a broken one halfway between, so they run on across the block edges of a frozen lake.
 const ICE=ramp(0x729ef6,0x7ca7f9,0x86affb,0x91b8fe,0x9dc1ff);
-const frost=(x:number,y:number,salt:number)=>{const d=(x+y*2+Math.round(valueNoise(x,y,4,4,salt)*3))%11;return d===0||(d===1&&hash(x,y,salt+1)<.5);};
+const frost=(x:number,y:number,salt:number)=>{
+  const d=(x+y*2+Math.round(valueNoise(x,y,4,4,salt)*3))%16,h=hash(x,y,salt+1);
+  return d===0||(d===1&&h<.5)||(d===8&&valueNoise(x,y,4,4,salt+2)>.4&&h<.85);
+};
 export const ice:Painter=cached((x,y)=>{
   if(frost(x,y,231))return withAlpha(rgb(0xc8deff),215);
   return withAlpha(pick(ICE,contrast(fbm(x,y,232,1,1,.3),1.4)),165);
@@ -300,16 +304,18 @@ export const oxidizedCopper=copper(OXIDIZED,null,1,371);
 
 // ---- Fluids ---------------------------------------------------------------------------------------
 const WATER=[0x9c,0xa6,0xb0,0xba,0xc4];
-/** Water is painted grey (the mesher tints it per biome) and semi-transparent. */
+/** Water is painted grey (the mesher tints it per biome) and semi-transparent. Lakes repeat the tile, so the ripples
+ *  repeat every 8 rows and their sideways wave every 8 columns (both divide 16): no seam at the block edges. */
 export const waterStill:Painter=cached((x,y)=>{
-  const ripple=(y+Math.round(Math.sin((x+valueNoise(x,y,8,8,381)*6)*.8)*1.3)+16)%6;
+  const ripple=(y+Math.round(Math.sin((x+valueNoise(x,y,8,8,381)*6)*Math.PI/4)*1.3)+16)%8;
   const v=contrast(fbm(x,y,382,2,1,.3),1.3),g=ripple===0?0xd2:ripple===1?0xc6:WATER[Math.floor(v*WATER.length)];
   return grey(g,ripple===0?205:178);
 },380);
 export const waterFlow:Painter=cached((x,y)=>{
-  const streak=(x+Math.round(valueNoise(x,y,16,4,391)*3)+16)%5;
-  const v=contrast(fbm(x,y,392,.5,2,.3),1.3),g=streak===0?0xcf:WATER[Math.floor(v*WATER.length)];
-  return grey(g,streak===0?200:176);
+  // Two streaks per 8 columns (8 divides 16): a full bright one and a broken fainter one, so side-by-side blocks join up.
+  const streak=(x+Math.round(valueNoise(x,y,16,4,391)*3)+16)%8,faint=streak===4&&valueNoise(x,y,16,4,393)>.45;
+  const v=contrast(fbm(x,y,392,.5,2,.3),1.3),g=streak===0?0xcf:faint?0xc4:WATER[Math.floor(v*WATER.length)];
+  return grey(g,streak===0?200:faint?190:176);
 },390);
 const LAVA=ramp(0xb83a0a,0xcc4a0c,0xdc5c10,0xe87016,0xf28a20,0xfaa430);
 /** Bright molten rock with dark cooling veins along a noise contour. */

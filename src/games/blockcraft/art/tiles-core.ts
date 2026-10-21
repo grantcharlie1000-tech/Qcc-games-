@@ -102,10 +102,12 @@ export function bitmap(rows:readonly string[],palette:Record<string,RGBA|Painter
 }
 /** Overlays painter `top` onto `base` wherever `top` is opaque. */
 export const over=(base:Painter,top:Painter):Painter=>(x,y,n,m)=>{const c=top(x,y,n,m);return(c[3]??255)>0?c:base(x,y,n,m);};
-/** A painter memoised into a 16×16 cache (for painters that are expensive per pixel). */
-export function cached(p:Painter,salt:number):Painter{
+/** A painter memoised into a 16×16 cache (for painters that are expensive per pixel). `raw` is the uncached
+ *  painter; tests evaluate it past the tile edge (x or y ≥ 16) to check that a pattern repeats every 16 px. */
+export function cached(p:Painter,salt:number):Painter&{raw:Painter}{
   let cache:RGBA[]|null=null;
-  return(x,y)=>{if(!cache){cache=[];for(let j=0;j<T;j++)for(let i=0;i<T;i++)cache.push(p(i,j,hash(i,j,salt),hash(i,j,salt+1)));}return cache[wrap(y)*T+wrap(x)];};
+  const read:Painter=(x,y)=>{if(!cache){cache=[];for(let j=0;j<T;j++)for(let i=0;i<T;i++)cache.push(p(i,j,hash(i,j,salt),hash(i,j,salt+1)));}return cache[wrap(y)*T+wrap(x)];};
+  return Object.assign(read,{raw:p});
 }
 /** Seamless Voronoi cells (cobblestone, gravel, glowstone): returns the nearest cell id and the gap to the second nearest. */
 export function voronoi(count:number,salt:number,jitter=1){
