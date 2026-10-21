@@ -105,6 +105,34 @@ describe('audio context lifecycle',()=>{
     gestures.gesture();
     expect(c.state).toBe('running');
   });
+  test('while the browser holds the context suspended nothing queues up (no burst when it resumes)',()=>{
+    const c=start();
+    // Autoplay policy: the browser suspended the context and no resume is pending.
+    c.state='suspended';
+    for(let i=0;i<20;i++)engine.play('step:stone');
+    game.player.state.headInWater=true;
+    for(let i=0;i<5;i++)engine.tick?.();
+    expect(engine.voiceCount).toBe(0);
+    gestures.gesture();
+    expect(c.state).toBe('running');
+    engine.play('step:stone');
+    expect(engine.voiceNames()).toContain('step:stone');
+  });
+  test('sounds played while a resume is still pending are kept (the first click is heard)',()=>{
+    const c=start();
+    c.state='suspended';
+    let resolve=()=>{};
+    c.resume=()=>{c.resumes++;return new Promise<void>(r=>{resolve=()=>{c.state='running';r();};});};
+    gestures.gesture();
+    expect(c.resumes).toBe(1);
+    engine.play('click');
+    expect(engine.voiceNames()).toEqual(['click']);
+    // Further gestures while it is pending do not stack resume calls.
+    gestures.gesture('keydown');
+    expect(c.resumes).toBe(1);
+    resolve();
+    expect(c.state).toBe('running');
+  });
   test('dispose closes the context and removes every listener',()=>{
     const c=start();engine.play('click');
     engine.dispose?.();
@@ -341,6 +369,19 @@ describe('ambience',()=>{
     for(let t=0;t<3*60*20;t++){engine.tick?.();c.currentTime+=.05;engine.frame?.(.05);expect(engine.voiceNames()).not.toContain('music');}
     const notes=c.all<MockGain>('gain').filter(g=>g.gain.events.some(e=>e.value>0)&&g.gain.peak()<=.12);
     expect(notes.length).toBeGreaterThan(5);
+  });
+  test('music does not burst out notes it missed while the world stood still (death screen)',()=>{
+    const c=start();
+    for(let t=1;t<=2400&&!engine.voiceNames().includes('music');t++){engine.tick?.();c.currentTime+=.05;}
+    expect(engine.voiceNames()).toContain('music');
+    for(let t=0;t<40;t++){engine.tick?.();c.currentTime+=.05;}
+    // Ticks stop on the death screen while the audio clock keeps running.
+    c.currentTime+=25;
+    const before=c.nodes.length;
+    engine.tick?.();
+    const late=c.nodes.slice(before).filter((n):n is MockSource=>n instanceof MockSource&&n.kind==='oscillator'&&n.startTime===c.currentTime);
+    // At most one chord (four pad tones) and a pluck may fall in the short grace window.
+    expect(late.length).toBeLessThanOrEqual(5);
   });
   test('no music when the shell sound is off',()=>{
     engine.dispose?.();build(false);

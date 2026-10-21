@@ -172,6 +172,11 @@ describe('mob voices',()=>{
       }
     }
   });
+  test('vanilla getSoundVolume: cows, wolves, squid and small slimes 0.4, the others 1',()=>{
+    const quiet:Record<string,number>={cow:.4,wolf:.4,squid:.4,slime:.4,rabbit:.6};
+    for(const mob of MOB_KINDS)for(const v of ['hurt','death'] as const)
+      expect(must(`mob:${mob}:${v}`).volume).toBeCloseTo(quiet[mob]??1,5);
+  });
   test('death cries last longer than hurt cries',()=>{
     for(const mob of MOB_KINDS)expect(specDuration(must(`mob:${mob}:death`))).toBeGreaterThan(specDuration(must(`mob:${mob}:hurt`)));
   });
