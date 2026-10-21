@@ -1,3 +1,5 @@
+import {additionalReading} from './extensions';
+
 export interface StudyTopic {
   id: string;
   subject: string;
@@ -5,16 +7,11 @@ export interface StudyTopic {
   subtitle: string;
   objective: string;
   sections: {heading: string; paragraphs: string[]}[];
-  diagram: {svg: string; caption: string};
   example: {title: string; question: string; steps: string[]; result: string};
   check: {question: string; answer: string};
 }
 
-// Raw imports are eager: reading or changing chapters never fetches a file.
-const diagrams = import.meta.glob<string>('./diagrams/*.svg', {query:'?raw', import:'default', eager:true});
-const diagram = (id:string, caption:string)=>({svg:diagrams[`./diagrams/${id}.svg`], caption});
-
-export const studyTopics: readonly StudyTopic[] = [
+const coreTopics: readonly StudyTopic[] = [
   {
     id:'close-reading',subject:'English',title:'Reading between the lines',subtitle:'Close reading & language',
     objective:'Connect a precise language choice to an interpretation of a text.',
@@ -30,7 +27,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'A convincing analysis tests its claim against another detail. If the first image suggests freedom but later images suggest confinement, explain the tension instead of ignoring it. Use qualified language such as “suggests” when more than one interpretation is plausible. In revision, underline the evidence in each paragraph and check that your explanation accounts for its exact wording.'
       ]}
     ],
-    diagram:diagram('close-reading','A useful reasoning chain: evidence, language choice, reader response, interpretation.'),
     example:{title:'Worked reading · an original sentence',question:'“The gate swallowed her, and the street fell silent.” How could the gate help develop an idea about belonging?',steps:[
       '“Swallowed” gives the gate the action of a living creature: personification.',
       'The verb makes entry seem threatening rather than welcoming; the following silence strengthens her isolation.'
@@ -52,7 +48,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Read only the first sentence of each paragraph. Can you follow a developing answer to the question? Then check the evidence and explanation within each paragraph. A conclusion should bring the reasoning together and show its significance. It should not introduce a major new example that the essay has not analysed. Leave time to correct references, punctuation and unclear pronouns.'
       ]}
     ],
-    diagram:diagram('essay-writing','A paragraph is a small argument that helps support the essay’s larger claim.'),
     example:{title:'From observation to argument',question:'An invented story shows a runner initially hiding an injury, then asking their team for help. What could a paragraph argue?',steps:[
       'Make a claim: the runner’s decision redefines strength as accepting support.',
       'Select the moment of asking for help and explain how its language contrasts with earlier secrecy.'
@@ -74,7 +69,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Enjambment carries a sentence across a line break; an end-stopped line gives a grammatical pause. Neither has one automatic effect. A break may briefly emphasise a word or delay information. Compare that local effect with the poem’s larger movement. A strong response explains how voice, image and structure work together, and acknowledges uncertainty where the text leaves it open.'
       ]}
     ],
-    diagram:diagram('poetry','A tonal shift is an interpretation to test against words and structure, not a feature to assume.'),
     example:{title:'An original two-line image',question:'“I left the window open for the sea, / but morning found my hands upon the latch.” What changes?',steps:[
       'The open window and sea invite an interpretation of possibility or freedom.',
       '“But” turns toward a restrictive image: hands at the latch suggest hesitation or a wish for control.'
@@ -96,7 +90,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Avoid a catalogue of techniques with no argument. Select two choices that work together and explain their contribution to an idea. For example, a long shot can isolate a figure while the removal of background sound focuses attention on their breathing. Compare another moment to show how this effect develops or changes. Distinguish a character’s viewpoint from the film’s larger perspective.'
       ]}
     ],
-    diagram:diagram('film-language','The frame is a simplified original example; a low angle gains meaning from its surrounding scene.'),
     example:{title:'Two choices working together',question:'An invented scene cuts from a crowded hall to a close-up of a student, with the crowd’s sound fading. What might this achieve?',steps:[
       'The close-up directs attention to the student’s reaction rather than the wider event.',
       'Fading crowd sound can create a sense of subjective isolation or intense concentration.'
@@ -118,7 +111,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'A line can extend forever on paper while its context cannot. A hire charge may apply only for whole hours or a limited time. Interpolation estimates within the observed range; extrapolation extends beyond it and needs more caution. Give a numerical answer with a sentence explaining what it means, and check whether the value is possible in the original situation.'
       ]}
     ],
-    diagram:diagram('linear-relationships','For y = 2x + 3, the intercept is 3 and each increase of 1 in x adds 2 to y.'),
     example:{title:'A fixed charge and an hourly rate',question:'A fictional bike hire costs $8 for one hour and $14 for three hours. Assume a linear charge. What is its rule?',steps:[
       'Gradient = (14 − 8) ÷ (3 − 1) = 3 dollars per hour.',
       'Substitute (1, 8): 8 = 3 × 1 + c, so c = 5.'
@@ -140,7 +132,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'A contextual equation may produce two mathematical solutions but only one realistic answer. A negative time or a length outside the model’s range may need to be rejected with a reason. Sketch a labelled graph to connect roots, intercept and turning point. Do not discard a negative answer merely because it is negative: its meaning depends on the quantity being modelled.'
       ]}
     ],
-    diagram:diagram('quadratics','The roots 1 and 3 are equally distant from the symmetry line x = 2.'),
     example:{title:'Factors reveal the graph',question:'Find the roots and vertex of y = x² − 4x + 3.',steps:[
       'Factorise: x² − 4x + 3 = (x − 1)(x − 3), so the roots are 1 and 3.',
       'The symmetry line is x = (1 + 3)/2 = 2. Substitution gives y = 4 − 8 + 3 = −1.'
@@ -162,7 +153,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'A height problem may need a horizontal ground distance and an angle of elevation. A sloping distance is a different side. If an angle is measured from eye height, add that height to the calculated vertical distance. State assumptions such as level ground, and check whether the answer has a reasonable scale. A labelled sketch often reveals the main source of error before any arithmetic.'
       ]}
     ],
-    diagram:diagram('trigonometry','Side names depend on θ; the 3–4–5 triangle also satisfies Pythagoras’ theorem.'),
     example:{title:'Height from an angle',question:'From 12 m away on level ground, the angle from ground level to the top of a post is 35°. Find its height.',steps:[
       'Opposite is height h and adjacent is 12 m, so tan 35° = h/12.',
       'Multiply by 12: h = 12 tan 35° ≈ 8.402 m.'
@@ -184,7 +174,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'P(B given A) restricts attention to cases where A has occurred. Its denominator is that restricted group, not the original whole population. A table can make this easier to see. Always state the event and the condition in words. A numerical probability is a model result, not a promise about the next single trial; relative frequencies may vary, especially in small samples.'
       ]}
     ],
-    diagram:diagram('probability','After the first draw the bag contains four counters; the second-stage probabilities must change.'),
     example:{title:'Two counters without replacement',question:'A bag holds 3 red and 2 blue counters. What is the probability of drawing two red counters?',steps:[
       'First red: 3/5. Given that red was removed, second red: 2/4.',
       'Multiply along this route: (3/5) × (2/4) = 6/20.'
@@ -206,7 +195,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Mass measures inertia and is measured in kilograms; weight is gravitational force and is measured in newtons. Near Earth, weight is approximately mg with g ≈ 9.8 m/s². On level ground with no vertical acceleration, normal force can balance weight while a horizontal resultant still causes acceleration. State any simplifying assumptions, such as negligible air resistance or a constant friction force.'
       ]}
     ],
-    diagram:diagram('forces','Vertical forces balance, but the unequal horizontal forces produce a resultant to the right.'),
     example:{title:'A trolley with friction',question:'A 4 kg trolley has a 12 N push right and a 4 N friction force left. Find its acceleration.',steps:[
       'Choose right as positive: Fnet = 12 − 4 = 8 N right.',
       'a = Fnet/m = 8/4 = 2 m/s².'
@@ -228,7 +216,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Efficiency = useful energy output / total energy input. Multiply by 100 for a percentage. Use the same units and the same operating interval. A real device has transfers to the surroundings, so a simple useful-output calculation usually gives less than 100%. When an answer exceeds 100%, check the system boundary, arithmetic and whether an additional energy source has been overlooked.'
       ]}
     ],
-    diagram:diagram('energy','The illustrative transfers sum to the 100 J input; the useful fraction depends on the device’s purpose.'),
     example:{title:'A small motor',question:'A motor receives 100 J and transfers 60 J to useful motion, 30 J to thermal energy and 10 J to sound. Find efficiency.',steps:[
       'Check the account: 60 + 30 + 10 = 100 J.',
       'Useful fraction = 60/100 = 0.60. Multiply by 100%.'
@@ -250,7 +237,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'In a simple acid–hydroxide neutralisation, hydrogen ions react with hydroxide ions to form water: H⁺ + OH⁻ → H₂O. A salt remains from the other ions. Acid plus carbonate produces a salt, water and carbon dioxide. A neutralisation mixture is not automatically pH 7: amounts, reacting species and the final solution matter. Follow classroom laboratory safety instructions; never identify chemicals by tasting them.'
       ]}
     ],
-    diagram:diagram('acids-bases','The labelled scale is a classroom model for aqueous solutions at 25°C; each pH step is multiplicative.'),
     example:{title:'Comparing two solutions',question:'How does hydrogen ion concentration at pH 2 compare with that at pH 4?',steps:[
       'The difference is two pH units.',
       'Each step toward lower pH multiplies hydrogen ion concentration by 10: 10 × 10 = 100.'
@@ -272,7 +258,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Each fertilisation is a new chance event in the model. A 1 in 4 probability does not guarantee one aa offspring in every group of four. Mutation can produce new alleles; recombination and independent assortment rearrange existing variation. Real inheritance can also involve incomplete dominance, multiple genes and other patterns, so state the assumptions of a simple cross before interpreting it.'
       ]}
     ],
-    diagram:diagram('inheritance','A simplified Aa × Aa cross predicts probabilities, not an exact sequence of offspring.'),
     example:{title:'A fictional plant trait',question:'In a model, A gives smooth seeds and is completely dominant to a. Cross two Aa plants. What fraction is predicted to have rough seeds?',steps:[
       'Each parent contributes A or a. List AA, Aa, Aa and aa.',
       'Only aa expresses the recessive rough-seed phenotype under these assumptions.'
@@ -294,11 +279,10 @@ export const studyTopics: readonly StudyTopic[] = [
         'If a predator declines, its prey may increase, changing pressure on the prey’s food. This is a possible mechanism, not an automatic forecast. Other predators, resource limits, habitat and time delays can alter the outcome. Use evidence to support each step and distinguish a short-term response from a long-term equilibrium. Competition can occur within a species as well as between species.'
       ]}
     ],
-    diagram:diagram('ecosystems','A simplified teaching web: arrows run from food to consumer, and do not imply every diet link is shown.'),
     example:{title:'A possible ripple effect',question:'In this model, what could happen if birds that eat wētā decline?',steps:[
       'Less bird predation could allow the wētā population to increase, if other factors permit.',
       'More herbivorous wētā could increase feeding pressure on plants; another limiting factor could reduce that effect.'
-    ],result:'Explain the mechanism with qualified language and evidence. A real food web is more complex than the simplified drawing.'},
+    ],result:'Explain the mechanism with qualified language and evidence. A real food web is more complex than the simplified model.'},
     check:{question:'Why is it incorrect to say energy is recycled in exactly the same way as nutrients?',answer:'Matter such as nutrients can cycle. Energy enters, passes through food webs and is dissipated as heat, so continual energy input is required.'}
   },
   {
@@ -316,7 +300,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Compare independent sources and check their context. Agreement can strengthen a claim, but two accounts may share the same original information. Differences may reflect perspective, timing or purpose rather than a simple mistake. Consider whose voices are missing and why some records survive more readily than others. A conclusion should be proportional to the evidence and acknowledge significant limits instead of claiming certainty from a single example.'
       ]}
     ],
-    diagram:diagram('historical-evidence','Triangulate evidence while checking whether the sources are genuinely independent.'),
     example:{title:'A diary and a photograph',question:'A diary describes an enormous protest. A photograph shows a crowded street. Do they prove that nearly everyone supported it?',steps:[
       'They support the claim that a sizeable gathering occurred, subject to date, location and framing checks.',
       'They do not establish the views of people outside the frame or the proportion of the wider population attending.'
@@ -337,7 +320,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'For revision, separate a textual observation from an interpretation of what a particular rangatira or Crown representative understood. Use a table: wording, relevant context, evidence of a perspective, and implications. Different iwi and hapū have distinct histories; do not describe Māori perspectives as a single unchanging view. Keep this introductory comparison separate from a claim to settle complex historical or legal questions.'
       ]}
     ],
-    diagram:diagram('te-tiriti','An introductory comparison of selected wording. It is not a substitute for reading both full texts.'),
     example:{title:'A careful comparison sentence',question:'How can you discuss the Article 1 difference without assuming identical understandings?',steps:[
       'Identify the actual terms: kāwanatanga in the Māori text and sovereignty in the English text.',
       'Explain that the different concepts require historical context and evidence about particular participants’ understandings.'
@@ -359,7 +341,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'A strong causal paragraph identifies a factor, explains a mechanism and supports it with precise evidence. Compare short-term and long-term roles. Ask whether a cause made war more likely, shaped its scale or explains its timing. Include connections: military plans could reduce the time available for diplomacy. Acknowledge an alternative explanation and justify your weighting rather than claiming that one acronym fully explains the war.'
       ]}
     ],
-    diagram:diagram('wwi-causes','Pressures and a trigger interacted through decisions; the arrows do not imply inevitability.'),
     example:{title:'Turning a list into an explanation',question:'Improve “alliances caused the war”.',steps:[
       'Specify how commitments influenced the expectations and choices of particular governments.',
       'Connect those choices to a step in escalation, and distinguish support from an automatic obligation in every circumstance.'
@@ -381,7 +362,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'Stopbanks, detention areas, wetland restoration, planning rules and warnings address different parts of risk. A structure may protect one area but change flows elsewhere or create a false sense of security. Evaluate short- and long-term effects and whose perspectives are represented, including mana whenua and downstream communities. Use a named local case from your course when turning this conceptual framework into a specific assessment response.'
       ]}
     ],
-    diagram:diagram('rivers-flooding','Flood risk emerges from the catchment process and the people and places exposed to it.'),
     example:{title:'Two neighbourhoods, one storm',question:'Why might a new paved development produce a faster river response than a vegetated area?',steps:[
       'Impermeable surfaces reduce infiltration and drainage systems can route runoff quickly toward the channel.',
       'A shorter transfer time can increase peak discharge, depending on storm conditions and the wider catchment.'
@@ -403,7 +383,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'At a price above equilibrium, quantity supplied exceeds quantity demanded in this model, creating excess supply and downward pressure on price. Below equilibrium there is excess demand. When one curve shifts, compare the old and new intersections and explain the pressure driving adjustment. If both curves shift, one outcome may be uncertain without information about their relative sizes. Use “other things equal” deliberately, not as decoration.'
       ]}
     ],
-    diagram:diagram('supply-demand','Equilibrium E is an intersection of schedules; price is on the vertical axis and quantity on the horizontal.'),
     example:{title:'Lower production costs',question:'In the model, what happens when a new process lowers the cost of producing notebooks, with demand unchanged?',steps:[
       'Supply increases: sellers are willing to supply more notebooks at each price, so the supply curve shifts right.',
       'The new intersection with unchanged demand has a lower price and a higher quantity.'
@@ -425,7 +404,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'An ordinary example may hide a faulty assumption. Test an empty list, a single item, zero and negative values if they are allowed. Define how invalid input is handled instead of silently treating every value as valid. A loop should make progress toward its termination condition. After a change, rerun earlier cases so a fix for one input does not break another. Correctness and efficiency are related but distinct questions.'
       ]}
     ],
-    diagram:diagram('algorithms','The loop updates the total and consumes an item on every iteration, ensuring progress.'),
     example:{title:'Trace a running total',question:'Start total at 0. Add each score in [4, 0, 7]. What should a trace show?',steps:[
       'After reading 4, total is 4. After reading 0, total remains 4.',
       'After reading 7, total is 11, then the loop ends because there are no items left.'
@@ -446,7 +424,6 @@ export const studyTopics: readonly StudyTopic[] = [
         'A useful revision response considers the conditions that make a choice possible. Safe spaces, time, transport, cost, cultural inclusion and supportive relationships can affect participation. Compare actions at personal, interpersonal and community levels. For the walking-group example, an individual might invite a friend, peers might agree on an inclusive pace, and a school might provide a safe route. Evaluate who benefits, who may be excluded and how the response could be improved rather than assuming a single solution fits everyone.'
       ]}
     ],
-    diagram:diagram('hauora','Original schematic of Durie’s model: connected dimensions supported by whenua; not an architectural drawing.'),
     example:{title:'Explain the connection',question:'A student feels isolated and starts attending a welcoming study group. How might two dimensions connect?',steps:[
       'Supportive peer relationships can strengthen taha whānau through a sense of social connection.',
       'Feeling supported may reduce anxiety and improve confidence, linking to taha hinengaro in this scenario.'
@@ -454,6 +431,8 @@ export const studyTopics: readonly StudyTopic[] = [
     check:{question:'Why is “exercise improves all four dimensions” too general as an explanation?',answer:'It does not show how the dimensions connect in a particular situation or consider barriers, cultural context and the person’s own experience.'}
   }
 ];
+
+export const studyTopics: readonly StudyTopic[] = coreTopics.map(topic=>({...topic,sections:[...topic.sections,...additionalReading[topic.id]]}));
 
 const topicIndex = new Map(studyTopics.map(topic=>[topic.id, topic]));
 export const topicById = (id:string):StudyTopic|undefined=>topicIndex.get(id);

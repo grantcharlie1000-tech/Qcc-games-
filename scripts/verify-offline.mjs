@@ -1,12 +1,13 @@
 import {chromium} from 'playwright';
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPoolShot} from './pool-verifier-shot.mjs';
 const titles={'neon-coil':'Neon Coil','fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
+const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
@@ -34,7 +35,7 @@ try{
   const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.status()>=400)failedAssets.push({url:response.url(),status:response.status()});});page.on('requestfailed',request=>failedAssets.push({url:request.url(),failure:request.failure()?.errorText}));page.on('request',r=>{if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade-v2:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
-  await page.goto(base);assert.equal(await page.locator('[data-study-topic]').count(),20);await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
+  await page.goto(base);assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
   const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')).map(([,v])=>v.file);
   assert.ok(!initial.some(url=>heavy.some(file=>url.endsWith(file))),'heavy game chunks must remain lazy');
@@ -42,14 +43,15 @@ try{
   await waitFor(()=>page.evaluate(()=>navigator.serviceWorker.controller!==null),'service worker control');
   const cacheNames=await page.evaluate(()=>caches.keys());assert.ok(!cacheNames.some(key=>key.endsWith(':stale:pack')));assert.equal(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:fruit-merge')),'4321');
   await context.setOffline(true);await page.reload();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
-  // All chapters are bundled in the shell: offline reading never fetches assets.
+  // Prose is bundled in the shell; any photographs come from the same-origin offline study assets.
   await page.getByRole('button',{name:'Open menu'}).click();
   const readingRequests=[];const recordReading=request=>readingRequests.push(request.url());page.on('request',recordReading);
   await page.getByRole('button',{name:'Study Mode',exact:true}).click();
-  const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>o.value));assert.equal(topics.length,20);
-  for(const topic of topics){await page.getByLabel('Study topic',{exact:true}).selectOption(topic);assert.ok(await page.locator('#study-title').textContent());assert.equal(await page.locator('.study-figure svg').count(),1);assert.equal(await page.locator('.study-chapter h2').count(),5);}
-  await page.getByRole('link',{name:'Games',exact:true}).click();page.off('request',recordReading);assert.deepEqual(readingRequests,[],'Study switching must not request any files');
-  results.push({deployment:label,studyArticlesOffline:topics.length,studySwitchRequests:readingRequests});
+  const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>o.value));assert.equal(topics.length,20);const decodedStudyImages=new Map();
+  for(const topic of topics){await page.getByLabel('Study topic',{exact:true}).selectOption(topic);assert.ok(await page.locator('#study-title').textContent());assert.equal(await page.locator('.study-chapter svg, .study-sidebar').count(),0);assert.equal(await page.locator('.study-text-section').count(),6);assert.ok((await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length>=900);assert.equal(await page.locator('.study-byline img').count(),1);for(const image of await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(async image=>{await image.decode();return {url:image.currentSrc||image.src,width:image.naturalWidth,height:image.naturalHeight};})))){const relative=new URL(image.url).pathname.slice(new URL(base).pathname.length);const expected=studyMedia.assets.find(asset=>'study/'+asset.path===relative);assert.ok(expected,'Only declared Study images may render offline: '+relative);assert.deepEqual([image.width,image.height],[expected.width,expected.height]);decodedStudyImages.set(relative,{path:relative,width:image.width,height:image.height});}}
+  assert.equal(decodedStudyImages.size,studyMedia.assets.length,'Every declared Study image must decode offline');
+  await page.getByRole('link',{name:'Games',exact:true}).click();page.off('request',recordReading);assert.ok(readingRequests.every(url=>new URL(url).origin===new URL(base).origin&&/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname.slice(new URL(base).pathname.length))),'Study may request only first-party offline study photographs');
+  results.push({deployment:label,studyArticlesOffline:topics.length,studyImagesOffline:[...decodedStudyImages.values()],studySwitchRequests:readingRequests});
   await page.screenshot({path:`${folder}/home-${label}-390.png`,fullPage:true});
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
   await page.setViewportSize(sizes[0]);
@@ -67,7 +69,7 @@ try{
    assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id),frozen,id+' study snapshot');
    await page.getByRole('link',{name:'Games',exact:true}).click();page.off('request',recordSwitch);
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
-   assert.deepEqual(switchRequests,[],id+' no files requested while switching');
+   assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');
    await page.getByRole('button',{name:'Pause game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');
    await page.getByRole('button',{name:'Restart game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),false);

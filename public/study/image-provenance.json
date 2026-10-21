@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "generation": "AI-generated with GPT Image; resized and compressed to WebP.",
+  "disclosure": "Contributor portraits depict fictional adults, not real authors or credentialed experts. Article photos are illustrative generated scenes, not documentary evidence of specific people, places, experiments or events.",
+  "assets": [
+    {
+      "path": "contributors/ari-rowan.webp",
+      "sha256": "c99e524d7bb1c0056315617c3f3e1f7b6ef135a05b689e6b3543d8f14f60bd8d",
+      "bytes": 21264,
+      "width": 512,
+      "height": 512,
+      "kind": "fictional-contributor-portrait"
+    },
+    {
+      "path": "contributors/mina-vale.webp",
+      "sha256": "cdf5781c615e579169034a8de9d116a5044f500d06028e1f02541694e57725f3",
+      "bytes": 17642,
+      "width": 512,
+      "height": 512,
+      "kind": "fictional-contributor-portrait"
+    },
+    {
+      "path": "contributors/leo-finch.webp",
+      "sha256": "1a9541d061756dd3aa93bc723a91d35225afe997a3768bddc0dae59d8d697fcc",
+      "bytes": 20536,
+      "width": 512,
+      "height": 512,
+      "kind": "fictional-contributor-portrait"
+    },
+    {
+      "path": "contributors/nell-moss.webp",
+      "sha256": "f252c02bfc755f90ac0366881c976a46fa9a1d9968fdc63c26018d96b9bd7411",
+      "bytes": 27258,
+      "width": 512,
+      "height": 512,
+      "kind": "fictional-contributor-portrait"
+    },
+    {
+      "path": "photos/reading-writing.webp",
+      "sha256": "8a80ec7ad374ad37db811c929912d4ddbee9c565811594b6ba65947b0d2c0e84",
+      "bytes": 94194,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    },
+    {
+      "path": "photos/film-making.webp",
+      "sha256": "017432e44b440c7e3b8b5f1d3c2a656804c05fb8d72cce2484bd31d902ba207b",
+      "bytes": 83252,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    },
+    {
+      "path": "photos/field-measurement.webp",
+      "sha256": "cc5b3a331fdf98ffd60bfba71f92344a4339e4ca0a3870837978a5ba4d50fc91",
+      "bytes": 256606,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    },
+    {
+      "path": "photos/forces-energy.webp",
+      "sha256": "23bef6427b8ba4da00a62b06bbb1f45166a21db844271d73d899f66327441f6f",
+      "bytes": 48338,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    },
+    {
+      "path": "photos/seedlings-ecology.webp",
+      "sha256": "046dae017665c65f7e8c9532cfbaa3475d7c34d97b05d6b92c07dc7acfcadce1",
+      "bytes": 147708,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    },
+    {
+      "path": "photos/river-catchment.webp",
+      "sha256": "0c29f9356fd32f758edb8ec2664e9c9b5e4c5ea85656c0a1d1ffa86e0f0e883f",
+      "bytes": 232472,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    },
+    {
+      "path": "photos/produce-market.webp",
+      "sha256": "805387fbbebfc227ef9aefdd608fe808a13fbef0addf99f34dc9580b1b6fa75c",
+      "bytes": 200976,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    },
+    {
+      "path": "photos/community-wellbeing.webp",
+      "sha256": "2a9c9e7574452e87c3babffecbdafda37f3b3bae3cd02f738a6d9d0d0905a6ad",
+      "bytes": 221350,
+      "width": 1280,
+      "height": 853,
+      "kind": "illustrative-photo"
+    }
+  ]
+}
