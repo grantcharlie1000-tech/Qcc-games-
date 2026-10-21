@@ -5,7 +5,9 @@
 //    MASTER_LEVEL × settings.volume, 0 while game.context.settings.sound is off (read live on every frame, play
 //    and event, since the shell does not announce changes; settingsChanged, stateChanged and shellPaused re-sync).
 //  - The context is suspended while the engine is paused or lost, while the shell pauses the game, while the
-//    sound setting is off or the volume is 0, and closed on dispose. Sounds requested while silent are dropped.
+//    sound setting is off or the volume is 0, and closed on dispose. Sounds requested while silent are dropped, and
+//    so are sounds requested while the browser holds the context suspended on its own (its clock stands still, so
+//    they would all burst out on resume) unless a resume asked for by a gesture is about to complete.
 //  - At most MAX_VOICES voices (each play() is one voice whatever its layers). A full pool drops a new sound
 //    quieter than every playing one, otherwise the quietest voice is faded out and replaced. Beds (rain,
 //    underwater, music) count toward the cap but are never stolen.
@@ -43,6 +45,10 @@ const RAIN_HOLD=4;const RAIN_FADE=.8;const RAIN_RELEASE=3;
 const RAIN_NEAR_FLOOR=.6;const RAIN_PAN=.5;const RAIN_AVERAGE=.3;
 /** Rain low-pass cutoff when unmuffled; a call pitch p < 1 muffles it to RAIN_OPEN × p⁴ (p = 0.5 → 750 Hz). */
 const RAIN_OPEN=12000;
+/** Seconds a pending resume() keeps accepting sounds (and blocks further resume calls) before it counts as stalled. */
+const RESUME_GRACE=1;
+/** Seconds between two music ticks beyond which the world stood still (death screen) and the piece waits. */
+const MUSIC_STALL=.5;
 const GESTURES=['pointerdown','pointerup','mousedown','touchend','keydown','click'] as const;
 
 export interface SoundOptions{
@@ -79,6 +85,11 @@ export class SoundEngine implements SoundService{
   private voices:Voice[]=[];private dying:Voice[]=[];
   private rain:RainBed|null=null;private underwater:UnderwaterBed|null=null;private music:Music|null=null;
   private live=false;private masterTarget=-1;private disposed=false;private unavailable=false;private initialised=false;
+  /** Our latest resume()/suspend() request while it is in flight, its sequence number, and how long a resume has been
+   *  pending (seconds of frames). */
+  private pending:'resume'|'suspend'|null=null;private pendingSeq=0;private resumeAge=0;
+  /** Audio time of the last music tick (-1 = none yet). */
+  private musicClock=-1;
   /** A user gesture has been seen (the page may start audio from now on). */
   private activated=false;
   private mood=0;private musicDelay=0;private submerged=false;private fade=0;
@@ -127,6 +138,7 @@ export class SoundEngine implements SoundService{
   frame(_dt:number){
     if(this.disposed)return;
     try{
+      if(this.pending==='resume')this.resumeAge+=Number.isFinite(_dt)&&_dt>0?_dt:0;
       this.sync();
       if(!this.ctx)return;
       this.prune();this.updateRain();this.report();
@@ -134,7 +146,7 @@ export class SoundEngine implements SoundService{
   }
   reset(){
     this.stopAll();
-    this.mood=0;this.fade=0;this.submerged=false;this.musicDelay=this.delay(MUSIC_FIRST_DELAY);
+    this.mood=0;this.fade=0;this.submerged=false;this.musicClock=-1;this.musicDelay=this.delay(MUSIC_FIRST_DELAY);
   }
   dispose(){
     if(this.disposed)return;
@@ -154,7 +166,7 @@ export class SoundEngine implements SoundService{
   private playNamed(name:string,at:Vec3|null|undefined,options:{volume?:number;pitch?:number}|undefined){
     if(!this.ctx||this.disposed||typeof name!=='string')return;
     this.sync();
-    if(!this.live)return;
+    if(!this.ready())return;
     const pos=finiteVec(at)?at:null;
     let distance:number|null=null,eye:Vec3|null=null;
     if(pos){eye=this.game.player.eye();const dx=pos.x-eye.x,dy=pos.y-eye.y,dz=pos.z-eye.z;distance=Math.sqrt(dx*dx+dy*dy+dz*dz);}
@@ -247,7 +259,7 @@ export class SoundEngine implements SoundService{
     this.activated=true;
     try{
       if(!this.ctx){if(this.game.context.settings.sound&&!this.unavailable)this.create();}
-      else if(this.ctx.state==='suspended'&&this.audible())void this.ctx.resume().catch(()=>{});
+      else if(this.ctx.state==='suspended'&&this.audible())this.resumeContext();
       this.sync();
     }catch{/* audio is optional */}
   }
@@ -273,6 +285,38 @@ export class SoundEngine implements SoundService{
       try{void c.close().catch(()=>{});}catch{/* ignore */}
     }
   }
+  /** Sounds may start now: audible, and the context runs or a resume is about to complete. */
+  private ready():boolean{
+    const c=this.ctx;
+    return this.live&&!!c&&(c.state==='running'||(this.pending==='resume'&&this.resumeAge<RESUME_GRACE));
+  }
+  /** Asks a suspended context (or one we are suspending) to resume; one request at a time, though a stalled resume
+   *  may be retried by a later gesture. */
+  private resumeContext(){
+    const c=this.ctx;
+    if(!c||c.state==='closed'||(this.pending==='resume'&&this.resumeAge<RESUME_GRACE))return;
+    if(c.state==='suspended'||this.pending==='suspend')this.request(c,'resume');
+  }
+  /** Suspends a running context (or one we are resuming); one request at a time. */
+  private suspendContext(){
+    const c=this.ctx;
+    if(!c||c.state==='closed'||this.pending==='suspend')return;
+    if(c.state==='running'||this.pending==='resume')this.request(c,'suspend');
+  }
+  /** Calls resume() or suspend(); when the latest request settles, the context is brought back in line with what is
+   *  wanted now (sound may have come back while a suspend was in flight). */
+  private request(c:AudioContext,kind:'resume'|'suspend'){
+    const seq=++this.pendingSeq;
+    this.pending=kind;
+    if(kind==='resume')this.resumeAge=0;
+    const done=()=>{
+      if(this.ctx!==c||seq!==this.pendingSeq||this.disposed)return;
+      this.pending=null;
+      if(kind==='suspend'&&this.live)this.resumeContext();
+      this.sync();
+    };
+    try{Promise.resolve(kind==='resume'?c.resume():c.suspend()).then(done,done);}catch{this.pending=null;}
+  }
   private audible():boolean{
     const g=this.game,c=this.ctx;
     return !!c&&!this.disposed&&c.state!=='closed'&&!!g.context.settings.sound&&!g.shellPaused&&g.state!=='paused'&&g.state!=='lost'&&g.settings.volume>0;
@@ -293,15 +337,15 @@ export class SoundEngine implements SoundService{
       g.cancelScheduledValues(now);
       if(want){
         g.setValueAtTime(0,now);g.setTargetAtTime(target,now,.03);
-        if(c.state!=='running')void c.resume().catch(()=>{});
-      }else{
-        g.setTargetAtTime(0,now,.005);
-        if(c.state==='running')void c.suspend().catch(()=>{});
-      }
+        this.resumeContext();
+      }else g.setTargetAtTime(0,now,.005);
       this.masterTarget=target;
     }else if(want&&target!==this.masterTarget){
       g.setTargetAtTime(target,now,.03);this.masterTarget=target;
     }
+    // Silent: keep the context suspended (also when a resume completed after sound went away). A context the browser
+    // suspended while audible is left alone until a gesture resumes it.
+    if(!want)this.suspendContext();
     this.report();
   }
   /** Root data attributes for browser checks: data-audio (none, running, suspended, closed) and data-audio-voices. */
@@ -365,7 +409,7 @@ export class SoundEngine implements SoundService{
     if(!c)return;
     this.sync();
     const bed=this.underwater;
-    if(!this.live){
+    if(!this.ready()){
       if(bed&&this.fade===0){this.underwater=null;this.removeVoice(bed.voice,.05);}
       return;
     }
@@ -403,7 +447,7 @@ export class SoundEngine implements SoundService{
     this.mood=0;
     if(!this.ctx)return;
     this.sync();
-    if(!this.live)return;
+    if(!this.ready())return;
     moodSoundPosition(e,this.sample,this.moodAt);
     const s=caveSpec(this.rand);
     this.playSpec('cave',s,s.volume,s.pitch,this.moodAt,e);
@@ -415,9 +459,13 @@ export class SoundEngine implements SoundService{
     const c=this.ctx;
     if(!c)return;
     this.sync();
-    if(!this.live)return;
+    if(!this.ready())return;
     const now=c.currentTime,m=this.music;
+    const gap=this.musicClock>=0?now-this.musicClock:0;
+    this.musicClock=now;
     if(m){
+      // Ticks stop while the audio clock runs on (death screen): the piece waits instead of bursting out missed notes.
+      if(gap>MUSIC_STALL)m.start+=gap;
       const notes=m.piece.notes;
       while(m.next<notes.length&&m.start+notes[m.next].t<now+1.5){
         const n=notes[m.next++];

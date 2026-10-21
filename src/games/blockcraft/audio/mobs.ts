@@ -1,7 +1,7 @@
 // Mob voices for every kind in MOB_KINDS (data/items.ts): ambient, hurt, death and step, played by the
-// entity service as `mob:<name>:<kind>`. Vanilla levels: voices at the mob's sound volume (1 for most,
-// 0.4 for squid and small slimes) with pitch (r - r) × 0.2 + 1, steps at 0.15. Unknown creatures get a
-// stable generic voice derived from their name.
+// entity service as `mob:<name>:<kind>`. Vanilla levels: voices at the mob's getSoundVolume() (1 for most;
+// 0.4 for cows, wolves, squid and small slimes; rabbits quieter) with pitch (r - r) × 0.2 + 1, steps at 0.15.
+// Unknown creatures get a stable generic voice derived from their name.
 import type {MobSoundKind} from '../engine/contracts';
 import {grains,hashString,hits,mulberry,noise,rumble,spec,tone,vanillaPitch,vary,type Layer,type Rand,type SoundSpec} from './spec';
 
@@ -16,7 +16,7 @@ const lp=(freq:number,q=1):Filter=>({type:'lowpass',freq,q});
 
 const VOICES:Record<string,Voice>={
   // Low, drawn-out moo with a vocal formant.
-  cow:{
+  cow:{volume:.4,
     ambient:(_r,f)=>[tone('sawtooth',128*f,{freqEnd:104*f,attack:.12,hold:.55,decay:.35,gain:.3,vibrato:{rate:5,depth:.012},filter:lp(900)}),
       tone('sawtooth',129*f,{freqEnd:105*f,attack:.14,hold:.5,decay:.35,gain:.16,filter:bp(620,3)}),
       rumble(300,{attack:.15,hold:.4,decay:.3,gain:.08})],
@@ -63,9 +63,9 @@ const VOICES:Record<string,Voice>={
     death:(_r,f)=>[tone('sine',2400*f,{freqEnd:1200*f,attack:.006,hold:.15,decay:.25,gain:.25,vibrato:{rate:14,depth:.05}}),
       tone('sine',4800*f,{freqEnd:2400*f,attack:.006,hold:.1,decay:.2,gain:.05})],
     step:(_r,f)=>[rumble(300*f,{attack:.003,decay:.06,gain:.4}),noise('bandpass',1300*f,{q:1,decay:.025,gain:.15})]},
-  // Barks (and sometimes pants); yelps when hurt, whimpers when dying.
-  wolf:{
-    ambient:(r,f)=>r()<.25?[
+  // Barks (a third of the time pants, as vanilla's untamed or healthy wolves); yelps when hurt, whimpers when dying.
+  wolf:{volume:.4,
+    ambient:(r,f)=>r()<1/3?[
       noise('bandpass',1700*f,{q:1,decay:.07,gain:.3,bursts:hits([0,.16,.32,.48],.08,.3)}),
       noise('bandpass',900*f,{q:1,decay:.05,gain:.12,bursts:hits([.08,.24,.4,.56],.05,.12)})]:[
       noise('bandpass',620*f,{q:1.5,attack:.008,decay:.11,gain:.4}),
