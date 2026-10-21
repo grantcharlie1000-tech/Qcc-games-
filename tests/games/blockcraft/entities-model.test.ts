@@ -82,6 +82,7 @@ describe('entity rendering',()=>{
     const entities=createEntities(game);game.entities=entities;
     entities.register(walker({model:testModel({appearance:e=>({tint:e.id%2?0xff0000:0xffffff})})}));
     entities.register({kind:'falling',category:'misc',width:.98,height:.98,maxHealth:1,render:'block',block:()=>B.sand,physics:'none'});
+    entities.register({kind:'thrown',category:'projectile',width:.25,height:.25,maxHealth:1,render:'item',item:()=>stack('snowball'),physics:'none'});
     entities.init?.();
     game.flat(60);
     const p=game.player.state;p.x=.5;p.y=60;p.z=8;
@@ -110,6 +111,18 @@ describe('entity rendering',()=>{
     // CPU budget (≤ 1 ms for 60 entities in the brief); generous here for a shared test machine.
     const t0=performance.now();for(let i=0;i<30;i++)entities.frame?.(1/60);
     expect((performance.now()-t0)/30).toBeLessThan(4);
+  });
+  test('thrown items face the camera; primed blocks flash white',()=>{
+    const {entities,s}=scene();
+    entities.spawn('thrown',.5,61,2);entities.frame?.(1/60);
+    const [models,blocks]=s.children.filter(c=>c.name==='entities') as THREE.Mesh[];
+    const p=models.geometry.getAttribute('position').array as Float32Array;
+    // The billboard's right edge follows the camera's right vector (+x here): both top corners share z.
+    expect(p[2]).toBeCloseTo(p[5],4);expect(p[3]-p[0]).toBeCloseTo(.5,3);
+    const t=entities.spawn('falling',.5,60,0,{data:{fuse:10}})!;entities.frame?.(1/60);
+    expect((blocks.geometry.getAttribute('extra').array as Uint8Array)[2]).toBe(191);
+    t.data.fuse=5;entities.frame?.(1/60);
+    expect((blocks.geometry.getAttribute('extra').array as Uint8Array)[2]).toBe(0);
   });
   test('nothing visible means no draw calls; hurt, death and baby states change the output',()=>{
     const {entities,s}=scene();

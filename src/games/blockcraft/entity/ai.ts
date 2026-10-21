@@ -79,16 +79,23 @@ export function createEntityAI(game:Game):EntityAIInternal{
     }
     return true;
   }
-  /** A step in front of the feet that needs a jump: taller than the step height, with room above for the body. */
-  function wantsJump(e:Entity,dx:number,dz:number):boolean{
-    if(!e.onGround&&!e.inWater)return false;
-    if(e.collidedH&&e.onGround)return true;
-    const reach=e.width/2+.25,x=Math.floor(e.x+dx*reach),z=Math.floor(e.z+dz*reach),y=Math.floor(e.y+.01),w=game.world;
+  /** A block at the feet level in cell (x,z) that is taller than the step height, with room above for the body. */
+  function jumpable(e:Entity,x:number,z:number):boolean{
+    const y=Math.floor(e.y+.01),w=game.world;
     if(x===Math.floor(e.x)&&z===Math.floor(e.z))return false;
     const id=w.get(x,y,z);if(id<=0||!SOLID[id])return false;
     if(y+cellTop(id)-e.y<=step(e)+1e-3)return false;
     const above=w.get(x,y+1,z),above2=w.get(x,y+2,z);
     return above>=0&&!SOLID[above]&&(e.height<=1||above2>=0&&!SOLID[above2]);
+  }
+  /** Jump over a step ahead (the cell in the walking direction, or either axis neighbour when blocked). */
+  function wantsJump(e:Entity,dx:number,dz:number):boolean{
+    if(!e.onGround&&!e.inWater)return false;
+    const reach=e.width/2+.25;
+    if(jumpable(e,Math.floor(e.x+dx*reach),Math.floor(e.z+dz*reach)))return true;
+    if(!e.collidedH)return false;
+    return Math.abs(dx)>1e-3&&jumpable(e,Math.floor(e.x+Math.sign(dx)*reach),Math.floor(e.z))||
+      Math.abs(dz)>1e-3&&jumpable(e,Math.floor(e.x),Math.floor(e.z+Math.sign(dz)*reach));
   }
   function steer(e:Entity,x:number,z:number,speed:number):boolean{
     const dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);
@@ -158,8 +165,7 @@ export function createEntityAI(game:Game):EntityAIInternal{
       const s=state(e);
       if(s.wandering){
         const arrived=Math.hypot(s.wx-e.x,s.wz-e.z)<.9&&Math.abs(s.wy-e.y)<1.5;
-        if(arrived||++s.wanderTicks>400){s.wandering=false;ai.stop(e);return;}
-        ai.navigate(e,s.wx,s.wy,s.wz,speed);
+        if(arrived||++s.wanderTicks>400||!ai.navigate(e,s.wx,s.wy,s.wz,speed)){s.wandering=false;ai.stop(e);}
         return;
       }
       if(game.random()>=chance)return;

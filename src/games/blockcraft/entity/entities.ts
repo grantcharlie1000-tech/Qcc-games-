@@ -93,6 +93,8 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     const reason=options.reason??'event',yaw=Number.isFinite(options.yaw)?wrapAngle(options.yaw!):0;
     const data=isObject(options.data)?{...options.data}:{};
     const id=preset?.id!==undefined&&!byIdMap.has(preset.id)?preset.id:nextId;
+    // Claimed before init(): an init that spawns other entities must not reuse it.
+    if(id>=nextId)nextId=id+1;
     const e:Entity={id,kind:name,category:k.category,x,y,z,vx:0,vy:0,vz:0,yaw,pitch:0,headYaw:yaw,moveX:0,moveZ:0,jump:false,
       width:k.width,height:k.height,onGround:false,inWater:false,inLava:false,collidedH:false,collidedV:false,health:k.maxHealth,maxHealth:k.maxHealth,
       age:0,hurtTime:0,deathTime:0,removed:false,fire:0,baby:!!options.baby,data};
@@ -106,7 +108,6 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(!(e.maxHealth>0)||!Number.isFinite(e.maxHealth))e.maxHealth=k.maxHealth;
     if(!Number.isFinite(e.health)||e.health<=0)e.health=e.maxHealth;
     if(e.health>e.maxHealth)e.health=e.maxHealth;
-    if(id>=nextId)nextId=id+1;
     const type=bodyType(k.category),living=type==='living';
     const rec:Rec={e,kind:k,px:x,py:y,pz:z,pyaw:e.yaw,phead:e.headYaw,ppitch:e.pitch,walkPos:0,walkSpeed:0,walkSpeedOld:0,bob:game.random()*Math.PI*2,
       frozen:false,type,living,phys:k.physics==='none'?null:resolvePhysics(type,k.physics),motion:newMotion(),fluids:newFluidState(),
@@ -147,7 +148,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
   }
   function die(r:Rec,source:DamageSource){
     const e=r.e,k=r.kind;
-    e.deathTime=1;e.health=0;e.moveX=e.moveZ=0;e.jump=false;e.fire=Math.min(e.fire,1);
+    e.deathTime=1;e.health=0;e.moveX=e.moveZ=0;e.jump=false;
     sound(e,k,'death');
     const byPlayer=!!source.byPlayer||game.time.tick-r.playerHit<=PLAYER_KILL_MEMORY;
     let loot:ItemStack[]=[];

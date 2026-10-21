@@ -79,6 +79,13 @@ describe('steering helpers',()=>{
     for(let i=0;i<80;i++){h.game.entities.ai.moveToward(e,8.5,60,.5,2);h.tick();}
     expect(e.y).toBeCloseTo(60,3);expect(e.x).toBeLessThan(3.2);
   });
+  test('moveToward jumps a 1-block step',()=>{
+    const h=harness({kinds:[walker({kind:'go',tick:(e,game)=>{game.entities.ai.moveToward(e,9.5,61,.5,2.3);}})]});
+    fill(h.game,3,60,-3,12,60,3,B.stone);
+    const e=h.game.entities.spawn('go',.5,60,.5)!;
+    h.tick(120);
+    expect(e.y).toBeCloseTo(61,3);expect(e.x).toBeGreaterThan(8.9);
+  });
   test('flee runs away from the threat',()=>{
     const h=harness({kinds:[walker({kind:'prey',tick:(e,game)=>game.entities.ai.flee(e,.5,.5,3)})],r:3});
     const e=h.game.entities.spawn('prey',2.5,60,.5)!;

@@ -117,6 +117,11 @@ describe('lifecycle',()=>{
     expect(e).toMatchObject({baby:true,yaw:1,headYaw:1,data:{colour:3,ready:true},health:20,category:'passive'});
     expect(h.game.entities.byId(e.id)).toBe(e);
   });
+  test('an init that spawns other entities gets distinct ids',()=>{
+    const h=harness({kinds:[walker({kind:'rider'}),walker({kind:'mount',init:(e,game)=>{e.data.rider=(game.entities.spawn('rider',e.x,e.y+1,e.z) as {id:number}).id;}})]});
+    const m=h.game.entities.spawn('mount',.5,60,.5)!;
+    expect(m.data.rider).not.toBe(m.id);expect(new Set(h.game.entities.all().map(e=>e.id)).size).toBe(2);
+  });
   test('init may veto a spawn by marking the entity removed',()=>{
     let seen=0;
     const h=harness({kinds:[walker({init:(e,_g,reason)=>{if(reason==='natural')e.removed=true;}})]});
