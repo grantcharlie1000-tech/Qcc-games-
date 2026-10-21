@@ -8,9 +8,13 @@
 //     water up to sea level;
 //  3. underground blobs and ores (terrain-ores.ts), replayed from the 3×3 neighbourhood;
 //  4. noise caves (terrain-caves.ts): cheese caverns, spaghetti and noodle tunnels, kept away from water, open to
-//     the surface only at rare entrances, lava below y 10, moss patches and mushrooms on cave floors;
+//     the surface only at rare entrances, lava below y 10, moss patches and mushrooms on cave floors; sand or
+//     gravel of the surface layers left over a cave becomes sandstone or stone (vanilla's ceilings), so no floor
+//     can fall in later;
 //  5. small structures (terrain-structures.ts) inside their own chunk;
-//  6. trees (terrain-trees.ts) planned per trunk column (treeAt) from a TREE_REACH margin of neighbouring columns;
+//  6. trees (terrain-trees.ts) planned per trunk column (treeAt) from a TREE_REACH margin of neighbouring columns,
+//     on dry ground from the waterline up (swamp oaks also in water up to two deep; 2×2 trunks on ground within a
+//     block of level);
 //  7. vegetation from the biome lists, pumpkin patches, then snow layers and ice where coldAt() holds.
 import {Simplex} from './noise';
 import * as noise from './noise';
@@ -276,7 +280,7 @@ export class TerrainGenerator implements TerrainService{
     let wide=kind==='dark_oak'||kind==='mega_spruce'||kind==='jungle'&&hash3(x,0x52,z,seed)<.3;
     if(wide){
       // A 2×2 trunk stands on dry ground whose other three columns are within a block of this one: its base
-      // replaces the top of a higher column and reaches down into a lower one (see footprint()).
+      // replaces the top of a higher column and reaches down into a lower one (see placeTrees()).
       let fits=!wet&&this.slopeAt(x+1,z+1,this.heightAt(x+1,z+1))<=2;
       for(let k=1;k<4&&fits;k++){const g=this.heightAt(x+(k&1),z+(k>>1));if(g<h-1||g>h+1||g<SEA_LEVEL)fits=false;}
       // Without room a giant spruce or jungle tree becomes its single-trunk form; dark oaks only grow 2×2.
