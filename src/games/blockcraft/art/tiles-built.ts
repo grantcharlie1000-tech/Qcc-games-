@@ -174,12 +174,17 @@ export const WOOL_HEX:Record<typeof WOOL_COLOURS[number],number>={
   white:0xe9ecec,orange:0xf07613,magenta:0xbd44b3,light_blue:0x3aafd9,yellow:0xf8c627,lime:0x70b919,pink:0xed8dac,gray:0x3e4447,
   light_gray:0x8e8e86,cyan:0x158991,purple:0x792aac,blue:0x35399d,brown:0x724728,green:0x546d1b,red:0xa12722,black:0x141519
 };
-/** Knitted wool: a diagonal weave of slightly lighter and darker fibres. */
+/** Fluffy woven wool: patches of short diagonal fibres that lean one way or the other per 4×4 patch, each fibre
+ *  with a light crest and a soft trough, broken up by noise so no regular stripe shows. Dark colours are lifted a
+ *  little so black and grey wool still show their weave. */
 export function wool(hex:number,salt:number):Painter{
-  const base=rgb(hex);
+  const base=rgb(hex),lift=Math.max(0,40-(.299*base[0]+.587*base[1]+.114*base[2])*.3);
   return cached((x,y)=>{
-    const weave=((x+y)&3)===0?1.07:((x-y+16)&3)===2?.92:1,fibre=valueNoise(x,y,2,4,salt)*.08;
-    return shade(base,weave*(.96+fibre)+(hash(x,y,salt+1)-.5)*.05);
+    const lean=hash(x>>2,y>>2,salt+3)<.5,d=((lean?x+y:x-y+16)+Math.floor(hash(x>>2,y>>2,salt+4)*4))&3;
+    let k=d===0?1.06:d===1?1.01:d===2?.97:.94;
+    k+=(valueNoise(x,y,4,4,salt+2)-.5)*.08+(hash(x,y,salt+1)-.5)*.06;
+    const c=shade(base,k),add=(k-1)*lift*2.2;
+    return[c[0]+add,c[1]+add,c[2]+add].map(v=>Math.max(0,Math.min(255,Math.round(v)))) as RGBA;
   },salt);
 }
 

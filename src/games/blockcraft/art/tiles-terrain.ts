@@ -2,11 +2,11 @@
 import {type Painter,type RGBA,T,CLEAR,rgb,grey,shade,ramp,pick,hash,valueNoise,fbm,contrast,voronoi,cached,withAlpha,rng} from './tiles-core';
 
 // ---- Stone family -------------------------------------------------------------------------------
-const STONE=ramp(0x5e5e5e,0x6a6a6a,0x747474,0x7d7d7d,0x878787,0x929292,0x9e9e9e);
-/** Smooth grey stone with faint horizontal strata and a few dark flecks. */
+const STONE=ramp(0x5f5f5f,0x6b6b6b,0x747474,0x7c7c7c,0x848484,0x8d8d8d,0x989898);
+/** Smooth grey stone: soft mottled blotches, faint horizontal strata and sparse darker flecks. */
 export const stone:Painter=cached((x,y)=>{
-  const v=contrast(valueNoise(x,y,8,4,11)*.32+valueNoise(x,y,4,2,12)*.26+hash(x,y,13)*.42,1.75),f=hash(x>>1,y,14);
-  if(f<.05)return STONE[0];
+  const v=contrast(valueNoise(x,y,8,4,11)*.36+valueNoise(x,y,4,2,12)*.3+hash(x,y,13)*.34,1.6),f=hash(x>>1,y,14);
+  if(f<.045)return STONE[0];
   return pick(STONE.slice(1),v);
 },10);
 const GRANITE=ramp(0x7a5141,0x8c5d4b,0x9a6855,0xa77461,0xb5816d,0xc6978a);
@@ -15,10 +15,12 @@ export const granite:Painter=cached((x,y)=>{
   if(h>.95)return rgb(0xd9bcb0);if(h<.05)return rgb(0x684235);
   return pick(GRANITE,v);
 },20);
-const DIORITE=ramp(0x9d9d9f,0xb0b0b2,0xc0c0c2,0xcfcfd1,0xdedee0,0xebebed);
+const DIORITE=ramp(0xaeaeb0,0xbcbcbe,0xc8c8ca,0xd3d3d5,0xdfdfe1,0xebebed);
+/** Diorite: pale, softly mottled stone peppered with small clusters of dark grey grains. */
 export const diorite:Painter=cached((x,y)=>{
-  const v=contrast(fbm(x,y,31,1,1,.45),1.7),cluster=valueNoise(x,y,4,4,33);
-  if(cluster>.62&&hash(x,y,32)<.55)return hash(x,y,34)<.5?rgb(0x5f5f61):rgb(0x7a7a7c);
+  const v=contrast(fbm(x,y,31,1,1,.5),1.35),grain=valueNoise(x,y,2,2,33),h=hash(x,y,32);
+  if(grain>.7&&h<.62)return h<.3?rgb(0x6c6c6e):rgb(0x858587);
+  if(h>.965)return rgb(0x949496);
   return pick(DIORITE,v);
 },30);
 const ANDESITE=ramp(0x6c6c6d,0x777778,0x828283,0x8b8b8c,0x959596,0xa2a2a3);
@@ -29,16 +31,19 @@ export const andesite:Painter=cached((x,y)=>{
 },40);
 
 const COBBLE=ramp(0x575757,0x646464,0x717171,0x7e7e7e,0x8b8b8b,0x989898,0xa6a6a6);
-/** Rounded stones: Voronoi cells with dark mortar and a light upper-left bevel per stone. */
+/** Rounded stones: Voronoi cells outlined by dark mortar; each stone is lit from the upper left (a light rim
+ *  there, a shadowed rim on the lower right) so it reads as a domed cobble rather than a flat patch. */
 function cobbles(palette:RGBA[],mortar:RGBA[],count:number,salt:number):Painter{
   const cells=voronoi(count,salt,.9);
   return cached((x,y)=>{
     const gap=cells.gap(x,y);
-    if(gap<.9)return pick(mortar,hash(x,y,salt+1));
-    const id=cells.id(x,y),base=1+Math.floor(hash(id,0,salt+2)*(palette.length-3)),edge=cells.dx(x,y)+cells.dy(x,y);
-    let k=base+(edge<-2?1:edge>2.2&&gap<2.2?-1:0)+(hash(x,y,salt+3)<.12?-1:hash(x,y,salt+3)>.92?1:0);
-    k=Math.max(0,Math.min(palette.length-1,k));
-    return palette[k];
+    if(gap<.75)return pick(mortar,hash(x,y,salt+1));
+    const id=cells.id(x,y),base=2+Math.floor(hash(id,0,salt+2)*(palette.length-4));
+    // dx/dy point from the stone's centre to the pixel: up-left of centre is lit, down-right is in shade.
+    const lean=(cells.dx(x,y)+cells.dy(x,y))/Math.max(1,cells.centre(x,y)),rim=gap<1.9;
+    let k=base+(rim&&lean<-.4?1:0)+(rim&&lean>.5?-1:0)+(gap<1.25&&lean>.5?-1:0)+(lean<-1&&gap>1.9?1:0);
+    k+=hash(x,y,salt+3)<.1?-1:hash(x,y,salt+3)>.94?1:0;
+    return palette[Math.max(0,Math.min(palette.length-1,k))];
   },salt);
 }
 export const cobblestone=cobbles(COBBLE,ramp(0x464646,0x4f4f4f),14,51);
@@ -192,8 +197,8 @@ const ORE_STYLES:Record<string,OreStyle>={
   iron:{dark:0x9a7154,mid:0xc99c7a,light:0xead0b2,clusters:6,size:7},
   copper:{dark:0x8a4426,mid:0xc66b3e,light:0xea935e,accent:0x4ea78a,clusters:6,size:8},
   gold:{dark:0xb88e18,mid:0xf3cf38,light:0xfff29a,clusters:6,size:7},
-  redstone:{dark:0x8e0b07,mid:0xd31910,light:0xff5a48,clusters:7,size:6},
-  lapis:{dark:0x14318a,mid:0x2254ca,light:0x4c80f2,clusters:7,size:7},
+  redstone:{dark:0x8e0b07,mid:0xd31910,light:0xff5a48,clusters:6,size:7},
+  lapis:{dark:0x14318a,mid:0x2254ca,light:0x4c80f2,clusters:6,size:7},
   diamond:{dark:0x1a9890,mid:0x4fdcd3,light:0xc2fffa,clusters:6,size:7},
   emerald:{dark:0x0d7a2e,mid:0x1cbf55,light:0x8ef4ae,clusters:6,size:6}
 };
