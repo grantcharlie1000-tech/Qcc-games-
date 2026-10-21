@@ -154,11 +154,13 @@ export function findPath(source:BlockSource,sx:number,sy:number,sz:number,tx:num
   const start=count++;INDEX.set(key(sx,sy,sz),start);
   NX[start]=sx;NY[start]=sy;NZ[start]=sz;PARENT[start]=-1;G[start]=0;H[start]=dist(sx,sy,sz);F[start]=H[start];CLOSED[start]=0;heapPush(start);
   let best=start,end=-1;
+  // An unreachable goal cell (inside a block, mid-air) counts as reached from any neighbour.
+  const near=standable(tx,ty,tz)?1e-6:1.001;
   while(heapSize>0&&result.expanded<maxNodes){
     const n=heapPop();if(CLOSED[n])continue;
     CLOSED[n]=1;result.expanded++;
     if(H[n]<H[best])best=n;
-    if(H[n]<=1.001){end=n;break;}
+    if(H[n]<=near){end=n;break;}
     const x=NX[n],y=NY[n],z=NZ[n];
     // Room to jump: the cells right above the body at the current column.
     let headroom=true;for(let dz=0;dz<cw&&headroom;dz++)for(let dx=0;dx<cw;dx++)if(blocksBody(world.get(x+dx,y+chh,z+dz))){headroom=false;break;}
