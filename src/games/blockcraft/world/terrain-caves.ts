@@ -5,7 +5,7 @@
 //
 // Fields are sampled on a coarse 4×8×4 grid and interpolated per voxel, like vanilla's noise cells,
 // which keeps a chunk to about 3 000 noise evaluations. Pure: the terrain generator decides where
-// carving is allowed (surface, water and lava rules) and calls `kindAt` per voxel.
+// carving is allowed (surface, water and lava rules) and asks for a column's cave kinds with `carveColumn`.
 import {Simplex} from './noise';
 import {CS,CH} from '../engine/constants';
 
@@ -20,9 +20,11 @@ export const CHEESE_MIN_DEPTH=10;
 function cheeseThreshold(y:number):number{
   return .38+(y>48?(y-48)*.012:0)+(y<16?(16-y)*.01:0);
 }
-/** Classify interpolated field values at height y. */
-export function classify(f:Float64Array,o:number,y:number):number{
-  if(f[o]>cheeseThreshold(y))return CAVE_CHEESE;
+const CHEESE_T=new Float64Array(CH+1);
+for(let y=0;y<=CH;y++)CHEESE_T[y]=cheeseThreshold(y);
+/** Classify interpolated field values at height y (cheese allowed when `cheese`). */
+export function classify(f:Float64Array,o:number,y:number,cheese=true):number{
+  if(cheese&&f[o]>CHEESE_T[y])return CAVE_CHEESE;
   const a=f[o+1],b=f[o+2],r=.075+.035*f[o+3];
   if(a*a+b*b<r*r)return CAVE_SPAGHETTI;
   if(f[o+6]>.2){const na=f[o+4],nb=f[o+5],t=.045+.01*f[o+3];if(na<t&&na>-t&&nb<t&&nb>-t)return CAVE_NOODLE;}
@@ -36,8 +38,10 @@ export class CaveField{
   private readonly nodes=new Float64Array(NXZ*NXZ*NY*FIELDS);
   /** Per column (after fillChunk + prepareColumn): the bilinear values at each y node level. */
   private readonly levels=new Float64Array(NY*FIELDS);
+  private readonly corner=new Float64Array(FIELDS*4);
   private readonly scratch=new Float64Array(FIELDS*2);
   private readonly point=new Float64Array(FIELDS);
+  private readonly step=new Float64Array(FIELDS);
   private levelsTop=0;
   constructor(seed:number){
     const s=seed>>>0;
@@ -55,7 +59,7 @@ export class CaveField{
   }
   /** Evaluates the node grid of chunk (cx,cz) for y nodes up to the one covering `maxY`. */
   fillChunk(cx:number,cz:number,maxY:number){
-    const top=Math.min(NY-1,Math.floor(maxY/CELL_Y)+1),n=this.nodes;
+    const top=Math.max(1,Math.min(NY-1,Math.floor(maxY/CELL_Y)+1)),n=this.nodes;
     for(let k=0;k<=top;k++)for(let j=0;j<NXZ;j++)for(let i=0;i<NXZ;i++)
       this.evalNode(cx*CS+i*CELL_XZ,k*CELL_Y,cz*CS+j*CELL_XZ,n,((k*NXZ+j)*NXZ+i)*FIELDS);
     this.levelsTop=top;
@@ -75,12 +79,25 @@ export class CaveField{
     for(let f=0;f<FIELDS;f++)p[f]=l[o+f]+(l[o+FIELDS+f]-l[o+f])*t;
     return classify(p,0,y);
   }
+  /** Fills kinds[y] for y in 1..top of the prepared column (top below the filled levels); caverns only up to cheeseTop.
+   *  Same values as kindAt, interpolated incrementally. */
+  carveColumn(kinds:Uint8Array,top:number,cheeseTop:number){
+    const l=this.levels,p=this.point,d=this.step;
+    let y=1;
+    while(y<=top){
+      const k=y>>3,o=k*FIELDS,end=Math.min(top,k*CELL_Y+CELL_Y-1),t=(y&7)/CELL_Y;
+      for(let f=0;f<FIELDS;f++){const a=l[o+f],b=l[o+FIELDS+f];d[f]=(b-a)/CELL_Y;p[f]=a+(b-a)*t;}
+      for(;y<=end;y++){
+        kinds[y]=classify(p,0,y,y<=cheeseTop);
+        for(let f=0;f<FIELDS;f++)p[f]+=d[f];
+      }
+    }
+  }
   /** Cave kind at a world position, computed exactly as chunk generation interpolates it (tests, debugging). */
   sample(x:number,y:number,z:number):number{
     const cx=Math.floor(x/CS),cz=Math.floor(z/CS),lx=x-cx*CS,lz=z-cz*CS,gi=lx>>2,gj=lz>>2,k=y>>3;
-    const fx=(lx&3)/CELL_XZ,fz=(lz&3)/CELL_XZ,t=(y&7)/CELL_Y,s=this.scratch,p=this.point;
+    const fx=(lx&3)/CELL_XZ,fz=(lz&3)/CELL_XZ,t=(y&7)/CELL_Y,s=this.scratch,p=this.point,corner=this.corner;
     const w00=(1-fx)*(1-fz),w10=fx*(1-fz),w01=(1-fx)*fz,w11=fx*fz;
-    const corner=new Float64Array(FIELDS*4);
     for(let level=0;level<2;level++){
       const yy=(k+level)*CELL_Y;
       this.evalNode(cx*CS+gi*CELL_XZ,yy,cz*CS+gj*CELL_XZ,corner,0);

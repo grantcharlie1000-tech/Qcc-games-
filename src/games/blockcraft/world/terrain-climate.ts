@@ -135,7 +135,7 @@ export class Climate{
     else if(C<COAST_HI&&h<SEA_LEVEL-5)biome=OCEAN;
     else if(C<COAST_HI&&(h<=SEA_LEVEL+3||E<-.25&&h<=SEA_LEVEL+12))biome=E<-.25?STONY:BEACH;
     else if(wet>.5)biome=SWAMP;
-    else if(h>=PEAK_HEIGHT+Math.round(2*d2)&&tz<=1)biome=PEAKS;
+    else if(h>=PEAK_HEIGHT+Math.round(2*d2)&&tz<=2)biome=tz<=1?PEAKS:HILLS;
     else if(h>=82+Math.round(2*d2)||(E<-.12&&h>=74))biome=HIGHLAND[tz][hz];
     else{
       biome=MIDDLE[tz][hz];
