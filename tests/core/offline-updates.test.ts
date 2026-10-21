@@ -83,3 +83,49 @@ test('online recovery hooks exist even when the initial inspection fails before 
  module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());await module.checkForUpdates();expect(sw.register).not.toHaveBeenCalled();
  window.dispatchEvent(new Event('online'));await vi.waitFor(()=>expect(registration.update).toHaveBeenCalledOnce());expect(sw.controller).toBe(initial);
 });
+
+test('an offered update becoming the controller during its initial query does not falsely refuse reload',async()=>{
+ const {module,registration,sw}=await setup();
+ const next=waitingWorker();registration.waiting=next;
+ module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());await module.checkForUpdates();
+ const initial=sw.controller,send=initial.postMessage;
+ initial.postMessage=(message,ports)=>{
+  if(message.type==='ARCADE_VERSION'){
+   next.state='activated';sw.controller=next as any;registration.active=next as any;registration.waiting=undefined;
+  }
+  send(message,ports);
+ };
+ await expect(module.activateUpdate()).resolves.toBeUndefined();
+ expect(next.postMessage.mock.calls.some(([message])=>message.type==='ARCADE_ACTIVATE')).toBe(false);
+});
+
+test('a different controller replacing the offered update still refuses reload',async()=>{
+ const {module,registration,sw}=await setup();const next=waitingWorker();registration.waiting=next;
+ module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());await module.checkForUpdates();
+ const different=waitingWorker('https://arcade.test/assets/different.js');different.state='activated';
+ registration.waiting=undefined;registration.active=different as any;sw.controller=different as any;
+ await expect(module.activateUpdate()).rejects.toThrow('changed');
+ expect(next.postMessage.mock.calls.some(([message])=>message.type==='ARCADE_ACTIVATE')).toBe(false);
+});
+
+test('a stale offered-build reply cannot authorize reload after another controller takes over',async()=>{
+ const {module,registration,sw}=await setup();const next=waitingWorker();registration.waiting=next;
+ module.watchUpdates('https://arcade.test/assets/running.js',vi.fn());await module.checkForUpdates();
+ const initial=sw.controller,send=initial.postMessage;
+ initial.postMessage=(message,ports)=>{
+  if(message.type==='ARCADE_VERSION'){
+   next.state='activated';registration.waiting=undefined;registration.active=next as any;sw.controller=next as any;
+  }
+  send(message,ports);
+ };
+ const nextSend=next.postMessage.getMockImplementation()!;
+ next.postMessage.mockImplementation((message,ports)=>{
+  if(message.type==='ARCADE_VERSION'){
+   const different=waitingWorker('https://arcade.test/assets/different.js');different.state='activated';
+   sw.controller=different as any;registration.active=different as any;
+  }
+  nextSend(message,ports);
+ });
+ await expect(module.activateUpdate()).rejects.toThrow('changed');
+});
+
