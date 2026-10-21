@@ -1,6 +1,6 @@
 # Water Sort
 
-A quiet, colourful sorting puzzle for mouse, touch and keyboard. Nine original
+A quiet, colourful sorting puzzle for mouse, touch and keyboard. Twenty-seven original
 levels offer Gentle (two/three colours), Flow (four), and Deep (five) difficulty.
 All colours have exactly four units; every board has two spare tubes.
 
@@ -35,7 +35,7 @@ runs have exactly q units, the receiving colour is matching or empty, and there
 is enough space. Prepending each inverse triple to the witness proves that the
 resulting level has a solution. Fixed seeds give reproducible original boards.
 
-Every one of the nine shipped levels is additionally solved in tests by a
+Every one of the 27 shipped levels is additionally solved in tests by a
 separate breadth-first implementation that calls none of the production rules,
 goal, canonicalizer or search. Its plan and the reverse witness are replayed
 through the player rules. Actual shortest routes for the relaxed goal are
@@ -119,3 +119,11 @@ large dashboard, duplicated parent toolbar, or new runtime dependency.
 Reference stills and continuous-motion limits are recorded in SKILL_USAGE.md.
 No original MP4 was provided, so timing is an implementation choice. Evidence
 and exact observed checks are in TEST_RESULTS.md and the owned test directory.
+
+## Level expansion — 21 October 2026
+
+27 distinct boards are shipped, with nine levels in each existing difficulty tier.
+The first nine boards, indices and generator are unchanged, preserving saved games.
+Eighteen named seeded boards are appended. Every level is verified by an independent
+BFS, its reverse-construction witness, the normal solver and reachable-state hint
+recovery. Level selection exposes all 27; completing Level 27 wraps to Level 1.

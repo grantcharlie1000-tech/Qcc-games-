@@ -50,3 +50,33 @@ describe('snapshot coherence',()=>{
  it('ignores a fabricated winner while the eight is still on the table',()=>{const s=createGame();s.phase='over';s.winner=0;expect(restoreGame(s)).toBeNull();});
  it('ignores overlapping stationary balls rather than restoring an unstable table',()=>{const s=createGame();s.balls[1].x=s.balls[0].x;s.balls[1].y=s.balls[0].y;expect(restoreGame(s)).toBeNull();});
 });
+
+describe('visible pocket mouths and cushion jaws',()=>{
+ const rolling=(b:Ball)=>{const s=settled();s.balls=[ball(0,220,650),b];s.phase='moving';s.shot={first:b.id,pots:[],cushions:[],scratch:false,eligible8:false,break:false};return s;};
+ it.each([{x:100,y:438,vx:-500,pocket:2},{x:100,y:402,vx:-500,pocket:2},{x:340,y:438,vx:500,pocket:3},{x:340,y:402,vx:500,pocket:3}])('accepts an off-centre ball through the open side mouth %j',({x,y,vx,pocket})=>{
+  const s=rolling(ball(1,x,y,vx)),pots=s.shot!.pots;
+  for(let i=0;i<80&&s.phase==='moving'&&!s.balls[1].pocketed;i++)step(s);
+  expect(s.balls[1].pocketed).toBe(true);
+  expect(pots).toContainEqual({id:1,pocket});
+ });
+ it('rebounds off a rounded pocket jaw instead of an invisible straight wall',()=>{
+  const s=rolling(ball(1,51,444,-500));for(let i=0;i<3;i++)step(s);
+  expect(s.balls[1].pocketed).toBe(false);
+  expect(s.balls[1].vy).toBeLessThan(-50);
+  expect(s.shot?.cushions).toContain(1);
+ });
+ it('previews the pocket capture instead of stopping at an invisible wall across its mouth',()=>{
+  const s=settled();s.balls=[ball(0,100,438)];const p=preview(s,Math.PI);
+  expect(p.hit).toBeNull();
+  // A 22-unit capture radius at (40,420), 18 units off centre.
+  expect(p.x).toBeCloseTo(40+Math.sqrt(22**2-18**2),5);
+  expect(p.y).toBeCloseTo(438,5);
+ });
+ it.each(POCKETS.map((p,pocket)=>({p,pocket})))('pots a centre-aimed shot at pocket $pocket',({p,pocket})=>{
+  const dx=p.x<220?1:-1,dy=p.y===420?0:p.y<420?1:-1;
+  const n=Math.hypot(dx,dy),s=rolling(ball(1,p.x+dx*80,p.y+dy*80,-dx/n*600,-dy/n*600)),pots=s.shot!.pots;
+  for(let i=0;i<100&&s.phase==='moving'&&!s.balls[1].pocketed;i++)step(s);
+  expect(s.balls[1].pocketed).toBe(true);
+  expect(pots).toContainEqual({id:1,pocket});
+ });
+});

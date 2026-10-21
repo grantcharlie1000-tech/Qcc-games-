@@ -1,0 +1,55 @@
+import * as store from '../core/storage';
+import {scoredGame,validName,validScore,readBoard,type Board} from './shared';
+interface Storage {read<T>(key:string,fallback:T):T;write(key:string,value:unknown):boolean}
+interface Profile {token:string;name:string}
+export class LeaderboardSync {
+ private pending:Record<string,number>={};private sent:Record<string,number>={};
+ private timer:ReturnType<typeof setTimeout>|undefined;private inFlight:Promise<void>|null=null;
+ readonly endpoint='/.netlify/functions/leaderboard';
+ constructor(private storage:Storage=store,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis)){
+  for(const [key,score] of Object.entries(storage.read('leaderboard:pending',{})??{}))if(scoredGame(key)&&validScore(score))this.pending[key]=score;
+  for(const [key,score] of Object.entries(storage.read('leaderboard:sent',{})??{}))if(scoredGame(key)&&validScore(score))this.sent[key]=score;
+ }
+ profile():Profile|null{
+  const value=this.storage.read<Profile|null>('leaderboard:profile',null);
+  return value&&typeof value.token==='string'&&/^[a-f0-9]{64}$/.test(value.token)&&validName(value.name)?value:null;
+ }
+ join(name:string):void{
+  name=name.trim();if(!validName(name))throw new Error('Choose a name of 2–24 characters without control characters or angle brackets.');
+  const old=this.profile();
+  const token=old?.token??Array.from(crypto.getRandomValues(new Uint8Array(32)),n=>n.toString(16).padStart(2,'0')).join('');
+  this.storage.write('leaderboard:profile',{token,name});
+  if(old?.name!==name){this.sent={};this.storage.write('leaderboard:sent',this.sent);}
+ }
+ queue(game:string,score:number):void{
+  if(!this.profile()||!scoredGame(game)||!validScore(score)||score<=Math.max(this.pending[game]??0,this.sent[game]??0))return;
+  this.pending[game]=score;this.storage.write('leaderboard:pending',this.pending);
+  if(!this.timer)this.timer=setTimeout(()=>{this.timer=undefined;void this.flush().catch(()=>{});},10000);
+ }
+ flush():Promise<void>{
+  if(this.inFlight)return this.inFlight;
+  if(this.timer){clearTimeout(this.timer);this.timer=undefined;}
+  this.inFlight=this.send().finally(()=>{this.inFlight=null;});return this.inFlight;
+ }
+ private async send(){
+  const profile=this.profile();if(!profile)return;
+  for(const [game,score] of Object.entries(this.pending)){
+   const response=await this.fetcher(this.endpoint,{method:'POST',headers:{Authorization:`Bearer ${profile.token}`,'Content-Type':'application/json'},body:JSON.stringify({game,score,name:profile.name}),signal:AbortSignal.timeout(8000)});
+   if(!response.ok)throw new Error('Scores are saved here and will sync when the leaderboard is available.');
+   this.sent[game]=Math.max(score,this.sent[game]??0);this.storage.write('leaderboard:sent',this.sent);
+   if(this.pending[game]===score&&this.profile()?.name===profile.name)delete this.pending[game];
+   this.storage.write('leaderboard:pending',this.pending);
+  }
+ }
+ async load(game:string):Promise<Board>{
+  if(!scoredGame(game))throw new Error('Choose a game with scores.');
+  const profile=this.profile();
+  const response=await this.fetcher(`${this.endpoint}?game=${encodeURIComponent(game)}`,{headers:profile?{Authorization:`Bearer ${profile.token}`}:{},cache:'no-store',signal:AbortSignal.timeout(8000)});
+  if(!response.ok)throw new Error('Online leaderboard is temporarily unavailable.');
+  const board=readBoard(await response.json());
+  if(!board)throw new Error('The leaderboard response could not be read.');
+  this.storage.write('leaderboard:cache:'+game,board);return board;
+ }
+ cached(game:string):Board|null{return readBoard(this.storage.read('leaderboard:cache:'+game,null));}
+ dispose(){if(this.timer)clearTimeout(this.timer);this.timer=undefined;}
+}

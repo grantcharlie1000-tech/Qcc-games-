@@ -61,21 +61,52 @@ export function validState(value:unknown):value is State {
  return all.length===52&&all.every(id=>integer(id,51))&&new Set(all).size===52;
 }
 export function won(s:State):boolean {return validState(s)&&s.foundations.every(p=>p.length===13);}
-export function hint(s:State):Action|null {
- const sources:Source[]=[];
+/** Ignore counters and interchangeable column locations when detecting a loop. */
+function hintPosition(s:State):string {
+ const columns=s.tableau.map(p=>p.map(c=>`${c.id}:${Number(c.up)}`).join(',')).sort();
+ return JSON.stringify([s.stock,s.waste,s.foundations,columns]);
+}
+const coveredCount=(s:State)=>s.tableau.reduce((n,p)=>n+p.filter(c=>!c.up).length,0);
+const homeCount=(s:State)=>s.foundations.reduce((n,p)=>n+p.length,0);
+function hintMoves(s:State):{action:Action;state:State;priority:number}[]{
+ const sources:Source[]=[],options:{action:Action;state:State;priority:number}[]=[];
  if(s.waste.length)sources.push({kind:'waste',pile:0,index:s.waste.length-1});
  s.tableau.forEach((p,pile)=>p.forEach((c,index)=>{if(c.up)sources.push({kind:'tableau',pile,index});}));
- for(const from of sources)for(let pile=0;pile<4;pile++){const to:Target={kind:'foundation',pile};if(move(s,from,to))return {kind:'move',from,to};}
- for(const from of sources){if(from.kind==='tableau'&&from.index===0)continue;for(let pile=0;pile<7;pile++){const to:Target={kind:'tableau',pile};if(move(s,from,to))return {kind:'move',from,to};}}
- if(s.stock.length||s.waste.length)return {kind:'draw'};
- for(const from of sources)for(let pile=0;pile<7;pile++){const to:Target={kind:'tableau',pile};if(s.tableau[pile].length&&move(s,from,to))return {kind:'move',from,to};}
- // Returning a foundation top is legal, but prefer progress and stock actions first.
- for(let foundation=0;foundation<4;foundation++){
-  const cards=s.foundations[foundation];if(!cards.length)continue;
-  const from:Source={kind:'foundation',pile:foundation,index:cards.length-1};
-  for(let pile=0;pile<7;pile++){const to:Target={kind:'tableau',pile};if(move(s,from,to))return {kind:'move',from,to};}
+ s.foundations.forEach((p,pile)=>{if(p.length)sources.push({kind:'foundation',pile,index:p.length-1});});
+ for(const from of sources)for(const kind of ['foundation','tableau'] as const){
+  for(let pile=0;pile<(kind==='foundation'?4:7);pile++){
+   // Moving a whole King-led column to another empty column changes nothing.
+   if(kind==='tableau'&&!s.tableau[pile].length&&from.kind==='tableau'&&from.index===0)continue;
+   const to:Target={kind,pile},next=move(s,from,to);if(!next)continue;
+   const reveals=from.kind==='tableau'&&from.index>0&&!s.tableau[from.pile][from.index-1].up;
+   const priority=reveals?4:kind==='foundation'?3:from.kind==='waste'?2:from.kind==='foundation'?0:1;
+   options.push({action:{kind:'move',from,to},state:next,priority});
+  }
  }
- return null;
+ return options.sort((a,b)=>b.priority-a.priority);
+}
+/**
+ * Find a short route to a reveal or a net foundation gain, without returning to
+ * a recent position. Foundation withdrawals are setup moves, never an end goal.
+ * The bounded search stops before exploring beyond a newly uncovered card.
+ */
+export function hint(s:State,history:readonly State[]=[]):Action|null {
+ const home=homeCount(s),covered=coveredCount(s);if(home===52)return null;
+ const seen=new Set(history.map(hintPosition));seen.add(hintPosition(s));
+ const queue:{state:State;first:Action|null;depth:number}[]=[{state:s,first:null,depth:0}];
+ for(let cursor=0;cursor<queue.length&&cursor<300;cursor++){
+  const node=queue[cursor];
+  for(const option of hintMoves(node.state)){
+   const key=hintPosition(option.state);if(seen.has(key))continue;seen.add(key);
+   const first=node.first??option.action;
+   if(coveredCount(option.state)<covered||homeCount(option.state)>home)return first;
+   if(node.depth<2)queue.push({state:option.state,first,depth:node.depth+1});
+  }
+ }
+ // Draw-one can inspect every stock card. Stop once recycling would repeat a
+ // position already tried; manual draws and unlimited recycling remain legal.
+ const next=draw(s);
+ return next&&!history.some(p=>hintPosition(p)===hintPosition(next))&&hintPosition(next)!==hintPosition(s)?{kind:'draw'}:null;
 }
 export function act(session:Session,action:Action):Session|null {
  const state=action.kind==='draw'?draw(session.state):move(session.state,action.from,action.to);
