@@ -4,7 +4,7 @@ import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {collidesAt} from '../../../src/games/blockcraft/engine/physics';
 import {ENDERMAN_HEAD,findTeleportTarget,isHoldable,isStaredAt,stareDistance,teleportRandomly,tryPlaceBlock,tryTakeBlock}
   from '../../../src/games/blockcraft/entity/monsters-enderman';
-import type {Entity} from '../../../src/games/blockcraft/engine/contracts';
+import type {Entity,PartPose} from '../../../src/games/blockcraft/engine/contracts';
 import {createHarness,lookAt,type MonsterHarness} from './monsters-fixture';
 
 const GRASS=B.grass,FLOWER=blockId('poppy'),CACTUS=blockId('cactus');
@@ -234,9 +234,11 @@ describe('block carrying',()=>{
     expect(tryPlaceBlock(h.game,e,queue(.6,.2,.6))).toBe(false);
     expect(h.game.world.get(0,60,0)).toBe(AIR);
   });
-  test('the model shows the carried block tinted by its colour; death drops it and up to one ender pearl',()=>{
+  test('the model shows the carried block between its hands; death drops it and up to one ender pearl',()=>{
     const h=createHarness(),e=enderman(h,.5,60,.5,{carried:B.sand}),k=h.entities.kind('enderman')!;
-    expect(k.model!.appearance!(e).tint).toBeTypeOf('number');
+    const pose:Record<string,PartPose>={};
+    k.model!.animate!(e,pose,{time:0,partial:0,limbSwing:0,limbAmount:0,headYaw:0,headPitch:0,attack:0,reducedMotion:false});
+    expect(pose.carried_sand.visible).toBe(true);expect(pose.carried_dirt.visible).toBe(false);
     h.entities.damage(e,100,{kind:'player',byPlayer:true});
     const ids=h.dropped.map(s=>s.id);
     expect(ids).toContain('sand');

@@ -82,7 +82,8 @@ function touchesPlayer(e:Entity,game:Game):boolean{
   const p=game.player.state,reach=e.width/2+game.player.width/2+1;
   return Math.abs(p.x-e.x)<reach&&Math.abs(p.z-e.z)<reach&&p.y-.5<e.y+e.height&&p.y+game.player.height+.5>e.y;
 }
-const LANDING=new Map<number,ParticleOptions>(SLIME_SIZES.map(s=>[s,Object.freeze({count:Math.min(32,s*8),spread:.26*s})]));
+/** Landing squish: vanilla spawns 8 × size slime particles within half the size around the feet. */
+const LANDING=new Map<number,ParticleOptions>(SLIME_SIZES.map(s=>[s,Object.freeze({count:s*8,spread:.35*s})]));
 
 export function tickSlime(e:Entity,game:Game){
   const d=data(e),r=gameRandom(game),ai=game.entities.ai,p=game.player.state,size=d.size;
@@ -119,7 +120,8 @@ export function createSlimeKind():EntityKind{
     kind:'slime',category:'hostile',width:SLIME_UNIT*4,height:SLIME_UNIT*4,maxHealth:16,
     model:createSlimeModel(),
     xp:e=>isSlimeSize(e.data.size)?e.data.size:1,
-    despawns:true,
+    // Slimes bounce: no fall damage (vanilla).
+    despawns:true,noFallDamage:true,
     sounds:{name:'slime',ambient:false,step:false},
     // Vanilla monster entry: weight 100 in groups of 4 everywhere monsters spawn; init() applies the slime rules.
     spawn:{light:'dark',group:[4,4],weight:100,biomes:BIOMES.filter(b=>b.name!=='mushroom_fields').map(b=>[b.name,100] as const)},
