@@ -82,7 +82,10 @@ test.describe('desktop 1366x768',()=>{
     });
     await give(page);
     const iconCount=(key:'__icons'|'__hudIcons')=>page.evaluate(k=>(window as unknown as Record<string,number>)[k],key);
-    await expect.poll(()=>iconCount('__icons'),{timeout:15000}).toBeGreaterThanOrEqual(4);
+    // Wait until the icon painting on the start menu has finished (some icons may already be cached).
+    let painted=-1;
+    await expect.poll(async()=>{const n=await iconCount('__icons'),done=n>0&&n===painted;painted=n;return done;},{timeout:20000,intervals:[1000]}).toBe(true);
+    await page.evaluate(()=>{(window as unknown as {__hudIcons:number}).__hudIcons=0;});
     await play(page);
     await setSurvival(page,{health:7,absorption:4,food:7,saturation:0,xpLevel:12,xpProgress:.5},7);
     const hearts=page.locator('.bc-hearts .bc-icon:not([hidden])');
@@ -182,7 +185,10 @@ for(const [width,height] of [[390,844],[320,568]] as const)test.describe(`phone 
     await page.screenshot({path:evidence(`menu-${width}x${height}`)});
     await play(page);
     await setSurvival(page,{health:20,absorption:0,food:20,saturation:5,xpLevel:3,xpProgress:.25},4);await give(page);
+    await page.evaluate(()=>{(window as unknown as {blockcraft:{survival:{effects():unknown[]}}}).blockcraft.survival.effects=()=>[
+      {name:'fire_resistance',level:1,ticks:3000},{name:'regeneration',level:2,ticks:400},{name:'slowness',level:1,ticks:900}];});
     await expect(page.locator('.bc-hearts .bc-icon:not([hidden])')).toHaveCount(10,{timeout:15000});
+    await expect(page.locator('.bc-effect:not([hidden])')).toHaveCount(3,{timeout:15000});
     const slots=await boxes(page,'.bc-slot');
     expect(slots).toHaveLength(9);
     for(const s of slots){expect(s.width,'touch-sized slots').toBeGreaterThanOrEqual(26);expect(s.x).toBeGreaterThanOrEqual(7.5);expect(s.x+s.width).toBeLessThanOrEqual(width-7.5);}
