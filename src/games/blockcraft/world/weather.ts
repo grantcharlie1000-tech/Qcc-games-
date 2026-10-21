@@ -1,12 +1,13 @@
 // Weather service: the vanilla clear / rain / thunder cycle (world/weather-cycle.ts), precipitation by biome and sky
 // exposure (world/weather-columns.ts), snow layers while it snows and ice on cold water (world/weather-snow.ts), lightning with
-// fire, damage, charged creepers and distance-delayed thunder (world/weather-lightning.ts), rain ambience, and the
-// rain/snow/bolt visuals (render/weather.ts) when the game has a real renderer. Sky darkening is computed by the
-// engine from `intensity` and `thunder`; the renderer reads `flash`.
+// fire, damage, charged creepers and distance-delayed thunder (world/weather-lightning.ts), rain ambience, leaves
+// dripping in the rain (world/weather-drips.ts), and the rain/snow/bolt visuals (render/weather.ts) when the game has a
+// real renderer. Sky darkening is computed by the engine from `intensity` and `thunder`; the renderer reads `flash`.
 import type {Entity,Game,Vec3,WeatherService,WeatherState} from '../engine/contracts';
 import {RAINING_LEVEL,THUNDERING_LEVEL,advanceCycle,cycleState,newCycle,parseCycle,serializeCycle,setCycle,type WeatherCycle} from './weather-cycle';
 import {precipitationHeight,precipitationKind,surfaceY} from './weather-columns';
 import {precipitationTick} from './weather-snow';
+import {dripTick} from './weather-drips';
 import {THUNDER_SPEED,createBolt,findStrikeTarget,rollStrikeColumn,tickBolt,type Bolt,type BoltEvents} from './weather-lightning';
 import {createWeatherVisuals,type WeatherVisuals} from '../render/weather';
 import {visualRandom} from '../render/weather-drops';
@@ -25,6 +26,8 @@ const RAIN_SOUND_RANGE=10;
 const MAX_BOLTS=8,MAX_THUNDER=8;
 /** Flash peak and decay per second (softer and slower with reduced motion). */
 const FLASH_PEAK=1,FLASH_DECAY=10,SOFT_FLASH_PEAK=.35,SOFT_FLASH_DECAY=3;
+/** One water drip particle at the exact point given. */
+const DRIP_PARTICLE={count:1,spread:0};
 
 interface PendingThunder{due:number;x:number;y:number;z:number;volume:number;pitch:number}
 
@@ -36,6 +39,8 @@ export function createWeather(game:Game):WeatherController{
   /** Gameplay randomness, called as a method so it works whether or not the engine binds game.random. */
   const random=()=>game.random();
   let flash=0,ticks=0,rainSoundIn=0,visuals:WeatherVisuals|null=null;
+  const dripScratch={x:0,y:0,z:0};
+  const drip=(x:number,y:number,z:number)=>game.render.spawnParticles('drip',x,y,z,DRIP_PARTICLE);
 
   const raining=()=>cycle.rainLevel>RAINING_LEVEL;
   const thunderStrength=()=>cycle.thunderLevel*cycle.rainLevel;
@@ -118,6 +123,7 @@ export function createWeather(game:Game):WeatherController{
       if(flashing())flash=Math.max(flash,flashPeak());
       for(const t of thunder)if(t.due>=0&&t.due<=ticks){t.due=-1;playThunder(t);}
       rainSound();
+      if(raining())dripTick(game.world,p.x,p.y,p.z,ambience,drip,dripScratch);
     },
     frame(dt){
       if(flashing())flash=Math.max(flash,flashPeak());

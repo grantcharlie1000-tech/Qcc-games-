@@ -338,6 +338,49 @@ describe('lightning',()=>{
   });
 });
 
+describe('leaves drip in the rain (vanilla LeavesBlock.animateTick)',()=>{
+  /** A leaf canopy at y=70 over x,z in [-12,12], with spawned particles recorded. */
+  function canopy(biome='plains'){
+    const s=setup(biome);
+    for(let x=-12;x<=12;x++)for(let z=-12;z<=12;z++)s.game.world.set(x,70,z,B.oakLeaves);
+    const drips:Vec3[]=[];
+    s.game.render={...s.game.render,spawnParticles:(kind,x,y,z)=>{if(kind==='drip')drips.push({x,y,z});}};
+    return{...s,drips};
+  }
+  test('leaves rained on drip water from their underside near the player',()=>{
+    const {game,weather,drips}=canopy();startRain(game,weather);drips.length=0;
+    tick(game,2000);
+    // 625 rained-on leaf columns of the 1089 around the player, about 1 drip per column per 550 ticks.
+    expect(drips.length).toBeGreaterThan(1000);expect(drips.length).toBeLessThan(4000);
+    for(const d of drips){
+      expect(d.y).toBeGreaterThan(69.9);expect(d.y).toBeLessThan(70);
+      expect(Math.floor(d.x)).toBeGreaterThanOrEqual(-12);expect(Math.floor(d.x)).toBeLessThanOrEqual(12);
+      expect(Math.floor(d.z)).toBeGreaterThanOrEqual(-12);expect(Math.floor(d.z)).toBeLessThanOrEqual(12);
+    }
+  });
+  test('no drips in clear weather, under cover, in snow, or onto an opaque block below',()=>{
+    const clear=canopy();tick(clear.game,2000);expect(clear.drips).toHaveLength(0);
+    const snowy=canopy('snowy_plains');startRain(snowy.game,snowy.weather);snowy.drips.length=0;tick(snowy.game,2000);
+    expect(snowy.drips).toHaveLength(0);
+    // The west half of the canopy rests on stone: water cannot drip out of it.
+    const half=canopy();
+    for(let x=-12;x<0;x++)for(let z=-12;z<=12;z++)half.game.world.set(x,69,z,B.stone);
+    startRain(half.game,half.weather);half.drips.length=0;tick(half.game,2000);
+    expect(half.drips.length).toBeGreaterThan(100);
+    for(const d of half.drips)expect(d.x).toBeGreaterThanOrEqual(0);
+    const roofed=canopy();
+    for(let x=-12;x<=12;x++)for(let z=-12;z<=12;z++)roofed.game.world.set(x,75,z,B.stone);
+    startRain(roofed.game,roofed.weather);roofed.drips.length=0;tick(roofed.game,2000);
+    expect(roofed.drips).toHaveLength(0);
+  });
+  test('leaves more than 16 blocks above the player do not drip',()=>{
+    const {game,weather,drips}=canopy();
+    game.player.teleport(.5,40,.5);
+    startRain(game,weather);drips.length=0;tick(game,2000);
+    expect(drips).toHaveLength(0);
+  });
+});
+
 describe('rain sound',()=>{
   test('rain is heard at intervals, following the intensity; none when clear or dry',()=>{
     const {game,weather,sounds}=setup('plains');
