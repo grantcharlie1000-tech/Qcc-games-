@@ -215,6 +215,14 @@ describe('AI decisions',()=>{
     hurt(h,cow);tick(h,1);
     expect(cow.moveX).toBe(0);
   });
+  test('an animal standing in shallow lava is not held in it by the hazard guard',()=>{
+    const h=setup(),world=w(h);
+    for(let x=-2;x<=2;x++)for(let z=-2;z<=2;z++)world.set(x,60,z,B.lava);
+    const cow=h.spawn('cow',.5,60,.5);cow.inLava=true;cow.onGround=true;cow.fire=100;
+    h.game.entities.ai.navigate=(e,_x,_y,_z,speed)=>{e.moveX=speed;e.moveZ=0;return true;};
+    tick(h,1);
+    expect(cow.moveX).toBeGreaterThan(0);
+  });
   test('babies follow an adult of their kind',()=>{
     const h=setup(),mother=h.spawn('sheep',6.5,60,.5),lamb=h.spawn('sheep',.5,60,.5,{baby:true,reason:'breed'});
     tick(h,20);

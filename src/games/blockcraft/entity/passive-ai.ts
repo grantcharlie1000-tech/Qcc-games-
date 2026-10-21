@@ -397,7 +397,8 @@ export function tickAnimal(e:Entity,game:Game,cfg:AnimalConfig):void{
  *  - On the ground it stops dead at the edge, cancelling the run-up (it would slide over) and any step jump.
  *  - A step jump must land safely too: from the step's top, over the distance the jump carries it. Steering jumps 1-block
  *    steps, and the jump would otherwise fly over a lip into the lava or pit behind it, with no check in the air.
- *  - In the air, steering must not push it on into a hazard.
+ *  - In the air, steering must not push it on into a hazard (rabbit hops then restore their launch velocity: they are
+ *    ballistic and their launch check covered the whole hop).
  *  Every check also covers sliding along a wall (dangerMoving). */
 function guardHazards(e:Entity,game:Game,cfg:AnimalConfig,b:Brain):void{
   if(e.inWater||e.inLava||!e.moveX&&!e.moveZ)return;

@@ -341,7 +341,7 @@ function rabbitAvoid(e:Entity,game:Game,b:Brain):boolean{
 }
 
 const FARMLAND=new Set([blockId('farmland'),blockId('farmland_wet')]);
-/** 1 for the fully grown carrot states, so the garden search costs one world read per cell. */
+/** 1 for the fully grown carrot states (garden search and target re-checks). */
 const MATURE_CARROT=new Uint8Array(256);
 for(const d of familyStates('carrots'))if(d.age===d.maxAge)MATURE_CARROT[d.id]=1;
 /** A fully grown carrot crop on farmland at (x,y,z). */
@@ -356,7 +356,7 @@ const SEARCH_LEVELS=[0,1,-1],SEARCH_RANGE=15;
 function findCarrot(e:Entity,game:Game,b:Brain):boolean{
   const fx=Math.floor(e.x),fy=feetY(e),fz=Math.floor(e.z),R=SEARCH_RANGE;
   let best=Infinity;
-  for(let cz=(fz-R)>>4;cz<=(fz+R)>>4;cz++)for(let cx=(fx-R)>>4;cx<=(fx+R)>>4;cx++){
+  for(let cz=Math.floor((fz-R)/CS);cz<=Math.floor((fz+R)/CS);cz++)for(let cx=Math.floor((fx-R)/CS);cx<=Math.floor((fx+R)/CS);cx++){
     const chunk=game.world.chunk(cx,cz);if(!chunk)continue;
     const bx=cx*CS,bz=cz*CS,x0=Math.max(fx-R,bx),x1=Math.min(fx+R,bx+CS-1),z0=Math.max(fz-R,bz),z1=Math.min(fz+R,bz+CS-1);
     for(let level=0;level<SEARCH_LEVELS.length;level++){
@@ -419,17 +419,16 @@ function rabbitMove(e:Entity,game:Game,b:Brain){
   if(e.onGround){
     if(!b.wasOnGround){b.hop=0;b.jumpDelay=b.mode==='panic'||b.mode==='avoid'?DELAY_FAST:DELAY_WALK;}
     const speed=Math.hypot(e.moveX,e.moveZ);
+    let launched=false;
     if(speed>0&&b.jumpDelay===0){
       const climb=asked||e.collidedH||stepAhead(game,e,speed),up=climb?HOP_CLIMB:b.mode==='stroll'?HOP_STROLL:HOP_UP;
       // The whole hop must land somewhere safe (on the step's top when climbing), not just the next step, also if a wall
       // turns it into a slide: airtime 2·up/g at the launch speed, plus a margin.
-      if(!dangerMoving(game.world,e.x,climb?e.y+1:e.y,e.z,e.moveX,e.moveZ,e.width/2,speed*2*up/GRAVITY+.3)){
-        e.vy=up;e.vx=b.hopX=e.moveX;e.vz=b.hopZ=e.moveZ;b.hop=1;b.wasOnGround=true;
-        return;
-      }
-      game.entities.ai.stop(e);b.hasTarget=false;
+      if(dangerMoving(game.world,e.x,climb?e.y+1:e.y,e.z,e.moveX,e.moveZ,e.width/2,speed*2*up/GRAVITY+.3)){
+        game.entities.ai.stop(e);b.hasTarget=false;
+      }else{e.vy=up;e.vx=b.hopX=e.moveX;e.vz=b.hopZ=e.moveZ;b.hop=1;launched=true;}
     }
-    e.moveX=0;e.moveZ=0;b.hop=0;
+    if(!launched){e.moveX=0;e.moveZ=0;b.hop=0;}
   }else if(b.hop>0){
     // A hop is ballistic: no steering in the air, so a new goal cannot swerve it into what the launch check avoided.
     b.hop++;e.moveX=b.hopX;e.moveZ=b.hopZ;
