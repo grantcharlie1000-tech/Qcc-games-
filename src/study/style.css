@@ -19,3 +19,5 @@
 .study-update{border-bottom:1px solid var(--study-line);padding:12px 0;display:flex;align-items:center;gap:16px;flex-wrap:wrap}.study-update[hidden]{display:none}.study-update p{font:13px/1.6 system-ui,sans-serif;margin:0;flex:1;min-width:200px}.study-update button{font:600 13px/1.4 system-ui,sans-serif;min-height:44px;padding:10px 14px;border:1px solid #395a4a;border-radius:4px;background:#edf1e8;color:#264a38}.study-update button[hidden]{display:none}
 
 .study-wordmark{display:flex;align-items:center;gap:10px}.study-wordmark .mauri-mark{width:28px;height:28px;flex-shrink:0}.study-wordmark span{margin:0;color:inherit;font-weight:750}
+
+.study-games-sentence a{display:inline-block;min-height:44px;line-height:44px;text-decoration:underline;text-underline-offset:3px}.study-chapter-footer .study-topic-control{margin:24px 0}.study-chapter-footer .study-topic-control select{max-width:100%}

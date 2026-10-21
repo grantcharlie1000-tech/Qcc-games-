@@ -1,12 +1,12 @@
 import {test,expect} from '@playwright/test';
 
-test('article has top controls, bilateral distributed ad reservations and no sidebar or diagrams',async({page})=>{
+test('article opens without a top bar and has inline games navigation, footer controls and bilateral ad reservations',async({page})=>{
  await page.setViewportSize({width:1600,height:1000});await page.goto('/');
  await page.getByRole('button',{name:'Reject All',exact:true}).click();
  await page.locator('[data-study-topic="close-reading"]').click();await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  await expect(page.locator('.study-sidebar')).toHaveCount(0);await expect(page.getByText('Your reading desk',{exact:true})).toHaveCount(0);await expect(page.getByRole('navigation',{name:'Chapter contents'})).toHaveCount(0);
  await expect(page.locator('.study-diagram,.study-byline svg')).toHaveCount(0);
- const nav=page.getByRole('navigation',{name:'Site navigation'});await expect(nav.getByLabel('Study topic',{exact:true})).toBeVisible();await expect(nav.getByRole('link',{name:'Games',exact:true})).toBeVisible();
+ await expect(page.locator('#study-view > .study-header, #study-view > .study-utility')).toHaveCount(0);await expect(page.locator('.study-chapter-footer').getByLabel('Study topic',{exact:true})).toBeVisible();const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});await expect(games).toHaveText('games');await expect(games).toBeVisible();
  for(const side of ['left','right']){const slots=page.locator(`[data-ad-rail="${side}"] .study-ad-placeholder`);expect(await slots.count()).toBeGreaterThanOrEqual(3);const boxes=await slots.evaluateAll(es=>es.map(e=>({y:e.getBoundingClientRect().top,height:e.getBoundingClientRect().height})));expect(boxes.at(-1)!.y-boxes[0].y).toBeGreaterThan(1000);}
  const words=(await page.locator('.study-chapter article').innerText()).trim().split(/\s+/).length;expect(words).toBeGreaterThanOrEqual(900);await expect(page.locator('iframe')).toHaveCount(0);
 });

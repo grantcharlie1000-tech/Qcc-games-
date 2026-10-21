@@ -6,7 +6,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  await page.locator('[data-study-topic="close-reading"]').click();await expect(page.locator('.study-ad-placeholder')).toHaveCount(0);await page.getByRole('button',{name:'Open menu',exact:true}).click();
  const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
- const games=page.getByRole('navigation',{name:'Site navigation'}).getByRole('link',{name:'Games',exact:true});
+ const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});
  await expect(games).toBeVisible();await expect(page.locator('.study-byline')).toContainText('Fictional contributor');await expect(page.locator('.study-byline img')).toBeVisible();await expect(page.locator('.study-hero img')).toBeVisible();
  await expect(page.locator('.study-ad-placeholder').first()).toContainText('Advertisement placeholder');await expect(page.locator('.study-ad-placeholder').first()).toContainText('Ads are disabled');
  await expect(page.locator('iframe')).toHaveCount(0);const formats=new Set<string>(),authors=new Set<string>();
@@ -38,7 +38,7 @@ test('modified Games clicks reach the browser without returning the retained gam
  }));
  const closeOpenedPage=(opened:import('@playwright/test').Page)=>{void opened.close();};
  context.on('page',closeOpenedPage);
- const games=page.getByRole('navigation',{name:'Site navigation'}).getByRole('link',{name:'Games',exact:true});
+ const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});
  for(const modifier of ['Control','Meta','Shift','Alt'] as const){
   await games.click({modifiers:[modifier]});
   await expect(page.locator('html')).toHaveAttribute('data-games-click-trusted','true');
