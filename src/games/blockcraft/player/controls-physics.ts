@@ -140,6 +140,12 @@ export function eyeLiquid(world:BlockSource,x:number,eyeY:number,z:number):numbe
   if(id<0||!LIQUID[id])return 0;
   return by+liquidSurface(world,bx,by,bz,id)>ey?LIQUID[id]:0;
 }
+/** Does a box overlap any liquid cell, whatever its level (vanilla Level.containsAnyLiquid)? Unloaded cells are dry. */
+export function boxHasLiquid(world:BlockSource,minX:number,minY:number,minZ:number,maxX:number,maxY:number,maxZ:number):boolean{
+  for(let y=Math.floor(minY),y1=Math.ceil(maxY);y<y1;y++)for(let z=Math.floor(minZ),z1=Math.ceil(maxZ);z<z1;z++)
+    for(let x=Math.floor(minX),x1=Math.ceil(maxX);x<x1;x++){const id=world.get(x,y,z);if(id>0&&LIQUID[id])return true;}
+  return false;
+}
 /** Liquid kind (0 none, 1 water, 2 lava) of the voxel containing a point. */
 export function liquidAt(world:BlockSource,x:number,y:number,z:number):number{
   const id=world.get(Math.floor(x),Math.floor(y),Math.floor(z));return id>0?LIQUID[id]:0;

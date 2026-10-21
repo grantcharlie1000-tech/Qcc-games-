@@ -40,6 +40,13 @@ function speed(r:Rig,warmup:number,seconds:number){
 function fill(r:Rig,x0:number,y0:number,z0:number,x1:number,y1:number,z1:number,id:number){
   for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++)for(let x=x0;x<=x1;x++)r.game.world.set(x,y,z,id);
 }
+/** Vanilla 20 Hz fall onto ground `drop` blocks below the start, from rest (or a jump at v0 blocks/tick): the fall
+ *  distance passed to fallOn. Entity.checkFallDamage adds -y only on ticks that do not end on the ground. */
+function vanillaFall(drop:number,v0=0){
+  let y=0,v=v0,fall=0;
+  for(let i=0;i<1000;i++){if(y+v<=-drop)return fall;if(v<0)fall-=v;y+=v;v=(v-.08)*.98;}
+  return fall;
+}
 
 describe('exports',()=>{
   test('hitbox constants and a fresh state',()=>{
@@ -206,6 +213,18 @@ describe('liquids',()=>{
     const r=rig();for(let i=0;i<7;i++)fill(r,i-3,60,-1,i-3,60,1,blockId(`water_${i+1}`));
     r.player.teleport(.5,60,.5);run(r,1.5);expect(r.player.state.inWater).toBe(true);expect(r.player.state.x).toBeGreaterThan(1);
   });
+  test('pressing into a wall under water or lava does not climb it (the hop needs a dry space, vanilla isFree)',()=>{
+    const w=rig({height:50});fill(w,-6,50,-6,6,59,6,B.water);fill(w,-6,50,-3,6,62,-3,B.stone);w.player.teleport(.5,50,-.5);
+    hold(w,'forward');run(w,2);expect(w.player.state.inWater).toBe(true);expect(w.player.state.z).toBeLessThan(-1.6);
+    expect(w.player.state.y).toBeLessThan(50.2);expect(w.player.state.vy).toBeLessThan(1);
+    const l=rig();fill(l,-6,57,-6,6,59,6,B.lava);fill(l,-6,57,-3,6,65,-3,B.stone);l.player.teleport(.5,57,-1.3);
+    hold(l,'forward');run(l,2);expect(l.player.state.inLava).toBe(true);expect(l.player.state.z).toBeLessThan(-1.6);
+    expect(l.player.state.y).toBeLessThan(57.2);
+  });
+  test('swims up from deep water and hops out onto the bank at the surface',()=>{
+    const r=pool(6);hold(r,'forward','jump');run(r,8);
+    expect(r.player.state.y).toBeGreaterThanOrEqual(60-1e-3);expect(r.player.state.z).toBeLessThan(-6.5);expect(r.player.state.inWater).toBe(false);
+  });
   test('lava slows movement to a crawl and sets inLava',()=>{
     const r=rig();fill(r,-3,60,-20,3,60,3,B.lava);r.player.teleport(.5,60,.5);hold(r,'forward');
     const v=speed(r,1,2);expect(r.player.state.inLava).toBe(true);expect(v).toBeLessThan(1.2);expect(v).toBeGreaterThan(.3);
@@ -246,11 +265,38 @@ describe('creative flight',()=>{
 });
 
 describe('falling, landing and safety',()=>{
-  test('reports fall distance and calls survival.land on landing',()=>{
+  test('reports fall distance and calls survival.land on landing (the landing tick does not count, like vanilla)',()=>{
     const r=rig();r.player.teleport(.5,70,.5);run(r,.5);expect(r.player.state.fallDistance).toBeGreaterThan(2);
-    run(r,2);expect(r.player.state.onGround).toBe(true);expect(r.lands.length).toBe(1);expect(r.lands[0]).toBeCloseTo(10,1);
+    run(r,2);expect(r.player.state.onGround).toBe(true);expect(r.lands.length).toBe(1);
+    expect(r.lands[0]).toBeGreaterThan(9);expect(r.lands[0]).toBeLessThan(10);
+    expect(vanillaFall(10)).toBeCloseTo(9.667,3);expect(Math.ceil(r.lands[0]-3)).toBe(Math.ceil(vanillaFall(10)-3));
     expect(r.player.state.fallDistance).toBe(0);
     expect(r.game.sounds.played.some(s=>s.name==='fall:stone')).toBe(true);
+  });
+  test('the landing tick is left out, so falls of 2 to 11 blocks report what vanilla damage needs',()=>{
+    const harm=(d:number)=>d>3?Math.ceil(d-3):0;
+    for(let drop=2;drop<=11;drop++){
+      const r=rig();r.player.teleport(.5,60+drop,.5);run(r,4);expect(r.lands.length).toBe(1);
+      expect(r.lands[0]).toBeLessThan(drop);expect(r.lands[0]).toBeGreaterThan(drop-1);
+      expect(harm(r.lands[0])).toBe(harm(vanillaFall(drop)));
+    }
+    expect(vanillaFall(3)).toBeLessThan(3);expect(vanillaFall(4)).toBeGreaterThan(3);
+  });
+  test('walking off a 3-high ledge never hurts and a 4-high one always costs half a heart, whatever the step phase',()=>{
+    for(const height of [3,4])for(const start of [0,.017,.033,.05,.067]){
+      const r=rig({height:56,radius:4});fill(r,-8,56,-1,8,55+height,8,B.stone);r.player.teleport(.5,56+height,.5+start);
+      hold(r,'forward');run(r,3);expect(r.player.state.y).toBeCloseTo(56,3);
+      const worst=Math.max(...r.lands);
+      if(height===3)expect(worst).toBeLessThan(3);else{expect(worst).toBeGreaterThan(3);expect(worst).toBeLessThan(4);}
+    }
+  });
+  test('sprint-jumping down a 2-block step costs nothing (vanilla reports about 2.67)',()=>{
+    const r=rig({height:58,radius:4});fill(r,-8,58,-1,8,59,8,B.stone);r.player.teleport(.5,60,4.5);
+    hold(r,'forward','sprint','jump');run(r,2);release(r,'jump');run(r,.6);
+    expect(r.player.state.y).toBeCloseTo(58,3);expect(r.player.state.z).toBeLessThan(-4);
+    const worst=Math.max(...r.lands);expect(worst).toBeGreaterThan(2.3);expect(worst).toBeLessThan(3);
+    expect(vanillaFall(2,.42)).toBeCloseTo(2.6725,3);expect(Math.abs(worst-vanillaFall(2,.42))).toBeLessThan(.15);
+    expect(r.game.sounds.played.some(s=>s.name.startsWith('fall:'))).toBe(false);
   });
   test('landing in water negates fall damage',()=>{
     const r=rig();fill(r,-3,57,-3,3,59,3,B.water);r.player.teleport(.5,80,.5);run(r,4);
@@ -342,7 +388,7 @@ describe('vanilla details',()=>{
     expect(r.player.state.flying).toBe(false);
   });
   test('small falls are silent; creative falls make no fall sound',()=>{
-    const r=rig();r.player.teleport(.5,62.5,.5);run(r,1.5);expect(r.lands.length).toBe(1);expect(r.lands[0]).toBeCloseTo(2.5,2);
+    const r=rig();r.player.teleport(.5,62.5,.5);run(r,1.5);expect(r.lands.length).toBe(1);expect(r.lands[0]).toBeGreaterThan(1.5);expect(r.lands[0]).toBeLessThan(2.5);
     expect(r.game.sounds.played.some(s=>s.name.startsWith('fall:'))).toBe(false);
     const c=rig({mode:'creative'});c.player.teleport(.5,70,.5);run(c,2);expect(c.game.sounds.played.some(s=>s.name.startsWith('fall:'))).toBe(false);
     const big=rig();big.player.teleport(.5,66,.5);run(big,2);expect(big.particles).toContain('block');

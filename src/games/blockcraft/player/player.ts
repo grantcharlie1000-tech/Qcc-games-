@@ -14,7 +14,7 @@ import {
   FLY_VERTICAL,FLY_VERTICAL_RETAIN,GROUND_FACTOR,INPUT_SCALE,JUMP_DELAY_TICKS,JUMP_VELOCITY,LADDER_CLIMB,LADDER_CLIMB_WATER,
   LADDER_LIMIT,LAVA_PUSH,LAVA_RETAIN,LAVA_SINK,LEDGE_HOP,LIQUID_ACCEL,LIQUID_JUMP,LIQUID_VERTICAL_RETAIN,SNEAK_INPUT,SPRINT_JUMP_BOOST,
   SPRINT_MULTIPLIER,STEP,STEPS_PER_TICK,STEP_HEIGHT,SWIM_FOLLOW,SWIM_FOLLOW_STEEP,USE_INPUT,WATER_DIVE,WATER_PUSH,WATER_RETAIN,
-  WATER_RETAIN_SPRINT,WATER_SINK,climbableAt,createFluidSample,effectSpeedFactor,eyeLiquid,liquidAt,perStep,sampleFluids,
+  WATER_RETAIN_SPRINT,WATER_SINK,boxHasLiquid,climbableAt,createFluidSample,effectSpeedFactor,eyeLiquid,liquidAt,perStep,sampleFluids,
   slipperinessAt,stepSoundBlock,supportBlock
 } from './controls-physics';
 
@@ -59,6 +59,8 @@ export function createPlayer(game:Game):PlayerService{
    *  tick (the source of the sprint-jump speed and the landing boost). These hold the current tick's choices. */
   let tickStep=0,tickAccel=0,tickRetain=.6*AIR_RETAIN,lastRetain=.6*AIR_RETAIN,boostX=0,boostZ=0;
   let moveDist=0,nextStep=1,exhaust=0,speedFactor=1,sensed=false;
+  /** p.fallDistance when the current 20 Hz tick began: what landing reports. */
+  let fallAtTick=0;
   const off:(()=>void)[]=[];
 
   const fits=(q:Pose)=>!collidesAt(game.world,p.x,p.y,p.z,HALF_WIDTH,POSE_HEIGHT[q]);
@@ -174,7 +176,7 @@ export function createPlayer(game:Game):PlayerService{
 
     // ---- Jumping (LivingEntity.aiStep) ----------------------------------------------------------
     const tickStart=tickStep===0;tickStep=(tickStep+1)%STEPS_PER_TICK;
-    if(tickStart)boostX=boostZ=0;
+    if(tickStart){boostX=boostZ=0;fallAtTick=p.fallDistance;}
     if(jumpDelay>0)jumpDelay--;
     const threshold=POSE_EYE[pose]<FLUID_JUMP_THRESHOLD?0:FLUID_JUMP_THRESHOLD;
     let swimUp=0,jumped=false;
@@ -251,17 +253,22 @@ export function createPlayer(game:Game):PlayerService{
     p.vx=move.hitX?0:svx;p.vz=move.hitZ?0:svz;
     const mx=p.x-x0,my=p.y-y0,mz=p.z-z0,horizontal=Math.sqrt(mx*mx+mz*mz);
     collidedH=move.hitX||move.hitZ;collidedHard=collidedH&&!minorCollision(dirX,dirZ,mx,mz);
-    // Against a ledge in a liquid, hop out when the space 0.6 higher is free (0.3 blocks/tick).
-    if(collidedH&&(p.inWater||p.inLava)&&!p.flying&&!collidesAt(w,p.x+p.vx/TPS,y0+p.vy/TPS+.6,p.z+p.vz/TPS,HALF_WIDTH,h))p.vy=LEDGE_HOP;
+    // Against a ledge in a liquid, hop out (0.3 blocks/tick) when the box 0.6 higher is free: no block and no liquid
+    // (vanilla isFree), so only at the surface. Walls under water or lava are not ladders.
+    if(collidedH&&(p.inWater||p.inLava)&&!p.flying){
+      const hx=p.x+p.vx/TPS,hy=y0+p.vy/TPS+.6,hz=p.z+p.vz/TPS;
+      if(!collidesAt(w,hx,hy,hz,HALF_WIDTH,h)&&!boxHasLiquid(w,hx-HALF_WIDTH,hy,hz-HALF_WIDTH,hx+HALF_WIDTH,hy+h,hz+HALF_WIDTH))p.vy=LEDGE_HOP;
+    }
     if(p.flying&&p.onGround)p.flying=false;
     eyeSmooth+=(POSE_EYE[pose]-eyeSmooth)*(1-EYE_RETAIN);
 
     // ---- After the move: liquids, fall distance, landing, sounds, exhaustion ----------------------
     senseFluids(true);
-    // Water, flight and ladders reset the fall; lava halves it every tick. The landing step's own drop counts too.
-    if(p.inWater||p.flying||p.onLadder)p.fallDistance=0;
-    else{if(p.inLava)p.fallDistance*=LAVA_FALL_RETAIN;if(my<0)p.fallDistance-=my;}
-    if(p.onGround){if(p.fallDistance>0)landed(p.fallDistance);p.fallDistance=0;}
+    // Water, flight and ladders reset the fall; lava halves it every tick. Vanilla checkFallDamage adds the drop only on
+    // ticks that do not end on the ground, so landing reports the distance fallen before the landing tick began.
+    if(p.inWater||p.flying||p.onLadder)p.fallDistance=fallAtTick=0;
+    else{if(p.inLava){p.fallDistance*=LAVA_FALL_RETAIN;fallAtTick*=LAVA_FALL_RETAIN;}if(my<0)p.fallDistance-=my;}
+    if(p.onGround){if(fallAtTick>0)landed(fallAtTick);p.fallDistance=fallAtTick=0;}
     sounds(mx,my,mz,horizontal);
     if(!creative){
       if(swimming||p.headInWater)exhaust+=.01*Math.sqrt(horizontal*horizontal+my*my);
@@ -295,7 +302,7 @@ export function createPlayer(game:Game):PlayerService{
     },
     look(){const c=Math.cos(p.pitch);return{x:-Math.sin(p.yaw)*c,y:Math.sin(p.pitch),z:-Math.cos(p.yaw)*c};},
     teleport(x,y,z){
-      p.x=x;p.y=y;p.z=z;p.vx=p.vy=p.vz=0;p.fallDistance=0;
+      p.x=x;p.y=y;p.z=z;p.vx=p.vy=p.vz=0;p.fallDistance=fallAtTick=0;
       p.onGround=boxCollides(game.world,x-HALF_WIDTH,y-.02,z-HALF_WIDTH,x+HALF_WIDTH,y,z+HALF_WIDTH);
       tickStep=0;boostX=boostZ=0;collidedH=collidedHard=false;moveDist=0;nextStep=1;sensed=false;
       eyeSmooth=POSE_EYE[pose];syncPrev();
@@ -319,7 +326,7 @@ export function createPlayer(game:Game):PlayerService{
     },
     reset(){
       Object.assign(p,createPlayerState());pose=STAND;swimming=false;acc=0;flyTimer=jumpDelay=tickStep=0;tickAccel=boostX=boostZ=0;tickRetain=lastRetain=.6*AIR_RETAIN;
-      collidedH=collidedHard=false;moveDist=0;nextStep=1;exhaust=0;speedFactor=1;sensed=false;eyeSmooth=POSE_EYE[STAND];syncPrev();
+      collidedH=collidedHard=false;moveDist=0;nextStep=1;exhaust=0;speedFactor=1;sensed=false;fallAtTick=0;eyeSmooth=POSE_EYE[STAND];syncPrev();
     },
     serialize:()=>({x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,flying:p.flying,spawn:{...p.spawn},bedSpawn:p.bedSpawn?{...p.bedSpawn}:null}),
     restore(v){
