@@ -1,12 +1,14 @@
 // Chunk mesher (Meshing area). Turns a chunk plus its 3×3 neighbourhood and the padded light volume into the shared
 // MeshPart vertex layout (engine/contracts.ts):
 //  - cubes are greedy-merged where light, AO and tint are uniform, with vanilla smooth lighting (per-vertex sky and
-//    block light averaged over the four light cells in front of the vertex, opaque cells skipped) and vanilla AO;
+//    block light averaged over the four light cells in front of the vertex, opaque cells skipped) and vanilla AO
+//    (none on light-emitting cubes, like vanilla);
 //  - every other registry shape is modelled after the vanilla block models in render/shapes*.ts;
 //  - biome tints are blended over 3×3 columns, using the neighbour chunks' biomes at the borders;
 //  - culling: opaque neighbours and `cullSame` families hide faces, partial shapes never hide a neighbour's face
 //    (only identical partial faces facing each other, like snow beside snow, are both dropped), liquids never draw
-//    against liquids.
+//    against the same liquid.
+//  - sway flags are for placed blocks only: meshBlock output (held, dropped and falling blocks) never sways.
 import * as blocks from '../data/blocks';
 import * as biomes from '../data/biomes';
 import * as constants from '../engine/constants';
@@ -20,7 +22,7 @@ const {AIR,B,LAYER:BLOCK_LAYER,OPAQUE,FACE_TILE}=blocks;
 const {biomeDef}=biomes;
 const {CS,CH,LAYER,CHUNK_VOLUME,PAD_X,PAD_LAYER,PAD_Y,padIndex}=constants;
 const {MeshBuilder}=builder;
-const {AO_OFF,AVG,CORNER,CU,CULL_SAME,CV,EMISSIVE,FAMILY_ID,FLAG_EMISSIVE,FLAG_SWAY,FLIP_ORDER,GRASS_ID,GRASS_OVERLAY_TILE,GRASS_SIDE_TILE,N_AXIS,N_SIGN,PAD_NB,SHADE,SHAPE,SH_AIR,SH_CUBE,SIDE_FACE,SNOWY_DIRT,SNOWY_SIDE_TILE,SNOW_COVER,SWAY,TINT_KIND,U_AXIS,V_AXIS,V_FLIP}=tables;
+const {AO_OFF,AVG,CORNER,CU,CULL_SAME,CV,EMISSIVE,FAMILY_ID,FLAG_EMISSIVE,FLAG_SWAY,FLIP_ORDER,GRASS_ID,GRASS_OVERLAY_TILE,GRASS_SIDE_TILE,NO_AO,N_AXIS,N_SIGN,PAD_NB,SHADE,SHAPE,SH_AIR,SH_CUBE,SIDE_FACE,SNOWY_DIRT,SNOWY_SIDE_TILE,SNOW_COVER,SWAY,TINT_KIND,U_AXIS,V_AXIS,V_FLIP}=tables;
 const {emitShape}=shapesModule;
 
 export {plantOffset} from './shapes';
@@ -90,9 +92,10 @@ function prepareTints(n:readonly (ChunkData|null)[]){
 // Greedy key: tile 8 | light 8 | ao 2 | layer 2 | emissive 1 | palette 10 bits; never 0 because layer ≥ 1.
 const cornerLight=new Uint8Array(4),cornerAO=new Uint8Array(4);
 /** All six faces of the cube at padded index p (chunk cell x,y,z; voxel index i). Uniform faces are keyed for greedy
- *  merging; others (light or AO varying across the face, swaying leaves, meshBlock) are written at once. */
+ *  merging; others (light or AO varying across the face, swaying leaves, meshBlock) are written at once. Light-emitting
+ *  cubes (glowstone, lit furnaces) get no AO. */
 function cube(p:number,i:number,x:number,y:number,z:number,id:number){
-  const Bk=b.blocks,L=b.light,iso=b.iso,col=x+z*CS,layer=BLOCK_LAYER[id],emissive=EMISSIVE[id],sway=SWAY[id]?FLAG_SWAY:0;
+  const Bk=b.blocks,L=b.light,iso=b.iso,col=x+z*CS,layer=BLOCK_LAYER[id],emissive=EMISSIVE[id],sway=SWAY[id]&&!iso?FLAG_SWAY:0,noAO=NO_AO[id];
   const mergeable=!iso&&!sway,cullSame=CULL_SAME[id],fam=FAMILY_ID[id],snowyDirt=SNOWY_DIRT[id];
   const snowy=snowyDirt&&!iso&&SNOW_COVER[Bk[p+PL]];
   for(let f=0;f<6;f++){
@@ -111,8 +114,8 @@ function cube(p:number,i:number,x:number,y:number,z:number,id:number){
         if(!oa){const l=L[a];s+=l>>4;bl+=l&15;cnt++;}
         if(!ob){const l=L[bb];s+=l>>4;bl+=l&15;cnt++;}
         if(!(oa&&ob)){const d=q+AO_OFF[o+2],od=OPAQUE[Bk[d]];if(!od){const l=L[d];s+=l>>4;bl+=l&15;cnt++;}occ=3-oa-ob-od;}
-        cornerLight[c]=emissive?0xff:AVG[cnt*64+s]<<4|AVG[cnt*64+bl];cornerAO[c]=occ;
-        if(c&&(cornerLight[c]!==cornerLight[0]||occ!==cornerAO[0]))uniform=false;
+        cornerLight[c]=emissive?0xff:AVG[cnt*64+s]<<4|AVG[cnt*64+bl];cornerAO[c]=noAO?3:occ;
+        if(c&&(cornerLight[c]!==cornerLight[0]||cornerAO[c]!==cornerAO[0]))uniform=false;
       }
     }
     if(mergeable&&uniform){

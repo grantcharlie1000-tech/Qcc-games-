@@ -8,9 +8,9 @@ import * as tables from './mesher-tables';
 import * as liquidModule from './shapes-liquid';
 // Module-local aliases: hot loops read plain constants rather than live import bindings.
 const {FACE_TILE,LAYER}=blocks;
-const {CS}=constants;
+const {CS,PAD_LAYER}=constants;
 const {M_KEEP,M_MIRROR,M_NOCULL,M_ROT,M_SHADE,M_SOLID,M_UV}=builder;
-const {DOOR_BOX,DOOR_FRONT,DOOR_UPPER,EMISSIVE,FACE_DX,FACE_DZ,FACING_FACE,FLAG_EMISSIVE,FLAG_SWAY,N_AXIS,N_SIGN,OPPOSITE_FACE,PLANT_OFFSET,SH_BED,SH_CACTUS,SH_CROP,SH_CROSS,SH_DOOR,SH_FARMLAND,SH_FIRE,SH_FLAT,SH_LADDER,SH_LANTERN,SH_LIQUID,SH_SLAB,SH_SNOW,SH_STAIRS,SH_TORCH,SLAB_TOP,STAIRS_BACK,SWAY,TINT_KIND}=tables;
+const {DOOR_BOX,DOOR_FRONT,DOOR_UPPER,EMISSIVE,FACE_DX,FACE_DZ,FACING_FACE,FAMILY_ID,FLAG_EMISSIVE,FLAG_SWAY,N_AXIS,N_SIGN,OPPOSITE_FACE,PLANT_OFFSET,SH_BED,SH_CACTUS,SH_CROP,SH_CROSS,SH_DOOR,SH_FARMLAND,SH_FIRE,SH_FLAT,SH_LADDER,SH_LANTERN,SH_LIQUID,SH_SLAB,SH_SNOW,SH_STAIRS,SH_TORCH,SLAB_TOP,STAIRS_BACK,SWAY,SWAY_STACK,TINT_KIND}=tables;
 const {liquid}=liquidModule;
 
 /** Deterministic 32-bit hash of a world column (plant offsets, lily pad rotation). */
@@ -20,13 +20,17 @@ export function positionHash(x:number,z:number):number{
   return (h^(h>>>15))>>>0;
 }
 /** Vanilla-style random model offset of flowers (horizontal) and short grass / ferns (horizontal and down), in pixels:
- *  x and z within ±4 (a quarter block), y within -3..0. Zero for every other block. Pure, so the outline can follow it. */
+ *  x and z within ±4 (a quarter block), y within -3..0. Zero for every other block. Pure, so the outline can follow it.
+ *  On a chunk's west and north edge columns (world x or z ≡ 0 mod 16) x and z stay ≥ -1 px, so the planes (which start
+ *  1 px into the cell) never reach below the unsigned chunk-local position range and keep their exact diagonal. */
 export function plantOffset(id:number,x:number,z:number,out:{x:number;y:number;z:number}):{x:number;y:number;z:number}{
   const kind=PLANT_OFFSET[id];out.x=out.y=out.z=0;
   if(!kind)return out;
   const h=positionHash(x,z);
   out.x=Math.round(((h&15)/15-.5)*8);out.z=Math.round((((h>>>8)&15)/15-.5)*8);
   if(kind===2)out.y=Math.round((((h>>>4)&15)/15-1)*3.2);
+  if((x&15)===0&&out.x<-1)out.x=-1;
+  if((z&15)===0&&out.z<-1)out.z=-1;
   return out;
 }
 const offset={x:0,y:0,z:0};
@@ -64,20 +68,24 @@ function plane(b:MeshBuilder,ax:number,az:number,bx:number,bz:number,y0:number,h
 }
 const plantLight=(b:MeshBuilder,p:number,id:number)=>EMISSIVE[id]&&!b.iso?0xff:b.light[p];
 const plantFlags=(id:number)=>EMISSIVE[id]?FLAG_EMISSIVE:0;
-const plantSway=(id:number)=>SWAY[id]?FLAG_SWAY:0;
+/** Sway for placed plants only (never in meshBlock). */
+const plantSway=(b:MeshBuilder,id:number)=>SWAY[id]&&!b.iso?FLAG_SWAY:0;
 const SIDES=[0,1,4,5],CROP_PLANES=[4,12],FIRE_DIAGONALS=[0,0,16,16,0,16,16,0];
 /** cross: two diagonal planes corner to corner (vanilla 0.8..15.2 rounded to the pixel grid), with the vanilla random
- *  offset for flowers and grass. The cutout layer is drawn without back-face culling, so one quad per plane. */
+ *  offset for flowers and grass. The cutout layer is drawn without back-face culling, so one quad per plane. Stacked
+ *  sugar cane sways only at the top of the stack. */
 function cross(b:MeshBuilder,p:number,x:number,y:number,z:number,id:number){
   if(b.iso)offset.x=offset.y=offset.z=0;else plantOffset(id,b.wx+x,b.wz+z,offset);
-  const light=plantLight(b,p,id),flags=plantFlags(id),top=plantSway(id),rgb=b.tintColour(TINT_KIND[id*6],x+z*CS),tile=FACE_TILE[id*6],layer=LAYER[id];
+  let top=plantSway(b,id);
+  if(top&&SWAY_STACK[id]&&FAMILY_ID[b.blocks[p+PAD_LAYER]]===FAMILY_ID[id])top=0;
+  const light=plantLight(b,p,id),flags=plantFlags(id),rgb=b.tintColour(TINT_KIND[id*6],x+z*CS),tile=FACE_TILE[id*6],layer=LAYER[id];
   const ox=x*16+offset.x,oy=y*16+offset.y,oz=z*16+offset.z;
   plane(b,ox+1,oz+1,ox+15,oz+15,oy,16,light,flags,top,layer,tile,rgb);
   plane(b,ox+1,oz+15,ox+15,oz+1,oy,16,light,flags,top,layer,tile,rgb);
 }
 /** crop: four planes in a # pattern at 4 and 12 px, sunk 1 px into the farmland like vanilla (y -1..15). */
 function crop(b:MeshBuilder,p:number,x:number,y:number,z:number,id:number){
-  const light=plantLight(b,p,id),flags=plantFlags(id),top=plantSway(id),rgb=b.tintColour(TINT_KIND[id*6],x+z*CS),tile=FACE_TILE[id*6],layer=LAYER[id];
+  const light=plantLight(b,p,id),flags=plantFlags(id),top=plantSway(b,id),rgb=b.tintColour(TINT_KIND[id*6],x+z*CS),tile=FACE_TILE[id*6],layer=LAYER[id];
   const ox=x*16,oy=y*16-1,oz=z*16;
   for(let i=0;i<2;i++){
     const k=CROP_PLANES[i];

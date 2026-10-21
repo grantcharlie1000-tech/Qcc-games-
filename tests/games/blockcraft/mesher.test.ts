@@ -114,6 +114,18 @@ describe('mesh layout',()=>{
     expect(m.opaque.quads).toBe(40*128*6-128);
     expect(m.opaque.position.length).toBe(m.opaque.quads*16);
   });
+  test('a part stops at exactly MAX_PART_QUADS with whole quads, and the next chunk starts fresh',()=>{
+    // A chunk full of fire: six unculled quads per cell (196 608) overflows the cutout part.
+    const n=hood((_,chunks)=>chunks[4].blocks.fill(id('fire')));
+    const m=meshChunk(n,fullLight()),c=m.cutout,fire=quads(meshBlock(id('fire')).cutout)[0][0].tile;
+    expect(CHUNK_VOLUME*6).toBeGreaterThan(MAX_PART_QUADS);
+    expect(c.quads).toBe(MAX_PART_QUADS);
+    expect(c.position.length).toBe(c.quads*16);expect(c.uvt.length).toBe(c.quads*16);expect(c.tint.length).toBe(c.quads*16);
+    const last=(c.quads-1)*16;
+    for(let k=0;k<4;k++){expect(c.uvt[last+k*4+2]).toBe(fire);expect(c.tint[last+k*4+3]).toBe(255);}
+    expect(m.opaque.quads+m.translucent.quads).toBe(0);
+    expect(quads(alone('stone').opaque)).toHaveLength(6);expect(alone('stone').cutout.quads).toBe(0);
+  });
 });
 
 // ---- Cubes, greedy merging and culling --------------------------------------------------------------
@@ -220,9 +232,20 @@ describe('smooth lighting',()=>{
     // Triangles (0,1,2),(2,1,3): the shared edge 1–2 must not touch the dark corner.
     expect(q[1].shade).toBe(255);expect(q[2].shade).toBe(255);
   });
-  test('emissive cubes keep AO but get full light',()=>{
+  test('emissive cubes get full light; light-emitting cubes have no AO (vanilla)',()=>{
     const q=quads(alone('glowstone').opaque);
     for(const v of q.flat()){expect(v.flags&4).toBe(4);expect(v.light).toBe(0xff);}
+    // Glowstone set into a stone ceiling with a stone block diagonally below: the bottom face stays evenly shaded.
+    const ceiling=meshChunk(hood(put=>{for(let x=6;x<11;x++)for(let z=6;z<11;z++)put(x,12,z,x===8&&z===8?'glowstone':'stone');put(9,11,9,'stone');}),fullLight());
+    const bottom=quads(ceiling.opaque).filter(q=>faceOf(q)===3&&q.every(v=>v.tile===tileIndex('glowstone')));
+    expect(bottom).toHaveLength(1);for(const v of bottom[0])expect(v.shade).toBe(SHADE_VANILLA[3]);
+    // A lit furnace on a stone floor has no corner shadows; an unlit one keeps its AO.
+    const sideShades=(name:string)=>{
+      const m=meshChunk(hood(put=>{for(let x=6;x<11;x++)for(let z=6;z<11;z++)put(x,9,z,'stone');put(8,10,8,name);}),fullLight());
+      return quads(m.opaque).filter(q=>faceOf(q)===0&&q.every(v=>v.x===144&&v.y>=160)).flat().map(v=>v.shade);
+    };
+    expect(new Set(sideShades('furnace_lit_north'))).toEqual(new Set([SHADE_VANILLA[0]]));
+    expect(new Set(sideShades('furnace_north'))).toEqual(new Set([SHADE_VANILLA[0],Math.round(255*.6*.6)]));
   });
 });
 
@@ -273,6 +296,14 @@ describe('vertex flags',()=>{
       for(const v of quads(alone(name).cutout).flat())expect(v.flags&1).toBe(v.y>Math.min(...quads(alone(name).cutout).flat().map(w=>w.y))?1:0);
     }
     for(const v of quads(alone('stone').opaque).flat())expect(v.flags).toBe(0);
+  });
+  test('sugar cane sways only at the top of its stack, so the segments stay joined',()=>{
+    const lone=quads(alone('sugar_cane').cutout).flat();
+    for(const v of lone)expect(v.flags&1).toBe(v.y===176?1:0);
+    const cane=lone[0].tile;
+    const stack=quads(meshChunk(hood(put=>{put(8,9,8,'grass_block');put(8,10,8,'sugar_cane');put(8,11,8,'sugar_cane');put(8,12,8,'sugar_cane');}),fullLight()).cutout).flat().filter(v=>v.tile===cane);
+    expect(stack).toHaveLength(3*2*4);
+    for(const v of stack)expect(v.flags&1).toBe(v.y===208?1:0);
   });
   test('emissive on lava, fire, lantern, torches and glowstone only',()=>{
     for(const name of ['lava','fire','lantern','torch','wall_torch_north','glowstone']){
@@ -325,13 +356,31 @@ describe('liquids',()=>{
     const h=(x:number)=>Math.max(...q.filter(v=>v.x===x).map(v=>v.y));
     expect(h(128)).toBeGreaterThan(h(144));
   });
-  test('liquids draw only toward air and non-liquid transparent blocks',()=>{
+  test('liquids draw toward air, non-liquid transparent blocks and other liquids, never against the same liquid or ice',()=>{
     const faces=(other:string)=>quads(meshChunk(hood(put=>{put(8,10,8,'water');put(9,10,8,other);put(8,9,8,'stone');}),fullLight()).translucent).filter(q=>faceOf(q)===0&&q.every(v=>v.x===144)).length;
-    expect(faces('lava')).toBe(0);expect(faces('water')).toBe(0);expect(faces('stone')).toBe(0);expect(faces('ice')).toBe(0);
+    expect(faces('water')).toBe(0);expect(faces('water_3')).toBe(0);expect(faces('stone')).toBe(0);expect(faces('ice')).toBe(0);
     expect(faces('glass')).toBe(1);expect(faces('oak_leaves')).toBe(1);expect(faces('stone_slab')).toBe(1);
+    // Water beside lava (vanilla isNeighborSameFluid compares fluid types): both draw the shared face, so no hole opens.
+    expect(faces('lava')).toBe(1);
+    const beside=meshChunk(hood(put=>{put(8,10,8,'water');put(9,10,8,'lava');put(8,9,8,'stone');put(9,9,8,'stone');}),fullLight());
+    expect(quads(beside.opaque).filter(q=>faceOf(q)===1&&q.every(v=>v.x===144))).toHaveLength(1);
+    // Water under lava: the water top and the lava bottom are both drawn.
+    const stacked=meshChunk(hood(put=>{put(8,9,8,'stone');put(8,10,8,'water');put(8,11,8,'lava');}),fullLight());
+    expect(quads(stacked.translucent).filter(q=>q.every(v=>v.flags&2))).toHaveLength(1);
+    expect(quads(stacked.opaque).filter(q=>faceOf(q)===3&&q.every(v=>v.y===176))).toHaveLength(1);
     // Solid ground below hides the bottom face; air below shows it.
     expect(quads(meshChunk(hood(put=>{put(8,10,8,'water');put(8,9,8,'stone');}),fullLight()).translucent).filter(q=>faceOf(q)===3)).toHaveLength(0);
     expect(quads(alone('water').translucent).filter(q=>faceOf(q)===3)).toHaveLength(1);
+    // Water on ice: no bottom face in the plane of the ice top (only the ice face is drawn there).
+    const onIce=quads(meshChunk(hood(put=>{put(8,10,8,'ice');put(8,11,8,'water');}),fullLight()).translucent).filter(q=>q.every(v=>v.y===176));
+    expect(onIce).toHaveLength(1);expect(onIce[0][0].tile).toBe(tileIndex('ice'));
+    // Water filled to the top under ice: no surface in the plane of the ice bottom.
+    const underIce=quads(meshChunk(hood(put=>{
+      for(let x=7;x<10;x++)for(let z=7;z<10;z++)put(x,9,z,'stone');
+      put(8,10,8,'water');put(8,11,8,'ice');
+      for(const [x,z] of [[7,8],[9,8],[8,7],[8,9]]){put(x,10,z,'water');put(x,11,z,'water');}
+    }),fullLight()).translucent).filter(q=>q.every(v=>v.y===176&&v.x>=128&&v.x<=144&&v.z>=128&&v.z<=144));
+    expect(underIce).toHaveLength(1);expect(underIce[0][0].tile).toBe(tileIndex('ice'));
   });
   test('the top still shows under an opaque block when it sits below it; lava is opaque and emissive',()=>{
     const m=meshChunk(hood(put=>{put(8,10,8,'water');put(8,11,8,'stone');}),fullLight());
@@ -358,6 +407,32 @@ describe('block shapes',()=>{
     const offsets=new Set<string>();for(let x=0;x<40;x++){const o=plantOffset(id('short_grass'),x,x*7,{x:0,y:0,z:0});offsets.add(`${o.x},${o.y},${o.z}`);expect(o.y).toBeLessThanOrEqual(0);expect(o.y).toBeGreaterThanOrEqual(-3);}
     expect(offsets.size).toBeGreaterThan(10);
     expect(plantOffset(id('oak_sapling'),3,4,{x:9,y:9,z:9})).toEqual({x:0,y:0,z:0});
+  });
+  test('cross: offset plants on the west and north chunk edges keep straight 14 px diagonals that match plantOffset',()=>{
+    const plants=[[0,0,'poppy'],[0,8,'short_grass'],[8,0,'fern']] as const;
+    let edgeClamped=0;
+    for(let cz=-4;cz<4;cz++)for(let cx=-4;cx<4;cx++){
+      const n=hood(put=>{for(const [x,z,name] of plants)put(x,10,z,name);});
+      Object.assign(n[4],{cx,cz});
+      const qs=quads(meshChunk(n,fullLight()).cutout);
+      for(const [lx,lz,name] of plants){
+        const off=plantOffset(id(name),cx*16+lx,cz*16+lz,{x:0,y:0,z:0});
+        if(lx===0){expect(off.x).toBeGreaterThanOrEqual(-1);if(off.x===-1)edgeClamped++;}
+        if(lz===0){expect(off.z).toBeGreaterThanOrEqual(-1);if(off.z===-1)edgeClamped++;}
+        const own=qs.filter(q=>q.every(v=>Math.abs(v.x-lx*16-8)<=12&&Math.abs(v.z-lz*16-8)<=12));
+        expect(own).toHaveLength(2);
+        for(const q of own){
+          const lo=q.filter(v=>v.y===q[1].y);expect(lo).toHaveLength(2);
+          expect(Math.abs(lo[0].x-lo[1].x)).toBe(14);expect(Math.abs(lo[0].z-lo[1].z)).toBe(14);
+          expect(Math.max(...q.map(v=>v.y))-Math.min(...q.map(v=>v.y))).toBe(16);
+        }
+        expect(bounds(own)).toMatchObject({minX:lx*16+1+off.x,minZ:lz*16+1+off.z,minY:160+off.y});
+      }
+    }
+    expect(edgeClamped).toBeGreaterThan(5);
+    // Away from the edges the full ±4 px range remains.
+    const inner=new Set<number>();for(let x=0;x<200;x++)inner.add(plantOffset(id('poppy'),x*16+5,x*16+5,{x:0,y:0,z:0}).x);
+    expect(inner.has(-4)).toBe(true);expect(inner.has(4)).toBe(true);
   });
   test('crop: four planes in a # pattern sunk 1 px into the farmland',()=>{
     const qs=quads(alone('wheat_3').cutout);
@@ -504,27 +579,63 @@ describe('meshBlock',()=>{
     expect(meshBlock(id('air')).opaque.quads).toBe(0);
     for(const v of all(meshBlock(id('wheat_7'))).flat())expect(v.y).toBeGreaterThanOrEqual(0);
   });
+  test('held and dropped blocks never sway',()=>{
+    for(const name of ['oak_leaves','oak_sapling','short_grass','poppy','wheat_7','sugar_cane']){
+      const vs=all(meshBlock(id(name))).flat();
+      expect(vs.length).toBeGreaterThan(0);
+      for(const v of vs)expect(v.flags&1).toBe(0);
+    }
+  });
 });
 
 // ---- Border continuity and performance -------------------------------------------------------------
 describe('chunk borders',()=>{
-  test('vertices on a shared border get the same light, AO and tint from both chunks',()=>{
-    const t=createTerrain(5),cache=new Map<string,ChunkData>();
-    const gen=(x:number,z:number)=>{const k=`${x},${z}`;if(!cache.has(k))cache.set(k,t.generate(x,z));return cache.get(k)!;};
+  test('vertices on a shared border get the same light and AO from both chunks, and tints follow one world-space blend',()=>{
+    // Generated terrain with a varied world-space biome pattern, so the tint blend changes across the border.
+    const t=createTerrain(5),cache=new Map<string,ChunkData>(),pattern=['plains','swamp','jungle','desert'].map(biomeId);
+    const biomeAt=(wx:number,wz:number)=>pattern[(Math.floor(wx/3)*5+Math.floor(wz/2)*3)&3];
+    const gen=(x:number,z:number)=>{
+      const k=`${x},${z}`;
+      if(!cache.has(k)){const c=t.generate(x,z);for(let lz=0;lz<CS;lz++)for(let lx=0;lx<CS;lx++)c.biomes[lx+lz*CS]=biomeAt(x*CS+lx,z*CS+lz);cache.set(k,c);}
+      return cache.get(k)!;
+    };
     const hoodAt=(cx:number,cz:number)=>{const n:ChunkData[]=[];for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++)n.push(gen(cx+dx,cz+dz));return n;};
-    const na=hoodAt(0,0),nb=hoodAt(1,0);
-    const a=meshChunk(na,engineLight(na)),b=meshChunk(nb,engineLight(nb));
+    const meshAt=(cx:number)=>{const n=hoodAt(cx,0);return meshChunk(n,engineLight(n));};
+    // Two borders: chunk -1 | 0 and chunk 0 | 1.
+    const meshes=[-1,0,1].map(meshAt);let shared=0,checked=0;const sharedFaces=new Set<string>(),colours=new Set<number>();
+    // Light and AO: every cube face direction with vertices on the border line (tops, bottoms and the z-facing sides).
     const border=(m:ChunkMesh,x:number)=>{
       const map=new Map<string,Set<string>>();
       for(const q of quads(m.opaque)){
-        if(faceOf(q)!==2)continue;
-        for(const v of q)if(v.x===x){const k=`${v.y},${v.z}`;const s=map.get(k)??new Set();s.add(`${v.light},${v.shade}`);map.set(k,s);}
+        const f=faceOf(q);if(f<2)continue;
+        for(const v of q)if(v.x===x){const k=`${f},${v.y},${v.z}`;const s=map.get(k)??new Set();s.add(`${v.light},${v.shade}`);map.set(k,s);}
       }
       return map;
     };
-    const ma=border(a,256),mb=border(b,0);let shared=0;
-    for(const [k,s] of ma){const o=mb.get(k);if(!o)continue;shared++;expect([...o].sort()).toEqual([...s].sort());}
-    expect(shared).toBeGreaterThan(4);
+    // Tint: each grass top on either side of a border carries the 3×3 world-space blend of every column it covers.
+    const G=(wx:number,wz:number)=>{
+      let r=0,g=0,bl=0;
+      for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){const c=biomeDef(biomeAt(wx+dx,wz+dz)).grass;r+=c>>16;g+=(c>>8)&255;bl+=c&255;}
+      return Math.round(r/9)<<16|Math.round(g/9)<<8|Math.round(bl/9);
+    };
+    const grassTop=quads(meshBlock(id('grass_block')).opaque).find(q=>faceOf(q)===2)![0].tile;
+    const tints=(m:ChunkMesh,x:number,cx:number)=>{
+      for(const q of quads(m.opaque)){
+        if(faceOf(q)!==2||q[0].tile!==grassTop||!q.some(v=>v.x===x))continue;
+        const bb=bounds([q]);
+        for(let lx=bb.minX/16;lx<bb.maxX/16;lx++)for(let lz=bb.minZ/16;lz<bb.maxZ/16;lz++){
+          for(const v of q)expect(v.rgb).toBe(G(cx*CS+lx,lz));
+          colours.add(q[0].rgb);checked++;
+        }
+      }
+    };
+    for(let i=0;i<2;i++){
+      const ma=border(meshes[i],256),mb=border(meshes[i+1],0);
+      for(const [k,s] of ma){const o=mb.get(k);if(!o)continue;shared++;sharedFaces.add(k.split(',')[0]);expect([...o].sort()).toEqual([...s].sort());}
+      tints(meshes[i],256,i-1);tints(meshes[i+1],0,i);
+    }
+    expect(shared).toBeGreaterThan(4);expect(sharedFaces.has('2')).toBe(true);expect([...sharedFaces].some(f=>f==='4'||f==='5')).toBe(true);
+    expect(checked).toBeGreaterThan(16);expect(colours.size).toBeGreaterThan(2);
   });
 });
 describe('performance',()=>{

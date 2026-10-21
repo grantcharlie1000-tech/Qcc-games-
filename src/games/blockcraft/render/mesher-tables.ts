@@ -61,8 +61,12 @@ const FACE_OF_FACING:Record<Facing,number>={east:0,west:1,south:4,north:5};
 
 // ---- Per-block tables ------------------------------------------------------------------------------
 export const SHAPE=new Uint8Array(256),FAMILY_ID=new Uint16Array(256),CULL_SAME=new Uint8Array(256),EMISSIVE=new Uint8Array(256);
-/** 1 = every vertex sways (leaves), 2 = only the vertices above the block base (plants and crops). */
+/** 1 = every vertex sways (leaves), 2 = only the vertices above the block base (plants and crops). Never in meshBlock. */
 export const SWAY=new Uint8Array(256);
+/** Stacked plants (sugar cane): only the top segment's top vertices sway, so the joints between segments stay closed. */
+export const SWAY_STACK=new Uint8Array(256);
+/** Light-emitting cubes get no ambient occlusion (vanilla tesselateBlock: AO only when getLightEmission() == 0). */
+export const NO_AO=new Uint8Array(256);
 /** Per block and face (id*6+f): 0 untinted, 1 grass, 2 foliage, 3 water. */
 export const TINT_KIND=new Uint8Array(256*6);
 /** Vanilla random plant offset: 0 none, 1 horizontal (flowers), 2 horizontal and down (short grass, ferns). */
@@ -81,7 +85,7 @@ export const DOOR_BOX=new Uint8Array(256*6),DOOR_FRONT=new Uint8Array(256),DOOR_
 export const STAIRS_BACK=new Uint8Array(256*6);
 /** Grass, podzol and mycelium show the snowy side when snow or a snow block is on top. */
 export const SNOWY_DIRT=new Uint8Array(256),SNOW_COVER=new Uint8Array(256);
-/** Cubes in the translucent layer (ice): liquids draw no side face against them (the cube face covers that plane). */
+/** Cubes in the translucent layer (ice): liquids draw no face against them (the cube face already covers that plane). */
 export const TRANSLUCENT_CUBE=new Uint8Array(256);
 
 /** Boundary face profiles: two partial shapes whose touching faces have the same non-zero profile hide both faces
@@ -102,7 +106,9 @@ for(const b of BLOCKS){
   if(b.facing)FACING_FACE[id]=FACE_OF_FACING[b.facing];
   EMISSIVE[id]=+(shape===SH_TORCH||shape===SH_LANTERN||shape===SH_FIRE||LIQUID[id]===2||(shape===SH_CUBE&&b.lightEmission>=15));
   if(shape===SH_CUBE&&b.family.endsWith('_leaves'))SWAY[id]=1;
-  else if((shape===SH_CROSS&&b.family!=='sugar_cane')||shape===SH_CROP)SWAY[id]=2;
+  else if(shape===SH_CROSS||shape===SH_CROP)SWAY[id]=2;
+  SWAY_STACK[id]=+(b.family==='sugar_cane');
+  NO_AO[id]=+(shape===SH_CUBE&&b.lightEmission>0);
   if(b.liquid)LIQUID_HEIGHT[id]=b.liquid.falling||b.liquid.level===0?8/9:(8-b.liquid.level)/9;
   if(b.liquid&&!b.liquid.falling){
     const kind=LIQUID[id];

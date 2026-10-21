@@ -1,6 +1,8 @@
 // Liquids, after vanilla LiquidBlockRenderer: per-corner surface heights averaged with the neighbours, the still tile on
-// a level surface and the flowing tile turned along the flow elsewhere, faces only toward air or non-liquid
-// transparent blocks, and the liquid-surface vertex flag on the top.
+// a level surface and the flowing tile turned along the flow elsewhere, and the liquid-surface vertex flag on the top.
+// Faces are drawn toward air, non-opaque blocks and other liquids (vanilla isNeighborSameFluid compares fluid types, so
+// water beside lava leaves no hole), never against the same liquid, and never in the plane of a translucent cube face
+// (ice), which already covers it.
 import * as blocks from '../data/blocks';
 import * as constants from '../engine/constants';
 import type {MeshBuilder} from './mesher-builder';
@@ -67,9 +69,9 @@ export function liquid(b:MeshBuilder,p:number,x:number,y:number,z:number,id:numb
     H[2]=px(cornerHeight(B,kind,h0,hS,hW,p+PAD_X-1));H[3]=px(cornerHeight(B,kind,h0,hS,hE,p+PAD_X+1));
   }
   const ox=x*16,oy=y*16,oz=z*16,qx=b.qx,qy=b.qy,qz=b.qz,qu=b.qu,qv=b.qv;
-  // Top: drawn unless the same (or another) liquid is above; under an opaque block only when it sits below the top.
+  // Top: drawn unless the same liquid is above; under an opaque block or ice only when it sits below the cell top.
   const low=Math.min(H[0],H[1],H[2],H[3]);
-  if(!LIQUID[above]&&(!OPAQUE[above]||low<16)){
+  if(LIQUID[above]!==kind&&(!(OPAQUE[above]||TRANSLUCENT_CUBE[above])||low<16)){
     flowAt(B,p,kind,own);
     const still=flow.x===0&&flow.z===0,tile=still?LIQUID_STILL_TILE[kind]:LIQUID_FLOW_TILE[kind];
     const anchor=OPAQUE[above]?p:p+PAD_LAYER;
@@ -90,13 +92,13 @@ export function liquid(b:MeshBuilder,p:number,x:number,y:number,z:number,id:numb
     b.emit(layer,tile,rgb,true);
   }
   const below=B[p-PAD_LAYER];
-  if(b.iso||(!LIQUID[below]&&!OPAQUE[below])){
+  if(b.iso||(LIQUID[below]!==kind&&!OPAQUE[below]&&!TRANSLUCENT_CUBE[below])){
     b.setBox(0,0,0,16,16,16);
     b.boxFace(p,x,y,z,id,3,LIQUID_STILL_TILE[kind],layer,b.tintColour(TINT_KIND[id*6+3],col),emissive,M_SMOOTH|M_SHADE|M_NOCULL);
   }
   for(let k=0;k<4;k++){
     const f=SIDES[k],q=p+PAD_NB[f],n=B[q];
-    if(!b.iso&&(LIQUID[n]||OPAQUE[n]||TRANSLUCENT_CUBE[n]))continue;
+    if(!b.iso&&(LIQUID[n]===kind||OPAQUE[n]||TRANSLUCENT_CUBE[n]))continue;
     if(!emissive||b.iso)b.corners(q,f,false);
     const na=N_AXIS[f],ua=U_AXIS[f],shade=Math.round(255*FACE_SHADE[f]);
     for(let c=0;c<4;c++){
