@@ -251,7 +251,8 @@ function saplingTree(game:Game,x:number,y:number,z:number,d:BlockDef):boolean{
   const w=game.world,wood=d.family.replace(/_sapling$/,'') as WoodType,r=rng(game);
   // 2×2 saplings grow mega spruce and dark oak (dark oak only grows from 2×2).
   if(wood==='spruce'||wood==='dark_oak'){
-    for(const [ox,oz] of [[0,0],[-1,0],[0,-1],[-1,-1]]){
+    // Vanilla MegaTreeGrower order: x offset 0 then -1, z offset 0 then -1; the tree grows from the north-west sapling.
+    for(const [ox,oz] of [[0,0],[0,-1],[-1,0],[-1,-1]]){
       const cells=[[x+ox,z+oz],[x+ox+1,z+oz],[x+ox,z+oz+1],[x+ox+1,z+oz+1]];
       if(!cells.every(([cx,cz])=>blockDef(w.get(cx,y,cz)).family===d.family))continue;
       const base=cells[0],others=cells.filter(([cx,cz])=>cx!==base[0]||cz!==base[1]);
@@ -292,7 +293,7 @@ function growGrass(game:Game,x:number,y:number,z:number){
   attempts:for(let i=0;i<128;i++){
     let px=x,py=y+1,pz=z;
     for(let j=0;j<i/16;j++){
-      px+=Math.floor(r()*3)-1;py+=Math.floor((Math.floor(r()*3)-1)*Math.floor(r()*3)/2);pz+=Math.floor(r()*3)-1;
+      px+=Math.floor(r()*3)-1;py+=Math.trunc((Math.floor(r()*3)-1)*Math.floor(r()*3)/2);pz+=Math.floor(r()*3)-1;
       const below=w.get(px,py-1,pz),here=w.get(px,py,pz);
       if(below!==grass||here<0||FULL_CUBE[here])continue attempts;
     }
