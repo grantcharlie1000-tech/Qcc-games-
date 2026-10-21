@@ -194,38 +194,45 @@ export const packedIce:Painter=cached((x,y)=>{
 interface OreStyle{dark:number;mid:number;light:number;accent?:number;clusters:number;size:number}
 const ORE_STYLES:Record<string,OreStyle>={
   coal:{dark:0x111111,mid:0x262626,light:0x4a4a4a,clusters:6,size:9},
-  iron:{dark:0x9a7154,mid:0xc99c7a,light:0xead0b2,clusters:6,size:7},
-  copper:{dark:0x8a4426,mid:0xc66b3e,light:0xea935e,accent:0x4ea78a,clusters:6,size:8},
-  gold:{dark:0xb88e18,mid:0xf3cf38,light:0xfff29a,clusters:6,size:7},
+  iron:{dark:0x9a7154,mid:0xc99c7a,light:0xead0b2,clusters:5,size:8},
+  copper:{dark:0x8a4426,mid:0xc66b3e,light:0xea935e,accent:0x4ea78a,clusters:5,size:9},
+  gold:{dark:0xb88e18,mid:0xf3cf38,light:0xfff29a,clusters:5,size:8},
   redstone:{dark:0x8e0b07,mid:0xd31910,light:0xff5a48,clusters:6,size:7},
   lapis:{dark:0x14318a,mid:0x2254ca,light:0x4c80f2,clusters:6,size:7},
-  diamond:{dark:0x1a9890,mid:0x4fdcd3,light:0xc2fffa,clusters:6,size:7},
-  emerald:{dark:0x0d7a2e,mid:0x1cbf55,light:0x8ef4ae,clusters:6,size:6}
+  diamond:{dark:0x1a9890,mid:0x4fdcd3,light:0xc2fffa,clusters:5,size:7},
+  emerald:{dark:0x0d7a2e,mid:0x1cbf55,light:0x8ef4ae,clusters:5,size:6}
 };
 const DIRS=[[1,0],[-1,0],[0,1],[0,-1]] as const;
 /** Ore cluster mask: 0 none, 1 dark lower-right rim, 2 body, 3 upper-left highlight, 4 accent. Each cluster grows
  *  from a 2×2 core by adding edge neighbours, preferring cells that touch more of the cluster, so ores read as
- *  chunky nuggets embedded in the stone rather than thin worms. */
+ *  chunky nuggets embedded in the stone rather than thin worms. Clusters never touch each other (not even at a
+ *  corner), so every nugget stays a separate blob as in the vanilla ores. */
 function oreMask(style:OreStyle,salt:number):Uint8Array{
-  const mask=new Uint8Array(T*T),random=rng(salt),centres:[number,number][]=[];
-  for(let tries=0;centres.length<style.clusters&&tries<300;tries++){
+  const mask=new Uint8Array(T*T),owner=new Int8Array(T*T).fill(-1),random=rng(salt),centres:[number,number][]=[];
+  const nearOther=(x:number,y:number,id:number)=>{
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<T&&ny<T&&owner[ny*T+nx]>=0&&owner[ny*T+nx]!==id)return true;}
+    return false;
+  };
+  for(let tries=0;centres.length<style.clusters&&tries<400;tries++){
     const cx=1+Math.floor(random()*13),cy=1+Math.floor(random()*13);
-    if(centres.some(([x,y])=>Math.max(Math.abs(x-cx),Math.abs(y-cy))<4))continue;
+    if(centres.some(([x,y])=>Math.max(Math.abs(x-cx),Math.abs(y-cy))<(tries<300?5:4)))continue;
+    const id=centres.length,core=[[cx,cy],[cx+1,cy],[cx,cy+1],[cx+1,cy+1]];
+    if(core.some(([x,y])=>nearOther(x,y,id)))continue;
     centres.push([cx,cy]);
-    const blob=[[cx,cy],[cx+1,cy],[cx,cy+1],[cx+1,cy+1]];
+    const blob=core;for(const [x,y] of blob)owner[y*T+x]=id;
     const has=(x:number,y:number)=>blob.some(([bx,by])=>bx===x&&by===y);
     while(blob.length<style.size){
       const candidates:[number,number,number][]=[];let total=0;
       for(const [bx,by] of blob)for(const [dx,dy] of DIRS){
         const nx=bx+dx,ny=by+dy;
-        if(nx<0||ny<0||nx>15||ny>15||has(nx,ny)||candidates.some(([x,y])=>x===nx&&y===ny))continue;
+        if(nx<0||ny<0||nx>15||ny>15||has(nx,ny)||nearOther(nx,ny,id)||candidates.some(([x,y])=>x===nx&&y===ny))continue;
         const touching=DIRS.filter(([ex,ey])=>has(nx+ex,ny+ey)).length,weight=touching*touching+1;
         candidates.push([nx,ny,weight]);total+=weight;
       }
       if(!candidates.length)break;
       let r=random()*total,chosen=candidates[candidates.length-1];
       for(const c of candidates){r-=c[2];if(r<0){chosen=c;break;}}
-      blob.push([chosen[0],chosen[1]]);
+      blob.push([chosen[0],chosen[1]]);owner[chosen[1]*T+chosen[0]]=id;
     }
     // Body everywhere, a dark rim where the nugget ends below and to the right, one highlight on its upper-left pixel.
     let lit=blob[0];

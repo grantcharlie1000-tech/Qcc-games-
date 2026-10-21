@@ -118,6 +118,35 @@ describe('tile groups',()=>{
       expect(shared/N,o).toBeGreaterThan(.55);expect(shared/N,o).toBeLessThan(.9);
     }
   });
+  test('each ore shows 4 to 6 separate mineral blobs, as in vanilla',()=>{
+    // Blobs are 4-connected groups of pixels that differ from the base; separate blobs never touch, even diagonally.
+    const blobs=(name:string,base:string)=>{
+      const p=px(name),b=px(base),on=(x:number,y:number)=>x>=0&&y>=0&&x<TILE&&y<TILE&&
+        Math.abs(p[(y*TILE+x)*4]-b[(y*TILE+x)*4])+Math.abs(p[(y*TILE+x)*4+1]-b[(y*TILE+x)*4+1])+Math.abs(p[(y*TILE+x)*4+2]-b[(y*TILE+x)*4+2])>30;
+      const label=new Int16Array(N).fill(-1),sizes:number[]=[];
+      for(let i=0;i<N;i++){
+        if(!on(i%TILE,Math.floor(i/TILE))||label[i]>=0)continue;
+        const stack=[i];label[i]=sizes.length;let size=0;
+        while(stack.length){
+          const j=stack.pop()!,x=j%TILE,y=Math.floor(j/TILE);size++;
+          for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const k=(y+dy)*TILE+x+dx;if(on(x+dx,y+dy)&&label[k]<0){label[k]=sizes.length;stack.push(k);}}
+        }
+        sizes.push(size);
+      }
+      for(let i=0;i<N;i++){
+        const x=i%TILE,y=Math.floor(i/TILE);if(label[i]<0)continue;
+        for(const [dx,dy] of [[1,1],[1,-1]]){const k=(y+dy)*TILE+x+dx;if(on(x+dx,y+dy))expect(label[k],`${name} blobs touch at ${x},${y}`).toBe(label[i]);}
+      }
+      return sizes;
+    };
+    for(const ore of ['coal','iron','copper','gold','redstone','lapis','diamond','emerald']){
+      for(const [name,base] of [[`${ore}_ore`,'stone'],...(ore==='emerald'?[]:[[`deepslate_${ore}_ore`,'deepslate']])]){
+        const sizes=blobs(name,base);
+        expect(sizes.length,name).toBeGreaterThanOrEqual(4);expect(sizes.length,name).toBeLessThanOrEqual(6);
+        for(const size of sizes){expect(size,name).toBeGreaterThanOrEqual(4);expect(size,name).toBeLessThanOrEqual(12);}
+      }
+    }
+  });
   test('deepslate is dark with vertical grain and a distinct top',()=>{
     const deep=px('deepslate'),stone=px('stone');
     expect(luma(...mean(deep) as [number,number,number])).toBeLessThan(.8*luma(...mean(stone) as [number,number,number]));
@@ -130,6 +159,12 @@ describe('tile groups',()=>{
     const colours=WOOL_COLOURS.map(c=>mean(px(`${c}_wool`)));
     for(let i=0;i<colours.length;i++)for(let j=i+1;j<colours.length;j++)expect(dist(colours[i],colours[j]),`${WOOL_COLOURS[i]} vs ${WOOL_COLOURS[j]}`).toBeGreaterThan(25);
     expect(luma(...colours[0] as [number,number,number])).toBeGreaterThan(200);expect(luma(...colours[15] as [number,number,number])).toBeLessThan(45);
+    // Every colour, black included, shows its woven fibres: visible but gentle light-dark variation.
+    for(const colour of WOOL_COLOURS){
+      const p=px(`${colour}_wool`),l:number[]=[];for(let i=0;i<N;i++)l.push(luma(p[i*4],p[i*4+1],p[i*4+2]));
+      const m=l.reduce((a,b)=>a+b)/N,sd=Math.sqrt(l.reduce((a,b)=>a+(b-m)**2,0)/N);
+      expect(sd,colour).toBeGreaterThan(2.5);expect(sd,colour).toBeLessThan(16);
+    }
   });
   test('copper oxidises from orange to teal',()=>{
     const stages=['copper_block','exposed_copper','weathered_copper','oxidized_copper'].map(n=>mean(px(n)));
