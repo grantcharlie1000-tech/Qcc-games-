@@ -21,7 +21,7 @@ Hit a legal ball first. Then pot a ball or reach a cushion. Scratching, missing 
 - Every break foul/illegal break automatically gives the opponent ball-in-hand anywhere; there are no accept-position/re-rack choices or head-string restriction.
 - A break 8 is automatically re-spotted near the foot spot, moved along the long axis until clear. No re-break choice.
 - No “safety” declaration, temporary group claims while the table is open, automatic stalemate/referee procedure, spin, jumps, off-table balls, equipment/physical-player or tournament conduct fouls. Restart is available for a stalled game.
-- Physics uses circles and simplified planar cushion noses with circular pocket capture regions. It does not simulate pocket jaws, rattling, cloth spin, throw or a real table's exact dimensions.
+- Physics uses circles, six finite cushion noses with rounded jaw endpoints, and circular pocket capture regions. It does not simulate pocket rattling, cloth spin, throw or a real table's exact dimensions.
 
 ## Controls and feedback
 
@@ -33,7 +33,7 @@ On the focused table, left/right rotate (Shift gives fine 0.2°), up/down change
 
 ## Simulation and AI
 
-The model is separate from DOM and uses a fixed 1/240 second step. Equal-mass impulses affect the collision normal only; position separation and approaching-only impulses prevent repeated bounce jitter. Ball restitution 0.97, cushion restitution 0.88, linear rolling deceleration 105 units/s². Maximum shot speed 900 units/s advances only 3.75 units per step, below half the 9.5-unit radius. Four contact iterations per step handle the rack. Pocket checks measure swept segment distance to each opening before cushion response. Speeds below 2 settle exactly to zero.
+The model is separate from DOM and uses a fixed 1/240 second step. Equal-mass impulses affect the collision normal only; position separation and approaching-only impulses prevent repeated bounce jitter. Ball restitution 0.97, cushion restitution 0.88, linear rolling deceleration 105 units/s². Maximum shot speed 900 units/s advances only 3.75 units per step, below half the 9.5-unit radius. Four contact iterations per step handle the rack. Pocket checks measure swept segment distance to each opening before cushion response. Pocket wells have a 26-unit visible radius, a contrasting inner rim at the 22-unit capture radius, and 30-unit mouth cutouts. The six finite rails, rounded jaw collisions, cushion artwork and first-contact aim guide share the same geometry. The AI reflects kicks from the actual rail/jaw normal; a ray into a pocket is not treated as a cushion. Speeds below 2 settle exactly to zero.
 
 The offline computer scores legal target/pocket pairs using ghost-ball geometry, cut angle, distance and clear paths for cue and object. It selects legal direct contacts if no pot is open, then searches one-cushion kicks. As a last resort when no legal escape is found it shoots toward a legal target; a resulting obstruction/foul is judged normally. It is a casual opponent, not an optimal solver. Power estimates include travel and cut loss. A deterministic both-sides simulation tests complete rack progression.
 

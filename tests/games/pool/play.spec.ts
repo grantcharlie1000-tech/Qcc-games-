@@ -42,3 +42,25 @@ for(const [pocket,winner] of [['2','Player 1'],['0','Player 2']])test(`actual 8-
  const {createGame}=await import('../../../src/games/pool/model');const fixture=createGame('two');fixture.break=false;fixture.groups=['solids','stripes'];for(const b of fixture.balls)if(b.id!==0&&b.id!==8)b.pocketed=true;fixture.balls[0].x=220;fixture.balls[0].y=420;fixture.balls[8].x=110;fixture.balls[8].y=420;
  await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Pool',exact:true})).toBeVisible();await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:pool',JSON.stringify({version:1,data})),fixture);await page.getByRole('link',{name:'Play Pool',exact:true}).click();await expect(page.locator('.pool-live')).toContainText('group is clear');await page.getByLabel('8-ball pocket').selectOption(pocket);await directShot(page,Math.PI,.38);await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','over');await expect(page.locator('.pool-message')).toContainText(`${winner} won`);await expect(page.locator('.pool-game')).toHaveAttribute('data-gesture','idle');await page.reload();await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','over');
 });
+
+test('off-centre side-pocket shot drops through the visible opening',async({page})=>{
+ const {createGame}=await import('../../../src/games/pool/model');
+ const fixture=createGame('two');fixture.break=false;fixture.groups=['solids','stripes'];
+ for(const b of fixture.balls)if(b.id!==0&&b.id!==1&&b.id!==8)b.pocketed=true;
+ Object.assign(fixture.balls[0],{x:220,y:438});
+ Object.assign(fixture.balls[1],{x:110,y:438});
+ Object.assign(fixture.balls[8],{x:280,y:250});
+ await page.getByRole('link',{name:'Back to game library'}).click();
+ await expect(page.getByRole('link',{name:'Play Pool',exact:true})).toBeVisible();
+ await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:pool',JSON.stringify({version:1,data})),fixture);
+ await page.getByRole('link',{name:'Play Pool',exact:true}).click();
+ await directShot(page,Math.PI,.38);
+ const root=page.locator('.pool-game');
+ await expect(root).toHaveAttribute('data-shots','1');
+ await expect(root).toHaveAttribute('data-phase','aim',{timeout:15000});
+ await expect(page.locator('.pool-message')).toContainText('Good pot');
+ await expect(root).toHaveAttribute('data-turn','0');
+ const state=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:pool')!).data);
+ expect(state.balls.find((b:{id:number})=>b.id===1).pocketed).toBe(true);
+ expect(state.ballInHand).toBe(false);
+});

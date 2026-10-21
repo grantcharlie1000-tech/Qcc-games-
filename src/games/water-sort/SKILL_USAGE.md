@@ -52,3 +52,15 @@ and `https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/api/elem
 A real Chromium regression was observed failing on missing capture before the
 implementation. New real-mouse tests verify retargeted moves/up, release before
 rerender, and zero pours after capture cancellation and lifecycle interruptions.
+
+## Level expansion and shared scores — 21 October 2026
+
+Applied the project's planning, test-driven-development and verification skills,
+plus the already-read game-development web/2D guides. The level-count test failed
+at nine before appending eighteen seeded boards. Kept the generator and original
+nine level indexes unchanged; independent BFS, witnesses, solver and reachable-state
+recovery now cover all 27 boards. Shared online scores use the Netlify Database and
+Functions skills, the connected coding context, and the existing site architecture.
+Independent code review found a per-request pool allocation; verified the installed
+library, applied the receiving-code-review workflow and cached the warm handler.
+Follow-up review found no remaining blockers.

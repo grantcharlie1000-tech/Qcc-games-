@@ -252,3 +252,8 @@ test('a successor merges its own early ACK with a predecessor queue left after i
  const d=worker({version:'next',previous:'new',backend:c.backend});connect(c,d);await d.emit('install');await d.emit('message',{data:{type:'ARCADE_CLIENT_READY',entry:origin+'assets/next-entry.js'},source:{id:'d-ready'}});d.clients.splice(0,d.clients.length,{id:'early-ready',url:origin},{id:'d-ready',url:origin});await d.emit('activate');
  const state=await d.backend.get('pocket-arcade-v2:/:next:shell')!.get(origin+'.arcade-update-state')!.clone().json();expect(state.pending).toEqual([]);expect(state.early).toEqual([]);expect(state.owners).toContainEqual({id:'early-ready',entry:origin+'assets/old-entry.js'});expect(state.owners).toContainEqual({id:'d-ready',entry:origin+'assets/next-entry.js'});expect(d.backend.has(oldPack)).toBe(true);
 });
+test('leaderboard reads bypass the service worker and cannot replay a cached ranking',async()=>{
+ const w=worker(),respondWith=vi.fn();
+ w.handlers.fetch({request:new Request(origin+'.netlify/functions/leaderboard?game=snake'),respondWith,waitUntil:()=>{}});
+ expect(respondWith).not.toHaveBeenCalled();
+});

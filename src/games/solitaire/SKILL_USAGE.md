@@ -30,3 +30,15 @@ No installed specialty Klondike/card-rules skill exists in the inventory. No ins
 State invariants are directly tested: every one of the 52 card IDs appears exactly once, valid face-up tableau sequences, hidden prefix only, suit/rank foundation order, seed/counter validity, versioned snapshot/history validation. There is no solver or guarantee that a hint leads to a win. Physical phone hardware and WebKit were not available/executed; touch was exercised in system Chromium through CDP.
 
 Review correction: also read `.agents/skills/receiving-code-review/SKILL.md` (obra/superpowers @ bb92a77741419a4ab5f06e711a283343f1ada0c3, MIT). Verified the reported foundation-hint omission using a complete valid 52-card fixture and failing model/UI regressions. Kept foundation withdrawals as a last fallback and explicitly tested existing productive/stock priorities; fresh verification is appended to TEST_RESULTS.
+
+## Hint loops — 21 October 2026
+
+Applied the already-loaded project `using-superpowers`, `systematic-debugging`,
+`game-development` (web-games and 2d-games), `test-driven-development` and
+`verification-before-completion` skills. Reproduced a foundation withdrawal/return
+loop, stock recycling and an unhelpful first-legal-move choice with failing model
+tests. Replaced the greedy hint order with bounded progress search and saved-history
+cycle checks. The earlier foundation-only fallback expectation is intentionally
+replaced: manual withdrawal remains legal, while hints require a productive route.
+Added a real productive foundation setup fixture and browser tests. Independent
+review completed through the repository's `requesting-code-review` workflow: no blocking findings.

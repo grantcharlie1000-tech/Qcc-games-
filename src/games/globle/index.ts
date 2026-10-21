@@ -135,14 +135,27 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     return false;
   }
 
-  function submit() {
+  function submit(value = input.value) {
     if (paused || disposed) return;
     // Don't let a guess typed for yesterday's puzzle land on the new one.
     if (checkDate() && state.mode === 'daily') return;
-    const typed = input.value;
+    const typed = value;
     const outcome = evaluate(round(), typed);
     if (outcome.kind !== 'guess') {
       say(outcome.message, outcome.kind === 'finished' ? 'info' : 'error');
+      if (outcome.kind === 'unknown' && outcome.suggestion) {
+        const country = nameOf(outcome.suggestion);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'gl-correction';
+        button.textContent = country;
+        // The model ends its suggestion with the country name and a question mark.
+        message.replaceChildren(document.createTextNode(outcome.message.slice(0, -country.length - 1)), button, '?');
+        button.addEventListener('click', () => {
+          submit(country);
+          if (!round().won) input.focus({preventScroll: true});
+        }, {signal});
+      }
       input.select();
       return;
     }

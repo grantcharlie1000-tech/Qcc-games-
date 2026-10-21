@@ -43,6 +43,34 @@ const view = async (page: Page) => {
 };
 const documentScroll = (page: Page) => page.evaluate(() => ({x: scrollX, y: scrollY, height: document.documentElement.scrollHeight, view: innerHeight}));
 
+test('spelling corrections submit a guess on click and keyboard activation', async ({page}) => {
+  await practice(page, 'FRA');
+  await guess(page, 'Germny');
+  const correction = page.getByRole('button', {name: 'Germany', exact: true});
+  await expect(correction).toBeVisible();
+  expect(await count(page)).toBe('0');
+  await correction.click();
+  await expect(page.locator('.gl-guess[data-id=DEU]')).toBeVisible();
+  expect(await count(page)).toBe('1');
+  await expect(input(page)).toHaveValue('');
+  await expect(input(page)).toBeFocused();
+
+  await guess(page, 'Germny');
+  await correction.click();
+  await expect(page.locator('.gl-message')).toContainText('already guessed Germany');
+  expect(await count(page)).toBe('1');
+
+  await guess(page, 'Frnace');
+  const winner = page.getByRole('button', {name: 'France', exact: true});
+  await winner.focus();
+  await winner.press('Enter');
+  await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
+  await expect(page.locator('.gl-win-text')).toContainText('2 guesses');
+  await page.reload();
+  await expect(page.locator('.gl-guess[data-id=DEU]')).toBeVisible();
+  await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
+});
+
 test('complete winning round with neighbours, aliases, duplicates and invalid entries', async ({page}) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

@@ -57,12 +57,12 @@ describe('soluble level construction and search', () => {
     }
     expect(won(state)).toBe(true);
   });
-  it('ships nine distinct levels with all three difficulty tiers', () => {
-    expect(LEVELS).toHaveLength(9);
-    expect(new Set(LEVELS.map(l => boardKey(l.board))).size).toBe(9);
+  it('ships 27 distinct levels with all three difficulty tiers', () => {
+    expect(LEVELS).toHaveLength(27);
+    expect(new Set(LEVELS.map(l => boardKey(l.board))).size).toBe(27);
     expect(new Set(LEVELS.map(l => l.difficulty)).size).toBe(3);
   });
-  it.each(Array.from({length:9}, (_, i) => i))('independently BFS verifies shipped level %i and its reverse witness', index => {
+  it.each(Array.from({length:LEVELS.length}, (_, i) => i))('independently BFS verifies shipped level %i and its reverse witness', index => {
     const level = LEVELS[index];
     expect(level).toBeDefined();
     const plan = independentSolve(level.board);
@@ -74,7 +74,7 @@ describe('soluble level construction and search', () => {
     for (const [a,b] of level.witness) board = pour(board, a, b)!.board;
     expect(won(board)).toBe(true);
   });
-  it.each(Array.from({length:9}, (_, i) => i))('finds legal decreasing hint routes from level %i', index => {
+  it.each(Array.from({length:LEVELS.length}, (_, i) => i))('finds legal decreasing hint routes from level %i', index => {
     let board = cloneBoard(LEVELS[index].board);
     const plan = solve(board);
     expect(plan?.length).toBeGreaterThan(0);

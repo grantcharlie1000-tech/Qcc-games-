@@ -8,6 +8,7 @@ import {activateUpdate, cacheAll, checkForUpdates, watchUpdates} from './core/of
 import {StudyView} from './study/view';
 import {reloadAfterActivation} from './core/update';
 import {fitGameStage} from './core/viewport-fit';
+import {LeaderboardView} from './leaderboard/view';
 
 const icon=(name:string)=>{
   const paths:Record<string,string>={menu:'<path d="M4 7h16M4 12h10"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
@@ -15,12 +16,13 @@ const icon=(name:string)=>{
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header class="topbar"><button class="hamburger icon-button" aria-label="Open menu">${icon('menu')}</button><div class="count-pill" aria-label="${games.length} games">${icon('grid')}<strong>${games.length}</strong></div><button class="favourites-pill" aria-pressed="false">${icon('star')}<span>FAVOURITES</span></button></header><main id="content"></main>
-<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Pocket Arcade</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. No accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Pocket Arcade</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. No accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog"><form method="dialog" class="dialog-head"><h2>How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
 const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const preferences=store.settings();
+const leaderboards=new LeaderboardView();
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
@@ -133,7 +135,7 @@ function openStudy(){
   resumeAfterStudy=!!activeId&&(!paused||pausedForDialog);
   const saved=setPaused(true); // Pause and serialize synchronously, before painting the chapter.
   pausedForDialog=false;
-  if(menu.open)menu.close();if(rulesDialog.open)rulesDialog.close();
+  if(menu.open)menu.close();if(rulesDialog.open)rulesDialog.close();if(leaderboards.root.open)leaderboards.root.close();
   hideArcade();study.showArticle(studyMessage(saved));
 }
 function returnFromStudy(){
@@ -158,6 +160,7 @@ async function route(){
   const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
   const wasInGame=!!activeId;
   if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
+  if(leaderboards.root.open){pausedForDialog=false;leaderboards.root.close();}
   const token=++generation;leave();
   if(!id){library();if(wasInGame)requestAnimationFrame(()=>{if(!activeId)window.scrollTo(libraryScroll.x,libraryScroll.y);});return;}
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
@@ -183,6 +186,7 @@ async function route(){
         if(token!==generation)return;
         document.querySelector('#game-score strong')!.textContent=String(Math.floor(score));
         const next=store.recordScore(id,score);
+        leaderboards.sync.queue(id,Math.floor(next));
         document.querySelector('#game-best strong')!.textContent=String(Math.floor(next));
       },
       setLevel(level){if(token===generation)document.querySelector('#game-level')!.textContent=String(level);},
@@ -209,11 +213,11 @@ async function route(){
       announce(selected?'Added to favourites':'Removed from favourites');storageStatus();
     });
     autosave=window.setInterval(save,5000);
-    if(paused||study.isOpen||document.hidden||menu.open||rulesDialog.open){
+    if(paused||study.isOpen||document.hidden||menu.open||rulesDialog.open||leaderboards.root.open){
       if(!document.hidden&&(menu.open||rulesDialog.open))pausedForDialog=true;
       setPaused(true);
     }
-    if(!study.isOpen&&!menu.open&&!rulesDialog.open)stage.focus();
+    if(!study.isOpen&&!menu.open&&!rulesDialog.open&&!leaderboards.root.open)stage.focus();
   }catch(error){
     if(token!==generation)return;
     const stage=document.querySelector('#game-stage')!;
@@ -227,11 +231,18 @@ function openMenu(){
 }
 document.querySelector('.hamburger')!.addEventListener('click',openMenu);
 function dialogClosed(){
+  if(menu.open||rulesDialog.open||leaderboards.root.open)return;
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
 menu.addEventListener('close',()=>{if(updateBusy)updateRequest++;dialogClosed();if(!activeId&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
+leaderboards.root.addEventListener('close',dialogClosed);
+document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
+  const resume=pausedForDialog||!!activeId&&!paused;
+  pausedForDialog=false;if(menu.open)menu.close();if(activeId)setPaused(true);
+  leaderboards.open(activeId);pausedForDialog=resume;
+});
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
 document.querySelector('#open-study')!.addEventListener('click',openStudy);
 document.querySelector('.favourites-pill')!.addEventListener('click',event=>{

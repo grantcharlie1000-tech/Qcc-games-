@@ -16,3 +16,8 @@ export function foundationWithdrawalState():State {
   tableau:tops.map((id,pile)=>[...covered.slice(pile*3,pile*3+3).map(id=>({id,up:false})),{id,up:true}]),
  };
 }
+
+/** Queen of spades must return homeward to the red King to receive a Jack and reveal a card. */
+export function productiveWithdrawalState():State {
+ const s=foundationWithdrawalState();s.stock.push(s.foundations[2].pop()!);return s;
+}
