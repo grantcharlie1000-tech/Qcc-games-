@@ -5,7 +5,7 @@ import {CS} from '../engine/constants';
 import {itemDef,type ItemStack} from '../data/items';
 import {biomeDef} from '../data/biomes';
 import {blockDef} from '../data/blocks';
-import {VIEW_DISTANCES,type Game} from '../engine/contracts';
+import {VIEW_DISTANCES,type EffectName,type Game,type StatusEffect} from '../engine/contracts';
 
 export type Fill='full'|'half'|null;
 export type HeartType='normal'|'poison';
@@ -221,6 +221,54 @@ export const RARITY_COLOURS:Record<Rarity,string>={common:'#ffffff',uncommon:'#f
 const RARITY:Record<string,Rarity>={golden_apple:'rare'};
 export function heldName(stack:ItemStack):{text:string;rarity:Rarity}{
   return{text:itemDef(stack.id)?.displayName??stack.id,rarity:RARITY[stack.id]??'common'};
+}
+
+// ---- Status effects ------------------------------------------------------------------------------------
+export interface EffectInfo{displayName:string;beneficial:boolean;
+  /** Vanilla MobEffect colour: orders effects of equal duration. */
+  colour:number}
+export const EFFECTS:Readonly<Record<EffectName,EffectInfo>>={
+  speed:{displayName:'Speed',beneficial:true,colour:0x33ebff},
+  slowness:{displayName:'Slowness',beneficial:false,colour:0x8bafe0},
+  regeneration:{displayName:'Regeneration',beneficial:true,colour:0xcd5cab},
+  fire_resistance:{displayName:'Fire Resistance',beneficial:true,colour:0xe49a3a},
+  night_vision:{displayName:'Night Vision',beneficial:true,colour:0xc2ff66},
+  hunger:{displayName:'Hunger',beneficial:false,colour:0x587653},
+  poison:{displayName:'Poison',beneficial:false,colour:0x87a363},
+  absorption:{displayName:'Absorption',beneficial:true,colour:0x2552a5},
+  saturation:{displayName:'Saturation',beneficial:true,colour:0xf82423}};
+export interface EffectIcon{name:EffectName;beneficial:boolean;
+  /** GUI pixels from the right edge of the screen to the 24×24 frame's right edge, and from the top of the strip. */
+  right:number;top:number;
+  /** Icon alpha 0..1 (the frame stays opaque). */
+  alpha:number;
+  /** Name, level and time left, e.g. "Slowness II, 0:05". */
+  label:string}
+const ROMAN=['','I','II','III','IV','V','VI','VII','VIII','IX','X'];
+/** StringUtil.formatTickDuration: m:ss, or h:mm:ss from an hour. */
+export function formatTicks(ticks:number){
+  const t=Math.max(0,Math.floor(ticks/20)),h=Math.floor(t/3600),m=Math.floor(t/60)%60,sec=String(t%60).padStart(2,'0');
+  return h?`${h}:${String(m).padStart(2,'0')}:${sec}`:`${m}:${sec}`;
+}
+const clamp=(v:number,lo:number,hi:number)=>Math.min(hi,Math.max(lo,v));
+/** Gui.renderEffects icon alpha: opaque until the last 200 ticks, then half and pulsing faster toward the end while it
+ *  fades out. Reduced motion keeps the dimming without the pulse. */
+export function effectAlpha(ticks:number,reduced:boolean){
+  if(ticks>200)return 1;
+  const m=Math.max(0,Math.floor(ticks)),base=clamp(m/100,0,.5);
+  // The pulse can dip below zero near the end, which draws nothing.
+  return reduced?base:Math.max(0,base+Math.cos(m*Math.PI/5)*clamp((10-Math.floor(m/20))/10*.25,0,.25));
+}
+/** Gui.renderEffects: active effects top-right, longest first (then by colour); beneficial ones fill the top row
+ *  from the right edge 25 GUI pixels apart, harmful ones the row below (26 lower). */
+export function effectIcons(effects:readonly StatusEffect[],reduced:boolean):EffectIcon[]{
+  const shown=effects.filter(e=>EFFECTS[e.name]&&e.ticks>0).sort((a,b)=>b.ticks-a.ticks||EFFECTS[b.name].colour-EFFECTS[a.name].colour);
+  let good=0,bad=0;
+  return shown.map(e=>{
+    const info=EFFECTS[e.name],n=info.beneficial?++good:++bad,level=Math.max(1,Math.floor(e.level));
+    return{name:e.name,beneficial:info.beneficial,right:25*n-24,top:info.beneficial?1:27,alpha:effectAlpha(e.ticks,reduced),
+      label:`${info.displayName}${level>1?` ${ROMAN[level]??level}`:''}, ${formatTicks(e.ticks)}`};
+  });
 }
 
 // ---- Compass and clock ---------------------------------------------------------------------------------

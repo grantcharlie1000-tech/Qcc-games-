@@ -2,8 +2,9 @@ import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
 
 // HUD and menus in the browser: layout at 1366×768 and 390×844 (clear of the arcade toolbar and the shell's corner
-// buttons), bars and hotbar drawn from state, F1/F3 flags, the action bar, world options, controls, advancements
-// and the death screen. Software WebGL is slow, so timeouts are generous. Screenshots go to HUD_EVIDENCE_DIR.
+// buttons), bars and hotbar drawn from state, status effects, F1/F3 flags, the pixel-font action bar, the insets
+// published for other layers, world options, controls, advancements and the death screen. Software WebGL is slow,
+// so timeouts are generous. Screenshots go to HUD_EVIDENCE_DIR.
 type Box={x:number;y:number;width:number;height:number};
 const evidence=(name:string)=>`${process.env.HUD_EVIDENCE_DIR??'test-results/hud-evidence'}/${name}.png`;
 const overlaps=(a:Box,b:Box)=>a.x<b.x+b.width-.5&&b.x<a.x+a.width-.5&&a.y<b.y+b.height-.5&&b.y<a.y+a.height-.5;
@@ -17,7 +18,7 @@ async function boxes(page:Page,selector:string):Promise<Box[]>{
   return page.locator(selector).evaluateAll(els=>els.filter(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;})
     .map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};}));
 }
-const HUD_PARTS='.bc-hotbar-bg,.bc-offhand,.bc-xp,.bc-level,.bc-hearts .bc-icon,.bc-food .bc-icon,.bc-armor .bc-icon,.bc-air .bc-icon,.bc-readouts[data-place=right] .bc-dial,.bc-held-name';
+const HUD_PARTS='.bc-hotbar-bg,.bc-offhand,.bc-xp,.bc-level,.bc-hearts .bc-icon,.bc-food .bc-icon,.bc-armor .bc-icon,.bc-air .bc-icon,.bc-readouts[data-place=right] .bc-dial,.bc-held-name,.bc-effect';
 const SHELL='.game-toolbar a,.game-toolbar button';
 /** Sets survival values through the live service (test-only overrides of its getters). */
 async function setSurvival(page:Page,values:Record<string,number>,armor?:number){
@@ -41,6 +42,21 @@ async function shellOnTop(page:Page){
   expect(hits.length).toBeGreaterThan(2);
   for(const h of hits)expect(h.ok,`shell control ${h.id} is covered`).toBe(true);
 }
+/** A CSS variable the HUD publishes on the game root, in px. */
+const rootVar=(page:Page,name:string)=>page.locator('.blockcraft').evaluate((e,n)=>parseFloat(getComputedStyle(e).getPropertyValue(n)),name);
+/** The action bar is drawn in the pixel font: the art is on the toast, its CSS text transparent but still there. */
+async function pixelActionBar(page:Page,text:string,scale:number){
+  const toast=page.locator('.bc-toast');
+  await expect(toast).toHaveText(text);
+  const st=await toast.evaluate(e=>{const s=getComputedStyle(e);return{bg:s.backgroundImage,colour:s.color,shadow:s.textShadow,backdrop:s.backgroundColor};});
+  expect(st.bg).toContain('data:image/svg+xml');expect(st.colour).toBe('rgba(0, 0, 0, 0)');expect(st.shadow).toBe('none');
+  // No backdrop, as in vanilla.
+  expect(st.backdrop).toBe('rgba(0, 0, 0, 0)');
+  const box=(await toast.boundingBox())!;
+  // Whole lines of 9 GUI pixels.
+  const lines=Math.round(box.height/(9*scale));expect(lines).toBeGreaterThanOrEqual(1);expect(box.height).toBeCloseTo(lines*9*scale,0);
+  return{box,lines};
+}
 async function checkClear(page:Page,width:number,height:number){
   const hud=await boxes(page,HUD_PARTS),shell=await boxes(page,SHELL);
   expect(hud.length).toBeGreaterThan(20);
@@ -56,8 +72,19 @@ test.describe('desktop 1366x768',()=>{
   test('HUD layout, state rendering, readouts, F1, F3 and the action bar',async({page})=>{
     test.setTimeout(150000);
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
-    await page.goto('/#/game/blockcraft');await ready(page);await play(page);
-    await setSurvival(page,{health:7,absorption:4,food:7,saturation:0,xpLevel:12,xpProgress:.5},7);await give(page);
+    await page.goto('/#/game/blockcraft');await ready(page);
+    // Item icons are painted on the start menu (idle time), not all on the first frame of play.
+    await page.evaluate(()=>{
+      const w=window as unknown as {blockcraft:{hud:{frame(dt:number):void}};__icons:number;__hudIcons:number};
+      const hud=w.blockcraft.hud,frame=hud.frame.bind(hud),toDataURL=HTMLCanvasElement.prototype.toDataURL;let inside=false;w.__icons=0;w.__hudIcons=0;
+      HTMLCanvasElement.prototype.toDataURL=function(this:HTMLCanvasElement,...a:Parameters<HTMLCanvasElement['toDataURL']>){w.__icons++;if(inside)w.__hudIcons++;return toDataURL.apply(this,a);};
+      hud.frame=(dt:number)=>{inside=true;try{frame(dt);}finally{inside=false;}};
+    });
+    await give(page);
+    const iconCount=(key:'__icons'|'__hudIcons')=>page.evaluate(k=>(window as unknown as Record<string,number>)[k],key);
+    await expect.poll(()=>iconCount('__icons'),{timeout:15000}).toBeGreaterThanOrEqual(4);
+    await play(page);
+    await setSurvival(page,{health:7,absorption:4,food:7,saturation:0,xpLevel:12,xpProgress:.5},7);
     const hearts=page.locator('.bc-hearts .bc-icon:not([hidden])');
     await expect(hearts).toHaveCount(12,{timeout:15000});
     const icons=await hearts.evaluateAll(els=>els.map(e=>(e as HTMLElement).dataset.icon));
@@ -73,6 +100,8 @@ test.describe('desktop 1366x768',()=>{
     await expect(page.getByRole('button',{name:'Diamond Pickaxe, durability 781 of 1561, slot 1'})).toHaveAttribute('aria-pressed','true');
     await expect(page.getByRole('button',{name:'Dirt ×64, slot 2'})).toBeVisible();
     await expect(page.locator('.bc-slot[data-slot="0"] .bc-dur')).toBeVisible();
+    await expect(page.locator('.bc-slot[data-slot="0"] img')).toHaveAttribute('src',/^data:image\/png/);
+    expect(await iconCount('__hudIcons'),'item icons generated by the HUD after Play').toBe(0);
     await expect(page.locator('.bc-slot[data-slot="1"] .bc-count')).toBeVisible();
     await expect(page.locator('.bc-offhand')).toBeVisible();
     await expect(page.locator('.bc-held-name')).toHaveText('Diamond Pickaxe');
@@ -86,6 +115,18 @@ test.describe('desktop 1366x768',()=>{
     // Compass and clock icons in slots are the animated dials too.
     await expect(page.locator('.bc-slot[data-slot="2"] img')).toHaveAttribute('src',/^data:image\/svg\+xml/);
 
+    // Status effects top-right under the toolbar: beneficial ones in the top row, longest rightmost; harmful below.
+    await page.evaluate(()=>{(window as unknown as {blockcraft:{survival:{effects():unknown[]}}}).blockcraft.survival.effects=()=>[
+      {name:'speed',level:2,ticks:2400},{name:'night_vision',level:1,ticks:6000},{name:'poison',level:1,ticks:150}];});
+    await expect(page.locator('.bc-effect:not([hidden])')).toHaveCount(3,{timeout:15000});
+    const effect=async(name:RegExp)=>(await page.getByRole('img',{name}).boundingBox())!;
+    const nv=await effect(/^Night Vision, 5:00$/),speed=await effect(/^Speed II, 2:00$/),poison=await effect(/^Poison, 0:07$/);
+    expect(nv.width).toBeCloseTo(72,0);expect(nv.x+nv.width).toBeCloseTo(1366-3,0);expect(nv.y).toBeCloseTo(58+3,0);
+    expect(speed.x+speed.width).toBeCloseTo(1366-26*3,0);expect(speed.y).toBeCloseTo(nv.y,0);
+    expect(poison.x+poison.width).toBeCloseTo(1366-3,0);expect(poison.y).toBeCloseTo(58+27*3,0);
+    // Ending soon: the poison icon is dimmed.
+    expect(Number(await page.locator('.bc-effect[data-effect=poison] b').evaluate(e=>getComputedStyle(e).opacity))).toBeLessThan(.8);
+
     // Vanilla GUI scale 3 at 1366×768: the 182 px hotbar is 546 px wide, centred, on the bottom edge.
     const bar=(await page.locator('.bc-hotbar-bg').boundingBox())!;
     expect(bar.width).toBeCloseTo(546,0);expect(bar.x+bar.width/2).toBeCloseTo(683,0);expect(bar.y+bar.height).toBeCloseTo(768,0);
@@ -96,11 +137,16 @@ test.describe('desktop 1366x768',()=>{
     await expect(page.locator('.blockcraft')).toHaveAttribute('data-locked','true');
     await expect(page.locator('.bc-slot').first()).toHaveCSS('pointer-events','none');
 
-    // Action bar above the bars.
-    await page.evaluate(()=>(window as unknown as {blockcraft:{ui:{toast(m:string):void}}}).blockcraft.ui.toast('You can sleep only at night'));
-    const toast=(await page.locator('.bc-toast').boundingBox())!;
+    // Action bar above the bars, in the pixel font on one line like vanilla.
+    await page.evaluate(()=>(window as unknown as {blockcraft:{ui:{toast(m:string):void}}}).blockcraft.ui.toast('You may not rest now; there are monsters nearby'));
+    const {box:toast,lines}=await pixelActionBar(page,'You may not rest now; there are monsters nearby',3);
+    expect(lines).toBe(1);expect(toast.x+toast.width/2).toBeCloseTo(683,0);
     const topOfBars=Math.min(...(await boxes(page,'.bc-hearts .bc-icon,.bc-armor .bc-icon')).map(b=>b.y));
     expect(toast.y+toast.height).toBeLessThanOrEqual(topOfBars+1);
+    // The insets published for other layers follow the bars as drawn (7 armour points: armour row on top).
+    expect(await rootVar(page,'--bc-hud-bars')).toBeCloseTo(768-topOfBars,0);
+    expect(await rootVar(page,'--bc-hud-actionbar')).toBeCloseTo(768-(toast.y+toast.height),0);
+    expect(await rootVar(page,'--bc-hud-top')).toBeGreaterThan(768-toast.y-1);
     await page.screenshot({path:evidence('hud-1366x768')});
 
     // Low health: vignette on.
@@ -152,9 +198,13 @@ for(const [width,height] of [[390,844],[320,568]] as const)test.describe(`phone 
     await expect(page.locator('.blockcraft')).toHaveAttribute('data-slot','1');
     // The action bar sits above the bars, inside the screen.
     await page.evaluate(()=>(window as unknown as {blockcraft:{ui:{toast(m:string):void}}}).blockcraft.ui.toast('You may not rest now; there are monsters nearby'));
-    const toast=(await page.locator('.bc-toast').boundingBox())!;
+    const scale=await rootVar(page,'--bc-gui');
+    // Too long for one line here: it wraps into whole pixel-font lines inside the screen, centred.
+    const {box:toast}=await pixelActionBar(page,'You may not rest now; there are monsters nearby',scale);
     const topOfBars=Math.min(...(await boxes(page,'.bc-hearts .bc-icon,.bc-armor .bc-icon,.bc-food .bc-icon')).map(b=>b.y));
     expect(toast.y+toast.height).toBeLessThanOrEqual(topOfBars+1);expect(toast.x).toBeGreaterThanOrEqual(0);expect(toast.x+toast.width).toBeLessThanOrEqual(width);
+    expect(toast.x+toast.width/2).toBeCloseTo(width/2,0);
+    expect(await rootVar(page,'--bc-hud-bars')).toBeCloseTo(height-topOfBars,0);
     await page.screenshot({path:evidence(`hud-${width}x${height}`)});
     expect(errors).toEqual([]);
   });
@@ -211,10 +261,11 @@ test.describe('menus',()=>{
     await expect.poll(async()=>await page.locator('.bc-menu').isVisible()||await root.getAttribute('data-phase')==='playing',{timeout:5000}).toBe(true);
     if(await page.locator('.bc-menu').isVisible())await play(page);
 
-    // Death screen: message, score and a Respawn button enabled after a second.
-    await page.evaluate(()=>(window as unknown as {blockcraft:{survival:{kill(m:string):void}}}).blockcraft.survival.kill('Steve hit the ground too hard'));
+    // Death screen: message, score (the experience collected, as in vanilla) and a Respawn button enabled after a second.
+    await page.evaluate(()=>{const s=(window as unknown as {blockcraft:{survival:{kill(m:string):void}}}).blockcraft.survival;
+      Object.defineProperty(s,'xpTotal',{configurable:true,get:()=>37});s.kill('Steve hit the ground too hard');});
     await expect(page.getByRole('heading',{name:'You died!'})).toBeVisible();
-    await expect(page.locator('.bc-menu')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu')).toContainText('Score:');
+    await expect(page.locator('.bc-menu')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu-score')).toHaveText('Score: 37');
     const respawn=page.getByRole('button',{name:'Respawn'});
     await expect(respawn).toBeDisabled();await expect(respawn).toBeEnabled({timeout:5000});
     await shellOnTop(page);

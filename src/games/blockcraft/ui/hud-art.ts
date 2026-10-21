@@ -138,6 +138,30 @@ const join=(g:string[][])=>g.map(r=>r.join(''));
   s[14][6]='W';s[14][7]='W';s[14][8]='W';s[14][9]='W';
   def('attack_full',join(s),{W:'#ffffff'});
 }
+// Status effects: original 18×18 icons drawn over a 24×24 bevelled frame (Gui.renderEffects): speed chevrons, a
+// slow snail, a regeneration heart with a plus, a golden absorption heart, a poison drop, a rotten shank for hunger,
+// a sparkling shank for saturation, an eye for night vision and a flame for fire resistance.
+{
+  const f=blank(24,24);
+  for(let y=0;y<24;y++)for(let x=0;x<24;x++){
+    const edge=x===0||y===0||x===23||y===23,corner=(x===0||x===23)&&(y===0||y===23);
+    f[y][x]=corner?'.':edge?'K':(x===1||y===1)?(x===22||y===22?'m':'h'):(x===22||y===22)?'s':'f';
+  }
+  def('effect_frame',join(f),{K:'#101010',h:'#f4f4f4',m:'#a0a0a0',s:'#555555',f:'#c6c6c6'});
+  const px=(rows:string)=>rows.split('/');
+  const EFFECT_ART:Record<string,{grid:Grid;palette:Palette}>={
+  speed:{grid:px('................../................../................../....KK......KK..../...KhcK....KhcK.../....KhcK....KhcK../.....KhcK....KhcK./KKKK..KhcK....KhcK/.......KccK...KccK/.KKKK..KcdK...KcdK/......KcdK...KcdK./KKKK.KcdK...KcdK../....KcdK...KcdK.../...KcdK...KcdK..../....KK.....KK...../................../................../..................'),palette:{K:'#123a5c',c:'#5fd0ff',h:'#c8f2ff',d:'#2f8ccf'}},
+  slowness:{grid:px('................../................../................../........KKKKK...../......KKsssssKK.../.....KssddddsssK../....KssdKKKKdsssK./....KsdKssssKdssK./...KssdKsKKsKdsssK/b.bKssdKsdKsKdsssK/K.KKsssdKKsKdsssK./KbbKKssssddKssssK./KbebbKsssssssssK../KbbbbKKKKKKKKKKKK./.KbbbbbbbbbbbbbbbK/..KKKKKKKKKKKKKKK./................../..................'),palette:{K:'#1f2733',s:'#8aa0b8',d:'#5b6d82',b:'#b9c4cf',e:'#1f2733'}},
+  regeneration:{grid:px('................../................../...KKKK....KKKK.../..KrhhrK..KrrrrK../.KrhhhrrKKrrrwrrK./.KrhhrrrrrrrwwwrK./.KrhrrrrrrrrrwrdK./.KrrrrrrrrrrrrrdK./..KrrrrrrrrrrrdK../...KrrrrrrrrrdK.../....KrrrrrrrdK..../.....KrrrrrdK...../......KrrrdK....../.......KrdK......./........KK......../................../................../..................'),palette:{K:'#4a0f2e',r:'#e0559f',h:'#ffc6e3',d:'#a8306f',w:'#ffffff'}},
+  absorption:{grid:px('................../................../...KKKK....KKKK.../..KaaaaK..KaaaaK../.KarhhaaKKaarraaK./.KarhrrraarrrrraK./.KarhrrrrrrrrrraK./.KarrrrrrrrrrrraK./..KarrrrrrrrrraK../...KarrrrrrrraK.../....KarrrrrraK..../.....KarrrraK...../......KarraK....../.......KaaK......./........KK......../................../................../..................'),palette:{K:'#4a3300',a:'#b8860b',r:'#f5c518',h:'#fff3a6'}},
+  poison:{grid:px('........KK......../.......KggK......./.......KggK......./......KgggdK....../......KgggdK....../.....KghggddK...../.....KhgggddK...../....KghggggddK..../....KhgggggddK..../...KghggggggddK.../...KhggggggggdK.../...KgggggggggdK.../...KggggggggddK.../....KggggggddK..../.....KddddddK...../......KKKKKK....../................../..................'),palette:{K:'#1d2e0b',g:'#7ea82d',h:'#c9e27a',d:'#4e6c17'}},
+  hunger:{grid:px('................../..........KKKK..../.........KmmhhK.../........KmmmmhhK../.......KmmmmmmhK../.......KmmmmmmmhK./......KdmmmmmmmmK./......KddmmmmmmmK./.....KdddmmmmmmK../.....KKdddmmmmK.../....KbbKddddmK..../...KbbbbKKKKK...../..KbbbbbK........./.KbbbKbK........../KbbbKKK.........../KbbK............../.KK.............../..................'),palette:{K:'#1f2a08',m:'#71892a',h:'#a7c056',d:'#43561a',b:'#d0d9aa'}},
+  saturation:{grid:px('................../..y.......KKKK..../.yyy.....KmmhhK.../..y.....KmmmmhhK../.......KmmmmmmhK../.......KmmmmmmmhK./......KdmmmmmmmmK./......KddmmmmmmmK./.....KdddmmmmmmK../.....KKdddmmmmK.../....KbbKddddmK..../...KbbbbKKKKK...../..KbbbbbK........./.KbbbKbK......y.../KbbbKKK......yyy../KbbK..........y.../.KK.............../..................'),palette:{K:'#3b1d07',m:'#c9452a',h:'#f5a26b',d:'#7e2310',b:'#f2e9da',y:'#fff36b'}},
+  night_vision:{grid:px('................../................../................../................../......KKKKKK....../....KKwwwwwwKK..../...KwwwKKKKwwwK.../..KwwwKiiiiKwwwK../.KwwwKiippiiKwwwK./.KwwwKippppiKwwwK./..KwwwKiiiiKwwwK../...KwwwKKKKwwwK.../....KKwwwwwwKK..../......KKKKKK....../................../................../................../..................'),palette:{K:'#0e1440',w:'#c7d6ff',i:'#3a6df0',p:'#050a26'}},
+  fire_resistance:{grid:px('........K........./.......KrK......../.......KroK......./......KrooK...K.../.....KrooyoK.KrK../....KrooyyoKKroK../...KrooyyyyoroooK./...KroyyyyyyoooK../..KrooyywyyyyoooK./..KroyywwwyyyyooK./.KrooyywwwwyyyyoK./.KroyyywwwwwyyyoK./.KroyyywwwwwyyyoK./.KrooyyywwwyyyooK./..KrooyyyyyyyooK../...KKroooooorKK.../.....KKKKKKKK...../..................'),palette:{K:'#3d0b00',r:'#c2410c',o:'#f97316',y:'#fdbf3b',w:'#fff3c4'}},
+  };
+  for(const [name,art] of Object.entries(EFFECT_ART))def(`effect_${name}`,art.grid,art.palette);
+}
 export const ICON_NAMES:readonly string[]=Object.keys(ICONS);
 
 export function iconGrid(name:string,patterns:boolean):Grid{

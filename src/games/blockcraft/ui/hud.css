@@ -1,5 +1,5 @@
 /* HUD and menus (ui/hud.ts, ui/menus.ts). Layers inside .blockcraft: world overlays 5 (crosshair, vignette, flash),
-   HUD 10 (bars, hotbar, readouts, F3 overlay), the ui's toast 25 (placed here above the bars), menus 30.
+   HUD 10 (bars, hotbar, readouts, status effects, F3 overlay), the ui's toast 25 (placed here above the bars), menus 30.
    The HUD is drawn in GUI pixels: .bc-gui sits at the bottom centre and is scaled by the GUI scale (--bc-gui).
    Reserved: top 56 px for the arcade toolbar, the bottom-right corner for the shell's small buttons. */
 .bc-hud [hidden],.bc-crosshair [hidden],.bc-menu [hidden],.bc-debug [hidden]{display:none!important}
@@ -61,6 +61,13 @@
 /* Narrow screens: the animated slot icons are the readouts; the dials remain for assistive technology only. */
 .bc-readouts[data-place=slots],.bc-readouts[data-place=slots] .bc-dial{width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .bc-dial{position:relative;width:24px;height:24px;filter:drop-shadow(1px 1px 0 #0006)}
+
+/* Status effects top-right, in GUI pixels from the corner below the arcade toolbar (vanilla Gui.renderEffects: 24 px
+   frames 25 apart, beneficial in the top row, harmful below). Advancement toasts pass over them, as in vanilla. */
+.bc-effects{position:absolute;top:max(58px,calc(env(safe-area-inset-top,0px) + 56px));right:env(safe-area-inset-right,0px);width:0;height:0;
+  transform:scale(var(--bc-gui,2));transform-origin:0 0;pointer-events:none}
+.bc-effect{position:absolute;display:block;width:24px;height:24px;background-repeat:no-repeat;background-size:100% 100%}
+.bc-effect b{position:absolute;left:3px;top:3px;display:block;width:18px;height:18px;background-repeat:no-repeat;background-size:100% 100%}
 
 /* F1 hides the whole GUI like vanilla: HUD, crosshair, vignette, action bar and the F3 screen (the flags are set by
    the input service). Menus and screens stay. */

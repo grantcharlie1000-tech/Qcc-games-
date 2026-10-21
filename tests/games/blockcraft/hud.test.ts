@@ -1,7 +1,7 @@
 import {describe,expect,test} from 'vitest';
 import {heartIcons,foodIcons,armorIcons,airBubbles,xpFill,durabilityBar,attackIndicator,heldNameFade,heldNameOpacity,HealthTracker,HeldNameTimer,
   regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,barsView,stackHeights,stackInsets,
-  type HeartInput,type BarsOptions} from '../../../src/games/blockcraft/ui/hud-model';
+  effectIcons,effectAlpha,EFFECTS,type HeartInput,type BarsOptions} from '../../../src/games/blockcraft/ui/hud-model';
 import {ICON_NAMES,iconGrid,iconSvg,iconPalette,digitsSvg,DIGIT_GLYPHS,hotbarSvg,xpBarSvg,compassGrid,clockGrid,dialFrame,COMPASS_FRAMES,CLOCK_FRAMES,
   selectionFrameSvg,offhandSvg,FONT_GLYPHS,hasGlyphs,textWidth,textSvg,shadowColour,wrapText,textLinesSvg} from '../../../src/games/blockcraft/ui/hud-art';
 import {optionLabel,nextDifficulty,keyLabel,controlRows,fovLabel,sensitivityFromSlider,sensitivityToSlider,deathScore} from '../../../src/games/blockcraft/ui/menus-options';
@@ -388,6 +388,41 @@ describe('compass and clock dials',()=>{
   test('slot art has vanilla sizes and the selection frame leaves the item visible',()=>{
     expect(offhandSvg()).toContain('width="22" height="22"');
     const sel=selectionFrameSvg();expect(sel).toContain('width="24" height="24"');expect(sel).not.toContain('x="4" y="4" width="16" height="16"');
+  });
+});
+
+describe('status effects',()=>{
+  test('beneficial effects fill the top row from the right, harmful ones the row below, longest first',()=>{
+    const icons=effectIcons([{name:'speed',level:1,ticks:600},{name:'poison',level:1,ticks:300},{name:'night_vision',level:1,ticks:3600},
+      {name:'slowness',level:2,ticks:100},{name:'regeneration',level:1,ticks:0}],false);
+    expect(icons.map(i=>[i.name,i.right,i.top])).toEqual([['night_vision',1,1],['speed',26,1],['poison',1,27],['slowness',26,27]]);
+    expect(icons.map(i=>i.beneficial)).toEqual([true,true,false,false]);
+    expect(icons.map(i=>i.label)).toEqual(['Night Vision, 3:00','Speed, 0:30','Poison, 0:15','Slowness II, 0:05']);
+    expect(effectIcons([],false)).toEqual([]);
+    expect(effectIcons([{name:'fire_resistance',level:1,ticks:20*3725}],false)[0].label).toBe('Fire Resistance, 1:02:05');
+    // Equal durations: the vanilla colour order decides.
+    const tie=effectIcons([{name:'saturation',level:1,ticks:40},{name:'absorption',level:4,ticks:40}],false);
+    expect(tie.map(i=>i.name)).toEqual(['saturation','absorption']);expect(tie[1].label).toBe('Absorption IV, 0:02');
+  });
+  test('icons dim to half and pulse in their last 10 seconds; steady with reduced motion',()=>{
+    expect(effectAlpha(201,false)).toBe(1);expect(effectAlpha(6000,true)).toBe(1);
+    expect(effectAlpha(200,false)).toBeCloseTo(.5);
+    expect(effectAlpha(199,false)).toBeCloseTo(.5+Math.cos(199*Math.PI/5)*.025);
+    // The pulse grows toward the end and the icon fades out over the last 2.5 seconds.
+    const pulse=(from:number,to:number)=>{const a=[];for(let m=from;m<=to;m++)a.push(effectAlpha(m,false));return Math.max(...a)-Math.min(...a);};
+    expect(pulse(10,19)).toBeGreaterThan(pulse(180,189));
+    expect(effectAlpha(150,true)).toBe(.5);expect(effectAlpha(30,true)).toBeCloseTo(.3);expect(effectAlpha(0,true)).toBe(0);
+    for(let m=0;m<=200;m++){const a=effectAlpha(m,false);expect(a).toBeGreaterThanOrEqual(0);expect(a).toBeLessThanOrEqual(.75);}
+  });
+  test('every effect has a name, a side and original 18x18 art in a 24x24 frame',()=>{
+    for(const [name,info] of Object.entries(EFFECTS)){
+      expect(info.displayName.length).toBeGreaterThan(3);
+      const g=iconGrid(`effect_${name}`,false);expect(g,name).toHaveLength(18);expect(g.every(r=>r.length===18),name).toBe(true);
+    }
+    expect(Object.entries(EFFECTS).filter(([,i])=>!i.beneficial).map(([n])=>n).sort()).toEqual(['hunger','poison','slowness']);
+    const f=iconGrid('effect_frame',false);expect(f).toHaveLength(24);expect(f[0][0]).toBe('.');expect(f[0][1]).not.toBe('.');
+    // Each effect icon is a different picture.
+    expect(new Set(Object.keys(EFFECTS).map(n=>iconGrid(`effect_${n}`,false).join('/'))).size).toBe(Object.keys(EFFECTS).length);
   });
 });
 

@@ -6,8 +6,8 @@
 //    hunger shanks (jitter at zero saturation, hunger effect), armour, air bubbles, the experience bar and level,
 //    the hotbar with item icons, counts and durability bars, the selection frame, the offhand slot, the held item
 //    name in the pixel font, compass and clock readouts (large dials beside the hotbar while held, and animated
-//    compass and clock icons in the slots like the vanilla item textures), and the F3 debug overlay. F1
-//    (ROOT_FLAGS.hudHidden) hides it all.
+//    compass and clock icons in the slots like the vanilla item textures), the status effect icons top-right, and
+//    the F3 debug overlay. F1 (ROOT_FLAGS.hudHidden) hides it all.
 //  - Menus (z-index 30, ui/menus.ts): start, game menu, death and lost-graphics screens.
 // The layout publishes CSS variables on game.root: --bc-gui (GUI scale), --bc-hud-bottom (hotbar lift, clear of the
 // shell's corner buttons), --bc-hud-bars (top of the bars as drawn), --bc-hud-top (top of the whole stack) and
@@ -18,7 +18,7 @@ import {iconUrl} from '../art/items';
 import {itemDef} from '../data/items';
 import {ROOT_FLAGS} from '../engine/constants';
 import type {Game,HudService,ItemStack} from '../engine/contracts';
-import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,heldName,HealthTracker,HeldNameTimer,hudLayout,
+import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,effectIcons,heldName,HealthTracker,HeldNameTimer,hudLayout,
   RARITY_COLOURS,stackHeights,stackInsets,sunAngle,type BarIcon,type HudLayout} from './hud-model';
 import {clockUrl,compassUrl,CLOCK_FRAMES,COMPASS_FRAMES,dialFrame,digitsUrl,hasGlyphs,hotbarUrl,hudIconUrl,offhandUrl,selectionUrl,textLinesUrl,
   textUrl,textWidth,wrapText,xpBarUrl} from './hud-art';
@@ -89,7 +89,8 @@ export function createHud(game:Game):HudService{
     <div class="bc-offhand" role="img" hidden></div>
     <p class="bc-held-name" role="status"><span class="bc-held-label"></span><i class="bc-held-text" aria-hidden="true"></i></p>
     <div class="bc-readouts" hidden><i class="bc-dial" data-dial="compass" role="img" hidden></i><i class="bc-dial" data-dial="clock" role="img" hidden></i></div>
-  </div>`;
+  </div>
+  <div class="bc-effects" role="group" aria-label="Status effects" hidden></div>`;
   const debug=make('bc-debug');debug.setAttribute('aria-hidden','true');
   debug.innerHTML='<div class="bc-debug-col"></div><div class="bc-debug-col"></div>';
   game.root.append(fx,crosshair,hud,debug);
@@ -98,7 +99,7 @@ export function createHud(game:Game):HudService{
   const xpEl=q(hud,'.bc-xp'),xpFillEl=q(hud,'.bc-xp-fill'),levelEl=q(hud,'.bc-level'),hotbarBg=q(hud,'.bc-hotbar-bg'),hotbar=q(hud,'.bc-hotbar');
   const selection=q(hud,'.bc-selection'),offhandEl=q(hud,'.bc-offhand'),heldEl=q(hud,'.bc-held-name'),readouts=q(hud,'.bc-readouts');
   const heldLabel=q(heldEl,'.bc-held-label'),heldText=q(heldEl,'.bc-held-text');
-  const compassEl=q(hud,'[data-dial=compass]'),clockEl=q(hud,'[data-dial=clock]');
+  const compassEl=q(hud,'[data-dial=compass]'),clockEl=q(hud,'[data-dial=clock]'),effectsEl=q(hud,'.bc-effects');
   const vignette=q(fx,'.bc-vignette'),flash=q(fx,'.bc-flash');
   const attackBar=q(crosshair,'.bc-attack-bar'),attackBarFill=q(crosshair,'.bc-attack-bar b'),attackFull=q(crosshair,'.bc-attack-full');
   const [debugLeft,debugRight]=[...debug.querySelectorAll<HTMLElement>('.bc-debug-col')];
@@ -135,7 +136,7 @@ export function createHud(game:Game):HudService{
   let lastTick=-1,lastHurtTick=-1000,heldId='\u0000',heldOpacity=-1,selected=-1,barsLabel='',level=-1;
   let fpsFrames=0,fpsStart=0,fps=0,debugAt=0,barsTop=49,stackKey='',state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'slots'='slots';
   let readoutKey='',lowHealth=false,pickedUp:string|null=null,toastEl:HTMLElement|null=null,toastObserver:MutationObserver|null=null,toastKey='',toastSearch=0;
-  const warmed=new Set<string>();
+  const warmed=new Set<string>(),effectEls:HTMLElement[]=[];let effectsKey='',warmHandle=0;
   const cur=new Float64Array(18),prev=new Float64Array(18).fill(NaN);
   let resize:ResizeObserver|null=null;
 
@@ -276,6 +277,24 @@ export function createHud(game:Game):HudService{
       if(frame!==clockFrame){clockFrame=frame;clockEl.style.backgroundImage=url(clockUrl(frame));clockEl.setAttribute('aria-label',`Clock: ${clockText(game.time.dayTime)}`);}
     }
   }
+  /** Status effect icons top-right (Gui.renderEffects), redrawn when an icon, its alpha or its time left changed. */
+  function updateStatusEffects(){
+    const icons=effectIcons(game.survival.effects(),reduced);
+    let key='';for(const i of icons)key+=`${i.name}:${i.right}:${i.top}:${i.alpha.toFixed(2)}:${i.label}|`;
+    if(key===effectsKey)return;effectsKey=key;
+    while(effectEls.length<icons.length){
+      const e=make('bc-effect','i');e.setAttribute('role','img');e.style.backgroundImage=url(hudIconUrl('effect_frame',false));
+      e.append(document.createElement('b'));effectsEl.append(e);effectEls.push(e);
+    }
+    effectEls.forEach((e,k)=>{
+      const icon=icons[k];setHidden(e,!icon);if(!icon)return;
+      const art=e.firstElementChild as HTMLElement;
+      if(e.dataset.effect!==icon.name){e.dataset.effect=icon.name;art.style.backgroundImage=url(hudIconUrl(`effect_${icon.name}`,false));}
+      e.style.right=`${icon.right}px`;e.style.top=`${icon.top}px`;art.style.opacity=icon.alpha.toFixed(2);
+      if(e.getAttribute('aria-label')!==icon.label)e.setAttribute('aria-label',icon.label);
+    });
+    setHidden(effectsEl,!icons.length);
+  }
   function updateEffects(){
     const s=game.survival,low=game.settings.mode==='survival'&&!s.dead&&s.health>0&&Math.ceil(s.health)+Math.ceil(s.absorption)<=4;
     if(low!==lowHealth){lowHealth=low;vignette.dataset.on=String(low);}
@@ -321,15 +340,27 @@ export function createHud(game:Game):HudService{
     st.setProperty('--bc-actionbar-w',`${(w*s).toFixed(2)}px`);st.setProperty('--bc-actionbar-h',`${(lines.length*9*s).toFixed(2)}px`);
     st.setProperty('--bc-actionbar-max','none');st.setProperty('--bc-actionbar-ink','transparent');st.setProperty('--bc-actionbar-shadow','none');
   }
-  /** While the HUD is hidden (loading, start menu) paint one new item icon per frame, hotbar first, so the first frame
-   *  of play does not stall generating every icon at once. */
+  /** While the HUD is hidden (loading, start menu) paint one new item icon at a time, hotbar first, so the first frame
+   *  of play does not stall generating every icon at once. Returns false when every icon is ready. */
   function warmIcons(){
     const inv=game.inventory;
     // Hotbar, then the offhand, then the main inventory.
     for(let k=0;k<=inv.slots.length;k++){
       const id=(k<9?inv.slots[k]:k===9?inv.offhand:inv.slots[k-1])?.id;
-      if(id&&!warmed.has(id)){warmed.add(id);iconUrl(id);return;}
+      if(id&&!warmed.has(id)){warmed.add(id);iconUrl(id);return true;}
     }
+    return false;
+  }
+  /** Warms icons in idle time too: the engine stops drawing frames on the start menu once the terrain is loaded. */
+  function scheduleWarm(){
+    if(warmHandle||signal.aborted||hud.dataset.shown==='true')return;
+    const run=()=>{warmHandle=0;if(hud.dataset.shown!=='true'&&warmIcons())scheduleWarm();};
+    warmHandle=typeof requestIdleCallback==='function'?requestIdleCallback(run,{timeout:400}):window.setTimeout(run,30);
+  }
+  function cancelWarm(){
+    if(!warmHandle)return;
+    if(typeof cancelIdleCallback==='function')cancelIdleCallback(warmHandle);else clearTimeout(warmHandle);
+    warmHandle=0;
   }
 
   // ---- Input on the HUD --------------------------------------------------------------------------------
@@ -352,10 +383,11 @@ export function createHud(game:Game):HudService{
         game.events.on('playerDied',({message})=>menus.setDeathMessage(message)),
         game.events.on('itemPickedUp',({stack})=>{pickedUp=stack.id;}),
         game.events.on('playerRespawned',resetHealth),
-        game.events.on('restored',resetHealth),
-        game.events.on('worldReset',resetHealth)
+        game.events.on('restored',()=>{resetHealth();scheduleWarm();}),
+        game.events.on('worldReset',()=>{resetHealth();scheduleWarm();}),
+        game.inventory.onChange(scheduleWarm)
       );
-      hud.dataset.mode=game.settings.mode;setVisibility();resetHealth();applyLayout();watchToast();
+      hud.dataset.mode=game.settings.mode;setVisibility();resetHealth();applyLayout();watchToast();scheduleWarm();
     },
     frame(){
       // Frame counter for F3: frames per real second (dt is capped, so it cannot measure slow frames).
@@ -374,18 +406,18 @@ export function createHud(game:Game):HudService{
         lastTick=tick;
         const h=game.survival.health;
         tracker.update(h,tick,Math.ceil(h)<tracker.renderHealth||tick-lastHurtTick<10);
-        tickHeldName(tick);
+        tickHeldName(tick);updateStatusEffects();
       }
       if(game.settings.mode==='survival')updateBars(tick);
       updateReadouts(now);updateHotbar();updateHeldName();updateCrosshair();updateEffects();
     },
     reset(){
-      heldTimer.reset();heldId='\u0000';heldOpacity=-1;selected=-1;crossKey='-';compassFrame=clockFrame=-1;lastTick=-1;level=-1;readoutKey='';pickedUp=null;
+      heldTimer.reset();heldId='\u0000';effectsKey='';heldOpacity=-1;selected=-1;crossKey='-';compassFrame=clockFrame=-1;lastTick=-1;level=-1;readoutKey='';pickedUp=null;
       for(const v of [...slotViews,offhandView])v.invalidate();
       resetHealth();
     },
     dispose(){
-      abort.abort();resize?.disconnect();toastObserver?.disconnect();toastObserver=null;toastEl=null;warmed.clear();for(const off of offs.splice(0))off();
+      abort.abort();cancelWarm();resize?.disconnect();toastObserver?.disconnect();toastObserver=null;toastEl=null;warmed.clear();for(const off of offs.splice(0))off();
       menus.dispose();fx.remove();crosshair.remove();hud.remove();debug.remove();
       for(const v of ROOT_VARS)game.root.style.removeProperty(v);
     }
