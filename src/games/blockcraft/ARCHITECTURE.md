@@ -76,8 +76,9 @@ Paths are relative to `src/games/blockcraft/`; tests go in `tests/games/blockcra
   - No emoji as artwork.
   - Respect `game.reducedMotion` (no view bobbing or sway).
   - Escape is reserved by the arcade shell (it opens Study Mode). Use `E` to close screens.
-- **Art is original.** Every texture is painted in code. Do not copy Mojang textures, sounds,
-  models or names of copyrighted assets (vanilla block and item *names* are fine).
+- **Art looks vanilla but is drawn here.** Every texture is painted in code to look like vanilla Minecraft
+  (see "Vanilla look" in FEATURES.md). Never copy, trace or embed Mojang textures, sounds or models (vanilla block
+  and item *names* are fine).
 - **Content Security Policy.** Only same-origin scripts and no inline scripts. Workers must be
   same-origin module workers. Never use `eval`. Data URLs are allowed for images.
 

@@ -627,3 +627,30 @@ unless they would compromise performance or correctness. Unit tests can build se
   - Fix and polish `iconUrl` isometric block icons: top, left and right faces, shaded, with the plains tint applied to tinted faces, and cutout tiles respected.
   - Export `spritePixels` for held and dropped item rendering; cache data URLs.
 - **Tests:** every sprite painted with transparency and no placeholders; icon generation produces distinct images.
+
+## Vanilla look (user requirement, applies to every area that draws art)
+
+The user wants Blockcraft's textures to look the same as vanilla Minecraft (current Java textures, the 1.14+ texture
+update style). Every texture, sprite, model skin, HUD icon and sky element must be recognisable at a glance as the vanilla
+one: the same 16×16 grid (model skins at vanilla texture sizes and UV layouts), the same palettes and hue ranges, the same
+value structure, outlines and pattern motifs. Examples:
+- stone: soft mid-grey mottling with sparse darker flecks; cobblestone: rounded grey stones with dark mortar outlines;
+  dirt: warm brown with darker and lighter speckles; grass side: dirt with a jagged 3–4 px green fringe; grass top,
+  leaves and short grass: greyscale noise tinted by biome.
+- oak planks: four horizontal boards with darker seams and end grain; logs: vertical bark stripes and concentric top
+  rings; each wood type in its vanilla colour (birch white with black marks, spruce dark brown, jungle, acacia orange,
+  dark oak, cherry pink).
+- ores: the stone (or deepslate) base with 4–6 clustered mineral blobs in vanilla colours (coal black, iron beige-peach,
+  copper orange with teal, gold yellow, redstone red, lapis blue, diamond cyan, emerald green).
+- items: vanilla silhouettes and two-tone tier palettes (wood, stone, iron, gold, diamond tools), the vanilla diamond
+  sword and pickaxe shapes, food, buckets, spawn eggs with the vanilla colour pairs.
+- mobs: vanilla proportions, UV layouts and colouring (pink pig, black-and-white cow, white sheep wool, green mottled
+  creeper with the black face, zombie teal shirt and blue trousers, bony skeleton, black spider with red eyes,
+  enderman black with purple eyes, translucent green slime).
+- HUD: vanilla heart, hunger shank, armour and bubble icons, the grey hotbar with the white selection frame,
+  the green XP bar.
+- sky: vanilla day/sunset/night colours, square sun and moon with phases, white blocky clouds.
+
+Draw everything yourself, in code (procedural painters or hand-written pixel arrays). Never download, copy, trace, embed
+or decode Mojang's texture files or pixel data, and never ship their assets: the arcade is public. Matching the look
+from knowledge of the game is the requirement; reproducing their files is forbidden.
