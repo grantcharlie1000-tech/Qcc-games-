@@ -41,9 +41,10 @@ async function settle(page:Page,frames=6){
   // Wait for a few rendered frames (software WebGL is slow).
   await page.evaluate(n=>new Promise<void>(done=>{let k=0;const step=()=>{if(++k>=n)done();else requestAnimationFrame(step);};requestAnimationFrame(step);}),frames);
 }
+/** Canvas screenshot: the four sky views are kept as evidence, the others go to the test output folder. */
 async function shot(page:Page,name:string){
-  const canvas=page.locator('.blockcraft canvas');
-  const buf=await canvas.screenshot({path:`${EVIDENCE}/render-${name}.png`});
+  const canvas=page.locator('.blockcraft canvas'),keep=['noon','dusk','midnight','underwater'].includes(name);
+  const buf=await canvas.screenshot({path:keep?`${EVIDENCE}/render-${name}.png`:test.info().outputPath(`render-${name}.png`)});
   return decodePng(buf);
 }
 
@@ -95,6 +96,16 @@ test('sky, fog, hand and overlays at noon, dusk, midnight and underwater',async(
   const under=await shot(page,'underwater');
   const middle=region(under,.3,.3,.7,.6);
   expect(middle[2]).toBeGreaterThan(middle[0]+30);
+
+  // In lava: everything beyond a block is the orange lava fog.
+  await page.evaluate(async()=>{
+    const url='/src/games/blockcraft/data/blocks.ts',{blockId}=await import(/* @vite-ignore */url);
+    const g=(window as unknown as {blockcraft:Engine}).blockcraft,e=g.player.eye(),lava=blockId('lava');
+    for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=-1;dy<=1;dy++)g.world.set(Math.floor(e.x)+dx,Math.floor(e.y)+dy,Math.floor(e.z)+dz,lava);
+  });
+  await settle(page,10);
+  const lava=region(await shot(page,'lava'),.3,.3,.7,.6);
+  expect(lava[0]).toBeGreaterThan(lava[2]+80);expect(lava[0]).toBeGreaterThan(lava[1]+40);
   expect(errors).toEqual([]);
 });
 

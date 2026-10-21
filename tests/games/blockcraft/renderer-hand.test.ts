@@ -94,7 +94,7 @@ describe('hand service',()=>{
     game.inventory.setSlot(0,{id:'cobblestone',count:5});
     for(let i=0;i<10;i++)hand.tick();update();
     expect(hand.state.main).toBe('cobblestone');expect(hand.mesh.geometry.drawRange.count).toBe(6);
-    game.inventory.setSlot(0,{id:'stick',count:1});game.inventory.offhand=({id:'apple',count:1});
+    game.inventory.setSlot(0,{id:'stick',count:1});(game.inventory as {offhand:unknown}).offhand={id:'apple',count:1};
     for(let i=0;i<10;i++)hand.tick();update();
     expect(hand.state.off).toBe('apple');expect(hand.mesh.geometry.drawRange.count).toBeGreaterThan(6*4);
   });

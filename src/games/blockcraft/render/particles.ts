@@ -125,7 +125,7 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
   const attr=(name:string,size:number)=>{
     const a=new THREE.InstancedBufferAttribute(new Float32Array(MAX_PARTICLES*size),size);a.setUsage(THREE.DynamicDrawUsage);geometry.setAttribute(name,a);return a;
   };
-  const iPos=attr('iPos',4),iUV=attr('iUV',4),iColor=attr('iColor',4),iMisc=attr('iMisc',2);
+  const iPos=attr('iPos',4),iUV=attr('iUV',4),iColor=attr('iColor',4),iMisc=attr('iMisc',2),instanceAttributes=[iPos,iUV,iColor,iMisc];
   geometry.instanceCount=0;
   const material=new THREE.RawShaderMaterial({
     glslVersion:THREE.GLSL3,vertexShader:VERTEX,fragmentShader:FRAGMENT,
@@ -482,7 +482,7 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
       col[a]=p.r;col[a+1]=p.g;col[a+2]=p.b;col[a+3]=p.a;
       misc[i*2]=p.emissive?FULL_BRIGHT:p.light;misc[i*2+1]=p.texture==='atlas'?TEX_ATLAS:TEX_SHEET;
     }
-    for(const a of [iPos,iUV,iColor,iMisc]){a.clearUpdateRanges();a.addUpdateRange(0,n*a.itemSize);a.needsUpdate=true;}
+    for(const a of instanceAttributes){a.clearUpdateRanges();a.addUpdateRange(0,n*a.itemSize);a.needsUpdate=true;}
     geometry.instanceCount=n;mesh.visible=n>0;
   }
   function sizeFactor(p:Particle,t:number){

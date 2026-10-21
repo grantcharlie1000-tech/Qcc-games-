@@ -207,6 +207,7 @@ export function createRenderer(game:Game):RenderService{
   const range={near:0,far:0,cylinder:true},sunrise=[0,0,0,0];
   let cloudTime=0,swamp=false;
   const WEIGHTS=[1,2,1];
+  const sampled={r:0,g:0,b:0,water:0};
   function sampleBiomes(x:number,z:number){
     // Vanilla blends biome sky colours over the surrounding biome cells (CubicSampler); a 3×3 tent filter at ±8 blocks.
     let r=0,g=0,b=0;
@@ -215,7 +216,13 @@ export function createRenderer(game:Game):RenderService{
       r+=c.r*w;g+=c.g*w;b+=c.b*w;
     }
     const biome=biomeDef(game.world.biomeAt(Math.floor(x),Math.floor(z)));swamp=biome.name==='swamp';
-    return{r,g,b,water:waterFogColor(biome.name)};
+    sampled.r=r;sampled.g=g;sampled.b=b;sampled.water=waterFogColor(biome.name);
+    return sampled;
+  }
+  function effect(name:string){
+    const list=game.survival.effects();
+    for(let i=0;i<list.length;i++)if(list[i].name===name)return list[i];
+    return null;
   }
   function frame(dt:number){
     if(disposed)return;
@@ -245,11 +252,10 @@ export function createRenderer(game:Game):RenderService{
     // Light and sky.
     const t=game.time,w=game.weather,rain=w?.intensity??0,thunder=w?.thunder??0,flash=w?.flash??0;
     const angle=celestialAngle(t.dayTime+partial*(game.settings.daylightCycle&&game.state==='playing'?1:0)),daylight=t.daylight;
-    const effects=game.survival.effects?.()??[],vision=effects.find(e=>e.name==='night_vision');
-    const nightVision=vision?nightVisionScale(vision.ticks):0;
+    const vision=effect('night_vision'),nightVision=vision?nightVisionScale(vision.ticks):0;
     uniforms.daylight.value=skyFactor(t.skyDarkening);uniforms.skyDarkening.value=t.skyDarkening;
     uniforms.flash.value=Math.max(0,Math.min(1,flash));uniforms.flicker.value=flicker;uniforms.nightVision.value=nightVision;
-    const sampled=sampleBiomes(eye.x,eye.z);biomeSky.r=sampled.r;biomeSky.g=sampled.g;biomeSky.b=sampled.b;
+    sampleBiomes(eye.x,eye.z);biomeSky.r=sampled.r;biomeSky.g=sampled.g;biomeSky.b=sampled.b;
     const skyHex=(Math.round(biomeSky.r*255)<<16)|(Math.round(biomeSky.g*255)<<8)|Math.round(biomeSky.b*255);
     skyColor(skyHex,daylight,rain,thunder,flash,zenith);
     const light=game.world.lightAt(Math.floor(eye.x),Math.floor(eye.y),Math.floor(eye.z)),eyeSky=light>=0?light>>4&15:15,eyeBlock=light>=0?light&15:0;
@@ -270,7 +276,7 @@ export function createRenderer(game:Game):RenderService{
     if(eye.y<1){const k=Math.max(0,eye.y)**2;fog.r*=k;fog.g*=k;fog.b*=k;}
     uniforms.fogColor.value.setRGB(fog.r,fog.g,fog.b);
     clear.setRGB(fog.r,fog.g,fog.b,THREE.SRGBColorSpace);renderer.setClearColor(clear,1);
-    fogRange(medium,viewChunks,{waterVision:waterVision(waterTicks),swamp,fireResistance:effects.some(e=>e.name==='fire_resistance')},range);
+    fogRange(medium,viewChunks,{waterVision:waterVision(waterTicks),swamp,fireResistance:effect('fire_resistance')!==null},range);
     uniforms.fogNear.value=range.near;uniforms.fogFar.value=range.far;uniforms.fogShape.value=range.cylinder?1:0;
 
     const viewBlocks=viewChunks*CS;
@@ -278,7 +284,7 @@ export function createRenderer(game:Game):RenderService{
     f.sky.r=zenith.r;f.sky.g=zenith.g;f.sky.b=zenith.b;
     f.sunrise=sunriseColor(angle,sunrise);f.sunriseSide=sunriseSide(angle);
     f.angle=angle;f.sunAlpha=1-Math.max(0,Math.min(1,rain));f.stars=starBrightness(angle,rain);f.moonPhase=moonPhase(t.day);
-    if(medium==='air'){f.skyFogStart=0;f.skyFogEnd=Math.max(range.far,24);}else{f.skyFogStart=range.near;f.skyFogEnd=range.far;}
+    if(medium==='air'){f.skyFogStart=0;f.skyFogEnd=viewBlocks;}else{f.skyFogStart=range.near;f.skyFogEnd=range.far;}
     f.voidDark=eye.y<SEA_LEVEL+1;f.skyVisible=medium!=='lava';
     cloudColor(daylight,rain,thunder,f.cloud);
     f.cloudFar=Math.min(280,Math.max(160,viewBlocks*2));f.cloudNear=f.cloudFar*.5;f.cloudsVisible=medium!=='lava';f.mediumFog=medium!=='air';
