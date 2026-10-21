@@ -106,6 +106,63 @@ export function airBubbles(air:number,maxAir:number,eyeInWater:boolean):{full:nu
 /** Experience bar fill in pixels: (int)(progress * 183), at most the 182 px bar. */
 export function xpFill(progress:number){return Number.isFinite(progress)?Math.min(182,Math.max(0,Math.floor(progress*183))):0;}
 
+// ---- The survival bars as drawn ---------------------------------------------------------------------
+/** One 9×9 icon: hud-art icon names (top layer first) and its position in GUI pixels (x from the screen centre to
+ *  the icon's left edge, bottom from the screen bottom to its bottom edge). */
+export interface BarIcon{layers:string[];x:number;bottom:number}
+export interface BarsView{
+  hearts:BarIcon[];armor:BarIcon[];food:BarIcon[];air:BarIcon[];
+  /** Experience bar fill (0..182 px) and level (0 hides the number). */
+  xp:number;level:number;
+  /** GUI pixels from the screen bottom to the top of the highest bar row (at least the 49 of one row of each). */
+  top:number;
+  /** Text equivalent for assistive technology. */
+  label:string;
+}
+export interface BarsOptions{
+  tick:number;
+  /** The health shown one second ago and the blink phase (HealthTracker). */
+  lagHealth:number;blinking:boolean;
+  /** No shaking, jitter or regeneration wave. */
+  reduced:boolean;
+}
+/** Gui.renderPlayerHealth and renderFood from the game state: hearts (containers, absorption, blinking lost health,
+ *  current health; poison), armour above the hearts, shanks from the right (hunger effect), air bubbles above the
+ *  shanks, and the experience bar. */
+export function barsView(game:Game,o:BarsOptions):BarsView{
+  const s=game.survival,tick=o.tick,random=o.reduced?null:tickRandom(tick);
+  const poisoned=s.hasEffect('poison'),hungry=s.hasEffect('hunger');
+  const max=Math.max(s.maxHealth,Math.ceil(o.lagHealth),Math.ceil(s.health));
+  const regen=!o.reduced&&s.hasEffect('regeneration')?regenIndex(tick,max):-1;
+  const h=heartIcons({health:s.health,maxHealth:s.maxHealth,absorption:s.absorption,lagHealth:o.lagHealth,blinking:o.blinking,regenIndex:regen,poisoned,random});
+  const type=poisoned?'heart_poison':'heart';
+  const hearts=h.icons.map(i=>{
+    const layers:string[]=[];
+    if(i.fill)layers.push(`${type}_${i.fill}`);
+    if(i.lost)layers.push(`${type}_${i.lost}_blink`);
+    if(i.absorb)layers.push(`heart_absorb_${i.absorb}`);
+    layers.push(i.blinkContainer?'heart_container_blink':'heart_container');
+    return{layers,x:-91+i.x,bottom:30+i.up};
+  });
+  const points=s.armorPoints(),armorBottom=40+(h.rows-1)*h.rowHeight;
+  const armor=armorIcons(points).map((a,j)=>({layers:a==='empty'?['armor_empty']:[`armor_${a}`,'armor_empty'],x:-91+j*8,bottom:armorBottom}));
+  const container=hungry?'food_hunger_container':'food_container';
+  const food=foodIcons(s.food,s.saturation,hungry,tick,random).map(f=>({layers:f.fill?[`food_${hungry?'hunger_':''}${f.fill}`,container]:[container],x:-91+f.x,bottom:30+f.up}));
+  const bubbles=airBubbles(s.air,s.maxAir,game.player.state.headInWater),air:BarIcon[]=[];
+  if(bubbles)for(let k=0;k<bubbles.full+bubbles.popping;k++)air.push({layers:[k<bubbles.full?'air':'air_bursting'],x:82-k*8,bottom:40});
+  const top=Math.max(49,(armor.length?armorBottom:30+(h.rows-1)*h.rowHeight)+9);
+  const half=(n:number)=>`${Math.ceil(n)/2}`;
+  const label=`Health ${half(s.health)} of ${s.maxHealth/2} hearts${s.absorption>0?`, ${half(s.absorption)} absorption`:''}${poisoned?', poisoned':''}`
+    +`, food ${s.food/2} of 10${hungry?', hunger effect':''}${points>0?`, armour ${points}`:''}${bubbles?`, air ${bubbles.full} of 10`:''}, experience level ${s.xpLevel}`;
+  return{hearts,armor,food,air,xp:xpFill(s.xpProgress),level:Math.max(0,Math.floor(s.xpLevel)),top,label};
+}
+/** Heights in GUI pixels from the screen bottom: the held item name (vanilla 59 px to its top, 14 lower without the
+ *  bars in creative) and the action bar (vanilla 68), lifted above extra heart rows so they never cover the bars. */
+export function stackHeights(barsTop:number,creative:boolean):{name:number;action:number}{
+  const name=creative?36:Math.max(50,barsTop+1);
+  return{name,action:Math.max(64,name+14)};
+}
+
 // ---- Hotbar decorations ------------------------------------------------------------------------------
 /** Mth.hsvToRgb (channels truncated like the game). */
 export function hsvToRgb(h:number,s:number,v:number):string{

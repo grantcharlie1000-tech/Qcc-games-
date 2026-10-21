@@ -203,6 +203,72 @@ export function digitsSvg(text:string,style:'count'|'level'):string{
 }
 export const digitsUrl=(text:string,style:'count'|'level')=>cached(`digits:${style}:${text}`,()=>digitsSvg(text,style));
 
+// ---- Pixel font --------------------------------------------------------------------------------------
+// Original blocky glyphs in the style of the game's GUI font: capitals and digits 7 px tall on the baseline (row 6),
+// lower case 5 px x-height with ascenders, and descenders on row 7. A glyph advances by its width plus 1.
+const px=(rows:string)=>rows.split('/');
+export const FONT_GLYPHS:Readonly<Record<string,Grid>>={
+  A:px('.###./#...#/#...#/#####/#...#/#...#/#...#'),B:px('####./#...#/####./#...#/#...#/#...#/####.'),
+  C:px('.###./#...#/#..../#..../#..../#...#/.###.'),D:px('####./#...#/#...#/#...#/#...#/#...#/####.'),
+  E:px('#####/#..../###../#..../#..../#..../#####'),F:px('#####/#..../###../#..../#..../#..../#....'),
+  G:px('.####/#..../#..##/#...#/#...#/#...#/.###.'),H:px('#...#/#...#/#####/#...#/#...#/#...#/#...#'),
+  I:px('###/.#./.#./.#./.#./.#./###'),J:px('....#/....#/....#/....#/....#/#...#/.###.'),
+  K:px('#...#/#..#./###../#..#./#...#/#...#/#...#'),L:px('#..../#..../#..../#..../#..../#..../#####'),
+  M:px('#...#/##.##/#.#.#/#...#/#...#/#...#/#...#'),N:px('#...#/##..#/#.#.#/#..##/#...#/#...#/#...#'),
+  O:px('.###./#...#/#...#/#...#/#...#/#...#/.###.'),P:px('####./#...#/####./#..../#..../#..../#....'),
+  Q:px('.###./#...#/#...#/#...#/#...#/#..#./.##.#'),R:px('####./#...#/####./#...#/#...#/#...#/#...#'),
+  S:px('.####/#..../.###./....#/....#/#...#/.###.'),T:px('#####/..#../..#../..#../..#../..#../..#..'),
+  U:px('#...#/#...#/#...#/#...#/#...#/#...#/.###.'),V:px('#...#/#...#/#...#/#...#/#...#/.#.#./..#..'),
+  W:px('#...#/#...#/#...#/#...#/#.#.#/##.##/#...#'),X:px('#...#/.#.#./..#../.#.#./#...#/#...#/#...#'),
+  Y:px('#...#/.#.#./..#../..#../..#../..#../..#..'),Z:px('#####/....#/...#./..#../.#.../#..../#####'),
+  a:px('...../...../.###./....#/.####/#...#/.####'),b:px('#..../#..../#.##./##..#/#...#/#...#/####.'),
+  c:px('...../...../.###./#...#/#..../#...#/.###.'),d:px('....#/....#/.##.#/#..##/#...#/#...#/.####'),
+  e:px('...../...../.###./#...#/#####/#..../.####'),f:px('..##/.#../####/.#../.#../.#../.#..'),
+  g:px('...../...../.####/#...#/#...#/.####/....#/####.'),h:px('#..../#..../#.##./##..#/#...#/#...#/#...#'),
+  i:px('#/./#/#/#/#/#'),j:px('....#/...../....#/....#/....#/....#/#...#/.###.'),
+  k:px('#.../#.../#..#/#.#./##../#.#./#..#'),l:px('#./#./#./#./#./#./.#'),
+  m:px('...../...../##.#./#.#.#/#.#.#/#...#/#...#'),n:px('...../...../####./#...#/#...#/#...#/#...#'),
+  o:px('...../...../.###./#...#/#...#/#...#/.###.'),p:px('...../...../#.##./##..#/#...#/####./#..../#....'),
+  q:px('...../...../.##.#/#..##/#...#/.####/....#/....#'),r:px('...../...../#.##./##..#/#..../#..../#....'),
+  s:px('...../...../.####/#..../.###./....#/####.'),t:px('.#./.#./###/.#./.#./.#./..#'),
+  u:px('...../...../#...#/#...#/#...#/#...#/.####'),v:px('...../...../#...#/#...#/#...#/.#.#./..#..'),
+  w:px('...../...../#...#/#...#/#.#.#/#.#.#/.####'),x:px('...../...../#...#/.#.#./..#../.#.#./#...#'),
+  y:px('...../...../#...#/#...#/#...#/.####/....#/####.'),z:px('...../...../#####/...#./..#../.#.../#####'),
+  ' ':px('.../.../.../.../.../.../...'),'.':px('././././././#'),',':px('././././././#/#'),
+  '!':px('#/#/#/#/#/./#'),'?':px('.###./#...#/....#/...#./..#../...../..#..'),"'":px('#/#/././././.'),
+  '"':px('#.#/#.#/.../.../.../.../...'),'-':px('...../...../...../#####/...../...../.....'),
+  ':':px('./#/./././#/.'),';':px('./#/./././#/#'),'(':px('..#/.#./#../#../#../.#./..#'),')':px('#../.#./..#/..#/..#/.#./#..'),
+  '/':px('....#/...#./...#./..#../.#.../.#.../#....'),'+':px('...../..#../..#../#####/..#../..#../.....'),
+  '&':px('.#.../#.#../.#.../#.#.#/#..#./#..#./.##.#'),'%':px('#...#/#..#./...#./..#../.#.../.#..#/#...#'),
+  '#':px('.#.#./.#.#./#####/.#.#./#####/.#.#./.#.#.'),...DIGIT_GLYPHS
+};
+/** True when every character has a glyph (otherwise the HUD falls back to the CSS font). */
+export const hasGlyphs=(text:string)=>[...text].every(ch=>FONT_GLYPHS[ch]!==undefined);
+/** Width in GUI pixels: each glyph's width plus 1 (the last column holds the shadow). */
+export const textWidth=(text:string)=>[...text].reduce((w,ch)=>w+(FONT_GLYPHS[ch]?.[0].length??5)+1,0);
+/** The GUI drop shadow: each channel at a quarter brightness, like the game's text shadow. */
+export function shadowColour(colour:string){
+  const n=parseInt(colour.slice(1,7),16);
+  return`#${(((n&0xfcfcfc)>>2)>>>0).toString(16).padStart(6,'0')}`;
+}
+/** Text as a 9 px tall SVG in the pixel font with the GUI drop shadow (1 px right and down). */
+export function textSvg(text:string,colour='#ffffff'):string{
+  const chars=[...text],w=Math.max(1,textWidth(text)),shadow=shadowColour(colour);
+  let x=0,back='',front='';
+  for(const ch of chars){
+    const glyph=FONT_GLYPHS[ch];if(!glyph){x+=6;continue;}
+    back+=gridSvg(glyph,{'#':shadow},x+1,1);front+=gridSvg(glyph,{'#':colour},x,0);
+    x+=glyph[0].length+1;
+  }
+  return`${open(w,9)}${back}${front}</svg>`;
+}
+const TEXT_CACHE_LIMIT=256;
+/** Data URL of pixel-font text (cached; the cache is cleared when it grows past a few hundred strings). */
+export function textUrl(text:string,colour='#ffffff'){
+  if(urlCache.size>TEXT_CACHE_LIMIT*4)urlCache.clear();
+  return cached(`text:${colour}:${text}`,()=>textSvg(text,colour));
+}
+
 // ---- Hotbar, slots and experience bar ------------------------------------------------------------------
 const rect=(x:number,y:number,w:number,h:number,c:string)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" ${colour(c)}/>`;
 /** One bevelled slot cell (20×20 at x,y): a light rim and a dark translucent well for the 16×16 item. */

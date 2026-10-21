@@ -1,10 +1,12 @@
 import {describe,expect,test} from 'vitest';
 import {heartIcons,foodIcons,armorIcons,airBubbles,xpFill,durabilityBar,attackIndicator,heldNameFade,heldNameOpacity,HealthTracker,
-  regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,type HeartInput} from '../../../src/games/blockcraft/ui/hud-model';
+  regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,barsView,stackHeights,
+  type HeartInput,type BarsOptions} from '../../../src/games/blockcraft/ui/hud-model';
 import {ICON_NAMES,iconGrid,iconSvg,iconPalette,digitsSvg,DIGIT_GLYPHS,hotbarSvg,xpBarSvg,compassGrid,clockGrid,dialFrame,COMPASS_FRAMES,CLOCK_FRAMES,
-  selectionFrameSvg,offhandSvg} from '../../../src/games/blockcraft/ui/hud-art';
+  selectionFrameSvg,offhandSvg,FONT_GLYPHS,hasGlyphs,textWidth,textSvg,shadowColour} from '../../../src/games/blockcraft/ui/hud-art';
 import {optionLabel,nextDifficulty,keyLabel,controlRows,fovLabel,sensitivityFromSlider,sensitivityToSlider} from '../../../src/games/blockcraft/ui/menus-options';
-import {createFakeGame} from './helpers/fake-game';
+import {ITEMS} from '../../../src/games/blockcraft/data/items';
+import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import type {InputBinding} from '../../../src/games/blockcraft/engine/contracts';
 
 const hearts=(o:Partial<HeartInput>={})=>heartIcons({health:20,maxHealth:20,absorption:0,lagHealth:20,blinking:false,regenIndex:-1,poisoned:false,random:null,...o});
@@ -77,6 +79,66 @@ describe('hearts from survival state',()=>{
     // Healing does not blink unless hurt recently.
     t.update(16,130,false);expect(t.blinking(131)).toBe(false);
     t.update(18,131,true);expect(t.blinkUntil).toBe(141);
+  });
+});
+
+describe('bars drawn from the game state',()=>{
+  type Survival=FakeGame['survival'];
+  function gameWith(values:Partial<Survival>,options:{armor?:number;effects?:string[];headInWater?:boolean}={}){
+    const game=createFakeGame(),effects=new Set(options.effects??[]);
+    game.survival={...game.survival,...values,armorPoints:()=>options.armor??0,hasEffect:name=>effects.has(name)};
+    game.player.state.headInWater=!!options.headInWater;
+    return game;
+  }
+  const view=(game:FakeGame,o:Partial<BarsOptions>={})=>barsView(game,{tick:0,lagHealth:game.survival.health,blinking:false,reduced:true,...o});
+  test('7 health with 4 absorption, 7 food and 7 armour',()=>{
+    const v=view(gameWith({health:7,absorption:4,food:7,saturation:2},{armor:7}));
+    expect(v.hearts.map(h=>h.layers.join(' '))).toEqual([...Array(3).fill('heart_full heart_container'),'heart_half heart_container',
+      ...Array(6).fill('heart_container'),'heart_absorb_full heart_container','heart_absorb_full heart_container']);
+    // Hearts start at the hotbar's left edge (91 px left of centre), 8 px apart, 30 px up; absorption on a second row.
+    expect(v.hearts.slice(0,3).map(h=>[h.x,h.bottom])).toEqual([[-91,30],[-83,30],[-75,30]]);
+    expect(v.hearts[10]).toMatchObject({x:-91,bottom:40});
+    // Armour sits above every heart row; shanks fill from the right edge.
+    expect(v.armor).toHaveLength(10);expect(v.armor[3]).toEqual({layers:['armor_half','armor_empty'],x:-67,bottom:50});
+    expect(v.armor[4].layers).toEqual(['armor_empty']);
+    expect(v.food.map(f=>f.layers[0])).toEqual(['food_full','food_full','food_full','food_half',...Array(6).fill('food_container')]);
+    expect(v.food[0]).toMatchObject({x:82,bottom:30});expect(v.food[9].x).toBe(10);
+    expect(v.air).toEqual([]);expect(v.top).toBe(59);
+    expect(v.label).toBe('Health 3.5 of 10 hearts, 2 absorption, food 3.5 of 10, armour 7, experience level 0');
+  });
+  test('full health without armour: no armour row, and the stack top is the vanilla 49 px',()=>{
+    const v=view(gameWith({}));
+    expect(v.hearts.every(h=>h.layers.join(' ')==='heart_full heart_container')).toBe(true);
+    expect(v.armor).toEqual([]);expect(v.top).toBe(49);
+  });
+  test('poison and hunger effects change the icons; the white blink layer shows health just lost',()=>{
+    const v=view(gameWith({health:12,food:4},{effects:['poison','hunger']}),{lagHealth:16,blinking:true});
+    expect(v.hearts[5].layers).toEqual(['heart_poison_full','heart_poison_full_blink','heart_container_blink']);
+    expect(v.hearts[6].layers).toEqual(['heart_poison_full_blink','heart_container_blink']);
+    expect(v.food[0].layers).toEqual(['food_hunger_full','food_hunger_container']);expect(v.food[9].layers).toEqual(['food_hunger_container']);
+    expect(v.label).toContain('poisoned');expect(v.label).toContain('hunger effect');
+  });
+  test('hearts shake at 4 health or less and shanks jitter at zero saturation, unless reduced motion',()=>{
+    const game=gameWith({health:3,food:6,saturation:0});
+    const moving=[0,1,2,3,4,5,6,7].map(tick=>view(game,{tick,reduced:false}));
+    expect(moving.some(v=>v.hearts.some(h=>h.bottom!==30))).toBe(true);
+    expect(moving.some(v=>v.food.some(f=>f.bottom!==30))).toBe(true);
+    for(let tick=0;tick<8;tick++){const v=view(game,{tick});expect(v.hearts.every(h=>h.bottom===30)&&v.food.every(f=>f.bottom===30)).toBe(true);}
+  });
+  test('air bubbles above the shanks under water, the last one bursting',()=>{
+    const v=view(gameWith({air:151},{headInWater:true}));
+    expect(v.air.map(a=>a.layers[0])).toEqual(['air','air','air','air','air','air_bursting']);
+    expect(v.air[0]).toMatchObject({x:82,bottom:40});expect(v.air[5].x).toBe(42);
+    expect(view(gameWith({air:300})).air).toEqual([]);
+  });
+  test('experience bar and level',()=>{
+    const v=view(gameWith({xpLevel:12,xpProgress:.5}));
+    expect(v.xp).toBe(91);expect(v.level).toBe(12);
+  });
+  test('the held name and action bar sit above the bars (lower in creative)',()=>{
+    expect(stackHeights(49,false)).toEqual({name:50,action:64});
+    expect(stackHeights(59,false)).toEqual({name:60,action:74});
+    expect(stackHeights(59,true)).toEqual({name:36,action:64});
   });
 });
 
@@ -236,6 +298,19 @@ describe('pixel art',()=>{
     expect(new Set(Object.values(DIGIT_GLYPHS).map(g=>g.join())).size).toBe(10);
     expect(digitsSvg('64','count')).toContain('width="12" height="8"');
     expect(digitsSvg('7','level')).toContain('width="7" height="9"');
+  });
+  test('the pixel font covers every item name, with vanilla advances and a quarter-brightness shadow',()=>{
+    for(const def of ITEMS.values())expect(hasGlyphs(def.displayName),def.displayName).toBe(true);
+    for(const [ch,glyph] of Object.entries(FONT_GLYPHS)){
+      expect(glyph.length===7||glyph.length===8,ch).toBe(true);expect(new Set(glyph.map(r=>r.length)).size,ch).toBe(1);
+      expect(glyph.every(r=>/^[#.]+$/.test(r)),ch).toBe(true);
+    }
+    // Capitals 5 wide (advance 6), i 1 wide, l 2 wide, space advance 4.
+    expect(textWidth('A')).toBe(6);expect(textWidth('il')).toBe(5);expect(textWidth('A B')).toBe(16);
+    expect(hasGlyphs('Diamond Pickaxe')).toBe(true);expect(hasGlyphs('Épée')).toBe(false);
+    expect(shadowColour('#ffffff')).toBe('#3f3f3f');expect(shadowColour('#55ffff')).toBe('#153f3f');
+    const svg=textSvg('Dirt');expect(svg).toContain(`width="${textWidth('Dirt')}" height="9"`);expect(svg).toContain('#3f3f3f');
+    expect(new Set(Object.values(FONT_GLYPHS).map(gl=>gl.join('/'))).size).toBeGreaterThan(70);
   });
   test('hotbar and experience bar textures have vanilla sizes',()=>{
     expect(hotbarSvg()).toContain('width="182" height="22"');

@@ -5,24 +5,28 @@
 //    GUI scale (hud-model's hudLayout): hearts (absorption, blinking, low-health shake, regeneration wave, poison),
 //    hunger shanks (jitter at zero saturation, hunger effect), armour, air bubbles, the experience bar and level,
 //    the hotbar with item icons, counts and durability bars, the selection frame, the offhand slot, the held item
-//    name, compass and clock readouts, and the F3 debug overlay. F1 (ROOT_FLAGS.hudHidden) hides it all.
+//    name in the pixel font, compass and clock readouts, and the F3 debug overlay. F1 (ROOT_FLAGS.hudHidden) hides it.
 //  - Menus (z-index 30, ui/menus.ts): start, game menu, death and lost-graphics screens.
-// The layout publishes CSS variables on game.root (--bc-gui, --bc-hud-bottom, --bc-hud-bars, --bc-hud-top) that
-// place the ui's action-bar toast and can keep the touch controls above the bars.
+// The layout publishes CSS variables on game.root: --bc-gui (GUI scale), --bc-hud-bottom (hotbar lift, clear of the
+// shell's corner buttons), --bc-hud-bars (top of the bars), --bc-hud-top (top of the whole stack) and
+// --bc-hud-actionbar (the ui's action-bar toast, placed by hud.css). Each is in CSS px above the safe-area inset.
 import './hud.css';
 import {iconUrl} from '../art/items';
 import {itemDef} from '../data/items';
 import {ROOT_FLAGS} from '../engine/constants';
 import type {Game,HudService,ItemStack} from '../engine/contracts';
-import {airBubbles,armorIcons,attackIndicator,compassAngle,debugLines,debugRightLines,durabilityBar,foodIcons,heartIcons,heldName,heldNameFade,
-  heldNameOpacity,HealthTracker,hudLayout,regenIndex,RARITY_COLOURS,sunAngle,tickRandom,xpFill,clockText,type HudLayout} from './hud-model';
-import {clockUrl,compassUrl,CLOCK_FRAMES,COMPASS_FRAMES,dialFrame,digitsUrl,hotbarUrl,hudIconUrl,offhandUrl,selectionUrl,xpBarUrl} from './hud-art';
+import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,heldName,heldNameFade,heldNameOpacity,
+  HealthTracker,hudLayout,RARITY_COLOURS,stackHeights,sunAngle,type BarIcon,type HudLayout} from './hud-model';
+import {clockUrl,compassUrl,CLOCK_FRAMES,COMPASS_FRAMES,dialFrame,digitsUrl,hasGlyphs,hotbarUrl,hudIconUrl,offhandUrl,selectionUrl,textUrl,
+  textWidth,xpBarUrl} from './hud-art';
 import {createMenus} from './menus';
 
 /** Readout dial size in GUI pixels (the 16 px dial art at 1.5×). */
 const DIAL=24;
 const SHOWN_STATES=new Set(['playing','screen','paused','dead']);
 const ROOT_VARS=['--bc-gui','--bc-hud-bottom','--bc-hud-bars','--bc-hud-top','--bc-hud-actionbar'];
+/** Vanilla ItemStack.popTime after a pickup: 5 ticks. */
+const POP_MS=250;
 
 function box(el:HTMLElement,left:number,bottom:number,width?:number,height?:number){
   const s=el.style;s.left=`${left}px`;s.bottom=`${bottom}px`;if(width!==undefined)s.width=`${width}px`;if(height!==undefined)s.height=`${height}px`;
@@ -34,15 +38,16 @@ function layers(el:HTMLElement,names:readonly string[],patterns:boolean){
   if(el.dataset.icon===key)return;
   el.dataset.icon=key;el.style.backgroundImage=names.map(n=>url(hudIconUrl(n,patterns))).join(',');
 }
+function setHidden(el:HTMLElement,hidden:boolean){if(el.hidden!==hidden)el.hidden=hidden;}
 
 /** One item stack drawn like a vanilla slot: 16×16 icon, durability bar and count. */
 class StackView{
   readonly el=document.createElement('span');
-  private img=document.createElement('img');private dur=document.createElement('i');private bar=document.createElement('b');private count=document.createElement('i');
-  private id='';private n=-1;private damage=-1;
+  readonly img=document.createElement('img');private dur=document.createElement('i');private bar=document.createElement('b');private count=document.createElement('i');
+  id='';n=-1;private damage=-1;
   constructor(){
     this.el.className='bc-stack';this.img.alt='';this.img.draggable=false;this.dur.className='bc-dur';this.count.className='bc-count';
-    this.dur.append(this.bar);this.el.append(this.img,this.dur,this.count);this.dur.hidden=true;this.img.hidden=true;
+    this.dur.append(this.bar);this.el.append(this.img,this.dur,this.count);this.dur.hidden=true;this.img.hidden=true;this.count.hidden=true;
   }
   /** Returns true when something changed. */
   update(stack:ItemStack|null):boolean{
@@ -77,7 +82,7 @@ export function createHud(game:Game):HudService{
     <div class="bc-hotbar" role="toolbar" aria-label="Hotbar"></div>
     <i class="bc-selection" aria-hidden="true"></i>
     <div class="bc-offhand" role="img" hidden></div>
-    <p class="bc-held-name" role="status"></p>
+    <p class="bc-held-name" role="status"><span class="bc-held-label"></span><i class="bc-held-text" aria-hidden="true"></i></p>
     <div class="bc-readouts" hidden><i class="bc-dial" data-dial="compass" role="img" hidden></i><i class="bc-dial" data-dial="clock" role="img" hidden></i></div>
   </div>`;
   const debug=make('bc-debug');debug.setAttribute('aria-hidden','true');
@@ -87,6 +92,7 @@ export function createHud(game:Game):HudService{
   const gui=q(hud,'.bc-gui'),bars=q(hud,'.bc-bars'),heartsEl=q(hud,'.bc-hearts'),armorEl=q(hud,'.bc-armor'),foodEl=q(hud,'.bc-food'),airEl=q(hud,'.bc-air');
   const xpEl=q(hud,'.bc-xp'),xpFillEl=q(hud,'.bc-xp-fill'),levelEl=q(hud,'.bc-level'),hotbarBg=q(hud,'.bc-hotbar-bg'),hotbar=q(hud,'.bc-hotbar');
   const selection=q(hud,'.bc-selection'),offhandEl=q(hud,'.bc-offhand'),heldEl=q(hud,'.bc-held-name'),readouts=q(hud,'.bc-readouts');
+  const heldLabel=q(heldEl,'.bc-held-label'),heldText=q(heldEl,'.bc-held-text');
   const compassEl=q(hud,'[data-dial=compass]'),clockEl=q(hud,'[data-dial=clock]');
   const vignette=q(fx,'.bc-vignette'),flash=q(fx,'.bc-flash');
   const attackBar=q(crosshair,'.bc-attack-bar'),attackBarFill=q(crosshair,'.bc-attack-bar b'),attackFull=q(crosshair,'.bc-attack-full');
@@ -107,17 +113,23 @@ export function createHud(game:Game):HudService{
     const v=new StackView();b.append(v.el);box(b,-90+i*20,1,20,20);hotbar.append(b);slots.push(b);slotViews.push(v);
   }
   const offhandView=new StackView();offhandEl.append(offhandView.el);
-  const armorIconsEls=Array.from({length:10},(_,j)=>{const e=make('bc-icon','i');armorEl.append(e);return e;});
-  const foodEls=Array.from({length:10},()=>{const e=make('bc-icon','i');foodEl.append(e);return e;});
-  const airEls=Array.from({length:10},(_,j)=>{const e=make('bc-icon','i');box(e,82-8*j,40);airEl.append(e);return e;});
-  const heartEls:HTMLElement[]=[];
+  /** Icon elements of one bar, created as needed (hearts grow with max health and absorption). */
+  function iconPool(parent:HTMLElement){
+    const els:HTMLElement[]=[];
+    return(icons:readonly BarIcon[],patterns:boolean)=>{
+      while(els.length<icons.length){const e=make('bc-icon','i');parent.append(e);els.push(e);}
+      els.forEach((e,i)=>{const icon=icons[i];setHidden(e,!icon);if(icon){layers(e,icon.layers,patterns);box(e,icon.x,icon.bottom);}});
+    };
+  }
+  const drawHearts=iconPool(heartsEl),drawArmor=iconPool(armorEl),drawFood=iconPool(foodEl),drawAir=iconPool(airEl);
 
   // ---- State --------------------------------------------------------------------------------------------
   const tracker=new HealthTracker();
   let layout:HudLayout=hudLayout(1280,720,false),layoutDirty=true,touch=false,colorBlind=false,reduced=false;
-  let lastTick=-1,lastHurtTick=-1000,heldTimer=0,prevHeld:ItemStack|null=null,heldId='\u0000',selected=-1,barsLabel='';
+  let lastTick=-1,lastHurtTick=-1000,heldTimer=0,prevHeld:ItemStack|null=null,heldId='\u0000',heldOpacity=-1,selected=-1,barsLabel='',level=-1;
   let fpsFrames=0,fpsStart=0,fps=0,debugAt=0,barsTop=49,stackKey='',state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'above'='above';
-  const cur=new Float64Array(20),prev=new Float64Array(20).fill(NaN);
+  let readoutKey='',lowHealth=false,pickedUp:string|null=null;
+  const cur=new Float64Array(18),prev=new Float64Array(18).fill(NaN);
   let resize:ResizeObserver|null=null;
 
   function applyLayout(){
@@ -140,60 +152,29 @@ export function createHud(game:Game):HudService{
     hud.dataset.shown=String(shown);fx.dataset.shown=String(shown);crosshair.dataset.shown=String(s==='playing');
   }
   function resetHealth(){tracker.reset(game.survival.health);lastHurtTick=-1000;prev.fill(NaN);}
-  const iconName=(base:string,fill:'full'|'half')=>`${base}_${fill}`;
 
   // ---- Bars -----------------------------------------------------------------------------------------------
   function renderBars(tick:number){
-    const s=game.survival,p=game.player.state;
-    const random=reduced?null:tickRandom(tick);
-    const max=Math.max(s.maxHealth,tracker.lagHealth,Math.ceil(s.health));
-    const regen=!reduced&&s.hasEffect('regeneration')?regenIndex(tick,max):-1;
     const blinking=reduced?tracker.recent(tick):tracker.blinking(tick);
-    const poisoned=s.hasEffect('poison');
-    const hearts=heartIcons({health:s.health,maxHealth:s.maxHealth,absorption:s.absorption,lagHealth:tracker.lagHealth,blinking,regenIndex:regen,poisoned,random});
-    while(heartEls.length<hearts.icons.length){const e=make('bc-icon','i');heartsEl.append(e);heartEls.push(e);}
-    heartEls.forEach((e,i)=>{
-      const h=hearts.icons[i];e.hidden=!h;if(!h)return;
-      const kind=h.type==='poison'?'heart_poison':'heart',list:string[]=[];
-      if(h.fill)list.push(iconName(kind,h.fill));
-      if(h.lost)list.push(`${iconName(kind,h.lost)}_blink`);
-      if(h.absorb)list.push(iconName('heart_absorb',h.absorb));
-      list.push(h.blinkContainer?'heart_container_blink':'heart_container');
-      layers(e,list,colorBlind);box(e,-91+h.x,30+h.up);
-    });
-    const armour=armorIcons(s.armorPoints()),armorBottom=40+(hearts.rows-1)*hearts.rowHeight;
-    barsTop=Math.max(49,armour.length?armorBottom+9:30+(hearts.rows-1)*hearts.rowHeight+9);placeStack();
-    armorIconsEls.forEach((e,j)=>{
-      const a=armour[j];e.hidden=!a;if(!a)return;
-      layers(e,a==='empty'?['armor_empty']:[`armor_${a}`,'armor_empty'],false);
-      box(e,-91+j*8,armorBottom);
-    });
-    const hunger=s.hasEffect('hunger');
-    foodIcons(s.food,s.saturation,hunger,tick,random).forEach((f,k)=>{
-      const e=foodEls[k],container=hunger?'food_hunger_container':'food_container';
-      layers(e,f.fill?[`food_${hunger?'hunger_':''}${f.fill}`,container]:[container],colorBlind);
-      box(e,-91+f.x,30+f.up);
-    });
-    const air=airBubbles(s.air,s.maxAir,p.headInWater);
-    airEls.forEach((e,j)=>{
-      const kind=!air?null:j<air.full?'air':j<air.full+air.popping?'air_bursting':null;
-      e.hidden=!kind;if(kind)layers(e,[kind],false);
-    });
-    const fill=xpFill(s.xpProgress);xpFillEl.style.width=`${fill}px`;
-    levelEl.hidden=s.xpLevel<=0;
-    if(s.xpLevel>0){const t=String(s.xpLevel);levelEl.style.backgroundImage=url(digitsUrl(t,'level'));levelEl.dataset.level=t;box(levelEl,-3*t.length-1,27,6*t.length+1,9);}
-    const label=`Health ${Math.ceil(s.health)/2} of ${s.maxHealth/2} hearts${s.absorption>0?`, ${Math.ceil(s.absorption)/2} absorption`:''}, food ${s.food/2} of 10`
-      +`${armour.length?`, armour ${s.armorPoints()}`:''}${air?`, air ${air.full} of 10`:''}, experience level ${s.xpLevel}`;
-    if(label!==barsLabel){barsLabel=label;bars.setAttribute('aria-label',label);}
+    const view=barsView(game,{tick,lagHealth:tracker.lagHealth,blinking,reduced});
+    drawHearts(view.hearts,colorBlind);drawArmor(view.armor,false);drawFood(view.food,colorBlind);drawAir(view.air,false);
+    if(view.top!==barsTop){barsTop=view.top;placeStack();}
+    xpFillEl.style.width=`${view.xp}px`;
+    if(view.level!==level){
+      level=view.level;setHidden(levelEl,level<=0);
+      if(level>0){const t=String(level);levelEl.style.backgroundImage=url(digitsUrl(t,'level'));levelEl.dataset.level=t;box(levelEl,-3*t.length-1,27,6*t.length+1,9);}
+    }
+    if(view.label!==barsLabel){barsLabel=view.label;bars.setAttribute('aria-label',view.label);}
   }
+  /** Redraws the bars only when an input changed (or every tick while something animates). */
   function updateBars(tick:number){
     const s=game.survival,p=game.player.state;
     const shake=Math.ceil(s.health)+Math.ceil(s.absorption)<=4,regen=s.hasEffect('regeneration'),jitter=s.saturation<=0,blink=tracker.recent(tick);
     const animated=blink||!reduced&&(shake||regen||jitter);
     cur[0]=s.health;cur[1]=s.maxHealth;cur[2]=s.absorption;cur[3]=s.food;cur[4]=s.saturation>0?1:0;cur[5]=s.air;cur[6]=p.headInWater?1:0;
-    cur[7]=s.armorPoints();cur[8]=s.xpLevel;cur[9]=xpFill(s.xpProgress);cur[10]=s.hasEffect('poison')?1:0;cur[11]=regen?1:0;cur[12]=s.hasEffect('hunger')?1:0;
+    cur[7]=s.armorPoints();cur[8]=s.xpLevel;cur[9]=s.xpProgress;cur[10]=s.hasEffect('poison')?1:0;cur[11]=regen?1:0;cur[12]=s.hasEffect('hunger')?1:0;
     cur[13]=colorBlind?1:0;cur[14]=reduced?1:0;cur[15]=animated?tick:-1;cur[16]=tracker.lagHealth;cur[17]=s.maxAir;
-    let changed=false;for(let i=0;i<18;i++)if(cur[i]!==prev[i]){changed=true;prev[i]=cur[i];}
+    let changed=false;for(let i=0;i<cur.length;i++)if(cur[i]!==prev[i]){changed=true;prev[i]=cur[i];}
     if(changed)renderBars(tick);
   }
 
@@ -203,29 +184,43 @@ export function createHud(game:Game):HudService{
     return`${name}${stack.count>1?` ×${stack.count}`:''}${stack.damage&&max?`, durability ${max-stack.damage} of ${max}`:''}`;
   }
   const slotLabel=(stack:ItemStack|null,i:number)=>`${stack?stackLabel(stack):'Empty'}, slot ${i+1}`;
+  /** The vanilla pickup "pop": the icon starts squashed (half width, 1.5× height) and springs back over 5 ticks. */
+  function pop(view:StackView){
+    if(reduced||typeof view.img.animate!=='function')return;
+    view.img.animate([{transform:'scale(.5,1.5)'},{transform:'scale(1,1)'}],{duration:POP_MS,easing:'linear'});
+  }
   function updateHotbar(){
     const inv=game.inventory;
-    for(let i=0;i<9;i++){const st=inv.slots[i]??null;if(slotViews[i].update(st))slots[i].setAttribute('aria-label',slotLabel(st,i));}
+    for(let i=0;i<9;i++){
+      const st=inv.slots[i]??null,view=slotViews[i],before=view.id===st?.id?view.n:0;
+      if(!view.update(st))continue;
+      slots[i].setAttribute('aria-label',slotLabel(st,i));
+      if(pickedUp&&st&&st.id===pickedUp&&st.count>before)pop(view);
+    }
+    pickedUp=null;
     if(inv.selected!==selected){
       if(selected>=0)slots[selected]?.setAttribute('aria-pressed','false');
       selected=inv.selected;slots[selected]?.setAttribute('aria-pressed','true');box(selection,-92+selected*20,-1,24,24);
     }
-    const off=inv.offhand;offhandEl.hidden=!off;
+    const off=inv.offhand;setHidden(offhandEl,!off);
     if(offhandView.update(off))offhandEl.setAttribute('aria-label',off?`Offhand: ${stackLabel(off)}`:'Offhand: empty');
   }
   function tickHeldName(){
     const held=game.inventory.held();
     heldTimer=heldNameFade(prevHeld,held,heldTimer);prevHeld=held;
     const id=held?.id??'';
-    if(id!==heldId){
-      heldId=id;
-      if(held){const n=heldName(held);heldEl.textContent=n.text;heldEl.style.color=RARITY_COLOURS[n.rarity];}else heldEl.textContent='';
-    }
+    if(id===heldId)return;
+    heldId=id;
+    const n=held?heldName(held):null,pixel=!!n&&hasGlyphs(n.text);
+    heldLabel.textContent=n?.text??'';
+    heldLabel.className=pixel?'bc-held-label bc-sr':'bc-held-label';
+    heldLabel.style.color=n?RARITY_COLOURS[n.rarity]:'';
+    setHidden(heldText,!pixel);
+    if(n&&pixel){const s=heldText.style;s.backgroundImage=url(textUrl(n.text,RARITY_COLOURS[n.rarity]));s.width=`${textWidth(n.text)}px`;}
   }
-  /** Held item name, action bar and readouts above the bars: the vanilla heights (59 and 68 px from the bottom),
-   *  lifted when extra heart rows push the armour row up so they never overlap it. */
+  /** Held item name, action bar and readouts above the bars at the vanilla heights. */
   function placeStack(){
-    const creative=game.settings.mode==='creative',name=creative?36:Math.max(50,barsTop+1),action=Math.max(64,name+14);
+    const {name,action}=stackHeights(barsTop,game.settings.mode==='creative');
     const key=`${name}:${action}:${readoutMode}:${layout.scale}:${layout.bottom}`;if(key===stackKey)return;stackKey=key;
     heldEl.style.bottom=`${name}px`;
     game.root.style.setProperty('--bc-hud-actionbar',`${(layout.bottom+action*layout.scale).toFixed(1)}px`);
@@ -233,7 +228,8 @@ export function createHud(game:Game):HudService{
   }
   function updateHeldName(){
     const o=heldId?heldNameOpacity(heldTimer):0;
-    heldEl.style.opacity=o.toFixed(3);heldEl.hidden=o<=0;
+    if(o===heldOpacity)return;heldOpacity=o;
+    heldEl.style.opacity=o.toFixed(3);setHidden(heldEl,o<=0);
   }
   function updateCrosshair(){
     const it=game.interaction,target=it.entityTarget,held=game.inventory.held();
@@ -245,16 +241,19 @@ export function createHud(game:Game):HudService{
     attackFull.hidden=ind?.kind!=='full';attackBar.hidden=ind?.kind!=='bar';
     if(ind?.kind==='bar')attackBarFill.style.width=`${ind.width}px`;
   }
-  function updateReadouts(){
+  function updateReadouts(now:number){
     const inv=game.inventory,main=inv.held()?.id,off=inv.offhand?.id;
-    const hasCompass=main==='compass'||off==='compass',hasClock=main==='clock'||off==='clock';
-    readouts.hidden=!hasCompass&&!hasClock;compassEl.hidden=!hasCompass;clockEl.hidden=!hasClock;
+    const hasCompass=main==='compass'||off==='compass',hasClock=main==='clock'||off==='clock',key=`${+hasCompass}${+hasClock}`;
+    if(key!==readoutKey){readoutKey=key;setHidden(readouts,!hasCompass&&!hasClock);setHidden(compassEl,!hasCompass);setHidden(clockEl,!hasClock);}
     if(hasCompass){
       const p=game.player.state,sp=p.spawn,near=Math.hypot(sp.x-p.x,sp.z-p.z)<.5;
-      // At the spawn point itself the needle spins, like a compass with nowhere to point.
-      const angle=near?performance.now()/400:compassAngle(p.x,p.z,p.yaw,sp.x,sp.z),frame=dialFrame(angle,COMPASS_FRAMES);
-      if(frame!==compassFrame){compassFrame=frame;compassEl.style.backgroundImage=url(compassUrl(frame));
-        compassEl.setAttribute('aria-label',near?'Compass: you are at the world spawn':`Compass: spawn is ${Math.round(angle*180/Math.PI)} degrees ${angle>=0?'right':'left'} of where you look`);}
+      // At the spawn point itself the needle spins, like a compass with nowhere to point (still with reduced motion).
+      const angle=near?(reduced?0:now/400):compassAngle(p.x,p.z,p.yaw,sp.x,sp.z),frame=dialFrame(angle,COMPASS_FRAMES);
+      if(frame!==compassFrame){
+        compassFrame=frame;compassEl.style.backgroundImage=url(compassUrl(frame));
+        const deg=Math.round(angle*180/Math.PI);
+        compassEl.setAttribute('aria-label',near?'Compass: you are at the world spawn':`Compass: spawn is ${deg===0?'straight ahead':`${Math.abs(deg)} degrees to the ${deg>0?'right':'left'}`}`);
+      }
     }
     if(hasClock){
       const frame=dialFrame(sunAngle(game.time.dayTime),CLOCK_FRAMES);
@@ -262,8 +261,8 @@ export function createHud(game:Game):HudService{
     }
   }
   function updateEffects(){
-    const s=game.survival,low=game.settings.mode==='survival'&&!s.dead&&Math.ceil(s.health)+Math.ceil(s.absorption)<=4&&s.health>0;
-    const v=String(low);if(vignette.dataset.on!==v)vignette.dataset.on=v;
+    const s=game.survival,low=game.settings.mode==='survival'&&!s.dead&&s.health>0&&Math.ceil(s.health)+Math.ceil(s.absorption)<=4;
+    if(low!==lowHealth){lowHealth=low;vignette.dataset.on=String(low);}
   }
   function damageFlash(){
     if(game.settings.mode!=='survival'||typeof flash.animate!=='function')return;
@@ -279,11 +278,12 @@ export function createHud(game:Game):HudService{
   function fillColumn(col:HTMLElement,lines:string[]){
     while(col.childElementCount<lines.length)col.append(document.createElement('span'));
     while(col.childElementCount>lines.length)col.lastElementChild!.remove();
-    lines.forEach((l,i)=>{const span=col.children[i] as HTMLElement;if(span.textContent!==l)span.textContent=l;span.hidden=!l;});
+    lines.forEach((l,i)=>{const span=col.children[i] as HTMLElement;if(span.textContent!==l)span.textContent=l;setHidden(span,!l);});
   }
 
   // ---- Input on the HUD --------------------------------------------------------------------------------
   hotbar.addEventListener('click',e=>{const b=(e.target as HTMLElement).closest<HTMLButtonElement>('.bc-slot');if(b)game.inventory.select(Number(b.dataset.slot));},{signal});
+  // Taps on the hotbar must not reach the canvas's touch look / mining.
   hotbar.addEventListener('pointerdown',e=>e.stopPropagation(),{signal});
 
   const service:HudService={
@@ -294,10 +294,11 @@ export function createHud(game:Game):HudService{
       else window.addEventListener('resize',()=>{layoutDirty=true;},{signal});
       offs.push(
         game.events.on('stateChanged',()=>{setVisibility();menus.refresh();}),
-        game.events.on('settingsChanged',()=>{menus.refresh();hud.dataset.mode=game.settings.mode;crossKey='-';}),
+        game.events.on('settingsChanged',()=>{menus.refresh();hud.dataset.mode=game.settings.mode;crossKey='-';placeStack();}),
         game.events.on('modeChanged',({mode})=>{hud.dataset.mode=mode;placeStack();}),
         game.events.on('playerDamaged',({amount})=>{if(amount>0){lastHurtTick=game.time.tick;damageFlash();}}),
         game.events.on('playerDied',({message})=>menus.setDeathMessage(message)),
+        game.events.on('itemPickedUp',({stack})=>{pickedUp=stack.id;}),
         game.events.on('playerRespawned',resetHealth),
         game.events.on('restored',resetHealth),
         game.events.on('worldReset',resetHealth)
@@ -323,10 +324,10 @@ export function createHud(game:Game):HudService{
         tickHeldName();
       }
       if(game.settings.mode==='survival')updateBars(tick);
-      updateHotbar();updateHeldName();updateCrosshair();updateReadouts();updateEffects();
+      updateHotbar();updateHeldName();updateCrosshair();updateReadouts(now);updateEffects();
     },
     reset(){
-      prevHeld=null;heldTimer=0;heldId='\u0000';selected=-1;crossKey='-';compassFrame=clockFrame=-1;lastTick=-1;
+      prevHeld=null;heldTimer=0;heldId='\u0000';heldOpacity=-1;selected=-1;crossKey='-';compassFrame=clockFrame=-1;lastTick=-1;level=-1;readoutKey='';pickedUp=null;
       for(const v of [...slotViews,offhandView])v.invalidate();
       resetHealth();
     },
