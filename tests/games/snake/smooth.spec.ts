@@ -87,7 +87,7 @@ test('a dropped RAF catches up to the same final grid and committed edge',async(
  }
  const steady=await scenario(page,false);
  const context=await browser.newContext();
- await context.addInitScript(()=>sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading'));
+ await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
  const dropped=await context.newPage();const skipped=await scenario(dropped,true);
  expect(steady.count).toBeGreaterThan(20);expect(skipped.count).toBeLessThan(steady.count/2);
  expect(skipped.snapshot.body[0].y).toBe(steady.snapshot.body[0].y); // Both execute the same horizontal leg; x differs exactly with active event time.
