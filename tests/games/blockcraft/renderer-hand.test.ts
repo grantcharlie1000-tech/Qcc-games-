@@ -1,8 +1,8 @@
 import {describe,expect,test} from 'vitest';
 import * as THREE from 'three';
 import {createFakeGame} from './helpers/fake-game';
-import {applyDisplay,armPose,bowPose,createHand,createViewMotion,eatPose,heldDisplay,hurtBob,itemSwingPose,viewBob,DEATH_TICKS,HURT_TICKS,SWING_TICKS} from '../../../src/games/blockcraft/render/hand';
-import {HandBuffer,addArm,addSprite,paintArmSkin,HAND_SLOT} from '../../../src/games/blockcraft/render/hand-art';
+import {applyDisplay,armPose,bowPose,createHand,createViewMotion,eatPose,heldDisplay,hurtBob,itemSwingPose,pullingSprite,viewBob,DEATH_TICKS,HURT_TICKS,SWING_TICKS} from '../../../src/games/blockcraft/render/hand';
+import {HandBuffer,addArm,addBlockMesh,addSprite,paintArmSkin,HAND_SLOT,HAND_TEX_ATLAS,HAND_TEX_TRANSLUCENT} from '../../../src/games/blockcraft/render/hand-art';
 import type {ChunkMesh} from '../../../src/games/blockcraft/engine/contracts';
 
 const at=(m:THREE.Matrix4,x:number,y:number,z:number)=>new THREE.Vector3(x,y,z).applyMatrix4(m);
@@ -49,6 +49,13 @@ describe('vanilla first-person poses',()=>{
     const roll=new THREE.Euler().setFromRotationMatrix(hurtBob(new THREE.Matrix4(),.84,0));
     expect(Math.abs(roll.z)).toBeGreaterThan(5*Math.PI/180);
     expect(hurtBob(new THREE.Matrix4(),0,0).equals(new THREE.Matrix4())).toBe(true);
+  });
+  test('a drawn bow shows the vanilla pull stages once item art paints them',()=>{
+    const all=()=>true;
+    expect(pullingSprite(0,all)).toBe('bow_pulling_0');expect(pullingSprite(12,all)).toBe('bow_pulling_0');
+    expect(pullingSprite(13,all)).toBe('bow_pulling_1');expect(pullingSprite(17,all)).toBe('bow_pulling_1');
+    expect(pullingSprite(18,all)).toBe('bow_pulling_2');expect(pullingSprite(400,all)).toBe('bow_pulling_2');
+    expect(pullingSprite(18,n=>n!=='bow_pulling_2')).toBe('');
   });
   test('held items are drawn as blocks, extruded sprites or the shield',()=>{
     expect(heldDisplay({id:'cobblestone',count:1})?.display).toBe('block');
@@ -133,6 +140,14 @@ describe('hand art',()=>{
     expect(buf.position[2]).toBeCloseTo(8.5/16);expect(buf.position[12+2]).toBeCloseTo(7.5/16);
     addArm(buf,0);expect(buf.quads).toBe(12);
   });
+  test('the translucent faces of a held block (ice) are marked to blend, the others stay opaque',()=>{
+    const quad=()=>({position:new Uint16Array([0,0,16,240,16,0,16,240,0,16,16,240,16,16,16,240]),uvt:new Uint16Array([0,0,1,255,16,0,1,255,0,16,1,255,16,16,1,255]),
+      tint:new Uint8Array(16).fill(255),quads:1});
+    const none={position:new Uint16Array(0),uvt:new Uint16Array(0),tint:new Uint8Array(0),quads:0};
+    const buf=new HandBuffer();
+    expect(addBlockMesh(buf,{opaque:quad(),cutout:none,translucent:quad(),minY:0,maxY:1},0)).toBe(2);
+    expect(buf.misc[1]).toBe(HAND_TEX_ATLAS);expect(buf.misc[4*2+1]).toBe(HAND_TEX_TRANSLUCENT);
+  });
 });
 
 describe('hand service',()=>{
@@ -170,6 +185,13 @@ describe('hand service',()=>{
     // Count changes of the same item do not re-equip.
     game.inventory.setSlot(0,{id:'stick',count:2});hand.tick();expect(hand.state.mainHeight).toBeCloseTo(1);
   });
+  test('drawing a bow keeps the bow in hand without re-equipping (the plain sprite until pull stages are painted)',()=>{
+    const {game,hand,update}=setup();
+    game.inventory.setSlot(0,{id:'bow',count:1});for(let i=0;i<10;i++)hand.tick();update();
+    (game.interaction as {using:unknown}).using={item:'bow',progress:0};
+    for(let i=0;i<25;i++){hand.tick();update();expect(hand.state.main.startsWith('bow')).toBe(true);expect(hand.state.mainHeight).toBeCloseTo(1);}
+    (game.interaction as {using:unknown}).using=null;hand.tick();update();expect(hand.state.main).toBe('bow');
+  });
   test('the attack cooldown keeps the main hand low until it recharges',()=>{
     const {game,hand}=setup();
     for(let i=0;i<6;i++)hand.tick();
@@ -190,6 +212,10 @@ describe('hand service',()=>{
     const {game,hand,update}=setup();
     game.inventory.setSlot(0,{id:'stick',count:1});for(let i=0;i<10;i++)hand.tick();update();
     hand.reset();expect(hand.state.main).toBe('');
+    // One blended, single-pass draw call; translucent texels keep their alpha on front faces only.
+    const material=hand.mesh.material as THREE.RawShaderMaterial;
+    expect(material.transparent).toBe(true);expect(material.forceSinglePass).toBe(true);
+    expect(material.fragmentShader).toMatch(/if\(vTex>1\.5\)\{if\(!gl_FrontFacing\)discard;a=t\.a;\}/);
     const disposed:string[]=[];
     hand.mesh.geometry.addEventListener('dispose',()=>disposed.push('geometry'));
     (hand.mesh.material as THREE.Material).addEventListener('dispose',()=>disposed.push('material'));

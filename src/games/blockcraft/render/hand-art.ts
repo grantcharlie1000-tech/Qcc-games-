@@ -2,7 +2,8 @@
 // short sleeve at the shoulder, painted here), held items as extruded 16×16 sprites (vanilla ItemModelGenerator: a front
 // and a back face plus a one-pixel side wall around every opaque pixel) and held blocks from the mesher's meshBlock.
 // Everything is written into one vertex buffer: position (model space, already in the item's display transform),
-// uv, colour (tint × shade), part (0 main hand, 1 offhand) and texture (0 hand sheet, 1 block atlas).
+// uv, colour (tint × shade), part (0 main hand, 1 offhand) and texture (0 hand sheet, 1 block atlas, 2 block atlas blended:
+// the translucent faces of a held block such as ice).
 import * as THREE from 'three';
 import {ATLAS_COLUMNS,ATLAS_ROWS} from '../data/blocks';
 import type {ChunkMesh} from '../engine/contracts';
@@ -10,6 +11,8 @@ import type {ChunkMesh} from '../engine/contracts';
 /** Hand sheet: three 16×16 slots side by side: 0 the arm skin, 1 the main-hand sprite, 2 the offhand sprite. */
 export const HAND_SLOT=16,HAND_SLOTS=3,HAND_SHEET_WIDTH=HAND_SLOT*HAND_SLOTS,HAND_SHEET_HEIGHT=HAND_SLOT;
 export const SLOT_ARM=0,SLOT_MAIN=1,SLOT_OFF=2;
+/** Texture codes of the hand buffer's misc.y. */
+export const HAND_TEX_SHEET=0,HAND_TEX_ATLAS=1,HAND_TEX_TRANSLUCENT=2;
 /** Room for two extruded sprites (2 faces + up to 64 edge quads per row run) and the arm. */
 export const MAX_HAND_QUADS=2400;
 
@@ -96,7 +99,8 @@ export function addSprite(buf:HandBuffer,pixels:Uint8ClampedArray,slot:number,pa
   }
   return buf.quads-before;
 }
-/** A meshBlock result (positions 0..16 per block, tile UVs) into the buffer, sampling the block atlas. */
+/** A meshBlock result (positions 0..16 per block, tile UVs) into the buffer, sampling the block atlas; the translucent
+ *  layer's quads are marked to blend (vanilla draws translucent block items with the translucent sheet). */
 export function addBlockMesh(buf:HandBuffer,mesh:ChunkMesh,part:number):number{
   const before=buf.quads,corner=[0,0,0,0,0,0,0,0,0,0,0,0],uv=[0,0,0,0,0,0,0,0],e=.0005;
   for(const p of [mesh.opaque,mesh.cutout,mesh.translucent]){
@@ -110,7 +114,7 @@ export function addBlockMesh(buf:HandBuffer,mesh:ChunkMesh,part:number):number{
         uv[k*2]=(col+fu)/ATLAS_COLUMNS;uv[k*2+1]=1-(row+1-fv)/ATLAS_ROWS;
         shade+=p.uvt[o+3]/255/4;r=p.tint[o]/255;g=p.tint[o+1]/255;b=p.tint[o+2]/255;
       }
-      buf.quad(corner,uv,r*shade,g*shade,b*shade,part,1);
+      buf.quad(corner,uv,r*shade,g*shade,b*shade,part,p===mesh.translucent?HAND_TEX_TRANSLUCENT:HAND_TEX_ATLAS);
     }
   }
   return buf.quads-before;

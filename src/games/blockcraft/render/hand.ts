@@ -2,11 +2,12 @@
 // view bob, the hand lagging behind fast turns, the equip dip when the held item changes (and while the attack
 // cooldown recharges), the 6-tick swing, eating/drinking, drawing a bow and raising a shield. The main hand shows the
 // bare arm when empty; the offhand shows only an item. Blocks come from game.mesher.meshBlock, items are extruded
-// sprites from art/items.ts. One draw call with its own 70° projection, drawn in front of the world.
+// sprites from art/items.ts. One draw call with its own 70° projection, drawn in front of the world and last in the
+// blended pass, so the translucent faces of a held block (ice) blend over the world like vanilla's translucent item sheet.
 import * as THREE from 'three';
 import {BLOCK_BY_NAME,TINTED_TILES} from '../data/blocks';
 import {itemDef,type ItemIcon} from '../data/items';
-import {spritePixels} from '../art/items';
+import {SPRITE_PAINTERS,spritePixels} from '../art/items';
 import {tilePixels} from '../art/atlas';
 import {quadIndices} from '../engine/constants';
 import type {Game,ItemStack} from '../engine/contracts';
@@ -162,6 +163,13 @@ export function heldDisplay(stack:ItemStack|null):{display:Display;icon:ItemIcon
   if(def.use==='shield')return{display:'shield',icon:def.icon};
   return{display:def.icon.kind==='block'?'block':'item',icon:def.icon};
 }
+/** Vanilla bow model overrides while drawing (pull = ticks drawn / 20): bow_pulling_0, _1 from 0.65, _2 from 0.9. The
+ *  stage sprite is used only once item art paints it (`has`); until then the plain bow stays in hand. */
+export function pullingSprite(used:number,has:(name:string)=>boolean):string{
+  const pull=Math.max(0,used)/20,name=pull>=.9?'bow_pulling_2':pull>=.65?'bow_pulling_1':'bow_pulling_0';
+  return has(name)?name:'';
+}
+const painted=(name:string)=>Object.prototype.hasOwnProperty.call(SPRITE_PAINTERS,name);
 type UseAnim='eat'|'bow'|'block'|null;
 function useAnim(id:string):UseAnim{
   const def=itemDef(id);if(!def)return null;
@@ -184,7 +192,11 @@ in vec2 vUv;in vec3 vColor;flat in float vTex;out vec4 colour;
 void main(){
   vec4 t=vTex<.5?texture(sheet,vUv):texture(atlas,vUv);
   if(t.a<.1)discard;
-  colour=vec4(t.rgb*vColor*light,1.);
+  float a=1.;
+  // Translucent block faces blend, front faces only (the mesher winds faces counter-clockwise from outside), like
+  // vanilla's culled translucent sheet; everything else is opaque.
+  if(vTex>1.5){if(!gl_FrontFacing)discard;a=t.a;}
+  colour=vec4(t.rgb*vColor*light,a);
 }`;
 
 export interface HandState{
@@ -224,7 +236,9 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
   geometry.setIndex(new THREE.BufferAttribute(quadIndices(MAX_HAND_QUADS),1));geometry.setDrawRange(0,0);
   const uniforms={mainMatrix:{value:new THREE.Matrix4()},offMatrix:{value:new THREE.Matrix4()},handProjection:{value:new THREE.Matrix4()},
     light:{value:new THREE.Color(1,1,1)},sheet:{value:sheet},atlas:{value:atlas}};
-  const material=new THREE.RawShaderMaterial({glslVersion:THREE.GLSL3,vertexShader:VERTEX,fragmentShader:FRAGMENT,uniforms,side:THREE.DoubleSide});
+  // Blended (opaque texels write alpha 1) and single pass (RawShaderMaterial's default): drawn after everything blended.
+  const material=new THREE.RawShaderMaterial({glslVersion:THREE.GLSL3,vertexShader:VERTEX,fragmentShader:FRAGMENT,uniforms,side:THREE.DoubleSide,
+    transparent:true,forceSinglePass:true});
   const mesh=new THREE.Mesh(geometry,material);
   mesh.frustumCulled=false;mesh.matrixAutoUpdate=false;mesh.renderOrder=9;mesh.name='hand';
   const projection=new THREE.PerspectiveCamera(70,1,.05,10);
@@ -233,7 +247,7 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
   let shownMain:ItemStack|null=null,shownOff:ItemStack|null=null,mainKey='',offKey='',builtMain='\0',builtOff='\0';
   let mainHeight=0,oMainHeight=0,offHeight=0,oOffHeight=0;
   let swinging=false,swingTime=0,attackAnim=0,oAttackAnim=0;
-  let usedItem='',useTicks=0,useHand:0|1=0;
+  let usedItem='',useTicks=0,useHand:0|1=0,mainSprite='',offSprite='';
   const model=new THREE.Matrix4();
 
   function build(){
@@ -249,7 +263,7 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
         continue;
       }
       applyDisplay(model.identity(),held.display,left);buf.setTransform(model);
-      const icon=held.icon,slot=part===0?SLOT_MAIN:SLOT_OFF;
+      const stage=part===0?mainSprite:offSprite,icon:ItemIcon=stage?{kind:'sprite',sprite:stage}:held.icon,slot=part===0?SLOT_MAIN:SLOT_OFF;
       if(icon.kind==='block'){
         const def=BLOCK_BY_NAME.get(icon.block);if(!def)continue;
         const tint=def.tint==='grass'?GRASS_ITEM:def.tint==='foliage'?FOLIAGE_ITEM:undefined;
@@ -302,13 +316,16 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
       offHeight+=Math.max(-.4,Math.min(.4,(offSame?1:0)-offHeight));
       if(mainHeight<.1)shownMain=main;
       if(offHeight<.1)shownOff=off;
-      mainKey=key(shownMain);offKey=key(shownOff);
       // updateSwingTime.
       if(swinging){swingTime++;if(swingTime>=SWING_TICKS){swingTime=0;swinging=false;}}else swingTime=0;
       attackAnim=swingTime/SWING_TICKS;
       const using=game.interaction?.using;
       if(using&&using.item===usedItem)useTicks++;
       else{usedItem=using?.item??'';useTicks=0;useHand=key(inv.held())===usedItem?0:1;}
+      // The drawn bow's pull stage is part of what the hand shows (a stage change rebuilds it, without re-equipping).
+      const stage=using&&useAnim(usedItem)==='bow'?pullingSprite(useTicks,painted):'';
+      mainSprite=stage&&useHand===0&&key(shownMain)===usedItem?stage:'';offSprite=stage&&useHand===1&&key(shownOff)===usedItem?stage:'';
+      mainKey=key(shownMain)+(mainSprite&&'#'+mainSprite);offKey=key(shownOff)+(offSprite&&'#'+offSprite);
     },
     update(partial,prefix,aspect,light){
       if(mainKey!==builtMain||offKey!==builtOff){builtMain=mainKey;builtOff=offKey;build();}
@@ -319,7 +336,7 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
       uniforms.handProjection.value.copy(projection.projectionMatrix);
       uniforms.light.value.setRGB(light.r,light.g,light.b);
     },
-    reset(){shownMain=shownOff=null;mainKey=offKey='';builtMain=builtOff='\0';mainHeight=oMainHeight=offHeight=oOffHeight=0;swinging=false;swingTime=0;attackAnim=oAttackAnim=0;usedItem='';useTicks=0;},
+    reset(){shownMain=shownOff=null;mainKey=offKey=mainSprite=offSprite='';builtMain=builtOff='\0';mainHeight=oMainHeight=offHeight=oOffHeight=0;swinging=false;swingTime=0;attackAnim=oAttackAnim=0;usedItem='';useTicks=0;},
     dispose(){geometry.dispose();material.dispose();sheet.dispose();}
   };
 }

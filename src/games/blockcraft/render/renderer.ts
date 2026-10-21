@@ -8,6 +8,9 @@
 //
 // Draw calls besides chunks and entities: sky 1, clouds 1, particles 1 (when alive), hand 1, block overlay 1 (when
 // targeting or mining), screen overlay 1 (when tinted) — at most 6.
+// Order (three.js renderOrder): opaque 0, cutout 1, sky dome 5; then blended: block overlay 1.4, clouds 1.5 (2.5 seen
+// from above), translucent chunks 2, particles 3, hand 9, screen overlay 100. World shaders are camera-relative
+// (modelViewMatrix is formed in float64 on the CPU), so nothing jitters far from spawn.
 import * as THREE from 'three';
 import {ATLAS_COLUMNS,ATLAS_ROWS,LIQUID,TILE_INDEX,isLava,isWater} from '../data/blocks';
 import {biomeDef} from '../data/biomes';
