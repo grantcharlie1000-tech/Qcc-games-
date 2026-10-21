@@ -67,7 +67,7 @@ class DomScreens implements ScreenView{
   private unmount:(()=>void)|null=null;
   private observer:IntersectionObserver|null=null;
   /** Pointer position relative to the layer, and whether the last input was the keyboard. */
-  private px=0;private py=0;private keyboard=false;
+  private px=0;private py=0;private keyboard=false;private mouseX=NaN;private mouseY=NaN;
   private mousePressed=false;private lastTouch=-Infinity;
   private touchId:number|null=null;private touchX=0;private touchY=0;private longTimer=0;
   private toastTimer=0;private tipTimer=0;private tipFor:ItemStack|null=null;private tipTouch=false;
@@ -349,10 +349,12 @@ class DomScreens implements ScreenView{
   }
   private mouseMove(e:MouseEvent){
     if(!this.open()||this.performanceNow()-this.lastTouch<TOUCH_MOUSE_GUARD_MS)return;
+    // Layout changes can fire a move without motion: keep keyboard focus as the hover then.
+    if(e.clientX===this.mouseX&&e.clientY===this.mouseY)return;
+    this.mouseX=e.clientX;this.mouseY=e.clientY;
     this.local(e.clientX,e.clientY);
     const target=e.target instanceof Element?e.target:null;
     const hit=this.layer.contains(target)?this.hitFor(target):{slot:null,outside:true};
-    if(this.keyboard&&(Math.abs(e.movementX)+Math.abs(e.movementY))<2)return;
     this.keyboard=false;this.tipTouch=false;
     this.c.hovered=hit.slot;
     if(this.c.pointer.active)this.c.pointer.move(hit);
