@@ -75,8 +75,9 @@ describe('walking speeds (vanilla 4.317 / 5.612 / 1.295 m/s)',()=>{
     const r=rig();fill(r,-2,60,-8,2,62,-8,B.stone);hold(r,'forward','sprint');run(r,.4);expect(r.player.state.sprinting).toBe(true);
     release(r,'sprint');run(r,2);expect(r.player.state.sprinting).toBe(false);expect(r.player.state.z).toBeGreaterThan(-7+HALF_WIDTH-.01);
   });
-  test('diagonal input is normalised, strafing works and look() follows yaw and pitch',()=>{
-    const r=rig();hold(r,'forward','right');expect(speed(r,1,2)).toBeCloseTo(4.317,1);
+  test('diagonal input is normalised to length 1 (vanilla: 4.317/0.98 = 4.405 m/s), strafing works and look() follows yaw and pitch',()=>{
+    const r=rig();hold(r,'forward','right');expect(speed(r,1,2)).toBeCloseTo(4.405,1);
+    const s=rig();hold(s,'left');expect(speed(s,1,1)).toBeCloseTo(4.317,1);expect(s.player.state.x).toBeLessThan(-3);
     const p=r.player.state;p.yaw=YAW.east;p.pitch=0;const l=r.player.look();expect(l.x).toBeCloseTo(1,5);expect(l.z).toBeCloseTo(0,5);
     p.pitch=Math.PI/2;expect(r.player.look().y).toBeCloseTo(1,5);
   });
@@ -90,20 +91,21 @@ describe('walking speeds (vanilla 4.317 / 5.612 / 1.295 m/s)',()=>{
 describe('jumping',()=>{
   test('a jump peaks at about 1.25 blocks and costs 0.05 exhaustion',()=>{
     const r=rig();run(r,.1);hold(r,'jump');let peak=0;
-    for(let i=0;i<36;i++){run(r,STEP);if(i===1)release(r,'jump');peak=Math.max(peak,r.player.state.y-60);}
+    for(let i=0;i<40;i++){run(r,STEP);if(i===2)release(r,'jump');peak=Math.max(peak,r.player.state.y-60);}
     expect(peak).toBeGreaterThan(1.2);expect(peak).toBeLessThan(1.3);
     expect(r.exhaustion.total).toBeCloseTo(.05,5);
   });
   test('holding jump hops repeatedly; sprint-jumping is faster than sprinting and costs 0.2 per jump',()=>{
-    const r=rig();hold(r,'forward','sprint','jump');run(r,1);
+    const r=rig({radius:4});hold(r,'forward','sprint','jump');run(r,1);
     const before=r.exhaustion.total;const v=speed(r,0,3);
-    expect(v).toBeGreaterThan(6.6);expect(v).toBeLessThan(7.6);
+    // Vanilla sprint-jumping averages 7.13 m/s on flat ground.
+    expect(v).toBeGreaterThan(6.95);expect(v).toBeLessThan(7.3);
     const jumps=r.lands.length;expect(jumps).toBeGreaterThan(3);
     // Sprint exhaustion is per metre on the ground only; jumps add 0.2 each.
     expect(r.exhaustion.total-before).toBeGreaterThan(.2*4);
   });
   test('air control is weak but present',()=>{
-    const r=rig();run(r,.1);hold(r,'jump');run(r,STEP*2);release(r,'jump');hold(r,'forward');
+    const r=rig();run(r,.1);hold(r,'jump');run(r,STEP*3);release(r,'jump');hold(r,'forward');
     const z=r.player.state.z;run(r,.25);expect(r.player.state.onGround).toBe(false);
     const moved=z-r.player.state.z;expect(moved).toBeGreaterThan(.05);expect(moved).toBeLessThan(.8);
   });
@@ -168,7 +170,8 @@ describe('ladders',()=>{
   });
   test('jump also climbs, sneaking holds position and releasing slides down at most 3 m/s',()=>{
     const r=ladder();hold(r,'jump');run(r,1.5);expect(r.player.state.y).toBeGreaterThan(62.5);
-    release(r,'jump');hold(r,'sneak');const y=r.player.state.y;run(r,1);expect(r.player.state.y).toBeCloseTo(y,3);
+    // Sneaking catches the climb within a few steps (the upward speed decays first), then holds still.
+    release(r,'jump');hold(r,'sneak');run(r,.25);const y=r.player.state.y;run(r,1);expect(r.player.state.y).toBeCloseTo(y,3);
     release(r,'sneak');const y2=r.player.state.y;run(r,.5);expect(y2-r.player.state.y).toBeGreaterThan(.5);expect(y2-r.player.state.y).toBeLessThanOrEqual(1.55);
     expect(r.player.state.fallDistance).toBe(0);
   });
@@ -187,10 +190,15 @@ describe('liquids',()=>{
     hold(r,'jump');run(r,6);expect(r.player.state.y).toBeGreaterThanOrEqual(60);expect(r.player.state.z).toBeLessThan(-6.5);
   });
   test('sprinting underwater swims in the 0.6 high swimming pose and follows the look direction',()=>{
-    const r=pool();run(r,.5);hold(r,'forward','sprint');r.player.state.pitch=-.5;run(r,.5);
+    const r=pool(9);r.player.teleport(.5,57.5,.5);run(r,.3);hold(r,'forward','sprint');r.player.state.pitch=-.5;run(r,.8);
     const p=r.player.state;expect(p.swimming).toBe(true);expect(p.sprinting).toBe(true);
     expect(r.player.height).toBeCloseTo(.6,5);expect(r.player.eyeHeight()).toBeCloseTo(.4,5);
-    const y=p.y;const v=speed(r,0,.5);expect(v).toBeGreaterThan(2.5);expect(p.y).toBeLessThan(y);
+    // Diving at pitch -0.5: about 3 m/s down while swimming forward at up to 3.9 m/s (0.9 kept per tick).
+    const y=p.y;const v=speed(r,0,.5);expect(v).toBeGreaterThan(3.1);expect(v).toBeLessThan(4);
+    expect(y-p.y).toBeGreaterThan(1);expect(y-p.y).toBeLessThan(2);
+    // Looking up near the surface swims up; letting go of sprint stands up again.
+    p.pitch=.6;run(r,1.5);expect(p.y).toBeGreaterThan(y);
+    release(r,'sprint','forward');run(r,.3);expect(p.swimming).toBe(false);expect(r.player.height).toBe(1.8);
   });
   test('flowing water pushes the player along the flow',()=>{
     const r=rig();for(let i=0;i<7;i++)fill(r,i-3,60,-1,i-3,60,1,blockId(`water_${i+1}`));
@@ -212,7 +220,7 @@ describe('liquids',()=>{
 });
 
 describe('creative flight',()=>{
-  function flyer(){const r=rig({mode:'creative',radius:6});run(r,.1);tap(r,'jump');hold(r,'jump');run(r,3*STEP);release(r,'jump');run(r,3*STEP);tap(r,'jump');run(r,STEP);return r;}
+  function flyer(){const r=rig({mode:'creative',radius:8});run(r,.1);tap(r,'jump');hold(r,'jump');run(r,3*STEP);release(r,'jump');run(r,3*STEP);tap(r,'jump');run(r,STEP);return r;}
   test('double-tapping jump toggles flight; survival players cannot fly',()=>{
     const r=flyer();expect(r.player.state.flying).toBe(true);
     const y=r.player.state.y;run(r,1);expect(r.player.state.y).toBeGreaterThan(60.5);expect(Math.abs(r.player.state.y-y)).toBeLessThan(1.2);
@@ -220,8 +228,9 @@ describe('creative flight',()=>{
     const s=rig();run(s,.1);tap(s,'jump');run(s,3*STEP);tap(s,'jump');run(s,STEP);expect(s.player.state.flying).toBe(false);
   });
   test('flies at 10.9 m/s, sprint-flies twice as fast and rises at 7.5 m/s',()=>{
-    const r=flyer();hold(r,'forward');expect(speed(r,1,1)).toBeCloseTo(10.89,0);
-    hold(r,'sprint');expect(speed(r,2,.5)).toBeCloseTo(21.78,0);expect(r.fov.at(-1)).toBeCloseTo(1.1*1.15,2);
+    // Flight accelerates slowly (0.91 kept per tick), like vanilla.
+    const r=flyer();hold(r,'forward');expect(speed(r,3,1)).toBeCloseTo(10.89,0);
+    hold(r,'sprint');expect(speed(r,3,.5)).toBeCloseTo(21.78,0);expect(r.fov.at(-1)).toBeCloseTo(1.1*1.15,2);
     release(r,'forward','sprint');hold(r,'jump');run(r,1);const y=r.player.state.y;run(r,1);expect(r.player.state.y-y).toBeCloseTo(7.5,0);
   });
   test('sneak descends and touching the ground ends flight; flight resets fall distance',()=>{
@@ -267,11 +276,14 @@ describe('falling, landing and safety',()=>{
 });
 
 describe('sounds and exhaustion',()=>{
-  test('footsteps every ~1.7 blocks walked, none while sneaking',()=>{
+  test('footsteps every ~1.7 blocks walked (sneaking too, at its slower pace); none while standing still',()=>{
     const r=rig();hold(r,'forward');run(r,3);
     const steps=r.game.sounds.played.filter(s=>s.name==='step:stone').length;
     const walked=4.317*3;expect(steps).toBeGreaterThanOrEqual(Math.floor(walked/1.667)-1);expect(steps).toBeLessThanOrEqual(Math.ceil(walked/1.667)+1);
-    const s=rig();hold(s,'forward','sneak');run(s,3);expect(s.game.sounds.played.filter(x=>x.name.startsWith('step:')).length).toBe(0);
+    const s=rig();hold(s,'forward','sneak');run(s,6);
+    const sneakSteps=s.game.sounds.played.filter(x=>x.name==='step:stone').length;
+    expect(sneakSteps).toBeGreaterThanOrEqual(Math.floor(1.295*6/1.667)-1);expect(sneakSteps).toBeLessThanOrEqual(Math.ceil(1.295*6/1.667)+1);
+    const still=rig();run(still,3);expect(still.game.sounds.played.length).toBe(0);
   });
   test('footsteps use the sound of the block underfoot',()=>{
     const r=rig();fill(r,-3,59,-30,3,59,3,B.grass);hold(r,'forward');run(r,2);
