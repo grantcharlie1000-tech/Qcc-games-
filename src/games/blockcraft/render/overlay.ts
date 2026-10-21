@@ -1,6 +1,6 @@
 // Overlays, one draw call each and only while something shows:
-//  - the block overlay: the targeted block's selection outline (vanilla: black at 40%, about 2.5 px at 1080p, drawn as
-//    screen-space quads so the width holds at any resolution) and the breaking crack (destroy_stage_N on the block's
+//  - the block overlay: the targeted block's selection outline (vanilla: black at 40%, 2.5 px and wider above 1080p, drawn
+//    as screen-space quads so the width holds at any resolution; hidden with F1) and the breaking crack (destroy_stage_N on the block's
 //    outline box, inflated slightly, polygon offset, multiplied into the block like vanilla's crumbling blend);
 //  - the screen overlay: full-screen tints from setOverlay (underwater blotches that slide with the view, lava, the
 //    red hurt vignette, fire flames at the bottom of the screen, the purple portal shimmer of ender pearls).
@@ -49,7 +49,7 @@ export function crackFaces(b:Box,pos:number[],uv:number[]){
 }
 
 const BLOCK_VERTEX=`precision highp float;
-uniform mat4 viewMatrix;uniform mat4 projectionMatrix;uniform vec2 resolution;uniform float lineWidth;uniform float near;
+uniform mat4 modelViewMatrix;uniform mat4 projectionMatrix;uniform vec2 resolution;uniform float lineWidth;uniform float near;
 uniform float showOutline;uniform float showCrack;
 in vec3 position;in vec3 other;in vec3 params;in vec2 uv;
 out vec2 vUv;flat out float vKind;
@@ -57,10 +57,10 @@ void main(){
   float kind=params.z;vKind=kind;vUv=uv;
   if(kind<.5){
     if(showCrack<.5){gl_Position=vec4(2.,2.,2.,1.);return;}
-    gl_Position=projectionMatrix*viewMatrix*vec4(position,1.);return;
+    gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);return;
   }
   if(showOutline<.5){gl_Position=vec4(2.,2.,2.,1.);return;}
-  vec4 a=viewMatrix*vec4(position,1.),b=viewMatrix*vec4(other,1.);float n=-near*1.001;
+  vec4 a=modelViewMatrix*vec4(position,1.),b=modelViewMatrix*vec4(other,1.);float n=-near*1.001;
   if(a.z>n){if(b.z>n){gl_Position=vec4(2.,2.,2.,1.);return;}a=mix(a,b,(n-a.z)/(b.z-a.z));}
   if(b.z>n)b=mix(b,a,(n-b.z)/(a.z-b.z));
   vec4 ca=projectionMatrix*a,cb=projectionMatrix*b;
@@ -87,6 +87,8 @@ const LINE_VERTS=48,CRACK_VERTS=24;
 export interface BlockOverlay{
   readonly mesh:THREE.Mesh;
   setSelection(box:Box|null):void;
+  /** F1 (hide GUI) hides the outline but not the crack, like vanilla's shouldRenderBlockOutline. */
+  setOutlineHidden(hidden:boolean):void;
   /** Crack at a block position (the box is its outline box) and stage 0..9, or null. */
   setBreaking(pos:Vec3|null,stage:number,id:number):void;
   /** Drawing buffer size in pixels (line width scales with it). */
@@ -115,42 +117,67 @@ export function createBlockOverlay(atlas:THREE.Texture):BlockOverlay{
     polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-4,side:THREE.DoubleSide
   });
   const mesh=new THREE.Mesh(geometry,material);
-  mesh.frustumCulled=false;mesh.matrixAutoUpdate=false;mesh.renderOrder=6;mesh.visible=false;mesh.name='block-overlay';
+  // First in the blended pass, before translucent chunks (2): like vanilla, the outline and crack of a block under water
+  // or behind ice are tinted by it instead of sitting on top.
+  mesh.frustumCulled=false;mesh.matrixAutoUpdate=false;mesh.renderOrder=1.4;mesh.visible=false;mesh.name='block-overlay';
   const edges:number[]=[],cpos:number[]=[],cuv:number[]=[];
-  const refresh=()=>{mesh.visible=uniforms.showOutline.value>0||uniforms.showCrack.value>0;};
+  // World positions (float64) of the outline edges and the crack corners. The GPU gets them relative to a whole-block
+  // origin at the shown block (the mesh is translated there; three forms modelViewMatrix in float64), so the outline
+  // stays steady far from spawn.
+  const lineWorld=new Float64Array(12*6),crackWorld=new Float64Array(CRACK_VERTS*3),origin={x:0,y:0,z:0};
+  let selected=false,cracking=false,outlineHidden=false;
+  function write(){
+    const src=selected?lineWorld:crackWorld;
+    origin.x=Math.floor(src[0]);origin.y=Math.floor(src[1]);origin.z=Math.floor(src[2]);
+    mesh.matrix.makeTranslation(origin.x,origin.y,origin.z);mesh.matrixWorld.copy(mesh.matrix);
+    if(selected){
+      for(let e=0;e<12;e++)for(let k=0;k<4;k++){
+        const v=(e*4+k)*3,w=e*6;
+        position[v]=lineWorld[w]-origin.x;position[v+1]=lineWorld[w+1]-origin.y;position[v+2]=lineWorld[w+2]-origin.z;
+        other[v]=lineWorld[w+3]-origin.x;other[v+1]=lineWorld[w+4]-origin.y;other[v+2]=lineWorld[w+5]-origin.z;
+      }
+      attrs.other.needsUpdate=true;
+    }
+    if(cracking)for(let i=0;i<CRACK_VERTS;i++){
+      const v=(LINE_VERTS+i)*3;
+      position[v]=crackWorld[i*3]-origin.x;position[v+1]=crackWorld[i*3+1]-origin.y;position[v+2]=crackWorld[i*3+2]-origin.z;
+    }
+    attrs.position.needsUpdate=true;
+  }
+  const refresh=()=>{
+    uniforms.showOutline.value=selected&&!outlineHidden?1:0;uniforms.showCrack.value=cracking?1:0;
+    mesh.visible=uniforms.showOutline.value>0||uniforms.showCrack.value>0;
+  };
   return{
     mesh,
     setSelection(box){
       const valid=!!box&&[box.minX,box.minY,box.minZ,box.maxX,box.maxY,box.maxZ].every(Number.isFinite);
-      uniforms.showOutline.value=valid?1:0;
+      selected=valid;
       if(valid){
         // Vanilla inflates the outline shape by 0.002 so the lines sit just outside the faces.
         const g=.002;boxEdges({minX:box!.minX-g,minY:box!.minY-g,minZ:box!.minZ-g,maxX:box!.maxX+g,maxY:box!.maxY+g,maxZ:box!.maxZ+g},edges);
-        for(let e=0;e<12;e++)for(let k=0;k<4;k++){
-          const v=(e*4+k)*3;
-          position[v]=edges[e*6];position[v+1]=edges[e*6+1];position[v+2]=edges[e*6+2];
-          other[v]=edges[e*6+3];other[v+1]=edges[e*6+4];other[v+2]=edges[e*6+5];
-        }
-        attrs.position.needsUpdate=true;attrs.other.needsUpdate=true;
+        lineWorld.set(edges);write();
       }
       refresh();
     },
+    setOutlineHidden(hidden){if(outlineHidden!==hidden){outlineHidden=hidden;refresh();}},
     setBreaking(pos,stage,id){
       const s=Math.floor(stage),tile=TILE_INDEX.get(`destroy_stage_${s}`);
       const valid=!!pos&&s>=0&&s<=9&&tile!==undefined&&[pos.x,pos.y,pos.z].every(Number.isFinite);
-      uniforms.showCrack.value=valid?1:0;
+      cracking=valid;
       if(valid){
         const bx=Math.floor(pos!.x),by=Math.floor(pos!.y),bz=Math.floor(pos!.z),o=OUTLINE_BOX[id]??[],b=o.length>=6?o:[0,0,0,1,1,1],g=.001;
         crackFaces({minX:bx+b[0]-g,minY:by+b[1]-g,minZ:bz+b[2]-g,maxX:bx+b[3]+g,maxY:by+b[4]+g,maxZ:bz+b[5]+g},cpos,cuv);
-        position.set(cpos,LINE_VERTS*3);uv.set(cuv,LINE_VERTS*2);
-        attrs.position.needsUpdate=true;attrs.uv.needsUpdate=true;
+        crackWorld.set(cpos);uv.set(cuv,LINE_VERTS*2);write();
+        attrs.uv.needsUpdate=true;
         uniforms.crackTile.value.set(tile!%ATLAS_COLUMNS,Math.floor(tile!/ATLAS_COLUMNS));
       }
       refresh();
     },
     resize(width,height,near){
       uniforms.resolution.value.set(Math.max(1,width),Math.max(1,height));uniforms.near.value=near;
-      uniforms.lineWidth.value=Math.max(1.5,2.5*width/1920);
+      // Vanilla line width: max(2.5, window width / 1920 × 2.5) pixels.
+      uniforms.lineWidth.value=Math.max(2.5,2.5*width/1920);
     },
     dispose(){geometry.dispose();material.dispose();}
   };

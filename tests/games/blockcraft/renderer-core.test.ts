@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {createFakeGame} from './helpers/fake-game';
 import {fieldOfView,governScale,mediumAt,sharedUniforms,voxelMaterial} from '../../../src/games/blockcraft/render/renderer';
 import {boxEdges,crackFaces,createBlockOverlay,createScreenOverlay} from '../../../src/games/blockcraft/render/overlay';
-import {CLOUD_PERIOD,CLOUD_Y,cloudOffset,createSky,createSkyFrame} from '../../../src/games/blockcraft/render/sky-dome';
+import {CLOUD_PERIOD,CLOUD_Y,cloudOffset,cloudRenderOrder,createSky,createSkyFrame} from '../../../src/games/blockcraft/render/sky-dome';
 import {CLOUD_CELLS,buildCloudGeometry,paintCloudMap} from '../../../src/games/blockcraft/render/sky-art';
 import {particleTile} from '../../../src/games/blockcraft/render/particles';
 import {B,FACE_TILE,TILE_INDEX,blockId} from '../../../src/games/blockcraft/data/blocks';
@@ -80,13 +80,22 @@ describe('sky and clouds',()=>{
     const full=buildCloudGeometry(paintCloudMap(),CLOUD_CELLS,12,4,2),first=Math.hypot(full.positions[0],full.positions[2]);
     expect(first).toBeLessThan(40);
   });
-  test('the tiled cloud mesh always surrounds the camera, drifting east',()=>{
+  test('the tiled cloud mesh always surrounds the camera, drifting west like vanilla',()=>{
     for(const [x,z,drift] of [[0,0,0],[1000,-3000,77],[-5555,123,9999],[CLOUD_PERIOD/2+1,0,CLOUD_PERIOD-1]]){
       const o=cloudOffset(x,z,drift);
       expect(Math.abs(x-o.x)).toBeLessThanOrEqual(CLOUD_PERIOD/2+1e-6);expect(Math.abs(z-o.z)).toBeLessThanOrEqual(CLOUD_PERIOD/2+1e-6);
-      expect((((o.x-drift)%CLOUD_PERIOD)+CLOUD_PERIOD)%CLOUD_PERIOD).toBeCloseTo(0,6);
+      expect((((o.x+drift)%CLOUD_PERIOD)+CLOUD_PERIOD)%CLOUD_PERIOD).toBeCloseTo(0,6);
     }
+    // Vanilla samples the cloud map at (camera x + 0.03 × ticks) / 12: a cloud moves toward -x.
+    expect(cloudOffset(0,0,6).x).toBe(-6);expect(cloudOffset(0,0,12).x).toBe(-12);
     expect(CLOUD_Y).toBe(192);
+  });
+  test('clouds blend before particles, and before translucent chunks unless seen from above',()=>{
+    expect(cloudRenderOrder(70)).toBeLessThan(2);expect(cloudRenderOrder(250)).toBeGreaterThan(2);expect(cloudRenderOrder(250)).toBeLessThan(3);
+    const sky=createSky(sharedUniforms()),f=createSkyFrame();
+    sky.update(f,{x:0,y:80,z:0});expect(sky.clouds.renderOrder).toBe(cloudRenderOrder(80));
+    sky.update(f,{x:0,y:300,z:0});expect(sky.clouds.renderOrder).toBe(cloudRenderOrder(300));
+    sky.dispose();
   });
   test('the sky dome and clouds follow the frame inputs and the camera',()=>{
     const u=sharedUniforms(),sky=createSky(u),f=createSkyFrame();
@@ -120,11 +129,23 @@ describe('overlays',()=>{
     const m=o.mesh.material as THREE.RawShaderMaterial;expect(m.uniforms.showOutline.value).toBe(1);
     o.setBreaking({x:1,y:2,z:3},4,B.stone);expect(m.uniforms.showCrack.value).toBe(1);
     const tile=TILE_INDEX.get('destroy_stage_4')!;expect(m.uniforms.crackTile.value.toArray()).toEqual([tile%16,Math.floor(tile/16)]);
-    const p=o.mesh.geometry.getAttribute('position').array as Float32Array;
-    let minX=Infinity,maxY=-Infinity;for(let i=48*3;i<p.length;i+=3){minX=Math.min(minX,p[i]);maxY=Math.max(maxY,p[i+1]);}
+    // Positions are relative to the mesh origin (a whole block near the shown block).
+    const p=o.mesh.geometry.getAttribute('position').array as Float32Array,origin=new THREE.Vector3().setFromMatrixPosition(o.mesh.matrixWorld);
+    let minX=Infinity,maxY=-Infinity;for(let i=48*3;i<p.length;i+=3){minX=Math.min(minX,p[i]+origin.x);maxY=Math.max(maxY,p[i+1]+origin.y);}
     expect(minX).toBeCloseTo(.999,3);expect(maxY).toBeCloseTo(3.001,3);
+    // F1 hides the outline but keeps the crack.
+    o.setOutlineHidden(true);expect(m.uniforms.showOutline.value).toBe(0);expect(m.uniforms.showCrack.value).toBe(1);expect(o.mesh.visible).toBe(true);
+    o.setOutlineHidden(false);expect(m.uniforms.showOutline.value).toBe(1);
+    o.setBreaking(null,0,0);o.setOutlineHidden(true);expect(o.mesh.visible).toBe(false);o.setOutlineHidden(false);
     o.setBreaking(null,0,0);o.setSelection(null);expect(o.mesh.visible).toBe(false);
     o.setBreaking({x:1,y:2,z:3},12,B.stone);expect(m.uniforms.showCrack.value).toBe(0);
+    // Far from spawn the GPU positions stay small; the outline is at least 2.5 px wide, wider above 1920 px.
+    o.setSelection({minX:300000,minY:64,minZ:-700000,maxX:300001,maxY:65,maxZ:-699999});
+    const q=o.mesh.geometry.getAttribute('position').array as Float32Array;
+    for(let i=0;i<48*3;i++)expect(Math.abs(q[i])).toBeLessThan(3);
+    expect(new THREE.Vector3().setFromMatrixPosition(o.mesh.matrixWorld).toArray()).toEqual([299999,63,-700001]);
+    o.resize(1280,720,.05);expect(m.uniforms.lineWidth.value).toBe(2.5);o.resize(3840,2160,.05);expect(m.uniforms.lineWidth.value).toBe(5);
+    expect(o.mesh.renderOrder).toBeLessThan(2);
     o.dispose();
   });
   test('screen overlays: every kind, strength clamped, null clears and unknown kinds are ignored',()=>{

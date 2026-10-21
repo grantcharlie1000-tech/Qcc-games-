@@ -15,7 +15,7 @@ import {CS,SEA_LEVEL,chunkKey,quadIndices,MAX_PART_QUADS,ROOT_FLAGS} from '../en
 import {paintAtlasTexture} from '../art/atlas';
 import {liquidHeight} from '../engine/physics';
 import type {ChunkMesh,Game,MeshPart,RenderService,SharedUniforms,Vec3,ParticleKind,ParticleOptions} from '../engine/contracts';
-import {LAVA_FOG,LIGHT_GLSL,celestialAngle,cloudColor,fogColor,fogRange,hexToRgb,lightmap,moonPhase,nightVisionScale,skyColor,skyFactor,
+import {LAVA_FOG,LIGHT_GLSL,celestialAngle,cloudColor,fogColor,fogRange,hexToRgb,lightFactor,lightmap,moonPhase,nightVisionScale,skyColor,
   starBrightness,sunriseColor,sunriseSide,underwaterFogColor,waterFogColor,waterVision,type Medium,type RGB,type RenderUniforms} from './sky';
 import {createSky,createSkyFrame} from './sky-dome';
 import {createParticles} from './particles';
@@ -24,7 +24,7 @@ import {createBlockOverlay,createScreenOverlay,type OverlayKind} from './overlay
 
 // ---- Chunk shaders ------------------------------------------------------------------------------------------------------
 const VERTEX=`precision highp float;
-uniform mat4 modelMatrix;uniform mat4 viewMatrix;uniform mat4 projectionMatrix;uniform vec3 cameraPosition;
+uniform mat4 modelMatrix;uniform mat4 modelViewMatrix;uniform mat4 viewMatrix;uniform mat4 projectionMatrix;
 uniform float daylight;uniform float flash;uniform float flicker;uniform float nightVision;uniform float time;uniform float sway;
 uniform vec4 liquidTiles;
 in vec4 position;in vec4 uvt;in vec4 tint;
@@ -35,12 +35,14 @@ void main(){
   float lightByte=mod(position.w,256.),flags=floor(position.w/256.);
   float sky=floor(lightByte/16.),block=mod(lightByte,16.);
   bool swaying=mod(flags,2.)>=1.,surface=mod(floor(flags/2.),2.)>=1.,emissive=mod(floor(flags/4.),2.)>=1.;
-  // Meshes sit at the chunk centre (for back-to-front sorting); vertices are chunk-local.
-  vec4 world=modelMatrix*vec4(position.xyz/16.-vec3(8.,0.,8.),1.);
+  // Meshes sit at the chunk centre (for back-to-front sorting); vertices are chunk-local. World x/z only feed the sway
+  // and ripple phases, where float32 rounding far from the origin does not show.
+  vec3 local=position.xyz/16.-vec3(8.,0.,8.);
+  vec2 world=(modelMatrix*vec4(local,1.)).xz;
   if(swaying&&sway>0.){
     // A slow two-wave breeze, continuous across blocks so shared corners move together.
-    float p=time*1.7+world.x*.45+world.z*.33,q=time*1.3+world.z*.41-world.x*.27;
-    world.x+=sin(p)*.035+sin(q*2.1)*.012;world.z+=sin(q)*.03;
+    float p=time*1.7+world.x*.45+world.y*.33,q=time*1.3+world.y*.41-world.x*.27;
+    local.x+=sin(p)*.035+sin(q*2.1)*.012;local.z+=sin(q)*.03;
   }
   vec3 lit=emissive?vec3(1.):bcLightmap(sky,block,daylight,flash,flicker,nightVision);
   vColor=tint.rgb*(uvt.w/255.)*lit;
@@ -48,9 +50,13 @@ void main(){
   float t=uvt.z;
   // 1 water still, 2 water flowing, 3 lava still, 4 lava flowing.
   vAnim=t==liquidTiles.x?1.:t==liquidTiles.y?2.:t==liquidTiles.z?3.:t==liquidTiles.w?4.:0.;
-  vLiquid=surface?1.:0.;vWorld=world.xz;
-  vRel=world.xyz-cameraPosition;
-  gl_Position=projectionMatrix*viewMatrix*world;
+  vLiquid=surface?1.:0.;vWorld=world;
+  // Camera-relative throughout: three multiplies the model and view matrices in float64 on the CPU, so a chunk's large
+  // world offset cancels before the GPU sees it (world-space float32 would make far terrain jitter). The fog vector is
+  // the view-space position turned back to world axes.
+  vec4 mv=modelViewMatrix*vec4(local,1.);
+  vRel=transpose(mat3(viewMatrix))*mv.xyz;
+  gl_Position=projectionMatrix*mv;
 }`;
 const FRAGMENT=`precision highp float;
 uniform sampler2D atlas;uniform float alphaTest;uniform float time;
@@ -244,7 +250,8 @@ export function createRenderer(game:Game):RenderService{
     const t=game.time,w=game.weather,rain=w?.intensity??0,thunder=w?.thunder??0,flash=w?.flash??0;
     const angle=celestialAngle(t.dayTime+partial*(game.settings.daylightCycle&&game.state==='playing'?1:0)),daylight=t.daylight;
     const vision=effect('night_vision'),nightVision=vision?nightVisionScale(vision.ticks):0;
-    uniforms.daylight.value=skyFactor(t.skyDarkening);uniforms.skyDarkening.value=t.skyDarkening;
+    // Smooth light from the unrounded darkening; skyDarkening keeps the engine's whole levels.
+    uniforms.daylight.value=lightFactor(daylight,rain,thunder);uniforms.skyDarkening.value=t.skyDarkening;
     uniforms.flash.value=Math.max(0,Math.min(1,flash));uniforms.flicker.value=flicker;uniforms.nightVision.value=nightVision;
     sampleBiomes(eye.x,eye.z);biomeSky.r=sampled.r;biomeSky.g=sampled.g;biomeSky.b=sampled.b;
     const skyHex=(Math.round(biomeSky.r*255)<<16)|(Math.round(biomeSky.g*255)<<8)|Math.round(biomeSky.b*255);
@@ -283,15 +290,15 @@ export function createRenderer(game:Game):RenderService{
     sky.update(f,camera.position);
 
     // Hand: lit like the player (light at the eye), with the bob prefix and the lag behind fast turns.
-    const hide=game.root.dataset?.[ROOT_FLAGS.hudHidden]==='true'||game.state==='loading';
-    hand.mesh.visible=!hide;
+    const hudHidden=game.root.dataset?.[ROOT_FLAGS.hudHidden]==='true',hide=hudHidden||game.state==='loading';
+    hand.mesh.visible=!hide;blockOverlay.setOutlineHidden(hudHidden);
     if(!hide){
       motion.lag(handPrefix.copy(prefix),p.yaw,p.pitch,partial,reduced);
       lightmap(eyeSky,eyeBlock,uniforms.daylight.value,{flash,flicker,nightVision},handLight);
       hand.update(partial,handPrefix,camera.aspect,handLight);
     }
     screenOverlay.update(uniforms.time.value,camera.aspect,p.yaw,p.pitch,Math.max(eyeBlock,eyeSky*uniforms.daylight.value)/15);
-    particles.update(partial);
+    particles.update(partial,camera.position);
   }
 
   const service:RenderService&{tick():void}={

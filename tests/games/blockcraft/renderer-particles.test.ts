@@ -169,6 +169,16 @@ describe('particles',()=>{
     expect(pos[0]).toBeCloseTo((p.prevX+p.x)/2,5);
     system.reset();system.update(0);expect(system.mesh.visible).toBe(false);
   });
+  test('far from spawn the instances are stored relative to an origin at the camera, so float32 keeps them precise',()=>{
+    const {game,system}=setup();
+    const x=100000.37,z=-250000.81;game.player.teleport(x,70,z);
+    system.spawn('crit',x,70,z,{count:1,spread:0,velocity:{x:0,y:0,z:0}});system.update(0,{x:x+1.6,y:71.62,z:z-.4});
+    const p=system.particles()[0],pos=(system.mesh.geometry.getAttribute('iPos') as THREE.InstancedBufferAttribute).array;
+    const o=new THREE.Vector3().setFromMatrixPosition(system.mesh.matrixWorld);
+    expect(o.toArray()).toEqual([Math.floor(x+1.6),71,Math.floor(z-.4)]);
+    expect(Math.abs(pos[0])).toBeLessThan(4);
+    expect(pos[0]+o.x).toBeCloseTo(p.x,4);expect(pos[1]+o.y).toBeCloseTo(p.y,4);expect(pos[2]+o.z).toBeCloseTo(p.z,4);
+  });
   test('particles take the light of the block they are in',()=>{
     const {game,system}=setup();
     const chunk=game.world.chunk(0,0)!;chunk.light=new Uint8Array(chunk.blocks.length);chunk.light[0+0*16+64*LAYER]=0x37;

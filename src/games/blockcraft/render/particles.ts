@@ -65,27 +65,30 @@ export interface ParticleSystem{
   spawn(kind:ParticleKind,x:number,y:number,z:number,options?:ParticleOptions):void;
   /** One 20 Hz simulation step. */
   tick():void;
-  /** Fill the instance buffers, interpolating `partial` (0..1) between the last two ticks. */
-  update(partial:number):void;
+  /** Fill the instance buffers, interpolating `partial` (0..1) between the last two ticks. Positions are stored relative
+   *  to `origin` (whole blocks near the camera; the mesh is translated there), so they stay precise far from spawn. */
+  update(partial:number,origin?:{x:number;y:number;z:number}):void;
   particles():readonly Particle[];
   reset():void;
   dispose():void;
 }
 
 const VERTEX=`precision highp float;
-uniform mat4 viewMatrix;uniform mat4 projectionMatrix;uniform vec3 cameraPosition;
+uniform mat4 modelViewMatrix;uniform mat4 viewMatrix;uniform mat4 projectionMatrix;
 uniform float daylight;uniform float flash;uniform float flicker;uniform float nightVision;
 in vec2 corner;in vec4 iPos;in vec4 iUV;in vec4 iColor;in vec2 iMisc;
 out vec2 vUv;out vec4 vColor;out vec3 vRel;flat out float vTex;
 ${LIGHT_GLSL}
 void main(){
   vec3 right=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]),up=vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]);
-  vec3 world=iPos.xyz+(right*corner.x+up*corner.y)*iPos.w;
+  // iPos is relative to the mesh origin near the camera; modelViewMatrix (float64 on the CPU) keeps it camera-relative.
+  vec3 local=iPos.xyz+(right*corner.x+up*corner.y)*iPos.w;
   vUv=vec2(mix(iUV.x,iUV.z,corner.x+.5),mix(iUV.y,iUV.w,corner.y+.5));
   float light=iMisc.x;
   vec3 lit=light>=255.?vec3(1.):bcLightmap(floor(light/16.),mod(light,16.),daylight,flash,flicker,nightVision);
-  vColor=vec4(iColor.rgb*lit,iColor.a);vTex=iMisc.y;vRel=world-cameraPosition;
-  gl_Position=projectionMatrix*viewMatrix*vec4(world,1.);
+  vec4 mv=modelViewMatrix*vec4(local,1.);
+  vColor=vec4(iColor.rgb*lit,iColor.a);vTex=iMisc.y;vRel=transpose(mat3(viewMatrix))*mv.xyz;
+  gl_Position=projectionMatrix*mv;
 }`;
 const FRAGMENT=`precision highp float;
 uniform sampler2D atlas;uniform sampler2D sheet;uniform vec3 fogColor;uniform float fogNear;uniform float fogFar;uniform float fogShape;
@@ -470,13 +473,16 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
   }
 
   // ---- Instances ----------------------------------------------------------------------------------------------------
-  function update(partial:number){
+  function update(partial:number,origin?:{x:number;y:number;z:number}){
     const t=Math.max(0,Math.min(1,Number.isFinite(partial)?partial:0)),n=live.length;
+    const ox=origin&&Number.isFinite(origin.x)?Math.floor(origin.x):0,oy=origin&&Number.isFinite(origin.y)?Math.floor(origin.y):0,
+      oz=origin&&Number.isFinite(origin.z)?Math.floor(origin.z):0;
+    mesh.matrix.makeTranslation(ox,oy,oz);mesh.matrixWorld.copy(mesh.matrix);
     const pos=iPos.array as Float32Array,uv=iUV.array as Float32Array,col=iColor.array as Float32Array,misc=iMisc.array as Float32Array;
     for(let i=0;i<n;i++){
       const p=live[i],a=i*4;
       // Vanilla centres the quad on the position (the bottom of the collision box).
-      pos[a]=p.prevX+(p.x-p.prevX)*t;pos[a+1]=p.prevY+(p.y-p.prevY)*t;pos[a+2]=p.prevZ+(p.z-p.prevZ)*t;
+      pos[a]=p.prevX+(p.x-p.prevX)*t-ox;pos[a+1]=p.prevY+(p.y-p.prevY)*t-oy;pos[a+2]=p.prevZ+(p.z-p.prevZ)*t-oz;
       pos[a+3]=p.size*sizeFactor(p,t);
       if(p.frames>1){
         const life=Math.max(1,p.lifetime),age=p.age;

@@ -4,14 +4,16 @@
 //    sky disc 16 blocks overhead fogged toward the horizon colour, the sunrise/sunset fan, the square sun and moon
 //    (phases from the celestial strip in sky-art.ts) and 1 500-odd stars, all rotating with the celestial angle, and the
 //    dark disc below the horizon when the camera is under it.
-//  - The clouds are 12×12×4 block boxes from a tiling cloud map (sky-art.ts), drifting east at the vanilla 0.6
-//    blocks per second, 0.8 opaque, shaded per face and faded into the fog with horizontal distance.
+//  - The clouds are 12×12×4 block boxes from a tiling cloud map (sky-art.ts), drifting west at the vanilla 0.6
+//    blocks per second (vanilla samples the cloud map at camera x + 0.03 × ticks), 0.8 opaque, shaded per face and faded
+//    into the fog with horizontal distance. They are blended before particles (and, seen from below, before translucent
+//    chunks), which write no depth: drawn after them, a cloud behind a particle would cover it.
 import * as THREE from 'three';
 import type {Vec3} from '../engine/contracts';
 import {LIGHT_GLSL,type RGB,type RenderUniforms} from './sky';
 import {CELESTIAL_CELL,CELESTIAL_CELLS,CELESTIAL_WIDTH,CLOUD_CELLS,buildCloudGeometry,paintCelestial,paintCloudMap} from './sky-art';
 
-/** Cloud layer (vanilla 1.18+): bottom height 192, 4 blocks thick, 12-block cells, drifting 0.03 blocks per tick east. */
+/** Cloud layer (vanilla 1.18+): bottom height 192, 4 blocks thick, 12-block cells, drifting 0.03 blocks per tick west. */
 export const CLOUD_Y=192,CLOUD_THICKNESS=4,CLOUD_CELL=12,CLOUD_SPEED=.6;
 /** Cloud map period in blocks: the mesh is 2×2 periods, re-centred on the camera every period. */
 export const CLOUD_PERIOD=CLOUD_CELLS*CLOUD_CELL;
@@ -79,9 +81,10 @@ void main(){
   colour=vec4(c,1.);
 }`;
 const CLOUD_VERTEX=`precision highp float;
-uniform mat4 modelMatrix;uniform mat4 viewMatrix;uniform mat4 projectionMatrix;uniform vec3 cameraPosition;
+uniform mat4 modelViewMatrix;uniform mat4 viewMatrix;uniform mat4 projectionMatrix;
 in vec3 position;in float shade;out float vShade;out vec3 vRel;
-void main(){vec4 w=modelMatrix*vec4(position,1.);vRel=w.xyz-cameraPosition;vShade=shade;gl_Position=projectionMatrix*viewMatrix*w;}`;
+// Camera-relative (modelViewMatrix is formed in float64 on the CPU), so the far-off mesh offset does not jitter.
+void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vRel=transpose(mat3(viewMatrix))*mv.xyz;vShade=shade;gl_Position=projectionMatrix*mv;}`;
 const CLOUD_FRAGMENT=`precision highp float;
 uniform vec3 cloudColor;uniform vec3 fogColor;uniform float cloudNear;uniform float cloudFar;
 uniform float mediumFog;uniform float fogNear;uniform float fogFar;
@@ -119,12 +122,16 @@ export interface Sky{
   update(frame:SkyFrame,camera:Vec3):void;
   dispose():void;
 }
-/** Cloud mesh offset for a camera position and drift: whole map periods, so the 2×2 tiled mesh always surrounds the camera. */
+/** Cloud mesh offset for a camera position and drift (blocks moved west): whole map periods, so the 2×2 tiled mesh
+ *  always surrounds the camera, shifted toward -x by the drift. */
 export function cloudOffset(cameraX:number,cameraZ:number,drift:number,out={x:0,z:0}){
   const d=((drift%CLOUD_PERIOD)+CLOUD_PERIOD)%CLOUD_PERIOD;
-  out.x=Math.round((cameraX-d)/CLOUD_PERIOD)*CLOUD_PERIOD+d;out.z=Math.round(cameraZ/CLOUD_PERIOD)*CLOUD_PERIOD;
+  out.x=Math.round((cameraX+d)/CLOUD_PERIOD)*CLOUD_PERIOD-d;out.z=Math.round(cameraZ/CLOUD_PERIOD)*CLOUD_PERIOD;
   return out;
 }
+/** Blended draw order of the clouds: before particles (3) always; seen from below also before translucent chunks (2),
+ *  which are then in front of them, and seen from above after those (the water below is behind the clouds). */
+export function cloudRenderOrder(cameraY:number):number{return cameraY<CLOUD_Y+CLOUD_THICKNESS/2?1.5:2.5;}
 
 export function createSky(uniforms:RenderUniforms):Sky{
   const strip=paintCelestial(),flipped=new Uint8Array(strip.length),row=CELESTIAL_WIDTH*4;
@@ -151,7 +158,7 @@ export function createSky(uniforms:RenderUniforms):Sky{
     glslVersion:THREE.GLSL3,vertexShader:CLOUD_VERTEX,fragmentShader:CLOUD_FRAGMENT,uniforms:cloudUniforms,
     transparent:true,depthWrite:true,side:THREE.FrontSide
   }));
-  clouds.frustumCulled=false;clouds.renderOrder=4;clouds.matrixAutoUpdate=false;clouds.name='clouds';
+  clouds.frustumCulled=false;clouds.renderOrder=cloudRenderOrder(0);clouds.matrixAutoUpdate=false;clouds.name='clouds';
   const offset={x:0,z:0};
 
   return{
@@ -164,7 +171,7 @@ export function createSky(uniforms:RenderUniforms):Sky{
       const s=f.sunrise;domeUniforms.sunrise.value.set(s?s[0]:0,s?s[1]:0,s?s[2]:0,s?s[3]:0);domeUniforms.sunriseSide.value=f.sunriseSide;
       domeUniforms.angle.value=f.angle*Math.PI*2;domeUniforms.sunAlpha.value=f.sunAlpha;domeUniforms.stars.value=f.stars;
       domeUniforms.moonCell.value=1+(((Math.floor(f.moonPhase)%8)+8)%8);
-      clouds.visible=f.cloudsVisible;
+      clouds.visible=f.cloudsVisible;clouds.renderOrder=cloudRenderOrder(camera.y);
       if(f.cloudsVisible){
         cloudOffset(camera.x,camera.z,f.cloudTime*CLOUD_SPEED,offset);
         clouds.matrix.makeTranslation(offset.x,CLOUD_Y,offset.z);clouds.matrixWorld.copy(clouds.matrix);

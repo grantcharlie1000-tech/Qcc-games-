@@ -1,8 +1,8 @@
 import {describe,expect,test} from 'vitest';
-import {celestialAngle,sunDirection,moonPhase,sunriseColor,starBrightness,skyColor,fogColor,cloudColor,lightmap,skyFactor,fogRange,waterVision,
+import {celestialAngle,sunDirection,moonPhase,sunriseColor,starBrightness,skyColor,fogColor,cloudColor,lightmap,skyFactor,lightFactor,fogRange,waterVision,
   waterFogColor,underwaterFogColor} from '../../../src/games/blockcraft/render/sky';
 import {paintCelestial,CELESTIAL_CELL} from '../../../src/games/blockcraft/render/sky-art';
-import {daylightAt} from '../../../src/games/blockcraft/engine/game';
+import {daylightAt,skyDarkeningAt} from '../../../src/games/blockcraft/engine/game';
 
 const PLAINS_SKY=0x78a7ff;
 const rgb=(hex:number)=>({r:(hex>>16&255)/255,g:(hex>>8&255)/255,b:(hex&255)/255});
@@ -80,6 +80,17 @@ describe('light',()=>{
   test('the sky light factor follows the engine sky darkening: 1 by day, 0.2 at night, lower in storms',()=>{
     expect(skyFactor(0)).toBe(1);expect(skyFactor(11)).toBeCloseTo(.2);expect(skyFactor(15)).toBeCloseTo(.2);
     expect(skyFactor(3)).toBeGreaterThan(skyFactor(8));expect(skyFactor(3)).toBeLessThan(1);
+  });
+  test('the rendered light factor is the unrounded sky darkening: smooth at dusk, equal to the engine levels at whole steps',()=>{
+    // Between dayTime 11000 and 14000 the integer darkening steps 11 times; the rendered factor must not.
+    let prev=lightFactor(daylightAt(11000),0,0),maxStep=0;
+    for(let t=11001;t<=14000;t++){const f=lightFactor(daylightAt(t),0,0);maxStep=Math.max(maxStep,Math.abs(f-prev));prev=f;}
+    expect(maxStep).toBeLessThan(.002);
+    expect(lightFactor(1,0,0)).toBe(1);expect(lightFactor(0,0,0)).toBeCloseTo(.2);expect(lightFactor(0,1,1)).toBeCloseTo(.2);
+    for(const [d,r,th] of [[1,0,0],[0,0,0],[1,1,0],[1,1,1],[.5,.3,0]]){
+      expect(Math.abs(lightFactor(d,r,th)-skyFactor(skyDarkeningAt(d,r,th)))).toBeLessThanOrEqual(.8*.5/11+1e-9);
+    }
+    expect(lightFactor(1,1,0)).toBeCloseTo(skyFactor(3));
   });
   test('the lightmap matches vanilla: full daylight is white, moonlight is dim blue, darkness is not pure black',()=>{
     const day=lightmap(15,0,1);expect(day.r).toBeGreaterThan(.97);expect(day.b).toBeGreaterThan(.97);
