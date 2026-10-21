@@ -84,6 +84,20 @@ describe('weather service: state and cycle',()=>{
     weather.set('thunder');tick(game,10);weather.set('clear');
     tick(game,RAIN_DELAY[0]-1);expect(weather.state).toBe('clear');
   });
+  test('sleeping in clear weather keeps the countdown, so rain still comes for a player who sleeps every night',()=>{
+    const {game,weather}=setup();tick(game,600);
+    const cycle=()=>(weather.serialize?.() as {cycle:{rt:number;tt:number;ct:number}}).cycle;
+    const before=cycle();
+    weather.set('clear');
+    expect(cycle()).toEqual(before);
+    // The countdown runs out within 7.5 days of awake time even with a set('clear') every 12542 ticks.
+    let rained=false;
+    for(let day=0;day<15&&!rained;day++){
+      for(let t=0;t<12542&&!rained;t+=50){tick(game,50);if(weather.state==='rain'||weather.state==='thunder')rained=true;}
+      if(!rained)weather.set('clear');
+    }
+    expect(rained).toBe(true);
+  });
   test('reset() returns to a clear new world',()=>{
     const {game,weather}=setup();startRain(game,weather,'thunder');
     weather.reset?.();

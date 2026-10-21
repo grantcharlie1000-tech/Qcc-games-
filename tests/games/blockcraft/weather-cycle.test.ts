@@ -87,6 +87,39 @@ describe('weather cycle (vanilla ServerLevel.advanceWeatherCycle)',()=>{
       expect(c.rainTime).toBeGreaterThanOrEqual(RAIN_DELAY[0]);expect(c.rainTime).toBeLessThanOrEqual(RAIN_DELAY[1]);
     }
   });
+  test('clearing without a duration (sleeping) only resets the cycle while it rains, like vanilla ServerLevel.tick',()=>{
+    const random=seeded(12);
+    // Already clear: the countdowns to rain and thunder keep running.
+    const c=newCycle();advanceCycle(c,random,true);
+    for(let i=0;i<500;i++)advanceCycle(c,random,true);
+    const rainTime=c.rainTime,thunderTime=c.thunderTime;
+    setCycle(c,'clear',undefined,random);
+    expect(cycleState(c)).toBe('clear');expect(c.rainTime).toBe(rainTime);expect(c.thunderTime).toBe(thunderTime);
+    // A commanded clear spell keeps running too.
+    const d=newCycle();setCycle(d,'clear',5000,random);setCycle(d,'clear',undefined,random);expect(d.clearTime).toBe(5000);
+    // Rain still easing out (level above 0.2) counts as raining: the cycle resets to a fresh clear spell.
+    const e=newCycle();setCycle(e,'rain',100000,random);for(let i=0;i<120;i++)advanceCycle(e,random,true);
+    setCycle(e,'clear',1000,random);for(let i=0;i<40;i++)advanceCycle(e,random,true);
+    expect(e.raining).toBe(false);expect(e.rainLevel).toBeGreaterThan(.2);
+    setCycle(e,'clear',undefined,random);
+    expect(e.clearTime).toBe(0);expect(e.rainTime).toBeGreaterThanOrEqual(RAIN_DELAY[0]);expect(e.rainTime).toBeLessThanOrEqual(RAIN_DELAY[1]);
+  });
+  test('a player who sleeps every night still gets rain spells',()=>{
+    // Awake from dawn until beds work (about 12542 ticks), then sleeping skips the night (no weather ticks) and clears.
+    const AWAKE=12542,DAYS=300;
+    let rainyDays=0;
+    for(let seed=1;seed<=3;seed++){
+      const c=newCycle(),random=seeded(seed*101);
+      for(let day=0;day<DAYS;day++){
+        let rained=false;
+        for(let t=0;t<AWAKE;t++){advanceCycle(c,random,true);if(c.raining)rained=true;}
+        if(rained)rainyDays++;
+        setCycle(c,'clear',undefined,random);
+      }
+    }
+    // A clear spell averages about 7.7 awake days, so roughly one day in nine has rain; resetting every night gave almost none.
+    expect(rainyDays).toBeGreaterThan(DAYS*3*.06);
+  });
   test('set() clamps durations and ignores invalid ones',()=>{
     const random=seeded(6),c=newCycle();
     setCycle(c,'rain',10**9,random);expect(c.rainTime).toBe(MAX_WEATHER_TICKS);

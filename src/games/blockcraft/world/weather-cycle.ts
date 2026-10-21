@@ -56,11 +56,13 @@ const stepLevel=(level:number,up:boolean)=>Math.max(0,Math.min(1,Math.round((lev
 
 const validTicks=(ticks:number|undefined)=>typeof ticks==='number'&&Number.isFinite(ticks)&&ticks>=1?Math.min(MAX_WEATHER_TICKS,Math.floor(ticks)):0;
 /** Commands a weather like vanilla /weather (setWeatherParameters). Without a duration: rain 0.5..1 day, a thunderstorm
- *  3600..15600 ticks; clear without a duration resets the cycle (vanilla resetWeatherCycle after sleeping), so a normal
- *  clear spell of 0.5..7.5 days follows. */
+ *  3600..15600 ticks. Clear without a duration is the sleeping reset (vanilla ServerLevel.tick: resetWeatherCycle only
+ *  while it rains): when it rains (or the rain is still above the 0.2 raining level) a fresh clear spell of 0.5..7.5 days
+ *  follows; when it is already clear nothing changes, so a player who sleeps every night still meets the next rain. */
 export function setCycle(c:WeatherCycle,state:WeatherState,ticks:number|undefined,random:()=>number):void{
   const fixed=validTicks(ticks);
   if(state==='clear'){
+    if(!fixed&&!c.raining&&c.rainLevel<=RAINING_LEVEL)return;
     c.raining=false;c.thundering=false;
     if(fixed){c.clearTime=fixed;c.rainTime=0;c.thunderTime=0;}
     else{c.clearTime=0;c.rainTime=sampleRange(RAIN_DELAY,random);c.thunderTime=sampleRange(THUNDER_DELAY,random);}
