@@ -38,7 +38,7 @@ const id=(name:string)=>blockId(name);
 const BEDROCK=B.bedrock,STONE=B.stone,DEEPSLATE=id('deepslate'),DIRT=B.dirt,SAND=B.sand,GRAVEL=B.gravel,CLAY=id('clay');
 const SANDSTONE=id('sandstone'),COARSE=id('coarse_dirt'),PODZOL=id('podzol'),GRASS=B.grass,MOSS=id('moss_block');
 const SNOW=B.snow,ICE=B.ice,WATER=B.water,LAVA=B.lava,CACTUS=id('cactus'),CANE=id('sugar_cane'),LILY=id('lily_pad');
-const PUMPKIN=id('pumpkin'),MELON=id('melon'),BROWN_MUSHROOM=id('brown_mushroom'),RED_MUSHROOM=id('red_mushroom');
+const PUMPKIN=id('pumpkin'),BROWN_MUSHROOM=id('brown_mushroom'),RED_MUSHROOM=id('red_mushroom');
 /** Cave air below this height is lava. */
 export const LAVA_LEVEL=10;
 const RIM=CS+2;
@@ -87,7 +87,7 @@ const INFO:BiomeInfo[]=BIOMES.map(def=>{
     plants,cane,lily,pumpkin};
 });
 const MAX_TREE_P=Math.max(...INFO.map(i=>i.treeP));
-/** Never spawn in water or on bare peaks; prefer grassland (beaches and mushroom islands only as a last resort). */
+/** Never spawn in water or on bare peaks; beaches and mushroom islands only as a last resort. */
 const NO_SPAWN=new Set(['ocean','deep_ocean','river','frozen_river','stony_shore','snowy_peaks','swamp'].map(biomeId));
 const POOR_SPAWN=new Set(['beach','mushroom_fields'].map(biomeId));
 const DESERT=biomeId('desert');
@@ -452,24 +452,25 @@ export class TerrainGenerator implements TerrainService{
       if(!c){if(chunks.size>=32)chunks.clear();c=this.generate(cx,cz);chunks.set(key,c);}
       return c.blocks[(x-cx*CS)+(z-cz*CS)*CS+y*LAYER];
     };
-    for(const fussy of [true,false])for(let r=0;r<=1024;r+=4){
+    // Grassland within 256 blocks first, then any dry land but beaches and mushroom islands, then those too.
+    for(const pass of [0,1,2])for(let r=0;r<=(pass?1024:256);r+=4){
       const n=r===0?1:Math.ceil(Math.PI*2*r/6);
       for(let a=0;a<n;a++){
         const angle=a/n*Math.PI*2,x=Math.round(Math.cos(angle)*r),z=Math.round(Math.sin(angle)*r),h=this.heightAt(x,z),b=this.biomeAt(x,z);
-        if(h<=SEA_LEVEL+1||h>=96||NO_SPAWN.has(b)||fussy&&POOR_SPAWN.has(b)||this.slopeAt(x,z,h)>1)continue;
+        if(h<=SEA_LEVEL+1||h>=96||NO_SPAWN.has(b)||pass<2&&POOR_SPAWN.has(b)||pass===0&&INFO[b].top!==GRASS||this.slopeAt(x,z,h)>1)continue;
         if(this.spawnClear(get,x,h,z)){this.spawn={x:x+.5,y:h+1,z:z+.5};return{...this.spawn};}
       }
     }
     const h=this.heightAt(0,0);
     return{x:.5,y:Math.min(CH-2,Math.max(SEA_LEVEL,h)+1),z:.5};
   }
-  /** Dry solid ground with two free blocks above and no tree within two columns. */
+  /** Dry solid ground with two free blocks above and no tree or cactus within two columns. */
   private spawnClear(get:(x:number,y:number,z:number)=>number,x:number,h:number,z:number){
     const ground=get(x,h,z);
     if(!SOLID[ground]||LEAVES[ground]||LOGS[ground]||ground===ICE||LIQUID[ground])return false;
     for(let dy=1;dy<=2;dy++){const b=get(x,h+dy,z);if(SOLID[b]||LIQUID[b])return false;}
     for(let dz=-2;dz<=2;dz++)for(let dx=-2;dx<=2;dx++)for(let y=h-2;y<CH;y++){
-      const b=get(x+dx,y,z+dz);if(LEAVES[b]||LOGS[b])return false;
+      const b=get(x+dx,y,z+dz);if(LEAVES[b]||LOGS[b]||b===CACTUS)return false;
       if(y>h+3&&b===AIR&&y>this.heightAt(x+dx,z+dz)+34)break;
     }
     return true;
