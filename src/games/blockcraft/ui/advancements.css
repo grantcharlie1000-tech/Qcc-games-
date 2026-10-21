@@ -73,7 +73,7 @@
 .bc-adv-tip.is-challenge .bc-adv-tip-desc{color:#ff88ff}
 .bc-adv-tip-meter{height:5px;margin:6px 0 2px;border:1px solid #5b5b5b;background:#000}
 .bc-adv-tip-meter i{display:block;height:100%;background:#55ff55}
-.bc-adv-tip-list,.bc-adv-tip-when{margin-top:4px !important;color:#bdbdbd;font-size:11px}
+.bc-adv-tip-body .bc-adv-tip-list,.bc-adv-tip-body .bc-adv-tip-when{margin-top:4px;color:#bdbdbd;font-size:11px}
 
 /* ---- Statistics ------------------------------------------------------------------------------------------------ */
 .bc-adv-stats{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));align-content:start;

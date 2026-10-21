@@ -305,6 +305,11 @@ describe('persistence',()=>{
     expect(adv.list().filter(a=>a.done).map(a=>a.id)).toEqual(['diamonds']);
     expect(adv.progress('a_balanced_diet')).toEqual([1,10]);
   });
+  test('a restored counted goal that is already complete is granted silently',()=>{
+    let xp=0;game.survival.addXp=p=>{xp+=p;};
+    adv.reset?.();adv.restore?.({v:1,progress:{monsters_hunted:[...HUNTED_MOBS]}});
+    expect(adv.has('monsters_hunted')).toBe(true);expect(adv.toasts.waiting).toHaveLength(0);expect(xp).toBe(0);
+  });
   test('reset clears everything',()=>{
     give('diamond');game.events.emit('playerDied',{message:'x'});
     adv.reset?.();
