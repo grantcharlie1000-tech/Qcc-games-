@@ -1,42 +1,271 @@
-// STUB shared mob steering (owned by the entity framework agent: bounded A* navigation over
-// standable cells, path caching, line of sight). This version steers in straight lines.
-import {SOLID,isLava,AIR} from '../data/blocks';
+// Shared mob steering (game.entities.ai). Every helper only sets moveX/moveZ/jump and yaw/headYaw/pitch; the entity
+// service turns that intent into motion. Built on contracts and engine/physics only.
+//  - wander: vanilla RandomStrollGoal (1/120 per tick by default) toward the best of ten random standable spots within 10
+//    blocks horizontally and 7 vertically (animals prefer grass and light, monsters darkness: getWalkTargetValue).
+//  - navigate: bounded A* (entity/ai-path.ts, ≤ 200 nodes) cached per entity, re-planned when the goal moves more than
+//    2 blocks, the mob is stuck or the path runs out. Searches share a budget of NODES_PER_TICK expanded nodes per tick
+//    across all mobs (a search may overdraw it; the debt is paid back over the next ticks), and a goal that could not be
+//    reached is retried only after 40–60 ticks unless it moves (vanilla delays path recalculation after a failed moveTo).
+//  - Every helper ignores non-finite goals and speeds (a NaN intent would otherwise reach the physics).
+//  - moveToward: straight steering that jumps 1-block steps and stops at cliffs (drops > 3), lava, fire and cacti.
+//  - flee: vanilla PanicGoal / AvoidEntityGoal: a standable spot 5–12 blocks away from the threat, then navigate there.
+//  - lookAt: head turns up to 30°/tick (pitch 40°), the body follows when the head is beyond 75°.
+import {SOLID,isWater,AIR,blockId} from '../data/blocks';
 import {raycast} from '../engine/physics';
 import type {Entity,EntityAI,Game} from '../engine/contracts';
+import {DANGER,MAX_PATH,cellTop,findPath,footprint,standableCell,type PathResult} from './ai-path';
 
-export function createEntityAI(game:Game):EntityAI{
-  const ai:EntityAI={
+/** Head turn speed (vanilla LookControl in melee goals) and pitch speed per tick. */
+const LOOK_YAW=30*Math.PI/180,LOOK_PITCH=40*Math.PI/180,MAX_HEAD=75*Math.PI/180;
+/** A* nodes expanded per game tick across all mobs, on average (mobs that find the budget spent steer straight and
+ *  retry on a later tick). A failed 200-node search costs about 0.3 ms in Node. */
+export const NODES_PER_TICK=400;
+/** Ticks between re-plans of one mob's path toward the same goal, and after a search that found nothing (+ jitter). */
+const REPLAN_TICKS=10,FAIL_BACKOFF=40,FAIL_JITTER=20;
+const GRASS=blockId('grass_block');
+
+interface AIState{
+  path:Int32Array;len:number;index:number;
+  goalX:number;goalY:number;goalZ:number;
+  /** Tick of the last search, whether it found nothing, and the tick from which the same goal may be searched again. */
+  planned:number;failed:boolean;retry:number;
+  /** Progress watch: ticks without getting closer to the current waypoint. */
+  stuck:number;best:number;
+  wandering:boolean;wx:number;wy:number;wz:number;wanderTicks:number;
+  fleeing:boolean;fx:number;fy:number;fz:number;fleeTicks:number;threatX:number;threatZ:number;
+  /** Tick lookAt was last called (the service eases the head toward the body otherwise). */
+  lookTick:number;
+}
+export const wrapAngle=(a:number)=>{a%=Math.PI*2;if(a>Math.PI)a-=Math.PI*2;else if(a<-Math.PI)a+=Math.PI*2;return a;};
+/** Rotates `from` toward `to` by at most `max` radians (shortest way). */
+export const rotateTowards=(from:number,to:number,max:number)=>{const d=wrapAngle(to-from);return from+Math.max(-max,Math.min(max,d));};
+/** Line of sight passes air and non-colliding blocks (plants, water, torches); leaves, glass and every solid block stop it. */
+const seeThrough=(id:number)=>id===AIR||!SOLID[id];
+const finite3=(x:number,y:number,z:number)=>Number.isFinite(x)&&Number.isFinite(y)&&Number.isFinite(z);
+/** A usable speed: non-finite speeds stop the mob. */
+const speedOf=(v:number)=>Number.isFinite(v)?v:0;
+
+export interface EntityAIInternal extends EntityAI{
+  /** Was lookAt called for this entity during the current tick? */
+  lookedAt(e:Entity):boolean;
+  /** Drops cached state (entity removed). */
+  forget(e:Entity):void;
+  reset():void;
+  /** Searches run and nodes expanded so far (tests and the debug overlay). */
+  readonly searches:number;readonly nodes:number;
+}
+
+export function createEntityAI(game:Game):EntityAIInternal{
+  const states=new WeakMap<Entity,AIState>();
+  const result:PathResult={length:0,complete:false,expanded:0};
+  let creditTick=-1,credit=0,searches=0,nodes=0;
+  function state(e:Entity):AIState{
+    let s=states.get(e);
+    if(!s){
+      s={path:new Int32Array(MAX_PATH*3),len:0,index:0,goalX:NaN,goalY:NaN,goalZ:NaN,planned:-1e9,failed:false,retry:-1e9,stuck:0,best:Infinity,
+        wandering:false,wx:0,wy:0,wz:0,wanderTicks:0,fleeing:false,fx:0,fy:0,fz:0,fleeTicks:0,threatX:0,threatZ:0,lookTick:-1};
+      states.set(e,s);
+    }
+    return s;
+  }
+  const now=()=>game.time.tick;
+  const step=(e:Entity)=>{const k=game.entities.kind(e.kind),p=k&&k.physics!=='none'?k.physics?.stepHeight:undefined;return p??.6;};
+  /** The cell the mob is about to enter holds lava, fire or a cactus, or is a cliff: no floor (or water) within 4 cells
+   *  below, i.e. a drop of more than 3 blocks. Airborne and swimming mobs are not held back. */
+  function hazardAhead(e:Entity,dx:number,dz:number):boolean{
+    const reach=e.width/2+.35,x=Math.floor(e.x+dx*reach),z=Math.floor(e.z+dz*reach),y=Math.floor(e.y+.01),w=game.world;
+    if(x===Math.floor(e.x)&&z===Math.floor(e.z))return false;
+    for(let c=0;c<2;c++){const id=w.get(x,y+c,z);if(id>=0&&DANGER[id])return true;}
+    if(!e.onGround||e.inWater||e.inLava)return false;
+    const front=w.get(x,y,z);if(front<0||SOLID[front])return false;
+    for(let k=1;k<=4;k++){
+      const id=w.get(x,y-k,z);
+      if(id<0)return false;
+      if(DANGER[id])return true;
+      if(isWater(id)||SOLID[id])return false;
+    }
+    return true;
+  }
+  /** A block at the feet level in cell (x,z) that is taller than the step height, with room above for the body. */
+  function jumpable(e:Entity,x:number,z:number):boolean{
+    const y=Math.floor(e.y+.01),w=game.world;
+    if(x===Math.floor(e.x)&&z===Math.floor(e.z))return false;
+    const id=w.get(x,y,z);if(id<=0||!SOLID[id])return false;
+    if(y+cellTop(id)-e.y<=step(e)+1e-3)return false;
+    const above=w.get(x,y+1,z),above2=w.get(x,y+2,z);
+    return above>=0&&!SOLID[above]&&(e.height<=1||above2>=0&&!SOLID[above2]);
+  }
+  /** Jump over a step ahead (the cell in the walking direction, or either axis neighbour when blocked). */
+  function wantsJump(e:Entity,dx:number,dz:number):boolean{
+    if(!e.onGround&&!e.inWater)return false;
+    const reach=e.width/2+.25;
+    if(jumpable(e,Math.floor(e.x+dx*reach),Math.floor(e.z+dz*reach)))return true;
+    if(!e.collidedH)return false;
+    return Math.abs(dx)>1e-3&&jumpable(e,Math.floor(e.x+Math.sign(dx)*reach),Math.floor(e.z))||
+      Math.abs(dz)>1e-3&&jumpable(e,Math.floor(e.x),Math.floor(e.z+Math.sign(dz)*reach));
+  }
+  function steer(e:Entity,x:number,z:number,speed:number):boolean{
+    const dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);
+    if(!Number.isFinite(d)){e.moveX=0;e.moveZ=0;return false;}
+    speed=speedOf(speed);
+    if(d<.5){e.moveX=0;e.moveZ=0;return true;}
+    const nx=dx/d,nz=dz/d;
+    if(hazardAhead(e,nx,nz)){e.moveX=0;e.moveZ=0;return false;}
+    e.moveX=nx*speed;e.moveZ=nz*speed;
+    if(wantsJump(e,nx,nz))e.jump=true;
+    return false;
+  }
+  function clearPath(s:AIState){s.len=0;s.index=0;s.stuck=0;s.best=Infinity;}
+  /** Plans a path to the goal; returns false when none was found. */
+  function plan(e:Entity,s:AIState,x:number,y:number,z:number):boolean{
+    const cw=footprint(e.width),half=cw/2;
+    const sx=Math.floor(e.x-half+.5),sy=Math.floor(e.y+.01),sz=Math.floor(e.z-half+.5);
+    const tx=Math.floor(x-half+.5),ty=Math.floor(y+.01),tz=Math.floor(z-half+.5);
+    const k=game.entities.kind(e.kind);
+    findPath(game.world,sx,sy,sz,tx,ty,tz,{width:e.width,height:e.height,aquatic:!!k?.aquatic},s.path,result);
+    searches++;nodes+=result.expanded;credit-=Math.max(1,result.expanded);
+    s.planned=now();s.goalX=x;s.goalY=y;s.goalZ=z;s.index=0;s.stuck=0;s.best=Infinity;
+    // A complete search with no waypoints means the mob already stands at the goal.
+    s.len=result.length;s.failed=result.length===0&&!result.complete;
+    s.retry=s.planned+(s.failed?FAIL_BACKOFF+Math.floor(game.random()*FAIL_JITTER):REPLAN_TICKS);
+    return !s.failed;
+  }
+  /** Node credit: refilled by NODES_PER_TICK each tick (at most one tick's worth banked), spent by searches. */
+  function canSearch(){
+    const t=now();
+    if(t!==creditTick){
+      const elapsed=t>creditTick?Math.min(t-creditTick,4):1;creditTick=t;
+      credit=Math.min(NODES_PER_TICK,credit+NODES_PER_TICK*elapsed);
+    }
+    return credit>0;
+  }
+  /** Follows the cached path, then heads for the current goal (x, z); returns true when it is reached. */
+  function follow(e:Entity,s:AIState,x:number,z:number,speed:number):boolean{
+    const half=footprint(e.width)/2,maxDist=e.width>.75?e.width/2:.75-e.width/2;
+    while(s.index<s.len){
+      const i=s.index*3,wx=s.path[i]+half,wy=s.path[i+1],wz=s.path[i+2]+half;
+      if(Math.abs(e.x-wx)<maxDist&&Math.abs(e.z-wz)<maxDist&&Math.abs(e.y-wy)<1){s.index++;s.best=Infinity;s.stuck=0;continue;}
+      const d=Math.hypot(wx-e.x,wz-e.z);
+      if(d<s.best-.05){s.best=d;s.stuck=0;}else if(++s.stuck>30){clearPath(s);s.retry=-1e9;return false;}
+      steer(e,wx,wz,speed);
+      // Waypoint above: jump when close (or blocked).
+      if(wy>e.y+.5&&d<1.6&&(e.onGround||e.inWater))e.jump=true;
+      return false;
+    }
+    return steer(e,x,z,speed);
+  }
+  function walkValue(e:Entity,x:number,y:number,z:number):number{
+    if(e.category==='passive'){
+      if(game.world.get(x,y-1,z)===GRASS)return 10;
+      return game.world.brightnessAt(x,y,z)/15-.5;
+    }
+    if(e.category==='hostile')return .5-game.world.brightnessAt(x,y,z)/15;
+    if(e.category==='water')return isWater(game.world.get(x,y,z))?1:-1;
+    return 0;
+  }
+  /** A standable feet cell in the column near y (searching ±range), or NaN. */
+  function columnSpot(e:Entity,x:number,y:number,z:number,range:number):number{
+    const aquatic=!!game.entities.kind(e.kind)?.aquatic;
+    for(let i=0;i<=range*2;i++){
+      const cy=y+(i&1?-(i+1)/2:i/2);
+      if(cy<1||cy>=127)continue;
+      if(!standableCell(game.world,x,cy,z,e.width,e.height))continue;
+      if(aquatic&&!isWater(game.world.get(x,cy,z)))continue;
+      return cy;
+    }
+    return NaN;
+  }
+  const ai:EntityAIInternal={
+    get searches(){return searches;},
+    get nodes(){return nodes;},
     wander(e,speed,chance=1/120){
-      const d=e.data as {wanderX?:number;wanderZ?:number};
-      if(d.wanderX===undefined||d.wanderZ===undefined){
-        if(game.random()<chance){d.wanderX=e.x+(game.random()-.5)*20;d.wanderZ=e.z+(game.random()-.5)*20;}
+      const s=state(e);speed=speedOf(speed);
+      if(s.wandering){
+        const arrived=Math.hypot(s.wx-e.x,s.wz-e.z)<.9&&Math.abs(s.wy-e.y)<1.5;
+        if(arrived||++s.wanderTicks>400||!ai.navigate(e,s.wx,s.wy,s.wz,speed)){s.wandering=false;ai.stop(e);}
         return;
       }
-      if(ai.moveToward(e,d.wanderX,e.y,d.wanderZ,speed)||e.collidedH&&e.onGround&&!e.jump){delete d.wanderX;delete d.wanderZ;ai.stop(e);}
+      if(game.random()>=chance)return;
+      let best=-Infinity,bx=0,by=0,bz=0;
+      const fx=Math.floor(e.x),fy=Math.floor(e.y+.01),fz=Math.floor(e.z);
+      for(let i=0;i<10;i++){
+        const x=fx+Math.floor(game.random()*21)-10,z=fz+Math.floor(game.random()*21)-10,y=fy+Math.floor(game.random()*15)-7;
+        const cy=columnSpot(e,x,y,z,3);if(Number.isNaN(cy))continue;
+        const v=walkValue(e,x,cy,z);
+        if(v>best){best=v;bx=x;by=cy;bz=z;}
+      }
+      if(best===-Infinity)return;
+      s.wandering=true;s.wx=bx+.5;s.wy=by;s.wz=bz+.5;s.wanderTicks=0;
+      ai.navigate(e,s.wx,s.wy,s.wz,speed);
     },
     lookAt(e,x,y,z){
-      const dx=x-e.x,dz=z-e.z,dy=y-(e.y+e.height*.85);
-      e.headYaw=Math.atan2(-dx,-dz);e.pitch=Math.atan2(dy,Math.hypot(dx,dz));
+      if(!finite3(x,y,z))return;
+      const dx=x-e.x,dz=z-e.z,dy=y-(e.y+e.height*.85),h=Math.hypot(dx,dz);
+      if(h>1e-6)e.headYaw=rotateTowards(e.headYaw,Math.atan2(-dx,-dz),LOOK_YAW);
+      e.pitch=rotateTowards(e.pitch,Math.atan2(dy,Math.max(h,1e-6)),LOOK_PITCH);
+      const diff=wrapAngle(e.headYaw-e.yaw);
+      if(diff>MAX_HEAD)e.yaw=e.headYaw-MAX_HEAD;else if(diff<-MAX_HEAD)e.yaw=e.headYaw+MAX_HEAD;
+      state(e).lookTick=now();
     },
-    moveToward(e,x,_y,z,speed){
-      const dx=x-e.x,dz=z-e.z,d=Math.hypot(dx,dz);
-      if(d<.5){ai.stop(e);return true;}
-      e.moveX=dx/d*speed;e.moveZ=dz/d*speed;e.yaw=e.headYaw=Math.atan2(-dx,-dz);
-      if(e.collidedH&&e.onGround)e.jump=true;
-      return false;
+    moveToward(e,x,_y,z,speed){return steer(e,x,z,speed);},
+    navigate(e,x,y,z,speed){
+      if(!finite3(x,y,z)){e.moveX=0;e.moveZ=0;return false;}
+      speed=speedOf(speed);
+      const s=state(e);
+      // NaN-safe: a cleared goal (NaN) always counts as moved.
+      const moved=!(Math.hypot(x-s.goalX,y-s.goalY,z-s.goalZ)<=2);
+      const exhausted=s.len>0&&s.index>=s.len&&Math.hypot(x-e.x,z-e.z)>1.5;
+      if(s.len===0||moved||exhausted){
+        if((moved||now()>=s.retry)&&canSearch())plan(e,s,x,y,z);
+        else if(moved){steer(e,x,z,speed);return true;}
+      }
+      if(s.len===0){steer(e,x,z,speed);return !s.failed;}
+      if(follow(e,s,x,z,speed)){e.moveX=0;e.moveZ=0;}
+      return true;
     },
-    navigate(e,x,y,z,speed){ai.moveToward(e,x,y,z,speed);return false;},
-    flee(e,fx,fz,speed){const dx=e.x-fx,dz=e.z-fz,d=Math.hypot(dx,dz)||1;ai.moveToward(e,e.x+dx/d*8,e.y,e.z+dz/d*8,speed);},
+    flee(e,fromX,fromZ,speed){
+      if(!Number.isFinite(fromX)||!Number.isFinite(fromZ))return;
+      speed=speedOf(speed);
+      const s=state(e);
+      const d=Math.hypot(e.x-fromX,e.z-fromZ),targetD=Math.hypot(s.fx-fromX,s.fz-fromZ);
+      const reached=Math.hypot(s.fx-e.x,s.fz-e.z)<1;
+      if(!s.fleeing||reached||++s.fleeTicks>100||targetD<d||Math.hypot(fromX-s.threatX,fromZ-s.threatZ)>4){
+        s.fleeing=false;s.threatX=fromX;s.threatZ=fromZ;s.fleeTicks=0;
+        const away=d>1e-3?Math.atan2(e.x-fromX,e.z-fromZ):game.random()*Math.PI*2;
+        let best=-1;
+        const fy=Math.floor(e.y+.01);
+        for(let i=0;i<10;i++){
+          const a=away+(game.random()-.5)*Math.PI*2/3,r=5+game.random()*7;
+          const x=Math.floor(e.x+Math.sin(a)*r),z=Math.floor(e.z+Math.cos(a)*r);
+          const cy=columnSpot(e,x,fy,z,4);if(Number.isNaN(cy))continue;
+          const dd=Math.hypot(x+.5-fromX,z+.5-fromZ);
+          if(dd>best){best=dd;s.fx=x+.5;s.fy=cy;s.fz=z+.5;}
+        }
+        if(best>d)s.fleeing=true;
+        else{
+          const len=d>1e-3?d:1,ux=d>1e-3?(e.x-fromX)/len:Math.sin(away),uz=d>1e-3?(e.z-fromZ)/len:Math.cos(away);
+          steer(e,e.x+ux*8,e.z+uz*8,speed);return;
+        }
+      }
+      ai.navigate(e,s.fx,s.fy,s.fz,speed);
+    },
     canSee(e,x,y,z){
+      if(!finite3(x,y,z))return false;
       const ox=e.x,oy=e.y+e.height*.85,oz=e.z,dx=x-ox,dy=y-oy,dz=z-oz,d=Math.hypot(dx,dy,dz);
       if(d<1e-6)return true;
-      return !raycast(game.world,ox,oy,oz,dx/d,dy/d,dz/d,d,id=>id===AIR||!SOLID[id]);
+      return !raycast(game.world,ox,oy,oz,dx/d,dy/d,dz/d,d,seeThrough);
     },
-    isSafe(x,y,z){
-      const fx=Math.floor(x),fy=Math.floor(y),fz=Math.floor(z),below=game.world.get(fx,fy-1,fz);
-      return below>0&&SOLID[below]===1&&!isLava(below)&&!SOLID[Math.max(0,game.world.get(fx,fy,fz))]&&!SOLID[Math.max(0,game.world.get(fx,fy+1,fz))];
+    isSafe(x,y,z,width=.6,height=1.8){
+      const half=footprint(width)/2;
+      return standableCell(game.world,Math.floor(x-half+.5),Math.floor(y+.01),Math.floor(z-half+.5),width,height);
     },
-    stop(e){e.moveX=0;e.moveZ=0;}
+    stop(e){
+      e.moveX=0;e.moveZ=0;
+      const s=states.get(e);if(s){clearPath(s);s.wandering=false;s.fleeing=false;s.failed=false;s.retry=-1e9;s.goalX=s.goalY=s.goalZ=NaN;}
+    },
+    lookedAt(e){return states.get(e)?.lookTick===now();},
+    forget(e){states.delete(e);},
+    reset(){creditTick=-1;credit=0;searches=0;nodes=0;}
   };
   return ai;
 }
