@@ -67,15 +67,17 @@ export interface Brain{
   leaping:boolean;
   // A destination being walked to (skeletons fleeing the sun, drowned heading for water), and ticks left.
   goX:number;goY:number;goZ:number;goTime:number;
-  // Zombies: ticks with the eyes under water (−1 when out), creepers: the fall in progress.
-  wet:number;fall:number;prevY:number;
+  // Skeletons: the wolf being run from.
+  avoid:Entity|null;
+  // Zombies: ticks with the eyes under water (−1 when out); creepers: swell direction and the fall in progress.
+  wet:number;swellDir:number;fall:number;prevY:number;
 }
 const brains=new WeakMap<Entity,Brain>();
 export function brain(e:Entity):Brain{
   let b=brains.get(e);
   if(!b){
     b={target:null,targetPlayer:false,revenge:false,sight:false,sightAge:-1,unseen:0,lastX:0,lastY:0,lastZ:0,hasLast:false,cooldown:0,look:0,
-      seeTime:0,strafeTime:-1,clockwise:false,backwards:false,attackTime:-1,leaping:false,goX:0,goY:0,goZ:0,goTime:0,wet:-1,fall:0,prevY:e.y};
+      seeTime:0,strafeTime:-1,clockwise:false,backwards:false,attackTime:-1,leaping:false,goX:0,goY:0,goZ:0,goTime:0,avoid:null,wet:-1,swellDir:-1,fall:0,prevY:e.y};
     brains.set(e,b);
   }
   return b;
