@@ -72,7 +72,7 @@ export function traceOutline(world:BlockSource,ox:number,oy:number,oz:number,dx:
       const b=OUTLINE_BOX[id];
       if(b.length===6&&b[0]===0&&b[1]===0&&b[2]===0&&b[3]===1&&b[4]===1&&b[5]===1)return fill(out,x,y,z,nx,ny,nz,id,t,ox+dx*t,oy+dy*t,oz+dz*t);
       if(b.length===6){
-        // Slab test against the outline box (scalar locals: this runs every frame); the entry face is the axis entered last.
+        // Slab test against the outline box, with no arrays (this runs every frame); the entry face is the axis entered last.
         slab.t0=0;slab.t1=Infinity;slab.axis=-1;
         slabAxis(0,ox,dx,x+b[0],x+b[3]);slabAxis(1,oy,dy,y+b[1],y+b[4]);slabAxis(2,oz,dz,z+b[2],z+b[5]);
         const t0=slab.t0;
