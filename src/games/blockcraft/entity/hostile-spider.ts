@@ -21,6 +21,7 @@ export const LEAP=.4*20;
 const T:TargetPos=newTarget();
 const chaseSpeed=mobSpeed(SPIDER_MOVEMENT),strollSpeed=mobSpeed(SPIDER_MOVEMENT,.8);
 
+const never=()=>false;
 /** Bright enough that spiders are neutral (getLightLevelDependentMagicValue ≥ 0.5). */
 export const spiderCalm=(game:Game,e:Entity)=>lightValue(eyeBrightness(game,e))>=.5;
 function climb(e:Entity){
@@ -45,7 +46,7 @@ function tickSpider(e:Entity,game:Game){
   const calm=spiderCalm(game,e);
   // SpiderAttackGoal.canContinueToUse: in bright light a target is dropped 1% of ticks.
   if(calm&&hasTarget(b)&&game.random()<.01)forget(b);
-  const has=updateTarget(game,e,b,SPIDER_FOLLOW,T,()=>!calm);
+  const has=updateTarget(game,e,b,SPIDER_FOLLOW,T,calm?never:undefined);
   setAggressive(e,has);
   if(has){
     if(leap(game,e,b,T)){game.entities.ai.lookAt(e,T.x,T.y+T.eye,T.z);tryMelee(game,e,b,T,SPIDER_DAMAGE);return;}

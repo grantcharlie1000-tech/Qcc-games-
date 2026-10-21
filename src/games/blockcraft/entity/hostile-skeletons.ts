@@ -90,13 +90,15 @@ function bowAttack(game:Game,e:Entity,b:Brain,t:TargetPos,stray:boolean){
   }else if(--b.attackTime<=0&&b.seeTime>=-60)e.data.draw=0;
 }
 const WOLVES:Entity[]=[];
+const isWolf=(o:Entity)=>o.kind==='wolf'&&o.deathTime===0&&!o.removed;
+const shade=(game:Game,e:Entity,x:number,y:number,z:number)=>!underSky(game,x,y,z)&&game.entities.ai.isSafe(x+.5,y,z+.5,e.width,e.height);
 /** AvoidEntityGoal(Wolf, 6, 1.0, 1.2): checked every 5 ticks; keeps running while a wolf is near. */
 function avoidWolves(game:Game,e:Entity,b:Brain):boolean{
   if((e.age+e.id)%5===0){
     b.avoid=null;
-    const list=game.entities.near(e.x,e.y,e.z,WOLF_RANGE,o=>o.kind==='wolf'&&o.deathTime===0&&!o.removed&&Math.abs(o.y-e.y)<=3,WOLVES);
+    const list=game.entities.near(e.x,e.y,e.z,WOLF_RANGE,isWolf,WOLVES);
     let best=Infinity;
-    for(const w of list){const d=(w.x-e.x)**2+(w.z-e.z)**2;if(d<best){best=d;b.avoid=w;}}
+    for(const w of list){const d=(w.x-e.x)**2+(w.z-e.z)**2;if(d<best&&Math.abs(w.y-e.y)<=3){best=d;b.avoid=w;}}
     WOLVES.length=0;
   }
   const w=b.avoid;
@@ -109,7 +111,7 @@ function avoidWolves(game:Game,e:Entity,b:Brain):boolean{
 function fleeSun(game:Game,e:Entity,b:Brain):boolean{
   if(walkToSpot(game,e,b,walk))return true;
   if(!isDay(game)||e.fire<=0||!underSky(game,Math.floor(e.x),Math.floor(e.y+.01),Math.floor(e.z)))return false;
-  return pickSpot(game,e,b,10,3,10,(x,y,z)=>!underSky(game,x,y,z)&&game.entities.ai.isSafe(x+.5,y,z+.5,e.width,e.height))&&walkToSpot(game,e,b,walk);
+  return pickSpot(game,e,b,10,3,10,shade)&&walkToSpot(game,e,b,walk);
 }
 function tickSkeleton(e:Entity,game:Game,stray:boolean){
   if(peacefulRemove(game,e))return;

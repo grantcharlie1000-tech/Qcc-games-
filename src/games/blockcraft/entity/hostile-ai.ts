@@ -120,11 +120,11 @@ export function seesTarget(game:Game,e:Entity,b:Brain,t:TargetPos):boolean{
 }
 /** NearestAttackableTargetGoal for the player: a 1-in-10 chance per tick to look, within `range` blocks (80% when the
  *  player sneaks), needing line of sight. `allow` adds kind rules (spider light, drowned water). */
-export function acquirePlayer(game:Game,e:Entity,b:Brain,range:number,scratch:TargetPos,allow?:()=>boolean):void{
+export function acquirePlayer(game:Game,e:Entity,b:Brain,range:number,scratch:TargetPos,allow?:(game:Game,e:Entity)=>boolean):void{
   if(hasTarget(b)||game.random()>=.1||!playerTargetable(game))return;
   const p=game.player.state,r=range*(p.sneaking?.8:1);
   if((p.x-e.x)**2+(p.y-e.y)**2+(p.z-e.z)**2>r*r)return;
-  if(allow&&!allow())return;
+  if(allow&&!allow(game,e))return;
   fillPlayer(game,scratch);
   if(!game.entities.ai.canSee(e,scratch.x,scratch.y+scratch.eye,scratch.z))return;
   b.targetPlayer=true;b.target=null;b.revenge=false;b.unseen=0;b.sight=true;b.sightAge=e.age;
@@ -138,7 +138,7 @@ export function keepTarget(game:Game,e:Entity,b:Brain,range:number,t:TargetPos):
   return true;
 }
 /** Target selection for a tick: keep the current target or look for the player. Returns true with a target in `t`. */
-export function updateTarget(game:Game,e:Entity,b:Brain,range:number,t:TargetPos,allow?:()=>boolean):boolean{
+export function updateTarget(game:Game,e:Entity,b:Brain,range:number,t:TargetPos,allow?:(game:Game,e:Entity)=>boolean):boolean{
   if(resolveTarget(game,b,t)&&keepTarget(game,e,b,range,t))return true;
   acquirePlayer(game,e,b,range,t,allow);
   return resolveTarget(game,b,t);
@@ -271,11 +271,11 @@ export function peacefulRemove(game:Game,e:Entity):boolean{
   game.entities.remove(e);return true;
 }
 /** Up to `tries` random cells within ±range (±dy vertically) accepted by `ok`, written to the brain's destination. */
-export function pickSpot(game:Game,e:Entity,b:Brain,range:number,dy:number,tries:number,ok:(x:number,y:number,z:number)=>boolean):boolean{
+export function pickSpot(game:Game,e:Entity,b:Brain,range:number,dy:number,tries:number,ok:(game:Game,e:Entity,x:number,y:number,z:number)=>boolean):boolean{
   const fx=Math.floor(e.x),fy=Math.floor(e.y+.01),fz=Math.floor(e.z);
   for(let i=0;i<tries;i++){
     const x=fx+Math.floor(game.random()*(range*2+1))-range,y=fy+Math.floor(game.random()*(dy*2+1))-dy,z=fz+Math.floor(game.random()*(range*2+1))-range;
-    if(ok(x,y,z)){b.goX=x+.5;b.goY=y;b.goZ=z+.5;b.goTime=200;return true;}
+    if(ok(game,e,x,y,z)){b.goX=x+.5;b.goY=y;b.goZ=z+.5;b.goTime=200;return true;}
   }
   return false;
 }

@@ -180,9 +180,11 @@ const HIT:TraceHit={x:0,y:0,z:0,nx:0,ny:0,nz:0};
 const at=(x:number,y:number,z:number)=>({x,y,z});
 const waterAt=(game:Game,e:Entity)=>{const id=game.world.get(Math.floor(e.x),Math.floor(e.y+e.height/2),Math.floor(e.z));return id>0&&isWater(id);};
 type Impact={kind:'block';x:number;y:number;z:number;nx:number;ny:number;nz:number}|{kind:'entity';x:number;y:number;z:number;entity:Entity|null;player:boolean};
-/** One flight step. `onHit` reacts to the first block or entity in the way and returns true when the projectile is done
- *  (removed or stuck); otherwise the projectile moves on with its (possibly changed) velocity. */
-function fly(game:Game,e:Entity,physics:{gravity:number;drag:number;waterDrag:number},onHit:(hit:Impact,ux:number,uy:number,uz:number,speed:number)=>boolean):void{
+/** Reaction to the first block or entity in the way; returns true when the projectile is done (removed or stuck). */
+type HitHandler=(game:Game,e:Entity,hit:Impact,ux:number,uy:number,uz:number,speed:number)=>boolean;
+/** One flight step. `onHit` reacts to an impact; when it returns false the projectile moves on with its (possibly
+ *  changed) velocity. */
+function fly(game:Game,e:Entity,physics:{gravity:number;drag:number;waterDrag:number},onHit:HitHandler):void{
   const f=flight(e);
   let vx=e.vx*TICK,vy=e.vy*TICK,vz=e.vz*TICK;
   const water=waterAt(game,e);
@@ -198,7 +200,7 @@ function fly(game:Game,e:Entity,physics:{gravity:number;drag:number;waterDrag:nu
     if(hitE.entity||hitE.player)impact={kind:'entity',x:e.x+ux*hitE.t,y:e.y+uy*hitE.t,z:e.z+uz*hitE.t,entity:hitE.entity,player:hitE.player};
     else if(block<=len)impact={kind:'block',x:e.x+ux*block,y:e.y+uy*block,z:e.z+uz*block,nx:HIT.nx,ny:HIT.ny,nz:HIT.nz};
     HIT.id=undefined;
-    if(impact&&onHit(impact,ux,uy,uz,len))return;
+    if(impact&&onHit(game,e,impact,ux,uy,uz,len))return;
     if(e.removed)return;
     vx=e.vx*TICK;vy=e.vy*TICK;vz=e.vz*TICK;
   }
@@ -266,7 +268,7 @@ function arrowHitEntity(game:Game,e:Entity,d:ArrowData,hit:{x:number;y:number;z:
 }
 function stick(game:Game,e:Entity,d:ArrowData,hit:{x:number;y:number;z:number},ux:number,uy:number,uz:number){
   e.x=hit.x-ux*.05;e.y=hit.y-uy*.05;e.z=hit.z-uz*.05;
-  e.vx=e.vy=e.vz=0;
+  e.vx=e.vy=e.vz=0;orient(e,ux,uy,uz);
   d.inGround=true;d.crit=false;d.shake=ARROW_SHAKE;flight(e).life=0;
   game.sounds.play('arrow_hit',at(hit.x,hit.y,hit.z),{pitch:1.2/(game.random()*.2+.9)});
 }
@@ -296,11 +298,13 @@ function tickArrow(e:Entity,game:Game){
     d.inGround=false;f.life=0;delete d.shake;
   }
   if(d.crit)game.render.spawnParticles('crit',e.x,e.y+e.height/2,e.z,{count:2,spread:.1});
-  fly(game,e,ARROW_PHYSICS,(hit,ux,uy,uz,speed)=>{
-    if(hit.kind==='entity')return arrowHitEntity(game,e,d,hit,ux,uy,uz,speed);
-    stick(game,e,d,hit,ux,uy,uz);return true;
-  });
+  fly(game,e,ARROW_PHYSICS,arrowImpact);
 }
+const arrowImpact:HitHandler=(game,e,hit,ux,uy,uz,speed)=>{
+  const d=e.data as unknown as ArrowData;
+  if(hit.kind==='entity')return arrowHitEntity(game,e,d,hit,ux,uy,uz,speed);
+  stick(game,e,d,hit,ux,uy,uz);return true;
+};
 
 // ---- Thrown items --------------------------------------------------------------------------------------
 /** Where a body of half width `hw` and height `h` fits at an impact point, nudged out of the face it hit. */
@@ -319,15 +323,16 @@ function breakParticles(game:Game,e:Entity,item:string,x:number,y:number,z:numbe
 }
 function thrownKind(kind:'snowball'|'egg'|'ender_pearl',effect:(game:Game,e:Entity,hit:Impact,ux:number,uy:number,uz:number)=>void):EntityKind{
   const icon:ItemStack=Object.freeze(stack(kind,1)) as ItemStack;
+  const impact:HitHandler=(game,e,hit,ux,uy,uz)=>{
+    if(hit.kind==='entity')nudge(game,e,hit.entity,hit.player,ux,uz);
+    effect(game,e,hit,ux,uy,uz);
+    game.entities.remove(e);return true;
+  };
   return{kind,category:'projectile',width:.25,height:.25,maxHealth:1,render:'item',item:()=>icon,physics:'none',persist:false,pickable:false,
     init(e){cleanOwner(e.data);},
     tick(e,game){
       if(e.fire>0)e.fire--;
-      fly(game,e,THROWN_PHYSICS,(hit,ux,uy,uz)=>{
-        if(hit.kind==='entity')nudge(game,e,hit.entity,hit.player,ux,uz);
-        effect(game,e,hit,ux,uy,uz);
-        game.entities.remove(e);return true;
-      });
+      fly(game,e,THROWN_PHYSICS,impact);
     }};
 }
 /** Egg hatching (ThrownEgg.onHit): 1/8 a baby chicken, 1/32 of those four. */

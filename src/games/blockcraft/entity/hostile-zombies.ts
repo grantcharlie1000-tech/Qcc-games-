@@ -56,13 +56,15 @@ function convert(game:Game,e:Entity,to:ZombieKind){
 
 /** Drowned.okTarget: by day only targets in water. */
 const drownedOk=(game:Game,inWater:boolean)=>!isDay(game)||inWater;
+const drownedSeesPrey=(game:Game)=>drownedOk(game,game.player.state.inWater);
 /** DrownedMoveControl while swimming after a target: vertical push 0.1 × movement speed along the direction to it,
  *  plus 0.002 blocks/tick² up when it is above (velocities here in blocks/second). */
 function swimToward(e:Entity,x:number,y:number,z:number){
   const dy=y-e.y,d=Math.hypot(x-e.x,dy,z-e.z)||1,attribute=ZOMBIE_MOVEMENT*(e.baby?1.5:1);
   e.vy+=(dy/d*attribute*.1+(dy>0?.002:0))*20;
 }
-const standableLand=(game:Game,x:number,y:number,z:number)=>{
+const waterCell=(game:Game,_e:Entity,x:number,y:number,z:number)=>{const id=game.world.get(x,y,z);return id>0&&isWater(id);};
+const standableLand=(game:Game,_e:Entity,x:number,y:number,z:number)=>{
   const w=game.world,below=w.get(x,y-1,z),feet=w.get(x,y,z),head=w.get(x,y+1,z);
   return below>0&&SOLID[below]===1&&!isWater(below)&&feet>=0&&!SOLID[feet]&&!isWater(feet)&&head>=0&&!SOLID[head]&&!isWater(head);
 };
@@ -72,10 +74,10 @@ function drownedIdle(game:Game,e:Entity,b:Brain,speed:number){
     if(e.inWater&&b.goY>e.y)swimToward(e,b.goX,b.goY,b.goZ);
     return;
   }
-  const day=isDay(game),w=game.world;
-  if(day&&!e.inWater&&pickSpot(game,e,b,10,3,10,(x,y,z)=>{const id=w.get(x,y,z);return id>0&&isWater(id);}))return;
+  const day=isDay(game);
+  if(day&&!e.inWater&&pickSpot(game,e,b,10,3,10,waterCell))return;
   if(!day&&e.inWater){
-    if(pickSpot(game,e,b,8,3,10,(x,y,z)=>standableLand(game,x,y,z)))return;
+    if(pickSpot(game,e,b,8,3,10,standableLand))return;
     if(e.y<SEA_LEVEL-2)swimToward(e,e.x,SEA_LEVEL,e.z);
   }
   idle(game,e,b,speed);
@@ -87,7 +89,7 @@ function tickZombie(e:Entity,game:Game,v:Variant){
   tickTimers(e,b);
   if(tickConversion(game,e,b,v))return;
   const drowned=v.kind==='drowned',speed=zombieSpeed(e);
-  let has=updateTarget(game,e,b,ZOMBIE_FOLLOW,T,drowned?()=>drownedOk(game,game.player.state.inWater):undefined);
+  let has=updateTarget(game,e,b,ZOMBIE_FOLLOW,T,drowned?drownedSeesPrey:undefined);
   if(has&&drowned&&!drownedOk(game,T.inWater)){forget(b);has=false;}
   setAggressive(e,has);
   if(has){
