@@ -2,7 +2,8 @@
 // large chest. Two chests with the same facing side by side (along the axis across their fronts)
 // form a large chest; in a longer row chests pair from the row's start, so every chest finds the
 // same partner. The left half (seen from the front) is the top three rows, as in vanilla.
-import {blockDef,FACING_VECTOR,rotateCW,type Facing} from '../data/blocks';
+// A chest (either half) under a full opaque block cannot open (vanilla ChestBlock.isChestBlockedAt); barrels can.
+import {blockDef,FACING_VECTOR,FULL_CUBE,OPAQUE,rotateCW,type Facing} from '../data/blocks';
 import type {BlockSource,ChestEntity,Game,Vec3} from '../engine/contracts';
 import {SlotMenu,arraySlot,playerSlots,screenRule,type MenuSlot} from './slots';
 import {blockScreenValid,playerInventoryHtml,slotGrid,type ScreenBuild} from './screen-common';
@@ -24,6 +25,11 @@ export function chestPositions(world:BlockSource,at:Vec3):Vec3[]{
   // The chest further toward the viewer's left is the top half.
   return partner>0?[other,at]:[at,other];
 }
+/** A full opaque block right above the chest keeps its lid shut. */
+export function chestBlocked(world:BlockSource,at:Vec3):boolean{
+  const id=world.get(at.x,at.y+1,at.z);
+  return id>0&&OPAQUE[id]===1&&FULL_CUBE[id]===1;
+}
 function containerSlots(entity:ChestEntity,offset:number):MenuSlot[]{
   if(entity.items.length<27)for(let i=entity.items.length;i<27;i++)entity.items.push(null);
   return Array.from({length:27},(_,i)=>arraySlot(entity.items,i,'container',`Chest slot ${offset+i+1}`));
@@ -37,6 +43,7 @@ export function buildChest(game:Game,menu:SlotMenu,at?:Vec3):ScreenBuild|null{
   // A partner without its block entity (not loaded yet) opens the clicked chest alone.
   if(positions.length>1&&entities.some(e=>e?.kind!=='chest')){positions=[at];entities=[game.blockEntities.get(at.x,at.y,at.z)];}
   if(entities.some(e=>e?.kind!=='chest'))return null;
+  if(!barrel&&positions.some(p=>chestBlocked(game.world,p)))return null;
   const slots=entities.flatMap((e,k)=>containerSlots(e as ChestEntity,k*27));
   menu.setup([...slots,...playerSlots(game.inventory)],screenRule((m,i)=>m.moveSlot(i,m.indexes('container'))));
   const large=positions.length>1,title=barrel?'Barrel':large?'Large Chest':'Chest';

@@ -59,6 +59,7 @@ async function placeBlocks(page:Page,blocks:{dx:number;dz:number;family:string;f
     return list.map(b=>{
       const def=stateFor(b.family,b.facing?{facing:b.facing,lit:false}:{});
       g.world.set(x+b.dx,y,z+b.dz,def.id,'player');
+      g.world.set(x+b.dx,y+1,z+b.dz,0,'player');// a solid block above would keep a chest shut
       return{x:x+b.dx,y,z:z+b.dz};
     });
   },[BLOCKS_MODULE,blocks] as const);

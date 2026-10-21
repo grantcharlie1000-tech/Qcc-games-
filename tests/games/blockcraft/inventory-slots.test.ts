@@ -8,7 +8,7 @@ import {buildCraftingTable} from '../../../src/games/blockcraft/ui/screen-crafti
 import {buildFurnace} from '../../../src/games/blockcraft/ui/screen-furnace';
 import {buildChest,chestPositions} from '../../../src/games/blockcraft/ui/screen-chest';
 import {buildCreative} from '../../../src/games/blockcraft/ui/screen-creative';
-import {stateFor} from '../../../src/games/blockcraft/data/blocks';
+import {blockId,stateFor} from '../../../src/games/blockcraft/data/blocks';
 import type {BlockEntity,CraftingService,FurnaceEntity,GameEvents,ItemStack,RecipeMatch,Vec3} from '../../../src/games/blockcraft/engine/contracts';
 
 const st=(id:string,count=1,damage?:number):ItemStack=>damage?{id,count,damage}:{id,count};
@@ -291,6 +291,15 @@ describe('chests',()=>{
     b.closed!();expect(game.sounds.played.map(s=>s.name)).toEqual(['chest_open','chest_close']);
     expect(b.valid!()).toBe(true);game.player.teleport(.5,61,12);expect(b.valid!()).toBe(false);
     game.player.teleport(.5,61,2.5);game.world.set(0,61,0,0);expect(b.valid!()).toBe(false);
+  });
+  test('a solid block on either half keeps the chest shut; glass does not, and barrels always open',()=>{
+    const {game,menu}=chestGame([{x:0,y:61,z:0},{x:1,y:61,z:0}]);
+    game.world.set(1,62,0,blockId('glass'));expect(buildChest(game,menu,{x:0,y:61,z:0})?.title).toBe('Large Chest');
+    game.world.set(1,62,0,blockId('stone'));expect(buildChest(game,menu,{x:0,y:61,z:0})).toBeNull();
+    game.world.set(5,61,0,blockId('barrel'));game.world.set(5,62,0,blockId('stone'));
+    const barrel:BlockEntity={kind:'chest',items:new Array(27).fill(null)};
+    const get=game.blockEntities.get;game.blockEntities={get:(x,y,z)=>x===5?barrel:get(x,y,z)};
+    expect(buildChest(game,menu,{x:5,y:61,z:0})?.title).toBe('Barrel');
   });
 });
 
