@@ -106,6 +106,14 @@ describe('particles',()=>{
     for(const p of system.particles())expect(p.emissive).toBe(true);
     expect(Math.max(...system.particles().filter(p=>p.kind==='explosion').map(p=>p.size))).toBeGreaterThanOrEqual(1.9);
   });
+  test('particles spawned while stepping (lava smoke) respect the cap without corrupting the live list',()=>{
+    const {system}=setup();system.spawn('lava',.5,70,.5,{count:MAX_PARTICLES});
+    for(let t=0;t<3;t++){
+      system.tick();expect(system.count).toBeLessThanOrEqual(MAX_PARTICLES);
+      expect(new Set(system.particles()).size).toBe(system.count);
+    }
+    expect(system.particles().some(p=>p.kind==='smoke')).toBe(true);
+  });
   test('lava particles leave smoke trails',()=>{
     const {system}=setup();system.spawn('lava',.5,64,.5,{count:20});
     for(let t=0;t<4;t++)system.tick();

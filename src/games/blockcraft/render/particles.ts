@@ -185,7 +185,10 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
   function lightAt(x:number,y:number,z:number){
     const v=game.world.lightAt(Math.floor(x),Math.floor(y),Math.floor(z));return v>=0?v&255:0;
   }
+  let ticking=false;const queued:Particle[]=[];
   function add(p:Particle){
+    // Particles made while stepping (lava smoke) join after the step, so the live list is not reshuffled mid-loop.
+    if(ticking){queued.push(p);return;}
     if(live.length>=MAX_PARTICLES){const old=live.shift()!;pool.push(old);}
     live.push(p);
   }
@@ -308,8 +311,9 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
   }
   function setColour(p:Particle,c:number){p.r=(c>>16&255)/255;p.g=(c>>8&255)/255;p.b=(c&255)/255;}
   /** Liquid a drip hangs from: the cell it is in or the one just above. 1 water (default), 2 lava. */
+  const DRIP_PROBES=[0,.2,1];
   function dripFluid(x:number,y:number,z:number){
-    for(const dy of [0,.2,1]){const id=game.world.get(Math.floor(x),Math.floor(y+dy),Math.floor(z));if(id>0&&LIQUID[id])return LIQUID[id];}
+    for(const dy of DRIP_PROBES){const id=game.world.get(Math.floor(x),Math.floor(y+dy),Math.floor(z));if(id>0&&LIQUID[id])return LIQUID[id];}
     return 1;
   }
 
@@ -342,20 +346,22 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
   /** Allowed movement along one axis for a box, against block collision boxes (vanilla collideBoundingBox per axis). */
   function clip(axis:0|1|2,d:number,x0:number,y0:number,z0:number,x1:number,y1:number,z1:number):number{
     if(d===0)return 0;
-    const lo=[x0,y0,z0],hi=[x1,y1,z1];
-    if(d>0)hi[axis]+=d;else lo[axis]+=d;
-    const ax=Math.floor(lo[0]),bx=Math.floor(hi[0]-1e-9),ay=Math.floor(lo[1])-1,by=Math.floor(hi[1]-1e-9),az=Math.floor(lo[2]),bz=Math.floor(hi[2]-1e-9);
-    const min=[x0,y0,z0],max=[x1,y1,z1];
+    const E=1e-7;
+    let lx=x0,ly=y0,lz=z0,hx=x1,hy=y1,hz=z1;
+    if(axis===0){if(d>0)hx+=d;else lx+=d;}else if(axis===1){if(d>0)hy+=d;else ly+=d;}else if(d>0)hz+=d;else lz+=d;
+    const ax=Math.floor(lx),bx=Math.floor(hx-1e-9),ay=Math.floor(ly)-1,by=Math.floor(hy-1e-9),az=Math.floor(lz),bz=Math.floor(hz-1e-9);
+    const lo=axis===0?x0:axis===1?y0:z0,hi=axis===0?x1:axis===1?y1:z1;
     for(let cy=ay;cy<=by;cy++)for(let cz=az;cz<=bz;cz++)for(let cx=ax;cx<=bx;cx++){
       const id=world.get(cx,cy,cz);if(id<=0)continue;
-      const boxes=COLLISION_BOXES[id];
-      for(let k=0;k<boxes.length;k+=6){
-        const bmin=[cx+boxes[k],cy+boxes[k+1],cz+boxes[k+2]],bmax=[cx+boxes[k+3],cy+boxes[k+4],cz+boxes[k+5]];
-        let overlap=true;
-        for(let a=0;a<3;a++)if(a!==axis&&(max[a]<=bmin[a]+1e-7||min[a]>=bmax[a]-1e-7)){overlap=false;break;}
-        if(!overlap)continue;
-        if(d>0&&max[axis]<=bmin[axis]+1e-7)d=Math.min(d,bmin[axis]-max[axis]);
-        else if(d<0&&min[axis]>=bmax[axis]-1e-7)d=Math.max(d,bmax[axis]-min[axis]);
+      const b=COLLISION_BOXES[id];
+      for(let k=0;k<b.length;k+=6){
+        const nx=cx+b[k],ny=cy+b[k+1],nz=cz+b[k+2],mx=cx+b[k+3],my=cy+b[k+4],mz=cz+b[k+5];
+        if(axis!==0&&(x1<=nx+E||x0>=mx-E))continue;
+        if(axis!==1&&(y1<=ny+E||y0>=my-E))continue;
+        if(axis!==2&&(z1<=nz+E||z0>=mz-E))continue;
+        const bl=axis===0?nx:axis===1?ny:nz,bh=axis===0?mx:axis===1?my:mz;
+        if(d>0&&hi<=bl+E)d=Math.min(d,bl-hi);
+        else if(d<0&&lo>=bh-E)d=Math.max(d,bh-lo);
       }
     }
     return d;
@@ -450,6 +456,7 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
   function tick(){
     for(let i=0;i<emitters.length;i++){emit(emitters[i]);if(emitters[i].left<=0)emitters.splice(i--,1);}
     const n=live.length;let w=0;
+    ticking=true;
     for(let i=0;i<n;i++){
       const p=live[i];
       if(step(p)){
@@ -457,9 +464,9 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
         live[w++]=p;
       }else pool.push(p);
     }
-    // Keep particles spawned while stepping (lava smoke), after the survivors.
-    for(let i=n;i<live.length;i++)live[w++]=live[i];
-    live.length=w;
+    ticking=false;live.length=w;
+    for(let i=0;i<queued.length;i++)add(queued[i]);
+    queued.length=0;
   }
 
   // ---- Instances ----------------------------------------------------------------------------------------------------
@@ -495,7 +502,7 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
       default:return 1;
     }
   }
-  function reset(){for(const p of live)pool.push(p);live.length=0;emitters.length=0;update(0);}
+  function reset(){for(const p of live)pool.push(p);live.length=0;queued.length=0;emitters.length=0;update(0);}
   return{
     mesh,sheet,
     get count(){return live.length;},

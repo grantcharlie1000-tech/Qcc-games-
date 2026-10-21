@@ -170,7 +170,7 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
   const projection=new THREE.PerspectiveCamera(70,1,.05,10);
 
   // ---- State (vanilla ItemInHandRenderer fields) ---------------------------------------------------------------------
-  let shownMain:ItemStack|null=null,shownOff:ItemStack|null=null,mainKey='',offKey='',builtKey='\0';
+  let shownMain:ItemStack|null=null,shownOff:ItemStack|null=null,mainKey='',offKey='',builtMain='\0',builtOff='\0';
   let mainHeight=0,oMainHeight=0,offHeight=0,oOffHeight=0;
   let swinging=false,swingTime=0,attackAnim=0,oAttackAnim=0;
   let usedItem='',useTicks=0,useHand:0|1=0;
@@ -251,7 +251,7 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
       else{usedItem=using?.item??'';useTicks=0;useHand=key(inv.held())===usedItem?0:1;}
     },
     update(partial,prefix,aspect,light){
-      if(mainKey+'|'+offKey!==builtKey){builtKey=mainKey+'|'+offKey;build();}
+      if(mainKey!==builtMain||offKey!==builtOff){builtMain=mainKey;builtOff=offKey;build();}
       const p=Math.max(0,Math.min(1,partial));
       handMatrix(uniforms.mainMatrix.value.copy(prefix),0,p);
       handMatrix(uniforms.offMatrix.value.copy(prefix),1,p);
@@ -259,7 +259,7 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
       uniforms.handProjection.value.copy(projection.projectionMatrix);
       uniforms.light.value.setRGB(light.r,light.g,light.b);
     },
-    reset(){shownMain=shownOff=null;mainKey=offKey='';builtKey='\0';mainHeight=oMainHeight=offHeight=oOffHeight=0;swinging=false;swingTime=0;attackAnim=oAttackAnim=0;usedItem='';useTicks=0;},
+    reset(){shownMain=shownOff=null;mainKey=offKey='';builtMain=builtOff='\0';mainHeight=oMainHeight=offHeight=oOffHeight=0;swinging=false;swingTime=0;attackAnim=oAttackAnim=0;usedItem='';useTicks=0;},
     dispose(){geometry.dispose();material.dispose();sheet.dispose();}
   };
 }
