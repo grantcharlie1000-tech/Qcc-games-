@@ -10,13 +10,13 @@ function* boxes(parts:readonly ModelPart[]):Generator<[ModelPart,ModelPart['boxe
   for(const p of parts){for(const b of p.boxes)yield[p,b];if(p.children)yield*boxes(p.children);}
 }
 /** Every texel of every drawn face region of the model. */
-function faceTexels(m:EntityModel):[number,number,string][]{
-  const out:[number,number,string][]=[];
+function faceTexels(m:EntityModel):[number,number,string,number][]{
+  const out:[number,number,string,number][]=[];
   for(const [p,b] of boxes(m.parts)){
     const [w,h,d]=b.size,drop=[false,h===0,false,false,w===0,d===0];
     faceRects(b.uv,b.size,!!b.mirror).forEach(([x,y,rw,rh],f)=>{
       if(drop[f])return;
-      for(let j=0;j<rh;j++)for(let i=0;i<rw;i++)out.push([x+i,y+j,p.name]);
+      for(let j=0;j<rh;j++)for(let i=0;i<rw;i++)out.push([x+i,y+j,p.name,f]);
     });
   }
   return out;
@@ -44,8 +44,10 @@ describe('companion textures',()=>{
   it('paint every face texel of the wolf skins and collar opaque, with vanilla 64×32 skins',()=>{
     const m=wolfWith({});
     expect(m.textureWidth).toBe(64);expect(m.textureHeight).toBe(32*3+16);
-    const px=paint(m);
-    for(const [x,y,part] of faceTexels(m))expect(px[(y*m.textureWidth+x)*4+3],`${part} ${x},${y}`).toBe(255);
+    const px=paint(m),alpha=(x:number,y:number)=>px[(y*m.textureWidth+x)*4+3];
+    for(const [x,y,part,face] of faceTexels(m))if(!(part.endsWith('.collar')&&face===0))expect(alpha(x,y),`${part} ${x},${y}`).toBe(255);
+    // The collar's front ring (its box top, 8×7 at 7,96) is cut out inside its rim.
+    expect(alpha(7,96)).toBe(255);expect(alpha(10,99)).toBe(0);expect(alpha(14,102)).toBe(255);
   });
   it('gives each wolf variant its own coat and a greyscale collar for tinting',()=>{
     const m=wolfWith({}),px=paint(m),w=m.textureWidth;
@@ -56,7 +58,7 @@ describe('companion textures',()=>{
     expect(pale[0]).toBeGreaterThan(woods[0]);
     expect(woods[0]-woods[2]).toBeGreaterThan(30);// brown
     expect(Math.abs(ashen[0]-ashen[2])).toBeLessThan(20);// grey
-    for(let y=96;y<105;y++)for(let x=0;x<30;x++){const [r,g,b]=at(x,y);expect(r).toBe(g);expect(g).toBe(b);}
+    for(let y=96;y<105;y++)for(let x=0;x<30;x++){if(!px[(y*w+x)*4+3])continue;const [r,g,b]=at(x,y);expect(r).toBe(g);expect(g).toBe(b);}
   });
   it('paints the squid skin fully, dark blue with a pale beak underneath',()=>{
     const m=squidModel(()=>{}),px=paint(m);

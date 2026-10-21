@@ -209,18 +209,19 @@ function faceColour(f:Fur,t:Texel,mode:Face):number{
   if(r===2){
     if(mode==='angry'){if(eye)return 0xb0261b;if(outer)return 0x2b201c;}
     else if(mode==='tame'){if(eye)return 0x1d1816;if(outer)return 0xf3f3f1;}
-    else{if(eye)return 0x1d1816;if(outer)return scale(f.shadow,.82);}
+    else{if(eye)return 0x1d1816;if(outer)return mix(col,f.shadow,.6);}
   }
   if(r===1){
     if(mode==='angry'&&c>=1&&c<=4)return 0x3b302b;
-    if(mode==='wild'&&(eye||outer))return mix(col,f.shadow,.7);
+    if(mode==='wild'&&eye)return mix(col,f.shadow,.35);
   }
   return col;
 }
 function wolfShader(f:Fur):Shader{
   return t=>{
-    const n=texelNoise(t,3),streak=hash3(Math.round(t.x*2),7,Math.round(t.z*2),5),v=n*.65+streak*.35;
-    const fur=v<.5?f.light:v<.86?f.mid:f.shadow;
+    // Soft two-tone fur with faint vertical streaks; the shadow tone is rare.
+    const n=texelNoise(t,3),streak=hash3(Math.round(t.x*2),7,Math.round(t.z*2),5),v=n*.6+streak*.4;
+    const fur=v<.55?f.light:v<.93?f.mid:f.shadow;
     switch(role(t)){
       case 'real_head':{
         if(t.box===1||t.box===2){
@@ -247,8 +248,8 @@ function wolfShader(f:Fur):Shader{
         if(t.ny<-.5)return n<.7?f.belly:f.light;
         // The chest under the head is pale, the rump plain fur.
         if(t.nz<-.5)return mane?(t.y<11?f.belly:fur):fur;
-        const top=(t.y-7)/(mane?7:6)+(n-.5)*.35;
-        if(t.ny>.5||top>.78)return n<.55?f.back:n<.85?mix(f.back,f.shadow,.5):scale(f.back,.85);
+        const top=(t.y-7)/(mane?7:6)+(n-.5)*.25;
+        if(t.ny>.5||top>.8)return n<.6?f.back:n<.9?mix(f.back,f.shadow,.4):scale(f.back,.9);
         if(top>.6)return mix(fur,f.back,.45);
         return t.y<8.2?mix(fur,f.belly,.5):fur;
       }
@@ -265,9 +266,10 @@ function wolfShader(f:Fur):Shader{
         return n<.55?f.tail:n<.85?mix(f.tail,f.light,.4):f.shadow;
       }
       case 'collar':{
-        // Greyscale, tinted by the collar colour: a bright band; the ring around the neck has a darker rim.
-        const ring=t.face===0,rim=ring&&(t.j===0||t.j===t.h-1||t.i===0||t.i===t.w-1);
-        return rim?0xb4b4b4:n<.85?0xf0f0f0:0xdadada;
+        // Greyscale, tinted by the collar colour: a band round the neck. On the front only its edge shows (the inside is
+        // cut out so the chest fur stays visible around the head).
+        if(t.face===0)return t.j===0||t.j===t.h-1||t.i===0||t.i===t.w-1?0xd4d4d4:-1;
+        return t.j===0&&(t.face===4||t.face===2)?0xc8c8c8:n<.85?0xf0f0f0:0xdedede;
       }
     }
     return fur;
@@ -355,7 +357,7 @@ function squidParts():ModelPart[]{
       {name:'body',pivot:[0,SQUID_DROP-8-SQUID_PIVOT,0],boxes:[jbox(-6,-8,-6,12,16,12,0,0,.02)]},
       ...tentacles]}]}];
 }
-const SQUID={base:0x2c4868,light:0x46698e,dark:0x1d3350,top:0x3a5b80,under:0x182a42,beak:0xcfc8b8,eye:0xe9edf0,pupil:0x0f1418,iris:0x5aa0a8,
+const SQUID={base:0x2b4766,light:0x40628a,dark:0x1d3350,top:0x46698f,under:0x182a42,beak:0xcfc8b8,eye:0xe9edf0,pupil:0x0f1418,iris:0x5aa0a8,
   tentacle:0x294463,sucker:0x8fa9c2,tip:0x1c3049};
 function squidShader():Shader{
   const S=SQUID;
@@ -369,26 +371,27 @@ function squidShader():Shader{
         const d=Math.max(Math.abs(t.x),Math.abs(t.z));
         return d<1?S.beak:d<2?scale(S.beak,.62):n<.7?S.under:S.dark;
       }
-      if(t.nz<-.5&&r>=11&&r<=12){
-        // Eyes on the front, low on the mantle: white outside, pupil inside, a teal iris ring under the pupil row.
-        const c=Math.floor(6-t.x);
+      if(Math.abs(t.nz)>.5&&r>=11&&r<=12){
+        // Eyes on the front and back, low on the mantle: white outside, pupil inside, a teal iris under the pupil.
+        const c=Math.floor(6-t.x*Math.sign(-t.nz));
         if(c===2||c===9)return S.eye;
         if(c===3||c===8)return r===11?S.pupil:S.iris;
       }
-      const spot=hash3(Math.round(t.x/2),Math.round(t.y/2),Math.round(t.z/2),9);
-      let col=n<.62?S.base:n<.86?S.light:S.dark;
-      if(spot>.82)col=mix(col,S.light,.6);
-      // Lighter band where the mantle meets the tentacles.
-      if(r>=14)col=mix(col,S.light,.35);
-      if(r<=1)col=mix(col,S.top,.5);
+      // Smooth navy skin: 2-pixel mottling, a few pale freckles, lighter toward the top and at the tentacle band.
+      const blot=hash3(Math.floor(t.x/2),Math.floor(t.y/2),Math.floor(t.z/2),9),freckle=hash3(Math.floor(t.x/3),Math.floor(t.y/3),Math.floor(t.z/3),13);
+      let col=mix(S.base,S.light,blot*.45);
+      if(n>.92)col=mix(col,S.dark,.6);
+      if(freckle>.86&&n>.5)col=mix(col,S.light,.7);
+      col=mix(col,S.top,Math.max(0,(5-r)/5)*.45);
+      if(r>=14)col=mix(col,S.light,.3);
       return col;
     }
     // Tentacles hang from y -2.2 down 18 px; suckers on the side facing the middle.
     const along=(SQUID_DROP-15-t.y)/18,inner=t.nx*t.x+t.nz*t.z<-.1;
     if(t.ny!==0&&Math.abs(t.ny)>.5)return S.tip;
     if(along>.82)return n<.6?S.tip:S.dark;
-    if(inner&&t.j%3===1)return S.sucker;
-    return n<.65?S.tentacle:n<.9?S.base:S.dark;
+    if(inner&&t.j%3===1&&t.j>1)return mix(S.tentacle,S.sucker,.75);
+    return n<.7?S.tentacle:n<.95?S.base:S.dark;
   };
 }
 /** The squid: vanilla 64×32 skin, the mantle pitching and spinning as it swims and the tentacles pulsing. */
