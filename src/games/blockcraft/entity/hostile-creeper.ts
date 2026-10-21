@@ -34,9 +34,9 @@ function explode(game:Game,e:Entity){
 /** Tracks the fall in progress; returns the distance fallen when the creeper lands (else 0). */
 function landed(e:Entity,b:Brain):number{
   let fell=0;
+  if(e.y<b.prevY)b.fall+=b.prevY-e.y;
   if(e.inWater||e.inLava)b.fall=0;
   else if(e.onGround){fell=b.fall;b.fall=0;}
-  else if(e.y<b.prevY)b.fall+=b.prevY-e.y;
   b.prevY=e.y;
   return fell;
 }

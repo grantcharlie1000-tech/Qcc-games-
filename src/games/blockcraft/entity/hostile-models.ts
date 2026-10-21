@@ -440,7 +440,7 @@ export function arrowModel():EntityModel{
   const parts:PartDef[]=[{name:'arrow',pivot:[0,0,0],boxes:[
     box([-.5,-.5,-8],[1,1,16],arrowShaft),box([-1,-1,-9],[2,2,2],arrowHead),
     box([-1.5,-.5,4],[3,1,4],arrowFletch,{key:'fletch'}),box([-.5,-1.5,4],[1,3,4],arrowFletch)]}];
-  const t=buildTexture(parts,32);
+  const t=buildTexture(parts,64);
   return{textureWidth:t.width,textureHeight:t.height,paint:t.paint,parts:t.parts,scale:.9,
     animate(e,pose,state){
       // The body yaw follows the flight; pitch tilts the shaft. A stuck arrow quivers for a moment (shake).
