@@ -184,7 +184,7 @@ describe('debug overlay',()=>{
   test('lines include fps, scale, draw calls, position, facing, biome, light, time, weather and counts',()=>{
     const game=createFakeGame();game.flat(60);
     game.player.state.x=12.5;game.player.state.y=60;game.player.state.z=-3.25;
-    game.time.dayTime=13000;game.time.day=4;game.weather.state='rain';
+    game.time.dayTime=13000;game.time.day=4;game.weather={...game.weather,state:'rain'};
     const text=debugLines(game,58.4,{passive:3,hostile:2,water:1}).join('\n');
     for(const part of ['58 fps','scale 1.00','Draw calls: 0','XYZ: 12.500 / 60.000 / -3.250','Block: 12 60 -4','Chunk: 0 -1','Facing: north','Biome: Ocean','sky','block',
       'Day 4','13000','Weather: rain','Entities: 0','Mobs: 3 passive, 2 hostile, 1 water'])expect(text).toContain(part);

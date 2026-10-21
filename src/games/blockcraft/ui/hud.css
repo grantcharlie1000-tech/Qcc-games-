@@ -1,27 +1,121 @@
-.bc-hud{position:absolute;inset:0;pointer-events:none;z-index:4}
-.bc-hud>*{pointer-events:auto}
-.bc-crosshair{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;pointer-events:none!important;mix-blend-mode:difference}
-.bc-crosshair::before,.bc-crosshair::after{content:"";position:absolute;background:#fff}
-.bc-crosshair::before{left:8px;top:0;width:2px;height:18px}
-.bc-crosshair::after{left:0;top:8px;width:18px;height:2px}
-.bc-debug{position:absolute;left:10px;top:max(60px,calc(env(safe-area-inset-top) + 52px));font:11px/1.3 ui-monospace,monospace;background:#0007;padding:4px 7px;border-radius:4px;pointer-events:none!important}
-.bc-stats{position:absolute;left:50%;transform:translateX(-50%);bottom:max(92px,calc(env(safe-area-inset-bottom) + 88px));font:700 13px/1 system-ui,sans-serif;text-shadow:0 1px 2px #000;pointer-events:none!important}
-.bc-hotbar{position:absolute;left:50%;bottom:max(42px,calc(env(safe-area-inset-bottom) + 38px));transform:translateX(-50%);display:flex;gap:3px;padding:3px;background:#0006;border-radius:6px}
-.bc-slot{position:relative;width:min(40px,calc((100vw - 60px) / 9));aspect-ratio:1;padding:3px;border:2px solid #fff3;border-radius:4px;background:#0004;cursor:pointer;touch-action:manipulation}
-.bc-slot img{display:block;width:100%;height:100%;image-rendering:pixelated}
-.bc-slot img[hidden]{display:none}
-.bc-slot small{position:absolute;right:2px;bottom:0;font:700 10px/1 system-ui,sans-serif;color:#fff;text-shadow:0 1px 1px #000}
-.bc-slot[aria-pressed=true]{border-color:#fff;background:#fff3;box-shadow:0 0 0 1px #000}
-.bc-slot:focus-visible,.bc-view:focus-visible{outline:2px solid #ffd84a;outline-offset:2px}
-.bc-view{position:absolute;left:10px;bottom:max(8px,env(safe-area-inset-bottom));height:28px;padding:0 10px;border:0;border-radius:14px;background:#0004;color:#fffd;font:700 11px/1 system-ui,sans-serif;cursor:pointer;z-index:11}
-.bc-debug[hidden],.bc-overlay[hidden]{display:none}
-.bc-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 20px 90px;background:linear-gradient(#0d2a4a66,#0d1a2acc);z-index:10}
-.bc-eyebrow{margin:0 0 8px;font-size:11px;font-weight:800;letter-spacing:2.5px;color:#cfe8ff}
-.bc-heading{margin:0 0 12px;font-family:Arcade,system-ui,sans-serif;font-size:clamp(28px,6vw,46px);line-height:1.05;color:#fff;text-shadow:0 3px 0 #2b5a1c}
-.bc-copy{max-width:460px;margin:0 0 16px;font-size:14px;line-height:1.65;color:#e6f1ff}
-.bc-menu-options{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap;justify-content:center}
-.blockcraft .bc-start{min-width:150px;min-height:48px;background:#5aa83a;color:#fff;box-shadow:0 4px 0 #2e5d1c}
-.blockcraft .bc-start:disabled{opacity:.6}
-.blockcraft .bc-start[hidden]{display:none}
-.bc-loading{min-height:1.4em;margin:12px 0 0;font-size:12px;color:#cfe0f5}
-@media(max-height:460px){.bc-overlay{padding:56px 16px 60px}.bc-copy{font-size:12px;margin-bottom:10px}.bc-eyebrow{display:none}.bc-hotbar{bottom:38px}}
+/* HUD and menus (ui/hud.ts, ui/menus.ts). Layers inside .blockcraft: world overlays 5 (crosshair, vignette, flash),
+   HUD 10 (bars, hotbar, readouts, F3 overlay), the ui's toast 25 (placed here above the bars), menus 30.
+   The HUD is drawn in GUI pixels: .bc-gui sits at the bottom centre and is scaled by the GUI scale (--bc-gui).
+   Reserved: top 56 px for the arcade toolbar, the bottom-right corner for the shell's small buttons. */
+.bc-hud [hidden],.bc-crosshair [hidden],.bc-menu [hidden],.bc-debug [hidden]{display:none!important}
+
+/* ---- World overlays ---------------------------------------------------------------------------------- */
+.bc-hud-fx{position:absolute;inset:0;z-index:5;pointer-events:none}
+.bc-hud-fx:not([data-shown=true]){display:none}
+.bc-vignette,.bc-flash{position:absolute;inset:0;opacity:0}
+.bc-vignette{background:radial-gradient(ellipse at center,#0000 50%,#a0000040 72%,#8c0000a6 100%);transition:opacity .5s}
+.bc-vignette[data-on=true]{opacity:1;animation:bc-heartbeat 1.2s ease-in-out infinite}
+.bc-flash{background:radial-gradient(ellipse at center,#ff000000 30%,#d0000066 75%,#b00000a6 100%)}
+@keyframes bc-heartbeat{0%,100%{opacity:.7}15%{opacity:1}30%{opacity:.8}45%{opacity:1}}
+.bc-hud-fx[data-reduced=true] .bc-vignette{animation:none;transition:none}
+@media (prefers-reduced-motion:reduce){.bc-vignette{animation:none!important;transition:none}}
+
+/* The crosshair inverts the world behind it (vanilla blends it with ONE_MINUS_DST_COLOR). */
+.bc-crosshair{position:absolute;left:50%;top:50%;width:0;height:0;z-index:5;pointer-events:none;mix-blend-mode:difference;transform:scale(var(--bc-gui,2))}
+.bc-crosshair:not([data-shown=true]){display:none}
+.bc-crosshair i{position:absolute;display:block;background-repeat:no-repeat;background-size:100% 100%}
+.bc-cross{left:-7px;top:-7px;width:15px;height:15px}
+.bc-attack-bar{left:-8px;top:9px;width:16px;height:4px}
+.bc-attack-bar b{display:block;width:0;height:4px;background-size:16px 4px;background-repeat:no-repeat}
+.bc-attack-full{left:-8px;top:9px;width:16px;height:16px}
+
+/* ---- HUD --------------------------------------------------------------------------------------------- */
+.bc-hud{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:hidden}
+.bc-hud:not([data-shown=true]){display:none}
+.bc-gui{position:absolute;left:50%;bottom:calc(var(--bc-hud-bottom,0px) + env(safe-area-inset-bottom,0px));width:0;height:0;transform-origin:0 0}
+.bc-gui i,.bc-gui b{font-style:normal;font-weight:normal}
+.bc-bars,.bc-hearts,.bc-armor,.bc-food,.bc-air,.bc-hotbar{position:absolute;left:0;bottom:0;width:0;height:0}
+.bc-hud[data-mode=creative] .bc-bars{display:none}
+.bc-icon{position:absolute;display:block;width:9px;height:9px;background-repeat:no-repeat;background-size:9px 9px}
+.bc-hotbar-bg,.bc-selection,.bc-offhand,.bc-xp,.bc-level,.bc-dial{position:absolute;display:block;background-repeat:no-repeat;background-size:100% 100%}
+.bc-selection{pointer-events:none}
+.bc-xp-fill{position:absolute;left:0;top:0;display:block;width:0;height:5px;background-repeat:no-repeat;background-size:182px 5px}
+
+.bc-slot{position:absolute;margin:0;padding:0;border:0;border-radius:0;background:none;color:inherit;font:inherit;cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.bc-slot:focus-visible{outline:1px solid #ffd84a;outline-offset:0}
+.bc-offhand{pointer-events:none}
+.bc-stack{position:absolute;left:2px;top:2px;width:16px;height:16px;pointer-events:none}
+.bc-offhand .bc-stack{left:3px;top:3px}
+.bc-stack img{position:absolute;left:0;top:0;width:16px;height:16px;image-rendering:pixelated}
+.bc-dur{position:absolute;left:2px;top:13px;display:block;width:13px;height:2px;background:#000}
+.bc-dur b{display:block;width:0;height:1px}
+.bc-count{position:absolute;top:9px;display:block;height:8px;background-repeat:no-repeat;background-size:100% 100%}
+
+.bc-held-name{position:absolute;left:0;bottom:50px;margin:0;transform:translateX(-50%);white-space:nowrap;font:700 8px/9px system-ui,sans-serif;letter-spacing:.02em;
+  color:#fff;text-shadow:1px 1px 0 #3f3f3f;pointer-events:none}
+.bc-readouts{position:absolute;display:flex;gap:2px;pointer-events:none}
+.bc-readouts[data-place=above]{transform:translateX(-50%)}
+.bc-dial{position:relative;width:24px;height:24px;filter:drop-shadow(1px 1px 0 #0006)}
+
+/* F1 hides the HUD, the crosshair and the action bar (the flags are set by the input service). */
+.blockcraft[data-hud-hidden=true] .bc-hud,.blockcraft[data-hud-hidden=true] .bc-crosshair,.blockcraft[data-hud-hidden=true] .bc-toast{visibility:hidden}
+
+/* ---- Action bar (the ui's toast) above the hotbar and bars, at the vanilla height ------------------------- */
+.blockcraft .bc-toast{left:50%;bottom:calc(var(--bc-hud-bottom,0px) + env(safe-area-inset-bottom,0px) + 64px * var(--bc-gui,2));
+  max-width:min(92%,560px);padding:2px 8px;border-radius:2px;background:#00000059;color:#fff;
+  font:700 clamp(13px,calc(7px * var(--bc-gui,2)),21px)/1.3 system-ui,sans-serif;text-shadow:1px 1px 0 #3f3f3f;text-align:center}
+
+/* ---- F3 debug overlay (top-left, under the arcade toolbar) ------------------------------------------------- */
+.bc-debug{position:absolute;left:max(6px,env(safe-area-inset-left,0px));right:6px;top:max(60px,calc(env(safe-area-inset-top,0px) + 56px));z-index:10;display:none;
+  flex-wrap:wrap;align-items:flex-start;gap:6px 28px;max-height:calc(100% - var(--bc-hud-top,160px) - 72px);overflow:hidden;pointer-events:none;
+  font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#e0e0e0}
+.blockcraft[data-debug=true] .bc-debug{display:flex}
+.bc-debug-col{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+.bc-debug-col span{max-width:100%;padding:0 3px;background:#50505090;white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.bc-debug-col span:empty{height:.5em;background:none}
+@media (max-width:520px){.bc-debug{font-size:10px;gap:4px 12px}}
+
+/* ---- Menus ------------------------------------------------------------------------------------------- */
+.bc-menu{position:absolute;inset:0;z-index:30;display:flex;overflow:auto;overscroll-behavior:contain;
+  padding:max(60px,calc(env(safe-area-inset-top,0px) + 56px)) 16px max(52px,calc(env(safe-area-inset-bottom,0px) + 48px));
+  background:linear-gradient(#0c1a2a59,#0b1420c7);color:#fff;text-align:center;-webkit-user-select:none;user-select:none}
+.bc-menu[hidden]{display:none}
+.bc-menu[data-kind=resume]{background:#101010a6}
+.bc-menu[data-kind=dead]{background:linear-gradient(#50000060,#803030a0)}
+.bc-menu[data-kind=lost]{background:#10243a}
+.bc-menu-panel{width:min(100%,400px);margin:auto}
+.bc-menu-title{margin:0 0 12px;font:800 clamp(24px,5vw,34px)/1.1 system-ui,sans-serif;color:#fff;text-shadow:3px 3px 0 #3f3f3f}
+.bc-menu[data-kind=start] .bc-menu-title{margin-bottom:10px;font:900 clamp(34px,10vw,58px)/1 Arcade,system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;
+  color:#d4d4d4;text-shadow:0 2px 0 #8b8b8b,0 4px 0 #555,0 6px 0 #2b2b2b,0 8px 12px #0009}
+.bc-menu[data-kind=dead] .bc-menu-title{font-size:clamp(30px,7vw,44px)}
+.bc-menu-message{max-width:420px;margin:0 auto 14px;font-size:14px;line-height:1.5;color:#e8e8e8;text-shadow:1px 1px 0 #000a}
+.bc-menu-score{margin:0 0 16px;font:600 15px/1.3 system-ui,sans-serif;text-shadow:2px 2px 0 #3f3f3f}
+.bc-score-value{color:#ffff55}
+.bc-menu-sub{margin:0 0 10px;font:700 17px/1.2 system-ui,sans-serif;text-shadow:2px 2px 0 #3f3f3f}
+.bc-loading{min-height:1.3em;margin:6px 0 0;font-size:12px;color:#d0dae4}
+
+/* Stone-grey vanilla buttons and sliders. */
+.bc-menu .bc-btn{display:block;width:100%;min-height:40px;margin:0 0 8px;padding:6px 10px;border:2px solid #000;border-radius:0;
+  background:linear-gradient(#8e8e8e,#6c6c6c);box-shadow:inset 2px 2px 0 #b5b5b5,inset -2px -3px 0 #4c4c4c;
+  color:#fff;font:600 15px/1.2 system-ui,sans-serif;text-shadow:2px 2px 0 #3f3f3f;cursor:pointer;touch-action:manipulation}
+.bc-menu .bc-btn:hover{border-color:#fff}
+.bc-menu .bc-btn:focus-visible{outline:3px solid #ffd84a;outline-offset:1px;border-color:#fff}
+.bc-menu .bc-btn:active{background:linear-gradient(#7a7a7a,#5e5e5e)}
+.bc-menu .bc-btn:disabled{background:#2c2c2c;box-shadow:none;color:#a0a0a0;text-shadow:none;cursor:default;border-color:#000}
+.bc-menu .bc-primary{min-height:44px;font-size:16px}
+.bc-btn-row{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+.bc-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px}
+.bc-options .bc-btn{margin:0;font-size:14px}
+.bc-done{margin-top:2px}
+.bc-slider{position:relative;display:block;min-height:40px;border:2px solid #000;background:#1e1e1e;box-shadow:inset 0 0 0 1px #4a4a4a}
+.bc-slider-label{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;padding:0 6px;
+  font:600 14px/1.15 system-ui,sans-serif;color:#fff;text-shadow:2px 2px 0 #3f3f3f;pointer-events:none}
+.bc-slider input{position:absolute;inset:0;width:100%;height:100%;margin:0;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer;touch-action:pan-y}
+.bc-slider input::-webkit-slider-runnable-track{height:36px;background:transparent}
+.bc-slider input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:12px;height:36px;border:2px solid #000;background:linear-gradient(#ababab,#7a7a7a);box-shadow:inset 1px 1px 0 #dcdcdc,inset -1px -1px 0 #4f4f4f}
+.bc-slider input::-moz-range-track{height:36px;background:transparent}
+.bc-slider input::-moz-range-thumb{width:8px;height:32px;border:2px solid #000;border-radius:0;background:linear-gradient(#ababab,#7a7a7a)}
+.bc-slider input:focus-visible{outline:3px solid #ffd84a;outline-offset:1px}
+.bc-slider:hover{border-color:#fff}
+.bc-controls{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 14px;max-height:min(52vh,380px);overflow:auto;margin:0 0 10px;padding:10px 12px;
+  border:2px solid #000;background:#000000a6;text-align:left;font-size:13px;line-height:1.35}
+.bc-controls dt{color:#e8e8e8}
+.bc-controls dd{margin:0;color:#ffff55;text-align:right;font-weight:600}
+@media (max-width:380px){.bc-options{grid-template-columns:1fr}.bc-menu .bc-btn,.bc-slider-label{font-size:14px}}
+@media (max-height:560px){.bc-menu .bc-btn,.bc-slider{min-height:34px}.bc-menu .bc-btn{margin-bottom:6px;padding:4px 8px}.bc-slider input::-webkit-slider-runnable-track,.bc-slider input::-webkit-slider-thumb{height:30px}
+  .bc-menu-message{margin-bottom:8px;font-size:12px}.bc-menu[data-kind=start] .bc-menu-title{font-size:32px}}
