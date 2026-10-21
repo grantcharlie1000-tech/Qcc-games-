@@ -1,7 +1,7 @@
 import {describe,expect,test} from 'vitest';
 import {createTickGame,idOf} from './ticks-helpers';
 import {blockDef} from '../../../src/games/blockcraft/data/blocks';
-import {cropGrowthSpeed,nextCopper} from '../../../src/games/blockcraft/world/growth';
+import {cropGrowthSpeed,hasLogWithin,nextCopper} from '../../../src/games/blockcraft/world/growth';
 
 const Y=60;
 /** Calls the random-tick handler of one block n times. */
@@ -156,6 +156,19 @@ describe('melting',()=>{
     dim.set(0,Y,0,'ice');dim.ticks.randomTickAt(0,Y,0);
     expect(dim.get(0,Y,0)).toBe('ice');
   });
+
+  test('ice melts from block light 12 reaching it (vanilla: torch up to 3 blocks away), though ice dims light inside itself',()=>{
+    const g=createTickGame();g.light(15,0);
+    const c=g.world.chunk(0,0)!,at=(x:number,y:number,z:number,block:number)=>{c.light![x+z*16+y*256]=15<<4|block;};
+    // A torch three blocks east of each ice block: air at 12 beside the ice, the ice cell itself at 12 - 2 = 10.
+    g.set(2,Y,2,'ice');at(3,Y,2,12);at(2,Y,2,10);
+    g.set(8,Y,8,'ice');at(9,Y,8,11);at(8,Y,8,9);
+    g.set(5,Y,5,'snow');at(6,Y,5,12);at(5,Y,5,11);
+    g.ticks.randomTickAt(2,Y,2);g.ticks.randomTickAt(8,Y,8);g.ticks.randomTickAt(5,Y,5);
+    expect(g.get(2,Y,2)).toBe('water');
+    expect(g.get(8,Y,8)).toBe('ice');
+    expect(g.get(5,Y,5)).toBe('snow');// snow layers test their own cell (vanilla SnowLayerBlock)
+  });
 });
 
 describe('leaf decay',()=>{
@@ -187,6 +200,85 @@ describe('leaf decay',()=>{
     // (1, Y+3, 0) is two steps from the second trunk; (-2, Y+5, -2) is 6+ steps away from it.
     expect(g.get(1,Y+3,0)).toBe('oak_leaves');
     expect(g.get(-2,Y+5,-2)).toBe('air');
+  });
+
+  test('a leaf whose only link ran through a removed log decays even behind a leaf still linked to another log',()=>{
+    const g=createTickGame();
+    // Log R with leaf C beside it and leaf B one step further; C also reaches log L in exactly 6 steps (z = 1..5).
+    g.set(0,Y+5,0,'oak_log');g.set(1,Y+5,0,'oak_leaves');g.set(2,Y+5,0,'oak_leaves');
+    for(let z=1;z<=5;z++)g.set(1,Y+5,z,'oak_leaves');
+    g.set(1,Y+5,6,'oak_log');
+    g.run(5);
+    g.set(0,Y+5,0,'air');
+    g.run(20);
+    randomTicks(g,1,Y+5,0,3);randomTicks(g,2,Y+5,0,3);
+    expect(g.get(1,Y+5,0)).toBe('oak_leaves');// C: still 6 steps from L
+    expect(g.get(2,Y+5,0)).toBe('air');// B: now 7 steps from any log
+  });
+
+  test('felling one of two overlapping trees leaves no floating leaves and keeps the linked ones',()=>{
+    const Y0=Y;
+    const oak=(g:ReturnType<typeof createTickGame>,tx:number,tz:number)=>{
+      for(let y=Y0;y<Y0+5;y++)g.set(tx,y,tz,'oak_log');
+      for(let y=Y0+3;y<Y0+5;y++)for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)if(g.get(tx+dx,y,tz+dz)==='air')g.set(tx+dx,y,tz+dz,'oak_leaves');
+      for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)if(g.get(tx+dx,Y0+5,tz+dz)==='air')g.set(tx+dx,Y0+5,tz+dz,'oak_leaves');
+      g.set(tx,Y0+6,tz,'oak_leaves');
+    };
+    for(const [bx,bz] of [[3,0],[4,0],[5,0],[2,2],[3,1]]){
+      const g=createTickGame();
+      oak(g,0,0);oak(g,bx,bz);
+      g.run(5);
+      for(let dy=4;dy>=0;dy--){g.set(0,Y0+dy,0,'air');g.run(2);}
+      g.run(60);
+      for(let round=0;round<3;round++)for(let x=-4;x<=10;x++)for(let z=-4;z<=10;z++)for(let y=Y0+3;y<=Y0+6;y++)g.ticks.randomTickAt(x,y,z);
+      const floating:string[]=[];let kept=0;
+      for(let x=-4;x<=10;x++)for(let z=-4;z<=10;z++)for(let y=Y0+3;y<=Y0+6;y++){
+        if(g.get(x,y,z)!=='oak_leaves')continue;
+        if(hasLogWithin(g.world,x,y,z))kept++;else floating.push(`${x},${y},${z}`);
+      }
+      expect(floating,`second tree at ${bx},${bz}`).toEqual([]);
+      expect(kept).toBeGreaterThan(40);
+    }
+  });
+
+  test('breaking a leaf cuts off the leaves whose link ran through it, up to the farthest one',()=>{
+    const g=createTickGame();
+    // A log at x = 0 and a row of leaves x = 1..6 (the last one exactly 6 steps from the log).
+    g.set(0,Y+5,0,'oak_log');
+    for(let x=1;x<=6;x++)g.set(x,Y+5,0,'oak_leaves');
+    g.run(5);
+    g.set(2,Y+5,0,'air');
+    g.run(10);
+    for(let x=1;x<=6;x++)randomTicks(g,x,Y+5,0,2);
+    expect([1,3,4,5,6].map(x=>g.get(x,Y+5,0))).toEqual(['oak_leaves','air','air','air','air']);
+  });
+
+  test('persistent leaves are never marked for decay',()=>{
+    const g=createTickGame();
+    for(let x=-10;x<=10;x++)for(let z=-10;z<=10;z++)g.set(x,Y+3,z,'oak_leaves_persistent');
+    g.set(0,Y+3,0,'oak_log');
+    g.run(5);
+    g.set(0,Y+3,0,'air');
+    g.run(100);
+    expect((g.ticks.serialize() as {orphans:number[]}).orphans).toEqual([]);
+    expect(g.get(5,Y+3,5)).toBe('oak_leaves_persistent');
+  });
+
+  test('natural leaves linked to a log only through persistent leaves keep it',()=>{
+    const g=createTickGame();
+    g.set(0,Y+3,0,'oak_log');g.set(1,Y+3,0,'oak_log');
+    for(let x=2;x<=4;x++)g.set(x,Y+3,0,'oak_leaves_persistent');
+    g.set(5,Y+3,0,'oak_leaves');
+    g.run(5);
+    g.set(0,Y+3,0,'air');
+    g.run(20);
+    randomTicks(g,5,Y+3,0,5);
+    expect(g.get(5,Y+3,0)).toBe('oak_leaves');// 4 steps from the remaining log through persistent leaves
+    g.set(1,Y+3,0,'air');
+    g.run(20);
+    randomTicks(g,5,Y+3,0,5);
+    expect(g.get(5,Y+3,0)).toBe('air');
+    expect(g.get(3,Y+3,0)).toBe('oak_leaves_persistent');
   });
 });
 

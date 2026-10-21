@@ -28,6 +28,39 @@ describe('scheduling',()=>{
     expect(g.get(0,Y+3,0)).toBe('air');
   });
 
+  test('a kind at its cap does not hold back the other kinds',()=>{
+    /** Ticks until sand starts falling after its support goes, and until a lone source makes its first flow. */
+    const measure=(busy:'flood'|'canopy'|null)=>{
+      const g=createTickGame();
+      g.set(30,Y+3,30,'stone');g.set(30,Y+4,30,'sand');
+      // A flood (far more than the fluid cap) or a felled 9×9×5 canopy (far more than the leaf check cap).
+      if(busy==='flood')for(let x=-24;x<=20;x+=4)for(let z=-24;z<=20;z+=4)g.set(x,Y,z,'water');
+      if(busy==='canopy'){
+        for(let y=Y;y<Y+9;y++)for(const [dx,dz] of [[0,0],[1,0],[0,1],[1,1]])g.set(dx,y,dz,'oak_log');
+        for(let y=Y+4;y<Y+9;y++)for(let dx=-4;dx<=5;dx++)for(let dz=-4;dz<=5;dz++)if(g.get(dx,y,dz)==='air')g.set(dx,y,dz,'oak_leaves');
+      }
+      g.run(20);
+      if(busy==='canopy')for(let y=Y;y<Y+9;y++)for(const [dx,dz] of [[0,0],[1,0],[0,1],[1,1]])g.set(dx,y,dz,'air');
+      g.set(30,Y+3,30,'air');g.set(38,Y,-20,'water');
+      let fell=-1,flowed=-1,capped=false;
+      for(let t=1;t<=40&&(fell<0||flowed<0);t++){
+        g.run(1);
+        const s=g.ticks.stats();
+        capped||=busy==='flood'?s.fluidUpdates>=g.ticks.limits.fluidUpdates:s.leafChecks>=g.ticks.limits.leafChecks;
+        if(fell<0&&g.get(30,Y+4,30)!=='sand')fell=t;
+        if(flowed<0&&g.get(39,Y,-20)!=='air')flowed=t;
+      }
+      return{fell,flowed,capped};
+    };
+    const alone=measure(null),flood=measure('flood'),canopy=measure('canopy');
+    expect(alone.fell).toBeGreaterThan(0);expect(alone.flowed).toBeGreaterThan(0);
+    expect(flood.capped).toBe(true);
+    expect(flood.fell).toBe(alone.fell);
+    expect(canopy.capped).toBe(true);
+    expect(canopy.fell).toBe(alone.fell);
+    expect(canopy.flowed).toBe(alone.flowed);
+  });
+
   test('blockChanged schedules neighbour updates (support, gravity, fluids)',()=>{
     const g=createTickGame();
     g.set(0,Y+2,0,'sand');g.set(2,Y,0,'water');

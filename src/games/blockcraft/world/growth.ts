@@ -9,8 +9,10 @@
 //  - farmland (FarmBlock): moist within 4 blocks of water (same level or one above) or in rain; otherwise it dries over about
 //    seven random ticks (1 in 7 here), and dry farmland with no crop on it turns back to dirt.
 //  - sugar cane and cactus: grow one block into air above while the column is under 3 tall, after 16 random ticks (1 in 16).
-//  - ice melts to water and snow layers vanish (with their no-tool loot) at block light ≥ 12.
-//  - leaves: decay once marked orphaned (no log within LEAF_DECAY_DISTANCE steps through leaves), re-checked first.
+//  - ice melts to water when block light ≥ 12 reaches it (in or beside the ice: a torch up to 3 blocks away, as in vanilla)
+//    and snow layers vanish (with their no-tool loot) at block light ≥ 12 in their cell.
+//  - leaves: decay once marked orphaned (no log within LEAF_DECAY_DISTANCE steps through leaves), re-checked first. The checks
+//    that mark them are scheduled by leafSourceRemoved when a log or leaf nearby goes away; persistent leaves never decay.
 //  - copper (WeatheringCopper): with chance 0.0569 per random tick, unless a less weathered copper block is within 4 taxicab
 //    blocks, ages one stage with chance ((older + 1) / (older + same + 1))², × 0.75 for unweathered copper.
 import {AIR,B,BLOCKS,LIQUID,OPAQUE,blockDef,blockId,stateFor,type BlockId} from '../data/blocks';
@@ -20,7 +22,7 @@ import {NEIGHBOURS,KIND_LEAF,posKey,type Sim} from './ticks-core';
 
 const FARMLAND=blockId('farmland'),FARMLAND_WET=blockId('farmland_wet'),MYCELIUM=blockId('mycelium');
 const SUGAR_CANE=blockId('sugar_cane'),CACTUS=blockId('cactus');
-export const IS_LOG=new Uint8Array(256),IS_LEAVES=new Uint8Array(256);
+export const IS_LOG=new Uint8Array(256),IS_LEAVES=new Uint8Array(256),PERSISTENT_LEAVES=new Uint8Array(256);
 const IS_CROP=new Uint8Array(256);
 /** Handler of each block's random tick (0 = none). Only these blocks count toward a section being worth ticking. */
 export const RT_CROP=1,RT_SAPLING=2,RT_GRASS=3,RT_FARMLAND=4,RT_COLUMN=5,RT_ICE=6,RT_SNOW=7,RT_LEAVES=8,RT_COPPER=9,RT_LAVA=10,RT_FIRE=11;
@@ -31,7 +33,7 @@ COPPER.forEach((id,i)=>{COPPER_AGE[id]=i;});
 for(const d of BLOCKS){
   const f=d.family;
   if(f.endsWith('_log'))IS_LOG[d.id]=1;
-  if(f.endsWith('_leaves'))IS_LEAVES[d.id]=1;
+  if(f.endsWith('_leaves')){IS_LEAVES[d.id]=1;PERSISTENT_LEAVES[d.id]=+!!d.persistent;}
   if(d.shape==='crop')IS_CROP[d.id]=1;
   RANDOM_TICK[d.id]=d.shape==='crop'?(d.age!<d.maxAge!?RT_CROP:0):f.endsWith('_sapling')?RT_SAPLING:d.id===B.grass||d.id===MYCELIUM?RT_GRASS:
     f==='farmland'?RT_FARMLAND:d.id===SUGAR_CANE||d.id===CACTUS?RT_COLUMN:d.id===B.ice?RT_ICE:d.id===B.snow?RT_SNOW:
@@ -123,49 +125,87 @@ function columnTick(sim:Sim,x:number,y:number,z:number,id:BlockId){
   sim.set(x,y+1,z,id,'growth');
 }
 
+/** Brightest block light arriving at a cell: its own or a face neighbour's. */
+function blockLightAround(sim:Sim,x:number,y:number,z:number){
+  let best=blockLight(sim,x,y,z);
+  for(let i=0;i<6;i++){const n=NEIGHBOURS[i],ny=y+n[1];if(ny>=0&&ny<CH)best=Math.max(best,blockLight(sim,x+n[0],ny,z+n[2]));}
+  return best;
+}
+/** IceBlock: melts when block light 12 reaches it (vanilla tests its own cell > 11 - lightBlock 1; the light engine here dims
+ *  light more inside ice, so the light beside it is used). SnowLayerBlock: block light 12 in its own cell. */
 function meltTick(sim:Sim,x:number,y:number,z:number,id:BlockId,code:number){
-  if(blockLight(sim,x,y,z)<=11)return;
-  if(code===RT_ICE)sim.set(x,y,z,B.water,'tick');
-  else sim.destroy(x,y,z,id,'tick',false);
+  if(code===RT_ICE){if(blockLightAround(sim,x,y,z)>=12)sim.set(x,y,z,B.water,'tick');return;}
+  if(blockLight(sim,x,y,z)>=12)sim.destroy(x,y,z,id,'tick',false);
 }
 
 // ---- Leaves -----------------------------------------------------------------------------------------------
-const LR=LEAF_DECAY_DISTANCE,LG=LR*2+1;
+// Vanilla keeps each leaf's distance to the nearest log (1..7) in its state and re-checks every leaf whose distance changes.
+// Without that state: when a log or leaf goes away, every leaf whose shortest path to a log may have run through it gets a
+// check. Such a leaf lies within LEAF_DECAY_DISTANCE - d steps (through leaves) of the removed cell, d being the removed
+// cell's own distance to a log (0 for a log), so a bounded flood from the removed cell reaches all of them.
+const LR=LEAF_DECAY_DISTANCE,LG=LR*2+1,CENTRE=LR+LR*LG+LR*LG*LG;
 const visited=new Uint32Array(LG*LG*LG),queue=new Int32Array(LG*LG*LG),qDepth=new Int8Array(LG*LG*LG);
 let stamp=0;
-/** Is a log within LEAF_DECAY_DISTANCE taxicab steps, walking through leaves of any wood? Unloaded blocks count as logs. */
-export function hasLogWithin(world:BlockSource,x:number,y:number,z:number):boolean{
-  if(++stamp===0xffffffff){visited.fill(0);stamp=1;}
-  const centre=LR+LR*LG+LR*LG*LG;
+const nextStamp=()=>{if(++stamp===0xffffffff){visited.fill(0);stamp=1;}return stamp;};
+/** Taxicab steps (1..LEAF_DECAY_DISTANCE) from a cell to the nearest log, walking through leaves of any wood (persistent
+ *  ones too); 0 when none is that close. Unloaded blocks count as logs. The cell's own block is not looked at. */
+export function logDistance(world:BlockSource,x:number,y:number,z:number):number{
+  const s=nextStamp();
   let head=0,tail=0;
-  visited[centre]=stamp;queue[tail]=centre;qDepth[tail++]=0;
+  visited[CENTRE]=s;queue[tail]=CENTRE;qDepth[tail++]=0;
   while(head<tail){
     const c=queue[head],k=qDepth[head++];
     const ox=c%LG-LR,oy=((c/LG)|0)%LG-LR,oz=((c/(LG*LG))|0)-LR;
     for(let i=0;i<6;i++){
       const nb=NEIGHBOURS[i],dx=nb[0],dy=nb[1],dz=nb[2];
       const id=world.get(x+ox+dx,y+oy+dy,z+oz+dz);
-      if(id<0||IS_LOG[id])return true;
+      if(id<0||IS_LOG[id])return k+1;
       if(!IS_LEAVES[id]||k+1>=LR)continue;
       const n=c+dx+dy*LG+dz*LG*LG;
-      if(visited[n]===stamp)continue;
-      visited[n]=stamp;queue[tail]=n;qDepth[tail++]=k+1;
+      if(visited[n]===s)continue;
+      visited[n]=s;queue[tail]=n;qDepth[tail++]=k+1;
     }
   }
-  return false;
+  return 0;
 }
-/** Scheduled leaf check after a log or leaf nearby went away: an orphaned leaf is marked and passes the check on. */
-export function leafCheck(sim:Sim,x:number,y:number,z:number):void{
-  const w=sim.blocks,id=w.get(x,y,z);
-  if(id<0||!IS_LEAVES[id])return;
-  // Already orphaned: its decay re-checks for a log anyway.
-  const key=posKey(x,y,z);
-  if(sim.orphans.has(key)||hasLogWithin(w,x,y,z)||sim.orphans.size>=MAX_ORPHANS)return;
-  sim.orphans.add(key);
-  for(let i=0;i<6;i++){
-    const nb=NEIGHBOURS[i],nx=x+nb[0],ny=y+nb[1],nz=z+nb[2],n=w.get(nx,ny,nz);
-    if(n>=0&&IS_LEAVES[n]&&!sim.orphans.has(posKey(nx,ny,nz)))sim.schedule(nx,ny,nz,1,KIND_LEAF);
+/** Is a log within LEAF_DECAY_DISTANCE taxicab steps, walking through leaves? */
+export const hasLogWithin=(world:BlockSource,x:number,y:number,z:number):boolean=>logDistance(world,x,y,z)>0;
+/** A log or leaf at (x,y,z) went away (the cell already holds its new block): schedules a decay check for every natural
+ *  leaf that may have lost its link to a log through it. Returns the number of leaves scheduled. */
+export function leafSourceRemoved(sim:Sim,x:number,y:number,z:number,wasLog:boolean):number{
+  const w=sim.blocks;
+  let reach=LR;
+  // A removed leaf with no log in reach carried nobody's link (an orphan decaying, for one).
+  if(!wasLog){const d=logDistance(w,x,y,z);if(!d)return 0;reach=LR-d;}
+  if(reach<=0)return 0;
+  const s=nextStamp();
+  let head=0,tail=0,scheduled=0;
+  visited[CENTRE]=s;queue[tail]=CENTRE;qDepth[tail++]=0;
+  while(head<tail){
+    const c=queue[head],k=qDepth[head++];
+    const ox=c%LG-LR,oy=((c/LG)|0)%LG-LR,oz=((c/(LG*LG))|0)-LR;
+    for(let i=0;i<6;i++){
+      const nb=NEIGHBOURS[i],dx=nb[0],dy=nb[1],dz=nb[2];
+      const n=c+dx+dy*LG+dz*LG*LG;
+      if(visited[n]===s)continue;
+      visited[n]=s;
+      const tx=x+ox+dx,ty=y+oy+dy,tz=z+oz+dz,id=w.get(tx,ty,tz);
+      if(id<=0||!IS_LEAVES[id])continue;
+      // Persistent leaves pass the link on (vanilla keeps their distance too) but never decay.
+      if(!PERSISTENT_LEAVES[id]&&!sim.orphans.has(posKey(tx,ty,tz))){sim.schedule(tx,ty,tz,1,KIND_LEAF);scheduled++;}
+      if(k+1<reach){queue[tail]=n;qDepth[tail++]=k+1;}
+    }
   }
+  return scheduled;
+}
+/** Scheduled leaf check: a natural leaf with no log within LEAF_DECAY_DISTANCE is marked to decay on its next random tick. */
+export function leafCheck(sim:Sim,x:number,y:number,z:number):void{
+  const id=sim.blocks.get(x,y,z);
+  if(id<0||!IS_LEAVES[id]||PERSISTENT_LEAVES[id])return;
+  const key=posKey(x,y,z);
+  // Already orphaned: its decay re-checks for a log anyway.
+  if(sim.orphans.has(key)||sim.orphans.size>=MAX_ORPHANS||hasLogWithin(sim.blocks,x,y,z))return;
+  sim.orphans.add(key);
 }
 export const MAX_ORPHANS=65536;
 function leavesTick(sim:Sim,x:number,y:number,z:number,id:BlockId){

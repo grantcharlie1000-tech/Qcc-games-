@@ -36,9 +36,11 @@ export class FastBlocks implements BlockSource{
 }
 
 // ---- Scheduled ticks ----------------------------------------------------------------------------
-/** What a scheduled tick does: a block update (fluids, falling blocks, support), a fire tick, or a leaf decay check. */
-export const KIND_BLOCK=0,KIND_FIRE=1,KIND_LEAF=2;
-export const TICK_KINDS=3;
+/** What a scheduled tick does: a block update (falling blocks, support; a liquid found there flows too), a fire tick,
+ *  a leaf decay check, or a liquid flow update. Each kind has its own queue and per-tick cap (like vanilla's separate
+ *  block and fluid tick lists), so a backlog of one kind never holds back the others. */
+export const KIND_BLOCK=0,KIND_FIRE=1,KIND_LEAF=2,KIND_FLUID=3;
+export const TICK_KINDS=4;
 export interface TickEntry{key:number;kind:number;due:number}
 
 /** Binary min-heap ordered by (due tick, scheduling order), stored in parallel arrays (no allocation per entry).
@@ -114,8 +116,8 @@ export interface Sim{
   set(x:number,y:number,z:number,id:BlockId,cause:ChangeCause):boolean;
   /** Pops the no-tool loot of a block (interaction.blockDrops(id, null)) at its centre. */
   dropLoot(id:BlockId,x:number,y:number,z:number):void;
-  /** Breaks a block in place: block particles (unless `particles` is false), its loot, then air. */
-  destroy(x:number,y:number,z:number,id:BlockId,cause:ChangeCause,particles?:boolean):void;
+  /** Breaks a block in place: block particles (unless `particles` is false), its loot (unless `loot` is false), then air. */
+  destroy(x:number,y:number,z:number,id:BlockId,cause:ChangeCause,particles?:boolean,loot?:boolean):void;
   /** Fire age (0..15) by position; missing = 0. */
   readonly fireAge:Map<number,number>;
   /** Leaves found with no log within LEAF_DECAY_DISTANCE; non-persistent ones decay on their next random tick. */

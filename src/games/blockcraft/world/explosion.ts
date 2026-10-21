@@ -5,7 +5,8 @@
 //  - Entities and the player within 2 × power: impact = (1 - distance / (2 × power)) × exposure (the share of rays from
 //    points on their box to the centre that no solid block stops); damage floor((impact² + impact) / 2 × 7 × 2 × power + 1)
 //    and a push of impact along the direction from the centre (to the eyes; to the feet for TNT).
-//  - Blown blocks drop their no-tool loot with chance 1 / power; TNT is primed with a 10-29 tick fuse; with `fire`, one in
+//  - Blown blocks drop their no-tool loot: all of them for primed TNT (gamerule tntExplosionDropDecay is false since 1.19.3),
+//    with chance 1 / power for other sources (creepers, no source); TNT is primed with a 10-29 tick fuse; with `fire`, one in
 //    three cleared cells over an opaque block catches fire.
 import {AIR,BLOCKS,OPAQUE,SOLID,LIQUID} from '../data/blocks';
 import {CH} from '../engine/constants';
@@ -70,7 +71,8 @@ export function explode(sim:Sim,x:number,y:number,z:number,power:number,source:E
   // Copy first: hooks run while hurting entities may start another explosion.
   const keys=blown.slice();
   hurtAround(sim,x,y,z,power,source,byPlayer);
-  let destroyed=0;const chance=1/power;
+  // Vanilla 1.20 gamerules: tntExplosionDropDecay false (TNT drops all it breaks), mob and block explosions decay.
+  let destroyed=0;const chance=source?.kind==='primed_tnt'?1:1/power;
   for(const key of keys){
     const bx=keyX(key),by=keyY(key),bz=keyZ(key),id=w.get(bx,by,bz);
     if(id<=0)continue;
@@ -78,7 +80,7 @@ export function explode(sim:Sim,x:number,y:number,z:number,power:number,source:E
       if(sim.set(bx,by,bz,AIR,'explosion')){destroyed++;sim.primeTnt(bx,by,bz,10+sim.randInt(20),byPlayer,source);}
       continue;
     }
-    const drop=!LIQUID[id]&&sim.rand()<chance;
+    const drop=!LIQUID[id]&&(chance>=1||sim.rand()<chance);
     if(!sim.set(bx,by,bz,AIR,'explosion'))continue;
     destroyed++;
     if(drop)sim.dropLoot(id,bx,by,bz);

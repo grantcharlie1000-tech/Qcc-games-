@@ -96,6 +96,23 @@ describe('support',()=>{
     expect(g.get(0,Y,0)).toBe('air');
     expect(g.dropCalls.map(c=>c.id)).toContain(idOf('oak_door_lower_closed_north'));
   });
+
+  test('in creative, breaking one half of a door or bed removes the other half without drops',()=>{
+    const g=createTickGame();
+    g.setMode('creative');
+    g.set(0,Y,0,'oak_door_lower_closed_north');g.set(0,Y+1,0,'oak_door_upper_closed_north');
+    // The bed head lies at foot - FACING_VECTOR[facing]: a north-facing foot at z = 3 has its head at z = 4.
+    g.set(3,Y,3,'bed_foot_north');g.set(3,Y,4,'bed_head_north');
+    g.run(3);
+    g.set(0,Y+1,0,'air');g.set(3,Y,4,'air');
+    g.run(3);
+    expect([g.get(0,Y,0),g.get(3,Y,3)]).toEqual(['air','air']);
+    expect(g.dropCalls).toEqual([]);
+    // A block popping for any other reason in creative still drops (only the player's own break is drop-free).
+    g.set(6,Y,0,'dirt');g.set(6,Y+1,0,'poppy');g.run(2);
+    g.world.set(6,Y,0,0,'explosion');g.run(2);
+    expect(g.dropCalls.map(c=>c.id)).toEqual([idOf('poppy')]);
+  });
 });
 
 describe('fire',()=>{
@@ -169,5 +186,21 @@ describe('fire',()=>{
     for(const [x,z] of [[1,0],[-1,0],[0,1],[0,-1]])g.set(x,Y+1,z,'oak_planks');
     for(let i=0;i<400&&g.get(0,Y+1,0)!=='fire';i++)g.ticks.randomTickAt(0,Y,0);
     expect(g.get(0,Y+1,0)).toBe('fire');
+  });
+
+  test('fire near the player smokes and crackles at about the vanilla ambient rate',()=>{
+    const g=createTickGame({randomTickSpeed:0});
+    const smoke:{x:number;y:number;z:number}[]=[];
+    g.render={...g.render,spawnParticles(kind,x,y,z){if(kind==='large_smoke'||kind==='smoke')smoke.push({x,y,z});}};
+    g.player.teleport(.5,Y,.5);
+    // Placed without an event, so no fire tick ever runs: only the ambient sampling sees it.
+    g.world.chunk(0,0)!.blocks[2+Y*256]=idOf('fire');
+    g.run(1000);
+    // Vanilla ClientLevel.animateTick: 667 samples at rand(16) - rand(16) and 667 at rand(32) - rand(32) per axis hit a cell
+    // two blocks away about 0.16 times per tick; FireBlock.animateTick crackles one time in 24.
+    const near=smoke.filter(p=>Math.abs(p.x-2.5)<1&&Math.abs(p.z-.5)<1);
+    expect(near.length).toBeGreaterThan(110);
+    expect(near.length).toBeLessThan(220);
+    expect(g.sounds.played.filter(s=>s.name==='fire').length).toBeGreaterThan(0);
   });
 });

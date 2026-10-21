@@ -3,25 +3,29 @@
 //    random-ticking block, in loaded chunks within 8 chunks of the player whose eight neighbours are loaded too.
 //    Handlers: growth.ts (crops, saplings, grass, mycelium, farmland, sugar cane, cactus, melting, leaf decay, copper)
 //    and fire.ts (lava setting fires, fire fallback).
-//  - Scheduled ticks (a priority queue, one pending tick per position and kind, persisted): fluids (fluids.ts), falling
-//    blocks (ticks-entities.ts), support pop-offs, farmland under solid blocks, fire (fire.ts) and leaf decay checks.
-//    A tick runs only when every chunk within 8 blocks is loaded; otherwise it waits for the missing chunk.
+//  - Scheduled ticks (one priority queue per kind, one pending tick per position and kind, persisted): block updates
+//    (falling blocks in ticks-entities.ts, support pop-offs, farmland under solid blocks), fluids (fluids.ts), fire (fire.ts)
+//    and leaf decay checks (growth.ts). Each kind has its own cap per tick, so a flood or a felled canopy never holds back
+//    the other kinds. A tick runs only when every chunk within 8 blocks is loaded; otherwise it waits for the missing chunk.
 //  - Explosions: explosion.ts. Entity kinds 'primed_tnt' and 'falling_block': ticks-entities.ts.
 //  - blockChanged: the changed block and its six neighbours get a reaction on the next tick (vanilla onPlace /
 //    neighborChanged / updateShape): liquids schedule a flow update or harden, gravity blocks over free space schedule a
 //    fall, blocks that lost their support pop off with their no-tool loot (cactus and sugar cane one tick later), fire that
-//    lost its footing goes out, farmland under a solid block turns to dirt. Removing a log or leaves starts leaf checks.
-//  - Budget: work per tick is capped by counts (never by time, so the world stays deterministic): fluid updates, all
+//    lost its footing goes out, farmland under a solid block turns to dirt. In creative, the other half of a door or bed the
+//    player broke goes without drops (vanilla preventCreativeDropFromBottomPart). Removing a log or leaves schedules leaf
+//    checks for every leaf that may have lost its link to a log (growth.ts leafSourceRemoved).
+//  - Budget: work per tick is capped by counts (never by time, so the world stays deterministic): each scheduled kind, all
 //    scheduled ticks, reactions, section scans and TNT explosions. Measured cost is in stats().
-//  - Ambient effects near the player (fire crackle and smoke, lava pops) use a separate random so they never change the world.
+//  - Ambient effects near the player (fire crackle and smoke, lava pops) sample like vanilla ClientLevel.animateTick and use
+//    a separate random so they never change the world.
 import {AIR,B,FACING_VECTOR,LIQUID,SOLID,blockDef,blockId,type BlockId} from '../data/blocks';
 import {CH,CS,LAYER,chunkKey} from '../engine/constants';
 import {canSurvive} from '../engine/support';
 import {mulberry32} from './noise';
 import type {BlockTickService,Game,GameEvents,ItemStack} from '../engine/contracts';
-import {FastBlocks,KIND_BLOCK,KIND_FIRE,KIND_LEAF,NEIGHBOURS,TICK_KINDS,TickQueue,keyX,keyY,keyZ,posKey,validKey,type Sim,type TickEntry} from './ticks-core';
+import {FastBlocks,KIND_BLOCK,KIND_FIRE,KIND_FLUID,KIND_LEAF,NEIGHBOURS,TICK_KINDS,TickQueue,keyX,keyY,keyZ,posKey,validKey,type Sim,type TickEntry} from './ticks-core';
 import {fluidNeighbourChanged,fluidTick} from './fluids';
-import {IS_LEAVES,IS_LOG,MAX_ORPHANS,RANDOM_TICK,RT_FIRE,RT_LAVA,growthRandomTick,leafCheck} from './growth';
+import {IS_LEAVES,IS_LOG,MAX_ORPHANS,RANDOM_TICK,RT_FIRE,RT_LAVA,growthRandomTick,leafCheck,leafSourceRemoved} from './growth';
 import {FIRE,fireCanSurvive,fireDelay,fireTick,lavaRandomTick} from './fire';
 import {explode as runExplosion} from './explosion';
 import {EXPLOSION_BUDGET,PRIMED_TNT_KIND,isFree,landFallingBlock,registerWorldEntities} from './ticks-entities';
@@ -29,11 +33,10 @@ import {EXPLOSION_BUDGET,PRIMED_TNT_KIND,isFree,landFallingBlock,registerWorldEn
 export {registerWorldEntities};
 
 export interface TickLimits{
-  /** Liquid updates per tick. */
-  fluidUpdates:number;
-  /** Fire ticks and leaf decay checks per tick (the costlier kinds). */
-  fireTicks:number;leafChecks:number;
-  /** Scheduled ticks of every kind per tick. */
+  /** Scheduled ticks per tick of each kind: block updates (falling blocks, support), liquid updates, fire ticks and leaf
+   *  decay checks. A kind at its cap waits for the next tick without holding back the others. */
+  blockTicks:number;fluidUpdates:number;fireTicks:number;leafChecks:number;
+  /** Scheduled ticks of every kind together per tick. */
   scheduled:number;
   /** Positions reacting to block changes per tick. */
   reactions:number;
@@ -41,7 +44,7 @@ export interface TickLimits{
   sectionScans:number;
   /** Explosions started by primed TNT per tick (the rest wait a tick). */
   explosions:number;
-  /** Ambient effect samples around the player per tick. */
+  /** Ambient effect samples around the player per tick and range (vanilla animateTick: 667 within 16 and 667 within 32 blocks). */
   ambient:number;
 }
 export interface TickStats{
@@ -49,7 +52,9 @@ export interface TickStats{
   ms:number;averageMs:number;
   /** Random cells picked, and those holding a block with random-tick behaviour, in the last tick. */
   randomTicks:number;randomHits:number;
-  scheduled:number;fluidUpdates:number;reactions:number;pending:number;
+  /** Scheduled ticks run in the last tick: all of them, liquid updates, fire ticks and leaf checks. */
+  scheduled:number;fluidUpdates:number;fireTicks:number;leafChecks:number;
+  reactions:number;pending:number;
 }
 export interface TickOptions{
   /** Random ticks per section per tick (vanilla gamerule randomTickSpeed, default 3). */
@@ -69,17 +74,28 @@ export interface BlockTicks extends BlockTickService{
 }
 
 const SECTIONS=CH/16;
-const GRAVITY=new Uint8Array(256),SUPPORT=new Uint8Array(256);
+/** GRAVITY: falls; SUPPORT: pops off without support; AMBIENT: has ambient effects (fire, lava). */
+const GRAVITY=new Uint8Array(256),SUPPORT=new Uint8Array(256),AMBIENT=new Uint8Array(256);
 const CACTUS=blockId('cactus'),SUGAR_CANE=blockId('sugar_cane'),FARMLAND=blockId('farmland'),FARMLAND_WET=blockId('farmland_wet');
-for(let id=0;id<256;id++){const d=blockDef(id);if(d.id!==id)continue;GRAVITY[id]=+d.gravity;SUPPORT[id]=+(d.needsSupport&&id!==FIRE);}
+for(let id=0;id<256;id++){
+  const d=blockDef(id);if(d.id!==id)continue;
+  GRAVITY[id]=+d.gravity;SUPPORT[id]=+(d.needsSupport&&id!==FIRE);AMBIENT[id]=+(id===FIRE||LIQUID[id]===2);
+}
+/** Ambient sampling reaches 31 blocks from the player: a 5×5 chunk window, flagged per 16³ section. */
+const AMBIENT_REACH=31,AMBIENT_SPAN=5,ambientSections=new Uint8Array(AMBIENT_SPAN*AMBIENT_SPAN*SECTIONS);
+const ambientChunks:(Uint8Array|null)[]=new Array(AMBIENT_SPAN*AMBIENT_SPAN).fill(null);
 const MAX_SAVED=40000,MAX_PARKED=40000,MAX_DELAY=1e6;
 const READY_DX=[0,-8,8,-8,8],READY_DZ=[0,-8,-8,8,8];
 
 export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
-  const limits:TickLimits={fluidUpdates:160,fireTicks:64,leafChecks:24,scheduled:512,reactions:4096,sectionScans:48,explosions:6,ambient:200};
+  const limits:TickLimits={blockTicks:256,fluidUpdates:160,fireTicks:64,leafChecks:32,scheduled:512,reactions:4096,sectionScans:48,explosions:6,ambient:667};
   const randomTickSpeed=Math.max(0,Math.floor(options.randomTickSpeed??3)),radius=Math.max(0,Math.floor(options.randomTickRadius??8));
   const blocks=new FastBlocks(game.world);
-  const queue=new TickQueue();
+  /** One queue per tick kind (KIND_BLOCK, KIND_FIRE, KIND_LEAF, KIND_FLUID). */
+  const queues=Array.from({length:TICK_KINDS},()=>new TickQueue());
+  const queued=()=>{let n=0;for(const q of queues)n+=q.size;return n;};
+  /** Partners of door halves and bed parts the player broke in creative: they go without drops. */
+  const noLoot=new Set<number>();
   /** Ticks that came due in unloaded chunks: chunk key → flat [position key, kind, ...]. */
   const parked=new Map<number,number[]>();let parkedCount=0;
   /** Positions waiting for their reaction to a block change (FIFO, deduplicated). */
@@ -99,7 +115,7 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
   }
   const fireAge=new Map<number,number>(),orphans=new Set<number>();
   const cosmetic=mulberry32(0x5eed1e55);
-  const stats:TickStats={ms:0,averageMs:0,randomTicks:0,randomHits:0,scheduled:0,fluidUpdates:0,reactions:0,pending:0};
+  const stats:TickStats={ms:0,averageMs:0,randomTicks:0,randomHits:0,scheduled:0,fluidUpdates:0,fireTicks:0,leafChecks:0,reactions:0,pending:0};
   let explosionsLeft=limits.explosions,unsubscribe:(()=>void)[]=[];
   const entry:TickEntry={key:0,kind:0,due:0};
   const now=()=>game.time.tick;
@@ -116,10 +132,10 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
       for(const s of drops)game.entities.dropItem(s,x+.25+game.random()*.5,y+.25+game.random()*.5,z+.25+game.random()*.5,
         {x:(game.random()-.5)*2,y:4,z:(game.random()-.5)*2});
     },
-    destroy(x,y,z,id,cause,particles=true){
+    destroy(x,y,z,id,cause,particles=true,loot=true){
       if(!game.world.set(x,y,z,AIR,cause))return;
       if(particles)game.render.spawnParticles('block',x+.5,y+.5,z+.5,{block:id,count:12,spread:.4});
-      sim.dropLoot(id,x,y,z);
+      if(loot)sim.dropLoot(id,x,y,z);
     },
     placeFire(x,y,z,age){
       const key=posKey(x,y,z),had=fireAge.get(key);
@@ -144,7 +160,7 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
   function schedule(x:number,y:number,z:number,delay:number,kind:number){
     if(!Number.isFinite(x+y+z+delay)||y<0||y>=CH)return;
     x=Math.floor(x);y=Math.floor(y);z=Math.floor(z);
-    queue.schedule(posKey(x,y,z),kind,now()+Math.max(1,Math.min(MAX_DELAY,Math.floor(delay))));
+    queues[kind].schedule(posKey(x,y,z),kind,now()+Math.max(1,Math.min(MAX_DELAY,Math.floor(delay))));
   }
   function park(key:number,kind:number,ck=chunkKey(keyX(key)>>4,keyZ(key)>>4)){
     if(parkedCount>=MAX_PARKED)return;
@@ -154,7 +170,7 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
   function unpark(ck:number){
     const list=parked.get(ck);if(!list)return;
     parked.delete(ck);parkedCount-=list.length/2;
-    for(let i=0;i<list.length;i+=2)queue.schedule(list[i],list[i+1],now()+1);
+    for(let i=0;i<list.length;i+=2)queues[list[i+1]].schedule(list[i],list[i+1],now()+1);
   }
 
   // ---- Reactions to block changes ----------------------------------------------------------------------
@@ -167,44 +183,52 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     }
     dirty[dirtyTail++]=key;
   }
-  function onBlockChanged({x,y,z,from,to}:GameEvents['blockChanged']){
+  function onBlockChanged({x,y,z,from,to,cause}:GameEvents['blockChanged']){
     const counts=sections.get(chunkKey(x>>4,z>>4));
-    if(counts){const s=y>>4;if(counts[s]>=0)counts[s]+=(RANDOM_TICK[to]?1:0)-(RANDOM_TICK[from]?1:0);}
+    if(counts){const s=y>>4;if(counts[s]>=0){counts[s]+=(RANDOM_TICK[to]?1:0)-(RANDOM_TICK[from]?1:0);counts[SECTIONS+s]+=AMBIENT[to]-AMBIENT[from];}}
     const key=posKey(x,y,z);
     if(from===FIRE&&to!==FIRE)fireAge.delete(key);
     if(IS_LEAVES[from]&&!IS_LEAVES[to])orphans.delete(key);
-    // A log or leaf went away: the leaves around it may have lost their link to a log (vanilla leaf distance updates).
-    const leafCheck=(IS_LOG[from]||IS_LEAVES[from])&&!IS_LOG[to]&&!IS_LEAVES[to];
+    // A log or leaf went away: leaves that may have lost their link to a log through it get a check (vanilla leaf distance
+    // updates). This runs now, while the rest of the canopy is as it was.
+    if((IS_LOG[from]||IS_LEAVES[from])&&!IS_LOG[to]&&!IS_LEAVES[to])leafSourceRemoved(sim,x,y,z,IS_LOG[from]===1);
+    if(cause==='player'&&game.settings.mode==='creative'){const p=partnerKey(x,y,z,from);if(p>=0)noLoot.add(p);}
     markDirty(key);
     for(let i=0;i<6;i++){
-      const n=NEIGHBOURS[i],nx=x+n[0],ny=y+n[1],nz=z+n[2];
+      const n=NEIGHBOURS[i],ny=y+n[1];
       if(ny<0||ny>=CH)continue;
-      markDirty(posKey(nx,ny,nz));
-      if(leafCheck){const id=blocks.get(nx,ny,nz);if(id>0&&IS_LEAVES[id])schedule(nx,ny,nz,1,KIND_LEAF);}
+      markDirty(posKey(x+n[0],ny,z+n[2]));
     }
+  }
+  /** Position key of the other half of a door or bed part, or -1. */
+  function partnerKey(x:number,y:number,z:number,id:BlockId){
+    const d=blockDef(id);
+    if(d.door){const py=y+(d.door.half==='lower'?1:-1);return py>=0&&py<CH?posKey(x,py,z):-1;}
+    if(d.bed&&d.facing){const v=FACING_VECTOR[d.facing],s=d.bed.part==='foot'?-1:1;return posKey(x+v[0]*s,y,z+v[1]*s);}
+    return -1;
   }
   function processReactions(){
     let n=0;
     while(dirtyHead<dirtyTail&&n<limits.reactions){
       const key=dirty[dirtyHead++];dirtySet.delete(key);n++;
-      react(keyX(key),keyY(key),keyZ(key));
+      react(keyX(key),keyY(key),keyZ(key),key);
     }
-    if(dirtyHead===dirtyTail)dirtyHead=dirtyTail=0;
+    if(dirtyHead===dirtyTail){dirtyHead=dirtyTail=0;noLoot.clear();}
     stats.reactions+=n;
   }
-  function react(x:number,y:number,z:number){
+  function react(x:number,y:number,z:number,key:number){
     const id=blocks.get(x,y,z);if(id<=0)return;
     if(LIQUID[id]){fluidNeighbourChanged(sim,x,y,z,id);return;}
     if(GRAVITY[id]){if(isFree(blocks.get(x,y-1,z)))schedule(x,y,z,2,KIND_BLOCK);return;}
     if(id===FIRE){
       if(!fireCanSurvive(blocks,x,y,z)){game.world.set(x,y,z,AIR,'tick');return;}
-      if(!queue.has(posKey(x,y,z),KIND_FIRE))schedule(x,y,z,fireDelay(sim),KIND_FIRE);
+      if(!queues[KIND_FIRE].has(key,KIND_FIRE))schedule(x,y,z,fireDelay(sim),KIND_FIRE);
       return;
     }
     if(id===FARMLAND||id===FARMLAND_WET){if(SOLID[Math.max(0,blocks.get(x,y+1,z))])schedule(x,y,z,1,KIND_BLOCK);return;}
     if(SUPPORT[id]&&!supported(x,y,z,id)){
       if(id===CACTUS||id===SUGAR_CANE)schedule(x,y,z,1,KIND_BLOCK);
-      else sim.destroy(x,y,z,id,'tick');
+      else sim.destroy(x,y,z,id,'tick',true,!(noLoot.size&&noLoot.delete(key)));
     }
   }
   /** canSurvive, plus the other half of a door or bed still being there (vanilla DoorBlock / BedBlock updateShape). */
@@ -234,19 +258,32 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     }
     return -1;
   }
+  /** Each kind runs its due ticks up to its own cap (blocks first, then liquids, like vanilla's block and fluid tick lists),
+   *  all of them together up to limits.scheduled; what is left waits for the next tick at the front of its queue. */
+  const KIND_ORDER=[KIND_BLOCK,KIND_FLUID,KIND_FIRE,KIND_LEAF];
+  const kindCap=(kind:number)=>kind===KIND_FLUID?limits.fluidUpdates:kind===KIND_FIRE?limits.fireTicks:kind===KIND_LEAF?limits.leafChecks:limits.blockTicks;
   function runScheduled(){
-    const t=now();let n=0,fluids=0,fires=0,leaves=0;
-    while(queue.peekDue()<=t&&n<limits.scheduled&&fluids<limits.fluidUpdates&&fires<limits.fireTicks&&leaves<limits.leafChecks){
-      if(!queue.pop(entry))break;
-      const x=keyX(entry.key),y=keyY(entry.key),z=keyZ(entry.key),missing=missingChunk(x,z);
-      if(missing>=0){park(entry.key,entry.kind,missing);continue;}
-      n++;
-      if(entry.kind===KIND_FIRE){fires++;fireTick(sim,x,y,z);continue;}
-      if(entry.kind===KIND_LEAF){leaves++;leafCheck(sim,x,y,z);continue;}
-      const id=blocks.get(x,y,z);
-      if(id<=0)continue;
-      if(LIQUID[id]){fluids++;fluidTick(sim,x,y,z);continue;}
-      blockTick(x,y,z,id);
+    const t=now();let n=0,fluids=0;
+    stats.fireTicks=stats.leafChecks=0;
+    for(const kind of KIND_ORDER){
+      const q=queues[kind],cap=kindCap(kind);let done=0;
+      while(done<cap&&n<limits.scheduled&&q.peekDue()<=t){
+        if(!q.pop(entry))break;
+        const x=keyX(entry.key),y=keyY(entry.key),z=keyZ(entry.key),missing=missingChunk(x,z);
+        if(missing>=0){park(entry.key,kind,missing);continue;}
+        n++;done++;
+        if(kind===KIND_FIRE)fireTick(sim,x,y,z);
+        else if(kind===KIND_LEAF)leafCheck(sim,x,y,z);
+        else if(kind===KIND_FLUID){fluids++;fluidTick(sim,x,y,z);}
+        else{
+          const id=blocks.get(x,y,z);
+          if(id<=0)continue;
+          // A block update that finds a liquid (game.ticks.schedule, older saves) runs its flow.
+          if(LIQUID[id]){fluids++;fluidTick(sim,x,y,z);}
+          else blockTick(x,y,z,id);
+        }
+      }
+      if(kind===KIND_FIRE)stats.fireTicks=done;else if(kind===KIND_LEAF)stats.leafChecks=done;
     }
     stats.scheduled=n;stats.fluidUpdates=fluids;
   }
@@ -266,12 +303,15 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
   }
 
   // ---- Random ticks --------------------------------------------------------------------------------------
-  function countSection(blocksArray:Uint8Array,heightmap:Int16Array,s:number){
+  /** Counts a section's random-ticking blocks (counts[s]) and its fire and lava (counts[SECTIONS + s], for ambient effects). */
+  function countSection(blocksArray:Uint8Array,heightmap:Int16Array,s:number,counts:Int16Array){
     let top=-1;for(let i=0;i<heightmap.length;i++)if(heightmap[i]>top)top=heightmap[i];
-    if(s*16>top)return 0;
-    let n=0;const end=(s+1)*16*LAYER;
-    for(let i=s*16*LAYER;i<end;i++)if(RANDOM_TICK[blocksArray[i]])n++;
-    return n;
+    let n=0,a=0;
+    if(s*16<=top){
+      const end=(s+1)*16*LAYER;
+      for(let i=s*16*LAYER;i<end;i++){const id=blocksArray[i];if(RANDOM_TICK[id])n++;a+=AMBIENT[id];}
+    }
+    counts[s]=n;counts[SECTIONS+s]=a;
   }
   function randomTicks(){
     let count=0,picks=0;
@@ -282,10 +322,10 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     for(const chunk of game.world.chunks.values()){
       if(Math.abs(chunk.cx-pcx)>radius||Math.abs(chunk.cz-pcz)>radius||!chunkReady(chunk.cx,chunk.cz,chunk.key))continue;
       let counts=sections.get(chunk.key);
-      if(!counts){counts=new Int16Array(SECTIONS).fill(-1);sections.set(chunk.key,counts);}
+      if(!counts){counts=new Int16Array(SECTIONS*2).fill(-1);sections.set(chunk.key,counts);}
       const b=chunk.blocks,x0=chunk.cx*CS,z0=chunk.cz*CS;
       for(let s=0;s<SECTIONS;s++){
-        if(counts[s]<0){if(scans>=limits.sectionScans)continue;counts[s]=countSection(b,chunk.heightmap,s);scans++;}
+        if(counts[s]<0){if(scans>=limits.sectionScans)continue;countSection(b,chunk.heightmap,s,counts);scans++;}
         if(counts[s]<=0)continue;
         picks+=randomTickSpeed;
         for(let i=0;i<randomTickSpeed;i++){
@@ -301,29 +341,52 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
   function randomTickBlock(code:number,x:number,y:number,z:number,id:BlockId){
     if(growthRandomTick(sim,code,x,y,z,id))return;
     if(code===RT_LAVA)lavaRandomTick(sim,x,y,z);
-    else if(code===RT_FIRE&&!queue.has(posKey(x,y,z),KIND_FIRE))schedule(x,y,z,fireDelay(sim),KIND_FIRE);
+    else if(code===RT_FIRE&&!queues[KIND_FIRE].has(posKey(x,y,z),KIND_FIRE))schedule(x,y,z,fireDelay(sim),KIND_FIRE);
   }
 
   // ---- Ambient effects ----------------------------------------------------------------------------------
+  /** ClientLevel.animateTick: per tick, `limits.ambient` cells at rand(16) - rand(16) and as many at rand(32) - rand(32) blocks
+   *  from the player on each axis (so cells near the player are sampled most); fire and lava there show their effects.
+   *  Samples in 16³ sections known to hold no fire or lava are skipped without reading the world. */
   function ambient(){
     const p=game.player.state,bx=Math.floor(p.x),by=Math.floor(p.y),bz=Math.floor(p.z),c=cosmetic;
-    for(let i=0;i<limits.ambient;i++){
-      const x=bx+((c()*33)|0)-16,y=by+((c()*33)|0)-16,z=bz+((c()*33)|0)-16;
-      const id=blocks.get(x,y,z);
-      if(id===FIRE){
-        if(c()<1/24)game.sounds.play('fire',{x:x+.5,y:y+.5,z:z+.5},{volume:.5+c()*.5,pitch:c()*.7+.3});
-        game.render.spawnParticles('smoke',x+.5,y+.7,z+.5,{count:2,spread:.3});
-      }else if(id>0&&LIQUID[id]===2&&blocks.get(x,y+1,z)===AIR){
-        if(c()<.01){game.render.spawnParticles('lava',x+.5,y+1,z+.5,{count:1});game.sounds.play('lava',{x:x+.5,y:y+1,z:z+.5},{volume:.2+c()*.2,pitch:.9+c()*.15});}
-        if(c()<.005)game.sounds.play('lava',{x:x+.5,y:y+.5,z:z+.5},{volume:.2+c()*.2,pitch:.9+c()*.15});
-      }
+    const cx0=(bx-AMBIENT_REACH)>>4,cz0=(bz-AMBIENT_REACH)>>4;
+    let any=false;
+    for(let dz=0;dz<AMBIENT_SPAN;dz++)for(let dx=0;dx<AMBIENT_SPAN;dx++){
+      const w=dz*AMBIENT_SPAN+dx,o=w*SECTIONS,counts=sections.get(chunkKey(cx0+dx,cz0+dz)),chunk=game.world.chunk(cx0+dx,cz0+dz);
+      ambientChunks[w]=chunk?chunk.blocks:null;
+      for(let s=0;s<SECTIONS;s++){const f=+(!!chunk&&(!counts||counts[s]<0||counts[SECTIONS+s]>0));ambientSections[o+s]=f;if(f)any=true;}
+    }
+    if(any)for(let i=0;i<limits.ambient;i++){
+      // One 32-bit draw gives the six offsets (4 bits each within 16, 5 bits each within 32).
+      let r=(c()*4294967296)>>>0;
+      ambientAt(bx+(r&15)-(r>>>4&15),by+(r>>>8&15)-(r>>>12&15),bz+(r>>>16&15)-(r>>>20&15),cx0,cz0);
+      r=(c()*4294967296)>>>0;
+      ambientAt(bx+(r&31)-(r>>>5&31),by+(r>>>10&31)-(r>>>15&31),bz+(r>>>20&31)-(r>>>25&31),cx0,cz0);
+    }
+    ambientChunks.fill(null);
+  }
+  function ambientAt(x:number,y:number,z:number,cx0:number,cz0:number){
+    if(y<0||y>=CH)return;
+    const w=((z>>4)-cz0)*AMBIENT_SPAN+(x>>4)-cx0;
+    if(!ambientSections[w*SECTIONS+(y>>4)])return;
+    const b=ambientChunks[w]!,index=(x&15)+((z&15)<<4)+(y<<8),id=b[index],c=cosmetic;
+    if(id===FIRE){
+      // FireBlock.animateTick: a crackle one time in 24, and three puffs of large smoke.
+      if(c()<1/24)game.sounds.play('fire',{x:x+.5,y:y+.5,z:z+.5},{volume:.5+c()*.5,pitch:c()*.7+.3});
+      game.render.spawnParticles('large_smoke',x+.5,y+.75,z+.5,{count:3,spread:.5});
+    }else if(LIQUID[id]===2&&(y+1>=CH||b[index+LAYER]===AIR)){
+      // LavaFluid.animateTick: a pop with a lava particle one time in 100, the ambient sound one time in 200.
+      if(c()<.01){game.render.spawnParticles('lava',x+.5,y+1,z+.5,{count:1});game.sounds.play('lava',{x:x+.5,y:y+1,z:z+.5},{volume:.2+c()*.2,pitch:.9+c()*.15});}
+      if(c()<.005)game.sounds.play('lava',{x:x+.5,y:y+.5,z:z+.5},{volume:.2+c()*.2,pitch:.9+c()*.15});
     }
   }
 
   // ---- Persistence --------------------------------------------------------------------------------------
   function serialize(){
     const ticks:number[]=[],t=now();
-    for(const e of queue.entries(MAX_SAVED))ticks.push(Math.max(1,e.due-t),e.key,e.kind);
+    const pending=queues.flatMap(q=>q.entries(MAX_SAVED)).sort((a,b)=>a.due-b.due).slice(0,MAX_SAVED);
+    for(const e of pending)ticks.push(Math.max(1,e.due-t),e.key,e.kind);
     const waiting:number[]=[];
     for(const list of parked.values())for(let i=0;i<list.length&&waiting.length<MAX_PARKED*2;i++)waiting.push(list[i]);
     const reactions=Array.from(dirty.subarray(dirtyHead,Math.min(dirtyTail,dirtyHead+MAX_SAVED)));
@@ -338,7 +401,7 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     if(Array.isArray(d.ticks))for(let i=0;i+2<d.ticks.length&&i<MAX_SAVED*3;i+=3){
       const delay=d.ticks[i],key=d.ticks[i+1],kind=d.ticks[i+2];
       if(typeof delay!=='number'||!Number.isInteger(delay)||delay<1||delay>MAX_DELAY||!validKey(key)||!kindOk(kind))continue;
-      queue.schedule(key,kind,t+delay);
+      queues[kind].schedule(key,kind,t+delay);
     }
     if(Array.isArray(d.parked))for(let i=0;i+1<d.parked.length&&i<MAX_PARKED*2;i+=2){
       const key=d.parked[i],kind=d.parked[i+1];
@@ -354,7 +417,8 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     for(const ck of [...parked.keys()])if(game.world.chunks.has(ck))unpark(ck);
   }
   function clearAll(){
-    queue.clear();parked.clear();parkedCount=0;dirtyHead=dirtyTail=0;dirtySet.clear();sections.clear();ready.clear();fireAge.clear();orphans.clear();
+    for(const q of queues)q.clear();
+    parked.clear();parkedCount=0;dirtyHead=dirtyTail=0;dirtySet.clear();noLoot.clear();sections.clear();ready.clear();fireAge.clear();orphans.clear();
     blocks.invalidate();explosionsLeft=limits.explosions;
   }
 
@@ -380,7 +444,7 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
       if(limits.ambient>0)ambient();
       explosionsLeft=limits.explosions;
       const ms=performance.now()-t0;
-      stats.ms=ms;stats.averageMs+=(ms-stats.averageMs)*.05;stats.pending=queue.size+parkedCount;
+      stats.ms=ms;stats.averageMs+=(ms-stats.averageMs)*.05;stats.pending=queued()+parkedCount;
     },
     schedule(x,y,z,delay){schedule(x,y,z,delay,KIND_BLOCK);},
     explode(x,y,z,power,source=null,byPlayer=false,fire=false){
@@ -391,7 +455,7 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
       const id=blocks.get(x,y,z);if(id<=0)return;
       const code=RANDOM_TICK[id];if(code)randomTickBlock(code,x,y,z,id);
     },
-    pending:()=>queue.size+parkedCount,
+    pending:()=>queued()+parkedCount,
     stats:()=>stats,
     reset(){clearAll();},
     serialize,

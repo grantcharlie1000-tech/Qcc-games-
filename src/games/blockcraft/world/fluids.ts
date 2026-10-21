@@ -1,6 +1,6 @@
 // Water and lava after vanilla Java 1.20 FlowingFluid / LiquidBlock, on the registry's liquid states:
 // a source (level 0, amount 8), flowing levels 1..7 (amount 8 - level) and one falling state (amount 8).
-//  - Scheduled ticks: water every 5 ticks, lava every 30 (×4 at random when a lava level rises).
+//  - Scheduled ticks (KIND_FLUID): water every 5 ticks, lava every 30 (×4 at random when a lava level rises).
 //  - A non-source recomputes itself from its neighbours (getNewLiquid): falling under the same liquid, a new water source
 //    between two sources over solid ground or a source, else the strongest horizontal neighbour minus the drop-off
 //    (water 1, lava 2); nothing left means it drains to air.
@@ -10,7 +10,7 @@
 //  - Reactions (LiquidBlock.shouldSpreadLiquid): lava with water above or beside it becomes obsidian (source) or cobblestone;
 //    lava flowing down into water turns that water to stone.
 import {AIR,B,BLOCKS,LIQUID,SOLID,type BlockId} from '../data/blocks';
-import {type Sim} from './ticks-core';
+import {KIND_FLUID,type Sim} from './ticks-core';
 
 export const WATER=1,LAVA=2;
 /** Ticks between updates, level drop per block and the reach of the search for a drop, by liquid (index 1 water, 2 lava). */
@@ -68,7 +68,7 @@ export function fluidTick(sim:Sim,x:number,y:number,z:number):void{
     const next=newLiquid(sim,kind,x,y,z);
     const delay=spreadDelay(sim,kind,state,next);
     if(!next){sim.set(x,y,z,AIR,'fluid');return;}
-    if(next!==state){state=next;sim.set(x,y,z,fluidBlock(kind,next),'fluid');sim.schedule(x,y,z,delay);}
+    if(next!==state){state=next;sim.set(x,y,z,fluidBlock(kind,next),'fluid');sim.schedule(x,y,z,delay,KIND_FLUID);}
   }
   spread(sim,kind,x,y,z,state);
 }
@@ -89,7 +89,7 @@ export function fluidNeighbourChanged(sim:Sim,x:number,y:number,z:number,id:Bloc
       return;
     }
   }
-  sim.schedule(x,y,z,TICK_DELAY[kind]);
+  sim.schedule(x,y,z,TICK_DELAY[kind],KIND_FLUID);
 }
 const isWater=(id:number)=>id>=0&&LIQUID[id]===WATER;
 

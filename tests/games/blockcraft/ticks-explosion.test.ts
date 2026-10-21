@@ -28,6 +28,20 @@ describe('explode',()=>{
     expect(g.sounds.played.some(s=>s.name==='explode')).toBe(true);
   });
 
+  test('TNT drops every block it breaks (vanilla tntExplosionDropDecay false); other blasts drop one in power',()=>{
+    const g=createTickGame({block:B.dirt});
+    g.entities.spawn('primed_tnt',.5,Y,.5,{data:{fuse:1,byPlayer:false}});
+    g.run(1);
+    const removed=countAir(g,6);
+    expect(removed).toBeGreaterThan(20);
+    expect(g.dropCalls.filter(c=>c.id===B.dirt)).toHaveLength(removed);
+    // A mob blast (a creeper) keeps the decay.
+    const m=createTickGame({block:B.dirt});
+    const creeper=target(m,20.5,20.5);
+    m.ticks.explode(.5,Y,.5,4,creeper,false);
+    expect(m.dropCalls.length).toBeLessThan(countAir(m,6)*.5);
+  });
+
   test('stone resists more than dirt and bedrock never breaks',()=>{
     const stone=createTickGame(),dirt=createTickGame({block:B.dirt});
     stone.ticks.explode(.5,Y,.5,4);dirt.ticks.explode(.5,Y,.5,4);
