@@ -18,7 +18,9 @@
 //  sentinel: light from there needs at least 15 steps to reach the padded rim (x,z in -1..16), so
 //  the padded border equals what each neighbour computes for itself. Cells start unknown and are
 //  decoded from the chunk only when the sky scan or the flood reaches them, so solid rock costs
-//  nothing. Emitters are found by a word-wise scan. Emitters and sky columns seed a bucket queue:
+//  nothing. Emitters are found by a word-wise scan (a 32-bit view of each chunk's block array, made
+//  the first time that array is seen and cached in a WeakMap, so calls on known chunks allocate
+//  nothing; every other buffer is created once per engine). Emitters and sky columns seed a bucket queue:
 //  one list per light level, threaded through one reused typed pool (Int32Array cell + next).
 //  The fill runs from level 15 down; a step's cost depends only on the cell entered, so a voxel's
 //  first push during the fill already carries its final level. Each voxel is therefore queued at
