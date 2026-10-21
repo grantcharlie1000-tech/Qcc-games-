@@ -2,7 +2,8 @@
 // during a thunderstorm every ticking chunk (centre within 128 blocks of the player) has a 1/100000 chance per tick
 // of a strike at a random column (or at a living entity under open sky within 3 blocks of it). A bolt lives 2 ticks plus 1-3 re-flashes; while visible it
 // hurts every living entity in a box 3 blocks around it (6 up) for 5 'lightning' damage and sets it on fire for
-// 8 seconds; creepers become charged and pigs are left alone. Fire starts at the strike on normal and hard.
+// 8 seconds; creepers become charged, pigs are left alone, and dropped items and experience orbs burn up. Fire starts
+// at the strike on normal and hard.
 import {AIR,blockId} from '../data/blocks';
 import {CS} from '../engine/constants';
 import {canSurvive} from '../engine/support';
@@ -19,6 +20,8 @@ export const LIGHTNING_FIRE_SECONDS=8;
 export const THUNDER_SPEED=40;
 const FIRE=blockId('fire');
 const LIVING=new Set(['passive','hostile','water']);
+/** Dropped items and experience orbs have 5 health in vanilla, so one strike destroys them. */
+const FRAGILE=new Set(['item','xp']);
 
 export interface Bolt{
   /** Block position of the strike (the bolt stands on its bottom centre). */
@@ -85,16 +88,17 @@ export function spawnFire(game:Game,bolt:Bolt,extra:number,random:()=>number):nu
 }
 
 /** Hurts everything in the bolt's box (vanilla AABB ±3 around the bottom centre, 6 more up): living mobs and the player.
- *  Pigs are unaffected; creepers become charged. */
+ *  Pigs are unaffected; creepers become charged; dropped items and experience orbs are destroyed. */
 export function hitEntities(game:Game,bolt:Bolt,scratch:Entity[]):void{
   const cx=bolt.x+.5,cy=bolt.y,cz=bolt.z+.5;
   const minX=cx-3,maxX=cx+3,minY=cy-3,maxY=cy+9,minZ=cz-3,maxZ=cz+3;
   const near=game.entities.near(cx,cy+3,cz,8,undefined,scratch);
   for(let i=0;i<near.length;i++){
-    const e=near[i];
-    if(!LIVING.has(e.category)||e.removed||e.deathTime>0||e.kind==='pig')continue;
+    const e=near[i],fragile=FRAGILE.has(e.category);
+    if(e.removed||!fragile&&(!LIVING.has(e.category)||e.deathTime>0||e.kind==='pig'))continue;
     const hw=e.width/2;
     if(e.x+hw<minX||e.x-hw>maxX||e.z+hw<minZ||e.z-hw>maxZ||e.y+e.height<minY||e.y>maxY)continue;
+    if(fragile){game.entities.remove(e);continue;}
     if(!game.entities.kind(e.kind)?.fireImmune)e.fire=e.fire>0?e.fire+1:LIGHTNING_FIRE_SECONDS*20;
     game.entities.damage(e,LIGHTNING_DAMAGE,{kind:'lightning'});
     if(e.kind==='creeper')e.data.charged=true;

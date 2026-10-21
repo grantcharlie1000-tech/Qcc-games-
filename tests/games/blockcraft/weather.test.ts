@@ -253,7 +253,7 @@ describe('lightning',()=>{
     const {game,weather}=setup('plains');startRain(game,weather);
     const mobs=entities(game);
     const creeper=mobs.add('creeper','hostile',3.5,64,2.5),pig=mobs.add('pig','passive',1.5,64,1.5),zombie=mobs.add('zombie','hostile',20.5,64,.5);
-    const item=mobs.add('item','item',2.5,64,2.5);
+    const item=mobs.add('item','item',2.5,64,2.5),orb=mobs.add('xp_orb','xp',1.5,64,3.5),farItem=mobs.add('item','item',9.5,64,2.5);
     const flyer=mobs.add('chicken','passive',2.5,72,2.5);
     game.player.teleport(40.5,64,.5);
     weather.strike(2,64,2);tick(game,1);
@@ -263,6 +263,8 @@ describe('lightning',()=>{
     for(const h of mobs.hits){expect(h.amount).toBe(5);expect(h.source.kind).toBe('lightning');}
     expect(creeper.data.charged).toBe(true);expect(creeper.fire).toBe(160);
     expect(pig.data.charged).toBeUndefined();expect(pig.fire).toBe(0);expect(zombie.fire).toBe(0);
+    // Dropped items and experience orbs (5 health in vanilla) are destroyed by the strike.
+    expect(item.removed).toBe(true);expect(orb.removed).toBe(true);expect(farItem.removed).toBe(false);
     expect(weather.flash).toBeGreaterThan(.5);
   });
   test('the player within reach takes lightning damage and catches fire',()=>{
