@@ -92,7 +92,22 @@ describe('slime splitting',()=>{
   });
 });
 
+/** The contract's moveX is a steady ground speed: vanilla input speed s settles at s² / (1 − 0.6 × 0.91) blocks per tick. */
+const inputSpeed=(moveX:number)=>Math.sqrt(moveX/20*(1-.6*.91));
+/** Blocks covered by one vanilla hop on flat ground (LivingEntity.travel): the jump tick accelerates by s² on the ground,
+ *  then 0.02 × s per tick in the air with 0.91 drag; jump 0.42, gravity 0.08, vertical drag 0.98. */
+function vanillaHop(s:number):number{
+  let x=0,y=0,vx=s*s,vy=.42;
+  x+=vx;y+=vy;vx*=.6*.91;vy=(vy-.08)*.98;
+  for(;;){vx+=.02*s;x+=vx;y+=vy;if(y<=0)return x;vx*=.91;vy=(vy-.08)*.98;}
+}
+
 describe('slime hopping and contact damage',()=>{
+  test.each([[1,.741],[2,1.184],[4,2.366]])('size %i: vanilla speed attribute 0.2 + 0.1 × size, about %f blocks per hop',(size,blocks)=>{
+    const s=inputSpeed(slimeHopSpeed(size));
+    expect(s).toBeCloseTo(.2+.1*size,6);
+    expect(vanillaHop(s)).toBeCloseTo(blocks,2);
+  });
   test('hops toward the player: still between hops, moving while airborne, squish on landing',()=>{
     const h=createHarness();h.game.player.teleport(.5,60,.5);
     const e=slime(h,4,.5,60,-5.5);e.data.chase=true;
@@ -135,6 +150,29 @@ describe('slime hopping and contact damage',()=>{
     h.entities.tick();
     expect(h.playerHits.map(x=>x.amount)).toEqual([damage]);
     expect(h.playerHits[0].source.kind).toBe('mob');
+  });
+  test('a touching slime hits once per 10 ticks (the player\'s invulnerability); a refused hit is retried next tick',()=>{
+    let h=createHarness();h.game.player.teleport(.5,60,.5);
+    slime(h,4,.5,60,-1.5);
+    for(let i=0;i<20;i++)h.entities.tick();
+    expect(h.playerHits.map(x=>x.amount)).toEqual([4,4]);
+    h=createHarness();h.game.player.teleport(.5,60,.5);
+    let calls=0;h.game.survival={...h.game.survival,damage:()=>++calls>3?4:0};
+    slime(h,4,.5,60,-1.5);
+    for(let i=0;i<8;i++)h.entities.tick();
+    expect(calls).toBe(4);
+  });
+  test('a chasing slime forgets a player it has not seen for about three seconds',()=>{
+    const h=createHarness();h.game.player.teleport(.5,60,.5);
+    const e=slime(h,2,.5,60,-8.5);e.data.chase=true;
+    for(let i=0;i<80;i++)h.entities.tick();
+    expect(e.data.chase).toBe(true);// in plain view
+    for(let y=60;y<=64;y++)for(let x=-4;x<=4;x++)h.game.world.set(x,y,-4,B.stone,'player');
+    let t=0;while(e.data.chase===true&&t<200){h.entities.tick();t++;}
+    expect(e.data.chase).toBe(false);
+    expect(t).toBeGreaterThanOrEqual(58);expect(t).toBeLessThanOrEqual(64);
+    for(let i=0;i<100;i++)h.entities.tick();
+    expect(e.data.chase).toBe(false);// cannot pick the player up again through the wall
   });
   test('small slimes, distant slimes and creative players take no contact damage',()=>{
     // Well inside the 0.6 × size reach: size 1 is still harmless.

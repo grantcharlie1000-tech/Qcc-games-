@@ -2,8 +2,8 @@ import {describe,expect,test} from 'vitest';
 import {AIR,B,blockId,isLiquid,SOLID} from '../../../src/games/blockcraft/data/blocks';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {collidesAt} from '../../../src/games/blockcraft/engine/physics';
-import {ENDERMAN_HEAD,findTeleportTarget,isHoldable,isStaredAt,stareDistance,strollTarget,teleportRandomly,tryPlaceBlock,tryTakeBlock}
-  from '../../../src/games/blockcraft/entity/monsters-enderman';
+import {ANGRY_SPEED,ENDERMAN_HEAD,WALK_SPEED,findTeleportTarget,isHoldable,isStaredAt,stareDistance,strollTarget,teleportRandomly,tryPlaceBlock,
+  tryTakeBlock} from '../../../src/games/blockcraft/entity/monsters-enderman';
 import type {Entity,PartPose} from '../../../src/games/blockcraft/engine/contracts';
 import {createHarness,lookAt,type MonsterHarness} from './monsters-fixture';
 
@@ -31,6 +31,11 @@ describe('enderman registration',()=>{
     expect(k.sounds?.name).toBe('enderman');
     expect(k.model?.parts.some(p=>p.emissive)).toBe(true);
   });
+  test('walk and chase speeds are the vanilla speed attributes 0.3 and 0.45, as steady ground speeds (moveX)',()=>{
+    // Vanilla input speed s settles at s² / (1 − 0.6 × 0.91) blocks per tick on normal ground.
+    const input=(v:number)=>Math.sqrt(v/20*(1-.6*.91));
+    expect(input(WALK_SPEED)).toBeCloseTo(.3,6);expect(input(ANGRY_SPEED)).toBeCloseTo(.45,6);
+  });
 });
 
 describe('stare detection geometry',()=>{
@@ -43,6 +48,14 @@ describe('stare detection geometry',()=>{
     for(const [x,y] of [[e.x,e.y+1.4],[e.x,e.y+.1],[e.x+.45,c.y],[e.x,e.y+e.height+.2]]){
       lookAt(h.game,x,y,e.z);expect(isStaredAt(h.game,e)).toBe(false);
     }
+  });
+  test('uses the tick position and yaw/pitch, not player.eye() or look() (they allocate every call)',()=>{
+    const h=createHarness(),e=enderman(h),c=headCentre(e);
+    lookAt(h.game,c.x,c.y,c.z);
+    const p=h.game.player;
+    p.eye=()=>{throw new Error('eye() called');};p.look=()=>{throw new Error('look() called');};
+    expect(isStaredAt(h.game,e)).toBe(true);
+    p.state.yaw+=.3;expect(isStaredAt(h.game,e)).toBe(false);
   });
   test('blocks between the eyes and the head stop the stare; plants and water do not',()=>{
     const h=createHarness(),e=enderman(h),c=headCentre(e);
@@ -128,6 +141,72 @@ describe('anger',()=>{
     expect(e.data.angry).toBe(false);
     for(let i=0;i<800;i++)h.entities.tick();
     expect(e.data.anger).toBe(0);
+  });
+});
+
+describe('calming down',()=>{
+  /** An enderman angered by a player hit, chasing the player (who looks away) for a few ticks. */
+  function chasing(h:MonsterHarness):Entity{
+    const e=enderman(h,.5,60,-6.5);
+    h.game.player.teleport(.5,60,.5);h.game.player.state.yaw=Math.PI;
+    h.entities.damage(e,1,{kind:'player',byPlayer:true});
+    for(let i=0;i<5;i++)h.entities.tick();
+    expect(e.data.angry).toBe(true);expect(Math.hypot(e.moveX,e.moveZ)).toBeGreaterThan(5);
+    return e;
+  }
+  test.each(['creative','dead','far'] as const)('it stops running when its anger ends (player %s)',how=>{
+    const h=createHarness(),e=chasing(h);
+    if(how==='creative')h.game.setMode('creative');
+    else if(how==='dead')(h.game.survival as {dead:boolean}).dead=true;
+    else h.game.player.teleport(.5,60,70.5);// beyond 64 blocks
+    h.entities.tick();
+    expect(e.data.angry).toBe(false);
+    expect(e.moveX).toBe(0);expect(e.moveZ).toBe(0);
+  });
+});
+
+describe('keeping out of water (vanilla endermen never path into water)',()=>{
+  /** Ticks with a crude stand-in for physics: moves the body by its intent (blocks/second), 20 ticks per second. */
+  function walk(h:MonsterHarness,e:Entity,ticks:number,each:()=>void){
+    for(let i=0;i<ticks;i++){h.entities.tick();e.x+=e.moveX/20;e.z+=e.moveZ/20;each();}
+  }
+  const overWater=(h:MonsterHarness,e:Entity)=>isLiquid(Math.max(0,h.game.world.get(Math.floor(e.x),Math.floor(e.y)-1,Math.floor(e.z))));
+  test('a calm enderman on an island never strolls into the moat around it',()=>{
+    const h=createHarness({seed:5}),e=enderman(h,.5,60,.5);
+    fill(h,-4,59,-4,4,59,4,B.water);fill(h,-1,59,-1,1,59,1,B.stone);// a 3x3 island in a 3-wide moat
+    h.game.player.teleport(30.5,60,30.5);h.game.player.state.pitch=-1.5;
+    let moving=0;
+    walk(h,e,560,()=>{expect(overWater(h,e)).toBe(false);if(Math.hypot(e.moveX,e.moveZ)>1)moving++;});
+    expect(h.navigations.length).toBeGreaterThan(0);expect(moving).toBeGreaterThan(0);
+  });
+  test('a stroll is dropped when no path is found',()=>{
+    const h=createHarness(),e=enderman(h,.5,60,.5);
+    h.game.player.teleport(30.5,60,30.5);h.game.player.state.pitch=-1.5;
+    const ai=h.entities.ai,navigate=ai.navigate;let calls=0;
+    // Like the real navigate: steers straight toward the goal when the search fails, and says so.
+    ai.navigate=(en,x,y,z,speed)=>{calls++;navigate.call(ai,en,x,y,z,speed);return false;};
+    let moving=0;
+    for(let i=0;i<590;i++){h.entities.tick();if(e.moveX||e.moveZ)moving++;}
+    expect(calls).toBeGreaterThan(0);expect(moving).toBe(0);
+  });
+  test('an angry enderman stops at the water\'s edge instead of wading after the player',()=>{
+    const h=createHarness(),e=enderman(h,.5,60,-9.5);
+    fill(h,-6,59,-6,6,59,-4,B.water);// a 3-wide channel between them
+    h.game.player.teleport(.5,60,.5);h.game.player.state.yaw=Math.PI;// looking away (south)
+    h.entities.damage(e,1,{kind:'player',byPlayer:true});
+    walk(h,e,60,()=>expect(overWater(h,e)).toBe(false));
+    expect(e.data.angry).toBe(true);
+    expect(e.z).toBeGreaterThan(-7);// it walked up to the edge
+    expect(e.moveX).toBe(0);expect(e.moveZ).toBe(0);
+  });
+  test('it still walks out once it is in water',()=>{
+    const h=createHarness(),e=enderman(h,.5,60,-9.5);
+    fill(h,-6,59,-12,6,59,-4,B.water);
+    h.game.player.teleport(.5,60,.5);h.game.player.state.yaw=Math.PI;
+    h.entities.damage(e,1,{kind:'player',byPlayer:true});
+    e.hurtTime=0;e.inWater=true;h.queueRandom(.99);// no teleport out of the water this tick
+    h.entities.tick();
+    expect(e.moveZ).toBeGreaterThan(5);
   });
 });
 

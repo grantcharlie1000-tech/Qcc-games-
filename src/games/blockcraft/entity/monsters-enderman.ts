@@ -5,7 +5,8 @@
 //    a player who looks away;
 //  - teleports at random in bright daylight under the open sky, when hurt by the environment (water and rain hurt it) and
 //    always dodges projectiles (its hurt hook cancels them), only onto safe dry ground (findTeleportTarget);
-//  - strolls calmly to dry spots only (vanilla WaterAvoidingRandomStrollGoal) and looks at players within 8 blocks;
+//  - strolls calmly to dry spots only (vanilla WaterAvoidingRandomStrollGoal), never walks into water or lava (vanilla water
+//    path malus -1: it stops at the edge, strolling or chasing), and looks at players within 8 blocks;
 //  - picks up and puts down earth, sand, gravel, clay, plants, cacti, pumpkins, melons and TNT (data.carried holds the BlockId);
 //  - drops 0–1 ender pearl (and its carried block) and gives 5 xp.
 import {AIR,B,COLLISION_BOXES,FULL_CUBE,LIQUID,SOLID,blockId,type BlockId} from '../data/blocks';
@@ -15,7 +16,7 @@ import {CH} from '../engine/constants';
 import {boxCollides,rayBox,raycast} from '../engine/physics';
 import {canSurvive} from '../engine/support';
 import type {BlockSource,DamageSource,Entity,EntityKind,Game,ParticleOptions,Vec3} from '../engine/contracts';
-import {gameRandom,meleeSource,noise,playerDistanceSq,playerTargetable,randInt,uniformCount} from './monsters-common';
+import {gameRandom,groundSpeed,meleeSource,noise,playerDistanceSq,playerTargetable,randInt,uniformCount} from './monsters-common';
 import {ENDERMAN_HEAD_PX,createEndermanModel} from './monsters-models';
 
 export const ENDERMAN_WIDTH=.6,ENDERMAN_HEIGHT=2.9,ENDERMAN_HEALTH=40,ENDERMAN_DAMAGE=7,ENDERMAN_XP=5;
@@ -23,8 +24,8 @@ export const ENDERMAN_WIDTH=.6,ENDERMAN_HEIGHT=2.9,ENDERMAN_HEALTH=40,ENDERMAN_D
 export const ENDERMAN_EYE=2.55;
 /** Head box in blocks above the feet (horizontal half size `half`), matching the model's head cube. */
 export const ENDERMAN_HEAD={bottom:ENDERMAN_HEAD_PX.bottom/16,top:ENDERMAN_HEAD_PX.top/16,half:.25} as const;
-/** Movement: vanilla speed attribute 0.3 calm and 0.45 angry, about 3.9 and 8.7 blocks/second on the ground. */
-export const WALK_SPEED=3.9,ANGRY_SPEED=8.7;
+/** Movement intents (steady ground speeds): vanilla speed attribute 0.3 calm and 0.45 angry, about 4.0 and 8.9 blocks/second. */
+export const WALK_SPEED=groundSpeed(.3),ANGRY_SPEED=groundSpeed(.45);
 export const STARE_RANGE=64;
 /** Ticks of continuous staring before it turns angry (vanilla aggro delay). */
 export const STARE_DELAY=5;
@@ -75,13 +76,17 @@ export function stareDistance(world:BlockSource,eye:Vec3,look:Vec3,e:Entity):num
   if(t<0||t>STARE_RANGE)return -1;
   return raycast(world,eye.x,eye.y,eye.z,look.x,look.y,look.z,t,seeThrough)?-1:t;
 }
-/** Is the player looking at this enderman's head right now? A cheap view-cone test runs before the exact ray. */
+const EYE:Vec3={x:0,y:0,z:0},LOOK:Vec3={x:0,y:0,z:0};
+/** Is the player looking at this enderman's head right now? A cheap view-cone test runs before the exact ray. Uses the
+ *  tick position and yaw/pitch in scratch vectors (player.eye() and look() allocate, and eye() is frame-interpolated). */
 export function isStaredAt(game:Game,e:Entity):boolean{
   const p=game.player.state,cp=Math.cos(p.pitch),lx=-Math.sin(p.yaw)*cp,ly=Math.sin(p.pitch),lz=-Math.cos(p.yaw)*cp;
-  const dx=e.x-p.x,dy=e.y+(ENDERMAN_HEAD.bottom+ENDERMAN_HEAD.top)/2-p.y-game.player.eyeHeight(),dz=e.z-p.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+  const eyeY=p.y+game.player.eyeHeight();
+  const dx=e.x-p.x,dy=e.y+(ENDERMAN_HEAD.bottom+ENDERMAN_HEAD.top)/2-eyeY,dz=e.z-p.z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);
   if(d>STARE_RANGE+1)return false;
   if(d>2&&dx*lx+dy*ly+dz*lz<d*.8)return false;
-  return stareDistance(game.world,game.player.eye(),game.player.look(),e)>=0;
+  EYE.x=p.x;EYE.y=eyeY;EYE.z=p.z;LOOK.x=lx;LOOK.y=ly;LOOK.z=lz;
+  return stareDistance(game.world,EYE,LOOK,e)>=0;
 }
 
 // ---- Teleporting --------------------------------------------------------------------------------
@@ -191,6 +196,30 @@ function dryStandable(game:Game,e:Entity,x:number,y:number,z:number):boolean{
   if(boxCollides(w,x+.5-hw,y,z+.5-hw,x+.5+hw,y+e.height,z+.5+hw))return false;
   return game.entities.ai.isSafe(x+.5,y,z+.5,e.width,e.height);
 }
+/** Would its movement intent take it into a liquid next: does the next cell along moveX/moveZ hold water or lava anywhere
+ *  from its head height down to the first floor (up to 4 blocks below the feet)? Vanilla endermen treat water as
+ *  impassable (path malus -1), but the shared path-finder only makes it costlier. Never true once it is in a liquid
+ *  already, so it can walk out. */
+export function liquidAhead(game:Game,e:Entity):boolean{
+  const speed=Math.hypot(e.moveX,e.moveZ);
+  if(!(speed>1e-6)||e.inWater||e.inLava)return false;
+  const reach=e.width/2+.35,x=Math.floor(e.x+e.moveX/speed*reach),z=Math.floor(e.z+e.moveZ/speed*reach);
+  if(x===Math.floor(e.x)&&z===Math.floor(e.z))return false;
+  const w=game.world,y=Math.floor(e.y+.01);
+  for(let dy=Math.ceil(e.height);dy>=-4;dy--){
+    const id=w.get(x,y+dy,z);
+    if(id<0)continue;
+    if(LIQUID[id])return true;
+    if(dy<=0&&SOLID[id]===1)return false;
+  }
+  return false;
+}
+/** Holds still this tick instead of stepping into a liquid; true when it had to. */
+function holdAtLiquid(game:Game,e:Entity):boolean{
+  if(!liquidAhead(game,e))return false;
+  e.moveX=e.moveZ=0;e.jump=false;
+  return true;
+}
 const STROLL_CHANCE=1/120,STROLL_TIMEOUT=400;
 /** Vanilla WaterAvoidingRandomStrollGoal target: the darkest of ten random dry standable spots within 10 blocks
  *  horizontally and 7 vertically (monsters prefer darkness), each column searched 3 blocks up and down; null if none. */
@@ -211,20 +240,29 @@ export function strollTarget(game:Game,e:Entity,random:()=>number=gameRandom(gam
 }
 interface Stroll{x:number;y:number;z:number;ticks:number}
 const STROLLS=new WeakMap<Entity,Stroll>();
-/** Calm wandering: now and then walks (path-finding) to a dry stroll target; gives up after 20 s or on reaching it. */
+/** Ends a stroll and stands still. */
+function endStroll(e:Entity,game:Game){STROLLS.delete(e);game.entities.ai.stop(e);}
+/** Follows the stroll path one tick; ends the stroll when no path is found (as the shared wander does) or the next step is
+ *  into a liquid. */
+function strollStep(e:Entity,game:Game,s:Stroll){
+  if(!game.entities.ai.navigate(e,s.x,s.y,s.z,WALK_SPEED)||liquidAhead(game,e))endStroll(e,game);
+}
+/** Calm wandering: now and then walks (path-finding) to a dry stroll target; gives up after 20 s, on reaching it, when no
+ *  path is found, or at the edge of water or lava. */
 function stroll(e:Entity,game:Game,random:()=>number){
-  const ai=game.entities.ai,s=STROLLS.get(e);
+  const s=STROLLS.get(e);
   if(s){
     const arrived=Math.hypot(s.x-e.x,s.z-e.z)<.9&&Math.abs(s.y-e.y)<1.5;
-    if(arrived||++s.ticks>STROLL_TIMEOUT){STROLLS.delete(e);ai.stop(e);}
-    else ai.navigate(e,s.x,s.y,s.z,WALK_SPEED);
+    if(arrived||++s.ticks>STROLL_TIMEOUT)endStroll(e,game);
+    else strollStep(e,game,s);
     return;
   }
   if(random()>=STROLL_CHANCE)return;
   const t=strollTarget(game,e,random);
   if(!t)return;
-  STROLLS.set(e,{x:t.x,y:t.y,z:t.z,ticks:0});
-  ai.navigate(e,t.x,t.y,t.z,WALK_SPEED);
+  const next:Stroll={x:t.x,y:t.y,z:t.z,ticks:0};
+  STROLLS.set(e,next);
+  strollStep(e,game,next);
 }
 
 // ---- Behaviour ----------------------------------------------------------------------------------
@@ -238,22 +276,26 @@ function rainedOn(game:Game,e:Entity):boolean{
   const x=Math.floor(e.x),z=Math.floor(e.z);
   return game.weather.isRainingOn(x,Math.floor(e.y),z)||game.weather.isRainingOn(x,Math.floor(e.y+e.height),z);
 }
-function setAngry(e:Entity,on:boolean){
+/** Starts or ends hostility. Calming down also stops the chase: the movement intent would otherwise persist (the entity
+ *  service keeps moveX/moveZ until the AI changes them) and carry it on at chase speed with no hazard checks. */
+function setAngry(e:Entity,game:Game,on:boolean){
   const d=data(e);
   if(on===d.angry)return;
   d.angry=on;d.since=on?0:e.age;d.tp=0;
-  if(!on)d.stare=0;
+  if(!on){d.stare=0;endStroll(e,game);}
 }
 /** Turns it hostile toward the player (scream on the first provocation) with fresh persistent anger. */
 export function provoke(e:Entity,game:Game){
   const d=data(e),fresh=!d.angry;
-  setAngry(e,true);
+  setAngry(e,game,true);
   d.anger=ANGER_MIN+randInt(gameRandom(game),ANGER_SPREAD);d.stare=0;
   if(fresh)game.sounds.play('mob:enderman:ambient',{x:e.x,y:e.y+ENDERMAN_EYE,z:e.z},{volume:2,pitch:1.4});
 }
 function chase(e:Entity,game:Game,distSq:number){
   const d=data(e),p=game.player.state,ai=game.entities.ai;
   ai.navigate(e,p.x,p.y,p.z,ANGRY_SPEED);
+  // Stops at the edge of water or lava (keeping its path, so it does not re-plan every tick).
+  holdAtLiquid(game,e);
   if(distSq<=ATTACK_REACH_SQ&&d.cooldown===0&&ai.canSee(e,p.x,p.y+game.player.eyeHeight(),p.z)){
     d.cooldown=ATTACK_COOLDOWN;d.swing=10;
     game.survival.damage(ENDERMAN_DAMAGE,meleeSource(e,game));
@@ -272,10 +314,10 @@ export function tickEnderman(e:Entity,game:Game){
   d.since=Math.min(d.since+1,1e6);
   if(d.cooldown>0)d.cooldown--;
   if(d.swing>0)d.swing--;
-  if(game.survival.dead){d.anger=0;setAngry(e,false);}
+  if(game.survival.dead){d.anger=0;setAngry(e,game,false);}
   const targetable=playerTargetable(game)&&distSq<=STARE_RANGE*STARE_RANGE;
-  if(d.angry&&!targetable)setAngry(e,false);
-  else if(!d.angry&&d.anger>0){d.anger--;if(targetable&&r()<.1)setAngry(e,true);}
+  if(d.angry&&!targetable)setAngry(e,game,false);
+  else if(!d.angry&&d.anger>0){d.anger--;if(targetable&&r()<.1)setAngry(e,game,true);}
   const stared=targetable&&isStaredAt(game,e);
   const eyeY=p.y+game.player.eyeHeight();
   if(!d.angry){
@@ -307,7 +349,7 @@ export function tickEnderman(e:Entity,game:Game){
   // Bright daylight under the open sky: now and then it gives up its target and teleports.
   if(game.time.skyDarkening<4&&d.since>=DAY_TELEPORT_AFTER){
     const bx=Math.floor(e.x),bz=Math.floor(e.z),f=magic(game.world.brightnessAt(bx,Math.floor(e.y+ENDERMAN_EYE),bz));
-    if(f>.5&&game.world.lightAt(bx,Math.floor(e.y),bz)>>4===15&&r()*30<(f-.4)*2){setAngry(e,false);teleportRandomly(game,e);}
+    if(f>.5&&game.world.lightAt(bx,Math.floor(e.y),bz)>>4===15&&r()*30<(f-.4)*2){setAngry(e,game,false);teleportRandomly(game,e);}
   }
 }
 

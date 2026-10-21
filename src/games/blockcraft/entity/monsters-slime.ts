@@ -7,7 +7,7 @@ import {BIOMES,biomeDef} from '../data/biomes';
 import {stack,type ItemStack} from '../data/items';
 import {CS} from '../engine/constants';
 import type {Entity,EntityKind,Game,ParticleOptions} from '../engine/contracts';
-import {gameRandom,hashInts,meleeSource,noise,playerTargetable,randInt,uniformCount} from './monsters-common';
+import {gameRandom,groundSpeed,hashInts,meleeSource,noise,playerTargetable,randInt,uniformCount} from './monsters-common';
 import {createSlimeModel} from './monsters-models';
 
 export const SLIME_SIZES=[1,2,4] as const;
@@ -15,9 +15,15 @@ export type SlimeSize=typeof SLIME_SIZES[number];
 export const isSlimeSize=(v:unknown):v is SlimeSize=>v===1||v===2||v===4;
 /** Box edge per size unit (vanilla 2.04 × 0.255). */
 export const SLIME_UNIT=.52;
-/** Average horizontal speed while airborne, blocks/second (vanilla speed 0.2 + 0.1 × size over a hop). */
-export const slimeHopSpeed=(size:number)=>size>=4?3.4:size>=2?1.8:1.2;
+/** Hop movement intent: the steady ground speed (moveX, blocks/second) of vanilla speed attribute 0.2 + 0.1 × size, about
+ *  4.0 / 7.0 / 15.9. The entity framework turns it back into input speed 0.3 / 0.4 / 0.6, so a hop covers about 0.74 / 1.18 /
+ *  2.37 blocks as in vanilla (one tick of ground acceleration, then 0.02 × speed per tick in the air). */
+export const slimeHopSpeed=(size:number)=>groundSpeed(.2+.1*size);
 const FOLLOW_SQ=16*16,FOLLOW_DY=4;
+/** Vanilla target memory: a chasing slime forgets a player unseen for 60 ticks (checked every other tick, as vanilla). */
+const UNSEEN_LIMIT=60;
+/** Ticks between contact hits: the player's invulnerability frames refuse anything sooner. */
+const CONTACT_COOLDOWN=10;
 /** Biomes where slimes also spawn on the surface (vanilla `allows_surface_slime_spawns`). */
 export const SURFACE_SLIME_BIOMES:ReadonlySet<string>=new Set(['swamp']);
 /** Vanilla moon brightness per phase (phase 0 = full moon on day 1). */
@@ -36,6 +42,10 @@ export interface SlimeData{
   air:boolean;
   /** Hopping after the player. */
   chase:boolean;
+  /** Ticks the chased player has been out of sight. */
+  unseen:number;
+  /** Ticks before the next contact hit can land. */
+  hit:number;
 }
 const data=(e:Entity)=>e.data as unknown as SlimeData;
 
@@ -89,8 +99,14 @@ export function tickSlime(e:Entity,game:Game){
   const d=data(e),r=gameRandom(game),ai=game.entities.ai,p=game.player.state,size=d.size;
   const dx=p.x-e.x,dy=p.y-e.y,dz=p.z-e.z,distSq=dx*dx+dy*dy+dz*dz,eyeY=p.y+game.player.eyeHeight();
   const targetable=playerTargetable(game);
-  if(d.chase){if(!targetable||distSq>FOLLOW_SQ)d.chase=false;}
-  else if(targetable&&distSq<=FOLLOW_SQ&&Math.abs(dy)<=FOLLOW_DY&&r()<.1&&ai.canSee(e,p.x,eyeY,p.z))d.chase=true;
+  if(d.hit>0)d.hit--;
+  if(d.chase){
+    if(!targetable||distSq>FOLLOW_SQ)d.chase=false;
+    else if(((e.age+e.id)&1)===0){
+      if(ai.canSee(e,p.x,eyeY,p.z))d.unseen=0;
+      else if((d.unseen+=2)>UNSEEN_LIMIT)d.chase=false;
+    }
+  }else if(targetable&&distSq<=FOLLOW_SQ&&Math.abs(dy)<=FOLLOW_DY&&r()<.1&&ai.canSee(e,p.x,eyeY,p.z)){d.chase=true;d.unseen=0;}
   if(d.chase){d.dir=Math.atan2(-dx,-dz);ai.lookAt(e,p.x,eyeY,p.z);}
   else if(--d.turn<=0){d.turn=40+randInt(r,60);d.dir=randInt(r,360)*Math.PI/180;}
   if((e.inWater||e.inLava)&&r()<.8)e.jump=true;
@@ -108,8 +124,10 @@ export function tickSlime(e:Entity,game:Game){
       e.jump=true;e.moveX=fx;e.moveZ=fz;d.air=true;
     }else{e.moveX=0;e.moveZ=0;}
   }else{e.moveX=fx;e.moveZ=fz;d.air=true;}
-  // Contact damage (sizes 2 and 4): within 0.6 × size of the player's feet, touching and with a line of sight.
-  if(size>1&&targetable&&distSq<.36*size*size&&touchesPlayer(e,game)&&ai.canSee(e,p.x,eyeY,p.z))game.survival.damage(size,meleeSource(e,game));
+  // Contact damage (sizes 2 and 4): within 0.6 × size of the player's feet, touching and with a line of sight. The damage
+  // source is built only when a hit can land; a refused hit (another attacker's invulnerability frames) is retried next tick.
+  if(size>1&&d.hit===0&&targetable&&distSq<.36*size*size&&touchesPlayer(e,game)&&ai.canSee(e,p.x,eyeY,p.z))
+    d.hit=game.survival.damage(size,meleeSource(e,game))>0?CONTACT_COOLDOWN:0;
 }
 
 const int=(v:unknown,min:number,max:number)=>typeof v==='number'&&Number.isInteger(v)&&v>=min&&v<=max;
@@ -135,7 +153,7 @@ export function createSlimeKind():EntityKind{
       if(!int(d.jump,0,30))d.jump=randInt(r,20)+10;
       if(typeof d.dir!=='number'||!Number.isFinite(d.dir))d.dir=e.yaw;
       if(!int(d.turn,0,100))d.turn=0;
-      d.air=false;d.chase=false;
+      d.air=false;d.chase=false;d.unseen=0;d.hit=0;
     },
     tick:tickSlime,
     drops(e,game){
