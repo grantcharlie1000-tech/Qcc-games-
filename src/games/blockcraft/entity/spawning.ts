@@ -5,7 +5,7 @@
 //    mycelium, podzol, sand, snow for the biomes that list such animals), brightness ≥ 9, weighted by the biome's
 //    `animals` unless a kind lists `spawn.biomes`. Cap 20 within 128 blocks of the player.
 //  - Monsters (spawn.light 'dark'): every tick a few random positions (random column of a lit chunk, random height up to
-//    the surface) start up to three packs of the kind's group size, walking ±5 blocks; 24 to 128 blocks from the player,
+//    the surface) start up to three packs of the kind's group size, walking ±5 blocks; 24 to 64 blocks from the player,
 //    on an opaque floor (not bedrock) with room for the box, vanilla darkness (sky light ≤ random 0..31, block light 0,
 //    brightness ≤ random 0..7). Weights from spawn.weight (default 100), `biomes` restrict and weigh, `replaces` takes
 //    its weight from the kind it replaces in its biomes (husk for zombie in deserts, stray for skeleton in snowy biomes).
@@ -21,10 +21,10 @@ import {collidesAt} from '../engine/physics';
 import type {Entity,EntityCategory,EntityKind,Game,SpawnReason} from '../engine/contracts';
 
 export const PASSIVE_CAP=20,HOSTILE_CAP=40,WATER_CAP=8;
-/** Horizontal radius around the player in which caps count mobs and spawns may happen. */
+/** Horizontal radius around the player in which caps count mobs. */
 export const SPAWN_RADIUS=128;
-/** No natural spawns closer than this to the player (vanilla 24). */
-export const MIN_SPAWN_DISTANCE=24;
+/** Natural spawns happen between these distances from the player (vanilla minimum 24; the brief's 64 keeps them in view). */
+export const MIN_SPAWN_DISTANCE=24,MAX_SPAWN_DISTANCE=64;
 export const DESPAWN_FAR=128,DESPAWN_NEAR=32;
 /** Vanilla creature spawn probability per chunk generation pack. */
 export const CREATURE_PROBABILITY=.1;
@@ -39,6 +39,15 @@ const BEDROCK=blockId('bedrock');
 const ANIMAL_GROUND=new Uint8Array(256);
 for(const n of ['grass_block','mycelium','podzol','coarse_dirt','sand','red_sand','snow_block','moss_block'])ANIMAL_GROUND[BLOCK_BY_NAME.get(n)!.id]=1;
 
+/** The aquatic kind that replaces `kind` in water in this biome (drowned for zombie), if any. */
+export function waterSubstitute(kinds:readonly EntityKind[],kind:EntityKind,biome:BiomeDef):EntityKind|null{
+  for(const k of kinds){
+    const s=k.spawn;
+    if(!k.aquatic||!s||s.light!=='dark'||s.replaces!==kind.kind)continue;
+    if(!s.biomes||s.biomes.some(b=>b[0]===biome.name&&b[1]>0))return k;
+  }
+  return null;
+}
 /** Weighted kinds that may spawn in a biome for a spawn light. Pure: depends only on the kinds and the biome. */
 export function spawnWeights(kinds:readonly EntityKind[],biome:BiomeDef,light:Light):[EntityKind,number][]{
   const out:[EntityKind,number][]=[];
@@ -52,9 +61,10 @@ export function spawnWeights(kinds:readonly EntityKind[],biome:BiomeDef,light:Li
     else w=biome.name==='mushroom_fields'?0:s.weight??100;
     if(w>0)out.push([k,w]);
   }
-  // Replacements take their weight from the kind they replace (vanilla: husk 80 + zombie 19 in deserts).
+  // Replacements take their weight from the kind they replace (vanilla: husk 80 + zombie 19 in deserts). Aquatic
+  // replacements (drowned for zombie) instead take over its spawns at water positions (see waterSubstitute).
   for(const [k,w] of out){
-    const r=k.spawn?.replaces;if(!r||!k.spawn?.biomes)continue;
+    const r=k.spawn?.replaces;if(!r||!k.spawn?.biomes||k.aquatic)continue;
     const target=out.find(o=>o[0].kind===r);if(target)target[1]=Math.max(0,target[1]-w);
   }
   return out.filter(o=>o[1]>0);
@@ -147,17 +157,19 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
       for(let t=0;t<tries;t++){
         x+=rand(6)-rand(6);z+=rand(6)-rand(6);
         const {d2,h}=playerDistance(x+.5,y,z+.5);
-        if(d2<=MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE||h>SPAWN_RADIUS||!game.world.isLoaded(x,z))continue;
+        if(d2<=MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE||h>MAX_SPAWN_DISTANCE||!game.world.isLoaded(x,z))continue;
         if(!kind){
           kind=pick(biomeDef(game.world.biomeAt(x,z)),light);
           if(!kind)break;
           tries=groupSize(kind);
         }
-        if(!canSpawn(kind,light,x,y,z))continue;
-        const e=host.spawn(kind.kind,x+.5,y,z+.5,{reason:'natural',yaw:game.random()*Math.PI*2});
+        let member=kind;
+        if(light==='dark'&&!kind.aquatic&&isWater(game.world.get(x,y,z)))member=waterSubstitute(host.kinds(),kind,biomeDef(game.world.biomeAt(x,z)))??kind;
+        if(!canSpawn(member,light,x,y,z))continue;
+        const e=host.spawn(member.kind,x+.5,y,z+.5,{reason:'natural',yaw:game.random()*Math.PI*2});
         if(!e)continue;
         total++;spawned++;
-        if(total>=CLUSTER||full(kind.category))return;
+        if(total>=CLUSTER||full(member.category))return;
         if(spawned>=tries)break;
       }
     }
@@ -165,7 +177,7 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
   function randomChunk():number{return keys.length?keys[rand(keys.length)]:NaN;}
   function chunkInRange(key:number){
     const p=game.player.state,x=keyX(key)*CS+8,z=keyZ(key)*CS+8;
-    return Math.hypot(x-p.x,z-p.z)<=SPAWN_RADIUS+12;
+    return Math.hypot(x-p.x,z-p.z)<=MAX_SPAWN_DISTANCE+12;
   }
   function hostileAttempt(){
     const key=randomChunk();if(Number.isNaN(key)||!chunkInRange(key))return;
@@ -192,7 +204,7 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
       const y=surfaceY(x,z);
       if(y>0){
         const {d2,h}=playerDistance(x+.5,y,z+.5);
-        if(d2>MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE&&h<=SPAWN_RADIUS&&game.world.brightnessAt(x,y,z)>8&&canSpawn(kind,'grass',x,y,z)){
+        if(d2>MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE&&h<=MAX_SPAWN_DISTANCE&&game.world.brightnessAt(x,y,z)>8&&canSpawn(kind,'grass',x,y,z)){
           host.spawn(kind.kind,x+.5,y,z+.5,{reason:'natural',yaw:game.random()*Math.PI*2});
           if(full('passive'))return;
         }

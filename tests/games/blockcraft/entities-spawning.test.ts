@@ -40,7 +40,7 @@ describe('passive spawning',()=>{
 });
 
 describe('hostile spawning',()=>{
-  test('monsters spawn in darkness on opaque ground, 24 to 128 blocks from the player',()=>{
+  test('monsters spawn in darkness on opaque ground, 24 to 64 blocks from the player',()=>{
     const h=harness({kinds:[zombie],r:4,light:0,spawning:true});
     const spawned=record(h);
     h.tick(600);
@@ -48,7 +48,7 @@ describe('hostile spawning',()=>{
     expect(natural.length).toBeGreaterThan(0);
     const p=h.game.player.state;
     for(const {e} of natural){
-      expect(Math.hypot(e.x-p.x,e.y-p.y,e.z-p.z)).toBeGreaterThan(24);
+      expect(Math.hypot(e.x-p.x,e.y-p.y,e.z-p.z)).toBeGreaterThan(24);expect(Math.hypot(e.x-p.x,e.z-p.z)).toBeLessThanOrEqual(64);
       expect(e.y).toBe(60);expect(h.game.world.get(Math.floor(e.x),59,Math.floor(e.z))).toBe(B.stone);
     }
     expect(h.game.entities.count('hostile')).toBeLessThanOrEqual(HOSTILE_CAP);
@@ -87,6 +87,18 @@ describe('hostile spawning',()=>{
     h.tick(600);expect(mid.removed).toBe(false);
     h.tick(6000);
     expect(mid.removed).toBe(true);expect(near.removed).toBe(false);expect(animal.removed).toBe(false);
+  });
+});
+
+describe('aquatic monsters',()=>{
+  test('an aquatic kind that replaces another spawns in its place in water, keeping land weights',()=>{
+    const drowned=monster({kind:'drowned',aquatic:true,spawn:{light:'dark',group:[1,2],weight:100,biomes:[['river',100]],replaces:'zombie'}});
+    expect(spawnWeights([zombie,drowned],BIOME_BY_NAME.get('river')!,'dark').map(([k,n])=>[k.kind,n])).toEqual([['zombie',100],['drowned',100]]);
+    const h=harness({kinds:[zombie,drowned],r:4,height:50,layers:[[B.water,50,58]],biome:'river',light:0,spawning:true});
+    h.tick(900);
+    const list=h.game.entities.all().filter(e=>e.category==='hostile');
+    expect(list.length).toBeGreaterThan(0);
+    for(const e of list){expect(e.kind).toBe('drowned');expect(h.game.world.get(Math.floor(e.x),Math.floor(e.y),Math.floor(e.z))).toBe(B.water);}
   });
 });
 
