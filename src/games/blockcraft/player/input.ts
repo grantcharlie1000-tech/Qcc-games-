@@ -1,111 +1,179 @@
-// STUB input (owned by the player & controls agent). Keyboard, mouse with pointer lock (or drag to
-// look), wheel/digit hotbar and a touch stick, look-drag, tap/hold and jump button.
+// Input service. Every device feeds one ControlState (controls-core.ts): the keyboard with Java Edition defaults
+// (controls-bindings.ts), the mouse with pointer lock (or drag-to-look when the lock is unavailable), the wheel,
+// Bedrock-style touch controls (controls-touch.ts, with look-drag, tap to use and hold to mine on the canvas) and
+// the Gamepad API (controls-gamepad.ts). It handles the hotbar keys, the wheel and the F1/F3 root flags itself;
+// every other action has one consumer that reads pressed()/down(). It never binds Escape and never takes keys
+// from text fields or open dialogs.
 import './touch.css';
-import type {Game,InputAction,InputBinding,InputService} from '../engine/contracts';
+import {ROOT_FLAGS} from '../engine/constants';
+import type {Game,InputService} from '../engine/contracts';
+import {BINDINGS,MOUSE_ACTIONS} from './controls-bindings';
+import {ControlState,type InputPhase} from './controls-core';
+import {LookGesture,type PointerKind} from './controls-gesture';
+import {PAD,PadMapper,readPad,type PadFrame} from './controls-gamepad';
+import {createTouchControls,type TouchControls,type TouchRing} from './controls-touch';
 
-const KEYS:Record<string,InputAction>={KeyW:'forward',ArrowUp:'forward',KeyS:'back',ArrowDown:'back',KeyA:'left',ArrowLeft:'left',KeyD:'right',ArrowRight:'right',
-  Space:'jump',ShiftLeft:'sneak',ShiftRight:'sneak',KeyR:'sprint',KeyQ:'drop',KeyF:'swapHands',KeyE:'inventory',KeyL:'advancements'};
-const LABELS:Record<InputAction,string>={forward:'Walk forward',back:'Walk backward',left:'Strafe left',right:'Strafe right',jump:'Jump / swim up',
-  sneak:'Sneak',sprint:'Sprint',attack:'Attack / mine',use:'Use item / place block',pick:'Pick block',drop:'Drop item',dropStack:'Drop stack',
-  swapHands:'Swap item with offhand',inventory:'Inventory',advancements:'Advancements'};
-const BINDINGS:InputBinding[]=(Object.keys(LABELS) as InputAction[]).map(action=>({action,label:LABELS[action],
-  keys:[...Object.entries(KEYS).filter(([,a])=>a===action).map(([k])=>k),...(action==='attack'?['Mouse0']:action==='use'?['Mouse2']:action==='pick'?['Mouse1']:[])]}));
+/** Radians per mouse pixel at sensitivity 1: Java Edition's default 0.15° per pixel. */
+export const MOUSE_RADIANS_PER_PX=.15*Math.PI/180;
+/** Radians per touch pixel at sensitivity 1 (a 360 px drag turns about 120°). */
+export const TOUCH_RADIANS_PER_PX=.0058;
+/** Larger pointer-lock jumps are browser glitches (the first event after locking can carry a huge delta). */
+const MAX_MOUSE_JUMP=400;
+const TEXT_ENTRY='input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"],[role="combobox"],[role="searchbox"]';
 
 export function createInput(game:Game):InputService{
-  const canvas=game.canvas,abort=new AbortController(),signal=abort.signal;
-  const touch=matchMedia('(pointer: coarse)').matches;
-  const held=new Set<InputAction>(),edges=new Set<InputAction>();
-  let captured=false,stick={x:0,y:0},lastForward=0;
-  const running=()=>game.state==='playing';
-  function press(action:InputAction){if(!held.has(action))edges.add(action);held.add(action);}
-  function release(action:InputAction){held.delete(action);}
-  const typing=(e:Event)=>e.target instanceof HTMLElement&&e.target.matches('input,textarea,select,[contenteditable=true]');
-  window.addEventListener('keydown',e=>{
-    if(typing(e)||document.querySelector('dialog[open]')||e.ctrlKey||e.metaKey||e.altKey)return;
-    if(game.state!=='playing'&&game.state!=='screen')return;
-    if(/^Digit[1-9]$/.test(e.code)&&game.state==='playing'){game.inventory.select(Number(e.code.slice(5))-1);e.preventDefault();return;}
-    const action=KEYS[e.code];if(!action)return;
-    if(game.state==='screen'&&action!=='inventory')return;
-    e.preventDefault();if(e.repeat&&held.has(action))return;
-    // Double-tap forward to sprint.
-    if(action==='forward'&&!e.repeat){const now=performance.now();if(now-lastForward<300)press('sprint');lastForward=now;}
-    press(action);
-  },{signal});
-  window.addEventListener('keyup',e=>{const action=KEYS[e.code];if(action){release(action);if(action==='forward')release('sprint');}},{signal});
-  window.addEventListener('blur',()=>service.clear(),{signal});
-  document.addEventListener('pointerlockchange',()=>{captured=document.pointerLockElement===canvas;game.events.emit('stateChanged',{from:game.state,to:game.state});},{signal});
-  document.addEventListener('mousemove',e=>{if(captured&&running())game.player.rotate(-e.movementX*.0022*game.settings.sensitivity,-e.movementY*.0022*game.settings.sensitivity);},{signal});
-  canvas.addEventListener('contextmenu',e=>e.preventDefault(),{signal});
-  // Without pointer lock (or on touch): drag looks, a short tap attacks, a hold uses.
-  let drag:{id:number;x:number;y:number;sx:number;sy:number;t:number;moved:boolean;button:number;timer:number}|null=null;
-  canvas.addEventListener('pointerdown',e=>{
-    if(!running())return;e.preventDefault();canvas.focus({preventScroll:true});
-    if(captured){press(e.button===0?'attack':e.button===2?'use':'pick');return;}
-    if(drag)return;
-    drag={id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,t:performance.now(),moved:false,button:e.button,timer:0};
-    canvas.setPointerCapture(e.pointerId);
-    if(e.pointerType!=='mouse'){const d=drag;d.timer=window.setTimeout(()=>{if(drag===d&&!d.moved)press('attack');},300);}
-    else if(!touch)service.capture();
-  },{signal});
-  canvas.addEventListener('pointermove',e=>{
-    if(!drag||drag.id!==e.pointerId||!running())return;
-    const k=(e.pointerType==='mouse'?.005:.006)*game.settings.sensitivity;game.player.rotate(-(e.clientX-drag.x)*k,-(e.clientY-drag.y)*k);drag.x=e.clientX;drag.y=e.clientY;
-    if(!drag.moved&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>8){drag.moved=true;clearTimeout(drag.timer);}
-  },{signal});
-  function endDrag(e:PointerEvent,cancel:boolean){
-    if(!drag||drag.id!==e.pointerId)return;const d=drag;drag=null;clearTimeout(d.timer);
-    if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
-    if(held.has('attack')){release('attack');return;}
-    if(!cancel&&!d.moved&&performance.now()-d.t<300&&running()){
-      // Tap: attack/mine once with a mouse click, place/use with a touch tap (Bedrock style).
-      const action:InputAction=e.pointerType==='mouse'?(d.button===2?'use':'attack'):'use';
-      press(action);setTimeout(()=>release(action),60);
+  const canvas=game.canvas,controls=new ControlState(),gesture=new LookGesture(),pad=new PadMapper();
+  const padFrame:PadFrame={connected:false,moveX:0,moveY:0,lookX:0,lookY:0,buttons:[]};
+  const abort=new AbortController(),signal=abort.signal;
+  const coarse=typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches;
+  let touchMode=coarse,lockFailures=0,padsKnown=0,padMenuA=false,padMenuStart=false,padStarting=false;
+  let gestureKind:PointerKind='touch',touchUI:TouchControls|null=null,offState:(()=>void)|null=null;
+  const ring:TouchRing={x:0,y:0,progress:0};
+
+  const phase=():InputPhase=>game.state==='playing'?'playing':game.state==='screen'?'screen':'other';
+  const locked=()=>document.pointerLockElement===canvas;
+  const lockUsable=()=>typeof canvas.requestPointerLock==='function'&&lockFailures<2;
+  /** Keys typed into text fields, open dialogs or other page controls (outside the game) are never taken. */
+  function ownsKey(e:KeyboardEvent){
+    const t=e.target;
+    if(t instanceof HTMLElement&&(t.isContentEditable||t.closest(TEXT_ENTRY)))return false;
+    if(document.querySelector('dialog[open]'))return false;
+    if(t instanceof Element&&t!==document.body&&t!==document.documentElement&&!game.root.contains(t)&&!locked())return false;
+    return true;
+  }
+  function toggleFlag(flag:keyof typeof ROOT_FLAGS){
+    const d=game.root.dataset,key=ROOT_FLAGS[flag];d[key]=d[key]==='true'?'':'true';
+  }
+  function setTouchMode(v:boolean){
+    if(touchMode===v)return;touchMode=v;
+    if(!v)controls.setStick(0,0);
+    refreshTouch();
+  }
+  function refreshTouch(){touchUI?.setVisible(touchMode&&game.state==='playing');}
+  function selectBy(step:number){game.inventory.select(((game.inventory.selected+step)%9+9)%9);}
+  function endGesture(e:PointerEvent,cancel:boolean){
+    const r=gesture.end(e.pointerId,performance.now(),cancel);
+    if(r.release)controls.release(r.release,'gesture');
+    if(r.tap&&phase()==='playing')controls.tap(r.tap);
+  }
+  function pollPad(dt:number){
+    const list=typeof navigator.getGamepads==='function'?navigator.getGamepads():[];
+    let found:Gamepad|null=null;
+    for(const g of list){if(!g||!g.connected)continue;if(!found||g.mapping==='standard'&&found.mapping!=='standard')found=g;}
+    readPad(found,padFrame);
+    const ph=phase(),out=pad.apply(padFrame,controls,ph,dt,game.settings.sensitivity);
+    if(out.hotbar)selectBy(out.hotbar);
+    if(out.dyaw||out.dpitch)game.player.rotate(out.dyaw,out.dpitch);
+    // Menus: A or Start plays from the start and pause menus and respawns from the death screen.
+    const a=!!padFrame.buttons[PAD.A],start=!!padFrame.buttons[PAD.START];
+    if(ph==='other'&&(a&&!padMenuA||start&&!padMenuStart)){
+      padStarting=true;
+      try{if(game.state==='dead')game.respawn();else if(game.state==='ready'||game.state==='paused')game.play();}finally{padStarting=false;}
     }
+    padMenuA=a;padMenuStart=start;
   }
-  canvas.addEventListener('pointerup',e=>endDrag(e,false),{signal});
-  canvas.addEventListener('pointercancel',e=>endDrag(e,true),{signal});
-  document.addEventListener('mouseup',e=>{if(captured)release(e.button===0?'attack':e.button===2?'use':'pick');},{signal});
-  canvas.addEventListener('wheel',e=>{if(!running())return;e.preventDefault();game.inventory.select((game.inventory.selected+(e.deltaY>0?1:-1)+9)%9);},{signal,passive:false});
-  // Touch stick and jump button live in the HUD layer; they report through these hooks.
-  const touchLayer=document.createElement('div');touchLayer.className='bc-touch';touchLayer.hidden=true;
-  touchLayer.innerHTML='<div class="bc-stick" aria-label="Movement stick"><span></span></div><button type="button" class="bc-jump" aria-label="Jump">▲</button><button type="button" class="bc-sneak" aria-label="Sneak">▼</button><button type="button" class="bc-inv" aria-label="Inventory">⋯</button>';
-  game.root.append(touchLayer);
-  const stickEl=touchLayer.querySelector<HTMLElement>('.bc-stick')!,knob=stickEl.querySelector<HTMLElement>('span')!;
-  let stickId:number|null=null;
-  stickEl.addEventListener('pointerdown',e=>{if(!running()||stickId!==null)return;e.preventDefault();stickId=e.pointerId;stickEl.setPointerCapture(e.pointerId);moveStick(e);},{signal});
-  stickEl.addEventListener('pointermove',e=>{if(e.pointerId===stickId)moveStick(e);},{signal});
-  for(const type of ['pointerup','pointercancel','lostpointercapture'])stickEl.addEventListener(type,e=>{if((e as PointerEvent).pointerId!==stickId)return;stickId=null;stick={x:0,y:0};knob.style.transform='';release('sprint');},{signal});
-  function moveStick(e:PointerEvent){
-    const box=stickEl.getBoundingClientRect(),r=box.width/2;
-    let dx=(e.clientX-box.left-r)/r,dy=(e.clientY-box.top-r)/r;const len=Math.hypot(dx,dy);if(len>1){dx/=len;dy/=len;}
-    stick={x:dx,y:-dy};knob.style.transform=`translate(${dx*r*.5}px,${dy*r*.5}px)`;
-    if(len>.95)press('sprint');else release('sprint');
-  }
-  const hold=(selector:string,action:InputAction)=>{
-    const el=touchLayer.querySelector<HTMLElement>(selector)!;
-    el.addEventListener('pointerdown',e=>{e.preventDefault();press(action);},{signal});
-    for(const type of ['pointerup','pointercancel','pointerleave'])el.addEventListener(type,()=>release(action),{signal});
-  };
-  hold('.bc-jump','jump');hold('.bc-sneak','sneak');
-  touchLayer.querySelector('.bc-inv')!.addEventListener('click',()=>press('inventory'),{signal});
-  game.events.on('stateChanged',()=>{touchLayer.hidden=!(touch&&(game.state==='playing'));});
 
   const service:InputService={
-    get captured(){return captured;},touch,
-    down:a=>held.has(a),
-    pressed(a){const had=edges.has(a);edges.delete(a);return had;},
-    move(){
-      const f=(+held.has('forward'))-(+held.has('back'))+stick.y,s=(+held.has('right'))-(+held.has('left'))+stick.x;
-      return{forward:Math.max(-1,Math.min(1,f)),strafe:Math.max(-1,Math.min(1,s))};
-    },
+    get captured(){return locked();},
+    get touch(){return touchMode;},
+    down:a=>controls.down(a),
+    pressed:a=>controls.pressed(a),
+    move:()=>controls.move(),
     capture(){
-      if(touch||captured)return;
-      try{const r=canvas.requestPointerLock() as unknown;if(r instanceof Promise)r.catch(()=>{});}catch{/* drag-to-look remains */}
+      if(touchMode||padStarting||locked()||typeof canvas.requestPointerLock!=='function')return;
+      try{const r=canvas.requestPointerLock() as unknown;if(r instanceof Promise)r.catch(()=>{/* pointerlockerror counts it */});}
+      catch{lockFailures++;}
     },
-    release(){if(document.pointerLockElement===canvas)document.exitPointerLock();},
+    release(){if(locked())document.exitPointerLock();},
+    clear(){
+      controls.clear();
+      if(gesture.active){const id=gesture.pointerId;gesture.reset();try{if(canvas.hasPointerCapture?.(id))canvas.releasePointerCapture(id);}catch{/* gone */}}
+      touchUI?.reset();
+    },
     bindings:()=>BINDINGS,
-    clear(){held.clear();edges.clear();stick={x:0,y:0};knob.style.transform='';if(drag){clearTimeout(drag.timer);drag=null;}},
-    dispose(){service.clear();abort.abort();touchLayer.remove();service.release();}
+    init(){
+      const root=game.root.dataset;root[ROOT_FLAGS.hudHidden]='';root[ROOT_FLAGS.debug]='';
+      touchUI=createTouchControls(game,controls,signal);
+      offState=game.events.on('stateChanged',refreshTouch);
+
+      // ---- Keyboard --------------------------------------------------------------------------------
+      window.addEventListener('keydown',e=>{
+        if(!ownsKey(e))return;
+        const out=controls.keyDown(e,phase(),performance.now());
+        if(!out.handled)return;
+        e.preventDefault();
+        if(out.hotbar!==undefined)game.inventory.select(out.hotbar);
+        if(out.flag)toggleFlag(out.flag);
+      },{signal});
+      window.addEventListener('keyup',e=>{if(controls.keyUp(e.code)&&phase()==='playing'&&ownsKey(e))e.preventDefault();},{signal});
+      window.addEventListener('blur',()=>service.clear(),{signal});
+      document.addEventListener('visibilitychange',()=>{if(document.hidden)service.clear();},{signal});
+
+      // ---- Mouse with pointer lock -------------------------------------------------------------------
+      document.addEventListener('pointerlockchange',()=>{if(locked())lockFailures=0;else controls.releaseAll('mouse:');},{signal});
+      document.addEventListener('pointerlockerror',()=>{lockFailures++;},{signal});
+      canvas.addEventListener('mousedown',e=>{
+        if(!locked()||phase()!=='playing')return;
+        const action=MOUSE_ACTIONS[e.button];if(!action)return;
+        e.preventDefault();controls.press(action,'mouse:'+e.button);
+      },{signal});
+      document.addEventListener('mouseup',e=>{const action=MOUSE_ACTIONS[e.button];if(action)controls.release(action,'mouse:'+e.button);},{signal});
+      document.addEventListener('mousemove',e=>{
+        if(!locked()||phase()!=='playing')return;
+        const dx=e.movementX||0,dy=e.movementY||0;if(Math.abs(dx)>MAX_MOUSE_JUMP||Math.abs(dy)>MAX_MOUSE_JUMP)return;
+        const k=MOUSE_RADIANS_PER_PX*game.settings.sensitivity;game.player.rotate(-dx*k,-dy*k);
+      },{signal});
+      canvas.addEventListener('contextmenu',e=>e.preventDefault(),{signal});
+      canvas.addEventListener('wheel',e=>{
+        if(phase()!=='playing')return;e.preventDefault();
+        const step=controls.wheel(e.deltaY,e.deltaMode,performance.now());if(step)selectBy(step);
+      },{signal,passive:false});
+
+      // ---- Pointers without the lock: touch look/tap/hold, or mouse drag-to-look ----------------------
+      canvas.addEventListener('pointerdown',e=>{
+        if(phase()!=='playing')return;
+        const kind:PointerKind=e.pointerType==='mouse'?'mouse':'touch';
+        if(kind==='mouse'){
+          setTouchMode(false);
+          if(locked())return;
+          if(lockUsable()){service.capture();return;}
+        }else setTouchMode(true);
+        if(gesture.active)return;
+        e.preventDefault();canvas.focus({preventScroll:true});
+        gestureKind=kind;gesture.begin(e.pointerId,e.clientX,e.clientY,performance.now(),kind,e.button);
+        try{canvas.setPointerCapture(e.pointerId);}catch{/* the pointer is already gone */}
+      },{signal});
+      canvas.addEventListener('pointermove',e=>{
+        const d=gesture.move(e.pointerId,e.clientX,e.clientY);if(!d||phase()!=='playing')return;
+        const k=(gestureKind==='touch'?TOUCH_RADIANS_PER_PX:MOUSE_RADIANS_PER_PX)*game.settings.sensitivity;
+        game.player.rotate(-d.dx*k,-d.dy*k);
+      },{signal});
+      canvas.addEventListener('pointerup',e=>endGesture(e,false),{signal});
+      canvas.addEventListener('pointercancel',e=>endGesture(e,true),{signal});
+      canvas.addEventListener('lostpointercapture',e=>endGesture(e,true),{signal});
+
+      // ---- Gamepads ----------------------------------------------------------------------------------
+      window.addEventListener('gamepadconnected',()=>{padsKnown++;},{signal});
+      window.addEventListener('gamepaddisconnected',()=>{
+        padsKnown=Math.max(0,padsKnown-1);
+        if(!padsKnown){controls.releaseAll('pad:');controls.setPadMove(0,0);pad.reset();padMenuA=padMenuStart=false;}
+      },{signal});
+      refreshTouch();
+    },
+    frame(dt){
+      const now=performance.now(),playing=phase()==='playing';
+      const hold=gesture.update(now);if(hold&&playing)controls.press(hold,'gesture');
+      if(padsKnown>0)pollPad(dt);
+      if(!touchUI)return;
+      let shown:TouchRing|null=null;
+      if(playing&&gesture.active&&gestureKind==='touch'){
+        const pos=gesture.position;ring.x=pos.x;ring.y=pos.y;
+        if(gesture.state==='pending'){ring.progress=gesture.progress(now);shown=ring;}
+        else if(gesture.state==='hold'){const b=game.interaction.breaking;if(b){ring.progress=b.progress;shown=ring;}}
+      }
+      touchUI.update(shown);
+    },
+    dispose(){service.clear();abort.abort();offState?.();offState=null;touchUI?.dispose();touchUI=null;service.release();}
   };
   return service;
 }
