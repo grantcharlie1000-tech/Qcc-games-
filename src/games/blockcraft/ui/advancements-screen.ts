@@ -2,12 +2,14 @@
 // three trees plus Statistics; each tree is laid out like the vanilla screen (root on the left, white connectors,
 // gold frames once earned, task/goal/challenge frame shapes) on its block background, with a vanilla-style tooltip
 // (title bar, description, progress) on hover, focus or tap. Arrow keys move along the tree; a mouse drag pans it.
+// Like vanilla, a tree shows only what the player has earned plus two levels beyond (visibleIds); a tab with nothing to
+// show is hidden, and before anything is earned the panel shows the vanilla "nothing here" message.
 import type {Game} from '../engine/contracts';
 import {iconUrl} from '../art/items';
 import {tilePixels} from '../art/atlas';
 import {TILE,familyStates} from '../data/blocks';
 import {ITEMS} from '../data/items';
-import {ADVANCEMENTS,ADVANCEMENT_BY_ID,ADVANCEMENT_TABS,layoutTab,type AdvancementTabId,type TreeCell} from './advancements-data';
+import {ADVANCEMENTS,ADVANCEMENT_BY_ID,ADVANCEMENT_TABS,layoutTab,visibleIds,type AdvancementTabId,type TreeCell} from './advancements-data';
 import {statRows,topEntries,type Statistics} from './advancements-stats';
 import type {AdvancementTracker} from './advancements-tracker';
 
@@ -22,6 +24,8 @@ export interface ScreenOptions{tracker:AdvancementTracker;game:Game;tab:ScreenTa
 /** Tree geometry in CSS pixels: frame size, column and row pitch, outer margin. */
 export const NODE=40,COLUMN=60,ROW=48,MARGIN=22;
 const LIST_LIMIT=8;
+/** The vanilla advancements screen before anything is earned (advancements.empty, advancements.sad_label). */
+export const EMPTY_LINES=["There doesn't seem to be anything here...",':('] as const;
 let uid=0;
 const titleCase=(id:string)=>id.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 const safeIcon=(id:string)=>{try{return iconUrl(id);}catch{return'';}};
@@ -50,7 +54,13 @@ const familyIcon=(family:string)=>ITEMS.has(family)?family:familyStates(family)[
 
 export function mountAdvancementsScreen(container:HTMLElement,o:ScreenOptions):MountedScreen{
   const {tracker,game}=o,id=++uid,abort=new AbortController(),signal=abort.signal;
-  let tab:ScreenTab=o.tab;
+  /** The tab last shown (remembered between openings); `shown` is what the panel shows now, null for the empty message. */
+  let tab:ScreenTab=o.tab,shown:ScreenTab|null=null;
+  let visible=visibleIds(a=>tracker.has(a));
+  const treeShows=(t:AdvancementTabId)=>visible.has(ADVANCEMENT_TABS.find(x=>x.id===t)!.root);
+  const available=(t:ScreenTab)=>t==='statistics'||treeShows(t);
+  /** The remembered tab if it has something to show, else the first tree that has; null when no tree has anything yet. */
+  const pick=():ScreenTab|null=>available(tab)?tab:ADVANCEMENT_TABS.find(t=>treeShows(t.id))?.id??null;
   const root=el('div','bc-adv');
   if(game.context.settings.colorBlind)root.classList.add('is-cb');
   const tablist=el('div','bc-adv-tabs');tablist.setAttribute('role','tablist');tablist.setAttribute('aria-label','Advancement categories');
@@ -64,25 +74,43 @@ export function mountAdvancementsScreen(container:HTMLElement,o:ScreenOptions):M
     const b=el('button','bc-adv-tab');b.type='button';b.id=`bc-adv-tab-${id}-${t.id}`;b.setAttribute('role','tab');b.setAttribute('aria-controls',panel.id);
     b.append(icon(t.icon,'bc-adv-tab-icon'),el('span','bc-adv-tab-name',t.title));
     const count=t.id==='statistics'?null:el('span','bc-adv-tab-count');if(count)b.append(count);
+    b.hidden=!available(t.id);
     b.addEventListener('click',()=>select(t.id),{signal});
     tablist.append(b);tabs.push({id:t.id,button:b,count});
   }
   tablist.addEventListener('keydown',e=>{
-    const i=tabs.findIndex(t=>t.id===tab);let next=-1;
-    if(e.key==='ArrowRight')next=(i+1)%tabs.length;else if(e.key==='ArrowLeft')next=(i+tabs.length-1)%tabs.length;
-    else if(e.key==='Home')next=0;else if(e.key==='End')next=tabs.length-1;
-    if(next<0)return;
-    e.preventDefault();e.stopPropagation();select(tabs[next].id);tabs[next].button.focus();
+    const list=tabs.filter(t=>!t.button.hidden),n=list.length,i=list.findIndex(t=>t.id===shown);let next=-1;
+    if(e.key==='ArrowRight')next=(i+1)%n;else if(e.key==='ArrowLeft')next=i<0?n-1:(i+n-1)%n;
+    else if(e.key==='Home')next=0;else if(e.key==='End')next=n-1;
+    if(next<0||!n)return;
+    e.preventDefault();e.stopPropagation();select(list[next].id);list[next].button.focus();
   },{signal});
 
   // ---- Views ----------------------------------------------------------------------------------------
   let tree:TreeView|null=null,stats:StatsView|null=null;
-  function select(next:ScreenTab){
-    tab=next;o.onTab(next);
+  function show(next:ScreenTab|null){
+    shown=next;if(next){tab=next;o.onTab(next);}
     for(const t of tabs){const on=t.id===next;t.button.setAttribute('aria-selected',String(on));t.button.tabIndex=on?0:-1;}
-    panel.setAttribute('aria-labelledby',`bc-adv-tab-${id}-${next}`);
+    if(next){panel.setAttribute('aria-labelledby',`bc-adv-tab-${id}-${next}`);panel.removeAttribute('aria-label');}
+    else{
+      panel.removeAttribute('aria-labelledby');panel.setAttribute('aria-label','Advancements');
+      const first=tabs.find(t=>!t.button.hidden);if(first)first.button.tabIndex=0;
+    }
     tree?.dispose();stats?.dispose();tree=stats=null;panel.textContent='';
-    if(next==='statistics')stats=new StatsView(panel,tracker);else tree=new TreeView(panel,tracker,next);
+    if(next==='statistics')stats=new StatsView(panel,tracker);
+    else if(next)tree=new TreeView(panel,tracker,next,visible);
+    else{const empty=el('div','bc-adv-empty');for(const line of EMPTY_LINES)empty.append(el('p','bc-adv-empty-line',line));panel.append(empty);}
+  }
+  function select(next:ScreenTab){show(next);counts();}
+  /** After advancements change: show newly visible nodes and tabs (rebuilding the open tree), or just restyle it. */
+  function reveal(){
+    const next=visibleIds(a=>tracker.has(a)),changed=next.size!==visible.size||[...next].some(a=>!visible.has(a));
+    visible=next;
+    for(const t of tabs)t.button.hidden=!available(t.id);
+    const want=pick();
+    if(want!==shown)show(want);
+    else if(changed&&tree&&!tree.matches(visible)){const view=tree.view();show(shown);tree?.restoreView(view);}
+    else{tree?.refresh();stats?.refresh();}
     counts();
   }
   function counts(){
@@ -95,10 +123,10 @@ export function mountAdvancementsScreen(container:HTMLElement,o:ScreenOptions):M
     }
     summary.textContent=`${made} of ${all} advancements made`;
   }
-  select(tab);
+  show(pick());counts();
   return{
     refresh(what){
-      if(what==='tree'){counts();tree?.refresh();stats?.refresh();}
+      if(what==='tree')reveal();
       else stats?.refresh();
     },
     unmount(){abort.abort();tree?.dispose();stats?.dispose();root.remove();}
@@ -110,11 +138,13 @@ class TreeView{
   private readonly scroller:HTMLElement;private readonly stage:HTMLElement;private readonly tip:HTMLElement;
   private readonly cells:TreeCell[];private readonly nodes=new Map<string,HTMLButtonElement>();
   private readonly abort=new AbortController();
+  /** Ids laid out, in layout order (to tell whether a new visible set changes this tree). */
+  private readonly ids:string;
   private tipFor:string|null=null;private drag:{id:number;x:number;y:number;moved:boolean}|null=null;
-  constructor(panel:HTMLElement,private readonly tracker:AdvancementTracker,tabId:AdvancementTabId){
+  constructor(panel:HTMLElement,private readonly tracker:AdvancementTracker,private readonly tabId:AdvancementTabId,visible:ReadonlySet<string>){
     const signal=this.abort.signal,tabDef=ADVANCEMENT_TABS.find(t=>t.id===tabId)!;
-    this.cells=layoutTab(tabId);
-    const cols=Math.max(...this.cells.map(c=>c.x))+1,rows=Math.max(...this.cells.map(c=>c.y))+1;
+    this.cells=layoutTab(tabId,visible);this.ids=this.cells.map(c=>c.def.id).join();
+    const cols=Math.max(0,...this.cells.map(c=>c.x))+1,rows=Math.max(0,...this.cells.map(c=>c.y))+1;
     const w=MARGIN*2+(cols-1)*COLUMN+NODE,h=MARGIN*2+(rows-1)*ROW+NODE;
     this.scroller=el('div','bc-adv-tree');this.scroller.dataset.tab=tabId;
     const canvas=el('div','bc-adv-canvas');
@@ -137,10 +167,23 @@ class TreeView{
     this.stage.addEventListener('keydown',e=>this.key(e),{signal});
     this.scroller.addEventListener('pointerdown',e=>this.pointerDown(e),{signal});
     this.scroller.addEventListener('pointermove',e=>this.pointerMove(e),{signal});
-    for(const type of ['pointerup','pointercancel'] as const)this.scroller.addEventListener(type,e=>{if(this.drag?.id===e.pointerId)this.drag=null;},{signal});
+    for(const type of ['pointerup','pointercancel'] as const)this.scroller.addEventListener(type,e=>{
+      if(this.drag?.id===e.pointerId){this.drag=null;this.scroller.classList.remove('is-panning');}
+    },{signal});
     this.refresh();
   }
   private px(v:number,pitch:number){return Math.round(MARGIN+v*pitch);}
+  /** True when this tree already shows exactly the visible part of its tab. */
+  matches(visible:ReadonlySet<string>){return layoutTab(this.tabId,visible).map(c=>c.def.id).join()===this.ids;}
+  /** Focused node and scroll position, carried over when the tree is rebuilt with more nodes. */
+  view(){
+    const a=document.activeElement as HTMLElement|null;
+    return{focus:a&&this.stage.contains(a)?a.dataset.id??null:null,left:this.scroller.scrollLeft,top:this.scroller.scrollTop};
+  }
+  restoreView(v:{focus:string|null;left:number;top:number}){
+    this.scroller.scrollLeft=v.left;this.scroller.scrollTop=v.top;
+    if(v.focus)this.nodes.get(v.focus)?.focus({preventScroll:true});
+  }
   /** Vanilla connectors: from the parent's centre right to the middle of the gap, down/up to the child's row, then into the child. */
   private lines(w:number,h:number){
     const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');

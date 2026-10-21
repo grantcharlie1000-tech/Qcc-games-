@@ -20,6 +20,7 @@
 .bc-adv-tabs{display:flex;flex-wrap:wrap;gap:4px}
 .bc-adv-tab{display:flex;align-items:center;gap:5px;min-height:30px;padding:0 9px 0 6px;border:0;border-radius:3px;background:#a2a2a2;color:#2b2b2b;
   font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:inset 1px 1px #d8d8d8,inset -1px -1px #555}
+.bc-adv-tab[hidden]{display:none}
 .bc-adv-tab[aria-selected="true"]{background:#e6e6e6;box-shadow:inset 1px 1px #fff,inset -1px -1px #8b8b8b,0 0 0 2px #373737}
 @media (hover:hover){.bc-adv-tab:not([aria-selected="true"]):hover{background:#b6b6b6}}
 .bc-adv-tab:focus-visible,.bc-adv-node:focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px #1d4fa3}
@@ -28,6 +29,10 @@
 @container (max-width:520px){.bc-adv-tab:not([aria-selected="true"]) .bc-adv-tab-name{display:none}}
 .bc-adv-panel{flex:1;min-height:0;display:flex;flex-direction:column}
 .bc-adv-summary{margin:0;font-size:12px;color:#3f3f3f}
+/* Nothing earned yet: the vanilla black panel with "There doesn't seem to be anything here..." and ":(" in white. */
+.bc-adv-empty{flex:1;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;
+  border-radius:2px;background:#000;box-shadow:inset 0 0 0 2px #373737;color:#fff;text-align:center;text-shadow:1px 1px 0 #3f3f3f}
+.bc-adv-empty-line{margin:0;font-size:13px}
 
 /* ---- Tree ------------------------------------------------------------------------------------------------------ */
 .bc-adv-tree{position:relative;flex:1;min-height:160px;overflow:auto;border-radius:2px;background:#2a2a2a;cursor:grab;

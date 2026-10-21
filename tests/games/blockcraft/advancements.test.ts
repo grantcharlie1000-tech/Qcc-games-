@@ -1,7 +1,7 @@
 import {describe,expect,test,beforeEach} from 'vitest';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import {createAdvancements,type AdvancementsController} from '../../../src/games/blockcraft/ui/advancements';
-import {ADVANCEMENTS,ADVANCEMENT_BY_ID,ADVANCEMENT_TABS,BALANCED_DIET_FOODS,HUNTED_MOBS,BREEDABLE_ANIMALS,treeOrder,layoutTab}
+import {ADVANCEMENTS,ADVANCEMENT_BY_ID,ADVANCEMENT_TABS,BALANCED_DIET_FOODS,HUNTED_MOBS,BREEDABLE_ANIMALS,treeOrder,layoutTab,visibleIds}
   from '../../../src/games/blockcraft/ui/advancements-data';
 import {ToastQueue,TOAST_LIFE_MS,TOAST_SLIDE_MS,type ToastView} from '../../../src/games/blockcraft/ui/advancements-toasts';
 import {formatDistance,formatTime,statRows} from '../../../src/games/blockcraft/ui/advancements-stats';
@@ -80,6 +80,40 @@ describe('advancement tree',()=>{
         if(parent)expect(c.x).toBe(parent.x+1);else expect(c.x).toBe(0);
       }
     }
+  });
+});
+
+describe('visibility (vanilla AdvancementVisibilityEvaluator)',()=>{
+  beforeEach(setup);
+  const visible=()=>visibleIds(id=>adv.has(id));
+  test('a fresh world shows nothing',()=>{
+    expect(visible().size).toBe(0);
+    for(const tab of ADVANCEMENT_TABS)expect(layoutTab(tab.id,visible())).toEqual([]);
+  });
+  test('an earned advancement reveals its children and grandchildren, not further',()=>{
+    adv.grant('minecraft');
+    expect([...visible()].sort()).toEqual(['benchmarking','getting_an_upgrade','getting_wood','into_the_deep','minecraft','stone_age']);
+    adv.grant('husbandry');// Husbandry is two levels deep: all of it shows
+    expect(ADVANCEMENTS.filter(a=>a.tab==='husbandry').every(a=>visible().has(a.id))).toBe(true);
+  });
+  test('an earned advancement reveals its ancestors, but not their other children',()=>{
+    adv.grant('diamonds');
+    expect([...visible()].sort()).toEqual(['acquire_hardware','cover_me_with_diamonds','diamonds','getting_an_upgrade','isnt_it_iron_pick',
+      'minecraft','stone_age']);
+    expect(visible().has('suit_up')).toBe(false);expect(visible().has('adventure')).toBe(false);
+  });
+  test('the visible part of a tab lays out as a tree of its own, rooted at the tab root',()=>{
+    adv.grant('minecraft');adv.grant('husbandry');
+    const v=visible(),cells=layoutTab('minecraft',v);
+    expect(cells.map(c=>c.def.id).sort()).toEqual([...v].filter(id=>ADVANCEMENT_BY_ID.get(id)!.tab==='minecraft').sort());
+    expect(cells.map(c=>c.def.id)).not.toContain('acquire_hardware');expect(cells.map(c=>c.def.id)).toContain('into_the_deep');
+    expect(cells[0].def.id).toBe('minecraft');
+    for(const c of cells){
+      const parent=c.def.parent?cells.find(p=>p.def.id===c.def.parent):undefined;
+      if(c.def.parent)expect(parent,c.def.id).toBeDefined();
+      if(parent)expect(c.x).toBe(parent.x+1);
+    }
+    expect(Math.max(...cells.map(c=>c.y))+1).toBe(cells.filter(c=>!cells.some(k=>k.def.parent===c.def.id)).length);
   });
 });
 
@@ -201,7 +235,10 @@ describe('toasts',()=>{
     adv.frame?.(.016);
     expect(adv.toasts.visible.map(t=>t.def.id)).toEqual(['minecraft']);
     expect(game.sounds.played.filter(s=>s.name==='toast')).toHaveLength(1);
-    for(let t=0;t<(TOAST_LIFE_MS+TOAST_SLIDE_MS)/100+1;t++)adv.frame?.(.1);
+    const gone=TOAST_SLIDE_MS+TOAST_LIFE_MS+TOAST_SLIDE_MS;// vanilla: 0.6 s in, 5 s fully shown, 0.6 s out
+    for(let t=0;t<(gone-200)/100;t++)adv.frame?.(.1);
+    expect(adv.toasts.visible).toHaveLength(1);
+    for(let t=0;t<3;t++)adv.frame?.(.1);
     expect(adv.toasts.visible).toHaveLength(0);
     expect(game.sounds.played.filter(s=>s.name==='toast')).toHaveLength(1);
   });
@@ -211,9 +248,29 @@ describe('toasts',()=>{
     for(const id of ['minecraft','stone_age','diamonds'])q.push(ADVANCEMENT_BY_ID.get(id)!);
     q.update(16,view,false);
     expect(shown).toEqual([['minecraft','stone_age']]);expect(q.visible.map(t=>t.slot)).toEqual([0,1]);
-    q.update(TOAST_LIFE_MS+TOAST_SLIDE_MS,view,false);
+    q.update(TOAST_SLIDE_MS+TOAST_LIFE_MS+TOAST_SLIDE_MS,view,false);
     q.update(16,view,false);
     expect(shown[1]).toEqual(['diamonds']);expect(q.visible[0].slot).toBe(0);
+  });
+  test('vanilla timing: the 5 s display starts once the 600 ms slide-in ends, then a 600 ms slide-out',()=>{
+    expect([TOAST_SLIDE_MS,TOAST_LIFE_MS]).toEqual([600,5000]);
+    const slides:number[]=[],view:ToastView={capacity:()=>5,show(){},place(_t,s){slides.push(s);},hide(){}};
+    const q=new ToastQueue(()=>{});q.push(ADVANCEMENT_BY_ID.get('minecraft')!);
+    q.update(0,view,false);q.update(5590,view,false);expect(slides.at(-1)).toBe(1);
+    q.update(310,view,false);expect(slides.at(-1)).toBeGreaterThan(0);expect(slides.at(-1)).toBeLessThan(1);expect(q.visible).toHaveLength(1);
+    q.update(299,view,false);expect(q.visible).toHaveLength(1);
+    q.update(1,view,false);expect(q.visible).toHaveLength(0);
+    const r=new ToastQueue(()=>{});r.push(ADVANCEMENT_BY_ID.get('minecraft')!);
+    r.update(0,view,true);r.update(5599,view,true);expect(r.visible).toHaveLength(1);
+    r.update(1,view,true);expect(r.visible).toHaveLength(0);// reduced motion: in place for the same 5.6 s
+  });
+  test('the layout height is read only when a toast waits for a slot',()=>{
+    let reads=0;const view:ToastView={capacity:()=>{reads++;return 5;},show(){},place(){},hide(){}};
+    const q=new ToastQueue(()=>{});q.push(ADVANCEMENT_BY_ID.get('minecraft')!);
+    q.update(16,view,false);expect(reads).toBe(1);expect(q.visible).toHaveLength(1);
+    for(let i=0;i<50;i++)q.update(16,view,false);
+    expect(reads).toBe(1);
+    q.push(ADVANCEMENT_BY_ID.get('stone_age')!);q.update(16,view,false);expect(reads).toBe(2);expect(q.visible).toHaveLength(2);
   });
   test('slide in and out eases over 600 ms, or not at all with reduced motion',()=>{
     const slides:number[]=[],view:ToastView={capacity:()=>5,show(){},place(_t,s){slides.push(s);},hide(){}};
@@ -258,16 +315,55 @@ describe('statistics',()=>{
     p.x+=3;tick();expect(adv.statistics().walk).toBe(300);
     p.sprinting=true;p.z+=4;tick();expect(adv.statistics().sprint).toBe(400);p.sprinting=false;
     p.sneaking=true;p.x+=.5;tick();expect(adv.statistics().crouch).toBe(50);p.sneaking=false;
-    p.onGround=false;p.inWater=true;p.x+=1;p.y-=1;tick();expect(adv.statistics().swim).toBe(141);p.inWater=false;
+    p.onGround=false;p.inWater=p.headInWater=p.swimming=true;p.x+=1;p.y-=1;tick();expect(adv.statistics().swim).toBe(141);
+    p.inWater=p.headInWater=p.swimming=false;
     p.flying=true;p.x+=2;p.y+=5;tick();expect(adv.statistics().fly).toBe(200);p.flying=false;
     p.fallDistance=4.5;p.y-=4.5;tick();p.onGround=true;p.fallDistance=0;tick();expect(adv.statistics().fall).toBe(450);
     p.x+=500;tick();expect(adv.statistics().walk).toBe(300);// teleports are not walking
   });
-  test('days survived count living time including slept nights; a death resets them',()=>{
-    tick(24000);expect(adv.statistics().daysSurvived).toBe(1);
-    game.events.emit('timeSkipped',{from:13000,to:0});expect(adv.statistics().sinceDeath).toBe(24000+11000);
-    game.events.emit('playerDied',{message:'x'});expect(adv.statistics().daysSurvived).toBe(0);
-    expect(adv.statistics().playTime).toBe(24000);
+  test('vanilla movement branches: wading and walking under water, ladders, slow airborne drift',()=>{
+    const p=game.player.state;p.onGround=true;tick();
+    p.inWater=true;p.x+=3;p.y+=.2;tick();
+    let s=adv.statistics();expect([s.walk,s.swim,s.walkOnWater,s.walkUnderWater]).toEqual([0,0,300,0]);
+    p.headInWater=true;p.x+=1;p.y-=1;tick();
+    s=adv.statistics();expect([s.walk,s.swim,s.walkOnWater,s.walkUnderWater]).toEqual([0,0,300,141]);
+    p.inWater=p.headInWater=false;p.onLadder=true;p.x+=.5;tick();p.y+=2;tick();p.y-=1;tick();
+    s=adv.statistics();expect([s.climb,s.walk,s.fly]).toEqual([200,0,0]);p.onLadder=false;
+    p.onGround=false;for(let i=0;i<20;i++){p.x+=.1;tick();}
+    expect(adv.statistics().fly).toBe(0);// vanilla counts airborne travel only above 25 cm a tick
+    p.flying=true;for(let i=0;i<20;i++){p.x+=.1;tick();}expect(adv.statistics().fly).toBe(0);
+    p.x+=.3;tick();expect(adv.statistics().fly).toBe(30);
+    const labels=statRows(adv.statistics()).map(r=>r.label);
+    expect(labels).toContain('Distance Walked on Water');expect(labels).toContain('Distance Walked under Water');
+  });
+  test('falls do not count for players who can fly (creative)',()=>{
+    const p=game.player.state;game.settings.mode='creative';p.onGround=false;tick();
+    p.fallDistance=6;p.y-=6;tick();p.onGround=true;p.fallDistance=0;tick();expect(adv.statistics().fall).toBe(0);
+    game.settings.mode='survival';p.onGround=false;tick();p.fallDistance=3;p.y-=3;tick();p.onGround=true;p.fallDistance=0;tick();
+    expect(adv.statistics().fall).toBe(300);
+  });
+  test('Damage Dealt counts the player\'s melee hits on mobs, up to the health the mob had',()=>{
+    const tnt:DamageSource={kind:'explosion',byPlayer:true};
+    const arrow:DamageSource={kind:'projectile',byPlayer:true,projectile:mob('arrow','projectile')};
+    game.events.emit('entityDamaged',{entity:mob('item','item'),amount:57,source:tnt});
+    game.events.emit('entityDamaged',{entity:mob('xp_orb','xp'),amount:57,source:tnt});
+    game.events.emit('entityDamaged',{entity:mob('item','item'),amount:2,source:arrow});
+    expect(adv.statistics().damageDealt).toBe(0);expect(adv.has('take_aim')).toBe(false);
+    game.events.emit('entityDamaged',{entity:{...mob('pig','passive'),health:4},amount:6,source:arrow});
+    expect(adv.statistics().damageDealt).toBe(0);expect(adv.has('take_aim')).toBe(true);
+    game.events.emit('entityDamaged',{entity:{...mob('zombie'),health:-3},amount:7,source:melee});// 4 health left before the hit
+    expect(adv.statistics().damageDealt).toBe(40);
+    const creeper=mob('creeper');game.events.emit('entityDamaged',{entity:creeper,amount:57,source:tnt});
+    game.events.emit('entityDied',{entity:creeper,source:fall});// TNT the player lit still credits the kill
+    expect(adv.statistics().kills).toBe(1);expect(adv.statistics().damageDealt).toBe(40);
+  });
+  test('days survived include slept nights; time since last death counts only played ticks; a death resets both',()=>{
+    tick(14000);expect(adv.statistics().daysSurvived).toBe(0);
+    game.events.emit('timeSkipped',{from:13000,to:0});
+    expect(adv.statistics().daysSurvived).toBe(1);expect(adv.statistics().sinceDeath).toBe(14000);
+    game.events.emit('playerDied',{message:'x'});
+    expect(adv.statistics().daysSurvived).toBe(0);expect(adv.statistics().sinceDeath).toBe(0);
+    expect(adv.statistics().playTime).toBe(14000);
   });
   test('formatting like the vanilla statistics screen',()=>{
     expect(formatDistance(30)).toBe('30 cm');expect(formatDistance(1234)).toBe('12.34 m');expect(formatDistance(123456)).toBe('1.23 km');
@@ -309,6 +405,11 @@ describe('persistence',()=>{
     let xp=0;game.survival.addXp=p=>{xp+=p;};
     adv.reset?.();adv.restore?.({v:1,progress:{monsters_hunted:[...HUNTED_MOBS]}});
     expect(adv.has('monsters_hunted')).toBe(true);expect(adv.toasts.waiting).toHaveLength(0);expect(xp).toBe(0);
+  });
+  test('a save without the survived counter keeps its days survived',()=>{
+    adv.reset?.();adv.restore?.({v:1,stats:{sinceDeath:30000}});
+    expect(adv.statistics().daysSurvived).toBe(1);expect(adv.statistics().sinceDeath).toBe(30000);
+    adv.reset?.();adv.restore?.({v:1,stats:{sinceDeath:30000,survived:50000}});expect(adv.statistics().daysSurvived).toBe(2);
   });
   test('reset clears everything',()=>{
     give('diamond');game.events.emit('playerDied',{message:'x'});

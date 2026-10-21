@@ -135,19 +135,35 @@ export function treeOrder(tab:AdvancementTabId):AdvancementDef[]{
   if(start)walk(start);
   return out;
 }
+/** Vanilla AdvancementVisibilityEvaluator (none of these advancements is hidden): an advancement shows once it or one of
+ *  its descendants is earned, or its parent or grandparent is. The set is closed under parents, so each tab's visible part
+ *  is a tree rooted at the tab root; a tab whose root is not visible has nothing to show. */
+export function visibleIds(isDone:(id:string)=>boolean):Set<string>{
+  const out=new Set<string>();
+  const walk=(a:AdvancementDef,parentDone:boolean,grandparentDone:boolean):boolean=>{
+    const done=isDone(a.id);let subtreeDone=done;
+    for(const c of childrenOf(a.id))if(walk(c,done,parentDone))subtreeDone=true;
+    if(subtreeDone||parentDone||grandparentDone)out.add(a.id);
+    return subtreeDone;
+  };
+  for(const t of ADVANCEMENT_TABS){const root=ADVANCEMENT_BY_ID.get(t.root);if(root)walk(root,false,false);}
+  return out;
+}
 export interface TreeCell{def:AdvancementDef;
   /** Column (depth from the root) and row (leaves stack downward; a parent sits midway between its first and last child). */
   x:number;y:number}
-/** Tidy-tree layout of a tab, roots on the left like the vanilla screen. Rows are in node units (may be halves). */
-export function layoutTab(tab:AdvancementTabId):TreeCell[]{
+/** Tidy-tree layout of a tab, roots on the left like the vanilla screen. Rows are in node units (may be halves).
+ *  With `visible`, only those advancements are laid out (like vanilla, which lays out what the player can see). */
+export function layoutTab(tab:AdvancementTabId,visible?:ReadonlySet<string>):TreeCell[]{
   const cells:TreeCell[]=[];let row=0;
+  const shows=(a:AdvancementDef)=>!visible||visible.has(a.id);
   const place=(a:AdvancementDef,depth:number):TreeCell=>{
     const cell:TreeCell={def:a,x:depth,y:0};cells.push(cell);
-    const kids=childrenOf(a.id).map(c=>place(c,depth+1));
+    const kids=childrenOf(a.id).filter(shows).map(c=>place(c,depth+1));
     cell.y=kids.length?(kids[0].y+kids[kids.length-1].y)/2:row++;
     return cell;
   };
   const root=ADVANCEMENT_TABS.find(t=>t.id===tab)?.root,start=root?ADVANCEMENT_BY_ID.get(root):undefined;
-  if(start)place(start,0);
+  if(start&&shows(start))place(start,0);
   return cells;
 }

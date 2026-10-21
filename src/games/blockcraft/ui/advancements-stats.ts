@@ -1,9 +1,11 @@
 // Statistics (DOM-free): counters kept by the advancement tracker and the vanilla Java statistics formatting.
 import {DAY_TICKS} from '../engine/constants';
 
-/** Plain counters. Distances are centimetres, times ticks and damage tenths of a health point, like vanilla. */
-export const COUNTER_KEYS=['playTime','sinceDeath','walk','sprint','crouch','swim','climb','fall','fly','mined','placed','crafted','eaten',
-  'kills','bred','slept','damageDealt','damageTaken','deaths'] as const;
+/** Plain counters. Distances are centimetres, times ticks and damage tenths of a health point, like vanilla.
+ *  sinceDeath counts played ticks only (vanilla Time Since Last Death); survived also adds the nights skipped by sleeping
+ *  and drives Days Survived. */
+export const COUNTER_KEYS=['playTime','sinceDeath','survived','walk','sprint','crouch','walkOnWater','walkUnderWater','swim','climb','fall','fly',
+  'mined','placed','crafted','eaten','kills','bred','slept','damageDealt','damageTaken','deaths'] as const;
 export type CounterKey=typeof COUNTER_KEYS[number];
 export type Counters=Record<CounterKey,number>;
 export interface Statistics extends Counters{
@@ -15,7 +17,7 @@ export interface Statistics extends Counters{
 export function createCounters():Counters{
   const c={} as Counters;for(const k of COUNTER_KEYS)c[k]=0;return c;
 }
-export const daysSurvived=(sinceDeath:number)=>Math.floor(sinceDeath/DAY_TICKS);
+export const daysSurvived=(survivedTicks:number)=>Math.floor(survivedTicks/DAY_TICKS);
 
 /** Java's "########0.00" decimal format. */
 const decimal=(v:number)=>(Math.round(v*100)/100).toFixed(2);
@@ -42,7 +44,8 @@ export function statRows(s:Readonly<Statistics>):StatRow[]{
     ['daysSurvived','Days Survived',count(s.daysSurvived)],['playTime','Play Time',formatTime(s.playTime)],
     ['sinceDeath','Time Since Last Death',formatTime(s.sinceDeath)],
     ['walk','Distance Walked',formatDistance(s.walk)],['sprint','Distance Sprinted',formatDistance(s.sprint)],
-    ['crouch','Distance Crouched',formatDistance(s.crouch)],['swim','Distance Swum',formatDistance(s.swim)],
+    ['crouch','Distance Crouched',formatDistance(s.crouch)],['walkOnWater','Distance Walked on Water',formatDistance(s.walkOnWater)],
+    ['walkUnderWater','Distance Walked under Water',formatDistance(s.walkUnderWater)],['swim','Distance Swum',formatDistance(s.swim)],
     ['climb','Distance Climbed',formatDistance(s.climb)],['fall','Distance Fallen',formatDistance(s.fall)],
     ['fly','Distance Flown',formatDistance(s.fly)],
     ['mined','Blocks Mined',count(s.mined)],['placed','Blocks Placed',count(s.placed)],['crafted','Items Crafted',count(s.crafted)],

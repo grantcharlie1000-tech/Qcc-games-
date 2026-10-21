@@ -1,6 +1,7 @@
 // Advancement toasts in the top-right zone, like the vanilla ToastComponent: each toast slides in from the right
-// (600 ms), stays until 5 s after it appeared, slides out (600 ms) and frees its slot; waiting toasts take the lowest
-// free slot, so on-screen toasts never jump. ToastQueue is DOM-free (timing, slots); ToastLayer draws it.
+// (600 ms), is fully shown for 5 s from the end of the slide-in, slides out (600 ms, gone 6.2 s after it appeared) and
+// frees its slot; waiting toasts take the lowest free slot, so on-screen toasts never jump. With reduced motion a toast
+// shows in place for the same 5.6 s. ToastQueue is DOM-free (timing, slots); ToastLayer draws it.
 import {iconUrl} from '../art/items';
 import type {AdvancementDef,AdvancementFrame} from './advancements-data';
 
@@ -21,11 +22,15 @@ export interface ToastView{
   hide(toast:ToastEntry):void;
 }
 const easeOut=(t:number)=>1-(1-t)**3,easeIn=(t:number)=>t*t*t;
+/** Age at which the slide-out starts: the 5 s display timer runs from the end of the slide-in (vanilla). */
+const TOAST_HOLD_MS=TOAST_SLIDE_MS+TOAST_LIFE_MS;
+/** Milliseconds from appearing to leaving the screen. */
+export const toastDuration=(reducedMotion:boolean)=>TOAST_HOLD_MS+(reducedMotion?0:TOAST_SLIDE_MS);
 /** Slide position of a toast of this age; reduced motion shows it in place for its whole life. */
 export function toastSlide(age:number,reducedMotion:boolean){
   if(reducedMotion)return 1;
   if(age<TOAST_SLIDE_MS)return easeOut(Math.max(0,age)/TOAST_SLIDE_MS);
-  if(age>TOAST_LIFE_MS)return 1-easeIn(Math.min(1,(age-TOAST_LIFE_MS)/TOAST_SLIDE_MS));
+  if(age>TOAST_HOLD_MS)return 1-easeIn(Math.min(1,(age-TOAST_HOLD_MS)/TOAST_SLIDE_MS));
   return 1;
 }
 export class ToastQueue{
@@ -35,19 +40,22 @@ export class ToastQueue{
   get idle(){return!this.waiting.length&&!this.visible.length;}
   push(def:AdvancementDef){this.waiting.push(def);}
   update(dtMs:number,view:ToastView|null,reducedMotion:boolean){
-    const end=TOAST_LIFE_MS+(reducedMotion?0:TOAST_SLIDE_MS);
+    const end=toastDuration(reducedMotion);
     for(let i=this.visible.length-1;i>=0;i--){
       const t=this.visible[i];t.age+=dtMs;
       if(t.age>=end){this.visible.splice(i,1);view?.hide(t);}
     }
-    const cap=Math.max(1,Math.min(TOAST_SLOTS,view?view.capacity():TOAST_SLOTS));
-    let shown:AdvancementDef[]|null=null;
-    while(this.waiting.length&&this.visible.length<cap){
-      const slot=this.freeSlot();if(slot>=cap)break;
-      const t:ToastEntry={def:this.waiting.shift()!,slot,age:0};
-      this.visible.push(t);view?.show(t);(shown??=[]).push(t.def);
+    // The layer's capacity reads layout (clientHeight), so only ask while a toast waits for a slot.
+    if(this.waiting.length){
+      const cap=Math.max(1,Math.min(TOAST_SLOTS,view?view.capacity():TOAST_SLOTS));
+      let shown:AdvancementDef[]|null=null;
+      while(this.waiting.length&&this.visible.length<cap){
+        const slot=this.freeSlot();if(slot>=cap)break;
+        const t:ToastEntry={def:this.waiting.shift()!,slot,age:0};
+        this.visible.push(t);view?.show(t);(shown??=[]).push(t.def);
+      }
+      if(shown)this.onShow(shown);
     }
-    if(shown)this.onShow(shown);
     if(view)for(const t of this.visible)view.place(t,toastSlide(t.age,reducedMotion));
   }
   clear(view:ToastView|null){for(const t of this.visible)view?.hide(t);this.visible.length=0;this.waiting.length=0;}

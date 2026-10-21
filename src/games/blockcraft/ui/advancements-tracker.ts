@@ -81,13 +81,14 @@ export class AdvancementTracker{
       if(e.source.attacker)this.lastHurtByMob=this.game.time.tick;
     });
     on('playerDied',()=>{
-      this.counters.deaths++;this.counters.sinceDeath=0;
+      this.counters.deaths++;this.counters.sinceDeath=0;this.counters.survived=0;
       if(this.game.time.tick-this.lastHurtByMob<=PLAYER_KILL_MEMORY)this.trigger(BY_EVENT.get('killed_by_mob'));
       this.lastHurtByMob=-Infinity;this.changed();
     });
     on('playerRespawned',()=>{this.hasPrev=false;});
     on('restored',()=>{this.hasPrev=false;});
-    on('timeSkipped',e=>{if(!this.game.survival.dead)this.counters.sinceDeath+=((e.to-e.from)%DAY_TICKS+DAY_TICKS)%DAY_TICKS;});
+    // Nights slept through count for Days Survived, not for the played-time statistics.
+    on('timeSkipped',e=>{if(!this.game.survival.dead)this.counters.survived+=((e.to-e.from)%DAY_TICKS+DAY_TICKS)%DAY_TICKS;});
   }
   detach(){for(const off of this.offs)off();this.offs=[];}
 
@@ -97,7 +98,7 @@ export class AdvancementTracker{
     for(let i=0;i<inv.slots.length;i++)this.holding(inv.slots[i]);
     for(let i=0;i<inv.armor.length;i++)this.holding(inv.armor[i]);
     this.holding(inv.offhand);
-    const c=this.counters;c.playTime++;if(!this.game.survival.dead)c.sinceDeath++;
+    const c=this.counters;c.playTime++;if(!this.game.survival.dead){c.sinceDeath++;c.survived++;}
     this.travel();
     if(this.game.time.tick%200===0)for(const [id,at] of this.recentHits)if(this.game.time.tick-at>PLAYER_KILL_MEMORY)this.recentHits.delete(id);
   }
@@ -131,7 +132,7 @@ export class AdvancementTracker{
   }
   statistics():Statistics{
     return{...this.counters,minedBy:{...this.minedBy},craftedBy:{...this.craftedBy},killedBy:{...this.killedBy},
-      daysSurvived:daysSurvived(this.counters.sinceDeath)};
+      daysSurvived:daysSurvived(this.counters.survived)};
   }
 
   reset(){
@@ -155,7 +156,11 @@ export class AdvancementTracker{
       if(set.size)this.collected.set(id,set);
       if(set.size>=def.count.required)this.grant(id,true);
     }
-    if(isRecord(data.stats))for(const k of COUNTER_KEYS)if(isCount(data.stats[k]))this.counters[k]=data.stats[k] as number;
+    if(isRecord(data.stats)){
+      for(const k of COUNTER_KEYS)if(isCount(data.stats[k]))this.counters[k]=data.stats[k] as number;
+      // Saves from before the survived counter: the time since the last death is the best estimate.
+      if(!isCount(data.stats.survived))this.counters.survived=Math.max(this.counters.survived,this.counters.sinceDeath);
+    }
     this.minedBy=restoreMap(data.minedBy,validFamily);this.craftedBy=restoreMap(data.craftedBy,validItem);this.killedBy=restoreMap(data.killedBy,validMob);
     this.hasPrev=false;this.changed();
   }
@@ -179,10 +184,16 @@ export class AdvancementTracker{
     if(!ITEMS.has(stack.id)||!(stack.count>0))return;
     this.counters.crafted+=stack.count;bump(this.craftedBy,stack.id,stack.count);this.trigger(BY_CRAFTED.get(stack.id));
   }
+  /** Player-caused damage to a mob: kill credit, Take Aim and (vanilla Player.attack) Damage Dealt for melee hits only,
+   *  counting no more than the health the mob had. Items, xp orbs and other non-living entities never count. */
   private entityDamaged(entity:Entity,amount:number,source:DamageSource){
     if(!source.byPlayer&&source.kind!=='player')return;
+    if(!MOB_CATEGORIES.has(entity.category))return;
     this.recentHits.set(entity.id,this.game.time.tick);
-    if(Number.isFinite(amount)&&amount>0)this.counters.damageDealt+=Math.round(amount*10);
+    if(source.kind==='player'&&Number.isFinite(amount)&&amount>0){
+      const lost=Math.min(amount,Number.isFinite(entity.health)?Math.max(0,entity.health+amount):amount);
+      this.counters.damageDealt+=Math.round(lost*10);
+    }
     if(source.kind==='projectile'&&source.projectile?.kind==='arrow')this.trigger(BY_EVENT.get('arrow_hit'));
   }
   private entityDied(entity:Entity,source:DamageSource){
@@ -196,21 +207,24 @@ export class AdvancementTracker{
   }
   private changed(){this.hooks.changed();}
 
-  /** Vanilla movement statistics: walk/sprint/crouch on the ground, swim in water, climb ladders, fly, and fall on landing. */
+  /** Vanilla Player.checkMovementStatistics: the first matching state wins. Swimming pose → swum (3D); eyes in water →
+   *  walked under water (3D); feet in water → walked on water (horizontal); on a ladder → climbed (upward only); on the
+   *  ground → sprinted, crouched or walked (horizontal); otherwise airborne travel (creative flight, sprint jumps) above
+   *  25 cm a tick → flown. Falls of 2 blocks or more count on landing, except for players who can fly (creative). */
   private travel(){
     const p=this.game.player.state,c=this.counters;
     if(this.hasPrev){
       const dx=p.x-this.prevX,dy=p.y-this.prevY,dz=p.z-this.prevZ,h=Math.hypot(dx,dz),d=Math.hypot(dx,dy,dz);
       if(d<=TELEPORT_DISTANCE){
-        if(p.swimming||p.inWater||p.headInWater)c.swim+=cm(d);
-        else if(p.onLadder&&dy>0)c.climb+=cm(dy);
+        if(p.swimming)c.swim+=cm(d);
+        else if(p.headInWater)c.walkUnderWater+=cm(d);
+        else if(p.inWater)c.walkOnWater+=cm(h);
+        else if(p.onLadder){if(dy>0)c.climb+=cm(dy);}
         else if(p.onGround){const n=cm(h);if(p.sprinting)c.sprint+=n;else if(p.sneaking)c.crouch+=n;else c.walk+=n;}
-        else if(p.flying)c.fly+=cm(h);
-        // Vanilla counts fast airborne travel (more than 25 cm a tick, e.g. sprint jumping) as flown.
         else if(cm(h)>25)c.fly+=cm(h);
       }
     }
-    if(p.onGround){if(this.airFall>=2)c.fall+=cm(this.airFall);this.airFall=0;}
+    if(p.onGround){if(this.airFall>=2&&this.game.settings.mode!=='creative')c.fall+=cm(this.airFall);this.airFall=0;}
     else if(p.inWater||p.flying||p.onLadder)this.airFall=0;
     else this.airFall=p.fallDistance;
     this.prevX=p.x;this.prevY=p.y;this.prevZ=p.z;this.hasPrev=true;
