@@ -3,10 +3,9 @@
 // of a strike at a random column (or at a living entity under open sky within 3 blocks of it). A bolt lives 2 ticks plus 1-3 re-flashes; while visible it
 // hurts every living entity in a box 3 blocks around it (6 up) for 5 'lightning' damage and sets it on fire for
 // 8 seconds; creepers become charged, pigs are left alone, and dropped items and experience orbs burn up. Fire starts
-// at the strike on normal and hard.
-import {AIR,blockId} from '../data/blocks';
+// at the strike on normal and hard, wherever vanilla fire can stay (a sturdy top below or a flammable neighbour).
+import {AIR,BLOCKS,OPAQUE,blockId} from '../data/blocks';
 import {CS} from '../engine/constants';
-import {canSurvive} from '../engine/support';
 import type {Entity,Game,Vec3} from '../engine/contracts';
 import {isTickingChunk,precipitationHeight,TICKING_RANGE} from './weather-columns';
 
@@ -76,11 +75,29 @@ export function rollStrikeColumn(px:number,pz:number,random:()=>number):{x:numbe
   return{x:cx*CS+Math.floor(random()*CS),z:cz*CS+Math.floor(random()*CS)};
 }
 
+/** Blocks fire can burn (vanilla FireBlock odds): the registry's flammable blocks plus grass, ferns, dead bushes and flowers. */
+const BURNS=new Uint8Array(256);
+const BURNING_PLANTS=new Set(['short_grass','fern','dead_bush','dandelion','poppy','blue_orchid','allium','cornflower','oxeye_daisy']);
+/** A full top face fire can rest on: an opaque cube, or a top or double slab. */
+const STURDY=new Uint8Array(256);
+for(const d of BLOCKS){
+  BURNS[d.id]=+(d.flammable||BURNING_PLANTS.has(d.family));
+  STURDY[d.id]=+(OPAQUE[d.id]===1||d.slab==='top'||d.slab==='double');
+}
+const SIX=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]] as const;
+/** Vanilla FireBlock.canSurvive for an air cell: a sturdy block below, or a neighbour fire can burn. */
+export function fireCanStay(world:Game['world'],x:number,y:number,z:number):boolean{
+  const below=world.get(x,y-1,z);
+  if(below>0&&STURDY[below])return true;
+  for(const [dx,dy,dz] of SIX){const n=world.get(x+dx,y+dy,z+dz);if(n>0&&BURNS[n])return true;}
+  return false;
+}
+
 /** Places fire at the bolt and at `extra` random cells around it (vanilla spawnFire): only into air where fire can stay. */
 export function spawnFire(game:Game,bolt:Bolt,extra:number,random:()=>number):number{
   let lit=0;
   const tryAt=(x:number,y:number,z:number)=>{
-    if(game.world.get(x,y,z)===AIR&&canSurvive(game.world,FIRE,x,y,z)&&game.world.set(x,y,z,FIRE,'tick'))lit++;
+    if(game.world.get(x,y,z)===AIR&&fireCanStay(game.world,x,y,z)&&game.world.set(x,y,z,FIRE,'tick'))lit++;
   };
   tryAt(bolt.x,bolt.y,bolt.z);
   for(let i=0;i<extra;i++)tryAt(bolt.x+Math.floor(random()*3)-1,bolt.y+Math.floor(random()*3)-1,bolt.z+Math.floor(random()*3)-1);

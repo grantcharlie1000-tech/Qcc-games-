@@ -293,6 +293,21 @@ describe('lightning',()=>{
       expect(game.world.get(6,64,6)===FIRE,difficulty).toBe(fire);
     }
   });
+  test('fire takes hold where vanilla fire can stay: on a sturdy top or beside something flammable',()=>{
+    const {game,weather}=setup('plains');startRain(game,weather);game.player.teleport(60.5,64,.5);
+    // A tree canopy: the strike lands on leaves with nothing sturdy below the fire cell.
+    for(let x=4;x<=8;x++)for(let z=4;z<=8;z++)game.world.set(x,70,z,B.oakLeaves);
+    weather.strike(6,71,6);tick(game,1);
+    expect(game.world.get(6,71,6)).toBe(FIRE);
+    // A glass roof is neither sturdy for fire nor flammable.
+    for(let x=14;x<=18;x++)for(let z=14;z<=18;z++)game.world.set(x,70,z,B.glass);
+    weather.strike(16,71,16);tick(game,1);
+    for(let x=15;x<=17;x++)for(let y=70;y<=72;y++)for(let z=15;z<=17;z++)expect(game.world.get(x,y,z)).not.toBe(FIRE);
+    // A plank wall: fire clings beside it in mid-air.
+    for(let y=64;y<=72;y++)game.world.set(24,y,24,B.oakPlanks);
+    weather.strike(25,70,24);tick(game,1);
+    expect(game.world.get(25,70,24)).toBe(FIRE);
+  });
   test('thunder is heard after a delay of 1 second per 40 blocks',()=>{
     const {game,weather,sounds}=setup('plains');startRain(game,weather);
     game.player.teleport(.5,64,.5);
