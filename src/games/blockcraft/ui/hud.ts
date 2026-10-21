@@ -273,10 +273,12 @@ export function createHud(game:Game):HudService{
     const s=game.survival,low=game.settings.mode==='survival'&&!s.dead&&s.health>0&&Math.ceil(s.health)+Math.ceil(s.absorption)<=4;
     if(low!==lowHealth){lowHealth=low;vignette.dataset.on=String(low);}
   }
+  /** A short red flash at the screen edges when hurt (the renderer's 'hurt' tint covers the centre). Reduced motion:
+   *  dimmer and shorter, without the pulse of the low-health vignette. */
   function damageFlash(){
     if(game.settings.mode!=='survival'||typeof flash.animate!=='function')return;
     flash.getAnimations?.().forEach(a=>a.cancel());
-    flash.animate([{opacity:reduced?.3:.55},{opacity:0}],{duration:reduced?300:450,easing:'ease-out'});
+    flash.animate([{opacity:reduced?.3:.5},{opacity:0}],{duration:reduced?250:450,easing:'ease-out'});
   }
   function updateDebug(now:number){
     if(game.root.dataset[ROOT_FLAGS.debug]!=='true'||now-debugAt<100)return;debugAt=now;
