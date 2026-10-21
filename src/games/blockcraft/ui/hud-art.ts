@@ -169,8 +169,13 @@ export function iconSvg(name:string,patterns:boolean):string{
   return`${open(g[0].length,g.length)}${gridSvg(g,iconPalette(name,patterns))}</svg>`;
 }
 export const svgUrl=(svg:string)=>`data:image/svg+xml,${encodeURIComponent(svg)}`;
-const urlCache=new Map<string,string>();
-function cached(key:string,make:()=>string){let u=urlCache.get(key);if(!u){u=svgUrl(make());urlCache.set(key,u);}return u;}
+/** Generated data URLs by key. Bounded: names and levels are open-ended, so it starts over past this many entries. */
+const urlCache=new Map<string,string>(),URL_CACHE_LIMIT=1024;
+function cached(key:string,make:()=>string){
+  let u=urlCache.get(key);
+  if(!u){if(urlCache.size>=URL_CACHE_LIMIT)urlCache.clear();u=svgUrl(make());urlCache.set(key,u);}
+  return u;
+}
 /** Data URL of a HUD icon (cached). */
 export const hudIconUrl=(name:string,patterns:boolean)=>cached(`${name}:${patterns&&ICONS[name]?.patterned?1:0}`,()=>iconSvg(name,patterns));
 
@@ -262,12 +267,8 @@ export function textSvg(text:string,colour='#ffffff'):string{
   }
   return`${open(w,9)}${back}${front}</svg>`;
 }
-const TEXT_CACHE_LIMIT=256;
-/** Data URL of pixel-font text (cached; the cache is cleared when it grows past a few hundred strings). */
-export function textUrl(text:string,colour='#ffffff'){
-  if(urlCache.size>TEXT_CACHE_LIMIT*4)urlCache.clear();
-  return cached(`text:${colour}:${text}`,()=>textSvg(text,colour));
-}
+/** Data URL of pixel-font text (cached). */
+export const textUrl=(text:string,colour='#ffffff')=>cached(`text:${colour}:${text}`,()=>textSvg(text,colour));
 
 // ---- Hotbar, slots and experience bar ------------------------------------------------------------------
 const rect=(x:number,y:number,w:number,h:number,c:string)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" ${colour(c)}/>`;

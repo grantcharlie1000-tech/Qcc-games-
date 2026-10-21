@@ -17,7 +17,7 @@ async function boxes(page:Page,selector:string):Promise<Box[]>{
   return page.locator(selector).evaluateAll(els=>els.filter(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;})
     .map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};}));
 }
-const HUD_PARTS='.bc-hotbar-bg,.bc-offhand,.bc-xp,.bc-level,.bc-hearts .bc-icon,.bc-food .bc-icon,.bc-armor .bc-icon,.bc-air .bc-icon,.bc-dial,.bc-held-name';
+const HUD_PARTS='.bc-hotbar-bg,.bc-offhand,.bc-xp,.bc-level,.bc-hearts .bc-icon,.bc-food .bc-icon,.bc-armor .bc-icon,.bc-air .bc-icon,.bc-readouts[data-place=right] .bc-dial,.bc-held-name';
 const SHELL='.game-toolbar a,.game-toolbar button';
 /** Sets survival values through the live service (test-only overrides of its getters). */
 async function setSurvival(page:Page,values:Record<string,number>,armor?:number){
@@ -75,6 +75,9 @@ test.describe('desktop 1366x768',()=>{
     await expect(page.locator('[data-dial=clock]')).toBeVisible();await expect(page.locator('[data-dial=compass]')).toBeHidden();
     await page.keyboard.press('Digit3');
     await expect(page.locator('[data-dial=compass]')).toBeVisible();await expect(page.locator('.bc-held-name')).toHaveText('Compass');
+    await expect(page.locator('.bc-readouts')).toHaveAttribute('data-place','right');
+    // Compass and clock icons in slots are the animated dials too.
+    await expect(page.locator('.bc-slot[data-slot="2"] img')).toHaveAttribute('src',/^data:image\/svg\+xml/);
 
     // Vanilla GUI scale 3 at 1366×768: the 182 px hotbar is 546 px wide, centred, on the bottom edge.
     const bar=(await page.locator('.bc-hotbar-bg').boundingBox())!;
@@ -111,32 +114,38 @@ test.describe('desktop 1366x768',()=>{
   });
 });
 
-test.describe('phone 390x844 with touch',()=>{
-  test.use({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
+for(const [width,height] of [[390,844],[320,568]] as const)test.describe(`phone ${width}x${height} with touch`,()=>{
+  test.use({viewport:{width,height},hasTouch:true,isMobile:true});
   test('HUD and menus fit the phone and keep clear of the shell buttons',async({page})=>{
     test.setTimeout(150000);
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto('/#/game/blockcraft');await ready(page);
     // The start menu fits between the toolbar and the bottom edge.
-    for(const b of await boxes(page,'.bc-menu .bc-btn')){expect(b.y).toBeGreaterThanOrEqual(56);expect(b.x+b.width).toBeLessThanOrEqual(390);expect(b.y+b.height).toBeLessThanOrEqual(844);}
+    for(const b of await boxes(page,'.bc-menu .bc-btn')){expect(b.y).toBeGreaterThanOrEqual(56);expect(b.x+b.width).toBeLessThanOrEqual(width);expect(b.y+b.height).toBeLessThanOrEqual(height);}
     await expect(page.locator('.bc-menu-message')).toContainText('Drag');
-    await page.screenshot({path:evidence('menu-390x844')});
+    await page.screenshot({path:evidence(`menu-${width}x${height}`)});
     await play(page);
     await setSurvival(page,{health:20,absorption:0,food:20,saturation:5,xpLevel:3,xpProgress:.25},4);await give(page);
     await expect(page.locator('.bc-hearts .bc-icon:not([hidden])')).toHaveCount(10,{timeout:15000});
     const slots=await boxes(page,'.bc-slot');
     expect(slots).toHaveLength(9);
-    for(const s of slots){expect(s.width,'touch-sized slots').toBeGreaterThanOrEqual(26);expect(s.x).toBeGreaterThanOrEqual(7.5);expect(s.x+s.width).toBeLessThanOrEqual(382.5);}
+    for(const s of slots){expect(s.width,'touch-sized slots').toBeGreaterThanOrEqual(26);expect(s.x).toBeGreaterThanOrEqual(7.5);expect(s.x+s.width).toBeLessThanOrEqual(width-7.5);}
     await expect(page.locator('.bc-offhand')).toBeVisible();
     const off=(await page.locator('.bc-offhand').boundingBox())!;expect(off.x).toBeGreaterThanOrEqual(7.5);
-    await checkClear(page,390,844);
+    // No room beside the bars: the animated compass and clock slot icons are the readouts.
+    await expect(page.locator('.bc-readouts')).toHaveAttribute('data-place','slots');
+    await expect(page.locator('.bc-slot[data-slot="2"] img')).toHaveAttribute('src',/^data:image\/svg\+xml/);
+    await expect(page.locator('.bc-offhand img')).toHaveAttribute('src',/^data:image\/svg\+xml/);
+    await checkClear(page,width,height);
     // Tapping a slot selects it.
     await page.locator('.bc-slot[data-slot="1"]').tap();
     await expect(page.locator('.blockcraft')).toHaveAttribute('data-slot','1');
+    // The action bar sits above the bars, inside the screen.
     await page.evaluate(()=>(window as unknown as {blockcraft:{ui:{toast(m:string):void}}}).blockcraft.ui.toast('You may not rest now; there are monsters nearby'));
-    const toast=(await page.locator('.bc-toast').boundingBox())!,bar=(await page.locator('.bc-hotbar-bg').boundingBox())!;
-    expect(toast.y+toast.height).toBeLessThan(bar.y);expect(toast.x).toBeGreaterThanOrEqual(0);expect(toast.x+toast.width).toBeLessThanOrEqual(390);
-    await page.screenshot({path:evidence('hud-390x844')});
+    const toast=(await page.locator('.bc-toast').boundingBox())!;
+    const topOfBars=Math.min(...(await boxes(page,'.bc-hearts .bc-icon,.bc-armor .bc-icon,.bc-food .bc-icon')).map(b=>b.y));
+    expect(toast.y+toast.height).toBeLessThanOrEqual(topOfBars+1);expect(toast.x).toBeGreaterThanOrEqual(0);expect(toast.x+toast.width).toBeLessThanOrEqual(width);
+    await page.screenshot({path:evidence(`hud-${width}x${height}`)});
     expect(errors).toEqual([]);
   });
 });

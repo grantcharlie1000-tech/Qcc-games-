@@ -5,7 +5,9 @@
 //    GUI scale (hud-model's hudLayout): hearts (absorption, blinking, low-health shake, regeneration wave, poison),
 //    hunger shanks (jitter at zero saturation, hunger effect), armour, air bubbles, the experience bar and level,
 //    the hotbar with item icons, counts and durability bars, the selection frame, the offhand slot, the held item
-//    name in the pixel font, compass and clock readouts, and the F3 debug overlay. F1 (ROOT_FLAGS.hudHidden) hides it.
+//    name in the pixel font, compass and clock readouts (large dials beside the hotbar while held, and animated
+//    compass and clock icons in the slots like the vanilla item textures), and the F3 debug overlay. F1
+//    (ROOT_FLAGS.hudHidden) hides it all.
 //  - Menus (z-index 30, ui/menus.ts): start, game menu, death and lost-graphics screens.
 // The layout publishes CSS variables on game.root: --bc-gui (GUI scale), --bc-hud-bottom (hotbar lift, clear of the
 // shell's corner buttons), --bc-hud-bars (top of the bars), --bc-hud-top (top of the whole stack) and
@@ -44,16 +46,16 @@ function setHidden(el:HTMLElement,hidden:boolean){if(el.hidden!==hidden)el.hidde
 class StackView{
   readonly el=document.createElement('span');
   readonly img=document.createElement('img');private dur=document.createElement('i');private bar=document.createElement('b');private count=document.createElement('i');
-  id='';n=-1;private damage=-1;
+  id='';n=-1;private damage=-1;private src='';
   constructor(){
     this.el.className='bc-stack';this.img.alt='';this.img.draggable=false;this.dur.className='bc-dur';this.count.className='bc-count';
     this.dur.append(this.bar);this.el.append(this.img,this.dur,this.count);this.dur.hidden=true;this.img.hidden=true;this.count.hidden=true;
   }
-  /** Returns true when something changed. */
-  update(stack:ItemStack|null):boolean{
-    const id=stack?.id??'',n=stack?.count??0,damage=stack?.damage??0;
+  /** `icon` replaces the item's own icon (the animated compass and clock dials). Returns true when the stack changed. */
+  update(stack:ItemStack|null,icon?:string):boolean{
+    const id=stack?.id??'',n=stack?.count??0,damage=stack?.damage??0,src=id?icon??iconUrl(id):'';
+    if(src!==this.src){this.src=src;this.img.hidden=!src;if(src)this.img.src=src;else this.img.removeAttribute('src');}
     if(id===this.id&&n===this.n&&damage===this.damage)return false;
-    if(id!==this.id){this.img.hidden=!id;if(id)this.img.src=iconUrl(id);else this.img.removeAttribute('src');}
     if(n!==this.n){
       const text=n>1?String(n):'';this.count.hidden=!text;
       if(text){const c=this.count.style;c.backgroundImage=url(digitsUrl(text,'count'));c.left=`${17-6*text.length}px`;c.width=`${6*text.length}px`;}
@@ -63,7 +65,7 @@ class StackView{
     this.id=id;this.n=n;this.damage=damage;return true;
   }
   /** Forget what is drawn so the next update redraws (new world). */
-  invalidate(){this.id='\u0000';this.n=-1;this.damage=-1;}
+  invalidate(){this.id='\u0000';this.n=-1;this.damage=-1;this.src='\u0000';}
 }
 
 export function createHud(game:Game):HudService{
@@ -127,7 +129,7 @@ export function createHud(game:Game):HudService{
   const tracker=new HealthTracker();
   let layout:HudLayout=hudLayout(1280,720,false),layoutDirty=true,touch=false,colorBlind=false,reduced=false;
   let lastTick=-1,lastHurtTick=-1000,heldTimer=0,prevHeld:ItemStack|null=null,heldId='\u0000',heldOpacity=-1,selected=-1,barsLabel='',level=-1;
-  let fpsFrames=0,fpsStart=0,fps=0,debugAt=0,barsTop=49,stackKey='',state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'above'='above';
+  let fpsFrames=0,fpsStart=0,fps=0,debugAt=0,barsTop=49,stackKey='',state='',crossKey='',compassFrame=-1,clockFrame=-1,readoutMode:'right'|'slots'='slots';
   let readoutKey='',lowHealth=false,pickedUp:string|null=null;
   const cur=new Float64Array(18),prev=new Float64Array(18).fill(NaN);
   let resize:ResizeObserver|null=null;
@@ -140,9 +142,11 @@ export function createHud(game:Game):HudService{
     st.setProperty('--bc-gui',String(s));st.setProperty('--bc-hud-bottom',`${layout.bottom}px`);
     st.setProperty('--bc-hud-bars',`${layout.bars}px`);st.setProperty('--bc-hud-top',`${layout.top}px`);
     gui.style.transform=`translateX(${(layout.shift*s).toFixed(2)}px) scale(${s})`;
-    // Readouts sit right of the hotbar when there is room (clear of the shell's corner buttons), else above the bars.
+    // Large readout dials sit right of the hotbar when there is room (clear of the shell's corner buttons). Narrow
+    // screens have no free space beside or above the bars (touch controls, action bar), so there the animated slot
+    // icons are the readouts and the dials stay only for assistive technology.
     const right=w/2+(91+layout.shift+4+DIAL*2+2)*s;
-    readoutMode=right<=w-8&&(right<=w-150||layout.bottom>=40)?'right':'above';
+    readoutMode=right<=w-8&&(right<=w-150||layout.bottom>=40)?'right':'slots';
     readouts.dataset.place=readoutMode;
     stackKey='';placeStack();
   }
@@ -189,11 +193,13 @@ export function createHud(game:Game):HudService{
     if(reduced||typeof view.img.animate!=='function')return;
     view.img.animate([{transform:'scale(.5,1.5)'},{transform:'scale(1,1)'}],{duration:POP_MS,easing:'linear'});
   }
+  /** Compass and clock icons in slots animate like the vanilla item textures (needle toward spawn, time dial). */
+  const dialIcon=(id:string|undefined)=>id==='compass'&&compassFrame>=0?compassUrl(compassFrame):id==='clock'&&clockFrame>=0?clockUrl(clockFrame):undefined;
   function updateHotbar(){
     const inv=game.inventory;
     for(let i=0;i<9;i++){
       const st=inv.slots[i]??null,view=slotViews[i],before=view.id===st?.id?view.n:0;
-      if(!view.update(st))continue;
+      if(!view.update(st,dialIcon(st?.id)))continue;
       slots[i].setAttribute('aria-label',slotLabel(st,i));
       if(pickedUp&&st&&st.id===pickedUp&&st.count>before)pop(view);
     }
@@ -203,7 +209,7 @@ export function createHud(game:Game):HudService{
       selected=inv.selected;slots[selected]?.setAttribute('aria-pressed','true');box(selection,-92+selected*20,-1,24,24);
     }
     const off=inv.offhand;setHidden(offhandEl,!off);
-    if(offhandView.update(off))offhandEl.setAttribute('aria-label',off?`Offhand: ${stackLabel(off)}`:'Offhand: empty');
+    if(offhandView.update(off,dialIcon(off?.id)))offhandEl.setAttribute('aria-label',off?`Offhand: ${stackLabel(off)}`:'Offhand: empty');
   }
   function tickHeldName(){
     const held=game.inventory.held();
@@ -224,7 +230,7 @@ export function createHud(game:Game):HudService{
     const key=`${name}:${action}:${readoutMode}:${layout.scale}:${layout.bottom}`;if(key===stackKey)return;stackKey=key;
     heldEl.style.bottom=`${name}px`;
     game.root.style.setProperty('--bc-hud-actionbar',`${(layout.bottom+action*layout.scale).toFixed(1)}px`);
-    if(readoutMode==='right')box(readouts,95,0);else box(readouts,0,action+14);
+    box(readouts,readoutMode==='right'?95:0,0);
   }
   function updateHeldName(){
     const o=heldId?heldNameOpacity(heldTimer):0;
@@ -241,11 +247,14 @@ export function createHud(game:Game):HudService{
     attackFull.hidden=ind?.kind!=='full';attackBar.hidden=ind?.kind!=='bar';
     if(ind?.kind==='bar')attackBarFill.style.width=`${ind.width}px`;
   }
+  /** Dial frames for every compass and clock on the hotbar or offhand, and the readouts of the held ones. */
   function updateReadouts(now:number){
     const inv=game.inventory,main=inv.held()?.id,off=inv.offhand?.id;
     const hasCompass=main==='compass'||off==='compass',hasClock=main==='clock'||off==='clock',key=`${+hasCompass}${+hasClock}`;
     if(key!==readoutKey){readoutKey=key;setHidden(readouts,!hasCompass&&!hasClock);setHidden(compassEl,!hasCompass);setHidden(clockEl,!hasClock);}
-    if(hasCompass){
+    let anyCompass=hasCompass,anyClock=hasClock;
+    for(let i=0;i<9;i++){const id=inv.slots[i]?.id;if(id==='compass')anyCompass=true;else if(id==='clock')anyClock=true;}
+    if(anyCompass){
       const p=game.player.state,sp=p.spawn,near=Math.hypot(sp.x-p.x,sp.z-p.z)<.5;
       // At the spawn point itself the needle spins, like a compass with nowhere to point (still with reduced motion).
       const angle=near?(reduced?0:now/400):compassAngle(p.x,p.z,p.yaw,sp.x,sp.z),frame=dialFrame(angle,COMPASS_FRAMES);
@@ -255,7 +264,7 @@ export function createHud(game:Game):HudService{
         compassEl.setAttribute('aria-label',near?'Compass: you are at the world spawn':`Compass: spawn is ${deg===0?'straight ahead':`${Math.abs(deg)} degrees to the ${deg>0?'right':'left'}`}`);
       }
     }
-    if(hasClock){
+    if(anyClock){
       const frame=dialFrame(sunAngle(game.time.dayTime),CLOCK_FRAMES);
       if(frame!==clockFrame){clockFrame=frame;clockEl.style.backgroundImage=url(clockUrl(frame));clockEl.setAttribute('aria-label',`Clock: ${clockText(game.time.dayTime)}`);}
     }
@@ -324,7 +333,7 @@ export function createHud(game:Game):HudService{
         tickHeldName();
       }
       if(game.settings.mode==='survival')updateBars(tick);
-      updateHotbar();updateHeldName();updateCrosshair();updateReadouts(now);updateEffects();
+      updateReadouts(now);updateHotbar();updateHeldName();updateCrosshair();updateEffects();
     },
     reset(){
       prevHeld=null;heldTimer=0;heldId='\u0000';heldOpacity=-1;selected=-1;crossKey='-';compassFrame=clockFrame=-1;lastTick=-1;level=-1;readoutKey='';pickedUp=null;
