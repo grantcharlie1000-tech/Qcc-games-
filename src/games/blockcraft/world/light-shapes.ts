@@ -69,7 +69,8 @@ export function facesOcclude(from:number,to:number,face:number):boolean{
 
 /** True when replacing block `from` by `to` can change light anywhere: opacity, emission, opaqueness or the face shape
  *  that occludes light differ. (A bottom slab placed in open air has the same opacity as air but shades the cells below.)
- *  World edits use it to decide whether neighbours beyond the shared border need relighting. */
+ *  Meant for world/world.ts set() when it decides whether neighbours beyond the shared border need relighting: comparing
+ *  only opacity and emission misses placing or removing slabs, stairs, snow layers and farmland. */
 export function changesLight(from:BlockId,to:BlockId):boolean{
   return LIGHT_OPACITY[from]!==LIGHT_OPACITY[to]||LIGHT_EMISSION[from]!==LIGHT_EMISSION[to]||OPAQUE[from]!==OPAQUE[to]||LIGHT_CLASS[from]!==LIGHT_CLASS[to];
 }
