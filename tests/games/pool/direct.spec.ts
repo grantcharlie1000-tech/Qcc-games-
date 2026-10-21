@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '../../fixtures';
+import {settledPoolGeometry} from '../../../scripts/pool-verifier-shot.mjs';
 async function table(page:Page){const canvas=page.locator('.pool-table');await expect(canvas).toBeVisible();return (await canvas.boundingBox())!;}
 async function cueDrag(page:Page,pull=90){await page.locator('.pool-table').hover();const b=await table(page);await page.mouse.move(b.x+225/840*b.width,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+(225-pull)/840*b.width,b.y+b.height/2,{steps:8});}
 type NativePullPoint={type:string;clientX:number;clientY:number;pointerId:number;trusted:boolean;left:number;top:number;width:number;height:number};
@@ -63,13 +64,31 @@ test('native touch captures at high DPI, rejects a second finger outside the tab
   await context.addInitScript(()=>{
    sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
    const events:{type:string;trusted:boolean;captured:boolean}[]=[];
-   Object.assign(window,{poolTouchEvents:events});
+   const diagnostics:Record<string,unknown>[]=[];
+   const record=(label:string,event?:Event)=>{
+    if(diagnostics.length>=256)return;
+    const canvas=document.querySelector('.pool-table'),root=document.querySelector('.pool-game'),r=canvas?.getBoundingClientRect(),p=event as PointerEvent|undefined;
+    diagnostics.push({label,time:performance.now(),gesture:root?.getAttribute('data-gesture'),phase:root?.getAttribute('data-phase'),shots:root?.getAttribute('data-shots'),rect:r?{x:r.x,y:r.y,width:r.width,height:r.height}:null,viewport:window.visualViewport?{scale:visualViewport!.scale,width:visualViewport!.width,height:visualViewport!.height,offsetLeft:visualViewport!.offsetLeft,offsetTop:visualViewport!.offsetTop}:null,focused:document.hasFocus(),visibility:document.visibilityState,event:event?{type:event.type,trusted:event.isTrusted,pointerId:p?.pointerId,pointerType:p?.pointerType,primary:p?.isPrimary,button:p?.button,buttons:p?.buttons,x:p?.clientX,y:p?.clientY,targetIsCanvas:event.target===canvas,captured:canvas instanceof HTMLCanvasElement&&p?.pointerId!==undefined?canvas.hasPointerCapture(p.pointerId):false}:null});
+   };
+   Object.assign(window,{poolTouchEvents:events,poolTouchDiagnostics:diagnostics,recordPoolTouchDiagnostic:record});
+   for(const type of ['pointerdown','pointermove','pointerup','pointercancel','gotpointercapture','lostpointercapture','contextmenu']){
+    window.addEventListener(type,event=>record('capture:'+type,event),{capture:true});
+    window.addEventListener(type,event=>record('bubble:'+type,event));
+   }
+   for(const type of ['resize','blur','focus'])window.addEventListener(type,event=>record('window:'+type,event));
+   for(const type of ['resize','scroll'])window.visualViewport?.addEventListener(type,event=>record('viewport:'+type,event));
+   document.addEventListener('visibilitychange',event=>record('document:visibilitychange',event));
    for(const type of ['pointerdown','pointerup','pointercancel','gotpointercapture'])window.addEventListener(type,event=>{const e=event as PointerEvent;events.push({type,trusted:e.isTrusted,captured:(e.target as Element).hasPointerCapture?.(e.pointerId)||false});},{capture:true});
   });
   const page=await context.newPage();await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');
   const root=page.locator('.pool-game'),session=await context.newCDPSession(page);
   const touch=(type:'touchStart'|'touchMove'|'touchEnd'|'touchCancel',touchPoints:{x:number;y:number;id:number}[]=[])=>session.send('Input.dispatchTouchEvent',{type,touchPoints});
-  async function pull(){const b=await table(page),a={x:b.x+225/840*b.width,y:b.y+b.height/2,id:1},z={...a,x:b.x+135/840*b.width};await touch('touchStart',[a]);for(let i=1;i<=6;i++)await touch('touchMove',[{...a,x:a.x+(z.x-a.x)*i/6}]);await expect(root).toHaveAttribute('data-gesture','pull');return {a,z};}
+  await page.locator('.pool-table').evaluate(canvas=>{
+   const record=(window as unknown as {recordPoolTouchDiagnostic:(label:string)=>void}).recordPoolTouchDiagnostic;
+   const observer=new ResizeObserver(()=>record('observer:table'));observer.observe(canvas);
+   record('observer:attached');
+  });
+  async function pull(){const b=await settledPoolGeometry(page),a={x:b.x+225/840*b.width,y:b.y+b.height/2,id:1},z={...a,x:b.x+135/840*b.width};await touch('touchStart',[a]);for(let i=1;i<=6;i++)await touch('touchMove',[{...a,x:a.x+(z.x-a.x)*i/6}]);await expect(root).toHaveAttribute('data-gesture','pull');return {a,z};}
   await pull();await touch('touchCancel');await expect(root).toHaveAttribute('data-shots','0');
   await pull();await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1.25});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1.25,2);await expect(root).toHaveAttribute('data-gesture','idle');await touch('touchEnd');await expect(root).toHaveAttribute('data-shots','0');
   await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1,2);
@@ -79,7 +98,16 @@ test('native touch captures at high DPI, rejects a second finger outside the tab
   const events=await page.evaluate(()=>(window as unknown as {poolTouchEvents:{type:string;trusted:boolean;captured:boolean}[]}).poolTouchEvents);
   expect(events.every(e=>e.trusted)).toBe(true);expect(events.some(e=>e.type==='gotpointercapture')).toBe(true);expect(events.some(e=>e.type==='pointerup'&&e.captured)).toBe(true);expect(events.some(e=>e.type==='pointercancel')).toBe(true);
   expect(await page.evaluate(()=>({x:scrollX,y:scrollY,overflow:document.documentElement.scrollWidth>innerWidth}))).toEqual({x:0,y:0,overflow:false});
- }finally{await context.close();}
+ }finally{
+  try{
+   for(const page of context.pages()){
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const diagnostics=await Promise.race([page.evaluate(()=>(window as unknown as {poolTouchDiagnostics?:unknown[]}).poolTouchDiagnostics||[]),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('Pool touch diagnostic deadline')),5000);})]).finally(()=>clearTimeout(timer));
+    await test.info().attach('pool-native-touch-diagnostics',{body:JSON.stringify(diagnostics,null,2),contentType:'application/json'});
+   }
+  }catch(error){console.warn('Pool touch diagnostic capture failed:',String(error));}
+  await context.close();
+ }
 });
 for(const size of [{width:768,height:1024},{width:1366,height:768}])test(`gesture feedback preserves table geometry at ${size.width}×${size.height}`,async({page})=>{
  await page.setViewportSize(size);await expect.poll(async()=>{const b=await table(page);return Math.abs(b.width/(b.height||1)-840/440)<.001;}).toBe(true);
@@ -129,3 +157,4 @@ test('integer native pointer positions preserve displayed and committed pull pow
  const loaded=await expectNativePower(page,'pointermove');expect(loaded.down.clientX).toBe(start);expect(loaded.end.clientX).toBe(end);
  await page.mouse.up();await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','1');await expectNativePower(page,'pointerup');
 });
+
