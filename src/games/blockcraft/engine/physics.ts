@@ -74,6 +74,7 @@ export function moveBody(world:BlockSource,b:Body,halfWidth:number,height:number
   return result;
 }
 function moveVertical(world:BlockSource,b:Body,hw:number,h:number,delta:number):boolean{
+  if(!Number.isFinite(delta))return false;// NaN or infinite motion would never finish
   while(delta!==0){
     const step=Math.max(-MAX_STEP,Math.min(MAX_STEP,delta));delta-=step;b.y+=step;
     if(!bodyCollides(world,b,hw,h))continue;
@@ -89,6 +90,7 @@ function moveVertical(world:BlockSource,b:Body,hw:number,h:number,delta:number):
   return false;
 }
 function moveHorizontal(world:BlockSource,b:Body,hw:number,h:number,axis:0|2,delta:number):boolean{
+  if(!Number.isFinite(delta))return false;// NaN or infinite motion would never finish
   while(delta!==0){
     const step=Math.max(-MAX_STEP,Math.min(MAX_STEP,delta));delta-=step;
     if(axis===0)b.x+=step;else b.z+=step;
@@ -133,12 +135,13 @@ export function liquidHeight(id:number):number{
   return l.falling||l.level===0?8/9:(8-l.level)/9;
 }
 /** Normalised horizontal flow of the liquid at a voxel (vanilla rule: toward lower levels / drops), or zero. */
+const FLOW_DX=[1,-1,0,0],FLOW_DZ=[0,0,1,-1];
 export function flowAt(world:BlockSource,x:number,y:number,z:number,out:Vec3={x:0,y:0,z:0}):Vec3{
   out.x=out.y=out.z=0;const id=world.get(x,y,z);if(id<0||!LIQUID[id])return out;
   const kind=LIQUID[id],level=blockDef(id).liquid!.falling?0:blockDef(id).liquid!.level;
-  for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]] as const){
-    const n=world.get(x+dx,y,z+dz);
-    if(n===AIR&&(()=>{const below=world.get(x+dx,y-1,z+dz);return below===AIR||LIQUID[below]===kind;})()){out.x+=dx*8;out.z+=dz*8;continue;}
+  for(let i=0;i<4;i++){
+    const dx=FLOW_DX[i],dz=FLOW_DZ[i],n=world.get(x+dx,y,z+dz);
+    if(n===AIR){const below=world.get(x+dx,y-1,z+dz);if(below===AIR||LIQUID[below]===kind){out.x+=dx*8;out.z+=dz*8;continue;}}
     if(n<0||LIQUID[n]!==kind)continue;
     const nl=blockDef(n).liquid!.falling?0:blockDef(n).liquid!.level;const diff=nl-level;out.x+=dx*diff;out.z+=dz*diff;
   }

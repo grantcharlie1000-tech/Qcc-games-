@@ -63,7 +63,9 @@ for(const def of BLOCKS){
   if(SPRITE_BLOCK_ITEMS[def.family])continue;
   // Isometric icons show +y, +z (left) and +x (right): use the south-facing, unlit state so fronts show.
   const iconState=def.facing?stateFor(def.family,{facing:'south',lit:false})??def:def.slab?stateFor(def.family,{slab:'bottom'})??def:def;
-  const icon:ItemIcon=FLAT_ICON.has(def.shape)?{kind:'tile',tile:def.tiles[0]}:{kind:'block',block:iconState.name};
+  // The lantern tile is the model's UV sheet, so its item uses the painted lantern sprite.
+  const icon:ItemIcon=def.family==='lantern'?sprite('lantern'):FLAT_ICON.has(def.shape)?{kind:'tile',tile:def.tiles[0]}:{kind:'block',block:iconState.name};
+  if(def.family==='lantern')ITEM_SPRITES.push('lantern');
   const wooden=/_(planks|log)$/.test(def.family)||['crafting_table','chest','bookshelf','ladder','barrel','oak_stairs'].includes(def.family);
   const fuel=wooden?15:def.family==='oak_slab'?7.5:def.family.endsWith('_sapling')||def.family.endsWith('_wool')||def.family==='dead_bush'?5:def.family==='coal_block'?800:undefined;
   add({id:def.family,displayName:def.displayName,maxStack:64,icon,places:def.family,fuel});

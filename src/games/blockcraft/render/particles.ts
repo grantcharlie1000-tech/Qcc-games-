@@ -19,11 +19,11 @@ import {ITEM_SLOTS,ITEM_SLOT_BASE,PARTICLE_SPRITES,SHEET_COLUMNS,SHEET_HEIGHT,SH
 /** About 2 000 particles at once; the oldest make room for new ones. */
 export const MAX_PARTICLES=2000;
 export const PARTICLE_KINDS:readonly ParticleKind[]=['block','item','smoke','large_smoke','explosion','splash','bubble','drip','crit','heart','angry',
-  'happy','flame','lava','portal','poof','slime','damage','sweep','note','spell'];
+  'happy','flame','lava','portal','poof','slime','damage','sweep','note','spell','ink'];
 const KIND_SET=new Set<string>(PARTICLE_KINDS);
 /** Particles spawned when ParticleOptions.count is omitted. 'explosion' runs the vanilla emitter (48 puffs over 8 ticks). */
 const DEFAULT_COUNT:Record<ParticleKind,number>={block:16,item:8,smoke:4,large_smoke:4,explosion:48,splash:8,bubble:4,drip:1,crit:8,heart:1,angry:1,
-  happy:5,flame:1,lava:1,portal:4,poof:20,slime:8,damage:4,sweep:1,note:1,spell:8};
+  happy:5,flame:1,lava:1,portal:4,poof:20,slime:8,damage:4,sweep:1,note:1,spell:8,ink:6};
 const DEFAULT_SPREAD=.25,EXPLOSION_SPREAD=2,EXPLOSION_PER_TICK=6;
 const TEX_ATLAS=0,TEX_SHEET=1;
 /** Packed light of particles that ignore light (vanilla 15728880). */
@@ -217,9 +217,13 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
         }
         break;
       }
-      case 'smoke':case 'large_smoke':case 'poof':{
+      case 'smoke':case 'large_smoke':case 'poof':case 'ink':{
         p=base(kind,x,y,z);burst(p,0,0,0);
-        if(kind==='poof'){
+        if(kind==='ink'){
+          // SquidInkParticle: black puffs that keep the given velocity, do not rise and slow down (friction 0.92).
+          p.gravity=0;p.friction=.92;p.vx=p.vx*.1+vx;p.vy=p.vy*.1+vy;p.vz=p.vz*.1+vz;
+          p.r=p.g=p.b=.05;p.size*=1.5;p.lifetime=Math.floor(8/(rand()*.8+.2))+4;
+        }else if(kind==='poof'){
           // ExplodeParticle: rises slowly, light grey, 0.1..0.7 quad size.
           p.gravity=-.1;p.friction=.9;p.vx=vx+(rand()*2-1)*.05;p.vy=vy+(rand()*2-1)*.05;p.vz=vz+(rand()*2-1)*.05;
           p.r=p.g=p.b=rand()*.3+.7;p.size=2*.1*(rand()*rand()*6+1);p.lifetime=Math.floor(16/(rand()*.8+.2))+2;
@@ -488,7 +492,7 @@ export function createParticles(game:Game,atlas:THREE.Texture,uniforms:RenderUni
         const life=Math.max(1,p.lifetime),age=p.age;
         // setSpriteFromAge; the generic smoke sprites run from the largest (7) to the smallest.
         let frame=Math.min(p.frames-1,Math.floor(age*p.frames/life));
-        if(p.kind==='smoke'||p.kind==='large_smoke'||p.kind==='poof')frame=p.frames-1-frame;
+        if(p.kind==='smoke'||p.kind==='large_smoke'||p.kind==='poof'||p.kind==='ink')frame=p.frames-1-frame;
         if(p.kind!=='splash'&&p.kind!=='portal')setCell(p,p.cell+frame);
       }
       uv[a]=p.u0;uv[a+1]=p.v0;uv[a+2]=p.u1;uv[a+3]=p.v1;

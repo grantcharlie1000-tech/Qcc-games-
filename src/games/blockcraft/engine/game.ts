@@ -61,7 +61,9 @@ export function daylightAt(dayTime:number){
 }
 /** Sky light levels lost to night and weather (rain up to 3, thunder up to 5 more). */
 export function skyDarkeningAt(daylight:number,rain:number,thunder:number){
-  return Math.min(15,Math.round((1-daylight)*11+rain*3+thunder*5));
+  // Vanilla Level.updateSkyBrightness: weather scales the daylight down (rain by up to 5/16, thunder by 5/16 more).
+  const c=(v:number)=>Math.max(0,Math.min(1,v));
+  return Math.floor((1-c(daylight)*(1-c(rain)*5/16)*(1-c(thunder)*5/16))*11);
 }
 
 export class Engine implements Game{
@@ -80,7 +82,7 @@ export class Engine implements Game{
   private created:[string,System][];private ticked:System[];private framed:System[];
   private seed=DEFAULT_SEED;private rng=mulberry32(DEFAULT_SEED);
   private frameId=0;private last=0;private tickAcc=0;private paused=false;private disposed=false;
-  private spawnPending=true;private respawnPending=false;private freshWorld=true;private restored=false;private wasLocked=false;private lastScore=-1;private lastDay=0;
+  private diedAt=0;private spawnPending=true;private respawnPending=false;private freshWorld=true;private restored=false;private wasLocked=false;private lastScore=-1;private lastDay=0;
   private abort=new AbortController();
   constructor(container:HTMLElement,readonly context:GameContext){
     this.root=document.createElement('div');this.root.className='blockcraft';
@@ -102,7 +104,7 @@ export class Engine implements Game{
     this.ticked=this.ordered(['survival','player','entities','ticks','blockEntities','weather']);
     this.framed=this.ordered(['input','player','interaction','render','entities','weather','ui','hud']);
     this.streamer=new ChunkStreamer(this.world,()=>this.terrain,createLightEngine(),this.mesher,this.render,()=>this.schedule());
-    this.root.dataset.workers=String(this.streamer.workerCount);
+    this.root.dataset.workers=String(this.streamer.workerCount);this.root.dataset.locked='false';
     const signal=this.abort.signal;
     document.addEventListener('pointerlockchange',()=>{
       const locked=document.pointerLockElement===this.canvas;
@@ -112,7 +114,7 @@ export class Engine implements Game{
     },{signal});
     this.canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();this.contextLost();},{signal});
     this.events.on('playerDied',({message})=>{
-      this.stats.deaths++;this.setState('dead');this.ui.close();this.input.clear();this.input.release();this.hud.showMenu('dead');
+      this.stats.deaths++;this.diedAt=performance.now();this.setState('dead');this.ui.close();this.input.clear();this.input.release();this.hud.showMenu('dead');
       this.context.announce(message);this.context.setStatus(message);
     });
     this.events.on('entityDied',({source})=>{if(source.byPlayer||source.kind==='player')this.stats.kills++;});
@@ -189,7 +191,8 @@ export class Engine implements Game{
     const t=this.time,from=t.dayTime,to=((Math.round(dayTime)%DAY_TICKS)+DAY_TICKS)%DAY_TICKS,delta=(to-from+DAY_TICKS)%DAY_TICKS;
     if(!delta)return;
     t.tick+=delta;if(to<from)t.day++;t.dayTime=to;this.updateLight();
-    this.weather.set('clear');
+    // Waking clears the weather only while the weather cycle runs (vanilla doWeatherCycle).
+    if(this.settings.weatherCycle)this.weather.set('clear');
     this.events.emit('timeSkipped',{from,to});
   }
   private updateLight(){
@@ -198,7 +201,10 @@ export class Engine implements Game{
   }
 
   // ---- Loop ---------------------------------------------------------------------------------
+  /** Wake the loop. Only a loop that had stopped restarts its clock (its first frame then counts as 1/60 s). */
   private schedule(){if(!this.frameId&&!this.disposed&&!this.paused&&this.state!=='lost'){this.last=0;this.frameId=requestAnimationFrame(t=>this.loop(t));}}
+  /** Next frame of a running loop: keeps the clock so dt is the real time between frames. */
+  private continueLoop(){if(!this.frameId&&!this.disposed&&!this.paused&&this.state!=='lost')this.frameId=requestAnimationFrame(t=>this.loop(t));}
   private loop(time:number){
     this.frameId=0;if(this.disposed||this.paused||this.state==='lost')return;
     const dt=Math.min(.1,this.last?(time-this.last)/1000:1/60);this.last=time;
@@ -214,7 +220,8 @@ export class Engine implements Game{
     for(const s of this.framed)s.frame?.(dt);
     this.render.render();
     this.report(built);
-    if(running||this.streamer.busy||this.spawnPending||built)this.schedule();
+    // Keep drawing for a second after death so the death animation plays out.
+    if(running||this.streamer.busy||this.spawnPending||built||this.state==='dead'&&time-this.diedAt<1000)this.continueLoop();
   }
   private tick(){
     const t=this.time;t.tick++;
@@ -242,7 +249,9 @@ export class Engine implements Game{
     for(let i=0;i<CH&&bodyCollides(this.world,p,HALF_WIDTH,HEIGHT);i++)p.y+=1;
     if(this.freshWorld){p.spawn={x:p.x,y:p.y,z:p.z};this.freshWorld=false;}
     this.spawnPending=false;
-    if(this.state==='loading'){this.setState('ready');this.hud.showMenu(this.restored?'resume':'start');}
+    // A world saved on the death screen loads back onto it.
+    if(this.state==='loading'&&this.survival.dead){this.diedAt=performance.now();this.setState('dead');this.hud.showMenu('dead');}
+    else if(this.state==='loading'){this.setState('ready');this.hud.showMenu(this.restored?'resume':'start');}
     // A respawn far away finished loading after the click: pointer lock needs a new gesture.
     else if(this.respawnPending&&this.state==='ready')this.hud.showMenu('resume');
     this.respawnPending=false;

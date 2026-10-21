@@ -39,7 +39,7 @@ export function skyFactor(darkening:number):number{return .2+.8*clamp01(1-darken
  *  night up to 11, rain 3, thunder 5 more). The engine rounds it to whole levels for game logic; vanilla lights the client
  *  smoothly (getSkyDarken), so sunlit terrain fades with the sky instead of stepping 11 times at dusk. */
 export function lightFactor(daylight:number,rain:number,thunder:number):number{
-  return skyFactor(Math.min(15,(1-clamp01(daylight))*11+clamp01(rain)*3+clamp01(thunder)*5));
+  return skyFactor((1-clamp01(daylight)*(1-clamp01(rain)*5/16)*(1-clamp01(thunder)*5/16))*11);
 }
 /** Zenith colour: the biome sky scaled by daylight, greyed by rain and thunder, brightened by lightning (vanilla getSkyColor). */
 export function skyColor(biomeSky:number,daylight:number,rain:number,thunder:number,flash:number,out:RGB={r:0,g:0,b:0}):RGB{

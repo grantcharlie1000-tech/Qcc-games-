@@ -1,10 +1,12 @@
 // Shared "can this block stay here" rules for placement (interaction), pop-off (ticks) and
 // decoration (terrain). Pure and worker-safe: imports only data/.
-import {BLOCK_BY_NAME,FACING_VECTOR,OPAQUE,SOLID,blockDef,isWater,AIR,type BlockId} from '../data/blocks';
+import {BLOCK_BY_NAME,FACING_VECTOR,FULL_CUBE,OPAQUE,SOLID,blockDef,isWater,AIR,type BlockId} from '../data/blocks';
 import type {BlockSource} from './contracts';
 
 const SOIL=new Set(['grass_block','dirt','coarse_dirt','podzol','mycelium','farmland']);
 const SAND=new Set(['sand','red_sand']);
+const ICE=new Set(['ice','packed_ice']);
+const NX=[1,-1,0,0,0,0],NY=[0,0,1,-1,0,0],NZ=[0,0,0,0,1,-1];
 const family=(id:number)=>id<0?'':blockDef(id).family;
 
 /** True when block `id` may exist at (x,y,z) given its neighbours. Unloaded neighbours (-1) count as supporting. */
@@ -15,7 +17,16 @@ export function canSurvive(world:BlockSource,id:BlockId,x:number,y:number,z:numb
     case 'soil':return SOIL.has(family(below));
     case 'soil_or_sand':return SOIL.has(family(below))||SAND.has(family(below));
     case 'farmland':return family(below)==='farmland';
-    case 'opaque_below':return OPAQUE[below]===1||family(below).endsWith('_leaves')&&d.family==='snow';
+    case 'opaque_below':
+      // Vanilla snow settles on any full top face (glass, top and double slabs, leaves) except ice.
+      if(d.family==='snow')return (FULL_CUBE[below]===1||blockDef(below).slab==='top'||family(below).endsWith('_leaves'))&&!ICE.has(family(below));
+      return OPAQUE[below]===1;
+    case 'fire':{
+      // Vanilla FireBlock.canSurvive: a sturdy top below, or any neighbour that can burn.
+      if(FULL_CUBE[below]===1&&!family(below).endsWith('_leaves'))return true;
+      for(let i=0;i<6;i++){const n=world.get(x+NX[i],y+NY[i],z+NZ[i]);if(n>0&&blockDef(n).flammable)return true;}
+      return false;
+    }
     case 'sugar_cane':{
       if(family(below)==='sugar_cane')return true;
       if(!SOIL.has(family(below))&&!SAND.has(family(below)))return false;

@@ -64,7 +64,8 @@ describe('weather service: state and cycle',()=>{
     tick(game,1);expect(game.time.skyDarkening).toBe(3);
     weather.set('thunder');tick(game,101);
     expect(weather.state).toBe('thunder');expect(weather.thunder).toBe(1);
-    tick(game,1);expect(game.time.skyDarkening).toBe(8);
+    // Vanilla: a thunderstorm at noon darkens the sky by floor((1 - 11/16 × 11/16) × 11) = 5 levels.
+    tick(game,1);expect(game.time.skyDarkening).toBe(5);
     weather.set('clear');tick(game,101);
     expect(weather.state).toBe('clear');expect(weather.intensity).toBe(0);expect(weather.thunder).toBe(0);
   });
@@ -266,13 +267,15 @@ describe('snow layers and ice',()=>{
     tick(game,2000);
     expect(snowAt()).toBeGreaterThan(100);
   });
-  test('snow needs an air cell on an opaque block (or leaves) with block light below 10',()=>{
+  test('snow needs an air cell on a full top face (or leaves) with block light below 10',()=>{
     const {game}=setup('snowy_plains');
     expect(precipitateColumn(game.world,3,3)).toBe('snow');expect(game.world.get(3,64,3)).toBe(B.snow);
     expect(precipitateColumn(game.world,3,3)).toBeNull();// already snowy
     game.world.set(5,64,5,B.shortGrass);expect(precipitateColumn(game.world,5,5)).toBeNull();
     game.world.set(6,64,6,B.oakLeaves);expect(precipitateColumn(game.world,6,6)).toBe('snow');expect(game.world.get(6,65,6)).toBe(B.snow);
-    game.world.set(7,64,7,B.glass);expect(precipitateColumn(game.world,7,7)).toBeNull();
+    // Vanilla snow settles on any full top face, glass included, but never on ice.
+    game.world.set(7,64,7,B.glass);expect(precipitateColumn(game.world,7,7)).toBe('snow');
+    game.world.set(8,64,8,B.ice);expect(precipitateColumn(game.world,8,8)).not.toBe('snow');
     const chunk=game.world.chunk(0,0)!;chunk.light=new Uint8Array(CHUNK_VOLUME).fill(0xf0);chunk.light[voxelIndex(9,64,9)]=0xfa;
     expect(precipitateColumn(game.world,9,9)).toBeNull();
   });

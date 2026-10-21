@@ -80,6 +80,8 @@ export interface World extends BlockWriter{
   set(x:number,y:number,z:number,id:BlockId,cause?:ChangeCause):boolean;
   /** True once MAX_EDITS voxels differ from generation: further edits of untouched voxels fail. */
   readonly editsFull:boolean;
+  /** Voxels that currently differ from generation (natural snow and ice keep it under 75% of MAX_EDITS). */
+  readonly editCount:number;
   biomeAt(x:number,z:number):BiomeId;
   /** Highest non-air block y in a column, or -1. */
   topY(x:number,z:number):number;
@@ -150,7 +152,9 @@ export interface Mesher{
   meshBlock(id:BlockId,tint?:number):ChunkMesh;
 }
 export type ParticleKind='block'|'item'|'smoke'|'large_smoke'|'explosion'|'splash'|'bubble'|'drip'|'crit'|'heart'|'angry'|
-  'happy'|'flame'|'lava'|'portal'|'poof'|'slime'|'damage'|'sweep'|'note'|'spell';
+  'happy'|'flame'|'lava'|'portal'|'poof'|'slime'|'damage'|'sweep'|'note'|'spell'|
+  /** Squid ink: black, does not rise, friction 0.92. */
+  'ink';
 export interface ParticleOptions{
   /** Block texture for 'block' (break/landing dust) and item sprite for 'item' (eating crumbs, snowball/egg breaking). */
   block?:BlockId;item?:ItemId;
@@ -210,7 +214,7 @@ export interface PlayerState extends Vec3{
   vx:number;vy:number;vz:number;yaw:number;pitch:number;
   onGround:boolean;inWater:boolean;inLava:boolean;headInWater:boolean;onLadder:boolean;
   sneaking:boolean;sprinting:boolean;flying:boolean;
-  /** Swimming pose (sprinting in water): 0.6 high hitbox, eye at 0.4. */
+  /** Swimming pose (sprint-swimming in water, or crawling under a 1-block gap): 0.6 high hitbox, eye at 0.4. */
   swimming:boolean;
   /** Blocks fallen since last on ground (for fall damage). */
   fallDistance:number;
@@ -240,7 +244,7 @@ export interface PlayerService extends System{
  *  see ROOT_FLAGS. Escape belongs to the shell and the browser (pointer lock); never bind it. */
 export type InputAction='forward'|'back'|'left'|'right'|'jump'|'sneak'|'sprint'|'attack'|'use'|'pick'|'drop'|'dropStack'|'swapHands'|'inventory'|'advancements';
 export interface InputBinding{action:InputAction;
-  /** KeyboardEvent.code values or 'Mouse0' / 'Mouse2' / 'Mouse1'. */
+  /** KeyboardEvent.code values, a chord joined with '+' (dropStack: 'ControlLeft+KeyQ'), or 'Mouse0' / 'Mouse2' / 'Mouse1'. */
   keys:readonly string[];label:string}
 export interface InputService extends System{
   /** Current held state of an action. */
@@ -313,6 +317,10 @@ export interface SurvivalService extends System{
   /** Death: sets dead and health 0, drops the inventory (inventory.dropAll) and xp orbs (7 per level, max 100) unless
    *  keepInventory, then emits `playerDied` (the engine shows the death screen). Repeated calls while dead do nothing. */
   kill(message:string):void;
+  /** The death message while dead ('' while alive): the death screen shows it after loading a world saved on it. */
+  readonly deathMessage:string;
+  /** 0..1 red hurt flash: 1 on a fresh hit, fading over the 10-tick hurt animation. */
+  readonly hurtFlash:number;
 }
 
 // ---- Items, inventory and crafting ---------------------------------------------------------------
@@ -341,6 +349,8 @@ export interface InventoryService extends System{
   setOffhand(stack:ItemStack|null):void;
   /** Swaps the held stack and the offhand (F). */
   swapHands():void;
+  /** Wears the stack in the offhand (a raised shield); breaks it with tool_break when worn out. No-op in creative. */
+  damageOffhand?(amount:number):void;
   count(id:ItemId):number;
   /** Removes up to `count` items of an id; returns the number removed. */
   remove(id:ItemId,count:number):number;
@@ -512,10 +522,15 @@ export interface EntityKind{
   persist?:boolean;
   /** Validate restored data for this kind; return null to drop the entity. Default: keep JSON values as is. */
   restoreData?(data:Record<string,unknown>):Record<string,unknown>|null;
-  /** Despawns when far from the player (hostile mobs: instantly beyond 128 blocks, randomly beyond 32). */
-  despawns?:boolean;
-  /** Breathes water (squid, drowned): suffocates on land instead of drowning. */
+  /** Despawns when far from the player (hostile mobs: instantly beyond 128 blocks, randomly beyond 32). A predicate decides per
+   *  entity (endermen holding a block never despawn). */
+  despawns?:boolean|((entity:Entity)=>boolean);
+  /** Swims freely in water and never drowns; kinds of category 'water' (squid) also dry out on land. */
   aquatic?:boolean;
+  /** Undead (zombies, husks, drowned, skeletons, strays): never drowns, as vanilla canBreatheUnderwater. */
+  undead?:boolean;
+  /** Paths never enter water (endermen). */
+  avoidsWater?:boolean;
   /** Immune to fall damage (chickens, cats) / fire and lava. */
   noFallDamage?:boolean;fireImmune?:boolean;
   /** Burns in daylight unless in water, rain or shade (zombies, skeletons, strays, drowned out of water). */
@@ -525,8 +540,12 @@ export interface EntityKind{
   /** Natural spawning. Animals: light 'grass' (on grass, light ≥ 9, mostly at chunk generation), weights from biome `animals`
    *  unless `biomes` lists [biome name, weight]. Monsters: light 'dark' (block light 0 and sky brightness ≤ 7 or in caves),
    *  weight among dark spawns, `biomes` restricts, `replaces` substitutes this kind for another in matching biomes
-   *  (husk for zombie in deserts, stray for skeleton in snowy biomes). Water: in water columns. */
-  spawn?:{light:'dark'|'grass'|'water';group:[number,number];weight?:number;biomes?:readonly (readonly [string,number])[];replaces?:string};
+   *  (husk for zombie in deserts, stray for skeleton in snowy biomes). Water: in water columns. Natural spawns happen 24–64 blocks
+   *  from the player (caps count mobs within 128). An aquatic dark kind with `replaces` takes over the replaced kind's spawns at
+   *  water positions (drowned for zombie). Grass kinds spawn on their biome's top block (sand rabbits, mycelium mooshrooms).
+   *  `check` adds kind-specific placement rules (husk and stray need open sky; slime chunks below y 40 need no darkness). */
+  spawn?:{light:'dark'|'grass'|'water';group:[number,number];weight?:number;biomes?:readonly (readonly [string,number])[];replaces?:string;
+    check?(game:Game,x:number,y:number,z:number):boolean};
 }
 export interface EntityRay{entity:Entity;distance:number}
 /** Shared steering helpers (entity/ai.ts) used by every mob. They only set moveX/moveZ/jump/yaw/headYaw. */
@@ -562,7 +581,8 @@ export interface EntityService extends System{
   near(x:number,y:number,z:number,radius:number,filter?:(e:Entity)=>boolean,out?:Entity[]):Entity[];
   /** First pickable entity hit by a ray. */
   raycast(origin:Vec3,direction:Vec3,maxDistance:number,ignore?:Entity|null):EntityRay|null;
-  /** Damage with knockback, hurt flash, invulnerability, sounds and death (drops + xp when byPlayer). Returns true if applied. */
+  /** Damage with knockback, hurt flash, invulnerability, sounds and death (drops + xp when byPlayer). Returns true if applied.
+   *  Amount 0 is a valid hit (snowballs, eggs, pearls): flash, invulnerability, knockback and the kind's hurt hook still run. */
   damage(entity:Entity,amount:number,source:DamageSource):boolean;
   /** Spawn a dropped item entity; merges with nearby equal stacks. pickupDelay in ticks (default 10). */
   dropItem(stack:ItemStack,x:number,y:number,z:number,velocity?:Vec3,pickupDelay?:number):void;
@@ -591,7 +611,7 @@ export interface InteractionService extends System{
   readonly breaking:{x:number;y:number;z:number;progress:number}|null;
   /** Items a block drops when broken with `tool` (null = hand or explosion). Respects requiresTool, shears, silk-free
    *  vanilla drops (stone → cobblestone, ores, leaves → saplings/apples/sticks by chance, grass seeds, crops by age). */
-  blockDrops(id:BlockId,tool:ItemStack|null):ItemStack[];
+  blockDrops(id:BlockId,tool:ItemStack|null,cause?:ChangeCause):ItemStack[];
 }
 export interface BlockTickService extends System{
   /** Run a scheduled update of a block after `delay` ticks (fluids, falling blocks, support checks). */
@@ -633,13 +653,18 @@ export type MobSoundKind='ambient'|'hurt'|'death'|'step';
  *  pop → entities (pickup); click/chest/door/craft → ui and interaction; explode/fuse/ignite → ticks and creepers;
  *  splash/swim → player and entities; fizz/lava/fire → ticks; bow/arrow_hit/throw → interaction and projectiles;
  *  tool_break/equip → inventory; thunder/rain → weather; attack_* /crit/sweep → interaction; toast → advancements;
- *  bucket_*, shear, milk → interaction; teleport → monsters (enderman) and pearls; furnace → blockEntities (lit furnace crackle near
- *  the player); mob:* → entities.
+ *  bucket_* → interaction; shear, milk → passive mobs (EntityKind.interact); teleport → monsters (enderman) and pearls;
+ *  furnace → blockEntities (lit furnace crackle near the player); mob:* → entities (also wolf_growl/whine/pant/shake and
+ *  squid_squirt voices from companions); break also passive (grazing) and ticks (blocks popping off); pop also passive (eggs);
+ *  fuse, ignite and fizz also interaction (flint and steel, TNT, punching fire out); shield_block → survival; till, bone_meal,
+ *  scrape → interaction. Thunder is never attenuated: `at` sets its direction, a volume below 1 is the caller's distance fade.
+ *  options.volume and options.pitch replace the event's vanilla defaults, as vanilla playSound(sound, volume, pitch).
  *  Unknown names must not throw. */
 export type SoundName=`break:${SoundKind}`|`place:${SoundKind}`|`step:${SoundKind}`|`hit:${SoundKind}`|`fall:${SoundKind}`|
   'hurt'|'death'|'eat'|'burp'|'drink'|'pop'|'levelup'|'orb'|'click'|'door_open'|'door_close'|'chest_open'|'chest_close'|'craft'|
   'explode'|'fuse'|'ignite'|'splash'|'swim'|'fizz'|'lava'|'fire'|'bow'|'arrow_hit'|'throw'|'tool_break'|'equip'|'thunder'|'rain'|
   'attack_weak'|'attack_strong'|'crit'|'sweep'|'toast'|'bucket_fill'|'bucket_empty'|'shear'|'milk'|'teleport'|'furnace'|
+  'shield_block'|'till'|'bone_meal'|'scrape'|
   `mob:${string}:${MobSoundKind}`;
 export interface SoundService extends System{
   /** Procedural Web Audio sound; positional (distance falloff and stereo pan from the camera) when `at` is given.
@@ -713,7 +738,10 @@ export interface GameEvents{
   blockBroken:{x:number;y:number;z:number;id:BlockId;byPlayer:boolean};
   blockPlaced:{x:number;y:number;z:number;id:BlockId};
   playerDamaged:{amount:number;source:DamageSource};
-  playerDied:{message:string};
+  /** source: what killed the player, when known. */
+  playerDied:{message:string;source?:DamageSource};
+  /** The player landed after falling `fallDistance` blocks at feet (x,y,z) (farmland trampling). */
+  playerLanded?:{fallDistance:number;x:number;y:number;z:number};
   playerRespawned:{};
   playerSlept:{};
   entitySpawned:{entity:Entity;reason:SpawnReason};
@@ -721,6 +749,8 @@ export interface GameEvents{
   entityDied:{entity:Entity;source:DamageSource};
   animalBred:{kind:string;x:number;y:number;z:number};
   entityTamed:{entity:Entity};
+  /** An entity left the world (death animation over, despawned or removed); slimes split here. */
+  entityRemoved?:{entity:Entity};
   itemPickedUp:{stack:ItemStack};
   /** A crafting or furnace result taken by the player. */
   itemCrafted:{stack:ItemStack;station:CraftingStation};

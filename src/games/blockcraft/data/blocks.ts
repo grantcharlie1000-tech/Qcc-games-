@@ -11,7 +11,7 @@ export type SoundKind='stone'|'wood'|'gravel'|'grass'|'sand'|'cloth'|'glass'|'sn
 export type Facing='north'|'south'|'east'|'west';
 export type TintKind='none'|'grass'|'foliage'|'water';
 /** What a block needs to stay in place (see engine/support.ts canSurvive). */
-export type SupportRule='soil'|'soil_or_sand'|'farmland'|'opaque_below'|'sugar_cane'|'cactus'|'water'|'wall'|'door'|'bed';
+export type SupportRule='soil'|'soil_or_sand'|'farmland'|'opaque_below'|'sugar_cane'|'cactus'|'water'|'wall'|'door'|'bed'|'fire';
 export const FACINGS:Facing[]=['north','south','east','west'];
 /** Offsets of each facing: north is -z, south +z, east +x, west -x. */
 export const FACING_VECTOR:Record<Facing,[number,number]>={north:[0,-1],south:[0,1],east:[1,0],west:[-1,0]};
@@ -270,7 +270,7 @@ define('tnt',{tiles:{top:'tnt_top',bottom:'tnt_bottom',side:'tnt_side'},hardness
 define('glowstone',{lightEmission:15,hardness:.3,sound:'glass'});
 define('lantern',{shape:'lantern',lightEmission:15,hardness:3.5,tool:'pickaxe',requiresTool:true,sound:'metal',support:'opaque_below'});
 // Fire: lit by flint and steel, lava and lightning; burns out and spreads to flammable blocks (world/ticks.ts).
-define('fire',{shape:'fire',lightEmission:15,hardness:0,replaceable:true,solid:false,sound:'wood',item:null,support:'opaque_below'});
+define('fire',{shape:'fire',lightEmission:15,hardness:0,replaceable:true,solid:false,sound:'wood',item:null,support:'fire'});
 define('barrel',{tiles:{top:'barrel_top',bottom:'barrel_bottom',side:'barrel_side'},hardness:2.5,tool:'axe',sound:'wood',blockEntity:'chest',interactive:true,flammable:true});
 for(const metal of ['iron','gold','diamond','emerald','lapis','coal','redstone'])define(`${metal}_block`,{hardness:metal==='coal'?5:metal==='lapis'||metal==='gold'?3:5,...stone,blast:metal==='lapis'?3:6,level:metal==='diamond'||metal==='gold'||metal==='emerald'?2:metal==='iron'||metal==='lapis'?1:0,sound:'metal'});
 for(const facing of FACINGS)define(`ladder_${facing}`,{family:'ladder',display:'Ladder',shape:'ladder',facing,tiles:'ladder',hardness:.4,tool:'axe',sound:'wood',climbable:true,item:'ladder',support:'wall'});

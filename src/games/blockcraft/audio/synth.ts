@@ -302,7 +302,24 @@ const SIMPLE:Record<SimpleName,Recipe>={
     noise('bandpass',2000,{freqEnd:500,q:1.2,attack:.05,decay:.5,gain:.12})]),
   furnace:r=>spec(1,1,[
     noise('bandpass',2200,{q:1,decay:.025,gain:.35,bursts:grains(r,5,.6,.025,.4,.5)}),
-    rumble(300,{attack:.1,hold:.3,decay:.4,gain:.15})])
+    rumble(300,{attack:.1,hold:.3,decay:.4,gain:.15})]),
+  // A wooden thud with a dull metal ring (vanilla item.shield.block).
+  shield_block:r=>{const f=vary(r,.08);return spec(1,.8+r()*.4,[
+    rumble(180*f,{attack:.002,decay:.18,gain:.45}),
+    noise('bandpass',900*f,{q:1.4,attack:.002,decay:.09,gain:.35}),
+    tone('triangle',620*f,{attack:.001,decay:.22,gain:.12})]);},
+  // Soil scraped by a hoe (vanilla item.hoe.till).
+  till:r=>{const f=vary(r,.1);return spec(1,1,[
+    noise('bandpass',700*f,{freqEnd:1100*f,q:1.2,attack:.01,decay:.16,gain:.4,bursts:grains(r,3,.12,.03,.4)}),
+    rumble(240*f,{decay:.08,gain:.2})]);},
+  // A soft crunch and sparkle (vanilla item.bone_meal.use).
+  bone_meal:r=>{const f=vary(r,.1);return spec(1,1,[
+    noise('highpass',2600*f,{q:.8,decay:.04,gain:.35,bursts:grains(r,4,.15,.03,.45)}),
+    tone('sine',1800*f,{freqEnd:2600*f,delay:.05,attack:.005,decay:.12,gain:.08})]);},
+  // An axe scraping copper (vanilla item.axe.scrape).
+  scrape:r=>{const f=vary(r,.08);return spec(1,1,[
+    noise('bandpass',2400*f,{freqEnd:1600*f,q:3,attack:.02,hold:.1,decay:.2,gain:.35}),
+    tone('sawtooth',1150*f,{freqEnd:900*f,attack:.02,decay:.25,gain:.06,filter:{type:'bandpass',freq:1400,q:3}})]);}
 };
 const SIMPLE_MAP=new Map<string,Recipe>(Object.entries(SIMPLE));
 

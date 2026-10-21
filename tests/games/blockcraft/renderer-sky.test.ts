@@ -88,9 +88,11 @@ describe('light',()=>{
     expect(maxStep).toBeLessThan(.002);
     expect(lightFactor(1,0,0)).toBe(1);expect(lightFactor(0,0,0)).toBeCloseTo(.2);expect(lightFactor(0,1,1)).toBeCloseTo(.2);
     for(const [d,r,th] of [[1,0,0],[0,0,0],[1,1,0],[1,1,1],[.5,.3,0]]){
-      expect(Math.abs(lightFactor(d,r,th)-skyFactor(skyDarkeningAt(d,r,th)))).toBeLessThanOrEqual(.8*.5/11+1e-9);
+      // The engine truncates darkness to whole levels (vanilla), so the levels are at most one step brighter.
+      const diff=skyFactor(skyDarkeningAt(d,r,th))-lightFactor(d,r,th);expect(diff).toBeGreaterThanOrEqual(-1e-9);expect(diff).toBeLessThanOrEqual(.8/11+1e-9);
     }
-    expect(lightFactor(1,1,0)).toBeCloseTo(skyFactor(3));
+    // Rain at noon: vanilla darkens by 11 × 5/16 = 3.44 levels (3 whole levels).
+    expect(lightFactor(1,1,0)).toBeCloseTo(skyFactor(11*5/16));expect(skyDarkeningAt(1,1,0)).toBe(3);
   });
   test('the lightmap matches vanilla: full daylight is white, moonlight is dim blue, darkness is not pure black',()=>{
     const day=lightmap(15,0,1);expect(day.r).toBeGreaterThan(.97);expect(day.b).toBeGreaterThan(.97);

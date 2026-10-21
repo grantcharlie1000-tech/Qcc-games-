@@ -56,7 +56,7 @@ export function createFakeGame(options:{seed?:number;random?:()=>number;mode?:'s
     armorIn:()=>null,setArmor:()=>true,setOffhand:noop,swapHands:noop,count:id=>slots.reduce((n,s)=>n+(s?.id===id?s.count:0),0),
     remove:()=>0,setSlot(i,s){slots[i]=s;},dropHeld:noop,dropAll:noop,clear(){slots.fill(null);armor.fill(null);},onChange:()=>noop};
   const survival:SurvivalService={health:20,maxHealth:20,food:20,saturation:5,air:300,maxAir:300,absorption:0,xpLevel:0,xpProgress:0,xpTotal:0,
-    dead:false,burning:0,armorPoints:()=>0,damage:a=>a,heal:noop,addExhaustion:noop,eat:noop,canEat:()=>true,addXp:noop,addEffect:noop,
+    dead:false,deathMessage:'',hurtFlash:0,burning:0,armorPoints:()=>0,damage:a=>a,heal:noop,addExhaustion:noop,eat:noop,canEat:()=>true,addXp:noop,addEffect:noop,
     removeEffect:noop,clearEffects:noop,effects:()=>[],hasEffect:()=>false,ignite:noop,extinguish:noop,land:noop,respawn:noop,kill:noop};
   const entityList:Entity[]=[];
   const entities:EntityService={

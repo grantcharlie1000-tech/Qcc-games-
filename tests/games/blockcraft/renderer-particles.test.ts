@@ -43,7 +43,7 @@ describe('particles',()=>{
       const before=system.count;system.spawn(kind,.5,62,.5,{block:B.stone,item:'apple'});
       expect(system.count,kind).toBeGreaterThan(before);
     }
-    expect(PARTICLE_KINDS.length).toBe(21);
+    expect(PARTICLE_KINDS.length).toBe(22);
     system.update(0);
     const geometry=system.mesh.geometry as THREE.InstancedBufferGeometry;
     expect(system.mesh.visible).toBe(true);expect(geometry.instanceCount).toBe(system.count);

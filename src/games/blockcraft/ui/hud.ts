@@ -369,7 +369,7 @@ export function createHud(game:Game):HudService{
   hotbar.addEventListener('pointerdown',e=>e.stopPropagation(),{signal});
 
   const service:HudService={
-    showMenu(kind){menus.show(kind);},
+    showMenu(kind){if(kind==='dead'&&game.survival.deathMessage)menus.setDeathMessage(game.survival.deathMessage);menus.show(kind);},
     init(){
       touch=game.input.touch;
       // Relayout at once: frames stop while the game is paused, but the HUD still shows behind the pause menu.
