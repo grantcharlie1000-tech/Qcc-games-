@@ -4,9 +4,9 @@ import {EventEmitter} from 'node:events';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {createUpdateNativeTrace} from './update-native-trace.mjs';
+import {createUpdateNativeTrace,NATIVE_TRACE_LIMITS,nativeEventMetadata,diagnosticMetadata} from './update-native-trace.mjs';
 
-async function fixture(t,{startError,endError,dataLoss=false,events=[{name:'ServiceWorkerVersion::Request',cat:'ServiceWorker'}]}={}){
+async function fixture(t,{startError,endError,dataLoss=false,events=[{name:'ServiceWorkerVersion::Request',cat:'ServiceWorker'}],traceOptions={}}={}){
  const directory=await mkdtemp(join(tmpdir(),'qcc-native-trace-test-'));t.after(()=>rm(directory,{recursive:true,force:true}));
  const calls=[],cdp=new EventEmitter();let closed=false;
  cdp.send=async(method,params)=>{
@@ -18,7 +18,7 @@ async function fixture(t,{startError,endError,dataLoss=false,events=[{name:'Serv
   }
  };
  const context=Object.assign(new EventEmitter(),{browser:()=>({newBrowserCDPSession:async()=>cdp}),pages:()=>[],close:async()=>{closed=true;}});
- const trace=createUpdateNativeTrace({enabled:true,directory,log:()=>{}});
+ const trace=createUpdateNativeTrace({enabled:true,directory,log:()=>{},...traceOptions});
  return {directory:trace.directory,calls,cdp,context,trace,closed:()=>closed};
 }
 
@@ -75,7 +75,7 @@ test('passive worker deltas retain last-known optional fields without inventing 
  pageCdp.emit('ServiceWorker.workerVersionUpdated',{versions:[{registrationId:'r',versionId:'b',runningStatus:'stopped'}]});
  assert.equal(f.trace.mark('W-release-request'),undefined);
  const original=new Error('Timed out: W activates after topic away and back');await f.trace.failure(original,{scope:'/'});
- const rows=(await readFile(f.directory+'/timeline-snapshots.jsonl','utf8')).trim().split('\n').map(JSON.parse),snapshot=rows.find(r=>r.reason==='original-assertion-failure-before-cleanup-or-diagnostic-RPC');
+ const snapshot=JSON.parse(await readFile(f.directory+'/failure-timeline.json','utf8'));
  const marker=snapshot.events.find(r=>r.kind==='W-release-request'),worker=marker.workers[0].versions[0];
  assert.equal(worker.targetId,'old-target');assert.equal(worker.runningStatus,'stopped');assert.deepEqual(worker.lastDelta,{registrationId:'r',versionId:'b',runningStatus:'stopped'});assert.equal('epoch' in worker,false);assert.equal('controlledClients' in worker,false);
  assert.deepEqual(commands,['ServiceWorker.enable','Network.enable']);assert.ok(snapshot.events.some(r=>r.kind==='category-discovery'&&r.discovered.length===0&&r.coverage==='unknown'));
@@ -89,7 +89,7 @@ test('HTTP metadata observes finish, premature close and abort without consuming
  request.emit('aborted');response.destroyed=true;response.emit('close');
  const original=new Error('original assertion');await f.trace.failure(original,{scope:'/'});
  response.writableFinished=true;response.emit('finish');await f.context.close();
- const snapshots=(await readFile(f.directory+'/timeline-snapshots.jsonl','utf8')).trim().split('\n').map(JSON.parse),before=snapshots.find(r=>r.reason==='original-assertion-failure-before-cleanup-or-diagnostic-RPC');
+ const before=JSON.parse(await readFile(f.directory+'/failure-timeline.json','utf8'));
  assert.ok(before.events.some(r=>r.kind==='server-request-aborted'));assert.ok(before.events.some(r=>r.kind==='server-response-close'&&r.responseFinished===false));assert.equal(before.events.some(r=>r.kind==='server-response-finish'),false);
 });
 
@@ -109,4 +109,57 @@ test('a late passive page session cannot enable observation after setup timeout 
  t.mock.timers.enable({apis:['setTimeout']});const observing=f.trace.observe(f.context,{scope:'/'});await requestedSession;t.mock.timers.tick(5000);await observing;
  await f.trace.failure(new Error('original'),{});resolveSession(pageCdp);await Promise.resolve();await Promise.resolve();assert.deepEqual(commands,[]);
  t.mock.timers.reset();await f.context.close();
+});
+
+
+test('public diagnostic metadata excludes headers, bodies, queries and non-fixture URLs',()=>{
+ const event=nativeEventMetadata({name:'URL_REQUEST_START_JOB',cat:'netlog',ph:'b',pid:1,tid:2,ts:3,id2:{local:'0x14'},args:{params:{url:'http://127.0.0.1:4181/sw.js?secret=redact#fragment',method:'GET',source_start_time:'10',headers:['Cookie: secret'],request_headers:'Authorization: secret',body:'private',key:'private cache key',source_dependency:{id:5,type:1}}}});
+ assert.deepEqual(event.args,{params:{url:'http://127.0.0.1:4181/sw.js',method:'GET',source_start_time:'10',source_dependency:{id:5,type:1}}});
+ assert.equal(nativeEventMetadata({args:{url:'https://private.invalid/account?secret=1'}}).args.url,'[non-fixture-url]');
+ const metadata=diagnosticMetadata({scope:'/',headers:'private',versions:[{scriptURL:'http://127.0.0.1:4181/sw.js?secret=1',controlledClients:['test-client']}],error:'Failed https://private.invalid/path?secret=1'});
+ assert.deepEqual(metadata,{scope:'/',versions:[{scriptURL:'http://127.0.0.1:4181/sw.js',controlledClients:['test-client']}],error:'Failed [non-fixture-url]'});
+});
+
+test('recent timeline survives earlier full-suite traffic and reserves the first failure snapshot',async t=>{
+ const f=await fixture(t,{traceOptions:{limits:{...NATIVE_TRACE_LIMITS,timelineRows:4,snapshotBytes:10000},metadata:{checkout:'test-checkout',tree:'test-tree'}}});await f.trace.observe(f.context,{scope:'/'});
+ for(let i=0;i<20;i++)f.trace.phase('prior-phase-'+i);
+ f.trace.phase('controlled-waiting-WXY');f.trace.mark('W-release-request');
+ const original=new Error('Timed out: W activates after topic away and back');await f.trace.failure(original,{scope:'/'});await f.trace.failure(new Error('later cleanup error'),{});
+ const snapshot=JSON.parse(await readFile(f.directory+'/failure-timeline.json','utf8'));
+ assert.equal(snapshot.phase,'controlled-waiting-WXY');assert.ok(snapshot.dropped>0);assert.equal(snapshot.metadata.checkout,'test-checkout');assert.ok(snapshot.events.some(row=>row.kind==='W-release-request'));assert.equal(snapshot.events.at(-1).message,original.message);assert.ok(snapshot.events.length<=4);
+ await f.context.close();
+});
+
+test('native tail retains the latest batch and reports evicted events',async t=>{
+ const event=name=>({name,cat:'ServiceWorker',ph:'I',ts:1,args:{status:'COMPLETED'}});
+ const f=await fixture(t,{events:[event('at-deadline')],traceOptions:{limits:{...NATIVE_TRACE_LIMITS,traceBytesPerContext:180}}});await f.trace.observe(f.context,{scope:'/'});
+ for(let i=0;i<5;i++)f.cdp.emit('Tracing.dataCollected',{value:[event('earlier-'+i)]});
+ await f.context.close();const raw=await readFile(f.directory+'/service-worker-0.jsonl','utf8');assert.match(raw,/at-deadline/);assert.doesNotMatch(raw,/earlier-0/);
+ const rows=(await readFile(f.directory+'/observations.jsonl','utf8')).trim().split('\n').map(JSON.parse),complete=rows.find(row=>row.kind==='complete');assert.ok(complete.traceDroppedEvents>0);assert.equal(complete.usable,false);assert.ok(complete.traceBytes<=180);
+});
+
+test('later context retains file capacity and explicit identity after completed-file eviction',async t=>{
+ const f=await fixture(t,{traceOptions:{limits:{...NATIVE_TRACE_LIMITS,traceBytesTotal:100}}});
+ await f.trace.observe(f.context,{scope:'/',profileId:0});await f.context.close();
+ const second=Object.assign(new EventEmitter(),{browser:f.context.browser,pages:()=>[],close:async()=>{}});
+ f.trace.phase('controlled-waiting-WXY');await f.trace.observe(second,{scope:'/Qcc-games-/',profileId:1});await second.close();
+ await assert.rejects(readFile(f.directory+'/service-worker-0.jsonl'),{code:'ENOENT'});assert.match(await readFile(f.directory+'/service-worker-1.jsonl','utf8'),/ServiceWorkerVersion/);
+ const rows=(await readFile(f.directory+'/observations.jsonl','utf8')).trim().split('\n').map(JSON.parse),last=rows.filter(row=>row.kind==='complete').at(-1);assert.deepEqual(last.retainedContextFiles,[1]);assert.deepEqual(last.evictedContexts,[0]);
+});
+
+test('failed setup does not reuse a later context identity',async t=>{
+ const f=await fixture(t,{startError:new Error('first setup unavailable')});await f.trace.observe(f.context,{scope:'/'});
+ const send=f.cdp.send;f.cdp.send=(method,params)=>method==='Tracing.start'?Promise.resolve():send(method,params);
+ await f.trace.observe(f.context,{scope:'/Qcc-games-/'});await f.context.close();
+ assert.match(await readFile(f.directory+'/service-worker-1.jsonl','utf8'),/ServiceWorkerVersion/);
+ const rows=(await readFile(f.directory+'/observations.jsonl','utf8')).trim().split('\n').map(JSON.parse);assert.equal(rows.find(row=>row.kind==='setup-unavailable').index,0);assert.equal(rows.find(row=>row.kind==='start').index,1);
+});
+
+
+test('an oversized native batch and late completion cannot displace the retained boundary',async t=>{
+ const f=await fixture(t,{events:[{name:'boundary',cat:'ServiceWorker'}],traceOptions:{limits:{...NATIVE_TRACE_LIMITS,traceBytesPerContext:180}}});await f.trace.observe(f.context,{scope:'/'});
+ f.cdp.emit('Tracing.dataCollected',{value:[{name:'oversized',cat:'ServiceWorker',args:{status:'x'.repeat(500)}}]});await f.context.close();
+ f.cdp.emit('Tracing.dataCollected',{value:[{name:'late',cat:'ServiceWorker'}]});
+ const raw=await readFile(f.directory+'/service-worker-0.jsonl','utf8');assert.match(raw,/boundary/);assert.doesNotMatch(raw,/oversized|late/);
+ const rows=(await readFile(f.directory+'/observations.jsonl','utf8')).trim().split('\n').map(JSON.parse);assert.equal(rows.find(row=>row.kind==='complete').traceDroppedEvents,1);assert.equal(rows.find(row=>row.kind==='complete').usable,false);
 });

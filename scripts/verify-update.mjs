@@ -3,6 +3,7 @@ import http from 'node:http';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {existsSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {legacyBuild,readBuild,release,waitingRelease} from './update-fixtures.mjs';
 import {createUpdateNativeTrace} from './update-native-trace.mjs';
 const current=await readBuild(process.cwd()+'/dist');
@@ -10,7 +11,12 @@ const legacy=await legacyBuild();
 const A=release(legacy,'A'),L=release(legacy,'L'),B=release(current,'B'),C=release(current,'C'),D=release(current,'D'),W=waitingRelease(current,'W'),X=waitingRelease(current,'X'),Y=waitingRelease(current,'Y'),broken=release(current,'broken');
 const evidence=process.env.ARCADE_UPDATE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(evidence,{recursive:true});
 const nativeTraceEnabled=process.env.ARCADE_UPDATE_NATIVE_TRACE==='1';
-const nativeTrace=nativeTraceEnabled?createUpdateNativeTrace({enabled:true,directory:evidence+'/native-trace'}):undefined;
+function nativeRunMetadata(){
+ const value={node:process.version,platform:process.platform,arch:process.arch,suite:'full original update verifier unless explicit local filter',case:process.env.ARCADE_UPDATE_CASE||'all',scope:process.env.ARCADE_UPDATE_SCOPE||'both',buildVersion:JSON.parse(current.get('/offline-manifest.json')).version};
+ try{value.checkout=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8',timeout:5000}).trim();value.tree=execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8',timeout:5000}).trim();}catch{value.checkoutUnavailable=true;}
+ value.ci=Object.fromEntries(['GITHUB_SHA','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_EVENT_NAME','GITHUB_JOB','RUNNER_OS','RUNNER_ARCH'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));return value;
+}
+const nativeTrace=nativeTraceEnabled?createUpdateNativeTrace({enabled:true,directory:evidence+'/native-trace',metadata:nativeRunMetadata()}):undefined;
 let deployed=A,scope='/',gate,holdManifest=false,manifestGate,failed=false;
 const requests=[],contexts=[],profiles=[],results=[],startupInventories=[],retainedPageEvidence=[];const primaryPages=new WeakMap();
 const mime={js:'application/javascript',html:'text/html',css:'text/css',json:'application/json',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json'};
@@ -29,7 +35,7 @@ async function version(page){return await bounded(page.evaluate(()=>new Promise(
  const channel=new MessageChannel();const timer=setTimeout(()=>{channel.port1.close();channel.port2.close();reject(new Error('Worker version RPC timed out'));},3000);
  channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();channel.port2.close();known.set(worker,e.data.version);resolve(e.data.version);};worker.postMessage({type:'ARCADE_VERSION'},[channel.port2]);
 })),3000,'worker version RPC (Node deadline)').catch(error=>{if(error.message.includes('version RPC')){console.log('TRANSIENT VERSION OBSERVATION',error.message);return undefined;}throw error;});}
-async function home(page,base){await page.goto(base);await page.locator('[data-study-topic],.game-card').first().waitFor();if(await page.locator('[data-study-topic]').count())await page.locator('[data-study-topic="close-reading"]').click();}
+async function home(page,base){if(nativeTraceEnabled)await nativeTrace.ready(page);await page.goto(base);await page.locator('[data-study-topic],.game-card').first().waitFor();if(await page.locator('[data-study-topic]').count())await page.locator('[data-study-topic="close-reading"]').click();}
 async function menu(page){await page.getByRole('button',{name:'Open menu',exact:true}).click();}
 async function closeMenu(page){await page.getByRole('button',{name:'Close menu',exact:true}).click();}
 async function download(page){await menu(page);await page.getByRole('button',{name:'Make all games available offline',exact:true}).click();await page.getByRole('button',{name:'Offline pack downloaded',exact:true}).waitFor();await closeMenu(page);}
@@ -41,8 +47,9 @@ async function durableOwner(page,target){
  const client=await sourceClient(page);assert.ok(client?.id,'ready document has an authenticated source client');
  await poll(()=>page.evaluate(async({id,version,entry})=>{const r=await navigator.serviceWorker.getRegistration(),cache=await caches.open('pocket-arcade-v2:'+new URL(r.scope).pathname+':'+version+':shell'),response=await cache.match(new URL('.arcade-update-state',r.scope));if(!response)return false;const state=await response.json();return !state.pending.some(item=>item.id===id)&&state.owners.some(item=>item.id===id&&item.entry===new URL(entry,r.scope).href);},{id:client.id,version:target.version,entry:target.entry}),'actual module/source client ownership is durable');return client;
 }
+function nativeContextMetadata(context,profile){try{return {scope,profileId:profiles.indexOf(profile),browserVersion:context.browser().version(),executable:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':chromium.executablePath()),viewport:{width:390,height:844},persistent:true,launchArgs:['--no-sandbox']};}catch{return {scope,browserMetadataUnavailable:true};}}
 async function launch(profile){
- const context=await chromium.launchPersistentContext(profile,{executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),viewport:{width:390,height:844},args:['--no-sandbox']});contexts.push(context);if(nativeTraceEnabled)await nativeTrace.observe(context,{scope});
+ const context=await chromium.launchPersistentContext(profile,{executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),viewport:{width:390,height:844},args:['--no-sandbox']});contexts.push(context);if(nativeTraceEnabled)await nativeTrace.observe(context,nativeContextMetadata(context,profile));
  await context.addInitScript(()=>{
   window.updateControllerTimeline=[];
   const record=label=>{try{const worker=navigator.serviceWorker.controller,item={label,time:performance.now(),script:worker?.scriptURL,state:worker?.state};window.updateControllerTimeline.push(item);if(worker){const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();channel.port2.close();},1000);channel.port1.onmessage=event=>{clearTimeout(timer);item.build=event.data;channel.port1.close();channel.port2.close();};worker.postMessage({type:'ARCADE_VERSION'},[channel.port2]);}}catch{}};
@@ -67,9 +74,10 @@ async function diagnostic(page){return await bounded(page.evaluate(async()=>{
  return {scope:r.scope,requestedEntry,entryHits,controllerTimeline:window.updateControllerTimeline,controller:await query(navigator.serviceWorker.controller),active:await query(r.active),waiting:await query(r.waiting),installing:await query(r.installing),activeEvents:await query(r.active,'ARCADE_DIAGNOSTIC'),waitingEvents:await query(r.waiting,'ARCADE_DIAGNOSTIC'),states};
 }),5000,'worker/ledger diagnostic (Node deadline)').catch(error=>({unavailable:error.message}));}
 async function cacheKeys(page){return await page.evaluate(()=>caches.keys());}
+async function captureNativeFailure(error){if(nativeTraceEnabled)await nativeTrace.failure(error,{scope,heldGate:!!gate,heldManifest:!!manifestGate});}
 async function settleGate(){gate?.writeHead(200,{'Cache-Control':'no-store'});gate?.end('continue');gate=undefined;}
 async function delayedNavigation(context,base,discover,expected){
- const delayed=await context.newPage();const navigation=delayed.goto(base+'?delayed-navigation=1');navigation.catch(()=>{});
+ const delayed=await context.newPage();if(nativeTraceEnabled)await nativeTrace.ready(delayed);const navigation=delayed.goto(base+'?delayed-navigation=1');navigation.catch(()=>{});
  await poll(()=>!!gate,'old navigation response held before document commit');
  await discover();
  let discoveryDeferred=false;try{await poll(async()=>{
@@ -79,11 +87,11 @@ async function delayedNavigation(context,base,discover,expected){
  navigator.serviceWorker.getRegistration().then(r=>query(r?.waiting?.state==='installed'?r.waiting:r?.active));
 }),expected),3000,'installed worker identity');
  return await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();return !!r?.installing||!!r?.waiting;});
- },'update fully installed before old response release');}catch(error){if(expected){console.error('HELD INSTALL DIAGNOSTIC',JSON.stringify(await diagnostic(context.pages().find(page=>page!==delayed&&page.url().startsWith(base)))));throw error;}discoveryDeferred=true;}
+ },'update fully installed before old response release');}catch(error){if(expected){await captureNativeFailure(error);console.error('HELD INSTALL DIAGNOSTIC',JSON.stringify(await diagnostic(context.pages().find(page=>page!==delayed&&page.url().startsWith(base)))));throw error;}discoveryDeferred=true;}
  // Chromium may keep an extended fetch alive through installing/waiting. Record
  // that state rather than assuming execution-unready clients are enumerable.
  const state=await context.pages().find(page=>page!==delayed&&page.url().startsWith(base)).evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();return {active:r.active?.state,waiting:!!r.waiting,installing:!!r.installing};});
- await settleGate();await navigation;try{await delayed.locator('[data-study-topic],.game-card').first().waitFor();}catch(error){console.error('DELAYED BOOTSTRAP DIAGNOSTIC',JSON.stringify(await diagnostic(delayed)));throw error;}
+ await settleGate();await navigation;try{await delayed.locator('[data-study-topic],.game-card').first().waitFor();}catch(error){await captureNativeFailure(error);console.error('DELAYED BOOTSTRAP DIAGNOSTIC',JSON.stringify(await diagnostic(delayed)));throw error;}
  console.log('DELAYED NAVIGATION OBSERVED',JSON.stringify({state,discoveryDeferred}));return {delayed,state,discoveryDeferred};
 }
 async function acceptVersion(page,target){
@@ -97,9 +105,10 @@ async function acceptVersion(page,target){
  await poll(async()=>await version(page)===target.version,'expected controller '+target.label);
 }
 async function cancelledCase(path,base){
+ nativeTrace?.phase('cancelled-navigation',{scope:path});
  deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),page=primaryPage(context);
  await home(page,base);await download(page);await poll(async()=>await version(page)===B.version,'fixed B controls canceled-navigation fixture');
- const cancelled=await context.newPage(),attempt=cancelled.goto(base+'?delayed-navigation=1');attempt.catch(()=>{});await poll(()=>!!gate,'canceled B reservation response held');
+ const cancelled=await context.newPage();if(nativeTraceEnabled)await nativeTrace.ready(cancelled);const attempt=cancelled.goto(base+'?delayed-navigation=1');attempt.catch(()=>{});await poll(()=>!!gate,'canceled B reservation response held');
  await cancelled.close();await settleGate();await attempt.catch(()=>{});console.log('CANCELED B NAVIGATION',path);
  const bPack='pocket-arcade-v2:'+path+':'+B.version+':pack';
  for(const target of [C,D]){
@@ -124,6 +133,7 @@ async function progress(page){return await page.evaluate(()=>{
  const data=JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')).data;return {seed:data.seed,bag:data.bag,current:data.current,next:data.next,score:data.score,fruits:data.fruits.map(({id,tier})=>({id,tier}))};
 });}
 async function controlledWaitingCase(path,base){
+ nativeTrace?.phase('controlled-waiting-WXY',{scope:path});
  console.log('CONTROLLED WAITING START',path);deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);
  await menu(a);await a.locator('#motion').check();await closeMenu(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='waiting-B';});
  const c=await context.newPage();if(nativeTraceEnabled)await nativeTrace.ready(c);await home(c,base);deployed=W;await menu(c);await closeMenu(c);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();
@@ -139,6 +149,7 @@ async function controlledWaitingCase(path,base){
  await context.tracing.stop({path:`${evidence}/update-controlled-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('CONTROLLED WAITING PASS',path);
 }
 async function legacyWaitingCase(path,base,transition=false){
+ nativeTrace?.phase(transition?'legacy-waiting-transition':'legacy-already-waiting',{scope:path});
  deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A-with-waiting-L';});
  const b=await context.newPage();await home(b,base);deployed=L;await b.reload();
  await poll(()=>b.evaluate(expected=>new Promise(resolve=>{navigator.serviceWorker.getRegistration().then(r=>{if(r?.waiting?.state!=='installed'){resolve(false);return;}const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();resolve(false);},1000);c.port1.onmessage=e=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(e.data.version===expected);};r.waiting.postMessage({type:'ARCADE_VERSION'},[c.port2]);});}),L.version),'legacy L already waiting over active A');
@@ -162,6 +173,7 @@ async function legacyWaitingCase(path,base,transition=false){
  assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'));await context.tracing.stop({path:`${evidence}/update-legacy-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('LEGACY ALREADY WAITING MIGRATION PASS',path);
 }
 async function legacyNavigationCase(path,base){
+ nativeTrace?.phase('legacy-delayed-navigation',{scope:path});
  deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),page=primaryPage(context);await home(page,base);await download(page);
  const observed=await delayedNavigation(context,base,async()=>{deployed=B;await page.reload();});
  assert.equal(await observed.delayed.locator('meta[name="arcade-release"]').getAttribute('content'),'A');
@@ -176,7 +188,7 @@ try{
   if(process.env.ARCADE_UPDATE_CASE==='legacy-waiting'){await legacyWaitingCase(path,base);results.push({scope:path,legacyAlreadyWaitingMigration:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='waiting'){await controlledWaitingCase(path,base);results.push({scope:path,controlledWaiting:true});continue;}
   if(!process.env.ARCADE_UPDATE_CASE){await legacyWaitingCase(path,base);await legacyWaitingCase(path,base,true);deployed=A;}
-  console.log('SEED LEGACY',path);let context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller),'legacy control');assert.equal(await version(a),A.version);
+  nativeTrace?.phase('migration',{scope:path});console.log('SEED LEGACY',path);let context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller),'legacy control');assert.equal(await version(a),A.version);
   await a.evaluate(()=>{localStorage.setItem('pocket-arcade:v1:best:fruit-merge','1234');localStorage.setItem('pocket-arcade:v1:settings',JSON.stringify({sound:false,reducedMotion:true,colorBlind:true}));document.cookie='retainedCookie=unchanged; path=/';});await context.close();
   context=await launch(profile);a=primaryPage(context);await home(a,base);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A';});const before=await data(a);
   const b=await context.newPage();await home(b,base);
@@ -204,7 +216,7 @@ try{
   console.log('DEPLOY C WITH MODERN NAVIGATION PENDING',path);
   const modernRace=await delayedNavigation(context,base,async()=>{await c.evaluate(()=>window.dispatchEvent(new Event('online')));},C.version);
   await c.evaluate(()=>window.dispatchEvent(new Event('online')));
-  try{await acceptVersion(c,C);}catch(error){console.error('MODERN ACTIVATION DIAGNOSTIC',JSON.stringify(await diagnostic(c)));throw error;}assert.equal(await a.evaluate(()=>window.retainedDocument),'modern-B');
+  try{await acceptVersion(c,C);}catch(error){await captureNativeFailure(error);console.error('MODERN ACTIVATION DIAGNOSTIC',JSON.stringify(await diagnostic(c)));throw error;}assert.equal(await a.evaluate(()=>window.retainedDocument),'modern-B');
   assert.equal(await modernRace.delayed.locator('meta[name="arcade-release"]').getAttribute('content'),'B');await poll(()=>modernRace.delayed.evaluate(async({version,entry})=>{const r=await navigator.serviceWorker.getRegistration(),cache=await caches.open('pocket-arcade-v2:'+new URL(r.scope).pathname+':'+version+':shell'),response=await cache.match(new URL('.arcade-update-state',r.scope));if(!response)return false;const ledger=await response.json();return !ledger.pending.some(item=>item.entry===new URL(entry,r.scope).href)&&ledger.owners.some(item=>item.entry===new URL(entry,r.scope).href);},{version:C.version,entry:B.entry}),'delayed live B document durably acknowledges its module');console.log('DELAYED BOOTSTRAP VERIFIED',JSON.stringify(await diagnostic(modernRace.delayed)));await modernRace.delayed.close();
   await c.reload();await menu(c);assert.match(await c.locator('.menu-note').textContent(),/Release C/);await closeMenu(c);
   await a.bringToFront();await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();assert.equal(await a.locator('#app').getAttribute('aria-hidden'),'true');
@@ -232,7 +244,7 @@ try{
   }
   for(const page of context.pages().filter(page=>page.url().startsWith(base)))await durableOwner(page,C);
   console.log('ALL OWNED PAGES CURRENT BEFORE GC',path);
-  await c.bringToFront();await c.evaluate(()=>window.dispatchEvent(new Event('online')));try{await poll(async()=>!(await cacheKeys(c)).includes(oldPack),'modern B caches reclaimed after old document safely reloads');}catch(error){console.error('RECLAMATION DIAGNOSTIC C',JSON.stringify(await diagnostic(c)));console.error('RECLAMATION DIAGNOSTIC GAME',JSON.stringify(await diagnostic(a)));throw error;}assert.ok((await cacheKeys(c)).includes(futureShell));assert.equal(await c.evaluate(async()=>(await navigator.serviceWorker.getRegistration()).installing===window.futureInstallerBeforeGc),true,'native future installer identity is unchanged across GC');const afterGc=await diagnostic(c);assert.equal(afterGc.installing?.version,D.version,'same future D installation survives GC');assert.equal(afterGc.installing?.state,'installing');assert.ok((await cacheKeys(c)).includes('pocket-arcade:'+path+':'+A.version+':pack'),'legacy pins propagated through C');
+  await c.bringToFront();await c.evaluate(()=>window.dispatchEvent(new Event('online')));try{await poll(async()=>!(await cacheKeys(c)).includes(oldPack),'modern B caches reclaimed after old document safely reloads');}catch(error){await captureNativeFailure(error);console.error('RECLAMATION DIAGNOSTIC C',JSON.stringify(await diagnostic(c)));console.error('RECLAMATION DIAGNOSTIC GAME',JSON.stringify(await diagnostic(a)));throw error;}assert.ok((await cacheKeys(c)).includes(futureShell));assert.equal(await c.evaluate(async()=>(await navigator.serviceWorker.getRegistration()).installing===window.futureInstallerBeforeGc),true,'native future installer identity is unchanged across GC');const afterGc=await diagnostic(c);assert.equal(afterGc.installing?.version,D.version,'same future D installation survives GC');assert.equal(afterGc.installing?.state,'installing');assert.ok((await cacheKeys(c)).includes('pocket-arcade:'+path+':'+A.version+':pack'),'legacy pins propagated through C');
   holdManifest=false;manifestGate.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});manifestGate.end(D.map.get('/offline-manifest.json'));manifestGate=undefined;await acceptVersion(c,D);
   assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'C','future activation still does not reload an active game');
   await a.keyboard.press('Escape');await a.getByRole('button',{name:'Reload to update',exact:true}).click();await a.locator('.fm-count').filter({hasText:'3 fruits'}).waitFor();assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'D');
@@ -242,7 +254,7 @@ try{
  }
 }catch(error){
  failed=true;console.error('LOCAL FAILURE PROFILES RETAINED',JSON.stringify(profiles));
- console.error(error);if(nativeTraceEnabled)await nativeTrace.failure(error,{scope,heldGate:!!gate,heldManifest:!!manifestGate});await settleGate();manifestGate?.end();console.error('REQUESTS AT FAILURE',JSON.stringify(requests.slice(-40)));for(const [i,context] of contexts.entries()){for(const page of context.pages()){if(!page.isClosed())console.error('FAILURE WORKER',JSON.stringify(await diagnostic(page)));console.error('FAILURE PAGE',page.url(),await page.evaluate(()=>({marker:document.querySelector('meta[name="arcade-release"]')?.getAttribute('content'),focus:document.activeElement?.id,body:document.body.className,status:document.querySelector('#update-status')?.textContent,disabled:document.querySelector('#reload-update')?.disabled})).catch(()=>null));}await Promise.race([context.tracing.stop({path:`${evidence}/update-failure-${i}.zip`}).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);}throw error;
+ console.error(error);await captureNativeFailure(error);await settleGate();manifestGate?.end();console.error('REQUESTS AT FAILURE',JSON.stringify(requests.slice(-40)));for(const [i,context] of contexts.entries()){for(const page of context.pages()){if(!page.isClosed())console.error('FAILURE WORKER',JSON.stringify(await diagnostic(page)));console.error('FAILURE PAGE',page.url(),await page.evaluate(()=>({marker:document.querySelector('meta[name="arcade-release"]')?.getAttribute('content'),focus:document.activeElement?.id,body:document.body.className,status:document.querySelector('#update-status')?.textContent,disabled:document.querySelector('#reload-update')?.disabled})).catch(()=>null));}await Promise.race([context.tracing.stop({path:`${evidence}/update-failure-${i}.zip`}).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);}throw error;
 }finally{
  gate?.end('stop');manifestGate?.end();for(const context of contexts)await context.close().catch(()=>{});server.closeAllConnections();await new Promise(resolve=>server.close(resolve));if(!failed)for(const profile of profiles)await rm(profile,{recursive:true,force:true});
  await writeFile(evidence+'/update-results.json',JSON.stringify({recordedAt:new Date().toISOString(),results,requests,startupInventories,retainedPageEvidence,retainedProfiles:failed?profiles:[]},null,2));
