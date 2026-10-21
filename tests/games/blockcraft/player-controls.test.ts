@@ -148,9 +148,11 @@ describe('gamepad',()=>{
     const a=m.apply(readPad(pad({},[0,0,1,-1])),c,'playing',.1,1);expect(a.dyaw).toBeLessThan(0);expect(a.dpitch).toBeGreaterThan(0);
     const b=new PadMapper().apply(readPad(pad({},[0,0,1,-1])),new ControlState(),'playing',.1,2);expect(b.dyaw).toBeCloseTo(a.dyaw*2,5);
   });
-  test('with a screen open only Y passes; outside play buttons are released',()=>{
+  test('with a screen open only Y or B (closing it) pass; outside play buttons are released',()=>{
     const c=new ControlState(),m=new PadMapper();
     m.apply(readPad(pad({[PAD.A]:1,[PAD.Y]:1})),c,'screen',1/60,1);expect(c.down('jump')).toBe(false);expect(c.pressed('inventory')).toBe(true);
+    m.apply(readPad(pad({[PAD.A]:1})),c,'screen',1/60,1);m.apply(readPad(pad({[PAD.B]:1})),c,'screen',1/60,1);expect(c.pressed('inventory')).toBe(true);
+    m.apply(readPad(pad({[PAD.B]:1})),c,'screen',1/60,1);expect(c.pressed('inventory')).toBe(false);
     m.apply(readPad(pad({[PAD.A]:1})),c,'playing',1/60,1);expect(c.down('jump')).toBe(true);
     m.apply(readPad(pad({[PAD.A]:1})),c,'other',1/60,1);expect(c.down('jump')).toBe(false);
   });

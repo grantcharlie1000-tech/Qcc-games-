@@ -87,7 +87,7 @@ export function createTouchControls(game:Game,controls:ControlState,signal:Abort
     e.preventDefault();if(dropId!==null)return;dropId=e.pointerId;dropFired=false;capture(drop,e);drop.classList.add('bc-active');
     dropTimer=window.setTimeout(()=>{dropFired=true;controls.tap('dropStack');},DROP_STACK_MS);
   });
-  for(const type of ['pointerup','pointercancel'])on(drop,type,e=>{
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])on(drop,type,e=>{
     if(e.pointerId!==dropId)return;dropId=null;clearTimeout(dropTimer);drop.classList.remove('bc-active');
     if(type==='pointerup'&&!dropFired)controls.tap('drop');
   });
@@ -117,7 +117,7 @@ export function createTouchControls(game:Game,controls:ControlState,signal:Abort
       if(descendId!==null)descendId=null;
       if(dropId!==null){dropId=null;clearTimeout(dropTimer);drop.classList.remove('bc-active');}
       // The controls themselves are cleared by the caller; keep the toggle's look in step.
-      sneakOn=false;sneak.setAttribute('aria-pressed','false');sneak.classList.remove('bc-active');
+      sneakOn=false;if(!flying)sneak.setAttribute('aria-pressed','false');sneak.classList.remove('bc-active');
       controls.releaseAll('touch:');ring.hidden=true;
     },
     dispose(){clearTimeout(dropTimer);layer.remove();}

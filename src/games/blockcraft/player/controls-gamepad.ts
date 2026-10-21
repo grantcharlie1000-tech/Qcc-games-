@@ -1,5 +1,6 @@
 // Gamepad API mapping (standard layout): left stick moves, right stick looks, A jump, B sneak, X drop,
 // Y inventory, RT attack, LT use, LB/RB hotbar, left stick click sprints, right stick click picks.
+// With a screen open, Y or B closes it (the ui consumes `inventory` to close any screen).
 import type {InputAction} from '../engine/contracts';
 import type {ControlState,InputPhase} from './controls-core';
 
@@ -43,7 +44,7 @@ export class PadMapper{
     const b=frame.buttons,was=(i:number)=>!!this.prev[i],is=(i:number)=>!!b[i];
     if(phase!=='playing'){
       state.releaseAll('pad:');state.setPadMove(0,0);
-      if(phase==='screen'&&is(PAD.Y)&&!was(PAD.Y))state.tap('inventory');
+      if(phase==='screen'&&(is(PAD.Y)&&!was(PAD.Y)||is(PAD.B)&&!was(PAD.B)))state.tap('inventory');
     }else{
       // Level-based holds (a button kept down through a screen is held again), edges only on a new press.
       for(const [i,action] of HELD){
