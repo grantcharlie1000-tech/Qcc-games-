@@ -67,3 +67,19 @@ approval. Raw verification results are recorded with the final checkpoint.
 
 Raw logs are in `docs/evidence/fair-color-blocks/`; native-input screenshot:
 `tests/games/color-blocks/evidence/fair-hand-390x844.png`. Astra review is pending.
+
+
+## Random fresh runs and exact saved continuation
+
+Fresh mounts and Restart seed the existing dealer with browser random values.
+The pure model retains explicit seeded reproducibility. Previously every browser
+run used the model's fixed default seed, so fresh boards and restarts repeated
+the same first hand and followed the same sequence for the same placements.
+That seed boundary predates the complete-hand dealer.
+
+Reload continues the saved tray, bag and PRNG state exactly. The host mounts
+before restoring, so its temporary fresh state does not replace a valid save.
+Hands remain constrained by the complete-placement witness and line clears;
+validated dot fallback on fragmented boards and occasional repeated random
+hands are expected. New-run randomness does not promise a uniform distribution
+of all possible hands or different pieces on every restart.
