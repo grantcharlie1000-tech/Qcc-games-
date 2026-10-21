@@ -252,15 +252,35 @@ export const lantern:Painter=(x,y)=>{
   for(const top of [1,10])if(x>=11&&x<=13&&(y===top||(y===top+1&&x!==12)))return y===top?LANTERN_IRON[3]:LANTERN_IRON[1];
   return CLEAR;
 };
-const FLAME=ramp(0xb83010,0xe05818,0xf88a22,0xffbc3a,0xffe486,0xfff6c8);
-/** Fire: flame tongues rising from the base to uneven heights, hottest (lightest) low down. Tiles horizontally. */
-export const fire:Painter=cached((x,y)=>{
-  const height=6+valueNoise(x,0,4,16,911)*6+valueNoise(x,0,2,16,912)*4,up=15-y;
-  if(up>=height)return CLEAR;
-  const t=up/height;
-  if(t>.35&&valueNoise(x,y,2,4,913)<.24)return CLEAR;
-  return pick(FLAME,1-t*(.85+hash(x,y,914)*.3));
-},910);
+const FLAME=ramp(0xa82a0c,0xd44a12,0xf27a1c,0xffa82c,0xffd25a,0xfff0a8);
+/** Flame tongues: [centre column, height in px, half width at the base, lean in px over the full height]. */
+const TONGUES:readonly [number,number,number,number][]=[[1.5,10,2.6,1],[5,15,3,-1.5],[8.5,11,2.4,1.2],[12,16,3.2,-1],[14.6,8,2,.6]];
+/** Fire: five pointed tongues of flame that lean and overlap, a dark red rim, a white-hot base and small flicker gaps
+ *  inside the upper flames. Wraps horizontally so the planes around a burning block join up. */
+export const fire:Painter=(()=>{
+  const heat=new Float32Array(T*T).fill(-1);
+  for(let y=0;y<T;y++)for(let x=0;x<T;x++){
+    const up=15-y+.5;
+    let best=-1;
+    for(const [cx,h,w,lean] of TONGUES){
+      if(up>h)continue;
+      const t=up/h,centre=cx+lean*t*t,dx=Math.abs(((x+.5-centre)%T+T*1.5)%T-T/2);
+      // Width narrows toward a sharp tip; the remaining margin (in px) to the tongue's edge is the heat.
+      const half=w*(1-t)**.8+.35,margin=half-dx;
+      if(margin>0)best=Math.max(best,margin*(1.2-t)+(1-t)*1.5);
+    }
+    heat[y*T+x]=best;
+  }
+  return cached((x,y)=>{
+    const k=heat[y*T+x];if(k<0)return CLEAR;
+    const up=15-y,edge=[[1,0],[-1,0],[0,-1]].some(([dx,dy])=>heat[((y+dy+T)%T)*T+((x+dx+T)%T)]<0||y+dy<0);
+    // Flicker gaps: a few holes in the upper body, never on the rim, so the outline stays crisp.
+    if(!edge&&up>5&&up<12&&valueNoise(x,y,2,2,913)<.16)return CLEAR;
+    if(edge)return up<3?FLAME[3]:FLAME[up>9?0:1];
+    if(up<=1)return FLAME[5];
+    return pick(FLAME.slice(1),Math.min(.999,k/3.2+(up<4?.35:0)+(hash(x,y,914)-.5)*.15));
+  },910);
+})();
 
 // ---- Metal and mineral blocks -------------------------------------------------------------------------
 /** A bevelled plate: light top-left edges, dark bottom-right edges, with a motif inside. */

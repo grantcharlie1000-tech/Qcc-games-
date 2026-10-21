@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {describe,expect,test} from 'vitest';
 import {TILE,TILE_NAMES,TILE_ALPHA,TINTED_TILES,ATLAS_COLUMNS,ATLAS_ROWS,WOOL_COLOURS,WOOD_TYPES} from '../../../src/games/blockcraft/data/blocks';
 import {PAINTERS,placeholder,paintAtlas,atlasPixels,tilePixels,paintTile,paintAtlasTexture,paintClouds,ATLAS_WIDTH,ATLAS_HEIGHT} from '../../../src/games/blockcraft/art/atlas';
@@ -161,6 +162,43 @@ describe('tile groups',()=>{
     const warm=(p:Px)=>{let n=0;for(let i=0;i<p.length;i+=4)if(p[i]>200&&p[i+1]>100&&p[i+2]<90)n++;return n;};
     expect(warm(px('furnace_front'))).toBe(0);expect(warm(px('furnace_front_on'))).toBeGreaterThan(12);
   });
+  test('farmland darkens when moist; snow, ice, sandstone and the farm blocks read in their own colours',()=>{
+    const l=(name:string)=>luma(...mean(px(name)) as [number,number,number]);
+    expect(l('farmland_moist')).toBeLessThan(l('farmland')*.7);expect(l('farmland')).toBeLessThan(l('dirt')*1.15);
+    expect(l('snow')).toBeGreaterThan(225);
+    const ice=mean(px('ice'));expect(ice[2]).toBeGreaterThan(ice[0]+40);expect(TILE_ALPHA.get('ice')).toBe('translucent');
+    const packed=mean(px('packed_ice'));expect(packed[2]).toBeGreaterThan(packed[0]+40);
+    for(const name of ['sandstone','sandstone_top','sandstone_bottom','red_sandstone','red_sandstone_top','red_sandstone_bottom']){
+      const c=mean(px(name));expect(c[0],name).toBeGreaterThan(c[2]+40);
+    }
+    expect(same(px('sandstone'),px('sandstone_top'))).toBe(false);expect(same(px('sandstone_top'),px('sandstone_bottom'))).toBe(false);
+    const pumpkin=mean(px('pumpkin_side')),melon=mean(px('melon_side')),cactus=mean(px('cactus_side'));
+    expect(pumpkin[0]).toBeGreaterThan(pumpkin[1]+50);expect(pumpkin[1]).toBeGreaterThan(pumpkin[2]+40);
+    expect(melon[1]).toBeGreaterThan(melon[0]+30);expect(cactus[1]).toBeGreaterThan(cactus[0]+50);
+    // The TNT side carries a pale paper label between red sticks.
+    const tnt=px('tnt_side'),labelRow=mean(tnt,(x,y)=>y>=5&&y<=10),sticks=mean(tnt,(x,y)=>y<4||y>11);
+    expect(luma(...labelRow as [number,number,number])).toBeGreaterThan(luma(...sticks as [number,number,number])+60);
+    expect(sticks[0]).toBeGreaterThan(sticks[1]*2.5);
+  });
+  test('workstations and containers show their faces',()=>{
+    for(const [a,b] of [['crafting_table_top','crafting_table_side'],['crafting_table_side','crafting_table_front'],['chest_side','chest_front'],
+      ['chest_top','chest_side'],['furnace_side','furnace_front'],['furnace_top','furnace_side'],['barrel_top','barrel_bottom'],['barrel_side','barrel_top']])
+      expect(same(px(a),px(b)),`${a} vs ${b}`).toBe(false);
+    // The chest latch is metal grey on the wooden front.
+    const latch=mean(px('chest_front'),(x,y)=>x>=7&&x<=8&&y>=4&&y<=7);expect(saturation(latch)).toBeLessThan(.15);expect(luma(...latch as [number,number,number])).toBeGreaterThan(100);
+  });
+  test('flowers and mushrooms carry their colours on clear backgrounds',()=>{
+    const colourful=(name:string,check:(c:number[])=>boolean)=>{const p=px(name);let n=0;for(let i=0;i<p.length;i+=4)if(p[i+3]&&check([p[i],p[i+1],p[i+2]]))n++;return n;};
+    expect(colourful('dandelion',([r,g,b])=>r>200&&g>160&&b<80)).toBeGreaterThan(6);
+    expect(colourful('poppy',([r,g,b])=>r>150&&g<60&&b<60)).toBeGreaterThan(6);
+    expect(colourful('blue_orchid',([r,g,b])=>b>180&&r<120)).toBeGreaterThan(6);
+    expect(colourful('allium',([r,g,b])=>r>120&&b>160&&g<130)).toBeGreaterThan(6);
+    expect(colourful('cornflower',([r,g,b])=>b>150&&r<100&&g<140)).toBeGreaterThan(6);
+    expect(colourful('oxeye_daisy',([r,g,b])=>r>200&&g>200&&b>200)).toBeGreaterThan(6);
+    expect(colourful('red_mushroom',([r,g,b])=>r>180&&g<60)).toBeGreaterThan(10);
+    expect(colourful('brown_mushroom',([r,g,b])=>r>g&&g>b&&r<200&&r>90)).toBeGreaterThan(10);
+    for(const wood of WOOD_TYPES){const p=px(`${wood}_sapling`);expect(opaqueCount(p),wood).toBeGreaterThan(30);expect(opaqueCount(p),wood).toBeLessThan(N*.6);}
+  });
   test('crops grow taller with each stage and wheat ripens to gold',()=>{
     for(const [crop,stages] of [['wheat',8],['carrots',4],['potatoes',4]] as const){
       const tops=Array.from({length:stages},(_,s)=>topRow(px(`${crop}_stage${s}`)));
@@ -222,6 +260,37 @@ describe('shaped tiles',()=>{
       const p=px(name);let base=0;for(let x=0;x<TILE;x++)if(alphaOf(p,x,15))base++;
       expect(base,name).toBeGreaterThan(0);expect(alphaOf(p,0,0)+alphaOf(p,15,0),name).toBe(0);
     }
+  });
+});
+
+describe('cover',()=>{
+  const svg=readFileSync(new URL('../../../public/game-art/blockcraft/cover.svg',import.meta.url),'utf8');
+  test('the cover is well-formed SVG in the 320×410 frame',()=>{
+    expect(svg.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<svg ')).toBe(true);
+    expect(svg).toContain('viewBox="0 0 320 410"');
+    // Tags nest and close properly and every attribute is quoted.
+    const stack:string[]=[],body=svg.replace(/^<\?xml[^>]*\?>/,'');let elements=0;
+    for(const [,close,name,attrs,self] of body.matchAll(/<(\/?)([A-Za-z][\w:-]*)([^>]*?)(\/?)>/g)){
+      expect(attrs.replace(/\s+[\w:-]+="[^"<]*"/g,'').trim(),`<${name}${attrs}>`).toBe('');
+      if(close)expect(stack.pop()).toBe(name);else{elements++;if(!self)stack.push(name);}
+    }
+    expect(stack).toEqual([]);expect(elements).toBeGreaterThan(500);
+    expect(body.replace(/<[^>]*>/g,'').replace(/[^<>&]*/g,'')).toBe('');
+    expect(svg).toMatch(/<title id="title">[^<]+<\/title>/);
+    expect(svg).not.toMatch(/<script|<text|href=/);
+  });
+  test('the cover keeps the title area clear and shows a cow, a sheep, a creeper, snow and desert',()=>{
+    for(const mob of ['mob-cow','mob-sheep','mob-creeper'])expect(svg).toContain(`class="${mob}"`);
+    for(const [,d] of svg.matchAll(/ d="([^"]+)"/g)){
+      const v=(d.match(/-?\d+(?:\.\d+)?/g)??[]).map(Number);
+      for(let i=0;i+1<v.length;i+=2){
+        expect(v[i]).toBeGreaterThanOrEqual(-.05);expect(v[i]).toBeLessThanOrEqual(320.05);expect(v[i+1]).toBeLessThanOrEqual(410.05);
+        if(!d.startsWith('M0 282'))expect(v[i+1],d.slice(0,40)).toBeGreaterThanOrEqual(95);
+      }
+    }
+    for(const [,y] of svg.matchAll(/<rect x="\d+" y="(\d+)"/g))expect(Number(y)).toBeGreaterThanOrEqual(95);
+    const fills=new Set([...svg.matchAll(/fill="(#[0-9a-f]{6})"/g)].map(m=>m[1]));
+    for(const colour of ['#f2f7fa','#e3d394','#6fbf45'])expect(fills.has(colour),colour).toBe(true);
   });
 });
 
