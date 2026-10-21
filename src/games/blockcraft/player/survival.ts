@@ -10,8 +10,8 @@ import type {DamageSource,EffectName,Entity,Game,StatusEffect,SurvivalService,Sy
 import {StatusEffects,isEffectName,MAX_EFFECT_LEVEL,MAX_EFFECT_TICKS} from './effects';
 import {AIR_REFILL,BURN_DAMAGE,CACTUS_DAMAGE,COMBAT_MEMORY_ENTITY_TICKS,COMBAT_MEMORY_TICKS,DAMAGE_TYPES,DROWN_AIR,DROWN_DAMAGE,
   EXHAUSTION_PER_POINT,FAST_REGEN_TICKS,FIRE_BLOCK_DAMAGE,FIRE_BLOCK_SECONDS,FIRE_IMMUNE_TICKS,INVULNERABLE_TICKS,KILL_CREDIT_TICKS,
-  LAVA_DAMAGE,LAVA_FIRE_SECONDS,MAX_AIR,MAX_EXHAUSTION,MAX_FOOD,MAX_HEALTH,REGEN_EXHAUSTION,SLOW_REGEN_TICKS,SPAWN_PROTECTION_TICKS,
-  START_SATURATION,STARVE_DAMAGE,STARVE_TICKS,SUFFOCATION_DAMAGE,VOID_DAMAGE,VOID_Y,damageAfterArmor,damageTypeOf,deathMessage,
+  LAVA_DAMAGE,LAVA_FIRE_SECONDS,MAX_AIR,MAX_EXHAUSTION,MAX_FOOD,MAX_HEALTH,REGEN_EXHAUSTION,SHIELD_READY_TICKS,SLOW_REGEN_TICKS,
+  SPAWN_PROTECTION_TICKS,START_SATURATION,STARVE_DAMAGE,STARVE_TICKS,SUFFOCATION_DAMAGE,VOID_DAMAGE,VOID_Y,damageAfterArmor,damageTypeOf,deathMessage,
   deathXp,entityName,fallDamage,isLiving,scaleForDifficulty,scalesWithDifficulty,shieldWear,xpToNextLevel,type DamageType} from './survival-rules';
 
 /** Internal state exposed for tests and the debug overlay (not part of the SurvivalService contract). */
@@ -22,6 +22,10 @@ export interface SurvivalDebug{
   readonly invulnerableTicks:number;
   /** Damage-free ticks left after respawning or joining a world. */
   readonly spawnProtection:number;
+  /** The death message while dead ('' while alive): what the death screen shows after loading a world saved on it. */
+  readonly deathMessage:string;
+  /** 0..1 red hurt flash, 1 on a fresh hit and fading over the 10-tick hurt animation (also sent as the 'hurt' overlay). */
+  readonly hurtFlash:number;
 }
 /** The service with every lifecycle hook it implements. */
 export type SurvivalSystem=SurvivalService&SurvivalDebug&Required<Pick<System,'init'|'tick'|'frame'|'reset'|'serialize'|'restore'|'dispose'>>;
@@ -65,6 +69,8 @@ export function createSurvival(game:Game):SurvivalSystem{
   /** Vanilla remainingFireTicks: > 0 burning; ≤ 0 counts up while standing in fire and ignites at 0. */
   let fireTicks=-FIRE_IMMUNE_TICKS;
   let dead=false,lastMessage='';
+  /** Ticks the shield has been raised, up to SHIELD_READY_TICKS. */
+  let shieldTicks=0;
   let invul=0,lastHurt=0,spawnProtection=0,age=0,lastLevelUp=-1000,hurtFlash=0,portalFlash=0;
   /** The mob that last hurt the player (LivingEntity.lastHurtByMob), credited for environmental deaths for 100 ticks. */
   let lastAttacker:{name:string;entity:Entity;age:number}|null=null,lastEntry:CombatEntry|null=null;
@@ -122,7 +128,7 @@ export function createSurvival(game:Game):SurvivalSystem{
   }
   /** LivingEntity.isDamageSourceBlocked: a raised shield and the source (projectile, else attacker) in the front half. */
   function shieldFacing(source:DamageSource):boolean{
-    if(game.interaction.using?.item!=='shield')return false;
+    if(game.interaction.using?.item!=='shield'||shieldTicks<SHIELD_READY_TICKS)return false;
     const from=source.projectile??source.attacker;if(!from)return false;
     const p=state(),dx=p.x-from.x,dz=p.z-from.z;
     if(Math.hypot(dx,dz)<1e-9)return false;
@@ -270,6 +276,17 @@ export function createSurvival(game:Game):SurvivalSystem{
     const above=w.get(x,y+1,z),height=above>0&&isLava(above)?1:liquidHeight(id);
     return ey<y+height;
   }
+  /** The player's inLava flag, confirmed by lava near the body. The player re-senses fluids in its next physics step (a
+   *  frame) after a teleport, which can come after survival's tick: a flag left over from a death in lava must not set the
+   *  respawned player alight. The box is generous so that real contact is never missed. */
+  function lavaContact(){
+    const p=state();if(!p.inLava)return false;
+    const w=game.world,hw=game.player.width/2+.1,y0=Math.floor(p.y-.1),y1=Math.floor(p.y+game.player.height+.1);
+    for(let y=y0;y<=y1;y++)for(let z=Math.floor(p.z-hw);z<=Math.floor(p.z+hw);z++)for(let x=Math.floor(p.x-hw);x<=Math.floor(p.x+hw);x++){
+      const id=w.get(x,y,z);if(id>0&&isLava(id))return true;
+    }
+    return false;
+  }
   /** Fire and cactus cells the player's box is inside (Entity.checkInsideBlocks), plus standing on a cactus alone. */
   function touching(){
     const p=state(),w=game.world,hw=game.player.width/2,h=game.player.height;
@@ -325,24 +342,31 @@ export function createSurvival(game:Game):SurvivalSystem{
   function fresh(){
     health=MAX_HEALTH;food=MAX_FOOD;saturation=START_SATURATION;exhaustion=0;foodTimer=0;air=MAX_AIR;absorption=0;
     fireTicks=-FIRE_IMMUNE_TICKS;effects.clear();dead=false;lastMessage='';invul=0;lastHurt=0;hurtFlash=0;portalFlash=0;
-    lastAttacker=null;lastEntry=null;climbed=false;
+    lastAttacker=null;lastEntry=null;climbed=false;shieldTicks=0;
+  }
+  /** Where game.respawn() puts the player: the bed while it is still a bed (an unloaded one is trusted), else world spawn. */
+  function respawnPoint(){
+    const p=state(),bed=p.bedSpawn;
+    if(bed){const id=game.world.get(bed.x,bed.y,bed.z);if(id<0||BED[id])return{x:bed.x+.5,y:bed.y+1,z:bed.z+.5};}
+    return p.spawn;
   }
   function tick(){
     if(dead)return;
     age++;
     if(invul>0)invul--;
     if(spawnProtection>0)spawnProtection--;
-    const p=state(),isCreative=creative();
+    const p=state(),isCreative=creative(),lava=lavaContact();
+    shieldTicks=game.interaction.using?.item==='shield'?Math.min(SHIELD_READY_TICKS,shieldTicks+1):0;
     if(p.onLadder)climbed=true;else if(p.onGround||p.inWater||p.flying)climbed=false;
     // Water puts out fire; burning hurts once a second (not while in lava, which hurts more).
     if(p.inWater&&fireTicks>0)fireTicks=0;
     if(isCreative){if(fireTicks>0)fireTicks=0;}
     else if(fireTicks>0){
-      if(fireTicks%20===0&&!p.inLava)hurt(BURN_DAMAGE,SOURCES.burn,'on_fire');
+      if(fireTicks%20===0&&!lava)hurt(BURN_DAMAGE,SOURCES.burn,'on_fire');
       fireTicks--;
       if(dead)return;
     }
-    if(p.inLava&&!isCreative){setOnFire(LAVA_FIRE_SECONDS);hurt(LAVA_DAMAGE,SOURCES.lava,'lava');if(dead)return;}
+    if(lava&&!isCreative){setOnFire(LAVA_FIRE_SECONDS);hurt(LAVA_DAMAGE,SOURCES.lava,'lava');if(dead)return;}
     if(p.y<VOID_Y){hurt(VOID_DAMAGE,SOURCES.void,'void');if(dead)return;}
     if(!isCreative&&eyesInWall()){hurt(SUFFOCATION_DAMAGE,SOURCES.wall,'suffocate');if(dead)return;}
     // Air: 300 ticks underwater, then 2 damage each time it reaches -20; refills 4 per tick.
@@ -364,7 +388,7 @@ export function createSurvival(game:Game):SurvivalSystem{
       hurt(FIRE_BLOCK_DAMAGE,SOURCES.burn,'in_fire');if(dead)return;
     }
     if(touch&TOUCH_CACTUS){hurt(CACTUS_DAMAGE,SOURCES.cactus,'cactus');if(dead)return;}
-    if(!(touch&TOUCH_FIRE)&&!p.inLava&&fireTicks<=0)fireTicks=-FIRE_IMMUNE_TICKS;
+    if(!(touch&TOUCH_FIRE)&&!lava&&fireTicks<=0)fireTicks=-FIRE_IMMUNE_TICKS;
     if(fireTicks>0&&(p.inWater||rainingOnPlayer()))fireTicks=-FIRE_IMMUNE_TICKS;
     // Peaceful (Player.aiStep): 1 health and 1 saturation every 20 ticks, 1 food every 10 ticks. Saturation never exceeds food.
     if(game.settings.difficulty==='peaceful'){
@@ -377,11 +401,13 @@ export function createSurvival(game:Game):SurvivalSystem{
   function frame(dt:number){
     const d=Number.isFinite(dt)&&dt>0?dt:0;
     hurtFlash=Math.max(0,hurtFlash-d/HURT_FLASH_SECONDS);portalFlash=Math.max(0,portalFlash-d);
+    // One overlay at a time: lasting states first. Fire and lava hurt every 10 ticks, the length of the hurt flash, so a
+    // flash ahead of the flames would hide them for as long as the player burns (vanilla always shows them when on fire).
     let kind:Overlay=null,strength=0;
     if(eyesInLava()){kind='lava';strength=1;}
     else if(portalFlash>0){kind='portal';strength=Math.min(1,portalFlash/PORTAL_SECONDS);}
-    else if(hurtFlash>0){kind='hurt';strength=hurtFlash;}
     else if(fireTicks>0&&!dead){kind='fire';strength=effects.has('fire_resistance')?.5:1;}
+    else if(hurtFlash>0){kind='hurt';strength=hurtFlash;}
     else if(state().headInWater){kind='water';strength=1;}
     game.render.setOverlay(kind,strength);
   }
@@ -414,6 +440,7 @@ export function createSurvival(game:Game):SurvivalSystem{
     get xpLevel(){return xpLevel;},get xpProgress(){return xpPoints/xpToNextLevel(xpLevel);},get xpTotal(){return xpTotal;},
     get dead(){return dead;},get burning(){return Math.max(0,fireTicks);},
     get exhaustion(){return exhaustion;},get invulnerableTicks(){return invul;},get spawnProtection(){return spawnProtection;},
+    get deathMessage(){return dead?lastMessage||'You died':'';},get hurtFlash(){return hurtFlash;},
     armorPoints,
     damage(amount,source){
       if(!source||typeof source!=='object')return 0;
@@ -456,10 +483,16 @@ export function createSurvival(game:Game):SurvivalSystem{
     },
     kill,
     init(){
-      // Joining a world (ServerPlayer.spawnInvulnerableTime) protects for 3 seconds of play, like respawning. A world saved
-      // on the death screen shows it again once loaded instead (the drops already happened).
+      // Joining a world (ServerPlayer.spawnInvulnerableTime) protects for 3 seconds of play, like respawning.
       offRestored=game.events.on('restored',()=>{
-        if(dead)game.events.emit('playerDied',{message:lastMessage||'You died'});else spawnProtection=SPAWN_PROTECTION_TICKS;
+        if(!dead){spawnProtection=SPAWN_PROTECTION_TICKS;return;}
+        // A world saved on the death screen: the death was counted and its drops made before saving, so playerDied is not
+        // sent again (every listener would count a second death). The engine shows the death screen from survival.dead
+        // and deathMessage, entering state 'dead' before this event.
+        if(game.state==='dead')return;
+        // An engine that resumes the world without the death screen would leave a dead player in play: respawn instead.
+        service.respawn();
+        const at=respawnPoint();game.player.teleport(at.x,at.y,at.z);
       });
       offWorldReset=game.events.on('worldReset',()=>{if(!dead)spawnProtection=SPAWN_PROTECTION_TICKS;});
     },

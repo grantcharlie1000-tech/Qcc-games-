@@ -140,7 +140,7 @@ describe('damage',()=>{
 describe('shield blocking',()=>{
   const raise=(game:ReturnType<typeof setup>['game'])=>{game.interaction={...game.interaction,using:{item:'shield',progress:0}} as InteractionService;};
   it('fully blocks melee from within 90° of the look direction, reduces knockback and pushes the attacker away',()=>{
-    const {s,game,p,damageHeld,damaged}=calm();raise(game);
+    const {s,game,p,damageHeld,damaged,tick}=calm();raise(game);tick(5);
     game.inventory.setSlot(0,{id:'shield',count:1});
     const front=entity('zombie',.5,60,-1.5);// yaw 0 looks north (-z)
     expect(s.damage(5,{kind:'mob',attacker:front,knockback:{x:0,z:1,strength:8}})).toBe(0);
@@ -155,19 +155,29 @@ describe('shield blocking',()=>{
     expect(s.damage(5,{kind:'mob',attacker:entity('zombie',.5,60,-2)})).toBe(5);
   });
   it('blocks projectiles by the projectile position and wears an offhand shield',()=>{
-    const {s,game,setOffhand,damageHeld}=calm();raise(game);
+    const {s,game,setOffhand,damageHeld,tick}=calm();raise(game);tick(5);
     (game.inventory as {offhand:ItemStack|null}).offhand={id:'shield',count:1,damage:10};
     const arrow=entity('arrow',.5,61,-1,'projectile'),shooter=entity('skeleton',.5,60,8);
     expect(s.damage(4,{kind:'projectile',attacker:shooter,projectile:arrow})).toBe(0);
     expect(damageHeld).not.toHaveBeenCalled();expect(setOffhand).toHaveBeenCalledWith({id:'shield',count:1,damage:10+1+4});
   });
   it('small hits do not wear the shield; a worn-out offhand shield breaks',()=>{
-    const {s,game,setOffhand,tick}=calm();raise(game);
+    const {s,game,setOffhand,tick}=calm();raise(game);tick(5);
     const max=requireItem('shield').durability!;
     (game.inventory as {offhand:ItemStack|null}).offhand={id:'shield',count:1,damage:max-2};
     expect(s.damage(2,{kind:'mob',attacker:entity('zombie',.5,60,-2)})).toBe(0);expect(setOffhand).not.toHaveBeenCalled();
     tick(10);
     expect(s.damage(8,{kind:'mob',attacker:entity('zombie',.5,60,-2)})).toBe(0);expect(setOffhand).toHaveBeenCalledWith(null);
+  });
+  it('blocks only once the shield has been raised for 5 ticks (LivingEntity.isBlocking), counting again after lowering it',()=>{
+    const {s,game,tick}=calm();const front=()=>entity('zombie',.5,60,-1.5);
+    raise(game);tick(4);
+    expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(3);// raised 4 ticks: not blocking yet
+    tick(10);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(0);// raised 14 ticks
+    game.interaction={...game.interaction,using:null} as InteractionService;tick(10);
+    raise(game);tick(1);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(3);
+    tick(4);s.respawn();tick(1);expect(s.damage(3,{kind:'void'})).toBe(3);
+    tick(10);expect(s.damage(3,{kind:'mob',attacker:front()})).toBe(0);
   });
 });
 
@@ -286,7 +296,7 @@ describe('environment',()=>{
     game.world.set(0,61,0,B.glass);tick(20);expect(s.health).toBe(18);
   });
   it('lava: 4 damage every 10 ticks and 15 s of fire',()=>{
-    const {s,p,tick}=calm();p.inLava=true;
+    const {s,p,tick,game}=calm();game.world.set(0,60,0,B.lava);p.inLava=true;
     tick();expect(s.health).toBe(16);expect(s.burning).toBe(300);
     tick(9);expect(s.health).toBe(16);tick();expect(s.health).toBe(12);
     p.inLava=false;expect(s.burning).toBeGreaterThan(280);
@@ -362,7 +372,7 @@ describe('death and respawn',()=>{
     const creeper=calm();creeper.s.damage(30,{kind:'explosion',attacker:entity('creeper',0,60,2)});expect(creeper.died).toEqual(['You were blown up by Creeper']);
     const arrow=calm();arrow.s.damage(30,{kind:'projectile',attacker:entity('skeleton',0,60,9),projectile:entity('arrow',0,61,1,'projectile')});
     expect(arrow.died).toEqual(['You were shot by Skeleton']);
-    const lava=calm({state:{health:3}});lava.p.inLava=true;lava.tick();expect(lava.died).toEqual(['You tried to swim in lava']);
+    const lava=calm({state:{health:3}});lava.game.world.set(0,60,0,B.lava);lava.p.inLava=true;lava.tick();expect(lava.died).toEqual(['You tried to swim in lava']);
     const fall=calm();fall.s.land(30);expect(fall.died).toEqual(['You fell from a high place']);
     const assisted=calm();assisted.s.damage(2,{kind:'mob',attacker:entity('spider',0,60,1)});assisted.tick(10);assisted.s.land(40);
     expect(assisted.died).toEqual(['You were doomed to fall by Spider']);
@@ -392,10 +402,19 @@ describe('death and respawn',()=>{
     tick(60);expect(s.damage(5,{kind:'mob'})).toBe(5);
     p.y=60;
   });
+  it('a stale inLava flag after respawning away from the lava neither sets the player alight nor hurts',()=>{
+    // The player re-senses fluids in its next physics step (a frame), which can come after survival's first tick.
+    const {s,p,game,tick}=calm();
+    game.world.set(10,60,10,B.lava);p.x=10.5;p.z=10.5;p.inLava=true;
+    tick();expect(s.burning).toBe(300);
+    s.kill('You tried to swim in lava');s.respawn();game.player.teleport(.5,60,.5);
+    tick();expect(s.burning).toBe(0);
+    p.inLava=false;tick(100);expect(s.health).toBe(20);expect(s.burning).toBe(0);
+  });
 });
 
 describe('screen overlay',()=>{
-  it('sets the overlay every frame: lava at the eyes, hurt flash, fire, then water',()=>{
+  it('sets the overlay every frame: lava at the eyes, fire, hurt flash, then water',()=>{
     const {s,game,p,overlay,tick}=calm();
     s.frame(1/60);expect(overlay).toHaveBeenLastCalledWith(null,0);
     p.headInWater=true;s.frame(1/60);expect(overlay).toHaveBeenLastCalledWith('water',1);p.headInWater=false;
@@ -404,6 +423,25 @@ describe('screen overlay',()=>{
     tick(10);s.ignite(3);s.frame(1/60);expect(overlay).toHaveBeenLastCalledWith('fire',1);s.extinguish();
     game.world.set(0,61,0,B.lava);s.frame(1/60);expect(overlay).toHaveBeenLastCalledWith('lava',1);
     expect(overlay).toHaveBeenCalledTimes(6);
+  });
+  it('lasting fire wins over the hurt flash, which wins over water',()=>{
+    const {s,game,p,overlay,tick}=calm();
+    const shown=(ticks:number)=>{const seen:Record<string,number>={};
+      for(let i=0;i<ticks;i++){tick();for(let f=0;f<3;f++){s.frame(1/60);const k=String(overlay.mock.lastCall?.[0]);seen[k]=(seen[k]??0)+1;}}
+      return seen;};
+    // Wading in lava with the eyes out: hurt every 10 ticks, but the flames show all along.
+    game.world.set(0,60,0,B.lava);p.inLava=true;
+    expect(shown(20)).toEqual({fire:60});
+    game.world.set(0,60,0,blockId('air'));p.inLava=false;s.extinguish();tick(20);
+    // Standing in a fire block: flames once alight, never hidden by the hurt flash after that.
+    game.world.set(0,60,0,blockId('fire'));tick(20);expect(s.burning).toBeGreaterThan(0);
+    expect(shown(20)).toEqual({fire:60});
+    game.world.set(0,60,0,blockId('air'));s.extinguish();tick(20);
+    // Under water a hit still flashes.
+    s.heal(20);p.headInWater=true;s.frame(1/60);expect(overlay).toHaveBeenLastCalledWith('water',1);
+    s.damage(2,{kind:'mob'});s.frame(1/60);expect(overlay.mock.lastCall?.[0]).toBe('hurt');
+    s.frame(.6);expect(overlay).toHaveBeenLastCalledWith('water',1);
+    expect(s.hurtFlash).toBe(0);tick(10);s.damage(4,{kind:'mob'});expect(s.hurtFlash).toBe(1);
   });
   it('shows the portal shimmer after an ender pearl teleport',()=>{
     const {s,overlay}=calm();
@@ -429,12 +467,32 @@ describe('persistence',()=>{
     s.restore({food:12,saturation:30});expect(s.food).toBe(12);expect(s.saturation).toBe(5);
     s.restore({food:3,saturation:10});expect(s.food).toBe(3);expect(s.saturation).toBe(3);
   });
-  it('a world saved while dead shows the death screen again after loading, without dropping twice',()=>{
+  it('a world saved while dead stays dead for the engine\'s death screen, without a second playerDied or drops',()=>{
     const a=calm();a.s.kill('You drowned');
     const b=setup();b.s.restore(JSON.parse(JSON.stringify(a.s.serialize())));
-    expect(b.s.dead).toBe(true);
-    b.game.events.emit('restored',{});
-    expect(b.died).toEqual(['You drowned']);expect(b.dropAll).not.toHaveBeenCalled();
+    expect(b.s.dead).toBe(true);expect(b.s.health).toBe(0);expect(b.s.deathMessage).toBe('You drowned');
+    // Every playerDied listener counts a death (engine stats, advancements): loading must not count this one again.
+    let deaths=0;b.game.events.on('playerDied',()=>{deaths++;});
+    b.game.setState('dead');b.game.events.emit('restored',{});
+    expect(b.s.dead).toBe(true);expect(deaths).toBe(0);expect(b.died).toEqual([]);expect(b.dropAll).not.toHaveBeenCalled();
+    expect(b.s.deathMessage).toBe('You drowned');expect(calm().s.deathMessage).toBe('');
+  });
+  it('a dead save the engine resumes without a death screen respawns at the bed or world spawn instead',()=>{
+    const a=calm();a.s.addXp(100);a.s.kill('You fell out of the world');
+    const saved=JSON.parse(JSON.stringify(a.s.serialize()));
+    const b=setup();b.s.restore(saved);
+    let deaths=0;b.game.events.on('playerDied',()=>{deaths++;});
+    b.p.spawn={x:30.5,y:61,z:-4.5};b.p.x=3;b.p.y=-90;b.p.z=3;
+    b.game.setState('loading');b.game.events.emit('restored',{});
+    expect(deaths).toBe(0);expect(b.s.dead).toBe(false);expect(b.s.deathMessage).toBe('');
+    expect([b.s.health,b.s.food,b.s.xpLevel,b.s.spawnProtection]).toEqual([20,20,0,60]);
+    expect([b.p.x,b.p.y,b.p.z]).toEqual([30.5,61,-4.5]);
+    const bed=setup();bed.s.restore(saved);bed.p.bedSpawn={x:2,y:60,z:7};// unloaded (-1) or still a bed: trusted
+    bed.game.world.set(2,60,7,blockId('bed_foot_north'));bed.game.setState('loading');bed.game.events.emit('restored',{});
+    expect([bed.p.x,bed.p.y,bed.p.z]).toEqual([2.5,61,7.5]);
+    const broken=setup();broken.s.restore(saved);broken.p.bedSpawn={x:2,y:60,z:7};broken.p.spawn={x:9.5,y:61,z:9.5};
+    broken.game.setState('loading');broken.game.events.emit('restored',{});
+    expect([broken.p.x,broken.p.y,broken.p.z]).toEqual([9.5,61,9.5]);
   });
   it('joining a loaded or new world gives the 3-second spawn protection (ServerPlayer.spawnInvulnerableTime)',()=>{
     const loaded=calm();loaded.game.events.emit('restored',{});

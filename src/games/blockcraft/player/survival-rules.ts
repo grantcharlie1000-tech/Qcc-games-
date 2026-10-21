@@ -81,6 +81,8 @@ export function damageAfterArmor(damage:number,defense:number,toughness:number):
   const f=2+toughness/4,reduction=Math.min(20,Math.max(defense/5,defense-damage/f));
   return damage*(1-reduction/25);
 }
+/** A raised shield blocks only after this many ticks (LivingEntity.isBlocking: use duration − remaining ≥ 5). */
+export const SHIELD_READY_TICKS=5;
 /** Shield wear for a blocked hit (LivingEntity.hurtCurrentlyUsedShield): 1 + floor(damage) when damage ≥ 3. */
 export const shieldWear=(damage:number)=>damage>=3?1+Math.floor(damage):0;
 
