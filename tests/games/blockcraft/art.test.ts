@@ -148,7 +148,7 @@ describe('vanilla look',()=>{
     // vein loop would cut the molten surface into an inside and an outside.
     const p=px('lava_still'),c=mean(p),limit=.7*luma(c[0],c[1],c[2]);
     const dark=(x:number,y:number)=>{const q=at(p,(x+TILE)%TILE,(y+TILE)%TILE);return luma(q[0],q[1],q[2])<limit;};
-    const groups=(want:boolean,dirs:readonly [number,number][])=>{
+    const groups=(want:boolean,dirs:readonly (readonly [number,number])[])=>{
       const seen=new Uint8Array(N);let count=0;
       for(let i=0;i<N;i++){
         if(seen[i]||dark(i%TILE,Math.floor(i/TILE))!==want)continue;

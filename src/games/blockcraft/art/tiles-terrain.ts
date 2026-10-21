@@ -328,18 +328,34 @@ function lava(salt:number,sx:number,sy:number):Painter{
     return pick(LAVA,v);
   },salt);
 }
-export const lavaStill=lava(401,1,1);
+/** Still lava: molten rock under scattered crust blotches, one per cell of a jittered 3×3 grid so they spread evenly
+ *  and differ in size and shape, plus a few bright yellow spots. No vein contour, so a pool shows no ring per block. */
+export const lavaStill:Painter=(()=>{
+  const cells=voronoi(9,402,.9);
+  return cached((x,y)=>{
+    const id=cells.id(x,y),r=.8+hash(id,0,409)*1.4,d=cells.centre(x,y)+(valueNoise(x,y,2,2,410)-.5)*1.6;
+    if(d<r)return d<r-.9?rgb(0x8a2606):rgb(0xa03008);
+    const v=contrast(fbm(x,y,405,1,1,.3),1.5);
+    if(d<r+.8)return pick(LAVA.slice(1,4),v);
+    if(v>.86&&hash(x,y,406)<.6)return rgb(0xffc84a);
+    return pick(LAVA.slice(1),v);
+  },400);
+})();
 export const lavaFlow=lava(411,.5,2);
 
 // ---- Farmland ---------------------------------------------------------------------------------------
-/** Tilled soil: grainy earth raked into four wavering furrows (a dark trough under a lighter ridge), broken by clods. */
+/** Tilled soil seen from above, as in vanilla: grainy earth raked into nested square rims stepping in from a dark
+ *  1-px furrow along the block edge (dark troughs, light ridges and plain soil in turn, wavering a little), broken by
+ *  clods. A tilled field reads as a grid of framed squares. */
 function farmland(p:RGBA[],clod:RGBA,salt:number):Painter{
   return cached((x,y)=>{
-    const wobble=Math.round(valueNoise(x,y,4,16,salt)*2-.5),row=((y+wobble)%4+4)%4,h=hash(x,y,salt+1);
-    const soil=contrast(fbm(x,y,salt+2,1,1,.7),1.5);
+    const d=Math.max(Math.abs(x-7.5),Math.abs(y-7.5)),h=hash(x,y,salt+1),soil=contrast(fbm(x,y,salt+2,1,1,.7),1.5);
+    const trough=()=>h<.75?pick(p.slice(0,2),soil):p[2];
+    if(d===7.5)return trough();
     if(h<.045)return clod;
-    if(row===3)return h<.75?pick(p.slice(0,2),soil):p[2];
-    if(row===0)return pick(p.slice(2),soil*.7+h*.3);
+    const ring=Math.floor(d+.5+valueNoise(x,y,4,4,salt)*1.2)%3;
+    if(ring===0)return trough();
+    if(ring===1)return pick(p.slice(2),soil*.7+h*.3);
     return pick(p.slice(1,4),soil);
   },salt);
 }
