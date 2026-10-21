@@ -299,8 +299,9 @@ export function createHud(game:Game):HudService{
     showMenu(kind){menus.show(kind);},
     init(){
       touch=game.input.touch;
-      if(typeof ResizeObserver==='function'){resize=new ResizeObserver(()=>{layoutDirty=true;});resize.observe(game.root);}
-      else window.addEventListener('resize',()=>{layoutDirty=true;},{signal});
+      // Relayout at once: frames stop while the game is paused, but the HUD still shows behind the pause menu.
+      if(typeof ResizeObserver==='function'){resize=new ResizeObserver(()=>applyLayout());resize.observe(game.root);}
+      else window.addEventListener('resize',()=>applyLayout(),{signal});
       offs.push(
         game.events.on('stateChanged',()=>{setVisibility();menus.refresh();}),
         game.events.on('settingsChanged',()=>{menus.refresh();hud.dataset.mode=game.settings.mode;crossKey='-';placeStack();}),

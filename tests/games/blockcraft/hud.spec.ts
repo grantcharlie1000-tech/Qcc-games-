@@ -34,6 +34,13 @@ async function give(page:Page){
     inv.setOffhand({id:'clock',count:1});inv.select(0);
   });
 }
+/** Every shell toolbar and corner button is on top (hit-testable) while a Blockcraft menu is open. */
+async function shellOnTop(page:Page){
+  const hits=await page.locator(SHELL).evaluateAll(els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden';})
+    .map(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{id:e.id||e.getAttribute('aria-label'),ok:!!hit&&e.contains(hit)};}));
+  expect(hits.length).toBeGreaterThan(2);
+  for(const h of hits)expect(h.ok,`shell control ${h.id} is covered`).toBe(true);
+}
 async function checkClear(page:Page,width:number,height:number){
   const hud=await boxes(page,HUD_PARTS),shell=await boxes(page,SHELL);
   expect(hud.length).toBeGreaterThan(20);
@@ -85,6 +92,9 @@ test.describe('desktop 1366x768',()=>{
     const sel=(await page.locator('.bc-selection').boundingBox())!;expect(sel.x).toBeCloseTo(bar.x-3+2*60,0);
     const cross=(await page.locator('.bc-cross').boundingBox())!;expect(cross.x+cross.width/2).toBeCloseTo(683,-1);expect(cross.y+cross.height/2).toBeCloseTo(384,-1);
     await checkClear(page,1366,768);
+    // With the mouse captured the hotbar never takes clicks meant for the world.
+    await expect(page.locator('.blockcraft')).toHaveAttribute('data-locked','true');
+    await expect(page.locator('.bc-slot').first()).toHaveCSS('pointer-events','none');
 
     // Action bar above the bars.
     await page.evaluate(()=>(window as unknown as {blockcraft:{ui:{toast(m:string):void}}}).blockcraft.ui.toast('You can sleep only at night'));
@@ -159,6 +169,7 @@ test.describe('menus',()=>{
     const root=page.locator('.blockcraft');
     const settings=()=>page.evaluate(()=>({...(window as unknown as {blockcraft:{settings:Record<string,unknown>}}).blockcraft.settings}));
     await expect(page.locator('.bc-menu-title')).toHaveText('Blockcraft');
+    await shellOnTop(page);
     await page.getByRole('button',{name:'Game mode'}).click();
     await expect(root).toHaveAttribute('data-mode','creative');await expect(page.getByRole('button',{name:'Game Mode: Creative'})).toBeVisible();
     await page.getByRole('button',{name:'Game mode'}).click();await expect(root).toHaveAttribute('data-mode','survival');
@@ -206,6 +217,7 @@ test.describe('menus',()=>{
     await expect(page.locator('.bc-menu')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu')).toContainText('Score:');
     const respawn=page.getByRole('button',{name:'Respawn'});
     await expect(respawn).toBeDisabled();await expect(respawn).toBeEnabled({timeout:5000});
+    await shellOnTop(page);
     await page.screenshot({path:evidence('death-1280x720')});
     await respawn.click();
     await expect.poll(()=>root.getAttribute('data-phase'),{timeout:20000}).not.toBe('dead');

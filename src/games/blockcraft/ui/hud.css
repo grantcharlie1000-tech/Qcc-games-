@@ -3,6 +3,9 @@
    The HUD is drawn in GUI pixels: .bc-gui sits at the bottom centre and is scaled by the GUI scale (--bc-gui).
    Reserved: top 56 px for the arcade toolbar, the bottom-right corner for the shell's small buttons. */
 .bc-hud [hidden],.bc-crosshair [hidden],.bc-menu [hidden],.bc-debug [hidden]{display:none!important}
+/* The layer z-indexes (menus 30, toasts 25...) are relative to the game: keep them under the arcade shell's toolbar,
+   corner buttons and pause overlay, which sit in the page around the game root. */
+.blockcraft{isolation:isolate}
 
 /* ---- World overlays ---------------------------------------------------------------------------------- */
 .bc-hud-fx{position:absolute;inset:0;z-index:5;pointer-events:none}
@@ -38,6 +41,8 @@
 
 .bc-slot{position:absolute;margin:0;padding:0;border:0;border-radius:0;background:none;color:inherit;font:inherit;cursor:pointer;pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .bc-slot:focus-visible{outline:1px solid #ffd84a;outline-offset:0}
+/* With the mouse captured the hotbar is display only (as in vanilla): clicks always reach the world. */
+.blockcraft[data-locked=true] .bc-slot{pointer-events:none}
 .bc-offhand{pointer-events:none}
 .bc-stack{position:absolute;left:2px;top:2px;width:16px;height:16px;pointer-events:none}
 .bc-offhand .bc-stack{left:3px;top:3px}
