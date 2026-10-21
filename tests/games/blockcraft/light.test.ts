@@ -1,11 +1,12 @@
 // Lighting engine tests: hand-checked vanilla scenarios, a brute-force BFS reference on random
 // worlds, border continuity between neighbouring chunks, the incremental relight path and the
-// per-chunk time budget on generated terrain.
+// per-chunk time budget and scratch reuse on generated terrain (plain and cave-riddled).
 import {describe,expect,test} from 'vitest';
 import {AIR,B,BLOCKS,COLLISION_BOXES,LIGHT_EMISSION,LIGHT_OPACITY,OPAQUE,OUTLINE_BOX,blockId} from '../../../src/games/blockcraft/data/blocks';
 import {CH,CHUNK_VOLUME,LAYER,PAD_VOLUME,padIndex,voxelIndex} from '../../../src/games/blockcraft/engine/constants';
 import type {ChunkData,LightEngine,Vec3} from '../../../src/games/blockcraft/engine/contracts';
 import {createLightEngine} from '../../../src/games/blockcraft/world/light';
+import {changesLight} from '../../../src/games/blockcraft/world/light-shapes';
 import {createTerrain} from '../../../src/games/blockcraft/world/terrain';
 
 // ---- Test world: a 3×3 neighbourhood in centre-chunk local coordinates (x,z in -16..31) ----------
@@ -178,7 +179,7 @@ describe('sky light',()=>{
     for(let y=69;y>=64;y--)expect(sky(out,8,y,8)).toBe(12-(69-y));
     // A real tree: shade beside the trunk, full sky away from it.
     const t=new Hood();t.fill(-16,0,-16,31,63,31,B.grass);
-    t.fill(8,64,8,8,69,8,B.oakLog);t.fill(5,67,5,11,68,11,B.oakLeaves);t.fill(7,69,7,9,70,9,B.oakLeaves);t.fill(8,64,8,8,69,8,B.oakLog);
+    t.fill(5,67,5,11,68,11,B.oakLeaves);t.fill(7,69,7,9,70,9,B.oakLeaves);t.fill(8,64,8,8,69,8,B.oakLog);
     out=light(t);
     expect(sky(out,7,64,8)).toBeLessThan(15);expect(sky(out,7,64,8)).toBeGreaterThan(0);
     expect(sky(out,8,66,9)).toBeLessThan(sky(out,8,66,13));
@@ -344,21 +345,101 @@ describe('incremental relight',()=>{
 });
 
 describe('performance',()=>{
-  test('computes generated terrain in at most 3 ms per chunk on average',()=>{
-    const t=createTerrain(1234),grid=new Map<string,ChunkData>();
+  /** A 5×5 patch of generated chunks around chunk (0,0), keyed "cx,cz". */
+  function terrainGrid(seed:number){
+    const t=createTerrain(seed),grid=new Map<string,ChunkData>();
     for(let cz=-2;cz<=2;cz++)for(let cx=-2;cx<=2;cx++)grid.set(`${cx},${cz}`,t.generate(cx,cz));
+    return grid;
+  }
+  /** The nine 3×3 neighbourhoods of the inner chunks of a 5×5 grid, as streaming builds them. */
+  function hoodsOf(grid:Map<string,ChunkData>){
     const hoods:(ChunkData|null)[][]=[];
     for(let cz=-1;cz<=1;cz++)for(let cx=-1;cx<=1;cx++)hoods.push([-1,0,1].flatMap(dz=>[-1,0,1].map(dx=>grid.get(`${cx+dx},${cz+dz}`)!)));
+    return hoods;
+  }
+  /** Carves vanilla-like caves through a grid in world coordinates: caverns and winding tunnels at every depth, some
+   *  opening at the surface, lava below y = 10. Returns the carved share of the underground blocks. */
+  function carveCaves(grid:Map<string,ChunkData>,seed:number){
+    const r=rng(seed),chunkAt=(x:number,z:number)=>grid.get(`${Math.floor(x/16)},${Math.floor(z/16)}`);
+    let underground=0,carved=0;
+    for(const c of grid.values())for(let i=LAYER;i<CHUNK_VOLUME;i++)if(c.blocks[i]!==AIR&&c.blocks[i]!==B.water)underground++;
+    const sphere=(cx:number,cy:number,cz:number,radius:number)=>{
+      for(let y=Math.max(1,Math.floor(cy-radius));y<=Math.min(CH-1,Math.ceil(cy+radius));y++)
+        for(let z=Math.floor(cz-radius);z<=Math.ceil(cz+radius);z++)for(let x=Math.floor(cx-radius);x<=Math.ceil(cx+radius);x++){
+          const c=chunkAt(x,z),i=voxelIndex(x&15,y,z&15);
+          if(!c||(x-cx)**2+(y-cy)**2+(z-cz)**2>radius*radius||c.blocks[i]===AIR||c.blocks[i]===B.water)continue;
+          c.blocks[i]=y<10?B.lava:AIR;carved++;
+        }
+    };
+    const top=(x:number,z:number)=>{const c=chunkAt(x,z)!;let y=CH-1;while(y>0&&c.blocks[voxelIndex(x&15,y,z&15)]===AIR)y--;return y;};
+    for(let k=0;k<8;k++)sphere(-32+r()*80,12+r()*34,-32+r()*80,5+r()*4);
+    for(let k=0;k<44;k++){
+      let x=-32+r()*80,z=-32+r()*80,y=k%5===0?top(Math.floor(x),Math.floor(z)):6+r()*54,yaw=r()*Math.PI*2,pitch=(r()-.5)*.6;
+      for(let step=0;step<110;step++){
+        sphere(x,y,z,1.5+1.5*Math.sin(step*.15+k)**2);
+        yaw+=(r()-.5)*.6;pitch=Math.max(-.7,Math.min(.7,pitch+(r()-.5)*.3));
+        x+=Math.cos(yaw)*Math.cos(pitch);z+=Math.sin(yaw)*Math.cos(pitch);y=Math.max(4,Math.min(90,y+Math.sin(pitch)));
+      }
+    }
+    return carved/underground;
+  }
+  /** Average milliseconds per chunk over rounds of every neighbourhood (after a warm-up); the best round is the least noisy. */
+  function measure(label:string,hoods:readonly (ChunkData|null)[][]){
     const e=createLightEngine(),out=new Uint8Array(PAD_VOLUME);
     for(let k=0;k<3;k++)for(const n of hoods)e.computePadded(n,out);
     const rounds:number[]=[];
-    for(let round=0;round<5;round++){
+    for(let round=0;round<7;round++){
       const begin=performance.now();
       for(const n of hoods)e.computePadded(n,out);
       rounds.push((performance.now()-begin)/hoods.length);
     }
     const best=Math.min(...rounds);
-    console.log(`light: ${rounds.map(r=>r.toFixed(2)).join(', ')} ms per chunk (best ${best.toFixed(2)})`);
-    expect(best).toBeLessThanOrEqual(3);
+    console.log(`light, ${label}: ${rounds.map(r=>r.toFixed(2)).join(', ')} ms per chunk (best ${best.toFixed(2)})`);
+    return best;
+  }
+  test('computes generated terrain in at most 3 ms per chunk on average',()=>{
+    expect(measure('generated terrain',[...hoodsOf(terrainGrid(1234)),...hoodsOf(terrainGrid(42))])).toBeLessThanOrEqual(3);
+  });
+  test('stays within the budget in cave-riddled terrain with lava lakes',()=>{
+    const grid=terrainGrid(77),share=carveCaves(grid,7),hoods=hoodsOf(grid);
+    expect(share).toBeGreaterThan(.08);
+    // Still exact: caves bring sky light and lava light into the flood.
+    const h=new Hood();h.chunks.splice(0,9,...hoods[4]);
+    expect(firstDifference(light(h),reference(h))).toBeNull();
+    expect(measure(`caves (${(share*100).toFixed(0)}% of the underground carved)`,hoods)).toBeLessThanOrEqual(3);
+  });
+  test('reuses its scratch state: the queue pool does not grow on generated terrain',()=>{
+    const e=createLightEngine(),out=new Uint8Array(PAD_VOLUME),capacity=e.queueCapacity,cavern=terrainGrid(77);
+    carveCaves(cavern,7);
+    let peak=0;
+    for(const n of [...hoodsOf(terrainGrid(1234)),...hoodsOf(cavern)]){e.computePadded(n,out);peak=Math.max(peak,e.queuePeak);}
+    expect(peak).toBeGreaterThan(0);
+    expect(peak).toBeLessThan(capacity/2);
+    expect(e.queueCapacity).toBe(capacity);
+  });
+  test('grows the queue pool once for a world dense with emitters and stays exact',()=>{
+    // A checkerboard of torches fills the whole neighbourhood: more seeds than the initial pool holds.
+    const h=new Hood();
+    for(let y=0;y<CH;y++)for(let z=-16;z<32;z++)for(let x=-16;x<32;x++)if((x+y+z)%2===0)h.set(x,y,z,B.torch);
+    const e=createLightEngine(),capacity=e.queueCapacity;
+    const out=light(h,e);
+    expect(e.queueCapacity).toBeGreaterThan(capacity);
+    expect(firstDifference(out,reference(h))).toBeNull();
+    const grown=e.queueCapacity;
+    expect(light(h,e)).toEqual(out);
+    expect(e.queueCapacity).toBe(grown);
+  });
+});
+
+describe('light-shapes',()=>{
+  test('changesLight reports edits that can change light anywhere',()=>{
+    expect(changesLight(AIR,B.stone)).toBe(true);
+    expect(changesLight(AIR,B.torch)).toBe(true);
+    expect(changesLight(AIR,blockId('stone_slab'))).toBe(true);
+    expect(changesLight(blockId('stone_slab'),blockId('stone_slab_top'))).toBe(true);
+    expect(changesLight(B.water,blockId('water_3'))).toBe(false);
+    expect(changesLight(B.stone,blockId('cobblestone'))).toBe(false);
+    expect(changesLight(AIR,B.shortGrass)).toBe(false);
+    expect(changesLight(blockId('oak_stairs_north'),blockId('cobblestone_stairs_north'))).toBe(false);
   });
 });
