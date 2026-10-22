@@ -15,11 +15,19 @@ const engine='(window as unknown as {blockcraft:Debug}).blockcraft';
 test('rain and lightning render within budget',async({page},info)=>{
   test.setTimeout(180000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  // A shader that fails to compile is only logged by three.js: count it as an error too.
+  page.on('console',m=>{if(m.type()==='error'&&/shader|webglprogram/i.test(m.text()))errors.push(m.text());});
   await page.setViewportSize({width:960,height:540});
   await page.goto('/#/game/blockcraft');await ready(page);
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
-  await page.evaluate(()=>{(window as unknown as {blockcraft:Debug}).blockcraft.weather.set('thunder',100000);});
+  // The world spawn may sit in a dry biome (deserts and savannas get no rain, as in vanilla), so every loaded column is
+  // made plains first; nudging the camera rebuilds the precipitation field.
+  await page.evaluate(plains=>{
+    const g=(window as unknown as {blockcraft:Debug}).blockcraft,p=g.player.state;
+    for(const c of g.world.chunks.values())c.biomes.fill(plains);
+    g.weather.set('thunder',100000);g.player.teleport(p.x,p.y+1,p.z);
+  },biomeId('plains'));
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-weather','thunder');
   await expect.poll(()=>page.evaluate(()=>(window as unknown as {blockcraft:Debug}).blockcraft.weather.intensity),{timeout:60000}).toBeGreaterThan(.9);
   const drops=await page.evaluate(()=>{
@@ -45,6 +53,8 @@ test('rain and lightning render within budget',async({page},info)=>{
 test('snow falls as flakes in cold biomes',async({page},info)=>{
   test.setTimeout(180000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  // A shader that fails to compile is only logged by three.js: count it as an error too.
+  page.on('console',m=>{if(m.type()==='error'&&/shader|webglprogram/i.test(m.text()))errors.push(m.text());});
   await page.setViewportSize({width:960,height:540});
   await page.goto('/#/game/blockcraft');await ready(page);
   await page.getByRole('button',{name:'Play',exact:true}).click();

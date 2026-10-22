@@ -1,9 +1,9 @@
 // Hostile mobs: zombie, husk, drowned (entity/hostile-zombies.ts), skeleton, stray (entity/hostile-skeletons.ts),
 // creeper (entity/hostile-creeper.ts) and spider (entity/hostile-spider.ts), plus the projectile kinds arrow, snowball,
-// egg and ender pearl (entity/projectiles.ts). Shared targeting, melee and shields are in entity/hostile-ai.ts; models
-// and textures in entity/hostile-models.ts. Every hostile mob despawns away from the player, spawns in the dark (no
+// egg and ender pearl (entity/projectiles.ts). Shared targeting, melee and the spawn rules are in entity/hostile-ai.ts;
+// models and textures in entity/hostile-models.ts. Every hostile mob despawns away from the player, spawns in the dark (no
 // natural spawns in peaceful, where existing ones are removed) and hurts the player through game.survival.damage with
-// its base (normal difficulty) damage, which survival scales by difficulty.
+// its base (normal difficulty) damage, which survival scales by difficulty (and a raised shield blocks).
 import type {EntityKind,Game} from '../engine/contracts';
 import {creeperKind} from './hostile-creeper';
 import {skeletonKinds} from './hostile-skeletons';

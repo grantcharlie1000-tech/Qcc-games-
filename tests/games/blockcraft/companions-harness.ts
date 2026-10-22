@@ -125,7 +125,8 @@ export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'
     raycast:()=>null,
     damage(e,amount,source){
       const k=kinds.get(e.kind);
-      if(e.removed||e.deathTime>0||!(amount>0))return false;
+      // As entities.ts: amount 0 is a valid hit for living entities (snowballs, eggs, pearls); negative or NaN is not.
+      if(e.removed||e.deathTime>0||!(amount>=0)||!Number.isFinite(amount))return false;
       if(!living(k))return k?.hurt?.(e,game,source,amount)!==false&&!!k?.hurt;
       let dealt=amount;const fresh=e.hurtTime===0;
       if(!fresh){const last=lastHurt.get(e)??0;if(amount<=last)return false;dealt=amount-last;}
@@ -192,7 +193,8 @@ export function createHarness(options:{random?:()=>number;mode?:'survival'|'crea
     if(!(amount>0))return 0;
     h.hurt.push({amount,source});game.events.emit('playerDamaged',{amount,source});return amount;
   };
-  game.render.spawnParticles=(kind,x,y,z,o)=>{h.particles.push({kind,x,y,z,options:o});};
+  // Options are copied: callers may reuse one options object (the renderer reads it at once).
+  game.render.spawnParticles=(kind,x,y,z,o)=>{h.particles.push({kind,x,y,z,options:o&&{...o,velocity:o.velocity&&{...o.velocity}}});};
   game.inventory.consumeHeld=(count=1)=>{
     if(game.settings.mode==='creative')return;
     const s=game.inventory.slots[0];if(!s)return;

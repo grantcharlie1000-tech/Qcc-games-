@@ -5,11 +5,12 @@ import {blockId} from '../../../src/games/blockcraft/data/blocks';
 // Entity framework in the real engine: 60 entities of every render mode (box models with animation, sprite and block
 // items, xp orbs, block-rendered entities) add at most 3 draw calls, and the CPU time of entity rendering stays small.
 // In development window.blockcraft is the engine; software WebGL is slow, so everything polls with generous timeouts.
+type Mesh={name:string;visible:boolean;layers:{set(n:number):void}};
 type Engine={
   entities:{register(k:unknown):void;spawn(kind:string,x:number,y:number,z:number,o?:unknown):unknown;all():{kind:string}[];remove(e:unknown):void;
     dropItem(s:unknown,x:number,y:number,z:number,v?:unknown,d?:number):void;dropXp(n:number,x:number,y:number,z:number):void;
     debug:{render:{entities:number;quads:number;blockQuads:number;drawCalls:number;cpuMs:number}|null}};
-  render:{info():{drawCalls:number};scene:{children:{name:string;visible:boolean}[]}};
+  render:{info():{drawCalls:number;chunks:number};scene:{children:Mesh[]}};
   player:{state:{x:number;y:number;z:number;yaw:number};eye():{x:number;y:number;z:number}};
   world:{topY(x:number,z:number):number};
   updateSettings(p:unknown):void;
@@ -20,6 +21,8 @@ const frames=(page:Page,n:number)=>page.evaluate(n=>new Promise<void>(done=>{let
 test('60 entities of every render mode add at most 3 draw calls',async({page})=>{
   test.setTimeout(240000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  // A shader that fails to compile is only logged by three.js: count it as an error too.
+  page.on('console',m=>{if(m.type()==='error'&&/shader|webglprogram/i.test(m.text()))errors.push(m.text());});
   await page.setViewportSize({width:1280,height:720});
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:90000});
@@ -60,7 +63,8 @@ test('60 entities of every render mode add at most 3 draw calls',async({page})=>
     for(let i=0;i<36;i++){const [x,y,z]=at(5+Math.floor(i/9)*1.6,(i%9-4)*1.1);if(g.entities.spawn('spec_mob',x,y,z,{yaw:yaw+Math.PI,baby:i%6===0}))n++;}
     const items=['stick','dirt','torch','iron_pickaxe','cobblestone','apple','oak_planks','diamond'];
     for(let i=0;i<12;i++){const [x,y,z]=at(3.2,(i%6-2.5)*.9+(i>5?.4:0));const id=items[i%items.length];g.entities.dropItem({id,count:id==='iron_pickaxe'?1:1+i*5},x,y+.2,z,{x:0,y:0,z:0},32767);n++;}
-    for(let i=0;i<6;i++){const [x,y,z]=at(2.6,(i-2.5)*1.2);if(g.entities.spawn('xp_orb',x,y+.2,z,{data:{points:1+i*40}}))n++;}
+    // Orbs beyond the 8 blocks within which the player attracts and collects them (ticks run in real time).
+    for(let i=0;i<6;i++){const [x,y,z]=at(11,(i-2.5)*1.2);if(g.entities.spawn('xp_orb',x,y+.2,z,{data:{points:1+i*40}}))n++;}
     for(let i=0;i<6;i++){const [x,y,z]=at(9.5,(i-2.5)*1.6);if(g.entities.spawn('spec_block',x,y,z))n++;}
     return n;
   });
@@ -70,11 +74,31 @@ test('60 entities of every render mode add at most 3 draw calls',async({page})=>
     const g=(window as unknown as {blockcraft:Engine}).blockcraft,r=g.entities.debug.render!;
     return{total:g.render.info().drawCalls,stats:{...r},meshes:g.render.scene.children.filter(c=>c.name==='entities'&&c.visible).length,count:g.entities.all().length};
   });
-  console.log('entity render',JSON.stringify(result),'chunk-only draw calls',base);
+  // The draw calls the entities add, measured in two neighbouring frames with the entity meshes shown and then hidden
+  // (moved to a layer the camera does not draw), so chunk streaming between the measurements cannot skew it; retried
+  // when the chunk count changed in between.
+  const added=await page.evaluate(()=>new Promise<{shown:number;hidden:number;chunks:number}|null>(done=>{
+    const g=(window as unknown as {blockcraft:Engine}).blockcraft,meshes=g.render.scene.children.filter(c=>c.name==='entities');
+    const frame=()=>new Promise<void>(r=>requestAnimationFrame(()=>r()));
+    void(async()=>{
+      for(let attempt=0;attempt<10;attempt++){
+        await frame();await frame();
+        const shown=g.render.info();
+        for(const m of meshes)m.layers.set(31);
+        await frame();await frame();
+        const hidden=g.render.info();
+        for(const m of meshes)m.layers.set(0);
+        if(shown.chunks===hidden.chunks){done({shown:shown.drawCalls,hidden:hidden.drawCalls,chunks:shown.chunks});return;}
+      }
+      done(null);
+    })();
+  }));
+  console.log('entity render',JSON.stringify(result),'chunk-only draw calls before spawning',base,'with/without entities',JSON.stringify(added));
   expect(result.count).toBe(60);
   expect(result.stats.entities).toBeGreaterThanOrEqual(50);
   expect(result.stats.drawCalls).toBeLessThanOrEqual(3);expect(result.meshes).toBeLessThanOrEqual(3);
-  expect(result.total-base).toBeLessThanOrEqual(3);
+  expect(added).not.toBeNull();
+  expect(added!.shown-added!.hidden).toBeGreaterThan(0);expect(added!.shown-added!.hidden).toBeLessThanOrEqual(3);
   // Entity CPU time per frame, sampled over 30 frames (brief: ≤ 1 ms for 60 entities; software GL machines are shared).
   const cpu=await page.evaluate(()=>new Promise<number>(done=>{
     const g=(window as unknown as {blockcraft:Engine}).blockcraft;let n=0,sum=0;

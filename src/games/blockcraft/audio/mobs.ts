@@ -1,7 +1,8 @@
 // Mob voices for every kind in MOB_KINDS (data/items.ts): ambient, hurt, death and step, played by the
 // entity service as `mob:<name>:<kind>`. Vanilla levels: voices at the mob's getSoundVolume() (1 for most;
 // 0.4 for cows, wolves, squid and small slimes; rabbits quieter) with pitch (r - r) × 0.2 + 1, steps at 0.15.
-// Companion wolves also play the wolf_growl, wolf_whine, wolf_pant and wolf_shake ambient variants.
+// Companion wolves also play the wolf_growl, wolf_whine, wolf_pant and wolf_shake ambient variants, and squid the
+// squid_squirt ambient variant when they ink (vanilla SQUID_SQUIRT).
 // Unknown creatures get a stable generic voice derived from their name.
 import type {MobSoundKind} from '../engine/contracts';
 import {grains,hashString,hits,louder,mulberry,noise,rumble,spec,tone,vanillaPitch,vary,type Layer,type Rand,type SoundSpec} from './spec';
@@ -22,6 +23,11 @@ const wolfHurt=(_r:Rand,f:number)=>[tone('sawtooth',900*f,{freqEnd:620*f,attack:
 const wolfDeath=(_r:Rand,f:number)=>[tone('sawtooth',820*f,{freqEnd:300*f,attack:.01,hold:.2,decay:.4,gain:.24,vibrato:{rate:7,depth:.04},filter:bp(1200)}),
   noise('bandpass',1200*f,{q:1,attack:.02,decay:.3,gain:.08})];
 const wolfStep=(_r:Rand,f:number)=>[noise('bandpass',1400*f,{q:1.3,decay:.03,gain:.4}),rumble(240*f,{attack:.003,decay:.04,gain:.25})];
+const squidHurt=(_r:Rand,f:number)=>[noise('bandpass',720*f,{freqEnd:300*f,q:2,attack:.006,decay:.15,gain:.42}),
+  tone('sine',260*f,{freqEnd:120*f,attack:.004,decay:.12,gain:.25})];
+const squidDeath=(_r:Rand,f:number)=>[noise('bandpass',700*f,{freqEnd:220*f,q:2,attack:.01,hold:.1,decay:.4,gain:.42,tremolo:{rate:7,depth:.5}}),
+  tone('sine',240*f,{freqEnd:80*f,attack:.01,hold:.1,decay:.4,gain:.25})];
+const squidStep=(_r:Rand,f:number)=>[noise('lowpass',700*f,{attack:.03,decay:.15,gain:.3})];
 
 const VOICES:Record<string,Voice>={
   // Low, drawn-out moo with a vocal formant.
@@ -115,11 +121,15 @@ const VOICES:Record<string,Voice>={
     ambient:(_r,f)=>[rumble(500*f,{freqEnd:300*f,attack:.05,decay:.4,gain:.5,tremolo:{rate:9,depth:.6}}),
       tone('sine',300*f,{freqEnd:620*f,delay:.1,attack:.004,decay:.05,gain:.16}),
       tone('sine',360*f,{freqEnd:700*f,delay:.26,attack:.004,decay:.05,gain:.12})],
-    hurt:(_r,f)=>[noise('bandpass',720*f,{freqEnd:300*f,q:2,attack:.006,decay:.15,gain:.42}),
-      tone('sine',260*f,{freqEnd:120*f,attack:.004,decay:.12,gain:.25})],
-    death:(_r,f)=>[noise('bandpass',700*f,{freqEnd:220*f,q:2,attack:.01,hold:.1,decay:.4,gain:.42,tremolo:{rate:7,depth:.5}}),
-      tone('sine',240*f,{freqEnd:80*f,attack:.01,hold:.1,decay:.4,gain:.25})],
-    step:(_r,f)=>[noise('lowpass',700*f,{attack:.03,decay:.15,gain:.3})]},
+    hurt:squidHurt,death:squidDeath,step:squidStep},
+  // The ink squirt (vanilla SQUID_SQUIRT, played by companions when a squid inks): a short wet hiss sweeping down, a
+  // bubbly gush under it and two small pops of ink. Hurt, death and steps are the squid's.
+  squid_squirt:{volume:.4,trim:{death:.45},
+    ambient:(_r,f)=>[noise('bandpass',1900*f,{freqEnd:480*f,q:1.6,attack:.004,hold:.04,decay:.22,gain:.45}),
+      rumble(460*f,{freqEnd:200*f,attack:.01,hold:.04,decay:.24,gain:.4,tremolo:{rate:16,depth:.6}}),
+      tone('sine',540*f,{freqEnd:960*f,delay:.07,attack:.003,decay:.04,gain:.12}),
+      tone('sine',450*f,{freqEnd:800*f,delay:.16,attack:.003,decay:.045,gain:.1})],
+    hurt:squidHurt,death:squidDeath,step:squidStep},
   // Hollow groans with a rough, growling edge.
   zombie:{
     ambient:(_r,f)=>[tone('sawtooth',96*f,{freqEnd:86*f,attack:.15,hold:.5,decay:.4,gain:.32,vibrato:{rate:4,depth:.03},fm:{ratio:.5,depth:.3},filter:bp(450)}),

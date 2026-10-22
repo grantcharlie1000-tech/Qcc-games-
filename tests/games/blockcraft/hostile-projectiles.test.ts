@@ -123,16 +123,18 @@ describe('arrow hits',()=>{
     h.game.runTicks(6);
     expect(h.effects).toEqual([{name:'slowness',seconds:30,level:1}]);expect(h.ignited).toEqual([5]);
   });
-  test('a raised shield facing the arrow deflects it and wears the shield',()=>{
-    const h=createHarness();h.game.player.teleport(.5,60,.5);
+  test('a raised shield facing the arrow deflects it: survival blocks the hit and wears the shield',()=>{
+    const h=createHarness();h.useRealSurvival();h.game.player.teleport(.5,60,.5);
     h.game.inventory.setSlot(0,{id:'shield',count:1});h.setUsing('shield');h.game.player.state.yaw=0;// facing north, toward the shooter
+    h.game.runTicks(5);// a shield blocks once raised for 5 ticks
     const a=fire(h,'arrow',.5,61.2,-5.5,0,0,32,{owner:'mob',damage:2.2});
     let speed=0;for(let i=0;i<6&&!h.wear.length;i++){speed=Math.hypot(a.vx,a.vy,a.vz);h.game.runTicks(1);}
     expect(h.hurt).toHaveLength(0);expect(h.wear).toEqual([5]);
     expect(a.vz).toBeLessThan(0);expect(Math.hypot(a.vx,a.vy,a.vz)).toBeLessThan(speed*.2);expect(a.removed).toBe(false);
-    const b=createHarness();b.game.player.teleport(.5,60,.5);b.setUsing('shield');b.game.player.state.yaw=Math.PI;// facing away
+    const b=createHarness();b.useRealSurvival();b.game.player.teleport(.5,60,.5);b.setUsing('shield');b.game.player.state.yaw=Math.PI;// facing away
+    b.game.runTicks(5);
     fire(b,'arrow',.5,61.2,-5.5,0,0,32,{owner:'mob',damage:2.2});b.game.runTicks(6);
-    expect(b.hurt).toHaveLength(1);
+    expect(b.hurt).toHaveLength(1);expect(b.game.survival.health).toBeLessThan(20);
   });
   test('arrows bounce off a creative player',()=>{
     const h=createHarness({mode:'creative'});h.game.player.teleport(.5,60,.5);
@@ -177,12 +179,15 @@ describe('thrown items',()=>{
     const s=fire(h,'snowball',.5,61,.5,0,-10,0,{owner:'player'});h.game.runTicks(3);
     expect(s.removed).toBe(true);expect(h.particles.some(p=>p.kind==='item'&&p.options?.item==='snowball')).toBe(true);
   });
-  test('snowballs knock mobs back without damage, and the mob turns on the thrower',()=>{
+  test('snowballs land a zero-damage hit: knockback without damage, and the mob turns on the thrower',()=>{
     const h=createHarness();night(h.game);h.game.player.teleport(.5,60,8.5);
     fill(h,-4,60,4,4,64,4,B.stone);// out of the zombie's sight
     const z=h.spawn('zombie',.5,60,-4.5);
     const s=fire(h,'snowball',.5,61,.5,0,0,-30,{owner:'player'});h.game.runTicks(4);
-    expect(s.removed).toBe(true);expect(h.hits).toHaveLength(0);expect(z.health).toBe(20);
+    expect(s.removed).toBe(true);expect(z.health).toBe(20);
+    // The entity service took it as a zero-damage hit (flash and invulnerability), not a scripted nudge.
+    expect(h.hits.map(x=>[x.entity,x.amount,x.source.kind,x.source.projectile])).toEqual([[z,0,'projectile',s]]);
+    expect(z.hurtTime).toBeGreaterThan(0);
     expect(z.vz).toBeLessThan(-2);expect(z.data.aggressive).toBe(true);
   });
   test('a mob nudged by a snowball ignores further zero-damage hits for 10 ticks (vanilla invulnerability)',()=>{
@@ -192,7 +197,7 @@ describe('thrown items',()=>{
       fire(h,'snowball',.5,61,.5,0,0,-30,{owner:'player'});
       if(pair)fire(h,'snowball',.5,61.3,.5,0,0,-30,{owner:'player'});
       for(let t=0;t<30;t++){if(t===second)fire(h,'snowball',z.x,61,z.z+3,0,0,-30,{owner:'player'});h.game.runTicks(1);}
-      expect(h.hits).toHaveLength(0);
+      expect(h.hits.every(x=>x.amount===0)).toBe(true);expect(z.health).toBe(20);
       return z.z;
     };
     const once=run(null);

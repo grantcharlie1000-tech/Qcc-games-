@@ -7,18 +7,20 @@
 //    flight, carry potion effects (stray Slowness) and fire, and stick 0.05 blocks out of the face they hit, quivering
 //    for 7 ticks; they fall again when the block goes, despawn after 1200 ticks in the ground, and the player picks up
 //    their own (`pickup`) arrows. A failed hit (shield, invulnerability, creative) bounces them back at a tenth of the
-//    speed; a mob that dodged out of the way (endermen) lets them fly on. A raised shield facing the arrow blocks it.
-//  - Snowballs and eggs break on impact with item particles and knock mobs back without damage (a mob nudged this way
-//    ignores further zero-damage hits for 10 ticks, like vanilla's invulnerability after hurt(0)); an egg hatches a baby
-//    chicken one time in eight (four chicks one time in 32 of those). Ender pearls teleport the player who threw them to
-//    the impact, with 5 'fall' damage, portal particles and the teleport sound.
+//    speed; a mob that dodged out of the way (endermen) lets them fly on. A raised shield facing the arrow is survival's
+//    to judge: survival.damage returns 0 for a blocked hit and wears the shield.
+//  - Snowballs, eggs and pearls hitting a mob deal a zero-damage hit through the entity service (vanilla hurt(0)): hurt
+//    flash, knockback along the flight, the kind's hurt hook (endermen teleport away) and its hurt sound, then 10 ticks
+//    in which further zero hits are ignored. They break on impact with item particles; an egg hatches a baby chicken one
+//    time in eight (four chicks one time in 32 of those). Ender pearls teleport the player who threw them to the impact,
+//    with 5 'fall' damage, portal particles and the teleport sound.
 // Data contracts (engine/contracts shared entity kinds): arrow {owner:'player'|'mob', ownerId?, damage, pickup, crit,
 // inGround} plus optional {effect, effectSeconds}; thrown {owner, ownerId?}. Velocities are set after spawning.
 import {COLLISION_BOXES,blockDef,isLava,isWater} from '../data/blocks';
 import {stack} from '../data/items';
 import {boxCollides,collidesAt,rayBox} from '../engine/physics';
 import type {BlockSource,DamageSource,EffectName,Entity,EntityKind,Game,ItemStack,ParticleOptions} from '../engine/contracts';
-import {KNOCKBACK,difficultyScaled,knockEntity,shieldBlocks,triangle,wearShield} from './hostile-ai';
+import {KNOCKBACK,triangle} from './hostile-ai';
 import {arrowModel} from './hostile-models';
 
 /** Per-tick motion constants in blocks/tick (multiply velocities by 1/20 to use them). */
@@ -31,8 +33,6 @@ export const ARROW_SHAKE=7;
 /** Vanilla Projectile.shoot spread per unit of inaccuracy. */
 export const SPREAD=.0172275;
 export const PROJECTILE_KINDS=['arrow','snowball','egg','ender_pearl'] as const;
-/** Ticks a mob ignores zero-damage hits after one (vanilla: hurt within invulnerableTime > 10 needs a bigger amount). */
-export const NUDGE_TICKS=10;
 const TICK=1/20;
 /** Particle options reused every tick (bubbles in water, the critical arrow trail): no allocation per projectile. */
 const TRAIL:Readonly<ParticleOptions>={count:2,spread:.1};
@@ -219,22 +219,13 @@ function fly(game:Game,e:Entity,physics:{gravity:number;drag:number;waterDrag:nu
   const id=game.world.get(Math.floor(e.x),Math.floor(e.y+e.height/2),Math.floor(e.z));
   if(id>0&&!water){if(isLava(id))e.fire=Math.max(e.fire,300);else if(blockDef(id).family==='fire')e.fire=Math.max(e.fire,160);}
 }
-/** Game tick of each mob's last zero-damage hit (NUDGE_TICKS of immunity to the next one). */
-const nudged=new WeakMap<Entity,number>();
-/** A thrown item's or arrow's zero-damage hit (snowballs, eggs, pearls): knockback and the hurt reaction, no damage. */
+/** A thrown item's zero-damage hit (snowballs, eggs, pearls; vanilla hurt(0)). The entity service applies the flash,
+ *  invulnerability, knockback, hurt hook and hurt sound; the player takes nothing (survival ignores a zero hit). */
 function nudge(game:Game,e:Entity,target:Entity|null,player:boolean,ux:number,uz:number){
-  const owner=ownerOf(game,e),source:DamageSource={kind:'projectile',attacker:owner,projectile:e,byPlayer:isPlayerOwned(e),
+  const source:DamageSource={kind:'projectile',attacker:ownerOf(game,e),projectile:e,byPlayer:isPlayerOwned(e),
     knockback:{x:ux,z:uz,strength:KNOCKBACK}};
-  if(player){game.survival.damage(0,source);return;}
-  if(!target||game.entities.damage(target,0,source))return;
-  // The entity service applies no zero-damage hits: knock the mob back and let it react (panic, retaliate) here.
-  if(target.hurtTime>0||target.deathTime>0)return;
-  const now=game.time.tick,last=nudged.get(target);
-  if(last!==undefined&&now>=last&&now-last<NUDGE_TICKS)return;
-  nudged.set(target,now);
-  let cancelled=false;
-  try{cancelled=game.entities.kind(target.kind)?.hurt?.(target,game,source,0)===false;}catch{cancelled=false;}
-  if(!cancelled)knockEntity(target,ux,uz,KNOCKBACK);
+  if(player)game.survival.damage(0,source);
+  else if(target)game.entities.damage(target,0,source);
 }
 
 // ---- Arrows ------------------------------------------------------------------------------------------
@@ -246,13 +237,10 @@ function arrowHitEntity(game:Game,e:Entity,d:ArrowData,hit:{x:number;y:number;z:
   const source:DamageSource={kind:'projectile',attacker:owner,projectile:e,byPlayer,knockback:{x:ux,z:uz,strength:KNOCKBACK}};
   let landed=false,dodged=false;
   if(hit.player){
-    // A raised shield facing the arrow blocks it (vanilla isDamageSourceBlocked uses the arrow's position).
-    if(shieldBlocks(game,hit.x,hit.z))wearShield(game,difficultyScaled(game,damage));
-    else{
-      landed=game.survival.damage(damage,source)>0;
-      if(landed&&d.effect)game.survival.addEffect(d.effect,d.effectSeconds??30,1);
-      if(landed&&e.fire>0)game.survival.ignite(5);
-    }
+    // Survival blocks it with a raised shield facing the arrow (by the arrow's position), returning 0.
+    landed=game.survival.damage(damage,source)>0;
+    if(landed&&d.effect)game.survival.addEffect(d.effect,d.effectSeconds??30,1);
+    if(landed&&e.fire>0)game.survival.ignite(5);
   }else if(hit.entity){
     const t=hit.entity;
     landed=game.entities.damage(t,damage,source);

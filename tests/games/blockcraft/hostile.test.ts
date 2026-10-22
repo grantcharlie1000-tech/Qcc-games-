@@ -178,9 +178,9 @@ describe('zombie AI',()=>{
     const z=h.spawn('zombie',.5,60,1.7);h.game.runTicks(2);
     expect(z.removed).toBe(true);expect(h.hurt).toHaveLength(0);
   });
-  test('a raised shield facing the zombie blocks the hit, wears the shield by difficulty and pushes the zombie back',()=>{
+  test('a raised shield facing the zombie blocks the hit (survival): shield worn by difficulty, zombie pushed back',()=>{
     for(const [difficulty,wear] of [['normal',4],['hard',5],['easy',0]] as const){
-      const h=createHarness();night(h.game);onGround(h);h.game.settings.difficulty=difficulty;
+      const h=createHarness();h.useRealSurvival();night(h.game);onGround(h);h.game.settings.difficulty=difficulty;
       h.game.inventory.setSlot(0,{id:'shield',count:1});h.setUsing('shield');
       h.game.player.state.yaw=Math.PI;// looking south (+z) at the zombie
       const z=h.spawn('zombie',.5,60,1.7);
@@ -289,7 +289,7 @@ describe('conversion',()=>{
     expect(husk.removed).toBe(true);expect(k.spawned.filter(s=>s.reason==='convert').map(s=>s.entity.kind)).toEqual(['zombie']);
     expect(drowned.removed).toBe(false);
   });
-  test('the undead breathe under water (their hurt hooks cancel drowning) while a creeper drowns',()=>{
+  test('the undead (EntityKind.undead) breathe under water while a creeper drowns',()=>{
     const h=createHarness({mode:'creative'});night(h.game);
     fill(h,-12,60,-3,12,62,3,B.water);fill(h,-12,63,-3,12,63,3,B.stone);// a flooded tunnel: no one can surface
     const undead=['zombie','husk','skeleton','stray'].map((n,i)=>h.spawn(n,-10.5+i*5,60,.5)),creeper=h.spawn('creeper',10.5,60,.5);
@@ -337,32 +337,50 @@ describe('drowned',()=>{
   });
 });
 
-describe('natural spawn rules',()=>{
-  const spawn=(h:Harness,kind:string,x:number,y:number,z:number,reason:'natural'|'egg'='natural')=>h.game.entities.spawn(kind,x,y,z,{reason});
+describe('natural spawn rules (spawn.check, at the feet cell)',()=>{
+  const check=(h:Harness,kind:string,x:number,y:number,z:number)=>{const c=h.game.entities.kind(kind)?.spawn?.check;return c?c(h.game,x,y,z):null;};
   function deepWater(h:Harness){fill(h,-2,40,-2,2,61,2,B.water);}
-  test('drowned: water below the feet, 1 in 40 and below sea level − 5 outside rivers, 1 in 15 in rivers',()=>{
-    // The harness world is all ocean (biome 0). The first random() is the baby roll, the second the spawn chance.
-    const lucky=createHarness({random:sequence([],.02)});deepWater(lucky);
-    expect(spawn(lucky,'drowned',.5,50,.5)).not.toBeNull();
-    expect(spawn(lucky,'drowned',.5,58,.5)).toBeNull();// too shallow below sea level
-    expect(spawn(lucky,'drowned',.5,40,.5)).toBeNull();// stone below the feet
-    const unlucky=createHarness({random:sequence([],.03)});deepWater(unlucky);
-    expect(spawn(unlucky,'drowned',.5,50,.5)).toBeNull();
-    expect(spawn(unlucky,'drowned',.5,58,.5,'egg')).not.toBeNull();// only natural spawns are gated
+  /** Packed light for every voxel of the loaded chunks (sky<<4 | block). */
+  function light(h:Harness,packed:number){for(const c of h.game.world.chunks.values())c.light=new Uint8Array(c.blocks.length).fill(packed);}
+  test('drowned: darkness, water below the feet, 1 in 40 and below sea level − 5 outside rivers, 1 in 15 in rivers',()=>{
+    // The harness world is all ocean (biome 0). Darkness draws two random() values, then the spawn chance one.
+    const lucky=createHarness({random:sequence([],.02)});deepWater(lucky);light(lucky,0);
+    expect(check(lucky,'drowned',0,50,0)).toBe(true);
+    expect(check(lucky,'drowned',0,58,0)).toBe(false);// too shallow below sea level
+    expect(check(lucky,'drowned',0,40,0)).toBe(false);// stone below the feet
+    const unlucky=createHarness({random:sequence([],.03)});deepWater(unlucky);light(unlucky,0);
+    expect(check(unlucky,'drowned',0,50,0)).toBe(false);
     for(const c of unlucky.game.world.chunks.values())c.biomes.fill(biomeId('river'));
-    expect(spawn(unlucky,'drowned',.5,58,.5)).not.toBeNull();// .03 < 1/15
-    const dry=createHarness({random:sequence([],.1)});deepWater(dry);
+    expect(check(unlucky,'drowned',0,58,0)).toBe(true);// .03 < 1/15
+    const dry=createHarness({random:sequence([],.1)});deepWater(dry);light(dry,0);
     for(const c of dry.game.world.chunks.values())c.biomes.fill(biomeId('river'));
-    expect(spawn(dry,'drowned',.5,58,.5)).toBeNull();
+    expect(check(dry,'drowned',0,58,0)).toBe(false);
+    // Torchlight stops it, whatever the dice say.
+    const lit=createHarness({random:sequence([],.02)});deepWater(lit);light(lit,0x07);
+    expect(check(lit,'drowned',0,50,0)).toBe(false);
+    // Spawn eggs and other reasons never reach the check.
+    expect(unlucky.spawn('drowned',.5,50,.5,{reason:'egg'})).not.toBeNull();
   });
-  test('husks and strays spawn naturally only under open sky; zombies and skeletons anywhere',()=>{
-    const h=createHarness();fill(h,-2,66,-2,2,66,2,B.stone);// a roof
-    for(const n of ['husk','stray']){
-      expect(spawn(h,n,.5,60,.5),n).toBeNull();
-      expect(spawn(h,n,8.5,60,8.5),n).not.toBeNull();
-      expect(spawn(h,n,.5,60,.5,'egg'),n).not.toBeNull();
+  test('husks and strays need darkness under open sky; zombies and skeletons use the framework default',()=>{
+    const h=createHarness({random:sequence([],.99)});fill(h,-2,66,-2,2,66,2,B.stone);// a roof
+    night(h.game);// sky darkening 11: brightness 4 in the open
+    // Sky light 15 in the open, 0 under the roof (the fake world has no light engine).
+    for(const c of h.game.world.chunks.values()){
+      const l=c.light=new Uint8Array(c.blocks.length);
+      for(let i=0;i<l.length;i++){
+        const x=c.cx*16+(i&15),z=c.cz*16+(i>>4&15),y=i>>8,roofed=x>=-2&&x<=2&&z>=-2&&z<=2&&y<66;
+        l[i]=y>=60&&!roofed?0xf0:0;
+      }
     }
-    for(const n of ['zombie','skeleton'])expect(spawn(h,n,.5,60,.5),n).not.toBeNull();
+    for(const n of ['husk','stray']){
+      expect(check(h,n,0,60,0),n).toBe(false);
+      expect(check(h,n,8,60,8),n).toBe(true);
+    }
+    // A snow layer at the feet still sees the sky (vanilla canSeeSky is sky light, not the height map).
+    h.game.world.set(8,60,8,B.snow);
+    for(const n of ['husk','stray'])expect(check(h,n,8,60,8),n).toBe(true);
+    for(const n of ['zombie','skeleton'])expect(check(h,n,0,60,0),n).toBeNull();
+    for(const n of ['zombie','husk','drowned','skeleton','stray'])expect(kind(h,n).undead,n).toBe(true);
   });
 });
 

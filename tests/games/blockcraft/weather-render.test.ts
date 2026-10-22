@@ -1,5 +1,6 @@
 import {describe,expect,test} from 'vitest';
 import * as THREE from 'three';
+import {sharedUniforms} from '../../../src/games/blockcraft/render/renderer';
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import {B} from '../../../src/games/blockcraft/data/blocks';
 import {biomeId} from '../../../src/games/blockcraft/data/biomes';
@@ -136,6 +137,10 @@ describe('weather visuals in a scene',()=>{
     expect(precipitation.visible).toBe(true);expect(geometry.instanceCount).toBeGreaterThan(1000);expect(geometry.instanceCount).toBeLessThanOrEqual(PRECIPITATION_CAPACITY);
     const material=precipitation.material as THREE.RawShaderMaterial;
     expect(material.uniforms.fogColor).toBe(uniforms.fogColor);expect(material.uniforms.daylight).toBe(uniforms.daylight);expect(material.uniforms.flash).toBe(uniforms.flash);
+    // Lit by the renderer's lightmap at full sky light and fogged like the chunks; neutral extras without the renderer's.
+    expect(material.vertexShader).toContain('bcLightmap(15.,0.,daylight,flash,flicker,nightVision)');
+    expect(material.fragmentShader).toContain('bcFog(bcFogDistance(vRel,fogShape),fogNear,fogFar)');
+    expect(material.uniforms.flicker.value).toBe(0);expect(material.uniforms.nightVision.value).toBe(0);expect(material.uniforms.fogShape.value).toBe(1);
     expect(material.transparent).toBe(true);expect(material.depthWrite).toBe(false);
     visuals.frame(1/60,1,[{x:3,y:64,z:3,life:2,flashes:1,seed:42}]);
     expect(bolt.visible).toBe(true);expect((bolt.geometry as THREE.BufferGeometry).drawRange.count).toBe(BOLT_VERTICES);
@@ -143,6 +148,13 @@ describe('weather visuals in a scene',()=>{
     visuals.frame(1/60,1,[]);expect(bolt.visible).toBe(false);
     visuals.dispose();
     for(const m of visuals.meshes)expect(scene.children).not.toContain(m);
+  });
+  test('with the renderer\'s uniforms the precipitation shares flicker, night vision and the fog shape',()=>{
+    const {game}=sceneGame();
+    const full=sharedUniforms();game.render={...game.render,uniforms:full} as unknown as RenderService;
+    const visuals=createWeatherVisuals(game),material=visuals.meshes[0].material as THREE.RawShaderMaterial;
+    for(const k of ['daylight','flash','flicker','nightVision','fogColor','fogNear','fogFar','fogShape'] as const)expect(material.uniforms[k],k).toBe(full[k]);
+    visuals.dispose();
   });
   test('the service builds its visuals from game.render and drives them every frame',()=>{
     const {game,scene}=sceneGame('snowy_plains');

@@ -9,6 +9,7 @@
 //  - Every helper ignores non-finite goals and speeds (a NaN intent would otherwise reach the physics).
 //  - moveToward: straight steering that jumps 1-block steps and stops at cliffs (drops > 3), lava, fire and cacti.
 //  - flee: vanilla PanicGoal / AvoidEntityGoal: a standable spot 5–12 blocks away from the threat, then navigate there.
+//  - Kinds with avoidsWater (endermen) never path into water, and wander and flee never pick a spot in water for them.
 //  - lookAt: head turns up to 30°/tick (pitch 40°), the body follows when the head is beyond 75°.
 import {SOLID,isWater,AIR,blockId} from '../data/blocks';
 import {raycast} from '../engine/physics';
@@ -122,7 +123,7 @@ export function createEntityAI(game:Game):EntityAIInternal{
     const sx=Math.floor(e.x-half+.5),sy=Math.floor(e.y+.01),sz=Math.floor(e.z-half+.5);
     const tx=Math.floor(x-half+.5),ty=Math.floor(y+.01),tz=Math.floor(z-half+.5);
     const k=game.entities.kind(e.kind);
-    findPath(game.world,sx,sy,sz,tx,ty,tz,{width:e.width,height:e.height,aquatic:!!k?.aquatic},s.path,result);
+    findPath(game.world,sx,sy,sz,tx,ty,tz,{width:e.width,height:e.height,aquatic:!!k?.aquatic,avoidWater:!!k?.avoidsWater},s.path,result);
     searches++;nodes+=result.expanded;credit-=Math.max(1,result.expanded);
     s.planned=now();s.goalX=x;s.goalY=y;s.goalZ=z;s.index=0;s.stuck=0;s.best=Infinity;
     // A complete search with no waypoints means the mob already stands at the goal.
@@ -165,12 +166,13 @@ export function createEntityAI(game:Game):EntityAIInternal{
   }
   /** A standable feet cell in the column near y (searching ±range), or NaN. */
   function columnSpot(e:Entity,x:number,y:number,z:number,range:number):number{
-    const aquatic=!!game.entities.kind(e.kind)?.aquatic;
+    const k=game.entities.kind(e.kind),aquatic=!!k?.aquatic,dry=!aquatic&&!!k?.avoidsWater;
     for(let i=0;i<=range*2;i++){
       const cy=y+(i&1?-(i+1)/2:i/2);
       if(cy<1||cy>=127)continue;
       if(!standableCell(game.world,x,cy,z,e.width,e.height))continue;
       if(aquatic&&!isWater(game.world.get(x,cy,z)))continue;
+      if(dry&&isWater(game.world.get(x,cy,z)))continue;
       return cy;
     }
     return NaN;

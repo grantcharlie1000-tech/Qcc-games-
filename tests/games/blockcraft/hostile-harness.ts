@@ -1,17 +1,20 @@
 // Test harness for the hostile mobs and projectiles: the fake game with a small, deterministic entity service that
 // follows the entity framework's rules (entity/entities.ts): living motion after vanilla LivingEntity.travel (intent =
 // steady ground speed, ground acceleration s², friction 0.546, air 0.02 s, water 0.8 drag and slow sinking, aquatic
-// mobs swimming freely with 0.9 drag, jumps 0.42 blocks/tick, gravity after the move), 'none' physics kinds moving
-// themselves, damage with invulnerability frames (only a bigger hit lands, for the difference), zero-damage hits
-// refused, the kind's hurt hook, knockback and loot, and drowning (300 ticks of air with the eyes under water, then 2
-// 'drown' damage per second). Drowning follows the first framework version, where only aquatic kinds breathe water; the
-// later one also spares the undead, so the hostile kinds cancel 'drown' damage themselves and work with both. Steering is
-// straight-line (no path-finding). Survival, explosions, particles, effects and held-item wear are recorded. game.random
-// throws when called unbound, as the engine's method did. Not a test file itself (vitest only runs *.test.ts).
+// mobs swimming freely with 0.9 drag and climbing out at a ledge when they are not water mobs and their intent points
+// at the bank, jumps 0.42 blocks/tick, gravity after the move), 'none' physics kinds moving themselves, damage with
+// invulnerability frames (only a bigger hit lands, for the difference), zero-damage hits (flash, invulnerability,
+// knockback and the hurt hook, no health lost), the kind's hurt hook, knockback and loot, and drowning (300 ticks of air
+// with the eyes under water, then 2 'drown' damage per second; aquatic and undead kinds never drown). Natural spawning is
+// not simulated: the spawn rules are the kinds' spawn.check, tested directly. Steering is straight-line (no
+// path-finding). Survival, explosions, particles, effects and held-item wear are recorded; useRealSurvival() swaps in
+// the real survival service (shields). game.random throws when called unbound, as the engine's method did. Not a test
+// file itself (vitest only runs *.test.ts).
 import {createFakeGame,type FakeGame} from './helpers/fake-game';
 import {boxCollides,moveBody,raycast} from '../../../src/games/blockcraft/engine/physics';
 import {AIR,SOLID,isLava,isWater} from '../../../src/games/blockcraft/data/blocks';
 import {registerHostileMobs} from '../../../src/games/blockcraft/entity/hostile';
+import {createSurvival} from '../../../src/games/blockcraft/player/survival';
 import type {DamageSource,EffectName,Entity,EntityAI,EntityKind,EntityService,ItemStack,ParticleKind,ParticleOptions,
   SpawnReason,Vec3} from '../../../src/games/blockcraft/engine/contracts';
 
@@ -33,6 +36,8 @@ export interface Harness{
   spawn(kind:string,x:number,y:number,z:number,options?:{data?:Record<string,unknown>;baby?:boolean;reason?:SpawnReason;yaw?:number}):Entity;
   setUsing(item:string|null):void;
   sounds():string[];
+  /** Replaces the recording survival stub with the real survival service; `hurt` then records playerDamaged. */
+  useRealSurvival():void;
 }
 
 const TICK=1/20,AIR_SUPPLY=300;
@@ -44,6 +49,12 @@ function fluids(game:FakeGame,e:Entity){
     for(let x=Math.floor(e.x-hw+.001);x<=Math.floor(e.x+hw-.001);x++){const id=game.world.get(x,y,z);if(id>0&&isWater(id))water=true;else if(id>0&&isLava(id))lava=true;}
   e.inWater=water;e.inLava=lava;
 }
+const liquidIn=(game:FakeGame,x0:number,y0:number,z0:number,x1:number,y1:number,z1:number)=>{
+  for(let y=Math.floor(y0);y<=Math.floor(y1-1e-4);y++)for(let z=Math.floor(z0);z<=Math.floor(z1-1e-4);z++)for(let x=Math.floor(x0);x<=Math.floor(x1-1e-4);x++){
+    const id=game.world.get(x,y,z);if(id>0&&(isWater(id)||isLava(id)))return true;
+  }
+  return false;
+};
 /** One tick of a living body (entity/entities-physics stepLiving, without flowing water and ladders). */
 function stepLiving(game:FakeGame,e:Entity,aquatic:boolean){
   let ux=e.vx*TICK,uy=e.vy*TICK,uz=e.vz*TICK;
@@ -51,9 +62,17 @@ function stepLiving(game:FakeGame,e:Entity,aquatic:boolean){
   if(e.jump){if(e.inWater||e.inLava)uy+=.04;else if(e.onGround)uy=.42;e.jump=false;}
   const target=Math.hypot(e.moveX,e.moveZ)*TICK,dirX=target>1e-9?e.moveX*TICK/target:0,dirZ=target>1e-9?e.moveZ*TICK/target:0;
   const s=Math.sqrt(target*(1-.6*.91)),wasGround=e.onGround;
+  let hitX=false,hitZ=false;
   const move=()=>{e.vx=ux/TICK;e.vy=uy/TICK;e.vz=uz/TICK;const hit=moveBody(game.world,e,e.width/2,e.height,TICK,undefined,.6);
-    e.collidedH=hit.hitX||hit.hitZ;e.collidedV=hit.hitY;ux=e.vx*TICK;uy=e.vy*TICK;uz=e.vz*TICK;};
-  if(e.inWater&&aquatic){ux+=dirX*target*.1;uz+=dirZ*target*.1;move();ux*=.9;uz*=.9;uy=(uy-g/16)*.9;}
+    e.collidedH=hit.hitX||hit.hitZ;e.collidedV=hit.hitY;hitX=hit.hitX;hitZ=hit.hitZ;ux=e.vx*TICK;uy=e.vy*TICK;uz=e.vz*TICK;};
+  if(e.inWater&&aquatic){
+    const y0=e.y;ux+=dirX*target*.1;uz+=dirZ*target*.1;move();ux*=.9;uz*=.9;uy=(uy-g/16)*.9;
+    // Aquatic land mobs (drowned) heading for the bank climb out (entities-physics canClimbOut).
+    if(e.category!=='water'&&e.collidedH&&target>1e-9&&(hitX&&Math.abs(dirX)>.1||hitZ&&Math.abs(dirZ)>.1)){
+      const hw=e.width/2,ny=e.y+uy+.6-(e.y-y0);
+      if(!boxCollides(game.world,e.x+ux-hw,ny,e.z+uz-hw,e.x+ux+hw,ny+e.height,e.z+uz+hw)&&!liquidIn(game,e.x+ux-hw,ny,e.z+uz-hw,e.x+ux+hw,ny+e.height,e.z+uz+hw))uy=.3;
+    }
+  }
   else if(e.inWater||e.inLava){
     const y0=e.y;ux+=dirX*.02*s;uz+=dirZ*.02*s;move();
     if(e.inWater){ux*=.8;uy*=.8;uz*=.8;uy-=g/16;}else{ux*=.5;uy*=.5;uz*=.5;uy-=g/4;}
@@ -67,9 +86,9 @@ function stepLiving(game:FakeGame,e:Entity,aquatic:boolean){
 
 export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'hits'|'drops'>):EntityService{
   const kinds=new Map<string,EntityKind>(),list:Entity[]=[],lastHurt=new WeakMap<Entity,number>(),air=new WeakMap<Entity,number>();
-  /** entities.ts environment step: non-aquatic mobs with the eyes under water lose air, then drown. */
+  /** entities.ts environment step: mobs that are neither aquatic nor undead lose air with the eyes under water, then drown. */
   function breathe(e:Entity,k:EntityKind){
-    if(k.aquatic)return;
+    if(k.aquatic||k.undead)return;
     const eye=game.world.get(Math.floor(e.x),Math.floor(e.y+e.height*.85),Math.floor(e.z));
     let a=air.get(e)??AIR_SUPPLY;
     if(eye>0&&isWater(eye)){if(--a<=-20){a=0;service.damage(e,2,DROWN);}}
@@ -127,12 +146,13 @@ export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'
     raycast:()=>null,
     damage(e,amount,source){
       const k=kinds.get(e.kind);
-      if(e.removed||e.deathTime>0||!(amount>0))return false;
+      if(e.removed||e.deathTime>0||!(amount>=0)||!Number.isFinite(amount))return false;
       if(!living(k))return k?.hurt?.(e,game,source,amount)!==false&&!!k?.hurt;
       let dealt=amount;const fresh=e.hurtTime===0;
       if(!fresh){const last=lastHurt.get(e)??0;if(amount<=last)return false;dealt=amount-last;}
       if(k?.hurt?.(e,game,source,amount)===false)return false;
       lastHurt.set(e,amount);e.health-=dealt;record.hits.push({entity:e,amount:dealt,source});
+      game.events.emit('entityDamaged',{entity:e,amount:dealt,source});
       if(fresh){
         e.hurtTime=10;
         const kb=source.knockback;
@@ -172,7 +192,11 @@ export function createHarness(options:{random?:()=>number;mode?:'survival'|'crea
   const h:Harness={game,spawned:[],hurt:[],effects:[],ignited:[],explosions:[],particles:[],hits:[],drops:[],wear:[],teleports:[],
     spawn(kind,x,y,z,o){const e=game.entities.spawn(kind,x,y,z,o);if(!e)throw new Error(`cannot spawn ${kind}`);return e;},
     setUsing(item){(game.interaction as {using:unknown}).using=item?{item,progress:0}:null;},
-    sounds:()=>game.sounds.played.map(s=>s.name)};
+    sounds:()=>game.sounds.played.map(s=>s.name),
+    useRealSurvival(){
+      const s=createSurvival(game);game.survival=s;s.init();
+      game.events.on('playerDamaged',({amount,source})=>h.hurt.push({amount,source}));
+    }};
   game.entities=createTestEntities(game,h);
   game.survival.damage=(amount,source)=>{
     if(game.settings.mode==='creative'&&source.kind!=='void')return 0;

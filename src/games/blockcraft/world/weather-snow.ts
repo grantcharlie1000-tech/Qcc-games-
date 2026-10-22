@@ -50,16 +50,10 @@ export function precipitateColumn(world:World,x:number,z:number,snowing=true):'i
   return null;
 }
 
-/** Voxels edited in the world, when the world tells (VoxelWorld.editCount; the World contract has only editsFull). */
-function editCount(world:World):number{
-  const count=(world as Partial<{editCount:unknown}>).editCount;
-  return typeof count==='number'&&Number.isFinite(count)?count:0;
-}
-
 /** The per-tick pass over loaded chunks near (px,pz): each ticking chunk gets a 1/16 chance of one random column
  *  update. `snowing` = it is raining (vanilla isRaining); cold columns then get snow and ice, nothing changes otherwise. */
 export function precipitationTick(world:World,px:number,pz:number,random:()=>number,snowing:boolean):void{
-  if(!snowing||world.editsFull||editCount(world)>=MAX_EDITS*WEATHER_EDIT_SHARE)return;
+  if(!snowing||world.editsFull||world.editCount>=MAX_EDITS*WEATHER_EDIT_SHARE)return;
   for(const chunk of world.chunks.values()){
     if(!isTickingChunk(chunk.cx,chunk.cz,px,pz))continue;
     if(random()>=PRECIPITATION_CHANCE)continue;

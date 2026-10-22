@@ -7,15 +7,19 @@
 //    (entity/entities-physics.ts), fall damage ceil(distance − 3) (ceil(distance / 2 − 3) on beds, which also bounce;
 //    none when the mob lands in water, re-checked at landing like vanilla checkFallDamage), sounds. Then mobs push each
 //    other and the player (vanilla 0.05 blocks/tick), and the spawner runs.
-//  - Breathing (vanilla canBreatheUnderwater): aquatic kinds and undead never drown. The contract has no undead flag, so
-//    undead are the kinds that burn in daylight (zombie, skeleton, stray, drowned) or replace such a kind (husk).
+//  - Breathing (vanilla canBreatheUnderwater): aquatic kinds and undead (EntityKind.undead) never drown. A kind that leaves
+//    `undead` unset is inferred as before: undead when it burns in daylight or replaces such a kind (husk).
 //  - Non-finite positions, angles, velocities and intents set by a kind or another area are reset before physics
 //    (positions to the last tick's, the rest to 0) and velocities are clamped to ±MAX_SPEED, so a NaN never reaches
 //    the collision loop.
 //  - damage(): the kind's hurt hook may cancel; 10 ticks of hurt flash and invulnerability during which only a bigger
 //    hit lands (for the difference, without knockback); knockback halves the velocity and adds the push (vertical
 //    min(8, vy / 2 + strength) on the ground); death tips the body over for 20 ticks, then 20 `poof` particles and removal.
-//    Loot always drops, experience only when the player hit it within the last 100 ticks (or the killing blow).
+//    Amount 0 is a valid hit (snowballs, eggs, pearls): flash, invulnerability (lastHurt 0), knockback, the hurt hook and
+//    the hurt sound, but no health lost. Loot always drops, experience only when the player hit it within the last 100
+//    ticks (or the killing blow); entityDied reports that memory as source.byPlayer.
+//  - entityRemoved is emitted once whenever an entity leaves the world: the end of the death animation, despawning and
+//    remove() (not for reset(), a new world).
 //  - Persistence: up to 200 entities nearest the player (hostiles and kinds with persist:false are not saved); restore
 //    validates every field and the kind's restoreData.
 import {OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
@@ -51,6 +55,8 @@ interface Rec extends RenderRec{
   playerHit:number;
   /** Ticks without being near the player or hurt (despawning). */
   idle:number;
+  /** entityRemoved was emitted for it. */
+  gone:boolean;
   ambient:number;stepDist:number;nextStep:number;air:number;
   headStable:number;stableHead:number;lastYaw:number;
 }
@@ -123,20 +129,40 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     const type=bodyType(k.category),living=type==='living';
     const rec:Rec={e,kind:k,px:x,py:y,pz:z,pyaw:e.yaw,phead:e.headYaw,ppitch:e.pitch,walkPos:0,walkSpeed:0,walkSpeedOld:0,bob:game.random()*Math.PI*2,
       frozen:false,type,living,phys:k.physics==='none'?null:resolvePhysics(type,k.physics),motion:newMotion(),fluids:newFluidState(),
-      lastHurt:0,playerHit:-1e9,idle:0,ambient:-80,stepDist:0,nextStep:1,air:AIR_SUPPLY,headStable:0,stableHead:e.headYaw,lastYaw:e.yaw};
+      lastHurt:0,playerHit:-1e9,idle:0,gone:false,ambient:-80,stepDist:0,nextStep:1,air:AIR_SUPPLY,headStable:0,stableHead:e.headYaw,lastYaw:e.yaw};
     recs.push(rec);list.push(e);byIdMap.set(e.id,rec);
     game.events.emit('entitySpawned',{entity:e,reason});
     return e;
   }
   function remove(e:Entity){
-    if(e.removed&&!byIdMap.has(e.id))return;
+    const r=byIdMap.get(e.id),own=r!==undefined&&r.e===e;
+    if(e.removed&&!own)return;
     e.removed=true;dirty=true;ai.forget(e);
+    if(own&&!r.gone){r.gone=true;game.events.emit('entityRemoved',{entity:e});}
   }
+  /** Entities another area flagged removed directly (no remove() call), announced after compaction. */
+  const unannounced:Entity[]=[];
   function compact(){
-    if(!dirty)return;dirty=false;
+    if(!dirty){
+      // A kind or another area may set `removed` without calling remove(): pick those up too.
+      let flagged=false;for(let i=0;i<recs.length&&!flagged;i++)flagged=recs[i].e.removed;
+      if(!flagged)return;
+    }
+    dirty=false;
     let j=0;
-    for(let i=0;i<recs.length;i++){const r=recs[i];if(r.e.removed){if(byIdMap.get(r.e.id)===r)byIdMap.delete(r.e.id);continue;}recs[j]=r;list[j]=r.e;j++;}
+    for(let i=0;i<recs.length;i++){
+      const r=recs[i];
+      if(r.e.removed){
+        if(byIdMap.get(r.e.id)===r)byIdMap.delete(r.e.id);
+        if(!r.gone){r.gone=true;ai.forget(r.e);unannounced.push(r.e);}
+        continue;
+      }
+      recs[j]=r;list[j]=r.e;j++;
+    }
     recs.length=j;list.length=j;
+    if(unannounced.length){
+      for(const e of unannounced.splice(0))game.events.emit('entityRemoved',{entity:e});
+    }
   }
 
   // ---- Combat ----------------------------------------------------------------------------------
@@ -163,6 +189,8 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     e.deathTime=1;e.health=0;e.moveX=e.moveZ=0;e.jump=false;
     sound(e,k,'death');
     const byPlayer=!!source.byPlayer||game.time.tick-r.playerHit<=PLAYER_KILL_MEMORY;
+    // Listeners (kill statistics, advancements) see the player-hit memory as a player kill.
+    const cause:DamageSource=byPlayer&&!source.byPlayer?{...source,byPlayer:true}:source;
     let loot:ItemStack[]=[];
     try{loot=k.drops?.(e,game,byPlayer)??[];}catch{loot=[];}
     if(Array.isArray(loot))for(const s of loot)if(s&&typeof s.id==='string'&&Number.isInteger(s.count)&&s.count>0)service.dropItem(s,e.x,e.y+.1,e.z);
@@ -171,17 +199,19 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
       try{xp=typeof k.xp==='function'?k.xp(e):k.xp??0;}catch{xp=0;}
       if(Number.isFinite(xp)&&xp>=1)service.dropXp(Math.floor(xp),e.x,e.y+.25,e.z);
     }
-    game.events.emit('entityDied',{entity:e,source});
+    game.events.emit('entityDied',{entity:e,source:cause});
   }
   function damage(e:Entity,amount:number,source:DamageSource):boolean{
     const r=byIdMap.get(e.id);
-    if(!r||r.e!==e||e.removed||e.deathTime>0||!(amount>0)||!Number.isFinite(amount)||!source)return false;
+    // Amount 0 is a valid hit for living entities (snowballs, eggs, pearls); negative or non-finite amounts are not.
+    if(!r||r.e!==e||e.removed||e.deathTime>0||!(amount>=0)||!Number.isFinite(amount)||!source)return false;
     const k=r.kind;
     const fireKind=source.kind==='fire'||source.kind==='lava';
     if(fireKind&&k.fireImmune)return false;
     if(source.kind==='fall'&&k.noFallDamage)return false;
     if(!r.living){
       if(r.type!=='item'&&r.type!=='orb'){try{return k.hurt?.(e,game,source,amount)!==false&&!!k.hurt;}catch{return false;}}
+      if(amount===0)return false;
       try{if(k.hurt?.(e,game,source,amount)===false)return false;}catch{return false;}
       e.health-=amount;
       game.events.emit('entityDamaged',{entity:e,amount,source});
@@ -250,13 +280,17 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(eye>0&&OPAQUE[eye]&&SOLID[eye])damage(e,1,WALL_SOURCE);
     if(e.y<-64)damage(e,4,VOID_SOURCE);
   }
-  /** Never drowns (vanilla canBreatheUnderwater): aquatic, undead (burnsInDaylight), or replacing such a kind (husk). */
+  /** Never drowns (vanilla canBreatheUnderwater): aquatic or undead. Kinds that do not set `undead` fall back to the old
+   *  inference: undead when they burn in daylight or replace such a kind (husk). */
   const breathing=new Map<string,boolean>();
   function breathes(k:EntityKind,depth=0):boolean{
     const known=breathing.get(k.kind);if(known!==undefined)return known;
-    let v=!!k.aquatic||!!k.burnsInDaylight;
-    const replaced=k.spawn?.replaces;
-    if(!v&&depth<4&&typeof replaced==='string'){const t=kinds.get(replaced);if(t&&t!==k)v=breathes(t,depth+1);}
+    let v=!!k.aquatic||k.undead===true;
+    if(!v&&k.undead===undefined){
+      v=!!k.burnsInDaylight;
+      const replaced=k.spawn?.replaces;
+      if(!v&&depth<4&&typeof replaced==='string'){const t=kinds.get(replaced);if(t&&t!==k)v=breathes(t,depth+1);}
+    }
     breathing.set(k.kind,v);return v;
   }
   function itemEnvironment(r:Rec){

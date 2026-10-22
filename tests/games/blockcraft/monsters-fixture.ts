@@ -1,5 +1,6 @@
 // Test fixture for the monsters area: a fake game with a small, contract-faithful entity service
-// (spawn → init → entitySpawned, damage → hurt hook → death → drops, xp and entityDied) so enderman
+// (spawn → init → entitySpawned, damage → hurt hook → death → drops, xp and entityDied, entityRemoved once when an
+// entity leaves the world: remove() or the end of the 20-tick death animation; zero-damage hits are valid) so enderman
 // and slime kinds can be exercised without the real entity framework, DOM or WebGL.
 import {AIR,SOLID} from '../../../src/games/blockcraft/data/blocks';
 import {raycast} from '../../../src/games/blockcraft/engine/physics';
@@ -61,7 +62,7 @@ export function createHarness(options:{seed?:number;mode?:'survival'|'creative';
       list.push(e);game.events.emit('entitySpawned',{entity:e,reason});
       return e;
     },
-    remove(e){e.removed=true;},
+    remove(e){if(e.removed)return;e.removed=true;game.events.emit('entityRemoved',{entity:e});},
     byId:id=>list.find(e=>e.id===id&&!e.removed),
     all:()=>list,
     near(x,y,z,r,filter,out=[]){
@@ -71,7 +72,7 @@ export function createHarness(options:{seed?:number;mode?:'survival'|'creative';
     },
     raycast:()=>null,
     damage(e,amount,source){
-      if(e.removed||e.hurtTime>0||e.deathTime>0)return false;
+      if(e.removed||e.hurtTime>0||e.deathTime>0||!(amount>=0))return false;
       const k=kinds.get(e.kind);
       if(k?.hurt?.(e,game,source,amount)===false)return false;
       e.health-=amount;e.hurtTime=10;
@@ -91,7 +92,7 @@ export function createHarness(options:{seed?:number;mode?:'survival'|'creative';
     tick(){
       for(const e of list){
         if(e.removed)continue;e.age++;if(e.hurtTime>0)e.hurtTime--;
-        if(e.deathTime>0){if(++e.deathTime>20)e.removed=true;continue;}
+        if(e.deathTime>0){if(++e.deathTime>=20)entities.remove(e);continue;}
         kinds.get(e.kind)?.tick?.(e,game);
       }
     }

@@ -18,7 +18,7 @@ const WOLF_VARIANTS=['wolf_growl','wolf_whine','wolf_pant','wolf_shake'] as cons
 const ALL:SoundName[]=[
   ...MATERIALS.flatMap(m=>ACTIONS.map(a=>`${a}:${m}` as SoundName)),...SIMPLE,
   ...MOB_KINDS.flatMap(k=>MOB_SOUNDS.map(s=>`mob:${k}:${s}` as SoundName)),
-  ...WOLF_VARIANTS.map(v=>`mob:${v}:ambient` as SoundName)];
+  ...WOLF_VARIANTS.map(v=>`mob:${v}:ambient` as SoundName),'mob:squid_squirt:ambient'];
 
 const fixed=(v:number)=>()=>v;
 const spec=(name:string,r:()=>number=fixed(.5),distance:number|null=null)=>soundSpec(name,r,distance);
@@ -219,6 +219,17 @@ describe('mob voices',()=>{
     // The variants share the wolf's hurt, death and step.
     for(const v of WOLF_VARIANTS)for(const k of ['hurt','death','step'])
       expect(signature(must(`mob:${v}:${k}`))).toBe(signature(must(`mob:wolf:${k}`)));
+  });
+  test('squid ink has a designed squirt: a short wet hiss sweeping down, at the squid\'s volume',()=>{
+    const squirt=must('mob:squid_squirt:ambient');
+    expect(signature(squirt)).not.toBe(signature(must('mob:squid:ambient')));
+    expect(squirt.layers.some(l=>l.kind==='noise'&&l.freqEnd!==undefined&&l.freqEnd<l.freq/2)).toBe(true);
+    expect(squirt.layers.some(l=>l.kind==='noise'&&l.color==='brown'&&!!l.tremolo)).toBe(true);
+    expect(specDuration(squirt)).toBeLessThan(.5);expect(specDuration(squirt)).toBeGreaterThan(.2);
+    expect(squirt.volume).toBeCloseTo(.4,5);
+    // Not the hashed generic voice a nameless creature would get (a single tone).
+    expect(squirt.layers.length).toBeGreaterThan(1);
+    for(const k of ['hurt','death','step'])expect(signature(must(`mob:squid_squirt:${k}`))).toBe(signature(must(`mob:squid:${k}`)));
   });
   test('unknown creatures get a stable generic voice',()=>{
     expect(signature(must('mob:villager:hurt'))).toBe(signature(must('mob:villager:hurt')));

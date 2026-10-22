@@ -6,13 +6,13 @@
 //    14 − 4 × difficulty), then waits 40 ticks (20 on hard): one arrow every 3 s, 2 s on hard.
 //  - Runs from wolves within 6 blocks; when burning in daylight without a target it looks for shade (FleeSunGoal).
 //  - Stray: the snowy-biome skeleton (replaces 80 of 100 skeletons in snowy plains); its arrows add Slowness for 30 s.
-//    Natural strays need open sky (Stray.checkStraySpawnRules): init removes one spawned under a roof.
-//  - Undead breathe under water: the hurt hook cancels 'drown' damage.
+//    Natural strays need open sky as well as monster darkness (Stray.checkStraySpawnRules, the kind's spawn.check).
+//  - Undead (EntityKind.undead): they breathe under water, so the entity service never drowns them.
 // Drops: 0–2 bones and 0–2 arrows; player kills drop the held bow 8.5% of the time, worn as in vanilla; 5 xp.
 import {itemDef,stack} from '../data/items';
 import type {Difficulty,Entity,EntityKind,Game,ItemStack} from '../engine/contracts';
-import {DIFFICULTY_ID,avoidHazards,brain,cleanData,difficultyId,idle,isDay,mobSpeed,newTarget,peacefulRemove,pickSpot,retaliate,
-  setAggressive,tickTimers,triangle,underSky,updateTarget,walkToSpot,type Brain,type TargetPos} from './hostile-ai';
+import {DIFFICULTY_ID,avoidHazards,brain,cleanData,darkUnderOpenSky,difficultyId,idle,isDay,mobSpeed,newTarget,peacefulRemove,pickSpot,
+  retaliate,setAggressive,tickTimers,triangle,underSky,updateTarget,walkToSpot,type Brain,type TargetPos} from './hostile-ai';
 import {skeletonModels} from './hostile-models';
 import {shoot} from './projectiles';
 
@@ -148,17 +148,13 @@ function skeletonKind(kind:SkeletonKind):EntityKind{
   const stray=kind==='stray';
   return{
     kind,category:'hostile',width:.6,height:1.99,maxHealth:20,model:skeletonModels[kind](),
-    sounds:{name:kind},despawns:true,burnsInDaylight:true,xp:5,
-    spawn:stray?{light:'dark',group:[4,4],biomes:[['snowy_plains',80]],replaces:'skeleton'}:{light:'dark',group:[4,4],weight:100},
-    init(e,game,reason){
-      if(reason==='natural'&&stray&&!underSky(game,Math.floor(e.x),Math.floor(e.y+.01),Math.floor(e.z))){game.entities.remove(e);return;}
+    sounds:{name:kind},despawns:true,undead:true,burnsInDaylight:true,xp:5,
+    spawn:stray?{light:'dark',group:[4,4],biomes:[['snowy_plains',80]],replaces:'skeleton',check:darkUnderOpenSky}:{light:'dark',group:[4,4],weight:100},
+    init(e,_game,reason){
       if(reason==='restore'){for(const k of Object.keys(e.data))delete e.data[k];}
     },
     tick:(e,game)=>tickSkeleton(e,game,stray),
-    hurt(e,game,source){
-      if(source.kind==='drown')return false;// undead breathe under water (vanilla canBreatheUnderwater)
-      retaliate(e,game,source);
-    },
+    hurt(e,game,source){retaliate(e,game,source);},
     drops:(_e,game,byPlayer)=>skeletonDrops(game,byPlayer),
     restoreData:data=>cleanData(data,{})
   };

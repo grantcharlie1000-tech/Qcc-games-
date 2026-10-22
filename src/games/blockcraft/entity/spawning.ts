@@ -1,21 +1,27 @@
 // Natural spawning and despawning (Java 1.20 NaturalSpawner, simplified to a fixed number of attempts per tick).
 // Everything is off while settings.mobSpawning is false; peaceful removes hostile mobs and stops their spawning.
 //  - Animals (spawn.light 'grass'): packs when a chunk is generated for the first time (chunkLoaded fresh: each chunk rolls
-//    0.1 per pack, vanilla creature probability) and a rare respawn attempt every 400 ticks in daylight; on grass (or
-//    mycelium, podzol, sand, snow for the biomes that list such animals), brightness ≥ 9, weighted by the biome's
-//    `animals` unless a kind lists `spawn.biomes`. Cap 20 within 128 blocks of the player.
+//    0.1 per pack, vanilla creature probability) and a rare respawn attempt every 400 ticks in daylight; on grass (snowy
+//    grass too: the snow layer has no collision), on the biome's top block (sand rabbits in deserts, mycelium mooshrooms)
+//    or on podzol, coarse dirt and snow blocks, light ≥ 9, weighted by the biome's `animals` unless a kind lists
+//    `spawn.biomes`. Cap 20 within 128 blocks of the player.
 //  - Monsters (spawn.light 'dark'): every tick a few random positions (random column of a lit chunk, random height up to
 //    the surface) start up to three packs of the kind's group size, walking ±5 blocks; 24 to 64 blocks from the player,
 //    on an opaque floor (not bedrock) with room for the box, vanilla darkness (sky light ≤ random 0..31, block light 0,
-//    brightness ≤ random 0..7). Weights from spawn.weight (default 100), `biomes` restrict and weigh, `replaces` takes
+//    brightness ≤ random 0..7, with a sky darkening of 10 while thundering). Weights from spawn.weight (default 100), `biomes` restrict and weigh, `replaces` takes
 //    its weight from the kind it replaces in its biomes (husk for zombie in deserts, stray for skeleton in snowy biomes).
 //    No monsters in mushroom fields unless a kind lists them. Aquatic monsters (drowned) spawn in water. Cap 40.
+//  - spawn.check(game, x, y, z) (the feet cell) is the kind's own light and placement rule, like vanilla's per-type
+//    checkSpawnRules: it replaces the light test (darkness for 'dark' kinds, light ≥ 9 for 'grass' kinds) while the
+//    floor, room, water, distance and cap rules still apply. Husk and stray add open sky to the monster darkness,
+//    drowned add the water rules, slime chunks below y 40 need no darkness. isDarkEnoughToSpawn is the darkness rule.
 //  - Water mobs (spawn.light 'water'): in water columns of oceans and rivers (or the kind's biomes) between y 50 and sea
 //    level. Cap 8.
-//  - Despawning (kinds with `despawns`, default hostile and water mobs): beyond 128 blocks at once; beyond 32 blocks
-//    1/800 per tick after 600 idle ticks; idle time resets within 32 blocks or when hurt.
+//  - Despawning (kinds with `despawns`, default hostile and water mobs; a predicate decides per entity, e.g. endermen
+//    holding a block never despawn): beyond 128 blocks at once; beyond 32 blocks 1/800 per tick after 600 idle ticks;
+//    idle time resets within 32 blocks or when hurt.
 import {AIR,BLOCK_BY_NAME,COLLISION_BOXES,LIQUID,OPAQUE,SOLID,blockId,isWater} from '../data/blocks';
-import {biomeDef,type BiomeDef} from '../data/biomes';
+import {BIOMES,biomeDef,type BiomeDef} from '../data/biomes';
 import {CS,CH,SEA_LEVEL,chunkKey,keyX,keyZ} from '../engine/constants';
 import {collidesAt} from '../engine/physics';
 import type {Entity,EntityCategory,EntityKind,Game,SpawnReason} from '../engine/contracts';
@@ -35,9 +41,36 @@ const CLUSTER=4;
 
 type Light='dark'|'grass'|'water';
 const BEDROCK=blockId('bedrock');
-/** Ground animals spawn on (grass for most; mooshrooms mycelium, rabbits sand and snow, wolves podzol and snow). */
+/** Ground animals spawn on anywhere: grass (vanilla animals_spawnable_on), and the podzol, coarse dirt and snow blocks of
+ *  wolves and rabbits. Each biome's top block is accepted too (BIOME_TOP: sand in deserts, mycelium in mushroom fields). */
 const ANIMAL_GROUND=new Uint8Array(256);
-for(const n of ['grass_block','mycelium','podzol','coarse_dirt','sand','red_sand','snow_block','moss_block'])ANIMAL_GROUND[BLOCK_BY_NAME.get(n)!.id]=1;
+for(const n of ['grass_block','podzol','coarse_dirt','snow_block'])ANIMAL_GROUND[BLOCK_BY_NAME.get(n)!.id]=1;
+/** Top block id per biome id. */
+const BIOME_TOP=Int16Array.from(BIOMES,b=>BLOCK_BY_NAME.get(b.top)?.id??-1);
+/** Can an animal stand on `below` in this biome? */
+export function animalGround(below:number,biome:BiomeDef):boolean{
+  return below>0&&(ANIMAL_GROUND[below]===1||below===BIOME_TOP[biome.id]);
+}
+/** Vanilla Level.isThundering: the thunder level (already scaled by the rain level) above 0.9. */
+const THUNDERING=.9;
+/** The sky darkening Monster.isDarkEnoughToSpawn uses while thundering (getMaxLocalRawBrightness(pos, 10)). */
+const THUNDER_SPAWN_DARKENING=10;
+/** Vanilla Monster.isDarkEnoughToSpawn at a feet cell: sky light ≤ a random 0..31, no block light, brightness ≤ a random
+ *  0..7. The brightness uses the current sky darkening, or a darkening of 10 while thundering (so monsters spawn on the
+ *  surface during a daytime thunderstorm). Kinds with their own spawn.check call it to keep the monster darkness rule. */
+export function isDarkEnoughToSpawn(game:Game,x:number,y:number,z:number):boolean{
+  const l=game.world.lightAt(x,y,z),sky=l>>4,block=l&15;
+  if(sky>Math.floor(game.random()*32))return false;
+  if(block>0)return false;
+  const brightness=game.weather.thunder>THUNDERING?Math.max(block,sky-THUNDER_SPAWN_DARKENING):game.world.brightnessAt(x,y,z);
+  return brightness<=Math.floor(game.random()*8);
+}
+/** The despawn flag of a kind for one entity (a predicate decides per entity; default: hostile and water mobs). */
+export function despawnsNow(kind:EntityKind,e:Entity):boolean{
+  const d=kind.despawns;
+  if(typeof d==='function'){try{return d(e)===true;}catch{return e.category==='hostile'||e.category==='water';}}
+  return d??(e.category==='hostile'||e.category==='water');
+}
 
 /** The aquatic kind that replaces `kind` in water in this biome (drowned for zombie), if any. */
 export function waterSubstitute(kinds:readonly EntityKind[],kind:EntityKind,biome:BiomeDef):EntityKind|null{
@@ -128,27 +161,40 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
     if(water)return isWater(feet)&&(k.height<=1||isWater(head)||head===AIR);
     return cellFree(feet)&&(k.height<=1||cellFree(head));
   }
-  /** Vanilla Monster.isDarkEnoughToSpawn at a feet cell. */
-  function darkEnough(x:number,y:number,z:number):boolean{
+  /** Packed light at a feet cell for animal spawns. A chunk at generation has no light yet, and World.lightAt's fallback
+   *  (sky only above the heightmap) reads a surface cell holding short grass, a flower or a snow layer as dark; such a cell
+   *  with nothing opaque above counts as open sky here. */
+  function spawnLight(x:number,y:number,z:number):number{
     const l=game.world.lightAt(x,y,z);
-    if((l>>4)>rand(32))return false;
-    if((l&15)>0)return false;
-    return game.world.brightnessAt(x,y,z)<=rand(8);
+    if(l!==0)return l;
+    const c=game.world.chunk(Math.floor(x/CS),Math.floor(z/CS));
+    if(!c||c.light)return l;
+    const top=game.world.topY(x,z);
+    for(let cy=y;cy<=top;cy++){const id=game.world.get(x,cy,z);if(id<0||OPAQUE[id])return l;}
+    return 0xf0;
+  }
+  /** The kind's light rule at a feet cell: its spawn.check when it has one, else monster darkness ('dark') or light ≥ 9
+   *  ('grass'); water kinds have none. A throwing check refuses. */
+  function lightOk(k:EntityKind,light:Light,x:number,y:number,z:number):boolean{
+    const check=k.spawn?.check;
+    if(check){try{return check(game,x,y,z)===true;}catch{return false;}}
+    if(light==='dark')return isDarkEnoughToSpawn(game,x,y,z);
+    if(light==='grass'){const l=spawnLight(x,y,z);return Math.max(l&15,l>>4)>8;}
+    return true;
   }
   function canSpawn(k:EntityKind,light:Light,x:number,y:number,z:number):boolean{
     if(y<1||y>=CH-2)return false;
     const aquatic=!!k.aquatic||light==='water';
-    if(light==='water')return y>=SEA_LEVEL-12&&y<=SEA_LEVEL&&roomFor(k,x,y,z,true);
+    if(light==='water')return y>=SEA_LEVEL-12&&y<=SEA_LEVEL&&roomFor(k,x,y,z,true)&&lightOk(k,light,x,y,z);
     if(light==='dark'){
-      if(peaceful()||!darkEnough(x,y,z))return false;
-      if(aquatic)return roomFor(k,x,y,z,true);
+      if(peaceful())return false;
+      if(aquatic)return roomFor(k,x,y,z,true)&&lightOk(k,light,x,y,z);
       const below=game.world.get(x,y-1,z);
-      return below>=0&&OPAQUE[below]===1&&below!==BEDROCK&&roomFor(k,x,y,z,false);
+      return below>=0&&OPAQUE[below]===1&&below!==BEDROCK&&roomFor(k,x,y,z,false)&&lightOk(k,light,x,y,z);
     }
     const below=game.world.get(x,y-1,z);
-    if(below<0||!ANIMAL_GROUND[below]||!roomFor(k,x,y,z,false))return false;
-    const l=game.world.lightAt(x,y,z);
-    return Math.max(l&15,l>>4)>8;
+    if(!animalGround(below,biomeDef(game.world.biomeAt(x,z)))||!roomFor(k,x,y,z,false))return false;
+    return lightOk(k,light,x,y,z);
   }
   const cap=(c:EntityCategory)=>c==='hostile'?HOSTILE_CAP:c==='water'?WATER_CAP:PASSIVE_CAP;
   const full=(c:EntityCategory)=>host.countNear(c)>=cap(c);
@@ -255,8 +301,7 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
       if(++passiveTimer>=PASSIVE_INTERVAL){passiveTimer=0;if(!full('passive'))passiveAttempt();}
     },
     despawn(e,kind,idle){
-      const despawns=kind.despawns??(e.category==='hostile'||e.category==='water');
-      if(!despawns)return 'keep';
+      if(!despawnsNow(kind,e))return 'keep';
       const p=game.player.state,d2=(e.x-p.x)**2+(e.y-p.y)**2+(e.z-p.z)**2;
       if(d2>DESPAWN_FAR*DESPAWN_FAR)return 'remove';
       if(d2<DESPAWN_NEAR*DESPAWN_NEAR)return 'near';

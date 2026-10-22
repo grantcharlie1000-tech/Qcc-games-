@@ -6,7 +6,8 @@
 //    down) 1 in 50 ticks, and stops when no player has been within 32 blocks for 5 s. The body turns toward its motion,
 //    pitches mantle-first and spins about its long axis.
 //  - Out of water it falls (0.08 blocks/tick², 0.98 drag), loses horizontal speed and lies on its side.
-//  - Hurt by a player or mob it squirts 30 black ink particles from its tentacle end, then flees (SquidFleeGoal, while the
+//  - Hurt by a player or mob it squirts 30 'ink' particles (black, hanging in the water) from its tentacle end, each with
+//    its own direction as vanilla Squid.spawnInk, then flees (SquidFleeGoal, while the
 //    attacker is within 10 blocks for 5 s; vanilla's unnormalised flee vector: faster the further it gets), trailing
 //    bubbles.
 //  - Drops 1-3 ink sacs; 1-3 experience.
@@ -19,8 +20,12 @@ export const SQUID_SIZE=.8,SQUID_HEALTH=10;
 /** Ticks a hit keeps the squid fleeing (vanilla lastHurtByMob memory) and the flee range. */
 export const FLEE_MEMORY=100,FLEE_RANGE=10;
 const TWO_PI=Math.PI*2,DEG=Math.PI/180,GRAVITY=.08,TICK=1/20;
-/** Ink colour (vanilla squid ink is black). */
+/** Ink colour (vanilla squid ink is black; the 'ink' particle kind is black by itself). */
 export const INK_COLOUR=0x0c0c12;
+/** Ink particles per squirt (vanilla 30). */
+export const INK_PARTICLES=30;
+const INK_VELOCITY={x:0,y:0,z:0};
+const INK_OPTIONS={count:1,spread:.05,velocity:INK_VELOCITY,color:INK_COLOUR};
 
 export interface SquidBrain{
   /** Movement vector, blocks per tick at full speed. */
@@ -119,7 +124,8 @@ export function tickSquid(e:Entity,game:Game):void{
   }
   b.wasInWater=e.inWater;
 }
-/** Squid.spawnInk: 30 ink puffs from the tentacle end (one block "below" the body in its own frame). */
+/** Squid.spawnInk: 30 ink particles from the tentacle end (one block "below" the body in its own frame), each along its
+ *  own direction at 0.3..2.3 × 0.1 blocks/tick. */
 export function spawnInk(e:Entity,game:Game,b:SquidBrain){
   // SoundEvents.SQUID_SQUIRT at the squid's volume (0.4) and voice pitch.
   game.sounds.play('mob:squid_squirt:ambient',{x:e.x,y:e.y+e.height/2,z:e.z},{volume:.4,pitch:(game.random()-game.random())*.2+1});
@@ -132,11 +138,12 @@ export function spawnInk(e:Entity,game:Game,b:SquidBrain){
   const base=[0,0,0],v=[0,0,0];
   rotate(0,-1,0,base);
   const ox=e.x+base[0],oy=e.y+base[1]+.5,oz=e.z+base[2];
-  for(let i=0;i<6;i++){
+  for(let i=0;i<INK_PARTICLES;i++){
     rotate(game.random()*.6-.3,-1,game.random()*.6-.3,v);
     // 0.3..2.3 × 0.1 blocks/tick, in blocks/second.
     const s=(.3+game.random()*2)*.1/TICK;
-    game.render.spawnParticles('large_smoke',ox,oy,oz,{count:5,spread:.15,velocity:{x:v[0]*s,y:v[1]*s,z:v[2]*s},color:INK_COLOUR});
+    INK_VELOCITY.x=v[0]*s;INK_VELOCITY.y=v[1]*s;INK_VELOCITY.z=v[2]*s;
+    game.render.spawnParticles('ink',ox,oy,oz,INK_OPTIONS);
   }
 }
 export function hurtSquid(e:Entity,game:Game,source:DamageSource):void{
