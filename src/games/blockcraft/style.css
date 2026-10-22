@@ -1,5 +1,7 @@
 /* Base layer (engine). Module styles live beside their modules: ui/hud.css, ui/screens.css, player/touch.css. */
 .blockcraft{position:absolute;inset:0;overflow:hidden;isolation:isolate;background:#000;color:#fff;font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none}
 .blockcraft canvas{display:block;width:100%;height:100%;touch-action:none;outline:none;cursor:crosshair}
+/* Keyboard focus on the world shows while a menu is up (the first Tab stop); never during play. */
+.blockcraft:not([data-phase=playing]) canvas:focus-visible{outline:3px solid #ffd84a;outline-offset:-3px}
 .bc-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;line-height:1.6;background:#10243a}
 .bc-fallback p{max-width:360px}

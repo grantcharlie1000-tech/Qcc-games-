@@ -41,7 +41,11 @@ describe('registries',()=>{
 });
 
 describe('world',()=>{
-  test('chunk keys round-trip negative coordinates',()=>{for(const [x,z] of [[0,0],[-1,5],[300,-300],[-32000,32000]])expect([keyX(chunkKey(x,z)),keyZ(chunkKey(x,z))]).toEqual([x,z]);});
+  test('chunk keys round-trip negative coordinates and stay small integers',()=>{
+    for(const [x,z] of [[0,0],[-1,5],[300,-300],[-16000,16000],[-16384,16383]]){
+      const k=chunkKey(x,z);expect([keyX(k),keyZ(k)]).toEqual([x,z]);expect(k).toBeGreaterThanOrEqual(0);expect(k).toBeLessThan(2**30);
+    }
+  });
   test('edits persist across unload, emit events and maintain the heightmap',()=>{
     const events=new EventBus<GameEvents>(),seen:number[]=[];events.on('blockChanged',e=>seen.push(e.to));
     const world=new VoxelWorld(events);world.insert(0,0,chunk(b=>b.fill(B.stone,0,10*LAYER)));

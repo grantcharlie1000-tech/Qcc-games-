@@ -68,7 +68,9 @@ export const footprint=(width:number)=>width<=1?1:Math.floor(width+1);
 /** Feet cell height in cells. */
 const cellsHigh=(height:number)=>Math.max(1,Math.ceil(height-1e-6));
 
-let world:BlockSource,cw=1,chh=2;
+/** Reads nothing: the source between searches, so this module never keeps a world (and its game) alive. */
+const NO_WORLD:BlockSource={get:()=>-1};
+let world:BlockSource=NO_WORLD,cw=1,chh=2;
 
 // ---- Per-search memo ----------------------------------------------------------------------------
 /** Memo window around the search start (cells outside it are read directly). */
@@ -142,7 +144,7 @@ function nearDanger(x:number,y:number,z:number):boolean{
 export function standableCell(source:BlockSource,x:number,y:number,z:number,width=.6,height=1.8):boolean{
   if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return false;
   world=source;cw=footprint(width);chh=cellsHigh(height);memo=false;
-  return standable(x,y,z);
+  try{return standable(x,y,z);}finally{world=NO_WORLD;}
 }
 
 // ---- Search scratch -----------------------------------------------------------------------------
@@ -212,7 +214,7 @@ export function findPath(source:BlockSource,sx:number,sy:number,sz:number,tx:num
   if(!int(sx)||!int(sy)||!int(sz)||!int(tx)||!int(ty)||!int(tz))return result;
   world=source;cw=footprint(req.width);chh=cellsHigh(req.height);
   beginMemo(sx,sy,sz);
-  try{return search(sx,sy,sz,tx,ty,tz,req,out,result);}finally{memo=false;}
+  try{return search(sx,sy,sz,tx,ty,tz,req,out,result);}finally{memo=false;world=NO_WORLD;}
 }
 function search(sx:number,sy:number,sz:number,tx:number,ty:number,tz:number,req:PathRequest,out:Int32Array,result:PathResult):PathResult{
   const maxNodes=req.maxNodes??MAX_NODES,maxDrop=req.maxDrop??MAX_DROP,waterCost=req.aquatic?0:8,avoidWater=!!req.avoidWater&&!req.aquatic;

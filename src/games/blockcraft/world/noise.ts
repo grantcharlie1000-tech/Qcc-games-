@@ -4,8 +4,9 @@ const F2=.5*(Math.sqrt(3)-1),G2=(3-Math.sqrt(3))/6,F3=1/3,G3=1/6;
 const GRAD3=new Int8Array([1,1,0,-1,1,0,1,-1,0,-1,-1,0,1,0,1,-1,0,1,1,0,-1,-1,0,-1,0,1,1,0,-1,1,0,1,-1,0,-1,-1]);
 
 export function mulberry32(seed:number){
-  let a=seed>>>0;
-  return ()=>{a=(a+0x6d2b79f5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};
+  // The state lives in a typed array: a uint32 in a closure variable would be boxed (allocated) on most calls.
+  const a=new Uint32Array(1);a[0]=seed;
+  return ()=>{a[0]+=0x6d2b79f5;let t=a[0];t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};
 }
 /** Integer hash of a lattice point and seed to [0,1). */
 export function hash3(x:number,y:number,z:number,seed:number):number{

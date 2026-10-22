@@ -343,6 +343,8 @@ export class Engine implements Game{
     this.streamer.dispose();this.input.release();
     for(const [,s] of [...this.created].reverse()){try{s.dispose?.();}catch{/* keep disposing */}}
     this.events.clear();this.root.remove();
+    // Drop the voxel buffers even if something still holds the world.
+    this.world.clear();
   }
 }
 

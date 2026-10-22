@@ -5,11 +5,12 @@ import {VIEW_DISTANCES,type ChunkData,type LightEngine,type Mesher,type RenderSe
 import type {VoxelWorld} from '../world/world';
 
 const MESH_BUDGET_MS=5,GENERATE_BUDGET_MS=6;
-/** Chunk offsets sorted nearest-first, computed once for the largest view. */
-const OFFSETS=(()=>{
+/** Chunk offsets sorted nearest-first, computed once for the largest view, as flat arrays (no per-frame destructuring). */
+const [OFF_X,OFF_Z,OFF_D]=(()=>{
   const r=VIEW_DISTANCES[VIEW_DISTANCES.length-1]+3,list:[number,number,number][]=[];
   for(let dz=-r;dz<=r;dz++)for(let dx=-r;dx<=r;dx++)list.push([dx,dz,dx*dx+dz*dz]);
-  return list.sort((a,b)=>a[2]-b[2]);
+  list.sort((a,b)=>a[2]-b[2]);
+  return [Int32Array.from(list,o=>o[0]),Int32Array.from(list,o=>o[1]),Int32Array.from(list,o=>o[2])];
 })();
 interface WorkerEntry{worker:Worker;jobs:Set<number>}
 interface Reply{seed:number;cx:number;cz:number;blocks:Uint8Array;biomes:Uint8Array}
@@ -40,7 +41,7 @@ export class ChunkStreamer{
   get meshedCount(){return this.meshed.size;}
   isMeshed(cx:number,cz:number){return this.meshed.has(chunkKey(cx,cz));}
   private centre={cx:0,cz:0,view:5};
-  setCentre(x:number,z:number,view:number){this.centre={cx:Math.floor(x/CS),cz:Math.floor(z/CS),view};}
+  setCentre(x:number,z:number,view:number){const c=this.centre;c.cx=Math.floor(x/CS);c.cz=Math.floor(z/CS);c.view=view;}
   private inRange(cx:number,cz:number,extra:number){const c=this.centre,r=c.view+extra;return (cx-c.cx)**2+(cz-c.cz)**2<=r*r;}
   private receive(r:Reply){
     const key=chunkKey(r.cx,r.cz);this.pending.delete(key);
@@ -58,15 +59,17 @@ export class ChunkStreamer{
     const chunk=this.world.chunk(cx,cz)!,mesh=this.mesher.meshChunk(this.neighbours,this.lightBuffer);
     // Keep the chunk's own light for gameplay queries (spawning, crops).
     chunk.light??=new Uint8Array(CHUNK_VOLUME);
-    for(let y=0;y<CH;y++)for(let z=0;z<CS;z++){const src=1+(z+1)*PAD_X+(y+1)*PAD_LAYER;chunk.light.set(this.lightBuffer.subarray(src,src+CS),z*CS+y*LAYER);}
+    // A plain copy: a subarray view per row would allocate 2048 objects per build.
+    const light=chunk.light,lb=this.lightBuffer;
+    for(let y=0;y<CH;y++)for(let z=0;z<CS;z++){const s=1+(z+1)*PAD_X+(y+1)*PAD_LAYER,d=z*CS+y*LAYER;for(let x=0;x<CS;x++)light[d+x]=lb[s+x];}
     this.render.setChunkMesh(cx,cz,mesh);
     const key=chunkKey(cx,cz);this.meshed.add(key);this.world.dirty.delete(key);this.world.lightDirty.delete(key);
   }
   /** Per frame: unload, request, generate (fallback) and mesh within budget. Returns meshes built. */
   update():number{
     const {cx:pcx,cz:pcz,view:r}=this.centre,rGen=(r+1.5)**2,rMesh=r*r,rDrop=(r+2.5)**2;
-    for(const [key,chunk] of this.world.chunks)if((chunk.cx-pcx)**2+(chunk.cz-pcz)**2>rDrop){
-      this.render.setChunkMesh(chunk.cx,chunk.cz,null);this.meshed.delete(key);this.world.remove(key);
+    for(const chunk of this.world.chunks.values())if((chunk.cx-pcx)**2+(chunk.cz-pcz)**2>rDrop){
+      this.render.setChunkMesh(chunk.cx,chunk.cz,null);this.meshed.delete(chunk.key);this.world.remove(chunk.key);
     }
     const begin=performance.now();let built=0;this.busy=this.pending.size>0;
     // Edited chunks first: immediate feedback for the player's own changes.
@@ -83,9 +86,9 @@ export class ChunkStreamer{
       const cx=keyX(key),cz=keyZ(key);
       if(this.hasNeighbours(cx,cz)){this.build(cx,cz);built++;}
     }
-    for(const [dx,dz,d] of OFFSETS){
-      if(d>rGen)break;
-      const cx=pcx+dx,cz=pcz+dz,key=chunkKey(cx,cz);
+    for(let o=0;o<OFF_D.length;o++){
+      const d=OFF_D[o];if(d>rGen)break;
+      const cx=pcx+OFF_X[o],cz=pcz+OFF_Z[o],key=chunkKey(cx,cz);
       if(!this.world.chunks.has(key)){
         if(this.pending.has(key))continue;
         if(this.workers.length){

@@ -1,6 +1,6 @@
 import {AIR,B,BLOCK_COUNT,LIGHT_OPACITY} from '../data/blocks';
 import {changesLight} from './light-shapes';
-import {CS,CH,LAYER,CHUNK_VOLUME,chunkKey,keyX,keyZ} from '../engine/constants';
+import {CS,CH,LAYER,CHUNK_VOLUME,CHUNK_LIMIT,chunkKey,keyX,keyZ} from '../engine/constants';
 import type {Chunk,ChunkData,ChangeCause,World,BlockId,GameEvents} from '../engine/contracts';
 import type {EventBus} from '../engine/events';
 
@@ -131,7 +131,7 @@ export class VoxelWorld implements World{
   restorePopulated(list:unknown){
     if(!Array.isArray(list)||list.length%2||list.length>2e5)return;
     this.populated.clear();
-    for(let i=0;i<list.length;i+=2){const x=list[i],z=list[i+1];if(Number.isInteger(x)&&Number.isInteger(z)&&Math.abs(x)<0x7fff&&Math.abs(z)<0x7fff)this.populated.add(chunkKey(x,z));}
+    for(let i=0;i<list.length;i+=2){const x=list[i],z=list[i+1];if(Number.isInteger(x)&&Number.isInteger(z)&&Math.abs(x)<CHUNK_LIMIT&&Math.abs(z)<CHUNK_LIMIT)this.populated.add(chunkKey(x,z));}
   }
   /** Validates the whole list before replacing current edits. */
   restoreEdits(list:unknown):boolean{
@@ -139,7 +139,7 @@ export class VoxelWorld implements World{
     const parsed=new Map<number,Map<number,number>>();let total=0;
     for(let i=0;i<list.length;){
       const cx=list[i++],cz=list[i++],count=list[i++];
-      if(!Number.isInteger(cx)||!Number.isInteger(cz)||!Number.isInteger(count)||count<0||Math.abs(cx)>=0x7fff||Math.abs(cz)>=0x7fff)return false;
+      if(!Number.isInteger(cx)||!Number.isInteger(cz)||!Number.isInteger(count)||count<0||Math.abs(cx)>=CHUNK_LIMIT||Math.abs(cz)>=CHUNK_LIMIT)return false;
       if(i+count*2>list.length)return false;
       const edits=new Map<number,number>();
       for(let n=0;n<count;n++){

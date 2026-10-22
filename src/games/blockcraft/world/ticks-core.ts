@@ -6,7 +6,7 @@ import {CH} from '../engine/constants';
 import type {BlockId,BlockSource,ChangeCause,Entity,Game,World} from '../engine/contracts';
 
 // ---- Positions ----------------------------------------------------------------------------------
-// x and z fit in 20 bits each (chunk coordinates are limited to ±0x7fff), y in 7 bits: the key is an
+// x and z fit in 20 bits each (chunk coordinates are limited to ±0x4000, CHUNK_LIMIT), y in 7 bits: the key is an
 // exact integer below 2^47, safe in JSON and as a Map key.
 const OFFSET=1<<19,SPAN=1<<20;
 export const MAX_KEY=SPAN*SPAN*CH;
