@@ -56,7 +56,7 @@
 .bc-glyph[data-icon="quick"]{background-image:var(--bc-art-icon-quick)}
 .bc-glyph[data-icon="book"]{background-image:var(--bc-art-icon-book)}
 .bc-book-btn{width:calc(var(--bc-u) * 20);height:calc(var(--bc-u) * 18)}
-.bc-book-btn .bc-glyph{margin:calc(var(--bc-u) * -1) 0 0 calc(var(--bc-u) * 2)}
+.bc-book-btn .bc-glyph{margin:var(--bc-u) 0 0 calc(var(--bc-u) * 2)}
 .bc-tool:focus-visible,.bc-wbtn:focus-visible,.bc-tab:focus-visible,.bc-recipe:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px #1d4fa3}
 .bc-screen:not(.bc-screen-touch) .bc-quick{display:none}
 @container (orientation:portrait){
