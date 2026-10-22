@@ -36,10 +36,10 @@ export function toastLines(title:string):string[]{
 /** Opacity of the heading and the title at this age. A one-line toast shows both throughout; a wrapped title shows the
  *  heading alone, which fades out from 1.2 s to 1.5 s, then the title lines fade in until 1.8 s (vanilla). */
 export function toastFade(age:number,wrapped:boolean):{head:number;title:number}{
-  if(!wrapped)return{head:1,title:1};
-  const clamp=(v:number)=>Math.max(0,Math.min(1,v));
-  return{head:clamp((1500-age)/300),title:clamp((age-1500)/300)};
+  return wrapped?{head:headAlpha(age),title:titleAlpha(age)}:{head:1,title:1};
 }
+const clamp01=(v:number)=>v<0?0:v>1?1:v;
+const headAlpha=(age:number)=>clamp01((1500-age)/300),titleAlpha=(age:number)=>clamp01((age-1500)/300);
 export interface ToastEntry{readonly def:AdvancementDef;
   /** Vertical slot from the top (0 = first). */
   readonly slot:number;
@@ -143,9 +143,10 @@ export class ToastLayer implements ToastView{
   place(t:ToastEntry,slide:number){
     const n=this.nodes.get(t);if(!n)return;
     if(n.head){
-      const f=toastFade(t.age,true);
-      if(f.head!==n.headAlpha){n.headAlpha=f.head;n.head.style.opacity=String(f.head);}
-      if(f.title!==n.titleAlpha){n.titleAlpha=f.title;for(const p of n.title)p.style.opacity=String(f.title);}
+      // Per frame: numbers only, and a style write only when an opacity changes.
+      const head=headAlpha(t.age),title=titleAlpha(t.age);
+      if(head!==n.headAlpha){n.headAlpha=head;n.head.style.opacity=String(head);}
+      if(title!==n.titleAlpha){n.titleAlpha=title;for(const p of n.title)p.style.opacity=String(title);}
     }
     if(n.slide===slide)return;
     n.slide=slide;n.el.style.transform=slide>=1?'':`translateX(${((1-slide)*110).toFixed(2)}%)`;

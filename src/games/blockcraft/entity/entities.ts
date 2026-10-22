@@ -3,10 +3,11 @@
 // batched rendering (entity/model-render.ts). Behaviour follows Java 1.20:
 //  - Tick (per entity, skipped while its chunk is unloaded; saved kinds then wait in the store, see Persistence):
 //    despawn check, age, hurt timer, environment (fire ticks with 1 damage per second, lava 4 and 15 s of fire, fire
-//    blocks, cacti, burning in daylight, drowning / drying out, suffocation, the void), the kind's tick (AI), body rotation toward the movement intent (head within 75°), physics
-//    (entity/entities-physics.ts), fall damage ceil(distance − 3) (ceil(distance / 2 − 3) on beds, which also bounce;
-//    none when the mob lands in water, re-checked at landing like vanilla checkFallDamage), sounds. Then mobs push each
-//    other and the player (vanilla 0.05 blocks/tick), and the spawner runs.
+//    blocks, cacti, burning in daylight, drowning / drying out, suffocation, the void), the kind's tick (AI), body
+//    rotation toward the movement intent (head within 75°), physics (entity/entities-physics.ts), fall damage
+//    ceil(distance − 3) (ceil(distance / 2 − 3) on beds, which also bounce; none when the mob lands in water, re-checked
+//    at landing like vanilla checkFallDamage), sounds. Then mobs push each other and the player (vanilla 0.05
+//    blocks/tick), and the spawner runs.
 //  - Breathing (vanilla canBreatheUnderwater): aquatic kinds and undead (EntityKind.undead) never drown. A kind that leaves
 //    `undead` unset is inferred as before: undead when it burns in daylight or replaces such a kind (husk).
 //  - Non-finite positions, angles, velocities and intents set by a kind or another area are reset before physics
