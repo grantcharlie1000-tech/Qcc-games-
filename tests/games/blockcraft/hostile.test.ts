@@ -8,7 +8,8 @@ import {CLIMB_SPEED,spiderCalm} from '../../../src/games/blockcraft/entity/hosti
 import {zombieSpeed} from '../../../src/games/blockcraft/entity/hostile-zombies';
 import {HOSTILE_MOBS} from '../../../src/games/blockcraft/entity/hostile';
 import {creeperLook} from '../../../src/games/blockcraft/entity/hostile-models';
-import type {AnimationState,Entity,EntityKind,ModelPart,PartPose} from '../../../src/games/blockcraft/engine/contracts';
+import {faceRect} from '../../../src/games/blockcraft/entity/hostile-art';
+import type {AnimationState,Entity,EntityKind,EntityModel,ModelPart,PartPose} from '../../../src/games/blockcraft/engine/contracts';
 import {createHarness,fill,night,noon,sequence,until,type Harness} from './hostile-harness';
 
 const kind=(h:Harness,name:string)=>h.game.entities.kind(name) as EntityKind;
@@ -121,6 +122,103 @@ describe('models',()=>{
     expect(flashes.has(0)).toBe(true);expect([...flashes].some(f=>f>=.5)).toBe(true);
     const h=createHarness(),c=h.spawn('creeper',0,60,0);
     expect(kind(h,'creeper').model!.appearance!(c)).toMatchObject({flash:0,scale:1});
+  });
+  const painted=(m:EntityModel)=>{const px=new Uint8ClampedArray(m.textureWidth*m.textureHeight*4);m.paint(px,m.textureWidth,m.textureHeight);return px;};
+  /** Mean colour of the opaque texels of a texture rectangle, and how many there are. */
+  function meanOf(m:EntityModel,px:Uint8ClampedArray,[x,y,w,h]:readonly number[]):{rgb:[number,number,number];n:number}{
+    let r=0,g=0,b=0,n=0;
+    for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++){const o=(j*m.textureWidth+i)*4;if(px[o+3]){r+=px[o];g+=px[o+1];b+=px[o+2];n++;}}
+    return{rgb:[r/n,g/n,b/n],n};
+  }
+  const lum=(c:readonly number[])=>.3*c[0]+.59*c[1]+.11*c[2];
+  const partOf=(m:EntityModel,name:string)=>{const p=allParts(m.parts).find(x=>x.name===name);if(!p)throw new Error(`no part ${name}`);return p;};
+  const box=(h:Harness,mob:string,part:string,i=0)=>{const b=partOf(kind(h,mob).model!,part).boxes[i];return{size:b.size,uv:b.uv,...b.inflate?{inflate:b.inflate}:{},...b.mirror?{mirror:true}:{}};};
+  test('the Java geometry and texture offsets of every mob (vanilla UV layouts)',()=>{
+    const h=createHarness();
+    for(const z of ['zombie','husk','drowned']){
+      expect(box(h,z,'head')).toEqual({size:[8,8,8],uv:[0,0]});expect(box(h,z,'body')).toEqual({size:[8,12,4],uv:[16,16]});
+      expect(box(h,z,'right_arm')).toEqual({size:[4,12,4],uv:[40,16]});expect(box(h,z,'right_leg')).toEqual({size:[4,12,4],uv:[0,16]});
+      expect(kind(h,z).model!.textureWidth).toBe(64);expect(kind(h,z).model!.textureHeight).toBeGreaterThanOrEqual(64);
+      // Arms at the shoulders, the head on top of the 24 px body.
+      expect(partOf(kind(h,z).model!,'right_arm').pivot).toEqual([5,22,0]);expect(partOf(kind(h,z).model!,'head').boxes[0].from[1]+24).toBe(24);
+    }
+    // Zombie and husk mirror the right limbs; the drowned has its own left arm and leg like the player layout.
+    expect(box(h,'zombie','left_arm')).toEqual({size:[4,12,4],uv:[40,16],mirror:true});
+    expect(box(h,'drowned','left_arm')).toEqual({size:[4,12,4],uv:[32,48]});expect(box(h,'drowned','left_leg')).toEqual({size:[4,12,4],uv:[16,48]});
+    // The drowned's outer layer: the same layout 64 rows down, 0.25 px out (the hat 0.75).
+    expect(box(h,'drowned','head',1)).toEqual({size:[8,8,8],uv:[0,64],inflate:.25});expect(box(h,'drowned','head',2)).toEqual({size:[8,8,8],uv:[32,64],inflate:.75});
+    expect(box(h,'drowned','left_arm',1)).toEqual({size:[4,12,4],uv:[32,112],inflate:.25});
+    expect(kind(h,'husk').model!.scale).toBe(1.0625);
+    // Skeletons: 2×12×2 bones; the stray's clothing is the humanoid layer (4×12×4 limbs) 32 rows down.
+    for(const s of ['skeleton','stray']){
+      expect(box(h,s,'right_arm')).toEqual({size:[2,12,2],uv:[40,16]});expect(box(h,s,'left_leg')).toEqual({size:[2,12,2],uv:[0,16],mirror:true});
+    }
+    expect(box(h,'stray','right_arm',1)).toEqual({size:[4,12,4],uv:[40,48],inflate:.25});expect(box(h,'stray','body',1)).toEqual({size:[8,12,4],uv:[16,48],inflate:.25});
+    expect(box(h,'stray','head',2)).toEqual({size:[8,8,8],uv:[32,32],inflate:.75});
+    expect(partOf(kind(h,'skeleton').model!,'right_arm').boxes).toHaveLength(1);
+    // Creeper: head 8×8×8, body 8×12×4, four 4×6×4 legs; the charged armour 2 px out in the rows below.
+    expect(box(h,'creeper','head')).toEqual({size:[8,8,8],uv:[0,0]});expect(box(h,'creeper','body')).toEqual({size:[8,12,4],uv:[16,16]});
+    for(const leg of ['leg_front_right','leg_front_left','leg_back_right','leg_back_left'])expect(box(h,'creeper',leg)).toEqual({size:[4,6,4],uv:[0,16]});
+    expect(box(h,'creeper','aura_head')).toEqual({size:[8,8,8],uv:[0,32],inflate:2});
+    const cr=kind(h,'creeper').model!;expect(partOf(cr,'head').pivot[1]+partOf(cr,'head').boxes[0].from[1]).toBe(18);
+    // Spider: head 8×8×8 at (32,4), neck 6×6×6, abdomen 10×8×12, legs 16×2×2; the glowing eyes in the rows below.
+    expect(box(h,'spider','head')).toEqual({size:[8,8,8],uv:[32,4]});expect(box(h,'spider','neck')).toEqual({size:[6,6,6],uv:[0,0]});
+    expect(box(h,'spider','abdomen')).toEqual({size:[10,8,12],uv:[0,12]});expect(box(h,'spider','leg_right_front')).toEqual({size:[16,2,2],uv:[18,0]});
+    expect(box(h,'spider','leg_left_hind')).toEqual({size:[16,2,2],uv:[18,0],mirror:true});
+    expect(box(h,'spider','eyes')).toEqual({size:[8,8,8],uv:[32,36],inflate:.05});expect(partOf(kind(h,'spider').model!,'eyes').emissive).toBe(true);
+  });
+  test('skins use the vanilla palettes and faces',()=>{
+    const h=createHarness(),m=(n:string)=>kind(h,n).model!;
+    const zombie=m('zombie'),zp=painted(zombie);
+    const shirt=meanOf(zombie,zp,faceRect([16,16],[8,12,4],'front')).rgb,pants=meanOf(zombie,zp,faceRect([0,16],[4,12,4],'front')).rgb;
+    const skin=meanOf(zombie,zp,faceRect([0,0],[8,8,8],'west')).rgb;
+    expect(shirt[1]).toBeGreaterThan(shirt[0]+60);expect(shirt[2]).toBeGreaterThan(shirt[0]+60);// cyan shirt
+    expect(pants[2]).toBeGreaterThan(pants[0]+60);expect(pants[2]).toBeGreaterThan(pants[1]+60);// blue trousers
+    expect(skin[1]).toBeGreaterThan(skin[0]+30);expect(skin[1]).toBeGreaterThan(skin[2]+30);// green skin
+    // Black eyes on the face (row 4 of the 8×8 front at 8,8).
+    expect(lum(meanOf(zombie,zp,[9,12,2,1]).rgb)).toBeLessThan(30);expect(lum(meanOf(zombie,zp,[13,12,2,1]).rgb)).toBeLessThan(30);
+    const husk=m('husk'),hp=painted(husk),hskin=meanOf(husk,hp,faceRect([0,0],[8,8,8],'west')).rgb;
+    expect(hskin[0]).toBeGreaterThan(140);expect(hskin[0]).toBeGreaterThan(hskin[1]);expect(hskin[1]).toBeGreaterThan(hskin[2]);// sandy
+    expect(lum(meanOf(husk,hp,faceRect([16,16],[8,12,4],'front')).rgb)).toBeLessThan(lum(hskin)-30);
+    // Drowned: teal skin and glowing eyes on an emissive layer (clear everywhere but the eyes).
+    const drowned=m('drowned'),dp=painted(drowned),dskin=meanOf(drowned,dp,faceRect([0,0],[8,8,8],'west')).rgb;
+    expect(dskin[1]).toBeGreaterThan(dskin[0]+50);expect(dskin[2]).toBeGreaterThan(dskin[0]+40);
+    expect(partOf(drowned,'eyes').emissive).toBe(true);
+    const eyes=partOf(drowned,'eyes').boxes[0].uv,glow=meanOf(drowned,dp,faceRect(eyes,[8,8,8],'front'));
+    expect(glow.n).toBe(4);expect(glow.rgb[2]).toBeGreaterThan(200);expect(glow.rgb[0]).toBeLessThan(180);
+    expect(meanOf(drowned,dp,faceRect(eyes,[8,8,8],'top')).n).toBe(0);
+    // Skeleton: pale bone, black eye holes; the stray is bluer and wears a ragged robe (cut out).
+    const skel=m('skeleton'),sp=painted(skel),bone=meanOf(skel,sp,faceRect([0,0],[8,8,8],'west')).rgb;
+    expect(lum(bone)).toBeGreaterThan(160);expect(lum(meanOf(skel,sp,[9,11,2,2]).rgb)).toBeLessThan(50);
+    const ribs=meanOf(skel,sp,faceRect([16,16],[8,12,4],'front')).rgb;expect(lum(ribs)).toBeLessThan(lum(bone)-40);
+    const stray=m('stray'),tp=painted(stray),sbone=meanOf(stray,tp,faceRect([0,0],[8,8,8],'west')).rgb;
+    expect(sbone[2]).toBeGreaterThan(sbone[0]+8);
+    const robe=faceRect([16,48],[8,12,4],'front'),cloth=meanOf(stray,tp,robe);
+    expect(cloth.n).toBeGreaterThan(40);expect(cloth.n).toBeLessThan(robe[2]*robe[3]);expect(cloth.rgb[2]).toBeGreaterThan(cloth.rgb[0]+10);
+    // Creeper: the classic face (eyes, nose and frown) in near-black on mottled green.
+    const creeper=m('creeper'),cp=painted(creeper),FACE=['........','........','.KK..KK.','.KK..KK.','...KK...','..KKKK..','..KKKK..','..K..K..'];
+    for(let y=0;y<8;y++)for(let x=0;x<8;x++){
+      const o=((8+y)*64+8+x)*4,c=[cp[o],cp[o+1],cp[o+2]];
+      if(FACE[y][x]==='K')expect(lum(c),`face ${x},${y}`).toBeLessThan(50);else expect(c[1],`skin ${x},${y}`).toBeGreaterThan(c[0]+40);
+    }
+    // Spider: near-black body, red glowing eyes.
+    const spider=m('spider'),xp=painted(spider);
+    expect(lum(meanOf(spider,xp,faceRect([0,12],[10,8,12],'top')).rgb)).toBeLessThan(70);
+    const red=meanOf(spider,xp,faceRect([32,36],[8,8,8],'front'));expect(red.n).toBeGreaterThanOrEqual(8);expect(red.rgb[0]).toBeGreaterThan(red.rgb[1]+120);
+  });
+  test('the skeleton holds a bow sprite in its right hand, string toward the body',()=>{
+    const h=createHarness(),m=kind(h,'skeleton').model!,px=painted(m),bow=partOf(m,'bow');
+    expect(partOf(m,'right_arm').children?.map(c=>c.name)).toEqual(['bow']);
+    const slab=bow.boxes[0];expect(slab.size).toEqual([1,16,16]);
+    // The sprite on both broad faces: mirrored so the two layers line up, transparent around the bow.
+    const [wx,wy]=faceRect(slab.uv,slab.size,'west'),[ex,ey]=faceRect(slab.uv,slab.size,'east');
+    let opaque=0;
+    for(let j=0;j<16;j++)for(let i=0;i<16;i++){
+      const a=px[((wy+j)*64+wx+i)*4+3],b=px[((ey+j)*64+ex+15-i)*4+3];
+      expect(a).toBe(b);if(a)opaque++;
+    }
+    expect(opaque).toBeGreaterThan(20);expect(opaque).toBeLessThan(80);
+    const stray=kind(h,'stray').model!;expect(partOf(stray,'bow').boxes[0].uv[1]).toBeGreaterThanOrEqual(64);
   });
 });
 

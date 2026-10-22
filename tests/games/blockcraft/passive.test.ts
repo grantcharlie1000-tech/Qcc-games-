@@ -9,8 +9,9 @@ import {biomeId} from '../../../src/games/blockcraft/data/biomes';
 import {stack} from '../../../src/games/blockcraft/data/items';
 import {registerPassiveMobs,PASSIVE_SPEEDS,randomWoolColour,mixWoolColours,rabbitVariantFor,RABBIT_VARIANTS} from '../../../src/games/blockcraft/entity/passive';
 import {dangerAhead,dangerMoving,standable,brainOf} from '../../../src/games/blockcraft/entity/passive-ai';
-import {faceRect,FACES} from '../../../src/games/blockcraft/entity/passive-model';
-import type {AnimationState,DamageSource,Entity,EntityAI,EntityKind,EntityModel,GameEvents,ItemStack,PartPose,SpawnReason} from '../../../src/games/blockcraft/engine/contracts';
+import {faceRect,FACES,restTransforms} from '../../../src/games/blockcraft/entity/passive-model';
+import {CUTOUT_PARTS} from '../../../src/games/blockcraft/entity/passive-art';
+import type {AnimationState,DamageSource,Entity,EntityAI,EntityKind,EntityModel,GameEvents,ItemStack,ModelPart,PartPose,SpawnReason} from '../../../src/games/blockcraft/engine/contracts';
 
 type Call={fn:string;id:number;x:number;y:number;z:number;speed?:number};
 interface Harness{
@@ -708,34 +709,68 @@ function animate(model:EntityModel,e:Entity,state:Partial<AnimationState>={}):Re
   model.animate?.(e,pose,{time:1,partial:.5,limbSwing:1,limbAmount:.5,headYaw:.3,headPitch:-.2,attack:0,reducedMotion:false,...state});
   return pose;
 }
+/** Every part with its children, depth first. */
+function allParts(parts:readonly ModelPart[],out:ModelPart[]=[]):ModelPart[]{for(const p of parts){out.push(p);if(p.children)allParts(p.children,out);}return out;}
+/** A part's name without the variant prefix and the baby_ marker. */
+const baseName=(name:string)=>name.slice(name.indexOf('.')+1).replace(/^baby_/,'');
+const painted=(model:EntityModel)=>{const px=new Uint8ClampedArray(model.textureWidth*model.textureHeight*4);model.paint(px,model.textureWidth,model.textureHeight);return px;};
+/** Mean colour of the opaque texels of a texture rectangle [x, y, w, h]. */
+function meanOf(model:EntityModel,px:Uint8ClampedArray,[x,y,w,h]:[number,number,number,number]):[number,number,number]{
+  let r=0,g=0,b=0,n=0;
+  for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++){const o=(j*model.textureWidth+i)*4;if(px[o+3]){r+=px[o];g+=px[o+1];b+=px[o+2];n++;}}
+  return[r/n,g/n,b/n];
+}
+const lum=(c:readonly number[])=>.3*c[0]+.59*c[1]+.11*c[2];
+const partOf=(model:EntityModel,name:string)=>{const p=allParts(model.parts).find(x=>x.name===name);if(!p)throw new Error(`no part ${name}`);return p;};
+/** Rest-pose bounds (entity space, pixels) of the visible parts, through every rest rotation. */
+function restBounds(model:EntityModel,pose:Record<string,PartPose>){
+  const m=restTransforms(model.parts);let minY=Infinity,maxY=-Infinity;
+  const walk=(parts:readonly ModelPart[])=>{for(const part of parts){
+    if(pose[part.name]?.visible===false)continue;
+    const t=m.get(part.name)!;
+    for(const b of part.boxes)for(let k=0;k<8;k++){
+      const x=b.from[0]+(k&1?b.size[0]:0),y=b.from[1]+(k&2?b.size[1]:0),z=b.from[2]+(k&4?b.size[2]:0);
+      const wy=t[4]*x+t[5]*y+t[6]*z+t[7];minY=Math.min(minY,wy);maxY=Math.max(maxY,wy);
+    }
+    if(part.children)walk(part.children);
+  }};
+  walk(model.parts);
+  return{minY,maxY};
+}
 
 describe('models',()=>{
   const h=setup(),names=['cow','pig','sheep','chicken','rabbit'];
-  test.each(names)('%s: every box unwraps inside the texture onto opaque painted pixels',name=>{
-    const model=h.kind(name).model!,px=new Uint8ClampedArray(model.textureWidth*model.textureHeight*4);
-    model.paint(px,model.textureWidth,model.textureHeight);
-    for(const part of model.parts)for(const box of part.boxes){
-      for(const s of box.size)expect(Number.isInteger(s)&&s>0,`${name}.${part.name} size`).toBe(true);
+  test.each(names)('%s: every box unwraps inside the texture onto painted pixels (cut-outs only where intended)',name=>{
+    const model=h.kind(name).model!,px=painted(model);
+    for(const part of allParts(model.parts))for(const box of part.boxes){
+      const cutout=CUTOUT_PARTS.has(baseName(part.name)),zero=box.size.filter(s=>s===0).length;
+      for(const s of box.size)expect(Number.isInteger(s)&&s>=0,`${name}.${part.name} size`).toBe(true);
+      // Only the crossed mushroom planes are flat (one zero dimension).
+      expect(zero,`${name}.${part.name} flat`).toBe(cutout&&part.name.includes('mushroom')?1:0);
+      let opaque=0;
       for(const face of FACES){
         const [x,y,fw,fh]=faceRect(box.uv,box.size,face);
+        if(fw===0||fh===0)continue;
         expect(x>=0&&y>=0&&x+fw<=model.textureWidth&&y+fh<=model.textureHeight,`${name}.${part.name} ${face} in texture`).toBe(true);
-        for(let j=y;j<y+fh;j++)for(let i=x;i<x+fw;i++)expect(px[(j*model.textureWidth+i)*4+3],`${name}.${part.name} ${face} painted at ${i},${j}`).toBe(255);
+        for(let j=y;j<y+fh;j++)for(let i=x;i<x+fw;i++){
+          const a=px[(j*model.textureWidth+i)*4+3];
+          if(a===255)opaque++;else if(!cutout)expect(a,`${name}.${part.name} ${face} painted at ${i},${j}`).toBe(255);
+        }
       }
+      expect(opaque,`${name}.${part.name} painted`).toBeGreaterThan(0);
     }
   });
   test.each(names)('%s: unique part names, feet on the ground and a pose for every part',name=>{
     const k=h.kind(name),model=k.model!,e=h.spawn(name);
-    expect(new Set(model.parts.map(p=>p.name)).size).toBe(model.parts.length);
+    const all=allParts(model.parts);
+    expect(new Set(all.map(p=>p.name)).size).toBe(all.length);
     const scale=model.scale??1;
     const pose=animate(model,e);
-    let minY=Infinity,maxY=-Infinity;
-    for(const part of model.parts){
-      expect(pose[part.name],`${name}.${part.name} posed`).toBeDefined();
-      if(pose[part.name].visible===false)continue;
-      for(const b of part.boxes){minY=Math.min(minY,part.pivot[1]+b.from[1]);maxY=Math.max(maxY,part.pivot[1]+b.from[1]+b.size[1]);}
-    }
-    expect(minY).toBe(0);
-    // The visible model is roughly as tall as the hitbox (heads and ears may poke above it).
+    for(const part of model.parts)expect(pose[part.name],`${name}.${part.name} posed`).toBeDefined();
+    const {minY,maxY}=restBounds(model,pose);
+    // The feet stand on the ground (rabbit front paws dip 0.07 px, as vanilla's do).
+    expect(Math.abs(minY)).toBeLessThan(.1);
+    // The visible model is roughly as tall as the hitbox (heads, horns and ears may poke above it).
     expect(maxY*scale/16).toBeGreaterThan(k.height*.8);expect(maxY*scale/16).toBeLessThan(k.height*1.6);
     // Poses are reused objects (no per-frame allocation).
     const again:Record<string,PartPose>={...pose};model.animate!(e,again,{time:2,partial:0,limbSwing:2,limbAmount:1,headYaw:0,headPitch:0,attack:0,reducedMotion:false});
@@ -748,6 +783,95 @@ describe('models',()=>{
     expect(shown(baby).some(n=>n.includes('baby'))).toBe(true);
     expect(shown(baby).some(n=>/(^|\.)head$/.test(n))).toBe(false);
   });
+  test('the Java geometry and texture offsets of every mob (vanilla UV layouts)',()=>{
+    const box=(kind:string,part:string,i=0)=>{const b=partOf(h.kind(kind).model!,part).boxes[i];return{size:b.size,uv:b.uv};};
+    // Cow: head 8×8×6 with 1×3×1 horns, body 12×18×10 with the udder, legs 4×12×4 (64×32 layout).
+    expect(box('cow','cow.head')).toEqual({size:[8,8,6],uv:[0,0]});
+    expect(box('cow','cow.head',1)).toEqual({size:[1,3,1],uv:[22,0]});
+    expect(box('cow','cow.body')).toEqual({size:[12,18,10],uv:[18,4]});
+    expect(box('cow','cow.body',1)).toEqual({size:[4,6,1],uv:[52,0]});
+    for(const leg of ['leg_rh','leg_lh','leg_rf','leg_lf'])expect(box('cow',`cow.${leg}`)).toEqual({size:[4,12,4],uv:[0,16]});
+    // Pig: head 8×8×8 with the 4×3×1 snout, body 10×16×8, legs 4×6×4.
+    expect(box('pig','head')).toEqual({size:[8,8,8],uv:[0,0]});expect(box('pig','head',1)).toEqual({size:[4,3,1],uv:[16,16]});
+    expect(box('pig','body')).toEqual({size:[10,16,8],uv:[28,8]});expect(box('pig','leg_rf')).toEqual({size:[4,6,4],uv:[0,16]});
+    // Sheep: skin model on top, the fur model (same offsets) 32 rows below it.
+    expect(box('sheep','head')).toEqual({size:[6,6,8],uv:[0,0]});expect(box('sheep','body')).toEqual({size:[8,16,6],uv:[28,8]});
+    expect(box('sheep','wool_head')).toEqual({size:[6,6,6],uv:[0,32]});expect(box('sheep','wool_body')).toEqual({size:[8,16,6],uv:[28,40]});
+    expect(box('sheep','wool_leg_rh')).toEqual({size:[4,6,4],uv:[0,48]});
+    expect(partOf(h.kind('sheep').model!,'wool_body').boxes[0].inflate).toBe(1.75);
+    // Chicken: head, beak and wattle, the 6×8×6 body, 3×5×3 legs and 1×4×6 wings.
+    expect([box('chicken','head'),box('chicken','head',1),box('chicken','head',2)]).toEqual([{size:[4,6,3],uv:[0,0]},{size:[4,2,2],uv:[14,0]},{size:[2,2,2],uv:[14,4]}]);
+    expect(box('chicken','body')).toEqual({size:[6,8,6],uv:[0,9]});expect(box('chicken','leg_r')).toEqual({size:[3,5,3],uv:[26,0]});
+    expect(box('chicken','wing_l')).toEqual({size:[1,4,6],uv:[24,13]});
+    // Rabbit (per coat, 64×32): body 6×5×10, head 5×4×5, ears, haunches, feet, front legs, tail and nose.
+    expect(box('rabbit','brown.body')).toEqual({size:[6,5,10],uv:[0,0]});expect(box('rabbit','brown.head')).toEqual({size:[5,4,5],uv:[32,0]});
+    expect(box('rabbit','brown.ear_l')).toEqual({size:[2,5,1],uv:[58,0]});expect(box('rabbit','brown.haunch_r')).toEqual({size:[2,4,5],uv:[16,15]});
+    expect(box('rabbit','brown.foot_l')).toEqual({size:[2,1,7],uv:[26,24]});expect(box('rabbit','brown.leg_rf')).toEqual({size:[2,7,2],uv:[0,15]});
+    expect(box('rabbit','white.tail').uv).toEqual([52,6+box('rabbit','white.body').uv[1]]);
+  });
+  test('quadruped bodies keep the vanilla 90° rest rotation and sit where vanilla puts them',()=>{
+    const cow=h.kind('cow').model!,body=partOf(cow,'cow.body');
+    expect(body.rotation?.[0]).toBeCloseTo(-Math.PI/2);
+    // Rest transform of the body box corners: 12 wide, from y 12 to 22 and z -8 to 10 (head end at -z).
+    const t=restTransforms(cow.parts).get('cow.body')!,b=body.boxes[0],ys:number[]=[],zs:number[]=[];
+    for(let k=0;k<8;k++){
+      const x=b.from[0]+(k&1?b.size[0]:0),y=b.from[1]+(k&2?b.size[1]:0),z=b.from[2]+(k&4?b.size[2]:0);
+      ys.push(t[4]*x+t[5]*y+t[6]*z+t[7]);zs.push(t[8]*x+t[9]*y+t[10]*z+t[11]);
+    }
+    expect([Math.min(...ys),Math.max(...ys)].map(v=>Math.round(v))).toEqual([12,22]);
+    expect([Math.min(...zs),Math.max(...zs)].map(v=>Math.round(v))).toEqual([-8,10]);
+    // The pig's snout sticks out of the front of its head; the sheep's face sticks out of its wool.
+    const pig=partOf(h.kind('pig').model!,'head');
+    expect(pig.boxes[1].from[2]).toBeLessThan(pig.boxes[0].from[2]);
+    const sheep=h.kind('sheep').model!;
+    expect(partOf(sheep,'head').boxes[0].from[2]).toBeLessThan(partOf(sheep,'wool_head').boxes[0].from[2]-1);
+  });
+  test('skins use the vanilla palettes: black-and-white cow, red mooshroom, pink pig, white sheep and chicken',()=>{
+    const cow=h.kind('cow').model!,cowPx=painted(cow);
+    // The cow's body side (the 10×18 face at 18,14) holds both near-black coat and white patches.
+    let dark=0,white=0;
+    for(let j=14;j<32;j++)for(let i=18;i<28;i++){const o=(j*cow.textureWidth+i)*4,l=lum([cowPx[o],cowPx[o+1],cowPx[o+2]]);if(l<70)dark++;if(l>200)white++;}
+    expect(dark).toBeGreaterThan(40);expect(white).toBeGreaterThan(10);
+    // Pink udder, grey horns.
+    const udder=meanOf(cow,cowPx,faceRect([52,0],[4,6,1],'bottom'));expect(udder[0]).toBeGreaterThan(udder[1]+50);
+    const horn=meanOf(cow,cowPx,faceRect([22,0],[1,3,1],'front'));expect(Math.max(...horn)-Math.min(...horn)).toBeLessThan(20);expect(horn[0]).toBeGreaterThan(120);
+    // The mooshroom block (second variant) is red.
+    const block=cow.textureHeight/2,moo=meanOf(cow,cowPx,[18,14+block,44,18]);expect(moo[0]).toBeGreaterThan(moo[1]+60);
+    const pig=h.kind('pig').model!,pigPx=painted(pig),pink=meanOf(pig,pigPx,faceRect([0,0],[8,8,8],'front'));
+    expect(pink[0]).toBeGreaterThan(200);expect(pink[0]).toBeGreaterThan(pink[1]+50);
+    // The snout is darker than the face.
+    const snout=meanOf(pig,pigPx,faceRect([16,16],[4,3,1],'front'));expect(lum(snout)).toBeLessThan(lum(pink));
+    const sheep=h.kind('sheep').model!,sheepPx=painted(sheep),wool=meanOf(sheep,sheepPx,faceRect([28,40],[8,16,6],'back'));
+    expect(lum(wool)).toBeGreaterThan(200);expect(Math.max(...wool)-Math.min(...wool)).toBeLessThan(6);// greyscale: the dye tint shows true
+    const face=meanOf(sheep,sheepPx,faceRect([0,0],[6,6,8],'front'));expect(lum(face)).toBeLessThan(lum(wool)-20);
+    const hen=h.kind('chicken').model!,henPx=painted(hen),feathers=meanOf(hen,henPx,faceRect([0,9],[6,8,6],'west'));
+    expect(lum(feathers)).toBeGreaterThan(215);
+    const beak=meanOf(hen,henPx,faceRect([14,0],[4,2,2],'top'));expect(beak[0]).toBeGreaterThan(200);expect(beak[2]).toBeLessThan(110);
+    const wattle=meanOf(hen,henPx,faceRect([14,4],[2,2,2],'front'));expect(wattle[0]).toBeGreaterThan(wattle[1]+100);
+  });
+  test('chicken legs are cut out: a shank and toes, nothing on top',()=>{
+    const hen=h.kind('chicken').model!,px=painted(hen),alpha=(i:number,j:number)=>px[(j*hen.textureWidth+i)*4+3];
+    const [tx,ty,tw,th]=faceRect([26,0],[3,5,3],'top');
+    for(let j=ty;j<ty+th;j++)for(let i=tx;i<tx+tw;i++)expect(alpha(i,j)).toBe(0);
+    const [fx,fy,fw,fh]=faceRect([26,0],[3,5,3],'front');
+    // The middle column is the shank, the bottom row the toes; the rest is clear.
+    for(let j=0;j<fh;j++)for(let i=0;i<fw;i++)expect(alpha(fx+i,fy+j)>0,`front ${i},${j}`).toBe(i===1||j===fh-1);
+  });
+  test('mooshroom mushrooms are crossed planes of a red mushroom sprite; the head one rides on the head',()=>{
+    const model=h.kind('cow').model!,px=painted(model),m=h.spawn('cow',.5,60,.5,{data:{variant:'mooshroom'}});
+    const planes=partOf(model,'mooshroom.mushroom_1').boxes;
+    expect(planes.map(b=>b.size.filter(s=>s===0).length)).toEqual([1,1]);
+    // The sprite: a red cap over a pale stem, transparent around it.
+    const [x,y]=planes[0].uv;let red=0,clear=0;
+    for(let j=y;j<y+16;j++)for(let i=x;i<x+16;i++){const o=(j*model.textureWidth+i)*4;if(!px[o+3])clear++;else if(px[o]>180&&px[o+1]<80)red++;}
+    expect(red).toBeGreaterThan(20);expect(clear).toBeGreaterThan(150);
+    const pose=animate(model,m,{headYaw:.5,headPitch:.3});
+    expect(pose['mooshroom.head_mushroom']).toMatchObject({x:pose['mooshroom.head'].x,y:pose['mooshroom.head'].y,visible:true});
+    expect(partOf(model,'mooshroom.head_mushroom').pivot).toEqual(partOf(model,'mooshroom.head').pivot);
+    // The planes stand on the back and on top of the head.
+    const rest=restTransforms(model.parts);
+    expect(rest.get('mooshroom.mushroom_1')![7]).toBeCloseTo(21.6,1);expect(rest.get('mooshroom.head_mushroom_planes')![7]).toBeCloseTo(23.2,1);
+  });
   test('legs swing in opposite phase with walking speed; heads follow the look',()=>{
     const model=h.kind('pig').model!,pig=h.spawn('pig');
     const p=animate(model,pig,{limbSwing:0,limbAmount:1,headYaw:.4,headPitch:.2});
@@ -757,16 +881,34 @@ describe('models',()=>{
     const still=animate(model,pig,{limbAmount:0});
     for(const x of model.parts.filter(x=>x.name.includes('leg')))expect(still[x.name].x).toBeCloseTo(0);
   });
-  test('rabbit coats are separate painted variants',()=>{
+  test('rabbit coats are separate painted variants; ears turn with the head',()=>{
     const model=h.kind('rabbit').model!,r=h.spawn('rabbit',.5,60,.5,{data:{variant:'gold'}});
-    const p=animate(model,r);
+    const p=animate(model,r,{headYaw:.4,headPitch:.2});
     const shown=model.parts.filter(x=>p[x.name].visible!==false).map(x=>x.name);
     expect(shown.length).toBeGreaterThan(5);expect(shown.every(n=>n.startsWith('gold.'))).toBe(true);
+    expect(p['gold.ear_r']).toMatchObject({x:p['gold.head'].x,y:p['gold.head'].y});
+    // The ears keep their vanilla 15° splay on top of the head's turn.
+    expect(partOf(model,'gold.ear_r').rotation?.[1]).toBeCloseTo(.2617994);expect(partOf(model,'gold.ear_l').rotation?.[1]).toBeCloseTo(-.2617994);
+    // Each coat has its own colours (white is light, black is dark): the body's side row of each coat block.
+    const px=painted(model),block=model.textureHeight/RABBIT_VARIANTS.length;
+    const lumOf=(v:string)=>lum(meanOf(model,px,[0,RABBIT_VARIANTS.indexOf(v as never)*block+10,32,5]));
+    expect(lumOf('white')).toBeGreaterThan(200);expect(lumOf('black')).toBeLessThan(70);
   });
-  test('chicken wings flap while airborne',()=>{
+  test('a hopping rabbit kicks its hind legs back and reaches with the front legs',()=>{
+    const hh=setup(),model=hh.kind('rabbit').model!,r=hh.spawn('rabbit',.5,60,.5,{data:{variant:'brown'}});
+    const rest=animate(model,r);
+    brainOf(r).hop=6;
+    const hop=animate(model,r,{partial:0});
+    expect(hop['brown.foot_r'].x).toBeLessThan(rest['brown.foot_r'].x-.5);
+    expect(hop['brown.haunch_l'].x).toBeLessThan(rest['brown.haunch_l'].x-.5);
+    expect(hop['brown.leg_rf'].x).toBeGreaterThan(rest['brown.leg_rf'].x+.4);
+  });
+  test('chicken wings flap up and out while airborne',()=>{
     const hh=setup(),model=hh.kind('chicken').model!,hen=hh.spawn('chicken');
     hen.onGround=false;tick(hh,6);
-    const p=animate(model,hen);const wings=model.parts.filter(x=>x.name.includes('wing'));
-    expect(wings.some(x=>Math.abs(p[x.name].z)>.05)).toBe(true);
+    const p=animate(model,hen);
+    // The right wing (at +x) turns with a positive z angle, which lifts its tip outward; the left wing mirrors it.
+    expect(partOf(model,'wing_r').pivot[0]).toBeGreaterThan(0);
+    expect(p.wing_r.z).toBeGreaterThan(.05);expect(p.wing_l.z).toBeCloseTo(-p.wing_r.z);
   });
 });
