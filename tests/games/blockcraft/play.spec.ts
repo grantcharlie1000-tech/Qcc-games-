@@ -56,9 +56,14 @@ test('boots, plays, opens the inventory, switches mode, pauses for Study and res
   // Back to the game: that click resumes play at once (no second Resume on Blockcraft's Game Menu).
   await page.getByRole('link',{name:'Games',exact:true}).click();
   await expect(root).toHaveAttribute('data-phase','playing');await expect(page.locator('.bc-menu')).toBeHidden();
+  // Resume can legitimately advance residual movement. Freeze and capture the save
+  // actually being restored, rather than comparing with the earlier Study snapshot.
+  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
+  await expect(root).toHaveAttribute('data-phase','paused');
+  const reloadSnapshot=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:blockcraft')!).data);
   await page.reload();await ready(page);
   await expect(root).toHaveAttribute('data-mode','creative');
-  expect(Math.abs(await num(page,'x')-snapshot.systems.player.x)).toBeLessThan(.01);
+  expect(Math.abs(await num(page,'x')-reloadSnapshot.systems.player.x)).toBeLessThan(.01);
   await page.evaluate(()=>{(window as unknown as {oldCanvas:HTMLCanvasElement}).oldCanvas=document.querySelector('.blockcraft canvas')!;});
   await page.getByRole('link',{name:'Back to game library'}).click();await expect(root).toHaveCount(0);
   expect(await page.evaluate(()=>(window as unknown as {oldCanvas:HTMLCanvasElement}).oldCanvas.getContext('webgl2')!.isContextLost())).toBe(true);

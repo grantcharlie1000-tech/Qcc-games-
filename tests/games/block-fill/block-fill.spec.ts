@@ -4,12 +4,15 @@ import { generateLevel, solve } from '../../../src/games/block-fill/logic';
 test.use({viewport:{width:390,height:844},reducedMotion:'reduce'});
 const board=(page:Page)=>page.locator('.bf-board');
 async function center(page:Page,cell:number){const level=generateLevel(Number(await board(page).getAttribute('data-level'))-1),box=(await board(page).boundingBox())!;const s=level.size*64+24;return{x:box.x+(44+cell%level.size*64)/s*box.width,y:box.y+(44+Math.floor(cell/level.size)*64)/s*box.height};}
-async function drag(page:Page,path:number[],fast=false){
+async function stableBoard(page:Page){
   // A mounted SVG can be measured before the stage applies its first fit after
   // reload, or while the next garden is being laid out. Hover waits for the
   // actual board to be stable before we derive native pointer coordinates.
   await expect(page.locator('#game-stage')).toHaveAttribute('data-viewport-scale',/./);
   await board(page).hover();
+}
+async function drag(page:Page,path:number[],fast=false){
+  await stableBoard(page);
   const first=await center(page,path[0]!);await page.mouse.move(first.x,first.y);await page.mouse.down();
   for(let i=1;i<path.length;i++){
     // Straight runs are sent as a single large movement, forcing interpolation.
@@ -54,6 +57,7 @@ test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',a
  test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
   const level=generateLevel(0),path=level.solution;
   const session=await context.newCDPSession(page);
+  await stableBoard(page);
   const start=await center(page,path[0]!);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...start,id:1}]});
   for(const cell of path.slice(1,4)){const p=await center(page,cell);await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{...p,id:1}]});}
   await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(board(page)).toHaveAttribute('data-covered','4');

@@ -180,7 +180,8 @@ export class Engine implements Game{
     for(const k of Object.keys(clean) as (keyof GameSettings)[])if(this.settings[k]!==clean[k]){(this.settings as unknown as Record<string,unknown>)[k]=clean[k];changed=true;}
     if(!changed)return;
     if(clean.view!==undefined)this.setView(clean.view);
-    if(clean.mode!==undefined){if(clean.mode==='survival')this.player.state.flying=false;this.events.emit('modeChanged',{mode:clean.mode});}
+    // The menu can change mode after the render loop has gone idle. Keep observers current without waking it.
+    if(clean.mode!==undefined){this.root.dataset.mode=this.settings.mode;if(clean.mode==='survival')this.player.state.flying=false;this.events.emit('modeChanged',{mode:clean.mode});}
     this.events.emit('settingsChanged',{settings:this.settings});
   }
   private setView(index:number){this.settings.view=index;this.render.setViewDistance(VIEW_DISTANCES[index]);this.root.dataset.view=String(VIEW_DISTANCES[index]);this.schedule();}
