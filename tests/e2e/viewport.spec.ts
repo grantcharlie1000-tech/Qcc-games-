@@ -42,7 +42,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   await page.addInitScript(()=>window.addEventListener('keydown',event=>{if(event.key==='PageDown')queueMicrotask(()=>document.documentElement.dataset.studyPageDownPrevented=String(event.defaultPrevented));},{capture:true}));
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
-  await page.locator('[href="#/game/pool"]').scrollIntoViewIfNeeded();
+  await page.getByRole('link',{name:'Play Pool',exact:true}).scrollIntoViewIfNeeded();
   const libraryY=await page.evaluate(()=>scrollY);
   expect(libraryY).toBeGreaterThan(0);
   await page.getByRole('link',{name:'Play Pool',exact:true}).click();
