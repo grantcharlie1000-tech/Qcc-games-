@@ -1,11 +1,5 @@
 name: Diagnose Blockcraft native input
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/blockcraft-input-diagnostic.yml'
-      - 'playwright.config.ts'
-      - 'tests/games/blockcraft/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,7 +32,7 @@ jobs:
           --project=chromium --workers=1
           --grep 'keyboard and mouse:|mine, place, open a door|boots, plays, opens the inventory'
         env:
-          BLOCKCRAFT_BROWSER_CHANNEL: ${{ matrix.browser != 'headless-shell' && 'chromium' || '' }}
+          BLOCKCRAFT_BROWSER_CHANNEL: ${{ matrix.browser == 'headless-shell' && 'headless-shell' || 'chromium' }}
           BLOCKCRAFT_HEADED: ${{ matrix.browser == 'chromium-headed' && '1' || '0' }}
       - uses: actions/upload-artifact@v4
         if: always()

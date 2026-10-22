@@ -27,7 +27,8 @@ jobs:
       - name: Verify native diagnostic helper
         run: node --test scripts/update-native-trace.test.mjs
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      # Full Chromium under a virtual display preserves native pointer-lock input.
+      - run: xvfb-run -a npm run test:e2e
       - run: npm run build
       - run: npm run verify:update
         env:
