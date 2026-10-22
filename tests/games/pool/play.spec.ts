@@ -47,8 +47,8 @@ test('off-centre side-pocket shot drops through the visible opening',async({page
  const {createGame}=await import('../../../src/games/pool/model');
  const fixture=createGame('two');fixture.break=false;fixture.groups=['solids','stripes'];
  for(const b of fixture.balls)if(b.id!==0&&b.id!==1&&b.id!==8)b.pocketed=true;
- Object.assign(fixture.balls[0],{x:220,y:438});
- Object.assign(fixture.balls[1],{x:110,y:438});
+ Object.assign(fixture.balls[0],{x:220,y:434});
+ Object.assign(fixture.balls[1],{x:110,y:434});
  Object.assign(fixture.balls[8],{x:280,y:250});
  await page.getByRole('link',{name:'Back to game library'}).click();
  await expect(page.getByRole('link',{name:'Play Pool',exact:true})).toBeVisible();

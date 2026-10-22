@@ -5,9 +5,6 @@
 @media(max-width:600px){#study-view{font-size:16px}.study-header{padding:20px 16px;gap:20px}.study-header nav{gap:12px}.study-topic-control{width:100%;order:0}.study-topic-control select{max-width:none}.study-choices-button{order:1}.study-return{order:2}.study-page{padding:45px 20px 70px}.study-topic-groups{grid-template-columns:1fr;gap:30px}.study-reader-layout{padding:45px 20px 65px}.study-article-heading{margin-bottom:35px}#study-view h1{font-size:2.65rem;overflow-wrap:normal}.study-article-body{font-size:1rem;line-height:1.85}.study-byline{gap:12px}.study-hero{margin-bottom:45px}.study-text-section,.study-example,.study-check,.study-sources{margin-bottom:45px}.study-cookie-panel{position:static;width:auto;max-width:none;margin:0 16px 24px;box-shadow:none}.study-choice-pending .study-cookie-panel{margin:16px}.study-privacy-dialog{padding:22px}.study-privacy-dialog .study-privacy-actions{flex-direction:column}.study-save-error{margin:16px!important}}
 @media(prefers-reduced-motion:reduce){#study-view *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
 .study-revision-date{color:var(--study-muted);font-size:.76rem;flex-basis:100%}
-/* A floating panel gets a dedicated outer gutter on wide displays. At smaller
-   widths it remains in flow, so neither rail nor the reading column is covered. */
-@media(min-width:1600px){.study-choice-pending .study-cookie-panel{position:fixed;z-index:20;left:16px;bottom:16px;margin:0;width:330px}.study-choice-pending .study-reader-layout{padding-left:376px;grid-template-columns:140px minmax(0,1fr) 140px;gap:24px}}
 
 /* Keep a paused backdrop out of compositing while the retained game is hidden. */
 .study-active #pause-overlay{display:none}
@@ -21,3 +18,7 @@
 .study-wordmark{display:flex;align-items:center;gap:10px}.study-wordmark .mauri-mark{width:28px;height:28px;flex-shrink:0}.study-wordmark span{margin:0;color:inherit;font-weight:750}
 
 .study-games-sentence a{display:inline-block;min-height:44px;line-height:44px;text-decoration:underline;text-underline-offset:3px}.study-chapter-footer .study-topic-control{margin:24px 0}.study-chapter-footer .study-topic-control select{max-width:100%}
+
+/* Preferences float above the page without reserving a layout section. */
+#study-view .study-cookie-panel{position:fixed;z-index:30;left:16px;bottom:16px;width:360px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:auto;margin:0;box-sizing:border-box;box-shadow:0 12px 45px #0009}
+.study-games-sentence a{display:inline;min-height:0;line-height:inherit}

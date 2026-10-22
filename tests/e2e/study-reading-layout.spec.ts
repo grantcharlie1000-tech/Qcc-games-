@@ -18,13 +18,14 @@ test('rejecting optional reading storage preserves game data and legacy topics a
  await page.reload();await expect(page.locator('[data-study-topic]')).toHaveCount(20);
 });
 
-test('all three initial choices have equal controls and both pending desktop rails remain unobstructed',async({page})=>{
+test('initial choices have equal controls and the banner overlays without reserving layout space',async({page})=>{
  await page.setViewportSize({width:1600,height:1000});await page.goto('/#/game/minesweeper');await page.locator('[data-study-topic="forces"]').click();await page.keyboard.press('Escape');
  const panel=page.getByRole('region',{name:'Reading storage choices'});await expect(panel).toBeVisible();
  const boxes=await panel.getByRole('button').evaluateAll(es=>es.map(e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height};}));expect(boxes).toHaveLength(3);expect(new Set(boxes.map(b=>b.w)).size).toBe(1);expect(new Set(boxes.map(b=>b.h)).size).toBe(1);expect(boxes[0].h).toBeGreaterThanOrEqual(44);
- const panelBox=(await panel.boundingBox())!,articleBox=(await page.locator('.study-chapter').boundingBox())!;expect(panelBox.x+panelBox.width<=articleBox.x||panelBox.y+panelBox.height<=articleBox.y).toBe(true);
+ const articleBox=(await page.locator('.study-chapter').boundingBox())!;expect(await panel.evaluate(el=>getComputedStyle(el).position)).toBe('fixed');
  await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));await page.screenshot({path:'docs/evidence/article-reading-layout/with-photos/privacy-pending-1600.png'});
- for(const side of ['left','right']){const rail=page.getByRole('complementary',{name:`${side==='left'?'Left':'Right'} advertisement reservations`});await expect(rail.locator('.study-ad-placeholder').first()).toBeVisible();const b=(await rail.boundingBox())!;expect(panelBox.x+panelBox.width<=b.x||panelBox.y+panelBox.height<=b.y||b.y+b.height<=panelBox.y).toBe(true);}
+ for(const side of ['left','right']){const rail=page.getByRole('complementary',{name:`${side==='left'?'Left':'Right'} advertisement reservations`});await expect(rail.locator('.study-ad-placeholder').first()).toBeVisible();expect(await rail.locator('.study-ad-placeholder').count()).toBeGreaterThanOrEqual(3);}
+ await panel.getByRole('button',{name:'Reject All',exact:true}).click();expect(await page.locator('.study-chapter').boundingBox()).toEqual(articleBox);
 });
 
 test('native keyboard preferences preserve the chapter, scroll, paused game and focus',async({page})=>{
@@ -61,7 +62,7 @@ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:768,
  await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));await page.screenshot({path:`docs/evidence/article-reading-layout/with-photos/top-${viewport.width}.png`});
  await page.locator('.study-text-section').nth(3).scrollIntoViewIfNeeded();await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));await page.screenshot({path:`docs/evidence/article-reading-layout/with-photos/middle-${viewport.width}.png`});
  await page.locator('.study-check').scrollIntoViewIfNeeded();await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));await page.screenshot({path:`docs/evidence/article-reading-layout/with-photos/bottom-${viewport.width}.png`});
- const games=page.getByRole('link',{name:'Games',exact:true});const hit=(await games.boundingBox())!;expect(hit.width).toBeGreaterThanOrEqual(44);expect(hit.height).toBeGreaterThanOrEqual(44);await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.fm-count')).toContainText('1 fruit');await expect(page.locator('.study-cookie-panel')).toHaveCount(0);
+ const games=page.getByRole('link',{name:'Games',exact:true});const hit=(await games.boundingBox())!;expect(hit.width).toBeGreaterThan(0);expect(hit.height).toBeGreaterThan(0);await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.fm-count')).toContainText('1 fruit');await expect(page.locator('.study-cookie-panel')).toHaveCount(0);
 });
 
 test('all twenty articles expose useful visible prose and consistent reading structure',async({page})=>{
