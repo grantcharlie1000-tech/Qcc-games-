@@ -114,6 +114,8 @@ describe('primed_tnt',()=>{
   test('explodes after an 80-tick fuse at its position, attributed to the igniter',()=>{
     const g=createTickGame();
     const tnt=g.entities.spawn('primed_tnt',.5,Y,.5,{data:{fuse:80,byPlayer:true}})!;
+    // The igniter already hissed the fuse (interaction for flint and steel, fire for burning TNT): spawning adds none.
+    expect(g.sounds.played.some(s=>s.name==='fuse')).toBe(false);
     expect(g.entities.kind('primed_tnt')!.render).toBe('block');
     expect(g.entities.kind('primed_tnt')!.block!(tnt)).toBe(blockId('tnt'));
     const t=target(g,3.5,.5);

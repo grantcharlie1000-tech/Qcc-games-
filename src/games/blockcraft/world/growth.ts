@@ -11,7 +11,7 @@
 //    (FarmBlock.fallOn, farmlandFallOn below).
 //  - sugar cane and cactus: grow one block into air above while the column is under 3 tall, after 16 random ticks (1 in 16).
 //  - ice melts to water when block light ≥ 12 reaches it (in or beside the ice: a torch up to 3 blocks away, as in vanilla)
-//    and snow layers vanish (with their no-tool loot) at block light ≥ 12 in their cell.
+//    and snow layers vanish (no drops: vanilla snow loot needs an entity) at block light ≥ 12 in their cell.
 //  - leaves: decay once marked orphaned (no log within LEAF_DECAY_DISTANCE steps through leaves), re-checked first. The checks
 //    that mark them are scheduled by leafSourceRemoved when a log or leaf nearby goes away; persistent leaves never decay.
 //  - copper (WeatheringCopper): with chance 0.0569 per random tick, unless a less weathered copper block is within 4 taxicab
