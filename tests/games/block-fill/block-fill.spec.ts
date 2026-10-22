@@ -28,10 +28,10 @@ test('fast actual drag fills every square and unlocks the larger next garden',as
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await drag(page,generateLevel(0).solution,true);
   await expect(board(page)).toHaveAttribute('data-covered','9');await expect(page.getByRole('button',{name:'Next garden'})).toBeVisible();
-  await expect(page.locator('#game-score')).toContainText('1000');
+  await expect(page.locator('#game-score')).toContainText('1800');
   await page.getByRole('button',{name:'Reset path',exact:true}).click();
-  await expect(page.locator('#game-score')).toContainText('1000');
-  await page.reload();await expect(page.locator('#game-score')).toContainText('1000');
+  await expect(page.locator('#game-score')).toContainText('1800');
+  await page.reload();await expect(page.locator('#game-score')).toContainText('1800');
   await drag(page,generateLevel(0).solution,true);
   await expect(board(page)).toHaveAttribute('data-covered','9');
   await page.getByRole('button',{name:'Next garden'}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');

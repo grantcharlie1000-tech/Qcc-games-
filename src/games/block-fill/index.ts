@@ -1,5 +1,5 @@
 import type { GameModule } from '../../core/types';
-import { generateLevel, initialState, step, undo, solved, hint, restoreState, sampleSegment, LEVEL_COUNT, type Point } from './logic';
+import { generateLevel, initialState, step, undo, solved, hint, restoreState, sampleSegment, recordWin, campaignScore, LEVEL_COUNT, type Point } from './logic';
 import './style.css';
 
 const game:GameModule={
@@ -14,7 +14,7 @@ const game:GameModule={
     container.append(root);
     const board=root.querySelector<SVGSVGElement>('.bf-board')!,message=root.querySelector<HTMLElement>('.bf-message')!,next=root.querySelector<HTMLButtonElement>('.bf-next')!;
     const buttons=Array.from(root.querySelectorAll<HTMLButtonElement>('button'));
-    function snapshot(){return {version:1,level:state.level,path:[...state.path],rewarded:state.rewarded};}
+    function snapshot(){return {version:1,level:state.level,path:[...state.path],rewarded:state.rewarded,steps:state.steps,hints:state.hints,best:{...state.best}};}
     function stopPointer(){
       if(activePointer!==undefined&&board.hasPointerCapture(activePointer)) board.releasePointerCapture(activePointer);
       activePointer=undefined;previous=undefined;
@@ -34,7 +34,7 @@ const game:GameModule={
       const text=note??(complete?(state.level===LEVEL_COUNT-1?'All twelve gardens filled. Beautifully traced!':'Garden complete! Every square has its place.'):'Start at S. The pale circle is your trail head.');
       message.textContent=text;
       next.hidden=!complete||state.level===LEVEL_COUNT-1;
-      context.setLevel(`Garden ${state.level+1} / ${LEVEL_COUNT}`);context.setScore(state.level*1000+(state.rewarded?1000:0));context.setStatus(complete?'Trail complete':`${state.path.length} / ${level.cells.length} squares covered`);
+      context.setLevel(`Garden ${state.level+1} / ${LEVEL_COUNT}`);context.setScore(campaignScore(state.best));context.setStatus(complete?'Trail complete':`${state.path.length} / ${level.cells.length} squares covered`);
       for(const button of buttons) button.disabled=paused;
       root.querySelector<HTMLButtonElement>('[data-action="undo"]')!.disabled=paused||state.path.length<2;
       root.dataset.reducedMotion=String(context.settings.reducedMotion);root.classList.toggle('bf-complete',complete);
@@ -42,13 +42,14 @@ const game:GameModule={
     function update(path:number[],note?:string){
       if(path===state.path) return;
       const wasComplete=solved(generateLevel(state.level),state.path);
-      state={...state,path,rewarded:state.rewarded||solved(generateLevel(state.level),path)};selected=undefined;recovery=0;render(note);context.save(snapshot());
+      state=recordWin({...state,path,rewarded:state.rewarded||solved(generateLevel(state.level),path),steps:state.steps+Math.max(0,path.length-state.path.length)});selected=undefined;recovery=0;render(note);context.save(snapshot());
       if(solved(generateLevel(state.level),path)&&!wasComplete){context.sound('success');context.announce('Garden complete. All squares covered.');}
     }
     function move(cell:number){if(paused||disposed)return;update(step(generateLevel(state.level),state.path,cell));}
     function doHint(){
       if(paused||disposed)return;
       const level=generateLevel(state.level),h=hint(level,state.path);selected=undefined;recovery=0;
+      if(h.kind!=='done'){state={...state,hints:state.hints+1};context.save(snapshot());}
       if(h.kind==='step'){selected=h.cell;render(`Try the marked square: row ${Math.floor(h.cell/level.size)+1}, column ${h.cell%level.size+1}.`);}
       else if(h.kind==='backtrack'){recovery=h.count;render(`${h.proven?'This trail cannot finish.':'A verified route is available after undoing.'} Undo ${recovery} ${recovery===1?'square':'squares'} for a solvable position.`);}
       else render('Every square is already covered!');
@@ -61,7 +62,7 @@ const game:GameModule={
       if(action==='reset')update([generateLevel(state.level).start]);
       if(action==='hint')doHint();
     },options);
-    next.addEventListener('click',()=>{if(!paused&&solved(generateLevel(state.level),state.path)&&state.level<LEVEL_COUNT-1){state={version:1,level:state.level+1,path:[generateLevel(state.level+1).start],rewarded:false};selected=undefined;render();context.save(snapshot());board.focus();}},options);
+    next.addEventListener('click',()=>{if(!paused&&solved(generateLevel(state.level),state.path)&&state.level<LEVEL_COUNT-1){state={...state,level:state.level+1,path:[generateLevel(state.level+1).start],rewarded:false,steps:0,hints:0};selected=undefined;render();context.save(snapshot());board.focus();}},options);
     const point=(e:PointerEvent):Point=>{const rect=board.getBoundingClientRect(),s=generateLevel(state.level).size,logical=s*64+24;return{x:((e.clientX-rect.left)/rect.width*logical-12)/64,y:((e.clientY-rect.top)/rect.height*logical-12)/64};};
     board.addEventListener('pointerdown',e=>{
       if(paused||disposed||activePointer!==undefined||e.button!==0)return;
@@ -86,7 +87,7 @@ const game:GameModule={
     render();
     return {
       pause(){paused=true;stopPointer();render();},resume(){paused=false;render();},
-      restart(){stopPointer();state=initialState();selected=undefined;recovery=0;render();context.save(snapshot());},
+      restart(){stopPointer();state=initialState(state.best);selected=undefined;recovery=0;render();context.save(snapshot());},
       serialize:snapshot,
       restore(data){const validated=restoreState(data);if(validated){stopPointer();state=validated;selected=undefined;recovery=0;render();}},
       dispose(){disposed=true;stopPointer();abort.abort();root.remove();},

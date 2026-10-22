@@ -1,5 +1,5 @@
 import type { GameModule, GameContext } from '../../core/types';
-import { deal, act, undo, restore, hint, won, move, movable, rank, suit, red, type Session, type Source, type Target, type Action } from './model';
+import { deal, act, undo, restore, hint, score, won, move, movable, rank, suit, red, type Session, type Source, type Target, type Action } from './model';
 import './solitaire.css';
 const symbols=['♣','♥','♠','♦'];
 const suits=['clubs','hearts','spades','diamonds'];
@@ -17,7 +17,7 @@ const module:GameModule={id:'solitaire',title:'Solitaire',cover:'game-art/solita
  function source(el:HTMLElement):Source|null{const kind=el.dataset.source;if(kind!=='waste'&&kind!=='tableau'&&kind!=='foundation')return null;return {kind,pile:Number(el.dataset.pile),index:Number(el.dataset.index)};}
  function target(el:HTMLElement):Target|null{const kind=el.dataset.target;if(kind!=='tableau'&&kind!=='foundation')return null;return {kind,pile:Number(el.dataset.pile)};}
  function same(a:Source|null,b:Source){return a?.kind===b.kind&&a.pile===b.pile&&a.index===b.index;}
- function sync(){const count=session.state.foundations.reduce((n,p)=>n+p.length,0);context.setScore(count*10);context.setLevel(`${count}/52 home`);context.setStatus(won(session.state)?'You won! All 52 cards are home.':notice);}
+ function sync(){const count=session.state.foundations.reduce((n,p)=>n+p.length,0);context.setScore(score(session));context.setLevel(`${count}/52 home`);context.setStatus(won(session.state)?'You won! All 52 cards are home.':notice);}
  function save(){context.save(session);}
  function changed(next:Session,message:string){session=next;selected=null;suggested=null;notice=message;sync();render();save();context.sound(won(session.state)?'success':'tap');context.announce(won(session.state)?'You won! All four foundations are complete.':message);}
  function perform(action:Action){if(paused||disposed||won(session.state))return false;const next=act(session,action);if(!next){notice='That move is not legal. Build down in alternating colours; empty columns need a King.';context.announce(notice);sync();return false;}changed(next,action.kind==='draw'?(session.state.stock.length?'One card drawn to Waste.':'Waste recycled. Draw again to turn a card.'): 'Card moved.');return true;}

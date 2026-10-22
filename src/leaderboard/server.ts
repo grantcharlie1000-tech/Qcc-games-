@@ -6,13 +6,18 @@ export interface Database {
 }
 export function createLeaderboardHandler(db:Database){
  async function board(game:string,playerId:string|null):Promise<Board>{
-  const result=await db.query(`WITH ranked AS (
-   SELECT row_number() OVER (ORDER BY s.score DESC,s.reached_at ASC,s.player_id ASC)::int AS rank,
-    s.player_id AS "playerId",p.name,s.score
+  // One place per nickname: the same name on another device or a reset browser is the same player,
+  // so only that name's best score is ranked. A requester is matched by their own row or their name.
+  const result=await db.query(`WITH best AS (
+   SELECT DISTINCT ON (lower(p.name)) s.player_id,p.name,s.score,s.reached_at
    FROM arcade_scores s JOIN arcade_players p ON p.id=s.player_id WHERE s.game_id=$1
-  ) SELECT * FROM ranked WHERE rank<=25 OR "playerId"=$2 ORDER BY rank`,[game,playerId]);
-  const rows=result.rows as Entry[];
-  return {entries:rows.filter(r=>r.rank<=25),player:rows.find(r=>r.playerId===playerId)??null};
+   ORDER BY lower(p.name),s.score DESC,s.reached_at ASC,s.player_id ASC
+  ),ranked AS (
+   SELECT row_number() OVER (ORDER BY score DESC,reached_at ASC,player_id ASC)::int AS rank,player_id AS "playerId",name,score FROM best
+  ) SELECT r.*,lower(r.name)=(SELECT lower(name) FROM arcade_players WHERE id=$2) AS mine
+  FROM ranked r WHERE r.rank<=25 OR lower(r.name)=(SELECT lower(name) FROM arcade_players WHERE id=$2) ORDER BY r.rank`,[game,playerId]);
+  const rows=(result.rows as (Entry&{mine:boolean|null})[]).map(({mine,...entry})=>({entry,mine:mine===true}));
+  return {entries:rows.filter(r=>r.entry.rank<=25).map(r=>r.entry),player:rows.find(r=>r.mine)?.entry??null};
  }
  return async function handle(request:Request):Promise<Response>{
   const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};

@@ -3,7 +3,7 @@ export interface State {seed:number;moves:number;recycles:number;stock:number[];
 export interface Source {kind:'waste'|'tableau'|'foundation';pile:number;index:number}
 export interface Target {kind:'tableau'|'foundation';pile:number}
 export type Action={kind:'draw'}|{kind:'move';from:Source;to:Target};
-export interface Session {version:1;state:State;history:State[]}
+export interface Session {version:1;state:State;history:State[];undos?:number}
 export const suit=(id:number)=>Math.floor(id/13);
 export const rank=(id:number)=>id%13+1;
 export const red=(id:number)=>suit(id)===1||suit(id)===3;
@@ -110,11 +110,16 @@ export function hint(s:State,history:readonly State[]=[]):Action|null {
 }
 export function act(session:Session,action:Action):Session|null {
  const state=action.kind==='draw'?draw(session.state):move(session.state,action.from,action.to);
- return state?{version:1,state,history:[...session.history,session.state].slice(-200)}:null;
+ return state?{...session,state,history:[...session.history,session.state].slice(-200)}:null;
 }
-export function undo(session:Session):Session|null {const state=session.history.at(-1);return state?{version:1,state:clone(state),history:session.history.slice(0,-1)}:null;}
+export function undo(session:Session):Session|null {const state=session.history.at(-1);return state?{...session,state:clone(state),history:session.history.slice(0,-1),undos:(session.undos??0)+1}:null;}
+/** 10 per home card; a win is 1000 plus a positive bonus that falls with moves, recycles and undos. */
+export function score(session:Session):number {
+ const s=session.state;if(!won(s))return homeCount(s)*10;
+ return 1000+Math.max(1,2000-s.moves-10*s.recycles-5*(session.undos??0));
+}
 export function restore(value:unknown):Session|null {
  if(!value||typeof value!=='object')return null;const s=value as Session;
- if(s.version!==1||!validState(s.state)||!Array.isArray(s.history)||s.history.length>200||!s.history.every(p=>validState(p)&&p.seed===s.state.seed))return null;
+ if(s.version!==1||(s.undos!==undefined&&!integer(s.undos))||!validState(s.state)||!Array.isArray(s.history)||s.history.length>200||!s.history.every(p=>validState(p)&&p.seed===s.state.seed))return null;
  return structuredClone(s);
 }

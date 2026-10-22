@@ -82,3 +82,9 @@ export function restore(data:unknown):Board|null {
   }
   b.status=d.status as Board['status'];b.exploded=d.exploded as number|null;return b;
 }
+/** Losses score safe cells (<1000). Wins: harder level first, then 3 per second under par. */
+export const WIN={beginner:{base:1000,par:300},intermediate:{base:3000,par:900},expert:{base:6000,par:1800}} as const;
+export function score(b:Board):number {
+  const safe=b.revealed.filter((v,i)=>v&&b.cells[i]!==-1).length,{base,par}=WIN[b.level];
+  return b.status==='won'?base+Math.max(0,par-Math.floor(b.elapsedMs/1000))*3:safe;
+}

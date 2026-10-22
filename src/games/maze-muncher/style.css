@@ -1,0 +1,58 @@
+/* Maze Muncher sizes its own board, keeping the touch pad at real CSS size. */
+body.in-game .game-view[data-game-id=maze-muncher] #game-stage.viewport-fitted{position:static!important;transform:none!important;width:100%!important;height:100%!important;max-height:none;display:grid;place-items:center}
+.mm-game{--mm-w:224px;--mm-ease:cubic-bezier(.23,1,.32,1);width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#e8ecff}
+.mm-frame{position:relative;flex:none;width:var(--mm-w);aspect-ratio:224/266;border-radius:18px;padding:6px;background:#10153a;box-shadow:0 0 0 2px #2a3a9a,0 12px 28px #02041a80}
+.mm-svg{display:block;width:100%;height:100%;border-radius:12px;touch-action:none;outline-offset:3px}
+.mm-svg:focus-visible{outline:3px solid #ffe14d}
+.mm-wall{fill:#0b1350;stroke:#4d7dff;stroke-width:1.3;stroke-linejoin:round;transition:stroke .12s linear,fill .12s linear}
+.mm-flash .mm-wall{stroke:#f4f6ff;fill:#1c2470}
+.mm-door{fill:#ffb3e6}
+.mm-dot{fill:#ffe2c4}
+.mm-berry{fill:#ffcf6b}
+/* Power berries blink while play is live; they stay steady otherwise or with reduced motion. */
+.mm-playing:not(.mm-reduced) .mm-berry{animation:mm-blink .34s steps(1,end) infinite}
+.mm-paused .mm-berry{animation-play-state:paused}
+@keyframes mm-blink{50%{opacity:0}}
+.mm-burst line{stroke:#8dffe0;stroke-width:1.4;stroke-linecap:round}
+.mm-nib .mm-step .mm-foot-a{transform:translateY(-.8px)}
+.mm-nib .mm-step .mm-foot-b{transform:translateY(.4px)}
+.mm-wisp-flame{fill:var(--mm-wisp)}
+.mm-spark{fill:var(--mm-wisp);opacity:.75}
+.mm-wisp-scared,.mm-wisp-eyes{display:none}
+.mm-scared .mm-wisp-flame,.mm-scared .mm-spark{fill:#2b3cff}
+.mm-scared .mm-wisp-face{display:none}
+.mm-scared .mm-wisp-scared{display:inline}
+.mm-ending .mm-wisp-flame,.mm-ending .mm-spark{fill:#f2f2ff}
+.mm-ending .mm-wisp-scared circle{fill:#ff3b5c}
+.mm-ending .mm-wisp-scared path{stroke:#ff3b5c}
+/* Reduced motion: a steady white outline replaces the end-of-fright flashing. */
+.mm-ending-calm .mm-wisp-flame{stroke:#f2f2ff;stroke-width:1.4}
+.mm-eyes-only .mm-wisp-body{display:none}
+.mm-eyes-only .mm-wisp-eyes{display:inline}
+.mm-colorblind .mm-wisp-flame{stroke:#05071a;stroke-width:.8}
+.mm-banner{font:15px Arcade,sans-serif;fill:#ffe14d;letter-spacing:1px}
+.mm-banner.mm-over{fill:#ff4d5e}
+.mm-popup{font:7px Arcade,sans-serif;fill:#7fe9ff}
+.mm-card{position:absolute;inset:6px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center;background:#05071ad0;opacity:1;transform:none;transition:opacity .2s var(--mm-ease),transform .2s var(--mm-ease)}
+.mm-card[hidden]{display:flex;opacity:0;transform:scale(.97);pointer-events:none;visibility:hidden;transition:opacity .2s var(--mm-ease),transform .2s var(--mm-ease),visibility 0s .2s}
+.mm-card strong{font-family:Arcade,sans-serif;font-size:clamp(26px,5vw,40px);color:#ffe14d;text-shadow:0 3px #b8326a}
+.mm-card p{margin:0 0 4px;max-width:250px;font:600 14px/1.45 system-ui,sans-serif;color:#d5dcff}
+.mm-card .game-button{background:#3fe0bd;color:#062a26;min-height:48px}
+.mm-card .game-button:focus-visible,.mm-pad button:focus-visible{outline:3px solid #ffe14d;outline-offset:3px}
+.mm-controls{flex:none;display:flex;flex-direction:column;align-items:center;gap:7px}
+.mm-help{display:flex;gap:12px;margin:0;font:700 12px/18px system-ui,sans-serif;color:#b9c3f5}
+.mm-help span+span::before{content:'·';margin-right:12px;color:#4d7dff}
+.mm-pad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,48px);gap:5px}
+.mm-pad button{border:1px solid #3a4ba8;border-bottom:3px solid #0a0f33;border-radius:13px;background:linear-gradient(#26318a,#171f5e);color:#e8ecff;font-weight:900;font-size:22px;touch-action:manipulation;cursor:pointer;min-width:48px;min-height:48px;transition:transform .12s var(--mm-ease)}
+.mm-pad button:active{transform:scale(.96)}
+.mm-pad button:disabled{opacity:.45}
+.mm-pad [data-dir=up]{grid-column:2}
+.mm-pad [data-dir=left]{grid-column:1;grid-row:2}
+.mm-pad [data-dir=down]{grid-column:2;grid-row:2}
+.mm-pad [data-dir=right]{grid-column:3;grid-row:2}
+.mm-sideways{flex-direction:row;gap:24px}
+.mm-sideways .mm-controls{width:180px;gap:14px}
+.mm-sideways .mm-help{flex-direction:column;align-items:center;gap:2px}
+.mm-sideways .mm-help span+span::before{display:none}
+@media (prefers-reduced-motion:reduce){.mm-card,.mm-card[hidden]{transform:none}.mm-pad button{transition:none}.mm-pad button:active{transform:none}}
+@media(max-height:600px){.mm-game:not(.mm-sideways) .mm-help{display:none}}

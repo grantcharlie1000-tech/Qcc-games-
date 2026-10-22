@@ -1,5 +1,5 @@
 import type { GameModule, GameContext } from '../../core/types';
-import { LEVELS, copyPaths, emptyPaths, endpoint, connected, begin, extend, isWon, hint, traverse, restoreSnapshot } from './model';
+import { LEVELS, copyPaths, emptyPaths, endpoint, connected, begin, extend, isWon, hint, traverse, restoreSnapshot, recordWin, campaignScore } from './model';
 import type { Paths, Point, Snapshot } from './model';
 import './style.css';
 
@@ -30,7 +30,7 @@ const game: GameModule = {
  rules:'Connect every pair of matching letters and shapes by drawing through neighbouring cells. Move only up, down, left or right. Paths cannot cross, share cells or enter another pair’s endpoint. To win, connect ALL pairs AND fill the ENTIRE board. Drag from a peg to redraw its colour, or grab a trail to trim it. Undo reverses a gesture. Erase selected removes its trail. Hint checks the current board: it adds one safe step or explains when you must backtrack. Keyboard: Tab into the board, arrows to move, Space or Enter to start/stop drawing, arrows to draw, Backspace to trim, Delete to erase. Twelve puzzles grow from 4×4 to 7×7.',
  mount(container:HTMLElement, context:GameContext) {
   const abort = new AbortController(), signal=abort.signal, svgPrefix=`cc-${++instanceSequence}`;
-  let state:Snapshot={version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[]};
+  let state:Snapshot={version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[],assists:0,best:{}};
   let paused=false,disposed=false,selected=-1,active=-1,focusCell=0,pointerId:number|null=null,lastPoint:Point|null=null,gesture:Paths|null=null,keyboardDrawing=false;
   let feedback='Start at any matching peg. Fill every cell.';
   const root=document.createElement('section');root.className='cc-game';
@@ -43,12 +43,11 @@ const game: GameModule = {
   let buttons:HTMLButtonElement[]=[];
   const level=()=>LEVELS[state.level];
   function snapshot():Snapshot {
-   const saved:Snapshot={...state,paths:copyPaths(state.paths),completed:[...state.completed],history:state.history.map(copyPaths)};
+   const saved:Snapshot={...state,paths:copyPaths(state.paths),completed:[...state.completed],history:state.history.map(copyPaths),best:{...state.best}};
    // Autosave/pagehide may run while a pointer is still held. Project the entire
    // pending gesture transaction without ending the gesture or mutating live state.
    if(gesture&&JSON.stringify(gesture)!==JSON.stringify(state.paths)){
-    saved.history.push(copyPaths(gesture));if(saved.history.length>100)saved.history.shift();saved.moves++;
-    if(isWon(level(),saved.paths)&&!saved.completed.includes(saved.level))saved.completed.push(saved.level);
+    saved.history.push(copyPaths(gesture));if(saved.history.length>100)saved.history.shift();saved.moves++;recordWin(saved);
    }
    return saved;
   }
@@ -74,7 +73,7 @@ const game: GameModule = {
    find<HTMLElement>('.cc-progress').textContent=`${percent}% covered`;
    find<HTMLElement>('.cc-pairs').textContent=`${pairs} / ${current.pairs.length} pairs`;
    find<HTMLElement>('.cc-moves').textContent=`${state.moves} moves`;
-   context.setLevel(`${state.level+1} / ${LEVELS.length} · ${n}×${n}`);context.setScore(state.completed.length*100);
+   context.setLevel(`${state.level+1} / ${LEVELS.length} · ${n}×${n}`);context.setScore(campaignScore(state.best));
    context.setStatus(won?'All pairs connected · Board completely filled':`${pairs} of ${current.pairs.length} pairs · ${percent}% covered`);
    find<HTMLElement>('.cc-feedback').textContent=feedback;
    find<HTMLElement>('.cc-win').hidden=!won;
@@ -111,7 +110,7 @@ const game: GameModule = {
    if(JSON.stringify(before)===JSON.stringify(state.paths))return;
    state.history.push(copyPaths(before));if(state.history.length>100)state.history.shift();state.moves++;
    if(isWon(level(),state.paths)){
-    if(!state.completed.includes(state.level))state.completed.push(state.level);
+    recordWin(state);
     say(state.completed.length===LEVELS.length?'All twelve puzzles complete. A perfect tapestry!':'Beautifully connected! Every cell is filled.');context.sound('success');
    }else{
     if(feedback.startsWith('Drawing ')){
@@ -173,21 +172,22 @@ const game: GameModule = {
   grid.addEventListener('focusout',event=>{if(keyboardDrawing&&!grid.contains(event.relatedTarget as Node|null))finish()},{signal});
   function eraseSelected(){if(paused||selected<0)return;finish();const before=copyPaths(state.paths);state.paths[selected]=[];say(`Erased ${palette[selected].letter}.`);record(before)}
   erase.addEventListener('click',eraseSelected,{signal});
-  undo.addEventListener('click',()=>{if(paused)return;finish();const previous=state.history.pop();if(!previous)return;state.paths=previous;state.moves=Math.max(0,state.moves-1);say('Last gesture undone.');render();save()},{signal});
+  undo.addEventListener('click',()=>{if(paused)return;finish();const previous=state.history.pop();if(!previous)return;state.paths=previous;state.moves=Math.max(0,state.moves-1);state.assists++;say('Last gesture undone.');render();save()},{signal});
   hintButton.addEventListener('click',()=>{
-   if(paused)return;finish();const result=hint(level(),state.paths);
+   if(paused)return;finish();const result=hint(level(),state.paths);if(result.kind!=='complete')state.assists++;
    if(result.kind==='step'){const before=copyPaths(state.paths);state.paths=result.paths;selected=result.color;focusCell=result.cell;say(`Hint: extend ${palette[result.color].letter} to row ${Math.floor(result.cell/level().size)+1}, column ${result.cell%level().size+1}.`);record(before)}
    else if(result.kind==='backtrack'){if(result.color===undefined)say('This layout cannot fill the board. At least one path must be shortened or erased.');else{selected=result.color;say(`A backtrack is needed. Erase or redraw ${palette[result.color].letter}; clearing it makes a complete solution possible.`)}render()}
    else if(result.kind==='limit'){say('This layout needs a longer search. No safe hint found yet; try shortening a path.');render()}
   },{signal});
-  function changePuzzle(index:number){if(paused)return;finish();state.level=index;state.paths=emptyPaths(level());state.history=[];state.moves=0;active=selected=-1;focusCell=0;say('New puzzle. Connect every pair and fill every cell.');rebuild();save()}
+  function changePuzzle(index:number){if(paused)return;finish();state.level=index;state.paths=emptyPaths(level());state.history=[];state.moves=state.assists=0;active=selected=-1;focusCell=0;say('New puzzle. Connect every pair and fill every cell.');rebuild();save()}
   picker.addEventListener('change',()=>changePuzzle(Number(picker.value)),{signal});
   next.addEventListener('click',()=>{if(!paused&&isWon(level(),state.paths))changePuzzle((state.level+1)%LEVELS.length)},{signal});
   rebuild();
   return {
    pause(){if(disposed)return;finish();paused=true;render()},
    resume(){if(disposed)return;paused=false;render()},
-   restart(){if(disposed)return;finish();state={version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[]};selected=active=-1;focusCell=0;say('Fresh start. Connect every pair and fill every cell.');rebuild();save()},
+   // Restart replays the current puzzle; completed and best are campaign progress.
+   restart(){if(disposed)return;finish();state={...state,paths:emptyPaths(level()),moves:0,history:[],assists:0};selected=active=-1;focusCell=0;say('Fresh start. Connect every pair and fill every cell.');rebuild();save()},
    serialize(){return snapshot()},
    restore(data:unknown){if(disposed)return;const restored=restoreSnapshot(data);if(!restored)return;finish();state=restored;selected=active=-1;focusCell=0;feedback='Saved puzzle restored.';rebuild()},
    dispose(){if(disposed)return;finish();disposed=true;abort.abort();root.remove()},
