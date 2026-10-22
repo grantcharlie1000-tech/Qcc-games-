@@ -4,7 +4,7 @@ import {ITEMS,ITEM_SPRITES,parseStack,itemForBlock,requireItem} from '../../../s
 import {BIOMES} from '../../../src/games/blockcraft/data/biomes';
 import {CS,CH,CHUNK_VOLUME,LAYER,PAD_VOLUME,voxelIndex,chunkKey,keyX,keyZ} from '../../../src/games/blockcraft/engine/constants';
 import {VoxelWorld,MAX_EDITS} from '../../../src/games/blockcraft/world/world';
-import {moveBody,raycast,bodyCollides,rayBox} from '../../../src/games/blockcraft/engine/physics';
+import {moveBody,raycast,bodyCollides,rayBox,bedStandUp} from '../../../src/games/blockcraft/engine/physics';
 import {EventBus} from '../../../src/games/blockcraft/engine/events';
 import {createTerrain} from '../../../src/games/blockcraft/world/terrain';
 import {createLightEngine} from '../../../src/games/blockcraft/world/light';
@@ -75,6 +75,23 @@ describe('physics',()=>{
     expect(raycast(w,.5,12.5,.5,0,-1,0,6)).toMatchObject({x:0,y:9,z:0,ny:1});
     expect(raycast(w,-3.5,10.5,.5,1,0,0,6)).toBeNull();
     expect(rayBox(0,0,0,1,0,0,2,-1,-1,3,1,1)).toBeCloseTo(2);expect(rayBox(0,0,0,-1,0,0,2,-1,-1,3,1,1)).toBe(-1);
+  });
+  test('getting up from a bed: beside it (vanilla BedBlock.findStandUpPosition order), on it, or obstructed',()=>{
+    // Head at (0,10,0) pointing north (the foot is south of it); the clockwise side of north is east.
+    const bed=()=>{const w=flatWorld(10);w.set(0,10,0,blockId('bed_head_south'));w.set(0,10,1,blockId('bed_foot_south'));return w;};
+    const up=(w:VoxelWorld)=>bedStandUp(w,0,10,0,0,-1,.3,1.8);
+    const wall=(w:VoxelWorld,x:number,z:number)=>{w.set(x,10,z,B.stone);w.set(x,11,z,B.stone);};
+    const w=bed();expect(up(w)).toEqual({x:1.5,y:10,z:.5});
+    wall(w,1,0);expect(up(w)).toEqual({x:1.5,y:10,z:1.5});
+    w.set(1,10,1,B.lava);expect(up(w)).toEqual({x:1.5,y:10,z:2.5});
+    // A cell needs a floor: a hole beside the foot end is skipped.
+    w.set(1,9,2,0);w.set(1,8,2,0);expect(up(w)).toEqual({x:.5,y:10,z:2.5});
+    // Walled in on every side: on top of the bed (its 9/16 shape is the floor); lava only when nothing else is left.
+    const boxed=bed();for(const [x,z] of [[1,0],[1,1],[1,2],[0,2],[-1,2],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]])wall(boxed,x,z);
+    expect(up(boxed)).toEqual({x:.5,y:10+9/16,z:.5});
+    boxed.set(0,11,0,B.stone);expect(up(boxed)).toEqual({x:.5,y:10+9/16,z:1.5});
+    boxed.set(0,11,1,B.stone);expect(up(boxed)).toBeNull();
+    boxed.set(-1,10,1,B.lava);boxed.set(-1,11,1,0);expect(up(boxed)).toEqual({x:-.5,y:10,z:1.5});
   });
 });
 

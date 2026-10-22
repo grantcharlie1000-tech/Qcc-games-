@@ -811,7 +811,8 @@ export interface Game{
   random():number;
   /** Start / resume play from the start or pause menu (a user gesture: captures the mouse). */
   play():void;
-  /** From the death screen: survival.respawn(), teleport to the bed (if still a bed) or world spawn, emit playerRespawned, play. */
+  /** From the death screen: survival.respawn(), teleport beside the bed (vanilla stand-up cells, once its chunks are loaded; a bed
+   *  that is gone or obstructed is forgotten with a toast) or to the world spawn, emit playerRespawned, play. */
   respawn():void;
   /** Called by the UI service when a screen opens (state 'screen', mouse released) or closes (back to 'playing', mouse captured). */
   screenChanged(open:boolean):void;

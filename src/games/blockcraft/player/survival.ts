@@ -350,7 +350,8 @@ export function createSurvival(game:Game):SurvivalSystem{
     fireTicks=-FIRE_IMMUNE_TICKS;effects.clear();dead=false;lastMessage='';invul=0;lastHurt=0;hurtFlash=0;portalFlash=0;
     lastAttacker=null;lastEntry=null;climbed=false;shieldTicks=0;
   }
-  /** Where game.respawn() puts the player: the bed while it is still a bed (an unloaded one is trusted), else world spawn. */
+  /** Fallback for an engine that resumes a dead save without the death screen: on the bed while it is still a bed (an unloaded
+   *  one is trusted), else the world spawn. game.respawn() itself stands the player up beside the bed. */
   function respawnPoint(){
     const p=state(),bed=p.bedSpawn;
     if(bed){const id=game.world.get(bed.x,bed.y,bed.z);if(id<0||BED[id])return{x:bed.x+.5,y:bed.y+1,z:bed.z+.5};}
