@@ -98,7 +98,7 @@ export interface Texel{
   x:number;y:number;z:number;
   /** Face normal in entity space (rest pose). */
   nx:number;ny:number;nz:number;
-  /** Part name (without variant prefix) and the box's index in it. */
+  /** Part name (the plain spec name) and the box's index in it. */
   part:string;box:number;
   /** 0 top, 1 bottom, 2 -x, 3 front (-z), 4 +x, 5 back (+z): the face in the box's own frame. */
   face:number;
