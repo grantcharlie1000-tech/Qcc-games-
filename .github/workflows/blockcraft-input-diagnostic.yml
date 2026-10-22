@@ -1,0 +1,49 @@
+name: Diagnose Blockcraft native input
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/blockcraft-input-diagnostic.yml'
+      - 'playwright.config.ts'
+      - 'tests/games/blockcraft/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: blockcraft-input-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native-input:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [headless-shell, chromium-headless, chromium-headed]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Same trusted input, assertions and browser revision, with only the browser mode varied.
+      - name: Run native controls and placement checks
+        run: >-
+          xvfb-run -a npx playwright test
+          tests/games/blockcraft/controls.spec.ts
+          tests/games/blockcraft/interaction.spec.ts
+          tests/games/blockcraft/play.spec.ts
+          --project=chromium --workers=1
+          --grep 'keyboard and mouse:|mine, place, open a door|boots, plays, opens the inventory'
+        env:
+          BLOCKCRAFT_BROWSER_CHANNEL: ${{ matrix.browser != 'headless-shell' && 'chromium' || '' }}
+          BLOCKCRAFT_HEADED: ${{ matrix.browser == 'chromium-headed' && '1' || '0' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blockcraft-input-${{ matrix.browser }}
+          path: |
+            playwright-report
+            test-results

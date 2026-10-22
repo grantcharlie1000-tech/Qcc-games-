@@ -30,11 +30,14 @@ test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:1280,height:720});
   await page.addInitScript(()=>{
-    const events:unknown[]=[];
-    (window as unknown as {__bcMouseTrace:unknown[]}).__bcMouseTrace=events;
+    const events:unknown[]=[],first:unknown[]=[];
+    const trace={events,first,count:0,nonzero:0,dx:0,dy:0};
+    (window as unknown as {__bcMouseTrace:unknown}).__bcMouseTrace=trace;
     document.addEventListener('mousemove',e=>{
       const root=document.querySelector<HTMLElement>('.blockcraft');
-      events.push({x:e.clientX,y:e.clientY,dx:e.movementX,dy:e.movementY,trusted:e.isTrusted,locked:document.pointerLockElement?.tagName??null,phase:root?.dataset.phase,yaw:root?.dataset.yaw});
+      const event={x:e.clientX,y:e.clientY,dx:e.movementX,dy:e.movementY,trusted:e.isTrusted,locked:document.pointerLockElement?.tagName??null,phase:root?.dataset.phase,yaw:root?.dataset.yaw,focused:document.hasFocus(),visibility:document.visibilityState};
+      trace.count++;if(e.movementX||e.movementY)trace.nonzero++;trace.dx+=e.movementX;trace.dy+=e.movementY;
+      if(first.length<20)first.push(event);events.push(event);
       if(events.length>40)events.shift();
     },true);
   });
@@ -52,7 +55,7 @@ test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields
   await look(page,locks,{x:640,y:360},160,0,4);
   try{await expect.poll(async()=>Math.abs(await num(page,'yaw')-yaw)).toBeGreaterThan(.1);}
   catch(error){
-    const events=await page.evaluate(()=>(window as unknown as {__bcMouseTrace:unknown[]}).__bcMouseTrace);
+    const events=await page.evaluate(()=>(window as unknown as {__bcMouseTrace:unknown}).__bcMouseTrace);
     await test.info().attach('mouse-look-events',{body:JSON.stringify({initialYaw:yaw,events}),contentType:'application/json'});
     throw error;
   }

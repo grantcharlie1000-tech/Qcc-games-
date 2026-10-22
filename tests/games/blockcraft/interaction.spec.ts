@@ -21,9 +21,9 @@ const aim=(page:Page,p:V)=>page.evaluate(p=>{
   s.yaw=Math.atan2(-dx,-dz);s.pitch=Math.atan2(dy,Math.hypot(dx,dz));
 },p);
 const hold=(page:Page,id:string,count=1)=>page.evaluate(([id,count])=>{const inv=window.blockcraft!.inventory;inv.setSlot(inv.selected,{id:id as string,count:count as number});},[id,count] as const);
-/** One short right click. A press counts even when released before the next tick; a longer one held across a slow frame
- *  (a loaded machine) can last the 4-tick repeat delay and use twice (a second block, or the bucket filled and poured). */
-async function rightClick(page:Page){await page.mouse.down({button:'right'});await page.waitForTimeout(30);await page.mouse.up({button:'right'});}
+/** A single trusted click, not a press split across traced protocol calls. On a busy runner the
+ *  nominal 30 ms wait between down/up stretched beyond the game's held-use repeat delay. */
+async function rightClick(page:Page){await page.mouse.click(512,320,{button:'right'});}
 async function targetIs(page:Page,p:V){await expect.poll(()=>data(page,'target'),{timeout:20000}).toBe(`${p.x},${p.y},${p.z}`);}
 
 test('mine, place, open a door, use a bucket and open a crafting table',async({page,browserName})=>{
@@ -38,6 +38,8 @@ test('mine, place, open a door, use a bucket and open a crafting table',async({p
   // Headless WebKit never grants pointer lock: there the presses below go through the hold-to-mine / click fallback.
   if(lockless(browserName))await useLockFallback(page,512,320);
   else await expect(page.locator('.blockcraft')).toHaveAttribute('data-locked','true');
+  // Keep the pointer at the click coordinate before the fixture aims at any block.
+  await page.mouse.move(512,320);
 
   // A flat stone site 7×7 around the player with clear air above.
   const ids={stone:blockId('stone'),dirt:blockId('dirt'),water:blockId('water'),air:0,grass:blockId('grass_block')};
