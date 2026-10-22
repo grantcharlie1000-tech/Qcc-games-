@@ -20,7 +20,11 @@ test('two independent browsers play a full online rack and agree on the result',
   const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama'),extra=await launchPlayer('Rua');
   try{
     await host.page.goto(`${BASE}/#/game/pool`);
-    await host.page.getByLabel('Players').selectOption('online');
+    const table=await host.page.locator('.pool-table').boundingBox();
+    await host.page.getByRole('button',{name:'Multiplayer'}).click();
+    await expect(host.page.getByRole('dialog',{name:'Pool multiplayer'})).toBeVisible();
+    // The menu floats over the game: the table keeps its size and place.
+    expect(await host.page.locator('.pool-table').boundingBox()).toEqual(table);
     await host.page.getByRole('button',{name:'Create room'}).click();
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:25000});
     const code=(await host.page.locator('.mp-room-code').textContent())!.trim();
@@ -29,7 +33,7 @@ test('two independent browsers play a full online rack and agree on the result',
 
     // Invalid and unknown codes are explained.
     await guest.page.goto(`${BASE}/#/game/pool`);
-    await guest.page.getByLabel('Players').selectOption('online');
+    await guest.page.getByRole('button',{name:'Multiplayer'}).click();
     await guest.page.getByLabel('Room code').fill('ABC');await guest.page.getByRole('button',{name:'Join by code'}).click();
     await expect(guest.page.locator('.mp-status')).toHaveText(/6 letters and numbers/);
     await guest.page.getByLabel('Room code').fill(code==='ZZZZZZ'?'YYYYYY':'ZZZZZZ');await guest.page.getByRole('button',{name:'Join by code'}).click();
@@ -42,7 +46,11 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(guest.page.locator('.pool-game')).toHaveAttribute('data-online','guest',{timeout:30000});
     await expect(host.page.locator('.mp-players')).toContainText('Tama');
     await expect(guest.page.locator('.pool-player').first()).toContainText('Hana');
-    await expect(guest.page.locator('.mp-link')).toContainText(/Direct peer-to-peer|TURN relay/,{timeout:15000});
+    await expect(guest.page.getByRole('dialog')).toBeHidden();
+    await expect(host.page.locator('.mp-link')).toContainText(/Direct peer-to-peer|TURN relay/,{timeout:15000});
+    await host.page.getByRole('button',{name:'Close multiplayer menu'}).click();
+    await expect(host.page.getByRole('dialog')).toBeHidden();
+    await expect(host.page.getByRole('button',{name:'Online room'})).toBeVisible();
 
     // A third player is refused: the room is full.
     await extra.page.goto(`${BASE}/#/game/pool?room=${code}`);
@@ -106,7 +114,7 @@ test('forcing the TURN relay without relay credentials fails clearly instead of 
   const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama');
   try{
     await host.page.goto(`${BASE}/#/game/pool?relay=1`);
-    await host.page.getByLabel('Players').selectOption('online');
+    await host.page.getByRole('button',{name:'Multiplayer'}).click();
     await host.page.getByRole('button',{name:'Create room'}).click();
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:25000});
     await expect(host.page.locator('.mp-link')).toContainText('Relay fallback is not configured');

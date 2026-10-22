@@ -51,12 +51,16 @@ test('host, guest and a late joiner share one world',async()=>{
 
     // ---- Host creates a room: the shared world is a separate world.
     step('Host creates a room: the shared world is a separate world.');
-    await host.page.getByRole('button',{name:'Play online…'}).click({timeout:20000});
+    const canvas=await host.page.locator('.blockcraft canvas').boundingBox();
+    await host.page.getByRole('button',{name:'Multiplayer'}).click({timeout:20000});
+    await expect(host.page.getByRole('dialog',{name:'Blockcraft multiplayer'})).toBeVisible();
+    expect(await host.page.locator('.blockcraft canvas').boundingBox()).toEqual(canvas);
     await host.page.getByRole('button',{name:'Create room'}).click({timeout:20000});
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:30000});
     const code=(await host.page.locator('.mp-room-code').textContent())!.trim();
     await expect.poll(()=>ev(host.page,bc=>bc.net.role)).toBe('host');
     await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:90000});
+    await host.page.getByRole('button',{name:'Close multiplayer menu'}).click({timeout:20000});
     const sharedSeed=await ev(host.page,bc=>bc.terrain.seed);
     expect(sharedSeed).not.toBe(soloSeed);
     await play(host);

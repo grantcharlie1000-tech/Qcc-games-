@@ -45,7 +45,7 @@ The host’s device runs the only simulation (`src/games/pool/online.ts`), with 
 
 ## Blockcraft
 
-Choose **Play online…** in the start or game menu. The host’s world becomes the shared world, saved on the host’s device under
+Choose **Multiplayer** in the start or game menu (in Pool, the **Multiplayer** button beside Players). The menu floats in the centre of the screen over the game, so nothing in the game resizes; close it with ✕ or by clicking outside it. The host’s world becomes the shared world, saved on the host’s device under
 its own key (`mp:blockcraft:world`), separate from the single-player save. Guests keep their single-player world aside and get
 it back when they leave or the host goes.
 

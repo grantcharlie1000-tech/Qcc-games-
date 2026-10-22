@@ -2,7 +2,7 @@ import type {GameModule} from '../../core/types';
 import {createGame,step,shoot,restoreGame,POCKETS,groupOf,legalTargets,chooseAI,placeAICue,placeCue,validCuePosition,DT,type PoolState} from './model';
 import {drawTable} from './render';
 import {POOL_ONLINE_VERSION,PoolGuest,PoolHost,parseCommand,parseHostMessage,type Command} from './online';
-import {RoomPanel,inviteCodeFromHash,relayOnlyFromHash} from '../../multiplayer/panel';
+import {RoomDialog,inviteCodeFromHash,relayOnlyFromHash} from '../../multiplayer/panel';
 import type {Room} from '../../multiplayer/room';
 import {tablePoint,onFelt,beginDrag,moveDrag,releaseDrag,type Drag} from './input';
 import './style.css';
@@ -13,7 +13,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  let state=createGame(),paused=false,disposed=false,frame=0,last=0,accumulator=0,aiPlan:ReturnType<typeof chooseAI>|null=null;
  let ghost:{x:number;y:number;valid:boolean}|null=null;
  const abort=new AbortController(),root=document.createElement('div');root.className='pool-game';
- root.innerHTML=`<div class="pool-topline"><span class="pool-brand">THE POCKET CLUB <small> / EIGHT BALL</small></span><label class="pool-mode">Players <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option><option value="online">Online · two devices</option></select></label></div><div class="pool-online" hidden></div><div class="pool-players"><div class="pool-player"></div><div class="pool-player"></div></div><p class="pool-message" role="status"></p><div class="pool-table-area"><div class="pool-cue-meter" aria-hidden="true"><span>POWER</span><div><i></i></div><b>‹</b></div><div class="pool-table-wrap"><div class="mp-waiting" hidden>Waiting for host<small>The host has paused the game.</small></div><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Drag felt to aim; pull white ball back and release to shoot. Arrow keys aim and change power; Enter shoots; C cancels." aria-describedby="pool-tip" width="840" height="440"></canvas></div></div><div class="pool-inhand" hidden>Ball-in-hand: tap or drag to a clear spot and release. Keyboard: arrows to move, Enter to place.</div><div class="pool-under"><div class="pool-pull"><span class="pool-gesture-label" role="status">Drag felt to aim · pull white ball back to shoot</span><div class="pool-power-track"><span></span></div><output class="pool-power-value" aria-live="off">Ready</output></div><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((_,i)=>`<option value="${i}">${i+1} · ${['Top right','Bottom right','Top middle','Bottom middle','Top left','Bottom left'][i]}</option>`).join('')}</select></div><span class="pool-shot-count">Shot 0</span></div><p class="pool-tip" id="pool-tip">1 · Drag the felt to aim. 2 · Pull back from the white ball, then release.<br>Cancel: return to your starting point, add a second finger, or press C. Keyboard: ← → aim · ↑ ↓ power · Enter shoot.</p><p class="pool-live"></p>`;
+ root.innerHTML=`<div class="pool-topline"><span class="pool-brand">THE POCKET CLUB <small> / EIGHT BALL</small></span><label class="pool-mode"><span class="pool-mode-text">Players</span> <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option></select></label><button type="button" class="pool-multiplayer" aria-haspopup="dialog">Multiplayer</button></div><div class="pool-players"><div class="pool-player"></div><div class="pool-player"></div></div><p class="pool-message" role="status"></p><div class="pool-table-area"><div class="pool-cue-meter" aria-hidden="true"><span>POWER</span><div><i></i></div><b>‹</b></div><div class="pool-table-wrap"><div class="mp-waiting" hidden>Waiting for host<small>The host has paused the game.</small></div><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Drag felt to aim; pull white ball back and release to shoot. Arrow keys aim and change power; Enter shoots; C cancels." aria-describedby="pool-tip" width="840" height="440"></canvas></div></div><div class="pool-inhand" hidden>Ball-in-hand: tap or drag to a clear spot and release. Keyboard: arrows to move, Enter to place.</div><div class="pool-under"><div class="pool-pull"><span class="pool-gesture-label" role="status">Drag felt to aim · pull white ball back to shoot</span><div class="pool-power-track"><span></span></div><output class="pool-power-value" aria-live="off">Ready</output></div><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((_,i)=>`<option value="${i}">${i+1} · ${['Top right','Bottom right','Top middle','Bottom middle','Top left','Bottom left'][i]}</option>`).join('')}</select></div><span class="pool-shot-count">Shot 0</span></div><p class="pool-tip" id="pool-tip">1 · Drag the felt to aim. 2 · Pull back from the white ball, then release.<br>Cancel: return to your starting point, add a second finger, or press C. Keyboard: ← → aim · ↑ ↓ power · Enter shoot.</p><p class="pool-live"></p>`;
  container.append(root);
  const $=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
  const canvas=$<HTMLCanvasElement>('.pool-table'),pocket=$<HTMLSelectElement>('#pool-pocket'),mode=$<HTMLSelectElement>('[aria-label="Players"]');
@@ -24,7 +24,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  /** Online play: the room, this device's seat, the host's authoritative table or the guest's mirror, and the offline
   *  game kept aside (the shell keeps saving that one, so online racks never replace it). */
  let online:{room:Room;seat:number;host:PoolHost|null;guest:PoolGuest|null;offline:PoolState;guestId:string|null;roomPaused:boolean;seq:number;off:()=>void}|null=null;
- let panel:RoomPanel|null=null,lastAimSent=0;
+ let dialog:RoomDialog|null=null,lastAimSent=0;
  const human=()=>online?state.turn===online.seat:state.mode==='two'||state.turn===0;
  const onlineReady=()=>!online||(online.host?online.host.opponent:!!online.guest?.state)&&!online.roomPaused&&online.guest?.pending==null;
  const canAim=()=>!paused&&!disposed&&state.phase==='aim'&&human()&&!state.ballInHand&&onlineReady();
@@ -38,7 +38,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   root.dataset.phase=state.phase;root.dataset.shots=String(state.shots);root.dataset.turn=String(state.turn);root.dataset.table=state.balls.map(b=>`${b.id}:${b.x.toFixed(2)},${b.y.toFixed(2)},${b.pocketed?1:0}`).join(';');root.setAttribute('aria-busy',String(state.phase==='moving'));
   for(let i=0;i<2;i++){const el=root.querySelectorAll<HTMLElement>('.pool-player')[i],g=state.groups[i],remaining=g?state.balls.filter(b=>!b.pocketed&&groupOf(b.id)===g).length:0;el.classList.toggle('pool-current',state.turn===i&&state.phase!=='over');el.innerHTML=`<strong>${state.turn===i&&state.phase!=='over'?'▸ ':''}${escapeHtml(name(i))}</strong><span>${g?`${g==='solids'?'● Solids 1–7':'◒ Stripes 9–15'} · ${remaining} left`:'Open table · no group yet'}</span><small>${g&&remaining===0?'ON THE 8':g?state.balls.filter(b=>!b.pocketed&&groupOf(b.id)===g).map(b=>b.id).join(' · '):'Pot after the break to choose'}</small>`;}
   const text=state.phase==='over'?`${name(state.winner!)} won. ${state.message}`:state.phase==='moving'?`${name(state.turn)} · balls rolling…`:`${name(state.turn)} to play. ${state.message}`;setText('.pool-message',text);
-  $('.pool-shot-count').textContent=`${state.shots} shot${state.shots===1?'':'s'}`;mode.value=online||!$('.pool-online').hidden?'online':state.mode;mode.disabled=paused||!!online;
+  $('.pool-shot-count').textContent=`${state.shots} shot${state.shots===1?'':'s'}`;mode.value=state.mode;mode.disabled=paused||!!online;$('.pool-multiplayer').textContent=online?'Online room':'Multiplayer';
   root.dataset.online=online?(online.host?'host':'guest'):'off';root.dataset.rev=String(online?(online.host?online.host.rev:online.guest!.rev):0);
   $('.mp-waiting').hidden=!(online?.guest&&online.roomPaused);
   pocket.value=String(state.calledPocket);pocket.disabled=!canAim()||state.break;
@@ -100,7 +100,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
     context.announce(`${e.player.name} joined. ${self.name} breaks.`);refresh(true);
    }else if(e.type==='left'&&session.host&&e.player.id===session.guestId){
     session.guestId=null;session.host.setGuest(null);state=session.host.state;ghost=null;
-    panel?.setNote(`${e.player.name} left, so that rack ended. Waiting for a new opponent.`);context.announce(`${e.player.name} left the online game.`);refresh();
+    dialog?.panel.setNote(`${e.player.name} left, so that rack ended. Waiting for a new opponent.`);context.announce(`${e.player.name} left the online game.`);refresh();
    }else if(e.type==='message'&&session.host&&e.from.id===session.guestId){
     const m=parseCommand(e.data);if(!m)return;
     const previous=state.phase;
@@ -116,9 +116,9 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
    }else if(e.type==='paused'){session.roomPaused=e.paused;cancelDrag();if(session.guest)context.announce(e.paused?'Waiting for host.':'The host resumed.');refresh();}
    else if(e.type==='closed')endOnline(e.message);
   });
-  if(session.guest)room.send({t:'sync'});
+  if(session.guest){room.send({t:'sync'});dialog?.close();}
   if(session.host&&paused)room.setPaused(true);
-  panel?.setNote(session.host?'You are the host: your device runs the table and breaks first.':'');
+  dialog?.panel.setNote(session.host?'You are the host: your device runs the table and breaks first.':'');
   refresh(true);
  }
  function endOnline(message:string){
@@ -128,13 +128,10 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const c=cue();ghost=state.ballInHand?{x:c.x,y:c.y,valid:validCuePosition(state,c.x,c.y)}:null;
   context.setStatus(message);context.announce(message);refresh();
  }
- function showOnline(show:boolean){
-  const area=$('.pool-online');
-  if(show&&!panel){
-   panel=new RoomPanel({game:'pool',title:'Pool',version:POOL_ONLINE_VERSION,maxPlayers:2,onOpen:startOnline,onClosed:endOnline,inviteCode:inviteCodeFromHash(location.hash),relayOnly:relayOnlyFromHash(location.hash)});
-   area.append(panel.root);
-  }
-  area.hidden=!show;refresh();
+ /** The Multiplayer menu floats over the game: nothing in the table layout changes size. */
+ function showOnline(){
+  dialog??=new RoomDialog({game:'pool',title:'Pool',version:POOL_ONLINE_VERSION,maxPlayers:2,onOpen:startOnline,onClosed:endOnline,inviteCode:inviteCodeFromHash(location.hash),relayOnly:relayOnlyFromHash(location.hash)});
+  dialog.open();
  }
  function cancelDrag(){
   const id=pointer;drag=null;pointer=null;placing=false;dragRect=null;
@@ -178,7 +175,8 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  if(window.visualViewport){on(window.visualViewport,'resize',changedLayout);on(window.visualViewport,'scroll',changedLayout);}
  const resizeObserver=new ResizeObserver(changedLayout);resizeObserver.observe(canvas);
  on(pocket,'change',()=>{if(canAim()){cancelDrag();if(online)act({t:'pocket',pocket:Number(pocket.value)});else{state.calledPocket=Number(pocket.value);updated();}}});
- on(mode,'change',()=>{const value=mode.value;if(paused||online)return;if(value==='online'){showOnline(true);return;}showOnline(false);reset(value==='two'?'two':'ai');});
+ on(mode,'change',()=>{const value=mode.value;if(paused||online)return;reset(value==='two'?'two':'ai');});
+ on($('.pool-multiplayer'),'click',()=>{if(!paused)showOnline();});
  on(canvas,'contextmenu',event=>{event.preventDefault();cancelDrag();refresh();});
  on(canvas,'keydown',((event:KeyboardEvent)=>{
   if(['c','C','Escape','Backspace'].includes(event.key)){event.preventDefault();cancelDrag();refresh();return;}
@@ -212,8 +210,8 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  }
  // Pausing cancels the stroke, but physical contacts end only on pointerup/cancel.
  // Online, the host's pause pauses the room; resuming resends the whole table so every device agrees again.
- const instance={pause(){if(paused||disposed)return;cancelDrag();paused=true;cancelAnimationFrame(frame);last=0;if(online?.host){online.host.paused=true;online.room.setPaused(true);online.roomPaused=true;}refresh();},resume(){if(!paused||disposed)return;paused=false;last=0;if(online?.host){online.host.paused=false;online.roomPaused=false;online.room.setPaused(false);if(online.guestId)online.host.sync(1);}else if(online?.guest)online.room.send({t:'sync'});refresh();frame=requestAnimationFrame(tick);},restart(){if(online?.host){cancelDrag();if(online.host.opponent){online.host.newRack();state=online.host.state;ghost=null;refresh(true);}return;}if(online){context.setStatus('Only the host can start a new online rack.');return;}reset();},serialize(){return JSON.parse(JSON.stringify(online?online.offline:state)) as PoolState;},restore(data:unknown){const restored=restoreGame(data);if(!restored)return;if(online){online.offline=restored;return;}cancelDrag();state=restored;aiPlan=null;accumulator=0;last=0;const cue=state.balls.find(b=>b.id===0)!;ghost=state.ballInHand?{x:cue.x,y:cue.y,valid:validCuePosition(state,cue.x,cue.y)}:null;refresh();},dispose(){cancelDrag();resizeObserver.disconnect();disposed=true;online?.off();online=null;panel?.dispose();panel=null;cancelAnimationFrame(frame);abort.abort();root.remove();}};
- if(inviteCodeFromHash(location.hash))showOnline(true);
+ const instance={pause(){if(paused||disposed)return;cancelDrag();paused=true;cancelAnimationFrame(frame);last=0;if(online?.host){online.host.paused=true;online.room.setPaused(true);online.roomPaused=true;}refresh();},resume(){if(!paused||disposed)return;paused=false;last=0;if(online?.host){online.host.paused=false;online.roomPaused=false;online.room.setPaused(false);if(online.guestId)online.host.sync(1);}else if(online?.guest)online.room.send({t:'sync'});refresh();frame=requestAnimationFrame(tick);},restart(){if(online?.host){cancelDrag();if(online.host.opponent){online.host.newRack();state=online.host.state;ghost=null;refresh(true);}return;}if(online){context.setStatus('Only the host can start a new online rack.');return;}reset();},serialize(){return JSON.parse(JSON.stringify(online?online.offline:state)) as PoolState;},restore(data:unknown){const restored=restoreGame(data);if(!restored)return;if(online){online.offline=restored;return;}cancelDrag();state=restored;aiPlan=null;accumulator=0;last=0;const cue=state.balls.find(b=>b.id===0)!;ghost=state.ballInHand?{x:cue.x,y:cue.y,valid:validCuePosition(state,cue.x,cue.y)}:null;refresh();},dispose(){cancelDrag();resizeObserver.disconnect();disposed=true;online?.off();online=null;dialog?.dispose();dialog=null;cancelAnimationFrame(frame);abort.abort();root.remove();}};
+ if(inviteCodeFromHash(location.hash))queueMicrotask(()=>{if(!disposed)showOnline();});
  // Development-only hook for the two-browser tests: read the table, aim like the keyboard does, send a raw command.
  if(import.meta.env.DEV)(window as unknown as {__pool?:unknown}).__pool={
   state:()=>JSON.parse(JSON.stringify(state)),seat:()=>online?.seat??null,

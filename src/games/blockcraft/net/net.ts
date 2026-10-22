@@ -1,8 +1,8 @@
 // game.net: offline it reports the local player and full authority, so every system behaves as in single player. The
-// "Play online…" menu button opens the shared room panel (Create room, Join by code, Copy invite link, Leave room). The
+// "Multiplayer" menu button opens the shared room panel (Create room, Join by code, Copy invite link, Leave room). The
 // creator hosts: its world becomes the shared world (saved separately from single player). A guest's single-player world is
 // kept aside while it plays online and comes back when it leaves or the host goes.
-import {RoomPanel,inviteCodeFromHash,relayOnlyFromHash} from '../../../multiplayer/panel';
+import {RoomDialog,inviteCodeFromHash,relayOnlyFromHash} from '../../../multiplayer/panel';
 import type {Room} from '../../../multiplayer/room';
 import type {Game,NetRole,NetService,PlayerView} from '../engine/contracts';
 import {localView} from '../engine/players';
@@ -36,7 +36,7 @@ export interface NetController extends NetService{
 
 export function createNet(game:Game,hooks:NetHooks):NetController{
   let role:NetRole='offline',host:HostSession|null=null,guest:GuestSession|null=null,room:Room|null=null,kept:unknown=null;
-  let panel:RoomPanel|null=null,overlay:HTMLElement|null=null,waiting:HTMLElement|null=null;
+  let dialog:RoomDialog|null=null,waiting:HTMLElement|null=null;
   let holdReason:'join'|'host'|null=null,disposing=false;
   const local=localView(game);
   const single:readonly PlayerView[]=[local];
@@ -62,7 +62,8 @@ export function createNet(game:Game,hooks:NetHooks):NetController{
       });
     }
     game.events.emit('settingsChanged',{settings:game.settings});
-    overlayVisible(false);
+    // The host keeps the menu open to share the code; a guest goes straight into the world.
+    if(r.role==='guest')overlayVisible(false);
   }
   function stop(message:string){
     const wasGuest=role==='guest';
@@ -77,22 +78,15 @@ export function createNet(game:Game,hooks:NetHooks):NetController{
     game.events.emit('settingsChanged',{settings:game.settings});
     game.ui.toast(message.slice(0,120));game.context.announce(message);game.context.setStatus(message);
   }
+  /** The Multiplayer menu, floating in the centre over the game (no layout changes). */
   function overlayVisible(show:boolean){
-    if(show&&!overlay){
-      overlay=document.createElement('div');overlay.className='bc-online';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Play Blockcraft online');
-      panel=new RoomPanel({game:'blockcraft',title:'Blockcraft',version:BLOCKCRAFT_ONLINE_VERSION,maxPlayers:MAX_PLAYERS,onOpen:start,onClosed:stop,
+    if(show&&!dialog){
+      dialog=new RoomDialog({game:'blockcraft',title:'Blockcraft',version:BLOCKCRAFT_ONLINE_VERSION,maxPlayers:MAX_PLAYERS,onOpen:start,onClosed:stop,
         inviteCode:inviteCodeFromHash(location.hash),relayOnly:relayOnlyFromHash(location.hash)});
-      panel.setNote('The host’s world is shared and saved on the host’s device. Guests keep their own single-player world.');
-      const back=document.createElement('button');back.type='button';back.className='game-button secondary bc-online-back';back.textContent='Back to game menu';
-      back.addEventListener('click',()=>overlayVisible(false));
-      overlay.append(panel.root,back);
-      // Menus, screens and the world below must not see these clicks and keys.
-      for(const type of ['pointerdown','mousedown','click','wheel','keydown','keyup'])overlay.addEventListener(type,e=>{if((e as KeyboardEvent).key!=='Escape')e.stopPropagation();});
-      game.root.append(overlay);
+      dialog.panel.setNote('The host’s world is shared and saved on the host’s device. Guests keep their own single-player world.');
     }
-    if(overlay){overlay.hidden=!show;if(show)overlay.querySelector<HTMLElement>('input:not(:disabled),button')?.focus({preventScroll:true});}
+    if(show)dialog?.open();else dialog?.close();
   }
-
   const service:NetController={
     get role(){return role;},
     get authority(){return role!=='guest';},
@@ -115,7 +109,7 @@ export function createNet(game:Game,hooks:NetHooks):NetController{
       // Leaving the game ends the room (guests are told the host left) and saves the shared world.
       if(room&&!room.closed)room.close('left');
       host?.dispose();guest?.dispose();host=null;guest=null;role='offline';
-      panel?.dispose();overlay?.remove();waiting?.remove();
+      dialog?.dispose();waiting?.remove();
     }
   };
   return service;

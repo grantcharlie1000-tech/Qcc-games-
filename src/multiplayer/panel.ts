@@ -172,3 +172,40 @@ export class RoomPanel{
   leave(){this.current?.close('left');}
   dispose(){this.disposed=true;this.off?.();this.off=null;const room=this.current;this.current=null;room?.close('left');this.root.remove();}
 }
+
+/** The Multiplayer menu: the room panel in a card floating in the centre of the screen over the game. It sits outside the
+ *  game's layout (fixed, in #app), so opening it resizes nothing; Study Mode hides it with the rest of the arcade. */
+export class RoomDialog{
+  readonly root=document.createElement('div');
+  readonly panel:RoomPanel;
+  private before:HTMLElement|null=null;
+  constructor(options:PanelOptions){
+    this.panel=new RoomPanel(options);
+    const r=this.root;r.className='mp-overlay';r.hidden=true;
+    r.setAttribute('role','dialog');r.setAttribute('aria-modal','true');r.setAttribute('aria-label',`${options.title} multiplayer`);
+    const card=document.createElement('div');card.className='mp-card';
+    const close=document.createElement('button');close.type='button';close.className='mp-close';close.setAttribute('aria-label','Close multiplayer menu');
+    close.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>';
+    close.addEventListener('click',()=>this.close());
+    card.append(close,this.panel.root);r.append(card);
+    // A click on the backdrop closes; nothing inside reaches the game below.
+    r.addEventListener('click',e=>{if(e.target===r)this.close();});
+    for(const type of ['pointerdown','pointerup','mousedown','mouseup','click','wheel','touchstart','keydown','keyup'])
+      r.addEventListener(type,e=>{if((e as KeyboardEvent).key!=='Escape')e.stopPropagation();});
+    (document.querySelector('#app')??document.body).append(r);
+  }
+  get isOpen(){return !this.root.hidden;}
+  open(){
+    if(this.isOpen)return;
+    this.before=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    this.root.hidden=false;
+    this.root.querySelector<HTMLElement>('.mp-panel input:not(:disabled),.mp-panel button:not(:disabled)')?.focus({preventScroll:true});
+  }
+  close(){
+    if(!this.isOpen)return;
+    this.root.hidden=true;
+    if(this.before?.isConnected)this.before.focus({preventScroll:true});
+    this.before=null;
+  }
+  dispose(){this.panel.dispose();this.root.remove();}
+}
