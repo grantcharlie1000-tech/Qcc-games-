@@ -575,6 +575,7 @@ unless they would compromise performance or correctness. Unit tests can build se
 - **Must:**
   - `mountScreen`: the Advancements screen body (tree with parents, locked/unlocked, progress, plus statistics) opened by L or the pause menu.
   - Toasts in the top-right zone ("Advancement Made!", icon, title) with the `toast` sound; they never cover the shell toolbar.
+    A title wider than 125 GUI px wraps like vanilla: the heading shows alone first, then cross-fades to the title lines.
   - Statistics: blocks mined/placed, mobs killed, deaths, distance walked, days survived, items crafted.
   - Persistence via `serialize`/`restore`.
   - Hook only via `game.events` (blockBroken, blockPlaced, itemPickedUp, itemCrafted, itemConsumed, entityDied, animalBred, entityTamed,

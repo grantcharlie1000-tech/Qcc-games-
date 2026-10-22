@@ -3,19 +3,18 @@
 
 /* ---- Toasts ------------------------------------------------------------------------------------------------- */
 /* The vanilla advancement toast in GUI pixels (--u, set by the toast layer from the HUD's GUI scale): a 160x32 dark frame,
-   the 16 px icon at (8, 8), the heading at (30, 7) and the title at (30, 18) in the GUI font, without a text shadow. */
+   the 16 px icon at (8, 8), the heading at (30, 7) and the title at (30, 18) in the GUI font, without a text shadow. Lines
+   are at most 125 GUI px (longer titles wrap; the toast layer sets each line's top). */
 .bc-adv-toasts{--u:2px;position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));z-index:25;
   width:calc(160 * var(--u));height:0;pointer-events:none}
 .bc-adv-toast{position:absolute;right:0;top:calc(var(--slot,0) * 34 * var(--u));box-sizing:border-box;width:calc(160 * var(--u));height:calc(32 * var(--u));
   border-radius:calc(2 * var(--u));background:#212121;will-change:transform;
   box-shadow:inset 0 0 0 var(--u) #000,inset 0 0 0 calc(2 * var(--u)) #555,inset 0 0 0 calc(3 * var(--u)) #2c2c2c}
 .bc-adv-toast-icon{position:absolute;left:calc(8 * var(--u));top:calc(8 * var(--u));width:calc(16 * var(--u));height:calc(16 * var(--u));image-rendering:pixelated}
-.bc-adv-toast p{position:absolute;left:calc(30 * var(--u));margin:0;max-width:calc(128 * var(--u));overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+.bc-adv-toast p{position:absolute;left:calc(30 * var(--u));margin:0;max-width:calc(125 * var(--u));overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
   font:calc(8 * var(--u))/calc(9 * var(--u)) ui-monospace,"Courier New",monospace}
 .bc-adv-toast p.is-art{width:calc(var(--tw) * var(--u));height:calc(9 * var(--u));color:transparent!important;
   background:no-repeat 0 0/100% 100%;image-rendering:pixelated}
-.bc-adv-toast-head{top:calc(7 * var(--u))}
-.bc-adv-toast-title{top:calc(18 * var(--u))}
 
 /* ---- Screen body ------------------------------------------------------------------------------------------- */
 /* Labels are pixel-font art (.bc-px, ui/screens.css) at the panel's GUI pixel; the tab row uses two thirds of it. */
