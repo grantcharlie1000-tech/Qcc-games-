@@ -54,8 +54,7 @@ export function achievementTarget(a:Achievement,style:NumberStyle):string {
   return a.check.type==='runEarned'||a.check.type==='cps'||a.check.type==='clickEarned'?format(a.check.target,style):a.check.target.toLocaleString('en-GB');
 }
 export function goldenResult(kind:'lucky'|'bumper'|'storm',amount:Big|undefined,style:NumberStyle,seconds:number):string {
-  if(kind==='lucky')return `Lucky Harvest! +${format(amount??0,style)} kernels.`;
-  const e=GOLDEN.effects[kind];
-  return kind==='bumper'?`Bumper Crop! Production ×${e.mult} for ${Math.round(seconds)} seconds.`:`Kernel Storm! Clicks ×${e.mult} for ${Math.round(seconds)} seconds.`;
+  if(kind==='lucky')return `Lucky! +${format(amount??0,style)}`;
+  return kind==='bumper'?`Bumper Crop! ×${GOLDEN.effects.bumper.mult} production`:`Kernel Storm! ×${GOLDEN.effects.storm.mult} clicks`;
 }
 export const festivalText=(id:keyof typeof FESTIVALS)=>`${FESTIVALS[id].name}: ${FESTIVALS[id].desc}`;

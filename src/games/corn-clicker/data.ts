@@ -292,17 +292,17 @@ export const permById=new Map(PERMS.map(p=>[p.id,p]));
 
 // ───────────────────────── Garden ─────────────────────────
 export type GardenEffect='production'|'click'|'goldenFreq'|'goldenDuration'|'harvest';
-export interface Variety {id:VarietyId;name:string;growSeconds:number;effect:GardenEffect;pct:number;plantSeconds:number;harvestSeconds:number;parents?:[VarietyId,VarietyId];mutationChance:number;desc:string}
-/** Plant cost = production × plantSeconds (minimum 50 kernels); harvest = production × harvestSeconds. */
+export interface Variety {id:VarietyId;name:string;growSeconds:number;effect:GardenEffect;pct:number;plantSeconds:number;harvestMult:number;parents?:[VarietyId,VarietyId];mutationChance:number;desc:string}
+/** Plant cost = production × plantSeconds (minimum 50 kernels); a ripe harvest returns that cost × harvestMult, fixed at planting. */
 export const VARIETIES:Variety[]=[
- {id:'sweet',name:'Golden Sweetcorn',growSeconds:120,effect:'production',pct:2,plantSeconds:30,harvestSeconds:300,mutationChance:0,desc:'The dependable classic. Mature plants add +2% production.'},
- {id:'popcorn',name:'Pop-Pop Popcorn',growSeconds:180,effect:'click',pct:5,plantSeconds:60,harvestSeconds:300,parents:['sweet','sweet'],mutationChance:0.12,desc:'Pops with enthusiasm. Mature plants add +5% click power.'},
- {id:'bluemoon',name:'Blue Moon Maize',growSeconds:240,effect:'goldenFreq',pct:3,plantSeconds:120,harvestSeconds:420,parents:['sweet','popcorn'],mutationChance:0.1,desc:'Only ripens once in a blue moon. Mature plants make golden cobs 3% more frequent.'},
- {id:'candy',name:'Candy Stripe',growSeconds:300,effect:'harvest',pct:0,plantSeconds:180,harvestSeconds:1800,parents:['sweet','bluemoon'],mutationChance:0.08,desc:'Grown for its enormous harvest: 30 minutes of production.'},
- {id:'ghost',name:'Ghost Corn',growSeconds:360,effect:'goldenDuration',pct:5,plantSeconds:240,harvestSeconds:600,parents:['bluemoon','bluemoon'],mutationChance:0.07,desc:'Barely there. Mature plants make golden effects last 5% longer.'},
- {id:'ember',name:'Ember Maize',growSeconds:360,effect:'click',pct:8,plantSeconds:240,harvestSeconds:600,parents:['popcorn','candy'],mutationChance:0.06,desc:'Warm to the touch. Mature plants add +8% click power.'},
- {id:'prism',name:'Prism Kernel',growSeconds:480,effect:'production',pct:4,plantSeconds:360,harvestSeconds:900,parents:['candy','bluemoon'],mutationChance:0.05,desc:'Every kernel a tiny gemstone. Mature plants add +4% production.'},
- {id:'starcob',name:'Starcob',growSeconds:720,effect:'goldenFreq',pct:6,plantSeconds:600,harvestSeconds:1800,parents:['prism','ghost'],mutationChance:0.04,desc:'Grown from fallen starlight. Mature plants make golden cobs 6% more frequent.'},
+ {id:'sweet',name:'Golden Sweetcorn',growSeconds:120,effect:'production',pct:2,plantSeconds:30,harvestMult:1.4,mutationChance:0,desc:'The dependable classic. Mature plants add +2% production.'},
+ {id:'popcorn',name:'Pop-Pop Popcorn',growSeconds:180,effect:'click',pct:5,plantSeconds:60,harvestMult:1.5,parents:['sweet','sweet'],mutationChance:0.12,desc:'Pops with enthusiasm. Mature plants add +5% click power.'},
+ {id:'bluemoon',name:'Blue Moon Maize',growSeconds:240,effect:'goldenFreq',pct:3,plantSeconds:120,harvestMult:1.5,parents:['sweet','popcorn'],mutationChance:0.1,desc:'Only ripens once in a blue moon. Mature plants make golden cobs 3% more frequent.'},
+ {id:'candy',name:'Candy Stripe',growSeconds:300,effect:'harvest',pct:0,plantSeconds:300,harvestMult:2,parents:['sweet','bluemoon'],mutationChance:0.08,desc:'Grown for its harvest: pays back double its planting cost.'},
+ {id:'ghost',name:'Ghost Corn',growSeconds:360,effect:'goldenDuration',pct:5,plantSeconds:240,harvestMult:1.6,parents:['bluemoon','bluemoon'],mutationChance:0.07,desc:'Barely there. Mature plants make golden effects last 5% longer.'},
+ {id:'ember',name:'Ember Maize',growSeconds:360,effect:'click',pct:8,plantSeconds:240,harvestMult:1.6,parents:['popcorn','candy'],mutationChance:0.06,desc:'Warm to the touch. Mature plants add +8% click power.'},
+ {id:'prism',name:'Prism Kernel',growSeconds:480,effect:'production',pct:4,plantSeconds:360,harvestMult:1.8,parents:['candy','bluemoon'],mutationChance:0.05,desc:'Every kernel a tiny gemstone. Mature plants add +4% production.'},
+ {id:'starcob',name:'Starcob',growSeconds:720,effect:'goldenFreq',pct:6,plantSeconds:600,harvestMult:2,parents:['prism','ghost'],mutationChance:0.04,desc:'Grown from fallen starlight. Mature plants make golden cobs 6% more frequent.'},
 ];
 export const varietyById=Object.fromEntries(VARIETIES.map(v=>[v.id,v])) as Record<VarietyId,Variety>;
 export const GARDEN={size:3,bigSize:4,bigSizeGreenhouses:50,mutationInterval:10};

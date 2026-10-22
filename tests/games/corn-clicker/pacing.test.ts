@@ -28,6 +28,12 @@ describe('pacing',()=>{
     // At least 3× more after an hour of the second run.
     expect(earned[1]-earned[0]).toBeGreaterThan(Math.log10(3));
   },120000);
+  test('constant garden farming helps without collapsing the first-Replant pacing',()=>{
+    const plain=simulate({seconds:3*3600,clicksPerSecond:6,golden:true});
+    const garden=simulate({seconds:3*3600,clicksPerSecond:6,golden:true,garden:true});
+    expect(garden.seedTimes[1]).toBeGreaterThan(1800);
+    expect(garden.game.seedsAvailable()).toBeLessThanOrEqual(plain.game.seedsAvailable()*2);
+  },120000);
   test('idle play with occasional clicks still reaches a first Golden Seed within three hours',()=>{
     const run=simulate({seconds:3*3600,clicksPerSecond:0.3});
     expect(run.seedTimes[1]).toBeLessThan(3*3600);

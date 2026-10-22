@@ -6,13 +6,16 @@ export const SAVE_VERSION=2;
 export type ParticleLevel='off'|'low'|'full';
 export interface RunStats {earned:Big;clicks:number;clickEarned:Big;golden:number;harvests:number;pests:number;festivals:number;producersBought:number;upgradesBought:number;playSeconds:number;offlineEarned:Big;bestCps:Big}
 export interface LifeStats extends RunStats {replants:number;planted:number;mutations:number;offlineReturns:number;skinsChanged:number;bestBurst:number}
-export interface Plot {v:VarietyId;age:number}
+/** `paid` is the planting cost; the harvest value is fixed from it when planted. */
+export interface Plot {v:VarietyId;age:number;paid:Big}
 export interface ActiveEffect {remaining:number;duration:number}
 export interface GoldenOnScreen {x:number;y:number;life:number;maxLife:number;kind:GoldenKind}
 export interface Pest {id:number;stolen:Big;angle:number}
 export interface Options {sound:boolean;volume:number;reducedMotion:boolean;particles:ParticleLevel;numbers:'short'|'long'|'scientific';ticker:boolean}
 export interface State {
   rev:number;created:number;lastTick:number;rng:number;
+  /** Latest clock time ever credited: time before it is never paid again, even after a clock change. */
+  clockMax:number;
   kernels:Big;
   producers:Record<ProducerId,number>;
   upgrades:Set<string>;
@@ -34,7 +37,7 @@ export interface State {
 export function freshRun():RunStats {return {earned:Big.ZERO,clicks:0,clickEarned:Big.ZERO,golden:0,harvests:0,pests:0,festivals:0,producersBought:0,upgradesBought:0,playSeconds:0,offlineEarned:Big.ZERO,bestCps:Big.ZERO};}
 export function freshState(now:number,seed=Math.floor(Math.random()*2**31)):State {
   return {
-    rev:0,created:now,lastTick:now,rng:seed>>>0,
+    rev:0,created:now,lastTick:now,clockMax:now,rng:seed>>>0,
     kernels:Big.ZERO,
     producers:Object.fromEntries(PRODUCER_IDS.map(id=>[id,0])) as Record<ProducerId,number>,
     upgrades:new Set(),perms:new Set(),seeds:0,seedsClaimed:0,achievements:new Set(),skin:'classic',
@@ -54,12 +57,12 @@ export function freshState(now:number,seed=Math.floor(Math.random()*2**31)):Stat
 const runToJson=(r:RunStats)=>({...r,earned:r.earned.toString(),clickEarned:r.clickEarned.toString(),offlineEarned:r.offlineEarned.toString(),bestCps:r.bestCps.toString()});
 export function serialize(s:State):Record<string,unknown> {
   return {
-    v:SAVE_VERSION,rev:s.rev,created:s.created,lastTick:s.lastTick,rng:s.rng,
+    v:SAVE_VERSION,rev:s.rev,created:s.created,lastTick:s.lastTick,clockMax:s.clockMax,rng:s.rng,
     kernels:s.kernels.toString(),producers:{...s.producers},upgrades:[...s.upgrades],perms:[...s.perms],
     seeds:s.seeds,seedsClaimed:s.seedsClaimed,achievements:[...s.achievements],skin:s.skin,
     run:runToJson(s.run),life:{...runToJson(s.life),replants:s.life.replants,planted:s.life.planted,mutations:s.life.mutations,offlineReturns:s.life.offlineReturns,skinsChanged:s.life.skinsChanged,bestBurst:s.life.bestBurst},
     golden:{next:s.golden.next,onScreen:s.golden.onScreen,effects:s.golden.effects},
-    garden:{plots:s.garden.plots,discovered:[...s.garden.discovered],mutationClock:s.garden.mutationClock},
+    garden:{plots:s.garden.plots.map(p=>p&&{v:p.v,age:p.age,paid:p.paid.toString()}),discovered:[...s.garden.discovered],mutationClock:s.garden.mutationClock},
     festival:s.festival,scarecrow:s.scarecrow,
     pests:{list:s.pests.list.map(p=>({id:p.id,stolen:p.stolen.toString(),angle:p.angle})),next:s.pests.next,enabled:s.pests.enabled,nextId:s.pests.nextId},
     options:s.options,tutorial:[...s.tutorial],
@@ -104,7 +107,7 @@ export function deserialize(raw:unknown,now:number):State {
   const d=migrate(raw);
   if(!('kernels' in d)||Big.parse(d.kernels)===undefined)throw new SaveError('Save data has no valid kernel balance.');
   const s=freshState(now,int(d.rng,1,2**32-1)||1);
-  s.rev=int(d.rev);s.created=num(d.created,now,0);s.lastTick=num(d.lastTick,now,0);
+  s.rev=int(d.rev);s.created=num(d.created,now,0);s.lastTick=num(d.lastTick,now,0);s.clockMax=Math.max(s.lastTick,num(d.clockMax,s.lastTick,0));
   s.kernels=big(d.kernels);
   const producers=isObj(d.producers)?d.producers:{};
   for(const id of PRODUCER_IDS)s.producers[id]=int(producers[id],0,1e6);
@@ -130,7 +133,7 @@ export function deserialize(raw:unknown,now:number):State {
   }
   const garden=isObj(d.garden)?d.garden:{};
   const plots=Array.isArray(garden.plots)?garden.plots:[];
-  s.garden.plots=Array.from({length:16},(_,i)=>{const p=plots[i];return isObj(p)&&VARIETY_IDS.has(p.v as VarietyId)?{v:p.v as VarietyId,age:num(p.age,0,0,1e9)}:null;});
+  s.garden.plots=Array.from({length:16},(_,i)=>{const p=plots[i];return isObj(p)&&VARIETY_IDS.has(p.v as VarietyId)?{v:p.v as VarietyId,age:num(p.age,0,0,1e9),paid:big(p.paid)}:null;});
   s.garden.discovered=new Set(['sweet',...strings(garden.discovered).filter(v=>VARIETY_IDS.has(v as VarietyId))] as VarietyId[]);
   s.garden.mutationClock=num(garden.mutationClock,0,0,600);
   const festival=isObj(d.festival)?d.festival:{};

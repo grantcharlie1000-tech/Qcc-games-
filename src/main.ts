@@ -58,7 +58,11 @@ storageStatus();
 function announce(text:string){document.querySelector('#announcer')!.textContent=text;}
 function save():boolean {
   if(!instance||!activeId)return true;
-  try {const durable=store.saveGame(activeId,instance.serialize());storageStatus();return durable;}
+  try {
+    // A game may return undefined when it has nothing of its own to save (e.g. another tab owns it).
+    const data=instance.serialize();if(data===undefined)return true;
+    const durable=store.saveGame(activeId,data);storageStatus();return durable;
+  }
   catch {announce('This game could not save this time.');return false;}
 }
 let updateReady=false,updateBusy=false,updateRequest=0,updateFailure='';

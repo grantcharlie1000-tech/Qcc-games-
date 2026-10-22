@@ -3,7 +3,7 @@ import {CornGame} from '../../../src/games/corn-clicker/model';
 import {PRODUCERS,type ProducerId} from '../../../src/games/corn-clicker/data';
 import {Big} from '../../../src/games/corn-clicker/big';
 
-export interface SimOptions {seconds:number;clicksPerSecond:number;game?:CornGame;golden?:boolean;log?:(t:number,g:CornGame)=>void}
+export interface SimOptions {seconds:number;clicksPerSecond:number;game?:CornGame;golden?:boolean;garden?:boolean;log?:(t:number,g:CornGame)=>void}
 export interface SimResult {game:CornGame;firstProducer:number;purchases:number[];firstGarden:number;seedTimes:Record<number,number>}
 
 /** Buys the best payback item every simulated second; clicks golden cobs when `golden`. */
@@ -17,6 +17,12 @@ export function simulate(o:SimOptions):SimResult {
     for(;clickDebt>=1;clickDebt--)g.click(now);
     g.tick(now);
     if(o.golden&&g.s.golden.onScreen)g.collectGolden();
+    // An obsessive gardener: harvest everything ripe and replant the best-paying known variety.
+    if(o.garden&&g.has('garden'))for(let i=0;i<16;i++){
+      if(!g.plotActive(i))continue;
+      if(g.s.garden.plots[i]&&g.mature(i))g.harvest(i);
+      if(!g.s.garden.plots[i])g.plant(i,g.s.garden.discovered.has('candy')?'candy':'sweet');
+    }
     g.checkAchievements();
     // Buy loop: pick the cheapest-payback option among producers and upgrades.
     for(let guard=0;guard<50;guard++){

@@ -2,7 +2,7 @@
  * Garden panel: plots, seed tray (tap-to-select or drag into a plot), selected-plot details and
  * the collection book. Pointer dragging and tapping share one code path; buttons keep it keyboard-accessible.
  */
-import {plantSvg} from './art';
+import {plantArt} from './art';
 import {format} from './big';
 import {VARIETIES,varietyById,type VarietyId} from './data';
 import type {CornGame} from './model';
@@ -13,6 +13,7 @@ export interface GardenHost {
   style():'short'|'long'|'scientific';
   feedback(kind:'plant'|'harvest'|'deny',text:string,at?:HTMLElement):void;
   changed():void;
+  canAct():boolean;
 }
 const effectLabel=(id:VarietyId)=>{
   const v=varietyById[id];
@@ -31,7 +32,7 @@ export class GardenView {
       <div class="cc-garden-main"><div class="cc-garden-grid" role="group" aria-label="Garden plots"></div>
       <div class="cc-garden-side"><h3 class="cc-h3" id="cc-seed-title">Seeds</h3><div class="cc-seed-tray" role="group" aria-labelledby="cc-seed-title"></div>
       <p class="cc-garden-help"></p><div class="cc-plot-details" aria-live="polite"></div></div></div>
-      <h3 class="cc-h3">Collection book</h3><ul class="cc-book"></ul>`;
+      <h3 class="cc-h3">Collection</h3><ul class="cc-book"></ul>`;
     this.locked=root.querySelector('.cc-garden-locked')!;this.grid=root.querySelector('.cc-garden-grid')!;
     this.tray=root.querySelector('.cc-seed-tray')!;this.details=root.querySelector('.cc-plot-details')!;this.book=root.querySelector('.cc-book')!;this.help=root.querySelector('.cc-garden-help')!;
     this.tray.addEventListener('pointerdown',this.onSeedDown);
@@ -39,14 +40,14 @@ export class GardenView {
     this.grid.addEventListener('click',this.onPlotClick);
     this.details.addEventListener('click',this.onDetailsClick);
   }
-  private plant(id:VarietyId,stage:0|1|2|3){const key=id+stage;let svg=this.art.get(key);if(!svg){svg=plantSvg(id,stage);this.art.set(key,svg);}return svg;}
+  private plant(id:VarietyId,stage:0|1|2|3){const key=id+stage;let svg=this.art.get(key);if(!svg){svg=plantArt(id,stage);this.art.set(key,svg);}return svg;}
 
   /** Rebuild structure when something visible changed, then refresh timers. */
   update(){
     const g=this.host.game(),s=g.s.garden,style=this.host.style();
     const open=g.has('garden');
     this.locked.hidden=open;
-    this.locked.textContent=open?'':'Buy the “Kitchen Garden Plot” upgrade to plant this run. Your collection book and discoveries are kept forever.';
+    this.locked.textContent=open?'':'Buy the Kitchen Garden Plot upgrade to plant.';
     this.root.querySelector<HTMLElement>('.cc-garden-main')!.hidden=!open;
     const size=g.gardenSize();
     const sig=[open,size,[...s.discovered].join(),s.plots.map((p,i)=>p?`${p.v}${g.stage(i)}`:'-').join(),this.selectedSeed,this.selectedPlot].join('|');
@@ -82,15 +83,13 @@ export class GardenView {
     this.grid.innerHTML=plots;
     this.tray.innerHTML=VARIETIES.filter(v=>s.discovered.has(v.id)).map(v=>`<button type="button" class="cc-seed" data-seed="${v.id}" aria-pressed="${this.selectedSeed===v.id}" aria-label="${v.name} seed: ${effectLabel(v.id)}, grows in ${duration(v.growSeconds)}">
       <span class="cc-seed-art">${this.plant(v.id,3)}</span><span class="cc-seed-name">${v.name}</span><span class="cc-seed-cost"></span></button>`).join('');
-    this.help.textContent=this.selectedSeed
-      ?`Tap an empty plot to plant ${varietyById[this.selectedSeed].name}, or drag the seed onto a plot.`
-      :'Tap a seed then a plot, or drag a seed into a plot. Tap a ripe plant to harvest it. Leave an empty plot beside two ripe plants and something new may sprout.';
+    this.help.textContent=this.selectedSeed?'Now tap a plot.':'Pick a seed, then a plot. Ripe plants: tap to harvest.';
     this.book.innerHTML=VARIETIES.map(v=>{
       const known=s.discovered.has(v.id);
       const parentsKnown=v.parents?.every(p=>s.discovered.has(p));
       const recipe=v.parents?`${parentsKnown?`${varietyById[v.parents[0]].name} + ${varietyById[v.parents[1]].name}`:'??? + ???'}`:'Starter seed';
-      return `<li class="cc-book-item${known?'':' cc-unknown'}"><span class="cc-book-art">${known?this.plant(v.id,3):''}</span><span><strong>${known?v.name:'Undiscovered variety'}</strong>
-        <small>${known?`${v.desc} Grows in ${duration(v.growSeconds)}.`:'Grow next to the right parents to discover it.'}</small><small class="cc-recipe">Recipe: ${recipe}</small></span></li>`;
+      return `<li class="cc-book-item${known?'':' cc-unknown'}"><span class="cc-book-art">${known?this.plant(v.id,3):''}</span><span><strong>${known?v.name:'???'}</strong>
+        <small>${known?`${effectLabel(v.id)} · ${duration(v.growSeconds)}`:recipe}</small></span></li>`;
     }).join('');
   }
   private renderDetails(){
@@ -101,8 +100,7 @@ export class GardenView {
     const state=`${i}${p.v}${mature}`;
     if(this.details.dataset.state!==state){
       this.details.dataset.state=state;
-      this.details.innerHTML=`<p><strong>${v.name}</strong> <span class="cc-detail-time"></span></p><p class="cc-muted">${v.desc}</p>
-        <div class="cc-row">${mature?'<button type="button" class="cc-btn" data-act="harvest">Harvest</button>':'<button type="button" class="cc-btn cc-btn-quiet" data-act="remove">Pull up (no harvest)</button>'}<button type="button" class="cc-btn cc-btn-quiet" data-act="close">Close</button></div>`;
+      this.details.innerHTML=`<p><strong>${v.name}</strong> <span class="cc-detail-time"></span></p>        <div class="cc-row">${mature?'<button type="button" class="cc-btn" data-act="harvest">Harvest</button>':'<button type="button" class="cc-btn cc-btn-quiet" data-act="remove">Pull up (no harvest)</button>'}<button type="button" class="cc-btn cc-btn-quiet" data-act="close">Close</button></div>`;
     }
     this.details.querySelector('.cc-detail-time')!.textContent=mature?`ripe: harvest for ${format(g.harvestValue(i),style)} kernels`:`ripe in ${duration(left)}`;
   }
@@ -156,6 +154,7 @@ export class GardenView {
     removeEventListener('pointermove',this.onMove);removeEventListener('pointerup',this.onUp);removeEventListener('pointercancel',this.onCancel);
   }
   private plantAt(i:number,id:VarietyId,at:HTMLElement){
+    if(!this.host.canAct())return;
     const g=this.host.game();
     if(g.s.garden.plots[i]){this.host.feedback('deny','That plot is already in use.',at);return;}
     const cost=g.plantCost(id);
@@ -176,6 +175,7 @@ export class GardenView {
     this.grid.querySelector<HTMLElement>(`[data-plot="${i}"]`)?.focus();
   };
   private harvest(i:number,at:HTMLElement){
+    if(!this.host.canAct())return;
     const g=this.host.game(),name=varietyById[g.s.garden.plots[i]!.v].name;
     const value=g.harvest(i);
     if(value){this.host.feedback('harvest',value.isZero()?`Pulled up ${name}.`:`Harvested ${name}: +${format(value,this.host.style())} kernels.`,at);this.host.changed();}

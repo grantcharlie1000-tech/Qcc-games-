@@ -1,6 +1,6 @@
 # Corn Clicker
 
-An original corn-themed incremental game in the style of the genre's classics. You start by clicking a single cob and end up running corn production on a cosmic scale. Names, jokes and SVG artwork are original.
+An original corn-themed incremental game in the style of the genre's classics. You start by clicking a single cob and end up running corn production on a cosmic scale. Names, jokes and pixel artwork are original.
 
 ## Files
 | File | Role |
@@ -11,7 +11,7 @@ An original corn-themed incremental game in the style of the genre's classics. Y
 | `state.ts` | State shape, fresh state, versioned serialization, migration from older layouts, validation and repair, and export codes. |
 | `persistence.ts` | Cross-tab ownership lock, rolling backups and direct reads of the newest save. |
 | `ui.ts`, `garden-view.ts`, `text.ts`, `audio.ts`, `style.css` | Interface, input, feedback, tooltips, modals and synthesised sounds. |
-| `art.ts` | Hand-written SVG: the cob in 8 skins, 20 producer icons, 4 farm backdrops, the golden cob, pest, scarecrow, 8 varieties × 4 growth stages, and kernel, seed and butter icons. |
+| `sprites.ts`, `art.ts` | Pixel art. Sprites are character grids with small palettes, covering the cob (8 skins as palette swaps), 20 producers, golden cob, pest, scarecrow hats, 4 plant stages (8 varieties as palette swaps) and icons. `art.ts` draws each sprite once to a canvas, then shows it as a crisp-scaled PNG; the farm backdrop is painted procedurally at 192×120. |
 
 ## Rules
 - **Clicking.** Each pointer press (per finger), each non-repeating Space or Enter press on the focused cob, and each assistive-technology activation awards one click. A click is worth `(1 + Many Hands bonus) × click multipliers + production × click share`, and Kernel Storm multiplies the result by 777. The click-share upgrades (8 of them, plus permanent ones) keep clicking useful late in the game.
@@ -25,7 +25,7 @@ An original corn-themed incremental game in the style of the genre's classics. Y
   **Stacking:** different effects multiply, so a click during Bumper + Storm earns its production share at ×7, then ×777. Lucky uses current boosted production. Collecting an effect that is already running sets its timer to the longer of the two and never doubles the multiplier.
 - **Butter Bonus and skins.** There are 67 achievements, each worth +1% production (churns and Butter Vault raise this). Eight cob skins unlock at 0/5/10/18/26/34/44/55 achievements. The Goals tab shows the closest achievement and the next skin.
 - **Replant.** `seeds ever available = floor(cbrt(lifetime kernels harvested / 1e9))`. Replanting claims only seeds not already claimed, and spending kernels never lowers lifetime harvest. Each seed ever claimed gives +4% production permanently, and spending seeds on permanent upgrades doesn't change that. Replanting resets kernels, producers, ordinary upgrades (feature unlocks included), garden plantings, boosts, festivals, pests and run statistics. It keeps achievements, skins, discovered varieties, seeds, permanent upgrades, lifetime statistics and options. There are 22 permanent upgrades across Active, Idle, Golden and Whole-farm paths, some with prerequisites.
-- **Garden.** Unlocked by the *Kitchen Garden Plot* upgrade (needs 1 Greenhouse). The plot is 3×3, growing to 4×4 at 50 Greenhouses. Planting costs `max(50, production × plantSeconds)`. Ripe plants give their effect while they stand: production, click, golden frequency or golden duration. Harvesting pays `production × harvestSeconds`; pulling an unripe plant pays nothing. Every 10 s, an empty plot next to the right two ripe parents (8-neighbourhood) may sprout a mutation. The recipes are: Popcorn = Sweet+Sweet, Blue Moon = Sweet+Popcorn, Candy = Sweet+Blue Moon, Ghost = Blue Moon+Blue Moon, Ember = Popcorn+Candy, Prism = Candy+Blue Moon, Starcob = Prism+Ghost. Discoveries are permanent. Recipes appear in the collection book once both parents are known. Seeds can be tapped then planted in a plot, or dragged onto a plot.
+- **Garden.** Unlocked by the *Kitchen Garden Plot* upgrade (needs 1 Greenhouse). The plot is 3×3, growing to 4×4 at 50 Greenhouses. Planting costs `max(50, production × plantSeconds)`. Ripe plants give their effect while they stand: production, click, golden frequency or golden duration. Harvesting pays the planting cost × `harvestMult` (1.4–2), fixed when the seed was planted, so constant replanting helps without dominating the economy; pulling an unripe plant pays nothing. Every 10 s, an empty plot next to the right two ripe parents (8-neighbourhood) may sprout a mutation. The recipes are: Popcorn = Sweet+Sweet, Blue Moon = Sweet+Popcorn, Candy = Sweet+Blue Moon, Ghost = Blue Moon+Blue Moon, Ember = Popcorn+Candy, Prism = Candy+Blue Moon, Starcob = Prism+Ghost. Discoveries are permanent. Recipes appear in the collection book once both parents are known. Seeds can be tapped then planted in a plot, or dragged onto a plot.
 - **Scarecrow** (needs 1 Irrigation Network). It has one selectable bonus, or two with *Scarecrow Pact*:
   - +5% production
   - +15% clicks
@@ -39,8 +39,8 @@ An original corn-themed incremental game in the style of the genre's classics. Y
 
 ## Time, saving and safety
 - Production is computed from wall-clock elapsed time in ≤1 s steps, never from frame counts. A 1 s heartbeat keeps it running when animation frames are throttled.
-- A gap of up to 60 s between ticks counts as active play. A longer gap, whether the game was closed, hidden, paused or the device slept, counts as **time away**. Away time pays base production (no golden, festival or pest effects) at 50% for up to 8 h. Permanent upgrades raise this to 12 h, then 28 h, and to 75%, then 100%. Boosts and festivals count down through the whole gap. The garden grows for the credited time. The return dialog explains all of this. `lastTick` is saved, so a reload cannot pay the same gap twice, and imported codes start from "now".
-- If the clock goes backwards, no time is credited and boost timers cannot grow. A save stamped more than a minute in the future is treated as "now".
+- Short pauses (menu, rules, Study; up to 60 s) freeze the farm, golden cob included. A gap of up to 60 s between ticks while running counts as active play. A longer gap, whether the game was closed, hidden, paused or the device slept, counts as **time away**. Away time pays base production (no golden, festival or pest effects) at 50% for up to 8 h. Permanent upgrades raise this to 12 h, then 28 h, and to 75%, then 100%. Boosts and festivals count down through the whole gap. The garden grows for the credited time. The return dialog explains all of this. `lastTick` is saved, so a reload cannot pay the same gap twice, and imported codes start from "now".
+- If the clock goes backwards, no time is credited and boost timers cannot grow. A high-water mark (`clockMax`) means time already paid is never paid again, even after moving the clock forward, back and forward. A save stamped more than a minute in the future is treated as "now".
 - **Saving.**
   - The shell's 5 s autosave and its saves on pause and pagehide are used.
   - Significant actions also save: purchases (coalesced 0.7 s), prestige, imports, permanent upgrades and garden actions.
@@ -48,7 +48,7 @@ An original corn-themed incremental game in the style of the genre's classics. Y
   - A damaged save is replaced automatically by the newest readable backup. Any backup can be restored from Options.
   - Export codes are base64 JSON with an FNV checksum.
   - Older layouts migrate (version 1 → 2), and unknown or invalid fields are repaired or dropped.
-- **Tabs.** Only one tab runs the farm. Others show "Playing in another tab". *Play here instead* claims the lock, waits for the old tab's final save, then loads the newest save, and the old tab steps aside. A tab that isn't the owner returns the newest save from storage from `serialize()`, so it can never overwrite newer progress. A paused tab gives up the lock; when it resumes, it adopts a newer save written by another tab.
+- **Tabs.** Only one tab runs the farm. Others show "Playing in another tab". *Play here instead* claims the lock, waits for the old tab's final save, then loads the newest save, and the old tab steps aside. A tab that isn't the owner returns `undefined` from `serialize()`, and the shell skips that write, so it can never overwrite newer progress. Revisions only rise, including after Restart and backup restores. Taking over always continues from the stored save. A paused tab gives up the lock; when it resumes, it adopts a newer save written by another tab.
 - **Restart** in the toolbar asks for confirmation and makes a backup before wiping everything.
 
 ## Interface

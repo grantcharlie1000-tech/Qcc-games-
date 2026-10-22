@@ -168,6 +168,15 @@ describe('time, offline earnings and clock guards',()=>{
     expect(restored.s.kernels.toNumber()).toBeCloseTo(once.toNumber()+5,4);
     expect(restored.events.some(e=>e.type==='offline')).toBe(false);
   });
+  test('moving the clock forward, back and forward again never pays the same hours twice',()=>{
+    const g=game(x=>{x.s.producers.patch=10;});
+    g.tick(T0+8*3600_000);const once=g.s.kernels;
+    expect(once.toNumber()).toBeCloseTo(10*8*3600*0.5,4);
+    g.tick(T0);g.tick(T0+8*3600_000);
+    expect(g.s.kernels.toNumber()).toBeCloseTo(once.toNumber(),4);
+    g.tick(T0+11*3600_000);
+    expect(g.s.kernels.sub(once).toNumber()).toBeCloseTo(10*3*3600*0.5,4);
+  });
   test('a clock moved backwards credits nothing and cannot extend boosts',()=>{
     const g=game(x=>{x.s.producers.patch=10;});
     g.spawnGolden();g.s.golden.onScreen!.kind='bumper';g.collectGolden();
@@ -207,7 +216,7 @@ describe('prestige: Replant',()=>{
     expect(g.permanentMult()).toBeCloseTo(1+2*PRESTIGE.bonusPerSeed,9);
   });
   test('replanting resets the run but keeps achievements, discoveries, skins and permanent upgrades',()=>{
-    const g=game(x=>{x.s.producers.farmhand=50;x.s.upgrades.add('farmhand-10');x.s.upgrades.add('feature-garden');x.s.garden.plots[0]={v:'sweet',age:5};x.s.garden.discovered.add('popcorn');x.s.achievements.add('click-1');x.s.perms.add('seedling-start');x.s.skin='butter';});
+    const g=game(x=>{x.s.producers.farmhand=50;x.s.upgrades.add('farmhand-10');x.s.upgrades.add('feature-garden');x.s.garden.plots[0]={v:'sweet',age:5,paid:Big.of(50)};x.s.garden.discovered.add('popcorn');x.s.achievements.add('click-1');x.s.perms.add('seedling-start');x.s.skin='butter';});
     g.s.run.earned=g.s.life.earned=Big.of(PRESTIGE.seedUnit);rich(g,1e6);
     g.spawnGolden();g.s.golden.onScreen!.kind='bumper';g.collectGolden();
     g.replant();
@@ -229,7 +238,7 @@ describe('prestige: Replant',()=>{
 
 describe('saves',()=>{
   test('round trip preserves everything, including huge numbers and the random sequence',()=>{
-    const g=game(x=>{x.s.producers.corniverse=500;x.s.upgrades.add('corniverse-10');x.s.achievements.add('click-1');x.s.garden.plots[3]={v:'ember',age:12};x.s.garden.discovered.add('ember');x.s.scarecrow.bonuses=['guard'];});
+    const g=game(x=>{x.s.producers.corniverse=500;x.s.upgrades.add('corniverse-10');x.s.achievements.add('click-1');x.s.garden.plots[3]={v:'ember',age:12,paid:Big.of(1e6)};x.s.garden.discovered.add('ember');x.s.scarecrow.bonuses=['guard'];});
     g.advance(10);rich(g,Big.fromLog10(450));g.s.life.earned=Big.fromLog10(460);
     const json=JSON.parse(JSON.stringify(serialize(g.s)));
     const back=deserialize(json,T0);
@@ -243,7 +252,7 @@ describe('saves',()=>{
     expect(repaired.producers.farmhand).toBe(0);expect(repaired.producers.patch).toBe(2);
     expect([...repaired.upgrades]).toEqual(['patch-10']);expect(repaired.perms.size).toBe(0);
     expect(repaired.seeds).toBe(0);expect([...repaired.achievements]).toEqual(['click-1']);expect(repaired.skin).toBe('classic');
-    expect(repaired.garden.plots[0]).toBeNull();expect(repaired.garden.plots[1]).toEqual({v:'sweet',age:0});
+    expect(repaired.garden.plots[0]).toBeNull();expect(repaired.garden.plots[1]).toMatchObject({v:'sweet',age:0});
   });
   test('older saves migrate forward',()=>{
     const legacy=deserialize({kernels:500,buildings:{farmhand:3,patch:1},clicks:20,totalEarned:900,lastTick:T0},T0);
@@ -276,6 +285,12 @@ describe('garden, pests, achievements',()=>{
     for(let i=0;i<200&&!g.s.garden.discovered.has('popcorn');i++)g.advance(10);
     expect(g.s.garden.discovered.has('popcorn')).toBe(true);
     expect(g.events.some(e=>e.type==='mutation'&&e.discovered)).toBe(true);
+  });
+  test('a harvest returns a fixed multiple of what was paid, not of production at harvest time',()=>{
+    const g=game(x=>{x.s.producers.patch=1000;x.s.upgrades.add('feature-garden');});rich(g,1e9);
+    const cost=g.plantCost('sweet');g.plant(0,'sweet');g.advance(VARIETIES[0].growSeconds);
+    g.s.producers.corniverse=5;g.touch();
+    expect(g.harvestValue(0).toNumber()).toBeCloseTo(Math.floor(cost.toNumber()*VARIETIES[0].harvestMult),0);
   });
   test('pests siphon production and return it with interest',()=>{
     const g=game(x=>{x.s.producers.field=10;x.s.upgrades.add('feature-cornpocalypse');x.s.pests.list=[{id:1,stolen:Big.ZERO,angle:0},{id:2,stolen:Big.ZERO,angle:90}];});

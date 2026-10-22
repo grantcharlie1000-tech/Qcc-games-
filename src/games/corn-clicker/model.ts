@@ -193,10 +193,11 @@ export class CornGame {
   quantity(id:ProducerId,amount:BuyAmount):number {return amount==='max'?Math.max(1,this.maxAffordable(id)):amount;}
   /** Production gained by buying `count` more of a producer, at current multipliers. */
   gainFor(id:ProducerId,count:number):Big {
-    const before=this.baseCps();
-    this.s.producers[id]+=count;this.touch();
+    const before=this.baseCps(),saved=this.cache;
+    // Evaluate the hypothetical purchase on a scratch cache so the real one (and `version`) survive.
+    this.cache={};this.s.producers[id]+=count;
     const after=this.baseCps();
-    this.s.producers[id]-=count;this.touch();
+    this.s.producers[id]-=count;this.cache=saved;
     return after.sub(before).clampZero().mul(this.temporaryMult());
   }
   buyProducer(id:ProducerId,amount:BuyAmount):number {
@@ -281,9 +282,18 @@ export class CornGame {
       // The clock went backwards: credit nothing and continue from the new time.
       this.s.lastTick=now;if(elapsed<-2)this.events.push({type:'clock'});return 0;
     }
-    this.s.lastTick=now;
+    const credited=this.s.clockMax;
+    this.s.lastTick=now;this.s.clockMax=Math.max(this.s.clockMax,now);
     if(elapsed<=ACTIVE_GAP_SECONDS){this.advance(elapsed);return elapsed;}
-    return this.away(elapsed);
+    // Time away is only paid beyond the latest moment ever credited, so moving the clock
+    // forward, back and forward again cannot pay the same hours twice.
+    const fresh=(now-Math.max(credited,now-elapsed*1000))/1000;
+    if(fresh<=ACTIVE_GAP_SECONDS){
+      // Already-credited time after a clock change: timers still run out, nothing is paid.
+      this.expireEffects(elapsed);if(this.s.golden.onScreen){this.s.golden.onScreen=null;this.scheduleGolden();}
+      this.events.push({type:'clock'});return 0;
+    }
+    return this.away(fresh);
   }
   /** Active play: everything runs at full rate in ≤1 s steps so effects expire mid-gap. */
   advance(seconds:number){
@@ -476,12 +486,13 @@ export class CornGame {
   plantCost(v:VarietyId):Big {return Big.max(Big.of(50),this.baseCps().mul(varietyById[v].plantSeconds)).floor();}
   harvestValue(i:number):Big {
     const p=this.s.garden.plots[i];if(!p||!this.mature(i))return Big.ZERO;
-    return Big.max(Big.of(100),this.baseCps().mul(varietyById[p.v].harvestSeconds)).floor();
+    return Big.max(Big.of(100),p.paid.mul(varietyById[p.v].harvestMult)).floor();
   }
   plant(i:number,v:VarietyId):boolean {
     if(!this.has('garden')||!this.plotActive(i)||this.s.garden.plots[i]||!this.s.garden.discovered.has(v))return false;
-    if(!this.spend(this.plantCost(v)))return false;
-    this.s.garden.plots[i]={v,age:0};this.s.life.planted++;this.touch();return true;
+    const cost=this.plantCost(v);
+    if(!this.spend(cost))return false;
+    this.s.garden.plots[i]={v,age:0,paid:cost};this.s.life.planted++;this.touch();return true;
   }
   /** Harvests a mature plant for kernels, or clears an unripe one for nothing. */
   harvest(i:number):Big|undefined {
@@ -519,7 +530,7 @@ export class CornGame {
         for(const v of this.mutationCandidates(i)){
           if(this.random()<varietyById[v].mutationChance){
             const discovered=!g.discovered.has(v);
-            g.plots[i]={v,age:0};g.discovered.add(v);this.s.life.mutations++;
+            g.plots[i]={v,age:0,paid:this.plantCost(v)};g.discovered.add(v);this.s.life.mutations++;
             this.events.push({type:'mutation',variety:v,plot:i,discovered});break;
           }
         }
@@ -618,8 +629,10 @@ export class CornGame {
   }
   /** Everything except options is wiped. */
   hardReset(now:number){
-    const options=this.s.options,tutorial=this.s.tutorial;
-    this.s=freshState(now);this.s.options=options;this.s.tutorial=tutorial;this.touch();
+    const options=this.s.options,tutorial=this.s.tutorial,rev=this.s.rev;
+    // Keep the revision rising so other tabs recognise the new farm as the newest save.
+    this.s=freshState(now);this.s.options=options;this.s.tutorial=tutorial;this.s.rev=rev;
+    this.recentClicks=[];this.touch();
   }
 }
 export {PRODUCERS,PERMS};

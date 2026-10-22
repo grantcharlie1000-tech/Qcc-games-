@@ -18,7 +18,7 @@ test('fresh start with mouse and keyboard: one kernel per input, first producer,
   await page.setViewportSize({width:1366,height:768});
   await page.goto('/#/game/corn-clicker');
   await expect(cob(page)).toBeVisible();
-  await expect(page.locator('.cc-tip')).toContainText('Click or tap the big cob');
+  await expect(page.locator('.cc-tip')).toContainText('Click the cob!');
   for(let i=0;i<15;i++)await cob(page).click();
   await expect(page.locator('.cc-kernels-num')).toHaveText('15');
   // Keyboard: each press awards once; a held key's auto-repeat does not.
@@ -56,15 +56,15 @@ test('fresh start with mouse and keyboard: one kernel per input, first producer,
   await page.goto('/#/collection');
   const before=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)!).data,KEY);
   expect(before.producers.farmhand).toBe(1);
-  await page.evaluate(([k])=>{const s=JSON.parse(localStorage.getItem(k)!);s.data.lastTick-=3*3600_000;localStorage.setItem(k,JSON.stringify(s));},[KEY]);
+  await page.evaluate(([k])=>{const s=JSON.parse(localStorage.getItem(k)!);s.data.lastTick-=3*3600_000;s.data.clockMax-=3*3600_000;localStorage.setItem(k,JSON.stringify(s));},[KEY]);
   await page.goto('/#/game/corn-clicker');
   const dialog=page.getByRole('dialog',{name:'Welcome back!'});
   await expect(dialog).toContainText('3 hours');
   // One Farmhand (0.1/s, plus the small Butter Bonus) at 50% for 3 hours ≈ 540 kernels.
-  const offline=Number((await dialog.locator('b').nth(1).textContent())!.replace(/,/g,''));
+  const offline=Number((await dialog.locator('b').first().textContent())!.replace(/[+,]/g,''));
   expect(offline).toBeGreaterThanOrEqual(540);expect(offline).toBeLessThan(600);
   await page.screenshot({path:'tests/games/corn-clicker/evidence/offline.png'});
-  await dialog.getByRole('button',{name:'Back to the farm'}).click();
+  await dialog.getByRole('button',{name:'Collect'}).click();
   await expect(dialog).toBeHidden();
   const after=await kernels(page);
   expect(after).toBeGreaterThanOrEqual(Math.floor(Number(before.kernels))+offline);
@@ -127,7 +127,7 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   const box=(await golden.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(390);
   await golden.tap();
-  await expect(page.locator('.cc-toasts')).toContainText(/Lucky Harvest|Bumper Crop|Kernel Storm/);
+  await expect(page.locator('.cc-toasts')).toContainText(/Lucky!|Bumper Crop|Kernel Storm/);
   await tabs.getByRole('tab',{name:'Cob'}).tap();
   const layout=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth<=innerWidth,stage:document.querySelector('.cc-root')!.getBoundingClientRect().bottom<=innerHeight+1}));
   expect(layout).toEqual({scroll:true,stage:true});
@@ -170,15 +170,15 @@ test('garden by tap and by drag, harvest, then Replant keeps discoveries and buy
   // Replant: shows what resets and survives, the reward and the next-seed progress.
   await page.getByRole('tab',{name:'Replant'}).click();
   const panel=page.locator('#cc-sub-replant');
-  await expect(panel).toContainText('2 Golden Seeds available to claim now');
-  await expect(panel).toContainText('Replanting resets');await expect(panel).toContainText('You keep');
+  await expect(panel).toContainText('+2 seeds');
+  await expect(panel).toContainText('Resets');await expect(panel).toContainText('Keeps');
   await expect(panel.getByRole('meter',{name:'Progress to the next Golden Seed'})).toBeVisible();
   await panel.getByRole('button',{name:'Replant for 2 Golden Seeds'}).click();
   const confirm=page.getByRole('dialog',{name:/Replant for 2 Golden Seeds/});
   await expect(confirm).toContainText('+0% → +8%');
   await confirm.getByRole('button',{name:'Replant'}).click();
   await expect(page.locator('.cc-kernels-num')).toHaveText('0');
-  await expect(panel).toContainText('You hold 2 unspent seeds');
+  await expect(panel).toContainText('You have 2');
   await panel.locator('[data-perm=green-thumbs]').click();
   await expect(page.locator('.cc-cpc')).toHaveText('2');
   const after=await saved(page);

@@ -4,13 +4,13 @@
  */
 import type {GameContext} from '../../core/types';
 import {canRetain} from '../../core/storage';
-import {cobSvg,producerIcon,sceneBackdrop,goldenCobSvg,pestSvg,scarecrowSvg,kernelSvg,seedSvg,butterSvg} from './art';
+import {cobArt,producerArt,sceneArt,goldenArt,pestArt,scarecrowArt,kernelArt,kernelUrl,seedArt,butterArt,mouseArt,sparkleArt} from './art';
 import {Big,format,type NumberStyle} from './big';
 import {
-  PRODUCERS,PRODUCER_IDS,producerById,UPGRADES,upgradeById,ACHIEVEMENTS,achievementById,SKINS,PERMS,permById,PRESTIGE,GOLDEN,FESTIVALS,SCARECROW,NEWS,VARIETIES,varietyById,
+  PRODUCERS,PRODUCER_IDS,producerById,FESTIVAL,PESTS,UPGRADES,upgradeById,ACHIEVEMENTS,achievementById,SKINS,PERMS,permById,PRESTIGE,GOLDEN,FESTIVALS,SCARECROW,NEWS,VARIETIES,varietyById,
   type ProducerId,type Upgrade,type ScarecrowBonus,type SkinId,type PermPath,
 } from './data';
-import {CornGame,type BuyAmount,type GameEvent} from './model';
+import {CornGame,ACTIVE_GAP_SECONDS,type BuyAmount,type GameEvent} from './model';
 import {freshState,serialize,deserialize,exportString,importString,SaveError,type State} from './state';
 import {TabGuard,readDiskSave,revisionOf,addBackup,listBackups} from './persistence';
 import {Sfx,type Cue} from './audio';
@@ -22,17 +22,16 @@ type Top='cob'|'shop'|'farm';
 const SUBS:[Sub,string][]=[['farm','Farm'],['garden','Garden'],['goals','Goals'],['stats','Stats'],['replant','Replant'],['options','Options']];
 const BACKUP_EVERY_MS=10*60*1000;
 const esc=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-const svgUrl=(svg:string)=>`url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 
 interface Tip {id:string;text:string;tab?:Top;sub?:Sub;show(g:CornGame):boolean;done(g:CornGame):boolean}
 const TIPS:Tip[]=[
-  {id:'click',text:'Click or tap the big cob to harvest kernels. With the cob focused, Space or Enter works too.',tab:'cob',show:()=>true,done:g=>g.s.life.clicks>=10},
-  {id:'buy',text:'You can afford a Farmhand! Buy one in the Shop: producers harvest for you, even while you are away.',tab:'shop',show:g=>g.s.kernels.gte(15),done:g=>g.totalOwned()>0},
-  {id:'upgrade',text:'An upgrade is ready at the top of the Shop. Hover or focus it to see exactly what it does.',tab:'shop',show:g=>g.availableUpgrades().length>0,done:g=>g.s.life.upgradesBought>0},
-  {id:'bulk',text:'Tip: switch the shop to ×10, ×100 or Max to buy many producers at once. Prices shown are the real bulk totals.',tab:'shop',show:g=>g.totalOwned()>=12,done:()=>false},
-  {id:'golden',text:'A golden cob appeared! Collect it before it fades for a lucky payout or a big temporary boost. Press G as a shortcut.',show:g=>!!g.s.golden.onScreen,done:g=>g.s.life.golden>0},
-  {id:'garden',text:'The Garden is open: Farm → Garden. Plant seeds, harvest ripe plants and look for mutations.',tab:'farm',sub:'garden',show:g=>g.has('garden'),done:g=>g.s.life.planted>0},
-  {id:'replant',text:'You can now Replant for Golden Seeds. Each seed you ever claim adds +4% production forever. Farm → Replant explains what resets.',tab:'farm',sub:'replant',show:g=>g.seedsAvailable()>=1,done:g=>g.s.life.replants>0},
+  {id:'click',text:'Click the cob!',tab:'cob',show:()=>true,done:g=>g.s.life.clicks>=10},
+  {id:'buy',text:'Buy a Farmhand in the Shop.',tab:'shop',show:g=>g.s.kernels.gte(15),done:g=>g.totalOwned()>0},
+  {id:'upgrade',text:'An upgrade is ready in the Shop.',tab:'shop',show:g=>g.availableUpgrades().length>0,done:g=>g.s.life.upgradesBought>0},
+  {id:'bulk',text:'Try ×10 or Max to buy in bulk.',tab:'shop',show:g=>g.totalOwned()>=12,done:()=>false},
+  {id:'golden',text:'Catch the golden cob! (G)',show:g=>!!g.s.golden.onScreen,done:g=>g.s.life.golden>0},
+  {id:'garden',text:'The Garden is open.',tab:'farm',sub:'garden',show:g=>g.has('garden'),done:g=>g.s.life.planted>0},
+  {id:'replant',text:'You can Replant for Golden Seeds.',tab:'farm',sub:'replant',show:g=>g.seedsAvailable()>=1,done:g=>g.s.life.replants>0},
 ];
 
 export class CornClicker {
@@ -40,17 +39,17 @@ export class CornClicker {
   private readonly root:HTMLElement;
   private readonly sfx=new Sfx();
   private readonly guard:TabGuard;
-  private paused=false;private passive=false;private disposed=false;
+  private paused=false;private passive=false;private disposed=false;private pausedAt=0;
   private raf=0;private heartbeat=0;private saveTimer=0;
   private amount:BuyAmount=1;
   private top:Top='cob';private sub:Sub='farm';
-  private lastUi=0;private lastSlow=0;private lastAchievements=0;private lastBackup=Date.now();private lastSaved=0;
+  private lastUi=0;private lastSlow=0;private lastAchievements=0;private lastBackup=listBackups()[0]?.at??0;private lastSaved=0;
   private newsIndex=-1;private newsAt=0;
   private sig:Record<string,string>={};
   private gainCache=new Map<string,Big>();private gainVersion=-1;
   private readonly icons=new Map<string,string>();
   private readonly garden:GardenView;
-  private readonly kernelUrl=svgUrl(kernelSvg());
+  private readonly kernelUrl=`url("${kernelUrl()}")`;
   private lastPointerType='mouse';
   private tooltipFor:HTMLElement|null=null;
   /** On touch, the upgrade explained by the first tap; a second tap on it buys. */
@@ -74,7 +73,7 @@ export class CornClicker {
       upgrades:q('.cc-upgrades'),upcoming:q('.cc-upcoming'),producers:q('.cc-producers'),golden:q('.cc-golden-layer'),toasts:q('.cc-toasts'),tooltip:q('.cc-tooltip'),
       modal:q('.cc-modal'),card:q('.cc-modal-card'),goals:q('#cc-sub-goals'),stats:q('#cc-sub-stats'),replant:q('#cc-sub-replant'),options:q('#cc-sub-options'),upgCount:q('.cc-upg-count')};
     this.garden=new GardenView(q('#cc-sub-garden'),{
-      game:()=>this.game,style:()=>this.style(),changed:()=>this.requestSave(),
+      game:()=>this.game,style:()=>this.style(),changed:()=>this.requestSave(),canAct:()=>this.canAct(),
       feedback:(kind,text,at)=>{this.play(kind==='deny'?'deny':kind==='plant'?'plant':'harvest');if(kind==='plant')this.announce(text);else this.toast(text,'info');if(at&&kind==='harvest')this.burst(at,6);},
     });
     this.bind();
@@ -91,13 +90,13 @@ export class CornClicker {
     return `<div class="cc-hud" aria-hidden="true"><span><b class="cc-hud-k">0</b> kernels</span><span><b class="cc-hud-c">0</b>/s</span></div>
 <section class="cc-col cc-left" id="cc-pane-cob" role="tabpanel" aria-labelledby="cc-tab-cob" aria-label="Cob">
   <div class="cc-counters"><p class="cc-kernels"><span class="cc-kernels-num">0</span> <span class="cc-kernels-label">kernels</span></p>
-  <p class="cc-rates"><span><b class="cc-cps">0</b> per second</span><span><b class="cc-cpc">1</b> per click</span></p></div>
+  <p class="cc-rates"><span><b class="cc-cps">0</b>/s</span><span><b class="cc-cpc">1</b>/click</span></p></div>
   <div class="cc-buffs"></div>
   <div class="cc-cob-stage"><div class="cc-pests"></div>
-    <button type="button" class="cc-cob" aria-label="Harvest the cob">${cobSvg(this.game.s.skin)}</button>
+    <button type="button" class="cc-cob" aria-label="Harvest the cob">${cobArt(this.game.s.skin)}</button>
     <div class="cc-fx" aria-hidden="true"></div></div>
   <div class="cc-tip" hidden><p></p><button type="button" class="cc-btn cc-btn-quiet cc-tip-done">Got it</button></div>
-  <div class="cc-goal"><p class="cc-goal-main"></p><p class="cc-goal-unlock"></p></div>
+  <div class="cc-goal"><p class="cc-goal-main"></p><p class="cc-goal-unlock" hidden></p></div>
   <p class="cc-saved"></p>
 </section>
 <section class="cc-col cc-mid" id="cc-pane-farm" role="tabpanel" aria-labelledby="cc-tab-farm" aria-label="Farm">
@@ -108,7 +107,7 @@ export class CornClicker {
 <section class="cc-col cc-right" id="cc-pane-shop" role="tabpanel" aria-labelledby="cc-tab-shop" aria-label="Shop">
   <h2 class="cc-h">Upgrades <span class="cc-upg-count"></span></h2>
   <div class="cc-upgrades" role="list" aria-label="Available upgrades"></div>
-  <div class="cc-upcoming" aria-label="Upcoming upgrades"></div>
+  <div class="cc-upcoming" hidden></div>
   <div class="cc-buy-row" role="radiogroup" aria-label="Buy amount">${([1,10,100,'max'] as BuyAmount[]).map(a=>`<button type="button" role="radio" class="cc-amount" data-amount="${a}" aria-checked="${a===1}">${a==='max'?'Max':'×'+a}</button>`).join('')}</div>
   <h2 class="cc-h cc-sr">Producers</h2>
   <div class="cc-producers" role="list" aria-label="Producers"></div>
@@ -133,14 +132,19 @@ export class CornClicker {
   pause(){
     if(this.paused||this.disposed)return;
     if(!this.passive){this.simulate();this.flushSave();}
-    this.paused=true;this.stop();this.guard.release();this.hideTooltip();
+    this.paused=true;this.pausedAt=Date.now();this.stop();this.guard.release();this.hideTooltip();
   }
   resume(){
     if(!this.paused||this.disposed)return;
     this.paused=false;
     if(this.passive)return;
     if(!this.guard.claim()){this.becomePassive();return;}
-    this.adoptNewerDiskSave();
+    if(!this.adoptNewerDiskSave()){
+      // A short pause (menu, rules, Study) freezes the farm, golden cob included.
+      // Longer absences are left for the next tick to pay as time away.
+      const gap=Date.now()-this.pausedAt;
+      if(gap>=0&&gap<=ACTIVE_GAP_SECONDS*1000)this.game.s.lastTick=Math.min(Date.now(),this.game.s.lastTick+gap);
+    }
     this.start();
   }
   /** The toolbar's Restart starts a brand-new farm, after confirmation. */
@@ -152,7 +156,7 @@ export class CornClicker {
     });
   }
   serialize():unknown {
-    if(!this.guard.owner||this.passive)return readDiskSave()??serialize(this.game.s);
+    if(!this.guard.owner||this.passive)return undefined;
     return this.ownedSnapshot();
   }
   private ownedSnapshot():Record<string,unknown> {
@@ -165,6 +169,7 @@ export class CornClicker {
     try{state=deserialize(data,now);}
     catch(error){
       const backup=listBackups().find(b=>{try{deserialize(b.data,now);return true;}catch{return false;}});
+      addBackup(data,'Unreadable save (kept for recovery)');
       if(!backup)throw error;
       state=deserialize(backup.data,now);
       setTimeout(()=>this.toast(`Your save could not be read, so the backup from ${new Date(backup.at).toLocaleString()} was restored.`,'warn'),0);
@@ -179,7 +184,7 @@ export class CornClicker {
     this.game=new CornGame(state,now);
     this.afterLoad();
   }
-  private afterLoad(){this.sig={skinCount:String(this.game.s.achievements.size)};this.gainVersion=-1;this.garden.reset();this.root.querySelector('.cc-cob')!.innerHTML=cobSvg(this.game.s.skin);this.applyOptions();this.renderAll();}
+  private afterLoad(){this.sig={skinCount:String(this.game.s.achievements.size)};this.gainVersion=-1;this.garden.reset();this.root.querySelector('.cc-cob')!.innerHTML=cobArt(this.game.s.skin);this.applyOptions();this.renderAll();}
   dispose(){
     this.disposed=true;this.stop();clearTimeout(this.saveTimer);
     this.guard.dispose();this.sfx.dispose();this.garden.dispose();
@@ -188,9 +193,11 @@ export class CornClicker {
   }
 
   // ───────────────────────── Multiple tabs ─────────────────────────
-  private adoptNewerDiskSave(){
+  /** Load a save another tab wrote while this one was paused. Returns whether it did. */
+  private adoptNewerDiskSave():boolean {
     const disk=readDiskSave();
-    if(revisionOf(disk)>this.game.s.rev){try{this.load(deserialize(disk,Date.now()),Date.now());}catch{/* keep in-memory state */}}
+    if(revisionOf(disk)<=this.game.s.rev)return false;
+    try{this.load(deserialize(disk,Date.now()),Date.now());return true;}catch{return false;}
   }
   private lostOwnership(){
     if(this.passive||this.disposed)return;
@@ -212,7 +219,8 @@ export class CornClicker {
     setTimeout(()=>{
       if(this.disposed)return;
       const disk=readDiskSave();
-      if(disk!==undefined&&revisionOf(disk)>=this.game.s.rev){try{this.load(deserialize(disk,Date.now()),Date.now());}catch{/* keep current */}}
+      // This tab changed nothing while it was inactive, so the stored save is always the one to continue.
+      if(disk!==undefined){try{this.load(deserialize(disk,Date.now()),Date.now());}catch{/* keep current */}}
       this.passive=false;this.closeModal();if(!this.paused)this.start();this.updateSaved();
     },600);
   }
@@ -280,7 +288,7 @@ export class CornClicker {
     const earned=events.filter(e=>e.type==='achievement');
     if(earned.length>1){
       const names=earned.map(e=>achievementById.get((e as {id:string}).id)!.name);
-      this.toast(`${earned.length} achievements: ${names.slice(0,3).join(', ')}${names.length>3?` and ${names.length-3} more`:''} (+Butter Bonus)`,'achievement');
+      this.toast(`${earned.length} achievements unlocked!`,'achievement');
       this.play('achievement');this.skinToast();this.requestSave();
     }
     for(const e of events)if(e.type!=='achievement'||earned.length===1)this.handle(e);
@@ -288,24 +296,24 @@ export class CornClicker {
   private skinToast(){
     const count=this.game.s.achievements.size,known=Number(this.sig.skinCount??count);
     this.sig.skinCount=String(count);
-    for(const skin of SKINS)if(skin.achievements>known&&skin.achievements<=count)this.toast(`New cob skin unlocked: ${skin.name}. Choose it in Farm → Goals.`,'achievement');
+    for(const skin of SKINS)if(skin.achievements>known&&skin.achievements<=count)this.toast(`New skin: ${skin.name}`,'achievement');
   }
   private handle(e:GameEvent){
     switch(e.type){
       case 'achievement':{
         const a=achievementById.get(e.id)!;
-        this.toast(`Achievement: ${a.name} (+Butter Bonus)`,'achievement');this.play('achievement');this.skinToast();
+        this.toast(`Achievement: ${a.name}`,'achievement');this.play('achievement');this.skinToast();
         this.requestSave();break;
       }
       case 'golden-spawn':this.announce('A golden cob appeared! Press G to collect it.');break;
       case 'golden-expired':this.announce('The golden cob faded away.');break;
-      case 'effect-end':this.toast(`${GOLDEN.effects[e.kind].name} has ended.`,'info');break;
-      case 'festival-start':this.toast(`Harvest festival! ${festivalText(e.id)}`,'gold');this.play('festival');break;
-      case 'festival-end':this.toast(`The ${FESTIVALS[e.id].name} is over. The next fair arrives later.`,'info');break;
+      case 'effect-end':break;
+      case 'festival-start':this.toast(`${FESTIVALS[e.id].name}! ${FESTIVALS[e.id].desc}`,'gold');this.play('festival');break;
+      case 'festival-end':break;
       case 'pest-spawn':this.announce('A mutant pest latched onto the cob. Pop it to get its kernels back with interest.');break;
       case 'mutation':{
         const v=varietyById[e.variety];
-        this.toast(e.discovered?`New variety discovered: ${v.name}! It has been added to your collection book.`:`${v.name} sprouted from a mutation in the garden.`,e.discovered?'gold':'info');
+        this.toast(e.discovered?`New variety: ${v.name}!`:`${v.name} sprouted!`,e.discovered?'gold':'info');
         if(e.discovered)this.play('achievement');this.requestSave();break;
       }
       case 'offline':this.showOffline(e.seconds,e.earned,e.capped);this.flushSave();break;
@@ -406,6 +414,8 @@ export class CornClicker {
   }
 
   // ───────────────────────── Clicking and feedback ─────────────────────────
+  /** Gameplay input only counts while this tab runs the farm and the game is not paused. */
+  private canAct(){return !this.paused&&!this.passive&&!this.disposed;}
   private harvestClick(x:number,y:number){
     if(this.passive||this.paused)return;
     this.simulate();
@@ -422,7 +432,7 @@ export class CornClicker {
     return this.game.s.options.reducedMotion||this.ctx.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
   private squash(){
-    const body=this.el.cob.querySelector('svg');if(!body)return;
+    const body=this.el.cob.querySelector('img');if(!body)return;
     body.getAnimations?.().forEach(a=>a.cancel());
     if(this.calm()){body.animate?.([{filter:'brightness(1.15)'},{filter:'none'}],{duration:120});return;}
     body.animate?.([{transform:'scale(1,1)'},{transform:'scale(1.06,.9)',offset:.35},{transform:'scale(.98,1.03)',offset:.7},{transform:'scale(1,1)'}],{duration:180,easing:'cubic-bezier(.23,1,.32,1)'});
@@ -485,13 +495,13 @@ export class CornClicker {
     const chip=(cls:string,name:string,detail:string,left:number,total:number,title:string)=>chips.push(`<div class="cc-buff ${cls}" title="${esc(title)}"><span class="cc-buff-name">${name}</span><span class="cc-buff-detail">${detail}</span><span class="cc-buff-bar" style="--left:${Math.max(0,Math.min(1,left/total))}"></span></div>`);
     for(const kind of ['bumper','storm'] as const){
       const e=g.s.golden.effects[kind];
-      if(e)chip(`cc-buff-${kind}`,GOLDEN.effects[kind].name,`×${GOLDEN.effects[kind].mult} ${kind==='bumper'?'production':'clicks'} · ${duration(e.remaining)}`,e.remaining,e.duration,GOLDEN.effects[kind].desc+' Collecting the same effect again refreshes its timer instead of stacking.');
+      if(e)chip(`cc-buff-${kind}`,GOLDEN.effects[kind].name,`×${GOLDEN.effects[kind].mult} · ${duration(e.remaining)}`,e.remaining,e.duration,GOLDEN.effects[kind].desc+' Collecting the same effect again refreshes its timer instead of stacking.');
     }
     const fest=g.has('festival')?g.s.festival.active:null;
-    if(fest)chip('cc-buff-festival',FESTIVALS[fest.id].name,`${FESTIVALS[fest.id].desc.replace(/\.$/,'')} · ${duration(fest.remaining)}`,fest.remaining,150,'Harvest festival');
+    if(fest)chip('cc-buff-festival',FESTIVALS[fest.id].name,duration(fest.remaining),fest.remaining,FESTIVAL.duration,FESTIVALS[fest.id].desc);
     if(g.cornpocalypseActive()&&g.s.pests.list.length){
       const stolen=Big.sum(g.s.pests.list.map(p=>p.stolen));
-      chips.push(`<div class="cc-buff cc-buff-pests"><span class="cc-buff-name">${g.s.pests.list.length} pest${g.s.pests.list.length>1?'s':''}</span><span class="cc-buff-detail">−${Math.round(g.siphonFraction()*100)}% production · holding ${this.f(stolen)}</span><button type="button" class="cc-mini" data-act="pop-all">Pop all</button></div>`);
+      chips.push(`<div class="cc-buff cc-buff-pests"><span class="cc-buff-name">${g.s.pests.list.length} pest${g.s.pests.list.length>1?'s':''}</span><span class="cc-buff-detail" title="Holding ${this.f(stolen)} kernels">−${Math.round(g.siphonFraction()*100)}%</span><button type="button" class="cc-mini" data-act="pop-all">Pop all</button></div>`);
     }
     const html=chips.join('');
     if(this.sig.buffs!==html){this.sig.buffs=html;this.el.buffs.innerHTML=html;}
@@ -502,25 +512,25 @@ export class CornClicker {
     if(!g){button?.remove();return;}
     if(!button){
       button=document.createElement('button');button.type='button';button.className='cc-golden';
-      button.innerHTML=`${goldenCobSvg()}<svg class="cc-golden-ring" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" pathLength="100"/></svg>`;
+      button.innerHTML=`${goldenArt()}<span class="cc-golden-bar" aria-hidden="true"><span></span></span>`;
       layer.append(button);
       if(!this.calm())button.animate?.([{opacity:0,transform:'scale(.6)'},{opacity:1,transform:'scale(1)'}],{duration:260,easing:'cubic-bezier(.23,1,.32,1)'});
     }
     button.style.left=`${g.x*100}%`;button.style.top=`${g.y*100}%`;
-    const ring=button.querySelector<SVGCircleElement>('circle')!;
-    ring.style.strokeDashoffset=String(100-100*g.life/g.maxLife);
+    button.style.setProperty('--life',String(Math.max(0,g.life/g.maxLife)));
     button.classList.toggle('cc-fading',g.life<3);
     const label=`Golden cob: collect it (${Math.ceil(g.life)} seconds left, or press G)`;
     if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
   }
   private collectGolden(){
+    if(!this.canAct())return;
     const g=this.game.s.golden.onScreen;if(!g)return;
     const button=this.el.golden.querySelector<HTMLElement>('.cc-golden');
     if(button)this.burst(button,12);
     const event=this.game.collectGolden();
     if(event?.type!=='golden')return;
     const seconds=event.kind==='lucky'?0:this.game.s.golden.effects[event.kind]?.remaining??0;
-    const text=goldenResult(event.kind,event.amount,this.style(),seconds)+(event.twin?' A twin golden cob appeared!':'');
+    const text=goldenResult(event.kind,event.amount,this.style(),seconds)+(event.twin?' Twin!':'');
     this.toast(text,'gold');this.announce(text);this.play('golden');
     this.drainEvents();this.updateGolden();this.updateBuffs();this.requestSave();
   }
@@ -529,39 +539,42 @@ export class CornClicker {
     const sig=list.map(p=>p.id).join();
     if(this.sig.pests!==sig){
       this.sig.pests=sig;
-      this.el.pests.innerHTML=list.map(p=>`<button type="button" class="cc-pest" data-pest="${p.id}" style="--a:${p.angle}deg">${this.icon('pest',pestSvg)}</button>`).join('');
+      this.el.pests.innerHTML=list.map(p=>`<button type="button" class="cc-pest" data-pest="${p.id}" style="--a:${p.angle}deg">${this.icon('pest',pestArt)}</button>`).join('');
     }
     this.el.pests.querySelectorAll<HTMLElement>('.cc-pest').forEach(b=>{
       const p=list.find(x=>x.id===Number(b.dataset.pest));
-      if(p)b.setAttribute('aria-label',`Mutant pest holding ${this.f(p.stolen)} kernels: pop it for ${this.f(p.stolen.mul(1.25))}`);
+      if(p)b.setAttribute('aria-label',`Mutant pest holding ${this.f(p.stolen)} kernels: pop it for ${this.f(p.stolen.mul(PESTS.payout))}`);
     });
   }
   private popPest(id:number,at:HTMLElement){
+    if(!this.canAct())return;
     this.burst(at,8);
     const amount=this.game.popPest(id);
-    if(amount){this.play('pest');this.toast(`Pest popped: +${this.f(amount)} kernels returned with interest.`,'info');}
+    if(amount){this.play('pest');this.toast(`+${this.f(amount)}`,'info');}
     this.drainEvents();this.updatePests();this.updateBuffs();this.requestSave();
   }
   private popAll(){
+    if(!this.canAct())return;
     const n=this.game.s.pests.list.length;if(!n)return;
     const total=this.game.popAllPests();
-    this.play('pest');this.toast(`Popped ${n} pest${n>1?'s':''}: +${this.f(total)} kernels.`,'info');
+    this.play('pest');this.toast(`+${this.f(total)}`,'info');
     this.drainEvents();this.updatePests();this.updateBuffs();this.requestSave();
   }
 
   // ───────────────────────── Shop ─────────────────────────
   private icon(key:string,make:()=>string){let svg=this.icons.get(key);if(!svg){svg=make();this.icons.set(key,svg);}return svg;}
-  private producerIcon(id:ProducerId){return this.icon(id,()=>producerIcon(id));}
+  private producerIcon(id:ProducerId){return this.icon(id,()=>producerArt(id));}
   private upgradeIcon(u:Upgrade):string {
     const e=u.effect;
     switch(e.kind){
       case 'producer':return this.producerIcon(e.target);
       case 'synergy':return `<span class="cc-pair">${this.producerIcon(e.low)}${this.producerIcon(e.high)}</span>`;
-      case 'golden':return this.icon('golden',goldenCobSvg);
-      case 'butter':return this.icon('butter',butterSvg);
-      case 'unlock':return e.feature==='scarecrow'?this.icon('scarecrow-straw',()=>scarecrowSvg('straw')):e.feature==='cornpocalypse'?this.icon('pest',pestSvg):e.feature==='garden'?this.icon('seed',seedSvg):this.icon('fair',()=>producerIcon('field'));
-      case 'click':case 'clickCps':case 'manyHands':return `<span class="cc-click-icon">${this.producerIcon('farmhand')}</span>`;
-      case 'global':return `<span class="cc-flavour" style="--hue:${(Number(u.id.split('-')[1])*47)%360}deg">${this.icon('kernel',kernelSvg)}</span>`;
+      case 'golden':return this.icon('golden',goldenArt);
+      case 'butter':return this.icon('butter',butterArt);
+      case 'unlock':return e.feature==='scarecrow'?this.icon('scarecrow-straw',()=>scarecrowArt('straw')):e.feature==='cornpocalypse'?this.icon('pest',pestArt):e.feature==='garden'?this.icon('seed',seedArt):this.icon('sparkle',sparkleArt);
+      case 'click':case 'clickCps':return this.icon('mouse',mouseArt);
+      case 'manyHands':return `<span class="cc-click-icon">${this.producerIcon('farmhand')}</span>`;
+      case 'global':return `<span class="cc-flavour" style="--hue:${(Number(u.id.split('-')[1])*47)%360}deg">${this.icon('kernel',kernelArt)}</span>`;
     }
   }
   private gain(id:ProducerId,count:number):Big {
@@ -581,8 +594,8 @@ export class CornClicker {
       this.sig.producers=sig;
       this.el.producers.innerHTML=shown.map(p=>`<button type="button" class="cc-prod" role="listitem" data-producer="${p.id}" data-tip="producer:${p.id}" aria-describedby="cc-tooltip">
         <span class="cc-prod-icon">${this.producerIcon(p.id)}</span>
-        <span class="cc-prod-main"><span class="cc-prod-name">${p.name}</span><span class="cc-prod-price"><span class="cc-prod-qty"></span> <span class="cc-cost"></span></span><span class="cc-prod-gain"></span></span>
-        <span class="cc-prod-owned"></span></button>`).join('')+(mystery?`<div class="cc-prod cc-mystery" role="listitem"><span class="cc-prod-icon">?</span><span class="cc-prod-main"><span class="cc-prod-name">???</span><span class="cc-prod-gain">Appears as your harvest grows (around ${this.f(mystery.baseCost*0.35)} kernels).</span></span></div>`:'');
+        <span class="cc-prod-main"><span class="cc-prod-name">${p.name}</span><span class="cc-prod-price"><span class="cc-prod-qty"></span> <span class="cc-cost"></span></span></span>
+        <span class="cc-prod-owned"></span></button>`).join('')+(mystery?`<div class="cc-prod cc-mystery" role="listitem"><span class="cc-prod-icon">?</span><span class="cc-prod-main"><span class="cc-prod-name">???</span></span></div>`:'');
     }
     for(const row of this.el.producers.querySelectorAll<HTMLElement>('[data-producer]')){
       const id=row.dataset.producer as ProducerId,owned=g.s.producers[id];
@@ -590,7 +603,7 @@ export class CornClicker {
       const gain=this.gain(id,qty);
       const set=(sel:string,text:string)=>{const el=row.querySelector(sel)!;if(el.textContent!==text)el.textContent=text;};
       set('.cc-prod-qty',qty>1||this.amount!==1?`×${qty}`:'');
-      set('.cc-cost',this.f(cost));set('.cc-prod-gain',`+${this.f(gain,true)}/s`);set('.cc-prod-owned',String(owned));
+      set('.cc-cost',this.f(cost));set('.cc-prod-owned',owned?String(owned):'');
       row.classList.toggle('cc-poor',!afford);
       row.setAttribute('aria-disabled',String(!afford));
       const label=`${producerById[id].name}: own ${owned}. Buy ${qty} for ${format(cost,style)} kernels, +${format(gain,style,true)} per second.${afford?'':' Not enough kernels.'}`;
@@ -602,7 +615,7 @@ export class CornClicker {
     if(this.sig.upgrades!==usig){
       this.sig.upgrades=usig;
       this.el.upgrades.innerHTML=available.length?available.map(u=>`<button type="button" class="cc-upg cc-upg-${u.group}" role="listitem" data-upgrade="${u.id}" data-tip="upgrade:${u.id}" aria-describedby="cc-tooltip">${this.upgradeIcon(u)}</button>`).join('')
-        :'<p class="cc-muted cc-empty">No upgrades right now. Keep growing: new ones unlock as you own more producers and harvest more.</p>';
+        :'';
       this.el.upgCount.textContent=available.length?`(${available.length})`:'';
     }
     for(const b of this.el.upgrades.querySelectorAll<HTMLElement>('[data-upgrade]')){
@@ -619,14 +632,14 @@ export class CornClicker {
     }
   }
   private buyProducer(id:ProducerId,row:HTMLElement){
+    if(!this.canAct())return;
     if(this.passive)return;
     this.simulate();
     const g=this.game,before=g.s.producers[id];
     const bought=g.buyProducer(id,this.amount);
     if(!bought){
       this.play('deny');
-      const need=g.bulkCost(id,g.quantity(id,this.amount)).sub(g.s.kernels);
-      this.toast(`Need ${this.f(need)} more kernels for that.`,'info');return;
+      return;
     }
     this.play('buy');this.burst(row.querySelector('.cc-prod-icon')??row,Math.min(8,2+bought));
     this.announce(`Bought ${bought} ${bought===1?producerById[id].name:producerById[id].plural}. You now own ${before+bought}.`);
@@ -634,16 +647,17 @@ export class CornClicker {
     if(this.tooltipFor===row)this.showTooltip(row);
   }
   private clickUpgrade(b:HTMLElement){
+    if(!this.canAct())return;
     if(this.passive)return;
     // Touch: the first tap explains, the second tap buys.
     if(this.lastPointerType==='touch'&&this.touchArmed!==b){this.touchArmed=b;this.showTooltip(b);return;}
     this.touchArmed=null;
     const u=upgradeById.get(b.dataset.upgrade!)!;
     this.simulate();
-    if(!this.game.buyUpgrade(u.id)){this.play('deny');this.toast(`${u.name} needs ${this.f(this.game.upgradePrice(u).sub(this.game.s.kernels))} more kernels.`,'info');return;}
+    if(!this.game.buyUpgrade(u.id)){this.play('deny');return;}
     this.play('upgrade');this.burst(b,8);this.hideTooltip();
     this.announce(`Bought ${u.name}. ${effectText(u)}`);
-    if(u.effect.kind==='unlock')this.toast(`${u.name}: ${effectText(u)}`,'gold');
+    if(u.effect.kind==='unlock')this.toast(`Unlocked: ${u.name}`,'gold');
     this.updateShop();this.updateCounters();this.slowUpdate();this.requestSave();
     // Keep keyboard focus in the upgrade list after the bought button disappears.
     this.el.upgrades.querySelector<HTMLElement>('[data-upgrade]')?.focus({preventScroll:true});
@@ -662,6 +676,7 @@ export class CornClicker {
         <p>Buy ${qty}: <b>${format(g.bulkCost(p.id,qty),style)}</b> kernels for <b>+${format(this.gain(p.id,qty),style,true)}</b>/s.</p>
         ${next&&next.req.type==='owned'?`<p class="cc-muted">Next upgrade unlocks at ${next.req.count} owned.</p>`:''}`;
     }
+    if(kind==='ach'){const a=achievementById.get(id)!,got=g.s.achievements.has(id);return a.secret&&!got?'<strong>???</strong><p>Secret.</p>':`<strong>${a.name}</strong><p>${a.desc}</p>${got?'<p class="cc-muted">Earned</p>':''}`;}
     const u=upgradeById.get(id);if(!u)return '';
     const price=g.upgradePrice(u);
     if(kind==='locked')return `<strong>${u.name}</strong> <span class="cc-muted">(locked)</span><p>${effectText(u)}</p><p>Unlocks when you ${requirementText(u.req,style)} (${Math.floor(g.requirementProgress(u.req)*100)}% there).</p><p>Price: ${format(price,style)} kernels.</p>`;
@@ -703,30 +718,26 @@ export class CornClicker {
     this.root.querySelectorAll('.cc-tab').forEach(t=>t.classList.toggle('cc-attention',!!tip.tab&&(t as HTMLElement).dataset.top===tip.tab&&this.top!==tip.tab));
     if(tip.sub)this.root.querySelector(`#cc-subtab-${tip.sub}`)?.classList.toggle('cc-attention',this.sub!==tip.sub);
   }
+  /** One short line under the cob: what to save for next. The next unlock lives in Goals. */
   private updateGoal(){
     const g=this.game,style=this.style(),cps=g.effectiveCps();
-    let goal:string;
-    if(g.totalOwned()===0)goal=`Goal: harvest ${format(g.unitPrice('farmhand',0),style)} kernels to hire your first Farmhand (${Math.min(100,Math.floor(g.s.kernels.toNumber()/15*100))}%).`;
+    let goal='';
+    if(g.seedsAvailable()>0&&g.s.life.replants===0)goal=`Replant ready: ${g.seedsAvailable()} seed${g.seedsAvailable()>1?'s':''}`;
+    else if(g.totalOwned()===0)goal=`Next: Farmhand · ${format(g.unitPrice('farmhand',0),style)}`;
     else{
-      const options:{name:string;cost:Big}[]=[
-        ...g.availableUpgrades().map(u=>({name:`the ${u.name} upgrade`,cost:g.upgradePrice(u)})),
-        ...PRODUCERS.filter(p=>g.revealed(p.id)).map(p=>({name:`a ${p.name}`,cost:g.unitPrice(p.id,g.s.producers[p.id])})),
-      ].sort((a,b)=>a.cost.cmp(b.cost));
-      const target=options.find(o=>o.cost.gt(g.s.kernels))??options[options.length-1];
-      const affordable=options.filter(o=>o.cost.lte(g.s.kernels)).length;
-      goal=affordable?`You can afford ${affordable} thing${affordable>1?'s':''} in the Shop.`:'';
-      if(target&&target.cost.gt(g.s.kernels)){
-        const wait=cps.isZero()?'':` (about ${duration(target.cost.sub(g.s.kernels).div(cps).toNumber())})`;
-        goal+=`${goal?' ':''}Next: save ${format(target.cost,style)} for ${target.name}${wait}.`;
-      }
-      if(g.seedsAvailable()>0)goal+=` Replant now for ${g.seedsAvailable()} Golden Seed${g.seedsAvailable()>1?'s':''}.`;
+      const target=[
+        ...g.availableUpgrades().map(u=>({name:u.name,cost:g.upgradePrice(u)})),
+        ...PRODUCERS.filter(p=>g.revealed(p.id)).map(p=>({name:p.name,cost:g.unitPrice(p.id,g.s.producers[p.id])})),
+      ].sort((a,b)=>a.cost.cmp(b.cost)).find(o=>o.cost.gt(g.s.kernels));
+      if(target)goal=`Next: ${target.name}${cps.isZero()?'':` · ${duration(target.cost.sub(g.s.kernels).div(cps).toNumber())}`}`;
     }
+    if(this.el.goal.textContent!==goal)this.el.goal.textContent=goal;
+  }
+  private unlockText():string {
+    const g=this.game,style=this.style();
     const feature=UPGRADES.find(u=>u.group==='feature'&&!g.s.upgrades.has(u.id)&&!g.requirementMet(u.req));
     const hidden=PRODUCERS.find(p=>!g.revealed(p.id));
-    const unlock=feature?`Upcoming unlock: ${feature.name}, when you ${requirementText(feature.req,style)}.`
-      :hidden?`Next producer: ${hidden.name} appears around ${format(hidden.baseCost*0.35,style)} kernels.`:'Every producer is revealed. Can the Corniverse grow any further?';
-    if(this.el.goal.textContent!==goal)this.el.goal.textContent=goal;
-    if(this.el.unlock.textContent!==unlock)this.el.unlock.textContent=unlock;
+    return feature?`${feature.name}: ${requirementText(feature.req,style)}`:hidden?`${hidden.name}: around ${format(hidden.baseCost*0.35,style)} kernels`:'Everything unlocked!';
   }
   private updateTicker(){
     const g=this.game;
@@ -763,7 +774,7 @@ export class CornClicker {
     const type=slots>1?'checkbox':'radio';
     this.openModal(`<h2 id="cc-modal-title">Scarecrow bonus</h2><p>${slots>1?'Choose up to two bonuses.':'Choose one bonus.'} After changing, the scarecrow needs ${duration(60)} to settle before the next change.</p>
       ${cool>0?`<p class="cc-warn">Settling in: ${duration(cool)} until you can change again.</p>`:''}
-      <fieldset class="cc-crow-options"${cool>0?' disabled':''}><legend class="cc-sr">Bonuses</legend>${(Object.keys(SCARECROW) as ScarecrowBonus[]).map(b=>`<label class="cc-crow-option"><input type="${type}" name="cc-crow" value="${b}"${current.has(b)?' checked':''}><span class="cc-crow-art">${this.icon('crow'+SCARECROW[b].hat,()=>scarecrowSvg(SCARECROW[b].hat))}</span><span><strong>${SCARECROW[b].name}</strong><small>${SCARECROW[b].desc}</small></span></label>`).join('')}</fieldset>
+      <fieldset class="cc-crow-options"${cool>0?' disabled':''}><legend class="cc-sr">Bonuses</legend>${(Object.keys(SCARECROW) as ScarecrowBonus[]).map(b=>`<label class="cc-crow-option"><input type="${type}" name="cc-crow" value="${b}"${current.has(b)?' checked':''}><span class="cc-crow-art">${this.icon('crow'+SCARECROW[b].hat,()=>scarecrowArt(SCARECROW[b].hat))}</span><span><strong>${SCARECROW[b].name}</strong><small>${SCARECROW[b].desc}</small></span></label>`).join('')}</fieldset>
       <p class="cc-error" role="alert"></p>
       <div class="cc-row"><button type="button" class="cc-btn cc-btn-quiet" data-act="close">Cancel</button><button type="button" class="cc-btn" data-act="apply"${cool>0?' disabled':''}>Apply</button></div>`,card=>{
       card.querySelector('[data-act=apply]')!.addEventListener('click',()=>{
@@ -787,9 +798,9 @@ export class CornClicker {
     const previous=new Set((this.sig.scene??'').split('|')[1]?.split(',').map(x=>x.replace(/\d+$/,''))??[]);
     this.sig.scene=sig;
     const hat=crow?SCARECROW[crow as ScarecrowBonus].hat:'straw';
-    this.el.scene.innerHTML=`<div class="cc-backdrop">${this.icon('scene'+stage,()=>sceneBackdrop(stage as 0|1|2|3))}</div>
+    this.el.scene.innerHTML=`<div class="cc-backdrop">${this.icon('scene'+stage,()=>sceneArt(stage as 0|1|2|3))}</div>
       ${fest?`<div class="cc-bunting" aria-hidden="true"></div><p class="cc-fair-banner">${FESTIVALS[fest as keyof typeof FESTIVALS].name}!</p>`:''}
-      ${crow?`<div class="cc-scarecrow" title="Scarecrow: ${SCARECROW[crow as ScarecrowBonus].name}">${this.icon('crow'+hat,()=>scarecrowSvg(hat))}</div>`:''}
+      ${crow?`<div class="cc-scarecrow" title="Scarecrow: ${SCARECROW[crow as ScarecrowBonus].name}">${this.icon('crow'+hat,()=>scarecrowArt(hat))}</div>`:''}
       <div class="cc-lots">${lots.length?lots.map(id=>`<div class="cc-lot${previous.has(id)?'':' cc-new'}" data-lot="${id}" title="${s.producers[id]} ${s.producers[id]===1?producerById[id].name:producerById[id].plural}">
         ${Array.from({length:copies(s.producers[id])},(_,i)=>`<span class="cc-lot-icon" style="--i:${i}">${this.producerIcon(id)}</span>`).join('')}<span class="cc-lot-count">${s.producers[id]}</span></div>`).join('')
         :'<p class="cc-scene-empty">An empty field, waiting for its first Farmhand.</p>'}</div>`;
@@ -798,23 +809,23 @@ export class CornClicker {
 
   // ───────────────────────── Goals ─────────────────────────
   private updateGoals(){
-    const g=this.game,style=this.style(),count=g.s.achievements.size;
+    const g=this.game,count=g.s.achievements.size;
     if(this.sig.goals!==`${count}|${g.s.skin}`){
       this.sig.goals=`${count}|${g.s.skin}`;
       const nextSkin=SKINS.find(s=>s.achievements>count);
-      this.el.goals.innerHTML=`<div class="cc-butter"><span class="cc-butter-icon">${this.icon('butter',butterSvg)}</span><div><h3 class="cc-h3">Butter Bonus</h3>
-        <p><b>${count}</b> of ${ACHIEVEMENTS.length} achievements: <b>+${g.butterPct().toFixed(1)}%</b> production, kept forever.</p>
+      this.el.goals.innerHTML=`<div class="cc-butter"><span class="cc-butter-icon">${this.icon('butter',butterArt)}</span><div class="cc-grow">
+        <p><b>Butter Bonus +${g.butterPct().toFixed(0)}%</b> <span class="cc-muted">${count}/${ACHIEVEMENTS.length}</span></p>
         <div class="cc-meter" role="meter" aria-label="Butter Bonus" aria-valuemin="0" aria-valuemax="${ACHIEVEMENTS.length}" aria-valuenow="${count}"><span style="--fill:${count/ACHIEVEMENTS.length}"></span></div>
-        <p class="cc-muted">${nextSkin?`Next cob skin, ${nextSkin.name}, at ${nextSkin.achievements} achievements (${nextSkin.achievements-count} to go).`:'Every cob skin unlocked!'}</p></div></div>
+        ${nextSkin?`<p class="cc-muted">Next skin at ${nextSkin.achievements}</p>`:''}</div></div>
         <div class="cc-next-ach"></div>
-        <h3 class="cc-h3">Cob skins</h3><div class="cc-skins" role="radiogroup" aria-label="Cob skin">${SKINS.map(s=>{const open=g.skinUnlocked(s.id);
-          return `<button type="button" role="radio" class="cc-skin${open?'':' cc-locked'}" data-skin="${s.id}" aria-checked="${g.s.skin===s.id}" aria-label="${s.name}${open?'':`: locked, needs ${s.achievements} achievements`}"${open?'':' aria-disabled="true"'}>${open?this.icon('skin-'+s.id,()=>cobSvg(s.id)):'<span class="cc-lock" aria-hidden="true">?</span>'}<span>${s.name}</span></button>`;}).join('')}</div>
-        <h3 class="cc-h3">Achievements</h3><ul class="cc-achievements">${ACHIEVEMENTS.map(a=>{const got=g.s.achievements.has(a.id);const hide=a.secret&&!got;
-          return `<li class="cc-ach${got?' cc-got':''}"><strong>${hide?'Secret achievement':a.name}</strong><small>${hide?'Keep clicking…':a.desc}</small></li>`;}).join('')}</ul>`;
+        <div class="cc-skins" role="radiogroup" aria-label="Cob skin">${SKINS.map(s=>{const open=g.skinUnlocked(s.id);
+          return `<button type="button" role="radio" class="cc-skin${open?'':' cc-locked'}" data-skin="${s.id}" aria-checked="${g.s.skin===s.id}" aria-label="${s.name}${open?'':`: needs ${s.achievements} achievements`}" title="${s.name}"${open?'':' aria-disabled="true"'}>${open?this.icon('skin-'+s.id,()=>cobArt(s.id)):'<span class="cc-lock" aria-hidden="true">?</span>'}</button>`;}).join('')}</div>
+        <ul class="cc-achievements" aria-label="Achievements">${ACHIEVEMENTS.map(a=>{const got=g.s.achievements.has(a.id);const hide=a.secret&&!got;
+          return `<li class="cc-ach${got?' cc-got':''}" tabindex="0" data-tip="ach:${a.id}" aria-label="${esc(hide?'Secret achievement':`${a.name}: ${a.desc}${got?' Earned.':''}`)}">${got?this.icon('kernel',kernelArt):''}</li>`;}).join('')}</ul>`;
     }
     const next=g.nextAchievement();
     const box=this.el.goals.querySelector<HTMLElement>('.cc-next-ach')!;
-    const html=next?`<h3 class="cc-h3">Next achievement</h3><p><strong>${next.name}</strong>: ${next.desc}</p><div class="cc-meter" role="meter" aria-label="Progress to ${esc(next.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.floor(g.achievementProgress(next)*100)}"><span style="--fill:${g.achievementProgress(next)}"></span></div><p class="cc-muted">Target: ${achievementTarget(next,style)}.</p>`:'<p>Every achievement earned. Magnificent.</p>';
+    const html=`${next?`<p><span class="cc-muted">Next:</span> <b>${next.name}</b> · ${next.desc}</p><div class="cc-meter" role="meter" aria-label="Progress to ${esc(next.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.floor(g.achievementProgress(next)*100)}"><span style="--fill:${g.achievementProgress(next)}"></span></div>`:''}<p><span class="cc-muted">Unlock:</span> ${this.unlockText()}</p>`;
     if(box.innerHTML!==html)box.innerHTML=html;
   }
 
@@ -832,12 +843,8 @@ export class CornClicker {
     ];
     const html=`<table class="cc-stats"><caption class="cc-sr">Statistics</caption><thead><tr><th scope="col">Statistic</th><th scope="col">This run</th><th scope="col">Lifetime</th></tr></thead><tbody>
       ${rows.map(([a,b,c])=>`<tr><th scope="row">${a}</th><td>${b}</td><td>${c}</td></tr>`).join('')}</tbody></table>
-      <ul class="cc-stat-list"><li>Replants: <b>${l.replants}</b> · Golden Seeds claimed: <b>${s.seedsClaimed}</b> (+${(s.seedsClaimed*PRESTIGE.bonusPerSeed*100).toFixed(0)}% production)</li>
-      <li>Producers owned now: <b>${g.totalOwned()}</b> · Upgrades owned: <b>${s.upgrades.size}</b> of ${UPGRADES.length}</li>
-      <li>Varieties discovered: <b>${s.garden.discovered.size}</b> of ${VARIETIES.length} · Plants sown: <b>${l.planted}</b> · Mutations: <b>${l.mutations}</b></li>
-      <li>Production multipliers: permanent ×${g.permanentMult().toFixed(2)} · temporary ×${g.temporaryMult().toFixed(2)} · clicks earn ${(g.clickCpsFraction()*100).toFixed(0)}% of production each</li></ul>
-      <h3 class="cc-h3">Time away</h3><p>While you are away (including while the game is paused for more than a minute), producers keep working at <b>${Math.round(off.rate*100)}%</b> of base production for up to <b>${longDuration(off.seconds)}</b>. Golden, festival and pest effects are not included, and temporary boosts keep counting down while you are gone. Permanent upgrades from Replanting can extend this.</p>
-      ${s.lastOffline?`<p class="cc-muted">Last return: away ${longDuration(s.lastOffline.seconds)}, earned ${f(s.lastOffline.earned)} kernels${s.lastOffline.capped?' (allowance reached)':''}.</p>`:''}`;
+      <p class="cc-muted">Replants ${l.replants} · Seeds ${s.seedsClaimed} (+${(s.seedsClaimed*PRESTIGE.bonusPerSeed*100).toFixed(0)}%) · Varieties ${s.garden.discovered.size}/${VARIETIES.length}</p>
+      <p class="cc-muted">Away: ${Math.round(off.rate*100)}% production for up to ${longDuration(off.seconds)}.</p>`;
     if(this.sig.stats!==html){this.sig.stats=html;this.el.stats.innerHTML=html;}
   }
 
@@ -845,20 +852,18 @@ export class CornClicker {
   private updateReplant(){
     const g=this.game,s=g.s,style=this.style(),available=g.seedsAvailable(),next=g.nextSeedProgress();
     const bonusNow=s.seedsClaimed*PRESTIGE.bonusPerSeed*100,bonusAfter=(s.seedsClaimed+available)*PRESTIGE.bonusPerSeed*100;
-    const paths:[PermPath,string][]=[['active','Active clicking'],['idle','Idle production'],['golden','Golden cobs'],['general','Whole farm']];
-    const html=`<div class="cc-seed-head"><span class="cc-seed-icon">${this.icon('seed',seedSvg)}</span><div>
-      <p class="cc-big"><b>${available}</b> Golden Seed${available===1?'':'s'} available to claim now</p>
-      <p>You hold <b>${s.seeds}</b> unspent seeds. Seeds ever claimed: <b>${s.seedsClaimed}</b>, worth +${bonusNow.toFixed(0)}% production permanently${available?`, rising to +${bonusAfter.toFixed(0)}% after replanting`:''}. Spending seeds never lowers this bonus.</p>
+    const paths:[PermPath,string][]=[['active','Clicking'],['idle','Idle'],['golden','Golden'],['general','Farm']];
+    const html=`<div class="cc-seed-head"><span class="cc-seed-icon">${this.icon('seed',seedArt)}</span><div class="cc-grow">
+      <p class="cc-big"><b>+${available}</b> seed${available===1?'':'s'}</p>
       <div class="cc-meter" role="meter" aria-label="Progress to the next Golden Seed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.floor(next.progress*100)}"><span style="--fill:${next.progress}"></span></div>
-      <p class="cc-muted">Next seed: ${(next.progress*100).toFixed(1)}%, ${format(next.needed,style)} more kernels to harvest. Seeds come from all kernels ever harvested (spending never counts against you); each Replant awards only seeds not already claimed.</p></div></div>
-      <div class="cc-reset-lists"><div><h3 class="cc-h3">Replanting resets</h3><ul><li>${format(s.kernels,style)} kernels</li><li>${g.totalOwned()} producers</li><li>${s.upgrades.size} ordinary upgrades (including Garden, Scarecrow, Fair and Cornpocalypse unlocks)</li><li>Garden plantings, active boosts, festivals and pests</li><li>This-run statistics</li></ul></div>
-      <div><h3 class="cc-h3">You keep</h3><ul><li>${s.achievements.size} achievements and the Butter Bonus</li><li>Cob skins</li><li>${s.garden.discovered.size} discovered corn varieties</li><li>Golden Seeds and every permanent upgrade</li><li>Lifetime statistics and options</li></ul></div></div>
-      <button type="button" class="cc-btn cc-btn-gold" data-act="replant"${available?'':' disabled'}>${available?`Replant for ${available} Golden Seed${available===1?'':'s'}`:'Replant (no seeds yet)'}</button>
-      <h3 class="cc-h3">Permanent upgrades</h3><p class="cc-muted">Bought with Golden Seeds. Kept through every Replant.</p>
+      <p class="cc-muted">Next seed ${(next.progress*100).toFixed(0)}% · You have ${s.seeds} · Bonus +${bonusNow.toFixed(0)}%${available?` → +${bonusAfter.toFixed(0)}%`:''}</p></div></div>
+      <div class="cc-reset-lists"><div><h3 class="cc-h3">Resets</h3><p>Kernels, producers, upgrades, garden plants</p></div>
+      <div><h3 class="cc-h3">Keeps</h3><p>Achievements, skins, varieties, seeds, permanent upgrades</p></div></div>
+      <button type="button" class="cc-btn cc-btn-gold" data-act="replant"${available?'':' disabled'}>${available?`Replant for ${available} Golden Seed${available===1?'':'s'}`:'Replant'}</button>
       ${paths.map(([path,label])=>`<h4 class="cc-h4">${label}</h4><div class="cc-perms">${PERMS.filter(p=>p.path===path).map(p=>{
         const owned=s.perms.has(p.id),locked=!!p.requires&&!s.perms.has(p.requires),can=g.canBuyPerm(p.id);
-        return `<button type="button" class="cc-perm${owned?' cc-owned':''}${can?'':' cc-poor'}" data-perm="${p.id}" aria-disabled="${!can}"><strong>${p.name}</strong><small>${p.desc}</small>
-          <span class="cc-perm-cost">${owned?'Owned':`${p.cost} seed${p.cost===1?'':'s'}`}${locked?` · needs ${permById.get(p.requires!)!.name}`:''}</span></button>`;}).join('')}</div>`).join('')}`;
+        return `<button type="button" class="cc-perm${owned?' cc-owned':''}${can?'':' cc-poor'}" data-perm="${p.id}" aria-disabled="${!can}" title="${esc(p.desc)}${locked?` Needs ${esc(permById.get(p.requires!)!.name)}.`:''}"><strong>${p.name}</strong><small>${p.desc}</small>
+          <span class="cc-perm-cost">${owned?'Owned':`${p.cost} seed${p.cost===1?'':'s'}`}</span></button>`;}).join('')}</div>`).join('')}`;
     if(this.sig.replant!==html){
       const focused=(document.activeElement as HTMLElement|null)?.dataset?.perm;
       this.sig.replant=html;this.el.replant.innerHTML=html;
@@ -869,12 +874,12 @@ export class CornClicker {
     const g=this.game,available=g.seedsAvailable(),style=this.style();
     if(available<1)return;
     this.confirm(`Replant for ${available} Golden Seed${available===1?'':'s'}?`,
-      `You will lose ${format(g.s.kernels,style)} kernels, ${g.totalOwned()} producers, ${g.s.upgrades.size} upgrades and your garden plantings. You keep achievements, skins, discovered varieties, Golden Seeds and permanent upgrades. Production bonus from seeds: +${(g.s.seedsClaimed*PRESTIGE.bonusPerSeed*100).toFixed(0)}% → +${((g.s.seedsClaimed+available)*PRESTIGE.bonusPerSeed*100).toFixed(0)}%.`,
+      `Production bonus +${(g.s.seedsClaimed*PRESTIGE.bonusPerSeed*100).toFixed(0)}% → +${((g.s.seedsClaimed+available)*PRESTIGE.bonusPerSeed*100).toFixed(0)}%. Kernels, producers and upgrades reset.`,
       'Replant',()=>{
         addBackup(this.ownedSnapshot(),'Before replanting');
         const claimed=this.game.replant();
         this.afterLoad();this.flushSave();this.play('achievement');
-        this.toast(`Replanted! +${claimed} Golden Seeds. Spend them on permanent upgrades below.`,'gold');
+        this.toast(`Replanted! +${claimed} seeds`,'gold');
         this.game.checkAchievements();this.drainEvents();
       });
   }
@@ -937,7 +942,7 @@ export class CornClicker {
       const b=(event.target as Element).closest<HTMLElement>('[data-skin]');if(!b)return;
       const id=b.dataset.skin as SkinId;
       if(!this.game.skinUnlocked(id)){this.toast(`Earn ${SKINS.find(s=>s.id===id)!.achievements} achievements to unlock this skin.`,'info');return;}
-      if(this.game.setSkin(id)){this.el.cob.innerHTML=cobSvg(id);this.play('upgrade');this.requestSave();this.updateGoals();this.root.querySelector<HTMLElement>(`[data-skin="${id}"]`)?.focus();}
+      if(this.game.setSkin(id)){this.el.cob.innerHTML=cobArt(id);this.play('upgrade');this.requestSave();this.updateGoals();this.root.querySelector<HTMLElement>(`[data-skin="${id}"]`)?.focus();}
     });
     this.el.options.addEventListener('change',event=>{
       const input=event.target as HTMLInputElement|HTMLSelectElement,key=input.dataset.opt;if(!key)return;
@@ -957,7 +962,7 @@ export class CornClicker {
       if(backup){
         const b=listBackups()[Number(backup.dataset.backup)];if(!b)return;
         this.confirm('Restore this backup?',`${b.reason}, saved ${new Date(b.at).toLocaleString()}. Your current farm is backed up first, so you can switch back.`,'Restore backup',()=>{
-          try{const state=deserialize(b.data,Date.now());addBackup(this.ownedSnapshot(),'Before restoring a backup');state.lastTick=Date.now();this.load(state,Date.now());this.flushSave();this.toast('Backup restored.','info');}
+          try{const state=deserialize(b.data,Date.now());addBackup(this.ownedSnapshot(),'Before restoring a backup');state.lastTick=state.clockMax=Date.now();state.rev=this.game.s.rev+1;this.load(state,Date.now());this.flushSave();this.toast('Backup restored.','info');}
           catch{this.toast('That backup could not be read.','warn');}
         });
       }
@@ -992,7 +997,7 @@ export class CornClicker {
         try{
           const state=deserialize(importString(text),Date.now());
           // Imported saves never pay offline rewards: otherwise an old code could be imported repeatedly.
-          state.lastTick=Date.now();state.rev=Math.max(state.rev,this.game.s.rev)+1;
+          state.lastTick=state.clockMax=Date.now();state.rev=Math.max(state.rev,this.game.s.rev)+1;
           addBackup(this.ownedSnapshot(),'Before importing a save');
           this.load(state,Date.now());this.flushSave();this.closeModal();this.toast('Save imported.','info');
         }catch(e){error.textContent=e instanceof SaveError?e.message:'That save code could not be read.';}
@@ -1004,6 +1009,7 @@ export class CornClicker {
   private openModal(html:string,bind?:(card:HTMLElement)=>void,closable=true){
     if(this.el.modal.hidden)this.modalReturn=document.activeElement as HTMLElement|null;
     this.el.modal.hidden=false;this.el.modal.dataset.closable=String(closable);
+    for(const child of this.root.children)if(child!==this.el.modal&&child!==this.el.toasts)(child as HTMLElement).inert=true;
     this.card(html);bind?.(this.el.card);
     this.el.card.querySelectorAll('[data-act=close]').forEach(b=>b.addEventListener('click',()=>this.closeModal()));
     (this.el.card.querySelector<HTMLElement>('textarea,button'))?.focus();
@@ -1012,6 +1018,7 @@ export class CornClicker {
   private card(html:string){this.el.card.innerHTML=html;}
   private closeModal(){
     this.el.modal.hidden=true;this.el.card.innerHTML='';
+    for(const child of this.root.children)(child as HTMLElement).inert=false;
     const back=this.modalReturn;this.modalReturn=null;
     if(back?.isConnected)back.focus({preventScroll:true});else this.el.cob.focus({preventScroll:true});
   }
@@ -1023,9 +1030,8 @@ export class CornClicker {
   private showOffline(seconds:number,earned:Big,capped:boolean){
     const off=this.game.offlineAllowance(),style=this.style();
     this.play('harvest');this.game.checkAchievements();
-    this.openModal(`<h2 id="cc-modal-title">Welcome back!</h2><p>You were away for <b>${longDuration(seconds)}</b>. Your farm harvested <b>${format(earned,style)}</b> kernels while you were gone.</p>
-      <p class="cc-muted">Away, producers work at ${Math.round(off.rate*100)}% of base production for up to ${longDuration(off.seconds)}.${capped?' You reached that limit this time: Replant upgrades can extend it.':''} Temporary boosts kept counting down while you were away.</p>
-      <div class="cc-row"><button type="button" class="cc-btn" data-act="close">Back to the farm</button></div>`);
+    this.openModal(`<h2 id="cc-modal-title">Welcome back!</h2><p class="cc-big"><b>+${format(earned,style)}</b></p><p class="cc-muted">Away ${longDuration(seconds)} · ${Math.round(off.rate*100)}% rate, up to ${longDuration(off.seconds)}${capped?' (limit reached)':''}</p>
+      <div class="cc-row"><button type="button" class="cc-btn" data-act="close">Collect</button></div>`);
     this.announce(`Welcome back. Your farm harvested ${format(earned,style)} kernels while you were away.`);
   }
 }
