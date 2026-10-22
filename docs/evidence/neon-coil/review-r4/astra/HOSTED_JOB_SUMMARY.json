@@ -1,0 +1,33 @@
+[
+  {
+    "name": "build",
+    "conclusion": "failure",
+    "relevant_steps": [
+      {
+        "name": "Run npm test",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run npm run test:e2e",
+        "conclusion": "failure"
+      },
+      {
+        "name": "Run npm run build",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run npm run verify:update",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run npm run verify:offline",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  {
+    "name": "deploy",
+    "conclusion": "skipped",
+    "relevant_steps": []
+  }
+]

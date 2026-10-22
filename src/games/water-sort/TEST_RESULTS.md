@@ -140,3 +140,27 @@ Observed checks after this isolated follow-up:
 The parent independently verifies the final integrated input change and owns
 final all-game build/offline checks. This section reports specialist checks;
 it does not claim the earlier whole-app 139-case run covered this later patch.
+
+## 27 levels and shared scoreboards — 21 October 2026
+
+- Expanded from **9 to 27 distinct boards**; original nine indexes/boards preserved.
+- `npm test`: **482 passed across 32 files**. All 27 levels pass independent BFS,
+  reverse witnesses, decreasing winning hints and reachable-state recovery; the
+  original ninth-level save remains compatible. Water Sort has 112 model checks.
+- `npm run build`: **passed** with the pre-existing large-bundle advisory.
+- Chromium Water Sort + initial shared-board run: **17 passed (1.9 minutes)**,
+  including the final added level's select/reload/win/wrap to Level 1.
+- Chromium shell + Study + online-board/pause run: **38 passed (2.8 minutes)**.
+  Shared-board test overlaps the previous run; shell checks retain all games and
+  cover menu, blocked storage, Study, pause/return and library viewports.
+- Real Postgres integration validates shared ranking between tokens, monotonic
+  personal bests, nickname/game isolation, validation and payload limits.
+- `dev:online` also passed a real HTTP round trip: two distinct player submissions
+  return one shared board ordered 200 then 120 points.
+- Independent review: connection pool reuse fixed and re-reviewed; no remaining
+  blocking findings. Online activation still requires a Netlify deploy of this code,
+  including the function and automatic database migration; production was not changed.
+- Additional real-game publication browser check: **1 passed (10.7s)**. Joining,
+  earning points by revealing a safe Minesweeper tile, and reopening the board
+  publishes the actual GameContext score and displays the player's matching best.
+  Across the overlapping runs, **55 distinct browser scenarios passed**.

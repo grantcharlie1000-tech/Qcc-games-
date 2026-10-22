@@ -1,8 +1,12 @@
 import {test,expect} from '@playwright/test';
 import type {Page} from '@playwright/test';
+import {readFileSync} from 'node:fs';
+import {directShot} from '../games/pool/helpers';
 
+const studyImagePaths=new Set<string>(JSON.parse(readFileSync('public/study/image-provenance.json','utf8')).assets.map((asset:{path:string})=>`/study/${asset.path}`));
+const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of requests){const url=new URL(request);expect(url.origin).toBe(new URL(page.url()).origin);expect(studyImagePaths.has(url.pathname)).toBe(true);}};
 const topicKey='pocket-arcade:study:v1:topic';
-const choose=async(page:import('@playwright/test').Page,id='close-reading')=>page.locator(`[data-study-topic="${id}"]`).click();
+const choose=async(page:import('@playwright/test').Page,id='close-reading')=>{const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.isVisible())await accept.click();await page.locator(`[data-study-topic="${id}"]`).click();};
 const returnToGame=async(page:import('@playwright/test').Page)=>page.getByRole('link',{name:'Games',exact:true}).click();
 const snapshot=(page:Page,id:string)=>page.evaluate(id=>JSON.parse(localStorage.getItem(`pocket-arcade:v1:save:${id}`)!).data,id);
 
@@ -29,8 +33,14 @@ async function gameAction(page:Page,id:string){
   if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
   if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
   if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
-  if(id==='pool')await page.getByRole('button',{name:'Shoot',exact:true}).click();
+  if(id==='pool'){
+    await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','0');
+    await directShot(page);
+    await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','1');
+    await expect(page.locator('.pool-game')).toHaveAttribute('data-phase','moving');
+  }
   if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
+  if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');}
   if(id==='blockcraft'){
     // Chunks stream on animation frames, which the paused clock drives.
     for(let i=0;i<80&&await page.locator('.blockcraft').getAttribute('data-ready')!=='true';i++)await page.clock.runFor(100);
@@ -47,7 +57,7 @@ test('first visit offers exactly 20 topics and remembers the choice for this tab
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
   await choose(page,'quadratics');
-  await expect(page.locator('.game-card')).toHaveCount(14);
+  await expect(page.locator('.game-card')).toHaveCount(16);
   expect(await page.evaluate(key=>sessionStorage.getItem(key),topicKey)).toBe('quadratics');
   await page.reload();
   await expect(page.locator('.game-card').first()).toBeVisible();
@@ -94,8 +104,8 @@ test('Escape immediately saves and pauses; article changes never load or replace
   for(const id of topics){
     await page.getByLabel('Study topic',{exact:true}).selectOption(id);
     await expect(page.locator('#study-title')).not.toBeEmpty();
-    await expect(page.locator('.study-figure svg')).toBeVisible();
-    await expect(page.locator('.study-chapter h2')).toHaveCount(5);
+    await expect(page.locator('.study-diagram, .study-byline svg')).toHaveCount(0);
+    await expect(page.locator('.study-text-section')).toHaveCount(6);
   }
   await page.keyboard.press('Escape');
   await expect(page.locator('#study-view')).toBeVisible();
@@ -105,11 +115,11 @@ test('Escape immediately saves and pauses; article changes never load or replace
   await expect(page.locator('.fm-count')).toContainText('1 fruit');
   expect(await page.evaluate(()=>(window as unknown as {retainedStage:Element|null}).retainedStage===document.querySelector('#game-stage > *'))).toBe(true);
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
-  expect(requests).toEqual([]);
+  expectOnlyStudyImages(requests,page);
 });
 
 test.describe('all retained game instances',()=>{
-  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','blockcraft']){
+  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft']){
     test(`${id}: gameplay, Escape, frozen autosave and exact return`,async({page})=>{
       test.setTimeout(60000);
       const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -161,12 +171,12 @@ for(const modal of ['menu','rules']){
   });
 }
 
-test('manual pause survives Study and contents navigation keeps the game route intact',async({page})=>{
+test('manual pause survives Study and topic navigation keeps the game route intact',async({page})=>{
   await page.goto('/#/game/minesweeper');await choose(page);
   await page.getByRole('gridcell').first().click();
   await page.getByRole('button',{name:'Pause game',exact:true}).click();
   await page.keyboard.press('Escape');
-  await page.getByRole('navigation',{name:'Chapter contents'}).getByRole('link').first().click();
+  await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
   expect(new URL(page.url()).hash).toBe('#/game/minesweeper');
   await returnToGame(page);
   await expect(page.locator('#pause-overlay')).toBeVisible();
@@ -196,20 +206,24 @@ test('Study remains usable when both storage APIs are blocked',async({page})=>{
     for(const key of ['sessionStorage','localStorage'])Object.defineProperty(window,key,{get(){throw new DOMException('Blocked','SecurityError');}});
   });
   await page.goto('/#/game/solitaire');
-  await expect(page.locator('.study-session-note')).toContainText('unavailable');
-  await choose(page,'historical-evidence');
+  await page.getByRole('button',{name:'Customize',exact:true}).click();
+  await expect(page.getByRole('dialog')).toContainText('unavailable');await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:'Accept All',exact:true}).click();
+  await expect(page.getByRole('dialog').getByRole('status')).toContainText('This choice applies to this page only');await expect(page.getByRole('dialog').getByRole('status')).toBeInViewport();await page.keyboard.press('Escape');
+  await page.locator('[data-study-topic="historical-evidence"]').click();await expect(page.getByRole('dialog').getByRole('status')).toContainText('Your reading topic could not be remembered');await expect(page.getByRole('dialog').getByRole('status')).toBeInViewport();await page.keyboard.press('Escape');
   await page.getByRole('button',{name:/^Draw from stock/}).click();
   const cards=await page.locator('.sol-card').count();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.study-save-note')).toContainText('memory');
+  await expect(page.locator('.study-save-error')).toContainText('memory');
   await page.getByLabel('Study topic',{exact:true}).selectOption('hauora');
+  await expect(page.getByRole('dialog').getByRole('status')).toContainText('Your reading topic could not be remembered');await expect(page.getByRole('dialog').getByRole('status')).toBeInViewport();await page.keyboard.press('Escape');
   await returnToGame(page);
   expect(await page.locator('.sol-card').count()).toBe(cards);
   await page.reload();
   await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
 });
 
-test('library menu opens a chapter without remaking cards or requesting assets',async({page})=>{
+test('library menu keeps cards and requests only approved study images',async({page})=>{
   await page.goto('/');await choose(page);
   await page.locator('.game-card img').last().evaluate((image:HTMLImageElement)=>image.decode());
   const card=await page.locator('.game-card').first().elementHandle();
@@ -219,7 +233,7 @@ test('library menu opens a chapter without remaking cards or requesting assets',
   await expect(page.locator('#study-title')).toBeVisible();
   await returnToGame(page);
   expect(await card!.evaluate(node=>node===document.querySelector('.game-card'))).toBe(true);
-  expect(requests).toEqual([]);
+  expectOnlyStudyImages(requests,page);
 });
 
 test('a partially dragged Solitaire card is cleaned up without changing the deal',async({page})=>{
@@ -262,29 +276,21 @@ test('returning while the page is hidden leaves the game safely paused',async({p
 for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,height:768}]){
   test(`topic picker and textbook at ${size.width}`,async({page})=>{
     await page.setViewportSize(size);await page.goto('/');
-    await page.screenshot({path:`docs/evidence/study-picker-${size.width}.png`,fullPage:true});
+    await page.screenshot({path:`docs/evidence/article-reading-layout/picker-${size.width}.png`,fullPage:true});
     await choose(page,'inheritance');await page.getByRole('button',{name:'Open menu'}).click();
     await page.getByRole('button',{name:'Study Mode',exact:true}).click();
     await expect(page.locator('#study-title')).toHaveText('From DNA to inherited variation');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-    await page.screenshot({path:`docs/evidence/study-article-${size.width}.png`,fullPage:true});
+    await page.screenshot({path:`docs/evidence/article-reading-layout/article-${size.width}.png`,fullPage:true});
     await page.getByText('Read the explanation',{exact:true}).click();
     await expect(page.locator('details')).toHaveAttribute('open','');
     await returnToGame(page);
-    await expect(page.locator('.game-card')).toHaveCount(14);
+    await expect(page.locator('.game-card')).toHaveCount(16);
   });
 }
 
-test('all twenty original diagrams render as a review contact sheet',async({page})=>{
-  await page.goto('/');await choose(page);await page.getByRole('button',{name:'Open menu'}).click();
-  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
-  const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>(o as HTMLOptionElement).value));
-  const figures:string[]=[];
-  for(const id of topics){
-    await page.getByLabel('Study topic',{exact:true}).selectOption(id);
-    figures.push(`<figure><h2>${await page.locator('.study-subtitle').textContent()}</h2>${await page.locator('.study-diagram').innerHTML()}</figure>`);
-  }
-  await page.setViewportSize({width:1440,height:1000});
-  await page.setContent(`<html><head><style>body{margin:20px;color:#263e38;background:#f8f6ef;font:14px system-ui}main{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}figure{margin:0;padding:12px;background:#edf1e5;border:1px solid #cbd4c2;border-radius:6px}h1{font-size:25px}h2{font-size:12px;min-height:30px;margin:0 0 10px}svg{width:100%;height:auto}</style></head><body><h1>Study Mode · 20 original textbook diagrams</h1><main>${figures.join('')}</main></body></html>`);
-  await page.screenshot({path:'docs/evidence/study-diagrams-contact.png',fullPage:true});
+test('all twenty articles contain substantial readable prose without sidebar or SVG diagrams',async({page})=>{
+  await page.goto('/');await choose(page);await page.getByRole('button',{name:'Open menu'}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>(o as HTMLOptionElement).value));expect(topics).toHaveLength(20);
+  for(const id of topics){await page.getByLabel('Study topic',{exact:true}).selectOption(id);await expect(page.locator('.study-text-section')).toHaveCount(6);await expect(page.locator('.study-sidebar,.study-diagram,.study-chapter svg')).toHaveCount(0);const words=(await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length;expect(words).toBeGreaterThanOrEqual(900);expect(await page.locator('.study-example ol li').count()).toBeGreaterThanOrEqual(2);}
 });

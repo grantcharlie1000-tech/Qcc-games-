@@ -1,15 +1,69 @@
-import { SIZE,type SnakeState } from './model';
-/** Original procedural garden illustration, drawn in logical 480px coordinates. */
-export function drawGarden(canvas:HTMLCanvasElement,s:SnakeState){
- const g=canvas.getContext('2d')!,dpr=Math.min(window.devicePixelRatio||1,2),pixels=Math.round(480*dpr);
- if(canvas.width!==pixels)canvas.width=canvas.height=pixels;g.setTransform(dpr,0,0,dpr,0,0);
- const circle=(x:number,y:number,r:number,color:string)=>{g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();};
- const grass=g.createLinearGradient(0,0,480,480);grass.addColorStop(0,'#c5d981');grass.addColorStop(1,'#86b75d');g.fillStyle=grass;g.fillRect(0,0,480,480);
- for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){g.fillStyle=(x+y)%2?'#ffffff09':'#284d1b0d';g.fillRect(x*30,y*30,30,30);}
- g.strokeStyle='#638c4430';g.lineWidth=2;for(let y=15;y<480;y+=90)for(let x=16;x<480;x+=90){g.beginPath();g.moveTo(x,y+5);g.quadraticCurveTo(x-5,y,x-3,y-4);g.moveTo(x,y+5);g.quadraticCurveTo(x+4,y+1,x+5,y-1);g.stroke();}
- if(s.food){const x=s.food.x*30+15,y=s.food.y*30+15;g.save();g.translate(x,y);g.fillStyle='#294a282b';g.beginPath();g.ellipse(0,10,12,5,0,0,Math.PI*2);g.fill();g.lineCap='round';g.strokeStyle='#6a4329';g.lineWidth=3;g.beginPath();g.moveTo(0,-7);g.quadraticCurveTo(-2,-15,3,-15);g.stroke();g.fillStyle='#2c753b';g.beginPath();g.ellipse(6,-12,6,3,-.5,0,Math.PI*2);g.fill();const red=g.createRadialGradient(-5,-5,1,0,0,16);red.addColorStop(0,'#ffb76e');red.addColorStop(.4,'#f45b42');red.addColorStop(1,'#b92e38');g.fillStyle=red;g.beginPath();g.moveTo(0,-8);g.bezierCurveTo(-15,-16,-18,3,-8,12);g.quadraticCurveTo(-3,15,0,12);g.quadraticCurveTo(5,15,10,9);g.bezierCurveTo(19,-2,10,-16,0,-8);g.fill();g.strokeStyle='#ffe2b5b0';g.lineWidth=2;g.beginPath();g.moveTo(-7,-6);g.quadraticCurveTo(-11,-3,-9,2);g.stroke();g.restore();}
- g.lineCap='round';g.lineJoin='round';g.strokeStyle='#244c2c';g.lineWidth=26;g.beginPath();s.body.forEach((p,i)=>i?g.lineTo(p.x*30+15,p.y*30+17):g.moveTo(p.x*30+15,p.y*30+17));g.stroke();
- for(let i=s.body.length-1;i>=0;i--){const p=s.body[i],x=p.x*30+15,y=p.y*30+15;const green=g.createRadialGradient(x-5,y-7,1,x,y,17);green.addColorStop(0,i===0?'#eff89a':'#c8ed70');green.addColorStop(.45,i===0?'#a9d859':'#80be4c');green.addColorStop(1,'#3d823e');g.fillStyle=green;g.beginPath();g.roundRect(x-13,y-13,26,26,11);g.fill();if(i>0){g.fillStyle='#edfaac80';g.beginPath();g.ellipse(x-3,y-7,6,2.3,-.2,0,Math.PI*2);g.fill();circle(x+5,y+5,2,'#4e923c70');}}
- const h=s.body[0];g.save();g.translate(h.x*30+15,h.y*30+15);g.rotate(({right:0,down:Math.PI/2,left:Math.PI,up:-Math.PI/2})[s.direction]);circle(6,-9,5.5,'#f8ffdc');circle(6,9,5.5,'#f8ffdc');circle(8,-9,2.7,'#173e2c');circle(8,9,2.7,'#173e2c');circle(8.5,-10,1,'white');circle(8.5,8,1,'white');g.strokeStyle='#315c2b';g.lineWidth=1.6;g.beginPath();g.arc(7,0,4,-.9,.9);g.stroke();g.restore();
- canvas.setAttribute('aria-label',`Snake garden. Head column ${h.x+1}, row ${h.y+1}. Length ${s.body.length}. ${s.food?`Apple column ${s.food.x+1}, row ${s.food.y+1}.`:''} Use arrow keys, WASD or swipe.`);
+import {SIZE,HEAD_RADIUS,BODY_RADIUS,FOOD_RADIUS, type SnakeState} from './model';
+import {projectSnake, type SnakePresentation} from './presentation';
+const BOARD = 480, CELL = BOARD / SIZE;
+
+/** Original Canvas artwork. Geometry stays in board units; backing pixels follow the actual display. */
+export function drawGarden(canvas: HTMLCanvasElement, state: SnakeState, view: SnakePresentation, reducedMotion: boolean) {
+  const g = canvas.getContext('2d')!;
+  const display = canvas.getBoundingClientRect().width || BOARD;
+  const pixels = Math.max(1, Math.round(display * (window.devicePixelRatio || 1)));
+  if (canvas.width !== pixels || canvas.height !== pixels) canvas.width = canvas.height = pixels;
+  g.setTransform(pixels / BOARD, 0, 0, pixels / BOARD, 0, 0);
+  const circle = (x:number,y:number,r:number,color:string|CanvasGradient) => {
+    g.fillStyle=color;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();
+  };
+  const grass = g.createLinearGradient(0,0,BOARD,BOARD);
+  grass.addColorStop(0,'#c8de94');grass.addColorStop(1,'#a4c976');
+  g.fillStyle=grass;g.fillRect(0,0,BOARD,BOARD);
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++) {
+    g.fillStyle=(x+y)%2?'#ffffff0b':'#3664260a';g.fillRect(x*CELL,y*CELL,CELL,CELL);
+  }
+  // Quiet, stationary tufts leave the travel lanes readable.
+  g.strokeStyle='#5b843a29';g.lineWidth=1.4;g.lineCap='round';
+  for(let y=18;y<BOARD;y+=90)for(let x=20;x<BOARD;x+=90) {
+    g.beginPath();g.moveTo(x,y+4);g.quadraticCurveTo(x-5,y,x-3,y-4);
+    g.moveTo(x,y+4);g.quadraticCurveTo(x+3,y+1,x+4,y-2);g.stroke();
+  }
+  if(state.food) {
+    const r=FOOD_RADIUS*CELL;
+    g.save();g.globalAlpha=reducedMotion?1:.85+.15*Math.min(1,Math.max(0,(view.time-view.foodAt)/200));g.translate(state.food.x*CELL+15,state.food.y*CELL+15);
+    g.fillStyle='#25472425';g.beginPath();g.ellipse(0,r+2,r,2,0,0,Math.PI*2);g.fill();
+    // Stem/leaf and shadow are decorative; the solid fruit disk is exactly FOOD_RADIUS.
+    g.strokeStyle='#70462e';g.lineWidth=1.8;g.beginPath();g.moveTo(0,-r+1);g.lineTo(1,-r-4);g.stroke();
+    g.fillStyle='#36783e';g.beginPath();g.ellipse(4,-r-2,3,1.8,-.4,0,Math.PI*2);g.fill();
+    const red=g.createRadialGradient(-r*.3,-r*.4,0,0,0,r);red.addColorStop(0,'#ffb386');red.addColorStop(.4,'#ef6552');red.addColorStop(1,'#bd303c');
+    circle(0,0,r,red);circle(-r*.35,-r*.35,1,'#ffe4c8');g.restore();
+  }
+  const pose=projectSnake(state,view,reducedMotion);
+  const path=()=>{g.beginPath();pose.path.forEach((p,i)=>i?g.lineTo(p.x*CELL+15,p.y*CELL+15):g.moveTo(p.x*CELL+15,p.y*CELL+15));};
+  g.lineJoin='round';g.lineCap='round';
+  g.save();g.translate(0,2.5);path();g.strokeStyle='#31552e40';g.lineWidth=BODY_RADIUS*CELL*2;g.stroke();g.restore();
+  path();g.strokeStyle='#36733d';g.lineWidth=BODY_RADIUS*CELL*2;g.stroke();
+  const body=g.createLinearGradient(0,0,BOARD,BOARD);body.addColorStop(0,'#92ce69');body.addColorStop(1,'#68ae53');
+  path();g.strokeStyle=body;g.lineWidth=BODY_RADIUS*CELL*2-2;g.stroke();
+  // Continuous inset highlight follows the same corners as the body, without bead-like seams.
+  g.save();g.translate(-.5,-1.5);path();g.strokeStyle='#c5e99545';g.lineWidth=5;g.stroke();g.restore();
+  const hx=pose.head.x*CELL+15,hy=pose.head.y*CELL+15;
+  g.save();g.translate(hx,hy);g.rotate(Math.atan2(pose.tangent.y,pose.tangent.x));
+  const eatAge=view.time-view.ateAt;
+  const appetite=reducedMotion?0:Math.max(0,1-eatAge/200);
+  const head=g.createRadialGradient(-2,-3,1,0,0,HEAD_RADIUS*CELL);head.addColorStop(0,'#c8e98a');head.addColorStop(.65,'#9bd367');head.addColorStop(1,'#66a94e');
+  g.fillStyle=head;g.beginPath();g.arc(0,0,HEAD_RADIUS*CELL,0,Math.PI*2);g.fill();
+  const lost=state.phase==='lost';
+  if(lost) {
+    // A calm facial change communicates collision without a flash or screen shake.
+    g.strokeStyle='#274d32';g.lineWidth=2;
+    for(const y of [-6,6]){g.beginPath();g.moveTo(1,y-1.5);g.lineTo(6,y+1.5);g.moveTo(1,y+1.5);g.lineTo(6,y-1.5);g.stroke();}
+  } else {
+    for(const y of [-6,6]) {
+      circle(4,y,4.5,'#fbffe8');circle(6,y,2.2,'#244734');circle(6.5,y-.8,.8,'#fff');
+    }
+  }
+  g.strokeStyle='#396137';g.lineWidth=1.6;g.beginPath();
+  if(lost){g.moveTo(7,-1.5);g.lineTo(7,1.5);}else {g.arc(5,0,2.8+appetite*.5,-.7,.7);}g.stroke();g.restore();
+  if(!reducedMotion && view.eaten && eatAge>=0 && eatAge<200) {
+    // Opacity-only feedback at the consumed cell; no particles or repeated pulsing.
+    g.globalAlpha=(1-eatAge/200)*.35;g.strokeStyle='#fff4c0';g.lineWidth=2;g.beginPath();
+    g.arc(view.eaten.x*CELL+15,view.eaten.y*CELL+15,FOOD_RADIUS*CELL+3,0,Math.PI*2);g.stroke();g.globalAlpha=1;
+  }
 }

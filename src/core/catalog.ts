@@ -9,11 +9,13 @@ export const games: GameInfo[] = [
 {id:'ball-run',title:'Ball Run',color:'#080b20',ink:'#e448b3',accent:'#e448b3'},
 {id:'animal-stack',title:'Animal Stack',color:'#08b6d5',ink:'#203d42',accent:'#213d44'},
 {id:'snake',title:'Snake',color:'#f9dda2',ink:'#dc624b',accent:'#dc624b'},
+{id:'neon-coil',title:'Neon Coil',color:'#0c1727',ink:'#c5f97f',accent:'#b9f655'},
 {id:'minesweeper',title:'Minesweeper',color:'#303f49',ink:'#ebf3f4',accent:'#ebf3f4'},
 {id:'solitaire',title:'Solitaire',color:'#108746',ink:'#053f22',accent:'#07512a'},
 {id:'block-fill',title:'Block Fill',color:'#303638',ink:'#c1c3c9',accent:'#c1c3c9'},
 {id:'color-connect',title:'Color Connect',color:'#54405f',ink:'#ffcd46',accent:'#ffcd46'},
 {id:'pool',title:'Pool',color:'#007b49',ink:'#e4edb3',accent:'#e4edb3'},
+{id:'globle',title:'Globle',color:'#123a5e',ink:'#ffe0a4',accent:'#ffe0a4'},
 {id:'blockcraft',title:'Blockcraft',color:'#8fd0f7',ink:'#1f4a1a',accent:'#2c6b22'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');

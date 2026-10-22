@@ -1,0 +1,24 @@
+{
+  "productCheckpoint": "9d8155188bf65e3f717c97f4634dfc7ce37740c2",
+  "localBrowser": "154.0.8037.57",
+  "pack": "7d27d2663c4f",
+  "canonicalExit": 0,
+  "canonicalScopeCount": 2,
+  "scriptSha256": {
+    "scripts/verify-update.mjs": "0a36fc5e9fc3399dd75e5a2dd803c994eea5fb72730ad8c9bfa407513d64713b",
+    "scripts/update-fixtures.mjs": "ce7e5cd128a40eea0469825577c1e470595bd74ea7fef849a6747669ea6e9ed5"
+  },
+  "productMatchesCheckpoint": {
+    "public/sw.js": true,
+    "src/main.ts": true,
+    "src/core/offline.ts": true,
+    "src/core/storage.ts": true
+  },
+  "syntaxChecks": [
+    "node --check scripts/verify-update.mjs",
+    "node --check scripts/update-fixtures.mjs"
+  ],
+  "canonicalCommand": "ARCADE_UPDATE_EVIDENCE_DIR=/tmp/qcc-update-owned-pages-final-canonical PLAYWRIGHT_BROWSERS_PATH=/tmp/qcc-playwright node scripts/verify-update.mjs",
+  "canonicalRaw": "owned-pages-final.txt",
+  "canonicalResults": "owned-pages-final-results.json"
+}

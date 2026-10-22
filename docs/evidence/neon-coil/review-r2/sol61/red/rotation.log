@@ -1,0 +1,167 @@
+
+Running 2 tests using 1 worker
+
+(node:20017) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 568x320 (1.7s)
+(node:20151) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 667x375 (1.8s)
+
+
+  1) [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 568x320 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 250
+    Received:    351.875
+
+      199 |     expect.soft(card.x + card.width).toBeLessThanOrEqual(size.width);
+      200 |     expect.soft(card.y).toBeGreaterThanOrEqual(62);
+    > 201 |     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                       ^
+      202 |     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+      203 |     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+      204 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu']) {
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:201:39
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 250
+    Received:    290.28125
+
+      201 |     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+      202 |     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+    > 203 |     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                         ^
+      204 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu']) {
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = enter.x < control.x + control.width && enter.x + enter.width > control.x && enter.y < control.y + control.height && enter.y + enter.height > control.y;
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:203:41
+
+    Error: Enter overlaps #restart-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = enter.x < control.x + control.width && enter.x + enter.width > control.x && enter.y < control.y + control.height && enter.y + enter.height > control.y;
+    > 207 |       expect.soft(overlap, `Enter overlaps ${selector}`).toBe(false);
+          |                                                          ^
+      208 |     }
+      209 |     // Cover the whole actionable button, including its bottom-right area where Restart covered it.
+      210 |     const hits = await page.locator('.nc-start').evaluate(button => {
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:58
+
+    Error: Enter overlaps #favourite-game
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      205 |       const control = await bounds(selector);
+      206 |       const overlap = enter.x < control.x + control.width && enter.x + enter.width > control.x && enter.y < control.y + control.height && enter.y + enter.height > control.y;
+    > 207 |       expect.soft(overlap, `Enter overlaps ${selector}`).toBe(false);
+          |                                                          ^
+      208 |     }
+      209 |     // Cover the whole actionable button, including its bottom-right area where Restart covered it.
+      210 |     const hits = await page.locator('.nc-start').evaluate(button => {
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:207:58
+
+    Error: Every sampled Enter point reaches Enter
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+    @@ -4,8 +4,8 @@
+        true,
+        true,
+        true,
+        true,
+        true,
+    -   true,
+    -   true,
+    +   false,
+    +   false,
+      ]
+
+      212 |       return [.1, .5, .9].flatMap(x => [.1, .5, .9].map(y => button.contains(document.elementFromPoint(b.x + b.width * x, b.y + b.height * y))));
+      213 |     });
+    > 214 |     expect.soft(hits, 'Every sampled Enter point reaches Enter').toEqual(Array(9).fill(true));
+          |                                                                  ^
+      215 |     expect.soft(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight])).toEqual([size.width, size.height]);
+      216 |     await page.locator('.nc-start').click(); await page.clock.runFor(150);
+      217 |     await expect(page.locator('.nc-you')).toBeVisible();
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:214:66
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 250
+    Received:    252.5
+
+      219 |     await page.screenshot({ path: `${evidence}/running-${size.width}.png` });
+      220 |     expect.soft(await page.locator('.nc-ranking li').count()).toBe(5);
+    > 221 |     expect.soft(you.y + you.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                     ^
+      222 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu', '.nc-boost']) {
+      223 |       const control = await bounds(selector);
+      224 |       const overlap = you.x < control.x + control.width && you.x + you.width > control.x && you.y < control.y + control.height && you.y + you.height > control.y;
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:221:37
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-55721-ured-player-ranking-568x320-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-55721-ured-player-ranking-568x320-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-55721-ured-player-ranking-568x320-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-55721-ured-player-ranking-568x320-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 667x375 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 305
+    Received:    351.875
+
+      199 |     expect.soft(card.x + card.width).toBeLessThanOrEqual(size.width);
+      200 |     expect.soft(card.y).toBeGreaterThanOrEqual(62);
+    > 201 |     expect.soft(card.y + card.height).toBeLessThanOrEqual(footer.y - 8);
+          |                                       ^
+      202 |     expect.soft(enter.height).toBeGreaterThanOrEqual(44);
+      203 |     expect.soft(enter.y + enter.height).toBeLessThanOrEqual(footer.y - 8);
+      204 |     for (const selector of ['#restart-game', '#favourite-game', '#rules-game', '#game-menu']) {
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:201:39
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-91ac6-ured-player-ranking-667x375-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-91ac6-ured-player-ranking-667x375-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-91ac6-ured-player-ranking-667x375-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r2/sol61/red/rotation-playwright/games-neon-coil-play-short-91ac6-ured-player-ranking-667x375-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 568x320 
+    [chromium] › tests/games/neon-coil/play.spec.ts:190:3 › short landscape bounds and unobscured player ranking 667x375 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

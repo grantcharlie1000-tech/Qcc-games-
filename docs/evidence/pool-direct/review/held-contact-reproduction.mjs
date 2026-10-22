@@ -1,0 +1,10 @@
+import { chromium } from '/workspace/Qcc-games-/node_modules/playwright/index.mjs';
+import {writeFile} from 'node:fs/promises';
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const context=await browser.newContext({viewport:{width:1366,height:768},hasTouch:true});
+await context.addInitScript(()=>{sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');window.events=[];for(const type of ['pointerdown','pointerup','pointercancel','gotpointercapture','lostpointercapture'])window.addEventListener(type,e=>events.push({type,trusted:e.isTrusted,id:e.pointerId,pointerType:e.pointerType,target:e.target.tagName}),true)});
+const page=await context.newPage();await page.goto('http://127.0.0.1:4173/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');const canvas=page.locator('.pool-table'),root=page.locator('.pool-game');const cdp=await context.newCDPSession(page);
+const frames=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+async function stroke(){await canvas.hover();await frames();const b=await canvas.boundingBox();await page.mouse.move(b.x+225/840*b.width,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+135/840*b.width,b.y+b.height/2,{steps:8});let gesture=await root.getAttribute('data-gesture');await page.mouse.up();return {gesture,shots:await root.getAttribute('data-shots')}}
+await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:200,y:80,id:7}]});const blockedBeforePause=await stroke();
+await page.getByRole('button',{name:'Pause game',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Keep playing',exact:true}).focus();await page.keyboard.press('Enter');const allowedAfterPause=await stroke();const events=await page.evaluate(()=>window.events);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+const result={blockedBeforePause,allowedAfterPause,events};await writeFile('/tmp/pool-astra-native-contact.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));await browser.close();

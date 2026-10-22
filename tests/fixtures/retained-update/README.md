@@ -1,0 +1,3 @@
+# Frozen legacy update protocol
+
+These files are byte-for-byte copies from main a7f7631d4f606667f23b016ad6091cb3899365e8: src/main.ts, src/core/offline.ts, public/sw.js and scripts/offline-manifest.mjs. They preserve the real legacy bootstrap, lack of update UI/protocol, cache-first navigation and waiting-worker behavior. The update verification builds a temporary copy of the app with these files overlaid; game/study/storage behavior comes from the same sources, which the update task does not alter except the durable save return value. Fixtures use non-TypeScript suffixes so they are compiled only in that isolated legacy build. Test-only release markers and asset URL renames distinguish deployments without changing the legacy protocol and baseline precache selection.

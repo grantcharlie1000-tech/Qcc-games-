@@ -1,0 +1,12 @@
+{
+  "id": "6ad6e364522e436f764bb8bc",
+  "site_id": "4afc912c-6802-4c18-8f2c-273fb3e771ee",
+  "state": "ready",
+  "commit_ref": "a7f7631d4f606667f23b016ad6091cb3899365e8",
+  "branch": "main",
+  "context": "production",
+  "created_at": "2026-10-20T03:43:32.061Z",
+  "updated_at": "2026-10-20T11:38:32.436Z",
+  "published_at": "2026-10-20T03:43:46.560Z",
+  "deploy_ssl_url": "https://main--mauri-gazette.netlify.app"
+}

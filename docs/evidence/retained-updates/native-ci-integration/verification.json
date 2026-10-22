@@ -1,0 +1,23 @@
+{
+  "recordedAt": "2026-10-20T19:53:42.123377+00:00",
+  "main": "fbac0a58aa23b953ff9ed382d2cd4bd80c817008",
+  "integrationCommit": "01e73d275a07844520a023944fc41b9583ff8d65",
+  "priorDiagnosticCheckpoint": "abad6df6ba0d0424a54cddf3aa9e0d34f6efd276",
+  "unitPasses": 324,
+  "helperPasses": 7,
+  "typeScriptAndBuild": "passed",
+  "packVersion": "1a6bfac19793",
+  "runtimeAssets": {
+    "count": 30,
+    "bytes": 1071226,
+    "entryAndCssBytes": 174370,
+    "additionalBytes": 896856
+  },
+  "workflowChange": "Existing verify:update has ARCADE_UPDATE_NATIVE_TRACE=1 only for pull_request; explicit node --test scripts/update-native-trace.test.mjs step added. No deployment-gate, permission, trigger, concurrency, dependency or fixture changes.",
+  "limits": [
+    "Original unmodified713 W failure and hosted713 subpathD failure remain unclassified.",
+    "Instrumented green can reflect observer timing; native trace is diagnostic, not a product fix.",
+    "No new broad browser, verify:update or offline repetition after integration. Those checks await reviewed hosted CI.",
+    "No local push, PR, CI request, merge-to-main or deployment. Exact review and parent sequencing pending."
+  ]
+}

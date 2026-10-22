@@ -11,13 +11,20 @@
     "test:e2e": "playwright test",
     "check": "tsc --noEmit",
     "verify:offline": "node scripts/verify-offline.mjs",
-    "verify:update": "node scripts/verify-update.mjs"
+    "verify:update": "node scripts/verify-update.mjs",
+    "dev:online": "node scripts/leaderboard-dev.mjs"
   },
   "dependencies": {
+    "@netlify/database": "2.0.1",
+    "@netlify/functions": "6.0.3",
+    "globe.gl": "2.46.2",
     "matter-js": "0.20.0",
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "three-conic-polygon-geometry": "2.1.3",
+    "three-geojson-geometry": "2.1.1"
   },
   "devDependencies": {
+    "@netlify/database-dev": "1.0.1",
     "@playwright/test": "^1.56.0",
     "@types/matter-js": "^0.20.0",
     "@types/node": "^26.6.5",

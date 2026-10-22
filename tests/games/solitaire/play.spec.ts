@@ -1,7 +1,7 @@
 import {seedStudyTopic} from '../../fixtures';
 import { test, expect, type Page } from '../../fixtures';
 import { deal, type State } from '../../../src/games/solitaire/model';
-import { foundationWithdrawalState } from './fixtures';
+import { foundationWithdrawalState, productiveWithdrawalState } from './fixtures';
 const key='pocket-arcade:v1:save:solitaire';
 async function open(page:Page,state:State=deal(123)){
  await page.addInitScript(({key,state})=>{if(!sessionStorage.getItem('sol-test-init')){localStorage.setItem(key,JSON.stringify({version:1,data:{version:1,state,history:[]},updated:0}));sessionStorage.setItem('sol-test-init','1');}},{key,state});
@@ -45,10 +45,18 @@ test('complete legal foundations show a win; invalid saves safely start fresh',a
 test('touch pointer drag uses the same legal move path on a phone',async({browser,browserName})=>{
  test.skip(browserName!=='chromium','Native touch drag uses Chromium CDP; the other Solitaire interactions run in both engines.');
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await open(page,state());const cdp=await context.newCDPSession(page);
- const from=(await page.getByRole('button',{name:'6 of hearts, column 2',exact:true}).boundingBox())!;const to=(await page.getByRole('button',{name:'7 of clubs, column 1',exact:true}).boundingBox())!;
+ const six=page.getByRole('button',{name:'6 of hearts, column 2',exact:true});await six.hover();
+ // CDP touch has no actionability wait. Read both cards in the same settled layout.
+ const {from,to}=await six.evaluate(el=>{
+  const source=el.getBoundingClientRect(),target=el.closest('.solitaire')!.querySelector('button[aria-label="7 of clubs, column 1"]')!.getBoundingClientRect();
+  return {from:{x:source.x,y:source.y},to:{x:target.x,y:target.y}};
+ });
+ await six.evaluate(el=>el.addEventListener('pointerdown',event=>{const p=event as PointerEvent;el.setAttribute('data-test-touch-start',JSON.stringify({id:p.pointerId,trusted:p.isTrusted}));},{capture:true,once:true}));
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:from.x+15,y:from.y+12}]});
+ await expect(six).toHaveAttribute('data-test-touch-start',/./);const nativeStart=JSON.parse((await six.getAttribute('data-test-touch-start'))!);expect(nativeStart.trusted).toBe(true);
+ expect(await six.evaluate((el,id)=>el.hasPointerCapture(id),nativeStart.id)).toBe(true);
  for(let i=1;i<=8;i++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:from.x+15+(to.x-from.x)*i/8,y:from.y+12+(to.y-from.y+20)*i/8}]});
- await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.getByRole('button',{name:'6 of hearts, column 1',exact:true})).toBeVisible();expect((await saved(page)).state.tableau[0].map((c:{id:number})=>c.id)).toEqual([6,18]);const before=(await saved(page)).state;const current=(await page.getByRole('button',{name:'6 of hearts, column 1',exact:true}).boundingBox())!;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:current.x+12,y:current.y+12}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:current.x+70,y:current.y+35}]});await expect(page.locator('.sol-drag-ghost')).toBeVisible();await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await expect(page.locator('.sol-drag-ghost')).toHaveCount(0);expect((await saved(page)).state).toEqual(before);await context.close();
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.getByRole('button',{name:'6 of hearts, column 1',exact:true})).toBeVisible();expect((await saved(page)).state.tableau[0].map((c:{id:number})=>c.id)).toEqual([6,18]);const before=(await saved(page)).state;const moved=page.getByRole('button',{name:'6 of hearts, column 1',exact:true});await moved.hover();const current=(await moved.boundingBox())!;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:current.x+12,y:current.y+12}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:current.x+70,y:current.y+35}]});await expect(page.locator('.sol-drag-ghost')).toBeVisible();await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await expect(page.locator('.sol-drag-ghost')).toHaveCount(0);expect((await saved(page)).state).toEqual(before);await context.close();
 });
 test('a long tableau sequence stays within its column at desktop and phone sizes',async({page})=>{
  const s=deal(33);const sequence=Array.from({length:13},(_,i)=>12-i+(i%2?13:0));s.tableau=[sequence.map(id=>({id,up:true})),[],[],[],[],[],[]];s.stock=Array.from({length:52},(_,i)=>i).filter(id=>!sequence.includes(id));await page.setViewportSize({width:1366,height:900});await open(page,s);
@@ -62,14 +70,32 @@ test('a long tableau sequence stays within its column at desktop and phone sizes
  await fits();await page.setViewportSize({width:390,height:844});await fits();
 });
 
-test('hint highlights and executes a foundation withdrawal when no other move exists',async({page})=>{
+test('hints stop a foundation loop and keep manual withdrawal and Undo legal',async({page})=>{
  await open(page,foundationWithdrawalState());
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- await expect(page.locator('.sol-message')).toHaveText('Hint: move 2 of clubs to column 1.');
- await expect(page.getByRole('button',{name:'2 of clubs, foundation',exact:true})).toHaveClass(/sol-hint/);
- await expect(page.locator('.sol-column').first()).toHaveClass(/sol-hint-target/);
+ const hintButton=page.getByRole('button',{name:'Hint',exact:true});
+ await hintButton.click();
+ await expect(page.locator('.sol-message')).toContainText('No new useful move found');
+ await expect(page.locator('.sol-hint')).toHaveCount(0);
+ await page.getByRole('button',{name:'2 of clubs, foundation',exact:true}).click();
  await page.getByRole('button',{name:'3 of hearts, column 1',exact:true}).click();
  await expect(page.getByRole('button',{name:'2 of clubs, column 1',exact:true})).toBeVisible();
- const after=(await saved(page)).state;expect(after.foundations[0]).toEqual([0]);expect(after.tableau[0].slice(-2).map((c:{id:number})=>c.id)).toEqual([15,1]);
- await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.getByRole('button',{name:'2 of clubs, foundation',exact:true})).toBeVisible();
+ await hintButton.click();await expect(page.locator('.sol-message')).toContainText('No new useful move found');
+ await page.reload();await hintButton.click();
+ await expect(page.locator('.sol-message')).toContainText('No new useful move found');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await expect(page.getByRole('button',{name:'2 of clubs, foundation',exact:true})).toBeVisible();
+});
+
+test('a foundation setup hint leads to uncovering a card instead of immediately reversing',async({page})=>{
+ await open(page,productiveWithdrawalState());
+ await page.getByRole('button',{name:'Hint',exact:true}).click();
+ await expect(page.locator('.sol-message')).toHaveText('Hint: move Queen of spades to column 7.');
+ await expect(page.getByRole('button',{name:'Queen of spades, foundation',exact:true})).toHaveClass(/sol-hint/);
+ await page.getByRole('button',{name:'King of hearts, column 7',exact:true}).click();
+ await page.getByRole('button',{name:'Hint',exact:true}).click();
+ await expect(page.locator('.sol-message')).toHaveText('Hint: move Jack of hearts to column 7.');
+ const before=(await saved(page)).state.tableau.flat().filter((c:{up:boolean})=>!c.up).length;
+ await page.getByRole('button',{name:'Queen of spades, column 7',exact:true}).click();
+ const after=(await saved(page)).state.tableau.flat().filter((c:{up:boolean})=>!c.up).length;
+ expect(after).toBe(before-1);
 });

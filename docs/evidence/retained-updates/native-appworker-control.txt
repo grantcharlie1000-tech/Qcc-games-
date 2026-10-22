@@ -1,0 +1,1 @@
+[{"case":"actual-worker-full-runtime-noapp-with-moduleACK","milliseconds":1040,"nonce":"unchanged"}]

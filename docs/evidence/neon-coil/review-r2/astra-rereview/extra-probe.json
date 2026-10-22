@@ -1,0 +1,402 @@
+{
+  "layout": [
+    {
+      "size": {
+        "width": 844,
+        "height": 390
+      },
+      "card": {
+        "x": 132,
+        "y": 99.109375,
+        "width": 580,
+        "height": 179.78125
+      },
+      "enter": {
+        "x": 434,
+        "y": 182.890625,
+        "width": 253,
+        "height": 44
+      },
+      "boxes": {
+        ".nc-you": {
+          "x": 630,
+          "y": 243,
+          "width": 175,
+          "height": 26
+        },
+        "#restart-game": {
+          "x": 626,
+          "y": 328,
+          "width": 42,
+          "height": 42
+        },
+        "#favourite-game": {
+          "x": 678,
+          "y": 328,
+          "width": 42,
+          "height": 42
+        },
+        "#rules-game": {
+          "x": 730,
+          "y": 328,
+          "width": 42,
+          "height": 42
+        },
+        "#game-menu": {
+          "x": 782,
+          "y": 328,
+          "width": 42,
+          "height": 42
+        },
+        ".nc-boost": {
+          "x": 324.5,
+          "y": 318,
+          "width": 195,
+          "height": 54
+        }
+      }
+    },
+    {
+      "size": {
+        "width": 740,
+        "height": 360
+      },
+      "card": {
+        "x": 80,
+        "y": 84.109375,
+        "width": 580,
+        "height": 179.78125
+      },
+      "enter": {
+        "x": 382,
+        "y": 167.890625,
+        "width": 253,
+        "height": 44
+      },
+      "boxes": {
+        ".nc-you": {
+          "x": 526,
+          "y": 243,
+          "width": 175,
+          "height": 26
+        },
+        "#restart-game": {
+          "x": 522,
+          "y": 298,
+          "width": 42,
+          "height": 42
+        },
+        "#favourite-game": {
+          "x": 574,
+          "y": 298,
+          "width": 42,
+          "height": 42
+        },
+        "#rules-game": {
+          "x": 626,
+          "y": 298,
+          "width": 42,
+          "height": 42
+        },
+        "#game-menu": {
+          "x": 678,
+          "y": 298,
+          "width": 42,
+          "height": 42
+        },
+        ".nc-boost": {
+          "x": 272.5,
+          "y": 288,
+          "width": 195,
+          "height": 54
+        }
+      }
+    },
+    {
+      "size": {
+        "width": 320,
+        "height": 568
+      },
+      "card": {
+        "x": 18,
+        "y": 134.859375,
+        "width": 284,
+        "height": 305.265625
+      },
+      "enter": {
+        "x": 47,
+        "y": 331.53125,
+        "width": 226,
+        "height": 47
+      },
+      "boxes": {
+        ".nc-you": {
+          "x": 172,
+          "y": 228.5,
+          "width": 123,
+          "height": 24
+        },
+        "#restart-game": {
+          "x": 102,
+          "y": 506,
+          "width": 42,
+          "height": 42
+        },
+        "#favourite-game": {
+          "x": 154,
+          "y": 506,
+          "width": 42,
+          "height": 42
+        },
+        "#rules-game": {
+          "x": 206,
+          "y": 506,
+          "width": 42,
+          "height": 42
+        },
+        "#game-menu": {
+          "x": 258,
+          "y": 506,
+          "width": 42,
+          "height": 42
+        },
+        ".nc-boost": {
+          "x": 70,
+          "y": 434,
+          "width": 180,
+          "height": 48
+        }
+      }
+    },
+    {
+      "size": {
+        "width": 568,
+        "height": 320
+      },
+      "card": {
+        "x": 99,
+        "y": 67,
+        "width": 370,
+        "height": 284.875
+      },
+      "enter": {
+        "x": 128,
+        "y": 243.28125,
+        "width": 312,
+        "height": 47
+      },
+      "boxes": {
+        ".nc-you": {
+          "x": 420,
+          "y": 228.5,
+          "width": 123,
+          "height": 24
+        },
+        "#restart-game": {
+          "x": 350,
+          "y": 258,
+          "width": 42,
+          "height": 42
+        },
+        "#favourite-game": {
+          "x": 402,
+          "y": 258,
+          "width": 42,
+          "height": 42
+        },
+        "#rules-game": {
+          "x": 454,
+          "y": 258,
+          "width": 42,
+          "height": 42
+        },
+        "#game-menu": {
+          "x": 506,
+          "y": 258,
+          "width": 42,
+          "height": 42
+        },
+        ".nc-boost": {
+          "x": 52,
+          "y": 258,
+          "width": 180,
+          "height": 48
+        }
+      }
+    }
+  ],
+  "input": [
+    {
+      "label": "boost-first-active",
+      "data": {
+        "phase": "running",
+        "tick": "25",
+        "mass": "27.500",
+        "x": "83.389",
+        "y": "-69.292",
+        "angle": "-1.3333",
+        "boosting": "true",
+        "trails": "2",
+        "rank": "19",
+        "eaten": "0",
+        "defeated": "0",
+        "cpuP95": "0.00"
+      },
+      "capture": [
+        {
+          "id": 3,
+          "target": "",
+          "canvas": false,
+          "boost": true
+        },
+        {
+          "id": 4,
+          "target": "nc-canvas",
+          "canvas": true,
+          "boost": false
+        }
+      ]
+    },
+    {
+      "label": "mouse-hover-does-not-steal",
+      "data": {
+        "phase": "running",
+        "tick": "32",
+        "mass": "26.800",
+        "x": "85.329",
+        "y": "-101.883",
+        "angle": "-1.5708",
+        "boosting": "true",
+        "trails": "3",
+        "rank": "19",
+        "eaten": "0",
+        "defeated": "0",
+        "cpuP95": "0.00"
+      },
+      "capture": [
+        {
+          "id": 3,
+          "target": "",
+          "canvas": false,
+          "boost": true
+        },
+        {
+          "id": 4,
+          "target": "nc-canvas",
+          "canvas": true,
+          "boost": false
+        }
+      ]
+    },
+    {
+      "label": "paused-captures-cleared",
+      "data": {
+        "phase": "running",
+        "tick": "37",
+        "mass": "26.300",
+        "x": "85.329",
+        "y": "-125.258",
+        "angle": "-1.5708",
+        "boosting": "false",
+        "trails": "3",
+        "rank": "19",
+        "eaten": "0",
+        "defeated": "0",
+        "cpuP95": "0.00"
+      },
+      "capture": [
+        {
+          "id": 3,
+          "target": "",
+          "canvas": false,
+          "boost": false
+        },
+        {
+          "id": 4,
+          "target": "nc-canvas",
+          "canvas": false,
+          "boost": false
+        }
+      ]
+    },
+    {
+      "label": "resumed-no-held-input",
+      "data": {
+        "phase": "running",
+        "tick": "44",
+        "mass": "26.300",
+        "x": "85.329",
+        "y": "-144.508",
+        "angle": "-1.5708",
+        "boosting": "false",
+        "trails": "3",
+        "rank": "19",
+        "eaten": "0",
+        "defeated": "0",
+        "cpuP95": "0.00"
+      },
+      "capture": [
+        {
+          "id": 3,
+          "target": "",
+          "canvas": false,
+          "boost": false
+        },
+        {
+          "id": 4,
+          "target": "nc-canvas",
+          "canvas": false,
+          "boost": false
+        }
+      ]
+    },
+    {
+      "label": "blur-captures-cleared",
+      "data": {
+        "phase": "running",
+        "tick": "64",
+        "mass": "25.500",
+        "x": "85.329",
+        "y": "-214.908",
+        "angle": "-1.5708",
+        "boosting": "false",
+        "trails": "4",
+        "rank": "19",
+        "eaten": "0",
+        "defeated": "0",
+        "cpuP95": "0.00"
+      },
+      "capture": [
+        {
+          "id": 3,
+          "target": "",
+          "canvas": false,
+          "boost": false
+        },
+        {
+          "id": 4,
+          "target": "nc-canvas",
+          "canvas": false,
+          "boost": false
+        },
+        {
+          "id": 5,
+          "target": "",
+          "canvas": false,
+          "boost": false
+        },
+        {
+          "id": 6,
+          "target": "nc-canvas",
+          "canvas": false,
+          "boost": false
+        }
+      ]
+    },
+    {
+      "label": "dispose",
+      "arenaCount": 0
+    }
+  ],
+  "errors": []
+}

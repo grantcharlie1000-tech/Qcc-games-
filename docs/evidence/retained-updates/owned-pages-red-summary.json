@@ -1,0 +1,330 @@
+{
+  "error": "Timed out: modern B caches reclaimed after old document safely reloads",
+  "head": "9d8155188bf65e3f717c97f4634dfc7ce37740c2",
+  "pages": [
+    {
+      "page": 0,
+      "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+      "controller": {
+        "state": "activated",
+        "version": "7d27d2663c4f-C",
+        "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+        "cacheNamespace": 2,
+        "cacheRetirement": 1
+      },
+      "events": {
+        "globalId": "5e5b9724-0974-4a30-8511-c0083dc3debf",
+        "startedAt": 1792477763617,
+        "pending": {},
+        "outstandingResponses": []
+      },
+      "state": {
+        "pocket-arcade-v2:/:7d27d2663c4f-C:shell": {
+          "legacy": [
+            "1b93b781-420e-4d95-89d9-9f82b9d0c6be"
+          ],
+          "current": [
+            "706c6853-376c-40e4-8cca-b8c4072d8cff",
+            "ecd6519c-24fa-4a02-a20e-09f1a121fdb5"
+          ],
+          "pending": [],
+          "early": [],
+          "owners": [
+            {
+              "id": "1b93b781-420e-4d95-89d9-9f82b9d0c6be",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"
+            },
+            {
+              "id": "706c6853-376c-40e4-8cca-b8c4072d8cff",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js"
+            },
+            {
+              "id": "ecd6519c-24fa-4a02-a20e-09f1a121fdb5",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js"
+            }
+          ],
+          "stale": [
+            "pocket-arcade-v2:/:7d27d2663c4f-B:shell",
+            "pocket-arcade-v2:/:7d27d2663c4f-B:pack"
+          ],
+          "assets": [
+            {
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+              "keys": [
+                "pocket-arcade-v2:/:7d27d2663c4f-C:shell",
+                "pocket-arcade-v2:/:7d27d2663c4f-C:pack"
+              ]
+            },
+            {
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js",
+              "keys": [
+                "pocket-arcade-v2:/:7d27d2663c4f-B:shell",
+                "pocket-arcade-v2:/:7d27d2663c4f-B:pack"
+              ]
+            }
+          ]
+        }
+      },
+      "timeline": [
+        {
+          "label": "document-start",
+          "time": 64.70000000298023,
+          "script": "http://127.0.0.1:4181/sw.js",
+          "state": "activated",
+          "build": {
+            "version": "7d27d2663c4f-C",
+            "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+            "cacheNamespace": 2,
+            "cacheRetirement": 1
+          }
+        }
+      ]
+    },
+    {
+      "page": 1,
+      "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js",
+      "controller": {
+        "state": "activated",
+        "version": "7d27d2663c4f-C",
+        "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+        "cacheNamespace": 2,
+        "cacheRetirement": 1
+      },
+      "events": {
+        "globalId": "5e5b9724-0974-4a30-8511-c0083dc3debf",
+        "startedAt": 1792477763617,
+        "pending": {
+          "77": {
+            "name": "message",
+            "type": "ARCADE_CLIENT_READY"
+          },
+          "78": {
+            "name": "message",
+            "type": "ARCADE_CLIENT_READY"
+          },
+          "79": {
+            "name": "message",
+            "type": "ARCADE_RETIRE_CACHES"
+          }
+        },
+        "outstandingResponses": []
+      },
+      "state": {
+        "pocket-arcade-v2:/:7d27d2663c4f-C:shell": {
+          "legacy": [
+            "1b93b781-420e-4d95-89d9-9f82b9d0c6be"
+          ],
+          "current": [
+            "706c6853-376c-40e4-8cca-b8c4072d8cff",
+            "ecd6519c-24fa-4a02-a20e-09f1a121fdb5"
+          ],
+          "pending": [],
+          "early": [],
+          "owners": [
+            {
+              "id": "1b93b781-420e-4d95-89d9-9f82b9d0c6be",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"
+            },
+            {
+              "id": "706c6853-376c-40e4-8cca-b8c4072d8cff",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js"
+            },
+            {
+              "id": "ecd6519c-24fa-4a02-a20e-09f1a121fdb5",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js"
+            }
+          ],
+          "stale": [
+            "pocket-arcade-v2:/:7d27d2663c4f-B:shell",
+            "pocket-arcade-v2:/:7d27d2663c4f-B:pack"
+          ],
+          "assets": [
+            {
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+              "keys": [
+                "pocket-arcade-v2:/:7d27d2663c4f-C:shell",
+                "pocket-arcade-v2:/:7d27d2663c4f-C:pack"
+              ]
+            },
+            {
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js",
+              "keys": [
+                "pocket-arcade-v2:/:7d27d2663c4f-B:shell",
+                "pocket-arcade-v2:/:7d27d2663c4f-B:pack"
+              ]
+            }
+          ]
+        }
+      },
+      "timeline": null
+    },
+    {
+      "page": 2,
+      "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+      "controller": {
+        "state": "activated",
+        "version": "7d27d2663c4f-C",
+        "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+        "cacheNamespace": 2,
+        "cacheRetirement": 1
+      },
+      "events": {
+        "globalId": "5e5b9724-0974-4a30-8511-c0083dc3debf",
+        "startedAt": 1792477763617,
+        "pending": {},
+        "outstandingResponses": []
+      },
+      "state": {
+        "pocket-arcade-v2:/:7d27d2663c4f-C:shell": {
+          "legacy": [
+            "1b93b781-420e-4d95-89d9-9f82b9d0c6be"
+          ],
+          "current": [
+            "ecd6519c-24fa-4a02-a20e-09f1a121fdb5",
+            "706c6853-376c-40e4-8cca-b8c4072d8cff"
+          ],
+          "pending": [],
+          "early": [],
+          "owners": [
+            {
+              "id": "1b93b781-420e-4d95-89d9-9f82b9d0c6be",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js"
+            },
+            {
+              "id": "ecd6519c-24fa-4a02-a20e-09f1a121fdb5",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js"
+            },
+            {
+              "id": "706c6853-376c-40e4-8cca-b8c4072d8cff",
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js"
+            }
+          ],
+          "stale": [
+            "pocket-arcade-v2:/:7d27d2663c4f-B:shell",
+            "pocket-arcade-v2:/:7d27d2663c4f-B:pack"
+          ],
+          "assets": [
+            {
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+              "keys": [
+                "pocket-arcade-v2:/:7d27d2663c4f-C:shell",
+                "pocket-arcade-v2:/:7d27d2663c4f-C:pack"
+              ]
+            },
+            {
+              "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-B.js",
+              "keys": [
+                "pocket-arcade-v2:/:7d27d2663c4f-B:shell",
+                "pocket-arcade-v2:/:7d27d2663c4f-B:pack"
+              ]
+            }
+          ]
+        }
+      },
+      "timeline": [
+        {
+          "label": "document-start",
+          "time": 28,
+          "script": "http://127.0.0.1:4181/sw.js",
+          "state": "activated",
+          "build": {
+            "version": "7d27d2663c4f-C",
+            "entry": "http://127.0.0.1:4181/assets/index-D0ozSXMY-C.js",
+            "cacheNamespace": 2,
+            "cacheRetirement": 1
+          }
+        }
+      ]
+    }
+  ],
+  "traceStartupPages": [
+    {
+      "type": "event",
+      "time": 33887.962,
+      "class": "BrowserContext",
+      "method": "page",
+      "params": {
+        "pageId": "page@9a3f2cb4a69caa6a840fb1ede1cb20ce"
+      }
+    },
+    {
+      "type": "event",
+      "time": 33887.995,
+      "class": "BrowserContext",
+      "method": "page",
+      "params": {
+        "pageId": "page@d42b7401fe04cf2d8218be6ef5c35f73"
+      }
+    },
+    {
+      "type": "event",
+      "time": 37516.181,
+      "class": "BrowserContext",
+      "method": "page",
+      "params": {
+        "pageId": "page@b14234b4759230ddeb1d5bec3ab24426"
+      }
+    },
+    {
+      "type": "event",
+      "time": 38358.166,
+      "class": "BrowserContext",
+      "method": "page",
+      "params": {
+        "pageId": "page@7db099b1bb7e86f1ae733d5cfa90485b"
+      }
+    }
+  ],
+  "profileRestorationProbe": {
+    "browser": "Chromium154.0.8037.57",
+    "phases": [
+      {
+        "phase": "before context.close with original tab open",
+        "pages": [
+          {
+            "url": "http://127.0.0.1:4185/",
+            "client": {
+              "id": "d7cde76d-a63d-44aa-9a28-bf6ad44c07be",
+              "url": "http://127.0.0.1:4185/",
+              "token": "original-test-tab",
+              "entry": "http://127.0.0.1:4185/assets/index-D0ozSXMY-profile.js"
+            }
+          }
+        ]
+      },
+      {
+        "phase": "after persistent profile reopen before harness navigation",
+        "pages": [
+          {
+            "url": "about:blank",
+            "client": null
+          },
+          {
+            "url": "http://127.0.0.1:4185/",
+            "client": {
+              "id": "a4f18999-ec6e-4ab8-aaa5-b1909cc6d8c5",
+              "url": "http://127.0.0.1:4185/",
+              "token": "original-test-tab",
+              "entry": "http://127.0.0.1:4185/assets/index-D0ozSXMY-profile.js"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "W activation was not reached, so no new W failure lifetime evidence exists.",
+    "All33 response records in the observed C worker global settled; this does not prove every native event or earlier worker-global epoch settled.",
+    "Failure trace did not collect direct page-target-to-SW-client pairing; visible extra B page and sole authenticated B owner establish the outstanding dependency.",
+    "Probe proves native restored app plus blank startup tab with same session token and authenticated new clientID; exact run uses separate ephemeral profile.",
+    "No tracked source/product changes or further combined rerun."
+  ],
+  "browserMetadata": {
+    "localSelected": "/usr/bin/chromium 154.0.8037.57 Debian13",
+    "installedPlaywrightExpected": {
+      "revision": "1248",
+      "version": "156.0.8078.4"
+    },
+    "downloadsAttempted": false
+  }
+}

@@ -1,0 +1,271 @@
+[WebServer] (node:25569) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:25582) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:25602) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing ready arena (3.3s)
+(node:25741) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing paused arena (4.2s)
+(node:25878) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  3 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing dead arena (6.7s)
+(node:26028) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  4 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing running arena (2.8s)
+
+
+  1) [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing ready arena 
+
+    Error: ready 390x844
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    Error: ready 844x390
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    Error: Stopped simulation cannot leave stale ranking indefinitely
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      273 |       await page.clock.runFor(300); await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      274 |       expect(await saved(page)).toEqual(before);
+    > 275 |       expect.soft(await page.locator('.nc-ranking li').count(), 'Stopped simulation cannot leave stale ranking indefinitely').toBe(5);
+          |                                                                                                                               ^
+      276 |     }
+      277 |     expect(await page.locator('#announcer').getAttribute('data-resize-announcements')).toBe('0');
+      278 |     expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'))).toBe(bestBefore);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:275:127
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-dee53-thout-advancing-ready-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing paused arena 
+
+    Error: paused 390x844
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    Error: paused 844x390
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    Error: Stopped simulation cannot leave stale ranking indefinitely
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      273 |       await page.clock.runFor(300); await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      274 |       expect(await saved(page)).toEqual(before);
+    > 275 |       expect.soft(await page.locator('.nc-ranking li').count(), 'Stopped simulation cannot leave stale ranking indefinitely').toBe(5);
+          |                                                                                                                               ^
+      276 |     }
+      277 |     expect(await page.locator('#announcer').getAttribute('data-resize-announcements')).toBe('0');
+      278 |     expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'))).toBe(bestBefore);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:275:127
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-6cd3e-hout-advancing-paused-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing dead arena 
+
+    Error: dead 390x844
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    Error: dead 844x390
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    Error: Stopped simulation cannot leave stale ranking indefinitely
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      273 |       await page.clock.runFor(300); await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      274 |       expect(await saved(page)).toEqual(before);
+    > 275 |       expect.soft(await page.locator('.nc-ranking li').count(), 'Stopped simulation cannot leave stale ranking indefinitely').toBe(5);
+          |                                                                                                                               ^
+      276 |     }
+      277 |     expect(await page.locator('#announcer').getAttribute('data-resize-announcements')).toBe('0');
+      278 |     expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:neon-coil'))).toBe(bestBefore);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:275:127
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-b6932-ithout-advancing-dead-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing running arena 
+
+    Error: running 390x844
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    Error: running 844x390
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 5
+    Received: 10
+
+      265 |       await page.setViewportSize(size);
+      266 |       await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: size.width, h: size.height });
+    > 267 |       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
+          |                                                                                                              ^
+      268 |       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      269 |       const world = await saved(page); resizes.push({ ...size, world });
+      270 |       expect(world).toEqual(before);
+        at /workspace/Qcc-games-/tests/games/neon-coil/play.spec.ts:267:110
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace docs/evidence/neon-coil/review-r3/sol61/red/snapshot-playwright/games-neon-coil-play-resiz-a475e-out-advancing-running-arena-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4 failed
+    [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing ready arena 
+    [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing paused arena 
+    [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing dead arena 
+    [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing running arena 
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

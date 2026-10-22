@@ -1,0 +1,70 @@
+  1) [webkit] › tests/games/neon-coil/play.spec.ts:79:1 › resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths 
+2026-10-20T11:47:45.4140930Z 
+2026-10-20T11:47:45.4141078Z     Error: expect(received).toBe(expected) // Object.is equality
+2026-10-20T11:47:45.4141235Z 
+2026-10-20T11:47:45.4141293Z     Expected: 5
+2026-10-20T11:47:45.4141426Z     Received: 10
+2026-10-20T11:47:45.4141502Z 
+2026-10-20T11:47:45.4141772Z       88 |       return page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }));
+2026-10-20T11:47:45.4142372Z       89 |     }).toEqual({ w: size.width * 2, h: size.height * 2 });
+2026-10-20T11:47:45.4142933Z     > 90 |     expect(await page.locator('.nc-ranking li').count()).toBe(size.width < 600 || size.height < 600 ? 5 : 10);
+2026-10-20T11:47:45.4143387Z          |                                                          ^
+2026-10-20T11:47:45.4143654Z       91 |     for (const selector of ['#pause-game', '#restart-game', '.nc-boost']) {
+2026-10-20T11:47:45.4143945Z       92 |       const box = (await page.locator(selector).boundingBox())!;
+2026-10-20T11:47:45.4144515Z       93 |       expect(box.x).toBeGreaterThanOrEqual(0); expect(box.y).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(size.width); expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+2026-10-20T11:47:45.4145080Z         at /home/runner/work/Qcc-games-/Qcc-games-/tests/games/neon-coil/play.spec.ts:90:58
+2026-10-20T11:47:45.4145273Z 
+2026-10-20T11:47:45.4145573Z     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+2026-10-20T11:47:45.4145991Z     test-results/games-neon-coil-play-resiz-b7144--ultrawide-and-touch-widths-webkit/test-failed-1.png
+2026-10-20T11:47:45.4146456Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-20T11:47:45.4146610Z 
+2026-10-20T11:47:45.4146875Z     Error Context: test-results/games-neon-coil-play-resiz-b7144--ultrawide-and-touch-widths-webkit/error-context.md
+2026-10-20T11:47:45.4147146Z 
+2026-10-20T11:47:45.4147368Z     attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+2026-10-20T11:47:45.4147758Z     test-results/games-neon-coil-play-resiz-b7144--ultrawide-and-touch-widths-webkit/trace.zip
+2026-10-20T11:47:45.4148036Z     Usage:
+2026-10-20T11:47:45.4148104Z 
+2026-10-20T11:47:45.4148375Z         npx playwright show-trace test-results/games-neon-coil-play-resiz-b7144--ultrawide-and-touch-widths-webkit/trace.zip
+2026-10-20T11:47:45.4148658Z 
+2026-10-20T11:47:45.4148855Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+2026-10-20T11:47:45.4149214Z 
+2026-10-20T11:47:45.4149283Z   1 failed
+2026-10-20T11:47:45.4150124Z     [webkit] › tests/games/neon-coil/play.spec.ts:79:1 › resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths 
+2026-10-20T11:47:45.4150451Z   14 skipped
+2026-10-20T11:47:45.4150572Z   329 passed (9.0m)
+2026-10-20T11:47:45.7390892Z ##[error]Process completed with exit code 1.
+2026-10-20T11:47:45.7446942Z ##[group]Run actions/upload-artifact@v4
+2026-10-20T11:47:45.7447113Z with:
+2026-10-20T11:47:45.7447234Z   name: arcade-verification
+2026-10-20T11:47:45.7447424Z   path: playwright-report
+test-results
+docs/evidence/release
+
+2026-10-20T11:47:45.7447625Z   if-no-files-found: warn
+2026-10-20T11:47:45.7447761Z   compression-level: 6
+2026-10-20T11:47:45.7447884Z   overwrite: false
+2026-10-20T11:47:45.7448009Z   include-hidden-files: false
+2026-10-20T11:47:45.7448150Z ##[endgroup]
+2026-10-20T11:47:45.8627311Z (node:18177) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-10-20T11:47:45.8628082Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-10-20T11:47:45.8886409Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-10-20T11:47:45.8888257Z The least common ancestor is /home/runner/work/Qcc-games-/Qcc-games-. This will be the root directory of the artifact
+2026-10-20T11:47:45.8889074Z With the provided path, there will be 165 files uploaded
+2026-10-20T11:47:45.8892437Z Artifact name is valid!
+2026-10-20T11:47:45.8892859Z Root directory input is valid!
+2026-10-20T11:47:46.2423787Z Beginning upload of artifact content to blob storage
+2026-10-20T11:47:46.4454210Z (node:18177) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-10-20T11:47:47.1066462Z Uploaded bytes 8388608
+2026-10-20T11:47:47.3191056Z Uploaded bytes 16777216
+2026-10-20T11:47:47.5408027Z Uploaded bytes 25165824
+2026-10-20T11:47:47.7115389Z Uploaded bytes 33554432
+2026-10-20T11:47:47.8618183Z Uploaded bytes 39135530
+2026-10-20T11:47:47.9193654Z Finished uploading artifact content to blob storage!
+2026-10-20T11:47:47.9195649Z SHA256 digest of uploaded artifact zip is 5ef27e9b22303545ddd7f7feda3eac652ba15124c108e0bf58c88ac972e9c85b
+2026-10-20T11:47:47.9197082Z Finalizing artifact upload
+2026-10-20T11:47:48.1687507Z Artifact arcade-verification.zip successfully finalized. Artifact ID 12261214108
+2026-10-20T11:47:48.1688321Z Artifact arcade-verification has been successfully uploaded! Final size is 39135530 bytes. Artifact ID is 12261214108
+2026-10-20T11:47:48.1694222Z Artifact download URL: https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39416296107/artifacts/12261214108
+2026-10-20T11:47:48.1910391Z Post job cleanup.
+2026-10-20T11:47:48.2525723Z [command]/usr/bin/git version
+2026-10-20T11:47:48.2562800Z git version 2.55.0

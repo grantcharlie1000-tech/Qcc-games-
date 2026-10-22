@@ -1,0 +1,21 @@
+{
+  "checkpoint": "cc08465d3cf015ca842f8de80d9c92e6f77f953e",
+  "base": "a7f7631d4f606667f23b016ad6091cb3899365e8",
+  "provenance": "Preserved from actual audit tool stdout; this JSON is a summary, not the original runner output.",
+  "typescript": "npm run check passed",
+  "vitest": {"filesPassed":25,"testsPassed":288,"durationSeconds":3.18},
+  "modelProbes": [
+    {"seed":1,"ticks":7200,"phase":"running","invalid":null,"defeated":21,"mass":43,"bytes":556487},
+    {"seed":2,"ticks":2730,"phase":"dead","invalid":null,"defeated":8,"mass":43,"bytes":379696},
+    {"seed":42,"ticks":7200,"phase":"running","invalid":null,"defeated":23,"mass":57,"bytes":551061}
+  ],
+  "touchBoostFirst": {"viewport":{"width":390,"height":844},"boosting":true,"tick":31,"mass":32,"x":143,"y":0,"angle":0},
+  "landscape844x390": {
+    "youRow":{"x":630,"y":343,"width":175,"height":26},
+    "restart":{"x":626,"y":328,"width":42,"height":42},
+    "introCard":{"x":202,"y":67,"width":440,"height":359.65625},
+    "introEnter":{"x":231,"y":318.0625,"width":382,"height":47}
+  },
+  "landscape740x360": {"introEnter":{"x":179,"y":318.0625,"width":382,"height":47}},
+  "screenshots":["/tmp/neon-review-landscape-running.png","/tmp/neon-review-landscape-intro.png","/tmp/neon-review-landscape-360.png"]
+}

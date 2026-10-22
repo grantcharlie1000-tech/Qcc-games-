@@ -1,0 +1,37 @@
+{
+  "browser": "Chromium154.0.8037.57",
+  "phases": [
+    {
+      "phase": "before context.close with original tab open",
+      "pages": [
+        {
+          "url": "http://127.0.0.1:4185/",
+          "client": {
+            "id": "d7cde76d-a63d-44aa-9a28-bf6ad44c07be",
+            "url": "http://127.0.0.1:4185/",
+            "token": "original-test-tab",
+            "entry": "http://127.0.0.1:4185/assets/index-D0ozSXMY-profile.js"
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after persistent profile reopen before harness navigation",
+      "pages": [
+        {
+          "url": "about:blank",
+          "client": null
+        },
+        {
+          "url": "http://127.0.0.1:4185/",
+          "client": {
+            "id": "a4f18999-ec6e-4ab8-aaa5-b1909cc6d8c5",
+            "url": "http://127.0.0.1:4185/",
+            "token": "original-test-tab",
+            "entry": "http://127.0.0.1:4185/assets/index-D0ozSXMY-profile.js"
+          }
+        }
+      ]
+    }
+  ]
+}

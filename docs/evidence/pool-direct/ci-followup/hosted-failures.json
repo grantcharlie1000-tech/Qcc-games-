@@ -1,0 +1,55 @@
+{
+  "runId": 39416367186,
+  "pullRequest": 6,
+  "mergeCommit": "d07fbd6ed4b22414772558a1b807f706cbd083bf",
+  "head": "5b2145e347f09a0cda1eb8f8fb6dfbf6474b04ec",
+  "main": "a7f7631d4f606667f23b016ad6091cb3899365e8",
+  "hosted": {
+    "unitPassed": 282,
+    "browserPassed": 315,
+    "browserSkipped": 13,
+    "browserFailed": 4,
+    "downstreamSkipped": [
+      "build",
+      "verify:update",
+      "verify:offline"
+    ]
+  },
+  "originalJobLog": "/workspace/pool-ci-evidence/39416367186/job.log",
+  "artifact": {
+    "id": 12261974583,
+    "url": "https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/39416367186/artifacts/12261974583",
+    "localDownload": "HTTP 403; hosted trace ZIP unavailable"
+  },
+  "failures": [
+    {
+      "engines": [
+        "chromium",
+        "webkit"
+      ],
+      "test": "tests/e2e/study.spec.ts:107 retained pool",
+      "error": "60-second timeout on removed Shoot button",
+      "scope": "Pool action only; real aim/pull/release plus shot count, frozen clock and restoration assertions preserved",
+      "localChromium": "RED reproduced, targeted GREEN passed"
+    },
+    {
+      "engines": [
+        "webkit"
+      ],
+      "test": "tests/games/pool/direct.spec.ts:58 at 768x1024",
+      "error": "expected75%, received74%",
+      "actualWebKitCause": "unconfirmed; native hosted coordinates unavailable",
+      "scope": "expected display/model power from trusted delivered coordinates; strict geometry and one-shot checks preserved",
+      "localChromium": "fractional75% and integer74% native input contracts both pass"
+    },
+    {
+      "engines": [
+        "chromium"
+      ],
+      "test": "tests/games/ball-run/play.spec.ts:18",
+      "error": "30-second wait for x>.5 after native ArrowRight delay250ms",
+      "classification": "Original timeout reproduced in full local Chromium suite; cause remains unclassified. Focused original-assertion repeats passed 4/4.",
+      "sourceAndAssertions": "unchanged"
+    }
+  ]
+}

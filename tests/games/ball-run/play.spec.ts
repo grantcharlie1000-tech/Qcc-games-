@@ -8,43 +8,53 @@ async function waitDistance(page:Page,distance:number){await page.waitForFunctio
 async function seedCourse(page:Page,distance=24){await page.addInitScript(distance=>localStorage.setItem('pocket-arcade:v1:save:ball-run',JSON.stringify({version:1,data:{version:1,seed:8,run:2,phase:'running',distance,x:0,vx:0,height:.38,vy:0,grounded:true,elapsed:2,best:143,reason:''}})),distance);}
 
 test('real drag and held keys steer; pause, Study, restart, restore, and disposal retain their contracts',async({page})=>{
+  await page.clock.install({time:new Date('2026-10-20T12:00:00Z')});await page.clock.pauseAt(new Date('2026-10-20T12:00:01Z'));
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const game=page.locator('.ball-run'),canvas=game.locator('canvas');
   await page.getByRole('button',{name:'Game rules'}).click();await expect(page.locator('#rules-text')).toContainText('ramps');await page.getByRole('button',{name:'Let’s play'}).click();
-  await page.getByRole('button',{name:'Start rolling'}).click();await waitDistance(page,.2);
-  // Release the native key before polling its result: a slow driver must not
-  // keep steering right while it waits for the first threshold observation.
-  await page.keyboard.press('ArrowRight',{delay:250});await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.5);
-  await canvas.hover();const bounds=(await canvas.boundingBox())!;
-  await canvas.evaluate(el=>el.addEventListener('pointerdown',event=>{
-    const p=event as PointerEvent;el.setAttribute('data-test-drag',JSON.stringify({id:p.pointerId,x:Number(el.closest<HTMLElement>('.ball-run')!.dataset.x),clientX:p.clientX,clientY:p.clientY,width:el.clientWidth,trusted:p.isTrusted}));
-  },{capture:true,once:true}));
-  await page.mouse.move(bounds.x+bounds.width*.55,bounds.y+bounds.height*.65);await page.mouse.down();
-  const anchor=JSON.parse((await canvas.getAttribute('data-test-drag'))!);expect(anchor.trusted).toBe(true);
-  expect(await canvas.evaluate((el,id)=>el.hasPointerCapture(id),anchor.id)).toBe(true);
-  // Aim inside the road from the actual native down-event position, rather
-  // than assuming the preceding held key stopped at exactly x=.5.
-  await page.mouse.move(anchor.clientX+(-.3-anchor.x)/6*anchor.width,anchor.clientY,{steps:8});
-  await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)<.1);await page.mouse.up();
-  expect(await canvas.evaluate((el,id)=>el.hasPointerCapture(id),anchor.id)).toBe(false);
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
-  const distance=await game.getAttribute('data-distance'),x=await game.getAttribute('data-x');await page.keyboard.press('ArrowLeft');await frames(page);
-  expect(await game.getAttribute('data-distance')).toBe(distance);expect(await game.getAttribute('data-x')).toBe(x);
-  await page.getByRole('button',{name:'Keep playing'}).click();
-  await page.keyboard.down('ArrowLeft');await page.keyboard.press('Escape');const studyDistance=await game.getAttribute('data-distance');
-  await page.keyboard.down('d');await frames(page);expect(await game.getAttribute('data-distance')).toBe(studyDistance);await page.keyboard.up('d');await page.keyboard.up('ArrowLeft');
-  await page.getByRole('link',{name:'Games',exact:true}).click();
-  await expect(game).toHaveAttribute('data-phase','running');
-  await page.keyboard.down('ArrowRight');await expect(game).toHaveAttribute('data-phase','over',{timeout:10000});await page.keyboard.up('ArrowRight');
-  await page.getByRole('button',{name:'Roll again'}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
-  await expect(game).toHaveAttribute('data-phase','ready');await expect(game).toHaveAttribute('data-distance','0.000');
-  await page.getByRole('button',{name:'Start rolling'}).click();await waitDistance(page,3);await page.getByRole('button',{name:'Pause game',exact:true}).click();
-  const saved=await game.getAttribute('data-distance');await page.reload();await expect(page.getByRole('button',{name:'Continue rolling'})).toBeVisible();await expect(game).toHaveAttribute('data-distance',saved!);
-  await page.evaluate(()=>{(window as unknown as {oldBallCanvas:HTMLCanvasElement}).oldBallCanvas=document.querySelector('.ball-run canvas')!;});
-  await page.getByRole('link',{name:'Back to game library'}).click();await expect(game).toHaveCount(0);
-  expect(await page.evaluate(()=>{const c=(window as unknown as {oldBallCanvas:HTMLCanvasElement}).oldBallCanvas;return c.getContext('webgl2')!.isContextLost();})).toBe(true);
-  await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();await expect(page.getByRole('button',{name:'Continue rolling'})).toBeVisible();expect(errors).toEqual([]);
+  await page.getByRole('button',{name:'Start rolling'}).click();await page.clock.runFor(64);await waitDistance(page,.2);
+  // Keep this lifecycle contract on one controlled clock: native input and
+  // actionability must not race resumed timer backlogs or course hazards.
+  let pointerHeld=false;
+  try{
+    await page.keyboard.down('ArrowRight');
+    try{await page.clock.runFor(250);}finally{await page.keyboard.up('ArrowRight');}
+    await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.5);
+    await canvas.hover();const bounds=(await canvas.boundingBox())!;
+    await canvas.evaluate(el=>el.addEventListener('pointerdown',event=>{
+      const p=event as PointerEvent;el.setAttribute('data-test-drag',JSON.stringify({id:p.pointerId,x:Number(el.closest<HTMLElement>('.ball-run')!.dataset.x),clientX:p.clientX,clientY:p.clientY,width:el.clientWidth,trusted:p.isTrusted}));
+    },{capture:true,once:true}));
+    await page.mouse.move(bounds.x+bounds.width*.55,bounds.y+bounds.height*.65);await page.mouse.down();pointerHeld=true;
+    const anchor=JSON.parse((await canvas.getAttribute('data-test-drag'))!);expect(anchor.trusted).toBe(true);
+    expect(await canvas.evaluate((el,id)=>el.hasPointerCapture(id),anchor.id)).toBe(true);
+    // Aim inside the road from the actual native down-event position, rather
+    // than assuming the preceding held key stopped at exactly x=.5.
+    await page.mouse.move(anchor.clientX+(-.3-anchor.x)/6*anchor.width,anchor.clientY,{steps:8});
+    await page.clock.runFor(500);
+    await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)<.1);await page.mouse.up();pointerHeld=false;
+    expect(await canvas.evaluate((el,id)=>el.hasPointerCapture(id),anchor.id)).toBe(false);
+    await page.getByRole('button',{name:'Pause game',exact:true}).click();
+    const distance=await game.getAttribute('data-distance'),x=await game.getAttribute('data-x');await page.keyboard.press('ArrowLeft');await page.clock.runFor(200);
+    expect(await game.getAttribute('data-distance')).toBe(distance);expect(await game.getAttribute('data-x')).toBe(x);
+    await page.getByRole('button',{name:'Keep playing'}).click();
+    await page.keyboard.down('ArrowLeft');await page.keyboard.press('Escape');const studyDistance=await game.getAttribute('data-distance');
+    await page.keyboard.down('d');await page.clock.runFor(200);expect(await game.getAttribute('data-distance')).toBe(studyDistance);await page.keyboard.up('d');await page.keyboard.up('ArrowLeft');
+    await page.getByRole('link',{name:'Games',exact:true}).click();
+    await expect(game).toHaveAttribute('data-phase','running');
+    await page.keyboard.down('ArrowRight');await page.clock.runFor(10000);await expect(game).toHaveAttribute('data-phase','over',{timeout:10000});await page.keyboard.up('ArrowRight');
+    await page.getByRole('button',{name:'Roll again'}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
+    await expect(game).toHaveAttribute('data-phase','ready');await expect(game).toHaveAttribute('data-distance','0.000');
+    await page.getByRole('button',{name:'Start rolling'}).click();await page.clock.runFor(400);await waitDistance(page,3);await page.getByRole('button',{name:'Pause game',exact:true}).click();
+    const saved=await game.getAttribute('data-distance');await page.reload();await expect(page.getByRole('button',{name:'Continue rolling'})).toBeVisible();await expect(game).toHaveAttribute('data-distance',saved!);
+    await page.evaluate(()=>{(window as unknown as {oldBallCanvas:HTMLCanvasElement}).oldBallCanvas=document.querySelector('.ball-run canvas')!;});
+    await page.getByRole('link',{name:'Back to game library'}).click();await expect(game).toHaveCount(0);
+    expect(await page.evaluate(()=>{const c=(window as unknown as {oldBallCanvas:HTMLCanvasElement}).oldBallCanvas;return c.getContext('webgl2')!.isContextLost();})).toBe(true);
+    await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();await expect(page.getByRole('button',{name:'Continue rolling'})).toBeVisible();expect(errors).toEqual([]);
+  }finally{
+    await page.keyboard.up('ArrowRight');await page.keyboard.up('ArrowLeft');await page.keyboard.up('d');
+    if(pointerHeld)await page.mouse.up();await page.clock.resume();
+  }
 });
 
 test('native phone touch drag steers continuously and cancel releases capture',async({browser,browserName})=>{
@@ -64,8 +74,20 @@ test('native phone touch drag steers continuously and cancel releases capture',a
 
 test('a real restored run accelerates through cyan gates and flies then lands across a gap without jumping',async({page})=>{
   await page.setViewportSize({width:390,height:844});await seedCourse(page,24);await page.goto('/#/game/ball-run');
-  const game=page.locator('.ball-run');await page.getByRole('button',{name:'Continue rolling'}).click();
-  await expect(game.locator('.br-boost')).toBeVisible();
+  const game=page.locator('.ball-run'),boost=game.locator('.br-boost');
+  // The real boost window can fall entirely between Playwright assertion polls.
+  // Observe its actual computed visibility before starting, without slowing the game.
+  await boost.evaluate(element=>{
+    const observer=new MutationObserver(()=>{
+      const rect=element.getBoundingClientRect();
+      if(!(element as HTMLElement).hidden&&rect.width>0&&rect.height>0&&getComputedStyle(element).visibility==='visible'){
+        element.setAttribute('data-test-observed-visible','true');observer.disconnect();
+      }
+    });
+    observer.observe(element,{attributes:true,attributeFilter:['hidden']});
+  });
+  await page.getByRole('button',{name:'Continue rolling'}).click();
+  await expect(boost).toHaveAttribute('data-test-observed-visible','true');
   const bounds=(await game.locator('canvas').boundingBox())!;
   await page.mouse.move(bounds.width*.55,bounds.height*.65);await page.mouse.down();await page.mouse.move(bounds.width*.49,bounds.height*.65,{steps:4});
   await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)<-.08);await page.mouse.up();
@@ -82,8 +104,9 @@ test('a real restored run accelerates through cyan gates and flies then lands ac
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`perspective keeps a round ball and fills ${viewport.width}x${viewport.height}`,async({page})=>{
   await page.setViewportSize(viewport);await seedCourse(page,58);await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Continue rolling'}).click();await frames(page,5);
   const canvas=page.locator('.ball-run canvas'),box=(await canvas.boundingBox())!;
-  expect(box.width).toBeCloseTo(viewport.width,0);expect(box.height).toBeCloseTo(viewport.height,0);
-  expect(Number(await page.locator('.ball-run').getAttribute('data-aspect'))).toBeCloseTo(viewport.width/viewport.height,4);
+  const playWidth=viewport.width>=1100?viewport.width-264:viewport.width;
+  expect(box.x).toBeCloseTo(viewport.width-playWidth,0);expect(box.width).toBeCloseTo(playWidth,0);expect(box.height).toBeCloseTo(viewport.height,0);
+  expect(Number(await page.locator('.ball-run').getAttribute('data-aspect'))).toBeCloseTo(playWidth/viewport.height,4);
   const ballY=Number(await page.locator('.ball-run').getAttribute('data-ball-screen-y'));expect(ballY).toBeGreaterThan(.60);expect(ballY).toBeLessThan(.78);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await page.screenshot({path:`tests/games/ball-run/evidence/${viewport.width}x${viewport.height}.png`});

@@ -1,0 +1,11 @@
+{
+  "main": "fbac0a58aa23b953ff9ed382d2cd4bd80c817008",
+  "preservedDiagnosticCheckpoint": "abad6df6ba0d0424a54cddf3aa9e0d34f6efd276",
+  "integrationHead": "01e73d275a07844520a023944fc41b9583ff8d65",
+  "preservedPriorPaths": 90,
+  "animalStackMatchesMain": true,
+  "deploymentGatesByteIdentical": true,
+  "permissionsTriggersConcurrencyByteIdentical": true,
+  "traceOptIn": "pull_request only; all other events0/default-off",
+  "helperTestsExplicitlyInvoked": true
+}

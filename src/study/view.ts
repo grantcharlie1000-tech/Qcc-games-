@@ -1,108 +1,76 @@
+import mauriMark from '../assets/mauri-mark.svg?raw';
 import './style.css';
 import {studyTopics} from './topics';
 import {createTopicSession} from './session';
-import {articleFormats,contributors,readingNotes} from './editorial';
+import {contributors,readingNotes} from './editorial';
+import {ReadingPrivacy} from './privacy';
+import {studyAsset,studyImagesReady,topicImage} from './media';
 
 const html=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const subjects=[...new Set(studyTopics.map(topic=>topic.subject))];
-const arrow='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg>';
-
+const sources:Record<string,[string,string][]>={
+ 'te-tiriti':[['Waitangi Tribunal: Māori and English versions','https://www.waitangitribunal.govt.nz/en/about/the-treaty/maori-and-english-versions'],['NZHistory: Differences between the texts','https://nzhistory.govt.nz/page/differences-between-texts']],
+ 'wwi-causes':[['NZHistory: Origins of the First World War','https://nzhistory.govt.nz/war/first-world-war-overview/origins']],
+ hauora:[['Ministry of Health: Te Whare Tapa Whā','https://www.health.govt.nz/maori-health/maori-health-models/te-whare-tapa-wha']]
+};
+const ad=()=>'<aside class="study-ad-placeholder" aria-label="Advertisement placeholder"><span>Advertisement placeholder</span><p>Ads are disabled.</p></aside>';
 export class StudyView {
-  readonly session=createTopicSession();
   readonly root=document.createElement('section');
+  private privacy=new ReadingPrivacy(remember=>{if(remember){const topic=this.session.topic();if(topic)this.session.choose(topic.id);}else this.session.forget();this.privacy.setTopicFailure(this.session.failure());});
+  readonly session=createTopicSession(()=>sessionStorage,()=>this.privacy.allowed());
   private mode:'closed'|'choose'|'article'='closed';
   private message='';
-
-  constructor(onInitialChoice:()=>void,onReturn:()=>void){
-    this.root.id='study-view';this.root.hidden=true;
-    this.root.setAttribute('aria-label','Study Mode');
-    document.body.append(this.root);
+  private updateMessage='';
+  private updateReady=false;
+  private updateBusy=false;
+  constructor(onInitialChoice:()=>void,onReturn:()=>void,onUpdate:()=>void=()=>{}){
+    this.root.id='study-view';this.root.hidden=true;this.root.setAttribute('aria-label','Study Mode');document.body.append(this.root);
     this.root.addEventListener('click',event=>{
       const target=(event.target as Element).closest<HTMLElement>('button, [data-study-return]');
-      if(target?.dataset.studyTopic){
-        if(this.session.choose(target.dataset.studyTopic))onInitialChoice();
+      if(target?.hasAttribute('data-study-update-reload'))onUpdate();
+      if(target?.dataset.studyTopic&&this.session.choose(target.dataset.studyTopic)){
+        this.privacy.setTopicFailure(this.session.failure());
+        if(this.privacy.allowed()&&this.session.failure())this.privacy.showTopicStorageNotice(target,onInitialChoice);else onInitialChoice();
       }
-      if(target?.hasAttribute('data-study-return') && event.button===0
-        && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey){
-        event.preventDefault();onReturn();
-      }
+      if(target?.hasAttribute('data-reading-choices'))this.privacy.open(target);
+      if(target?.hasAttribute('data-study-return')&&event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();onReturn();}
     });
     this.root.addEventListener('change',event=>{
       if((event.target as Element).id!=='study-topic')return;
-      if(this.session.choose((event.target as HTMLSelectElement).value)){
-        this.showArticle(this.message,false);
-        this.root.querySelector<HTMLSelectElement>('#study-topic')?.focus({preventScroll:true});
-      }
+      if(this.session.choose((event.target as HTMLSelectElement).value)){this.privacy.setTopicFailure(this.session.failure());this.showArticle(this.message,false);const select=this.root.querySelector<HTMLSelectElement>('#study-topic')!;select.focus({preventScroll:true});if(this.privacy.allowed()&&this.session.failure())this.privacy.showTopicStorageNotice(select);}
     });
   }
-
-  get isOpen(){return this.mode!=='closed';}
-
-  private retention(){return this.session.retained()
-    ?'Your topic is remembered for this browser session.'
-    :'Session storage is unavailable. Your topic lasts until this page is reloaded.';}
-
-  showPicker(){
-    this.mode='choose';this.root.hidden=false;
-    this.root.innerHTML=`<main class="study-picker study-page"><div class="study-wordmark">MAURI <span>/</span> STUDY NOTES</div>
-      <div class="study-picker-intro"><p class="study-eyebrow">The reading collection</p><h1 id="study-title" tabindex="-1">Choose your study topic</h1>
-      <p>Twenty original chapters. Eight subjects. A little room to follow an idea. Choose a topic for this session.</p><p class="study-picker-hint">During a game, press <kbd>Esc</kbd> to pause, save and open your chapter. You can change topics while reading.</p></div>
-      <div class="study-collection-label"><span>Browse the collection</span><span>01 — 20</span></div><div class="study-topic-groups">${subjects.map(subject=>`<section aria-label="${html(subject)}"><h2>${html(subject)}</h2><div class="study-topic-list">${studyTopics.filter(t=>t.subject===subject).map((topic,i)=>`<button class="study-topic" data-study-topic="${topic.id}"><span>${String(i+1).padStart(2,'0')}</span><strong>${html(topic.title)}</strong>${arrow}</button>`).join('')}</div></section>`).join('')}</div>
-      <p class="study-session-note">${this.retention()}</p></main>`;
-    this.focusHeading();
+  setUpdateStatus(message:string,ready:boolean,busy=false){
+    this.updateMessage=message;this.updateReady=ready;this.updateBusy=busy;
+    const region=this.root.querySelector<HTMLElement>('[data-study-update]');
+    if(!region)return;
+    region.hidden=!message;
+    region.querySelector('p')!.textContent=message;
+    region.querySelector<HTMLButtonElement>('button')!.hidden=!ready;region.querySelector<HTMLButtonElement>('button')!.disabled=busy;
   }
-
+  private updateRegion(){return '<aside class="study-update" data-study-update hidden><p role="status" id="study-update-status"></p><button data-study-update-reload aria-describedby="study-update-status" hidden>Reload to update</button></aside>';}
+  get isOpen(){return this.mode!=='closed';}
+  dismissPrivacy(){return this.privacy.dismiss();}
+  private privacyButton(){return '<button class="study-choices-button" data-reading-choices>Reading storage choices</button>';}
+  private header(select='',includeGames=true){return `<div class="study-utility">Original revision notes · MAURI</div><header class="study-header"><div class="study-wordmark">${mauriMark}<span>Mauri Study Notes</span></div><nav aria-label="Site navigation">${select}${this.privacyButton()}${includeGames?`<a class="study-return" href="${html(window.location.hash||'#/')}" data-study-return>Games</a>`:''}</nav></header>`;}
+  showPicker(){
+    this.privacy.detach();this.mode='choose';this.root.hidden=false;
+    this.privacy.setTopicFailure(this.session.failure());
+    this.root.innerHTML=`${this.header('',false)}${this.updateRegion()}<main class="study-picker study-page"><div class="study-picker-intro"><p class="study-eyebrow">The reading collection</p><h1 id="study-title" tabindex="-1">Choose your study topic</h1><p>Twenty original chapters. Eight subjects. A little room to follow an idea.</p><p>During a game, press <kbd>Esc</kbd> to pause and open your chapter. You can change topics while reading.</p></div><div class="study-topic-groups">${subjects.map(subject=>`<section aria-label="${html(subject)}"><h2>${html(subject)}</h2><div class="study-topic-list">${studyTopics.filter(t=>t.subject===subject).map(topic=>`<button class="study-topic" data-study-topic="${topic.id}">${html(topic.title)}</button>`).join('')}</div></section>`).join('')}</div></main>`;
+    this.setUpdateStatus(this.updateMessage,this.updateReady,this.updateBusy);
+    this.privacy.mount(this.root);this.focusHeading();
+  }
   showArticle(message:string,focus=true){
     const topic=this.session.topic();if(!topic){this.showPicker();return;}
-    this.mode='article';this.message=message;this.root.hidden=false;
-    const chapter=studyTopics.indexOf(topic)+1;
-    const author=contributors[(chapter-1)%contributors.length];
-    const format=articleFormats[(chapter-1)%articleFormats.length];
-    const notes=readingNotes[topic.id];
-    const readingWords=[topic.title,topic.subtitle,topic.objective,
-      ...topic.sections.flatMap(entry=>[entry.heading,...entry.paragraphs]),
-      ...notes,topic.diagram.caption,topic.example.title,topic.example.question,
-      ...topic.example.steps,topic.example.result,topic.check.question,topic.check.answer
-    ].join(' ').split(/\s+/).length;
-    const readingMinutes=Math.ceil(readingWords/180);
-    const section=(index:number)=>{
-      const entry=topic.sections[index];
-      return `<section id="study-section-${index}" tabindex="-1"><h2>${html(entry.heading)}</h2>${entry.paragraphs.map(p=>`<p>${html(p)}</p>`).join('')}${index>0?`<p class="study-reading-note">${html(notes[index-1])}</p>`:''}</section>`;
-    };
-    const svg=topic.diagram.svg.replace(/<\?xml[^>]*\?>\s*/,'')
-      .replaceAll('id="arrow"',`id="${topic.id}-arrow"`).replaceAll('url(#arrow)',`url(#${topic.id}-arrow)`);
-    const figure=`<figure class="study-figure"><div class="study-diagram">${svg}</div><figcaption><span>FIG. ${chapter}.1</span> ${html(topic.diagram.caption)}</figcaption></figure>`;
-    const body=format==='essay'
-      ? `${section(0)}${figure}${section(1)}${section(2)}`
-      : format==='explainer'
-        ? `<div class="study-opening">${section(0)}${figure}</div>${section(1)}${section(2)}`
-        : `${section(0)}${section(1)}<div class="study-field-observation">${figure}${section(2)}</div>`;
-    this.root.innerHTML=`<div class="study-page">
-      <header class="study-header"><div class="study-wordmark">MAURI <span>/</span> STUDY NOTES</div><nav aria-label="Site navigation"><a class="study-return" href="${html(window.location.hash || '#/')}" data-study-return>Games</a></nav></header>
-      <div class="study-reader-layout"><aside class="study-sidebar"><p class="study-eyebrow">Your reading desk</p>
-        <label for="study-topic">Study topic</label><select id="study-topic">${subjects.map(subject=>`<optgroup label="${html(subject)}">${studyTopics.filter(t=>t.subject===subject).map(t=>`<option value="${t.id}"${t.id===topic.id?' selected':''}>${html(t.subtitle)}</option>`).join('')}</optgroup>`).join('')}</select>
-        <nav aria-label="Chapter contents"><p>In this chapter</p><ol>${topic.sections.map((s,i)=>`<li><a href="#study-section-${i}" data-study-anchor="study-section-${i}">${html(s.heading)}</a></li>`).join('')}<li><a href="#study-example" data-study-anchor="study-example">Worked example</a></li><li><a href="#study-check" data-study-anchor="study-check">Check your understanding</a></li></ol></nav>
-        <p class="study-save-note" role="status">${html(message)}</p><p class="study-session-note">${this.retention()}</p>
-      </aside>
-      <main class="study-chapter" data-format="${format}"><article aria-labelledby="study-title"><div class="study-chapter-meta"><span>${html(topic.subject)} · NCEA revision</span><span>CHAPTER ${String(chapter).padStart(2,'0')} / 20</span></div>
-        <h1 id="study-title" tabindex="-1">${html(topic.title)}</h1><p class="study-subtitle">${html(topic.subtitle)}</p>
-        <div class="study-byline">${author.svg}<div><span class="study-author-name">${html(author.name)}</span><span class="study-fictional">Fictional contributor</span></div><span class="study-reading-time">${readingMinutes} min read</span></div><p class="study-objective"><span>Learning focus</span>${html(topic.objective)}</p>
-        <div class="study-article-body">${body}</div>
-        <section id="study-example" class="study-example" tabindex="-1"><p class="study-eyebrow">Put it into practice</p><h2>${html(topic.example.title)}</h2><p>${html(topic.example.question)}</p><ol>${topic.example.steps.map(step=>`<li>${html(step)}</li>`).join('')}</ol><p class="study-result">${html(topic.example.result)}</p></section>
-        <section id="study-check" class="study-check" tabindex="-1"><h2>Check your understanding</h2><p>${html(topic.check.question)}</p><details><summary>Read the explanation</summary><p>${html(topic.check.answer)}</p></details></section>
-        <aside class="study-ad-placeholder" aria-label="Advertisement placeholder"><span>Advertisement placeholder</span><p>Ads are disabled.</p></aside>
-        <footer class="study-chapter-footer"><p class="study-contributor-note">${html(author.note)} All contributor names and portraits are fictional. These are original revision notes, not official assessment guidance.</p><span>Original revision notes · Use alongside your class materials.</span></footer>
-      </article></main></div></div>`;
-    // In-page contents must not change the arcade's hash route or unmount a game.
-    this.root.querySelectorAll<HTMLAnchorElement>('[data-study-anchor]').forEach(link=>{
-      link.addEventListener('click',event=>{
-        event.preventDefault();const section=this.root.querySelector<HTMLElement>(`#${link.dataset.studyAnchor}`);
-        section?.scrollIntoView({block:'start'});section?.focus({preventScroll:true});
-      });
-    });
-    if(focus)this.focusHeading();else window.scrollTo(0,0);
+    this.privacy.detach();this.mode='article';this.message=message;this.root.hidden=false;
+    const chapter=studyTopics.indexOf(topic)+1,author=contributors[(chapter-1)%contributors.length],notes=readingNotes[topic.id],image=topicImage(topic.id);
+    const words=[topic.title,topic.subtitle,topic.objective,...topic.sections.flatMap(s=>[s.heading,...s.paragraphs]),...notes,topic.example.title,topic.example.question,...topic.example.steps,topic.example.result,topic.check.question].join(' ').split(/\s+/).length;
+    const select=`<div class="study-topic-control"><label for="study-topic">Study topic</label><select id="study-topic">${subjects.map(subject=>`<optgroup label="${html(subject)}">${studyTopics.filter(t=>t.subject===subject).map(t=>`<option value="${t.id}"${t.id===topic.id?' selected':''}>${html(t.subtitle)}</option>`).join('')}</optgroup>`).join('')}</select></div>`;
+    const body=topic.sections.map((section,index)=>`<section class="study-text-section"><h2>${html(section.heading)}</h2>${section.paragraphs.map(p=>`<p>${html(p)}</p>`).join('')}${index===1||index===2?`<p>${html(notes[index-1])}</p>`:''}</section>${index%2===1?`<div class="study-inline-ad">${ad()}</div>`:''}`).join('');
+    this.root.innerHTML=`${this.updateRegion()}${/failed|memory/i.test(message)?`<p class="study-save-error" role="alert">${html(message)}</p>`:''}<div class="study-reader-layout"><aside class="study-ad-rail study-ad-rail-left" data-ad-rail="left" aria-label="Left advertisement reservations">${ad().repeat(4)}</aside><main class="study-chapter" data-format="long-read"><article aria-labelledby="study-title"><header class="study-article-heading"><p class="study-eyebrow">${html(topic.subject)} · Chapter ${String(chapter).padStart(2,'0')} / 20</p><h1 id="study-title" tabindex="-1">${html(topic.title)}</h1><p class="study-subtitle">${html(topic.subtitle)}</p><div class="study-byline">${studyImagesReady?`<img src="${studyAsset(`contributors/${author.portrait}.webp`)}" alt="Generated portrait of fictional contributor ${html(author.name)}" width="64" height="64">`:''}<div><span class="study-author-name">${html(author.name)}</span><span class="study-fictional">Fictional contributor</span></div><span class="study-reading-time">${Math.ceil(words/180)} min read</span><time class="study-revision-date" datetime="2026-10-20">Revised 20 October 2026</time></div></header>${studyImagesReady&&image?`<figure class="study-hero"><img src="${studyAsset(`photos/${image.file}.webp`)}" alt="${html(image.alt)}" width="1280" height="853"><figcaption>${html(image.caption)}</figcaption></figure>`:''}<div class="study-article-body"><p class="study-objective"><strong>Learning focus</strong> ${html(topic.objective)}</p>${body}<p class="study-games-sentence">Taking a break? Explore the <a href="${html(window.location.hash||'#/')}" data-study-return aria-label="Games">games</a>, then come back to your reading.</p><section class="study-example"><p class="study-eyebrow">Put it into practice</p><h2>${html(topic.example.title)}</h2><p>${html(topic.example.question)}</p><ol>${topic.example.steps.map(step=>`<li>${html(step)}</li>`).join('')}</ol><p class="study-result">${html(topic.example.result)}</p></section><section class="study-check"><h2>Check your understanding</h2><p>${html(topic.check.question)}</p><details><summary>Read the explanation</summary><p>${html(topic.check.answer)}</p></details></section>${sources[topic.id]?`<section class="study-sources"><h2>Further reading</h2><ul>${sources[topic.id].map(([label,url])=>`<li><a href="${html(url)}" target="_blank" rel="noopener">${html(label)}</a></li>`).join('')}</ul></section>`:''}</div><footer class="study-chapter-footer"><p>${html(author.note)} All contributor names and portraits are fictional. These original revision notes are not official assessment guidance.</p>${select}${this.privacyButton()}</footer></article></main><aside class="study-ad-rail study-ad-rail-right" data-ad-rail="right" aria-label="Right advertisement reservations">${ad().repeat(4)}</aside></div>`;
+    this.setUpdateStatus(this.updateMessage,this.updateReady,this.updateBusy);
+    this.privacy.mount(this.root);if(focus)this.focusHeading();else window.scrollTo(0,0);
   }
-
-  hide(){this.mode='closed';this.root.hidden=true;this.root.replaceChildren();}
+  hide(){this.privacy.detach();this.mode='closed';this.root.hidden=true;this.root.replaceChildren();}
   private focusHeading(){window.scrollTo(0,0);this.root.querySelector<HTMLElement>('#study-title')?.focus({preventScroll:true});}
 }

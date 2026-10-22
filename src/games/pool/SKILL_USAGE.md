@@ -1,3 +1,11 @@
+# Direct-input redesign — 2026-10-20
+
+Review feedback also used the local receiving-code-review skill: the native pause/contact finding was reproduced before the minimal fix, with fresh input recovery checked afterward.
+
+The horizontal redesign read and applied the repository's game-development router, web-games and 2d-games guides, test-driven-development (including writing-good-tests) and verification-before-completion. Their concrete influence was separating input math from the unchanged physics model, mapping measured screen coordinates into saved coordinates, regression-testing cancellation before fixes, and reporting fresh browser/unit evidence with explicit limits. The using-superpowers router was read and its dispatched-subagent exclusion respected. No new skill or third-party dependency was installed. Current details and evidence: [POOL_DIRECT_DRAG.md](../../../docs/POOL_DIRECT_DRAG.md).
+
+The original 2026-10-19 skill record follows; its references to sliders, gameplay buttons and the optional aim aid describe the earlier interface.
+
 # Actual skill and documentation usage
 
 Inventory command: `rg --files .agents/skills -g SKILL.md`. No third-party skill was installed. No additional agent was spawned. Exact local skills below were read; reading documentation is listed separately.
@@ -35,3 +43,14 @@ From repository `skills.lock.json`: game-development guides: `vudovn/ag-kit` at 
 ## Gaps and local reasoning
 
 The actual inventory has no billiards cue solver, eight-ball referee, ghost-ball shot-selection or numerical-conservation specialty skill. The mandatory areas are covered by relevant actual skills above plus official rules/source and explicit original implementation/tests. Circle impulses, swept pocket detection, ghost-ball geometry and turn adjudication were written locally; no imaginary skill names or invocations are claimed. The computer can fail difficult snookered escapes; it is an offline casual opponent. No WebKit engine or physical Chromebook measurements are claimed.
+
+## Pocket and rail clarity — 21 October 2026
+
+Read and applied the canonical project `using-superpowers`, `systematic-debugging`,
+`game-development` (web-games and 2d-games), `test-driven-development` (including
+writing-good-tests), `verification-before-completion`, and `requesting-code-review`
+skills. Reproduced the invisible side-pocket wall with failing off-centre pot,
+rounded-jaw response and aim-preview tests, then shared finite rail/pocket geometry
+between model and canvas. Inspected desktop, portrait phone and landscape canvas
+captures. An independent reviewer checked collision, preview, AI and save behavior
+and found no blocking issues.

@@ -1,0 +1,297 @@
+
+> pocket-offline-arcade@1.0.0 test
+> vitest run tests/core/offline-worker.test.ts
+
+
+ RUN  v3.2.7 /tmp/qcc-update-recovery
+
+ ❯ tests/core/offline-worker.test.ts (29 tests | 16 failed) 1218ms
+   ✓ online gameplay survives a full response cache 9ms
+   ✓ online gameplay survives completely blocked cache storage 2ms
+   ✓ installing an update never navigates documents or deletes their game caches 5ms
+   ✓ a coherent update can activate without waiting for legacy documents to close 4ms
+   ✓ an inconsistent deployment cannot activate over the retained version 4ms
+   × old cached chunks remain usable after the worker process restarts 15ms
+     → expected 'gone from deployment' to be 'retained old lazy chunk' // Object.is equality
+   × cleanup only deletes the captured stale set, preserving future installs and other scopes 7ms
+     → expected true to be false // Object.is equality
+   ✓ a live unacknowledged legacy document prevents stale cache deletion 3ms
+   × missing persisted retention metadata fails closed after a restart 4ms
+     → Cannot read properties of undefined (reading 'clear')
+   ✓ legacy migration pins old caches even when an execution-unready navigation is absent 5ms
+   × an absent current navigation retains its own generation and settles only its source ACK 6ms
+     → expected false to be true // Object.is equality
+   × activation imports late predecessor reservations and an old-module ACK retains its dependencies 6ms
+     → expected true to be false // Object.is equality
+   ✓ an unresolved old navigation protects its generation across restart and a later update 21ms
+   ✓ navigation never emits HTML before its reservation is durably stored 26ms
+   × normal multi-generation cleanup accepts legitimately absent old asset mappings 4ms
+     → expected true to be false // Object.is equality
+   ✓ one evicted legacy pinned cache does not turn unrelated future generations into permanent pins 5ms
+   ✓ an update cannot activate when its manifest needs a runtime chunk outside its atomic precache 3ms
+   ✓ waiting activation accepts only its own exact build and entry 2ms
+   × a ready module ACK already sent before its tab closes can settle that source reservation 6ms
+     → expected true to be false // Object.is equality
+   × a known ready owner omitted by enumeration remains protected via clients.get across handover 6ms
+     → Cannot read properties of undefined (reading 'get')
+   × a reclaimed cache name is retired before a later same-version install recreates it 6ms
+     → expected true to be false // Object.is equality
+   × rollback cache reuse waits for predecessor in-flight deletion and durable retirement before opening 1011ms
+     → expected "spy" to be called at least once
+   × failed predecessor retirement persistence refuses installation before opening successor caches 16ms
+     → promise resolved "undefined" instead of rejecting
+   × a distinct waiting D refuses cache reuse and wrong-predecessor installation before opening 4ms
+     → promise resolved "undefined" instead of rejecting
+   × D changing the active predecessor during retirement ACK refuses installation before opening 4ms
+     → promise resolved "undefined" instead of rejecting
+   × losing the installing worker identity during retirement ACK refuses opening successor caches 4ms
+     → promise resolved "undefined" instead of rejecting
+   ✓ legacy A with an already-waiting legacy D remains a supported migration state 3ms
+   × legacy waiting D activation during B install cannot delete the v2 candidate 4ms
+     → expected false to be true // Object.is equality
+   × a live modern predecessor cache pair can never be reused by an installer with the same version 21ms
+     → promise resolved "undefined" instead of rejecting
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/core/offline-worker.test.ts > old cached chunks remain usable after the worker process restarts
+AssertionError: expected 'gone from deployment' to be 'retained old lazy chunk' // Object.is equality
+
+Expected: "retained old lazy chunk"
+Received: "gone from deployment"
+
+ ❯ tests/core/offline-worker.test.ts:61:270
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > cleanup only deletes the captured stale set, preserving future installs and other scopes
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/core/offline-worker.test.ts:67:33
+     65|  w.clients.splice(0,w.clients.length,{id:'new-page',url:origin});
+     66|  await w.emit('message',{data:{type:'ARCADE_CLIENT_READY',entry:origin…
+     67|  expect(w.backend.has(oldPack)).toBe(false);expect(w.backend.has(oldSh…
+       |                                 ^
+     68|  expect(w.backend.has(future)).toBe(true);expect(w.backend.has('pocket…
+     69| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > missing persisted retention metadata fails closed after a restart
+TypeError: Cannot read properties of undefined (reading 'clear')
+ ❯ tests/core/offline-worker.test.ts:79:112
+     77| });
+     78| test('missing persisted retention metadata fails closed after a restar…
+     79|  const w=worker();await w.emit('install');await w.emit('activate');w.b…
+       |                                                                                                                ^
+     80|  const restarted=worker({backend:w.backend});restarted.clients.splice(…
+     81|  await restarted.emit('message',{data:{type:'ARCADE_CLIENT_READY',entr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > an absent current navigation retains its own generation and settles only its source ACK
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/core/offline-worker.test.ts:93:56
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > activation imports late predecessor reservations and an old-module ACK retains its dependencies
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/core/offline-worker.test.ts:105:173
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > normal multi-generation cleanup accepts legitimately absent old asset mappings
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/core/offline-worker.test.ts:125:162
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a ready module ACK already sent before its tab closes can settle that source reservation
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/core/offline-worker.test.ts:151:151
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a known ready owner omitted by enumeration remains protected via clients.get across handover
+TypeError: Cannot read properties of undefined (reading 'get')
+ ❯ tests/core/offline-worker.test.ts:157:64
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a reclaimed cache name is retired before a later same-version install recreates it
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/core/offline-worker.test.ts:165:62
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > rollback cache reuse waits for predecessor in-flight deletion and durable retirement before opening
+AssertionError: expected "spy" to be called at least once
+ ❯ tests/core/offline-worker.test.ts:176:166
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > failed predecessor retirement persistence refuses installation before opening successor caches
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:183:32
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a distinct waiting D refuses cache reuse and wrong-predecessor installation before opening
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:187:32
+    185| test('a distinct waiting D refuses cache reuse and wrong-predecessor i…
+    186|  const b=worker();b.self.registration.waiting={state:'installed',scrip…
+    187|  await expect(b.emit('install')).rejects.toThrow();expect(b.backend.ha…
+       |                                ^
+    188| });
+    189| test('D changing the active predecessor during retirement ACK refuses …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > D changing the active predecessor during retirement ACK refuses installation before opening
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:191:32
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > losing the installing worker identity during retirement ACK refuses opening successor caches
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:195:32
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > legacy waiting D activation during B install cannot delete the v2 candidate
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/core/offline-worker.test.ts:205:154
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/16]⎯
+
+ FAIL  tests/core/offline-worker.test.ts > a live modern predecessor cache pair can never be reused by an installer with the same version
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected: 
+Error {
+  "message": "rejected promise",
+}
+
++ Received: 
+undefined
+
+ ❯ tests/core/offline-worker.test.ts:209:32
+    207| test('a live modern predecessor cache pair can never be reused by an i…
+    208|  const c=worker();await c.emit('install');await c.emit('activate');con…
+    209|  await expect(b.emit('install')).rejects.toThrow();expect(b.fetch).not…
+       |                                ^
+    210| });
+    211| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/16]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  16 failed | 13 passed (29)
+   Start at  05:36:53
+   Duration  1.68s (transform 102ms, setup 0ms, collect 107ms, tests 1.22s, environment 0ms, prepare 114ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

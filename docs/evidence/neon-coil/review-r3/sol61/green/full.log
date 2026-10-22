@@ -1,0 +1,36 @@
+[WebServer] (node:26597) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:26610) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 20 tests using 1 worker
+
+(node:26630) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/games/neon-coil/play.spec.ts:12:1 › pointer movement without click, earned growth, Space boost, P pause, keyboard and restart (15.5s)
+  ✓   2 [chromium] › tests/games/neon-coil/play.spec.ts:38:1 › rim death creates real food, exposes death reason, and replay has one loop (8.1s)
+  ✓   3 [chromium] › tests/games/neon-coil/play.spec.ts:55:1 › real hover steering into a local bot body causes death and collectible pellets (3.6s)
+  ✓   4 [chromium] › tests/games/neon-coil/play.spec.ts:67:1 › Escape preserves host study, saves exactly, and saved continuation waits for user (6.2s)
+  ✓   5 [chromium] › tests/games/neon-coil/play.spec.ts:80:1 › resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths (9.7s)
+  ✓   6 [chromium] › tests/games/neon-coil/play.spec.ts:99:1 › touch drag and a second finger on the boost control steer without scrolling (2.8s)
+  ✓   7 [chromium] › tests/games/neon-coil/play.spec.ts:119:1 › focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely (10.9s)
+  ✓   8 [chromium] › tests/games/neon-coil/play.spec.ts:142:1 › the library retains original grid Snake and opens Neon Coil separately (3.0s)
+  ✓   9 [chromium] › tests/games/neon-coil/play.spec.ts:158:3 › native touch ownership: steering-first (2.3s)
+  ✓  10 [chromium] › tests/games/neon-coil/play.spec.ts:158:3 › native touch ownership: boost-first (2.2s)
+  ✓  11 [chromium] › tests/games/neon-coil/play.spec.ts:158:3 › native touch ownership: reacquire (2.4s)
+  ✓  12 [chromium] › tests/games/neon-coil/play.spec.ts:191:3 › short landscape bounds and unobscured player ranking 844x390 (1.3s)
+  ✓  13 [chromium] › tests/games/neon-coil/play.spec.ts:191:3 › short landscape bounds and unobscured player ranking 740x360 (1.2s)
+  ✓  14 [chromium] › tests/games/neon-coil/play.spec.ts:191:3 › short landscape bounds and unobscured player ranking 568x320 (1.2s)
+  ✓  15 [chromium] › tests/games/neon-coil/play.spec.ts:191:3 › short landscape bounds and unobscured player ranking 667x375 (1.2s)
+  ✓  16 [chromium] › tests/games/neon-coil/play.spec.ts:230:1 › short narrow viewport keeps intro and Boost within the supported 320px width (747ms)
+  ✓  17 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing ready arena (2.3s)
+  ✓  18 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing paused arena (3.5s)
+  ✓  19 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing dead arena (6.8s)
+  ✓  20 [chromium] › tests/games/neon-coil/play.spec.ts:242:3 › resize synchronizes ranking without advancing running arena (2.1s)
+
+  20 passed (1.5m)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

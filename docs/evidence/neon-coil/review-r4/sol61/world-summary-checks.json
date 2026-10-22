@@ -1,0 +1,170 @@
+{
+  "dpr1/resize-running.json": {
+    "before": {
+      "sha256": "128d55a64593db2546f4c52796284b7b69de0ec88693890a26a6688db5e6cf44",
+      "phase": "running",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr1/resize-dead.json": {
+    "before": {
+      "sha256": "ec4f344773fdef7adeb18c5b8c520826f9f5a8b361cd22ae9a89df378c748db1",
+      "phase": "dead",
+      "ticks": 599,
+      "mass": 61
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr1/resize-paused.json": {
+    "before": {
+      "sha256": "4ae10a4dfbcf5244762d6858ce070e7551903aa8d6f13b49fe5451e97a7a87ca",
+      "phase": "running",
+      "ticks": 8,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr1/resize-ready.json": {
+    "before": {
+      "sha256": "fa51d572eebe79cfa85d988063c588052b902f654c7637d1f5431a9ee1ba74c1",
+      "phase": "ready",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr2/resize-running.json": {
+    "before": {
+      "sha256": "128d55a64593db2546f4c52796284b7b69de0ec88693890a26a6688db5e6cf44",
+      "phase": "running",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr2/resize-dead.json": {
+    "before": {
+      "sha256": "ec4f344773fdef7adeb18c5b8c520826f9f5a8b361cd22ae9a89df378c748db1",
+      "phase": "dead",
+      "ticks": 599,
+      "mass": 61
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr2/resize-paused.json": {
+    "before": {
+      "sha256": "3e5eb15be632a6b0328b688f0b5556c087538d50960b5235e147005be50bc3de",
+      "phase": "running",
+      "ticks": 7,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr2/resize-ready.json": {
+    "before": {
+      "sha256": "fa51d572eebe79cfa85d988063c588052b902f654c7637d1f5431a9ee1ba74c1",
+      "phase": "ready",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr1.25/resize-ready.json": {
+    "before": {
+      "sha256": "fa51d572eebe79cfa85d988063c588052b902f654c7637d1f5431a9ee1ba74c1",
+      "phase": "ready",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "dpr3/resize-ready.json": {
+    "before": {
+      "sha256": "fa51d572eebe79cfa85d988063c588052b902f654c7637d1f5431a9ee1ba74c1",
+      "phase": "ready",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "full-neon/resize-running.json": {
+    "before": {
+      "sha256": "128d55a64593db2546f4c52796284b7b69de0ec88693890a26a6688db5e6cf44",
+      "phase": "running",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "full-neon/resize-dead.json": {
+    "before": {
+      "sha256": "ec4f344773fdef7adeb18c5b8c520826f9f5a8b361cd22ae9a89df378c748db1",
+      "phase": "dead",
+      "ticks": 599,
+      "mass": 61
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "full-neon/resize-paused.json": {
+    "before": {
+      "sha256": "3e5eb15be632a6b0328b688f0b5556c087538d50960b5235e147005be50bc3de",
+      "phase": "running",
+      "ticks": 7,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  },
+  "full-neon/resize-ready.json": {
+    "before": {
+      "sha256": "fa51d572eebe79cfa85d988063c588052b902f654c7637d1f5431a9ee1ba74c1",
+      "phase": "ready",
+      "ticks": 0,
+      "mass": 30
+    },
+    "allResizeAndAfterSummariesEqual": true,
+    "errors": [],
+    "announcements": 0,
+    "bestUnchanged": true
+  }
+}

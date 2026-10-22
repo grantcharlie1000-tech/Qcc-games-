@@ -31,3 +31,18 @@ The timing/input/scaling specialty guides target Phaser. They do not specify nat
 No grid-Snake solver skill exists in the inventory. The project brief defines the classic rule variant; pure invariant tests cover its edge cases. A Wikipedia genre-page fetch returned no usable content and was not treated as evidence. No external rule text or art was copied.
 
 The parent explicitly retained cover.svg ownership for a new SVG-skill art pass. This specialist did not create or edit that cover and does not claim SVG-skill use; gameplay illustration is original Canvas code in `art.ts`.
+
+
+# Smooth redesign — 2026-10-20
+
+Read the canonical local `using-superpowers` (dispatched-subagent exemption), `animate`, `game-development`, `game-development/web-games`, `game-development/2d-games`, `scale-and-responsive`, `input-keyboard-mouse-touch`, `time-and-timers`, and `verification-before-completion` skills. Applied animation purpose (spatial consistency/state feedback), native Canvas fixed simulation/interpolated render, reduced-motion gating, no new library, bounded input queue, responsive logical/display/backing separation, pause clock reset and fresh verification. The Phaser guides informed principles only; no Phaser API is used. The existing `--ease-out` tokens are untouched; continuous gameplay follows the model's linear clock.
+
+The brief explicitly requests gameplay motion; it governs this frequent-input game over `animate`'s general UI shortcut-frequency gate. No UI shortcut entrance animation was added. Geometry and input tests plus actual routed browser checks replace any invented Snake-specific skill. Independent coordinator review and browser/performance evidence are part of the handoff. See `docs/snake-smooth-design.md` for the projection sketch, sizing arithmetic, save compatibility and reference-access limitation.
+
+
+The post-commit Astra correction pass read `receiving-code-review` and `systematic-debugging`: checked each finding against the actual model/presentation and RAF invalidation paths, retained the independent failure evidence, and replaced the clock assumption with delivered-timestamp accounting. It preserves the parent’s timing decision and uses focused regressions instead of broad unrelated changes.
+
+
+# Continuous authoritative candidate
+
+The later explicit authorization supersedes the original all-input-deadlines constraint. Applied the already-read game-development fixed-clock/path principles, animation purpose/reduced-motion guidance, responsive/input lifecycle skills, receiving-code-review and systematic debugging to a pure version-2 leg/contact model. Native Canvas remains the renderer; no new engine/library/skill installation was needed. Two actual red→green regression records are retained for save invariants and numerical event boundaries. Core continuous travel is essential in both motion modes; only cosmetics are reduced. Current contact dimensions, changed turn cutoff and safe old-save conversion are specified in `SPEC.md`. Independent review is requested only through the coordinator’s allocated slot.
