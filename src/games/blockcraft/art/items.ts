@@ -1,4 +1,4 @@
-// Item art: every name in ITEM_SPRITES painted as 16×16 pixel art in the vanilla style (art/sprites-*.ts),
+// Item art: every name in ITEM_SPRITES has a 16×16 geometry/particle sprite, with a full-detail shield face texture,
 // and the inventory icons the UI shows for every item: sprites, flat block tiles (plants, torches, ladders)
 // and isometric block models (art/sprites-blocks.ts). Pixels are computed without a canvas; data URLs use the
 // browser canvas when there is one and a small PNG encoder otherwise. Everything is cached.
@@ -13,6 +13,7 @@ import {FOOD_SPRITES} from './sprites-food';
 import {MISC_SPRITES} from './sprites-misc';
 import {renderBlockIcon,tileTint} from './sprites-blocks';
 import {pngDataUrl} from './sprites-png';
+import {SHIELD_TEXTURE_SIZE,shieldTexturePixels} from './sprites-shield';
 
 /** Side of the square inventory icons in pixels (16 texels × 4: crisp at every GUI scale with pixelated scaling). */
 export const ICON_SIZE=64;
@@ -26,18 +27,21 @@ const ICON_SPRITE:Record<string,string>={lantern:'lantern'};
 export const hasSprite=(name:string)=>Object.prototype.hasOwnProperty.call(SPRITE_PAINTERS,name);
 const EMPTY=new Uint8ClampedArray(TILE*TILE*4);
 const sprites=new Map<string,Uint8ClampedArray>();
-/** 16×16 RGBA pixels of an item sprite, top row first (held and dropped items, particles). Cached and shared:
+/** 16×16 RGBA pixels of an item sprite, top row first (held geometry and particles). Cached and shared:
  *  treat as read-only. Unknown names give a transparent sprite. */
 export function spritePixels(name:string):Uint8ClampedArray{
   let p=sprites.get(name);
   if(!p){p=hasSprite(name)?SPRITE_PAINTERS[name]():EMPTY;sprites.set(name,p);}
   return p;
 }
-/** Nearest-neighbour scale of a 16×16 image to size×size, multiplying rgb by `tint` (0xRRGGBB). */
-function upscale(src:Uint8ClampedArray,size:number,tint=0xffffff):Uint8ClampedArray{
+/** Full-detail texture pixels, kept separate from the 16×16 geometry/particle mask. Cached and read-only. */
+export const spriteTexturePixels=(name:string):Uint8ClampedArray=>name==='shield'?shieldTexturePixels():spritePixels(name);
+export const spriteTextureSize=(name:string):number=>name==='shield'?SHIELD_TEXTURE_SIZE:TILE;
+/** Nearest-neighbour resampling to size×size, multiplying rgb by `tint` (0xRRGGBB). */
+function upscale(src:Uint8ClampedArray,size:number,tint=0xffffff,sourceSize=TILE):Uint8ClampedArray{
   const out=new Uint8ClampedArray(size*size*4),tr=tint>>16&255,tg=tint>>8&255,tb=tint&255;
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-    const i=((y*TILE/size|0)*TILE+(x*TILE/size|0))*4,j=(y*size+x)*4;if(!src[i+3])continue;
+    const i=((y*sourceSize/size|0)*sourceSize+(x*sourceSize/size|0))*4,j=(y*size+x)*4;if(!src[i+3])continue;
     out[j]=Math.round(src[i]*tr/255);out[j+1]=Math.round(src[i+1]*tg/255);out[j+2]=Math.round(src[i+2]*tb/255);out[j+3]=src[i+3];
   }
   return out;
@@ -47,9 +51,9 @@ export function iconPixels(itemId:string,size=ICON_SIZE):Uint8ClampedArray{
   const def=itemDef(itemId);
   if(!def)return new Uint8ClampedArray(size*size*4);
   const own=ICON_SPRITE[itemId];
-  if(own)return upscale(spritePixels(own),size);
+  if(own)return upscale(spriteTexturePixels(own),size,0xffffff,spriteTextureSize(own));
   const icon=def.icon;
-  if(icon.kind==='sprite')return upscale(spritePixels(icon.sprite),size);
+  if(icon.kind==='sprite')return upscale(spriteTexturePixels(icon.sprite),size,0xffffff,spriteTextureSize(icon.sprite));
   if(icon.kind==='tile')return upscale(tilePixels(icon.tile),size,tileTint(icon.tile)??0xffffff);
   const block=BLOCK_BY_NAME.get(icon.block);
   return block?renderBlockIcon(block,size):new Uint8ClampedArray(size*size*4);

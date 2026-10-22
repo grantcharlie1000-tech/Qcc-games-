@@ -1,6 +1,6 @@
 // Entity rendering: every entity in two dynamic meshes (≤ 2 draw calls, none when nothing is visible).
 //  1. Entity atlas layer: box models of every kind (CPU-posed boxes, entity/model.ts), dropped and thrown item sprites,
-//     experience orbs. The atlas holds each kind's model.paint texture, every item sprite (art/items spritePixels) and
+//     experience orbs. The atlas holds each kind's model.paint texture, every item's full-detail sprite texture and
 //     the orb icons; it is rebuilt when kinds are registered.
 //  2. Block atlas layer (game.render.atlas): block-rendered entities (falling blocks, primed TNT with its white flash and
 //     swell) via game.mesher.meshBlock, dropped block items as small spinning cubes, flat block-tile items, and the
@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import {ATLAS_COLUMNS,ATLAS_ROWS,BLOCK_COUNT,FACE_TILE,TILE_INDEX,TINTED_TILES,blockDef,BLOCK_BY_NAME} from '../data/blocks';
 import {ITEM_SPRITES,itemDef} from '../data/items';
 import {CH,quadIndices} from '../engine/constants';
-import {spritePixels} from '../art/items';
+import {spriteTexturePixels,spriteTextureSize} from '../art/items';
 import {LIGHT_GLSL,type RenderUniforms} from '../render/sky';
 import type {AnimationState,ChunkMesh,Entity,EntityKind,Game,PartPose,SharedUniforms} from '../engine/contracts';
 import {FLAG_EMISSIVE,QuadWriter,compileModel,diffuse,entityMatrix,mat,packAtlas,paintOrb,writeModel,type AtlasLayout,type CompiledModel,type Region} from './model';
@@ -146,7 +146,7 @@ export function createEntityRenderer(game:Game):EntityRenderer{
     const kinds=game.entities.kinds().filter(k=>k.model&&Number.isInteger(k.model.textureWidth)&&Number.isInteger(k.model.textureHeight)
       &&k.model.textureWidth>0&&k.model.textureHeight>0&&k.model.textureWidth<=1024&&k.model.textureHeight<=1024);
     const items=[...kinds.map(k=>({key:'kind:'+k.kind,w:k.model!.textureWidth,h:k.model!.textureHeight})),
-      ...ITEM_SPRITES.map(s=>({key:'sprite:'+s,w:16,h:16})),...Array.from({length:ORB_ICONS},(_,i)=>({key:'orb:'+i,w:16,h:16}))];
+      ...ITEM_SPRITES.map(s=>({key:'sprite:'+s,w:spriteTextureSize(s),h:spriteTextureSize(s)})),...Array.from({length:ORB_ICONS},(_,i)=>({key:'orb:'+i,w:16,h:16}))];
     const l=packAtlas(items,512),pixels=new Uint8ClampedArray(l.width*l.height*4);
     for(const k of kinds){
       const r=l.regions.get('kind:'+k.kind)!,tw=r.w,th=r.h,tmp=new Uint8ClampedArray(tw*th*4);
@@ -156,8 +156,8 @@ export function createEntityRenderer(game:Game):EntityRenderer{
       poses.set(k.kind,{});
     }
     for(const s of ITEM_SPRITES){
-      const r=l.regions.get('sprite:'+s)!,px=spritePixels(s);
-      for(let y=0;y<16;y++)pixels.set(px.subarray(y*64,(y+1)*64),((r.y+y)*l.width+r.x)*4);
+      const r=l.regions.get('sprite:'+s)!,px=spriteTexturePixels(s),stride=r.w*4;
+      for(let y=0;y<r.h;y++)pixels.set(px.subarray(y*stride,(y+1)*stride),((r.y+y)*l.width+r.x)*4);
       spriteRegions.set(s,r);
     }
     for(let i=0;i<ORB_ICONS;i++){const r=l.regions.get('orb:'+i)!;paintOrb(pixels,l.width,r.x,r.y,i);orbRegions[i]=r;}
@@ -274,7 +274,7 @@ export function createEntityRenderer(game:Game):EntityRenderer{
         const reg=spriteRegions.get(icon.sprite);if(!reg||!layout)return;
         const w=entityLayer.writer;w.light=light;
         const e1=1/64;
-        w.rect(cx,cy,cz,ux,uy,uz,vx,vy,vz,(reg.x+e1)/layout.width,(reg.y+e1)/layout.height,(reg.x+16-e1)/layout.width,(reg.y+16-e1)/layout.height,1,0);
+        w.rect(cx,cy,cz,ux,uy,uz,vx,vy,vz,(reg.x+e1)/layout.width,(reg.y+e1)/layout.height,(reg.x+reg.w-e1)/layout.width,(reg.y+reg.h-e1)/layout.height,1,0);
       }else{
         const tile=TILE_INDEX.get(icon.tile);if(tile===undefined)return;
         const w=blockLayer.writer,tx=tile%ATLAS_COLUMNS,ty=Math.floor(tile/ATLAS_COLUMNS);
