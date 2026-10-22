@@ -22,11 +22,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      # Timing budgets must not compete with other test workers on shared runners.
+      - run: npm test -- --maxWorkers=1
       - name: Verify native diagnostic helper
         run: node --test scripts/update-native-trace.test.mjs
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      # Full Chromium under a virtual display preserves native pointer-lock input.
+      - run: xvfb-run -a npm run test:e2e
       - run: npm run build
       - run: npm run verify:update
         env:

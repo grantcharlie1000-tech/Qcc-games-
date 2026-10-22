@@ -1,0 +1,69 @@
+/* Touch controls (player/controls-touch.ts): touch layer z-index 15, movement stick bottom-left, buttons bottom-right.
+   Both sit above the hotbar zone in portrait and beside it in landscape; safe-area insets keep them clear of notches. */
+.bc-touch{
+  --bc-touch-gap:max(14px,env(safe-area-inset-left,0px));
+  --bc-touch-gap-right:max(14px,env(safe-area-inset-right,0px));
+  --bc-touch-bottom:calc(max(12px,env(safe-area-inset-bottom,0px)) + 92px);
+  --bc-touch-btn:clamp(44px,12.5vmin,58px);
+  --bc-touch-jump:clamp(56px,16vmin,74px);
+  --bc-touch-stick:clamp(100px,30vmin,148px);
+  position:absolute;inset:0;z-index:15;pointer-events:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+}
+.bc-touch[hidden]{display:none}
+.bc-touch>.bc-stick,.bc-touch-pad>*{pointer-events:auto;touch-action:none}
+
+.bc-stick{
+  position:absolute;left:var(--bc-touch-gap);bottom:var(--bc-touch-bottom);
+  width:var(--bc-touch-stick);height:var(--bc-touch-stick);border-radius:50%;
+  background:radial-gradient(circle,#0000 40%,#0000002e 41%);border:2px solid #ffffff59;box-shadow:inset 0 0 0 1px #0003;
+}
+.bc-stick-knob{
+  position:absolute;left:30%;top:30%;width:40%;height:40%;border-radius:50%;
+  background:#ffffffb8;box-shadow:0 2px 6px #0006;pointer-events:none;
+}
+.bc-stick.bc-sprinting .bc-stick-knob{background:#fff;box-shadow:0 0 0 3px #7fd36b,0 2px 6px #0006}
+
+.bc-touch-pad{
+  position:absolute;right:var(--bc-touch-gap-right);bottom:var(--bc-touch-bottom);
+  display:grid;grid-template-columns:auto auto;gap:10px 12px;align-items:end;justify-items:center;
+}
+.bc-touch-btn{
+  display:grid;place-items:center;width:var(--bc-touch-btn);height:var(--bc-touch-btn);padding:0;margin:0;
+  border-radius:50%;border:2px solid #ffffff6b;background:#00000047;color:#fff;cursor:pointer;
+  font:inherit;line-height:1;
+}
+.bc-touch-btn svg{width:56%;height:56%;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.bc-touch-btn.bc-inv svg{stroke-width:4.2}
+.bc-touch-btn:focus-visible{outline:3px solid #ffd84a;outline-offset:2px}
+.bc-touch-btn.bc-active,.bc-touch-btn[aria-pressed="true"]{background:#ffffff4d;border-color:#fff}
+.bc-jump{width:var(--bc-touch-jump);height:var(--bc-touch-jump)}
+.bc-sneak.bc-flying{border-style:dashed}
+
+.bc-hold-ring{
+  --p:0;position:absolute;left:-28px;top:-28px;width:56px;height:56px;border-radius:50%;pointer-events:none;
+  background:conic-gradient(#fff calc(var(--p) * 1turn),#ffffff40 0);
+  -webkit-mask:radial-gradient(farthest-side,#0000 calc(100% - 6px),#000 calc(100% - 5px));
+  mask:radial-gradient(farthest-side,#0000 calc(100% - 6px),#000 calc(100% - 5px));
+}
+.bc-hold-ring[hidden]{display:none}
+
+/* Portrait: the stick and buttons sit above the HUD bars as drawn (the HUD publishes --bc-hud-bars on the game root:
+   higher with armour or extra heart rows, lower in creative), so they never cover the hearts, armour or shanks. */
+@media (orientation:portrait){
+  .bc-touch{--bc-touch-bottom:calc(var(--bc-hud-bars,92px) + env(safe-area-inset-bottom,0px) + 12px)}
+}
+/* Landscape phones and tablets: the centred hotbar leaves the bottom corners free (above the shell's and HUD's
+   small corner buttons). */
+@media (orientation:landscape) and (min-width:560px){
+  .bc-touch{--bc-touch-bottom:calc(max(10px,env(safe-area-inset-bottom,0px)) + 46px)}
+}
+/* Very short landscape screens: a smaller stick and buttons. */
+@media (orientation:landscape) and (max-height:420px){
+  .bc-touch{--bc-touch-stick:clamp(92px,28vmin,120px);--bc-touch-btn:clamp(40px,12vmin,50px);--bc-touch-jump:clamp(50px,15vmin,62px)}
+  .bc-touch-pad{gap:8px 10px}
+}
+@media (forced-colors:active){
+  .bc-stick,.bc-touch-btn{border-color:ButtonText;background:ButtonFace;color:ButtonText}
+  .bc-stick-knob{background:ButtonText}
+}

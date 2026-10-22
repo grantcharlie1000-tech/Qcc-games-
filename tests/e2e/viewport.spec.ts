@@ -1,8 +1,8 @@
 import {test,expect} from '../fixtures';
 import {deal} from '../../src/games/solitaire/model';
 
-const ids=['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle'];
-const referenced=new Set(['water-sort','color-blocks','ball-run','animal-stack']);
+const ids=['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft'];
+const referenced=new Set(['water-sort','color-blocks','ball-run','animal-stack','blockcraft']);
 
 for(const size of [{width:390,height:844},{width:844,height:390}]){
   test(`all games fill ${size.width}×${size.height} without scrolling the document`,async({page})=>{
@@ -62,7 +62,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
   await expect(page.locator('.game-view')).toHaveCSS('position','fixed');
   await page.getByRole('link',{name:'Back to game library',exact:true}).click();
-  await expect(page.locator('.game-card')).toHaveCount(15);
+  await expect(page.locator('.game-card')).toHaveCount(16);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(libraryY);
   await page.mouse.wheel(0,-1600);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBeLessThan(libraryY);

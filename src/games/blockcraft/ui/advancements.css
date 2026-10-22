@@ -1,0 +1,100 @@
+/* Advancements (ui/advancements*.ts). Toasts: layer z-index 25 in the top-right zone, below the 56 px arcade toolbar and
+   above the bottom-right shell buttons. Screen body: inside the ui area's advancements panel (.bc-adv-body). */
+
+/* ---- Toasts ------------------------------------------------------------------------------------------------- */
+/* The vanilla advancement toast in GUI pixels (--u, set by the toast layer from the HUD's GUI scale): a 160x32 dark frame,
+   the 16 px icon at (8, 8), the heading at (30, 7) and the title at (30, 18) in the GUI font, without a text shadow. Lines
+   are at most 125 GUI px (longer titles wrap; the toast layer sets each line's top). */
+.bc-adv-toasts{--u:2px;position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));z-index:25;
+  width:calc(160 * var(--u));height:0;pointer-events:none}
+.bc-adv-toast{position:absolute;right:0;top:calc(var(--slot,0) * 34 * var(--u));box-sizing:border-box;width:calc(160 * var(--u));height:calc(32 * var(--u));
+  border-radius:calc(2 * var(--u));background:#212121;will-change:transform;
+  box-shadow:inset 0 0 0 var(--u) #000,inset 0 0 0 calc(2 * var(--u)) #555,inset 0 0 0 calc(3 * var(--u)) #2c2c2c}
+.bc-adv-toast-icon{position:absolute;left:calc(8 * var(--u));top:calc(8 * var(--u));width:calc(16 * var(--u));height:calc(16 * var(--u));image-rendering:pixelated}
+.bc-adv-toast p{position:absolute;left:calc(30 * var(--u));margin:0;max-width:calc(125 * var(--u));overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  font:calc(8 * var(--u))/calc(9 * var(--u)) ui-monospace,"Courier New",monospace}
+.bc-adv-toast p.is-art{width:calc(var(--tw) * var(--u));height:calc(9 * var(--u));color:transparent!important;
+  background:no-repeat 0 0/100% 100%;image-rendering:pixelated}
+
+/* ---- Screen body ------------------------------------------------------------------------------------------- */
+/* Labels are pixel-font art (.bc-px, ui/screens.css) at the panel's GUI pixel; the tab row uses two thirds of it. */
+.bc-adv{--bc-adv-u:var(--bc-u,2px);display:flex;flex-direction:column;gap:6px;height:100%;min-height:0;color:#3f3f3f;font-size:13px;line-height:1.25}
+.bc-adv-tabs{--bc-u:max(1px,calc(var(--bc-adv-u) * 2 / 3))}
+.bc-adv .bc-px{text-shadow:none}
+.bc-adv-tabs{display:flex;flex-wrap:wrap;gap:4px}
+.bc-adv-tab{display:flex;align-items:center;gap:5px;min-height:30px;padding:0 9px 0 6px;border:0;border-radius:3px;background:#a2a2a2;color:#2b2b2b;
+  font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:inset 1px 1px #d8d8d8,inset -1px -1px #555}
+.bc-adv-tab[hidden]{display:none}
+.bc-adv-tab[aria-selected="true"]{background:#e6e6e6;box-shadow:inset 1px 1px #fff,inset -1px -1px #8b8b8b,0 0 0 2px #373737}
+@media (hover:hover){.bc-adv-tab:not([aria-selected="true"]):hover{background:#b6b6b6}}
+.bc-adv-tab:focus-visible,.bc-adv-node:focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 5px #1d4fa3}
+.bc-adv-tab-icon{width:20px;height:20px;image-rendering:pixelated}
+.bc-adv-tab-count{font-weight:500;font-variant-numeric:tabular-nums;color:#4b4b4b}
+@container (max-width:520px){.bc-adv-tab:not([aria-selected="true"]) .bc-adv-tab-name{display:none}}
+.bc-adv-panel{flex:1;min-height:0;display:flex;flex-direction:column}
+.bc-adv-summary{margin:0;font-size:12px;color:#3f3f3f}
+/* Nothing earned yet: the vanilla black panel with "There doesn't seem to be anything here..." and ":(" in white. */
+.bc-adv-empty{flex:1;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;
+  border-radius:2px;background:#000;box-shadow:inset 0 0 0 2px #373737;color:#fff;text-align:center;text-shadow:1px 1px 0 #3f3f3f}
+.bc-adv-empty-line{margin:0;font-size:13px}
+
+/* ---- Tree ------------------------------------------------------------------------------------------------------ */
+.bc-adv-tree{position:relative;flex:1;min-height:160px;overflow:auto;border-radius:2px;background:#2a2a2a;cursor:grab;
+  box-shadow:inset 0 0 0 2px #373737;touch-action:pan-x pan-y;overscroll-behavior:contain;scrollbar-width:thin}
+.bc-adv-tree.is-panning{cursor:grabbing}
+.bc-adv-canvas{position:relative;display:flex;box-sizing:border-box;width:max-content;min-width:100%;min-height:100%;
+  background:linear-gradient(rgba(0,0,0,.42),rgba(0,0,0,.42)),var(--bc-adv-bg,none) 0 0/32px 32px repeat,#3b3b3b;image-rendering:pixelated}
+/* Auto margins centre a small tree and fall back to 0 when it overflows, so every part stays scrollable. */
+.bc-adv-stage{position:relative;flex:none;margin:auto}
+.bc-adv-lines{position:absolute;left:0;top:0;pointer-events:none;shape-rendering:crispEdges}
+.bc-adv-line-shadow{fill:none;stroke:#000;stroke-width:6}
+.bc-adv-line{fill:none;stroke:#fff;stroke-width:2}
+/* Frames: grey until earned, gold after; square task, rounded goal, spiked challenge. */
+.bc-adv-node{position:absolute;display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;background:none;cursor:pointer;
+  --f:#c6c6c6;--f-hi:#f4f4f4;--f-lo:#6f6f6f;--shape:none}
+.bc-adv-node::before,.bc-adv-node::after{content:"";position:absolute;clip-path:var(--shape)}
+.bc-adv-node::before{inset:0;background:#000}
+.bc-adv-node::after{inset:2px;background:var(--f);box-shadow:inset 2px 2px var(--f-hi),inset -2px -2px var(--f-lo)}
+.bc-adv-node.is-done{--f:#e8b23a;--f-hi:#fde48c;--f-lo:#94620f}
+.bc-adv-node.is-goal{--shape:inset(0 round 34%)}
+.bc-adv-node.is-challenge{--shape:polygon(50% 0%,65.7% 12.1%,85.4% 14.6%,87.9% 34.3%,100% 50%,87.9% 65.7%,85.4% 85.4%,65.7% 87.9%,50% 100%,
+  34.3% 87.9%,14.6% 85.4%,12.1% 65.7%,0% 50%,12.1% 34.3%,14.6% 14.6%,34.3% 12.1%)}
+@media (hover:hover){.bc-adv-node:hover::after{filter:brightness(1.12)}}
+.bc-adv-node-icon{position:relative;z-index:1;width:24px;height:24px;image-rendering:pixelated;pointer-events:none}
+.bc-adv-node.is-challenge .bc-adv-node-icon{width:22px;height:22px}
+/* Colour-blind setting: a check badge marks earned frames as well as the gold. */
+.bc-adv-check{display:none}
+.bc-adv.is-cb .bc-adv-node.is-done .bc-adv-check{display:block;position:absolute;right:-4px;bottom:-4px;z-index:2;width:14px;height:14px;
+  box-sizing:border-box;border:2px solid #000;border-radius:50%;background:#fff}
+.bc-adv.is-cb .bc-adv-node.is-done .bc-adv-check::after{content:"";position:absolute;left:3px;top:0;width:3px;height:6px;border:solid #000;
+  border-width:0 2px 2px 0;transform:rotate(45deg)}
+/* Vanilla tooltip: blue title bar (gold once earned), dark body with a green (task) or pink (challenge) description. */
+.bc-adv-tip{position:absolute;z-index:3;width:max-content;min-width:150px;max-width:240px;pointer-events:none;color:#fff;font-size:12px;line-height:1.3;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.45))}
+.bc-adv-tip[hidden]{display:none}
+.bc-adv-tip-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 8px;border:2px solid #000;border-bottom:0;
+  border-radius:3px 3px 0 0;background:#1d5ca6;font-weight:700;text-shadow:1px 1px 0 rgba(0,0,0,.55)}
+.bc-adv-tip.is-done .bc-adv-tip-bar{background:#99670f}
+.bc-adv-tip-count{font-variant-numeric:tabular-nums;font-weight:600}
+.bc-adv-tip-body{padding:5px 8px 6px;border:2px solid #000;border-radius:0 0 3px 3px;background:#202020}
+.bc-adv-tip-body p{margin:0}
+.bc-adv-tip-desc{color:#55ff55}
+.bc-adv-tip.is-challenge .bc-adv-tip-desc{color:#ff88ff}
+.bc-adv-tip-meter{height:5px;margin:6px 0 2px;border:1px solid #5b5b5b;background:#000}
+.bc-adv-tip-meter i{display:block;height:100%;background:#55ff55}
+.bc-adv-tip-body .bc-adv-tip-list,.bc-adv-tip-body .bc-adv-tip-when{margin-top:4px;color:#bdbdbd;font-size:11px}
+
+/* ---- Statistics ------------------------------------------------------------------------------------------------ */
+.bc-adv-stats{flex:1;min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));align-content:start;
+  gap:10px 16px;padding:8px 10px;border-radius:2px;background:#dcdcdc;box-shadow:inset 1px 1px #8b8b8b,inset -1px -1px #fff;
+  overscroll-behavior:contain;scrollbar-width:thin;-webkit-user-select:text;user-select:text}
+.bc-adv-stat-sec{min-width:0}
+.bc-adv-stat-sec:first-child{grid-row:span 3}
+.bc-adv-stat-head{margin:0 0 4px;font-size:12px;font-weight:700;color:#2b2b2b}
+.bc-adv-stat-list,.bc-adv-stat-items{margin:0;padding:0;list-style:none}
+.bc-adv-stat-row,.bc-adv-stat-item{display:flex;align-items:center;gap:8px;min-height:22px;padding:1px 6px;font-size:12px}
+.bc-adv-stat-row:nth-child(odd),.bc-adv-stat-item:nth-child(odd){background:rgba(0,0,0,.06)}
+.bc-adv-stat-name,.bc-adv-stat-label{flex:1;min-width:0;margin:0;color:#3f3f3f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bc-adv-stat-val,.bc-adv-stat-num{margin:0;font-weight:600;color:#1f1f1f;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bc-adv-stat-icon{flex:none;width:18px;height:18px;image-rendering:pixelated}
+.bc-adv-stat-empty{padding:2px 6px;font-size:12px;color:#5b5b5b}

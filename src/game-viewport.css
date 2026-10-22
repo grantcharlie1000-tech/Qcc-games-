@@ -21,6 +21,7 @@ body.in-game #pause-overlay{border-radius:0}
 .game-view[data-game-id=water-sort]{--scene-width:min(var(--play-width,100vw),calc(100dvh * .58));--scene-bg:#221b2e}
 .game-view[data-game-id=color-blocks]{--scene-width:min(var(--play-width,100vw),calc(100dvh * .72));--scene-bg:#30223b}
 .game-view[data-game-id=ball-run]{--scene-width:var(--play-width,100vw);--scene-bg:#000}
+.game-view[data-game-id=blockcraft]{--scene-width:var(--play-width,100vw);--scene-bg:#9fd3ff}
 body.in-game .game-view[data-reference-game=true]{padding:0;background:var(--scene-bg);display:block}
 body.in-game .game-view[data-reference-game=true] .stage-wrap,
 body.in-game .game-view[data-reference-game=true] #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
@@ -54,11 +55,16 @@ body.in-game .game-view[data-reference-game=true] #game-menu svg{width:18px;heig
 /* Fixed descendants must not use the transformed header as their containing block. */
 body.in-game .game-view[data-reference-game=true] .game-toolbar{transform:none;left:calc((var(--play-width,100vw) - var(--scene-width)) / 2)}
 body.in-game .game-view[data-game-id=water-sort] .game-metrics,
-body.in-game .game-view[data-game-id=ball-run] .game-metrics{display:none}
-body.in-game .game-view[data-game-id=ball-run] #pause-game{position:static;width:36px;height:36px;min-width:36px;min-height:36px;margin-left:auto;background:#0003}
-body.in-game .game-view[data-game-id=ball-run] #pause-game svg{width:25px;height:25px}
-body.in-game .game-view[data-game-id=ball-run] #restart-game{position:fixed;bottom:7px;right:78px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px}
-body.in-game .game-view[data-game-id=ball-run] #restart-game svg{width:18px;height:18px}
+body.in-game .game-view[data-game-id=ball-run] .game-metrics,
+body.in-game .game-view[data-game-id=blockcraft] .game-metrics{display:none}
+body.in-game .game-view[data-game-id=ball-run] #pause-game,
+body.in-game .game-view[data-game-id=blockcraft] #pause-game{position:static;width:36px;height:36px;min-width:36px;min-height:36px;margin-left:auto;background:#0003}
+body.in-game .game-view[data-game-id=ball-run] #pause-game svg,
+body.in-game .game-view[data-game-id=blockcraft] #pause-game svg{width:25px;height:25px}
+body.in-game .game-view[data-game-id=ball-run] #restart-game,
+body.in-game .game-view[data-game-id=blockcraft] #restart-game{position:fixed;bottom:7px;right:78px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px}
+body.in-game .game-view[data-game-id=ball-run] #restart-game svg,
+body.in-game .game-view[data-game-id=blockcraft] #restart-game svg{width:18px;height:18px}
 /* Globle lays itself out responsively inside the whole stage. */
 body.in-game .game-view[data-game-id=globle] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=globle] #game-stage{height:100%;max-height:none;min-height:0}
@@ -68,6 +74,6 @@ body.in-game .game-view[data-game-id=globle] .game-metrics{display:none}
 /* Keep desktop rankings beside the game, never over its input surface. */
 .lb-sidebar{position:fixed;left:12px;top:16px;bottom:16px;width:240px;overflow:auto;overscroll-behavior:contain;padding:16px;background:#25282a;border:1px solid #444951;border-radius:16px;font:14px/1.4 system-ui,sans-serif;z-index:26}
 .lb-sidebar[hidden]{display:none}.lb-sidebar h2{font-size:18px;margin:0 0 12px}.lb-sidebar .game-button{width:100%;margin-top:12px}.lb-sidebar .lb-table{table-layout:fixed}.lb-sidebar th:first-child{width:38px}.lb-sidebar th:last-child{width:65px}
-@media(min-width:1100px){body.in-game .game-view:not([data-game-id=pool]){left:264px;width:calc(100% - 264px);--play-width:calc(100vw - 264px)}body.in-game .game-view[data-reference-game=true]:not([data-game-id=pool]) .game-toolbar{left:calc((var(--play-width) - var(--scene-width)) / 2)}}
+@media(min-width:1100px){body.in-game .game-view:not([data-game-id=pool]):not([data-game-id=blockcraft]){left:264px;width:calc(100% - 264px);--play-width:calc(100vw - 264px)}body.in-game .game-view[data-reference-game=true]:not([data-game-id=pool]):not([data-game-id=blockcraft]) .game-toolbar{left:calc((var(--play-width) - var(--scene-width)) / 2)}}
 
 @media(max-width:1099px){.lb-sidebar{display:none}}

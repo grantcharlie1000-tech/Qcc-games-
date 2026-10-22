@@ -21,7 +21,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  expect(formats.size).toBe(1);expect(authors.size).toBe(4);expect(requests.filter(url=>!/^\/study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname))).toEqual([]);
  await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));await page.screenshot({path:`docs/evidence/article-reading-layout/with-photos/article-${viewport.width}.png`,fullPage:true});
  const bounds=(await games.boundingBox())!;expect(bounds.height).toBeGreaterThanOrEqual(44);expect(bounds.width).toBeGreaterThanOrEqual(44);
- await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-card')).toHaveCount(15);await expect(page.locator('#study-view')).toBeHidden();
+ await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-card')).toHaveCount(16);await expect(page.locator('#study-view')).toBeHidden();
 });
 
 test('modified Games clicks reach the browser without returning the retained game',async({page,context})=>{
