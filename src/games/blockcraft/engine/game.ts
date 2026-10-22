@@ -2,14 +2,14 @@
 // state machine (loading → ready → playing ⇄ screen ⇄ paused, dead, lost) and persistence.
 import type {GameContext,GameInstance} from '../../../core/types';
 import {CH,CS,DAY_TICKS,TPS} from './constants';
-import {blockDef} from '../data/blocks';
+import {FACING_VECTOR,blockDef} from '../data/blocks';
 import {EventBus} from './events';
 import {VIEW_DISTANCES,type AdvancementsService,type BlockEntityService,type CraftingService,type Difficulty,type EngineState,type EntityService,type Game,
   type GameEvents,type GameMode,type GameSettings,type GameTime,type HudService,type InputService,type InteractionService,type Mesher,type PlayerService,
   type RenderService,type SoundService,type SurvivalService,type System,type TerrainService,type UIService,type BlockTickService,type InventoryService,
   type WeatherService} from './contracts';
 import {ChunkStreamer} from './streaming';
-import {bodyCollides} from './physics';
+import {bedStandUp,bodyCollides} from './physics';
 import {mulberry32} from '../world/noise';
 import {VoxelWorld} from '../world/world';
 import {createTerrain} from '../world/terrain';
@@ -82,7 +82,7 @@ export class Engine implements Game{
   private created:[string,System][];private ticked:System[];private framed:System[];
   private seed=DEFAULT_SEED;private rng=mulberry32(DEFAULT_SEED);
   private frameId=0;private last=0;private tickAcc=0;private paused=false;private disposed=false;
-  private diedAt=0;private spawnPending=true;private respawnPending=false;private freshWorld=true;private restored=false;private wasLocked=false;private lastScore=-1;private lastDay=0;
+  private diedAt=0;private spawnPending=true;private respawnPending=false;private bedPending=false;private freshWorld=true;private restored=false;private wasLocked=false;private lastScore=-1;private lastDay=0;
   private abort=new AbortController();
   constructor(container:HTMLElement,readonly context:GameContext){
     this.root=document.createElement('div');this.root.className='blockcraft';
@@ -151,15 +151,10 @@ export class Engine implements Game{
     if(this.disposed||this.state!=='dead')return;
     this.survival.respawn();
     const p=this.player.state,bed=p.bedSpawn;
-    let at=p.spawn;
-    if(bed){
-      const id=this.world.get(bed.x,bed.y,bed.z);
-      // An unloaded bed (-1) is trusted; a broken one is forgotten.
-      if(id<0||blockDef(id).family==='bed')at={x:bed.x+.5,y:bed.y+1,z:bed.z+.5};
-      else{p.bedSpawn=null;this.ui.toast('You have no home bed, or it was obstructed');}
-    }
+    // At the bed, trySpawn gets the player up beside it once its chunks are loaded.
+    const at=bed?{x:bed.x+.5,y:bed.y+1,z:bed.z+.5}:p.spawn;
     this.player.teleport(at.x,at.y,at.z);
-    this.spawnPending=true;this.respawnPending=true;this.setState('ready');
+    this.spawnPending=true;this.respawnPending=true;this.bedPending=!!bed;this.setState('ready');
     this.events.emit('playerRespawned',{});
     this.hud.showMenu(null);
     this.trySpawn();
@@ -248,6 +243,7 @@ export class Engine implements Game{
   private trySpawn(){
     const p=this.player.state,cx=Math.floor(p.x/CS),cz=Math.floor(p.z/CS);
     if(!this.streamer.hasNeighbours(cx,cz)||!this.streamer.isMeshed(cx,cz))return;
+    if(this.bedPending&&!this.standUp()){this.trySpawn();return;}
     for(let i=0;i<CH&&bodyCollides(this.world,p,HALF_WIDTH,HEIGHT);i++)p.y+=1;
     if(this.freshWorld){p.spawn={x:p.x,y:p.y,z:p.z};this.freshWorld=false;}
     this.spawnPending=false;
@@ -257,6 +253,20 @@ export class Engine implements Game{
     // A respawn far away finished loading after the click: pointer lock needs a new gesture.
     else if(this.respawnPending&&this.state==='ready')this.hud.showMenu('resume');
     this.respawnPending=false;
+  }
+
+  /** Respawning at a bed: get up beside it (vanilla BedBlock.findStandUpPosition). A bed that is gone or obstructed is
+   *  forgotten and the player goes to the world spawn instead (false: its chunks may still have to load). */
+  private standUp(){
+    this.bedPending=false;
+    const p=this.player.state,bed=p.bedSpawn;if(!bed)return true;
+    const d=blockDef(Math.max(0,this.world.get(bed.x,bed.y,bed.z))),v=d.family==='bed'&&d.facing?FACING_VECTOR[d.facing]:null;
+    // FACING_VECTOR points from the head to the foot.
+    const at=v&&bedStandUp(this.world,bed.x,bed.y,bed.z,-v[0],-v[1],HALF_WIDTH,HEIGHT);
+    if(at){this.player.teleport(at.x,at.y,at.z);return true;}
+    p.bedSpawn=null;this.ui.toast('You have no home bed, or it was obstructed');
+    this.player.teleport(p.spawn.x,p.spawn.y,p.spawn.z);
+    return false;
   }
 
   // ---- World lifecycle ----------------------------------------------------------------------
@@ -271,7 +281,7 @@ export class Engine implements Game{
     for(const [,s] of this.created)s.reset?.();
     this.updateLight();
     const s=this.terrain.spawnPoint();this.player.teleport(s.x,s.y,s.z);this.player.state.spawn={...s};this.player.state.bedSpawn=null;
-    this.spawnPending=true;this.respawnPending=false;this.freshWorld=true;this.restored=false;this.lastScore=-1;this.lastDay=0;
+    this.spawnPending=true;this.respawnPending=false;this.bedPending=false;this.freshWorld=true;this.restored=false;this.lastScore=-1;this.lastDay=0;
     if(this.state!=='lost')this.setState('loading');
     this.events.emit('worldReset',{});
   }

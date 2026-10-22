@@ -105,7 +105,7 @@ export const SLEEP_MESSAGES={day:'You can sleep only at night',monsters:'You may
   far:'You may not rest now; the bed is too far away',obstructed:'This bed is obstructed',spawn:'Respawn point set'} as const;
 const monsters:Entity[]=[];
 /** BedBlock.use + ServerPlayer.startSleepInBed: range and obstruction checks, then the respawn point is set; sleeping needs
- *  night (or thunder) and no monsters within 8 blocks (5 vertically) in survival. Sleeping skips to morning. */
+ *  night (or thunder) and no monsters within 8 blocks (5 vertically) in survival. Sleeping skips to morning while the daylight cycle runs. */
 export function useBed(game:Game,x:number,y:number,z:number):void{
   const w=game.world,d=blockDef(w.get(x,y,z));if(!d.bed||!d.facing)return;
   const [fx,fz]=FACING_VECTOR[d.facing];
@@ -127,7 +127,10 @@ export function useBed(game:Game,x:number,y:number,z:number):void{
     if(found){game.ui.toast(SLEEP_MESSAGES.monsters);return;}
   }
   if(changed)game.ui.toast(SLEEP_MESSAGES.spawn);
-  game.skipTime(0);
+  // ServerLevel.tick on waking: morning only under doDaylightCycle (skipTime also clears the weather under doWeatherCycle);
+  // a frozen clock stays put, but the weather still resets.
+  if(game.settings.daylightCycle)game.skipTime(0);
+  else if(game.settings.weatherCycle)game.weather.set('clear');
   game.events.emit('playerSlept',{});
 }
 /** Opens or closes both halves of a door. */

@@ -502,25 +502,29 @@ describe('persistence',()=>{
     expect(b.s.dead).toBe(true);expect(b.s.health).toBe(0);expect(b.s.deathMessage).toBe('You drowned');
     // Every playerDied listener counts a death (engine stats, advancements): loading must not count this one again.
     let deaths=0;b.game.events.on('playerDied',()=>{deaths++;});
-    b.game.setState('dead');b.game.events.emit('restored',{});
+    // Engine.restore emits 'restored' while still 'loading'; trySpawn enters 'dead' once the chunks are in.
+    const p=b.p;p.x=3;p.y=40;p.z=3;
+    b.game.setState('loading');b.game.events.emit('restored',{});
     expect(b.s.dead).toBe(true);expect(deaths).toBe(0);expect(b.died).toEqual([]);expect(b.dropAll).not.toHaveBeenCalled();
+    expect([p.x,p.y,p.z]).toEqual([3,40,3]);
+    b.game.setState('dead');b.game.events.emit('restored',{});expect(b.s.dead).toBe(true);
     expect(b.s.deathMessage).toBe('You drowned');expect(calm().s.deathMessage).toBe('');
   });
-  it('a dead save the engine resumes without a death screen respawns at the bed or world spawn instead',()=>{
+  it('a dead save an engine resumes past loading without a death screen respawns at the bed or world spawn instead',()=>{
     const a=calm();a.s.addXp(100);a.s.kill('You fell out of the world');
     const saved=JSON.parse(JSON.stringify(a.s.serialize()));
     const b=setup();b.s.restore(saved);
     let deaths=0;b.game.events.on('playerDied',()=>{deaths++;});
     b.p.spawn={x:30.5,y:61,z:-4.5};b.p.x=3;b.p.y=-90;b.p.z=3;
-    b.game.setState('loading');b.game.events.emit('restored',{});
+    b.game.setState('ready');b.game.events.emit('restored',{});
     expect(deaths).toBe(0);expect(b.s.dead).toBe(false);expect(b.s.deathMessage).toBe('');
     expect([b.s.health,b.s.food,b.s.xpLevel,b.s.spawnProtection]).toEqual([20,20,0,60]);
     expect([b.p.x,b.p.y,b.p.z]).toEqual([30.5,61,-4.5]);
     const bed=setup();bed.s.restore(saved);bed.p.bedSpawn={x:2,y:60,z:7};// unloaded (-1) or still a bed: trusted
-    bed.game.world.set(2,60,7,blockId('bed_foot_north'));bed.game.setState('loading');bed.game.events.emit('restored',{});
+    bed.game.world.set(2,60,7,blockId('bed_foot_north'));bed.game.setState('ready');bed.game.events.emit('restored',{});
     expect([bed.p.x,bed.p.y,bed.p.z]).toEqual([2.5,61,7.5]);
     const broken=setup();broken.s.restore(saved);broken.p.bedSpawn={x:2,y:60,z:7};broken.p.spawn={x:9.5,y:61,z:9.5};
-    broken.game.setState('loading');broken.game.events.emit('restored',{});
+    broken.game.setState('ready');broken.game.events.emit('restored',{});
     expect([broken.p.x,broken.p.y,broken.p.z]).toEqual([9.5,61,9.5]);
   });
   it('joining a loaded or new world gives the 3-second spawn protection (ServerPlayer.spawnInvulnerableTime)',()=>{

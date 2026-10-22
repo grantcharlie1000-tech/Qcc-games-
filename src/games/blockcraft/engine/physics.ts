@@ -1,5 +1,5 @@
 // Shared voxel collision for the player and entities, block raycasting and fluid flow.
-import {AIR,COLLISION_BOXES,FULL_CUBE,LIQUID,blockDef,isLiquid} from '../data/blocks';
+import {AIR,BLOCKS,COLLISION_BOXES,FULL_CUBE,LIQUID,blockDef,isLiquid} from '../data/blocks';
 import type {BlockSource,RayHit,Vec3} from './contracts';
 
 const EPS=1e-4,MAX_STEP=.45;
@@ -45,6 +45,33 @@ export interface Body{x:number;y:number;z:number;vx:number;vy:number;vz:number;o
 export const bodyCollides=(world:BlockSource,b:{x:number;y:number;z:number},halfWidth:number,height:number)=>
   boxCollides(world,b.x-halfWidth,b.y,b.z-halfWidth,b.x+halfWidth,b.y+height,b.z+halfWidth);
 export const collidesAt=(world:BlockSource,x:number,y:number,z:number,hw:number,h:number)=>boxCollides(world,x-hw,y,z-hw,x+hw,y+h,z+hw);
+
+/** Blocks a player is not put into when getting up (vanilla EntityType.isBlockDangerous): lava, fire and cacti. */
+const HARMFUL=new Uint8Array(256);
+for(const d of BLOCKS)HARMFUL[d.id]=+(LIQUID[d.id]===2||d.shape==='fire'||d.shape==='cactus');
+/** Top of a block's collision shape within its cell, or -1 when it has none. */
+function shapeTop(id:number):number{const b=COLLISION_BOXES[id];let top=-1;for(let i=4;i<b.length;i+=6)if(b[i]>top)top=b[i];return top;}
+/** Vanilla BedBlock.findStandUpPosition (no bunk beds): where a body gets up from the bed whose head is at (x,y,z) and lies
+ *  (dx,dz) from its foot. Tries the cells around both halves (the side clockwise of the head direction first, round past the
+ *  foot end to the head end), then the top of the bed itself; first skipping lava, fire and cacti, then not. A cell needs a
+ *  floor (its own collision shape lower than a full block, or a full-height block under it) and room for the body there.
+ *  Returns the feet position, or null when every cell is obstructed. Unloaded cells (-1) never qualify. */
+export function bedStandUp(world:BlockSource,x:number,y:number,z:number,dx:number,dz:number,halfWidth:number,height:number):Vec3|null{
+  const sx=-dz,sz=dx;
+  const cells=[sx,sz,sx-dx,sz-dz,sx-2*dx,sz-2*dz,-2*dx,-2*dz,-sx-2*dx,-sz-2*dz,-sx-dx,-sz-dz,-sx,-sz,-sx+dx,-sz+dz,dx,dz,sx+dx,sz+dz,0,0,-dx,-dz];
+  for(const safe of [true,false])for(let i=0;i<cells.length;i+=2){
+    const cx=x+cells[i],cz=z+cells[i+1],id=world.get(cx,y,cz);
+    if(id<0||safe&&HARMFUL[id])continue;
+    let floor=shapeTop(id);
+    if(floor<0){
+      const below=world.get(cx,y-1,cz);if(below<0)continue;
+      floor=shapeTop(below)-1;
+      if(floor<0||safe&&floor===0&&HARMFUL[below])continue;
+    }else if(floor>=1)continue;
+    if(!collidesAt(world,cx+.5,y+floor,cz+.5,halfWidth,height))return{x:cx+.5,y:y+floor,z:cz+.5};
+  }
+  return null;
+}
 
 export interface MoveResult{hitX:boolean;hitY:boolean;hitZ:boolean;stepped:boolean}
 const SCRATCH:MoveResult={hitX:false,hitY:false,hitZ:false,stepped:false};

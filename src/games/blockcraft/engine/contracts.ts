@@ -518,7 +518,10 @@ export interface EntityKind{
   hurt?(entity:Entity,game:Game,source:DamageSource,amount:number):boolean|void;
   /** Can be targeted by the crosshair and attacked (mobs). Items, xp and projectiles are not. Default: category passive/hostile/water. */
   pickable?:boolean;
-  /** Saved with the world (default true; projectiles and particles-like kinds may opt out). */
+  /** Saved with the world (default true; projectiles and particles-like kinds may opt out). Hostiles are never saved. Up to
+   *  200 simulated entities are saved in full, those the player owns (data.owner 'player': tamed wolves) first, then the
+   *  nearest to the player or the world spawn; the rest, and the entities waiting in unloaded chunks, are saved as `far`
+   *  (up to 2000, same order) and come back when their chunk loads. */
   persist?:boolean;
   /** Validate restored data for this kind; return null to drop the entity. Default: keep JSON values as is. */
   restoreData?(data:Record<string,unknown>):Record<string,unknown>|null;
@@ -597,7 +600,8 @@ export interface EntityService extends System{
 export interface RayHit{x:number;y:number;z:number;nx:number;ny:number;nz:number;id:BlockId;distance:number}
 /** Mining, placing, attacking and using items. Doors open on use (both halves, `door_open`/`door_close`); breaking either
  *  half breaks the other (support rule) and only the lower half drops the door. Beds: use at night (dayTime 12542..23459)
- *  or in a thunderstorm sleeps (sets bedSpawn, game.skipTime to morning, emits playerSlept) unless monsters are within
+ *  or in a thunderstorm sleeps (sets bedSpawn, game.skipTime to morning while the daylight cycle runs, else clears the weather
+ *  while the weather cycle runs; emits playerSlept) unless monsters are within
  *  8 blocks ("You may not rest now; there are monsters nearby") or it is day ("You can sleep only at night"); only the foot
  *  drops the bed. Placing a block refuses cells overlapping the player or a mob. */
 export interface InteractionService extends System{
@@ -812,7 +816,8 @@ export interface Game{
   random():number;
   /** Start / resume play from the start or pause menu (a user gesture: captures the mouse). */
   play():void;
-  /** From the death screen: survival.respawn(), teleport to the bed (if still a bed) or world spawn, emit playerRespawned, play. */
+  /** From the death screen: survival.respawn(), teleport beside the bed (vanilla stand-up cells, once its chunks are loaded; a bed
+   *  that is gone or obstructed is forgotten with a toast) or to the world spawn, emit playerRespawned, play. */
   respawn():void;
   /** Replaces this world (and its save) with a fresh one from the next seed: the confirmed shell Restart. */
   newWorld():void;

@@ -350,7 +350,8 @@ export function createSurvival(game:Game):SurvivalSystem{
     fireTicks=-FIRE_IMMUNE_TICKS;effects.clear();dead=false;lastMessage='';invul=0;lastHurt=0;hurtFlash=0;portalFlash=0;
     lastAttacker=null;lastEntry=null;climbed=false;shieldTicks=0;
   }
-  /** Where game.respawn() puts the player: the bed while it is still a bed (an unloaded one is trusted), else world spawn. */
+  /** Fallback for an engine that resumes a dead save without the death screen: on the bed while it is still a bed (an unloaded
+   *  one is trusted), else the world spawn. game.respawn() itself stands the player up beside the bed. */
   function respawnPoint(){
     const p=state(),bed=p.bedSpawn;
     if(bed){const id=game.world.get(bed.x,bed.y,bed.z);if(id<0||BED[id])return{x:bed.x+.5,y:bed.y+1,z:bed.z+.5};}
@@ -493,9 +494,9 @@ export function createSurvival(game:Game):SurvivalSystem{
       offRestored=game.events.on('restored',()=>{
         if(!dead){spawnProtection=SPAWN_PROTECTION_TICKS;return;}
         // A world saved on the death screen: the death was counted and its drops made before saving, so playerDied is not
-        // sent again (every listener would count a second death). The engine shows the death screen from survival.dead
-        // and deathMessage, entering state 'dead' before this event.
-        if(game.state==='dead')return;
+        // sent again (every listener would count a second death). The engine emits this event while still 'loading' and
+        // enters 'dead' (the death screen, from survival.dead and deathMessage) once the player's chunks are in.
+        if(game.state==='dead'||game.state==='loading')return;
         // An engine that resumes the world without the death screen would leave a dead player in play: respawn instead.
         service.respawn();
         const at=respawnPoint();game.player.teleport(at.x,at.y,at.z);
