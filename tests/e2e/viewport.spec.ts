@@ -1,3 +1,4 @@
+import {GAME_IDS} from '../../src/core/types';
 import {test,expect} from '../fixtures';
 import {deal} from '../../src/games/solitaire/model';
 
@@ -62,7 +63,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
   await expect(page.locator('.game-view')).toHaveCSS('position','fixed');
   await page.getByRole('link',{name:'Back to game library',exact:true}).click();
-  await expect(page.locator('.game-card')).toHaveCount(16);
+  await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(libraryY);
   await page.mouse.wheel(0,-1600);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBeLessThan(libraryY);

@@ -1,3 +1,4 @@
+import {GAME_IDS} from '../../src/core/types';
 import {test,expect} from '@playwright/test';
 import type {Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
@@ -58,7 +59,7 @@ test('first visit offers exactly 20 topics and remembers the choice for this tab
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
   await choose(page,'quadratics');
-  await expect(page.locator('.game-card')).toHaveCount(16);
+  await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   expect(await page.evaluate(key=>sessionStorage.getItem(key),topicKey)).toBe('quadratics');
   await page.reload();
   await expect(page.locator('.game-card').first()).toBeVisible();
@@ -286,7 +287,7 @@ for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,he
     await page.getByText('Read the explanation',{exact:true}).click();
     await expect(page.locator('details')).toHaveAttribute('open','');
     await returnToGame(page);
-    await expect(page.locator('.game-card')).toHaveCount(16);
+    await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   });
 }
 

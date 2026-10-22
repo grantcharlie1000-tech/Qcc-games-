@@ -1,3 +1,4 @@
+import {GAME_IDS} from '../../src/core/types';
 import {test,expect} from '@playwright/test';
 for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:1366,height:768}])test(`editorial notes, clean bylines and embedded Games navigation fit ${viewport.width}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/');await expect(page.locator('[data-study-topic]')).toHaveCount(20);await expect(page.locator('.study-ad-placeholder')).toHaveCount(0);
@@ -21,7 +22,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  expect(formats.size).toBe(1);expect(authors.size).toBe(4);expect(requests.filter(url=>!/^\/study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname))).toEqual([]);
  await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));await page.screenshot({path:`docs/evidence/article-reading-layout/with-photos/article-${viewport.width}.png`,fullPage:true});
  const bounds=(await games.boundingBox())!;expect(bounds.height).toBeGreaterThan(0);expect(bounds.width).toBeGreaterThan(0);
- await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-card')).toHaveCount(17);await expect(page.locator('#study-view')).toBeHidden();
+ await games.focus();await page.keyboard.press('Enter');await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);await expect(page.locator('#study-view')).toBeHidden();
 });
 
 test('modified Games clicks reach the browser without returning the retained game',async({page,context})=>{

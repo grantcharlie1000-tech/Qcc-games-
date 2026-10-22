@@ -71,7 +71,7 @@ export class StudyView {
     this.setUpdateStatus(this.updateMessage,this.updateReady,this.updateBusy);
     this.privacy.mount(this.root);
     if(focus)this.root.querySelector<HTMLElement>('#study-title')?.focus({preventScroll:true});
-    requestAnimationFrame(()=>{if(this.mode!=='article')return;const sections=this.root.querySelectorAll<HTMLElement>('.study-text-section');sections[Math.floor(sections.length/2)]?.scrollIntoView({block:'start'});});
+    const sections=this.root.querySelectorAll<HTMLElement>('.study-text-section');sections[Math.floor(sections.length/2)]?.scrollIntoView({block:'start'});
   }
   hide(){this.privacy.detach();this.mode='closed';this.root.hidden=true;this.root.replaceChildren();}
   private focusHeading(){window.scrollTo(0,0);this.root.querySelector<HTMLElement>('#study-title')?.focus({preventScroll:true});}
