@@ -16,6 +16,8 @@ No physical device was tested.
   Blocks' touch evidence (`video.saveAs` finds no recording: the container has Playwright's ffmpeg 1011, the tests want
   1013) and Pool's WebKit verifier-readiness check (power 74 % instead of 75 %).
 - `npm run build` passes (offline pack 106 files). `npm run verify:update` passes.
+  `npm run verify:offline` passes: all 16 games download, play offline and switch to Study and back at `/` and
+  `/Qcc-games-/` (32 of 32), with no page errors, external requests or failed assets.
 
 ## Blockcraft in detail (before the merge of `main`)
 
