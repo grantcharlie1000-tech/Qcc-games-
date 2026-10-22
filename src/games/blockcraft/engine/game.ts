@@ -110,6 +110,8 @@ export class Engine implements Game{
       const locked=document.pointerLockElement===this.canvas;
       // The browser released the mouse (Escape): pause, unless a screen or menu did it.
       if(this.wasLocked&&!locked&&this.state==='playing')this.toPaused();
+      // A lock requested just before a screen or menu opened can arrive late: give the mouse back at once.
+      if(locked&&this.state!=='playing'){this.input.release();this.wasLocked=false;this.root.dataset.locked='false';return;}
       this.wasLocked=locked;this.root.dataset.locked=String(locked);
     },{signal});
     this.canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();this.contextLost();},{signal});
