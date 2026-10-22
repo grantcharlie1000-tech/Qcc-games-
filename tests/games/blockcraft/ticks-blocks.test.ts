@@ -1,6 +1,6 @@
 import {describe,expect,test} from 'vitest';
 import {createTickGame,idOf} from './ticks-helpers';
-import {B} from '../../../src/games/blockcraft/data/blocks';
+import {B,blockDef} from '../../../src/games/blockcraft/data/blocks';
 import {FIRE_ODDS,LAVA_IGNITES} from '../../../src/games/blockcraft/world/fire';
 
 const Y=60;
@@ -69,8 +69,20 @@ describe('support',()=>{
     g.set(0,Y,0,'air');
     g.run(3);
     expect(g.get(0,Y+1,0)).toBe('air');
-    expect(g.dropCalls).toContainEqual({id:idOf('poppy'),tool:null});
+    // World loot: the pop-off passes its cause, so blockDrops skips the tool requirement (vanilla dropResources).
+    expect(g.dropCalls).toContainEqual({id:idOf('poppy'),tool:null,cause:'tick'});
     expect(g.drops.some(d=>d.stack.id==='poppy')).toBe(true);
+    // Level.destroyBlock's level event 2001: the block's break sound with the particles.
+    const sound=`break:${blockDef(idOf('poppy')).sound}`;
+    expect(g.sounds.played.filter(s=>s.name===sound)).toHaveLength(1);
+    expect(g.sounds.played.find(s=>s.name===sound)?.at).toEqual({x:.5,y:Y+1.5,z:.5});
+  });
+  test('leaves decaying and snow melting go silently (no level event)',()=>{
+    const g=createTickGame();
+    g.set(0,Y,0,'snow');g.light(15,15);
+    for(let i=0;i<50&&g.get(0,Y,0)==='snow';i++)g.ticks.randomTickAt(0,Y,0);
+    expect(g.get(0,Y,0)).toBe('air');
+    expect(g.sounds.played.some(s=>s.name.startsWith('break:'))).toBe(false);
   });
 
   test('a wall torch pops when its wall goes; crops pop when farmland turns to dirt',()=>{
@@ -158,6 +170,32 @@ describe('fire',()=>{
     expect(fires).toBe(0);
   });
 
+  test('fire stays wherever the shared support rule (flint and steel, lightning) allows it: on glass and ice too',()=>{
+    const g=createTickGame();
+    g.set(0,Y,0,'glass');g.set(0,Y+1,0,'fire');g.set(3,Y,0,'ice');g.set(3,Y+1,0,'fire');
+    g.run(2);
+    expect(g.get(0,Y+1,0)).toBe('fire');expect(g.get(3,Y+1,0)).toBe('fire');
+    // Top slabs are sturdy too (vanilla isFaceSturdy), though the shared rule leaves them out.
+    g.set(6,Y,0,'stone_slab_top');g.set(6,Y+1,0,'fire');g.run(2);expect(g.get(6,Y+1,0)).toBe('fire');
+  });
+  test('a lone fire burns on every sturdy top (stone, glass, ice, slabs) until it ages out, and goes out at once off one',()=>{
+    // Vanilla FireBlock.tick with nothing to burn: removed when the base is not isFaceSturdy(UP) or the age passes 3. Ageing
+    // takes at least 4 fire ticks (30-39 ticks each), so every fire on a sturdy base is still burning after 3 of them.
+    const g=createTickGame(),bases=['stone','glass','ice','stone_slab_top','stone_slab_double','stone_slab'];
+    bases.forEach((b,i)=>{g.set(i*3,Y,0,b);g.set(i*3,Y+1,0,'fire');});
+    g.run(110);
+    expect(bases.map((b,i)=>[b,g.get(i*3,Y+1,0)])).toEqual(bases.map(b=>[b,b==='stone_slab'?'air':'fire']));
+  });
+  test('a burnt block becomes fire only where fire can stay, else air',()=>{
+    // Floating wool blocks, each with a fire beside it: once burnt, the wool's cell has nothing to hold fire.
+    const g=createTickGame(),cells:[number,number][]=[];
+    for(const x of [-12,-8,-4,0,4,8,12])for(const z of [-12,-6,0,6,12]){g.set(x,Y+5,z,'white_wool');g.set(x+1,Y+5,z,'fire');cells.push([x,z]);}
+    const wool=new Set(cells.map(([x,z])=>`${x},${z}`));
+    let floating=0;g.events.on('blockChanged',e=>{if(e.y===Y+5&&e.to===idOf('fire')&&wool.has(`${e.x},${e.z}`))floating++;});
+    g.run(3000);
+    expect(cells.every(([x,z])=>g.get(x,Y+5,z)!=='white_wool')).toBe(true);
+    expect(floating).toBe(0);
+  });
   test('fire next to a flammable wall survives in the air beside it',()=>{
     const g=createTickGame();
     for(let y=Y;y<Y+3;y++)g.set(1,y,0,'oak_log');

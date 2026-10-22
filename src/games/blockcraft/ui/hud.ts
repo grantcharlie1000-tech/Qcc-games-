@@ -18,7 +18,7 @@ import {iconUrl} from '../art/items';
 import {itemDef} from '../data/items';
 import {ROOT_FLAGS} from '../engine/constants';
 import type {Game,HudService,ItemStack} from '../engine/contracts';
-import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,effectIcons,heldName,HealthTracker,HeldNameTimer,hudLayout,
+import {attackIndicator,barsView,clockText,compassAngle,debugLines,debugRightLines,durabilityBar,effectIcons,heldName,HealthTracker,HeldNameTimer,hudLayout,hurtRecently,
   RARITY_COLOURS,stackHeights,stackInsets,sunAngle,type BarIcon,type HudLayout} from './hud-model';
 import {clockUrl,compassUrl,CLOCK_FRAMES,COMPASS_FRAMES,dialFrame,digitsUrl,hasGlyphs,hotbarUrl,hudIconUrl,offhandUrl,selectionUrl,textLinesUrl,
   textUrl,textWidth,wrapText,xpBarUrl} from './hud-art';
@@ -405,7 +405,8 @@ export function createHud(game:Game):HudService{
       if(tick!==lastTick){
         lastTick=tick;
         const h=game.survival.health;
-        tracker.update(h,tick,Math.ceil(h)<tracker.renderHealth||tick-lastHurtTick<10);
+        // Gui.renderPlayerHealth blinks only while player.invulnerableTime > 0: the 20 ticks after a hit.
+        tracker.update(h,tick,hurtRecently(tick,lastHurtTick));
         tickHeldName(tick);updateStatusEffects();
       }
       if(game.settings.mode==='survival')updateBars(tick);

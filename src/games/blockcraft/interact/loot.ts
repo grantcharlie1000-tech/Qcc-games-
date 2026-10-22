@@ -1,8 +1,9 @@
 // Block loot tables (vanilla Java 1.20, no enchantments). lootDrops is the single source of block drops: the
-// interaction service exposes it as blockDrops, which world ticks (support pop-offs) and explosions call with no tool
-// (and, once the contract carries it, a cause so that only player harvests apply requiresTool).
+// interaction service exposes it as blockDrops, which world ticks (support pop-offs), fluids and explosions call with
+// no tool and their cause, so that only player harvests apply requiresTool.
 import {blockDef,WOOD_TYPES,type BlockDef,type BlockId} from '../data/blocks';
 import {ITEMS,itemDef,stack,type ItemStack} from '../data/items';
+import type {ChangeCause} from '../engine/contracts';
 
 export type Random=()=>number;
 /** Uniform integer in [min, max]. */
@@ -69,13 +70,19 @@ table(['glowstone'],(_d,_h,r)=>one('glowstone_dust',between(r,2,4)));
 table(['oak_door'],def=>def.door?.half==='lower'?one('oak_door'):[]);
 table(['bed'],def=>def.bed?.part==='foot'?one('red_bed'):[]);
 
-/** Items dropped when block `id` is broken with `held` (null = bare hand). `anyTool` skips the tool requirement: vanilla only
- *  checks requiresCorrectToolForDrops when a player harvests, so explosions, support pop-offs and fluids drop cobblestone,
- *  ores and lanterns. */
-export function lootDrops(id:BlockId,held:ItemStack|null,random:Random,anyTool=false):ItemStack[]{
+/** Blocks whose vanilla loot table needs an entity breaking them (condition entity_properties "this"): snow layers drop
+ *  snowballs for a player with a shovel or an explosion (its source entity), never when they melt, pop off or wash away. */
+const NEEDS_ENTITY=new Set(['snow']);
+/** Items dropped when block `id` is broken with `held` (null = bare hand). `cause` omitted or 'player' is a player harvest,
+ *  which needs the right tool for requiresTool blocks; any other cause is world loot: vanilla only checks
+ *  requiresCorrectToolForDrops when a player harvests, so explosions, support pop-offs and fluids drop cobblestone, ores
+ *  and lanterns. */
+export function lootDrops(id:BlockId,held:ItemStack|null,random:Random,cause?:ChangeCause):ItemStack[]{
   const def=blockDef(id);
   if(def.shape==='air'||def.liquid)return [];
-  if(!anyTool&&!canHarvest(id,held))return [];
+  const harvest=cause===undefined||cause==='player';
+  if(harvest&&!canHarvest(id,held))return [];
+  if(!harvest&&cause!=='explosion'&&NEEDS_ENTITY.has(def.family))return [];
   const t=TABLES.get(def.family);
   if(t)return t(def,held,random);
   if(!def.item||!ITEMS.has(def.item))return [];

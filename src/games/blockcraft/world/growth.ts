@@ -7,15 +7,16 @@
 //  - grass and mycelium (SpreadingSnowyDirtBlock): turn to dirt when covered (a full cube, slab or stairs above, or a liquid
 //    source or fall); at light ≥ 9 above try four random spots in x±1, y-3..+1, z±1 and convert uncovered dirt not under water.
 //  - farmland (FarmBlock): moist within 4 blocks of water (same level or one above) or in rain; otherwise it dries over about
-//    seven random ticks (1 in 7 here), and dry farmland with no crop on it turns back to dirt.
+//    seven random ticks (1 in 7 here), and dry farmland with no crop on it turns back to dirt. Landing on it tramples it
+//    (FarmBlock.fallOn, farmlandFallOn below).
 //  - sugar cane and cactus: grow one block into air above while the column is under 3 tall, after 16 random ticks (1 in 16).
 //  - ice melts to water when block light ≥ 12 reaches it (in or beside the ice: a torch up to 3 blocks away, as in vanilla)
-//    and snow layers vanish (with their no-tool loot) at block light ≥ 12 in their cell.
+//    and snow layers vanish (no drops: vanilla snow loot needs an entity) at block light ≥ 12 in their cell.
 //  - leaves: decay once marked orphaned (no log within LEAF_DECAY_DISTANCE steps through leaves), re-checked first. The checks
 //    that mark them are scheduled by leafSourceRemoved when a log or leaf nearby goes away; persistent leaves never decay.
 //  - copper (WeatheringCopper): with chance 0.0569 per random tick, unless a less weathered copper block is within 4 taxicab
 //    blocks, ages one stage with chance ((older + 1) / (older + same + 1))², × 0.75 for unweathered copper.
-import {AIR,B,BLOCKS,LIQUID,OPAQUE,blockDef,blockId,stateFor,type BlockId} from '../data/blocks';
+import {AIR,B,BLOCKS,COLLISION_BOXES,LIQUID,OPAQUE,blockDef,blockId,stateFor,type BlockId} from '../data/blocks';
 import {CH,LEAF_DECAY_DISTANCE} from '../engine/constants';
 import type {BlockSource,TreeKind} from '../engine/contracts';
 import {NEIGHBOURS,KIND_LEAF,posKey,type Sim} from './ticks-core';
@@ -117,6 +118,34 @@ function farmlandTick(sim:Sim,x:number,y:number,z:number,id:BlockId){
   if(above>=0&&!IS_CROP[above])sim.set(x,y,z,B.dirt,'tick');
 }
 
+const FOOT_EPS=1e-4;
+/** FarmBlock.fallOn: a player landing on farmland after falling `fallDistance` blocks turns it to dirt with chance
+ *  fallDistance - 0.5, when their box is big enough (width² × height > 0.512: not crawling or swimming). The block landed on
+ *  is vanilla getOnPosLegacy's: the main supporting block (Level.findSupportingBlock: of the blocks whose collision shape
+ *  touches the bottom of the box, the nearest to the centre; ties go to the larger z, then x) taken 0.2 below the feet, or
+ *  with no supporting block the cell under the centre. Water, plants and torches hold nobody up, so landing on the edge of
+ *  a field beside a water channel tramples it. Returns true when it trampled. The crop on top pops off (it loses its
+ *  farmland). */
+export function farmlandFallOn(sim:Sim,fallDistance:number,x:number,y:number,z:number,width:number,height:number):boolean{
+  if(!(fallDistance>.5)||!(width*width*height>.512)||!Number.isFinite(x+y+z))return false;
+  const by=Math.floor(y-.2),hw=width/2;if(by<0||by>=CH)return false;
+  // The ground test's thin box under the feet (player onGround: 0.02 deep), with the collision code's tolerance.
+  const minX=x-hw,maxX=x+hw,minZ=z-hw,maxZ=z+hw,low=y-.02,sy=Math.floor(low);
+  let bx=Math.floor(x),bz=Math.floor(z),bestD=Infinity;
+  for(let cz=Math.floor(minZ+FOOT_EPS);cz<=Math.floor(maxZ-FOOT_EPS);cz++)for(let cx=Math.floor(minX+FOOT_EPS);cx<=Math.floor(maxX-FOOT_EPS);cx++){
+    const id=sim.blocks.get(cx,sy,cz);if(id<=0)continue;
+    const b=COLLISION_BOXES[id];let touches=false;
+    for(let i=0;i<b.length&&!touches;i+=6)
+      touches=minX<cx+b[i+3]-FOOT_EPS&&maxX>cx+b[i]+FOOT_EPS&&minZ<cz+b[i+5]-FOOT_EPS&&maxZ>cz+b[i+2]+FOOT_EPS&&sy+b[i+4]>low&&sy+b[i+1]<y+FOOT_EPS;
+    if(!touches)continue;
+    const d=(cx+.5-x)**2+(cz+.5-z)**2;
+    if(d<=bestD){bestD=d;bx=cx;bz=cz;}
+  }
+  const id=sim.blocks.get(bx,by,bz);
+  if(id!==FARMLAND&&id!==FARMLAND_WET)return false;
+  if(!(sim.rand()<fallDistance-.5))return false;
+  return sim.set(bx,by,bz,B.dirt,'entity');
+}
 function columnTick(sim:Sim,x:number,y:number,z:number,id:BlockId){
   const w=sim.blocks;
   if(y+1>=CH||w.get(x,y+1,z)!==AIR)return;

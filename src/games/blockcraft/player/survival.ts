@@ -134,11 +134,15 @@ export function createSurvival(game:Game):SurvivalSystem{
     if(Math.hypot(dx,dz)<1e-9)return false;
     return dx*-Math.sin(p.yaw)+dz*-Math.cos(p.yaw)<0;
   }
+  /** Wears the raised shield (main hand first, as vanilla uses it); an offhand shield breaks with tool_break through
+   *  inventory.damageOffhand. */
   function wearShield(amount:number){
     if(amount<=0)return;
     const inv=game.inventory;
     if(inv.held()?.id==='shield'){inv.damageHeld(amount);return;}
     const off=inv.offhand;if(off?.id!=='shield')return;
+    if(inv.damageOffhand){inv.damageOffhand(amount);return;}
+    // An inventory without damageOffhand (optional in the contract): rewrite the stack, breaking it silently.
     const wear=(off.damage??0)+amount,max=itemDef('shield')?.durability??336;
     inv.setOffhand(wear>=max?null:{...off,damage:wear});
   }
@@ -182,7 +186,8 @@ export function createSurvival(game:Game):SurvivalSystem{
     if(info.blockable&&shieldFacing(source)){
       wearShield(shieldWear(amount));
       if((type==='mob'||type==='player')&&isLiving(source.attacker))repel(source.attacker);
-      if(invul===0){invul=INVULNERABLE_TICKS;lastHurt=0;knockback(source,SHIELD_KNOCKBACK);}
+      // A fresh block (not during the hurt cooldown) plays item.shield.block at 0.8..1.2 pitch (vanilla entity event 29).
+      if(invul===0){invul=INVULNERABLE_TICKS;lastHurt=0;knockback(source,SHIELD_KNOCKBACK);game.sounds.play('shield_block',null,{pitch:.8+game.random()*.4});}
       return 0;
     }
     let applied:number,fresh:boolean;
@@ -209,7 +214,7 @@ export function createSurvival(game:Game):SurvivalSystem{
       kill(deathMessage({type,attacker,credit:attacker?null:credit,fallDistance,
         projectile:source.projectile?entityName(source.projectile):null,
         fallAssist:type==='fall'&&prev&&prev.type!=='fall'?{attacker:prev.attacker}:null,
-        fallLocation:type==='fall'&&climbed?'ladder':null}));
+        fallLocation:type==='fall'&&climbed?'ladder':null}),source);
     }else if(fresh)game.sounds.play('hurt');
     return lost;
   }
@@ -219,7 +224,8 @@ export function createSurvival(game:Game):SurvivalSystem{
     if(!a||age-a.age>KILL_CREDIT_TICKS||a.entity.removed||a.entity.deathTime>0||!(a.entity.health>0))return null;
     return a.name;
   }
-  function kill(message:string){
+  /** `source`: the damage that killed the player, sent with playerDied (none for a direct kill such as a command). */
+  function kill(message:string,source?:DamageSource){
     if(dead)return;
     dead=true;health=0;absorption=0;fireTicks=-FIRE_IMMUNE_TICKS;invul=0;
     lastMessage=typeof message==='string'&&message.trim()?message.trim().slice(0,200):'You died';
@@ -229,7 +235,7 @@ export function createSurvival(game:Game):SurvivalSystem{
       if(xp>0)game.entities.dropXp(xp,p.x,p.y+.5,p.z);
     }
     game.sounds.play('death');
-    game.events.emit('playerDied',{message:lastMessage});
+    game.events.emit('playerDied',source?{message:lastMessage,source}:{message:lastMessage});
   }
 
   // ---- Status effects ----------------------------------------------------------------------
@@ -481,7 +487,7 @@ export function createSurvival(game:Game):SurvivalSystem{
       if(!keep){xpLevel=0;xpPoints=0;xpTotal=0;}
       spawnProtection=SPAWN_PROTECTION_TICKS;
     },
-    kill,
+    kill:message=>kill(message),
     init(){
       // Joining a world (ServerPlayer.spawnInvulnerableTime) protects for 3 seconds of play, like respawning.
       offRestored=game.events.on('restored',()=>{

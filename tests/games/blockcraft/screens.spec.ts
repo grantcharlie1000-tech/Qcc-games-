@@ -189,6 +189,12 @@ test('a large chest keeps items between openings; armour equips by shift-click, 
   expect(await engine(page,g=>g.inventory.armorIn('feet'))).toBeNull();// a helmet does not fit the boots
   await slot(page,'Helmet slot').click();
   await expect(slot(page,'Helmet slot')).toHaveAttribute('aria-label','Helmet slot: Leather Helmet');
+  // The offhand slot takes clicks and the armour column has its size: no HUD rule (.bc-offhand, .bc-armor) reaches the screen.
+  await give(page,12,'shield',1);
+  await slot(page,'Inventory slot 4').click();await slot(page,'Offhand slot').click();
+  await expect(slot(page,'Offhand slot')).toHaveAttribute('aria-label','Offhand slot: Shield');
+  expect(await engine(page,g=>g.inventory.offhand?.id)).toBe('shield');
+  expect((await slot(page,'Helmet slot').boundingBox())!.width).toBeGreaterThan(20);
   await slot(page,'Inventory slot 3').focus();
   await page.keyboard.press('Digit5');
   await expect(slot(page,'Hotbar slot 5')).toHaveAttribute('aria-label','Hotbar slot 5: Diamond Boots');

@@ -8,9 +8,10 @@
 //    (ignite odds + 40 + 7 × difficulty) / (age + 30) in 100 (+100 per block above the first), not in rain.
 //  - Lava random ticks: one or two steps up and sideways set fire in air beside something flammable (stopped by solid
 //    blocks), or, one time in three, fire on top of flammable blocks beside the lava.
-import {AIR,BLOCKS,OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
+import {AIR,BLOCKS,FULL_CUBE,SOLID,blockId} from '../data/blocks';
 import {biomeDef} from '../data/biomes';
 import {CH} from '../engine/constants';
+import {canSurvive} from '../engine/support';
 import type {BlockSource,Difficulty,WeatherService} from '../engine/contracts';
 import {KIND_FIRE,NEIGHBOURS,posKey,type Sim} from './ticks-core';
 
@@ -30,17 +31,24 @@ for(const d of BLOCKS){
   if(odds){FIRE_ODDS.ignite[d.id]=odds[0];FIRE_ODDS.burn[d.id]=odds[1];}
   LAVA_IGNITES[d.id]=+(d.flammable||!!odds);
 }
+/** Blocks with a full top face to rest on (vanilla isFaceSturdy(UP)): every full cube but leaves (glass, ice and double
+ *  slabs too, as the shared 'fire' support rule counts them) and top slabs. */
+const STURDY_TOP=new Uint8Array(256);
+for(const d of BLOCKS)STURDY_TOP[d.id]=+(FULL_CUBE[d.id]===1&&!d.family.endsWith('_leaves')||d.slab==='top');
 const canBurn=(id:number)=>id>0&&FIRE_ODDS.ignite[id]>0;
-/** A full top face to rest on: an opaque cube, a top or double slab. */
-const sturdy=(id:number)=>id>0&&(OPAQUE[id]===1||blockDef(id).slab==='top'||blockDef(id).slab==='double');
+const sturdy=(id:number)=>id>0&&STURDY_TOP[id]===1;
 /** Fire touches something it can burn. */
 function validLocation(w:BlockSource,x:number,y:number,z:number){
   return canBurn(w.get(x+1,y,z))||canBurn(w.get(x-1,y,z))||canBurn(w.get(x,y+1,z))||canBurn(w.get(x,y-1,z))||canBurn(w.get(x,y,z+1))||canBurn(w.get(x,y,z-1));
 }
 /** FireBlock.canSurvive: a sturdy block below or a flammable neighbour (fire also clings to the sides of burning blocks).
- *  Next to an unloaded chunk it is given the benefit of the doubt. */
+ *  Everything the shared rule (engine/support.ts SupportRule 'fire', used by flint and steel and lightning) accepts stays,
+ *  so fire placed by another area is never put out on its first tick; on top of it, the vanilla cases that rule leaves
+ *  out: top slabs below, and neighbours with FireBlock ignite odds (short grass, flowers). Next to an unloaded chunk it is
+ *  given the benefit of the doubt. fireTick's burn-out uses the same sturdy test, so a lone fire on glass or ice burns
+ *  as long as one on stone. */
 export function fireCanSurvive(w:BlockSource,x:number,y:number,z:number):boolean{
-  if(sturdy(w.get(x,y-1,z))||validLocation(w,x,y,z))return true;
+  if(canSurvive(w,FIRE,x,y,z)||sturdy(w.get(x,y-1,z))||validLocation(w,x,y,z))return true;
   for(let i=0;i<6;i++){const n=NEIGHBOURS[i];if(w.get(x+n[0],y+n[1],z+n[2])<0)return true;}
   return false;
 }
@@ -95,8 +103,8 @@ export function fireTick(sim:Sim,x:number,y:number,z:number):void{
 function burnOut(sim:Sim,x:number,y:number,z:number,chance:number,age:number){
   const id=sim.blocks.get(x,y,z);if(id<=0)return;
   const burn=FIRE_ODDS.burn[id];if(!burn||sim.randInt(chance)>=burn)return;
-  if(sim.randInt(age+10)<5&&!sim.game.weather.isRainingOn(x,y,z))sim.placeFire(x,y,z,Math.min(age+(sim.randInt(5)>>2),15));
-  else sim.set(x,y,z,AIR,'tick');
+  // The burnt block becomes fire (where fire can stay) or air.
+  if(!(sim.randInt(age+10)<5&&!sim.game.weather.isRainingOn(x,y,z)&&sim.placeFire(x,y,z,Math.min(age+(sim.randInt(5)>>2),15))))sim.set(x,y,z,AIR,'tick');
   if(id===TNT&&sim.primeTnt(x,y,z,80,false))sim.game.sounds.play('fuse',{x:x+.5,y:y+.5,z:z+.5});
 }
 

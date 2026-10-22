@@ -172,8 +172,9 @@ test('first-person hand, held items, selection, breaking crack, screen overlays,
   expect(order.overlay).toBeLessThan(2);expect(order.clouds).toBeLessThan(order.particles);expect(order.hand).toBeGreaterThan(order.particles);
   await page.evaluate(t=>{
     const g=(window as unknown as {blockcraft:Engine}).blockcraft,p=g.player.state,e=g.player.eye(),r=g.render;
-    const at=t??{id:1};
-    r.setOverlay('fire',1);
+    const at=t??{id:1},keep=(window as unknown as {keep:Engine}).keep;
+    // Survival sets the screen overlay every frame (nothing while the player is fine): hold this one like the selection.
+    r.setOverlay('fire',1);keep.overlay=r.setOverlay;r.setOverlay=()=>{};
     const fx=e.x-Math.sin(p.yaw)*2.5,fz=e.z-Math.cos(p.yaw)*2.5;
     for(const kind of ['block','smoke','flame','heart','crit','happy','note','spell'])r.spawnParticles(kind,fx,e.y-.6,fz,{block:at.id??1,count:6,spread:.7});
     r.spawnParticles('explosion',fx-3,e.y+1,fz-3,{count:2,spread:.5});
@@ -181,18 +182,21 @@ test('first-person hand, held items, selection, breaking crack, screen overlays,
   await settle(page,3);
   await shot(page,'overlays');
   const budget=await page.evaluate(()=>{
-    const g=(window as unknown as {blockcraft:Engine}).blockcraft,r=g.render,groups=r.scene.children.filter((c:Engine)=>c.isGroup);
-    for(const c of groups)c.visible=false;
+    // Only the renderer's own layers: chunk groups, and the entity and weather layers (other areas, with their own budgets in
+    // entities.spec and weather.spec), are hidden while counting.
+    const g=(window as unknown as {blockcraft:Engine}).blockcraft,r=g.render,layers=['sky','clouds','particles','hand','block-overlay','screen-overlay'];
+    const others=r.scene.children.filter((c:Engine)=>c.visible&&(c.isGroup||(c.isMesh||c.isPoints||c.isLine)&&!layers.includes(c.name)));
+    for(const c of others)c.visible=false;
     r.render();const calls=r.info().drawCalls;
-    for(const c of groups)c.visible=true;
-    const shown=['sky','clouds','particles','hand','block-overlay','screen-overlay'].filter(n=>r.scene.getObjectByName(n)?.visible);
+    for(const c of others)c.visible=true;
+    const shown=layers.filter(n=>r.scene.getObjectByName(n)?.visible);
     return{calls,shown};
   });
   // Sky, clouds, particles, hand, block overlay and screen overlay all active: six draw calls at most.
-  expect(budget.shown.length).toBe(6);expect(budget.calls).toBeLessThanOrEqual(6);
+  expect(budget.shown).toEqual(['sky','clouds','particles','hand','block-overlay','screen-overlay']);expect(budget.calls).toBeLessThanOrEqual(6);
   await page.evaluate(()=>{
     const g=(window as unknown as {blockcraft:Engine}).blockcraft,r=g.render,keep=(window as unknown as {keep:Engine}).keep;
-    r.setSelection=keep.selection;r.setBreaking=keep.breaking;r.setOverlay(null);r.setBreaking(null,0);r.setSelection(null);
+    r.setSelection=keep.selection;r.setBreaking=keep.breaking;r.setOverlay=keep.overlay;r.setOverlay(null);r.setBreaking(null,0);r.setSelection(null);
   });
   expect(Number(await data(page,'scale'))).toBeGreaterThan(0);
   expect(errors).toEqual([]);

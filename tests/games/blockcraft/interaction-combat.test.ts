@@ -107,4 +107,14 @@ describe('melee through the interaction service',()=>{
     h.click('use');
     expect(got).toEqual([mob,h.inv.slots[0]]);expect(h.log.swings).toBe(1);
   });
+  it('the mob\'s interact hook goes before item use; the mob plays its own sounds (shear, milk)',()=>{
+    const {h}=arena('bucket');let handled=true,calls=0;
+    h.ents.register({...h.ents.kind('zombie')!,interact:()=>{calls++;return handled;}});
+    h.click('use');
+    expect(calls).toBe(1);expect(h.inv.slots[0]).toEqual(stack('bucket'));
+    expect(h.sounds()).not.toContain('milk');expect(h.sounds()).not.toContain('shear');
+    // When the mob passes, the held item is used as usual: a snowball is thrown.
+    handled=false;h.hold('snowball',2);h.step(5);h.click('use');
+    expect(calls).toBe(2);expect(h.ents.spawned.some(s=>s.entity.kind==='snowball')).toBe(true);
+  });
 });

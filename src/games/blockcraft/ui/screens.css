@@ -17,7 +17,7 @@
 .bc-tool svg{width:15px;height:15px}
 .bc-tool[aria-pressed="true"]{background:#7fa86a;color:#fff;box-shadow:inset 1px 1px #375a2a,inset -1px -1px #c4e6b4}
 .bc-tool:focus-visible,.bc-tab:focus-visible,.bc-recipe:focus-visible,.bc-book-filter:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px #1d4fa3}
-.bc-screen:not(.bc-touch) .bc-quick{display:none}
+.bc-screen:not(.bc-screen-touch) .bc-quick{display:none}
 .bc-label{margin:4px 0 2px;font-size:12px;font-weight:600;color:var(--bc-text)}
 .bc-body{position:relative}
 
@@ -55,7 +55,7 @@
 .bc-inv-top{display:flex;align-items:stretch;gap:calc(var(--s)*.12);height:calc(var(--s)*4);margin:2px 0 4px}
 .bc-figure{flex:0 0 calc(var(--s)*2.3);display:grid;place-items:center;background:#000;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi);overflow:hidden}
 .bc-figure svg{height:88%;width:auto}
-.bc-offhand{align-self:flex-end}
+.bc-offhand-slot{align-self:flex-end}
 .bc-craft{margin-left:auto;display:flex;flex-direction:column;justify-content:center}
 .bc-craft .bc-label{margin-top:0}
 .bc-craft-row{display:flex;align-items:center;gap:calc(var(--s)*.15)}
@@ -139,12 +139,11 @@
 .bc-tip-info{color:#aaa}
 
 /* ---- Action bar ------------------------------------------------------------------------------------------------ */
-.bc-toast{position:absolute;left:50%;bottom:clamp(92px,16%,132px);z-index:25;max-width:min(90%,520px);transform:translateX(-50%);padding:3px 10px;border-radius:3px;
-  background:rgba(0,0,0,.45);color:#fff;font:600 14px/1.35 system-ui,sans-serif;text-align:center;text-shadow:1px 1px 0 #3f3f3f;opacity:0;transition:opacity .25s;pointer-events:none}
+/* The HUD (hud.css) places and draws the toast as the vanilla action bar (position, size, pixel-font art, and hiding it
+   with F1); the ui only fades it in and out. */
+.bc-toast{position:absolute;opacity:0;transition:opacity .25s;pointer-events:none}
 .bc-toast.show{opacity:1}
 .bc-toast:empty{display:none}
-/* F1 hides the action bar with the rest of the HUD (ROOT_FLAGS.hudHidden). */
-[data-hud-hidden="true"] .bc-toast{visibility:hidden}
 
 /* ---- Small screens ------------------------------------------------------------------------------------------- */
 @container (max-width:360px){

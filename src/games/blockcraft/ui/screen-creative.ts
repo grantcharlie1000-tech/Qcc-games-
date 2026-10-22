@@ -29,8 +29,8 @@ export function buildCreative(game:Game,menu:SlotMenu,state:CreativeState):Scree
   if(tab.id==='inventory'){
     menu.setup([...armorSlots(inv),...playerSlots(inv),offhandSlot(inv),destroySlot()],screenRule(equipRule));
     const [offhand]=menu.indexes('offhand'),[destroy]=menu.indexes('destroy');
-    body=`<div class="bc-inv-top bc-creative-inv">${slotGrid(menu,menu.indexes('armor'),1,'bc-armor','Armor')}<div class="bc-figure" data-figure>${figureSvg(inv.armor)}</div>`+
-      `<div class="bc-offhand">${slotHtml(menu,offhand)}</div></div>`+
+    body=`<div class="bc-inv-top bc-creative-inv">${slotGrid(menu,menu.indexes('armor'),1,'bc-armor-slots','Armor')}<div class="bc-figure" data-figure>${figureSvg(inv.armor)}</div>`+
+      `<div class="bc-offhand-slot">${slotHtml(menu,offhand)}</div></div>`+
       `${slotGrid(menu,menu.indexes('main'),9,'bc-main','Inventory')}<div class="bc-hotbar-wrap">${slotGrid(menu,menu.indexes('hotbar'),9,'bc-hotbar-row','Hotbar')}${slotHtml(menu,destroy,'bc-s-destroy')}</div>`;
   }else{
     const items=creativeItems(state);

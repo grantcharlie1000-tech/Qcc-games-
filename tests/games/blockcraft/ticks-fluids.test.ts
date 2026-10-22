@@ -75,7 +75,7 @@ describe('water',()=>{
     g.set(0,Y,0,'water');
     g.run(100);
     expect(g.get(2,Y,0)).toBe('water_2');
-    expect(g.dropCalls.some(c=>c.id===idOf('poppy')&&c.tool===null)).toBe(true);
+    expect(g.dropCalls.some(c=>c.id===idOf('poppy')&&c.tool===null&&c.cause==='fluid')).toBe(true);
     expect(g.drops.some(d=>d.stack.id==='poppy')).toBe(true);
   });
 });

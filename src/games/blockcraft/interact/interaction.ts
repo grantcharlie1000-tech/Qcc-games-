@@ -278,9 +278,9 @@ export function createInteraction(game:Game):InteractionService{
     get attackCharge(){return combat.charge(partial);},
     get using(){return using?usingView:null;},
     get breaking(){return breaking;},
-    // `cause` (beyond the contract, see the report's contract requests): requiresTool applies to player harvests only
-    // (no cause = the contract's default); explosions, support pop-offs and fluids drop like vanilla world loot.
-    blockDrops:(id,tool,cause?:ChangeCause)=>lootDrops(id,tool,random,cause!==undefined&&cause!=='player'),
+    // requiresTool applies to player harvests only (no cause, or 'player'); explosions, support pop-offs and fluids drop
+    // like vanilla world loot.
+    blockDrops:(id,tool,cause?:ChangeCause)=>lootDrops(id,tool,random,cause),
     frame(dt){
       partial=Math.min(1,partial+dt*20);
       updateTarget();showSelection();
@@ -299,7 +299,9 @@ export function createInteraction(game:Game):InteractionService{
       if(input.pressed('dropStack')){if(game.inventory.held()){game.inventory.dropHeld(true);game.render.swing();}}
       else if(input.pressed('drop')){if(game.inventory.held()){game.inventory.dropHeld(false);game.render.swing();}}
       let broke=false;
-      if(using){input.pressed('attack');input.pressed('use');input.pressed('pick');}
+      // Using an item discards every click (vanilla: while(consumeClick());). Presses are counted (at most a few unread),
+      // so each is read until none is left.
+      if(using){while(input.pressed('attack'));while(input.pressed('use'));while(input.pressed('pick'));}
       else{
         if(input.pressed('attack'))broke=startAttack();
         if(input.pressed('use'))startUse();

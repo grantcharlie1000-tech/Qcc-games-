@@ -3,6 +3,7 @@ import {AIR,B,blockDef,blockId} from '../../../src/games/blockcraft/data/blocks'
 import {itemDef,stack} from '../../../src/games/blockcraft/data/items';
 import {bonemealAge,bowPower,SLEEP_MESSAGES} from '../../../src/games/blockcraft/interact/use';
 import type {TreeKind,WeatherService} from '../../../src/games/blockcraft/engine/contracts';
+import {ControlState} from '../../../src/games/blockcraft/player/controls-core';
 import {createHarness,type Harness} from './interaction-harness';
 
 const name=(h:Harness,x:number,y:number,z:number)=>blockDef(h.game.world.get(x,y,z)).name;
@@ -88,7 +89,9 @@ describe('fire and TNT',()=>{
     expect(name(h,0,60,-2)).toBe('air');
     const tnt=h.ents.spawned.find(s=>s.entity.kind==='primed_tnt')!;
     expect(tnt.entity.data).toEqual({fuse:80,byPlayer:true});expect(tnt.entity).toMatchObject({x:.5,y:60,z:-1.5});
-    expect(tnt.entity.vy).toBeCloseTo(4);expect(h.inv.damaged).toBe(1);expect(h.sounds()).toContain('fuse');
+    expect(tnt.entity.vy).toBeCloseTo(4);expect(h.inv.damaged).toBe(1);
+    // The fuse hisses once (interaction plays it; primed_tnt does not again), and lighting TNT is not an ignite.
+    expect(h.sounds().filter(s=>s==='fuse')).toHaveLength(1);expect(h.sounds()).not.toContain('ignite');
   });
   it('flint and steel sets fire on top of a block, not in mid-air',()=>{
     const h=createHarness();useOn(h,'flint_and_steel',0,59,-2);
@@ -110,6 +113,20 @@ describe('eating and drinking',()=>{
     expect(h.inv.slots[0]).toEqual(stack('bread',2));expect(h.interaction.using).toBeNull();
     expect(h.sounds().filter(s=>s==='eat').length).toBe(7);
     expect(h.log.particles.some(p=>p.kind==='item'&&p.options?.item==='bread')).toBe(true);
+  });
+  it('every click made while an item is in use is discarded, two in one tick too (vanilla consumeClick loops)',()=>{
+    const h=createHarness();h.hold('bread',3);h.lookAt(.5,70,-10);h.step();
+    // The real input state counts presses (up to two unread per action); held state stays with the fake input.
+    const controls=new ControlState();h.game.input={...h.game.input,pressed:a=>controls.pressed(a)};
+    controls.tap('use');h.down('use');h.step(5);
+    expect(h.interaction.using?.item).toBe('bread');
+    // Two quick clicks of each kind, and use let go, between two ticks: that tick ends the eating.
+    for(const a of ['attack','use','pick'] as const){controls.tap(a);controls.tap(a);}
+    const swings=h.log.swings;h.down('use',false);h.step();
+    expect(h.interaction.using).toBeNull();
+    // No click is left over to attack (a swing at the air) or start eating again.
+    h.step(3);
+    expect(h.interaction.using).toBeNull();expect(h.log.swings).toBe(swings);expect(h.surv.eaten).toHaveLength(0);
   });
   it('letting go early eats nothing; a full stomach refuses unless the food is always edible',()=>{
     const h=createHarness();h.hold('apple',2);h.lookAt(.5,70,-10);
@@ -162,10 +179,20 @@ describe('buckets',()=>{
     expect(name(h,0,60,-2)).toBe('water');expect(h.inv.slots[0]).toEqual(stack('bucket'));expect(h.sounds()).toContain('bucket_empty');
     useOn(h,'lava_bucket',2,59,-2);expect(name(h,2,60,-2)).toBe('lava');
   });
-  it('water washes away a torch, dropping it; rays pass beside thin shapes',()=>{
+  it('water washes away a torch, dropping it with its break particles and sound; rays pass beside thin shapes',()=>{
     const h=createHarness();h.game.world.set(0,60,-2,B.torch);
     h.hold('water_bucket');h.aimFace(0,59,-2,0,1,0,{u:.15,v:.15});h.step();h.click('use');
     expect(name(h,0,60,-2)).toBe('water');expect(h.ents.drops.map(d=>d.stack)).toEqual([stack('torch')]);
+    // Level.destroyBlock's level event 2001, as when a torch pops off.
+    expect(h.sounds()).toEqual(expect.arrayContaining([`break:${blockDef(B.torch).sound}`,'bucket_empty']));
+    expect(h.log.particles.some(p=>p.kind==='block'&&p.options?.block===B.torch&&p.x===.5&&p.z===-1.5)).toBe(true);
+  });
+  it('a bucket emptied into fire puts it out without break particles or sound (destroyBlock skips fire)',()=>{
+    // Emptied against the side of a block beside the fire, above the fire's thin outline.
+    const h=createHarness();h.game.world.set(0,60,-2,blockId('fire'));h.game.world.set(1,60,-2,B.stone);
+    useOn(h,'water_bucket',1,60,-2,[-1,0,0]);
+    expect(name(h,0,60,-2)).toBe('water');
+    expect(h.sounds().some(s=>s.startsWith('break:'))).toBe(false);expect(h.log.particles.some(p=>p.kind==='block')).toBe(false);
   });
   it('creative keeps the full bucket',()=>{
     const h=createHarness({mode:'creative'});useOn(h,'water_bucket',0,59,-2);
@@ -181,6 +208,8 @@ describe('farming',()=>{
     useOn(h,'iron_hoe',0,59,-2);useOn(h,undefined,1,59,-2);useOn(h,undefined,-1,59,-2,SOUTH);
     expect(name(h,0,59,-2)).toBe('farmland');expect(name(h,1,59,-2)).toBe('farmland');expect(name(h,-1,59,-2)).toBe('grass_block');
     expect(h.inv.damaged).toBe(2);
+    // HoeItem plays HOE_TILL for each tilled block.
+    expect(h.sounds().filter(s=>s==='till')).toHaveLength(2);expect(h.sounds()).not.toContain('place:gravel');
     w.set(2,59,-2,blockId('coarse_dirt'));useOn(h,undefined,2,59,-2);expect(name(h,2,59,-2)).toBe('dirt');
   });
   it('bone meal grows crops 2-5 stages and is used; a ripe crop refuses it',()=>{
@@ -188,7 +217,9 @@ describe('farming',()=>{
     useOn(h,'bone_meal',0,60,-2,TOP,5);
     const age=blockDef(w.get(0,60,-2)).age!;expect(age).toBeGreaterThanOrEqual(2);expect(age).toBeLessThanOrEqual(5);
     expect(h.inv.slots[0]!.count).toBe(4);expect(h.log.particles.some(p=>p.kind==='happy')).toBe(true);
+    expect(h.sounds().filter(s=>s==='bone_meal')).toHaveLength(1);
     w.set(0,60,-2,blockId('wheat_7'));useOn(h,undefined,0,60,-2);expect(h.inv.slots[0]!.count).toBe(4);
+    expect(h.sounds().filter(s=>s==='bone_meal')).toHaveLength(1);
   });
   it('maps bone meal on 4-stage crops onto the 8 vanilla ages',()=>{
     const carrots0=blockDef(blockId('carrots_0')),carrots2=blockDef(blockId('carrots_2'));
@@ -225,6 +256,7 @@ describe('farming',()=>{
   it('axes scrape a stage of oxidation off copper',()=>{
     const h=createHarness();h.game.world.set(0,60,-2,blockId('weathered_copper'));useOn(h,'stone_axe',0,60,-2,SOUTH);
     expect(name(h,0,60,-2)).toBe('exposed_copper');expect(h.inv.damaged).toBe(1);
+    expect(h.sounds()).toContain('scrape');expect(h.log.particles.length).toBeGreaterThan(0);
   });
 });
 
@@ -256,6 +288,9 @@ describe('bows and throwing',()=>{
       const h=createHarness();h.hold(item,4);h.lookAt(.5,62,-10);h.step();h.click('use');
       const e=h.ents.spawned.find(s=>s.entity.kind===item)!.entity;
       expect(speed(e)).toBeGreaterThan(29);expect(speed(e)).toBeLessThan(31);expect(e.data).toEqual({owner:'player'});
+      // Thrown from 0.1 below the eye, facing its flight (Projectile.shoot): yaw 0 looks -z, pitch up-positive.
+      expect(e.y).toBeCloseTo(h.game.player.eye().y-.1,5);
+      expect(e.yaw).toBeCloseTo(Math.atan2(-e.vx,-e.vz),5);expect(e.pitch).toBeCloseTo(Math.atan2(e.vy,Math.hypot(e.vx,e.vz)),5);
       expect(h.inv.slots[0]!.count).toBe(3);expect(h.sounds()).toContain('throw');
     }
     const h=createHarness();h.hold('ender_pearl',4);h.lookAt(.5,62,-10);
@@ -284,10 +319,10 @@ describe('spawn eggs',()=>{
 
 describe('service surface',()=>{
   it('blockDrops is the loot entry point; explosions may ignore tool requirements',()=>{
-    const h=createHarness(),drops=h.interaction.blockDrops as (id:number,tool:null,explosion?:boolean)=>unknown;
+    const h=createHarness();
     expect(h.interaction.blockDrops(B.stone,null)).toEqual([]);
     expect(h.interaction.blockDrops(B.stone,stack('wooden_pickaxe'))).toEqual([stack('cobblestone')]);
-    expect(drops(B.stone,null,true)).toEqual([stack('cobblestone')]);
+    expect(h.interaction.blockDrops(B.stone,null,'explosion')).toEqual([stack('cobblestone')]);
   });
   it('hides the selection when looking at the sky and shows it again on a block',()=>{
     const h=createHarness();h.aimFace(0,59,-2,0,1,0);h.step();expect(h.log.selection).not.toBeNull();

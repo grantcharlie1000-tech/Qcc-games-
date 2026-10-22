@@ -115,6 +115,34 @@ describe('farmland',()=>{
     expect(g.get(2,Y-1,0)).toBe('dirt');
   });
 
+  test('landing on farmland tramples it with chance fallDistance - 0.5 (FarmBlock.fallOn); the crop pops off',()=>{
+    const g=createTickGame(),feet=Y-1+15/16;
+    g.set(0,Y-1,0,'farmland');g.set(0,Y,0,'wheat_3');g.set(3,Y-1,0,'farmland_wet');
+    // A long fall always tramples; the crop on top loses its farmland and drops.
+    g.events.emit('playerLanded',{fallDistance:4,x:.5,y:feet,z:.5});
+    expect(g.get(0,Y-1,0)).toBe('dirt');
+    g.run(2);expect(g.get(0,Y,0)).toBe('air');expect(g.dropCalls.map(c=>c.id)).toContain(idOf('wheat_3'));
+    // Under half a block never does.
+    for(let i=0;i<50;i++)g.events.emit('playerLanded',{fallDistance:.5,x:3.5,y:feet,z:.5});
+    expect(g.get(3,Y-1,0)).toBe('farmland_wet');
+    // A jump (about 1.25 blocks) tramples three times in four.
+    let trampled=0;
+    for(let i=0;i<400;i++){g.set(3,Y-1,0,'farmland');g.events.emit('playerLanded',{fallDistance:1.25,x:3.5,y:feet,z:.5});if(g.get(3,Y-1,0)==='dirt')trampled++;}
+    expect(trampled/400).toBeGreaterThan(.65);expect(trampled/400).toBeLessThan(.85);
+    // The block under the feet decides: standing over stone at the edge of a field leaves the farmland alone.
+    g.set(6,Y-1,0,'farmland');g.events.emit('playerLanded',{fallDistance:10,x:7.2,y:Y,z:.5});
+    expect(g.get(6,Y-1,0)).toBe('farmland');
+    // Only blocks with a collision shape touching the feet hold the player up (vanilla Level.findSupportingBlock): at the edge
+    // of a field with the centre over a water channel, grass or a torch, the farmland is the support and is trampled.
+    for(const [i,beside] of (['water','short_grass','torch','stone_slab'] as const).entries()){
+      const fx=10+i*3;g.set(fx,Y-1,0,'farmland');g.set(fx+1,Y-1,0,beside);
+      g.events.emit('playerLanded',{fallDistance:10,x:fx+1.2,y:feet,z:.5});
+      expect([beside,g.get(fx,Y-1,0)]).toEqual([beside,'dirt']);
+    }
+    // A crawling player (0.6 high) is too small (width² × height ≤ 0.512).
+    g.player={...g.player,height:.6};
+    g.events.emit('playerLanded',{fallDistance:10,x:6.5,y:feet,z:.5});expect(g.get(6,Y-1,0)).toBe('farmland');
+  });
   test('rain keeps farmland moist',()=>{
     const g=createTickGame();
     g.weather={...g.weather,state:'rain',isRainingOn:()=>true};

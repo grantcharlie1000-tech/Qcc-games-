@@ -161,6 +161,25 @@ describe('shield blocking',()=>{
     expect(s.damage(4,{kind:'projectile',attacker:shooter,projectile:arrow})).toBe(0);
     expect(damageHeld).not.toHaveBeenCalled();expect(setOffhand).toHaveBeenCalledWith({id:'shield',count:1,damage:10+1+4});
   });
+  it('a fresh block plays shield_block once; hits during the hurt cooldown wear the shield silently',()=>{
+    const {s,game,tick,sounds}=calm();raise(game);tick(5);
+    game.inventory.setSlot(0,{id:'shield',count:1});
+    const pitches:number[]=[],play=game.sounds.play.bind(game.sounds);
+    game.sounds.play=(name,at,o)=>{if(name==='shield_block')pitches.push(o?.pitch??1);play(name,at,o);};
+    const front=()=>entity('zombie',.5,60,-1.5);
+    expect(s.damage(5,{kind:'mob',attacker:front()})).toBe(0);
+    expect(sounds()).toEqual(['shield_block']);
+    expect(pitches[0]).toBeGreaterThanOrEqual(.8);expect(pitches[0]).toBeLessThanOrEqual(1.2);
+    expect(s.damage(5,{kind:'mob',attacker:front()})).toBe(0);expect(sounds()).toEqual(['shield_block']);
+    tick(10);expect(s.damage(5,{kind:'mob',attacker:front()})).toBe(0);expect(sounds()).toEqual(['shield_block','shield_block']);
+  });
+  it('an offhand shield wears through inventory.damageOffhand when the inventory has it',()=>{
+    const {s,game,setOffhand,damageHeld,tick}=calm();raise(game);tick(5);
+    (game.inventory as {offhand:ItemStack|null}).offhand={id:'shield',count:1,damage:10};
+    const damageOffhand=vi.fn();game.inventory.damageOffhand=damageOffhand;
+    expect(s.damage(4,{kind:'mob',attacker:entity('zombie',.5,60,-1.5)})).toBe(0);
+    expect(damageOffhand).toHaveBeenCalledWith(5);expect(setOffhand).not.toHaveBeenCalled();expect(damageHeld).not.toHaveBeenCalled();
+  });
   it('small hits do not wear the shield; a worn-out offhand shield breaks',()=>{
     const {s,game,setOffhand,tick}=calm();raise(game);tick(5);
     const max=requireItem('shield').durability!;
@@ -361,6 +380,16 @@ describe('death and respawn',()=>{
     expect(dropAll).toHaveBeenCalledTimes(1);expect(dropXp).toHaveBeenCalledWith(21,expect.any(Number),expect.any(Number),expect.any(Number));
     expect(sounds()).toContain('death');expect(sounds()).not.toContain('hurt');
     s.kill('again');expect(died.length).toBe(1);expect(s.damage(5,{kind:'mob'})).toBe(0);
+  });
+  it('playerDied carries the killing damage source; a direct kill has none',()=>{
+    const a=calm(),events:{message:string;source?:{kind:string;attacker?:Entity|null}}[]=[];
+    a.game.events.on('playerDied',e=>events.push(e));
+    const zombie=entity('zombie',.5,60,-1),source={kind:'mob' as const,attacker:zombie};
+    a.s.damage(25,source);
+    expect(events).toHaveLength(1);expect(events[0].source).toBe(source);expect(events[0].source?.attacker).toBe(zombie);
+    const b=calm(),direct:{message:string;source?:unknown}[]=[];
+    b.game.events.on('playerDied',e=>direct.push(e));
+    b.s.kill('You died');expect(direct).toEqual([{message:'You died'}]);
   });
   it('keeps the inventory and xp with keepInventory',()=>{
     const {s,game,dropAll,dropXp}=calm();game.settings.keepInventory=true;

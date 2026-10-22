@@ -1,7 +1,7 @@
 import {describe,expect,test} from 'vitest';
 import {heartIcons,foodIcons,armorIcons,airBubbles,xpFill,durabilityBar,attackIndicator,heldNameFade,heldNameOpacity,HealthTracker,HeldNameTimer,
   regenIndex,compassAngle,sunAngle,clockText,hudLayout,facingInfo,debugLines,debugRightLines,heldName,hsvToRgb,tickRandom,barsView,stackHeights,stackInsets,
-  effectIcons,effectAlpha,EFFECTS,type HeartInput,type BarsOptions} from '../../../src/games/blockcraft/ui/hud-model';
+  effectIcons,effectAlpha,EFFECTS,hurtRecently,INVULNERABLE_TICKS,type HeartInput,type BarsOptions} from '../../../src/games/blockcraft/ui/hud-model';
 import {ICON_NAMES,iconGrid,iconSvg,iconPalette,digitsSvg,DIGIT_GLYPHS,hotbarSvg,xpBarSvg,compassGrid,clockGrid,dialFrame,COMPASS_FRAMES,CLOCK_FRAMES,
   selectionFrameSvg,offhandSvg,FONT_GLYPHS,hasGlyphs,textWidth,textSvg,shadowColour,wrapText,textLinesSvg} from '../../../src/games/blockcraft/ui/hud-art';
 import {optionLabel,nextDifficulty,keyLabel,controlRows,fovLabel,sensitivityFromSlider,sensitivityToSlider,deathScore} from '../../../src/games/blockcraft/ui/menus-options';
@@ -79,6 +79,19 @@ describe('hearts from survival state',()=>{
     // Healing does not blink unless hurt recently.
     t.update(16,130,false);expect(t.blinking(131)).toBe(false);
     t.update(18,131,true);expect(t.blinkUntil).toBe(141);
+  });
+  test('health changes blink only within 20 ticks of a hit (invulnerableTime > 0), not when health is set another way',()=>{
+    expect(INVULNERABLE_TICKS).toBe(20);
+    expect(hurtRecently(100,100)).toBe(true);expect(hurtRecently(119,100)).toBe(true);expect(hurtRecently(120,100)).toBe(false);
+    expect(hurtRecently(100,-1000)).toBe(false);expect(hurtRecently(99,100)).toBe(false);
+    // A health value lowered without a playerDamaged event (a test override, a restore) shows steadily.
+    const t=new HealthTracker();t.reset(20);
+    t.update(7,50,hurtRecently(50,-1000));
+    for(let k=50;k<=80;k++)expect(t.blinking(k)).toBe(false);
+    expect(t.renderHealth).toBe(7);
+    // A real hit blinks; healing within the window blinks for 10 ticks.
+    t.update(5,90,hurtRecently(90,90));expect(t.blinkUntil).toBe(110);
+    t.update(6,105,hurtRecently(105,90));expect(t.blinkUntil).toBe(115);
   });
 });
 

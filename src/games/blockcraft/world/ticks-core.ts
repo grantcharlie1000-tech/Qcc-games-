@@ -114,15 +114,16 @@ export interface Sim{
   /** Schedules a tick of `kind` (default KIND_BLOCK) after `delay` ticks; a pending one is kept. */
   schedule(x:number,y:number,z:number,delay:number,kind?:number):void;
   set(x:number,y:number,z:number,id:BlockId,cause:ChangeCause):boolean;
-  /** Pops the no-tool loot of a block (interaction.blockDrops(id, null)) at its centre. */
-  dropLoot(id:BlockId,x:number,y:number,z:number):void;
-  /** Breaks a block in place: block particles (unless `particles` is false), its loot (unless `loot` is false), then air. */
+  /** Pops the world loot of a block (interaction.blockDrops(id, null, cause): no tool requirement) at its centre. */
+  dropLoot(id:BlockId,x:number,y:number,z:number,cause:ChangeCause):void;
+  /** Breaks a block in place: block particles and its break sound (unless `particles` is false; vanilla level event 2001),
+   *  its loot (unless `loot` is false), then air. */
   destroy(x:number,y:number,z:number,id:BlockId,cause:ChangeCause,particles?:boolean,loot?:boolean):void;
   /** Fire age (0..15) by position; missing = 0. */
   readonly fireAge:Map<number,number>;
   /** Leaves found with no log within LEAF_DECAY_DISTANCE; non-persistent ones decay on their next random tick. */
   readonly orphans:Set<number>;
-  /** Places fire with an age. */
+  /** Places fire with an age where fire can stay (fireCanSurvive); false when it cannot or the cell did not change. */
   placeFire(x:number,y:number,z:number,age:number):boolean;
   /** Spawns a primed_tnt at a block position (the block is already gone). */
   primeTnt(x:number,y:number,z:number,fuse:number,byPlayer:boolean,source?:Entity|null):Entity|null;
