@@ -9,6 +9,14 @@ const sheep=(reasons:SpawnReason[]=[])=>walker({kind:'sheep',init:(e,_g,reason)=
 const roundTrip=(v:unknown)=>JSON.parse(JSON.stringify(v));
 
 describe('persistence',()=>{
+  test('retains dropped items above the terrain during creative flight',()=>{
+    const a=harness();a.game.entities.dropItem(stack('diamond',1),.5,210,.5);
+    const saved=roundTrip(a.game.entities.serialize?.());
+    const b=harness();b.game.entities.restore?.(saved);
+    expect(b.game.entities.all()).toHaveLength(1);
+    expect(b.game.entities.all()[0]).toMatchObject({kind:'item',y:210,data:{stack:{id:'diamond',count:1}}});
+  });
+
   test('round trip keeps animals and items; hostiles and persist:false kinds are not saved',()=>{
     const a=harness({kinds:[sheep(),monster(),walker({kind:'arrowish',category:'projectile',persist:false})]});
     const s=a.game.entities.spawn('sheep',3.25,60,4.75,{data:{colour:5},baby:true,yaw:1.25})!;

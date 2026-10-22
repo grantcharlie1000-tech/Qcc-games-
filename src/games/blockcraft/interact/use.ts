@@ -4,6 +4,7 @@
 import {AIR,B,COLLISION_BOXES,FACING_VECTOR,FULL_CUBE,OPAQUE,blockDef,blockId,familyStates,isLiquid,stateFor,type BlockDef,type BlockId,type WoodType} from '../data/blocks';
 import {BIOMES} from '../data/biomes';
 import {itemDef,stack,type ItemDef,type ItemStack} from '../data/items';
+import {chestBlocked} from '../ui/screen-chest';
 import {DAY_TICKS} from '../engine/constants';
 import {canSurvive} from '../engine/support';
 import type {Entity,Game,TreeKind,Vec3} from '../engine/contracts';
@@ -160,8 +161,8 @@ export function useBlock(game:Game,hand:Hand,hit:Hit):Result{
   if(d.family==='crafting_table'){game.ui.open('crafting_table',at);return 'success';}
   if(d.family==='furnace'){game.ui.open('furnace',at);return 'success';}
   if(d.family==='chest'){
-    // A chest cannot open under an opaque block.
-    const above=w.get(x,y+1,z);if(above<=0||!OPAQUE[above])game.ui.open('chest',at);
+    // Use the same lid obstruction rule as the chest screen (including stacked chests).
+    if(!chestBlocked(w,at))game.ui.open('chest',at);
     return 'success';
   }
   if(d.family==='barrel'){game.ui.open('chest',at);return 'success';}

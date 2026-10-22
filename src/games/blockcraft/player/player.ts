@@ -352,6 +352,7 @@ export function createPlayer(game:Game):PlayerService{
     teleport(x,y,z){
       x=Math.max(-EDGE,Math.min(EDGE,x));z=Math.max(-EDGE,Math.min(EDGE,z));
       p.x=x;p.y=y;p.z=z;p.vx=p.vy=p.vz=0;p.fallDistance=fallAtTick=0;
+      setPose(STAND);
       p.onGround=boxCollides(game.world,x-HALF_WIDTH,y-.02,z-HALF_WIDTH,x+HALF_WIDTH,y,z+HALF_WIDTH);
       tickStep=0;boostX=boostZ=0;collidedH=collidedHard=false;moveDist=0;nextStep=1;
       eyeSmooth=POSE_EYE[pose];syncPrev();resense();
@@ -382,7 +383,7 @@ export function createPlayer(game:Game):PlayerService{
       if(!v||typeof v!=='object'||Array.isArray(v))return;
       const d=v as Record<string,unknown>,num=(k:string)=>typeof d[k]==='number'&&Number.isFinite(d[k])?d[k] as number:null;
       const x=num('x'),y=num('y'),z=num('z');
-      if(x!==null&&y!==null&&z!==null&&Math.abs(x)<5e5&&Math.abs(z)<5e5&&y>VOID_Y&&y<CH+64)service.teleport(x,y,z);
+      if(x!==null&&y!==null&&z!==null&&Math.abs(x)<5e5&&Math.abs(z)<5e5&&y>VOID_Y&&y<5e5)service.teleport(x,y,z);
       const yaw=num('yaw'),pitch=num('pitch');
       if(yaw!==null&&Math.abs(yaw)<1e6)p.yaw=yaw;
       if(pitch!==null)p.pitch=clampPitch(pitch);

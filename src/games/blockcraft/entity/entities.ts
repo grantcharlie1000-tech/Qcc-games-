@@ -548,7 +548,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(!isObject(raw)||typeof raw.k!=='string')return;
     const k=kinds.get(raw.k);if(!k||k.persist===false||k.category==='hostile')return;
     const {x,y,z}=raw;
-    if(!finiteIn(x,XZ_MIN,XZ_MAX)||!finiteIn(y,-64,CH+64)||!finiteIn(z,XZ_MIN,XZ_MAX))return;
+    if(!finiteIn(x,XZ_MIN,XZ_MAX)||!finiteIn(y,-64,5e5)||!finiteIn(z,XZ_MIN,XZ_MAX))return;
     const v=(n:unknown)=>finiteIn(n,-100,100)?n:0,ang=(n:unknown)=>finiteIn(n,-1e3,1e3)?wrapAngle(n):0;
     let data:Record<string,unknown>|null=null;
     const clean=cleanJson(raw.d);data=isObject(clean)?clean:{};

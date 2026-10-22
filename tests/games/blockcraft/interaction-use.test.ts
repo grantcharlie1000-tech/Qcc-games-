@@ -31,6 +31,12 @@ describe('block use',()=>{
     useOn(h,null,0,60,-2,SOUTH);useOn(h,null,1,60,-2,SOUTH);
     expect(h.opened.map(o=>o.at)).toEqual([{x:1,y:60,z:-2}]);
   });
+  it.each(['chest_south','glowstone','redstone_block'])('opens a chest beneath non-blocking %s',above=>{
+    const h=createHarness(),w=h.game.world;
+    w.set(0,60,-2,blockId('chest_south'));w.set(0,61,-2,blockId(above));
+    useOn(h,null,0,60,-2,SOUTH);
+    expect(h.opened).toEqual([{id:'chest',at:{x:0,y:60,z:-2}}]);
+  });
   it('doors open and close both halves with sounds',()=>{
     const h=createHarness(),w=h.game.world;
     w.set(0,60,-2,blockId('oak_door_lower_closed_south'));w.set(0,61,-2,blockId('oak_door_upper_closed_south'));

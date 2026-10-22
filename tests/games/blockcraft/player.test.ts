@@ -382,6 +382,14 @@ describe('persistence',()=>{
     const q=rig({mode:'creative'});q.player.reset!();q.player.restore!(data);
     expect(q.player.state).toMatchObject({x:4.5,y:61,z:-3.5,yaw:1.2,pitch:-.4,flying:true,spawn:{x:1,y:62,z:2},bedSpawn:{x:5,y:60,z:6}});
   });
+  test('round-trips a creative flight above the terrain height',()=>{
+    const r=rig({mode:'creative'});r.player.teleport(30.5,61,10.5);
+    r.player.state.flying=true;hold(r,'jump');run(r,20);
+    const saved=JSON.parse(JSON.stringify(r.player.serialize!()));
+    expect(saved.y).toBeGreaterThan(192);
+    const q=rig({mode:'creative'});q.player.restore!(saved);
+    expect(q.player.state).toMatchObject({x:saved.x,y:saved.y,z:saved.z,flying:true});
+  });
   test('the world border stops the body like a wall and keeps teleports and saves inside it',()=>{
     const r=rig();const p=r.player.state,edge=WORLD_BORDER-HALF_WIDTH,c=WORLD_BORDER/CS;
     // Ground on both sides of the border at x=+WORLD_BORDER.

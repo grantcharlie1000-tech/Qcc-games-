@@ -29,6 +29,15 @@ test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields
   test.setTimeout(150000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:1280,height:720});
+  await page.addInitScript(()=>{
+    const events:unknown[]=[];
+    (window as unknown as {__bcMouseTrace:unknown[]}).__bcMouseTrace=events;
+    document.addEventListener('mousemove',e=>{
+      const root=document.querySelector<HTMLElement>('.blockcraft');
+      events.push({x:e.clientX,y:e.clientY,dx:e.movementX,dy:e.movementY,trusted:e.isTrusted,locked:document.pointerLockElement?.tagName??null,phase:root?.dataset.phase,yaw:root?.dataset.yaw});
+      if(events.length>40)events.shift();
+    },true);
+  });
   const locks=!lockless(browserName);await countLockErrors(page);
   await boot(page,'creative');
   const root=page.locator('.blockcraft');
@@ -41,7 +50,12 @@ test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields
   // Mouse look turns the player; buttons map to attack, use and pick while held.
   const yaw=await num(page,'yaw');
   await look(page,locks,{x:640,y:360},160,0,4);
-  await expect.poll(async()=>Math.abs(await num(page,'yaw')-yaw)).toBeGreaterThan(.1);
+  try{await expect.poll(async()=>Math.abs(await num(page,'yaw')-yaw)).toBeGreaterThan(.1);}
+  catch(error){
+    const events=await page.evaluate(()=>(window as unknown as {__bcMouseTrace:unknown[]}).__bcMouseTrace);
+    await test.info().attach('mouse-look-events',{body:JSON.stringify({initialYaw:yaw,events}),contentType:'application/json'});
+    throw error;
+  }
   expect(await num(page,'yaw')).toBeLessThan(yaw);// moving right turns right (yaw decreases)
   for(const [button,action] of [['left','attack'],['right','use'],['middle','pick']] as const){
     await page.mouse.down({button});await expect.poll(()=>down(page,action)).toBe(true);

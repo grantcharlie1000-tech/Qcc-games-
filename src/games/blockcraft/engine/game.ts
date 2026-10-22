@@ -244,7 +244,11 @@ export class Engine implements Game{
     const p=this.player.state,cx=Math.floor(p.x/CS),cz=Math.floor(p.z/CS);
     if(!this.streamer.hasNeighbours(cx,cz)||!this.streamer.isMeshed(cx,cz))return;
     if(this.bedPending&&!this.standUp()){this.trySpawn();return;}
-    for(let i=0;i<CH&&bodyCollides(this.world,p,HALF_WIDTH,HEIGHT);i++)p.y+=1;
+    // Restored chunks are now available: resolve crouching/crawling before repairing obstruction.
+    this.player.teleport(p.x,p.y,p.z);
+    const savedY=p.y;
+    for(let i=0;i<CH&&bodyCollides(this.world,p,HALF_WIDTH,this.player.height);i++)p.y+=1;
+    if(p.y!==savedY)this.player.teleport(p.x,p.y,p.z);
     if(this.freshWorld){p.spawn={x:p.x,y:p.y,z:p.z};this.freshWorld=false;}
     this.spawnPending=false;
     // A world saved on the death screen loads back onto it.
