@@ -4,7 +4,10 @@ import type {Entity} from '../../../src/games/blockcraft/engine/contracts';
 import {DYE_COLOURS,newWolfLook} from '../../../src/games/blockcraft/entity/companions-art';
 import {BABY_TICKS,BREED_COOLDOWN,FOLLOW_STOP,LOVE_TICKS,TAME_CHANCE,TAME_HEALTH,WILD_HEALTH,WOLF_DAMAGE,angerOf,canTeleportTo,isSitting,isTame,
   lookOfWolf,ownerGround,restoreWolfData,tailAngle,tame,teleportToOwner,variantForBiome,wolfBrain,wolfDeathMessage} from '../../../src/games/blockcraft/entity/companions-wolf';
+import {registerCompanionMobs} from '../../../src/games/blockcraft/entity/companions';
+import {registerHostileMobs} from '../../../src/games/blockcraft/entity/hostile';
 import {createHarness,dist,fill,sequence,until,type Harness} from './companions-harness';
+import {harness as frameworkHarness,walker} from './entities-helpers';
 
 function tamedWolf(h:Harness,x:number,z:number,sitting=false):Entity{
   const w=h.spawn('wolf',x,60,z,{data:{owner:'player',sitting}});
@@ -153,9 +156,16 @@ describe('owner defence',()=>{
     until(h,()=>h.hits.some(x=>x.entity===cow&&x.source.attacker===w),100);
     expect(h.hits.some(x=>x.entity===cow&&x.source.attacker===w)).toBe(true);
     const w2=tamedWolf(h,-1.5,.5);
-    h.game.entities.damage(zombie,2,{kind:'projectile',byPlayer:true});
+    h.game.entities.damage(zombie,2,{kind:'projectile',projectile:{kind:'arrow'} as Entity,byPlayer:true});
     until(h,()=>h.hits.some(x=>x.entity===zombie&&x.source.attacker===w2),100);
     expect(h.hits.some(x=>x.entity===zombie&&x.source.attacker===w2)).toBe(true);
+  });
+  it('ignores what the owner hits with thrown items (snowballs, eggs, pearls set no last-hurt mob)',()=>{
+    const h=createHarness(),w=tamedWolf(h,1.5,.5),cow=h.spawn('cow',7.5,60,.5);
+    for(const kind of ['snowball','egg','ender_pearl'])h.game.entities.damage(cow,0,{kind:'projectile',projectile:{kind} as Entity,byPlayer:true});
+    h.run(100);
+    expect(wolfBrain(w).target).toBe(null);
+    expect(h.hits.filter(x=>x.source.attacker===w)).toEqual([]);
   });
   it('never goes for creepers, the owner, or its pack mates, and not while sitting',()=>{
     const h=createHarness(),w=tamedWolf(h,1.5,.5),creeper=h.spawn('creeper',5.5,60,.5),zombie=h.spawn('zombie',-5.5,60,.5);
@@ -174,6 +184,37 @@ describe('owner defence',()=>{
     h.game.survival.damage(3,{kind:'mob',attacker:zombie});
     h.run(60);
     expect(h.hits.filter(x=>x.entity===zombie)).toEqual([]);
+  });
+});
+
+describe('owner defence with the real entity framework and projectiles',()=>{
+  // A cow in front of the player, a tamed standing wolf beside it, a projectile fired by the player at the cow.
+  function scene(){
+    const h=frameworkHarness({kinds:[walker({kind:'cow'})]});registerCompanionMobs(h.game);registerHostileMobs(h.game);
+    h.game.player.state.x=-3;h.game.player.state.z=3;
+    const cow=h.game.entities.spawn('cow',.5,60,-4.5)!,wolf=h.game.entities.spawn('wolf',4.5,60,-2.5,{data:{owner:'player',sitting:false}})!;
+    h.tick(3);
+    const hits:{amount:number;kind:string}[]=[];
+    h.game.events.on('entityDamaged',({entity,amount,source})=>{if(entity===cow)hits.push({amount,kind:source.projectile?.kind??source.kind});});
+    return{h,cow,wolf,hits};
+  }
+  for(const kind of ['snowball','egg'])it(`a player's ${kind} lands on the cow but the wolf leaves it alone`,()=>{
+    const {h,cow,wolf,hits}=scene();
+    const ball=h.game.entities.spawn(kind,.5,61,.5,{data:{owner:'player'}})!;ball.vz=-30;
+    for(let i=0;i<10;i++){h.tick(1);expect(wolfBrain(wolf).target).toBe(null);}
+    expect(ball.removed).toBe(true);expect(hits).toEqual([{amount:0,kind}]);
+    h.tick(200);
+    expect(wolfBrain(wolf).target).toBe(null);expect(cow.health).toBe(20);
+  });
+  it("a player's arrow or melee hit on the cow sets the wolf's target",()=>{
+    const {h,cow,wolf,hits}=scene();
+    const arrow=h.game.entities.spawn('arrow',.5,61,.5,{data:{owner:'player',damage:2,pickup:false,crit:false,inGround:false}})!;arrow.vz=-30;
+    let target:Entity|null=null;
+    for(let i=0;i<10&&!target;i++){h.tick(1);target=wolfBrain(wolf).target;}
+    expect(hits.map(x=>x.kind)).toEqual(['arrow']);expect(target).toBe(cow);
+    const {h:h2,cow:cow2,wolf:wolf2}=scene();
+    h2.game.entities.damage(cow2,1,{kind:'player',byPlayer:true});h2.tick(1);
+    expect(wolfBrain(wolf2).target).toBe(cow2);
   });
 });
 

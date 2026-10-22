@@ -655,8 +655,10 @@ export function wireOwnerEvents(game:Game):(()=>void)[]{
       const a=source.attacker;
       if(a&&!a.removed&&a.deathTime===0)defendOwner(game,a,PRIORITY.ownerHurtBy);
     }),
+    // OwnerHurtTargetGoal reads owner.getLastHurtMob(), which only melee (Player.attack) and arrows
+    // (AbstractArrow.onHitEntity) set: the zero-damage hits of thrown snowballs, eggs and pearls do not count.
     game.events.on('entityDamaged',({entity,source})=>{
-      if(!source.byPlayer||source.kind!=='player'&&source.kind!=='projectile')return;
+      if(!source.byPlayer||source.kind!=='player'&&source.projectile?.kind!=='arrow')return;
       defendOwner(game,entity,PRIORITY.ownerHurt);
     }),
     game.events.on('playerDied',()=>forgiveDeadPlayer(game)),

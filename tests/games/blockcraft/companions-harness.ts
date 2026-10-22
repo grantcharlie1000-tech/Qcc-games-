@@ -125,7 +125,8 @@ export function createTestEntities(game:FakeGame,record:Pick<Harness,'spawned'|'
     raycast:()=>null,
     damage(e,amount,source){
       const k=kinds.get(e.kind);
-      if(e.removed||e.deathTime>0||!(amount>0))return false;
+      // As entities.ts: amount 0 is a valid hit for living entities (snowballs, eggs, pearls); negative or NaN is not.
+      if(e.removed||e.deathTime>0||!(amount>=0)||!Number.isFinite(amount))return false;
       if(!living(k))return k?.hurt?.(e,game,source,amount)!==false&&!!k?.hurt;
       let dealt=amount;const fresh=e.hurtTime===0;
       if(!fresh){const last=lastHurt.get(e)??0;if(amount<=last)return false;dealt=amount-last;}
