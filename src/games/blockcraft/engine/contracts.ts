@@ -635,7 +635,9 @@ export interface UIService extends System{
 }
 export interface HudService extends System{
   /** Show the overlay menus owned by the HUD: start, pause, death and context-lost screens, and the new-world confirmation
-   *  for the shell's Restart ('restart': Create calls game.newWorld(), Cancel goes back to the menu it covered). */
+   *  for the shell's Restart ('restart': Create calls game.newWorld(), Cancel goes back to the menu it covered). The
+   *  question stays until it is answered: while it shows, 'start', 'resume' and 'dead' only change the menu Cancel goes
+   *  back to; null and 'lost' replace it. */
   showMenu(menu:'start'|'resume'|'dead'|'lost'|'restart'|null):void;
 }
 export interface AdvancementView{id:string;title:string;description:string;icon:ItemId;parent:string|null;done:boolean;

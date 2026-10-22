@@ -285,6 +285,8 @@ export class Engine implements Game{
   }
   newWorld(){
     if(this.disposed||this.state==='lost')return;
+    // This answers the Restart question, so it closes it (a showing question otherwise stays up over 'start').
+    this.hud.showMenu(null);
     this.setState('loading');this.ui.close();this.input.clear();this.input.release();
     this.resetWorld(nextSeed(this.seed));this.hud.showMenu('start');
     this.context.setStatus('A fresh world. Press Play when it is ready.');this.context.save(this.serialize());this.schedule();

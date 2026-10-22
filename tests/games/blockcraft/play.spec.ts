@@ -170,6 +170,20 @@ test.describe('shell buttons on a landscape phone',()=>{
     await expect.poll(seed).not.toBe(before);
     await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
     const fresh=(await saved(page))!;expect(fresh.seed).toBe(await seed());expect(fresh.edits).toEqual([]);
+    // Restart while a new world still loads (both in one task, so the world cannot finish first): the question stays
+    // when the world is ready behind it, and Cancel goes back to the start menu.
+    const loading=await page.evaluate(()=>{
+      const g=(window as unknown as {blockcraft:{newWorld():void;spawning:boolean}}).blockcraft;
+      g.newWorld();document.querySelector<HTMLButtonElement>('#restart-game')!.click();return g.spawning;
+    });
+    expect(loading).toBe(true);
+    await expect(page.getByRole('heading',{name:'Create a new world?'})).toBeVisible();
+    await ready(page);await page.waitForTimeout(300);
+    await expect(page.getByRole('heading',{name:'Create a new world?'})).toBeVisible();
+    await expect(page.getByRole('button',{name:'Cancel'})).toBeFocused();
+    await page.getByRole('button',{name:'Cancel'}).tap();
+    await expect(page.getByRole('button',{name:'Play',exact:true})).toBeEnabled();
+    expect(await root.getAttribute('data-phase')).toBe('ready');
     expect(errors).toEqual([]);
   });
 });

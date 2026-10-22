@@ -113,6 +113,9 @@ export function createMenus(game:Game):Menus{
     if(panel==='controls'&&!el.hidden)buildControls();
   }
   function show(next:MenuKind|null){
+    // The new-world question stays until it is answered: a world that finishes loading (or a death screen restored)
+    // behind it only changes the menu Cancel goes back to. null, 'lost' and the answers (Create, Cancel) replace it.
+    if(kind==='restart'&&!el.hidden&&(next==='start'||next==='resume'||next==='dead')){beforeRestart=next;return;}
     clearTimeout(respawnTimer);stopAdvancementsWatch();
     // (While the advancements screen shows over a menu, the menu is hidden but still its kind.)
     if(next==='restart'&&kind!=='restart')beforeRestart=kind;
@@ -160,7 +163,7 @@ export function createMenus(game:Game):Menus{
       case 'primary':game.play();break;
       case 'respawn':game.respawn();break;
       case 'new-world':game.newWorld();break;
-      case 'cancel':show(beforeRestart??(game.state==='dead'?'dead':'resume'));break;
+      case 'cancel':{const back=beforeRestart??(game.state==='dead'?'dead':'resume');kind=null;show(back);break;}
       case 'mode':game.updateSettings({mode:game.settings.mode==='survival'?'creative':'survival'});break;
       case 'difficulty':game.updateSettings({difficulty:nextDifficulty(game.settings.difficulty)});break;
       case 'options':setPanel('options');break;
