@@ -82,6 +82,29 @@ test('malformed saves are ignored and a fresh world starts',async({page})=>{
   expect(errors).toEqual([]);
 });
 
+test('a world saved on the death screen loads back onto it, without a second death',async({page})=>{
+  test.setTimeout(90000);
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  const deaths=()=>page.evaluate(()=>(window as unknown as {blockcraft:{stats:{deaths:number}}}).blockcraft.stats.deaths);
+  await page.goto('/#/game/blockcraft');await ready(page);
+  const root=page.locator('.blockcraft');
+  await page.getByRole('button',{name:'Play',exact:true}).click();await expect(root).toHaveAttribute('data-phase','playing');
+  await page.evaluate(()=>(window as unknown as {blockcraft:{survival:{kill(m:string):void}}}).blockcraft.survival.kill('You fell from a high place'));
+  await expect(root).toHaveAttribute('data-phase','dead');expect(await deaths()).toBe(1);
+  // The shell saves every 5 seconds.
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:blockcraft')??'null')?.data?.systems?.survival?.dead===true),
+    {timeout:15000}).toBe(true);
+  await page.reload();await ready(page);
+  await expect(root).toHaveAttribute('data-phase','dead');
+  await expect(page.getByRole('heading',{name:'You died!'})).toBeVisible();
+  await expect(page.locator('.bc-menu')).toContainText('You fell from a high place');
+  expect(await num(page,'health')).toBe(0);expect(await deaths()).toBe(1);
+  await page.getByRole('button',{name:'Respawn'}).click();
+  await expect.poll(()=>data(page,'phase'),{timeout:20000}).not.toBe('dead');
+  await expect.poll(()=>num(page,'health')).toBe(20);
+  expect(errors).toEqual([]);
+});
+
 for(const mode of ['throws','fails to load'] as const)test(`terrain still generates when a worker ${mode}`,async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.addInitScript(mode=>{
