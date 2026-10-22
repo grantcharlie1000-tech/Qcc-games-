@@ -39,7 +39,7 @@ interface CowPalette{
 const COW:CowPalette={coat:[0x33261f,0x2a1f19,0x3f3027,0x4a382c],coatW:[6,3,3,1],patch:[0xe9e7e2,0xdcd9d3,0xf4f3f0,0xc9c5bf],patchW:[6,3,2,1],
   muzzle:0xcbb5aa,nostril:0x3a2a24,eye:0xf0efeb,pupil:0x110d0b,horn:0xb9b9b1,hornLight:0xd6d6ce,hornDark:0x8f8f88,hoof:0x4a423d,sock:0xdedbd5,
   udder:0xe89c9c,udderLight:0xf3b8b6,teat:0xc77675,cut:.6,seed:17};
-const MOOSHROOM:CowPalette={coat:[0xa8261b,0x921f16,0xb8342a,0x7e1a12],coatW:[6,3,2,1],patch:[0xd9d5cf,0xc9c4bd,0xe6e3de,0xb3ada6],patchW:[6,3,2,1],
+const MOOSHROOM:CowPalette={coat:[0xa8261b,0x9f2319,0xb02b20,0x8c1d14],coatW:[8,3,2,1],patch:[0xd9d5cf,0xc9c4bd,0xe6e3de,0xb3ada6],patchW:[6,3,2,1],
   muzzle:0xd5c1b8,nostril:0x5c1d17,eye:0xf0efeb,pupil:0x140c0b,horn:0xbab8b0,hornLight:0xd8d6ce,hornDark:0x8f8d86,hoof:0x4b3833,sock:0xcfcac3,
   udder:0xe59a9a,udderLight:0xf0b5b3,teat:0xc27372,cut:.63,seed:29};
 /** The front of the head (8×8): B coat, W blaze, E eye white, K pupil, M muzzle, N nostril. */
@@ -175,7 +175,7 @@ export function pigModel():EntityModel{
 }
 
 // ---- Sheep -----------------------------------------------------------------------------------------
-const SHEEP={face:0xcbbcaf,faceShade:0xb9a999,faceLight:0xd8cbbf,eye:0xf1f0ec,pupil:0x1b1817,nose:0xd59a97,mouth:0xa86f6c,
+const SHEEP={face:0xc3b9af,faceShade:0xb0a59a,faceLight:0xd0c7be,eye:0xf1f0ec,pupil:0x1b1817,nose:0xd59a97,mouth:0xa86f6c,
   skin:[0xd9c6b8,0xcdb8a8,0xe4d4c8,0xc0a999],skinW:[5,3,2,1],leg:0xc5b4a5,legShade:0xb09e8e,hoof:0x6a5a4f,
   wool:[0xf3f3f1,0xe4e4e1,0xd5d5d1,0xfbfbfa,0xc8c8c3],woolW:[8,4,2,2,1],seed:59};
 /** The face (6×6): F face, E eye white, K pupil, N nose, M mouth. */
