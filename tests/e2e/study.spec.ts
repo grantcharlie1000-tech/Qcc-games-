@@ -179,7 +179,7 @@ test('manual pause survives Study and topic navigation keeps the game route inta
   await page.getByRole('button',{name:'Pause game',exact:true}).click();
   await page.keyboard.press('Escape');
   await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
-  expect(new URL(page.url()).hash).toBe('#/game/minesweeper');
+  expect(new URL(page.url()).hash).toBe('#/collection/10');
   await returnToGame(page);
   await expect(page.locator('#pause-overlay')).toBeVisible();
   await page.getByRole('button',{name:'Keep playing',exact:true}).click();
