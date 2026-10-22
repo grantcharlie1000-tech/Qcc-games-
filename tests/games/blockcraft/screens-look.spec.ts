@@ -1,5 +1,6 @@
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
+import {evidencePath} from './helpers/browser';
 
 // Vanilla look of the inventory-like screens: every screen at 1366×768 and 390×844 (plus touch, a landscape phone and the
 // recipe book), saved as evidence (tests/games/blockcraft/evidence/screens-*.png), with the vanilla GUI geometry checked
@@ -7,7 +8,6 @@ import type {Page} from '../../fixtures';
 // arcade toolbar (top 56 px) and fits the game area.
 type Engine=Record<string,any>;// eslint-disable-line @typescript-eslint/no-explicit-any
 const BLOCKS_MODULE='/src/games/blockcraft/data/blocks.ts';
-const EVIDENCE='tests/games/blockcraft/evidence';
 
 async function boot(page:Page,size:{width:number;height:number}){
   await page.setViewportSize(size);
@@ -78,21 +78,23 @@ async function checkGeometry(page:Page,size:{width:number;height:number},integer
   expect(g.top).toBeGreaterThanOrEqual(56);expect(g.bottom).toBeLessThanOrEqual(size.height);
   return g.u;
 }
-/** Colours (#rrggbb) of screen pixels, read from a screenshot (device pixels are CSS pixels here). */
+/** Colours (#rrggbb) of screen pixels at CSS pixel points, read from a screenshot in device pixels (the Desktop Safari
+ *  project renders at device scale 2). */
 async function pixels(page:Page,points:readonly {x:number;y:number}[]):Promise<string[]>{
   const png=(await page.screenshot()).toString('base64');
   return page.evaluate(async([data,pts])=>{
     const img=new Image();img.src=`data:image/png;base64,${data}`;await img.decode();
     const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
     const g=c.getContext('2d')!;g.drawImage(img,0,0);
-    return pts.map(p=>{const d=g.getImageData(Math.floor(p.x),Math.floor(p.y),1,1).data;return`#${[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,'0')).join('')}`;});
+    const k=img.width/innerWidth;
+    return pts.map(p=>{const d=g.getImageData(Math.floor(p.x*k),Math.floor(p.y*k),1,1).data;return`#${[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,'0')).join('')}`;});
   },[png,points] as const);
 }
 const guiUnit=(page:Page)=>page.locator('.bc-panel').evaluate(e=>parseFloat(getComputedStyle(e).getPropertyValue('--bc-u')));
 async function shot(page:Page,name:string){
   // Let lazily loaded icons and data URLs decode before the picture.
   await page.waitForTimeout(400);
-  await page.screenshot({path:`${EVIDENCE}/screens-${name}.png`});
+  await page.screenshot({path:evidencePath(`screens-${name}.png`)});
 }
 
 for(const size of [{width:1366,height:768,tag:'1366'},{width:390,height:844,tag:'390'}]){

@@ -1,13 +1,13 @@
 import {expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
 import {AIR,blockId} from '../../../src/games/blockcraft/data/blocks';
+import {evidencePath} from './helpers/browser';
 
 // Mob photo stage for the passive-look and hostile-look specs: a flat grass stage at noon in the real engine, the mobs
 // standing still on it facing the camera, a screenshot saved as evidence (tests/games/blockcraft/evidence/mobs-*.png).
 // In development window.blockcraft is the engine; software WebGL is slow, so everything waits with generous timeouts.
 type Engine={[k:string]:any};
 export type Mob=[kind:string,side:number,ahead:number,turn:number,options?:{data?:Record<string,unknown>;baby?:boolean}];
-const EVIDENCE='tests/games/blockcraft/evidence';
 
 export async function openStage(page:Page){
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -60,7 +60,7 @@ export async function stage(page:Page,name:string,mobs:readonly Mob[],view:{ahea
   const stats=await page.evaluate(()=>{const g=(window as unknown as {blockcraft:Engine}).blockcraft;return{...g.entities.debug.render,count:g.entities.all().length};});
   // Advancement toasts (creative inventory unlocks) would cover the stage: hide them for the photo.
   await page.evaluate(()=>{for(const el of document.querySelectorAll<HTMLElement>('.bc-adv-toasts'))el.style.visibility='hidden';});
-  await page.locator('.blockcraft canvas').screenshot({path:`${EVIDENCE}/mobs-${name}.png`});
+  await page.locator('.blockcraft canvas').screenshot({path:evidencePath(`mobs-${name}.png`)});
   return stats as {entities:number;drawCalls:number;count:number};
 }
 

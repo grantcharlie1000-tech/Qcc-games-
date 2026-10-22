@@ -275,8 +275,16 @@ export class Engine implements Game{
     if(this.state!=='lost')this.setState('loading');
     this.events.emit('worldReset',{});
   }
+  /** The shell's Restart button: a new world deletes this one, so ask first (the menu's Create calls newWorld()). The shell
+   *  resumes and saves right after this call, which keeps the current world until the player confirms. */
   restart(){
-    if(this.state==='lost')return;
+    if(this.disposed||this.state==='lost')return;
+    this.playOnShellResume=false;
+    if(this.state==='playing'||this.state==='screen')this.toPaused();
+    this.input.clear();this.input.release();this.hud.showMenu('restart');
+  }
+  newWorld(){
+    if(this.disposed||this.state==='lost')return;
     this.setState('loading');this.ui.close();this.input.clear();this.input.release();
     this.resetWorld(nextSeed(this.seed));this.hud.showMenu('start');
     this.context.setStatus('A fresh world. Press Play when it is ready.');this.context.save(this.serialize());this.schedule();
@@ -312,19 +320,37 @@ export class Engine implements Game{
     this.context.setStatus(`Saved world ready: day ${this.time.day}, ${this.stats.mined} blocks mined.`);
     this.schedule();
   }
+  /** The shell's pause stopped play: its resume (a click on Keep playing, Study's Games link, a closed dialog) plays again. */
+  private playOnShellResume=false;
   shellPause(){
     if(this.paused)return;
     this.paused=true;cancelAnimationFrame(this.frameId);this.frameId=0;
+    const playing=this.state==='playing'||this.state==='screen';
     this.toPaused();this.input.clear();this.input.release();
+    this.playOnShellResume=playing&&this.state==='paused';
     this.events.emit('shellPaused',{paused:true});
   }
-  shellResume(){if(this.disposed||!this.paused)return;this.paused=false;this.events.emit('shellPaused',{paused:false});this.schedule();}
+  shellResume(){
+    if(this.disposed||!this.paused)return;
+    this.paused=false;this.events.emit('shellPaused',{paused:false});this.schedule();
+    // One click resumes, not the shell's Keep playing and then the Game Menu's Resume. The shell calls this from the click,
+    // so the pointer lock request is still inside the user gesture.
+    const play=this.playOnShellResume&&this.state==='paused';this.playOnShellResume=false;
+    if(play)this.play();
+  }
   dispose(){
     if(this.disposed)return;this.disposed=true;cancelAnimationFrame(this.frameId);this.frameId=0;this.abort.abort();
     this.streamer.dispose();this.input.release();
     for(const [,s] of [...this.created].reverse()){try{s.dispose?.();}catch{/* keep disposing */}}
     this.events.clear();this.root.remove();
   }
+}
+
+/** The game without WebGL 2. The shell restores the saved world right after mount and saves every 5 s, on pause and on
+ *  leave: hand back what was restored, so a visit without 3D graphics never replaces the save. */
+export function fallbackInstance(dispose:()=>void):GameInstance{
+  let kept:unknown=null;
+  return{pause(){},resume(){},restart(){},serialize:()=>kept,restore(v){kept=v;},dispose};
 }
 
 export function mountEngine(container:HTMLElement,context:GameContext):GameInstance{
@@ -335,7 +361,7 @@ export function mountEngine(container:HTMLElement,context:GameContext):GameInsta
     const root=document.createElement('div');root.className='blockcraft';
     root.innerHTML='<div class="bc-fallback" role="status"><h2>3D graphics unavailable</h2><p>Blockcraft needs WebGL 2. Enable browser hardware acceleration or try a recent browser.</p><a class="game-button" href="#/">Choose another game</a></div>';
     container.append(root);context.setStatus('This browser could not create a WebGL 2 renderer.');
-    return{pause(){},resume(){},restart(){},serialize:()=>null,restore(){},dispose(){root.remove();}};
+    return fallbackInstance(()=>root.remove());
   }
   return{
     pause:()=>engine.shellPause(),resume:()=>engine.shellResume(),restart:()=>engine.restart(),

@@ -1,13 +1,13 @@
 import {inflateSync} from 'node:zlib';
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
+import {evidencePath} from './helpers/browser';
 
 // Renderer and sky in a real browser: screenshots at noon, dusk, midnight and underwater (saved as evidence), sky and fog
 // colours sampled from the screenshots, the hand, overlays and the draw-call budget.
 const data=(page:Page,key:string)=>page.locator('.blockcraft').getAttribute(`data-${key}`);
 async function ready(page:Page){await expect(page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:60000});}
 type Engine={[k:string]:any};
-const EVIDENCE='tests/games/blockcraft/evidence';
 
 /** Minimal PNG decoder (8-bit RGB/RGBA, non-interlaced) for screenshot pixels. */
 function decodePng(buf:Buffer){
@@ -44,7 +44,7 @@ async function settle(page:Page,frames=6){
 /** Canvas screenshot: the four sky views are kept as evidence, the others go to the test output folder. */
 async function shot(page:Page,name:string){
   const canvas=page.locator('.blockcraft canvas'),keep=['noon','dusk','midnight','underwater'].includes(name);
-  const buf=await canvas.screenshot({path:keep?`${EVIDENCE}/render-${name}.png`:test.info().outputPath(`render-${name}.png`)});
+  const buf=await canvas.screenshot({path:keep?evidencePath(`render-${name}.png`):test.info().outputPath(`render-${name}.png`)});
   return decodePng(buf);
 }
 

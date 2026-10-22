@@ -1,5 +1,6 @@
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
+import {evidencePath} from './helpers/browser';
 
 // Inventory and screens: crafting planks and a crafting table, the 3×3 table, smelting in a furnace, a (large) chest
 // round trip, armour equip, keyboard slots, the creative picker and the 320×568 layout. Software WebGL is slow, so
@@ -224,7 +225,8 @@ test('a large chest keeps items between openings; armour equips by shift-click, 
 
 test.describe('touch',()=>{
   test.use({hasTouch:true});
-  test('a tap picks up and places, a long press takes half, quick move turns taps into shift-clicks',async({page})=>{
+  test('a tap picks up and places, a long press takes half, quick move turns taps into shift-clicks',async({page,browserName})=>{
+    test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
     test.setTimeout(150000);
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
     await boot(page,{width:390,height:844});
@@ -300,7 +302,7 @@ test('creative picker and the survival inventory fit a 320×568 phone',async({pa
   await slot(page,'Hotbar slot 2').click();
   await page.locator('.bc-screen button[aria-label^="Destroy item slot"]').click();
   expect(await engine(page,g=>g.inventory.count('cow_spawn_egg'))).toBe(0);
-  await page.screenshot({path:'tests/games/blockcraft/evidence/screens-creative-320.png'});
+  await page.screenshot({path:evidencePath('screens-creative-320.png')});
   await page.keyboard.press('KeyE');
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
   expect(errors).toEqual([]);

@@ -104,3 +104,15 @@ describe('fake game helper',()=>{
     const before=game.time.dayTime;game.runTicks(20);expect(game.time.dayTime).toBe(before+20);
   });
 });
+
+describe('shell instance without WebGL 2',()=>{
+  test('hands back the save it was restored with, so autosaves never replace the world with null',async()=>{
+    const {fallbackInstance}=await import('../../../src/games/blockcraft/engine/game');
+    let removed=0;
+    const fresh=fallbackInstance(()=>{removed++;});expect(fresh.serialize()).toBeNull();
+    const instance=fallbackInstance(()=>{removed++;}),world={version:2,seed:5,edits:[0,0,1,100,1],systems:{}};
+    instance.restore(world);instance.pause();instance.resume();instance.restart();
+    expect(instance.serialize()).toBe(world);
+    instance.dispose();expect(removed).toBe(1);
+  });
+});

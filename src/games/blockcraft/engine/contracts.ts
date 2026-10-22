@@ -634,8 +634,9 @@ export interface UIService extends System{
   toast(message:string):void;
 }
 export interface HudService extends System{
-  /** Show the overlay menus owned by the HUD: start, pause, death and context-lost screens. */
-  showMenu(menu:'start'|'resume'|'dead'|'lost'|null):void;
+  /** Show the overlay menus owned by the HUD: start, pause, death and context-lost screens, and the new-world confirmation
+   *  for the shell's Restart ('restart': Create calls game.newWorld(), Cancel goes back to the menu it covered). */
+  showMenu(menu:'start'|'resume'|'dead'|'lost'|'restart'|null):void;
 }
 export interface AdvancementView{id:string;title:string;description:string;icon:ItemId;parent:string|null;done:boolean;
   /** Progress for counted goals ([done, total]). */
@@ -811,6 +812,8 @@ export interface Game{
   play():void;
   /** From the death screen: survival.respawn(), teleport to the bed (if still a bed) or world spawn, emit playerRespawned, play. */
   respawn():void;
+  /** Replaces this world (and its save) with a fresh one from the next seed: the confirmed shell Restart. */
+  newWorld():void;
   /** Called by the UI service when a screen opens (state 'screen', mouse released) or closes (back to 'playing', mouse captured). */
   screenChanged(open:boolean):void;
   /** Change game mode (emits modeChanged and settingsChanged). */

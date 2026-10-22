@@ -69,7 +69,7 @@ async function checkClear(page:Page,width:number,height:number){
 
 test.describe('desktop 1366x768',()=>{
   test.use({viewport:{width:1366,height:768}});
-  test('HUD layout, state rendering, readouts, F1, F3 and the action bar',async({page})=>{
+  test('HUD layout, state rendering, readouts, F1, F3 and the action bar',async({page,browserName})=>{
     test.setTimeout(150000);
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
     await page.goto('/#/game/blockcraft');await ready(page);
@@ -136,9 +136,12 @@ test.describe('desktop 1366x768',()=>{
     const sel=(await page.locator('.bc-selection').boundingBox())!;expect(sel.x).toBeCloseTo(bar.x-3+2*60,0);
     const cross=(await page.locator('.bc-cross').boundingBox())!;expect(cross.x+cross.width/2).toBeCloseTo(683,-1);expect(cross.y+cross.height/2).toBeCloseTo(384,-1);
     await checkClear(page,1366,768);
-    // With the mouse captured the hotbar never takes clicks meant for the world.
-    await expect(page.locator('.blockcraft')).toHaveAttribute('data-locked','true');
-    await expect(page.locator('.bc-slot').first()).toHaveCSS('pointer-events','none');
+    // With the mouse captured the hotbar never takes clicks meant for the world. (Headless WebKit never grants pointer
+    // lock; Safari does.)
+    if(browserName!=='webkit'){
+      await expect(page.locator('.blockcraft')).toHaveAttribute('data-locked','true');
+      await expect(page.locator('.bc-slot').first()).toHaveCSS('pointer-events','none');
+    }
 
     // Action bar above the bars, in the pixel font on one line like vanilla.
     await page.evaluate(()=>(window as unknown as {blockcraft:{ui:{toast(m:string):void}}}).blockcraft.ui.toast('You may not rest now; there are monsters nearby'));

@@ -1,11 +1,11 @@
-// Overlay menus owned by the HUD (layer z-index 30): the start menu, the game menu (pause), the death screen and
-// the lost-graphics screen. World options go through game.updateSettings; the Advancements button opens the
+// Overlay menus owned by the HUD (layer z-index 30): the start menu, the game menu (pause), the death screen, the
+// lost-graphics screen and the new-world confirmation for the shell's Restart. World options go through game.updateSettings; the Advancements button opens the
 // ui's advancements screen; the controls panel lists game.input.bindings(). Copy differs for touch.
 import type {Game,GameSettings} from '../engine/contracts';
 import {VIEW_DISTANCES} from '../engine/contracts';
 import {controlRows,deathScore,nextDifficulty,optionLabel,sensitivityFromSlider,sensitivityToSlider,OPTION_HINTS,TOUCH_ROWS,type OptionKey} from './menus-options';
 
-export type MenuKind='start'|'resume'|'dead'|'lost';
+export type MenuKind='start'|'resume'|'dead'|'lost'|'restart';
 type Panel='main'|'options'|'controls';
 export interface Menus{
   show(kind:MenuKind|null):void;
@@ -66,6 +66,10 @@ export function createMenus(game:Game):Menus{
     <div class="bc-menu-page" data-panel="dead" hidden>
       <button type="button" class="bc-btn bc-primary" data-act="respawn">Respawn</button>
     </div>
+    <div class="bc-menu-page" data-panel="restart" hidden>
+      <button type="button" class="bc-btn" data-act="new-world">Create New World</button>
+      <button type="button" class="bc-btn" data-act="cancel">Cancel</button>
+    </div>
     <p class="bc-loading" role="status"></p>
   </div>`;
   game.root.append(el);
@@ -75,9 +79,11 @@ export function createMenus(game:Game):Menus{
   const respawn=q<HTMLButtonElement>('[data-act=respawn]'),controls=q('.bc-controls');
   const pages=[...el.querySelectorAll<HTMLElement>('.bc-menu-page')];
   let kind:MenuKind|null=null,panel:Panel='main',deathMessage='',respawnTimer=0,advPoll=0,controlsTouch:boolean|null=null;
+  /** The menu the new-world confirmation covers (Cancel goes back to it). */
+  let beforeRestart:MenuKind|null=null;
 
-  function setPanel(p:Panel|'dead',focus=true){
-    if(p!=='dead')panel=p;
+  function setPanel(p:Panel|'dead'|'restart',focus=true){
+    if(p!=='dead'&&p!=='restart')panel=p;
     for(const page of pages)page.hidden=page.dataset.panel!==p;
     // The options and controls pages replace the menu's introduction.
     message.hidden=p==='options'||p==='controls';
@@ -107,6 +113,7 @@ export function createMenus(game:Game):Menus{
   }
   function show(next:MenuKind|null){
     clearTimeout(respawnTimer);stopAdvancementsWatch();
+    if(next==='restart'&&kind!=='restart')beforeRestart=el.hidden?null:kind;
     kind=next;el.hidden=!next;el.dataset.kind=next??'';
     if(!next)return;
     const focusInside=!document.activeElement||document.activeElement===document.body||game.root.contains(document.activeElement);
@@ -123,6 +130,12 @@ export function createMenus(game:Game):Menus{
       setPanel('dead',false);loading.textContent='';
       respawn.disabled=true;
       respawnTimer=window.setTimeout(()=>{respawn.disabled=false;if(focusInside)respawn.focus({preventScroll:true});},RESPAWN_DELAY_MS);
+    }else if(next==='restart'){
+      // Vanilla asks the same before a world is deleted. The question answers the shell's Restart button, so it takes the
+      // focus from there; Cancel has it, so Enter or Space never deletes the world by accident.
+      title.textContent='Create a new world?';message.textContent='This world will be lost forever! (A long time!)';
+      setPanel('restart',false);loading.textContent='';
+      q<HTMLButtonElement>('[data-act=cancel]').focus({preventScroll:true});
     }else{
       title.textContent='Graphics interrupted';
       message.textContent='The browser lost the 3D graphics context. Your world is saved: leave Blockcraft and open it again to keep playing.';
@@ -144,6 +157,8 @@ export function createMenus(game:Game):Menus{
     switch(act){
       case 'primary':game.play();break;
       case 'respawn':game.respawn();break;
+      case 'new-world':game.newWorld();break;
+      case 'cancel':show(beforeRestart??(game.state==='dead'?'dead':'resume'));break;
       case 'mode':game.updateSettings({mode:game.settings.mode==='survival'?'creative':'survival'});break;
       case 'difficulty':game.updateSettings({difficulty:nextDifficulty(game.settings.difficulty)});break;
       case 'options':setPanel('options');break;
