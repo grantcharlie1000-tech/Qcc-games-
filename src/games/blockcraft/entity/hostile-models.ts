@@ -78,7 +78,7 @@ const HUSK_LOOK:ZombieLook={
   skin:[0xab9a71,0xa08f67,0xb5a57d,0x8f7f5a,0xc2b28b],skinW:[10,4,3,1,1],blotch:0x8a7a56,
   face:pixelMap(['........','........','........','.dd..dd.','.kk..kk.','...nn...','..mmmm..','..mmmm..'],
     {d:0x6d5d3f,k:0x16120c,n:0x7a6a4a,m:0x3b2f1e}),
-  shirt:{base:0x5d4d37,dark:0x4b3d2b,light:0x6b5a41},pants:{base:0x46392a,dark:0x372c20,light:0x524434},shoe:0x2e261c,seed:23};
+  shirt:{base:0x7e6e4e,dark:0x6a5b3f,light:0x8d7d5b},pants:{base:0x5f5139,dark:0x4d412d,light:0x6c5d43},shoe:0x3a3022,seed:23};
 const DROWNED_GLOW=0x8ff7ef;
 const DROWNED_LOOK:ZombieLook={
   skin:[0x4f9e8a,0x46907d,0x58ab96,0x3d7f6d,0x67b9a3],skinW:[10,4,3,1,1],blotch:0x3a7766,

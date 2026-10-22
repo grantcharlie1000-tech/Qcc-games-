@@ -851,11 +851,18 @@ describe('models',()=>{
   });
   test('chicken legs are cut out: a shank and toes, nothing on top',()=>{
     const hen=h.kind('chicken').model!,px=painted(hen),alpha=(i:number,j:number)=>px[(j*hen.textureWidth+i)*4+3];
-    const [tx,ty,tw,th]=faceRect([26,0],[3,5,3],'top');
-    for(let j=ty;j<ty+th;j++)for(let i=tx;i<tx+tw;i++)expect(alpha(i,j)).toBe(0);
-    const [fx,fy,fw,fh]=faceRect([26,0],[3,5,3],'front');
-    // The middle column is the shank, the bottom row the toes; the rest is clear.
-    for(let j=0;j<fh;j++)for(let i=0;i<fw;i++)expect(alpha(fx+i,fy+j)>0,`front ${i},${j}`).toBe(i===1||j===fh-1);
+    const face=(f:typeof FACES[number])=>{const [x,y,w,hh]=faceRect([26,0],[3,5,3],f),rows:string[]=[];
+      for(let j=0;j<hh;j++){let r='';for(let i=0;i<w;i++)r+=alpha(x+i,y+j)?'#':'.';rows.push(r);}return rows;};
+    expect(face('top')).toEqual(['...','...','...']);
+    // Front and back: the middle column is the shank; three toes show on the front's bottom row, one on the back's.
+    expect(face('front')).toEqual(['.#.','.#.','.#.','.#.','###']);
+    expect(face('back')).toEqual(['.#.','.#.','.#.','.#.','.#.']);
+    // Sides: the shank, and the front toe running forward from it.
+    const west=face('west'),east=face('east');
+    expect(west.slice(0,4)).toEqual(['.#.','.#.','.#.','.#.']);expect(east.slice(0,4)).toEqual(['.#.','.#.','.#.','.#.']);
+    expect([west[4],east[4]].sort()).toEqual(['##.','.##']);
+    // Underneath: the toes fan out from the shank.
+    expect(face('bottom').join('').split('').filter(c=>c==='#').length).toBe(5);
   });
   test('mooshroom mushrooms are crossed planes of a red mushroom sprite; the head one rides on the head',()=>{
     const model=h.kind('cow').model!,px=painted(model),m=h.spawn('cow',.5,60,.5,{data:{variant:'mooshroom'}});
@@ -864,7 +871,7 @@ describe('models',()=>{
     // The sprite: a red cap over a pale stem, transparent around it.
     const [x,y]=planes[0].uv;let red=0,clear=0;
     for(let j=y;j<y+16;j++)for(let i=x;i<x+16;i++){const o=(j*model.textureWidth+i)*4;if(!px[o+3])clear++;else if(px[o]>180&&px[o+1]<80)red++;}
-    expect(red).toBeGreaterThan(20);expect(clear).toBeGreaterThan(150);
+    expect(red).toBeGreaterThan(10);expect(clear).toBeGreaterThan(200);
     const pose=animate(model,m,{headYaw:.5,headPitch:.3});
     expect(pose['mooshroom.head_mushroom']).toMatchObject({x:pose['mooshroom.head'].x,y:pose['mooshroom.head'].y,visible:true});
     expect(partOf(model,'mooshroom.head_mushroom').pivot).toEqual(partOf(model,'mooshroom.head').pivot);

@@ -46,9 +46,9 @@ const MOOSHROOM:CowPalette={coat:[0xa8261b,0x921f16,0xb8342a,0x7e1a12],coatW:[6,
 const COW_FACE=['BBBWWBBB','BBWWWWBB','BBBWWBBB','BEKWWKEB','BBBWWBBB','BMMMMMMB','MNMMMMNM','MMMMMMMM'];
 /** Red mushroom sprite (16×16): R cap, r cap shade, W spots, w stem, s stem shade. */
 const MUSHROOM_SPRITE=[
-  '................','................','................','................','................','......RRRR......','.....RWRRRR.....',
-  '....RRRRRWRR....','....RWRRRRRR....','....rrrrrrrr....','.......ww.......','.......ws.......','.......ws.......','......wwss......',
-  '......wsss......','................'];
+  '................','................','................','................','................','................','................',
+  '................','................','......RRRR......','.....RWRRRR.....','.....RRRRWR.....','.....rrrrrr.....','.......ws.......',
+  '.......ws.......','......wwss......'];
 const MUSHROOM_PAL:Pal={R:0xe2312c,r:0xb3211c,W:0xf2ede4,w:0xe2d9c7,s:0xc4b79f};
 const MUSHROOM_SPRITE_AT:[number,number]=[0,32];
 function cowShader(p:CowPalette):Shader{
@@ -271,14 +271,14 @@ function chickenShader():Shader{
         if(isBottom(t))return p.greyDark;
         return t.y<8?vary(t.y<7.5?p.grey:p.white[2],n,.03):feathers(t);
       default:{// legs (3×5×3, cut out): a 1-px shank down the middle, three toes forward and one back on the bottom row
-        const front=isFront(t),back=isBack(t),side=!front&&!back&&!isTop(t)&&!isBottom(t);
         if(isTop(t))return -1;
-        if(isBottom(t))return t.i===1||t.j===0?p.legDark:-1;
-        const bottom=t.j===t.h-1;
-        if(front)return bottom||t.i===1?(bottom?p.legDark:p.leg):-1;
-        if(back)return t.i===1?(bottom?p.legDark:p.leg):-1;
-        if(side)return bottom||t.i===1?(bottom?p.legDark:p.leg):-1;
-        return -1;
+        const cx=t.part==='leg_r'?1.5:-1.5,cz=-.5,alongX=Math.abs(t.x-cx)<.5,alongZ=Math.abs(t.z-cz)<.5;
+        if(isBottom(t))return alongX||t.z<cz-.5?p.legDark:-1;
+        const toes=t.j===t.h-1,colour=toes?p.legDark:p.leg;
+        if(isFront(t))return toes||alongX?colour:-1;
+        if(isBack(t))return alongX?colour:-1;
+        // Sides: the shank, and the front toe running forward along the bottom row.
+        return alongZ||toes&&t.z<cz?colour:-1;
       }
     }
   };
