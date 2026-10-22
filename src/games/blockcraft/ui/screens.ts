@@ -6,14 +6,19 @@
 //    arrows, Enter/Space, Shift for quick move, Ctrl for a right click, 1-9 / F / Q on the focused slot);
 //  - the action-bar toast (z-index 25).
 // Slots redraw by diffing each frame (stack identity, drag preview), so nothing is rebuilt while the world runs.
+// Looks: the vanilla Java container GUI, drawn by screens.css from the pixel art in ui/screen-art.ts at a whole number
+// of screen pixels per GUI pixel where the game area allows (--bc-u); stack counts and text use the GUI pixel font.
 import './screens.css';
 import {iconUrl} from '../art/items';
 import type {ItemStack} from '../data/items';
 import type {Game,UIService} from '../engine/contracts';
 import {ScreenController,type ScreenView} from './screen-controller';
 import {esc,type ScreenBuild} from './screen-common';
-import {figureSvg} from './screen-inventory';
-import {durabilityBar,itemName,slotLabel,tooltipLines} from './screen-tooltip';
+import {GUI_COLOURS,figureSvg,guiArtProperties,knobOffset,pixelTextHtml,scrollForKnob} from './screen-art';
+import {CREATIVE_LAYOUT} from './screen-creative';
+import {ARROW_COLUMNS,FLAME_ROWS,furnaceGauges} from './screen-furnace';
+import {durabilityBar,itemName,slotLabel,tooltipColour,tooltipLines} from './screen-tooltip';
+import {digitsUrl,textWidth} from './hud-art';
 import {LONG_PRESS_MS,type PointerKind,type SlotHit} from './slots-input';
 import type {CreativeTabId} from './screen-catalog';
 
@@ -44,11 +49,20 @@ interface SlotEl{
   /** Index in the crafting grid for 'grid' slots, else -1. */
   cell:number;
 }
-const ICONS={
-  book:'<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h5l1 1 1-1h5v10H9l-1 1-1-1H2z" fill="#7a4a24"/><path d="M3 4h4v8H3zM9 4h4v8H9z" fill="#f2ead8"/><path d="M8 4v9" stroke="#5a3418"/></svg>',
-  quick:'<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 5h8V2l5 4.5L10 11V8H2z" fill="currentColor"/><path d="M1 12h7v2H1z" fill="currentColor"/></svg>',
-  close:'<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="2.4"/></svg>'
-};
+/** Pixel-art icon of a tool button (screen-art TOOL_ICON_GRIDS, drawn by screens.css). */
+const icon=(name:'book'|'quick'|'close')=>`<i class="bc-glyph" data-icon="${name}" aria-hidden="true"></i>`;
+/** Recipe book panel width in GUI pixels (vanilla's is 147), and the gap beside the inventory. */
+export const BOOK_WIDTH=147,BOOK_GAP=4;
+/** GUI size the layer fits when a screen has no fixed geometry (the advancements window). */
+const FLOW_GUI={width:252,height:210};
+/** Sets a stack count drawn in the pixel font (white with the vanilla shadow), bottom right of its slot. */
+export function setCount(el:HTMLElement,count:number){
+  const text=count>1?String(Math.floor(count)):'';
+  if(el.textContent===text)return;
+  el.textContent=text;
+  if(text){el.style.setProperty('--n',String(text.length));el.style.backgroundImage=`url("${digitsUrl(text,'count')}")`;}
+  else{el.style.removeProperty('--n');el.style.backgroundImage='';}
+}
 
 class DomScreens implements ScreenView{
   private c!:ScreenController;
@@ -82,13 +96,18 @@ class DomScreens implements ScreenView{
   private figureArmor:readonly (ItemStack|null)[]|null=null;
   private bookEntries:readonly unknown[]|null=null;private bookOpen=false;
   private lastCursor:ItemStack|null=null;private lastCursorCount=-1;
+  /** The creative picker, its scrollbar knob, and a knob drag in progress (pointer id). */
+  private catalog:HTMLElement|null=null;private knob:HTMLElement|null=null;private knobDrag:number|null=null;
+  /** Listeners that belong to the shown screen. */
+  private screenAbort:AbortController|null=null;
 
   constructor(private game:Game){
     const layer=document.createElement('div');layer.className='bc-screen';layer.hidden=true;
     layer.innerHTML=`<div class="bc-wrap"><aside class="bc-book" aria-label="Recipe book" hidden></aside>
-      <section class="bc-panel" role="dialog" aria-modal="true" tabindex="-1"><header class="bc-head"><h2 class="bc-title"></h2><div class="bc-tools"></div></header><div class="bc-body"></div></section></div>
+      <section class="bc-panel" role="dialog" aria-modal="true" tabindex="-1"><h2 class="bc-title"></h2><div class="bc-tools"></div><div class="bc-body"></div></section></div>
       <div class="bc-cursor" aria-hidden="true" hidden><img alt="" draggable="false"><span class="bc-n"></span><span class="bc-d" hidden><i></i></span></div>
       <div class="bc-tip" role="tooltip" hidden></div>`;
+    for(const [name,value] of Object.entries(guiArtProperties()))layer.style.setProperty(name,value);
     this.layer=layer;
     const q=<T extends Element>(s:string)=>layer.querySelector<T>(s)! as T;
     this.wrap=q('.bc-wrap');this.panel=q('.bc-panel');this.title=q('.bc-title');this.tools=q('.bc-tools');this.body=q('.bc-body');
@@ -122,6 +141,13 @@ class DomScreens implements ScreenView{
     },{signal});
     window.addEventListener('keydown',e=>this.keyDown(e),{signal});
     layer.addEventListener('scroll',()=>{if(this.tip.hidden===false&&!this.keyboard)this.hideTip();},{signal,capture:true});
+    // The creative scrollbar: drag the knob or press the track (mouse and touch); the wheel scrolls the picker from
+    // anywhere on the screen like vanilla.
+    layer.addEventListener('pointerdown',e=>this.knobDown(e),{signal});
+    window.addEventListener('pointermove',e=>{if(e.pointerId===this.knobDrag)this.knobTo(e.clientY);},{signal});
+    const knobEnd=(e:PointerEvent)=>{if(e.pointerId===this.knobDrag)this.knobDrag=null;};
+    window.addEventListener('pointerup',knobEnd,{signal});window.addEventListener('pointercancel',knobEnd,{signal});
+    layer.addEventListener('wheel',e=>this.wheel(e),{signal,passive:false});
   }
 
   // ---- ScreenView -------------------------------------------------------------------------------
@@ -132,14 +158,13 @@ class DomScreens implements ScreenView{
     const caret=search?[search.selectionStart,search.selectionEnd]:null;
     this.release();
     this.build=build;
-    this.panel.className=`bc-panel bc-panel-${build.kind}`;
-    this.panel.setAttribute('aria-label',build.title);
-    this.title.textContent=build.title;
+    this.layout(build);
     const touch=this.touchUI();
-    this.tools.innerHTML=(c.hasBook?`<button type="button" class="bc-tool" data-book-toggle aria-pressed="${c.book.open}" aria-label="Recipe book" title="Recipe book">${ICONS.book}</button>`:'')+
-      (c.screen!=='advancements'?`<button type="button" class="bc-tool bc-quick" data-quick aria-pressed="${c.pointer.quickMove}" aria-label="Quick move: taps move stacks between sections" title="Quick move">${ICONS.quick}</button>`:'')+
-      `<button type="button" class="bc-tool" data-close aria-label="Close (E)" title="Close (E)">${ICONS.close}</button>`;
-    this.body.innerHTML=build.html;
+    this.tools.innerHTML=(c.screen!=='advancements'?`<button type="button" class="bc-tool bc-quick" data-quick aria-pressed="${c.pointer.quickMove}" aria-label="Quick move: taps move stacks between sections" title="Quick move">${icon('quick')}</button>`:'')+
+      `<button type="button" class="bc-tool" data-close aria-label="Close (E)" title="Close (E)">${icon('close')}</button>`;
+    const book=c.hasBook&&build.book?`<button type="button" class="bc-tool bc-book-btn bc-at" data-book-toggle style="--x:${build.book.x};--y:${build.book.y}" `+
+      `aria-pressed="${c.book.open}" aria-label="Recipe book" title="Recipe book">${icon('book')}</button>`:'';
+    this.body.innerHTML=build.html+book;
     if(search){
       const fresh=this.body.querySelector('.bc-search-input');
       if(fresh){fresh.replaceWith(search);search.focus({preventScroll:true});if(caret)search.setSelectionRange(caret[0],caret[1]);}
@@ -159,6 +184,25 @@ class DomScreens implements ScreenView{
     }
     this.figureArmor=null;this.flame=this.arrow=-1;this.lastCursor=null;this.lastCursorCount=-1;
     this.draw(0);
+    this.updateKnob();
+  }
+  /** Panel geometry and title for a build: the GUI size the layer fits (--gw/--gh, plus the recipe book beside it as
+   *  --gb), the panel's own size (--pw/--ph) and where its pixel-font title goes. */
+  private layout(build:ScreenBuild){
+    const c=this.c,gui=build.gui,ls=this.layer.style;
+    this.panel.className=`bc-panel bc-panel-${build.kind}${gui?' bc-fixed':''}`;
+    this.panel.setAttribute('aria-label',build.title);
+    ls.setProperty('--gw',String(gui?.width??FLOW_GUI.width));
+    ls.setProperty('--gh',String(gui?gui.height+(gui.above??0)+(gui.below??0):FLOW_GUI.height));
+    ls.setProperty('--gb',String(c.book.open&&c.hasBook?BOOK_WIDTH+BOOK_GAP:0));
+    // The panel's own size, also read by the recipe book beside it.
+    if(gui){ls.setProperty('--pw',String(gui.width));ls.setProperty('--ph',String(gui.height));}
+    else{ls.removeProperty('--pw');ls.removeProperty('--ph');}
+    const at=build.titleAt??{x:8,y:6};
+    this.title.innerHTML=pixelTextHtml(build.title,GUI_COLOURS.title);
+    this.title.className=at==='hidden'?'bc-title bc-sr':'bc-title';
+    const x=at==='center'?Math.floor(((gui?.width??FLOW_GUI.width)-textWidth(build.title))/2):at==='hidden'?0:at.x;
+    this.title.style.setProperty('--x',String(x));this.title.style.setProperty('--y',String(at==='center'||at==='hidden'?6:at.y));
   }
   hide(){
     const hadFocus=this.layer.contains(document.activeElement);
@@ -193,9 +237,10 @@ class DomScreens implements ScreenView{
   private release(){
     if(this.unmount){const u=this.unmount;this.unmount=null;try{u();}catch{/* the mounted body is gone anyway */}}
     this.observer?.disconnect();this.observer=null;
+    this.screenAbort?.abort();this.screenAbort=null;
     clearTimeout(this.longTimer);clearTimeout(this.tipTimer);
-    this.touchId=null;this.mousePressed=false;
-    this.slots=[];
+    this.touchId=null;this.mousePressed=false;this.knobDrag=null;
+    this.slots=[];this.catalog=null;this.knob=null;
   }
   private touchUI(){
     return this.game.input.touch||(typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches)||this.performanceNow()-this.lastTouch<60000;
@@ -204,6 +249,11 @@ class DomScreens implements ScreenView{
   private bindSlots(){
     const menu=this.c.menu,grid=menu.indexes('grid');
     const catalog=this.body.querySelector<HTMLElement>('.bc-catalog');
+    this.catalog=catalog;this.knob=this.body.querySelector<HTMLElement>('[data-scroll] .bc-knob');
+    if(catalog){
+      this.screenAbort=new AbortController();
+      catalog.addEventListener('scroll',()=>this.updateKnob(),{signal:this.screenAbort.signal,passive:true});
+    }
     if(catalog&&typeof IntersectionObserver==='function'){
       this.observer=new IntersectionObserver(entries=>{
         for(const entry of entries){
@@ -241,7 +291,7 @@ class DomScreens implements ScreenView{
       el.btn.classList.toggle('is-drag',preview>=0);
       el.btn.classList.toggle('is-carried',carried);
       el.btn.classList.toggle('is-filled',!!shown);
-      el.n.textContent=shown&&shown.count>1?String(shown.count):'';
+      setCount(el.n,shown?.count??0);
       const bar=durabilityBar(shown);
       el.bar.hidden=!bar;
       if(bar){el.fill.style.width=`${(bar.width*100).toFixed(1)}%`;el.fill.style.background=bar.color;}
@@ -262,7 +312,7 @@ class DomScreens implements ScreenView{
         if(bar){this.cursorFill.style.width=`${(bar.width*100).toFixed(1)}%`;this.cursorFill.style.background=bar.color;}
       }
       this.lastCursor=stack;this.lastCursorCount=count;
-      this.cursorImg.src=iconUrl(stack.id);this.cursorN.textContent=count>1?String(count):'';
+      this.cursorImg.src=iconUrl(stack.id);setCount(this.cursorN,count);
     }
     el.hidden=false;
     let x=this.px,y=this.py;
@@ -286,7 +336,8 @@ class DomScreens implements ScreenView{
     this.tipSlot=index;this.tipX=this.px;this.tipY=this.py;
     if(s!==this.tipFor){
       this.tipFor=s;
-      tip.innerHTML=tooltipLines(s).map((line,k)=>`<div class="${k===0?'bc-tip-name':line.startsWith(' +')?'bc-tip-plus':line.startsWith(' ')?'bc-tip-stat':'bc-tip-info'}">${esc(line)}</div>`).join('');
+      // Vanilla tooltip text: the name in white, modifiers in blue or dark green, the rest grey, each with its shadow.
+      tip.innerHTML=tooltipLines(s).map((line,k)=>{const t=tooltipColour(line,k);return`<div class="bc-tip-line ${t.cls}">${pixelTextHtml(line,t.colour,true)}</div>`;}).join('');
     }
     tip.hidden=false;
     const l=this.layer.getBoundingClientRect();
@@ -301,15 +352,47 @@ class DomScreens implements ScreenView{
   private hideTip(){if(!this.tip.hidden)this.tip.hidden=true;this.tipFor=null;this.tipSlot=-1;}
   private drawProgress(){
     const p=this.build?.progress?.();if(!p)return;
-    if(p.flame!==this.flame){
-      this.flame=p.flame;const f=this.body.querySelector<HTMLElement>('.bc-flame i');
-      if(f)f.style.height=`${(p.flame*100).toFixed(1)}%`;
-      this.body.querySelector('.bc-flame')?.classList.toggle('is-lit',p.flame>0);
+    const g=furnaceGauges(p.flame,p.arrow);
+    if(g.flameRows!==this.flame){
+      this.flame=g.flameRows;const f=this.body.querySelector<HTMLElement>('.bc-flame i');
+      if(f)f.style.height=`${(g.flameRows/FLAME_ROWS*100).toFixed(2)}%`;
+      this.body.querySelector('.bc-flame')?.classList.toggle('is-lit',g.flameRows>0);
     }
-    if(p.arrow!==this.arrow){
-      this.arrow=p.arrow;const a=this.body.querySelector<HTMLElement>('.bc-progress i');
-      if(a)a.style.width=`${(p.arrow*100).toFixed(1)}%`;
+    if(g.arrowColumns!==this.arrow){
+      this.arrow=g.arrowColumns;const a=this.body.querySelector<HTMLElement>('.bc-progress i');
+      if(a)a.style.width=`${(g.arrowColumns/ARROW_COLUMNS*100).toFixed(2)}%`;
     }
+  }
+  /** Moves the creative scrollbar knob to the picker's scroll position (dimmed when everything fits). */
+  private updateKnob(){
+    const cat=this.catalog,knob=this.knob;if(!cat||!knob)return;
+    const travel=CREATIVE_LAYOUT.scroll.travel,scrollable=cat.scrollHeight>cat.clientHeight+1;
+    knob.classList.toggle('is-off',!scrollable);
+    knob.style.setProperty('--k',String(Math.round(knobOffset(cat.scrollTop,cat.scrollHeight,cat.clientHeight,travel))));
+  }
+  private knobDown(e:PointerEvent){
+    const track=(e.target as Element).closest?.<HTMLElement>('[data-scroll]');
+    if(!track||!this.open()||!this.catalog||e.button>0)return;
+    e.preventDefault();
+    this.knobDrag=e.pointerId;
+    try{track.setPointerCapture?.(e.pointerId);}catch{/* not capturable */}
+    this.knobTo(e.clientY);
+  }
+  /** Scrolls the picker so the knob's middle follows the pointer, a row at a time (the picker snaps to rows). */
+  private knobTo(clientY:number){
+    const cat=this.catalog,track=this.knob?.parentElement;if(!cat||!track)return;
+    const r=track.getBoundingClientRect(),gui=r.height/(CREATIVE_LAYOUT.scroll.travel+17);
+    const offset=(clientY-r.top)/gui-1-7.5;
+    cat.scrollTop=scrollForKnob(offset,cat.scrollHeight,cat.clientHeight,CREATIVE_LAYOUT.scroll.travel);
+    this.updateKnob();
+  }
+  /** The wheel scrolls the creative picker a row per notch wherever the pointer is over the screen. */
+  private wheel(e:WheelEvent){
+    const cat=this.catalog;
+    if(!cat||!this.open()||!e.deltaY||cat.contains(e.target as Node))return;
+    e.preventDefault();
+    const row=cat.querySelector<HTMLElement>('[data-slot]')?.offsetHeight||18;
+    cat.scrollBy({top:Math.sign(e.deltaY)*row});
   }
   private drawFigure(){
     const armor=this.game.inventory.armor;
@@ -324,14 +407,15 @@ class DomScreens implements ScreenView{
     if(!force&&this.bookOpen&&entries===this.bookEntries)return;
     this.bookEntries=entries;this.bookOpen=true;
     const list=entries.map((e,i)=>{
-      const name=itemName(e.result);
-      return`<button type="button" class="bc-recipe${e.craftable?' is-craftable':''}" data-recipe="${i}" aria-label="${esc(name)}${e.result.count>1?`, makes ${e.result.count}`:''}${e.craftable?'':', missing ingredients'}" title="${esc(name)}">`+
-        `<img alt="" draggable="false" src="${iconUrl(e.result.id)}"><span class="bc-n">${e.result.count>1?e.result.count:''}</span></button>`;
+      const name=itemName(e.result),n=e.result.count;
+      return`<button type="button" class="bc-recipe${e.craftable?' is-craftable':''}" data-recipe="${i}" aria-label="${esc(name)}${n>1?`, makes ${n}`:''}${e.craftable?'':', missing ingredients'}" title="${esc(name)}">`+
+        `<img alt="" draggable="false" src="${iconUrl(e.result.id)}"><span class="bc-n"${n>1?` style="--n:${String(n).length};background-image:url('${digitsUrl(String(n),'count')}')"`:''}>${n>1?n:''}</span></button>`;
     }).join('');
-    el.innerHTML=`<div class="bc-book-head"><h3>Recipe Book</h3><button type="button" class="bc-book-filter" data-book-filter aria-pressed="${c.book.craftableOnly}">Craftable only</button>`+
-      `<button type="button" class="bc-tool bc-book-close" data-book-toggle aria-label="Close recipe book">${ICONS.close}</button></div>`+
-      `<p class="bc-book-hint">Choose a recipe to fill the grid; Shift fills as many as you can.</p>`+
-      `<div class="bc-book-list" role="group" aria-label="Recipes">${list||'<p class="bc-empty">No recipes yet.</p>'}</div>`;
+    el.innerHTML=`<div class="bc-book-head"><h3 class="bc-book-title">${pixelTextHtml('Recipe Book',GUI_COLOURS.title)}</h3>`+
+      `<button type="button" class="bc-tool bc-book-close" data-book-toggle aria-label="Close recipe book">${icon('close')}</button></div>`+
+      `<button type="button" class="bc-wbtn bc-book-filter" data-book-filter aria-pressed="${c.book.craftableOnly}">${pixelTextHtml('Craftable only',GUI_COLOURS.white,true)}</button>`+
+      `<p class="bc-book-hint bc-sr" id="bc-book-hint">Choose a recipe to fill the grid; Shift fills as many as you can.</p>`+
+      `<div class="bc-book-list" role="group" aria-label="Recipes" aria-describedby="bc-book-hint">${list||`<p class="bc-empty">${pixelTextHtml('No recipes yet.',GUI_COLOURS.title)}</p>`}</div>`;
     el.hidden=false;
   }
 
@@ -348,7 +432,7 @@ class DomScreens implements ScreenView{
   private isControl(target:EventTarget|null):boolean{
     if(!(target instanceof Element))return false;
     if(target.closest('[data-slot]'))return false;
-    return !!target.closest('button,input,a,select,textarea,label,.bc-book,[data-mount]');
+    return !!target.closest('button,input,a,select,textarea,label,.bc-book,[data-mount],[data-scroll]');
   }
   private open(){return !!this.build&&!this.layer.hidden;}
   private mouseDown(e:MouseEvent){

@@ -3,6 +3,7 @@
 // form a large chest; in a longer row chests pair from the row's start, so every chest finds the
 // same partner. The left half (seen from the front) is the top three rows, as in vanilla.
 // A chest (either half) under a redstone-conducting block cannot open (vanilla ChestBlock.isChestBlockedAt); barrels can.
+// Laid out like vanilla's 3-row and 6-row container screens.
 import {blockDef,FACING_VECTOR,FULL_CUBE,OPAQUE,rotateCW,type Facing} from '../data/blocks';
 import type {BlockSource,ChestEntity,Game,Vec3} from '../engine/contracts';
 import {SlotMenu,arraySlot,playerSlots,screenRule,type MenuSlot} from './slots';
@@ -33,6 +34,12 @@ export function chestBlocked(world:BlockSource,at:Vec3):boolean{
   const id=world.get(at.x,at.y+1,at.z);
   return id>0&&OPAQUE[id]===1&&FULL_CUBE[id]===1&&!LID_FREE.has(blockDef(id).family);
 }
+/** Vanilla ContainerScreen geometry for `rows` rows of 9 (3: chest and barrel, 6: large chest): 114 + 18 px a row tall,
+ *  the container's frames from (7, 17), the player's main rows 13 px below them and "Inventory" at height − 94. */
+export function chestLayout(rows:number){
+  const height=114+rows*18,main=17+rows*18+13;
+  return{size:{width:176,height},title:{x:8,y:6},container:{x:7,y:17},main,label:height-94};
+}
 function containerSlots(entity:ChestEntity,offset:number):MenuSlot[]{
   if(entity.items.length<27)for(let i=entity.items.length;i<27;i++)entity.items.push(null);
   return Array.from({length:27},(_,i)=>arraySlot(entity.items,i,'container',`Chest slot ${offset+i+1}`));
@@ -52,8 +59,9 @@ export function buildChest(game:Game,menu:SlotMenu,at?:Vec3):ScreenBuild|null{
   const large=positions.length>1,title=barrel?'Barrel':large?'Large Chest':'Chest';
   const centre={x:at.x+.5,y:at.y+.5,z:at.z+.5};
   const checks=positions.map(p=>blockScreenValid(game,p,barrel?['barrel']:['chest']));
-  return{id:'chest',title,kind:large?'chest-large':'chest',
-    html:`${slotGrid(menu,menu.indexes('container'),9,'bc-container',title)}${playerInventoryHtml(menu)}`,
+  const L=chestLayout(large?6:3);
+  return{id:'chest',title,kind:large?'chest-large':'chest',gui:L.size,titleAt:L.title,
+    html:`${slotGrid(menu,menu.indexes('container'),9,'bc-container',title,L.container)}${playerInventoryHtml(menu,L.main,L.label)}`,
     valid:()=>checks.every(c=>c()),
     opened:()=>game.sounds.play('chest_open',centre),closed:()=>game.sounds.play('chest_close',centre)};
 }

@@ -139,8 +139,9 @@ test('smelts raw iron in a furnace and pays its experience when the output is ta
     // Before the smelting area is merged its block entities do not tick: finish the job as a furnace would.
     await engine(page,(g,a)=>{const p=a as Pos;Object.assign(g.blockEntities.get(p.x,p.y,p.z),
       {input:null,fuel:null,output:{id:'iron_ingot',count:2},burn:60,burnTotal:80,cook:4,xp:1.4});},at);
-    await expect(page.locator('.bc-progress i')).toHaveAttribute('style',/width: 40/);
-    await expect(page.locator('.bc-flame i')).toHaveAttribute('style',/height: 75/);
+    // Whole GUI pixels like vanilla: 9 of the arrow's 22 columns, 11 of the flame's 14 rows (ceil(0.75 × 13) + 1).
+    await expect(page.locator('.bc-progress i')).toHaveAttribute('style',/width: 40\.91%/);
+    await expect(page.locator('.bc-flame i')).toHaveAttribute('style',/height: 78\.57%/);
   }
   await expect(slot(page,'Furnace output')).toHaveAttribute('aria-label','Furnace output: Iron Ingot, 2');
   await slot(page,'Furnace output').click({modifiers:['Shift']});
