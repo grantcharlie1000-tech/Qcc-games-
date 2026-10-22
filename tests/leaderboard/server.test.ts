@@ -29,6 +29,16 @@ describe('shared leaderboard with real Postgres',()=>{
   expect(snake.entries.map((e:any)=>[e.name,e.score])).toEqual([['New name',100],['Other',5]]);
   const tower=await (await handle(new Request(endpoint+'?game=tower'))).json();expect(tower.entries).toHaveLength(1);expect(tower.entries[0].score).toBe(8);
  });
+ it('ranks one place per nickname when the same player scores from another device',async()=>{
+  const phone='a'.repeat(64),laptop='b'.repeat(64),other='c'.repeat(64);
+  await submit(phone,'Ada',100);await submit(other,'Bo',150);await submit(laptop,'ada',300);await submit(phone,'Ada',120);
+  const result=await (await handle(new Request(endpoint+'?game=snake'))).json();
+  expect(result.entries.map((e:any)=>[e.rank,e.name,e.score])).toEqual([[1,'ada',300],[2,'Bo',150]]);
+  const mine=await (await handle(new Request(endpoint+'?game=snake',{headers:{Authorization:`Bearer ${phone}`}}))).json();
+  expect([mine.player.rank,mine.player.score]).toEqual([1,300]);
+  expect(mine.entries.filter((e:any)=>e.playerId===mine.player.playerId)).toHaveLength(1);
+  expect(mine.entries[0]).not.toHaveProperty('mine');
+ });
  it.each([{game:'globle',score:12,name:'Ada'},{game:'snake',score:-1,name:'Ada'},{game:'snake',score:1.5,name:'Ada'},{game:'snake',score:99,name:'<script>'}])('rejects invalid public submissions %j',async data=>{
   expect((await submit('c'.repeat(64),data.name,data.score,data.game)).status).toBe(400);
   expect((await pool.query('SELECT * FROM arcade_scores')).rows).toHaveLength(0);

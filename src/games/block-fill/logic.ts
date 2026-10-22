@@ -1,6 +1,9 @@
 /** Grid cells are vertices; Manhattan-distance-one pairs are undirected edges. */
 export interface Level { size:number; cells:number[]; start:number; solution:number[] }
-export interface State { version:1; level:number; path:number[]; rewarded:boolean }
+/** Best clear of one garden: forward steps taken (retraced squares count again), then hints. */
+export interface Best { steps:number; hints:number }
+/** `best` is campaign progress keyed by garden index: it survives Restart and Reset path. */
+export interface State { version:1; level:number; path:number[]; rewarded:boolean; steps:number; hints:number; best:Record<string,Best> }
 export const LEVEL_COUNT=12;
 const plans = [[3,9],[4,14],[4,16],[5,20],[5,23],[5,25],[6,27],[6,29],[6,31],[6,33],[6,35],[6,36]] as const;
 export function adjacent(a:number,b:number,size:number):boolean { return Math.abs(a%size-b%size)+Math.abs(Math.floor(a/size)-Math.floor(b/size))===1; }
@@ -19,7 +22,30 @@ export function generateLevel(index:number):Level {
   route=route.slice(0,count);
   return {size,cells:[...route].sort((a,b)=>a-b),start:route[0]!,solution:route};
 }
-export function initialState():State { return {version:1,level:0,path:[generateLevel(0).start],rewarded:false}; }
+export function initialState(best:Record<string,Best>={}):State { return {version:1,level:0,path:[generateLevel(0).start],rewarded:false,steps:0,hints:0,best:{...best}}; }
+/** Base is 100 per open square; par is one step per square after START. Each hint costs a tenth of base from the bonus. */
+export function levelPoints(index:number,best:Best):number {
+  const cells=plans[index]![1], base=100*cells, par=cells-1;
+  return base+Math.max(0,Math.round(base*Math.min(1,par/Math.max(1,best.steps)))-best.hints*Math.round(base/10));
+}
+export const campaignScore=(best:Record<string,Best>):number=>Object.entries(best).reduce((sum,[index,b])=>sum+levelPoints(Number(index),b),0);
+/** A solved path updates its garden's record only when that scores higher. */
+export function recordWin(state:State):State {
+  if(!solved(generateLevel(state.level),state.path)) return state;
+  const next={steps:state.steps,hints:state.hints}, old=state.best[state.level];
+  return old&&levelPoints(state.level,old)>=levelPoints(state.level,next)?state:{...state,best:{...state.best,[state.level]:next}};
+}
+const count=(value:unknown,min:number):value is number=>Number.isInteger(value)&&(value as number)>=min&&(value as number)<=1_000_000;
+/** Old snapshots lack `best`; malformed entries are dropped. */
+export function readBest(value:unknown):Record<string,Best> {
+  const best:Record<string,Best>={};
+  if(!value||typeof value!=='object'||Array.isArray(value)) return best;
+  for(const [key,entry] of Object.entries(value)) {
+    const b=entry as Partial<Best>|null, index=Number(key);
+    if(/^\d+$/.test(key)&&index<LEVEL_COUNT&&b&&typeof b==='object'&&count(b.steps,plans[index]![1]-1)&&count(b.hints,0)) best[index]={steps:b.steps,hints:b.hints};
+  }
+  return best;
+}
 export function step(level:Level,path:number[],cell:number):number[] {
   if(!level.cells.includes(cell)||!adjacent(path.at(-1)!,cell,level.size)) return path;
   if(path.length>1&&cell===path.at(-2)) return path.slice(0,-1);
@@ -81,10 +107,12 @@ export function hint(level:Level,path:number[]):Hint {
 export function restoreState(data:unknown):State|null {
   if(!data||typeof data!=='object') return null;
   const s=data as Record<string,unknown>;
-  if(Object.keys(s).sort().join(',')!=='level,path,rewarded,version'||typeof s.rewarded!=='boolean'||s.version!==1||!Number.isInteger(s.level)||(s.level as number)<0||(s.level as number)>=LEVEL_COUNT) return null;
+  // steps, hints and best are optional so pre-campaign snapshots still restore.
+  if(!['level','path','rewarded','version'].every(k=>k in s)||Object.keys(s).some(k=>!['level','path','rewarded','version','steps','hints','best'].includes(k))||typeof s.rewarded!=='boolean'||s.version!==1||!Number.isInteger(s.level)||(s.level as number)<0||(s.level as number)>=LEVEL_COUNT) return null;
   const level=generateLevel(s.level as number);
   if(!validPath(level,s.path)||solved(level,s.path)&&!s.rewarded) return null;
-  return {version:1,level:s.level as number,path:[...s.path],rewarded:s.rewarded};
+  const path=[...s.path];
+  return recordWin({version:1,level:s.level as number,path,rewarded:s.rewarded,steps:count(s.steps,path.length-1)?s.steps:path.length-1,hints:count(s.hints,0)?s.hints:0,best:readBest(s.best)});
 }
 export interface Point {x:number;y:number}
 /** Samples at one eighth of a cell; orthogonal fast segments cannot skip a cell. */

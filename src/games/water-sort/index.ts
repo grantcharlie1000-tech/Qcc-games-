@@ -1,7 +1,7 @@
 import type { GameModule } from '../../core/types';
 import { LEVELS } from './levels';
 import { cloneBoard, pour, won } from './rules';
-import { hintFor, readSnapshot, Session } from './session';
+import { campaignScore, readSnapshot, Session } from './session';
 import { bandsFor, COLOURS, liquidArt, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
 import './style.css';
@@ -20,11 +20,11 @@ const module:GameModule={
     const difficulty=root.querySelector<HTMLSelectElement>('.ws-difficulty')!,levelSelect=root.querySelector<HTMLSelectElement>('.ws-level')!;
     const stream=root.querySelector<SVGSVGElement>('.ws-stream')!,streamPath=stream.querySelector('path')!;
     let focusAfterPour:number|null=null;
-    let selected:number|null=null,hint:ReturnType<typeof hintFor>|null=null;
+    let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
     let message='Tap a tube, then its destination.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
     let pointer:{id:number;x:number;y:number;from:number;target:HTMLElement}|null=null,suppressClick=false;
     const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard)});
+    const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard),best:{...session.state.best}});
     function tell(text:string){message=text;context.announce(text);}
     function clearPointer(suppress=false){
       const active=pointer;pointer=null;
@@ -69,7 +69,7 @@ const module:GameModule={
       root.querySelector<HTMLElement>('.ws-victory')!.hidden=!complete;
       const status=complete?`All colours home in ${state.history.length} pours.`:message;
       root.querySelector('.ws-message')!.textContent=status;
-      context.setLevel(`Level ${state.level+1} · ${level.difficulty}`);context.setScore(complete?Math.max(100,1000-state.history.length*10):0);context.setStatus(status);
+      context.setLevel(`Level ${state.level+1} · ${level.difficulty}`);context.setScore(campaignScore(state.best));context.setStatus(status);
       fit();if(save)context.save(snapshot());
     }
     function clearAnimation(){
@@ -151,14 +151,14 @@ const module:GameModule={
       }
       context.sound('tap');render();
     }
-    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Tap a tube, then its destination.');render(true);}
+    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Tap a tube, then its destination.');render(true);}
     root.addEventListener('click',event=>{
       if(suppressClick&&(event as MouseEvent).detail!==0){suppressClick=false;return;}
       const target=(event.target as Element).closest<HTMLElement>('button');if(!target||session.paused||session.pending)return;
       if(target.dataset.tube!==undefined)choose(Number(target.dataset.tube),(event as MouseEvent).detail===0);
       else if(target.dataset.action==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}
       else if(target.dataset.action==='hint'&&!won(session.state.tubes)){
-        selected=null;hint=hintFor(session.state);
+        selected=null;hint=session.hint();
         if(hint.kind==='pour')tell(`Hint: pour tube ${hint.from+1} into tube ${hint.to+1}. ${hint.remaining} pours from a solution.`);
         else if(hint.kind==='undo')tell(`Undo ${hint.steps} ${hint.steps===1?'pour':'pours'} to reach a winning route.`);
         render();

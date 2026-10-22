@@ -74,7 +74,7 @@ describe('Color Connect rules', () => {
  });
  it('validates snapshot paths, score provenance, levels and undo history', () => {
   const saved={version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[]};
-  expect(restoreSnapshot(saved)).toEqual(saved);
+  expect(restoreSnapshot(saved)).toEqual({...saved,assists:0,best:{}});
   for(const corrupt of [null,{}, {...saved,level:99},{...saved,paths:[[999]]},{...saved,completed:[99]},{...saved,moves:-1},{...saved,history:[[[999]]]},{...saved,completed:new Array(1)},{...saved,history:new Array(1)}]) expect(restoreSnapshot(corrupt)).toBeNull();
  });
 });

@@ -74,6 +74,10 @@ time origin, avoiding hidden elapsed time. Disposal cancels RAF, aborts all
 root/window listeners, and removes the game root. No own storage, audio engine,
 global keyboard listener, or external runtime request is used. All lifecycle,
 score, level, status, sound and save calls use the frozen GameModule contract.
+Score is a campaign sum over solved levels of a base 50 × colours × (witness pours / 3 + 2)
+plus an efficiency bonus of base × min(1, witness pours / pours), less a tenth of
+base per hint or undo (bonus floored at 0). The snapshot keeps each level's best
+{pours, assists}; replays only improve it, and it survives restart and level changes.
 
 ## Presentation and input — 19 October correction
 

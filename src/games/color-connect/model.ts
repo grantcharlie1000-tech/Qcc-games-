@@ -176,7 +176,35 @@ export function traverse(from: Point, to: Point, size: number): number[] {
   }
   return cells;
 }
-export type Snapshot = {version:1;level:number;paths:Paths;completed:number[];moves:number;history:Paths[]};
+/** Best clear of one puzzle: gestures, then assists (hints and undos). */
+export type Best = {moves:number;assists:number};
+/** `best` is campaign progress keyed by puzzle index: it survives restarts and puzzle switches. */
+export type Snapshot = {version:1;level:number;paths:Paths;completed:number[];moves:number;history:Paths[];assists:number;best:Record<string,Best>};
+/** Base grows with board area and pairs; par is one gesture per pair. Each assist costs a tenth of base from the bonus. */
+export function levelPoints(index: number, best: Best): number {
+  const level = LEVELS[index], par = level.pairs.length, base = 50 * level.size * level.size + 100 * par;
+  return base + Math.max(0, Math.round(base * Math.min(1, par / Math.max(1, best.moves))) - best.assists * Math.round(base / 10));
+}
+export const campaignScore = (best: Record<string, Best>): number => Object.entries(best).reduce((sum, [index, b]) => sum + levelPoints(Number(index), b), 0);
+/** A won board marks its puzzle complete and updates its record only when that scores higher. Mutates `state`. */
+export function recordWin(state: Snapshot): Snapshot {
+  if (!isWon(LEVELS[state.level], state.paths)) return state;
+  if (!state.completed.includes(state.level)) state.completed.push(state.level);
+  const next = { moves: state.moves, assists: state.assists }, old = state.best[state.level];
+  if (!old || levelPoints(state.level, next) > levelPoints(state.level, old)) state.best = { ...state.best, [state.level]: next };
+  return state;
+}
+const count = (value: unknown, max: number): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
+/** Old snapshots lack `best`; malformed entries are dropped. */
+export function readBest(value: unknown): Record<string, Best> {
+  const best: Record<string, Best> = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return best;
+  for (const [key, entry] of Object.entries(value)) {
+    const b = entry as Partial<Best> | null;
+    if (/^\d+$/.test(key) && LEVELS[Number(key)] && b && typeof b === 'object' && count(b.moves, 1000000) && b.moves! > 0 && count(b.assists, 1000000)) best[Number(key)] = { moves: b.moves!, assists: b.assists! };
+  }
+  return best;
+}
 export function restoreSnapshot(value: unknown): Snapshot | null {
   if (!value || typeof value !== 'object') return null;
   const data = value as Partial<Snapshot>;
@@ -184,5 +212,5 @@ export function restoreSnapshot(value: unknown): Snapshot | null {
   const level = LEVELS[data.level!];
   if (!validatePaths(level, data.paths) || !Array.isArray(data.completed) || data.completed.length > LEVELS.length || new Set(data.completed).size !== data.completed.length || !Array.from(data.completed).every(index => Number.isInteger(index) && index >= 0 && index < LEVELS.length)) return null;
   if (!Array.isArray(data.history) || data.history.length > 100 || !Array.from(data.history).every(paths => validatePaths(level, paths))) return null;
-  return {version:1,level:data.level!,paths:copyPaths(data.paths),completed:[...data.completed],moves:data.moves!,history:data.history.map(copyPaths)};
+  return recordWin({version:1,level:data.level!,paths:copyPaths(data.paths),completed:[...data.completed],moves:data.moves!,history:data.history.map(copyPaths),assists:count(data.assists, 1000000) ? data.assists : 0,best:readBest(data.best)});
 }

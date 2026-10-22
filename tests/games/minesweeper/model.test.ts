@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {create,reveal,flag,chord,neighbors,restore,LEVELS} from '../../../src/games/minesweeper/model';
+import {create,reveal,flag,chord,neighbors,restore,score,WIN,LEVELS} from '../../../src/games/minesweeper/model';
 import type {Board,Level} from '../../../src/games/minesweeper/model';
 // These catch missing/double mines, unsafe placement, wrapping flood edges,
 // flag-based false wins, an unsafe chord, and accepting corrupted saves.
@@ -90,4 +90,20 @@ it('rejects an impossible loss recorded after all safe cells were already open',
   b.cells.forEach((v,i)=>{if(v!==-1)b.revealed[i]=true;});
   const mine=b.cells.indexOf(-1);b.revealed[mine]=true;b.exploded=mine;b.status='lost';
   expect(restore(b)).toBeNull();
+});
+
+describe('score',()=>{
+  const at=(level:Level,ms:number)=>{const b=create(level,9);reveal(b,0);b.cells.forEach((v,i)=>{if(v!==-1)reveal(b,i);});b.elapsedMs=ms;expect(b.status).toBe('won');return score(b);};
+  it('scores progress for unfinished and lost fields, below every win',()=>{
+    const b=create('expert',9);expect(score(b)).toBe(0);reveal(b,0);const safe=b.revealed.filter(Boolean).length;expect(score(b)).toBe(safe);
+    reveal(b,b.cells.indexOf(-1));expect(b.status).toBe('lost');expect(score(b)).toBe(safe);
+    const most=LEVELS.expert.width*LEVELS.expert.height-LEVELS.expert.mines-1;expect(most).toBeLessThan(WIN.beginner.base);
+  });
+  it('ranks wins by level, then time, above the old maxima',()=>{
+    expect(at('beginner',30500)).toBe(1000+270*3);expect(at('beginner',29000)).toBeGreaterThan(at('beginner',31000));
+    expect(at('beginner',1e7)).toBe(1000);expect(at('intermediate',1e7)).toBe(3000);expect(at('expert',1e7)).toBe(6000);
+    expect(at('beginner',0)).toBeLessThan(at('intermediate',1e7));expect(at('intermediate',0)).toBeLessThan(at('expert',1e7));
+    expect(at('beginner',1e7)).toBeGreaterThan(910);expect(at('intermediate',1e7)).toBeGreaterThan(2960);expect(at('expert',1e7)).toBeGreaterThan(5790);
+    expect(at('expert',0)).toBe(11400);
+  });
 });
