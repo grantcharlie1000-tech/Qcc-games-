@@ -2,21 +2,25 @@
    above the bottom-right shell buttons. Screen body: inside the ui area's advancements panel (.bc-adv-body). */
 
 /* ---- Toasts ------------------------------------------------------------------------------------------------- */
-.bc-adv-toasts{position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));z-index:25;
-  width:min(300px,calc(100% - 16px));height:0;pointer-events:none;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-.bc-adv-toast{position:absolute;right:0;top:calc(var(--slot,0) * 78px);box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;height:72px;
-  padding:7px 12px 7px 10px;border-radius:4px;background:#202020;color:#fff;will-change:transform;
-  box-shadow:0 0 0 2px #000,inset 0 0 0 1px #5b5b5b,inset 0 2px 0 1px #3a3a3a,0 3px 0 2px rgba(0,0,0,.35)}
-.bc-adv-toast-icon{flex:none;width:32px;height:32px;image-rendering:pixelated}
-.bc-adv-toast-text{min-width:0;flex:1}
-.bc-adv-toast-text p{margin:0;overflow:hidden;text-shadow:1px 1px 0 #3f3f3f}
-.bc-adv-toast-head{font-size:12px;line-height:15px;font-weight:600;color:#ffff55;white-space:nowrap;text-overflow:ellipsis}
-.bc-adv-toast.is-challenge .bc-adv-toast-head{color:#ff88ff}
-.bc-adv-toast-title{font-size:14px;line-height:17px;font-weight:700;white-space:nowrap;text-overflow:ellipsis}
-.bc-adv-toast-desc{font-size:11px;line-height:13px;color:#c8c8c8;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
+/* The vanilla advancement toast in GUI pixels (--u, set by the toast layer from the HUD's GUI scale): a 160x32 dark frame,
+   the 16 px icon at (8, 8), the heading at (30, 7) and the title at (30, 18) in the GUI font, without a text shadow. Lines
+   are at most 125 GUI px (longer titles wrap; the toast layer sets each line's top). */
+.bc-adv-toasts{--u:2px;position:absolute;top:calc(64px + env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));z-index:25;
+  width:calc(160 * var(--u));height:0;pointer-events:none}
+.bc-adv-toast{position:absolute;right:0;top:calc(var(--slot,0) * 34 * var(--u));box-sizing:border-box;width:calc(160 * var(--u));height:calc(32 * var(--u));
+  border-radius:calc(2 * var(--u));background:#212121;will-change:transform;
+  box-shadow:inset 0 0 0 var(--u) #000,inset 0 0 0 calc(2 * var(--u)) #555,inset 0 0 0 calc(3 * var(--u)) #2c2c2c}
+.bc-adv-toast-icon{position:absolute;left:calc(8 * var(--u));top:calc(8 * var(--u));width:calc(16 * var(--u));height:calc(16 * var(--u));image-rendering:pixelated}
+.bc-adv-toast p{position:absolute;left:calc(30 * var(--u));margin:0;max-width:calc(125 * var(--u));overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  font:calc(8 * var(--u))/calc(9 * var(--u)) ui-monospace,"Courier New",monospace}
+.bc-adv-toast p.is-art{width:calc(var(--tw) * var(--u));height:calc(9 * var(--u));color:transparent!important;
+  background:no-repeat 0 0/100% 100%;image-rendering:pixelated}
 
 /* ---- Screen body ------------------------------------------------------------------------------------------- */
-.bc-adv{display:flex;flex-direction:column;gap:6px;height:100%;min-height:0;color:#3f3f3f;font-size:13px;line-height:1.25}
+/* Labels are pixel-font art (.bc-px, ui/screens.css) at the panel's GUI pixel; the tab row uses two thirds of it. */
+.bc-adv{--bc-adv-u:var(--bc-u,2px);display:flex;flex-direction:column;gap:6px;height:100%;min-height:0;color:#3f3f3f;font-size:13px;line-height:1.25}
+.bc-adv-tabs{--bc-u:max(1px,calc(var(--bc-adv-u) * 2 / 3))}
+.bc-adv .bc-px{text-shadow:none}
 .bc-adv-tabs{display:flex;flex-wrap:wrap;gap:4px}
 .bc-adv-tab{display:flex;align-items:center;gap:5px;min-height:30px;padding:0 9px 0 6px;border:0;border-radius:3px;background:#a2a2a2;color:#2b2b2b;
   font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:inset 1px 1px #d8d8d8,inset -1px -1px #555}

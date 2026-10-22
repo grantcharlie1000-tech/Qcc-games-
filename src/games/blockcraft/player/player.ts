@@ -5,9 +5,10 @@
 // ladders, creative flight and the Speed/Slowness effects, bed bounces and Bedrock's touch auto-jump. It tracks fall
 // distance (survival.land and the playerLanded event on landing, leaving out the landing tick like vanilla), keeps the liquid and ladder flags
 // current, plays footsteps (silent while sneaking), falls, splashes and swim strokes, kicks up sprint dust, charges food
-// exhaustion and sets the field-of-view scale. The camera position (eye()) is interpolated between physics steps.
+// exhaustion and sets the field-of-view scale. The camera position (eye()) is interpolated between physics steps. The
+// world border (±WORLD_BORDER blocks on x and z) stops the body like a wall, and teleports land inside it.
 import {LIQUID,blockDef} from '../data/blocks';
-import {CH,TPS} from '../engine/constants';
+import {CH,TPS,WORLD_BORDER} from '../engine/constants';
 import {boxCollides,collidesAt,moveBody,type MoveResult} from '../engine/physics';
 import type {Game,ParticleOptions,PlayerService,PlayerState,Vec3} from '../engine/contracts';
 import {
@@ -46,6 +47,8 @@ const BED_BOUNCE=.66;
 const AUTO_JUMP_REACH=.25;
 const isBed=(id:number)=>id>0&&blockDef(id).shape==='bed';
 const clampPitch=(v:number)=>Math.max(-1.55,Math.min(1.55,v));
+/** Farthest the body's centre goes on x and z: its box stays inside the world border. */
+const EDGE=WORLD_BORDER-HALF_WIDTH;
 
 export function createPlayerState(x=.5,y=CH,z=.5):PlayerState{
   return{x,y,z,vx:0,vy:0,vz:0,yaw:0,pitch:-.25,onGround:false,inWater:false,inLava:false,headInWater:false,onLadder:false,
@@ -289,6 +292,9 @@ export function createPlayer(game:Game):PlayerService{
     }
     const x0=p.x,y0=p.y,z0=p.z,vy0=p.vy;splashVx=svx;splashVy=p.vy;splashVz=svz;
     moveBody(w,p,HALF_WIDTH,h,STEP,move,STEP_HEIGHT);
+    // The world border stops the body like a wall.
+    if(Math.abs(p.x)>EDGE){p.x=Math.sign(p.x)*EDGE;move.hitX=true;}
+    if(Math.abs(p.z)>EDGE){p.z=Math.sign(p.z)*EDGE;move.hitZ=true;}
     // Landing on a bed bounces (BedBlock.updateEntityAfterFallOn); sneaking suppresses it.
     if(move.hitY&&vy0<0&&p.onGround&&!p.sneaking&&isBed(supportBlock(w,p.x,p.y,p.z,HALF_WIDTH,.2)))p.vy=-vy0*BED_BOUNCE;
     // Holding back at an edge is not a collision: the velocity stays.
@@ -344,6 +350,7 @@ export function createPlayer(game:Game):PlayerService{
     },
     look(){const c=Math.cos(p.pitch);return{x:-Math.sin(p.yaw)*c,y:Math.sin(p.pitch),z:-Math.cos(p.yaw)*c};},
     teleport(x,y,z){
+      x=Math.max(-EDGE,Math.min(EDGE,x));z=Math.max(-EDGE,Math.min(EDGE,z));
       p.x=x;p.y=y;p.z=z;p.vx=p.vy=p.vz=0;p.fallDistance=fallAtTick=0;
       p.onGround=boxCollides(game.world,x-HALF_WIDTH,y-.02,z-HALF_WIDTH,x+HALF_WIDTH,y,z+HALF_WIDTH);
       tickStep=0;boostX=boostZ=0;collidedH=collidedHard=false;moveDist=0;nextStep=1;

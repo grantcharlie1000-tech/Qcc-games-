@@ -8,7 +8,7 @@
 //    name in the pixel font, compass and clock readouts (large dials beside the hotbar while held, and animated
 //    compass and clock icons in the slots like the vanilla item textures), the status effect icons top-right, and
 //    the F3 debug overlay. F1 (ROOT_FLAGS.hudHidden) hides it all.
-//  - Menus (z-index 30, ui/menus.ts): start, game menu, death and lost-graphics screens.
+//  - Menus (z-index 30, ui/menus.ts): start, game menu, death and lost-graphics screens, the new-world confirmation.
 // The layout publishes CSS variables on game.root: --bc-gui (GUI scale), --bc-hud-bottom (hotbar lift, clear of the
 // shell's corner buttons), --bc-hud-bars (top of the bars as drawn), --bc-hud-top (top of the whole stack) and
 // --bc-hud-actionbar (the ui's action-bar toast, placed by hud.css). Each is in CSS px above the safe-area inset.

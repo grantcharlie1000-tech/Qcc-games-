@@ -86,7 +86,9 @@ describe('hostile spawning',()=>{
     h.tick(1);expect(far.removed).toBe(true);
     h.tick(600);expect(mid.removed).toBe(false);
     h.tick(6000);
-    expect(mid.removed).toBe(true);expect(near.removed).toBe(false);expect(animal.removed).toBe(false);
+    expect(mid.removed).toBe(true);expect(near.removed).toBe(false);
+    // The cow is never despawned: its chunk is not loaded, so it waits there (entities-store.test.ts).
+    expect((h.game.entities as unknown as {debug:{stored:number}}).debug.stored).toBe(1);expect(h.game.entities.all()).not.toContain(animal);
   });
 });
 

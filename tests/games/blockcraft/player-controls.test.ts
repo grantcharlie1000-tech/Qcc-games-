@@ -142,6 +142,8 @@ describe('touch',()=>{
     g.begin(1,0,0,0,'mouse',1);expect(g.end(1,50,false).tap).toBe('pick');
     g.begin(1,0,0,0,'mouse',0);expect(g.update(HOLD_MS.mouse)).toBe('attack');expect(g.end(1,400,true)).toEqual({tap:null,release:'attack'});
     g.begin(4,0,0,0,'touch',0);expect(g.end(4,50,true)).toEqual({tap:null,release:null});
+    // No frame turned a still click into a hold (slow frames): the release still acts once.
+    g.begin(5,0,0,0,'mouse',2);expect(g.end(5,HOLD_MS.mouse+300,false)).toEqual({tap:'use',release:null});
   });
 });
 

@@ -1,5 +1,6 @@
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
+import {countLockErrors,lockless,look,useLockFallback} from './helpers/browser';
 
 // Player controls in a real browser: keyboard (movement, Ctrl sprint, jump, double-tap flight, hotbar, F1/F3, text
 // fields), mouse (pointer lock look and buttons, drag-to-look fallback), touch (stick, look drag, buttons, layout)
@@ -24,19 +25,22 @@ const watchJump=(page:Page,ms=2500)=>page.evaluate(async ms=>{
   return rise>.3||vy>2;
 },ms);
 
-test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields',async({page})=>{
+test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields',async({page,browserName})=>{
   test.setTimeout(150000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:1280,height:720});
+  const locks=!lockless(browserName);await countLockErrors(page);
   await boot(page,'creative');
   const root=page.locator('.blockcraft');
   await page.getByRole('button',{name:'Play',exact:true}).click();
-  await expect(root).toHaveAttribute('data-phase','playing');await expect(root).toHaveAttribute('data-locked','true');
+  await expect(root).toHaveAttribute('data-phase','playing');
+  // Headless WebKit never grants pointer lock: the mouse steps run on the drag-to-look and hold fallback there.
+  if(locks)await expect(root).toHaveAttribute('data-locked','true');else await useLockFallback(page,640,360);
   await expect(root).toHaveAttribute('data-hud-hidden','');await expect(root).toHaveAttribute('data-debug','');
 
   // Mouse look turns the player; buttons map to attack, use and pick while held.
   const yaw=await num(page,'yaw');
-  for(let i=1;i<=4;i++)await page.mouse.move(640+i*40,360);
+  await look(page,locks,{x:640,y:360},160,0,4);
   await expect.poll(async()=>Math.abs(await num(page,'yaw')-yaw)).toBeGreaterThan(.1);
   expect(await num(page,'yaw')).toBeLessThan(yaw);// moving right turns right (yaw decreases)
   for(const [button,action] of [['left','attack'],['right','use'],['middle','pick']] as const){
@@ -47,7 +51,11 @@ test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields
   // Space jumps; a quick double tap starts creative flight, then holding Space rises above the trees.
   await page.keyboard.down('Space');expect(await watchJump(page)).toBe(true);await page.keyboard.up('Space');
   for(let attempt=0;attempt<4&&!await state(page,'flying');attempt++){
-    await page.keyboard.press('Space');await page.waitForTimeout(220);await page.keyboard.press('Space');await page.waitForTimeout(800);
+    // The second tap comes after the take-off (flight on the ground ends at once, as in vanilla), however slow the frames
+    // are: two taps read in the same frame would both land before the jump.
+    await page.keyboard.press('Space');
+    await page.waitForFunction(()=>!(window as unknown as {blockcraft:Engine}).blockcraft.player.state.onGround,undefined,{timeout:3000}).catch(()=>{});
+    await page.keyboard.press('Space');await page.waitForTimeout(800);
   }
   expect(await state(page,'flying')).toBe(true);
   const flyY=await state(page,'y') as number;
@@ -104,7 +112,8 @@ test('mouse drag-to-look when pointer lock is unavailable',async({page})=>{
 
 test.describe('touch',()=>{
   test.use({hasTouch:true,isMobile:true,viewport:{width:390,height:844}});
-  test('stick, look drag, jump, sneak toggle, hold ring, inventory and layout',async({page})=>{
+  test('stick, look drag, jump, sneak toggle, hold ring, inventory and layout',async({page,browserName})=>{
+    test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
     test.setTimeout(150000);
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
     await boot(page);

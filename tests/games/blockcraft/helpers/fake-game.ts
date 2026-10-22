@@ -83,7 +83,7 @@ export function createFakeGame(options:{seed?:number;random?:()=>number;mode?:'s
     sounds:{play(name,at){played.push({name,at});},played},
     weather:{state:'clear',intensity:0,thunder:0,flash:0,precipitationAt:()=>null,isRainingOn:()=>false,set:noop} as WeatherService,
     advancements:{list:()=>[],has:()=>false,grant:noop,mountScreen:()=>noop} as AdvancementsService,
-    random,play:noop,respawn:noop,screenChanged:noop,
+    random,play:noop,respawn:noop,newWorld:noop,screenChanged:noop,
     setMode(mode){game.settings.mode=mode;events.emit('modeChanged',{mode});},setViewDistance(v){game.settings.view=v;},
     updateSettings(patch){Object.assign(game.settings,sanitizeSettings(patch));events.emit('settingsChanged',{settings:game.settings});},
     skipTime(dayTime){const from=game.time.dayTime;game.time.dayTime=dayTime%DAY_TICKS;events.emit('timeSkipped',{from,to:game.time.dayTime});},

@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import {ATLAS_COLUMNS,ATLAS_ROWS,LIQUID,TILE_INDEX,isLava,isWater} from '../data/blocks';
 import {biomeDef} from '../data/biomes';
 import {CS,SEA_LEVEL,chunkKey,quadIndices,MAX_PART_QUADS,ROOT_FLAGS} from '../engine/constants';
-import {paintAtlasTexture} from '../art/atlas';
+import {ATLAS_MIP_LEVELS,paintAtlasMipTexture,paintAtlasTexture} from '../art/atlas';
 import {liquidHeight} from '../engine/physics';
 import type {ChunkMesh,Game,MeshPart,RenderService,SharedUniforms,Vec3,ParticleKind,ParticleOptions} from '../engine/contracts';
 import {LAVA_FOG,LIGHT_GLSL,celestialAngle,cloudColor,fogColor,fogRange,hexToRgb,lightFactor,lightmap,moonPhase,nightVisionScale,skyColor,
@@ -83,8 +83,14 @@ void main(){
     float a=sin(vWorld.x*2.3+time*1.9)+sin(vWorld.y*2.9-time*1.6)+sin((vWorld.x+vWorld.y)*1.7+time*1.2);
     t+=vec2(a,-a)*.008;shine=1.+a*.025;
   }
-  vec2 f=clamp(fract(t),.001,.999);
-  vec4 tex=texture(atlas,vec2((vTile.x+f.x)/${ATLAS_COLUMNS}.,1.-(vTile.y+1.-f.y)/${ATLAS_ROWS}.));
+  vec2 f=clamp(fract(t),.001,.999),uv=vec2((vTile.x+f.x)/${ATLAS_COLUMNS}.,1.-(vTile.y+1.-f.y)/${ATLAS_ROWS}.);
+  // Mip level from the unwrapped tile coordinate (16 texels per tile, at most ${ATLAS_MIP_LEVELS} levels like vanilla), so a
+  // greedy quad keeps one level across its tile wraps. Cutouts keep the sharp level's alpha (vanilla does not mipmap
+  // plants), so distant grass and flowers never dissolve; their colour still fades.
+  vec2 gx=dFdx(t),gy=dFdy(t);
+  float lod=clamp(.5*log2(max(dot(gx,gx),dot(gy,gy))*256.),0.,${ATLAS_MIP_LEVELS}.);
+  vec4 tex=textureLod(atlas,uv,lod);
+  if(alphaTest>=.5)tex.a=textureLod(atlas,uv,0.).a;
   if(tex.a<alphaTest)discard;
   vec3 c=tex.rgb*vColor*shine;
   colour=vec4(mix(c,fogColor,bcFog(bcFogDistance(vRel,fogShape),fogNear,fogFar)),tex.a);
@@ -141,9 +147,10 @@ export function createRenderer(game:Game):RenderService{
   renderer.setPixelRatio(scale);
   const scene=new THREE.Scene();
   const camera=new THREE.PerspectiveCamera(70,1,.05,512);camera.rotation.order='YXZ';scene.add(camera);
-  const atlas=paintAtlasTexture();
+  // Terrain samples a mipmapped copy; the hand, overlays, particles and block entities keep the sharp atlas.
+  const atlas=paintAtlasTexture(),terrainAtlas=paintAtlasMipTexture();
   const uniforms=sharedUniforms();
-  const materials={opaque:voxelMaterial(atlas,'opaque',uniforms),cutout:voxelMaterial(atlas,'cutout',uniforms),translucent:voxelMaterial(atlas,'translucent',uniforms)};
+  const materials={opaque:voxelMaterial(terrainAtlas,'opaque',uniforms),cutout:voxelMaterial(terrainAtlas,'cutout',uniforms),translucent:voxelMaterial(terrainAtlas,'translucent',uniforms)};
   const sharedIndex=new THREE.BufferAttribute(quadIndices(MAX_PART_QUADS),1);
   const chunks=new Map<number,ChunkRender>();
   const chunkGroup=new THREE.Group();chunkGroup.matrixAutoUpdate=false;scene.add(chunkGroup);
@@ -351,7 +358,7 @@ export function createRenderer(game:Game):RenderService{
       for(const off of unsubscribe.splice(0))off();
       resize.disconnect();for(const r of chunks.values())release(r);chunks.clear();
       sky.dispose();particles.dispose();hand.dispose();blockOverlay.dispose();screenOverlay.dispose();
-      for(const m of Object.values(materials))m.dispose();atlas.dispose();
+      for(const m of Object.values(materials))m.dispose();atlas.dispose();terrainAtlas.dispose();
       renderer.dispose();renderer.forceContextLoss();scene.clear();
     }
   };

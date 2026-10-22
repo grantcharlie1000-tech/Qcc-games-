@@ -181,7 +181,7 @@ unless they would compromise performance or correctness. Unit tests can build se
   - **Water:** squid in water columns of oceans and rivers (`spawn.light 'water'`). Cap 8.
   - Peaceful removes hostiles.
   - Hostiles despawn beyond 128 blocks, or randomly beyond 32.
-- **Must:** entities in unloaded chunks are frozen and saved with the snapshot (cap 200 persistent entities; hostiles are not persisted).
+- **Must:** entities in unloaded chunks wait with their chunk: saved kinds (not hostiles or despawning kinds) leave the simulation in their save form and come back with the chunk (vanilla entity chunks), the rest are frozen. Saved with the snapshot: up to 200 loaded entities, and up to 2000 more (loaded ones past the first 200 and waiting ones), each group the player's own first, then the nearest to the player or the world spawn; hostiles are not persisted.
 - **Must:** item entities and xp orbs:
   - Items: small spinning cubes or sprites, merge nearby equal stacks, pick up after the delay with a magnet pull, despawn after 5 minutes.
   - Xp orbs: green glowing sprites attracted to the player.
@@ -298,6 +298,8 @@ unless they would compromise performance or correctness. Unit tests can build se
   - automatic step-up of 0.6 blocks (slabs, snow layers)
   - swimming with buoyancy; flowing water pushes the player; sprint in water = swimming pose (`state.swimming`, 0.6 high)
   - ladder climbing (forward or jump up, sneak holds position)
+  - a world border at ±256,000 blocks on x and z (`WORLD_BORDER`) stops the player like a wall; teleports and restored
+    positions land inside it, so every loaded chunk keeps a chunk key of its own (keys cover ±262,144 blocks)
   - lava slowness
   - creative flight (double-tap Space; Space up, sneak down; sprint-fly)
   - landing in water negates fall damage
@@ -573,6 +575,7 @@ unless they would compromise performance or correctness. Unit tests can build se
 - **Must:**
   - `mountScreen`: the Advancements screen body (tree with parents, locked/unlocked, progress, plus statistics) opened by L or the pause menu.
   - Toasts in the top-right zone ("Advancement Made!", icon, title) with the `toast` sound; they never cover the shell toolbar.
+    A title wider than 125 GUI px wraps like vanilla: the heading shows alone first, then cross-fades to the title lines.
   - Statistics: blocks mined/placed, mobs killed, deaths, distance walked, days survived, items crafted.
   - Persistence via `serialize`/`restore`.
   - Hook only via `game.events` (blockBroken, blockPlaced, itemPickedUp, itemCrafted, itemConsumed, entityDied, animalBred, entityTamed,

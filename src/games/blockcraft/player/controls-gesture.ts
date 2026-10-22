@@ -46,7 +46,10 @@ export class LookGesture{
     if(this.mode==='idle'||id!==this.id)return{tap:null,release:null};
     const wasPending=this.mode==='pending',release=this.holding;
     this.mode='idle';this.id=-1;this.holding=null;
-    const tap=!cancel&&wasPending&&now-this.start<HOLD_MS[this.kind]?(this.kind==='touch'?'use':MOUSE_ACTIONS[this.button]??'attack'):null;
+    // A mouse button's tap and hold are the same action, so a still click always acts, even when no frame ran during it
+    // to turn it into a hold (slow frames). A touch held that long meant mining, not a tap to use.
+    const quick=this.kind==='mouse'||now-this.start<HOLD_MS[this.kind];
+    const tap=!cancel&&wasPending&&quick?(this.kind==='touch'?'use':MOUSE_ACTIONS[this.button]??'attack'):null;
     return{tap,release};
   }
   reset(){this.mode='idle';this.id=-1;this.holding=null;}

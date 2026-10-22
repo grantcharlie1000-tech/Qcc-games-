@@ -1,6 +1,7 @@
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
 import {blockId} from '../../../src/games/blockcraft/data/blocks';
+import {evidencePath} from './helpers/browser';
 
 // Entity framework in the real engine: 60 entities of every render mode (box models with animation, sprite and block
 // items, xp orbs, block-rendered entities) add at most 3 draw calls, and the CPU time of entity rendering stays small.
@@ -106,6 +107,6 @@ test('60 entities of every render mode add at most 3 draw calls',async({page})=>
   }));
   console.log('entity render cpu ms',cpu.toFixed(3));
   expect(cpu).toBeLessThan(4);
-  await page.screenshot({path:'tests/games/blockcraft/evidence/entities.png'});
+  await page.screenshot({path:evidencePath('entities.png')});
   expect(errors).toEqual([]);
 });

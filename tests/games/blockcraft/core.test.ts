@@ -2,7 +2,7 @@ import {describe,expect,test} from 'vitest';
 import {BLOCKS,BLOCK_COUNT,TILE_NAMES,blockId,blockDef,B,OPAQUE,familyStates,stateFor} from '../../../src/games/blockcraft/data/blocks';
 import {ITEMS,ITEM_SPRITES,parseStack,itemForBlock,requireItem} from '../../../src/games/blockcraft/data/items';
 import {BIOMES} from '../../../src/games/blockcraft/data/biomes';
-import {CS,CH,CHUNK_VOLUME,LAYER,PAD_VOLUME,voxelIndex,chunkKey,keyX,keyZ} from '../../../src/games/blockcraft/engine/constants';
+import {CS,CH,CHUNK_LIMIT,CHUNK_VOLUME,LAYER,PAD_VOLUME,voxelIndex,chunkKey,keyX,keyZ} from '../../../src/games/blockcraft/engine/constants';
 import {VoxelWorld,MAX_EDITS} from '../../../src/games/blockcraft/world/world';
 import {moveBody,raycast,bodyCollides,rayBox} from '../../../src/games/blockcraft/engine/physics';
 import {EventBus} from '../../../src/games/blockcraft/engine/events';
@@ -41,7 +41,11 @@ describe('registries',()=>{
 });
 
 describe('world',()=>{
-  test('chunk keys round-trip negative coordinates',()=>{for(const [x,z] of [[0,0],[-1,5],[300,-300],[-32000,32000]])expect([keyX(chunkKey(x,z)),keyZ(chunkKey(x,z))]).toEqual([x,z]);});
+  test('chunk keys round-trip negative coordinates and stay small integers',()=>{
+    for(const [x,z] of [[0,0],[-1,5],[300,-300],[-16000,16000],[-16384,16383]]){
+      const k=chunkKey(x,z);expect([keyX(k),keyZ(k)]).toEqual([x,z]);expect(k).toBeGreaterThanOrEqual(0);expect(k).toBeLessThan(2**30);
+    }
+  });
   test('edits persist across unload, emit events and maintain the heightmap',()=>{
     const events=new EventBus<GameEvents>(),seen:number[]=[];events.on('blockChanged',e=>seen.push(e.to));
     const world=new VoxelWorld(events);world.insert(0,0,chunk(b=>b.fill(B.stone,0,10*LAYER)));
@@ -57,6 +61,36 @@ describe('world',()=>{
     expect(world.set(0,CH,0,1)).toBe(false);expect(world.set(0,5,0,999)).toBe(false);expect(world.set(500,5,0,0)).toBe(false);expect(world.set(.5,5,0,0)).toBe(false);
     for(const bad of [null,'x',[0,0,1,CHUNK_VOLUME,1],[0,0,1,5,BLOCK_COUNT],[0,0,2,1,1],[.5,0,0]])expect(world.restoreEdits(bad)).toBe(false);
     expect(MAX_EDITS).toBeGreaterThan(1000);
+  });
+  test('edits save as one compact segment per chunk, re-encoded only when that chunk changes',()=>{
+    const world=flatWorld();
+    for(let x=0;x<16;x++)for(let z=0;z<16;z++)world.set(x,12,z,B.glass);
+    world.set(-20,3,-20,0);world.set(-20,4,-20,B.glass);
+    const first=world.serializeEdits();expect(first).toHaveLength(2);
+    expect(first.every(s=>typeof s==='string')).toBe(true);
+    // 4 bytes of chunk coordinates, then 3 per edit, in base64.
+    expect(first.reduce((n,s)=>n+s.length,0)).toBe(Math.ceil((4+256*3)/3)*4+Math.ceil((4+2*3)/3)*4);
+    const again=world.serializeEdits();expect(again[0]).toBe(first[0]);expect(again[1]).toBe(first[1]);
+    world.set(-20,5,-20,B.glass);
+    const changed=world.serializeEdits(),i=changed.findIndex(s=>!first.includes(s));expect(i).toBeGreaterThanOrEqual(0);
+    expect(changed.filter(s=>first.includes(s))).toHaveLength(1);
+    const copy=new VoxelWorld();expect(copy.restoreEdits(JSON.parse(JSON.stringify(changed)))).toBe(true);expect(copy.editCount).toBe(259);
+    copy.insert(-2,-2,chunk(b=>b.fill(B.stone,0,10*LAYER)));expect(copy.get(-20,5,-20)).toBe(B.glass);expect(copy.get(-20,3,-20)).toBe(0);
+    // Saves from before (a flat list of cx, cz, count, then index/id pairs) still load.
+    const legacy=new VoxelWorld();expect(legacy.restoreEdits([0,0,2,5,B.glass,6,B.glass,-1,3,1,7,0])).toBe(true);expect(legacy.editCount).toBe(3);
+    expect(legacy.serializeEdits()).toHaveLength(2);
+    // Malformed segments (bad base64, a ragged tail, out-of-range index or id, a repeated chunk, mixed lists) are refused.
+    const seg=(bytes:number[])=>btoa(String.fromCharCode(...bytes));
+    for(const bad of [['@@'],[seg([0,0,0,0,1])],[seg([0,0,0,0,0,0x80,1])],[seg([0,0,0,0,0,0,BLOCK_COUNT])],[seg([0,0x40,0,0])],
+      [first[0],first[0]],[first[0],5]])expect(new VoxelWorld().restoreEdits(bad)).toBe(false);
+    expect(new VoxelWorld().restoreEdits([seg([0,0,0,0,0,0,1])])).toBe(true);
+    // Every chunk a key can name loads back: cx=-CHUNK_LIMIT is in range, cx=CHUNK_LIMIT (above) is not.
+    expect(new VoxelWorld().restoreEdits([seg([0,0xc0,0xff,0x3f,0,0,1])])).toBe(true);
+    const edge=new VoxelWorld();edge.insert(-CHUNK_LIMIT,CHUNK_LIMIT-1,chunk(b=>b.fill(B.stone,0,10*LAYER)));
+    expect(edge.set(-CHUNK_LIMIT*16,3,CHUNK_LIMIT*16-1,0)).toBe(true);
+    expect(new VoxelWorld().restoreEdits(JSON.parse(JSON.stringify(edge.serializeEdits())))).toBe(true);
+    expect(new VoxelWorld().restoreEdits([0,0,0,-CHUNK_LIMIT,CHUNK_LIMIT-1,0])).toBe(true);
+    expect(new VoxelWorld().restoreEdits([CHUNK_LIMIT,0,0])).toBe(false);
   });
   test('light falls back to sky above the heightmap until meshed',()=>{const w=flatWorld(10);expect(w.lightAt(0,12,0)>>4).toBe(15);expect(w.lightAt(0,5,0)).toBe(0);});
 });
@@ -102,5 +136,17 @@ describe('fake game helper',()=>{
     expect(game.world.get(0,59,0)).toBe(B.stone);expect(game.world.get(0,60,0)).toBe(0);
     game.sounds.play('click');expect(game.sounds.played[0].name).toBe('click');
     const before=game.time.dayTime;game.runTicks(20);expect(game.time.dayTime).toBe(before+20);
+  });
+});
+
+describe('shell instance without WebGL 2',()=>{
+  test('hands back the save it was restored with, so autosaves never replace the world with null',async()=>{
+    const {fallbackInstance}=await import('../../../src/games/blockcraft/engine/game');
+    let removed=0;
+    const fresh=fallbackInstance(()=>{removed++;});expect(fresh.serialize()).toBeNull();
+    const instance=fallbackInstance(()=>{removed++;}),world={version:2,seed:5,edits:[0,0,1,100,1],systems:{}};
+    instance.restore(world);instance.pause();instance.resume();instance.restart();
+    expect(instance.serialize()).toBe(world);
+    instance.dispose();expect(removed).toBe(1);
   });
 });

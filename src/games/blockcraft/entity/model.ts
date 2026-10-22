@@ -150,6 +150,8 @@ export class QuadWriter{
   ox=0;oy=0;oz=0;
   // Per-entity state applied to every quad written.
   light=0xf0;hurt=0;flash=0;tintR=255;tintG=255;tintB=255;
+  /** Face shade of the next quadFrom() (quad() takes it as an argument). */
+  shade=1;
   constructor(capacity=1024){this.capacity=capacity;this.allocate(capacity);}
   private allocate(capacity:number){
     const old={p:this.position,u:this.uv,c:this.color,e:this.extra};
@@ -175,7 +177,21 @@ export class QuadWriter{
     P[p]=ax-ox;P[p+1]=ay-oy;P[p+2]=az-oz;P[p+3]=bx-ox;P[p+4]=by-oy;P[p+5]=bz-oz;
     P[p+6]=cx-ox;P[p+7]=cy-oy;P[p+8]=cz-oz;P[p+9]=dx-ox;P[p+10]=dy-oy;P[p+11]=dz-oz;
     const U=this.uv;U[t]=u0;U[t+1]=v0;U[t+2]=u1;U[t+3]=v0;U[t+4]=u0;U[t+5]=v1;U[t+6]=u1;U[t+7]=v1;
-    const r=Math.round(this.tintR*shade),g=Math.round(this.tintG*shade),b=Math.round(this.tintB*shade);
+    this.shade=shade;this.colours(c,flags);
+  }
+  /** quad() with its corners read from `k` (x, y, z at offsets a, b, c, d), its uv rectangle from uv[o..o+3] and the
+   *  shade from `shade`. The per-face hot paths use it: doubles passed to a call are boxed (allocated), offsets are not. */
+  quadFrom(k:Float64Array,a:number,b:number,c:number,d:number,uv:Float32Array,o:number,flags:number){
+    if(!this.reserve(1))return;
+    const q=this.quads++,p=q*12,t=q*8;
+    const P=this.position,ox=this.ox,oy=this.oy,oz=this.oz;
+    P[p]=k[a]-ox;P[p+1]=k[a+1]-oy;P[p+2]=k[a+2]-oz;P[p+3]=k[b]-ox;P[p+4]=k[b+1]-oy;P[p+5]=k[b+2]-oz;
+    P[p+6]=k[c]-ox;P[p+7]=k[c+1]-oy;P[p+8]=k[c+2]-oz;P[p+9]=k[d]-ox;P[p+10]=k[d+1]-oy;P[p+11]=k[d+2]-oz;
+    const U=this.uv;U[t]=U[t+4]=uv[o];U[t+1]=U[t+3]=uv[o+1];U[t+2]=U[t+6]=uv[o+2];U[t+5]=U[t+7]=uv[o+3];
+    this.colours(q*16,flags);
+  }
+  private colours(c:number,flags:number){
+    const shade=this.shade,r=Math.round(this.tintR*shade),g=Math.round(this.tintG*shade),b=Math.round(this.tintB*shade);
     const C=this.color,E=this.extra,emissive=flags&FLAG_EMISSIVE;
     const hurt=emissive?0:this.hurt,flash=emissive?0:this.flash;
     for(let v=0;v<4;v++){const o=c+v*4;C[o]=r;C[o+1]=g;C[o+2]=b;C[o+3]=255;E[o]=this.light;E[o+1]=hurt;E[o+2]=flash;E[o+3]=flags;}
@@ -229,10 +245,9 @@ function writeBox(w:QuadWriter,b:CompiledBox,m:Mat,flags:number){
   for(let f=0;f<6;f++){
     if(!(b.faces&1<<f))continue;
     const n=FACE_NORMALS[f],nx=(m[0]*n[0]+m[1]*n[1]+m[2]*n[2])*inv,ny=(m[4]*n[0]+m[5]*n[1]+m[6]*n[2])*inv,nz=(m[8]*n[0]+m[9]*n[1]+m[10]*n[2])*inv;
-    const shade=flags&FLAG_EMISSIVE?1:diffuse(nx,ny,nz);
-    const k=FACE_CORNERS[f],a=k[0]*3,bb=k[1]*3,c=k[2]*3,d=k[3]*3,uv=b.uv;
-    w.quad(CORNERS[a],CORNERS[a+1],CORNERS[a+2],CORNERS[bb],CORNERS[bb+1],CORNERS[bb+2],CORNERS[c],CORNERS[c+1],CORNERS[c+2],CORNERS[d],CORNERS[d+1],CORNERS[d+2],
-      uv[f*4],uv[f*4+1],uv[f*4+2],uv[f*4+3],shade,flags);
+    w.shade=flags&FLAG_EMISSIVE?1:diffuse(nx,ny,nz);
+    const k=FACE_CORNERS[f];
+    w.quadFrom(CORNERS,k[0]*3,k[1]*3,k[2]*3,k[3]*3,b.uv,f*4,flags);
   }
 }
 

@@ -12,6 +12,7 @@ import {ITEMS} from '../data/items';
 import {ADVANCEMENTS,ADVANCEMENT_BY_ID,ADVANCEMENT_TABS,layoutTab,visibleIds,type AdvancementTabId,type TreeCell} from './advancements-data';
 import {statRows,topEntries,type Statistics} from './advancements-stats';
 import type {AdvancementTracker} from './advancements-tracker';
+import {GUI_COLOURS,pixelTextHtml} from './screen-art';
 
 export type ScreenTab=AdvancementTabId|'statistics';
 export interface MountedScreen{
@@ -72,7 +73,8 @@ export function mountAdvancementsScreen(container:HTMLElement,o:ScreenOptions):M
   const tabs:{id:ScreenTab;button:HTMLButtonElement;count:HTMLElement|null}[]=[];
   for(const t of [...ADVANCEMENT_TABS.map(t=>({id:t.id as ScreenTab,title:t.title,icon:t.icon})),{id:'statistics' as ScreenTab,title:'Statistics',icon:'book'}]){
     const b=el('button','bc-adv-tab');b.type='button';b.id=`bc-adv-tab-${id}-${t.id}`;b.setAttribute('role','tab');b.setAttribute('aria-controls',panel.id);
-    b.append(icon(t.icon,'bc-adv-tab-icon'),el('span','bc-adv-tab-name',t.title));
+    const name=el('span','bc-adv-tab-name');name.innerHTML=pixelTextHtml(t.title,GUI_COLOURS.title);
+    b.append(icon(t.icon,'bc-adv-tab-icon'),name);
     const count=t.id==='statistics'?null:el('span','bc-adv-tab-count');if(count)b.append(count);
     b.hidden=!available(t.id);
     b.addEventListener('click',()=>select(t.id),{signal});
@@ -99,7 +101,7 @@ export function mountAdvancementsScreen(container:HTMLElement,o:ScreenOptions):M
     tree?.dispose();stats?.dispose();tree=stats=null;panel.textContent='';
     if(next==='statistics')stats=new StatsView(panel,tracker);
     else if(next)tree=new TreeView(panel,tracker,next,visible);
-    else{const empty=el('div','bc-adv-empty');for(const line of EMPTY_LINES)empty.append(el('p','bc-adv-empty-line',line));panel.append(empty);}
+    else{const empty=el('div','bc-adv-empty');for(const line of EMPTY_LINES){const p=el('p','bc-adv-empty-line');p.innerHTML=pixelTextHtml(line,GUI_COLOURS.white);empty.append(p);}panel.append(empty);}
   }
   function select(next:ScreenTab){show(next);counts();}
   /** After advancements change: show newly visible nodes and tabs (rebuilding the open tree), or just restyle it. */
@@ -118,10 +120,10 @@ export function mountAdvancementsScreen(container:HTMLElement,o:ScreenOptions):M
     for(const t of tabs){
       if(!t.count)continue;
       const defs=ADVANCEMENTS.filter(a=>a.tab===t.id),n=defs.filter(a=>tracker.has(a.id)).length;
-      t.count.textContent=`${n}/${defs.length}`;
+      t.count.innerHTML=pixelTextHtml(`${n}/${defs.length}`,'#555555');
       t.button.setAttribute('aria-label',`${t.button.querySelector('.bc-adv-tab-name')?.textContent}, ${n} of ${defs.length} made`);
     }
-    summary.textContent=`${made} of ${all} advancements made`;
+    summary.innerHTML=pixelTextHtml(`${made} of ${all} advancements made`,GUI_COLOURS.title);
   }
   show(pick());counts();
   return{

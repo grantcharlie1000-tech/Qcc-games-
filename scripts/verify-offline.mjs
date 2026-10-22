@@ -26,7 +26,14 @@ async function action(page,id){
  else if(id==='flappy-bird'){await page.getByRole('button',{name:/Take flight|Continue flight|Fly again/}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.flappy-bird').getAttribute('data-tick'))>5,'offline Flappy Bird movement');}
  else if(id==='pool'){await verifyPoolShot(page);}
  else if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');await page.locator('.gl-guess[data-id=KEN]').waitFor();}
- else if(id==='blockcraft'){const root=page.locator('.blockcraft');await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Blockcraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Blockcraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();}
+ else if(id==='blockcraft'){const root=page.locator('.blockcraft');
+  // The shell's Restart asks before it replaces the world.
+  const create=page.getByRole('button',{name:'Create New World',exact:true});if(await create.isVisible())await create.click();
+  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Blockcraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Blockcraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();
+  // Back from Study the game plays on and captures the mouse (the lock arrives a moment later): let it go (Blockcraft
+  // pauses on its Game Menu), so the shell's buttons take the clicks that follow.
+  for(let i=0;i<40&&await root.getAttribute('data-locked')!=='true';i++)await page.waitForTimeout(50);
+  await page.evaluate(()=>document.exitPointerLock());await waitFor(async()=>await root.getAttribute('data-locked')!=='true','offline Blockcraft mouse released');}
  else if(id==='animal-stack'){await page.getByRole('button',{name:/^Drop /}).click();await page.waitForTimeout(650);}
 }
 try{

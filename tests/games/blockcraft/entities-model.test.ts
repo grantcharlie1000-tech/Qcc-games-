@@ -157,3 +157,18 @@ describe('entity rendering',()=>{
     expect(height()).toBeCloseTo(adult/2,1);
   });
 });
+
+describe('quad writer',()=>{
+  test('quadFrom (corner and uv offsets) writes exactly what quad writes',()=>{
+    const a=new QuadWriter(4),b=new QuadWriter(4);
+    for(const w of [a,b]){w.begin(10,20,30);w.light=0x9a;w.hurt=40;w.flash=7;w.tintR=200;w.tintG=150;w.tintB=100;}
+    const k=Float64Array.from({length:12},(_,i)=>i*1.25+.3),uv=new Float32Array([0,0,0,0,.125,.25,.375,.5]);
+    a.quad(k[0],k[1],k[2],k[3],k[4],k[5],k[6],k[7],k[8],k[9],k[10],k[11],uv[4],uv[5],uv[6],uv[7],.8,0);
+    b.shade=.8;b.quadFrom(k,0,3,6,9,uv,4,0);
+    expect(b.quads).toBe(1);
+    expect([...b.position.subarray(0,12)]).toEqual([...a.position.subarray(0,12)]);
+    expect([...b.uv.subarray(0,8)]).toEqual([...a.uv.subarray(0,8)]);
+    expect([...b.color.subarray(0,16)]).toEqual([...a.color.subarray(0,16)]);
+    expect([...b.extra.subarray(0,16)]).toEqual([...a.extra.subarray(0,16)]);
+  });
+});

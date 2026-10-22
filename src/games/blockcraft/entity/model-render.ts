@@ -207,20 +207,20 @@ export function createEntityRenderer(game:Game):EntityRenderer{
     const w=blockLayer.writer,M=BASE;if(!w.reserve(m.count))return;
     const P=m.pos;
     for(let q=0;q<m.count;q++){
-      const o=q*12,c:number[]=TMPC;
+      const o=q*12,c=TMPC;
       for(let v=0;v<4;v++){
         const x=(P[o+v*3]-cx)*s,y=(P[o+v*3+1]-cy)*s,z=(P[o+v*3+2]-cz)*s;
         c[v*3]=M[0]*x+M[1]*y+M[2]*z+M[3];c[v*3+1]=M[4]*x+M[5]*y+M[6]*z+M[7];c[v*3+2]=M[8]*x+M[9]*y+M[10]*z+M[11];
       }
       w.tintR=m.tint[q*3];w.tintG=m.tint[q*3+1];w.tintB=m.tint[q*3+2];
       const u=m.uv,t=q*8;
-      w.quad(c[0],c[1],c[2],c[3],c[4],c[5],c[6],c[7],c[8],c[9],c[10],c[11],u[t],u[t+1],u[t+6],u[t+7],m.shade[q],0);
+      w.shade=m.shade[q];w.quadFrom(c,0,3,6,9,u,t,0);
       // The writer assumes a rectangle; restore this quad's own per-vertex uvs (rotated faces).
       const U=w.uv,k=(w.quads-1)*8;for(let i=0;i<8;i++)U[k+i]=u[t+i];
     }
     w.tintR=w.tintG=w.tintB=255;
   }
-  const TMPC:number[]=new Array(12).fill(0);
+  const TMPC=new Float64Array(12);
 
   // ---- Per-kind drawing --------------------------------------------------------------------------
   let camRX=1,camRY=0,camRZ=0,camUX=0,camUY=1,camUZ=0,camX=0,camZ=0;

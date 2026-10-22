@@ -1,6 +1,7 @@
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
 import {blockDef,blockId} from '../../../src/games/blockcraft/data/blocks';
+import {countLockErrors,evidencePath,lockless,useLockFallback} from './helpers/browser';
 
 // Interaction flows in the running game (survival): mining with drops, placing, a door placed and opened, a bucket
 // picking up and pouring water, and a crafting table opened by right click. The dev build exposes the engine as
@@ -20,18 +21,23 @@ const aim=(page:Page,p:V)=>page.evaluate(p=>{
   s.yaw=Math.atan2(-dx,-dz);s.pitch=Math.atan2(dy,Math.hypot(dx,dz));
 },p);
 const hold=(page:Page,id:string,count=1)=>page.evaluate(([id,count])=>{const inv=window.blockcraft!.inventory;inv.setSlot(inv.selected,{id:id as string,count:count as number});},[id,count] as const);
-async function rightClick(page:Page){await page.mouse.down({button:'right'});await page.waitForTimeout(120);await page.mouse.up({button:'right'});}
+/** One short right click. A press counts even when released before the next tick; a longer one held across a slow frame
+ *  (a loaded machine) can last the 4-tick repeat delay and use twice (a second block, or the bucket filled and poured). */
+async function rightClick(page:Page){await page.mouse.down({button:'right'});await page.waitForTimeout(30);await page.mouse.up({button:'right'});}
 async function targetIs(page:Page,p:V){await expect.poll(()=>data(page,'target'),{timeout:20000}).toBe(`${p.x},${p.y},${p.z}`);}
 
-test('mine, place, open a door, use a bucket and open a crafting table',async({page})=>{
+test('mine, place, open a door, use a bucket and open a crafting table',async({page,browserName})=>{
   test.setTimeout(240000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:1024,height:640});
+  await countLockErrors(page);
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:60000});
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
-  await expect(page.locator('.blockcraft')).toHaveAttribute('data-locked','true');
+  // Headless WebKit never grants pointer lock: there the presses below go through the hold-to-mine / click fallback.
+  if(lockless(browserName))await useLockFallback(page,512,320);
+  else await expect(page.locator('.blockcraft')).toHaveAttribute('data-locked','true');
 
   // A flat stone site 7×7 around the player with clear air above.
   const ids={stone:blockId('stone'),dirt:blockId('dirt'),water:blockId('water'),air:0,grass:blockId('grass_block')};
@@ -105,6 +111,6 @@ test('mine, place, open a door, use a bucket and open a crafting table',async({p
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','screen',{timeout:20000});
   await page.keyboard.press('KeyE');
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
-  await page.screenshot({path:'tests/games/blockcraft/evidence/interaction.png'});
+  await page.screenshot({path:evidencePath('interaction.png')});
   expect(errors).toEqual([]);
 });
