@@ -6,14 +6,14 @@ import type {ScreenBuild} from '../../../src/games/blockcraft/ui/screen-common';
 import {stateFor} from '../../../src/games/blockcraft/data/blocks';
 import type {BlockEntity,FurnaceEntity} from '../../../src/games/blockcraft/engine/contracts';
 import {ARROW_GRID,BUTTON_GRID,DESTROY_GRID,EMPTY_SLOT_GRIDS,FIGURE_GRID,FIGURE_PALETTE,FLAME_GRID,GUI_COLOURS,KNOB_GRID,PANEL_GRID,PANEL_PALETTE,
-  SLOT_GRID,SLOT_PALETTE,SMALL_ARROW_GRID,TAB_HEIGHT,TAB_WIDTH,TOOL_ICON_GRIDS,arrowGrid,figureSvg,guiArtProperties,knobOffset,pixelTextHtml,pixelTextSvg,
+  SLOT_GRID,SLOT_PALETTE,SLOT_TILE_GRID,SMALL_ARROW_GRID,TAB_HEIGHT,TAB_WIDTH,TOOL_ICON_GRIDS,arrowGrid,figureSvg,guiArtProperties,knobOffset,pixelTextHtml,pixelTextSvg,
   scrollForKnob,shade,tabGrid} from '../../../src/games/blockcraft/ui/screen-art';
 import {textWidth} from '../../../src/games/blockcraft/ui/hud-art';
 import {INVENTORY_LAYOUT} from '../../../src/games/blockcraft/ui/screen-inventory';
 import {CRAFTING_LAYOUT} from '../../../src/games/blockcraft/ui/screen-crafting';
 import {FURNACE_LAYOUT,furnaceGauges} from '../../../src/games/blockcraft/ui/screen-furnace';
 import {chestLayout} from '../../../src/games/blockcraft/ui/screen-chest';
-import {CREATIVE_LAYOUT,tabPosition} from '../../../src/games/blockcraft/ui/screen-creative';
+import {CREATIVE_LAYOUT,SEARCH_WIDTH,searchDrawable,searchFieldHtml,searchIndexAt,searchScroll,tabPosition} from '../../../src/games/blockcraft/ui/screen-creative';
 import {CREATIVE_TABS} from '../../../src/games/blockcraft/ui/screen-catalog';
 import {tooltipColour} from '../../../src/games/blockcraft/ui/screen-tooltip';
 import {setCount} from '../../../src/games/blockcraft/ui/screens';
@@ -39,6 +39,16 @@ describe('vanilla GUI art',()=>{
     expect([...SLOT_GRID]).toEqual(['DDG','DGW','GWW']);
     expect(SLOT_PALETTE).toEqual({D:'#373737',G:'#8b8b8b',W:'#ffffff'});
     expect(dims(BUTTON_GRID)).toEqual([5,5]);
+  });
+  test('the creative picker tiles whole 18×18 slots with the same edges as the 9-slice slot',()=>{
+    expect(dims(SLOT_TILE_GRID)).toEqual([18,18]);
+    expect(SLOT_TILE_GRID.every(r=>r.length===18&&/^[DGW]+$/.test(r))).toBe(true);
+    const last=17,at=(x:number,y:number)=>SLOT_TILE_GRID[y][x];
+    // Corners and edges match SLOT_GRID's: dark top and left, white bottom and right, grey top-right and bottom-left.
+    for(const [sx,sy,tx,ty] of [[0,0,0,0],[2,0,last,0],[0,2,0,last],[2,2,last,last],[1,0,8,0],[0,1,0,8],[2,1,last,8],[1,2,8,last],[1,1,8,8]])
+      expect(at(tx,ty),`${tx},${ty}`).toBe(SLOT_GRID[sy][sx]);
+    expect(SLOT_TILE_GRID.slice(1,last).every(r=>r==='D'+'G'.repeat(16)+'W')).toBe(true);
+    expect(guiArtProperties()['--bc-art-slot-tile']).toMatch(/^url\('data:image\/svg\+xml,[^']+'\)$/);
   });
   test('creative tabs are 26×32; a selected tab flows into the panel, straight down at its sides in the edge columns',()=>{
     for(const top of [true,false])for(const selected of [true,false])for(const edge of [null,'left','right'] as const){
@@ -90,8 +100,8 @@ describe('vanilla GUI art',()=>{
     const props=guiArtProperties();
     for(const name of ['--bc-art-panel','--bc-art-slot','--bc-art-arrow','--bc-art-arrow-on','--bc-art-flame','--bc-art-flame-on','--bc-art-knob','--bc-art-knob-off',
       '--bc-art-empty-head','--bc-art-empty-offhand','--bc-art-destroy','--bc-art-icon-close','--bc-art-icon-book','--bc-art-tab-top','--bc-art-tab-top-on-left',
-      '--bc-art-tab-bottom-on-right','--bc-art-button-hover'])expect(props[name],name).toMatch(/^url\('data:image\/svg\+xml,[^']+'\)$/);
-    expect(Object.keys(props).length).toBeGreaterThanOrEqual(29);
+      '--bc-art-tab-bottom-on-right','--bc-art-button-hover','--bc-art-slot-tile'])expect(props[name],name).toMatch(/^url\('data:image\/svg\+xml,[^']+'\)$/);
+    expect(Object.keys(props).length).toBeGreaterThanOrEqual(30);
   });
 });
 
@@ -144,6 +154,47 @@ describe('gauges and scrollbar',()=>{
     expect(scrollForKnob(48.5,900,300,travel)).toBeCloseTo(300);
     expect(scrollForKnob(-20,900,300,travel)).toBe(0);expect(scrollForKnob(500,900,300,travel)).toBe(600);
     expect(scrollForKnob(10,300,300,travel)).toBe(0);
+  });
+});
+
+describe('creative search field',()=>{
+  const W=SEARCH_WIDTH;
+  test('the text window is 80 GUI px and scrolls only as far as the cursor needs',()=>{
+    expect(W).toBe(80);
+    expect(searchScroll('',0,0)).toBe(0);
+    expect(searchScroll('diamond',7,0)).toBe(0);
+    const long='diamond sword pickaxe axe';const total=textWidth(long);
+    expect(total+6).toBeGreaterThan(W);
+    // The underscore at the end (6 px) fits exactly at the right edge.
+    expect(searchScroll(long,long.length,0)).toBe(total+6-W);
+    // Moving left inside the window keeps the scroll; past its left edge the window follows the cursor.
+    const s=total+6-W,k=long.length-3;
+    expect(searchScroll(long,k,s)).toBe(s);
+    expect(searchScroll(long,0,s)).toBe(0);
+    const mid=5,cx=textWidth(long.slice(0,mid));
+    expect(searchScroll(long,mid,s)).toBe(Math.min(s,cx));
+    // A scroll left over from a longer query never shows empty space past the end.
+    expect(searchScroll('dia',3,40)).toBe(0);
+  });
+  test('a click lands on the nearest boundary between drawn characters',()=>{
+    const v='iron ingot',w=(t:string)=>textWidth(t);
+    expect(searchIndexAt(v,-3)).toBe(0);expect(searchIndexAt(v,0)).toBe(0);
+    expect(searchIndexAt(v,w('iron '))).toBe(5);
+    expect(searchIndexAt(v,w('iron ')+w('i')/2+.1)).toBe(6);expect(searchIndexAt(v,w('iron ')+w('i')/2-.1)).toBe(5);
+    expect(searchIndexAt(v,999)).toBe(v.length);
+  });
+  test('the query is pixel text with its shadow, the selection white with blue text, the cursor an underscore or a bar',()=>{
+    const end=searchFieldHtml('dia',3,3,3,true,0);
+    expect(end).toContain('>dia</span>');expect(end).toContain('--sx:0');
+    expect(end).toContain('class="bc-search-caret is-end" style="--cx:18"'.replace('18',String(textWidth('dia'))));
+    const mid=searchFieldHtml('diamond',1,3,1,true,0);
+    expect(mid).toContain('>d</span>');expect(mid).toMatch(/class="bc-search-sel"><span class="bc-px"[^>]*>ia<\/span><\/span>/);
+    expect(mid).toContain('>mond</span>');
+    expect(mid).toContain(`class="bc-search-caret" style="--cx:${textWidth('d')}"`);
+    expect(searchFieldHtml('dia',3,3,3,false,0)).not.toContain('bc-search-caret');
+    expect(searchFieldHtml('diamond sword',13,13,13,true,12)).toContain('--sx:-12');
+    expect(searchFieldHtml('',0,0,0,true,0)).toBe('<span class="bc-search-text" style="--sx:0"></span><i class="bc-search-caret is-end" style="--cx:0"></i>');
+    expect(searchDrawable('iron ingot')).toBe(true);expect(searchDrawable('épée')).toBe(false);
   });
 });
 
@@ -222,6 +273,10 @@ describe('vanilla screen layouts',()=>{
     expect(b.html).toContain('data-tab="search" data-row="top" data-edge="right"');
     ui.setTab('search');b=last();
     expect(b.html).toContain('class="bc-search bc-at" style="--x:80;--y:4"');
+    expect(b.html).toContain('<span class="bc-search-view" aria-hidden="true"></span>');expect(b.html).not.toContain('placeholder');
+    // An empty search is empty slots, like vanilla; the message is only for assistive technology.
+    ui.setQuery('no such item');b=last();
+    expect(b.html).toContain('<p class="bc-empty bc-sr">No items match.</p>');
     ui.setTab('inventory');b=last();p=positions(b.html);
     expect(b.titleAt).toBe('hidden');
     expect(p.get('Helmet slot')).toEqual([53,5]);expect(p.get('Chestplate slot')).toEqual([53,32]);

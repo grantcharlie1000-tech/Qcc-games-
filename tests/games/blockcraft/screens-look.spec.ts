@@ -78,6 +78,17 @@ async function checkGeometry(page:Page,size:{width:number;height:number},integer
   expect(g.top).toBeGreaterThanOrEqual(56);expect(g.bottom).toBeLessThanOrEqual(size.height);
   return g.u;
 }
+/** Colours (#rrggbb) of screen pixels, read from a screenshot (device pixels are CSS pixels here). */
+async function pixels(page:Page,points:readonly {x:number;y:number}[]):Promise<string[]>{
+  const png=(await page.screenshot()).toString('base64');
+  return page.evaluate(async([data,pts])=>{
+    const img=new Image();img.src=`data:image/png;base64,${data}`;await img.decode();
+    const c=document.createElement('canvas');c.width=img.width;c.height=img.height;
+    const g=c.getContext('2d')!;g.drawImage(img,0,0);
+    return pts.map(p=>{const d=g.getImageData(Math.floor(p.x),Math.floor(p.y),1,1).data;return`#${[d[0],d[1],d[2]].map(v=>v.toString(16).padStart(2,'0')).join('')}`;});
+  },[png,points] as const);
+}
+const guiUnit=(page:Page)=>page.locator('.bc-panel').evaluate(e=>parseFloat(getComputedStyle(e).getPropertyValue('--bc-u')));
 async function shot(page:Page,name:string){
   // Let lazily loaded icons and data URLs decode before the picture.
   await page.waitForTimeout(400);
@@ -111,7 +122,18 @@ for(const size of [{width:1366,height:768,tag:'1366'},{width:390,height:844,tag:
     // The recipe book: beside the inventory on wide screens, over it on tall ones.
     await page.locator('.bc-panel [data-book-toggle]').click();
     await expect(page.locator('.bc-book')).toBeVisible();
-    await checkGeometry(page,size,true);
+    // Like vanilla, the book never changes the GUI scale.
+    expect(await checkGeometry(page,size,true)).toBe(u);
+    if(size.tag==='1366'){
+      // Keyboard focus on a recipe shows its whole ring, even in the list's top row (white outside, blue inside).
+      await page.locator('.bc-recipe').nth(1).focus();await page.keyboard.press('Shift+Tab');
+      await expect(page.locator('.bc-recipe').first()).toBeFocused();
+      const r=(await page.locator('.bc-recipe').first().boundingBox())!;
+      const mid=r.x+r.width/2,midY=r.y+r.height/2;
+      expect(await pixels(page,[{x:mid,y:r.y+.5},{x:mid,y:r.y+r.height-.5},{x:r.x+.5,y:midY},{x:r.x+r.width-.5,y:midY},{x:mid,y:r.y+u+1.5}]))
+        .toEqual(['#ffffff','#ffffff','#ffffff','#ffffff','#1d4fa3']);
+      await page.locator('.bc-panel').focus();
+    }
     await shot(page,`recipe-book-${size.tag}`);
     await page.locator('.bc-screen [data-book-toggle]:visible').first().click();
     await expect(page.locator('.bc-book')).toBeHidden();
@@ -138,7 +160,26 @@ for(const size of [{width:1366,height:768,tag:'1366'},{width:390,height:844,tag:
     await expect.poll(()=>page.locator('.bc-knob').evaluate(e=>Number(getComputedStyle(e).getPropertyValue('--k')))).toBe(97);
     await page.locator('.bc-catalog').evaluate(e=>{e.scrollTop=0;});
     await page.locator('.bc-tab[aria-label="Search Items"]').click();
+    // A short search: the query in the pixel font (the field's own text is invisible) over all 45 slot frames.
+    await expect(page.locator('.bc-search-input')).toBeFocused();
+    await page.keyboard.type('diamond');
+    await expect(page.locator('.bc-search-view .bc-px')).toHaveText('diamond');
+    expect(await page.locator('.bc-search-input').evaluate(e=>getComputedStyle(e).color)).toBe('rgba(0, 0, 0, 0)');
+    expect(await page.locator('.bc-catalog').evaluate(e=>getComputedStyle(e).backgroundImage)).toMatch(/^url\(/);
+    const found=await page.locator('.bc-catalog .bc-s').count();
+    expect(found).toBeGreaterThan(0);expect(found).toBeLessThan(36);
+    if(size.tag==='1366'){
+      const box=(await page.locator('.bc-catalog').boundingBox())!,cu=await guiUnit(page);
+      const points:{x:number;y:number}[]=[];
+      for(let k=found;k<45;k++){
+        const x=box.x+(k%9)*18*cu,y=box.y+Math.floor(k/9)*18*cu;
+        points.push({x:x+9*cu,y:y+.5},{x:x+9*cu,y:y+9*cu},{x:x+9*cu,y:y+18*cu-.5});
+      }
+      const seen=await pixels(page,points);
+      for(let i=0;i<seen.length;i+=3)expect(seen.slice(i,i+3),`empty slot ${found+i/3}`).toEqual(['#373737','#8b8b8b','#ffffff']);
+    }
     await shot(page,`creative-search-${size.tag}`);
+    await page.keyboard.press('Control+a');await page.keyboard.press('Backspace');
     await page.locator('.bc-tab[aria-label="Survival Inventory"]').click();
     await shot(page,`creative-inventory-${size.tag}`);
     await engine(page,g=>g.ui.close());
@@ -149,6 +190,45 @@ for(const size of [{width:1366,height:768,tag:'1366'},{width:390,height:844,tag:
     expect(errors).toEqual([]);
   });
 }
+
+test('the recipe book keeps the GUI scale and covers the panel where it does not fit beside it',async({page})=>{
+  test.setTimeout(180000);
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  const size={width:1024,height:768};
+  await boot(page,size);
+  await stock(page);
+  await page.mouse.move(2,size.height-2);
+  await engine(page,g=>g.ui.open('inventory'));
+  const u=await checkGeometry(page,size,true);
+  expect(u).toBe(3);
+  await page.locator('.bc-panel [data-book-toggle]').click();
+  await expect(page.locator('.bc-book')).toBeVisible();
+  expect(await checkGeometry(page,size,true)).toBe(u);
+  await expect(page.locator('.bc-screen')).toHaveClass(/bc-book-over/);
+  const [book,panel]=await Promise.all([page.locator('.bc-book').boundingBox(),page.locator('.bc-panel').boundingBox()]);
+  expect(book).toEqual(panel);
+  await expect(page.locator('.bc-book [data-book-toggle]')).toBeVisible();
+  await page.mouse.move(2,size.height-2);
+  await shot(page,'recipe-book-1024');
+  // A wider game area has room beside the panel: the book moves there, at the same scale.
+  await page.setViewportSize({width:1366,height:768});
+  await expect(page.locator('.bc-screen')).not.toHaveClass(/bc-book-over/);
+  expect(await guiUnit(page)).toBe(u);
+  const [beside,moved]=await Promise.all([page.locator('.bc-book').boundingBox(),page.locator('.bc-panel').boundingBox()]);
+  expect(beside!.x+beside!.width).toBeLessThanOrEqual(moved!.x);
+  await page.setViewportSize(size);
+  await expect(page.locator('.bc-screen')).toHaveClass(/bc-book-over/);
+  await page.locator('.bc-book [data-book-toggle]').click();
+  await expect(page.locator('.bc-book')).toBeHidden();
+  // Switching straight to another screen keeps the cursor free (a mouse capture granted late is let go again).
+  await engine(page,g=>{g.ui.close();g.ui.open('crafting_table');});
+  await expect(page.locator('.bc-panel')).toHaveAttribute('aria-label','Crafting');
+  await page.locator('.bc-panel [data-book-toggle]').click();
+  await expect(page.locator('.bc-book')).toBeVisible();
+  expect(await guiUnit(page)).toBe(u);
+  await engine(page,g=>g.ui.close());
+  expect(errors).toEqual([]);
+});
 
 test('a landscape phone fits every screen, the large chest included',async({page})=>{
   test.setTimeout(180000);
