@@ -41,11 +41,21 @@ async function settle(page:Page,frames=6){
   // Wait for a few rendered frames (software WebGL is slow).
   await page.evaluate(n=>new Promise<void>(done=>{let k=0;const step=()=>{if(++k>=n)done();else requestAnimationFrame(step);};requestAnimationFrame(step);}),frames);
 }
-/** Canvas screenshot: the four sky views are kept as evidence, the others go to the test output folder. */
+/** The rendered frame's pixels: one more frame drawn and read back in the same task, before the browser presents and
+ *  clears the drawing buffer. (A canvas screenshot can catch WebKit between those and come back black.) */
+async function pixels(page:Page){
+  const url=await page.evaluate(()=>{
+    const g=(window as unknown as {blockcraft:Engine}).blockcraft;g.render.render();
+    return(document.querySelector('.blockcraft canvas') as HTMLCanvasElement).toDataURL('image/png');
+  });
+  return decodePng(Buffer.from(url.slice(url.indexOf(',')+1),'base64'));
+}
+/** Canvas screenshot (with the HUD) as a picture: the four sky views are kept as evidence, the others go to the test output
+ *  folder. The checks read the frame itself (pixels()). */
 async function shot(page:Page,name:string){
   const canvas=page.locator('.blockcraft canvas'),keep=['noon','dusk','midnight','underwater'].includes(name);
-  const buf=await canvas.screenshot({path:keep?evidencePath(`render-${name}.png`):test.info().outputPath(`render-${name}.png`)});
-  return decodePng(buf);
+  await canvas.screenshot({path:keep?evidencePath(`render-${name}.png`):test.info().outputPath(`render-${name}.png`)});
+  return pixels(page);
 }
 
 test('sky, fog, hand and overlays at noon, dusk, midnight and underwater',async({page})=>{
@@ -126,7 +136,7 @@ test('first-person hand, held items, selection, breaking crack, screen overlays,
   // The bare arm: the lower right of the screen changes when the hand is hidden (F1).
   const arm=await shot(page,'hand-arm');
   await page.evaluate(()=>{(document.querySelector('.blockcraft') as HTMLElement).dataset.hudHidden='true';});await settle(page,4);
-  const hidden=decodePng(await page.locator('.blockcraft canvas').screenshot());
+  const hidden=await pixels(page);
   await page.evaluate(()=>{(document.querySelector('.blockcraft') as HTMLElement).dataset.hudHidden='';});
   const a=region(arm,.72,.7,.95,.98),h=region(hidden,.72,.7,.95,.98);
   expect(Math.abs(a[0]-h[0])+Math.abs(a[1]-h[1])+Math.abs(a[2]-h[2])).toBeGreaterThan(20);

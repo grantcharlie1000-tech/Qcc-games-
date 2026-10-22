@@ -22,7 +22,7 @@ Not taken from upstream: its PNG textures and font (they look like Minecraft ass
 
 ## Measurements
 
-Same machine (4-core cloud container, shared with another Chromium session during the runs), Chromium 141 headless, **software WebGL (SwiftShader)**, view distance 5 chunks. The "before" column is the final review's measurement of commit `63f0fc1`; "after" is the same probe on the fixes that followed it (stream B). The old 1280×720 figures from before the feature work were 8.2 fps standing (p50 133 ms), 6.2 fps sprinting, 13.8 % main-thread busy, 22 MB heap and 53–74 draw calls.
+Same machine (a 4-core cloud container that other browser runs shared during the measurements), Chromium 141 headless, **software WebGL (SwiftShader)**, view distance 5 chunks. Both columns come from [`scripts/blockcraft-perf.mjs`](../scripts/blockcraft-perf.mjs) (modes `perf`, `leak` and `save`; its header says how to run it): "before" at commit `63f0fc1`, "after" at commit `ec167fb`, which holds the performance fixes. The old 1280×720 figures from before the feature work were 8.2 fps standing (p50 133 ms), 6.2 fps sprinting, 13.8 % main-thread busy, 22 MB heap and 53–74 draw calls.
 
 | Metric (1366×768 unless noted) | Before (`63f0fc1`) | After |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ Same machine (4-core cloud container, shared with another Chromium session durin
 | Autosave in normal play | 8–25 KB, 0.2–0.5 ms | 22–25 KB, 0.2–0.4 ms |
 | Leaving and re-entering 5 times | workers, AudioContexts, WebGL contexts, timers and listeners all released; one engine kept alive by a module variable (18 MB) | the path search no longer keeps a world; dispose also clears the voxel buffers |
 
-With software rendering almost all of the frame time is the emulated GPU (the CPU profile is about 90 % idle), and frame times move with the load the other session puts on the shared GPU process, so the frame rows compare loosely; the allocation, autosave and heap rows do not depend on it. **No physical-device performance is claimed here.** The probes are in the session scratchpad (`perf.mjs`, `save.mjs`).
+With software rendering almost all of the frame time is the emulated GPU (the CPU profile is about 90 % idle), and frame times move with whatever else loads the shared machine, so the frame rows compare loosely; the allocation, autosave and heap rows do not depend on it. **No physical-device performance is claimed here.**
 
 ## Rendering pipeline
 
