@@ -51,7 +51,11 @@ test('keyboard and mouse: walk, sprint, jump, fly, hotbar, F1/F3 and text fields
   // Space jumps; a quick double tap starts creative flight, then holding Space rises above the trees.
   await page.keyboard.down('Space');expect(await watchJump(page)).toBe(true);await page.keyboard.up('Space');
   for(let attempt=0;attempt<4&&!await state(page,'flying');attempt++){
-    await page.keyboard.press('Space');await page.waitForTimeout(220);await page.keyboard.press('Space');await page.waitForTimeout(800);
+    // The second tap comes after the take-off (flight on the ground ends at once, as in vanilla), however slow the frames
+    // are: two taps read in the same frame would both land before the jump.
+    await page.keyboard.press('Space');
+    await page.waitForFunction(()=>!(window as unknown as {blockcraft:Engine}).blockcraft.player.state.onGround,undefined,{timeout:3000}).catch(()=>{});
+    await page.keyboard.press('Space');await page.waitForTimeout(800);
   }
   expect(await state(page,'flying')).toBe(true);
   const flyY=await state(page,'y') as number;
