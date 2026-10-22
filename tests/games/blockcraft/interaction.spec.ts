@@ -21,7 +21,9 @@ const aim=(page:Page,p:V)=>page.evaluate(p=>{
   s.yaw=Math.atan2(-dx,-dz);s.pitch=Math.atan2(dy,Math.hypot(dx,dz));
 },p);
 const hold=(page:Page,id:string,count=1)=>page.evaluate(([id,count])=>{const inv=window.blockcraft!.inventory;inv.setSlot(inv.selected,{id:id as string,count:count as number});},[id,count] as const);
-async function rightClick(page:Page){await page.mouse.down({button:'right'});await page.waitForTimeout(120);await page.mouse.up({button:'right'});}
+/** One short right click. A press counts even when released before the next tick; a longer one held across a slow frame
+ *  (a loaded machine) can last the 4-tick repeat delay and use twice (a second block, or the bucket filled and poured). */
+async function rightClick(page:Page){await page.mouse.down({button:'right'});await page.waitForTimeout(30);await page.mouse.up({button:'right'});}
 async function targetIs(page:Page,p:V){await expect.poll(()=>data(page,'target'),{timeout:20000}).toBe(`${p.x},${p.y},${p.z}`);}
 
 test('mine, place, open a door, use a bucket and open a crafting table',async({page,browserName})=>{
