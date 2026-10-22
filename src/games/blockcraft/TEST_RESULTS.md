@@ -1,8 +1,23 @@
 # Blockcraft test results
 
-Branch `feat/blockcraft` with the final review fixes. Chromium 141.0.7390.37 headless with software WebGL (SwiftShader) and
-Playwright WebKit (the Desktop Safari project, device scale 2), on a 4-core cloud container that other browser runs shared.
+Branch `feat/blockcraft` after the final review fixes and the merge of `main` (Neon Coil, Globle, leaderboards, the Study
+redesign), so the arcade has 16 games. Chromium 141.0.7390.37 headless with software WebGL (SwiftShader) and Playwright
+WebKit (the Desktop Safari project, device scale 2), on a 4-core cloud container that other browser runs shared.
 No physical device was tested.
+
+## Whole repository, as CI runs it
+
+- `npx tsc --noEmit -p .`: passes. `npx vitest run`: 2374 tests in 97 files pass.
+- `npx playwright test` (every spec, Chromium and WebKit, 2 workers, the Vite dev server CI uses): 587 passed, 20 skipped,
+  3 failed in 30.8 minutes. Every Blockcraft test passes: 35 per browser, of which the two CDP touch tests
+  skip on WebKit. The 3
+  failures are in other games and fail the same way on unmodified `main` (`a6105cf`) in this container: Flappy Bird's
+  "original scene and controls fit" (a toolbar control off screen; on `main` it failed at 320, 390 and 844 wide), Color
+  Blocks' touch evidence (`video.saveAs` finds no recording: the container has Playwright's ffmpeg 1011, the tests want
+  1013) and Pool's WebKit verifier-readiness check (power 74 % instead of 75 %).
+- `npm run build` passes (offline pack 106 files). `npm run verify:update` passes.
+
+## Blockcraft in detail (before the merge of `main`)
 
 - `npx tsc --noEmit -p .`: passes.
 - `npx vitest run`: 2131 tests in 86 files pass. The Blockcraft suites (`tests/games/blockcraft/*.test.ts`, 1857 tests in
