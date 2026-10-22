@@ -12,7 +12,7 @@ export function independentSolve(input: Board): [number, number][] | null {
   const seen = new Set<string>();
   for (let at = 0; at < queue.length && at < 150000; at++) {
     const { board, path } = queue[at];
-    if (board.some(t => t.length) && board.every(t => new Set(t).size <= 1)) return path;
+    if (board.some(t => t.length) && board.every(t => new Set(t).size <= 1) && new Set(board.flat()).size === board.filter(t => t.length).length) return path;
     for (let a = 0; a < board.length; a++) {
       if (!board[a].length) continue;
       const c = board[a].at(-1)!;
