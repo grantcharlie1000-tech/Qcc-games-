@@ -13,6 +13,14 @@ test('desktop rankings sit left of the game, disappear for Pool, and return afte
  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
  await expect(page.locator('#leaderboard-game option[value=pool]')).toHaveCount(0);
 });
+test('Blockcraft has no leaderboard rail and keeps the full width',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
+ await page.goto('/#/game/blockcraft');await expect(page.locator('.blockcraft')).toBeAttached();
+ await expect(page.locator('.lb-sidebar')).toHaveCount(0);
+ const view=await page.locator('.game-view').boundingBox();
+ expect(view!.x).toBe(0);expect(view!.width).toBe(1440);
+});
 test('late leaderboard response cannot overwrite the next game',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  let release!:()=>void;const gate=new Promise<void>(r=>release=r);
@@ -32,7 +40,7 @@ test('late leaderboard response cannot overwrite the next game',async({page})=>{
  await expect(page.locator('.lb-sidebar')).not.toContainText('Old Snake');
 });
 
-for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','animal-stack','flappy-bird','globle','blockcraft'])test(`${id} has an unobstructed desktop panel`,async({page})=>{
+for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','animal-stack','flappy-bird','globle'])test(`${id} has an unobstructed desktop panel`,async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
   await page.goto('/#/game/'+id);await expect(page.locator('.lb-sidebar')).toBeVisible();
