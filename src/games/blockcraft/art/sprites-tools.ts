@@ -2,6 +2,7 @@
 // stick handle), shears, flint and steel, bow, arrow, buckets, shield, compass and clock.
 // Role letters: O outline, D dark, M mid, L light, H highlight (head material); a/b/c handle outline/dark/light.
 import {type Palette,type Sprite,sprite,edgesOf} from './sprites-core';
+import {shieldSprite} from './sprites-shield';
 
 /** Head colours of each tool tier: wood is planks-tan, stone grey, iron near-white, gold yellow, diamond cyan. */
 export const TIER_COLOURS:Record<'wooden'|'stone'|'iron'|'golden'|'diamond',{O:number;D:number;M:number;L:number;H:number}>={
@@ -264,24 +265,8 @@ TOOL_SPRITES.water_bucket=pail(0x4a7ee6,0x2f5bc8);
 TOOL_SPRITES.lava_bucket=pail(0xfca33c,0xd9561e);
 TOOL_SPRITES.milk_bucket=pail(0xffffff,0xe6e6ea);
 
-// ---- Shield: oak boards in an iron rim, as the plain vanilla shield face. --------------------------------
-TOOL_SPRITES.shield=sprite([
-  '................',
-  '...iiiiiiiiii...',
-  '...iPPPPPPQQj...',
-  '...iPPPPPPQQj...',
-  '...ippppppqqj...',
-  '...iPPPPPPQQj...',
-  '...iPPPPPPQQj...',
-  '...ippppppqqj...',
-  '...iPPPPPPQQj...',
-  '...iPPPPPPQQj...',
-  '...ippppppqqj...',
-  '....iPPPPPQj....',
-  '....iPPPPPQj....',
-  '.....jjjjjj.....',
-  '................',
-  '................'],{i:0xc4c4c4,j:0x8a8a8a,P:0xb08a52,p:0x86663a,Q:0x8f6f40,q:0x6c5030,O:0x2e2e2e},edgesOf('ijPpQq','O'));
+// ---- Shield: the supplied face inside the existing iron rim. -------------------------------------------
+TOOL_SPRITES.shield=shieldSprite;
 
 // ---- Compass and clock: round frames with a dial. ------------------------------------------------------
 TOOL_SPRITES.compass=sprite([
