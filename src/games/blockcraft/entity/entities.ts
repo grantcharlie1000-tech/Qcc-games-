@@ -1,9 +1,9 @@
 // The entity service (game.entities): registry, lifecycle, the 20 Hz simulation of every entity, combat, persistence,
 // natural spawning (entity/spawning.ts), shared steering (entity/ai.ts), dropped items and orbs (entity/items.ts) and
 // batched rendering (entity/model-render.ts). Behaviour follows Java 1.20:
-//  - Tick (per entity, frozen while its chunk is unloaded): despawn check, age, hurt timer, environment (fire ticks with
-//    1 damage per second, lava 4 and 15 s of fire, fire blocks, cacti, burning in daylight, drowning / drying out,
-//    suffocation, the void), the kind's tick (AI), body rotation toward the movement intent (head within 75°), physics
+//  - Tick (per entity, skipped while its chunk is unloaded; saved kinds then wait in the store, see Persistence):
+//    despawn check, age, hurt timer, environment (fire ticks with 1 damage per second, lava 4 and 15 s of fire, fire
+//    blocks, cacti, burning in daylight, drowning / drying out, suffocation, the void), the kind's tick (AI), body rotation toward the movement intent (head within 75°), physics
 //    (entity/entities-physics.ts), fall damage ceil(distance − 3) (ceil(distance / 2 − 3) on beds, which also bounce;
 //    none when the mob lands in water, re-checked at landing like vanilla checkFallDamage), sounds. Then mobs push each
 //    other and the player (vanilla 0.05 blocks/tick), and the spawner runs.
@@ -20,8 +20,11 @@
 //    ticks (or the killing blow); entityDied reports that memory as source.byPlayer.
 //  - entityRemoved is emitted once whenever an entity leaves the world: the end of the death animation, despawning and
 //    remove() (not for reset(), a new world).
-//  - Persistence: up to 200 entities nearest the player (hostiles and kinds with persist:false are not saved); restore
-//    validates every field and the kind's restoreData.
+//  - Persistence (hostiles and kinds with persist:false are not saved): `list` holds up to 200 simulated entities, the
+//    player's own (data.owner 'player') first, then the nearest to the player or the world spawn. The rest of them and
+//    the entities of unloaded chunks (which leave the simulation and wait in a per-chunk store until their chunk loads)
+//    are saved as `far`, up to 2000 in the same order. restore validates every field and the kind's restoreData; an
+//    entry whose chunk is not loaded waits in the store.
 import {OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
 import {itemDef,stack as makeStack,type ItemStack} from '../data/items';
 import {CH,CS,chunkKey} from '../engine/constants';
@@ -474,18 +477,20 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
   }
 
   // ---- Persistence ------------------------------------------------------------------------------
+  /** `list` holds up to MAX_SAVED simulated entities, the player's own and the nearest first; the rest of them join the
+   *  entities of unloaded chunks in `far` (up to MAX_STORED), so a farm bigger than MAX_SAVED is not cut on reload. */
   function serialize():unknown{
-    const p=game.player.state,keep:Rec[]=[];
+    const keep:Record<string,unknown>[]=[];
     for(const r of recs){
       const e=r.e,k=r.kind;
       if(e.removed||e.deathTime>0||k.persist===false||k.category==='hostile')continue;
-      keep.push(r);
+      keep.push(pack(e));
     }
-    if(keep.length>MAX_SAVED){
-      const d=(r:Rec)=>(r.e.x-p.x)**2+(r.e.y-p.y)**2+(r.e.z-p.z)**2;
-      keep.sort((a,b)=>d(a)-d(b));keep.length=MAX_SAVED;
-    }
-    return{v:SAVE_VERSION,list:keep.map(({e})=>pack(e)),far:storedForSave()};
+    if(keep.length<=MAX_SAVED)return{v:SAVE_VERSION,list:keep,far:storedForSave()};
+    byKeepOrder(keep);
+    const far=keep.splice(MAX_SAVED);
+    for(const at of stored.values())for(const v of at)far.push(v);
+    return{v:SAVE_VERSION,list:keep,far:far.length>MAX_STORED?byKeepOrder(far).slice(0,MAX_STORED):far};
   }
   /** The save form of an entity. */
   function pack(e:Entity):Record<string,unknown>{

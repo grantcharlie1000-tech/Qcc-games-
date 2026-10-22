@@ -1,7 +1,7 @@
 import {describe,expect,test} from 'vitest';
 import {B} from '../../../src/games/blockcraft/data/blocks';
 import {CHUNK_VOLUME,LAYER,chunkKey} from '../../../src/games/blockcraft/engine/constants';
-import {MAX_STORED,type EntityDebug} from '../../../src/games/blockcraft/entity/entities';
+import {MAX_SAVED,MAX_STORED,type EntityDebug} from '../../../src/games/blockcraft/entity/entities';
 import type {VoxelWorld} from '../../../src/games/blockcraft/world/world';
 import {harness,monster,walker,type EntityHarness} from './entities-helpers';
 
@@ -55,6 +55,28 @@ describe('entities of unloaded chunks',()=>{
     c.game.entities.restore?.({v:1,list:[{k:'sheep',i:9,x:90.5,y:60,z:.5,d:{colour:3}}],far:[{k:'sheep',x:'x',z:0},{k:'nope',x:90,y:60,z:0}]});
     expect(c.game.entities.all()).toHaveLength(0);expect(debug(c).stored).toBe(1);
     load(c.game.world as VoxelWorld,5,0);expect(c.game.entities.all().map(e=>e.id)).toEqual([9]);
+  });
+  test(`a farm of more than ${MAX_SAVED} animals in loaded chunks is saved whole, the player's own first`,()=>{
+    const dog=walker({kind:'dog'});
+    const a=harness({kinds:[sheep(),dog]});
+    // 250 sheep around the player and a tamed dog sitting at the far side of the loaded area.
+    const flock=Array.from({length:250},(_,i)=>a.game.entities.spawn('sheep',-8.5+(i%16),60,-8.5+Math.floor(i/16),{data:{colour:i%16}})!);
+    const pet=a.game.entities.spawn('dog',40.5,60,40.5,{data:{owner:'player',sitting:true}})!;
+    a.tick(1);
+    expect(a.game.entities.all()).toHaveLength(251);
+    const saved=JSON.parse(JSON.stringify(a.game.entities.serialize?.())) as Saved;
+    expect(saved.list).toHaveLength(MAX_SAVED);
+    // The player's own animal is never the one cut; the rest wait in `far` instead of being dropped.
+    expect(saved.list[0].i).toBe(pet.id);
+    expect(saved.list.length+saved.far.length).toBe(251);
+    const b=harness({kinds:[sheep(),dog]});
+    (b.game.world as VoxelWorld).clear();
+    b.game.entities.restore?.(saved);
+    for(let cz=-2;cz<=2;cz++)for(let cx=-2;cx<=2;cx++)load(b.game.world as VoxelWorld,cx,cz);
+    const back=b.game.entities.all();
+    expect(back).toHaveLength(251);
+    expect(new Set(back.map(e=>e.id))).toEqual(new Set([...flock,pet].map(e=>e.id)));
+    expect(back.find(e=>e.id===pet.id)?.data).toEqual({owner:'player',sitting:true});
   });
   test(`at most ${MAX_STORED} are kept: the player's own first, then the nearest to the player or the world spawn`,()=>{
     const h=harness({kinds:[sheep()]});

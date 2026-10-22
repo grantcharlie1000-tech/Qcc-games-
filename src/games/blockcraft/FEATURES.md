@@ -181,7 +181,7 @@ unless they would compromise performance or correctness. Unit tests can build se
   - **Water:** squid in water columns of oceans and rivers (`spawn.light 'water'`). Cap 8.
   - Peaceful removes hostiles.
   - Hostiles despawn beyond 128 blocks, or randomly beyond 32.
-- **Must:** entities in unloaded chunks wait with their chunk: saved kinds (not hostiles or despawning kinds) leave the simulation in their save form and come back with the chunk (vanilla entity chunks), the rest are frozen. Saved with the snapshot: up to 200 loaded entities and up to 2000 waiting ones (the player's own first, then the nearest to the player or the world spawn); hostiles are not persisted.
+- **Must:** entities in unloaded chunks wait with their chunk: saved kinds (not hostiles or despawning kinds) leave the simulation in their save form and come back with the chunk (vanilla entity chunks), the rest are frozen. Saved with the snapshot: up to 200 loaded entities, and up to 2000 more (loaded ones past the first 200 and waiting ones), each group the player's own first, then the nearest to the player or the world spawn; hostiles are not persisted.
 - **Must:** item entities and xp orbs:
   - Items: small spinning cubes or sprites, merge nearby equal stacks, pick up after the delay with a magnet pull, despawn after 5 minutes.
   - Xp orbs: green glowing sprites attracted to the player.
