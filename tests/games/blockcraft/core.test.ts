@@ -2,7 +2,7 @@ import {describe,expect,test} from 'vitest';
 import {BLOCKS,BLOCK_COUNT,TILE_NAMES,blockId,blockDef,B,OPAQUE,familyStates,stateFor} from '../../../src/games/blockcraft/data/blocks';
 import {ITEMS,ITEM_SPRITES,parseStack,itemForBlock,requireItem} from '../../../src/games/blockcraft/data/items';
 import {BIOMES} from '../../../src/games/blockcraft/data/biomes';
-import {CS,CH,CHUNK_VOLUME,LAYER,PAD_VOLUME,voxelIndex,chunkKey,keyX,keyZ} from '../../../src/games/blockcraft/engine/constants';
+import {CS,CH,CHUNK_LIMIT,CHUNK_VOLUME,LAYER,PAD_VOLUME,voxelIndex,chunkKey,keyX,keyZ} from '../../../src/games/blockcraft/engine/constants';
 import {VoxelWorld,MAX_EDITS} from '../../../src/games/blockcraft/world/world';
 import {moveBody,raycast,bodyCollides,rayBox} from '../../../src/games/blockcraft/engine/physics';
 import {EventBus} from '../../../src/games/blockcraft/engine/events';
@@ -84,6 +84,13 @@ describe('world',()=>{
     for(const bad of [['@@'],[seg([0,0,0,0,1])],[seg([0,0,0,0,0,0x80,1])],[seg([0,0,0,0,0,0,BLOCK_COUNT])],[seg([0,0x40,0,0])],
       [first[0],first[0]],[first[0],5]])expect(new VoxelWorld().restoreEdits(bad)).toBe(false);
     expect(new VoxelWorld().restoreEdits([seg([0,0,0,0,0,0,1])])).toBe(true);
+    // Every chunk a key can name loads back: cx=-CHUNK_LIMIT is in range, cx=CHUNK_LIMIT (above) is not.
+    expect(new VoxelWorld().restoreEdits([seg([0,0xc0,0xff,0x3f,0,0,1])])).toBe(true);
+    const edge=new VoxelWorld();edge.insert(-CHUNK_LIMIT,CHUNK_LIMIT-1,chunk(b=>b.fill(B.stone,0,10*LAYER)));
+    expect(edge.set(-CHUNK_LIMIT*16,3,CHUNK_LIMIT*16-1,0)).toBe(true);
+    expect(new VoxelWorld().restoreEdits(JSON.parse(JSON.stringify(edge.serializeEdits())))).toBe(true);
+    expect(new VoxelWorld().restoreEdits([0,0,0,-CHUNK_LIMIT,CHUNK_LIMIT-1,0])).toBe(true);
+    expect(new VoxelWorld().restoreEdits([CHUNK_LIMIT,0,0])).toBe(false);
   });
   test('light falls back to sky above the heightmap until meshed',()=>{const w=flatWorld(10);expect(w.lightAt(0,12,0)>>4).toBe(15);expect(w.lightAt(0,5,0)).toBe(0);});
 });

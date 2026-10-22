@@ -1,6 +1,6 @@
 import {AIR,B,BLOCK_COUNT,LIGHT_OPACITY} from '../data/blocks';
 import {changesLight} from './light-shapes';
-import {CS,CH,LAYER,CHUNK_VOLUME,CHUNK_LIMIT,chunkKey,keyX,keyZ} from '../engine/constants';
+import {CS,CH,LAYER,CHUNK_VOLUME,chunkInRange,chunkKey,keyX,keyZ} from '../engine/constants';
 import type {Chunk,ChunkData,ChangeCause,World,BlockId,GameEvents} from '../engine/contracts';
 import type {EventBus} from '../engine/events';
 
@@ -23,7 +23,7 @@ export function decodeEdits(segment:string):{cx:number;cz:number;edits:Map<numbe
   let text:string;try{text=atob(segment);}catch{return null;}
   if(text.length<4||(text.length-4)%3)return null;
   const cx=(text.charCodeAt(0)|text.charCodeAt(1)<<8)<<16>>16,cz=(text.charCodeAt(2)|text.charCodeAt(3)<<8)<<16>>16;
-  if(Math.abs(cx)>=CHUNK_LIMIT||Math.abs(cz)>=CHUNK_LIMIT)return null;
+  if(!chunkInRange(cx,cz))return null;
   const edits=new Map<number,number>();
   for(let i=4;i<text.length;i+=3){
     const index=text.charCodeAt(i)|text.charCodeAt(i+1)<<8,id=text.charCodeAt(i+2);
@@ -163,7 +163,7 @@ export class VoxelWorld implements World{
   restorePopulated(list:unknown){
     if(!Array.isArray(list)||list.length%2||list.length>2e5)return;
     this.populated.clear();
-    for(let i=0;i<list.length;i+=2){const x=list[i],z=list[i+1];if(Number.isInteger(x)&&Number.isInteger(z)&&Math.abs(x)<CHUNK_LIMIT&&Math.abs(z)<CHUNK_LIMIT)this.populated.add(chunkKey(x,z));}
+    for(let i=0;i<list.length;i+=2){const x=list[i],z=list[i+1];if(Number.isInteger(x)&&Number.isInteger(z)&&chunkInRange(x,z))this.populated.add(chunkKey(x,z));}
   }
   /** Validates the whole list before replacing current edits: segments (serializeEdits), or the flat list of older saves
    *  (cx, cz, count, then index/id pairs). */
@@ -182,7 +182,7 @@ export class VoxelWorld implements World{
     }
     for(let i=0;i<list.length;){
       const cx=list[i++],cz=list[i++],count=list[i++];
-      if(!Number.isInteger(cx)||!Number.isInteger(cz)||!Number.isInteger(count)||count<0||Math.abs(cx)>=CHUNK_LIMIT||Math.abs(cz)>=CHUNK_LIMIT)return false;
+      if(!Number.isInteger(cx)||!Number.isInteger(cz)||!Number.isInteger(count)||count<0||!chunkInRange(cx,cz))return false;
       if(i+count*2>list.length)return false;
       const edits=new Map<number,number>();
       for(let n=0;n<count;n++){

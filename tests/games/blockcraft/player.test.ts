@@ -7,7 +7,9 @@ import {B,blockId} from '../../../src/games/blockcraft/data/blocks';
 import {bodyCollides,flowAt} from '../../../src/games/blockcraft/engine/physics';
 import {FLY_SPEED,FLY_VERTICAL_SPEED,JUMP_VELOCITY,SNEAK_SPEED,SPRINT_SPEED,WALK_SPEED,effectSpeedFactor,jumpPeak,liquidFlow,vanillaJumpPeak}
   from '../../../src/games/blockcraft/player/controls-physics';
-import type {InputAction,PlayerService,StatusEffect} from '../../../src/games/blockcraft/engine/contracts';
+import {CHUNK_VOLUME,CS,LAYER,WORLD_BORDER,chunkInRange} from '../../../src/games/blockcraft/engine/constants';
+import {VIEW_DISTANCES,type InputAction,type PlayerService,type StatusEffect} from '../../../src/games/blockcraft/engine/contracts';
+import type {VoxelWorld} from '../../../src/games/blockcraft/world/world';
 
 const STEP=1/60;
 /** Yaw that makes "forward" walk along a world axis (yaw 0 looks north, -z). */
@@ -379,6 +381,19 @@ describe('persistence',()=>{
     const data=JSON.parse(JSON.stringify(r.player.serialize!()));
     const q=rig({mode:'creative'});q.player.reset!();q.player.restore!(data);
     expect(q.player.state).toMatchObject({x:4.5,y:61,z:-3.5,yaw:1.2,pitch:-.4,flying:true,spawn:{x:1,y:62,z:2},bedSpawn:{x:5,y:60,z:6}});
+  });
+  test('the world border stops the body like a wall and keeps teleports and saves inside it',()=>{
+    const r=rig();const p=r.player.state,edge=WORLD_BORDER-HALF_WIDTH,c=WORLD_BORDER/CS;
+    // Ground on both sides of the border at x=+WORLD_BORDER.
+    for(let cz=-1;cz<=0;cz++)for(let cx=c-1;cx<=c;cx++){
+      const blocks=new Uint8Array(CHUNK_VOLUME);blocks.fill(B.stone,0,60*LAYER);(r.game.world as VoxelWorld).insert(cx,cz,{blocks,biomes:new Uint8Array(LAYER)});
+    }
+    r.player.teleport(WORLD_BORDER-3,60,.5);p.yaw=YAW.east;hold(r,'forward','sprint');run(r,2);
+    expect(p.x).toBe(edge);expect(p.vx).toBe(0);expect(Math.abs(p.z-.5)).toBeLessThan(1e-9);
+    r.player.teleport(WORLD_BORDER+40,61,-WORLD_BORDER-7);expect(p.x).toBe(edge);expect(p.z).toBe(-edge);
+    r.player.restore!({x:-4e5,y:61,z:3});expect(p.x).toBe(-edge);expect(p.z).toBe(3);
+    // Every chunk within view of the border has a key of its own.
+    expect(chunkInRange(c+VIEW_DISTANCES[VIEW_DISTANCES.length-1]+2,-c-VIEW_DISTANCES[VIEW_DISTANCES.length-1]-3)).toBe(true);
   });
   test('ignores invalid data without throwing',()=>{
     const r=rig();const before={...r.player.state};

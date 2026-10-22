@@ -298,6 +298,8 @@ unless they would compromise performance or correctness. Unit tests can build se
   - automatic step-up of 0.6 blocks (slabs, snow layers)
   - swimming with buoyancy; flowing water pushes the player; sprint in water = swimming pose (`state.swimming`, 0.6 high)
   - ladder climbing (forward or jump up, sneak holds position)
+  - a world border at ±256,000 blocks on x and z (`WORLD_BORDER`) stops the player like a wall; teleports and restored
+    positions land inside it, so every loaded chunk keeps a chunk key of its own (keys cover ±262,144 blocks)
   - lava slowness
   - creative flight (double-tap Space; Space up, sneak down; sprint-fly)
   - landing in water negates fall damage

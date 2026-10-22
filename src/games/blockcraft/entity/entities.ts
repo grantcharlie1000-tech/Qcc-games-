@@ -27,7 +27,7 @@
 //    entry whose chunk is not loaded waits in the store.
 import {OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
 import {itemDef,stack as makeStack,type ItemStack} from '../data/items';
-import {CH,CS,chunkKey} from '../engine/constants';
+import {CH,CHUNK_LIMIT,CS,chunkKey} from '../engine/constants';
 import {rayBox} from '../engine/physics';
 import type {DamageSource,Entity,EntityCategory,EntityKind,EntityRay,EntityService,Game,SpawnReason,Vec3} from '../engine/contracts';
 import {createEntityAI,rotateTowards,wrapAngle} from './ai';
@@ -87,6 +87,8 @@ export function sunBrightness(level:number):number{const f=level/15;return f/(4-
 const isObject=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const r3=(v:number)=>Math.round(v*1000)/1000;
 const finiteIn=(v:unknown,min:number,max:number):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
+/** Saved x and z must name a chunk with a key of its own (the world border keeps every entity well inside). */
+const XZ_MIN=-CHUNK_LIMIT*CS,XZ_MAX=CHUNK_LIMIT*CS-1;
 const isLivingCategory=(c:EntityCategory)=>c==='passive'||c==='hostile'||c==='water';
 const CATEGORIES:readonly EntityCategory[]=['passive','hostile','water','item','projectile','xp','misc'];
 
@@ -509,7 +511,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
   /** Keeps a save entry until its chunk loads. Its id stays reserved, so the entity comes back with it. */
   function stash(raw:unknown){
     const entry=cleanJson(raw);
-    if(!isObject(entry)||typeof entry.k!=='string'||!finiteIn(entry.x,-3e7,3e7)||!finiteIn(entry.z,-3e7,3e7))return;
+    if(!isObject(entry)||typeof entry.k!=='string'||!finiteIn(entry.x,XZ_MIN,XZ_MAX)||!finiteIn(entry.z,XZ_MIN,XZ_MAX))return;
     const k=kinds.get(entry.k);if(!k||k.persist===false||k.category==='hostile')return;
     const id=entry.i;if(Number.isInteger(id)&&(id as number)>=nextId&&(id as number)<2**31)nextId=(id as number)+1;
     addStored(entry,entry.x,entry.z);
@@ -545,7 +547,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(!isObject(raw)||typeof raw.k!=='string')return;
     const k=kinds.get(raw.k);if(!k||k.persist===false||k.category==='hostile')return;
     const {x,y,z}=raw;
-    if(!finiteIn(x,-3e7,3e7)||!finiteIn(y,-64,CH+64)||!finiteIn(z,-3e7,3e7))return;
+    if(!finiteIn(x,XZ_MIN,XZ_MAX)||!finiteIn(y,-64,CH+64)||!finiteIn(z,XZ_MIN,XZ_MAX))return;
     const v=(n:unknown)=>finiteIn(n,-100,100)?n:0,ang=(n:unknown)=>finiteIn(n,-1e3,1e3)?wrapAngle(n):0;
     let data:Record<string,unknown>|null=null;
     const clean=cleanJson(raw.d);data=isObject(clean)?clean:{};
@@ -671,7 +673,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
       if(!isObject(data)||data.v!==SAVE_VERSION||!Array.isArray(data.list))return;
       for(const raw of data.list.slice(0,MAX_SAVED)){
         // Entities of chunks that are not loaded yet wait for them (the world loads after a restore).
-        if(isObject(raw)&&finiteIn(raw.x,-3e7,3e7)&&finiteIn(raw.z,-3e7,3e7)&&!game.world.isLoaded(raw.x,raw.z)){stash(raw);continue;}
+        if(isObject(raw)&&finiteIn(raw.x,XZ_MIN,XZ_MAX)&&finiteIn(raw.z,XZ_MIN,XZ_MAX)&&!game.world.isLoaded(raw.x,raw.z)){stash(raw);continue;}
         try{restoreOne(raw);}catch{/* skip a broken entry */}
       }
       if(Array.isArray(data.far))for(const raw of data.far.slice(0,MAX_STORED))stash(raw);
