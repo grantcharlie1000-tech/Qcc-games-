@@ -493,9 +493,9 @@ export function createSurvival(game:Game):SurvivalSystem{
       offRestored=game.events.on('restored',()=>{
         if(!dead){spawnProtection=SPAWN_PROTECTION_TICKS;return;}
         // A world saved on the death screen: the death was counted and its drops made before saving, so playerDied is not
-        // sent again (every listener would count a second death). The engine shows the death screen from survival.dead
-        // and deathMessage, entering state 'dead' before this event.
-        if(game.state==='dead')return;
+        // sent again (every listener would count a second death). The engine emits this event while still 'loading' and
+        // enters 'dead' (the death screen, from survival.dead and deathMessage) once the player's chunks are in.
+        if(game.state==='dead'||game.state==='loading')return;
         // An engine that resumes the world without the death screen would leave a dead player in play: respawn instead.
         service.respawn();
         const at=respawnPoint();game.player.teleport(at.x,at.y,at.z);

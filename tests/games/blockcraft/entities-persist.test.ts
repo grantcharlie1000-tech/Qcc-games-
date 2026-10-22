@@ -41,6 +41,19 @@ describe('persistence',()=>{
     const kept=Math.max(...saved.list.map(d)),all=h.game.entities.all().map(d).sort((a,b)=>a-b);
     expect(kept).toBeLessThanOrEqual(all[MAX_SAVED-1]+1e-6);
   });
+  test('the player\'s own animals (tamed wolves) are saved first however far away, and restore before the cut',()=>{
+    const h=harness({kinds:[walker()],r:4});
+    const pet=h.game.entities.spawn('walker',60.5,60,60.5,{data:{owner:'player',sitting:true}})!;
+    const wild=h.game.entities.spawn('walker',59.5,60,60.5,{data:{owner:'mob'}})!;
+    for(let i=0;i<250;i++)h.game.entities.spawn('walker',.5+(i%50)-25,60,.5+Math.floor(i/50)*8-20);
+    const saved=roundTrip(h.game.entities.serialize?.()) as {list:{i:number;d:Record<string,unknown>}[]};
+    expect(saved.list).toHaveLength(MAX_SAVED);
+    expect(saved.list[0]).toMatchObject({i:pet.id,d:{owner:'player',sitting:true}});
+    expect(saved.list.some(r=>r.i===wild.id)).toBe(false);
+    const b=harness({kinds:[walker()],r:4});
+    b.game.entities.restore?.({...saved,list:[...saved.list,...saved.list.slice(1,60)]});
+    expect(b.game.entities.all()).toHaveLength(MAX_SAVED);expect(b.game.entities.byId(pet.id)?.data.owner).toBe('player');
+  });
   test('invalid saves are ignored without throwing',()=>{
     const h=harness({kinds:[sheep()]});
     const bad:unknown[]=[null,5,'x',[],{v:2,list:[]},{v:1,list:'x'},{v:1,list:[null,1,'a',

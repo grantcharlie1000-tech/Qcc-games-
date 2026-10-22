@@ -53,10 +53,23 @@ describe('beds',()=>{
     return{h,slept,use:()=>useOn(h,null,0,60,-2,TOP)};
   }
   it('at night sleeps to morning, sets the bed spawn at the head and emits playerSlept',()=>{
-    const {h,slept,use}=bed(18000);use();
-    expect(h.game.time.dayTime).toBe(0);expect(slept).toHaveLength(1);
+    const {h,slept,use}=bed(18000);h.game.settings.daylightCycle=true;
+    const skipped:{from:number;to:number}[]=[];h.game.events.on('timeSkipped',e=>skipped.push(e));
+    use();
+    expect(skipped).toHaveLength(1);expect(skipped[0].to).toBe(0);expect(h.game.time.dayTime).toBeLessThan(10);expect(slept).toHaveLength(1);
     expect(h.game.player.state.bedSpawn).toEqual({x:0,y:60,z:-3});
     expect(h.game.toasts).toContain(SLEEP_MESSAGES.spawn);
+  });
+  it('with Daylight Cycle off sleeping keeps the time but still resets the weather (vanilla doDaylightCycle, doWeatherCycle)',()=>{
+    const {h,slept,use}=bed(18000);
+    const weather:unknown[]=[];h.game.weather.set=(...a:unknown[])=>{weather.push(a[0]);};
+    const skipped:unknown[]=[];h.game.events.on('timeSkipped',e=>skipped.push(e));
+    use();
+    expect(h.game.time.dayTime).toBe(18000);expect(skipped).toEqual([]);expect(weather).toEqual(['clear']);
+    expect(slept).toHaveLength(1);expect(h.game.player.state.bedSpawn).toEqual({x:0,y:60,z:-3});
+    const frozen=bed(18000);frozen.h.game.settings.weatherCycle=false;
+    const set:unknown[]=[];frozen.h.game.weather.set=(...a:unknown[])=>{set.push(a[0]);};
+    frozen.use();expect(frozen.h.game.time.dayTime).toBe(18000);expect(set).toEqual([]);expect(frozen.slept).toHaveLength(1);
   });
   it('by day refuses with a message but still sets the respawn point',()=>{
     const {h,slept,use}=bed(6000);use();

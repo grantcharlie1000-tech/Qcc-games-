@@ -457,7 +457,7 @@ unless they would compromise performance or correctness. Unit tests can build se
 - **Must:** use actions:
   - open the crafting table, furnace and chest screens
   - toggle doors (both halves)
-  - beds: sleep at night when no monsters are within 8 blocks → time to morning; set the bed spawn; toasts otherwise
+  - beds: sleep at night when no monsters are within 8 blocks → time to morning (when Daylight Cycle is on); set the bed spawn; toasts otherwise
   - TNT plus flint and steel → a `primed_tnt` entity (data `byPlayer: true`); flint and steel on other blocks places `fire` on top
   - eat food: hold for 1.6 s with particles and sound; only when hungry unless `always`
   - drink milk: clears effects

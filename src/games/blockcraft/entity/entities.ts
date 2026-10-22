@@ -20,8 +20,8 @@
 //    ticks (or the killing blow); entityDied reports that memory as source.byPlayer.
 //  - entityRemoved is emitted once whenever an entity leaves the world: the end of the death animation, despawning and
 //    remove() (not for reset(), a new world).
-//  - Persistence: up to 200 entities nearest the player (hostiles and kinds with persist:false are not saved); restore
-//    validates every field and the kind's restoreData.
+//  - Persistence: up to 200 entities, the player's own (data.owner 'player': tamed wolves) first, then the nearest
+//    (hostiles and kinds with persist:false are not saved); restore validates every field and the kind's restoreData.
 import {OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
 import {itemDef,stack as makeStack,type ItemStack} from '../data/items';
 import {CH} from '../engine/constants';
@@ -473,8 +473,9 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
       keep.push(r);
     }
     if(keep.length>MAX_SAVED){
-      const d=(r:Rec)=>(r.e.x-p.x)**2+(r.e.y-p.y)**2+(r.e.z-p.z)**2;
-      keep.sort((a,b)=>d(a)-d(b));keep.length=MAX_SAVED;
+      // The player's own animals (tamed wolves: vanilla persistenceRequired) come first however far away they were left.
+      const d=(r:Rec)=>(r.e.x-p.x)**2+(r.e.y-p.y)**2+(r.e.z-p.z)**2,owned=(r:Rec)=>r.e.data.owner==='player'?0:1;
+      keep.sort((a,b)=>owned(a)-owned(b)||d(a)-d(b));keep.length=MAX_SAVED;
     }
     return{v:SAVE_VERSION,list:keep.map(({e})=>({k:e.kind,i:e.id,x:r3(e.x),y:r3(e.y),z:r3(e.z),vx:r3(e.vx),vy:r3(e.vy),vz:r3(e.vz),
       yw:r3(e.yaw),hy:r3(e.headYaw),pt:r3(e.pitch),h:r3(e.health),a:e.age,f:e.fire,b:e.baby?1:0,d:cleanJson(e.data)??{}}))};
