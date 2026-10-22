@@ -53,6 +53,8 @@ export class CornClicker {
   private readonly kernelUrl=svgUrl(kernelSvg());
   private lastPointerType='mouse';
   private tooltipFor:HTMLElement|null=null;
+  /** On touch, the upgrade explained by the first tap; a second tap on it buys. */
+  private touchArmed:HTMLElement|null=null;
   private modalReturn:HTMLElement|null=null;
   private keyboardAwardAt=0;
   private readonly el:{[k:string]:HTMLElement};
@@ -634,7 +636,8 @@ export class CornClicker {
   private clickUpgrade(b:HTMLElement){
     if(this.passive)return;
     // Touch: the first tap explains, the second tap buys.
-    if(this.lastPointerType==='touch'&&this.tooltipFor!==b){this.showTooltip(b);return;}
+    if(this.lastPointerType==='touch'&&this.touchArmed!==b){this.touchArmed=b;this.showTooltip(b);return;}
+    this.touchArmed=null;
     const u=upgradeById.get(b.dataset.upgrade!)!;
     this.simulate();
     if(!this.game.buyUpgrade(u.id)){this.play('deny');this.toast(`${u.name} needs ${this.f(this.game.upgradePrice(u).sub(this.game.s.kernels))} more kernels.`,'info');return;}
@@ -678,7 +681,7 @@ export class CornClicker {
     if(top+h>root.height-8)top=Math.max(8,r.top-root.top-h-8);
     tip.style.left=`${left}px`;tip.style.top=`${top}px`;
   }
-  private readonly hideTooltip=()=>{this.el.tooltip.hidden=true;this.tooltipFor=null;};
+  private readonly hideTooltip=()=>{this.el.tooltip.hidden=true;this.tooltipFor=null;this.touchArmed=null;};
   private refreshTooltip(){if(this.tooltipFor){if(this.tooltipFor.isConnected&&!this.el.tooltip.hidden)this.el.tooltip.innerHTML=this.tooltipHtml(this.tooltipFor.dataset.tip!);else this.hideTooltip();}}
 
   // ───────────────────────── Tabs, tips, goals ─────────────────────────

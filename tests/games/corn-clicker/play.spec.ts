@@ -103,15 +103,23 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
   const page=await context.newPage();
   const errors=errorsOf(page);
-  await seed(page,{kernels:'14',golden:{next:0.4}});
+  await seed(page,{kernels:'114',run:{clicks:20},life:{clicks:20},golden:{next:0.4}});
   await cob(page).tap();
-  await expect(page.locator('.cc-kernels-num')).toHaveText('15');
+  await expect(page.locator('.cc-kernels-num')).toHaveText('115');
   const tabs=page.getByRole('tablist',{name:'Corn Clicker sections'});
   await tabs.getByRole('tab',{name:'Shop'}).tap();
   await expect(page.locator('#cc-pane-shop')).toBeVisible();
   await expect(page.locator('#cc-pane-cob')).toBeHidden();
   await page.locator('[data-producer=farmhand]').tap();
   await expect(page.locator('[data-producer=farmhand] .cc-prod-owned')).toHaveText('1');
+  // Touch: the first tap on an upgrade explains it, the second buys it.
+  const thumbs=page.locator('[data-upgrade=click-1]');
+  await thumbs.tap();
+  await expect(page.locator('.cc-tooltip')).toContainText('Tap again to buy.');
+  await expect(thumbs).toBeVisible();
+  await thumbs.tap();
+  await expect(thumbs).toHaveCount(0);
+  await expect(page.locator('.cc-hud-c')).toBeVisible();
   await tabs.getByRole('tab',{name:'Farm'}).tap();
   await expect(page.locator('.cc-lot[data-lot=farmhand]')).toBeVisible();
   const golden=page.getByRole('button',{name:/^Golden cob/});

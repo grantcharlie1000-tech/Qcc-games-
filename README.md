@@ -1,6 +1,6 @@
 # Pocket Arcade
 
-A static, private browser arcade with seventeen playable games: **Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft and Maze Muncher**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No accounts, advertisements or currency. Gameplay stays local; optional shared leaderboards use a Netlify score service.
+A static, private browser arcade with eighteen playable games: **Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher and Corn Clicker**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No accounts, advertisements or currency. Gameplay stays local; optional shared leaderboards use a Netlify score service.
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
@@ -35,7 +35,7 @@ Choose one of **20 NCEA study topics** on the first visit in a tab, then open th
 
 Use the hamburger for Study Mode, search, sound, motion, colour-blind settings and **Make all games available offline**. Sound starts muted. Games offer a shared back, pause, restart and rules toolbar, plus their own controls. Mouse and trackpad use the same pointer controls; suitable games also accept keyboard and touch input.
 
-Scores, settings, favourites and compact game snapshots stay in this browser's local storage. If storage is blocked or full, play continues in memory and the menu explains that progress cannot be retained. Game snapshots do not sync between devices. Open **Menu → Leaderboards** to view shared scores for the fourteen scored games. Join with a public nickname to sync your personal bests; offline scores queue until the connection returns. Globle retains its own statistics and has no score leaderboard; Maze Muncher keeps a local best score only. Restart starts a new run; leaving a game saves its current state. A hidden tab pauses real-time play.
+Scores, settings, favourites and compact game snapshots stay in this browser's local storage. If storage is blocked or full, play continues in memory and the menu explains that progress cannot be retained. Game snapshots do not sync between devices. Open **Menu → Leaderboards** to view shared scores for the fourteen scored games. Join with a public nickname to sync your personal bests; offline scores queue until the connection returns. Globle retains its own statistics and has no score leaderboard; Maze Muncher keeps a local best score only; Corn Clicker keeps its own farm save, backups and statistics. Restart starts a new run; leaving a game saves its current state. A hidden tab pauses real-time play.
 
 Offline play requires a successful download on the same browser, device and origin, using HTTPS or localhost. Browser eviction, private browsing, managed-device policies and network controls can prevent retention. The app cannot bypass them. After an update, close older arcade tabs so the new worker can activate; download the new pack to make all of that release available offline.
 
@@ -64,3 +64,5 @@ Blockcraft is a modern-Minecraft-style survival and creative sandbox that began 
 Flappy Bird uses an original marsh swift and reed-gate illustration. Ball Run now generates reproducible varied obstacles with a clear corridor and swept sphere collisions; older runs retain their original obstacle layout. See [local checkpoint and test evidence](docs/FLAPPY_BALL_RUN.md).
 
 Maze Muncher is an original maze-chase game with classic arcade rules: chasers with their own targets, scatter and chase waves, power berries, eyes returning home, a side tunnel, bonus treats and faster levels. Its characters, maze and SVG art are original. See [its spec](src/games/maze-muncher/SPEC.md).
+
+Corn Clicker is an original corn-themed incremental game: click the cob, hire producers from Farmhands to the Corniverse, collect golden cobs, grow and cross-breed corn in the garden, and Replant for Golden Seeds. It keeps earning while you are away (50% for up to 8 hours), autosaves with backups and export codes, and runs in one tab at a time. See [its spec](src/games/corn-clicker/SPEC.md).
