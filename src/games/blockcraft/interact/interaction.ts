@@ -80,6 +80,9 @@ export function createInteraction(game:Game):InteractionService{
   // Mining state (vanilla MultiPlayerGameMode).
   let breaking:{x:number;y:number;z:number;progress:number}|null=null,destroying=false,destroyTicks=0,destroyItem:string|null=null,destroyDelay=0;
   let missTime=0,rightClickDelay=0,lastHeld:string|null=null,partial=0;
+  /** Frames that saw the button still held. A slow frame runs several catch-up ticks with the button state sampled
+   *  once, so held repeats wait until the hold has outlasted a frame: a quick click never fires twice. */
+  let useHeldFrames=0,attackHeldFrames=0;
   let using:ItemUse|null=null;const usingView={item:'',progress:0};
   let editToast=false;
   // Scratch objects reused every mining tick (no per-tick allocation).
@@ -283,6 +286,7 @@ export function createInteraction(game:Game):InteractionService{
     blockDrops:(id,tool,cause?:ChangeCause)=>lootDrops(id,tool,random,cause),
     frame(dt){
       partial=Math.min(1,partial+dt*20);
+      useHeldFrames=game.input.down('use')?useHeldFrames+1:0;attackHeldFrames=game.input.down('attack')?attackHeldFrames+1:0;
       updateTarget();showSelection();
       if(game.state!=='playing'){if(breaking||destroying)stopDestroy();if(using)stopUsing();}
     },
@@ -307,9 +311,9 @@ export function createInteraction(game:Game):InteractionService{
         if(input.pressed('use'))startUse();
         if(input.pressed('pick'))pick();
       }
-      if(input.down('use')&&rightClickDelay===0&&!using)startUse();
+      if(input.down('use')&&useHeldFrames>0&&rightClickDelay===0&&!using)startUse();
       if(using)tickUsing();
-      continueAttack(input.down('attack')&&!broke);
+      continueAttack(input.down('attack')&&attackHeldFrames>0&&!broke);
       // Vanilla counts the miss lock down after handling the keys, so holding attack mines again 10 ticks after a miss.
       if(missTime>0)missTime--;
       showSelection();

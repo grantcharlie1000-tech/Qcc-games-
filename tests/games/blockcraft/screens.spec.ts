@@ -209,6 +209,8 @@ test('a large chest keeps items between openings; armour equips by shift-click, 
   await slot(page,'Inventory slot 4').click();
   await expect(page.locator('.bc-cursor .bc-d')).toBeVisible();
   expect(await engine(page,g=>g.serialize().systems.ui)).toEqual({stacks:[{id:'iron_pickaxe',count:1,damage:125}]});
+  // A second click on the same slot within 250 ms is a vanilla double click (collect), so wait before placing it back.
+  await page.waitForTimeout(300);
   await slot(page,'Inventory slot 4').click();
   await expect(page.locator('.bc-cursor')).toBeHidden();
   await page.keyboard.press('KeyE');
