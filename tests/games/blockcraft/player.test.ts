@@ -411,6 +411,16 @@ describe('vanilla details',()=>{
     const m=rig();(m.game as {reducedMotion:boolean}).reducedMotion=true;hold(m,'forward','sprint');run(m,1);
     expect(m.player.state.sprinting).toBe(true);expect(m.fov.at(-1)).toBe(1);
   });
+  test('a jump press released before the step ran still counts as holding jump for the next tick (slow frames, quick taps)',()=>{
+    // One tap, never held: the player still jumps.
+    const r=rig();run(r,.1);tap(r,'jump');let rise=0;
+    for(let i=0;i<30;i++){run(r,STEP);rise=Math.max(rise,r.player.state.y-60);}
+    expect(rise).toBeGreaterThan(1);
+    // Two instant taps on the ground in creative, read within one long frame: flight starts and stays (it hovers).
+    const c=rig({mode:'creative'});run(c,.1);tap(c,'jump');c.player.frame!(.05);tap(c,'jump');c.player.frame!(.1);
+    expect(c.player.state.flying).toBe(true);
+    run(c,1);expect(c.player.state.flying).toBe(true);expect(c.player.state.onGround).toBe(false);
+  });
   test('a second jump press later than 7 ticks does not toggle flight',()=>{
     const r=rig({mode:'creative'});run(r,.1);tap(r,'jump');run(r,STEP);run(r,.5);tap(r,'jump');run(r,STEP);
     expect(r.player.state.flying).toBe(false);

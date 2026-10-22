@@ -60,6 +60,9 @@ export function createPlayer(game:Game):PlayerService{
   let swimming=false;
   let acc=0,alpha=1,prevX=p.x,prevY=p.y,prevZ=p.z,eyeSmooth:number=POSE_EYE[STAND],prevEye=eyeSmooth;
   let flyTimer=0,jumpDelay=0,collidedH=false,collidedHard=false;
+  /** A jump press counts as holding jump until the next tick's input sample, even when the key went up before the step
+   *  ran (taps shorter than a frame at low frame rates, quick touch taps): vanilla samples held keys once per tick. */
+  let jumpTap=false;
   /** Vanilla decides jumps, ground/air/liquid physics and friction once per 20 Hz tick. The velocity here is vanilla's
    *  per-tick displacement d, which follows d' = A(previous tick)·d + accel(this tick): friction lags acceleration by one
    *  tick (the source of the sprint-jump speed and the landing boost). These hold the current tick's choices. */
@@ -177,8 +180,8 @@ export function createPlayer(game:Game):PlayerService{
     if(!sensed)senseFluids(false);
 
     // ---- Input ------------------------------------------------------------------------------
-    const mv=input.move(),jumpHeld=input.down('jump'),sneakKey=input.down('sneak'),sprintKey=input.down('sprint');
-    const jumpPressed=input.pressed('jump');
+    const jumpPressed=input.pressed('jump');if(jumpPressed)jumpTap=true;
+    const mv=input.move(),jumpHeld=input.down('jump')||jumpTap,sneakKey=input.down('sneak'),sprintKey=input.down('sprint');
     if(flyTimer>0)flyTimer--;
     // Double-tapping jump within 7 ticks toggles creative flight (LocalPlayer.aiStep jumpTriggerTime).
     if(jumpPressed&&creative){if(flyTimer===0)flyTimer=FLIGHT_TOGGLE_STEPS;else if(!swimming){p.flying=!p.flying;flyTimer=0;}}
@@ -210,6 +213,7 @@ export function createPlayer(game:Game):PlayerService{
 
     // ---- Jumping (LivingEntity.aiStep) ----------------------------------------------------------
     const tickStart=tickStep===0;tickStep=(tickStep+1)%STEPS_PER_TICK;
+    if(tickStart)jumpTap=false;
     if(tickStart){
       boostX=boostZ=0;fallAtTick=p.fallDistance;
       if(p.sprinting&&p.onGround&&!p.inWater&&!p.inLava&&!p.sneaking)sprintDust();
@@ -353,7 +357,7 @@ export function createPlayer(game:Game):PlayerService{
     },
     tick(){if(p.y<VOID_Y)game.survival.damage(4,{kind:'void'});},
     frame(dt){
-      if(game.state!=='playing'&&game.state!=='screen'){acc=0;syncPrev();return;}
+      if(game.state!=='playing'&&game.state!=='screen'){acc=0;jumpTap=false;syncPrev();return;}
       readEffects();
       acc=Math.min(acc+dt,MAX_LAG);
       while(acc>=STEP-1e-9){acc-=STEP;step();}
@@ -363,7 +367,7 @@ export function createPlayer(game:Game):PlayerService{
       game.render.setFovScale(fovScale());
     },
     reset(){
-      Object.assign(p,createPlayerState());pose=STAND;swimming=false;acc=0;flyTimer=jumpDelay=tickStep=0;tickAccel=boostX=boostZ=0;tickRetain=lastRetain=.6*AIR_RETAIN;
+      Object.assign(p,createPlayerState());pose=STAND;swimming=false;acc=0;flyTimer=jumpDelay=tickStep=0;jumpTap=false;tickAccel=boostX=boostZ=0;tickRetain=lastRetain=.6*AIR_RETAIN;
       collidedH=collidedHard=false;moveDist=0;nextStep=1;exhaust=0;speedFactor=1;sensed=false;fallAtTick=0;eyeSmooth=POSE_EYE[STAND];syncPrev();
     },
     serialize:()=>({x:p.x,y:p.y,z:p.z,yaw:p.yaw,pitch:p.pitch,flying:p.flying,spawn:{...p.spawn},bedSpawn:p.bedSpawn?{...p.bedSpawn}:null}),
