@@ -6,6 +6,33 @@ import type {EventBus} from '../engine/events';
 
 export const MAX_EDITS=200000;
 
+/** One chunk's edits as a save segment: base64 of Int16 cx and cz, then per edit a Uint16 voxel index and a Uint8 block id
+ *  (little endian). About 4 characters per edit, and a plain string costs next to nothing to stringify. */
+export function encodeEdits(cx:number,cz:number,edits:ReadonlyMap<number,number>):string{
+  const bytes=new Uint8Array(4+edits.size*3);
+  bytes[0]=cx&255;bytes[1]=(cx>>8)&255;bytes[2]=cz&255;bytes[3]=(cz>>8)&255;
+  let o=4;
+  edits.forEach((id,index)=>{bytes[o]=index&255;bytes[o+1]=index>>8;bytes[o+2]=id;o+=3;});
+  let text='';
+  for(let i=0;i<bytes.length;i+=0x6000)text+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x6000) as unknown as number[]);
+  return btoa(text);
+}
+/** A validated save segment, or null. */
+export function decodeEdits(segment:string):{cx:number;cz:number;edits:Map<number,number>}|null{
+  if(segment.length>(4+CHUNK_VOLUME*3)*4/3+4)return null;
+  let text:string;try{text=atob(segment);}catch{return null;}
+  if(text.length<4||(text.length-4)%3)return null;
+  const cx=(text.charCodeAt(0)|text.charCodeAt(1)<<8)<<16>>16,cz=(text.charCodeAt(2)|text.charCodeAt(3)<<8)<<16>>16;
+  if(Math.abs(cx)>=CHUNK_LIMIT||Math.abs(cz)>=CHUNK_LIMIT)return null;
+  const edits=new Map<number,number>();
+  for(let i=4;i<text.length;i+=3){
+    const index=text.charCodeAt(i)|text.charCodeAt(i+1)<<8,id=text.charCodeAt(i+2);
+    if(index>=CHUNK_VOLUME||id>=BLOCK_COUNT)return null;
+    edits.set(index,id);
+  }
+  return{cx,cz,edits};
+}
+
 export function computeHeightmap(blocks:Uint8Array,out=new Int16Array(LAYER)):Int16Array{
   for(let c=0;c<LAYER;c++){let y=CH-1;while(y>=0&&blocks[c+y*LAYER]===AIR)y--;out[c]=y;}
   return out;
@@ -20,6 +47,8 @@ export class VoxelWorld implements World{
   /** Chunks that have been generated at least once in this world (entity packs, structures). */
   readonly populated=new Set<number>();
   private editTotal=0;
+  /** Encoded save segment of each chunk's edits, kept until those edits change (the shell saves every 5 s). */
+  private segments=new Map<number,string>();
   /** Chunks whose mesh must be rebuilt now: the edited chunk and neighbours sharing its border (AO, culling, tint). */
   readonly dirty=new Set<number>();
   /** Neighbours that only need relighting (light reaches 15 blocks); rebuilt when `dirty` is empty. */
@@ -53,6 +82,7 @@ export class VoxelWorld implements World{
     }
     if(originals.get(index)===id){edits.delete(index);originals.delete(index);this.editTotal--;}
     else edits.set(index,id);
+    this.segments.delete(chunk.key);
     chunk.blocks[index]=id;
     const column=lx+lz*CS;
     if(id!==AIR&&wy>chunk.heightmap[column])chunk.heightmap[column]=wy;
@@ -103,7 +133,7 @@ export class VoxelWorld implements World{
     const key=chunkKey(cx,cz),edits=this.edits.get(key),originals=new Map<number,number>();
     if(edits)for(const [index,id] of edits){
       const generated=data.blocks[index];
-      if(generated===id){edits.delete(index);this.editTotal--;continue;}
+      if(generated===id){edits.delete(index);this.editTotal--;this.segments.delete(key);continue;}
       originals.set(index,generated);data.blocks[index]=id;
     }
     this.originals.set(key,originals);
@@ -115,15 +145,17 @@ export class VoxelWorld implements World{
   remove(key:number){
     if(this.chunks.delete(key)){this.dirty.delete(key);this.lightDirty.delete(key);this.originals.delete(key);this.events?.emit('chunkUnloaded',{cx:keyX(key),cz:keyZ(key)});}
   }
-  clear(){for(const key of [...this.chunks.keys()])this.remove(key);this.edits.clear();this.originals.clear();this.populated.clear();this.editTotal=0;this.dirty.clear();this.lightDirty.clear();}
-  /** Flat list: cx, cz, count, then index/id pairs. */
-  serializeEdits():number[]{
-    const out:number[]=[];
-    for(const [key,edits] of this.edits){
-      if(!edits.size)continue;
-      out.push(keyX(key),keyZ(key),edits.size);
-      for(const [index,id] of edits)out.push(index,id);
-    }
+  clear(){for(const key of [...this.chunks.keys()])this.remove(key);this.edits.clear();this.segments.clear();this.originals.clear();this.populated.clear();this.editTotal=0;this.dirty.clear();this.lightDirty.clear();}
+  /** One encoded segment per edited chunk (encodeEdits). Unchanged chunks reuse their segment, so an autosave costs about
+   *  nothing until edits change, however many there are. */
+  serializeEdits():string[]{
+    const out:string[]=[];
+    this.edits.forEach((edits,key)=>{
+      if(!edits.size)return;
+      let segment=this.segments.get(key);
+      if(segment===undefined){segment=encodeEdits(keyX(key),keyZ(key),edits);this.segments.set(key,segment);}
+      out.push(segment);
+    });
     return out;
   }
   /** Flat list of populated chunk coordinates: cx, cz, cx, cz... */
@@ -133,10 +165,21 @@ export class VoxelWorld implements World{
     this.populated.clear();
     for(let i=0;i<list.length;i+=2){const x=list[i],z=list[i+1];if(Number.isInteger(x)&&Number.isInteger(z)&&Math.abs(x)<CHUNK_LIMIT&&Math.abs(z)<CHUNK_LIMIT)this.populated.add(chunkKey(x,z));}
   }
-  /** Validates the whole list before replacing current edits. */
+  /** Validates the whole list before replacing current edits: segments (serializeEdits), or the flat list of older saves
+   *  (cx, cz, count, then index/id pairs). */
   restoreEdits(list:unknown):boolean{
     if(!Array.isArray(list))return false;
     const parsed=new Map<number,Map<number,number>>();let total=0;
+    if(typeof list[0]==='string'){
+      for(const segment of list){
+        const s=typeof segment==='string'?decodeEdits(segment):null;if(!s)return false;
+        const key=chunkKey(s.cx,s.cz);if(parsed.has(key))return false;
+        total+=s.edits.size;if(total>MAX_EDITS)return false;
+        if(s.edits.size)parsed.set(key,s.edits);
+      }
+      this.edits.clear();this.segments.clear();for(const [key,edits] of parsed)this.edits.set(key,edits);this.editTotal=total;
+      return true;
+    }
     for(let i=0;i<list.length;){
       const cx=list[i++],cz=list[i++],count=list[i++];
       if(!Number.isInteger(cx)||!Number.isInteger(cz)||!Number.isInteger(count)||count<0||Math.abs(cx)>=CHUNK_LIMIT||Math.abs(cz)>=CHUNK_LIMIT)return false;
@@ -150,7 +193,7 @@ export class VoxelWorld implements World{
       total+=edits.size;if(total>MAX_EDITS)return false;
       parsed.set(chunkKey(cx,cz),edits);
     }
-    this.edits.clear();for(const [key,edits] of parsed)this.edits.set(key,edits);this.editTotal=total;
+    this.edits.clear();this.segments.clear();for(const [key,edits] of parsed)this.edits.set(key,edits);this.editTotal=total;
     return true;
   }
 }
