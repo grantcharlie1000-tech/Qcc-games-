@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import {BLOCK_BY_NAME,TINTED_TILES} from '../data/blocks';
 import {itemDef,type ItemIcon} from '../data/items';
-import {SPRITE_PAINTERS,spritePixels} from '../art/items';
+import {SPRITE_PAINTERS,spritePixels,spriteTexturePixels,spriteTextureSize} from '../art/items';
 import {tilePixels} from '../art/atlas';
 import {quadIndices} from '../engine/constants';
 import type {Game,ItemStack} from '../engine/contracts';
@@ -220,11 +220,22 @@ const key=(s:ItemStack|null)=>s?s.id:'';
 
 export function createHand(game:Game,atlas:THREE.Texture):Hand{
   // ---- Sheet (rows flipped: v=1 is the top row) ---------------------------------------------------------------------
-  const pixels=new Uint8Array(HAND_SHEET_WIDTH*HAND_SHEET_HEIGHT*4);
-  const sheet=new THREE.DataTexture(pixels,HAND_SHEET_WIDTH,HAND_SHEET_HEIGHT,THREE.RGBAFormat);
+  // Keep the 16×16 geometry and normalized slot UVs; only the backing texture needs the shield's photo detail.
+  const textureSlot=spriteTextureSize('shield'),textureScale=textureSlot/HAND_SLOT;
+  const textureWidth=HAND_SHEET_WIDTH*textureScale,textureHeight=HAND_SHEET_HEIGHT*textureScale;
+  const pixels=new Uint8Array(textureWidth*textureHeight*4);
+  const sheet=new THREE.DataTexture(pixels,textureWidth,textureHeight,THREE.RGBAFormat);
   sheet.magFilter=sheet.minFilter=THREE.NearestFilter;sheet.generateMipmaps=false;
-  const writeSlot=(slot:number,src:Uint8ClampedArray)=>{
-    for(let y=0;y<HAND_SLOT;y++)pixels.set(src.subarray(y*HAND_SLOT*4,(y+1)*HAND_SLOT*4),((HAND_SHEET_HEIGHT-1-y)*HAND_SHEET_WIDTH+slot*HAND_SLOT)*4);
+  const writeSlot=(slot:number,src:Uint8ClampedArray,sourceSize=HAND_SLOT)=>{
+    for(let y=0;y<textureSlot;y++){
+      const offset=((textureHeight-1-y)*textureWidth+slot*textureSlot)*4;
+      if(sourceSize===textureSlot){pixels.set(src.subarray(y*sourceSize*4,(y+1)*sourceSize*4),offset);continue;}
+      const sourceRow=(y*sourceSize/textureSlot|0)*sourceSize;
+      for(let x=0;x<textureSlot;x++){
+        const s=(sourceRow+(x*sourceSize/textureSlot|0))*4,d=offset+x*4;
+        pixels[d]=src[s];pixels[d+1]=src[s+1];pixels[d+2]=src[s+2];pixels[d+3]=src[s+3];
+      }
+    }
     sheet.needsUpdate=true;
   };
   writeSlot(SLOT_ARM,paintArmSkin());
@@ -272,7 +283,9 @@ export function createHand(game:Game,atlas:THREE.Texture):Hand{
       }else{
         const px=icon.kind==='sprite'?spritePixels(icon.sprite):tilePixels(icon.tile);
         const tint=icon.kind==='tile'&&TINTED_TILES.has(icon.tile)?(/lily/.test(icon.tile)?FOLIAGE_ITEM:GRASS_ITEM):0xffffff;
-        writeSlot(slot,px);addSprite(buf,px,slot,part,tint);
+        if(icon.kind==='sprite')writeSlot(slot,spriteTexturePixels(icon.sprite),spriteTextureSize(icon.sprite));
+        else writeSlot(slot,px);
+        addSprite(buf,px,slot,part,tint);
       }
     }
     for(const a of Object.values(attrs)){a.clearUpdateRanges();a.addUpdateRange(0,buf.quads*4*a.itemSize);a.needsUpdate=true;}

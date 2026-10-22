@@ -42,7 +42,7 @@ describe('Block Fill path rules',()=>{
     if(recovery.kind==='backtrack') {expect(recovery.count).toBeGreaterThan(0); expect(solve(square,dead.slice(0,-recovery.count))).not.toBeNull();}
   });
   it('roundtrips valid snapshots and rejects corrupt, forged completed and incompatible states',()=>{
-    const s=initialState(); s.path=generateLevel(0).solution.slice(0,3);
+    const s=initialState(); s.path=generateLevel(0).solution.slice(0,3); s.steps=2;
     expect(restoreState(JSON.parse(JSON.stringify(s)))).toEqual(s);
     for(const bad of [null,{}, {...s,version:4},{...s,level:100},{...s,path:[0,8]},{...s,path:[s.path[0],s.path[0]]},{...s,completed:999},{...s,path:[]},{...s,path:[generateLevel(0).start,...new Array(1)]},{...s,path:Object.assign(new Array(2),{0:generateLevel(0).start})}]) expect(restoreState(bad)).toBeNull();
   });
@@ -79,7 +79,7 @@ describe('current-prefix search evidence',()=>{
         const p=l.solution.slice(0,n),h=hint(l,p);expect(h.kind).toBe('step');
         if(h.kind==='step'){expect(step(l,p,h.cell).length).toBe(n+1);expect(solve(l,[...p,h.cell])).not.toBeNull();}
       }
-      const completed={version:1,level:i,path:l.solution,rewarded:true};expect(restoreState(completed)).toEqual(completed);
+      const completed={version:1,level:i,path:l.solution,rewarded:true};expect(restoreState(completed)).toEqual({...completed,steps:l.cells.length-1,hints:0,best:{[i]:{steps:l.cells.length-1,hints:0}}});
     }
   });
 });

@@ -135,7 +135,7 @@ for(const transition of ['pause','Study'] as const)test(`native held touch remai
    for(const type of ['pointerdown','pointerup','pointercancel'])window.addEventListener(type,event=>{const e=event as PointerEvent;events.push({type,trusted:e.isTrusted,pointerType:e.pointerType});},{capture:true});
   });
   const page=await context.newPage();await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');
-  const root=page.locator('.pool-game'),session=await context.newCDPSession(page),brand=(await page.locator('.pool-brand').boundingBox())!;
+  const root=page.locator('.pool-game'),session=await context.newCDPSession(page),brand=(await page.locator('.pool-player-heading').first().boundingBox())!;
   await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:brand.x+5,y:brand.y+brand.height/2,id:7}]});
   await cueDrag(page);await page.mouse.up();expect(await root.getAttribute('data-shots')).toBe('0');
   if(transition==='pause'){

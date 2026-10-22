@@ -1,3 +1,4 @@
+import {GAME_IDS} from '../../src/core/types';
 import {test,expect} from '@playwright/test';
 import type {Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
@@ -32,6 +33,7 @@ async function gameAction(page:Page,id:string){
   }
   if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
   if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
+  if(id==='maze-muncher')await page.getByRole('button',{name:'Start game',exact:true}).click();
   if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
   if(id==='pool'){
     await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','0');
@@ -57,7 +59,7 @@ test('first visit offers exactly 20 topics and remembers the choice for this tab
   await page.keyboard.press('Escape');
   await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
   await choose(page,'quadratics');
-  await expect(page.locator('.game-card')).toHaveCount(16);
+  await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   expect(await page.evaluate(key=>sessionStorage.getItem(key),topicKey)).toBe('quadratics');
   await page.reload();
   await expect(page.locator('.game-card').first()).toBeVisible();
@@ -119,7 +121,7 @@ test('Escape immediately saves and pauses; article changes never load or replace
 });
 
 test.describe('all retained game instances',()=>{
-  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft']){
+  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher']){
     test(`${id}: gameplay, Escape, frozen autosave and exact return`,async({page})=>{
       test.setTimeout(60000);
       const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -177,7 +179,7 @@ test('manual pause survives Study and topic navigation keeps the game route inta
   await page.getByRole('button',{name:'Pause game',exact:true}).click();
   await page.keyboard.press('Escape');
   await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
-  expect(new URL(page.url()).hash).toBe('#/game/minesweeper');
+  expect(new URL(page.url()).hash).toBe('#/collection/10');
   await returnToGame(page);
   await expect(page.locator('#pause-overlay')).toBeVisible();
   await page.getByRole('button',{name:'Keep playing',exact:true}).click();
@@ -285,7 +287,7 @@ for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,he
     await page.getByText('Read the explanation',{exact:true}).click();
     await expect(page.locator('details')).toHaveAttribute('open','');
     await returnToGame(page);
-    await expect(page.locator('.game-card')).toHaveCount(16);
+    await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   });
 }
 

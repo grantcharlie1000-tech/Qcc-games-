@@ -1,15 +1,23 @@
 import {test,expect} from '../fixtures';
-test('desktop rankings sit left of the game, disappear for Pool, and return after resize',async({page})=>{
+const expand=(page:import('@playwright/test').Page)=>page.getByRole('button',{name:'Top scores',exact:true}).click();
+test('rankings float collapsed over a full-width game, expand on demand and remember the choice',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
- await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'a'.repeat(64),name:'Ada',score:42}],player:null}}));
+ await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'a'.repeat(64),name:'Extraordinarily Longname',score:1234567}],player:null}}));
  await page.goto('/#/game/snake');
  const panel=page.getByRole('complementary',{name:'Snake leaderboard'});
- await expect(panel).toBeVisible();await expect(panel).toContainText('Ada');
- const box=await panel.boundingBox(),game=await page.locator('.game-view').boundingBox();
- expect(box!.x+box!.width).toBeLessThanOrEqual(game!.x);
+ await expect(panel).toBeVisible();await expect(panel.locator('.lb-table')).toBeHidden();
+ const view=await page.locator('.game-view').boundingBox();expect(view!.x).toBe(0);expect(view!.width).toBe(1440);
+ await expand(page);await expect(panel).toContainText('Extraordinarily Longname');
+ expect(await page.locator('.game-view').boundingBox()).toEqual(view);
+ // Every cell stays on one line.
+ for(const cell of await panel.locator('th,td').all()){const box=await cell.boundingBox();expect(box!.height).toBeLessThan(40);}
+ await page.reload();await expect(panel.locator('.lb-table')).toBeVisible();
+ await page.getByRole('button',{name:'Hide top scores'}).click();await expect(panel.locator('.lb-table')).toBeHidden();
+ await page.reload();await expect(page.getByRole('button',{name:'Top scores',exact:true})).toHaveAttribute('aria-expanded','false');
  await page.setViewportSize({width:390,height:844});await expect(panel).toBeHidden();
  await page.setViewportSize({width:1440,height:900});await expect(panel).toBeVisible();
  await page.goto('/#/game/pool');await expect(page.locator('.lb-sidebar')).toHaveCount(0);
+ await page.goto('/#/game/globle');await expect(page.locator('.lb-sidebar')).toHaveCount(0);
  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
  await expect(page.locator('#leaderboard-game option[value=pool]')).toHaveCount(0);
 });
@@ -31,7 +39,7 @@ test('late leaderboard response cannot overwrite the next game',async({page})=>{
   await route.fulfill({json:board(snake?'Old Snake':'New Tower')});
  });
  const started=page.waitForRequest(request=>request.url().includes('game=snake'));
- await page.goto('/#/game/snake');await started;
+ await page.goto('/#/game/snake');await expand(page);await started;
  await page.evaluate(()=>{location.hash='#/game/tower';});
  await expect(page.locator('.lb-sidebar')).toContainText('New Tower');
  const oldReply=page.waitForResponse(response=>response.url().includes('game=snake'));release();await oldReply;
@@ -40,26 +48,27 @@ test('late leaderboard response cannot overwrite the next game',async({page})=>{
  await expect(page.locator('.lb-sidebar')).not.toContainText('Old Snake');
 });
 
-for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','animal-stack','flappy-bird','globle'])test(`${id} has an unobstructed desktop panel`,async({page})=>{
+for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','animal-stack','flappy-bird'])test(`${id} keeps its full layout with a collapsed rankings pill`,async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
-  await page.goto('/#/game/'+id);await expect(page.locator('.lb-sidebar')).toBeVisible();
-  await expect(page.locator('#game-stage .loading')).toHaveCount(0);
-  const panel=await page.locator('.lb-sidebar').boundingBox(),back=await page.getByRole('link',{name:'Back to game library',exact:true}).boundingBox();
-  expect(back!.x,id).toBeGreaterThanOrEqual(panel!.x+panel!.width);
+ await page.goto('/#/game/'+id);await expect(page.locator('.lb-sidebar')).toBeVisible();
+ await expect(page.locator('#game-stage .loading')).toHaveCount(0);
+ const view=await page.locator('.game-view').boundingBox();expect(view!.x,id).toBe(0);expect(view!.width,id).toBe(1440);
+ const pill=await page.locator('.lb-toggle').boundingBox(),back=await page.getByRole('link',{name:'Back to game library',exact:true}).boundingBox();
+ expect(pill!.y,id).toBeGreaterThan(back!.y+back!.height);expect(pill!.width,id).toBeLessThan(200);
 });
 
 test('visible rankings refresh automatically without a manual button',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await page.clock.install();let reads=0;
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'c'.repeat(64),name:++reads===1?'First player':'New leader',score:99}],player:null}}));
- await page.goto('/#/game/snake');await expect(page.locator('.lb-sidebar')).toContainText('First player');
+ await page.goto('/#/game/snake');await expand(page);await expect(page.locator('.lb-sidebar')).toContainText('First player');
  await page.clock.fastForward(30001);await expect(page.locator('.lb-sidebar')).toContainText('New leader');
  await page.setViewportSize({width:390,height:844});await expect(page.locator('.lb-sidebar')).toHaveAttribute('hidden','');const before=reads;await page.clock.fastForward(60001);expect(reads).toBe(before);
 });
 test('offline entry shows cached rankings without a network request',async({page,context})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'d'.repeat(64),name:'Saved player',score:21}],player:null}}));
- await page.goto('/#/game/snake');await expect(page.locator('.lb-sidebar')).toContainText('Saved player');
+ await page.goto('/#/game/snake');await expand(page);await expect(page.locator('.lb-sidebar')).toContainText('Saved player');
  await page.getByRole('link',{name:'Back to game library',exact:true}).click();
  await context.setOffline(true);await page.evaluate(()=>{location.hash='#/game/snake';});
  await expect(page.locator('.lb-sidebar')).toContainText('Saved player');await expect(page.locator('.lb-sidebar .lb-status')).toContainText('Offline');

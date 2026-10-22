@@ -20,8 +20,15 @@ export function pour(board: Board, from: number, to: number): Pour | null {
   next[to].push(...Array<number>(amount).fill(colour));
   return { board: next, from, to, colour, amount };
 }
+/** Every colour must be gathered into its own single tube: no mixed tubes and no colour split across tubes. */
 export function won(board: Board): boolean {
-  return board.some(tube => tube.length) && board.every(tube => tube.every(colour => colour === tube[0]));
+  const homes = new Set<number>();
+  for (const tube of board) {
+    if (!tube.length) continue;
+    if (!tube.every(colour => colour === tube[0]) || homes.has(tube[0])) return false;
+    homes.add(tube[0]);
+  }
+  return homes.size > 0;
 }
 export function legalPours(board: Board): Pour[] {
   const moves: Pour[] = [];

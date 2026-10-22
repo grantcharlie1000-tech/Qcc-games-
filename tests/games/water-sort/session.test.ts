@@ -92,5 +92,5 @@ describe('Water Sort finite-state lifecycle', () => {
 });
 it('keeps the original ninth level compatible with its previously saved board',()=>{
  const tubes=[[0,1,3,4],[1,0,0,2],[2,4,2,0],[3,3,1,1],[4,2,4,3],[],[]];
- expect(readSnapshot({version:1,level:8,tubes,history:[]})).toEqual({version:1,level:8,tubes,history:[]});
+ expect(readSnapshot({version:1,level:8,tubes,history:[]})).toEqual({version:1,level:8,tubes,history:[],assists:0,best:{}});
 });

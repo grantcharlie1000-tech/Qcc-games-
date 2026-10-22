@@ -17,9 +17,10 @@ has less free capacity than the exposed run. That differs from the source's
 all-or-nothing `Bottle.push`; none of its code is copied. A legal pour moves
 `min(exposed top run, destination free capacity)` units. An empty source, self
 pour, out-of-range tube, full target or mismatching target top changes nothing.
-The user's requested goal takes precedence: **every nonempty tube contains only
-one colour**. Partial tubes count, including one colour split among two tubes.
-An entirely empty board does not win. Capacity remains four during all pours.
+The user's requested goal takes precedence: **every colour is sorted into its
+own single tube**. Every nonempty tube holds one colour and no colour appears in
+two tubes, so a colour split among two partial tubes does not win. An entirely
+empty board does not win. Capacity remains four during all pours.
 
 ## Construction and independent verification
 
@@ -38,10 +39,8 @@ resulting level has a solution. Fixed seeds give reproducible original boards.
 Every one of the 27 shipped levels is additionally solved in tests by a
 separate breadth-first implementation that calls none of the production rules,
 goal, canonicalizer or search. Its plan and the reverse witness are replayed
-through the player rules. Actual shortest routes for the relaxed goal are
-recorded in TEST_RESULTS.md and evidence/measurements.json. The constructor's
-fully consolidated witness is a sufficient solution to this goal too; play
-stops as soon as the nonempty tubes are homogeneous. No unchecked random board
+through the player rules. The constructor's fully consolidated witness solves
+this goal; play stops once each colour occupies exactly one tube. No unchecked random board
 is shipped or generated during play.
 
 `solver.ts` performs breadth-first graph search from the **current** board.
@@ -74,6 +73,10 @@ time origin, avoiding hidden elapsed time. Disposal cancels RAF, aborts all
 root/window listeners, and removes the game root. No own storage, audio engine,
 global keyboard listener, or external runtime request is used. All lifecycle,
 score, level, status, sound and save calls use the frozen GameModule contract.
+Score is a campaign sum over solved levels of a base 50 × colours × (witness pours / 3 + 2)
+plus an efficiency bonus of base × min(1, witness pours / pours), less a tenth of
+base per hint or undo (bonus floored at 0). The snapshot keeps each level's best
+{pours, assists}; replays only improve it, and it survives restart and level changes.
 
 ## Presentation and input — 19 October correction
 

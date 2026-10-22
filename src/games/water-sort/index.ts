@@ -1,7 +1,7 @@
 import type { GameModule } from '../../core/types';
 import { LEVELS } from './levels';
 import { cloneBoard, pour, won } from './rules';
-import { hintFor, readSnapshot, Session } from './session';
+import { campaignScore, readSnapshot, Session } from './session';
 import { bandsFor, COLOURS, liquidArt, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
 import './style.css';
@@ -10,7 +10,7 @@ const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-6 5 6 
 const hintIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M8 13a6 6 0 1 1 8 0l-1 3H9zM12 1V0M3 5 1 4m20 0-2 1M2 13H0m24 0h-2"/></svg>';
 const module:GameModule={
   id:'water-sort',title:'Water Sort',cover:'game-art/water-sort/cover.svg',
-  rules:'Sort the liquids so every nonempty tube contains only one colour. Partial tubes count as sorted. Tap a source tube, then an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Use Tab or arrow keys to focus and Enter or Space to select. Colour-blind mode adds letters to the bands. Undo reverses a completed pour; Hint shows a winning next pour or how many pours to undo if stuck. The compact difficulty and Level controls select any of 27 verified-soluble levels. Restart resets the current level.',
+  rules:'Sort the liquids so each colour fills its own tube. A colour split between two tubes is not sorted yet. Tap a source tube, then an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Use Tab or arrow keys to focus and Enter or Space to select. Colour-blind mode adds letters to the bands. Undo reverses a completed pour; Hint shows a winning next pour or how many pours to undo if stuck. The compact difficulty and Level controls select any of 27 verified-soluble levels. Restart resets the current level.',
   mount(container,context) {
     const session=new Session(),abort=new AbortController(),root=document.createElement('section');
     root.className='ws-game';root.setAttribute('aria-label','Water Sort puzzle');
@@ -20,11 +20,11 @@ const module:GameModule={
     const difficulty=root.querySelector<HTMLSelectElement>('.ws-difficulty')!,levelSelect=root.querySelector<HTMLSelectElement>('.ws-level')!;
     const stream=root.querySelector<SVGSVGElement>('.ws-stream')!,streamPath=stream.querySelector('path')!;
     let focusAfterPour:number|null=null;
-    let selected:number|null=null,hint:ReturnType<typeof hintFor>|null=null;
+    let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
     let message='Tap a tube, then its destination.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
     let pointer:{id:number;x:number;y:number;from:number;target:HTMLElement}|null=null,suppressClick=false;
     const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard)});
+    const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard),best:{...session.state.best}});
     function tell(text:string){message=text;context.announce(text);}
     function clearPointer(suppress=false){
       const active=pointer;pointer=null;
@@ -69,7 +69,7 @@ const module:GameModule={
       root.querySelector<HTMLElement>('.ws-victory')!.hidden=!complete;
       const status=complete?`All colours home in ${state.history.length} pours.`:message;
       root.querySelector('.ws-message')!.textContent=status;
-      context.setLevel(`Level ${state.level+1} · ${level.difficulty}`);context.setScore(complete?Math.max(100,1000-state.history.length*10):0);context.setStatus(status);
+      context.setLevel(`Level ${state.level+1} · ${level.difficulty}`);context.setScore(campaignScore(state.best));context.setStatus(status);
       fit();if(save)context.save(snapshot());
     }
     function clearAnimation(){
@@ -151,14 +151,14 @@ const module:GameModule={
       }
       context.sound('tap');render();
     }
-    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Tap a tube, then its destination.');render(true);}
+    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Tap a tube, then its destination.');render(true);}
     root.addEventListener('click',event=>{
       if(suppressClick&&(event as MouseEvent).detail!==0){suppressClick=false;return;}
       const target=(event.target as Element).closest<HTMLElement>('button');if(!target||session.paused||session.pending)return;
       if(target.dataset.tube!==undefined)choose(Number(target.dataset.tube),(event as MouseEvent).detail===0);
       else if(target.dataset.action==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}
       else if(target.dataset.action==='hint'&&!won(session.state.tubes)){
-        selected=null;hint=hintFor(session.state);
+        selected=null;hint=session.hint();
         if(hint.kind==='pour')tell(`Hint: pour tube ${hint.from+1} into tube ${hint.to+1}. ${hint.remaining} pours from a solution.`);
         else if(hint.kind==='undo')tell(`Undo ${hint.steps} ${hint.steps===1?'pour':'pours'} to reach a winning route.`);
         render();

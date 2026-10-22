@@ -2,9 +2,35 @@ import type { Board, Pour } from './rules';
 import { boardKey, cloneBoard, legalPours, pour, won } from './rules';
 import { LEVELS } from './levels';
 import { solve } from './solver';
-export interface State { version: 1; level: number; tubes: Board; history: Board[] }
+/** Best clear of one level: fewest pours, then fewest assists (hints and undos). */
+export interface Best { pours: number; assists: number }
+/** `best` is campaign progress keyed by level index: it survives restarts and level switches. */
+export interface State { version: 1; level: number; tubes: Board; history: Board[]; assists: number; best: Record<string, Best> }
 export type Hint = {kind:'pour';from:number;to:number;remaining:number} | {kind:'undo';steps:number} | {kind:'done'};
-const freshState = (level: number): State => ({ version: 1, level, tubes: cloneBoard(LEVELS[level].board), history: [] });
+const freshState = (level: number, best: Record<string, Best> = {}): State => ({ version: 1, level, tubes: cloneBoard(LEVELS[level].board), history: [], assists: 0, best: { ...best } });
+/** Base grows with colours and scramble depth; par is the shipped witness length. Each assist costs a tenth of base from the bonus. */
+export function levelPoints(level: number, best: Best): number {
+  const { colours, witness } = LEVELS[level], base = 50 * colours * (witness.length / 3 + 2);
+  return base + Math.max(0, Math.round(base * Math.min(1, witness.length / Math.max(1, best.pours))) - best.assists * Math.round(base / 10));
+}
+export const campaignScore = (best: Record<string, Best>): number => Object.entries(best).reduce((sum, [level, b]) => sum + levelPoints(Number(level), b), 0);
+/** A won board updates its level's record only when that scores higher. */
+export function recordWin(state: State): State {
+  if (!won(state.tubes)) return state;
+  const next = { pours: state.history.length, assists: state.assists }, old = state.best[state.level];
+  return old && levelPoints(state.level, old) >= levelPoints(state.level, next) ? state : { ...state, best: { ...state.best, [state.level]: next } };
+}
+const count = (value: unknown, max: number): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= max;
+/** Old snapshots lack `best`; malformed entries are dropped. */
+export function readBest(value: unknown): Record<string, Best> {
+  const best: Record<string, Best> = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return best;
+  for (const [key, entry] of Object.entries(value)) {
+    const b = entry as Partial<Best> | null;
+    if (/^\d+$/.test(key) && LEVELS[Number(key)] && b && typeof b === 'object' && count(b.pours, 5000) && b.pours! > 0 && count(b.assists, 1e6)) best[Number(key)] = { pours: b.pours!, assists: b.assists! };
+  }
+  return best;
+}
 function validBoard(value: unknown, colours: number): value is number[][] {
   if (!Array.isArray(value) || value.length !== colours + 2) return false;
   const counts = Array<number>(colours).fill(0);
@@ -35,7 +61,7 @@ export function readSnapshot(data: unknown): State | null {
     } else if (won(previous) || !legalPours(previous).some(move => boardKey(move.board) === boardKey(board))) return null;
     previous = board;
   }
-  return { version:1, level, tubes:cloneBoard(value.tubes), history:value.history.map(cloneBoard) };
+  return recordWin({ version:1, level, tubes:cloneBoard(value.tubes), history:value.history.map(cloneBoard), assists:count(value.assists, 1e6) ? value.assists : 0, best:readBest(value.best) });
 }
 export function hintFor(state: State): Hint {
   if (won(state.tubes)) return { kind:'done' };
@@ -51,7 +77,7 @@ export class Session {
   state: State;
   paused = false;
   pending: {move:Pour;elapsed:number;duration:number} | null = null;
-  constructor(level = 0) { this.state = freshState(LEVELS[level] ? level : 0); }
+  constructor(level = 0, best: Record<string, Best> = {}) { this.state = freshState(LEVELS[level] ? level : 0, best); }
   begin(from:number, to:number, duration=260): boolean {
     if (this.paused || this.pending || won(this.state.tubes) || this.state.history.length >= 5000) return false;
     const move = pour(this.state.tubes, from, to);
@@ -63,7 +89,7 @@ export class Session {
     if (this.paused || !this.pending) return false;
     this.pending.elapsed += Math.max(0, ms);
     if (this.pending.elapsed < this.pending.duration) return false;
-    this.state = { ...this.state, tubes:this.pending.move.board, history:[...this.state.history, cloneBoard(this.state.tubes)] };
+    this.state = recordWin({ ...this.state, tubes:this.pending.move.board, history:[...this.state.history, cloneBoard(this.state.tubes)] });
     this.pending = null;
     return true;
   }
@@ -71,8 +97,9 @@ export class Session {
     if (this.paused || this.pending || !this.state.history.length) return false;
     const history = [...this.state.history];
     const tubes = history.pop()!;
-    this.state = { ...this.state, tubes:cloneBoard(tubes), history };
+    this.state = { ...this.state, tubes:cloneBoard(tubes), history, assists:this.state.assists + 1 };
     return true;
   }
-  restart(): void { this.pending = null; this.state = freshState(this.state.level); }
+  hint(): Hint { if (!won(this.state.tubes)) this.state = { ...this.state, assists:this.state.assists + 1 }; return hintFor(this.state); }
+  restart(): void { this.pending = null; this.state = freshState(this.state.level, this.state.best); }
 }

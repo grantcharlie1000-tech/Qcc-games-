@@ -2,6 +2,8 @@
 // and version must match, and there must be a free seat), relays nothing on its own, and decides everything in the game;
 // guests only talk to the host. The host's pause pauses the whole room. When the host leaves the room ends (no migration).
 import {MAX_MESSAGE_CHARS,PROTOCOL_VERSION,Reassembler,cleanName,frame,hostPeerId,normalizeCode,parseEnvelope,randomCode,type Envelope,type RejectReason,type RosterEntry} from './protocol';
+import {entryHash} from '../core/navigation';
+import type {GameId} from '../core/types';
 import {peerEndpoint,type Endpoint,type EndpointFactory,type Link,type LinkKind,type TransportError} from './transport';
 import {iceServers,type IceResult} from './ice';
 
@@ -111,7 +113,7 @@ export class Room{
   get closed(){return this.closedState;}
   get inviteLink(){
     const base=typeof location!=='undefined'?location.href.split('#')[0]:'';
-    return `${base}#/game/${this.options.game}?room=${this.code}`;
+    return `${base}${entryHash(this.options.game as GameId)}?room=${this.code}`;
   }
   /** Round-trip time to a guest (host) or to the host (guest), ms; NaN until measured. */
   rtt(id?:string){const p=id?this.peers.get(id):[...this.peers.values()][0];return p?p.rtt:NaN;}

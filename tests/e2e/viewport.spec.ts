@@ -1,7 +1,8 @@
+import {GAME_IDS} from '../../src/core/types';
 import {test,expect} from '../fixtures';
 import {deal} from '../../src/games/solitaire/model';
 
-const ids=['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft'];
+const ids=['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher'];
 const referenced=new Set(['water-sort','color-blocks','ball-run','animal-stack','blockcraft']);
 
 for(const size of [{width:390,height:844},{width:844,height:390}]){
@@ -26,7 +27,7 @@ for(const size of [{width:390,height:844},{width:844,height:390}]){
           const box=await page.locator('#game-stage > *').first().boundingBox();
           return !!box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=size.width+1&&box.y+box.height<=size.height+1;
         },{message:`${id}: the entire game, including controls, must fit`}).toBe(true);
-        const names:Record<string,string|RegExp>={'fruit-merge':'Drop fruit',tower:'Drop block',snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','color-connect':'Hint','flappy-bird':'Flap',globle:'Guess'};
+        const names:Record<string,string|RegExp>={'fruit-merge':'Drop fruit',tower:'Drop block',snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','color-connect':'Hint','flappy-bird':'Flap',globle:'Guess','maze-muncher':'Start game'};
         const control=id==='pool'?page.locator('.pool-table'):page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
         await expect.poll(()=>control.evaluate(button=>{
           const r=button.getBoundingClientRect(),under=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
@@ -62,7 +63,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
   await expect(page.locator('.game-view')).toHaveCSS('position','fixed');
   await page.getByRole('link',{name:'Back to game library',exact:true}).click();
-  await expect(page.locator('.game-card')).toHaveCount(16);
+  await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(libraryY);
   await page.mouse.wheel(0,-1600);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBeLessThan(libraryY);

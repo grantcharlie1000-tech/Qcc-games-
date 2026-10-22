@@ -1,3 +1,4 @@
+import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
 import './style.css';
 import './game-viewport.css';
@@ -96,7 +97,7 @@ function leave(){
 }
 function library(){
   const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1><div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="#/game/${g.id}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1><div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
 }
 function setPaused(value:boolean):boolean {
   if(!value&&updateBusy)updateRequest++;
@@ -160,8 +161,11 @@ async function route(){
   if(!initialized)return;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
-  const requested=location.hash.match(/^#\/game\/([a-z-]+)/)?.[1] as GameId|undefined;
+  const requested=entryFromHash(location.hash);
   const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
+  // Keep a game link's options (an online invite) when the address is made canonical.
+  const canonical=id?entryHash(id)+(location.hash.match(/\?.*$/)?.[0]??''):collectionHash;
+  if(location.hash!==canonical)history.replaceState(null,'',location.pathname+location.search+canonical);
   const wasInGame=!!activeId;
   if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
   if(leaderboards.root.open){pausedForDialog=false;leaderboards.root.close();}
@@ -170,7 +174,7 @@ async function route(){
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-toolbar">
-      <a class="icon-button" href="#/" aria-label="Back to game library">${icon('back')}</a><h1 id="game-title">${info.title}</h1>
+      <a class="icon-button" href="${collectionHash}" aria-label="Back to game library">${icon('back')}</a><h1 id="game-title">${info.title}</h1>
       <button id="favourite-game" class="icon-button" aria-label="Favourite ${info.title}" aria-pressed="${store.favourites().includes(id)}">${icon('star')}</button>
       <button id="pause-game" class="icon-button" aria-label="Pause game">${icon('pause')}</button>
       <button id="restart-game" class="icon-button" aria-label="Restart game">${icon('restart')}</button>
@@ -179,8 +183,8 @@ async function route(){
     </div>
     <div class="game-metrics"><span id="game-score"><span class="metric-label">${referenceGames.has(id)?id==='animal-stack'?'SOLO':'SCORE':'Score'}</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">${referenceGames.has(id)?'RECORD':'Best'}</span><strong>${store.highScore(id)}</strong><svg class="record-crown" viewBox="0 0 28 12" aria-hidden="true"><path d="m2 9-1-7 7 4 6-6 6 6 7-4-1 7z" fill="currentColor"/></svg></span></div>
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
-    <p id="game-status" role="status"></p></section>`;
-  if(id!=='pool'&&id!=='blockcraft')leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
+    <p id="game-status" role="status"${id==='pool'?' aria-hidden="true"':''}></p></section>`;
+  if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
   document.querySelector('#game-menu')!.addEventListener('click',openMenu);
   try {
     const loaded=await loadGame(id);if(token!==generation)return;
@@ -226,7 +230,7 @@ async function route(){
   }catch(error){
     if(token!==generation)return;
     const stage=document.querySelector('#game-stage')!;
-    stage.innerHTML='<p class="game-error"></p><a class="game-button" href="#/">Back to library</a>';
+    stage.innerHTML=`<p class="game-error"></p><a class="game-button" href="${collectionHash}">Back to library</a>`;
     stage.querySelector('.game-error')!.textContent=error instanceof Error?error.message:'Could not load this game.';
   }
 }
@@ -253,10 +257,10 @@ document.querySelector('#open-study')!.addEventListener('click',openStudy);
 document.querySelector('.favourites-pill')!.addEventListener('click',event=>{
   onlyFavourites=!onlyFavourites;
   (event.currentTarget as HTMLElement).setAttribute('aria-pressed',String(onlyFavourites));
-  if(activeId)location.hash='#/';else library();
+  if(activeId)location.hash=collectionHash;else library();
 });
 document.querySelector<HTMLInputElement>('#search')!.addEventListener('input',event=>{
-  search=(event.target as HTMLInputElement).value;if(activeId)location.hash='#/';else library();
+  search=(event.target as HTMLInputElement).value;if(activeId)location.hash=collectionHash;else library();
 });
 for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#colour','colorBlind']] as const){
   const input=document.querySelector<HTMLInputElement>(selector)!;input.checked=preferences[key];

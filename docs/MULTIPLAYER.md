@@ -7,7 +7,7 @@ service in `src/multiplayer/`. Everything else in the arcade stays offline and u
 
 - **Create room** registers a six-character room code (no look-alike characters, e.g. `K7Q2MX`) with the PeerJS Cloud
   signalling server. The player who creates the room is the **host** and runs the authoritative game.
-- **Join by code**, or open the **invite link** (`…#/game/<game>?room=CODE`, from **Copy invite link**). The link opens the
+- **Join by code**, or open the **invite link** (`…#/collection/<n>?room=CODE`, from **Copy invite link**; older `#/game/<game>?room=CODE` links work too). The link opens the
   game with the code filled in; the player confirms their name and presses Join.
 - Every guest connects to the host only (a star). Messages are JSON over one reliable, ordered WebRTC data channel per
   guest; large messages (Blockcraft worlds) are split into frames and reassembled (`src/multiplayer/protocol.ts`).

@@ -53,24 +53,24 @@ describe('snapshot coherence',()=>{
 
 describe('visible pocket mouths and cushion jaws',()=>{
  const rolling=(b:Ball)=>{const s=settled();s.balls=[ball(0,220,650),b];s.phase='moving';s.shot={first:b.id,pots:[],cushions:[],scratch:false,eligible8:false,break:false};return s;};
- it.each([{x:100,y:438,vx:-500,pocket:2},{x:100,y:402,vx:-500,pocket:2},{x:340,y:438,vx:500,pocket:3},{x:340,y:402,vx:500,pocket:3}])('accepts an off-centre ball through the open side mouth %j',({x,y,vx,pocket})=>{
+ it.each([{x:100,y:434,vx:-500,pocket:2},{x:100,y:406,vx:-500,pocket:2},{x:340,y:434,vx:500,pocket:3},{x:340,y:406,vx:500,pocket:3}])('accepts an off-centre ball through the open side mouth %j',({x,y,vx,pocket})=>{
   const s=rolling(ball(1,x,y,vx)),pots=s.shot!.pots;
   for(let i=0;i<80&&s.phase==='moving'&&!s.balls[1].pocketed;i++)step(s);
   expect(s.balls[1].pocketed).toBe(true);
   expect(pots).toContainEqual({id:1,pocket});
  });
  it('rebounds off a rounded pocket jaw instead of an invisible straight wall',()=>{
-  const s=rolling(ball(1,51,444,-500));for(let i=0;i<3;i++)step(s);
+  const s=rolling(ball(1,51,442,-500));for(let i=0;i<3;i++)step(s);
   expect(s.balls[1].pocketed).toBe(false);
   expect(s.balls[1].vy).toBeLessThan(-50);
   expect(s.shot?.cushions).toContain(1);
  });
  it('previews the pocket capture instead of stopping at an invisible wall across its mouth',()=>{
-  const s=settled();s.balls=[ball(0,100,438)];const p=preview(s,Math.PI);
+  const s=settled();s.balls=[ball(0,100,434)];const p=preview(s,Math.PI);
   expect(p.hit).toBeNull();
-  // A 22-unit capture radius at (40,420), 18 units off centre.
-  expect(p.x).toBeCloseTo(40+Math.sqrt(22**2-18**2),5);
-  expect(p.y).toBeCloseTo(438,5);
+  // A 17-unit middle-pocket radius at (40,420), 14 units off centre.
+  expect(p.x).toBeCloseTo(40+Math.sqrt(17**2-14**2),5);
+  expect(p.y).toBeCloseTo(434,5);
  });
  it.each(POCKETS.map((p,pocket)=>({p,pocket})))('pots a centre-aimed shot at pocket $pocket',({p,pocket})=>{
   const dx=p.x<220?1:-1,dy=p.y===420?0:p.y<420?1:-1;
@@ -79,4 +79,23 @@ describe('visible pocket mouths and cushion jaws',()=>{
   expect(s.balls[1].pocketed).toBe(true);
   expect(pots).toContainEqual({id:1,pocket});
  });
+});
+describe('computer difficulty',()=>{
+ it('keeps old saves on medium and validates difficulty',()=>{const s=createGame();expect(s.difficulty).toBe('medium');const legacy={...s} as Partial<PoolState>;delete legacy.difficulty;expect(restoreGame(legacy)?.difficulty).toBe('medium');expect(restoreGame({...s,difficulty:'impossible'})).toBeNull();});
+ it('gives beginners a substantially less accurate shot',()=>{const s=settled();s.break=false;s.balls=[ball(0,220,600),ball(9,140,420),ball(8,330,250),ball(1,310,350)];s.groups=['solids','stripes'];s.turn=1;const medium=chooseAI(s);s.difficulty='easy';const easy=chooseAI(s);expect(Math.abs(easy.angle-medium.angle)).toBeGreaterThan(.1);expect(easy.power).toBeLessThan(medium.power);});
+ it('hard plans without changing the live table',()=>{const s=createGame();s.break=false;s.difficulty='hard';const before=JSON.stringify(s);const plan=chooseAI(s);expect(JSON.stringify(s)).toBe(before);expect(Number.isFinite(plan.angle)).toBe(true);expect(plan.power).toBeGreaterThan(0);});
+});
+it('hard corrects a medium under-hit and keeps its turn',()=>{
+ const s=settled();s.turn=1;s.groups=['solids','stripes'];
+ for(const b of s.balls)b.pocketed=![0,1,8,9].includes(b.id);
+ Object.assign(s.balls[0],{x:220,y:600});Object.assign(s.balls[9],{x:272,y:260});Object.assign(s.balls[1],{x:310,y:350});Object.assign(s.balls[8],{x:330,y:150});
+ const medium=structuredClone(s),mediumPlan=chooseAI(medium);shoot(medium,mediumPlan.angle,mediumPlan.power,mediumPlan.pocket);finish(medium);
+ s.difficulty='hard';const hardPlan=chooseAI(s);shoot(s,hardPlan.angle,hardPlan.power,hardPlan.pocket);finish(s);
+ expect(medium.balls[9].pocketed).toBe(false);expect(s.balls[9].pocketed).toBe(true);expect(s.turn).toBe(1);expect(s.ballInHand).toBe(false);
+});
+it('accepts a shot inside the visible side-pocket opening',()=>{
+ const s=settled();s.balls=[ball(0,110,434)];
+ expect(preview(s,Math.PI).pocket).toBe(2);
+ shoot(s,Math.PI,.4,0);finish(s);
+ expect(s.ballInHand).toBe(true);expect(s.message).toContain('Scratch');
 });
