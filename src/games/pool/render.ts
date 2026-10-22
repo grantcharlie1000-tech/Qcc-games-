@@ -2,7 +2,7 @@ import {FIELD,POCKETS,RAILS,pocketRadius,R,preview,legalTargets,type PoolState} 
 import type {Drag} from './input';
 import {ballColor} from './appearance';
 const backdrops=new WeakMap<HTMLCanvasElement,HTMLCanvasElement>();
-export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y:number;valid:boolean}|null,paused:boolean,drag:Drag|null=null){
+export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y:number;valid:boolean}|null,paused:boolean,drag:Drag|null=null,names:[string,string]|null=null){
  const ratio=Math.min(2,window.devicePixelRatio||1),width=840,height=440;
  if(canvas.width!==width*ratio||canvas.height!==height*ratio){canvas.width=width*ratio;canvas.height=height*ratio;}
  const c=canvas.getContext('2d')!;c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,width,height);
@@ -81,6 +81,6 @@ export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y
  }
  if(s.ballInHand&&ghost){c.save();c.globalAlpha=.75;c.fillStyle=ghost.valid?'#fff7de':'#ff816b';c.beginPath();c.arc(ghost.x,ghost.y,R,0,Math.PI*2);c.fill();c.strokeStyle=ghost.valid?'#fff8c9':'#ff816b';c.lineWidth=2;c.setLineDash([4,4]);c.beginPath();c.arc(ghost.x,ghost.y,R+6,0,Math.PI*2);c.stroke();c.restore();}
  if(s.phase==='over'){
-  c.setTransform(ratio,0,0,ratio,0,0);c.fillStyle='#082840dd';c.fillRect(235,150,370,130);c.fillStyle='#fce5a2';c.textAlign='center';c.font='bold 25px system-ui';c.fillText(`${s.mode==='ai'?(s.winner===0?'You win':'Computer wins'):`Player ${s.winner!+1} wins`}`,420,205);c.font='14px system-ui';c.fillText('Use Restart for a fresh rack',420,239);
+  c.setTransform(ratio,0,0,ratio,0,0);c.fillStyle='#082840dd';c.fillRect(235,150,370,130);c.fillStyle='#fce5a2';c.textAlign='center';c.font='bold 25px system-ui';c.fillText(`${names?`${names[s.winner!]} wins`:s.mode==='ai'?(s.winner===0?'You win':'Computer wins'):`Player ${s.winner!+1} wins`}`,420,205);c.font='14px system-ui';c.fillText('Use Restart for a fresh rack',420,239);
  }
 }

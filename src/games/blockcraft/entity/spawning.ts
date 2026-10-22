@@ -26,6 +26,7 @@ import {CS,CH,SEA_LEVEL,chunkKey,keyX,keyZ} from '../engine/constants';
 import {collidesAt} from '../engine/physics';
 import type {Entity,EntityCategory,EntityKind,Game,SpawnReason} from '../engine/contracts';
 
+import {nearestHorizontal2,playersOf} from '../engine/players';
 export const PASSIVE_CAP=20,HOSTILE_CAP=40,WATER_CAP=8;
 /** Horizontal radius around the player in which caps count mobs. */
 export const SPAWN_RADIUS=128;
@@ -151,8 +152,13 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
   }
   /** Distance to the player of a candidate spawn position (squared 3D, horizontal), written to `dist` (no allocation). */
   const dist={d2:0,h:0};
+  /** Online: the nearest player's distance (no spawn closer than MIN_SPAWN_DISTANCE to anyone). */
   function playerDistance(x:number,y:number,z:number){
-    const p=game.player.state,dx=x-p.x,dy=y-p.y,dz=z-p.z;dist.d2=dx*dx+dy*dy+dz*dz;dist.h=Math.sqrt(dx*dx+dz*dz);
+    dist.d2=Infinity;dist.h=Infinity;
+    for(const p of playersOf(game)){
+      const dx=x-p.x,dy=y-p.y,dz=z-p.z,d2=dx*dx+dy*dy+dz*dz;
+      if(d2<dist.d2){dist.d2=d2;dist.h=Math.sqrt(dx*dx+dz*dz);}
+    }
   }
   const inSpawnRing=()=>dist.d2>MIN_SPAWN_DISTANCE*MIN_SPAWN_DISTANCE&&dist.h<=MAX_SPAWN_DISTANCE;
   function roomFor(k:EntityKind,x:number,y:number,z:number,water:boolean):boolean{
@@ -225,8 +231,8 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
   }
   function randomChunk():number{return keys.length?keys[rand(keys.length)]:NaN;}
   function chunkInRange(key:number){
-    const p=game.player.state,x=keyX(key)*CS+8,z=keyZ(key)*CS+8;
-    return Math.hypot(x-p.x,z-p.z)<=MAX_SPAWN_DISTANCE+12;
+    const x=keyX(key)*CS+8,z=keyZ(key)*CS+8;
+    return nearestHorizontal2(game,x,z)<=(MAX_SPAWN_DISTANCE+12)**2;
   }
   function hostileAttempt(){
     const key=randomChunk();if(Number.isNaN(key)||!chunkInRange(key))return;
@@ -302,7 +308,7 @@ export function createSpawner(game:Game,host:SpawnerHost):Spawner{
     },
     despawn(e,kind,idle){
       if(!despawnsNow(kind,e))return 'keep';
-      const p=game.player.state,d2=(e.x-p.x)**2+(e.y-p.y)**2+(e.z-p.z)**2;
+      let d2=Infinity;for(const p of playersOf(game))d2=Math.min(d2,(e.x-p.x)**2+(e.y-p.y)**2+(e.z-p.z)**2);
       if(d2>DESPAWN_FAR*DESPAWN_FAR)return 'remove';
       if(d2<DESPAWN_NEAR*DESPAWN_NEAR)return 'near';
       return idle>600&&rand(800)===0?'remove':'keep';

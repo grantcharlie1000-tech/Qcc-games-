@@ -167,7 +167,8 @@ async function route(){
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
   const requested=entryFromHash(location.hash);
   const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
-  const canonical=id?entryHash(id):collectionHash;
+  // Keep a game link's options (an online invite) when the address is made canonical.
+  const canonical=id?entryHash(id)+(location.hash.match(/\?.*$/)?.[0]??''):collectionHash;
   if(location.hash!==canonical)history.replaceState(null,'',location.pathname+location.search+canonical);
   const wasInGame=!!activeId;
   if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};

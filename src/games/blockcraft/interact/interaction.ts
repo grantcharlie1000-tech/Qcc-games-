@@ -2,6 +2,7 @@
 // crack stages, attacks with the modern cooldown (combat.ts), right clicks with both hands (use.ts, placement.ts),
 // pick block, dropping and swapping hands. Input is handled on the 20 Hz tick like vanilla's handleKeybinds, reading
 // pressed() edges as well as down() so clicks shorter than a frame or a tick still register.
+import {hasAuthority} from '../engine/players';
 import {AIR,B,OUTLINE_BOX,SOLID,blockDef,isLiquid,type BlockId} from '../data/blocks';
 import {ITEMS,itemDef,stack,type ItemStack} from '../data/items';
 import type {BlockSource,ChangeCause,Entity,Game,InteractionService,ParticleOptions,RayHit,Vec3} from '../engine/contracts';
@@ -145,9 +146,10 @@ export function createInteraction(game:Game):InteractionService{
     game.events.emit('blockBroken',{x,y,z,id,byPlayer:true});
     if(!survival)return;
     const r=random;
-    for(const s of drops)game.entities.dropItem(s,x+.5+(r()-.5)*.5,y+.5+(r()-.5)*.5-.125,z+.5+(r()-.5)*.5,{x:(r()*.2-.1)*20,y:4,z:(r()*.2-.1)*20});
+    // Online guests: the host rolls the loot and experience for the break it accepts.
+    if(hasAuthority(game)){for(const s of drops)game.entities.dropItem(s,x+.5+(r()-.5)*.5,y+.5+(r()-.5)*.5-.125,z+.5+(r()-.5)*.5,{x:(r()*.2-.1)*20,y:4,z:(r()*.2-.1)*20});
     const xp=canHarvest(id,held)?blockXp(id,r):0;
-    if(xp>0)game.entities.dropXp(xp,centre.x,centre.y,centre.z);
+    if(xp>0)game.entities.dropXp(xp,centre.x,centre.y,centre.z);}
     const wear=mineWear(def,held);if(wear)game.inventory.damageHeld(wear);
     game.survival.addExhaustion(BREAK_EXHAUSTION);
   }

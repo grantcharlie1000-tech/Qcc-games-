@@ -16,10 +16,11 @@
 //    with 5 'fall' damage, portal particles and the teleport sound.
 // Data contracts (engine/contracts shared entity kinds): arrow {owner:'player'|'mob', ownerId?, damage, pickup, crit,
 // inGround} plus optional {effect, effectSeconds}; thrown {owner, ownerId?}. Velocities are set after spawning.
+import {localView,playersOf,touches} from '../engine/players';
 import {COLLISION_BOXES,blockDef,isLava,isWater} from '../data/blocks';
 import {stack} from '../data/items';
 import {boxCollides,collidesAt,rayBox} from '../engine/physics';
-import type {BlockSource,DamageSource,EffectName,Entity,EntityKind,Game,ItemStack,ParticleOptions} from '../engine/contracts';
+import type {BlockSource,DamageSource,EffectName,Entity,EntityKind,Game,ItemStack,ParticleOptions,PlayerView} from '../engine/contracts';
 import {KNOCKBACK,triangle} from './hostile-ai';
 import {arrowModel} from './hostile-models';
 
@@ -101,6 +102,12 @@ interface Flight{left:boolean;life:number}
 const flights=new WeakMap<Entity,Flight>();
 function flight(e:Entity):Flight{let f=flights.get(e);if(!f){f={left:false,life:0};flights.set(e,f);}return f;}
 const isPlayerOwned=(e:Entity)=>e.data.owner==='player';
+/** The player who shot or threw it: an online guest when data.remote names one, else the local player. */
+function ownerView(game:Game,e:Entity):PlayerView|null{
+  if(!isPlayerOwned(e))return null;
+  const remote=e.data.remote;
+  return typeof remote==='string'?game.net?.player(remote)??null:localView(game);
+}
 /** The mob that shot or threw it, if it still exists. */
 function ownerOf(game:Game,e:Entity):Entity|null{
   const id=e.data.ownerId;if(typeof id!=='number')return null;
@@ -108,6 +115,7 @@ function ownerOf(game:Game,e:Entity):Entity|null{
 }
 function cleanOwner(d:Record<string,unknown>){
   d.owner=d.owner==='player'?'player':'mob';
+  if(!(typeof d.remote==='string'&&d.remote.length<=80&&d.owner==='player'))delete d.remote;
   if(!(Number.isInteger(d.ownerId)&&(d.ownerId as number)>0))delete d.ownerId;
 }
 function cleanArrow(d:Record<string,unknown>){
@@ -134,8 +142,8 @@ export function shoot(e:Entity,dx:number,dy:number,dz:number,speed:number,inaccu
 
 // ---- Entity sweep ------------------------------------------------------------------------------------
 const CANDIDATES:Entity[]=[];
-interface EntityHit{entity:Entity|null;player:boolean;t:number}
-const EHIT:EntityHit={entity:null,player:false,t:Infinity};
+interface EntityHit{entity:Entity|null;player:PlayerView|null;t:number}
+const EHIT:EntityHit={entity:null,player:null,t:Infinity};
 /** The sweep's projectile and game, read by the reusable candidate filter (no closure per tick). */
 let sweeping:Entity|null=null,sweepGame:Game|null=null;
 const candidate=(o:Entity)=>{
@@ -148,7 +156,8 @@ function clearedOwner(game:Game,e:Entity,f:Flight,mx:number,my:number,mz:number)
   if(f.left)return true;
   let x0:number,y0:number,z0:number,x1:number,y1:number,z1:number;
   if(isPlayerOwned(e)){
-    const p=game.player.state,hw=game.player.width/2;x0=p.x-hw;y0=p.y;z0=p.z-hw;x1=p.x+hw;y1=p.y+game.player.height;z1=p.z+hw;
+    const p=ownerView(game,e);if(!p){f.left=true;return true;}
+    const hw=p.width/2;x0=p.x-hw;y0=p.y;z0=p.z-hw;x1=p.x+hw;y1=p.y+p.height;z1=p.z+hw;
   }else{
     const o=ownerOf(game,e);if(!o){f.left=true;return true;}
     const hw=o.width/2;x0=o.x-hw;y0=o.y;z0=o.z-hw;x1=o.x+hw;y1=o.y+o.height;z1=o.z+hw;
@@ -161,7 +170,7 @@ function clearedOwner(game:Game,e:Entity,f:Flight,mx:number,my:number,mz:number)
 }
 /** The nearest pickable entity (or the player) whose box grown by 0.3 the ray crosses within `max`. */
 function sweepEntities(game:Game,e:Entity,dx:number,dy:number,dz:number,max:number,left:boolean):EntityHit{
-  EHIT.entity=null;EHIT.player=false;EHIT.t=Infinity;
+  EHIT.entity=null;EHIT.player=null;EHIT.t=Infinity;
   const ox=e.x,oy=e.y,oz=e.z,ownerId=e.data.ownerId;
   sweeping=e;sweepGame=game;
   const list=game.entities.near(ox+dx*max/2,oy+dy*max/2,oz+dz*max/2,max/2+2,candidate,CANDIDATES);
@@ -172,10 +181,12 @@ function sweepEntities(game:Game,e:Entity,dx:number,dy:number,dz:number,max:numb
     if(t>=0&&t<=max&&t<EHIT.t){EHIT.t=t;EHIT.entity=o;}
   }
   CANDIDATES.length=0;
-  if(!game.survival.dead&&(left||!isPlayerOwned(e))){
-    const p=game.player.state,hw=game.player.width/2+.3;
-    const t=rayBox(ox,oy,oz,dx,dy,dz,p.x-hw,p.y-.3,p.z-hw,p.x+hw,p.y+game.player.height+.3,p.z+hw);
-    if(t>=0&&t<=max&&t<EHIT.t){EHIT.t=t;EHIT.entity=null;EHIT.player=true;}
+  const owner=left?null:ownerView(game,e);
+  for(const p of playersOf(game)){
+    if(p.dead||p===owner)continue;
+    const hw=p.width/2+.3;
+    const t=rayBox(ox,oy,oz,dx,dy,dz,p.x-hw,p.y-.3,p.z-hw,p.x+hw,p.y+p.height+.3,p.z+hw);
+    if(t>=0&&t<=max&&t<EHIT.t){EHIT.t=t;EHIT.entity=null;EHIT.player=p;}
   }
   return EHIT;
 }
@@ -184,7 +195,7 @@ function sweepEntities(game:Game,e:Entity,dx:number,dy:number,dz:number,max:numb
 const HIT:TraceHit={x:0,y:0,z:0,nx:0,ny:0,nz:0};
 const at=(x:number,y:number,z:number)=>({x,y,z});
 const waterAt=(game:Game,e:Entity)=>{const id=game.world.get(Math.floor(e.x),Math.floor(e.y+e.height/2),Math.floor(e.z));return id>0&&isWater(id);};
-type Impact={kind:'block';x:number;y:number;z:number;nx:number;ny:number;nz:number}|{kind:'entity';x:number;y:number;z:number;entity:Entity|null;player:boolean};
+type Impact={kind:'block';x:number;y:number;z:number;nx:number;ny:number;nz:number}|{kind:'entity';x:number;y:number;z:number;entity:Entity|null;player:PlayerView|null};
 /** Reaction to the first block or entity in the way; returns true when the projectile is done (removed or stuck). */
 type HitHandler=(game:Game,e:Entity,hit:Impact,ux:number,uy:number,uz:number,speed:number)=>boolean;
 /** One flight step. `onHit` reacts to an impact; when it returns false the projectile moves on with its (possibly
@@ -221,26 +232,27 @@ function fly(game:Game,e:Entity,physics:{gravity:number;drag:number;waterDrag:nu
 }
 /** A thrown item's zero-damage hit (snowballs, eggs, pearls; vanilla hurt(0)). The entity service applies the flash,
  *  invulnerability, knockback, hurt hook and hurt sound; the player takes nothing (survival ignores a zero hit). */
-function nudge(game:Game,e:Entity,target:Entity|null,player:boolean,ux:number,uz:number){
-  const source:DamageSource={kind:'projectile',attacker:ownerOf(game,e),projectile:e,byPlayer:isPlayerOwned(e),
+function nudge(game:Game,e:Entity,target:Entity|null,player:PlayerView|null,ux:number,uz:number){
+  const source:DamageSource={kind:'projectile',attacker:ownerOf(game,e),projectile:e,byPlayer:isPlayerOwned(e),player:ownerView(game,e),
     knockback:{x:ux,z:uz,strength:KNOCKBACK}};
-  if(player)game.survival.damage(0,source);
+  if(player)player.damage(0,source);
   else if(target)game.entities.damage(target,0,source);
 }
 
 // ---- Arrows ------------------------------------------------------------------------------------------
 /** Vanilla shouldFall: nothing solid within 0.06 blocks of the arrow's tip. */
 const loose=(game:Game,e:Entity)=>!boxCollides(game.world,e.x-.06,e.y-.06,e.z-.06,e.x+.06,e.y+.06,e.z+.06);
-function arrowHitEntity(game:Game,e:Entity,d:ArrowData,hit:{x:number;y:number;z:number;entity:Entity|null;player:boolean},ux:number,uy:number,uz:number,speed:number):boolean{
+function arrowHitEntity(game:Game,e:Entity,d:ArrowData,hit:{x:number;y:number;z:number;entity:Entity|null;player:PlayerView|null},ux:number,uy:number,uz:number,speed:number):boolean{
   const damage=arrowDamage(speed,d.damage,d.crit,()=>game.random());// bound: Game.random is a method
   const owner=ownerOf(game,e),byPlayer=d.owner==='player';
-  const source:DamageSource={kind:'projectile',attacker:owner,projectile:e,byPlayer,knockback:{x:ux,z:uz,strength:KNOCKBACK}};
+  const source:DamageSource={kind:'projectile',attacker:owner,projectile:e,byPlayer,player:ownerView(game,e),knockback:{x:ux,z:uz,strength:KNOCKBACK}};
   let landed=false,dodged=false;
   if(hit.player){
     // Survival blocks it with a raised shield facing the arrow (by the arrow's position), returning 0.
-    landed=game.survival.damage(damage,source)>0;
-    if(landed&&d.effect)game.survival.addEffect(d.effect,d.effectSeconds??30,1);
-    if(landed&&e.fire>0)game.survival.ignite(5);
+    const p=hit.player;
+    landed=p.damage(damage,source)>0;
+    if(landed&&d.effect)p.addEffect(d.effect,d.effectSeconds??30,1);
+    if(landed&&e.fire>0)p.ignite(5);
   }else if(hit.entity){
     const t=hit.entity;
     landed=game.entities.damage(t,damage,source);
@@ -272,12 +284,12 @@ function stick(game:Game,e:Entity,d:ArrowData,hit:{x:number;y:number;z:number},u
 }
 /** The player touching a stuck arrow (box grown by 1, 0.5, 1) picks it up when allowed. */
 function pickup(game:Game,e:Entity,d:ArrowData){
-  if(d.shake||d.owner!=='player'||game.survival.dead)return;
-  const p=game.player.state,reach=game.player.width/2+1+e.width/2;
-  if(Math.abs(p.x-e.x)>reach||Math.abs(p.z-e.z)>reach||e.y+e.height<p.y-.5||e.y>p.y+game.player.height+.5)return;
+  if(d.shake||d.owner!=='player')return;
+  const p=playersOf(game).find(v=>!v.dead&&touches(v,e.x,e.y,e.z,e.width,e.height));
+  if(!p)return;
   if(!d.pickup){if(game.settings.mode==='creative')game.entities.remove(e);return;}
-  if(game.inventory.add(stack('arrow',1))>0)return;
-  game.events.emit('itemPickedUp',{stack:stack('arrow',1)});
+  if(!p.canTake(stack('arrow',1))||p.give(stack('arrow',1))>0)return;
+  if(p.local)game.events.emit('itemPickedUp',{stack:stack('arrow',1)});
   game.sounds.play('pop',at(e.x,e.y,e.z),{volume:.2,pitch:((game.random()-game.random())*.7+1)*2});
   game.entities.remove(e);
 }
@@ -344,12 +356,14 @@ function hatch(game:Game,e:Entity,hit:Impact,ux:number,uy:number,uz:number){
 }
 /** Ender pearl landing (ThrownEnderpearl.onHit): portal particles; the thrower is teleported with 5 fall damage. */
 function teleport(game:Game,e:Entity,hit:Impact,ux:number,uy:number,uz:number){
-  const hw=game.player.width/2,h=game.player.height,p=impactPoint(hit,ux,uy,uz,hw,h,game);
+  const thrower=ownerView(game,e);
+  const hw=(thrower?.width??.6)/2,h=thrower?.height??1.8,p=impactPoint(hit,ux,uy,uz,hw,h,game);
   game.render.spawnParticles('portal',p.x,p.y+1,p.z,{count:32,spread:.5});
-  if(!isPlayerOwned(e)||game.survival.dead)return;
-  game.player.teleport(p.x,p.y,p.z);
+  // A pearl whose thrower has left the world teleports nobody.
+  if(!thrower||thrower.dead)return;
+  thrower.teleport(p.x,p.y,p.z);
   game.sounds.play('teleport',at(p.x,p.y,p.z));
-  game.survival.damage(5,{kind:'fall',projectile:e});
+  thrower.damage(5,{kind:'fall',projectile:e});
 }
 
 // ---- Registration --------------------------------------------------------------------------------------

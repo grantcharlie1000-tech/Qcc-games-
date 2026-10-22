@@ -18,6 +18,8 @@
 //    scheduled ticks, reactions, section scans and TNT explosions. Measured cost is in stats().
 //  - Ambient effects near the player (fire crackle and smoke, lava pops) sample like vanilla ClientLevel.animateTick and use
 //    a separate random so they never change the world.
+import {hasAuthority} from '../engine/players';
+import {playersOf} from '../engine/players';
 import {AIR,B,FACING_VECTOR,LIQUID,SOLID,blockDef,blockId,type BlockId} from '../data/blocks';
 import {CH,CS,LAYER,chunkKey} from '../engine/constants';
 import {canSurvive} from '../engine/support';
@@ -189,6 +191,8 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     dirty[dirtyTail++]=key;
   }
   function onBlockChanged({x,y,z,from,to,cause}:GameEvents['blockChanged']){
+    // An online guest does not simulate blocks (the host does): nothing to schedule.
+    if(!hasAuthority(game))return;
     const counts=sections.get(chunkKey(x>>4,z>>4));
     if(counts){const s=y>>4;if(counts[s]>=0){counts[s]+=(RANDOM_TICK[to]?1:0)-(RANDOM_TICK[from]?1:0);counts[SECTIONS+s]+=AMBIENT[to]-AMBIENT[from];}}
     const key=posKey(x,y,z);
@@ -322,10 +326,12 @@ export function createBlockTicks(game:Game,options:TickOptions={}):BlockTicks{
     let count=0,picks=0;
     stats.randomTicks=stats.randomHits=0;
     if(randomTickSpeed<=0)return;
-    const p=game.player.state,pcx=Math.floor(p.x)>>4,pcz=Math.floor(p.z)>>4;
+    // Chunks near any player tick (online guests keep their surroundings alive on the host).
+    const players=playersOf(game);
+    const near=(cx:number,cz:number)=>{for(const p of players)if(Math.abs(cx-(Math.floor(p.x)>>4))<=radius&&Math.abs(cz-(Math.floor(p.z)>>4))<=radius)return true;return false;};
     let scans=0;
     for(const chunk of game.world.chunks.values()){
-      if(Math.abs(chunk.cx-pcx)>radius||Math.abs(chunk.cz-pcz)>radius||!chunkReady(chunk.cx,chunk.cz,chunk.key))continue;
+      if(!near(chunk.cx,chunk.cz)||!chunkReady(chunk.cx,chunk.cz,chunk.key))continue;
       let counts=sections.get(chunk.key);
       if(!counts){counts=new Int16Array(SECTIONS*2).fill(-1);sections.set(chunk.key,counts);}
       const b=chunk.blocks,x0=chunk.cx*CS,z0=chunk.cz*CS;

@@ -1,6 +1,7 @@
 // Right-click behaviour (vanilla Java 1.20): block use (screens, doors, beds, TNT), item use on a block (hoe, bone meal,
 // flint and steel, spawn eggs, seeds, axe scraping, placement) and item use in the air (buckets, food, milk, bows,
 // shields, throwables, lily pads).
+import {hasAuthority} from '../engine/players';
 import {AIR,B,COLLISION_BOXES,FACING_VECTOR,FULL_CUBE,OPAQUE,blockDef,blockId,familyStates,isLiquid,stateFor,type BlockDef,type BlockId,type WoodType} from '../data/blocks';
 import {BIOMES} from '../data/biomes';
 import {itemDef,stack,type ItemDef,type ItemStack} from '../data/items';
@@ -127,6 +128,8 @@ export function useBed(game:Game,x:number,y:number,z:number):void{
     const found=monsters.length>0;monsters.length=0;
     if(found){game.ui.toast(SLEEP_MESSAGES.monsters);return;}
   }
+  // Online, the host's clock is the world's: a guest's bed only sets the spawn point.
+  if(!hasAuthority(game)){game.ui.toast(changed?'Respawn point set. Only the host can sleep through the night online.':'Only the host can sleep through the night online.');return;}
   if(changed)game.ui.toast(SLEEP_MESSAGES.spawn);
   // ServerLevel.tick on waking: morning only under doDaylightCycle (skipTime also clears the weather under doWeatherCycle);
   // a frozen clock stays put, but the weather still resets.
@@ -232,6 +235,8 @@ const HAS_BABIES=new Set(['cow','pig','sheep','chicken','rabbit','wolf','zombie'
 /** Right click on an entity: its own interaction (shear, milk, breed, tame...), then spawn-egg babies. */
 export function useOnEntity(game:Game,hand:Hand,e:Entity):Result{
   const s=hand.get();
+  // Online guests see copies of the host's animals: shearing, milking, breeding and taming stay with the host for now.
+  if(!hasAuthority(game)){if(game.entities.kind(e.kind)?.interact)game.ui.toast('Only the host can use animals in this online version.');return 'pass';}
   if(!hand.offhand&&game.entities.kind(e.kind)?.interact?.(e,game,s))return 'success';
   const def=s&&itemDef(s.id);
   if(def?.use==='spawn_egg'&&def.spawns===e.kind&&HAS_BABIES.has(e.kind))return spawnMob(game,hand,def,e.x,e.y,e.z,true);

@@ -34,6 +34,10 @@ import {createUI} from '../ui/screens';
 import {createHud} from '../ui/hud';
 import {createWeather} from '../world/weather';
 import {createAdvancements} from '../ui/advancements';
+import {createNet,type NetController,type NetHooks} from '../net/net';
+import {avatarKind} from '../net/avatar';
+import {SHARED_SETTINGS} from '../net/protocol';
+import type {GuestWorld} from '../net/guest';
 
 export const SNAPSHOT_VERSION=2;
 const DEFAULT_SEED=0x51ab1e;
@@ -77,7 +81,12 @@ export class Engine implements Game{
   world:VoxelWorld;terrain:TerrainService;render:RenderService;input:InputService;player:PlayerService;survival:SurvivalService;
   inventory:InventoryService;crafting:CraftingService;blockEntities:BlockEntityService;entities:EntityService;interaction:InteractionService;
   ticks:BlockTickService;ui:UIService;hud:HudService;sounds:SoundService;weather:WeatherService;advancements:AdvancementsService;
+  readonly net:NetController;
   private streamer:ChunkStreamer;
+  /** Systems whose tick simulates the shared world: skipped on an online guest (the host runs them). */
+  private hostOnly:Set<System>;
+  /** Online guest: play is held while the host is paused or the shared world loads. */
+  private netHeld=false;
   /** Services in creation order (disposed in reverse) and in tick / frame order. */
   private created:[string,System][];private ticked:System[];private framed:System[];
   private seed=DEFAULT_SEED;private rng=mulberry32(DEFAULT_SEED);
@@ -96,12 +105,15 @@ export class Engine implements Game{
     this.crafting=createCrafting(this);this.blockEntities=createBlockEntities(this);this.entities=createEntities(this);
     this.interaction=createInteraction(this);this.ticks=createBlockTicks(this);this.sounds=createSounds(this);this.weather=createWeather(this);
     this.ui=createUI(this);this.hud=createHud(this);this.advancements=createAdvancements(this);
+    this.net=createNet(this,this.netHooks());
     registerPassiveMobs(this);registerCompanionMobs(this);registerHostileMobs(this);registerMonsters(this);registerWorldEntities(this);
+    this.entities.register(avatarKind());
     this.created=[['terrain',this.terrain],['render',this.render],['input',this.input],['player',this.player],['survival',this.survival],
       ['inventory',this.inventory],['crafting',this.crafting],['blockEntities',this.blockEntities],['entities',this.entities],
       ['interaction',this.interaction],['ticks',this.ticks],['sounds',this.sounds],['weather',this.weather],['ui',this.ui],['hud',this.hud],
-      ['advancements',this.advancements]];
-    this.ticked=this.ordered(['survival','player','entities','ticks','blockEntities','weather']);
+      ['advancements',this.advancements],['net',this.net]];
+    this.hostOnly=new Set<System>([this.entities,this.ticks,this.blockEntities,this.weather]);
+    this.ticked=this.ordered(['survival','player','net','entities','ticks','blockEntities','weather']);
     this.framed=this.ordered(['input','player','interaction','render','entities','weather','ui','hud']);
     this.streamer=new ChunkStreamer(this.world,()=>this.terrain,createLightEngine(),this.mesher,this.render,()=>this.schedule());
     this.root.dataset.workers=String(this.streamer.workerCount);this.root.dataset.locked='false';
@@ -142,7 +154,7 @@ export class Engine implements Game{
   // ---- State transitions --------------------------------------------------------------------
   // Leaving 'playing'/'screen' sets the new state BEFORE ui.close(), so the screenChanged(false) it triggers is ignored.
   play(){
-    if(this.disposed||this.state==='lost'||this.state==='loading'||this.paused||this.spawnPending)return;
+    if(this.disposed||this.state==='lost'||this.state==='loading'||this.paused||this.spawnPending||this.netHeld)return;
     if(this.state==='dead')return;// respawn first
     this.hud.showMenu(null);this.setState('playing');this.canvas.focus({preventScroll:true});this.input.capture();
     this.context.setStatus(this.input.touch?'Drag to look. Hold to mine, tap to place.':'Mouse looks once captured. Left click mines, right click places, E opens the inventory.');
@@ -171,7 +183,7 @@ export class Engine implements Game{
   private contextLost(){
     if(this.disposed)return;
     this.setState('lost');this.ui.close();this.input.clear();this.input.release();cancelAnimationFrame(this.frameId);this.frameId=0;
-    this.hud.showMenu('lost');this.context.save(this.serialize());this.context.setStatus('Graphics context lost. Leave and reopen the game.');
+    this.hud.showMenu('lost');this.context.save(this.shellSerialize());this.context.setStatus('Graphics context lost. Leave and reopen the game.');
   }
   setMode(mode:GameMode){this.updateSettings({mode});}
   setViewDistance(index:number){this.updateSettings({view:Math.max(0,Math.min(VIEW_DISTANCES.length-1,Math.round(index)))});}
@@ -225,7 +237,8 @@ export class Engine implements Game{
     const t=this.time;t.tick++;
     if(this.settings.daylightCycle){t.dayTime=(t.dayTime+1)%DAY_TICKS;if(t.dayTime===0)t.day++;}
     this.updateLight();
-    for(const s of this.ticked)s.tick?.();
+    const authority=this.net.authority;
+    for(const s of this.ticked)if(authority||!this.hostOnly.has(s))s.tick?.();
   }
   private report(built:number){
     const d=this.root.dataset,p=this.player.state;
@@ -280,7 +293,7 @@ export class Engine implements Game{
     this.streamer.clear();this.world.clear();
     this.terrain.dispose?.();this.terrain=createTerrain(this.seed);
     this.created[0]=['terrain',this.terrain];
-    this.ticked=this.ordered(['survival','player','entities','ticks','blockEntities','weather']);
+    this.ticked=this.ordered(['survival','player','net','entities','ticks','blockEntities','weather']);
     this.framed=this.ordered(['input','player','interaction','render','entities','weather','ui','hud']);
     Object.assign(this.time,{tick:0,dayTime:1000,day:1});Object.assign(this.stats,{mined:0,placed:0,kills:0,deaths:0});
     for(const [,s] of this.created)s.reset?.();
@@ -294,6 +307,7 @@ export class Engine implements Game{
    *  resumes and saves right after this call, which keeps the current world until the player confirms. */
   restart(){
     if(this.disposed||this.state==='lost')return;
+    if(this.net.role==='guest'){this.ui.toast('Only the host can start a new world.');return;}
     this.playOnShellResume=false;
     if(this.state==='playing'||this.state==='screen')this.toPaused();
     this.ui.close();this.input.clear();this.input.release();this.hud.showMenu('restart');
@@ -304,7 +318,7 @@ export class Engine implements Game{
     this.hud.showMenu(null);
     this.setState('loading');this.ui.close();this.input.clear();this.input.release();
     this.resetWorld(nextSeed(this.seed));this.hud.showMenu('start');
-    this.context.setStatus('A fresh world. Press Play when it is ready.');this.context.save(this.serialize());this.schedule();
+    this.context.setStatus('A fresh world. Press Play when it is ready.');this.context.save(this.shellSerialize());this.schedule();
   }
   serialize():unknown{
     const systems:Record<string,unknown>={};
@@ -335,6 +349,56 @@ export class Engine implements Game{
     this.events.emit('modeChanged',{mode:this.settings.mode});this.events.emit('settingsChanged',{settings:this.settings});
     this.events.emit('restored',{});
     this.context.setStatus(`Saved world ready: day ${this.time.day}, ${this.stats.mined} blocks mined.`);
+    this.schedule();
+  }
+  // ---- Online play ----------------------------------------------------------------------------------
+  /** What the shell saves: online, the single-player world kept aside (the shared world has its own save). */
+  shellSerialize():unknown{return this.net.kept??this.serialize();}
+  shellRestore(value:unknown){if(this.net.kept!==null)this.net.keep(value);else this.restore(value);}
+  private netHooks():NetHooks{
+    return{
+      serialize:()=>this.serialize(),
+      restore:v=>this.restore(v),
+      freshWorld:seed=>{
+        this.setState('loading');this.ui.close();this.input.clear();this.input.release();
+        this.resetWorld(seed);this.hud.showMenu('start');this.schedule();
+      },
+      loadGuestWorld:w=>this.loadGuestWorld(w),
+      setExtraCentres:points=>{this.streamer.setExtraCentres(points,4);if(points.length)this.schedule();},
+      hold:on=>{
+        if(this.netHeld===on)return;
+        this.netHeld=on;
+        if(on){if(this.state==='playing'||this.state==='screen')this.toPaused();this.input.clear();this.input.release();}
+        else if(this.state==='paused')this.hud.showMenu('resume');
+        this.schedule();
+      },
+      wake:()=>this.schedule(),
+      lost:()=>this.state==='lost'
+    };
+  }
+  /** An online guest enters the host's world: same seed and generation, the host's edits, containers, time, weather and
+   *  rules, standing where the host put it (with its own items when it played here before). */
+  private loadGuestWorld(w:GuestWorld){
+    if(this.disposed||this.state==='lost')return;
+    this.setState('loading');this.ui.close();this.input.clear();this.input.release();
+    this.resetWorld(w.seed);
+    this.world.restoreEdits(w.edits);
+    try{this.blockEntities.restore?.(w.be);}catch{/* invalid containers are ignored */}
+    try{if(w.weather)this.weather.restore?.(w.weather);}catch{/* keep clear weather */}
+    if(w.time){const t=w.time;if(t.dayTime>=0&&t.dayTime<DAY_TICKS&&t.day>=1&&t.tick>=0){this.time.tick=t.tick;this.time.dayTime=t.dayTime;this.time.day=t.day;}}
+    const patch:Record<string,unknown>={};for(const k of SHARED_SETTINGS)patch[k]=w.settings[k];
+    this.updateSettings(sanitizeSettings(patch));
+    if(w.record){
+      for(const [sys,data] of [[this.player,w.record.player],[this.inventory,w.record.inventory],[this.survival,w.record.survival]] as const)
+        if(data)try{sys.restore?.(data);}catch{/* a broken part starts fresh */}
+    }
+    this.player.teleport(w.you.x,w.you.y,w.you.z);
+    this.player.state.spawn={...w.spawn};
+    if(this.settings.mode==='survival')this.player.state.flying=false;
+    this.updateLight();this.freshWorld=false;this.restored=false;this.lastScore=-1;
+    this.events.emit('modeChanged',{mode:this.settings.mode});this.events.emit('settingsChanged',{settings:this.settings});
+    this.hud.showMenu('start');
+    this.context.setStatus('Joined the shared world. Press Play when it is ready.');
     this.schedule();
   }
   /** The shell's pause stopped play: its resume (a click on Keep playing, Study's Games link, a closed dialog) plays again. */
@@ -384,6 +448,6 @@ export function mountEngine(container:HTMLElement,context:GameContext):GameInsta
   }
   return{
     pause:()=>engine.shellPause(),resume:()=>engine.shellResume(),restart:()=>engine.restart(),
-    serialize:()=>engine.serialize(),restore:v=>engine.restore(v),dispose:()=>engine.dispose()
+    serialize:()=>engine.shellSerialize(),restore:v=>engine.shellRestore(v),dispose:()=>engine.dispose()
   };
 }

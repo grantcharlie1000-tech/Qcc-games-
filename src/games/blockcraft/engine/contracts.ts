@@ -66,7 +66,8 @@ export interface Chunk extends ChunkData{
   /** Highest non-air y per column (x + z*16), -1 for empty columns. Maintained by World. */
   heightmap:Int16Array;
 }
-export type ChangeCause='player'|'tick'|'explosion'|'entity'|'growth'|'fluid'|'restore';
+/** 'remote': applied from the online host's authoritative world on a guest (never sent back as a request). */
+export type ChangeCause='player'|'tick'|'explosion'|'entity'|'growth'|'fluid'|'restore'|'remote';
 /** Read access used by pure algorithms (physics, AI, tree growth). -1 = not loaded. */
 export interface BlockSource{get(x:number,y:number,z:number):number}
 export interface BlockWriter extends BlockSource{set(x:number,y:number,z:number,id:BlockId,cause?:ChangeCause):boolean}
@@ -273,6 +274,8 @@ export interface DamageSource{kind:DamageKind;
   projectile?:Entity|null;
   /** The player caused it (melee, a player arrow, TNT they lit): counts for drops, xp and stats. */
   byPlayer?:boolean;
+  /** Online: the player view that caused it (a guest's melee or arrow on the host). */
+  player?:PlayerView|null;
   /** Knockback direction (world xz, need not be normalised) from the attacker; strength in blocks/second. */
   knockback?:{x:number;z:number;strength:number}}
 export interface StatusEffect{name:EffectName;
@@ -594,6 +597,30 @@ export interface EntityService extends System{
   /** Spawn experience orbs totalling `points`. */
   dropXp(points:number,x:number,y:number,z:number):void;
   count(category:EntityCategory):number;
+  /** Online guest only (see net/): entities are copies of the host's. While on, tick() does not simulate; mirror.tick moves
+   *  copies toward the host's positions, and local spawns, drops, experience and damage go to `forward` instead. */
+  readonly mirror?:EntityMirror;
+}
+export interface MirrorState{x:number;y:number;z:number;yaw:number;headYaw:number;pitch:number;health:number;hurtTime:number;deathTime:number;
+  fire:number;baby:boolean;onGround:boolean}
+export interface EntityForward{
+  /** A local spawn (projectiles, spawn eggs): the entity exists for this tick only, so the caller can set its velocity. */
+  spawned(entity:Entity):void;
+  dropItem(stack:ItemStack,x:number,y:number,z:number,velocity:Vec3|undefined,pickupDelay:number):void;
+  dropXp(points:number,x:number,y:number,z:number):void;
+  damage(entity:Entity,amount:number,source:DamageSource):boolean;
+}
+export interface EntityMirror{
+  readonly active:boolean;
+  start(forward:EntityForward):void;
+  stop():void;
+  /** Creates or updates the copy of host entity `id`. */
+  upsert(id:number,kind:string,state:MirrorState,data:Record<string,unknown>|null):Entity|null;
+  remove(id:number):void;
+  /** Ids of every copy. */
+  ids():number[];
+  /** Per guest tick: `step` moves each copy toward its latest host state; walk animation and sounds follow. */
+  tick(step:(entity:Entity)=>void):void;
 }
 
 // ---- Interaction, block ticks, UI, sound ---------------------------------------------------------
@@ -716,6 +743,42 @@ export interface WeatherService extends System{
 //  'squid'; hostile (entity/hostile.ts) 'zombie', 'husk', 'drowned', 'skeleton', 'stray', 'creeper', 'spider';
 //  monsters (entity/monsters.ts) 'enderman', 'slime'.
 
+// ---- Online play (net/) -------------------------------------------------------------------------
+/** A player in the world: the local one, or (on the host) a guest. Mobs target, push and damage players through views. */
+export interface PlayerView{
+  readonly id:string;readonly name:string;readonly local:boolean;
+  readonly x:number;readonly y:number;readonly z:number;readonly yaw:number;
+  readonly width:number;readonly height:number;readonly eyeHeight:number;
+  readonly inWater:boolean;readonly sneaking:boolean;readonly dead:boolean;
+  /** Survival, alive and playing (not paused or away): mobs may target it. Difficulty is checked by callers. */
+  readonly targetable:boolean;
+  damage(amount:number,source:DamageSource):number;
+  push(vx:number,vy:number,vz:number):void;
+  /** Gives a picked-up stack; returns the count that was not taken. */
+  give(stack:ItemStack):number;
+  /** False when the inventory has no room for any of this item (items are not attracted). */
+  canTake(stack:ItemStack):boolean;
+  addXp(points:number):void;
+  ignite(seconds:number):void;
+  addEffect(name:EffectName,seconds:number,level?:number):void;
+  teleport(x:number,y:number,z:number):void;
+}
+export type NetRole='offline'|'host'|'guest';
+export interface NetService extends System{
+  readonly role:NetRole;
+  /** Runs the shared world (blocks, entities, furnaces, time, weather): offline and host. False on a guest. */
+  readonly authority:boolean;
+  /** Every player in the world, the local one first. */
+  players():readonly PlayerView[];
+  /** The nearest player to a point within `maxDistance` that `filter` accepts. */
+  nearestPlayer(x:number,y:number,z:number,maxDistance?:number,filter?:(p:PlayerView)=>boolean):PlayerView|null;
+  player(id:string):PlayerView|undefined;
+  /** Shows the online panel (Create room, Join by code, Copy invite link, Leave room). */
+  openPanel():void;
+  /** Host: the name of the guest using one of these containers (the screen must not open), else null. */
+  containerBusy?(positions:readonly Vec3[]):string|null;
+}
+
 // ---- The game object ---------------------------------------------------------------------------
 export interface GameSettings{mode:GameMode;difficulty:Difficulty;
   /** Index into VIEW_DISTANCES. */
@@ -775,6 +838,8 @@ export interface GameEvents{
   worldReset:{};
   /** A saved world finished restoring (every system restored). */
   restored:{};
+  /** A chest, barrel or furnace screen opened on these block positions (online play shares their contents). */
+  containerOpened:{positions:Vec3[]};
 }
 /** DOM layers inside game.root (absolute, z-index): canvas 0, world overlays (crosshair, vignette) 5, HUD (hotbar, bars,
  *  action bar) 10, touch controls 15, screens 20, toasts 25, menus 30. Reserved zones: top-left debug overlay (F3),
@@ -812,6 +877,8 @@ export interface Game{
   readonly sounds:SoundService;
   readonly weather:WeatherService;
   readonly advancements:AdvancementsService;
+  /** Online play: roles, players and authority. Offline it reports one local player and full authority. */
+  readonly net:NetService;
   /** Seeded random for gameplay (not world generation). */
   random():number;
   /** Start / resume play from the start or pause menu (a user gesture: captures the mouse). */

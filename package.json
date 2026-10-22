@@ -19,6 +19,7 @@
     "@netlify/functions": "6.0.3",
     "globe.gl": "2.46.2",
     "matter-js": "0.20.0",
+    "peerjs": "1.5.5",
     "three": "^0.180.0",
     "three-conic-polygon-geometry": "2.1.3",
     "three-geojson-geometry": "2.1.1"

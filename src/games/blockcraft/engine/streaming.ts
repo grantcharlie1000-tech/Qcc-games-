@@ -41,8 +41,17 @@ export class ChunkStreamer{
   get meshedCount(){return this.meshed.size;}
   isMeshed(cx:number,cz:number){return this.meshed.has(chunkKey(cx,cz));}
   private centre={cx:0,cz:0,view:5};
+  /** Online host: other players' positions, kept generated, lit and simulated within `view` chunks of each. */
+  private extra:{cx:number;cz:number;view:number}[]=[];
   setCentre(x:number,z:number,view:number){const c=this.centre;c.cx=Math.floor(x/CS);c.cz=Math.floor(z/CS);c.view=view;}
-  private inRange(cx:number,cz:number,extra:number){const c=this.centre,r=c.view+extra;return (cx-c.cx)**2+(cz-c.cz)**2<=r*r;}
+  setExtraCentres(points:readonly {x:number;z:number}[],view:number){
+    this.extra=points.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.z)).slice(0,8).map(p=>({cx:Math.floor(p.x/CS),cz:Math.floor(p.z/CS),view}));
+  }
+  private centres(){return this.extra.length?[this.centre,...this.extra]:[this.centre];}
+  private inRange(cx:number,cz:number,extra:number){
+    for(const c of this.centres()){const r=c.view+extra;if((cx-c.cx)**2+(cz-c.cz)**2<=r*r)return true;}
+    return false;
+  }
   private receive(r:Reply){
     const key=chunkKey(r.cx,r.cz);this.pending.delete(key);
     if(this.disposed||r.seed!==this.terrain().seed||this.world.chunks.has(key)||!this.inRange(r.cx,r.cz,1.5))return;
@@ -67,9 +76,11 @@ export class ChunkStreamer{
   }
   /** Per frame: unload, request, generate (fallback) and mesh within budget. Returns meshes built. */
   update():number{
-    const {cx:pcx,cz:pcz,view:r}=this.centre,rGen=(r+1.5)**2,rMesh=r*r,rDrop=(r+2.5)**2;
-    for(const chunk of this.world.chunks.values())if((chunk.cx-pcx)**2+(chunk.cz-pcz)**2>rDrop){
-      this.render.setChunkMesh(chunk.cx,chunk.cz,null);this.meshed.delete(chunk.key);this.world.remove(chunk.key);
+    const centres=this.centres();
+    for(const chunk of this.world.chunks.values()){
+      let keep=false;
+      for(const c of centres)if((chunk.cx-c.cx)**2+(chunk.cz-c.cz)**2<=(c.view+2.5)**2){keep=true;break;}
+      if(!keep){this.render.setChunkMesh(chunk.cx,chunk.cz,null);this.meshed.delete(chunk.key);this.world.remove(chunk.key);}
     }
     const begin=performance.now();let built=0;this.busy=this.pending.size>0;
     // Edited chunks first: immediate feedback for the player's own changes.
@@ -86,6 +97,9 @@ export class ChunkStreamer{
       const cx=keyX(key),cz=keyZ(key);
       if(this.hasNeighbours(cx,cz)){this.build(cx,cz);built++;}
     }
+    // The local player's surroundings first, then each other player's.
+    for(const c of centres){
+    const {cx:pcx,cz:pcz,view:r}=c,rGen=(r+1.5)**2,rMesh=r*r;
     for(let o=0;o<OFF_D.length;o++){
       const d=OFF_D[o];if(d>rGen)break;
       const cx=pcx+OFF_X[o],cz=pcz+OFF_Z[o],key=chunkKey(cx,cz);
@@ -101,6 +115,7 @@ export class ChunkStreamer{
       this.busy=true;
       if(built&&performance.now()-begin>MESH_BUDGET_MS)continue;
       this.build(cx,cz);built++;
+    }
     }
     return built;
   }

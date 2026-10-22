@@ -50,3 +50,5 @@ body.in-game .game-view[data-game-id=pool] #game-status{position:absolute;width:
  .pool-gesture-label,.pool-help,.pool-live{margin-left:33px;font-size:10px}.pool-tip{font-size:10px}
 }
 @media(max-height:500px) and (min-width:601px){.pool-game{gap:3px;padding-top:0}.pool-player{padding-top:4px}.pool-player-heading{margin-bottom:4px}.pool-pot-tray{max-width:220px}.pool-pot-count{margin-top:2px}.pool-open-table{min-height:20px}.pool-under{padding:3px 0}.pool-help summary{padding:2px}.pool-gesture-label{font-size:10px}}
+
+.pool-multiplayer{min-height:40px;padding:6px 12px;border:1px solid #d8bf72;border-radius:6px;background:#f4d385;color:#1d2a36;font:800 11px system-ui,sans-serif;letter-spacing:.04em;cursor:pointer;touch-action:manipulation}.pool-multiplayer:hover{filter:brightness(1.06)}.pool-multiplayer:focus-visible{outline:3px solid #ffe49d;outline-offset:2px}

@@ -1,6 +1,6 @@
 # Pocket Arcade architecture
 
-Eighteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker. No factory game, currency, accounts, ads, tracking, backend, runtime CDN, or external runtime requests.
+Eighteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker. No factory game, currency, accounts, ads, tracking or runtime CDN. External requests are limited to the optional shared leaderboard (same origin) and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
 
 ## Static shell
 
@@ -49,3 +49,7 @@ The four corrected games, isolated specialist handoffs, original cutout/art geom
 ## Corn Clicker
 
 `src/games/corn-clicker/` is an incremental game (see its [SPEC](src/games/corn-clicker/SPEC.md)). Like Globle it fills `#game-stage` (`fillGames` in `src/main.ts`; the stage is an inline-size container so the game switches from three panels to tabs below 900 px). Unlike the other games, time keeps counting while it is paused or closed: the next tick credits gaps of up to a minute at full rate and longer gaps by its offline rules, so the Study retention test checks only its frozen autosave. It keeps two extra localStorage keys beside the shell's save: `corn-clicker:lock` (one tab owns the farm; others step aside and return the latest save from storage from `serialize()`) and `corn-clicker:backups` (five rolling snapshots).
+
+## Online multiplayer
+
+`src/multiplayer/` is the one shared online layer: `room.ts` (host-created PeerJS/WebRTC star rooms, admission by protocol/game/version, seats, heartbeats, host pause, clean endings), `protocol.ts` (codes, names, envelopes, framing of large messages), `transport.ts` (PeerJS, lazily imported, and the relay detection), `ice.ts` with `turn-server.ts` and `netlify/functions/turn.mts` (temporary Cloudflare TURN credentials, rate-limited), and `panel.ts` (Create room, Join by code, Copy invite link, Leave room). Pool (`src/games/pool/online.ts`) and Blockcraft (`src/games/blockcraft/net/`) build on it; the host is authoritative in both. Blockcraft systems see players through `game.net` and `engine/players.ts`, so offline behaviour is the single-player behaviour. Online state never replaces the shell's single-player saves. Details, setup and limitations: [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md).

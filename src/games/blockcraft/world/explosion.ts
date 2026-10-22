@@ -8,6 +8,7 @@
 //  - Blown blocks drop their no-tool loot: all of them for primed TNT (gamerule tntExplosionDropDecay is false since 1.19.3),
 //    with chance 1 / power for other sources (creepers, no source); TNT is primed with a 10-29 tick fuse; with `fire`, one in
 //    three cleared cells over an opaque block catches fire.
+import {playersOf} from '../engine/players';
 import {AIR,BLOCKS,OPAQUE,SOLID,LIQUID} from '../data/blocks';
 import {CH} from '../engine/constants';
 import {raycast} from '../engine/physics';
@@ -112,14 +113,17 @@ function hurtAround(sim:Sim,x:number,y:number,z:number,power:number,source:Entit
     if(e.kind!=='primed_tnt'&&e.kind!=='falling_block')game.entities.damage(e,Math.floor((impact*impact+impact)/2*7*reach+1),damageSource);
     if(!e.removed){e.vx+=dx*impact*20;e.vy+=dy*impact*20;e.vz+=dz*impact*20;}
   }
-  if(game.survival.dead)return;
-  const p=game.player.state,dist=Math.hypot(p.x-x,p.y-y,p.z-z)/reach;
-  if(dist>1)return;
-  let dx=p.x-x,dy=game.player.eye().y-y,dz=p.z-z;
-  const len=Math.hypot(dx,dy,dz);if(len===0)return;
-  dx/=len;dy/=len;dz/=len;
-  const hw=game.player.width/2,h=game.player.height;
-  const impact=(1-dist)*exposure(w,x,y,z,p.x-hw,p.y,p.z-hw,p.x+hw,p.y+h,p.z+hw);
-  game.survival.damage(Math.floor((impact*impact+impact)/2*7*reach+1),damageSource);
-  game.player.push(dx*impact*20,dy*impact*20,dz*impact*20);
+  // Every player (online guests too) is hurt and thrown like the local one.
+  for(const p of playersOf(game)){
+    if(p.dead)continue;
+    const dist=Math.hypot(p.x-x,p.y-y,p.z-z)/reach;
+    if(dist>1)continue;
+    let dx=p.x-x,dy=(p.local?game.player.eye().y:p.y+p.eyeHeight)-y,dz=p.z-z;
+    const len=Math.hypot(dx,dy,dz);if(len===0)continue;
+    dx/=len;dy/=len;dz/=len;
+    const hw=p.width/2,h=p.height;
+    const impact=(1-dist)*exposure(w,x,y,z,p.x-hw,p.y,p.z-hw,p.x+hw,p.y+h,p.z+hw);
+    p.damage(Math.floor((impact*impact+impact)/2*7*reach+1),damageSource);
+    p.push(dx*impact*20,dy*impact*20,dz*impact*20);
+  }
 }

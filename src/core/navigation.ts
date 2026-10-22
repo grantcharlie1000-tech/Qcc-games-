@@ -4,8 +4,9 @@ const entries:readonly GameId[]=['color-blocks','water-sort','fruit-merge','towe
 export const collectionHash='#/collection';
 export const entryHash=(id:GameId)=>`${collectionHash}/${entries.indexOf(id)+1}`;
 export function entryFromHash(hash:string):GameId|undefined{
- const reference=hash.match(/^#\/collection\/([1-9]\d*)$/);
+ // A game link may carry options after `?` (an online room invite: `?room=CODE`).
+ const reference=hash.match(/^#\/collection\/([1-9]\d*)(?:\?.*)?$/);
  if(reference)return entries[Number(reference[1])-1];
- const legacy=hash.match(/^#\/game\/([a-z-]+)$/)?.[1];
+ const legacy=hash.match(/^#\/game\/([a-z-]+)(?:\?.*)?$/)?.[1];
  return entries.find(id=>id===legacy);
 }

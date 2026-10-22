@@ -7,7 +7,8 @@
 // service from the kind flags. Shields are survival's: a blocked hit on the player returns 0 from survival.damage,
 // which also wears the shield and pushes a melee attacker back.
 import {SOLID,blockDef,isLava} from '../data/blocks';
-import type {DamageSource,Difficulty,Entity,Game} from '../engine/contracts';
+import type {DamageSource,Difficulty,Entity,Game,PlayerView} from '../engine/contracts';
+import {localView,playersOf} from '../engine/players';
 import {isDarkEnoughToSpawn} from './spawning';
 
 export const DIFFICULTY_ID:Readonly<Record<Difficulty,number>>={peaceful:0,easy:1,normal:2,hard:3};
@@ -51,6 +52,8 @@ export const eyeBrightness=(game:Game,e:Entity)=>game.world.brightnessAt(Math.fl
 export interface Brain{
   /** Current target: another entity, or the player when targetPlayer. */
   target:Entity|null;targetPlayer:boolean;
+  /** Which player when targetPlayer (online play has several; null means the local player). */
+  player:PlayerView|null;
   /** The target hurt this mob or one of its kin (HurtByTargetGoal). */
   revenge:boolean;
   /** Cached line of sight to the target and the tick it was checked; ticks unseen. */
@@ -76,13 +79,13 @@ const brains=new WeakMap<Entity,Brain>();
 export function brain(e:Entity):Brain{
   let b=brains.get(e);
   if(!b){
-    b={target:null,targetPlayer:false,revenge:false,sight:false,sightAge:-1,unseen:0,lastX:0,lastY:0,lastZ:0,hasLast:false,cooldown:0,look:0,
+    b={target:null,targetPlayer:false,player:null,revenge:false,sight:false,sightAge:-1,unseen:0,lastX:0,lastY:0,lastZ:0,hasLast:false,cooldown:0,look:0,
       seeTime:0,strafeTime:-1,clockwise:false,backwards:false,attackTime:-1,leaping:false,goX:0,goY:0,goZ:0,goTime:0,avoid:null,wet:-1,swellDir:-1,fall:0,prevY:e.y};
     brains.set(e,b);
   }
   return b;
 }
-export function forget(b:Brain){b.target=null;b.targetPlayer=false;b.revenge=false;b.unseen=0;b.sightAge=-1;b.sight=false;b.hasLast=false;}
+export function forget(b:Brain){b.target=null;b.targetPlayer=false;b.player=null;b.revenge=false;b.unseen=0;b.sightAge=-1;b.sight=false;b.hasLast=false;}
 /** Writes data.aggressive only when it changes (models raise arms / aim bows from it). */
 export function setAggressive(e:Entity,on:boolean){if((e.data.aggressive===true)!==on){if(on)e.data.aggressive=true;else delete e.data.aggressive;}}
 export function hasTarget(b:Brain){return b.targetPlayer||b.target!==null;}
@@ -91,19 +94,21 @@ export function hasTarget(b:Brain){return b.targetPlayer||b.target!==null;}
 export interface TargetPos{x:number;y:number;z:number;width:number;height:number;eye:number;inWater:boolean}
 export const newTarget=():TargetPos=>({x:0,y:0,z:0,width:.6,height:1.8,eye:1.62,inWater:false});
 
-/** Creative, dead or peaceful players are never targeted. */
-export function playerTargetable(game:Game):boolean{
-  return game.settings.mode==='survival'&&!game.survival.dead&&game.settings.difficulty!=='peaceful'&&game.state!=='dead';
+/** Creative, dead, away or peaceful players are never targeted. */
+export function playerTargetable(game:Game,p:PlayerView=localView(game)):boolean{
+  return game.settings.difficulty!=='peaceful'&&p.targetable;
 }
-function fillPlayer(game:Game,out:TargetPos){
-  const p=game.player.state;
-  out.x=p.x;out.y=p.y;out.z=p.z;out.width=game.player.width;out.height=game.player.height;out.eye=game.player.eyeHeight();out.inWater=p.inWater;
+/** The player a brain targets. */
+export const targetView=(game:Game,b:Brain):PlayerView=>b.player??localView(game);
+function fillPlayer(p:PlayerView,out:TargetPos){
+  out.x=p.x;out.y=p.y;out.z=p.z;out.width=p.width;out.height=p.height;out.eye=p.eyeHeight;out.inWater=p.inWater;
 }
 /** Fills `out` with the brain's target, clearing targets that are gone. Returns false without a target. */
 export function resolveTarget(game:Game,b:Brain,out:TargetPos):boolean{
   if(b.targetPlayer){
-    if(!playerTargetable(game)){forget(b);return false;}
-    fillPlayer(game,out);return true;
+    const p=targetView(game,b);
+    if(!playerTargetable(game,p)){forget(b);return false;}
+    fillPlayer(p,out);return true;
   }
   const t=b.target;
   if(!t)return false;
@@ -121,13 +126,19 @@ export function seesTarget(game:Game,e:Entity,b:Brain,t:TargetPos):boolean{
 /** NearestAttackableTargetGoal for the player: a 1-in-10 chance per tick to look, within `range` blocks (80% when the
  *  player sneaks), needing line of sight. `allow` adds kind rules (spider light, drowned water). */
 export function acquirePlayer(game:Game,e:Entity,b:Brain,range:number,scratch:TargetPos,allow?:(game:Game,e:Entity)=>boolean):void{
-  if(hasTarget(b)||game.random()>=.1||!playerTargetable(game))return;
-  const p=game.player.state,r=range*(p.sneaking?.8:1);
-  if((p.x-e.x)**2+(p.y-e.y)**2+(p.z-e.z)**2>r*r)return;
+  if(hasTarget(b)||game.random()>=.1)return;
+  // The nearest targetable player in range (80% range while sneaking).
+  let p:PlayerView|null=null,best=Infinity;
+  for(const v of playersOf(game)){
+    if(!playerTargetable(game,v))continue;
+    const r=range*(v.sneaking?.8:1),d=(v.x-e.x)**2+(v.y-e.y)**2+(v.z-e.z)**2;
+    if(d<=r*r&&d<best){best=d;p=v;}
+  }
+  if(!p)return;
   if(allow&&!allow(game,e))return;
-  fillPlayer(game,scratch);
+  fillPlayer(p,scratch);
   if(!game.entities.ai.canSee(e,scratch.x,scratch.y+scratch.eye,scratch.z))return;
-  b.targetPlayer=true;b.target=null;b.revenge=false;b.unseen=0;b.sight=true;b.sightAge=e.age;
+  b.targetPlayer=true;b.player=p.local?null:p;b.target=null;b.revenge=false;b.unseen=0;b.sight=true;b.sightAge=e.age;
   b.lastX=p.x;b.lastY=p.y;b.lastZ=p.z;b.hasLast=true;
 }
 /** TargetGoal.canContinueToUse: drops a target beyond the follow range or unseen for 3 seconds. Returns true while kept. */
@@ -149,9 +160,10 @@ export function retaliate(e:Entity,game:Game,source:DamageSource):boolean{
   if(a&&a!==e&&!a.removed&&a.deathTime===0&&(a.category==='hostile'||a.category==='passive'||a.category==='water')){
     b.target=a;b.targetPlayer=false;b.revenge=true;b.unseen=0;b.sightAge=-1;b.cooldown=0;return true;
   }
-  if((source.kind==='player'||source.byPlayer)&&playerTargetable(game)){
-    b.target=null;b.targetPlayer=true;b.revenge=true;b.unseen=0;b.sightAge=-1;
-    const p=game.player.state;b.lastX=p.x;b.lastY=p.y;b.lastZ=p.z;b.hasLast=true;
+  const view=source.player??localView(game);
+  if((source.kind==='player'||source.byPlayer)&&playerTargetable(game,view)){
+    b.target=null;b.targetPlayer=true;b.player=view.local?null:view;b.revenge=true;b.unseen=0;b.sightAge=-1;
+    const p=view;b.lastX=p.x;b.lastY=p.y;b.lastZ=p.z;b.hasLast=true;
     return true;
   }
   return false;
@@ -163,7 +175,7 @@ export function alertOthers(game:Game,e:Entity,range:number,kin:(o:Entity)=>bool
   const list=game.entities.near(e.x,e.y,e.z,range,o=>o!==e&&o.deathTime===0&&!o.removed&&kin(o)&&Math.abs(o.y-e.y)<=10,NEAR);
   for(const o of list){
     const ob=brain(o);if(hasTarget(ob)||o===b.target)continue;
-    ob.target=b.target;ob.targetPlayer=b.targetPlayer;ob.revenge=true;ob.unseen=0;ob.sightAge=-1;
+    ob.target=b.target;ob.targetPlayer=b.targetPlayer;ob.player=b.player;ob.revenge=true;ob.unseen=0;ob.sightAge=-1;
     ob.lastX=b.lastX;ob.lastY=b.lastY;ob.lastZ=b.lastZ;ob.hasLast=b.hasLast;
   }
   NEAR.length=0;
@@ -191,8 +203,8 @@ export function chase(game:Game,e:Entity,b:Brain,t:TargetPos,speed:number):void{
 export function meleeHit(game:Game,e:Entity,b:Brain,base:number):boolean{
   e.data.swing=SWING_TICKS;
   if(b.targetPlayer){
-    const p=game.player.state;
-    return game.survival.damage(base,{kind:'mob',attacker:e,knockback:{x:p.x-e.x,z:p.z-e.z,strength:KNOCKBACK}})>0;
+    const p=targetView(game,b);
+    return p.damage(base,{kind:'mob',attacker:e,knockback:{x:p.x-e.x,z:p.z-e.z,strength:KNOCKBACK}})>0;
   }
   const t=b.target;
   if(!t)return false;
@@ -226,9 +238,15 @@ export function avoidHazards(game:Game,e:Entity):void{
 export function floatInLiquid(game:Game,e:Entity){if((e.inWater||e.inLava)&&game.random()<.8)e.jump=true;}
 /** LookAtPlayerGoal: an idle mob sometimes watches a player within 8 blocks for 2-4 seconds. */
 export function idleLook(game:Game,e:Entity,b:Brain):void{
-  const p=game.player.state;
-  if(b.look>0){b.look--;game.entities.ai.lookAt(e,p.x,p.y+game.player.eyeHeight(),p.z);return;}
-  if(game.random()<.02&&!game.survival.dead&&(p.x-e.x)**2+(p.y-e.y)**2+(p.z-e.z)**2<64)b.look=40+Math.floor(game.random()*40);
+  const p=b.look>0&&b.player&&!b.player.dead?b.player:nearest(game,e);
+  if(!p)return;
+  if(b.look>0){b.look--;game.entities.ai.lookAt(e,p.x,p.y+p.eyeHeight,p.z);return;}
+  if(game.random()<.02&&!p.dead&&(p.x-e.x)**2+(p.y-e.y)**2+(p.z-e.z)**2<64){b.look=40+Math.floor(game.random()*40);if(!b.targetPlayer)b.player=p.local?null:p;}
+}
+function nearest(game:Game,e:Entity):PlayerView|null{
+  let p:PlayerView|null=null,best=Infinity;
+  for(const v of playersOf(game)){const d=(v.x-e.x)**2+(v.y-e.y)**2+(v.z-e.z)**2;if(d<best){best=d;p=v;}}
+  return p;
 }
 /** RandomStrollGoal and LookAtPlayerGoal for a mob without a target. */
 export function idle(game:Game,e:Entity,b:Brain,speed:number){

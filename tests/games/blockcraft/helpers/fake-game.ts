@@ -8,6 +8,7 @@ import {B} from '../../../../src/games/blockcraft/data/blocks';
 import {CHUNK_VOLUME,LAYER,DAY_TICKS} from '../../../../src/games/blockcraft/engine/constants';
 import {daylightAt,skyDarkeningAt,sanitizeSettings} from '../../../../src/games/blockcraft/engine/game';
 import {createPlayerState} from '../../../../src/games/blockcraft/player/player';
+import {offlineNet} from '../../../../src/games/blockcraft/engine/players';
 import type {GameContext} from '../../../../src/core/types';
 import type {AdvancementsService,BlockEntityService,BlockTickService,CraftingService,EngineState,Entity,EntityService,Game,GameEvents,
   GameSettings,GameTime,HudService,InputAction,InputService,InteractionService,InventoryService,ItemStack,Mesher,PlayerService,RenderService,
@@ -101,7 +102,9 @@ export function createFakeGame(options:{seed?:number;random?:()=>number;mode?:'s
         for(const s of systems??[game.survival,game.player,game.entities,game.ticks,game.blockEntities,game.weather,game.inventory,game.interaction,game.advancements] as System[])s.tick?.();
       }
     },
-    setState(state){const from=game.state;game.state=state;events.emit('stateChanged',{from,to:state});}
+    setState(state){const from=game.state;game.state=state;events.emit('stateChanged',{from,to:state});},
+    net:undefined as unknown as Game['net']
   };
+  game.net=offlineNet(game as unknown as Game);
   return game;
 }
