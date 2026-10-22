@@ -1,5 +1,5 @@
 import type {GameModule} from '../../core/types';
-import {create,reveal,flag,chord,restore as restoreBoard,LEVELS} from './model';
+import {create,reveal,flag,chord,restore as restoreBoard,score,LEVELS} from './model';
 import type {Level} from './model';
 import './style.css';
 // CSS custom-property URLs otherwise resolve relative to the emitted /assets/ stylesheet.
@@ -61,7 +61,7 @@ const game:GameModule={
       (root.querySelector('.ms-progress i') as HTMLElement).style.width=`${safe/total*100}%`;
       const message=board.status==='won'?'Field cleared!':board.status==='lost'?'Mine found!':board.status==='ready'?'Your first move is safe.':'Follow the numbers. Trust your logic.';
       root.querySelector('.ms-outcome')!.textContent=message;root.dataset.status=board.status;
-      context.setScore(safe*10+(board.status==='won'?mines*20:0));context.setLevel(title(board.level));
+      context.setScore(score(board));context.setLevel(title(board.level));
       context.setStatus(board.status==='won'?'All safe cells revealed. Field cleared!':board.status==='lost'?'A mine ended this expedition. Restart for a fresh field.':`${safe} of ${total} safe cells revealed. Flags are reminders, not a win condition.`);
       levelSelect.value=board.level;sizeSelect.value=String(size);mode.setAttribute('aria-pressed',String(flagMode));clock();
     }

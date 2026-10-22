@@ -180,7 +180,7 @@ async function route(){
     <div class="game-metrics"><span id="game-score"><span class="metric-label">${referenceGames.has(id)?id==='animal-stack'?'SOLO':'SCORE':'Score'}</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">${referenceGames.has(id)?'RECORD':'Best'}</span><strong>${store.highScore(id)}</strong><svg class="record-crown" viewBox="0 0 28 12" aria-hidden="true"><path d="m2 9-1-7 7 4 6-6 6 6 7-4-1 7z" fill="currentColor"/></svg></span></div>
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
     <p id="game-status" role="status"></p></section>`;
-  if(id!=='pool'&&id!=='blockcraft')leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
+  if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
   document.querySelector('#game-menu')!.addEventListener('click',openMenu);
   try {
     const loaded=await loadGame(id);if(token!==generation)return;

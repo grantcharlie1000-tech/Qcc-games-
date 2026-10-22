@@ -30,7 +30,7 @@ test('actual pointer paths fill the entire board, award a win and advance',async
  for(const path of solution) await draw(page,path);
  await expect(page.locator('.cc-win')).toBeVisible();
  await expect(page.locator('.cc-progress')).toContainText('100%');
- await expect(page.locator('#game-score')).toContainText('100');
+ await expect(page.locator('#game-score')).toContainText('2200');
  await page.getByRole('button',{name:'Next puzzle',exact:true}).click();
  await expect(page.locator('.cc-puzzle-name')).toContainText('Little bends');
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
@@ -147,12 +147,12 @@ test('a save during the held final gesture restores its move, undo record and on
  expect(saved.history[2]).toEqual([[9,5,6,10,11,15],[14,13,12],[]]);
  const second=await page.evaluate(()=>{const h=window as unknown as {ccSnapshotInstance:any};return h.ccSnapshotInstance.serialize()});expect(second).toEqual(saved);
  await page.evaluate(data=>{const h=window as unknown as {ccSnapshotInstance:any};h.ccSnapshotInstance.restore(data)},saved);await page.mouse.up();
- expect(await page.evaluate(()=>(window as unknown as {ccSnapshotScore:number}).ccSnapshotScore)).toBe(100);
+ expect(await page.evaluate(()=>(window as unknown as {ccSnapshotScore:number}).ccSnapshotScore)).toBe(2200);
  await page.locator('#cc-snapshot-test .cc-undo').click();await expect(page.locator('#cc-snapshot-test [data-path]')).toHaveCount(9);
  const redoStart=await cellCenter(8);await page.mouse.move(redoStart.x,redoStart.y);await page.mouse.down();
  for(const cell of [4,0,1,2,3,7]){const p=await cellCenter(cell);await page.mouse.move(p.x,p.y)}await page.mouse.up();
  const final=await page.evaluate(()=>{const h=window as unknown as {ccSnapshotInstance:any;ccSnapshotScore:number};const result={score:h.ccSnapshotScore,completed:h.ccSnapshotInstance.serialize().completed};h.ccSnapshotInstance.dispose();document.querySelector('#cc-snapshot-test')?.remove();return result});
- expect(final).toEqual({score:100,completed:[0]});
+ expect(final).toEqual({score:2200,completed:[0]});
 });
 test('pointer release synchronizes the trail-tip keyboard focus without stealing toolbar focus',async({page})=>{
  await draw(page,[9,5]);
