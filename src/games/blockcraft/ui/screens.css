@@ -154,9 +154,9 @@
 @keyframes bc-caret-blink{50%{visibility:hidden}}
 .bc-reduced .bc-search-caret{animation:none}
 @media (prefers-reduced-motion:reduce){.bc-search-caret{animation:none}}
-/* The picker scrolls a row at a time; vanilla's scrollbar replaces the native one. */
-/* Empty slot frames are tiled under the items (scrolling with them): all 45 slots and the end of a partly filled last
-   row show, as on vanilla's picker, for a short tab, a search with few results or none. */
+/* The picker scrolls a row at a time; vanilla's scrollbar replaces the native one. Empty slot frames are tiled under the
+   items (scrolling with them), so all 45 slots and the rest of a partly filled last row show like vanilla's picker, for a
+   short tab and for a search with few results or none. */
 .bc-catalog{width:calc(var(--bc-u) * 162);height:calc(var(--bc-u) * 90);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;
   scrollbar-width:none;scroll-snap-type:y mandatory;
   background:var(--bc-art-slot-tile) 0 0/calc(var(--bc-u) * 18) calc(var(--bc-u) * 18) repeat local;image-rendering:pixelated}

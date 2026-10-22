@@ -128,7 +128,10 @@ test('smelts raw iron in a furnace and pays its experience when the output is ta
   await slot(page,'Inventory slot 1').click({modifiers:['Shift']});
   await slot(page,'Inventory slot 2').click({modifiers:['Shift']});
   await expect(slot(page,'Furnace input')).toHaveAttribute('aria-label','Furnace input: Raw Iron, 2');
-  await expect(slot(page,'Furnace fuel')).toHaveAttribute('aria-label','Furnace fuel: Coal');
+  // The coal goes to the fuel slot, and a working furnace burns it at once (it lights as soon as it has input and fuel),
+  // so the slot may already be empty again.
+  await expect.poll(()=>engine(page,(g,a)=>{const p=a as Pos,f=g.blockEntities.get(p.x,p.y,p.z);
+    return g.inventory.count('coal')===0&&(f.fuel?.id==='coal'||f.burn>0);},at)).toBe(true);
   const furnace=(field:string)=>engine(page,(g,a)=>{const [p,f]=a as [Pos,string];return g.blockEntities.get(p.x,p.y,p.z)[f];},[at,field]);
   expect(await furnace('input')).toEqual({id:'raw_iron',count:2});
   if(await engine(page,g=>typeof g.blockEntities.tick==='function')){
