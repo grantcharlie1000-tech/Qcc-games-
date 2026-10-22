@@ -35,7 +35,7 @@ let libraryScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
-const fillGames=new Set<GameId>(['globle']);
+const fillGames=new Set<GameId>(['globle','corn-clicker']);
 
 function syncViewportLock(){
   document.documentElement.classList.toggle('game-viewport',!!activeId&&!document.body.classList.contains('study-active'));
@@ -58,7 +58,11 @@ storageStatus();
 function announce(text:string){document.querySelector('#announcer')!.textContent=text;}
 function save():boolean {
   if(!instance||!activeId)return true;
-  try {const durable=store.saveGame(activeId,instance.serialize());storageStatus();return durable;}
+  try {
+    // A game may return undefined when it has nothing of its own to save (e.g. another tab owns it).
+    const data=instance.serialize();if(data===undefined)return true;
+    const durable=store.saveGame(activeId,data);storageStatus();return durable;
+  }
   catch {announce('This game could not save this time.');return false;}
 }
 let updateReady=false,updateBusy=false,updateRequest=0,updateFailure='';

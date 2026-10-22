@@ -1,12 +1,12 @@
 # Pocket Arcade architecture
 
-Seventeen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher. No factory game, currency, accounts, ads, tracking or runtime CDN. External requests are limited to the optional shared leaderboard (same origin) and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
+Eighteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker. No factory game, currency, accounts, ads, tracking or runtime CDN. External requests are limited to the optional shared leaderboard (same origin) and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
 
 ## Static shell
 
 Vite 7, strict TypeScript, semantic DOM/CSS; no application framework. Hash routes `#/game/<id>` work at the origin root and any repository subpath. Vite's relative base `./` is authoritative. All assets use `import.meta.env.BASE_URL` or relative imports. Locally bundled Lilita One (OFL) supplies the bold, playful lettering. The nine user-provided images, inspected as the contact sheet and detailed originals under `/workspace/arcade-references`, set portrait proportions, dark rims, two-column mobile layout, saturated artwork and minimal header. The header replaces the original wallet and advertising control with a catalog-driven game count and working favourites filter.
 
-`src/core/catalog.ts` contains seventeen cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run, Globle and Blockcraft; globe.gl only by Globle. Blockcraft also starts module Web Workers (`src/games/blockcraft/world/worker.ts`, emitted as a hashed same-origin asset and included in the offline pack) for terrain generation, and falls back to time-sliced main-thread generation if workers are unavailable. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
+`src/core/catalog.ts` contains eighteen cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run, Globle and Blockcraft; globe.gl only by Globle. Blockcraft also starts module Web Workers (`src/games/blockcraft/world/worker.ts`, emitted as a hashed same-origin asset and included in the offline pack) for terrain generation, and falls back to time-sliced main-thread generation if workers are unavailable. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
 
 ## Study Mode
 
@@ -45,6 +45,10 @@ The four corrected games, isolated specialist handoffs, original cutout/art geom
 ## Globle
 
 `src/games/globle/` is a globe.gl country-guessing game (see its [SPEC](src/games/globle/SPEC.md)). It fills `#game-stage` directly (`fillGames` in `src/main.ts`) instead of the uniform scale fit, because a CSS transform would break WebGL pointer mapping. Distances between the 197 playable countries are precomputed from Natural Earth 1:10m boundaries by `scripts/build-globle-data.mjs` and bundled with separately simplified 1:50m display outlines; regenerate both with `node scripts/build-globle-data.mjs` (then `node scripts/build-globle-cover.mjs` for the cover). Land is drawn as one merged vertex-coloured mesh plus one border mesh, built in 10 ms slices.
+
+## Corn Clicker
+
+`src/games/corn-clicker/` is an incremental game (see its [SPEC](src/games/corn-clicker/SPEC.md)). Like Globle it fills `#game-stage` (`fillGames` in `src/main.ts`; the stage is an inline-size container so the game switches from three panels to tabs below 900 px). Unlike the other games, time keeps counting while it is paused or closed: the next tick credits gaps of up to a minute at full rate and longer gaps by its offline rules, so the Study retention test checks only its frozen autosave. It keeps two extra localStorage keys beside the shell's save: `corn-clicker:lock` (one tab owns the farm; others step aside and return the latest save from storage from `serialize()`) and `corn-clicker:backups` (five rolling snapshots).
 
 ## Online multiplayer
 

@@ -69,6 +69,11 @@ body.in-game .game-view[data-game-id=blockcraft] #restart-game svg{width:18px;he
 body.in-game .game-view[data-game-id=globle] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=globle] #game-stage{height:100%;max-height:none;min-height:0}
 body.in-game .game-view[data-game-id=globle] .game-metrics{display:none}
+/* Corn Clicker fills the whole viewport below the toolbar and lays out its own panels. */
+body.in-game .game-view[data-game-id=corn-clicker] .stage-wrap{display:block}
+body.in-game .game-view[data-game-id=corn-clicker] #game-stage{height:100%;max-height:none;min-height:0;container-type:inline-size}
+body.in-game .game-view[data-game-id=corn-clicker] .game-metrics,
+body.in-game .game-view[data-game-id=corn-clicker] #game-status{display:none}
 @media(max-height:480px){body.in-game .game-view:not([data-reference-game=true]){padding:3px 10px}body.in-game .game-view:not([data-reference-game=true]) .game-toolbar{flex-basis:38px}body.in-game .game-view:not([data-reference-game=true]) .game-metrics{margin:0 auto 3px;flex-basis:28px}body.in-game .game-view:not([data-reference-game=true]) #game-status{font-size:10px;max-height:15px;margin-top:3px}}
 
 /* Rankings float over the page and never take layout space from the game. Collapsed is a small pill. */
