@@ -4,9 +4,20 @@
 // shows in place for the same 5.6 s. ToastQueue is DOM-free (timing, slots); ToastLayer draws it.
 import {iconUrl} from '../art/items';
 import type {AdvancementDef,AdvancementFrame} from './advancements-data';
+import {hasGlyphs,textWidth} from './hud-art';
+import {pixelTextUrl} from './screen-art';
 
 export const TOAST_LIFE_MS=5000,TOAST_SLIDE_MS=600,TOAST_SLOTS=5;
 export const TOAST_HEADINGS:Record<AdvancementFrame,string>={task:'Advancement Made!',goal:'Goal Reached!',challenge:'Challenge Complete!'};
+/** Vanilla AdvancementToast: a 160x32 GUI px frame, the icon at (8, 8), the heading at (30, 7) in yellow (purple for
+ *  challenges) and the title at (30, 18) in white, in the GUI font without a shadow. */
+export const TOAST_WIDTH=160,TOAST_HEIGHT=32;
+export const TOAST_COLOURS:Record<AdvancementFrame,string>={task:'#ffff00',goal:'#ffff00',challenge:'#ff88ff'};
+/** GUI pixel size of the toasts in CSS px: the HUD's GUI scale, smaller (in halves) when the screen is too narrow. */
+export function toastUnit(width:number,guiScale:number){
+  const fit=Math.floor((width-16)/TOAST_WIDTH*2)/2;
+  return Math.max(1,Math.min(guiScale>0?guiScale:2,fit));
+}
 export interface ToastEntry{readonly def:AdvancementDef;
   /** Vertical slot from the top (0 = first). */
   readonly slot:number;
@@ -62,28 +73,37 @@ export class ToastQueue{
   private freeSlot(){let s=0;while(this.visible.some(t=>t.slot===s))s++;return s;}
 }
 
-/** Layout shared with advancements.css: the top 56 px belong to the arcade toolbar, the bottom right to the shell buttons. */
-const TOP=64,BOTTOM=160,PITCH=78;
+/** Layout shared with advancements.css: the top 56 px belong to the arcade toolbar, the bottom right to the shell buttons.
+ *  Toasts are TOAST_HEIGHT + 2 GUI px apart. */
+const TOP=64,BOTTOM=160,PITCH=TOAST_HEIGHT+2;
 const safeIcon=(id:string)=>{try{return iconUrl(id);}catch{return'';}};
+/** One toast line: the text drawn in the GUI font (characters outside the font fall back to a CSS font). */
+function line(cls:string,text:string,colour:string){
+  const p=document.createElement('p');p.className=`bc-adv-toast-${cls}`;p.textContent=text;p.style.color=colour;
+  if(hasGlyphs(text)){p.classList.add('is-art');p.style.setProperty('--tw',String(textWidth(text)));p.style.backgroundImage=`url("${pixelTextUrl(text,colour,false)}")`;}
+  return p;
+}
 /** DOM toasts inside game.root (layer z-index 25, top-right zone). Screen readers hear the shell announcement instead. */
 export class ToastLayer implements ToastView{
   private el:HTMLElement|null=null;
   private readonly nodes=new Map<ToastEntry,{el:HTMLElement;slide:number}>();
   constructor(private readonly root:HTMLElement){}
+  private unit(){
+    const gui=parseFloat(getComputedStyle(this.root).getPropertyValue('--bc-gui'));
+    return toastUnit(this.root.clientWidth||innerWidth,gui);
+  }
   capacity(){
     const h=this.root.clientHeight;
-    return h>0?Math.max(1,Math.min(TOAST_SLOTS,Math.floor((h-TOP-BOTTOM)/PITCH))):TOAST_SLOTS;
+    return h>0?Math.max(1,Math.min(TOAST_SLOTS,Math.floor((h-TOP-BOTTOM)/(PITCH*this.unit())))):TOAST_SLOTS;
   }
   show(t:ToastEntry){
     if(!this.el){this.el=document.createElement('div');this.el.className='bc-adv-toasts';this.el.setAttribute('aria-hidden','true');this.root.append(this.el);}
-    const el=document.createElement('div'),icon=document.createElement('img'),text=document.createElement('div');
+    this.el.style.setProperty('--u',`${this.unit()}px`);
+    const el=document.createElement('div'),icon=document.createElement('img');
     el.className=`bc-adv-toast is-${t.def.frame}`;el.style.setProperty('--slot',String(t.slot));
     icon.className='bc-adv-toast-icon';icon.alt='';icon.draggable=false;const src=safeIcon(t.def.icon);if(src)icon.src=src;
-    text.className='bc-adv-toast-text';
-    for(const [cls,copy] of [['head',TOAST_HEADINGS[t.def.frame]],['title',t.def.title],['desc',t.def.description]]){
-      const p=document.createElement('p');p.className=`bc-adv-toast-${cls}`;p.textContent=copy;text.append(p);
-    }
-    el.append(icon,text);this.el.append(el);
+    el.append(icon,line('head',TOAST_HEADINGS[t.def.frame],TOAST_COLOURS[t.def.frame]),line('title',t.def.title,'#ffffff'));
+    this.el.append(el);
     this.nodes.set(t,{el,slide:-1});
   }
   place(t:ToastEntry,slide:number){
