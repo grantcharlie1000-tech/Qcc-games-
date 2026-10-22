@@ -9,7 +9,8 @@ import type {Game} from '../engine/contracts';
 import {SlotMenu,armorSlots,equipRule,hotbarSlots,offhandSlot,playerSlots,screenRule,type MenuSlot} from './slots';
 import {CREATIVE_TABS,searchItems,tabItems,type CreativeTab,type CreativeTabId} from './screen-catalog';
 import {esc,figureHtml,placeStyle,slotHtml,slotGrid,type GuiPos,type ScreenBuild} from './screen-common';
-import {GUI_COLOURS,TAB_HEIGHT,TAB_OVERLAP,TAB_WIDTH,pixelTextHtml} from './screen-art';
+import {TAB_HEIGHT,TAB_OVERLAP,TAB_WIDTH,pixelTextHtml} from './screen-art';
+import {hasGlyphs,textWidth} from './hud-art';
 
 export interface CreativeState{tab:CreativeTabId;query:string}
 /** Vanilla creative geometry (GUI px; slot frames). The scroll track's inner area is 12×112 from (175, 18). */
@@ -58,13 +59,55 @@ export function buildCreative(game:Game,menu:SlotMenu,state:CreativeState):Scree
       if(m.slots[i]?.section==='hotbar')m.slots[i].set(null);
       return false;
     });
+    // The field edits natively; its text is drawn in the pixel font by the view (.bc-search-view, see searchFieldHtml).
     const search=tab.id==='search'?`<label class="bc-search bc-at" style="${placeStyle(L.search)}"><span class="bc-sr">Search items</span>`+
-      `<input type="search" class="bc-search-input" autocomplete="off" spellcheck="false" placeholder="Search…" value="${esc(state.query)}"></label>`:'';
-    const empty=items.length?'':`<p class="bc-empty">${pixelTextHtml('No items match.',GUI_COLOURS.title)}</p>`;
+      `<input type="search" class="bc-search-input" autocomplete="off" spellcheck="false" value="${esc(state.query)}">`+
+      '<span class="bc-search-view" aria-hidden="true"></span></label>':'';
+    // Vanilla shows an empty search as empty slots; the message is only for assistive technology.
+    const empty=items.length?'':'<p class="bc-empty bc-sr">No items match.</p>';
     body=`${search}<div class="bc-catalog bc-at" style="${placeStyle(L.catalog)}" role="group" aria-label="${esc(tab.title)}">${slotGrid(menu,menu.indexes('catalog'),9,'bc-catalog-grid')}${empty}</div>`+
       `<div class="bc-scroll bc-at" style="${placeStyle(L.scroll)}" data-scroll aria-hidden="true"><i class="bc-knob"></i></div>`+
       slotGrid(menu,menu.indexes('hotbar'),9,'bc-hotbar-row','Hotbar',L.hotbar);
   }
   return{id:'creative',title:tab.title,kind:`creative bc-creative-${tab.id}`,gui:L.size,titleAt:tab.id==='inventory'?'hidden':L.title,
     html:`${tabsHtml(state,true)}<div class="bc-creative-body">${body}</div>${tabsHtml(state,false)}`};
+}
+
+// ---- Search field ------------------------------------------------------------------------------------------------
+// Vanilla draws the query in the GUI font (white with its shadow) from (82, 6), 80 GUI px wide, scrolled so the cursor
+// stays in view; the cursor is an underscore at the end of the text and a thin bar inside it, and a selection shows
+// as a white box with blue text. The input keeps editing, the caret index and the accessible name.
+/** Width of the search field's text window in GUI px. */
+export const SEARCH_WIDTH=80;
+/** True when the pixel font can draw the query (otherwise the field shows its native text). */
+export const searchDrawable=(value:string)=>hasGlyphs(value);
+/** The text window's first GUI px for a cursor at `caret`, starting from the previous `scroll`: the least movement that
+ *  keeps the cursor (6 px for the underscore at the end, 1 px for the bar) inside the window. */
+export function searchScroll(value:string,caret:number,scroll:number):number{
+  const cx=textWidth(value.slice(0,caret)),cw=caret>=value.length?6:1;
+  const s=Math.min(Math.max(scroll,cx+cw-SEARCH_WIDTH),cx);
+  return Math.max(0,Math.min(s,Math.max(0,textWidth(value)+6-SEARCH_WIDTH)));
+}
+/** Character index nearest to `x` GUI px from the start of the text (a click in the field). */
+export function searchIndexAt(value:string,x:number):number{
+  let w=0,i=0;
+  for(const ch of value){
+    const a=textWidth(ch);
+    if(x<w+a/2)return i;
+    w+=a;i+=ch.length;
+  }
+  return value.length;
+}
+/** The field's pixel-font view: the query scrolled by `scroll` GUI px, the selection [start, end) highlighted, and the
+ *  blinking cursor at `caret` while the field has focus. */
+export function searchFieldHtml(value:string,start:number,end:number,caret:number,focused:boolean,scroll:number):string{
+  const part=(text:string)=>text?pixelTextHtml(text,'#ffffff',true):'';
+  const sel=value.slice(start,end);
+  let html=`<span class="bc-search-text" style="--sx:${-scroll}">${part(value.slice(0,start))}`+
+    `${sel?`<span class="bc-search-sel">${pixelTextHtml(sel,'#0000ff')}</span>`:''}${part(value.slice(end))}</span>`;
+  if(focused){
+    const x=textWidth(value.slice(0,caret))-scroll;
+    html+=`<i class="bc-search-caret${caret>=value.length?' is-end':''}" style="--cx:${x}"></i>`;
+  }
+  return html;
 }

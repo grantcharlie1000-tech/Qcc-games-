@@ -15,7 +15,7 @@ import type {Game,UIService} from '../engine/contracts';
 import {ScreenController,type ScreenView} from './screen-controller';
 import {esc,type ScreenBuild} from './screen-common';
 import {GUI_COLOURS,figureSvg,guiArtProperties,knobOffset,pixelTextHtml,scrollForKnob} from './screen-art';
-import {CREATIVE_LAYOUT} from './screen-creative';
+import {CREATIVE_LAYOUT,searchDrawable,searchFieldHtml,searchIndexAt,searchScroll} from './screen-creative';
 import {ARROW_COLUMNS,FLAME_ROWS,furnaceGauges} from './screen-furnace';
 import {durabilityBar,itemName,slotLabel,tooltipColour,tooltipLines} from './screen-tooltip';
 import {digitsUrl,textWidth} from './hud-art';
@@ -98,6 +98,8 @@ class DomScreens implements ScreenView{
   private lastCursor:ItemStack|null=null;private lastCursorCount=-1;
   /** The creative picker, its scrollbar knob, and a knob drag in progress (pointer id). */
   private catalog:HTMLElement|null=null;private knob:HTMLElement|null=null;private knobDrag:number|null=null;
+  /** The creative search field, its pixel-font view, what the view last drew, and its text window's scroll (GUI px). */
+  private search:HTMLInputElement|null=null;private searchView:HTMLElement|null=null;private searchKey='';private searchScrollX=0;
   /** Listeners that belong to the shown screen. */
   private screenAbort:AbortController|null=null;
 
@@ -148,6 +150,16 @@ class DomScreens implements ScreenView{
     const knobEnd=(e:PointerEvent)=>{if(e.pointerId===this.knobDrag)this.knobDrag=null;};
     window.addEventListener('pointerup',knobEnd,{signal});window.addEventListener('pointercancel',knobEnd,{signal});
     layer.addEventListener('wheel',e=>this.wheel(e),{signal,passive:false});
+    // A screen needs a free cursor: a mouse capture the game requested just before the screen opened (closing one screen
+    // and opening another in the same moment) can be granted afterwards, so it is let go again.
+    document.addEventListener('pointerlockchange',()=>{
+      if(this.open()&&document.pointerLockElement&&typeof document.exitPointerLock==='function')document.exitPointerLock();
+    },{signal});
+    // The book's place (beside or over the panel) follows the size of the game area.
+    if(typeof ResizeObserver==='function'){
+      const ro=new ResizeObserver(()=>{if(this.open())this.fitBook();});
+      ro.observe(layer);signal.addEventListener('abort',()=>ro.disconnect());
+    }
   }
 
   // ---- ScreenView -------------------------------------------------------------------------------
@@ -176,6 +188,7 @@ class DomScreens implements ScreenView{
     this.layer.classList.toggle('bc-reduced',this.game.reducedMotion);
     this.layer.classList.toggle(SCREEN_TOUCH,touch);
     this.layer.hidden=false;
+    this.fitBook();
     this.renderBook(true);
     if(!search){
       const field=this.body.querySelector<HTMLInputElement>('.bc-search-input');
@@ -186,15 +199,14 @@ class DomScreens implements ScreenView{
     this.draw(0);
     this.updateKnob();
   }
-  /** Panel geometry and title for a build: the GUI size the layer fits (--gw/--gh, plus the recipe book beside it as
-   *  --gb), the panel's own size (--pw/--ph) and where its pixel-font title goes. */
+  /** Panel geometry and title for a build: the GUI size the layer fits (--gw/--gh; the recipe book does not change
+   *  it), the panel's own size (--pw/--ph) and where its pixel-font title goes. */
   private layout(build:ScreenBuild){
-    const c=this.c,gui=build.gui,ls=this.layer.style;
+    const gui=build.gui,ls=this.layer.style;
     this.panel.className=`bc-panel bc-panel-${build.kind}${gui?' bc-fixed':''}`;
     this.panel.setAttribute('aria-label',build.title);
     ls.setProperty('--gw',String(gui?.width??FLOW_GUI.width));
     ls.setProperty('--gh',String(gui?gui.height+(gui.above??0)+(gui.below??0):FLOW_GUI.height));
-    ls.setProperty('--gb',String(c.book.open&&c.hasBook?BOOK_WIDTH+BOOK_GAP:0));
     // The panel's own size, also read by the recipe book beside it.
     if(gui){ls.setProperty('--pw',String(gui.width));ls.setProperty('--ph',String(gui.height));}
     else{ls.removeProperty('--pw');ls.removeProperty('--ph');}
@@ -204,11 +216,25 @@ class DomScreens implements ScreenView{
     const x=at==='center'?Math.floor(((gui?.width??FLOW_GUI.width)-textWidth(build.title))/2):at==='hidden'?0:at.x;
     this.title.style.setProperty('--x',String(x));this.title.style.setProperty('--y',String(at==='center'||at==='hidden'?6:at.y));
   }
+  /** Vanilla keeps the GUI scale when the recipe book opens and, when the screen is too narrow for it beside the panel
+   *  (widthTooNarrow), draws it over the panel. Tall areas (portrait, height >= width) always overlay it in screens.css. */
+  private fitBook(){
+    const c=this.c,gui=this.build?.gui;
+    let over=false;
+    if(gui&&c.book.open&&c.hasBook&&!this.layer.hidden){
+      const cs=getComputedStyle(this.layer);
+      const w=this.layer.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight),h=this.layer.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+      const u=parseFloat(getComputedStyle(this.wrap).getPropertyValue('--bc-u'))||1;
+      // The width the scale fits in screens.css (panel and tools) plus the book and its gap.
+      over=w>h&&(gui.width+24+BOOK_WIDTH+BOOK_GAP)*u>w-8+.5;
+    }
+    this.layer.classList.toggle('bc-book-over',over);
+  }
   hide(){
     const hadFocus=this.layer.contains(document.activeElement);
     this.release();
     this.build=null;
-    this.layer.hidden=true;this.bookEl.hidden=true;this.bookEl.innerHTML='';this.bookEntries=null;this.bookOpen=false;
+    this.layer.hidden=true;this.bookEl.hidden=true;this.bookEl.innerHTML='';this.bookEntries=null;this.bookOpen=false;this.searchScrollX=0;
     this.body.innerHTML='';this.tools.innerHTML='';
     this.cursorEl.hidden=true;this.hideTip();
     if(hadFocus)this.game.canvas.focus?.({preventScroll:true});
@@ -220,6 +246,7 @@ class DomScreens implements ScreenView{
     this.drawTip();
     this.drawProgress();
     this.drawFigure();
+    this.drawSearch();
     this.renderBook(false);
   }
   toast(message:string){
@@ -240,7 +267,7 @@ class DomScreens implements ScreenView{
     this.screenAbort?.abort();this.screenAbort=null;
     clearTimeout(this.longTimer);clearTimeout(this.tipTimer);
     this.touchId=null;this.mousePressed=false;this.knobDrag=null;
-    this.slots=[];this.catalog=null;this.knob=null;
+    this.slots=[];this.catalog=null;this.knob=null;this.search=null;this.searchView=null;this.searchKey='';
   }
   private touchUI(){
     return this.game.input.touch||(typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches)||this.performanceNow()-this.lastTouch<60000;
@@ -250,6 +277,7 @@ class DomScreens implements ScreenView{
     const menu=this.c.menu,grid=menu.indexes('grid');
     const catalog=this.body.querySelector<HTMLElement>('.bc-catalog');
     this.catalog=catalog;this.knob=this.body.querySelector<HTMLElement>('[data-scroll] .bc-knob');
+    this.search=this.body.querySelector<HTMLInputElement>('.bc-search-input');this.searchView=this.body.querySelector<HTMLElement>('.bc-search-view');
     if(catalog){
       this.screenAbort=new AbortController();
       catalog.addEventListener('scroll',()=>this.updateKnob(),{signal:this.screenAbort.signal,passive:true});
@@ -394,6 +422,31 @@ class DomScreens implements ScreenView{
     const row=cat.querySelector<HTMLElement>('[data-slot]')?.offsetHeight||18;
     cat.scrollBy({top:Math.sign(e.deltaY)*row});
   }
+  /** Draws the search query in the pixel font (with the selection and cursor) whenever the field's text, selection or
+   *  focus changes; text the font cannot draw is left to the field itself. */
+  private drawSearch(){
+    const input=this.search,view=this.searchView;if(!input||!view)return;
+    const value=input.value,focused=document.activeElement===input;
+    const start=input.selectionStart??value.length,end=input.selectionEnd??start;
+    const caret=input.selectionDirection==='backward'?start:end;
+    const key=`${focused?1:0}:${start}:${end}:${caret}:${value}`;
+    if(key===this.searchKey)return;
+    this.searchKey=key;
+    const native=!searchDrawable(value);
+    view.parentElement?.classList.toggle('is-native',native);
+    if(native){view.innerHTML='';return;}
+    this.searchScrollX=searchScroll(value,caret,this.searchScrollX);
+    view.innerHTML=searchFieldHtml(value,start,end,caret,focused,this.searchScrollX);
+  }
+  /** A click in the search field puts the cursor between the drawn characters (the field's own text is invisible). */
+  private placeSearchCaret(e:MouseEvent){
+    const input=this.search,view=this.searchView;
+    if(!input||!view||input.selectionStart!==input.selectionEnd||!searchDrawable(input.value))return;
+    const u=parseFloat(getComputedStyle(view).getPropertyValue('--bc-u'))||1,r=view.getBoundingClientRect();
+    const i=searchIndexAt(input.value,(e.clientX-r.left)/u-1+this.searchScrollX);
+    input.setSelectionRange(i,i);
+    this.drawSearch();
+  }
   private drawFigure(){
     const armor=this.game.inventory.armor;
     if(armor===this.figureArmor)return;
@@ -520,6 +573,7 @@ class DomScreens implements ScreenView{
   private clicked(e:MouseEvent){
     const t=e.target instanceof Element?e.target:null;if(!t||!this.open())return;
     const c=this.c;
+    if(t===this.search){this.placeSearchCaret(e);return;}
     const tab=t.closest<HTMLElement>('[data-tab]');
     if(tab){c.setTab(tab.dataset.tab as CreativeTabId);return;}
     if(t.closest('[data-close]')){c.close();return;}

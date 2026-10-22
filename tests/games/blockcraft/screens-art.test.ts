@@ -184,7 +184,7 @@ describe('vanilla screen layouts',()=>{
     game.world.set(0,61,0,stateFor('crafting_table',{})!.id);game.player.teleport(.5,61,2.5);
     ui.open('crafting_table',{x:0,y:61,z:0});
     let b=last(),p=positions(b.html);
-    expect(b.gui).toEqual(CRAFTING_LAYOUT.size);expect(b.titleAt).toEqual({x:28,y:6});expect(b.book).toEqual({x:5,y:34});
+    expect(b.gui).toEqual(CRAFTING_LAYOUT.size);expect(b.titleAt).toEqual({x:29,y:6});expect(b.book).toEqual({x:5,y:34});
     expect(p.get('Crafting grid')).toEqual([29,16]);expect(p.get('Crafting result')).toEqual([119,30]);
     expect(b.html).toMatch(/bc-s-result bc-s-big|bc-s-big/);expect(b.html).toContain('>Inventory</span>');
     const f:FurnaceEntity={kind:'furnace',input:null,fuel:null,output:null,burn:0,burnTotal:0,cook:0,xp:0};

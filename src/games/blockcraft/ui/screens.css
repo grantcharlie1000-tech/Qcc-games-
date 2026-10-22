@@ -3,11 +3,12 @@
    size that fits the game area (whole pixels from 2 up so the pixel art stays crisp, fractional below that on phones),
    keeping the top 56 px clear for the arcade toolbar and fitting 320×568 up to desktop. The art (panel, slots, buttons,
    tabs, gauges, silhouettes, icons) is drawn in ui/screen-art.ts and handed over as --bc-art-* custom properties.
-   Sizes the layer fits: --gw × --gh (the GUI, its tabs included), plus --gb for the recipe book beside it. */
+   Sizes the layer fits: --gw × --gh (the GUI, its tabs included). Like vanilla, the recipe book never changes the scale:
+   it opens beside the panel where there is room and over it where there is not (.bc-book-over, set by ui/screens.ts). */
 @property --bc-u{syntax:'<length>';inherits:true;initial-value:2px}
 .bc-screen{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:56px 8px 8px;box-sizing:border-box;
   background:linear-gradient(rgba(16,16,16,.75),rgba(16,16,16,.82));container-type:size;overflow:hidden;touch-action:none;overscroll-behavior:contain;
-  --gw:176;--gh:166;--gb:0;
+  --gw:176;--gh:166;
   --bc-font:"Pixelify Sans","Silkscreen","Press Start 2P","VT323",ui-monospace,"Courier New",monospace;
   font:13px/1.25 var(--bc-font);color:#404040;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .bc-screen[hidden]{display:none}
@@ -15,8 +16,8 @@
    size; --bc-fit-common fits a height of at least 210, so every screen but the large chest gets the same whole-pixel
    scale like vanilla's one GUI scale. Below 2 px a GUI pixel (phones) each screen uses all the room it has. */
 .bc-screen>*{
-  --bc-fit:min(calc((100cqw - 8px)/(var(--gw) + var(--gb) + 24)),calc((100cqh - 8px)/var(--gh)));
-  --bc-fit-common:min(calc((100cqw - 8px)/(var(--gw) + var(--gb) + 24)),calc((100cqh - 8px)/max(var(--gh),210)));
+  --bc-fit:min(calc((100cqw - 8px)/(var(--gw) + 24)),calc((100cqh - 8px)/var(--gh)));
+  --bc-fit-common:min(calc((100cqw - 8px)/(var(--gw) + 24)),calc((100cqh - 8px)/max(var(--gh),210)));
   --bc-u:max(1px,var(--bc-fit))}
 /* Tall areas (phones held upright): tools in a row above the panel, the recipe book over it. */
 @container (orientation:portrait){
@@ -57,7 +58,7 @@
 .bc-glyph[data-icon="book"]{background-image:var(--bc-art-icon-book)}
 .bc-book-btn{width:calc(var(--bc-u) * 20);height:calc(var(--bc-u) * 18)}
 .bc-book-btn .bc-glyph{margin:var(--bc-u) 0 0 calc(var(--bc-u) * 2)}
-.bc-tool:focus-visible,.bc-wbtn:focus-visible,.bc-tab:focus-visible,.bc-recipe:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px #1d4fa3}
+.bc-tool:focus-visible,.bc-wbtn:focus-visible,.bc-tab:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px #1d4fa3}
 .bc-screen:not(.bc-screen-touch) .bc-quick{display:none}
 @container (orientation:portrait){
   .bc-panel{margin:calc(var(--bc-u) * 18) 0 0}
@@ -127,19 +128,40 @@
 .bc-tab[data-row="bottom"] img{top:calc(var(--bc-u) * 7)}
 @media (hover:hover){.bc-tab:not([aria-selected="true"]):hover{filter:brightness(1.08)}}
 .bc-search{box-sizing:border-box;display:block;width:calc(var(--bc-u) * 89);height:calc(var(--bc-u) * 12);background:#000 padding-box;border:var(--bc-u) solid #a0a0a0}
-/* The arcade styles input[type=search] globally: a tighter selector keeps the vanilla field. */
-.bc-screen input.bc-search-input{box-sizing:border-box;display:block;width:100%;height:100%;margin:0;padding:0 calc(var(--bc-u) * 2);border:0;border-radius:0;background:transparent;color:#fff;
-  font:calc(var(--bc-u) * 8)/1 var(--bc-font);-webkit-user-select:text;user-select:text;touch-action:manipulation;-webkit-appearance:none;appearance:none}
-.bc-search-input::placeholder{color:#808080}
+/* The arcade styles input[type=search] globally: a tighter selector keeps the vanilla field. The input edits with its
+   own text and caret transparent (a monospace about 6 GUI px a character, so clicks and drags land near the drawn
+   characters); .bc-search-view draws the query in the pixel font (searchFieldHtml in screen-creative.ts). */
+.bc-screen input.bc-search-input{box-sizing:border-box;display:block;width:100%;height:100%;margin:0;padding:0 0 0 var(--bc-u);border:0;border-radius:0;background:transparent;
+  color:transparent;caret-color:transparent;font:calc(var(--bc-u) * 10)/1 monospace;-webkit-user-select:text;user-select:text;touch-action:manipulation;
+  -webkit-appearance:none;appearance:none}
+.bc-search:not(.is-native) .bc-search-input::selection{background:transparent;color:transparent}
 .bc-search-input::-webkit-search-cancel-button{display:none}
 .bc-screen input.bc-search-input:focus,.bc-screen input.bc-search-input:focus-visible{outline:none}
 .bc-search:focus-within{border-color:#fff}
+/* Text the pixel font cannot draw: the field shows its own text. */
+.bc-screen .bc-search.is-native input.bc-search-input{padding:0 calc(var(--bc-u) * 2);color:#fff;caret-color:#fff;font:calc(var(--bc-u) * 8)/1 var(--bc-font)}
+.bc-search-view{position:absolute;left:0;top:0;width:calc(var(--bc-u) * (1 + 80));height:100%;overflow:hidden;pointer-events:none}
+.bc-search.is-native .bc-search-view{display:none}
+.bc-search-text{position:absolute;left:var(--bc-u);top:var(--bc-u);display:flex;align-items:flex-start;white-space:nowrap;
+  transform:translateX(calc(var(--sx,0) * var(--bc-u)))}
+/* A selection: a white box 1 px above and below the line with the selected text in blue. */
+.bc-search-sel{display:block;box-sizing:border-box;height:calc(var(--bc-u) * 11);margin-top:calc(var(--bc-u) * -1);padding-top:var(--bc-u);background:#fff}
+/* The cursor: a thin light bar inside the text, an underscore with its shadow at the end; it blinks every 300 ms. */
+.bc-search-caret{position:absolute;left:calc(var(--cx) * var(--bc-u));top:0;width:var(--bc-u);height:calc(var(--bc-u) * 11);background:#d0d0d0;
+  animation:bc-caret-blink .6s step-end infinite}
+.bc-search-caret.is-end{left:calc((var(--cx) + 1) * var(--bc-u));top:calc(var(--bc-u) * 8);width:calc(var(--bc-u) * 5);height:var(--bc-u);background:#fff;
+  box-shadow:var(--bc-u) var(--bc-u) 0 #3f3f3f}
+@keyframes bc-caret-blink{50%{visibility:hidden}}
+.bc-reduced .bc-search-caret{animation:none}
+@media (prefers-reduced-motion:reduce){.bc-search-caret{animation:none}}
 /* The picker scrolls a row at a time; vanilla's scrollbar replaces the native one. */
+/* Empty slot frames are tiled under the items (scrolling with them): all 45 slots and the end of a partly filled last
+   row show, as on vanilla's picker, for a short tab, a search with few results or none. */
 .bc-catalog{width:calc(var(--bc-u) * 162);height:calc(var(--bc-u) * 90);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;
-  scrollbar-width:none;scroll-snap-type:y mandatory}
+  scrollbar-width:none;scroll-snap-type:y mandatory;
+  background:var(--bc-art-slot-tile) 0 0/calc(var(--bc-u) * 18) calc(var(--bc-u) * 18) repeat local;image-rendering:pixelated}
 .bc-catalog::-webkit-scrollbar{display:none}
 .bc-catalog .bc-s{touch-action:pan-y;scroll-snap-align:start}
-.bc-catalog .bc-empty{margin:calc(var(--bc-u) * 4) 0 0 calc(var(--bc-u) * 2);line-height:0}
 .bc-scroll{box-sizing:border-box;width:calc(var(--bc-u) * 14);height:calc(var(--bc-u) * 114);background:#8b8b8b padding-box;
   border:var(--bc-u) solid transparent;border-image:var(--bc-art-slot) 1 / var(--bc-u) stretch;cursor:pointer;touch-action:none;image-rendering:pixelated}
 .bc-knob{position:absolute;left:0;top:calc(var(--k,0) * var(--bc-u));width:calc(var(--bc-u) * 12);height:calc(var(--bc-u) * 15);
@@ -170,7 +192,12 @@
 .bc-recipe:not(.is-craftable) img{opacity:.75}
 .bc-recipe img{display:block;width:calc(var(--bc-u) * 16);height:calc(var(--bc-u) * 16);image-rendering:pixelated;pointer-events:none}
 @media (hover:hover){.bc-recipe:hover{filter:brightness(1.15)}}
+/* Recipes sit edge to edge in a scrolling list: an inset ring that neighbours and the list edge cannot cover. */
+.bc-recipe:focus-visible{z-index:1;outline:2px solid #fff;outline-offset:-2px;box-shadow:inset 0 0 0 4px #1d4fa3}
 .bc-book-close{display:none}
+/* Too narrow for the book beside the panel (vanilla's widthTooNarrow): it covers the panel instead, with its own close. */
+.bc-book-over .bc-book{position:absolute;left:0;top:0;z-index:2;width:calc(var(--pw,176) * var(--bc-u))}
+.bc-book-over .bc-book-close{display:block}
 @container (orientation:portrait){
   .bc-book{position:absolute;left:0;top:calc(var(--bc-u) * 18);z-index:2;width:calc(var(--pw,176) * var(--bc-u))}
   .bc-book-close{display:block}

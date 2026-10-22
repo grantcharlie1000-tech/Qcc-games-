@@ -39,6 +39,9 @@ export const PANEL_PALETTE:Palette={K:GUI_COLOURS.outline,W:GUI_COLOURS.hi,G:GUI
 /** A sunken slot, sliced 1 px: dark top and left edge, white bottom and right edge, grey corners between them. */
 export const SLOT_GRID:Grid=['DDG','DGW','GWW'];
 export const SLOT_PALETTE:Palette={D:GUI_COLOURS.slotLo,G:GUI_COLOURS.slot,W:GUI_COLOURS.hi};
+/** One whole 18×18 sunken slot (the same edges as SLOT_GRID), tiled under the creative picker so all of its 9×5 slots
+ *  and the rest of a partly filled last row show their frames like vanilla, whatever the tab holds. */
+export const SLOT_TILE_GRID:Grid=Array.from({length:18},(_,y)=>y===0?'D'.repeat(17)+'G':y===17?'G'+'W'.repeat(17):'D'+'G'.repeat(16)+'W');
 /** A raised button, sliced 2 px: outline, light top-left edge, face, dark bottom-right edge. */
 export const BUTTON_GRID:Grid=['KKKKK','KHHHK','KHBDK','KDDDK','KKKKK'];
 export const BUTTON_PALETTES={
@@ -264,6 +267,7 @@ export function guiArtProperties():Record<string,string>{
   const props:Record<string,string>={
     '--bc-art-panel':url('panel',PANEL_GRID,PANEL_PALETTE),
     '--bc-art-slot':url('slot',SLOT_GRID,SLOT_PALETTE),
+    '--bc-art-slot-tile':url('slot-tile',SLOT_TILE_GRID,SLOT_PALETTE),
     '--bc-art-button':url('button',BUTTON_GRID,BUTTON_PALETTES.normal),
     '--bc-art-button-hover':url('button-hover',BUTTON_GRID,BUTTON_PALETTES.hover),
     '--bc-art-button-on':url('button-on',BUTTON_GRID,BUTTON_PALETTES.pressed),

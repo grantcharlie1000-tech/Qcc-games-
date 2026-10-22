@@ -7,7 +7,7 @@ import {SlotMenu,mainHotbarRule,playerSlots,screenRule} from './slots';
 import {arrowHtml,blockScreenValid,playerInventoryHtml,slotGrid,slotHtml,type ScreenBuild} from './screen-common';
 
 /** Vanilla CraftingScreen geometry (GUI px; slot frames, the result's 26×26 frame). */
-export const CRAFTING_LAYOUT={size:{width:176,height:166},title:{x:28,y:6},grid:{x:29,y:16},arrow:{x:90,y:35},result:{x:119,y:30},
+export const CRAFTING_LAYOUT={size:{width:176,height:166},title:{x:29,y:6},grid:{x:29,y:16},arrow:{x:90,y:35},result:{x:119,y:30},
   book:{x:5,y:34},main:83,label:72} as const;
 
 export function buildCraftingTable(game:Game,menu:SlotMenu,at?:Vec3):ScreenBuild{
