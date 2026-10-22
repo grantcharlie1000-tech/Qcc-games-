@@ -24,7 +24,7 @@
 //    validates every field and the kind's restoreData.
 import {OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
 import {itemDef,stack as makeStack,type ItemStack} from '../data/items';
-import {CH} from '../engine/constants';
+import {CH,CS,chunkKey} from '../engine/constants';
 import {rayBox} from '../engine/physics';
 import type {DamageSource,Entity,EntityCategory,EntityKind,EntityRay,EntityService,Game,SpawnReason,Vec3} from '../engine/contracts';
 import {createEntityAI,rotateTowards,wrapAngle} from './ai';
@@ -32,9 +32,12 @@ import {bodyType,newFluidState,newMotion,resolvePhysics,sampleFluids,stepItem,st
   type BodyType,type FluidState,type Motion,type ResolvedPhysics} from './entities-physics';
 import {createItemKinds,splitXp} from './items';
 import {createEntityRenderer,type EntityRenderer,type RenderRec,type RenderStats} from './model-render';
-import {SPAWN_RADIUS,createSpawner} from './spawning';
+import {SPAWN_RADIUS,createSpawner,despawnsNow} from './spawning';
 
 export const HURT_TICKS=10,DEATH_TICKS=20,MAX_SAVED=200,AIR_SUPPLY=300;
+/** Entities kept with unloaded chunks (and saved as `far`); beyond it the player's own and those nearest the player or
+ *  the world spawn stay. */
+export const MAX_STORED=2000;
 /** Ticks after a player hit during which a death still counts as a player kill (vanilla lastHurtByPlayerTime). */
 export const PLAYER_KILL_MEMORY=100;
 /** Vanilla knockback 0.4 blocks/tick (blocks/second here), also the cap of the vertical part. */
@@ -86,13 +89,19 @@ const CATEGORIES:readonly EntityCategory[]=['passive','hostile','water','item','
 
 export interface EntityDebug{readonly render:RenderStats|null;readonly frozen:number;readonly searches:number;
   /** A* nodes expanded so far. */
-  readonly nodes:number}
+  readonly nodes:number;
+  /** Entities waiting with unloaded chunks. */
+  readonly stored:number}
 
 export function createEntities(game:Game):EntityService&{readonly debug:EntityDebug}{
   const kinds=new Map<string,EntityKind>();let kindList:EntityKind[]=[];
   const recs:Rec[]=[],list:Entity[]=[],byIdMap=new Map<number,Rec>();
   const ai=createEntityAI(game);
   let nextId=1,dirty=false,sinceTick=0,renderer:EntityRenderer|null=null;
+  /** Entities of unloaded chunks in their save form, by chunk (vanilla entity chunks): a saved entity whose chunk is not
+   *  loaded leaves the simulation (no entityRemoved: it is unloaded, not gone) and comes back, with its id, when the chunk
+   *  loads again. Without this, everything left behind while exploring stayed frozen in memory. */
+  const stored=new Map<number,Record<string,unknown>[]>();let storedCount=0;
   const unsubscribe:(()=>void)[]=[];
   const scratchPush:Rec[]=[];
   const voice=(e:Entity)=>(game.random()-game.random())*.2+(e.baby?1.5:1);
@@ -476,8 +485,56 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
       const d=(r:Rec)=>(r.e.x-p.x)**2+(r.e.y-p.y)**2+(r.e.z-p.z)**2;
       keep.sort((a,b)=>d(a)-d(b));keep.length=MAX_SAVED;
     }
-    return{v:SAVE_VERSION,list:keep.map(({e})=>({k:e.kind,i:e.id,x:r3(e.x),y:r3(e.y),z:r3(e.z),vx:r3(e.vx),vy:r3(e.vy),vz:r3(e.vz),
-      yw:r3(e.yaw),hy:r3(e.headYaw),pt:r3(e.pitch),h:r3(e.health),a:e.age,f:e.fire,b:e.baby?1:0,d:cleanJson(e.data)??{}}))};
+    return{v:SAVE_VERSION,list:keep.map(({e})=>pack(e)),far:storedForSave()};
+  }
+  /** The save form of an entity. */
+  function pack(e:Entity):Record<string,unknown>{
+    return{k:e.kind,i:e.id,x:r3(e.x),y:r3(e.y),z:r3(e.z),vx:r3(e.vx),vy:r3(e.vy),vz:r3(e.vz),
+      yw:r3(e.yaw),hy:r3(e.headYaw),pt:r3(e.pitch),h:r3(e.health),a:e.age,f:e.fire,b:e.baby?1:0,d:cleanJson(e.data)??{}};
+  }
+
+  // ---- Entities of unloaded chunks ----------------------------------------------------------------
+  /** Waits with its chunk while that chunk is unloaded: what the save keeps and would not despawn anyway. */
+  const storable=(r:Rec)=>!r.e.removed&&r.e.deathTime===0&&r.kind.persist!==false&&r.kind.category!=='hostile'&&!despawnsNow(r.kind,r.e);
+  function addStored(entry:Record<string,unknown>,x:number,z:number){
+    const key=chunkKey(Math.floor(x/CS),Math.floor(z/CS));
+    let at=stored.get(key);if(!at){at=[];stored.set(key,at);}
+    at.push(entry);storedCount++;
+  }
+  /** Keeps a save entry until its chunk loads. Its id stays reserved, so the entity comes back with it. */
+  function stash(raw:unknown){
+    const entry=cleanJson(raw);
+    if(!isObject(entry)||typeof entry.k!=='string'||!finiteIn(entry.x,-3e7,3e7)||!finiteIn(entry.z,-3e7,3e7))return;
+    const k=kinds.get(entry.k);if(!k||k.persist===false||k.category==='hostile')return;
+    const id=entry.i;if(Number.isInteger(id)&&(id as number)>=nextId&&(id as number)<2**31)nextId=(id as number)+1;
+    addStored(entry,entry.x,entry.z);
+    if(storedCount>MAX_STORED*1.25)trimStored();
+  }
+  /** The player's own animals first, then the nearest to the player or the world spawn (where farms usually are). */
+  function byKeepOrder(entries:Record<string,unknown>[]){
+    const p=game.player.state,s=p.spawn;
+    const d=(v:Record<string,unknown>)=>{const x=v.x as number,z=v.z as number;return Math.min((x-p.x)**2+(z-p.z)**2,(x-s.x)**2+(z-s.z)**2);};
+    const own=(v:Record<string,unknown>)=>isObject(v.d)&&v.d.owner==='player'?0:1;
+    return entries.sort((a,b)=>own(a)-own(b)||d(a)-d(b));
+  }
+  function storedEntries(){const out:Record<string,unknown>[]=[];for(const at of stored.values())for(const v of at)out.push(v);return out;}
+  function storedForSave(){const all=storedEntries();return all.length>MAX_STORED?byKeepOrder(all).slice(0,MAX_STORED):all;}
+  function trimStored(){
+    const keep=byKeepOrder(storedEntries()).slice(0,MAX_STORED);
+    stored.clear();storedCount=0;
+    for(const v of keep)addStored(v,v.x as number,v.z as number);
+  }
+  /** A saved entity whose chunk is not loaded leaves the simulation for the store. */
+  function unload(r:Rec){
+    stash(pack(r.e));
+    const e=r.e;e.removed=true;r.gone=true;dirty=true;ai.forget(e);
+    if(byIdMap.get(e.id)===r)byIdMap.delete(e.id);
+  }
+  /** A chunk loaded: its stored entities come back. */
+  function reload(cx:number,cz:number){
+    const key=chunkKey(cx,cz),at=stored.get(key);if(!at)return;
+    stored.delete(key);storedCount-=at.length;
+    for(const raw of at){try{restoreOne(raw);}catch{/* skip a broken entry */}}
   }
   function restoreOne(raw:unknown){
     if(!isObject(raw)||typeof raw.k!=='string')return;
@@ -563,10 +620,10 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     count(category){let n=0;for(const r of recs){const e=r.e;if(!e.removed&&e.deathTime===0&&e.category===category)n++;}return n;},
     get debug():EntityDebug{
       let frozen=0;for(const r of recs)if(r.frozen&&!r.e.removed)frozen++;
-      return{render:renderer?{...renderer.stats}:null,frozen,searches:ai.searches,nodes:ai.nodes};
+      return{render:renderer?{...renderer.stats}:null,frozen,searches:ai.searches,nodes:ai.nodes,stored:storedCount};
     },
     init(){
-      unsubscribe.push(game.events.on('chunkLoaded',({cx,cz,fresh})=>spawner.chunkLoaded(cx,cz,fresh)));
+      unsubscribe.push(game.events.on('chunkLoaded',({cx,cz,fresh})=>{reload(cx,cz);spawner.chunkLoaded(cx,cz,fresh);}));
       unsubscribe.push(game.events.on('chunkUnloaded',({cx,cz})=>spawner.chunkUnloaded(cx,cz)));
       const render=game.render as Partial<typeof game.render>;
       if(render&&render.scene&&render.camera&&render.uniforms&&!renderer){
@@ -586,6 +643,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
         }
         saneTransform(r);
         r.frozen=!game.world.isLoaded(e.x,e.z);
+        if(r.frozen&&storable(r)){unload(r);continue;}
         r.px=e.x;r.py=e.y;r.pz=e.z;r.pyaw=e.yaw;r.phead=e.headYaw;r.ppitch=e.pitch;r.walkSpeedOld=r.walkSpeed;
         if(r.frozen)continue;
         e.age++;
@@ -606,11 +664,16 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     serialize,
     restore(data){
       if(!isObject(data)||data.v!==SAVE_VERSION||!Array.isArray(data.list))return;
-      for(const raw of data.list.slice(0,MAX_SAVED)){try{restoreOne(raw);}catch{/* skip a broken entry */}}
+      for(const raw of data.list.slice(0,MAX_SAVED)){
+        // Entities of chunks that are not loaded yet wait for them (the world loads after a restore).
+        if(isObject(raw)&&finiteIn(raw.x,-3e7,3e7)&&finiteIn(raw.z,-3e7,3e7)&&!game.world.isLoaded(raw.x,raw.z)){stash(raw);continue;}
+        try{restoreOne(raw);}catch{/* skip a broken entry */}
+      }
+      if(Array.isArray(data.far))for(const raw of data.far.slice(0,MAX_STORED))stash(raw);
     },
     reset(){
       for(const r of recs){r.e.removed=true;ai.forget(r.e);}
-      recs.length=0;list.length=0;byIdMap.clear();nextId=1;dirty=false;sinceTick=0;
+      recs.length=0;list.length=0;byIdMap.clear();nextId=1;dirty=false;sinceTick=0;stored.clear();storedCount=0;
       spawner.reset();ai.reset();
     },
     dispose(){
