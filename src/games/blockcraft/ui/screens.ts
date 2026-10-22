@@ -99,7 +99,8 @@ class DomScreens implements ScreenView{
   /** The creative picker, its scrollbar knob, and a knob drag in progress (pointer id). */
   private catalog:HTMLElement|null=null;private knob:HTMLElement|null=null;private knobDrag:number|null=null;
   /** The creative search field, its pixel-font view, what the view last drew, and its text window's scroll (GUI px). */
-  private search:HTMLInputElement|null=null;private searchView:HTMLElement|null=null;private searchKey='';private searchScrollX=0;
+  private search:HTMLInputElement|null=null;private searchView:HTMLElement|null=null;private searchScrollX=0;
+  private drawnQuery:string|null=null;private drawnStart=-1;private drawnEnd=-1;private drawnCaret=-1;private drawnFocus=false;
   /** Listeners that belong to the shown screen. */
   private screenAbort:AbortController|null=null;
 
@@ -267,7 +268,7 @@ class DomScreens implements ScreenView{
     this.screenAbort?.abort();this.screenAbort=null;
     clearTimeout(this.longTimer);clearTimeout(this.tipTimer);
     this.touchId=null;this.mousePressed=false;this.knobDrag=null;
-    this.slots=[];this.catalog=null;this.knob=null;this.search=null;this.searchView=null;this.searchKey='';
+    this.slots=[];this.catalog=null;this.knob=null;this.search=null;this.searchView=null;this.drawnQuery=null;
   }
   private touchUI(){
     return this.game.input.touch||(typeof matchMedia==='function'&&matchMedia('(pointer: coarse)').matches)||this.performanceNow()-this.lastTouch<60000;
@@ -429,9 +430,8 @@ class DomScreens implements ScreenView{
     const value=input.value,focused=document.activeElement===input;
     const start=input.selectionStart??value.length,end=input.selectionEnd??start;
     const caret=input.selectionDirection==='backward'?start:end;
-    const key=`${focused?1:0}:${start}:${end}:${caret}:${value}`;
-    if(key===this.searchKey)return;
-    this.searchKey=key;
+    if(value===this.drawnQuery&&start===this.drawnStart&&end===this.drawnEnd&&caret===this.drawnCaret&&focused===this.drawnFocus)return;
+    this.drawnQuery=value;this.drawnStart=start;this.drawnEnd=end;this.drawnCaret=caret;this.drawnFocus=focused;
     const native=!searchDrawable(value);
     view.parentElement?.classList.toggle('is-native',native);
     if(native){view.innerHTML='';return;}

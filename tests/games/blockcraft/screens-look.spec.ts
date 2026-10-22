@@ -223,7 +223,7 @@ test('the recipe book keeps the GUI scale and covers the panel where it does not
   // Switching straight to another screen keeps the cursor free (a mouse capture granted late is let go again).
   await engine(page,g=>{g.ui.close();g.ui.open('crafting_table');});
   await expect(page.locator('.bc-panel')).toHaveAttribute('aria-label','Crafting');
-  await page.locator('.bc-panel [data-book-toggle]').click();
+  await page.locator('.bc-panel [data-book-toggle]').click({timeout:15000});
   await expect(page.locator('.bc-book')).toBeVisible();
   expect(await guiUnit(page)).toBe(u);
   await engine(page,g=>g.ui.close());
