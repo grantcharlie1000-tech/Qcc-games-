@@ -41,12 +41,13 @@ describe('client ICE configuration',()=>{
   it('adds TURN when the function answers and falls back to STUN with a reason',async()=>{
     resetIceCache();
     const ok=await iceServers(async()=>Response.json({iceServers:[cloudflare.iceServers[1]],ttl:3600}),0);
-    expect(ok.turn).toBe(true);expect(ok.iceServers.length).toBe(2);
+    expect(ok.turn).toBe(true);expect(ok.publicRelay).toBeFalsy();expect(ok.iceServers.length).toBe(2);
     resetIceCache();
     const missing=await iceServers(async()=>new Response('',{status:503}),0);
-    expect(missing.turn).toBe(false);expect(missing.message).toMatch(/not configured/);
+    expect(missing.turn).toBe(true);expect(missing.publicRelay).toBe(true);expect(missing.message).toMatch(/not configured/);
+    expect(missing.iceServers.some(s=>[s.urls].flat().some(u=>u.includes('turn.peerjs.com')))).toBe(true);
     const offline=await iceServers(async()=>{throw new Error('offline');},0);
-    expect(offline.turn).toBe(false);
+    expect(offline.publicRelay).toBe(true);
   });
   it('validates server lists',()=>{
     expect(validIceServers([{urls:'javascript:alert(1)'}])).toBeNull();

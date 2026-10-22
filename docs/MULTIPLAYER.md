@@ -96,7 +96,13 @@ relay. `netlify/functions/turn.mts` issues temporary Cloudflare TURN credentials
 The master token never reaches browsers. The function accepts only same-origin POSTs, returns `Cache-Control: no-store`, drops
 port-53 URLs (browsers block them), and is rate-limited twice: Netlify’s rule (20 requests per minute per IP, in the function’s
 `config`) and an in-memory limit of 6 per minute per client per function instance. Without the variables it answers 503 and the
-game falls back to Cloudflare STUN only, saying “Relay fallback is not configured here. Only direct connections can work.”
+game falls back to **PeerJS’s free public relay** (`turn:eu-0/us-0.turn.peerjs.com:3478`, the relay PeerJS Cloud configures by
+default). That relay is shared, rate-limited and best effort: it lets most phones on blocked networks connect, but for reliable play
+at school configure Cloudflare TURN. The panel then notes “The private relay is not configured here. If a direct connection is
+blocked, the free public relay is tried (best effort).”
+
+A failed join on such a network used to show “The connection failed (negotiation-failed)”: the devices reached each other through
+signalling, but no direct or relayed path existed. It now says the network may block device-to-device connections.
 
 **Testing a forced relay:** add `?relay=1` to the game link (e.g. `#/game/pool?relay=1`, or an invite link with
 `&relay=1`). Every connection then uses `iceTransportPolicy: 'relay'`. The panel shows “Connected through the TURN relay” only

@@ -52,6 +52,7 @@ export class Room{
   readonly code:string;
   readonly turn:boolean;
   readonly iceMessage:string;
+  readonly publicRelay:boolean;
   private listeners=new Set<(event:RoomEvent)=>void>();
   private roster:RosterEntry[]=[];
   private peers=new Map<string,Peer>();
@@ -63,7 +64,7 @@ export class Room{
   private readonly unload=()=>this.close('left');
 
   private constructor(role:'host'|'guest',code:string,private endpoint:Endpoint,private options:RoomOptions,ice:IceResult){
-    this.role=role;this.code=code;this.turn=ice.turn;this.iceMessage=ice.message;
+    this.role=role;this.code=code;this.turn=ice.turn;this.publicRelay=!!ice.publicRelay;this.iceMessage=ice.message;
     if(typeof window!=='undefined')window.addEventListener('pagehide',this.unload);
     endpoint.onDisconnected(()=>{if(this.closedState)return;this.emit({type:'signalling',connected:false});setTimeout(()=>{if(!this.closedState)endpoint.reconnect();},1500);});
   }
@@ -258,14 +259,16 @@ export class Room{
       const peer:Peer={entry:{id:hostId,seat:0,name:'Host',host:true},link,reader:new Reassembler(),seen:Date.now(),bad:0,rtt:NaN,kind:'unknown',hello:undefined};
       this.peers.set(hostId,peer);
       const timer=setTimeout(()=>fail(new RoomError('timeout',ice.turn
-        ?'Could not reach the host. Check both devices are online, then try again.'
+        ?'Could not connect to the host. Check both devices are online. Some networks block device-to-device connections: try both on the same Wi-Fi or both on mobile data.'
         :'Could not reach the host. This network may block direct connections, and relay fallback is unavailable.')),JOIN_MS);
       this.endpoint.onError(e=>{
         if(e.type==='peer-unavailable')fail(new RoomError('not-found','No room with that code is open. Check the code, or ask the host for a new invite.'));
         else if(!settled)fail(transportError(e));
       });
       link.onOpen(()=>{this.write(peer,{t:'hello',protocol:PROTOCOL_VERSION,game:this.options.game,version:this.options.version,name});this.measure(peer);});
-      link.onError(e=>fail(new RoomError('network',`The connection failed (${e.type}).`)));
+      link.onError(e=>fail(new RoomError('network',e.type==='negotiation-failed'||e.type==='connection'
+        ?'Could not connect the two devices. This network may block device-to-device connections. Try again, or put both devices on the same Wi-Fi or both on mobile data.'
+        :`The connection failed (${e.type}).`)));
       link.onClose(()=>{if(!settled)fail(new RoomError('network','The host closed the connection.'));else this.drop(peer,'lost');});
       link.onData(text=>{
         let value:unknown;

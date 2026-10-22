@@ -155,7 +155,7 @@ export class RoomPanel{
     const room=this.current;if(!room)return;
     const kinds=[...this.kinds.values()];
     let text=room.players.length<2?'':kinds.includes('relay')?LINK_TEXT.relay:kinds.includes('direct')?LINK_TEXT.direct:LINK_TEXT.unknown;
-    if(!room.turn)text+=`${text?' ':''}${room.iceMessage}`;
+    if(!room.turn||room.publicRelay)text+=`${text?' ':''}${room.iceMessage}`;
     this.$('.mp-link').textContent=[this.note,text].filter(Boolean).join(' ');
   }
   private async copy(){

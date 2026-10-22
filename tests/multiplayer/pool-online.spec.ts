@@ -109,7 +109,7 @@ test('two independent browsers play a full online rack and agree on the result',
   }finally{await closeAll([host,guest,extra]);}
 });
 
-test('forcing the TURN relay without relay credentials fails clearly instead of connecting directly',async()=>{
+test('forcing the relay without private TURN credentials never connects directly and explains a failure',async()=>{
   test.setTimeout(120_000);
   const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama');
   try{
@@ -117,11 +117,18 @@ test('forcing the TURN relay without relay credentials fails clearly instead of 
     await host.page.getByRole('button',{name:'Multiplayer'}).click();
     await host.page.getByRole('button',{name:'Create room'}).click();
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:25000});
-    await expect(host.page.locator('.mp-link')).toContainText('Relay fallback is not configured');
+    await expect(host.page.locator('.mp-link')).toContainText('private relay is not configured');
     const code=(await host.page.locator('.mp-room-code').textContent())!.trim();
     await guest.page.goto(`${BASE}/#/game/pool?room=${code}&relay=1`);
     await guest.page.getByRole('button',{name:'Join by code'}).click();
-    await expect(guest.page.locator('.mp-status')).toHaveText(/relay fallback is unavailable|connection failed/,{timeout:40000});
-    await expect(guest.page.locator('.pool-game')).toHaveAttribute('data-online','off');
+    // With only the free public relay, the join either succeeds through a relay or fails with a plain explanation.
+    await expect.poll(async()=>await guest.page.locator('.pool-game').getAttribute('data-online')==='guest'||/Could not|failed/.test(await guest.page.locator('.mp-status').textContent()??''),{timeout:45000}).toBe(true);
+    if(await guest.page.locator('.pool-game').getAttribute('data-online')==='guest'){
+      await expect(host.page.locator('.mp-link')).toContainText('TURN relay',{timeout:15000});
+      console.log('Forced relay connected through the public relay.');
+    }else{
+      await expect(guest.page.locator('.mp-status')).not.toContainText('negotiation-failed');
+      console.log('Forced relay could not connect here:',await guest.page.locator('.mp-status').textContent());
+    }
   }finally{await closeAll([host,guest]);}
 });
