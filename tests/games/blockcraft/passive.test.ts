@@ -10,6 +10,7 @@ import {stack} from '../../../src/games/blockcraft/data/items';
 import {registerPassiveMobs,PASSIVE_SPEEDS,randomWoolColour,mixWoolColours,rabbitVariantFor,RABBIT_VARIANTS} from '../../../src/games/blockcraft/entity/passive';
 import {dangerAhead,dangerMoving,standable,brainOf} from '../../../src/games/blockcraft/entity/passive-ai';
 import {faceRect,FACES,restTransforms} from '../../../src/games/blockcraft/entity/passive-model';
+import {QuadWriter,compileModel,identity,mat,writeModel} from '../../../src/games/blockcraft/entity/model';
 import {CUTOUT_PARTS} from '../../../src/games/blockcraft/entity/passive-art';
 import type {AnimationState,DamageSource,Entity,EntityAI,EntityKind,EntityModel,GameEvents,ItemStack,ModelPart,PartPose,SpawnReason} from '../../../src/games/blockcraft/engine/contracts';
 
@@ -527,7 +528,7 @@ describe('cows and mooshrooms',()=>{
   test('the model shows the variant\'s parts only, with mushrooms on adult mooshrooms',()=>{
     const h=setup(),model=h.kind('cow').model!;
     const m=h.spawn('cow',.5,60,.5,{data:{variant:'mooshroom'}}),c=h.spawn('cow',.5,60,.5,{data:{variant:'cow'}});
-    const visible=(e:Entity)=>{const p=animate(model,e);return model.parts.filter(x=>p[x.name].visible!==false).map(x=>x.name);};
+    const visible=(e:Entity)=>shownParts(model,animate(model,e));
     expect(visible(m).some(n=>n.includes('mushroom'))).toBe(true);
     expect(visible(c).some(n=>n.includes('mushroom'))).toBe(false);
     expect(visible(m).filter(n=>visible(c).includes(n))).toEqual([]);
@@ -711,8 +712,22 @@ function animate(model:EntityModel,e:Entity,state:Partial<AnimationState>={}):Re
 }
 /** Every part with its children, depth first. */
 function allParts(parts:readonly ModelPart[],out:ModelPart[]=[]):ModelPart[]{for(const p of parts){out.push(p);if(p.children)allParts(p.children,out);}return out;}
-/** A part's name without the variant prefix and the baby_ marker. */
-const baseName=(name:string)=>name.slice(name.indexOf('.')+1).replace(/^baby_/,'');
+/** Variant models (cow, rabbit) hold one box-less group part per variant at the top level. */
+const grouped=(model:EntityModel)=>model.parts.length>1&&model.parts.every(p=>!p.boxes.length&&!!p.children?.length);
+/** The parts drawn for a pose (hidden parts and their children skipped), named `<variant>.<part>` in variant models. */
+function shownParts(model:EntityModel,pose:Record<string,PartPose>):string[]{
+  const out:string[]=[],groups=grouped(model);
+  const walk=(parts:readonly ModelPart[],prefix:string,top:boolean)=>{for(const p of parts){
+    if(pose[p.name]?.visible===false)continue;
+    if(top&&groups){walk(p.children!,`${p.name}.`,false);continue;}
+    out.push(prefix+p.name);
+    if(p.children)walk(p.children,prefix,false);
+  }};
+  walk(model.parts,'',true);
+  return out;
+}
+/** A part's name without the baby_ marker. */
+const baseName=(name:string)=>name.replace(/^baby_/,'');
 const painted=(model:EntityModel)=>{const px=new Uint8ClampedArray(model.textureWidth*model.textureHeight*4);model.paint(px,model.textureWidth,model.textureHeight);return px;};
 /** Mean colour of the opaque texels of a texture rectangle [x, y, w, h]. */
 function meanOf(model:EntityModel,px:Uint8ClampedArray,[x,y,w,h]:[number,number,number,number]):[number,number,number]{
@@ -721,7 +736,12 @@ function meanOf(model:EntityModel,px:Uint8ClampedArray,[x,y,w,h]:[number,number,
   return[r/n,g/n,b/n];
 }
 const lum=(c:readonly number[])=>.3*c[0]+.59*c[1]+.11*c[2];
-const partOf=(model:EntityModel,name:string)=>{const p=allParts(model.parts).find(x=>x.name===name);if(!p)throw new Error(`no part ${name}`);return p;};
+/** A part by name; `<variant>.<part>` looks inside that variant's group. */
+const partOf=(model:EntityModel,name:string)=>{
+  const dot=name.indexOf('.'),group=dot<0?null:model.parts.find(x=>x.name===name.slice(0,dot));
+  if(dot>=0&&!group)throw new Error(`no variant ${name}`);
+  const p=allParts(group?group.children!:model.parts).find(x=>x.name===(dot<0?name:name.slice(dot+1)));if(!p)throw new Error(`no part ${name}`);return p;
+};
 /** Rest-pose bounds (entity space, pixels) of the visible parts, through every rest rotation. */
 function restBounds(model:EntityModel,pose:Record<string,PartPose>){
   const m=restTransforms(model.parts);let minY=Infinity,maxY=-Infinity;
@@ -762,11 +782,14 @@ describe('models',()=>{
   });
   test.each(names)('%s: unique part names, feet on the ground and a pose for every part',name=>{
     const k=h.kind(name),model=k.model!,e=h.spawn(name);
-    const all=allParts(model.parts);
-    expect(new Set(all.map(p=>p.name)).size).toBe(all.length);
+    // Names are unique within the model, or within each variant group (the groups share part names).
+    const scopes=grouped(model)?model.parts.map(g=>allParts(g.children!)):[allParts(model.parts)];
+    for(const all of scopes)expect(new Set(all.map(p=>p.name)).size).toBe(all.length);
+    if(grouped(model))expect(new Set(model.parts.map(g=>g.name)).size).toBe(model.parts.length);
     const scale=model.scale??1;
     const pose=animate(model,e);
-    for(const part of model.parts)expect(pose[part.name],`${name}.${part.name} posed`).toBeDefined();
+    const posed=grouped(model)?[...model.parts,...model.parts.find(g=>pose[g.name].visible)!.children!]:model.parts;
+    for(const part of posed)expect(pose[part.name],`${name}.${part.name} posed`).toBeDefined();
     const {minY,maxY}=restBounds(model,pose);
     // The feet stand on the ground (rabbit front paws dip 0.07 px, as vanilla's do).
     expect(Math.abs(minY)).toBeLessThan(.1);
@@ -774,11 +797,11 @@ describe('models',()=>{
     expect(maxY*scale/16).toBeGreaterThan(k.height*.8);expect(maxY*scale/16).toBeLessThan(k.height*1.6);
     // Poses are reused objects (no per-frame allocation).
     const again:Record<string,PartPose>={...pose};model.animate!(e,again,{time:2,partial:0,limbSwing:2,limbAmount:1,headYaw:0,headPitch:0,attack:0,reducedMotion:false});
-    for(const part of model.parts)expect(again[part.name]).toBe(pose[part.name]);
+    for(const part of posed)expect(again[part.name]).toBe(pose[part.name]);
   });
   test.each(['cow','pig','sheep','chicken','rabbit'])('%s: babies show the big baby head instead of the adult one',name=>{
     const model=h.kind(name).model!,adult=h.spawn(name),baby=h.spawn(name,.5,60,.5,{baby:true,reason:'breed'});
-    const shown=(e:Entity)=>{const p=animate(model,e);return model.parts.filter(x=>p[x.name].visible!==false).map(x=>x.name);};
+    const shown=(e:Entity)=>shownParts(model,animate(model,e));
     expect(shown(adult).some(n=>n.includes('baby'))).toBe(false);
     expect(shown(baby).some(n=>n.includes('baby'))).toBe(true);
     expect(shown(baby).some(n=>/(^|\.)head$/.test(n))).toBe(false);
@@ -813,7 +836,7 @@ describe('models',()=>{
     const cow=h.kind('cow').model!,body=partOf(cow,'cow.body');
     expect(body.rotation?.[0]).toBeCloseTo(-Math.PI/2);
     // Rest transform of the body box corners: 12 wide, from y 12 to 22 and z -8 to 10 (head end at -z).
-    const t=restTransforms(cow.parts).get('cow.body')!,b=body.boxes[0],ys:number[]=[],zs:number[]=[];
+    const t=restTransforms([partOf(cow,'cow')]).get('body')!,b=body.boxes[0],ys:number[]=[],zs:number[]=[];
     for(let k=0;k<8;k++){
       const x=b.from[0]+(k&1?b.size[0]:0),y=b.from[1]+(k&2?b.size[1]:0),z=b.from[2]+(k&4?b.size[2]:0);
       ys.push(t[4]*x+t[5]*y+t[6]*z+t[7]);zs.push(t[8]*x+t[9]*y+t[10]*z+t[11]);
@@ -873,11 +896,12 @@ describe('models',()=>{
     for(let j=y;j<y+16;j++)for(let i=x;i<x+16;i++){const o=(j*model.textureWidth+i)*4;if(!px[o+3])clear++;else if(px[o]>180&&px[o+1]<80)red++;}
     expect(red).toBeGreaterThan(10);expect(clear).toBeGreaterThan(200);
     const pose=animate(model,m,{headYaw:.5,headPitch:.3});
-    expect(pose['mooshroom.head_mushroom']).toMatchObject({x:pose['mooshroom.head'].x,y:pose['mooshroom.head'].y,visible:true});
+    expect(pose.mooshroom.visible).toBe(true);expect(pose.cow.visible).toBe(false);
+    expect(pose.head_mushroom).toMatchObject({x:pose.head.x,y:pose.head.y,visible:true});
     expect(partOf(model,'mooshroom.head_mushroom').pivot).toEqual(partOf(model,'mooshroom.head').pivot);
     // The planes stand on the back and on top of the head.
-    const rest=restTransforms(model.parts);
-    expect(rest.get('mooshroom.mushroom_1')![7]).toBeCloseTo(21.6,1);expect(rest.get('mooshroom.head_mushroom_planes')![7]).toBeCloseTo(23.2,1);
+    const rest=restTransforms([partOf(model,'mooshroom')]);
+    expect(rest.get('mushroom_1')![7]).toBeCloseTo(21.6,1);expect(rest.get('head_mushroom_planes')![7]).toBeCloseTo(23.2,1);
   });
   test('legs swing in opposite phase with walking speed; heads follow the look',()=>{
     const model=h.kind('pig').model!,pig=h.spawn('pig');
@@ -891,9 +915,9 @@ describe('models',()=>{
   test('rabbit coats are separate painted variants; ears turn with the head',()=>{
     const model=h.kind('rabbit').model!,r=h.spawn('rabbit',.5,60,.5,{data:{variant:'gold'}});
     const p=animate(model,r,{headYaw:.4,headPitch:.2});
-    const shown=model.parts.filter(x=>p[x.name].visible!==false).map(x=>x.name);
+    const shown=shownParts(model,p);
     expect(shown.length).toBeGreaterThan(5);expect(shown.every(n=>n.startsWith('gold.'))).toBe(true);
-    expect(p['gold.ear_r']).toMatchObject({x:p['gold.head'].x,y:p['gold.head'].y});
+    expect(p.ear_r).toMatchObject({x:p.head.x,y:p.head.y});
     // The ears keep their vanilla 15° splay on top of the head's turn.
     expect(partOf(model,'gold.ear_r').rotation?.[1]).toBeCloseTo(.2617994);expect(partOf(model,'gold.ear_l').rotation?.[1]).toBeCloseTo(-.2617994);
     // Each coat has its own colours (white is light, black is dark): the body's side row of each coat block.
@@ -901,14 +925,34 @@ describe('models',()=>{
     const lumOf=(v:string)=>lum(meanOf(model,px,[0,RABBIT_VARIANTS.indexOf(v as never)*block+10,32,5]));
     expect(lumOf('white')).toBeGreaterThan(200);expect(lumOf('black')).toBeLessThan(70);
   });
+  test.each([['rabbit',RABBIT_VARIANTS,20],['cow',['cow','mooshroom'],12]] as const)(
+    '%s: only the shown variant is posed and drawn (one pose entry per variant group plus one per part name)',(name,variants,cap)=>{
+    const model=h.kind(name).model!,compiled=compileModel(model,{x:0,y:0,w:model.textureWidth,h:model.textureHeight},model.textureWidth,model.textureHeight);
+    expect(model.parts.map(g=>g.name)).toEqual([...variants]);
+    // One pose record shared by every entity of the kind, reset before each draw as the entity renderer does.
+    const pose:Record<string,PartPose>={},writer=new QuadWriter(64),base=identity(mat());
+    for(const variant of variants)for(const baby of [false,true]){
+      const e=h.spawn(name,.5,60,.5,{baby,data:{variant},reason:baby?'breed':undefined});
+      for(const key in pose){const p=pose[key];p.x=p.y=p.z=0;p.px=p.py=p.pz=0;p.visible=true;}
+      model.animate!(e,pose,{time:1,partial:.5,limbSwing:1,limbAmount:.5,headYaw:.3,headPitch:-.2,attack:0,reducedMotion:false});
+      expect(variants.filter(v=>pose[v].visible),`${variant} baby ${baby}`).toEqual([variant]);
+      // The writer draws the shown group's visible boxes and nothing of the hidden ones.
+      const group=compiled.parts.find(g=>g.name===variant)!;let faces=0;
+      const count=(parts:typeof compiled.parts)=>{for(const p of parts){if(pose[p.name]?.visible===false)continue;
+        for(const b of p.boxes)for(let f=0;f<6;f++)if(b.faces&1<<f)faces++;count(p.children);}};
+      count(group.children);
+      writer.begin(0,0,0);expect(writeModel(writer,compiled,base,pose,{tint:-1})).toBe(faces);
+    }
+    expect(Object.keys(pose).length).toBeLessThanOrEqual(cap);
+  });
   test('a hopping rabbit kicks its hind legs back and reaches with the front legs',()=>{
     const hh=setup(),model=hh.kind('rabbit').model!,r=hh.spawn('rabbit',.5,60,.5,{data:{variant:'brown'}});
     const rest=animate(model,r);
     brainOf(r).hop=6;
     const hop=animate(model,r,{partial:0});
-    expect(hop['brown.foot_r'].x).toBeLessThan(rest['brown.foot_r'].x-.5);
-    expect(hop['brown.haunch_l'].x).toBeLessThan(rest['brown.haunch_l'].x-.5);
-    expect(hop['brown.leg_rf'].x).toBeGreaterThan(rest['brown.leg_rf'].x+.4);
+    expect(hop.foot_r.x).toBeLessThan(rest.foot_r.x-.5);
+    expect(hop.haunch_l.x).toBeLessThan(rest.haunch_l.x-.5);
+    expect(hop.leg_rf.x).toBeGreaterThan(rest.leg_rf.x+.4);
   });
   test('chicken wings flap up and out while airborne',()=>{
     const hh=setup(),model=hh.kind('chicken').model!,hen=hh.spawn('chicken');

@@ -12,8 +12,12 @@
 //
 // Baby heads: vanilla quadrupeds and chickens draw a baby's head at full size on a half-size body. The entity framework
 // scales a baby's whole model by 0.5, so the builder adds `baby_<part>` copies of the head parts with every box doubled
-// (painted from a 2× upscale of the adult texture) at the baby head position, and swaps them in for babies. Variants stack
-// whole textures vertically; their parts are prefixed `<variant>.`.
+// (painted from a 2× upscale of the adult texture) at the baby head position, and swaps them in for babies.
+//
+// Variants stack whole textures vertically. Each variant's parts sit under a box-less group part named after the variant
+// (pivot 0, no rotation) and keep the plain part names, the same in every group. animate shows one group and writes
+// poses only for that variant's parts, so the pose record holds one entry per group plus one per part name (rabbit: 6 + 14),
+// not one per part of every variant, and the renderer skips a hidden coat with one lookup.
 import type {AnimationState,Entity,EntityModel,ModelBox,ModelPart,PartPose} from '../engine/contracts';
 import {FACE_CORNERS,FACE_NORMALS,euler,faceRects,identity,mat,multiply,type Mat} from './model';
 
@@ -162,7 +166,7 @@ export function blit(px:Uint8ClampedArray,width:number,x0:number,y0:number,rows:
 // ---- Model builder ----------------------------------------------------------------------------
 export interface ModelVariant{
   id:string;
-  /** Colours every box of the base parts and of `extra` (texel part names have no variant prefix). */
+  /** Colours every box of the base parts and of `extra` (texels carry the plain part names). */
   shader:Shader;
   /** Extra painting after the boxes (sprites of plane parts), rows offset by `oy`. */
   decorate?(px:Uint8ClampedArray,width:number,oy:number):void;
@@ -178,14 +182,14 @@ export interface ModelSpec{
   variantOf?(e:Entity):number;
   /** Head parts drawn full size on babies; `pivot` is where the (first listed) head's pivot sits on a baby, in final pixels. */
   babyHead?:{parts:readonly string[];pivot:Vec3T};
-  /** Writes the frame's pose by base part name (no variant prefix, no `baby_`). Every entry is reset to rest first. */
+  /** Writes the frame's pose by base part name (no `baby_`). Every entry is reset to rest first. */
   pose(e:Entity,pose:Record<string,PartPose>,state:AnimationState):void;
   extraVisible?(e:Entity):boolean;
   appearance?(e:Entity):{tint?:number;flash?:number;scale?:number};
   scale?:number;
 }
 type Role='body'|'adultHead'|'baby'|'extra';
-interface Entry{name:string;base:string;variant:number;role:Role}
+interface Entry{name:string;base:string;role:Role}
 const scaleVec=(v:readonly number[],f:number):Vec3T=>[v[0]*f,v[1]*f,v[2]*f];
 
 /** Expands a spec into a contract EntityModel (variants, baby heads, reusable pose objects). */
@@ -212,20 +216,25 @@ export function buildModel(spec:ModelSpec):EntityModel{
     }
   }
   const blockHeight=spec.babyHead?shelfY+shelfH:spec.height,multi=spec.variants.length>1;
-  const parts:ModelPart[]=[],entries:Entry[]=[],baseNames=new Set<string>();
-  const shift=(p:ModelPart,oy:number,prefix:string):ModelPart=>({...p,name:prefix+p.name,
-    boxes:p.boxes.map(b=>({...b,uv:[b.uv[0],b.uv[1]+oy] as [number,number]})),
-    children:p.children?.map(c=>shift(c,oy,prefix))});
+  const parts:ModelPart[]=[],baseNames=new Set<string>(),partNames=new Set<string>();
+  /** Per variant: the top-level parts it poses. */
+  const entries:Entry[][]=[];
+  const shift=(p:ModelPart,oy:number):ModelPart=>{
+    partNames.add(p.name);
+    return{...p,boxes:p.boxes.map(b=>({...b,uv:[b.uv[0],b.uv[1]+oy] as [number,number]})),children:p.children?.map(c=>shift(c,oy))};
+  };
   spec.variants.forEach((variant,i)=>{
-    const oy=i*blockHeight,prefix=multi?`${variant.id}.`:'';
-    const add=(p:ModelPart,base:string,role:Role)=>{
-      parts.push(shift(p,oy,prefix));
-      entries.push({name:prefix+p.name,base,variant:i,role});baseNames.add(base);
-    };
+    const oy=i*blockHeight,own:ModelPart[]=[],list:Entry[]=[];
+    const add=(p:ModelPart,base:string,role:Role)=>{own.push(shift(p,oy));list.push({name:p.name,base,role});baseNames.add(base);};
     for(const p of spec.parts)add(p,p.name,babyNames.has(p.name)?'adultHead':'body');
     for(const p of babyParts)add(p,p.name.slice(5),'baby');
     for(const p of variant.extra??[])add(p,p.name,'extra');
+    if(new Set(list.map(en=>en.name)).size!==list.length)throw new Error(`duplicate part name in variant ${variant.id}`);
+    entries.push(list);
+    if(multi)parts.push({name:variant.id,pivot:[0,0,0],boxes:[],children:own});else parts.push(...own);
   });
+  const groups=multi?spec.variants.map(v=>v.id):[];
+  if(new Set(groups).size!==groups.length||groups.some(g=>partNames.has(g)))throw new Error('variant ids must be unique and differ from part names');
   const base:Record<string,PartPose>={};
   for(const n of baseNames)base[n]={x:0,y:0,z:0,px:0,py:0,pz:0,visible:true};
   const names=[...baseNames];
@@ -245,10 +254,18 @@ export function buildModel(spec:ModelSpec):EntityModel{
     animate(e,pose,state){
       for(let i=0;i<names.length;i++){const p=base[names[i]];p.x=p.y=p.z=0;p.px=p.py=p.pz=0;p.visible=true;}
       spec.pose(e,base,state);
-      const variant=spec.variantOf?.(e)??0,baby=e.baby,extra=!baby&&(spec.extraVisible?.(e)??true);
-      for(let i=0;i<entries.length;i++){
-        const en=entries[i],src=base[en.base];
-        let on=en.variant===variant&&src.visible!==false;
+      let variant=spec.variantOf?.(e)??0;
+      if(!Number.isInteger(variant)||variant<0||variant>=entries.length)variant=0;
+      const baby=e.baby,extra=!baby&&(spec.extraVisible?.(e)??true);
+      // Only the entity's variant group is shown; the hidden groups' parts need no pose.
+      for(let g=0;g<groups.length;g++){
+        let out=pose[groups[g]];if(!out){out={x:0,y:0,z:0};pose[groups[g]]=out;}
+        out.x=out.y=out.z=0;out.px=out.py=out.pz=0;out.visible=g===variant;
+      }
+      const list=entries[variant];
+      for(let i=0;i<list.length;i++){
+        const en=list[i],src=base[en.base];
+        let on=src.visible!==false;
         if(en.role==='baby')on=on&&baby;else if(en.role==='adultHead')on=on&&!baby;else if(en.role==='extra')on=on&&extra;
         const m=en.role==='baby'?2:1;
         let out=pose[en.name];if(!out){out={x:0,y:0,z:0};pose[en.name]=out;}
