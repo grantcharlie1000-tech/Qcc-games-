@@ -1,4 +1,4 @@
-import {AIR,B,BLOCK_COUNT} from '../data/blocks';
+import {AIR,B,BLOCK_COUNT,LIGHT_OPACITY} from '../data/blocks';
 import {changesLight} from './light-shapes';
 import {CS,CH,LAYER,CHUNK_VOLUME,chunkKey,keyX,keyZ} from '../engine/constants';
 import type {Chunk,ChunkData,ChangeCause,World,BlockId,GameEvents} from '../engine/contracts';
@@ -90,7 +90,10 @@ export class VoxelWorld implements World{
     if(!chunk)return 0xf0;
     const lx=x-cx*CS,lz=z-cz*CS;
     if(chunk.light)return chunk.light[lx+lz*CS+y*LAYER];
-    return y>chunk.heightmap[lx+lz*CS]?0xf0:0;
+    // Not lit yet: full sky when nothing from this cell up blocks sky light (short grass, flowers, snow layers).
+    const column=lx+lz*CS,top=chunk.heightmap[column];
+    for(let yy=y;yy<=top;yy++)if(LIGHT_OPACITY[chunk.blocks[column+yy*LAYER]])return 0;
+    return 0xf0;
   }
   brightnessAt(x:number,y:number,z:number){
     const l=this.lightAt(x,y,z);return Math.max(l&15,(l>>4)-this.skyDarkening);

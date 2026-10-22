@@ -249,7 +249,7 @@ export interface InputBinding{action:InputAction;
 export interface InputService extends System{
   /** Current held state of an action. */
   down(action:InputAction):boolean;
-  /** True once per press (edge), cleared when read. Each action has exactly one consumer (above). */
+  /** True once per press; up to 2 unread presses are kept and each read consumes one (a consumer that discards presses reads until false). Each action has exactly one consumer (above). */
   pressed(action:InputAction):boolean;
   /** Movement axes -1..1 combined from keys and the touch stick. */
   move():{forward:number;strafe:number};
@@ -543,7 +543,9 @@ export interface EntityKind{
    *  (husk for zombie in deserts, stray for skeleton in snowy biomes). Water: in water columns. Natural spawns happen 24–64 blocks
    *  from the player (caps count mobs within 128). An aquatic dark kind with `replaces` takes over the replaced kind's spawns at
    *  water positions (drowned for zombie). Grass kinds spawn on their biome's top block (sand rabbits, mycelium mooshrooms).
-   *  `check` adds kind-specific placement rules (husk and stray need open sky; slime chunks below y 40 need no darkness). */
+   *  `check(game,x,y,z)` (integer feet cell) replaces the default light test (monster darkness for dark kinds, light ≥ 9 for grass
+   *  kinds) with the kind's own rule (husk and stray: darkness and open sky; slime chunks below y 40: no darkness needed); the
+   *  floor, room, water, distance and cap rules still apply. */
   spawn?:{light:'dark'|'grass'|'water';group:[number,number];weight?:number;biomes?:readonly (readonly [string,number])[];replaces?:string;
     check?(game:Game,x:number,y:number,z:number):boolean};
 }
