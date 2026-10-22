@@ -1,142 +1,233 @@
-/* Inventory-like screens (ui/screens.ts): layer z-index 20, toast 25. Slot size --s follows the game area (container
-   query units) so every screen fits from 320×568 phones to desktop; the top 56 px stay clear for the arcade toolbar. */
+/* Inventory-like screens (ui/screens.ts) in the look of the vanilla Java container GUI: layer z-index 20, toast 25.
+   Everything is laid out in GUI pixels at the vanilla positions; --bc-u is one GUI pixel in CSS pixels. It is the largest
+   size that fits the game area (whole pixels from 2 up so the pixel art stays crisp, fractional below that on phones),
+   keeping the top 56 px clear for the arcade toolbar and fitting 320×568 up to desktop. The art (panel, slots, buttons,
+   tabs, gauges, silhouettes, icons) is drawn in ui/screen-art.ts and handed over as --bc-art-* custom properties.
+   Sizes the layer fits: --gw × --gh (the GUI, its tabs included). Like vanilla, the recipe book never changes the scale:
+   it opens beside the panel where there is room and over it where there is not (.bc-book-over, set by ui/screens.ts). */
+@property --bc-u{syntax:'<length>';inherits:true;initial-value:2px}
 .bc-screen{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:56px 8px 8px;box-sizing:border-box;
-  background:rgba(16,16,20,.62);container-type:size;overflow:hidden;touch-action:none;overscroll-behavior:contain;
-  --s:clamp(24px,min(calc((100cqw - 40px)/9.3),calc((100cqh - 96px)/12.4)),42px);
-  --bc-panel:#c6c6c6;--bc-hi:#fff;--bc-lo:#555;--bc-slot:#8b8b8b;--bc-slot-lo:#373737;--bc-text:#3f3f3f;
-  font:13px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--bc-text);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  background:linear-gradient(rgba(16,16,16,.75),rgba(16,16,16,.82));container-type:size;overflow:hidden;touch-action:none;overscroll-behavior:contain;
+  --gw:176;--gh:166;
+  --bc-font:"Pixelify Sans","Silkscreen","Press Start 2P","VT323",ui-monospace,"Courier New",monospace;
+  font:13px/1.25 var(--bc-font);color:#404040;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .bc-screen[hidden]{display:none}
-.bc-wrap{position:relative;display:flex;align-items:flex-start;gap:8px;max-width:100%;max-height:100%}
-.bc-panel{position:relative;box-sizing:border-box;padding:6px 8px 8px;max-height:calc(100cqh - 64px);overflow:auto;background:var(--bc-panel);border-radius:3px;
-  box-shadow:0 0 0 2px #000,inset 2px 2px var(--bc-hi),inset -2px -2px var(--bc-lo);outline:none;scrollbar-width:thin}
-.bc-head{display:flex;align-items:center;gap:6px;min-height:24px;margin-bottom:2px}
-.bc-title{flex:1;margin:0;font-size:13px;font-weight:600;color:var(--bc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bc-tools{display:flex;gap:4px}
-.bc-tool{display:grid;place-items:center;width:26px;height:24px;padding:0;border:0;border-radius:2px;background:#a9a9a9;color:#2b2b2b;cursor:pointer;
-  box-shadow:inset 1px 1px #fff,inset -1px -1px #555}
-.bc-tool svg{width:15px;height:15px}
-.bc-tool[aria-pressed="true"]{background:#7fa86a;color:#fff;box-shadow:inset 1px 1px #375a2a,inset -1px -1px #c4e6b4}
-.bc-tool:focus-visible,.bc-tab:focus-visible,.bc-recipe:focus-visible,.bc-book-filter:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px #1d4fa3}
+/* Wide areas: tools in a column right of the panel, the recipe book left of it. --bc-fit is the fit of the screen's own
+   size; --bc-fit-common fits a height of at least 210, so every screen but the large chest gets the same whole-pixel
+   scale like vanilla's one GUI scale. Below 2 px a GUI pixel (phones) each screen uses all the room it has. */
+.bc-screen>*{
+  --bc-fit:min(calc((100cqw - 8px)/(var(--gw) + 24)),calc((100cqh - 8px)/var(--gh)));
+  --bc-fit-common:min(calc((100cqw - 8px)/(var(--gw) + 24)),calc((100cqh - 8px)/max(var(--gh),210)));
+  --bc-u:max(1px,var(--bc-fit))}
+/* Tall areas (phones held upright): tools in a row above the panel, the recipe book over it. */
+@container (orientation:portrait){
+  .bc-screen>*{
+    --bc-fit:min(calc((100cqw - 8px)/var(--gw)),calc((100cqh - 8px)/(var(--gh) + 20)));
+    --bc-fit-common:min(calc((100cqw - 8px)/var(--gw)),calc((100cqh - 8px)/(max(var(--gh),210) + 20)))}
+}
+@supports (width:round(down,3.5px,1px)){
+  .bc-screen>*{--bc-u:max(1px,round(down,var(--bc-fit-common),1px),min(var(--bc-fit),2px))}
+}
+.bc-sr{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ---- Panel ---------------------------------------------------------------------------------------------------- */
+.bc-wrap{position:relative;display:flex;align-items:flex-start;gap:calc(var(--bc-u) * 4)}
+.bc-panel{position:relative;z-index:0;flex:none;box-sizing:border-box;outline:none;margin-right:calc(var(--bc-u) * 20)}
+.bc-panel::before{content:"";position:absolute;inset:0;z-index:-1;box-sizing:border-box;pointer-events:none;
+  border:calc(var(--bc-u) * 4) solid transparent;border-image:var(--bc-art-panel) 4 fill / calc(var(--bc-u) * 4) stretch;image-rendering:pixelated}
+.bc-fixed{width:calc(var(--pw) * var(--bc-u));height:calc(var(--ph) * var(--bc-u))}
+.bc-fixed .bc-body{position:absolute;inset:0}
+.bc-at{position:absolute;left:calc(var(--x) * var(--bc-u));top:calc(var(--y) * var(--bc-u));margin:0}
+.bc-title{position:absolute;left:calc(var(--x) * var(--bc-u));top:calc(var(--y) * var(--bc-u));margin:0;line-height:0;font-weight:normal;pointer-events:none}
+.bc-label{line-height:0;font-weight:normal;pointer-events:none}
+/* Pixel-font text: the art behind transparent text (kept for assistive technology). */
+.bc-px{display:inline-block;vertical-align:top;width:calc(var(--tw) * var(--bc-u));height:calc(var(--bc-u) * 9);overflow:hidden;white-space:nowrap;
+  background:no-repeat 0 0/100% 100%;color:transparent;font-size:calc(var(--bc-u) * 7);line-height:calc(var(--bc-u) * 9);image-rendering:pixelated}
+.bc-px-css{width:auto;background:none;font:calc(var(--bc-u) * 8)/calc(var(--bc-u) * 9) var(--bc-font)}
+
+/* ---- Tool buttons (quick move, close; the recipe book button inside the panel) ------------------------------------ */
+.bc-tools{position:absolute;left:calc(100% + var(--bc-u) * 4);top:0;display:flex;flex-direction:column;gap:calc(var(--bc-u) * 2)}
+.bc-tool,.bc-wbtn{display:block;box-sizing:border-box;margin:0;padding:0;border:calc(var(--bc-u) * 2) solid transparent;border-radius:0;
+  border-image:var(--bc-art-button) 2 fill / calc(var(--bc-u) * 2) stretch;background:none;color:#fff;cursor:pointer;image-rendering:pixelated;touch-action:manipulation}
+.bc-tool{width:calc(var(--bc-u) * 16);height:calc(var(--bc-u) * 16)}
+@media (hover:hover){.bc-tool:hover,.bc-wbtn:hover{border-image-source:var(--bc-art-button-hover)}}
+.bc-tool[aria-pressed="true"],.bc-wbtn[aria-pressed="true"]{border-image-source:var(--bc-art-button-on)}
+.bc-glyph{display:block;width:calc(var(--bc-u) * 12);height:calc(var(--bc-u) * 12);background:no-repeat 0 0/100% 100%;pointer-events:none;image-rendering:pixelated}
+.bc-glyph[data-icon="close"]{background-image:var(--bc-art-icon-close)}
+.bc-glyph[data-icon="quick"]{background-image:var(--bc-art-icon-quick)}
+.bc-glyph[data-icon="book"]{background-image:var(--bc-art-icon-book)}
+.bc-book-btn{width:calc(var(--bc-u) * 20);height:calc(var(--bc-u) * 18)}
+.bc-book-btn .bc-glyph{margin:var(--bc-u) 0 0 calc(var(--bc-u) * 2)}
+.bc-tool:focus-visible,.bc-wbtn:focus-visible,.bc-tab:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px #1d4fa3}
 .bc-screen:not(.bc-screen-touch) .bc-quick{display:none}
-.bc-label{margin:4px 0 2px;font-size:12px;font-weight:600;color:var(--bc-text)}
-.bc-body{position:relative}
+@container (orientation:portrait){
+  .bc-panel{margin:calc(var(--bc-u) * 18) 0 0}
+  .bc-tools{left:auto;right:0;top:auto;bottom:calc(100% + var(--bc-u) * 2);flex-direction:row-reverse}
+}
 
 /* ---- Slots ---------------------------------------------------------------------------------------------------- */
-.bc-grid{display:grid;grid-template-columns:repeat(var(--cols),var(--s));grid-auto-rows:var(--s);width:max-content}
-.bc-hotbar-row{margin-top:4px}
-.bc-s{position:relative;display:block;box-sizing:border-box;width:var(--s);height:var(--s);margin:0;padding:calc(var(--s)*.1);border:0;border-radius:0;
-  background:var(--bc-slot) no-repeat center/62%;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi);cursor:pointer;color:#fff;touch-action:none}
-.bc-s::after{content:"";position:absolute;inset:1px;pointer-events:none}
-@media (hover:hover){.bc-s:hover::after{background:rgba(255,255,255,.42)}}
+.bc-grid{display:grid;grid-template-columns:repeat(var(--cols),calc(var(--bc-u) * 18));grid-auto-rows:calc(var(--bc-u) * 18);width:max-content}
+.bc-s{--p:0;position:relative;display:block;box-sizing:border-box;width:calc(var(--bc-u) * 18);height:calc(var(--bc-u) * 18);margin:0;padding:0;
+  border:var(--bc-u) solid transparent;border-image:var(--bc-art-slot) 1 / var(--bc-u) stretch;border-radius:0;
+  background:#8b8b8b no-repeat 0 0/100% 100%;background-clip:padding-box;color:#fff;cursor:pointer;touch-action:none;image-rendering:pixelated}
+.bc-s.bc-at{position:absolute}
+/* The large result slot: a 26×26 frame around a 16×16 item. */
+.bc-s-big{--p:4;width:calc(var(--bc-u) * 26);height:calc(var(--bc-u) * 26);padding:calc(var(--bc-u) * 4)}
+/* Vanilla lightens the hovered slot behind its item. */
+@media (hover:hover){.bc-s:hover{background-color:#c5c5c5}}
 .bc-s:focus{outline:none}
 .bc-s:focus-visible{z-index:1;outline:2px solid #fff;outline-offset:-2px;box-shadow:0 0 0 2px #1d4fa3}
-.bc-s:focus-visible::after{background:rgba(255,255,255,.3)}
-.bc-i{display:block;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
+.bc-s:focus-visible{background-color:#b6b6b6}
+.bc-i{display:block;width:calc(var(--bc-u) * 16);height:calc(var(--bc-u) * 16);image-rendering:pixelated;pointer-events:none}
 .bc-i[hidden]{display:none}
-.bc-n{position:absolute;right:2px;bottom:1px;font:700 calc(var(--s)*.34)/1 system-ui,sans-serif;color:#fff;text-shadow:1px 1px 0 #3f3f3f;pointer-events:none;font-variant-numeric:tabular-nums}
-.bc-d{position:absolute;left:calc(var(--s)*.12);right:calc(var(--s)*.12);bottom:calc(var(--s)*.1);height:max(2px,calc(var(--s)*.08));background:#000;pointer-events:none}
+/* Stack count: pixel digits, white with the dark shadow, their right and bottom edges on the slot frame's. */
+.bc-n{position:absolute;right:calc((var(--p) - 1) * var(--bc-u));bottom:calc((var(--p) - 1) * var(--bc-u));width:calc(var(--n,0) * 6 * var(--bc-u));
+  height:calc(var(--bc-u) * 8);background:no-repeat 0 0/100% 100%;color:transparent;font-size:0;pointer-events:none;image-rendering:pixelated}
+/* Durability bar: 13×2 black under a 1 px coloured bar (green to red), 2 px in from the item's left, 13 px down. */
+.bc-d{position:absolute;left:calc((var(--p) + 2) * var(--bc-u));top:calc((var(--p) + 13) * var(--bc-u));width:calc(var(--bc-u) * 13);height:calc(var(--bc-u) * 2);
+  background:#000;pointer-events:none}
 .bc-d[hidden]{display:none}
-.bc-d i{display:block;height:100%;width:100%}
-.bc-s.is-drag::after{background:rgba(255,255,255,.35)}
+.bc-d i{display:block;height:50%;width:100%}
+.bc-s.is-drag{background-color:#c5c5c5}
 .bc-s.is-carried .bc-i{opacity:.35}
-.bc-s.is-ghost .bc-i{opacity:.4;filter:grayscale(.3)}
-.bc-s.is-ghost::after{background:rgba(160,40,40,.25)}
-.bc-s-big{width:calc(var(--s)*1.4);height:calc(var(--s)*1.4)}
-.bc-s-big .bc-n{font-size:calc(var(--s)*.4)}
-/* Empty armour and offhand slots show an outline of what fits there. */
-.bc-s[data-empty]:not(.is-filled){background-size:68%}
-.bc-s[data-empty="head"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 4h10v7h-3V7H6v4H3z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
-.bc-s[data-empty="chest"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 3h4l2 2 2-2h4v5h-2v6H4V8H2z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
-.bc-s[data-empty="legs"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 2h10v12H9V7H7v7H3z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
-.bc-s[data-empty="feet"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 6h4v6H2zM10 6h4v6h-4z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
-.bc-s[data-empty="offhand"]:not(.is-filled){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 2h10v6c0 3-2.5 5-5 6-2.5-1-5-3-5-6z' fill='none' stroke='%23373737' stroke-width='1.2' opacity='.55'/%3E%3C/svg%3E")}
+.bc-s.is-ghost .bc-i{opacity:.45}
+.bc-s.is-ghost{background-color:#a46a6a}
+/* Empty armour and offhand slots show a pale outline of what fits there. */
+.bc-s[data-empty]:not(.is-filled){background-size:calc(var(--bc-u) * 16) calc(var(--bc-u) * 16)}
+.bc-s[data-empty="head"]:not(.is-filled){background-image:var(--bc-art-empty-head)}
+.bc-s[data-empty="chest"]:not(.is-filled){background-image:var(--bc-art-empty-chest)}
+.bc-s[data-empty="legs"]:not(.is-filled){background-image:var(--bc-art-empty-legs)}
+.bc-s[data-empty="feet"]:not(.is-filled){background-image:var(--bc-art-empty-feet)}
+.bc-s[data-empty="offhand"]:not(.is-filled){background-image:var(--bc-art-empty-offhand)}
 
-/* ---- Survival inventory, crafting table, furnace ------------------------------------------------------------- */
-.bc-inv-top{display:flex;align-items:stretch;gap:calc(var(--s)*.12);height:calc(var(--s)*4);margin:2px 0 4px}
-.bc-figure{flex:0 0 calc(var(--s)*2.3);display:grid;place-items:center;background:#000;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi);overflow:hidden}
-.bc-figure svg{height:88%;width:auto}
-.bc-offhand-slot{align-self:flex-end}
-.bc-craft{margin-left:auto;display:flex;flex-direction:column;justify-content:center}
-.bc-craft .bc-label{margin-top:0}
-.bc-craft-row{display:flex;align-items:center;gap:calc(var(--s)*.15)}
-.bc-arrow{position:relative;display:block;flex:none;width:calc(var(--s)*.9);height:calc(var(--s)*.5);background:#8b8b8b;
-  clip-path:polygon(0 35%,62% 35%,62% 0,100% 50%,62% 100%,62% 65%,0 65%)}
-.bc-arrow i{position:absolute;left:0;top:0;bottom:0;width:0;background:#fff;transition:width .1s linear}
+/* ---- Survival inventory, crafting table, furnace -------------------------------------------------------------- */
+/* The black player preview window with a sunken edge; the figure stands at its bottom. */
+.bc-figure{box-sizing:border-box;display:flex;align-items:flex-end;justify-content:center;width:calc(var(--w) * var(--bc-u));height:calc(var(--h) * var(--bc-u));
+  padding-bottom:calc(var(--bc-u) * 3);background:#000 padding-box;border:var(--bc-u) solid transparent;border-image:var(--bc-art-slot) 1 / var(--bc-u) stretch;overflow:hidden}
+.bc-figure svg{display:block;height:calc(var(--fh) * var(--bc-u));width:auto}
+.bc-arrow{display:block;width:calc(var(--bc-u) * 22);height:calc(var(--bc-u) * 15);background:var(--bc-art-arrow) no-repeat 0 0/100% 100%;image-rendering:pixelated}
+.bc-arrow-small{width:calc(var(--bc-u) * 16);height:calc(var(--bc-u) * 13);background-image:var(--bc-art-arrow-small)}
+.bc-arrow i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--bc-art-arrow-on) no-repeat 0 0/calc(var(--bc-u) * 22) 100%;image-rendering:pixelated}
 .bc-arrow:not(.bc-progress) i{display:none}
-.bc-table{display:flex;flex-direction:column;align-items:center;margin-bottom:4px}
-.bc-table .bc-craft-row{gap:calc(var(--s)*.4)}
-.bc-furnace{display:flex;align-items:center;justify-content:center;gap:calc(var(--s)*.5);margin:4px 0 6px}
-.bc-furnace-in{display:flex;flex-direction:column;align-items:center;gap:2px}
-.bc-flame{position:relative;display:block;width:calc(var(--s)*.55);height:calc(var(--s)*.6);background:#8b8b8b;
-  clip-path:polygon(50% 0,80% 35%,100% 70%,85% 100%,15% 100%,0 70%,20% 35%)}
-.bc-flame i{position:absolute;left:0;right:0;bottom:0;height:0;
-  background:linear-gradient(0deg,#c3290a,#f2711c 45%,#ffe36b) bottom/100% calc(var(--s)*.6) no-repeat}
-.bc-furnace .bc-arrow{width:calc(var(--s)*1.1)}
-
-/* ---- Chests -------------------------------------------------------------------------------------------------- */
-.bc-container{margin-bottom:2px}
+.bc-flame{display:block;width:calc(var(--bc-u) * 14);height:calc(var(--bc-u) * 14);background:var(--bc-art-flame) no-repeat 0 0/100% 100%;image-rendering:pixelated}
+.bc-flame i{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--bc-art-flame-on) no-repeat 0 100%/100% calc(var(--bc-u) * 14);image-rendering:pixelated}
 
 /* ---- Creative -------------------------------------------------------------------------------------------------- */
-.bc-tabs{display:flex;gap:2px;margin:0 0 4px}
-.bc-tabs-bottom{margin:4px 0 0}
-.bc-tab{display:grid;place-items:center;width:calc(var(--s)*1.4);height:calc(var(--s)*1.05);padding:0;border:0;border-radius:3px 3px 0 0;cursor:pointer;
-  background:#a9a9a9;box-shadow:inset 1px 1px #e8e8e8,inset -1px -1px #555}
-.bc-tabs-bottom .bc-tab{border-radius:0 0 3px 3px}
-.bc-tab[aria-selected="true"]{background:var(--bc-panel);box-shadow:inset 1px 1px #fff,inset -1px -1px #6b6b6b,0 0 0 1px #000}
-.bc-tab img{width:62%;height:auto;image-rendering:pixelated;pointer-events:none}
-.bc-search{display:block;margin:0 0 4px}
-.bc-search-input{box-sizing:border-box;width:100%;height:24px;padding:2px 6px;border:0;border-radius:0;background:#000;color:#fff;font:13px/1 system-ui,sans-serif;
-  box-shadow:inset 0 0 0 1px #a0a0a0;-webkit-user-select:text;user-select:text;touch-action:manipulation}
-.bc-search-input:focus{outline:2px solid #fff;outline-offset:-2px}
-.bc-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-.bc-catalog{max-height:calc(var(--s)*5);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;scrollbar-width:thin}
-.bc-catalog .bc-s{touch-action:pan-y}
-.bc-empty{margin:8px 4px;color:#555}
-.bc-hotbar-wrap{display:flex;align-items:flex-end;gap:calc(var(--s)*.2)}
-.bc-s-destroy{background:#8b8b8b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 4l8 8M12 4l-8 8' stroke='%23a01818' stroke-width='2'/%3E%3C/svg%3E") no-repeat center/55%}
-.bc-creative-inv{height:calc(var(--s)*4)}
-.bc-panel-creative .bc-hotbar-wrap .bc-hotbar-row{margin-top:4px}
+.bc-panel-creative{margin-top:calc(var(--bc-u) * 28);margin-bottom:calc(var(--bc-u) * 28)}
+.bc-tabs{position:absolute;left:0;top:0}
+.bc-tab{display:block;box-sizing:border-box;width:calc(var(--bc-u) * 26);height:calc(var(--bc-u) * 32);margin:0;padding:0;border:0;border-radius:0;cursor:pointer;
+  z-index:-2;background:var(--bc-art-tab-top) no-repeat 0 0/100% 100%;image-rendering:pixelated}
+.bc-tab[data-row="bottom"]{background-image:var(--bc-art-tab-bottom)}
+.bc-tab[aria-selected="true"]{z-index:1;background-image:var(--bc-art-tab-top-on)}
+.bc-tab[aria-selected="true"][data-edge="left"]{background-image:var(--bc-art-tab-top-on-left)}
+.bc-tab[aria-selected="true"][data-edge="right"]{background-image:var(--bc-art-tab-top-on-right)}
+.bc-tab[aria-selected="true"][data-row="bottom"]{background-image:var(--bc-art-tab-bottom-on)}
+.bc-tab[aria-selected="true"][data-row="bottom"][data-edge="left"]{background-image:var(--bc-art-tab-bottom-on-left)}
+.bc-tab[aria-selected="true"][data-row="bottom"][data-edge="right"]{background-image:var(--bc-art-tab-bottom-on-right)}
+.bc-tab img{position:absolute;left:calc(var(--bc-u) * 5);top:calc(var(--bc-u) * 9);width:calc(var(--bc-u) * 16);height:calc(var(--bc-u) * 16);image-rendering:pixelated;pointer-events:none}
+.bc-tab[data-row="bottom"] img{top:calc(var(--bc-u) * 7)}
+@media (hover:hover){.bc-tab:not([aria-selected="true"]):hover{filter:brightness(1.08)}}
+.bc-search{box-sizing:border-box;display:block;width:calc(var(--bc-u) * 89);height:calc(var(--bc-u) * 12);background:#000 padding-box;border:var(--bc-u) solid #a0a0a0}
+/* The arcade styles input[type=search] globally: a tighter selector keeps the vanilla field. The input edits with its
+   own text and caret transparent (a monospace about 6 GUI px a character, so clicks and drags land near the drawn
+   characters); .bc-search-view draws the query in the pixel font (searchFieldHtml in screen-creative.ts). */
+.bc-screen input.bc-search-input{box-sizing:border-box;display:block;width:100%;height:100%;margin:0;padding:0 0 0 var(--bc-u);border:0;border-radius:0;background:transparent;
+  color:transparent;caret-color:transparent;font:calc(var(--bc-u) * 10)/1 monospace;-webkit-user-select:text;user-select:text;touch-action:manipulation;
+  -webkit-appearance:none;appearance:none}
+.bc-search:not(.is-native) .bc-search-input::selection{background:transparent;color:transparent}
+.bc-search-input::-webkit-search-cancel-button{display:none}
+.bc-screen input.bc-search-input:focus,.bc-screen input.bc-search-input:focus-visible{outline:none}
+.bc-search:focus-within{border-color:#fff}
+/* Text the pixel font cannot draw: the field shows its own text. */
+.bc-screen .bc-search.is-native input.bc-search-input{padding:0 calc(var(--bc-u) * 2);color:#fff;caret-color:#fff;font:calc(var(--bc-u) * 8)/1 var(--bc-font)}
+.bc-search-view{position:absolute;left:0;top:0;width:calc(var(--bc-u) * (1 + 80));height:100%;overflow:hidden;pointer-events:none}
+.bc-search.is-native .bc-search-view{display:none}
+.bc-search-text{position:absolute;left:var(--bc-u);top:var(--bc-u);display:flex;align-items:flex-start;white-space:nowrap;
+  transform:translateX(calc(var(--sx,0) * var(--bc-u)))}
+/* A selection: a white box 1 px above and below the line with the selected text in blue. */
+.bc-search-sel{display:block;box-sizing:border-box;height:calc(var(--bc-u) * 11);margin-top:calc(var(--bc-u) * -1);padding-top:var(--bc-u);background:#fff}
+/* The cursor: a thin light bar inside the text, an underscore with its shadow at the end; it blinks every 300 ms. */
+.bc-search-caret{position:absolute;left:calc(var(--cx) * var(--bc-u));top:0;width:var(--bc-u);height:calc(var(--bc-u) * 11);background:#d0d0d0;
+  animation:bc-caret-blink .6s step-end infinite}
+.bc-search-caret.is-end{left:calc((var(--cx) + 1) * var(--bc-u));top:calc(var(--bc-u) * 8);width:calc(var(--bc-u) * 5);height:var(--bc-u);background:#fff;
+  box-shadow:var(--bc-u) var(--bc-u) 0 #3f3f3f}
+@keyframes bc-caret-blink{50%{visibility:hidden}}
+.bc-reduced .bc-search-caret{animation:none}
+@media (prefers-reduced-motion:reduce){.bc-search-caret{animation:none}}
+/* The picker scrolls a row at a time; vanilla's scrollbar replaces the native one. Empty slot frames are tiled under the
+   items (scrolling with them), so all 45 slots and the rest of a partly filled last row show like vanilla's picker, for a
+   short tab and for a search with few results or none. */
+.bc-catalog{width:calc(var(--bc-u) * 162);height:calc(var(--bc-u) * 90);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;
+  scrollbar-width:none;scroll-snap-type:y mandatory;
+  background:var(--bc-art-slot-tile) 0 0/calc(var(--bc-u) * 18) calc(var(--bc-u) * 18) repeat local;image-rendering:pixelated}
+.bc-catalog::-webkit-scrollbar{display:none}
+.bc-catalog .bc-s{touch-action:pan-y;scroll-snap-align:start}
+.bc-scroll{box-sizing:border-box;width:calc(var(--bc-u) * 14);height:calc(var(--bc-u) * 114);background:#8b8b8b padding-box;
+  border:var(--bc-u) solid transparent;border-image:var(--bc-art-slot) 1 / var(--bc-u) stretch;cursor:pointer;touch-action:none;image-rendering:pixelated}
+.bc-knob{position:absolute;left:0;top:calc(var(--k,0) * var(--bc-u));width:calc(var(--bc-u) * 12);height:calc(var(--bc-u) * 15);
+  background:var(--bc-art-knob) no-repeat 0 0/100% 100%;image-rendering:pixelated;pointer-events:none}
+.bc-knob.is-off{background-image:var(--bc-art-knob-off)}
+.bc-s-destroy:not(.is-filled){background-image:var(--bc-art-destroy);background-size:calc(var(--bc-u) * 16) calc(var(--bc-u) * 16)}
+@container (orientation:portrait){
+  .bc-panel-creative{margin-top:calc(var(--bc-u) * 46)}
+  .bc-panel-creative .bc-tools{bottom:calc(100% + var(--bc-u) * 30)}
+}
 
 /* ---- Recipe book --------------------------------------------------------------------------------------------- */
-.bc-book{box-sizing:border-box;width:calc(var(--s)*5 + 20px);max-height:calc(100cqh - 64px);display:flex;flex-direction:column;padding:6px 8px 8px;background:var(--bc-panel);
-  border-radius:3px;box-shadow:0 0 0 2px #000,inset 2px 2px var(--bc-hi),inset -2px -2px var(--bc-lo)}
+.bc-book{position:relative;z-index:0;box-sizing:border-box;flex:none;display:flex;flex-direction:column;gap:calc(var(--bc-u) * 3);
+  width:calc(var(--bc-u) * 147);height:calc(var(--ph,166) * var(--bc-u));padding:calc(var(--bc-u) * 6) calc(var(--bc-u) * 7) calc(var(--bc-u) * 7)}
+.bc-book::before{content:"";position:absolute;inset:0;z-index:-1;box-sizing:border-box;pointer-events:none;
+  border:calc(var(--bc-u) * 4) solid transparent;border-image:var(--bc-art-panel) 4 fill / calc(var(--bc-u) * 4) stretch;image-rendering:pixelated}
 .bc-book[hidden]{display:none}
-.bc-book-head{display:flex;align-items:center;gap:4px}
-.bc-book-head h3{flex:1;margin:0;font-size:12px;font-weight:600}
-.bc-book-filter{padding:2px 6px;border:0;border-radius:2px;background:#a9a9a9;color:#222;font:600 11px/1.4 system-ui,sans-serif;cursor:pointer;box-shadow:inset 1px 1px #fff,inset -1px -1px #555}
-.bc-book-filter[aria-pressed="true"]{background:#7fa86a;color:#fff}
-.bc-book-hint{margin:4px 0;font-size:11px;color:#555}
-.bc-book-list{display:grid;grid-template-columns:repeat(5,var(--s));grid-auto-rows:var(--s);overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain;scrollbar-width:thin}
-.bc-book-list .bc-empty{grid-column:1/-1}
-.bc-recipe{position:relative;box-sizing:border-box;width:var(--s);height:var(--s);padding:calc(var(--s)*.1);border:0;background:#9a6a6a;cursor:pointer;
-  box-shadow:inset 1px 1px #5a3030,inset -1px -1px #d6b0b0;touch-action:pan-y}
-.bc-recipe.is-craftable{background:#8b8b8b;box-shadow:inset 1px 1px var(--bc-slot-lo),inset -1px -1px var(--bc-hi)}
-.bc-recipe:not(.is-craftable) img{opacity:.55}
-.bc-recipe img{display:block;width:100%;height:100%;image-rendering:pixelated;pointer-events:none}
+.bc-book-head{display:flex;align-items:center;gap:calc(var(--bc-u) * 4);min-height:calc(var(--bc-u) * 9)}
+.bc-book-title{flex:1;margin:0;line-height:0;font-weight:normal}
+.bc-book-filter{align-self:stretch;height:calc(var(--bc-u) * 16);padding:0 calc(var(--bc-u) * 2);line-height:0}
+.bc-book-list{flex:1;min-height:0;display:grid;grid-template-columns:repeat(5,calc(var(--bc-u) * 24));grid-auto-rows:calc(var(--bc-u) * 24);justify-content:center;
+  align-content:start;overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#8b8b8b #c6c6c6}
+.bc-book-list .bc-empty{grid-column:1/-1;margin:calc(var(--bc-u) * 4) 0 0;line-height:0}
+/* Recipe buttons: raised grey when the inventory holds the ingredients, red when it does not. */
+.bc-recipe{--p:3;position:relative;box-sizing:border-box;width:calc(var(--bc-u) * 24);height:calc(var(--bc-u) * 24);margin:0;padding:calc(var(--bc-u) * 3);border:var(--bc-u) solid;
+  border-color:#e0a8a8 #5a2626 #5a2626 #e0a8a8;border-radius:0;background:#b05656;cursor:pointer;touch-action:pan-y}
+.bc-recipe.is-craftable{border-color:#fff #555 #555 #fff;background:#a9a9a9}
+.bc-recipe:not(.is-craftable) img{opacity:.75}
+.bc-recipe img{display:block;width:calc(var(--bc-u) * 16);height:calc(var(--bc-u) * 16);image-rendering:pixelated;pointer-events:none}
 @media (hover:hover){.bc-recipe:hover{filter:brightness(1.15)}}
+/* Recipes sit edge to edge in a scrolling list: an inset ring that neighbours and the list edge cannot cover. */
+.bc-recipe:focus-visible{z-index:1;outline:2px solid #fff;outline-offset:-2px;box-shadow:inset 0 0 0 4px #1d4fa3}
 .bc-book-close{display:none}
-@container (max-width:600px){
-  .bc-book{position:absolute;inset:0;z-index:2;width:auto}
-  .bc-book-close{display:grid}
+/* Too narrow for the book beside the panel (vanilla's widthTooNarrow): it covers the panel instead, with its own close. */
+.bc-book-over .bc-book{position:absolute;left:0;top:0;z-index:2;width:calc(var(--pw,176) * var(--bc-u))}
+.bc-book-over .bc-book-close{display:block}
+@container (orientation:portrait){
+  .bc-book{position:absolute;left:0;top:calc(var(--bc-u) * 18);z-index:2;width:calc(var(--pw,176) * var(--bc-u))}
+  .bc-book-close{display:block}
 }
 
 /* ---- Advancements ---------------------------------------------------------------------------------------------- */
-.bc-panel-advancements{width:min(calc(100cqw - 16px),720px);height:min(calc(100cqh - 64px),560px);display:flex;flex-direction:column}
+.bc-panel-advancements{width:min(calc(100cqw - 16px - var(--bc-u) * 20),720px);height:min(calc(100cqh - 8px),560px);display:flex;flex-direction:column;
+  padding:calc(var(--bc-u) * 18) calc(var(--bc-u) * 7) calc(var(--bc-u) * 7);font:13px/1.25 system-ui,-apple-system,"Segoe UI",sans-serif}
 .bc-panel-advancements .bc-body{flex:1;min-height:0;display:flex;flex-direction:column}
 .bc-adv-body{flex:1;min-height:0;overflow:auto;touch-action:pan-x pan-y;-webkit-user-select:text;user-select:text}
+@container (orientation:portrait){
+  .bc-panel-advancements{width:calc(100cqw - 8px);height:min(calc(100cqh - 8px - var(--bc-u) * 18),560px)}
+}
 
 /* ---- Carried stack and tooltips ------------------------------------------------------------------------------ */
-.bc-cursor{position:absolute;left:0;top:0;z-index:3;width:var(--s);height:var(--s);pointer-events:none;will-change:transform}
+.bc-cursor{--p:0;position:absolute;left:0;top:0;z-index:3;width:calc(var(--bc-u) * 16);height:calc(var(--bc-u) * 16);pointer-events:none;will-change:transform}
 .bc-cursor[hidden]{display:none}
-.bc-cursor img{display:block;width:80%;height:80%;margin:10%;image-rendering:pixelated}
-.bc-cursor .bc-n{right:0;bottom:0}
-.bc-tip{position:absolute;left:0;top:0;z-index:4;max-width:min(240px,70cqw);padding:4px 6px;border-radius:2px;background:rgba(16,0,16,.94);
-  box-shadow:inset 0 0 0 1px #2a0b5e,inset 0 0 0 2px #5000ff40;color:#aaa;font-size:12px;line-height:1.35;pointer-events:none}
+.bc-cursor img{display:block;width:100%;height:100%;image-rendering:pixelated}
+/* Vanilla tooltip: a near-black purple panel with cut corners and a purple border fading down, 4 px around the text;
+   the name stands 2 px apart from the lines under it. */
+.bc-tip{position:absolute;left:0;top:0;z-index:4;box-sizing:border-box;padding:calc(var(--bc-u) * 4) calc(var(--bc-u) * 4) calc(var(--bc-u) * 2);
+  background:rgba(16,0,16,.94);pointer-events:none;white-space:nowrap;
+  clip-path:polygon(var(--bc-u) 0,calc(100% - var(--bc-u)) 0,calc(100% - var(--bc-u)) var(--bc-u),100% var(--bc-u),100% calc(100% - var(--bc-u)),
+    calc(100% - var(--bc-u)) calc(100% - var(--bc-u)),calc(100% - var(--bc-u)) 100%,var(--bc-u) 100%,var(--bc-u) calc(100% - var(--bc-u)),
+    0 calc(100% - var(--bc-u)),0 var(--bc-u),var(--bc-u) var(--bc-u))}
+.bc-tip::before{content:"";position:absolute;inset:var(--bc-u);box-sizing:border-box;border:var(--bc-u) solid transparent;
+  border-image:linear-gradient(rgba(80,0,255,.31),rgba(40,0,127,.31)) 1;pointer-events:none}
 .bc-tip[hidden]{display:none}
-.bc-tip-name{color:#fff;font-weight:600}
-.bc-tip-plus{color:#6b6bff}
-.bc-tip-stat{color:#2fbf2f}
-.bc-tip-info{color:#aaa}
+.bc-tip-line{display:block;height:calc(var(--bc-u) * 10);line-height:0}
+.bc-tip-name{margin-bottom:calc(var(--bc-u) * 2)}
 
 /* ---- Action bar ------------------------------------------------------------------------------------------------ */
 /* The HUD (hud.css) places and draws the toast as the vanilla action bar (position, size, pixel-font art, and hiding it
@@ -144,11 +235,5 @@
 .bc-toast{position:absolute;opacity:0;transition:opacity .25s;pointer-events:none}
 .bc-toast.show{opacity:1}
 .bc-toast:empty{display:none}
-
-/* ---- Small screens ------------------------------------------------------------------------------------------- */
-@container (max-width:360px){
-  .bc-panel{padding:4px 5px 6px}
-  .bc-tool{width:24px;height:22px}
-}
-.bc-reduced .bc-arrow i,.bc-toast.bc-reduced{transition:none}
-@media (prefers-reduced-motion:reduce){.bc-arrow i,.bc-toast{transition:none}}
+.bc-toast.bc-reduced{transition:none}
+@media (prefers-reduced-motion:reduce){.bc-toast{transition:none}}

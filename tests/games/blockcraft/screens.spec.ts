@@ -128,7 +128,10 @@ test('smelts raw iron in a furnace and pays its experience when the output is ta
   await slot(page,'Inventory slot 1').click({modifiers:['Shift']});
   await slot(page,'Inventory slot 2').click({modifiers:['Shift']});
   await expect(slot(page,'Furnace input')).toHaveAttribute('aria-label','Furnace input: Raw Iron, 2');
-  await expect(slot(page,'Furnace fuel')).toHaveAttribute('aria-label','Furnace fuel: Coal');
+  // The coal goes to the fuel slot, and a working furnace burns it at once (it lights as soon as it has input and fuel),
+  // so the slot may already be empty again.
+  await expect.poll(()=>engine(page,(g,a)=>{const p=a as Pos,f=g.blockEntities.get(p.x,p.y,p.z);
+    return g.inventory.count('coal')===0&&(f.fuel?.id==='coal'||f.burn>0);},at)).toBe(true);
   const furnace=(field:string)=>engine(page,(g,a)=>{const [p,f]=a as [Pos,string];return g.blockEntities.get(p.x,p.y,p.z)[f];},[at,field]);
   expect(await furnace('input')).toEqual({id:'raw_iron',count:2});
   if(await engine(page,g=>typeof g.blockEntities.tick==='function')){
@@ -139,8 +142,9 @@ test('smelts raw iron in a furnace and pays its experience when the output is ta
     // Before the smelting area is merged its block entities do not tick: finish the job as a furnace would.
     await engine(page,(g,a)=>{const p=a as Pos;Object.assign(g.blockEntities.get(p.x,p.y,p.z),
       {input:null,fuel:null,output:{id:'iron_ingot',count:2},burn:60,burnTotal:80,cook:4,xp:1.4});},at);
-    await expect(page.locator('.bc-progress i')).toHaveAttribute('style',/width: 40/);
-    await expect(page.locator('.bc-flame i')).toHaveAttribute('style',/height: 75/);
+    // Whole GUI pixels like vanilla: 9 of the arrow's 22 columns, 11 of the flame's 14 rows (ceil(0.75 × 13) + 1).
+    await expect(page.locator('.bc-progress i')).toHaveAttribute('style',/width: 40\.91%/);
+    await expect(page.locator('.bc-flame i')).toHaveAttribute('style',/height: 78\.57%/);
   }
   await expect(slot(page,'Furnace output')).toHaveAttribute('aria-label','Furnace output: Iron Ingot, 2');
   await slot(page,'Furnace output').click({modifiers:['Shift']});
@@ -255,11 +259,17 @@ test('creative picker and the survival inventory fit a 320×568 phone',async({pa
   test.setTimeout(150000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await boot(page,{width:320,height:568});
+  // The whole GUI (panel, creative tabs, tool buttons) sits inside the phone, below the arcade toolbar, and every slot
+  // is a usable touch target.
   const fits=async()=>{
-    const box=(await page.locator('.bc-panel').boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
-    expect(box.x+box.width).toBeLessThanOrEqual(320);expect(box.y+box.height).toBeLessThanOrEqual(568);
-    expect(await page.locator('.bc-panel').evaluate(e=>e.scrollWidth<=e.clientWidth&&e.scrollHeight<=e.clientHeight+1)).toBe(true);
+    const box=await page.evaluate(()=>{
+      const all=[...document.querySelectorAll('.bc-panel,.bc-panel .bc-tab,.bc-panel .bc-tools')].map(e=>e.getBoundingClientRect());
+      const slot=document.querySelector('.bc-panel .bc-s')!.getBoundingClientRect();
+      return{left:Math.min(...all.map(r=>r.left)),top:Math.min(...all.map(r=>r.top)),right:Math.max(...all.map(r=>r.right)),bottom:Math.max(...all.map(r=>r.bottom)),slot:slot.width};
+    });
+    expect(box.left).toBeGreaterThanOrEqual(0);expect(box.top).toBeGreaterThanOrEqual(56);
+    expect(box.right).toBeLessThanOrEqual(320);expect(box.bottom).toBeLessThanOrEqual(568);
+    expect(box.slot).toBeGreaterThanOrEqual(24);
   };
   await engine(page,g=>g.ui.open('inventory'));
   await expect(page.locator('.bc-panel')).toHaveAttribute('aria-label','Inventory');

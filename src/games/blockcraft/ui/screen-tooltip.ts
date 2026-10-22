@@ -36,6 +36,14 @@ export function tooltipLines(stack:ItemStack):string[]{
   const d=durabilityOf(stack);if(d)lines.push(`Durability: ${d.left} / ${d.max}`);
   return lines;
 }
+/** Vanilla tooltip text colours: the item name white, armour modifiers (" +6 Armor") blue, attack modifiers
+ *  (" 7 Attack Damage") dark green, the rest grey. `cls` names the kind for the stylesheet. */
+export function tooltipColour(line:string,index:number):{colour:string;cls:string}{
+  if(index===0)return{colour:'#ffffff',cls:'bc-tip-name'};
+  if(line.startsWith(' +'))return{colour:'#5555ff',cls:'bc-tip-plus'};
+  if(line.startsWith(' '))return{colour:'#00aa00',cls:'bc-tip-stat'};
+  return{colour:'#aaaaaa',cls:'bc-tip-info'};
+}
 /** Accessible name of a slot and what it holds, e.g. "Hotbar slot 1: Oak Planks, 64". */
 export function slotLabel(position:string,stack:ItemStack|null):string{
   if(!stack)return`${position}: empty`;
