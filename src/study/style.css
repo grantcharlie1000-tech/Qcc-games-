@@ -21,3 +21,8 @@
 .study-wordmark{display:flex;align-items:center;gap:10px}.study-wordmark .mauri-mark{width:28px;height:28px;flex-shrink:0}.study-wordmark span{margin:0;color:inherit;font-weight:750}
 
 .study-games-sentence a{display:inline-block;min-height:44px;line-height:44px;text-decoration:underline;text-underline-offset:3px}.study-chapter-footer .study-topic-control{margin:24px 0}.study-chapter-footer .study-topic-control select{max-width:100%}
+
+/* Preferences float above the page without reserving a layout section. */
+#study-view .study-cookie-panel{position:fixed;z-index:30;left:16px;bottom:16px;width:360px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:auto;margin:0;box-sizing:border-box;box-shadow:0 12px 45px #0009}
+@media(min-width:1600px){.study-choice-pending .study-reader-layout{padding-left:40px;grid-template-columns:140px minmax(0,920px) 140px}}
+.study-games-sentence a{display:inline;min-height:0;line-height:inherit}
