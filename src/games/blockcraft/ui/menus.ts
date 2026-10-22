@@ -1,6 +1,7 @@
 // Overlay menus owned by the HUD (layer z-index 30): the start menu, the game menu (pause), the death screen, the
-// lost-graphics screen and the new-world confirmation for the shell's Restart. World options go through game.updateSettings; the Advancements button opens the
-// ui's advancements screen; the controls panel lists game.input.bindings(). Copy differs for touch.
+// lost-graphics screen and the new-world confirmation for the shell's Restart. World options go through
+// game.updateSettings; the Advancements button opens the ui's advancements screen; the controls panel lists
+// game.input.bindings(). Copy differs for touch.
 import type {Game,GameSettings} from '../engine/contracts';
 import {VIEW_DISTANCES} from '../engine/contracts';
 import {controlRows,deathScore,nextDifficulty,optionLabel,sensitivityFromSlider,sensitivityToSlider,OPTION_HINTS,TOUCH_ROWS,type OptionKey} from './menus-options';
@@ -113,7 +114,8 @@ export function createMenus(game:Game):Menus{
   }
   function show(next:MenuKind|null){
     clearTimeout(respawnTimer);stopAdvancementsWatch();
-    if(next==='restart'&&kind!=='restart')beforeRestart=el.hidden?null:kind;
+    // (While the advancements screen shows over a menu, the menu is hidden but still its kind.)
+    if(next==='restart'&&kind!=='restart')beforeRestart=kind;
     kind=next;el.hidden=!next;el.dataset.kind=next??'';
     if(!next)return;
     const focusInside=!document.activeElement||document.activeElement===document.body||game.root.contains(document.activeElement);

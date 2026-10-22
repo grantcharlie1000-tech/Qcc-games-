@@ -281,7 +281,7 @@ export class Engine implements Game{
     if(this.disposed||this.state==='lost')return;
     this.playOnShellResume=false;
     if(this.state==='playing'||this.state==='screen')this.toPaused();
-    this.input.clear();this.input.release();this.hud.showMenu('restart');
+    this.ui.close();this.input.clear();this.input.release();this.hud.showMenu('restart');
   }
   newWorld(){
     if(this.disposed||this.state==='lost')return;
