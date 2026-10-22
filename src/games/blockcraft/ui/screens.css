@@ -11,17 +11,21 @@
   --bc-font:"Pixelify Sans","Silkscreen","Press Start 2P","VT323",ui-monospace,"Courier New",monospace;
   font:13px/1.25 var(--bc-font);color:#404040;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .bc-screen[hidden]{display:none}
-/* Wide areas: tools in a column right of the panel, the recipe book left of it. Every GUI screen fits a height of at
-   least 210 (all but the large chest share one size). */
+/* Wide areas: tools in a column right of the panel, the recipe book left of it. --bc-fit is the fit of the screen's own
+   size; --bc-fit-common fits a height of at least 210, so every screen but the large chest gets the same whole-pixel
+   scale like vanilla's one GUI scale. Below 2 px a GUI pixel (phones) each screen uses all the room it has. */
 .bc-screen>*{
-  --bc-fit:min(calc((100cqw - 8px)/(var(--gw) + var(--gb) + 24)),calc((100cqh - 8px)/max(var(--gh),210)));
+  --bc-fit:min(calc((100cqw - 8px)/(var(--gw) + var(--gb) + 24)),calc((100cqh - 8px)/var(--gh)));
+  --bc-fit-common:min(calc((100cqw - 8px)/(var(--gw) + var(--gb) + 24)),calc((100cqh - 8px)/max(var(--gh),210)));
   --bc-u:max(1px,var(--bc-fit))}
 /* Tall areas (phones held upright): tools in a row above the panel, the recipe book over it. */
 @container (orientation:portrait){
-  .bc-screen>*{--bc-fit:min(calc((100cqw - 8px)/var(--gw)),calc((100cqh - 8px)/(max(var(--gh),210) + 20)))}
+  .bc-screen>*{
+    --bc-fit:min(calc((100cqw - 8px)/var(--gw)),calc((100cqh - 8px)/(var(--gh) + 20)));
+    --bc-fit-common:min(calc((100cqw - 8px)/var(--gw)),calc((100cqh - 8px)/(max(var(--gh),210) + 20)))}
 }
 @supports (width:round(down,3.5px,1px)){
-  .bc-screen>*{--bc-u:max(1px,round(down,var(--bc-fit),1px),min(var(--bc-fit),2px))}
+  .bc-screen>*{--bc-u:max(1px,round(down,var(--bc-fit-common),1px),min(var(--bc-fit),2px))}
 }
 .bc-sr{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
@@ -123,11 +127,12 @@
 .bc-tab[data-row="bottom"] img{top:calc(var(--bc-u) * 7)}
 @media (hover:hover){.bc-tab:not([aria-selected="true"]):hover{filter:brightness(1.08)}}
 .bc-search{box-sizing:border-box;display:block;width:calc(var(--bc-u) * 89);height:calc(var(--bc-u) * 12);background:#000 padding-box;border:var(--bc-u) solid #a0a0a0}
-.bc-search-input{box-sizing:border-box;display:block;width:100%;height:100%;margin:0;padding:0 calc(var(--bc-u) * 2);border:0;border-radius:0;background:transparent;color:#fff;
+/* The arcade styles input[type=search] globally: a tighter selector keeps the vanilla field. */
+.bc-screen input.bc-search-input{box-sizing:border-box;display:block;width:100%;height:100%;margin:0;padding:0 calc(var(--bc-u) * 2);border:0;border-radius:0;background:transparent;color:#fff;
   font:calc(var(--bc-u) * 8)/1 var(--bc-font);-webkit-user-select:text;user-select:text;touch-action:manipulation;-webkit-appearance:none;appearance:none}
 .bc-search-input::placeholder{color:#808080}
 .bc-search-input::-webkit-search-cancel-button{display:none}
-.bc-search-input:focus{outline:none}
+.bc-screen input.bc-search-input:focus,.bc-screen input.bc-search-input:focus-visible{outline:none}
 .bc-search:focus-within{border-color:#fff}
 /* The picker scrolls a row at a time; vanilla's scrollbar replaces the native one. */
 .bc-catalog{width:calc(var(--bc-u) * 162);height:calc(var(--bc-u) * 90);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;

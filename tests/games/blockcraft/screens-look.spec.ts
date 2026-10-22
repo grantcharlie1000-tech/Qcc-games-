@@ -159,7 +159,8 @@ test('a landscape phone fits every screen, the large chest included',async({page
   const at=await stations(page);
   await page.mouse.move(2,size.height-2);
   await engine(page,g=>g.ui.open('inventory'));
-  await checkGeometry(page,size,false);
+  // Below 2 px a GUI pixel each screen uses all of its room: the inventory is not shrunk to the large chest's size.
+  expect(await checkGeometry(page,size,false)).toBeCloseTo((size.height-64-8)/166,1);
   await shot(page,'inventory-844x390');
   await engine(page,(g,a)=>g.ui.open('chest',a),at.big);
   await expect(page.locator('.bc-panel')).toHaveAttribute('aria-label','Large Chest');
