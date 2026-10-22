@@ -30,7 +30,8 @@ import {OPAQUE,SOLID,blockDef,blockId} from '../data/blocks';
 import {itemDef,stack as makeStack,type ItemStack} from '../data/items';
 import {CH,CHUNK_LIMIT,CS,chunkKey} from '../engine/constants';
 import {rayBox} from '../engine/physics';
-import type {DamageSource,Entity,EntityCategory,EntityKind,EntityRay,EntityService,Game,SpawnReason,Vec3} from '../engine/contracts';
+import type {DamageSource,Entity,EntityCategory,EntityForward,EntityKind,EntityMirror,EntityRay,EntityService,Game,MirrorState,SpawnReason,Vec3} from '../engine/contracts';
+import {localView,playersOf} from '../engine/players';
 import {createEntityAI,rotateTowards,wrapAngle} from './ai';
 import {bodyType,newFluidState,newMotion,resolvePhysics,sampleFluids,stepItem,stepLiving,stepOrb,stepSimple,
   type BodyType,type FluidState,type Motion,type ResolvedPhysics} from './entities-physics';
@@ -120,12 +121,20 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     kinds.set(kind.kind,kind);kindList=[...kinds.values()];breathing.clear();
     spawner.invalidate();renderer?.invalidate();
   }
+  // ---- Online guest mirror ------------------------------------------------------------------------
+  /** Set while this game is an online guest: entities are the host's, local spawns and hits are forwarded. */
+  let forward:EntityForward|null=null,mirrorInit=false,ghostId=0;
+  /** Local spawns this tick (a projectile the player threw): forwarded on the next tick, once the caller set velocity. */
+  const ghosts:Entity[]=[];
   function create(name:string,x:number,y:number,z:number,options:SpawnOptions={},preset?:Preset):Entity|null{
     const k=kinds.get(name);if(!k)return null;
+    // A copy's init must not spawn anything of its own (the host's world already has whatever it spawned).
+    if(forward&&mirrorInit)return null;
     if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return null;
     const reason=options.reason??'event',yaw=Number.isFinite(options.yaw)?wrapAngle(options.yaw!):0;
     const data=isObject(options.data)?{...options.data}:{};
-    const id=preset?.id!==undefined&&!byIdMap.has(preset.id)?preset.id:nextId;
+    const ghost=!!forward&&!mirroring;
+    const id=ghost?--ghostId:preset?.id!==undefined&&!byIdMap.has(preset.id)?preset.id:nextId;
     // Claimed before init(): an init that spawns other entities must not reuse it.
     if(id>=nextId)nextId=id+1;
     const e:Entity={id,kind:name,category:k.category,x,y,z,vx:0,vy:0,vz:0,yaw,pitch:0,headYaw:yaw,moveX:0,moveZ:0,jump:false,
@@ -134,7 +143,8 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(preset){
       e.vx=preset.vx;e.vy=preset.vy;e.vz=preset.vz;e.health=preset.health;e.age=preset.age;e.fire=preset.fire;e.headYaw=preset.headYaw;e.pitch=preset.pitch;
     }
-    try{k.init?.(e,game,reason);}catch{return null;}
+    const wasInit=mirrorInit;if(forward)mirrorInit=true;
+    try{k.init?.(e,game,reason);}catch{return null;}finally{mirrorInit=wasInit;}
     if(e.removed)return null;
     if(!(e.width>0&&e.width<64))e.width=k.width;
     if(!(e.height>0&&e.height<64))e.height=k.height;
@@ -146,6 +156,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
       frozen:false,type,living,phys:k.physics==='none'?null:resolvePhysics(type,k.physics),motion:newMotion(),fluids:newFluidState(),
       lastHurt:0,playerHit:-1e9,idle:0,gone:false,ambient:-80,stepDist:0,nextStep:1,air:AIR_SUPPLY,headStable:0,stableHead:e.headYaw,lastYaw:e.yaw};
     recs.push(rec);list.push(e);byIdMap.set(e.id,rec);
+    if(ghost)ghosts.push(e);
     game.events.emit('entitySpawned',{entity:e,reason});
     return e;
   }
@@ -192,7 +203,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     }else if(source.kind!=='explosion'){
       const from=source.projectile??source.attacker;
       if(from){x=e.x-from.x;z=e.z-from.z;strength=KNOCKBACK;}
-      else if(source.kind==='player'){const p=game.player.state;x=e.x-p.x;z=e.z-p.z;strength=KNOCKBACK;}
+      else if(source.kind==='player'){const p=source.player??localView(game);x=e.x-p.x;z=e.z-p.z;strength=KNOCKBACK;}
     }
     const len=Math.hypot(x,z);
     if(!(strength>0)||len<1e-6)return;
@@ -217,6 +228,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     game.events.emit('entityDied',{entity:e,source:cause});
   }
   function damage(e:Entity,amount:number,source:DamageSource):boolean{
+    if(forward)return mirroring?false:forward.damage(e,amount,source);
     const r=byIdMap.get(e.id);
     // Amount 0 is a valid hit for living entities (snowballs, eggs, pearls); negative or non-finite amounts are not.
     if(!r||r.e!==e||e.removed||e.deathTime>0||!(amount>=0)||!Number.isFinite(amount)||!source)return false;
@@ -366,9 +378,11 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     if(r.type==='living')stepLiving(w,e,p,f,!!r.kind.aquatic,m);
     else if(r.type==='item')stepItem(w,e,p,f,m);
     else if(r.type==='orb'){
-      const pl=game.player.state,alive=!game.survival.dead;
-      ORB_TARGET.x=pl.x;ORB_TARGET.y=pl.y+game.player.eyeHeight()/2;ORB_TARGET.z=pl.z;
-      stepOrb(w,e,p,f,m,alive?ORB_TARGET:null,game.random);
+      // The nearest living player attracts the orb.
+      let pl=null,best=Infinity;
+      for(const v of playersOf(game)){if(v.dead)continue;const d=(v.x-e.x)**2+(v.y-e.y)**2+(v.z-e.z)**2;if(d<best){best=d;pl=v;}}
+      if(pl){ORB_TARGET.x=pl.x;ORB_TARGET.y=pl.y+pl.eyeHeight/2;ORB_TARGET.z=pl.z;}
+      stepOrb(w,e,p,f,m,pl?ORB_TARGET:null,game.random);
     }else stepSimple(w,e,p,f,m);
   }
   function sounds(r:Rec){
@@ -462,21 +476,22 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
         if(Math.abs(B.x-A.x)<(A.width+B.width)/2&&Math.abs(B.z-A.z)<(A.width+B.width)/2&&B.y<A.y+A.height&&B.y+B.height>A.y)pushPair(A,B,null);
       }
     }
-    const p=game.player.state;
-    if(game.survival.dead)return;
-    const pw=game.player.width,ph=game.player.height;
-    for(const r of a){
-      const e=r.e;
-      if(Math.abs(e.x-p.x)<(e.width+pw)/2&&Math.abs(e.z-p.z)<(e.width+pw)/2&&e.y<p.y+ph&&e.y+e.height>p.y)pushPair(e,null,p);
+    for(const p of playersOf(game)){
+      if(p.dead)continue;
+      const pw=p.width,ph=p.height;
+      for(const r of a){
+        const e=r.e;
+        if(Math.abs(e.x-p.x)<(e.width+pw)/2&&Math.abs(e.z-p.z)<(e.width+pw)/2&&e.y<p.y+ph&&e.y+e.height>p.y)pushPair(e,null,p);
+      }
     }
   }
-  function pushPair(A:Entity,B:Entity|null,player:Vec3|null){
+  function pushPair(A:Entity,B:Entity|null,player:(Vec3&{push(x:number,y:number,z:number):void})|null){
     const bx=B?B.x:player!.x,bz=B?B.z:player!.z;
     let dx=bx-A.x,dz=bz-A.z,d=Math.max(Math.abs(dx),Math.abs(dz));
     if(d<.01)return;
     d=Math.sqrt(d);dx/=d;dz/=d;const k=Math.min(1,1/d)*.05*20;dx*=k;dz*=k;
     A.vx-=dx;A.vz-=dz;
-    if(B){B.vx+=dx;B.vz+=dz;}else game.player.push(dx,0,dz);
+    if(B){B.vx+=dx;B.vz+=dz;}else player!.push(dx,0,dz);
   }
 
   // ---- Persistence ------------------------------------------------------------------------------
@@ -568,13 +583,58 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     spawn:(kind,x,y,z,o)=>create(kind,x,y,z,o),
     kinds:()=>kindList,
     countNear(category){
-      const p=game.player.state;let n=0;
-      for(const r of recs){const e=r.e;if(!e.removed&&e.deathTime===0&&e.category===category&&Math.hypot(e.x-p.x,e.z-p.z)<=SPAWN_RADIUS)n++;}
+      const players=playersOf(game);let n=0;
+      for(const r of recs){
+        const e=r.e;if(e.removed||e.deathTime!==0||e.category!==category)continue;
+        for(const p of players)if(Math.hypot(e.x-p.x,e.z-p.z)<=SPAWN_RADIUS){n++;break;}
+      }
       return n;
     },
     all:()=>list,remove
   });
 
+  /** True while a copy is created or updated from host data (not a local spawn). */
+  let mirroring=false;
+  const mirror:EntityMirror={
+    get active(){return !!forward;},
+    start(f){service.reset?.();forward=f;ghosts.length=0;ghostId=0;},
+    stop(){forward=null;ghosts.length=0;service.reset?.();},
+    upsert(id:number,kind:string,st:MirrorState,data:Record<string,unknown>|null){
+      if(!forward||!Number.isInteger(id))return null;
+      let r=byIdMap.get(id);
+      if(r&&(r.e.kind!==kind||r.e.removed)){remove(r.e);compact();r=undefined;}
+      if(!r){
+        mirroring=true;
+        try{create(kind,st.x,st.y,st.z,{data:data??{},baby:st.baby,reason:'restore',yaw:st.yaw},
+          {id,vx:0,vy:0,vz:0,health:Math.max(1e-3,st.health),age:0,fire:st.fire,headYaw:st.headYaw,pitch:st.pitch});}
+        finally{mirroring=false;}
+        r=byIdMap.get(id);if(!r)return null;
+        r.px=st.x;r.py=st.y;r.pz=st.z;
+      }
+      const e=r.e;
+      if(data)e.data=data;
+      e.health=st.health;e.hurtTime=st.hurtTime;e.fire=st.fire;e.baby=st.baby;e.onGround=st.onGround;
+      if(st.deathTime>0&&e.deathTime===0)e.deathTime=1;
+      return e;
+    },
+    remove(id){const r=byIdMap.get(id);if(r)remove(r.e);},
+    ids(){const out:number[]=[];for(const r of recs)if(!r.e.removed&&r.e.id>0)out.push(r.e.id);return out;},
+    tick(step){
+      sinceTick=0;
+      // Local spawns from the last tick go to the host now that their velocity is set, then leave.
+      for(const e of ghosts.splice(0)){if(!e.removed)forward?.spawned(e);remove(e);}
+      for(const r of recs){
+        const e=r.e;if(e.removed)continue;
+        r.px=e.x;r.py=e.y;r.pz=e.z;r.pyaw=e.yaw;r.phead=e.headYaw;r.ppitch=e.pitch;r.walkSpeedOld=r.walkSpeed;
+        e.age++;if(e.hurtTime>0)e.hurtTime--;if(e.deathTime>0&&e.deathTime<DEATH_TICKS)e.deathTime++;
+        step(e);saneTransform(r);
+        r.motion.moved=Math.hypot(e.x-r.px,e.z-r.pz);
+        walkAnimation(r);
+        if(r.living&&e.deathTime===0)sounds(r);
+      }
+      compact();
+    }
+  };
   const service:EntityService&{readonly debug:EntityDebug}={
     ai,register,
     kinds:()=>kindList,
@@ -606,6 +666,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     damage,
     dropItem(s,x,y,z,velocity,pickupDelay=10){
       if(!s||typeof s.id!=='string'||!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return;
+      if(forward){if(!mirroring)forward.dropItem({...s},x,y,z,velocity,pickupDelay);return;}
       const def=itemDef(s.id);if(!def||!Number.isFinite(s.count))return;
       let left=Math.floor(s.count);
       const delay=Number.isInteger(pickupDelay)&&pickupDelay>=0?Math.min(pickupDelay,32767):10;
@@ -619,6 +680,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     },
     dropXp(points,x,y,z){
       if(!(points>=1)||!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z))return;
+      if(forward){if(!mirroring)forward.dropXp(points,x,y,z);return;}
       for(const value of splitXp(Math.min(points,1e6))){
         const e=create('xp_orb',x,y,z,{data:{points:value},reason:'event',yaw:game.random()*Math.PI*2});
         if(!e)return;
@@ -626,6 +688,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
       }
     },
     count(category){let n=0;for(const r of recs){const e=r.e;if(!e.removed&&e.deathTime===0&&e.category===category)n++;}return n;},
+    mirror,
     get debug():EntityDebug{
       let frozen=0;for(const r of recs)if(r.frozen&&!r.e.removed)frozen++;
       return{render:renderer?{...renderer.stats}:null,frozen,searches:ai.searches,nodes:ai.nodes,stored:storedCount};
@@ -640,6 +703,8 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     },
     tick(){
       sinceTick=0;
+      // A guest's copies move in mirror.tick (the host simulates them).
+      if(forward)return;
       const n=recs.length;
       for(let i=0;i<n;i++){
         const r=recs[i],e=r.e;
@@ -691,6 +756,7 @@ export function createEntities(game:Game):EntityService&{readonly debug:EntityDe
     }
   };
   const items=createItemKinds(game,()=>service);
+  void mirror;
   register(items.item);register(items.xp);
   return service;
 }

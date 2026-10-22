@@ -42,6 +42,8 @@ export function furnaceSlots(game:Game,f:FurnaceEntity):MenuSlot[]{
 export function buildFurnace(game:Game,menu:SlotMenu,at?:Vec3):ScreenBuild|null{
   const f=at&&game.blockEntities.get(at.x,at.y,at.z);
   if(!f||f.kind!=='furnace')return null;
+  const busy=game.net?.containerBusy?.([at]);if(busy){game.ui.toast(`${busy} is using that.`);return null;}
+  game.events.emit('containerOpened',{positions:[at]});
   menu.setup([...furnaceSlots(game,f),...playerSlots(game.inventory)],screenRule((m,i)=>{
     const s=m.slots[i].get();if(!s)return false;
     if(canSmelt(game,s.id))return m.moveSlot(i,m.indexes('input'));

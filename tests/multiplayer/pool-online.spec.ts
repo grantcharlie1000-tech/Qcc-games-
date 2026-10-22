@@ -100,3 +100,20 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(guest.page.locator('.pool-game')).toHaveAttribute('data-online','off');
   }finally{await closeAll([host,guest,extra]);}
 });
+
+test('forcing the TURN relay without relay credentials fails clearly instead of connecting directly',async()=>{
+  test.setTimeout(120_000);
+  const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama');
+  try{
+    await host.page.goto(`${BASE}/#/game/pool?relay=1`);
+    await host.page.getByLabel('Players').selectOption('online');
+    await host.page.getByRole('button',{name:'Create room'}).click();
+    await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:25000});
+    await expect(host.page.locator('.mp-link')).toContainText('Relay fallback is not configured');
+    const code=(await host.page.locator('.mp-room-code').textContent())!.trim();
+    await guest.page.goto(`${BASE}/#/game/pool?room=${code}&relay=1`);
+    await guest.page.getByRole('button',{name:'Join by code'}).click();
+    await expect(guest.page.locator('.mp-status')).toHaveText(/relay fallback is unavailable|connection failed/,{timeout:40000});
+    await expect(guest.page.locator('.pool-game')).toHaveAttribute('data-online','off');
+  }finally{await closeAll([host,guest]);}
+});

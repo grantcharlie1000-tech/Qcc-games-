@@ -100,6 +100,18 @@ describe('Room',()=>{
     expect(guest.closed).toBe(true);
   });
 
+  it('drops a peer that sends a huge message before it is admitted, and replaces a reconnecting peer',async()=>{
+    const net=new FakeNetwork(),host=await Room.create(opts(net,'Hana'));
+    const ep=await net.factory(undefined,{iceServers:[],relayOnly:false});
+    const link=ep.connect(host.code?`qcc-games-v1-pool-${host.code.toLowerCase()}`:'');
+    await settle();
+    let id=0;for(const f of frame({t:'game',d:'x'.repeat(50_000)},()=>++id))link.send(f);
+    await settle();
+    expect(host.players).toHaveLength(1);
+    // A guest whose second connection arrives keeps one seat.
+    const guest=await joined(net,host,'Tama');
+    expect(host.players).toHaveLength(2);void guest;
+  });
   it('retries a taken room code',async()=>{
     const net=new FakeNetwork();let calls=0;const factory=net.factory;
     net.factory=async(id,ice)=>{if(calls++===0)throw {type:'unavailable-id',message:'taken'};return factory(id,ice);};

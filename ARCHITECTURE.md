@@ -1,6 +1,6 @@
 # Pocket Arcade architecture
 
-Sixteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft. No factory game, currency, accounts, ads, tracking, backend, runtime CDN, or external runtime requests.
+Sixteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft. No factory game, currency, accounts, ads, tracking or runtime CDN. External requests are limited to the optional shared leaderboard (same origin) and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
 
 ## Static shell
 
@@ -45,3 +45,7 @@ The four corrected games, isolated specialist handoffs, original cutout/art geom
 ## Globle
 
 `src/games/globle/` is a globe.gl country-guessing game (see its [SPEC](src/games/globle/SPEC.md)). It fills `#game-stage` directly (`fillGames` in `src/main.ts`) instead of the uniform scale fit, because a CSS transform would break WebGL pointer mapping. Distances between the 197 playable countries are precomputed from Natural Earth 1:10m boundaries by `scripts/build-globle-data.mjs` and bundled with separately simplified 1:50m display outlines; regenerate both with `node scripts/build-globle-data.mjs` (then `node scripts/build-globle-cover.mjs` for the cover). Land is drawn as one merged vertex-coloured mesh plus one border mesh, built in 10 ms slices.
+
+## Online multiplayer
+
+`src/multiplayer/` is the one shared online layer: `room.ts` (host-created PeerJS/WebRTC star rooms, admission by protocol/game/version, seats, heartbeats, host pause, clean endings), `protocol.ts` (codes, names, envelopes, framing of large messages), `transport.ts` (PeerJS, lazily imported, and the relay detection), `ice.ts` with `turn-server.ts` and `netlify/functions/turn.mts` (temporary Cloudflare TURN credentials, rate-limited), and `panel.ts` (Create room, Join by code, Copy invite link, Leave room). Pool (`src/games/pool/online.ts`) and Blockcraft (`src/games/blockcraft/net/`) build on it; the host is authoritative in both. Blockcraft systems see players through `game.net` and `engine/players.ts`, so offline behaviour is the single-player behaviour. Online state never replaces the shell's single-player saves. Details, setup and limitations: [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md).

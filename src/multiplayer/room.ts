@@ -1,7 +1,7 @@
 // One online room: a star of WebRTC data channels around the player who created it. The host admits guests (protocol, game
 // and version must match, and there must be a free seat), relays nothing on its own, and decides everything in the game;
 // guests only talk to the host. The host's pause pauses the whole room. When the host leaves the room ends (no migration).
-import {PROTOCOL_VERSION,Reassembler,cleanName,frame,hostPeerId,normalizeCode,parseEnvelope,randomCode,type Envelope,type RejectReason,type RosterEntry} from './protocol';
+import {MAX_MESSAGE_CHARS,PROTOCOL_VERSION,Reassembler,cleanName,frame,hostPeerId,normalizeCode,parseEnvelope,randomCode,type Envelope,type RejectReason,type RosterEntry} from './protocol';
 import {peerEndpoint,type Endpoint,type EndpointFactory,type Link,type LinkKind,type TransportError} from './transport';
 import {iceServers,type IceResult} from './ice';
 
@@ -30,6 +30,8 @@ export interface RoomOptions{
   ice?:()=>Promise<IceResult>;
 }
 
+/** Connections waiting to be admitted, and the largest message they may send (a hello is tiny). */
+const MAX_PENDING=8,HELLO_CHARS=4096;
 const HEARTBEAT_MS=2000,HOST_SILENCE_MS=10000,GUEST_SILENCE_MS=12000,PAUSED_SILENCE_MS=90000,HELLO_MS=10000,JOIN_MS=20000;
 const MESSAGES:Record<RejectReason,string>={
   full:'That room is full.',
@@ -167,7 +169,11 @@ export class Room{
   // ---- Host ---------------------------------------------------------------------------------------------------------
   private admit(link:Link){
     if(this.closedState){link.close();return;}
-    const peer:Peer={entry:null,link,reader:new Reassembler(),seen:Date.now(),bad:0,rtt:NaN,kind:'unknown',hello:undefined};
+    let pending=0;for(const p of this.peers.values())if(!p.entry)pending++;
+    if(pending>=MAX_PENDING){link.close();return;}
+    // The same peer connecting again replaces its old connection (and frees its seat).
+    const old=this.peers.get(link.peer);if(old)this.drop(old,'lost');
+    const peer:Peer={entry:null,link,reader:new Reassembler(HELLO_CHARS),seen:Date.now(),bad:0,rtt:NaN,kind:'unknown',hello:undefined};
     this.peers.set(link.peer,peer);
     peer.hello=setTimeout(()=>{if(!peer.entry)this.drop(peer,'timeout');},HELLO_MS);
     link.onData(text=>this.receiveHost(peer,text));
@@ -195,7 +201,7 @@ export class Room{
       if(this.roster.length>=this.options.maxPlayers)return this.refuse(peer,'full');
       let seat=1;while(this.roster.some(p=>p.seat===seat))seat++;
       let unique=name,n=2;while(this.roster.some(p=>p.name===unique))unique=`${name.slice(0,13)} ${n++}`;
-      clearTimeout(peer.hello);
+      clearTimeout(peer.hello);peer.reader.limit=MAX_MESSAGE_CHARS;
       peer.entry={id:peer.link.peer,seat,name:unique,host:false};
       this.roster=[...this.roster,peer.entry].sort((a,b)=>a.seat-b.seat);
       this.write(peer,{t:'welcome',seat,you:peer.entry.id,players:this.roster,paused:this.pausedState});

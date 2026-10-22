@@ -8,7 +8,8 @@
 //    blocks; one orb of a merged group is collected every 2 ticks (survival.addXp, which plays `orb`); same-value orbs
 //    merge every 20 ticks; despawn at age 6000.
 import {maxStack,parseStack,sameItem,stack as makeStack,type ItemStack} from '../data/items';
-import type {Entity,EntityKind,EntityService,Game} from '../engine/contracts';
+import type {Entity,EntityKind,EntityService,Game,PlayerView} from '../engine/contracts';
+import {localView,playersOf,touches} from '../engine/players';
 
 export const ITEM_DESPAWN_AGE=6000;
 export const DEFAULT_PICKUP_DELAY=10;
@@ -40,8 +41,7 @@ const intIn=(v:unknown,min:number,max:number):v is number=>typeof v==='number'&&
 
 /** Does the player's box grown by (1, 0.5, 1) touch the entity box? */
 export function touchesPlayer(game:Game,e:Entity):boolean{
-  const p=game.player.state,pw=game.player.width/2+1+e.width/2;
-  return Math.abs(p.x-e.x)<pw&&Math.abs(p.z-e.z)<pw&&e.y<p.y+game.player.height+.5&&e.y+e.height>p.y-.5;
+  return touches(localView(game),e.x,e.y,e.z,e.width,e.height);
 }
 
 export function createItemKinds(game:Game,service:()=>EntityService):{item:EntityKind;xp:EntityKind}{
@@ -51,7 +51,8 @@ export function createItemKinds(game:Game,service:()=>EntityService):{item:Entit
   let self:Entity|null=null,selfPoints=0;
   const otherItem=(o:Entity)=>o!==self&&o.kind==='item';
   const sameOrb=(o:Entity)=>o!==self&&o.kind==='xp_orb'&&(o.data as unknown as OrbData).points===selfPoints;
-  const playerReady=()=>!game.survival.dead&&game.state!=='dead';
+  /** The local player can pick up unless dead (or on the death screen); a guest unless dead. */
+  const ready=(v:PlayerView)=>!v.dead&&(!v.local||game.state!=='dead');
   function mergeable(e:Entity){
     const d=e.data as unknown as ItemData;
     return !e.removed&&d.pickup!==NO_PICKUP&&e.age<ITEM_DESPAWN_AGE&&d.stack.count<maxStack(d.stack.id);
@@ -71,10 +72,10 @@ export function createItemKinds(game:Game,service:()=>EntityService):{item:Entit
       if(source===e)return;
     }
   }
-  function pickUp(e:Entity,d:ItemData){
-    const s=d.stack,left=game.inventory.add({...s}),taken=s.count-Math.max(0,left);
+  function pickUp(e:Entity,d:ItemData,p:PlayerView){
+    const s=d.stack,left=p.give({...s}),taken=s.count-Math.max(0,left);
     if(taken<=0)return;
-    game.events.emit('itemPickedUp',{stack:makeStack(s.id,taken,s.damage)});
+    if(p.local)game.events.emit('itemPickedUp',{stack:makeStack(s.id,taken,s.damage)});
     game.sounds.play('pop',{x:e.x,y:e.y,z:e.z},{volume:.2,pitch:((game.random()-game.random())*.7+1)*2});
     if(left<=0)service().remove(e);else s.count=left;
   }
@@ -93,9 +94,16 @@ export function createItemKinds(game:Game,service:()=>EntityService):{item:Entit
       if(e.age>=ITEM_DESPAWN_AGE){service().remove(e);return;}
       const moving=Math.abs(e.vx)+Math.abs(e.vy)+Math.abs(e.vz)>.02;
       if(e.age%(moving?2:40)===0)mergeItems(e);
-      if(e.removed||d.pickup!==0||!playerReady())return;
-      if(touchesPlayer(game,e)){pickUp(e,d);return;}
-      const p=game.player.state,dx=p.x-e.x,dy=p.y+game.player.height/2-(e.y+e.height/2),dz=p.z-e.z,dist=Math.hypot(dx,dy,dz);
+      if(e.removed||d.pickup!==0)return;
+      // Online, any player can take it: the first one touching it, else the nearest pulls it in.
+      let p:PlayerView|null=null,best=Infinity;
+      for(const v of playersOf(game)){
+        if(!ready(v)||!v.canTake(d.stack))continue;
+        if(touches(v,e.x,e.y,e.z,e.width,e.height)){pickUp(e,d,v);return;}
+        const dd=(v.x-e.x)**2+(v.y-e.y)**2+(v.z-e.z)**2;if(dd<best){best=dd;p=v;}
+      }
+      if(!p)return;
+      const dx=p.x-e.x,dy=p.y+p.height/2-(e.y+e.height/2),dz=p.z-e.z,dist=Math.hypot(dx,dy,dz);
       if(dist<MAGNET_RADIUS&&dist>1e-3){
         const k=MAGNET_PULL*(1-dist/MAGNET_RADIUS*.5)/dist;
         e.vx+=dx*k;e.vz+=dz*k;e.vy+=dy*k+(e.onGround?.8:0);
@@ -128,9 +136,11 @@ export function createItemKinds(game:Game,service:()=>EntityService):{item:Entit
         }
       }
       if(lastOrbPickup>game.time.tick)lastOrbPickup=-1e9;// the clock restarted (new world)
-      if(!playerReady()||!touchesPlayer(game,e)||game.time.tick-lastOrbPickup<2)return;
+      if(game.time.tick-lastOrbPickup<2)return;
+      const taker=playersOf(game).find(v=>ready(v)&&touches(v,e.x,e.y,e.z,e.width,e.height));
+      if(!taker)return;
       lastOrbPickup=game.time.tick;
-      game.survival.addXp(d.points);
+      taker.addXp(d.points);
       if(--d.count<=0)service().remove(e);
     },
     restoreData(data){

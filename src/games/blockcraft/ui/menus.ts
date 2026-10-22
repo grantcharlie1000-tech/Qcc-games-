@@ -49,6 +49,7 @@ export function createMenus(game:Game):Menus{
         <button type="button" class="bc-btn" data-act="advancements">Advancements</button>
       </div>
       <button type="button" class="bc-btn" data-act="controls">Controls</button>
+      <button type="button" class="bc-btn" data-act="online">Play online…</button>
     </div>
     <div class="bc-menu-page" data-panel="options" hidden>
       <h3 class="bc-menu-sub">Options</h3>
@@ -100,6 +101,10 @@ export function createMenus(game:Game):Menus{
     const s=game.settings;
     mode.textContent=optionLabel('mode',s);
     difficulty.textContent=optionLabel('difficulty',s);
+    // Online guests play by the host's world rules.
+    const guest=game.net?.role==='guest';
+    for(const b of [mode,difficulty,...TOGGLES.map(k=>q<HTMLButtonElement>(`[data-toggle=${k}]`))]){b.disabled=guest;b.title=guest?'Set by the host':b.dataset.toggle?OPTION_HINTS[b.dataset.toggle as OptionKey]??'':'';}
+    q('[data-act=online]').textContent=game.net&&game.net.role!=='offline'?'Online room…':'Play online…';
     for(const sl of SLIDERS){
       const input=q<HTMLInputElement>(`[data-slider=${sl.key}]`),label=optionLabel(sl.key,s);
       q(`[data-label=${sl.key}]`).textContent=label;input.setAttribute('aria-valuetext',label);
@@ -168,6 +173,7 @@ export function createMenus(game:Game):Menus{
       case 'difficulty':game.updateSettings({difficulty:nextDifficulty(game.settings.difficulty)});break;
       case 'options':setPanel('options');break;
       case 'controls':setPanel('controls');break;
+      case 'online':game.net?.openPanel();break;
       case 'back':{const from=panel;setPanel('main',false);q(`[data-act=${from}]`).focus({preventScroll:true});break;}
       case 'advancements':{
         const previous=kind;game.ui.open('advancements');

@@ -7,6 +7,7 @@
 // output slot, unlit progress falls back 2 ticks per tick, and the block swaps between lit and unlit states keeping its
 // facing. Only furnaces in loaded chunks tick.
 // Entities persist by position; empty ones are not saved (get() recreates them on demand).
+import {hasAuthority} from '../engine/players';
 import {CH,CS,chunkKey} from '../engine/constants';
 import {FACING_VECTOR,blockDef,stateFor} from '../data/blocks';
 import {itemDef,maxStack,parseStack,type ItemId,type ItemStack} from '../data/items';
@@ -123,7 +124,8 @@ export function createBlockEntities(game:Game):BlockEntityService{
     const fromDef=blockDef(from),toDef=blockDef(to);
     if(fromDef.family===toDef.family&&fromDef.blockEntity===toDef.blockEntity)return;// furnace ⇄ furnace_lit, facings
     const old=holders.get(posKey(x,y,z));
-    if(old){discard(old);if(fromDef.blockEntity===old.entity.kind&&cause!=='restore')dropContents(old);}
+    // Contents drop where the world is simulated (offline, the online host), never from a guest's copy.
+    if(old){discard(old);if(fromDef.blockEntity===old.entity.kind&&cause!=='restore'&&cause!=='remote'&&hasAuthority(game))dropContents(old);}
     if(toDef.blockEntity)add(x,y,z,emptyEntity(toDef.blockEntity));
   }
   function onChunkLoaded({cx,cz}:{cx:number;cz:number}){

@@ -52,6 +52,7 @@ export class RoomPanel{
   private off:(()=>void)|null=null;
   private kinds=new Map<string,LinkKind>();
   private note='';
+  private disposed=false;
   constructor(private options:PanelOptions){
     const r=this.root;r.className='mp-panel';r.setAttribute('aria-label',`Online ${options.title}`);
     r.innerHTML=`<h2 class="mp-title">Play ${options.title} online <small>up to ${options.maxPlayers} players</small></h2>
@@ -113,6 +114,8 @@ export class RoomPanel{
     finally{this.setBusy(false);}
   }
   private attach(room:Room){
+    // The game was left while the room was being created or joined: close it at once.
+    if(this.disposed){room.close('left');return;}
     this.current=room;this.kinds.clear();
     this.off=room.on(e=>this.onEvent(room,e));
     this.$('.mp-offline').hidden=true;this.$('.mp-online').hidden=false;this.$<HTMLInputElement>('.mp-name').disabled=true;this.$('.mp-name').parentElement!.hidden=true;
@@ -167,5 +170,5 @@ export class RoomPanel{
     }
   }
   leave(){this.current?.close('left');}
-  dispose(){this.off?.();this.off=null;const room=this.current;this.current=null;room?.close('left');this.root.remove();}
+  dispose(){this.disposed=true;this.off?.();this.off=null;const room=this.current;this.current=null;room?.close('left');this.root.remove();}
 }

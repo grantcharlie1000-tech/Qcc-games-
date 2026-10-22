@@ -2,6 +2,7 @@
 // host checks seat, turn, phase, revision and sequence, applies them with the normal rules, streams ball positions while
 // they roll and sends the complete authoritative state whenever it changes (always when the balls settle). Guests never
 // simulate physics, so both devices show the same pockets, fouls, ball-in-hand, turns and winner.
+import {cleanName} from '../../multiplayer/protocol';
 import {createGame,placeCue,restoreGame,shoot,step,DT,type PoolState} from './model';
 
 /** Bump when rules, physics or messages change: peers with another version are refused. */
@@ -36,7 +37,7 @@ export function parseHostMessage(v:unknown):HostMessage|null{
   if(!v||typeof v!=='object')return null;
   const m=v as Record<string,unknown>;
   if(!Number.isInteger(m.rev))return null;
-  if(m.t==='state'){const state=restoreGame(m.state);const names=m.names;return state&&state.mode==='two'&&Array.isArray(names)&&names.length===2&&names.every(n=>typeof n==='string')?{t:'state',rev:m.rev as number,state,names:names as [string,string]}:null;}
+  if(m.t==='state'){const state=restoreGame(m.state);const names=m.names;return state&&state.mode==='two'&&Array.isArray(names)&&names.length===2&&names.every(n=>typeof n==='string')?{t:'state',rev:m.rev as number,state,names:names.map(n=>cleanName(n)??'') as [string,string]}:null;}
   if(m.t==='frame')return Array.isArray(m.b)&&m.b.length===32&&m.b.every(n=>Number.isInteger(n))&&Number.isInteger(m.p)&&finite(m.ms,0,1e8)?m as HostMessage:null;
   if(m.t==='aim')return finite(m.angle,-10,10)&&finite(m.power,0,1)?m as HostMessage:null;
   if(m.t==='reject')return Number.isInteger(m.seq)&&typeof m.reason==='string'?m as HostMessage:null;

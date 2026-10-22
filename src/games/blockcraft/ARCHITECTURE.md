@@ -36,6 +36,7 @@ example with a small local adapter or a fallback).
 | HUD and menus | `ui/hud.ts`, `ui/hud.css`, `ui/hud-*.ts`, `ui/menus*.ts` | `hud*.test.ts`, `hud*.spec.ts` |
 | Block art | `art/atlas.ts`, `art/tiles-*.ts`, `scripts/generate-blockcraft-cover.py`, `public/game-art/blockcraft/*` | `art*.test.ts` |
 | Item art | `art/items.ts`, `art/sprites-*.ts` | `item-art*.test.ts` |
+| Online play | `net/*`, `engine/players.ts` (player views: use `playersOf(game)` / `hasAuthority(game)` instead of `game.player` for anything that should also see online guests) | `net*.test.ts`, `tests/multiplayer/blockcraft-online.spec.ts` |
 
 Paths are relative to `src/games/blockcraft/`; tests go in `tests/games/blockcraft/`. Shared test helpers live in
 `tests/games/blockcraft/helpers/` (integrator-owned; `fake-game.ts` builds a DOM-free `Game` whose services you replace with yours).

@@ -17,10 +17,11 @@ import {biomeDef} from '../data/biomes';
 import {stack} from '../data/items';
 import {SEA_LEVEL} from '../engine/constants';
 import type {Entity,EntityKind,Game,ItemStack} from '../engine/contracts';
-import {alertOthers,avoidHazards,brain,chase,cleanData,darkUnderOpenSky,difficultyId,forget,idle,ignite,isDay,localDifficulty,mobSpeed,
+import {alertOthers,targetView,avoidHazards,brain,chase,cleanData,darkUnderOpenSky,difficultyId,forget,idle,ignite,isDay,localDifficulty,mobSpeed,
   newTarget,peacefulRemove,pickSpot,retaliate,setAggressive,tickTimers,tryMelee,updateTarget,walkToSpot,type Brain,
   type TargetPos} from './hostile-ai';
 import {zombieModels} from './hostile-models';
+import {playersOf} from '../engine/players';
 import {isDarkEnoughToSpawn} from './spawning';
 
 export type ZombieKind='zombie'|'husk'|'drowned';
@@ -68,7 +69,7 @@ function convert(game:Game,e:Entity,to:ZombieKind){
 
 /** Drowned.okTarget: by day only targets in water. */
 const drownedOk=(game:Game,inWater:boolean)=>!isDay(game)||inWater;
-const drownedSeesPrey=(game:Game)=>drownedOk(game,game.player.state.inWater);
+const drownedSeesPrey=(game:Game)=>playersOf(game).some(p=>drownedOk(game,p.inWater));
 /** DrownedMoveControl while swimming after a target: vertical push 0.1 × movement speed along the direction to it,
  *  plus 0.002 blocks/tick² up when it is above (velocities here in blocks/second). */
 function swimToward(e:Entity,x:number,y:number,z:number){
@@ -118,8 +119,9 @@ function onHit(game:Game,e:Entity,b:Brain,v:Variant){
   const f=localDifficulty(game);
   const burn=e.fire>0&&game.random()<f*.3?2*Math.floor(f):0;
   if(b.targetPlayer){
-    if(v.hunger)game.survival.addEffect('hunger',7*difficultyId(game),1);
-    if(burn>0)game.survival.ignite(burn);
+    const p=targetView(game,b);
+    if(v.hunger)p.addEffect('hunger',7*difficultyId(game),1);
+    if(burn>0)p.ignite(burn);
   }else if(b.target&&burn>0)ignite(b.target,burn*20);
 }
 

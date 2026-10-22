@@ -92,6 +92,18 @@ export class VoxelWorld implements World{
     this.events?.emit('blockChanged',{x:wx,y:wy,z:wz,from,to:id,cause});
     return true;
   }
+  /** Online guest: the host's block at a position. A loaded chunk changes now (cause 'remote'); an unloaded one keeps it as an
+   *  edit, applied when the chunk is generated (an edit equal to the generated block is dropped then). */
+  applyRemote(wx:number,wy:number,wz:number,id:BlockId):boolean{
+    if(wy<0||wy>=CH||id<0||id>=BLOCK_COUNT||!Number.isInteger(wx)||!Number.isInteger(wy)||!Number.isInteger(wz))return false;
+    const cx=Math.floor(wx/CS),cz=Math.floor(wz/CS),key=chunkKey(cx,cz);
+    if(this.chunks.has(key)){this.set(wx,wy,wz,id,'remote');return true;}
+    let edits=this.edits.get(key);if(!edits){edits=new Map();this.edits.set(key,edits);}
+    const index=(wx-cx*CS)+(wz-cz*CS)*CS+wy*LAYER;
+    if(!edits.has(index))this.editTotal++;
+    edits.set(index,id);this.segments.delete(key);
+    return true;
+  }
   private markAround(cx:number,cz:number,lx:number,lz:number,lightChange:boolean){
     this.dirty.add(chunkKey(cx,cz));
     for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){

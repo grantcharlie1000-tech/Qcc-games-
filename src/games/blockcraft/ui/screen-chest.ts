@@ -54,6 +54,8 @@ export function buildChest(game:Game,menu:SlotMenu,at?:Vec3):ScreenBuild|null{
   if(positions.length>1&&entities.some(e=>e?.kind!=='chest')){positions=[at];entities=[game.blockEntities.get(at.x,at.y,at.z)];}
   if(entities.some(e=>e?.kind!=='chest'))return null;
   if(!barrel&&positions.some(p=>chestBlocked(game.world,p)))return null;
+  const busy=game.net?.containerBusy?.(positions);if(busy){game.ui.toast(`${busy} is using that.`);return null;}
+  game.events.emit('containerOpened',{positions});
   const slots=entities.flatMap((e,k)=>containerSlots(e as ChestEntity,k*27));
   menu.setup([...slots,...playerSlots(game.inventory)],screenRule((m,i)=>m.moveSlot(i,m.indexes('container'))));
   const large=positions.length>1,title=barrel?'Barrel':large?'Large Chest':'Chest';
