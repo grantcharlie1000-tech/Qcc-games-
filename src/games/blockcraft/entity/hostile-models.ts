@@ -10,7 +10,7 @@
 // chasing) and swinging on attack, skeleton bow aim, creeper four-leg walk with the swell flash and the charged aura,
 // spider eight-leg gait, and baby zombies with a 1.5× head on the half-size body.
 import type {AnimationState,Entity,EntityModel,PartPose} from '../engine/contracts';
-import {CLEAR,blob,buildTexture,faceSeed,grain,hash,jfrom,jpivot,jrot,mix,pixelMap,shade,upscale,weighted,
+import {CLEAR,blob,buildTexture,faceSeed,grain,hash,jfrom,jpivot,mix,pixelMap,shade,upscale,weighted,
   type BoxDef,type Face,type PartDef,type Painter,type V3} from './hostile-art';
 
 // ---- Pose helpers -----------------------------------------------------------------------------------
@@ -297,7 +297,7 @@ function spiderLeg():Painter{
   const f=fur(113);
   return(face,x,y,w,h)=>{
     if(face==='top'||face==='bottom')return f(face,x,y,w,h);
-    // Pale joint bands; the region's left column on the -x and +x faces is the tip of the leg (dark).
+    // Pale joint bands, counted from the tip of the leg: the front face region starts at the tip, the back face region ends there.
     const along=face==='east'||face==='front'?x:w-1-x;
     return along===5||along===11?0x5a4b41:f(face,x,y,w,h);
   };
