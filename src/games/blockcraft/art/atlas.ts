@@ -117,12 +117,46 @@ export function tilePixels(name:string):Uint8ClampedArray{
   for(let y=0;y<TILE;y++)out.set(atlas.subarray(((oy+y)*ATLAS_WIDTH+ox)*4,((oy+y)*ATLAS_WIDTH+ox+TILE)*4),y*TILE*4);
   return out;
 }
-/** The atlas as a GPU texture (rows flipped for WebGL, nearest filtering, no colour conversion). */
-export function paintAtlasTexture():THREE.DataTexture{
+function flippedAtlas(){
   const pixels=atlasPixels(),flipped=new Uint8Array(pixels.length),row=ATLAS_WIDTH*4;
   for(let y=0;y<ATLAS_HEIGHT;y++)flipped.set(pixels.subarray(y*row,(y+1)*row),(ATLAS_HEIGHT-1-y)*row);
-  const texture=new THREE.DataTexture(flipped,ATLAS_WIDTH,ATLAS_HEIGHT,THREE.RGBAFormat);
+  return flipped;
+}
+/** The atlas as a GPU texture (rows flipped for WebGL, nearest filtering, no colour conversion). */
+export function paintAtlasTexture():THREE.DataTexture{
+  const texture=new THREE.DataTexture(flippedAtlas(),ATLAS_WIDTH,ATLAS_HEIGHT,THREE.RGBAFormat);
   texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestFilter;texture.generateMipmaps=false;texture.needsUpdate=true;
+  return texture;
+}
+/** Mip levels a tile keeps to itself: 16, 8, 4, 2 and 1 px per tile (vanilla Mipmap Levels 4). */
+export const ATLAS_MIP_LEVELS=4;
+/** The next mip level of an RGBA image: a 2x2 box filter weighted by alpha, so transparent texels never darken their
+ *  neighbours. Tiles are 16 px and aligned, so up to ATLAS_MIP_LEVELS each tile is filtered on its own. */
+export function mipLevel(src:Uint8Array,width:number,height:number):Uint8Array<ArrayBuffer>{
+  const w=Math.max(1,width>>1),h=Math.max(1,height>>1),out=new Uint8Array(w*h*4);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    let r=0,g=0,b=0,a=0,pr=0,pg=0,pb=0;
+    for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
+      const sx=Math.min(width-1,x*2+dx),sy=Math.min(height-1,y*2+dy),i=(sy*width+sx)*4,al=src[i+3];
+      r+=src[i]*al;g+=src[i+1]*al;b+=src[i+2]*al;a+=al;pr+=src[i];pg+=src[i+1];pb+=src[i+2];
+    }
+    const o=(y*w+x)*4;
+    if(a>0){out[o]=Math.round(r/a);out[o+1]=Math.round(g/a);out[o+2]=Math.round(b/a);}
+    else{out[o]=Math.round(pr/4);out[o+1]=Math.round(pg/4);out[o+2]=Math.round(pb/4);}
+    out[o+3]=Math.round(a/4);
+  }
+  return out;
+}
+/** The atlas with its whole mip chain, for terrain: distant faces and water fade to their tiles' average colours instead
+ *  of aliasing into moire. Chunk shaders pick the level themselves (at most ATLAS_MIP_LEVELS) from the unwrapped tile
+ *  coordinate, so greedy-tiled quads never jump a level at their tile wraps; close up it stays nearest-pixel sharp. */
+export function paintAtlasMipTexture():THREE.DataTexture{
+  let data:Uint8Array=flippedAtlas(),w=ATLAS_WIDTH,h=ATLAS_HEIGHT;
+  const mipmaps:{data:Uint8Array;width:number;height:number}[]=[{data,width:w,height:h}];
+  while(w>1||h>1){data=mipLevel(data,w,h);w=Math.max(1,w>>1);h=Math.max(1,h>>1);mipmaps.push({data,width:w,height:h});}
+  const texture=new THREE.DataTexture(mipmaps[0].data as Uint8Array<ArrayBuffer>,ATLAS_WIDTH,ATLAS_HEIGHT,THREE.RGBAFormat);
+  texture.mipmaps=mipmaps as unknown as THREE.DataTexture['mipmaps'];
+  texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestMipmapLinearFilter;texture.generateMipmaps=false;texture.needsUpdate=true;
   return texture;
 }
 /** Blocky cloud mask: white texels at alpha 230 where there is cloud, 0 elsewhere, covering 40% of the sky.
