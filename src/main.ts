@@ -35,7 +35,7 @@ let libraryScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
-const fillGames=new Set<GameId>(['globle']);
+const fillGames=new Set<GameId>(['globle','corn-clicker']);
 
 function syncViewportLock(){
   document.documentElement.classList.toggle('game-viewport',!!activeId&&!document.body.classList.contains('study-active'));
