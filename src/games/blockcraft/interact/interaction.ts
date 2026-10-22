@@ -299,7 +299,9 @@ export function createInteraction(game:Game):InteractionService{
       if(input.pressed('dropStack')){if(game.inventory.held()){game.inventory.dropHeld(true);game.render.swing();}}
       else if(input.pressed('drop')){if(game.inventory.held()){game.inventory.dropHeld(false);game.render.swing();}}
       let broke=false;
-      if(using){input.pressed('attack');input.pressed('use');input.pressed('pick');}
+      // Using an item discards every click (vanilla: while(consumeClick());). Presses are counted (at most a few unread),
+      // so each is read until none is left.
+      if(using){while(input.pressed('attack'));while(input.pressed('use'));while(input.pressed('pick'));}
       else{
         if(input.pressed('attack'))broke=startAttack();
         if(input.pressed('use'))startUse();

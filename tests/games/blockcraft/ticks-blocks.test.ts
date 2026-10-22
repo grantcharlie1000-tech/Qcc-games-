@@ -178,6 +178,14 @@ describe('fire',()=>{
     // Top slabs are sturdy too (vanilla isFaceSturdy), though the shared rule leaves them out.
     g.set(6,Y,0,'stone_slab_top');g.set(6,Y+1,0,'fire');g.run(2);expect(g.get(6,Y+1,0)).toBe('fire');
   });
+  test('a lone fire burns on every sturdy top (stone, glass, ice, slabs) until it ages out, and goes out at once off one',()=>{
+    // Vanilla FireBlock.tick with nothing to burn: removed when the base is not isFaceSturdy(UP) or the age passes 3. Ageing
+    // takes at least 4 fire ticks (30-39 ticks each), so every fire on a sturdy base is still burning after 3 of them.
+    const g=createTickGame(),bases=['stone','glass','ice','stone_slab_top','stone_slab_double','stone_slab'];
+    bases.forEach((b,i)=>{g.set(i*3,Y,0,b);g.set(i*3,Y+1,0,'fire');});
+    g.run(110);
+    expect(bases.map((b,i)=>[b,g.get(i*3,Y+1,0)])).toEqual(bases.map(b=>[b,b==='stone_slab'?'air':'fire']));
+  });
   test('a burnt block becomes fire only where fire can stay, else air',()=>{
     // Floating wool blocks, each with a fire beside it: once burnt, the wool's cell has nothing to hold fire.
     const g=createTickGame(),cells:[number,number][]=[];

@@ -1,8 +1,9 @@
 // DOM-free input state shared by every device (keyboard, mouse, touch, gamepad). Each held action
 // remembers which sources hold it (two keys, a key and a touch button...), so releasing one source
-// never cancels another. pressed() edges follow the single-consumer rule: true once per press, cleared on read.
+// never cancels another. pressed() edges follow the single-consumer rule: true once per press, each read consuming one.
 // Presses are counted like vanilla KeyMapping.clickCount, so two presses between two frames (a fast double tap
-// when frames are slow) still read as two.
+// when frames are slow) still read as two; up to MAX_PENDING_PRESSES unread presses are kept, and a consumer that
+// discards presses (interaction while an item is in use) reads until pressed() is false.
 import {KEY_ACTIONS,SCREEN_ACTIONS} from './controls-bindings';
 import type {InputAction} from '../engine/contracts';
 

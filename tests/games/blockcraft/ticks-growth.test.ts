@@ -132,6 +132,13 @@ describe('farmland',()=>{
     // The block under the feet decides: standing over stone at the edge of a field leaves the farmland alone.
     g.set(6,Y-1,0,'farmland');g.events.emit('playerLanded',{fallDistance:10,x:7.2,y:Y,z:.5});
     expect(g.get(6,Y-1,0)).toBe('farmland');
+    // Only blocks with a collision shape touching the feet hold the player up (vanilla Level.findSupportingBlock): at the edge
+    // of a field with the centre over a water channel, grass or a torch, the farmland is the support and is trampled.
+    for(const [i,beside] of (['water','short_grass','torch','stone_slab'] as const).entries()){
+      const fx=10+i*3;g.set(fx,Y-1,0,'farmland');g.set(fx+1,Y-1,0,beside);
+      g.events.emit('playerLanded',{fallDistance:10,x:fx+1.2,y:feet,z:.5});
+      expect([beside,g.get(fx,Y-1,0)]).toEqual([beside,'dirt']);
+    }
     // A crawling player (0.6 high) is too small (width² × height ≤ 0.512).
     g.player={...g.player,height:.6};
     g.events.emit('playerLanded',{fallDistance:10,x:6.5,y:feet,z:.5});expect(g.get(6,Y-1,0)).toBe('farmland');

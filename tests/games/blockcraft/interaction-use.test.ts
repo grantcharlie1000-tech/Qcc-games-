@@ -3,6 +3,7 @@ import {AIR,B,blockDef,blockId} from '../../../src/games/blockcraft/data/blocks'
 import {itemDef,stack} from '../../../src/games/blockcraft/data/items';
 import {bonemealAge,bowPower,SLEEP_MESSAGES} from '../../../src/games/blockcraft/interact/use';
 import type {TreeKind,WeatherService} from '../../../src/games/blockcraft/engine/contracts';
+import {ControlState} from '../../../src/games/blockcraft/player/controls-core';
 import {createHarness,type Harness} from './interaction-harness';
 
 const name=(h:Harness,x:number,y:number,z:number)=>blockDef(h.game.world.get(x,y,z)).name;
@@ -113,6 +114,20 @@ describe('eating and drinking',()=>{
     expect(h.sounds().filter(s=>s==='eat').length).toBe(7);
     expect(h.log.particles.some(p=>p.kind==='item'&&p.options?.item==='bread')).toBe(true);
   });
+  it('every click made while an item is in use is discarded, two in one tick too (vanilla consumeClick loops)',()=>{
+    const h=createHarness();h.hold('bread',3);h.lookAt(.5,70,-10);h.step();
+    // The real input state counts presses (up to two unread per action); held state stays with the fake input.
+    const controls=new ControlState();h.game.input={...h.game.input,pressed:a=>controls.pressed(a)};
+    controls.tap('use');h.down('use');h.step(5);
+    expect(h.interaction.using?.item).toBe('bread');
+    // Two quick clicks of each kind, and use let go, between two ticks: that tick ends the eating.
+    for(const a of ['attack','use','pick'] as const){controls.tap(a);controls.tap(a);}
+    const swings=h.log.swings;h.down('use',false);h.step();
+    expect(h.interaction.using).toBeNull();
+    // No click is left over to attack (a swing at the air) or start eating again.
+    h.step(3);
+    expect(h.interaction.using).toBeNull();expect(h.log.swings).toBe(swings);expect(h.surv.eaten).toHaveLength(0);
+  });
   it('letting go early eats nothing; a full stomach refuses unless the food is always edible',()=>{
     const h=createHarness();h.hold('apple',2);h.lookAt(.5,70,-10);
     holdUse(h,20);expect(h.surv.eaten).toHaveLength(0);expect(h.interaction.using).toBeNull();
@@ -164,10 +179,20 @@ describe('buckets',()=>{
     expect(name(h,0,60,-2)).toBe('water');expect(h.inv.slots[0]).toEqual(stack('bucket'));expect(h.sounds()).toContain('bucket_empty');
     useOn(h,'lava_bucket',2,59,-2);expect(name(h,2,60,-2)).toBe('lava');
   });
-  it('water washes away a torch, dropping it; rays pass beside thin shapes',()=>{
+  it('water washes away a torch, dropping it with its break particles and sound; rays pass beside thin shapes',()=>{
     const h=createHarness();h.game.world.set(0,60,-2,B.torch);
     h.hold('water_bucket');h.aimFace(0,59,-2,0,1,0,{u:.15,v:.15});h.step();h.click('use');
     expect(name(h,0,60,-2)).toBe('water');expect(h.ents.drops.map(d=>d.stack)).toEqual([stack('torch')]);
+    // Level.destroyBlock's level event 2001, as when a torch pops off.
+    expect(h.sounds()).toEqual(expect.arrayContaining([`break:${blockDef(B.torch).sound}`,'bucket_empty']));
+    expect(h.log.particles.some(p=>p.kind==='block'&&p.options?.block===B.torch&&p.x===.5&&p.z===-1.5)).toBe(true);
+  });
+  it('a bucket emptied into fire puts it out without break particles or sound (destroyBlock skips fire)',()=>{
+    // Emptied against the side of a block beside the fire, above the fire's thin outline.
+    const h=createHarness();h.game.world.set(0,60,-2,blockId('fire'));h.game.world.set(1,60,-2,B.stone);
+    useOn(h,'water_bucket',1,60,-2,[-1,0,0]);
+    expect(name(h,0,60,-2)).toBe('water');
+    expect(h.sounds().some(s=>s.startsWith('break:'))).toBe(false);expect(h.log.particles.some(p=>p.kind==='block')).toBe(false);
   });
   it('creative keeps the full bucket',()=>{
     const h=createHarness({mode:'creative'});useOn(h,'water_bucket',0,59,-2);
