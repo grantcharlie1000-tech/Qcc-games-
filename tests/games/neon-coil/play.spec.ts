@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { test, expect, seedStudyTopic, type Page } from '../../fixtures';
+import { GAME_IDS } from '../../../src/core/types';
 const evidence = process.env.NEON_COIL_EVIDENCE_DIR || 'docs/evidence/neon-coil';
 const game = (page: Page) => page.locator('.nc-game');
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pocket-arcade:v1:save:neon-coil')!).data);
@@ -94,7 +95,7 @@ test('resize, high DPI, reduced motion and controls fit desktop, ultrawide and t
       // ResizeObserver is delivered on a native layout frame, outside the fake clock.
       await page.clock.runFor(34);
       return page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }));
-    }).toEqual({ w: (size.width >= 1100 ? size.width - 264 : size.width) * 2, h: size.height * 2 });
+    }).toEqual({ w: size.width * 2, h: size.height * 2 });
     expect(await page.locator('.nc-ranking li').count()).toBe(size.width < 600 || size.height < 600 ? 5 : 10);
     for (const selector of ['#pause-game', '#restart-game', '.nc-boost']) {
       const box = (await page.locator(selector).boundingBox())!;
@@ -148,7 +149,7 @@ test('focusable boost, lost focus, frame stalls, disposal and invalid saves reco
 });
 test('the library retains original grid Snake and opens Neon Coil separately', async ({ page }) => {
   await open(page); await page.getByRole('link', { name: 'Back to game library', exact: true }).click();
-  await expect(page.locator('.game-card')).toHaveCount(16);
+  await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect(page.getByRole('link', { name: 'Play Snake', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Play Snake', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Start slithering', exact: true })).toBeVisible();
@@ -272,7 +273,7 @@ for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
       await page.setViewportSize(size);
       // Backing pixels use the browser's DPR, capped at 2 and rounded by the renderer.
       const dpr = await page.evaluate(() => Math.min(2, window.devicePixelRatio || 1));
-      await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: Math.round((size.width >= 1100 ? size.width - 264 : size.width) * dpr), h: Math.round(size.height * dpr) });
+      await expect.poll(() => page.locator('.nc-canvas').evaluate(c => ({ w: (c as HTMLCanvasElement).width, h: (c as HTMLCanvasElement).height }))).toEqual({ w: Math.round(size.width * dpr), h: Math.round(size.height * dpr) });
       expect.soft(await page.locator('.nc-ranking li').count(), `${lifecycle} ${size.width}x${size.height}`).toBe(size.rows);
       await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
       const world = await saved(page); resizes.push({ ...size, world: worldSummary(world) });

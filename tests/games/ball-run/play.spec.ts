@@ -104,7 +104,8 @@ test('a real restored run accelerates through cyan gates and flies then lands ac
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`perspective keeps a round ball and fills ${viewport.width}x${viewport.height}`,async({page})=>{
   await page.setViewportSize(viewport);await seedCourse(page,58);await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Continue rolling'}).click();await frames(page,5);
   const canvas=page.locator('.ball-run canvas'),box=(await canvas.boundingBox())!;
-  const playWidth=viewport.width>=1100?viewport.width-264:viewport.width;
+  // Rankings float over the game, so the canvas fills the whole viewport at every width.
+  const playWidth=viewport.width;
   expect(box.x).toBeCloseTo(viewport.width-playWidth,0);expect(box.width).toBeCloseTo(playWidth,0);expect(box.height).toBeCloseTo(viewport.height,0);
   expect(Number(await page.locator('.ball-run').getAttribute('data-aspect'))).toBeCloseTo(playWidth/viewport.height,4);
   const ballY=Number(await page.locator('.ball-run').getAttribute('data-ball-screen-y'));expect(ballY).toBeGreaterThan(.60);expect(ballY).toBeLessThan(.78);
