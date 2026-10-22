@@ -8,7 +8,7 @@
 //  - Monsters (spawn.light 'dark'): every tick a few random positions (random column of a lit chunk, random height up to
 //    the surface) start up to three packs of the kind's group size, walking ±5 blocks; 24 to 64 blocks from the player,
 //    on an opaque floor (not bedrock) with room for the box, vanilla darkness (sky light ≤ random 0..31, block light 0,
-//    brightness ≤ random 0..7). Weights from spawn.weight (default 100), `biomes` restrict and weigh, `replaces` takes
+//    brightness ≤ random 0..7, with a sky darkening of 10 while thundering). Weights from spawn.weight (default 100), `biomes` restrict and weigh, `replaces` takes
 //    its weight from the kind it replaces in its biomes (husk for zombie in deserts, stray for skeleton in snowy biomes).
 //    No monsters in mushroom fields unless a kind lists them. Aquatic monsters (drowned) spawn in water. Cap 40.
 //  - spawn.check(game, x, y, z) (the feet cell) is the kind's own light and placement rule, like vanilla's per-type
@@ -51,13 +51,19 @@ const BIOME_TOP=Int16Array.from(BIOMES,b=>BLOCK_BY_NAME.get(b.top)?.id??-1);
 export function animalGround(below:number,biome:BiomeDef):boolean{
   return below>0&&(ANIMAL_GROUND[below]===1||below===BIOME_TOP[biome.id]);
 }
+/** Vanilla Level.isThundering: the thunder level (already scaled by the rain level) above 0.9. */
+const THUNDERING=.9;
+/** The sky darkening Monster.isDarkEnoughToSpawn uses while thundering (getMaxLocalRawBrightness(pos, 10)). */
+const THUNDER_SPAWN_DARKENING=10;
 /** Vanilla Monster.isDarkEnoughToSpawn at a feet cell: sky light ≤ a random 0..31, no block light, brightness ≤ a random
- *  0..7. Kinds with their own spawn.check call it to keep the monster darkness rule. */
+ *  0..7. The brightness uses the current sky darkening, or a darkening of 10 while thundering (so monsters spawn on the
+ *  surface during a daytime thunderstorm). Kinds with their own spawn.check call it to keep the monster darkness rule. */
 export function isDarkEnoughToSpawn(game:Game,x:number,y:number,z:number):boolean{
-  const l=game.world.lightAt(x,y,z);
-  if((l>>4)>Math.floor(game.random()*32))return false;
-  if((l&15)>0)return false;
-  return game.world.brightnessAt(x,y,z)<=Math.floor(game.random()*8);
+  const l=game.world.lightAt(x,y,z),sky=l>>4,block=l&15;
+  if(sky>Math.floor(game.random()*32))return false;
+  if(block>0)return false;
+  const brightness=game.weather.thunder>THUNDERING?Math.max(block,sky-THUNDER_SPAWN_DARKENING):game.world.brightnessAt(x,y,z);
+  return brightness<=Math.floor(game.random()*8);
 }
 /** The despawn flag of a kind for one entity (a predicate decides per entity; default: hostile and water mobs). */
 export function despawnsNow(kind:EntityKind,e:Entity):boolean{

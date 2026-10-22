@@ -8,6 +8,7 @@
 // which also wears the shield and pushes a melee attacker back.
 import {SOLID,blockDef,isLava} from '../data/blocks';
 import type {DamageSource,Difficulty,Entity,Game} from '../engine/contracts';
+import {isDarkEnoughToSpawn} from './spawning';
 
 export const DIFFICULTY_ID:Readonly<Record<Difficulty,number>>={peaceful:0,easy:1,normal:2,hard:3};
 /** Vanilla knockback strength 0.4 blocks/tick, in blocks/second. */
@@ -262,17 +263,9 @@ export const underSky=(game:Game,x:number,y:number,z:number)=>game.world.topY(x,
 // ---- Natural spawn rules (EntityKind.spawn.check) --------------------------------------------------
 /** Vanilla Level.canSeeSky for a spawn cell: full sky light (snow layers, plants and torches let it through). */
 export const seesSky=(game:Game,x:number,y:number,z:number)=>(game.world.lightAt(x,y,z)>>4)>=15;
-/** Vanilla Monster.isDarkEnoughToSpawn at a feet cell (the entity framework's default dark-spawn rule): sky light at most a
- *  random 0..31, no block light, brightness at most a random 0..7. A kind's spawn.check replaces that default, so the
- *  hostile checks call it first. */
-export function monsterDark(game:Game,x:number,y:number,z:number):boolean{
-  const l=game.world.lightAt(x,y,z);
-  if((l>>4)>Math.floor(game.random()*32))return false;
-  if((l&15)>0)return false;
-  return game.world.brightnessAt(x,y,z)<=Math.floor(game.random()*8);
-}
-/** Husk and stray spawn rule (checkHuskSpawnRules, checkStraySpawnRules): monster darkness and open sky. */
-export const darkUnderOpenSky=(game:Game,x:number,y:number,z:number)=>monsterDark(game,x,y,z)&&seesSky(game,x,y,z);
+/** Husk and stray spawn rule (checkHuskSpawnRules, checkStraySpawnRules): monster darkness and open sky. A kind's
+ *  spawn.check replaces the framework's default darkness test, so it calls the framework's rule (isDarkEnoughToSpawn). */
+export const darkUnderOpenSky=(game:Game,x:number,y:number,z:number)=>isDarkEnoughToSpawn(game,x,y,z)&&seesSky(game,x,y,z);
 
 // ---- Validation ------------------------------------------------------------------------------
 const isInt=(v:unknown,min:number,max:number):v is number=>Number.isInteger(v)&&(v as number)>=min&&(v as number)<=max;

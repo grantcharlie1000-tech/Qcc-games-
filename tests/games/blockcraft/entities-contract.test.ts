@@ -119,6 +119,21 @@ describe('spawn.check',()=>{
     expect(n).toBe(200);
     for(let i=0;i<50;i++){expect(isDarkEnoughToSpawn(day.game,3,60,3)).toBe(false);expect(isDarkEnoughToSpawn(torch.game,3,60,3)).toBe(false);}
   });
+  test('in a thunderstorm the surface is dark enough by day (vanilla getMaxLocalRawBrightness(pos, 10))',()=>{
+    const rate=(thunder:number)=>{
+      const h=harness({light:0xf0,seed:11});
+      const w=h.game.weather as {intensity:number;thunder:number};w.intensity=1;w.thunder=thunder;
+      h.game.time.dayTime=6000;h.tick(1);
+      let n=0;for(let i=0;i<4000;i++)if(isDarkEnoughToSpawn(h.game,3,60,3))n++;
+      return {rate:n/4000,darkening:h.game.time.skyDarkening};
+    };
+    // Thundering (thunder > 0.9): brightness 15 - 10 = 5 passes 3 of 8 rolls (5, 6, 7) after the sky-light roll (17 of 32).
+    const storm=rate(1);
+    expect(storm.darkening).toBe(5);
+    expect(storm.rate).toBeGreaterThan(17/32*3/8-.03);expect(storm.rate).toBeLessThan(17/32*3/8+.03);
+    // Not yet thundering, or clear: the normal sky darkening leaves brightness 10 or 15, which never passes.
+    expect(rate(.85).rate).toBe(0);expect(rate(0).rate).toBe(0);
+  });
   test('the check replaces the darkness test and gets the feet cell; floor, room and distance still apply',()=>{
     const cells:[number,number,number][]=[];
     const anyLight=monster({kind:'blob',spawn:{light:'dark',group:[1,1],weight:100,check:(_g,x,y,z)=>{cells.push([x,y,z]);return true;}}});

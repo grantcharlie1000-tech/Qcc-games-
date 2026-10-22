@@ -18,9 +18,10 @@ import {stack} from '../data/items';
 import {SEA_LEVEL} from '../engine/constants';
 import type {Entity,EntityKind,Game,ItemStack} from '../engine/contracts';
 import {alertOthers,avoidHazards,brain,chase,cleanData,darkUnderOpenSky,difficultyId,forget,idle,ignite,isDay,localDifficulty,mobSpeed,
-  monsterDark,newTarget,peacefulRemove,pickSpot,retaliate,setAggressive,tickTimers,tryMelee,updateTarget,walkToSpot,type Brain,
+  newTarget,peacefulRemove,pickSpot,retaliate,setAggressive,tickTimers,tryMelee,updateTarget,walkToSpot,type Brain,
   type TargetPos} from './hostile-ai';
 import {zombieModels} from './hostile-models';
+import {isDarkEnoughToSpawn} from './spawning';
 
 export type ZombieKind='zombie'|'husk'|'drowned';
 export const ZOMBIE_FAMILY:ReadonlySet<string>=new Set<ZombieKind>(['zombie','husk','drowned']);
@@ -126,7 +127,7 @@ function onHit(game:Game,e:Entity,b:Brain,v:Variant){
  *  monster darkness, then 1 time in 15 in rivers, else 1 in 40 below sea level − 5. */
 export function drownedSpawnOk(game:Game,x:number,y:number,z:number):boolean{
   const below=game.world.get(x,y-1,z);
-  if(!(below>0&&isWater(below))||!monsterDark(game,x,y,z))return false;
+  if(!(below>0&&isWater(below))||!isDarkEnoughToSpawn(game,x,y,z))return false;
   if(RIVERS.has(biomeDef(game.world.biomeAt(x,z)).name))return game.random()<DROWNED_RIVER_CHANCE;
   return game.random()<DROWNED_OCEAN_CHANCE&&y<SEA_LEVEL-5;
 }
