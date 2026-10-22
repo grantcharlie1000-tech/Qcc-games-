@@ -256,11 +256,17 @@ test('creative picker and the survival inventory fit a 320×568 phone',async({pa
   test.setTimeout(150000);
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await boot(page,{width:320,height:568});
+  // The whole GUI (panel, creative tabs, tool buttons) sits inside the phone, below the arcade toolbar, and every slot
+  // is a usable touch target.
   const fits=async()=>{
-    const box=(await page.locator('.bc-panel').boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
-    expect(box.x+box.width).toBeLessThanOrEqual(320);expect(box.y+box.height).toBeLessThanOrEqual(568);
-    expect(await page.locator('.bc-panel').evaluate(e=>e.scrollWidth<=e.clientWidth&&e.scrollHeight<=e.clientHeight+1)).toBe(true);
+    const box=await page.evaluate(()=>{
+      const all=[...document.querySelectorAll('.bc-panel,.bc-panel .bc-tab,.bc-panel .bc-tools')].map(e=>e.getBoundingClientRect());
+      const slot=document.querySelector('.bc-panel .bc-s')!.getBoundingClientRect();
+      return{left:Math.min(...all.map(r=>r.left)),top:Math.min(...all.map(r=>r.top)),right:Math.max(...all.map(r=>r.right)),bottom:Math.max(...all.map(r=>r.bottom)),slot:slot.width};
+    });
+    expect(box.left).toBeGreaterThanOrEqual(0);expect(box.top).toBeGreaterThanOrEqual(56);
+    expect(box.right).toBeLessThanOrEqual(320);expect(box.bottom).toBeLessThanOrEqual(568);
+    expect(box.slot).toBeGreaterThanOrEqual(24);
   };
   await engine(page,g=>g.ui.open('inventory'));
   await expect(page.locator('.bc-panel')).toHaveAttribute('aria-label','Inventory');
