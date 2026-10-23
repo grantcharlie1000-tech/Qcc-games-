@@ -81,15 +81,15 @@
 - Segment length scale `s(d) = clamp(speed(d)/14, 1, 3.5)` applied to these unscaled ranges; feature amplitudes are not scaled:
   - `warmup`: first segment only, `WARMUP` m straight at centre 0, flat.
   - `straight` 24–48 m; local rise `0.3·sin²(πt)`.
-  - `bend` 40–70 m; `c = c0 + A·sin(2πt)`, `|A|` 0.8–2.0 limited by `CENTER_LIMIT`.
-  - `offset` 18–28 m; `c = c0 + (c1−c0)·smoothstep(t)`, `c1` in `±CENTER_LIMIT`, `|c1−c0| ≥ 1.2`.
+  - `bend` 40–70 m; `c = c0 + A·sin(2πt)`, `|A|` 0.8–min(2.0, `CENTER_LIMIT − |c0|`) — always ≥ 0.8 because offsets keep `|c| ≤ CENTER_LIMIT − 0.8`.
+  - `offset` 18–28 m; `c = c0 + (c1−c0)·smoothstep(t)`, `|c1| ≤ CENTER_LIMIT − 0.8`, `|c1−c0| ≥ 1.2`.
   - `ribbon` 40–70 m; width eases to `ribbonWidth` over the first 25 %, holds, eases back over the last 25 % (smoothstep).
-  - `ribbonBend` 50–80 m; ribbon plus `A·sin(2πt)`, `|A|` 0.6–1.2.
+  - `ribbonBend` 50–80 m; ribbon plus `A·sin(2πt)`, `|A|` 0.6–1.2 (always ≥ 0.6).
   - `bank` 30–50 m; `bank = B·sin²(πt)`, `|B|` = 0.5–1 × `maxBank`, random sign.
   - `crest` 30–60 m, `local = H·sin²(πt)`, H 1.5–3.5; `dip` 30–50 m, H −1.0 to −2.0.
   - `drop`: approach 20–30 m with `local` rising to `h` (2–4) by smootherstep (zero slope at the lip); gap `G` 2–4 m with `ground=false` and elevation = landing level (`local = 0`); landing pad ≥ `max(20, maxSpeed·sqrt(2h/GRAVITY) + 12)` m flat. Clamp `G ≤ speed(lip)·sqrt(2h/GRAVITY) − 1.2` so it is always cleared at the speed there.
   - `gate`: 30 m straight, full width, centre constant, `tunnel=true`. Gates are **scheduled, not drawn**: the generator integrates running time (`Σ length / speed`) and inserts a gate segment once the time since the previous gate (or since distance 0) reaches an interval drawn from `CONFIG[d].gate.interval`; the next segment is always a `straight`. `Gate.clearEnd = end + speed(end)·1.0`. Gate index counts from 0; `gatesBefore(d)` counts gates with `start ≤ d`; `speed(d) = speedAt(difficulty, d, gatesBefore(d))`.
-- Selection between gates: weighted by `CONFIG[d].segments`; no `drop` after a `drop`.
+- Selection between gates: in exact long-run proportion to `CONFIG[d].segments`, stratified so short courses still show every kind (a credit/deficit scheduler: every draw adds `weight/total` to each kind's credit and draws among positive credits in proportion to credit); no `drop` after a `drop` (skip to the next draw, never a fixed fallback kind).
 - Universal traversability: before accepting a segment, run the reachability pass **backwards** over it from the full allowed band at its end; the result at its start must cover the whole allowed band. If not, retry with length ×1.5 (twice), then substitute a `straight`.
 
 **Reachability pass (decided):** sets of disjoint `[lo, hi]` world-x intervals for the ball centre, stepped every 1 m (and exactly at obstacle distances):
@@ -97,7 +97,7 @@
 - forward step: shift by `BANK_DRIFT·sin(bank)·Δ/v`, dilate by `reachStep(v, Δ)`, intersect with the next allowed band. `v` is `course.speed(d)` (exact: gates are unavoidable).
 
 **Obstacle rows (decided):**
-- Row cursor starts at `WARMUP + 10`. Gap to the next row: seconds drawn from `lerp(introInterval, rowInterval, p)`, `p = clamp((d − WARMUP)/rampDistance, 0, 1)`, times `speed(d)`. After `restEvery` rows, skip `restSeconds`·speed.
+- Row cursor starts at `WARMUP + 10`. Rows are spaced start-to-start, and a row never starts sooner than 0.35 s (the tightest in-pattern spacing) after the previous pattern's last block. Gap to the next row: seconds drawn from `lerp(introInterval, rowInterval, p)`, `p = clamp((d − WARMUP)/rampDistance, 0, 1)`, times `speed(d)`. After `restEvery` rows, skip `restSeconds`·speed.
 - No obstacles in: warmup; `[gate.start − 5, gate.clearEnd]`; ribbon/ribbonBend segments; `[lip − 8, gapEnd + 12]` around each drop; the middle 40 % of crests and dips.
 - Patterns (weights `CONFIG[d].patterns`, `hw` = minimum half-width over the pattern span, `g = minGap`, all blocks inside `|u| + w/2 ≤ hw − 0.05`):
   - `single` w 0.8–1.6, h 0.9–2.2, depth 0.8–1.6, random u.
@@ -114,13 +114,13 @@
 - Two seeded PRNG streams (road, rows) derived from `seed` and the difficulty index (e.g. mulberry32 of a hash); generation is lazy and sequential: `sample`/`forEachObstacle` call an internal `ensure(d)` that keeps road ≥ 400 m and rows ≥ 300 m past `d`.
 
 - [ ] **Step 1: Write the failing tests** in `course.test.ts` (seeds 1–24 unless stated, all three difficulties):
-  - determinism: two fresh `getCourse` instances (clear by requesting 7 other courses) agree on `sample` at 500 random distances and on every obstacle to 3 km, whether queried near-first or far-first.
-  - continuity: at every segment boundary and every 0.25 m to 5 km, `center`, `width`, `bank`, `elevation` are continuous (|Δ| < 0.05 per 0.25 m) except across a drop gap; `|center| ≤ CENTER_LIMIT`; `ribbonWidth ≤ width ≤ roadWidth`; `|bank| ≤ maxBank`.
+  - determinism: fresh `getCourse` instances (clear by requesting 7 other courses) agree on `sample` at 500 random distances and on every obstacle to 3 km across three query orders: far-first (`gatesBefore(3900)` first), random samples first, and **incremental** (`forEachObstacle(d, d + 5)` for d = 0…3000 before any far query).
+  - continuity: at every segment boundary (to 1e-4) and every 0.05 m to 5 km, `center`, `width`, `bank`, `elevation` change by < 0.05 per 0.05 m except across a drop gap; every bend sways by `|A| ≥ 0.8` and every ribbonBend by `≥ 0.6`; `|center| ≤ CENTER_LIMIT`; `ribbonWidth ≤ width ≤ roadWidth`; `|bank| ≤ maxBank`.
   - opening: `[0, WARMUP]` is straight, centre 0, no obstacles; `sample(0).center === 0`.
   - vocabulary: within 6 km every difficulty produces bend, offset, ribbon, bank, crest, drop and gate segments (Medium/Hard also ribbonBend); gates arrive every `gate.interval` seconds of running (check the integrated time between consecutive gates lies within the interval, ±1 segment).
   - clear zones: no obstacle overlaps a gate clear zone, ribbon, drop exclusion zone or warmup; every obstacle lies on the road surface (`|offset|` + half-width, sweep included, ≤ half-width at its distance).
   - drops: for each drop, a point mass leaving the lip at `speed(lip)` along `-SLOPE` and falling under `GRAVITY` lands ≥ 1 m past the gap and before the pad ends even at `maxSpeed`.
-  - density: measured over 1–6 km at `course.speed` (clear zones included), blocks per second ≥ 0.6 (Easy), ≥ 0.9 (Medium), ≥ 1.3 (Hard) and rows per second ≥ 0.35 / 0.5 / 0.7 — the old game averaged ~0.4 blocks per second; Hard > Medium > Easy.
+  - density: measured over 1–6 km at `course.speed` (clear zones included), pooled over seeds 1–24: blocks per second ≥ 0.6 (Easy), ≥ 0.9 (Medium), ≥ 1.3 (Hard) and rows per second ≥ 0.35 / 0.5 / 0.65; every individual seed ≥ 85 % of each pooled threshold — the old game averaged ~0.4 blocks per second; Hard > Medium > Easy. (Ruling 2026-10-23: ribbons stay block-free as on reference page 04; Medium/Hard spacing and ribbon weights were tuned in config.ts to recover density.)
   - variety: over 6 km, Hard uses ≥ 8 pattern kinds, sliders appear on Medium/Hard and never on Easy; 32 seeds give ≥ 28 distinct first-five-row layouts.
   - feasibility (independent of the generator's internals): re-run the interval reachability over 0–6 km for each seed/difficulty using `reachStep` with 0.95× the reach and assert the set never empties.
 - [ ] **Step 2:** `npx vitest run tests/games/ball-run/course.test.ts` → FAIL (module missing).

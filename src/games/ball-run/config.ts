@@ -80,20 +80,20 @@ export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
   medium: {
     label: 'Medium', startSpeed: 11, acceleration: .045, maxSpeed: 50,
     roadWidth: 5.4, ribbonWidth: 2.2, minGap: 1.7,
-    rowInterval: [.75, 1.35], introInterval: [1.3, 2], rampDistance: 600,
+    rowInterval: [.7, 1.25], introInterval: [1.3, 2], rampDistance: 600,
     restEvery: [12, 16], restSeconds: [2.5, 3.5], maxBank: .26,
     gate: { speedGain: 1.25, interval: [25, 40] },
-    segments: { straight: 22, bend: 18, offset: 15, ribbon: 10, ribbonBend: 5, bank: 10, crest: 8, dip: 4, drop: 5 },
+    segments: { straight: 22, bend: 18, offset: 15, ribbon: 8, ribbonBend: 4, bank: 10, crest: 8, dip: 4, drop: 5 },
     patterns: { single: 18, pair: 14, gate: 16, doubleGate: 10, slalom: 10, zigzag: 8, scatter: 8, slider: 8, wallRun: 5, bigBlock: 5 },
     color: '#e2a21b',
   },
   hard: {
     label: 'Hard', startSpeed: 13, acceleration: .06, maxSpeed: 62,
     roadWidth: 4.8, ribbonWidth: 1.8, minGap: 1.45,
-    rowInterval: [.55, 1.05], introInterval: [1, 1.6], rampDistance: 500,
-    restEvery: [14, 18], restSeconds: [2, 3], maxBank: .32,
+    rowInterval: [.5, .95], introInterval: [1, 1.6], rampDistance: 500,
+    restEvery: [16, 20], restSeconds: [1.8, 2.6], maxBank: .32,
     gate: { speedGain: 1.5, interval: [20, 35] },
-    segments: { straight: 15, bend: 16, offset: 15, ribbon: 12, ribbonBend: 8, bank: 12, crest: 8, dip: 4, drop: 6 },
+    segments: { straight: 15, bend: 16, offset: 15, ribbon: 9, ribbonBend: 6, bank: 12, crest: 8, dip: 4, drop: 6 },
     patterns: { single: 10, pair: 12, gate: 16, doubleGate: 10, slalom: 12, zigzag: 12, scatter: 9, slider: 12, wallRun: 5, bigBlock: 6 },
     color: '#f0524f',
   },
@@ -219,7 +219,9 @@ export interface Course {
   surfaceHeight(distance: number, x: number): number;
   /** Calls fn for each obstacle whose depth span overlaps [from, to], in distance order. */
   forEachObstacle(from: number, to: number, fn: (obstacle: Obstacle) => void): void;
-  /** Pose at a run time; writes into `out`. */
+  /** Pose at a run time; writes into `out`. Only accepts obstacles this course issued via forEachObstacle.
+   * The box is extended down to stay seated on sloped road, so collision and rendering must use the
+   * pose's half sizes, never `obstacle.height`. */
   pose(obstacle: Obstacle, elapsed: number, out: ObstaclePose): ObstaclePose;
   /** Calls fn for each gate overlapping [from, to]. */
   forEachGate(from: number, to: number, fn: (gate: Gate) => void): void;
