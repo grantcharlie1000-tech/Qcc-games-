@@ -80,12 +80,19 @@ test('survival mining takes time and drops the block',async({page,browserName})=
   if(!locks)await useLockFallback(page,640,360);
   await look(page,locks,{x:640,y:360},0,320,8);
   await expect.poll(()=>data(page,'target')).not.toBe('');
-  // Real terrain often puts short grass (instant to break) under the crosshair: make the target dirt (0.75 s by hand).
+  // Real terrain often puts short grass (instant to break) under the crosshair, including in the player's own cell. Clear the
+  // plants around the player so the crosshair rests on the ground, then make that block dirt (0.75 s by hand). Turning the
+  // player's own cell solid instead would push them out and swing the crosshair onto a neighbouring plant.
+  type World={world:{get(x:number,y:number,z:number):number;set(x:number,y:number,z:number,id:number):boolean}};
+  const feet=await page.locator('.blockcraft').evaluate(e=>['x','y','z'].map(k=>Math.floor(Number(e.getAttribute(`data-${k}`)))));
+  await page.evaluate(([x,y,z])=>{const g=(window as unknown as {blockcraft:World}).blockcraft;
+    for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)for(let dy=0;dy<=1;dy++)g.world.set(x+dx,y+dy,z+dz,0);},feet);
+  await expect.poll(async()=>Number((await data(page,'target'))?.split(',')[1]),{timeout:10000}).toBe(feet[1]-1);
   const at=(await data(page,'target'))!;
   const dirt=blockId('dirt');
-  await page.evaluate(([x,y,z,id])=>{const g=(window as unknown as {blockcraft:{world:{set(x:number,y:number,z:number,id:number):boolean}}}).blockcraft;
-    g.world.set(x,y,z,id);},[...at.split(',').map(Number),dirt]);
-  await expect.poll(()=>page.evaluate(([x,y,z])=>(window as unknown as {blockcraft:{world:{get(x:number,y:number,z:number):number}}}).blockcraft.world.get(x,y,z),at.split(',').map(Number))).toBe(dirt);
+  await page.evaluate(([x,y,z,id])=>{(window as unknown as {blockcraft:World}).blockcraft.world.set(x,y,z,id);},[...at.split(',').map(Number),dirt]);
+  await expect.poll(()=>page.evaluate(([x,y,z])=>(window as unknown as {blockcraft:World}).blockcraft.world.get(x,y,z),at.split(',').map(Number))).toBe(dirt);
+  await expect.poll(()=>data(page,'target')).toBe(at);
   await page.mouse.down();await page.waitForTimeout(200);
   expect(await num(page,'mined')).toBe(0);
   await expect.poll(()=>num(page,'mined'),{timeout:8000}).toBe(1);await page.mouse.up();

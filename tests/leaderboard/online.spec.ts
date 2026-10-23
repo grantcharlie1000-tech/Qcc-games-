@@ -16,7 +16,7 @@ async function connect(context:BrowserContext,score:number){
 }
 async function join(page:Page,name:string){
  await page.goto('/#/');await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
- await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(13);
+ await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(14);
  await page.getByLabel('Game',{exact:true}).selectOption('snake');await page.getByLabel('Your public nickname').fill(name);await page.getByRole('button',{name:'Join leaderboard',exact:true}).click();
  await expect(page.locator('.lb-table tbody')).toContainText(name);
 }

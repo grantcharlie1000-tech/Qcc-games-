@@ -14,6 +14,8 @@ async function seed(page:Page,data:Record<string,unknown>){
 const errorsOf=(page:Page)=>{const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));return errors;};
 
 test('fresh start with mouse and keyboard: one kernel per input, first producer, upgrade, bulk prices, save and offline return',async({page})=>{
+  // About a hundred real cob clicks plus a reload: 19 s in CI Chromium, just over 30 s in WebKit.
+  test.setTimeout(90000);
   const errors=errorsOf(page);
   await page.setViewportSize({width:1366,height:768});
   await page.goto('/#/game/corn-clicker');

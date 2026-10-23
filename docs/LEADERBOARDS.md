@@ -2,8 +2,10 @@
 
 Open **Menu → Leaderboards**, choose a game and join with a public nickname.
 The board lists the top 25 personal bests for that game and your own rank, including
-when it is below the top 25. Every scored game is included (14); Globle has its own
-puzzle statistics and no comparable points score.
+when it is below the top 25. Every scored game is included (15); Globle has its own
+puzzle statistics and no comparable points score. Corn Clicker ranks lifetime
+kernels harvested. They outgrow 32-bit scores, so it submits `floor(log10(kernels) × 10000)`
+and boards show the decoded total to four significant figures.
 
 Each browser keeps a random 256-bit private bearer token. Only its SHA-256 hash is
 stored by the server or returned as the public player ID. Clearing browser storage
@@ -39,8 +41,8 @@ server and reports online score service unavailability.
 The existing Netlify site must deploy this code to make the feature public. The
 function lives at `/.netlify/functions/leaderboard`; all reads and writes are
 same-origin. `@netlify/database` enables Netlify's provisioning and automatic
-migration runner. The committed migration creates separate player/score tables and
-an ordered score index. Nothing writes to an unrelated database. No secret key is
+migration runner. The committed migrations create separate player/score tables and
+an ordered score index, then add Corn Clicker to the allowed games. Nothing writes to an unrelated database. No secret key is
 embedded in the frontend. Function/database use follows the site's Netlify plan.
 
 Use a Netlify build/deploy containing `package.json`, its lockfile, the migration,
