@@ -1,6 +1,19 @@
 import { test, expect } from '../fixtures';
 import { LEVELS, emptyPaths, solve } from '../../src/games/color-connect/model';
 
+test.beforeEach(async({page})=>{
+ await page.addInitScript(()=>{
+  const events:unknown[]=[];(window as any).campaignPointerEvents=events;
+  document.addEventListener('pointermove',event=>{
+   const grid=document.querySelector<HTMLElement>('.cc-grid');
+   if(!grid?.hasPointerCapture(event.pointerId))return;
+   const rect=grid.getBoundingClientRect(),size=Number(grid.getAttribute('aria-colcount'));
+   const point=(sample:PointerEvent)=>[Number(((sample.clientX-rect.x)/rect.width*size).toFixed(3)),Number(((sample.clientY-rect.y)/rect.height*size).toFixed(3))];
+   events.push({point:point(event),samples:event.getCoalescedEvents?.().map(point)});
+  },{capture:true,passive:true});
+ });
+});
+
 test.afterEach(async({page},info)=>{
  if(info.status===info.expectedStatus)return;
  // CI logs remain available when an environment cannot download trace ZIPs.
@@ -11,6 +24,7 @@ test.afterEach(async({page},info)=>{
   winHidden:(document.querySelector('.cc-win') as HTMLElement|null)?.hidden,
   cells:Array.from(document.querySelectorAll<HTMLElement>('[data-cc-cell]'),cell=>({cell:Number(cell.dataset.ccCell),path:cell.dataset.path??null,label:cell.getAttribute('aria-label')})),
   saved:JSON.parse(localStorage.getItem('pocket-arcade:v1:save:color-connect')||'null')?.data?.paths,
+  pointerEvents:(window as any).campaignPointerEvents,
  }))));
 });
 
