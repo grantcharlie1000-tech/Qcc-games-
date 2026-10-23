@@ -202,6 +202,9 @@ class CourseImpl implements Course {
   private readonly rowRandom: Random;
   private readonly patternTotal: number;
   private readonly gapRoute: number;
+  /** Each drawn kind's share of CONFIG.segments, and the scheduler's running credit per kind. */
+  private readonly share = new Float64Array(DRAWN.length);
+  private readonly credit = new Float64Array(DRAWN.length);
 
   private readonly segments: Segment[] = [];
   private readonly gateStarts: number[] = [];
@@ -211,7 +214,6 @@ class CourseImpl implements Course {
   private roadEnd = 0;
   private sinceGate = 0;
   private gateDue: number;
-  private bag: Drawn[] = [];
   private hint = 0;
 
   private readonly blocks: Block[] = [];
@@ -243,6 +245,8 @@ class CourseImpl implements Course {
     this.rowRandom = new Random(hash(seed, 2 * index + 12));
     this.gateDue = this.roadRandom.range(cfg.gate.interval[0], cfg.gate.interval[1]);
     this.restDue = this.rowRandom.int(cfg.restEvery[0], cfg.restEvery[1]);
+    const segmentTotal = DRAWN.reduce((sum, kind) => sum + cfg.segments[kind], 0);
+    DRAWN.forEach((kind, i) => { this.share[i] = cfg.segments[kind] / segmentTotal; });
     let total = 0, depth = 0;
     for (const kind of PATTERNS) if (cfg.patterns[kind] > 0) { total += cfg.patterns[kind]; depth = Math.max(depth, MAX_DEPTH[kind]); }
     this.patternTotal = total;
@@ -351,30 +355,43 @@ class CourseImpl implements Course {
     return t;
   }
 
-  private draw(previous: SegmentKind): Drawn {
-    // A weighted bag: each kind appears in proportion to its weight within every cycle.
-    if (!this.bag.length) for (const kind of DRAWN) {
-      const weight = this.cfg.segments[kind];
-      if (weight > 0) for (let i = Math.max(1, Math.round(weight / 4)); i > 0; i--) this.bag.push(kind);
+  /** Exact-proportion scheduler: every segment adds each kind's share of CONFIG.segments to its
+   * credit and the kind built pays 1, so counts track the weights and no kind waits long. The draw
+   * is among positive credits in proportion to credit; after a drop, drop is left out (a redraw).
+   * A forced kind (the straight after a gate) pays the same way. */
+  private schedule(previous: SegmentKind, forced: Drawn | null): Drawn {
+    const credit = this.credit, open = (i: number) => this.share[i] > 0 && !(previous === 'drop' && DRAWN[i] === 'drop');
+    let sum = 0, best = -1;
+    for (let i = 0; i < DRAWN.length; i++) {
+      credit[i] += this.share[i];
+      if (!open(i)) continue;
+      if (credit[i] > 0) sum += credit[i];
+      if (best < 0 || credit[i] > credit[best]) best = i;
     }
-    if (!this.bag.length) return 'straight';
-    let i = Math.floor(this.roadRandom.next() * this.bag.length);
-    if (previous === 'drop' && this.bag[i] === 'drop') {
-      i = this.bag.findIndex(kind => kind !== 'drop');
-      if (i < 0) return 'straight';
+    let pick = forced ? DRAWN.indexOf(forced) : Math.max(0, best);
+    if (!forced && sum > 0) {
+      let x = this.roadRandom.next() * sum;
+      for (let i = 0; i < DRAWN.length; i++) if (open(i) && credit[i] > 0 && (x -= credit[i]) < 0) { pick = i; break; }
     }
-    return this.bag.splice(i, 1)[0];
+    credit[pick] -= 1;
+    return DRAWN[pick];
+  }
+
+  /** A drawn kind was built as another: move the cost so the weights describe the road as built. */
+  private recharge(from: Drawn, to: Drawn): Drawn {
+    this.credit[DRAWN.indexOf(from)] += 1;
+    this.credit[DRAWN.indexOf(to)] -= 1;
+    return to;
   }
 
   private addSegment(): void {
     const cfg = this.cfg, r = this.roadRandom, index = this.segments.length, start = this.roadEnd, previous = this.segments[index - 1];
     const c0 = previous ? previous.c1 : 0;
-    const kind: SegmentKind = !previous ? 'warmup' : previous.kind === 'gate' ? 'straight' : this.sinceGate >= this.gateDue ? 'gate' : this.draw(previous.kind);
     const make = (type: SegmentKind, length: number, amp = 0, c1 = c0, approach = 0, gap = 0): Segment =>
       ({ kind: type, index, start, end: start + length, c0, c1, amp, approach, gap });
     let seg: Segment | null = null;
-    if (kind === 'warmup') seg = make('warmup', WARMUP);
-    else if (kind === 'gate') {
+    if (!previous) seg = make('warmup', WARMUP);
+    else if (previous.kind !== 'gate' && this.sinceGate >= this.gateDue) {
       this.gateStarts.push(start);
       seg = make('gate', GATE_LENGTH);
       const end = start + GATE_LENGTH;
@@ -383,6 +400,9 @@ class CourseImpl implements Course {
       this.gateDue = r.range(cfg.gate.interval[0], cfg.gate.interval[1]);
     } else {
       const scale = clamp(this.speedNow(start) / 14, 1, 3.5), room = CENTER_LIMIT - Math.abs(c0);
+      let kind = this.schedule(previous.kind, previous.kind === 'gate' ? 'straight' : null);
+      // Offsets keep |c| ≤ CENTER_LIMIT − 0.8, so a bend always has room; without it, move toward the centre first.
+      if (kind === 'bend' && room < .8 || kind === 'ribbonBend' && room < .6) kind = this.recharge(kind, 'offset');
       if (kind === 'drop') {
         const approach = r.range(20, 30) * scale, height = r.range(2, 4), gap = r.range(2, 4), flight = Math.sqrt(2 * height / GRAVITY);
         for (let k = 0; k < 3 && !seg; k++) {
@@ -393,19 +413,21 @@ class CourseImpl implements Course {
         const length = r.range(LENGTH[kind][0], LENGTH[kind][1]) * scale;
         let amp = 0, c1 = c0;
         if (kind === 'straight') amp = STRAIGHT_RISE;
-        else if (kind === 'bend') amp = r.sign() * Math.min(r.range(.8, 2), room);
-        else if (kind === 'ribbonBend') amp = r.sign() * Math.min(r.range(.6, 1.2), room);
+        else if (kind === 'bend') amp = r.sign() * r.range(.8, Math.min(2, room));
+        else if (kind === 'ribbonBend') amp = r.sign() * r.range(.6, Math.min(1.2, room));
         else if (kind === 'bank') amp = r.sign() * r.range(.5, 1) * cfg.maxBank;
         else if (kind === 'crest') amp = r.range(1.5, 3.5);
         else if (kind === 'dip') amp = -r.range(1, 2);
         else if (kind === 'offset') {
-          // Uniform over [-limit, c0 - 1.2] ∪ [c0 + 1.2, limit].
-          const below = Math.max(0, c0 - 1.2 + CENTER_LIMIT), above = Math.max(0, CENTER_LIMIT - c0 - 1.2), pick = r.range(0, below + above);
-          c1 = pick < below ? -CENTER_LIMIT + pick : c0 + 1.2 + (pick - below);
+          // Uniform over [-limit, c0 - 1.2] ∪ [c0 + 1.2, limit], limit = CENTER_LIMIT − 0.8 (from the centre line: ±limit).
+          const limit = CENTER_LIMIT - .8, below = Math.max(0, c0 - 1.2 + limit), above = Math.max(0, limit - c0 - 1.2);
+          if (below + above > 0) { const pick = r.range(0, below + above); c1 = pick < below ? -limit + pick : c0 + 1.2 + (pick - below); }
+          else c1 = r.sign() * limit;
         }
         for (let k = 0; k < 3 && !seg; k++) seg = this.traversable(make(kind, length * 1.5 ** k, amp, c1));
       }
-      seg ??= this.traversable(make('straight', r.range(LENGTH.straight[0], LENGTH.straight[1]) * scale, STRAIGHT_RISE)) as Segment;
+      // A flat straight at constant centre and width is traversable by construction.
+      if (!seg) seg = make(this.recharge(kind, 'straight'), r.range(LENGTH.straight[0], LENGTH.straight[1]) * scale, STRAIGHT_RISE);
     }
     this.segments.push(seg);
     this.roadEnd = seg.end;
@@ -641,8 +663,11 @@ class CourseImpl implements Course {
           low = Math.min(low, delta); high = Math.max(high, delta);
         }
       }
-      o.sink = -low; o.lift = high;
-      if (o.sink + o.lift > .3 + .15 * o.depth) return false;
+      o.sink = -low;
+      if (o.sink + high > .3 + .15 * o.depth) return false;
+      // low and high are measured along the box's up axis, but heights are vertical: on a bank the box
+      // must reach (high + sink)/cos² − sink above its base for its top to stand o.height clear of the road.
+      o.lift = (high + o.sink) / (o.cos * o.cos) - o.sink;
       const n = (o.height + o.lift - o.sink) / 2, hh = (o.height + o.sink + o.lift) / 2;
       const x = o.roadX + o.offset + o.sin * n, extent = o.width / 2 * o.cos + hh * Math.abs(o.sin) + amp;
       o.from = o.distance - half - CLEAR; o.to = o.distance + half + CLEAR;
