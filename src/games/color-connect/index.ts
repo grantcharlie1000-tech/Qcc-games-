@@ -55,7 +55,11 @@ const game: GameModule = {
   function save(){if(!disposed)context.save(snapshot())}
   function rebuild(){
    const current=level();picker.value=String(state.level);grid.replaceChildren();buttons=[];
-   grid.style.gridTemplateColumns=`repeat(${current.size},1fr)`;grid.setAttribute('aria-rowcount',String(current.size));grid.setAttribute('aria-colcount',String(current.size));
+   grid.style.gridTemplateColumns=`repeat(${current.size},1fr)`;
+   // WebKit can resize implicit rows around a pressed native button. The SVG
+   // and pointer mapper both require equal squares throughout the gesture.
+   grid.style.gridTemplateRows=`repeat(${current.size},minmax(0,1fr))`;
+   grid.setAttribute('aria-rowcount',String(current.size));grid.setAttribute('aria-colcount',String(current.size));
    for(let y=0;y<current.size;y++){
     const row=document.createElement('div');row.setAttribute('role','row');row.className='cc-row';grid.append(row);
     for(let x=0;x<current.size;x++){

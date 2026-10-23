@@ -1,19 +1,6 @@
 import { test, expect } from '../fixtures';
 import { LEVELS, emptyPaths, solve } from '../../src/games/color-connect/model';
 
-test.beforeEach(async({page})=>{
- await page.addInitScript(()=>{
-  const events:unknown[]=[];(window as any).campaignPointerEvents=events;
-  document.addEventListener('pointermove',event=>{
-   const grid=document.querySelector<HTMLElement>('.cc-grid');
-   if(!grid?.hasPointerCapture(event.pointerId))return;
-   const rect=grid.getBoundingClientRect(),size=Number(grid.getAttribute('aria-colcount'));
-   const point=(sample:PointerEvent)=>[Number(((sample.clientX-rect.x)/rect.width*size).toFixed(3)),Number(((sample.clientY-rect.y)/rect.height*size).toFixed(3))];
-   events.push({point:point(event),client:[event.clientX,event.clientY],rect:[rect.x,rect.y,rect.width,rect.height],samples:event.getCoalescedEvents?.().map(point)});
-  },{capture:true,passive:true});
- });
-});
-
 test.afterEach(async({page},info)=>{
  if(info.status===info.expectedStatus)return;
  // CI logs remain available when an environment cannot download trace ZIPs.
@@ -22,10 +9,8 @@ test.afterEach(async({page},info)=>{
   pairs:document.querySelector('.cc-pairs')?.textContent,
   moves:document.querySelector('.cc-moves')?.textContent,
   winHidden:(document.querySelector('.cc-win') as HTMLElement|null)?.hidden,
-  cells:Array.from(document.querySelectorAll<HTMLElement>('[data-cc-cell]'),cell=>({cell:Number(cell.dataset.ccCell),path:cell.dataset.path??null,label:cell.getAttribute('aria-label')})),
   saved:JSON.parse(localStorage.getItem('pocket-arcade:v1:save:color-connect')||'null')?.data?.paths,
-  pointerEvents:(window as any).campaignPointerEvents,
-  layout:{rows:getComputedStyle(document.querySelector('.cc-grid')!).gridTemplateRows,focus:(document.activeElement as HTMLElement)?.dataset.ccCell,cells:Array.from(document.querySelectorAll('[data-cc-cell]'),cell=>{const r=cell.getBoundingClientRect();return {cell:Number((cell as HTMLElement).dataset.ccCell),y:r.y,height:r.height}})},
+  layout:{rows:getComputedStyle(document.querySelector('.cc-grid')!).gridTemplateRows,focus:(document.activeElement as HTMLElement)?.dataset.ccCell},
  }))));
 });
 
@@ -42,9 +27,8 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
   for(const [i,cell] of path.entries()){
    const box=(await page.locator(`[data-cc-cell="${cell}"]`).boundingBox())!;
    const dom=await page.locator(`[data-cc-cell="${cell}"]`).evaluate(node=>{const r=node.getBoundingClientRect(),g=node.closest('.cc-grid')!.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,grid:[g.x,g.y,g.width,g.height]}});
-   if(Math.abs(box.y-dom.y)>1||Math.abs(box.height-dom.height)>1)console.log('CAMPAIGN_BOX_MISMATCH',JSON.stringify({cell,box,dom}));
+   // Check actual hit areas while held, when WebKit can change implicit rows.
    const logical=[(dom.x+dom.width/2-dom.grid[0])/dom.grid[2]*9,(dom.y+dom.height/2-dom.grid[1])/dom.grid[3]*9];
-   console.log('CAMPAIGN_REQUEST',JSON.stringify({cell,point:[box.x+box.width/2,box.y+box.height/2],logical,grid:dom.grid}));
    expect(Math.abs(logical[0]-(cell%9+.5))).toBeLessThan(.05);expect(Math.abs(logical[1]-(Math.floor(cell/9)+.5))).toBeLessThan(.05);
    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);if(i===0)await page.mouse.down();
   }
