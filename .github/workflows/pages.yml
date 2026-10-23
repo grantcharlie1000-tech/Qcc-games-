@@ -29,6 +29,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Avoid the slow Azure mirror documented in actions/runner-images#12949.
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       # Fast feedback on the dense-board regression; the full suite below
       # remains mandatory and retains every existing verification step.
@@ -51,6 +57,12 @@ jobs:
       - run: npm test -- --maxWorkers=1
       - name: Verify native diagnostic helper
         run: node --test scripts/update-native-trace.test.mjs
+      # Keep the same signed Ubuntu packages while avoiding a stalled mirror.
+      - name: Use Ubuntu archive for browser dependencies
+        run: |
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i 's|http://azure\.archive\.ubuntu\.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt
+          fi
       - run: npx playwright install --with-deps chromium webkit
       # Full Chromium under a virtual display preserves native pointer-lock input.
       - run: xvfb-run -a npm run test:e2e
