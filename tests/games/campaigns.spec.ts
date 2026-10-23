@@ -25,6 +25,7 @@ test.afterEach(async({page},info)=>{
   cells:Array.from(document.querySelectorAll<HTMLElement>('[data-cc-cell]'),cell=>({cell:Number(cell.dataset.ccCell),path:cell.dataset.path??null,label:cell.getAttribute('aria-label')})),
   saved:JSON.parse(localStorage.getItem('pocket-arcade:v1:save:color-connect')||'null')?.data?.paths,
   pointerEvents:(window as any).campaignPointerEvents,
+  layout:{rows:getComputedStyle(document.querySelector('.cc-grid')!).gridTemplateRows,focus:(document.activeElement as HTMLElement)?.dataset.ccCell,cells:Array.from(document.querySelectorAll('[data-cc-cell]'),cell=>{const r=cell.getBoundingClientRect();return {cell:Number((cell as HTMLElement).dataset.ccCell),y:r.y,height:r.height}})},
  }))));
 });
 
@@ -44,6 +45,15 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
   }
   if(path===result.paths.at(-1))await expect(page.locator('.cc-win')).toBeVisible();
   await page.mouse.up();
+  // The SVG and input mapper use equal squares; native button focus must not
+  // resize an implicit CSS grid row and move its hit area away from the art.
+  await expect.poll(()=>page.locator('.cc-grid').evaluate(grid=>{
+   const r=grid.getBoundingClientRect(),n=Number(grid.getAttribute('aria-colcount'));
+   return Math.max(...Array.from(grid.querySelectorAll<HTMLElement>('[data-cc-cell]'),cell=>{
+    const box=cell.getBoundingClientRect(),i=Number(cell.dataset.ccCell);
+    return Math.max(Math.abs(box.x+box.width/2-(r.x+(i%n+.5)*r.width/n)),Math.abs(box.y+box.height/2-(r.y+(Math.floor(i/n)+.5)*r.height/n)));
+   }));
+  }),{message:'Every hit cell stays aligned with its drawn square after focus changes'}).toBeLessThan(1);
  }
  await expect(page.locator('.cc-win')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
