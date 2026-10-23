@@ -60,6 +60,11 @@ export function restoreRecords(value: unknown): Records {
     const entry = source[difficulty];
     if (typeof entry !== 'object' || entry === null) return empty();
     const r = entry as Record<string, unknown>, day = validKey(r.day, dayKey), week = validKey(r.week, weekKey);
-    return { allTime: int(r.allTime), day, dayBest: day ? int(r.dayBest) : 0, week, weekBest: week ? int(r.weekBest) : 0 };
+    const dayBest = day ? int(r.dayBest) : 0;
+    // Fields are validated one by one, so restore their ordering too: a day's
+    // best also counts for its week, and every best counts for all time.
+    const [y, m, d] = day ? day.split('-').map(Number) : [0, 0, 0];
+    const weekBest = week ? Math.max(int(r.weekBest), day && weekKey(new Date(y, m - 1, d, 12)) === week ? dayBest : 0) : 0;
+    return { allTime: Math.max(int(r.allTime), weekBest, dayBest), day, dayBest, week, weekBest };
   });
 }

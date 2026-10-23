@@ -137,8 +137,18 @@ describe('Ball Run record restore', () => {
       hard: { allTime: -4, day: '2026-10-23', dayBest: -1, week: '26-10-19', weekBest: 5 },
     });
     expect(records.easy).toEqual({ allTime: 12, day: '', dayBest: 0, week: '', weekBest: 0 });
-    expect(records.medium).toEqual({ allTime: 2147483647, day: '2026-10-23', dayBest: 2147483647, week: '2026-10-19', weekBest: 77 });
+    expect(records.medium).toEqual({ allTime: 2147483647, day: '2026-10-23', dayBest: 2147483647, week: '2026-10-19', weekBest: 2147483647 });
     expect(records.hard).toEqual({ allTime: 0, day: '2026-10-23', dayBest: 0, week: '', weekBest: 0 });
+  });
+
+  it('restores consistent bests: a day best lifts its own week and every best lifts all time', () => {
+    const records = restoreRecords({
+      easy: { allTime: 10, day: '2026-10-23', dayBest: 90, week: '2026-10-19', weekBest: 40 },
+      medium: { allTime: 5, day: '2026-10-23', dayBest: 60, week: '2026-10-12', weekBest: 30 },
+    });
+    expect(records.easy).toEqual({ allTime: 90, day: '2026-10-23', dayBest: 90, week: '2026-10-19', weekBest: 90 });
+    // A day outside the stored week leaves that week's best alone.
+    expect(records.medium).toEqual({ allTime: 60, day: '2026-10-23', dayBest: 60, week: '2026-10-12', weekBest: 30 });
   });
 
   it('round-trips valid records through JSON', () => {
