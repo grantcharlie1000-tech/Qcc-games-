@@ -21,6 +21,8 @@ export const REACH_SAFETY = .7;
 export const WARMUP = 80;
 /** Track centre stays within ±this many metres of x = 0 so the tower canyon frames it. */
 export const CENTER_LIMIT = 2;
+/** "Speed Up" label and trail after passing a gate (s). Feedback only: the speed gain itself is permanent. */
+export const GATE_FEEDBACK = 1.2;
 /** Collision burst / fall time before Game Over (s). */
 export const DYING_DURATION = .9;
 /** A ball this far below the road surface can no longer recover (m). */
@@ -31,16 +33,16 @@ export const EDGE_SUPPORT = RADIUS * .35;
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 export type Difficulty = typeof DIFFICULTIES[number];
 
-export type SegmentKind = 'warmup' | 'straight' | 'bend' | 'offset' | 'ribbon' | 'ribbonBend' | 'bank' | 'crest' | 'dip' | 'drop' | 'boost';
+export type SegmentKind = 'warmup' | 'straight' | 'bend' | 'offset' | 'ribbon' | 'ribbonBend' | 'bank' | 'crest' | 'dip' | 'drop' | 'gate';
 export type PatternKind = 'single' | 'pair' | 'gate' | 'doubleGate' | 'slalom' | 'zigzag' | 'scatter' | 'slider' | 'wallRun' | 'bigBlock';
 
 export interface DifficultyConfig {
   readonly label: string;
   /** Speed at distance 0 (m/s). */
   readonly startSpeed: number;
-  /** Constant forward acceleration over time (m/s²) until the cap. */
+  /** Slow continuous forward acceleration over time (m/s²). */
   readonly acceleration: number;
-  /** Base speed cap (m/s); a boost may exceed it by its strength. */
+  /** Speed cap (m/s); nothing exceeds it. */
   readonly maxSpeed: number;
   readonly roadWidth: number;
   readonly ribbonWidth: number;
@@ -55,8 +57,10 @@ export interface DifficultyConfig {
   readonly restEvery: readonly [number, number];
   readonly restSeconds: readonly [number, number];
   readonly maxBank: number;
-  readonly boost: { readonly strength: number; readonly duration: number };
-  readonly segments: Readonly<Record<Exclude<SegmentKind, 'warmup'>, number>>;
+  /** Boost gates: each one passed adds speedGain (m/s) permanently. A gate comes every interval seconds of running. */
+  readonly gate: { readonly speedGain: number; readonly interval: readonly [number, number] };
+  /** Weights for the segments between gates (gates are scheduled by time, not drawn). */
+  readonly segments: Readonly<Record<Exclude<SegmentKind, 'warmup' | 'gate'>, number>>;
   readonly patterns: Readonly<Record<PatternKind, number>>;
   /** Difficulty badge and Play colour. Text labels always accompany it. */
   readonly color: string;
@@ -64,32 +68,32 @@ export interface DifficultyConfig {
 
 export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
   easy: {
-    label: 'Easy', startSpeed: 9, acceleration: .05, maxSpeed: 40,
+    label: 'Easy', startSpeed: 9, acceleration: .03, maxSpeed: 40,
     roadWidth: 6.2, ribbonWidth: 2.6, minGap: 2,
     rowInterval: [1, 1.8], introInterval: [1.6, 2.4], rampDistance: 700,
     restEvery: [10, 14], restSeconds: [3, 4.5], maxBank: .2,
-    boost: { strength: .25, duration: 1.8 },
-    segments: { straight: 30, bend: 20, offset: 15, ribbon: 8, ribbonBend: 0, bank: 8, crest: 8, dip: 4, drop: 4, boost: 6 },
+    gate: { speedGain: 1, interval: [30, 45] },
+    segments: { straight: 30, bend: 20, offset: 15, ribbon: 8, ribbonBend: 0, bank: 8, crest: 8, dip: 4, drop: 4 },
     patterns: { single: 30, pair: 18, gate: 16, doubleGate: 10, slalom: 8, zigzag: 4, scatter: 6, slider: 0, wallRun: 6, bigBlock: 4 },
     color: '#2bb24c',
   },
   medium: {
-    label: 'Medium', startSpeed: 11, acceleration: .075, maxSpeed: 50,
+    label: 'Medium', startSpeed: 11, acceleration: .045, maxSpeed: 50,
     roadWidth: 5.4, ribbonWidth: 2.2, minGap: 1.7,
     rowInterval: [.75, 1.35], introInterval: [1.3, 2], rampDistance: 600,
     restEvery: [12, 16], restSeconds: [2.5, 3.5], maxBank: .26,
-    boost: { strength: .3, duration: 2.2 },
-    segments: { straight: 22, bend: 18, offset: 15, ribbon: 10, ribbonBend: 5, bank: 10, crest: 8, dip: 4, drop: 5, boost: 6 },
+    gate: { speedGain: 1.25, interval: [25, 40] },
+    segments: { straight: 22, bend: 18, offset: 15, ribbon: 10, ribbonBend: 5, bank: 10, crest: 8, dip: 4, drop: 5 },
     patterns: { single: 18, pair: 14, gate: 16, doubleGate: 10, slalom: 10, zigzag: 8, scatter: 8, slider: 8, wallRun: 5, bigBlock: 5 },
     color: '#e2a21b',
   },
   hard: {
-    label: 'Hard', startSpeed: 13, acceleration: .1, maxSpeed: 62,
+    label: 'Hard', startSpeed: 13, acceleration: .06, maxSpeed: 62,
     roadWidth: 4.8, ribbonWidth: 1.8, minGap: 1.45,
     rowInterval: [.55, 1.05], introInterval: [1, 1.6], rampDistance: 500,
     restEvery: [14, 18], restSeconds: [2, 3], maxBank: .32,
-    boost: { strength: .35, duration: 2.6 },
-    segments: { straight: 15, bend: 16, offset: 15, ribbon: 12, ribbonBend: 8, bank: 12, crest: 8, dip: 4, drop: 6, boost: 6 },
+    gate: { speedGain: 1.5, interval: [20, 35] },
+    segments: { straight: 15, bend: 16, offset: 15, ribbon: 12, ribbonBend: 8, bank: 12, crest: 8, dip: 4, drop: 6 },
     patterns: { single: 10, pair: 12, gate: 16, doubleGate: 10, slalom: 12, zigzag: 12, scatter: 9, slider: 12, wallRun: 5, bigBlock: 6 },
     color: '#f0524f',
   },
@@ -99,25 +103,14 @@ export function isDifficulty(value: unknown): value is Difficulty {
   return typeof value === 'string' && (DIFFICULTIES as readonly string[]).includes(value);
 }
 
-/** Base forward speed: constant time-acceleration, so v² grows linearly with distance. */
-export function baseSpeed(difficulty: Difficulty, distance: number): number {
+/** Forward speed after `gates` boost gates: a slow continuous ramp (constant
+ * time-acceleration, so v² grows linearly with distance) plus a permanent gain
+ * per gate, capped. Every gate spans the whole road, so a surviving run has
+ * passed exactly the gates behind it and speed is a pure function of distance. */
+export function speedAt(difficulty: Difficulty, distance: number, gates: number): number {
   const c = CONFIG[difficulty];
-  return Math.min(c.maxSpeed, Math.sqrt(c.startSpeed * c.startSpeed + 2 * c.acceleration * Math.max(0, distance)));
-}
-
-/** Boost multiplier for the seconds remaining: quick rise, hold, smooth fall. 1 when idle. */
-export function boostFactor(difficulty: Difficulty, boostTime: number): number {
-  const { strength, duration } = CONFIG[difficulty].boost;
-  if (!(boostTime > 0)) return 1;
-  const t = Math.min(1, Math.max(0, 1 - boostTime / duration));
-  const smooth = (x: number) => x * x * (3 - 2 * x);
-  const envelope = t < .12 ? smooth(t / .12) : t < .55 ? 1 : 1 - smooth((t - .55) / .45);
-  return 1 + strength * envelope;
-}
-
-/** Peak speed the ball can reach anywhere on this difficulty, boost included. */
-export function peakSpeed(difficulty: Difficulty): number {
-  return CONFIG[difficulty].maxSpeed * (1 + CONFIG[difficulty].boost.strength);
+  const ramp = Math.sqrt(c.startSpeed * c.startSpeed + 2 * c.acceleration * Math.max(0, distance));
+  return Math.min(c.maxSpeed, ramp + c.gate.speedGain * Math.max(0, gates));
 }
 
 /** Maximum lateral steering speed at a forward speed: more authority when faster,
@@ -146,10 +139,10 @@ export interface Run {
   grounded: boolean;
   /** Seconds spent running (drives sliding blocks). */
   elapsed: number;
-  /** Seconds of boost remaining; 0 when idle. */
-  boostTime: number;
-  /** Index of the last boost zone that fired, -1 for none. Each zone fires once. */
-  boostIndex: number;
+  /** Seconds of "Speed Up" feedback remaining; 0 when idle. The speed gain itself is permanent. */
+  speedUpTime: number;
+  /** Index of the last gate passed, -1 for none. Equals course.gatesBefore(distance) - 1. */
+  gateIndex: number;
   /** Seconds since death while dying. */
   dyingTime: number;
   /** Whole metres; frozen at the moment of death. */
@@ -170,7 +163,7 @@ export interface TrackSample {
   bank: number;
   /** False inside a drop gap. */
   ground: boolean;
-  /** Inside a boost arch: solid, harmless side walls keep the ball centre within width/2 - RADIUS. */
+  /** Inside a boost gate's arch: solid, harmless side walls keep the ball centre within width/2 - RADIUS. */
   tunnel: boolean;
   kind: SegmentKind;
   segment: number;
@@ -206,14 +199,15 @@ export interface ObstaclePose {
   halfDepth: number;
 }
 
-export interface BoostZone {
+export interface Gate {
+  /** 0 for the first gate on the course. */
   readonly index: number;
-  /** Arch entrance: crossing it fires the boost once. */
+  /** Arch entrance: crossing it adds the permanent speed gain. */
   readonly start: number;
   /** Arch exit. */
   readonly end: number;
-  /** No obstacles before this distance: covers the boosted stretch after the exit. */
-  readonly envelopeEnd: number;
+  /** No obstacles before this distance: one second of clear run-out after the exit. */
+  readonly clearEnd: number;
 }
 
 export interface Course {
@@ -227,8 +221,12 @@ export interface Course {
   forEachObstacle(from: number, to: number, fn: (obstacle: Obstacle) => void): void;
   /** Pose at a run time; writes into `out`. */
   pose(obstacle: Obstacle, elapsed: number, out: ObstaclePose): ObstaclePose;
-  /** Calls fn for each boost zone overlapping [from, to]. */
-  forEachBoost(from: number, to: number, fn: (zone: BoostZone) => void): void;
+  /** Calls fn for each gate overlapping [from, to]. */
+  forEachGate(from: number, to: number, fn: (gate: Gate) => void): void;
+  /** Number of gates whose entrance is at or before `distance`. */
+  gatesBefore(distance: number): number;
+  /** Forward speed at a distance on this course: speedAt(difficulty, distance, gatesBefore(distance)). */
+  speed(distance: number): number;
   /** Largest obstacle depth on this course, to widen collision queries. */
   readonly maxDepth: number;
 }

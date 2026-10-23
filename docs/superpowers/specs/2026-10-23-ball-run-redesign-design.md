@@ -1,10 +1,11 @@
 # Ball Run redesign — design
 
-Date: 2026-10-23. Source brief: `Ball-Run-Reference.pdf` (10 pages, "Rebuild Reference for QCC Games", prepared 21 October 2026 from a 62-second Hard-mode recording), plus Charlie's direct requests in this session:
+Date: 2026-10-23. Source brief: `Ball-Run-Reference.pdf` (10 pages, "Rebuild Reference for QCC Games", prepared 21 October 2026 from a 62-second Hard-mode recording). **Pages 1–9 only:** Charlie asked to ignore the final page (the condensed coding-agent prompt); everything this design takes from the brief is on pages 1–9. Plus Charlie's direct requests in this session:
 
 1. Use the reference to redesign Ball Run.
 2. The ball must **accelerate more slowly** and have a **much higher speed cap**.
 3. **More obstacles**, placed **more randomly** and **more difficult** to get through.
+4. (During the build) **The gates symbolise a permanent speed boost.**
 
 The reference separates OBSERVED facts from PROPOSED web adaptations and UNKNOWN values. Every UNKNOWN that this design fixes is marked *design call* and lives in one editable configuration table.
 
@@ -46,22 +47,29 @@ Ball Run should play like the recorded game: an automatically advancing glossy m
 
 ## Decided how (from the brief and requests)
 
-### Speed (design call, Charlie's request)
+### Speed (Charlie's requests: slower acceleration, much higher cap, gates are permanent boosts)
 
-Base speed is a pure function of distance with **constant time-acceleration**: `v(d) = min(cap, sqrt(v0² + 2·a·d))`, which is linear in elapsed time. Current game: 12 m/s, effective 0.14–0.26 m/s², capped at 22 m/s after ~50 s.
+Charlie confirmed during the build that **the cyan gates are a permanent speed boost**. Speed is therefore a slow continuous ramp plus a permanent gain for every gate passed, capped:
+
+`v(d) = min(cap, sqrt(v0² + 2·a·d) + gain × gatesPassed(d))`
+
+Every gate spans the whole road, so a surviving run has passed exactly the gates behind it and speed stays a pure function of distance on a given course (which keeps the reachability guarantee exact). Gates are scheduled by running time, so their share of the acceleration is predictable.
 
 | | Easy | Medium | Hard |
 | --- | --- | --- | --- |
 | Start `v0` | 9 m/s | 11 m/s | 13 m/s |
-| Acceleration `a` | 0.05 m/s² | 0.075 m/s² | 0.10 m/s² |
+| Continuous acceleration `a` | 0.03 m/s² | 0.045 m/s² | 0.06 m/s² |
+| Gate gain (permanent) | +1.0 m/s | +1.25 m/s | +1.5 m/s |
+| A gate every | 30–45 s | 25–40 s | 20–35 s |
 | Cap | 40 m/s | 50 m/s | 62 m/s |
-| Time to cap | ~10 min | ~8.7 min | ~8.2 min |
+| Speed at 60 s (simulated) | ~12 m/s | ~15 m/s | ~20 m/s |
+| Cap reached | ~9.5 min | ~7.5 min | ~7 min |
 
-Every tier accelerates more slowly than today and its cap is roughly 2–3× today's 22 m/s. Lateral steering authority scales with speed (`6 + 0.16·(v − 12)` m/s, never below 5) so high speed stays steerable but each dodge costs more road.
+Today's game starts at 12 m/s, gains 0.14–0.26 m/s² and is capped at 22 m/s after ~50 s. Every tier now accelerates more slowly on average (Hard ~0.11 m/s² including gates), and the caps are about 2–3× today's. Lateral steering authority scales with speed (`6 + 0.16·(v − 12)` m/s, never below 5) so high speed stays steerable but each dodge costs more road.
 
-### Boost (from the brief, values design calls)
+### Boost gates (from the brief; permanence confirmed by Charlie; values design calls)
 
-A boost arch (grid arch, magenta side walls, cyan chevrons) spans a straight, full-width stretch of road. The side walls are solid but harmless: inside the arch the ball rolls along a wall instead of leaving the road (*design call*; a visible wall, not an invisible clamp). Steering keeps full authority in the air everywhere (*design call*, matching today's game). Crossing its entrance triggers one boost per strip: speed × (1 + strength) with a quick rise and smooth fall over the duration. Easy 25 %/1.8 s, Medium 30 %/2.2 s, Hard 35 %/2.6 s. "Speed Up" label and a magenta trail while active. No obstacles inside a boost envelope.
+A gate is an arch (grid arch, magenta side walls, cyan chevrons) over a straight, full-width stretch of road. Crossing its entrance permanently adds the gate gain (none once at the cap). Feedback: a "Speed Up" label (or "Top Speed" when already capped) and a short magenta trail for 1.2 s. The side walls are solid but harmless: inside the arch the ball rolls along a wall instead of leaving the road (*design call*; a visible wall, not an invisible clamp). Steering keeps full authority in the air everywhere (*design call*, matching today's game). No obstacles inside the arch or in the first second after it.
 
 ### Obstacles (Charlie's request; generation is a design call)
 
@@ -73,7 +81,7 @@ Seeded patterns: single block (random size and lateral position, including large
 
 ### Track (from the brief; parameters design calls)
 
-A seeded sequence of variable-length segments: wide straight, narrow ribbon (tapered), offset transition, S-bend, banked section (surface roll with gentle drift toward the low side), crest/dip (high enough speed briefly lifts off), drop (road ends, continues lower; always clearable at the current minimum speed), launch ramp gap, boost arch, curved ribbon (Medium/Hard). Road width: Easy 6.2 m, Medium 5.4 m, Hard 4.8 m; ribbons 2.6 / 2.2 / 1.8 m. Rates of lateral shift and narrowing are bounded by the steering authority. The opening ~80 m is a clear warm-up.
+A seeded sequence of variable-length segments: wide straight, narrow ribbon (tapered), offset transition, S-bend, banked section (surface roll with gentle drift toward the low side), crest/dip (high enough speed briefly lifts off), drop (road ends, continues lower; always clearable at the speed there), boost gate, curved ribbon (Medium/Hard). Road width: Easy 6.2 m, Medium 5.4 m, Hard 4.8 m; ribbons 2.6 / 2.2 / 1.8 m. Rates of lateral shift and narrowing are bounded by the steering authority. The opening ~80 m is a clear warm-up.
 
 ### Records and scoring (brief's proposed defaults)
 
@@ -91,12 +99,12 @@ Ready (setup panel) → Playing ⇄ Paused → Dying (one burst of magenta, cyan
 - **Home** on the Game Over panel returns to the game's own setup panel to change difficulty (*design call*: the shell's back arrow already leaves to the library).
 - Accessible names: `Play`, `Continue` (restored run), `Play again`, `Home`. Shared checks that matched the old names (`tests/e2e/study.spec.ts:35`, `scripts/verify-offline.mjs:25`) are updated in the same change.
 - `context.setScore` is throttled (at most a few calls per second plus one on death) because one call per metre at 60 m/s would write storage dozens of times a second. Status/level text keeps flowing for screen readers.
-- Data attributes the tests read stay: `data-phase` (now also `dying`), `data-x`, `data-distance`, `data-grounded`, `data-ball-screen-x/y`, `data-aspect`, `data-draw-calls`, `data-geometries`; plus `data-difficulty`, `data-speed`, `data-boost`. The `.br-boost` "Speed Up" label still toggles `hidden`.
+- Data attributes the tests read stay: `data-phase` (now also `dying`), `data-x`, `data-distance`, `data-grounded`, `data-ball-screen-x/y`, `data-aspect`, `data-draw-calls`, `data-geometries`; plus `data-difficulty`, `data-speed`, `data-boost` (Speed Up feedback showing), `data-gates`. The `.br-boost` "Speed Up" label still toggles `hidden`.
 - Colour is never the only carrier: difficulty names are text, blocks and boost arches differ in shape, records have text labels.
 
 ### Saves
 
-Version 4 snapshots hold the run (seed, difficulty, distance, lateral state, boost state, phase) and records. Version 1–3 saves come from a different course: their in-progress position is not resumed (it could sit inside a new block); their all-time best is kept as Medium's all-time record (*design call*: the old pace sat between Medium and Hard; the shell RECORD is unaffected either way). A restored v4 run needs an explicit Continue.
+Version 4 snapshots hold the run (seed, difficulty, distance, lateral state, gate index and Speed Up feedback, phase) and records. Version 1–3 saves come from a different course: their in-progress position is not resumed (it could sit inside a new block); their all-time best is kept as Medium's all-time record (*design call*: the old pace sat between Medium and Hard; the shell RECORD is unaffected either way). A restored v4 run needs an explicit Continue.
 
 ### Reduced motion
 
