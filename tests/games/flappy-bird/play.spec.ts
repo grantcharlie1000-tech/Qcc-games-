@@ -59,6 +59,9 @@ test('native phone touch is a single flap and pointer cancellation does not leav
 
 for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`original scene and controls fit ${size.width}x${size.height}`,async({page})=>{
   await page.setViewportSize(size);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/game/flappy-bird');await expect(page.locator('.flappy-bird canvas')).toBeVisible();await expect(page.locator('#game-stage')).toHaveAttribute('data-viewport-scale',/./);
+  // Native actionability waits for the stage's asynchronous fit before the
+  // strict bounds and hit-target measurements below.
+  await page.getByRole('button',{name:'Take flight',exact:true}).hover();
   for(const control of await page.locator('.flappy-bird button,.game-toolbar button,.game-toolbar a').all()){
     if(!await control.isVisible())continue;const box=(await control.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(-1);expect(box.y).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(size.width+1);expect(box.y+box.height).toBeLessThanOrEqual(size.height+1);if(await control.evaluate(el=>!!el.closest('.flappy-bird')))expect(box.height).toBeGreaterThanOrEqual(43.9);
     expect(await control.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);

@@ -139,10 +139,26 @@ function move(snake: Snake) {
     else { tail.x += (before.x - tail.x) * excess / d; tail.y += (before.y - tail.y) * excess / d; snake.pathLength = target; }
   }
   if (snake.body.length > MAX_BODY_POINTS) {
-    // Keep the recent head history exact. Decimate only the older trail, using
-    // the same polyline for drawing, collision, trimming and persistence.
-    // Recompute its actual arc length so saves never invent hidden geometry.
-    snake.body = snake.body.filter((_, i) => i < 64 || i % 2 === 0 || i === snake.body.length - 1);
+    // Keep recent motion exact and sample the older trail at uniform arc-length
+    // intervals. Repeated index decimation can create arbitrarily long chords
+    // on wide turns, making a legitimate trail fail its own save validator.
+    const recent = 64, slots = MAX_BODY_POINTS / 2 - recent;
+    let olderLength = 0;
+    for (let i = recent; i < snake.body.length; i++) olderLength += distance(snake.body[i - 1], snake.body[i]);
+    const compact = snake.body.slice(0, recent), spacing = olderLength / slots;
+    let segment = recent, traversed = 0;
+    for (let sample = 1; sample < slots; sample++) {
+      const at = spacing * sample;
+      while (segment < snake.body.length - 1 && traversed + distance(snake.body[segment - 1], snake.body[segment]) < at) {
+        traversed += distance(snake.body[segment - 1], snake.body[segment]); segment++;
+      }
+      const a = snake.body[segment - 1], b = snake.body[segment], length = distance(a, b);
+      const t = length ? Math.max(0, Math.min(1, (at - traversed) / length)) : 0;
+      compact.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    compact.push(snake.body[snake.body.length - 1]);
+    snake.body = compact;
+    // Drawing, collision and persistence all use this actual polyline length.
     snake.pathLength = 0;
     for (let i = 1; i < snake.body.length; i++) snake.pathLength += distance(snake.body[i - 1], snake.body[i]);
   }

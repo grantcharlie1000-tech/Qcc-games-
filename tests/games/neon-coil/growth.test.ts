@@ -37,3 +37,28 @@ test('real body grows well beyond the former 1,930-pixel limit with bounded hist
  expect(maxPoints).toBeLessThanOrEqual(2048);
  expect(restoreArena(snapshot(s))).not.toBeNull();
 },30000);
+
+for(const mass of [5_000_000,1_000_000_000])for(const pattern of ['wide-left','wide-right','figure-eight'] as const)test(`${mass}-mass ${pattern} routes keep every emitted snapshot restorable`,()=>{
+ const s=quiet(),p=s.snakes[0];p.mass=mass;
+ for(let i=0;i<10000;i++){
+  s.snakes.slice(1).forEach(b=>b.diedAt=s.ticks);s.food=[];
+  const target=pattern==='figure-eight'?Math.atan2(400*Math.sin(i*.005)-p.y,700*Math.sin(i*.0025)-p.x):(pattern==='wide-left'?1:-1)*(i+1)*.004;
+  const previousPoints=p.body.length;
+  stepArena(s,{angle:target});
+  if(i%127===0||p.body.length<previousPoints){expect(s.phase).toBe('running');expect(restoreArena(snapshot(s)),`${pattern}, tick ${i+1}`).not.toBeNull();}
+ }
+ expect(p.body.length).toBeLessThanOrEqual(2048);
+ expect(restoreArena(snapshot(s))).not.toBeNull();
+},30000);
+
+test('Astra’s translated five-million-mass route preserves saves at tick 7,984',()=>{
+ const s=quiet(),p=s.snakes[0];p.mass=5_000_000;p.y=-550;p.previous.y-=550;p.body.forEach(point=>point.y-=550);
+ expect(restoreArena(snapshot(s))).not.toBeNull();
+ for(let i=0;i<7984;i++){
+  s.snakes.slice(1).forEach(b=>b.diedAt=s.ticks);s.food=[];
+  const before=p.body.length;stepArena(s,{angle:(i+1)*.005});
+  if(p.body.length<before)expect(restoreArena(snapshot(s)),`compaction at ${i+1}`).not.toBeNull();
+ }
+ expect(s.phase).toBe('running');expect(p.mass).toBe(5_000_000);
+ expect(p.body.length).toBeLessThanOrEqual(2048);expect(restoreArena(snapshot(s))).not.toBeNull();
+},30000);

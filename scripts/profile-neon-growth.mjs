@@ -8,18 +8,18 @@ const result=await page.evaluate(async()=>{
  const m=await import('/src/games/neon-coil/model.ts');const {createRenderer}=await import('/src/games/neon-coil/render.ts');
  const canvas=document.createElement('canvas');document.body.replaceChildren(canvas);const renderer=createRenderer(canvas);renderer.resize(1280,720);
  const results=[];
- for(const mass of [600,10000,100000,1000000000]){
+ for(const [mass,turn] of [[600,.018],[10000,.018],[100000,.018],[5000000,.004],[1000000000,.004]]){
   const s=m.createArena();s.phase='running';const p=s.snakes[0];p.mass=mass;
   s.snakes.slice(1).forEach(b=>{b.alive=false;b.body=[];b.pathLength=0;b.diedAt=0});
   let maxPoints=0;const simulation=[];
   for(let i=0;i<18000;i++){
    s.snakes.slice(1).forEach(b=>b.diedAt=s.ticks);s.food=[];
-   const t=performance.now();m.stepArena(s,{angle:(i+1)*.018});
+   const t=performance.now();m.stepArena(s,{angle:(i+1)*turn});
    if(i>=17500)simulation.push(performance.now()-t);maxPoints=Math.max(maxPoints,p.body.length);
   }
   const render=[];for(let i=0;i<180;i++){const t=performance.now();renderer.draw(s);render.push(performance.now()-t);}
   const p95=a=>a.sort((a,b)=>a-b)[Math.floor(a.length*.95)];
-  results.push({mass:p.mass,actualLength:p.pathLength,targetLength:m.bodyLength(mass),maxPoints,finalPoints:p.body.length,simulationP95Ms:p95(simulation),renderP95Ms:p95(render),restores:m.restoreArena(s)!==null});
+  results.push({mass:p.mass,turnPerTick:turn,actualLength:p.pathLength,targetLength:m.bodyLength(mass),maxPoints,finalPoints:p.body.length,simulationP95Ms:p95(simulation),renderP95Ms:p95(render),restores:m.restoreArena(s)!==null});
  }
  return {browser:navigator.userAgent,viewport:[innerWidth,innerHeight],isolatedPlayer:true,ticksPerCase:18000,results};
 });
