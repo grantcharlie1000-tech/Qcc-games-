@@ -32,6 +32,27 @@ const settings: [number, number, number, string][] = [
   [5, 42, 4, 'Garden paths'], [5, 91, 4, 'Ribbon dance'], [5, 214, 5, 'Sweet circuit'],
   [6, 76, 5, 'Deep lagoon'], [6, 229, 5, 'Interwoven'], [6, 102, 6, 'Prism garden'],
   [7, 24, 6, 'Twilight maze'], [7, 49, 6, 'Seven seas'], [7, 389, 7, 'Grand tapestry'],
+  // Larger chapters; verified search effort rises within each board size.
+  [8, 2097, 7, 'Copper maze'],
+  [8, 2023, 7, 'Mosaic crossing'],
+  [8, 2063, 7, 'Braided ribbons'],
+  [8, 2044, 7, 'Lantern garden'],
+  [8, 2008, 7, 'Winding tapestry'],
+  [8, 2088, 7, 'Crystal circuit'],
+  [8, 2019, 7, 'Hidden avenues'],
+  [8, 2100, 7, 'Starlight weave'],
+  [8, 2012, 7, 'Twilight lattice'],
+  [8, 2037, 7, 'Eightfold knot'],
+  [9, 2081, 7, 'Silver labyrinth'],
+  [9, 2070, 7, 'Coral canopy'],
+  [9, 2056, 7, 'Moonlit passages'],
+  [9, 2030, 7, 'Ninefold garden'],
+  [9, 2073, 7, 'Aurora ribbons'],
+  [9, 2048, 7, 'Spectral avenues'],
+  [9, 2095, 7, 'Prism network'],
+  [9, 2043, 7, 'Ocean lattice'],
+  [9, 2076, 7, 'Midnight tapestry'],
+  [9, 2096, 7, 'Grand labyrinth'],
 ];
 export const LEVELS: Level[] = settings.map(([size, seed, colors, name]) => ({ ...generate(size, seed, colors).level, name }));
 

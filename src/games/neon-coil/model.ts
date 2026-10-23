@@ -5,7 +5,9 @@ export const SPEED = 165;
 export const TURN_RATE = 3.2;
 export const MIN_MASS = 20;
 export const START_MASS = 30;
-export const MAX_MASS = 600;
+// Numeric safety is separate from the fixed geometry budget: meals keep scoring.
+export const MAX_MASS = Number.MAX_SAFE_INTEGER;
+export const MAX_BODY_POINTS = 2048;
 export const FOOD_TARGET = 1500;
 export const BOT_COUNT = 18;
 const MAX_FOOD = 2600;
@@ -29,7 +31,9 @@ export interface Controls { angle?: number; boost?: boolean }
 interface Segment { owner: number; a: Point; b: Point; radius: number }
 type Grid = Map<string, Segment[]>;
 export const wrapAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
-export const bodyLength = (mass: number) => 130 + mass * 3;
+// Preserve every existing run's growth through 600. Beyond it, diminishing
+// length gains keep enormous scores playable, while every meal still grows.
+export const bodyLength = (mass: number) => mass <= 600 ? 130 + mass * 3 : 1930 + 1800 * Math.log1p((mass - 600) / 600);
 export const radius = (snake: Snake) => 8 + Math.min(4, Math.max(0, snake.mass - START_MASS) * .014);
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 function random(s: Arena) { s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0; return s.seed / 4294967296; }
@@ -134,6 +138,14 @@ function move(snake: Snake) {
     if (d <= excess + 1e-8) { snake.body.pop(); snake.pathLength -= d; }
     else { tail.x += (before.x - tail.x) * excess / d; tail.y += (before.y - tail.y) * excess / d; snake.pathLength = target; }
   }
+  if (snake.body.length > MAX_BODY_POINTS) {
+    // Keep the recent head history exact. Decimate only the older trail, using
+    // the same polyline for drawing, collision, trimming and persistence.
+    // Recompute its actual arc length so saves never invent hidden geometry.
+    snake.body = snake.body.filter((_, i) => i < 64 || i % 2 === 0 || i === snake.body.length - 1);
+    snake.pathLength = 0;
+    for (let i = 1; i < snake.body.length; i++) snake.pathLength += distance(snake.body[i - 1], snake.body[i]);
+  }
 }
 function defeat(s: Arena, snake: Snake, cause: string, killer?: number) {
   if (!snake.alive) return;
@@ -225,11 +237,12 @@ export function restoreArena(data: unknown): Arena | null {
   if (!Array.isArray(s.snakes) || s.snakes.length !== BOT_COUNT + 1 || !Array.isArray(s.food) || s.food.length > MAX_FOOD) return null;
   for (let id = 0; id < s.snakes.length; id++) {
     const snake = s.snakes[id];
-    if (!point(snake) || snake.id !== id || snake.name !== (id === 0 ? 'YOU' : NAMES[id - 1]) || snake.color !== COLORS[id % COLORS.length] || !point(snake.previous) || !finite(snake.angle, -Math.PI, Math.PI) || !finite(snake.previousAngle, -Math.PI, Math.PI) || !finite(snake.target, -10, 10) || !finite(snake.mass, MIN_MASS - 1e-6, MAX_MASS) || !finite(snake.pathLength, 0, bodyLength(MAX_MASS) + 10) || !finite(snake.boostSpent, 0, 1.1) || !finite(snake.brainAt, 0, 1e9) || !finite(snake.diedAt, 0, s.ticks) || !finite(snake.kills, 0, 1e9) || typeof snake.alive !== 'boolean' || typeof snake.boosting !== 'boolean' || !Array.isArray(snake.body) || snake.body.length > 1000 || !snake.body.every(point)) return null;
+    if (!point(snake) || snake.id !== id || snake.name !== (id === 0 ? 'YOU' : NAMES[id - 1]) || snake.color !== COLORS[id % COLORS.length] || !point(snake.previous) || !finite(snake.angle, -Math.PI, Math.PI) || !finite(snake.previousAngle, -Math.PI, Math.PI) || !finite(snake.target, -10, 10) || !finite(snake.mass, MIN_MASS - 1e-6, MAX_MASS) || !finite(snake.pathLength, 0, bodyLength(MAX_MASS) + 10) || !finite(snake.boostSpent, 0, 1.1) || !finite(snake.brainAt, 0, 1e9) || !finite(snake.diedAt, 0, s.ticks) || !finite(snake.kills, 0, 1e9) || typeof snake.alive !== 'boolean' || typeof snake.boosting !== 'boolean' || !Array.isArray(snake.body) || snake.body.length > MAX_BODY_POINTS || !snake.body.every(point)) return null;
     if (snake.alive && (snake.body.length < 2 || distance(snake, snake.body[0]) > .01)) return null;
     if (!snake.alive && snake.body.length !== 0) return null;
     let length = 0;
-    for (let i = 1; i < snake.body.length; i++) { const d = distance(snake.body[i], snake.body[i - 1]); if (d > 6) return null; length += d; }
+    const maxSegment = Math.max(6, bodyLength(snake.mass) / MAX_BODY_POINTS * 32);
+    for (let i = 1; i < snake.body.length; i++) { const d = distance(snake.body[i], snake.body[i - 1]); if (d > maxSegment) return null; length += d; }
     if (Math.abs(length - snake.pathLength) > .1) return null;
   }
   if ((s.phase === 'dead') === s.snakes[0].alive) return null;

@@ -35,7 +35,7 @@ test('fast actual drag fills every square and unlocks the larger next garden',as
   await drag(page,generateLevel(0).solution,true);
   await expect(board(page)).toHaveAttribute('data-covered','9');
   await page.getByRole('button',{name:'Next garden'}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
-  await expect(page.locator('#game-level')).toContainText('2 / 12');
+  await expect(page.locator('#game-level')).toContainText('2 / 32');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
 });
 test('keyboard, legal current-state hints, undo, reset, pause, restart and reload save',async({page})=>{
@@ -81,14 +81,14 @@ test('re-entry preserves progress and captures original golden trail art',async(
   await page.screenshot({path:'tests/games/block-fill/evidence/chromium.png',fullPage:true});
 });
 
-test('all twelve gardens are playable to the final win using real pointer input',async({page})=>{
-  test.setTimeout(90000);
-  for(let i=0;i<12;i++){
+test('all thirty-two gardens are playable to the final win using real pointer input',async({page})=>{
+  test.setTimeout(180000);
+  for(let i=0;i<32;i++){
     const level=generateLevel(i);await drag(page,level.solution,true);
     await expect(board(page)).toHaveAttribute('data-covered',String(level.cells.length));
-    if(i<11)await page.getByRole('button',{name:'Next garden'}).click();
+    if(i<31)await page.getByRole('button',{name:'Next garden'}).click();
   }
-  await expect(page.locator('.bf-message')).toContainText('All twelve gardens filled');
+  await expect(page.locator('.bf-message')).toContainText('All gardens filled');
 });
 test('invalid persisted snapshots are ignored safely',async({page})=>{
   await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Block Fill',exact:true})).toBeVisible();

@@ -145,11 +145,11 @@ test('touch, colour labels, patterns, phone fit and screenshot',async({browser})
   await context.close();
 });
 
-test('all 27 levels are selectable and the final added level wins, restores and wraps to level 1',async({page})=>{
+test('all 77 levels are selectable and the final added level wins, restores and wraps to level 1',async({page})=>{
  test.setTimeout(90000);await page.emulateMedia({reducedMotion:'reduce'});await open(page);
- const levels=page.getByRole('combobox',{name:'Level',exact:true});await expect(levels.locator('option')).toHaveCount(27);
- await levels.selectOption('26');await expect(page.locator('.ws-level-name')).toHaveText('Level 27');
- await page.reload();await expect(levels).toHaveValue('26');
+ const levels=page.getByRole('combobox',{name:'Level',exact:true});await expect(levels.locator('option')).toHaveCount(77);
+ await levels.selectOption('76');await expect(page.locator('.ws-level-name')).toHaveText('Level 77');
+ await page.reload();await expect(levels).toHaveValue('76');
  for(let i=0;i<40&&await root(page).getAttribute('data-phase')!=='won';i++)await hintPour(page);
  await expect(root(page)).toHaveAttribute('data-phase','won');
  await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(levels).toHaveValue('0');

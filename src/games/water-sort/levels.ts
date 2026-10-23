@@ -57,6 +57,57 @@ const definitions: [string, string, number, number, number][] = [
   ['Crystal depths', 'Deep', 5, 1004, 11],
   ['Aurora falls', 'Deep', 5, 1005, 12],
   ['Rainbow reservoir', 'Deep', 5, 1006, 13],
+  // Extension: independently solved and ordered by minimum legal pour count.
+  ['Prism channel', 'Deep', 5, 3015, 30], // optimal pours: 14
+  ['Moonlit inlet', 'Deep', 5, 3029, 30], // optimal pours: 14
+  ['Silver eddies', 'Deep', 5, 3081, 30], // optimal pours: 14
+  ['Tidal ribbons', 'Deep', 5, 3121, 30], // optimal pours: 14
+  ['Glass rapids', 'Deep', 5, 3147, 30], // optimal pours: 14
+  ['Opal current', 'Deep', 5, 3217, 30], // optimal pours: 14
+  ['Copper spring', 'Deep', 5, 3223, 30], // optimal pours: 14
+  ['Luminous bend', 'Deep', 5, 3263, 30], // optimal pours: 14
+  ['Sapphire flow', 'Deep', 5, 3269, 30], // optimal pours: 14
+  ['Estuary lights', 'Deep', 6, 3003, 30], // optimal pours: 14
+  ['Twilight basin', 'Deep', 6, 3007, 30], // optimal pours: 15
+  ['Sixfold stream', 'Deep', 6, 3014, 30], // optimal pours: 15
+  ['Mosaic spring', 'Deep', 6, 3021, 30], // optimal pours: 15
+  ['Braided delta', 'Deep', 6, 3192, 30], // optimal pours: 15
+  ['Moonstone pool', 'Deep', 6, 3296, 30], // optimal pours: 15
+  ['Prismatic arch', 'Deep', 7, 3001, 30], // optimal pours: 15
+  ['Coral currents', 'Deep', 7, 3009, 30], // optimal pours: 15
+  ['Ribbon reservoir', 'Deep', 7, 3019, 30], // optimal pours: 15
+  ['Velvet tide', 'Deep', 7, 3024, 30], // optimal pours: 15
+  ['Indigo crossing', 'Deep', 7, 3037, 30], // optimal pours: 15
+  ['Labyrinth lake', 'Deep', 6, 3005, 30], // optimal pours: 16
+  ['Woven waters', 'Deep', 6, 3009, 30], // optimal pours: 16
+  ['Cascade chamber', 'Deep', 6, 3029, 30], // optimal pours: 16
+  ['Hidden confluence', 'Deep', 6, 3055, 30], // optimal pours: 16
+  ['Cobalt passage', 'Deep', 6, 3075, 30], // optimal pours: 16
+  ['Mirror lagoon', 'Deep', 6, 3085, 30], // optimal pours: 16
+  ['Colour vortex', 'Deep', 6, 3121, 30], // optimal pours: 16
+  ['Jewel basin', 'Deep', 6, 3127, 30], // optimal pours: 16
+  ['Northern current', 'Deep', 6, 3205, 30], // optimal pours: 16
+  ['Rainbow narrows', 'Deep', 6, 3217, 30], // optimal pours: 16
+  ['Sevenfold sea', 'Deep', 6, 3069, 30], // optimal pours: 17
+  ['Spectral passage', 'Deep', 6, 3107, 30], // optimal pours: 17
+  ['Tangled tributaries', 'Deep', 7, 3003, 30], // optimal pours: 17
+  ['Kaleidoscope bay', 'Deep', 7, 3071, 30], // optimal pours: 17
+  ['Deepwater weave', 'Deep', 7, 3087, 30], // optimal pours: 17
+  ['Midnight channels', 'Deep', 7, 3133, 30], // optimal pours: 17
+  ['Prism labyrinth', 'Deep', 7, 3137, 30], // optimal pours: 17
+  ['Starlit rapids', 'Deep', 7, 3183, 30], // optimal pours: 17
+  ['Ocean tapestry', 'Deep', 7, 3213, 30], // optimal pours: 17
+  ['Aurora channel', 'Deep', 6, 3015, 30], // optimal pours: 18
+  ['Chromatic depths', 'Deep', 7, 3599, 30], // optimal pours: 18
+  ['Glass whirlpool', 'Deep', 7, 3761, 30], // optimal pours: 18
+  ['Rainbow riddle', 'Deep', 7, 3873, 30], // optimal pours: 18
+  ['Crystal labyrinth', 'Deep', 7, 3985, 30], // optimal pours: 18
+  ['Infinite inlet', 'Deep', 7, 4111, 30], // optimal pours: 18
+  ['Seventh tide', 'Deep', 7, 3619, 30], // optimal pours: 19
+  ['Spectral summit', 'Deep', 7, 3847, 30], // optimal pours: 19
+  ['Prism pinnacle', 'Deep', 7, 3949, 30], // optimal pours: 19
+  ['Ocean odyssey', 'Deep', 7, 3497, 30], // optimal pours: 20
+  ['Master of currents', 'Deep', 7, 3807, 30], // optimal pours: 21
 ];
 export const LEVELS: readonly Level[] = definitions.map(([name, difficulty, colours, seed, swaps]) => ({
   name, difficulty, colours, ...constructLevel(colours, seed, swaps),

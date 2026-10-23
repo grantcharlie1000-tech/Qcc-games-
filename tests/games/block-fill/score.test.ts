@@ -14,7 +14,8 @@ describe('Block Fill campaign score', () => {
     const clean=(i:number)=>levelPoints(i,{steps:generateLevel(i).cells.length-1,hints:0});
     expect(levelPoints(11,{steps:999,hints:99})).toBeGreaterThan(clean(0));
     for(let i=1;i<LEVEL_COUNT;i++)expect(clean(i)).toBeGreaterThan(clean(i-1));
-    expect(Array.from({length:LEVEL_COUNT},(_,i)=>clean(i)).reduce((a,b)=>a+b,0)).toBe(59600);
+    expect(Array.from({length:12},(_,i)=>clean(i)).reduce((a,b)=>a+b,0)).toBe(59600);
+    expect(Array.from({length:LEVEL_COUNT},(_,i)=>clean(i)).reduce((a,b)=>a+b,0)).toBe(245600);
   });
   it('records a solve, keeps only an improved clear and survives Restart', () => {
     const l=generateLevel(0);
@@ -29,7 +30,7 @@ describe('Block Fill campaign score', () => {
     const start=generateLevel(0).start;
     expect(restoreState({version:1,level:0,path:[start],rewarded:false})).toEqual({version:1,level:0,path:[start],rewarded:false,steps:0,hints:0,best:{}});
     expect(restoreState({version:1,level:0,path:[start],rewarded:true,steps:-3,hints:'x',best:'x'})).toMatchObject({steps:0,hints:0,best:{}});
-    expect(readBest({0:{steps:8,hints:0},1:{steps:2,hints:0},2:{steps:15},12:{steps:40,hints:0},x:{steps:8,hints:0},3:null})).toEqual({0:{steps:8,hints:0}});
+    expect(readBest({0:{steps:8,hints:0},1:{steps:2,hints:0},2:{steps:15},32:{steps:40,hints:0},x:{steps:8,hints:0},3:null})).toEqual({0:{steps:8,hints:0}});
     const s=restoreState({version:1,level:1,path:[generateLevel(1).start],rewarded:false,steps:4,hints:1,best:{0:{steps:8,hints:0},11:{steps:50,hints:2}}})!;
     expect(campaignScore(s.best)).toBe(1800+levelPoints(11,{steps:50,hints:2}));
     expect(restoreState({...s,extra:1})).toBeNull();
