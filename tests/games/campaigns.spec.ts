@@ -1,6 +1,19 @@
 import { test, expect } from '../fixtures';
 import { LEVELS, emptyPaths, solve } from '../../src/games/color-connect/model';
 
+test.afterEach(async({page},info)=>{
+ if(info.status===info.expectedStatus)return;
+ // CI logs remain available when an environment cannot download trace ZIPs.
+ console.log('CAMPAIGN_FAILURE',JSON.stringify(await page.evaluate(()=>({
+  progress:document.querySelector('.cc-progress')?.textContent,
+  pairs:document.querySelector('.cc-pairs')?.textContent,
+  moves:document.querySelector('.cc-moves')?.textContent,
+  winHidden:(document.querySelector('.cc-win') as HTMLElement|null)?.hidden,
+  cells:Array.from(document.querySelectorAll<HTMLElement>('[data-cc-cell]'),cell=>({cell:Number(cell.dataset.ccCell),path:cell.dataset.path??null,label:cell.getAttribute('aria-label')})),
+  saved:JSON.parse(localStorage.getItem('pocket-arcade:v1:save:color-connect')||'null')?.data?.paths,
+ }))));
+});
+
 test('the final 9×9 connection puzzle is selectable, playable, saved and wraps after completion',async({page})=>{
  test.setTimeout(60000);await page.setViewportSize({width:390,height:844});
  await page.goto('/#/game/color-connect');
