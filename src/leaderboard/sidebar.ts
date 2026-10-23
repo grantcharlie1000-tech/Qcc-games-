@@ -2,6 +2,7 @@ import * as store from '../core/storage';
 import type {GameId} from '../core/types';
 import type {LeaderboardSync} from './client';
 import {scoredGame,type Board} from './shared';
+import {formatScore} from './format';
 const trophy='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3zm0 4H6v1a2 2 0 0 0 1 1.7zm10 0v2.7A2 2 0 0 0 18 8V7z" fill="currentColor"/></svg>';
 /**
  * A floating, collapsible companion to the opt-in leaderboard dialog. It overlays the
@@ -54,7 +55,7 @@ export class LeaderboardSidebar {
  private paint(board:Board|null){
   const body=this.root.querySelector('tbody')!;body.replaceChildren();
   for(const entry of board?.entries??[]){const row=document.createElement('tr');const you=entry.playerId===board?.player?.playerId;if(you)row.className='lb-you';
-   for(const value of [entry.rank,entry.name,entry.score.toLocaleString()]){const cell=document.createElement('td');cell.textContent=String(value);row.append(cell);}
+   for(const value of [entry.rank,entry.name,formatScore(this.game,entry.score)]){const cell=document.createElement('td');cell.textContent=String(value);row.append(cell);}
    row.children[1]!.setAttribute('title',entry.name+(you?' (you)':''));body.append(row);}
   this.root.querySelector<HTMLElement>('.lb-table')!.hidden=!board?.entries.length;
  }
@@ -65,7 +66,7 @@ export class LeaderboardSidebar {
   this.busy=true;clearTimeout(this.timer);
   if(!this.root.querySelector('tbody')!.childElementCount)this.status('Loading…');
   try{const board=await this.sync.load(this.game);if(this.disposed||request!==this.request)return;this.paint(board);
-   const mine=board.player;this.status(mine?`You: #${mine.rank} · ${mine.score.toLocaleString()}`:board.entries.length?'Best score per player.':'No scores yet. Be the first!');}
+   const mine=board.player;this.status(mine?`You: #${mine.rank} · ${formatScore(this.game,mine.score)}`:board.entries.length?'Best score per player.':'No scores yet. Be the first!');}
   catch{if(this.disposed||request!==this.request)return;const cached=this.sync.cached(this.game);this.paint(cached);this.status(cached?'Offline · showing saved rankings.':'Rankings unavailable right now.');}
   finally{this.busy=false;if(this.refreshPending){this.refreshPending=false;void this.refresh();}else this.schedule();}
  }

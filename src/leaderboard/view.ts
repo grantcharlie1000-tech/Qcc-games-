@@ -3,6 +3,7 @@ import * as store from '../core/storage';
 import type {GameId} from '../core/types';
 import {LeaderboardSync} from './client';
 import {scoredGame,SCORED_GAMES,type Board} from './shared';
+import {formatScore} from './format';
 import './style.css';
 export class LeaderboardView {
  readonly root=document.createElement('dialog');
@@ -42,27 +43,27 @@ export class LeaderboardView {
    await this.refresh();
   }catch(error){this.status(error instanceof Error?error.message:'Could not save your nickname.');}
  }
- private paint(board:Board|null){
+ private paint(board:Board|null,game=this.select.value as GameId){
   const tbody=this.root.querySelector('tbody')!;tbody.replaceChildren();
   for(const entry of board?.entries??[]){
    const row=document.createElement('tr');if(entry.playerId===board?.player?.playerId)row.className='lb-you';
-   for(const value of [entry.rank,entry.name+(entry.playerId===board?.player?.playerId?' · You':''),entry.score.toLocaleString()]){
+   for(const value of [entry.rank,entry.name+(entry.playerId===board?.player?.playerId?' · You':''),formatScore(game,entry.score)]){
     const cell=document.createElement('td');cell.textContent=String(value);row.append(cell);
    }tbody.append(row);
   }
   const mine=board?.player;
-  this.root.querySelector('.lb-personal')!.textContent=mine?`Your rank: ${mine.rank} · Best: ${mine.score.toLocaleString()}`:this.sync.profile()?'Play and score to earn your place.':'Join to share your scores.';
+  this.root.querySelector('.lb-personal')!.textContent=mine?`Your rank: ${mine.rank} · Best: ${formatScore(game,mine.score)}`:this.sync.profile()?'Play and score to earn your place.':'Join to share your scores.';
  }
  private async refresh(){
-  const id=++this.request,game=this.select.value;this.paint(null);this.status('Loading shared scores…');
+  const id=++this.request,game=this.select.value as GameId;this.paint(null);this.status('Loading shared scores…');
   let pending=false;
   try{await this.sync.flush();}catch{pending=true;}
   try{
-   const board=await this.sync.load(game);if(id!==this.request||!this.root.open)return;this.paint(board);
+   const board=await this.sync.load(game);if(id!==this.request||!this.root.open)return;this.paint(board,game);
    this.status(pending?'Your scores are waiting to sync. Showing the latest shared scores.':board.entries.length?'Updated from the online leaderboard.':'No scores yet. Be the first to play!');
   }catch{
    if(id!==this.request||!this.root.open)return;
-   const cached=this.sync.cached(game);this.paint(cached);
+   const cached=this.sync.cached(game);this.paint(cached,game);
    this.status(cached?'Offline or unavailable · showing previously loaded scores. Your scores will sync when connected.':'Online leaderboard unavailable. You can keep playing; your scores are saved on this device.');
   }
  }

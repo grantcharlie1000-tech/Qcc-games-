@@ -15,6 +15,7 @@ import {freshState,serialize,deserialize,exportString,importString,SaveError,typ
 import {TabGuard,readDiskSave,revisionOf,addBackup,listBackups} from './persistence';
 import {Sfx,type Cue} from './audio';
 import {GardenView} from './garden-view';
+import {cornScore} from './score';
 import {duration,longDuration,effectText,requirementText,achievementTarget,goldenResult,festivalText} from './text';
 
 type Sub='farm'|'garden'|'goals'|'stats'|'replant'|'options';
@@ -235,6 +236,8 @@ export class CornClicker {
     clearTimeout(this.saveTimer);this.saveTimer=0;
     if(this.passive||!this.guard.owner||this.disposed)return;
     this.ctx.save(this.ownedSnapshot());this.updateSaved();
+    // Lifetime kernels are the leaderboard score; the host keeps the best and syncs it.
+    this.ctx.setScore(cornScore(this.game.s.life.earned));
   }
   private updateSaved(){
     const el=this.el.saved;

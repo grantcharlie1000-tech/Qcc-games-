@@ -73,3 +73,22 @@ test('offline entry shows cached rankings without a network request',async({page
  await context.setOffline(true);await page.evaluate(()=>{location.hash='#/game/snake';});
  await expect(page.locator('.lb-sidebar')).toContainText('Saved player');await expect(page.locator('.lb-sidebar .lb-status')).toContainText('Offline');
 });
+test('Corn Clicker ranks lifetime kernels and shows them in the game number format',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});const posted:any[]=[];
+ await page.route('**/.netlify/functions/leaderboard**',route=>{
+  if(route.request().method()==='POST')posted.push(route.request().postDataJSON());
+  return route.fulfill({json:{entries:[{rank:1,playerId:'e'.repeat(64),name:'Cob Baron',score:126600}],player:null}});
+ });
+ await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:leaderboard:profile',JSON.stringify({token:'f'.repeat(64),name:'Ada'})));
+ await page.goto('/#/game/corn-clicker');await expect(page.locator('#game-stage .loading')).toHaveCount(0);
+ // The farm fills the viewport to its bottom edge, so the pill sits in the toolbar rather than over the game.
+ const pill=await page.locator('.lb-toggle').boundingBox(),stage=await page.locator('#game-stage').boundingBox();
+ expect(pill!.y+pill!.height).toBeLessThanOrEqual(stage!.y);
+ await expand(page);
+ await expect(page.locator('.lb-sidebar')).toContainText('Cob Baron');await expect(page.locator('.lb-sidebar')).toContainText('4.571 T');
+ for(let i=0;i<3;i++)await page.getByRole('button',{name:/^Harvest the cob/}).click();
+ await page.getByRole('button',{name:'All rankings'}).click();
+ await expect(page.locator('#leaderboard-game')).toHaveValue('corn-clicker');
+ await expect(page.locator('#leaderboard-dialog tbody')).toContainText('4.571 T');
+ await expect.poll(()=>posted.find(p=>p.game==='corn-clicker')?.score??0).toBeGreaterThan(0);
+});

@@ -99,6 +99,9 @@ body.in-game .game-view[data-game-id=corn-clicker] #game-status{display:none}
 .lb-sidebar .lb-table th:last-child{width:84px}
 .lb-sidebar .lb-table td:first-child{color:#bfc6c3}
 .lb-sidebar .lb-table tr:nth-child(-n+3) td:first-child{color:#ffe0a4;font-weight:700}
+/* Corn Clicker fills the viewport to its bottom edge, so its rankings sit in the empty middle of the toolbar instead. */
+body.in-game .game-view[data-game-id=corn-clicker]~.lb-sidebar{top:max(12px,env(safe-area-inset-top));bottom:auto;left:50%;transform:translateX(-50%)}
+body.in-game .game-view[data-game-id=corn-clicker]~.lb-sidebar .lb-panel{transform-origin:top center}
 .lb-actions{display:flex;gap:8px;margin-top:10px}
 .lb-actions .game-button{flex:1 1 auto;min-height:36px;padding:6px 10px;font-size:14px;white-space:nowrap;margin:0;width:auto}
 .lb-actions .lb-refresh{flex:0 0 auto}
