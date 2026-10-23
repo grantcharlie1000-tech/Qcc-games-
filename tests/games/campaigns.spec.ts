@@ -9,7 +9,7 @@ test.beforeEach(async({page})=>{
    if(!grid?.hasPointerCapture(event.pointerId))return;
    const rect=grid.getBoundingClientRect(),size=Number(grid.getAttribute('aria-colcount'));
    const point=(sample:PointerEvent)=>[Number(((sample.clientX-rect.x)/rect.width*size).toFixed(3)),Number(((sample.clientY-rect.y)/rect.height*size).toFixed(3))];
-   events.push({point:point(event),samples:event.getCoalescedEvents?.().map(point)});
+   events.push({point:point(event),client:[event.clientX,event.clientY],rect:[rect.x,rect.y,rect.width,rect.height],samples:event.getCoalescedEvents?.().map(point)});
   },{capture:true,passive:true});
  });
 });
@@ -41,8 +41,11 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
  for(const path of result.paths){
   for(const [i,cell] of path.entries()){
    const box=(await page.locator(`[data-cc-cell="${cell}"]`).boundingBox())!;
-   const dom=await page.locator(`[data-cc-cell="${cell}"]`).evaluate(node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}});
+   const dom=await page.locator(`[data-cc-cell="${cell}"]`).evaluate(node=>{const r=node.getBoundingClientRect(),g=node.closest('.cc-grid')!.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,grid:[g.x,g.y,g.width,g.height]}});
    if(Math.abs(box.y-dom.y)>1||Math.abs(box.height-dom.height)>1)console.log('CAMPAIGN_BOX_MISMATCH',JSON.stringify({cell,box,dom}));
+   const logical=[(dom.x+dom.width/2-dom.grid[0])/dom.grid[2]*9,(dom.y+dom.height/2-dom.grid[1])/dom.grid[3]*9];
+   console.log('CAMPAIGN_REQUEST',JSON.stringify({cell,point:[box.x+box.width/2,box.y+box.height/2],logical,grid:dom.grid}));
+   expect(Math.abs(logical[0]-(cell%9+.5))).toBeLessThan(.05);expect(Math.abs(logical[1]-(Math.floor(cell/9)+.5))).toBeLessThan(.05);
    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);if(i===0)await page.mouse.down();
   }
   if(path===result.paths.at(-1))await expect(page.locator('.cc-win')).toBeVisible();
