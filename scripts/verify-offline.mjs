@@ -25,7 +25,10 @@ async function action(page,id){
  else if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling|Roll again/}).click();const before=await page.locator('.ball-run').getAttribute('data-distance');await page.keyboard.down('ArrowRight');try{await waitFor(async()=>Number(await page.locator('.ball-run').getAttribute('data-distance'))>Number(before)&&Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline Ball Run forward movement and steering');}finally{await page.keyboard.up('ArrowRight');}assert.ok(Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline held steering must move the ball');}
  else if(id==='flappy-bird'){await page.getByRole('button',{name:/Take flight|Continue flight|Fly again/}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.flappy-bird').getAttribute('data-tick'))>5,'offline Flappy Bird movement');}
  else if(id==='maze-muncher'){const start=page.getByRole('button',{name:/Start game|Play again/});if(await start.isVisible())await start.click();await page.keyboard.press('ArrowLeft');await waitFor(async()=>/heading left/.test(await page.locator('.mm-svg').getAttribute('aria-label')),'offline Maze Muncher movement');}
- else if(id==='corn-clicker'){const cob=page.getByRole('button',{name:/^Harvest the cob/});await cob.click();await cob.click();await waitFor(async()=>/^[1-9]/.test(await page.locator('.cc-kernels-num').textContent()),'offline Corn Clicker harvest');}
+ else if(id==='corn-clicker'){
+  // The shell's Restart asks before it erases the farm.
+  const erase=page.getByRole('button',{name:'Erase everything',exact:true});if(await erase.isVisible()){await erase.click();await erase.waitFor({state:'hidden'});}
+  const cob=page.getByRole('button',{name:/^Harvest the cob/});await cob.click();await cob.click();await waitFor(async()=>/^[1-9]/.test(await page.locator('.cc-kernels-num').textContent()),'offline Corn Clicker harvest');}
  else if(id==='pool'){await verifyPoolShot(page);}
  else if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');await page.locator('.gl-guess[data-id=KEN]').waitFor();}
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');
