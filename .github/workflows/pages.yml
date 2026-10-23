@@ -16,7 +16,8 @@ jobs:
   campaign-regression:
     name: Campaign regression (${{ matrix.browser }})
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Package mirrors can be slow; keep this separate from the test's timeout.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
