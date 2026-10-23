@@ -1,0 +1,60 @@
+[
+  {
+    "source": "implementation",
+    "baseSha": "c7fe5804db2e6aa7373ef66d9286dae3bea57499",
+    "browser": "System Chromium 154",
+    "failure": "Timed out: W activates after topic away and back",
+    "controller": {
+      "state": "activated",
+      "version": "ab2c64d8a6e3-B",
+      "entry": "http://127.0.0.1:4181/assets/index-BxB33J-6-B.js",
+      "cacheNamespace": 2,
+      "cacheRetirement": 1
+    },
+    "waiting": {
+      "state": "installed",
+      "version": "ab2c64d8a6e3-W",
+      "entry": "http://127.0.0.1:4181/assets/index-BxB33J-6-W.js",
+      "cacheNamespace": 2,
+      "cacheRetirement": 1
+    },
+    "waitingPendingEvents": {
+      "2": {
+        "name": "message",
+        "type": "ARCADE_ACTIVATE"
+      }
+    },
+    "waitingSkipCalls": 1,
+    "waitingSkipDone": 0,
+    "activePendingEvents": {}
+  },
+  {
+    "source": "untouched_base",
+    "baseSha": "c7fe5804db2e6aa7373ef66d9286dae3bea57499",
+    "browser": "System Chromium 154",
+    "failure": "Timed out: W activates after topic away and back",
+    "controller": {
+      "state": "activated",
+      "version": "ba3b24346553-B",
+      "entry": "http://127.0.0.1:4181/assets/index-BQWJ8kma-B.js",
+      "cacheNamespace": 2,
+      "cacheRetirement": 1
+    },
+    "waiting": {
+      "state": "installed",
+      "version": "ba3b24346553-W",
+      "entry": "http://127.0.0.1:4181/assets/index-BQWJ8kma-W.js",
+      "cacheNamespace": 2,
+      "cacheRetirement": 1
+    },
+    "waitingPendingEvents": {
+      "2": {
+        "name": "message",
+        "type": "ARCADE_ACTIVATE"
+      }
+    },
+    "waitingSkipCalls": 1,
+    "waitingSkipDone": 0,
+    "activePendingEvents": {}
+  }
+]

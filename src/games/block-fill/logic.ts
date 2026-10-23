@@ -4,8 +4,11 @@ export interface Level { size:number; cells:number[]; start:number; solution:num
 export interface Best { steps:number; hints:number }
 /** `best` is campaign progress keyed by garden index: it survives Restart and Reset path. */
 export interface State { version:1; level:number; path:number[]; rewarded:boolean; steps:number; hints:number; best:Record<string,Best> }
-export const LEVEL_COUNT=12;
-const plans = [[3,9],[4,14],[4,16],[5,20],[5,23],[5,25],[6,27],[6,29],[6,31],[6,33],[6,35],[6,36]] as const;
+export const LEVEL_COUNT=32;
+const plans = [[3,9],[4,14],[4,16],[5,20],[5,23],[5,25],[6,27],[6,29],[6,31],[6,33],[6,35],[6,36],
+  // One additional square per garden, with new 7x7 and 8x8 chapters.
+  [7,37],[7,38],[7,39],[7,40],[7,41],[7,42],[7,43],[7,44],[7,45],[7,46],[7,47],[7,48],[7,49],[8,50],[8,51],[8,52],[8,53],[8,54],[8,55],[8,56]
+] as const;
 export function adjacent(a:number,b:number,size:number):boolean { return Math.abs(a%size-b%size)+Math.abs(Math.floor(a/size)-Math.floor(b/size))===1; }
 /** Seeded backbite transformations preserve one Hamiltonian path; truncating it creates holes. */
 export function generateLevel(index:number):Level {

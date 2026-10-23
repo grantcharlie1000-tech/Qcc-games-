@@ -20,7 +20,8 @@ describe('Water Sort campaign score', () => {
     const clean = (i:number) => levelPoints(i,{pours:LEVELS[i].witness.length,assists:0});
     expect(clean(26)).toBeGreaterThan(clean(0));
     expect(levelPoints(26,{pours:5000,assists:99})).toBeGreaterThan(clean(0));
-    expect(LEVELS.reduce((sum,_,i)=>sum+clean(i),0)).toBe(61300);
+    expect(LEVELS.slice(0,27).reduce((sum,_,i)=>sum+clean(i),0)).toBe(61300);
+    expect(LEVELS.reduce((sum,_,i)=>sum+clean(i),0)).toBe(340400);
   });
   it('records a win, counts undos and hints, keeps the better clear and survives restart and level switches', () => {
     const session = new Session();

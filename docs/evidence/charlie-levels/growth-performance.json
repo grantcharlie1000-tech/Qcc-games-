@@ -1,0 +1,66 @@
+{
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+  "viewport": [
+    1280,
+    720
+  ],
+  "isolatedPlayer": true,
+  "ticksPerCase": 18000,
+  "results": [
+    {
+      "mass": 600,
+      "turnPerTick": 0.018,
+      "actualLength": 1930,
+      "targetLength": 1930,
+      "maxPoints": 703,
+      "finalPoints": 703,
+      "simulationP95Ms": 0.6000000000931323,
+      "renderP95Ms": 0.20000000018626451,
+      "restores": true
+    },
+    {
+      "mass": 10000,
+      "turnPerTick": 0.018,
+      "actualLength": 6994.139290168066,
+      "targetLength": 6994.139290168066,
+      "maxPoints": 2048,
+      "finalPoints": 1695,
+      "simulationP95Ms": 2,
+      "renderP95Ms": 0.20000000018626451,
+      "restores": true
+    },
+    {
+      "mass": 100000,
+      "turnPerTick": 0.018,
+      "actualLength": 11138.792457557349,
+      "targetLength": 11138.792457557349,
+      "maxPoints": 2048,
+      "finalPoints": 1343,
+      "simulationP95Ms": 1,
+      "renderP95Ms": 0.20000000018626451,
+      "restores": true
+    },
+    {
+      "mass": 5000000,
+      "turnPerTick": 0.004,
+      "actualLength": 18180.43386732801,
+      "targetLength": 18180.43386732801,
+      "maxPoints": 2048,
+      "finalPoints": 2015,
+      "simulationP95Ms": 1.3999999999068677,
+      "renderP95Ms": 0.20000000018626451,
+      "restores": true
+    },
+    {
+      "mass": 1000000000,
+      "turnPerTick": 0.004,
+      "actualLength": 27717.405127114474,
+      "targetLength": 27717.405127114474,
+      "maxPoints": 2048,
+      "finalPoints": 1906,
+      "simulationP95Ms": 1.1000000000931323,
+      "renderP95Ms": 0.20000000018626451,
+      "restores": true
+    }
+  ]
+}

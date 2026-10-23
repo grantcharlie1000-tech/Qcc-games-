@@ -1,7 +1,7 @@
 # Water Sort
 
-A quiet, colourful sorting puzzle for mouse, touch and keyboard. Twenty-seven original
-levels offer Gentle (two/three colours), Flow (four), and Deep (five) difficulty.
+A quiet, colourful sorting puzzle for mouse, touch and keyboard. Seventy-seven original
+levels offer Gentle (two/three colours), Flow (four), and Deep (five to seven) difficulty.
 All colours have exactly four units; every board has two spare tubes.
 
 ## Rules and research
@@ -36,7 +36,7 @@ runs have exactly q units, the receiving colour is matching or empty, and there
 is enough space. Prepending each inverse triple to the witness proves that the
 resulting level has a solution. Fixed seeds give reproducible original boards.
 
-Every one of the 27 shipped levels is additionally solved in tests by a
+Every one of the 77 shipped levels is additionally solved in tests by a
 separate breadth-first implementation that calls none of the production rules,
 goal, canonicalizer or search. Its plan and the reverse witness are replayed
 through the player rules. The constructor's fully consolidated witness solves
@@ -130,3 +130,7 @@ The first nine boards, indices and generator are unchanged, preserving saved gam
 Eighteen named seeded boards are appended. Every level is verified by an independent
 BFS, its reverse-construction witness, the normal solver and reachable-state hint
 recovery. Level selection exposes all 27; completing Level 27 wraps to Level 1.
+
+## Level expansion — 23 October 2026
+
+The original 27 boards remain unchanged. Fifty new Deep puzzles extend the catalogue to 77, with independent minimum-pour difficulty rising from 14 to 21. New boards are distinct even under tube reordering and colour renaming; each has an independently solved route and legal construction witness. The final level now wraps from Level 77 to Level 1. See `docs/LEVEL_EXPANSION.md` for the full arcade inventory and verification.

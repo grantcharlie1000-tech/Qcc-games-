@@ -13,11 +13,15 @@ async function stableBoard(page:Page){
 }
 async function drag(page:Page,path:number[],fast=false){
   await stableBoard(page);
-  const first=await center(page,path[0]!);await page.mouse.move(first.x,first.y);await page.mouse.down();
+  // The SVG bounds stay fixed throughout a gesture. Measure once instead of
+  // making two browser round trips per cell across the extended campaign.
+  const level=generateLevel(Number(await board(page).getAttribute('data-level'))-1),box=(await board(page).boundingBox())!,logical=level.size*64+24;
+  const point=(cell:number)=>({x:box.x+(44+cell%level.size*64)/logical*box.width,y:box.y+(44+Math.floor(cell/level.size)*64)/logical*box.height});
+  const first=point(path[0]!);await page.mouse.move(first.x,first.y);await page.mouse.down();
   for(let i=1;i<path.length;i++){
     // Straight runs are sent as a single large movement, forcing interpolation.
     if(fast&&i<path.length-1&&path[i]!-path[i-1]===path[i+1]!-path[i]!)continue;
-    const p=await center(page,path[i]!);await page.mouse.move(p.x,p.y,{steps:1});
+    const p=point(path[i]!);await page.mouse.move(p.x,p.y,{steps:1});
   }
   await page.mouse.up();
 }
@@ -35,7 +39,7 @@ test('fast actual drag fills every square and unlocks the larger next garden',as
   await drag(page,generateLevel(0).solution,true);
   await expect(board(page)).toHaveAttribute('data-covered','9');
   await page.getByRole('button',{name:'Next garden'}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
-  await expect(page.locator('#game-level')).toContainText('2 / 12');
+  await expect(page.locator('#game-level')).toContainText('2 / 32');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
 });
 test('keyboard, legal current-state hints, undo, reset, pause, restart and reload save',async({page})=>{
@@ -77,18 +81,21 @@ test('re-entry preserves progress and captures original golden trail art',async(
   await drag(page,generateLevel(0).solution.slice(0,6),true);await expect(board(page)).toHaveAttribute('data-covered','6');
   await page.getByRole('link',{name:'Back to game library'}).click();await page.goto('/#/game/block-fill');await expect(board(page)).toHaveAttribute('data-covered','6');
   await board(page).focus();await page.keyboard.press('Backspace');await expect(board(page)).toHaveAttribute('data-covered','5');
+  // Re-entry can expose the restored SVG before its stage fit is painted.
+  // Wait for the board to settle before calculating a native click coordinate.
+  await stableBoard(page);
   const last=await center(page,generateLevel(0).solution[5]!);await page.mouse.click(last.x,last.y);await expect(board(page)).toHaveAttribute('data-covered','6');
   await page.screenshot({path:'tests/games/block-fill/evidence/chromium.png',fullPage:true});
 });
 
-test('all twelve gardens are playable to the final win using real pointer input',async({page})=>{
-  test.setTimeout(90000);
-  for(let i=0;i<12;i++){
+test('all thirty-two gardens are playable to the final win using real pointer input',async({page})=>{
+  test.setTimeout(180000);
+  for(let i=0;i<32;i++){
     const level=generateLevel(i);await drag(page,level.solution,true);
     await expect(board(page)).toHaveAttribute('data-covered',String(level.cells.length));
-    if(i<11)await page.getByRole('button',{name:'Next garden'}).click();
+    if(i<31)await page.getByRole('button',{name:'Next garden'}).click();
   }
-  await expect(page.locator('.bf-message')).toContainText('All twelve gardens filled');
+  await expect(page.locator('.bf-message')).toContainText('All gardens filled');
 });
 test('invalid persisted snapshots are ignored safely',async({page})=>{
   await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Block Fill',exact:true})).toBeVisible();

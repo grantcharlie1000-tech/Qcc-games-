@@ -27,7 +27,7 @@ function shape(color:number,x:number,y:number):string {
 let instanceSequence=0;
 const game: GameModule = {
  id:'color-connect', title:'Color Connect', cover:'game-art/color-connect/cover.svg',
- rules:'Connect every pair of matching letters and shapes by drawing through neighbouring cells. Move only up, down, left or right. Paths cannot cross, share cells or enter another pair’s endpoint. To win, connect ALL pairs AND fill the ENTIRE board. Drag from a peg to redraw its colour, or grab a trail to trim it. Undo reverses a gesture. Erase selected removes its trail. Hint checks the current board: it adds one safe step or explains when you must backtrack. Keyboard: Tab into the board, arrows to move, Space or Enter to start/stop drawing, arrows to draw, Backspace to trim, Delete to erase. Twelve puzzles grow from 4×4 to 7×7.',
+ rules:'Connect every pair of matching letters and shapes by drawing through neighbouring cells. Move only up, down, left or right. Paths cannot cross, share cells or enter another pair’s endpoint. To win, connect ALL pairs AND fill the ENTIRE board. Drag from a peg to redraw its colour, or grab a trail to trim it. Undo reverses a gesture. Erase selected removes its trail. Hint checks the current board: it adds one safe step or explains when you must backtrack. Keyboard: Tab into the board, arrows to move, Space or Enter to start/stop drawing, arrows to draw, Backspace to trim, Delete to erase. Thirty-two puzzles grow from 4×4 to 9×9.',
  mount(container:HTMLElement, context:GameContext) {
   const abort = new AbortController(), signal=abort.signal, svgPrefix=`cc-${++instanceSequence}`;
   let state:Snapshot={version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[],assists:0,best:{}};
@@ -55,7 +55,11 @@ const game: GameModule = {
   function save(){if(!disposed)context.save(snapshot())}
   function rebuild(){
    const current=level();picker.value=String(state.level);grid.replaceChildren();buttons=[];
-   grid.style.gridTemplateColumns=`repeat(${current.size},1fr)`;grid.setAttribute('aria-rowcount',String(current.size));grid.setAttribute('aria-colcount',String(current.size));
+   grid.style.gridTemplateColumns=`repeat(${current.size},1fr)`;
+   // WebKit can resize implicit rows around a pressed native button. The SVG
+   // and pointer mapper both require equal squares throughout the gesture.
+   grid.style.gridTemplateRows=`repeat(${current.size},minmax(0,1fr))`;
+   grid.setAttribute('aria-rowcount',String(current.size));grid.setAttribute('aria-colcount',String(current.size));
    for(let y=0;y<current.size;y++){
     const row=document.createElement('div');row.setAttribute('role','row');row.className='cc-row';grid.append(row);
     for(let x=0;x<current.size;x++){
@@ -111,7 +115,7 @@ const game: GameModule = {
    state.history.push(copyPaths(before));if(state.history.length>100)state.history.shift();state.moves++;
    if(isWon(level(),state.paths)){
     recordWin(state);
-    say(state.completed.length===LEVELS.length?'All twelve puzzles complete. A perfect tapestry!':'Beautifully connected! Every cell is filled.');context.sound('success');
+    say(state.completed.length===LEVELS.length?'All puzzles complete. A perfect tapestry!':'Beautifully connected! Every cell is filled.');context.sound('success');
    }else{
     if(feedback.startsWith('Drawing ')){
      const allPairs=state.paths.every((path,color)=>connected(level(),path,color));
@@ -143,7 +147,9 @@ const game: GameModule = {
   }
   function logical(event:PointerEvent):Point{const rect=grid.getBoundingClientRect(),n=level().size;return {x:(event.clientX-rect.left)/rect.width*n,y:(event.clientY-rect.top)/rect.height*n}}
   function pointerMove(event:PointerEvent){
-   if(paused||pointerId!==event.pointerId||!lastPoint)return;
+   // Showing victory can refit the stage while the pointer is still held.
+   // A completed gesture must survive release at those old screen coordinates.
+   if(paused||pointerId!==event.pointerId||!lastPoint||isWon(level(),state.paths))return;
    event.preventDefault();
    const samples=event.getCoalescedEvents?.()||[];
    for(const sample of samples.length?samples:[event]){const point=logical(sample);for(const cell of traverse(lastPoint,point,level().size).slice(1))move(cell);lastPoint=point}
