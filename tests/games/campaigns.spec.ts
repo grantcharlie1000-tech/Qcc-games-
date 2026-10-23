@@ -41,6 +41,8 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
  for(const path of result.paths){
   for(const [i,cell] of path.entries()){
    const box=(await page.locator(`[data-cc-cell="${cell}"]`).boundingBox())!;
+   const dom=await page.locator(`[data-cc-cell="${cell}"]`).evaluate(node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}});
+   if(Math.abs(box.y-dom.y)>1||Math.abs(box.height-dom.height)>1)console.log('CAMPAIGN_BOX_MISMATCH',JSON.stringify({cell,box,dom}));
    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);if(i===0)await page.mouse.down();
   }
   if(path===result.paths.at(-1))await expect(page.locator('.cc-win')).toBeVisible();
