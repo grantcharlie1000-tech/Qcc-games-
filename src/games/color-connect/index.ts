@@ -143,7 +143,9 @@ const game: GameModule = {
   }
   function logical(event:PointerEvent):Point{const rect=grid.getBoundingClientRect(),n=level().size;return {x:(event.clientX-rect.left)/rect.width*n,y:(event.clientY-rect.top)/rect.height*n}}
   function pointerMove(event:PointerEvent){
-   if(paused||pointerId!==event.pointerId||!lastPoint)return;
+   // Showing victory can refit the stage while the pointer is still held.
+   // A completed gesture must survive release at those old screen coordinates.
+   if(paused||pointerId!==event.pointerId||!lastPoint||isWon(level(),state.paths))return;
    event.preventDefault();
    const samples=event.getCoalescedEvents?.()||[];
    for(const sample of samples.length?samples:[event]){const point=logical(sample);for(const cell of traverse(lastPoint,point,level().size).slice(1))move(cell);lastPoint=point}

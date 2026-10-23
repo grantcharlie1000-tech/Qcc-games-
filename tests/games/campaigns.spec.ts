@@ -15,6 +15,7 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
    const box=(await page.locator(`[data-cc-cell="${cell}"]`).boundingBox())!;
    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);if(i===0)await page.mouse.down();
   }
+  if(path===result.paths.at(-1))await expect(page.locator('.cc-win')).toBeVisible();
   await page.mouse.up();
  }
  await expect(page.locator('.cc-win')).toBeVisible();
