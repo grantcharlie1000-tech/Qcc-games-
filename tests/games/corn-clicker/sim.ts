@@ -2,13 +2,15 @@
 import {CornGame} from '../../../src/games/corn-clicker/model';
 import {PRODUCERS,type ProducerId} from '../../../src/games/corn-clicker/data';
 import {Big} from '../../../src/games/corn-clicker/big';
+import {freshState} from '../../../src/games/corn-clicker/state';
 
 export interface SimOptions {seconds:number;clicksPerSecond:number;game?:CornGame;golden?:boolean;garden?:boolean;log?:(t:number,g:CornGame)=>void}
 export interface SimResult {game:CornGame;firstProducer:number;purchases:number[];firstGarden:number;seedTimes:Record<number,number>}
 
 /** Buys the best payback item every simulated second; clicks golden cobs when `golden`. */
 export function simulate(o:SimOptions):SimResult {
-  const g=o.game??new CornGame(undefined,0);
+  // A fixed RNG seed keeps golden cobs and garden rolls, and so the pacing assertions, reproducible.
+  const g=o.game??new CornGame(freshState(0,1),0);
   let now=g.s.lastTick,firstProducer=-1,firstGarden=-1,clickDebt=0;
   const purchases:number[]=[],seedTimes:Record<number,number>={};
   for(let t=1;t<=o.seconds;t++){
