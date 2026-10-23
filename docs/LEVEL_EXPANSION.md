@@ -45,17 +45,19 @@ Regression coverage includes real pellet consumption past 600 and 10,000, boost 
 
 - Baseline aggregate: **passed**, 111 files / 2,493 tests.
 - New cap/progression regressions: observed failing before implementation.
-- Implementation aggregate: **passed**, 114 files / 2,651 tests (`npm test -- --maxWorkers=1`).
+- Initial implementation aggregate: **passed**, 114 files / 2,651 tests (`npm test -- --maxWorkers=1`).
 - Typecheck, production build and native diagnostic helper: **passed**; 7 helper tests.
 - Focused Chromium: **passed**, 24 tests, including all 32 gardens, final Water Sort solve/save/wrap and a 600 → 9,600 Neon Coil save continuation.
 - Offline production verification: **passed**, all 18 games plus Study at both `/` and `/Qcc-games-/`.
 - Follow-up Chromium: **passed**, all 6 Block Fill tests with stable coordinate measurement, plus the final 9×9 Color Connect solve/save/wrap and existing held-final-gesture regression. The three-minute 32-garden timeout remains unchanged.
-- Full Chromium aggregate and CI: in progress. Local aggregate failures are recorded separately; no claim of aggregate success is made.
+- Audit-fix aggregate: **passed**, 114 files / 2,657 tests. The subsequently added exact Astra reproducer passed with all 9 growth cases.
+- Full local Chromium aggregate before the audit fix: **296 passed, 25 failed, 1 skipped**. Follow-up runs passed all 6 Block Fill cases, both Color Connect completion cases, and all 25 Ball Run / Color Blocks correction / Flappy Bird cases. Seventeen original failures were a missing Playwright FFmpeg binary (system FFmpeg is now used from a temporary tool cache); Flappy fit checks now wait for native actionability before the unchanged bounds assertions. The two online multiplayer room tests could not reach PeerJS Cloud: the host returned HTTP 403. One Globle screenshot timed out under concurrent load.
+- Current full Chromium aggregate and CI: pending at record time; the PR checks remain authoritative.
 - Retained-update verification: **failed** at `W activates after topic away and back` in both this branch and the untouched base. The waiting worker receives activation but its `skipWaiting()` promise remains pending under local Chromium 154; see `docs/evidence/charlie-levels/update-baseline-comparison.json`. No service-worker code changed in this PR. Packaged Chromium installation is also blocked by HTTP 403.
 - WebKit local installation: **blocked**, browser download host returned HTTP 403 `Domain forbidden`. Chromium is installed locally. WebKit execution is pending CI and is not claimed as passed.
 - Independent Astra review: pending parent audit; merge is held until resolved.
 
-The reproducible `node scripts/profile-neon-growth.mjs` profile (run against `npm run dev -- --port 4173`) exercised 18,000 ticks per case at 600, 10,000, 100,000 and one billion mass. History stayed at or below 2,048 points and every final state restored. Observed isolated-player simulation p95 was 0.4–1.1 ms and canvas draw-call p95 was 0.2–0.3 ms on this environment. These are software Chromium measurements, not physical-device certification; `growth-performance.json` records actual versus target body length.
+The reproducible `node scripts/profile-neon-growth.mjs` profile (run against `npm run dev -- --port 4173`) exercised 18,000 ticks per case at 600, 10,000, 100,000, five million and one billion mass, including wide turns. History stayed at or below 2,048 points and every final state restored. Observed isolated-player simulation p95 was 0.6–2.0 ms and canvas draw-call p95 was 0.2 ms on this environment. These are software Chromium measurements, not physical-device certification; `growth-performance.json` records actual versus target body length.
 
 The new 9×9 browser walkthrough exposed an input bug: showing victory refits the stage before pointer release, so reprocessing that release against the smaller grid could retract the just-completed path. Pointer updates now freeze once full coverage is reached, and release commits the winning gesture. The browser regression verifies victory both before and after release, then save/restore and wrapping.
 

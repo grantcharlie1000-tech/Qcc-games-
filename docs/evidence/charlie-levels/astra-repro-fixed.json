@@ -1,0 +1,14 @@
+{
+  "reviewedOriginalSha": "6e1c5850a3ec46c2368bd145ab81bfd711c4603d",
+  "modelFixSha": "74b78d04556aec0711fad6bff3782c3db99dc3b1",
+  "runtime": "Node.js 24",
+  "initialRestore": true,
+  "tick": 7984,
+  "phase": "running",
+  "mass": 5000000,
+  "points": 1660,
+  "longestSegment": 18.756972247151946,
+  "allowedSegment": 284.06927917700017,
+  "finalRestore": true,
+  "validatorChanged": false
+}
