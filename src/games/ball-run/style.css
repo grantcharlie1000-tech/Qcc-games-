@@ -76,6 +76,7 @@
 .br-help li{padding-left:16px;position:relative}
 .br-help li::before{content:'';position:absolute;left:2px;top:.42em;width:7px;height:7px;border-radius:2px;background:var(--br-accent)}
 .br-note{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;font:13px/1.4 system-ui,sans-serif;color:#ffe0a4}
+.br-helping .br-note{flex-shrink:0}
 
 .br-continue{background:#1d1d22f2;padding:22px 20px 20px;display:grid;gap:12px;justify-items:center}
 
