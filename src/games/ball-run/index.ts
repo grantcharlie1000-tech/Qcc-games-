@@ -10,6 +10,10 @@ import './style.css';
 
 type Panel = 'setup' | 'continue' | 'over' | 'lost' | null;
 type Scope = 'today' | 'week' | 'allTime';
+type Marks = Record<Scope, boolean>;
+/** The save: model.ts's Snapshot plus this module's own field, which restoreSnapshot ignores. `marks` are
+ * the records this run set, so a Game Over reopened from the save keeps its NEW markers and crown. */
+type Saved = Snapshot & { marks: Marks };
 
 const INK = '#141418';
 const SCOPES: readonly Scope[] = ['today', 'week', 'allTime'];
@@ -35,6 +39,7 @@ function easeOut(x: number): number {
   const t = (lo + hi) / 2;
   return 3 * (1 - t) ** 2 * t + 3 * (1 - t) * t * t + t ** 3;
 }
+const noMarks = (): Marks => ({ today: false, week: false, allTime: false });
 const nextSeed = (seed: number) => (seed + 1664525) >>> 0 || 1;
 function randomSeed(): number {
   try { return crypto.getRandomValues(new Uint32Array(1))[0] || 1; } catch { return Math.floor(Math.random() * 0xffffffff) + 1; }
@@ -42,8 +47,8 @@ function randomSeed(): number {
 
 const template = () => `<div class="br-viewport">
   <canvas tabindex="0" aria-label="3D ball track. Drag left and right to steer, or hold the Left and Right arrows or A and D."></canvas>
-  <div class="br-hud" hidden><p class="br-stat"><small class="br-mode-label">MEDIUM MODE</small><strong class="br-score">0</strong></p><p class="br-stat br-target" data-scope="new"><small class="br-target-label">NEW BEST</small><strong class="br-target-value">0</strong></p></div>
-  <p class="br-speed" hidden></p>
+  <div class="br-top"><div class="br-hud" hidden><p class="br-stat"><small class="br-mode-label">MEDIUM MODE</small><strong class="br-score">0</strong></p><p class="br-stat br-target" data-scope="new"><small class="br-target-label">NEW BEST</small><strong class="br-target-value">0</strong></p></div>
+  <p class="br-speed" hidden></p></div>
   <p class="br-boost" hidden>Speed Up</p>
   <div class="br-layer" hidden>
     <section class="br-panel br-setup" aria-label="Ball Run setup" hidden>
@@ -73,7 +78,7 @@ const template = () => `<div class="br-viewport">
         <div class="br-actions"><button type="button" class="br-home" aria-label="Home">${HOUSE}</button><button type="button" class="br-button br-again">Play again</button></div>
       </div>
     </section>
-    <section class="br-panel br-lost" aria-label="Graphics interrupted" hidden><h2 class="br-title">Graphics interrupted</h2><p class="br-copy">Your run is saved. Leave and reopen Ball Run to restore the graphics.</p></section>
+    <section class="br-panel br-lost" aria-label="Graphics interrupted" hidden><h2 class="br-title" tabindex="-1">Graphics interrupted</h2><p class="br-copy">Your run is saved. Leave and reopen Ball Run to restore the graphics.</p></section>
   </div>
 </div>`;
 
@@ -100,7 +105,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const copy = q('.br-head .br-copy'), pick = q('.br-pick'), level = q('.br-level'), slider = q<HTMLInputElement>('.br-slider'), help = q('.br-help'), note = q('.br-note');
   const play = q<HTMLButtonElement>('.br-play'), helpToggle = q<HTMLButtonElement>('.br-help-toggle'), resumeButton = q<HTMLButtonElement>('.br-resume'), continueInfo = q('.br-continue-info');
   const reason = q('.br-reason'), final = q('.br-final'), badgeName = q('.br-badge-name'), again = q<HTMLButtonElement>('.br-again'), home = q<HTMLButtonElement>('.br-home');
-  const crown = q('.br-crown'), rows = SCOPES.map(s => q(`.br-row[data-scope="${s}"]`)), faceSlots = [...root.querySelectorAll<HTMLElement>('.br-face-slot')];
+  const lostTitle = q('.br-lost .br-title'), crown = q('.br-crown'), rows = SCOPES.map(s => q(`.br-row[data-scope="${s}"]`)), faceSlots = [...root.querySelectorAll<HTMLElement>('.br-face-slot')];
 
   let run: Run = createRun(randomSeed(), 1, 'medium'), course = getCourse(run.seed, run.difficulty), records: Records = emptyRecords();
   let paused = false, disposed = false, contextLost = false, waiting = false, committed = false;
@@ -108,14 +113,14 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let left = false, right = false, drag: number | null = null, pointerStart = 0, ballStart = 0, pointerTarget = 0;
   /** Records when the run started: the HUD's next target. */
   let view: RecordView = { today: 0, week: 0, allTime: 0 };
-  let marks: Record<Scope, boolean> = { today: false, week: false, allTime: false };
+  let marks: Marks = noMarks();
   let shownScore = -1, reported = -1, reportedAt = -Infinity, shownSpeed = -1, boostText = 'Speed Up', boostWidth = 0;
   let viewWidth = canvas.clientWidth, viewHeight = canvas.clientHeight;
   const abort = new AbortController(), signal = abort.signal;
 
   const active = () => !paused && !disposed && !contextLost && !waiting && (run.phase === 'running' || run.phase === 'dying');
   const label = () => CONFIG[run.difficulty].label;
-  const snapshot = (): Snapshot => ({ version: 4, difficulty: run.difficulty, records, run: { ...run } });
+  const snapshot = (): Saved => ({ version: 4, difficulty: run.difficulty, records, run: { ...run }, marks: { ...marks } });
   const save = () => context.save(snapshot());
   function releasePointer() {
     const pointer = drag;
@@ -309,7 +314,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     run = createRun(seed, run.run >= 1e8 ? 1 : run.run + 1, difficulty);
     course = getCourse(run.seed, run.difficulty);
     committed = waiting = false;
-    marks = { today: false, week: false, allTime: false };
+    marks = noMarks();
     boostText = 'Speed Up';
     setHelp(false);
     scene.reset();
@@ -394,12 +399,15 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     // scene.dispose() forces a context loss of its own; disposed is set before it.
     if (disposed) return;
     event.preventDefault();
+    // Hiding a panel (or leaving the canvas inert) would drop keyboard and screen-reader users' focus: the message takes it.
+    const focused = root.contains(document.activeElement);
     contextLost = true;
     cancel();
     clearInput();
     boostLabel.hidden = true;
     screen();
     save();
+    if (focused) lostTitle.focus({ preventScroll: true });
     context.setStatus('Graphics context lost. Your run is saved. Leave and reopen Ball Run.');
   }, { signal });
   const resize = new ResizeObserver(() => {
@@ -417,6 +425,27 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   });
   resize.observe(canvas);
 
+  /** A restored Game Over's NEW markers: each one saved as true that the restored records still confirm
+   * (that scope's record is this run's score). A day or week that has rolled over, a damaged field or a
+   * live run shows none. */
+  function restoredMarks(value: unknown): Marks {
+    const result = noMarks(), saved = typeof value === 'object' && value !== null ? (value as { marks?: unknown }).marks : null;
+    if (run.phase !== 'over' || run.score <= 0 || typeof saved !== 'object' || saved === null) return result;
+    const now: Record<Scope, number> = viewRecords(records, run.difficulty, new Date());
+    for (const s of SCOPES) result[s] = (saved as Record<string, unknown>)[s] === true && now[s] === run.score;
+    return result;
+  }
+  /** Play again holds focus at Game Over. The shell focuses its stage right after restore(), so a restored
+   * Game Over takes focus back once that synchronous work is done, unless something else has taken it. */
+  function focusAgain() {
+    again.focus({ preventScroll: true });
+    queueMicrotask(() => {
+      const active = document.activeElement;
+      if (disposed || paused || contextLost || run.phase !== 'over' || !(active === container || active === document.body || root.contains(active))) return;
+      again.focus({ preventScroll: true });
+    });
+  }
+
   theme();
   screen();
   context.setStatus(`Choose Easy, Medium or Hard, then press Play. ${STEER_COPY}`);
@@ -427,7 +456,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     restart() {
       if (contextLost) return;
       // Abandoning a run is an ending: its score counts, once.
-      if (run.phase === 'running' && run.score > 0) finish();
+      if ((run.phase === 'running' || run.phase === 'over') && run.score > 0) { committed = false; finish(); }
       fresh(false);
       context.setStatus('Fresh course. Choose a difficulty, then press Play.');
     },
@@ -442,18 +471,19 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       course = getCourse(run.seed, run.difficulty);
       waiting = run.phase === 'running';
       committed = run.phase === 'over';
-      marks = { today: false, week: false, allTime: false };
+      marks = restoredMarks(value);
       view = viewRecords(records, run.difficulty, new Date());
       reported = run.score;
       boostText = run.gateIndex >= 0 ? gateText() : 'Speed Up';
       scene.reset();
-      if (restored.migrated) {
-        note.hidden = false;
-        note.textContent = `Ball Run has a new course. Your best of ${records.medium.allTime} m is kept as Medium’s all-time record.`;
-      }
+      // An old save's best becomes Medium's all-time record. With no best there is nothing to tell: the plain setup.
+      const kept = restored.migrated ? records.medium.allTime : 0;
+      note.hidden = kept <= 0;
+      note.textContent = kept > 0 ? `Ball Run has a new course. Your best of ${kept} m is kept as Medium’s all-time record.` : '';
       screen();
-      if (waiting) context.setStatus(`Saved ${label()} run at ${run.score} metres. Press Continue to resume.`);
-      else if (restored.migrated) context.setStatus(note.textContent!);
+      const text = waiting ? `Saved ${label()} run at ${run.score} metres. Press Continue to resume.` : kept > 0 ? note.textContent : '';
+      if (text) { context.setStatus(text); context.announce(text); }
+      if (run.phase === 'over') focusAgain();
     },
     dispose() {
       if (disposed) return;

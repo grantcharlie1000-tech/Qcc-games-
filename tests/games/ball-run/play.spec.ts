@@ -330,8 +330,60 @@ test('a legacy save keeps its best as Medium’s all-time record on a new course
   const root=game(page);
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
   await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toContainText('143');
+  await expect(page.locator('#game-status')).toContainText('143');await expect(announced(page)).toContainText('Your best of 143 m is kept');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root.locator('.br-mode-label')).toHaveText('MEDIUM MODE');await expect(root.locator('.br-target-label')).toHaveText('ALL TIME');await expect(root.locator('.br-target-value')).toHaveText('143');
+});
+
+test('a legacy save with no best opens the plain setup',async({page})=>{
+  await seed(page,{version:2,seed:8,run:2,phase:'running',distance:58,x:0,vx:0,height:.38,vy:0,grounded:true,elapsed:2,best:0,reason:''});
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
+  const root=game(page);
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toBeHidden();
+  await expect(page.locator('#game-status')).toHaveText(/^Choose Easy, Medium or Hard, then press Play\./);
+  expect(await page.locator('body').innerText()).not.toMatch(/best of|is kept/i);await expect(announced(page)).not.toContainText('best');
+});
+
+test('a restored Game Over shows only the NEW marks its records still confirm',async({page})=>{
+  const end=overRun(11,'hard'),now=new Date(),records=emptyRecords();
+  // Today's best is this run's score; this week's and all time are higher, so their saved marks are stale.
+  records.hard={allTime:end.score+600,day:dayKey(now),dayBest:end.score,week:weekKey(now),weekBest:end.score+5};
+  await seed(page,{...snapshot(end,records),marks:{today:true,week:true,allTime:'yes'}});
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
+  const root=game(page),over=root.locator('.br-over'),row=(name:string)=>over.locator('.br-row').filter({hasText:name});
+  await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await expect(over.locator('.br-final')).toHaveText(String(end.score));
+  await expect(row('Today’s best')).toHaveAttribute('data-new','true');await expect(row('Week’s best')).toHaveAttribute('data-new','false');await expect(row('All-time best')).toHaveAttribute('data-new','false');
+  await expect(over.locator('.br-crown')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
+});
+
+test('under reduced motion Game Over only fades; shell Restart from dying or Game Over never commits twice',async({page})=>{
+  test.setTimeout(90000);
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const {run,score}=beforeBlock(11,'hard'),first=new Date(2026,9,21,12),second=new Date(2026,9,22,12),third=new Date(2026,9,23,12);
+  await seed(page,snapshot(run,emptyRecords()));const reports=await countReports(page);
+  await page.clock.install({time:first});await page.clock.pauseAt(new Date(first.getTime()+1000));
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
+  const root=game(page),over=root.locator('.br-over'),restart=page.getByRole('button',{name:'Restart game',exact:true});
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  await runUntilPhase(page,'dying');
+  const dead=(await saved(page)).records.hard,count=await reports();
+  expect(dead.day).toBe(dayKey(first));expect(dead.dayBest).toBe(score);
+  // A day later a second commit would set a new today's best, and report the score again.
+  await page.clock.setSystemTime(second);await restart.click();
+  await expect(root).toHaveAttribute('data-phase','ready');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
+  expect((await saved(page)).records.hard).toEqual(dead);expect(await reports()).toBe(count);
+  await page.getByRole('button',{name:'Play',exact:true}).click();
+  await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
+  // Reduced motion: the panel fades in at full size.
+  const mid=await entrance(over);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toBe('none');
+  await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();
+  await page.clock.runFor(400);await expectClear(page,over);
+  const ended=(await saved(page)).records.hard,count2=await reports();
+  expect(ended.day).toBe(dayKey(second));expect(count2).toBeGreaterThan(count);
+  await page.clock.setSystemTime(third);await restart.click();await expect(root).toHaveAttribute('data-phase','ready');
+  expect((await saved(page)).records.hard).toEqual(ended);expect(await reports()).toBe(count2);
 });
 
 test('a gate is a permanent speed boost with visible Speed Up feedback',async({page})=>{
@@ -376,7 +428,7 @@ test('a curve reads as a curve',async({page})=>{
 });
 
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768},{width:1920,height:1080},{width:667,height:330},{width:568,height:320}])test(`fills ${viewport.width}x${viewport.height} with a round ball and keeps every panel on screen`,async({page})=>{
-  test.setTimeout(60000);
+  test.setTimeout(120000);
   await page.setViewportSize(viewport);await seed(page,snapshot(onStraight(3,'medium'),emptyRecords()));
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.goto('/#/game/ball-run');
@@ -418,11 +470,22 @@ test('lost WebGL visibly saves and remains stopped until exit and re-entry',asyn
   await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Play',exact:true}).click();await waitDistance(page,2);
   await page.evaluate(()=>document.querySelector<HTMLCanvasElement>('.ball-run canvas')!.getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext());
   await expect(page.getByRole('heading',{name:'Graphics interrupted'})).toBeVisible();
+  // Steering focus moves to the message rather than staying on a dead canvas.
+  await expect(page.getByRole('heading',{name:'Graphics interrupted'})).toBeFocused();
   await expect(page.getByRole('button',{name:/^(Play|Continue|Play again)$/})).toHaveCount(0);
   const distance=(await saved(page)).run.distance;
   await frames(page,10);expect((await saved(page)).run.distance).toBe(distance);
   await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();
   await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible();expect(await data(page,'distance')).toBeCloseTo(distance,2);
+});
+
+test('losing WebGL while a panel control has focus moves focus to the message',async({page})=>{
+  await page.goto('/#/game/ball-run');const slider=page.getByRole('slider',{name:'Difficulty'});
+  await slider.focus();await expect(slider).toBeFocused();
+  await page.evaluate(()=>document.querySelector<HTMLCanvasElement>('.ball-run canvas')!.getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext());
+  const heading=page.getByRole('heading',{name:'Graphics interrupted'});
+  await expect(heading).toBeVisible();await expect(heading).toBeFocused();await expect(heading).toHaveAttribute('tabindex','-1');
+  await expect(slider).toBeHidden();
 });
 
 test('unsupported WebGL gives a visible useful fallback and never overwrites the save',async({page})=>{

@@ -7,9 +7,14 @@
 .ball-run button{font:inherit;border:0;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ball-run button:focus-visible,.br-slider:focus-visible{outline:3px solid #ffe0a4;outline-offset:3px}
 
-/* HUD: mode and score beside the next record, in the toolbar row between back and pause. The shell's
- * toolbar stops at 1080 px from the left edge, so the HUD centres on the toolbar, not on a wider viewport. */
-.br-hud{position:absolute;top:var(--br-top);left:min(50%,540px);transform:translateX(-50%);height:40px;display:flex;align-items:center;gap:clamp(20px,7vw,48px);z-index:4;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px #000d}
+/* HUD: mode and score beside the next record, in the toolbar row between back and pause, centred over the
+ * track (the middle of the canvas) with the speed beneath. The shell's toolbar runs from x=0 and stops at
+ * 1080 px, its pause button 12 px inside the end (1032–1068 px on wider screens, 48 px from the right edge on
+ * narrower ones). The grid's third column (as wide as the first unless that is too narrow) therefore keeps
+ * the HUD's right edge at 1020 px or less, and 60 px from the right edge: always 12 px clear of pause. */
+.br-top{position:absolute;top:var(--br-top);left:0;right:0;z-index:4;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(max(60px,100% - 1020px),1fr);pointer-events:none}
+.br-hud,.br-speed{grid-column:2;justify-self:center}
+.br-hud{height:40px;display:flex;align-items:center;gap:clamp(20px,7vw,48px);white-space:nowrap;text-shadow:0 1px 3px #000d}
 .br-stat{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;line-height:1}
 .br-stat small{font-size:10px;letter-spacing:.04em}
 .br-stat strong{font-size:20px;font-weight:800}
@@ -17,7 +22,7 @@
 .br-target[data-scope=week]{color:#ff6f9c}
 .br-target[data-scope=allTime]{color:#37e2b3}
 .br-target[data-scope=new]{color:#ffe066}
-.br-speed{position:absolute;top:calc(var(--br-top) + 42px);left:min(50%,540px);transform:translateX(-50%);z-index:4;font-size:10px;color:#c9c6f0b8;pointer-events:none;text-shadow:0 1px 2px #000}
+.br-speed{margin-top:2px;font-size:10px;color:#c9c6f0b8;text-shadow:0 1px 2px #000}
 /* Speed Up sits beside the ball, lower left (index.ts places it from the ball's screen position). */
 .br-boost{position:absolute;left:0;top:0;z-index:4;font-size:clamp(16px,2.4vmin + 6px,24px);line-height:1;font-style:italic;letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none;text-shadow:0 0 10px #00e7ef,0 2px 0 #8a0a6c}
 /* index.ts sets these every frame. The shell's reduced-motion rule gives every element a
@@ -34,8 +39,12 @@
 .br-face{display:block;width:100%;height:100%}
 .br-face-slot{position:relative;display:block;width:76px;height:76px;margin:0 auto}
 .br-actions{display:flex;justify-content:center;align-items:center;gap:12px}
-/* White labels on the reference's amber and green fills (below 3:1 on their own): a dark halo keeps them legible. */
-.br-button{min-height:50px;min-width:150px;padding:8px 22px;border-radius:12px;font-size:22px;letter-spacing:.03em;text-transform:uppercase;text-shadow:0 2px 0 #0005,0 0 3px #0007;box-shadow:inset 0 -4px #0003;transition:transform 120ms cubic-bezier(.23,1,.32,1),filter 120ms}
+/* White labels on the reference's fills: white on amber is 2.2:1 and on green 2.8:1, so every glyph is outlined
+ * on all sides in a dark shade of its own fill (edge against fill 4.2–4.9:1, white against edge 10:1 or more). */
+.ball-run{--br-edge:#4f3909}
+.ball-run[data-difficulty=easy]{--br-edge:#0d3517}
+.ball-run[data-difficulty=hard]{--br-edge:#481918}
+.br-button{--edge:var(--br-edge);min-height:50px;min-width:150px;padding:8px 22px;border-radius:12px;font-size:22px;letter-spacing:.03em;text-transform:uppercase;text-shadow:-1.5px -1.5px 0 var(--edge),0 -1.5px 0 var(--edge),1.5px -1.5px 0 var(--edge),1.5px 0 0 var(--edge),1.5px 1.5px 0 var(--edge),0 1.5px 0 var(--edge),-1.5px 1.5px 0 var(--edge),-1.5px 0 0 var(--edge),0 2.5px 0 var(--edge);box-shadow:inset 0 -4px #0003;transition:transform 120ms cubic-bezier(.23,1,.32,1),filter 120ms}
 .br-button:active,.br-home:active,.br-help-toggle:active{transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.br-button:hover,.br-home:hover,.br-help-toggle:hover{filter:brightness(1.08)}}
 
@@ -92,9 +101,12 @@
 .br-row[data-new=false] .br-new{display:none}
 .br-home{width:54px;height:50px;flex:none;border-radius:12px;background:#c6544c;box-shadow:inset 0 -4px #0003;display:grid;place-items:center}
 .br-home svg{width:26px;height:26px}
-.br-again{flex:1;max-width:230px;min-width:0;background:#2bb24c;font-size:20px}
+.br-again{--edge:#0d3517;flex:1;max-width:230px;min-width:0;background:#2bb24c;font-size:20px}
 
 .br-lost{background:#1d1d22f2;padding:24px 22px;display:grid;gap:12px}
+/* Focus moves to this heading when the graphics stop under a focused control. */
+.br-lost .br-title:focus{outline:none}
+.br-lost .br-title:focus-visible{outline:3px solid #ffe0a4;outline-offset:4px;border-radius:4px}
 .br-fallback{position:absolute;inset:76px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:28px;text-align:center;font:16px/1.6 system-ui,sans-serif;background:#000}
 .br-fallback h2{font:800 24px Arcade,system-ui,sans-serif;margin:0 0 8px}
 .br-fallback p{max-width:360px;margin:0 0 18px}
@@ -163,5 +175,5 @@
 }
 @media(max-width:360px){.br-head,.br-body{padding-left:14px;padding-right:14px}.br-button{min-width:128px}.br-hud{gap:14px}}
 /* Large screens: the same layouts, a size up. */
-/* zoom scales the HUD's own px offsets too: 450 px zoomed is the toolbar's 540 px centre. */
-@media(min-width:900px) and (min-height:640px){.br-panel,.br-hud{zoom:1.2}.br-hud{left:min(50%,450px)}.br-speed{top:calc(var(--br-top) + 50px);font-size:12px}}
+/* Only the HUD itself is zoomed: its grid (and the 1020 px limit) stays in unzoomed px. */
+@media(min-width:900px) and (min-height:640px){.br-panel,.br-hud{zoom:1.2}.br-speed{font-size:12px}}

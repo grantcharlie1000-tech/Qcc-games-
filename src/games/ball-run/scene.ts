@@ -134,35 +134,39 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   towerMaterial.polygonOffsetFactor = 1;
   towerMaterial.polygonOffsetUnits = 1;
   const towers = pool(box, towerMaterial, 4 * CITY_COUNT, city);
-  const transform = new THREE.Object3D(), direction = new THREE.Vector3(), forward = new THREE.Vector3(0, 0, -1);
-  const put = (mesh: THREE.InstancedMesh, index: number, x: number, y: number, z: number, sx: number, sy: number, sz: number, pitch = 0, yaw = 0, roll = 0) => {
-    transform.position.set(x, y, z);
-    transform.rotation.set(pitch, yaw, roll, 'YXZ');
-    transform.scale.set(sx, sy, sz);
+  // Instances are written from one shared transform. Callers set its position, rotation and scale
+  // (or a bar's ends) in place and pass only the mesh and index: numbers passed to a helper that is
+  // not inlined are boxed on every call, and the road is rebuilt most frames.
+  const transform = new THREE.Object3D(), { position, rotation, scale } = transform;
+  const from = new THREE.Vector3(), to = new THREE.Vector3(), direction = new THREE.Vector3(), forward = new THREE.Vector3(0, 0, -1);
+  const place = (mesh: THREE.InstancedMesh, index: number) => {
     transform.updateMatrix();
     mesh.setMatrixAt(index, transform.matrix);
   };
-  /** A bar of the given cross-section from a to b; its width stays near-horizontal for road lines. */
-  const bar = (mesh: THREE.InstancedMesh, index: number, ax: number, ay: number, az: number, bx: number, by: number, bz: number, width: number, height: number) => {
-    direction.set(bx - ax, by - ay, bz - az);
-    const length = direction.length();
-    transform.position.set((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2);
+  /** A bar of the given cross-section from `from` to `to`; its width stays near-horizontal for road lines. */
+  const bar = (mesh: THREE.InstancedMesh, index: number, width: number, height: number) => {
+    const length = direction.subVectors(to, from).length();
+    position.addVectors(from, to).multiplyScalar(.5);
     transform.quaternion.setFromUnitVectors(forward, direction.divideScalar(length));
-    transform.scale.set(width, height, length + .006);
-    transform.updateMatrix();
-    mesh.setMatrixAt(index, transform.matrix);
+    scale.set(width, height, length + .006);
+    place(mesh, index);
   };
-  const cityPoints: number[] = [];
+  const cityGeometry = new THREE.BufferGeometry();
   {
+    // Scoped to this block so the 0.8 MB array can be collected once the attribute has copied it.
+    const cityPoints: number[] = [];
     const line = (ax: number, ay: number, az: number, bx: number, by: number, bz: number) => cityPoints.push(ax, ay, az, bx, by, bz);
     let index = 0;
+    rotation.set(0, 0, 0, 'YXZ');
     for (const side of SIDES) for (let row = 0; row < 2; row++) for (let i = 0; i < CITY_COUNT; i++) {
       const v = (i + row * 3 + (side > 0 ? 5 : 0)) % CITY_VARIANTS;
       const w = 3 + row, depth = DEPTHS[v], h = HEIGHTS[v] + row * 12, z = 14 - i * CITY_STEP;
       const inner = CITY_INNER + JITTER[v] + row * 4.4, x = side * (inner + w / 2);
       // The base follows the course's slope so the canyon descends with the road.
       const lo = CITY_BASE + SLOPE * z, hi = lo + h;
-      put(towers, index++, x, lo + h / 2, z, w, h, depth);
+      position.set(x, lo + h / 2, z);
+      scale.set(w, h, depth);
+      place(towers, index++);
       // Lines only on the faces seen from the road: the inner face and the near (+z) face.
       const xi = side * inner, xo = side * (inner + w), z0 = z - depth / 2, z1 = z + depth / 2;
       for (let y = lo; y <= hi; y += 1.1) { line(xi, y, z0, xi, y, z1); line(xi, y, z1, xo, y, z1); }
@@ -170,9 +174,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       for (let k = 1; k <= w; k++) line(xi + side * k, lo, z1, xi + side * k, hi, z1);
     }
     commit(towers, index);
+    cityGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cityPoints, 3));
   }
-  const cityGeometry = new THREE.BufferGeometry();
-  cityGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cityPoints, 3));
   geometries.push(cityGeometry);
   const cityLines = new THREE.LineSegments(cityGeometry, new THREE.LineBasicMaterial({ color: PALETTE.towerLine }));
   materials.push(cityLines.material as THREE.Material);
@@ -239,13 +242,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const length = hi - lo, dc = B.center - A.center, de = B.elevation - A.elevation;
     const yaw = -Math.atan2(dc, length), pitch = Math.atan2(de, Math.hypot(dc, length));
     const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
-    put(tiles, tileIndex, (A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin),
-      M.width, TILE_DEPTH, Math.hypot(dc, de, length) + .01, pitch, yaw, -M.bank);
+    position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));
+    rotation.set(pitch, yaw, -M.bank, 'YXZ');
+    scale.set(M.width, TILE_DEPTH, Math.hypot(dc, de, length) + .01);
+    place(tiles, tileIndex);
     for (const lane of LANES) {
       if (lineCount >= LINES) return;
       const ax = A.center + lane * A.width, bx = B.center + lane * B.width;
-      bar(grid, lineCount++, ax, surfaceY(A, ax) + LIFT, -(lo - builtOrigin), bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin),
-        lane === 0 ? CENTER_WIDTH : LINE_WIDTH, LINE_HEIGHT);
+      from.set(ax, surfaceY(A, ax) + LIFT, -(lo - builtOrigin));
+      to.set(bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin));
+      bar(grid, lineCount++, lane === 0 ? CENTER_WIDTH : LINE_WIDTH, LINE_HEIGHT);
     }
   }
 
@@ -253,8 +259,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     track(d, S);
     if (!S.ground || lineCount >= LINES) return;
     track(d + .5, M);
-    put(grid, lineCount++, S.center, S.elevation + yRef + LIFT, -(d - builtOrigin), S.width + LINE_WIDTH, LINE_HEIGHT, CROSS_WIDTH,
-      Math.atan(S.gradient), -Math.atan2(M.center - S.center, .5), -S.bank);
+    position.set(S.center, S.elevation + yRef + LIFT, -(d - builtOrigin));
+    rotation.set(Math.atan(S.gradient), -Math.atan2(M.center - S.center, .5), -S.bank, 'YXZ');
+    scale.set(S.width + LINE_WIDTH, LINE_HEIGHT, CROSS_WIDTH);
+    place(grid, lineCount++);
+  }
+
+  /** Adds the transform as one piece of a gate's walls, in `color` (they share the block mesh). */
+  function gatePiece(color: THREE.Color): void {
+    if (gateWalls >= BLOCKS) return;
+    place(blocks, gateWalls);
+    blocks.setColorAt(gateWalls++, color);
   }
 
   /** A boost gate: magenta walls with pink posts, a lavender arch ring every RING metres,
@@ -264,41 +279,58 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const c = M.center, radius = M.width / 2 + .04, length = gate.end - gate.start;
     const e0 = track(gate.start, A).elevation + yRef, e1 = track(gate.end, B).elevation + yRef;
     const z0 = -(gate.start - builtOrigin), z1 = -(gate.end - builtOrigin), pitch = Math.atan2(e1 - e0, length);
-    const block = (x: number, y: number, z: number, sx: number, sy: number, sz: number, color: THREE.Color, tilt = 0) => {
-      if (gateWalls >= BLOCKS) return;
-      put(blocks, gateWalls, x, y, z, sx, sy, sz, tilt);
-      blocks.setColorAt(gateWalls++, color);
-    };
     for (const side of SIDES) {
-      const x = c + side * (radius + .06);
-      block(x, (e0 + e1) / 2 + WALL / 2, (z0 + z1) / 2, .1, WALL, length, wallColor, pitch);
+      rotation.set(pitch, 0, 0, 'YXZ');
+      position.set(c + side * (radius + .06), (e0 + e1) / 2 + WALL / 2, (z0 + z1) / 2);
+      scale.set(.1, WALL, length);
+      gatePiece(wallColor);
       // Pink rails along the top and middle of the wall.
-      for (const h of RAILS) block(c + side * radius, (e0 + e1) / 2 + h, (z0 + z1) / 2, BAR, BAR, length, postColor, pitch);
+      for (const h of RAILS) {
+        position.set(c + side * radius, (e0 + e1) / 2 + h, (z0 + z1) / 2);
+        scale.set(BAR, BAR, length);
+        gatePiece(postColor);
+      }
     }
     for (let k = 0; k * RING <= length + 1e-6; k++) {
       const d = gate.start + k * RING, y = track(d, S).elevation + yRef, z = -(d - builtOrigin), entrance = k === 0;
       for (const side of SIDES) {
-        if (entrance) { if (cyanCount < CYAN) bar(cyan, cyanCount++, c + side * radius, y, z, c + side * radius, y + WALL, z, ENTRANCE_BAR, ENTRANCE_BAR); }
-        else block(c + side * radius, y + WALL / 2, z, BAR, WALL, BAR, postColor);
+        if (entrance) {
+          if (cyanCount >= CYAN) continue;
+          from.set(c + side * radius, y, z);
+          to.set(c + side * radius, y + WALL, z);
+          bar(cyan, cyanCount++, ENTRANCE_BAR, ENTRANCE_BAR);
+        } else {
+          rotation.set(0, 0, 0, 'YXZ');
+          position.set(c + side * radius, y + WALL / 2, z);
+          scale.set(BAR, WALL, BAR);
+          gatePiece(postColor);
+        }
       }
       if (entrance ? cyanCount + ARCH > CYAN : lineCount + ARCH > LINES) continue;
       const mesh = entrance ? cyan : grid, size = entrance ? ENTRANCE_BAR : BAR;
       for (let j = 0; j < ARCH; j++) {
         const a0 = Math.PI * j / ARCH, a1 = Math.PI * (j + 1) / ARCH;
-        bar(mesh, entrance ? cyanCount++ : lineCount++, c + radius * Math.cos(a0), y + WALL + radius * Math.sin(a0), z,
-          c + radius * Math.cos(a1), y + WALL + radius * Math.sin(a1), z, size, size);
+        from.set(c + radius * Math.cos(a0), y + WALL + radius * Math.sin(a0), z);
+        to.set(c + radius * Math.cos(a1), y + WALL + radius * Math.sin(a1), z);
+        bar(mesh, entrance ? cyanCount++ : lineCount++, size, size);
       }
     }
     // Long bars over the arch.
     for (let j = 1; j < ARCH && lineCount < LINES; j++) {
       const a = Math.PI * j / ARCH, x = c + radius * Math.cos(a), h = WALL + radius * Math.sin(a);
-      bar(grid, lineCount++, x, e0 + h, z0, x, e1 + h, z1, BAR, BAR);
+      from.set(x, e0 + h, z0);
+      to.set(x, e1 + h, z1);
+      bar(grid, lineCount++, BAR, BAR);
     }
     // Cyan chevrons pointing forward along the road: arms at d, tip 1.1 m further on.
     const arm = Math.min(.4 * M.width, 1.5);
     for (let d = gate.start + 5; d < gate.end - 2 && cyanCount + 2 <= CYAN; d += 2.8) {
       const ya = track(d, S).elevation + yRef + LIFT * 1.5, yb = track(d + 1.1, S).elevation + yRef + LIFT * 1.5;
-      for (const side of SIDES) bar(cyan, cyanCount++, c + side * arm, ya, -(d - builtOrigin), c, yb, -(d + 1.1 - builtOrigin), .24, LINE_HEIGHT);
+      for (const side of SIDES) {
+        from.set(c + side * arm, ya, -(d - builtOrigin));
+        to.set(c, yb, -(d + 1.1 - builtOrigin));
+        bar(cyan, cyanCount++, .24, LINE_HEIGHT);
+      }
     }
   }
 
@@ -310,10 +342,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     cyanCount = 0;
     gateWalls = 0;
     let tileCount = 0;
-    const from = origin - BEHIND, end = origin + range;
+    const start = origin - BEHIND, end = origin + range;
     // Tiles: 0.5 m near the ball, 1 m from 60 m, 2 m from 140 m; each step is aligned
     // to absolute distance so the far road never swims.
-    for (let a = from; a < end && tileCount < TILES;) {
+    for (let a = start; a < end && tileCount < TILES;) {
       const ahead = a - origin, step = ahead < 60 ? .5 : ahead < 140 ? 1 : 2;
       const b = (Math.floor(a / step + 1e-6) + 1) * step;
       const groundA = track(a, A).ground, groundB = track(b, B).ground;
@@ -323,8 +355,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       else if (groundB) { const edge = groundEdge(a, b); if (b - edge > .01) piece(edge, b, tileCount++); }
       a = b;
     }
-    for (let d = Math.ceil(from / 2) * 2; d < end; d += 2) crossLine(d);
-    course.forEachGate(Math.max(0, from), end, arch);
+    for (let d = Math.ceil(start / 2) * 2; d < end; d += 2) crossLine(d);
+    course.forEachGate(Math.max(0, start), end, arch);
     commit(tiles, tileCount);
     commit(grid, lineCount);
     commit(cyan, cyanCount);
@@ -335,7 +367,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   function placeBlock(o: Obstacle): void {
     if (blockCount >= BLOCKS) return;
     course.pose(o, frameElapsed, pose);
-    put(blocks, blockCount, pose.x, pose.y + yRef, -(pose.distance - builtOrigin), 2 * pose.halfWidth, 2 * pose.halfHeight, 2 * pose.halfDepth, 0, 0, -pose.roll);
+    position.set(pose.x, pose.y + yRef, -(pose.distance - builtOrigin));
+    rotation.set(0, 0, -pose.roll, 'YXZ');
+    scale.set(2 * pose.halfWidth, 2 * pose.halfHeight, 2 * pose.halfDepth);
+    place(blocks, blockCount);
     blocks.setColorAt(blockCount++, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
   }
 
@@ -375,7 +410,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const age = (z - TRAIL_NEAR) / (far - TRAIL_NEAR);
       // Shrinks on screen too: samples nearer the camera are scaled down by their distance.
       const size = (.42 - .32 * age) * Math.min(1, 4 * (1 - age)) * clamp(Math.hypot(CAMERA_BACK - z, up) / ballRange, 0, 1);
-      put(trail, shown, history[slot * 3 + 1], history[slot * 3 + 2] + lift, z, size, size, size);
+      position.set(history[slot * 3 + 1], history[slot * 3 + 2] + lift, z);
+      rotation.set(0, 0, 0, 'YXZ');
+      scale.setScalar(size);
+      place(trail, shown);
       trail.setColorAt(shown++, tint.copy(trailColor).lerp(trailFaded, .6 * age));
     }
     commit(trail, shown);
@@ -399,7 +437,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
         spin = (unit(seed, h + 7) - .5) * 14 * t;
         size *= 1 - .45 * k;
       }
-      put(burst, i, x, Math.max(y, floor + size / 2), z, size, size, size, spin, spin * .7, 0);
+      position.set(x, Math.max(y, floor + size / 2), z);
+      rotation.set(spin, spin * .7, 0, 'YXZ');
+      scale.setScalar(size);
+      place(burst, i);
       const hue = unit(seed, h + 8);
       burst.setColorAt(i, burstColors[hue < .45 ? 0 : hue < .8 ? 1 : 2]);
     }
