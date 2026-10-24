@@ -86,7 +86,7 @@
   - `ribbon` 40–70 m; width eases to `ribbonWidth` over the first 25 %, holds, eases back over the last 25 % (smoothstep).
   - `ribbonBend` 50–80 m; ribbon plus `A·sin(2πt)`, `|A|` 0.6–1.2 (always ≥ 0.6).
   - `bank` 30–50 m; `bank = B·sin²(πt)`, `|B|` = 0.5–1 × `maxBank`, random sign.
-  - `crest` 30–60 m, `local = H·sin²(πt)`, H 1.5–3.5; `dip` 30–50 m, H −1.0 to −2.0.
+  - `crest` 30–60 m, `local = H·sin²(πt)`, H 1.5–3.5; `dip` 30–50 m, H −1.0 to −2.0. Crest and dip lengths are **not** speed-scaled (ruling 2026-10-24, so fast runs lift off as on reference page 04), and |H| is capped by speed so a launch stays moderate: `|H| ≤ 8·L/(π·v)` (launch vertical speed ≲ 8 m/s, ≲ 0.8 s in the air), never below 1.0 (crest) / 0.6 (dip).
   - `drop`: approach 20–30 m with `local` rising to `h` (2–4) by smootherstep (zero slope at the lip); gap `G` 2–4 m with `ground=false` and elevation = landing level (`local = 0`); landing pad ≥ `max(20, maxSpeed·sqrt(2h/GRAVITY) + 12)` m flat. Clamp `G ≤ speed(lip)·sqrt(2h/GRAVITY) − 1.2` so it is always cleared at the speed there.
   - `gate`: 30 m straight, full width, centre constant, `tunnel=true`. Gates are **scheduled, not drawn**: the generator integrates running time (`Σ length / speed`) and inserts a gate segment once the time since the previous gate (or since distance 0) reaches an interval drawn from `CONFIG[d].gate.interval`; the next segment is always a `straight`. `Gate.clearEnd = end + speed(end)·1.0`. Gate index counts from 0; `gatesBefore(d)` counts gates with `start ≤ d`; `speed(d) = speedAt(difficulty, d, gatesBefore(d))`.
 - Selection between gates: in exact long-run proportion to `CONFIG[d].segments`, stratified so short courses still show every kind (a credit/deficit scheduler: every draw adds `weight/total` to each kind's credit and draws among positive credits in proportion to credit); no `drop` after a `drop` (skip to the next draw, never a fixed fallback kind).
@@ -98,7 +98,7 @@
 
 **Obstacle rows (decided):**
 - Row cursor starts at `WARMUP + 10`. Rows are spaced start-to-start, and a row never starts sooner than 0.35 s (the tightest in-pattern spacing) after the previous pattern's last block. Gap to the next row: seconds drawn from `lerp(introInterval, rowInterval, p)`, `p = clamp((d − WARMUP)/rampDistance, 0, 1)`, times `speed(d)`. After `restEvery` rows, skip `restSeconds`·speed.
-- No obstacles in: warmup; `[gate.start − 5, gate.clearEnd]`; ribbon/ribbonBend segments; `[lip − 8, gapEnd + 12]` around each drop; the middle 40 % of crests and dips.
+- No obstacles in: warmup; `[gate.start − 5, gate.clearEnd]`; ribbon/ribbonBend segments; `[lip − 8, lip + speed(lip)·sqrt(2h/GRAVITY) + 12]` around each drop (to where the ball actually lands); the middle 40 % of crests and dips **and** every predicted crest/dip flight from take-off − 5 m to landing + 12 m at the speed there. No gate entrance inside any predicted flight zone (drops, crests, dip entries and exits): a due gate is deferred past it.
 - Patterns (weights `CONFIG[d].patterns`, `hw` = minimum half-width over the pattern span, `g = minGap`, all blocks inside `|u| + w/2 ≤ hw − 0.05`):
   - `single` w 0.8–1.6, h 0.9–2.2, depth 0.8–1.6, random u.
   - `bigBlock` w 1.8–min(2.8, 2hw−g−0.2), h 2.2–3.2, depth 1.6–3.
@@ -147,7 +147,7 @@
 **Step semantics (decided):**
 - running: speed `v = runSpeed`; steer with `lateralSpeed(v)`, then `x += BANK_DRIFT·sin(bank)·dt`; inside a tunnel clamp x to `c ± (w/2 − RADIUS)` and zero `vx` when clamped (harmless walls); `distance += v·dt`, `elapsed += dt`, `speedUpTime = max(0, speedUpTime − dt)`; crossing a gate `start` with `gate.index > gateIndex` sets `gateIndex = index` and `speedUpTime = GATE_FEEDBACK` (the speed gain itself comes from `course.speed`).
 - support: `ground && |x − c| ≤ w/2 − EDGE_SUPPORT`; surface centre height `S = surfaceHeight + RADIUS/cos(bank)`.
-- grounded & supported: implied `vyS = (S_new − S_old)/dt`; if `(vyS − vy)/dt < −GRAVITY` lift off keeping `vy`, else `height = S_new`, `vy = vyS`. Grounded & unsupported: airborne keeping `vy`.
+- grounded & supported: follow the surface (`height = S_new`, `vy` = surface vertical speed); lift off keeping `vy` only when the road's curvature along the ball's line at the current speed falls away faster than `GRAVITY` (ruling 2026-10-24: a gate's speed gain or a steering reversal on a bank must never launch the ball). Grounded & unsupported: airborne keeping `vy`.
 - airborne: `height += vy·dt − GRAVITY·dt²/2; vy −= GRAVITY·dt`; land when supported, `height ≤ S_new` and the previous height was ≥ previous `S − 0.05`.
 - fall: airborne and `height < S(at x clamped onto the road) − FALL_DEPTH` → `phase='dying'`, `reason='fall'`, score frozen.
 - blocks: for each obstacle overlapping `[min(d0,d1) − RADIUS, max(d0,d1) + RADIUS]` (widen by `maxDepth`), take poses at old and new `elapsed`, move both ball endpoints into the box frame (translate, rotate by `−roll` about the forward axis) and `sweepSphereBox` against `[0,0,0]`/half-sizes. Hit → `phase='dying'`, `reason='block'`, ball stays at its pre-step position, `score = floor(old distance)`.
@@ -162,7 +162,7 @@
   - gates: driving a run across gate 0 sets `gateIndex` 0 and `speedUpTime = GATE_FEEDBACK` exactly once; speed just after the gate exceeds speed just before by the gate gain (± the ramp over that metre) and **stays** higher (still ≥ that gain above the no-gate ramp 10 s later); at the cap a gate adds nothing but still fires feedback; `runSpeed` never exceeds `maxSpeed`.
   - steering: `steer` at 30 Hz vs 144 Hz equal to 1e-10; lateral authority at 50 m/s exceeds 12 m/s.
   - bank drift: on a bank segment with input 0 the ball drifts toward the low side.
-  - crest: at the speed cap a run lifts off over a crest and lands; at start speed it stays grounded.
+  - crest: on each difficulty, the first crest past the cap distance whose road falls away faster than gravity launches the ball, which lands and keeps running; at start speed it stays grounded; gate entrances and bank steering reversals never launch it.
   - drop: a run with input steering to the road centre crosses every drop in the first 6 km on all difficulties (grounded after each gap).
   - tunnel walls: holding input 1 inside a tunnel keeps the ball on the road with `x = c + w/2 − RADIUS`.
   - edge fall: holding input 1 outside tunnels → `dying` with `reason 'fall'`, score frozen thereafter, then `over` after `DYING_DURATION`.
