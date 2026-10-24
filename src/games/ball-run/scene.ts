@@ -135,20 +135,23 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   towerMaterial.polygonOffsetUnits = 1;
   const towers = pool(box, towerMaterial, 4 * CITY_COUNT, city);
   // Instances are written from one shared transform. Callers set its position, rotation and scale
-  // (or a bar's ends) in place and pass only the mesh and index: numbers passed to a helper that is
-  // not inlined are boxed on every call, and the road is rebuilt most frames.
+  // (or a bar's ends) in place and pass no plain numbers to the helpers: a number passed to a
+  // function that is not inlined is boxed on every call, and the road is rebuilt most frames.
   const transform = new THREE.Object3D(), { position, rotation, scale } = transform;
   const from = new THREE.Vector3(), to = new THREE.Vector3(), direction = new THREE.Vector3(), forward = new THREE.Vector3(0, 0, -1);
+  /** Bar cross-sections (width, height). */
+  const laneLine = new THREE.Vector2(LINE_WIDTH, LINE_HEIGHT), centerLine = new THREE.Vector2(CENTER_WIDTH, LINE_HEIGHT),
+    archBar = new THREE.Vector2(BAR, BAR), entranceBar = new THREE.Vector2(ENTRANCE_BAR, ENTRANCE_BAR), chevron = new THREE.Vector2(.24, LINE_HEIGHT);
   const place = (mesh: THREE.InstancedMesh, index: number) => {
     transform.updateMatrix();
     mesh.setMatrixAt(index, transform.matrix);
   };
   /** A bar of the given cross-section from `from` to `to`; its width stays near-horizontal for road lines. */
-  const bar = (mesh: THREE.InstancedMesh, index: number, width: number, height: number) => {
+  const bar = (mesh: THREE.InstancedMesh, index: number, section: THREE.Vector2) => {
     const length = direction.subVectors(to, from).length();
     position.addVectors(from, to).multiplyScalar(.5);
     transform.quaternion.setFromUnitVectors(forward, direction.divideScalar(length));
-    scale.set(width, height, length + .006);
+    scale.set(section.x, section.y, length + .006);
     place(mesh, index);
   };
   const cityGeometry = new THREE.BufferGeometry();
@@ -245,12 +248,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     rotation.set(pitch, yaw, -M.bank, 'YXZ');
     scale.set(M.width, TILE_DEPTH, Math.hypot(dc, de, length) + .01);
     place(tiles, tileIndex);
-    for (const lane of LANES) {
+    // Counted, not for-of, which allocated an iterator per tile.
+    for (let k = 0; k < LANES.length; k++) {
       if (lineCount >= LINES) return;
-      const ax = A.center + lane * A.width, bx = B.center + lane * B.width;
+      const lane = LANES[k], ax = A.center + lane * A.width, bx = B.center + lane * B.width;
       from.set(ax, surfaceY(A, ax) + LIFT, -(lo - builtOrigin));
       to.set(bx, surfaceY(B, bx) + LIFT, -(hi - builtOrigin));
-      bar(grid, lineCount++, lane === 0 ? CENTER_WIDTH : LINE_WIDTH, LINE_HEIGHT);
+      bar(grid, lineCount++, lane === 0 ? centerLine : laneLine);
     }
   }
 
@@ -272,32 +276,33 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   }
 
   /** A boost gate: magenta walls with pink posts, a lavender arch ring every RING metres,
-   * a heavier cyan entrance ring and cyan chevrons on the road. */
+   * a heavier cyan entrance ring and cyan chevrons on the road. Its loops are counted, not
+   * for-of, which allocated an iterator per loop on every rebuild. */
   function arch(gate: Gate): void {
     track((gate.start + gate.end) / 2, M);
     const c = M.center, radius = M.width / 2 + .04, length = gate.end - gate.start;
     const e0 = track(gate.start, A).elevation + yRef, e1 = track(gate.end, B).elevation + yRef;
     const z0 = -(gate.start - builtOrigin), z1 = -(gate.end - builtOrigin), pitch = Math.atan2(e1 - e0, length);
-    for (const side of SIDES) {
+    for (let side = -1; side <= 1; side += 2) {
       rotation.set(pitch, 0, 0, 'YXZ');
       position.set(c + side * (radius + .06), (e0 + e1) / 2 + WALL / 2, (z0 + z1) / 2);
       scale.set(.1, WALL, length);
       gatePiece(wallColor);
       // Pink rails along the top and middle of the wall.
-      for (const h of RAILS) {
-        position.set(c + side * radius, (e0 + e1) / 2 + h, (z0 + z1) / 2);
+      for (let r = 0; r < RAILS.length; r++) {
+        position.set(c + side * radius, (e0 + e1) / 2 + RAILS[r], (z0 + z1) / 2);
         scale.set(BAR, BAR, length);
         gatePiece(postColor);
       }
     }
     for (let k = 0; k * RING <= length + 1e-6; k++) {
       const d = gate.start + k * RING, y = track(d, S).elevation + yRef, z = -(d - builtOrigin), entrance = k === 0;
-      for (const side of SIDES) {
+      for (let side = -1; side <= 1; side += 2) {
         if (entrance) {
           if (cyanCount >= CYAN) continue;
           from.set(c + side * radius, y, z);
           to.set(c + side * radius, y + WALL, z);
-          bar(cyan, cyanCount++, ENTRANCE_BAR, ENTRANCE_BAR);
+          bar(cyan, cyanCount++, entranceBar);
         } else {
           rotation.set(0, 0, 0, 'YXZ');
           position.set(c + side * radius, y + WALL / 2, z);
@@ -306,12 +311,12 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
         }
       }
       if (entrance ? cyanCount + ARCH > CYAN : lineCount + ARCH > LINES) continue;
-      const mesh = entrance ? cyan : grid, size = entrance ? ENTRANCE_BAR : BAR;
+      const mesh = entrance ? cyan : grid, section = entrance ? entranceBar : archBar;
       for (let j = 0; j < ARCH; j++) {
         const a0 = Math.PI * j / ARCH, a1 = Math.PI * (j + 1) / ARCH;
         from.set(c + radius * Math.cos(a0), y + WALL + radius * Math.sin(a0), z);
         to.set(c + radius * Math.cos(a1), y + WALL + radius * Math.sin(a1), z);
-        bar(mesh, entrance ? cyanCount++ : lineCount++, size, size);
+        bar(mesh, entrance ? cyanCount++ : lineCount++, section);
       }
     }
     // Long bars over the arch.
@@ -319,16 +324,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const a = Math.PI * j / ARCH, x = c + radius * Math.cos(a), h = WALL + radius * Math.sin(a);
       from.set(x, e0 + h, z0);
       to.set(x, e1 + h, z1);
-      bar(grid, lineCount++, BAR, BAR);
+      bar(grid, lineCount++, archBar);
     }
     // Cyan chevrons pointing forward along the road: arms at d, tip 1.1 m further on.
     const arm = Math.min(.4 * M.width, 1.5);
     for (let d = gate.start + 5; d < gate.end - 2 && cyanCount + 2 <= CYAN; d += 2.8) {
       const ya = track(d, S).elevation + yRef + LIFT * 1.5, yb = track(d + 1.1, S).elevation + yRef + LIFT * 1.5;
-      for (const side of SIDES) {
+      for (let side = -1; side <= 1; side += 2) {
         from.set(c + side * arm, ya, -(d - builtOrigin));
         to.set(c, yb, -(d + 1.1 - builtOrigin));
-        bar(cyan, cyanCount++, .24, LINE_HEIGHT);
+        bar(cyan, cyanCount++, chevron);
       }
     }
   }
