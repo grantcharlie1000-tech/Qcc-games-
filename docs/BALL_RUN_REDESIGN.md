@@ -1,6 +1,6 @@
 # Ball Run redesign checkpoint
 
-Work is based on main `ceb61e3` in `grantcharlie1000-tech/Qcc-games-`, on branch `claude/ball-run-redesign`, which is pushed to origin. No pull request, merge, release or deployment has been made. The final verification ran on `fbfc3c8` plus a deliberate evidence refresh. The branch's work-in-progress snapshot commits are due to be rewritten into logical commits, so none of their SHAs are cited here.
+Work is based on main `ceb61e3` in `grantcharlie1000-tech/Qcc-games-`, on branch `claude/ball-run-redesign`, which is pushed to origin. No pull request, merge, release or deployment has been made. The final verification ran on the final source and made one deliberate change, the evidence refresh; afterwards only the evidence PNGs and the documentation changed. The branch's work-in-progress snapshot commits are due to be rewritten into logical commits, so no branch SHAs are cited here.
 
 Design: [spec](superpowers/specs/2026-10-23-ball-run-redesign-design.md). Plan and dated rulings: [plan](superpowers/plans/2026-10-23-ball-run-redesign.md). Current game: [SPEC.md](../src/games/ball-run/SPEC.md). Commands and measurements: [TEST_RESULTS.md](../src/games/ball-run/TEST_RESULTS.md). Skills: [SKILL_USAGE.md](../src/games/ball-run/SKILL_USAGE.md).
 
@@ -28,13 +28,13 @@ Ball Run is rebuilt as pure modules (`config.ts`, `course.ts`, `model.ts`, `reco
 
 Every difficulty is slower than the old curve at 30 s and 60 s (a model test), and the caps are about 2–3 times the old one.
 
-**More, more random, harder obstacles.** Rows are spaced in time (a row every 1.0–1.8 / 0.68–1.2 / 0.48–0.9 s at full intensity), drawn from ten seeded patterns: single, big block, pair, gate wall, double gate, slalom, zigzag, scatter, sliding blocks (Medium and Hard) and long wall runs. Measured density is 0.867 / 1.214 / 1.476 blocks per second against the old game's 0.4. The narrowest gap is 2.0 / 1.7 / 1.45 m for a 0.76 m ball. Every row is accepted only if a route the ball can really steer through survives (see Verification).
+**More, more random, harder obstacles.** Rows are spaced in time (a row every 1.0–1.8 / 0.68–1.2 / 0.48–0.9 s at full intensity), drawn from ten seeded patterns: single, big block, pair, gate wall, double gate, slalom, zigzag, scatter, sliding blocks (Medium and Hard) and long wall runs. Measured density is 0.867 / 1.214 / 1.476 blocks per second against the old game's 0.4. Every block row leaves at least one opening of 2.0 / 1.7 / 1.45 m at every step for a 0.76 m ball (between block faces, or out to where a ball can still be supported at the road edge); gaps that are not routes can be narrower. Every row is accepted only if a route the ball can really steer through survives (see Verification).
 
 **Permanent gates.** Each gate is a full-width arch with cyan chevrons. Crossing it raises speed for the rest of the run; "Speed Up" and a short trail confirm it, and at the cap the label reads "Top Speed" and nothing is added.
 
 ## Design calls and rulings
 
-The reference cannot reveal speeds, sizes or generation rules, so each number is a design call kept in `config.ts`. These are the calls and the rulings made during the build, with their reasons.
+The reference cannot reveal speeds, sizes or generation rules, so each number is a design call. Per-difficulty tuning and shared constants are in `config.ts`; generator shapes, margins and pattern sizes are constants in `course.ts`; camera and render numbers are in `scene.ts`; input and UI timings are in `index.ts` ([SPEC.md](../src/games/ball-run/SPEC.md) lists them). These are the calls and the rulings made during the build, with their reasons.
 
 | Decision | Reason |
 | --- | --- |
@@ -72,8 +72,13 @@ The reference cannot reveal speeds, sizes or generation rules, so each number is
 | Reduced motion: fixed FOV, no roll or pitch-down, a smaller fade-only burst, a 1 m trail, a fade-only panel. Equal on-screen trail counts in narrow landscape accepted. | "Fewer and gentler, not zero" (animate skill); the reduced trail is still shorter by length. |
 | Button labels keep the reference's white on colour, with a dark edge in the fill's own shade. | Reference page 05; the edge gives 4.2–4.9:1 against the fill, though strict WCAG ignores it. |
 | Evidence screenshots are written only with `BALL_RUN_EVIDENCE=1` and only by Chromium. | 23 tracked PNGs churned on every test run and mixed engines. |
-| Residual per-render allocation (about 47–66 KB) accepted. | Removing more needs `course.sample` to take no double arguments, a larger restructure. |
+| Residual per-render allocation (about 47–76 KB, from two independent heap-sampling runs) accepted. | Removing more needs `course.sample` to take no double arguments, a larger restructure. |
 | Medium and Hard row intervals retuned to 0.68–1.2 s and 0.48–0.9 s. | Flight zones had cut Hard to 0.656 rows/s against 0.65; it is now 0.686. |
+| A resize ends a drag but keeps held keys steering (the design spec said resize clears held input). | A drag maps canvas pixels to metres, so it cannot outlive the old size; a held key does not depend on the canvas size, and the plan's Task 5 browser test requires it to keep steering through a resize. |
+
+## Verification environment
+
+Node 22.22.0 and Playwright 1.64.1 on a 4 vCPU Linux container. Chromium is Chrome for Testing 153.0.8010.12 at `/opt/pw-browsers/chromium` (`CHROMIUM_PATH`), headless, with ANGLE SwiftShader software WebGL. WebKit is Playwright's WebKit build 2370 (with FFmpeg 1013), installed into the session scratchpad for this checkpoint and reached through `PLAYWRIGHT_BROWSERS_PATH`; it is not part of the repository, so that run cannot be reproduced from it alone. CI installs both engines itself (`.github/workflows/pages.yml`). Out-of-suite scripts and logs are in the session scratchpad.
 
 ## Verification
 
@@ -81,7 +86,7 @@ Final verification, 2026-10-24 (full commands and numbers in [TEST_RESULTS.md](.
 
 - `npx tsc --noEmit -p tsconfig.json`: pass.
 - `npx vitest run tests/games/ball-run`: **80 passed** (model 30, records 19, bot 8, course 23).
-- `npm test -- --maxWorkers=1`: 2721 of 2722 passed. The one failure is a Blockcraft lighting performance budget (3.12 ms against 3 ms) that also fails on unchanged main; Blockcraft is untouched.
+- `npm test -- --maxWorkers=1`: 2721 of 2722 passed. The one failure is a Blockcraft lighting performance budget (3.12 ms against 3 ms) that also fails on unchanged main; Blockcraft is untouched. The run exited 1 because of that failure and one unhandled vitest `onTaskUpdate` RPC timeout, which also occurs on main.
 - `npm run build` and `git diff --check ceb61e3`: pass; Ball Run chunk 54.92 kB.
 - Ball Run browser spec: **Chromium 27 passed; WebKit 26 passed, 1 skipped** (Chromium-only CDP touch).
 - Shared Study, viewport and leaderboard specs filtered to Ball Run and viewports: 8 passed in each engine.
@@ -92,7 +97,7 @@ Key guarantees, measured:
 
 - A route always exists: an independent interval check at 0.95 of the generator's reach never closes (seeds 1–24 in the suite; 1000 seeds out of suite; 300 seeds after the final retune), and every row leaves an opening of exactly the minimum gap or more.
 - A look-ahead bot driving the real simulation survives the suite matrix on every difficulty, from the start and past the cap. Earlier wide sweeps (400 seeds) had 0 deaths. The final whole-branch review re-ran sweeps on the final course (logs kept with the session, not in the repository): seeds 13–112 × 3000 m from the start, seeds 5–104 × 1500 m past the cap and seeds 1–60 × 1500 m from half the cap distance gave 0 failures on every difficulty; 40 seeds × 30 km from the start gave one Hard death at 27,951 m, which a beam search with the real simulation showed passable from the bot's own states.
-- Flights last at most 0.958 s and rise at most 2.58 m above the road on crests and dips; no landing within 12 m of a block and no gate entered in the air, over 1998 km of real simulation.
+- Flights last at most 0.958 s and rise at most 2.58 m above the road on crests and dips; no landing within 12 m of a block and no gate entered in the air, over 1998 km of real simulation (before the final row-spacing retune; the road is unchanged by it, and block clearance of flight zones is enforced by the generator).
 
 The final whole-branch review (five lenses, each finding re-verified independently) confirmed 8 findings (1 important, 7 minor) and refuted 5. All 8 are addressed: a restored Game Over's status, burst fragments sinking into the road, the legacy note hiding Play on short landscape screens, the speed readout over arch bars, a vacuous Restart test, the missing minimum-gap test, mixed-engine evidence and this documentation.
 
@@ -105,18 +110,29 @@ Chromium screenshots at 1× from the final evidence run, in [tests/games/ball-ru
 - Setup panels: [390×844](../tests/games/ball-run/evidence/setup-390x844.png), [844×390](../tests/games/ball-run/evidence/setup-844x390.png), [1366×768](../tests/games/ball-run/evidence/setup-1366x768.png), [1920×1080](../tests/games/ball-run/evidence/setup-1920x1080.png), [667×330](../tests/games/ball-run/evidence/setup-667x330.png), [568×320](../tests/games/ball-run/evidence/setup-568x320.png).
 - Game Over panels: [390×844](../tests/games/ball-run/evidence/over-390x844.png), [844×390](../tests/games/ball-run/evidence/over-844x390.png), [1366×768](../tests/games/ball-run/evidence/over-1366x768.png), [1920×1080](../tests/games/ball-run/evidence/over-1920x1080.png), [667×330](../tests/games/ball-run/evidence/over-667x330.png), [568×320](../tests/games/ball-run/evidence/over-568x320.png).
 
-`ramp-gap.webm` in the same folder shows the old ramp course. It is kept because [DELIVERY.md](DELIVERY.md) and [GAMEPLAY_CORRECTIONS.md](GAMEPLAY_CORRECTIONS.md) link it; no video of the new course is committed.
+`ramp-gap.webm` in the same folder shows the old ramp course. It is kept because [DELIVERY.md](DELIVERY.md) and [GAMEPLAY_CORRECTIONS.md](GAMEPLAY_CORRECTIONS.md) link it; no video of the new course is committed. Older checkpoints (DELIVERY.md, GAMEPLAY_CORRECTIONS.md, [FLAPPY_BALL_RUN.md](FLAPPY_BALL_RUN.md)) link screenshots by the same names; those now show the redesign, and the earlier images are in git history (for example at `ceb61e3`).
+
+These stills were checked by eye. The side-by-side comparison with reference pages 02, 03, 04 and 06 was made with earlier renderer screenshots (sheets kept in the session scratchpad) and was not repeated for this final set; see [TEST_RESULTS.md](../src/games/ball-run/TEST_RESULTS.md#redesign-2026-10-24).
 
 ## Known limitations
 
 - No physical phone, Chromebook, touch hardware or GPU was tested. Frame timings are SwiftShader software WebGL in a container (medians of 100–200 ms per frame for both the old and new renderer), not device frame rates. Touch is Chromium's CDP emulation.
 - The bot is not a complete oracle: very long continuous drives killed it on passable road (Medium seed 37 at 10.2 km and Hard seed 33 at 14.6 km before the final retune; Hard seed 13 at 28 km after it).
 - The generator's reach model ignores the ball's 0.1 s steering lag; the 0.7 safety factor and the bot, which models the lag, cover it.
-- About 47–66 KB of garbage per render while the road rebuilds, about 150–200 B per simulation step inside `course.ts`, and a little more during the burst.
+- About 47–76 KB of garbage per render while the road rebuilds (two independent heap-sampling runs), about 150–200 B per simulation step inside `course.ts`, and a little more during the burst.
 - Hard row density has little headroom: 0.686 rows/s against a 0.65 threshold, and the worst seed is at 89 % against an 85 % floor. Any change that adds clear road may need Hard's row interval retuned.
 - Cold generation of the first course reached about 186 ms under heavy machine load (target 150 ms); a quiet re-measure of the final code was not made.
 - White button labels on amber and green stay below 3:1 by strict WCAG; a dark edge carries the contrast to keep the reference look. The `How to play` toggle is 36–40 px and short-landscape panel buttons are 40 px tall, below the 44 px guidance.
 - Stills show composition, not continuous motion or the original's timing.
+
+## Review focus
+
+- The route guarantee: the generator's interval pass in `course.ts` (`passable`, `step`, the gap and sliver pruning) against the independent `closesAt` and `widestOpening` checks in `tests/games/ball-run/course.test.ts`.
+- Flights: the point-mass prediction and flight zones in `course.ts`, and the lift-off and landing rules in `model.ts` `step`.
+- Records committed exactly once when a run ends, and the 250 ms score throttle, in `index.ts`; save validation in `model.ts` `restoreSnapshot`.
+- Input lifetime across pause, Study, blur, resize, death and restore in `index.ts`.
+- Renderer pooling, used-range uploads, allocation and disposal in `scene.ts`.
+- The look-ahead bot (`tests/games/ball-run/bot.ts`) as evidence: a planner, not a complete oracle.
 
 ## Deliverables
 

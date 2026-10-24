@@ -1,6 +1,6 @@
 # Ball Run
 
-Current design: the 2026-10-24 redesign, built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at his request) and his requests for slower acceleration, a much higher speed cap, more, more random and harder obstacles, and gates that give a permanent speed boost. The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. All of them live in `config.ts`; change them there. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
+Current design: the 2026-10-24 redesign, built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at his request) and his requests for slower acceleration, a much higher speed cap, more, more random and harder obstacles, and gates that give a permanent speed boost. The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. Per-difficulty tuning and the shared constants live in `config.ts`; segment shapes and lengths, margins and flight zones are the constants at the top of `course.ts`, and pattern sizes are in its `build()`; camera, pool and render numbers are in `scene.ts` (most at its top); input and UI timings, such as the 250 ms score throttle and 6 m of steering per canvas width, are in `index.ts`. Change a number where it lives. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
 
 A glossy magenta sphere rolls forward by itself along a suspended indigo grid road in a black void, between lavender wireframe towers. The road curves, banks, narrows, crests and drops away, and magenta blocks must be threaded at speed. There is no jump, brake or lane snapping. Hitting a block or rolling off the edge ends the run.
 
@@ -18,10 +18,10 @@ A glossy magenta sphere rolls forward by itself along a suspended indigo grid ro
 | Gate gain (permanent) | +1.0 m/s | +1.25 m/s | +1.5 m/s |
 | A gate every (seconds of running) | 30–45 | 25–40 | 20–35 |
 | Road width / ribbon width | 6.2 / 2.6 m | 5.4 / 2.2 m | 4.8 / 1.8 m |
-| Minimum gap between blocks | 2.0 m | 1.7 m | 1.45 m |
+| Narrowest route opening | 2.0 m | 1.7 m | 1.45 m |
 | Rows every (full intensity) | 1.0–1.8 s | 0.68–1.2 s | 0.48–0.9 s |
 | Rows every (start of run) | 1.6–2.4 s | 1.3–2.0 s | 1.0–1.6 s |
-| Ramp from start to full intensity | 700 m | 600 m | 500 m |
+| Ramp to full intensity, from the end of the warm-up | 700 m | 600 m | 500 m |
 | Rest: after this many rows | 10–14 | 12–16 | 16–20 |
 | Rest length | 3–4.5 s | 2.5–3.5 s | 1.8–2.6 s |
 | Maximum bank | 0.20 rad | 0.26 rad | 0.32 rad |
@@ -57,7 +57,7 @@ A seeded sequence of variable-length segments. Two mulberry32 streams (road and 
 - `drop`: a 20–30 m approach rising 2–4 m with zero slope at the lip, a 2–4 m gap with no ground, then a landing pad of at least `max(20, cap·sqrt(2h/g) + 12)` m. The gap is clamped so it is always cleared at the speed there.
 - `gate`: a 30 m full-width straight arch, always followed by a straight.
 
-Other segment lengths scale by `clamp(speed/14, 1, 3.5)`. Segment kinds are chosen by an exact-proportion credit scheduler, so short courses still show every kind and long courses match the weights; a drop never follows a drop. Before a segment is accepted, a backward reachability pass from its end must cover the whole allowed band at its start; otherwise it is retried longer (×1.5, twice) and finally replaced by a straight.
+Drawn segment lengths (straight, bend, offset, ribbon, ribbonBend, bank, and the straight that replaces a rejected segment) and a drop's approach scale by `clamp(speed/14, 1, 3.5)`; the warm-up, gates and a drop's gap and pad do not. Segment kinds are chosen by an exact-proportion credit scheduler, so short courses still show every kind and long courses match the weights; a drop never follows a drop. Before a segment is accepted, a backward reachability pass from its end must cover the whole allowed band at its start; otherwise it is retried longer (×1.5, twice) and finally replaced by a straight.
 
 ## Obstacles
 
@@ -78,7 +78,7 @@ The generator tracks the set of lateral ball-centre positions still reachable al
 How it is proven (see `TEST_RESULTS.md`):
 
 - An independent re-implementation of the interval check in `course.test.ts`, at 0.95 of the generator's reach, stays open over 0–6 km for seeds 1–24 on every difficulty.
-- A minimum-gap test checks every step of every row against the spec's literal 2.0 / 1.7 / 1.45 m.
+- A minimum-gap test checks every step of every row against the spec's literal 2.0 / 1.7 / 1.45 m, measuring the widest opening between block faces or out to the outer side of a ball still supported at the road edge. Gaps that are not routes can be narrower (scatter cubes may sit 0.1 m apart).
 - A look-ahead bot (`tests/games/ball-run/bot.ts`) drives the real `step()`: it plans the lag-free position with the model's exact steering, using at most 0.85 of the authority, and must survive 12 seeds × 3000 m from the start and 4 seeds × 1500 m past the cap on every difficulty, plus three Hard cap regression seeds.
 - Out-of-suite sweeps covered 1000 seeds of the interval check and hundreds of bot runs; exact grid searches confirmed the tight spots where earlier bots failed.
 
@@ -88,9 +88,9 @@ The generator's model ignores the ball's 0.1 s steering lag; the 0.7 safety fact
 
 The ball leaves the road only where the road curves away along its line faster than gravity at its speed (or the ground ends), and its ballistic step must clear the road. A gate's speed gain or a steering reversal on a bank never launches it. In the air it keeps full steering. It lands only from above, on supported road.
 
-While building the road, the generator runs a point mass along it with the model's own step and lift-off rule. Every predicted flight gets a block-free zone from 6 m before take-off to 13 m past landing (5 m and 12 m plus a 1 m margin for step phase), with landing taken where the low edge of a bank meets the ball. A gate that falls due inside a flight zone is deferred behind a flat run-out. A crest or dip drawn under a flight or inside its zone is built as a straight, so no flight chains into another launch. Flights under 1 cm are invisible skims and do not count.
+While building the road, the generator runs a point mass along it with the model's own step and lift-off rule. Every predicted flight gets a block-free zone from 6 m before take-off to 13 m past landing (5 m and 12 m plus a 1 m margin for step phase), with landing taken where the low edge of a bank meets the ball. A gate that falls due inside a flight zone is deferred behind a flat run-out. A crest or dip drawn under a flight or inside its zone is built as a straight, so no flight chains into another launch. The tests do not count flights under 1 cm (invisible skims); the generator zones them anyway.
 
-Measured with the real simulation (bot-driven, seeds 1–40, start to 4 km past the cap): at most 0.958 s in the air, at most 2.58 m above the road beneath on crests and dips (4.0 m on drops), longest 38 / 47 / 58 m; no landing within 12 m of a block and no gate entered airborne.
+Measured with the real simulation (bot-driven, seeds 1–40, start to 4 km past the cap): at most 0.958 s in the air, at most 2.58 m above the road beneath on crests and dips (4.0 m on drops), longest 38 / 47 / 58 m; no landing within 12 m of a block and no gate entered airborne. This sweep ran before the final row-spacing retune; the road is unchanged by it, and block clearance of flight zones is enforced by the generator.
 
 ## Records
 
@@ -110,7 +110,7 @@ Ready (setup panel) → Playing ⇄ Paused → Dying (0.9 s) → Game Over.
 - Death: a block hit freezes the ball and replaces it with a burst of magenta, cyan and white cubes; a fall keeps the ball visible as it drops. Input is cleared and the score frozen.
 - Game Over: `GAME OVER`, the reason (`You hit a block` / `You fell off the track`), the score, the difficulty badge (with a crown when a record was set), the three records, `Home` (back to setup) and `Play again` (same difficulty, new seed). It enters with opacity and a 0.96 → 1 settle over 250 ms on `cubic-bezier(0.23, 1, 0.32, 1)`.
 - Shell Restart returns to setup with a fresh course. A restored running run waits behind `Your run is waiting` / `Continue`.
-- Pause, blur, tab hiding, pointer cancel or lost capture, resize, death, restart and Study clear held input. The loop is a fixed-step accumulator capped at 0.1 s per frame; it stops while paused, ready, over or after context loss, and never catches up hidden time.
+- Pause, blur, tab hiding, pointer cancel or lost capture, death, restart and Study clear held input. A resize ends a drag (it maps canvas pixels to metres) but held keys keep steering. The loop is a fixed-step accumulator capped at 0.1 s per frame; it stops while paused, ready, over or after context loss, and never catches up hidden time.
 - The shell owns back, pause, restart, rules, menu, the pause overlay (z-index 20), autosave and Escape. Game panels sit at z-index 10, clear of the toolbar and the 52 px bottom strip. The HUD (mode, score, next target, speed) sits in the toolbar row centred over the track; on screens too wide for that it stops at 1020 px, so it always stays at least 12 px clear of the pause button.
 
 The page exposes `data-phase`, `data-x`, `data-distance`, `data-grounded`, `data-ball-screen-x/y`, `data-aspect`, `data-draw-calls`, `data-geometries`, `data-difficulty`, `data-speed`, `data-boost`, `data-gates` and `data-score` for tests.
@@ -132,7 +132,7 @@ One Three r180 WebGL 2 renderer, `antialias: false`, pixel ratio capped at 1.5, 
 - Burst: 40 cubes, positions an analytic function of dying time and the seed, so pause and restore are exact; each fragment is kept above the drawn road under it.
 - Camera: 3.6 m behind and 1.8 m above, following the ball's height and 85 % of its offset; looks ahead and pitches down when the ball is high above the road (reference page 04). Vertical FOV `64 + 10·clamp((v − 12)/50, 0, 1)`; wide aspects are narrowed so the horizontal view never exceeds 82°, keeping the ball at its portrait screen height. Camera roll is half the bank. A fall keeps the camera and drawn ball inside the tower canyon.
 
-Budget: at most 11 draw calls and 4 geometries while running. Measured: 6–8 calls and 3 geometries in every scene (box, sphere, city lines), constant across restarts. Instance pools (tiles 420, grid 3400, blocks and walls 320, cyan 200, trail 18, burst 40) are allocated once and uploaded by used range. A warm-up render at creation compiles every shader. `model.step()` allocates nothing; a road rebuild still allocates about 47–66 KB per render (see TEST_RESULTS.md). No shadows, post-processing or custom shaders.
+Budget: at most 11 draw calls and 4 geometries while running. Measured: 6–8 calls and 3 geometries in every scene (box, sphere, city lines), constant across restarts. Instance pools (tiles 420, grid 3400, blocks and walls 320, cyan 200, trail 18, burst 40) are allocated once and uploaded by used range. A warm-up render at creation compiles every shader. `model.ts` allocates nothing of its own in steady state; the course calls `model.step()` makes leave about 150–200 B per step, and the shared exact sphere-box test it runs only inside a block's swept bounds allocates a little more. A road rebuild still allocates about 47–76 KB per render, from two independent heap-sampling runs (see TEST_RESULTS.md). No shadows, post-processing or custom shaders.
 
 Missing WebGL 2 shows `3D graphics unavailable` with `Choose another game` and leaves any save untouched. Context loss saves the run and shows `Graphics interrupted` until exit and re-entry. Disposal releases geometry, materials, instances, observers, listeners, the frame loop, the renderer and its context.
 
