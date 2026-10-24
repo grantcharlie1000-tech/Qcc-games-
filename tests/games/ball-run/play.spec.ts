@@ -9,6 +9,8 @@ import {placeRun} from './bot';
 test.use({video:{mode:'on',size:{width:390,height:844}}});
 
 const SAVE='pocket-arcade:v1:save:ball-run',BEST='pocket-arcade:v1:best:ball-run',EVIDENCE='tests/games/ball-run/evidence';
+// Tracked evidence screenshots are refreshed on purpose (BALL_RUN_EVIDENCE=1), not on every run.
+const evidence=(page:Page,name:string)=>process.env.BALL_RUN_EVIDENCE?page.screenshot({path:`${EVIDENCE}/${name}`}).then(()=>{}):Promise.resolve();
 const game=(page:Page)=>page.locator('.ball-run');
 const data=async(page:Page,name:string)=>Number(await game(page).getAttribute(`data-${name}`));
 const saved=(page:Page)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);
@@ -255,7 +257,7 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   await expect(announced(page)).toHaveText(`Saved Hard run at ${run.score} metres. Press Continue to resume.`);await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await runUntilPhase(page,'dying');await expect(root).toHaveAttribute('data-score',String(score));
-  await page.clock.runFor(150);await page.screenshot({path:`${EVIDENCE}/collision.png`});
+  await page.clock.runFor(150);await evidence(page,`collision.png`);
   await runUntilPhase(page,'over');
   // Mid-entrance: fading in and settling from a slightly smaller scale.
   const mid=await entrance(over);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toMatch(/^matrix\(0\.9\d*, 0, 0, 0\.9\d*, 0, 0\)$/);
@@ -271,7 +273,7 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   await expect(row('All-time best').locator('strong')).toHaveText(String(score+600));await expect(row('All-time best')).toHaveAttribute('data-new','false');
   // The final, unthrottled score report reaches the shell record.
   expect(await page.evaluate(key=>Number(localStorage.getItem(key)),BEST)).toBe(score);
-  await expectClear(page,over);await page.screenshot({path:`${EVIDENCE}/results.png`});
+  await expectClear(page,over);await evidence(page,`results.png`);
   await expectReadableLabel(again);
   // Reopened at Game Over, the panel keeps this run's NEW markers and crown, with Play again focused as after a live death.
   await page.reload();await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await page.clock.runFor(400);
@@ -399,7 +401,7 @@ test('a gate is a permanent speed boost with visible Speed Up feedback',async({p
   for(let i=0;i<60&&await root.getAttribute('data-boost')!=='true';i++)await page.clock.runFor(25);
   await expect(root).toHaveAttribute('data-boost','true');await expect(root).toHaveAttribute('data-gates','1');
   await expect(boost).toBeVisible();await expect(boost).toHaveText('Speed Up');
-  await page.clock.runFor(350);await page.screenshot({path:`${EVIDENCE}/boost.png`});
+  await page.clock.runFor(350);await evidence(page,`boost.png`);
   for(let i=0;i<60&&await root.getAttribute('data-boost')!=='false';i++)await page.clock.runFor(50);
   await expect(root).toHaveAttribute('data-boost','false');await expect(boost).toBeHidden();await expect(root).toHaveAttribute('data-phase','running');
   // The label has gone; the speed it announced stays.
@@ -424,7 +426,7 @@ test('a curve reads as a curve',async({page})=>{
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   await page.getByRole('button',{name:'Continue',exact:true}).click();await page.clock.runFor(200);
-  await expect(game(page)).toHaveAttribute('data-phase','running');await page.screenshot({path:`${EVIDENCE}/curve.png`});
+  await expect(game(page)).toHaveAttribute('data-phase','running');await evidence(page,`curve.png`);
 });
 
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768},{width:1920,height:1080},{width:667,height:330},{width:568,height:320}])test(`fills ${viewport.width}x${viewport.height} with a round ball and keeps every panel on screen`,async({page})=>{
@@ -454,11 +456,11 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   if(fits)expect(Math.abs(mid(hud)-viewport.width/2)).toBeLessThanOrEqual(1);
   expect(Math.abs(mid(speed)-mid(hud))).toBeLessThanOrEqual(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
-  await page.screenshot({path:`${EVIDENCE}/${viewport.width}x${viewport.height}.png`});
+  await evidence(page,`${viewport.width}x${viewport.height}.png`);
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');await page.clock.runFor(400);
-  await expectClear(page,root.locator('.br-over'));await page.screenshot({path:`${EVIDENCE}/over-${viewport.width}x${viewport.height}.png`});
+  await expectClear(page,root.locator('.br-over'));await evidence(page,`over-${viewport.width}x${viewport.height}.png`);
   await page.getByRole('button',{name:'Home',exact:true}).click();
-  await expectClear(page,root.locator('.br-setup'));await page.screenshot({path:`${EVIDENCE}/setup-${viewport.width}x${viewport.height}.png`});
+  await expectClear(page,root.locator('.br-setup'));await evidence(page,`setup-${viewport.width}x${viewport.height}.png`);
   await page.getByRole('button',{name:'How to play',exact:true}).click();await expectClear(page,root.locator('.br-setup'));
   // However short the screen, all of the help can be read: the list scrolls to its last line.
   const help=root.locator('.br-help');await help.evaluate(list=>{list.scrollTop=list.scrollHeight;});
@@ -511,7 +513,7 @@ test('repeated restarts release held input and reuse the same GPU resources',asy
   await page.keyboard.down('ArrowRight');await page.getByRole('button',{name:'Play',exact:true}).click();await waitDistance(page,2);await page.keyboard.up('ArrowRight');
   await expect(root).toHaveAttribute('data-x','0.000');await expect(root).toHaveAttribute('data-geometries',geometries!);
   expect(Number(await root.getAttribute('data-draw-calls'))).toBeLessThanOrEqual(11);expect(Number(geometries)).toBeLessThanOrEqual(4);
-  await page.screenshot({path:`${EVIDENCE}/procedural-restart.png`});
+  await evidence(page,`procedural-restart.png`);
 });
 
 test('resizing during a held steering key retains keyboard control',async({page})=>{
