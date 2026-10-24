@@ -7,7 +7,7 @@ import {
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun, restoreSnapshot, runSpeed, steer, step, type Snapshot } from '../../../src/games/ball-run/model';
 import { commitScore, emptyRecords, type Records } from '../../../src/games/ball-run/records';
-import { capDistance, describeRun, driveBot, placeRun, restHeight, spans } from './bot';
+import { capDistance, describeRun, driveBot, placeRun, restHeight, safeStart, spans } from './bot';
 
 const blankPose = (): ObstaclePose => ({ x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
@@ -53,6 +53,20 @@ function roadFall(course: Course, from: number, to: number): { fall: number; dee
     if (a < -GRAVITY && first === Infinity) first = d;
   }
   return { fall, deepest, first };
+}
+
+/** Drives a run with the bot to `to`, watching a crest that starts at `start`: whether the run
+ * entered it grounded, where it first left the road past `start` (and its state the step before),
+ * and where it next landed (−1 when it did not). */
+function flyOver(run: Run, start: number, to: number): { entered: boolean; lifted: number; landed: number; before: Run | null } {
+  let previous: Run = { ...run }, before: Run | null = null, lifted = -1, landed = -1, entered = false;
+  driveBot(run, to - run.distance, r => {
+    if (r.distance >= start && previous.distance < start) entered = r.grounded;
+    if (lifted < 0 && previous.distance >= start && previous.grounded && !r.grounded) { lifted = r.distance; before = previous; }
+    else if (lifted >= 0 && landed < 0 && r.grounded) landed = r.distance;
+    previous = { ...r };
+  });
+  return { entered, lifted, landed, before };
 }
 
 type Point = readonly [x: number, y: number, d: number];
@@ -287,13 +301,7 @@ describe('Ball Run vertical motion', () => {
     // Driven from the start of a real run; the bot steers round the blocks on the way.
     const run = createRun(seed, 1, 'hard');
     run.phase = 'running';
-    let previous = clone(run), before: Run | null = null, lifted = -1, landed = -1, entered = false;
-    driveBot(run, end + 200, r => {
-      if (r.distance >= start && previous.distance < start) entered = r.grounded;
-      if (lifted < 0 && previous.distance >= start && previous.grounded && !r.grounded) { lifted = r.distance; before = previous; }
-      else if (lifted >= 0 && landed < 0 && r.grounded) landed = r.distance;
-      previous = clone(r);
-    });
+    const { entered, lifted, landed, before } = flyOver(run, start, end + 200);
     expect(run.phase, describeRun(run)).toBe('running');
     expect(entered).toBe(true);
     // It leaves the road inside the crest, once the road there falls away faster than gravity.
@@ -309,8 +317,37 @@ describe('Ball Run vertical motion', () => {
     expect(run.grounded).toBe(true);
   });
 
-  it('carries the ball across every drop in the first 6 km on every difficulty', () => {
-    // A fast ball lands beyond the block-free run-out, so the bot steers it past any blocks there.
+  it('lifts off at the speed cap over the first crest past it that curves away faster than gravity, and lands again, on every difficulty', () => {
+    for (const difficulty of DIFFICULTIES) {
+      // The first crest past the cap whose road, at the cap, falls away faster than gravity.
+      const seed = 1, course = getCourse(seed, difficulty), cap = capDistance(course), max = CONFIG[difficulty].maxSpeed;
+      const crest = spans(course, cap + 8000, cap).find(s => s.kind === 'crest' && roadFall(course, s.start, s.end).fall < -1.05 * GRAVITY);
+      expect(crest, `course: no crest leaves the road in 8 km past the ${difficulty} cap on seed 1`).toBeDefined();
+      const { start, end } = crest!, { first, deepest } = roadFall(course, start, end), label = `${difficulty} crest ${start.toFixed(1)}–${end.toFixed(1)}`;
+      // From a safe start before it, the bot drives a running ball over it and on past its landing.
+      const from = safeStart(course, start - 500);
+      expect(from, label).toBeLessThan(start - 30);
+      const run = placeRun(seed, difficulty, from);
+      const { entered, lifted, landed, before } = flyOver(run, start, end + 200);
+      expect(run.phase, describeRun(run)).toBe('running');
+      expect(entered, label).toBe(true);
+      expect(runSpeed(before!), label).toBe(max);
+      expect(lifted, label).toBeGreaterThan(first - max * STEP - .3);
+      expect(lifted, label).toBeLessThanOrEqual(deepest);
+      const pressed = clone(before!);
+      pressed.vy -= 1;
+      step(pressed, 0, STEP);
+      expect(pressed.grounded, label).toBe(true);
+      expect(landed, label).toBeGreaterThan(lifted + 1);
+      expect(run.grounded, label).toBe(true);
+    }
+  });
+
+  it('carries a ball steering to the road centre across every drop in the first 6 km on every difficulty', () => {
+    // A drop keeps blocks away from 8 m before its lip to 12 m past where a ball at that speed lands,
+    // so steering to the centre is enough. The ball is followed to 10 m past where it really lands:
+    // its front stays inside that zone while the real landing trails the analytic one by under a
+    // metre (measured over 1,114 drops to the cap: at most 0.48 m, less than one step).
     for (const difficulty of DIFFICULTIES) {
       let drops = 0;
       for (let seed = 1; seed <= 3; seed++) {
@@ -322,13 +359,15 @@ describe('Ball Run vertical motion', () => {
           while (!course.sample(far).ground) far += .01;
           const run = placeRun(seed, difficulty, lip - 7.5);
           let flew = false, landed = -1;
-          driveBot(run, far + 40 - run.distance, r => {
+          drive(run, r => landed >= 0 && r.distance >= landed + 10, r => {
             if (!r.grounded && r.distance > lip && r.distance < far) flew = true;
             if (flew && landed < 0 && r.grounded) landed = r.distance;
+            return toCentre(r);
           });
-          expect(run.phase, `${difficulty} seed ${seed} drop at ${lip}`).toBe('running');
+          expect(run.phase, `${difficulty} seed ${seed} drop at ${lip}: ${describeRun(run)}`).toBe('running');
           expect(flew).toBe(true);
           expect(landed).toBeGreaterThan(far);
+          expect(run.distance).toBeGreaterThanOrEqual(landed + 10);
           expect(run.grounded).toBe(true);
           drops++;
         }
