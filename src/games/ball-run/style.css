@@ -7,8 +7,9 @@
 .ball-run button{font:inherit;border:0;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ball-run button:focus-visible,.br-slider:focus-visible{outline:3px solid #ffe0a4;outline-offset:3px}
 
-/* HUD: mode and score beside the next record, in the toolbar row between back and pause. */
-.br-hud{position:absolute;top:var(--br-top);left:50%;transform:translateX(-50%);height:40px;display:flex;align-items:center;gap:clamp(20px,7vw,48px);z-index:4;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px #000d}
+/* HUD: mode and score beside the next record, in the toolbar row between back and pause. The shell's
+ * toolbar stops at 1080 px from the left edge, so the HUD centres on the toolbar, not on a wider viewport. */
+.br-hud{position:absolute;top:var(--br-top);left:min(50%,540px);transform:translateX(-50%);height:40px;display:flex;align-items:center;gap:clamp(20px,7vw,48px);z-index:4;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px #000d}
 .br-stat{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;line-height:1}
 .br-stat small{font-size:10px;letter-spacing:.04em}
 .br-stat strong{font-size:20px;font-weight:800}
@@ -16,7 +17,7 @@
 .br-target[data-scope=week]{color:#ff6f9c}
 .br-target[data-scope=allTime]{color:#37e2b3}
 .br-target[data-scope=new]{color:#ffe066}
-.br-speed{position:absolute;top:calc(var(--br-top) + 42px);left:50%;transform:translateX(-50%);z-index:4;font-size:10px;color:#c9c6f0b8;pointer-events:none;text-shadow:0 1px 2px #000}
+.br-speed{position:absolute;top:calc(var(--br-top) + 42px);left:min(50%,540px);transform:translateX(-50%);z-index:4;font-size:10px;color:#c9c6f0b8;pointer-events:none;text-shadow:0 1px 2px #000}
 /* Speed Up sits beside the ball, lower left (index.ts places it from the ball's screen position). */
 .br-boost{position:absolute;left:0;top:0;z-index:4;font-size:clamp(16px,2.4vmin + 6px,24px);line-height:1;font-style:italic;letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none;text-shadow:0 0 10px #00e7ef,0 2px 0 #8a0a6c}
 /* index.ts sets these every frame. The shell's reduced-motion rule gives every element a
