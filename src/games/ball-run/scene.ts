@@ -28,6 +28,11 @@ const BEHIND = 6;
 const LANES = [-.5, -.25, 0, .25, .5], SIDES = [-1, 1];
 const TILE_DEPTH = .18, LINE_WIDTH = .07, CENTER_WIDTH = .13, CROSS_WIDTH = .1, LINE_HEIGHT = .02, LIFT = .02;
 const CAMERA_BACK = 3.6, CAMERA_UP = 1.8;
+/** Vertical FOV (degrees): the plan's 64° widening by up to 10° with speed. In landscape it is
+ * narrowed so the horizontal FOV is 82° at the base speed; speed widens it in the same ratio. */
+const FOV = 64, FOV_GAIN = 10, H_FOV_CAP = 82;
+/** Followed down a fall, the view tilts after the ball by this share of its extra drop, down to the steepest pitch. */
+const FALL_TILT = .65, MAX_PITCH = .6;
 /** Trail: samples nearer the ball would only tint it, and those within 0.2 m of the camera
  * are unseen, so the 0.5 m history shows at most 6 spheres (3–4 on screen). The trail
  * shrinks and fades over its length; under reduced motion it ends 1 m behind its first
@@ -37,6 +42,9 @@ const TRAIL_NEAR = RADIUS * 1.6, TRAIL_FAR = CAMERA_BACK - .2, TRAIL_FAR_REDUCED
 const WALL = 1.5, RING = 3, ARCH = 10, BAR = .06, ENTRANCE_BAR = .13, RAILS = [WALL / 2, WALL];
 /** Tower city: 8 building variations every 7 m, so the pooled city repeats every 56 m. */
 const CITY_VARIANTS = 8, CITY_STEP = 7, CITY_PERIOD = CITY_VARIANTS * CITY_STEP, CITY_COUNT = 48, CITY_BASE = -14, CITY_INNER = 5.6;
+/** A fall keeps its sideways speed, so the drawn ball stops at the nearest tower faces and drops
+ * down them (on the road |x| ≤ 5 m, so this never moves a live ball); the camera stays 1.2 m inside them. */
+const BALL_LIMIT = CITY_INNER - RADIUS - .05, CAMERA_LIMIT = CITY_INNER - 1.2;
 const HEIGHTS = [40, 27, 47, 33, 53, 30, 44, 36], JITTER = [0, .5, .2, .8, .1, .6, .3, .9], DEPTHS = [6, 5, 6.5, 5.5, 6, 4.5, 6.5, 5];
 
 /** Linear RGB multipliers per box face, in BoxGeometry order: +x, -x, +y, -y, +z, -z. */
@@ -61,7 +69,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const scene = new THREE.Scene();
   const fog = new THREE.Fog(PALETTE.void, 80, 170);
   scene.fog = fog;
-  const camera = new THREE.PerspectiveCamera(64, 1, .1, 300);
+  const camera = new THREE.PerspectiveCamera(FOV, 1, .1, 300);
 
   const geometries: THREE.BufferGeometry[] = [], materials: THREE.Material[] = [], pools: THREE.InstancedMesh[] = [];
   const box = new THREE.BoxGeometry(1, 1, 1);
@@ -197,7 +205,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const projection = new THREE.Vector3();
   let builtOrigin = NaN, builtCourse: Course | null = null, disposed = false;
   let gateWalls = 0, yRef = 0, frameElapsed = 0, blockCount = 0;
-  let lineCount = 0, cyanCount = 0, course: Course;
+  let lineCount = 0, cyanCount = 0, course: Course, fovFit = 1;
 
   // Road ---------------------------------------------------------------------
 
@@ -333,22 +341,22 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   // Trail history: past ball positions every 0.5 m of travel, newest last.
   const history = new Float64Array(TRAIL * 3);
   let historyCount = 0, historyHead = 0, historySeed = NaN, historyRun = NaN, lastD = NaN, lastX = 0, lastH = 0;
-  function record(run: Run): void {
+  function record(run: Run, x: number): void {
     if (run.seed !== historySeed || run.run !== historyRun || !(run.distance >= lastD) || run.distance - lastD > 40) {
       historySeed = run.seed; historyRun = run.run; historyCount = 0; historyHead = 0;
-      lastD = run.distance; lastX = run.x; lastH = run.height;
+      lastD = run.distance; lastX = x; lastH = run.height;
       return;
     }
     const span = run.distance - lastD;
     for (let s = Math.floor(lastD * 2) / 2 + .5; s <= run.distance; s += .5) {
       const f = span > 0 ? (s - lastD) / span : 1;
       history[historyHead * 3] = s;
-      history[historyHead * 3 + 1] = lastX + (run.x - lastX) * f;
+      history[historyHead * 3 + 1] = lastX + (x - lastX) * f;
       history[historyHead * 3 + 2] = lastH + (run.height - lastH) * f;
       historyHead = (historyHead + 1) % TRAIL;
       historyCount = Math.min(TRAIL, historyCount + 1);
     }
-    lastD = run.distance; lastX = run.x; lastH = run.height;
+    lastD = run.distance; lastX = x; lastH = run.height;
   }
 
   function drawTrail(run: Run, reduced: boolean): void {
@@ -433,20 +441,24 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
 
     const broken = run.reason === 'block' && (run.phase === 'dying' || run.phase === 'over');
     ball.visible = !broken;
-    ball.position.set(run.x, run.height + SLOPE * distance, 0);
-    record(run);
+    const bx = clamp(run.x, -BALL_LIMIT, BALL_LIMIT);
+    ball.position.set(bx, run.height + SLOPE * distance, 0);
+    record(run, bx);
     drawTrail(run, reduced);
     drawBurst(run, reduced);
 
-    // Chase camera: 3.6 m behind and 1.8 m above the ball's base. It stops following a
-    // fall 1.5 m below the road and looks at the road 12–29 m ahead, so crests and bends
-    // turn the view; high above the road (a drop, a crest at speed) it looks closer, so
-    // the view pitches down and shows the height. Reduced motion keeps the fixed look-ahead.
+    // Chase camera: 3.6 m behind and 1.8 m above the ball's base, following 85 % of its offset
+    // from the road centre. It looks at the road 12–29 m ahead, so crests and bends turn the
+    // view; high above the road (a drop, a crest at speed) it looks closer, so the view pitches
+    // down and shows the height. Off the edge it stays 1.2 m inside the towers and turns to keep
+    // the ball where following would have put it; it stops 1.5 m below the road and tilts part
+    // way after the falling ball. Reduced motion keeps the fixed look-ahead and does not tilt.
     track(distance, S);
     const bank = S.bank, roadCenter = S.center;
-    const lift = SLOPE * distance, road0 = S.elevation + lift;
-    const base = Math.max(run.height + lift - RADIUS, road0 - 1.5);
-    const followX = run.x - .15 * (run.x - roadCenter);
+    const lift = SLOPE * distance, road0 = S.elevation + lift, ballBase = run.height + lift - RADIUS;
+    const base = Math.max(ballBase, road0 - 1.5);
+    const idealX = bx - .15 * (bx - roadCenter), edge = S.width / 2 + .5;
+    const followX = clamp(clamp(idealX, roadCenter - edge, roadCenter + edge), -CAMERA_LIMIT, CAMERA_LIMIT);
     let above = 0;
     if (!reduced) {
       roadWindow(distance, -2, 6);
@@ -454,11 +466,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     }
     roadWindow(distance, 12, 17);
     const cy = base + CAMERA_UP, reach = CAMERA_BACK + 20 / (1 + .3 * above);
-    const pitch = clamp(Math.atan2(windowElevation + lift + .6 - cy, reach), -.6, .04);
+    let pitch = clamp(Math.atan2(windowElevation + lift + .6 - cy, reach), -MAX_PITCH, .04);
+    if (!reduced && base > ballBase) {
+      const sight = CAMERA_UP - RADIUS;
+      pitch = Math.max(-MAX_PITCH, pitch - FALL_TILT * (Math.atan2(sight + base - ballBase, CAMERA_BACK) - Math.atan2(sight, CAMERA_BACK)));
+    }
     camera.position.set(followX, cy, CAMERA_BACK);
-    camera.lookAt(followX + .25 * (windowCenter - roadCenter), cy + Math.tan(pitch) * reach, CAMERA_BACK - reach);
+    camera.lookAt(followX + .25 * (windowCenter - roadCenter) + (idealX - followX) * reach / CAMERA_BACK, cy + Math.tan(pitch) * reach, CAMERA_BACK - reach);
     if (!reduced) camera.rotateZ(-.5 * bank);
-    const fov = reduced ? 64 : 64 + 10 * clamp((speed - 12) / 50, 0, 1), far = range + 40;
+    const planFov = reduced ? FOV : FOV + FOV_GAIN * clamp((speed - 12) / 50, 0, 1), far = range + 40;
+    const fov = fovFit < 1 ? 2 * THREE.MathUtils.RAD2DEG * Math.atan(fovFit * Math.tan(THREE.MathUtils.DEG2RAD * planFov / 2)) : planFov;
     if (camera.fov !== fov || camera.far !== far) { camera.fov = fov; camera.far = far; camera.updateProjectionMatrix(); }
     fog.near = 60 + speed;
     fog.far = 150 + 1.6 * speed;
@@ -475,6 +492,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (disposed || !(width >= 1 && height >= 1)) return;
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
+    // 1 (the plan's FOV unchanged) up to aspect 1.39, where 64° vertical is 82° horizontally.
+    fovFit = Math.min(1, Math.tan(THREE.MathUtils.DEG2RAD * H_FOV_CAP / 2) / (camera.aspect * Math.tan(THREE.MathUtils.DEG2RAD * FOV / 2)));
     camera.updateProjectionMatrix();
     stats.aspect = camera.aspect;
   }
