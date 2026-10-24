@@ -2,7 +2,7 @@
  * course generator's reachability code: it plans its own interval reachability over
  * the course's public API, then drives the real simulation through `step`. */
 import {
-  BANK_DRIFT, CONFIG, EDGE_SUPPORT, RADIUS, STEP, lateralSpeed,
+  BANK_DRIFT, CONFIG, EDGE_SUPPORT, RADIUS, STEER_RESPONSE, STEP, lateralSpeed,
   type Course, type Difficulty, type Obstacle, type ObstaclePose, type Run, type SegmentKind, type TrackSample,
 } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
@@ -89,7 +89,13 @@ export function describeRun(run: Run): string {
 
 /** Planning tiers, most comfortable first. The middle one is the generator's own guarantee
  * (its reach safety and clearances); the last relies on 0.85 of the real lateral authority
- * with bare clearances. The real controller always has full authority to absorb tracking error. */
+ * with bare clearances.
+ *
+ * The bot plans the lag-free position p = x + vx / STEER_RESPONSE rather than x: under the
+ * model's analytic steering p moves at exactly the commanded lateral speed plus bank drift,
+ * so it can follow a planned line exactly, while x trails it as a 0.1 s exponential average
+ * (plus 0.1 s of drift). Each constraint on x at distance D therefore applies to p at
+ * D − v·LAG, shifted against the drift; corner cutting at sharp turns is left to the margins. */
 const TIERS = [
   { authority: .55, clear: RADIUS + .16, edge: EDGE_SUPPORT + .16 },
   { authority: .7, clear: RADIUS + .06, edge: EDGE_SUPPORT + .12 },
@@ -97,10 +103,12 @@ const TIERS = [
 ] as const;
 const HARD = TIERS.length - 1;
 const REPLAN = 6;
-/** Steering look-ahead (s): a little longer than the steering response time. */
-const LEAD = .12;
+/** Steering lag (s): x trails p by about this long. */
+const LAG = 1 / STEER_RESPONSE;
+/** A ball within this of the previous line keeps following it, so the line stays continuous across re-plans. */
+const ANCHOR = .2;
 /** Unforced drift toward the middle of the viable corridor, as a share of the tier's reach. */
-const SETTLE = .35;
+const SETTLE = 1;
 const MAX_POINTS = 4096, MAX_SPANS = 32;
 
 /** A block's footprint without clearance; sliding blocks cover their whole sweep. */
@@ -126,8 +134,12 @@ export class Planner {
   /** Viable positions: from here the end of the horizon can still be reached. */
   readonly viable = TIERS.map(() => new Sets());
   readonly path = new Float64Array(MAX_POINTS);
+  /** Where the constraints on p at each point come from: the ball's distance one lag later. */
+  private readonly check = new Float64Array(MAX_POINTS);
+  /** Road at the check distance, and the drift offset of x from p there. */
   private readonly center = new Float64Array(MAX_POINTS);
   private readonly width = new Float64Array(MAX_POINTS);
+  private readonly offset = new Float64Array(MAX_POINTS);
   private readonly tunnel = new Uint8Array(MAX_POINTS);
   n = 0;
   failed = false;
@@ -141,6 +153,7 @@ export class Planner {
   /** Plans a line from the run's state; false when even the last tier found no route somewhere on the horizon. */
   plan(run: Run, course: Course): boolean {
     const d0 = run.distance, end = d0 + Math.max(120, 2.5 * runSpeed(run)), pose = this.pose, blocks = this.blocks;
+    const p0 = run.x + LAG * run.vx, previous = this.n ? this.lineAt(d0) : p0, start = Math.abs(previous - p0) <= ANCHOR ? previous : p0;
     blocks.length = 0;
     course.forEachObstacle(d0 - TIERS[0].clear, end + TIERS[0].clear, (o: Obstacle) => {
       course.pose(o, run.elapsed, pose);
@@ -153,20 +166,26 @@ export class Planner {
       }
       blocks.push({ from: pose.distance - pose.halfDepth, to: pose.distance + pose.halfDepth, lo: lo - out, hi: hi + out });
     });
-    // Points: the ball, every whole metre, and where each tier's widened block starts and ends.
+    // Points: the ball, every whole metre, and where each tier's widened block starts and ends (one lag earlier).
     const at = this.at;
     let n = 0;
     at[n++] = d0;
     for (let d = Math.floor(d0) + 1; d <= end && n < MAX_POINTS; d++) at[n++] = d;
-    for (const b of blocks) for (const tier of TIERS) for (const e of [b.from - tier.clear, b.to + tier.clear]) if (e > d0 && e < end && n < MAX_POINTS) at[n++] = e;
+    for (const b of blocks) for (const tier of TIERS) for (const edge of [b.from - tier.clear, b.to + tier.clear]) {
+      const e = edge - LAG * course.speed(edge);
+      if (e > d0 && e < end && n < MAX_POINTS) at[n++] = e;
+    }
     at.subarray(1, n).sort();
     this.n = n;
     const s = this.sample;
     for (let i = 0; i < n; i++) {
-      course.sample(at[i], s);
+      const v = course.speed(at[i]), check = this.check[i] = at[i] + LAG * v;
+      course.sample(check, s);
       this.center[i] = s.center; this.width[i] = s.width; this.tunnel[i] = s.tunnel ? 1 : 0;
+      this.offset[i] = -LAG * BANK_DRIFT * Math.sin(s.bank);
       if (i === 0) continue;
-      const dd = at[i] - at[i - 1], v = course.speed(at[i]);
+      course.sample(at[i - 1], s);
+      const dd = at[i] - at[i - 1];
       this.shift[i] = BANK_DRIFT * Math.sin(s.bank) * dd / v;
       for (let t = 0; t < TIERS.length; t++) this.reach[t][i] = TIERS[t].authority * lateralSpeed(v) * dd / v;
     }
@@ -184,7 +203,7 @@ export class Planner {
     }
     // Forward line: stay in the most comfortable viable set the reach allows, settling toward its middle.
     const path = this.path;
-    path[0] = run.x;
+    path[0] = start;
     for (let i = 0; i + 1 < n; i++) path[i + 1] = this.next(i + 1, path[i] + this.shift[i + 1]);
     this.cursor = 0;
     return !this.failed;
@@ -192,9 +211,9 @@ export class Planner {
 
   /** Road band at point i for a tier, minus the blocks active there. */
   private allowed(i: number, t: number, sets: Sets): void {
-    const tier = TIERS[t], m = this.tunnel[i] ? RADIUS + .01 : tier.edge;
+    const tier = TIERS[t], m = this.tunnel[i] ? RADIUS + .01 : tier.edge, c = this.center[i] + this.offset[i];
     const tl = this.tl, th = this.th;
-    tl[0] = this.center[i] - this.width[i] / 2 + m; th[0] = this.center[i] + this.width[i] / 2 - m;
+    tl[0] = c - this.width[i] / 2 + m; th[0] = c + this.width[i] / 2 - m;
     this.store(i, sets, this.cut(i, t, tl[0] <= th[0] ? 1 : 0));
   }
 
@@ -208,8 +227,8 @@ export class Planner {
       else { tl[k] = lo; th[k] = hi; k++; }
     }
     if (i > 0) {
-      const tier = TIERS[t], m = this.tunnel[i] ? RADIUS + .01 : tier.edge;
-      const bandLo = this.center[i] - this.width[i] / 2 + m, bandHi = this.center[i] + this.width[i] / 2 - m;
+      const tier = TIERS[t], m = this.tunnel[i] ? RADIUS + .01 : tier.edge, c = this.center[i] + this.offset[i];
+      const bandLo = c - this.width[i] / 2 + m, bandHi = c + this.width[i] / 2 - m;
       let w = 0;
       for (let j = 0; j < k; j++) {
         const lo = Math.max(tl[j], bandLo), hi = Math.min(th[j], bandHi);
@@ -222,10 +241,10 @@ export class Planner {
 
   /** Removes the tier-widened blocks active at point i from tl/th[0..k); returns the new count. */
   private cut(i: number, t: number, k: number): number {
-    const d = this.at[i], c = TIERS[t].clear, tl = this.tl, th = this.th, o = MAX_SPANS;
+    const d = this.check[i], c = TIERS[t].clear, shift = this.offset[i], tl = this.tl, th = this.th, o = MAX_SPANS;
     for (const b of this.blocks) {
       if (b.from - c > d || b.to + c < d) continue;
-      const blo = b.lo - c, bhi = b.hi + c;
+      const blo = b.lo - c + shift, bhi = b.hi + c + shift;
       let w = 0;
       for (let j = 0; j < k; j++) {
         const lo = tl[j], hi = th[j];
@@ -245,9 +264,10 @@ export class Planner {
     for (let j = 0; j < k; j++) { sets.lo[b + j] = this.tl[j]; sets.hi[b + j] = this.th[j]; }
   }
 
-  /** Next line position at point i from the drifted previous one, `p`. */
+  /** Next line position at point i from the drifted previous one, `p`. The line may use the
+   * last tier's reach to get back into a more comfortable tier; inside one it settles gently. */
   private next(i: number, p: number): number {
-    const b = i * MAX_SPANS;
+    const b = i * MAX_SPANS, reach = this.reach[HARD][i] + 1e-7;
     for (let t = 0; t < TIERS.length; t++) {
       const sets = this.viable[t], r = this.reach[t][i], count = sets.count[i];
       // The corridor nearest p, and a target a little way toward its middle.
@@ -256,8 +276,6 @@ export class Planner {
         const g = Math.max(0, sets.lo[b + j] - p, p - sets.hi[b + j]);
         if (g < gap) { gap = g; nearest = j; }
       }
-      // A line that rides a corridor's edge must not drop to a harder tier on rounding alone.
-      const reach = r + 1e-7;
       if (nearest < 0 || gap > reach) continue;
       const middle = (sets.lo[b + nearest] + sets.hi[b + nearest]) / 2, q = p + clamp(middle - p, -SETTLE * r, SETTLE * r);
       let best = NaN, miss = Infinity;
@@ -299,7 +317,7 @@ export const botStats = { plans: 0, failedPlans: 0 };
 /** Drives a running run with the look-ahead bot until it has travelled `metres` or stops
  * running, calling `observe` after every step. Mutates and returns the same run. */
 export function driveBot(run: Run, metres: number, observe?: (run: Run) => void): { run: Run; steps: number } {
-  const course = getCourse(run.seed, run.difficulty), planner = new Planner(), target = run.distance + metres;
+  const course = getCourse(run.seed, run.difficulty), planner = new Planner(), target = run.distance + metres, sample = blankSample();
   botStats.plans = botStats.failedPlans = 0;
   let steps = 0;
   while (run.phase === 'running' && run.distance < target) {
@@ -307,8 +325,9 @@ export function driveBot(run: Run, metres: number, observe?: (run: Run) => void)
       botStats.plans++;
       if (!planner.plan(run, course)) botStats.failedPlans++;
     }
-    const v = runSpeed(run), aim = planner.lineAt(run.distance + LEAD * v);
-    step(run, clamp((aim - run.x) / (LEAD * lateralSpeed(v)) - .02 * run.vx, -1, 1), STEP);
+    // p moves at exactly the commanded lateral speed plus drift: put it on the line after this step.
+    const v = runSpeed(run), p = run.x + LAG * run.vx, drift = BANK_DRIFT * Math.sin(course.sample(run.distance, sample).bank);
+    step(run, clamp(((planner.lineAt(run.distance + v * STEP) - p) / STEP - drift) / lateralSpeed(v), -1, 1), STEP);
     steps++;
     observe?.(run);
   }

@@ -20,13 +20,13 @@ export interface BallRunScene {
 
 const PALETTE = {
   void: 0x000000, track: 0x333b74, grid: 0x929bfb, sphere: 0xe500b1, block: 0xb51cfa, boost: 0x00e7ef,
-  tower: 0x1f2358, towerLine: 0x8088e6, white: 0xffffff,
+  tower: 0x232764, towerLine: 0x8890f2, white: 0xffffff,
 };
 const TILES = 420, LINES = 3400, BLOCKS = 320, CYAN = 200, TRAIL = 18, TRAIL_REDUCED = 8, BURST = 40, BURST_REDUCED = 14;
 /** Road drawn behind the origin; the camera sits 3.6 m back. */
 const BEHIND = 6;
 const LANES = [-.5, -.25, 0, .25, .5];
-const TILE_DEPTH = .18, LINE_WIDTH = .06, CENTER_WIDTH = .09, CROSS_WIDTH = .08, LINE_HEIGHT = .02, LIFT = .02;
+const TILE_DEPTH = .18, LINE_WIDTH = .07, CENTER_WIDTH = .13, CROSS_WIDTH = .1, LINE_HEIGHT = .02, LIFT = .02;
 const CAMERA_BACK = 3.6, CAMERA_UP = 1.8;
 /** Boost arch: wall height, ring spacing and arch bars. */
 const WALL = 1.5, RING = 3, ARCH = 10, BAR = .06, ENTRANCE_BAR = .13;
@@ -67,6 +67,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   box.setAttribute('color', new THREE.BufferAttribute(faceColors, 3));
   const sphere = new THREE.SphereGeometry(RADIUS, 32, 20);
   geometries.push(box, sphere);
+  const white = new THREE.Color(PALETTE.white);
   const basic = (parameters: THREE.MeshBasicMaterialParameters) => { const m = new THREE.MeshBasicMaterial(parameters); materials.push(m); return m; };
   const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, count: number, parent: THREE.Object3D, colored = false) => {
     const mesh = new THREE.InstancedMesh(geometry, material, count);
@@ -79,7 +80,20 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     pools.push(mesh);
     return mesh;
   };
-  const white = new THREE.Color(PALETTE.white);
+  /** Shows the first `count` instances and uploads only those. */
+  const commit = (mesh: THREE.InstancedMesh, count: number) => {
+    mesh.count = count;
+    mesh.visible = count > 0;
+    if (!count) return;
+    mesh.instanceMatrix.clearUpdateRanges();
+    mesh.instanceMatrix.addUpdateRange(0, count * 16);
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) {
+      mesh.instanceColor.clearUpdateRanges();
+      mesh.instanceColor.addUpdateRange(0, count * 3);
+      mesh.instanceColor.needsUpdate = true;
+    }
+  };
 
   // Road, gates and blocks share one group placed relative to the origin.
   const road = new THREE.Group();
@@ -133,12 +147,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       put(towers, index++, x, lo + h / 2, z, w, h, depth);
       // Lines only on the faces seen from the road: the inner face and the near (+z) face.
       const xi = side * inner, xo = side * (inner + w), z0 = z - depth / 2, z1 = z + depth / 2;
-      for (let y = lo; y <= hi; y += 1.4) { line(xi, y, z0, xi, y, z1); line(xi, y, z1, xo, y, z1); }
-      for (let zz = z0; zz <= z1 + .01; zz += 1.5) line(xi, lo, zz, xi, hi, zz);
+      for (let y = lo; y <= hi; y += 1.1) { line(xi, y, z0, xi, y, z1); line(xi, y, z1, xo, y, z1); }
+      for (let k = 0; k <= 4; k++) line(xi, lo, z0 + depth * k / 4, xi, hi, z0 + depth * k / 4);
       for (let k = 1; k <= w; k++) line(xi + side * k, lo, z1, xi + side * k, hi, z1);
     }
-    towers.count = index;
-    towers.instanceMatrix.needsUpdate = true;
+    commit(towers, index);
   }
   const cityGeometry = new THREE.BufferGeometry();
   cityGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cityPoints, 3));
@@ -147,13 +160,14 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   materials.push(cityLines.material as THREE.Material);
   city.add(cityLines);
 
-  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, specular: 0xa868b8, shininess: 30 });
+  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, specular: 0xc070c0, shininess: 36 });
   materials.push(ballMaterial);
   const ball = new THREE.Mesh(sphere, ballMaterial);
   scene.add(ball);
-  scene.add(new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.1));
-  const key = new THREE.DirectionalLight(0xffffff, 2.1);
-  key.position.set(0, 10, 1.5);
+  // Overhead light gives the soft upper highlight; a dark ground colour gives the deep-purple underside.
+  scene.add(new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
+  const key = new THREE.DirectionalLight(0xffffff, 1.9);
+  key.position.set(0, 10, .5);
   const rim = new THREE.DirectionalLight(0x9c5aff, 1.2);
   rim.position.set(4, 1, -5);
   scene.add(key, rim);
@@ -227,7 +241,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
    * a heavier cyan entrance ring and cyan chevrons on the road. */
   function arch(gate: Gate): void {
     track((gate.start + gate.end) / 2, M);
-    const c = M.center, radius = M.width / 2 + .1, length = gate.end - gate.start;
+    const c = M.center, radius = M.width / 2 + .04, length = gate.end - gate.start;
     const e0 = track(gate.start, A).elevation + yRef, e1 = track(gate.end, B).elevation + yRef;
     const z0 = -(gate.start - builtOrigin), z1 = -(gate.end - builtOrigin), pitch = Math.atan2(e1 - e0, length);
     const block = (x: number, y: number, z: number, sx: number, sy: number, sz: number, color: THREE.Color, tilt = 0) => {
@@ -261,10 +275,10 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       bar(grid, lineCount++, x, e0 + h, z0, x, e1 + h, z1, BAR, BAR);
     }
     // Cyan chevrons pointing forward along the road.
-    const arm = Math.min(.36 * M.width, 1.4);
-    for (let d = gate.start + 4; d < gate.end - 1.5 && cyanCount + 2 <= CYAN; d += 2.2) {
-      const ya = track(d, S).elevation + yRef + LIFT * 1.5, yb = track(d + 1, S).elevation + yRef + LIFT * 1.5;
-      for (const side of [-1, 1]) bar(cyan, cyanCount++, c + side * arm, yb, -(d + 1 - builtOrigin), c, ya, -(d - builtOrigin), .17, LINE_HEIGHT);
+    const arm = Math.min(.4 * M.width, 1.5);
+    for (let d = gate.start + 5; d < gate.end - 2 && cyanCount + 2 <= CYAN; d += 2.8) {
+      const ya = track(d, S).elevation + yRef + LIFT * 1.5, yb = track(d + 1.1, S).elevation + yRef + LIFT * 1.5;
+      for (const side of [-1, 1]) bar(cyan, cyanCount++, c + side * arm, yb, -(d + 1.1 - builtOrigin), c, ya, -(d - builtOrigin), .24, LINE_HEIGHT);
     }
   }
 
@@ -291,14 +305,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     }
     for (let d = Math.ceil(from / 2) * 2; d < end; d += 2) crossLine(d);
     course.forEachGate(Math.max(0, from), end, arch);
-    const used = [tileCount, lineCount, cyanCount];
-    [tiles, grid, cyan].forEach((mesh, i) => {
-      mesh.count = used[i];
-      mesh.visible = used[i] > 0;
-      mesh.instanceMatrix.clearUpdateRanges();
-      mesh.instanceMatrix.addUpdateRange(0, Math.max(1, used[i]) * 16);
-      mesh.instanceMatrix.needsUpdate = true;
-    });
+    commit(tiles, tileCount);
+    commit(grid, lineCount);
+    commit(cyan, cyanCount);
   }
 
   // Per frame ---------------------------------------------------------------
@@ -338,16 +347,14 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     let shown = 0;
     for (let i = 0; i < n; i++) {
       const slot = ((historyHead - 1 - i) % TRAIL + TRAIL) % TRAIL, age = (i + 1) / (n + 1), z = run.distance - history[slot * 3];
-      // Samples still under the ball would only tint it.
-      if (z < RADIUS * 1.6) continue;
+      // Samples still under the ball would only tint it; those behind the camera are unseen.
+      if (z < RADIUS * 1.6 || z > CAMERA_BACK - .2) continue;
       // Shrinks on screen too: samples nearer the camera are scaled down by their distance.
       const size = (.42 - .32 * age) * clamp(Math.hypot(CAMERA_BACK - z, up) / ballRange, 0, 1);
       put(trail, shown, history[slot * 3 + 1], history[slot * 3 + 2] + lift, z, size, size, size);
       trail.setColorAt(shown++, tint.copy(trailColor).multiplyScalar((1 - age) * fade * .55));
     }
-    trail.count = shown;
-    trail.visible = shown > 0;
-    if (shown) { trail.instanceMatrix.needsUpdate = true; trail.instanceColor!.needsUpdate = true; }
+    commit(trail, shown);
   }
 
   /** Fragments are an analytic function of dyingTime, seeded by the run, so pause and restore are exact. */
@@ -356,42 +363,42 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const show = run.phase === 'dying' && run.reason === 'block' && k < 1;
     const n = show ? reduced ? BURST_REDUCED : BURST : 0;
     const bx = run.x, by = run.height + SLOPE * run.distance, floor = by - RADIUS;
-    for (let i = 0; i < n; i++) {
-      const u = (j: number) => unit(run.seed, i * 8 + j);
-      const ox = (u(0) - .5) * RADIUS * 1.4, oy = (u(1) - .5) * RADIUS * 1.4, oz = (u(2) - .5) * RADIUS;
-      let size = .06 + .1 * u(3), x = bx + ox, y = by + oy, z = oz, spin = 0;
+    for (let i = 0, seed = run.seed; i < n; i++) {
+      const h = i * 10;
+      let size = .06 + .1 * unit(seed, h), spin = 0;
+      let x = bx + (unit(seed, h + 1) - .5) * RADIUS * 1.4, y = by + (unit(seed, h + 2) - .5) * RADIUS * 1.4, z = (unit(seed, h + 3) - .5) * RADIUS;
       if (!reduced) {
         // Thrown back toward the camera and outward from the block face, under light gravity.
-        x += (u(4) - .5) * 6.5 * t;
-        y += (.6 + 4.2 * u(5)) * t - 4.5 * t * t;
-        z += (-.4 + 4.2 * u(6)) * t;
-        spin = (u(7) - .5) * 14 * t;
+        x += (unit(seed, h + 4) - .5) * 6.5 * t;
+        y += (.6 + 4.2 * unit(seed, h + 5)) * t - 4.5 * t * t;
+        z += (-.4 + 4.2 * unit(seed, h + 6)) * t;
+        spin = (unit(seed, h + 7) - .5) * 14 * t;
         size *= 1 - .45 * k;
       }
       put(burst, i, x, Math.max(y, floor + size / 2), z, size, size, size, spin, spin * .7, 0);
-      burst.setColorAt(i, burstColors[u(7) < .45 ? 0 : u(7) < .8 ? 1 : 2]);
+      const hue = unit(seed, h + 8);
+      burst.setColorAt(i, burstColors[hue < .45 ? 0 : hue < .8 ? 1 : 2]);
     }
     burstMaterial.opacity = reduced ? 1 - k : k < .55 ? 1 : 1 - (k - .55) / .45;
-    burst.count = n;
-    burst.visible = n > 0;
-    if (n) { burst.instanceMatrix.needsUpdate = true; burst.instanceColor!.needsUpdate = true; }
+    commit(burst, n);
   }
 
-  /** Camera look-ahead: road centre and elevation averaged over 12–28 m ahead. The window
-   * slides continuously, so a drop's step in elevation becomes a smooth pitch. */
-  let aheadCenter = 0, aheadElevation = 0;
-  function lookAhead(distance: number): void {
+  /** Road centre and elevation averaged over `span` metres from `distance + from`: a box
+   * filter over 1 m samples that slides continuously, so a drop's step in elevation
+   * moves the camera smoothly instead of snapping it. */
+  let windowCenter = 0, windowElevation = 0;
+  function roadWindow(distance: number, from: number, span: number): void {
     const base = Math.floor(distance), f = distance - base;
     let c = 0, e = 0;
-    for (let k = 12; k <= 29; k++) {
-      const w = k === 12 ? 1 - f : k === 29 ? f : 1;
+    for (let k = 0; k <= span; k++) {
+      const w = k === 0 ? 1 - f : k === span ? f : 1;
       if (w <= 0) continue;
-      course.sample(base + k, S);
+      track(base + from + k, S);
       c += w * S.center;
       e += w * S.elevation;
     }
-    aheadCenter = c / 17;
-    aheadElevation = e / 17;
+    windowCenter = c / span;
+    windowElevation = e / span;
   }
 
   function render(view: FrameView): void {
@@ -407,10 +414,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     frameElapsed = run.elapsed;
     blockCount = gateWalls;
     course.forEachObstacle(origin - BEHIND, origin + range, placeBlock);
-    blocks.count = blockCount;
-    blocks.visible = blockCount > 0;
-    blocks.instanceMatrix.needsUpdate = true;
-    blocks.instanceColor!.needsUpdate = true;
+    commit(blocks, blockCount);
 
     const broken = run.reason === 'block' && (run.phase === 'dying' || run.phase === 'over');
     ball.visible = !broken;
@@ -420,17 +424,21 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     drawBurst(run, reduced);
 
     // Chase camera: 3.6 m behind and 1.8 m above the ball's base. It stops following a
-    // fall 1.5 m below the road, and looks at the road ahead so crests and drops pitch the view.
-    course.sample(distance, S);
+    // fall 1.5 m below the road and looks at the road 12–29 m ahead, so crests and bends
+    // turn the view; high above the road (a drop, a crest at speed) it looks closer, so
+    // the view pitches down and shows the height.
+    track(distance, S);
     const bank = S.bank, roadCenter = S.center;
     const lift = SLOPE * distance, road0 = S.elevation + lift;
     const base = Math.max(run.height + lift - RADIUS, road0 - 1.5);
     const followX = run.x - .15 * (run.x - roadCenter);
-    lookAhead(distance);
-    const ty = aheadElevation + lift + .6, cy = base + CAMERA_UP, reach = CAMERA_BACK + 20;
-    const pitch = clamp(Math.atan2(ty - cy, reach), -.55, .04);
+    roadWindow(distance, -2, 6);
+    const above = Math.max(0, base - windowElevation - lift - .3);
+    roadWindow(distance, 12, 17);
+    const cy = base + CAMERA_UP, reach = CAMERA_BACK + 20 / (1 + .3 * above);
+    const pitch = clamp(Math.atan2(windowElevation + lift + .6 - cy, reach), -.6, .04);
     camera.position.set(followX, cy, CAMERA_BACK);
-    camera.lookAt(followX + .25 * (aheadCenter - roadCenter), cy + Math.tan(pitch) * reach, -20);
+    camera.lookAt(followX + .25 * (windowCenter - roadCenter), cy + Math.tan(pitch) * reach, CAMERA_BACK - reach);
     if (!reduced) camera.rotateZ(-.5 * bank);
     const fov = reduced ? 64 : 64 + 10 * clamp((speed - 12) / 50, 0, 1), far = range + 40;
     if (camera.fov !== fov || camera.far !== far) { camera.fov = fov; camera.far = far; camera.updateProjectionMatrix(); }
@@ -473,5 +481,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   }
 
   resize(canvas.clientWidth || 1, canvas.clientHeight || 1);
+  // Every pool is still visible with no instances: one render now uploads every geometry
+  // and compiles every material, so the first boost or crash never stalls on a shader
+  // compile and the geometry count is the same from the first frame.
+  renderer.render(scene, camera);
   return { resize, render, reset, stats, dispose };
 }
