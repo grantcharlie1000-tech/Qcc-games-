@@ -28,8 +28,8 @@ const BEHIND = 6;
 const LANES = [-.5, -.25, 0, .25, .5], SIDES = [-1, 1];
 const TILE_DEPTH = .18, LINE_WIDTH = .07, CENTER_WIDTH = .13, CROSS_WIDTH = .1, LINE_HEIGHT = .02, LIFT = .02;
 const CAMERA_BACK = 3.6, CAMERA_UP = 1.8;
-/** Vertical FOV (degrees): the plan's 64° widening by up to 10° with speed. In landscape it is
- * narrowed so the horizontal FOV is 82° at the base speed; speed widens it in the same ratio. */
+/** Vertical FOV (degrees): the plan's 64° widening by up to 10° with speed. A wide view is
+ * narrowed in one ratio at every speed, so its horizontal FOV reaches 82° only at full widening. */
 const FOV = 64, FOV_GAIN = 10, H_FOV_CAP = 82;
 /** Followed down a fall, the view tilts after the ball by this share of its extra drop, down to the steepest pitch. */
 const FALL_TILT = .65, MAX_PITCH = .6;
@@ -495,8 +495,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (disposed || !(width >= 1 && height >= 1)) return;
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
-    // 1 (the plan's FOV unchanged) up to aspect 1.39, where 64° vertical is 82° horizontally.
-    fovFit = Math.min(1, Math.tan(THREE.MathUtils.DEG2RAD * H_FOV_CAP / 2) / (camera.aspect * Math.tan(THREE.MathUtils.DEG2RAD * FOV / 2)));
+    // 1 (the plan's FOV unchanged) up to aspect 1.15, where the widest 74° vertical is 82° horizontally.
+    fovFit = Math.min(1, Math.tan(THREE.MathUtils.DEG2RAD * H_FOV_CAP / 2) / (camera.aspect * Math.tan(THREE.MathUtils.DEG2RAD * (FOV + FOV_GAIN) / 2)));
     camera.updateProjectionMatrix();
     stats.aspect = camera.aspect;
   }

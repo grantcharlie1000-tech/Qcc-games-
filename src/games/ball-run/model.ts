@@ -169,7 +169,12 @@ const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.is
 const isInt = (v: unknown, lo: number, hi: number): v is number => isNumber(v) && Number.isInteger(v) && v >= lo && v <= hi;
 
 /** A fresh, fully checked copy of a saved v4 run, or null. Cheap checks come first, so a
- * damaged save never makes the course generate far ahead. */
+ * damaged save never makes the course generate far ahead. Beyond the plan's list (ratified):
+ * distance ≤ 1e6; elapsed ≤ 1e7; reason matches the phase; dyingTime is 0 while live and at most
+ * DYING_DURATION + 0.05; a dead run's gateIndex lies between the gates behind its score and those
+ * behind its distance (a falling ball keeps moving); a grounded ball is also supported; a running
+ * airborne ball is not already below the fall depth; height is within 100 m of the road; and
+ * run.difficulty equals the snapshot's. */
 function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
   if (!isObject(value)) return null;
   const r = value;

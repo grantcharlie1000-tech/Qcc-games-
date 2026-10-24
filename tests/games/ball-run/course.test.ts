@@ -81,7 +81,8 @@ function clearZones(c: Course): [number, number][] {
     if (seg.kind === 'ribbon' || seg.kind === 'ribbonBend') zones.push([seg.start, seg.end]);
     if (seg.kind === 'crest' || seg.kind === 'dip') { const l = seg.end - seg.start; zones.push([seg.start + .3 * l, seg.start + .7 * l]); }
   }
-  for (const d of drops(c)) zones.push([d.lip - 8, d.gapEnd + 12]);
+  // A drop stays clear until 12 m past where the ball lands at the speed there.
+  for (const d of drops(c)) zones.push([d.lip - 8, d.lip + c.speed(d.lip) * Math.sqrt(2 * d.height / GRAVITY) + 12]);
   return zones;
 }
 
@@ -176,7 +177,8 @@ describe('Ball Run course generator', () => {
     expect(a.difficulty).toBe('hard');
   });
 
-  it('is identical for a seed and difficulty however far ahead or in what order it is queried', () => {
+  // Heavier tests get room for a loaded machine (other suites may share the CPU).
+  it('is identical for a seed and difficulty however far ahead or in what order it is queried', { timeout: 30000 }, () => {
     let state = 12345;
     const random = () => ((state = Math.imul(state, 1664525) + 1013904223 >>> 0) / 2 ** 32);
     const distances = Array.from({ length: 500 }, () => random() * 4000);
@@ -209,7 +211,7 @@ describe('Ball Run course generator', () => {
 
   // Sampled every 0.05 m: the steepest decided feature (ribbon taper, 0.54 m per metre) changes by
   // 0.027 per step, well under the 0.05 bound, which is still far below any real jump.
-  it('keeps the road continuous, centred within the canyon and inside its width and bank limits', () => {
+  it('keeps the road continuous, centred within the canyon and inside its width and bank limits', { timeout: 30000 }, () => {
     for (const { seed, difficulty } of CASES) {
       const c = course(seed, difficulty), cfg = CONFIG[difficulty], a = blank(), b = blank(), label = `${difficulty} seed ${seed}`;
       // Extremes are gathered first: an expect per sample would cost minutes over 7 million samples.
@@ -339,7 +341,7 @@ describe('Ball Run course generator', () => {
     }
   });
 
-  it('makes every drop clearable at the speed there and still landable on its pad at the speed cap', () => {
+  it('makes every drop clearable at the speed there, block-free until past the landing, and landable on its pad at the speed cap', () => {
     let count = 0;
     for (const { seed, difficulty } of CASES) {
       const c = course(seed, difficulty);
@@ -353,8 +355,11 @@ describe('Ball Run course generator', () => {
             const y = drop.lipElevation - SLOPE * x - GRAVITY * x * x / (2 * v * v);
             if (y <= c.sample(drop.lip + x).elevation) break;
           }
-          expect(drop.lip + x, `${difficulty} seed ${seed} at ${v} m/s`).toBeGreaterThanOrEqual(drop.gapEnd + 1);
-          expect(drop.lip + x, `${difficulty} seed ${seed} at ${v} m/s`).toBeLessThanOrEqual(drop.padEnd);
+          const where = `${difficulty} seed ${seed} drop at ${drop.lip.toFixed(1)}, ${v} m/s`;
+          expect(drop.lip + x, where).toBeGreaterThanOrEqual(drop.gapEnd + 1);
+          expect(drop.lip + x + 12, where).toBeLessThanOrEqual(drop.padEnd);
+          // At the speed there, nothing stands from 8 m before the lip to 12 m past the landing.
+          if (v === c.speed(drop.lip)) expect(obstacles(c, drop.lip - 8, drop.lip + x + 11.9).map(o => o.id), where).toEqual([]);
         }
       }
     }

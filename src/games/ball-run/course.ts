@@ -410,7 +410,9 @@ class CourseImpl implements Course {
           seg = this.traversable(make('drop', lip + g + Math.max(20, cfg.maxSpeed * flight + 12), height, c0, lip, g));
         }
       } else {
-        const length = r.range(LENGTH[kind][0], LENGTH[kind][1]) * scale;
+        // Crests and dips keep their length at any speed, so a fast ball leaves the road over them
+        // (reference page 04, "drop and flight"); the other kinds stretch with speed.
+        const length = r.range(LENGTH[kind][0], LENGTH[kind][1]) * (kind === 'crest' || kind === 'dip' ? 1 : scale);
         let amp = 0, c1 = c0;
         if (kind === 'straight') amp = STRAIGHT_RISE;
         else if (kind === 'bend') amp = r.sign() * r.range(.8, Math.min(2, room));
@@ -437,7 +439,11 @@ class CourseImpl implements Course {
     else if (seg.kind === 'gate') this.zone(seg.start - 5, this.gates[this.gates.length - 1].clearEnd);
     else if (seg.kind === 'ribbon' || seg.kind === 'ribbonBend') this.zone(seg.start, seg.end);
     else if (seg.kind === 'crest' || seg.kind === 'dip') this.zone(seg.start + .3 * length, seg.start + .7 * length);
-    else if (seg.kind === 'drop') this.zone(seg.start + seg.approach - 8, seg.start + seg.approach + seg.gap + 12);
+    else if (seg.kind === 'drop') {
+      // Clear until 12 m past where the ball lands at the speed there (the pad is longer: it fits maxSpeed).
+      const lip = seg.start + seg.approach;
+      this.zone(lip - 8, lip + this.speedNow(lip) * Math.sqrt(2 * seg.amp / GRAVITY) + 12);
+    }
   }
 
   private zone(lo: number, hi: number): void {

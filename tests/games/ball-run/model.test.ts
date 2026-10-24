@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BANK_DRIFT, CONFIG, DIFFICULTIES, DYING_DURATION, EDGE_SUPPORT, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, SLOPE, STEP, WARMUP,
+  BANK_DRIFT, CONFIG, DIFFICULTIES, DYING_DURATION, EDGE_SUPPORT, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, STEP, WARMUP,
   lateralSpeed, speedAt,
   type Course, type Difficulty, type Gate, type Obstacle, type ObstaclePose, type Phase, type Run,
 } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun, restoreSnapshot, runSpeed, steer, step, type Snapshot } from '../../../src/games/ball-run/model';
 import { commitScore, emptyRecords, type Records } from '../../../src/games/ball-run/records';
-import { capDistance, driveBot, placeRun, restHeight, spans } from './bot';
+import { capDistance, describeRun, driveBot, placeRun, restHeight, spans } from './bot';
 
 const blankPose = (): ObstaclePose => ({ x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
@@ -39,6 +39,20 @@ function freeBanks(difficulty: Difficulty, count: number): Array<{ seed: number;
     }
   }
   return found;
+}
+
+/** The road's vertical acceleration under a ball moving at the course speed, from the course API:
+ * the most negative value over [from, to] (`fall`), where it is reached (`deepest`), and the first
+ * distance where it is below −GRAVITY (`first`; Infinity if never). */
+function roadFall(course: Course, from: number, to: number): { fall: number; deepest: number; first: number } {
+  const h = .25, e = (d: number) => course.sample(d).elevation;
+  let fall = 0, deepest = from, first = Infinity;
+  for (let d = from + h; d <= to - h; d += h / 2) {
+    const a = course.speed(d) ** 2 * (e(d + h) - 2 * e(d) + e(d - h)) / (h * h);
+    if (a < fall) { fall = a; deepest = d; }
+    if (a < -GRAVITY && first === Infinity) first = d;
+  }
+  return { fall, deepest, first };
 }
 
 type Point = readonly [x: number, y: number, d: number];
@@ -208,12 +222,13 @@ describe('Ball Run steering', () => {
 });
 
 describe('Ball Run vertical motion', () => {
-  it('keeps the ball grounded over crests at early-run speed', () => {
+  it('keeps the ball grounded over early crests that curve away more gently than gravity at their speed', () => {
     for (const difficulty of DIFFICULTIES) {
       let crests = 0;
       for (let seed = 1; seed <= 4; seed++) {
         const course = getCourse(seed, difficulty);
         for (const crest of spans(course, 2500).filter(s => s.kind === 'crest')) {
+          if (roadFall(course, crest.start, crest.end).fall < -.95 * GRAVITY) continue;
           // Blocks may touch the block-free middle 40 %, so stay a ball's width and a step inside it.
           const length = crest.end - crest.start, run = placeRun(seed, difficulty, crest.start + .3 * length + 1);
           let airborne = 0;
@@ -262,41 +277,35 @@ describe('Ball Run vertical motion', () => {
     }
   });
 
-  it('lifts off over a sharp crest at the speed cap and lands again', () => {
-    // Crest lengths scale with speed, so few crests are sharp enough: search for one. Failing here
-    // means the course has no crest the spec's lift-off can happen on (a course problem, not a model one).
-    let found: { seed: number; start: number; end: number } | null = null;
-    for (let seed = 1; seed <= 40 && !found; seed++) {
-      const course = getCourse(seed, 'hard'), cap = capDistance(course);
-      for (const crest of spans(course, cap + 8000, cap)) {
-        if (crest.kind !== 'crest') continue;
-        const length = crest.end - crest.start;
-        let rise = 0;
-        for (let d = crest.start; d <= crest.end; d += .25) rise = Math.max(rise, course.sample(d).elevation + SLOPE * d);
-        const v = course.speed(crest.start + length / 2);
-        if (2 * Math.PI ** 2 * rise / length ** 2 * v * v > 1.03 * GRAVITY) { found = { seed, start: crest.start, end: crest.end }; break; }
-      }
-    }
-    expect(found, 'course: no crest sharp enough to leave the road at the cap in 40 Hard seeds').not.toBeNull();
-    const { seed, start, end } = found!, length = end - start, run = placeRun(seed, 'hard', start + .3 * length + 1);
-    expect(runSpeed(run)).toBe(CONFIG.hard.maxSpeed);
-    // Straight on, up to the lift-off inside the crest's block-free middle.
-    let before = clone(run);
-    while (run.grounded && run.phase === 'running' && run.distance < start + .7 * length) { before = clone(run); step(run, 0, STEP); }
-    expect(run.phase).toBe('running');
-    expect(run.grounded).toBe(false);
-    const lifted = run.distance;
-    expect(lifted).toBeGreaterThan(start + .3 * length);
-    // It leaves only because its flight clears the road: moving down 1 m/s faster there, it stays on.
-    const pressed = clone(before);
+  it('lifts off over the first crest that curves away faster than gravity at its speed, and lands again', () => {
+    // Found from the course API alone: the first crest on Hard seed 1 whose road, at the course's speed
+    // there, falls away from a ball faster than gravity can follow (with a margin for the fixed step).
+    const seed = 1, course = getCourse(seed, 'hard');
+    const crest = spans(course, 8000).find(s => s.kind === 'crest' && roadFall(course, s.start, s.end).fall < -1.05 * GRAVITY);
+    expect(crest, 'course: no crest leaves the road at its speed in 8 km of Hard seed 1').toBeDefined();
+    const { start, end } = crest!, { first, deepest } = roadFall(course, start, end);
+    // Driven from the start of a real run; the bot steers round the blocks on the way.
+    const run = createRun(seed, 1, 'hard');
+    run.phase = 'running';
+    let previous = clone(run), before: Run | null = null, lifted = -1, landed = -1, entered = false;
+    driveBot(run, end + 200, r => {
+      if (r.distance >= start && previous.distance < start) entered = r.grounded;
+      if (lifted < 0 && previous.distance >= start && previous.grounded && !r.grounded) { lifted = r.distance; before = previous; }
+      else if (lifted >= 0 && landed < 0 && r.grounded) landed = r.distance;
+      previous = clone(r);
+    });
+    expect(run.phase, describeRun(run)).toBe('running');
+    expect(entered).toBe(true);
+    // It leaves the road inside the crest, once the road there falls away faster than gravity.
+    expect(lifted).toBeGreaterThan(first - runSpeed(before!) * STEP - .3);
+    expect(lifted).toBeLessThanOrEqual(deepest);
+    // ...and only because its flight clears the road: moving down 1 m/s faster there, it stays on.
+    const pressed = clone(before!);
     pressed.vy -= 1;
     step(pressed, 0, STEP);
+    expect(pressed.phase).toBe('running');
     expect(pressed.grounded).toBe(true);
-    // A barely-sharp crest lands the ball near the end of its block-free middle: the bot steers on from there.
-    let landed = -1;
-    driveBot(run, .6 * length, r => { if (landed < 0 && r.grounded) landed = r.distance; });
-    expect(run.phase).toBe('running');
-    expect(landed).toBeGreaterThan(lifted);
+    expect(landed).toBeGreaterThan(lifted + 1);
     expect(run.grounded).toBe(true);
   });
 
