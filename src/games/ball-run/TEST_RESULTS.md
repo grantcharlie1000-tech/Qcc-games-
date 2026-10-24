@@ -1,6 +1,6 @@
 # Ball Run test results
 
-Current results: [Redesign (2026-10-24)](#redesign-2026-10-24) below. The 2026-10-19 sections that come first describe the replaced game. Their screenshots have since been overwritten by the redesign's evidence set under the same names; only `ramp-gap.webm` remains from them, and the earlier images are in git history (for example at main `ceb61e3`).
+Current results: [Redesign (2026-10-24)](#redesign-2026-10-24) below. The 2026-10-19 sections that come first describe the replaced game. Their screenshots have since been overwritten by the redesign's evidence set under the same names; only `ramp-gap.webm` remains from them. The earlier images are in git history: check out each file at the commit that last changed it before the redesign (`git log -- tests/games/ball-run/evidence/<file>`); the images at main `ceb61e3` show the later procedural follow-up, not the 2026-10-19 ramp course.
 
 ## Gameplay correction (2026-10-19)
 

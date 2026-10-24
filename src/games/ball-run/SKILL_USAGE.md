@@ -82,4 +82,4 @@ Upstream sources: https://github.com/mrdoob/three.js/blob/r180/src/core/BufferAt
 
 ### Gaps
 
-No installed skill covers Three.js, endless-runner track generation, or proving a procedural course passable; none gives numbers for speed curves, reaction time or obstacle density. The interval reachability method, the flight predictor and the look-ahead bot were designed for this game and are proven by their own tests. The reference brief's pages 1–9 were compared with renderer and UI screenshots; page 10 was set aside at Charlie's request, and the brief is not distributed in the repository.
+No installed skill covers Three.js, endless-runner track generation, or proving a procedural course passable; none gives numbers for speed curves, reaction time or obstacle density. The interval reachability method, the flight predictor and the look-ahead bot were designed for this game and are proven by their own tests. The reference brief's frames on pages 02–06 were compared side by side with renderer and UI screenshots (pages 1–9 were the source of the design); page 10 was set aside at Charlie's request, and the brief is not distributed in the repository.

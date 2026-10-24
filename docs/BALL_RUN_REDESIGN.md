@@ -6,7 +6,7 @@ Design: [spec](superpowers/specs/2026-10-23-ball-run-redesign-design.md). Plan a
 
 ## What Charlie asked for
 
-1. Redesign Ball Run from `Ball-Run-Reference.pdf` (a rebuild reference made from a 62-second Hard-mode recording), using pages 1–9 only. Page 10, a condensed coding-agent prompt, was set aside at his request. The brief is not distributed in the repository.
+1. Redesign Ball Run from `Ball-Run-Reference.pdf` (a rebuild reference made from a 62-second Hard-mode recording), using pages 1–9 only. Page 10, a condensed coding-agent prompt, was set aside at Charlie's request. The brief is not distributed in the repository.
 2. Slower acceleration and a much higher speed cap.
 3. More obstacles, placed more randomly and harder to get through.
 4. During the build: the cyan gates are a permanent speed boost.
@@ -55,7 +55,7 @@ The reference cannot reveal speeds, sizes or generation rules, so each number is
 | Crest and dip lengths are not stretched with speed (ruling 2026-10-24). | Stretched crests almost never launched (1 of 621), but page 04 shows a drop and flight at speed. |
 | Crest and dip height capped at `8·L/(π·v)` (launch at most about 8 m/s up); blocks kept out of every predicted flight from 5 m before take-off to 12 m past landing; a due gate deferred past a flight. | Unstretched crests then threw the ball up to 121 m and 10.8 m high, through arch roofs and onto blocks. |
 | A crest or dip drawn under a predicted flight, or inside its zone, is built as a straight (ruling 2026-10-24). | Crest-then-dip pairs and touch-and-go hops gave 1.1–1.7 s chained flights. |
-| A flight under 1 cm is not a flight. | Invisible skims where the road falls within 0.3 % of gravity. |
+| A flight under 1 cm is not counted as a flight by the tests (the generator still clears a zone around it). | Invisible skims where the road falls within 0.3 % of gravity. |
 | A drop's clear zone runs to 12 m past where the ball lands at the speed there. | Fast drops landed up to 23 m beyond the old zone, among blocks. |
 | The test bot plans with the model's exact steering (lag and bank drift) instead of the plan's simple controller. | The simple bot died on every matrix course on passable road; an exact grid search proved the course passable. |
 | Restore rejects distances over 1e6 m before touching the course. | Generating a course to the 1e8 m limit takes seconds and gigabytes. |
