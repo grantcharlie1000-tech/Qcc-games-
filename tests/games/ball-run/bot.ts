@@ -256,11 +256,13 @@ export class Planner {
         const g = Math.max(0, sets.lo[b + j] - p, p - sets.hi[b + j]);
         if (g < gap) { gap = g; nearest = j; }
       }
-      if (nearest < 0 || gap > r) continue;
+      // A line that rides a corridor's edge must not drop to a harder tier on rounding alone.
+      const reach = r + 1e-7;
+      if (nearest < 0 || gap > reach) continue;
       const middle = (sets.lo[b + nearest] + sets.hi[b + nearest]) / 2, q = p + clamp(middle - p, -SETTLE * r, SETTLE * r);
       let best = NaN, miss = Infinity;
       for (let j = 0; j < count; j++) {
-        const lo = Math.max(sets.lo[b + j], p - r), hi = Math.min(sets.hi[b + j], p + r);
+        const lo = Math.max(sets.lo[b + j], p - reach), hi = Math.min(sets.hi[b + j], p + reach);
         if (lo > hi) continue;
         const x = clamp(q, lo, hi);
         if (Math.abs(x - q) < miss) { miss = Math.abs(x - q); best = x; }

@@ -147,13 +147,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   materials.push(cityLines.material as THREE.Material);
   city.add(cityLines);
 
-  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, specular: 0xffa0e8, shininess: 40 });
+  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, specular: 0xa868b8, shininess: 30 });
   materials.push(ballMaterial);
   const ball = new THREE.Mesh(sphere, ballMaterial);
   scene.add(ball);
-  scene.add(new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.2));
-  const key = new THREE.DirectionalLight(0xffffff, 1.6);
-  key.position.set(0, 10, -1.5);
+  scene.add(new THREE.HemisphereLight(0xff9fe8, 0x0c0014, 1.1));
+  const key = new THREE.DirectionalLight(0xffffff, 2.1);
+  key.position.set(0, 10, 1.5);
   const rim = new THREE.DirectionalLight(0x9c5aff, 1.2);
   rim.position.set(4, 1, -5);
   scene.add(key, rim);
