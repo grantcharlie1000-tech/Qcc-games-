@@ -20,6 +20,9 @@ const gateList = (course: Course, to: number) => { const list: Gate[] = []; cour
 const obstacles = (course: Course, from: number, to: number) => { const list: Obstacle[] = []; course.forEachObstacle(from, to, o => list.push(o)); return list; };
 const poseOf = (course: Course, o: Obstacle, elapsed = 0) => course.pose(o, elapsed, blankPose());
 const clone = (run: Run): Run => JSON.parse(JSON.stringify(run)) as Run;
+/** Points per metre from the brief, written out rather than read from CONFIG: Easy scores less per metre. */
+const RATE: Record<Difficulty, number> = { easy: .5, medium: 1, hard: 1 };
+const pointsAt = (difficulty: Difficulty, distance: number) => Math.floor(distance * RATE[difficulty]);
 const snapshotOf = (run: Run | null, records: Records, difficulty: Difficulty = run?.difficulty ?? 'medium'): unknown =>
   JSON.parse(JSON.stringify({ version: 4, difficulty, records, run } satisfies Snapshot));
 /** Steps until `until` holds, or the run stops running; returns the steps taken. */
@@ -403,7 +406,7 @@ describe('Ball Run hazards', () => {
       expect(run.phase).toBe('dying');
       expect(run.reason).toBe('fall');
       const score = run.score, distance = run.distance;
-      expect(score).toBe(Math.floor(distance));
+      expect(score).toBe(pointsAt(difficulty, distance));
       expect(Math.abs(run.x)).toBeGreaterThan(CONFIG[difficulty].roadWidth / 2 - EDGE_SUPPORT);
       let steps = 0;
       while (phaseOf(run) === 'dying' && steps < 1000) { step(run, 1, STEP); steps++; expect(run.score).toBe(score); }
@@ -481,7 +484,7 @@ describe('Ball Run hazards', () => {
       expect(jump.distance).toBe(start.distance);
       expect(jump.x).toBe(start.x);
       expect(jump.height).toBe(start.height);
-      expect(jump.score).toBe(Math.floor(start.distance));
+      expect(jump.score).toBe(pointsAt(difficulty, start.distance));
       // At the fixed step the ball stops within one step of the face, and stays there.
       const run = placeRun(seed, difficulty, front - RADIUS - 6, pose.x);
       drive(run, () => false, () => 0);
@@ -670,6 +673,22 @@ describe('Ball Run new runs', () => {
   });
 });
 
+describe('Ball Run points', () => {
+  it('scores whole points: half a point per metre on Easy, one on Medium and Hard', () => {
+    for (const difficulty of DIFFICULTIES) {
+      const run = createRun(2, 1, difficulty);
+      run.phase = 'running';
+      drive(run, r => {
+        expect(r.score, `${difficulty} at ${r.distance} m`).toBe(pointsAt(difficulty, r.distance));
+        return r.distance > 70;
+      });
+      expect(run.phase).toBe('running');
+      // The first step past 70 m ends before 70.2 m at any starting speed.
+      expect(run.score).toBe({ easy: 35, medium: 70, hard: 70 }[difficulty]);
+    }
+  });
+});
+
 describe('Ball Run saves', () => {
   const records = commitScore(commitScore(emptyRecords(), 'hard', 812, new Date(2026, 9, 21)), 'medium', 303, new Date(2026, 9, 23));
 
@@ -719,6 +738,39 @@ describe('Ball Run saves', () => {
     expect(restored.run).toMatchObject({ phase: 'over', reason: 'fall', score: run.score, distance: run.distance });
     while (phaseOf(run) === 'dying') step(run, 0, STEP);
     expect(restoreSnapshot(snapshotOf(run, records))!.run).toEqual(run);
+  });
+
+  it('restores Easy runs scored in points, live, dying and finished', () => {
+    const live = placeRun(9, 'easy', 41.7);
+    expect(live.score).toBe(20);
+    continuesIdentically(live);
+    const fell = createRun(3, 2, 'easy');
+    fell.phase = 'running';
+    drive(fell, () => false, () => -1);
+    expect(fell.phase).toBe('dying');
+    expect(fell.score).toBe(pointsAt('easy', fell.distance));
+    // A fall keeps flying forward: 3 m on, the frozen points lag the points for where the ball is.
+    for (let i = 0; i < 40; i++) step(fell, 0, STEP);
+    expect(phaseOf(fell)).toBe('dying');
+    expect(fell.score).toBeLessThan(pointsAt('easy', fell.distance));
+    expect(restoreSnapshot(snapshotOf(fell, records))!.run).toMatchObject({ phase: 'over', reason: 'fall', score: fell.score, distance: fell.distance });
+    while (phaseOf(fell) === 'dying') step(fell, 0, STEP);
+    expect(restoreSnapshot(snapshotOf(fell, records))!.run).toEqual(fell);
+  });
+
+  it('rejects an Easy run whose points do not match its distance or the gates behind where it ended', () => {
+    const live = placeRun(9, 'easy', 41.7);
+    for (const score of [41, 19, 21]) {
+      expect(restoreSnapshot(snapshotOf({ ...clone(live), score }, records))!.run, `live, score ${score}`).toBeNull();
+    }
+    // Stopped by a block 3 m past gate 0: the points put the death past the gate, so gate 0 was passed.
+    const gate = gateList(getCourse(1, 'easy'), 4000)[0], at = gate.start + 3;
+    const over: Run = { ...placeRun(1, 'easy', at), phase: 'over', reason: 'block', dyingTime: DYING_DURATION, score: pointsAt('easy', at) };
+    expect(over.gateIndex).toBe(0);
+    expect(restoreSnapshot(snapshotOf(over, records))!.run).toEqual(over);
+    for (const [field, value] of [['score', Math.floor(at)], ['score', over.score + 1], ['gateIndex', -1]] as const) {
+      expect(restoreSnapshot(snapshotOf({ ...clone(over), [field]: value } as Run, records))!.run, `${field} = ${value}`).toBeNull();
+    }
   });
 
   it('drops an invalid run but keeps the records', () => {

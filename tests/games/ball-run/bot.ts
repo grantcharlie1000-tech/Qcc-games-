@@ -28,7 +28,7 @@ export function placeRun(seed: number, difficulty: Difficulty, distance: number,
   run.vx = 0;
   run.elapsed = elapsed;
   run.gateIndex = course.gatesBefore(distance) - 1;
-  run.score = Math.floor(distance);
+  run.score = Math.floor(distance * CONFIG[difficulty].pointsPerMetre);
   run.height = restHeight(course, distance, run.x);
   // The surface's vertical speed over the step ahead, or the step behind when a drop's gap is ahead.
   const dt = course.sample(distance + v * STEP).ground ? STEP : -STEP;

@@ -13,6 +13,19 @@ const SAVE='pocket-arcade:v1:save:ball-run',BEST='pocket-arcade:v1:best:ball-run
 // by the Chromium project: one engine (and one pixel ratio) for the whole set, never WebKit overwriting it.
 const evidence=(page:Page,name:string)=>process.env.BALL_RUN_EVIDENCE&&test.info().project.name==='chromium'?page.screenshot({path:`${EVIDENCE}/${name}`}).then(()=>{}):Promise.resolve();
 const game=(page:Page)=>page.locator('.ball-run');
+const banner=(page:Page)=>game(page).locator('.br-banner');
+const LEVELS=['Easy','Medium','Hard'] as const;
+const difficultyGroup=(page:Page)=>page.getByRole('radiogroup',{name:'Difficulty'});
+const radio=(page:Page,name:string)=>difficultyGroup(page).getByRole('radio',{name,exact:true});
+const points=(n:number)=>`${n} ${n===1?'point':'points'}`;
+/** One difficulty checked and the group's only Tab stop (roving tabindex), with the game themed to match. */
+async function expectDifficulty(page:Page,name:typeof LEVELS[number]){
+  for(const level of LEVELS){
+    await expect(radio(page,level)).toHaveAttribute('aria-checked',String(level===name));
+    await expect(radio(page,level)).toHaveAttribute('tabindex',level===name?'0':'-1');
+  }
+  await expect(game(page)).toHaveAttribute('data-difficulty',name.toLowerCase());
+}
 const data=async(page:Page,name:string)=>Number(await game(page).getAttribute(`data-${name}`));
 const saved=(page:Page)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);
 const snapshot=(run:Run|null,records:Records,difficulty:Difficulty=run?.difficulty??'medium')=>({version:4,difficulty,records,run});
@@ -75,7 +88,8 @@ const apart=(a:Box,b:Box)=>b.x>=a.x+a.width||b.x+b.width<=a.x||b.y>=a.y+a.height
 /** Fully on screen, clear of the shell's corner and bottom controls, nothing cut off, with every button hit for real. */
 async function expectClear(page:Page,panel:Locator){
   // Hit tests ignore opacity, so check that the panel has finished entering and is really seen.
-  await expect(panel.locator('..')).toHaveCSS('opacity','1');await expect(panel).toHaveCSS('transform','none');
+  await expect.poll(()=>panel.evaluate(p=>{let o=1;for(let e:Element|null=p;e;e=e.parentElement)o*=Number(getComputedStyle(e).opacity);return o;})).toBe(1);
+  await expect(panel).toHaveCSS('transform','none');
   const box=(await panel.boundingBox())!,size=page.viewportSize()!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height-52);
@@ -129,8 +143,8 @@ async function countReports(page:Page){
   await page.addInitScript(key=>{const writes:number[]=[],set=Storage.prototype.setItem;(window as unknown as {bestWrites:number[]}).bestWrites=writes;Storage.prototype.setItem=function(this:Storage,k:string,v:string){if(k===key)writes.push(performance.now());return set.call(this,k,v);};},BEST);
   return ()=>page.evaluate(()=>(window as unknown as {bestWrites:number[]}).bestWrites.length);
 }
-/** The Game Over panel's entrance mid-way: the layer's opacity and the panel's transform. */
-const entrance=(over:Locator)=>over.evaluate(p=>({opacity:Number(getComputedStyle(p.parentElement!).opacity),transform:getComputedStyle(p).transform}));
+/** The banner's entrance at this moment: its opacity and transform (it enters by opacity only). */
+const entrance=(bar:Locator)=>bar.evaluate(b=>({opacity:Number(getComputedStyle(b).opacity),transform:getComputedStyle(b).transform}));
 /** A run that has hit a block and finished dying: what a save made at Game Over holds. */
 function overRun(seed:number,difficulty:Difficulty){
   const {run,score}=beforeBlock(seed,difficulty),end=simulate(run,2);
@@ -139,40 +153,71 @@ function overRun(seed:number,difficulty:Difficulty){
   return end;
 }
 
-test('a fresh profile opens Medium setup; the slider re-themes it; help explains permanent gates; Play rolls',async({page})=>{
+test('a fresh profile opens Medium setup; the segmented difficulty control re-themes it; help explains points and permanent gates; Play rolls',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page),slider=page.getByRole('slider',{name:'Difficulty'}),play=page.getByRole('button',{name:'Play',exact:true});
-  await expect(play).toBeVisible();await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-difficulty','medium');
-  // Behind a panel the canvas is no Tab stop: from the stage, Tab reaches the difficulty first.
-  await page.locator('#game-stage').focus();await page.keyboard.press('Tab');await expect(slider).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
-  await expect(slider).toHaveValue('1');await expect(slider).toHaveAttribute('aria-valuetext','Medium');await expect(root.locator('.br-level')).toHaveText('Medium');
+  const root=game(page),play=page.getByRole('button',{name:'Play',exact:true});
+  await expect(play).toBeVisible();await expect(root).toHaveAttribute('data-phase','ready');await expectDifficulty(page,'Medium');
+  await expect(page.getByRole('slider')).toHaveCount(0);
+  // Behind a panel the canvas is no Tab stop: from the stage, Tab reaches the selected difficulty first, and the group is a single Tab stop.
+  await page.locator('#game-stage').focus();await page.keyboard.press('Tab');await expect(radio(page,'Medium')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
+  await page.keyboard.press('Tab');await expect(play).toBeFocused();await page.keyboard.press('Shift+Tab');await expect(radio(page,'Medium')).toBeFocused();
+  await expect(root.locator('.br-level')).toHaveText('Medium');
   await expect(root.locator('.br-setup .br-face')).toHaveAttribute('data-face','medium');await expect(play).toHaveCSS('background-color','rgb(226, 162, 27)');
   // The recording's 79 and 143 belong to one player, never to a fresh profile.
   expect(await page.locator('body').innerText()).not.toMatch(/\b(79|143)\b/);
-  await slider.focus();await page.keyboard.press('ArrowRight');
-  await expect(slider).toHaveValue('2');await expect(slider).toHaveAttribute('aria-valuetext','Hard');await expect(root).toHaveAttribute('data-difficulty','hard');
+  // Arrows move and select (Right and Down forward, Left and Up back, wrapping round); Home and End jump.
+  await page.keyboard.press('ArrowRight');await expectDifficulty(page,'Hard');await expect(radio(page,'Hard')).toBeFocused();
   await expect(root.locator('.br-level')).toHaveText('Hard');await expect(root.locator('.br-setup .br-face')).toHaveAttribute('data-face','hard');await expect(play).toHaveCSS('background-color','rgb(240, 82, 79)');
   await expectReadableLabel(play);
-  await page.keyboard.press('Home');await expect(root).toHaveAttribute('data-difficulty','easy');await expect(play).toHaveCSS('background-color','rgb(43, 178, 76)');
+  await page.keyboard.press('ArrowRight');await expectDifficulty(page,'Easy');await expect(radio(page,'Easy')).toBeFocused();await expect(play).toHaveCSS('background-color','rgb(43, 178, 76)');
   // White on the reference's green and amber is below 3:1: a dark edge in the fill's own hue carries the label.
   await expectReadableLabel(play);
-  await page.keyboard.press('ArrowRight');await expect(root).toHaveAttribute('data-difficulty','medium');await expectReadableLabel(play);
-  await page.keyboard.press('End');await expect(root).toHaveAttribute('data-difficulty','hard');
+  await page.keyboard.press('ArrowLeft');await expectDifficulty(page,'Hard');await expect(radio(page,'Hard')).toBeFocused();
+  await page.keyboard.press('Home');await expectDifficulty(page,'Easy');await expect(radio(page,'Easy')).toBeFocused();
+  await page.keyboard.press('ArrowDown');await expectDifficulty(page,'Medium');await expect(radio(page,'Medium')).toBeFocused();await expectReadableLabel(play);
+  await page.keyboard.press('ArrowUp');await expectDifficulty(page,'Easy');
+  await page.keyboard.press('End');await expectDifficulty(page,'Hard');await expect(radio(page,'Hard')).toBeFocused();await expect(root.locator('.br-level')).toHaveText('Hard');
+  // A click selects as well.
+  await radio(page,'Medium').click();await expectDifficulty(page,'Medium');await expect(root.locator('.br-level')).toHaveText('Medium');
+  await radio(page,'Hard').click();await expectDifficulty(page,'Hard');
   const help=page.getByRole('button',{name:'How to play',exact:true});
-  await help.click();await expect(help).toHaveAttribute('aria-expanded','true');await expect(root.locator('.br-help')).toBeVisible();await expect(root.locator('.br-help')).toContainText('permanently');
+  await help.click();await expect(help).toHaveAttribute('aria-expanded','true');await expect(root.locator('.br-help')).toBeVisible();
+  await expect(root.locator('.br-help')).toContainText('permanently');await expect(root.locator('.br-help')).toContainText('points');await expect(root.locator('.br-help')).not.toContainText('metres travelled');
   await expectClear(page,root.locator('.br-setup'));
   await help.click();await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();
   // The shell's Restart gives a fresh setup panel with help closed.
   await help.click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
-  await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
-  await page.getByRole('button',{name:'Game rules'}).click();await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
+  await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();await expect(difficultyGroup(page)).toBeVisible();await expectDifficulty(page,'Hard');
+  await page.getByRole('button',{name:'Game rules'}).click();await expect(page.locator('#rules-text')).toContainText('permanently');await expect(page.locator('#rules-text')).toContainText('points');
+  await page.getByRole('button',{name:'Let’s play'}).click();
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
   await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
   const speed=await data(page,'speed');expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
   await waitDistance(page,15);expect(await data(page,'speed')).toBeGreaterThan(speed);await expect(root.locator('.br-score')).not.toHaveText('0');
+  // The HUD's score is the run's points.
+  await expect(root.locator('.br-score')).toHaveText((await root.getAttribute('data-score'))!);
   expect(errors).toEqual([]);
+});
+
+test('the difficulty control is styled exactly as Globle’s mode toggle: one pill, three equal segments',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  const read=(pill:string,segment:string,state:string)=>page.evaluate(([pill,segment,state])=>{
+    const pick=(e:Element,props:string[])=>{const s=getComputedStyle(e);return Object.fromEntries(props.map(p=>[p,s.getPropertyValue(p)]));};
+    const segments=[...document.querySelectorAll(segment)],on=segments.find(s=>s.getAttribute(state)==='true')!,off=segments.find(s=>s.getAttribute(state)==='false')!;
+    const look=['background-color','color','border-top-left-radius','border-bottom-right-radius','border-top-width','min-height','padding-top','padding-bottom','padding-left','padding-right','font-family','font-weight','font-size','font-style','line-height','letter-spacing','text-transform','text-shadow','box-shadow','opacity'];
+    return {pill:pick(document.querySelector(pill)!,['display','background-color','border-top-left-radius','border-bottom-right-radius','border-top-width','padding-top','padding-left','row-gap','column-gap','box-shadow']),on:pick(on,look),off:pick(off,look)};
+  },[pill,segment,state] as const);
+  await page.goto('/#/game/globle');await expect(page.locator('.gl-modes')).toBeVisible();
+  const globle=await read('.gl-modes','.gl-mode','aria-pressed');
+  expect(globle.on['background-color']).toBe('rgb(85, 82, 104)');
+  await page.goto('/#/game/ball-run');await expect(difficultyGroup(page)).toBeVisible();
+  expect(await read('.br-modes','.br-mode','aria-checked')).toEqual(globle);
+  // Three equal segments side by side.
+  const boxes=await Promise.all(LEVELS.map(async level=>(await radio(page,level).boundingBox())!));
+  for(const box of boxes){expect(Math.abs(box.width-boxes[0].width)).toBeLessThanOrEqual(1);expect(Math.abs(box.y-boxes[0].y)).toBeLessThanOrEqual(.5);}
+  expect(boxes[0].x).toBeLessThan(boxes[1].x);expect(boxes[1].x).toBeLessThan(boxes[2].x);
 });
 
 test('real drag and held keys steer; P pauses and resumes; Study, blur, death and restore keep their contracts',async({page})=>{
@@ -223,11 +268,13 @@ test('real drag and held keys steer; P pauses and resumes; Study, blur, death an
     // Losing window focus releases a held key too.
     await page.keyboard.down('d');await page.clock.runFor(100);await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
     await page.clock.runFor(400);const blurred=await data(page,'x');await page.clock.runFor(250);expect(Math.abs(await data(page,'x')-blurred)).toBeLessThan(.02);await page.keyboard.up('d');
-    // Off the edge: a fall, a frozen score and the Game Over panel.
+    // Off the edge: a fall, a frozen score and the banner over the world; the reason goes to the status line too.
     await page.keyboard.down('ArrowRight');await runUntilPhase(page,'dying');const score=await root.getAttribute('data-score');
     await page.clock.runFor(300);await expect(root).toHaveAttribute('data-score',score!);
     await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
-    await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await expect(root.locator('.br-reason')).toHaveText('You fell off the track');
+    await expect(banner(page)).toBeVisible();await expect(banner(page).locator('.br-reason')).toHaveText('You fell off the track');
+    await expect(banner(page).locator('.br-final')).toHaveText(score!);await expect(banner(page)).toContainText(points(Number(score)));
+    await expect(page.locator('#game-status')).toContainText(`You fell off the track. ${points(Number(score))}.`);
     await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(root).toHaveAttribute('data-phase','running');
     await page.getByRole('button',{name:'Restart game',exact:true}).click();
     await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-distance','0.000');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
@@ -261,57 +308,64 @@ test('native phone touch drag steers continuously and cancel releases capture',a
   await expect(root).toHaveAttribute('data-phase','running');await context.close();
 });
 
-test('a restored Hard run hits a block: burst, Game Over with records, R and Home, and reload keeps the records',async({page})=>{
+test('a restored Hard run hits a block: burst, a banner over the world, R and Difficulty, and reload keeps the records',async({page})=>{
   test.setTimeout(180000);
   const {run,score}=beforeBlock(11,'hard'),records=emptyRecords();records.hard.allTime=score+600;
   await seed(page,snapshot(run,records));
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page),over=root.locator('.br-over');
-  await expect(page.getByRole('heading',{name:'Your run is waiting'})).toBeVisible();await expect(root.locator('.br-continue')).toContainText('Hard');await expect(root.locator('.br-continue')).toContainText(`${run.score} m`);
+  const root=game(page),bar=banner(page),best=bar.locator('.br-best'),again=page.getByRole('button',{name:'Play again',exact:true});
+  await expect(page.getByRole('heading',{name:'Your run is waiting'})).toBeVisible();await expect(root.locator('.br-continue')).toContainText('Hard');await expect(root.locator('.br-continue')).toContainText(points(run.score));
   await expect(root).toHaveAttribute('data-distance',run.distance.toFixed(3));
   // A restored run is announced, not only written to the status line; the canvas behind the panel is no Tab stop.
-  await expect(announced(page)).toHaveText(`Saved Hard run at ${run.score} metres. Press Continue to resume.`);await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
+  await expect(announced(page)).toHaveText(`Saved Hard run at ${points(run.score)}. Press Continue to resume.`);await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await runUntilPhase(page,'dying');await expect(root).toHaveAttribute('data-score',String(score));
+  // The reason is told at once, aloud and in the status line.
+  await expect(announced(page)).toHaveText(`You hit a block. ${points(score)}.`);
+  await expect(page.locator('#game-status')).toHaveText(`You hit a block. ${points(score)}. Press R or Play again for a new run.`);
   await page.clock.runFor(150);await evidence(page,`collision.png`);
   await runUntilPhase(page,'over');
-  // Mid-entrance: fading in and settling from a slightly smaller scale.
-  const mid=await entrance(over);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toMatch(/^matrix\(0\.9\d*, 0, 0, 0\.9\d*, 0, 0\)$/);
+  // No Game Over screen: the world stays in view, undimmed, while a banner fades in by opacity alone.
+  const mid=await entrance(bar);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toBe('none');
+  await expect(root.locator('.br-layer')).toBeHidden();await expect(page.getByRole('heading',{name:/game over/i})).toHaveCount(0);
   await page.clock.runFor(400);
-  const again=page.getByRole('button',{name:'Play again',exact:true});
   await expect(again).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
-  await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await expect(over.locator('.br-reason')).toHaveText('You hit a block');
-  await expect(over.locator('.br-final')).toHaveText(String(score));
-  await expect(over.locator('.br-badge')).toContainText('HARD');await expect(over.locator('.br-badge .br-face')).toHaveAttribute('data-face','hard');
-  const row=(name:string)=>over.locator('.br-row').filter({hasText:name});
-  await expect(row('Today’s best').locator('strong')).toHaveText(String(score));await expect(row('Today’s best')).toHaveAttribute('data-new','true');
-  await expect(row('Week’s best').locator('strong')).toHaveText(String(score));await expect(row('Week’s best')).toHaveAttribute('data-new','true');
-  await expect(row('All-time best').locator('strong')).toHaveText(String(score+600));await expect(row('All-time best')).toHaveAttribute('data-new','false');
+  await expect(root.locator('.br-hud')).toBeVisible();
+  await expect(bar.locator('.br-final')).toHaveText(String(score));await expect(bar).toContainText(points(score));
+  await expect(best).toHaveText(`Best ${score+600}`);await expect(best).toHaveAttribute('data-new','false');await expect(bar.locator('.br-reason')).toHaveText('You hit a block');
+  // The old results panel has gone: no records list, NEW marks, crown or Home.
+  await expect(root.locator('.br-over,.br-row,.br-crown,.br-new,.br-home')).toHaveCount(0);await expect(page.getByRole('button',{name:'Home',exact:true})).toHaveCount(0);
   // The final, unthrottled score report reaches the shell record.
   expect(await page.evaluate(key=>Number(localStorage.getItem(key)),BEST)).toBe(score);
-  await expectClear(page,over);await evidence(page,`results.png`);
-  await expectReadableLabel(again);
-  // Reopened at Game Over, the panel keeps this run's NEW markers and crown, with Play again focused as after a live death.
-  await page.reload();await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await page.clock.runFor(400);
-  await expect(over.locator('.br-final')).toHaveText(String(score));await expect(again).toBeFocused();
-  await expect(row('Today’s best')).toHaveAttribute('data-new','true');await expect(row('Week’s best')).toHaveAttribute('data-new','true');await expect(row('All-time best')).toHaveAttribute('data-new','false');
-  await expect(over.locator('.br-crown')).toBeVisible();
+  await expectClear(page,bar);await evidence(page,`banner-crash.png`);
+  // Below the shell's pause overlay (z-index 20).
+  expect(Number(await bar.evaluate(b=>getComputedStyle(b).zIndex))).toBeLessThan(20);
+  await page.locator('#pause-game').click();await expect(page.locator('#pause-overlay')).toBeVisible();
+  const centre=(await bar.boundingBox())!;
+  expect(await page.evaluate(([x,y])=>!!document.elementFromPoint(x,y)?.closest('#pause-overlay'),[centre.x+centre.width/2,centre.y+centre.height/2])).toBe(true);
+  await page.locator('#pause-game').click();await expect(page.locator('#pause-overlay')).toBeHidden();
+  // Reopened after the run ended, the banner is back with Play again focused, as after a live death.
+  await page.reload();await expect(bar).toBeVisible();await page.clock.runFor(400);
+  await expect(bar.locator('.br-final')).toHaveText(String(score));await expect(best).toHaveText(`Best ${score+600}`);await expect(again).toBeFocused();
+  await expect(root.locator('.br-layer')).toBeHidden();
   // R plays again at once on a new course of the same difficulty.
-  await page.keyboard.press('r');await expect(root).toHaveAttribute('data-phase','running');await page.clock.runFor(100);
+  await page.keyboard.press('r');await expect(root).toHaveAttribute('data-phase','running');await expect(bar).toBeHidden();await page.clock.runFor(100);
   expect(await data(page,'distance')).toBeLessThan(5);await expect(root).toHaveAttribute('data-difficulty','hard');expect((await saved(page)).run.seed).not.toBe(run.seed);
   // A key held through death stays released after Play again until it is pressed afresh.
-  await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await expect(over.locator('.br-reason')).toHaveText('You fell off the track');
-  await expect(row('Today’s best').locator('strong')).toHaveText(String(score));await expect(row('Today’s best')).toHaveAttribute('data-new','false');
+  await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await expect(bar.locator('.br-reason')).toHaveText('You fell off the track');
+  await expect(best).toHaveText(`Best ${score+600}`);
   await page.keyboard.press('r');await page.clock.runFor(300);await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-x','0.000');
   await page.keyboard.up('ArrowRight');await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
   await expect(again).toBeFocused();
-  await page.getByRole('button',{name:'Home',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');await expect(root).toHaveAttribute('data-phase','ready');
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeFocused();
+  // Difficulty reopens the setup panel on the current difficulty, focused there and ready to change it.
+  await bar.getByRole('button',{name:'Difficulty',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(root).toHaveAttribute('data-phase','ready');await expect(bar).toBeHidden();
+  await expectDifficulty(page,'Hard');await expect(radio(page,'Hard')).toBeFocused();await expect(page.locator('#game-status')).toHaveText('Choose a difficulty, then press Play.');
+  await page.keyboard.press('ArrowLeft');await expectDifficulty(page,'Medium');await page.keyboard.press('ArrowRight');await expectDifficulty(page,'Hard');
   await page.reload();
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expectDifficulty(page,'Hard');
   await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(100);
   await expect(root.locator('.br-target-label')).toHaveText('THIS WEEK');await expect(root.locator('.br-target-value')).toHaveText(String(score));
   expect(errors).toEqual([]);
@@ -356,8 +410,8 @@ test('a legacy save keeps its best as Medium’s all-time record on a new course
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page);
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toContainText('143');
-  await expect(page.locator('#game-status')).toContainText('143');await expect(announced(page)).toContainText('Your best of 143 m is kept');
+  await expectDifficulty(page,'Medium');await expect(root.locator('.br-note')).toContainText('143 points');
+  await expect(page.locator('#game-status')).toContainText('143');await expect(announced(page)).toContainText('Your best of 143 points is kept');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root.locator('.br-mode-label')).toHaveText('MEDIUM MODE');await expect(root.locator('.br-target-label')).toHaveText('ALL TIME');await expect(root.locator('.br-target-value')).toHaveText('143');
 });
@@ -385,35 +439,39 @@ test('a legacy save with no best opens the plain setup',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page);
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toBeHidden();
+  await expectDifficulty(page,'Medium');await expect(root.locator('.br-note')).toBeHidden();
   await expect(page.locator('#game-status')).toHaveText(/^Choose Easy, Medium or Hard, then press Play\./);
   expect(await page.locator('body').innerText()).not.toMatch(/best of|is kept/i);await expect(announced(page)).not.toContainText('best');
 });
 
-test('a restored Game Over shows only the NEW marks its records still confirm',async({page})=>{
+// Reopened from the save, a run's banner says New best only while its records still confirm it.
+for(const {name,above,marks,isNew} of [
+  {name:'a New best its records confirm',above:0,marks:{today:true,week:true,allTime:true},isNew:true},
+  {name:'a stale New best',above:600,marks:{allTime:true},isNew:false},
+  {name:'a damaged New best mark',above:0,marks:{allTime:'yes'},isNew:false},
+])test(`a restored ended run shows its banner: ${name}`,async({page})=>{
   const end=overRun(11,'hard'),now=new Date(),records=emptyRecords();
-  // Today's best is this run's score; this week's and all time are higher, so their saved marks are stale.
-  records.hard={allTime:end.score+600,day:dayKey(now),dayBest:end.score,week:weekKey(now),weekBest:end.score+5};
-  await seed(page,{...snapshot(end,records),marks:{today:true,week:true,allTime:'yes'}});
+  records.hard={allTime:end.score+above,day:dayKey(now),dayBest:end.score,week:weekKey(now),weekBest:end.score};
+  await seed(page,{...snapshot(end,records),marks});
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page),over=root.locator('.br-over'),row=(name:string)=>over.locator('.br-row').filter({hasText:name});
-  await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await expect(over.locator('.br-final')).toHaveText(String(end.score));
-  await expect(row('Today’s best')).toHaveAttribute('data-new','true');await expect(row('Week’s best')).toHaveAttribute('data-new','false');await expect(row('All-time best')).toHaveAttribute('data-new','false');
-  await expect(over.locator('.br-crown')).toBeVisible();
+  const root=game(page),bar=banner(page),best=bar.locator('.br-best');
+  await expect(bar).toBeVisible();await expect(root.locator('.br-layer')).toBeHidden();
+  await expect(bar.locator('.br-final')).toHaveText(String(end.score));await expect(bar).toContainText(points(end.score));
+  await expect(best).toHaveText(isNew?'New best':`Best ${end.score+above}`);await expect(best).toHaveAttribute('data-new',String(isNew));
   await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
   // The status line and the announcer give the result and what to do next, in the words of a live death, never the setup prompt.
-  const result=`You hit a block. ${end.score} metres. Press R or Play again for a new run.`;
+  const result=`You hit a block. ${points(end.score)}.${isNew?' New best!':''} Press R or Play again for a new run.`;
   await expect(page.locator('#game-status')).toHaveText(result);await expect(announced(page)).toHaveText(result);
 });
 
-test('under reduced motion Game Over only fades; shell Restart from dying or Game Over never commits twice',async({page})=>{
+test('under reduced motion the banner appears at once; shell Restart from dying or after the run never commits twice',async({page})=>{
   test.setTimeout(90000);
   await page.emulateMedia({reducedMotion:'reduce'});
   const {run,score}=beforeBlock(11,'hard'),first=new Date(2026,9,21,12),second=new Date(2026,9,22,12),third=new Date(2026,9,23,12);
   await seed(page,snapshot(run,emptyRecords()));const reports=await countReports(page);
   await page.clock.install({time:first});await page.clock.pauseAt(new Date(first.getTime()+1000));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page),over=root.locator('.br-over'),restart=page.getByRole('button',{name:'Restart game',exact:true});
+  const root=game(page),bar=banner(page),restart=page.getByRole('button',{name:'Restart game',exact:true});
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await runUntilPhase(page,'dying');
   const dead=(await saved(page)).records.hard,count=await reports();
@@ -424,13 +482,13 @@ test('under reduced motion Game Over only fades; shell Restart from dying or Gam
   expect((await saved(page)).records.hard).toEqual(dead);expect(await reports()).toBe(count);
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
-  // Reduced motion: the panel fades in at full size.
-  const mid=await entrance(over);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toBe('none');
+  // Reduced motion: no fade at all, the banner is fully there the moment the run ends.
+  const shown=await entrance(bar);expect(shown.opacity).toBe(1);expect(shown.transform).toBe('none');
   await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();
-  await page.clock.runFor(400);await expectClear(page,over);
+  await expectClear(page,bar);
   const ended=(await saved(page)).records.hard,count2=await reports();
   expect(ended.day).toBe(dayKey(second));expect(count2).toBeGreaterThan(count);
-  await page.clock.setSystemTime(third);await restart.click();await expect(root).toHaveAttribute('data-phase','ready');
+  await page.clock.setSystemTime(third);await restart.click();await expect(root).toHaveAttribute('data-phase','ready');await expect(bar).toBeHidden();
   expect((await saved(page)).records.hard).toEqual(ended);expect(await reports()).toBe(count2);
 });
 
@@ -477,7 +535,7 @@ test('a curve reads as a curve',async({page})=>{
   await expect(game(page)).toHaveAttribute('data-phase','running');await evidence(page,`curve.png`);
 });
 
-for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768},{width:1920,height:1080},{width:667,height:330},{width:568,height:320}])test(`fills ${viewport.width}x${viewport.height} with a round ball and keeps every panel on screen`,async({page})=>{
+for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768},{width:1920,height:1080},{width:667,height:330},{width:568,height:320}])test(`fills ${viewport.width}x${viewport.height} with a round ball and keeps the banner and every panel on screen`,async({page})=>{
   test.setTimeout(120000);
   await page.setViewportSize(viewport);await seed(page,snapshot(onStraight(3,'medium'),emptyRecords()));
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
@@ -506,9 +564,14 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await evidence(page,`${viewport.width}x${viewport.height}.png`);
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');await page.clock.runFor(400);
-  await expectClear(page,root.locator('.br-over'));await evidence(page,`over-${viewport.width}x${viewport.height}.png`);
-  await page.getByRole('button',{name:'Home',exact:true}).click();
-  await expectClear(page,root.locator('.br-setup'));await evidence(page,`setup-${viewport.width}x${viewport.height}.png`);
+  // The banner: near the bottom, above the shell's controls and the rankings pill, the HUD still showing.
+  const bar=banner(page);await expectClear(page,bar);await expect(root.locator('.br-hud')).toBeVisible();await expect(root.locator('.br-layer')).toBeHidden();
+  const placed=(await bar.boundingBox())!;expect(placed.y+placed.height).toBeGreaterThan(viewport.height*.7);
+  await expect(bar.locator('.br-final')).toHaveText((await root.getAttribute('data-score'))!);await expect(bar.locator('.br-best')).toHaveText('New best');
+  await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();
+  await evidence(page,`banner-${viewport.width}x${viewport.height}.png`);
+  await bar.getByRole('button',{name:'Difficulty',exact:true}).click();
+  await expectClear(page,root.locator('.br-setup'));await expectDifficulty(page,'Medium');await evidence(page,`setup-${viewport.width}x${viewport.height}.png`);
   await page.getByRole('button',{name:'How to play',exact:true}).click();await expectClear(page,root.locator('.br-setup'));
   // However short the screen, all of the help can be read: the list scrolls to its last line.
   const help=root.locator('.br-help');await help.evaluate(list=>{list.scrollTop=list.scrollHeight;});
@@ -530,12 +593,12 @@ test('lost WebGL visibly saves and remains stopped until exit and re-entry',asyn
 });
 
 test('losing WebGL while a panel control has focus moves focus to the message',async({page})=>{
-  await page.goto('/#/game/ball-run');const slider=page.getByRole('slider',{name:'Difficulty'});
-  await slider.focus();await expect(slider).toBeFocused();
+  await page.goto('/#/game/ball-run');const medium=radio(page,'Medium');
+  await medium.focus();await expect(medium).toBeFocused();
   await page.evaluate(()=>document.querySelector<HTMLCanvasElement>('.ball-run canvas')!.getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext());
   const heading=page.getByRole('heading',{name:'Graphics interrupted'});
   await expect(heading).toBeVisible();await expect(heading).toBeFocused();await expect(heading).toHaveAttribute('tabindex','-1');
-  await expect(slider).toBeHidden();
+  await expect(difficultyGroup(page)).toBeHidden();
 });
 
 test('unsupported WebGL gives a visible useful fallback and never overwrites the save',async({page})=>{

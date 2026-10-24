@@ -3,7 +3,7 @@
  * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
 import { sweepSphereBox } from '../../core/collision';
 import {
-  BANK_DRIFT, DYING_DURATION, EDGE_SUPPORT, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, STEER_RESPONSE,
+  BANK_DRIFT, CONFIG, DYING_DURATION, EDGE_SUPPORT, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, STEER_RESPONSE,
   isDifficulty, lateralSpeed,
   type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';
@@ -19,6 +19,8 @@ const MAX_SCORE = 2147483647;
 const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
 const blankPose = (): ObstaclePose => ({ x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+/** The score: whole points for the metres travelled, at the difficulty's rate. */
+const pointsAt = (difficulty: Difficulty, distance: number) => Math.min(MAX_SCORE, Math.floor(distance * CONFIG[difficulty].pointsPerMetre));
 
 /** Ball-centre height resting on the sampled road at world x. */
 const restOn = (s: TrackSample, x: number) => s.elevation - (x - s.center) * Math.tan(s.bank) + RADIUS / Math.cos(s.bank);
@@ -79,11 +81,11 @@ function testBlock(o: Obstacle): void {
   hit = sweepSphereBox(sweepFrom, sweepTo, origin, half, RADIUS);
 }
 
-function die(run: Run, reason: 'block' | 'fall', score: number): void {
+function die(run: Run, reason: 'block' | 'fall', distance: number): void {
   run.phase = 'dying';
   run.reason = reason;
   run.dyingTime = 0;
-  run.score = Math.min(MAX_SCORE, Math.floor(score));
+  run.score = pointsAt(run.difficulty, distance);
 }
 
 /** Advances a run by dt seconds. Ignores non-finite input, and dt outside (0, 0.05]. */
@@ -144,7 +146,7 @@ export function step(run: Run, input: number, dt: number): void {
     const edge = clamp(run.x, s.center - s.width / 2, s.center + s.width / 2);
     if (run.height < restOn(s, edge) - FALL_DEPTH) { die(run, 'fall', run.distance); return; }
   }
-  run.score = Math.min(MAX_SCORE, Math.floor(run.distance));
+  run.score = pointsAt(run.difficulty, run.distance);
 }
 
 /** A fall keeps flying forward and down; a block hit stays where it stopped. */
@@ -171,29 +173,30 @@ const isInt = (v: unknown, lo: number, hi: number): v is number => isNumber(v) &
 /** A fresh, fully checked copy of a saved v4 run, or null. Cheap checks come first, so a
  * damaged save never makes the course generate far ahead. Beyond the plan's list (ratified):
  * distance ≤ 1e6; elapsed ≤ 1e7; reason matches the phase; dyingTime is 0 while live and at most
- * DYING_DURATION + 0.05; a dead run's gateIndex lies between the gates behind its score and those
- * behind its distance (a falling ball keeps moving); a grounded ball is also supported; a running
- * airborne ball is not already below the fall depth; height is within 100 m of the road; and
- * run.difficulty equals the snapshot's. */
+ * DYING_DURATION + 0.05; the score is the points for the distance while live and no more once dead;
+ * a dead run's gateIndex lies between the gates behind the earliest distance its points allow
+ * (score / pointsPerMetre) and those behind its distance (a falling ball keeps moving); a grounded
+ * ball is also supported; a running airborne ball is not already below the fall depth; height is
+ * within 100 m of the road; and run.difficulty equals the snapshot's. */
 function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
   if (!isObject(value)) return null;
   const r = value;
   if (r.version !== 4 || r.difficulty !== difficulty || !PHASES.includes(r.phase as Phase) || typeof r.grounded !== 'boolean') return null;
   for (const key of ['distance', 'x', 'vx', 'height', 'vy', 'elapsed', 'speedUpTime', 'gateIndex', 'dyingTime', 'score'] as const) if (!isNumber(r[key])) return null;
   const phase = r.phase as Phase, distance = r.distance as number, score = r.score as number, gateIndex = r.gateIndex as number;
-  const live = phase === 'ready' || phase === 'running';
+  const live = phase === 'ready' || phase === 'running', rate = CONFIG[difficulty].pointsPerMetre;
   if (!isInt(r.seed, 1, 0xffffffff) || !isInt(r.run, 1, 1e8)) return null;
   if (distance < 0 || distance > MAX_RESTORE_DISTANCE || Math.abs(r.x as number) > 50 || Math.abs(r.vx as number) > 40 || Math.abs(r.vy as number) > 200) return null;
   if ((r.elapsed as number) < 0 || (r.elapsed as number) > 1e7 || (r.speedUpTime as number) < 0 || (r.speedUpTime as number) > GATE_FEEDBACK) return null;
   if ((r.dyingTime as number) < 0 || (r.dyingTime as number) > DYING_DURATION + .05 || (live && r.dyingTime !== 0)) return null;
   if (live ? r.reason !== '' : r.reason !== 'block' && r.reason !== 'fall') return null;
-  if (!Number.isInteger(score) || !Number.isInteger(gateIndex) || score < 0 || score > Math.floor(distance) || (live && score !== Math.floor(distance))) return null;
+  if (!Number.isInteger(score) || !Number.isInteger(gateIndex) || score < 0 || score > pointsAt(difficulty, distance) || (live && score !== pointsAt(difficulty, distance))) return null;
 
   const course = getCourse(r.seed as number, difficulty), s = course.sample(distance), rest = restOn(s, r.x as number);
   // Every gate spans the road: a live run has passed exactly the gates behind it; a dead
-  // one passed those behind the point where it died and no more.
+  // one passed those behind the point where it died (at least score / rate) and no more.
   const passed = course.gatesBefore(distance) - 1;
-  if (live ? gateIndex !== passed : gateIndex < course.gatesBefore(score) - 1 || gateIndex > passed) return null;
+  if (live ? gateIndex !== passed : gateIndex < course.gatesBefore(score / rate) - 1 || gateIndex > passed) return null;
   const height = r.height as number;
   if (Math.abs(height - rest) > 100) return null;
   if (r.grounded) {

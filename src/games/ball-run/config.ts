@@ -64,6 +64,8 @@ export interface DifficultyConfig {
   readonly patterns: Readonly<Record<PatternKind, number>>;
   /** Difficulty badge and Play colour. Text labels always accompany it. */
   readonly color: string;
+  /** Score: whole points = floor(metres × this). Easy earns less per metre; Medium stays 1 so a legacy best keeps its value. */
+  readonly pointsPerMetre: number;
 }
 
 export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
@@ -75,7 +77,7 @@ export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
     gate: { speedGain: 1, interval: [30, 45] },
     segments: { straight: 30, bend: 20, offset: 15, ribbon: 8, ribbonBend: 0, bank: 8, crest: 8, dip: 4, drop: 4 },
     patterns: { single: 30, pair: 18, gate: 16, doubleGate: 10, slalom: 8, zigzag: 4, scatter: 6, slider: 0, wallRun: 6, bigBlock: 4 },
-    color: '#2bb24c',
+    color: '#2bb24c', pointsPerMetre: .5,
   },
   medium: {
     label: 'Medium', startSpeed: 11, acceleration: .045, maxSpeed: 50,
@@ -85,7 +87,7 @@ export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
     gate: { speedGain: 1.25, interval: [25, 40] },
     segments: { straight: 22, bend: 18, offset: 15, ribbon: 8, ribbonBend: 4, bank: 10, crest: 8, dip: 4, drop: 5 },
     patterns: { single: 18, pair: 14, gate: 16, doubleGate: 10, slalom: 10, zigzag: 8, scatter: 8, slider: 8, wallRun: 5, bigBlock: 5 },
-    color: '#e2a21b',
+    color: '#e2a21b', pointsPerMetre: 1,
   },
   hard: {
     label: 'Hard', startSpeed: 13, acceleration: .06, maxSpeed: 62,
@@ -95,7 +97,7 @@ export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
     gate: { speedGain: 1.5, interval: [20, 35] },
     segments: { straight: 15, bend: 16, offset: 15, ribbon: 9, ribbonBend: 6, bank: 12, crest: 8, dip: 4, drop: 6 },
     patterns: { single: 10, pair: 12, gate: 16, doubleGate: 10, slalom: 12, zigzag: 12, scatter: 9, slider: 12, wallRun: 5, bigBlock: 6 },
-    color: '#f0524f',
+    color: '#f0524f', pointsPerMetre: 1,
   },
 };
 
