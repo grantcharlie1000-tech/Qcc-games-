@@ -171,7 +171,7 @@ function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
   if (r.version !== 4 || r.difficulty !== difficulty || !PHASES.includes(r.phase as Phase) || typeof r.grounded !== 'boolean') return null;
   for (const key of ['distance', 'x', 'vx', 'height', 'vy', 'elapsed', 'speedUpTime', 'gateIndex', 'dyingTime', 'score'] as const) if (!isNumber(r[key])) return null;
   const phase = r.phase as Phase, distance = r.distance as number, score = r.score as number, gateIndex = r.gateIndex as number;
-  const ended = phase === 'dying' || phase === 'over', live = phase === 'ready' || phase === 'running';
+  const live = phase === 'ready' || phase === 'running';
   if (!isInt(r.seed, 1, 0xffffffff) || !isInt(r.run, 1, 1e8)) return null;
   if (distance < 0 || distance > MAX_RESTORE_DISTANCE || Math.abs(r.x as number) > 50 || Math.abs(r.vx as number) > 40 || Math.abs(r.vy as number) > 200) return null;
   if ((r.elapsed as number) < 0 || (r.elapsed as number) > 1e7 || (r.speedUpTime as number) < 0 || (r.speedUpTime as number) > GATE_FEEDBACK) return null;
@@ -202,18 +202,23 @@ function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
  * dropped). v1–v3 saves come from another course: only their best survives, as Medium's
  * all-time record. Anything else is null. Never throws. */
 export function restoreSnapshot(value: unknown): { difficulty: Difficulty; records: Records; run: Run | null; migrated: boolean } | null {
-  if (!isObject(value)) return null;
-  if (value.version === 4) {
-    const records = restoreRecords(value.records), saved = isObject(value.run) ? value.run.difficulty : null;
-    const difficulty = isDifficulty(value.difficulty) ? value.difficulty : isDifficulty(saved) ? saved : 'medium';
-    let run: Run | null = null;
-    try { run = restoreRun(value.run, difficulty); } catch { run = null; }
-    return { difficulty, records, run, migrated: false };
+  try {
+    if (!isObject(value)) return null;
+    if (value.version === 4) {
+      // A damaged difficulty falls back to the run's, then Medium, rather than losing the records.
+      const records = restoreRecords(value.records), saved = isObject(value.run) ? value.run.difficulty : null;
+      const difficulty = isDifficulty(value.difficulty) ? value.difficulty : isDifficulty(saved) ? saved : 'medium';
+      let run: Run | null = null;
+      try { run = restoreRun(value.run, difficulty); } catch { run = null; }
+      return { difficulty, records, run, migrated: false };
+    }
+    if ((value.version === 1 || value.version === 2 || value.version === 3) && isNumber(value.best) && value.best >= 0) {
+      const records = emptyRecords();
+      records.medium.allTime = Math.min(MAX_SCORE, Math.floor(value.best));
+      return { difficulty: 'medium', records, run: null, migrated: true };
+    }
+    return null;
+  } catch {
+    return null;
   }
-  if ((value.version === 1 || value.version === 2 || value.version === 3) && isNumber(value.best) && value.best >= 0) {
-    const records = emptyRecords();
-    records.medium.allTime = Math.min(MAX_SCORE, Math.floor(value.best));
-    return { difficulty: 'medium', records, run: null, migrated: true };
-  }
-  return null;
 }
