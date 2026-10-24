@@ -423,12 +423,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     commit(trail, shown);
   }
 
-  /** Fragments are an analytic function of dyingTime, seeded by the run, so pause and restore are exact. */
+  /** Fragments are an analytic function of dyingTime, seeded by the run, so pause and restore are exact.
+   * A thrown fragment comes to rest on the drawn road under its own x and z, which rises toward
+   * the camera with the course's slope and follows local gradient and bank (a flat floor at the
+   * ball's base let fragments sink into it). It rests on the tops of the lane and cross lines,
+   * which stand LIFT above the tiles, so no line cuts it. Reduced-motion fragments do not move,
+   * so they need no floor. */
   function drawBurst(run: Run, reduced: boolean): void {
     const t = clamp(run.dyingTime, 0, DYING_DURATION), k = t / DYING_DURATION;
     const show = run.phase === 'dying' && run.reason === 'block' && k < 1;
     const n = show ? reduced ? BURST_REDUCED : BURST : 0;
-    const bx = run.x, by = run.height + SLOPE * run.distance, floor = by - RADIUS;
+    const lift = SLOPE * run.distance, bx = run.x, by = run.height + lift, floor = lift + LIFT + LINE_HEIGHT / 2;
     for (let i = 0, seed = run.seed; i < n; i++) {
       const h = i * 10;
       let size = .06 + .1 * unit(seed, h), spin = 0;
@@ -440,8 +445,16 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
         z += (-.4 + 4.2 * unit(seed, h + 6)) * t;
         spin = (unit(seed, h + 7) - .5) * 14 * t;
         size *= 1 - .45 * k;
+        // Under the fragment the road is locally the plane y = y0 + gx·Δx + gz·Δz (render space,
+        // +z toward the camera). A cube spun by R (Euler YXZ: spin, 0.7·spin) reaches below that
+        // plane by up to size/2 · Σᵢ|(Rᵀw)ᵢ| with w = (gx, −1, gz), so its centre keeps that height.
+        track(run.distance - z, S);
+        const gx = -Math.tan(S.bank), gz = -S.gradient;
+        const sa = Math.sin(spin), ca = Math.cos(spin), sb = Math.sin(.7 * spin), cb = Math.cos(.7 * spin), p = gx * sb + gz * cb;
+        const reach = size / 2 * (Math.abs(gx * cb - gz * sb) + Math.abs(sa * p - ca) + Math.abs(ca * p + sa));
+        y = Math.max(y, S.elevation + (x - S.center) * gx + floor + reach);
       }
-      position.set(x, Math.max(y, floor + size / 2), z);
+      position.set(x, y, z);
       rotation.set(spin, spin * .7, 0, 'YXZ');
       scale.setScalar(size);
       place(burst, i);
@@ -452,17 +465,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     commit(burst, n);
   }
 
-  /** Road centre and elevation averaged over `span` metres from `distance + from`: a box
+  /** Road centre and elevation averaged over `span` metres from `distance + offset`: a box
    * filter over 1 m samples that slides continuously, so a drop's step in elevation
    * moves the camera smoothly instead of snapping it. */
   let windowCenter = 0, windowElevation = 0;
-  function roadWindow(distance: number, from: number, span: number): void {
+  function roadWindow(distance: number, offset: number, span: number): void {
     const base = Math.floor(distance), f = distance - base;
     let c = 0, e = 0;
     for (let k = 0; k <= span; k++) {
       const w = k === 0 ? 1 - f : k === span ? f : 1;
       if (w <= 0) continue;
-      track(base + from + k, S);
+      track(base + offset + k, S);
       c += w * S.center;
       e += w * S.elevation;
     }

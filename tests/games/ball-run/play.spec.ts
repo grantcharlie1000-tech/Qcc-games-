@@ -9,8 +9,9 @@ import {placeRun} from './bot';
 test.use({video:{mode:'on',size:{width:390,height:844}}});
 
 const SAVE='pocket-arcade:v1:save:ball-run',BEST='pocket-arcade:v1:best:ball-run',EVIDENCE='tests/games/ball-run/evidence';
-// Tracked evidence screenshots are refreshed on purpose (BALL_RUN_EVIDENCE=1), not on every run.
-const evidence=(page:Page,name:string)=>process.env.BALL_RUN_EVIDENCE?page.screenshot({path:`${EVIDENCE}/${name}`}).then(()=>{}):Promise.resolve();
+// Tracked evidence screenshots are refreshed on purpose (BALL_RUN_EVIDENCE=1), not on every run, and only
+// by the Chromium project: one engine (and one pixel ratio) for the whole set, never WebKit overwriting it.
+const evidence=(page:Page,name:string)=>process.env.BALL_RUN_EVIDENCE&&test.info().project.name==='chromium'?page.screenshot({path:`${EVIDENCE}/${name}`}).then(()=>{}):Promise.resolve();
 const game=(page:Page)=>page.locator('.ball-run');
 const data=async(page:Page,name:string)=>Number(await game(page).getAttribute(`data-${name}`));
 const saved=(page:Page)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);
@@ -104,6 +105,23 @@ async function expectReadableLabel(button:Locator){
   const measured=await labelEdge(button);
   expect(measured.edge,'label edge against the fill').toBeGreaterThanOrEqual(3);expect(measured.label,'label against its edge').toBeGreaterThanOrEqual(7);
   expect(measured.shadows,'an edge on every side').toBeGreaterThanOrEqual(8);
+}
+/** The speed readout crosses a gate's arch bars, lavender #929bfb (scene.ts's grid colour). Its text is opaque and
+ * outlined on all eight sides by a hard, opaque edge: the edge stands out from the bars, and the text from its edge. */
+async function expectReadableSpeed(page:Page){
+  const measured=await game(page).locator('.br-speed').evaluate(e=>{
+    const style=getComputedStyle(e),rgba=(s:string)=>{const v=s.match(/[\d.]+/g)!.map(Number);return [v[0],v[1],v[2],v[3]??1];};
+    const lum=(c:number[])=>{const [r,g,bl]=c.slice(0,3).map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4;});return .2126*r+.7152*g+.0722*bl;};
+    const ratio=(a:number[],c:number[])=>{const [x,y]=[lum(a),lum(c)].sort((p,q)=>q-p);return (x+.05)/(y+.05);};
+    const text=rgba(style.color),edges=style.textShadow.split(/,(?![^(]*\))/).map(shadow=>{
+      const colour=rgba(shadow.match(/rgba?\([^)]*\)/)![0]),[x,y,blur]=shadow.replace(/rgba?\([^)]*\)/,'').trim().split(/\s+/).map(parseFloat);
+      return {colour,x,y,blur};
+    }).filter(s=>s.blur===0&&s.colour[3]===1&&(s.x!==0||s.y!==0));
+    const sides=new Set(edges.map(s=>`${Math.sign(s.x)},${Math.sign(s.y)}`)).size,edge=edges[0]?.colour??[0,0,0,0];
+    return {alpha:text[3],sides,bars:ratio(edge,[146,155,251]),text:ratio(text,edge)};
+  });
+  expect(measured.alpha,'opaque text').toBe(1);expect(measured.sides,'an edge on every side').toBe(8);
+  expect(measured.bars,'edge against the arch bars').toBeGreaterThanOrEqual(4.5);expect(measured.text,'text against its edge').toBeGreaterThanOrEqual(7);
 }
 const announced=(page:Page)=>page.locator('#announcer');
 /** Counts the shell's score reports (each one writes the shell record). */
@@ -300,16 +318,19 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
 });
 
 test('shell Restart abandoning a run commits its score once, to today’s best and the shell record',async({page})=>{
-  const now=new Date(),records=emptyRecords();records.medium={allTime:5000,day:'',dayBest:0,week:weekKey(now),weekBest:4000};
+  // A Wednesday and the Thursday after it: one week, two days.
+  const now=new Date(2026,9,21,12),tomorrow=new Date(2026,9,22,12),records=emptyRecords();records.medium={allTime:5000,day:'',dayBest:0,week:weekKey(now),weekBest:4000};
   await seed(page,snapshot(null,records,'medium'));
   // Every shell score report writes storage: count them.
-  await page.addInitScript(key=>{const writes:number[]=[],set=Storage.prototype.setItem;(window as unknown as {bestWrites:number[]}).bestWrites=writes;Storage.prototype.setItem=function(this:Storage,k:string,v:string){if(k===key)writes.push(performance.now());return set.call(this,k,v);};},BEST);
+  const reports=await countReports(page);
+  await page.clock.install({time:now});await page.clock.pauseAt(new Date(now.getTime()+1000));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page);
   await expect(root).toHaveAttribute('data-difficulty','medium');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root.locator('.br-target-label')).toHaveText('THIS WEEK');await expect(root.locator('.br-target-value')).toHaveText('4000');
-  await waitDistance(page,25);
+  for(let t=0;t<6000&&await data(page,'distance')<25;t+=50)await page.clock.runFor(50);
+  expect(await data(page,'distance')).toBeGreaterThanOrEqual(25);await expect(root).toHaveAttribute('data-phase','running');
   await page.getByRole('button',{name:'Restart game',exact:true}).click();
   await expect(root).toHaveAttribute('data-phase','ready');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
   // Running reports are at least 250 ms apart; only the final one, at the commit, is not throttled.
@@ -321,13 +342,17 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   expect(await page.evaluate(key=>Number(localStorage.getItem(key)),BEST)).toBe(kept.dayBest);
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root.locator('.br-target-label')).toHaveText('TODAY');await expect(root.locator('.br-target-value')).toHaveText(String(kept.dayBest));
-  // A run abandoned before its first metre has nothing to commit.
+  // A run abandoned before its first metre has nothing to commit. The clock stands still, so the run is still at 0 m;
+  // on the next day a commit would change the records (today's best starts afresh) and report the score again.
+  await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-distance','0.000');
+  const count=await reports();await page.clock.setSystemTime(tomorrow);
   await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(root).toHaveAttribute('data-phase','ready');
-  expect((await saved(page)).records.medium).toEqual(kept);
+  expect((await saved(page)).records.medium).toEqual(kept);expect(await reports()).toBe(count);
 });
 
+const legacySave={version:1,seed:8,run:2,phase:'running',distance:58,x:0,vx:0,height:.38,vy:0,grounded:true,elapsed:2,best:143,reason:''};
 test('a legacy save keeps its best as Medium’s all-time record on a new course',async({page})=>{
-  await seed(page,{version:1,seed:8,run:2,phase:'running',distance:58,x:0,vx:0,height:.38,vy:0,grounded:true,elapsed:2,best:143,reason:''});
+  await seed(page,legacySave);
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page);
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
@@ -335,6 +360,24 @@ test('a legacy save keeps its best as Medium’s all-time record on a new course
   await expect(page.locator('#game-status')).toContainText('143');await expect(announced(page)).toContainText('Your best of 143 m is kept');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root.locator('.br-mode-label')).toHaveText('MEDIUM MODE');await expect(root.locator('.br-target-label')).toHaveText('ALL TIME');await expect(root.locator('.br-target-value')).toHaveText('143');
+});
+
+// Short landscape screens, down to a phone with browser bars: the note gives way, never Play or How to play.
+for(const viewport of [{width:568,height:320},{width:667,height:330},{width:568,height:300},{width:640,height:300}])test(`a legacy save's note keeps Play and How to play in view at ${viewport.width}x${viewport.height}`,async({page})=>{
+  await seed(page,legacySave);
+  await page.setViewportSize(viewport);await page.goto('/#/game/ball-run');
+  const root=game(page),setup=root.locator('.br-setup'),note=root.locator('.br-note');
+  await expect(note).toContainText('143');await expectClear(page,setup);
+  for(const name of ['Play','How to play']){
+    const shown=await page.getByRole('button',{name,exact:true}).evaluate(b=>{
+      const r=b.getBoundingClientRect(),p=b.closest('.br-panel')!.getBoundingClientRect();
+      const inside=r.top>=p.top-.5&&r.bottom<=p.bottom+.5&&r.left>=p.left-.5&&r.right<=p.right+.5&&r.bottom<=innerHeight&&r.right<=innerWidth;
+      return inside&&[[.5,.5],[.2,.2],[.8,.2],[.2,.8],[.8,.8]].every(([fx,fy])=>{const hit=document.elementFromPoint(r.x+r.width*fx,r.y+r.height*fy);return !!hit&&b.contains(hit);});
+    });
+    expect(shown,`${name} is fully visible`).toBe(true);
+  }
+  // The note gives way only as a last resort (it would scroll): at these sizes all of it shows.
+  expect(await note.evaluate(n=>n.clientHeight>0&&n.scrollHeight<=n.clientHeight+1)).toBe(true);
 });
 
 test('a legacy save with no best opens the plain setup',async({page})=>{
@@ -358,6 +401,9 @@ test('a restored Game Over shows only the NEW marks its records still confirm',a
   await expect(row('Today’s best')).toHaveAttribute('data-new','true');await expect(row('Week’s best')).toHaveAttribute('data-new','false');await expect(row('All-time best')).toHaveAttribute('data-new','false');
   await expect(over.locator('.br-crown')).toBeVisible();
   await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
+  // The status line and the announcer give the result and what to do next, in the words of a live death, never the setup prompt.
+  const result=`You hit a block. ${end.score} metres. Press R or Play again for a new run.`;
+  await expect(page.locator('#game-status')).toHaveText(result);await expect(announced(page)).toHaveText(result);
 });
 
 test('under reduced motion Game Over only fades; shell Restart from dying or Game Over never commits twice',async({page})=>{
@@ -401,6 +447,8 @@ test('a gate is a permanent speed boost with visible Speed Up feedback',async({p
   for(let i=0;i<60&&await root.getAttribute('data-boost')!=='true';i++)await page.clock.runFor(25);
   await expect(root).toHaveAttribute('data-boost','true');await expect(root).toHaveAttribute('data-gates','1');
   await expect(boost).toBeVisible();await expect(boost).toHaveText('Speed Up');
+  // Inside the arch: the speed readout, which the gate has just raised, stays readable over the arch bars.
+  await expect(root.locator('.br-speed')).toBeVisible();await expectReadableSpeed(page);
   await page.clock.runFor(350);await evidence(page,`boost.png`);
   for(let i=0;i<60&&await root.getAttribute('data-boost')!=='false';i++)await page.clock.runFor(50);
   await expect(root).toHaveAttribute('data-boost','false');await expect(boost).toBeHidden();await expect(root).toHaveAttribute('data-phase','running');

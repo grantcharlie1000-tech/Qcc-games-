@@ -22,7 +22,9 @@
 .br-target[data-scope=week]{color:#ff6f9c}
 .br-target[data-scope=allTime]{color:#37e2b3}
 .br-target[data-scope=new]{color:#ffe066}
-.br-speed{margin-top:2px;font-size:10px;color:#c9c6f0b8;text-shadow:0 1px 2px #000}
+/* The speed crosses a gate's lavender arch bars just as a gate changes it: opaque text in a hard black outline on
+ * every side (as on the buttons' labels) with the HUD's halo, so it reads over the bars as well as over the void. */
+.br-speed{margin-top:2px;font-size:10px;color:#ecebff;text-shadow:-1px -1px 0 #000,0 -1px 0 #000,1px -1px 0 #000,1px 0 0 #000,1px 1px 0 #000,0 1px 0 #000,-1px 1px 0 #000,-1px 0 0 #000,0 1px 3px #000d}
 /* Speed Up sits beside the ball, lower left (index.ts places it from the ball's screen position). */
 .br-boost{position:absolute;left:0;top:0;z-index:4;font-size:clamp(16px,2.4vmin + 6px,24px);line-height:1;font-style:italic;letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none;text-shadow:0 0 10px #00e7ef,0 2px 0 #8a0a6c}
 /* index.ts sets these every frame. The shell's reduced-motion rule gives every element a
@@ -48,8 +50,8 @@
 .br-button:active,.br-home:active,.br-help-toggle:active{transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.br-button:hover,.br-home:hover,.br-help-toggle:hover{filter:brightness(1.08)}}
 
-/* Setup: purple heading over a dark body, as on the reference menu. Only the help list shrinks (it scrolls),
- * so Play and How to play always stay in view. */
+/* Setup: purple heading over a dark body, as on the reference menu. Only the help list and a saved best's
+ * note shrink (they scroll), so Play and How to play always stay in view. */
 .br-setup{background:#1d1d22f2;display:flex;flex-direction:column}
 .br-head{flex:none;padding:20px 20px 46px;background:linear-gradient(#3f1a4cf2,#2a1236f2);display:grid;gap:10px}
 .br-body{flex:0 1 auto;min-height:0;padding:0 20px 20px;display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -73,7 +75,7 @@
 .br-help{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;display:grid;align-content:start;gap:7px;padding:0;list-style:none;text-align:left;font-size:14px;line-height:1.3;color:#f3eefb}
 .br-help li{padding-left:16px;position:relative}
 .br-help li::before{content:'';position:absolute;left:2px;top:.42em;width:7px;height:7px;border-radius:2px;background:var(--br-accent)}
-.br-note{font:13px/1.4 system-ui,sans-serif;color:#ffe0a4}
+.br-note{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;font:13px/1.4 system-ui,sans-serif;color:#ffe0a4}
 
 .br-continue{background:#1d1d22f2;padding:22px 20px 20px;display:grid;gap:12px;justify-items:center}
 
@@ -156,6 +158,12 @@
   .br-face-slot{width:46px;height:46px}
   .br-level{font-size:21px}
   .br-help{font-size:12px;gap:4px}
+  .br-note{font-size:12px;line-height:1.3}
+  /* A saved best's note needs the room: the face moves beside the difficulty's name, the slider stays full width. */
+  .br-setup:has(.br-note:not([hidden])) .br-pick{grid-template-columns:1fr auto auto 1fr;align-items:center;column-gap:10px}
+  .br-setup:has(.br-note:not([hidden])) .br-face-slot{grid-column:2;width:40px;height:40px}
+  .br-setup:has(.br-note:not([hidden])) .br-level{grid-column:3}
+  .br-setup:has(.br-note:not([hidden])) .br-slider{grid-column:1/-1}
   .br-button{min-height:40px;font-size:20px}
   .br-home{width:48px;height:40px}
   .br-help-toggle{width:36px;height:36px}

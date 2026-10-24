@@ -120,6 +120,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   const active = () => !paused && !disposed && !contextLost && !waiting && (run.phase === 'running' || run.phase === 'dying');
   const label = () => CONFIG[run.difficulty].label;
+  const overReason = () => run.reason === 'fall' ? 'You fell off the track' : 'You hit a block';
+  /** Game Over's status line, after a live death and on a Game Over reopened from the save. */
+  const overStatus = () => `${overReason()}. ${run.score} metres. Press R or Play again for a new run.`;
   const snapshot = (): Saved => ({ version: 4, difficulty: run.difficulty, records, run: { ...run }, marks: { ...marks } });
   const save = () => context.save(snapshot());
   function releasePointer() {
@@ -160,7 +163,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   function fillResults() {
     const values: Record<Scope, number> = viewRecords(records, run.difficulty, new Date());
-    reason.textContent = run.reason === 'fall' ? 'You fell off the track' : 'You hit a block';
+    reason.textContent = overReason();
     final.textContent = String(run.score);
     SCOPES.forEach((s, i) => { rows[i].querySelector('strong')!.textContent = String(values[s]); rows[i].dataset.new = String(marks[s]); });
     crown.toggleAttribute('hidden', !SCOPES.some(s => marks[s]));
@@ -273,10 +276,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   function died() {
     clearInput();
     finish();
-    const text = run.reason === 'fall' ? 'You fell off the track' : 'You hit a block';
     context.sound('lose');
-    context.setStatus(`${text}. ${run.score} metres. Press R or Play again for a new run.`);
-    context.announce(`${text} at ${run.score} metres.`);
+    context.setStatus(overStatus());
+    context.announce(`${overReason()} at ${run.score} metres.`);
   }
 
   function ended() {
@@ -481,7 +483,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       note.hidden = kept <= 0;
       note.textContent = kept > 0 ? `Ball Run has a new course. Your best of ${kept} m is kept as Medium’s all-time record.` : '';
       screen();
-      const text = waiting ? `Saved ${label()} run at ${run.score} metres. Press Continue to resume.` : kept > 0 ? note.textContent : '';
+      // A Game Over reopened from the save says what ended the run and what to do next, as a live death does.
+      const text = waiting ? `Saved ${label()} run at ${run.score} metres. Press Continue to resume.` : run.phase === 'over' ? overStatus() : kept > 0 ? note.textContent : '';
       if (text) { context.setStatus(text); context.announce(text); }
       if (run.phase === 'over') focusAgain();
     },
