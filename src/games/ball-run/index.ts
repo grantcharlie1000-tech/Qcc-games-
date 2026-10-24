@@ -146,7 +146,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }
 
   function fillResults() {
-    const now = viewRecords(records, run.difficulty, new Date()), values: Record<Scope, number> = now;
+    const values: Record<Scope, number> = viewRecords(records, run.difficulty, new Date());
     reason.textContent = run.reason === 'fall' ? 'You fell off the track' : 'You hit a block';
     final.textContent = String(run.score);
     SCOPES.forEach((s, i) => { rows[i].querySelector('strong')!.textContent = String(values[s]); rows[i].dataset.new = String(marks[s]); });

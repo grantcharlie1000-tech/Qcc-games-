@@ -28,7 +28,7 @@
 .br-face{display:block;width:100%;height:100%}
 .br-face-slot{position:relative;display:block;width:76px;height:76px;margin:0 auto}
 .br-actions{display:flex;justify-content:center;align-items:center;gap:12px}
-.br-button{min-height:50px;min-width:150px;padding:8px 22px;border-radius:12px;font-size:22px;letter-spacing:.03em;text-transform:uppercase;box-shadow:inset 0 -4px #0003;transition:transform 120ms cubic-bezier(.23,1,.32,1),filter 120ms}
+.br-button{min-height:50px;min-width:150px;padding:8px 22px;border-radius:12px;font-size:22px;letter-spacing:.03em;text-transform:uppercase;text-shadow:0 2px 0 #0003;box-shadow:inset 0 -4px #0003;transition:transform 120ms cubic-bezier(.23,1,.32,1),filter 120ms}
 .br-button:active,.br-home:active,.br-help-toggle:active{transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.br-button:hover,.br-home:hover,.br-help-toggle:hover{filter:brightness(1.08)}}
 
@@ -68,7 +68,7 @@
 .br-final{font-size:46px;line-height:1;color:#f8a66f}
 .br-side{display:grid;gap:14px}
 .br-records{position:relative;margin-top:30px;padding:30px 9px 9px;border-radius:14px;background:#fde4d6;display:grid}
-.br-badge{position:absolute;left:0;right:0;top:-30px;display:flex;justify-content:center;align-items:flex-end;gap:10px;font-size:15px;color:var(--br-accent);letter-spacing:.03em}
+.br-badge{position:absolute;left:0;right:0;top:-30px;display:flex;justify-content:center;align-items:flex-end;gap:10px;font-size:15px;color:var(--br-accent);color:color-mix(in srgb,var(--br-accent) 50%,#4a1626);letter-spacing:.03em}
 .br-badge>span:not(.br-face-slot){padding-bottom:6px}
 .br-badge .br-face-slot{width:56px;height:56px;margin:0}
 .br-crown{position:absolute;width:28px;height:12px;top:-9px;left:calc(50% - 14px)}

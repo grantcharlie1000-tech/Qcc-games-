@@ -96,14 +96,17 @@ export function describeRun(run: Run): string {
 // 1. Viability: interval sets of p from which the end of a window of road can still be reached,
 //    by backward reachability with a fraction of the real lateral authority, in three tiers from
 //    comfortable to bare. A constraint on x at distance D applies to p at D − v·LAG (x trails p by
-//    about LAG), shifted against the drift. These depend only on the course, so each window is
-//    computed once and shared by every re-plan inside it.
+//    about LAG), shifted against the drift. These depend only on the course, so a window three
+//    horizons long is computed once and shared by every re-plan inside it: a cache, whose sets
+//    therefore reach one to three horizons past the ball rather than exactly one. (Rebuilding to
+//    exactly one horizon on every re-plan also passes the bot matrix, at about three times the cost.)
 // 2. Line: every REPLAN steps, from the ball's state, p is chosen point by point (the most
-//    comfortable viable choice first) and every choice is checked by the exact x it produces: on
-//    the road, and clear of every block (sliding blocks close their whole sweep). Where x fails,
-//    a shooting pass pushes p toward the side x needs over the two lags before and re-runs; if
-//    that does not clear the horizon, a depth-first search with backtracking tries.
-// 3. Control: the input puts p back on the line after every step.
+//    comfortable viable choice first), never moving faster than 0.85 of the lateral authority, and
+//    every choice is checked by the exact x it produces: on the road, and clear of every block
+//    (sliding blocks close their whole sweep). Where x fails, a shooting pass pushes p toward the
+//    side x needs over the two lags before and re-runs; if that does not clear the horizon, a
+//    depth-first search with backtracking tries.
+// 3. Control: the input (full authority available) puts p back on the line after every step.
 //
 // The plan's first design (an x line backtracked from a single reachability pass, followed by a
 // look-ahead P controller) could not keep up with the 0.1 s steering lag or bank drift and died
@@ -300,7 +303,7 @@ class Window {
   }
 }
 
-export class Planner {
+class Planner {
   readonly window = new Window();
   /** Plan points: the ball, then the window's points over the horizon (plan point k ≥ 1 is window point first + k − 1). */
   readonly at = new Float64Array(MAX_POINTS);
@@ -373,7 +376,7 @@ export class Planner {
     for (let repair = 0; ; repair++) {
       let k = from, tried = 0;
       for (; k < n; k++) {
-        const base = path[k - 1] + this.shift[k], all = lateralSpeed(this.speed[k]) * (this.at[k] - this.at[k - 1]) / this.speed[k] - 1e-9;
+        const base = path[k - 1] + this.shift[k], all = this.reach[HARD][k] + 1e-7;
         const want = clamp(this.settle(k, base), lower[k], upper[k]), p = tried = clamp(want, base - all, base + all);
         // A bound out of reach is met as far as possible, and moves the repair earlier.
         if (p !== want) { this.needSide = Math.sign(want - p); this.needBy = Math.abs(want - p); break; }
@@ -476,7 +479,7 @@ export class Planner {
   }
 
   /** Fallback candidates at point k, after the first: the middle and ends of every viable
-   * corridor in reach, then the reach limits, then (as a last resort) the full lateral authority. */
+   * corridor in reach, then straight on and the reach limits (0.85 of the lateral authority). */
   private fallbacks(k: number): void {
     const base = this.path[k - 1] + this.shift[k], r = this.reach[HARD][k] + 1e-7, j0 = this.first + k - 1, b = j0 * MAX_SPANS;
     for (const sets of this.window.viable) for (let j = 0; j < sets.count[j0]; j++) {
@@ -484,8 +487,7 @@ export class Planner {
       if (lo > hi) continue;
       this.add(k, clamp((sets.lo[b + j] + sets.hi[b + j]) / 2, lo, hi)); this.add(k, lo); this.add(k, hi);
     }
-    const all = lateralSpeed(this.speed[k]) * (this.at[k] - this.at[k - 1]) / this.speed[k] - 1e-9;
-    this.add(k, base); this.add(k, base - r); this.add(k, base + r); this.add(k, base - all); this.add(k, base + all);
+    this.add(k, base); this.add(k, base - r); this.add(k, base + r);
     this.full[k] = 1;
   }
 

@@ -280,14 +280,22 @@ describe('Ball Run vertical motion', () => {
     expect(found, 'course: no crest sharp enough to leave the road at the cap in 40 Hard seeds').not.toBeNull();
     const { seed, start, end } = found!, length = end - start, run = placeRun(seed, 'hard', start + .3 * length + 1);
     expect(runSpeed(run)).toBe(CONFIG.hard.maxSpeed);
-    let lifted = -1, landed = -1;
-    // A barely-sharp crest lands the ball near the end of its block-free middle: the bot steers on from there.
-    driveBot(run, .6 * length, r => {
-      if (lifted < 0 && !r.grounded) lifted = r.distance;
-      if (lifted > 0 && landed < 0 && r.grounded) landed = r.distance;
-    });
+    // Straight on, up to the lift-off inside the crest's block-free middle.
+    let before = clone(run);
+    while (run.grounded && run.phase === 'running' && run.distance < start + .7 * length) { before = clone(run); step(run, 0, STEP); }
     expect(run.phase).toBe('running');
+    expect(run.grounded).toBe(false);
+    const lifted = run.distance;
     expect(lifted).toBeGreaterThan(start + .3 * length);
+    // It leaves only because its flight clears the road: moving down 1 m/s faster there, it stays on.
+    const pressed = clone(before);
+    pressed.vy -= 1;
+    step(pressed, 0, STEP);
+    expect(pressed.grounded).toBe(true);
+    // A barely-sharp crest lands the ball near the end of its block-free middle: the bot steers on from there.
+    let landed = -1;
+    driveBot(run, .6 * length, r => { if (landed < 0 && r.grounded) landed = r.distance; });
+    expect(run.phase).toBe('running');
     expect(landed).toBeGreaterThan(lifted);
     expect(run.grounded).toBe(true);
   });
@@ -605,6 +613,11 @@ describe('Ball Run new runs', () => {
       run.phase = 'running';
       for (let i = 0; i < 240; i++) { step(run, 0, STEP); expect(run.grounded).toBe(true); }
       expect(run.height).toBeCloseTo(restHeight(course, run.distance, 0), 9);
+      // Only the road's shape lifts the ball, right from the start: one saved with no vertical speed stays on.
+      const still = { ...createRun(77, 3, difficulty), phase: 'running', vy: 0 } as Run;
+      step(still, 0, STEP);
+      expect(still.grounded).toBe(true);
+      expect(still.height).toBeCloseTo(restHeight(course, still.distance, 0), 9);
     }
   });
 });
