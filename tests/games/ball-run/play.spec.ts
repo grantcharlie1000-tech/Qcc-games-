@@ -1,6 +1,6 @@
 import {seedStudyTopic,test,expect} from '../../fixtures';
 import type {Locator,Page} from '@playwright/test';
-import {CONFIG,STEP,WARMUP,type Difficulty,type ObstaclePose,type Run} from '../../../src/games/ball-run/config';
+import {CONFIG,STEP,WARMUP,speedAt,type Difficulty,type Gate,type ObstaclePose,type Run} from '../../../src/games/ball-run/config';
 import {getCourse} from '../../../src/games/ball-run/course';
 import {step} from '../../../src/games/ball-run/model';
 import {dayKey,emptyRecords,weekKey,type Records} from '../../../src/games/ball-run/records';
@@ -40,13 +40,14 @@ function beforeBlock(seed:number,difficulty:Difficulty){
   }
   throw new Error(`no block approach on ${difficulty} seed ${seed}`);
 }
-/** A running run on the centre line 4 m before gate 0 (inside its block-free zone). */
-function beforeGate(seed:number,difficulty:Difficulty){
-  const course=getCourse(seed,difficulty);let start=NaN;
-  course.forEachGate(0,3000,g=>{if(g.index===0)start=g.start;});
-  const run=placeRun(seed,difficulty,start-4),through=simulate(run,3,r=>r.phase!=='running'||(r.gateIndex===0&&r.speedUpTime===0));
+/** A running run on the centre line 4 m before the first gate `pick` accepts (inside its block-free zone). */
+function beforeGate(seed:number,difficulty:Difficulty,pick:(gate:Gate)=>boolean=g=>g.index===0){
+  const course=getCourse(seed,difficulty),found:Gate[]=[];
+  course.forEachGate(0,40000,g=>{if(!found.length&&pick(g))found.push(g);});
+  const gate=found[0];if(!gate)throw new Error(`no such gate on ${difficulty} seed ${seed}`);
+  const run=placeRun(seed,difficulty,gate.start-4),through=simulate(run,3,r=>r.phase!=='running'||(r.gateIndex===gate.index&&r.speedUpTime===0));
   expect(through.phase).toBe('running');
-  return {run,before:course.speed(start-4),after:course.speed(start+.5)};
+  return {run,gate,before:course.speed(gate.start-4),after:course.speed(gate.start+.5)};
 }
 /** An ordinary block-free straight: flat, unbanked road with nothing 50 m ahead. */
 function onStraight(seed:number,difficulty:Difficulty){
@@ -279,6 +280,19 @@ test('a gate is a permanent speed boost with visible Speed Up feedback',async({p
   await expect(root).toHaveAttribute('data-boost','false');await expect(boost).toBeHidden();await expect(root).toHaveAttribute('data-phase','running');
   // The label has gone; the speed it announced stays.
   expect(await data(page,'speed')).toBeGreaterThan(before+CONFIG.hard.gate.speedGain*.9);await expect(root).toHaveAttribute('data-gates','1');
+});
+
+test('a gate passed at the speed cap reads Top Speed and adds nothing',async({page})=>{
+  const cap=CONFIG.hard.maxSpeed,{run,gate,before,after}=beforeGate(5,'hard',g=>speedAt('hard',g.start,g.index)>=cap);
+  expect(before).toBe(cap);expect(after).toBe(cap);
+  await seed(page,snapshot(run,emptyRecords()));
+  await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
+  const root=game(page),boost=root.locator('.br-boost');
+  await page.getByRole('button',{name:'Continue',exact:true}).click();
+  for(let i=0;i<60&&await root.getAttribute('data-boost')!=='true';i++)await page.clock.runFor(25);
+  await expect(root).toHaveAttribute('data-boost','true');await expect(root).toHaveAttribute('data-gates',String(gate.index+1));
+  await expect(boost).toBeVisible();await expect(boost).toHaveText('Top Speed');await expect(root).toHaveAttribute('data-speed',cap.toFixed(2));
 });
 
 test('a curve reads as a curve',async({page})=>{

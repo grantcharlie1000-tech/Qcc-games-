@@ -27,6 +27,14 @@ const HOUSE = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><pa
 const CROWN = '<svg class="br-crown" viewBox="0 0 28 12" aria-hidden="true" focusable="false"><path d="m2 11-1-9 7 4 6-6 6 6 7-4-1 9z" fill="#ffe0a4"/></svg>';
 
 const STEER_COPY = 'Drag left and right, or hold A / D or ← →, to steer.';
+/** cubic-bezier(0.23, 1, 0.32, 1) at progress x: solve the curve's x(t) = x by bisection, return y(t). */
+function easeOut(x: number): number {
+  const bx = (t: number) => 3 * (1 - t) ** 2 * t * .23 + 3 * (1 - t) * t * t * .32 + t ** 3;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (bx(mid) < x) lo = mid; else hi = mid; }
+  const t = (lo + hi) / 2;
+  return 3 * (1 - t) ** 2 * t + 3 * (1 - t) * t * t + t ** 3;
+}
 const nextSeed = (seed: number) => (seed + 1664525) >>> 0 || 1;
 function randomSeed(): number {
   try { return crypto.getRandomValues(new Uint32Array(1))[0] || 1; } catch { return Math.floor(Math.random() * 0xffffffff) + 1; }
@@ -161,13 +169,13 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     helpToggle.setAttribute('aria-expanded', String(open));
   }
 
-  /** Game Over enters with a 250 ms fade and settle from 0.96 (a strong ease-out); reduced motion fades
-   * only. Driven by animation frames rather than CSS or WAAPI so it also runs under a test's virtual clock. */
+  /** Game Over enters with a 250 ms fade and settle from 0.96 on cubic-bezier(0.23, 1, 0.32, 1); reduced
+   * motion fades only. Driven by animation frames rather than CSS or WAAPI so it also runs under a test's virtual clock. */
   function enter(panel: HTMLElement) {
     settle();
     const start = performance.now(), scale = !reducedMotion();
     const tick = (now: number) => {
-      const t = Math.min(1, Math.max(0, (now - start) / 250)), k = 1 - (1 - t) ** 5;
+      const t = Math.min(1, Math.max(0, (now - start) / 250)), k = easeOut(t);
       layer.style.opacity = String(k);
       if (scale) panel.style.transform = `scale(${.96 + .04 * k})`;
       entering = t < 1 ? requestAnimationFrame(tick) : 0;
@@ -195,7 +203,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     draw();
   }
 
-  /** HUD text every frame it changes; the shell's score at most every 250 ms (storage writes). */
+  /** HUD text every frame it changes; the shell's score at most every 250 ms (each call writes storage).
+   * Only finish() reports outside that throttle: the final score, once per run. */
   function report(force = false) {
     const score = run.score;
     if (force || score !== shownScore) {
@@ -210,7 +219,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (force || speed !== shownSpeed) { shownSpeed = speed; speedLabel.textContent = `${speed} m/s`; }
     if (run.phase === 'running' && !waiting && score !== reported) {
       const now = performance.now();
-      if (force || now - reportedAt >= 250) { reported = score; reportedAt = now; context.setScore(score); }
+      if (now - reportedAt >= 250) { reported = score; reportedAt = now; context.setScore(score); }
     }
   }
 
