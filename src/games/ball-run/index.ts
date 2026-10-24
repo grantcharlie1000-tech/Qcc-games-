@@ -456,7 +456,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     restart() {
       if (contextLost) return;
       // Abandoning a run is an ending: its score counts, once.
-      if ((run.phase === 'running' || run.phase === 'over') && run.score > 0) { committed = false; finish(); }
+      if (run.phase === 'running' && run.score > 0) finish();
       fresh(false);
       context.setStatus('Fresh course. Choose a difficulty, then press Play.');
     },
