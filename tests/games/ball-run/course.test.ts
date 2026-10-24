@@ -103,9 +103,9 @@ const flightCache = new WeakMap<Course, Flight[]>();
  * start to 4 km past the speed cap, written independently of the generator. On the road it leaves
  * where the road ends (a drop's lip) or where the road's vertical acceleration under it (speed² ×
  * curvature) falls below −GRAVITY, then flies from the road's velocity there until it meets the road
- * again; a touch-down followed at once by another take-off is one flight. `apex` is the height reached
- * above the road where it took off, `clearance` the most it rose above the road beneath it, `kind` the
- * segment it took off from. */
+ * again anywhere across it; a touch-down followed at once by another take-off is one flight. `apex` is
+ * the height reached above the road where it took off, `clearance` the most it rose above the road
+ * beneath it, `kind` the segment it took off from. */
 function flights(c: Course): Flight[] {
   const cached = flightCache.get(c);
   if (cached) return cached;
@@ -130,7 +130,8 @@ function flights(c: Course): Flight[] {
       const y = y0 + w * t - GRAVITY * t * t / 2;
       apex = Math.max(apex, y - y0);
       clearance = Math.max(clearance, y - c.sample(x, s).elevation);
-      if (s.ground && y <= s.elevation) break;
+      // Down anywhere across the road: on a bank its low edge is met last.
+      if (s.ground && y <= s.elevation - (s.width / 2 - EDGE_SUPPORT) * Math.abs(Math.tan(s.bank))) break;
     }
     const last = out[out.length - 1];
     if (last && at - landed < h) {
