@@ -22,14 +22,19 @@ const PALETTE = {
   void: 0x000000, track: 0x333b74, grid: 0x929bfb, sphere: 0xe500b1, block: 0xb51cfa, boost: 0x00e7ef,
   tower: 0x232764, towerLine: 0x8890f2, white: 0xffffff,
 };
-const TILES = 420, LINES = 3400, BLOCKS = 320, CYAN = 200, TRAIL = 18, TRAIL_REDUCED = 8, BURST = 40, BURST_REDUCED = 14;
+const TILES = 420, LINES = 3400, BLOCKS = 320, CYAN = 200, TRAIL = 18, BURST = 40, BURST_REDUCED = 14;
 /** Road drawn behind the origin; the camera sits 3.6 m back. */
 const BEHIND = 6;
-const LANES = [-.5, -.25, 0, .25, .5];
+const LANES = [-.5, -.25, 0, .25, .5], SIDES = [-1, 1];
 const TILE_DEPTH = .18, LINE_WIDTH = .07, CENTER_WIDTH = .13, CROSS_WIDTH = .1, LINE_HEIGHT = .02, LIFT = .02;
 const CAMERA_BACK = 3.6, CAMERA_UP = 1.8;
-/** Boost arch: wall height, ring spacing and arch bars. */
-const WALL = 1.5, RING = 3, ARCH = 10, BAR = .06, ENTRANCE_BAR = .13;
+/** Trail: samples nearer the ball would only tint it, and those within 0.2 m of the camera
+ * are unseen, so the 0.5 m history shows at most 6 spheres (3–4 on screen). The trail
+ * shrinks and fades over its length; under reduced motion it ends 1 m behind its first
+ * sphere, so it shows at most 2 and stops short of the screen edge. */
+const TRAIL_NEAR = RADIUS * 1.6, TRAIL_FAR = CAMERA_BACK - .2, TRAIL_FAR_REDUCED = TRAIL_NEAR + 1, TRAIL_OPACITY = .85;
+/** Boost arch: wall height, ring spacing, arch bars and the heights of the wall rails. */
+const WALL = 1.5, RING = 3, ARCH = 10, BAR = .06, ENTRANCE_BAR = .13, RAILS = [WALL / 2, WALL];
 /** Tower city: 8 building variations every 7 m, so the pooled city repeats every 56 m. */
 const CITY_VARIANTS = 8, CITY_STEP = 7, CITY_PERIOD = CITY_VARIANTS * CITY_STEP, CITY_COUNT = 48, CITY_BASE = -14, CITY_INNER = 5.6;
 const HEIGHTS = [40, 27, 47, 33, 53, 30, 44, 36], JITTER = [0, .5, .2, .8, .1, .6, .3, .9], DEPTHS = [6, 5, 6.5, 5.5, 6, 4.5, 6.5, 5];
@@ -80,19 +85,23 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     pools.push(mesh);
     return mesh;
   };
+  // One reusable update range per instanced attribute (Three clears the list after each upload).
+  const ranges = new Map<THREE.BufferAttribute, { start: number; count: number }>();
+  const upload = (attribute: THREE.BufferAttribute, count: number) => {
+    let range = ranges.get(attribute);
+    if (!range) ranges.set(attribute, range = { start: 0, count: 0 });
+    range.count = count;
+    attribute.clearUpdateRanges();
+    attribute.updateRanges.push(range);
+    attribute.needsUpdate = true;
+  };
   /** Shows the first `count` instances and uploads only those. */
   const commit = (mesh: THREE.InstancedMesh, count: number) => {
     mesh.count = count;
     mesh.visible = count > 0;
     if (!count) return;
-    mesh.instanceMatrix.clearUpdateRanges();
-    mesh.instanceMatrix.addUpdateRange(0, count * 16);
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) {
-      mesh.instanceColor.clearUpdateRanges();
-      mesh.instanceColor.addUpdateRange(0, count * 3);
-      mesh.instanceColor.needsUpdate = true;
-    }
+    upload(mesh.instanceMatrix, count * 16);
+    if (mesh.instanceColor) upload(mesh.instanceColor, count * 3);
   };
 
   // Road, gates and blocks share one group placed relative to the origin.
@@ -138,7 +147,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   {
     const line = (ax: number, ay: number, az: number, bx: number, by: number, bz: number) => cityPoints.push(ax, ay, az, bx, by, bz);
     let index = 0;
-    for (const side of [-1, 1]) for (let row = 0; row < 2; row++) for (let i = 0; i < CITY_COUNT; i++) {
+    for (const side of SIDES) for (let row = 0; row < 2; row++) for (let i = 0; i < CITY_COUNT; i++) {
       const v = (i + row * 3 + (side > 0 ? 5 : 0)) % CITY_VARIANTS;
       const w = 3 + row, depth = DEPTHS[v], h = HEIGHTS[v] + row * 12, z = 14 - i * CITY_STEP;
       const inner = CITY_INNER + JITTER[v] + row * 4.4, x = side * (inner + w / 2);
@@ -173,12 +182,14 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   scene.add(key, rim);
 
   // Speed Up trail and the block-death burst: one pooled mesh each, hidden when unused.
-  const trailMaterial = basic({ color: PALETTE.white, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  // The trail uses normal blending so it stays magenta over the light road lines. Instances
+  // have no alpha of their own, so older spheres darken toward the road colour and shrink.
+  const trailMaterial = basic({ color: PALETTE.white, transparent: true, depthWrite: false });
   const trail = pool(sphere, trailMaterial, TRAIL, scene, true);
   const burstMaterial = basic({ color: PALETTE.white, transparent: true });
   const burst = pool(box, burstMaterial, BURST, scene, true);
   const burstColors = [new THREE.Color(PALETTE.sphere), new THREE.Color(PALETTE.boost), new THREE.Color(PALETTE.white)];
-  const trailColor = new THREE.Color(PALETTE.sphere), tint = new THREE.Color();
+  const trailColor = new THREE.Color(PALETTE.sphere), trailFaded = new THREE.Color(PALETTE.track), tint = new THREE.Color();
 
   const stats: SceneStats = { calls: 0, geometries: 0, aspect: 1, ballScreenX: .5, ballScreenY: .5 };
   const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample();
@@ -249,15 +260,15 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       put(blocks, gateWalls, x, y, z, sx, sy, sz, tilt);
       blocks.setColorAt(gateWalls++, color);
     };
-    for (const side of [-1, 1]) {
+    for (const side of SIDES) {
       const x = c + side * (radius + .06);
       block(x, (e0 + e1) / 2 + WALL / 2, (z0 + z1) / 2, .1, WALL, length, wallColor, pitch);
       // Pink rails along the top and middle of the wall.
-      for (const h of [WALL / 2, WALL]) block(c + side * radius, (e0 + e1) / 2 + h, (z0 + z1) / 2, BAR, BAR, length, postColor, pitch);
+      for (const h of RAILS) block(c + side * radius, (e0 + e1) / 2 + h, (z0 + z1) / 2, BAR, BAR, length, postColor, pitch);
     }
     for (let k = 0; k * RING <= length + 1e-6; k++) {
       const d = gate.start + k * RING, y = track(d, S).elevation + yRef, z = -(d - builtOrigin), entrance = k === 0;
-      for (const side of [-1, 1]) {
+      for (const side of SIDES) {
         if (entrance) { if (cyanCount < CYAN) bar(cyan, cyanCount++, c + side * radius, y, z, c + side * radius, y + WALL, z, ENTRANCE_BAR, ENTRANCE_BAR); }
         else block(c + side * radius, y + WALL / 2, z, BAR, WALL, BAR, postColor);
       }
@@ -274,11 +285,11 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const a = Math.PI * j / ARCH, x = c + radius * Math.cos(a), h = WALL + radius * Math.sin(a);
       bar(grid, lineCount++, x, e0 + h, z0, x, e1 + h, z1, BAR, BAR);
     }
-    // Cyan chevrons pointing forward along the road.
+    // Cyan chevrons pointing forward along the road: arms at d, tip 1.1 m further on.
     const arm = Math.min(.4 * M.width, 1.5);
     for (let d = gate.start + 5; d < gate.end - 2 && cyanCount + 2 <= CYAN; d += 2.8) {
       const ya = track(d, S).elevation + yRef + LIFT * 1.5, yb = track(d + 1.1, S).elevation + yRef + LIFT * 1.5;
-      for (const side of [-1, 1]) bar(cyan, cyanCount++, c + side * arm, yb, -(d + 1.1 - builtOrigin), c, ya, -(d - builtOrigin), .24, LINE_HEIGHT);
+      for (const side of SIDES) bar(cyan, cyanCount++, c + side * arm, ya, -(d - builtOrigin), c, yb, -(d + 1.1 - builtOrigin), .24, LINE_HEIGHT);
     }
   }
 
@@ -341,18 +352,22 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   }
 
   function drawTrail(run: Run, reduced: boolean): void {
-    const show = run.phase === 'running' && run.speedUpTime > 0;
-    const n = show ? Math.min(historyCount, reduced ? TRAIL_REDUCED : TRAIL) : 0;
-    const fade = clamp(run.speedUpTime / .35, 0, 1), lift = SLOPE * run.distance, up = CAMERA_UP - RADIUS, ballRange = Math.hypot(CAMERA_BACK, up);
+    const n = run.phase === 'running' && run.speedUpTime > 0 ? historyCount : 0;
+    const far = reduced ? TRAIL_FAR_REDUCED : TRAIL_FAR, lift = SLOPE * run.distance, up = CAMERA_UP - RADIUS, ballRange = Math.hypot(CAMERA_BACK, up);
+    trailMaterial.opacity = TRAIL_OPACITY * clamp(run.speedUpTime / .35, 0, 1);
     let shown = 0;
+    // Newest first, so z (metres behind the ball) only grows.
     for (let i = 0; i < n; i++) {
-      const slot = ((historyHead - 1 - i) % TRAIL + TRAIL) % TRAIL, age = (i + 1) / (n + 1), z = run.distance - history[slot * 3];
-      // Samples still under the ball would only tint it; those behind the camera are unseen.
-      if (z < RADIUS * 1.6 || z > CAMERA_BACK - .2) continue;
+      const slot = ((historyHead - 1 - i) % TRAIL + TRAIL) % TRAIL, z = run.distance - history[slot * 3];
+      if (z < TRAIL_NEAR) continue;
+      if (z > far) break;
+      // Age follows distance along the trail, so spheres darken and shrink smoothly to
+      // nothing at its end (they never become road-coloured dots over the lane lines).
+      const age = (z - TRAIL_NEAR) / (far - TRAIL_NEAR);
       // Shrinks on screen too: samples nearer the camera are scaled down by their distance.
-      const size = (.42 - .32 * age) * clamp(Math.hypot(CAMERA_BACK - z, up) / ballRange, 0, 1);
+      const size = (.42 - .32 * age) * Math.min(1, 4 * (1 - age)) * clamp(Math.hypot(CAMERA_BACK - z, up) / ballRange, 0, 1);
       put(trail, shown, history[slot * 3 + 1], history[slot * 3 + 2] + lift, z, size, size, size);
-      trail.setColorAt(shown++, tint.copy(trailColor).multiplyScalar((1 - age) * fade * .55));
+      trail.setColorAt(shown++, tint.copy(trailColor).lerp(trailFaded, .6 * age));
     }
     commit(trail, shown);
   }
@@ -426,14 +441,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     // Chase camera: 3.6 m behind and 1.8 m above the ball's base. It stops following a
     // fall 1.5 m below the road and looks at the road 12–29 m ahead, so crests and bends
     // turn the view; high above the road (a drop, a crest at speed) it looks closer, so
-    // the view pitches down and shows the height.
+    // the view pitches down and shows the height. Reduced motion keeps the fixed look-ahead.
     track(distance, S);
     const bank = S.bank, roadCenter = S.center;
     const lift = SLOPE * distance, road0 = S.elevation + lift;
     const base = Math.max(run.height + lift - RADIUS, road0 - 1.5);
     const followX = run.x - .15 * (run.x - roadCenter);
-    roadWindow(distance, -2, 6);
-    const above = Math.max(0, base - windowElevation - lift - .3);
+    let above = 0;
+    if (!reduced) {
+      roadWindow(distance, -2, 6);
+      above = Math.max(0, base - windowElevation - lift - .3);
+    }
     roadWindow(distance, 12, 17);
     const cy = base + CAMERA_UP, reach = CAMERA_BACK + 20 / (1 + .3 * above);
     const pitch = clamp(Math.atan2(windowElevation + lift + .6 - cy, reach), -.6, .04);

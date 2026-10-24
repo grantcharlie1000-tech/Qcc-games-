@@ -47,8 +47,10 @@ export function steer(body: { x: number; vx: number }, input: number, dt: number
 // Step scratch: reused so a step allocates nothing in steady state.
 const before = blankSample(), after = blankSample(), poseA = blankPose(), poseB = blankPose();
 const sweepFrom = [0, 0, 0], sweepTo = [0, 0, 0], origin = [0, 0, 0] as const, half = [0, 0, 0];
-let hitCourse: Course, hitFrom = 0, hitTo = 0, hit = false;
-let fromX = 0, fromY = 0, fromD = 0, toX = 0, toY = 0, toD = 0;
+/** The step being tested against blocks: elapsed before and after, then the ball's old and new
+ * x, height and distance. A typed array, because module-level number variables box every write. */
+const sweep = new Float64Array(8);
+let hitCourse: Course, hit = false;
 
 /** Moves world point (x, y, d) into the frame of a box posed at `p` (rolled about the forward axis). */
 function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]): void {
@@ -61,10 +63,10 @@ function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]):
 /** Does the ball's swept path from the old to the new state touch this block? */
 function testBlock(o: Obstacle): void {
   if (hit) return;
-  hitCourse.pose(o, hitFrom, poseA);
-  const p = o.slide ? hitCourse.pose(o, hitTo, poseB) : poseA;
-  local(poseA, fromX, fromY, fromD, sweepFrom);
-  local(p, toX, toY, toD, sweepTo);
+  hitCourse.pose(o, sweep[0], poseA);
+  const p = o.slide ? hitCourse.pose(o, sweep[1], poseB) : poseA;
+  local(poseA, sweep[2], sweep[3], sweep[4], sweepFrom);
+  local(p, sweep[5], sweep[6], sweep[7], sweepTo);
   half[0] = p.halfWidth; half[1] = p.halfHeight; half[2] = p.halfDepth;
   // Swept bounding-box rejection first: the exact test allocates.
   let gap = 0;
@@ -123,8 +125,8 @@ export function step(run: Run, input: number, dt: number): void {
     run.vy -= GRAVITY * dt;
   }
 
-  hitCourse = course; hitFrom = e0; hitTo = run.elapsed; hit = false;
-  fromX = x0; fromY = h0; fromD = d0; toX = run.x; toY = run.height; toD = run.distance;
+  hitCourse = course; hit = false;
+  sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
   course.forEachObstacle(d0 - RADIUS - course.maxDepth, run.distance + RADIUS + course.maxDepth, testBlock);
   if (hit) {
     // The ball stops where it was, just short of the block.

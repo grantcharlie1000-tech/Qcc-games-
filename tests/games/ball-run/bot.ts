@@ -98,10 +98,16 @@ export function describeRun(run: Run): string {
 //    comfortable to bare. A constraint on x at distance D applies to p at D − v·LAG (x trails p by
 //    about LAG), shifted against the drift. These depend only on the course, so each window is
 //    computed once and shared by every re-plan inside it.
-// 2. Line: every REPLAN steps a depth-first search from the ball's state picks p point by point,
-//    the most comfortable viable choice first, and rejects any choice whose exact x leaves the
-//    road or touches a block (sliding blocks close their whole sweep); dead ends backtrack.
+// 2. Line: every REPLAN steps, from the ball's state, p is chosen point by point (the most
+//    comfortable viable choice first) and every choice is checked by the exact x it produces: on
+//    the road, and clear of every block (sliding blocks close their whole sweep). Where x fails,
+//    a shooting pass pushes p toward the side x needs over the two lags before and re-runs; if
+//    that does not clear the horizon, a depth-first search with backtracking tries.
 // 3. Control: the input puts p back on the line after every step.
+//
+// The plan's first design (an x line backtracked from a single reachability pass, followed by a
+// look-ahead P controller) could not keep up with the 0.1 s steering lag or bank drift and died
+// on most seeds; see the Task 3 report.
 
 /** Viability tiers, most comfortable first. The middle one is the generator's own reach safety and
  * clearances; the last relies on 0.85 of the real lateral authority with bare clearances. */
@@ -111,13 +117,16 @@ const TIERS = [
   { authority: .85, clear: RADIUS + .02, edge: EDGE_SUPPORT + .03 },
 ] as const;
 const HARD = TIERS.length - 1;
-/** Margins for the exact x of a searched line: comfortable, then bare. */
+/** Margins for the exact x of a searched line: comfortable (square corners), then bare (the ball's
+ * real round contact with a block's corner). */
 const X_MARGINS = [{ clear: RADIUS + .05, edge: EDGE_SUPPORT + .05 }, { clear: RADIUS + .01, edge: EDGE_SUPPORT + .01 }] as const;
 const REPLAN = 6;
 /** Steering lag (s): x trails p by about this long. */
 const LAG = 1 / STEER_RESPONSE;
 /** Search budget: candidates tried per point. */
 const BUDGET = 40;
+/** Repairs tried by the shooting search before it falls back to the depth-first search. */
+const REPAIRS = 30;
 /** The exact search looks this far ahead (s, at least SEARCH_MIN m); the viability sets cover the rest of the horizon. */
 const SEARCH = 2.5, SEARCH_MIN = 50;
 const MAX_POINTS = 4096, MAX_SPANS = 32, MAX_CANDS = 16;
@@ -310,6 +319,12 @@ export class Planner {
   private readonly full = new Uint8Array(MAX_POINTS);
   private readonly pick = new Int32Array(MAX_POINTS);
   private readonly best = new Float64Array(MAX_POINTS);
+  /** Bounds on p set by repairs. */
+  private readonly lower = new Float64Array(MAX_POINTS);
+  private readonly upper = new Float64Array(MAX_POINTS);
+  /** Set when `clear` fails: the side x must move to (±1), and how far. */
+  private needSide = 0;
+  private needBy = 0;
   private readonly sample = blankSample();
   private cursor = 0;
 
@@ -335,15 +350,51 @@ export class Planner {
     }
     // Comfortable margins first, then bare ones; keep whichever line runs further.
     const x0 = run.x, p0 = run.x + LAG * run.vx;
-    let reached = this.search(x0, p0, 0, n);
-    if (reached < n - 1) {
-      const keep = this.path.slice(0, reached + 1), strict = reached;
-      reached = this.search(x0, p0, 1, n);
-      if (reached < strict) { this.path.set(keep); reached = strict; }
+    let reached = -1, keep: Float64Array | null = null;
+    for (const margin of [0, 1]) for (const method of [this.shoot, this.search]) {
+      if (reached === n - 1) break;
+      const got = method.call(this, x0, p0, margin, n);
+      if (got > reached) { reached = got; keep = this.path.slice(0, got + 1); }
     }
+    this.path.set(keep!);
     this.n = reached + 1;
     this.cursor = 0;
     return reached === n - 1;
+  }
+
+  /** Greedy line with exact x, repaired where x fails: p is pushed toward the side x needs over
+   * the two lags before the failure (where x is mostly decided), and the line re-run from there.
+   * Returns the last point reached. */
+  private shoot(x0: number, p0: number, margin: number, n: number): number {
+    const path = this.path, xs = this.xs, lower = this.lower, upper = this.upper;
+    lower.fill(-Infinity, 0, n); upper.fill(Infinity, 0, n);
+    path[0] = p0; xs[0] = x0;
+    let from = 1, deepest = 0;
+    for (let repair = 0; ; repair++) {
+      let k = from, tried = 0;
+      for (; k < n; k++) {
+        const base = path[k - 1] + this.shift[k], all = lateralSpeed(this.speed[k]) * (this.at[k] - this.at[k - 1]) / this.speed[k] - 1e-9;
+        const want = clamp(this.settle(k, base), lower[k], upper[k]), p = tried = clamp(want, base - all, base + all);
+        // A bound out of reach is met as far as possible, and moves the repair earlier.
+        if (p !== want) { this.needSide = Math.sign(want - p); this.needBy = Math.abs(want - p); break; }
+        const x = this.follow(k, xs[k - 1], path[k - 1], p, 1);
+        if (!this.clear(k, xs[k - 1], path[k - 1], p, x, margin)) break;
+        path[k] = p; xs[k] = x;
+      }
+      if (k - 1 > deepest) { deepest = k - 1; this.best.set(path.subarray(0, k)); }
+      if (k === n) return n - 1;
+      if (repair >= REPAIRS) break;
+      const back = this.at[k] - 2 * LAG * this.speed[k], by = 1.2 * this.needBy + .005;
+      let j = k;
+      while (j > 1 && this.at[j - 1] >= back) j--;
+      for (let i = j; i <= k; i++) {
+        const ref = i < k ? path[i] : tried;
+        if (this.needSide > 0) lower[i] = Math.max(lower[i], ref + by); else upper[i] = Math.min(upper[i], ref - by);
+      }
+      from = j;
+    }
+    path.set(this.best.subarray(0, deepest + 1));
+    return deepest;
   }
 
   /** Depth-first search for a line through all n points; returns the last point reached (the
@@ -389,19 +440,28 @@ export class Planner {
   }
 
   /** x at point k is on the road, and the step to it from x0 at point k − 1 (checked as two
-   * chords through the exact midpoint) keeps the ball's centre c from every block's footprint
-   * (the ball is a sphere, so corners are rounded). */
+   * chords through the exact midpoint) keeps the ball's centre c from every block's footprint:
+   * with square corners on the comfortable pass, and round ones (the ball is a sphere) on the bare pass. */
   private clear(k: number, x0: number, p0: number, p1: number, x: number, margin: number): boolean {
     const w = this.window, j = this.first + k - 1, c = X_MARGINS[margin].clear, a = this.segment[0], b = this.segment[1], m = this.segment[2];
-    if (Math.abs(x - w.roadC[j]) > w.roadW[j] / 2 - (w.roadT[j] ? RADIUS : X_MARGINS[margin].edge)) return false;
+    const halfRoad = w.roadW[j] / 2 - (w.roadT[j] ? RADIUS : X_MARGINS[margin].edge), off = x - w.roadC[j];
+    if (Math.abs(off) > halfRoad) { this.needSide = -Math.sign(off); this.needBy = Math.abs(off) - halfRoad; return false; }
     if (!w.nearCount[j]) return true;
     a[0] = x0; a[1] = this.at[k - 1]; b[0] = x; b[1] = this.at[k];
     m[0] = this.follow(k, x0, p0, p1, .5); m[1] = (a[1] + b[1]) / 2;
     for (let i = 0; i < w.nearCount[j]; i++) {
       const block = w.blocks[w.near[j * MAX_SPANS + i]];
       this.box[0] = (block.lo + block.hi) / 2; this.box[1] = (block.from + block.to) / 2;
-      this.half[0] = (block.hi - block.lo) / 2; this.half[1] = (block.to - block.from) / 2;
-      if (sweepSphereBox(a, m, this.box, this.half, c) || sweepSphereBox(m, b, this.box, this.half, c)) return false;
+      const square = margin === 0 ? c : 0, round = c - square;
+      this.half[0] = (block.hi - block.lo) / 2 + square; this.half[1] = (block.to - block.from) / 2 + square;
+      if (sweepSphereBox(a, m, this.box, this.half, round) || sweepSphereBox(m, b, this.box, this.half, round)) {
+        // Leave by the nearer side that is on the road.
+        const left = block.lo - c - .01, right = block.hi + c + .01, onRoad = (v: number) => Math.abs(v - w.roadC[j]) <= halfRoad;
+        const goLeft = onRoad(left) && (!onRoad(right) || x - left <= right - x);
+        this.needSide = goLeft ? -1 : 1;
+        this.needBy = Math.max(.03, goLeft ? x - left : right - x);
+        return false;
+      }
     }
     return true;
   }

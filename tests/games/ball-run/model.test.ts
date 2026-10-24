@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CONFIG, DIFFICULTIES, DYING_DURATION, EDGE_SUPPORT, GATE_FEEDBACK, GRAVITY, RADIUS, SLOPE, STEP, WARMUP, lateralSpeed, speedAt,
-  type Course, type Difficulty, type Gate, type Obstacle, type ObstaclePose, type Run,
+  type Course, type Difficulty, type Gate, type Obstacle, type ObstaclePose, type Phase, type Run,
 } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun, restoreSnapshot, runSpeed, steer, step, type Snapshot } from '../../../src/games/ball-run/model';
@@ -11,6 +11,8 @@ import { capDistance, driveBot, placeRun, restHeight, spans } from './bot';
 const blankPose = (): ObstaclePose => ({ x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
 const courseOf = (run: Run) => getCourse(run.seed, run.difficulty);
+/** Read through a function so TypeScript does not narrow the phase across steps. */
+const phaseOf = (run: Run): Phase => run.phase;
 /** Simple centre-line steering for obstacle-free stretches. */
 const toCentre = (run: Run) => clamp1((courseOf(run).sample(run.distance + 2).center - run.x) * 1.5 - run.vx * .05);
 const gateList = (course: Course, to: number) => { const list: Gate[] = []; course.forEachGate(0, to, gate => list.push(gate)); return list; };
@@ -254,7 +256,7 @@ describe('Ball Run hazards', () => {
       expect(score).toBe(Math.floor(distance));
       expect(Math.abs(run.x)).toBeGreaterThan(CONFIG[difficulty].roadWidth / 2 - EDGE_SUPPORT);
       let steps = 0;
-      while (run.phase === 'dying' && steps < 1000) { step(run, 1, STEP); steps++; expect(run.score).toBe(score); }
+      while (phaseOf(run) === 'dying' && steps < 1000) { step(run, 1, STEP); steps++; expect(run.score).toBe(score); }
       expect(run.phase).toBe('over');
       expect(run.distance).toBeGreaterThan(distance);
       expect(Math.abs(steps * STEP - DYING_DURATION)).toBeLessThanOrEqual(STEP + 1e-9);
@@ -425,7 +427,7 @@ describe('Ball Run saves', () => {
     step(run, 0, STEP);
     const restored = restoreSnapshot(snapshotOf(run, records))!;
     expect(restored.run).toMatchObject({ phase: 'over', reason: 'fall', score: run.score, distance: run.distance });
-    while (run.phase === 'dying') step(run, 0, STEP);
+    while (phaseOf(run) === 'dying') step(run, 0, STEP);
     expect(restoreSnapshot(snapshotOf(run, records))!.run).toEqual(run);
   });
 
