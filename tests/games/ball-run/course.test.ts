@@ -183,9 +183,8 @@ function subtract(set: number[], lo: number, hi: number): number[] {
   }
   return out;
 }
-interface Blocked { from: number; to: number; lo: number; hi: number }
-/** World-x footprint of an obstacle's box (whole sweep for sliders), widened by the ball clearance. */
-function blocked(c: Course, o: CourseObstacle): Blocked {
+/** World-x extent of an obstacle's box seen from above (rolled with the bank), over its whole sweep for a slider. */
+function sweep(c: Course, o: CourseObstacle): [number, number] {
   const p = blankPose();
   const footprint = (elapsed: number) => {
     c.pose(o, elapsed, p);
@@ -200,7 +199,30 @@ function blocked(c: Course, o: CourseObstacle): Blocked {
       lo = Math.min(lo, a); hi = Math.max(hi, b);
     }
   }
+  return [lo, hi];
+}
+interface Blocked { from: number; to: number; lo: number; hi: number }
+/** World-x footprint of an obstacle's box (whole sweep for sliders), widened by the ball clearance. */
+function blocked(c: Course, o: CourseObstacle): Blocked {
+  const [lo, hi] = sweep(c, o);
   return { from: o.distance - o.depth / 2 - CLEAR, to: o.distance + o.depth / 2 + CLEAR, lo: lo - CLEAR, hi: hi + CLEAR };
+}
+/** Widest lateral opening at distance d between the boxes standing there (sliders over their whole sweep),
+ * edge to edge: from face to face, or from a face to the road's edge as far as a ball still on the road
+ * reaches (its centre EDGE_SUPPORT inside the edge, its body RADIUS beyond the centre). `extents` caches sweep(). */
+function widestOpening(c: Course, d: number, extents: Map<number, [number, number]>, s: TrackSample): number {
+  c.sample(d, s);
+  const reach = s.width / 2 - EDGE_SUPPORT + RADIUS, left = s.center - reach, right = s.center + reach;
+  const boxes: [number, number][] = [];
+  c.forEachObstacle(d, d, o => {
+    let e = extents.get(o.id);
+    if (!e) extents.set(o.id, e = sweep(c, o as CourseObstacle));
+    boxes.push(e);
+  });
+  boxes.sort((a, b) => a[0] - b[0]);
+  let at = left, widest = 0;
+  for (const [lo, hi] of boxes) { widest = Math.max(widest, Math.min(lo, right) - at); at = Math.max(at, hi); }
+  return Math.max(widest, right - at);
 }
 /** Forward interval reachability from distance 0, written independently of the generator.
  * Returns the distance where no lateral position remains, or null if a route survives to `to`. */
@@ -581,6 +603,24 @@ describe('Ball Run course generator', () => {
   it('always leaves a route open for 0.95 of the reach the generator assumes', () => {
     for (const { seed, difficulty } of CASES) {
       expect(closesAt(course(seed, difficulty), SPAN, .95), `${difficulty} seed ${seed}`).toBeNull();
+    }
+  });
+
+  // The spec: "The minimum gap is 2.0 m (Easy), 1.7 m (Medium), 1.45 m (Hard) against a 0.76 m ball."
+  // Written out rather than read from CONFIG, so lowering CONFIG's minGap cannot lower the bar.
+  it('leaves an opening of the minimum gap, 2.0 / 1.7 / 1.45 m, at every step of every block row, a slider blocking its whole sweep', { timeout: 60000 }, () => {
+    const want: Record<Difficulty, number> = { easy: 2, medium: 1.7, hard: 1.45 };
+    for (const { seed, difficulty } of CASES) {
+      const c = course(seed, difficulty), s = blank(), extents = new Map<number, [number, number]>(), narrow: string[] = [];
+      for (const o of obstacles(c)) {
+        // Both faces exactly (where the set of boxes standing changes) and every 0.1 m between them.
+        const front = o.distance - o.depth / 2, back = o.distance + o.depth / 2;
+        for (let k = 0, n = Math.ceil(o.depth / .1); k <= n; k++) {
+          const d = Math.min(front + k * .1, back), open = widestOpening(c, d, extents, s);
+          if (open < want[difficulty] - 1e-6) narrow.push(`row ${o.row} (${o.pattern}) at ${d.toFixed(2)}: widest opening ${open.toFixed(3)} m`);
+        }
+      }
+      expect(narrow.slice(0, 5), `${difficulty} seed ${seed}: ${narrow.length} steps too narrow`).toEqual([]);
     }
   });
 
