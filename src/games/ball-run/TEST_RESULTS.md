@@ -104,9 +104,9 @@ Renderer allocation, measured by heap sampling while the road rebuilds every fra
 
 `BALL_RUN_EVIDENCE=1 CHROMIUM_PATH=… PLAYWRIGHT_BROWSERS_PATH=… npx playwright test tests/games/ball-run --project=chromium --workers=1 --output=…`: 27 passed (5.0 m). Screenshots are written only with `BALL_RUN_EVIDENCE` set and only by Chromium, so the set is one engine at one pixel ratio (1×, CSS size); the previous committed set had been a 2× WebKit mix. In `tests/games/ball-run/evidence/`, checked by eye:
 
-- Running: [390x844](evidence/390x844.png), [844x390](evidence/844x390.png), [1366x768](evidence/1366x768.png), [1920x1080](evidence/1920x1080.png), [667x330](evidence/667x330.png), [568x320](evidence/568x320.png).
+- Running: [390x844](../../../tests/games/ball-run/evidence/390x844.png), [844x390](../../../tests/games/ball-run/evidence/844x390.png), [1366x768](../../../tests/games/ball-run/evidence/1366x768.png), [1920x1080](../../../tests/games/ball-run/evidence/1920x1080.png), [667x330](../../../tests/games/ball-run/evidence/667x330.png), [568x320](../../../tests/games/ball-run/evidence/568x320.png).
 - Setup: `setup-<size>.png`; Game Over: `over-<size>.png`, same six sizes.
-- Moments: [curve](evidence/curve.png) (road curving toward a gate arch), [boost](evidence/boost.png) (Hard, inside the arch: chevrons, Speed Up, trail), [collision](evidence/collision.png) (burst against a block), [results](evidence/results.png) (Hard Game Over with Today and Week NEW), [procedural-restart](evidence/procedural-restart.png).
+- Moments: [curve](../../../tests/games/ball-run/evidence/curve.png) (road curving toward a gate arch), [boost](../../../tests/games/ball-run/evidence/boost.png) (Hard, inside the arch: chevrons, Speed Up, trail), [collision](../../../tests/games/ball-run/evidence/collision.png) (burst against a block), [results](../../../tests/games/ball-run/evidence/results.png) (Hard Game Over with Today and Week NEW), [procedural-restart](../../../tests/games/ball-run/evidence/procedural-restart.png).
 
 `ramp-gap.webm` in the same folder shows the pre-redesign ramp course. The current spec no longer writes it; it is kept because `docs/DELIVERY.md` and `docs/GAMEPLAY_CORRECTIONS.md` link it. This checkpoint's Playwright videos were not added to the repository.
 
