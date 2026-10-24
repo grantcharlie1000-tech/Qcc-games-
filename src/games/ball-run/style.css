@@ -120,4 +120,5 @@
 }
 @media(max-width:360px){.br-head,.br-body{padding-left:14px;padding-right:14px}.br-button{min-width:128px}.br-hud{gap:14px}}
 /* Large screens: the same layouts, a size up. */
-@media(min-width:900px) and (min-height:640px){.br-panel,.br-hud{zoom:1.2}.br-speed{top:calc(var(--br-top) + 50px);font-size:12px}}
+/* zoom scales the HUD's own px offsets too: 450 px zoomed is the toolbar's 540 px centre. */
+@media(min-width:900px) and (min-height:640px){.br-panel,.br-hud{zoom:1.2}.br-hud{left:min(50%,450px)}.br-speed{top:calc(var(--br-top) + 50px);font-size:12px}}
