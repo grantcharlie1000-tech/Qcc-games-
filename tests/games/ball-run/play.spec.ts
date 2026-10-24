@@ -234,6 +234,8 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
 test('shell Restart abandoning a run commits its score once, to today’s best and the shell record',async({page})=>{
   const now=new Date(),records=emptyRecords();records.medium={allTime:5000,day:'',dayBest:0,week:weekKey(now),weekBest:4000};
   await seed(page,snapshot(null,records,'medium'));
+  // Every shell score report writes storage: count them.
+  await page.addInitScript(key=>{const writes:number[]=[],set=Storage.prototype.setItem;(window as unknown as {bestWrites:number[]}).bestWrites=writes;Storage.prototype.setItem=function(this:Storage,k:string,v:string){if(k===key)writes.push(performance.now());return set.call(this,k,v);};},BEST);
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page);
   await expect(root).toHaveAttribute('data-difficulty','medium');
@@ -242,6 +244,10 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   await waitDistance(page,25);
   await page.getByRole('button',{name:'Restart game',exact:true}).click();
   await expect(root).toHaveAttribute('data-phase','ready');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
+  // Running reports are at least 250 ms apart; only the final one, at the commit, is not throttled.
+  const writes=await page.evaluate(()=>(window as unknown as {bestWrites:number[]}).bestWrites);
+  expect(writes.length).toBeGreaterThan(2);
+  for(let i=1;i<writes.length-1;i++)expect(writes[i]-writes[i-1]).toBeGreaterThanOrEqual(249);
   const kept=(await saved(page)).records.medium;
   expect(kept.day).toBe(dayKey(now));expect(kept.dayBest).toBeGreaterThanOrEqual(25);expect(kept.weekBest).toBe(4000);expect(kept.allTime).toBe(5000);
   expect(await page.evaluate(key=>Number(localStorage.getItem(key)),BEST)).toBe(kept.dayBest);

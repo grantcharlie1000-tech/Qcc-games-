@@ -19,6 +19,9 @@
 .br-speed{position:absolute;top:calc(var(--br-top) + 42px);left:50%;transform:translateX(-50%);z-index:4;font-size:10px;color:#c9c6f0b8;pointer-events:none;text-shadow:0 1px 2px #000}
 /* Speed Up sits beside the ball, lower left (index.ts places it from the ball's screen position). */
 .br-boost{position:absolute;left:0;top:0;z-index:4;font-size:clamp(16px,2.4vmin + 6px,24px);line-height:1;font-style:italic;letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none;text-shadow:0 0 10px #00e7ef,0 2px 0 #8a0a6c}
+/* index.ts sets these every frame. The shell's reduced-motion rule gives every element a
+ * 0.01 ms transition, which would otherwise interpolate (or, with no frames, hold) each write. */
+.br-boost,.br-layer,.br-over{transition:none}
 
 /* Panels sit over a dimmed world, below the shell's pause overlay (z-index 20), clear of its corner and bottom controls. */
 .br-layer{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding:calc(var(--br-top) + 46px) 16px max(56px,calc(env(safe-area-inset-bottom) + 50px));background:radial-gradient(ellipse at 50% 40%,#2a0d3166,#0000 70%),#07040ca6;overflow:hidden}
