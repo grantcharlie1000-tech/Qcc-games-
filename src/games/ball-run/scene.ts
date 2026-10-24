@@ -453,7 +453,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     // view; high above the road (a drop, a crest at speed) it looks closer, so the view pitches
     // down and shows the height. Off the edge it stays 1.2 m inside the towers and turns to keep
     // the ball where following would have put it; it stops 1.5 m below the road and tilts part
-    // way after the falling ball. Reduced motion keeps the fixed look-ahead and does not tilt.
+    // way after the falling ball, never past MAX_PITCH. Reduced motion keeps the fixed look-ahead and does not tilt.
     track(distance, S);
     const bank = S.bank, roadCenter = S.center;
     const lift = SLOPE * distance, road0 = S.elevation + lift, ballBase = run.height + lift - RADIUS;
@@ -467,12 +467,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     roadWindow(distance, 12, 17);
     const cy = base + CAMERA_UP, reach = CAMERA_BACK + 20 / (1 + .3 * above);
     let pitch = clamp(Math.atan2(windowElevation + lift + .6 - cy, reach), -MAX_PITCH, .04);
-    const sight = CAMERA_UP - RADIUS;
-    if (!reduced && base > ballBase) pitch = Math.max(-MAX_PITCH, pitch - FALL_TILT * (Math.atan2(sight + base - ballBase, CAMERA_BACK) - Math.atan2(sight, CAMERA_BACK)));
+    // Camera height over the ball's centre; reduced motion keeps the grounded sight line.
+    const sight = CAMERA_UP - RADIUS, overBall = reduced ? sight : sight + base - ballBase;
+    if (!reduced && base > ballBase) pitch = Math.max(-MAX_PITCH, pitch - FALL_TILT * (Math.atan2(overBall, CAMERA_BACK) - Math.atan2(sight, CAMERA_BACK)));
     if (fovFit < 1) {
       // The narrower landscape view tilts so the ball keeps its portrait height on screen.
-      const below = Math.atan2(sight + base - ballBase, CAMERA_BACK) + pitch;
-      pitch -= below - Math.atan(fovFit * Math.tan(below));
+      const below = Math.atan2(overBall, CAMERA_BACK) + pitch;
+      pitch = Math.max(-MAX_PITCH, pitch - (below - Math.atan(fovFit * Math.tan(below))));
     }
     camera.position.set(followX, cy, CAMERA_BACK);
     camera.lookAt(followX + .25 * (windowCenter - roadCenter) + (idealX - followX) * reach / CAMERA_BACK, cy + Math.tan(pitch) * reach, CAMERA_BACK - reach);

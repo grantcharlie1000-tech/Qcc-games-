@@ -87,6 +87,38 @@ async function expectClear(page:Page,panel:Locator){
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
 }
 
+/** A button's white label is outlined in a dark shade of its fill: WCAG contrast of that edge (the first
+ * text shadow) against the fill, and of the label's own colour against the edge. */
+function labelEdge(button:Locator){
+  return button.evaluate(b=>{
+    const style=getComputedStyle(b),rgb=(s:string)=>s.match(/[\d.]+/g)!.slice(0,3).map(Number);
+    const lum=(c:number[])=>{const [r,g,bl]=c.map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4;});return .2126*r+.7152*g+.0722*bl;};
+    const ratio=(a:number[],c:number[])=>{const [x,y]=[lum(a),lum(c)].sort((p,q)=>q-p);return (x+.05)/(y+.05);};
+    const edge=rgb(style.textShadow.match(/rgba?\([^)]*\)/)![0]),fill=rgb(style.backgroundColor);
+    return {edge:ratio(edge,fill),label:ratio(rgb(style.color),edge),shadows:style.textShadow.split(/,(?![^(]*\))/).length};
+  });
+}
+async function expectReadableLabel(button:Locator){
+  const measured=await labelEdge(button);
+  expect(measured.edge,'label edge against the fill').toBeGreaterThanOrEqual(3);expect(measured.label,'label against its edge').toBeGreaterThanOrEqual(7);
+  expect(measured.shadows,'an edge on every side').toBeGreaterThanOrEqual(8);
+}
+const announced=(page:Page)=>page.locator('#announcer');
+/** Counts the shell's score reports (each one writes the shell record). */
+async function countReports(page:Page){
+  await page.addInitScript(key=>{const writes:number[]=[],set=Storage.prototype.setItem;(window as unknown as {bestWrites:number[]}).bestWrites=writes;Storage.prototype.setItem=function(this:Storage,k:string,v:string){if(k===key)writes.push(performance.now());return set.call(this,k,v);};},BEST);
+  return ()=>page.evaluate(()=>(window as unknown as {bestWrites:number[]}).bestWrites.length);
+}
+/** The Game Over panel's entrance mid-way: the layer's opacity and the panel's transform. */
+const entrance=(over:Locator)=>over.evaluate(p=>({opacity:Number(getComputedStyle(p.parentElement!).opacity),transform:getComputedStyle(p).transform}));
+/** A run that has hit a block and finished dying: what a save made at Game Over holds. */
+function overRun(seed:number,difficulty:Difficulty){
+  const {run,score}=beforeBlock(seed,difficulty),end=simulate(run,2);
+  for(let i=0;i<1000&&end.phase!=='over';i++)step(end,0,STEP);
+  expect(end.phase).toBe('over');expect(end.score).toBe(score);
+  return end;
+}
+
 test('a fresh profile opens Medium setup; the slider re-themes it; help explains permanent gates; Play rolls',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
@@ -101,7 +133,11 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
   await slider.focus();await page.keyboard.press('ArrowRight');
   await expect(slider).toHaveValue('2');await expect(slider).toHaveAttribute('aria-valuetext','Hard');await expect(root).toHaveAttribute('data-difficulty','hard');
   await expect(root.locator('.br-level')).toHaveText('Hard');await expect(root.locator('.br-setup .br-face')).toHaveAttribute('data-face','hard');await expect(play).toHaveCSS('background-color','rgb(240, 82, 79)');
+  await expectReadableLabel(play);
   await page.keyboard.press('Home');await expect(root).toHaveAttribute('data-difficulty','easy');await expect(play).toHaveCSS('background-color','rgb(43, 178, 76)');
+  // White on the reference's green and amber is below 3:1: a dark edge in the fill's own hue carries the label.
+  await expectReadableLabel(play);
+  await page.keyboard.press('ArrowRight');await expect(root).toHaveAttribute('data-difficulty','medium');await expectReadableLabel(play);
   await page.keyboard.press('End');await expect(root).toHaveAttribute('data-difficulty','hard');
   const help=page.getByRole('button',{name:'How to play',exact:true});
   await help.click();await expect(help).toHaveAttribute('aria-expanded','true');await expect(root.locator('.br-help')).toBeVisible();await expect(root.locator('.br-help')).toContainText('permanently');
@@ -215,10 +251,17 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   const root=game(page),over=root.locator('.br-over');
   await expect(page.getByRole('heading',{name:'Your run is waiting'})).toBeVisible();await expect(root.locator('.br-continue')).toContainText('Hard');await expect(root.locator('.br-continue')).toContainText(`${run.score} m`);
   await expect(root).toHaveAttribute('data-distance',run.distance.toFixed(3));
+  // A restored run is announced, not only written to the status line; the canvas behind the panel is no Tab stop.
+  await expect(announced(page)).toHaveText(`Saved Hard run at ${run.score} metres. Press Continue to resume.`);await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await runUntilPhase(page,'dying');await expect(root).toHaveAttribute('data-score',String(score));
   await page.clock.runFor(150);await page.screenshot({path:`${EVIDENCE}/collision.png`});
-  await runUntilPhase(page,'over');await page.clock.runFor(400);
+  await runUntilPhase(page,'over');
+  // Mid-entrance: fading in and settling from a slightly smaller scale.
+  const mid=await entrance(over);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toMatch(/^matrix\(0\.9\d*, 0, 0, 0\.9\d*, 0, 0\)$/);
+  await page.clock.runFor(400);
+  const again=page.getByRole('button',{name:'Play again',exact:true});
+  await expect(again).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
   await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await expect(over.locator('.br-reason')).toHaveText('You hit a block');
   await expect(over.locator('.br-final')).toHaveText(String(score));
   await expect(over.locator('.br-badge')).toContainText('HARD');await expect(over.locator('.br-badge .br-face')).toHaveAttribute('data-face','hard');
@@ -229,6 +272,12 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   // The final, unthrottled score report reaches the shell record.
   expect(await page.evaluate(key=>Number(localStorage.getItem(key)),BEST)).toBe(score);
   await expectClear(page,over);await page.screenshot({path:`${EVIDENCE}/results.png`});
+  await expectReadableLabel(again);
+  // Reopened at Game Over, the panel keeps this run's NEW markers and crown, with Play again focused as after a live death.
+  await page.reload();await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await page.clock.runFor(400);
+  await expect(over.locator('.br-final')).toHaveText(String(score));await expect(again).toBeFocused();
+  await expect(row('Today’s best')).toHaveAttribute('data-new','true');await expect(row('Week’s best')).toHaveAttribute('data-new','true');await expect(row('All-time best')).toHaveAttribute('data-new','false');
+  await expect(over.locator('.br-crown')).toBeVisible();
   // R plays again at once on a new course of the same difficulty.
   await page.keyboard.press('r');await expect(root).toHaveAttribute('data-phase','running');await page.clock.runFor(100);
   expect(await data(page,'distance')).toBeLessThan(5);await expect(root).toHaveAttribute('data-difficulty','hard');expect((await saved(page)).run.seed).not.toBe(run.seed);
@@ -237,8 +286,10 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   await expect(row('Today’s best').locator('strong')).toHaveText(String(score));await expect(row('Today’s best')).toHaveAttribute('data-new','false');
   await page.keyboard.press('r');await page.clock.runFor(300);await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-x','0.000');
   await page.keyboard.up('ArrowRight');await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
+  await expect(again).toBeFocused();
   await page.getByRole('button',{name:'Home',exact:true}).click();
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');await expect(root).toHaveAttribute('data-phase','ready');
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeFocused();
   await page.reload();
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');
   await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(100);
@@ -339,8 +390,17 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   const ballY=await data(page,'ball-screen-y');expect(ballY).toBeGreaterThan(.60);expect(ballY).toBeLessThan(.80);
   await expect(root.locator('.br-hud')).toBeVisible();
   // The HUD shares the toolbar row, which stops at 1080 px: it stays between back and pause at every width.
-  const hud=(await root.locator('.br-hud').boundingBox())!;
+  const hud=(await root.locator('.br-hud').boundingBox())!,speed=(await root.locator('.br-speed').boundingBox())!;
   for(const control of [page.getByRole('link',{name:'Back to game library'}),page.getByRole('button',{name:'Pause game',exact:true})])expect(apart(hud,(await control.boundingBox())!)).toBe(true);
+  // Centred over the track (the middle of the canvas), unless that would bring it within 12 px of pause;
+  // it never does. 1366 px is wide enough to centre; at 1920 px pause (at 1032–1068 px) holds it back.
+  const pause=(await page.getByRole('button',{name:'Pause game',exact:true}).boundingBox())!,mid=(b:Box)=>b.x+b.width/2;
+  const fits=viewport.width/2+hud.width/2<=pause.x-12;
+  expect(hud.x+hud.width).toBeLessThanOrEqual(pause.x-12+.5);
+  if(viewport.width===1366)expect(fits).toBe(true);
+  if(viewport.width===1920)expect(fits).toBe(false);
+  if(fits)expect(Math.abs(mid(hud)-viewport.width/2)).toBeLessThanOrEqual(1);
+  expect(Math.abs(mid(speed)-mid(hud))).toBeLessThanOrEqual(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await page.screenshot({path:`${EVIDENCE}/${viewport.width}x${viewport.height}.png`});
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');await page.clock.runFor(400);

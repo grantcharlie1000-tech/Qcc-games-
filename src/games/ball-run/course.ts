@@ -287,8 +287,8 @@ class CourseImpl implements Course {
   private readonly lookup = blankSample();
   private readonly scratch = blankSample();
   private readonly ghostSample = blankSample();
-  /** Whether the road under the last ghostRest() call has ground. */
-  private ghostGround = true;
+  /** fly()'s own sample of the road where a ghost step ends: no other ghostRest() call writes it. */
+  private readonly ghostAhead = blankSample();
 
   constructor(readonly seed: number, readonly difficulty: Difficulty) {
     const cfg = this.cfg = CONFIG[difficulty], index = DIFFICULTIES.indexOf(difficulty);
@@ -512,12 +512,12 @@ class CourseImpl implements Course {
   // Flights ------------------------------------------------------------------
 
   /** Ball-centre height resting on the centre line at d (or, if `low`, at the low edge of a bank, where a
-   * ball that steered there lands last), with ghostGround set. Beyond the road built so far it continues
-   * flat (only asked for by flightsOver's look past the end). */
-  private ghostRest(d: number, low = false): number {
-    if (d >= this.roadEnd) { this.ghostGround = true; return -SLOPE * d + RADIUS; }
-    const s = shape(this.find(d), d, this.cfg.roadWidth, this.cfg.ribbonWidth, this.ghostSample);
-    this.ghostGround = s.ground;
+   * ball that steered there lands last). `at` receives the road sample there; only its `ground` is set
+   * beyond the road built so far, where the road continues flat (only asked for by flightsOver's look
+   * past the end). */
+  private ghostRest(d: number, low = false, at: TrackSample = this.ghostSample): number {
+    if (d >= this.roadEnd) { at.ground = true; return -SLOPE * d + RADIUS; }
+    const s = shape(this.find(d), d, this.cfg.roadWidth, this.cfg.ribbonWidth, at);
     return s.elevation - (low ? (s.width / 2 - EDGE_SUPPORT) * Math.abs(Math.tan(s.bank)) : 0) + RADIUS / Math.cos(s.bank);
   }
 
@@ -544,7 +544,8 @@ class CourseImpl implements Course {
       if (g.grounded && !launches(seg.kind) && g.d >= seg.start + 2 && g.d < seg.end - 2) { this.settle(g, seg.end - 2); continue; }
       const v = this.speedNow(g.d), d0 = g.d, d1 = d0 + v * STEP;
       if (!flat && d1 >= this.roadEnd) return furthest;
-      const rest0 = this.ghostRest(d0), rest = this.ghostRest(d1), ground = this.ghostGround, surfaceVy = (rest - rest0) / STEP;
+      const rest0 = this.ghostRest(d0), rest = this.ghostRest(d1, false, this.ghostAhead), ground = this.ghostAhead.ground;
+      const surfaceVy = (rest - rest0) / STEP;
       const fall = g.h + g.vy * STEP - GRAVITY * STEP * STEP / 2;
       if (g.grounded) {
         const away = (rest - 2 * rest0 + this.ghostRest(d0 - v * STEP)) / (STEP * STEP) < -GRAVITY && fall > rest;
