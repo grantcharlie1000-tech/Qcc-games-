@@ -498,7 +498,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     // view; high above the road (a drop, a crest at speed) it looks closer, so the view pitches
     // down and shows the height. Off the edge it stays 1.2 m inside the towers and turns to keep
     // the ball where following would have put it; it stops 1.5 m below the road and tilts part
-    // way after the falling ball, never past MAX_PITCH. Reduced motion keeps the fixed look-ahead and does not tilt.
+    // way after the falling ball, never past MAX_PITCH. Reduced motion keeps the fixed look-ahead
+    // and does not tilt.
     track(distance, S);
     const bank = S.bank, roadCenter = S.center;
     const lift = SLOPE * distance, road0 = S.elevation + lift, ballBase = run.height + lift - RADIUS;
