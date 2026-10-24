@@ -463,7 +463,7 @@ describe('Ball Run course generator', () => {
       }
     }
     expect(crests).toBeGreaterThan(1000);
-    // The cap binds on every difficulty (36 / 87 / 141 crests and dips over these seeds when written).
+    // The cap binds on every difficulty (37 / 87 / 140 crests and dips over these seeds when written).
     for (const d of DIFFICULTIES) expect(capped[d], d).toBeGreaterThan(20);
   });
 
