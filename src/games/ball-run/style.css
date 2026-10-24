@@ -24,22 +24,27 @@
  * 0.01 ms transition, which would otherwise interpolate (or, with no frames, hold) each write. */
 .br-boost,.br-layer,.br-over{transition:none}
 
-/* Panels sit over a dimmed world, below the shell's pause overlay (z-index 20), clear of its corner and bottom controls. */
-.br-layer{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding:calc(var(--br-top) + 46px) 16px max(56px,calc(env(safe-area-inset-bottom) + 50px));background:radial-gradient(ellipse at 50% 40%,#2a0d3166,#0000 70%),#07040ca6;overflow:hidden}
-.br-panel{width:min(340px,100%);max-height:100%;border-radius:22px;text-align:center;box-shadow:0 18px 50px #000b;overflow:hidden}
+/* Panels sit over a dimmed world, below the shell's pause overlay (z-index 20), clear of its corner and bottom controls.
+ * The layer's one cell is exactly the space between them, so a panel's max-height holds; a panel never clips:
+ * the help list scrolls inside the setup panel, and any panel scrolls as a last resort. */
+.br-layer{position:absolute;inset:0;z-index:10;display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;padding:calc(var(--br-top) + 46px) 16px max(56px,calc(env(safe-area-inset-bottom) + 50px));background:radial-gradient(ellipse at 50% 40%,#2a0d3166,#0000 70%),#07040ca6;overflow:hidden}
+.br-panel{width:min(340px,100%);max-height:100%;border-radius:22px;text-align:center;box-shadow:0 18px 50px #000b;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .br-title{font-size:24px;line-height:1.05;letter-spacing:.02em}
 .br-copy{font-size:14px;line-height:1.32;color:#f3eefb}
 .br-face{display:block;width:100%;height:100%}
 .br-face-slot{position:relative;display:block;width:76px;height:76px;margin:0 auto}
 .br-actions{display:flex;justify-content:center;align-items:center;gap:12px}
-.br-button{min-height:50px;min-width:150px;padding:8px 22px;border-radius:12px;font-size:22px;letter-spacing:.03em;text-transform:uppercase;text-shadow:0 2px 0 #0003;box-shadow:inset 0 -4px #0003;transition:transform 120ms cubic-bezier(.23,1,.32,1),filter 120ms}
+/* White labels on the reference's amber and green fills (below 3:1 on their own): a dark halo keeps them legible. */
+.br-button{min-height:50px;min-width:150px;padding:8px 22px;border-radius:12px;font-size:22px;letter-spacing:.03em;text-transform:uppercase;text-shadow:0 2px 0 #0005,0 0 3px #0007;box-shadow:inset 0 -4px #0003;transition:transform 120ms cubic-bezier(.23,1,.32,1),filter 120ms}
 .br-button:active,.br-home:active,.br-help-toggle:active{transform:scale(.97)}
 @media(hover:hover) and (pointer:fine){.br-button:hover,.br-home:hover,.br-help-toggle:hover{filter:brightness(1.08)}}
 
-/* Setup: purple heading over a dark body, as on the reference menu. */
-.br-setup{background:#1d1d22f2}
-.br-head{padding:20px 20px 46px;background:linear-gradient(#3f1a4cf2,#2a1236f2);display:grid;gap:10px}
-.br-body{padding:0 20px 20px;display:grid;gap:12px;justify-items:center}
+/* Setup: purple heading over a dark body, as on the reference menu. Only the help list shrinks (it scrolls),
+ * so Play and How to play always stay in view. */
+.br-setup{background:#1d1d22f2;display:flex;flex-direction:column}
+.br-head{flex:none;padding:20px 20px 46px;background:linear-gradient(#3f1a4cf2,#2a1236f2);display:grid;gap:10px}
+.br-body{flex:0 1 auto;min-height:0;padding:0 20px 20px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.br-body>*{flex:none}
 /* The face badge straddles the heading's edge, as on the reference menu. */
 .br-pick .br-face-slot{margin-top:-38px}
 .br-helping .br-head{padding-bottom:16px}
@@ -56,7 +61,7 @@
 .br-setup .br-play{grid-column:2}
 .br-help-toggle{justify-self:start;width:40px;height:40px;border-radius:10px;background:#8c4f9f;font-size:22px;box-shadow:inset 0 -3px #0003}
 .br-help-toggle[aria-expanded=true]{box-shadow:inset 0 0 0 3px #ffe0a4}
-.br-help{display:grid;gap:7px;padding:0;list-style:none;text-align:left;font-size:14px;line-height:1.3;color:#f3eefb}
+.br-help{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;display:grid;align-content:start;gap:7px;padding:0;list-style:none;text-align:left;font-size:14px;line-height:1.3;color:#f3eefb}
 .br-help li{padding-left:16px;position:relative}
 .br-help li::before{content:'';position:absolute;left:2px;top:.42em;width:7px;height:7px;border-radius:2px;background:var(--br-accent)}
 .br-note{font:13px/1.4 system-ui,sans-serif;color:#ffe0a4}
@@ -95,28 +100,66 @@
 .br-fallback p{max-width:360px;margin:0 0 18px}
 .br-fallback .game-button{display:inline-block}
 
-/* Short landscape screens: the panels go side by side so they fit between the toolbar and the bottom controls. */
+/* Short screens: a size down, so the panels fit between the toolbar and the bottom controls. */
 @media(max-height:520px){
-  .br-layer{padding-top:calc(var(--br-top) + 44px);padding-bottom:max(50px,calc(env(safe-area-inset-bottom) + 46px))}
-  .br-setup{display:grid;grid-template-columns:1fr 1.1fr;width:min(620px,100%)}
-  .br-head{align-content:center;padding:18px}
-  .br-body,.br-helping .br-body{padding:14px 18px;gap:10px;align-content:center}
-  .br-pick .br-face-slot{margin-top:0}
+  .br-layer{padding-top:calc(var(--br-top) + 44px);padding-bottom:max(52px,calc(env(safe-area-inset-bottom) + 46px))}
+  .br-head{padding:16px 16px 36px}
+  .br-body{padding:0 16px 16px;gap:10px}
+  .br-pick .br-face-slot{margin-top:-28px}
   .br-pick{gap:6px}
   .br-face-slot{width:56px;height:56px}
   .br-level{font-size:24px}
   .br-help{font-size:13px;gap:5px}
   .br-button{min-height:44px}
+  .br-home{height:44px}
   .br-help-toggle{width:38px;height:38px}
-  .br-over{grid-template-columns:1fr 1.25fr;align-items:center;width:min(620px,100%);padding:16px 18px;gap:18px}
+  .br-over{padding:14px 16px 12px;gap:8px}
   .br-over .br-title{font-size:26px}
+  .br-score-label{font-size:18px}
   .br-final{font-size:40px}
   .br-records{margin-top:26px;padding-top:26px}
   .br-badge{top:-26px}
   .br-badge .br-face-slot{width:48px;height:48px}
-  .br-row{min-height:28px}
+  .br-row{min-height:26px}
   .br-side{gap:10px}
   .br-continue{padding:16px 20px;gap:8px}
+}
+/* Short landscape screens: the panels go side by side. */
+@media(max-height:520px) and (min-width:480px){
+  .br-setup{flex-direction:row;width:min(620px,100%)}
+  .br-head{flex:1 1 0;min-width:0;align-content:safe center;padding:18px}
+  .br-body,.br-helping .br-body{flex:1.1 1 0;min-width:0;padding:14px 18px;justify-content:safe center}
+  .br-pick .br-face-slot{margin-top:0}
+  .br-over{grid-template-columns:1fr 1.25fr;align-items:center;width:min(620px,100%);padding:16px 18px;gap:18px}
+  .br-score-label{font-size:22px}
+  .br-row{min-height:28px}
+}
+/* Landscape phones with browser bars (down to about 300 px of height): everything a step smaller. */
+@media(max-height:360px) and (min-width:480px){
+  .br-layer{padding-top:calc(var(--br-top) + 42px)}
+  .br-title{font-size:21px}
+  .br-copy{font-size:13px;line-height:1.28}
+  .br-head{padding:14px 16px;gap:8px}
+  .br-body,.br-helping .br-body{padding:12px 16px;gap:8px}
+  .br-face-slot{width:46px;height:46px}
+  .br-level{font-size:21px}
+  .br-help{font-size:12px;gap:4px}
+  .br-button{min-height:40px;font-size:20px}
+  .br-home{width:48px;height:40px}
+  .br-help-toggle{width:36px;height:36px}
+  .br-over{padding:12px 16px;gap:16px}
+  .br-over .br-title{font-size:23px}
+  .br-reason{font-size:13px;margin-bottom:2px}
+  .br-score-label{font-size:18px}
+  .br-final{font-size:34px}
+  .br-records{margin-top:20px;padding:22px 8px 7px}
+  .br-badge{top:-20px;font-size:13px}
+  .br-badge .br-face-slot{width:40px;height:40px}
+  .br-rows{gap:4px}
+  .br-row{min-height:24px;padding:2px 10px;font-size:14px}
+  .br-side{gap:8px}
+  .br-again{font-size:18px}
+  .br-continue{padding:12px 18px;gap:6px}
 }
 @media(max-width:360px){.br-head,.br-body{padding-left:14px;padding-right:14px}.br-button{min-width:128px}.br-hud{gap:14px}}
 /* Large screens: the same layouts, a size up. */

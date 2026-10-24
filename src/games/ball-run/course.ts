@@ -2,9 +2,11 @@
  * sequence of rows; each comes from its own PRNG stream and is generated lazily and
  * strictly in order, so a seed and difficulty give the same course however it is
  * queried. A row is kept only if interval reachability, using the ball's real
- * lateral authority scaled by REACH_SAFETY, still leaves a route through it. */
+ * lateral authority scaled by REACH_SAFETY, still leaves a route through it. A point
+ * mass run along the road as it is built predicts every flight off a crest, dip or
+ * drop; blocks and gate entrances stay out of each one. */
 import {
-  BANK_DRIFT, CENTER_LIMIT, CONFIG, DIFFICULTIES, EDGE_SUPPORT, GRAVITY, RADIUS, REACH_SAFETY, SLOPE, WARMUP,
+  BANK_DRIFT, CENTER_LIMIT, CONFIG, DIFFICULTIES, EDGE_SUPPORT, GRAVITY, RADIUS, REACH_SAFETY, SLOPE, STEP, WARMUP,
   lateralSpeed, speedAt,
   type Course, type Difficulty, type DifficultyConfig, type Gate, type Obstacle, type ObstaclePose, type PatternKind,
   type SegmentKind, type TrackSample,
@@ -28,6 +30,14 @@ const MIN_ROUTE = .25;
 /** Least time from a row's last block to the next row: the tightest spacing inside a pattern. */
 const ROW_SPACING = .35;
 const GATE_LENGTH = 30, STRAIGHT_RISE = .3;
+/** Crests and dips are low enough that the road launches a ball at most this fast upward off the base
+ * slope (m/s): about 0.8 s in the air. Never lower than CREST_LEAST / DIP_LEAST (m). */
+const LAUNCH_SPEED = 8, CREST_LEAST = 1, DIP_LEAST = .6;
+/** Block-free road before a predicted take-off and after its landing (m), and what the prediction
+ * allows a real ball (another step phase, steering on a bank) on either side (m). */
+const FLIGHT_BEFORE = 5, FLIGHT_AFTER = 12, FLIGHT_MARGIN = 1;
+/** The shortest run-out that defers a due gate past a flight (m). */
+const RUN_OUT = 5;
 
 type Drawn = Exclude<SegmentKind, 'warmup' | 'gate'>;
 const DRAWN: readonly Drawn[] = ['straight', 'bend', 'offset', 'ribbon', 'ribbonBend', 'bank', 'crest', 'dip', 'drop'];
@@ -46,6 +56,8 @@ const smoother = (t: number) => t * t * t * (t * (6 * t - 15) + 10);
 const smootherSlope = (t: number) => 30 * t * t * (t - 1) * (t - 1);
 const ribbonEase = (t: number) => t < .25 ? smooth(t * 4) : t > .75 ? smooth((1 - t) * 4) : 1;
 const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
+/** Only these segments' road can fall away from a ball faster than gravity, or end. */
+const launches = (kind: SegmentKind) => kind === 'crest' || kind === 'dip' || kind === 'drop';
 
 function hash(a: number, b: number): number {
   let h = (a ^ Math.imul(b + 1, 0x9e3779b9)) >>> 0;
@@ -112,6 +124,40 @@ class Intervals {
     this.n = k / 2;
   }
   meets(lo: number, hi: number): boolean { for (let i = 0; i < 2 * this.n; i += 2) if (this.v[i] <= hi && this.v[i + 1] >= lo) return true; return false; }
+}
+
+/** Obstacle-free zones, flat [start, end, ...], sorted and merged, read through a cursor that only moves forward. */
+class Zones {
+  private readonly z: number[] = [];
+  private at = 0;
+  /** Zones arrive in order of their start. */
+  add(lo: number, hi: number): void {
+    const z = this.z, n = z.length;
+    if (n && lo <= z[n - 1]) z[n - 1] = Math.max(z[n - 1], hi);
+    else z.push(lo, hi);
+  }
+  /** End of the zone containing d, or -1. d never decreases between calls. */
+  end(d: number): number {
+    const z = this.z;
+    while (this.at < z.length && z[this.at + 1] <= d) this.at += 2;
+    return this.at < z.length && z[this.at] <= d ? z[this.at + 1] : -1;
+  }
+  /** Start of the first zone not yet passed (after end(d) found d outside every zone: the next one past d). */
+  next(): number { return this.at < this.z.length ? this.z[this.at] : Infinity; }
+  /** End of the last zone, or -Infinity. */
+  last(): number { return this.z.length ? this.z[this.z.length - 1] : -Infinity; }
+}
+
+/** A point-mass ball the generator runs along the road's centre line at the course speed, with the
+ * simulation's fixed step and lift-off rule, to predict where a real ball flies. */
+interface Ghost {
+  d: number;
+  /** Ball-centre height and vertical speed. */
+  h: number;
+  vy: number;
+  grounded: boolean;
+  /** Where the current flight left the road (last grounded distance). */
+  takeoff: number;
 }
 
 interface Segment {
@@ -209,8 +255,11 @@ class CourseImpl implements Course {
   private readonly segments: Segment[] = [];
   private readonly gateStarts: number[] = [];
   private readonly gates: Gate[] = [];
-  /** Obstacle-free zones, flat [start, end, ...], sorted and merged. */
-  private readonly zones: number[] = [];
+  /** Obstacle-free zones from the road's segments, and around every predicted flight. */
+  private readonly zones = new Zones();
+  private readonly flightZones = new Zones();
+  /** The flight predictor: it has run over all the road built so far, but for its last step. */
+  private readonly ghost: Ghost = { d: 0, h: 0, vy: 0, grounded: true, takeoff: 0 };
   private roadEnd = 0;
   private sinceGate = 0;
   private gateDue: number;
@@ -221,7 +270,6 @@ class CourseImpl implements Course {
   private rowCount = 0;
   private rowsSinceRest = 0;
   private restDue: number;
-  private zoneIndex = 0;
   /** Exact reachable set at frontierAt; no obstacle has yet been placed past it. */
   private frontierAt = 0;
   private readonly frontier = new Intervals();
@@ -238,6 +286,9 @@ class CourseImpl implements Course {
   private readonly probe = blankSample();
   private readonly lookup = blankSample();
   private readonly scratch = blankSample();
+  private readonly ghostSample = blankSample();
+  /** Whether the road under the last ghostRest() call has ground. */
+  private ghostGround = true;
 
   constructor(readonly seed: number, readonly difficulty: Difficulty) {
     const cfg = this.cfg = CONFIG[difficulty], index = DIFFICULTIES.indexOf(difficulty);
@@ -390,7 +441,13 @@ class CourseImpl implements Course {
     const make = (type: SegmentKind, length: number, amp = 0, c1 = c0, approach = 0, gap = 0): Segment =>
       ({ kind: type, index, start, end: start + length, c0, c1, amp, approach, gap });
     let seg: Segment | null = null;
+    // Where the road is next clear of predicted flights: past `start` when a flight is over it.
+    const clear = previous ? Math.max(this.flightZones.last(), this.flightsOver()) : -Infinity;
     if (!previous) seg = make('warmup', WARMUP);
+    // A gate falls due inside a predicted flight: run out flat until past it, then open the gate.
+    else if (previous.kind !== 'gate' && this.sinceGate >= this.gateDue && clear > start) {
+      seg = make(this.schedule(previous.kind, 'straight'), Math.max(RUN_OUT, clear - start));
+    }
     else if (previous.kind !== 'gate' && this.sinceGate >= this.gateDue) {
       this.gateStarts.push(start);
       seg = make('gate', GATE_LENGTH);
@@ -403,6 +460,9 @@ class CourseImpl implements Course {
       let kind = this.schedule(previous.kind, previous.kind === 'gate' ? 'straight' : null);
       // Offsets keep |c| ≤ CENTER_LIMIT − 0.8, so a bend always has room; without it, move toward the centre first.
       if (kind === 'bend' && room < .8 || kind === 'ribbonBend' && room < .6) kind = this.recharge(kind, 'offset');
+      // A dip under a flight, or just after its landing, would stretch it or launch the ball again at
+      // once: land the ball on a straight instead.
+      if (kind === 'dip' && clear > start) kind = this.recharge(kind, 'straight');
       if (kind === 'drop') {
         const approach = r.range(20, 30) * scale, height = r.range(2, 4), gap = r.range(2, 4), flight = Math.sqrt(2 * height / GRAVITY);
         for (let k = 0; k < 3 && !seg; k++) {
@@ -411,15 +471,17 @@ class CourseImpl implements Course {
         }
       } else {
         // Crests and dips keep their length at any speed, so a fast ball leaves the road over them
-        // (reference page 04, "drop and flight"); the other kinds stretch with speed.
+        // (reference page 04, "drop and flight"); the other kinds stretch with speed. Their height is
+        // capped by the speed there instead, so a launch stays short and low.
         const length = r.range(LENGTH[kind][0], LENGTH[kind][1]) * (kind === 'crest' || kind === 'dip' ? 1 : scale);
+        const highest = LAUNCH_SPEED * length / (Math.PI * this.speedNow(start + length));
         let amp = 0, c1 = c0;
         if (kind === 'straight') amp = STRAIGHT_RISE;
         else if (kind === 'bend') amp = r.sign() * r.range(.8, Math.min(2, room));
         else if (kind === 'ribbonBend') amp = r.sign() * r.range(.6, Math.min(1.2, room));
         else if (kind === 'bank') amp = r.sign() * r.range(.5, 1) * cfg.maxBank;
-        else if (kind === 'crest') amp = r.range(1.5, 3.5);
-        else if (kind === 'dip') amp = -r.range(1, 2);
+        else if (kind === 'crest') amp = Math.min(r.range(1.5, 3.5), Math.max(CREST_LEAST, highest));
+        else if (kind === 'dip') amp = -Math.min(r.range(1, 2), Math.max(DIP_LEAST, highest));
         else if (kind === 'offset') {
           // Uniform over [-limit, c0 - 1.2] ∪ [c0 + 1.2, limit], limit = CENTER_LIMIT − 0.8 (from the centre line: ±limit).
           const limit = CENTER_LIMIT - .8, below = Math.max(0, c0 - 1.2 + limit), above = Math.max(0, limit - c0 - 1.2);
@@ -434,22 +496,79 @@ class CourseImpl implements Course {
     this.segments.push(seg);
     this.roadEnd = seg.end;
     this.sinceGate += this.runTime(seg.start, seg.end);
-    const length = seg.end - seg.start;
-    if (seg.kind === 'warmup') this.zone(0, WARMUP);
-    else if (seg.kind === 'gate') this.zone(seg.start - 5, this.gates[this.gates.length - 1].clearEnd);
-    else if (seg.kind === 'ribbon' || seg.kind === 'ribbonBend') this.zone(seg.start, seg.end);
-    else if (seg.kind === 'crest' || seg.kind === 'dip') this.zone(seg.start + .3 * length, seg.start + .7 * length);
+    const length = seg.end - seg.start, zones = this.zones;
+    if (seg.kind === 'warmup') zones.add(0, WARMUP);
+    else if (seg.kind === 'gate') zones.add(seg.start - 5, this.gates[this.gates.length - 1].clearEnd);
+    else if (seg.kind === 'ribbon' || seg.kind === 'ribbonBend') zones.add(seg.start, seg.end);
+    else if (seg.kind === 'crest' || seg.kind === 'dip') zones.add(seg.start + .3 * length, seg.start + .7 * length);
     else if (seg.kind === 'drop') {
       // Clear until 12 m past where the ball lands at the speed there (the pad is longer: it fits maxSpeed).
       const lip = seg.start + seg.approach;
-      this.zone(lip - 8, lip + this.speedNow(lip) * Math.sqrt(2 * seg.amp / GRAVITY) + 12);
+      zones.add(lip - 8, lip + this.speedNow(lip) * Math.sqrt(2 * seg.amp / GRAVITY) + 12);
+    }
+    this.fly(this.ghost, false);
+  }
+
+  // Flights ------------------------------------------------------------------
+
+  /** Ball-centre height resting on the centre line at d (or, if `low`, at the low edge of a bank, where a
+   * ball that steered there lands last), with ghostGround set. Beyond the road built so far it continues
+   * flat (only asked for by flightsOver's look past the end). */
+  private ghostRest(d: number, low = false): number {
+    if (d >= this.roadEnd) { this.ghostGround = true; return -SLOPE * d + RADIUS; }
+    const s = shape(this.find(d), d, this.cfg.roadWidth, this.cfg.ribbonWidth, this.ghostSample);
+    this.ghostGround = s.ground;
+    return s.elevation - (low ? (s.width / 2 - EDGE_SUPPORT) * Math.abs(Math.tan(s.bank)) : 0) + RADIUS / Math.cos(s.bank);
+  }
+
+  /** Puts a ghost on the road at d, moving with it. */
+  private settle(g: Ghost, d: number): void {
+    const v = this.speedNow(d);
+    g.d = d;
+    g.h = this.ghostRest(d);
+    g.vy = (g.h - this.ghostRest(d - v * STEP)) / STEP;
+    g.grounded = true;
+  }
+
+  /** Runs a ghost over the road built so far (and, if `flat`, on along flat road until it is on the
+   * road again 2 m past the end), as model.step moves a ball on the centre line: it stays on the road
+   * unless the road falls away faster than gravity can follow, or ends, and lands where the lowest
+   * point across the road meets it. Each flight it finishes adds its clear zone; the furthest end of
+   * those zones is returned. Where the road cannot launch it, a grounded ghost skips to 2 m before the
+   * segment's end. */
+  private fly(g: Ghost, flat: boolean): number {
+    let furthest = -Infinity;
+    for (;;) {
+      const seg = this.find(g.d);
+      if (flat && g.grounded && g.d >= this.roadEnd + 2) return furthest;
+      if (g.grounded && !launches(seg.kind) && g.d >= seg.start + 2 && g.d < seg.end - 2) { this.settle(g, seg.end - 2); continue; }
+      const v = this.speedNow(g.d), d0 = g.d, d1 = d0 + v * STEP;
+      if (!flat && d1 >= this.roadEnd) return furthest;
+      const rest0 = this.ghostRest(d0), rest = this.ghostRest(d1), ground = this.ghostGround, surfaceVy = (rest - rest0) / STEP;
+      const fall = g.h + g.vy * STEP - GRAVITY * STEP * STEP / 2;
+      if (g.grounded) {
+        const away = (rest - 2 * rest0 + this.ghostRest(d0 - v * STEP)) / (STEP * STEP) < -GRAVITY && fall > rest;
+        if (ground && !away) { g.h = rest; g.vy = surfaceVy; }
+        else { g.grounded = false; g.takeoff = d0; }
+      } else if (ground && fall <= this.ghostRest(d1, true) && g.h >= this.ghostRest(d0, true) - .05) {
+        g.h = rest; g.vy = surfaceVy; g.grounded = true;
+        const lo = g.takeoff - FLIGHT_BEFORE - FLIGHT_MARGIN, hi = d1 + FLIGHT_AFTER + FLIGHT_MARGIN;
+        if (g === this.ghost) this.flightZones.add(lo, hi);
+        furthest = Math.max(furthest, hi);
+      }
+      if (!g.grounded) { g.h = fall; g.vy -= GRAVITY * STEP; }
+      g.d = d1;
+      // Unreachable (every drop is cleared at the speed there); never fly on forever.
+      if (!g.grounded && g.h < rest - 10) this.settle(g, d1);
     }
   }
 
-  private zone(lo: number, hi: number): void {
-    const z = this.zones, n = z.length;
-    if (n && lo <= z[n - 1]) z[n - 1] = Math.max(z[n - 1], hi);
-    else z.push(lo, hi);
+  /** The furthest end of the clear zones of flights a copy of the ghost finishes when the road goes on
+   * flat from its end, as a gate or a run-out would: it covers the flight the ghost is in, or is about
+   * to begin within its last step. -Infinity if there is none. */
+  private flightsOver(): number {
+    const g = this.ghost;
+    return this.fly({ d: g.d, h: g.h, vy: g.vy, grounded: g.grounded, takeoff: g.takeoff }, true);
   }
 
   private traversable(seg: Segment): Segment | null {
@@ -493,11 +612,9 @@ class CourseImpl implements Course {
     while (this.rowCursor < d + ROWS_AHEAD) this.addRow();
   }
 
-  /** End of the obstacle-free zone containing d, or -1. */
-  private zoneEnd(d: number): number {
-    const z = this.zones;
-    while (this.zoneIndex < z.length && z[this.zoneIndex + 1] <= d) this.zoneIndex += 2;
-    return this.zoneIndex < z.length && z[this.zoneIndex] <= d ? z[this.zoneIndex + 1] : -1;
+  /** Builds road until every flight taking off before d has landed. */
+  private ensureFlights(d: number): void {
+    while (this.ghost.d < d || !this.ghost.grounded) this.addSegment();
   }
 
   private addRow(): void {
@@ -505,12 +622,13 @@ class CourseImpl implements Course {
     let d = this.rowCursor;
     for (;;) {
       this.ensureRoad(d);
-      const end = this.zoneEnd(d);
+      this.ensureFlights(d + LOOK_AHEAD + FLIGHT_BEFORE + FLIGHT_MARGIN);
+      const end = Math.max(this.zones.end(d), this.flightZones.end(d));
       if (end < 0) break;
       d = end;
     }
     // Only zones within LOOK_AHEAD are final whatever has been generated, so stop there.
-    const limit = Math.min(d + LOOK_AHEAD, this.zoneIndex < this.zones.length ? this.zones[this.zoneIndex] : Infinity);
+    const limit = Math.min(d + LOOK_AHEAD, this.zones.next(), this.flightZones.next());
     const v = this.speedNow(d), p = clamp((d - WARMUP) / cfg.rampDistance, 0, 1);
     const gap = r.range(lerp(cfg.introInterval[0], cfg.rowInterval[0], p), lerp(cfg.introInterval[1], cfg.rowInterval[1], p)) * v;
     // Stop short of the row so its first block's widened front is itself a blocked step.

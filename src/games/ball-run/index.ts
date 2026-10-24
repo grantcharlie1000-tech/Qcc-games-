@@ -195,6 +195,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     if (panel === 'over') fillResults();
     layer.hidden = !panel;
     for (const [name, element] of Object.entries(panels)) element.hidden = name !== panel;
+    // The canvas is a Tab stop only while it steers; a panel's controls come first otherwise.
+    canvas.tabIndex = panel ? -1 : 0;
     hud.hidden = speedLabel.hidden = panel === 'setup' || panel === 'lost';
     if (panel === 'over' && shown !== 'over') enter(panels.over);
     else if (panel !== 'over' && entering) settle();
@@ -309,6 +311,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     committed = waiting = false;
     marks = { today: false, week: false, allTime: false };
     boostText = 'Speed Up';
+    setHelp(false);
     scene.reset();
     if (start) begin();
     else { screen(); save(); }

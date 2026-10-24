@@ -67,7 +67,9 @@ function onBend(seed:number,difficulty:Difficulty){
     if(clear)return placeRun(seed,difficulty,d+12);
   }
 }
-/** Fully on screen, clear of the shell's corner and bottom controls, with every button hit for real. */
+type Box={x:number,y:number,width:number,height:number};
+const apart=(a:Box,b:Box)=>b.x>=a.x+a.width||b.x+b.width<=a.x||b.y>=a.y+a.height||b.y+b.height<=a.y;
+/** Fully on screen, clear of the shell's corner and bottom controls, nothing cut off, with every button hit for real. */
 async function expectClear(page:Page,panel:Locator){
   // Hit tests ignore opacity, so check that the panel has finished entering and is really seen.
   await expect(panel.locator('..')).toHaveCSS('opacity','1');await expect(panel).toHaveCSS('transform','none');
@@ -77,9 +79,10 @@ async function expectClear(page:Page,panel:Locator){
   for(const name of ['Back to game library','Pause game','Resume game','Restart game','Game rules','Open menu','Favourite Ball Run','Rankings']){
     const control=name==='Rankings'?page.locator('.lb-toggle'):page.getByRole(name.startsWith('Back')?'link':'button',{name,exact:true});
     if(!await control.isVisible())continue;
-    const c=(await control.boundingBox())!;
-    expect(c.x>=box.x+box.width||c.x+c.width<=box.x||c.y>=box.y+box.height||c.y+c.height<=box.y,`${name} overlaps the panel`).toBe(true);
+    expect(apart(box,(await control.boundingBox())!),`${name} overlaps the panel`).toBe(true);
   }
+  // The panel shows all of its content without falling back to scrolling.
+  expect(await panel.evaluate(p=>p.scrollHeight<=p.clientHeight+1&&p.scrollWidth<=p.clientWidth+1)).toBe(true);
   for(const button of await panel.getByRole('button').all())expect(await button.evaluate(b=>{const r=b.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !!hit&&b.contains(hit);})).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
 }
@@ -89,6 +92,8 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page),slider=page.getByRole('slider',{name:'Difficulty'}),play=page.getByRole('button',{name:'Play',exact:true});
   await expect(play).toBeVisible();await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-difficulty','medium');
+  // Behind a panel the canvas is no Tab stop: from the stage, Tab reaches the difficulty first.
+  await page.locator('#game-stage').focus();await page.keyboard.press('Tab');await expect(slider).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
   await expect(slider).toHaveValue('1');await expect(slider).toHaveAttribute('aria-valuetext','Medium');await expect(root.locator('.br-level')).toHaveText('Medium');
   await expect(root.locator('.br-setup .br-face')).toHaveAttribute('data-face','medium');await expect(play).toHaveCSS('background-color','rgb(226, 162, 27)');
   // The recording's 79 and 143 belong to one player, never to a fresh profile.
@@ -102,8 +107,12 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
   await help.click();await expect(help).toHaveAttribute('aria-expanded','true');await expect(root.locator('.br-help')).toBeVisible();await expect(root.locator('.br-help')).toContainText('permanently');
   await expectClear(page,root.locator('.br-setup'));
   await help.click();await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();
+  // The shell's Restart gives a fresh setup panel with help closed.
+  await help.click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
+  await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
   await page.getByRole('button',{name:'Game rules'}).click();await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
+  await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
   await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
   const speed=await data(page,'speed');expect(speed).toBeCloseTo(CONFIG.hard.startSpeed,1);
   await waitDistance(page,15);expect(await data(page,'speed')).toBeGreaterThan(speed);await expect(root.locator('.br-score')).not.toHaveText('0');
@@ -137,18 +146,24 @@ test('real drag and held keys steer; P pauses and resumes; Study, blur, death an
     await page.clock.runFor(500);
     await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)<.1);await page.mouse.up();pointerHeld=false;
     expect(await canvas.evaluate((el,id)=>el.hasPointerCapture(id),anchor.id)).toBe(false);
-    // P is the shell's pause button: label, frozen world, and P again resumes.
+    // P is the shell's pause button: label, frozen world, and P again resumes. A key held down
+    // through the pause and the resume is released by the pause: it steers only when pressed afresh.
+    const held=await data(page,'x');await page.keyboard.down('ArrowRight');await page.clock.runFor(100);expect(await data(page,'x')).toBeGreaterThan(held);
     await page.keyboard.press('p');await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
     const distance=await root.getAttribute('data-distance'),x=await root.getAttribute('data-x');await page.keyboard.press('ArrowLeft');await page.clock.runFor(200);
     expect(await root.getAttribute('data-distance')).toBe(distance);expect(await root.getAttribute('data-x')).toBe(x);
     await page.keyboard.press('p');await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
     await page.clock.runFor(100);expect(await data(page,'distance')).toBeGreaterThan(Number(distance));
-    // A key held into Study is released; keys pressed while reading never reach the game.
-    await page.keyboard.down('ArrowLeft');await page.clock.runFor(50);await page.keyboard.press('Escape');const studyDistance=await root.getAttribute('data-distance');
-    await page.keyboard.down('d');await page.clock.runFor(200);expect(await root.getAttribute('data-distance')).toBe(studyDistance);await page.keyboard.up('d');await page.keyboard.up('ArrowLeft');
+    await page.clock.runFor(300);const resumed=await data(page,'x');await page.clock.runFor(250);expect(Math.abs(await data(page,'x')-resumed)).toBeLessThan(.02);
+    await page.keyboard.up('ArrowRight');
+    // A key held down into Study and back out is released; keys pressed while reading never reach the game.
+    const studied=await data(page,'x');await page.keyboard.down('ArrowLeft');await page.clock.runFor(100);expect(await data(page,'x')).toBeLessThan(studied);
+    await page.keyboard.press('Escape');const studyDistance=await root.getAttribute('data-distance');
+    await page.keyboard.down('d');await page.clock.runFor(200);expect(await root.getAttribute('data-distance')).toBe(studyDistance);await page.keyboard.up('d');
     await page.getByRole('link',{name:'Games',exact:true}).click();
     await expect(root).toHaveAttribute('data-phase','running');await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
     await page.clock.runFor(400);const settled=await data(page,'x');await page.clock.runFor(250);expect(Math.abs(await data(page,'x')-settled)).toBeLessThan(.02);
+    await page.keyboard.up('ArrowLeft');
     // Losing window focus releases a held key too.
     await page.keyboard.down('d');await page.clock.runFor(100);await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
     await page.clock.runFor(400);const blurred=await data(page,'x');await page.clock.runFor(250);expect(Math.abs(await data(page,'x')-blurred)).toBeLessThan(.02);await page.keyboard.up('d');
@@ -309,7 +324,7 @@ test('a curve reads as a curve',async({page})=>{
   await expect(game(page)).toHaveAttribute('data-phase','running');await page.screenshot({path:`${EVIDENCE}/curve.png`});
 });
 
-for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`fills ${viewport.width}x${viewport.height} with a round ball and keeps every panel on screen`,async({page})=>{
+for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768},{width:1920,height:1080},{width:667,height:330},{width:568,height:320}])test(`fills ${viewport.width}x${viewport.height} with a round ball and keeps every panel on screen`,async({page})=>{
   test.setTimeout(60000);
   await page.setViewportSize(viewport);await seed(page,snapshot(onStraight(3,'medium'),emptyRecords()));
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
@@ -323,6 +338,9 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   expect(await data(page,'aspect')).toBeCloseTo(viewport.width/viewport.height,4);
   const ballY=await data(page,'ball-screen-y');expect(ballY).toBeGreaterThan(.60);expect(ballY).toBeLessThan(.80);
   await expect(root.locator('.br-hud')).toBeVisible();
+  // The HUD shares the toolbar row, which stops at 1080 px: it stays between back and pause at every width.
+  const hud=(await root.locator('.br-hud').boundingBox())!;
+  for(const control of [page.getByRole('link',{name:'Back to game library'}),page.getByRole('button',{name:'Pause game',exact:true})])expect(apart(hud,(await control.boundingBox())!)).toBe(true);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await page.screenshot({path:`${EVIDENCE}/${viewport.width}x${viewport.height}.png`});
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');await page.clock.runFor(400);
@@ -330,6 +348,10 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   await page.getByRole('button',{name:'Home',exact:true}).click();
   await expectClear(page,root.locator('.br-setup'));await page.screenshot({path:`${EVIDENCE}/setup-${viewport.width}x${viewport.height}.png`});
   await page.getByRole('button',{name:'How to play',exact:true}).click();await expectClear(page,root.locator('.br-setup'));
+  // However short the screen, all of the help can be read: the list scrolls to its last line.
+  const help=root.locator('.br-help');await help.evaluate(list=>{list.scrollTop=list.scrollHeight;});
+  const list=(await help.boundingBox())!,last=(await help.locator('li').last().boundingBox())!;
+  expect(last.y+last.height).toBeLessThanOrEqual(list.y+list.height+1);
 });
 
 test('lost WebGL visibly saves and remains stopped until exit and re-entry',async({page})=>{

@@ -22,15 +22,15 @@ const blank = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient:
 const blankPose = (): ObstaclePose => ({ x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
 
 interface Span { index: number; kind: SegmentKind; start: number; end: number }
-const spanCache = new WeakMap<Course, Span[]>();
-/** Complete segments up to SPAN; boundaries found by bisecting on the sample's segment index. */
-function segments(c: Course): Span[] {
-  const cached = spanCache.get(c);
+const spanCache = new WeakMap<Course, Map<number, Span[]>>();
+/** Complete segments up to `to`; boundaries found by bisecting on the sample's segment index. */
+function segments(c: Course, to = SPAN): Span[] {
+  const byEnd = spanCache.get(c) ?? new Map<number, Span[]>(), cached = byEnd.get(to);
   if (cached) return cached;
   const s = blank(), out: Span[] = [];
   c.sample(0, s);
   let index = s.segment, kind = s.kind, start = 0;
-  for (let k = 1; k <= SPAN * 2; k++) {
+  for (let k = 1; k <= to * 2; k++) {
     const d = k / 2;
     if (c.sample(d, s).segment === index) continue;
     let lo = d - .5, hi = d;
@@ -39,7 +39,8 @@ function segments(c: Course): Span[] {
     c.sample(d, s);
     index = s.segment; kind = s.kind; start = hi;
   }
-  spanCache.set(c, out);
+  byEnd.set(to, out);
+  spanCache.set(c, byEnd);
   return out;
 }
 function obstacles(c: Course, from = 0, to = SPAN): CourseObstacle[] {
@@ -85,6 +86,66 @@ function clearZones(c: Course): [number, number][] {
   for (const d of drops(c)) zones.push([d.lip - 8, d.lip + c.speed(d.lip) * Math.sqrt(2 * d.height / GRAVITY) + 12]);
   return zones;
 }
+
+/** First distance at which the course reaches its speed cap. */
+function capDistance(c: Course): number {
+  const max = CONFIG[c.difficulty].maxSpeed;
+  let lo = 0, hi = 1000;
+  while (c.speed(hi) < max) { lo = hi; hi += 1000; }
+  for (let i = 0; i < 50; i++) { const mid = (lo + hi) / 2; if (c.speed(mid) >= max) hi = mid; else lo = mid; }
+  return hi;
+}
+/** The flight and gate tests run each course from the start to 4 km past its speed cap (16–20 km). */
+const farEnd = (c: Course) => Math.ceil(capDistance(c)) + 4000;
+interface Flight { kind: SegmentKind; takeoff: number; landing: number; airtime: number; apex: number; clearance: number; speed: number }
+const flightCache = new WeakMap<Course, Flight[]>();
+/** Every flight of a point mass running along the road's centre line at the course's speed, from the
+ * start to 4 km past the speed cap, written independently of the generator. On the road it leaves
+ * where the road ends (a drop's lip) or where the road's vertical acceleration under it (speed² ×
+ * curvature) falls below −GRAVITY, then flies from the road's velocity there until it meets the road
+ * again; a touch-down followed at once by another take-off is one flight. `apex` is the height reached
+ * above the road where it took off, `clearance` the most it rose above the road beneath it, `kind` the
+ * segment it took off from. */
+function flights(c: Course): Flight[] {
+  const cached = flightCache.get(c);
+  if (cached) return cached;
+  const h = .5, s = blank(), out: Flight[] = [], to = farEnd(c);
+  const e = (d: number) => c.sample(d, s).elevation;
+  const falls = (d: number, k: number, share = 1) => c.speed(d) ** 2 * (e(d + k) - 2 * e(d) + e(d - k)) / (k * k) < -share * GRAVITY;
+  /** Leaves the road here: a millimetre from a lip, or where the road falls away faster than gravity. */
+  const leaves = (d: number) => !c.sample(d + .001, s).ground || c.sample(d + .05, s).ground && falls(d, .05);
+  let d = h, landed = -1;
+  while (d < to) {
+    // A coarse look every half metre, with a margin so that a short stretch past gravity is not missed...
+    if (c.sample(d + h, s).ground && !falls(d, h, .9)) { d += h; continue; }
+    // ...then a close one: the first point within half a metre that leaves the road, to a micrometre.
+    let lo = d === landed ? d : d - h, at = -1;
+    for (let m = lo; m <= d + h && at < 0; m += .02) if (leaves(m)) at = m; else lo = m;
+    if (at < 0) { d += h; continue; }
+    for (let i = 0; i < 20 && at > lo; i++) { const mid = (lo + at) / 2; if (leaves(mid)) at = mid; else lo = mid; }
+    const y0 = e(at), w = c.speed(at) * (y0 - e(at - .01)) / .01, dt = 1 / 2000;
+    let t = 0, x = at, apex = 0, clearance = 0;
+    for (;;) {
+      x += c.speed(x) * dt; t += dt;
+      const y = y0 + w * t - GRAVITY * t * t / 2;
+      apex = Math.max(apex, y - y0);
+      clearance = Math.max(clearance, y - c.sample(x, s).elevation);
+      if (s.ground && y <= s.elevation) break;
+    }
+    const last = out[out.length - 1];
+    if (last && at - landed < h) {
+      last.airtime += t; last.landing = x;
+      last.apex = Math.max(last.apex, y0 - e(last.takeoff) + apex);
+      last.clearance = Math.max(last.clearance, clearance);
+    } else out.push({ kind: c.sample(at + .1, s).kind, takeoff: at, landing: x, airtime: t, apex, clearance, speed: c.speed(at) });
+    d = landed = x;
+  }
+  flightCache.set(c, out);
+  return out;
+}
+/** A ball that never rises a centimetre off the road has skimmed it, not flown (the road there falls away
+ * within a few thousandths of gravity, and the generator, with the simulation's own step, may not lift off). */
+const flown = (f: Flight) => f.clearance >= .01;
 
 // Interval sets for the independent reachability check: flat [lo, hi, lo, hi, ...], sorted and disjoint.
 function dilate(set: number[], shift: number, r: number): number[] {
@@ -273,15 +334,17 @@ describe('Ball Run course generator', () => {
     }
   });
 
-  it('uses the whole track vocabulary and schedules a gate every gate.interval seconds of running', () => {
+  it('uses the whole track vocabulary and schedules a gate every gate.interval seconds of running, deferring one past a flight', { timeout: 60000 }, () => {
+    let deferred = 0;
     for (const { seed, difficulty } of CASES) {
-      const c = course(seed, difficulty), cfg = CONFIG[difficulty], segs = segments(c), kinds = new Set(segs.map(s => s.kind));
+      const c = course(seed, difficulty), cfg = CONFIG[difficulty], kinds = new Set(segments(c).map(s => s.kind));
       const expected: SegmentKind[] = ['bend', 'offset', 'ribbon', 'bank', 'crest', 'drop', 'gate'];
       if (difficulty !== 'easy') expected.push('ribbonBend');
       for (const kind of expected) expect(kinds, `${difficulty} seed ${seed} lacks ${kind}`).toContain(kind);
+      // Gates to 4 km past the cap, where flights are longest.
+      const segs = segments(c, farEnd(c)), list = gates(c, farEnd(c)), zones = flights(c).map(f => [f.takeoff - 5, f.landing + 12]);
       expect(segs[0].kind).toBe('warmup');
-      const list = gates(c);
-      expect(list.length).toBeGreaterThan(2);
+      expect(list.length).toBeGreaterThan(10);
       let previous = 0;
       list.forEach((gate, i) => {
         expect(gate.index).toBe(i);
@@ -294,13 +357,27 @@ describe('Ball Run course generator', () => {
         const s = c.sample(gate.start + 15);
         expect(s.tunnel).toBe(true);
         expect(s.width).toBe(cfg.roadWidth);
-        const before = segs[at - 1], seconds = runTime(c, previous, gate.start);
-        expect(seconds, `${difficulty} seed ${seed} gate ${i}`).toBeGreaterThanOrEqual(cfg.gate.interval[0] - .02);
-        expect(seconds - runTime(c, before.start, before.end), `${difficulty} seed ${seed} gate ${i}`).toBeLessThan(cfg.gate.interval[1] + .02);
+        // A gate that fell due inside a predicted flight follows a flat run-out (a straight with no rise)
+        // from where it fell due to just past that flight's clear zone. The generator predicts with the
+        // simulation's own step, which carries a grazing flight up to about 5 m further than this test's
+        // prediction does, so its zones may reach up to 6 m past these.
+        const where = `${difficulty} seed ${seed} gate ${i}`, before = segs[at - 1], middle = (before.start + before.end) / 2;
+        let due = before;
+        if (before.kind === 'straight' && Math.abs(c.sample(middle).elevation + SLOPE * middle) < 1e-9) {
+          const over = zones.filter(([lo, hi]) => lo - 6 <= before.start && before.start < hi + 6);
+          expect(over.length, `${where}: a flat run-out under no flight`).toBeGreaterThan(0);
+          expect(before.end, where).toBeLessThanOrEqual(Math.max(before.start + 5, ...over.map(([, hi]) => hi + 6)));
+          due = segs[at - 2];
+          deferred++;
+        }
+        const seconds = runTime(c, previous, gate.start);
+        expect(seconds, where).toBeGreaterThanOrEqual(cfg.gate.interval[0] - .02);
+        expect(seconds - runTime(c, due.start, gate.start), where).toBeLessThan(cfg.gate.interval[1] + .02);
         previous = gate.start;
       });
       expect(c.sample(list[0].start - 1).tunnel).toBe(false);
     }
+    expect(deferred).toBeGreaterThan(0);
   });
 
   it('builds the segments between gates in the proportions of CONFIG.segments', () => {
@@ -364,6 +441,73 @@ describe('Ball Run course generator', () => {
       }
     }
     expect(count).toBeGreaterThan(72);
+  });
+
+  it('caps every crest\'s and dip\'s height by the speed there, so a launch leaves the road at most 8 m/s upward', { timeout: 60000 }, () => {
+    let crests = 0;
+    const capped: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
+    for (const { seed, difficulty } of CASES) {
+      const c = course(seed, difficulty);
+      for (const seg of segments(c, farEnd(c))) {
+        if (seg.kind !== 'crest' && seg.kind !== 'dip') continue;
+        // local = H·sin²(πt) above the base slope, so H is the local height halfway along.
+        const length = seg.end - seg.start, middle = seg.start + length / 2, H = c.sample(middle).elevation + SLOPE * middle;
+        const floor = seg.kind === 'crest' ? 1 : .6, most = Math.max(floor, 8 * length / (Math.PI * c.speed(seg.end - 1e-6)));
+        const where = `${difficulty} seed ${seed} ${seg.kind} at ${seg.start.toFixed(1)}`;
+        expect(Math.sign(H), where).toBe(seg.kind === 'crest' ? 1 : -1);
+        expect(Math.abs(H), where).toBeLessThanOrEqual(most + 1e-9);
+        expect(Math.abs(H), where).toBeGreaterThanOrEqual(floor - 1e-9);
+        crests++;
+        if (Math.abs(H) > most - 1e-6) capped[difficulty]++;
+      }
+    }
+    expect(crests).toBeGreaterThan(1000);
+    // The cap binds on every difficulty (36 / 87 / 141 crests and dips over these seeds when written).
+    for (const d of DIFFICULTIES) expect(capped[d], d).toBeGreaterThan(20);
+  });
+
+  it('launches a ball over crests, dips and drops only, for at most a second and at most 3 m up, to 4 km past the speed cap', { timeout: 60000 }, () => {
+    const atCap: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
+    for (const { seed, difficulty } of CASES) {
+      const c = course(seed, difficulty), max = CONFIG[difficulty].maxSpeed;
+      let launches = 0;
+      for (const f of flights(c)) {
+        const where = `${difficulty} seed ${seed} ${f.kind} flight ${f.takeoff.toFixed(1)}–${f.landing.toFixed(1)} at ${f.speed.toFixed(1)} m/s`;
+        expect(['crest', 'dip', 'drop'], where).toContain(f.kind);
+        expect(f.airtime, where).toBeLessThanOrEqual(1);
+        expect(f.apex, where).toBeLessThanOrEqual(3);
+        if (f.speed === max && f.kind !== 'drop') launches++;
+      }
+      // Fast crests and dips still launch the ball: at the cap, on every course.
+      expect(launches, `${difficulty} seed ${seed} crest and dip launches at the cap`).toBeGreaterThan(0);
+      atCap[difficulty] += launches;
+    }
+    for (const d of DIFFICULTIES) expect(atCap[d], `${d} crest and dip launches at the cap`).toBeGreaterThan(72);
+  });
+
+  it('keeps every block out of every predicted flight, from 5 m before take-off to 12 m past landing', { timeout: 60000 }, () => {
+    for (const { seed, difficulty } of CASES) {
+      const c = course(seed, difficulty), misplaced: string[] = [];
+      for (const f of flights(c).filter(flown)) {
+        for (const o of obstacles(c, f.takeoff - 5, f.landing + 12)) {
+          misplaced.push(`block ${o.id} at ${o.distance.toFixed(2)} in ${f.kind} flight ${f.takeoff.toFixed(2)}–${f.landing.toFixed(2)} at ${f.speed.toFixed(1)} m/s`);
+        }
+      }
+      expect(misplaced, `${difficulty} seed ${seed}`).toEqual([]);
+    }
+  });
+
+  it('never opens a gate inside a predicted flight, from 5 m before take-off to 12 m past landing', { timeout: 60000 }, () => {
+    let total = 0;
+    for (const { seed, difficulty } of CASES) {
+      const c = course(seed, difficulty), list = flights(c).filter(flown), misplaced: string[] = [];
+      for (const g of gates(c, farEnd(c))) {
+        total++;
+        for (const f of list) if (g.start >= f.takeoff - 5 && g.start <= f.landing + 12) misplaced.push(`gate ${g.index} at ${g.start.toFixed(2)} in ${f.kind} flight ${f.takeoff.toFixed(2)}–${f.landing.toFixed(2)}`);
+      }
+      expect(misplaced, `${difficulty} seed ${seed}`).toEqual([]);
+    }
+    expect(total).toBeGreaterThan(900);
   });
 
   // Pooled per difficulty over all 24 seeds, with every seed held to 85 % of each threshold.
