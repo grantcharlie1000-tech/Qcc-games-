@@ -234,10 +234,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     return s.elevation - (x - s.center) * Math.tan(s.bank) + yRef;
   }
 
-  /** One tile from lo to hi (rolled with the bank, pitched and yawed along the road) plus its lane lines. */
+  /** One tile from lo to hi (rolled with the bank, pitched and yawed along the road) plus its lane lines.
+   * A and B already hold the track at lo and hi. */
   function piece(lo: number, hi: number, tileIndex: number): void {
-    track(lo, A);
-    track(hi, B);
     track((lo + hi) / 2, M);
     const length = hi - lo, dc = B.center - A.center, de = B.elevation - A.elevation;
     const yaw = -Math.atan2(dc, length), pitch = Math.atan2(de, Math.hypot(dc, length));
@@ -351,8 +350,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
       const groundA = track(a, A).ground, groundB = track(b, B).ground;
       // Nothing is drawn in a drop gap: clip the tile to the ground side of an edge.
       if (groundA && groundB) piece(a, b, tileCount++);
-      else if (groundA) { const edge = groundEdge(a, b); if (edge - a > .01) piece(a, edge, tileCount++); }
-      else if (groundB) { const edge = groundEdge(a, b); if (b - edge > .01) piece(edge, b, tileCount++); }
+      else if (groundA) { const edge = groundEdge(a, b); if (edge - a > .01) { track(edge, B); piece(a, edge, tileCount++); } }
+      else if (groundB) { const edge = groundEdge(a, b); if (b - edge > .01) { track(edge, A); piece(edge, b, tileCount++); } }
       a = b;
     }
     for (let d = Math.ceil(start / 2) * 2; d < end; d += 2) crossLine(d);

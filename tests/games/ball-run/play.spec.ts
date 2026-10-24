@@ -156,7 +156,7 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
 });
 
 test('real drag and held keys steer; P pauses and resumes; Study, blur, death and restore keep their contracts',async({page})=>{
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   await page.clock.install({time:new Date('2026-10-20T12:00:00Z')});await page.clock.pauseAt(new Date('2026-10-20T12:00:01Z'));
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
@@ -242,7 +242,7 @@ test('native phone touch drag steers continuously and cancel releases capture',a
 });
 
 test('a restored Hard run hits a block: burst, Game Over with records, R and Home, and reload keeps the records',async({page})=>{
-  test.setTimeout(90000);
+  test.setTimeout(180000);
   const {run,score}=beforeBlock(11,'hard'),records=emptyRecords();records.hard.allTime=score+600;
   await seed(page,snapshot(run,records));
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));

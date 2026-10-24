@@ -97,7 +97,7 @@ function capDistance(c: Course): number {
 }
 /** The flight and gate tests run each course from the start to 4 km past its speed cap (16–20 km). */
 const farEnd = (c: Course) => Math.ceil(capDistance(c)) + 4000;
-interface Flight { kind: SegmentKind; takeoff: number; landing: number; airtime: number; apex: number; clearance: number; speed: number }
+interface Flight { kind: SegmentKind; takeoff: number; landing: number; airtime: number; apex: number; clearance: number; speed: number; relaunch: number }
 const flightCache = new WeakMap<Course, Flight[]>();
 /** Every flight of a point mass running along the road's centre line at the course's speed, from the
  * start to 4 km past the speed cap, written independently of the generator. On the road it leaves
@@ -105,7 +105,8 @@ const flightCache = new WeakMap<Course, Flight[]>();
  * curvature) falls below −GRAVITY, then flies from the road's velocity there until it meets the road
  * again anywhere across it; a touch-down followed at once by another take-off is one flight. `apex` is
  * the height reached above the road where it took off, `clearance` the most it rose above the road
- * beneath it, `kind` the segment it took off from. */
+ * beneath it, `kind` the segment it took off from, and `relaunch` how far past its take-off it last
+ * left the road again on touching down (a few centimetres where it grazes the road at a dip's entry). */
 function flights(c: Course): Flight[] {
   const cached = flightCache.get(c);
   if (cached) return cached;
@@ -135,15 +136,21 @@ function flights(c: Course): Flight[] {
     }
     const last = out[out.length - 1];
     if (last && at - landed < h) {
-      last.airtime += t; last.landing = x;
+      last.airtime += t; last.landing = x; last.relaunch = at - last.takeoff;
       last.apex = Math.max(last.apex, y0 - e(last.takeoff) + apex);
       last.clearance = Math.max(last.clearance, clearance);
-    } else out.push({ kind: c.sample(at + .1, s).kind, takeoff: at, landing: x, airtime: t, apex, clearance, speed: c.speed(at) });
+    } else out.push({ kind: c.sample(at + .1, s).kind, takeoff: at, landing: x, airtime: t, apex, clearance, speed: c.speed(at), relaunch: 0 });
     d = landed = x;
   }
   flightCache.set(c, out);
   return out;
 }
+/** Courses where a ball once landed on a crest that had begun under its flight and was launched again at
+ * once, chaining two flights into one of 1.1–1.7 s (a crest after a crest, or after a dip's exit). */
+const CHAINED: { seed: number; difficulty: Difficulty }[] = [
+  { seed: 36, difficulty: 'medium' }, { seed: 102, difficulty: 'medium' }, { seed: 122, difficulty: 'medium' },
+  { seed: 64, difficulty: 'hard' }, { seed: 188, difficulty: 'hard' }, { seed: 199, difficulty: 'hard' }, { seed: 223, difficulty: 'hard' },
+];
 /** A ball that never rises a centimetre off the road has skimmed it, not flown (the road there falls away
  * within a few thousandths of gravity, and the generator, with the simulation's own step, may not lift off). */
 const flown = (f: Flight) => f.clearance >= .01;
@@ -463,13 +470,13 @@ describe('Ball Run course generator', () => {
       }
     }
     expect(crests).toBeGreaterThan(1000);
-    // The cap binds on every difficulty (37 / 87 / 140 crests and dips over these seeds when written).
+    // The cap binds on every difficulty (37 / 85 / 145 crests and dips over these seeds when written).
     for (const d of DIFFICULTIES) expect(capped[d], d).toBeGreaterThan(20);
   });
 
-  it('launches a ball over crests, dips and drops only, for at most a second and at most 3 m up, to 4 km past the speed cap', { timeout: 60000 }, () => {
+  it('launches a ball over crests, dips and drops only, one flight at a time, for at most a second and at most 3 m up, to 4 km past the speed cap', { timeout: 60000 }, () => {
     const atCap: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
-    for (const { seed, difficulty } of CASES) {
+    for (const { seed, difficulty } of [...CASES, ...CHAINED]) {
       const c = course(seed, difficulty), max = CONFIG[difficulty].maxSpeed;
       let launches = 0;
       for (const f of flights(c)) {
@@ -477,6 +484,10 @@ describe('Ball Run course generator', () => {
         expect(['crest', 'dip', 'drop'], where).toContain(f.kind);
         expect(f.airtime, where).toBeLessThanOrEqual(1);
         expect(f.apex, where).toBeLessThanOrEqual(3);
+        // Off a crest or dip it also rises at most 3 m above the road beneath it (a drop's road falls away below it).
+        if (f.kind !== 'drop') expect(f.clearance, where).toBeLessThanOrEqual(3);
+        // It lands before the road can launch it again: one flight is never chained onto the next.
+        expect(f.relaunch, `${where}: launched again ${f.relaunch.toFixed(2)} m past take-off`).toBeLessThan(1);
         if (f.speed === max && f.kind !== 'drop') launches++;
       }
       // Fast crests and dips still launch the ball: at the cap, on every course.
@@ -484,6 +495,21 @@ describe('Ball Run course generator', () => {
       atCap[difficulty] += launches;
     }
     for (const d of DIFFICULTIES) expect(atCap[d], `${d} crest and dip launches at the cap`).toBeGreaterThan(72);
+  });
+
+  it('builds no crest or dip under a predicted flight or within 12 m past its landing, to 4 km past the speed cap', { timeout: 60000 }, () => {
+    let crests = 0;
+    for (const { seed, difficulty } of [...CASES, ...CHAINED]) {
+      const c = course(seed, difficulty), list = flights(c).filter(flown), misplaced: string[] = [];
+      for (const seg of segments(c, farEnd(c))) {
+        if (seg.kind !== 'crest' && seg.kind !== 'dip') continue;
+        crests++;
+        // A dip's own entry launch takes off where it starts.
+        for (const f of list) if (f.takeoff < seg.start - .5 && seg.start <= f.landing + 12) misplaced.push(`${seg.kind} at ${seg.start.toFixed(2)} under ${f.kind} flight ${f.takeoff.toFixed(2)}–${f.landing.toFixed(2)}`);
+      }
+      expect(misplaced, `${difficulty} seed ${seed}`).toEqual([]);
+    }
+    expect(crests).toBeGreaterThan(1000);
   });
 
   it('keeps every block out of every predicted flight, from 5 m before take-off to 12 m past landing', { timeout: 60000 }, () => {

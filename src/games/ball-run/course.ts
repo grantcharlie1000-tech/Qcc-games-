@@ -31,7 +31,8 @@ const MIN_ROUTE = .25;
 const ROW_SPACING = .35;
 const GATE_LENGTH = 30, STRAIGHT_RISE = .3;
 /** Crests and dips are low enough that the road launches a ball at most this fast upward off the base
- * slope (m/s): about 0.8 s in the air. Never lower than CREST_LEAST / DIP_LEAST (m). */
+ * slope (m/s): under about a second in the air (it leaves the road partway up). Never lower than
+ * CREST_LEAST / DIP_LEAST (m). */
 const LAUNCH_SPEED = 8, CREST_LEAST = 1, DIP_LEAST = .6;
 /** Block-free road before a predicted take-off and after its landing (m), and what the prediction
  * allows a real ball (another step phase, steering on a bank) on either side (m). */
@@ -56,8 +57,9 @@ const smoother = (t: number) => t * t * t * (t * (6 * t - 15) + 10);
 const smootherSlope = (t: number) => 30 * t * t * (t - 1) * (t - 1);
 const ribbonEase = (t: number) => t < .25 ? smooth(t * 4) : t > .75 ? smooth((1 - t) * 4) : 1;
 const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
-/** Only these segments' road can fall away from a ball faster than gravity, or end. */
-const launches = (kind: SegmentKind) => kind === 'crest' || kind === 'dip' || kind === 'drop';
+/** Smootherstep's steepest downward curvature, 10/√3, rounded up: a drop's approach of length a rising h
+ * curves down at most this × h/a². */
+const APPROACH_BEND = 5.78;
 
 function hash(a: number, b: number): number {
   let h = (a ^ Math.imul(b + 1, 0x9e3779b9)) >>> 0;
@@ -460,9 +462,9 @@ class CourseImpl implements Course {
       let kind = this.schedule(previous.kind, previous.kind === 'gate' ? 'straight' : null);
       // Offsets keep |c| ≤ CENTER_LIMIT − 0.8, so a bend always has room; without it, move toward the centre first.
       if (kind === 'bend' && room < .8 || kind === 'ribbonBend' && room < .6) kind = this.recharge(kind, 'offset');
-      // A dip under a flight, or just after its landing, would stretch it or launch the ball again at
-      // once: land the ball on a straight instead.
-      if (kind === 'dip' && clear > start) kind = this.recharge(kind, 'straight');
+      // A crest or dip under a flight, or just after its landing, would stretch it or launch the ball
+      // again at once (one flight chained onto the next): land the ball on a straight instead.
+      if ((kind === 'crest' || kind === 'dip') && clear > start) kind = this.recharge(kind, 'straight');
       if (kind === 'drop') {
         const approach = r.range(20, 30) * scale, height = r.range(2, 4), gap = r.range(2, 4), flight = Math.sqrt(2 * height / GRAVITY);
         for (let k = 0; k < 3 && !seg; k++) {
@@ -530,45 +532,75 @@ class CourseImpl implements Course {
     g.grounded = true;
   }
 
+  /** Where a grounded ghost at d may skip to without passing a take-off: 2 m before the end of the
+   * stretch of its segment around d whose road cannot fall away faster than gravity, or d itself if
+   * there is none. Only crests (their middle half), dips (their first and last quarters) and drops (the
+   * lip, and an approach that curves down too sharply for the speed at its lip) can launch the ball;
+   * a drop's pad is flat. The 2 m margins keep the lift-off test's three road samples on that stretch. */
+  private calm(seg: Segment, d: number): number {
+    const u = d - seg.start, length = seg.end - seg.start;
+    let from = 0, to = length;
+    if (seg.kind === 'crest') { if (u < length / 4) to = length / 4; else from = 3 * length / 4; }
+    else if (seg.kind === 'dip') { from = length / 4; to = 3 * length / 4; }
+    else if (seg.kind === 'drop') {
+      const v = this.speedNow(seg.start + seg.approach);
+      if (u >= seg.approach) from = seg.approach + seg.gap;
+      else if (seg.amp * APPROACH_BEND * v * v < GRAVITY * seg.approach * seg.approach) to = seg.approach;
+      else return d;
+    }
+    return u >= from + 2 && u < to - 2 ? seg.start + to - 2 : d;
+  }
+
   /** Runs a ghost over the road built so far (and, if `flat`, on along flat road until it is on the
    * road again 2 m past the end), as model.step moves a ball on the centre line: it stays on the road
    * unless the road falls away faster than gravity can follow, or ends, and lands where the lowest
    * point across the road meets it. Each flight it finishes adds its clear zone; the furthest end of
-   * those zones is returned. Where the road cannot launch it, a grounded ghost skips to 2 m before the
-   * segment's end. */
+   * those zones is returned. Where the road cannot launch it (calm()), a grounded ghost skips ahead. */
   private fly(g: Ghost, flat: boolean): number {
     let furthest = -Infinity;
     for (;;) {
       const seg = this.find(g.d);
       if (flat && g.grounded && g.d >= this.roadEnd + 2) return furthest;
-      if (g.grounded && !launches(seg.kind) && g.d >= seg.start + 2 && g.d < seg.end - 2) { this.settle(g, seg.end - 2); continue; }
+      if (g.grounded) { const to = this.calm(seg, g.d); if (to > g.d) { this.settle(g, to); continue; } }
       const v = this.speedNow(g.d), d0 = g.d, d1 = d0 + v * STEP;
       if (!flat && d1 >= this.roadEnd) return furthest;
-      const rest0 = this.ghostRest(d0), rest = this.ghostRest(d1, false, this.ghostAhead), ground = this.ghostAhead.ground;
-      const surfaceVy = (rest - rest0) / STEP;
       const fall = g.h + g.vy * STEP - GRAVITY * STEP * STEP / 2;
-      if (g.grounded) {
-        const away = (rest - 2 * rest0 + this.ghostRest(d0 - v * STEP)) / (STEP * STEP) < -GRAVITY && fall > rest;
-        if (ground && !away) { g.h = rest; g.vy = surfaceVy; }
-        else { g.grounded = false; g.takeoff = d0; }
-      } else if (ground && fall <= this.ghostRest(d1, true) && g.h >= this.ghostRest(d0, true) - .05) {
-        g.h = rest; g.vy = surfaceVy; g.grounded = true;
-        const lo = g.takeoff - FLIGHT_BEFORE - FLIGHT_MARGIN, hi = d1 + FLIGHT_AFTER + FLIGHT_MARGIN;
-        if (g === this.ghost) this.flightZones.add(lo, hi);
-        furthest = Math.max(furthest, hi);
-      }
-      if (!g.grounded) { g.h = fall; g.vy -= GRAVITY * STEP; }
       g.d = d1;
-      // Unreachable (every drop is cleared at the speed there); never fly on forever.
-      if (!g.grounded && g.h < rest - 10) this.settle(g, d1);
+      if (g.grounded) {
+        // It leaves the road where the road ends, or where the road falls away faster than gravity and
+        // below where the ghost would fall (the road is sampled behind only then).
+        const rest0 = this.ghostRest(d0), rest = this.ghostRest(d1, false, this.ghostAhead);
+        if (this.ghostAhead.ground && !(fall > rest && (rest - 2 * rest0 + this.ghostRest(d0 - v * STEP)) / (STEP * STEP) < -GRAVITY)) {
+          g.h = rest; g.vy = (rest - rest0) / STEP;
+          continue;
+        }
+        g.grounded = false; g.takeoff = d0;
+      } else {
+        // In the air only the lowest point across the road ahead matters, until the ghost meets it.
+        const low = this.ghostRest(d1, true, this.ghostAhead);
+        if (this.ghostAhead.ground && fall <= low && g.h >= this.ghostRest(d0, true) - .05) {
+          const rest0 = this.ghostRest(d0), rest = this.ghostRest(d1);
+          g.h = rest; g.vy = (rest - rest0) / STEP; g.grounded = true;
+          const lo = g.takeoff - FLIGHT_BEFORE - FLIGHT_MARGIN, hi = d1 + FLIGHT_AFTER + FLIGHT_MARGIN;
+          if (g === this.ghost) this.flightZones.add(lo, hi);
+          furthest = Math.max(furthest, hi);
+          continue;
+        }
+        // Unreachable (every drop is cleared at the speed there); never fly on forever. The centre line
+        // is under 10 m above the road's low edge, so it is only looked at below that edge.
+        if (fall < low && fall < this.ghostRest(d1) - 10) { this.settle(g, d1); continue; }
+      }
+      g.h = fall; g.vy -= GRAVITY * STEP;
     }
   }
 
   /** The furthest end of the clear zones of flights a copy of the ghost finishes when the road goes on
    * flat from its end, as a gate or a run-out would: it covers the flight the ghost is in, or is about
-   * to begin within its last step. -Infinity if there is none. */
+   * to begin within its last step. -Infinity if there is none. Every segment ends level and, but for a
+   * dip, curving up (or not at all), so only a dip's end can launch a ghost that is on the road there. */
   private flightsOver(): number {
     const g = this.ghost;
+    if (g.grounded && this.segments[this.segments.length - 1].kind !== 'dip') return -Infinity;
     return this.fly({ d: g.d, h: g.h, vy: g.vy, grounded: g.grounded, takeoff: g.takeoff }, true);
   }
 
