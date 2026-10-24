@@ -80,7 +80,7 @@ export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
   medium: {
     label: 'Medium', startSpeed: 11, acceleration: .045, maxSpeed: 50,
     roadWidth: 5.4, ribbonWidth: 2.2, minGap: 1.7,
-    rowInterval: [.7, 1.25], introInterval: [1.3, 2], rampDistance: 600,
+    rowInterval: [.68, 1.2], introInterval: [1.3, 2], rampDistance: 600,
     restEvery: [12, 16], restSeconds: [2.5, 3.5], maxBank: .26,
     gate: { speedGain: 1.25, interval: [25, 40] },
     segments: { straight: 22, bend: 18, offset: 15, ribbon: 8, ribbonBend: 4, bank: 10, crest: 8, dip: 4, drop: 5 },
@@ -90,7 +90,7 @@ export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
   hard: {
     label: 'Hard', startSpeed: 13, acceleration: .06, maxSpeed: 62,
     roadWidth: 4.8, ribbonWidth: 1.8, minGap: 1.45,
-    rowInterval: [.5, .95], introInterval: [1, 1.6], rampDistance: 500,
+    rowInterval: [.48, .9], introInterval: [1, 1.6], rampDistance: 500,
     restEvery: [16, 20], restSeconds: [1.8, 2.6], maxBank: .32,
     gate: { speedGain: 1.5, interval: [20, 35] },
     segments: { straight: 15, bend: 16, offset: 15, ribbon: 9, ribbonBend: 6, bank: 12, crest: 8, dip: 4, drop: 6 },
