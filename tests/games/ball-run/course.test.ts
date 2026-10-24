@@ -198,6 +198,7 @@ describe('Ball Run course generator', () => {
       for (let i = 0; i < 7; i++) getCourse(91000 + i, difficulty);
       const step = getCourse(seed, difficulty), seen = new Map<number, CourseObstacle>();
       expect(step).not.toBe(near);
+      expect(step).not.toBe(far);
       for (let d = 0; d <= 3000; d++) step.forEachObstacle(d, d + 5, o => seen.set(o.id, o as CourseObstacle));
       expect([...seen.values()].filter(o => o.distance - o.depth / 2 <= 3000).sort((a, b) => a.id - b.id)).toEqual(nearBlocks);
       for (const [i, d] of distances.entries()) expect(step.sample(d)).toEqual(nearSamples[i]);
@@ -206,8 +207,8 @@ describe('Ball Run course generator', () => {
     }
   });
 
-  // |Δ| < 0.05 per 0.05 m: the decided features change by up to 0.54 m per metre (ribbon taper),
-  // so this is the finest bound they meet, and still far below any real jump.
+  // Sampled every 0.05 m: the steepest decided feature (ribbon taper, 0.54 m per metre) changes by
+  // 0.027 per step, well under the 0.05 bound, which is still far below any real jump.
   it('keeps the road continuous, centred within the canyon and inside its width and bank limits', () => {
     for (const { seed, difficulty } of CASES) {
       const c = course(seed, difficulty), cfg = CONFIG[difficulty], a = blank(), b = blank(), label = `${difficulty} seed ${seed}`;
