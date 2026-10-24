@@ -32,7 +32,7 @@ async function gameAction(page:Page,id:string){
     await page.keyboard.press(dy===1?'ArrowDown':dy===-1?'ArrowUp':dx===1?'ArrowRight':'ArrowLeft');
   }
   if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
-  if(id==='ball-run'){await page.getByRole('button',{name:/Start rolling|Continue rolling/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
+  if(id==='ball-run'){await page.getByRole('button',{name:/^(Play|Continue)$/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
   if(id==='maze-muncher')await page.getByRole('button',{name:'Start game',exact:true}).click();
   if(id==='corn-clicker')await page.getByRole('button',{name:/^Harvest the cob/}).click();
   if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
