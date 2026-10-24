@@ -245,3 +245,14 @@
 - [ ] Compare the five-moment evidence set (straight, curve, boost, collision, results) with the reference pages.
 - [ ] Update `src/games/ball-run/SPEC.md` (current design first, history kept), append `TEST_RESULTS.md` and `SKILL_USAGE.md` checkpoints, add `docs/BALL_RUN_REDESIGN.md`, README line if Ball Run is described there.
 - [ ] Independent whole-branch review; fix confirmed findings.
+
+---
+
+## Change request 2026-10-24 (Charlie, after the first delivery)
+
+Charlie reviewed the delivered game and asked: "For the UI keep the current aesthetic. And ditch the death screen and redesign the difficulty slider so it looks more at home in the app." Charlie then chose **a small score banner** after a crash and **segmented buttons** for difficulty.
+
+1. **Keep the current aesthetic.** Setup panel, HUD, faces, colours, burst, trail and renderer stay as they are, apart from the two changes below.
+2. **No Game Over screen.** After the crash burst or a fall, the world stays in view and a slim banner appears near the bottom: the run's metres, then "New best" when this run set the all-time best for its difficulty (otherwise "Best N m"), a primary **Play again** button in the app's cream button style, and a small secondary **Difficulty** button (`.game-button.secondary` style) that reopens the setup panel (controller's call, so difficulty can change without the toolbar). R still plays again; records still commit exactly once per ended run; the HUD stays; a restored finished run shows the banner; the reason ("You hit a block" / "You fell off the track") goes to the status line and is announced, and may appear as a small line in the banner. The banner sits above the shell's bottom controls and the leaderboard pill at every viewport, below z-index 20, enters with opacity only (instant under reduced motion), and focus moves to Play again. The old results panel, records list, crown/NEW marks, Home button and their CSS are removed.
+3. **Difficulty control.** Replace the range slider with a segmented control matching Globle's mode toggle (`src/games/globle/style.css` `.gl-modes` / `.gl-mode`): one rounded pill (radius 12, padding 3, gap 3, dark panel background), three equal segments Easy | Medium | Hard (radius 9, min-height 38, Arcade 800 15px), the selected segment `#555268` with white text, the others transparent with muted text. Semantics: `role="radiogroup"` named "Difficulty", each segment `role="radio"` with `aria-checked`, roving tabindex, Left/Right and Up/Down move and select, Home/End jump, click selects. The face badge, level name colour and Play colour still follow the selection.
+4. Update the browser tests (`tests/games/ball-run/play.spec.ts`), the evidence names (`banner-<size>.png` replace `over-<size>.png`; remove the old ones), the shared verify script only if a button name changes, and the docs (SPEC.md current design, docs/BALL_RUN_REDESIGN.md, a TEST_RESULTS.md checkpoint).
