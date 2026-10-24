@@ -34,9 +34,10 @@ const FOV = 64, FOV_GAIN = 10, H_FOV_CAP = 82;
 /** Followed down a fall, the view tilts after the ball by this share of its extra drop, down to the steepest pitch. */
 const FALL_TILT = .65, MAX_PITCH = .6;
 /** Trail: samples nearer the ball would only tint it, and those within 0.2 m of the camera
- * are unseen, so the 0.5 m history shows at most 6 spheres (3–4 on screen). The trail
- * shrinks and fades over its length; under reduced motion it ends 1 m behind its first
- * sphere, so it shows at most 2 and stops short of the screen edge. */
+ * are unseen, so the 0.5 m history shows at most 6 spheres (3–4 on screen in portrait, 2–3 in
+ * the narrower landscape view). The trail shrinks and fades over its length; under reduced
+ * motion it ends 1 m behind its first sphere, so it shows at most 2 and stops short of the
+ * screen edge. */
 const TRAIL_NEAR = RADIUS * 1.6, TRAIL_FAR = CAMERA_BACK - .2, TRAIL_FAR_REDUCED = TRAIL_NEAR + 1, TRAIL_OPACITY = .85;
 /** Boost arch: wall height, ring spacing, arch bars and the heights of the wall rails. */
 const WALL = 1.5, RING = 3, ARCH = 10, BAR = .06, ENTRANCE_BAR = .13, RAILS = [WALL / 2, WALL];
@@ -457,8 +458,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const bank = S.bank, roadCenter = S.center;
     const lift = SLOPE * distance, road0 = S.elevation + lift, ballBase = run.height + lift - RADIUS;
     const base = Math.max(ballBase, road0 - 1.5);
-    const idealX = bx - .15 * (bx - roadCenter), edge = S.width / 2 + .5;
-    const followX = clamp(clamp(idealX, roadCenter - edge, roadCenter + edge), -CAMERA_LIMIT, CAMERA_LIMIT);
+    const idealX = bx - .15 * (bx - roadCenter), followX = clamp(idealX, -CAMERA_LIMIT, CAMERA_LIMIT);
     let above = 0;
     if (!reduced) {
       roadWindow(distance, -2, 6);
@@ -467,9 +467,12 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     roadWindow(distance, 12, 17);
     const cy = base + CAMERA_UP, reach = CAMERA_BACK + 20 / (1 + .3 * above);
     let pitch = clamp(Math.atan2(windowElevation + lift + .6 - cy, reach), -MAX_PITCH, .04);
-    if (!reduced && base > ballBase) {
-      const sight = CAMERA_UP - RADIUS;
-      pitch = Math.max(-MAX_PITCH, pitch - FALL_TILT * (Math.atan2(sight + base - ballBase, CAMERA_BACK) - Math.atan2(sight, CAMERA_BACK)));
+    const sight = CAMERA_UP - RADIUS;
+    if (!reduced && base > ballBase) pitch = Math.max(-MAX_PITCH, pitch - FALL_TILT * (Math.atan2(sight + base - ballBase, CAMERA_BACK) - Math.atan2(sight, CAMERA_BACK)));
+    if (fovFit < 1) {
+      // The narrower landscape view tilts so the ball keeps its portrait height on screen.
+      const below = Math.atan2(sight + base - ballBase, CAMERA_BACK) + pitch;
+      pitch -= below - Math.atan(fovFit * Math.tan(below));
     }
     camera.position.set(followX, cy, CAMERA_BACK);
     camera.lookAt(followX + .25 * (windowCenter - roadCenter) + (idealX - followX) * reach / CAMERA_BACK, cy + Math.tan(pitch) * reach, CAMERA_BACK - reach);

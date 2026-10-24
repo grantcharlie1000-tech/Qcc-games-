@@ -1,1 +1,119 @@
-.ball-run{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;background:#000;color:#fff;font-family:system-ui,sans-serif}.br-viewport{position:absolute;inset:0;overflow:hidden;background:#000}.br-viewport canvas{display:block;width:100%;height:100%;touch-action:none;outline-offset:-5px}.br-viewport canvas:focus-visible{outline:2px solid #b8b7ff}.br-hud{position:absolute;top:82px;left:50%;transform:translateX(-50%);display:flex;gap:36px;text-align:center;pointer-events:none;text-shadow:0 2px 4px #000}.br-hud span{display:flex;flex-direction:column;gap:2px}.br-hud small{font-size:9px;font-weight:800;letter-spacing:.6px}.br-hud strong{font-size:22px;line-height:1}.br-record{color:#48e1bd}.br-speed{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);font-size:10px;color:#b8b5da;text-shadow:0 1px 3px #000;pointer-events:none}.br-boost{position:absolute;left:0;right:0;bottom:24%;text-align:center;font-size:clamp(24px,6vw,46px);font-weight:900;font-style:italic;text-shadow:0 3px 0 #0b4055;pointer-events:none}.br-start[hidden],.br-boost[hidden],.br-overlay[hidden]{display:none}.br-overlay{position:absolute;inset:76px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;background:linear-gradient(#0001,#000a)}.br-eyebrow{color:#8a90d7;font-size:10px;font-weight:800;letter-spacing:2px;margin:0 0 10px}.br-heading{font-size:clamp(25px,5vw,40px);line-height:1.1;margin:0 0 12px;color:#fff}.br-copy{font-size:14px;line-height:1.6;max-width:310px;margin:0 0 22px;color:#d7d4e7}.ball-run .br-start{min-height:48px;background:#db20b9;color:#fff;box-shadow:0 3px 0 #721267}.br-fallback{position:absolute;inset:76px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:28px;text-align:center;line-height:1.6;background:#000}.br-fallback p{max-width:360px}.br-fallback .game-button{display:inline-block}@media(max-height:460px){.br-hud{top:78px;gap:26px}.br-hud strong{font-size:18px}.br-hud small{font-size:8px}.br-overlay{padding:12px}.br-copy{margin-bottom:12px;font-size:12px}.br-heading{font-size:24px;margin-bottom:8px}.br-eyebrow{display:none}.br-speed{bottom:8px}}
+.ball-run{--br-accent:#e2a21b;--br-top:max(12px,env(safe-area-inset-top));position:relative;width:100%;height:100%;min-height:0;overflow:hidden;background:#000;color:#fff;font-family:Arcade,system-ui,sans-serif;-webkit-user-select:none;user-select:none}
+.ball-run [hidden]{display:none!important}
+.br-viewport{position:absolute;inset:0;overflow:hidden;background:#000}
+.br-viewport canvas{display:block;width:100%;height:100%;touch-action:none;outline-offset:-5px}
+.br-viewport canvas:focus-visible{outline:2px solid #b8b7ff}
+.ball-run p,.ball-run h2,.ball-run ul{margin:0}
+.ball-run button{font:inherit;border:0;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ball-run button:focus-visible,.br-slider:focus-visible{outline:3px solid #ffe0a4;outline-offset:3px}
+
+/* HUD: mode and score beside the next record, in the toolbar row between back and pause. */
+.br-hud{position:absolute;top:var(--br-top);left:50%;transform:translateX(-50%);height:40px;display:flex;align-items:center;gap:clamp(20px,7vw,48px);z-index:4;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px #000d}
+.br-stat{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;line-height:1}
+.br-stat small{font-size:10px;letter-spacing:.04em}
+.br-stat strong{font-size:20px;font-weight:800}
+.br-target[data-scope=today]{color:#ffc145}
+.br-target[data-scope=week]{color:#ff6f9c}
+.br-target[data-scope=allTime]{color:#37e2b3}
+.br-target[data-scope=new]{color:#ffe066}
+.br-speed{position:absolute;top:calc(var(--br-top) + 42px);left:50%;transform:translateX(-50%);z-index:4;font-size:10px;color:#c9c6f0b8;pointer-events:none;text-shadow:0 1px 2px #000}
+/* Speed Up sits beside the ball, lower left (index.ts places it from the ball's screen position). */
+.br-boost{position:absolute;left:0;top:0;z-index:4;font-size:clamp(16px,2.4vmin + 6px,24px);line-height:1;font-style:italic;letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none;text-shadow:0 0 10px #00e7ef,0 2px 0 #8a0a6c}
+
+/* Panels sit over a dimmed world, below the shell's pause overlay (z-index 20), clear of its corner and bottom controls. */
+.br-layer{position:absolute;inset:0;z-index:10;display:grid;place-items:center;padding:calc(var(--br-top) + 46px) 16px max(56px,calc(env(safe-area-inset-bottom) + 50px));background:radial-gradient(ellipse at 50% 40%,#2a0d3166,#0000 70%),#07040ca6;overflow:hidden}
+.br-panel{width:min(340px,100%);max-height:100%;border-radius:22px;text-align:center;box-shadow:0 18px 50px #000b;overflow:hidden}
+.br-title{font-size:24px;line-height:1.05;letter-spacing:.02em}
+.br-copy{font-size:14px;line-height:1.32;color:#f3eefb}
+.br-face{display:block;width:100%;height:100%}
+.br-face-slot{position:relative;display:block;width:76px;height:76px;margin:0 auto}
+.br-actions{display:flex;justify-content:center;align-items:center;gap:12px}
+.br-button{min-height:50px;min-width:150px;padding:8px 22px;border-radius:12px;font-size:22px;letter-spacing:.03em;text-transform:uppercase;box-shadow:inset 0 -4px #0003;transition:transform 120ms cubic-bezier(.23,1,.32,1),filter 120ms}
+.br-button:active,.br-home:active,.br-help-toggle:active{transform:scale(.97)}
+@media(hover:hover) and (pointer:fine){.br-button:hover,.br-home:hover,.br-help-toggle:hover{filter:brightness(1.08)}}
+
+/* Setup: purple heading over a dark body, as on the reference menu. */
+.br-setup{background:#1d1d22f2}
+.br-head{padding:20px 20px 46px;background:linear-gradient(#3f1a4cf2,#2a1236f2);display:grid;gap:10px}
+.br-body{padding:0 20px 20px;display:grid;gap:12px;justify-items:center}
+/* The face badge straddles the heading's edge, as on the reference menu. */
+.br-pick .br-face-slot{margin-top:-38px}
+.br-helping .br-head{padding-bottom:16px}
+.br-helping .br-body{padding-top:16px}
+.br-pick{display:grid;gap:8px;justify-items:center;width:100%}
+.br-level{font-size:28px;line-height:1;color:var(--br-accent);text-transform:uppercase;letter-spacing:.03em}
+.br-slider{--fill:50%;-webkit-appearance:none;appearance:none;display:block;width:min(200px,80%);height:34px;margin:2px auto 0;background:none;cursor:pointer;border-radius:999px}
+.br-slider::-webkit-slider-runnable-track{height:22px;border-radius:999px;background:linear-gradient(90deg,var(--br-accent) 0 var(--fill),#111114 var(--fill));box-shadow:inset 0 0 0 3px #2d2d34}
+.br-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:34px;height:34px;margin-top:-6px;border-radius:50%;background:radial-gradient(circle,var(--br-accent) 0 33%,#fff 36%);box-shadow:0 2px 6px #0009}
+.br-slider::-moz-range-track{height:22px;border-radius:999px;background:linear-gradient(90deg,var(--br-accent) 0 var(--fill),#111114 var(--fill));box-shadow:inset 0 0 0 3px #2d2d34}
+.br-slider::-moz-range-thumb{width:34px;height:34px;border:0;border-radius:50%;background:radial-gradient(circle,var(--br-accent) 0 33%,#fff 36%);box-shadow:0 2px 6px #0009}
+.br-play,.br-resume{background:var(--br-accent)}
+.br-setup .br-actions{display:grid;grid-template-columns:1fr auto 1fr;width:100%}
+.br-setup .br-play{grid-column:2}
+.br-help-toggle{justify-self:start;width:40px;height:40px;border-radius:10px;background:#8c4f9f;font-size:22px;box-shadow:inset 0 -3px #0003}
+.br-help-toggle[aria-expanded=true]{box-shadow:inset 0 0 0 3px #ffe0a4}
+.br-help{display:grid;gap:7px;padding:0;list-style:none;text-align:left;font-size:14px;line-height:1.3;color:#f3eefb}
+.br-help li{padding-left:16px;position:relative}
+.br-help li::before{content:'';position:absolute;left:2px;top:.42em;width:7px;height:7px;border-radius:2px;background:var(--br-accent)}
+.br-note{font:13px/1.4 system-ui,sans-serif;color:#ffe0a4}
+
+.br-continue{background:#1d1d22f2;padding:22px 20px 20px;display:grid;gap:12px;justify-items:center}
+
+/* Game Over: score, then the difficulty's three records, then Home and Play again. */
+.br-over{width:min(330px,100%);padding:22px 18px 18px;background:#73404fe6;display:grid;gap:14px}
+.br-result{display:grid;gap:4px}
+.br-over .br-title{font-size:30px;color:#ffe9da}
+.br-reason{font-size:14px;color:#f5c8bf;margin-bottom:6px}
+.br-score-label{font-size:22px;color:#f8a66f}
+.br-final{font-size:46px;line-height:1;color:#f8a66f}
+.br-side{display:grid;gap:14px}
+.br-records{position:relative;margin-top:30px;padding:30px 9px 9px;border-radius:14px;background:#fde4d6;display:grid}
+.br-badge{position:absolute;left:0;right:0;top:-30px;display:flex;justify-content:center;align-items:flex-end;gap:10px;font-size:15px;color:var(--br-accent);letter-spacing:.03em}
+.br-badge>span:not(.br-face-slot){padding-bottom:6px}
+.br-badge .br-face-slot{width:56px;height:56px;margin:0}
+.br-crown{position:absolute;width:28px;height:12px;top:-9px;left:calc(50% - 14px)}
+.br-rows{display:grid;gap:6px;padding:0;list-style:none}
+.br-row{display:grid;grid-template-columns:20px 1fr auto auto;align-items:center;gap:8px;min-height:32px;padding:4px 10px;border-radius:9px;background:#6d3a4a;font-size:15px;text-align:left}
+.br-row svg{width:20px;height:20px}
+.br-row strong{grid-column:4;font-weight:800;min-width:2ch;text-align:right}
+.br-row[data-scope=today]{color:#ffd23f}
+.br-row[data-scope=week]{color:#ff7ea6}
+.br-row[data-scope=allTime]{color:#3fe3c2}
+.br-new{grid-column:3;font-style:normal;font-size:10px;letter-spacing:.05em;padding:2px 6px;border-radius:5px;background:#ffe0a4;color:#5e2a37}
+.br-row[data-new=false] .br-new{display:none}
+.br-home{width:54px;height:50px;flex:none;border-radius:12px;background:#c6544c;box-shadow:inset 0 -4px #0003;display:grid;place-items:center}
+.br-home svg{width:26px;height:26px}
+.br-again{flex:1;max-width:230px;min-width:0;background:#2bb24c;font-size:20px}
+
+.br-lost{background:#1d1d22f2;padding:24px 22px;display:grid;gap:12px}
+.br-fallback{position:absolute;inset:76px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:28px;text-align:center;font:16px/1.6 system-ui,sans-serif;background:#000}
+.br-fallback h2{font:800 24px Arcade,system-ui,sans-serif;margin:0 0 8px}
+.br-fallback p{max-width:360px;margin:0 0 18px}
+.br-fallback .game-button{display:inline-block}
+
+/* Short landscape screens: the panels go side by side so they fit between the toolbar and the bottom controls. */
+@media(max-height:520px){
+  .br-layer{padding-top:calc(var(--br-top) + 44px);padding-bottom:max(50px,calc(env(safe-area-inset-bottom) + 46px))}
+  .br-setup{display:grid;grid-template-columns:1fr 1.1fr;width:min(620px,100%)}
+  .br-head{align-content:center;padding:18px}
+  .br-body,.br-helping .br-body{padding:14px 18px;gap:10px;align-content:center}
+  .br-pick .br-face-slot{margin-top:0}
+  .br-pick{gap:6px}
+  .br-face-slot{width:56px;height:56px}
+  .br-level{font-size:24px}
+  .br-help{font-size:13px;gap:5px}
+  .br-button{min-height:44px}
+  .br-help-toggle{width:38px;height:38px}
+  .br-over{grid-template-columns:1fr 1.25fr;align-items:center;width:min(620px,100%);padding:16px 18px;gap:18px}
+  .br-over .br-title{font-size:26px}
+  .br-final{font-size:40px}
+  .br-records{margin-top:26px;padding-top:26px}
+  .br-badge{top:-26px}
+  .br-badge .br-face-slot{width:48px;height:48px}
+  .br-row{min-height:28px}
+  .br-side{gap:10px}
+  .br-continue{padding:16px 20px;gap:8px}
+}
+@media(max-width:360px){.br-head,.br-body{padding-left:14px;padding-right:14px}.br-button{min-width:128px}.br-hud{gap:14px}}
+/* Large screens: the same layouts, a size up. */
+@media(min-width:900px) and (min-height:640px){.br-panel,.br-hud{zoom:1.2}.br-speed{top:calc(var(--br-top) + 50px);font-size:12px}}
