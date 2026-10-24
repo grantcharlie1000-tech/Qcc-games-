@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CONFIG, DIFFICULTIES, DYING_DURATION, EDGE_SUPPORT, GATE_FEEDBACK, GRAVITY, RADIUS, SLOPE, STEP, WARMUP, lateralSpeed, speedAt,
+  BANK_DRIFT, CONFIG, DIFFICULTIES, DYING_DURATION, EDGE_SUPPORT, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, SLOPE, STEP, WARMUP,
+  lateralSpeed, speedAt,
   type Course, type Difficulty, type Gate, type Obstacle, type ObstaclePose, type Phase, type Run,
 } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
@@ -26,6 +27,68 @@ function drive(run: Run, until: (run: Run) => boolean, input: (run: Run) => numb
   let n = 0;
   while (n < limit && run.phase === 'running' && !until(run)) { step(run, input(run), dt); n++; }
   return n;
+}
+
+/** Banks (seeds 1–12, first 6 km) with no block from 3 m before them to 60 % of the way along. */
+function freeBanks(difficulty: Difficulty, count: number): Array<{ seed: number; course: Course; start: number; end: number }> {
+  const found: Array<{ seed: number; course: Course; start: number; end: number }> = [];
+  for (let seed = 1; seed <= 12 && found.length < count; seed++) {
+    const course = getCourse(seed, difficulty);
+    for (const s of spans(course, 6000)) {
+      if (found.length < count && s.kind === 'bank' && obstacles(course, s.start - 3, s.start + .6 * (s.end - s.start)).length === 0) found.push({ seed, course, start: s.start, end: s.end });
+    }
+  }
+  return found;
+}
+
+type Point = readonly [x: number, y: number, d: number];
+/** A world point in a posed box's frame, from the documented convention alone (positive roll lowers
+ * the +x side, so the box's across axis is (cos, −sin) and its up axis (sin, cos)), not from the model. */
+function inBox(p: ObstaclePose, [x, y, d]: Point): Point {
+  const dx = x - p.x, dy = y - p.y, c = Math.cos(p.roll), s = Math.sin(p.roll);
+  return [dx * c - dy * s, dx * s + dy * c, d - p.distance];
+}
+/** Least distance from the ball's centre on the straight path a → b to a block, with a taken in the
+ * block's frame at elapsed e0 and b in its frame at e1 (finely sampled, so independent of sweepSphereBox). */
+function pathGap(course: Course, o: Obstacle, e0: number, e1: number, a: Point, b: Point): number {
+  const p0 = poseOf(course, o, e0), p1 = poseOf(course, o, e1), la = inBox(p0, a), lb = inBox(p1, b);
+  let gap = Infinity;
+  for (let i = 0; i <= 1000; i++) {
+    const t = i / 1000, u = la[0] + (lb[0] - la[0]) * t, w = la[1] + (lb[1] - la[1]) * t, z = la[2] + (lb[2] - la[2]) * t;
+    gap = Math.min(gap, Math.hypot(Math.max(0, Math.abs(u) - p1.halfWidth), Math.max(0, Math.abs(w) - p1.halfHeight), Math.max(0, Math.abs(z) - p1.halfDepth)));
+  }
+  return gap;
+}
+/** Where a run with no lateral speed goes in one step of input 0 if nothing stops it. */
+function freePath(run: Run, dt: number): [Point, Point] {
+  const course = courseOf(run), x = run.x + BANK_DRIFT * Math.sin(course.sample(run.distance).bank) * dt, d = run.distance + runSpeed(run) * dt;
+  const h = run.grounded ? restHeight(course, d, x) : run.height + run.vy * dt - GRAVITY * dt * dt / 2;
+  return [[run.x, run.height, run.distance], [x, h, d]];
+}
+/** Least gap from a path to every block near it except `skip`. */
+function othersGap(course: Course, skip: Obstacle, e0: number, e1: number, [a, b]: [Point, Point]): number {
+  let gap = Infinity;
+  for (const o of obstacles(course, Math.min(a[2], b[2]) - course.maxDepth - 1, Math.max(a[2], b[2]) + course.maxDepth + 1)) {
+    if (o.id !== skip.id) gap = Math.min(gap, pathGap(course, o, e0, e1, a, b));
+  }
+  return gap;
+}
+/** The point between `inside` (f < 0) and `outside` (f ≥ 0) where f changes sign. */
+function boundary(f: (v: number) => number, inside: number, outside: number): number {
+  for (let i = 0; i < 40; i++) { const mid = (inside + outside) / 2; if (f(mid) < 0) inside = mid; else outside = mid; }
+  return (inside + outside) / 2;
+}
+const onRoad = (course: Course, x: number, d: number) => { const s = course.sample(d); return s.ground && Math.abs(x - s.center) <= s.width / 2 - EDGE_SUPPORT - .02; };
+/** One step of input 0; true when it ends in a block hit. A miss must land exactly where freePath said. */
+function hits(run: Run, dt: number): boolean {
+  const [, end] = freePath(run, dt);
+  step(run, 0, dt);
+  if (run.phase === 'dying') return run.reason === 'block';
+  expect(run.phase).toBe('running');
+  expect(run.x).toBeCloseTo(end[0], 9);
+  expect(run.height).toBeCloseTo(end[1], 9);
+  expect(run.distance).toBeCloseTo(end[2], 9);
+  return false;
 }
 
 describe('Ball Run speed', () => {
@@ -131,20 +194,16 @@ describe('Ball Run steering', () => {
     const straight = placeRun(1, 'medium', 5);
     drive(straight, r => r.distance > 70, () => 0);
     expect(straight.x).toBe(0);
-    let tested = 0;
-    for (const difficulty of DIFFICULTIES) for (let seed = 1; seed <= 12 && tested < DIFFICULTIES.indexOf(difficulty) + 1; seed++) {
-      const course = getCourse(seed, difficulty);
-      const bank = spans(course, 6000).find(s => s.kind === 'bank' && obstacles(course, s.start - 3, s.start + .6 * (s.end - s.start)).length === 0);
-      if (!bank) continue;
-      const run = placeRun(seed, difficulty, bank.start), x0 = run.x, side = Math.sign(course.sample((bank.start + bank.end) / 2).bank);
+    for (const difficulty of DIFFICULTIES) {
+      const banks = freeBanks(difficulty, 1);
+      expect(banks).toHaveLength(1);
+      const { seed, course, start, end } = banks[0], run = placeRun(seed, difficulty, start), x0 = run.x, side = Math.sign(course.sample((start + end) / 2).bank);
       let expected = 0;
-      drive(run, r => r.distance >= bank.start + .5 * (bank.end - bank.start), r => { expected += 6 * Math.sin(course.sample(r.distance).bank) * STEP; return 0; });
+      drive(run, r => r.distance >= start + .5 * (end - start), r => { expected += BANK_DRIFT * Math.sin(course.sample(r.distance).bank) * STEP; return 0; });
       expect(run.phase).toBe('running');
       expect((run.x - x0) * side).toBeGreaterThan(.2);
       expect(run.x - x0).toBeCloseTo(expected, 1);
-      tested++;
     }
-    expect(tested).toBe(3);
   });
 });
 
@@ -169,8 +228,43 @@ describe('Ball Run vertical motion', () => {
     }
   });
 
+  it('stays on the road through every gate below the cap, and while steering hard across a bank', () => {
+    // Only road curving away lifts the ball. A gate's speed gain, or a full steering reversal on a
+    // bank, changes how fast the ball moves along the surface, not whether it stays on it.
+    for (const difficulty of DIFFICULTIES) {
+      let gates = 0;
+      for (let seed = 1; seed <= 3; seed++) {
+        const course = getCourse(seed, difficulty);
+        for (const gate of gateList(course, 3000)) {
+          const run = placeRun(seed, difficulty, gate.start - 3);
+          expect(runSpeed(run)).toBeLessThan(CONFIG[difficulty].maxSpeed);
+          let airborne = 0;
+          drive(run, r => r.distance > gate.start + 3, r => { if (!r.grounded) airborne++; return toCentre(r); });
+          expect(run.phase).toBe('running');
+          expect(run.gateIndex).toBe(gate.index);
+          expect(airborne + (run.grounded ? 0 : 1), `${difficulty} seed ${seed} gate ${gate.index} at ${gate.start}`).toBe(0);
+          gates++;
+        }
+      }
+      expect(gates).toBeGreaterThan(6);
+      for (const { seed, course, start, end } of freeBanks(difficulty, 2)) {
+        const run = placeRun(seed, difficulty, start + .2 * (end - start));
+        let airborne = 0, reversals = 0, heading = 0;
+        drive(run, r => r.distance >= start + .6 * (end - start) - 1, r => {
+          if (!r.grounded) airborne++;
+          if (Math.sign(r.vx) !== heading) { reversals++; heading = Math.sign(r.vx); }
+          return r.x > course.sample(r.distance).center ? -1 : 1;
+        });
+        expect(run.phase).toBe('running');
+        expect(reversals).toBeGreaterThan(4);
+        expect(airborne + (run.grounded ? 0 : 1), `${difficulty} seed ${seed} bank at ${start}`).toBe(0);
+      }
+    }
+  });
+
   it('lifts off over a sharp crest at the speed cap and lands again', () => {
-    // Crest lengths scale with speed, so few crests are sharp enough: search for one.
+    // Crest lengths scale with speed, so few crests are sharp enough: search for one. Failing here
+    // means the course has no crest the spec's lift-off can happen on (a course problem, not a model one).
     let found: { seed: number; start: number; end: number } | null = null;
     for (let seed = 1; seed <= 40 && !found; seed++) {
       const course = getCourse(seed, 'hard'), cap = capDistance(course);
@@ -183,7 +277,7 @@ describe('Ball Run vertical motion', () => {
         if (2 * Math.PI ** 2 * rise / length ** 2 * v * v > 1.03 * GRAVITY) { found = { seed, start: crest.start, end: crest.end }; break; }
       }
     }
-    expect(found, 'no crest sharp enough to leave the road at the cap in 40 Hard seeds').not.toBeNull();
+    expect(found, 'course: no crest sharp enough to leave the road at the cap in 40 Hard seeds').not.toBeNull();
     const { seed, start, end } = found!, length = end - start, run = placeRun(seed, 'hard', start + .3 * length + 1);
     expect(runSpeed(run)).toBe(CONFIG.hard.maxSpeed);
     let lifted = -1, landed = -1;
@@ -266,6 +360,48 @@ describe('Ball Run hazards', () => {
     }
   });
 
+  it('never lets a ball that slipped below the road edge pop back up onto it', () => {
+    // Landing needs the ball to have been on or above the road a step earlier: one steered back
+    // under the edge keeps falling instead of being rescued onto the surface.
+    for (const difficulty of DIFFICULTIES) for (const below of [.03, .06]) {
+      const course = getCourse(1, difficulty), run = createRun(1, 1, difficulty);
+      run.phase = 'running';
+      drive(run, r => !r.grounded && restHeight(course, r.distance, r.x) - r.height >= below, () => 1);
+      expect(run.phase).toBe('running');
+      let back = false, landed = false;
+      drive(run, () => false, r => {
+        if (onRoad(course, r.x, r.distance)) back = true;
+        if (r.grounded) landed = true;
+        return -1;
+      });
+      expect(back, `${difficulty}, ${below} m below`).toBe(true);
+      expect(landed).toBe(false);
+      expect(run.phase).toBe('dying');
+      expect(run.reason).toBe('fall');
+    }
+  });
+
+  it('measures a fall from the nearest road edge, off the high and the low side of a bank', () => {
+    for (const difficulty of DIFFICULTIES) {
+      const { seed, course, start, end } = freeBanks(difficulty, 1)[0];
+      for (const side of [-1, 1]) {
+        const at = start + .3 * (end - start), s = course.sample(at);
+        const run = placeRun(seed, difficulty, at, s.center + side * (s.width / 2 - EDGE_SUPPORT - .2));
+        // Somewhere the road's tilted plane, extended out under the ball, would give another answer.
+        let tilted = false;
+        while (run.phase === 'running') {
+          step(run, side, STEP);
+          const t = course.sample(run.distance), edge = Math.min(t.center + t.width / 2, Math.max(t.center - t.width / 2, run.x));
+          const fallen = !run.grounded && run.height < restHeight(course, run.distance, edge) - FALL_DEPTH;
+          if (fallen !== (!run.grounded && run.height < restHeight(course, run.distance, run.x) - FALL_DEPTH)) tilted = true;
+          expect(run.phase, `${difficulty} seed ${seed} side ${side} at ${run.distance}`).toBe(fallen ? 'dying' : 'running');
+        }
+        expect(run.reason).toBe('fall');
+        expect(tilted).toBe(true);
+      }
+    }
+  });
+
   it('stops dead at a thin block at the speed cap, even across a long step', () => {
     for (const difficulty of DIFFICULTIES) {
       let target: { seed: number; o: Obstacle; pose: ObstaclePose } | null = null;
@@ -327,6 +463,65 @@ describe('Ball Run hazards', () => {
     expect(passed).toBe(3);
   });
 
+  it('meets a rolled block in its own frame, 2.5 cm either side of where it first touches', () => {
+    for (const difficulty of DIFFICULTIES) {
+      let pairs = 0;
+      for (let seed = 1; seed <= 8 && pairs < 4; seed++) {
+        const course = getCourse(seed, difficulty);
+        for (const o of obstacles(course, 300, 5000)) {
+          const p = poseOf(course, o), c = Math.cos(p.roll), s = Math.sin(p.roll);
+          if (o.slide || Math.abs(p.roll) < .6 * CONFIG[difficulty].maxBank || pairs >= 4) continue;
+          // The reference axes match the road: both bottom corners sit on the banked surface.
+          for (const side of [-1, 1]) {
+            const above = p.y - side * p.halfWidth * s - p.halfHeight * c - course.surfaceHeight(p.distance, p.x + side * p.halfWidth * c - p.halfHeight * s);
+            expect(above).toBeLessThan(.005);
+            expect(above).toBeGreaterThan(-.31 - .15 * o.depth);
+          }
+          // One long step from just in front of the block, beside each side face.
+          const d0 = p.distance - p.halfDepth - RADIUS - .02, path = (x: number) => freePath(placeRun(seed, difficulty, d0, x), .05);
+          const gap = (x: number) => pathGap(course, o, 0, 0, ...path(x)) - RADIUS;
+          for (const side of [-1, 1]) {
+            const touch = boundary(gap, p.x, p.x + side * (p.halfWidth + p.halfHeight + RADIUS + .5)), near = touch - side * .025, far = touch + side * .025;
+            const end = path(far)[1];
+            if (!onRoad(course, near, d0) || !onRoad(course, far, d0) || !onRoad(course, end[0], end[2]) || othersGap(course, o, 0, 0, path(near)) < RADIUS + .05) continue;
+            expect(gap(near)).toBeLessThan(-.01);
+            expect(gap(far)).toBeGreaterThan(.01);
+            const where = `${difficulty} seed ${seed} block #${o.id} roll ${p.roll.toFixed(3)} side ${side}`;
+            expect(hits(placeRun(seed, difficulty, d0, near), .05), where).toBe(true);
+            expect(hits(placeRun(seed, difficulty, d0, far), .05), where).toBe(false);
+            pairs++;
+          }
+        }
+      }
+      expect(pairs).toBeGreaterThanOrEqual(4);
+    }
+  });
+
+  it('clears a block in flight only above its posed top, which stands above obstacle.height on a slope', () => {
+    for (const difficulty of DIFFICULTIES) {
+      let pairs = 0;
+      for (let seed = 1; seed <= 4 && pairs < 2; seed++) {
+        const course = getCourse(seed, difficulty);
+        for (const o of obstacles(course, 300, 3000)) {
+          const p = poseOf(course, o);
+          if (o.slide || Math.abs(p.roll) > .02 || p.halfHeight - o.height / 2 < .04 || pairs >= 2) continue;
+          // Level flight over one long step, from just in front of the block, over its middle.
+          const d0 = p.distance - p.halfDepth - RADIUS - .02;
+          const flying = (y: number) => Object.assign(placeRun(seed, difficulty, d0, p.x), { grounded: false, height: y, vy: GRAVITY * .05 / 2 });
+          const gap = (y: number) => pathGap(course, o, 0, 0, ...freePath(flying(y), .05)) - RADIUS;
+          const top = p.y + p.halfHeight, touch = boundary(gap, top, top + RADIUS + 1);
+          if (othersGap(course, o, 0, 0, freePath(flying(touch - .02), .05)) < RADIUS + .05) continue;
+          expect(touch).toBeCloseTo(top + RADIUS, 3);
+          const where = `${difficulty} seed ${seed} block #${o.id}`;
+          expect(hits(flying(touch - .02), .05), where).toBe(true);
+          expect(hits(flying(touch + .02), .05), where).toBe(false);
+          pairs++;
+        }
+      }
+      expect(pairs).toBe(2);
+    }
+  });
+
   it('hits a sliding block at one time and misses it half a period later', () => {
     for (const difficulty of ['medium', 'hard'] as const) {
       let target: { seed: number; o: Obstacle } | null = null;
@@ -351,6 +546,40 @@ describe('Ball Run hazards', () => {
       const miss = placeRun(seed, difficulty, start, x, arrive - 1 / v + slide.period / 2);
       drive(miss, r => r.distance > at.distance + at.halfDepth + RADIUS + .5, () => 0);
       expect(miss.phase).toBe('running');
+    }
+  });
+
+  it('sweeps a sliding block from where it was to where it is across a step', () => {
+    // Moving into the ball: only the block's new place reaches the end of the ball's path.
+    // Moving off the path: only its old place is in front of the ball as the step starts.
+    for (const difficulty of ['medium', 'hard'] as const) {
+      const cases = [0, 0];
+      for (let seed = 1; seed <= 10 && Math.min(...cases) < 2; seed++) {
+        const course = getCourse(seed, difficulty);
+        for (const o of obstacles(course, 300, 6000)) {
+          const slide = o.slide;
+          if (Math.min(...cases) >= 2) break;
+          if (!slide || Math.abs(poseOf(course, o).roll) > .02 || 2 * Math.PI * slide.amplitude / slide.period * .05 < .15) continue;
+          // Mid-sweep, where the block moves fastest, over one 0.05 s step.
+          let mid = -slide.phase / (2 * Math.PI) * slide.period;
+          while (mid < 1) mid += slide.period / 2;
+          const e0 = mid - .025, e1 = mid + .025, a = poseOf(course, o, e0), b = poseOf(course, o, e1), dir = Math.sign(b.x - a.x);
+          const d0 = a.distance - a.halfDepth - RADIUS - .02, centre = (a.x + b.x) / 2, reach = a.halfWidth + RADIUS + 1;
+          const path = (x: number) => freePath(placeRun(seed, difficulty, d0, x, e0), .05);
+          const moving = (x: number) => pathGap(course, o, e0, e1, ...path(x)) - RADIUS;
+          for (const [k, side, only] of [[0, dir, e0], [1, -dir, e1]] as const) {
+            if (cases[k] >= 2) continue;
+            const fixed = (x: number) => pathGap(course, o, only, only, ...path(x)) - RADIUS;
+            const x = (boundary(moving, centre, centre + side * reach) + boundary(fixed, centre, centre + side * reach)) / 2;
+            if (!onRoad(course, x, d0) || othersGap(course, o, e0, e1, path(x)) < RADIUS + .05) continue;
+            expect(moving(x)).toBeLessThan(-.01);
+            expect(fixed(x)).toBeGreaterThan(.01);
+            expect(hits(placeRun(seed, difficulty, d0, x, e0), .05), `${difficulty} seed ${seed} slider #${o.id} case ${k}`).toBe(true);
+            cases[k]++;
+          }
+        }
+      }
+      expect(cases).toEqual([2, 2]);
     }
   });
 

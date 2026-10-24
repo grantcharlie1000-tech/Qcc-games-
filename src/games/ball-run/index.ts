@@ -96,7 +96,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   let run: Run = createRun(randomSeed(), 1, 'medium'), course = getCourse(run.seed, run.difficulty), records: Records = emptyRecords();
   let paused = false, disposed = false, contextLost = false, waiting = false, committed = false;
-  let frame = 0, last = 0, accumulator = 0, shown: Panel = null;
+  let frame = 0, last = 0, accumulator = 0, shown: Panel = null, entering = 0;
   let left = false, right = false, drag: number | null = null, pointerStart = 0, ballStart = 0, pointerTarget = 0;
   /** Records when the run started: the HUD's next target. */
   let view: RecordView = { today: 0, week: 0, allTime: 0 };
@@ -161,12 +161,24 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     helpToggle.setAttribute('aria-expanded', String(open));
   }
 
-  /** Game Over enters with a short fade and settle; reduced motion fades only. */
+  /** Game Over enters with a 250 ms fade and settle from 0.96 (a strong ease-out); reduced motion fades
+   * only. Driven by animation frames rather than CSS or WAAPI so it also runs under a test's virtual clock. */
   function enter(panel: HTMLElement) {
-    if (typeof panel.animate !== 'function') return;
-    const timing = { duration: 250, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' };
-    layer.animate([{ opacity: 0 }, { opacity: 1 }], timing);
-    if (!reducedMotion()) panel.animate([{ transform: 'scale(0.96)' }, { transform: 'none' }], timing);
+    settle();
+    const start = performance.now(), scale = !reducedMotion();
+    const tick = (now: number) => {
+      const t = Math.min(1, Math.max(0, (now - start) / 250)), k = 1 - (1 - t) ** 5;
+      layer.style.opacity = String(k);
+      if (scale) panel.style.transform = `scale(${.96 + .04 * k})`;
+      entering = t < 1 ? requestAnimationFrame(tick) : 0;
+      if (!entering) settle();
+    };
+    tick(start);
+  }
+  function settle() {
+    cancelAnimationFrame(entering);
+    entering = 0;
+    layer.style.opacity = panels.over.style.transform = '';
   }
 
   function screen() {
@@ -177,6 +189,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     for (const [name, element] of Object.entries(panels)) element.hidden = name !== panel;
     hud.hidden = speedLabel.hidden = panel === 'setup' || panel === 'lost';
     if (panel === 'over' && shown !== 'over') enter(panels.over);
+    else if (panel !== 'over' && entering) settle();
     shown = panel;
     report(true);
     draw();
@@ -434,6 +447,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       if (disposed) return;
       disposed = true;
       cancel();
+      settle();
       clearInput();
       abort.abort();
       resize.disconnect();

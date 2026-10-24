@@ -68,6 +68,8 @@ function onBend(seed:number,difficulty:Difficulty){
 }
 /** Fully on screen, clear of the shell's corner and bottom controls, with every button hit for real. */
 async function expectClear(page:Page,panel:Locator){
+  // Hit tests ignore opacity, so check that the panel has finished entering and is really seen.
+  await expect(panel.locator('..')).toHaveCSS('opacity','1');await expect(panel).toHaveCSS('transform','none');
   const box=(await panel.boundingBox())!,size=page.viewportSize()!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height-52);

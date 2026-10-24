@@ -45,7 +45,7 @@ export function steer(body: { x: number; vx: number }, input: number, dt: number
 }
 
 // Step scratch: reused so a step allocates nothing in steady state.
-const before = blankSample(), after = blankSample(), poseA = blankPose(), poseB = blankPose();
+const before = blankSample(), after = blankSample(), behind = blankSample(), poseA = blankPose(), poseB = blankPose();
 const sweepFrom = [0, 0, 0], sweepTo = [0, 0, 0], origin = [0, 0, 0] as const, half = [0, 0, 0];
 /** The step being tested against blocks: elapsed before and after, then the ball's old and new
  * x, height and distance. A typed array, because module-level number variables box every write. */
@@ -114,8 +114,13 @@ export function step(run: Run, input: number, dt: number): void {
   const supported = s.ground && Math.abs(run.x - s.center) <= s.width / 2 - EDGE_SUPPORT;
   const rest = restOn(s, run.x), surfaceVy = (rest - rest0) / dt;
   if (run.grounded) {
-    // Stay on the road unless it falls away faster than gravity can follow.
-    if (supported && (surfaceVy - run.vy) / dt >= -GRAVITY) { run.height = rest; run.vy = surfaceVy; }
+    // Stay on the road unless it curves away faster than gravity can follow. The curve is measured
+    // along the ball's line at its current speed (the step mirrored behind it), so a change of speed
+    // (a gate) or of lateral speed (steering on a bank) moves the ball along the surface, not off it.
+    // Before the start the road continues the warm-up's straight slope.
+    const back = d0 - v * dt, behindRest = restOn(course.sample(back, behind), 2 * x0 - run.x) + Math.min(0, back) * behind.gradient;
+    const away = (rest - 2 * rest0 + behindRest) / (dt * dt) < -GRAVITY && h0 + run.vy * dt - GRAVITY * dt * dt / 2 > rest;
+    if (supported && !away) { run.height = rest; run.vy = surfaceVy; }
     else run.grounded = false;
   } else if (supported && h0 + run.vy * dt - GRAVITY * dt * dt / 2 <= rest && h0 >= rest0 - .05) {
     run.height = rest; run.vy = surfaceVy; run.grounded = true;
