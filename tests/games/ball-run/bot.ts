@@ -105,7 +105,11 @@ export function describeRun(run: Run): string {
 //    every choice is checked by the exact x it produces: on the road, and clear of every block
 //    (sliding blocks close their whole sweep). Where x fails, a shooting pass pushes p toward the
 //    side x needs over the two lags before and re-runs; if that does not clear the horizon, a
-//    depth-first search with backtracking tries.
+//    depth-first search with backtracking tries. Both decide point by point, so neither can go
+//    back to a choice made more than a few metres before the failure (which side of an earlier
+//    block to take). When both fall short, the previous re-plan's line is tried again (extended
+//    greedily), and then a breadth-first beam over (x, p) states, which keeps both sides of every
+//    block open at once.
 // 3. Control: the input (full authority available) puts p back on the line after every step.
 //
 // The plan's first design (an x line backtracked from a single reachability pass, followed by a
@@ -133,6 +137,9 @@ const REPAIRS = 30;
 /** The exact search looks this far ahead (s, at least SEARCH_MIN m); the viability sets cover the rest of the horizon. */
 const SEARCH = 2.5, SEARCH_MIN = 50;
 const MAX_POINTS = 4096, MAX_SPANS = 32, MAX_CANDS = 16;
+/** Beam search: states kept per point, one per cell of x and p (m), and the moves of p tried from
+ * each, as fractions of the reach. */
+const BEAM = 256, CELL_X = .03, CELL_P = .06, MOVES = [-1, -.75, -.5, -.25, 0, .25, .5, .75, 1];
 
 /** A block's footprint without clearance; a sliding block covers its whole sweep. */
 interface Footprint { from: number; to: number; lo: number; hi: number }
@@ -351,10 +358,11 @@ class Planner {
         for (let t = 0; t < TIERS.length; t++) this.reach[t][n] = w.reach[t][j];
       }
     }
-    // Comfortable margins first, then bare ones; keep whichever line runs further.
+    // Comfortable margins first, then bare ones; the greedy searches first, then the previous line
+    // and the beam. Keep whichever line runs furthest.
     const x0 = run.x, p0 = run.x + LAG * run.vx;
     let reached = -1, keep: Float64Array | null = null;
-    for (const margin of [0, 1]) for (const method of [this.shoot, this.search]) {
+    for (const [method, margin] of this.methods) {
       if (reached === n - 1) break;
       const got = method.call(this, x0, p0, margin, n);
       if (got > reached) { reached = got; keep = this.path.slice(0, got + 1); }
@@ -362,7 +370,106 @@ class Planner {
     this.path.set(keep!);
     this.n = reached + 1;
     this.cursor = 0;
+    this.previous.set(this.path.subarray(0, this.n));
+    this.previousAt.set(at.subarray(0, this.n));
+    this.previousN = this.n;
     return reached === n - 1;
+  }
+  private readonly methods: [(x0: number, p0: number, margin: number, n: number) => number, number][] = [
+    [this.shoot, 0], [this.search, 0], [this.shoot, 1], [this.search, 1], [this.reuse, 0], [this.reuse, 1], [this.beam, 0], [this.beam, 1],
+  ];
+  /** The last plan's line, for `reuse`. */
+  private readonly previous = new Float64Array(MAX_POINTS);
+  private readonly previousAt = new Float64Array(MAX_POINTS);
+  private previousN = 0;
+
+  /** The previous plan's line where it reaches (the ball has been following it), then greedy
+   * choices beyond. Returns the last point reached. */
+  private reuse(x0: number, p0: number, margin: number, n: number): number {
+    if (this.previousN < 2) return 0;
+    const path = this.path, xs = this.xs, end = this.previousAt[this.previousN - 1];
+    path[0] = p0; xs[0] = x0;
+    let k = 1;
+    for (; k < n; k++) {
+      const base = path[k - 1] + this.shift[k], all = this.reach[HARD][k] + 1e-7;
+      const want = this.at[k] <= end ? interpolate(this.previousAt, this.previous, this.previousN, this.at[k]) : this.settle(k, base);
+      const p = clamp(want, base - all, base + all), x = this.follow(k, xs[k - 1], path[k - 1], p, 1);
+      if (!this.clear(k, xs[k - 1], path[k - 1], p, x, margin)) break;
+      path[k] = p; xs[k] = x;
+    }
+    return k - 1;
+  }
+
+  // Beam storage: every point's states (x, p, parent index), BEAM per point.
+  private beamX = new Float64Array(0);
+  private beamP = new Float64Array(0);
+  private beamFrom = new Int32Array(0);
+  private readonly beamCount = new Int32Array(MAX_POINTS);
+
+  /** Breadth-first search: every point keeps up to BEAM states (x, p), at most one per cell, each
+   * extended by MOVES of p across 0.85 of the lateral authority and checked like every other line.
+   * Where more cells survive than BEAM, an even spread across x and p is kept. Returns the last
+   * point reached; at the horizon it prefers an end inside the most comfortable viability set. */
+  private beam(x0: number, p0: number, margin: number, n: number): number {
+    if (this.beamX.length < n * BEAM) {
+      this.beamX = new Float64Array(n * BEAM); this.beamP = new Float64Array(n * BEAM); this.beamFrom = new Int32Array(n * BEAM);
+    }
+    const bx = this.beamX, bp = this.beamP, from = this.beamFrom, count = this.beamCount, seen = new Map<number, number>();
+    const nx: number[] = [], np: number[] = [], nf: number[] = [], keys: number[] = [];
+    bx[0] = x0; bp[0] = p0; from[0] = -1; count[0] = 1;
+    let k = 1;
+    for (; k < n; k++) {
+      seen.clear(); nx.length = np.length = nf.length = keys.length = 0;
+      const r = this.reach[HARD][k], shift = this.shift[k], prev = (k - 1) * BEAM;
+      for (let s = 0; s < count[k - 1]; s++) {
+        const xa = bx[prev + s], pa = bp[prev + s];
+        for (const move of MOVES) {
+          const p = pa + shift + move * r, x = this.follow(k, xa, pa, p, 1);
+          const key = Math.round(x / CELL_X) * 1e5 + Math.round(p / CELL_P);
+          if (seen.has(key) || !this.clear(k, xa, pa, p, x, margin)) continue;
+          seen.set(key, nx.length);
+          nx.push(x); np.push(p); nf.push(prev + s); keys.push(key);
+        }
+      }
+      if (!nx.length) break;
+      const base = k * BEAM;
+      if (nx.length <= BEAM) {
+        for (let i = 0; i < nx.length; i++) { bx[base + i] = nx[i]; bp[base + i] = np[i]; from[base + i] = nf[i]; }
+        count[k] = nx.length;
+      } else {
+        const order = keys.map((_, i) => i).sort((a, b) => keys[a] - keys[b]);
+        for (let i = 0; i < BEAM; i++) {
+          const j = order[Math.floor(i * nx.length / BEAM)];
+          bx[base + i] = nx[j]; bp[base + i] = np[j]; from[base + i] = nf[j];
+        }
+        count[k] = BEAM;
+      }
+    }
+    const last = k - 1;
+    let pick = last * BEAM;
+    if (last === n - 1) {
+      let best = Infinity;
+      for (let s = 0; s < count[last]; s++) {
+        const score = this.comfort(last, bp[last * BEAM + s]);
+        if (score < best) { best = score; pick = last * BEAM + s; }
+      }
+    }
+    for (let i = pick, j = last; j >= 0; i = from[i], j--) { this.path[j] = bp[i]; this.xs[j] = bx[i]; }
+    return last;
+  }
+
+  /** Lower is more comfortable: the index of the most comfortable tier whose viability set at
+   * point k holds p (TIERS.length when none does), less how deep inside that set p lies. */
+  private comfort(k: number, p: number): number {
+    const j0 = this.first + k - 1, b = j0 * MAX_SPANS;
+    for (let t = 0; t < TIERS.length; t++) {
+      const sets = this.window.viable[t];
+      for (let j = 0; j < sets.count[j0]; j++) {
+        const inside = Math.min(p - sets.lo[b + j], sets.hi[b + j] - p);
+        if (inside >= 0) return t + 1 - Math.min(1, inside) * .999;
+      }
+    }
+    return TIERS.length + 1;
   }
 
   /** Greedy line with exact x, repaired where x fails: p is pushed toward the side x needs over
@@ -536,6 +643,15 @@ class Planner {
     const t = (d - at[i]) / (at[i + 1] - at[i] || 1);
     return this.path[i] + (this.path[i + 1] - this.path[i]) * t;
   }
+}
+
+/** A line through n points (at, path) at distance d: linear between points, flat beyond them. */
+function interpolate(at: Float64Array, path: Float64Array, n: number, d: number): number {
+  if (d <= at[0] || n < 2) return path[0];
+  if (d >= at[n - 1]) return path[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const mid = lo + hi >> 1; if (at[mid] <= d) lo = mid; else hi = mid; }
+  return path[lo] + (path[hi] - path[lo]) * (d - at[lo]) / (at[hi] - at[lo] || 1);
 }
 
 /** Statistics from the last driveBot call, for diagnosing a failure. */
