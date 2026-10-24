@@ -5,6 +5,7 @@ import {
   BANK_DRIFT, CONFIG, EDGE_SUPPORT, RADIUS, STEER_RESPONSE, STEP, lateralSpeed,
   type Course, type Difficulty, type Obstacle, type ObstaclePose, type Run, type SegmentKind, type TrackSample,
 } from '../../../src/games/ball-run/config';
+import { sweepSphereBox } from '../../../src/core/collision';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun, runSpeed, step } from '../../../src/games/ball-run/model';
 
@@ -86,32 +87,42 @@ export function describeRun(run: Run): string {
 }
 
 // The bot -------------------------------------------------------------------
+//
+// Under the model's analytic steering the lag-free position p = x + vx / STEER_RESPONSE moves at
+// exactly the commanded lateral speed plus bank drift, and x follows p as a LAG-second
+// exponential average (x' = (p − x) / LAG + drift). So the bot plans a line for p, which it can
+// follow exactly, and checks the exact x that line produces.
+//
+// 1. Viability: interval sets of p from which the end of a window of road can still be reached,
+//    by backward reachability with a fraction of the real lateral authority, in three tiers from
+//    comfortable to bare. A constraint on x at distance D applies to p at D − v·LAG (x trails p by
+//    about LAG), shifted against the drift. These depend only on the course, so each window is
+//    computed once and shared by every re-plan inside it.
+// 2. Line: every REPLAN steps a depth-first search from the ball's state picks p point by point,
+//    the most comfortable viable choice first, and rejects any choice whose exact x leaves the
+//    road or touches a block (sliding blocks close their whole sweep); dead ends backtrack.
+// 3. Control: the input puts p back on the line after every step.
 
-/** Planning tiers, most comfortable first. The middle one is the generator's own guarantee
- * (its reach safety and clearances); the last relies on 0.85 of the real lateral authority
- * with bare clearances.
- *
- * The bot plans the lag-free position p = x + vx / STEER_RESPONSE rather than x: under the
- * model's analytic steering p moves at exactly the commanded lateral speed plus bank drift,
- * so it can follow a planned line exactly, while x trails it as a 0.1 s exponential average
- * (plus 0.1 s of drift). Each constraint on x at distance D therefore applies to p at
- * D − v·LAG, shifted against the drift; corner cutting at sharp turns is left to the margins. */
+/** Viability tiers, most comfortable first. The middle one is the generator's own reach safety and
+ * clearances; the last relies on 0.85 of the real lateral authority with bare clearances. */
 const TIERS = [
   { authority: .55, clear: RADIUS + .16, edge: EDGE_SUPPORT + .16 },
   { authority: .7, clear: RADIUS + .06, edge: EDGE_SUPPORT + .12 },
   { authority: .85, clear: RADIUS + .02, edge: EDGE_SUPPORT + .03 },
 ] as const;
 const HARD = TIERS.length - 1;
+/** Margins for the exact x of a searched line: comfortable, then bare. */
+const X_MARGINS = [{ clear: RADIUS + .05, edge: EDGE_SUPPORT + .05 }, { clear: RADIUS + .01, edge: EDGE_SUPPORT + .01 }] as const;
 const REPLAN = 6;
 /** Steering lag (s): x trails p by about this long. */
 const LAG = 1 / STEER_RESPONSE;
-/** A ball within this of the previous line keeps following it, so the line stays continuous across re-plans. */
-const ANCHOR = .2;
-/** Unforced drift toward the middle of the viable corridor, as a share of the tier's reach. */
-const SETTLE = 1;
-const MAX_POINTS = 4096, MAX_SPANS = 32;
+/** Search budget: candidates tried per point. */
+const BUDGET = 40;
+/** The exact search looks this far ahead (s, at least SEARCH_MIN m); the viability sets cover the rest of the horizon. */
+const SEARCH = 2.5, SEARCH_MIN = 50;
+const MAX_POINTS = 4096, MAX_SPANS = 32, MAX_CANDS = 16;
 
-/** A block's footprint without clearance; sliding blocks cover their whole sweep. */
+/** A block's footprint without clearance; a sliding block covers its whole sweep. */
 interface Footprint { from: number; to: number; lo: number; hi: number }
 
 /** Interval sets for every point, stored flat. */
@@ -126,37 +137,43 @@ class Sets {
   }
 }
 
-export class Planner {
+/** Course data and viability sets over a stretch of road. */
+class Window {
+  from = 0;
+  to = -Infinity;
+  n = 0;
   readonly at = new Float64Array(MAX_POINTS);
-  /** Bank drift over the step that ends at point i. */
+  readonly speed = new Float64Array(MAX_POINTS);
+  readonly bank = new Float64Array(MAX_POINTS);
+  /** The road at the point itself, for x. */
+  readonly roadC = new Float64Array(MAX_POINTS);
+  readonly roadW = new Float64Array(MAX_POINTS);
+  readonly roadT = new Uint8Array(MAX_POINTS);
+  /** Bank drift and tier reach over the step that ends at each point. */
   readonly shift = new Float64Array(MAX_POINTS);
   readonly reach = TIERS.map(() => new Float64Array(MAX_POINTS));
-  /** Viable positions: from here the end of the horizon can still be reached. */
   readonly viable = TIERS.map(() => new Sets());
-  readonly path = new Float64Array(MAX_POINTS);
-  /** Where the constraints on p at each point come from: the ball's distance one lag later. */
+  /** Blocks near each point (indices into `blocks`), for the exact x check. */
+  readonly near = new Int32Array(MAX_POINTS * MAX_SPANS);
+  readonly nearCount = new Int32Array(MAX_POINTS);
+  readonly blocks: Footprint[] = [];
+  /** Where the constraints on p come from (one lag later), the road there and the drift offset of x from p. */
   private readonly check = new Float64Array(MAX_POINTS);
-  /** Road at the check distance, and the drift offset of x from p there. */
   private readonly center = new Float64Array(MAX_POINTS);
   private readonly width = new Float64Array(MAX_POINTS);
   private readonly offset = new Float64Array(MAX_POINTS);
   private readonly tunnel = new Uint8Array(MAX_POINTS);
-  n = 0;
-  failed = false;
-  private cursor = 0;
   private readonly sample = blankSample();
   private readonly pose = blankPose();
-  private readonly blocks: Footprint[] = [];
   private readonly tl = new Float64Array(MAX_SPANS * 3);
   private readonly th = new Float64Array(MAX_SPANS * 3);
 
-  /** Plans a line from the run's state; false when even the last tier found no route somewhere on the horizon. */
-  plan(run: Run, course: Course): boolean {
-    const d0 = run.distance, end = d0 + Math.max(120, 2.5 * runSpeed(run)), pose = this.pose, blocks = this.blocks;
-    const p0 = run.x + LAG * run.vx, previous = this.n ? this.lineAt(d0) : p0, start = Math.abs(previous - p0) <= ANCHOR ? previous : p0;
+  build(course: Course, from: number, to: number): void {
+    const pose = this.pose, blocks = this.blocks, reachOut = TIERS[0].clear;
+    this.from = from; this.to = to;
     blocks.length = 0;
-    course.forEachObstacle(d0 - TIERS[0].clear, end + TIERS[0].clear, (o: Obstacle) => {
-      course.pose(o, run.elapsed, pose);
+    course.forEachObstacle(from - reachOut, to + reachOut, (o: Obstacle) => {
+      course.pose(o, 0, pose);
       const out = pose.halfWidth * Math.abs(Math.cos(pose.roll)) + pose.halfHeight * Math.abs(Math.sin(pose.roll));
       let lo = pose.x, hi = pose.x;
       if (o.slide) {
@@ -166,31 +183,43 @@ export class Planner {
       }
       blocks.push({ from: pose.distance - pose.halfDepth, to: pose.distance + pose.halfDepth, lo: lo - out, hi: hi + out });
     });
-    // Points: the ball, every whole metre, and where each tier's widened block starts and ends (one lag earlier).
+    // Points: every whole metre, and where each widened block starts and ends, for x and (one lag earlier) for p.
     const at = this.at;
     let n = 0;
-    at[n++] = d0;
-    for (let d = Math.floor(d0) + 1; d <= end && n < MAX_POINTS; d++) at[n++] = d;
-    for (const b of blocks) for (const tier of TIERS) for (const edge of [b.from - tier.clear, b.to + tier.clear]) {
-      const e = edge - LAG * course.speed(edge);
-      if (e > d0 && e < end && n < MAX_POINTS) at[n++] = e;
+    at[n++] = from;
+    for (let d = Math.floor(from) + 1; d <= to && n < MAX_POINTS; d++) at[n++] = d;
+    for (const b of blocks) {
+      for (const tier of TIERS) for (const edge of [b.from - tier.clear, b.to + tier.clear]) {
+        const e = edge - LAG * course.speed(edge);
+        if (e > from && e < to && n < MAX_POINTS) at[n++] = e;
+      }
+      // The rounded footprint for x starts and ends here.
+      const c = X_MARGINS[0].clear;
+      for (const e of [b.from - c, b.to + c]) if (e > from && e < to && n < MAX_POINTS) at[n++] = e;
     }
-    at.subarray(1, n).sort();
+    at.subarray(0, n).sort();
     this.n = n;
     const s = this.sample;
     for (let i = 0; i < n; i++) {
-      const v = course.speed(at[i]), check = this.check[i] = at[i] + LAG * v;
-      course.sample(check, s);
+      const v = this.speed[i] = course.speed(at[i]);
+      course.sample(at[i], s);
+      this.roadC[i] = s.center; this.roadW[i] = s.width; this.roadT[i] = s.tunnel ? 1 : 0; this.bank[i] = s.bank;
+      course.sample(this.check[i] = at[i] + LAG * v, s);
       this.center[i] = s.center; this.width[i] = s.width; this.tunnel[i] = s.tunnel ? 1 : 0;
       this.offset[i] = -LAG * BANK_DRIFT * Math.sin(s.bank);
+      // Blocks whose rounded footprint the step ending here can touch.
+      let near = 0;
+      const a = i ? at[i - 1] : at[i], c = X_MARGINS[0].clear;
+      for (let b = 0; b < blocks.length && near < MAX_SPANS; b++) {
+        if (blocks[b].from - c <= at[i] && a <= blocks[b].to + c) this.near[i * MAX_SPANS + near++] = b;
+      }
+      this.nearCount[i] = near;
       if (i === 0) continue;
-      course.sample(at[i - 1], s);
       const dd = at[i] - at[i - 1];
-      this.shift[i] = BANK_DRIFT * Math.sin(s.bank) * dd / v;
+      this.shift[i] = BANK_DRIFT * Math.sin(this.bank[i - 1]) * dd / v;
       for (let t = 0; t < TIERS.length; t++) this.reach[t][i] = TIERS[t].authority * lateralSpeed(v) * dd / v;
     }
     // Backward viability, hardest tier first so softer tiers can fall back to it where they find no room.
-    this.failed = false;
     for (let t = HARD; t >= 0; t--) {
       const sets = this.viable[t];
       this.allowed(n - 1, t, sets);
@@ -198,26 +227,26 @@ export class Planner {
         this.back(i, t, sets);
         if (sets.count[i]) continue;
         if (t < HARD) sets.copy(i, this.viable[t + 1]);
-        else { this.failed = true; this.allowed(i, t, sets); }
+        else this.allowed(i, t, sets);
       }
     }
-    // Forward line: stay in the most comfortable viable set the reach allows, settling toward its middle.
-    const path = this.path;
-    path[0] = start;
-    for (let i = 0; i + 1 < n; i++) path[i + 1] = this.next(i + 1, path[i] + this.shift[i + 1]);
-    this.cursor = 0;
-    return !this.failed;
+  }
+
+  /** Index of the first point after d. */
+  after(d: number): number {
+    let lo = 0, hi = this.n;
+    while (lo < hi) { const mid = lo + hi >> 1; if (this.at[mid] <= d) lo = mid + 1; else hi = mid; }
+    return lo;
   }
 
   /** Road band at point i for a tier, minus the blocks active there. */
   private allowed(i: number, t: number, sets: Sets): void {
-    const tier = TIERS[t], m = this.tunnel[i] ? RADIUS + .01 : tier.edge, c = this.center[i] + this.offset[i];
-    const tl = this.tl, th = this.th;
-    tl[0] = c - this.width[i] / 2 + m; th[0] = c + this.width[i] / 2 - m;
-    this.store(i, sets, this.cut(i, t, tl[0] <= th[0] ? 1 : 0));
+    const m = this.tunnel[i] ? RADIUS + .01 : TIERS[t].edge, c = this.center[i] + this.offset[i];
+    this.tl[0] = c - this.width[i] / 2 + m; this.th[0] = c + this.width[i] / 2 - m;
+    this.store(i, sets, this.cut(i, t, this.tl[0] <= this.th[0] ? 1 : 0));
   }
 
-  /** viable[i] ← ((viable[i+1] ⊕ reach) − shift) ∩ allowed[i]; the ball's own point is not cut. */
+  /** viable[i] ← ((viable[i+1] ⊕ reach) − shift) ∩ allowed[i]. */
   private back(i: number, t: number, sets: Sets): void {
     const r = this.reach[t][i + 1], shift = this.shift[i + 1], b = (i + 1) * MAX_SPANS, tl = this.tl, th = this.th;
     let k = 0;
@@ -226,17 +255,14 @@ export class Planner {
       if (k && lo <= th[k - 1]) th[k - 1] = Math.max(th[k - 1], hi);
       else { tl[k] = lo; th[k] = hi; k++; }
     }
-    if (i > 0) {
-      const tier = TIERS[t], m = this.tunnel[i] ? RADIUS + .01 : tier.edge, c = this.center[i] + this.offset[i];
-      const bandLo = c - this.width[i] / 2 + m, bandHi = c + this.width[i] / 2 - m;
-      let w = 0;
-      for (let j = 0; j < k; j++) {
-        const lo = Math.max(tl[j], bandLo), hi = Math.min(th[j], bandHi);
-        if (lo <= hi) { tl[w] = lo; th[w] = hi; w++; }
-      }
-      k = this.cut(i, t, w);
+    const m = this.tunnel[i] ? RADIUS + .01 : TIERS[t].edge, c = this.center[i] + this.offset[i];
+    const bandLo = c - this.width[i] / 2 + m, bandHi = c + this.width[i] / 2 - m;
+    let w = 0;
+    for (let j = 0; j < k; j++) {
+      const lo = Math.max(tl[j], bandLo), hi = Math.min(th[j], bandHi);
+      if (lo <= hi) { tl[w] = lo; th[w] = hi; w++; }
     }
-    this.store(i, sets, k);
+    this.store(i, sets, this.cut(i, t, w));
   }
 
   /** Removes the tier-widened blocks active at point i from tl/th[0..k); returns the new count. */
@@ -263,21 +289,167 @@ export class Planner {
     sets.count[i] = k;
     for (let j = 0; j < k; j++) { sets.lo[b + j] = this.tl[j]; sets.hi[b + j] = this.th[j]; }
   }
+}
 
-  /** Next line position at point i from the drifted previous one, `p`. The line may use the
-   * last tier's reach to get back into a more comfortable tier; inside one it settles gently. */
-  private next(i: number, p: number): number {
-    const b = i * MAX_SPANS, reach = this.reach[HARD][i] + 1e-7;
+export class Planner {
+  readonly window = new Window();
+  /** Plan points: the ball, then the window's points over the horizon (plan point k ≥ 1 is window point first + k − 1). */
+  readonly at = new Float64Array(MAX_POINTS);
+  /** The line for p, and the exact x it gives. */
+  readonly path = new Float64Array(MAX_POINTS);
+  readonly xs = new Float64Array(MAX_POINTS);
+  n = 0;
+  private first = 0;
+  private readonly speed = new Float64Array(MAX_POINTS);
+  private readonly bank = new Float64Array(MAX_POINTS);
+  private readonly shift = new Float64Array(MAX_POINTS);
+  private readonly reach = TIERS.map(() => new Float64Array(MAX_POINTS));
+  private readonly cand = new Float64Array(MAX_POINTS * MAX_CANDS);
+  private readonly candN = new Int32Array(MAX_POINTS);
+  /** Whether a point's fallback candidates have been generated yet. */
+  private readonly full = new Uint8Array(MAX_POINTS);
+  private readonly pick = new Int32Array(MAX_POINTS);
+  private readonly best = new Float64Array(MAX_POINTS);
+  private readonly sample = blankSample();
+  private cursor = 0;
+
+  /** Plans a line from the run's state; false when no line clears the whole horizon (the line
+   * then runs as far as one was found). */
+  plan(run: Run, course: Course): boolean {
+    const d0 = run.distance, v0 = runSpeed(run), horizon = Math.max(120, 2.5 * v0), w = this.window;
+    if (w.from > d0 || w.to < d0 + horizon) w.build(course, d0, d0 + 3 * horizon);
+    this.first = w.after(d0 + 1e-9);
+    const at = this.at, ahead = d0 + Math.min(horizon, Math.max(SEARCH_MIN, SEARCH * v0));
+    at[0] = d0; this.speed[0] = v0; this.bank[0] = course.sample(d0, this.sample).bank;
+    let n = 1;
+    for (let j = this.first; j < w.n && w.at[j] <= ahead && n < MAX_POINTS; j++, n++) {
+      at[n] = w.at[j]; this.speed[n] = w.speed[j]; this.bank[n] = w.bank[j];
+      if (n === 1) {
+        const dd = at[1] - d0, v = this.speed[1];
+        this.shift[1] = BANK_DRIFT * Math.sin(this.bank[0]) * dd / v;
+        for (let t = 0; t < TIERS.length; t++) this.reach[t][1] = TIERS[t].authority * lateralSpeed(v) * dd / v;
+      } else {
+        this.shift[n] = w.shift[j];
+        for (let t = 0; t < TIERS.length; t++) this.reach[t][n] = w.reach[t][j];
+      }
+    }
+    // Comfortable margins first, then bare ones; keep whichever line runs further.
+    const x0 = run.x, p0 = run.x + LAG * run.vx;
+    let reached = this.search(x0, p0, 0, n);
+    if (reached < n - 1) {
+      const keep = this.path.slice(0, reached + 1), strict = reached;
+      reached = this.search(x0, p0, 1, n);
+      if (reached < strict) { this.path.set(keep); reached = strict; }
+    }
+    this.n = reached + 1;
+    this.cursor = 0;
+    return reached === n - 1;
+  }
+
+  /** Depth-first search for a line through all n points; returns the last point reached (the
+   * line in `path` runs that far). */
+  private search(x0: number, p0: number, margin: number, n: number): number {
+    const path = this.path, xs = this.xs, pick = this.pick, cand = this.cand;
+    path[0] = p0; xs[0] = x0;
+    let i = 0, deepest = 0, budget = BUDGET * n;
+    if (n > 1) this.start(1);
+    while (i < n - 1) {
+      const k = i + 1;
+      let advanced = false;
+      for (;;) {
+        if (pick[k] >= this.candN[k]) { if (this.full[k]) break; this.fallbacks(k); continue; }
+        if (budget-- <= 0) break;
+        const p = cand[k * MAX_CANDS + pick[k]], x = this.follow(k, xs[i], path[i], p, 1);
+        if (this.clear(k, xs[i], path[i], p, x, margin)) {
+          path[k] = p; xs[k] = x; i = k;
+          if (k + 1 < n) this.start(k + 1);
+          advanced = true;
+          break;
+        }
+        pick[k]++;
+      }
+      if (advanced) {
+        if (i > deepest) { deepest = i; this.best.set(path.subarray(0, i + 1)); }
+        continue;
+      }
+      if (budget <= 0 || i === 0) break;
+      // Every continuation from point i failed: try its next candidate.
+      pick[i]++;
+      i--;
+    }
+    if (i < n - 1) path.set(this.best.subarray(0, deepest + 1));
+    return i === n - 1 ? i : deepest;
+  }
+
+  /** Exact x after fraction f of the step to point k, while p moves linearly from p0 to p1. */
+  private follow(k: number, x0: number, p0: number, p1: number, f: number): number {
+    const dt = (this.at[k] - this.at[k - 1]) / this.speed[k], drift = BANK_DRIFT * Math.sin(this.bank[k - 1]);
+    const slope = dt > 0 ? (p1 - p0) / dt : 0, decay = Math.exp(-f * dt / LAG);
+    return p0 + slope * f * dt - LAG * slope + LAG * drift + (x0 - p0 + LAG * slope - LAG * drift) * decay;
+  }
+
+  /** x at point k is on the road, and the step to it from x0 at point k − 1 (checked as two
+   * chords through the exact midpoint) keeps the ball's centre c from every block's footprint
+   * (the ball is a sphere, so corners are rounded). */
+  private clear(k: number, x0: number, p0: number, p1: number, x: number, margin: number): boolean {
+    const w = this.window, j = this.first + k - 1, c = X_MARGINS[margin].clear, a = this.segment[0], b = this.segment[1], m = this.segment[2];
+    if (Math.abs(x - w.roadC[j]) > w.roadW[j] / 2 - (w.roadT[j] ? RADIUS : X_MARGINS[margin].edge)) return false;
+    if (!w.nearCount[j]) return true;
+    a[0] = x0; a[1] = this.at[k - 1]; b[0] = x; b[1] = this.at[k];
+    m[0] = this.follow(k, x0, p0, p1, .5); m[1] = (a[1] + b[1]) / 2;
+    for (let i = 0; i < w.nearCount[j]; i++) {
+      const block = w.blocks[w.near[j * MAX_SPANS + i]];
+      this.box[0] = (block.lo + block.hi) / 2; this.box[1] = (block.from + block.to) / 2;
+      this.half[0] = (block.hi - block.lo) / 2; this.half[1] = (block.to - block.from) / 2;
+      if (sweepSphereBox(a, m, this.box, this.half, c) || sweepSphereBox(m, b, this.box, this.half, c)) return false;
+    }
+    return true;
+  }
+  private readonly segment = [[0, 0], [0, 0], [0, 0]];
+  private readonly box = [0, 0];
+  private readonly half = [0, 0];
+
+  /** The first candidate at point k: the most comfortable viable choice. */
+  private start(k: number): void {
+    this.cand[k * MAX_CANDS] = this.settle(k, this.path[k - 1] + this.shift[k]);
+    this.candN[k] = 1; this.full[k] = 0; this.pick[k] = 0;
+  }
+
+  /** Fallback candidates at point k, after the first: the middle and ends of every viable
+   * corridor in reach, then the reach limits, then (as a last resort) the full lateral authority. */
+  private fallbacks(k: number): void {
+    const base = this.path[k - 1] + this.shift[k], r = this.reach[HARD][k] + 1e-7, j0 = this.first + k - 1, b = j0 * MAX_SPANS;
+    for (const sets of this.window.viable) for (let j = 0; j < sets.count[j0]; j++) {
+      const lo = Math.max(sets.lo[b + j], base - r), hi = Math.min(sets.hi[b + j], base + r);
+      if (lo > hi) continue;
+      this.add(k, clamp((sets.lo[b + j] + sets.hi[b + j]) / 2, lo, hi)); this.add(k, lo); this.add(k, hi);
+    }
+    const all = lateralSpeed(this.speed[k]) * (this.at[k] - this.at[k - 1]) / this.speed[k] - 1e-9;
+    this.add(k, base); this.add(k, base - r); this.add(k, base + r); this.add(k, base - all); this.add(k, base + all);
+    this.full[k] = 1;
+  }
+
+  private add(k: number, p: number): void {
+    const o = k * MAX_CANDS, m = this.candN[k];
+    if (m >= MAX_CANDS) return;
+    for (let j = 0; j < m; j++) if (Math.abs(this.cand[o + j] - p) < .005) return;
+    this.cand[o + m] = p;
+    this.candN[k] = m + 1;
+  }
+
+  /** Within the last tier's reach of p, the point toward the middle of the nearest corridor of
+   * the most comfortable tier that has one in reach. */
+  private settle(k: number, p: number): number {
+    const j0 = this.first + k - 1, b = j0 * MAX_SPANS, reach = this.reach[HARD][k] + 1e-7;
     for (let t = 0; t < TIERS.length; t++) {
-      const sets = this.viable[t], r = this.reach[t][i], count = sets.count[i];
-      // The corridor nearest p, and a target a little way toward its middle.
+      const sets = this.window.viable[t], r = this.reach[t][k], count = sets.count[j0];
       let nearest = -1, gap = Infinity;
       for (let j = 0; j < count; j++) {
         const g = Math.max(0, sets.lo[b + j] - p, p - sets.hi[b + j]);
         if (g < gap) { gap = g; nearest = j; }
       }
       if (nearest < 0 || gap > reach) continue;
-      const middle = (sets.lo[b + nearest] + sets.hi[b + nearest]) / 2, q = p + clamp(middle - p, -SETTLE * r, SETTLE * r);
+      const q = p + clamp((sets.lo[b + nearest] + sets.hi[b + nearest]) / 2 - p, -r, r);
       let best = NaN, miss = Infinity;
       for (let j = 0; j < count; j++) {
         const lo = Math.max(sets.lo[b + j], p - reach), hi = Math.min(sets.hi[b + j], p + reach);
@@ -287,20 +459,13 @@ export class Planner {
       }
       if (!Number.isNaN(best)) return best;
     }
-    // Not viable even on the last tier: head for the nearest place that is.
-    const sets = this.viable[HARD];
-    let best = p, miss = Infinity;
-    for (let j = 0; j < sets.count[i]; j++) {
-      const x = clamp(p, sets.lo[b + j], sets.hi[b + j]);
-      if (Math.abs(x - p) < miss) { miss = Math.abs(x - p); best = x; }
-    }
-    return best;
+    return p;
   }
 
   /** The planned line at a distance (linear between points). */
   lineAt(d: number): number {
     const at = this.at, n = this.n;
-    if (d <= at[0]) return this.path[0];
+    if (d <= at[0] || n < 2) return this.path[0];
     if (d >= at[n - 1]) return this.path[n - 1];
     let i = this.cursor;
     if (at[i] > d) i = 0;
