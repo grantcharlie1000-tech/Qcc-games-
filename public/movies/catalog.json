@@ -13,8 +13,9 @@
         "Adventure"
       ],
       "overview": "A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.",
-      "poster": "movies/art/interstellar.svg",
-      "seasons": []
+      "poster": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+      "seasons": [],
+      "backdrop": "https://image.tmdb.org/t/p/w1280/xJHokMbljvjADYdit5fK5VQsXEG.jpg"
     },
     {
       "id": "movie-438631",
@@ -26,7 +27,7 @@
         "Adventure"
       ],
       "overview": "On a desert world, a young heir must navigate rival powers and a destiny larger than his family.",
-      "poster": "movies/art/dune.svg",
+      "poster": "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg",
       "seasons": []
     },
     {
@@ -39,7 +40,7 @@
         "Drama"
       ],
       "overview": "A linguist works to understand visitors from another world, and discovers a new way to think about time.",
-      "poster": "movies/art/arrival.svg",
+      "poster": "https://image.tmdb.org/t/p/w500/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg",
       "seasons": []
     },
     {
@@ -52,7 +53,7 @@
         "Fantasy"
       ],
       "overview": "A girl enters a mysterious spirit world and finds courage while trying to bring her parents home.",
-      "poster": "movies/art/spirited-away.svg",
+      "poster": "https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
       "seasons": []
     },
     {
@@ -65,7 +66,7 @@
         "Adventure"
       ],
       "overview": "A hotel concierge and his young colleague become unlikely partners in an adventure through a changing Europe.",
-      "poster": "movies/art/grand-budapest.svg",
+      "poster": "https://image.tmdb.org/t/p/w500/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg",
       "seasons": []
     },
     {
@@ -78,7 +79,7 @@
         "Adventure"
       ],
       "overview": "Stranded far from home, an astronaut turns to science, ingenuity and a little humour to stay alive.",
-      "poster": "movies/art/martian.svg",
+      "poster": "https://image.tmdb.org/t/p/w500/sGz80DpcdpYWl5aKM0wIA2C90rc.jpg",
       "seasons": []
     },
     {
@@ -91,7 +92,7 @@
         "Drama"
       ],
       "overview": "A consulting detective and a former army doctor unravel intricate mysteries in contemporary London.",
-      "poster": "movies/art/sherlock.svg",
+      "poster": "https://image.tmdb.org/t/p/w500/7WTsnHkbA0FaG6R9twfFde0I9hl.jpg",
       "seasons": [
         {
           "number": 1,
@@ -147,7 +148,7 @@
         "Nature"
       ],
       "overview": "Explore remarkable habitats and the animals that make their homes in some of Earth\u2019s most demanding places.",
-      "poster": "movies/art/planet-earth.svg",
+      "poster": "https://image.tmdb.org/t/p/w500/5maYKYzWpE68ycxGh1luu4P2LOS.jpg",
       "seasons": [
         {
           "number": 1,
@@ -187,5 +188,6 @@
         }
       ]
     }
-  ]
+  ],
+  "artworkProvider": "TMDB"
 }

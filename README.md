@@ -69,6 +69,6 @@ Corn Clicker is an original corn-themed incremental game: click the cob, hire pr
 
 ## Movies & TV
 
-The cinema card opens a separate, private discovery section with local search, genres, movie/series details, seasons, episodes and a device-local list. Escape still opens Study Mode. Movie content and playback stay outside game scores, saves and offline downloads.
+The cinema card opens a Netflix-reference-based section with real TMDB posters/backdrops, local search, genres, details, seasons, episodes and a device-local list. Streaming remains enabled for supported titles through the documented FrameXTV player, isolated in a cross-origin sandbox. Study Mode unloads the external player and offers manual resume. Game scores, saves and offline downloads remain separate.
 
-FrameXTV is deliberately not integrated: its documented iframe/extraction model does not establish the required privacy or distribution rights. The starter catalog uses original artwork and summaries, with playback disabled until a verified licensed same-origin file is supplied. An operator-only TMDB snapshot importer supports richer discovery without runtime third-party requests. See [setup, privacy decisions and licensing prerequisites](docs/MOVIES_TV.md) and [verification results](docs/MOVIES_TV_TEST_RESULTS.md).
+TMDB and streaming providers receive ordinary image/playback requests. External availability, tracking and distribution rights are not verified by QCC. No provider scripts run in the parent page, and no DRM bypass, stream extraction or account forwarding is implemented. See [setup and provider/privacy details](docs/MOVIES_TV.md), [Netflix design references](docs/MOVIES_TV_DESIGN_REFERENCES.md) and [verification results](docs/MOVIES_TV_TEST_RESULTS.md).

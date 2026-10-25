@@ -21,12 +21,19 @@ export async function importCatalog({token,logo,output='public/movies',fetcher=f
   if(!response.ok||!response.headers.get('content-type')?.startsWith('image/'))throw new Error('Poster import failed');
   const image=Buffer.from(await response.arrayBuffer());if(image.length>5_000_000)throw new Error('Poster exceeds size limit');
   await writeFile(staged+`/art/${kind}-${item.id}.jpg`,image);
+  let backdrop;
+  if(/^\/[a-zA-Z0-9]+\.(jpg|png)$/.test(d.backdrop_path||'')){
+   const response=await fetcher(`https://image.tmdb.org/t/p/w1280${d.backdrop_path}`,{redirect:'error'});
+   if(!response.ok||!response.headers.get('content-type')?.startsWith('image/'))throw new Error('Backdrop import failed');
+   const image=Buffer.from(await response.arrayBuffer());if(image.length>5_000_000)throw new Error('Backdrop exceeds size limit');
+   backdrop=`movies/art/${kind}-${item.id}-backdrop.jpg`;await writeFile(staged+`/art/${kind}-${item.id}-backdrop.jpg`,image);
+  }
   const seasons=[];
   for(const s of (kind==='tv'?d.seasons||[]:[]).filter(s=>Number.isInteger(s.season_number)&&s.season_number>0).slice(0,30)){
    const data=await api(`tv/${item.id}/season/${s.season_number}?language=en-US`);
    seasons.push({number:s.season_number,name:s.name,episodes:(data.episodes||[]).map(e=>({number:e.episode_number,name:e.name,overview:e.overview||'',runtime:e.runtime}))});
   }
-  titles.push({id:`${kind}-${item.id}`,kind,name:d.title||d.name,year:Number((d.release_date||d.first_air_date||'').slice(0,4)),genres:(d.genres||[]).map(g=>g.name),overview:d.overview||'No description supplied.',poster,rating:d.vote_count>0?d.vote_average:undefined,runtime:d.runtime,seasons});
+  titles.push({id:`${kind}-${item.id}`,kind,name:d.title||d.name,year:Number((d.release_date||d.first_air_date||'').slice(0,4)),genres:(d.genres||[]).map(g=>g.name),overview:d.overview||'No description supplied.',poster,backdrop,rating:d.vote_count>0?d.vote_average:undefined,runtime:d.runtime,seasons});
  }
  if(!titles.length)throw new Error('No titles imported; previous catalog preserved');
  await writeFile(staged+'/art/tmdb-logo.png',logoBytes);

@@ -1,35 +1,38 @@
 # Movies & TV verification — 2026-10-25
 
+## Final feature model
+
+The user authorized normal provider/image requests, required actual movie pictures rather than generated art, and explicitly confirmed that streaming should remain enabled. The final implementation uses real TMDB image URLs and sandboxed FrameXTV embeds. It does not claim zero exposure, verified external streaming rights, or guaranteed provider availability. Generated movie artwork and preview screenshots containing it have been removed.
+
 ## Completed checks
 
 | Check | Result |
 | --- | --- |
-| `npm test -- --maxWorkers=1` | 122 test files, 2,740 tests passed. Includes game models, storage, Study, navigation, leaderboard integration and worker/update tests. |
-| `npm test -- tests/movies` after final UI changes | 4 files, 11 tests passed: catalog/routes/search, fail-closed licensed sources, local storage, runtime privacy/CSP boundaries and mocked operator TMDB import. |
-| Dedicated Chromium movie browser suite | 11 tests passed. Desktop/Chromebook/mobile widths, full-width launch/decorative posters, search/genres, list, episodes, unavailable playback, native licensed movie/TV fixture, Home reset, global Search, grid/episode scroll and focus restoration, Study scrolling/pause, blocked storage, failure/deep links and CSP enforcement. |
-| `npm run build` | Passed, including TypeScript, media-rights preflight, Vite production bundle and offline manifest generation. Existing large-game-chunk warnings remain. |
-| `node scripts/verify-movies.mjs` | Passed against production output at `/` and `/Qcc-games-/`. Zero external requests or page errors; no iframes/media/DNS hints on discovery; no movie content in worker caches or game pack; honest offline catalog failure; 18 game cards and 5 bundled decorations still available offline. |
-| SVG parse validation and `git diff --check` | Passed. 13 original SVG files validated. |
-| Independent review | Completed. Fixed shell focus/menu interference, detached-video progress writes, episode return scroll/focus, Home filter reset, global search scope, TV hero episode resolution and Study document scrolling. |
+| Feature unit/integration tests | 5 files, 13 tests passed: catalog/search/routes, constrained image URLs, local storage, operator importer, optional local media and documented provider URL/sandbox policy. |
+| Final feature Chromium browser suite | 15 tests passed, including 320/390/768/1366 layouts and the movie scroller's overflow; real-art URL configuration; enabled movie/TV playback; list/search/Home; episode/grid scroll/focus; Study pause/unload/manual resume; native player; origin/source-checked local external progress and seek; blocked storage; CSP; parent isolation, popups/top-navigation/camera denial. |
+| Production build | Passed TypeScript, optional local-media rights validation, Vite and offline manifest. Existing large game chunk warnings remain. |
+| `node scripts/verify-movies.mjs` | Passed against production output at `/` and `/Qcc-games-/`, using explicit transport fixtures for approved image/player origins. Confirms lazy provider loading, sandbox/referrer policy, Study unloading, no movie content in worker/game pack caches, honest offline catalog failure and 18 game cards. Does not assert live provider/image availability. |
+| Full unit suite before provider expansion | 122 files / 2,740 tests passed. A complete run including the final provider tests is recorded below when finished. |
+| Existing offline game verifier | All 18 games plus Study exercised successfully at root; the first subpath run passed 5 games then timed out in Snake. A constrained rerun of Snake and the remaining 12 games passed at both root and subpath. Combined coverage includes all 18 games at both paths. |
+| Independent review | Fixed shell focus/menu interference, teardown progress writes, Home/global search, TV hero episode resolution, movie/Study scrolling, iframe sizing, external progress persistence and origin/source checks. |
 
-The source was frozen after the reference-based Netflix-style desktop/mobile redesign and its focused regression checks. Visual evidence is in [the evidence directory](evidence/movies/); source references and their application are recorded in [the design reference record](MOVIES_TV_DESIGN_REFERENCES.md).
+## Complete browser run and follow-up
 
-## Full browser and existing game offline runs
+The complete 714-case browser invocation exited with **316 passed, 393 failed, 4 skipped and 1 did not run**. This is not a green full-suite result.
 
-Results are recorded here after the final runs complete.
+- 354 WebKit cases could not launch because WebKit is missing. Its installer was attempted and blocked by the workspace network policy (HTTP 403).
+- 34 Chromium cases could not create video-recording pages because Playwright's bundled FFmpeg was missing. The existing system FFmpeg was configured for a targeted rerun; results are recorded below after completion.
+- Two online multiplayer cases initially could not find Playwright's bundled Chromium. Rerunning with `/usr/bin/chromium` reached the existing room-creation checks, but PeerJS room creation timed out. The environment's outbound policy does not allow the required PeerJS Cloud host. Online gameplay is not reported as verified.
+- Two game checks timed out (Block Fill's full campaign and Neon Coil recovery) and one feature scroll check failed during ongoing UI/artwork changes. The feature scroll issue was fixed by preserving poster layout on load/error and passes in the final 15-test suite. The game cases are included in the isolated regression rerun.
 
-WebKit is not installed in this environment. `npx playwright install webkit` was attempted; the environment network policy returned HTTP 403 `Domain forbidden` for the Playwright download host. This is a test environment limitation, not a passing WebKit result. The repository's existing CI installs browser engines and must verify WebKit before approval.
+A targeted 61-case game rerun and final complete unit run are in progress; exact results are added before completion. Earlier interrupted runs and timing failures are not counted as passes. New provider/layout browser tests use transport fixtures to isolate application correctness from live service availability; fixtures are not shipped in production.
 
-Earlier development runs were interrupted for requested redesign/review fixes, and one attempt lost a shared Vite server. They are not counted as final passes. Final runs use a separately owned server and separate artifact directories. One early concurrent unit run passed its assertions but encountered a Vitest worker RPC timeout; the subsequent complete unit run exited successfully with the 2,740 passes above.
+## Network and licensing limits
 
-## Privacy evidence and limits
+The environment denies direct TMDB and FrameXTV access. Provider/image requests are permitted by application CSP as requested, but live image rendering and actual stream playback could not be confirmed here. `MOVIES_LIVE=1 node scripts/verify-movies.mjs` enables an explicit live audit in an environment with access. The default audit output identifies its fixture mode. It is not a packet capture or a guarantee about downstream tracking or device security.
 
-Production network capture uses a clean Chromium context and records all application requests at root and repository subpath. Every observed request stays on the tested origin. Static inspection rejects provider code/URLs, frames, tracking, DNS hints and proxy integration in `src/movies`. Browser CSP tests inject external frame/media/image/script/fetch attempts and verify the effective blocking directives and absence of external responses. Browser event reporting can include CSP-blocked attempts; this is not a packet-level DNS capture or an audit of browser extensions or vendor background services.
+The app supplies no DRM bypass, stream extraction, credentials, parent-page provider scripts or server-side streaming proxy. FrameXTV and downstream services can observe ordinary playback activity and may serve ads/use cookies. Browser isolation mitigates parent-page/device-capability risks; it does not establish content distribution rights or a clean downstream supply chain. QCC's list/progress are stored locally; a selected stream's resume position is sent as a normal seek control.
 
-The worker excludes the entire scoped `movies/` subtree and the offline builder excludes `dist/movies`. Only shared JS/CSS and inline original launch-card illustrations travel with the shell. First-party hosting must serve movie paths statically with no provider redirects/proxies or request-triggered upstream fetches. Existing opt-in game PeerJS permissions remain; the Movies section never initializes them. No FrameXTV or downstream resources, libraries, iframe controllers, proxies or extraction tools are integrated.
+No TMDB API token/approved logo was supplied; the operator importer is mocked in integration tests. The starter catalog has 8 titles, real CDN artwork URLs, original summaries, no invented ratings and limited episode coverage. Configure a reviewed TMDB snapshot to broaden discovery and verify attribution/commercial terms. Optional local media remains subject to explicit documented rights review.
 
-## Licensing and release limitations
-
-No licensed full movie/episode media, TMDB credential, or approved TMDB logo was supplied. Consequently all starter playback is disabled and the shipped catalog is explicitly a starter selection with original summaries/illustrations, no ratings and limited episode coverage. A generated silent CC0 solid-color fixture tests the native movie and TV player; it is excluded from production output. The TMDB importer was tested with a mocked upstream, not a live API account. Production metadata caching/image terms, commercial status, approved attribution logo and individual media distribution rights require operator review. There is no DRM, geographic restriction or copyright bypass.
-
-No merge or deployment was performed. Both commit and PR title carry `[skip netlify]` to suppress automatic Netlify branch/preview deployment. Existing CI may run verification jobs.
+No merge/deployment is performed. Commit and PR title include `[skip netlify]` to suppress automatic Netlify branch/preview deployment. CI may run verification jobs.
