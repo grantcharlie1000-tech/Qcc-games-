@@ -1,6 +1,6 @@
 # Ball Run test results
 
-Current results: [Redesign (2026-10-24)](#redesign-2026-10-24) below. The 2026-10-19 sections that come first describe the replaced game. Their screenshots have since been overwritten by the redesign's evidence set under the same names; only `ramp-gap.webm` remains from them. The earlier images are in git history: check out each file at the commit that last changed it before the redesign (`git log -- tests/games/ball-run/evidence/<file>`); the images at main `ceb61e3` show the later procedural follow-up, not the 2026-10-19 ramp course.
+Current results: [Road support and boost repair (2026-10-25)](#road-support-and-boost-repair-2026-10-25) below. The 2026-10-19 sections that come first describe the replaced game. Their screenshots have since been overwritten by the redesign's evidence set under the same names; only `ramp-gap.webm` remains from them. The earlier images are in git history: check out each file at the commit that last changed it before the redesign (`git log -- tests/games/ball-run/evidence/<file>`); the images at main `ceb61e3` show the later procedural follow-up, not the 2026-10-19 ramp course.
 
 ## Gameplay correction (2026-10-19)
 
@@ -135,3 +135,14 @@ Comparison with the reference: the side-by-side sheets were made during the rend
 - Cold course generation may exceed the 150 ms target under heavy load.
 - Stills show composition, not continuous motion; no WebM of the new course is committed. White button labels keep the reference look and stay below 3:1 against the amber and green fills by strict WCAG; a dark edge carries the contrast. In narrow landscape views the reduced-motion trail shows about as many spheres on screen as the normal one (2 against 2.26 mean), although it is shorter.
 - The Blockcraft performance test above fails on this machine on main as well.
+
+
+## Road support and boost repair (2026-10-25)
+
+Physical support now follows the sphere contact point across the visible road, including banks. Genuine edge falls, airborne/gap behavior and underside rejection remain. Permanent gate gains are +2.5/+3/+3 m/s with 1.8 s of clearer cyan feedback; caps remain 40/50/62 m/s. Older live saves start a fresh course because tuning changes seeded geometry; per-difficulty records are preserved.
+
+Local verification passed: **2,743 unit tests, 33 Chromium tests, typecheck and production build**. Independent review found no issues. Regression coverage includes all difficulties, 30/60/120/144 Hz frame accumulators, stalls, bank/edge contact, landing, pause/restart/restore, stacking/caps and continuous play through cap plus 4 km. Existing course tests retain their assertions and cover at least 20 km.
+
+Seed 1 speeds immediately before / after entrance / after feedback (m/s): Easy **10.36 / 12.86 / 12.93**, Medium **12.39 / 15.39 / 15.49**, Hard **13.77 / 16.77 / 16.83**. First-gate steps are 22–24%; the gain persists after feedback.
+
+WebKit/Safari was unavailable locally because the supported download returned HTTP 403. Physical-device performance and subjective feel remain unverified. Chromium used software WebGL; controlled frame timing does not establish hardware frame rates.

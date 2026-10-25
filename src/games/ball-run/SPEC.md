@@ -1,21 +1,21 @@
 # Ball Run
 
-Current design: the 2026-10-24 redesign, built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at Charlie's request) and Charlie's requests for slower acceleration, a much higher speed cap, more, more random and harder obstacles, and gates that give a permanent speed boost. The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. Per-difficulty tuning and the shared constants live in `config.ts`; segment lengths, margins and flight-zone sizes are the constants at the top of `course.ts`, segment amplitude ranges and clear-zone distances are set in its `addSegment()`, and pattern sizes are in its `build()`; camera, pool and render numbers are in `scene.ts` (most at its top); input and UI timings, such as the 250 ms score throttle and 6 m of steering per canvas width, are in `index.ts`. Change a number where it lives. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
+Current design: the 2026-10-24 redesign with the 2026-10-25 road-contact and boost repair, built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at Charlie's request) and Charlie's requests for slower acceleration, a much higher speed cap, more, more random and harder obstacles, and gates that give a permanent speed boost. The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. Per-difficulty tuning and the shared constants live in `config.ts`; segment lengths, margins and flight-zone sizes are the constants at the top of `course.ts`, segment amplitude ranges and clear-zone distances are set in its `addSegment()`, and pattern sizes are in its `build()`; camera, pool and render numbers are in `scene.ts` (most at its top); input and UI timings, such as the 250 ms score throttle and 6 m of steering per canvas width, are in `index.ts`. Change a number where it lives. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
 
 A glossy magenta sphere rolls forward by itself along a suspended indigo grid road in a black void, between lavender wireframe towers. The road curves, banks, narrows, crests and drops away, and magenta blocks must be threaded at speed. There is no jump, brake or lane snapping. Hitting a block or rolling off the edge ends the run.
 
 ## Modules
 
-`config.ts` is the shared contract (tuning, constants and types). `course.ts` generates the seeded road, gates and obstacle rows. `model.ts` is the fixed-step simulation and save format. `records.ts` holds per-difficulty records. These four are pure: no Three.js, DOM, `Date.now()` or `Math.random()`. `scene.ts` is the only Three.js file. `index.ts` owns the DOM panels and HUD, input, the loop and the shell contract. Rendering and collision read the same obstacle poses from the course.
+`config.ts` is the shared contract (tuning, constants and types). `course.ts` generates the seeded road, gates and obstacle rows. `model.ts` is the fixed-step simulation and save format. Saves retain the v4 record envelope and carry course revision 2 on the run; older live runs start a fresh course while keeping their per-difficulty records, because tuning changes the speed-dependent seeded track. `records.ts` holds per-difficulty records. These four are pure: no Three.js, DOM, `Date.now()` or `Math.random()`. `scene.ts` is the only Three.js file. `index.ts` owns the DOM panels and HUD, input, the loop and the shell contract. Rendering and collision read the same obstacle poses from the course.
 
 ## Difficulties and tuning
 
 | | Easy | Medium | Hard |
 | --- | --- | --- | --- |
 | Start speed | 9 m/s | 11 m/s | 13 m/s |
-| Continuous acceleration | 0.03 m/s² | 0.045 m/s² | 0.06 m/s² |
+| Continuous acceleration | 0.03 m/s² | 0.045 m/s² | 0.03 m/s² |
 | Speed cap | 40 m/s | 50 m/s | 62 m/s |
-| Gate gain (permanent) | +1.0 m/s | +1.25 m/s | +1.5 m/s |
+| Gate gain (permanent) | +2.5 m/s | +3.0 m/s | +3.0 m/s |
 | A gate every (seconds of running) | 30–45 | 25–40 | 20–35 |
 | Road width / ribbon width | 6.2 / 2.6 m | 5.4 / 2.2 m | 4.8 / 1.8 m |
 | Narrowest route opening | 2.0 m | 1.7 m | 1.45 m |
@@ -31,7 +31,7 @@ Segment weights between gates (straight / bend / offset / ribbon / ribbonBend / 
 
 Pattern weights (single / pair / gate / doubleGate / slalom / zigzag / scatter / slider / wallRun / bigBlock): Easy 30/18/16/10/8/4/6/0/6/4, Medium 18/14/16/10/10/8/8/8/5/5, Hard 10/12/16/10/12/12/9/12/5/6.
 
-Shared constants: ball radius 0.38 m (0.76 m wide); gravity 20 m/s² (snappier than Earth so flights read at arcade speed); base slope 0.12; fixed step 1/120 s; steering response 10/s; bank drift 6 m/s per unit sin(bank), toward the low side; the generator relies on 0.7 of the ball's lateral authority (`REACH_SAFETY`); 80 m clear warm-up; road centre within ±2 m of x = 0 so the tower canyon frames it; "Speed Up" feedback 1.2 s; dying 0.9 s; a ball 1.5 m below the road is lost; support ends 0.133 m inside the road edge.
+Shared constants: ball radius 0.38 m (0.76 m wide); gravity 20 m/s² (snappier than Earth so flights read at arcade speed); base slope 0.12; fixed step 1/120 s; steering response 10/s; bank drift 6 m/s per unit sin(bank), toward the low side; the generator relies on 0.7 of the ball's lateral authority (`REACH_SAFETY`); 80 m clear warm-up; road centre within ±2 m of x = 0 so the tower canyon frames it; "Speed Up" feedback 1.8 s; dying 0.9 s; a ball 1.5 m below the road is lost; physical support ends at the actual road edge under the sphere contact point. The 0.133 m inset remains a conservative route-generation margin only.
 
 ## Speed model and permanent gates
 
@@ -39,9 +39,9 @@ Speed is a pure function of distance on a given course:
 
 `v(d) = min(cap, sqrt(v0² + 2·a·d) + gain × gatesPassed(d))`
 
-The square-root ramp is constant acceleration in time. Every gate spans the whole road, so a surviving run has passed exactly the gates behind it; this keeps speed, and so the reachability guarantee, exact. Gates are scheduled by integrated running time, not drawn at random. Crossing a gate entrance adds its gain for the rest of the run; at the cap it adds nothing and the label reads "Top Speed" instead of "Speed Up". The 1.2 s label and trail are feedback only.
+The square-root ramp is constant acceleration in time. Every gate spans the whole road, so a surviving run has passed exactly the gates behind it; this keeps speed, and so the reachability guarantee, exact. Gates are scheduled by integrated running time, not drawn at random. Crossing a gate entrance adds its gain for the rest of the run; at the cap it adds nothing and the label reads "Top Speed" instead of "Speed Up". The 1.8 s label and cyan trail are feedback only; the speed readout grows and turns cyan during that interval, without camera shake or a FOV pulse.
 
-Measured by integrating `course.speed` on seeds 1–8: speed after 60 s is 11.8–11.9 m/s (Easy), 15.0–16.3 (Medium) and 18.3–19.9 (Hard); the cap is reached after 7.8–8.3 min (11.0–11.7 km), 6.9–7.4 min (12.3–13.1 km) and 6.3–6.7 min (13.6–14.7 km). The previous game started at 12 m/s and capped at 22 m/s after about 50 s. A model test asserts that every difficulty is slower than that old curve at 30 s and 60 s, that speed never decreases, and that it reaches exactly 40 / 50 / 62 m/s and never more.
+Measured first-gate speed on seed 1, immediately before / after / after feedback expires: 10.36 / 12.86 / 12.93 m/s (Easy), 12.39 / 15.39 / 15.49 (Medium), 13.77 / 16.77 / 16.83 (Hard). The entrance step is 22–24%; the gain remains after feedback. Hard puts more acceleration into gates and less into the continuous ramp. A retained model test asserts that every difficulty remains slower than the previous 12 m/s, 22 m/s-cap game at 30 s and 60 s, that speed never decreases, and that it reaches exactly 40 / 50 / 62 m/s and never more.
 
 Lateral authority grows with speed, `max(5, 6 + 0.16·(v − 12))` m/s (5.5 m/s at 9 m/s, 14 m/s at 62 m/s), so high speed stays steerable but each dodge costs more road. Steering is an analytic first-order response toward input × authority, exact for any step.
 
@@ -69,7 +69,7 @@ No blocks in: the warm-up; from 5 m before a gate to one second past its exit; r
 
 Blocks are posed on the road surface they stand on, rolled with the bank. The pose extends the box down to stay seated on sloped road, so collision and rendering both use the pose's half sizes, never the block's nominal height. Blocks that would need too much extension, or whose road shifts or rolls too much under them, are rejected.
 
-Measured density over 1–6 km, seeds 1–24, clear zones included: 0.867 / 1.214 / 1.476 blocks/s and 0.491 / 0.613 / 0.686 rows/s (Easy / Medium / Hard). The old game averaged about 0.4 blocks/s.
+Historical redesign density before the 2026-10-25 gate retuning, over 1–6 km, seeds 1–24, clear zones included: 0.867 / 1.214 / 1.476 blocks/s and 0.491 / 0.613 / 0.686 rows/s (Easy / Medium / Hard). The old game averaged about 0.4 blocks/s.
 
 ## Reachability guarantee
 
@@ -128,7 +128,7 @@ One Three r180 WebGL 2 renderer, `antialias: false`, pixel ratio capped at 1.5, 
 - Road: instanced tiles rolled by bank, pitched by gradient and yawed along the centre line, at 0.5 / 1 / 2 m detail; five longitudinal lines (thicker centre) and cross lines every 2 m; nothing drawn in drop gaps. Range `min(260, 160 + 1.6·v)` m with fog from `60 + v` to `150 + 1.6·v`. Rebuilt only when the 0.5 m origin moves.
 - Towers: a pooled city of 192 instanced boxes plus one line buffer, inner faces at least 5.6 m from the centre, repeating every 56 m and descending with the slope.
 - Gate: lavender rings every 3 m, magenta side walls 1.5 m high with pink posts and rails, a cyan entrance ring and forward-pointing cyan chevrons. The walls are solid but harmless: inside the arch the ball rolls along them instead of leaving the road.
-- Speed Up trail: up to 18 history samples every 0.5 m; shrinking magenta spheres from 0.6 m to 3.4 m behind the ball.
+- Speed Up trail: up to 18 history samples every 0.5 m; shrinking cyan spheres from 0.6 m to 3.4 m behind the ball.
 - Burst: 40 cubes, positions an analytic function of dying time and the seed, so pause and restore are exact; each fragment is kept above the drawn road under it.
 - Camera: 3.6 m behind and 1.8 m above, following the ball's height and 85 % of its offset; looks ahead and pitches down when the ball is high above the road (reference page 04). Vertical FOV `64 + 10·clamp((v − 12)/50, 0, 1)`; wide aspects are narrowed so the horizontal view never exceeds 82°, keeping the ball at its portrait screen height. Camera roll is half the bank. A fall keeps the camera and drawn ball inside the tower canyon.
 

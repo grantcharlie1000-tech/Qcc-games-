@@ -3,7 +3,7 @@
  * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
 import { sweepSphereBox } from '../../core/collision';
 import {
-  BANK_DRIFT, DYING_DURATION, EDGE_SUPPORT, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, STEER_RESPONSE,
+  BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, STEER_RESPONSE,
   isDifficulty, lateralSpeed,
   type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';
@@ -23,10 +23,14 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 /** Ball-centre height resting on the sampled road at world x. */
 const restOn = (s: TrackSample, x: number) => s.elevation - (x - s.center) * Math.tan(s.bank) + RADIUS / Math.cos(s.bank);
 
+/** Contact lies one radius down the bank's normal from the ball centre. The rendered
+ * top spans the full course width; the generator's inset is only a route safety margin. */
+const hasSupport = (s: TrackSample, x: number) => s.ground && Math.abs(x - RADIUS * Math.sin(s.bank) - s.center) <= s.width / 2;
+
 export function createRun(seed: number, run: number, difficulty: Difficulty): Run {
   const course = getCourse(seed, difficulty), s = course.sample(0);
   return {
-    version: 4, difficulty, seed, run, phase: 'ready', distance: 0, x: 0, vx: 0,
+    version: 4, courseRevision: COURSE_REVISION, difficulty, seed, run, phase: 'ready', distance: 0, x: 0, vx: 0,
     // Moving with the road surface, so the first step does not read as a launch.
     height: restOn(s, 0), vy: s.gradient * course.speed(0), grounded: true,
     elapsed: 0, speedUpTime: 0, gateIndex: -1, dyingTime: 0, score: 0, reason: '',
@@ -111,7 +115,7 @@ export function step(run: Run, input: number, dt: number): void {
     const room = s.width / 2 - RADIUS;
     if (Math.abs(run.x - s.center) > room) { run.x = s.center + Math.sign(run.x - s.center) * room; run.vx = 0; }
   }
-  const supported = s.ground && Math.abs(run.x - s.center) <= s.width / 2 - EDGE_SUPPORT;
+  const supported = hasSupport(s, run.x);
   const rest = restOn(s, run.x), surfaceVy = (rest - rest0) / dt;
   if (run.grounded) {
     // Stay on the road unless it curves away faster than gravity can follow. The curve is measured
@@ -178,7 +182,7 @@ const isInt = (v: unknown, lo: number, hi: number): v is number => isNumber(v) &
 function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
   if (!isObject(value)) return null;
   const r = value;
-  if (r.version !== 4 || r.difficulty !== difficulty || !PHASES.includes(r.phase as Phase) || typeof r.grounded !== 'boolean') return null;
+  if (r.version !== 4 || r.courseRevision !== COURSE_REVISION || r.difficulty !== difficulty || !PHASES.includes(r.phase as Phase) || typeof r.grounded !== 'boolean') return null;
   for (const key of ['distance', 'x', 'vx', 'height', 'vy', 'elapsed', 'speedUpTime', 'gateIndex', 'dyingTime', 'score'] as const) if (!isNumber(r[key])) return null;
   const phase = r.phase as Phase, distance = r.distance as number, score = r.score as number, gateIndex = r.gateIndex as number;
   const live = phase === 'ready' || phase === 'running';
@@ -197,11 +201,11 @@ function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
   const height = r.height as number;
   if (Math.abs(height - rest) > 100) return null;
   if (r.grounded) {
-    if (!s.ground || Math.abs((r.x as number) - s.center) > s.width / 2 - EDGE_SUPPORT || Math.abs(height - rest) > .01) return null;
+    if (!hasSupport(s, r.x as number) || Math.abs(height - rest) > .01) return null;
   } else if (phase === 'running' && height < restOn(s, clamp(r.x as number, s.center - s.width / 2, s.center + s.width / 2)) - FALL_DEPTH) return null;
 
   return {
-    version: 4, difficulty, seed: r.seed as number, run: r.run as number, phase: phase === 'dying' ? 'over' : phase,
+    version: 4, courseRevision: COURSE_REVISION, difficulty, seed: r.seed as number, run: r.run as number, phase: phase === 'dying' ? 'over' : phase,
     distance, x: r.x as number, vx: r.vx as number, height, vy: r.vy as number, grounded: r.grounded,
     elapsed: r.elapsed as number, speedUpTime: r.speedUpTime as number, gateIndex,
     dyingTime: phase === 'dying' ? DYING_DURATION : r.dyingTime as number, score, reason: r.reason as Run['reason'],
