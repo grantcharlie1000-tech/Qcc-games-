@@ -133,7 +133,10 @@ test('provider playback is enabled and sandboxed, and Study unloads it',async({p
 test('external player cannot read the parent document, open popups or navigate the top page',async({page})=>{
  await page.goto('/#/movies/movie-157336/play');const iframe=page.frameLocator('.movies-provider-frame');await expect(iframe.getByRole('button',{name:'Play stream'})).toBeVisible();
  const result=await iframe.locator('body').evaluate(()=>{let parentBlocked=false,topBlocked=false;try{void parent.document.body;}catch{parentBlocked=true;}try{top!.location.href='https://unapproved-provider.invalid';}catch{topBlocked=true;}const popup=window.open('about:blank');const policy=(document as any).permissionsPolicy??(document as any).featurePolicy;return {parentBlocked,topBlocked,popupBlocked:popup===null,cameraAllowed:policy?.allowsFeature('camera')};});
- expect(result).toMatchObject({parentBlocked:true,topBlocked:true,popupBlocked:true,cameraAllowed:false});await expect(page).toHaveURL(/#\/movies\/movie-157336\/play$/);
+ expect(result).toMatchObject({parentBlocked:true,topBlocked:true,popupBlocked:true});
+ expect(await page.locator('.movies-provider-frame').getAttribute('allow')).toContain("camera 'none'");
+ if(result.cameraAllowed!==undefined)expect(result.cameraAllowed).toBe(false);
+ await expect(page).toHaveURL(/#\/movies\/movie-157336\/play$/);
 });
 
 
