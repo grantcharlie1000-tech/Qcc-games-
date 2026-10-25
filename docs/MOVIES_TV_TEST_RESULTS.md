@@ -29,7 +29,9 @@ The targeted 61-case game rerun recorded 59 passes and 2 failures; the remaining
 
 ## Follow-up after the full hosted run
 
-On head `742894e`, the hosted browser job completed 697 tests, skipped 26 and failed one Chromium Blockcraft multiplayer assertion in 46.4 minutes. The test used an ordinary chest click, which correctly picked the diamonds up to the cursor, then incorrectly expected them in the inventory. It now uses the game's Shift-click quick-move. The existing local Chromium chest UI test passed with that interaction. CI now runs the complete Chromium and WebKit projects as separate parallel jobs instead of serially in one job; the next hosted run supplies the final counts.
+On head `742894e`, the hosted browser job completed 697 tests, skipped 26 and failed one Chromium Blockcraft multiplayer assertion in 46.4 minutes. The test used an ordinary chest click, which correctly picked the diamonds up to the cursor, then incorrectly expected them in the inventory. It now uses the game's Shift-click quick-move. The existing local Chromium chest UI test passed with that interaction.
+
+The follow-up [hosted run #135](https://github.com/grantcharlie1000-tech/Qcc-games-/actions/runs/40239708391) on `49d123c` passed all five jobs: Chromium 361 passed / 1 skipped (32.4 minutes), WebKit 337 passed / 25 skipped (23.4 minutes), both campaign regressions, and the build/unit/update/offline job. Across browsers that is 698 passed, 26 skipped and no failures. Chromium and WebKit now run in separate parallel jobs, reducing total browser wall time from 46.4 minutes to 32.4 minutes; Chromium also runs the online multiplayer scenarios that WebKit skips.
 
 ## Network and licensing limits
 
