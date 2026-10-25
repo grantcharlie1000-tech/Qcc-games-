@@ -53,3 +53,11 @@ The four corrected games, isolated specialist handoffs, original cutout/art geom
 ## Online multiplayer
 
 `src/multiplayer/` is the one shared online layer: `room.ts` (host-created PeerJS/WebRTC star rooms, admission by protocol/game/version, seats, heartbeats, host pause, clean endings), `protocol.ts` (codes, names, envelopes, framing of large messages), `transport.ts` (PeerJS, lazily imported, and the relay detection), `ice.ts` with `turn-server.ts` and `netlify/functions/turn.mts` (temporary Cloudflare TURN credentials, rate-limited), and `panel.ts` (Create room, Join by code, Copy invite link, Leave room). Pool (`src/games/pool/online.ts`) and Blockcraft (`src/games/blockcraft/net/`) build on it; the host is authoritative in both. Blockcraft systems see players through `game.net` and `engine/players.ts`, so offline behaviour is the single-player behaviour. Online state never replaces the shell's single-player saves. Details, setup and limitations: [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md).
+
+## Movies & TV
+
+`src/movies/` supplies the full-width cinema card and lazy `#/movies` routes. Search/list/progress use a separate namespace, never game ranking/save APIs. Real title images are sourced from TMDB's allowlisted image CDN, with optional locally cached operator imports. No generated movie artwork is shipped.
+
+`provider.ts` builds the public FrameXTV iframe URLs documented at its API page, using numeric TMDB IDs and season/episode numbers. The external player is cross-origin and sandboxed; no popups, top navigation, downloads, camera/microphone/location, clipboard, USB, serial or payment capabilities are granted. Parent-page scripts remain same-origin. Study/tab hiding removes the iframe, with manual Resume afterward. Optional reviewed local media takes priority and can fall back to the external player on user request. No streams are extracted/proxied or DRM/access controls bypassed. External provider availability/rights/tracking are not guaranteed.
+
+`movies/` and external resources stay outside the games offline manifest and worker caches. The library's cinematic card uses simple title fallbacks if external posters fail offline. `scripts/movies-import.mjs` is an operator-only TMDB snapshot command; `scripts/movies-validate.mjs` validates optional self-hosted media rights. See [provider and setup details](docs/MOVIES_TV.md).

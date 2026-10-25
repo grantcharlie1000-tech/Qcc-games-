@@ -169,7 +169,7 @@ async function navigation(event){
 self.addEventListener('fetch',event=>{
  const url=new URL(event.request.url);if(event.request.method!=='GET'||url.origin!==self.location.origin||!url.href.startsWith(SCOPE))return;
  // Shared rankings must always come from the network, never the offline asset cache.
- if(url.pathname.startsWith('/.netlify/functions/'))return;
+ if(url.pathname.startsWith('/.netlify/functions/')||url.pathname.startsWith(new URL('movies/',SCOPE).pathname))return;
  event.respondWith((async()=>{
   try{
    if(event.request.mode==='navigate')return await navigation(event);

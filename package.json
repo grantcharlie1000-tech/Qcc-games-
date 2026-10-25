@@ -5,14 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit && vite build && node scripts/offline-manifest.mjs",
+    "build": "node scripts/movies-validate.mjs && tsc --noEmit && vite build && node scripts/offline-manifest.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check": "tsc --noEmit",
     "verify:offline": "node scripts/verify-offline.mjs",
     "verify:update": "node scripts/verify-update.mjs",
-    "dev:online": "node scripts/leaderboard-dev.mjs"
+    "dev:online": "node scripts/leaderboard-dev.mjs",
+    "movies:import": "node scripts/movies-import.mjs"
   },
   "dependencies": {
     "@netlify/database": "2.0.1",

@@ -129,8 +129,10 @@ test('host, guest and a late joiner share one world',async()=>{
     const chest=at(-3,0,3);
     await ev(guest.page,(bc,c:V)=>bc.ui.open('chest',c),chest);
     await expect.poll(()=>ev(guest.page,(bc,c:V)=>bc.blockEntities.get(c.x,c.y,c.z).items[0],chest),{timeout:15000}).toEqual({id:'diamond',count:3});
-    await ev(guest.page,(bc,c:V)=>{bc.blockEntities.get(c.x,c.y,c.z).items[0]=null;bc.inventory.add({id:'diamond',count:3});},chest);
-    await expect.poll(()=>ev(host.page,(bc,c:V)=>bc.blockEntities.get(c.x,c.y,c.z).items[0],chest),{timeout:15000}).toBeNull();
+    // A normal click picks the stack up to the cursor; Shift-click is the UI quick-move into inventory.
+    await guest.page.getByRole('button',{name:/^Chest slot 1:/}).click({modifiers:['Shift']});
+    await expect.poll(()=>ev(guest.page,bc=>bc.inventory.count('diamond'))).toBe(3);
+    await expect.poll(()=>ev(host.page,(bc,c:V)=>bc.blockEntities.get(c.x,c.y,c.z).items[0],chest),{timeout:30000}).toBeNull();
     // The host cannot open it while the guest has it open.
     await ev(host.page,(bc,c:V)=>bc.ui.open('chest',c),chest);
     expect(await ev(host.page,bc=>bc.ui.screen)).toBeNull();

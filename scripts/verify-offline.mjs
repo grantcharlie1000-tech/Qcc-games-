@@ -1,3 +1,4 @@
+import {isLibraryMovieArtwork} from './movies-network-policy.mjs';
 import {chromium} from 'playwright';
 import {spawn} from 'node:child_process';
 import {existsSync} from 'node:fs';
@@ -45,8 +46,8 @@ try{
  for(const [label,path,port] of [['root','/',4275],['subpath','/Qcc-games-/',4276]]){
   const server=spawn('node',['scripts/serve-built.mjs'],{env:{...process.env,PORT:String(port),ARCADE_BASE:path},stdio:'ignore',detached:true});servers.push(server);
   const base=`http://127.0.0.1:${port}${path}`;await waitFor(async()=>{try{return (await fetch(base)).ok;}catch{return false;}},'built server');
-  const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[];
-  page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.status()>=400)failedAssets.push({url:response.url(),status:response.status()});});page.on('requestfailed',request=>failedAssets.push({url:request.url(),failure:request.failure()?.errorText}));page.on('request',r=>{if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
+  const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[],movieArtworkRequests=[],movieArtworkFailures=[];
+  page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.status()>=400)(isLibraryMovieArtwork(response.url())?movieArtworkFailures:failedAssets).push({url:response.url(),status:response.status()});});page.on('requestfailed',request=>(isLibraryMovieArtwork(request.url())?movieArtworkFailures:failedAssets).push({url:request.url(),failure:request.failure()?.errorText}));page.on('request',r=>{if(isLibraryMovieArtwork(r.url()))movieArtworkRequests.push(r.url());else if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade-v2:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
   await page.goto(base);assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
@@ -91,7 +92,7 @@ try{
    results.push({game:id,deployment:label,path,offline:true,action:true,save:true,restart:true,studyRestoration:true,studySwitchRequests:switchRequests.length,...switchTiming,rafMedianMs:frames[Math.floor(frames.length/2)],rafP95Ms:frames[Math.floor(frames.length*.95)]});console.log(`OFFLINE PASS ${label} ${id} + Study`);
   }
   assert.deepEqual(errors,[],'page errors');assert.deepEqual(external,[],'external runtime requests');assert.deepEqual(failedAssets,[],'failed local assets');
-  results.push({deployment:label,cacheNames,externalRequests:external,pageErrors:errors,failedAssets,initialResourceCount:initial.length,heavyChunksLazy:true});await context.close();
+  results.push({deployment:label,cacheNames,externalRequests:external,movieArtworkRequests,movieArtworkFailures,pageErrors:errors,failedAssets,initialResourceCount:initial.length,heavyChunksLazy:true});await context.close();
  }
  await writeFile(folder+'/offline-results.json',JSON.stringify({recordedAt:new Date().toISOString(),browser:'Chromium',browserVersion:browser.version(),physicalHardware:false,softwareWebGL:true,rafSamplesPerGame:45,gameCount:ids.length,results},null,2));console.log(`Verified ${ids.length} games offline at both root and repository subpath.`);
 }finally{await browser.close();for(const server of servers)try{process.kill(-server.pid,'SIGTERM');}catch{}}

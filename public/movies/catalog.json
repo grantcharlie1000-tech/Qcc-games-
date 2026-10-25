@@ -1,0 +1,193 @@
+{
+  "source": "starter",
+  "updated": "2026-10-25",
+  "trending": [],
+  "titles": [
+    {
+      "id": "movie-157336",
+      "kind": "movie",
+      "name": "Interstellar",
+      "year": 2014,
+      "genres": [
+        "Science Fiction",
+        "Adventure"
+      ],
+      "overview": "A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.",
+      "poster": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+      "seasons": [],
+      "backdrop": "https://image.tmdb.org/t/p/w1280/pbrkL804c8yAv3zBZR4QPEafpAR.jpg"
+    },
+    {
+      "id": "movie-438631",
+      "kind": "movie",
+      "name": "Dune",
+      "year": 2021,
+      "genres": [
+        "Science Fiction",
+        "Adventure"
+      ],
+      "overview": "On a desert world, a young heir must navigate rival powers and a destiny larger than his family.",
+      "poster": "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg",
+      "seasons": []
+    },
+    {
+      "id": "movie-329865",
+      "kind": "movie",
+      "name": "Arrival",
+      "year": 2016,
+      "genres": [
+        "Science Fiction",
+        "Drama"
+      ],
+      "overview": "A linguist works to understand visitors from another world, and discovers a new way to think about time.",
+      "poster": "https://image.tmdb.org/t/p/w500/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg",
+      "seasons": []
+    },
+    {
+      "id": "movie-129",
+      "kind": "movie",
+      "name": "Spirited Away",
+      "year": 2001,
+      "genres": [
+        "Animation",
+        "Fantasy"
+      ],
+      "overview": "A girl enters a mysterious spirit world and finds courage while trying to bring her parents home.",
+      "poster": "https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
+      "seasons": []
+    },
+    {
+      "id": "movie-120467",
+      "kind": "movie",
+      "name": "The Grand Budapest Hotel",
+      "year": 2014,
+      "genres": [
+        "Comedy",
+        "Adventure"
+      ],
+      "overview": "A hotel concierge and his young colleague become unlikely partners in an adventure through a changing Europe.",
+      "poster": "https://image.tmdb.org/t/p/w500/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg",
+      "seasons": []
+    },
+    {
+      "id": "movie-286217",
+      "kind": "movie",
+      "name": "The Martian",
+      "year": 2015,
+      "genres": [
+        "Science Fiction",
+        "Adventure"
+      ],
+      "overview": "Stranded far from home, an astronaut turns to science, ingenuity and a little humour to stay alive.",
+      "poster": "https://image.tmdb.org/t/p/w500/sGz80DpcdpYWl5aKM0wIA2C90rc.jpg",
+      "seasons": []
+    },
+    {
+      "id": "tv-19885",
+      "kind": "tv",
+      "name": "Sherlock",
+      "year": 2010,
+      "genres": [
+        "Mystery",
+        "Drama"
+      ],
+      "overview": "A consulting detective and a former army doctor unravel intricate mysteries in contemporary London.",
+      "poster": "https://image.tmdb.org/t/p/w500/7WTsnHkbA0FaG6R9twfFde0I9hl.jpg",
+      "seasons": [
+        {
+          "number": 1,
+          "name": "Season 1",
+          "episodes": [
+            {
+              "number": 1,
+              "name": "A Study in Pink",
+              "overview": "Episode information is included in this starter selection. Full metadata is available after a catalog refresh."
+            },
+            {
+              "number": 2,
+              "name": "The Blind Banker",
+              "overview": "Episode information is included in this starter selection. Full metadata is available after a catalog refresh."
+            },
+            {
+              "number": 3,
+              "name": "The Great Game",
+              "overview": "Episode information is included in this starter selection. Full metadata is available after a catalog refresh."
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "name": "Season 2",
+          "episodes": [
+            {
+              "number": 1,
+              "name": "A Scandal in Belgravia",
+              "overview": "Episode information is included in this starter selection. Full metadata is available after a catalog refresh."
+            },
+            {
+              "number": 2,
+              "name": "The Hounds of Baskerville",
+              "overview": "Episode information is included in this starter selection. Full metadata is available after a catalog refresh."
+            },
+            {
+              "number": 3,
+              "name": "The Reichenbach Fall",
+              "overview": "Episode information is included in this starter selection. Full metadata is available after a catalog refresh."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tv-68595",
+      "kind": "tv",
+      "name": "Planet Earth II",
+      "year": 2016,
+      "genres": [
+        "Documentary",
+        "Nature"
+      ],
+      "overview": "Explore remarkable habitats and the animals that make their homes in some of Earth\u2019s most demanding places.",
+      "poster": "https://image.tmdb.org/t/p/w500/5maYKYzWpE68ycxGh1luu4P2LOS.jpg",
+      "seasons": [
+        {
+          "number": 1,
+          "name": "Season 1",
+          "episodes": [
+            {
+              "number": 1,
+              "name": "Islands",
+              "overview": "A journey through the wildlife and landscapes of this habitat."
+            },
+            {
+              "number": 2,
+              "name": "Mountains",
+              "overview": "A journey through the wildlife and landscapes of this habitat."
+            },
+            {
+              "number": 3,
+              "name": "Jungles",
+              "overview": "A journey through the wildlife and landscapes of this habitat."
+            },
+            {
+              "number": 4,
+              "name": "Deserts",
+              "overview": "A journey through the wildlife and landscapes of this habitat."
+            },
+            {
+              "number": 5,
+              "name": "Grasslands",
+              "overview": "A journey through the wildlife and landscapes of this habitat."
+            },
+            {
+              "number": 6,
+              "name": "Cities",
+              "overview": "A journey through the wildlife and landscapes of this habitat."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "artworkProvider": "TMDB"
+}

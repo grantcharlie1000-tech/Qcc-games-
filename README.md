@@ -66,3 +66,9 @@ Flappy Bird uses an original marsh swift and reed-gate illustration; see [local 
 Maze Muncher is an original maze-chase game with classic arcade rules: chasers with their own targets, scatter and chase waves, power berries, eyes returning home, a side tunnel, bonus treats and faster levels. Its characters, maze and SVG art are original. See [its spec](src/games/maze-muncher/SPEC.md).
 
 Corn Clicker is an original corn-themed incremental game: click the cob, hire producers from Farmhands to the Corniverse, collect golden cobs, grow and cross-breed corn in the garden, and Replant for Golden Seeds. It keeps earning while you are away (50% for up to 8 hours), autosaves with backups and export codes, and runs in one tab at a time. See [its spec](src/games/corn-clicker/SPEC.md).
+
+## Movies & TV
+
+The cinema card opens a Netflix-reference-based section with real TMDB posters/backdrops, local search, genres, details, seasons, episodes and a device-local list. Streaming remains enabled for supported titles through the documented FrameXTV player, isolated in a cross-origin sandbox. Study Mode unloads the external player and offers manual resume. Game scores, saves and offline downloads remain separate.
+
+TMDB and streaming providers receive ordinary image/playback requests. External availability, tracking and distribution rights are not verified by QCC. No provider scripts run in the parent page, and no DRM bypass, stream extraction or account forwarding is implemented. See [setup and provider/privacy details](docs/MOVIES_TV.md), [Netflix design references](docs/MOVIES_TV_DESIGN_REFERENCES.md) and [verification results](docs/MOVIES_TV_TEST_RESULTS.md).
