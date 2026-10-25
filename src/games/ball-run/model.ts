@@ -1,96 +1,234 @@
-import {sweepSphereBox} from '../../core/collision';
-export {sweepSphereBox} from '../../core/collision';
-/** Pure course and kinematics. Distance is positive; render z is negative.
- * Height is world elevation in v2, so launch momentum and landing use the same geometry. */
-export const RADIUS=.38, LENGTH=24, SLOPE=.12;
-export interface Run { version:3; course:1|2; seed:number; run:number; phase:'ready'|'running'|'over'; distance:number; x:number; vx:number; height:number; vy:number; grounded:boolean; elapsed:number; best:number; reason:string }
-export function createRun(seed=0x42524e,run=1,best=0):Run {return {version:3,course:2,seed,run,phase:'ready',distance:0,x:0,vx:0,height:RADIUS,vy:0,grounded:true,elapsed:0,best,reason:''};}
-export interface Obstacle { local:number; x:number; width:number; height:number; depth:number }
-function hash(seed:number,index:number){let h=(seed^Math.imul(index+1,0x9e3779b9))>>>0;h=Math.imul(h^(h>>>16),0x21f0aaad);h=Math.imul(h^(h>>>15),0x735a2d97);return (h^(h>>>15))>>>0;}
-/** Two introductory sections, isolated ramps, and at least a .22m clearance
- * beyond the ball on the center line. No hazards on launches or speed gates. */
-export function section(seed:number,index:number,course:1|2=2){
-  const classic=(Math.imul(index+1,1664525)^seed)>>>0,h=hash(seed,index);
-  const gap=index>=2&&index%4===2?3:0,acceleration=index%4===1;
-  const obstacles:Obstacle[]=[];
-  if(course===1){if(index>=3&&index%4===3)obstacles.push({local:12,x:classic%2?1.05:-1.05,width:.9,height:1,depth:.9});}
-  else if(index>=3&&!gap&&!acceleration){
-    // Keep the first block familiar; subsequent sections vary size, location,
-    // side and paired gates. The seed and section alone determine every shape.
-    const tutorial=index===3,x=tutorial?1.05:1.25,width=tutorial?.9:.7+((h>>>5)%30)/100;
-    const local=tutorial?12:8+((h>>>10)%801)/100;
-    const block={local,x:((tutorial?classic:h)&1?1:-1)*x,width,height:tutorial?1:.8+((h>>>19)%51)/100,depth:tutorial?.9:.7+((h>>>24)%61)/100};
-    obstacles.push(block);
-    if(!tutorial&&(h&6)===2)obstacles.push({...block,x:-block.x});
+/** Pure Ball Run simulation: one fixed step of the ball on a seeded course, and the
+ * save format. Speed comes from the course (a function of distance); the ball only
+ * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
+import { sweepSphereBox } from '../../core/collision';
+import {
+  BANK_DRIFT, DYING_DURATION, EDGE_SUPPORT, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, STEER_RESPONSE,
+  isDifficulty, lateralSpeed,
+  type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
+} from './config';
+import { getCourse } from './course';
+import { emptyRecords, restoreRecords, type Records } from './records';
+
+export interface Snapshot { version: 4; difficulty: Difficulty; records: Records; run: Run | null }
+
+/** Restored runs never go beyond this: generating a course out to the 1e8 m save limit would take seconds and gigabytes. */
+const MAX_RESTORE_DISTANCE = 1e6;
+const MAX_SCORE = 2147483647;
+
+const blankSample = (): TrackSample => ({ center: 0, width: 0, elevation: 0, gradient: 0, bank: 0, ground: true, tunnel: false, kind: 'warmup', segment: 0 });
+const blankPose = (): ObstaclePose => ({ x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 });
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Ball-centre height resting on the sampled road at world x. */
+const restOn = (s: TrackSample, x: number) => s.elevation - (x - s.center) * Math.tan(s.bank) + RADIUS / Math.cos(s.bank);
+
+export function createRun(seed: number, run: number, difficulty: Difficulty): Run {
+  const course = getCourse(seed, difficulty), s = course.sample(0);
+  return {
+    version: 4, difficulty, seed, run, phase: 'ready', distance: 0, x: 0, vx: 0,
+    // Moving with the road surface, so the first step does not read as a launch.
+    height: restOn(s, 0), vy: s.gradient * course.speed(0), grounded: true,
+    elapsed: 0, speedUpTime: 0, gateIndex: -1, dyingTime: 0, score: 0, reason: '',
+  };
+}
+
+export function runSpeed(run: Run): number {
+  return getCourse(run.seed, run.difficulty).speed(run.distance);
+}
+
+/** Analytic first-order response toward input × lateral, exact for any dt. */
+export function steer(body: { x: number; vx: number }, input: number, dt: number, lateral: number): void {
+  const target = clamp(input, -1, 1) * lateral, decay = Math.exp(-STEER_RESPONSE * dt), old = body.vx;
+  body.vx = target + (old - target) * decay;
+  body.x += target * dt + (old - target) * (1 - decay) / STEER_RESPONSE;
+}
+
+// Step scratch: reused so a step allocates nothing in steady state.
+const before = blankSample(), after = blankSample(), behind = blankSample(), poseA = blankPose(), poseB = blankPose();
+const sweepFrom = [0, 0, 0], sweepTo = [0, 0, 0], origin = [0, 0, 0] as const, half = [0, 0, 0];
+/** The step being tested against blocks: elapsed before and after, then the ball's old and new
+ * x, height and distance. A typed array, because module-level number variables box every write. */
+const sweep = new Float64Array(8);
+let hitCourse: Course, hit = false;
+
+/** Moves world point (x, y, d) into the frame of a box posed at `p` (rolled about the forward axis). */
+function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]): void {
+  const dx = x - p.x, dy = y - p.y, c = Math.cos(p.roll), s = Math.sin(p.roll);
+  out[0] = dx * c - dy * s;
+  out[1] = dx * s + dy * c;
+  out[2] = d - p.distance;
+}
+
+/** Does the ball's swept path from the old to the new state touch this block? */
+function testBlock(o: Obstacle): void {
+  if (hit) return;
+  hitCourse.pose(o, sweep[0], poseA);
+  const p = o.slide ? hitCourse.pose(o, sweep[1], poseB) : poseA;
+  local(poseA, sweep[2], sweep[3], sweep[4], sweepFrom);
+  local(p, sweep[5], sweep[6], sweep[7], sweepTo);
+  half[0] = p.halfWidth; half[1] = p.halfHeight; half[2] = p.halfDepth;
+  // Swept bounding-box rejection first: the exact test allocates.
+  let gap = 0;
+  for (let axis = 0; axis < 3; axis++) {
+    const lo = Math.min(sweepFrom[axis], sweepTo[axis]), hi = Math.max(sweepFrom[axis], sweepTo[axis]);
+    const d = Math.max(0, -half[axis] - hi, lo - half[axis]);
+    gap += d * d;
   }
-  return {length:LENGTH,gap,obstacle:obstacles[0]?.x??0,obstacles,acceleration};
+  if (gap > RADIUS * RADIUS) return;
+  hit = sweepSphereBox(sweepFrom, sweepTo, origin, half, RADIUS);
 }
-export function trackAt(seed:number,distance:number){
-  const index=Math.max(0,Math.floor(distance/LENGTH)),local=distance-index*LENGTH,s=section(seed,index);
-  const phase=(seed%19)/19;
-  const center=.65*(Math.sin(distance*.034+phase)-Math.sin(phase))+.3*Math.sin(distance*.061);
-  // Each chunk meets its neighbours at zero offset and full width. A launch ramp
-  // rises 1.5m before the 3m gap; the landing is lower, never an impossible wall.
-  let rise=0,gradient=0;
-  if(s.gap){
-    if(local>=12&&local<17){rise=(local-12)*.3;gradient=.3;}
-    else if(local>=17&&local<20){rise=1.5;}
-    else if(local>=20){rise=(24-local)*.05;gradient=-.05;}
-  }else{rise=.45*Math.sin(Math.PI*local/LENGTH)**2;gradient=.45*Math.PI/LENGTH*Math.sin(2*Math.PI*local/LENGTH);}
-  const narrow=index%4===3?1.5*Math.sin(Math.PI*local/LENGTH)**2:0;
-  return {center,width:5.4-narrow,elevation:-distance*SLOPE+rise,gradient:gradient-SLOPE,ground:!(s.gap&&local>=17&&local<20),boost:s.acceleration&&local>=4&&local<=12,index,local,...s};
+
+function die(run: Run, reason: 'block' | 'fall', score: number): void {
+  run.phase = 'dying';
+  run.reason = reason;
+  run.dyingTime = 0;
+  run.score = Math.min(MAX_SCORE, Math.floor(score));
 }
-export function speedAt(distance:number){
-  const index=Math.floor(distance/LENGTH),local=distance-index*LENGTH;
-  const boost=index%4===1&&local>=4&&local<=12?1+.4*Math.sin((local-4)*Math.PI/8):1;
-  return Math.min(22,12+distance*.012)*boost;
-}
-export function steer(body:{x:number;vx:number},input:number,dt:number){
-  const target=Math.max(-1,Math.min(1,input))*6,decay=Math.exp(-10*dt),old=body.vx;
-  body.vx=target+(old-target)*decay;body.x+=target*dt+(old-target)*(1-decay)/10;
-}
-export function step(s:Run,input:number,dt:number){
-  if(s.phase!=='running'||dt<=0||dt>.05||!Number.isFinite(dt)||!Number.isFinite(input))return;
-  const oldDistance=s.distance,oldHeight=s.height,oldX=s.x,oldTrack=trackAt(s.seed,oldDistance),speed=speedAt(oldDistance);
-  steer(s,input,dt);s.distance+=speed*dt;s.elapsed+=dt;
-  const track=trackAt(s.seed,s.distance),supported=track.ground&&Math.abs(s.x-track.center)<=track.width/2-RADIUS*.35;
-  if(s.grounded){
-    if(supported){s.height=track.elevation+RADIUS;s.vy=0;}
-    else{s.grounded=false;s.vy=oldTrack.gradient*speed;}
+
+/** Advances a run by dt seconds. Ignores non-finite input, and dt outside (0, 0.05]. */
+export function step(run: Run, input: number, dt: number): void {
+  if (!(dt > 0 && dt <= .05) || !Number.isFinite(input)) return;
+  if (run.phase === 'dying') { stepDying(run, dt); return; }
+  if (run.phase !== 'running') return;
+  const course = getCourse(run.seed, run.difficulty), v = course.speed(run.distance);
+  const d0 = run.distance, x0 = run.x, vx0 = run.vx, h0 = run.height, vy0 = run.vy, grounded0 = run.grounded;
+  const e0 = run.elapsed, speedUp0 = run.speedUpTime, gate0 = run.gateIndex;
+  course.sample(d0, before);
+  const rest0 = restOn(before, x0);
+
+  steer(run, input, dt, lateralSpeed(v));
+  run.x += BANK_DRIFT * Math.sin(before.bank) * dt;
+  run.distance = d0 + v * dt;
+  run.elapsed = e0 + dt;
+  run.speedUpTime = Math.max(0, speedUp0 - dt);
+  const passed = course.gatesBefore(run.distance) - 1;
+  if (passed > run.gateIndex) { run.gateIndex = passed; run.speedUpTime = GATE_FEEDBACK; }
+
+  const s = course.sample(run.distance, after);
+  // Arch walls are solid but harmless, for a ball that was over the road.
+  if (s.tunnel && Math.abs(x0 - before.center) <= before.width / 2) {
+    const room = s.width / 2 - RADIUS;
+    if (Math.abs(run.x - s.center) > room) { run.x = s.center + Math.sign(run.x - s.center) * room; run.vx = 0; }
   }
-  if(!s.grounded){
-    s.height+=s.vy*dt-10*dt*dt;s.vy-=20*dt;
-    // Require an actual downward crossing of the surface, so coming back under
-    // a road after an edge fall cannot teleport the ball onto it.
-    if(supported&&s.vy<=track.gradient*speed&&oldHeight>=oldTrack.elevation+RADIUS-.025&&s.height<=track.elevation+RADIUS){s.height=track.elevation+RADIUS;s.vy=0;s.grounded=true;}
+  const supported = s.ground && Math.abs(run.x - s.center) <= s.width / 2 - EDGE_SUPPORT;
+  const rest = restOn(s, run.x), surfaceVy = (rest - rest0) / dt;
+  if (run.grounded) {
+    // Stay on the road unless it curves away faster than gravity can follow. The curve is measured
+    // along the ball's line at its current speed (the step mirrored behind it), so a change of speed
+    // (a gate) or of lateral speed (steering on a bank) moves the ball along the surface, not off it.
+    // Before the start the road continues the warm-up's straight slope.
+    const back = d0 - v * dt, behindRest = restOn(course.sample(back, behind), 2 * x0 - run.x) + Math.min(0, back) * behind.gradient;
+    const away = (rest - 2 * rest0 + behindRest) / (dt * dt) < -GRAVITY && h0 + run.vy * dt - GRAVITY * dt * dt / 2 > rest;
+    if (supported && !away) { run.height = rest; run.vy = surfaceVy; }
+    else run.grounded = false;
+  } else if (supported && h0 + run.vy * dt - GRAVITY * dt * dt / 2 <= rest && h0 >= rest0 - .05) {
+    run.height = rest; run.vy = surfaceVy; run.grounded = true;
   }
-  // Collider dimensions and positions are the same data the renderer consumes.
-  const first=Math.max(0,Math.floor((oldDistance-RADIUS)/LENGTH)),last=Math.floor((s.distance+RADIUS)/LENGTH);
-  for(let index=first;index<=last;index++)for(const obstacle of section(s.seed,index,s.course).obstacles){
-    const d=index*LENGTH+obstacle.local,t=trackAt(s.seed,d);
-    if(sweepSphereBox([oldX,oldHeight,oldDistance],[s.x,s.height,s.distance],
-      [t.center+obstacle.x,t.elevation+obstacle.height/2,d],[obstacle.width/2,obstacle.height/2,obstacle.depth/2],RADIUS)){
-      s.phase='over';s.reason='You hit a block';
+  if (!run.grounded) {
+    run.height = h0 + run.vy * dt - GRAVITY * dt * dt / 2;
+    run.vy -= GRAVITY * dt;
+  }
+
+  hitCourse = course; hit = false;
+  sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
+  course.forEachObstacle(d0 - RADIUS - course.maxDepth, run.distance + RADIUS + course.maxDepth, testBlock);
+  if (hit) {
+    // The ball stops where it was, just short of the block.
+    run.distance = d0; run.x = x0; run.vx = vx0; run.height = h0; run.vy = vy0; run.grounded = grounded0;
+    run.elapsed = e0; run.speedUpTime = speedUp0; run.gateIndex = gate0;
+    die(run, 'block', d0);
+    return;
+  }
+  if (!run.grounded) {
+    const edge = clamp(run.x, s.center - s.width / 2, s.center + s.width / 2);
+    if (run.height < restOn(s, edge) - FALL_DEPTH) { die(run, 'fall', run.distance); return; }
+  }
+  run.score = Math.min(MAX_SCORE, Math.floor(run.distance));
+}
+
+/** A fall keeps flying forward and down; a block hit stays where it stopped. */
+function stepDying(run: Run, dt: number): void {
+  if (run.reason === 'fall') {
+    run.distance += runSpeed(run) * dt;
+    run.x += run.vx * dt;
+    run.height += run.vy * dt - GRAVITY * dt * dt / 2;
+    run.vy -= GRAVITY * dt;
+    run.elapsed += dt;
+    run.speedUpTime = Math.max(0, run.speedUpTime - dt);
+  }
+  run.dyingTime += dt;
+  if (run.dyingTime >= DYING_DURATION - 1e-9) run.phase = 'over';
+}
+
+// Saves -----------------------------------------------------------------------
+
+const PHASES: readonly Phase[] = ['ready', 'running', 'dying', 'over'];
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isInt = (v: unknown, lo: number, hi: number): v is number => isNumber(v) && Number.isInteger(v) && v >= lo && v <= hi;
+
+/** A fresh, fully checked copy of a saved v4 run, or null. Cheap checks come first, so a
+ * damaged save never makes the course generate far ahead. Beyond the plan's list (ratified):
+ * distance ≤ 1e6; elapsed ≤ 1e7; reason matches the phase; dyingTime is 0 while live and at most
+ * DYING_DURATION + 0.05; a dead run's gateIndex lies between the gates behind its score and those
+ * behind its distance (a falling ball keeps moving); a grounded ball is also supported; a running
+ * airborne ball is not already below the fall depth; height is within 100 m of the road; and
+ * run.difficulty equals the snapshot's. */
+function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
+  if (!isObject(value)) return null;
+  const r = value;
+  if (r.version !== 4 || r.difficulty !== difficulty || !PHASES.includes(r.phase as Phase) || typeof r.grounded !== 'boolean') return null;
+  for (const key of ['distance', 'x', 'vx', 'height', 'vy', 'elapsed', 'speedUpTime', 'gateIndex', 'dyingTime', 'score'] as const) if (!isNumber(r[key])) return null;
+  const phase = r.phase as Phase, distance = r.distance as number, score = r.score as number, gateIndex = r.gateIndex as number;
+  const live = phase === 'ready' || phase === 'running';
+  if (!isInt(r.seed, 1, 0xffffffff) || !isInt(r.run, 1, 1e8)) return null;
+  if (distance < 0 || distance > MAX_RESTORE_DISTANCE || Math.abs(r.x as number) > 50 || Math.abs(r.vx as number) > 40 || Math.abs(r.vy as number) > 200) return null;
+  if ((r.elapsed as number) < 0 || (r.elapsed as number) > 1e7 || (r.speedUpTime as number) < 0 || (r.speedUpTime as number) > GATE_FEEDBACK) return null;
+  if ((r.dyingTime as number) < 0 || (r.dyingTime as number) > DYING_DURATION + .05 || (live && r.dyingTime !== 0)) return null;
+  if (live ? r.reason !== '' : r.reason !== 'block' && r.reason !== 'fall') return null;
+  if (!Number.isInteger(score) || !Number.isInteger(gateIndex) || score < 0 || score > Math.floor(distance) || (live && score !== Math.floor(distance))) return null;
+
+  const course = getCourse(r.seed as number, difficulty), s = course.sample(distance), rest = restOn(s, r.x as number);
+  // Every gate spans the road: a live run has passed exactly the gates behind it; a dead
+  // one passed those behind the point where it died and no more.
+  const passed = course.gatesBefore(distance) - 1;
+  if (live ? gateIndex !== passed : gateIndex < course.gatesBefore(score) - 1 || gateIndex > passed) return null;
+  const height = r.height as number;
+  if (Math.abs(height - rest) > 100) return null;
+  if (r.grounded) {
+    if (!s.ground || Math.abs((r.x as number) - s.center) > s.width / 2 - EDGE_SUPPORT || Math.abs(height - rest) > .01) return null;
+  } else if (phase === 'running' && height < restOn(s, clamp(r.x as number, s.center - s.width / 2, s.center + s.width / 2)) - FALL_DEPTH) return null;
+
+  return {
+    version: 4, difficulty, seed: r.seed as number, run: r.run as number, phase: phase === 'dying' ? 'over' : phase,
+    distance, x: r.x as number, vx: r.vx as number, height, vy: r.vy as number, grounded: r.grounded,
+    elapsed: r.elapsed as number, speedUpTime: r.speedUpTime as number, gateIndex,
+    dyingTime: phase === 'dying' ? DYING_DURATION : r.dyingTime as number, score, reason: r.reason as Run['reason'],
+  };
+}
+
+/** Restores a save. v4 keeps its records even when its run is damaged (the run is then
+ * dropped). v1–v3 saves come from another course: only their best survives, as Medium's
+ * all-time record. Anything else is null. Never throws. */
+export function restoreSnapshot(value: unknown): { difficulty: Difficulty; records: Records; run: Run | null; migrated: boolean } | null {
+  try {
+    if (!isObject(value)) return null;
+    if (value.version === 4) {
+      // A damaged difficulty falls back to the run's, then Medium, rather than losing the records.
+      const records = restoreRecords(value.records), saved = isObject(value.run) ? value.run.difficulty : null;
+      const difficulty = isDifficulty(value.difficulty) ? value.difficulty : isDifficulty(saved) ? saved : 'medium';
+      let run: Run | null = null;
+      try { run = restoreRun(value.run, difficulty); } catch { run = null; }
+      return { difficulty, records, run, migrated: false };
     }
+    if ((value.version === 1 || value.version === 2 || value.version === 3) && isNumber(value.best) && value.best >= 0) {
+      const records = emptyRecords();
+      records.medium.allTime = Math.min(MAX_SCORE, Math.floor(value.best));
+      return { difficulty: 'medium', records, run: null, migrated: true };
+    }
+    return null;
+  } catch {
+    return null;
   }
-  if(s.height< -s.distance*SLOPE-8){s.phase='over';s.reason='You fell off the track';}
-  s.best=Math.max(s.best,Math.floor(s.distance));
-}
-export function restoreRun(value:unknown):Run|null{
-  if(!value||typeof value!=='object')return null;
-  const s=value as Omit<Run,'version'>&{version:number};
-  if(![1,2,3].includes(s.version)||!['ready','running','over'].includes(s.phase)||typeof s.grounded!=='boolean'||typeof s.reason!=='string'||s.reason.length>80)return null;
-  for(const k of ['seed','run','distance','x','vx','height','vy','elapsed','best'] as const)if(typeof s[k]!=='number'||!Number.isFinite(s[k]))return null;
-  if(!Number.isInteger(s.seed)||s.seed<1||s.seed>0xffffffff||!Number.isInteger(s.run)||s.run<1||s.run>1e8||s.distance<0||s.distance>1e8||Math.abs(s.x)>1e5||Math.abs(s.vx)>6.01||Math.abs(s.vy)>40||s.elapsed<0||s.best<Math.floor(s.distance)||s.best>1e8)return null;
-  if(s.version===3&&s.course!==1&&s.course!==2)return null;
-  const track=trackAt(s.seed,s.distance);
-  if(s.version===1){
-    if(s.height< -8||s.height>3||(s.grounded&&(Math.abs(s.height-RADIUS)>.001||s.vy!==0)))return null;
-    // Old course geometry is incompatible: preserve progress/seed, rebase height
-    // onto this terrain. Legacy airborne runs retain their relative altitude.
-    return {...s,version:3,course:1,height:track.elevation+s.height,grounded:s.grounded&&track.ground,vy:s.grounded?(track.ground?0:track.gradient*speedAt(s.distance)):s.vy};
-  }
-  if(s.height< -s.distance*SLOPE-9||s.height> -s.distance*SLOPE+6)return null;
-  if(s.grounded&&(!track.ground||Math.abs(s.height-track.elevation-RADIUS)>.001||s.vy!==0))return null;
-  return {version:3,course:s.version===3?s.course:1,seed:s.seed,run:s.run,phase:s.phase,distance:s.distance,x:s.x,vx:s.vx,height:s.height,vy:s.vy,grounded:s.grounded,elapsed:s.elapsed,best:s.best,reason:s.reason};
 }

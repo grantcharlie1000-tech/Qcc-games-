@@ -1,160 +1,510 @@
-import * as THREE from 'three';
-import type { GameModule, GameContext, GameInstance } from '../../core/types';
-import { createRun, restoreRun, step, trackAt, section, speedAt, RADIUS, SLOPE, LENGTH } from './model';
+/** Ball Run's game module: DOM panels and HUD, input, the fixed-step loop and the shell
+ * contract around the pure simulation (model.ts) and the Three.js renderer (scene.ts). */
+import type { GameContext, GameInstance, GameModule } from '../../core/types';
+import { CONFIG, DIFFICULTIES, STEP, speedAt, type Difficulty, type Run } from './config';
+import { getCourse } from './course';
+import { createRun, restoreSnapshot, step, type Snapshot } from './model';
+import { commitScore, emptyRecords, nextTarget, viewRecords, type RecordView, type Records } from './records';
+import { createScene, type BallRunScene } from './scene';
 import './style.css';
 
-function mount(container:HTMLElement,context:GameContext):GameInstance{
-  const root=document.createElement('div');root.className='ball-run';
-  root.innerHTML=`<div class="br-viewport"><canvas tabindex="0" aria-label="3D downhill ball track. Drag smoothly to steer, or hold Left and Right arrows or A and D."></canvas><div class="br-hud"><span><small>DISTANCE</small><strong class="br-distance">0</strong></span><span class="br-record"><small>ALL TIME</small><strong class="br-best">0</strong></span></div><small class="br-speed">12 m/s</small><div class="br-boost" hidden>Speed Up</div><div class="br-overlay"><p class="br-eyebrow">BALL RUN</p><h2 class="br-heading">Chase the horizon</h2><p class="br-copy">Drag to steer, or hold ← → / A D.<br>Ride the ramps, thread the blocks,<br>and follow the cyan speed gates.</p><button class="game-button br-start">Start rolling</button></div></div>`;
+type Panel = 'setup' | 'continue' | 'over' | 'lost' | null;
+type Scope = 'today' | 'week' | 'allTime';
+type Marks = Record<Scope, boolean>;
+/** The save: model.ts's Snapshot plus this module's own field, which restoreSnapshot ignores. `marks` are
+ * the records this run set, so a Game Over reopened from the save keeps its NEW markers and crown. */
+type Saved = Snapshot & { marks: Marks };
+
+const INK = '#141418';
+const SCOPES: readonly Scope[] = ['today', 'week', 'allTime'];
+const ROWS: Record<Scope, string> = { today: 'Today’s best', week: 'Week’s best', allTime: 'All-time best' };
+const EYES: Record<Difficulty, string> = {
+  easy: `<circle cx="25" cy="32" r="5.6" fill="${INK}"/><circle cx="39" cy="32" r="5.6" fill="${INK}"/><circle cx="26.8" cy="30.2" r="2" fill="#fff"/><circle cx="40.8" cy="30.2" r="2" fill="#fff"/><path d="M27.5 41.5q4.5 3.6 9 0" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>`,
+  medium: `<path d="M19 31h12a6 6 0 0 1-12 0zM33 31h12a6 6 0 0 1-12 0z" fill="${INK}"/><path d="M18.5 28.5h13M32.5 28.5h13" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/><circle cx="27" cy="33" r="1.5" fill="#fff"/><circle cx="41" cy="33" r="1.5" fill="#fff"/><path d="M28 43h8" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>`,
+  hard: `<circle cx="25" cy="34" r="5" fill="${INK}"/><circle cx="39" cy="34" r="5" fill="${INK}"/><circle cx="26.5" cy="33" r="1.6" fill="#fff"/><circle cx="40.5" cy="33" r="1.6" fill="#fff"/><path d="M18.5 27.5 30 31.5M45.5 27.5 34 31.5" stroke="${INK}" stroke-width="3.4" stroke-linecap="round"/><path d="M27 45.5q5-3.6 10 0" fill="none" stroke="${INK}" stroke-width="2.8" stroke-linecap="round"/>`,
+};
+const HORNS = `<path d="M15 22C6 16 5 7 9.5 1.5 11 8 15.5 11.5 23 12zM49 22c9-6 10-15 5.5-20.5C53 8 48.5 11.5 41 12z" fill="${INK}"/>`;
+/** Difficulty badge: a face with fixed fills, always shown next to the difficulty's name. */
+const face = (d: Difficulty) => `<svg class="br-face" data-face="${d}" viewBox="0 0 64 64" aria-hidden="true" focusable="false">${d === 'hard' ? HORNS : ''}<circle cx="32" cy="34" r="29" fill="#2c2c33"/><circle cx="32" cy="34" r="26" fill="${INK}"/><circle cx="32" cy="34" r="20.5" fill="${CONFIG[d].color}"/>${EYES[d]}</svg>`;
+const TROPHY = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M6 3h12v2h3v2.5c0 2.6-1.9 4.6-4.4 4.9A6 6 0 0 1 13 15.8V18h3.5v3h-9v-3H11v-2.2a6 6 0 0 1-3.6-3.4C4.9 12.1 3 10.1 3 7.5V5h3zm0 4H5v.5c0 1.3.8 2.4 1.9 2.8Q6 9.6 6 9zm12 0v2q0 .7-.1 1.3A3 3 0 0 0 19 7.5V7z"/></svg>';
+const HOUSE = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2.5 1.5 11.5h3V21h5.8v-6h3.4v6h5.8v-9.5h3z"/></svg>';
+const CROWN = '<svg class="br-crown" viewBox="0 0 28 12" aria-hidden="true" focusable="false"><path d="m2 11-1-9 7 4 6-6 6 6 7-4-1 9z" fill="#ffe0a4"/></svg>';
+
+const STEER_COPY = 'Drag left and right, or hold A / D or ← →, to steer.';
+/** cubic-bezier(0.23, 1, 0.32, 1) at progress x: solve the curve's x(t) = x by bisection, return y(t). */
+function easeOut(x: number): number {
+  const bx = (t: number) => 3 * (1 - t) ** 2 * t * .23 + 3 * (1 - t) * t * t * .32 + t ** 3;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 24; i++) { const mid = (lo + hi) / 2; if (bx(mid) < x) lo = mid; else hi = mid; }
+  const t = (lo + hi) / 2;
+  return 3 * (1 - t) ** 2 * t + 3 * (1 - t) * t * t + t ** 3;
+}
+const noMarks = (): Marks => ({ today: false, week: false, allTime: false });
+const nextSeed = (seed: number) => (seed + 1664525) >>> 0 || 1;
+function randomSeed(): number {
+  try { return crypto.getRandomValues(new Uint32Array(1))[0] || 1; } catch { return Math.floor(Math.random() * 0xffffffff) + 1; }
+}
+
+const template = () => `<div class="br-viewport">
+  <canvas tabindex="0" aria-label="3D ball track. Drag left and right to steer, or hold the Left and Right arrows or A and D."></canvas>
+  <div class="br-top"><div class="br-hud" hidden><p class="br-stat"><small class="br-mode-label">MEDIUM MODE</small><strong class="br-score">0</strong></p><p class="br-stat br-target" data-scope="new"><small class="br-target-label">NEW BEST</small><strong class="br-target-value">0</strong></p></div>
+  <p class="br-speed" hidden></p></div>
+  <p class="br-boost" hidden>Speed Up</p>
+  <div class="br-layer" hidden>
+    <section class="br-panel br-setup" aria-label="Ball Run setup" hidden>
+      <div class="br-head"><h2 class="br-title">BALL RUN</h2><p class="br-copy">${STEER_COPY} Avoid the blocks and stay on the track. Survive as long as you can!</p></div>
+      <div class="br-body">
+        <div class="br-pick"><span class="br-face-slot"></span><p class="br-level">Medium</p><input class="br-slider" type="range" min="0" max="2" step="1" value="1" aria-label="Difficulty" aria-valuetext="Medium"></div>
+        <ul class="br-help" hidden>
+          <li>${STEER_COPY} A new drag starts from where the ball is.</li>
+          <li>Hitting a block or rolling off the edge ends the run.</li>
+          <li>Each cyan gate permanently raises your speed.</li>
+          <li>Score is metres travelled. Your best today, this week and all time are kept for each difficulty.</li>
+          <li>P pauses. R plays again after Game Over.</li>
+        </ul>
+        <p class="br-note" hidden></p>
+        <div class="br-actions"><button type="button" class="br-button br-play">Play</button><button type="button" class="br-help-toggle" aria-label="How to play" aria-expanded="false">?</button></div>
+      </div>
+    </section>
+    <section class="br-panel br-continue" aria-label="Saved run" hidden>
+      <h2 class="br-title">Your run is waiting</h2><span class="br-face-slot"></span><p class="br-copy br-continue-info"></p>
+      <div class="br-actions"><button type="button" class="br-button br-resume">Continue</button></div>
+    </section>
+    <section class="br-panel br-over" aria-label="Results" hidden>
+      <div class="br-result"><h2 class="br-title">GAME OVER</h2><p class="br-reason"></p><p class="br-score-label">Score</p><p class="br-final">0</p></div>
+      <div class="br-side">
+        <div class="br-records"><p class="br-badge"><span class="br-badge-name">MEDIUM</span><span class="br-face-slot">${CROWN}</span><span>MODE</span></p>
+          <ul class="br-rows">${SCOPES.map(s => `<li class="br-row" data-scope="${s}" data-new="false">${TROPHY}<span>${ROWS[s]}</span><em class="br-new">NEW</em><strong>0</strong></li>`).join('')}</ul></div>
+        <div class="br-actions"><button type="button" class="br-home" aria-label="Home">${HOUSE}</button><button type="button" class="br-button br-again">Play again</button></div>
+      </div>
+    </section>
+    <section class="br-panel br-lost" aria-label="Graphics interrupted" hidden><h2 class="br-title" tabindex="-1">Graphics interrupted</h2><p class="br-copy">Your run is saved. Leave and reopen Ball Run to restore the graphics.</p></section>
+  </div>
+</div>`;
+
+function mount(container: HTMLElement, context: GameContext): GameInstance {
+  const root = document.createElement('div');
+  root.className = 'ball-run';
+  root.innerHTML = template();
   container.append(root);
-  const canvas=root.querySelector('canvas')!,overlay=root.querySelector<HTMLElement>('.br-overlay')!,heading=root.querySelector('.br-heading')!,copy=root.querySelector('.br-copy')!,start=root.querySelector<HTMLButtonElement>('.br-start')!;
-  const distanceLabel=root.querySelector('.br-distance')!,bestLabel=root.querySelector('.br-best')!,speedLabel=root.querySelector('.br-speed')!,boostLabel=root.querySelector<HTMLElement>('.br-boost')!;
-  let state=createRun(0x42524e,1,context.highScore),awaitingStart=true,paused=false,disposed=false,contextLost=false,frame=0,last=0,accumulator=0,left=false,right=false,drag:number|null=null,pointerStart=0,ballStart=0,pointerTarget=0,lastMeter=-1;
-  const abort=new AbortController(),signal=abort.signal;
-  let renderer:THREE.WebGLRenderer;
-  try{renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'low-power'});}
-  catch{
-    root.innerHTML='<div class="br-fallback" role="status"><h2>3D graphics unavailable</h2><p>Ball Run needs WebGL 2. Enable browser hardware acceleration or try a recent browser.</p><a class="game-button" href="#/">Choose another game</a></div>';
+  const reducedMotion = () => context.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canvas = root.querySelector('canvas')!;
+  let scene: BallRunScene;
+  try { scene = createScene(canvas, { reducedMotion }); }
+  catch {
+    root.innerHTML = '<div class="br-fallback" role="status"><h2>3D graphics unavailable</h2><p>Ball Run needs WebGL 2. Enable browser hardware acceleration or try a recent browser.</p><a class="game-button" href="#/">Choose another game</a></div>';
     context.setStatus('This browser could not create a WebGL 2 renderer.');
-    return {pause(){},resume(){},restart(){state=createRun(state.seed,state.run+1,Math.max(state.best,context.highScore));},serialize:()=>({...state}),restore(value){const restored=restoreRun(value);if(restored)state=restored;},dispose(){root.remove();}};
+    // Nothing of its own to save: an existing save is left exactly as it was.
+    return { pause() {}, resume() {}, restart() {}, serialize: () => undefined, restore() {}, dispose() { root.remove(); } };
   }
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));renderer.setClearColor(0x000000);
-  const scene=new THREE.Scene();scene.fog=new THREE.Fog(0x000000,85,170);
-  const camera=new THREE.PerspectiveCamera(64,1,.1,190);
-  const geometries:THREE.BufferGeometry[]=[],materials:THREE.Material[]=[],instanceMeshes:THREE.InstancedMesh[]=[];
-  const box=new THREE.BoxGeometry(1,1,1);geometries.push(box);
-  function basic(color:number){const m=new THREE.MeshBasicMaterial({color});materials.push(m);return m;}
-  const road=new THREE.Group();scene.add(road);
-  function instances(count:number,material:THREE.Material,parent:THREE.Object3D=road){
-    const mesh=new THREE.InstancedMesh(box,material,count);mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);mesh.frustumCulled=false;parent.add(mesh);instanceMeshes.push(mesh);return mesh;
+
+  const q = <T extends Element = HTMLElement>(selector: string) => root.querySelector<T>(selector)! as T;
+  const hud = q('.br-hud'), modeLabel = q('.br-mode-label'), scoreLabel = q('.br-score'), target = q('.br-target'), targetLabel = q('.br-target-label'), targetValue = q('.br-target-value');
+  const speedLabel = q('.br-speed'), boostLabel = q('.br-boost'), layer = q('.br-layer');
+  const panels: Record<Exclude<Panel, null>, HTMLElement> = { setup: q('.br-setup'), continue: q('.br-continue'), over: q('.br-over'), lost: q('.br-lost') };
+  const copy = q('.br-head .br-copy'), pick = q('.br-pick'), level = q('.br-level'), slider = q<HTMLInputElement>('.br-slider'), help = q('.br-help'), note = q('.br-note');
+  const play = q<HTMLButtonElement>('.br-play'), helpToggle = q<HTMLButtonElement>('.br-help-toggle'), resumeButton = q<HTMLButtonElement>('.br-resume'), continueInfo = q('.br-continue-info');
+  const reason = q('.br-reason'), final = q('.br-final'), badgeName = q('.br-badge-name'), again = q<HTMLButtonElement>('.br-again'), home = q<HTMLButtonElement>('.br-home');
+  const lostTitle = q('.br-lost .br-title'), crown = q('.br-crown'), rows = SCOPES.map(s => q(`.br-row[data-scope="${s}"]`)), faceSlots = [...root.querySelectorAll<HTMLElement>('.br-face-slot')];
+
+  let run: Run = createRun(randomSeed(), 1, 'medium'), course = getCourse(run.seed, run.difficulty), records: Records = emptyRecords();
+  let paused = false, disposed = false, contextLost = false, waiting = false, committed = false;
+  let frame = 0, last = 0, accumulator = 0, shown: Panel = null, entering = 0;
+  let left = false, right = false, drag: number | null = null, pointerStart = 0, ballStart = 0, pointerTarget = 0;
+  /** Records when the run started: the HUD's next target. */
+  let view: RecordView = { today: 0, week: 0, allTime: 0 };
+  let marks: Marks = noMarks();
+  let shownScore = -1, reported = -1, reportedAt = -Infinity, shownSpeed = -1, boostText = 'Speed Up', boostWidth = 0;
+  let viewWidth = canvas.clientWidth, viewHeight = canvas.clientHeight;
+  const abort = new AbortController(), signal = abort.signal;
+
+  const active = () => !paused && !disposed && !contextLost && !waiting && (run.phase === 'running' || run.phase === 'dying');
+  const label = () => CONFIG[run.difficulty].label;
+  const overReason = () => run.reason === 'fall' ? 'You fell off the track' : 'You hit a block';
+  /** Game Over's status line, after a live death and on a Game Over reopened from the save. */
+  const overStatus = () => `${overReason()}. ${run.score} metres. Press R or Play again for a new run.`;
+  const snapshot = (): Saved => ({ version: 4, difficulty: run.difficulty, records, run: { ...run }, marks: { ...marks } });
+  const save = () => context.save(snapshot());
+  function releasePointer() {
+    const pointer = drag;
+    drag = null;
+    if (pointer !== null && canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
   }
-  const tiles=instances(320,basic(0x30365f)),grid=instances(1900,basic(0x999df5)),obstacles=instances(20,basic(0xd317c1)),cyan=instances(100,basic(0x30e9f4));
-  const projection=new THREE.Vector3(),transform=new THREE.Object3D(),lineDirection=new THREE.Vector3(),zAxis=new THREE.Vector3(0,0,1);
-  function gridLine(index:number,ax:number,ay:number,az:number,bx:number,by:number,bz:number){
-    lineDirection.set(bx-ax,by-ay,bz-az);const length=lineDirection.length();
-    transform.position.set((ax+bx)/2,(ay+by)/2,(az+bz)/2);transform.scale.set(.022,.018,length+.006);transform.quaternion.setFromUnitVectors(zAxis,lineDirection.normalize());transform.updateMatrix();grid.setMatrixAt(index,transform.matrix);
+  function clearInput() { left = false; right = false; releasePointer(); pointerTarget = run.x; }
+  function input(): number {
+    return drag !== null ? Math.max(-1, Math.min(1, (pointerTarget - run.x) * 3)) : Number(right) - Number(left);
   }
-  function put(mesh:THREE.InstancedMesh,index:number,x:number,y:number,z:number,sx:number,sy:number,sz:number,rx=0,ry=0){transform.position.set(x,y,z);transform.scale.set(sx,sy,sz);transform.rotation.set(rx,ry,0);transform.updateMatrix();mesh.setMatrixAt(index,transform.matrix);}
-  // A pooled city corridor, with dark faces and genuine grid lines on all sides.
-  // Both buffers are built once. Four-block variations repeat every 28m.
-  const city=new THREE.Group();scene.add(city);
-  const buildingMaterial=basic(0x17192f);
-  // Bias the filled faces behind their wire grid to prevent coplanar flicker.
-  buildingMaterial.polygonOffset=true;buildingMaterial.polygonOffsetFactor=1;buildingMaterial.polygonOffsetUnits=1;
-  const buildings=instances(100,buildingMaterial,city),cityLines:number[]=[];
-  function line(ax:number,ay:number,az:number,bx:number,by:number,bz:number){cityLines.push(ax,ay,az,bx,by,bz);}
-  let buildingIndex=0;
-  for(const side of [-1,1])for(let row=0;row<2;row++)for(let i=0;i<25;i++){
-    const x=side*(6.5+row*4+((i+row)%4)*.35),z=14-i*7,h=34+row*9+(i%4)*2+(side>0?4:0),lo=-12,w=3,depth=6;
-    put(buildings,buildingIndex++,x,lo+h/2,z,w,h,depth);
-    const x0=x-w/2,x1=x+w/2,z0=z-depth/2,z1=z+depth/2;
-    for(let y=lo;y<=lo+h;y+=1.4){line(x0,y,z0,x1,y,z0);line(x0,y,z1,x1,y,z1);line(x0,y,z0,x0,y,z1);line(x1,y,z0,x1,y,z1);}
-    for(let xx=x0;xx<=x1+.01;xx+=1){line(xx,lo,z0,xx,lo+h,z0);line(xx,lo,z1,xx,lo+h,z1);}
-    for(let zz=z0;zz<=z1+.01;zz+=1.5){line(x0,lo,zz,x0,lo+h,zz);line(x1,lo,zz,x1,lo+h,zz);}
+
+  /** 'Top Speed' when the last gate added nothing because the course was already at its cap. */
+  function gateText(): string {
+    let start = NaN;
+    course.forEachGate(run.distance - 200, run.distance, gate => { if (gate.index === run.gateIndex) start = gate.start; });
+    return Number.isFinite(start) && speedAt(run.difficulty, start, run.gateIndex) >= CONFIG[run.difficulty].maxSpeed ? 'Top Speed' : 'Speed Up';
   }
-  buildings.instanceMatrix.needsUpdate=true;
-  const cityGeo=new THREE.BufferGeometry();cityGeo.setAttribute('position',new THREE.Float32BufferAttribute(cityLines,3));geometries.push(cityGeo);
-  const lineMat=new THREE.LineBasicMaterial({color:0x7f88df});materials.push(lineMat);city.add(new THREE.LineSegments(cityGeo,lineMat));
-  const sphere=new THREE.SphereGeometry(RADIUS,32,20);geometries.push(sphere);
-  const ballMat=new THREE.MeshPhongMaterial({color:0xc400a9,specular:0xff7cde,shininess:95});materials.push(ballMat);
-  const ball=new THREE.Mesh(sphere,ballMat);scene.add(ball);
-  scene.add(new THREE.HemisphereLight(0xe4baff,0x210020,2.1));
-  const keyLight=new THREE.DirectionalLight(0xffffff,3.2);keyLight.position.set(-3,6,4);scene.add(keyLight);
-  const rim=new THREE.DirectionalLight(0x9c5aff,1.2);rim.position.set(4,1,-5);scene.add(rim);
-  let cachedOrigin=NaN;
-  function rebuildCourse(origin:number){
-    let tileIndex=0,gridIndex=0,cyanIndex=0;
-    for(let i=0;i<320;i++){
-      const d=origin-6+i*.5,t=trackAt(state.seed,Math.max(0,d+.25));if(d<0||!t.ground)continue;
-      const a=trackAt(state.seed,d),b=trackAt(state.seed,d+.5),rise=(b.elevation-a.elevation)/.5,rx=Math.atan(rise);
-      const y=t.elevation+origin*SLOPE,z=-(d+.25-origin),length=.5*Math.sqrt(1+rise*rise);
-      put(tiles,tileIndex++,t.center,y-.09,z,t.width,.18,length+.008,rx);
-      for(let lane=0;lane<=4;lane++){const offset=lane/4-.5;gridLine(gridIndex++,a.center+offset*a.width,a.elevation+origin*SLOPE+.02,-(d-origin),b.center+offset*b.width,b.elevation+origin*SLOPE+.02,-(d+.5-origin));}
-      if(Math.round(d*2)%4===0)put(grid,gridIndex++,t.center,y+.016,z,t.width,.018,.027,rx);
+
+  function theme() {
+    const d = run.difficulty, c = CONFIG[d], index = DIFFICULTIES.indexOf(d);
+    root.dataset.difficulty = d;
+    root.style.setProperty('--br-accent', c.color);
+    slider.value = String(index);
+    slider.setAttribute('aria-valuetext', c.label);
+    slider.style.setProperty('--fill', `${index * 50}%`);
+    level.textContent = c.label;
+    modeLabel.textContent = `${c.label.toUpperCase()} MODE`;
+    badgeName.textContent = c.label.toUpperCase();
+    continueInfo.textContent = `${c.label} mode · ${run.score} m`;
+    for (const slot of faceSlots) {
+      if (slot.dataset.face === d) continue;
+      slot.dataset.face = d;
+      slot.querySelector('.br-face')?.remove();
+      slot.insertAdjacentHTML('beforeend', face(d));
     }
-    tiles.count=tileIndex;grid.count=gridIndex;
-    const first=Math.max(0,Math.floor((origin-6)/LENGTH));let obstacleIndex=0;
-    for(let i=0;i<8;i++){
-      const index=first+i,s=section(state.seed,index,state.course);
-      for(const obstacle of s.obstacles){
-        const od=index*LENGTH+obstacle.local,ot=trackAt(state.seed,od);
-        put(obstacles,obstacleIndex++,ot.center+obstacle.x,ot.elevation+origin*SLOPE+obstacle.height/2,-(od-origin),obstacle.width,obstacle.height,obstacle.depth);
-      }
-      if(s.acceleration){
-        for(const local of [4,12]){
-          const gd=index*LENGTH+local,gt=trackAt(state.seed,gd),gy=gt.elevation+origin*SLOPE,gz=-(gd-origin);
-          for(const side of [-1,1])put(cyan,cyanIndex++,gt.center+side*(gt.width/2+.08),gy+.8,gz,.055,1.6,.055);
-          put(cyan,cyanIndex++,gt.center,gy+1.6,gz,gt.width+.2,.055,.055);
-        }
-        for(let local=5;local<=11;local+=2){
-          const cd=index*LENGTH+local,ct=trackAt(state.seed,cd),cy=ct.elevation+origin*SLOPE+.025,cz=-(cd-origin);
-          for(const side of [-1,1])put(cyan,cyanIndex++,ct.center+side*.22,cy,cz,.08,.025,.65,0,side*.65);
-        }
-      }
+  }
+
+  function fillResults() {
+    const values: Record<Scope, number> = viewRecords(records, run.difficulty, new Date());
+    reason.textContent = overReason();
+    final.textContent = String(run.score);
+    SCOPES.forEach((s, i) => { rows[i].querySelector('strong')!.textContent = String(values[s]); rows[i].dataset.new = String(marks[s]); });
+    crown.toggleAttribute('hidden', !SCOPES.some(s => marks[s]));
+  }
+
+  function setHelp(open: boolean) {
+    panels.setup.classList.toggle('br-helping', open);
+    help.hidden = !open;
+    pick.hidden = open;
+    copy.hidden = open;
+    helpToggle.setAttribute('aria-expanded', String(open));
+  }
+
+  /** Game Over enters with a 250 ms fade and settle from 0.96 on cubic-bezier(0.23, 1, 0.32, 1); reduced
+   * motion fades only. Driven by animation frames rather than CSS or WAAPI so it also runs under a test's virtual clock. */
+  function enter(panel: HTMLElement) {
+    settle();
+    const start = performance.now(), scale = !reducedMotion();
+    const tick = (now: number) => {
+      const t = Math.min(1, Math.max(0, (now - start) / 250)), k = easeOut(t);
+      layer.style.opacity = String(k);
+      if (scale) panel.style.transform = `scale(${.96 + .04 * k})`;
+      entering = t < 1 ? requestAnimationFrame(tick) : 0;
+      if (!entering) settle();
+    };
+    tick(start);
+  }
+  function settle() {
+    cancelAnimationFrame(entering);
+    entering = 0;
+    layer.style.opacity = panels.over.style.transform = '';
+  }
+
+  function screen() {
+    const panel: Panel = contextLost ? 'lost' : run.phase === 'ready' ? 'setup' : run.phase === 'over' ? 'over' : waiting ? 'continue' : null;
+    theme();
+    if (panel === 'over') fillResults();
+    layer.hidden = !panel;
+    for (const [name, element] of Object.entries(panels)) element.hidden = name !== panel;
+    // The canvas is a Tab stop only while it steers; a panel's controls come first otherwise.
+    canvas.tabIndex = panel ? -1 : 0;
+    hud.hidden = speedLabel.hidden = panel === 'setup' || panel === 'lost';
+    if (panel === 'over' && shown !== 'over') enter(panels.over);
+    else if (panel !== 'over' && entering) settle();
+    shown = panel;
+    report(true);
+    draw();
+  }
+
+  /** HUD text every frame it changes; the shell's score at most every 250 ms (each call writes storage).
+   * Only finish() reports outside that throttle: the final score, once per run. */
+  function report(force = false) {
+    const score = run.score;
+    if (force || score !== shownScore) {
+      shownScore = score;
+      scoreLabel.textContent = String(score);
+      const next = nextTarget(view, score);
+      target.dataset.scope = next.scope;
+      targetLabel.textContent = next.label;
+      targetValue.textContent = String(next.value);
     }
-    obstacles.count=obstacleIndex;cyan.count=cyanIndex;
-    for(const mesh of [tiles,grid,obstacles,cyan])mesh.instanceMatrix.needsUpdate=true;
-  }
-  function draw(){
-    if(disposed||contextLost)return;
-    const origin=Math.floor(state.distance*2)/2;if(origin!==cachedOrigin){cachedOrigin=origin;rebuildCourse(origin);}
-    road.position.set(0,(state.distance-origin)*SLOPE,state.distance-origin);
-    city.position.z=state.distance%28;
-    ball.position.set(state.x,state.height+state.distance*SLOPE,0);ball.rotation.set(-state.distance/RADIUS,0,-state.x/RADIUS);
-    // Player-relative tracking keeps valid steering visible even on a narrow phone.
-    // No extra camera sway, shake or FOV pulse is layered over gameplay.
-    const follow=state.x;
-    const cameraLift=Math.max(0,ball.position.y-RADIUS);
-    camera.position.set(follow,1.8+cameraLift,3.6);camera.lookAt(follow,-1.8+cameraLift,-20);
-    renderer.render(scene,camera);projection.copy(ball.position).project(camera);
-    root.dataset.ballScreenY=((1-projection.y)/2).toFixed(5);root.dataset.ballScreenX=((1+projection.x)/2).toFixed(5);
-    root.dataset.phase=state.phase;root.dataset.x=state.x.toFixed(3);root.dataset.distance=state.distance.toFixed(3);root.dataset.grounded=String(state.grounded);
-    root.dataset.drawCalls=String(renderer.info.render.calls);root.dataset.geometries=String(renderer.info.memory.geometries);root.dataset.aspect=camera.aspect.toFixed(5);
-    boostLabel.hidden=state.phase!=='running'||!trackAt(state.seed,state.distance).boost;
-  }
-  function releasePointer(){const pointer=drag;drag=null;if(pointer!==null&&canvas.hasPointerCapture(pointer))canvas.releasePointerCapture(pointer);}
-  function clearInput(){left=false;right=false;releasePointer();pointerTarget=state.x;}
-  function report(force=false){const meter=Math.floor(state.distance);if(!force&&meter===lastMeter)return;lastMeter=meter;distanceLabel.textContent=String(meter);bestLabel.textContent=String(Math.max(state.best,context.highScore));speedLabel.textContent=`${speedAt(state.distance).toFixed(1)} m/s`;context.setScore(meter);context.setLevel(`Descent ${1+Math.floor(meter/150)}`);}
-  function screen(){overlay.hidden=state.phase==='running';start.hidden=false;start.textContent=state.phase==='over'?'Roll again':'Start rolling';heading.textContent=state.phase==='over'?state.reason:'Chase the horizon';copy.innerHTML=state.phase==='over'?`${Math.floor(state.distance)} m travelled · Best ${Math.max(context.highScore,state.best)} m`:'Drag to steer, or hold ← → / A D.<br>Ride the ramps, thread the blocks,<br>and follow the cyan speed gates.';report(true);draw();}
-  function save(){context.save({...state});}
-  function loop(time:number){
-    frame=0;if(disposed||contextLost||paused||awaitingStart||state.phase!=='running')return;
-    const delta=last?Math.min((time-last)/1000,.1):0;last=time;accumulator+=delta;
-    while(accumulator>=1/120&&state.phase==='running'){
-      const input=drag!==null?Math.max(-1,Math.min(1,(pointerTarget-state.x)*3)):Number(right)-Number(left);
-      step(state,input,1/120);accumulator-=1/120;
+    const speed = Math.round(course.speed(run.distance));
+    if (force || speed !== shownSpeed) { shownSpeed = speed; speedLabel.textContent = `${speed} m/s`; }
+    if (run.phase === 'running' && !waiting && score !== reported) {
+      const now = performance.now();
+      if (now - reportedAt >= 250) { reported = score; reportedAt = now; context.setScore(score); }
     }
-    report();draw();
-    if((state.phase as string)==='over'){clearInput();screen();context.setStatus(`${state.reason}. ${Math.floor(state.distance)} metres. Roll again to retry.`);context.announce(`${state.reason}. ${Math.floor(state.distance)} metres.`);context.sound('lose');save();}
-    else frame=requestAnimationFrame(loop);
   }
-  function schedule(){last=0;accumulator=0;if(!frame&&!paused&&!disposed&&!contextLost&&!awaitingStart&&state.phase==='running')frame=requestAnimationFrame(loop);}
-  function begin(){if(paused||disposed||contextLost)return;awaitingStart=false;if(state.phase==='over'){state=createRun((state.seed+1664525)>>>0||1,state.run+1,Math.max(state.best,context.highScore));cachedOrigin=NaN;}state.phase='running';clearInput();screen();context.setStatus('Drag smoothly to steer, or hold Left / Right or A / D. Ramps carry you across the gaps.');context.announce('Rolling. Follow the track.');context.sound('tap');save();canvas.focus();schedule();}
-  start.addEventListener('click',begin,{signal});
-  function key(e:KeyboardEvent,down:boolean){
-    const direction=['ArrowLeft','a','A'].includes(e.key)?'left':['ArrowRight','d','D'].includes(e.key)?'right':null;if(!direction)return;
-    // Key release always clears its action, including after dialog/focus changes.
-    if(!down){if(direction==='left')left=false;else right=false;return;}
-    if(paused||contextLost||state.phase!=='running'||document.querySelector('dialog[open]')||e.ctrlKey||e.metaKey||e.altKey)return;
-    if(e.target instanceof HTMLElement&&e.target.matches('input,textarea,select,[contenteditable=true]'))return;
-    if(e.repeat&&!(direction==='left'?left:right))return;
-    e.preventDefault();if(direction==='left')left=true;else right=true;
+
+  function draw() {
+    if (disposed || contextLost) return;
+    const speed = course.speed(run.distance);
+    scene.render({ run, course, speed });
+    const stats = scene.stats, data = root.dataset, boosting = run.phase === 'running' && !waiting && run.speedUpTime > 0;
+    data.phase = run.phase;
+    data.x = run.x.toFixed(3);
+    data.distance = run.distance.toFixed(3);
+    data.grounded = String(run.grounded);
+    data.ballScreenX = stats.ballScreenX.toFixed(5);
+    data.ballScreenY = stats.ballScreenY.toFixed(5);
+    data.aspect = stats.aspect.toFixed(5);
+    data.drawCalls = String(stats.calls);
+    data.geometries = String(stats.geometries);
+    data.speed = speed.toFixed(2);
+    data.boost = String(boosting);
+    data.gates = String(run.gateIndex + 1);
+    data.score = String(run.score);
+    if (boostLabel.hidden === boosting) boostLabel.hidden = !boosting;
+    if (boosting) {
+      if (boostLabel.textContent !== boostText || !boostWidth) { boostLabel.textContent = boostText; boostWidth = boostLabel.offsetWidth; }
+      // Beside the ball's lower left (its screen radius is about 8 % of the view height), kept on screen.
+      const radius = .08 * viewHeight, x = stats.ballScreenX * viewWidth - radius - 6 - boostWidth;
+      boostLabel.style.transform = `translate(${Math.max(8, Math.min(viewWidth - boostWidth - 8, x)).toFixed(1)}px,${(stats.ballScreenY * viewHeight + .45 * radius).toFixed(1)}px)`;
+    }
   }
-  window.addEventListener('keydown',e=>key(e,true),{signal});window.addEventListener('keyup',e=>key(e,false),{signal});window.addEventListener('blur',clearInput,{signal});
-  canvas.addEventListener('pointerdown',e=>{if(paused||contextLost||state.phase!=='running'||drag!==null||e.button!==0)return;e.preventDefault();drag=e.pointerId;pointerStart=e.clientX;ballStart=state.x;pointerTarget=state.x;canvas.setPointerCapture(e.pointerId);canvas.focus();},{signal});
-  canvas.addEventListener('pointermove',e=>{if(drag!==e.pointerId||paused)return;pointerTarget=ballStart+(e.clientX-pointerStart)/Math.max(1,canvas.clientWidth)*6;},{signal});
-  for(const event of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(event,e=>{if((e as PointerEvent).pointerId===drag)releasePointer();},{signal});
-  canvas.addEventListener('webglcontextlost',e=>{if(disposed)return;e.preventDefault();contextLost=true;paused=true;cancelAnimationFrame(frame);frame=0;clearInput();overlay.hidden=false;heading.textContent='Graphics interrupted';copy.textContent='Your run is saved. Leave and reopen Ball Run to restore the graphics.';start.hidden=true;boostLabel.hidden=true;save();context.setStatus('Graphics context lost. Leave and reopen the game.');},{signal});
-  const resize=new ResizeObserver(()=>{if(disposed||contextLost)return;releasePointer();pointerTarget=state.x;const w=canvas.clientWidth,h=canvas.clientHeight;if(w<1||h<1)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();draw();});resize.observe(canvas);
-  screen();context.setStatus('Ready. Drag to steer or use Left / Right and A / D.');
+
+  // Records are committed once, when a run ends however it ends; the final score is reported unthrottled.
+  function finish() {
+    if (committed) return;
+    committed = true;
+    const now = new Date(), before = viewRecords(records, run.difficulty, now), score = run.score;
+    records = commitScore(records, run.difficulty, score, now);
+    marks = { today: score > before.today, week: score > before.week, allTime: score > before.allTime };
+    reported = score;
+    reportedAt = performance.now();
+    context.setScore(score);
+    save();
+  }
+
+  function died() {
+    clearInput();
+    finish();
+    context.sound('lose');
+    context.setStatus(overStatus());
+    context.announce(`${overReason()} at ${run.score} metres.`);
+  }
+
+  function ended() {
+    clearInput();
+    screen();
+    save();
+    again.focus({ preventScroll: true });
+  }
+
+  function loop(time: number) {
+    frame = 0;
+    if (!active()) return;
+    const delta = last ? Math.min((time - last) / 1000, .1) : 0;
+    last = time;
+    accumulator += delta;
+    while (accumulator >= STEP && active()) {
+      const phase = run.phase, gate = run.gateIndex;
+      step(run, input(), STEP);
+      accumulator -= STEP;
+      if (run.gateIndex !== gate) boostText = gateText();
+      if (phase === 'running' && run.phase === 'dying') died();
+    }
+    if (run.phase === 'over') { ended(); return; }
+    report();
+    draw();
+    frame = requestAnimationFrame(loop);
+  }
+  function schedule() { last = 0; accumulator = 0; if (!frame && active()) frame = requestAnimationFrame(loop); }
+  function cancel() { cancelAnimationFrame(frame); frame = 0; }
+
+  /** A fresh course: the setup panel, or straight into a run (Play again). */
+  function fresh(start: boolean, difficulty: Difficulty = run.difficulty, seed = nextSeed(run.seed)) {
+    cancel();
+    clearInput();
+    run = createRun(seed, run.run >= 1e8 ? 1 : run.run + 1, difficulty);
+    course = getCourse(run.seed, run.difficulty);
+    committed = waiting = false;
+    marks = noMarks();
+    boostText = 'Speed Up';
+    setHelp(false);
+    scene.reset();
+    if (start) begin();
+    else { screen(); save(); }
+  }
+
+  function begin() {
+    if (paused || disposed || contextLost) return;
+    if (run.phase === 'ready') run.phase = 'running';
+    if (run.phase !== 'running') return;
+    waiting = false;
+    note.hidden = true;
+    setHelp(false);
+    view = viewRecords(records, run.difficulty, new Date());
+    context.setLevel(`${label()} mode`);
+    context.setStatus(`${label()} mode. ${STEER_COPY} P pauses.`);
+    context.announce(`${label()} mode. Rolling.`);
+    context.sound('tap');
+    screen();
+    save();
+    canvas.focus({ preventScroll: true });
+    schedule();
+  }
+
+  const playAgain = () => { if (!paused && !contextLost && run.phase === 'over') fresh(true); };
+  play.addEventListener('click', begin, { signal });
+  resumeButton.addEventListener('click', begin, { signal });
+  again.addEventListener('click', playAgain, { signal });
+  home.addEventListener('click', () => {
+    if (paused || contextLost || run.phase !== 'over') return;
+    fresh(false);
+    context.setStatus('Choose a difficulty, then press Play.');
+    play.focus({ preventScroll: true });
+  }, { signal });
+  slider.addEventListener('input', () => {
+    const difficulty = DIFFICULTIES[Number(slider.value)];
+    if (run.phase !== 'ready' || !difficulty || difficulty === run.difficulty) return;
+    // Same seed, new difficulty: a different course, built behind the panel.
+    fresh(false, difficulty, run.seed);
+  }, { signal });
+  helpToggle.addEventListener('click', () => setHelp(help.hidden), { signal });
+
+  // Input. Held keys follow Neon Coil's rules; P is the shell's pause button; Escape stays the shell's.
+  const dialogOpen = () => !!document.querySelector('dialog[open]');
+  const typing = (target: EventTarget | null) => target instanceof Element && !!target.closest('input:not([type=range]),textarea,select,[contenteditable=""],[contenteditable=true]');
+  const direction = (key: string) => key === 'ArrowLeft' || key === 'a' ? 'left' : key === 'ArrowRight' || key === 'd' ? 'right' : null;
+  window.addEventListener('keydown', event => {
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    if (event.ctrlKey || event.altKey || event.metaKey || dialogOpen() || typing(event.target)) return;
+    if (key === 'p') { event.preventDefault(); if (!event.repeat) document.querySelector<HTMLButtonElement>('#pause-game')?.click(); return; }
+    if (key === 'r') { if (!event.repeat && run.phase === 'over') { event.preventDefault(); playAgain(); } return; }
+    const side = direction(key);
+    if (!side || paused || contextLost || waiting || run.phase !== 'running') return;
+    if (event.target instanceof HTMLInputElement) return;
+    // A repeat never re-arms a key that was released by pause, death or restart.
+    if (event.repeat && !(side === 'left' ? left : right)) return;
+    event.preventDefault();
+    if (side === 'left') left = true; else right = true;
+  }, { signal });
+  window.addEventListener('keyup', event => {
+    const side = direction(event.key.length === 1 ? event.key.toLowerCase() : event.key);
+    if (side === 'left') left = false; else if (side === 'right') right = false;
+  }, { signal });
+  window.addEventListener('blur', clearInput, { signal });
+  canvas.addEventListener('pointerdown', event => {
+    if (paused || contextLost || waiting || run.phase !== 'running' || drag !== null || event.button !== 0) return;
+    event.preventDefault();
+    drag = event.pointerId;
+    pointerStart = event.clientX;
+    ballStart = pointerTarget = run.x;
+    try { canvas.setPointerCapture(event.pointerId); } catch { /* the pointer is already gone */ }
+    canvas.focus({ preventScroll: true });
+  }, { signal });
+  // Relative: a new drag starts from the ball, 6 m per canvas width.
+  canvas.addEventListener('pointermove', event => {
+    if (drag === event.pointerId && !paused) pointerTarget = ballStart + (event.clientX - pointerStart) / Math.max(1, canvas.clientWidth) * 6;
+  }, { signal });
+  for (const name of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) canvas.addEventListener(name, event => { if (event.pointerId === drag) releasePointer(); }, { signal });
+
+  canvas.addEventListener('webglcontextlost', event => {
+    // scene.dispose() forces a context loss of its own; disposed is set before it.
+    if (disposed) return;
+    event.preventDefault();
+    // Hiding a panel (or leaving the canvas inert) would drop keyboard and screen-reader users' focus: the message takes it.
+    const focused = root.contains(document.activeElement);
+    contextLost = true;
+    cancel();
+    clearInput();
+    boostLabel.hidden = true;
+    screen();
+    save();
+    if (focused) lostTitle.focus({ preventScroll: true });
+    context.setStatus('Graphics context lost. Your run is saved. Leave and reopen Ball Run.');
+  }, { signal });
+  const resize = new ResizeObserver(() => {
+    if (disposed || contextLost) return;
+    // A drag maps canvas pixels to metres, so it ends with the old size; held keys keep steering.
+    releasePointer();
+    pointerTarget = run.x;
+    const width = canvas.clientWidth, height = canvas.clientHeight;
+    if (width < 1 || height < 1) return;
+    viewWidth = width;
+    viewHeight = height;
+    boostWidth = 0;
+    scene.resize(width, height);
+    draw();
+  });
+  resize.observe(canvas);
+
+  /** A restored Game Over's NEW markers: each one saved as true that the restored records still confirm
+   * (that scope's record is this run's score). A day or week that has rolled over, a damaged field or a
+   * live run shows none. */
+  function restoredMarks(value: unknown): Marks {
+    const result = noMarks(), saved = typeof value === 'object' && value !== null ? (value as { marks?: unknown }).marks : null;
+    if (run.phase !== 'over' || run.score <= 0 || typeof saved !== 'object' || saved === null) return result;
+    const now: Record<Scope, number> = viewRecords(records, run.difficulty, new Date());
+    for (const s of SCOPES) result[s] = (saved as Record<string, unknown>)[s] === true && now[s] === run.score;
+    return result;
+  }
+  /** Play again holds focus at Game Over. The shell focuses its stage right after restore(), so a restored
+   * Game Over takes focus back once that synchronous work is done, unless something else has taken it. */
+  function focusAgain() {
+    again.focus({ preventScroll: true });
+    queueMicrotask(() => {
+      const active = document.activeElement;
+      if (disposed || paused || contextLost || run.phase !== 'over' || !(active === container || active === document.body || root.contains(active))) return;
+      again.focus({ preventScroll: true });
+    });
+  }
+
+  theme();
+  screen();
+  context.setStatus(`Choose Easy, Medium or Hard, then press Play. ${STEER_COPY}`);
+
   return {
-    pause(){paused=true;clearInput();cancelAnimationFrame(frame);frame=0;},
-    resume(){if(disposed||contextLost)return;paused=false;schedule();},
-    restart(){if(contextLost)return;cancelAnimationFrame(frame);frame=0;awaitingStart=true;clearInput();state=createRun((state.seed+1664525)>>>0||1,state.run+1,Math.max(state.best,context.highScore));cachedOrigin=NaN;lastMeter=-1;screen();context.setStatus('Fresh track. Start rolling when ready.');save();},
-    serialize:()=>({...state}),
-    restore(value){const restored=restoreRun(value);if(!restored)return;cancelAnimationFrame(frame);frame=0;clearInput();state=restored;cachedOrigin=NaN;awaitingStart=true;state.best=Math.max(state.best,context.highScore);screen();if(state.phase==='running'){overlay.hidden=false;heading.textContent='Your descent awaits';copy.textContent=`Resume from ${Math.floor(state.distance)} metres. Ramps now carry you across the gaps — steer to stay on the road.`;start.textContent='Continue rolling';context.setStatus('Saved run ready. Continue rolling to resume.');}},
-    dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(frame);frame=0;clearInput();abort.abort();resize.disconnect();for(const mesh of instanceMeshes)mesh.dispose();for(const g of geometries)g.dispose();for(const m of materials)m.dispose();renderer.dispose();renderer.forceContextLoss();scene.clear();root.remove();}
+    pause() { paused = true; clearInput(); cancel(); },
+    resume() { if (disposed || contextLost) return; paused = false; schedule(); },
+    restart() {
+      if (contextLost) return;
+      // Abandoning a run is an ending: its score counts, once.
+      if (run.phase === 'running' && run.score > 0) finish();
+      fresh(false);
+      context.setStatus('Fresh course. Choose a difficulty, then press Play.');
+    },
+    serialize: snapshot,
+    restore(value) {
+      const restored = restoreSnapshot(value);
+      if (!restored) return;
+      cancel();
+      clearInput();
+      records = restored.records;
+      run = restored.run ?? createRun(run.seed, run.run, restored.difficulty);
+      course = getCourse(run.seed, run.difficulty);
+      waiting = run.phase === 'running';
+      committed = run.phase === 'over';
+      marks = restoredMarks(value);
+      view = viewRecords(records, run.difficulty, new Date());
+      reported = run.score;
+      boostText = run.gateIndex >= 0 ? gateText() : 'Speed Up';
+      scene.reset();
+      // An old save's best becomes Medium's all-time record. With no best there is nothing to tell: the plain setup.
+      const kept = restored.migrated ? records.medium.allTime : 0;
+      note.hidden = kept <= 0;
+      note.textContent = kept > 0 ? `Ball Run has a new course. Your best of ${kept} m is kept as Medium’s all-time record.` : '';
+      screen();
+      // A Game Over reopened from the save says what ended the run and what to do next, as a live death does.
+      const text = waiting ? `Saved ${label()} run at ${run.score} metres. Press Continue to resume.` : run.phase === 'over' ? overStatus() : kept > 0 ? note.textContent : '';
+      if (text) { context.setStatus(text); context.announce(text); }
+      if (run.phase === 'over') focusAgain();
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      cancel();
+      settle();
+      clearInput();
+      abort.abort();
+      resize.disconnect();
+      scene.dispose();
+      root.remove();
+    },
   };
 }
-const game:GameModule=Object.freeze({id:'ball-run',title:'Ball Run',cover:'game-art/ball-run/cover.svg',rules:'Roll as far as you can. Drag smoothly across the track, or hold Left / Right arrows or A / D to steer. Ride ramps across gaps and follow the cyan acceleration gates. Avoid magenta blocks and stay on narrow sections. Falling off an edge or hitting a block ends the run. Speed increases gradually and cyan sections give a temporary boost. Your best distance is saved. Start rolling or Continue rolling begins a run; Roll again gives you a fresh track.',mount});
+
+const game: GameModule = Object.freeze({
+  id: 'ball-run', title: 'Ball Run', cover: 'game-art/ball-run/cover.svg',
+  rules: 'Choose Easy, Medium or Hard, then press Play. The ball rolls forward by itself and keeps getting faster. Drag left and right on the track, or hold A / D or the Left / Right arrows, to steer. Hitting a magenta block or rolling off the edge ends the run. Each cyan gate you pass through permanently raises your speed. Your score is the metres you travel; your best today, this week and all time are kept for each difficulty. P pauses and resumes; R plays again after Game Over.',
+  mount,
+});
 export default game;
