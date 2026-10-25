@@ -6,6 +6,7 @@ import {CHUNK_VOLUME,LAYER} from '../../../src/games/blockcraft/engine/constants
 import {BLOCKCRAFT_ONLINE_VERSION,packState,unpackState,validFlat,parseSelf} from '../../../src/games/blockcraft/net/protocol';
 import {checkEdits,plausibleChange,RateLimit} from '../../../src/games/blockcraft/net/validate';
 import {applyDelta} from '../../../src/games/blockcraft/net/host';
+import {slotsAfterFirstSnapshot} from '../../../src/games/blockcraft/net/guest';
 import {localView,playersOf,nearestPlayer} from '../../../src/games/blockcraft/engine/players';
 import type {PlayerView} from '../../../src/games/blockcraft/engine/contracts';
 import {harness,walker} from './entities-helpers';
@@ -73,6 +74,25 @@ describe('host edit validation',()=>{
   test('the rate limit refills over time',()=>{
     const r=new RateLimit(10,20,0);
     expect(r.take(20,0)).toBe(true);expect(r.take(1,0)).toBe(false);expect(r.take(5,600)).toBe(true);
+  });
+});
+
+describe('container snapshot versus a take that already happened',()=>{
+  const diamond=JSON.stringify({id:'diamond',count:3});
+  const empty=JSON.stringify(null);
+  test('a take made after open and before the host snapshot is kept, and the snapshot stays the before-value',()=>{
+    const opened=new Map<number,string>([[0,diamond]]);
+    const localBefore=new Map<number,string>([[0,empty]]);
+    const host=new Map<number,string>([[0,diamond]]);
+    const next=slotsAfterFirstSnapshot(opened,localBefore,host);
+    expect(next.synced.get(0)).toBe(diamond);
+    expect(next.local.get(0)).toBe(empty);
+  });
+  test('an untouched slot keeps the host snapshot',()=>{
+    const opened=new Map<number,string>([[0,diamond]]);
+    const next=slotsAfterFirstSnapshot(opened,opened,new Map([[0,diamond]]));
+    expect(next.local.get(0)).toBe(diamond);
+    expect(next.synced.get(0)).toBe(diamond);
   });
 });
 

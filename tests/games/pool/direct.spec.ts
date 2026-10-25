@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '../../fixtures';
 import {settledPoolGeometry} from '../../../scripts/pool-verifier-shot.mjs';
 async function table(page:Page){const canvas=page.locator('.pool-table');await expect(canvas).toBeVisible();return (await canvas.boundingBox())!;}
-async function cueDrag(page:Page,pull=90){await page.locator('.pool-table').hover();const b=await table(page);await page.mouse.move(b.x+225/840*b.width,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+(225-pull)/840*b.width,b.y+b.height/2,{steps:8});}
+async function cueDrag(page:Page,pull=90){await page.locator('.pool-table').hover();const b=await settledPoolGeometry(page);await page.mouse.move(b.x+225/840*b.width,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+(225-pull)/840*b.width,b.y+b.height/2,{steps:8});}
 type NativePullPoint={type:string;clientX:number;clientY:number;pointerId:number;trusted:boolean;left:number;top:number;width:number;height:number};
 async function recordNativePull(page:Page){
  await page.locator('.pool-table').evaluate(canvas=>{
@@ -34,7 +34,7 @@ async function expectNativePower(page:Page,endType:'pointermove'|'pointerup'){
 }
 test.beforeEach(async({page})=>{await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');});
 test('horizontal direct break separates aim, pull, cancel and release',async({page})=>{
- await page.setViewportSize({width:1440,height:1000});await expect.poll(async()=> (await table(page)).width).toBeGreaterThan(800);const b=await table(page),root=page.locator('.pool-game');expect(b.width/b.height).toBeCloseTo(840/440,1);expect(b.width).toBeGreaterThan(800);
+ await page.setViewportSize({width:1440,height:1000});const b=await settledPoolGeometry(page),root=page.locator('.pool-game');expect(b.width/b.height).toBeCloseTo(840/440,1);expect(b.width).toBeGreaterThan(800);
  await page.mouse.move(b.x+b.width*.5,b.y+b.height*.5);await page.mouse.down();await page.mouse.move(b.x+b.width*.7,b.y+b.height*.5);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');
  await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await expect(page.locator('.pool-power-value')).toContainText('75%');await page.mouse.move(b.x+225/840*b.width,b.y+b.height/2);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');
  await cueDrag(page);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');await expect(root).toHaveAttribute('data-phase','moving');
@@ -91,8 +91,9 @@ test('native touch captures at high DPI, rejects a second finger outside the tab
   });
   async function pull(){const b=await settledPoolGeometry(page),a={x:b.x+225/840*b.width,y:b.y+b.height/2,id:1},z={...a,x:b.x+135/840*b.width};await touch('touchStart',[a]);for(let i=1;i<=6;i++)await touch('touchMove',[{...a,x:a.x+(z.x-a.x)*i/6}]);await expect(root).toHaveAttribute('data-gesture','pull');return {a,z};}
   await pull();await touch('touchCancel');await expect(root).toHaveAttribute('data-shots','0');
-  await pull();await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1.25});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1.25,2);await expect(root).toHaveAttribute('data-gesture','idle');await touch('touchEnd');await expect(root).toHaveAttribute('data-shots','0');
-  await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1,2);
+  // The play surface locks pinch-zoom, so a page-scale request cannot zoom the table or cancel the stroke.
+  await pull();await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1.25});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1,2);await expect(root).toHaveAttribute('data-gesture','pull');await touch('touchCancel');await expect(root).toHaveAttribute('data-shots','0');
+  await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});
   const held=await pull();await touch('touchStart',[held.z,{x:10,y:30,id:2}]);await touch('touchEnd');await expect(root).toHaveAttribute('data-gesture','idle');await expect(root).toHaveAttribute('data-shots','0');
   const returning=await pull();await touch('touchMove',[returning.a]);await touch('touchEnd');await expect(root).toHaveAttribute('data-shots','0');
   await pull();await touch('touchEnd');await expect(root).toHaveAttribute('data-shots','1');

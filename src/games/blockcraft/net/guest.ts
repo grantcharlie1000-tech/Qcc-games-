@@ -30,7 +30,7 @@ export class GuestSession{
   private avatars=new Map<string,{entity:Entity;state:PlayerState}>();
   private tags:NameTags;
   private lastSent=0;private lastSave=0;
-  private containers:{key:string;pos:number[];synced:Map<SlotName,string>}[]=[];
+  private containers:{key:string;pos:number[];synced:Map<SlotName,string>;opened:Map<SlotName,string>}[]=[];
   private off:(()=>void)[]=[];
   private hostPaused=false;
   constructor(private game:Game,private room:Room,private hooks:NetHooks){
@@ -56,7 +56,10 @@ export class GuestSession{
         this.pending.push(x,y,z,from,to);
       }),
       ev.on('containerOpened',({positions})=>{
-        this.containers=positions.map(p=>({key:`${p.x},${p.y},${p.z}`,pos:[p.x,p.y,p.z],synced:new Map()}));
+        this.containers=positions.map(p=>{
+          const local=this.game.blockEntities.get(p.x,p.y,p.z);
+          return {key:`${p.x},${p.y},${p.z}`,pos:[p.x,p.y,p.z],synced:new Map(),opened:new Map(local?slots(local):[])};
+        });
         this.send({t:'open',positions:positions.map(p=>[p.x,p.y,p.z])});
       })
     );
@@ -196,13 +199,19 @@ export class GuestSession{
     const c=this.containers.find(c=>c.key===`${pos[0]},${pos[1]},${pos[2]}`);if(!c)return;
     const local=this.game.blockEntities.get(pos[0],pos[1],pos[2]),v=m.entity as Record<string,unknown>|null;
     if(!local||!v||v.kind!==local.kind)return;
+    // The join snapshot already filled this chest, so a take can land before the host's first copy arrives.
+    const first=!c.synced.size;
+    const localBefore=first?new Map(slots(local)):null;
     // In place: the open screen's slots read these very arrays and fields.
     if(local.kind==='chest'&&Array.isArray(v.items))for(let i=0;i<local.items.length;i++)local.items[i]=stackOrNull(v.items[i]);
     if(local.kind==='furnace'){
       local.input=stackOrNull(v.input);local.fuel=stackOrNull(v.fuel);local.output=stackOrNull(v.output);
       for(const k of ['burn','burnTotal','cook','xp'] as const){const n=v[k];if(typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1e6)local[k]=n;}
     }
-    for(const [slot,value] of slots(local))c.synced.set(slot,value);
+    const host=new Map(slots(local));
+    const next=first&&localBefore?slotsAfterFirstSnapshot(c.opened,localBefore,host):{synced:host,local:host};
+    if([...next.local].some(([slot,value])=>next.synced.get(slot)!==value))writeSlots(local,next.local);
+    c.synced=next.synced;
   }
 
   // ---- Per tick and frame ----------------------------------------------------------------------------------------------------
@@ -273,4 +282,27 @@ export class GuestSession{
 function slots(e:BlockEntity):[SlotName,string][]{
   if(e.kind==='chest')return e.items.map((s,i)=>[i,JSON.stringify(s??null)]);
   return[['input',JSON.stringify(e.input??null)],['fuel',JSON.stringify(e.fuel??null)],['output',JSON.stringify(e.output??null)],['xp',JSON.stringify(e.xp)]];
+}
+/**
+ * The host's first container copy is authoritative, except for a slot the player already changed after opening.
+ * `synced` stays the host value so the next frame sends that edit as before → after. An untouched slot keeps the host copy.
+ */
+export function slotsAfterFirstSnapshot(
+  opened:ReadonlyMap<SlotName,string>,
+  localBefore:ReadonlyMap<SlotName,string>,
+  host:ReadonlyMap<SlotName,string>,
+):{synced:Map<SlotName,string>;local:Map<SlotName,string>}{
+  const synced=new Map(host),local=new Map(host);
+  for(const [slot,value] of localBefore){
+    const atOpen=opened.get(slot);
+    if(atOpen!==undefined&&value!==atOpen)local.set(slot,value);
+  }
+  return {synced,local};
+}
+function writeSlots(e:BlockEntity,values:ReadonlyMap<SlotName,string>){
+  const read=(slot:SlotName)=>stackOrNull(JSON.parse(values.get(slot)??'null'));
+  if(e.kind==='chest'){for(const [slot] of values)if(typeof slot==='number')e.items[slot]=read(slot);return;}
+  for(const key of ['input','fuel','output'] as const)if(values.has(key))e[key]=read(key);
+  const xp=values.get('xp');
+  if(xp!==undefined){const n=JSON.parse(xp);if(typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1e6)e.xp=n;}
 }

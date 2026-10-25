@@ -1,7 +1,7 @@
 /* A browser viewport layer, independent of native fullscreen. */
 html.game-viewport,html.game-viewport body{height:100%;overflow:hidden;overscroll-behavior:none}
 body.in-game .topbar{display:none}
-body.in-game .game-view{position:fixed;inset:0;width:100%;height:100dvh;max-width:none;margin:0;padding:8px 12px;display:flex;flex-direction:column;overflow:hidden;background:#191d1c}
+body.in-game .game-view{position:fixed;top:var(--play-top,0px);left:var(--play-left,0px);width:var(--play-width,100%);height:var(--play-height,100dvh);max-width:none;margin:0;padding:8px 12px;display:flex;flex-direction:column;overflow:hidden;background:#191d1c;touch-action:manipulation}
 body.in-game .game-toolbar{flex:0 0 46px;min-height:0;gap:5px;max-width:1080px;width:100%;margin:0 auto}
 body.in-game .game-toolbar h1{font-size:21px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.in-game .game-toolbar .icon-button{min-width:34px;min-height:36px;padding:5px}
@@ -65,6 +65,18 @@ body.in-game .game-view[data-game-id=ball-run] #restart-game,
 body.in-game .game-view[data-game-id=blockcraft] #restart-game{position:fixed;bottom:7px;right:78px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px}
 body.in-game .game-view[data-game-id=ball-run] #restart-game svg,
 body.in-game .game-view[data-game-id=blockcraft] #restart-game svg{width:18px;height:18px}
+/* Full screen sits in the top bar, clear of the in-flow corner control, and does not change that control's flex place. */
+body.in-game .game-view[data-reference-game=true] #fullscreen-game{position:absolute;top:2px;right:56px;z-index:2;margin:0}
+body.in-game .game-view[data-game-id=neon-coil] #fullscreen-game{top:max(20px,env(safe-area-inset-top));right:calc(max(22px,env(safe-area-inset-right)) + 52px);left:auto;bottom:auto;width:42px;height:42px;min-width:42px;min-height:42px}
+/* Animal Stack, Color Blocks and Water Sort keep a centred title under the top bar. Ball Run's score sits in that same row, measured against Back and Pause, so full screen joins the bottom cluster there too. */
+body.in-game .game-view[data-game-id=animal-stack] #fullscreen-game,
+body.in-game .game-view[data-game-id=color-blocks] #fullscreen-game,
+body.in-game .game-view[data-game-id=water-sort] #fullscreen-game,
+body.in-game .game-view[data-game-id=ball-run] #fullscreen-game{position:fixed;top:auto;bottom:max(7px,env(safe-area-inset-bottom));right:146px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px;background:#0002;color:#ffffffc9}
+body.in-game .game-view[data-game-id=animal-stack] #fullscreen-game svg,
+body.in-game .game-view[data-game-id=color-blocks] #fullscreen-game svg,
+body.in-game .game-view[data-game-id=water-sort] #fullscreen-game svg,
+body.in-game .game-view[data-game-id=ball-run] #fullscreen-game svg{width:18px;height:18px}
 /* Globle lays itself out responsively inside the whole stage. */
 body.in-game .game-view[data-game-id=globle] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=globle] #game-stage{height:100%;max-height:none;min-height:0}
@@ -108,4 +120,8 @@ body.in-game .game-view[data-game-id=corn-clicker]~.lb-sidebar .lb-panel{transfo
 @media(hover:hover) and (pointer:fine){.lb-toggle:hover{background:#2c3134f0}}
 @media(prefers-reduced-motion:reduce){.lb-panel{animation:none}}
 .reduce-motion .lb-panel{animation:none}
+/* Playing: no double-tap zoom. Pinch is also cancelled in script. Text fields stay selectable. */
+html.play-locked,html.play-locked body{touch-action:manipulation;-webkit-text-size-adjust:100%}
+html.play-locked body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html.play-locked input,html.play-locked textarea,html.play-locked select,html.play-locked [contenteditable]{-webkit-user-select:text;user-select:text;touch-action:manipulation}
 @media(max-width:1099px){.lb-toggle{width:40px;height:40px;padding:0;justify-content:center}.lb-toggle span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}}

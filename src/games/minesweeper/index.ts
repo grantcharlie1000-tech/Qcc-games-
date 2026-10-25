@@ -9,7 +9,7 @@ const game:GameModule={
   id:'minesweeper',title:'Minesweeper',cover:'game-art/minesweeper/cover.svg',
   rules:'Reveal all safe cells to clear the field. Numbers count mines in the eight neighboring cells. Empty cells open a connected area. Your first reveal and its neighbors are always safe.\n\nRight-click, hold a tile, use Flag mode, or press F to flag or unflag a covered cell. Flags are reminders; placing flags alone never wins. Click a revealed number (or press C) to open its neighbors when the flag count matches. Wrong flags can detonate a mine.\n\nUse arrow keys to move, Home/End to move across a row, Enter/Space to reveal. Choose larger cells for easier tapping; wide fields scroll inside the board. The timer starts on your first reveal and pauses with the game. Use Restart above for a new field.',
   mount(container,context){
-    let board=create('beginner',newSeed()),paused=false,disposed=false,flagMode=false,focus=0,size=34;
+    let board=create('beginner',newSeed()),paused=false,disposed=false,flagMode=false,focus=0,size=matchMedia('(pointer: coarse)').matches?44:34;
     let last=performance.now(),hold:number|undefined,press:{i:number;pointerId:number;x:number;y:number;consumed:boolean}|undefined,suppress:{i:number;pointerId:number}|undefined;
     const events=new AbortController();
     const root=document.createElement('section');root.className='ms';root.setAttribute('aria-label','Minefield');

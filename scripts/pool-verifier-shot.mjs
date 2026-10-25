@@ -9,8 +9,8 @@ function inspectLayout(canvas,{expected}={}){
   const r=canvas.getBoundingClientRect(),style=getComputedStyle(root),canvasStyle=getComputedStyle(canvas);
   const rect={x:r.x,y:r.y,width:r.width,height:r.height};
   const width=available.clientWidth,height=available.clientHeight,naturalWidth=Math.max(root.offsetWidth,root.scrollWidth),naturalHeight=Math.max(root.offsetHeight,root.scrollHeight)+(parseFloat(style.marginTop)||0)+(parseFloat(style.marginBottom)||0);
-  const scale=Math.min(1,width/naturalWidth,height/naturalHeight);
-  const fit=stage.classList.contains('viewport-fitted')&&stage.style.width===`${Math.min(1080,width)}px`&&stage.style.height===`${naturalHeight}px`&&Number(stage.dataset.viewportScale)===scale;
+  const scale=!naturalWidth||!naturalHeight?1:Math.min(width/naturalWidth,height/naturalHeight);
+  const fit=stage.classList.contains('viewport-fitted')&&stage.style.width===`${width}px`&&stage.style.height===`${naturalHeight}px`&&Math.abs(Number(stage.dataset.viewportScale)-scale)<1e-6;
   const ready=fit&&width>0&&height>0&&Object.values(rect).every(Number.isFinite)&&r.width>0&&r.height>0&&canvasStyle.display!=='none'&&canvasStyle.visibility==='visible'&&!stage.getAnimations({subtree:true}).some(a=>a.playState==='running'||a.pending);
   return {...rect,layoutKey:JSON.stringify([rect,stage.style.cssText,stage.dataset.viewportScale,width,height,naturalWidth,naturalHeight]),ready};
  };

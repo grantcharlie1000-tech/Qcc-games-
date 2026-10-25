@@ -10,11 +10,12 @@ import {activateUpdate, cacheAll, checkForUpdates, watchUpdates} from './core/of
 import {StudyView} from './study/view';
 import {reloadAfterActivation} from './core/update';
 import {fitGameStage} from './core/viewport-fit';
+import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {LeaderboardView} from './leaderboard/view';
 import {LeaderboardSidebar} from './leaderboard/sidebar';
 
 const icon=(name:string)=>{
-  const paths:Record<string,string>={menu:'<path d="M4 7h16M4 12h10"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
+  const paths:Record<string,string>={menu:'<path d="M4 7h16M4 12h10"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',fullscreen:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',exitfs:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.grid}</svg>`;
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
@@ -33,12 +34,16 @@ let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null
 let focusLabelBeforeStudy:string|null=null;
 let libraryScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
+let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
 const fillGames=new Set<GameId>(['globle','corn-clicker']);
 
 function syncViewportLock(){
-  document.documentElement.classList.toggle('game-viewport',!!activeId&&!document.body.classList.contains('study-active'));
+  const playing=!!activeId&&!document.body.classList.contains('study-active');
+  document.documentElement.classList.toggle('game-viewport',playing);
+  // Study and the library can scroll and zoom. Escape still opens Study; leaving play also exits fullscreen.
+  syncPlaySurface(playing);
 }
 
 const study=new StudyView(()=>{
@@ -92,6 +97,7 @@ watchUpdates(import.meta.url,status=>{
   if(newlyReady)announce('An update is ready. Open the menu, or use Reload to update in Study, when you are ready.');
 });
 function leave(){
+  detachFullscreen?.();detachFullscreen=undefined;
   leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
   stopFitting?.();stopFitting=undefined;
   save();instance?.dispose();instance=undefined;activeId=undefined;
@@ -183,11 +189,21 @@ async function route(){
       <button id="pause-game" class="icon-button" aria-label="Pause game">${icon('pause')}</button>
       <button id="restart-game" class="icon-button" aria-label="Restart game">${icon('restart')}</button>
       <button id="rules-game" class="icon-button" aria-label="Game rules">${icon('rules')}</button>
+      <button id="fullscreen-game" class="icon-button" type="button" aria-label="Enter full screen" aria-pressed="false" title="Enter full screen">${icon('fullscreen')}</button>
       <button id="game-menu" class="icon-button game-menu-button" aria-label="Open menu">${icon('menu')}</button>
     </div>
     <div class="game-metrics"><span id="game-score"><span class="metric-label">${referenceGames.has(id)?id==='animal-stack'?'SOLO':'SCORE':'Score'}</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">${referenceGames.has(id)?'RECORD':'Best'}</span><strong>${store.highScore(id)}</strong><svg class="record-crown" viewBox="0 0 28 12" aria-hidden="true"><path d="m2 9-1-7 7 4 6-6 6 6 7-4-1 7z" fill="currentColor"/></svg></span></div>
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
     <p id="game-status" role="status"${id==='pool'?' aria-hidden="true"':''}></p></section>`;
+  const fullscreenButton=document.querySelector<HTMLButtonElement>('#fullscreen-game')!;
+  detachFullscreen=attachFullscreen(fullscreenButton,state=>{
+    fullscreenButton.setAttribute('aria-pressed',String(state.expanded));
+    const label=state.expanded?'Exit full screen':'Enter full screen';
+    const hint='This browser keeps its own controls. The game fills the screen.';
+    fullscreenButton.setAttribute('aria-label',state.fallback&&state.expanded?`${label}. ${hint}`:label);
+    fullscreenButton.title=state.fallback&&state.expanded?hint:label;
+    fullscreenButton.innerHTML=icon(state.expanded?'exitfs':'fullscreen');
+  },()=>{if(activeId&&!study.isOpen)openStudy();});
   if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
   document.querySelector('#game-menu')!.addEventListener('click',openMenu);
   try {
