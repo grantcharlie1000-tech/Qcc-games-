@@ -1,0 +1,1 @@
+movies.webm is a 3-second silent solid-colour video generated for this repository's player tests with FFmpeg's color filter. It contains no third-party footage, music, images or other content. QCC dedicates the generated fixture to the public domain under CC0-1.0. It is test-only and is not shipped in public/ or the production build.

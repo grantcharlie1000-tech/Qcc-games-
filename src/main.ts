@@ -1,3 +1,6 @@
+import {moviesCard} from './movies/card';
+import './movies/style.css';
+import type {MoviesView} from './movies/view';
 import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
 import './style.css';
@@ -33,6 +36,9 @@ let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
 let focusLabelBeforeStudy:string|null=null;
 let libraryScroll={x:0,y:0};
+let movies:MoviesView|undefined;
+let movieOrigin:DOMRect|undefined;
+let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
@@ -97,6 +103,8 @@ watchUpdates(import.meta.url,status=>{
   if(newlyReady)announce('An update is ready. Open the menu, or use Reload to update in Study, when you are ready.');
 });
 function leave(){
+  movies?.dispose();movies=undefined;
+  document.querySelector<HTMLElement>('.topbar')!.inert=false;
   detachFullscreen?.();detachFullscreen=undefined;
   leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
   stopFitting?.();stopFitting=undefined;
@@ -107,7 +115,7 @@ function leave(){
 }
 function library(){
   const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1><div class="game-grid" aria-label="Game library">${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1><div class="game-grid" aria-label="Game library">${moviesCard()}${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
 }
 function setPaused(value:boolean):boolean {
   if(!value&&updateBusy)updateRequest++;
@@ -143,6 +151,7 @@ function studyMessage(saved:boolean):string {
   return store.canRetain()?'Game paused. Progress saved on this device.':'Game paused. Progress is held in memory for this visit.';
 }
 function openStudy(){
+  movies?.pause();
   if(study.isOpen)return;
   focusBeforeStudy=document.activeElement instanceof HTMLElement?document.activeElement:null;
   focusLabelBeforeStudy=focusBeforeStudy?.closest('#game-stage')?focusBeforeStudy.getAttribute('aria-label'):null;
@@ -171,6 +180,24 @@ async function route(){
   if(!initialized)return;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
+  const isMovies=location.hash==='#/movies'||location.hash.startsWith('#/movies/');
+  if(isMovies){
+    if(movies){movies.navigate(location.hash);return;}
+    if(!activeId)movieScroll={x:scrollX,y:scrollY};
+    if(menu.open)menu.close();
+    if(rulesDialog.open)rulesDialog.close();
+    if(leaderboards.root.open)leaderboards.root.close();
+    const token=++generation;leave();
+    content.innerHTML='<p class="loading">Opening Movies &amp; TV…</p>';
+    try{
+      const {MoviesView}=await import('./movies/view');if(token!==generation)return;
+      movies=new MoviesView(content,openStudy,preferences.reducedMotion,movieOrigin);movieOrigin=undefined;
+      document.querySelector<HTMLElement>('.topbar')!.inert=true;
+      movies.navigate(location.hash);
+    }catch{if(token===generation)content.innerHTML='<p>Movies &amp; TV could not load.</p><a href="#/collection">Back to games</a>';}
+    return;
+  }
+  const wasInMovies=!!movies;
   const requested=entryFromHash(location.hash);
   const id=requested&&games.some(g=>g.id===requested)?requested:undefined;
   // Keep a game link's options (an online invite) when the address is made canonical.
@@ -180,7 +207,7 @@ async function route(){
   if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
   if(leaderboards.root.open){pausedForDialog=false;leaderboards.root.close();}
   const token=++generation;leave();
-  if(!id){library();if(wasInGame)requestAnimationFrame(()=>{if(!activeId)window.scrollTo(libraryScroll.x,libraryScroll.y);});return;}
+  if(!id){library();if(wasInMovies)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);document.querySelector<HTMLElement>('.movies-launch')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId)window.scrollTo(libraryScroll.x,libraryScroll.y);});return;}
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-toolbar">
@@ -264,7 +291,7 @@ function dialogClosed(){
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
-menu.addEventListener('close',()=>{if(updateBusy)updateRequest++;dialogClosed();if(!activeId&&!study.isOpen)library();});
+menu.addEventListener('close',()=>{if(updateBusy)updateRequest++;dialogClosed();if(!activeId&&!movies&&!location.hash.startsWith('#/movies')&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
 document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
@@ -301,8 +328,9 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
   finally{button.disabled=false;}
 });
 
+content.addEventListener('click',event=>{const link=(event.target as Element).closest('.movies-launch');if(link&&event instanceof MouseEvent&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&event.button===0){movieOrigin=link.getBoundingClientRect();}});
 window.addEventListener('hashchange',()=>void route());
-window.addEventListener('pagehide',save);
+window.addEventListener('pagehide',()=>{save();movies?.pause();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance)setPaused(true);});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
@@ -310,7 +338,7 @@ window.addEventListener('keydown',event=>{
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
-  if(event.key!=='Escape'||(!activeId&&!study.isOpen))return;
+  if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;
   event.preventDefault();event.stopImmediatePropagation();
   if(!event.repeat&&!study.isOpen)openStudy();
 },{capture:true});
