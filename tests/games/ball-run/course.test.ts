@@ -95,8 +95,9 @@ function capDistance(c: Course): number {
   for (let i = 0; i < 50; i++) { const mid = (lo + hi) / 2; if (c.speed(mid) >= max) hi = mid; else lo = mid; }
   return hi;
 }
-/** The flight and gate tests run each course from the start to 4 km past its speed cap (16–20 km). */
-const farEnd = (c: Course) => Math.ceil(capDistance(c)) + 4000;
+/** Keep at least the original 20 km coverage when stronger gates reach the cap earlier,
+ * and always include 4 km at the cap. Do not trade away gate/flight cases as tuning changes. */
+const farEnd = (c: Course) => Math.max(20000, Math.ceil(capDistance(c)) + 4000);
 interface Flight { kind: SegmentKind; takeoff: number; landing: number; airtime: number; apex: number; clearance: number; speed: number; relaunch: number }
 const flightCache = new WeakMap<Course, Flight[]>();
 /** Every flight of a point mass running along the road's centre line at the course's speed, from the

@@ -197,14 +197,14 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   scene.add(key, rim);
 
   // Speed Up trail and the block-death burst: one pooled mesh each, hidden when unused.
-  // The trail uses normal blending so it stays magenta over the light road lines. Instances
+  // The cyan trail ties acceleration to the gate, distinct from the magenta ball. Instances
   // have no alpha of their own, so older spheres darken toward the road colour and shrink.
   const trailMaterial = basic({ color: PALETTE.white, transparent: true, depthWrite: false });
   const trail = pool(sphere, trailMaterial, TRAIL, scene, true);
   const burstMaterial = basic({ color: PALETTE.white, transparent: true });
   const burst = pool(box, burstMaterial, BURST, scene, true);
   const burstColors = [new THREE.Color(PALETTE.sphere), new THREE.Color(PALETTE.boost), new THREE.Color(PALETTE.white)];
-  const trailColor = new THREE.Color(PALETTE.sphere), trailFaded = new THREE.Color(PALETTE.track), tint = new THREE.Color();
+  const trailColor = new THREE.Color(PALETTE.boost), trailFaded = new THREE.Color(PALETTE.track), tint = new THREE.Color();
 
   const stats: SceneStats = { calls: 0, geometries: 0, aspect: 1, ballScreenX: .5, ballScreenY: .5 };
   const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample();
@@ -246,7 +246,9 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     const nx = Math.sin(M.bank) * TILE_DEPTH / 2, ny = Math.cos(M.bank) * TILE_DEPTH / 2;
     position.set((A.center + B.center) / 2 - nx, (A.elevation + B.elevation) / 2 + yRef - ny, -((lo + hi) / 2 - builtOrigin));
     rotation.set(pitch, yaw, -M.bank, 'YXZ');
-    scale.set(M.width, TILE_DEPTH, Math.hypot(dc, de, length) + .01);
+    // Width is measured in world x, as are lane lines and contact. Rolling a tile
+    // must not shrink its visible width relative to those shared course bounds.
+    scale.set(M.width / Math.cos(M.bank), TILE_DEPTH, Math.hypot(dc, de, length) + .01);
     place(tiles, tileIndex);
     // Counted, not for-of, which allocated an iterator per tile.
     for (let k = 0; k < LANES.length; k++) {

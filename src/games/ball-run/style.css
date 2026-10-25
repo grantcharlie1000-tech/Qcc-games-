@@ -25,11 +25,12 @@
 /* The speed crosses a gate's lavender arch bars just as a gate changes it: opaque text in a hard black outline on
  * every side (as on the buttons' labels) with the HUD's halo, so it reads over the bars as well as over the void. */
 .br-speed{margin-top:2px;font-size:10px;color:#ecebff;text-shadow:-1px -1px 0 #000,0 -1px 0 #000,1px -1px 0 #000,1px 0 0 #000,1px 1px 0 #000,0 1px 0 #000,-1px 1px 0 #000,-1px 0 0 #000,0 1px 3px #000d}
+.ball-run[data-boost=true] .br-speed{font-size:14px;color:#00e7ef}
 /* Speed Up sits beside the ball, lower left (index.ts places it from the ball's screen position). */
-.br-boost{position:absolute;left:0;top:0;z-index:4;font-size:clamp(16px,2.4vmin + 6px,24px);line-height:1;font-style:italic;letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none;text-shadow:0 0 10px #00e7ef,0 2px 0 #8a0a6c}
+.br-boost{position:absolute;left:0;top:0;z-index:4;font-size:clamp(20px,3vmin + 8px,30px);line-height:1;font-style:italic;letter-spacing:.02em;color:#fff;white-space:nowrap;pointer-events:none;text-shadow:0 0 10px #00e7ef,0 2px 0 #8a0a6c}
 /* index.ts sets these every frame. The shell's reduced-motion rule gives every element a
  * 0.01 ms transition, which would otherwise interpolate (or, with no frames, hold) each write. */
-.br-boost,.br-layer,.br-over{transition:none}
+.br-speed,.br-boost,.br-layer,.br-over{transition:none}
 
 /* Panels sit over a dimmed world, below the shell's pause overlay (z-index 20), clear of its corner and bottom controls.
  * The layer's one cell is exactly the space between them, so a panel's max-height holds; a panel never clips:
