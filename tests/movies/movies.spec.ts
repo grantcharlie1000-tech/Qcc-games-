@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 test.beforeEach(async({page})=>{
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
  await page.route('https://framextv.xyz/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
 test('full-width launch, local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
@@ -14,6 +15,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  const [grid,card]=await Promise.all([page.locator('.game-grid').boundingBox(),launch.boundingBox()]);expect(card!.width).toBeGreaterThan(grid!.width-50);
  await expect(launch.locator('img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\/w185\//);
  await launch.click();await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
+ await page.screenshot({path:'test-results/movies-home.png',fullPage:true});
  await expect(page.locator('.movies-poster img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\//);
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('sherlock');
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);
@@ -127,6 +129,44 @@ test('provider playback is enabled and sandboxed, and Study unloads it',async({p
  expect(await frame.getAttribute('allow')).toContain("camera 'none'");expect(await frame.getAttribute('src')).toContain('/embed/157336?autoplay=0');
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await expect(frame).toHaveCount(0);
  await page.getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame).toBeVisible();
+});
+
+test('full-catalog search, episode metadata and playback are on demand',async({page})=>{
+ const urls:string[]=[];page.on('request',request=>urls.push(request.url()));
+ await page.route('**/api/movies?*',async route=>{
+  const params=new URL(route.request().url()).searchParams;
+  if(params.has('id')){
+   const season=Number(params.get('season')||1);
+   const episodes=season===2?[{number:1,name:'The Long Crossing',overview:'A second-season episode.'}]:[{number:1,name:'First Contact',overview:'A first-season episode.'}];
+   return route.fulfill({json:{title:{id:'tv-778899',kind:'tv',name:'Remote Expedition',year:2024,genres:['Adventure','Drama'],overview:'A series returned from the full catalog.',poster:'https://image.tmdb.org/t/p/w500/remote.jpg',backdrop:'https://image.tmdb.org/t/p/w1280/remote-backdrop.jpg',seasons:[{number:1,name:'Season 1',episodes:season===1?episodes:[]},{number:2,name:'Season 2',episodes:season===2?episodes:[]}]}}});
+  }
+  return route.fulfill({json:{titles:[{id:'tv-778899',kind:'tv',name:'Remote Expedition',year:2024,genres:['Adventure'],overview:'A searchable series outside the starter snapshot.',poster:'https://image.tmdb.org/t/p/w500/remote.jpg',seasons:[]}],page:1,totalPages:1,totalResults:1}});
+ });
+ await page.goto('/#/movies');await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('remote expedition');
+ await expect(page.getByRole('link',{name:'Details for Remote Expedition'})).toBeVisible();
+ expect(urls.some(url=>url.includes('/api/movies?')&&url.includes('remote+expedition'))).toBe(true);
+ expect(urls.some(url=>url.includes('framextv'))).toBe(false);
+ await page.getByRole('link',{name:'Details for Remote Expedition'}).click();
+ await expect(page.getByRole('heading',{name:'Remote Expedition'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Play First Contact'})).toBeVisible();
+ await page.getByLabel('Season',{exact:true}).selectOption('2');
+ await expect(page.getByRole('link',{name:'Play The Long Crossing'})).toBeVisible();
+ await page.getByRole('link',{name:'Play The Long Crossing'}).click();
+ await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src',/\/embed\/778899\/2\/1/);
+});
+
+test('catalog search is paginated and remains isolated from the playback provider',async({page})=>{
+ await page.route('**/api/movies?*',route=>{
+  const params=new URL(route.request().url()).searchParams;
+  const title=params.get('page')==='2'?'Second Page Feature':'First Page Feature';
+  return route.fulfill({json:{titles:[{id:'movie-7788',kind:'movie',name:title,year:2023,genres:['Drama'],overview:'A full catalog result.',poster:'https://image.tmdb.org/t/p/w500/result.jpg',seasons:[]}],page:Number(params.get('page')||1),totalPages:2,totalResults:40}});
+ });
+ const requests:string[]=[];page.on('request',r=>requests.push(r.url()));
+ await page.goto('/#/movies');await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('feature');
+ await expect(page.getByRole('link',{name:'Details for First Page Feature'})).toBeVisible();
+ await page.getByRole('button',{name:'Next',exact:true}).click();
+ await expect(page.getByRole('link',{name:'Details for Second Page Feature'})).toBeVisible();
+ expect(requests.filter(url=>url.includes('framextv'))).toEqual([]);
 });
 
 

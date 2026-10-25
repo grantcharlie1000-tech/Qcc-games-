@@ -25,3 +25,98 @@ body.movies-active.study-active{overflow:auto}
 
 .movies-screen{width:100%;min-width:0;max-width:100%}.movies-provider-frame{display:block;max-width:100%;min-width:0}
 .movies-detail-art{aspect-ratio:2/3;object-fit:cover}
+
+/* FrameXTV reference: compact discovery header, title-first catalog rows, metadata badges and poster-led cards. */
+.movies-view{background:#0c1017;--movies-accent:#69d8f4}
+.movies-launch{background:radial-gradient(ellipse at 80% 20%,#174a64,transparent 65%),linear-gradient(115deg,#101722,#101a27);border-color:#273545}
+.movies-launch-copy>strong>span,.movies-card-mark,.movies-hero-copy .movies-eyebrow>span,.movies-detail .movies-eyebrow,.movies-player>.movies-eyebrow,.movies-episode-number{color:var(--movies-accent)}
+.movies-launch-cta{background:var(--movies-accent);color:#06131b!important}
+.movies-mini-poster{border-radius:8px;border:1px solid #ffffff22}
+.movies-view{--movies-accent:#69d8f4}
+.movies-top{height:68px;background:#0d121bf2;border-bottom:1px solid #202b39;backdrop-filter:blur(16px)}
+.movies-brand{color:#eaf7ff!important;letter-spacing:-1px}
+.movies-brand>span{color:#8ba0b6}
+.movies-top nav button{border-radius:999px;padding:0 13px;transition:background .18s,color .18s}
+.movies-top nav button[aria-pressed=true]{color:#8ee7fb;background:#1a2d3a}
+.movies-top nav button:hover{color:#fff;background:#172330}
+.movies-top-tools{gap:15px}
+.movies-top .movies-search-toggle{color:#d8edf5}
+.movies-profile{background:linear-gradient(135deg,#46c5e4,#167eaa);color:#07151c}
+.movies-hero{height:min(43vw,620px);min-height:450px;margin:12px 3.5% 0;padding:68px 4% 76px;border:1px solid #293442;border-radius:16px;background:linear-gradient(90deg,#08101bed 0%,#08101b99 40%,transparent 75%),linear-gradient(0deg,#0c1017 0%,transparent 34%),var(--movies-hero) center 38%/cover no-repeat,var(--movies-hero-fallback) center/cover no-repeat;overflow:hidden}
+.movies-hero-copy{width:min(600px,50%)}
+.movies-hero-copy h1{text-transform:none;letter-spacing:-1.5px;font-weight:800}
+.movies-hero-copy .movies-eyebrow{letter-spacing:2px;color:#8ee7fb}
+.movies-hero-tagline{font-size:18px}
+.movies-view .movies-primary{background:#8ce8f8;color:#0b1720;border-radius:7px}
+.movies-view .movies-primary:not(:disabled):hover{background:#b4f2ff}
+.movies-view .movies-secondary{background:#273440bb;border-radius:7px;border:1px solid #ffffff2a}
+.movies-view .movies-hero-list{border-radius:7px;background:#16232dbb;border-color:#ffffff38}
+.movies-hero-index{bottom:20px;right:20px;padding:8px 12px;border:1px solid #ffffff26;border-radius:8px;background:#0d1723c7}
+.movies-browse{padding:16px 4% 58px;margin-top:0}
+.movies-filterbar{position:relative;justify-content:flex-start;gap:13px;margin-bottom:22px}
+.movies-filterbar label{font-size:12px}
+.movies-search{max-width:520px;min-height:46px;border:1px solid #344253;border-radius:9px;background:#121a25}
+.movies-search input{font-size:14px}
+.movies-filterbar select{border-color:#344253;border-radius:9px;background:#121a25}
+.movies-shelf{margin:24px 0 32px}
+.movies-shelf-head{margin-bottom:10px}
+.movies-shelf-head h2{font-size:20px;letter-spacing:-.2px}
+.movies-shelf-head>span{padding:4px 9px;border:1px solid #273847;border-radius:999px;color:#8eb2c2;letter-spacing:.35px}
+.movies-row{grid-auto-columns:calc((100% - 55px)/6);gap:11px}
+.movies-poster-art{aspect-ratio:2/3;border:1px solid #273442;border-radius:9px;background:#131b24}
+.movies-poster img{object-position:50% 28%}
+.movies-poster-art:after{background:linear-gradient(0deg,#080e17ef 0%,#080e1740 45%,transparent 80%)}
+.movies-card-mark{font-size:18px}
+.movies-poster-type{top:9px;right:8px;padding:4px 6px;border:1px solid #ffffff38;border-radius:999px;background:#09131bb8;font-size:7px;letter-spacing:1px}
+.movies-poster-logo{font-size:clamp(12px,1.1vw,18px);left:10px;right:10px;bottom:10px;text-transform:none;line-height:1.14}
+.movies-poster>strong{font-size:12px;margin:8px 1px 1px;color:#edf3f8}
+.movies-poster small{font-size:10px;color:#8ea1b1}
+.movies-results-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:24px 13px}
+.movies-results-grid .movies-poster-art{aspect-ratio:2/3}
+.movies-result-count{color:#93aab8}
+.movies-catalog-status{margin:12px 0 16px!important;padding:11px 14px;border:1px solid #28394a;border-left:3px solid #69d8f4;border-radius:6px;background:#111a25;color:#b9d3df;font-size:13px}
+.movies-pagination{display:flex;align-items:center;justify-content:center;gap:16px;padding:26px 0 8px;color:#a8bdcb;font-size:13px}
+.movies-pagination button{border-color:#334353;border-radius:8px;background:#141e29}
+.movies-pagination button:not(:disabled):hover{border-color:#69d8f4;color:#a3edfa}
+.movies-detail-art{border-radius:10px;border:1px solid #2a3946}
+.movies-tags span{border-color:#334353;border-radius:999px;background:#111922}
+.movies-detail .movies-actions button,.movies-detail .movies-actions a{border-radius:8px}
+.movies-episode{border-color:#25313d}
+.movies-episode a{color:#7de2f3}
+.movies-screen{border-radius:12px;border-color:#293744}
+.movies-view button,.movies-view select,.movies-view input{border-color:#354452;border-radius:8px}
+.movies-mobile-nav{background:#0c121aeb;border-top:1px solid #263543}
+.movies-mobile-nav button[aria-pressed=true]{color:#82e3f5}
+@media(max-width:1000px){
+ .movies-row{grid-auto-columns:calc((100% - 33px)/4)}
+ .movies-results-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:650px){
+ .movies-launch{background:linear-gradient(110deg,#101722,#123047);border-radius:14px}
+ .movies-launch-cta{border-radius:8px}
+ .movies-top{height:100px;background:#0d121bf7}
+ .movies-top nav button[aria-pressed=true]{background:#1a2d3a}
+ .movies-hero{height:76vh;min-height:570px;max-height:700px;margin:8px 12px 0;padding:160px 20px 28px;border-radius:14px;background-image:linear-gradient(0deg,#0c1017 0%,#0c101766 72%,#0c101722),linear-gradient(90deg,#07101b55,transparent),var(--movies-hero),var(--movies-hero-fallback);background-position:0,0,58% center,center;background-size:auto,auto,cover,cover}
+ .movies-hero-copy{width:100%}
+ .movies-hero-copy .movies-eyebrow{font-size:9px;letter-spacing:1.8px}
+ .movies-hero-copy .movies-eyebrow>span{font-size:28px}
+ .movies-hero-copy h1{font-size:clamp(30px,8vw,48px);letter-spacing:-.7px}
+ .movies-hero-tagline{font-size:16px}
+ .movies-hero-copy>p:not(.movies-eyebrow):not(.movies-hero-tagline):not(.movies-hero-note){font-size:13px}
+ .movies-browse{padding:15px 16px 40px;margin-top:0}
+ .movies-filterbar{gap:9px}
+ .movies-search{min-height:44px}
+ .movies-filterbar select{min-height:40px}
+ .movies-shelf{margin:21px 0 28px}
+ .movies-shelf-head h2{font-size:17px}
+ .movies-shelf-head>span{display:none}
+ .movies-row{grid-auto-columns:calc((100% - 20px)/2.35);gap:9px}
+ .movies-poster-logo{font-size:15px}
+ .movies-results-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 9px}
+ .movies-results-grid .movies-poster-logo{font-size:12px;left:8px;bottom:8px}
+ .movies-poster>strong{font-size:10px}
+ .movies-poster small{font-size:8px}
+ .movies-catalog-status{font-size:12px}
+ .movies-pagination{gap:8px;font-size:11px}
+ .movies-pagination button{padding:8px 10px;min-height:40px}
+}

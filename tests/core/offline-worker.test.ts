@@ -54,6 +54,13 @@ function worker(options:{putFails?:boolean;openFails?:boolean;mismatch?:boolean;
  return {setWriteFailure:(value:boolean)=>failWrites=value,holdWrites:(value:Promise<void>|undefined)=>holdWrite=value,holdDeletes:(value:Promise<void>|undefined)=>holdDelete=value,self,installing,handlers,pending,skipWaiting,claim,navigate,fetch,caches,backend,clients,omitted,emit,request};
 }
 test('online gameplay survives a full response cache',async()=>{const w=worker({putFails:true});const response=await w.request();expect(response.status).toBe(200);expect(await response.text()).toBe('fresh game chunk');});
+test('full-catalog API requests bypass service-worker caches and reach the network directly',async()=>{
+ const w=worker();const url=origin+'api/movies?q=private-search';
+ const respondWith=vi.fn(),waitUntil=vi.fn();
+ w.handlers.fetch({request:new Request(url),clientId:'old-page',respondWith,waitUntil});
+ expect(respondWith).not.toHaveBeenCalled();expect(w.fetch).not.toHaveBeenCalled();
+ for(const cache of w.backend.values())expect(cache.has(url)).toBe(false);
+});
 test('online gameplay survives completely blocked cache storage',async()=>{const w=worker({openFails:true});const response=await w.request();expect(response.status).toBe(200);expect(await response.text()).toBe('fresh game chunk');});
 test('installing an update never navigates documents or deletes their game caches',async()=>{const w=worker();await w.emit('install');expect(w.navigate).not.toHaveBeenCalled();expect(w.claim).not.toHaveBeenCalled();expect(w.backend.has(oldPack)).toBe(true);});
 test('a coherent update can activate without waiting for legacy documents to close',async()=>{const w=worker();await w.emit('install');expect(w.skipWaiting).toHaveBeenCalledOnce();await w.emit('activate');expect(w.backend.has(oldPack)).toBe(true);expect(w.navigate).not.toHaveBeenCalled();});
