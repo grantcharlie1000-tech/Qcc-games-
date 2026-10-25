@@ -91,8 +91,9 @@ test('native touch captures at high DPI, rejects a second finger outside the tab
   });
   async function pull(){const b=await settledPoolGeometry(page),a={x:b.x+225/840*b.width,y:b.y+b.height/2,id:1},z={...a,x:b.x+135/840*b.width};await touch('touchStart',[a]);for(let i=1;i<=6;i++)await touch('touchMove',[{...a,x:a.x+(z.x-a.x)*i/6}]);await expect(root).toHaveAttribute('data-gesture','pull');return {a,z};}
   await pull();await touch('touchCancel');await expect(root).toHaveAttribute('data-shots','0');
-  await pull();await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1.25});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1.25,2);await expect(root).toHaveAttribute('data-gesture','idle');await touch('touchEnd');await expect(root).toHaveAttribute('data-shots','0');
-  await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1,2);
+  // The play surface locks pinch-zoom, so a page-scale request cannot zoom the table or cancel the stroke.
+  await pull();await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1.25});await expect.poll(()=>page.evaluate(()=>visualViewport!.scale)).toBeCloseTo(1,2);await expect(root).toHaveAttribute('data-gesture','pull');await touch('touchCancel');await expect(root).toHaveAttribute('data-shots','0');
+  await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});
   const held=await pull();await touch('touchStart',[held.z,{x:10,y:30,id:2}]);await touch('touchEnd');await expect(root).toHaveAttribute('data-gesture','idle');await expect(root).toHaveAttribute('data-shots','0');
   const returning=await pull();await touch('touchMove',[returning.a]);await touch('touchEnd');await expect(root).toHaveAttribute('data-shots','0');
   await pull();await touch('touchEnd');await expect(root).toHaveAttribute('data-shots','1');
