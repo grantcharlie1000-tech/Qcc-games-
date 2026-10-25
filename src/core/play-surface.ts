@@ -59,6 +59,8 @@ type FullscreenElement=HTMLElement&{webkitRequestFullscreen?:()=>void};
 
 let playing=false;
 let guards=false;
+let screenBusy=false;
+let screenGeneration=0;
 let renderExpanded:((state:ScreenPresentation)=>void)|undefined;
 
 function fullscreenDocument():FullscreenDocument {return document as FullscreenDocument;}
@@ -175,6 +177,8 @@ export function syncPlaySurface(next:boolean):void {
   installGuards();
   if(next)scheduleBox();
   else {
+    // Drop an in-flight request so it cannot fullscreen the library or Study after the player has left.
+    screenGeneration++;
     clearBox();
     root.classList.remove('play-immersive');
     void exitFullscreen().then(publish,publish);
@@ -200,15 +204,26 @@ export function attachFullscreen(button:HTMLButtonElement, render:(state:ScreenP
 }
 
 async function toggle(){
+  if(screenBusy)return;
+  screenBusy=true;
+  const generation=++screenGeneration;
   const root=document.documentElement;
-  const current:ScreenMode=fullscreenActive()?'fullscreen':root.classList.contains('play-immersive')?'immersive':'window';
-  const host:ScreenHost={
-    get supported(){return fullscreenSupported();},
-    get active(){return fullscreenActive();},
-    request:()=>requestFullscreen(root),
-    exit:()=>exitFullscreen(),
-  };
-  const next=await nextScreenMode(current,host);
-  root.classList.toggle('play-immersive',next==='immersive');
-  publish();
+  try{
+    const current:ScreenMode=fullscreenActive()?'fullscreen':root.classList.contains('play-immersive')?'immersive':'window';
+    const host:ScreenHost={
+      get supported(){return fullscreenSupported();},
+      get active(){return fullscreenActive();},
+      request:()=>requestFullscreen(root),
+      exit:()=>exitFullscreen(),
+    };
+    const next=await nextScreenMode(current,host);
+    if(generation!==screenGeneration||!playing){
+      root.classList.remove('play-immersive');
+      await exitFullscreen().catch(()=>{});
+      publish();
+      return;
+    }
+    root.classList.toggle('play-immersive',next==='immersive');
+    publish();
+  }finally{screenBusy=false;}
 }

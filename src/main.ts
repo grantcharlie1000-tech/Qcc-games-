@@ -199,8 +199,9 @@ async function route(){
   detachFullscreen=attachFullscreen(fullscreenButton,state=>{
     fullscreenButton.setAttribute('aria-pressed',String(state.expanded));
     const label=state.expanded?'Exit full screen':'Enter full screen';
-    fullscreenButton.setAttribute('aria-label',label);
-    fullscreenButton.title=state.fallback&&state.expanded?'This browser keeps its own controls. The game fills the screen.':label;
+    const hint='This browser keeps its own controls. The game fills the screen.';
+    fullscreenButton.setAttribute('aria-label',state.fallback&&state.expanded?`${label}. ${hint}`:label);
+    fullscreenButton.title=state.fallback&&state.expanded?hint:label;
     fullscreenButton.innerHTML=icon(state.expanded?'exitfs':'fullscreen');
   });
   if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});

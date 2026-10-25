@@ -78,7 +78,7 @@ test('a rejected Fullscreen API falls back without taking over Escape', async ({
   });
   await page.goto('/#/game/flappy-bird');
   await page.getByRole('button', {name: 'Enter full screen', exact: true}).click();
-  const button = page.getByRole('button', {name: 'Exit full screen', exact: true});
+  const button = page.getByRole('button', {name: /Exit full screen/});
   await expect(button).toHaveAttribute('aria-pressed', 'true');
   await expect(button).toHaveAttribute('title', 'This browser keeps its own controls. The game fills the screen.');
   await expect(page.locator('html')).toHaveClass(/play-immersive/);
@@ -86,6 +86,44 @@ test('a rejected Fullscreen API falls back without taking over Escape', async ({
   await page.keyboard.press('Escape');
   await expect(page.locator('#study-view')).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/play-immersive|play-locked/);
+});
+
+test('a fullscreen request that finishes after leaving does not capture the library', async ({page}) => {
+  await page.addInitScript(() => {
+    let active = false;
+    const define = (key: string, get: () => unknown) => Object.defineProperty(Document.prototype, key, {configurable: true, get});
+    define('fullscreenEnabled', () => true);
+    define('fullscreenElement', () => active ? document.documentElement : null);
+    Element.prototype.requestFullscreen = () => new Promise(resolve => {
+      (window as unknown as {__finishFullscreen?:()=>void}).__finishFullscreen = () => {active = true; resolve();};
+    });
+    Document.prototype.exitFullscreen = () => {active = false; return Promise.resolve();};
+  });
+  await page.goto('/#/game/tower');
+  await page.getByRole('button', {name: 'Enter full screen', exact: true}).click();
+  await page.getByRole('link', {name: 'Back to game library', exact: true}).click();
+  await expect(page.locator('.game-card').first()).toBeVisible();
+  await page.evaluate(() => (window as unknown as {__finishFullscreen:()=>void}).__finishFullscreen());
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBeNull();
+  await expect(page.locator('html')).not.toHaveClass(/play-immersive|play-locked/);
+});
+
+test('the fullscreen control stays off the score on a short reference-game scene', async ({page}) => {
+  await page.setViewportSize({width: 844, height: 390});
+  for (const id of ['animal-stack', 'color-blocks', 'water-sort']) {
+    await page.goto(`/#/game/${id}`);
+    await expect(page.locator('#fullscreen-game')).toBeVisible();
+    const overlap = await page.evaluate(game => {
+      const button = document.querySelector('#fullscreen-game')!.getBoundingClientRect();
+      const title = document.querySelector(game === 'water-sort' ? '.ws-level-name' : '#game-best')!.getBoundingClientRect();
+      const hits = button.width > 0 && button.x >= 0 && button.x + button.width <= innerWidth && button.y + button.height <= innerHeight;
+      const covers = button.left < title.right && title.left < button.right && button.top < title.bottom && title.top < button.bottom;
+      return {hits, covers, titleWidth: title.width};
+    }, id);
+    expect(overlap.titleWidth, id).toBeGreaterThan(10);
+    expect(overlap.hits, id).toBe(true);
+    expect(overlap.covers, id).toBe(false);
+  }
 });
 
 test('pinch is cancelled, a control and an overflowing board still receive a single finger', async ({page}) => {
