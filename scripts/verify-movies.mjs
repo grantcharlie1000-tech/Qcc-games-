@@ -23,9 +23,9 @@ try{for(const [label,base,port] of [['root','/',4381],['subpath','/Qcc-games-/',
  const page=await context.newPage(),unauthorized=[],requests=[],providerRequests=[],errors=[];
  const allowed=new Set([origin,'https://image.tmdb.org','https://framextv.xyz','https://framextv.cc']);
  page.on('request',request=>{const u=new URL(request.url());requests.push(u.href);let child=false;try{child=request.frame()!==page.mainFrame();}catch{}if(child)providerRequests.push(u.href);else if(!allowed.has(u.origin))unauthorized.push(u.href);});page.on('pageerror',e=>errors.push(e.message));
- await page.goto(url);await page.locator('.movies-launch').waitFor();await page.locator('.movies-launch').click();await page.locator('#movies-search').waitFor();
+ const response=await page.goto(url);await page.locator('.movies-launch').waitFor();await page.locator('.movies-launch').click();await page.locator('#movies-search').waitFor();
  assert(!requests.some(u=>new URL(u).hostname.startsWith('framextv.')),'Provider must not load until playback is selected');
- const policy=await page.evaluate(()=>document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content'));
+ const policy=response.headers()['content-security-policy'];
  assert(policy.includes("script-src 'self'"));assert(policy.includes('frame-src https://framextv.xyz https://framextv.cc'));
  await page.setViewportSize({width:390,height:844});await page.locator('#movies-search').fill('sherlock');await page.locator('.movies-results-grid .movies-poster').first().click();await page.locator('#movies-season').selectOption('2');await page.getByRole('link',{name:'Play The Reichenbach Fall'}).click();
  const frame=page.locator('.movies-provider-frame');await frame.waitFor();assert.equal(await frame.getAttribute('sandbox'),'allow-scripts allow-same-origin');assert.equal(await frame.getAttribute('referrerpolicy'),'no-referrer');assert((await frame.getAttribute('allow')).includes("camera 'none'"));

@@ -15,12 +15,13 @@ const nativeTrace=nativeTraceEnabled?createUpdateNativeTrace({enabled:true,direc
 let deployed=A,scope='/',gate,holdManifest=false,manifestGate;
 const requests=[],contexts=[],profiles=[],results=[],startupInventories=[],retainedPageEvidence=[];const primaryPages=new WeakMap();
 const mime={js:'application/javascript',html:'text/html',css:'text/css',json:'application/json',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json'};
+const contentSecurityPolicy="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; worker-src 'self'; media-src 'self'; frame-src https://framextv.xyz https://framextv.cc; form-action 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
 const server=http.createServer((req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname,relative=pathname.startsWith(scope)?'/'+pathname.slice(scope.length):'/missing',file=relative==='/'?'/index.html':relative;
  requests.push({release:deployed.label,file,destination:req.headers['sec-fetch-dest']});
  if(file==='/test-navigation-gate'){gate=res;return;}
  if(holdManifest&&file==='/offline-manifest.json'){manifestGate=res;return;}
- const data=deployed.map.get(file);res.writeHead(data?200:404,{'Content-Type':mime[file.split('.').at(-1)]||'application/octet-stream','Cache-Control':'no-store'});res.end(data);
+ const data=deployed.map.get(file),headers={'Content-Type':mime[file.split('.').at(-1)]||'application/octet-stream','Cache-Control':'no-store'};if(file.endsWith('.html'))headers['Content-Security-Policy']=contentSecurityPolicy;res.writeHead(data?200:404,headers);res.end(data);
 });await new Promise(resolve=>server.listen(4181,'127.0.0.1',resolve));
 async function bounded(task,milliseconds,label){let timer;try{return await Promise.race([task,new Promise((_,reject)=>timer=setTimeout(()=>reject(new Error('Timed out: '+label)),milliseconds))]);}finally{clearTimeout(timer);}}
 const poll=(fn,label)=>bounded((async()=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+label);})(),15000,label);
