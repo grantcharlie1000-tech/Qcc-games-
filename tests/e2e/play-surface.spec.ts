@@ -113,6 +113,8 @@ test('the fullscreen control stays off the score on a short reference-game scene
   for (const id of ['animal-stack', 'color-blocks', 'water-sort']) {
     await page.goto(`/#/game/${id}`);
     await expect(page.locator('#fullscreen-game')).toBeVisible();
+    await expect(page.locator('#game-stage > *').first()).toBeVisible();
+    await expect(page.locator(id === 'water-sort' ? '.ws-level-name' : '#game-best')).toBeVisible();
     const overlap = await page.evaluate(game => {
       const button = document.querySelector('#fullscreen-game')!.getBoundingClientRect();
       const title = document.querySelector(game === 'water-sort' ? '.ws-level-name' : '#game-best')!.getBoundingClientRect();
@@ -126,7 +128,8 @@ test('the fullscreen control stays off the score on a short reference-game scene
   }
 });
 
-test('pinch is cancelled, a control and an overflowing board still receive a single finger', async ({page}) => {
+test('pinch is cancelled, a control and an overflowing board still receive a single finger', async ({page, browserName}) => {
+  test.skip(browserName !== 'chromium', 'Synthetic Touch and TouchEvent constructors are available in Chromium.');
   await page.setViewportSize({width: 390, height: 844});
   await page.goto('/#/game/snake');
   await expect(page.locator('.snake-canvas')).toBeVisible();

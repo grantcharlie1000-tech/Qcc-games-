@@ -203,7 +203,7 @@ async function route(){
     fullscreenButton.setAttribute('aria-label',state.fallback&&state.expanded?`${label}. ${hint}`:label);
     fullscreenButton.title=state.fallback&&state.expanded?hint:label;
     fullscreenButton.innerHTML=icon(state.expanded?'exitfs':'fullscreen');
-  });
+  },()=>{if(activeId&&!study.isOpen)openStudy();});
   if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
   document.querySelector('#game-menu')!.addEventListener('click',openMenu);
   try {

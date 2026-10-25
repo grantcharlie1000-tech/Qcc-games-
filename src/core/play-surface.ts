@@ -61,7 +61,10 @@ let playing=false;
 let guards=false;
 let screenBusy=false;
 let screenGeneration=0;
+let intentionalExit=false;
+let fullscreenNotice=false;
 let renderExpanded:((state:ScreenPresentation)=>void)|undefined;
+let browserExit:(()=>void)|undefined;
 
 function fullscreenDocument():FullscreenDocument {return document as FullscreenDocument;}
 
@@ -90,6 +93,8 @@ function requestFullscreen(target:HTMLElement):Promise<void> {
 }
 
 function exitFullscreen():Promise<void> {
+  // A later fullscreenchange from this call must not be treated as the browser swallowing Escape.
+  if(fullscreenActive())intentionalExit=true;
   const doc=fullscreenDocument();
   if(document.fullscreenElement&&typeof document.exitFullscreen==='function'){
     const pending=document.exitFullscreen();
@@ -171,6 +176,7 @@ function installGuards(){
 /** Lock or release the play viewport. Leaving play also drops fullscreen and the iOS-style immersive fallback. */
 export function syncPlaySurface(next:boolean):void {
   playing=next;
+  if(next)intentionalExit=false;
   const root=document.documentElement;
   root.classList.toggle('play-locked',next);
   document.querySelector('meta[name="viewport"]')?.setAttribute('content',next?PLAYING_VIEWPORT:READING_VIEWPORT);
@@ -186,20 +192,35 @@ export function syncPlaySurface(next:boolean):void {
   }
 }
 
+function onFullscreenEvent(){
+  // fullscreenchange and the webkit alias can both fire for one transition.
+  if(fullscreenNotice)return;
+  fullscreenNotice=true;
+  queueMicrotask(()=>{
+    fullscreenNotice=false;
+    const intentional=intentionalExit;
+    intentionalExit=false;
+    publish();
+    // WebKit consumes Escape to leave fullscreen and never delivers the key. Opening Study keeps that hotkey.
+    if(!fullscreenActive()&&!intentional&&playing)browserExit?.();
+  });
+}
+
 /** The toolbar control. Escape stays with the arcade shell; this control never handles it. */
-export function attachFullscreen(button:HTMLButtonElement, render:(state:ScreenPresentation)=>void):()=>void {
+export function attachFullscreen(button:HTMLButtonElement, render:(state:ScreenPresentation)=>void, onBrowserExit?:()=>void):()=>void {
   renderExpanded=render;
+  browserExit=onBrowserExit;
   const onClick=()=>{void toggle();};
-  const onChange=()=>publish();
   button.addEventListener('click',onClick);
-  document.addEventListener('fullscreenchange',onChange);
-  document.addEventListener('webkitfullscreenchange',onChange);
+  document.addEventListener('fullscreenchange',onFullscreenEvent);
+  document.addEventListener('webkitfullscreenchange',onFullscreenEvent);
   publish();
   return ()=>{
     button.removeEventListener('click',onClick);
-    document.removeEventListener('fullscreenchange',onChange);
-    document.removeEventListener('webkitfullscreenchange',onChange);
+    document.removeEventListener('fullscreenchange',onFullscreenEvent);
+    document.removeEventListener('webkitfullscreenchange',onFullscreenEvent);
     if(renderExpanded===render)renderExpanded=undefined;
+    if(browserExit===onBrowserExit)browserExit=undefined;
   };
 }
 

@@ -9,7 +9,7 @@ const module:GameModule={
  rules:'Place the three fixed-orientation pieces onto the 8 by 8 board. Drag a piece, or select one and tap its top-left destination. Full rows and columns clear together. Each placed block earns 1 point; each cleared line earns 20 times your current clear streak. Consecutive clearing moves build the streak; a move without a clear resets it. Use all three pieces to get a new tray. Every new tray has a way to place all three pieces, including any line clears along the way. Plan carefully: other placements can leave the remaining pieces stuck. The game ends only when none of your remaining pieces fits. No rotation and no timer. Keyboard: select with 1, 2 or 3, use arrow keys to aim, and Enter or Space to place.',
  mount(container,context){
   let state=freshGame(),paused=false,disposed=false,selected:number|null=null,cursor={x:0,y:0},preview=false;
-  let drag:{id:number;slot:number;anchor:Point;start:Point;pointer:Point;pointerType:string;moved:boolean;bounds:Bounds}|null=null;
+  let drag:{id:number;slot:number;anchor:Point;start:Point;pointer:Point;pointerType:string;moved:boolean;bounds:Bounds;viewW:number;viewH:number}|null=null;
   let ignoreClick=false;const animations=new Set<Animation>();
   let publishedScore=-1,publishedLines=-1,publishedStatus='';
   const abort=new AbortController(),signal=abort.signal;
@@ -79,6 +79,8 @@ const module:GameModule={
   }
   function mapPointer(e:PointerEvent){
    if(!drag)return false;
+   // setViewportSize can update the window before the resize event is delivered.
+   if(window.innerWidth!==drag.viewW||window.innerHeight!==drag.viewH){cancel();draw();return false;}
    const rect=board.getBoundingClientRect();
    // A release can precede the browser's queued resize notification.
    if((['left','top','width','height'] as const).some(key=>Math.abs(rect[key]-drag!.bounds[key])>.5)){cancel();draw();return false;}
@@ -105,7 +107,7 @@ const module:GameModule={
    const slot=Number(button.dataset.slot),p=state.tray[slot];if(p===null)return;
    clearEffects();ignoreClick=false;
    const art=button.querySelector('svg')!,anchor=grabCell(p,art.getBoundingClientRect(),{x:e.clientX,y:e.clientY});
-   choose(slot);drag={id:e.pointerId,slot,anchor,start:{x:e.clientX,y:e.clientY},pointer:{x:e.clientX,y:e.clientY},pointerType:e.pointerType,moved:false,bounds:board.getBoundingClientRect()};
+   choose(slot);drag={id:e.pointerId,slot,anchor,start:{x:e.clientX,y:e.clientY},pointer:{x:e.clientX,y:e.clientY},pointerType:e.pointerType,moved:false,bounds:board.getBoundingClientRect(),viewW:window.innerWidth,viewH:window.innerHeight};
    floating.setAttribute('viewBox',art.getAttribute('viewBox')!);floating.innerHTML=art.innerHTML;
    root.setPointerCapture(e.pointerId);mapPointer(e);draw();e.preventDefault();
   },{signal});
