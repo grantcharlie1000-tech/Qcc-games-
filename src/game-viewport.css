@@ -68,13 +68,15 @@ body.in-game .game-view[data-game-id=blockcraft] #restart-game svg{width:18px;he
 /* Full screen sits in the top bar, clear of the in-flow corner control, and does not change that control's flex place. */
 body.in-game .game-view[data-reference-game=true] #fullscreen-game{position:absolute;top:2px;right:56px;z-index:2;margin:0}
 body.in-game .game-view[data-game-id=neon-coil] #fullscreen-game{top:max(20px,env(safe-area-inset-top));right:calc(max(22px,env(safe-area-inset-right)) + 52px);left:auto;bottom:auto;width:42px;height:42px;min-width:42px;min-height:42px}
-/* Animal Stack, Color Blocks and Water Sort keep a centred title under the top bar. Full screen joins the bottom cluster so it does not cover that title. */
+/* Animal Stack, Color Blocks and Water Sort keep a centred title under the top bar. Ball Run's score sits in that same row, measured against Back and Pause, so full screen joins the bottom cluster there too. */
 body.in-game .game-view[data-game-id=animal-stack] #fullscreen-game,
 body.in-game .game-view[data-game-id=color-blocks] #fullscreen-game,
-body.in-game .game-view[data-game-id=water-sort] #fullscreen-game{position:fixed;top:auto;bottom:max(7px,env(safe-area-inset-bottom));right:146px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px;background:#0002;color:#ffffffc9}
+body.in-game .game-view[data-game-id=water-sort] #fullscreen-game,
+body.in-game .game-view[data-game-id=ball-run] #fullscreen-game{position:fixed;top:auto;bottom:max(7px,env(safe-area-inset-bottom));right:146px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px;background:#0002;color:#ffffffc9}
 body.in-game .game-view[data-game-id=animal-stack] #fullscreen-game svg,
 body.in-game .game-view[data-game-id=color-blocks] #fullscreen-game svg,
-body.in-game .game-view[data-game-id=water-sort] #fullscreen-game svg{width:18px;height:18px}
+body.in-game .game-view[data-game-id=water-sort] #fullscreen-game svg,
+body.in-game .game-view[data-game-id=ball-run] #fullscreen-game svg{width:18px;height:18px}
 /* Globle lays itself out responsively inside the whole stage. */
 body.in-game .game-view[data-game-id=globle] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=globle] #game-stage{height:100%;max-height:none;min-height:0}
