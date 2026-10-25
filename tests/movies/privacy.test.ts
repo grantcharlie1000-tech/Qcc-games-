@@ -1,5 +1,7 @@
 import {it,expect} from 'vitest';
 import {readFileSync,readdirSync} from 'node:fs';
+// @ts-expect-error Node-only verification helper has no browser declaration.
+import {isLibraryMovieArtwork} from '../../scripts/movies-network-policy.mjs';
 import {parseCatalog,imageAsset} from '../../src/movies/model';
 it('ships real TMDB artwork rather than generated substitutes',()=>{
  const raw=JSON.parse(readFileSync('public/movies/catalog.json','utf8'));const catalog=parseCatalog(raw);
@@ -15,7 +17,9 @@ it('adds no tracking, extraction, proxy endpoint or parent-page provider script'
  expect(readFileSync('public/sw.js','utf8')).toContain("url.pathname.startsWith(new URL('movies/',SCOPE).pathname)");
  expect(readFileSync('scripts/offline-manifest.mjs','utf8')).toContain("path!=='dist/movies'");
 });
-it('permits only the approved image and frame origins while keeping scripts/media restrictive',()=>{
+it('permits only approved image/frame origins and narrowly scopes the offline thumbnail exception',()=>{
+ expect(isLibraryMovieArtwork('https://image.tmdb.org/t/p/w185/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg')).toBe(true);
+ for(const url of ['https://framextv.xyz/embed/1','https://image.tmdb.org/t/p/w500/a.jpg','https://image.tmdb.org/t/p/w185/a.jpg?track=1','https://image.tmdb.org.evil.test/t/p/w185/a.jpg'])expect(isLibraryMovieArtwork(url)).toBe(false);
  for(const path of ['index.html','netlify.toml']){
   const text=readFileSync(path,'utf8');
   for(const policy of ["media-src 'self'","frame-src https://framextv.xyz https://framextv.cc","script-src 'self'","object-src 'none'","https://image.tmdb.org"])expect(text).toContain(policy);

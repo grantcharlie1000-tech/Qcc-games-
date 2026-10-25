@@ -12,7 +12,9 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  const launch=page.getByRole('link',{name:'Explore Movies and TV'});
  await expect(launch.locator('.movies-mini-poster')).toHaveCount(5);await expect(launch.locator('a,button')).toHaveCount(0);
  const [grid,card]=await Promise.all([page.locator('.game-grid').boundingBox(),launch.boundingBox()]);expect(card!.width).toBeGreaterThan(grid!.width-50);
+ await expect(launch.locator('img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\/w185\//);
  await launch.click();await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
+ await expect(page.locator('.movies-poster img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\//);
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('sherlock');
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);
  await page.getByRole('link',{name:'Details for Sherlock'}).click();
@@ -144,4 +146,11 @@ test('external progress is local, rejects other senders and resumes through docu
  await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
  await frame.locator('body').evaluate((_,origin)=>{window.addEventListener('message',event=>{if(event.data.action==='seek')document.body.dataset.seek=String(event.data.time);});parent.postMessage({event:'frameXTV:timeupdate',currentTime:0},origin);},origin);
  await expect(frame.locator('body')).toHaveAttribute('data-seek','42');
+});
+
+
+test('unavailable backdrops fall back to the actual title poster',async({page})=>{
+ await page.route('**/pbrkL804c8yAv3zBZR4QPEafpAR.jpg',route=>route.fulfill({status:404,body:'Unavailable'}));
+ await page.goto('/#/movies');
+ await expect(page.locator('.movies-poster[data-title="movie-157336"] img').first()).toHaveAttribute('src','https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg');
 });
