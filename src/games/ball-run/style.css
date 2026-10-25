@@ -159,7 +159,11 @@
   .br-face-slot{width:46px;height:46px}
   .br-level{font-size:21px}
   .br-help{font-size:12px;gap:4px}
-  .br-note{font-size:12px;line-height:1.3}
+  /* 12×1.25 is an integer line. A wider system font (DejaVu on CI) wrapped the note to a third
+   * line and it scrolled; a wider body keeps that sentence on two lines. */
+  .br-note{font-size:12px;line-height:1.25}
+  .br-setup:has(.br-note:not([hidden])) .br-head{flex:.7 1 0}
+  .br-setup:has(.br-note:not([hidden])) .br-body{flex:1.5 1 0}
   /* A saved best's note needs the room: the face moves beside the difficulty's name, the slider stays full width. */
   .br-setup:has(.br-note:not([hidden])) .br-pick{grid-template-columns:1fr auto auto 1fr;align-items:center;column-gap:10px}
   .br-setup:has(.br-note:not([hidden])) .br-face-slot{grid-column:2;width:40px;height:40px}
