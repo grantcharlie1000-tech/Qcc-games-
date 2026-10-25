@@ -21,7 +21,7 @@ export function parseCatalog(value:unknown):Catalog {
  if(localAsset(value.attributionLogo))result.attributionLogo=value.attributionLogo;
  const seen=new Set<string>();
  for(const v of value.titles.slice(0,200)){
-  if(!object(v)||!text(v.id,80)||!/^((movie|tv)-[a-z0-9-]+)$/.test(v.id)||seen.has(v.id)||(v.kind!=='movie'&&v.kind!=='tv')||!text(v.name,200)||!integer(v.year)||!text(v.overview)||!imageAsset(v.poster)||!Array.isArray(v.genres)||!v.genres.every((g:unknown)=>text(g,80)))continue;
+  if(!object(v)||!text(v.id,80)||!/^((movie|tv)-[a-z0-9-]+)$/.test(v.id)||seen.has(v.id)||(v.kind!=='movie'&&v.kind!=='tv')||!text(v.name,200)||!(v.year===0||integer(v.year))||!text(v.overview)||!imageAsset(v.poster)||!Array.isArray(v.genres)||!v.genres.every((g:unknown)=>text(g,80)))continue;
   const seasons:Season[]=[];
   for(const s of (Array.isArray(v.seasons)?v.seasons:[]).slice(0,100)){
    if(!object(s)||!integer(s.number)||!text(s.name,200)||!Array.isArray(s.episodes))continue;

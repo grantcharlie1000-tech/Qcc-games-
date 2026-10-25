@@ -1,18 +1,15 @@
 # Movies & TV design references
 
-Reviewed on 2026-10-25 following the user's request to copy Netflix's UI and use references.
+Reviewed on 2026-10-26 after the request to base the catalog interface on FrameXTV.
 
 | Reference | Applied design |
 | --- | --- |
-| [Netflix's official mobile redesign](https://about.netflix.com/en/news/introducing-exciting-new-ways-to-find-and-enjoy-your-next-favorite-on-mobile) and [Home UI still](https://images.ctfassets.net/4cd45et68cgf/7lu1rd3OPvoAzqjZCOu0bJ/8ba82a8110bd5dfd256a17bba05c5fca/en-US-Home-UI-Still.jpg) | Framed mobile feature card, pill filters, Play/My List actions, persistent bottom navigation |
-| [Netflix Tudum's official interface guide](https://www.netflix.com/tudum/articles/netflix-new-homepage-layout-user-guide) | Content-first browsing, top navigation, visible search/list, categories and details |
-| [Netflix's TV experience announcement](https://about.netflix.com/en/news/unveiling-our-innovative-new-tv-experience) | Prominent imagery and simpler top-level shortcuts |
-| [Classic desktop browse screenshot](https://cdn.mos.cms.futurecdn.net/eWPve9UkA8ehWcRq9eRKpk.png), [published by Tom's Guide](https://www.tomsguide.com/news/netflix-just-killed-a-feature-that-seemed-like-a-great-idea) | Dense landscape shelves, small gutters, dark surfaces and familiar desktop navigation |
+| [FrameXTV Movies](https://framextv.xyz/movies) | The requested `.xyz` address redirects to FrameXTV's `.cc` catalog. It has full-width feature artwork, compact section navigation, searchable movie/TV catalog, curated horizontal rows, genre discovery, and concise type/rating/year metadata. Its catalog labels sections such as Trending Movies, Popular Movies, In Theaters, Sci-Fi, Horror, and Thrillers. |
+| [FrameXTV API & Embed Documentation](https://framextv.xyz/api) | The requested `.xyz` address redirects to the `.cc` documentation. Standard movie and episode iframe routes use TMDB IDs. The published API describes iframe embeds and player postMessage controls; it does not document a catalog/search REST endpoint. |
+| [TMDB search and discovery guide](https://developer.themoviedb.org/docs/finding-data) | Search and discovery provide the metadata index for the complete catalog rather than relying on a small checked-in sample. |
 
-The desktop layout uses a compact 72px header, 4% page gutters, a cinematic hero, white Play/gray More Info actions and horizontal rows. Mobile has an inset feature card, pill navigation and Home/Search/My List/Study controls. QCC retains its own branding and is not affiliated with Netflix.
+QCC keeps its own branding and game navigation while adopting FrameXTV's media-library structure: a feature title, visible search, category filters, poster-led cards, horizontal discovery shelves, metadata labels, title details, and episode selection. Poster images are real TMDB artwork, not generated substitutes.
 
-## Actual artwork, not generated substitutes
+Search uses a same-origin Netlify function backed by TMDB. It is paginated and can resolve title details and selected-season episodes on demand. Search text is sent only to the metadata service, never to FrameXTV; FrameXTV is contacted only when the user opens its playback iframe. A server-side TMDB read token is required and is not bundled into client code.
 
-All generated movie images and synthetic poster files were removed from the final implementation, along with outdated preview screenshots that showed them. Posters/backdrops now come from TMDB image URLs; `src/movies/artwork.ts` records poster file IDs for the starter titles. Imported catalogs use their own TMDB poster/backdrop fields. Browser access to `image.tmdb.org` is explicitly allowed by CSP. Images have empty decorative alt text on cards and a meaningful poster label in title details.
-
-The workspace's network policy blocks TMDB image downloads, so a live screenshot containing the actual remote artwork could not be verified here. Browser security/layout tests mock image transport; those fixtures are not movie artwork and are not shipped. The interface shows simple title fallbacks on failed images rather than inventing replacement pictures. Reference screenshots are linked for design research only and are not loaded by the app.
+The layout keeps the existing reduced-motion behavior and responsive desktop, Chromebook, and mobile breakpoints. QCC is not affiliated with FrameXTV or TMDB.

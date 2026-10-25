@@ -15,6 +15,7 @@ it('adds no tracking, extraction, proxy endpoint or parent-page provider script'
  const code=readdirSync('src/movies').filter(p=>/\.(ts|css)$/.test(p)).map(p=>readFileSync('src/movies/'+p,'utf8')).join('\n');
  expect(code).not.toMatch(/sendBeacon|WebSocket|RTCPeerConnection|dns-prefetch|preconnect|<script|eval\(/i);
  expect(readFileSync('public/sw.js','utf8')).toContain("url.pathname.startsWith(new URL('movies/',SCOPE).pathname)");
+ expect(readFileSync('public/sw.js','utf8')).toContain("url.pathname===new URL('api/movies',SCOPE).pathname");
  expect(readFileSync('scripts/offline-manifest.mjs','utf8')).toContain("path!=='dist/movies'");
 });
 it('permits only approved image/frame origins and narrowly scopes the offline thumbnail exception',()=>{
