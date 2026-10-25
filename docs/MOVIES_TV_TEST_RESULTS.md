@@ -27,6 +27,10 @@ The complete 714-case browser invocation exited with **316 passed, 393 failed, 4
 
 The targeted 61-case game rerun recorded 59 passes and 2 failures; the remaining Ball Run restart and Block Fill touch cases both passed in a separate, idle 2-case rerun. Thus every case in that targeted set has a passing result, but the earlier full-suite run remains red and is not relabelled as a clean single run. The final complete unit run exited successfully with 123 files and 2,742 tests passed. An earlier concurrent unit run passed its assertions but reported one Vitest worker RPC timeout; it is not counted as a successful suite. Earlier interrupted runs and timing failures are not counted as passes. New provider/layout browser tests use transport fixtures to isolate application correctness from live service availability; fixtures are not shipped in production.
 
+## Follow-up after the full hosted run
+
+On head `742894e`, the hosted browser job completed 697 tests, skipped 26 and failed one Chromium Blockcraft multiplayer assertion in 46.4 minutes. The test used an ordinary chest click, which correctly picked the diamonds up to the cursor, then incorrectly expected them in the inventory. It now uses the game's Shift-click quick-move. The existing local Chromium chest UI test passed with that interaction. CI now runs the complete Chromium and WebKit projects as separate parallel jobs instead of serially in one job; the next hosted run supplies the final counts.
+
 ## Network and licensing limits
 
 The environment denies direct TMDB and FrameXTV access. Provider/image requests are permitted by application CSP as requested, but live image rendering and actual stream playback could not be confirmed here. `MOVIES_LIVE=1 node scripts/verify-movies.mjs` enables an explicit live audit in an environment with access. The default audit output identifies its fixture mode. It is not a packet capture or a guarantee about downstream tracking or device security.
@@ -35,4 +39,4 @@ The app supplies no DRM bypass, stream extraction, credentials, parent-page prov
 
 No TMDB API token/approved logo was supplied; the operator importer is mocked in integration tests. The starter catalog has 8 titles, real CDN artwork URLs, original summaries, no invented ratings and limited episode coverage. Configure a reviewed TMDB snapshot to broaden discovery and verify attribution/commercial terms. Optional local media remains subject to explicit documented rights review.
 
-No merge/deployment is performed. Commit and PR title include `[skip netlify]` to suppress automatic Netlify branch/preview deployment. CI may run verification jobs.
+Commits and the PR title include `[skip netlify]` to suppress automatic Netlify branch/preview deployment. CI verification jobs still run. The PR description and check timeline carry the final hosted run result.
