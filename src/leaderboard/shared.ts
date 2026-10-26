@@ -3,7 +3,7 @@ export const SCORED_GAMES:readonly GameId[]=['fruit-merge','water-sort','color-b
 export const scoredGame=(value:unknown):value is GameId=>typeof value==='string'&&SCORED_GAMES.includes(value as GameId);
 export const validScore=(value:unknown):value is number=>typeof value==='number'&&Number.isInteger(value)&&value>0&&value<=2147483647;
 export const validName=(value:unknown):value is string=>typeof value==='string'&&value===value.trim()&&value.length>=2&&value.length<=24&&!/[\p{C}<>]/u.test(value);
-export interface Entry {rank:number;playerId:string;name:string;score:number}
+export interface Entry {rank:number;playerId:string;name:string;score:number;account?:boolean}
 export interface Board {entries:Entry[];player:Entry|null}
 export function readBoard(value:unknown):Board|null{
  if(!value||typeof value!=='object')return null;

@@ -11,12 +11,42 @@ function fixture(){
   if(offline)throw new Error('offline');
   const action=new URL(String(url),'https://test').searchParams.get('action');
   if(action==='signup'||action==='login')return Response.json({token,username:'Ada'});
-  if(action==='sync'){if(init.method==='PUT')remote=JSON.parse(init.body).saves;return Response.json({saves:remote});}
+  if(action==='sync'){if(init.method==='PUT')remote={...remote,...JSON.parse(init.body).saves};return Response.json({saves:remote});}
   return Response.json({ok:true});
  }) as unknown as typeof fetch;
  return {storage,values,fetcher,offline:(v:boolean)=>{offline=v;},remote:(v:any)=>{remote=v;}};
 }
 describe('account client',()=>{
+ it('pushes only dirty keys and pulls when clean',async()=>{
+  const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);f.storage.write('save:snake',{version:1,data:{score:1},updated:1});await c.authenticate('signup','Ada','password1');
+  f.storage.write('best:tower',10);await c.flush();expect(JSON.parse((f.fetcher as any).mock.calls.at(-1)[1].body).saves).toEqual({'best:tower':{value:10,updated:0}});
+  await c.flush();expect((f.fetcher as any).mock.calls.at(-1)[1].method).toBe('GET');c.dispose();
+ });
+ it('debounces changes for five seconds and flushes sustained changes by twenty',async()=>{
+  vi.useFakeTimers();const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);
+  try{await c.authenticate('signup','Ada','password1');(f.fetcher as any).mockClear();
+   f.storage.write('best:snake',1);await vi.advanceTimersByTimeAsync(4999);expect(f.fetcher).not.toHaveBeenCalled();
+   await vi.advanceTimersByTimeAsync(1);expect((f.fetcher as any).mock.calls[0][1].method).toBe('PUT');(f.fetcher as any).mockClear();
+   for(let i=0;i<5;i++){f.storage.write('best:snake',i+2);await vi.advanceTimersByTimeAsync(4000);}
+   expect((f.fetcher as any).mock.calls).toHaveLength(1);
+  }finally{c.dispose();vi.useRealTimers();}
+ });
+ it('pulls idle tabs at sixty seconds, skips hidden ticks and flushes on hiding',async()=>{
+  vi.useFakeTimers();const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);let hidden=false,visibility:(()=>void)|undefined;
+  vi.stubGlobal('document',{get hidden(){return hidden;},addEventListener:(_name:string,listener:()=>void)=>{visibility=listener;},removeEventListener:()=>{}});
+  try{await c.authenticate('signup','Ada','password1');c.start();await vi.advanceTimersByTimeAsync(0);(f.fetcher as any).mockClear();
+   await vi.advanceTimersByTimeAsync(59999);expect(f.fetcher).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(1);expect((f.fetcher as any).mock.calls.at(-1)[1].method).toBe('GET');
+   (f.fetcher as any).mockClear();hidden=true;await vi.advanceTimersByTimeAsync(60000);expect(f.fetcher).not.toHaveBeenCalled();
+   f.storage.write('best:snake',10);visibility!();await vi.advanceTimersByTimeAsync(0);
+   expect((f.fetcher as any).mock.calls.at(-1)[1]).toMatchObject({method:'PUT',keepalive:true});
+  }finally{c.dispose();vi.unstubAllGlobals();vi.useRealTimers();}
+ });
+ it('does not dirty identical snapshots when JSONB changes property order',async()=>{
+  const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);
+  f.storage.write('save:snake',{version:1,data:{score:1,level:2},updated:1});await c.authenticate('signup','Ada','password1');
+  f.remote({'save:snake':{updated:1,value:{updated:1,data:{level:2,score:1},version:1}}});await c.flush();await c.flush();
+  expect((f.fetcher as any).mock.calls.at(-1)[1].method).toBe('GET');c.dispose();
+ });
  it('stores session, imports guest saves only on signup, clears account saves and restores guest on logout',async()=>{
   const f=fixture();f.storage.write('best:snake',50);const c=new AccountsClient(f.storage,f.fetcher);
   await c.authenticate('signup','Ada','password1');expect(c.session()).toEqual({token,username:'Ada'});expect(f.storage.read('best:snake',0)).toBe(50);

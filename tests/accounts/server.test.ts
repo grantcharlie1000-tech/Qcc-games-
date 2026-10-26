@@ -63,14 +63,68 @@ describe('optional accounts with real Postgres',()=>{
   const submit=(token:string,name:string,score:number)=>leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',name,score})}));
   await submit(a.token,'Account_Name',100);await submit('b'.repeat(64),'account_name',999);
   const board=await (await leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard?game=snake',{headers:{Authorization:`Bearer ${a.token}`}}))).json();
-  expect(board.entries).toHaveLength(2);expect(board.player.score).toBe(100);expect(board.player.name).toBe('Account_Name');
+  expect(board.entries).toHaveLength(2);expect(board.entries.find((e:any)=>e.name==='Account_Name').account).toBe(true);expect(board.entries.find((e:any)=>e.name==='account_name').account).toBe(false);expect(board.player.score).toBe(100);expect(board.player.name).toBe('Account_Name');
   const guest=await (await leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard?game=snake',{headers:{Authorization:`Bearer ${'b'.repeat(64)}`}}))).json();expect(guest.player.score).toBe(999);
  });
- it('persistently limits ten failed username logins across IPs and thirty IP attempts',async()=>{
-  await signup();for(let i=0;i<10;i++)expect((await request('login',{username:'PLAYER_ONE',password:'wrong password'},undefined,'POST',{'x-nf-client-connection-ip':`192.0.2.${i}`})).status).toBe(401);
-  const limited=await request('login',{username:'player_one',password:'secret password'},undefined,'POST',{'x-nf-client-connection-ip':'192.0.2.99'});expect(limited.status).toBe(429);expect(Number(limited.headers.get('retry-after'))).toBeGreaterThan(0);
-  for(let i=0;i<30;i++)expect((await request('signup',{username:'bad',password:'short'},undefined,'POST',{'x-nf-client-connection-ip':'203.0.113.7'})).status).toBe(400);
-  expect((await request('signup',{username:'Allowed',password:'valid password'},undefined,'POST',{'x-nf-client-connection-ip':'203.0.113.7'})).status).toBe(429);
+ it('limits normalized username failures, IP failures and hourly signups separately',async()=>{
+  await signup();
+  for(let i=0;i<10;i++)expect((await request('login',{username:i%2?' PLAYER_ONE ':'player_one',password:'wrong password'},undefined,'POST',{'x-nf-client-connection-ip':`192.0.2.${i}`})).status).toBe(401);
+  const limited=await request('login',{username:'Player_One',password:'secret password'});expect(limited.status).toBe(429);expect(Number(limited.headers.get('retry-after'))).toBeGreaterThan(0);
+  await pool.query('TRUNCATE account_attempts');
+  for(let i=0;i<35;i++)expect((await request('login',{username:'Player_One',password:'secret password'})).status).toBe(200);
+  expect((await pool.query('SELECT * FROM account_attempts')).rows).toHaveLength(0);
+  await pool.query("INSERT INTO account_attempts(subject,attempts) VALUES ($1,100)",['login-ip:'+createHash('sha256').update('school').digest('hex')]);
+  expect((await request('login',{username:'Other_User',password:'wrong password'},undefined,'POST',{'x-nf-client-connection-ip':'school'})).status).toBe(429);
+  await pool.query("INSERT INTO account_attempts(subject,attempts) VALUES ($1,60)",['signup-ip:'+createHash('sha256').update('school').digest('hex')]);
+  expect((await request('signup',{username:'New_User',password:'valid password'},undefined,'POST',{'x-nf-client-connection-ip':'school'})).status).toBe(429);
+ },30000);
+ it('enforces failure and signup boundaries for concurrent requests',async()=>{
+  await signup();
+  const hash=(v:string)=>createHash('sha256').update(v).digest('hex');
+  await pool.query('INSERT INTO account_attempts(subject,attempts) VALUES ($1,9)',['username:'+hash('player_one')]);
+  vi.mocked(scrypt).mockClear();
+  expect((await Promise.all([0,1,2].map(i=>request('login',{username:' PLAYER_ONE ',password:i===2?'secret password':'wrong password'},undefined,'POST',{'x-nf-client-connection-ip':`test-${i}`})))).map(r=>r.status).sort()).toEqual([401,429,429]);expect(scrypt).toHaveBeenCalledOnce();
+  await pool.query('TRUNCATE account_attempts');await pool.query('INSERT INTO account_attempts(subject,attempts) VALUES ($1,99)',['login-ip:'+hash('school')]);
+  expect((await Promise.all(['Unknown_A','Unknown_B'].map(username=>request('login',{username,password:'wrong password'},undefined,'POST',{'x-nf-client-connection-ip':'school'})))).map(r=>r.status).sort()).toEqual([401,429]);
+  await pool.query('INSERT INTO account_attempts(subject,attempts) VALUES ($1,59)',['signup-ip:'+hash('school')]);
+  expect((await Promise.all(['School_A','School_B'].map(username=>request('signup',{username,password:'valid password'},undefined,'POST',{'x-nf-client-connection-ip':'school'})))).map(r=>r.status).sort()).toEqual([201,429]);
+ },30000);
+ it('handles a username taken after the availability check with a friendly conflict',async()=>{
+  await signup('Race_Name');
+  const racing=createAccountsHandler({query:pool.query.bind(pool),connect:async()=>{
+   const client=await pool.connect();return {query:async(text:string,values?:unknown[])=>text==='SELECT id FROM accounts WHERE lower(username)=lower($1)'?{rows:[]}:client.query(text,values),release:()=>client.release()};
+  }});
+  const response=await racing(new Request(endpoint+'?action=signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'race_name',password:'valid password'})}));
+  expect(response.status).toBe(409);expect(await response.json()).toEqual({error:'That username is already taken.'});expect((await pool.query("SELECT * FROM accounts WHERE lower(username)='race_name'")).rows).toHaveLength(1);
+ });
+ it('checks taken usernames before hashing and cleans expired sessions',async()=>{
+  await signup();vi.mocked(scrypt).mockClear();
+  expect((await request('signup',{username:' PLAYER_ONE ',password:'another password'})).status).toBe(409);expect(scrypt).not.toHaveBeenCalled();
+  await pool.query("UPDATE account_sessions SET expires_at=now()-interval '1 second'");
+  const response=await request('login',{username:'Player_One',password:'secret password'});expect(Object.keys(await response.json()).sort()).toEqual(['token','username']);
+  expect((await pool.query('SELECT * FROM account_sessions WHERE expires_at<=now()')).rows).toHaveLength(0);
+ });
+ it('rejects malformed route shapes with 4xx and keeps revocation response uniform',async()=>{
+  const a=await signup();expect(await (await request('me',undefined,a.token)).json()).toEqual({username:a.username});
+  for(const action of ['signup','login','logout','sync'])for(const body of [null,[],42,'text',{}]){
+   if(action==='logout'&&JSON.stringify(body)==='{}')continue;
+   const response=await request(action,body,a.token,action==='sync'?'PUT':'POST');expect(response.status).toBeGreaterThanOrEqual(400);expect(response.status).toBeLessThan(500);
+  }
+  for(const action of ['signup','login','logout','sync']){
+   const body=new ReadableStream({start(controller){controller.error(new Error('broken input'));}});
+   const response=await handle(new Request(endpoint+'?action='+action,{method:action==='sync'?'PUT':'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${a.token}`},body,duplex:'half'} as RequestInit));
+   expect(response.status).toBe(400);
+  }
+  const hash=createHash('sha256').update(a.token).digest('hex');
+  expect(await (await request('logout',{sessionHash:hash})).json()).toEqual(await (await request('logout',{sessionHash:hash})).json());
+ });
+ it('writes only submitted keys and retains favourite removal across devices',async()=>{
+  const a=await signup();
+  await request('sync',{saves:{favourites:{value:['snake'],updated:1},'best:snake':{value:20,updated:1}}},a.token,'PUT');
+  const before=(await pool.query("SELECT xmin::text FROM account_saves WHERE key='best:snake'")).rows[0].xmin;
+  await request('sync',{saves:{favourites:{value:[],updated:2}}},a.token,'PUT');
+  expect((await pool.query("SELECT xmin::text FROM account_saves WHERE key='best:snake'")).rows[0].xmin).toBe(before);
+  expect((await (await request('sync',undefined,a.token)).json()).saves.favourites.value).toEqual([]);
  });
  it('rejects cross-origin, non-JSON, malformed and oversized streamed bodies without caching',async()=>{
   const a=await signup();expect((await request('sync',{saves:{}},a.token,'PUT',{Origin:'https://evil.test'})).status).toBe(403);
@@ -84,7 +138,7 @@ describe('optional accounts with real Postgres',()=>{
   const first={'best:snake':{value:200,updated:1},favourites:{value:['snake'],updated:1},settings:{value:{sound:false,reducedMotion:false,colorBlind:false},updated:1},'save:snake':{value:{version:1,data:{score:3},updated:10},updated:10}};
   expect((await request('sync',{saves:first},a.token,'PUT')).status).toBe(200);
   const second={'best:snake':{value:100,updated:2},favourites:{value:['tower'],updated:2},settings:{value:{sound:true,reducedMotion:false,colorBlind:false},updated:2},'save:snake':{value:{version:1,data:{score:9},updated:20},updated:20}};
-  const merged=await (await request('sync',{saves:second},a.token,'PUT')).json();expect(merged.saves['best:snake'].value).toBe(200);expect(merged.saves.favourites.value).toEqual(['snake','tower']);expect(merged.saves.settings.value.sound).toBe(true);expect(merged.saves['save:snake'].value.data.score).toBe(9);
+  const merged=await (await request('sync',{saves:second},a.token,'PUT')).json();expect(merged.saves['best:snake'].value).toBe(200);expect(merged.saves.favourites.value).toEqual(['tower']);expect(merged.saves.settings.value.sound).toBe(true);expect(merged.saves['save:snake'].value.data.score).toBe(9);
   expect((await (await request('sync',undefined,a.token)).json()).saves).toEqual(merged.saves);expect((await (await request('sync',undefined,b.token)).json()).saves).toEqual({});
   for(const saves of [{'account:token':{value:'secret',updated:1}},{'best:snake':{value:-1,updated:1}},{'save:corn-clicker':{value:'x',updated:1}},{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
  });

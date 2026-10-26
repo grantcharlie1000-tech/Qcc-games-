@@ -381,6 +381,7 @@ let displayedAccount=accounts.session()?.token;
 accounts.onChange(()=>{
  const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;
  updateAccountMenu();
+ if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
  if(identity){for(const game of SCORED_GAMES)leaderboards.sync.queue(game,Math.floor(store.highScore(game)));void leaderboards.sync.flush().catch(()=>{});}
  if(changed&&initialized&&!accountView.root.open){if(study.isOpen)accountRoutePending=true;else void route();}
 });

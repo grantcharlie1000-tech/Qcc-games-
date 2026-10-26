@@ -47,7 +47,7 @@ export class LeaderboardView {
   const tbody=this.root.querySelector('tbody')!;tbody.replaceChildren();
   for(const entry of board?.entries??[]){
    const row=document.createElement('tr');if(entry.playerId===board?.player?.playerId)row.className='lb-you';
-   for(const value of [entry.rank,entry.name+(entry.playerId===board?.player?.playerId?' · You':''),formatScore(game,entry.score)]){
+   for(const value of [entry.rank,entry.name+(entry.account?' · account':'')+(entry.playerId===board?.player?.playerId?' · You':''),formatScore(game,entry.score)]){
     const cell=document.createElement('td');cell.textContent=String(value);row.append(cell);
    }tbody.append(row);
   }

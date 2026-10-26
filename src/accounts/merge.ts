@@ -6,7 +6,6 @@ export function mergeSaves(a:Saves,b:Saves):Saves {
  for(const [key,next] of Object.entries(b)){
   const old=result[key];if(!old){result[key]=next;continue;}
   if(key.startsWith('best:'))result[key]={value:Math.max(old.value as number,next.value as number),updated:Math.max(old.updated,next.updated)};
-  else if(key==='favourites')result[key]={value:[...new Set([...(old.value as string[]),...(next.value as string[])])].sort(),updated:Math.max(old.updated,next.updated)};
   else result[key]=newest(old,next);
  }
  return result;

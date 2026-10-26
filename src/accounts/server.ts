@@ -28,12 +28,22 @@ async function readJson(request:Request,limit:number){
 }
 const savesFrom=(rows:any[]):Saves=>Object.fromEntries(rows.map(row=>[row.key,{value:row.value,updated:Number(row.updated)}]));
 export function createAccountsHandler(db:Database){
- async function consume(subject:string,limit:number){
-  const result=await db.query(`INSERT INTO account_attempts(subject,attempts) VALUES ($1,1)
-   ON CONFLICT(subject) DO UPDATE SET attempts=CASE WHEN account_attempts.started_at<=now()-interval '15 minutes' THEN 1 ELSE account_attempts.attempts+1 END,
-   started_at=CASE WHEN account_attempts.started_at<=now()-interval '15 minutes' THEN now() ELSE account_attempts.started_at END
-   RETURNING attempts,greatest(1,ceil(extract(epoch FROM started_at+interval '15 minutes'-now())))::int AS retry`,[subject]);
-  return Number(result.rows[0].attempts)>limit?Number(result.rows[0].retry):0;
+ const pending=new Map<string,Promise<void>>();
+ async function lock(key:string){
+  const previous=pending.get(key);let release!:()=>void;
+  const next=new Promise<void>(resolve=>{release=resolve;});pending.set(key,next);await previous;
+  return ()=>{release();if(pending.get(key)===next)pending.delete(key);};
+ }
+ async function limited(query:Database['query'],subject:string,limit:number,seconds=900){
+  const result=await query("SELECT greatest(1,ceil(extract(epoch FROM started_at+($2*interval '1 second')-now())))::int AS retry FROM account_attempts WHERE subject=$1 AND attempts>=$3 AND started_at>now()-($2*interval '1 second')",[subject,seconds,limit]);
+  return Number(result.rows[0]?.retry??0);
+ }
+ async function consume(query:Database['query'],subject:string,seconds=900){
+  const result=await query(`INSERT INTO account_attempts(subject,attempts) VALUES ($1,1)
+   ON CONFLICT(subject) DO UPDATE SET attempts=CASE WHEN account_attempts.started_at<=now()-($2*interval '1 second') THEN 1 ELSE account_attempts.attempts+1 END,
+   started_at=CASE WHEN account_attempts.started_at<=now()-($2*interval '1 second') THEN now() ELSE account_attempts.started_at END
+   RETURNING attempts,greatest(1,ceil(extract(epoch FROM started_at+($2*interval '1 second')-now())))::int AS retry`,[subject,seconds]);
+  return {attempts:Number(result.rows[0].attempts),retry:Number(result.rows[0].retry)};
  }
  async function session(query:(text:string,values?:unknown[])=>Promise<unknown>,accountId:string){
   const token='acct_'+randomBytes(32).toString('hex');
@@ -51,25 +61,42 @@ export function createAccountsHandler(db:Database){
    if(request.method!=='GET'){
     const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);
     if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))return respond({error:'Send JSON.'},415);
-    data=await readJson(request,action==='sync'?MAX_BODY_BYTES:2048);
+    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:2048);}catch(error){throw error===413?413:400;}
    }
    if(action==='signup'||action==='login'){
     const ip=request.headers.get('x-nf-client-connection-ip')?.trim()||'unknown';
     await db.query("DELETE FROM account_attempts WHERE started_at<now()-interval '1 day'");
-    const retry=await consume('ip:'+sha(ip),30);if(retry)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(retry)});
+    await db.query('DELETE FROM account_sessions WHERE expires_at<=now()');
+    if(data&&typeof data.username==='string')data.username=data.username.trim();
     if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).some(k=>!['username','password','guestToken'].includes(k))||!validUsername(data.username)||!validPassword(data.password)||('guestToken' in data&&!(typeof data.guestToken==='string'&&/^[a-f0-9]{64}$/.test(data.guestToken))))return respond({error:'Use a username of 3–24 letters, digits, underscores, hyphens or dots, and a password of 8–128 characters.'},400);
-    const subject='username:'+sha(data.username.toLowerCase());
-    if(action==='login'){
-     const retry=await consume(subject,10);if(retry)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(retry)});
-     const account=(await db.query('SELECT id,username,password_hash FROM accounts WHERE lower(username)=lower($1)',[data.username])).rows[0];
-     if(!await verifyPassword(data.password,account?.password_hash??null))return respond({error:'Username or password is incorrect.'},401);
-     await db.query('DELETE FROM account_attempts WHERE subject=$1',[subject]);
-     const token=await session(db.query.bind(db),account.id);return respond({token,username:account.username});
-    }
-    const passwordHash=await hashPassword(data.password),id=randomUUID(),playerId=randomBytes(32).toString('hex');
-    const client=await db.connect();
+    const subject='username:'+sha(data.username.toLowerCase()),ipSubject=(action==='login'?'login-ip:':'signup-ip:')+sha(ip);
+    const subjects=(action==='login'?[ipSubject,subject]:[ipSubject]).sort(),releases:(()=>void)[]=[];
+    for(const key of subjects)releases.push(await lock(key));
+    let auth:Awaited<ReturnType<Database['connect']>>|undefined,failed=false;
     try{
-     await client.query('BEGIN');
+    auth=await db.connect();const query=auth.query.bind(auth) as Database['query'];
+    // Pin the backend through authentication, including on transaction-pooled hosts.
+    // Local locks also support the development database's shared backend.
+    await query('BEGIN');
+    for(const key of subjects)await query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[key]);
+    const retry=await limited(query,ipSubject,action==='login'?100:60,action==='login'?900:3600);if(retry)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(retry)});
+    if(action==='login'){
+     const retry=await limited(query,subject,10);if(retry)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(retry)});
+     const account=(await query('SELECT id,username,password_hash FROM accounts WHERE lower(username)=lower($1)',[data.username])).rows[0];
+     if(!await verifyPassword(data.password,account?.password_hash??null)){
+      const user=await consume(query,subject),ip=await consume(query,ipSubject);
+      if(user.attempts>10||ip.attempts>100)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(Math.max(user.retry,ip.retry))});
+      return respond({error:'Username or password is incorrect.'},401);
+     }
+     await query('DELETE FROM account_attempts WHERE subject=$1',[subject]);
+     const token=await session(query,account.id);return respond({token,username:account.username});
+    }
+    const attempt=await consume(query,ipSubject,3600);if(attempt.attempts>60)return respond({error:'Too many attempts. Try again later.'},429,{'Retry-After':String(attempt.retry)});
+    if((await query('SELECT id FROM accounts WHERE lower(username)=lower($1)',[data.username])).rows.length)return respond({error:'That username is already taken.'},409);
+    const passwordHash=await hashPassword(data.password),id=randomUUID(),playerId=randomBytes(32).toString('hex');
+    const client=auth;
+    try{
+     await client.query('SAVEPOINT signup');
      await client.query('INSERT INTO arcade_players(id,name) VALUES ($1,$2)',[playerId,data.username]);
      await client.query('INSERT INTO accounts(id,username,password_hash,player_id) VALUES ($1,$2,$3,$4)',[id,data.username,passwordHash,playerId]);
      if(data.guestToken){
@@ -79,12 +106,18 @@ export function createAccountsHandler(db:Database){
        ON CONFLICT(game_id,player_id) DO UPDATE SET score=excluded.score,reached_at=excluded.reached_at WHERE excluded.score>arcade_scores.score`,[playerId,guestId]);
       await client.query('DELETE FROM arcade_players WHERE id=$1 AND NOT EXISTS (SELECT 1 FROM accounts WHERE player_id=$1)',[guestId]);
      }
-     const token=await session(client.query.bind(client),id);await client.query('COMMIT');return respond({token,username:data.username},201);
-    }catch(error){await client.query('ROLLBACK');if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}finally{client.release();}
+     const token=await session(client.query.bind(client),id);await client.query('RELEASE SAVEPOINT signup');return respond({token,username:data.username},201);
+    }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup');if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
+    }catch(error){failed=true;if(auth)await auth.query('ROLLBACK');throw error;}
+    finally{try{if(auth&&!failed)await auth.query('COMMIT');}finally{auth?.release();for(const release of releases.reverse())release();}}
    }
-   if(action==='logout'&&data&&typeof data==='object'&&Object.keys(data).length===1&&typeof data.sessionHash==='string'&&/^[a-f0-9]{64}$/.test(data.sessionHash)){
-    // A hash is a revoke-only proof: it cannot read saves or authenticate a player.
-    await db.query('DELETE FROM account_sessions WHERE token_hash=$1',[data.sessionHash]);return respond({ok:true});
+   if(action==='logout'){
+    if(!data||typeof data!=='object'||Array.isArray(data))return respond({error:'Invalid logout request.'},400);
+    if(Object.keys(data).length){
+     if(Object.keys(data).length!==1||typeof data.sessionHash!=='string'||!/^[a-f0-9]{64}$/.test(data.sessionHash))return respond({error:'Invalid logout request.'},400);
+     // A hash is a revoke-only proof: it cannot read saves or authenticate a player.
+     await db.query('DELETE FROM account_sessions WHERE token_hash=$1',[data.sessionHash]);return respond({ok:true});
+    }
    }
    const account=await resolveAccount(db,request);if(!account)return respond({error:'Please log in again.'},401);
    if(action==='me')return respond({username:account.username});
@@ -98,8 +131,8 @@ export function createAccountsHandler(db:Database){
     await client.query('BEGIN');await client.query('SELECT id FROM accounts WHERE id=$1 FOR UPDATE',[account.id]);
     const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id]) as {rows:any[]};
     const saves=mergeSaves(savesFrom(previous.rows),data.saves);
-    for(const [key,record] of Object.entries(saves))await client.query(`INSERT INTO account_saves(account_id,key,value,updated) VALUES ($1,$2,$3::jsonb,$4)
-     ON CONFLICT(account_id,key) DO UPDATE SET value=excluded.value,updated=excluded.updated`,[account.id,key,JSON.stringify(record.value),record.updated]);
+    for(const key of Object.keys(data.saves)){const record=saves[key]!;await client.query(`INSERT INTO account_saves(account_id,key,value,updated) VALUES ($1,$2,$3::jsonb,$4)
+     ON CONFLICT(account_id,key) DO UPDATE SET value=excluded.value,updated=excluded.updated`,[account.id,key,JSON.stringify(record.value),record.updated]);}
     await client.query('COMMIT');return respond({saves});
    }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
   }catch(error){

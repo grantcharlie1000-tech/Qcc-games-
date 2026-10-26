@@ -55,7 +55,7 @@ export class LeaderboardSidebar {
  private paint(board:Board|null){
   const body=this.root.querySelector('tbody')!;body.replaceChildren();
   for(const entry of board?.entries??[]){const row=document.createElement('tr');const you=entry.playerId===board?.player?.playerId;if(you)row.className='lb-you';
-   for(const value of [entry.rank,entry.name,formatScore(this.game,entry.score)]){const cell=document.createElement('td');cell.textContent=String(value);row.append(cell);}
+   for(const value of [entry.rank,entry.name+(entry.account?' · account':''),formatScore(this.game,entry.score)]){const cell=document.createElement('td');cell.textContent=String(value);row.append(cell);}
    row.children[1]!.setAttribute('title',entry.name+(you?' (you)':''));body.append(row);}
   this.root.querySelector<HTMLElement>('.lb-table')!.hidden=!board?.entries.length;
  }

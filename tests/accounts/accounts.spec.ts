@@ -18,7 +18,8 @@ async function signIn(page:Page,username:string,signup=false){
  const dialog=page.locator('#accounts-dialog');
  if(signup){await dialog.getByRole('button',{name:'Sign up',exact:true}).click();await expect(dialog).toContainText('Forgotten passwords cannot be recovered.');}
  await dialog.getByLabel('Username',{exact:true}).fill(username);await dialog.getByLabel('Password',{exact:true}).fill('long enough password');
- await dialog.locator('form').getByRole('button',{name:signup?'Create account':'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();
+ if(signup)await dialog.getByLabel('Confirm password',{exact:true}).fill('long enough password');
+ await dialog.locator('form').getByRole('button',{name:signup?'Create account':'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
 }
 async function menu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();}
 
@@ -40,8 +41,12 @@ test('two browsers carry account scores and favourites, then logout restores gue
   await first.getByRole('link',{name:'Back to game library',exact:true}).click();
   await expect.poll(async()=>Number((await pool.query(`SELECT count(*) AS n FROM account_saves WHERE key='best:minesweeper'`)).rows[0].n)).toBeGreaterThan(0);
   await second.goto('/#/game/minesweeper');await signIn(second,name);await expect(second.locator('#favourite-game')).toHaveAttribute('aria-pressed','true');await expect(second.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
-  await expect(second.locator('#game-best strong')).not.toHaveText('0');await expect(second.locator('#game-best strong')).not.toHaveText('9999');expect(await second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual(['minesweeper']);await menu(second);await expect(second.locator('#menu')).toContainText(`Signed in as ${name}`);await expect(second.getByRole('button',{name:'Log in / Sign up',exact:true})).not.toBeVisible();
-  await second.getByRole('button',{name:'Leaderboards',exact:true}).click();await expect(second.locator('.lb-you')).toContainText(name);await second.getByRole('button',{name:'Close leaderboards',exact:true}).click();
+  await expect(second.locator('#game-best strong')).not.toHaveText('0');await expect(second.locator('#game-best strong')).not.toHaveText('9999');expect(await second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual(['minesweeper']);await second.locator('.lb-toggle').click();await expect(second.locator('.lb-sidebar tbody')).toContainText('· account');await second.getByRole('button',{name:'Hide top scores',exact:true}).click();await menu(second);await expect(second.locator('#menu')).toContainText(`Signed in as ${name}`);await expect(second.getByRole('button',{name:'Log in / Sign up',exact:true})).not.toBeVisible();
+  await second.getByRole('button',{name:'Leaderboards',exact:true}).click();await expect(second.locator('.lb-you')).toContainText(name);await expect(second.locator('.lb-you')).toContainText('· account');await second.getByRole('button',{name:'Close leaderboards',exact:true}).click();
+  await first.goto('/#/game/minesweeper');await first.locator('#favourite-game').click();await expect(first.locator('#favourite-game')).toHaveAttribute('aria-pressed','false');await first.getByRole('link',{name:'Back to game library',exact:true}).click();
+  await expect.poll(async()=>((await pool.query("SELECT value FROM account_saves WHERE key='favourites' AND account_id=(SELECT id FROM accounts WHERE username=$1)",[name])).rows[0]?.value)).toEqual([]);
+  expect(await first.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual([]);
+  await second.evaluate(()=>window.dispatchEvent(new Event('online')));await expect.poll(()=>second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual([]);await expect(second.locator('#favourite-game')).toHaveAttribute('aria-pressed','false');
   await menu(second);await second.getByRole('button',{name:'Switch account',exact:true}).click();await expect(second.locator('#accounts-dialog')).toBeVisible();
   await second.getByRole('button',{name:'Play as guest',exact:true}).click();await expect.poll(()=>second.evaluate(()=>Number(localStorage.getItem('pocket-arcade:v1:best:minesweeper')??0))).toBe(9999);expect(await second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual(['snake']);
   await menu(first);await first.getByRole('button',{name:'Log out',exact:true}).click();await expect(first.locator('#menu')).not.toBeVisible();await menu(first);await expect(first.getByRole('button',{name:'Log in / Sign up',exact:true})).toBeVisible();
@@ -63,7 +68,7 @@ test('logout in another tab preserves Study and returns to a fresh guest game',a
 
 test('keyboard-only signup and Escape still open Study while playing',async({page,context})=>{
  await connect(context);await page.goto('/#/game/fruit-merge');const dialog=page.locator('#accounts-dialog');await dialog.getByRole('button',{name:'Sign up',exact:true}).focus();await page.keyboard.press('Enter');
- await dialog.getByLabel('Username',{exact:true}).focus();await page.keyboard.type(`Keys_${Date.now()}`);await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Enter');
+ await dialog.getByLabel('Username',{exact:true}).focus();await page.keyboard.type(`Keys_${Date.now()}`);await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Enter');
  await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#study-title')).toHaveText('Reading between the lines');await page.screenshot({path:'docs/evidence/accounts/keyboard-study.png'});
 });
 
@@ -75,4 +80,16 @@ test('guest entry and account form fit a 320px touch screen',async({browser})=>{
   for(const name of ['Create account','Play as guest']){const button=dialog.getByRole('button',{name,exact:true});await button.scrollIntoViewIfNeeded();const box=(await button.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(320);}
   await dialog.getByRole('button',{name:'Play as guest',exact:true}).tap();await expect(page.locator('.game-card').first()).toBeVisible();await menu(page);await page.getByRole('button',{name:'Log in / Sign up',exact:true}).tap();await expect(dialog).toBeVisible();
  }finally{await context.close();}
+});
+
+test('signup confirms passwords, clears secrets and scrolls in short landscape',async({page,context})=>{
+ await page.setViewportSize({width:844,height:390});await connect(context);await page.goto('/');
+ const dialog=page.locator('#accounts-dialog');await dialog.getByRole('button',{name:'Sign up',exact:true}).click();
+ await dialog.getByLabel('Username',{exact:true}).fill('Mismatch');await dialog.getByLabel('Password',{exact:true}).fill('long enough password');await dialog.getByLabel('Confirm password',{exact:true}).fill('different password');
+ await dialog.getByRole('button',{name:'Create account',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('Passwords do not match.');
+ expect(await dialog.evaluate(el=>el.scrollHeight>el.clientHeight&&el.scrollWidth<=el.clientWidth)).toBe(true);
+ await dialog.evaluate((el:HTMLDialogElement)=>el.close());
+ await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
+ await dialog.evaluate((el:HTMLDialogElement)=>el.showModal());await dialog.getByLabel('Password',{exact:true}).fill('long enough password');await dialog.getByLabel('Confirm password',{exact:true}).fill('long enough password');
+ await dialog.getByRole('button',{name:'Play as guest',exact:true}).click();await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
 });

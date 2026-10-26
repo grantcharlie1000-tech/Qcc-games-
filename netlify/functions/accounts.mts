@@ -6,4 +6,4 @@ export default async (request:Request)=>{
  try{handle??=createAccountsHandler(getDatabase().pool);return await handle(request);}
  catch{return Response.json({error:'Accounts temporarily unavailable.'},{status:503,headers:{'Cache-Control':'no-store'}});}
 };
-export const config:Config={rateLimit:{action:'rate_limit',aggregateBy:'ip',windowSize:60,windowLimit:120}};
+export const config:Config={rateLimit:{action:'rate_limit',aggregateBy:'ip',windowSize:60,windowLimit:600}};

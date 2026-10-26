@@ -10,13 +10,13 @@ export function createLeaderboardHandler(db:Database){
   // Guests retain nickname deduplication. Account identities stand alone, so a same-named
   // guest cannot replace an account's personal score or steal its highlighting.
   const result=await db.query(`WITH identities AS (
-   SELECT s.player_id,p.name,s.score,s.reached_at,
+   SELECT s.player_id,p.name,s.score,s.reached_at,a.id IS NOT NULL AS account,
     CASE WHEN a.id IS NULL THEN 'guest:'||lower(p.name) ELSE 'account:'||a.id::text END AS identity
    FROM arcade_scores s JOIN arcade_players p ON p.id=s.player_id LEFT JOIN accounts a ON a.player_id=p.id WHERE s.game_id=$1
   ),best AS (
    SELECT DISTINCT ON (identity) * FROM identities ORDER BY identity,score DESC,reached_at ASC,player_id ASC
   ),ranked AS (
-   SELECT row_number() OVER (ORDER BY score DESC,reached_at ASC,player_id ASC)::int AS rank,player_id AS "playerId",name,score,
+   SELECT row_number() OVER (ORDER BY score DESC,reached_at ASC,player_id ASC)::int AS rank,player_id AS "playerId",name,score,account,
     identity=(SELECT CASE WHEN a.id IS NULL THEN 'guest:'||lower(p.name) ELSE 'account:'||a.id::text END
      FROM arcade_players p LEFT JOIN accounts a ON a.player_id=p.id WHERE p.id=$2) AS mine FROM best
   ) SELECT * FROM ranked WHERE rank<=25 OR mine ORDER BY rank`,[game,playerId]);

@@ -8,9 +8,12 @@ export interface AccountStorage {
 }
 const endpoint='/.netlify/functions/accounts';
 const sessionKey='accounts:session';
+// JSONB may reorder object keys; that does not make an acknowledged save dirty.
+const recordText=(value:unknown)=>JSON.stringify(value,(_key,next)=>next&&typeof next==='object'&&!Array.isArray(next)?Object.fromEntries(Object.keys(next).sort().map(key=>[key,next[key]])):next);
 export class AccountsClient {
  message='';beforeIdentityChange=()=>{};
  private listeners=new Set<()=>void>();private muted=false;private epoch=0;private started=false;
+ private firstChange=0;private lastPull=0;
  private timer:ReturnType<typeof setTimeout>|undefined;private interval:ReturnType<typeof setInterval>|undefined;
  private unsubscribe:(()=>void)|undefined;private inFlight:Promise<void>|null=null;private flightEpoch=-1;
  private knownToken:string|null;private acknowledged:Saves={};private loggingOut:Promise<void>|null=null;
@@ -25,7 +28,7 @@ export class AccountsClient {
  onChange(listener:()=>void){this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
  private emit(){for(const listener of this.listeners)listener();}
  private remove(key:string){if(this.storage.remove)this.storage.remove(key);else this.storage.write(key,null);}
- private schedule(){clearTimeout(this.timer);this.timer=setTimeout(()=>{this.timer=undefined;void this.flush().catch(()=>{});},1200);}
+ private schedule(){this.firstChange||=Date.now();clearTimeout(this.timer);this.timer=setTimeout(()=>{this.timer=undefined;this.firstChange=0;void this.flush().catch(()=>{});},Math.min(5000,Math.max(0,20000-(Date.now()-this.firstChange))));}
  guest(){this.storage.write('accounts:guest',true);this.emit();}
  private collect(includeOversize=false):Saves {
   const result:Saves={};let skipped=false;
@@ -87,7 +90,7 @@ export class AccountsClient {
   return result;
  }
  private stage(username:string){
-  const unsent:Saves={};for(const [key,record] of Object.entries(this.collect(true)))if(JSON.stringify(record)!==JSON.stringify(this.acknowledged[key]))unsent[key]=record;
+  const unsent:Saves={};for(const [key,record] of Object.entries(this.collect(true)))if(recordText(record)!==recordText(this.acknowledged[key]))unsent[key]=record;
   const key='accounts:pending:'+username.toLowerCase();if(Object.keys(unsent).length)this.storage.write(key,unsent);else this.remove(key);
  }
  private async revoke(token:string){
@@ -119,11 +122,12 @@ export class AccountsClient {
   const flight=pending.finally(()=>{if(this.inFlight===flight)this.inFlight=null;});this.inFlight=flight;this.flightEpoch=this.epoch;return flight;
  }
  private async sync(keepalive:boolean){
+  clearTimeout(this.timer);this.firstChange=0;
   const session=this.session(),epoch=this.epoch;
   if(!session){await this.revocations();return;}
   const current=()=>epoch===this.epoch&&this.session()?.token===session.token;
   try{
-   const saves=this.collect();
+   const saves=Object.fromEntries(Object.entries(this.collect()).filter(([key,record])=>recordText(record)!==recordText(this.acknowledged[key])));
    // Small pagehide batches respect browsers' shared 64 KiB keepalive quota.
    const limit=keepalive?60000:MAX_BODY_BYTES-2048;const batches:Saves[]=[];let batch:Saves={};
    for(const [key,record] of Object.entries(saves)){
@@ -131,11 +135,11 @@ export class AccountsClient {
     const next={...batch,[key]:record};if(new TextEncoder().encode(JSON.stringify({saves:next})).length>limit){batches.push(batch);batch={};}batch[key]=record;
    }
    if(Object.keys(batch).length)batches.push(batch);
-   if(!batches.length&&!keepalive){const response=await this.response('sync','GET',undefined,session.token);const result=await response.json();if(!validSaves(result.saves))throw new Error('The saved progress could not be read.');if(current()){this.acknowledged=result.saves;this.apply(mergeSaves(result.saves,this.collect()));}}
+   if(!batches.length&&!keepalive){const response=await this.response('sync','GET',undefined,session.token);const result=await response.json();if(!validSaves(result.saves))throw new Error('The saved progress could not be read.');if(current()){this.lastPull=Date.now();this.acknowledged=result.saves;this.apply(mergeSaves(result.saves,this.collect()));}}
    for(const saves of batches){
     const response=await this.response('sync','PUT',{saves},session.token,keepalive);
     const result=await response.json();if(!validSaves(result.saves))throw new Error('The saved progress could not be read.');
-    if(!current())return;this.acknowledged=result.saves;this.apply(mergeSaves(result.saves,this.collect()));
+    if(!current())return;this.lastPull=Date.now();this.acknowledged=result.saves;this.apply(mergeSaves(result.saves,this.collect()));
    }
    if(current()){if(!keepalive)this.stage(session.username);if(!this.message.includes('too large'))this.message='Progress synced.';this.emit();}
   }catch(error){if(current()){this.stage(session.username);this.message=error instanceof Error?error.message:'Progress is waiting to sync.';this.emit();}throw error;}
@@ -149,12 +153,15 @@ export class AccountsClient {
   const token=this.session()?.token??null;if(token===this.knownToken)return;
   this.beforeIdentityChange();this.acknowledged={};this.knownToken=token;this.epoch++;clearTimeout(this.timer);this.emit();
  };
+ private visibility=()=>{if(document.hidden)this.pagehide();};
+ private tick=()=>{if(typeof document!=='undefined'&&document.hidden)return;if(Date.now()-this.lastPull>=60000)void this.flush().catch(()=>{});};
  start(listenPagehide=true){
   if(this.started)return;this.started=true;
   if(typeof window!=='undefined'){window.addEventListener('online',this.online);if(listenPagehide)window.addEventListener('pagehide',this.pagehide);window.addEventListener('storage',this.storageChanged);}
-  this.interval=setInterval(this.online,30000);this.online();
+  if(typeof document!=='undefined')document.addEventListener('visibilitychange',this.visibility);
+  this.interval=setInterval(this.tick,60000);this.online();
  }
- dispose(){clearTimeout(this.timer);clearInterval(this.interval);this.unsubscribe?.();this.epoch++;
+ dispose(){if(typeof document!=='undefined')document.removeEventListener('visibilitychange',this.visibility);clearTimeout(this.timer);clearInterval(this.interval);this.unsubscribe?.();this.epoch++;
   if(typeof window!=='undefined'){window.removeEventListener('online',this.online);window.removeEventListener('pagehide',this.pagehide);window.removeEventListener('storage',this.storageChanged);}
  }
 }

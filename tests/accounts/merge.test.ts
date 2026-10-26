@@ -2,9 +2,13 @@ import {describe,it,expect} from 'vitest';
 import {mergeSaves} from '../../src/accounts/merge';
 import {validSaves,validUsername,validPassword,MAX_KEY_BYTES} from '../../src/accounts/shared';
 describe('account save merging and validation',()=>{
- it('keeps maximum best scores, unions favourites and uses newest settings and snapshots',()=>{
+ it('keeps maximum best scores, uses newest favourites and uses newest settings and snapshots',()=>{
   const result=mergeSaves({'best:snake':{value:20,updated:1},favourites:{value:['snake'],updated:2},settings:{value:{sound:true},updated:10},'save:snake':{value:{version:1,data:{score:5},updated:5},updated:5}},{'best:snake':{value:10,updated:20},favourites:{value:['tower','snake'],updated:3},settings:{value:{sound:false},updated:9},'save:snake':{value:{version:1,data:{score:9},updated:15},updated:15}});
-  expect(result['best:snake'].value).toBe(20);expect(result.favourites.value).toEqual(['snake','tower']);expect(result.settings.value).toEqual({sound:true});expect((result['save:snake'].value as any).data.score).toBe(9);
+  expect(result['best:snake'].value).toBe(20);expect(result.favourites.value).toEqual(['tower','snake']);expect(result.settings.value).toEqual({sound:true});expect((result['save:snake'].value as any).data.score).toBe(9);
+ });
+ it('keeps an unfavourite after both devices sync',()=>{
+  const a={favourites:{value:['snake'],updated:1}},removed={favourites:{value:[],updated:2}};
+  const server=mergeSaves(a,removed);expect(server.favourites.value).toEqual([]);expect(mergeSaves(a,server).favourites.value).toEqual([]);
  });
  it('does not mutate inputs and breaks timestamp ties consistently',()=>{
   const a={settings:{value:{sound:true},updated:1}},b={settings:{value:{sound:false},updated:1}};
