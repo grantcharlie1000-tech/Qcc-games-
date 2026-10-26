@@ -27,7 +27,7 @@ TMDB_READ_TOKEN=... TMDB_LOGO_PATH=/path/to/approved-logo.png npm run movies:imp
 npm run build
 ```
 
-The importer stages files and atomically switches metadata after success. A failed refresh preserves the previous catalog. Review [TMDB terms and attribution](https://developer.themoviedb.org/docs/faq), commercial status and image/data usage rights; supply an approved unmodified attribution logo for API snapshots. Metadata/image access does not establish streaming rights. No TMDB token is configured in the current Netlify production site. Full-catalog search therefore falls back to the bundled titles until the operator adds TMDB_READ_TOKEN with Functions scope and deploys again. The importer was integration-tested with a mock rather than run against a live account.
+The importer stages files and atomically switches metadata after success. A failed refresh preserves the previous catalog. Review [TMDB terms and attribution](https://developer.themoviedb.org/docs/faq), commercial status and image/data usage rights; supply an approved unmodified attribution logo for API snapshots. Metadata/image access does not establish streaming rights. Netlify now has TMDB_READ_TOKEN saved as a secret for Production and Deploy Preview with Functions and Runtime scopes. Deploy again after changing the variable so the published function receives the updated environment. The importer was integration-tested with a mock rather than run against a live account.
 
 ## Optional locally licensed files
 
