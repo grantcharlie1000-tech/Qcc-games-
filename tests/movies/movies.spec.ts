@@ -7,6 +7,35 @@ test.beforeEach(async({page})=>{
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
+for(const width of [1280,390])test(`launch poster wall avoids adjacent duplicates at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:800});await page.goto('/');
+ const posters=await page.locator('.movies-poster-wall img').evaluateAll(images=>images.filter(image=>getComputedStyle(image).display!=='none').map(image=>({src:(image as HTMLImageElement).src,rect:image.getBoundingClientRect().toJSON()})));
+ expect(posters.length).toBeGreaterThan(0);
+ for(let i=0;i<posters.length;i++)for(let j=i+1;j<posters.length;j++){
+  const a=posters[i],b=posters[j];
+  const vertical=Math.abs(a.rect.bottom-b.rect.top)<1&&Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left)>1;
+  const horizontal=Math.abs(a.rect.right-b.rect.left)<1&&Math.abs(a.rect.top-b.rect.top)<1;
+  if(vertical||horizontal)expect(a.src).not.toBe(b.src);
+ }
+});
+
+test('offline launch skips remote posters and retains a readable coloured fallback',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'onLine',{get:()=>false}));
+ const remote:string[]=[];page.on('request',request=>{if(request.url().startsWith('https://image.tmdb.org/'))remote.push(request.url());});
+ await page.goto('/');const launch=page.locator('.movies-launch');
+ await expect(launch).toHaveText('Movies & TV');await expect(launch.locator('img')).toHaveCount(0);
+ expect(remote).toEqual([]);expect(await launch.evaluate(e=>getComputedStyle(e).backgroundImage)).toContain('gradient');
+ await expect(launch.getByRole('heading')).toHaveCSS('color','rgb(255, 255, 255)');
+});
+
+test('failed launch posters are hidden over the coloured fallback',async({page})=>{
+ await page.route('https://image.tmdb.org/**',route=>route.abort());await page.goto('/');
+ const launch=page.locator('.movies-launch');
+ await expect.poll(()=>launch.locator('img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).hidden))).toBe(true);
+ expect(await launch.evaluate(e=>getComputedStyle(e).backgroundImage)).toContain('gradient');
+ await expect(launch.getByRole('heading')).toBeVisible();
+});
+
 test('full-width launch, local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
  const games=page.locator('.game-card');await expect(games).toHaveCount(18);
