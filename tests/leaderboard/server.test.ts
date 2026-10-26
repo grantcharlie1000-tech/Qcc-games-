@@ -10,6 +10,7 @@ beforeAll(async()=>{const connectionString=await local.start();await local.apply
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{await pool.query('TRUNCATE arcade_players CASCADE');});
 describe('shared leaderboard with real Postgres',()=>{
+ it('accepts Slipline scores',async()=>{expect((await submit('d'.repeat(64),'Ada',320,'slipline')).status).toBe(200);const board=await (await handle(new Request(endpoint+'?game=slipline'))).json();expect(board.entries[0].score).toBe(320)});
  it('shares ranked personal bests between independent players without duplicating updates',async()=>{
   const a='a'.repeat(64),b='b'.repeat(64);
   expect((await submit(a,'Ada',100)).status).toBe(200);await submit(b,'Bo',200);
