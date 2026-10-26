@@ -424,10 +424,14 @@ test('under reduced motion Game Over only fades; shell Restart from dying or Gam
   expect((await saved(page)).records.hard).toEqual(dead);expect(await reports()).toBe(count);
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
+  // Phase polling can stop on the very frame that starts the entrance (opacity 0).
+  // Advance inside its 250 ms fade: the 50 ms polling slice plus 64 ms stays below its end.
+  await page.clock.runFor(64);
   // Reduced motion: the panel fades in at full size.
   const mid=await entrance(over);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toBe('none');
   await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeFocused();
   await page.clock.runFor(400);await expectClear(page,over);
+  expect(await entrance(over)).toEqual({opacity:1,transform:'none'});
   const ended=(await saved(page)).records.hard,count2=await reports();
   expect(ended.day).toBe(dayKey(second));expect(count2).toBeGreaterThan(count);
   await page.clock.setSystemTime(third);await restart.click();await expect(root).toHaveAttribute('data-phase','ready');
