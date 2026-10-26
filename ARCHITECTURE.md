@@ -1,6 +1,6 @@
 # Pocket Arcade architecture
 
-Eighteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker. No factory game, currency, accounts, ads, tracking or runtime CDN. External requests are limited to the optional shared leaderboard (same origin) and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
+Eighteen games: Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker. No factory game, currency, ads, tracking or runtime CDN. Username/password accounts are optional; guests keep local-only saves. External requests are limited to optional account/save sync and the shared leaderboard (same origin) and, only when a player opens online play in Pool or Blockcraft, PeerJS Cloud signalling plus a same-origin TURN credential function (see [online multiplayer](docs/MULTIPLAYER.md)).
 
 ## Static shell
 
@@ -10,7 +10,7 @@ Vite 7, strict TypeScript, semantic DOM/CSS; no application framework. Hash rout
 
 ## Study Mode
 
-`src/study/` contains 20 original NCEA-related textbook chapters, eager raw SVG diagrams, sessionStorage validation and reading UI. A first visit in a tab selects a topic before play. The shell captures Escape before native dialog cancellation and game-local keys, pauses/serializes synchronously and retains the instance/DOM. Visibility plus inert preserves Canvas dimensions; keyboard capture isolates retained global handlers while preserving native reading defaults. Return restores focus/scroll and resumes only a previously running game in a visible tab. Changing chapters or following contents never imports a module, fetches content or changes the hash route. [Feature guide and evidence](docs/STUDY_MODE.md).
+`src/study/` contains 20 original NCEA-related textbook chapters, eager raw SVG diagrams, sessionStorage validation and reading UI. An account/guest entry prompt precedes Study on a new browser; the guest choice is remembered locally. A first visit in a tab selects a topic before play. The shell captures Escape before native dialog cancellation and game-local keys, pauses/serializes synchronously and retains the instance/DOM. Visibility plus inert preserves Canvas dimensions; keyboard capture isolates retained global handlers while preserving native reading defaults. Return restores focus/scroll and resumes only a previously running game in a visible tab. Changing chapters or following contents never imports a module, fetches content or changes the hash route. [Feature guide and evidence](docs/STUDY_MODE.md).
 
 ## Frozen module API
 
@@ -24,7 +24,7 @@ Common classes: `.game-button`, `.game-button.secondary`, `.game-controls`, `.ga
 
 ## Persistence and privacy
 
-Tiny snapshots/settings/scores use versioned localStorage envelopes and memory fallback. No IndexedDB is needed with these compact states. Blocked or full storage is reported truthfully in menu. Per-key dirty memory takes precedence over stale disk values after a quota error, preserving the latest session state. Settings sound defaults OFF. Audio uses local Web Audio oscillators after interaction. No analytics. Saves are never deleted by cache cleanup.
+Tiny snapshots/settings/scores use versioned localStorage envelopes and memory fallback. No IndexedDB is needed with these compact states. Blocked or full storage is reported truthfully in menu. Per-key dirty memory takes precedence over stale disk values after a quota error, preserving the latest session state. Settings sound defaults OFF. Audio uses local Web Audio oscillators after interaction. No analytics. Saves are never deleted by cache cleanup. Optional accounts collect only a public username and scrypt password hash; fixed 60-day sessions store only token hashes on the server. Account saves sync through a same-origin no-store function; the service worker excludes all function routes. Login keeps existing guest progress separate; sign-up imports it. Logout removes account data from this browser and restores its guest backup. See [accounts](docs/ACCOUNTS.md) for merge rules, size measurements and security details.
 
 ## Offline
 

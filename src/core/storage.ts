@@ -3,6 +3,17 @@ const prefix = 'pocket-arcade:v1:';
 const memory = new Map<string, unknown>();
 const unpersisted = new Set<string>();
 let retained = true;
+const listeners=new Set<(key:string)=>void>();
+export function subscribe(listener:(key:string)=>void){listeners.add(listener);return ()=>{listeners.delete(listener);};}
+function changed(key:string){for(const listener of listeners)listener(key);}
+export function keys():string[]{
+ const result=new Set(memory.keys());try{for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key?.startsWith(prefix))result.add(key.slice(prefix.length));}}catch{}return [...result];
+}
+export function remove(key:string):boolean {
+ memory.delete(key);unpersisted.delete(key);
+ try{localStorage.removeItem(prefix+key);changed(key);return true;}catch{retained=false;memory.set(key,null);unpersisted.add(key);changed(key);return false;}
+}
+export function invalidate(key:string){memory.delete(key);unpersisted.delete(key);}
 export function canRetain(): boolean { return retained; }
 export function read<T>(key:string, fallback:T):T {
   if(unpersisted.has(key)) return (memory.get(key) as T) ?? fallback;
@@ -12,8 +23,11 @@ export function read<T>(key:string, fallback:T):T {
 }
 export function write(key:string,value:unknown):boolean {
   memory.set(key,value);
-  try { localStorage.setItem(prefix+key,JSON.stringify(value)); unpersisted.delete(key); return true; }
-  catch { retained=false; unpersisted.add(key); return false; }
+  let durable=true;
+  try { localStorage.setItem(prefix+key,JSON.stringify(value)); unpersisted.delete(key); }
+  catch { retained=false; unpersisted.add(key);durable=false; }
+  if(key==='settings'||key==='favourites'||key.startsWith('best:'))write('updated:'+key,Date.now());
+  changed(key);return durable;
 }
 export function probeStorage():boolean { try { localStorage.setItem(prefix+'probe','1'); localStorage.removeItem(prefix+'probe'); } catch { retained=false; } return retained; }
 export function settings():Settings { return {...{sound:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,colorBlind:false},...read<Partial<Settings>>('settings',{})}; }

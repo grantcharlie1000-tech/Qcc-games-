@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {guestTest as test,expect} from '../fixtures';
 import {readFileSync} from 'node:fs';
 
 for(const width of [320,390,1366])test(`Mauri branding keeps the game collection explicit at ${width}`,async({page})=>{

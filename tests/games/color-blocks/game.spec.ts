@@ -3,7 +3,7 @@ import {createGame,type State} from '../../../src/games/color-blocks/model';
 const SAVE='pocket-arcade:v1:save:color-blocks';
 const fixture=():State=>({...createGame(42),tray:[5,12,0],board:Array(64).fill(0)});
 async function open(page:Page,s=fixture()){
- await page.addInitScript(({key,snapshot})=>{if(!sessionStorage.getItem('cb-fixture-ready')){localStorage.clear();localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');localStorage.setItem(key,JSON.stringify({version:1,data:snapshot}));sessionStorage.setItem('cb-fixture-ready','yes');}},{key:SAVE,snapshot:s});
+ await page.addInitScript(({key,snapshot})=>{if(!sessionStorage.getItem('cb-fixture-ready')){localStorage.clear();localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');localStorage.setItem(key,JSON.stringify({version:1,data:snapshot}));sessionStorage.setItem('cb-fixture-ready','yes');}},{key:SAVE,snapshot:s});
  await page.goto('/#/game/color-blocks');await expect(page.locator('.cb-cell')).toHaveCount(64);
 }
 async function point(page:Page,selector:string){const b=await page.locator(selector).boundingBox();if(!b)throw Error(selector);return {x:b.x+b.width/2,y:b.y+b.height/2};}

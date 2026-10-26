@@ -12,7 +12,7 @@ const observeFrames = (page: Page, count: number) => page.evaluate(n => new Prom
 }), count);
 
 test('shared pause stops Canvas rendering and repeated resumes keep one animation loop', async ({ page }) => {
-  await page.addInitScript(() => {localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading');});
+  await page.addInitScript(() => {localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic', 'close-reading');});
   await page.addInitScript(() => {
     const probe = window.animalPauseProbe = { paints: 0, frame: 0, perFrame: {} as Record<number, number> };
     const observe = () => { probe.frame++; requestAnimationFrame(observe); };

@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {guestTest as test,expect,seedGuest} from '../fixtures';
 
 test('article opens without a top bar and has inline games navigation, footer controls and bilateral ad reservations',async({page})=>{
  await page.setViewportSize({width:1600,height:1000});await page.goto('/');
@@ -132,6 +132,6 @@ test('saving from the footer returns focus to its actual opener and keeps the re
 });
 
 test('mobile touch can save and reopen choices without obstructing the retained game',async({browser})=>{
- const context=await browser.newContext({baseURL:test.info().project.use.baseURL,viewport:{width:320,height:568},isMobile:true,hasTouch:true});const page=await context.newPage();
+ const context=await browser.newContext({baseURL:test.info().project.use.baseURL,viewport:{width:320,height:568},isMobile:true,hasTouch:true});await seedGuest(context);const page=await context.newPage();
  try{await page.goto('/#/game/fruit-merge');await page.getByRole('button',{name:'Customize',exact:true}).tap();const dialog=page.getByRole('dialog');await dialog.getByRole('checkbox',{name:'Remember my reading topic for this browser session'}).tap();const save=dialog.getByRole('button',{name:'Save preferences',exact:true});await save.scrollIntoViewIfNeeded();await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>(image as HTMLImageElement).decode())));await page.screenshot({path:'docs/evidence/article-reading-layout/with-photos/privacy-customize-320-actions.png'});await save.tap();await expect(dialog).not.toBeVisible();await page.locator('[data-study-topic="forces"]').tap();await page.getByRole('button',{name:'Drop fruit',exact:true}).tap();await page.getByRole('button',{name:'Open menu',exact:true}).tap();await page.getByRole('button',{name:'Study Mode',exact:true}).tap();await page.getByRole('button',{name:'Reading storage choices',exact:true}).first().tap();await dialog.getByRole('checkbox',{name:'Remember my reading topic for this browser session'}).tap();await save.tap();await expect(dialog).not.toBeVisible();expect(await page.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'))).toBeNull();await page.getByRole('link',{name:'Games',exact:true}).tap();await expect(page.locator('.fm-count')).toContainText('1 fruit');await expect(page.locator('.study-cookie-panel')).toHaveCount(0);}finally{await context.close();}
 });

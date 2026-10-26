@@ -31,7 +31,7 @@ export class LeaderboardView {
  private status(text:string){this.root.querySelector('.lb-status')!.textContent=text;}
  open(game?:GameId){
   if(game&&game!=='pool'&&scoredGame(game))this.select.value=game;
-  const profile=this.sync.profile();this.root.querySelector<HTMLInputElement>('#leaderboard-name')!.value=profile?.name??'';
+  const profile=this.sync.profile();this.root.querySelector<HTMLElement>('.lb-profile')!.hidden=!!profile?.token.startsWith('acct_');this.root.querySelector<HTMLInputElement>('#leaderboard-name')!.value=profile?.name??'';
   this.root.querySelector('.lb-profile button')!.textContent=profile?'Save nickname':'Join leaderboard';
   this.root.showModal();void this.refresh();
  }

@@ -62,7 +62,7 @@ test('native touch captures at high DPI, rejects a second finger outside the tab
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});
  try{
   await context.addInitScript(()=>{
-   localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
+   localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
    sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
    const events:{type:string;trusted:boolean;captured:boolean}[]=[];
    const diagnostics:Record<string,unknown>[]=[];
@@ -130,7 +130,7 @@ for(const transition of ['pause','Study'] as const)test(`native held touch remai
  const context=await browser.newContext({viewport:{width:1366,height:768},hasTouch:true});
  try{
   await context.addInitScript(()=>{
-   localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
+   localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
    sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');
    const events:{type:string;trusted:boolean;pointerType:string}[]=[];Object.assign(window,{poolHeldContactEvents:events});
    for(const type of ['pointerdown','pointerup','pointercancel'])window.addEventListener(type,event=>{const e=event as PointerEvent;events.push({type,trusted:e.isTrusted,pointerType:e.pointerType});},{capture:true});

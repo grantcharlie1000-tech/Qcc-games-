@@ -1,5 +1,5 @@
 import {GAME_IDS} from '../../src/core/types';
-import {test,expect} from '@playwright/test';
+import {guestTest as test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 import {directShot} from '../games/pool/helpers';
@@ -211,6 +211,7 @@ test('Study remains usable when both storage APIs are blocked',async({page})=>{
     for(const key of ['sessionStorage','localStorage'])Object.defineProperty(window,key,{get(){throw new DOMException('Blocked','SecurityError');}});
   });
   await page.goto('/#/game/solitaire');
+  await page.getByRole('button',{name:'Play as guest',exact:true}).click();
   await page.getByRole('button',{name:'Customize',exact:true}).click();
   await expect(page.getByRole('dialog')).toContainText('unavailable');await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Accept All',exact:true}).click();
@@ -225,6 +226,7 @@ test('Study remains usable when both storage APIs are blocked',async({page})=>{
   await returnToGame(page);
   expect(await page.locator('.sol-card').count()).toBe(cards);
   await page.reload();
+  await page.getByRole('button',{name:'Play as guest',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Choose your study topic'})).toBeVisible();
 });
 
