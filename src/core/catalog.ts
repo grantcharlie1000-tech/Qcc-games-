@@ -18,7 +18,8 @@ export const games: GameInfo[] = [
 {id:'globle',title:'Globle',color:'#123a5e',ink:'#ffe0a4',accent:'#ffe0a4'},
 {id:'blockcraft',title:'Blockcraft',color:'#8fd0f7',ink:'#1f4a1a',accent:'#2c6b22'},
 {id:'maze-muncher',title:'Maze Muncher',color:'#10153a',ink:'#ffe14d',accent:'#3fe0bd'},
-{id:'corn-clicker',title:'Corn Clicker',color:'#2f5d1e',ink:'#ffe14d',accent:'#ffd447'}
+{id:'corn-clicker',title:'Corn Clicker',color:'#2f5d1e',ink:'#ffe14d',accent:'#ffd447'},
+{id:'quadfall',title:'Quadfall',color:'#101631',ink:'#7ee0ff',accent:'#ff9f43'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {

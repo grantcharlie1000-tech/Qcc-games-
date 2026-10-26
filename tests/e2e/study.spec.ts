@@ -34,6 +34,7 @@ async function gameAction(page:Page,id:string){
   if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
   if(id==='ball-run'){await page.getByRole('button',{name:/^(Play|Continue)$/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
   if(id==='maze-muncher')await page.getByRole('button',{name:'Start game',exact:true}).click();
+  if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');}
   if(id==='corn-clicker')await page.getByRole('button',{name:/^Harvest the cob/}).click();
   if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
   if(id==='pool'){
@@ -122,7 +123,7 @@ test('Escape immediately saves and pauses; article changes never load or replace
 });
 
 test.describe('all retained game instances',()=>{
-  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker']){
+  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','quadfall']){
     test(`${id}: gameplay, Escape, frozen autosave and exact return`,async({page})=>{
       test.setTimeout(60000);
       const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
