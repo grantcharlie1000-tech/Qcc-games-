@@ -277,6 +277,9 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   await runUntilPhase(page,'dying');await expect(root).toHaveAttribute('data-score',String(score));
   await page.clock.runFor(150);await evidence(page,`collision.png`);
   await runUntilPhase(page,'over');
+  // Phase polling can stop on the first entrance frame; move inside the 250 ms animation.
+  // Its 50 ms polling slice plus 64 ms still leaves the fade and scale in progress.
+  await page.clock.runFor(64);
   // Mid-entrance: fading in and settling from a slightly smaller scale.
   const mid=await entrance(over);expect(mid.opacity).toBeGreaterThan(0);expect(mid.opacity).toBeLessThan(1);expect(mid.transform).toMatch(/^matrix\(0\.9\d*, 0, 0, 0\.9\d*, 0, 0\)$/);
   await page.clock.runFor(400);
