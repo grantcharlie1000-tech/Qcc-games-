@@ -10,11 +10,16 @@ test.beforeEach(async({page})=>{
 test('full-width launch, local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
  const games=page.locator('.game-card');await expect(games).toHaveCount(18);
- const launch=page.getByRole('link',{name:'Explore Movies and TV'});
- await expect(launch.locator('.movies-mini-poster')).toHaveCount(5);await expect(launch.locator('a,button')).toHaveCount(0);
+ const launch=page.getByRole('link',{name:'Movies & TV',exact:true});
+ await expect(launch).toHaveAttribute('href','#/movies');
+ await expect(launch).toHaveText('Movies & TV');
+ await expect(launch.locator('[aria-hidden="true"] img')).toHaveCount(16);
+ await expect(launch.locator('a,button')).toHaveCount(0);
+ await launch.focus();await expect(launch).toBeFocused();
+ expect(await launch.evaluate(e=>getComputedStyle(e).outlineStyle)).toBe('solid');
  const [grid,card]=await Promise.all([page.locator('.game-grid').boundingBox(),launch.boundingBox()]);expect(card!.width).toBeGreaterThan(grid!.width-50);
  await expect(launch.locator('img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\/w185\//);
- await launch.click();await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
+ await launch.press('Enter');await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
  await page.screenshot({path:'test-results/movies-home.png',fullPage:true});
  await expect(page.locator('.movies-poster img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\//);
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('sherlock');
