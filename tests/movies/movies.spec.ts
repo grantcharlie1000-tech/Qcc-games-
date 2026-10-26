@@ -7,16 +7,11 @@ test.beforeEach(async({page})=>{
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
-for(const width of [1280,390])test(`launch poster wall avoids adjacent duplicates at ${width}px`,async({page})=>{
+for(const width of [320,390,650,768,1280,1920])test(`launch poster cards have no duplicate sources at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:800});await page.goto('/');
- const posters=await page.locator('.movies-poster-wall img').evaluateAll(images=>images.filter(image=>getComputedStyle(image).display!=='none').map(image=>({src:(image as HTMLImageElement).src,rect:image.getBoundingClientRect().toJSON()})));
- expect(posters.length).toBeGreaterThan(0);
- for(let i=0;i<posters.length;i++)for(let j=i+1;j<posters.length;j++){
-  const a=posters[i],b=posters[j];
-  const vertical=Math.abs(a.rect.bottom-b.rect.top)<1&&Math.min(a.rect.right,b.rect.right)-Math.max(a.rect.left,b.rect.left)>1;
-  const horizontal=Math.abs(a.rect.right-b.rect.left)<1&&Math.abs(a.rect.top-b.rect.top)<1;
-  if(vertical||horizontal)expect(a.src).not.toBe(b.src);
- }
+ const sources=await page.locator('.movies-launch img').evaluateAll(images=>images.map(image=>(image as HTMLImageElement).src));
+ expect(sources.length).toBeGreaterThan(0);
+ expect(new Set(sources).size).toBe(sources.length);
 });
 
 test('offline launch skips remote posters and retains a readable coloured fallback',async({page})=>{
@@ -42,7 +37,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  const launch=page.getByRole('link',{name:'Movies & TV',exact:true});
  await expect(launch).toHaveAttribute('href','#/movies');
  await expect(launch).toHaveText('Movies & TV');
- await expect(launch.locator('[aria-hidden="true"] img')).toHaveCount(16);
+ await expect(launch.locator('[aria-hidden="true"] img')).toHaveCount(8);
  await expect(launch.locator('a,button')).toHaveCount(0);
  await launch.focus();await expect(launch).toBeFocused();
  expect(await launch.evaluate(e=>getComputedStyle(e).outlineStyle)).toBe('solid');
