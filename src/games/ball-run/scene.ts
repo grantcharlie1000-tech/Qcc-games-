@@ -4,6 +4,7 @@
  * boxes collision uses. Every instanced buffer is allocated once and reused; the road
  * is rebuilt only when its origin, which moves in 0.5 m steps, changes. */
 import * as THREE from 'three';
+import { rollAngle } from './roll';
 import { DYING_DURATION, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
@@ -184,7 +185,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   materials.push(cityLines.material as THREE.Material);
   city.add(cityLines);
 
-  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, specular: 0xc070c0, shininess: 36 });
+  // Tinted bands make rotation visible while retaining the original Phong colour and light.
+  const surface = document.createElement('canvas');
+  surface.width = 128; surface.height = 64;
+  const ink = surface.getContext('2d')!;
+  ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
+  ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
+  ink.fillStyle = '#7c4684';
+  for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
+  const ballTexture = new THREE.CanvasTexture(surface);
+  ballTexture.colorSpace = THREE.SRGBColorSpace;
+  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
   materials.push(ballMaterial);
   const ball = new THREE.Mesh(sphere, ballMaterial);
   scene.add(ball);
@@ -210,6 +221,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample();
   const pose: ObstaclePose = { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 };
   const projection = new THREE.Vector3();
+  const rollX = new THREE.Vector3(1, 0, 0), rollZ = new THREE.Vector3(0, 0, 1), rollStep = new THREE.Quaternion();
+  let rollDistance = NaN, rollPosition = NaN, rollSeed = NaN, rollRun = NaN;
   let builtOrigin = NaN, builtCourse: Course | null = null, disposed = false;
   let gateWalls = 0, yRef = 0, frameElapsed = 0, blockCount = 0;
   let lineCount = 0, cyanCount = 0, course: Course, fovFit = 1;
@@ -488,6 +501,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   function render(view: FrameView): void {
     if (disposed) return;
     const run = view.run, distance = run.distance, reduced = options.reducedMotion();
+    const changedCourse = view.course !== builtCourse;
     course = view.course;
     const speed = Number.isFinite(view.speed) ? view.speed : course.speed(distance);
     const origin = Math.floor(distance * 2) / 2, range = Math.min(260, 160 + 1.6 * speed);
@@ -504,6 +518,15 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     ball.visible = !broken;
     const bx = clamp(run.x, -BALL_LIMIT, BALL_LIMIT);
     ball.position.set(bx, run.height + SLOPE * distance, 0);
+    const forward = distance - rollDistance, sideways = bx - rollPosition;
+    if (!changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3) {
+      // The road approaches +z; forward motion takes the top toward -z, sideways toward x.
+      rollStep.setFromAxisAngle(rollX, -rollAngle(forward));
+      ball.quaternion.premultiply(rollStep);
+      rollStep.setFromAxisAngle(rollZ, -rollAngle(sideways));
+      ball.quaternion.premultiply(rollStep).normalize();
+    }
+    rollDistance = distance; rollPosition = bx; rollSeed = run.seed; rollRun = run.run;
     record(run, bx);
     drawTrail(run, reduced);
     drawBurst(run, reduced);
@@ -569,6 +592,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     historyCount = 0;
     historySeed = NaN;
     lastD = NaN;
+    rollDistance = NaN;
   }
 
   function dispose(): void {
@@ -577,6 +601,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (const mesh of pools) mesh.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
+    ballTexture.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
     scene.clear();
