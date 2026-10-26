@@ -31,7 +31,7 @@ async function action(page,id){
   const erase=page.getByRole('button',{name:'Erase everything',exact:true});if(await erase.isVisible()){await erase.click();await erase.waitFor({state:'hidden'});}
   const cob=page.getByRole('button',{name:/^Harvest the cob/});await cob.click();await cob.click();await waitFor(async()=>/^[1-9]/.test(await page.locator('.cc-kernels-num').textContent()),'offline Corn Clicker harvest');}
  else if(id==='pool'){await verifyPoolShot(page);}
- else if(id==='fivefold'){await page.keyboard.type('a');await page.locator('.ff-tile.ff-filled').waitFor();}
+ else if(id==='fivefold'){await page.keyboard.press('Backspace');await page.keyboard.type('a');await page.locator('.ff-tile.ff-filled').waitFor();}
  else if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');await page.locator('.gl-guess[data-id=KEN]').waitFor();}
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');
   // The shell's Restart asks before it replaces the world.
