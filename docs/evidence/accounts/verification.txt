@@ -1,15 +1,11 @@
-Optional accounts verification — 2026-10-26
-
-npm run check — PASS
-npm test -- --maxWorkers=1 — PASS, 129 files / 2,788 tests
-npm run build — PASS (existing large-chunk warning)
-ARCADE_URL=http://127.0.0.1:4174 xvfb-run -a npx playwright test tests/accounts/accounts.spec.ts tests/leaderboard tests/e2e --project=chromium --workers=1 — 109 passed, 1 existing skip
-Additional raw pause-render / Color Blocks / Corn Clicker regression specs — 24 passed
-Final accounts-only rerun after minimum 44px targets and cross-tab Study/menu fixes — 5 passed
-Cross-tab logout while reading regression — RED with deferred account routing removed (missing game controls), GREEN after exact main.ts restoration; guest/account menu visibility also verified
-npm run verify:offline — PASS, 18 games at root and repository subpath
-npm run verify:update — PASS, legacy/modern migrations, retained clients, waiting updates and cancellation checks at both paths
-
-Port 4174 used Vite with HMR disabled to prevent development source edits from reloading retained Study/game instances. It serves the same application and tests route online requests through the real handlers with local Postgres.
-
-Account screenshots and copied offline/update JSON results are in this directory. Unrelated regenerated release screenshots/traces were removed from the working tree.
+Accounts verification, 2026-10-26 (NZDT), branch codex/accounts, on Linux with xvfb-run.
+npm run check                         pass
+npm test -- --maxWorkers=1            129 files, 2798 tests passed
+npm run build                         pass
+Playwright chromium tests/accounts tests/leaderboard tests/e2e   111 passed, 1 skipped
+Playwright webkit   tests/accounts tests/leaderboard tests/e2e   110 passed, 2 skipped
+Playwright chromium tests/games tests/movies tests/multiplayer tests/core   264 passed
+npm run verify:offline                pass (18 games, root and /Qcc-games-/)
+npm run verify:update                 FAIL "W activates after topic away and back" timeout;
+                                      same failure on unmodified main (68cb46b) in this environment.
+Dev server for Playwright: PORT=4191 node scripts/leaderboard-dev.mjs, ARCADE_URL=http://127.0.0.1:4191
