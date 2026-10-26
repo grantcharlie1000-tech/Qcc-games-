@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {filterTitles,parseCatalog,parseMovieRoute,licensedSource,localAsset} from '../../src/movies/model';
+import {filterTitles,parseCatalog,parseMovieRoute,licensedSource,localAsset,nextEpisode} from '../../src/movies/model';
 const title={id:'movie-1',kind:'movie',name:'Arrival',year:2016,genres:['Science Fiction'],overview:'A linguist makes contact.',poster:'movies/art/arrival.svg',seasons:[]};
 describe('private movie catalog',()=>{
  it('searches locally and combines type and genre filters',()=>{
@@ -22,4 +22,12 @@ describe('private movie catalog',()=>{
   expect(parseMovieRoute('#/movies/movie-1')).toEqual({id:'movie-1',play:false});
   expect(parseMovieRoute('#/movies/../../x')).toBeUndefined();
  });
+});
+
+describe('next episode',()=>{
+ const show=parseCatalog({titles:[{...title,id:'tv-1',kind:'tv',seasons:[{number:3,name:'Third',episodes:[]},{number:1,name:'First',episodes:[{number:7,name:'Seven',overview:''},{number:2,name:'Two',overview:''}]},{number:2,name:'Second',episodes:[{number:4,name:'Four',overview:''}]}]}]}).titles[0];
+ it('uses episode array order without mutating the title',()=>{expect(nextEpisode(show,1,7)).toEqual({season:1,episode:2,name:'Two'});expect(show.seasons.map(s=>s.number)).toEqual([3,1,2]);});
+ it('rolls over through seasons sorted by number using the first listed episode',()=>{expect(nextEpisode(show,1,2)).toEqual({season:2,episode:4,name:'Four'});});
+ it('uses episode one for an unloaded next season',()=>{expect(nextEpisode(show,2,4)).toEqual({season:3,episode:1,name:undefined});});
+ it('returns nothing for movies, missing episodes/seasons or the final episode',()=>{for(const [season,episode] of [[9,1],[1,99],[3,1]])expect(nextEpisode(show,season,episode)).toBeUndefined();expect(nextEpisode({...show,seasons:show.seasons.filter(s=>s.number!==3)},2,4)).toBeUndefined();expect(nextEpisode({...show,kind:'movie'},1,7)).toBeUndefined();});
 });

@@ -199,7 +199,7 @@ async function route(){
     content.innerHTML='<p class="loading">Opening Movies &amp; TV…</p>';
     try{
       const {MoviesView}=await import('./movies/view');if(token!==generation)return;
-      movies=new MoviesView(content,openStudy,preferences.reducedMotion,movieOrigin);movieOrigin=undefined;
+      movies=new MoviesView(content,openStudy,preferences.reducedMotion,movieOrigin,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});movieOrigin=undefined;
       document.querySelector<HTMLElement>('.topbar')!.inert=true;
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<p>Movies &amp; TV could not load.</p><a href="#/collection">Back to games</a>';}

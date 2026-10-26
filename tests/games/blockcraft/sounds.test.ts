@@ -15,7 +15,7 @@ const master=()=>engine.masterGain as unknown as MockGain;
 
 function build(sound=true){
   game=createFakeGame();
-  shell={sound,reducedMotion:false,colorBlind:false};
+  shell={sound,reducedMotion:false,colorBlind:false,autoNextEpisode:true};
   game.context=fakeContext({settings:shell});
   gestures=gestureTarget();
   engine=createSoundEngine(game,{createContext:()=>new MockAudioContext() as unknown as AudioContext,gestureTarget:gestures.target,random:seeded(5)});
@@ -177,7 +177,7 @@ describe('audio context lifecycle',()=>{
   });
   test('unavailable Web Audio is silent, never an error',()=>{
     engine.dispose?.();
-    game=createFakeGame();game.context=fakeContext({settings:{sound:true,reducedMotion:false,colorBlind:false}});
+    game=createFakeGame();game.context=fakeContext({settings:{sound:true,reducedMotion:false,colorBlind:false,autoNextEpisode:true}});
     const g=gestureTarget();
     const broken=createSoundEngine(game,{createContext:()=>{throw new Error('no audio');},gestureTarget:g.target});
     broken.init?.();
