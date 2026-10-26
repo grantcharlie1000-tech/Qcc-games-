@@ -31,7 +31,7 @@ export interface FakeGame extends Mutable<Omit<Game,'settings'|'time'|'stats'>>{
 
 const noop=()=>{};
 export function fakeContext(overrides:Partial<GameContext>={}):GameContext{
-  return{id:'blockcraft',settings:{sound:false,reducedMotion:false,colorBlind:false},highScore:0,setScore:noop,setLevel:noop,setStatus:noop,announce:noop,save:noop,sound:noop,...overrides};
+  return{id:'blockcraft',settings:{sound:false,reducedMotion:false,colorBlind:false,autoNextEpisode:true},highScore:0,setScore:noop,setLevel:noop,setStatus:noop,announce:noop,save:noop,sound:noop,...overrides};
 }
 
 export function createFakeGame(options:{seed?:number;random?:()=>number;mode?:'survival'|'creative'}={}):FakeGame{

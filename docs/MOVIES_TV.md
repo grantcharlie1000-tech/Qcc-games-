@@ -38,3 +38,11 @@ The importer stages files and atomically switches metadata after success. A fail
 The `movies/` subtree is excluded from the games offline manifest and worker runtime caches. External image/player requests are not handled by the worker. The launch card retains plain title fallbacks if remote posters are unavailable offline; all games still use their existing offline assets. Movies requires network access for catalog/player use and is not part of “Make all games available offline”.
 
 The workspace network policy currently denies direct requests to TMDB and FrameXTV; browser fixtures test integration/isolation without claiming live playback was verified. [Verification results](MOVIES_TV_TEST_RESULTS.md) record actual passes and limitations. [Design references](MOVIES_TV_DESIGN_REFERENCES.md) link the FrameXTV catalog and embed documentation. Dynamic catalog tests use mocked TMDB responses; the deployed TMDB endpoint cannot return full-catalog results until its server-side token is configured.
+
+## Auto next episode
+
+TV episodes offer **Auto next episode**, enabled by default. At the end, an “Up next” overlay offers Play now or Cancel and counts down for ten seconds. It follows the current season’s episode order, then the first episode of the next numbered season; the final episode has no countdown. Completed episode progress resets to zero. The preference is saved with settings and syncs for signed-in users; watch progress and lists remain on this device.
+
+End detection uses native video’s `ended` event or FrameXTV time updates within one second of a known duration. Some provider servers may not report this telemetry, in which case no countdown appears. QCC changes the selected episode; the external player may still require its own play action.
+
+Full screen expands the QCC screen when the browser supports it and keeps that screen open when advancing. Provider-owned fullscreen exits to reveal the overlay. Cancel, navigation, tab hiding, Study Mode and unexpected fullscreen exit cancel the countdown. Escape retains the site’s Study hotkey; returning from Study leaves the external stream paused on the same episode. Browsers can consume Escape to leave fullscreen, in which case the countdown is cancelled without opening Study.
