@@ -560,23 +560,33 @@ describe('Ball Run course generator', () => {
     expect(total).toBeGreaterThan(900);
   });
 
-  // Pooled per difficulty over all 24 seeds, with every seed held to 85 % of each threshold.
-  it('packs many more rows and blocks per second, increasing with difficulty', () => {
-    const thresholds = { easy: { blocks: .6, rows: .35 }, medium: { blocks: .9, rows: .5 }, hard: { blocks: 1.3, rows: .65 } };
+  // Before the faster, wider-spaced tuning, pooled blocks/s were .93 / 1.25 / 1.48
+  // and rows/s were .49 / .62 / .68. Bound both sides of the new pacing so speed
+  // cannot erase the extra reaction time, while courses still contain enough hazards.
+  it('spaces encounters out in real running time while keeping difficulty order', () => {
+    const bounds = {
+      easy: { blocks: [.6, .8], rows: [.32, .4] },
+      medium: { blocks: [.8, 1], rows: [.4, .5] },
+      hard: { blocks: [.95, 1.2], rows: [.45, .56] },
+    } as const;
     const totals: Record<Difficulty, { seconds: number; blocks: number; rows: number }> = {
       easy: { seconds: 0, blocks: 0, rows: 0 }, medium: { seconds: 0, blocks: 0, rows: 0 }, hard: { seconds: 0, blocks: 0, rows: 0 },
     };
     for (const { seed, difficulty } of CASES) {
-      const c = course(seed, difficulty), seconds = runTime(c, 1000, 6000), want = thresholds[difficulty], total = totals[difficulty];
+      const c = course(seed, difficulty), seconds = runTime(c, 1000, 6000), want = bounds[difficulty], total = totals[difficulty];
       const list = obstacles(c, 1000, 6000).filter(o => o.distance >= 1000 && o.distance < 6000), rows = new Set(list.map(o => o.row)).size;
-      expect(list.length / seconds, `${difficulty} seed ${seed} blocks/s`).toBeGreaterThanOrEqual(.85 * want.blocks);
-      expect(rows / seconds, `${difficulty} seed ${seed} rows/s`).toBeGreaterThanOrEqual(.85 * want.rows);
+      for (const metric of ['blocks', 'rows'] as const) {
+        const rate = (metric === 'blocks' ? list.length : rows) / seconds;
+        // Individual seeds may vary by 15 % beyond the pooled pacing band.
+        expect(rate, `${difficulty} seed ${seed} ${metric}/s`).toBeGreaterThanOrEqual(.85 * want[metric][0]);
+        expect(rate, `${difficulty} seed ${seed} ${metric}/s`).toBeLessThanOrEqual(1.15 * want[metric][1]);
+      }
       total.seconds += seconds; total.blocks += list.length; total.rows += rows;
     }
     const rate = (d: Difficulty, k: 'blocks' | 'rows') => totals[d][k] / totals[d].seconds;
-    for (const d of DIFFICULTIES) {
-      expect(rate(d, 'blocks'), `${d} blocks/s`).toBeGreaterThanOrEqual(thresholds[d].blocks);
-      expect(rate(d, 'rows'), `${d} rows/s`).toBeGreaterThanOrEqual(thresholds[d].rows);
+    for (const d of DIFFICULTIES) for (const metric of ['blocks', 'rows'] as const) {
+      expect(rate(d, metric), `${d} ${metric}/s`).toBeGreaterThanOrEqual(bounds[d][metric][0]);
+      expect(rate(d, metric), `${d} ${metric}/s`).toBeLessThanOrEqual(bounds[d][metric][1]);
     }
     expect(rate('hard', 'blocks')).toBeGreaterThan(rate('medium', 'blocks'));
     expect(rate('medium', 'blocks')).toBeGreaterThan(rate('easy', 'blocks'));

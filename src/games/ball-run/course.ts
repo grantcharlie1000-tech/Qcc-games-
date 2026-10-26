@@ -28,7 +28,7 @@ const CLEAR = RADIUS + .06, EDGE_MARGIN = EDGE_SUPPORT + .12;
 /** Narrowest reachable set allowed beside any block. */
 const MIN_ROUTE = .25;
 /** Least time from a row's last block to the next row: the tightest spacing inside a pattern. */
-const ROW_SPACING = .35;
+const ROW_SPACING = .525;
 const GATE_LENGTH = 30, STRAIGHT_RISE = .3;
 /** Crests and dips are low enough that the road launches a ball at most this fast upward off the base
  * slope (m/s): under about a second in the air (it leaves the road partway up). Never lower than
@@ -467,8 +467,14 @@ class CourseImpl implements Course {
       if ((kind === 'crest' || kind === 'dip') && clear > start) kind = this.recharge(kind, 'straight');
       if (kind === 'drop') {
         const approach = r.range(20, 30) * scale, height = r.range(2, 4), gap = r.range(2, 4), flight = Math.sqrt(2 * height / GRAVITY);
+        // Keep the approach's downward curvature below gravity (with 2% margin), so
+        // faster balls launch at the lip instead of grazing the ramp and launching twice.
+        // cap * curveTime bounds the distance needed even at top speed; the speed
+        // there therefore bounds the lip speed whenever this minimum extends a ramp.
+        const curveTime = Math.sqrt(APPROACH_BEND * height / (GRAVITY * .98));
+        const minimum = this.speedNow(start + cfg.maxSpeed * curveTime) * curveTime;
         for (let k = 0; k < 3 && !seg; k++) {
-          const lip = approach * 1.5 ** k, g = Math.min(gap, this.speedNow(start + lip) * flight - 1.2);
+          const lip = Math.max(approach * 1.5 ** k, minimum), g = Math.min(gap, this.speedNow(start + lip) * flight - 1.2);
           seg = this.traversable(make('drop', lip + g + Math.max(20, cfg.maxSpeed * flight + 12), height, c0, lip, g));
         }
       } else {
@@ -742,7 +748,7 @@ class CourseImpl implements Course {
           if (center === d) center += depth / 2;
           add(kind, center - depth / 2, side * (H - w / 2), w, r.range(1, 2), depth);
           side = -side;
-          center += r.range(.35, .5) * v;
+          center += r.range(.525, .75) * v;
         }
         break;
       }
@@ -754,12 +760,12 @@ class CourseImpl implements Course {
           if (center === d) center += depth / 2;
           wall(kind, center - depth / 2, depth, gw, side * r.range(near, far));
           side = -side;
-          center += r.range(.4, .6) * v;
+          center += r.range(.6, .9) * v;
         }
         break;
       }
       case 'scatter': {
-        const span = r.range(1, 1.5) * v;
+        const span = r.range(1.5, 2.25) * v;
         for (let i = r.int(4, 7); i > 0; i--) for (let tries = 0; tries < 8; tries++) {
           const s = r.range(.6, .9), u = r.range(-(H - s / 2), H - s / 2), front = d + r.range(0, span - s);
           if (out.some(o => Math.abs(o.offset - u) < (o.width + s) / 2 + .1 && Math.abs(o.distance - front - s / 2) < (o.depth + s) / 2 + .1)) continue;
@@ -780,7 +786,7 @@ class CourseImpl implements Course {
           if (center === d) center += depth / 2;
           add(kind, center - depth / 2, r.sign() * r.range(near, far), w, height, depth,
             { amplitude, period: r.range(1.4, 2.6), phase: r.range(0, 2 * Math.PI) });
-          center += r.range(.45, .7) * v;
+          center += r.range(.675, 1.05) * v;
         }
         break;
       }
