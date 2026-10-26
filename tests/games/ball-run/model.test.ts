@@ -400,6 +400,16 @@ describe('Ball Run hazards', () => {
     }
   });
 
+  it('does not clamp a ball flying above a gate wall', () => {
+    const course = getCourse(1, 'medium'), gate = gateList(course, 4000)[0];
+    const d = gate.start + 1, s = course.sample(d), edge = s.center + s.width / 2 - RADIUS;
+    const run = placeRun(1, 'medium', d, edge);
+    run.height = s.elevation + 3;
+    run.vy = 0; run.vx = 4; run.grounded = false;
+    step(run, 1, STEP);
+    expect(run.x).toBeGreaterThan(edge + .01);
+  });
+
   it('falls off the edge, freezes the score, and ends the run after the dying time', () => {
     for (const difficulty of DIFFICULTIES) {
       const run = createRun(1, 1, difficulty);
@@ -483,9 +493,8 @@ describe('Ball Run hazards', () => {
       step(jump, 0, .05);
       expect(jump.phase).toBe('dying');
       expect(jump.reason).toBe('block');
-      expect(jump.distance).toBe(start.distance);
-      expect(jump.x).toBe(start.x);
-      expect(jump.height).toBe(start.height);
+      expect(jump.distance).toBeCloseTo(front - RADIUS, 6);
+      expect(jump.distance).toBeGreaterThan(start.distance);
       expect(jump.score).toBe(Math.floor(start.distance));
       // At the fixed step the ball stops within one step of the face, and stays there.
       const run = placeRun(seed, difficulty, front - RADIUS - 6, pose.x);

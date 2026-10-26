@@ -25,6 +25,8 @@ export const WARMUP = 80;
 export const CENTER_LIMIT = 2;
 /** "Speed Up" label and trail after passing a gate (s). Feedback only: the speed gain itself is permanent. */
 export const GATE_FEEDBACK = 1.8;
+/** Height of the solid side walls of a boost gate (m). */
+export const GATE_WALL_HEIGHT = 1.5;
 /** Collision burst / fall time before Game Over (s). */
 export const DYING_DURATION = .9;
 /** A ball this far below the road surface can no longer recover (m). */

@@ -4,7 +4,8 @@
  * boxes collision uses. Every instanced buffer is allocated once and reused; the road
  * is rebuilt only when its origin, which moves in 0.5 m steps, changes. */
 import * as THREE from 'three';
-import { DYING_DURATION, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
+import { rollAngle } from './roll';
+import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
 export interface FrameView { run: Run; course: Course; speed: number }
@@ -40,7 +41,7 @@ const FALL_TILT = .65, MAX_PITCH = .6;
  * screen edge. */
 const TRAIL_NEAR = RADIUS * 1.6, TRAIL_FAR = CAMERA_BACK - .2, TRAIL_FAR_REDUCED = TRAIL_NEAR + 1, TRAIL_OPACITY = .85;
 /** Boost arch: wall height, ring spacing, arch bars and the heights of the wall rails. */
-const WALL = 1.5, RING = 3, ARCH = 10, BAR = .06, ENTRANCE_BAR = .13, RAILS = [WALL / 2, WALL];
+const WALL = GATE_WALL_HEIGHT, RING = 3, ARCH = 10, BAR = .06, ENTRANCE_BAR = .13, RAILS = [WALL / 2, WALL];
 /** Tower city: 8 building variations every 7 m, so the pooled city repeats every 56 m. */
 const CITY_VARIANTS = 8, CITY_STEP = 7, CITY_PERIOD = CITY_VARIANTS * CITY_STEP, CITY_COUNT = 48, CITY_BASE = -14, CITY_INNER = 5.6;
 /** A fall keeps its sideways speed, so the drawn ball stops at the nearest tower faces and drops
@@ -60,6 +61,13 @@ function unit(a: number, b: number): number {
   h = Math.imul(h ^ h >>> 16, 0x21f0aaad);
   h = Math.imul(h ^ h >>> 15, 0x735a2d97);
   return ((h ^ h >>> 15) >>> 0) / 4294967296;
+}
+
+/** Writes the box transform in the snapped road group's local coordinates. */
+export function setObstacleTransform(target: THREE.Object3D, pose: ObstaclePose, origin: number): void {
+  target.position.set(pose.x, pose.y + SLOPE * origin, -(pose.distance - origin));
+  target.rotation.set(0, 0, -pose.roll, 'YXZ');
+  target.scale.set(2 * pose.halfWidth, 2 * pose.halfHeight, 2 * pose.halfDepth);
 }
 
 /** Throws when a WebGL 2 renderer cannot be created. */
@@ -119,6 +127,21 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const tiles = pool(box, basic({ color: PALETTE.track }), TILES, road);
   const grid = pool(box, basic({ color: PALETTE.grid }), LINES, road);
   const blocks = pool(box, basic({ color: PALETTE.white, vertexColors: true }), BLOCKS, road, true);
+  // Vite removes this branch from production. The same instance transform used
+  // as the rendered block is used for its diagnostic wireframe.
+  let hitboxes: THREE.InstancedMesh | undefined, hitball: THREE.Mesh | undefined;
+  if (import.meta.env.DEV) {
+    let enabled = new URLSearchParams(window.location.search).get('hitboxes') === '1';
+    try { enabled ||= window.localStorage.getItem('ballrun:hitboxes') === '1'; } catch { /* storage can be unavailable */ }
+    if (enabled) {
+      const wire = basic({ color: 0x00ff00, wireframe: true, depthTest: false });
+      hitboxes = pool(box, wire, BLOCKS, road);
+      hitboxes.renderOrder = 100;
+      hitball = new THREE.Mesh(sphere, wire);
+      hitball.renderOrder = 100;
+      scene.add(hitball);
+    }
+  }
   const cyan = pool(box, basic({ color: PALETTE.boost }), CYAN, road);
   const blockShades = [0xb51cfa, 0xab18f0, 0xbb2cff, 0xa414e6].map(c => new THREE.Color(c));
   // Tunnel walls and their posts are seen side-on, so divide out the side light.
@@ -184,7 +207,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   materials.push(cityLines.material as THREE.Material);
   city.add(cityLines);
 
-  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, specular: 0xc070c0, shininess: 36 });
+  // Tinted bands make rotation visible while retaining the original Phong colour and light.
+  const surface = document.createElement('canvas');
+  surface.width = 128; surface.height = 64;
+  const ink = surface.getContext('2d')!;
+  ink.fillStyle = '#ffffff'; ink.fillRect(0, 0, 128, 64);
+  ink.fillStyle = '#9a5aa0'; ink.fillRect(0, 26, 128, 12);
+  ink.fillStyle = '#7c4684';
+  for (const x of [0, 32, 64, 96, 128]) ink.fillRect(x - 3.5, 0, 7, 64);
+  const ballTexture = new THREE.CanvasTexture(surface);
+  ballTexture.colorSpace = THREE.SRGBColorSpace;
+  const ballMaterial = new THREE.MeshPhongMaterial({ color: PALETTE.sphere, map: ballTexture, specular: 0xc070c0, shininess: 36 });
   materials.push(ballMaterial);
   const ball = new THREE.Mesh(sphere, ballMaterial);
   scene.add(ball);
@@ -210,6 +243,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   const A = blankSample(), B = blankSample(), M = blankSample(), S = blankSample();
   const pose: ObstaclePose = { x: 0, y: 0, distance: 0, roll: 0, halfWidth: 0, halfHeight: 0, halfDepth: 0 };
   const projection = new THREE.Vector3();
+  const rollX = new THREE.Vector3(1, 0, 0), rollZ = new THREE.Vector3(0, 0, 1), rollStep = new THREE.Quaternion();
+  let rollDistance = NaN, rollPosition = NaN, rollSeed = NaN, rollRun = NaN;
   let builtOrigin = NaN, builtCourse: Course | null = null, disposed = false;
   let gateWalls = 0, yRef = 0, frameElapsed = 0, blockCount = 0;
   let lineCount = 0, cyanCount = 0, course: Course, fovFit = 1;
@@ -282,17 +317,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
    * for-of, which allocated an iterator per loop on every rebuild. */
   function arch(gate: Gate): void {
     track((gate.start + gate.end) / 2, M);
-    const c = M.center, radius = M.width / 2 + .04, length = gate.end - gate.start;
+    const c = M.center, edge = M.width / 2, radius = edge + ENTRANCE_BAR / 2, length = gate.end - gate.start;
     const e0 = track(gate.start, A).elevation + yRef, e1 = track(gate.end, B).elevation + yRef;
     const z0 = -(gate.start - builtOrigin), z1 = -(gate.end - builtOrigin), pitch = Math.atan2(e1 - e0, length);
     for (let side = -1; side <= 1; side += 2) {
       rotation.set(pitch, 0, 0, 'YXZ');
-      position.set(c + side * (radius + .06), (e0 + e1) / 2 + WALL / 2, (z0 + z1) / 2);
+      position.set(c + side * (edge + .05), (e0 + e1) / 2 + WALL / 2, (z0 + z1) / 2);
       scale.set(.1, WALL, length);
       gatePiece(wallColor);
       // Pink rails along the top and middle of the wall.
       for (let r = 0; r < RAILS.length; r++) {
-        position.set(c + side * radius, (e0 + e1) / 2 + RAILS[r], (z0 + z1) / 2);
+        position.set(c + side * (edge + BAR / 2), (e0 + e1) / 2 + RAILS[r], (z0 + z1) / 2);
         scale.set(BAR, BAR, length);
         gatePiece(postColor);
       }
@@ -307,7 +342,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
           bar(cyan, cyanCount++, entranceBar);
         } else {
           rotation.set(0, 0, 0, 'YXZ');
-          position.set(c + side * radius, y + WALL / 2, z);
+          position.set(c + side * (edge + BAR / 2), y + WALL / 2, z);
           scale.set(BAR, WALL, BAR);
           gatePiece(postColor);
         }
@@ -373,11 +408,17 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   function placeBlock(o: Obstacle): void {
     if (blockCount >= BLOCKS) return;
     course.pose(o, frameElapsed, pose);
-    position.set(pose.x, pose.y + yRef, -(pose.distance - builtOrigin));
-    rotation.set(0, 0, -pose.roll, 'YXZ');
-    scale.set(2 * pose.halfWidth, 2 * pose.halfHeight, 2 * pose.halfDepth);
+    setObstacleTransform(transform, pose, builtOrigin);
     place(blocks, blockCount);
     blocks.setColorAt(blockCount++, o.kind === 'slider' ? sliderColor : blockShades[o.id % blockShades.length]);
+  }
+
+  let debugCount = 0;
+  function placeHitbox(o: Obstacle): void {
+    if (!hitboxes || debugCount >= BLOCKS) return;
+    course.pose(o, frameElapsed, pose);
+    setObstacleTransform(transform, pose, builtOrigin);
+    place(hitboxes, debugCount++);
   }
 
   // Trail history: past ball positions every 0.5 m of travel, newest last.
@@ -488,6 +529,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
   function render(view: FrameView): void {
     if (disposed) return;
     const run = view.run, distance = run.distance, reduced = options.reducedMotion();
+    const changedCourse = view.course !== builtCourse;
     course = view.course;
     const speed = Number.isFinite(view.speed) ? view.speed : course.speed(distance);
     const origin = Math.floor(distance * 2) / 2, range = Math.min(260, 160 + 1.6 * speed);
@@ -499,11 +541,27 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     blockCount = gateWalls;
     course.forEachObstacle(origin - BEHIND, origin + range, placeBlock);
     commit(blocks, blockCount);
+    if (hitboxes) {
+      debugCount = 0;
+      // Include the full previous sweep query, even behind the visible road.
+      course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - RADIUS - course.maxDepth, distance + RADIUS + course.maxDepth, placeHitbox);
+      commit(hitboxes, debugCount);
+    }
+    if (hitball) hitball.position.set(run.x, run.height + SLOPE * distance, 0);
 
     const broken = run.reason === 'block' && (run.phase === 'dying' || run.phase === 'over');
     ball.visible = !broken;
     const bx = clamp(run.x, -BALL_LIMIT, BALL_LIMIT);
     ball.position.set(bx, run.height + SLOPE * distance, 0);
+    const forward = distance - rollDistance, sideways = bx - rollPosition;
+    if (!changedCourse && run.seed === rollSeed && run.run === rollRun && forward >= 0 && forward <= 3 && Math.abs(sideways) <= 3) {
+      // The road approaches +z; forward motion takes the top toward -z, sideways toward x.
+      rollStep.setFromAxisAngle(rollX, -rollAngle(forward));
+      ball.quaternion.premultiply(rollStep);
+      rollStep.setFromAxisAngle(rollZ, -rollAngle(sideways));
+      ball.quaternion.premultiply(rollStep).normalize();
+    }
+    rollDistance = distance; rollPosition = bx; rollSeed = run.seed; rollRun = run.run;
     record(run, bx);
     drawTrail(run, reduced);
     drawBurst(run, reduced);
@@ -569,6 +627,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     historyCount = 0;
     historySeed = NaN;
     lastD = NaN;
+    rollDistance = NaN;
   }
 
   function dispose(): void {
@@ -577,6 +636,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     for (const mesh of pools) mesh.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
+    ballTexture.dispose();
     renderer.dispose();
     renderer.forceContextLoss();
     scene.clear();
