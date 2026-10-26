@@ -14,7 +14,10 @@ import {StudyView} from './study/view';
 import {reloadAfterActivation} from './core/update';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
+import {AccountsClient} from './accounts/client';
+import {AccountsView} from './accounts/view';
 import {LeaderboardView} from './leaderboard/view';
+import {SCORED_GAMES} from './leaderboard/shared';
 import {LeaderboardSidebar} from './leaderboard/sidebar';
 
 const icon=(name:string)=>{
@@ -23,18 +26,21 @@ const icon=(name:string)=>{
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header class="topbar"><div class="site-brand">${mauriMark}<span>Mauri Study Notes</span></div><button class="hamburger icon-button" aria-label="Open menu">${icon('menu')}</button><div class="count-pill" aria-label="${games.length} games">${icon('grid')}<span><strong>${games.length}</strong><small>Games</small></span></div><button class="favourites-pill" aria-pressed="false">${icon('star')}<span>FAVOURITES</span></button></header><main id="content"></main>
-<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Mauri Study Notes</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. No accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Mauri Study Notes</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog"><form method="dialog" class="dialog-head"><h2>How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
 const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const preferences=store.settings();
+const accounts=new AccountsClient();
+const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
 const leaderboards=new LeaderboardView();
 let leaderboardSidebar:LeaderboardSidebar|undefined;
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
 let focusLabelBeforeStudy:string|null=null;
+let accountRoutePending=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
 let movieOrigin:DOMRect|undefined;
@@ -102,13 +108,13 @@ watchUpdates(import.meta.url,status=>{
   showUpdate(updateFailure||status.message);
   if(newlyReady)announce('An update is ready. Open the menu, or use Reload to update in Study, when you are ready.');
 });
-function leave(){
+function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
   document.querySelector<HTMLElement>('.topbar')!.inert=false;
   detachFullscreen?.();detachFullscreen=undefined;
   leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
   stopFitting?.();stopFitting=undefined;
-  save();instance?.dispose();instance=undefined;activeId=undefined;
+  if(saveProgress)save();instance?.dispose();instance=undefined;activeId=undefined;
   clearInterval(autosave);paused=false;pausedForDialog=false;
   document.body.classList.remove('in-game');
   syncViewportLock();
@@ -166,6 +172,7 @@ function returnFromStudy(){
   if(updateBusy)updateRequest++;
   if(!initialized)return;
   study.hide();showArcade();updateStudySummary();
+  if(accountRoutePending){accountRoutePending=false;resumeAfterStudy=false;focusBeforeStudy=null;void route();return;}
   if(resumeAfterStudy&&!document.hidden)setPaused(false);
   resumeAfterStudy=false;
   window.scrollTo(scrollBeforeStudy.x,scrollBeforeStudy.y);
@@ -178,6 +185,7 @@ function returnFromStudy(){
 
 async function route(){
   if(!initialized)return;
+  accountRoutePending=false;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
   const isMovies=location.hash==='#/movies'||location.hash.startsWith('#/movies/');
@@ -283,11 +291,12 @@ async function route(){
 }
 
 function openMenu(){
+  updateAccountMenu();
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);menu.showModal();void checkForUpdates();
 }
 document.querySelector('.hamburger')!.addEventListener('click',openMenu);
 function dialogClosed(){
-  if(menu.open||rulesDialog.open||leaderboards.root.open)return;
+  if(menu.open||rulesDialog.open||leaderboards.root.open||accountView.root.open)return;
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
@@ -331,12 +340,13 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
 content.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.closest('.movies-poster-wall'))image.hidden=true;},{capture:true});
 content.addEventListener('click',event=>{const link=(event.target as Element).closest('.movies-launch');if(link&&event instanceof MouseEvent&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&event.button===0){movieOrigin=link.getBoundingClientRect();}});
 window.addEventListener('hashchange',()=>void route());
-window.addEventListener('pagehide',()=>{save();movies?.pause();});
+window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true).catch(()=>{});});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance)setPaused(true);});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
+  if(accountView.root.open)return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;
@@ -346,5 +356,49 @@ window.addEventListener('keydown',event=>{
 window.addEventListener('keyup',event=>{if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
 void checkForUpdates();
-if(study.session.topic()){initialized=true;void route();}
-else {hideArcade();study.showPicker();}
+function beginStudy(){
+ if(study.session.topic()){initialized=true;showArcade();void route();}
+ else {hideArcade();study.showPicker();}
+}
+function finishEntry(){
+ if(!initialized&&!study.isOpen)beginStudy();
+ else if(initialized){showArcade();void route();}
+ updateAccountMenu();
+}
+function updateAccountMenu(){
+ const session=accounts.session();
+ document.querySelector('#account-summary')!.textContent=session?`Signed in as ${session.username}`:'Playing as guest';
+ document.querySelector<HTMLElement>('#open-accounts')!.hidden=!!session;
+ document.querySelector<HTMLElement>('#logout-account')!.hidden=!session;
+ document.querySelector<HTMLElement>('#switch-account')!.hidden=!session;
+ document.querySelector('#account-sync-status')!.textContent=accounts.message;
+ Object.assign(preferences,store.settings());
+ for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#colour','colorBlind']] as const)document.querySelector<HTMLInputElement>(selector)!.checked=preferences[key];
+ document.documentElement.classList.toggle('reduce-motion',preferences.reducedMotion);
+}
+accounts.beforeIdentityChange=()=>{generation++;leave(false);};
+let displayedAccount=accounts.session()?.token;
+accounts.onChange(()=>{
+ const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;
+ updateAccountMenu();
+ if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
+ if(identity){for(const game of SCORED_GAMES)leaderboards.sync.queue(game,Math.floor(store.highScore(game)));void leaderboards.sync.flush().catch(()=>{});}
+ if(changed&&initialized&&!accountView.root.open){if(study.isOpen)accountRoutePending=true;else void route();}
+});
+document.querySelector('#open-accounts')!.addEventListener('click',()=>{menu.close();accountView.open();});
+let signingOut=false;
+async function logoutAccount(switching=false){
+ if(signingOut)return;signingOut=true;
+ const buttons=['#logout-account','#switch-account'].map(id=>document.querySelector<HTMLButtonElement>(id)!);
+ for(const button of buttons)button.disabled=true;
+ try{
+  if(activeId)setPaused(true);
+  await accounts.logout();menu.close();
+  if(switching)accountView.open();else finishEntry();
+ }finally{signingOut=false;for(const button of buttons)button.disabled=false;}
+}
+document.querySelector('#logout-account')!.addEventListener('click',()=>void logoutAccount());
+document.querySelector('#switch-account')!.addEventListener('click',()=>void logoutAccount(true));
+accounts.start(false);updateAccountMenu();
+if(accounts.session()||store.read('accounts:guest',false))beginStudy();
+else accountView.open();

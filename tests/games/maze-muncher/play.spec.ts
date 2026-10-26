@@ -28,7 +28,7 @@ test('start, eat dots, turn, pause freezes play and a reload resumes the run',as
 
 test('phone layout fits with touch buttons and swipe steering',async({browser})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
- await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
+ await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
  const page=await context.newPage();
  await page.clock.install({time:new Date('2026-10-22T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-22T09:00:01Z'));
  await page.goto('/#/game/maze-muncher');

@@ -1,0 +1,11 @@
+Accounts verification, 2026-10-26 (NZDT), branch codex/accounts, on Linux with xvfb-run.
+npm run check                         pass
+npm test -- --maxWorkers=1            129 files, 2798 tests passed
+npm run build                         pass
+Playwright chromium tests/accounts tests/leaderboard tests/e2e   111 passed, 1 skipped
+Playwright webkit   tests/accounts tests/leaderboard tests/e2e   110 passed, 2 skipped
+Playwright chromium tests/games tests/movies tests/multiplayer tests/core   264 passed
+npm run verify:offline                pass (18 games, root and /Qcc-games-/)
+npm run verify:update                 FAIL "W activates after topic away and back" timeout;
+                                      same failure on unmodified main (68cb46b) in this environment.
+Dev server for Playwright: PORT=4191 node scripts/leaderboard-dev.mjs, ARCADE_URL=http://127.0.0.1:4191

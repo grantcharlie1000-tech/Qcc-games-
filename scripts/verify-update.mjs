@@ -31,7 +31,7 @@ async function version(page){return await bounded(page.evaluate(()=>new Promise(
  const channel=new MessageChannel();const timer=setTimeout(()=>{channel.port1.close();channel.port2.close();reject(new Error('Worker version RPC timed out'));},3000);
  channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();channel.port2.close();known.set(worker,e.data.version);resolve(e.data.version);};worker.postMessage({type:'ARCADE_VERSION'},[channel.port2]);
 })),3000,'worker version RPC (Node deadline)').catch(error=>{if(error.message.includes('version RPC')){console.log('TRANSIENT VERSION OBSERVATION',error.message);return undefined;}throw error;});}
-async function home(page,base){await page.goto(base);await page.locator('[data-study-topic],.game-card').first().waitFor();if(await page.locator('[data-study-topic]').count()){const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.count())await accept.click();await page.locator('[data-study-topic="close-reading"]').click();}}
+async function home(page,base){await page.goto(base);await page.locator('#accounts-dialog[open],[data-study-topic],.game-card').first().waitFor();if(await page.locator('#accounts-dialog[open]').count())await page.getByRole('button',{name:'Play as guest',exact:true}).click();await page.locator('[data-study-topic],.game-card').first().waitFor();if(await page.locator('[data-study-topic]').count()){const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.count())await accept.click();await page.locator('[data-study-topic="close-reading"]').click();}}
 async function menu(page){await page.getByRole('button',{name:'Open menu',exact:true}).click();}
 async function closeMenu(page){await page.getByRole('button',{name:'Close menu',exact:true}).click();}
 async function download(page){await menu(page);await page.getByRole('button',{name:'Make all games available offline',exact:true}).click();await page.getByRole('button',{name:'Offline pack downloaded',exact:true}).waitFor();await closeMenu(page);}
@@ -46,6 +46,7 @@ async function durableOwner(page,target){
 async function launch(profile){
  const context=await chromium.launchPersistentContext(profile,{executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),viewport:{width:390,height:844},args:['--no-sandbox']});contexts.push(context);if(nativeTraceEnabled)await nativeTrace.observe(context,{scope});
  await context.addInitScript(()=>{
+  localStorage.setItem('pocket-arcade:v1:accounts:guest','true');
   window.updateControllerTimeline=[];
   const record=label=>{try{const worker=navigator.serviceWorker.controller,item={label,time:performance.now(),script:worker?.scriptURL,state:worker?.state};window.updateControllerTimeline.push(item);if(worker){const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();channel.port2.close();},1000);channel.port1.onmessage=event=>{clearTimeout(timer);item.build=event.data;channel.port1.close();channel.port2.close();};worker.postMessage({type:'ARCADE_VERSION'},[channel.port2]);}}catch{}};
   record('document-start');navigator.serviceWorker?.addEventListener('controllerchange',()=>record('controllerchange'));

@@ -35,3 +35,14 @@ it('notifies visible ranking consumers only after a successful score sync and su
  available=true;await sync.flush();expect(changed).toHaveBeenCalledWith('snake');
  unsubscribe();sync.queue('snake',20);await sync.flush();expect(changed).toHaveBeenCalledTimes(1);sync.dispose();
 });
+it('uses the account identity without importing guest pending scores and ignores late guest responses',async()=>{
+ const storage=memory();const calls:any[]=[];let release!:()=>void;
+ const gate=new Promise<void>(resolve=>release=resolve);
+ const sync=new LeaderboardSync(storage,vi.fn(async(_url:any,options:any)=>{calls.push(options);if(calls.length===1)await gate;return Response.json({entries:[],player:null});}) as typeof fetch);
+ sync.join('Guest');sync.queue('snake',900);const pending=sync.flush();await Promise.resolve();
+ storage.write('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Account'});
+ expect(sync.profile()?.name).toBe('Account');
+ sync.queue('snake',10);release();await pending;await sync.flush();
+ expect(calls).toHaveLength(2);expect(calls[1].headers.Authorization).toBe('Bearer acct_'+'a'.repeat(64));
+ expect(JSON.parse(calls[1].body).score).toBe(10);sync.dispose();
+});

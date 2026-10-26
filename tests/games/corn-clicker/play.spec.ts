@@ -102,7 +102,7 @@ test('a second tab never runs the same farm at once and can take over without lo
 
 test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser})=>{
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
-  await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
+  await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
   const page=await context.newPage();
   const errors=errorsOf(page);
   await seed(page,{kernels:'114',run:{clicks:20},life:{clicks:20},golden:{next:0.4}});

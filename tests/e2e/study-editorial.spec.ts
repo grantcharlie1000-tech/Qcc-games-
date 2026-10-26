@@ -1,5 +1,5 @@
 import {GAME_IDS} from '../../src/core/types';
-import {test,expect} from '@playwright/test';
+import {guestTest as test,expect} from '../fixtures';
 for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:1366,height:768}])test(`editorial notes, clean bylines and embedded Games navigation fit ${viewport.width}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/');await expect(page.locator('[data-study-topic]')).toHaveCount(20);await expect(page.locator('.study-ad-placeholder')).toHaveCount(0);
  await page.getByRole('button',{name:'Accept All',exact:true}).click();
