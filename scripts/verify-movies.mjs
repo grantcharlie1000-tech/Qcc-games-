@@ -18,7 +18,7 @@ try{for(const [label,base,port] of [['root','/',4381],['subpath','/Qcc-games-/',
  await context.addInitScript(()=>{if(window!==window.top)return;sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');});
  if(!live){
   await context.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
-  await context.route('https://framextv.xyz/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+  await context.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
  }
  const page=await context.newPage(),unauthorized=[],requests=[],providerRequests=[],errors=[];
  const allowed=new Set([origin,'https://image.tmdb.org','https://framextv.xyz','https://framextv.cc']);
