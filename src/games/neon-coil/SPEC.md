@@ -8,6 +8,14 @@ The parent thread safely inspected `Snakes_Desktop_Reference_Pack.zip` (SHA256 `
 
 All canvas snakes, eyes, woven background, pellet glow sprites, cover SVG, game name and interface are authored for this game. No screenshots, prerecorded gameplay, source assets, copied logos or system chrome ship with it. There is no networking, multiplayer claim, advertising, paid service or new dependency.
 
+## Visual refresh (reference pack)
+
+The QCC Snake - Gameplay Reference Pack page renders h-03–h-07 and h-10–h-12 were inspected for this refresh, using F04 as the primary normal-play target. The renderer now uses a seamless, world-anchored dark doodle floor, a striped red region outside the existing circular boundary, and cached shaded discs stamped tail-to-head at 0.25 body diameters. Bands follow arc distance behind the interpolated head, with a tapered tail, a dark blue/cyan player skin, colour-family bot skins, round heads, forward-facing eyes and upright labels with a 12px screen font floor. Saturated food has compact cached halos and bright cores; remains/boost pellets receive deterministic multicolour display colours from their IDs.
+
+Boost adds static cyan/white body bands with a render-only 100ms activation / 150ms release envelope; reduced motion snaps the intensity. The live HUD has a compact CLASSIC score, transparent skin-coloured rankings and a square chevron boost control with a local purple active aura. The minimap is smaller and clears the boost control. Patterns and sprites are cached once per renderer, offscreen content is culled, stamp buffers are reused, and DPR remains capped at 2.
+
+This is render/HUD only: simulation, model colours, saves/best scores, camera/zoom, input, host toolbar and start/death/continue cards retain their existing contracts. Crowns, direction markers, pickup fade and new menus were intentionally skipped; there is no networking or added dependency.
+
 ## Rules and tuning
 
 - Circular arena radius: 1,500 world pixels. Crossing the visibly outlined rim defeats the head. The camera follows the player; viewport shape reveals more or less world without stretching it. Growth subtly zooms out, with no shake or decorative pulsing.

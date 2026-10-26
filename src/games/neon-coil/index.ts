@@ -1,6 +1,7 @@
 import type { GameModule } from '../../core/types';
 import { advanceArena, BOT_COUNT, createArena, MIN_MASS, ranking, restoreArena, snapshot, STEP, type Arena } from './model';
 import { createRenderer } from './render';
+import { skinFor } from './skin';
 import './style.css';
 
 const module: GameModule = {
@@ -9,9 +10,9 @@ const module: GameModule = {
   mount(container, context) {
     const root = document.createElement('div'); root.className = 'nc-game';
     root.innerHTML = `<canvas class="nc-canvas" tabindex="0" role="img" aria-label="Neon Coil arena. Move the pointer without clicking, drag on touch, or use arrows and WASD to steer. Hold Space to boost. P pauses."></canvas>
-      <div class="nc-score"><span>NEON COIL</span><strong class="nc-mass">30</strong><small>MASS <b>·</b> <span class="nc-difficulty">CLASSIC</span></small><em>18 local bots · offline arena</em></div>
-      <aside class="nc-ranking" aria-label="Live arena ranking"><h2>LIVE RANKING <span>LOCAL BOTS</span></h2><ol></ol><div class="nc-you" hidden></div></aside>
-      <div class="nc-bottom"><p class="nc-hint">Move pointer to steer <span>·</span> Arrows / WASD <span>·</span> P pause</p><button class="nc-boost" aria-label="Hold to boost" aria-pressed="false"><span>BOOST</span><small class="nc-boost-note">Hold SPACE · spends mass</small></button></div>
+      <div class="nc-score" aria-label="Current mass in Classic mode"><span class="nc-difficulty">CLASSIC</span><strong class="nc-mass">30</strong></div>
+      <aside class="nc-ranking" aria-label="Live arena ranking"><h2>LIVE RANKING</h2><ol></ol><div class="nc-you" hidden></div></aside>
+      <div class="nc-bottom"><p class="nc-hint">Move pointer to steer <span>·</span> Arrows / WASD <span>·</span> P pause</p><button class="nc-boost" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold SPACE · spends mass</small></button></div>
       <div class="nc-overlay"><section class="nc-card" aria-labelledby="nc-heading"><p class="nc-eyebrow">A LITTLE LIGHT. A LONG WAY.</p><h2 id="nc-heading">Neon Coil<span>Find your flow.</span></h2><p class="nc-copy">Follow your pointer. Gather the glow.<br>Outmaneuver 18 local bots in a living arena.</p><div class="nc-guide"><span><b>01</b> Move pointer or drag to steer</span><span><b>02</b> Eat pellets to grow</span><span><b>03</b> Hold Space to boost · costs mass</span></div><p class="nc-result" hidden></p><button class="game-button nc-start">Enter arena <span aria-hidden="true">↗</span></button><p class="nc-footnote">Arrows / WASD also steer · P pause · Esc study<br>Heads hit other bodies. Your own coils are safe.</p></section></div>`;
     container.append(root);
     const canvas = root.querySelector<HTMLCanvasElement>('canvas')!, renderer = createRenderer(canvas);
@@ -58,8 +59,8 @@ const module: GameModule = {
       const entries = ranks.slice(0, limit);
       const row = (name: string, value: number, rank: number, color: string) => `<span class="nc-place">${rank}</span><i style="background:${color}" aria-hidden="true"></i><span class="nc-name">${name}</span><strong>${Math.floor(value)}</strong>`;
       // Names and colors are fixed local constants, never data from storage or the network.
-      board.innerHTML = entries.map((snake, i) => `<li${snake.id === 0 ? ' class="is-you"' : ''}>${row(snake.name, snake.mass, i + 1, snake.color)}</li>`).join('');
-      you.hidden = place <= limit; you.innerHTML = row('YOU', player.mass, place, player.color);
+      board.innerHTML = entries.map((snake, i) => `<li style="color:${skinFor(snake.id,snake.color).primary}"${snake.id === 0 ? ' class="is-you"' : ''}>${row(snake.name, snake.mass, i + 1, skinFor(snake.id,snake.color).primary)}</li>`).join('');
+      you.hidden = place <= limit; you.innerHTML = row('YOU', player.mass, place, skinFor(0,player.color).primary);
       root.dataset.phase = state.phase; root.dataset.tick = String(state.ticks); root.dataset.mass = player.mass.toFixed(3);
       root.dataset.x = player.x.toFixed(3); root.dataset.y = player.y.toFixed(3); root.dataset.angle = player.angle.toFixed(4);
       root.dataset.boosting = String(player.boosting); root.dataset.trails = String(state.food.filter(food => food.trail).length);
