@@ -337,7 +337,7 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
   finally{button.disabled=false;}
 });
 
-content.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.closest('.movies-mini-poster'))image.hidden=true;},{capture:true});
+content.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.closest('.movies-poster-wall'))image.hidden=true;},{capture:true});
 content.addEventListener('click',event=>{const link=(event.target as Element).closest('.movies-launch');if(link&&event instanceof MouseEvent&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&event.button===0){movieOrigin=link.getBoundingClientRect();}});
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true).catch(()=>{});});
