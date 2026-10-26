@@ -48,3 +48,13 @@ export function licensedSource(value:unknown,key:string,now=new Date()):Licensed
 }
 export const mediaKey=(title:Title,route:MovieRoute)=>title.kind==='tv'?`${title.id}:s${route.season}:e${route.episode}`:title.id;
 export const titleHash=(id:string)=>`#/movies/${id}`;
+
+export function nextEpisode(title:Title,season:number,episode:number):{season:number;episode:number;name?:string}|undefined {
+ if(title.kind!=='tv')return;
+ const current=title.seasons.find(s=>s.number===season),index=current?.episodes.findIndex(e=>e.number===episode)??-1;
+ if(!current||index<0)return;
+ const following=current.episodes[index+1];
+ if(following)return {season,episode:following.number,name:following.name};
+ const next=title.seasons.filter(s=>s.number>season).sort((a,b)=>a.number-b.number)[0];
+ if(next)return {season:next.number,episode:next.episodes[0]?.number??1,name:next.episodes[0]?.name};
+}

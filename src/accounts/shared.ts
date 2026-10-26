@@ -20,7 +20,7 @@ export function validSave(key:string,record:unknown,maxBytes=MAX_KEY_BYTES):reco
  if(!SAVE_KEYS.includes(key)||!object(record)||Object.keys(record).some(k=>k!=='value'&&k!=='updated')||!timestamp(record.updated))return false;
  const value=record.value;
  if(key==='settings'){
-  if(!object(value)||Object.entries(value).some(([k,v])=>!['sound','reducedMotion','colorBlind'].includes(k)||typeof v!=='boolean'))return false;
+  if(!object(value)||Object.entries(value).some(([k,v])=>!['sound','reducedMotion','colorBlind','autoNextEpisode'].includes(k)||typeof v!=='boolean'))return false;
  }else if(key==='favourites'){
   if(!Array.isArray(value)||value.length>GAME_IDS.length||!value.every(id=>GAME_IDS.includes(id)))return false;
  }else if(key.startsWith('best:')){

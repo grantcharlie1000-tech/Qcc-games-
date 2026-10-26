@@ -1,7 +1,7 @@
 import './style.css';
 import {movieIcon} from './icons';
 import {frameSource,FRAME_SANDBOX,FRAME_ALLOW,FRAME_MESSAGE_ORIGINS} from './provider';
-import {filterTitles,licensedSource,mediaKey,parseCatalog,parseMovieRoute,titleHash} from './model';
+import {filterTitles,licensedSource,mediaKey,nextEpisode,parseCatalog,parseMovieRoute,titleHash} from './model';
 import type {Catalog,MovieRoute,Title} from './model';
 import {MovieStorage} from './storage';
 const base=import.meta.env.BASE_URL;
@@ -9,6 +9,9 @@ const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 // Absolute same-origin URLs also resolve correctly inside CSS custom properties in /assets/ stylesheets.
 const asset=(v:string)=>v.startsWith('https://')?v:new URL(base+v,document.baseURI).href;
 const meta=(t:Title)=>[t.year||'',t.kind==='tv'?'Series':t.runtime?t.runtime+' min':'Movie',t.rating===undefined?'':'★ '+t.rating.toFixed(1)+'/10'].filter(Boolean).join(' · ');
+type FullscreenDocument=Document&{webkitFullscreenElement?:Element|null;webkitExitFullscreen?:()=>void};
+type FullscreenElement=HTMLElement&{webkitRequestFullscreen?:()=>void};
+interface PlaybackPreferences {autoNext:()=>boolean;setAutoNext:(value:boolean)=>void}
 export class MoviesView {
  readonly root=document.createElement('section');
  private catalog:Catalog={titles:[],source:'starter',trending:[]};
@@ -46,10 +49,17 @@ export class MoviesView {
  private frameTime=0;
  private frameSeek:number|undefined;
  private progressKey='';
+ private ended=false;
+ private suspended=false;
+ private countdown?:ReturnType<typeof setInterval>;
+ private nextHash='';
+ private countdownGeneration=0;
+ private wasFullscreen=false;
+ private intentionalExit=false;
  private lastSave=0;
  private route:MovieRoute={play:false};
  private onVisibility=()=>{if(document.hidden)this.pause();};
- constructor(container:HTMLElement,private study:()=>void,private reducedMotion:boolean,origin?:DOMRect){
+ constructor(container:HTMLElement,private study:()=>void,private reducedMotion:boolean,origin?:DOMRect,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
   this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){if(image.dataset.poster&&image.src!==image.dataset.poster){image.src=image.dataset.poster;delete image.dataset.poster;}else image.style.opacity='0';}},{capture:true});
@@ -60,6 +70,8 @@ export class MoviesView {
   },{capture:true});
   this.root.addEventListener('input',this.input);
   this.root.addEventListener('change',this.change);
+  this.root.addEventListener('keydown',this.keydown);
+  document.addEventListener('fullscreenchange',this.fullscreenChange);document.addEventListener('webkitfullscreenchange',this.fullscreenChange);
   document.addEventListener('visibilitychange',this.onVisibility);
   window.addEventListener('message',this.providerMessage);
   this.root.focus();
@@ -112,7 +124,7 @@ export class MoviesView {
   return this.dynamicIds.has(route.id)&&title.kind==='tv'&&!!route.season&&!this.loadedSeasons.has(route.id+':s'+route.season);
  }
  private async loadTitle(id:string,season?:number){
-  const request=++this.detailRequest;this.detailAbort?.abort();const controller=this.detailAbort=new AbortController();this.pendingTitle=true;this.render();
+  const request=++this.detailRequest;this.detailAbort?.abort();const controller=this.detailAbort=new AbortController();this.pendingTitle=true;if(!this.screenFullscreen())this.render();
   try{
    const params=new URLSearchParams({id});if(season)params.set('season',String(season));
    const response=await fetch('/api/movies?'+params,{credentials:'omit',referrerPolicy:'no-referrer',cache:'no-store',redirect:'error',signal:controller.signal});
@@ -120,6 +132,8 @@ export class MoviesView {
    const data=await response.json();const parsed=parseCatalog({titles:[data.title],source:'tmdb'});const title=parsed.titles[0];
    if(request!==this.detailRequest||this.route.id!==id)return;
    if(!title)throw new Error('Title details are unavailable.');
+   const previous=this.catalog.titles.find(t=>t.id===id);
+   if(previous)for(const item of title.seasons)if(!item.episodes.length)item.episodes=previous.seasons.find(s=>s.number===item.number)?.episodes??[];
    this.catalog={...this.catalog,titles:[...this.catalog.titles.filter(t=>t.id!==id),title]};
    this.dynamicIds.add(id);this.loadedDetails.add(id);
    if(season)this.loadedSeasons.add(id+':s'+season);
@@ -148,7 +162,10 @@ export class MoviesView {
   this.positions.set(this.positionKey(this.route),{top:this.root.scrollTop,href:this.lastActivatedHref||(document.activeElement as Element)?.closest('a')?.getAttribute('href')||''});
   this.lastActivatedHref='';
   const returning=!!this.route.id&&!next.id;
-  this.stopVideo();this.preferExternal=false;this.route=next;this.render();
+  const inPlace=this.route.play&&next.play&&this.route.id===next.id&&this.screenFullscreen();
+  this.stopVideo();this.suspended=false;this.preferExternal=false;this.route=next;
+  const title=this.catalog.titles.find(t=>t.id===next.id);
+  if(inPlace&&title)this.refreshPlayer(title);else this.render();
   if(this.ready&&this.needsDetails(next))void this.loadTitle(next.id!,next.season);
   if(this.focusSearch){this.focusSearch=false;this.searchFocus();return;}
   if(this.homeNavigation){this.homeNavigation=false;this.root.scrollTop=0;this.root.querySelector<HTMLElement>('h1')?.focus({preventScroll:true});return;}
@@ -189,10 +206,12 @@ export class MoviesView {
   const source=!this.preferExternal&&(t.kind==='movie'||episode)?licensedSource(this.licenses,mediaKey(t,this.route)):undefined;
   const external=frameSource(t,this.route);
   const back=titleHash(t.id)+(episode?`/season/${this.route.season}/episode/${this.route.episode}`:'');
-  return `<div class="movies-player"><a class="movies-detail-back" href="${back}">← Back to ${escape(t.name)}</a><p class="movies-eyebrow">QCC SCREEN / ${t.kind==='tv'?'SERIES':'CINEMA'}</p><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${this.route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-screen">${source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" src="${asset(source.path)}"></video>`:external?`<iframe class="movies-provider-frame" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`:`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${back}">Return to title</a></div>`}</div><p id="movies-player-status" role="status">${source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`:external?'External player provided by FrameXTV. It and its streaming providers receive normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.':'No provider identifier is available for this title.'}</p></div>`;
+  return `<div class="movies-player"><a class="movies-detail-back" href="${back}">← Back to ${escape(t.name)}</a><p class="movies-eyebrow">QCC SCREEN / ${t.kind==='tv'?'SERIES':'CINEMA'}</p><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${this.route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-screen" data-title="${t.id}" tabindex="-1" aria-label="Player area"><div class="movies-media">${source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" src="${asset(source.path)}"></video>`:external?`<iframe class="movies-provider-frame" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`:`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${back}">Return to title</a></div>`}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button></div>${t.kind==='tv'?`<label class="movies-auto-next"><input type="checkbox" id="movies-auto-next"${this.preferences.autoNext()?' checked':''}> Auto next episode</label>`:''}<p id="movies-player-status" role="status">${source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`:external?'External player provided by FrameXTV. It and its streaming providers receive normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.':'No provider identifier is available for this title.'}</p></div>`;
  }
  private mobileNav(){return `<nav class="movies-mobile-nav" aria-label="Mobile movies navigation"><button data-kind="all">${movieIcon('home')}<span>Home</span></button><button data-action="search">${movieIcon('search')}<span>Search</span></button><button data-kind="list">${movieIcon('list')}<span>My list</span></button><button data-action="study">${movieIcon('study')}<span>Study</span></button></nav>`;}
  private render(message=''){
+  const title=this.catalog.titles.find(t=>t.id===this.route.id);
+  if(this.route.play&&title&&this.screenFullscreen()&&this.root.querySelector<HTMLElement>('.movies-screen')?.dataset.title===title.id){this.refreshPlayer(title);return;}
   this.stopVideo();
   this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?'Connect to this site and try again. Movies are separate from the games offline pack.':'Your next story is on its way.'}</p>${this.failed?'<button data-action="retry">Try again</button>':''}</div>`:message?`<div class="movies-empty"><h1>${escape(message)}</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1>Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse())+this.mobileNav();
   if(!this.route.id&&this.query.trim().length>=2){
@@ -218,6 +237,10 @@ export class MoviesView {
    const paragraphs=this.root.querySelectorAll<HTMLElement>('.movies-footer p');
    if(paragraphs[1])paragraphs[1].textContent='Search and metadata use the TMDB database. This product uses the TMDB API but is not endorsed or certified by TMDB.';
   }
+  this.bindPlayer();
+ }
+ private bindPlayer(){
+  this.ended=false;
   this.video=this.root.querySelector('video')??undefined;
   this.frame=this.root.querySelector('iframe')??undefined;
   if(this.frame){const title=this.catalog.titles.find(t=>t.id===this.route.id)!;this.progressKey=mediaKey(title,this.route);this.frameTime=this.storage.data.progress[this.progressKey]??0;this.frameSeek=this.frameTime>0?this.frameTime:undefined;this.lastSave=0;}
@@ -225,10 +248,13 @@ export class MoviesView {
    const video=this.video,t=this.catalog.titles.find(t=>t.id===this.route.id)!;
    this.progressKey=mediaKey(t,this.route);this.lastSave=0;const key=this.progressKey;
    video.addEventListener('loadedmetadata',()=>{if(this.video!==video)return;const time=this.storage.data.progress[key];if(time&&Number.isFinite(video.duration)&&time<video.duration-2)video.currentTime=time;});
-   video.addEventListener('timeupdate',()=>{if(this.video===video&&Date.now()-this.lastSave>5000){this.storage.progress(key,video.currentTime);this.lastSave=Date.now();}});
-   video.addEventListener('pause',()=>{if(this.video===video)this.storage.progress(key,video.currentTime);});
+   video.addEventListener('play',()=>{if(this.video===video&&!document.hidden&&!this.root.closest('[inert]'))this.suspended=false;});
+   video.addEventListener('ended',()=>{if(this.video===video)this.episodeEnded();});
+   video.addEventListener('timeupdate',()=>{if(this.video!==video)return;this.rearm(video.currentTime,video.duration);if(!this.ended&&Date.now()-this.lastSave>5000){this.storage.progress(key,video.currentTime);this.lastSave=Date.now();}});
+   video.addEventListener('pause',()=>{if(this.video===video)this.storage.progress(key,this.ended?0:video.currentTime);});
    video.addEventListener('error',()=>{if(this.video!==video)return;const status=this.root.querySelector('#movies-player-status');if(status){status.textContent='The local file could not be played. ';const button=document.createElement('button');button.dataset.action='external-stream';button.textContent='Use external player';status.append(button);}});
   }
+  if(this.suspended||document.hidden)this.pause();
  }
  private providerMessage=(event:MessageEvent)=>{
   if(!this.frame||event.source!==this.frame.contentWindow||!FRAME_MESSAGE_ORIGINS.has(event.origin))return;
@@ -236,7 +262,8 @@ export class MoviesView {
   if(!data||data.event!=='frameXTV:timeupdate'||typeof data.currentTime!=='number'||!Number.isFinite(data.currentTime)||data.currentTime<0||data.currentTime>30*86400)return;
   if(this.frameSeek!==undefined){const time=this.frameSeek;this.frameSeek=undefined;this.frame.contentWindow?.postMessage({action:'seek',time},event.origin);return;}
   this.frameTime=data.currentTime;
-  if(Date.now()-this.lastSave>5000){this.storage.progress(this.progressKey,this.frameTime);this.lastSave=Date.now();}
+  if(typeof data.duration==='number'&&Number.isFinite(data.duration)&&data.duration>0){this.rearm(data.currentTime,data.duration);if(data.duration-data.currentTime<=1)this.episodeEnded();}
+  if(!this.ended&&Date.now()-this.lastSave>5000){this.storage.progress(this.progressKey,this.frameTime);this.lastSave=Date.now();}
  };
  private click=(event:MouseEvent)=>{
   const target=(event.target as Element).closest<HTMLElement>('button');if(!target)return;
@@ -245,7 +272,7 @@ export class MoviesView {
   if(target.dataset.list){this.storage.toggle(target.dataset.list);this.render();this.root.querySelector<HTMLElement>('[data-list]')?.focus();}
   if(target.dataset.playRoute)location.hash=target.dataset.playRoute;
   if(target.dataset.play)location.hash=titleHash(target.dataset.play)+'/play';
-  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(this.route.id){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(this.query,Number(target.dataset.page));break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'resume-stream':this.render();break;case 'external-stream':this.preferExternal=true;this.render();break;case 'reset':this.query='';this.searchRequest++;this.metadataAbort?.abort();this.remoteTitles=[];this.remoteError='';this.remoteLoading=false;this.kind='all';this.genre='All';this.render();break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
+  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(this.route.id){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(this.query,Number(target.dataset.page));break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'external-stream':this.preferExternal=true;this.render();break;case 'reset':this.query='';this.searchRequest++;this.metadataAbort?.abort();this.remoteTitles=[];this.remoteError='';this.remoteLoading=false;this.kind='all';this.genre='All';this.render();break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  private searchFocus(){const search=this.root.querySelector<HTMLInputElement>('#movies-search');search?.focus({preventScroll:true});search?.scrollIntoView({block:'center'});}
  private input=(event:Event)=>{
@@ -260,11 +287,67 @@ export class MoviesView {
  };
  private change=(event:Event)=>{
   const input=event.target as HTMLSelectElement;
+  if(input.id==='movies-auto-next'){const value=(event.target as HTMLInputElement).checked;this.preferences.setAutoNext(value);if(!value)this.cancelNext();}
   if(input.id==='movies-genre'){this.genre=input.value;this.render();this.root.querySelector<HTMLElement>('#movies-genre')?.focus({preventScroll:true});}
   if(input.id==='movies-season'&&this.route.id){const selected=this.catalog.titles.find(t=>t.id===this.route.id)?.seasons.find(s=>s.number===Number(input.value));if(selected&&!selected.episodes.length)location.hash=titleHash(this.route.id)+'/season/'+selected.number+'/episode/1';}
   if(input.id==='movies-season'&&this.route.id){const season=this.catalog.titles.find(t=>t.id===this.route.id)?.seasons.find(s=>s.number===Number(input.value));const episode=season?.episodes[0];if(episode)location.hash=`${titleHash(this.route.id)}/season/${season!.number}/episode/${episode.number}`;}
  };
- pause(){if(this.video){this.storage.progress(this.progressKey,this.video.currentTime);this.video.pause();}if(this.frame){this.storage.progress(this.progressKey,this.frameTime);this.frame.remove();this.frame=undefined;const screen=this.root.querySelector('.movies-screen');if(screen)screen.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
- private stopVideo(){if(this.frame)this.storage.progress(this.progressKey,this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;this.storage.progress(this.progressKey,video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
- dispose(){this.abort.abort();this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);window.removeEventListener('message',this.providerMessage);this.root.remove();document.body.classList.remove('movies-active');}
+ private fullscreenElement(){return document.fullscreenElement||(document as FullscreenDocument).webkitFullscreenElement;}
+ private screenFullscreen(){const screen=this.root.querySelector('.movies-screen');return !!screen&&this.fullscreenElement()===screen;}
+ private fullscreenSupported(){const element=document.documentElement as FullscreenElement;return typeof element.requestFullscreen==='function'||typeof element.webkitRequestFullscreen==='function';}
+ private async exitFullscreen(){
+  if(!this.fullscreenElement())return;
+  this.intentionalExit=true;const doc=document as FullscreenDocument;
+  try{if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen();else doc.webkitExitFullscreen?.();}catch{this.intentionalExit=false;}
+ }
+ private async toggleFullscreen(){
+  if(this.fullscreenElement()){await this.exitFullscreen();return;}
+  const screen=this.root.querySelector<FullscreenElement>('.movies-screen');if(!screen)return;
+  try{if(screen.requestFullscreen)await screen.requestFullscreen();else screen.webkitRequestFullscreen?.();}catch{/* The browser can deny fullscreen. */}
+  if(!screen.isConnected||this.suspended||document.hidden)await this.exitFullscreen();
+ }
+ private fullscreenChange=()=>{
+  const active=!!this.fullscreenElement();
+  if(this.wasFullscreen&&!active){if(!this.intentionalExit)this.cancelNext(true);this.intentionalExit=false;}
+  this.wasFullscreen=active;
+  const button=this.root.querySelector('[data-action="fullscreen"]');button?.setAttribute('aria-pressed',String(this.screenFullscreen()));
+ };
+ private refreshPlayer(title:Title){
+  const screen=this.root.querySelector<HTMLElement>('.movies-screen'),player=screen?.parentElement;if(!screen||!player)return;
+  this.stopVideo();
+  const template=document.createElement('template');template.innerHTML=this.player(title);const next=template.content.firstElementChild!;
+  screen.querySelector('.movies-media')!.replaceChildren(...next.querySelector('.movies-media')!.childNodes);
+  for(const child of [...player.children])if(child!==screen)child.remove();
+  let before=true;for(const child of [...next.children]){if(child.classList.contains('movies-screen'))before=false;else if(before)player.insertBefore(child,screen);else player.append(child);}
+  this.bindPlayer();this.fullscreenChange();
+ }
+ private rearm(time:number,duration:number){if(this.ended&&Number.isFinite(duration)&&duration>0&&duration-time>5){this.ended=false;this.cancelNext();}}
+ private episodeEnded(){
+  const title=this.catalog.titles.find(t=>t.id===this.route.id);if(this.suspended||this.ended||this.frameSeek!==undefined||!this.route.play||title?.kind!=='tv')return;
+  this.ended=true;this.frameTime=0;this.storage.progress(this.progressKey,0);
+  const next=nextEpisode(title,this.route.season!,this.route.episode!);if(!next||!this.preferences.autoNext())return;
+  this.cancelNext();const generation=this.countdownGeneration;
+  const show=()=>{
+   if(generation!==this.countdownGeneration||!this.ended||!this.preferences.autoNext())return;
+   const overlay=this.root.querySelector<HTMLElement>('.movies-next');if(!overlay)return;
+   this.nextHash=`${titleHash(title.id)}/season/${next.season}/episode/${next.episode}/play`;
+   const label=`Up next: S${next.season} · E${next.episode}${next.name?' — '+next.name:''}`;
+   overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div><button class="movies-primary" data-action="play-next">Play now</button><button data-action="cancel-next">Cancel</button></div>`;overlay.hidden=false;
+   const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent=label+'. Playing in 10 seconds.';
+   overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});
+   let seconds=10;this.countdown=setInterval(()=>{if(!this.preferences.autoNext()){this.cancelNext();return;}seconds--;if(seconds<=0)this.playNext();else {const count=overlay.querySelector('.movies-next-countdown');if(count)count.textContent='Playing in '+seconds;}},1000);
+  };
+  if(this.fullscreenElement()&&(this.fullscreenElement()===this.frame||this.fullscreenElement()===this.video))void this.exitFullscreen().then(show);else show();
+ }
+ private cancelNext(focus=false){
+  this.countdownGeneration++;clearInterval(this.countdown);this.countdown=undefined;this.nextHash='';
+  const overlay=this.root.querySelector<HTMLElement>('.movies-next');const visible=overlay&&!overlay.hidden;if(overlay)overlay.hidden=true;
+  const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent='';
+  if(focus&&visible)this.root.querySelector<HTMLElement>('.movies-screen')?.focus({preventScroll:true});
+ }
+ private playNext(){const hash=this.nextHash;this.cancelNext();if(hash&&this.preferences.autoNext())location.hash=hash;}
+ private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('button')){event.preventDefault();this.playNext();}};
+ pause(){this.suspended=true;this.cancelNext();if(this.video){this.storage.progress(this.progressKey,this.ended?0:this.video.currentTime);this.video.pause();}if(this.frame){this.storage.progress(this.progressKey,this.ended?0:this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
+ private stopVideo(){this.cancelNext();if(this.frame)this.storage.progress(this.progressKey,this.ended?0:this.frameTime);this.frame?.remove();this.frame=undefined;this.frameSeek=undefined;if(this.video){const video=this.video;this.storage.progress(this.progressKey,this.ended?0:video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
+ dispose(){this.abort.abort();this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);this.root.remove();document.body.classList.remove('movies-active');}
 }

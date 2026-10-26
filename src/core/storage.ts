@@ -30,7 +30,7 @@ export function write(key:string,value:unknown):boolean {
   changed(key);return durable;
 }
 export function probeStorage():boolean { try { localStorage.setItem(prefix+'probe','1'); localStorage.removeItem(prefix+'probe'); } catch { retained=false; } return retained; }
-export function settings():Settings { return {...{sound:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,colorBlind:false},...read<Partial<Settings>>('settings',{})}; }
+export function settings():Settings { return {...{sound:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,colorBlind:false,autoNextEpisode:true},...read<Partial<Settings>>('settings',{})}; }
 export function highScore(id:GameId):number { const score=read('best:'+id,0);return typeof score==='number'&&Number.isFinite(score)?score:0; }
 export function recordScore(id:GameId,score:number):number { const best=Math.max(highScore(id),Number.isFinite(score)?score:0);write('best:'+id,best);return best; }
 export function saveGame(id:GameId,data:unknown):boolean { return write('save:'+id,{version:1,data,updated:Date.now()}); }
