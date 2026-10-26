@@ -4,7 +4,7 @@
 import { sweepSphereBox } from '../../core/collision';
 import {
   BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
-  isDifficulty, lateralSpeed,
+  lateralSpeed,
   type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';
 import { getCourse } from './course';
@@ -233,24 +233,18 @@ function restoreRun(value: unknown, difficulty: Difficulty): Run | null {
   };
 }
 
-/** Restores a save. v4 keeps its records even when its run is damaged (the run is then
- * dropped). v1–v3 saves come from another course: only their best survives, as Medium's
- * all-time record. Anything else is null. Never throws. */
+/** Restore Hard records and compatible Hard runs; older courses cannot be resumed. */
 export function restoreSnapshot(value: unknown): { difficulty: Difficulty; records: Records; run: Run | null; migrated: boolean } | null {
   try {
     if (!isObject(value)) return null;
     if (value.version === 4) {
-      // A damaged difficulty falls back to the run's, then Medium, rather than losing the records.
-      const records = restoreRecords(value.records), saved = isObject(value.run) ? value.run.difficulty : null;
-      const difficulty = isDifficulty(value.difficulty) ? value.difficulty : isDifficulty(saved) ? saved : 'medium';
+      const records = restoreRecords(value.records);
       let run: Run | null = null;
-      try { run = restoreRun(value.run, difficulty); } catch { run = null; }
-      return { difficulty, records, run, migrated: false };
+      try { run = restoreRun(value.run, 'hard'); } catch { run = null; }
+      return { difficulty: 'hard', records, run, migrated: false };
     }
     if ((value.version === 1 || value.version === 2 || value.version === 3) && isNumber(value.best) && value.best >= 0) {
-      const records = emptyRecords();
-      records.medium.allTime = Math.min(MAX_SCORE, Math.floor(value.best));
-      return { difficulty: 'medium', records, run: null, migrated: true };
+      return { difficulty: 'hard', records: emptyRecords(), run: null, migrated: true };
     }
     return null;
   } catch {

@@ -40,24 +40,23 @@ describe('Ball Run record keys', () => {
 });
 
 describe('Ball Run records', () => {
-  const stored = (): Records => ({ ...emptyRecords(), medium: { allTime: 300, day: '2026-10-22', dayBest: 120, week: '2026-10-19', weekBest: 200 } });
+  const stored = (): Records => ({ ...emptyRecords(), hard: { allTime: 300, day: '2026-10-22', dayBest: 120, week: '2026-10-19', weekBest: 200 } });
 
   it('starts fresh profiles at zero, without the recording\'s 79 or 143', () => {
     const records = emptyRecords();
     for (const difficulty of DIFFICULTIES) expect(records[difficulty]).toEqual({ allTime: 0, day: '', dayBest: 0, week: '', weekBest: 0 });
     expect(JSON.stringify(records)).not.toMatch(/79|143/);
     expect(emptyRecords()).not.toBe(records);
-    expect(emptyRecords().easy).not.toBe(records.easy);
+    expect(emptyRecords().hard).not.toBe(records.hard);
   });
 
   it('reads stale or future day and week bests as zero', () => {
     const records = stored();
-    expect(viewRecords(records, 'medium', new Date(2026, 9, 22, 9))).toEqual({ today: 120, week: 200, allTime: 300 });
-    expect(viewRecords(records, 'medium', new Date(2026, 9, 23, 0, 0))).toEqual({ today: 0, week: 200, allTime: 300 });
-    expect(viewRecords(records, 'medium', new Date(2026, 9, 26, 0, 0))).toEqual({ today: 0, week: 0, allTime: 300 });
-    expect(viewRecords(records, 'medium', new Date(2026, 9, 21, 9))).toEqual({ today: 0, week: 200, allTime: 300 });
-    expect(viewRecords(records, 'medium', new Date(2026, 9, 18, 9))).toEqual({ today: 0, week: 0, allTime: 300 });
-    expect(viewRecords(records, 'hard', new Date(2026, 9, 22, 9))).toEqual({ today: 0, week: 0, allTime: 0 });
+    expect(viewRecords(records, 'hard', new Date(2026, 9, 22, 9))).toEqual({ today: 120, week: 200, allTime: 300 });
+    expect(viewRecords(records, 'hard', new Date(2026, 9, 23, 0, 0))).toEqual({ today: 0, week: 200, allTime: 300 });
+    expect(viewRecords(records, 'hard', new Date(2026, 9, 26, 0, 0))).toEqual({ today: 0, week: 0, allTime: 300 });
+    expect(viewRecords(records, 'hard', new Date(2026, 9, 21, 9))).toEqual({ today: 0, week: 200, allTime: 300 });
+    expect(viewRecords(records, 'hard', new Date(2026, 9, 18, 9))).toEqual({ today: 0, week: 0, allTime: 300 });
   });
 
   it('keeps the week and all-time bests and resets today on a later day', () => {
@@ -65,16 +64,15 @@ describe('Ball Run records', () => {
     records = commitScore(records, 'hard', 30, new Date(2026, 9, 21, 8));
     expect(records.hard).toEqual({ allTime: 100, day: '2026-10-21', dayBest: 30, week: '2026-10-19', weekBest: 100 });
     expect(viewRecords(records, 'hard', new Date(2026, 9, 21, 9))).toEqual({ today: 30, week: 100, allTime: 100 });
-    expect(records.easy).toEqual(emptyRecords().easy);
   });
 
   it('resets today and the week from Sunday night to Monday morning, but not across New Year mid-week', () => {
-    let records = commitScore(emptyRecords(), 'easy', 100, new Date(2026, 9, 25, 23, 59));
-    records = commitScore(records, 'easy', 30, new Date(2026, 9, 26, 0, 1));
-    expect(records.easy).toEqual({ allTime: 100, day: '2026-10-26', dayBest: 30, week: '2026-10-26', weekBest: 30 });
-    records = commitScore(emptyRecords(), 'easy', 100, new Date(2026, 11, 31, 22));
-    records = commitScore(records, 'easy', 30, new Date(2027, 0, 1, 9));
-    expect(viewRecords(records, 'easy', new Date(2027, 0, 1, 10))).toEqual({ today: 30, week: 100, allTime: 100 });
+    let records = commitScore(emptyRecords(), 'hard', 100, new Date(2026, 9, 25, 23, 59));
+    records = commitScore(records, 'hard', 30, new Date(2026, 9, 26, 0, 1));
+    expect(records.hard).toEqual({ allTime: 100, day: '2026-10-26', dayBest: 30, week: '2026-10-26', weekBest: 30 });
+    records = commitScore(emptyRecords(), 'hard', 100, new Date(2026, 11, 31, 22));
+    records = commitScore(records, 'hard', 30, new Date(2027, 0, 1, 9));
+    expect(viewRecords(records, 'hard', new Date(2027, 0, 1, 10))).toEqual({ today: 30, week: 100, allTime: 100 });
   });
 
   it('replaces a stored future day or week instead of comparing against it', () => {
@@ -84,27 +82,26 @@ describe('Ball Run records', () => {
 
   it('never lowers a value with a lower score and raises all three with a higher one', () => {
     const now = new Date(2026, 9, 23, 12);
-    const high = commitScore(emptyRecords(), 'medium', 100, now);
-    expect(commitScore(high, 'medium', 40, now).medium).toEqual(high.medium);
-    expect(viewRecords(commitScore(high, 'medium', 40, now), 'medium', now)).toEqual({ today: 100, week: 100, allTime: 100 });
-    expect(viewRecords(commitScore(high, 'medium', 101, now), 'medium', now)).toEqual({ today: 101, week: 101, allTime: 101 });
-    expect(commitScore(emptyRecords(), 'medium', 12.9, now).medium.allTime).toBe(12);
+    const high = commitScore(emptyRecords(), 'hard', 100, now);
+    expect(commitScore(high, 'hard', 40, now).hard).toEqual(high.hard);
+    expect(viewRecords(commitScore(high, 'hard', 40, now), 'hard', now)).toEqual({ today: 100, week: 100, allTime: 100 });
+    expect(viewRecords(commitScore(high, 'hard', 101, now), 'hard', now)).toEqual({ today: 101, week: 101, allTime: 101 });
+    expect(commitScore(emptyRecords(), 'hard', 12.9, now).hard.allTime).toBe(12);
   });
 
   it('returns a new object and leaves its input unchanged', () => {
-    const now = new Date(2026, 9, 23, 12), input = commitScore(stored(), 'easy', 50, now), before = structuredClone(input);
-    const result = commitScore(input, 'medium', 400, now);
+    const now = new Date(2026, 9, 23, 12), input = commitScore(stored(), 'hard', 50, now), before = structuredClone(input);
+    const result = commitScore(input, 'hard', 400, now);
     expect(input).toEqual(before);
     expect(result).not.toBe(input);
     for (const difficulty of DIFFICULTIES) expect(result[difficulty]).not.toBe(input[difficulty]);
-    expect(result.medium).toEqual({ allTime: 400, day: '2026-10-23', dayBest: 400, week: '2026-10-19', weekBest: 400 });
-    expect(result.easy).toEqual(input.easy);
+    expect(result.hard).toEqual({ allTime: 400, day: '2026-10-23', dayBest: 400, week: '2026-10-19', weekBest: 400 });
   });
 
   it('ignores non-finite and negative scores', () => {
     const now = new Date(2026, 9, 23, 12), input = stored();
     for (const score of [NaN, Infinity, -Infinity, -1]) {
-      const result = commitScore(input, 'medium', score, now);
+      const result = commitScore(input, 'hard', score, now);
       expect(result).toEqual(stored());
       expect(result).not.toBe(input);
     }
@@ -126,34 +123,19 @@ describe('Ball Run next target', () => {
 
 describe('Ball Run record restore', () => {
   it('turns missing or invalid data into empty records without throwing', () => {
-    for (const value of [null, undefined, {}, [], 'records', 42, { easy: { allTime: NaN } }, { hard: { allTime: -4, day: 'nope' } }, { medium: null }, { easy: { allTime: '12', day: 20261023 } }])
+    for (const value of [null, undefined, {}, [], 'records', 42, { easy: { allTime: NaN } }, { hard: { allTime: -4, day: 'nope' } }, { hard: null }, { easy: { allTime: '12', day: 20261023 } }])
       expect(restoreRecords(value)).toEqual(emptyRecords());
   });
 
-  it('validates each field: real calendar keys, Monday week keys, integers clamped to 0..2147483647', () => {
-    const records = restoreRecords({
-      easy: { allTime: 12.7, day: '2026-02-30', dayBest: 9, week: '2026-10-20', weekBest: 9 },
-      medium: { allTime: 1e12, day: '2026-10-23', dayBest: 3.5e9, week: '2026-10-19', weekBest: 77 },
-      hard: { allTime: -4, day: '2026-10-23', dayBest: -1, week: '26-10-19', weekBest: 5 },
-    });
-    expect(records.easy).toEqual({ allTime: 12, day: '', dayBest: 0, week: '', weekBest: 0 });
-    expect(records.medium).toEqual({ allTime: 2147483647, day: '2026-10-23', dayBest: 2147483647, week: '2026-10-19', weekBest: 2147483647 });
-    expect(records.hard).toEqual({ allTime: 0, day: '2026-10-23', dayBest: 0, week: '', weekBest: 0 });
-  });
-
-  it('restores consistent bests: a day best lifts its own week and every best lifts all time', () => {
-    const records = restoreRecords({
-      easy: { allTime: 10, day: '2026-10-23', dayBest: 90, week: '2026-10-19', weekBest: 40 },
-      medium: { allTime: 5, day: '2026-10-23', dayBest: 60, week: '2026-10-12', weekBest: 30 },
-    });
-    expect(records.easy).toEqual({ allTime: 90, day: '2026-10-23', dayBest: 90, week: '2026-10-19', weekBest: 90 });
-    // A day outside the stored week leaves that week's best alone.
-    expect(records.medium).toEqual({ allTime: 60, day: '2026-10-23', dayBest: 60, week: '2026-10-12', weekBest: 30 });
+  it('validates and normalizes Hard records', () => {
+    const records = restoreRecords({ hard: { allTime: 10, day: '2026-10-23', dayBest: 90, week: '2026-10-19', weekBest: 40 } });
+    expect(records.hard).toEqual({ allTime: 90, day: '2026-10-23', dayBest: 90, week: '2026-10-19', weekBest: 90 });
+    expect(restoreRecords({ hard: { allTime: 1e12, day: 'invalid' } }).hard.allTime).toBe(2147483647);
   });
 
   it('round-trips valid records through JSON', () => {
-    let records = commitScore(emptyRecords(), 'easy', 640, new Date(2026, 9, 18, 20));
-    records = commitScore(records, 'medium', 1234, new Date(2026, 9, 23, 12));
+    let records = commitScore(emptyRecords(), 'hard', 640, new Date(2026, 9, 18, 20));
+    records = commitScore(records, 'hard', 1234, new Date(2026, 9, 23, 12));
     records = commitScore(records, 'hard', 87, new Date(2027, 0, 1, 0, 5));
     const restored = restoreRecords(JSON.parse(JSON.stringify(records)));
     expect(restored).toEqual(records);

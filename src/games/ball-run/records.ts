@@ -1,4 +1,4 @@
-/** Per-difficulty bests: today (local calendar day), this week (Monday-start local
+/** Hard bests: today (local calendar day), this week (Monday-start local
  * week) and all time. Pure: the caller passes the date. Keys come from local
  * calendar fields, never millisecond arithmetic, so DST days cannot shift them. */
 import { DIFFICULTIES, type Difficulty } from './config';

@@ -20,7 +20,7 @@ const gateList = (course: Course, to: number) => { const list: Gate[] = []; cour
 const obstacles = (course: Course, from: number, to: number) => { const list: Obstacle[] = []; course.forEachObstacle(from, to, o => list.push(o)); return list; };
 const poseOf = (course: Course, o: Obstacle, elapsed = 0) => course.pose(o, elapsed, blankPose());
 const clone = (run: Run): Run => JSON.parse(JSON.stringify(run)) as Run;
-const snapshotOf = (run: Run | null, records: Records, difficulty: Difficulty = run?.difficulty ?? 'medium'): unknown =>
+const snapshotOf = (run: Run | null, records: Records, difficulty: Difficulty = run?.difficulty ?? 'hard'): unknown =>
   JSON.parse(JSON.stringify({ version: 4, difficulty, records, run } satisfies Snapshot));
 /** Steps until `until` holds, or the run stops running; returns the steps taken. */
 function drive(run: Run, until: (run: Run) => boolean, input: (run: Run) => number = toCentre, dt = STEP, limit = 100000): number {
@@ -219,7 +219,7 @@ describe('Ball Run steering', () => {
   });
 
   it('holds its line on flat road and drifts toward the low side of a bank', () => {
-    const straight = placeRun(1, 'medium', 5);
+    const straight = placeRun(1, 'hard', 5);
     drive(straight, r => r.distance > 70, () => 0);
     expect(straight.x).toBe(0);
     for (const difficulty of DIFFICULTIES) {
@@ -396,9 +396,9 @@ describe('Ball Run hazards', () => {
   });
 
   it('does not clamp a ball flying above a gate wall', () => {
-    const course = getCourse(1, 'medium'), gate = gateList(course, 4000)[0];
+    const course = getCourse(1, 'hard'), gate = gateList(course, 4000)[0];
     const d = gate.start + 1, s = course.sample(d), edge = s.center + s.width / 2 - RADIUS;
-    const run = placeRun(1, 'medium', d, edge);
+    const run = placeRun(1, 'hard', d, edge);
     run.height = s.elevation + 3;
     run.vy = 0; run.vx = 4; run.grounded = false;
     step(run, 1, STEP);
@@ -525,7 +525,7 @@ describe('Ball Run hazards', () => {
         if (passed >= DIFFICULTIES.indexOf(difficulty) + 1) break;
       }
     }
-    expect(passed).toBe(3);
+    expect(passed).toBe(1);
   });
 
   it('meets a rolled block in its own frame, 2.5 cm either side of where it first touches', () => {
@@ -588,7 +588,7 @@ describe('Ball Run hazards', () => {
   });
 
   it('hits a sliding block at one time and misses it half a period later', () => {
-    for (const difficulty of ['medium', 'hard'] as const) {
+    for (const difficulty of ['hard'] as const) {
       let target: { seed: number; o: Obstacle } | null = null;
       for (let seed = 1; seed <= 10 && !target; seed++) {
         const course = getCourse(seed, difficulty);
@@ -617,7 +617,7 @@ describe('Ball Run hazards', () => {
   it('sweeps a sliding block from where it was to where it is across a step', () => {
     // Moving into the ball: only the block's new place reaches the end of the ball's path.
     // Moving off the path: only its old place is in front of the ball as the step starts.
-    for (const difficulty of ['medium', 'hard'] as const) {
+    for (const difficulty of ['hard'] as const) {
       const cases = [0, 0];
       for (let seed = 1; seed <= 10 && Math.min(...cases) < 2; seed++) {
         const course = getCourse(seed, difficulty);
@@ -649,12 +649,12 @@ describe('Ball Run hazards', () => {
   });
 
   it('ignores non-finite or out-of-range input and steps, and does nothing outside a run', () => {
-    const run = placeRun(1, 'medium', 40), before = clone(run);
+    const run = placeRun(1, 'hard', 40), before = clone(run);
     for (const [input, dt] of [[NaN, STEP], [Infinity, STEP], [-Infinity, STEP], [0, NaN], [0, Infinity], [0, -STEP], [0, 0], [0, .0501]]) {
       step(run, input, dt);
       expect(run).toEqual(before);
     }
-    const ready = createRun(5, 2, 'easy'), fresh = clone(ready);
+    const ready = createRun(5, 2, 'hard'), fresh = clone(ready);
     step(ready, 1, STEP);
     expect(ready).toEqual(fresh);
   });
@@ -680,7 +680,7 @@ describe('Ball Run new runs', () => {
 });
 
 describe('Ball Run saves', () => {
-  const records = commitScore(commitScore(emptyRecords(), 'hard', 812, new Date(2026, 9, 21)), 'medium', 303, new Date(2026, 9, 23));
+  const records = commitScore(commitScore(emptyRecords(), 'hard', 812, new Date(2026, 9, 21)), 'hard', 303, new Date(2026, 9, 23));
 
   function continuesIdentically(run: Run) {
     const restored = restoreSnapshot(snapshotOf(run, records));
@@ -700,8 +700,8 @@ describe('Ball Run saves', () => {
   }
 
   it('restores a ready, a running, an airborne and a Speed Up run exactly', () => {
-    continuesIdentically(createRun(9, 4, 'easy'));
-    const running = createRun(9, 4, 'medium');
+    continuesIdentically(createRun(9, 4, 'hard'));
+    const running = createRun(9, 4, 'hard');
     running.phase = 'running';
     drive(running, r => r.distance > 40);
     continuesIdentically(running);
@@ -712,7 +712,7 @@ describe('Ball Run saves', () => {
     drive(airborne, r => !r.grounded && r.distance > lip + .3);
     expect(airborne.grounded).toBe(false);
     continuesIdentically(airborne);
-    const gate = gateList(getCourse(1, 'medium'), 4000)[0], boosted = placeRun(1, 'medium', gate.start - 2);
+    const gate = gateList(getCourse(1, 'hard'), 4000)[0], boosted = placeRun(1, 'hard', gate.start - 2);
     drive(boosted, r => r.speedUpTime > 0 && r.speedUpTime < GATE_FEEDBACK - .2);
     expect(boosted.gateIndex).toBe(0);
     continuesIdentically(boosted);
@@ -731,13 +731,13 @@ describe('Ball Run saves', () => {
   });
 
   it('drops an invalid run but keeps the records', () => {
-    const base = createRun(11, 5, 'medium');
+    const base = createRun(11, 5, 'hard');
     base.phase = 'running';
     drive(base, r => r.distance > 30);
     const good = restoreSnapshot(snapshotOf(base, records));
     expect(good!.run).toEqual(base);
     const bad: Array<[keyof Run, unknown]> = [
-      ['version', 3], ['version', '4'], ['difficulty', 'expert'], ['difficulty', 'hard'], ['seed', 0], ['seed', 1.5], ['seed', 2 ** 32], ['seed', '11'],
+      ['version', 3], ['version', '4'], ['difficulty', 'expert'], ['difficulty', 'medium'], ['seed', 0], ['seed', 1.5], ['seed', 2 ** 32], ['seed', '11'],
       ['run', 0], ['run', 1e8 + 1], ['run', 2.5], ['phase', 'paused'], ['distance', -1], ['distance', NaN], ['distance', 2e6], ['distance', 1e9],
       ['x', 50.5], ['x', null], ['vx', 41], ['vy', -201], ['height', base.height + .05], ['height', 'high'], ['grounded', 'true'], ['elapsed', -1],
       ['speedUpTime', -.1], ['speedUpTime', GATE_FEEDBACK + .1], ['gateIndex', 0], ['gateIndex', -.5], ['dyingTime', -1], ['dyingTime', NaN],
@@ -745,18 +745,18 @@ describe('Ball Run saves', () => {
     ];
     for (const [field, value] of bad) {
       const run = { ...clone(base), [field]: value } as Run;
-      const restored = restoreSnapshot(snapshotOf(run, records, 'medium'));
+      const restored = restoreSnapshot(snapshotOf(run, records, 'hard'));
       expect(restored, `${field} = ${String(value)}`).not.toBeNull();
       expect(restored!.run, `${field} = ${String(value)}`).toBeNull();
       expect(restored!.records).toEqual(records);
-      expect(restored!.difficulty).toBe('medium');
+      expect(restored!.difficulty).toBe('hard');
     }
-    for (const run of [5, 'run', [], { version: 4 }]) expect(restoreSnapshot({ version: 4, difficulty: 'easy', records, run })).toMatchObject({ difficulty: 'easy', records, run: null });
+    for (const run of [5, 'run', [], { version: 4 }]) expect(restoreSnapshot({ version: 4, difficulty: 'hard', records, run })).toMatchObject({ difficulty: 'hard', records, run: null });
     const missing = clone(base) as Partial<Run>;
     delete missing.vy;
     expect(restoreSnapshot(snapshotOf(missing as Run, records))!.run).toBeNull();
     // A grounded ball must rest on road that holds it.
-    const offRoad = placeRun(11, 'medium', 40, CONFIG.medium.roadWidth / 2 + 1);
+    const offRoad = placeRun(11, 'hard', 40, CONFIG.hard.roadWidth / 2 + 1);
     expect(restoreSnapshot(snapshotOf(offRoad, records))!.run).toBeNull();
   });
 
@@ -769,15 +769,14 @@ describe('Ball Run saves', () => {
     expect(restored!.records).toEqual(records);
   });
 
-  it('migrates v1–v3 saves into a Medium all-time record without resuming them', () => {
+  it('migrates v1–v3 saves without keeping the old best without resuming them', () => {
     const legacy = { seed: 5, run: 3, phase: 'running', distance: 120, x: 0, vx: 0, height: .38, vy: 0, grounded: true, elapsed: 9, reason: '' };
     for (const version of [1, 2, 3]) {
       const restored = restoreSnapshot({ ...legacy, version, course: 2, best: 143.6 });
       const expected = emptyRecords();
-      expected.medium.allTime = 143;
-      expect(restored).toEqual({ difficulty: 'medium', records: expected, run: null, migrated: true });
+      expect(restored).toEqual({ difficulty: 'hard', records: expected, run: null, migrated: true });
     }
-    expect(restoreSnapshot({ ...legacy, version: 2, best: 1e12 })!.records.medium.allTime).toBe(2147483647);
+    expect(restoreSnapshot({ ...legacy, version: 2, best: 1e12 })!.records).toEqual(emptyRecords());
     expect(restoreSnapshot({ ...legacy, version: 1, best: 0 })!.records).toEqual(emptyRecords());
   });
 
@@ -785,7 +784,25 @@ describe('Ball Run saves', () => {
     for (const value of [null, undefined, 0, 42, 'save', [], {}, { version: 5 }, { version: 0, best: 10 }, { version: 2, best: -1 }, { version: 3, best: NaN }, { version: 3 }, { version: 1, best: '143' }]) {
       expect(restoreSnapshot(value)).toBeNull();
     }
-    expect(restoreSnapshot({ version: 4 })).toEqual({ difficulty: 'medium', records: emptyRecords(), run: null, migrated: false });
-    expect(restoreSnapshot({ version: 4, difficulty: 'nightmare', records, run: null })).toEqual({ difficulty: 'medium', records, run: null, migrated: false });
+    expect(restoreSnapshot({ version: 4 })).toEqual({ difficulty: 'hard', records: emptyRecords(), run: null, migrated: false });
+    expect(restoreSnapshot({ version: 4, difficulty: 'nightmare', records, run: null })).toEqual({ difficulty: 'hard', records, run: null, migrated: false });
+  });
+});
+
+describe('hard-only save compatibility', () => {
+  it('keeps Hard records but discards a v4 Medium run and other records', () => {
+    const hard = { allTime: 300, day: '', dayBest: 0, week: '', weekBest: 0 };
+    const result = restoreSnapshot({ version: 4, difficulty: 'medium', records: { easy: { allTime: 100 }, medium: { allTime: 200 }, hard }, run: { ...createRun(5, 1, 'hard'), difficulty: 'medium' } });
+    expect(result).toMatchObject({ difficulty: 'hard', records: { hard }, run: null });
+    expect(Object.keys(result!.records)).toEqual(['hard']);
+  });
+
+  it('restores a v4 Hard run', () => {
+    const run = createRun(5, 1, 'hard');
+    expect(restoreSnapshot({ version: 4, difficulty: 'hard', records: emptyRecords(), run })?.run).toEqual(run);
+  });
+
+  it('drops the legacy best', () => {
+    expect(restoreSnapshot({ version: 1, best: 143 })).toMatchObject({ difficulty: 'hard', records: { hard: { allTime: 0 } }, run: null });
   });
 });

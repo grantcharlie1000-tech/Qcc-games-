@@ -149,7 +149,6 @@ function flights(c: Course): Flight[] {
 /** Courses where a ball once landed on a crest that had begun under its flight and was launched again at
  * once, chaining two flights into one of 1.1–1.7 s (a crest after a crest, or after a dip's exit). */
 const CHAINED: { seed: number; difficulty: Difficulty }[] = [
-  { seed: 36, difficulty: 'medium' }, { seed: 102, difficulty: 'medium' }, { seed: 122, difficulty: 'medium' },
   { seed: 64, difficulty: 'hard' }, { seed: 188, difficulty: 'hard' }, { seed: 199, difficulty: 'hard' }, { seed: 223, difficulty: 'hard' },
 ];
 /** A ball that never rises a centimetre off the road has skimmed it, not flown (the road there falls away
@@ -262,8 +261,7 @@ describe('Ball Run course generator', () => {
   it('memoises a course by seed and difficulty and keeps only the six most recent', () => {
     const a = getCourse(501, 'hard');
     expect(getCourse(501, 'hard')).toBe(a);
-    expect(getCourse(501, 'easy')).not.toBe(a);
-    for (let i = 0; i < 7; i++) getCourse(600 + i, 'medium');
+    for (let i = 0; i < 7; i++) getCourse(600 + i, 'hard');
     expect(getCourse(501, 'hard')).not.toBe(a);
     expect(a.seed).toBe(501);
     expect(a.difficulty).toBe('hard');
@@ -370,7 +368,7 @@ describe('Ball Run course generator', () => {
     for (const { seed, difficulty } of CASES) {
       const c = course(seed, difficulty), cfg = CONFIG[difficulty], kinds = new Set(segments(c).map(s => s.kind));
       const expected: SegmentKind[] = ['bend', 'offset', 'ribbon', 'bank', 'crest', 'drop', 'gate'];
-      if (difficulty !== 'easy') expected.push('ribbonBend');
+      expected.push('ribbonBend');
       for (const kind of expected) expect(kinds, `${difficulty} seed ${seed} lacks ${kind}`).toContain(kind);
       // Gates to 4 km past the cap, where flights are longest.
       const segs = segments(c, farEnd(c)), list = gates(c, farEnd(c)), zones = flights(c).map(f => [f.takeoff - 5, f.landing + 12]);
@@ -476,7 +474,7 @@ describe('Ball Run course generator', () => {
 
   it('caps every crest\'s and dip\'s height by the speed there, so a launch leaves the road at most 8 m/s upward', { timeout: 60000 }, () => {
     let crests = 0;
-    const capped: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
+    const capped: Record<Difficulty, number> = { hard: 0 };
     for (const { seed, difficulty } of CASES) {
       const c = course(seed, difficulty);
       for (const seg of segments(c, farEnd(c))) {
@@ -492,13 +490,13 @@ describe('Ball Run course generator', () => {
         if (Math.abs(H) > most - 1e-6) capped[difficulty]++;
       }
     }
-    expect(crests).toBeGreaterThan(1000);
+    expect(crests).toBeGreaterThan(400);
     // The cap binds on every difficulty (37 / 85 / 145 crests and dips over these seeds when written).
     for (const d of DIFFICULTIES) expect(capped[d], d).toBeGreaterThan(20);
   });
 
   it('launches a ball over crests, dips and drops only, one flight at a time, for at most a second and at most 3 m up, to 4 km past the speed cap', { timeout: 60000 }, () => {
-    const atCap: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
+    const atCap: Record<Difficulty, number> = { hard: 0 };
     for (const { seed, difficulty } of [...CASES, ...CHAINED]) {
       const c = course(seed, difficulty), max = CONFIG[difficulty].maxSpeed;
       let launches = 0;
@@ -532,7 +530,7 @@ describe('Ball Run course generator', () => {
       }
       expect(misplaced, `${difficulty} seed ${seed}`).toEqual([]);
     }
-    expect(crests).toBeGreaterThan(1000);
+    expect(crests).toBeGreaterThan(400);
   });
 
   it('keeps every block out of every predicted flight, from 5 m before take-off to 12 m past landing', { timeout: 60000 }, () => {
@@ -557,14 +555,14 @@ describe('Ball Run course generator', () => {
       }
       expect(misplaced, `${difficulty} seed ${seed}`).toEqual([]);
     }
-    expect(total).toBeGreaterThan(900);
+    expect(total).toBeGreaterThan(300);
   });
 
   // Pooled per difficulty over all 24 seeds, with every seed held to 85 % of each threshold.
-  it('packs many more rows and blocks per second, increasing with difficulty', () => {
-    const thresholds = { easy: { blocks: .6, rows: .35 }, medium: { blocks: .9, rows: .5 }, hard: { blocks: 1.3, rows: .65 } };
+  it('packs many more rows and blocks per second, on Hard', () => {
+    const thresholds = { hard: { blocks: 1.3, rows: .65 } };
     const totals: Record<Difficulty, { seconds: number; blocks: number; rows: number }> = {
-      easy: { seconds: 0, blocks: 0, rows: 0 }, medium: { seconds: 0, blocks: 0, rows: 0 }, hard: { seconds: 0, blocks: 0, rows: 0 },
+      hard: { seconds: 0, blocks: 0, rows: 0 },
     };
     for (const { seed, difficulty } of CASES) {
       const c = course(seed, difficulty), seconds = runTime(c, 1000, 6000), want = thresholds[difficulty], total = totals[difficulty];
@@ -578,17 +576,13 @@ describe('Ball Run course generator', () => {
       expect(rate(d, 'blocks'), `${d} blocks/s`).toBeGreaterThanOrEqual(thresholds[d].blocks);
       expect(rate(d, 'rows'), `${d} rows/s`).toBeGreaterThanOrEqual(thresholds[d].rows);
     }
-    expect(rate('hard', 'blocks')).toBeGreaterThan(rate('medium', 'blocks'));
-    expect(rate('medium', 'blocks')).toBeGreaterThan(rate('easy', 'blocks'));
-    expect(rate('hard', 'rows')).toBeGreaterThan(rate('medium', 'rows'));
-    expect(rate('medium', 'rows')).toBeGreaterThan(rate('easy', 'rows'));
   });
 
-  it('composes rows from many patterns, with sliders only on Medium and Hard, differently for every seed', () => {
+  it('composes rows from many patterns, including sliders, differently for every seed', () => {
     for (const { seed, difficulty } of CASES) {
       const list = obstacles(course(seed, difficulty)), patterns = new Set<PatternKind>(list.map(o => o.pattern));
       if (difficulty === 'hard') expect(patterns.size, `hard seed ${seed}`).toBeGreaterThanOrEqual(8);
-      expect(list.some(o => o.kind === 'slider')).toBe(difficulty !== 'easy');
+      expect(list.some(o => o.kind === 'slider')).toBe(true);
       list.forEach((o, i) => expect(o.id).toBe(i));
     }
     for (const difficulty of DIFFICULTIES) {
@@ -609,8 +603,8 @@ describe('Ball Run course generator', () => {
 
   // The spec: "The minimum gap is 2.0 m (Easy), 1.7 m (Medium), 1.45 m (Hard) against a 0.76 m ball."
   // Written out rather than read from CONFIG, so lowering CONFIG's minGap cannot lower the bar.
-  it('leaves an opening of the minimum gap, 2.0 / 1.7 / 1.45 m, at every step of every block row, a slider blocking its whole sweep', { timeout: 60000 }, () => {
-    const want: Record<Difficulty, number> = { easy: 2, medium: 1.7, hard: 1.45 };
+  it('leaves an opening of the minimum gap, 1.45 m, at every step of every block row, a slider blocking its whole sweep', { timeout: 60000 }, () => {
+    const want: Record<Difficulty, number> = { hard: 1.45 };
     for (const { seed, difficulty } of CASES) {
       const c = course(seed, difficulty), s = blank(), extents = new Map<number, [number, number]>(), narrow: string[] = [];
       for (const o of obstacles(c)) {

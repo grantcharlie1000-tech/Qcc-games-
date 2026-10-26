@@ -34,7 +34,7 @@ export const FALL_DEPTH = 1.5;
 /** Conservative centre margin for generated routes/flight prediction, not a physical road edge. */
 export const EDGE_SUPPORT = RADIUS * .35;
 
-export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
+export const DIFFICULTIES = ['hard'] as const;
 export type Difficulty = typeof DIFFICULTIES[number];
 
 export type SegmentKind = 'warmup' | 'straight' | 'bend' | 'offset' | 'ribbon' | 'ribbonBend' | 'bank' | 'crest' | 'dip' | 'drop' | 'gate';
@@ -71,26 +71,6 @@ export interface DifficultyConfig {
 }
 
 export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
-  easy: {
-    label: 'Easy', startSpeed: 9, acceleration: .03, maxSpeed: 40,
-    roadWidth: 6.2, ribbonWidth: 2.6, minGap: 2,
-    rowInterval: [1, 1.8], introInterval: [1.6, 2.4], rampDistance: 700,
-    restEvery: [10, 14], restSeconds: [3, 4.5], maxBank: .2,
-    gate: { speedGain: 2.5, interval: [30, 45] },
-    segments: { straight: 30, bend: 20, offset: 15, ribbon: 8, ribbonBend: 0, bank: 8, crest: 8, dip: 4, drop: 4 },
-    patterns: { single: 30, pair: 18, gate: 16, doubleGate: 10, slalom: 8, zigzag: 4, scatter: 6, slider: 0, wallRun: 6, bigBlock: 4 },
-    color: '#2bb24c',
-  },
-  medium: {
-    label: 'Medium', startSpeed: 11, acceleration: .045, maxSpeed: 50,
-    roadWidth: 5.4, ribbonWidth: 2.2, minGap: 1.7,
-    rowInterval: [.68, 1.2], introInterval: [1.3, 2], rampDistance: 600,
-    restEvery: [12, 16], restSeconds: [2.5, 3.5], maxBank: .26,
-    gate: { speedGain: 3, interval: [25, 40] },
-    segments: { straight: 22, bend: 18, offset: 15, ribbon: 8, ribbonBend: 4, bank: 10, crest: 8, dip: 4, drop: 5 },
-    patterns: { single: 18, pair: 14, gate: 16, doubleGate: 10, slalom: 10, zigzag: 8, scatter: 8, slider: 8, wallRun: 5, bigBlock: 5 },
-    color: '#e2a21b',
-  },
   hard: {
     // Put more of Hard's acceleration into the visible gates while keeping the opening gradual.
     label: 'Hard', startSpeed: 13, acceleration: .03, maxSpeed: 62,
@@ -103,10 +83,6 @@ export const CONFIG: Readonly<Record<Difficulty, DifficultyConfig>> = {
     color: '#f0524f',
   },
 };
-
-export function isDifficulty(value: unknown): value is Difficulty {
-  return typeof value === 'string' && (DIFFICULTIES as readonly string[]).includes(value);
-}
 
 /** Forward speed after `gates` boost gates: a slow continuous ramp (constant
  * time-acceleration, so v² grows linearly with distance) plus a permanent gain

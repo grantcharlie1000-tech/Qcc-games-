@@ -34,7 +34,7 @@ async function open(page: Page, run: Run) {
   await frames(page, 1, 1);
 }
 
-for (const [difficulty, reverse] of [['easy', 74], ['medium', 62], ['hard', 54]] as const) {
+for (const [difficulty, reverse] of [['hard', 54]] as const) {
   test(`${difficulty}: real steering reversal stays on the visible floor in fullscreen`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, createRun(1, 1, difficulty));
@@ -64,9 +64,9 @@ for (const reduced of [false, true]) {
   test(`boost has a larger cyan speed readout and keeps its gain after feedback; reduced motion=${reduced}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
     await page.setViewportSize({ width: 390, height: 844 });
-    const course = getCourse(1, 'medium'), list: number[] = [];
+    const course = getCourse(1, 'hard'), list: number[] = [];
     course.forEachGate(0, 2000, g => list.push(g.start));
-    await open(page, placeRun(1, 'medium', list[0] - 2));
+    await open(page, placeRun(1, 'hard', list[0] - 2));
     const speed = game(page).locator('.br-speed'), before = Number(await game(page).getAttribute('data-speed'));
     const normalFont = await speed.evaluate(e => parseFloat(getComputedStyle(e).fontSize));
     for (let i = 0; i < 60 && await game(page).getAttribute('data-boost') !== 'true'; i++) await frames(page, 1);

@@ -1,35 +1,20 @@
+> Current behavior: Hard is the only mode. Older non-Hard records and runs are discarded; the remaining historical comparisons below describe the earlier redesign.
+
 # Ball Run
 
-Current design: the 2026-10-24 redesign with the 2026-10-25 road-contact and boost repair, built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at Charlie's request) and Charlie's requests for slower acceleration, a much higher speed cap, more, more random and harder obstacles, and gates that give a permanent speed boost. The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. Per-difficulty tuning and the shared constants live in `config.ts`; segment lengths, margins and flight-zone sizes are the constants at the top of `course.ts`, segment amplitude ranges and clear-zone distances are set in its `addSegment()`, and pattern sizes are in its `build()`; camera, pool and render numbers are in `scene.ts` (most at its top); input and UI timings, such as the 250 ms score throttle and 6 m of steering per canvas width, are in `index.ts`. Change a number where it lives. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
+Current design: the 2026-10-24 redesign with the 2026-10-25 road-contact and boost repair, built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at Charlie's request) and Charlie's requests for slower acceleration, a much higher speed cap, more, more random and harder obstacles, and gates that give a permanent speed boost. The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. Hard tuning and the shared constants live in `config.ts`; segment lengths, margins and flight-zone sizes are the constants at the top of `course.ts`, segment amplitude ranges and clear-zone distances are set in its `addSegment()`, and pattern sizes are in its `build()`; camera, pool and render numbers are in `scene.ts` (most at its top); input and UI timings, such as the 250 ms score throttle and 6 m of steering per canvas width, are in `index.ts`. Change a number where it lives. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
 
 A glossy magenta sphere rolls forward by itself along a suspended indigo grid road in a black void, between lavender wireframe towers. The road curves, banks, narrows, crests and drops away, and magenta blocks must be threaded at speed. There is no jump, brake or lane snapping. Hitting a block or rolling off the edge ends the run.
 
 ## Modules
 
-`config.ts` is the shared contract (tuning, constants and types). `course.ts` generates the seeded road, gates and obstacle rows. `model.ts` is the fixed-step simulation and save format. Saves retain the v4 record envelope and carry course revision 2 on the run; older live runs start a fresh course while keeping their per-difficulty records, because tuning changes the speed-dependent seeded track. `records.ts` holds per-difficulty records. These four are pure: no Three.js, DOM, `Date.now()` or `Math.random()`. `scene.ts` is the only Three.js file. `index.ts` owns the DOM panels and HUD, input, the loop and the shell contract. Rendering and collision read the same obstacle poses from the course.
+`config.ts` is the shared contract (tuning, constants and types). `course.ts` generates the seeded road, gates and obstacle rows. `model.ts` is the fixed-step simulation and save format. Saves retain the v4 record envelope and carry course revision 2 on the run; incompatible live runs start a fresh course while keeping Hard records, because tuning changes the speed-dependent seeded track. `records.ts` holds Hard records. These four are pure: no Three.js, DOM, `Date.now()` or `Math.random()`. `scene.ts` is the only Three.js file. `index.ts` owns the DOM panels and HUD, input, the loop and the shell contract. Rendering and collision read the same obstacle poses from the course.
 
-## Difficulties and tuning
+## Hard tuning
 
-| | Easy | Medium | Hard |
-| --- | --- | --- | --- |
-| Start speed | 9 m/s | 11 m/s | 13 m/s |
-| Continuous acceleration | 0.03 m/s² | 0.045 m/s² | 0.03 m/s² |
-| Speed cap | 40 m/s | 50 m/s | 62 m/s |
-| Gate gain (permanent) | +2.5 m/s | +3.0 m/s | +3.0 m/s |
-| A gate every (seconds of running) | 30–45 | 25–40 | 20–35 |
-| Road width / ribbon width | 6.2 / 2.6 m | 5.4 / 2.2 m | 4.8 / 1.8 m |
-| Narrowest route opening | 2.0 m | 1.7 m | 1.45 m |
-| Rows every (full intensity) | 1.0–1.8 s | 0.68–1.2 s | 0.48–0.9 s |
-| Rows every (start of run) | 1.6–2.4 s | 1.3–2.0 s | 1.0–1.6 s |
-| Ramp to full intensity, from the end of the warm-up | 700 m | 600 m | 500 m |
-| Rest: after this many rows | 10–14 | 12–16 | 16–20 |
-| Rest length | 3–4.5 s | 2.5–3.5 s | 1.8–2.6 s |
-| Maximum bank | 0.20 rad | 0.26 rad | 0.32 rad |
-| Colour (always with its name) | green `#2bb24c` | amber `#e2a21b` | coral `#f0524f` |
+Hard is the only mode. It starts at 13 m/s, accelerates at 0.03 m/s², caps at 62 m/s and gains 3 m/s per gate every 20–35 seconds. Road and ribbon widths are 4.8 m and 1.8 m; the minimum route opening is 1.45 m. Rows start at 1.0–1.6 s intervals, ramping over 500 m to 0.48–0.9 s, with a 1.8–2.6 s rest after 16–20 rows. Maximum bank is 0.32 rad.
 
-Segment weights between gates (straight / bend / offset / ribbon / ribbonBend / bank / crest / dip / drop): Easy 30/20/15/8/0/8/8/4/4, Medium 22/18/15/8/4/10/8/4/5, Hard 15/16/15/9/6/12/8/4/6.
-
-Pattern weights (single / pair / gate / doubleGate / slalom / zigzag / scatter / slider / wallRun / bigBlock): Easy 30/18/16/10/8/4/6/0/6/4, Medium 18/14/16/10/10/8/8/8/5/5, Hard 10/12/16/10/12/12/9/12/5/6.
+Segment weights (straight / bend / offset / ribbon / ribbonBend / bank / crest / dip / drop): 15/16/15/9/6/12/8/4/6. Pattern weights (single / pair / gate / doubleGate / slalom / zigzag / scatter / slider / wallRun / bigBlock): 10/12/16/10/12/12/9/12/5/6.
 
 Shared constants: ball radius 0.38 m (0.76 m wide); gravity 20 m/s² (snappier than Earth so flights read at arcade speed); base slope 0.12; fixed step 1/120 s; steering response 10/s; bank drift 6 m/s per unit sin(bank), toward the low side; the generator relies on 0.7 of the ball's lateral authority (`REACH_SAFETY`); 80 m clear warm-up; road centre within ±2 m of x = 0 so the tower canyon frames it; "Speed Up" feedback 1.8 s; dying 0.9 s; a ball 1.5 m below the road is lost; physical support ends at the actual road edge under the sphere contact point. The 0.133 m inset remains a conservative route-generation margin only.
 
@@ -41,7 +26,7 @@ Speed is a pure function of distance on a given course:
 
 The square-root ramp is constant acceleration in time. Every gate spans the whole road, so a surviving run has passed exactly the gates behind it; this keeps speed, and so the reachability guarantee, exact. Gates are scheduled by integrated running time, not drawn at random. Crossing a gate entrance adds its gain for the rest of the run; at the cap it adds nothing and the label reads "Top Speed" instead of "Speed Up". The 1.8 s label and cyan trail are feedback only; the speed readout grows and turns cyan during that interval, without camera shake or a FOV pulse.
 
-Measured first-gate speed on seed 1, immediately before / after / after feedback expires: 10.36 / 12.86 / 12.93 m/s (Easy), 12.39 / 15.39 / 15.49 (Medium), 13.77 / 16.77 / 16.83 (Hard). The entrance step is 22–24%; the gain remains after feedback. Hard puts more acceleration into gates and less into the continuous ramp. A retained model test asserts that every difficulty remains slower than the previous 12 m/s, 22 m/s-cap game at 30 s and 60 s, that speed never decreases, and that it reaches exactly 40 / 50 / 62 m/s and never more.
+Measured first-gate speed on seed 1, immediately before / after / after feedback expires: 13.77 / 16.77 / 16.83 m/s. The gain remains after feedback. The model tests check that speed never decreases and caps at 62 m/s.
 
 Lateral authority grows with speed, `max(5, 6 + 0.16·(v − 12))` m/s (5.5 m/s at 9 m/s, 14 m/s at 62 m/s), so high speed stays steerable but each dodge costs more road. Steering is an analytic first-order response toward input × authority, exact for any step.
 
@@ -51,7 +36,7 @@ A seeded sequence of variable-length segments. Two mulberry32 streams (road and 
 
 - `warmup`: the first 80 m, straight, flat, centred, no blocks.
 - `straight` 24–48 m with a gentle 0.3 m rise; `bend` 40–70 m, sway 0.8–2 m; `offset` 18–28 m, a smoothstep shift of at least 1.2 m.
-- `ribbon` 40–70 m, tapering to the ribbon width and back; `ribbonBend` 50–80 m, a ribbon that sways 0.6–1.2 m (Medium and Hard).
+- `ribbon` 40–70 m, tapering to the ribbon width and back; `ribbonBend` 50–80 m, a ribbon that sways 0.6–1.2 m .
 - `bank` 30–50 m, rolled by 0.5–1 × the maximum bank; the ball drifts toward the low side.
 - `crest` 30–60 m, 1.5–3.5 m high; `dip` 30–50 m, 1–2 m deep. These two are not lengthened with speed, so fast runs lift off as on reference page 04; their height is capped at `8·L/(π·v)` (launch at most about 8 m/s upward), never below 1.0 m (crest) or 0.6 m (dip).
 - `drop`: a 20–30 m approach rising 2–4 m with zero slope at the lip, a 2–4 m gap with no ground, then a landing pad of at least `max(20, cap·sqrt(2h/g) + 12)` m. The gap is clamped so it is always cleared at the speed there.
@@ -63,7 +48,7 @@ Drawn segment lengths (straight, bend, offset, ribbon, ribbonBend, bank, and the
 
 Rows are spaced in time, so density holds as speed climbs: the gap to the next row is drawn from the start-of-run interval easing to the full-intensity interval over the ramp distance, times the speed there. Spacing is start to start, and a row never starts sooner than 0.35 s after the previous pattern's last block. After a set number of rows comes a rest.
 
-Patterns: `single` (random size and position), `bigBlock`, `pair`, `gate` (a wall with one gap), `doubleGate` (two gaps, falling back to `gate` on narrow road), `slalom` (3–5 edge-anchored blocks alternating sides 0.35–0.5 s apart), `zigzag` (3–4 walls whose gaps alternate sides), `scatter` (4–7 cubes over 1.0–1.5 s), `slider` (blocks sliding sideways with a 1.4–2.6 s period; one, or up to two on Hard; never on Easy) and `wallRun` (one edge-anchored block 6–14 m deep). Every block lies inside the road; every opening counted as a route is at least the minimum gap.
+Patterns: `single` (random size and position), `bigBlock`, `pair`, `gate` (a wall with one gap), `doubleGate` (two gaps, falling back to `gate` on narrow road), `slalom` (3–5 edge-anchored blocks alternating sides 0.35–0.5 s apart), `zigzag` (3–4 walls whose gaps alternate sides), `scatter` (4–7 cubes over 1.0–1.5 s), `slider` (blocks sliding sideways with a 1.4–2.6 s period; one or two) and `wallRun` (one edge-anchored block 6–14 m deep). Every block lies inside the road; every opening counted as a route is at least the minimum gap.
 
 No blocks in: the warm-up; from 5 m before a gate to one second past its exit; ribbons and ribbonBends (as on reference page 04); from 8 m before a drop lip to 12 m past where the ball lands at that speed; the middle 40 % of crests and dips; and every predicted flight (below).
 
@@ -77,9 +62,9 @@ The generator tracks the set of lateral ball-centre positions still reachable al
 
 How it is proven (see `TEST_RESULTS.md`):
 
-- An independent re-implementation of the interval check in `course.test.ts`, at 0.95 of the generator's reach, stays open over 0–6 km for seeds 1–24 on every difficulty.
+- An independent re-implementation of the interval check in `course.test.ts`, at 0.95 of the generator's reach, stays open over 0–6 km for seeds 1–24 on Hard.
 - A minimum-gap test checks every step of every row against the spec's literal 2.0 / 1.7 / 1.45 m, measuring the widest opening between block faces or out to the outer side of a ball still supported at the road edge. Gaps that are not routes can be narrower (scatter cubes may sit 0.1 m apart).
-- A look-ahead bot (`tests/games/ball-run/bot.ts`) drives the real `step()`: it plans the lag-free position with the model's exact steering, using at most 0.85 of the authority, and must survive 12 seeds × 3000 m from the start and 4 seeds × 1500 m past the cap on every difficulty, plus three Hard cap regression seeds.
+- A look-ahead bot (`tests/games/ball-run/bot.ts`) drives the real `step()`: it plans the lag-free position with the model's exact steering, using at most 0.85 of the authority, and must survive 12 seeds × 3000 m from the start and 4 seeds × 1500 m past the cap on Hard, plus three Hard cap regression seeds.
 - Out-of-suite sweeps covered 1000 seeds of the interval check and hundreds of bot runs; exact grid searches confirmed the tight spots where earlier bots failed.
 
 The generator's model ignores the ball's 0.1 s steering lag; the 0.7 safety factor covers it, and the bot, which models the lag, is the evidence.
@@ -94,7 +79,7 @@ Measured with the real simulation (bot-driven, seeds 1–40, start to 4 km past 
 
 ## Records
 
-Score is whole metres travelled, frozen at the moment of death. Each difficulty keeps today's best (local calendar day), this week's best (local week starting Monday) and the all-time best. Day and week keys are built from calendar fields, never millisecond arithmetic, so DST days and New Year are safe; stale or future keys read as 0. Fresh profiles start at zero.
+Score is whole metres travelled, frozen at the moment of death. Hard keeps today's best (local calendar day), this week's best (local week starting Monday) and the all-time best. Day and week keys are built from calendar fields, never millisecond arithmetic, so DST days and New Year are safe; stale or future keys read as 0. Fresh profiles start at zero.
 
 Records are committed exactly once when a run ends, however it ends: at death, or when the shell's Restart abandons a running run with a score above 0. Leaving the game mid-run is not an ending; the run is saved. Each commit also sends one final unthrottled score to the shell, so the shell RECORD and leaderboard always receive the final score in metres. While running, `setScore` is called at most every 250 ms and only when the score changed.
 
@@ -104,9 +89,9 @@ The HUD shows the smallest record still above the current score (ties show the b
 
 Ready (setup panel) → Playing ⇄ Paused → Dying (0.9 s) → Game Over.
 
-- Setup: `BALL RUN`, short instructions, a face badge (green smile, amber flat mouth, coral angry with horns) beside the difficulty name, a `Difficulty` slider, `Play` in the difficulty colour and a `How to play` toggle. Changing the slider builds a fresh course behind the panel.
+- Setup: `BALL RUN`, short instructions, a coral face badge beside the Hard label, `Play` and a `How to play` toggle.
 - Steering: drag anywhere on the canvas (relative; 6 m per canvas width; a new drag starts from where the ball is), or hold A/D or Left/Right. Both feed one steering value.
-- P clicks the shell's `#pause-game` (ignoring repeats, modifier keys, open dialogs and text fields, but not the slider), so the shell's label, overlay and save stay in sync. R at Game Over plays again. Escape is left to the shell's Study shortcut.
+- P clicks the shell's `#pause-game` (ignoring repeats, modifier keys, open dialogs and text fields), so the shell's label, overlay and save stay in sync. R at Game Over plays again. Escape is left to the shell's Study shortcut.
 - Death: a block hit freezes the ball and replaces it with a burst of magenta, cyan and white cubes; a fall keeps the ball visible as it drops. Input is cleared and the score frozen.
 - Game Over: `GAME OVER`, the reason (`You hit a block` / `You fell off the track`), the score, the difficulty badge (with a crown when a record was set), the three records, `Home` (back to setup) and `Play again` (same difficulty, new seed). It enters with opacity and a 0.96 → 1 settle over 250 ms on `cubic-bezier(0.23, 1, 0.32, 1)`.
 - Shell Restart returns to setup with a fresh course. A restored running run waits behind `Your run is waiting` / `Continue`.
@@ -119,7 +104,7 @@ The page exposes `data-phase`, `data-x`, `data-distance`, `data-grounded`, `data
 
 Version 4 snapshots hold the difficulty, the records and the run (seed, run counter, phase, distance, lateral state, height and vertical speed, elapsed time, gate index, Speed Up time, dying time, score, reason), plus the NEW marks of a finished run. Records live only in this snapshot; the game keeps no storage of its own. Restore never throws. It validates every run field (finite and in range, seed 1..0xffffffff, distance at most 1e6 m before the course is touched, gate index consistent with the course, a grounded ball resting on supported road); an invalid run is dropped and the records kept. A `dying` snapshot comes back as Game Over. A restored Game Over keeps only the NEW marks today's records still confirm and refocuses `Play again`.
 
-Version 1–3 saves come from the old course: their position is never resumed (it could sit inside a new block). Their best becomes Medium's all-time record (the old pace sat between Medium and Hard) and the game opens on Medium setup with a note saying the course is new and the best was kept; with a best of 0 it opens the plain setup.
+Version 1–3 saves come from the old course: their position is never resumed (it could sit inside a new block). Their best is discarded and the game opens on Hard setup without a migration note.
 
 ## Rendering
 

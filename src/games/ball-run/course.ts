@@ -6,7 +6,7 @@
  * mass run along the road as it is built predicts every flight off a crest, dip or
  * drop; blocks and gate entrances stay out of each one. */
 import {
-  BANK_DRIFT, CENTER_LIMIT, CONFIG, DIFFICULTIES, EDGE_SUPPORT, GRAVITY, RADIUS, REACH_SAFETY, SLOPE, STEP, WARMUP,
+  BANK_DRIFT, CENTER_LIMIT, CONFIG, EDGE_SUPPORT, GRAVITY, RADIUS, REACH_SAFETY, SLOPE, STEP, WARMUP,
   lateralSpeed, speedAt,
   type Course, type Difficulty, type DifficultyConfig, type Gate, type Obstacle, type ObstaclePose, type PatternKind,
   type SegmentKind, type TrackSample,
@@ -293,9 +293,10 @@ class CourseImpl implements Course {
   private readonly ghostAhead = blankSample();
 
   constructor(readonly seed: number, readonly difficulty: Difficulty) {
-    const cfg = this.cfg = CONFIG[difficulty], index = DIFFICULTIES.indexOf(difficulty);
-    this.roadRandom = new Random(hash(seed, 2 * index + 11));
-    this.rowRandom = new Random(hash(seed, 2 * index + 12));
+    const cfg = this.cfg = CONFIG[difficulty];
+    // Preserve the original Hard seed salts from its former difficulty index (2).
+    this.roadRandom = new Random(hash(seed, 15));
+    this.rowRandom = new Random(hash(seed, 16));
     this.gateDue = this.roadRandom.range(cfg.gate.interval[0], cfg.gate.interval[1]);
     this.restDue = this.rowRandom.int(cfg.restEvery[0], cfg.restEvery[1]);
     const segmentTotal = DRAWN.reduce((sum, kind) => sum + cfg.segments[kind], 0);
@@ -770,7 +771,7 @@ class CourseImpl implements Course {
       }
       case 'slider': {
         let center = d;
-        for (let i = this.difficulty === 'hard' ? r.int(1, 2) : 1; i > 0; i--) {
+        for (let i = r.int(1, 2); i > 0; i--) {
           const w = r.range(.9, 1.4), depth = r.range(.8, 1.3), height = r.range(1, 1.8);
           // Keep the sweep clear of one edge by at least minGap.
           const amplitude = Math.min(r.range(.6, 1.6), (2 * H - g - w) / 2);

@@ -5,7 +5,7 @@ import { createRun, restoreSnapshot, runSpeed, step } from '../../../src/games/b
 import { emptyRecords } from '../../../src/games/ball-run/records';
 import { capDistance, placeRun, restHeight, spans } from './bot';
 
-const reversal: Record<Difficulty, number> = { easy: 74, medium: 62, hard: 54 };
+const reversal: Record<Difficulty, number> = { hard: 54 };
 const gates = (seed: number, difficulty: Difficulty, to: number) => {
   const list: Gate[] = [];
   getCourse(seed, difficulty).forEachGate(0, to, g => list.push(g));
@@ -67,12 +67,12 @@ describe('Ball Run physical road contact regressions', () => {
   });
 
   it('keeps records but starts a fresh course when a save predates the new speed-dependent track', () => {
-    const run: Record<string, unknown> = { ...placeRun(1, 'medium', 40) };
+    const run: Record<string, unknown> = { ...placeRun(1, 'hard', 40) };
     delete run.courseRevision;
     const records = emptyRecords();
-    records.medium.allTime = 321;
-    const restored = restoreSnapshot({ version: 4, difficulty: 'medium', records, run });
-    expect(restored?.records.medium.allTime).toBe(321);
+    records.hard.allTime = 321;
+    const restored = restoreSnapshot({ version: 4, difficulty: 'hard', records, run });
+    expect(restored?.records.hard.allTime).toBe(321);
     expect(restored?.run).toBeNull();
   });
 

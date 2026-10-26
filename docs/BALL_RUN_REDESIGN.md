@@ -1,3 +1,5 @@
+> Current behavior: Hard is the only Ball Run mode. References to other difficulties below describe the historical redesign. Older non-Hard runs and records are discarded.
+
 # Ball Run redesign checkpoint
 
 Work is based on main `ceb61e3` in `grantcharlie1000-tech/Qcc-games-`, on branch `claude/ball-run-redesign`, which is pushed to origin. No pull request, merge, release or deployment has been made. The final verification ran on the final source and made one deliberate change, the evidence refresh; afterwards only the evidence PNGs and the documentation changed. The branch's work-in-progress snapshot commits are due to be rewritten into logical commits, so no branch SHAs are cited here.
@@ -13,22 +15,13 @@ Design: [spec](superpowers/specs/2026-10-23-ball-run-redesign-design.md). Plan a
 
 ## Result
 
-Ball Run is rebuilt as pure modules (`config.ts`, `course.ts`, `model.ts`, `records.ts`), one Three.js renderer (`scene.ts`) and a new UI (`index.ts`, `style.css`). It plays like the reference: a magenta sphere rolls on its own along a suspended indigo grid road between lavender wireframe towers; the road curves, banks, narrows into ribbons, crests, dips and drops away; magenta blocks must be threaded at speed. An Easy / Medium / Hard setup panel (green / amber / coral, with a face badge) starts a run. The HUD shows the mode, the score and the next record to beat. A block hit bursts the ball, and Game Over shows today's, this week's and all-time bests for that difficulty. P pauses, R plays again, and Escape stays the shell's Study shortcut. No dependency, external asset, shader or post-processing was added, and the shell, leaderboard protocol and other games are unchanged apart from two button-name patterns in shared checks.
+Ball Run is rebuilt as pure modules (`config.ts`, `course.ts`, `model.ts`, `records.ts`), one Three.js renderer (`scene.ts`) and a new UI (`index.ts`, `style.css`). It plays like the reference: a magenta sphere rolls on its own along a suspended indigo grid road between lavender wireframe towers; the road curves, banks, narrows into ribbons, crests, dips and drops away; magenta blocks must be threaded at speed. The Hard setup panel, with a coral face badge, starts a run. The HUD shows the mode, the score and the next record to beat. A block hit bursts the ball, and Game Over shows today's, this week's and all-time bests for Hard. P pauses, R plays again, and Escape stays the shell's Study shortcut. No dependency, external asset, shader or post-processing was added, and the shell, leaderboard protocol and other games are unchanged apart from two button-name patterns in shared checks.
 
 **Slower acceleration, much higher cap.** The old game went from 12 to 22 m/s in about 50 s. Now speed is `min(cap, sqrt(v0² + 2·a·d) + gain × gates passed)`:
 
-| | Easy | Medium | Hard |
-| --- | --- | --- | --- |
-| Start | 9 m/s | 11 m/s | 13 m/s |
-| Acceleration | 0.03 m/s² | 0.045 m/s² | 0.06 m/s² |
-| Gate gain (permanent) | +1.0 m/s every 30–45 s | +1.25 m/s every 25–40 s | +1.5 m/s every 20–35 s |
-| Speed at 60 s (seeds 1–8) | 11.8–11.9 m/s | 15.0–16.3 m/s | 18.3–19.9 m/s |
-| Cap | 40 m/s | 50 m/s | 62 m/s |
-| Cap reached (seeds 1–8) | 7.8–8.3 min | 6.9–7.4 min | 6.3–6.7 min |
+Hard starts at 13 m/s, accelerates at 0.03 m/s², gains 3 m/s per gate and caps at 62 m/s. Gates arrive every 20–35 seconds.
 
-Every difficulty is slower than the old curve at 30 s and 60 s (a model test), and the caps are about 2–3 times the old one.
-
-**More, more random, harder obstacles.** Rows are spaced in time (a row every 1.0–1.8 / 0.68–1.2 / 0.48–0.9 s at full intensity), drawn from ten seeded patterns: single, big block, pair, gate wall, double gate, slalom, zigzag, scatter, sliding blocks (Medium and Hard) and long wall runs. Measured density is 0.867 / 1.214 / 1.476 blocks per second against the old game's 0.4. Every block row leaves at least one opening of 2.0 / 1.7 / 1.45 m at every step for a 0.76 m ball (between block faces, or out to where a ball can still be supported at the road edge); gaps that are not routes can be narrower. Every row is accepted only if a route the ball can really steer through survives (see Verification).
+**Obstacles.** Rows arrive every 0.48–0.9 seconds at full intensity, drawn from ten seeded patterns including sliding blocks. Every row leaves a route with an opening at least 1.45 m wide for the 0.76 m ball.
 
 **Permanent gates.** Each gate is a full-width arch with cyan chevrons. Crossing it raises speed for the rest of the run; "Speed Up" and a short trail confirm it, and at the cap the label reads "Top Speed" and nothing is added.
 
@@ -62,7 +55,7 @@ The reference cannot reveal speeds, sizes or generation rules, so each number is
 | Records commit exactly once when a run ends, by death or by shell Restart of a running run with a score; leaving mid-run is not an ending. Each commit sends one unthrottled score. | An abandoned run never loses its score, and throttling can never leave the shell RECORD and the all-time best disagreeing (builder check). |
 | `setScore` at most every 250 ms while running. | One call per metre at 60 m/s would write storage dozens of times a second. |
 | Records live only in the game's save. | The shell contract allows no storage of the game's own. |
-| Version 1–3 saves keep their best as Medium's all-time record and never resume their run. | The old position could sit inside a new block; the old pace sat between Medium and Hard. |
+| Version 1–3 saves discard their old best and run. Version 4 retains Hard records and compatible Hard runs only. | Earlier courses and records are not comparable to Hard. |
 | Home returns to the game's own setup panel. | The shell's back arrow already leaves to the library. |
 | P clicks the shell's pause button (Neon Coil's pattern); R plays again only at Game Over; Escape is never bound. | Keeps the shell's pause label, overlay and save in sync, and leaves Escape to the shell's Study shortcut. |
 | The HUD sits in the toolbar row, centred over the track, and stops 12 px short of pause on wide screens. | Reference pages 02 and 06 place it there, and the shell hides its own metrics for Ball Run. At 1920 px it sits 51 px left of the track centre. |

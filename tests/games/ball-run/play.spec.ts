@@ -15,7 +15,7 @@ const evidence=(page:Page,name:string)=>process.env.BALL_RUN_EVIDENCE&&test.info
 const game=(page:Page)=>page.locator('.ball-run');
 const data=async(page:Page,name:string)=>Number(await game(page).getAttribute(`data-${name}`));
 const saved=(page:Page)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);
-const snapshot=(run:Run|null,records:Records,difficulty:Difficulty=run?.difficulty??'medium')=>({version:4,difficulty,records,run});
+const snapshot=(run:Run|null,records:Records,difficulty:Difficulty=run?.difficulty??'hard')=>({version:4,difficulty,records,run});
 async function frames(page:Page,count=12){await page.evaluate(count=>new Promise<void>(resolve=>{let n=0;function f(){if(++n>=count)resolve();else requestAnimationFrame(f);}requestAnimationFrame(f);}),count);}
 async function waitDistance(page:Page,distance:number){await page.waitForFunction(d=>Number(document.querySelector<HTMLElement>('.ball-run')?.dataset.distance)>=d,distance);}
 /** Runs the paused clock in small slices until the game reaches a phase. */
@@ -139,33 +139,22 @@ function overRun(seed:number,difficulty:Difficulty){
   return end;
 }
 
-test('a fresh profile opens Medium setup; the slider re-themes it; help explains permanent gates; Play rolls',async({page})=>{
+test('a fresh profile opens Hard setup; help explains permanent gates; Play rolls',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page),slider=page.getByRole('slider',{name:'Difficulty'}),play=page.getByRole('button',{name:'Play',exact:true});
-  await expect(play).toBeVisible();await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-difficulty','medium');
-  // Behind a panel the canvas is no Tab stop: from the stage, Tab reaches the difficulty first.
-  await page.locator('#game-stage').focus();await page.keyboard.press('Tab');await expect(slider).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
-  await expect(slider).toHaveValue('1');await expect(slider).toHaveAttribute('aria-valuetext','Medium');await expect(root.locator('.br-level')).toHaveText('Medium');
-  await expect(root.locator('.br-setup .br-face')).toHaveAttribute('data-face','medium');await expect(play).toHaveCSS('background-color','rgb(226, 162, 27)');
-  // The recording's 79 and 143 belong to one player, never to a fresh profile.
-  expect(await page.locator('body').innerText()).not.toMatch(/\b(79|143)\b/);
-  await slider.focus();await page.keyboard.press('ArrowRight');
-  await expect(slider).toHaveValue('2');await expect(slider).toHaveAttribute('aria-valuetext','Hard');await expect(root).toHaveAttribute('data-difficulty','hard');
-  await expect(root.locator('.br-level')).toHaveText('Hard');await expect(root.locator('.br-setup .br-face')).toHaveAttribute('data-face','hard');await expect(play).toHaveCSS('background-color','rgb(240, 82, 79)');
+  const root=game(page),play=page.getByRole('button',{name:'Play',exact:true});
+  await expect(play).toBeVisible();await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-difficulty','hard');
+  await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveCount(0);
+  await page.locator('#game-stage').focus();await page.keyboard.press('Tab');await expect(play).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','-1');
+  await expect(root.locator('.br-level')).toHaveText('Hard');await expect(root.locator('.br-setup .br-face')).toHaveAttribute('data-face','hard');
   await expectReadableLabel(play);
-  await page.keyboard.press('Home');await expect(root).toHaveAttribute('data-difficulty','easy');await expect(play).toHaveCSS('background-color','rgb(43, 178, 76)');
-  // White on the reference's green and amber is below 3:1: a dark edge in the fill's own hue carries the label.
-  await expectReadableLabel(play);
-  await page.keyboard.press('ArrowRight');await expect(root).toHaveAttribute('data-difficulty','medium');await expectReadableLabel(play);
-  await page.keyboard.press('End');await expect(root).toHaveAttribute('data-difficulty','hard');
   const help=page.getByRole('button',{name:'How to play',exact:true});
   await help.click();await expect(help).toHaveAttribute('aria-expanded','true');await expect(root.locator('.br-help')).toBeVisible();await expect(root.locator('.br-help')).toContainText('permanently');
   await expectClear(page,root.locator('.br-setup'));
   await help.click();await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();
   // The shell's Restart gives a fresh setup panel with help closed.
   await help.click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
-  await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
+  await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();await expect(play).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
   await page.getByRole('button',{name:'Game rules'}).click();await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
@@ -308,10 +297,10 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   await page.keyboard.up('ArrowRight');await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
   await expect(again).toBeFocused();
   await page.getByRole('button',{name:'Home',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');await expect(root).toHaveAttribute('data-phase','ready');
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');await expect(root).toHaveAttribute('data-phase','ready');
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeFocused();
   await page.reload();
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
   await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(100);
   await expect(root.locator('.br-target-label')).toHaveText('THIS WEEK');await expect(root.locator('.br-target-value')).toHaveText(String(score));
   expect(errors).toEqual([]);
@@ -319,14 +308,14 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
 
 test('shell Restart abandoning a run commits its score once, to today’s best and the shell record',async({page})=>{
   // A Wednesday and the Thursday after it: one week, two days.
-  const now=new Date(2026,9,21,12),tomorrow=new Date(2026,9,22,12),records=emptyRecords();records.medium={allTime:5000,day:'',dayBest:0,week:weekKey(now),weekBest:4000};
-  await seed(page,snapshot(null,records,'medium'));
+  const now=new Date(2026,9,21,12),tomorrow=new Date(2026,9,22,12),records=emptyRecords();records.hard={allTime:5000,day:'',dayBest:0,week:weekKey(now),weekBest:4000};
+  await seed(page,snapshot(null,records,'hard'));
   // Every shell score report writes storage: count them.
   const reports=await countReports(page);
   await page.clock.install({time:now});await page.clock.pauseAt(new Date(now.getTime()+1000));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page);
-  await expect(root).toHaveAttribute('data-difficulty','medium');
+  await expect(root).toHaveAttribute('data-difficulty','hard');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root.locator('.br-target-label')).toHaveText('THIS WEEK');await expect(root.locator('.br-target-value')).toHaveText('4000');
   for(let t=0;t<6000&&await data(page,'distance')<25;t+=50)await page.clock.runFor(50);
@@ -337,7 +326,7 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   const writes=await page.evaluate(()=>(window as unknown as {bestWrites:number[]}).bestWrites);
   expect(writes.length).toBeGreaterThan(2);
   for(let i=1;i<writes.length-1;i++)expect(writes[i]-writes[i-1]).toBeGreaterThanOrEqual(249);
-  const kept=(await saved(page)).records.medium;
+  const kept=(await saved(page)).records.hard;
   expect(kept.day).toBe(dayKey(now));expect(kept.dayBest).toBeGreaterThanOrEqual(25);expect(kept.weekBest).toBe(4000);expect(kept.allTime).toBe(5000);
   expect(await page.evaluate(key=>Number(localStorage.getItem(key)),BEST)).toBe(kept.dayBest);
   await page.getByRole('button',{name:'Play',exact:true}).click();
@@ -347,47 +336,20 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-distance','0.000');
   const count=await reports();await page.clock.setSystemTime(tomorrow);
   await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(root).toHaveAttribute('data-phase','ready');
-  expect((await saved(page)).records.medium).toEqual(kept);expect(await reports()).toBe(count);
+  expect((await saved(page)).records.hard).toEqual(kept);expect(await reports()).toBe(count);
 });
 
 const legacySave={version:1,seed:8,run:2,phase:'running',distance:58,x:0,vx:0,height:.38,vy:0,grounded:true,elapsed:2,best:143,reason:''};
-test('a legacy save keeps its best as Medium’s all-time record on a new course',async({page})=>{
+test('a legacy save opens Hard setup without keeping the old best',async({page})=>{
   await seed(page,legacySave);
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   const root=game(page);
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toContainText('143');
-  await expect(page.locator('#game-status')).toContainText('143');await expect(announced(page)).toContainText('Your best of 143 m is kept');
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
+  await expect(root.locator('.br-note')).toHaveCount(0);
   await page.getByRole('button',{name:'Play',exact:true}).click();
-  await expect(root.locator('.br-mode-label')).toHaveText('MEDIUM MODE');await expect(root.locator('.br-target-label')).toHaveText('ALL TIME');await expect(root.locator('.br-target-value')).toHaveText('143');
-});
-
-// Short landscape screens, down to a phone with browser bars: the note gives way, never Play or How to play.
-for(const viewport of [{width:568,height:320},{width:667,height:330},{width:568,height:300},{width:640,height:300}])test(`a legacy save's note keeps Play and How to play in view at ${viewport.width}x${viewport.height}`,async({page})=>{
-  await seed(page,legacySave);
-  await page.setViewportSize(viewport);await page.goto('/#/game/ball-run');
-  const root=game(page),setup=root.locator('.br-setup'),note=root.locator('.br-note');
-  await expect(note).toContainText('143');await expectClear(page,setup);
-  for(const name of ['Play','How to play']){
-    const shown=await page.getByRole('button',{name,exact:true}).evaluate(b=>{
-      const r=b.getBoundingClientRect(),p=b.closest('.br-panel')!.getBoundingClientRect();
-      const inside=r.top>=p.top-.5&&r.bottom<=p.bottom+.5&&r.left>=p.left-.5&&r.right<=p.right+.5&&r.bottom<=innerHeight&&r.right<=innerWidth;
-      return inside&&[[.5,.5],[.2,.2],[.8,.2],[.2,.8],[.8,.8]].every(([fx,fy])=>{const hit=document.elementFromPoint(r.x+r.width*fx,r.y+r.height*fy);return !!hit&&b.contains(hit);});
-    });
-    expect(shown,`${name} is fully visible`).toBe(true);
-  }
-  // The note gives way only as a last resort (it would scroll): at these sizes all of it shows.
-  expect(await note.evaluate(n=>n.clientHeight>0&&n.scrollHeight<=n.clientHeight+1)).toBe(true);
-});
-
-test('a legacy save with no best opens the plain setup',async({page})=>{
-  await seed(page,{version:2,seed:8,run:2,phase:'running',distance:58,x:0,vx:0,height:.38,vy:0,grounded:true,elapsed:2,best:0,reason:''});
-  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page);
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('1');await expect(root.locator('.br-note')).toBeHidden();
-  await expect(page.locator('#game-status')).toHaveText(/^Choose Easy, Medium or Hard, then press Play\./);
-  expect(await page.locator('body').innerText()).not.toMatch(/best of|is kept/i);await expect(announced(page)).not.toContainText('best');
+  await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');
+  await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
 });
 
 test('a restored Game Over shows only the NEW marks its records still confirm',async({page})=>{
@@ -474,7 +436,7 @@ test('a gate passed at the speed cap reads Top Speed and adds nothing',async({pa
 });
 
 test('a curve reads as a curve',async({page})=>{
-  await seed(page,snapshot(onBend(4,'medium'),emptyRecords()));
+  await seed(page,snapshot(onBend(4,'hard'),emptyRecords()));
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
   await page.getByRole('button',{name:'Continue',exact:true}).click();await page.clock.runFor(200);
@@ -483,7 +445,7 @@ test('a curve reads as a curve',async({page})=>{
 
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768},{width:1920,height:1080},{width:667,height:330},{width:568,height:320}])test(`fills ${viewport.width}x${viewport.height} with a round ball and keeps every panel on screen`,async({page})=>{
   test.setTimeout(120000);
-  await page.setViewportSize(viewport);await seed(page,snapshot(onStraight(3,'medium'),emptyRecords()));
+  await page.setViewportSize(viewport);await seed(page,snapshot(onStraight(3,'hard'),emptyRecords()));
   await page.clock.install({time:new Date()});await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.goto('/#/game/ball-run');
   const root=game(page);
@@ -534,12 +496,12 @@ test('lost WebGL visibly saves and remains stopped until exit and re-entry',asyn
 });
 
 test('losing WebGL while a panel control has focus moves focus to the message',async({page})=>{
-  await page.goto('/#/game/ball-run');const slider=page.getByRole('slider',{name:'Difficulty'});
-  await slider.focus();await expect(slider).toBeFocused();
+  await page.goto('/#/game/ball-run');const play=page.getByRole('button',{name:'Play',exact:true});
+  await play.focus();await expect(play).toBeFocused();
   await page.evaluate(()=>document.querySelector<HTMLCanvasElement>('.ball-run canvas')!.getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext());
   const heading=page.getByRole('heading',{name:'Graphics interrupted'});
   await expect(heading).toBeVisible();await expect(heading).toBeFocused();await expect(heading).toHaveAttribute('tabindex','-1');
-  await expect(slider).toBeHidden();
+  await expect(play).toBeHidden();
 });
 
 test('unsupported WebGL gives a visible useful fallback and never overwrites the save',async({page})=>{
