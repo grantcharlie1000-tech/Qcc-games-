@@ -92,3 +92,12 @@ test('Corn Clicker ranks lifetime kernels and shows them in the game number form
  await expect(page.locator('#leaderboard-dialog tbody')).toContainText('4.571 T');
  await expect.poll(()=>posted.find(p=>p.game==='corn-clicker')?.score??0).toBeGreaterThan(0);
 });
+
+test('Tetris exposes the leaderboard and rankings selector',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'a'.repeat(64),name:'Ada',score:1200}],player:null}}));
+ await page.goto('/#/game/quadfall');
+ const panel=page.getByRole('complementary',{name:'Tetris leaderboard'});await expect(panel).toBeVisible();
+ await expand(page);await expect(panel).toContainText('Ada');await expect(panel).toContainText('1,200');
+ await panel.getByRole('button',{name:'All rankings'}).click();await expect(page.locator('#leaderboard-game')).toHaveValue('quadfall');
+});
