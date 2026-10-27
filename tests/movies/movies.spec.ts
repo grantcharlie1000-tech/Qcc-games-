@@ -1,9 +1,11 @@
 import {test,expect} from '../fixtures';
 import {readFileSync} from 'node:fs';
+import {fulfillRelayVideo} from './relay-fixtures';
 // Network fixtures isolate browser security tests from provider uptime and workspace egress restrictions.
 test.beforeEach(async({page})=>{
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
- await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ await page.route('**/api/playback?*',route=>route.fulfill({json:{provider:new URL(route.request().url()).searchParams.get('provider'),source:{url:'/api/media?token=fixture',type:'webm'},subtitles:[]}}));
+ await page.route('**/api/media?*',route=>fulfillRelayVideo(route));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
@@ -71,10 +73,11 @@ for(const width of [320,390,768,1366])test(`responsive allowlisted provider boun
  await expect(page.getByRole('button',{name:'Play movie'})).toBeEnabled();
  await page.getByRole('link',{name:'Playback information',exact:true}).click();
  await expect(page.locator('.movies-provider-frame')).toBeVisible();
- expect(requests.filter(url=>![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(url).origin))).toEqual([]);
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream',exact:true})).toBeEnabled();
+ expect(requests.filter(url=>![new URL(page.url()).origin,'https://image.tmdb.org'].includes(new URL(url).origin))).toEqual([]);
  const audit=await page.evaluate(()=>({frames:document.querySelectorAll('iframe,embed,object').length,hints:document.querySelectorAll('link[rel=preconnect],link[rel=dns-prefetch],link[rel=prefetch]').length,overflow:(document.querySelector('.movies-view')!.scrollWidth>document.querySelector('.movies-view')!.clientWidth),resources:performance.getEntriesByType('resource').map(r=>r.name)}));
  expect(audit.frames).toBe(1);expect(audit.hints).toBe(0);expect(audit.overflow).toBe(false);
- expect(audit.resources.every(url=>[new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(url).origin))).toBe(true);
+ expect(audit.resources.every(url=>[new URL(page.url()).origin,'https://image.tmdb.org'].includes(new URL(url).origin))).toBe(true);
  await page.screenshot({path:`test-results/movies-${width}.png`,fullPage:true});
 });
 
@@ -89,7 +92,7 @@ test('blocked storage, catalog failure, invalid deep links and malicious metadat
 
 test('CSP blocks unapproved frames, media, images, scripts and connections',async({page})=>{
  await page.goto('/#/movies');await expect(page.locator('#movies-search')).toBeVisible();
- const responses:string[]=[];page.on('response',r=>{if(![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(r.url()).origin))responses.push(r.url());});
+ const responses:string[]=[];page.on('response',r=>{if(![new URL(page.url()).origin,'https://image.tmdb.org'].includes(new URL(r.url()).origin))responses.push(r.url());});
  const directives=await page.evaluate(async()=>{
   const violations:string[]=[];document.addEventListener('securitypolicyviolation',e=>violations.push(e.effectiveDirective));
   const host='https://unapproved-provider.invalid';
@@ -155,8 +158,8 @@ test('a featured licensed TV show plays its first included episode',async({page}
 test('provider playback is enabled and sandboxed, and Study unloads it',async({page})=>{
  await page.goto('/#/movies/movie-157336/play');const frame=page.locator('.movies-provider-frame');await expect(frame).toBeVisible();
  await expect(frame).toHaveAttribute('sandbox','allow-scripts allow-same-origin');await expect(frame).toHaveAttribute('referrerpolicy','no-referrer');
- expect(await frame.getAttribute('allow')).toContain("camera 'none'");expect(await frame.getAttribute('src')).toContain('/embed/157336?autoplay=0');
- await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await expect(frame).toHaveCount(0);
+ expect(await frame.getAttribute('allow')).toContain("camera 'none'");expect(await frame.getAttribute('src')).toBe('/movies/player.html?type=movie&id=157336&provider=framextv');
+ await page.frameLocator('.movies-provider-frame').getByLabel('Source',{exact:true}).press('Escape');await expect(page.locator('#study-view')).toBeVisible();await expect(frame).toHaveCount(0);
  await page.getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame).toBeVisible();
 });
 
@@ -181,7 +184,7 @@ test('full-catalog search, episode metadata and playback are on demand',async({p
  await page.getByLabel('Season',{exact:true}).selectOption('2');
  await expect(page.getByRole('link',{name:'Play The Long Crossing'})).toBeVisible();
  await page.getByRole('link',{name:'Play The Long Crossing'}).click();
- await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src',/\/embed\/778899\/2\/1/);
+ await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src','/movies/player.html?type=tv&id=778899&provider=framextv&season=2&episode=1');
 });
 
 test('catalog search is paginated and remains isolated from the playback provider',async({page})=>{
@@ -199,25 +202,50 @@ test('catalog search is paginated and remains isolated from the playback provide
 });
 
 
-test('external player cannot read the parent document, open popups or navigate the top page',async({page})=>{
- await page.goto('/#/movies/movie-157336/play');const iframe=page.frameLocator('.movies-provider-frame');await expect(iframe.getByRole('button',{name:'Play stream'})).toBeVisible();
- const result=await iframe.locator('body').evaluate(()=>{let parentBlocked=false,topBlocked=false;try{void parent.document.body;}catch{parentBlocked=true;}try{top!.location.href='https://unapproved-provider.invalid';}catch{topBlocked=true;}const popup=window.open('about:blank');const policy=(document as any).permissionsPolicy??(document as any).featurePolicy;return {parentBlocked,topBlocked,popupBlocked:popup===null,cameraAllowed:policy?.allowsFeature('camera')};});
- expect(result).toMatchObject({parentBlocked:true,topBlocked:true,popupBlocked:true});
+test('the first-party player loads only QCC scripts and denies popups and device permissions',async({page})=>{
+ await page.goto('/#/movies/movie-157336/play');const iframe=page.frameLocator('.movies-provider-frame');await expect(iframe.getByRole('button',{name:'Play stream'})).toBeEnabled();
+ const result=await iframe.locator('body').evaluate(()=>{const popup=window.open('about:blank');const policy=(document as any).permissionsPolicy??(document as any).featurePolicy;return {popupBlocked:popup===null,cameraAllowed:policy?.allowsFeature('camera'),externalScripts:[...document.scripts].filter(script=>script.src&&new URL(script.src).origin!==location.origin).map(script=>script.src)};});
+ expect(result.popupBlocked).toBe(true);expect(result.externalScripts).toEqual([]);
  expect(await page.locator('.movies-provider-frame').getAttribute('allow')).toContain("camera 'none'");
  if(result.cameraAllowed!==undefined)expect(result.cameraAllowed).toBe(false);
  await expect(page).toHaveURL(/#\/movies\/movie-157336\/play$/);
 });
 
 
-test('external progress is local, rejects other senders and resumes through documented controls',async({page})=>{
- await page.goto('/#/movies/movie-157336/play');const frame=page.frameLocator('.movies-provider-frame');await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
+test('relay progress is local, rejects other senders and resumes the actual video',async({page})=>{
+ await page.goto('/#/movies/movie-157336/play');const frame=page.frameLocator('.movies-provider-frame');await expect(frame.getByRole('button',{name:'Play stream'})).toBeEnabled();
  await page.evaluate(()=>window.postMessage({event:'frameXTV:timeupdate',currentTime:999},location.origin));
- expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBeUndefined();
- const origin=new URL(page.url()).origin;await frame.locator('body').evaluate((_,origin)=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:42},origin),origin);
- await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBe(42);
- await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
- await frame.locator('body').evaluate((_,origin)=>{window.addEventListener('message',event=>{if(event.data.action==='seek')document.body.dataset.seek=String(event.data.time);});parent.postMessage({event:'frameXTV:timeupdate',currentTime:0},origin);},origin);
- await expect(frame.locator('body')).toHaveAttribute('data-seek','42');
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress?.['movie-157336'])).not.toBe(999);
+ await frame.locator('video').evaluate(video=>{(video as HTMLVideoElement).currentTime=.7;});
+ await expect.poll(()=>frame.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime)).toBeCloseTo(.7,1);
+ await page.keyboard.press('Escape');await expect(page.locator('.movies-provider-frame')).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBeCloseTo(.7,1);
+ await page.getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeEnabled();
+ await expect.poll(()=>frame.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime)).toBeCloseTo(.7,1);
+});
+
+test('late episode details preserve the inline player, selected source and playback position',async({page})=>{
+ let pending:any;
+ const series=(season:number)=>({id:'tv-778899',kind:'tv',name:'Remote Expedition',year:2024,genres:['Adventure'],overview:'A remote series.',poster:'https://image.tmdb.org/t/p/w500/remote.jpg',seasons:[1,2].map(number=>({number,name:'Season '+number,episodes:number===season?[{number:1,name:number===1?'First Contact':'The Long Crossing',overview:''}]:[]}))});
+ await page.route('**/api/movies?*',route=>{
+  const season=Number(new URL(route.request().url()).searchParams.get('season')||1);
+  if(season===2){pending=route;return;}
+  return route.fulfill({json:{title:series(season)}});
+ });
+ await page.goto('/#/movies/tv-778899/season/1/episode/1/play');
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream',exact:true})).toBeEnabled();
+ await page.evaluate(()=>{location.hash='#/movies/tv-778899/season/2/episode/1/play';});
+ await expect.poll(()=>Boolean(pending)).toBe(true);
+ const element=page.locator('.movies-provider-frame'),frame=page.frameLocator('.movies-provider-frame');
+ await expect(element).toHaveAttribute('src',/season=2&episode=1/);
+ await frame.getByLabel('Source',{exact:true}).selectOption('vidlink');await expect(frame.getByRole('button',{name:'Play stream',exact:true})).toBeEnabled();
+ await frame.locator('video').evaluate(video=>{(video as HTMLVideoElement).currentTime=.7;});
+ await expect.poll(()=>frame.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime)).toBeCloseTo(.7,1);
+ await element.evaluate(node=>node.setAttribute('data-instance','original'));
+ await pending.fulfill({json:{title:series(2)}});
+ await expect(page.locator('.movies-player>h2')).toHaveText('S2 · E1 — The Long Crossing');
+ await expect(element).toHaveAttribute('data-instance','original');await expect(frame.getByLabel('Source',{exact:true})).toHaveValue('vidlink');
+ await expect.poll(()=>frame.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime)).toBeCloseTo(.7,1);
 });
 
 

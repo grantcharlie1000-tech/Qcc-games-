@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <meta name="referrer" content="no-referrer">
+ <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; media-src 'self' blob:; img-src 'self' data:; font-src 'self'; worker-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+ <title>QCC Player</title>
+</head>
+<body>
+ <main class="relay-player" aria-label="QCC streaming player">
+  <div class="relay-stage">
+   <video id="relay-video" controls playsinline preload="metadata" aria-label="Video player"></video>
+   <div class="relay-overlay"><button id="relay-play" type="button" disabled>Play stream</button></div>
+  </div>
+  <div class="relay-controls">
+   <label for="relay-source">Source <select id="relay-source" aria-label="Source"></select></label>
+   <button id="relay-next" type="button">Try another source</button>
+   <button id="relay-reload" type="button">Reload</button>
+   <p id="relay-status" role="status" aria-live="polite">Opening player…</p>
+  </div>
+ </main>
+ <script type="module" src="/src/movies/relay-player.ts"></script>
+</body>
+</html>
