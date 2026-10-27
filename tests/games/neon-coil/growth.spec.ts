@@ -9,7 +9,9 @@ test('a legacy 600-mass save eats, grows, renders and persists beyond 9,000',asy
  saved.snakes.slice(1).forEach(b=>{b.alive=false;b.body=[];b.pathLength=0;b.diedAt=0});
  saved.food=Array.from({length:30},(_,i)=>({id:i+1,x:3,y:0,value:300,color:0,trail:false}));saved.nextFood=31;
  await page.addInitScript(s=>{if(!localStorage.getItem('qcc-growth-seeded')){localStorage.setItem('pocket-arcade:v1:save:neon-coil',JSON.stringify({version:1,data:s}));localStorage.setItem('qcc-growth-seeded','1');}},saved);
- await page.clock.install();await page.goto('/#/game/neon-coil');
+ // Only runFor advances the arena; host/CI delays must not change the sampled mass.
+ await page.clock.install({time:new Date('2026-10-20T10:00:00Z')});
+ await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));await page.goto('/#/game/neon-coil');
  await page.getByRole('button',{name:'Continue arena',exact:true}).click();
  await page.keyboard.down('ArrowRight');await page.clock.runFor(1200);await page.keyboard.up('ArrowRight');
  await expect(page.locator('.nc-mass')).toHaveText('9600');

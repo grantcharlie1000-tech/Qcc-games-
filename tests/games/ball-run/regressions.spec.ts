@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '../../fixtures';
-import { CONFIG, DIFFICULTIES, RADIUS, STEP, type Run } from '../../../src/games/ball-run/config';
+import { CONFIG, DIFFICULTIES, RADIUS, STEP, STEER_RESPONSE, lateralSpeed, type Run } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun } from '../../../src/games/ball-run/model';
 import { emptyRecords } from '../../../src/games/ball-run/records';
@@ -34,15 +34,25 @@ async function open(page: Page, run: Run) {
   await frames(page, 1, 1);
 }
 
-for (const [difficulty, reverse] of [['easy', 74], ['medium', 62], ['hard', 54]] as const) {
+for (const difficulty of DIFFICULTIES) {
   test(`${difficulty}: real steering reversal stays on the visible floor in fullscreen`, async ({ page }) => {
+    // Match a near-edge excursion to the current steering authority and the
+    // response lag, instead of reusing a frame count from the slower course.
+    const course = getCourse(1, difficulty), halfWidth = course.sample(0).width / 2;
+    const reverse = Math.floor(((halfWidth - .04) / lateralSpeed(course.speed(0)) + Math.log(2) / STEER_RESPONSE) / STEP);
+    const turningFrames = Math.ceil(Math.log(2) / STEER_RESPONSE / STEP);
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, createRun(1, 1, difficulty));
     await page.getByRole('button', { name: 'Enter full screen', exact: true }).click();
     await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true);
     await page.keyboard.down('ArrowRight'); await frames(page, reverse);
     await page.keyboard.up('ArrowRight'); await page.keyboard.down('ArrowLeft');
-    await frames(page, 132 - reverse);
+    await frames(page, turningFrames);
+    const edgeX = Number(await game(page).getAttribute('data-x'));
+    expect(edgeX).toBeGreaterThan(halfWidth - .12);
+    expect(edgeX).toBeLessThan(halfWidth);
+    await expect(game(page)).toHaveAttribute('data-grounded', 'true');
+    await frames(page, 132 - reverse - turningFrames);
     await page.keyboard.up('ArrowLeft');
     await expect(game(page)).toHaveAttribute('data-phase', 'running');
     await expect(game(page)).toHaveAttribute('data-grounded', 'true');
