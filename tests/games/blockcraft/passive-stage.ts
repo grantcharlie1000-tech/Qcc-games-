@@ -33,7 +33,8 @@ const frames=(page:Page,n:number)=>page.evaluate(n=>new Promise<void>(done=>{let
 export async function stage(page:Page,name:string,mobs:readonly Mob[],view:{ahead?:number;pitch?:number}={}){
   await page.evaluate(([mobs,blocks])=>{
     const g=(window as unknown as {blockcraft:Engine}).blockcraft,p=g.player.state;
-    for(const e of [...g.entities.all()])g.entities.remove(e);
+    // The photo owns the whole entity scene, including animals waiting for unloaded chunks.
+    g.entities.reset();
     const cx=Math.floor(p.x),cz=Math.floor(p.z),y0=g.world.topY(cx,cz);
     for(let dx=-9;dx<=9;dx++)for(let dz=-14;dz<=4;dz++){
       g.world.set(cx+dx,y0,cz+dz,blocks.grass);

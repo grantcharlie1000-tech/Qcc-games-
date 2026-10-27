@@ -1,5 +1,6 @@
 import {test,expect} from '../../fixtures';
 import {openStage,stage,type Mob} from './passive-stage';
+import type {Game} from '../../../src/games/blockcraft/engine/contracts';
 
 // The passive mobs in the real engine at noon (evidence: tests/games/blockcraft/evidence/mobs-*.png): cow, mooshroom and
 // calf, pig and piglet, white, pink, sheared sheep and a lamb, chicken and chick, the six rabbit coats. The models must
@@ -22,5 +23,25 @@ test('passive mobs read as the vanilla mobs in daylight',async({page})=>{
     expect(stats.entities,name).toBe(mobs.length);
     expect(stats.drawCalls,name).toBeLessThanOrEqual(3);
   }
+  expect(errors).toEqual([]);
+});
+
+test('photo stage clears pending entities before delayed chunk delivery',async({page})=>{
+  test.setTimeout(120000);
+  const errors=await openStage(page);
+  await page.evaluate(()=>{
+    const g=(window as unknown as {blockcraft:Game}).blockcraft,p=g.player.state,x=p.x+4,z=p.z-4;
+    // A previously unloaded animal is waiting for its chunk, independently of natural-spawning settings.
+    g.entities.restore!({v:1,list:[],far:[{k:'cow',i:900001,x,y:p.y,z,h:10,d:{variant:'cow'}}]});
+    const off=g.events.on('entitySpawned',({entity,reason})=>{
+      if(entity.kind!=='rabbit'||reason!=='egg')return;
+      off();setTimeout(()=>g.events.emit('chunkLoaded',{cx:Math.floor(x/16),cz:Math.floor(z/16),fresh:false}),0);
+    });
+  });
+  const mobs=GROUPS.find(([name])=>name==='rabbit')![1];
+  const stats=await stage(page,'pending-rabbit',mobs,{pitch:-.55});
+  expect(stats.count).toBe(6);
+  expect(stats.entities).toBe(6);
+  expect(stats.drawCalls).toBeLessThanOrEqual(3);
   expect(errors).toEqual([]);
 });
