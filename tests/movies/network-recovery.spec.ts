@@ -5,7 +5,7 @@ const results={titles:[remoteTitle],page:1,totalPages:1,totalResults:1};
 
 test.beforeEach(async({page})=>{
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
- for(const origin of ['https://framextv.cc','https://framextv.xyz'])await page.route(origin+'/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ await page.route('**/movies/player.html?*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>QCC player fixture</title><button>Play stream</button>'}));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
@@ -137,9 +137,9 @@ test('fullscreen lazy-season failures expose retry without replacing the screen 
  await page.getByRole('button',{name:'Full screen',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.className)).toBe('movies-screen');
  await page.locator('.movies-screen').evaluate(element=>element.setAttribute('data-instance','original-screen'));
- await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
+ await page.frame({url:/\/movies\/player\.html/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
  await page.getByRole('button',{name:'Play now',exact:true}).click();
- const frame=page.locator('.movies-provider-frame');await expect(frame).toHaveAttribute('src',/\/778899\/2\/1\?/);
+ const frame=page.locator('.movies-provider-frame');await expect(frame).toHaveAttribute('src',/\bid=778899\b.*\bseason=2\b.*\bepisode=1\b/);
  await frame.evaluate(element=>element.setAttribute('data-instance','season-two-frame'));
  releaseFailure();
  const retry=page.getByRole('button',{name:'Retry title',exact:true});await expect(retry).toBeVisible();

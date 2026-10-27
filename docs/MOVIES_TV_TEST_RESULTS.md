@@ -1,5 +1,7 @@
 # Movies & TV verification — 2026-10-25
 
+> Historical results for the earlier external-iframe player. The replacement first-party relay, fallback sources, deployment setting and current verification commands are documented in [MOVIES_RELAY.md](MOVIES_RELAY.md).
+
 ## Final feature model
 
 The user authorized normal provider/image requests, required actual movie pictures rather than generated art, and explicitly confirmed that streaming should remain enabled. The final implementation uses real TMDB image URLs and sandboxed FrameXTV embeds. It does not claim zero exposure, verified external streaming rights, or guaranteed provider availability. Generated movie artwork and preview screenshots containing it have been removed.

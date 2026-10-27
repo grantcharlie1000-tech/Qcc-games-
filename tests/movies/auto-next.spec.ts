@@ -3,12 +3,12 @@ import {readFileSync} from 'node:fs';
 import type {Page} from '@playwright/test';
 const route=(season=1,episode=1)=>`/#/movies/tv-19885/season/${season}/episode/${episode}/play`;
 const overlay=(page:Page)=>page.getByRole('dialog',{name:'Up next'});
-async function telemetry(page:Page,currentTime=100,duration=100){await page.frame({url:/framextv/})!.evaluate(({currentTime,duration})=>parent.postMessage({event:'frameXTV:timeupdate',currentTime,duration},'*'),{currentTime,duration});}
+async function telemetry(page:Page,currentTime=100,duration=100){await page.frame({url:/\/movies\/player\.html/})!.evaluate(({currentTime,duration})=>parent.postMessage({event:'frameXTV:timeupdate',currentTime,duration},'*'),{currentTime,duration});}
 async function open(page:Page,url=route()){await page.goto(url);await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();await page.clock.install();}
 async function ended(page:Page){await telemetry(page);await expect(overlay(page)).toBeVisible();}
 
 test.beforeEach(async({page})=>{
- await page.route('https://framextv.cc/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ await page.route('**/movies/player.html?*',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>QCC player fixture</title><button>Play stream</button>'}));
  await page.route('https://image.tmdb.org/**',r=>r.abort());
  await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
@@ -22,7 +22,7 @@ test('end shows the next title, countdown and keyboard focus; Cancel stops and r
 for(const activation of ['click','Enter','countdown'])test(`${activation} advances to the next episode`,async({page})=>{
  await open(page);await ended(page);
  if(activation==='click')await page.getByRole('button',{name:'Play now',exact:true}).click();else if(activation==='Enter')await page.keyboard.press('Enter');else await page.clock.runFor(10000);
- await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);await expect(page.locator('.movies-player>h2')).toHaveText('S1 · E2 — The Blind Banker');await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src',/\/19885\/1\/2\?/);await expect(overlay(page)).toBeHidden();
+ await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);await expect(page.locator('.movies-player>h2')).toHaveText('S1 · E2 — The Blind Banker');await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src',/\bid=19885\b.*\bseason=1\b.*\bepisode=2\b/);await expect(overlay(page)).toBeHidden();
 });
 test('Enter on Cancel activates Cancel',async({page})=>{await open(page);await ended(page);await page.getByRole('button',{name:'Cancel',exact:true}).focus();await page.keyboard.press('Enter');await page.clock.runFor(11000);await expect(overlay(page)).toBeHidden();await expect(page).toHaveURL(/episode\/1\/play$/);});
 test('rolls over to the next season',async({page})=>{await open(page,route(1,3));await ended(page);await expect(overlay(page)).toContainText('S2 · E1 — A Scandal in Belgravia');await page.getByRole('button',{name:'Play now',exact:true}).click();await expect(page).toHaveURL(/season\/2\/episode\/1\/play$/);});
@@ -77,7 +77,7 @@ test('browser fullscreen exit cancels countdown without opening Study',async({pa
 
 test('provider fullscreen exits intentionally so the overlay becomes visible',async({page})=>{
  await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!e.requestFullscreen),'Browser reports the Fullscreen API unsupported');
- await page.frame({url:/framextv/})!.evaluate(()=>{document.querySelector('button')!.onclick=()=>{void document.documentElement.requestFullscreen();};});
+ await page.frame({url:/\/movies\/player\.html/})!.evaluate(()=>{document.querySelector('button')!.onclick=()=>{void document.documentElement.requestFullscreen();};});
  await page.frameLocator('.movies-provider-frame').getByRole('button').click();await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.className)).toBe('movies-provider-frame');await ended(page);await expect.poll(()=>page.evaluate(()=>document.fullscreenElement)).toBe(null);await page.clock.runFor(1000);await expect(overlay(page)).toContainText('Playing in 9');
 });
 
