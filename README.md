@@ -49,7 +49,7 @@ Offline play requires a successful download on the same browser, device and orig
 
 Shared online leaderboards require the Netlify function and database; static-only hosts continue to run the games but cannot serve the shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
 
-The Netlify project is **[Mauri Gazette](https://mauri-gazette.netlify.app)** (`mauri-gazette`), built from this repository's **main** branch. Publication is inspected through the Netlify connector; [deployment evidence and update status](docs/NETLIFY_DEPLOYMENT.md) distinguish published commits from local verification. The ready static ZIP is included there too.
+The Netlify project is **[NCEA Study](https://nceastudy.netlify.app)** (`nceastudy`), built from this repository's **main** branch. Publication is inspected through the Netlify connector; [deployment evidence and update status](docs/NETLIFY_DEPLOYMENT.md) record earlier releases. The ready static ZIP is included there too.
 
 ## Code and artwork
 
