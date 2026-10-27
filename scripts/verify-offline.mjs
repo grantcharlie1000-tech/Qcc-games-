@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPoolShot} from './pool-verifier-shot.mjs';
-const titles={'neon-coil':'Neon Coil','fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Blockcraft','maze-muncher':'Maze Muncher','corn-clicker':'Corn Clicker',quadfall:'Quadfall'};
+const titles={'neon-coil':'Neon Coil','fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Blockcraft','maze-muncher':'Maze Muncher','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Quadfall'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
@@ -31,6 +31,7 @@ async function action(page,id){
   // The shell's Restart asks before it erases the farm.
   const erase=page.getByRole('button',{name:'Erase everything',exact:true});if(await erase.isVisible()){await erase.click();await erase.waitFor({state:'hidden'});}
   const cob=page.getByRole('button',{name:/^Harvest the cob/});await cob.click();await cob.click();await waitFor(async()=>/^[1-9]/.test(await page.locator('.cc-kernels-num').textContent()),'offline Corn Clicker harvest');}
+ else if(id==='slipline'){await page.getByRole('button',{name:'Use hint'}).click();}
  else if(id==='pool'){await verifyPoolShot(page);}
  else if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');await page.locator('.gl-guess[data-id=KEN]').waitFor();}
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');

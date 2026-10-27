@@ -3,7 +3,7 @@
  * chooses its lateral line. Collision uses the same obstacle poses as rendering. */
 import { sweepSphereBox } from '../../core/collision';
 import {
-  BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GRAVITY, RADIUS, STEER_RESPONSE,
+  BANK_DRIFT, COURSE_REVISION, DYING_DURATION, FALL_DEPTH, GATE_FEEDBACK, GATE_WALL_HEIGHT, GRAVITY, RADIUS, STEER_RESPONSE,
   isDifficulty, lateralSpeed,
   type Course, type Difficulty, type Obstacle, type ObstaclePose, type Phase, type Run, type TrackSample,
 } from './config';
@@ -54,7 +54,8 @@ const sweepFrom = [0, 0, 0], sweepTo = [0, 0, 0], origin = [0, 0, 0] as const, h
 /** The step being tested against blocks: elapsed before and after, then the ball's old and new
  * x, height and distance. A typed array, because module-level number variables box every write. */
 const sweep = new Float64Array(8);
-let hitCourse: Course, hit = false;
+let hitCourse: Course, hit = false, hitFraction = 1;
+const sweepMid = [0, 0, 0];
 
 /** Moves world point (x, y, d) into the frame of a box posed at `p` (rolled about the forward axis). */
 function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]): void {
@@ -66,7 +67,6 @@ function local(p: ObstaclePose, x: number, y: number, d: number, out: number[]):
 
 /** Does the ball's swept path from the old to the new state touch this block? */
 function testBlock(o: Obstacle): void {
-  if (hit) return;
   hitCourse.pose(o, sweep[0], poseA);
   const p = o.slide ? hitCourse.pose(o, sweep[1], poseB) : poseA;
   local(poseA, sweep[2], sweep[3], sweep[4], sweepFrom);
@@ -80,7 +80,17 @@ function testBlock(o: Obstacle): void {
     gap += d * d;
   }
   if (gap > RADIUS * RADIUS) return;
-  hit = sweepSphereBox(sweepFrom, sweepTo, origin, half, RADIUS);
+  if (!sweepSphereBox(sweepFrom, sweepTo, origin, half, RADIUS)) return;
+  hit = true;
+  // The existing sweep defines a straight path in the moving box frame. Search
+  // its first touching point without changing the hit/miss decision.
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 40; i++) {
+    const t = (lo + hi) / 2;
+    for (let axis = 0; axis < 3; axis++) sweepMid[axis] = sweepFrom[axis] + (sweepTo[axis] - sweepFrom[axis]) * t;
+    if (sweepSphereBox(sweepFrom, sweepMid, origin, half, RADIUS)) hi = t; else lo = t;
+  }
+  hitFraction = Math.min(hitFraction, hi);
 }
 
 function die(run: Run, reason: 'block' | 'fall', score: number): void {
@@ -111,7 +121,10 @@ export function step(run: Run, input: number, dt: number): void {
 
   const s = course.sample(run.distance, after);
   // Arch walls are solid but harmless, for a ball that was over the road.
-  if (s.tunnel && Math.abs(x0 - before.center) <= before.width / 2) {
+  const flightDelta = vy0 * dt - GRAVITY * dt * dt / 2;
+  const overlapsWallHeight = h0 + Math.min(0, flightDelta) - RADIUS <= Math.max(before.elevation, s.elevation) + GATE_WALL_HEIGHT &&
+    h0 + Math.max(0, flightDelta) + RADIUS >= Math.min(before.elevation, s.elevation);
+  if (s.tunnel && overlapsWallHeight && Math.abs(x0 - before.center) <= before.width / 2) {
     const room = s.width / 2 - RADIUS;
     if (Math.abs(run.x - s.center) > room) { run.x = s.center + Math.sign(run.x - s.center) * room; run.vx = 0; }
   }
@@ -134,13 +147,21 @@ export function step(run: Run, input: number, dt: number): void {
     run.vy -= GRAVITY * dt;
   }
 
-  hitCourse = course; hit = false;
+  hitCourse = course; hit = false; hitFraction = 1;
   sweep[0] = e0; sweep[1] = run.elapsed; sweep[2] = x0; sweep[3] = h0; sweep[4] = d0; sweep[5] = run.x; sweep[6] = run.height; sweep[7] = run.distance;
   course.forEachObstacle(d0 - RADIUS - course.maxDepth, run.distance + RADIUS + course.maxDepth, testBlock);
   if (hit) {
-    // The ball stops where it was, just short of the block.
-    run.distance = d0; run.x = x0; run.vx = vx0; run.height = h0; run.vy = vy0; run.grounded = grounded0;
-    run.elapsed = e0; run.speedUpTime = speedUp0; run.gateIndex = gate0;
+    // Stop at the first contact along the same swept path that decided the hit.
+    const t = hitFraction;
+    run.distance = d0 + (run.distance - d0) * t;
+    run.x = x0 + (run.x - x0) * t;
+    run.height = h0 + (run.height - h0) * t;
+    run.vx = vx0 + (run.vx - vx0) * t;
+    run.vy = vy0 + (run.vy - vy0) * t;
+    const contactRoad = course.sample(run.distance, after);
+    run.grounded = grounded0 && hasSupport(contactRoad, run.x) && Math.abs(run.height - restOn(contactRoad, run.x)) <= .01;
+    run.elapsed = e0 + dt * t;
+    run.speedUpTime = Math.max(0, speedUp0 - dt * t); run.gateIndex = gate0;
     die(run, 'block', d0);
     return;
   }

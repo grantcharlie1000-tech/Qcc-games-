@@ -57,16 +57,17 @@ function roadFall(course: Course, from: number, to: number): { fall: number; dee
 
 /** Drives a run with the bot to `to`, watching a crest that starts at `start`: whether the run
  * entered it grounded, where it first left the road past `start` (and its state the step before),
- * and where it next landed (−1 when it did not). */
-function flyOver(run: Run, start: number, to: number): { entered: boolean; lifted: number; landed: number; before: Run | null } {
-  let previous: Run = { ...run }, before: Run | null = null, lifted = -1, landed = -1, entered = false;
+ * and where it next landed (−1 when it did not). Keep that landing state even if another
+ * crest launches the ball before the arbitrary end of the observation window. */
+function flyOver(run: Run, start: number, to: number): { entered: boolean; lifted: number; landed: number; before: Run | null; touchdown: Run | null } {
+  let previous: Run = { ...run }, before: Run | null = null, touchdown: Run | null = null, lifted = -1, landed = -1, entered = false;
   driveBot(run, to - run.distance, r => {
     if (r.distance >= start && previous.distance < start) entered = r.grounded;
     if (lifted < 0 && previous.distance >= start && previous.grounded && !r.grounded) { lifted = r.distance; before = previous; }
-    else if (lifted >= 0 && landed < 0 && r.grounded) landed = r.distance;
+    else if (lifted >= 0 && landed < 0 && r.grounded) { landed = r.distance; touchdown = { ...r }; }
     previous = { ...r };
   });
-  return { entered, lifted, landed, before };
+  return { entered, lifted, landed, before, touchdown };
 }
 
 type Point = readonly [x: number, y: number, d: number];
@@ -120,21 +121,25 @@ function hits(run: Run, dt: number): boolean {
 }
 
 describe('Ball Run speed', () => {
-  it('accelerates more slowly than the old game over the first minute, gates included', () => {
+  it('starts 20% faster while keeping the first minute gentler than the same-speed arcade ramp, gates included', () => {
     const slower: string[] = [];
+    const starts: Record<Difficulty, number> = { easy: 10.8, medium: 13.2, hard: 15.6 };
     for (const difficulty of DIFFICULTIES) for (let seed = 1; seed <= 8; seed++) {
       const course = getCourse(seed, difficulty);
-      let d = 0, old = 0;
+      expect(course.speed(0)).toBe(starts[difficulty]);
+      // The former arcade ramp raised by the same 20% as this tuning: retain the
+      // gradual opening guard without requiring the obsolete absolute speed limit.
+      let d = 0, reference = 0;
       for (let i = 1; i <= 7200; i++) {
         d += course.speed(d) * STEP;
-        old += Math.min(22, 12 + .012 * old) * STEP;
-        if ((i === 3600 || i === 7200) && !(course.speed(d) < Math.min(22, 12 + .012 * old))) slower.push(`${difficulty} seed ${seed} at ${i * STEP} s: ${course.speed(d)}`);
+        reference += Math.min(26.4, 14.4 + .012 * reference) * STEP;
+        if ((i === 3600 || i === 7200) && !(course.speed(d) < Math.min(26.4, 14.4 + .012 * reference))) slower.push(`${difficulty} seed ${seed} at ${i * STEP} s: ${course.speed(d)}`);
       }
     }
     expect(slower).toEqual([]);
   });
 
-  it('never slows down, passes the old 22 m/s cap and settles exactly on 40 / 50 / 62 m/s', () => {
+  it('never slows down, passes the old 22 m/s cap and settles exactly on 48 / 60 / 74.4 m/s', () => {
     for (const difficulty of DIFFICULTIES) for (let seed = 1; seed <= 3; seed++) {
       const course = getCourse(seed, difficulty), max = CONFIG[difficulty].maxSpeed, cap = capDistance(course);
       let previous = 0, top = 0, decreases = 0, past22 = -1;
@@ -301,7 +306,7 @@ describe('Ball Run vertical motion', () => {
     // Driven from the start of a real run; the bot steers round the blocks on the way.
     const run = createRun(seed, 1, 'hard');
     run.phase = 'running';
-    const { entered, lifted, landed, before } = flyOver(run, start, end + 200);
+    const { entered, lifted, landed, before, touchdown } = flyOver(run, start, end + 200);
     expect(run.phase, describeRun(run)).toBe('running');
     expect(entered).toBe(true);
     // It leaves the road inside the crest, once the road there falls away faster than gravity.
@@ -314,7 +319,7 @@ describe('Ball Run vertical motion', () => {
     expect(pressed.phase).toBe('running');
     expect(pressed.grounded).toBe(true);
     expect(landed).toBeGreaterThan(lifted + 1);
-    expect(run.grounded).toBe(true);
+    expect(touchdown?.height).toBeCloseTo(restHeight(course, landed, touchdown!.x), 9);
   });
 
   it('lifts off at the speed cap over the first crest past it that curves away faster than gravity, and lands again, on every difficulty', () => {
@@ -328,7 +333,7 @@ describe('Ball Run vertical motion', () => {
       const from = safeStart(course, start - 500);
       expect(from, label).toBeLessThan(start - 30);
       const run = placeRun(seed, difficulty, from);
-      const { entered, lifted, landed, before } = flyOver(run, start, end + 200);
+      const { entered, lifted, landed, before, touchdown } = flyOver(run, start, end + 200);
       expect(run.phase, describeRun(run)).toBe('running');
       expect(entered, label).toBe(true);
       expect(runSpeed(before!), label).toBe(max);
@@ -339,7 +344,7 @@ describe('Ball Run vertical motion', () => {
       step(pressed, 0, STEP);
       expect(pressed.grounded, label).toBe(true);
       expect(landed, label).toBeGreaterThan(lifted + 1);
-      expect(run.grounded, label).toBe(true);
+      expect(touchdown?.height, label).toBeCloseTo(restHeight(course, landed, touchdown!.x), 9);
     }
   });
 
@@ -393,6 +398,16 @@ describe('Ball Run hazards', () => {
       expect(run.x).toBeCloseTo(s.center + input * (s.width / 2 - RADIUS), 9);
       expect(run.vx).toBe(0);
     }
+  });
+
+  it('does not clamp a ball flying above a gate wall', () => {
+    const course = getCourse(1, 'medium'), gate = gateList(course, 4000)[0];
+    const d = gate.start + 1, s = course.sample(d), edge = s.center + s.width / 2 - RADIUS;
+    const run = placeRun(1, 'medium', d, edge);
+    run.height = s.elevation + 3;
+    run.vy = 0; run.vx = 4; run.grounded = false;
+    step(run, 1, STEP);
+    expect(run.x).toBeGreaterThan(edge + .01);
   });
 
   it('falls off the edge, freezes the score, and ends the run after the dying time', () => {
@@ -478,9 +493,8 @@ describe('Ball Run hazards', () => {
       step(jump, 0, .05);
       expect(jump.phase).toBe('dying');
       expect(jump.reason).toBe('block');
-      expect(jump.distance).toBe(start.distance);
-      expect(jump.x).toBe(start.x);
-      expect(jump.height).toBe(start.height);
+      expect(jump.distance).toBeCloseTo(front - RADIUS, 6);
+      expect(jump.distance).toBeGreaterThan(start.distance);
       expect(jump.score).toBe(Math.floor(start.distance));
       // At the fixed step the ball stops within one step of the face, and stays there.
       const run = placeRun(seed, difficulty, front - RADIUS - 6, pose.x);

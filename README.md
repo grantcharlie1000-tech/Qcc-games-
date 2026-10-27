@@ -1,6 +1,6 @@
 # Pocket Arcade
 
-A static, private browser arcade with nineteen playable games: **Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker and Quadfall**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No accounts, advertisements or currency. Gameplay stays local; optional shared leaderboards use a Netlify score service, and Pool and Blockcraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
+A static, private browser arcade with twenty playable games: **Fruit Merge, Water Sort, Color Blocks, Tower, Snake, Neon Coil, Minesweeper, Solitaire, Block Fill, Color Connect, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Blockcraft, Maze Muncher, Corn Clicker, Slipline and Quadfall**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No accounts, advertisements or currency. Gameplay stays local; optional shared leaderboards use a Netlify score service, and Pool and Blockcraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
@@ -49,7 +49,7 @@ Offline play requires a successful download on the same browser, device and orig
 
 Shared online leaderboards require the Netlify function and database; static-only hosts continue to run the games but cannot serve the shared scores. See [leaderboard setup and verification](docs/LEADERBOARDS.md).
 
-The Netlify project is **[Mauri Gazette](https://mauri-gazette.netlify.app)** (`mauri-gazette`), built from this repository's **main** branch. Publication is inspected through the Netlify connector; [deployment evidence and update status](docs/NETLIFY_DEPLOYMENT.md) distinguish published commits from local verification. The ready static ZIP is included there too.
+The Netlify project is **[NCEA Study](https://nceastudy.netlify.app)** (`nceastudy`), built from this repository's **main** branch. Publication is inspected through the Netlify connector; [deployment evidence and update status](docs/NETLIFY_DEPLOYMENT.md) record earlier releases. The ready static ZIP is included there too.
 
 ## Code and artwork
 
@@ -72,5 +72,7 @@ Corn Clicker is an original corn-themed incremental game: click the cob, hire pr
 The cinema card opens a Netflix-reference-based section with real TMDB posters/backdrops, local search, genres, details, seasons, episodes and a device-local list. Streaming remains enabled for supported titles through the documented FrameXTV player, isolated in a cross-origin sandbox. Study Mode unloads the external player and offers manual resume. Game scores, saves and offline downloads remain separate.
 
 TMDB and streaming providers receive ordinary image/playback requests. External availability, tracking and distribution rights are not verified by QCC. No provider scripts run in the parent page, and no DRM bypass, stream extraction or account forwarding is implemented. See [setup and provider/privacy details](docs/MOVIES_TV.md), [Netflix design references](docs/MOVIES_TV_DESIGN_REFERENCES.md) and [verification results](docs/MOVIES_TV_TEST_RESULTS.md).
+
+**Slipline** is a deterministic arrow-extraction puzzle: clear each route in its direction, avoid blocked moves, and preserve hearts through an endless campaign.
 
 Quadfall is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and build a local best score.

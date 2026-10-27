@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 // Network fixtures isolate browser security tests from provider uptime and workspace egress restrictions.
 test.beforeEach(async({page})=>{
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
- await page.route('https://framextv.xyz/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
@@ -33,7 +33,7 @@ test('failed launch posters are hidden over the coloured fallback',async({page})
 
 test('full-width launch, local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
- const games=page.locator('.game-card');await expect(games).toHaveCount(19);
+ const games=page.locator('.game-card');await expect(games).toHaveCount(20);
  const launch=page.getByRole('link',{name:'Movies & TV',exact:true});
  await expect(launch).toHaveAttribute('href','#/movies');
  await expect(launch).toHaveText('Movies & TV');
@@ -60,7 +60,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  // Study retains the movies route and returns to the same page.
  await page.getByRole('link',{name:'Games',exact:true}).click();
  await expect(page.locator('.movies-view')).toBeVisible();
- await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(19);await expect(launch).toBeFocused();
+ await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(20);await expect(launch).toBeFocused();
 });
 
 for(const width of [320,390,768,1366])test(`responsive allowlisted provider boundary at ${width}px`,async({page})=>{
@@ -71,10 +71,10 @@ for(const width of [320,390,768,1366])test(`responsive allowlisted provider boun
  await expect(page.getByRole('button',{name:'Play movie'})).toBeEnabled();
  await page.getByRole('link',{name:'Playback information',exact:true}).click();
  await expect(page.locator('.movies-provider-frame')).toBeVisible();
- expect(requests.filter(url=>![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.xyz'].includes(new URL(url).origin))).toEqual([]);
+ expect(requests.filter(url=>![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(url).origin))).toEqual([]);
  const audit=await page.evaluate(()=>({frames:document.querySelectorAll('iframe,embed,object').length,hints:document.querySelectorAll('link[rel=preconnect],link[rel=dns-prefetch],link[rel=prefetch]').length,overflow:(document.querySelector('.movies-view')!.scrollWidth>document.querySelector('.movies-view')!.clientWidth),resources:performance.getEntriesByType('resource').map(r=>r.name)}));
  expect(audit.frames).toBe(1);expect(audit.hints).toBe(0);expect(audit.overflow).toBe(false);
- expect(audit.resources.every(url=>[new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.xyz'].includes(new URL(url).origin))).toBe(true);
+ expect(audit.resources.every(url=>[new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(url).origin))).toBe(true);
  await page.screenshot({path:`test-results/movies-${width}.png`,fullPage:true});
 });
 
@@ -89,7 +89,7 @@ test('blocked storage, catalog failure, invalid deep links and malicious metadat
 
 test('CSP blocks unapproved frames, media, images, scripts and connections',async({page})=>{
  await page.goto('/#/movies');await expect(page.locator('#movies-search')).toBeVisible();
- const responses:string[]=[];page.on('response',r=>{if(![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.xyz'].includes(new URL(r.url()).origin))responses.push(r.url());});
+ const responses:string[]=[];page.on('response',r=>{if(![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(r.url()).origin))responses.push(r.url());});
  const directives=await page.evaluate(async()=>{
   const violations:string[]=[];document.addEventListener('securitypolicyviolation',e=>violations.push(e.effectiveDirective));
   const host='https://unapproved-provider.invalid';

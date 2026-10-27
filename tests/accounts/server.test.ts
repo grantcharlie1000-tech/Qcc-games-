@@ -118,6 +118,7 @@ describe('optional accounts with real Postgres',()=>{
   const hash=createHash('sha256').update(a.token).digest('hex');
   expect(await (await request('logout',{sessionHash:hash})).json()).toEqual(await (await request('logout',{sessionHash:hash})).json());
  });
+ it('round-trips Slipline score and save',async()=>{const a=await signup();const saves={'best:slipline':{value:200,updated:1},'save:slipline':{value:{version:1,data:{level:1},updated:1},updated:1}};expect((await request('sync',{saves},a.token,'PUT')).status).toBe(200);const pulled=await (await request('sync',undefined,a.token)).json();expect(pulled.saves['best:slipline'].value).toBe(200);expect(pulled.saves['save:slipline'].value.data.level).toBe(1)});
  it('writes only submitted keys and retains favourite removal across devices',async()=>{
   const a=await signup();
   await request('sync',{saves:{favourites:{value:['snake'],updated:1},'best:snake':{value:20,updated:1}}},a.token,'PUT');
