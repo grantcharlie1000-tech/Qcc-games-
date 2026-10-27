@@ -13,7 +13,7 @@ export async function verifyPassword(password:string,encoded:string|null):Promis
  return timingSafeEqual(actual,Buffer.from(hash!,'hex'))&&valid;
 }
 export interface Account {id:string;username:string;playerId:string}
-export async function resolveAccount(db:Database,request:Request):Promise<Account|null>{
+export async function resolveAccount(db:Pick<Database,'query'>,request:Request):Promise<Account|null>{
  const token=request.headers.get('authorization')?.match(/^Bearer (acct_[a-f0-9]{64})$/)?.[1];if(!token)return null;
  const result=await db.query(`UPDATE account_sessions s SET last_used=now() FROM accounts a
   WHERE s.token_hash=$1 AND s.expires_at>now() AND a.id=s.account_id
@@ -99,13 +99,7 @@ export function createAccountsHandler(db:Database){
      await client.query('SAVEPOINT signup');
      await client.query('INSERT INTO arcade_players(id,name) VALUES ($1,$2)',[playerId,data.username]);
      await client.query('INSERT INTO accounts(id,username,password_hash,player_id) VALUES ($1,$2,$3,$4)',[id,data.username,passwordHash,playerId]);
-     if(data.guestToken){
-      const guestId=sha(data.guestToken);
-      await client.query(`INSERT INTO arcade_scores(game_id,player_id,score,reached_at)
-       SELECT game_id,$1,score,reached_at FROM arcade_scores WHERE player_id=$2
-       ON CONFLICT(game_id,player_id) DO UPDATE SET score=excluded.score,reached_at=excluded.reached_at WHERE excluded.score>arcade_scores.score`,[playerId,guestId]);
-      await client.query('DELETE FROM arcade_players WHERE id=$1 AND NOT EXISTS (SELECT 1 FROM accounts WHERE player_id=$1)',[guestId]);
-     }
+     // Legacy guestToken is accepted for compatibility, but guest scores stay separate.
      const token=await session(client.query.bind(client),id);await client.query('RELEASE SAVEPOINT signup');return respond({token,username:data.username},201);
     }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup');if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
     }catch(error){failed=true;if(auth)await auth.query('ROLLBACK');throw error;}

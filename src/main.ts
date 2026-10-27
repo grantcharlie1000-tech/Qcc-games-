@@ -34,7 +34,7 @@ const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
 const preferences=store.settings();
 const accounts=new AccountsClient();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
-const leaderboards=new LeaderboardView();
+const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
 let leaderboardSidebar:LeaderboardSidebar|undefined;
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;

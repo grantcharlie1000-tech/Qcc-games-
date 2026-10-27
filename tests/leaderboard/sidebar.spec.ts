@@ -79,7 +79,7 @@ test('Corn Clicker ranks lifetime kernels and shows them in the game number form
   if(route.request().method()==='POST')posted.push(route.request().postDataJSON());
   return route.fulfill({json:{entries:[{rank:1,playerId:'e'.repeat(64),name:'Cob Baron',score:126600}],player:null}});
  });
- await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:leaderboard:profile',JSON.stringify({token:'f'.repeat(64),name:'Ada'})));
+ await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:accounts:session',JSON.stringify({token:'acct_'+'f'.repeat(64),username:'Ada'})));
  await page.goto('/#/game/corn-clicker');await expect(page.locator('#game-stage .loading')).toHaveCount(0);
  // The farm fills the viewport to its bottom edge, so the pill sits in the toolbar rather than over the game.
  const pill=await page.locator('.lb-toggle').boundingBox(),stage=await page.locator('#game-stage').boundingBox();

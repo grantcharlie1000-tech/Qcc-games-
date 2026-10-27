@@ -61,7 +61,7 @@ describe('optional accounts with real Postgres',()=>{
  it('keeps accounts independent from same-named guest leaderboard identities',async()=>{
   const a=await signup('Account_Name'),leaderboard=createLeaderboardHandler(pool);
   const submit=(token:string,name:string,score:number)=>leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',name,score})}));
-  await submit(a.token,'Account_Name',100);await submit('b'.repeat(64),'account_name',999);
+  await submit(a.token,'Account_Name',100);const guestId=createHash('sha256').update('b'.repeat(64)).digest('hex');await pool.query('INSERT INTO arcade_players(id,name) VALUES($1,$2)',[guestId,'account_name']);await pool.query("INSERT INTO arcade_scores(game_id,player_id,score) VALUES('snake',$1,999)",[guestId]);expect((await submit('b'.repeat(64),'account_name',1000)).status).toBe(401);
   const board=await (await leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard?game=snake',{headers:{Authorization:`Bearer ${a.token}`}}))).json();
   expect(board.entries).toHaveLength(2);expect(board.entries.find((e:any)=>e.name==='Account_Name').account).toBe(true);expect(board.entries.find((e:any)=>e.name==='account_name').account).toBe(false);expect(board.player.score).toBe(100);expect(board.player.name).toBe('Account_Name');
   const guest=await (await leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard?game=snake',{headers:{Authorization:`Bearer ${'b'.repeat(64)}`}}))).json();expect(guest.player.score).toBe(999);
@@ -148,16 +148,12 @@ describe('optional accounts with real Postgres',()=>{
   const a=await signup();await Promise.all([request('sync',{saves:{'best:snake':{value:200,updated:1}}},a.token,'PUT'),request('sync',{saves:{'best:tower':{value:300,updated:1}}},a.token,'PUT')]);
   const result=await (await request('sync',undefined,a.token)).json();expect(result.saves['best:snake'].value).toBe(200);expect(result.saves['best:tower'].value).toBe(300);
  });
- it('migrates guest scores only at signup and uses account identity/name on leaderboard',async()=>{
-  const leaderboard=createLeaderboardHandler(pool),guest='a'.repeat(64);
-  const post=(token:string,name:string,score:number)=>leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',name,score})}));
-  expect((await post(guest,'Guest',250)).status).toBe(200);const a=await signup('Account_Name',guest);
-  expect((await post(a.token,'Forged name',100)).status).toBe(200);
-  const board=await (await leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard?game=snake',{headers:{Authorization:`Bearer ${a.token}`}}))).json();expect(board.player.name).toBe('Account_Name');expect(board.player.score).toBe(250);expect(board.entries.filter((e:any)=>e.name==='Guest')).toHaveLength(0);
-  expect((await post(guest,'New guest',20)).status).toBe(200);
-  expect((await request('login',{username:a.username,password:'secret password',guestToken:guest})).status).toBe(200);
-  const scores=(await pool.query('SELECT score FROM arcade_scores ORDER BY score DESC')).rows;expect(scores.map((s:any)=>s.score)).toEqual([250,20]);
+ it('keeps historical guest scores separate at signup and uses session identity on the leaderboard',async()=>{
+  const guest='a'.repeat(64),guestId=createHash('sha256').update(guest).digest('hex'),leaderboard=createLeaderboardHandler(pool);
+  await pool.query('INSERT INTO arcade_players(id,name) VALUES($1,$2)',[guestId,'Guest']);await pool.query("INSERT INTO arcade_scores(game_id,player_id,score) VALUES('snake',$1,250)",[guestId]);
+  const a=await signup('Account_Name',guest),post=(token:string)=>leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',name:'Forged name',score:100})}));
+  expect((await post(a.token)).status).toBe(200);expect((await post(guest)).status).toBe(401);
+  const board=await (await leaderboard(new Request('https://arcade.test/.netlify/functions/leaderboard?game=snake',{headers:{Authorization:`Bearer ${a.token}`}}))).json();expect(board.player.name).toBe('Account_Name');expect(board.player.score).toBe(100);expect(board.entries.some((e:any)=>e.name==='Guest'&&e.score===250)).toBe(true);
   expect((await request('signup',{username:'Invalid_Guest',password:'valid password',guestToken:a.token})).status).toBe(400);
-  expect((await request('me',undefined,guest)).status).toBe(401);
  });
 });

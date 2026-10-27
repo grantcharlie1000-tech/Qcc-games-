@@ -1,48 +1,22 @@
 import {it,expect,vi} from 'vitest';
 import {LeaderboardSync} from '../../src/leaderboard/client';
-function memory(){const map=new Map<string,unknown>();return {read:<T>(key:string,fallback:T)=>(map.get(key)??fallback) as T,write:(key:string,value:unknown)=>{map.set(key,structuredClone(value));return true;}};}
-it('keeps best scores queued during an outage and synchronizes once without lowering them',async()=>{
- const storage=memory();let available=false;const sent:any[]=[];
- const fetcher=vi.fn(async(_url:any,options:any)=>{if(!available)throw new Error('offline');sent.push(JSON.parse(options.body));return Response.json({entries:[],player:null});});
- const sync=new LeaderboardSync(storage,fetcher as typeof fetch);
- sync.join('Ada');sync.queue('snake',100);sync.queue('snake',30);sync.queue('tower',9);
- await expect(sync.flush()).rejects.toThrow();
- sync.dispose();available=true;
- const restored=new LeaderboardSync(storage,fetcher as typeof fetch);await restored.flush();
- expect(sent.map(s=>[s.game,s.score,s.name])).toEqual([['snake',100,'Ada'],['tower',9,'Ada']]);
- await restored.flush();expect(sent).toHaveLength(2);restored.dispose();
+function memory(account=true){const map=new Map<string,unknown>();if(account)map.set('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Ada'});return {read:<T>(key:string,fallback:T)=>(map.get(key)??fallback) as T,write:(key:string,value:unknown)=>{map.set(key,structuredClone(value));return true;}};}
+it('keeps account bests queued through an outage and sends each once',async()=>{const storage=memory();let available=false;const sent:any[]=[];const fetcher=vi.fn(async(_url:any,options:any)=>{if(!available)throw Error('offline');sent.push(JSON.parse(options.body));return Response.json({});});const sync=new LeaderboardSync(storage,fetcher as typeof fetch);sync.queue('snake',100);sync.queue('snake',30);sync.queue('tower',9);await expect(sync.flush()).rejects.toThrow();sync.dispose();available=true;const restored=new LeaderboardSync(storage,fetcher as typeof fetch);await restored.flush();await restored.flush();expect(sent.map(s=>[s.game,s.score,s.name])).toEqual([['snake',100,'Ada'],['tower',9,'Ada']]);restored.dispose();});
+it('never publishes guest scores or replays legacy guest pending scores on login',async()=>{const storage=memory(false);storage.write('leaderboard:profile',{token:'b'.repeat(64),name:'Guest'});storage.write('leaderboard:pending',{snake:900});const fetcher=vi.fn(async()=>Response.json({}));const sync=new LeaderboardSync(storage,fetcher as typeof fetch);expect(sync.profile()).toBeNull();sync.queue('snake',1000);await sync.flush();expect(fetcher).not.toHaveBeenCalled();storage.write('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Ada'});await sync.flush();expect(fetcher).not.toHaveBeenCalled();sync.queue('snake',10);await sync.flush();expect(JSON.parse((fetcher.mock.calls[0] as any)[1].body).score).toBe(10);sync.dispose();});
+it('rejects invalid scores and unsupported games locally',async()=>{const fetcher=vi.fn(async()=>Response.json({}));const sync=new LeaderboardSync(memory(),fetcher as typeof fetch);for(const score of [Infinity,0,-1])sync.queue('snake',score);sync.queue('globle',20);await sync.flush();expect(fetcher).not.toHaveBeenCalled();sync.dispose();});
+it('retains a higher score arriving during a submission',async()=>{let release!:()=>void;const gate=new Promise<void>(r=>release=r),sent:number[]=[];const sync=new LeaderboardSync(memory(),vi.fn(async(_url:any,options:any)=>{sent.push(JSON.parse(options.body).score);if(sent.length===1)await gate;return Response.json({});}) as typeof fetch);sync.queue('snake',10);const pending=sync.flush();await Promise.resolve();sync.queue('snake',20);release();await pending;await sync.flush();expect(sent).toEqual([10,20]);sync.dispose();});
+it('does not move queued scores or late acknowledgements between accounts',async()=>{const storage=memory(),calls:any[]=[];let release!:()=>void;const gate=new Promise<void>(r=>release=r);const sync=new LeaderboardSync(storage,vi.fn(async(_url:any,options:any)=>{calls.push(options);if(calls.length===1)await gate;return Response.json({});}) as typeof fetch);sync.queue('snake',100);const pending=sync.flush();await Promise.resolve();storage.write('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bobby'});sync.queue('snake',20);release();await pending;await sync.flush();expect(calls.map(c=>[c.headers.Authorization,JSON.parse(c.body).score])).toEqual([['Bearer acct_'+'a'.repeat(64),100],['Bearer acct_'+'b'.repeat(64),20]]);expect(storage.read('leaderboard:sent:account:ada',{})).toEqual({});sync.dispose();});
+it('does not send queued account scores after logout even if a guest identity remains',async()=>{const storage=memory(),fetcher=vi.fn(async()=>Response.json({}));const sync=new LeaderboardSync(storage,fetcher as typeof fetch);sync.queue('snake',100);storage.write('accounts:session',null);storage.write('leaderboard:profile',{token:'b'.repeat(64),name:'Guest'});await sync.flush();expect(fetcher).not.toHaveBeenCalled();sync.dispose();});
+it('keeps expired-session scores local and asks for login without marking them sent',async()=>{const storage=memory(),sync=new LeaderboardSync(storage,vi.fn(async()=>Response.json({error:'Please log in again.'},{status:401})) as typeof fetch);sync.queue('snake',100);await expect(sync.flush()).rejects.toThrow('Log in again');expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({snake:100});expect(storage.read('leaderboard:sent:account:ada',{})).toEqual({});sync.dispose();});
+it('notifies ranking consumers only after successful sync',async()=>{let available=false;const sync=new LeaderboardSync(memory(),vi.fn(async()=>{if(!available)throw Error('offline');return Response.json({});}) as typeof fetch),changed=vi.fn();const unsubscribe=sync.onSynced(changed);sync.queue('snake',10);await expect(sync.flush()).rejects.toThrow();expect(changed).not.toHaveBeenCalled();available=true;await sync.flush();expect(changed).toHaveBeenCalledWith('snake');unsubscribe();sync.queue('snake',20);await sync.flush();expect(changed).toHaveBeenCalledTimes(1);sync.dispose();});
+it('ignores malformed cached rankings',()=>{const storage=memory(false);storage.write('leaderboard:cache:snake',{entries:'corrupt',player:null});const sync=new LeaderboardSync(storage);expect(sync.cached('snake')).toBeNull();sync.dispose();});
+it('asks for login on expiry and clears recovery state for a new identity',async()=>{
+ const storage=memory();const sync=new LeaderboardSync(storage,vi.fn(async()=>Response.json({error:'Please log in again.'},{status:401})) as typeof fetch);
+ await expect(sync.load('snake')).rejects.toThrow('Log in again');expect(sync.needsLogin).toBe(true);
+ storage.write('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bobby'});sync.profile();expect(sync.needsLogin).toBe(false);sync.dispose();
 });
-it('does not publish until the player joins, and rejects unsupported games and invalid scores',async()=>{
- const fetcher=vi.fn(async()=>Response.json({entries:[],player:null}));const sync=new LeaderboardSync(memory(),fetcher as typeof fetch);
- sync.queue('snake',100);await sync.flush();expect(fetcher).not.toHaveBeenCalled();
- sync.join('Ada');sync.queue('globle',100);sync.queue('snake',Infinity);sync.queue('snake',0);await sync.flush();expect(fetcher).not.toHaveBeenCalled();sync.dispose();
-});
-it('retains a higher score that arrives while an older submission is in flight',async()=>{
- let release!:()=>void;const gate=new Promise<void>(r=>release=r);const sent:number[]=[];
- const fetcher=vi.fn(async(_url:any,options:any)=>{sent.push(JSON.parse(options.body).score);if(sent.length===1)await gate;return Response.json({entries:[],player:null});});
- const sync=new LeaderboardSync(memory(),fetcher as typeof fetch);sync.join('Ada');sync.queue('snake',10);
- const pending=sync.flush();await Promise.resolve();sync.queue('snake',20);release();await pending;await sync.flush();
- expect(sent).toEqual([10,20]);sync.dispose();
-});
-it('ignores malformed saved rankings instead of breaking the offline dialog',()=>{
- const storage=memory();storage.write('leaderboard:cache:snake',{entries:'corrupt',player:null});
- const sync=new LeaderboardSync(storage);expect(sync.cached('snake')).toBeNull();sync.dispose();
-});
-it('notifies visible ranking consumers only after a successful score sync and supports unsubscribe',async()=>{
- let available=false;const sync=new LeaderboardSync(memory(),vi.fn(async()=>{if(!available)throw Error('offline');return Response.json({});}) as typeof fetch);
- const changed=vi.fn();expect(typeof sync.onSynced).toBe('function');const unsubscribe=sync.onSynced(changed);
- sync.join('Ada');sync.queue('snake',10);await expect(sync.flush()).rejects.toThrow();expect(changed).not.toHaveBeenCalled();
- available=true;await sync.flush();expect(changed).toHaveBeenCalledWith('snake');
- unsubscribe();sync.queue('snake',20);await sync.flush();expect(changed).toHaveBeenCalledTimes(1);sync.dispose();
-});
-it('uses the account identity without importing guest pending scores and ignores late guest responses',async()=>{
- const storage=memory();const calls:any[]=[];let release!:()=>void;
- const gate=new Promise<void>(resolve=>release=resolve);
- const sync=new LeaderboardSync(storage,vi.fn(async(_url:any,options:any)=>{calls.push(options);if(calls.length===1)await gate;return Response.json({entries:[],player:null});}) as typeof fetch);
- sync.join('Guest');sync.queue('snake',900);const pending=sync.flush();await Promise.resolve();
- storage.write('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Account'});
- expect(sync.profile()?.name).toBe('Account');
- sync.queue('snake',10);release();await pending;await sync.flush();
- expect(calls).toHaveLength(2);expect(calls[1].headers.Authorization).toBe('Bearer acct_'+'a'.repeat(64));
- expect(JSON.parse(calls[1].body).score).toBe(10);sync.dispose();
+
+it('ignores an old account 401 after switching to a different account',async()=>{
+ const storage=memory();let release!:()=>void;const gate=new Promise<void>(r=>release=r);const sync=new LeaderboardSync(storage,vi.fn(async()=>{await gate;return Response.json({},{status:401});}) as typeof fetch);
+ const pending=sync.load('snake');storage.write('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bobby'});release();await expect(pending).rejects.toThrow('Player changed');expect(sync.needsLogin).toBe(false);sync.dispose();
 });
