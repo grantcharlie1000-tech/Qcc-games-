@@ -1,6 +1,17 @@
 import {test,expect} from '../../fixtures';
 import type {Page} from '@playwright/test';
 import {generate,initial,free} from '../../../src/games/slipline/model';
+test('a blocked route stays tappable at the peak of its nudge',async({page})=>{
+ await page.goto('/#/game/slipline');await tapRoute(page,'.sl-board g[data-free="false"]');await expect(page.locator('.sl-heart.sl-spent')).toHaveCount(1);
+ await page.locator('.sl-board .sl-nudge').evaluate(route=>{for(const animation of route.getAnimations()){animation.pause();animation.currentTime=110;}});
+ await tapRoute(page,'.sl-board .sl-nudge');await expect(page.locator('.sl-heart.sl-spent')).toHaveCount(2);await expect(page.locator('.sl-board g[data-state="red"]')).toHaveCount(1);
+});
+test('taps use the visible route when the SVG board is letterboxed',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/game/slipline');
+ await page.locator('.sl-board').evaluate((svg:SVGSVGElement)=>{svg.style.width='600px';svg.style.height='300px';svg.style.maxHeight='none';svg.style.aspectRatio='auto';});
+ const ids=await page.locator('.sl-board g[data-free="true"]').evaluateAll(routes=>routes.map(route=>route.getAttribute('data-id')!));
+ for(const id of ids){const selector=`.sl-board g[data-id="${id}"]`;await tapRoute(page,selector);await expect(page.locator(selector)).toHaveCount(0);}
+});
 async function tapRoute(page:Page,selector:string){const route=page.locator(selector).first();const point=await route.locator('polyline').evaluate((node:SVGPolylineElement)=>{const p=node.getPointAtLength(node.getTotalLength()/2),m=node.getScreenCTM()!;return {x:p.x*m.a+p.y*m.c+m.e,y:p.x*m.b+p.y*m.d+m.f}});await page.mouse.click(point.x,point.y)}
 test('free and blocked routes, hint and reset',async({page})=>{await page.goto('/#/game/slipline');const paths=page.locator('.sl-board g[data-id]');await expect(paths.first()).toBeVisible();const total=await paths.count();await tapRoute(page,'.sl-board g[data-free="true"]');await expect(paths).toHaveCount(total-1);await tapRoute(page,'.sl-board g[data-free="false"]');await expect(page.locator('.sl-heart.sl-spent')).toHaveCount(1);await page.getByRole('button',{name:'Use hint'}).click();await expect(page.locator('.sl-board g[data-state="hinted"]')).toHaveCount(1);await expect(page.locator('.sl-hint b')).toHaveText('0');});
 test('board and hint fit phone and desktop',async({page})=>{for(const size of [{width:390,height:844},{width:1440,height:900}]){await page.setViewportSize(size);await page.goto('/#/game/slipline');const b=await page.locator('.sl-board').boundingBox(),h=await page.locator('.sl-hint').boundingBox();expect(b&&h).toBeTruthy();expect(b!.y+b!.height).toBeLessThanOrEqual(h!.y);expect(b!.x).toBeGreaterThanOrEqual(0);expect(b!.x+b!.width).toBeLessThanOrEqual(size.width);await page.screenshot({path:`tests/games/slipline/evidence/${size.width===390?'phone':'desktop'}.png`})}});
