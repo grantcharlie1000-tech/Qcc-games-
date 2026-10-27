@@ -1,26 +1,26 @@
 # Ball Run
 
-Current design: the 2026-10-24 redesign with the 2026-10-25 road-contact and boost repair, built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at Charlie's request) and Charlie's requests for slower acceleration, a much higher speed cap, more, more random and harder obstacles, and gates that give a permanent speed boost. The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. Per-difficulty tuning and the shared constants live in `config.ts`; segment lengths, margins and flight-zone sizes are the constants at the top of `course.ts`, segment amplitude ranges and clear-zone distances are set in its `addSegment()`, and pattern sizes are in its `build()`; camera, pool and render numbers are in `scene.ts` (most at its top); input and UI timings, such as the 250 ms score throttle and 6 m of steering per canvas width, are in `index.ts`. Change a number where it lives. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
+Current design: the 2026-10-24 redesign with the 2026-10-25 road-contact and boost repair and Charlie's 2026-10-27 request for higher speed and wider obstacle spacing on every difficulty. Start speeds, gate gains and speed caps are 20% higher; group intervals, internal pattern intervals and the buffer after a group are 50% longer. The game is built from pages 1–9 of Charlie's `Ball-Run-Reference.pdf` (a 62-second Hard-mode recording; page 10 was set aside at Charlie's request). The reference cannot reveal speeds, sizes or generation rules, so every number below is a remake design call. Per-difficulty tuning and the shared constants live in `config.ts`; segment lengths, margins and flight-zone sizes are the constants at the top of `course.ts`, segment amplitude ranges and clear-zone distances are set in its `addSegment()`, and pattern sizes are in its `build()`; camera, pool and render numbers are in `scene.ts` (most at its top); input and UI timings, such as the 250 ms score throttle and 6 m of steering per canvas width, are in `index.ts`. Change a number where it lives. Design record: `docs/superpowers/specs/2026-10-23-ball-run-redesign-design.md`; plan and rulings: `docs/superpowers/plans/2026-10-23-ball-run-redesign.md`; delivery checkpoint: `docs/BALL_RUN_REDESIGN.md`. Earlier designs are kept under History.
 
 A glossy magenta sphere rolls forward by itself along a suspended indigo grid road in a black void, between lavender wireframe towers. The road curves, banks, narrows, crests and drops away, and magenta blocks must be threaded at speed. There is no jump, brake or lane snapping. Hitting a block or rolling off the edge ends the run.
 
 ## Modules
 
-`config.ts` is the shared contract (tuning, constants and types). `course.ts` generates the seeded road, gates and obstacle rows. `model.ts` is the fixed-step simulation and save format. Saves retain the v4 record envelope and carry course revision 2 on the run; older live runs start a fresh course while keeping their per-difficulty records, because tuning changes the speed-dependent seeded track. `records.ts` holds per-difficulty records. These four are pure: no Three.js, DOM, `Date.now()` or `Math.random()`. `scene.ts` is the only Three.js file. `index.ts` owns the DOM panels and HUD, input, the loop and the shell contract. Rendering and collision read the same obstacle poses from the course.
+`config.ts` is the shared contract (tuning, constants and types). `course.ts` generates the seeded road, gates and obstacle rows. `model.ts` is the fixed-step simulation and save format. Saves retain the v4 record envelope and carry course revision 3 on the run; older live runs start a fresh course while keeping their per-difficulty records, because tuning changes the speed-dependent seeded track. `records.ts` holds per-difficulty records. These four are pure: no Three.js, DOM, `Date.now()` or `Math.random()`. `scene.ts` is the only Three.js file. `index.ts` owns the DOM panels and HUD, input, the loop and the shell contract. Rendering and collision read the same obstacle poses from the course.
 
 ## Difficulties and tuning
 
 | | Easy | Medium | Hard |
 | --- | --- | --- | --- |
-| Start speed | 9 m/s | 11 m/s | 13 m/s |
-| Continuous acceleration | 0.03 m/s² | 0.045 m/s² | 0.03 m/s² |
-| Speed cap | 40 m/s | 50 m/s | 62 m/s |
-| Gate gain (permanent) | +2.5 m/s | +3.0 m/s | +3.0 m/s |
+| Start speed | 10.8 m/s | 13.2 m/s | 15.6 m/s |
+| Continuous acceleration | 0.0432 m/s² | 0.0648 m/s² | 0.0432 m/s² |
+| Speed cap | 48 m/s | 60 m/s | 74.4 m/s |
+| Gate gain (permanent) | +3.0 m/s | +3.6 m/s | +3.6 m/s |
 | A gate every (seconds of running) | 30–45 | 25–40 | 20–35 |
 | Road width / ribbon width | 6.2 / 2.6 m | 5.4 / 2.2 m | 4.8 / 1.8 m |
 | Narrowest route opening | 2.0 m | 1.7 m | 1.45 m |
-| Rows every (full intensity) | 1.0–1.8 s | 0.68–1.2 s | 0.48–0.9 s |
-| Rows every (start of run) | 1.6–2.4 s | 1.3–2.0 s | 1.0–1.6 s |
+| Rows every (full intensity) | 1.5–2.7 s | 1.02–1.8 s | 0.72–1.35 s |
+| Rows every (start of run) | 2.4–3.6 s | 1.95–3.0 s | 1.5–2.4 s |
 | Ramp to full intensity, from the end of the warm-up | 700 m | 600 m | 500 m |
 | Rest: after this many rows | 10–14 | 12–16 | 16–20 |
 | Rest length | 3–4.5 s | 2.5–3.5 s | 1.8–2.6 s |
@@ -41,9 +41,9 @@ Speed is a pure function of distance on a given course:
 
 The square-root ramp is constant acceleration in time. Every gate spans the whole road, so a surviving run has passed exactly the gates behind it; this keeps speed, and so the reachability guarantee, exact. Gates are scheduled by integrated running time, not drawn at random. Crossing a gate entrance adds its gain for the rest of the run; at the cap it adds nothing and the label reads "Top Speed" instead of "Speed Up". The 1.8 s label and cyan trail are feedback only; the speed readout grows and turns cyan during that interval, without camera shake or a FOV pulse.
 
-Measured first-gate speed on seed 1, immediately before / after / after feedback expires: 10.36 / 12.86 / 12.93 m/s (Easy), 12.39 / 15.39 / 15.49 (Medium), 13.77 / 16.77 / 16.83 (Hard). The entrance step is 22–24%; the gain remains after feedback. Hard puts more acceleration into gates and less into the continuous ramp. A retained model test asserts that every difficulty remains slower than the previous 12 m/s, 22 m/s-cap game at 30 s and 60 s, that speed never decreases, and that it reaches exactly 40 / 50 / 62 m/s and never more.
+Revision 3 multiplies the start speed, gate gain and cap by 1.2 and acceleration by 1.44, giving a 20% higher speed at the same distance and gate count. Gates are scheduled by running time, so their positions and the generated road change. The first entrance still gives a noticeable permanent step, with a retained test requiring at least 18%. Hard puts more acceleration into gates and less into the continuous ramp. The first-minute test retains a gradual-opening guard against the former arcade ramp raised by the same 20%; speed never decreases and reaches exactly 48 / 60 / 74.4 m/s and never more.
 
-Lateral authority grows with speed, `max(5, 6 + 0.16·(v − 12))` m/s (5.5 m/s at 9 m/s, 14 m/s at 62 m/s), so high speed stays steerable but each dodge costs more road. Steering is an analytic first-order response toward input × authority, exact for any step.
+Lateral authority grows with speed, `max(5, 6 + 0.16·(v − 12))` m/s (5.8 m/s at 10.8 m/s, 16 m/s at 74.4 m/s), so high speed stays steerable but each dodge costs more road. Steering is an analytic first-order response toward input × authority, exact for any step.
 
 ## Course
 
@@ -54,16 +54,16 @@ A seeded sequence of variable-length segments. Two mulberry32 streams (road and 
 - `ribbon` 40–70 m, tapering to the ribbon width and back; `ribbonBend` 50–80 m, a ribbon that sways 0.6–1.2 m (Medium and Hard).
 - `bank` 30–50 m, rolled by 0.5–1 × the maximum bank; the ball drifts toward the low side.
 - `crest` 30–60 m, 1.5–3.5 m high; `dip` 30–50 m, 1–2 m deep. These two are not lengthened with speed, so fast runs lift off as on reference page 04; their height is capped at `8·L/(π·v)` (launch at most about 8 m/s upward), never below 1.0 m (crest) or 0.6 m (dip).
-- `drop`: a 20–30 m approach rising 2–4 m with zero slope at the lip, a 2–4 m gap with no ground, then a landing pad of at least `max(20, cap·sqrt(2h/g) + 12)` m. The gap is clamped so it is always cleared at the speed there.
+- `drop`: a 20–30 m approach rising 2–4 m with zero slope at the lip, a 2–4 m gap with no ground, then a landing pad of at least `max(20, cap·sqrt(2h/g) + 12)` m. After normal speed scaling, the approach is lengthened if needed to keep its downward curvature below 98% of gravity at its lip speed, preventing a premature launch and a second launch at the lip. The gap is clamped so it is always cleared at the speed there.
 - `gate`: a 30 m full-width straight arch, always followed by a straight.
 
 Drawn segment lengths (straight, bend, offset, ribbon, ribbonBend, bank, and the straight that replaces a rejected segment) and a drop's approach scale by `clamp(speed/14, 1, 3.5)`; the warm-up, gates, a drop's gap and pad, and the flat run-out before a deferred gate (as long as needed to clear the flight zone, at least 5 m) do not. Segment kinds are chosen by an exact-proportion credit scheduler, so short courses still show every kind and long courses match the weights; a drop never follows a drop. Before a segment is accepted, a backward reachability pass from its end must cover the whole allowed band at its start; otherwise it is retried longer (×1.5, twice) and finally replaced by a straight.
 
 ## Obstacles
 
-Rows are spaced in time, so density holds as speed climbs: the gap to the next row is drawn from the start-of-run interval easing to the full-intensity interval over the ramp distance, times the speed there. Spacing is start to start, and a row never starts sooner than 0.35 s after the previous pattern's last block. After a set number of rows comes a rest.
+Rows are spaced in time, so density holds as speed climbs: the gap to the next row is drawn from the start-of-run interval easing to the full-intensity interval over the ramp distance, times the speed there. Spacing is start to start, and a row never starts sooner than 0.525 s after the previous pattern's last block. After a set number of rows comes a rest. All row and pattern intervals are 50% longer than revision 2; at a corresponding 20% higher speed this gives roughly 80% more physical distance, while retaining extra time to react. Protected stretches and rejected patterns can further widen actual gaps.
 
-Patterns: `single` (random size and position), `bigBlock`, `pair`, `gate` (a wall with one gap), `doubleGate` (two gaps, falling back to `gate` on narrow road), `slalom` (3–5 edge-anchored blocks alternating sides 0.35–0.5 s apart), `zigzag` (3–4 walls whose gaps alternate sides), `scatter` (4–7 cubes over 1.0–1.5 s), `slider` (blocks sliding sideways with a 1.4–2.6 s period; one, or up to two on Hard; never on Easy) and `wallRun` (one edge-anchored block 6–14 m deep). Every block lies inside the road; every opening counted as a route is at least the minimum gap.
+Patterns: `single` (random size and position), `bigBlock`, `pair`, `gate` (a wall with one gap), `doubleGate` (two gaps, falling back to `gate` on narrow road), `slalom` (3–5 edge-anchored blocks alternating sides 0.525–0.75 s apart), `zigzag` (3–4 walls whose gaps alternate sides 0.6–0.9 s apart), `scatter` (4–7 cubes over 1.5–2.25 s), `slider` (blocks sliding sideways with a 1.4–2.6 s period; one, or up to two on Hard 0.675–1.05 s apart; never on Easy) and `wallRun` (one edge-anchored block 6–14 m deep). Scatter's wider span reduces average density but does not guarantee a minimum gap between every cube. Every block lies inside the road; every opening counted as a route is at least the minimum gap.
 
 No blocks in: the warm-up; from 5 m before a gate to one second past its exit; ribbons and ribbonBends (as on reference page 04); from 8 m before a drop lip to 12 m past where the ball lands at that speed; the middle 40 % of crests and dips; and every predicted flight (below).
 
@@ -90,7 +90,7 @@ The ball leaves the road only where the road curves away along its line faster t
 
 While building the road, the generator runs a point mass along it with the model's own step and lift-off rule. Every predicted flight gets a block-free zone from 6 m before take-off to 13 m past landing (5 m and 12 m plus a 1 m margin for step phase), with landing taken where the low edge of a bank meets the ball. A gate that falls due inside a flight zone is deferred behind a flat run-out. A crest or dip drawn under a flight or inside its zone is built as a straight, so no flight chains into another launch. The tests do not count flights under 1 cm (invisible skims); the generator zones them anyway.
 
-Measured with the real simulation (bot-driven, seeds 1–40, start to 4 km past the cap): at most 0.958 s in the air, at most 2.58 m above the road beneath on crests and dips (4.0 m on drops), longest 38 / 47 / 58 m; no landing within 12 m of a block and no gate entered airborne. This sweep ran before the final row-spacing retune; the road is unchanged by it, and block clearance of flight zones is enforced by the generator.
+Historical measurement before revision 3 (bot-driven, seeds 1–40, start to 4 km past the then-current cap): at most 0.958 s in the air, at most 2.58 m above the road beneath on crests and dips (4.0 m on drops), longest 38 / 47 / 58 m; no landing within 12 m of a block and no gate entered airborne. These figures describe the earlier tuning; the generator and flight tests enforce clearance on the current course.
 
 ## Records
 

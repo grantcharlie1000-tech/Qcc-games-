@@ -5,7 +5,7 @@
  * is rebuilt only when its origin, which moves in 0.5 m steps, changes. */
 import * as THREE from 'three';
 import { rollAngle } from './roll';
-import { DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
+import { CONFIG, DYING_DURATION, GATE_WALL_HEIGHT, RADIUS, SLOPE, type Course, type Gate, type Obstacle, type ObstaclePose, type Run, type TrackSample } from './config';
 
 export interface SceneOptions { reducedMotion(): boolean }
 export interface FrameView { run: Run; course: Course; speed: number }
@@ -544,7 +544,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): B
     if (hitboxes) {
       debugCount = 0;
       // Include the full previous sweep query, even behind the visible road.
-      course.forEachObstacle(distance - 62 * .05 - RADIUS - course.maxDepth, distance + RADIUS + course.maxDepth, placeHitbox);
+      course.forEachObstacle(distance - CONFIG.hard.maxSpeed * .05 - RADIUS - course.maxDepth, distance + RADIUS + course.maxDepth, placeHitbox);
       commit(hitboxes, debugCount);
     }
     if (hitball) hitball.position.set(run.x, run.height + SLOPE * distance, 0);

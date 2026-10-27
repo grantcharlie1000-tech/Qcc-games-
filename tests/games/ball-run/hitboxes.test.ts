@@ -21,7 +21,7 @@ describe('Ball Run sphere and box contact', () => {
 
   it('sweeps through a minimum-depth block at the maximum fixed-step speed', () => {
     const travel = CONFIG.hard.maxSpeed * STEP;
-    expect(travel).toBeCloseTo(.5166666667, 9);
+    expect(travel).toBeCloseTo(.62, 9);
     expect(sweepSphereBox([0, 0, -.3 - RADIUS - .01], [0, 0, -.3 - RADIUS - .01 + travel], center, half, RADIUS)).toBe(true);
     expect(sweepSphereBox([1 + RADIUS + .001, 0, -.7], [1 + RADIUS + .001, 0, .7], center, half, RADIUS)).toBe(false);
   });
