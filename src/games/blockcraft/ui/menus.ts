@@ -129,7 +129,7 @@ export function createMenus(game:Game):Menus{
     const focusInside=!document.activeElement||document.activeElement===document.body||game.root.contains(document.activeElement);
     score.textContent='';score.hidden=true;message.hidden=false;
     if(next==='start'||next==='resume'){
-      title.textContent=next==='start'?'Blockcraft':'Game Menu';
+      title.textContent=next==='start'?'Minecraft':'Game Menu';
       primary.textContent=next==='start'?'Play':'Resume';
       setPanel('main',false);refresh();
       if(focusInside&&!primary.disabled)primary.focus({preventScroll:true});
@@ -148,7 +148,7 @@ export function createMenus(game:Game):Menus{
       q<HTMLButtonElement>('[data-act=cancel]').focus({preventScroll:true});
     }else{
       title.textContent='Graphics interrupted';
-      message.textContent='The browser lost the 3D graphics context. Your world is saved: leave Blockcraft and open it again to keep playing.';
+      message.textContent='The browser lost the 3D graphics context. Your world is saved: leave Minecraft and open it again to keep playing.';
       for(const page of pages)page.hidden=true;loading.textContent='';
     }
   }

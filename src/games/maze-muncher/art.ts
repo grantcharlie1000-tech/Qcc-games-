@@ -148,7 +148,7 @@ export interface Board {
 const ROTATE: Record<Dir, string> = {right: '', left: ' scale(-1 1)', up: ' rotate(-90)', down: ' rotate(90)'};
 
 export function createBoard(prefix = 'mm'): Board {
-  const svg = el('svg', {viewBox: `0 0 ${WIDTH} ${HEIGHT}`, class: 'mm-svg', role: 'img', 'aria-label': 'Maze Muncher board'});
+  const svg = el('svg', {viewBox: `0 0 ${WIDTH} ${HEIGHT}`, class: 'mm-svg', role: 'img', 'aria-label': 'Pac-Man board'});
   svg.innerHTML = `<defs>
 <radialGradient id="${prefix}-nib" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#8dffe0"/><stop offset=".55" stop-color="#3fe0bd"/><stop offset="1" stop-color="#14a487"/></radialGradient>
 <filter id="${prefix}-glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>

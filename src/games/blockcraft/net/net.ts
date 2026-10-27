@@ -81,7 +81,7 @@ export function createNet(game:Game,hooks:NetHooks):NetController{
   /** The Multiplayer menu, floating in the centre over the game (no layout changes). */
   function overlayVisible(show:boolean){
     if(show&&!dialog){
-      dialog=new RoomDialog({game:'blockcraft',title:'Blockcraft',version:BLOCKCRAFT_ONLINE_VERSION,maxPlayers:MAX_PLAYERS,onOpen:start,onClosed:stop,
+      dialog=new RoomDialog({game:'blockcraft',title:'Minecraft',version:BLOCKCRAFT_ONLINE_VERSION,maxPlayers:MAX_PLAYERS,onOpen:start,onClosed:stop,
         inviteCode:inviteCodeFromHash(location.hash),relayOnly:relayOnlyFromHash(location.hash)});
       dialog.panel.setNote('The host’s world is shared and saved on the host’s device. Guests keep their own single-player world.');
     }

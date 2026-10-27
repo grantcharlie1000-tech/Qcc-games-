@@ -95,7 +95,7 @@ export class Engine implements Game{
   private abort=new AbortController();
   constructor(container:HTMLElement,readonly context:GameContext){
     this.root=document.createElement('div');this.root.className='blockcraft';
-    this.root.innerHTML='<canvas tabindex="0" aria-label="Blockcraft 3D world. W A S D move, Space jump, Shift sneak, Control or double-tap W sprint, mouse look, left click mine or attack, right click place or use, E inventory, Q drop, F swap hands, L advancements, 1 to 9 hotbar."></canvas>';
+    this.root.innerHTML='<canvas tabindex="0" aria-label="Minecraft 3D world. W A S D move, Space jump, Shift sneak, Control or double-tap W sprint, mouse look, left click mine or attack, right click place or use, E inventory, Q drop, F swap hands, L advancements, 1 to 9 hotbar."></canvas>';
     container.append(this.root);
     this.canvas=this.root.querySelector('canvas')!;
     this.world=new VoxelWorld(this.events,(x,z)=>this.terrain.biomeAt(x,z));
@@ -442,7 +442,7 @@ export function mountEngine(container:HTMLElement,context:GameContext):GameInsta
   catch{
     container.querySelector('.blockcraft')?.remove();
     const root=document.createElement('div');root.className='blockcraft';
-    root.innerHTML='<div class="bc-fallback" role="status"><h2>3D graphics unavailable</h2><p>Blockcraft needs WebGL 2. Enable browser hardware acceleration or try a recent browser.</p><a class="game-button" href="#/">Choose another game</a></div>';
+    root.innerHTML='<div class="bc-fallback" role="status"><h2>3D graphics unavailable</h2><p>Minecraft needs WebGL 2. Enable browser hardware acceleration or try a recent browser.</p><a class="game-button" href="#/">Choose another game</a></div>';
     container.append(root);context.setStatus('This browser could not create a WebGL 2 renderer.');
     return fallbackInstance(()=>root.remove());
   }

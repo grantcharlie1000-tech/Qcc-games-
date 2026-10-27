@@ -35,7 +35,7 @@ async function give(page:Page){
     inv.setOffhand({id:'clock',count:1});inv.select(0);
   });
 }
-/** Every shell toolbar and corner button is on top (hit-testable) while a Blockcraft menu is open. */
+/** Every shell toolbar and corner button is on top (hit-testable) while a Minecraft menu is open. */
 async function shellOnTop(page:Page){
   const hits=await page.locator(SHELL).evaluateAll(els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden';})
     .map(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{id:e.id||e.getAttribute('aria-label'),ok:!!hit&&e.contains(hit)};}));
@@ -227,7 +227,7 @@ test.describe('menus',()=>{
     await page.goto('/#/game/blockcraft');await ready(page);
     const root=page.locator('.blockcraft');
     const settings=()=>page.evaluate(()=>({...(window as unknown as {blockcraft:{settings:Record<string,unknown>}}).blockcraft.settings}));
-    await expect(page.locator('.bc-menu-title')).toHaveText('Blockcraft');
+    await expect(page.locator('.bc-menu-title')).toHaveText('Minecraft');
     await shellOnTop(page);
     await page.getByRole('button',{name:'Game mode'}).click();
     await expect(root).toHaveAttribute('data-mode','creative');await expect(page.getByRole('button',{name:'Game Mode: Creative'})).toBeVisible();

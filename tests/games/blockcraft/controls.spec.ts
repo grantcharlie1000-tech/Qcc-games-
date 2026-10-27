@@ -217,7 +217,7 @@ test('gamepad: A starts from the menu, left stick moves, right stick looks, A ju
   });
   await boot(page);
   const root=page.locator('.blockcraft');
-  // No gamepadconnected event: the pad was exposed to the page before Blockcraft mounted (as when coming back to the
+  // No gamepadconnected event: the pad was exposed to the page before Minecraft mounted (as when coming back to the
   // game), so input must find it through navigator.getGamepads() on its own.
   const set=(axes:number[],buttons:Record<number,number>={})=>page.evaluate(([a,b])=>{
     const pad=(window as unknown as {testPad:{axes:number[];buttons:{pressed:boolean;value:number}[]}}).testPad;

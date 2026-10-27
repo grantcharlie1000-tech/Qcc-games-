@@ -6,7 +6,7 @@ declare global {
  }
 }
 
-test('shared pause stops Fruit Merge drawing and repeated resumes keep one physics loop',async({page})=>{
+test('shared pause stops Suika Game drawing and repeated resumes keep one physics loop',async({page})=>{
  await page.addInitScript(()=>{
   localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
   sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');

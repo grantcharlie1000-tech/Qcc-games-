@@ -53,7 +53,7 @@ test('boots, plays, opens the inventory, switches mode, pauses for Study and res
   await expect(root).toHaveAttribute('data-phase','paused');
   const snapshot=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:blockcraft')!).data);
   expect(snapshot).toMatchObject({version:2,settings:{mode:'creative'}});expect(snapshot.edits.length).toBeGreaterThanOrEqual(1);
-  // Back to the game: that click resumes play at once (no second Resume on Blockcraft's Game Menu).
+  // Back to the game: that click resumes play at once (no second Resume on Minecraft's Game Menu).
   await page.getByRole('link',{name:'Games',exact:true}).click();
   await expect(root).toHaveAttribute('data-phase','playing');await expect(page.locator('.bc-menu')).toBeHidden();
   // Resume can legitimately advance residual movement. Freeze and capture the save
@@ -174,7 +174,7 @@ test.describe('shell buttons on a landscape phone',()=>{
     const root=page.locator('.blockcraft');
     const seed=()=>page.evaluate(()=>(window as unknown as {blockcraft:{seed:number}}).blockcraft.seed);
     await page.getByRole('button',{name:'Play',exact:true}).tap();await expect(root).toHaveAttribute('data-phase','playing');
-    // One tap on the shell's Keep playing is enough: Blockcraft's own Game Menu does not wait behind it.
+    // One tap on the shell's Keep playing is enough: Minecraft's own Game Menu does not wait behind it.
     await page.getByRole('button',{name:'Pause game'}).tap();await expect(root).toHaveAttribute('data-phase','paused');
     await page.getByRole('button',{name:'Keep playing'}).tap();
     await expect(root).toHaveAttribute('data-phase','playing');await expect(page.locator('.bc-menu')).toBeHidden();

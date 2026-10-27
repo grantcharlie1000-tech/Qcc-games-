@@ -196,7 +196,7 @@ test('Escape during a delayed import opens instantly and the late game mounts pa
   await page.goto('/');await choose(page);
   let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
   await page.route('**/src/games/fruit-merge/index.ts*',async route=>{await gate;await route.continue();});
-  await page.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();
+  await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();
   await expect(page.locator('.loading')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#study-title')).toHaveText('Reading between the lines');

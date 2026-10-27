@@ -21,7 +21,7 @@ test('rankings float collapsed over a full-width game, expand on demand and reme
  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
  await expect(page.locator('#leaderboard-game option[value=pool]')).toHaveCount(0);
 });
-test('Blockcraft has no leaderboard rail and keeps the full width',async({page})=>{
+test('Minecraft has no leaderboard rail and keeps the full width',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
  await page.goto('/#/game/blockcraft');await expect(page.locator('.blockcraft')).toBeAttached();
