@@ -127,3 +127,4 @@ html.play-locked input,html.play-locked textarea,html.play-locked select,html.pl
 @media(max-width:1099px){.lb-toggle{width:40px;height:40px;padding:0;justify-content:center}.lb-toggle span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}}
 
 body.in-game .game-view[data-game-id=slipline] #game-stage{height:100%;container-type:size}
+body.in-game .game-view[data-game-id=quadfall] #game-stage{height:100%}
