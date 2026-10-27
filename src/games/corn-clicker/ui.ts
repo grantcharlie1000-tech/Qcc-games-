@@ -96,6 +96,7 @@ export class CornClicker {
   <div class="cc-cob-stage"><div class="cc-pests"></div>
     <button type="button" class="cc-cob" aria-label="Harvest the cob">${cobArt(this.game.s.skin)}</button>
     <div class="cc-fx" aria-hidden="true"></div></div>
+  <button type="button" class="cc-mini cc-face-toggle" aria-pressed="false">Use face texture</button>
   <div class="cc-tip" hidden><p></p><button type="button" class="cc-btn cc-btn-quiet cc-tip-done">Got it</button></div>
   <div class="cc-goal"><p class="cc-goal-main"></p><p class="cc-goal-unlock" hidden></p></div>
   <p class="cc-saved"></p>
@@ -185,7 +186,7 @@ export class CornClicker {
     this.game=new CornGame(state,now);
     this.afterLoad();
   }
-  private afterLoad(){this.sig={skinCount:String(this.game.s.achievements.size)};this.gainVersion=-1;this.garden.reset();this.root.querySelector('.cc-cob')!.innerHTML=cobArt(this.game.s.skin);this.applyOptions();this.renderAll();}
+  private afterLoad(){this.sig={skinCount:String(this.game.s.achievements.size)};this.gainVersion=-1;this.garden.reset();this.updateCob();this.applyOptions();this.renderAll();}
   dispose(){
     this.disposed=true;this.stop();clearTimeout(this.saveTimer);
     this.guard.dispose();this.sfx.dispose();this.garden.dispose();
@@ -347,6 +348,7 @@ export class CornClicker {
       const r=cob.getBoundingClientRect();this.harvestClick(r.left+r.width/2,r.top+r.height*0.4);
     });
     cob.addEventListener('contextmenu',event=>event.preventDefault());
+    this.root.querySelector('.cc-face-toggle')!.addEventListener('click',()=>{if(!this.canAct())return;this.game.s.options.faceTexture=!this.game.s.options.faceTexture;this.updateCob();this.requestSave();});
     this.root.addEventListener('pointerdown',event=>{this.lastPointerType=event.pointerType;},true);
     // Tabs
     this.root.querySelector('.cc-tabs')!.addEventListener('click',event=>{const t=(event.target as Element).closest<HTMLElement>('[data-top]');if(t)this.setTop(t.dataset.top as Top,true);});
@@ -945,7 +947,7 @@ export class CornClicker {
       const b=(event.target as Element).closest<HTMLElement>('[data-skin]');if(!b)return;
       const id=b.dataset.skin as SkinId;
       if(!this.game.skinUnlocked(id)){this.toast(`Earn ${SKINS.find(s=>s.id===id)!.achievements} achievements to unlock this skin.`,'info');return;}
-      if(this.game.setSkin(id)){this.el.cob.innerHTML=cobArt(id);this.play('upgrade');this.requestSave();this.updateGoals();this.root.querySelector<HTMLElement>(`[data-skin="${id}"]`)?.focus();}
+      if(this.game.setSkin(id)){this.updateCob();this.play('upgrade');this.requestSave();this.updateGoals();this.root.querySelector<HTMLElement>(`[data-skin="${id}"]`)?.focus();}
     });
     this.el.options.addEventListener('change',event=>{
       const input=event.target as HTMLInputElement|HTMLSelectElement,key=input.dataset.opt;if(!key)return;
@@ -970,6 +972,12 @@ export class CornClicker {
         });
       }
     });
+  }
+  private updateCob(){
+    const face=this.game.s.options.faceTexture;
+    this.root.dataset.face=String(face);
+    this.el.cob.innerHTML=cobArt(this.game.s.skin,face);
+    this.root.querySelector('.cc-face-toggle')!.setAttribute('aria-pressed',String(face));
   }
   private applyOptions(){
     const o=this.game.s.options;

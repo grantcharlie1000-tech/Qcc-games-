@@ -246,6 +246,11 @@ describe('saves',()=>{
     const a=new CornGame(back),b=g;
     expect(a.random()).toBe(b.random());
   });
+  test('face texture defaults to corn and persists when enabled',()=>{
+    const fresh=freshState(T0);expect(fresh.options.faceTexture).toBe(false);
+    fresh.options.faceTexture=true;expect(deserialize(serialize(fresh),T0).options.faceTexture).toBe(true);
+    expect(deserialize({v:2,kernels:'0',options:{}},T0).options.faceTexture).toBe(false);
+  });
   test('invalid and incompatible saves are rejected or repaired',()=>{
     for(const bad of [null,'x',42,[],{},{kernels:'abc'},{kernels:'-5'},{v:SAVE_VERSION+1,kernels:'5'}])expect(()=>deserialize(bad,T0)).toThrow(SaveError);
     const repaired=deserialize({v:2,kernels:'10',producers:{farmhand:-4,patch:2.7,unknown:9},upgrades:['patch-10','not-real'],perms:['nope'],seeds:-2,achievements:['click-1','fake'],skin:'neon',garden:{plots:[{v:'weed',age:3},{v:'sweet',age:-1}]}},T0);

@@ -45,7 +45,9 @@
 .cc-goal-unlock[hidden]{display:none}
 .cc-grow{flex:1;min-width:0}
 .cc-cob-stage{container-type:size;position:relative;flex:1 1 0;min-height:150px;display:grid;place-items:center}
-.cc-cob{position:relative;z-index:2;border:0;background:none;padding:0;cursor:pointer;height:min(calc(100cqh - 16px),360px,calc((100cqw - 16px) * 4 / 3));aspect-ratio:3/4;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border-radius:0}
+.cc-cob{position:relative;z-index:2;border:0;background:none;padding:0;cursor:pointer;height:min(calc(100cqh - 16px),360px,calc((100cqw - 16px) * 44 / 28));aspect-ratio:28/44;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border-radius:0}
+.cc-root[data-face=true] .cc-cob{height:min(calc(100cqh - 16px),360px,calc((100cqw - 16px) * 4 / 3));aspect-ratio:3/4}
+.cc-face-toggle{align-self:center;margin:0 0 6px;min-height:36px}
 .cc-cob-img{object-fit:contain;--cc-face-filter:brightness(1)}
 .cc-cob-img[data-skin=butter]{--cc-face-filter:sepia(.5) saturate(1.5)}
 .cc-cob-img[data-skin=ruby]{--cc-face-filter:sepia(.5) saturate(2.5) hue-rotate(315deg)}
