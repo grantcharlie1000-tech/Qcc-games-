@@ -1,1 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410"><rect width="320" height="410" fill="#1e1e2c"/><defs><pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#b4b3d2" opacity=".18"/></pattern></defs><path fill="url(#dots)" d="M15 105h290v290H15z"/><g fill="none" stroke="#b4b3d2" stroke-width="3" stroke-linejoin="miter"><path d="M35 155v-30h110v35H65v35h135v-55h-35"/><path d="M35 235h155v-25H85v-25"/><path d="M35 255h35v95h125v-90h-95v60h65v-35h-35"/><path d="M220 125h65v235H215V175h45v145h-20"/><path d="M35 375h175v-20"/></g><g fill="#b4b3d2"><path d="m160 140 9-5v10zM85 180l-5 9h10zM130 280l-5 9h10zM240 315l-5 9h10zM210 350l-5 9h10z"/></g><path d="M95 235v-20h125v130h-40" fill="none" stroke="#b72858" stroke-width="3"/><path d="m175 345 9-5v10z" fill="#b72858"/><path d="M35 285h20v55h35" fill="none" stroke="#30b89f" stroke-width="3"/><path d="m95 340-9-5v10z" fill="#30b89f"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="sl-title sl-desc">
+ <title id="sl-title">Slipline arrow puzzle</title><desc id="sl-desc">Bold mint, pink and lilac arrow routes wind across a dark dotted board.</desc>
+ <defs><pattern id="sl-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r="1.5" fill="#d8d3ef" opacity=".14"/></pattern></defs>
+ <path fill="#202032" d="M0 0h320v410H0z"/>
+ <path fill="url(#sl-dots)" d="M20 100h280v290H20z"/>
+ <g fill="none" stroke="#10121f" stroke-width="23" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 6)">
+  <path d="M57 184v-49h159v44M265 140v101h-39M159 212h-59v54h81v49h-56M53 246v91h39M263 292v72h-99"/>
+ </g>
+ <g fill="none" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M57 184v-49h159v44" stroke="#5cddbb"/>
+  <path d="M265 140v101h-39" stroke="#eee7ff"/>
+  <path d="M159 212h-59v54h81v49h-56" stroke="#c4b2ee"/>
+  <path d="M53 246v91h39" stroke="#f289b4"/>
+  <path d="M263 292v72h-99" stroke="#5cddbb"/>
+ </g>
+ <path d="m216 198-17-24h34z" fill="#5cddbb"/>
+ <path d="m207 241 24-17v34z" fill="#eee7ff"/>
+ <path d="m106 315 24-17v34z" fill="#c4b2ee"/>
+ <path d="m111 337-24-17v34z" fill="#f289b4"/>
+ <path d="m145 364 24-17v34z" fill="#5cddbb"/>
+</svg>
