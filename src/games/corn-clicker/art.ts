@@ -2,7 +2,7 @@
  * Pixel-art rendering. Sprites in sprites.ts are character grids; each is drawn once to a small
  * canvas, turned into a PNG data URL and shown scaled up with `image-rendering: pixelated`.
  */
-import {COB,SKINS,PRODUCERS,GOLDEN,PEST,SCARECROW,PLANT,VARIETIES,KERNEL,SEED,BUTTER,MOUSE,SPARKLE,type Sprite} from './sprites';
+import {PRODUCERS,GOLDEN,PEST,SCARECROW,PLANT,VARIETIES,KERNEL,SEED,BUTTER,MOUSE,SPARKLE,type Sprite} from './sprites';
 
 export type ProducerId='farmhand'|'patch'|'field'|'tractor'|'combine'|'greenhouse'|'irrigation'|'factory'|'lab'|'hydroponic'|'robot'|'weather'|'megafarm'|'orbital'|'lunar'|'cloner'|'time'|'dimension'|'singularity'|'corniverse';
 export type SkinId='classic'|'butter'|'ruby'|'bluemoon'|'prism'|'frost'|'midnight'|'golden';
@@ -26,7 +26,7 @@ export function spriteUrl(sprite:Sprite,key:string,overrides:Record<string,strin
 const img=(url:string,w:number,h:number,cls='')=>`<img class="px${cls?' '+cls:''}" src="${url}" width="${w}" height="${h}" alt="" draggable="false">`;
 const sprite=(s:Sprite,key:string,overrides?:Record<string,string>,cls?:string)=>img(spriteUrl(s,key,overrides),s.w,s.h,cls);
 
-export const cobArt=(skin:SkinId)=>sprite(COB,'cob-'+skin,SKINS[skin],'cc-cob-img');
+export const cobArt=(skin:SkinId)=>`<img class="cc-cob-img" data-skin="${skin}" src="${import.meta.env.BASE_URL}game-art/corn-clicker/face.webp" width="600" height="800" alt="" draggable="false">`;
 export const producerArt=(id:ProducerId)=>sprite(PRODUCERS[id],'p-'+id);
 export const goldenArt=()=>sprite(GOLDEN,'golden');
 export const pestArt=()=>sprite(PEST,'pest');
