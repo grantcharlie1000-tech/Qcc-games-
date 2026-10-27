@@ -1,19 +1,25 @@
 # Shared leaderboards
 
-Open **Menu → Leaderboards**, choose a game and join with a public nickname.
+Open **Menu → Leaderboards**, choose a game and log in to share scores. Anyone can read rankings; guests can keep playing and saving locally.
 The board lists the top 25 personal bests for that game and your own rank, including
 when it is below the top 25. Every scored game is included (15); Globle has its own
 puzzle statistics and no comparable points score. Corn Clicker ranks lifetime
 kernels harvested. They outgrow 32-bit scores, so it submits `floor(log10(kernels) × 10000)`
 and boards show the decoded total to four significant figures.
 
-Each browser keeps a random 256-bit private bearer token. Only its SHA-256 hash is
-stored by the server or returned as the public player ID. Clearing browser storage
-creates a new identity; a matching nickname does not grant control of another
-player's scores. There is no account/login or cross-device identity recovery.
-Nickname changes apply to that browser's existing leaderboard entries.
+Score submissions require an unexpired, non-revoked account session. The server derives
+both player identity and public username from that session; client nicknames,
+account flags and player IDs grant no authority. Session validation runs in the
+same transaction as the score write, after the bounded request body arrives.
 
-Joining publishes existing local bests. Subsequent personal bests sync at most once
+Legacy guest tokens cannot submit scores. Their pending offline queues are not
+replayed when signing in, and signup does not migrate historical guest scores.
+Existing leaderboard rows remain readable and unchanged by this policy change;
+any cleanup is a separate operation. Scored guest runs and bests stay separate on
+signup, so they cannot silently repopulate the public board. Logout restores them
+for local guest play. Existing account-owned bests still synchronize on login.
+
+Subsequent personal bests sync at most once
 per ten-second queue interval; opening/refreshing the board and reconnecting also
 flush the queue. Pending improvements persist before any request. Lower scores
 never overwrite a best, and equal scores do not change the tie-break timestamp.
@@ -51,8 +57,8 @@ Existing GitHub Pages/static hosting can still serve every local game but will
 show online boards as unavailable. This implementation has not been published to
 the production site during this task.
 
-The function validates game IDs, nickname, body size, positive integer scores,
-origin and player identity, uses parameterized SQL and transactional upserts,
+The function validates game IDs, body size, positive integer scores,
+origin and the signed-in account session, uses parameterized SQL and transactional upserts,
 returns no-store responses, reuses its warm database pool, and has an IP request
 limit. Tables have no PUBLIC grants and are accessed only by the server connection.
 
@@ -62,7 +68,7 @@ Tests use the real local Netlify Postgres implementation and committed migration
 Separate tokens update one shared board, cannot lower an existing best, keep games
 separate and cannot overwrite another identity. Invalid requests are rejected.
 The browser test uses two isolated browser contexts connected to that real handler
-and database, checks public ranking, own rank, nickname, mobile fit and cached
+and database, checks public ranking, own rank, account identity, guest/login recovery, mobile fit and cached
 outage display. A separate real HTTP check exercises `dev:online` with two players.
 Client tests cover offline retry, persistent queues, in-flight score improvements
 and invalid saved rankings. Water Sort independently solves all 27 boards.

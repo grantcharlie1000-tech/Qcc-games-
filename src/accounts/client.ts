@@ -1,5 +1,6 @@
 import * as store from '../core/storage';
 import {mergeSaves} from './merge';
+import {scoredGame} from '../leaderboard/shared';
 import {SAVE_KEYS,MAX_BODY_BYTES,validSave,validSaves,validSessionToken,validUsername,validPassword,type Saves,type SaveRecord} from './shared';
 export interface Session {token:string;username:string}
 export interface AccountStorage {
@@ -72,14 +73,14 @@ export class AccountsClient {
  }
  async authenticate(action:'signup'|'login',username:string,password:string):Promise<void>{
   if(!validUsername(username)||!validPassword(password))throw new Error('Use a username of 3–24 letters, digits, underscores, hyphens or dots, and a password of 8–128 characters.');
-  const epoch=this.epoch,guest=this.storage.read<{token?:string}|null>('leaderboard:profile',null);
-  const response=await this.response(action,'POST',{username,password,...(action==='signup'&&/^[a-f0-9]{64}$/.test(guest?.token??'')?{guestToken:guest!.token}:{})});
+  const epoch=this.epoch;
+  const response=await this.response(action,'POST',{username,password});
   const session=await response.json();if(!validSessionToken(session.token)||!validUsername(session.username))throw new Error('The account response could not be read.');
   let remote:Saves={};
   if(action==='login')try{const response=await this.response('sync','GET',undefined,session.token);const result=await response.json();if(!validSaves(result.saves))throw new Error('The saved progress could not be read.');remote=result.saves;}catch(error){void this.revoke(session.token).catch(()=>{});throw error;}
   if(epoch!==this.epoch){void this.response('logout','POST',{},session.token,true).catch(()=>{});throw new Error('Account changed. Please try again.');}
   if(this.session())await this.logout();
-  this.beforeIdentityChange();this.epoch++;this.backup();const imported=action==='signup'?this.collect(true):{};
+  this.beforeIdentityChange();this.epoch++;this.backup();const imported=action==='signup'?Object.fromEntries(Object.entries(this.collect(true)).filter(([key])=>!scoredGame(key.slice(key.indexOf(':')+1)))):{};
   const staged=this.storage.read<Saves>('accounts:pending:'+session.username.toLowerCase(),{});
   this.clear();this.acknowledged=remote;this.apply(mergeSaves(remote,mergeSaves(imported,this.staged(staged))));this.storage.write(sessionKey,{token:session.token,username:session.username});this.knownToken=session.token;this.storage.write('accounts:guest',true);this.message='';this.emit();
   try{await this.flush();}catch{this.message='Signed in. Playing locally until your saves can sync.';this.emit();}

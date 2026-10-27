@@ -47,9 +47,9 @@ describe('account client',()=>{
   f.remote({'save:snake':{updated:1,value:{updated:1,data:{level:2,score:1},version:1}}});await c.flush();await c.flush();
   expect((f.fetcher as any).mock.calls.at(-1)[1].method).toBe('GET');c.dispose();
  });
- it('stores session, imports guest saves only on signup, clears account saves and restores guest on logout',async()=>{
-  const f=fixture();f.storage.write('best:snake',50);const c=new AccountsClient(f.storage,f.fetcher);
-  await c.authenticate('signup','Ada','password1');expect(c.session()).toEqual({token,username:'Ada'});expect(f.storage.read('best:snake',0)).toBe(50);
+ it('keeps guest scored runs separate on signup and restores them on logout',async()=>{
+  const f=fixture();f.storage.write('best:snake',50);f.storage.write('save:snake',{version:1,data:{score:50},updated:1});f.storage.write('leaderboard:profile',{token:'b'.repeat(64),name:'Guest'});const c=new AccountsClient(f.storage,f.fetcher);
+  await c.authenticate('signup','Ada','password1');expect(c.session()).toEqual({token,username:'Ada'});expect(f.storage.read('best:snake',0)).toBe(0);expect(f.storage.read('save:snake',null)).toBeNull();expect(JSON.parse((f.fetcher as any).mock.calls[0][1].body)).not.toHaveProperty('guestToken');
   f.storage.write('best:tower',90);await c.logout();expect(c.session()).toBeNull();expect(f.storage.read('best:tower',0)).toBe(0);expect(f.storage.read('best:snake',0)).toBe(50);c.dispose();
  });
  it('does not import guest saves on login and retries offline changes',async()=>{

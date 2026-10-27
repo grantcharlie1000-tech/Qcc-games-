@@ -50,7 +50,7 @@ export class LeaderboardSidebar {
  private active(){return !this.disposed&&this.wide.matches&&this.expanded&&!document.hidden&&navigator.onLine;}
  private schedule(){clearTimeout(this.timer);if(this.active())this.timer=setTimeout(()=>void this.refresh(),30000);}
  private online=()=>{void this.refresh();};
- private label(){this.root.querySelector('.lb-open')!.textContent=this.sync.profile()?'All rankings':'Join leaderboard';}
+ private label(){this.root.querySelector('.lb-open')!.textContent='All rankings';}
  private status(text:string){this.root.querySelector('.lb-status')!.textContent=text;}
  private paint(board:Board|null){
   const body=this.root.querySelector('tbody')!;body.replaceChildren();

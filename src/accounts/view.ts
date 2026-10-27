@@ -13,7 +13,7 @@ export class AccountsView {
    <div class="account-confirm" hidden><label for="account-confirm">Confirm password</label><input id="account-confirm" name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" disabled required></div>
    <p class="account-warning" hidden>Forgotten passwords cannot be recovered. No email or other personal information is collected. Keep your password somewhere safe.</p>
    <p class="account-status muted" role="status" aria-live="polite"></p><button type="submit" class="game-button account-submit">Log in</button></form>
-   <p class="muted account-local">Guest progress stays on this browser. Logging into an existing account keeps guest progress separate. Logging out removes account saves here and restores this browser’s guest progress.</p>`;
+   <p class="muted account-local">Guest scores stay on this browser. Sign in before playing to share scores. Scored guest runs stay separate when you sign up or log in. Logging out removes account saves here and restores this browser’s guest progress.</p>`;
   document.body.append(this.root);
   this.root.querySelector('.account-login')!.addEventListener('click',()=>this.mode(false));
   this.root.querySelector('.account-signup')!.addEventListener('click',()=>this.mode(true));
