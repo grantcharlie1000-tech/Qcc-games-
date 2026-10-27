@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {createState,hardDrop,hold,restoreState,advance,gravity,ghost,move,rotate,softDrop,cells} from '../../../src/games/quadfall/model';
-describe('Quadfall model',()=>{
+describe('Tetris model',()=>{
  it('uses reproducible seven-piece bags',()=>{const a=createState(123),b=createState(123);expect(a).toEqual(b);expect(new Set([a.active.id,...a.queue.slice(0,6)]).size).toBe(7);});
  it('locks a hard drop at the ghost and awards points',()=>{const s=createState(4),y=ghost(s);hardDrop(s);expect(s.score).toBeGreaterThan(0);expect(s.board.flat().filter(Boolean)).toHaveLength(4);expect(y).toBeGreaterThan(0);});
  it('limits hold until a lock',()=>{const s=createState(3),id=s.active.id;expect(hold(s)).toBe(true);expect(s.held).toBe(id);expect(hold(s)).toBe(false);hardDrop(s);expect(hold(s)).toBe(true);expect(s.active.id).toBe(id);});

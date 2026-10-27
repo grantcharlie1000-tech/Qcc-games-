@@ -5,7 +5,7 @@ import type { Snapshot } from '../../../src/games/color-connect/model';
 // Hand-checked full first-board solution.
 const solution = [[9,5,6,10,11,15],[14,13,12],[8,4,0,1,2,3,7]];
 const fresh = (): Snapshot => ({version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[],assists:0,best:{}});
-describe('Color Connect campaign score', () => {
+describe('Flow Free campaign score', () => {
   it('pays an area/pairs base plus a bonus vs one gesture per pair, less assists', () => {
     // 4×4 with 3 pairs: base 1100, par 3.
     expect(levelPoints(0,{moves:3,assists:0})).toBe(2200);

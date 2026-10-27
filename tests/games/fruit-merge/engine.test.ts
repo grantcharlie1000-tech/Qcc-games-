@@ -3,7 +3,7 @@ import { FruitEngine, STEP, type Snapshot } from '../../../src/games/fruit-merge
 const fruit = (id:number,tier:number,x:number,y:number, extra = {}) => ({id,tier,x,y,vx:0,vy:0,angle:0,av:0,age:3000,danger:0,sleeping:false,...extra});
 const state = (fruits:ReturnType<typeof fruit>[], extra = {}):Snapshot => ({version:1,seed:1234,bag:[0,1,2,3],current:0,next:0,score:0,time:3000,lastDrop:-1000,lastMerge:-10000,combo:0,aim:180,nextId:20,lost:false,fruits,...extra});
 const advance = (e:FruitEngine, frames:number) => {for(let n=0;n<frames;n++) e.step();};
-describe('Fruit Merge rules and real physics',()=>{
+describe('Suika Game rules and real physics',()=>{
  it('drops within the walls and refuses repeated drops during cooldown',()=>{
   const e=new FruitEngine(42);expect(e.drop(-100)).toBe(true);expect(e.drop(180)).toBe(false);
   expect(e.snapshot().fruits[0].x).toBeGreaterThanOrEqual(34);e.dispose();

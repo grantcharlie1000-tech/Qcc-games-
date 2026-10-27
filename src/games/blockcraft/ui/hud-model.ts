@@ -348,7 +348,7 @@ export function debugLines(game:Game,fps:number,mobs:MobCounts):string[]{
   const bx=Math.floor(p.x),by=Math.floor(p.y),bz=Math.floor(p.z),cx=Math.floor(bx/CS),cz=Math.floor(bz/CS);
   const f=facingInfo(p.yaw,p.pitch),light=game.world.lightAt(bx,by,bz),sky=light>>4,block=light&15;
   return[
-    `Blockcraft (${game.settings.mode}, ${game.settings.difficulty})`,
+    `Minecraft (${game.settings.mode}, ${game.settings.difficulty})`,
     `${Math.round(fps)} fps, scale ${game.render.resolutionScale.toFixed(2)}`,
     `Draw calls: ${r.drawCalls}, triangles: ${r.triangles}`,
     `C: ${r.chunks} drawn, ${game.world.chunks.size} loaded`,

@@ -3,7 +3,7 @@ import { LEVELS, generate, emptyPaths, extend, begin, validatePaths, isWon, solv
 import type { Level, Paths } from '../../../src/games/color-connect/model';
 const fixture: Level = { size: 4, name: 'Fixture', pairs: [[0, 3], [4, 7], [8, 11], [12, 15]] };
 const complete: Paths = [[0,1,2,3],[4,5,6,7],[8,9,10,11],[12,13,14,15]];
-describe('Color Connect rules', () => {
+describe('Flow Free rules', () => {
  it('accepts only orthogonal empty cells or the matching goal', () => {
   let paths = begin(fixture, emptyPaths(fixture), 0).paths;
   expect(extend(fixture, paths, 0, 5)).toEqual(paths);

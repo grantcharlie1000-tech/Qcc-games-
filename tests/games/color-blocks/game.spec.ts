@@ -35,7 +35,7 @@ test('keyboard aims, places and shows rules; pause blocks input, save reloads, r
  await page.keyboard.press('2');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');
  const saved=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);expect(saved.moves).toBe(1);
  // Remove init script's reset by navigating in the same document; route exit saves and disposes.
- await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Color Blocks',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');expect(await occupied(page)).toEqual([9,10,17,18]);
+ await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');expect(await occupied(page)).toEqual([9,10,17,18]);
  await page.reload();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');expect(await occupied(page)).toEqual([9,10,17,18]);
  await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('No rotation');await page.getByRole('button',{name:'Let’s play'}).click();
  await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');expect(await occupied(page)).toEqual([]);
@@ -50,7 +50,7 @@ test('a blocked first piece does not end the run; a genuinely blocked tray does'
 });
 test('colourblind patterns, reduced motion and malformed save are handled through the shell',async({page})=>{
  await open(page);await page.getByRole('button',{name:'Open menu'}).click();await page.locator('#colour').check();await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();await expect(page.locator('.cb-game')).toHaveClass(/cb-patterns/);await expect(page.locator('.cb-game')).toHaveClass(/cb-reduced/);
- await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Color Blocks',exact:true})).toBeVisible();await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({version:1,data:{board:['broken']}})),SAVE);await page.getByRole('link',{name:'Play Color Blocks',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-cell')).toHaveCount(64);
+ await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Block Blast',exact:true})).toBeVisible();await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({version:1,data:{board:['broken']}})),SAVE);await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-cell')).toHaveCount(64);
 });
 test.describe('touch input',()=>{
  test.use({hasTouch:true,viewport:{width:390,height:844}});
@@ -71,9 +71,9 @@ test('mid-run artwork, lifecycle cleanup and measured browser frame intervals',a
  await page.mouse.move(b.x+b.width/4,b.y+b.height/4);await page.mouse.down();const end=await point(page,'[data-cell="43"]');await page.mouse.move(end.x,end.y,{steps:5});await expect(page.locator('.cb-ghost')).toHaveCount(4);await page.mouse.up();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','19');
  await page.screenshot({path:'tests/games/color-blocks/evidence/chromium.png',fullPage:true});
  const frames=await page.evaluate(()=>new Promise<number[]>(resolve=>{const intervals:number[]=[];let prev=0;const tick=(t:number)=>{if(prev)intervals.push(t-prev);prev=t;if(intervals.length===45)resolve(intervals);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));
- frames.sort((a,b)=>a-b);console.log(`Color Blocks headless Chromium: 45 idle RAF intervals; median ${frames[22].toFixed(2)} ms, p95 ${frames[42].toFixed(2)} ms.`);
+ frames.sort((a,b)=>a-b);console.log(`Block Blast headless Chromium: 45 idle RAF intervals; median ${frames[22].toFixed(2)} ms, p95 ${frames[42].toFixed(2)} ms.`);
  for(let i=0;i<3;i++){
-  await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Color Blocks',exact:true}).click();await expect(page.locator('.cb-game')).toHaveCount(1);await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','19');
+  await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveCount(1);await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','19');
  }
  await page.locator('#game-stage').focus();await page.keyboard.press('3');await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','20');expect(errors).toEqual([]);
 });

@@ -143,11 +143,11 @@ test('focusable boost, lost focus, frame stalls, disposal and invalid saves reco
     await page.getByRole('link', { name: 'Back to game library', exact: true }).click(); await expect(game(page)).toHaveCount(0);
     await page.keyboard.press('p'); await page.clock.runFor(150);
     await page.evaluate(() => localStorage.setItem('pocket-arcade:v1:save:neon-coil', JSON.stringify({ version: 1, data: { version: 1, snakes: 'broken' } })));
-    await page.getByRole('link', { name: 'Play Neon Coil', exact: true }).click(); await expect(game(page)).toHaveAttribute('data-tick', '0');
+    await page.getByRole('link', { name: 'Play Slither.io', exact: true }).click(); await expect(game(page)).toHaveAttribute('data-tick', '0');
   }
   expect(errors).toEqual([]);
 });
-test('the library retains original grid Snake and opens Neon Coil separately', async ({ page }) => {
+test('the library retains original grid Snake and opens Slither.io separately', async ({ page }) => {
   await open(page); await page.getByRole('link', { name: 'Back to game library', exact: true }).click();
   await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect(page.getByRole('link', { name: 'Play Snake', exact: true })).toBeVisible();
@@ -157,7 +157,7 @@ test('the library retains original grid Snake and opens Neon Coil separately', a
   await expect(page.locator('#game-score strong')).toHaveText('10');
   await expect(page.locator('.snake-game')).toHaveCount(1); await expect(game(page)).toHaveCount(0);
   await page.getByRole('link', { name: 'Back to game library', exact: true }).click();
-  await page.getByRole('link', { name: 'Play Neon Coil', exact: true }).click();
+  await page.getByRole('link', { name: 'Play Slither.io', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); await expect(page.locator('.snake-game')).toHaveCount(0);
 });

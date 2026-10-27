@@ -53,7 +53,7 @@ test('host, guest and a late joiner share one world',async()=>{
     step('Host creates a room: the shared world is a separate world.');
     const canvas=await host.page.locator('.blockcraft canvas').boundingBox();
     await host.page.getByRole('button',{name:'Multiplayer'}).click({timeout:20000});
-    await expect(host.page.getByRole('dialog',{name:'Blockcraft multiplayer'})).toBeVisible();
+    await expect(host.page.getByRole('dialog',{name:'Minecraft multiplayer'})).toBeVisible();
     expect(await host.page.locator('.blockcraft canvas').boundingBox()).toEqual(canvas);
     await host.page.getByRole('button',{name:'Create room'}).click({timeout:20000});
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:30000});

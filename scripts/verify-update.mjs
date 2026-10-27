@@ -6,6 +6,8 @@ import {existsSync} from 'node:fs';
 import {legacyBuild,readBuild,release,waitingRelease} from './update-fixtures.mjs';
 import {createUpdateNativeTrace} from './update-native-trace.mjs';
 import {reloadGameDocument} from './update-document-readiness.mjs';
+// Retained releases keep their old display titles; both labels select the same game, whose data is verified below.
+const fruitGameLink=page=>page.getByRole('link',{name:/^Play (?:Fruit Merge|Suika Game)$/});
 const current=await readBuild(process.cwd()+'/dist');
 const legacy=await legacyBuild();
 const A=release(legacy,'A'),L=release(legacy,'L'),B=release(current,'B'),C=release(current,'C'),D=release(current,'D'),W=waitingRelease(current,'W'),X=waitingRelease(current,'X'),Y=waitingRelease(current,'Y'),broken=release(current,'broken');
@@ -128,7 +130,7 @@ async function progress(page){return await page.evaluate(()=>{
 });}
 async function controlledWaitingCase(path,base){
  console.log('CONTROLLED WAITING START',path);deployed=B;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);
- await menu(a);await a.locator('#motion').check();await closeMenu(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='waiting-B';});
+ await menu(a);await a.locator('#motion').check();await closeMenu(a);await fruitGameLink(a).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='waiting-B';});
  const c=await context.newPage();await home(c,base);deployed=W;await menu(c);await closeMenu(c);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();
  await holdActivation(a,W);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit W activation held after first save');
  await a.getByLabel('Study topic',{exact:true}).selectOption('quadratics');await a.getByLabel('Study topic',{exact:true}).selectOption('close-reading');await releaseActivation(a);await poll(async()=>await version(a)===W.version,'W activates after topic away and back');
@@ -142,7 +144,7 @@ async function controlledWaitingCase(path,base){
  await context.tracing.stop({path:`${evidence}/update-controlled-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('CONTROLLED WAITING PASS',path);
 }
 async function legacyWaitingCase(path,base,transition=false){
- deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A-with-waiting-L';});
+ deployed=A;const profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);const context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await fruitGameLink(a).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A-with-waiting-L';});
  const b=await context.newPage();await home(b,base);deployed=L;await b.reload();
  await poll(()=>b.evaluate(expected=>new Promise(resolve=>{navigator.serviceWorker.getRegistration().then(r=>{if(r?.waiting?.state!=='installed'){resolve(false);return;}const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();resolve(false);},1000);c.port1.onmessage=e=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(e.data.version===expected);};r.waiting.postMessage({type:'ARCADE_VERSION'},[c.port2]);});}),L.version),'legacy L already waiting over active A');
  assert.equal(await version(b),A.version);
@@ -181,7 +183,7 @@ try{
   if(!process.env.ARCADE_UPDATE_CASE){await legacyWaitingCase(path,base);await legacyWaitingCase(path,base,true);deployed=A;}
   console.log('SEED LEGACY',path);let context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller),'legacy control');assert.equal(await version(a),A.version);
   await a.evaluate(()=>{localStorage.setItem('pocket-arcade:v1:best:fruit-merge','1234');localStorage.setItem('pocket-arcade:v1:settings',JSON.stringify({sound:false,reducedMotion:true,colorBlind:true}));document.cookie='retainedCookie=unchanged; path=/';});await context.close();
-  context=await launch(profile);a=primaryPage(context);await home(a,base);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A';});const before=await data(a);
+  context=await launch(profile);a=primaryPage(context);await home(a,base);await fruitGameLink(a).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='legacy-A';});const before=await data(a);
   const b=await context.newPage();await home(b,base);
   console.log('DEPLOY FIXED B',path);deployed=B;await b.reload();
   await poll(async()=>await version(b)===B.version,'B activation with legacy tabs retained');
@@ -191,7 +193,7 @@ try{
   assert.equal(await a.evaluate(url=>fetch(url).then(r=>r.ok),new URL(A.game,base).href),true,'old lazy asset survives removed server copy while offline');await context.setOffline(false);
   await b.reload();assert.equal(await b.locator('meta[name="arcade-release"]').getAttribute('content'),'B');await menu(b);assert.match(await b.locator('.menu-note').textContent(),/Release B/);await closeMenu(b);
   assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A');assert.deepEqual(await data(b),before);await a.close();await b.close();await context.close();
-  context=await launch(profile);a=primaryPage(context);await home(a,base);await a.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await a.locator('.fm-count').filter({hasText:'2 fruits'}).waitFor();assert.equal(await version(a),B.version);await download(a);
+  context=await launch(profile);a=primaryPage(context);await home(a,base);await fruitGameLink(a).click();await a.locator('.fm-count').filter({hasText:'2 fruits'}).waitFor();assert.equal(await version(a),B.version);await download(a);
   assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'),'one-time legacy pack is deliberately pinned across profile restart');
   await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='modern-B';});
   // Preserve/adopt every restored app page and deliberately seed one extra B
@@ -239,7 +241,7 @@ try{
   holdManifest=false;manifestGate.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});manifestGate.end(D.map.get('/offline-manifest.json'));manifestGate=undefined;await acceptVersion(c,D);
   assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'C','future activation still does not reload an active game');
   await a.keyboard.press('Escape');await reloadGameDocument(a);assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'D');
-  await a.close();await c.close();for(const {page} of retainedB)await page.close();await context.close();context=await launch(profile);const restored=primaryPage(context);await home(restored,base);await restored.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await restored.locator('.fm-count').filter({hasText:'3 fruits'}).waitFor();assert.equal(await version(restored),D.version);await poll(async()=>!(await cacheKeys(restored)).includes('pocket-arcade-v2:'+path+':'+C.version+':shell'),'next generation C reclaimed without re-pinning already removed B');assert.equal(JSON.parse((await data(restored)).settings).reducedMotion,false);assert.equal((await data(restored)).score,before.score);assert.equal((await data(restored)).cookie,before.cookie);
+  await a.close();await c.close();for(const {page} of retainedB)await page.close();await context.close();context=await launch(profile);const restored=primaryPage(context);await home(restored,base);await fruitGameLink(restored).click();await restored.locator('.fm-count').filter({hasText:'3 fruits'}).waitFor();assert.equal(await version(restored),D.version);await poll(async()=>!(await cacheKeys(restored)).includes('pocket-arcade-v2:'+path+':'+C.version+':shell'),'next generation C reclaimed without re-pinning already removed B');assert.equal(JSON.parse((await data(restored)).settings).reducedMotion,false);assert.equal((await data(restored)).score,before.score);assert.equal((await data(restored)).cookie,before.cookie);
   await context.tracing.stop({path:`${evidence}/update-${tag}.zip`});await context.close();
   results.push({scope:path,oldVersion:A.version,versions:[B.version,C.version,D.version],persistentProfileRestarted:true,naturalReloadDiscovery:true,noAutomaticDocumentReload:true,legacyDelayedNavigation:false,modernDelayedNavigation:true,legacyPackPinned:true,oldLazyChunkRemovedFromServer:true,oldGamePlayedOffline:true,persistentProfileWorkerRestart:true,forcedLiveWorkerRestart:false,visibleNewContent:true,scoreSettingsCookiePreserved:true,actualProgressRestored:true,quotaBlockedUserReload:true,pendingPreferenceRecovered:true,inconsistentInstallRecovery:true,modernCachesCleaned:true,futureInstallCachePreserved:true});console.log('MIGRATION PASS',path);await controlledWaitingCase(path,base);Object.assign(results.at(-1),{waitingUpdateAccepted:true,resumeCancelsPendingReload:true,lateQuotaBlocksActualReload:true});await cancelledCase(path,base);const legacyNavigation=await legacyNavigationCase(path,base);Object.assign(results.at(-1),{cancelledReservationAllowsLaterGc:true,legacyDelayedNavigation:true,legacyDelayedNavigationWorkerState:legacyNavigation});
  }

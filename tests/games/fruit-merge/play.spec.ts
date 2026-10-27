@@ -18,7 +18,7 @@ test('mouse aim, real drops and merge, pause, keyboard, saved return and restart
  await page.evaluate(async()=>{await new Promise<void>(resolve=>{let n=0;const frame=()=>{if(++n===20)resolve();else requestAnimationFrame(frame);};requestAnimationFrame(frame);});window.dispatchEvent(new Event('pagehide'));});
  expect(JSON.parse((await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:save:fruit-merge')))!).data).toEqual(before);
  await page.getByRole('button',{name:'Keep playing',exact:true}).click();await page.getByRole('link',{name:'Back to game library'}).click();
- await page.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await expect(basket).toBeVisible();await expect(page.locator('.fm-count')).not.toHaveText('0 fruits in basket');
+ await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();await expect(basket).toBeVisible();await expect(page.locator('.fm-count')).not.toHaveText('0 fruits in basket');
  await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');
  await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeEnabled();expect(errors).toEqual([]);
 });
@@ -43,7 +43,7 @@ test('responsive touch aim, accessible fruit tiers and a real merge',async({page
 test('invalid saved data is ignored and navigation disposes stale controls',async({page})=>{
  await page.goto('/');await page.evaluate(()=>localStorage.setItem('pocket-arcade:v1:save:fruit-merge',JSON.stringify({version:1,data:{version:1,fruits:'broken'}})));
  await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');
- for(let n=0;n<3;n++){await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Fruit Merge',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');}
+ for(let n=0;n<3;n++){await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');}
  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('1 fruit in basket');
 });
 

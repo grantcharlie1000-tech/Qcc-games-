@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPoolShot} from './pool-verifier-shot.mjs';
-const titles={'neon-coil':'Neon Coil','fruit-merge':'Fruit Merge','water-sort':'Water Sort','color-blocks':'Color Blocks',tower:'Tower',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Color Connect','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Blockcraft','maze-muncher':'Maze Muncher','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Quadfall',fivefold:'Fivefold'};
+const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
@@ -13,8 +13,8 @@ const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
 async function action(page,id){
- if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.qf-game').getAttribute('data-score'))>0,'offline Quadfall hard drop');}
- else if(id==='neon-coil'){await page.getByRole('button',{name:/Enter arena|Continue arena/}).click();await page.mouse.move(240,300);await waitFor(async()=>Number(await page.locator('.nc-game').getAttribute('data-tick'))>10,'offline Neon Coil continuous movement');}
+ if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.qf-game').getAttribute('data-score'))>0,'offline Tetris hard drop');}
+ else if(id==='neon-coil'){await page.getByRole('button',{name:/Enter arena|Continue arena/}).click();await page.mouse.move(240,300);await waitFor(async()=>Number(await page.locator('.nc-game').getAttribute('data-tick'))>10,'offline Slither.io continuous movement');}
  else if(id==='fruit-merge'){await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await page.waitForTimeout(650);}
  else if(id==='water-sort'){await page.getByRole('button',{name:'Hint',exact:true}).click();const from=await page.locator('.ws-hint-from').getAttribute('data-tube'),to=await page.locator('.ws-hint-to').getAttribute('data-tube');await page.locator(`[data-tube="${from}"]`).click();await page.locator(`[data-tube="${to}"]`).click();await waitFor(async()=>await page.locator('.ws-game').getAttribute('data-phase')!=='pouring','pour');}
  else if(id==='color-blocks'){await page.locator('.cb-cell').first().focus();await page.keyboard.press('1');await page.keyboard.press('Enter');assert.equal(await page.locator('.cb-game').getAttribute('data-moves'),'1');}
@@ -26,7 +26,7 @@ async function action(page,id){
  else if(id==='color-connect'){await page.getByRole('button',{name:'Hint',exact:true}).click();}
  else if(id==='ball-run'){await page.getByRole('button',{name:/^(Play|Continue|Play again)$/}).click();const before=await page.locator('.ball-run').getAttribute('data-distance');await page.keyboard.down('ArrowRight');try{await waitFor(async()=>Number(await page.locator('.ball-run').getAttribute('data-distance'))>Number(before)&&Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline Ball Run forward movement and steering');}finally{await page.keyboard.up('ArrowRight');}assert.ok(Number(await page.locator('.ball-run').getAttribute('data-x'))>0,'offline held steering must move the ball');}
  else if(id==='flappy-bird'){await page.getByRole('button',{name:/Take flight|Continue flight|Fly again/}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.flappy-bird').getAttribute('data-tick'))>5,'offline Flappy Bird movement');}
- else if(id==='maze-muncher'){const start=page.getByRole('button',{name:/Start game|Play again/});if(await start.isVisible())await start.click();await page.keyboard.press('ArrowLeft');await waitFor(async()=>/heading left/.test(await page.locator('.mm-svg').getAttribute('aria-label')),'offline Maze Muncher movement');}
+ else if(id==='maze-muncher'){const start=page.getByRole('button',{name:/Start game|Play again/});if(await start.isVisible())await start.click();await page.keyboard.press('ArrowLeft');await waitFor(async()=>/heading left/.test(await page.locator('.mm-svg').getAttribute('aria-label')),'offline Pac-Man movement');}
  else if(id==='corn-clicker'){
   // The shell's Restart asks before it erases the farm.
   const erase=page.getByRole('button',{name:'Erase everything',exact:true});if(await erase.isVisible()){await erase.click();await erase.waitFor({state:'hidden'});}
@@ -38,11 +38,11 @@ async function action(page,id){
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');
   // The shell's Restart asks before it replaces the world.
   const create=page.getByRole('button',{name:'Create New World',exact:true});if(await create.isVisible())await create.click();
-  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Blockcraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Blockcraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();
-  // Back from Study the game plays on and captures the mouse (the lock arrives a moment later): let it go (Blockcraft
+  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Minecraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Minecraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();
+  // Back from Study the game plays on and captures the mouse (the lock arrives a moment later): let it go (Minecraft
   // pauses on its Game Menu), so the shell's buttons take the clicks that follow.
   for(let i=0;i<40&&await root.getAttribute('data-locked')!=='true';i++)await page.waitForTimeout(50);
-  await page.evaluate(()=>document.exitPointerLock());await waitFor(async()=>await root.getAttribute('data-locked')!=='true','offline Blockcraft mouse released');}
+  await page.evaluate(()=>document.exitPointerLock());await waitFor(async()=>await root.getAttribute('data-locked')!=='true','offline Minecraft mouse released');}
  else if(id==='animal-stack'){await page.getByRole('button',{name:/^Drop /}).click();await page.waitForTimeout(650);}
 }
 try{

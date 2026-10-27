@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {createGame,place,canPlace,hasMove,restoreGame,SHAPES,deal,clearLines,type State} from '../../../src/games/color-blocks/model';
 const fixture=():State=>({...createGame(42),board:Array(64).fill(0),tray:[0,1,2],score:0,combo:0,moves:0,lines:0});
-describe('Color Blocks integer rules',()=>{
+describe('Block Blast integer rules',()=>{
  it('reconciles a crossing row and column simultaneously and counts their intersection once',()=>{
   const s=fixture();for(let x=1;x<8;x++)s.board[x]=1;for(let y=1;y<8;y++)s.board[y*8]=2;
   const r=place(s,0,0,0)!;expect(r.cleared).toEqual([0,1,2,3,4,5,6,7,8,16,24,32,40,48,56]);

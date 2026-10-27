@@ -5,15 +5,15 @@ import {mapDrag,grabCell,type Point,type Bounds} from './input';
 import './style.css';
 const freshGame=()=>createGame(crypto.getRandomValues(new Uint32Array(1))[0]);
 const module:GameModule={
- id:'color-blocks',title:'Color Blocks',cover:'game-art/color-blocks/cover.svg',
- rules:'Place the three fixed-orientation pieces onto the 8 by 8 board. Drag a piece, or select one and tap its top-left destination. Full rows and columns clear together. Each placed block earns 1 point; each cleared line earns 20 times your current clear streak. Consecutive clearing moves build the streak; a move without a clear resets it. Use all three pieces to get a new tray. Every new tray has a way to place all three pieces, including any line clears along the way. Plan carefully: other placements can leave the remaining pieces stuck. The game ends only when none of your remaining pieces fits. No rotation and no timer. Keyboard: select with 1, 2 or 3, use arrow keys to aim, and Enter or Space to place.',
+ id:'color-blocks',title:'Block Blast',cover:'game-art/color-blocks/cover.svg',
+ rules:'Independent browser adaptation. Place the three fixed-orientation pieces onto the 8 by 8 board. Drag a piece, or select one and tap its top-left destination. Full rows and columns clear together. Each placed block earns 1 point; each cleared line earns 20 times your current clear streak. Consecutive clearing moves build the streak; a move without a clear resets it. Use all three pieces to get a new tray. Every new tray has a way to place all three pieces, including any line clears along the way. Plan carefully: other placements can leave the remaining pieces stuck. The game ends only when none of your remaining pieces fits. No rotation and no timer. Keyboard: select with 1, 2 or 3, use arrow keys to aim, and Enter or Space to place.',
  mount(container,context){
   let state=freshGame(),paused=false,disposed=false,selected:number|null=null,cursor={x:0,y:0},preview=false;
   let drag:{id:number;slot:number;anchor:Point;start:Point;pointer:Point;pointerType:string;moved:boolean;bounds:Bounds;viewW:number;viewH:number}|null=null;
   let ignoreClick=false;const animations=new Set<Animation>();
   let publishedScore=-1,publishedLines=-1,publishedStatus='';
   const abort=new AbortController(),signal=abort.signal;
-  const root=document.createElement('section');root.className='cb-game';root.setAttribute('aria-label','Color Blocks puzzle');
+  const root=document.createElement('section');root.className='cb-game';root.setAttribute('aria-label','Block Blast puzzle');
   root.innerHTML=`<div class="cb-board-frame"><div class="cb-board" role="grid" aria-label="8 by 8 placement board" aria-describedby="cb-instructions"></div><div class="cb-effects" aria-hidden="true"></div></div><div class="cb-tray" role="group" aria-label="Three-piece tray"></div><div class="cb-feedback" role="status">Pick a piece and find its place</div><p class="cb-instructions" id="cb-instructions">Drag to place, or select a piece then tap the board. Touch pieces lift above your finger. Keyboard: 1, 2 or 3 select, arrows aim, Enter places, Esc pauses and opens Study Mode.</p><svg class="cb-drag-art" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" hidden></svg>`;
   container.replaceChildren(root);
   const board=root.querySelector<HTMLElement>('.cb-board')!,tray=root.querySelector<HTMLElement>('.cb-tray')!,feedback=root.querySelector<HTMLElement>('.cb-feedback')!;

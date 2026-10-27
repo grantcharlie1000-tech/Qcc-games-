@@ -5,10 +5,10 @@ import './style.css';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 const module: GameModule = {
-  id: 'maze-muncher', title: 'Maze Muncher', cover: 'game-art/maze-muncher/cover.svg',
-  rules: 'Steer Nib through the maze with the arrow keys, WASD, a swipe on the board or the direction buttons. A turn you press early is saved and taken at the next opening. Eat every dot (10 points) to clear the maze. The four glowing power berries (50 points) frighten the chasers for a few seconds: they turn blue, slow down and can be eaten for 200, 400, 800 and 1,600 points. They flash just before they recover. Rook chases you directly, Vex aims ahead of you, Drift works with Rook to cut you off, and Mope gives up when it gets close. Every so often they all scatter to their own corners and turn around. A bonus treat appears under the house twice per maze. The side tunnel wraps around and slows the chasers. You start with three lives and earn one more at 10,000 points. Each new maze is faster and frightens the chasers for less time.',
+  id: 'maze-muncher', title: 'Pac-Man', cover: 'game-art/maze-muncher/cover.svg',
+  rules: 'Independent browser adaptation. Steer Nib through the maze with the arrow keys, WASD, a swipe on the board or the direction buttons. A turn you press early is saved and taken at the next opening. Eat every dot (10 points) to clear the maze. The four glowing power berries (50 points) frighten the chasers for a few seconds: they turn blue, slow down and can be eaten for 200, 400, 800 and 1,600 points. They flash just before they recover. Rook chases you directly, Vex aims ahead of you, Drift works with Rook to cut you off, and Mope gives up when it gets close. Every so often they all scatter to their own corners and turn around. A bonus treat appears under the house twice per maze. The side tunnel wraps around and slows the chasers. You start with three lives and earn one more at 10,000 points. Each new maze is faster and frightens the chasers for less time.',
   mount(container, context) {
-    container.innerHTML = `<div class="mm-game"><div class="mm-frame"><div class="mm-card"><strong>Maze Muncher</strong><p>Clear every dot. Power berries turn the tables.</p><button class="game-button mm-start">Start game</button></div></div><div class="mm-controls"><p class="mm-help"><span>Arrows / WASD</span><span>Swipe to steer</span></p><div class="mm-pad" role="group" aria-label="Directions"><button data-dir="up" aria-label="Go up">↑</button><button data-dir="left" aria-label="Go left">←</button><button data-dir="down" aria-label="Go down">↓</button><button data-dir="right" aria-label="Go right">→</button></div></div></div>`;
+    container.innerHTML = `<div class="mm-game"><div class="mm-frame"><div class="mm-card"><strong>Pac-Man</strong><p>Clear every dot. Power berries turn the tables.</p><button class="game-button mm-start">Start game</button></div></div><div class="mm-controls"><p class="mm-help"><span>Arrows / WASD</span><span>Swipe to steer</span></p><div class="mm-pad" role="group" aria-label="Directions"><button data-dir="up" aria-label="Go up">↑</button><button data-dir="left" aria-label="Go left">←</button><button data-dir="down" aria-label="Go down">↓</button><button data-dir="right" aria-label="Go right">→</button></div></div></div>`;
     const root = container.querySelector<HTMLElement>('.mm-game')!, frame = root.querySelector<HTMLElement>('.mm-frame')!, controls = root.querySelector<HTMLElement>('.mm-controls')!;
     const card = root.querySelector<HTMLElement>('.mm-card')!, heading = card.querySelector('strong')!, message = card.querySelector('p')!, startButton = card.querySelector('button')!;
     const pad = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-dir]'));
@@ -37,7 +37,7 @@ const module: GameModule = {
 
     function describe() {
       const p = tileOf(state.player);
-      const text = `Maze Muncher. Level ${state.level}. ${state.dotsLeft} dots left. Nib at column ${p.x + 1}, row ${p.y + 1}, heading ${state.player.dir}. ${state.lives} spare ${state.lives === 1 ? 'life' : 'lives'}.${state.fright > 0 ? ' Chasers are frightened.' : ''}`;
+      const text = `Pac-Man. Level ${state.level}. ${state.dotsLeft} dots left. Nib at column ${p.x + 1}, row ${p.y + 1}, heading ${state.player.dir}. ${state.lives} spare ${state.lives === 1 ? 'life' : 'lives'}.${state.fright > 0 ? ' Chasers are frightened.' : ''}`;
       if (text !== label) {board.svg.setAttribute('aria-label', text); label = text;}
     }
     function render() {
@@ -51,7 +51,7 @@ const module: GameModule = {
       const showCard = state.phase === 'ready' || state.phase === 'over';
       card.hidden = !showCard;
       if (state.phase === 'over') {heading.textContent = 'Game over'; message.textContent = `${state.score.toLocaleString()} points, reached level ${state.level}.`; startButton.textContent = 'Play again';}
-      else if (state.phase === 'ready') {heading.textContent = 'Maze Muncher'; message.textContent = 'Clear every dot. Power berries turn the tables.'; startButton.textContent = 'Start game';}
+      else if (state.phase === 'ready') {heading.textContent = 'Pac-Man'; message.textContent = 'Clear every dot. Power berries turn the tables.'; startButton.textContent = 'Start game';}
       startButton.disabled = paused;
       pad.forEach(b => b.disabled = paused || state.phase === 'over');
       context.setStatus(paused ? 'Paused' : state.phase === 'over' ? 'Game over. Play again for a new run.' : state.phase === 'ready' ? 'Press Start or any direction to begin.' : state.fright > 0 ? 'Power berry! Eat the blue chasers.' : 'Eat every dot and dodge the chasers.');
