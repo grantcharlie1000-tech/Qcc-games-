@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { BANK_DRIFT, CONFIG, DIFFICULTIES, GATE_FEEDBACK, RADIUS, STEP, lateralSpeed, type Difficulty, type Gate } from '../../../src/games/ball-run/config';
+import { BANK_DRIFT, CONFIG, DIFFICULTIES, GATE_FEEDBACK, RADIUS, STEP, STEER_RESPONSE, lateralSpeed, type Difficulty, type Gate } from '../../../src/games/ball-run/config';
 import { getCourse } from '../../../src/games/ball-run/course';
 import { createRun, restoreSnapshot, runSpeed, step } from '../../../src/games/ball-run/model';
 import { emptyRecords } from '../../../src/games/ball-run/records';
 import { capDistance, placeRun, restHeight, spans } from './bot';
 
-const reversal: Record<Difficulty, number> = { easy: 74, medium: 62, hard: 54 };
 const gates = (seed: number, difficulty: Difficulty, to: number) => {
   const list: Gate[] = [];
   getCourse(seed, difficulty).forEachGate(0, to, g => list.push(g));
@@ -14,14 +13,18 @@ const gates = (seed: number, difficulty: Difficulty, to: number) => {
 
 describe('Ball Run physical road contact regressions', () => {
   for (const difficulty of DIFFICULTIES) {
-    it(`${difficulty}: supports both measured reversals while the contact stays over the visible warm-up`, () => {
+    it(`${difficulty}: supports near-edge reversals in both directions on the visible warm-up`, () => {
       const course = getCourse(1, difficulty);
+      // Reverse early enough to cancel outward velocity near the physical edge.
+      // The response takes about ln(2)/STEER_RESPONSE seconds to change direction.
+      const halfWidth = course.sample(0).width / 2;
+      const reverse = Math.floor(((halfWidth - .04) / lateralSpeed(course.speed(0)) + Math.log(2) / STEER_RESPONSE) / STEP);
       for (const side of [-1, 1]) {
         const run = createRun(1, 1, difficulty);
         run.phase = 'running';
         let furthest = 0;
         for (let i = 0; i < 132; i++) {
-          step(run, side * (i < reversal[difficulty] ? 1 : -1), STEP);
+          step(run, side * (i < reverse ? 1 : -1), STEP);
           const s = course.sample(run.distance);
           furthest = Math.max(furthest, Math.abs(run.x - s.center));
           expect(s.kind).toBe('warmup');
@@ -30,6 +33,9 @@ describe('Ball Run physical road contact regressions', () => {
           expect(run.grounded, `${difficulty} step ${i}, x=${run.x}`).toBe(true);
           expect(run.height).toBeCloseTo(restHeight(course, run.distance, run.x), 9);
         }
+        // Still exercise the strip that used to lose support, rather than making
+        // the fixture pass by turning around comfortably inside the road.
+        expect(furthest).toBeGreaterThan(halfWidth - .12);
       }
     });
 
@@ -67,13 +73,16 @@ describe('Ball Run physical road contact regressions', () => {
   });
 
   it('keeps records but starts a fresh course when a save predates the new speed-dependent track', () => {
-    const run: Record<string, unknown> = { ...placeRun(1, 'medium', 40) };
-    delete run.courseRevision;
     const records = emptyRecords();
     records.medium.allTime = 321;
-    const restored = restoreSnapshot({ version: 4, difficulty: 'medium', records, run });
-    expect(restored?.records.medium.allTime).toBe(321);
-    expect(restored?.run).toBeNull();
+    for (const revision of [undefined, 2]) {
+      const run: Record<string, unknown> = { ...placeRun(1, 'medium', 40) };
+      if (revision === undefined) delete run.courseRevision;
+      else run.courseRevision = revision;
+      const restored = restoreSnapshot({ version: 4, difficulty: 'medium', records, run });
+      expect(restored?.records).toEqual(records);
+      expect(restored?.run, `old course revision ${revision}`).toBeNull();
+    }
   });
 
   it('uses the sphere contact point on both bank edges, rather than an inset centre band', () => {

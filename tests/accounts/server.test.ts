@@ -118,6 +118,7 @@ describe('optional accounts with real Postgres',()=>{
   const hash=createHash('sha256').update(a.token).digest('hex');
   expect(await (await request('logout',{sessionHash:hash})).json()).toEqual(await (await request('logout',{sessionHash:hash})).json());
  });
+ it('round-trips Slipline score and save',async()=>{const a=await signup();const saves={'best:slipline':{value:200,updated:1},'save:slipline':{value:{version:1,data:{level:1},updated:1},updated:1}};expect((await request('sync',{saves},a.token,'PUT')).status).toBe(200);const pulled=await (await request('sync',undefined,a.token)).json();expect(pulled.saves['best:slipline'].value).toBe(200);expect(pulled.saves['save:slipline'].value.data.level).toBe(1)});
  it('writes only submitted keys and retains favourite removal across devices',async()=>{
   const a=await signup();
   await request('sync',{saves:{favourites:{value:['snake'],updated:1},'best:snake':{value:20,updated:1}}},a.token,'PUT');
@@ -135,12 +136,13 @@ describe('optional accounts with real Postgres',()=>{
  });
  it('merges and pulls allowlisted saves while isolating accounts and refusing invalid values',async()=>{
   const a=await signup(),b=await signup('Second_User');
-  const first={'best:fivefold':{value:3,updated:1},'save:fivefold':{value:{version:1,data:{mode:'daily'},updated:1},updated:1},'best:snake':{value:200,updated:1},favourites:{value:['snake'],updated:1},settings:{value:{sound:false,reducedMotion:false,colorBlind:false,autoNextEpisode:true},updated:1},'save:snake':{value:{version:1,data:{score:3},updated:10},updated:10}};
+  const first={'best:fivefold':{value:3,updated:1},'save:fivefold':{value:{version:1,data:{mode:'daily'},updated:1},updated:1},'best:snake':{value:200,updated:1},'best:quadfall':{value:1200,updated:1},'save:quadfall':{value:{version:1,data:{phase:'running'},updated:1},updated:1},favourites:{value:['snake'],updated:1},settings:{value:{sound:false,reducedMotion:false,colorBlind:false,autoNextEpisode:true},updated:1},'save:snake':{value:{version:1,data:{score:3},updated:10},updated:10}};
   expect((await request('sync',{saves:first},a.token,'PUT')).status).toBe(200);
   const second={'best:snake':{value:100,updated:2},favourites:{value:['tower'],updated:2},settings:{value:{sound:true,reducedMotion:false,colorBlind:false,autoNextEpisode:false},updated:2},'save:snake':{value:{version:1,data:{score:9},updated:20},updated:20}};
   const merged=await (await request('sync',{saves:second},a.token,'PUT')).json();expect(merged.saves['best:snake'].value).toBe(200);expect(merged.saves.favourites.value).toEqual(['tower']);expect(merged.saves.settings.value.sound).toBe(true);expect(merged.saves.settings.value.autoNextEpisode).toBe(false);expect(merged.saves['save:snake'].value.data.score).toBe(9);
+  expect(merged.saves['best:quadfall'].value).toBe(1200);expect(merged.saves['save:quadfall']).toEqual({value:{version:1,data:{phase:'running'},updated:1},updated:1});
   expect((await (await request('sync',undefined,a.token)).json()).saves).toEqual(merged.saves);expect((await (await request('sync',undefined,b.token)).json()).saves).toEqual({});
-  for(const saves of [{'save:not-a-game':{value:{version:1,data:{},updated:1},updated:1}},{'account:token':{value:'secret',updated:1}},{'best:snake':{value:-1,updated:1}},{'save:corn-clicker':{value:'x',updated:1}},{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
+  for(const saves of [{'account:token':{value:'secret',updated:1}},{'best:snake':{value:-1,updated:1}},{'save:not-a-game':{value:{version:1,data:{},updated:1},updated:1}},{'save:corn-clicker':{value:'x',updated:1}},{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
  });
  it('serializes concurrent save merges so updates from separate devices are retained',async()=>{
   const a=await signup();await Promise.all([request('sync',{saves:{'best:snake':{value:200,updated:1}}},a.token,'PUT'),request('sync',{saves:{'best:tower':{value:300,updated:1}}},a.token,'PUT')]);

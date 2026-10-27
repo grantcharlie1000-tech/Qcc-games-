@@ -19,6 +19,8 @@ export const games: GameInfo[] = [
 {id:'blockcraft',title:'Blockcraft',color:'#8fd0f7',ink:'#1f4a1a',accent:'#2c6b22'},
 {id:'maze-muncher',title:'Maze Muncher',color:'#10153a',ink:'#ffe14d',accent:'#3fe0bd'},
 {id:'corn-clicker',title:'Corn Clicker',color:'#2f5d1e',ink:'#ffe14d',accent:'#ffd447'},
+{id:'slipline',title:'Slipline',color:'#1e1e2c',ink:'#b4b3d2',accent:'#945171'},
+{id:'quadfall',title:'Quadfall',color:'#101631',ink:'#7ee0ff',accent:'#ff9f43'},
 {id:'fivefold',title:'Fivefold',color:'#1d2b24',ink:'#f4e9c8',accent:'#6fbf73'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
