@@ -11,7 +11,7 @@ export interface Plot {v:VarietyId;age:number;paid:Big}
 export interface ActiveEffect {remaining:number;duration:number}
 export interface GoldenOnScreen {x:number;y:number;life:number;maxLife:number;kind:GoldenKind}
 export interface Pest {id:number;stolen:Big;angle:number}
-export interface Options {sound:boolean;volume:number;reducedMotion:boolean;particles:ParticleLevel;numbers:'short'|'long'|'scientific';ticker:boolean}
+export interface Options {sound:boolean;volume:number;reducedMotion:boolean;particles:ParticleLevel;numbers:'short'|'long'|'scientific';ticker:boolean;faceTexture:boolean}
 export interface State {
   rev:number;created:number;lastTick:number;rng:number;
   /** Latest clock time ever credited: time before it is never paid again, even after a clock change. */
@@ -47,7 +47,7 @@ export function freshState(now:number,seed=Math.floor(Math.random()*2**31)):Stat
     festival:{next:FESTIVAL.minDelay,active:null},
     scarecrow:{bonuses:[],cooldown:0},
     pests:{list:[],next:PESTS.minDelay,enabled:true,nextId:1},
-    options:{sound:false,volume:0.6,reducedMotion:false,particles:'full',numbers:'short',ticker:true},
+    options:{sound:false,volume:0.6,reducedMotion:false,particles:'full',numbers:'short',ticker:true,faceTexture:false},
     tutorial:new Set(),
     lastOffline:null,
   };
@@ -147,7 +147,7 @@ export function deserialize(raw:unknown,now:number):State {
   const options=isObj(d.options)?d.options:{};
   s.options={sound:options.sound===true,volume:num(options.volume,0.6,0,1),reducedMotion:options.reducedMotion===true,
     particles:(['off','low','full'] as const).find(v=>v===options.particles)??'full',
-    numbers:(['short','long','scientific'] as const).find(v=>v===options.numbers)??'short',ticker:options.ticker!==false};
+    numbers:(['short','long','scientific'] as const).find(v=>v===options.numbers)??'short',ticker:options.ticker!==false,faceTexture:options.faceTexture===true};
   s.tutorial=new Set(strings(d.tutorial));
   const off=isObj(d.lastOffline)?d.lastOffline:null;
   s.lastOffline=off?{seconds:num(off.seconds,0,0),earned:big(off.earned),capped:off.capped===true}:null;

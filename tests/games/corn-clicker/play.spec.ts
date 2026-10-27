@@ -225,3 +225,14 @@ test('export, import, damaged-save recovery from backup and confirmed restart',a
   await expect.poll(()=>kernels(page)).toBeGreaterThanOrEqual(777);
   await expect(page.locator('[data-producer=field] .cc-prod-owned')).toHaveText('3');
 });
+
+test('corn is the default and the face texture can be switched on, saved and switched off',async({page})=>{
+ await page.goto('/#/game/corn-clicker');await expect(cob(page)).toBeVisible();
+ const toggle=page.getByRole('button',{name:'Use face texture'});const art=cob(page).locator('img');
+ await expect(toggle).toHaveAttribute('aria-pressed','false');await expect(art).toHaveAttribute('src',/^data:image\/png/);
+ await toggle.click();await expect(toggle).toHaveAttribute('aria-pressed','true');await expect(art).toHaveAttribute('src',/face\.webp$/);
+ await cob(page).click();await expect(page.locator('.cc-kernels-num')).toHaveText('1');
+ await expect.poll(()=>page.evaluate(k=>{const raw=localStorage.getItem(k);return raw?JSON.parse(raw).data.options?.faceTexture:false;},KEY)).toBe(true);
+ await page.reload();await expect(toggle).toHaveAttribute('aria-pressed','true');await expect(art).toHaveAttribute('src',/face\.webp$/);
+ await toggle.click();await expect(toggle).toHaveAttribute('aria-pressed','false');await expect(art).toHaveAttribute('src',/^data:image\/png/);
+});
