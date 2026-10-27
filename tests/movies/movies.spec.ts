@@ -33,7 +33,7 @@ test('failed launch posters are hidden over the coloured fallback',async({page})
 
 test('full-width launch, local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
- const games=page.locator('.game-card');await expect(games).toHaveCount(20);
+ const games=page.locator('.game-card');await expect(games).toHaveCount(21);
  const launch=page.getByRole('link',{name:'Movies & TV',exact:true});
  await expect(launch).toHaveAttribute('href','#/movies');
  await expect(launch).toHaveText('Movies & TV');
@@ -60,7 +60,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  // Study retains the movies route and returns to the same page.
  await page.getByRole('link',{name:'Games',exact:true}).click();
  await expect(page.locator('.movies-view')).toBeVisible();
- await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(20);await expect(launch).toBeFocused();
+ await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(21);await expect(launch).toBeFocused();
 });
 
 for(const width of [320,390,768,1366])test(`responsive allowlisted provider boundary at ${width}px`,async({page})=>{
