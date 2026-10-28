@@ -1,3 +1,4 @@
+import './theme.css';
 import {moviesCard} from './movies/card';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
