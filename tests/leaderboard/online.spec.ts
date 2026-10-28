@@ -16,9 +16,10 @@ async function connect(context:BrowserContext,score:number,username?:string){
   await route.fulfill({status:result.status,headers:Object.fromEntries(result.headers),body});
  });
 }
+async function appMenu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Account & app settings',exact:true}).click();}
 async function join(page:Page,name:string){
- await page.goto('/#/');await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
- await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(15);
+ await page.goto('/#/');await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
+ await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(18);
  await page.getByLabel('Game',{exact:true}).selectOption('snake');
  await expect(page.locator('.lb-table tbody')).toContainText(name);
 }
@@ -42,7 +43,7 @@ test('two browsers share ranked scores, highlight the current player and show ca
 
 test('opening leaderboards pauses the active game and closing them restores its previous pause state',async({page,context})=>{
  await connect(context,0);await page.goto('/#/game/snake');await expect(page.locator('#game-stage')).not.toContainText('Getting your game ready');
- const menu=async()=>{await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();};
+ const menu=async()=>{await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();};
  await menu();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('snake');
  await expect(page.locator('#pause-overlay')).toBeVisible();
  await page.getByRole('button',{name:'Close leaderboards'}).click();await expect(page.locator('#pause-overlay')).toBeHidden();
@@ -53,19 +54,22 @@ test('opening leaderboards pauses the active game and closing them restores its 
 
 test('a score earned in a real game is published only for the signed-in account',async({page,context})=>{
  await connect(context,0,'Active_Player');await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();
- const open=async()=>{await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();};
+ const open=async()=>{await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();};
  await open();await expect(page.locator('.lb-login')).toBeHidden();await page.getByRole('button',{name:'Close leaderboards'}).click();
  await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
- await open();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('minesweeper');
- await expect(page.locator('#leaderboard-dialog .lb-you')).toContainText('Active_Player');
- const score=await page.locator('#game-score strong').textContent();await expect(page.locator('.lb-personal')).toContainText(`Best: ${Number(score).toLocaleString()}`);
+ await open();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('minesweeper-easy');
+ await expect(page.locator('#leaderboard-dialog .lb-you')).toHaveCount(0);await page.getByRole('button',{name:'Close leaderboards'}).click();
+ const b=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:minesweeper')!).data);
+ for(let i=0;i<b.cells.length;i++)if(b.cells[i]!==-1&&await page.locator(`.ms-tile[data-index="${i}"]`).getAttribute('data-state')!=='open')await page.locator(`.ms-tile[data-index="${i}"]`).click();
+ await open();await expect(page.locator('#leaderboard-dialog .lb-you')).toContainText('Active_Player');
+ await expect(page.locator('.lb-personal')).toContainText(' s');
 });
 
 test('guests can read rankings and keep local progress while the sharing action opens account login',async({page,context})=>{
  await page.clock.install({time:new Date('2026-10-27T10:00:00Z')});await page.clock.pauseAt(new Date('2026-10-27T10:00:01Z'));
  await connect(context,0);await page.goto('/#/game/minesweeper');await page.locator('.ms-tile[data-index="0"]').click();
  const saved=await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:save:minesweeper'));
- await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
+ await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
  await expect(page.locator('.lb-login')).toContainText('Log in to share');await expect(page.locator('#leaderboard-name')).toHaveCount(0);
  await page.locator('.lb-login').getByRole('button',{name:'Log in / Sign up',exact:true}).click();await expect(page.locator('#accounts-dialog')).toBeVisible();await expect(page.locator('#pause-overlay')).toBeVisible();
  await page.getByRole('button',{name:'Play as guest',exact:true}).click();expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:save:minesweeper'))).toBe(saved);
@@ -73,6 +77,6 @@ test('guests can read rankings and keep local progress while the sharing action 
 
 test('an expired session offers login recovery while scores remain local',async({page,context})=>{
  await connect(context,0,'Expired_Player');await pool.query("UPDATE account_sessions SET expires_at=now()-interval '1 second' WHERE account_id=(SELECT id FROM accounts WHERE username='Expired_Player')");
- await page.goto('/');await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
+ await page.goto('/');await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
  await expect(page.locator('.lb-status')).toContainText('Log in again');await expect(page.locator('.lb-login')).toBeVisible();await page.locator('.lb-login button').click();await expect(page.locator('#accounts-dialog')).toBeVisible();
 });

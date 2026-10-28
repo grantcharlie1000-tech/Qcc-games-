@@ -150,7 +150,9 @@ test('pinch is cancelled, a control and an overflowing board still receive a sin
   await expect(page.locator('.ms-tile').first()).toBeVisible();
 
   await page.getByLabel('Difficulty', {exact: true}).selectOption('expert');
-  await page.getByLabel('Cell size', {exact: true}).selectOption('54');
+  await page.getByRole('button', {name:'Open menu',exact:true}).click();
+  await page.getByRole('button', {name:'Zoom in',exact:true}).click();await page.getByRole('button', {name:'Zoom in',exact:true}).click();
+  await page.getByRole('button', {name:'Close game options',exact:true}).click();
   await expect.poll(() => page.locator('.ms-scroll').evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(true);
   const board = await page.evaluate(() => {
     const scroller = document.querySelector('.ms-scroll')!;

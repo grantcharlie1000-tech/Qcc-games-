@@ -71,5 +71,5 @@ export class LeaderboardSidebar {
   finally{this.busy=false;if(this.refreshPending){this.refreshPending=false;void this.refresh();}else this.schedule();}
  }
  dispose(){clearTimeout(this.timer);this.unsubscribe();document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('offline',this.visibility);this.disposed=true;this.request++;this.wide.removeEventListener('change',this.visibility);window.removeEventListener('online',this.online);this.root.remove();}
- static supports(game:GameId){return scoredGame(game)&&game!=='pool';}
+ static supports(game:GameId){return scoredGame(game)&&game!=='pool'&&game!=='minesweeper';}
 }

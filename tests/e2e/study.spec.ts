@@ -182,6 +182,7 @@ for(const modal of ['menu','rules']){
 test('manual pause survives Study and topic navigation keeps the game route intact',async({page})=>{
   await page.goto('/#/game/minesweeper');await choose(page);
   await page.getByRole('gridcell').first().click();
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
   await page.getByRole('button',{name:'Pause game',exact:true}).click();
   await page.keyboard.press('Escape');
   await page.getByLabel('Study topic',{exact:true}).selectOption('probability');

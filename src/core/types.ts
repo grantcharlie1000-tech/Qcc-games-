@@ -6,6 +6,11 @@ export interface GameContext {
   readonly settings: Readonly<Settings>;
   readonly highScore: number;
   setScore(score: number): void;
+  /** Optional game-specific rankings, using the shared account-backed service. */
+  submitRecord?(key:string,score:number):void;
+  openRankings?(key:string):void;
+  setPaused?(paused:boolean):void;
+  openAppMenu?():void;
   setLevel(level: string | number): void;
   setStatus(message: string): void;
   announce(message: string): void;
@@ -13,9 +18,11 @@ export interface GameContext {
   sound(kind?: 'tap' | 'success' | 'lose'): void;
 }
 export interface GameInstance {
+  openMenu?():void;
+  dismissMenu?():boolean;
   pause(): void;
   resume(): void;
-  restart(): void;
+  restart(): void | boolean;
   serialize(): unknown;
   restore(data: unknown): void;
   dispose(): void;

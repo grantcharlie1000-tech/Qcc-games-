@@ -72,7 +72,7 @@ export function restore(data:unknown):Board|null {
   const detonated=b.revealed.flatMap((v,i)=>v&&b.cells[i]===-1?[i]:[]);
   const won=b.first!==null&&b.cells.every((v,i)=>v===-1||b.revealed[i]);
   if(d.status==='ready'){
-    if(b.first!==null||b.revealed.some(Boolean)||d.exploded!==null||b.elapsedMs!==0)return null;
+    if(b.first!==null||b.revealed.some(Boolean)||d.exploded!==null||(b.elapsedMs!==0&&!(d.practice===true&&d.assisted===true)))return null;
   }else{
     if(b.first===null||!b.revealed[b.first])return null;
     if(d.status==='playing'){if(won||detonated.length||d.exploded!==null)return null;}

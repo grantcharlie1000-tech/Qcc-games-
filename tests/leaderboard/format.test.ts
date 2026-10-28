@@ -14,3 +14,7 @@ it('ranks Corn Clicker kernels on a log scale that keeps order and reads back as
  expect(formatScore('corn-clicker',cornScore(Big.of(4.567e12)))).toBe('4.567 T');
  expect(formatScore('snake',1234)).toBe((1234).toLocaleString());
 });
+
+it('formats the new Minesweeper difficulty records as elapsed seconds',()=>{
+ expect(formatScore('minesweeper-easy',2147483647-12345)).toBe('12.345 s');
+});

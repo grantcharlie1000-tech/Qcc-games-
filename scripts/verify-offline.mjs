@@ -12,6 +12,12 @@ const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','u
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
+async function restart(page,id){
+ const confirm=async dialog=>{assert.equal(dialog.type(),'confirm');assert.match(dialog.message(),/Discard this active field/);await dialog.accept();};
+ if(id==='minesweeper')page.on('dialog',confirm);
+ try{await page.getByRole('button',{name:'Restart game',exact:true}).click();}
+ finally{if(id==='minesweeper')page.off('dialog',confirm);}
+}
 async function action(page,id){
  if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.qf-game').getAttribute('data-score'))>0,'offline Tetris hard drop');}
  else if(id==='neon-coil'){await page.getByRole('button',{name:/Enter arena|Continue arena/}).click();await page.mouse.move(240,300);await waitFor(async()=>Number(await page.locator('.nc-game').getAttribute('data-tick'))>10,'offline Slither.io continuous movement');}
@@ -88,9 +94,10 @@ try{
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
    assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');
+   if(id==='minesweeper')await page.getByRole('button',{name:'Open menu',exact:true}).click();
    await page.getByRole('button',{name:'Pause game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');
-   await page.getByRole('button',{name:'Restart game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),false);
-   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.getByRole('button',{name:'Restart game',exact:true}).click();await action(page,id);await page.screenshot({path:`${folder}/${id}-${size.width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${id} overflow at ${size.width}`);}
+   await restart(page,id);assert.equal(await page.locator('#pause-overlay').isVisible(),false);
+   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await restart(page,id);await action(page,id);await page.screenshot({path:`${folder}/${id}-${size.width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${id} overflow at ${size.width}`);}
    await page.setViewportSize(sizes[0]);await page.getByRole('link',{name:'Back to game library'}).click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
    results.push({game:id,deployment:label,path,offline:true,action:true,save:true,restart:true,studyRestoration:true,studySwitchRequests:switchRequests.length,...switchTiming,rafMedianMs:frames[Math.floor(frames.length/2)],rafP95Ms:frames[Math.floor(frames.length*.95)]});console.log(`OFFLINE PASS ${label} ${id} + Study`);
   }

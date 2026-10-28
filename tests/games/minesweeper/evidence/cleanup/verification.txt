@@ -1,0 +1,23 @@
+Production browser tests
+  ✓  15 [chromium] › tests/games/minesweeper/play.spec.ts:83:1 › real touch tap, long hold, pan and pinch never double-activate or reveal accidentally (4.9s)
+  ✓  16 [chromium] › tests/games/minesweeper/play.spec.ts:100:1 › background pauses with the board hidden, and returning does not resume implicitly (2.4s)
+  ✓  17 [chromium] › tests/games/minesweeper/play.spec.ts:108:1 › assistive activation, keyboard reveal and shared fullscreen remain dependable (4.8s)
+  ✓  18 [chromium] › tests/games/minesweeper/play.spec.ts:118:1 › reduced motion opens the field immediately without tile animations (1.5s)
+
+  18 passed (1.1m)
+
+Account and leaderboard browser tests
+  ✓   8 [chromium] › tests/accounts/accounts.spec.ts:60:1 › logout in another tab preserves Study and returns to a fresh guest game (7.2s)
+  ✓   9 [chromium] › tests/accounts/accounts.spec.ts:72:1 › keyboard-only signup and Escape still open Study while playing (5.3s)
+  ✓  10 [chromium] › tests/accounts/accounts.spec.ts:78:1 › guest entry and account form fit a 320px touch screen (5.9s)
+  ✓  11 [chromium] › tests/accounts/accounts.spec.ts:88:1 › signup confirms passwords, clears secrets and scrolls in short landscape (4.9s)
+
+  11 passed (1.4m)
+
+Production build
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 18.55s
+Offline pack: 125 files, version a93eabaf5b2a

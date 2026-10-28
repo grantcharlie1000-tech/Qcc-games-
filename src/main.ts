@@ -17,7 +17,7 @@ import {attachFullscreen,syncPlaySurface} from './core/play-surface';
 import {AccountsClient} from './accounts/client';
 import {AccountsView} from './accounts/view';
 import {LeaderboardView} from './leaderboard/view';
-import {SCORED_GAMES} from './leaderboard/shared';
+import {SCORED_GAMES,MINESWEEPER_RANKINGS,scoredGame} from './leaderboard/shared';
 import {LeaderboardSidebar} from './leaderboard/sidebar';
 
 const icon=(name:string)=>{
@@ -49,7 +49,7 @@ let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
-const fillGames=new Set<GameId>(['globle','corn-clicker','slipline','quadfall','fivefold']);
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold']);
 
 function syncViewportLock(){
   const playing=!!activeId&&!document.body.classList.contains('study-active');
@@ -240,7 +240,7 @@ async function route(){
     fullscreenButton.innerHTML=icon(state.expanded?'exitfs':'fullscreen');
   },()=>{if(activeId&&!study.isOpen)openStudy();});
   if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
-  document.querySelector('#game-menu')!.addEventListener('click',openMenu);
+  document.querySelector('#game-menu')!.addEventListener('click',()=>{if(instance?.openMenu)instance.openMenu();else openMenu();});
   try {
     const loaded=await loadGame(id);if(token!==generation)return;
     const stage=document.querySelector<HTMLElement>('#game-stage')!;stage.replaceChildren();
@@ -249,10 +249,17 @@ async function route(){
       setScore(score){
         if(token!==generation)return;
         document.querySelector('#game-score strong')!.textContent=String(Math.floor(score));
-        const next=store.recordScore(id,score);
+        const next=id==='minesweeper'?0:store.recordScore(id,score);
         leaderboards.sync.queue(id,Math.floor(next));
         document.querySelector('#game-best strong')!.textContent=String(Math.floor(next));
       },
+      submitRecord(key,score){
+        if(token!==generation||id!=='minesweeper'||!MINESWEEPER_RANKINGS.includes(key as typeof MINESWEEPER_RANKINGS[number])||!Number.isInteger(score)||score<=0)return;
+        const best=Math.max(store.read<number>('best:'+key,0),score);store.write('best:'+key,best);leaderboards.sync.queue(key,best);
+      },
+      openRankings(key){if(token===generation&&scoredGame(key)){pausedForDialog=!paused;setPaused(true);leaderboards.open(key);}},
+      setPaused(value){if(token===generation)setPaused(value);},
+      openAppMenu(){if(token===generation)openMenu();},
       setLevel(level){if(token===generation)document.querySelector('#game-level')!.textContent=String(level);},
       setStatus(text){if(token===generation)document.querySelector('#game-status')!.textContent=text;},
       announce,
@@ -266,7 +273,7 @@ async function route(){
     if(!referenceGames.has(id)&&!fillGames.has(id))stopFitting=fitGameStage(stage,stage.parentElement!);
     document.querySelector('#pause-game')!.addEventListener('click',()=>setPaused(!paused));
     document.querySelector('#resume-game')!.addEventListener('click',()=>setPaused(false));
-    document.querySelector('#restart-game')!.addEventListener('click',()=>{instance?.restart();setPaused(false);save();});
+    document.querySelector('#restart-game')!.addEventListener('click',()=>{if(instance?.restart()===false)return;setPaused(false);save();});
     document.querySelector('#rules-game')!.addEventListener('click',()=>{
       pausedForDialog=!paused;setPaused(true);
       document.querySelector('#rules-text')!.textContent=loaded.rules;rulesDialog.showModal();
@@ -347,6 +354,7 @@ window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open)return;
+  if(event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;
@@ -382,7 +390,7 @@ accounts.onChange(()=>{
  const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;
  updateAccountMenu();
  if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
- if(identity){for(const game of SCORED_GAMES)leaderboards.sync.queue(game,Math.floor(store.highScore(game)));void leaderboards.sync.flush().catch(()=>{});}
+ if(identity){for(const game of [...SCORED_GAMES.filter(id=>id!=='minesweeper'),...MINESWEEPER_RANKINGS])leaderboards.sync.queue(game,Math.floor(store.read<number>('best:'+game,0)));void leaderboards.sync.flush().catch(()=>{});}
  if(changed&&initialized&&!accountView.root.open){if(study.isOpen)accountRoutePending=true;else void route();}
 });
 document.querySelector('#open-accounts')!.addEventListener('click',()=>{menu.close();accountView.open();});

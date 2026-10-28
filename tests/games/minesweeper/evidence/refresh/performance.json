@@ -1,0 +1,12 @@
+{
+  "browser": "154.0.8037.57",
+  "cpuThrottle": 4,
+  "viewport": "1366x768",
+  "synchronousActionMs": 18.199999999953434,
+  "actionToNextFrameMs": 21.79999999993015,
+  "medianFrameMs": 16.699999999953434,
+  "p95FrameMs": 26.900000000023283,
+  "tiles": 480,
+  "errors": [],
+  "note": "Headless shared Linux host with Chromium 4x CPU throttling, not a physical Chromebook/phone benchmark."
+}

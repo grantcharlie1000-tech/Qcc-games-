@@ -21,7 +21,7 @@ async function signIn(page:Page,username:string,signup=false){
  if(signup)await dialog.getByLabel('Confirm password',{exact:true}).fill('long enough password');
  await dialog.locator('form').getByRole('button',{name:signup?'Create account':'Log in',exact:true}).click();await expect(dialog).not.toBeVisible();await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
 }
-async function menu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();}
+async function menu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Account & app settings',exact:true}).click();}
 
 test('entry offers guest play before the Study chooser and remembers the choice',async({page,context})=>{
  await connect(context,false);await page.goto('/');const dialog=page.locator('#accounts-dialog');await expect(dialog).toBeVisible();
@@ -37,11 +37,14 @@ test('two browsers carry account scores and favourites, then logout restores gue
   await connect(a);await connect(b);await b.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:best:minesweeper','9999');localStorage.setItem('pocket-arcade:v1:favourites',JSON.stringify(['snake']));});const first=await a.newPage(),second=await b.newPage(),name=`Carry_${Date.now()}`;
   await first.goto('/#/game/minesweeper');await signIn(first,name,true);await expect(first.locator('.ms-tile').first()).toBeVisible();
   await first.getByRole('button',{name:'Favourite Minesweeper',exact:true}).click();await first.locator('.ms-tile[data-index="0"]').click();await expect(first.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
+  const field=await first.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:minesweeper')!).data);
+  for(let i=0;i<field.cells.length;i++)if(field.cells[i]!==-1&&await first.locator(`.ms-tile[data-index="${i}"]`).getAttribute('data-state')!=='open')await first.locator(`.ms-tile[data-index="${i}"]`).click();
+  await expect(first.locator('.ms-outcome')).toHaveText('Field cleared!');
   // Leaving saves the real game snapshot; the debounced account sync sends it without blocking play.
   await first.getByRole('link',{name:'Back to game library',exact:true}).click();
-  await expect.poll(async()=>Number((await pool.query(`SELECT count(*) AS n FROM account_saves WHERE key='best:minesweeper'`)).rows[0].n)).toBeGreaterThan(0);
+  await expect.poll(async()=>Number((await pool.query(`SELECT count(*) AS n FROM account_saves WHERE key='best:minesweeper-easy'`)).rows[0].n)).toBeGreaterThan(0);
   await second.goto('/#/game/minesweeper');await signIn(second,name);await expect(second.locator('#favourite-game')).toHaveAttribute('aria-pressed','true');await expect(second.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
-  await expect(second.locator('#game-best strong')).not.toHaveText('0');await expect(second.locator('#game-best strong')).not.toHaveText('9999');expect(await second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual(['minesweeper']);await second.locator('.lb-toggle').click();await expect(second.locator('.lb-sidebar tbody')).toContainText('· account');await second.getByRole('button',{name:'Hide top scores',exact:true}).click();await menu(second);await expect(second.locator('#menu')).toContainText(`Signed in as ${name}`);await expect(second.getByRole('button',{name:'Log in / Sign up',exact:true})).not.toBeVisible();
+  await expect(second.locator('.ms-result-detail')).toContainText('Best');expect(await second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual(['minesweeper']);await menu(second);await expect(second.locator('#menu')).toContainText(`Signed in as ${name}`);await expect(second.getByRole('button',{name:'Log in / Sign up',exact:true})).not.toBeVisible();
   await second.getByRole('button',{name:'Leaderboards',exact:true}).click();await expect(second.locator('#leaderboard-dialog .lb-you')).toContainText(name);await expect(second.locator('#leaderboard-dialog .lb-you')).toContainText('· account');await second.getByRole('button',{name:'Close leaderboards',exact:true}).click();
   await first.goto('/#/game/minesweeper');await first.locator('#favourite-game').click();await expect(first.locator('#favourite-game')).toHaveAttribute('aria-pressed','false');await first.getByRole('link',{name:'Back to game library',exact:true}).click();
   await expect.poll(async()=>((await pool.query("SELECT value FROM account_saves WHERE key='favourites' AND account_id=(SELECT id FROM accounts WHERE username=$1)",[name])).rows[0]?.value)).toEqual([]);
@@ -56,7 +59,7 @@ test('two browsers carry account scores and favourites, then logout restores gue
 
 test('logout in another tab preserves Study and returns to a fresh guest game',async({page,context})=>{
  await connect(context);await page.goto('/#/game/minesweeper');await signIn(page,`Tabs_${Date.now()}`,true);
- await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('#game-best strong')).not.toHaveText('0');
+ await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
  const reading=await context.newPage();await reading.goto('/#/game/minesweeper');await expect(reading.locator('.ms-tile').first()).toBeVisible();await reading.keyboard.press('Escape');
  await expect(reading.locator('#study-title')).toHaveText('Reading between the lines');
  await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page.locator('#menu')).not.toBeVisible();

@@ -48,7 +48,7 @@ test('late leaderboard response cannot overwrite the next game',async({page})=>{
  await expect(page.locator('.lb-sidebar')).not.toContainText('Old Snake');
 });
 
-for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','animal-stack','flappy-bird'])test(`${id} keeps its full layout with a collapsed rankings pill`,async({page})=>{
+for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','solitaire','block-fill','color-connect','ball-run','animal-stack','flappy-bird'])test(`${id} keeps its full layout with a collapsed rankings pill`,async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
  await page.goto('/#/game/'+id);await expect(page.locator('.lb-sidebar')).toBeVisible();
@@ -91,6 +91,13 @@ test('Corn Clicker ranks lifetime kernels and shows them in the game number form
  await expect(page.locator('#leaderboard-game')).toHaveValue('corn-clicker');
  await expect(page.locator('#leaderboard-dialog tbody')).toContainText('4.571 T');
  await expect.poll(()=>posted.find(p=>p.game==='corn-clicker')?.score??0).toBeGreaterThan(0);
+});
+
+test('Minesweeper uses separate difficulty rankings without a floating rail',async({page})=>{
+ await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
+ await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();await expect(page.locator('.lb-sidebar')).toHaveCount(0);
+ await page.locator('.ms-level').selectOption('intermediate');await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Rankings',exact:true}).click();
+ await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-medium');await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
 });
 
 test('Tetris exposes the leaderboard and rankings selector',async({page})=>{
