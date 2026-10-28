@@ -37,3 +37,13 @@ No local dedicated combinatorics, graph traversal or accessible DOM grid skill w
 Two attempted raw W3C Pointer Events branch URLs produced no usable excerpt; they were replaced with the MDN sources and are not evidence. Screen-reader hardware and WebKit are unavailable here. Parent performs independent integrated review; no additional specialist agent was spawned.
 
 `.agents/skills/requesting-code-review/SKILL.md` was read at completion. Its independent review goal is fulfilled by a review request to the parent integrator, rather than dispatching another agent: the explicit specialist assignment forbids additional agents. Parent receives the requirements, baseline, final commit and evidence paths. No independent review is claimed before their response.
+
+## 2026-10-27 improvement pass
+
+Read the project's `using-superpowers`, `brainstorming`, `test-driven-development`, `verification-before-completion`, game-development router, web-games and 2d-games guides. The user's detailed implementation brief supplied the design and authorized implementation; no additional approval gate was introduced. Read `animate` and `svg-skill`; used native CSS/WAAPI feedback and reused the existing SVG art. Read the cloud-environment runtime/networking skill for execution setup and Netlify database skill for migration conventions and local integration tests. No hosting/deployment action or production data change was made.
+
+Read `requesting-code-review` and dispatched an independent read-only reviewer as required by AGENTS.md. Their practice-save, pause-control and assistive-click findings were fixed and checked; a proposed account constraint issue was withdrawn after examining the later existing migrations. Final review reported no remaining critical/important issue. Verification details and limits are in TEST_RESULTS.md.
+
+## 2026-10-28 UI simplification
+
+Applied the same project UI/verification guidance to the user's request to remove clutter. Reused native dialog focus handling and the existing QCC actions; added optional menu/pause hooks to the game interface instead of replacing shared account or fullscreen logic. Independent reviewer checked native close-event ordering, pause/resume, Escape, focus, transitions and disposal in Chromium; no critical/important findings remained.

@@ -1,0 +1,34 @@
+Unit and database tests
+ Test Files  10 passed (10)
+      Tests  97 passed (97)
+   Start at  23:31:38
+   Duration  45.30s (transform 919ms, setup 0ms, collect 2.06s, tests 67.03s, environment 8ms, prepare 1.29s)
+
+
+Account and leaderboard browser integration
+  ✓  20 [chromium] › tests/leaderboard/online.spec.ts:67:1 › guests can read rankings and keep local progress while the sharing action opens account login (3.3s)
+  ✓  21 [chromium] › tests/leaderboard/online.spec.ts:77:1 › an expired session offers login recovery while scores remain local (5.8s)
+
+  21 passed (1.7m)
+
+Production browser tests
+  ✓  12 [chromium] › tests/games/minesweeper/play.spec.ts:107:1 › assistive activation, keyboard reveal and shared fullscreen remain dependable (3.4s)
+  ✓  13 [chromium] › tests/games/minesweeper/play.spec.ts:117:1 › reduced motion opens the field immediately without tile animations (1.4s)
+
+  13 passed (47.2s)
+
+Latest production build
+dist/assets/index-qcA9Hcae.js             1,286.89 kB │ gzip: 457.48 kB │ map: 1,790.53 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 8.43s
+Offline pack: 125 files, version 8e37b9b4027c
+
+Final practice checks after clearing stale hint text
+  ✓  1 [chromium] › tests/games/minesweeper/play.spec.ts:55:1 › practice explains a visible deduction, undo retains time and assistance survives restore (9.8s)
+  ✓  2 [chromium] › tests/games/minesweeper/play.spec.ts:63:1 › an ambiguous practice board explains that no safe move is established (1.3s)
+
+  2 passed (12.5s)

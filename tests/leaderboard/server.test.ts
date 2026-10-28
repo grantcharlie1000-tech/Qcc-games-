@@ -19,3 +19,15 @@ describe('shared leaderboard with real Postgres',()=>{
  it.each([{game:'globle',score:12},{game:'snake',score:-1},{game:'snake',score:1.5}])('rejects invalid authenticated submissions %j',async data=>{const token=await signup('Ada');expect((await submit(token,'Ada',data.score,data.game)).status).toBe(400);expect((await pool.query('SELECT * FROM arcade_scores')).rows).toHaveLength(0);});
  it('rejects missing sessions, foreign origins and oversized bodies',async()=>{expect((await submit('invalid','Ada',1)).status).toBe(401);const token=await signup('Ada'),headers={Authorization:`Bearer ${token}`,'Content-Type':'application/json',Origin:'https://foreign.test'};expect((await handle(new Request(endpoint,{method:'POST',headers,body:'{}'}))).status).toBe(403);delete (headers as any).Origin;expect((await handle(new Request(endpoint,{method:'POST',headers,body:'x'.repeat(3000)}))).status).toBe(413);});
 });
+
+it('isolates all three Minesweeper difficulty boards and ranks milliseconds',async()=>{
+ const token=await signup('MinesPlayer');
+ for(const [key,ms] of [['easy',12345],['medium',67890],['hard',123456]] as const){
+  const game='minesweeper-'+key,score=2147483647-ms;
+  expect((await submit(token,'ignored',score,game)).status).toBe(200);
+  await submit(token,'ignored',score-1000,game);
+  const board=await (await handle(new Request(endpoint+'?game='+game))).json();
+  expect(board.entries).toHaveLength(1);expect(board.entries[0].score).toBe(score);
+ }
+ expect((await (await handle(new Request(endpoint+'?game=minesweeper'))).json()).entries).toHaveLength(0);
+});

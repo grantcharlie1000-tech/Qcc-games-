@@ -1,3 +1,43 @@
+# Verification — 2026-10-28 UI cleanup
+
+The main surface now has one compact difficulty / Flags left / time / restart toolbar, the field, one status line and Reveal / Flag. The extra decorative heading, separate zoom row, repeated instructions and bottom settings disclosure were removed. The existing menu button opens a native dialog that groups game actions, preferences, practice and statistics; account/app settings remain accessible from there. Mobile initial tile sizes use the available width, with a 32 px minimum.
+
+- Targeted Vitest: **32 passed** (Minesweeper rules/practice, shared play-surface and leaderboard formatting).
+- Production Chromium: **18 passed** (all game/menu cases and difficulty ranking UI) against the latest production build served on port 4174.
+- Account/leaderboard Chromium integration: **11 passed**, including signed-in score publication, save/account transfer, guest isolation and dialog pause transitions.
+- `npm run build`: **exit 0**, including TypeScript, production bundling and offline manifest (125 files). Existing unrelated large-chunk warning remains.
+- `git diff --check`: **exit 0**.
+
+New tests first reproduced the crowded layout through the presence of the removed heading. They now verify a toolbar under 76 px, grouped options, generous button targets, pause/frozen clock on menu open, Escape/focus restoration, rules and app-menu transitions, and controlled scrolling at 1366×768, 390×844, 320×700 and 844×390. Existing gameplay/touch/restore/record tests were updated to use the simplified menu. Independent review additionally checked explicit paused state, native close-event ordering and disposal; no critical/important issue remained.
+
+Final production screenshots, opened and visually checked, are under `tests/games/minesweeper/evidence/cleanup/`: `game-1366.png`, `game-390.png`, `game-320.png`, `game-844.png` and matching `options-*.png`. Browser input uses Chromium, including trusted CDP touch. No new physical-device or WebKit validation is claimed.
+
+---
+
+# Verification — 2026-10-27 Minesweeper improvement
+
+All work was implemented in the existing codebase. No dependencies, production deploys or live database changes were introduced.
+
+- `npx vitest run tests/games/minesweeper tests/leaderboard tests/accounts tests/core/storage.test.ts`: **97 passed in 10 files**. Includes 19 existing gameplay invariants, six practice/record checks (including 60 seeded hint-safety scenarios), real local database difficulty isolation, faster-time ordering, account-only submission and three new account best-key round trips.
+- `npx playwright test tests/games/minesweeper tests/leaderboard/online.spec.ts tests/accounts/accounts.spec.ts --project=chromium`: **21 passed**. Checks real signed-in win publication, no publication for partial progress, two-browser record/save transfer, guest/logout isolation, offline cache and expired sessions as well as game controls.
+- Final production-browser check: **13 passed** (12 game cases + difficulty-ranking UI). Uses the built files served by `vite preview` on port 4174, including practice undo after a loss. A subsequent small fix clears stale hint text after a move/undo; its focused practice checks were rerun against a rebuilt production preview.
+- `npm run build`: **exit 0**, including TypeScript, Vite production bundling, movie registry validation and offline manifest generation (125 files). Vite reports the existing repository's large-chunk warning; Minesweeper itself is lazy loaded and adds approximately 8.5 KB gzip JS plus 3.2 KB gzip CSS.
+- `git diff --check`: **exit 0**.
+
+The game browser cases cover safe opening/flood behavior, correct/mismatched/incorrect chords, flag blocking, win without all flags, exact saved layout/reveal/flag restoration, terminal timer freeze, confirmed/cancelled restart, pause/background hiding and explicit resume, per-difficulty stats, explained/no-deduction hints, assistance surviving reload, first-reveal undo restoration, recovering a practice loss, trusted CDP touch tap/hold/pan/pinch/cancel, keyboard/assistive actions, reduced motion, first-play dismissal, sound default and shared fullscreen controls. Screenshot checks use 1366×768, 390×844 and 320×700 viewports; minimum tiles stay at 32 CSS px and large boards overflow inside the frame.
+
+Screenshots are in `tests/games/minesweeper/evidence/refresh/`: `desktop.png`, `easy-1366.png`, `easy-390.png`, `easy-320.png`, three corresponding Hard screenshots, `result-win.png` and `result-loss.png`. All are browser captures; the final Easy/Hard layout captures are from the production preview. They were opened and visually inspected.
+
+A Hard board with 480 tiles under Chromium 4× CPU throttling measured 18.2 ms for the synchronous reveal action and 21.8 ms to the next frame. Sixty sampled frame intervals had 16.7 ms median / 26.9 ms p95. See `evidence/refresh/performance.json`. These are headless shared Linux measurements, not physical Chromebook/phone performance claims.
+
+Independent read-only review found the practice-ready clock validation, pause overlay placement and assistive-click issues. They were fixed and verified. A proposed account database allowlist issue was withdrawn after review of the existing later migrations. The reviewer reported no remaining critical/important finding.
+
+WebKit's Playwright executable is not installed (`existsSync(webkit.executablePath())` was false). No physical iPhone, Chromebook or screen reader was available. Touch was tested with trusted Chromium CDP input; synthesized assistive clicks were checked separately. No WebKit/hardware validation is claimed. Rankings retain QCC's existing client-reported-score trust model rather than server replay verification.
+
+The initial old browser tests failed where expected because they referenced removed artwork/size controls and the old Flag toggle behavior; one failure exposed the real pause-overlay placement issue. They were replaced with equivalent and expanded behavior tests. The new practice unit suite initially failed with the not-yet-created module. The passing commands above and final production run are the evidence for this implementation, not the historical results below.
+
+---
+
 # Actual verification — 2026-10-19
 
 Worktree `/workspace/Qcc-games-/.worktrees/minesweeper`, isolated Vite server `npm run dev -- --port 4186` (Vite 7.3.7, `.vite-cache` owned/configured by parent). Commands were run here, not against the parent's port 4173.

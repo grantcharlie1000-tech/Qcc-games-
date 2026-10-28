@@ -89,10 +89,12 @@ test('legacy fit follows a growing Solitaire pile and preserves real card hits',
   expect(await page.evaluate(()=>scrollY)).toBe(0);
 });
 
-test('Minesweeper keeps its intentional board scrolling inside the fitted game',async({page})=>{
+test('Minesweeper keeps its intentional board scrolling inside the responsive game',async({page})=>{
   await page.setViewportSize({width:844,height:390});await page.goto('/#/game/minesweeper');
   await page.getByLabel('Difficulty',{exact:true}).selectOption('expert');
-  await page.getByLabel('Cell size',{exact:true}).selectOption('54');
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await page.getByRole('button',{name:'Zoom in',exact:true}).click();await page.getByRole('button',{name:'Zoom in',exact:true}).click();
+  await page.getByRole('button',{name:'Close game options',exact:true}).click();
   const first=page.locator('.ms-tile[data-index="0"]');await first.click({button:'right'});
   await expect(first).toHaveAttribute('data-state','flagged');
   await page.locator('.ms-scroll').hover();await page.mouse.wheel(2200,0);
@@ -105,12 +107,13 @@ test('Minesweeper keeps its intentional board scrolling inside the fitted game',
 });
 
 // Toolbar controls are outside the uniformly fitted stage.
-test('all legacy toolbar controls remain reachable at the supported 320px width',async({page})=>{
+test('the toolbar and game menu remain reachable at the supported 320px width',async({page})=>{
   await page.setViewportSize({width:320,height:568});await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms')).toBeVisible();
-  for(const control of await page.locator('.game-toolbar button,.game-toolbar a').all()){
+  for(const control of await page.locator('.game-toolbar button:visible,.game-toolbar a:visible').all()){
     const box=(await control.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(320);
     expect(await control.evaluate(element=>{const r=element.getBoundingClientRect();return element.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
   }
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('.ms-settings')).toBeVisible();
+  await page.getByRole('button',{name:'Account & app settings',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
 });

@@ -1,1 +1,104 @@
-.ms{--ms-ink:#173e3b;--ms-mint:#accdb3;width:100%;min-width:0;max-width:1040px;margin:auto;padding:12px 10px 10px;border:2px solid #345a51;border-radius:22px;background:linear-gradient(155deg,#29483f,#1b3431);box-shadow:inset 0 2px #91b49435,0 6px 0 #101f1e;color:#f8e7bd}.ms-heading{display:flex;align-items:center;justify-content:space-between;padding:0 8px 7px}.ms-heading h2{font-size:28px;line-height:1.1;margin:5px 0 8px;letter-spacing:.1px}.ms-eyebrow{font:700 10px/1.3 system-ui,sans-serif;letter-spacing:2px;color:#accbb2}.ms-heading>img{transform:rotate(10deg)}.ms-options{display:flex;gap:9px;margin:2px 0 12px}.ms-options label{display:flex;flex-direction:column;gap:5px;min-width:0;font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:1px;flex:1}.ms-options label:first-child{flex:1.8}.ms-options .game-select{width:100%;min-height:43px;padding:8px 6px;background:#16352f;border:1px solid #5b7c68;color:#f8ebd0;font-size:12px;letter-spacing:0;text-transform:none}.ms-instruments{display:flex;align-items:stretch;justify-content:space-between;gap:6px;padding:7px;border-radius:13px;background:#142f2b;border:1px solid #547462;box-shadow:inset 0 3px 0 #0d2424}.ms-instrument{min-width:0;padding:3px 5px;display:flex;flex-direction:column;gap:4px}.ms-instrument>span{font:700 9px system-ui,sans-serif;letter-spacing:.7px;color:#b5c7b0;white-space:nowrap}.ms-instrument strong{font:800 27px/1 Arcade,sans-serif;color:#ffe0a4;letter-spacing:1px}.ms-mode{min-width:76px;min-height:48px;padding:3px 4px;border:1px solid #63836e;border-radius:8px;background:#314f42;color:#f6e5c6;display:flex;align-items:center;flex-direction:column;font:700 10px system-ui,sans-serif}.ms-mode[aria-pressed=true]{background:#f7cf8f;color:#193f36;box-shadow:inset 0 0 0 2px #fff1c7}.ms-outcome{text-align:center;font-size:16px;margin:14px 0 12px;min-height:20px;color:#e3dbb8}.ms[data-status=won] .ms-outcome{color:#d6f5a9;font-size:24px}.ms[data-status=lost] .ms-outcome{color:#ffc2a4;font-size:24px}.ms-scroll{max-width:100%;min-width:0;overflow:auto;overscroll-behavior-x:contain;scrollbar-color:#9cbf9f #102a28;scrollbar-width:auto;border:2px solid #102e29;border-radius:11px;background:#173d35;box-shadow:0 3px #0c2524;touch-action:pan-x pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.ms-board{--ms-size:34px;display:flex;flex-direction:column;gap:2px;padding:5px;width:max-content;margin:0 auto;background:#507e6a}.ms-row{display:flex;gap:2px}.ms-row>[role=gridcell]{width:var(--ms-size);height:var(--ms-size)}.ms-tile{position:relative;display:flex;align-items:center;justify-content:center;width:var(--ms-size);height:var(--ms-size);min-width:0;border:0;border-radius:5px;padding:2px;background-color:#89b8a4;background-image:var(--ms-tile-art,none);background-position:center;background-size:100% 100%;box-shadow:inset 0 2px #d5e8ca,inset 0 -3px #23574f;color:var(--ms-ink);font:800 calc(var(--ms-size)*.62)/1 'Trebuchet MS',Arial,sans-serif;-webkit-user-select:none;user-select:none;touch-action:pan-x pan-y}.ms-tile:focus-visible{outline:3px solid #fff2b0;outline-offset:-3px;z-index:2}.ms-tile[data-state=open]{background:#d7dfbd;border:1px solid #c1cba6;box-shadow:inset 0 2px 2px #547e4930}.ms-tile.ms-n1{color:#175293}.ms-tile.ms-n2{color:#215c3a}.ms-tile.ms-n3{color:#a3352c}.ms-tile.ms-n4{color:#593b85}.ms-tile.ms-n5{color:#713d29}.ms-tile.ms-n6{color:#17646c}.ms-tile.ms-n7{color:#2b3437}.ms-tile.ms-n8{color:#4f4e40}.ms-tile>img{width:100%;height:100%;pointer-events:none}.ms-tile[data-state=mine]{background:#d9c3a6;box-shadow:inset 0 2px #93816c}.ms-tile.ms-exploded{background:#e38768;outline:2px solid #ffe4a6;outline-offset:-2px}.ms-cross{position:absolute;font:bold 36px Arial;color:#9d2428;text-shadow:0 1px #fff9}.ms-progress{margin:14px 4px 0;display:flex;align-items:center;gap:10px}.ms-safe{font:700 11px system-ui,sans-serif;color:#d0dabc;white-space:nowrap}.ms-progress>div{height:7px;flex:1;background:#15362c;border-radius:9px;overflow:hidden}.ms-progress i{display:block;height:100%;background:#e4c98b;border-radius:9px}.ms-instructions{font:12px/1.7 system-ui,sans-serif;text-align:center;color:#bad0b5;margin:11px 0 0}@media(min-width:620px){.ms{padding:18px}.ms-options{max-width:500px;margin-inline:auto}.ms-instruments{max-width:500px;margin:auto}.ms-heading{max-width:500px;margin:auto}.ms-outcome{margin:18px 0}.ms-progress{max-width:500px;margin-inline:auto}.ms-instrument>span{font-size:11px}}
+/* One quiet toolbar, a readable field, and secondary controls in a native dialog. */
+body.in-game .game-view[data-game-id=minesweeper]{padding:8px 12px max(12px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
+body.in-game .game-view[data-game-id=minesweeper] .game-toolbar{max-width:960px;flex-basis:48px}
+body.in-game .game-view[data-game-id=minesweeper] .game-toolbar h1{font-size:19px;color:#e4e9d9}
+body.in-game .game-view[data-game-id=minesweeper] .game-toolbar .icon-button{min-width:44px;min-height:44px}
+body.in-game .game-view[data-game-id=minesweeper] .game-metrics,
+body.in-game .game-view[data-game-id=minesweeper] #game-status,
+body.in-game .game-view[data-game-id=minesweeper] #pause-game{display:none}
+body.in-game .game-view[data-game-id=minesweeper] .stage-wrap{display:block}
+body.in-game .game-view[data-game-id=minesweeper] #game-stage{height:100%;max-height:none}
+body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#18231f}
+.ms{--ms-size:44px;--ms-ink:#27392e;display:flex;flex-direction:column;gap:10px;width:100%;height:100%;min-height:0;max-width:960px;margin:auto;color:#e9ead8;font-family:system-ui,sans-serif;overflow:auto;scrollbar-width:thin}
+.ms [hidden]{display:none!important}
+.ms button,.ms select{min-height:44px;border:1px solid transparent;border-radius:10px;background:#2e4035;color:#eceddd;font:600 13px/1.3 system-ui,sans-serif;padding:8px 12px}
+.ms button:disabled{cursor:default;opacity:.45}
+.ms button:active:not(:disabled){background:#445b46}
+.ms button:focus-visible,.ms select:focus-visible{outline:3px solid #ffe0a4;outline-offset:2px}
+.ms-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 90px 90px 44px;align-items:center;gap:16px;padding:8px 12px;background:#24332a;border-radius:12px;flex-shrink:0}
+.ms-field{display:flex;flex-direction:column;min-width:0;max-width:215px}
+.ms-field>span,.ms-instrument>span{font:600 10px/1.3 system-ui,sans-serif;color:#b6c2ad}
+.ms-field select{min-height:36px;padding:2px 20px 2px 0;width:100%;border:0;background:transparent;font-size:14px;font-weight:650}
+.ms-field select option{background:#26372c}
+.ms-instrument{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ms-instrument strong{font:800 22px/1 Arcade,sans-serif;color:#f6e6bf;font-variant-numeric:tabular-nums;letter-spacing:.5px}
+.ms .ms-tools #restart-game{padding:10px;width:44px;min-width:44px;min-height:44px;border:0;background:#354a39;color:#d8e3cd}
+.ms-tools svg{width:22px;height:22px}
+.ms-intro{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:0 4px;color:#c3cdb8;flex-shrink:0}
+.ms-intro p{font-size:12px;line-height:1.5;margin:0}
+.ms .ms-intro button{background:transparent;color:#d7e4c7;white-space:nowrap;padding-inline:8px}
+.ms-frame{position:relative;flex:1 1 auto;min-height:130px;display:flex;align-items:center;justify-content:center;border:1px solid #5a70514d;border-radius:18px;padding:8px;background:#101d17aa;box-shadow:inset 0 2px 8px #0003,0 1px #a5c69414;overflow:hidden}
+.ms-scroll{max-width:100%;max-height:100%;overflow:auto;overscroll-behavior:contain;scrollbar-color:#74876a #1c2b21;scrollbar-width:thin;border-radius:9px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;position:relative}
+.ms-board{display:flex;flex-direction:column;width:max-content;max-width:none;margin:auto;background:#cabd9b;padding:3px;border-radius:8px;overflow:hidden}.ms-row{display:flex}.ms-row>[role=gridcell]{width:var(--ms-size);height:var(--ms-size);flex-shrink:0}
+.ms .ms-tile{position:relative;display:flex;align-items:center;justify-content:center;width:var(--ms-size);height:var(--ms-size);min-height:0;min-width:0;border:0;border-radius:1px;padding:2px;background:#a7c28b;color:var(--ms-ink);box-shadow:inset 0 2px #d7e9b555,inset 0 -3px #47613b33;font:800 calc(var(--ms-size)*.56)/1 'Trebuchet MS',system-ui,sans-serif;touch-action:none;transition:filter 100ms ease,transform 100ms var(--ease-out)}
+.ms .ms-tile.ms-alternate{background:#97b57c}.ms .ms-tile:active{transform:translateY(1px);filter:brightness(.94);background:#89a86f;box-shadow:inset 0 2px 3px #344e3f44}.ms .ms-tile[data-state=open]{background:#e2d5b5;box-shadow:inset 0 1px 2px #584c2920}.ms .ms-tile.ms-alternate[data-state=open]{background:#d8caab}.ms .ms-tile[data-state=mine]{background:#d9cbae;box-shadow:inset 0 1px 2px #584c2920}.ms .ms-tile.ms-exploded{background:#e69379;box-shadow:inset 0 0 0 3px #903c31}.ms .ms-tile.ms-wrong{background:#e4b99b}.ms-tile img{width:76%;height:76%;pointer-events:none;user-select:none}.ms-cross{position:absolute;font:900 calc(var(--ms-size)*.95)/1 system-ui,sans-serif;color:#842e2a;text-shadow:0 1px #ffecd2}.ms .ms-n1[data-state=open]{color:#225e9c}.ms .ms-n2[data-state=open]{color:#346126}.ms .ms-n3[data-state=open]{color:#a33a29}.ms .ms-n4[data-state=open]{color:#643e94}.ms .ms-n5[data-state=open]{color:#813d25}.ms .ms-n6[data-state=open]{color:#07676c}.ms .ms-n7[data-state=open]{color:#2b352e}.ms .ms-n8[data-state=open]{color:#57503f}.ms .ms-tile:focus-visible{outline:3px solid #fff7d9;outline-offset:-4px;z-index:2;box-shadow:inset 0 0 0 6px #283e39}.ms .ms-tile.ms-hinted{outline:3px dashed #183f50;outline-offset:-5px;z-index:1}.ms[data-paused=true] .ms-board{visibility:hidden}.ms-underboard{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 3px;flex-shrink:0}
+.ms-outcome{font:12px/1.5 system-ui,sans-serif;color:#aebe9f;margin:0}
+.ms-badge{font-size:11px;color:#e8ce9c}
+.ms-hint-message{font:12px/1.5 system-ui,sans-serif;color:#e8d9af;margin:0;padding:8px 12px;border-left:2px solid #9dbb7c;background:#c9dc9f08;flex-shrink:0}
+.ms-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;padding-bottom:4px}
+.ms-mode-switch{display:flex;gap:3px;padding:3px;border-radius:12px;background:#24352b}
+.ms-mode-switch button{display:flex;gap:6px;align-items:center;justify-content:center;border:0;background:transparent;min-width:100px}
+.ms-mode-switch img{width:22px;height:22px}
+.ms-mode-switch button[aria-pressed=true]{color:#243323;background:#c0d1a1}
+.ms-instructions{margin:0;color:#9aad94;font:11px/1.5 system-ui,sans-serif;text-align:right}
+.ms-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:#31452d;flex-shrink:0}
+.ms-result strong{font:800 19px/1.2 Arcade,sans-serif;color:#e5efcc}
+.ms-result p{font-size:11px;line-height:1.5;margin:4px 0 0;color:#d0dcbc}
+.ms-result button{background:#d5dfb1;color:#243523;white-space:nowrap}
+.ms[data-status=lost] .ms-result{background:#44382d}
+.ms[data-status=lost] .ms-result strong{color:#f3d6b5}
+.ms[data-status=won] .ms-frame{border-color:#a8c77d;animation:ms-finish 250ms var(--ease-out)}
+.ms[data-status=lost] .ms-exploded img{animation:ms-finish 250ms var(--ease-out)}
+/* Native dialog supplies focus containment and makes the board inert behind it. */
+.ms .ms-settings{width:min(380px,calc(100% - 24px));max-height:calc(100dvh - 32px);padding:20px;border:1px solid #50634c;border-radius:18px;background:#233128;color:#e7ebdf;font:13px/1.5 system-ui,sans-serif;box-shadow:0 20px 70px #0007;scrollbar-width:thin}
+.ms-settings::backdrop{background:#0b130fe6}
+.ms:has(.ms-settings[open]) #pause-overlay{visibility:hidden}
+.ms-menu-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.ms-menu-heading h2{font:800 23px/1.2 Arcade,sans-serif;margin:0;color:#eceddb}
+.ms-menu-subtitle{font-size:12px;color:#aebb9f;margin:4px 0 0}
+.ms .ms-close{margin:-7px -7px 0 0;background:transparent;font-size:25px;font-weight:400;padding:0;width:44px;flex-shrink:0}
+.ms-menu-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.ms .ms-menu-actions button{justify-content:flex-start;text-align:left;padding:10px 12px;min-height:46px;background:#304334;border:0;font-size:12px;font-weight:600}
+.ms .ms-menu-actions .icon-button{display:flex;gap:8px;color:#eceddd;width:100%}
+.ms-menu-actions .icon-button::after{content:attr(aria-label)}
+.ms .ms-menu-actions #rules-game::after{content:'How to play'}
+.ms-menu-actions svg{width:18px;height:18px;flex-shrink:0}
+.ms-menu-section{border-top:1px solid #b0c29524;margin-top:16px;padding-top:12px}
+.ms-menu-section h3{font:650 12px/1.4 system-ui,sans-serif;color:#d7e2ca;margin:0 0 6px}
+.ms-setting-row{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:46px;color:#d0dbc6}
+.ms-setting-row strong{display:block;font-weight:650}
+.ms-setting-row small{display:block;color:#a7b69a;font-size:11px;margin-top:2px}
+.ms-setting-row input{width:22px;height:22px;margin:0 4px;accent-color:#bbd39a;flex-shrink:0}
+.ms-zoom{display:flex;align-items:center;gap:2px}
+.ms .ms-zoom button{width:44px;padding:4px;min-width:44px;background:transparent;font-size:21px;font-weight:400}
+.ms-scale{width:42px;text-align:center;font-size:12px;color:#c3d3b4}
+.ms-practice-tools{display:flex;gap:8px;margin-top:10px}
+.ms-practice-tools button{flex:1}
+.ms-statistics{font-size:12px;line-height:1.8;margin:0;color:#b4c5a8}
+.ms-menu-footer{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.ms .ms-app-settings{background:transparent;color:#c1d2b2;font-size:12px}
+.ms .ms-return{background:#c0d1a1;color:#243323;font-weight:700}
+@keyframes ms-finish{from{opacity:.65;transform:scale(.99)}to{opacity:1;transform:scale(1)}}
+@media(hover:hover) and (pointer:fine){.ms .ms-tile[data-state=hidden]:hover,.ms .ms-tile[data-state=flagged]:hover{filter:brightness(1.12)}.ms button:not(.ms-tile):hover{filter:brightness(1.1)}}
+@media(max-width:600px){
+ body.in-game .game-view[data-game-id=minesweeper]{padding-inline:8px}
+ .ms{gap:8px}
+ .ms-toolbar{grid-template-columns:minmax(0,1fr) 50px 64px 44px;gap:6px;padding:8px 10px}
+ .ms-field select{font-size:12px}
+ .ms-field>span,.ms-instrument>span{font-size:9px}
+ .ms-instrument strong{font-size:20px}
+ .ms-frame{padding:4px;border-radius:12px}
+ .ms-bottom{display:block}
+ .ms-mode-switch{width:100%}
+ .ms-mode-switch button{flex:1;min-height:46px}
+ .ms-instructions{display:none}
+ .ms-outcome{font-size:11px}
+ .ms-badge{font-size:10px}
+ .ms-result{padding:10px}
+ .ms-result strong{font-size:16px}
+ .ms-result button{padding-inline:10px}
+ .ms .ms-settings{margin:auto auto max(12px,env(safe-area-inset-bottom));padding:18px}
+}
+@media(max-height:500px){.ms-intro{display:none}.ms{gap:5px}.ms .ms-settings{max-height:calc(100dvh - 16px);margin:8px auto}}
+@media(prefers-reduced-motion:reduce){.ms *{animation:none!important;transition:none!important}}
+.reduce-motion .ms *{animation:none!important;transition:none!important}
