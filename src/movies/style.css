@@ -141,3 +141,12 @@ body.movies-active.study-active{overflow:auto}.movies-shelf-head>span{margin-lef
 .movies-progress{position:absolute;left:0;right:0;bottom:0;z-index:3;height:4px;background:#ffffff40}
 .movies-progress>span{display:block;height:100%;background:var(--c-rose)}
 .movies-view .movies-rails-status{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 20px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-xl);background:#18181b99;color:var(--c-300);font-size:13px;line-height:1.5}
+
+/* Section and My list title blocks: the heading sits above one line of copy and the count, which wraps on a phone. */
+.movies-view .movies-page-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px}
+.movies-view .movies-page-head>.movies-page-title{flex:0 0 100%;max-width:none;margin:40px 0 6px!important;padding:0!important}
+.movies-view .movies-page-head>p{flex:1 1 auto;min-width:0;margin:0;color:var(--c-400);font-size:14px;line-height:1.5}
+.movies-view .movies-page-head>.ui-count{flex:0 0 auto}
+/* An empty My list or an empty search keeps its message close to the filters rather than a full screen down. */
+.movies-view .movies-browse .movies-empty{min-height:0;max-width:none;margin:0;padding:56px 8px}
+@media (min-width:640px){.movies-view .movies-page-head>.movies-page-title{margin-top:56px!important}}

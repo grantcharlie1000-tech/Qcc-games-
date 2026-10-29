@@ -332,7 +332,8 @@ test('My list page shows a saved title that only its stored snapshot holds',asyn
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/list');
  await expect(page.getByRole('link',{name:'Details for Snapshot Only'})).toBeVisible();
- await expect(page.getByText('Make it a movie night.')).toHaveCount(0);
+ // The empty-list copy is replaced by the Task 13 copy, so it is the one that must stay away from a list with titles.
+ await expect(page.getByText('Your list is empty')).toHaveCount(0);
 });
 
 // Ruling 1: the hero list button names its action in its label, has no aria-pressed, and shows at every width.
@@ -381,6 +382,7 @@ test('a card whose image fails shows its placeholder title',async({page})=>{
 
 // A poster that failed stays failed: a re-render shows its placeholder without asking for the image again.
 test('a poster that failed is not rendered as an image again',async({page})=>{
+ await railsDown(page);
  await page.route('https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',route=>route.fulfill({status:404,headers:{'cache-control':'no-store'},body:'Unavailable'}));
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
@@ -496,6 +498,7 @@ test('Retry search keeps keyboard focus on the search status line',async({page})
 
 // Going back from a title returns focus to the card in the rail it was opened from, even when another rail shows the same title.
 test('going back from a title returns focus to the rail it was opened from',async({page})=>{
+ await railsDown(page);
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
  const card=page.locator('[data-rail="sci-fi-fantasy"] [data-title="movie-157336"]');
@@ -555,4 +558,313 @@ test('a late rails response keeps focus on the card that had it',async({page})=>
  release();
  await expect(page.getByRole('heading',{name:'Trending now',exact:true})).toBeVisible();
  await expect(page.locator('[data-rail] [data-title="movie-157336"]')).toBeFocused();
+});
+
+// Section pages and My list (Task 13). Each fixture answers by the request's own parameters, so a test states what the server returns.
+const seedMovies=(page:Page,state:unknown)=>page.addInitScript(value=>{
+ if(window!==window.top)return;
+ localStorage.setItem('qcc:movies:v1',JSON.stringify(value));
+},state);
+const savedFilm={list:['movie-157336'],progress:{},meta:{},titles:{}};
+
+test('TV Shows shows TV rails and asks the server for a genre',async({page})=>{
+ const genreRequests:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const url=route.request().url(),params=new URL(url).searchParams;
+  if(params.get('rails')==='tv')return route.fulfill({json:{rails:[{id:'fixture-shows',title:'Fixture TV rail',titles:[fixtureTitle('tv-90201','Fixture Series','tv')]}]}});
+  if(params.get('genre')==='Drama'){genreRequests.push(url);return route.fulfill({json:{titles:[{...fixtureTitle('tv-90202','Remote Drama Series','tv'),genres:['Drama']}],page:1,totalPages:1,totalResults:1}});}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'TV Shows',exact:true,level:1})).toBeVisible();
+ await expect(page.locator('.movies-page-head p')).toHaveText('Series to start tonight and seasons to catch up on.');
+ await expect(page.getByRole('heading',{name:'Fixture TV rail',exact:true})).toBeVisible();
+ await page.locator('#movies-genre').selectOption('Drama');
+ await expect(page.getByRole('link',{name:'Details for Remote Drama Series'})).toBeVisible();
+ // The bundled series that is a drama stays in the grid beside the server's title.
+ await expect(page.getByRole('link',{name:'Details for Sherlock'})).toBeVisible();
+ expect(genreRequests).toHaveLength(1);
+ expect(new URL(genreRequests[0]).searchParams.get('type')).toBe('tv');
+});
+
+test('My list keeps a remote title after a reload',async({page})=>{
+ const remote=fixtureTitle('tv-778811','Remote Expedition','tv');
+ const detail={...remote,seasons:[{number:1,name:'Season 1',episodes:[{number:1,name:'First Contact',overview:'A first episode.'}]}]};
+ await page.route('**/api/movies?*',route=>{
+  const params=new URL(route.request().url()).searchParams;
+  if(params.has('id'))return route.fulfill({json:{title:detail}});
+  if(params.has('q'))return route.fulfill({json:{titles:[remote],page:1,totalPages:1,totalResults:1}});
+  // Every other request, including the reload's, is answered with 503.
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('remote expedition');
+ await page.getByRole('link',{name:'Details for Remote Expedition'}).click();
+ await page.getByRole('button',{name:'Add to my list'}).click();
+ await expect(page.getByRole('button',{name:'In my list'})).toBeVisible();
+ await page.goto('/#/movies/list');
+ await page.reload();
+ await expect(page.getByRole('link',{name:'Details for Remote Expedition'})).toBeVisible();
+});
+
+test('an empty list explains how to add titles',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/list');
+ await expect(page.getByRole('heading',{name:'Your list is empty',exact:true})).toBeVisible();
+ await expect(page.getByText('Open a title and choose Add to my list to save it here.',{exact:true})).toBeVisible();
+ const explore=page.getByRole('button',{name:'Explore all titles',exact:true});
+ await expect(explore).toBeVisible();
+ await explore.click();
+ await expect(page).toHaveURL(/#\/movies$/);
+ await expect(page.locator('.movies-hero')).toBeVisible();
+});
+
+test('Movies shows its own rails from rails=movie',async({page})=>{
+ const requests:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const url=route.request().url();
+  if(new URL(url).searchParams.get('rails')==='movie'){requests.push(url);return route.fulfill({json:{rails:[{id:'fixture-picks',title:'Fixture movie rail',titles:[fixtureTitle('movie-90301','Fixture Movie Pick')]}]}});}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Fixture movie rail',exact:true})).toBeVisible();
+ await expect(page.locator('.movies-results-grid')).toHaveCount(0);
+ await expect(page.locator('.movies-rails-status')).toHaveCount(0);
+ expect(requests).toHaveLength(1);
+});
+
+test('Movies falls back to its bundled movies with a retry line when its rails fail',async({page})=>{
+ let fail=true;
+ const requests:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const url=route.request().url();
+  if(new URL(url).searchParams.get('rails')==='movie'){
+   requests.push(url);
+   return fail?route.fulfill({status:503,json:{error:'metadata_unavailable'}}):route.fulfill({json:{rails:[{id:'fixture-picks',title:'Fixture movie rail',titles:[fixtureTitle('movie-90301','Fixture Movie Pick')]}]}});
+  }
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ const status=page.locator('.movies-rails-status');
+ await expect(status).toContainText('Showing the starter selection. The full catalog is unavailable right now.');
+ // The six bundled films, in one grid.
+ await expect(page.locator('.movies-results-grid')).toHaveCount(1);
+ await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
+ fail=false;
+ await status.getByRole('button',{name:'Retry',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Fixture movie rail',exact:true})).toBeVisible();
+ expect(requests).toHaveLength(2);
+});
+
+test('section rails keep their ids unique and show their names as text',async({page})=>{
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.get('rails')==='movie')return route.fulfill({json:{rails:[
+   {id:'popular',title:'<b>Bold</b> rail',titles:[fixtureTitle('movie-90701','Rail One')]},
+   {id:'popular',title:'Second rail',titles:[fixtureTitle('movie-90702','Rail Two')]}
+  ]}});
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await expect(page.getByRole('heading',{name:'Second rail',exact:true})).toBeVisible();
+ await expect(page.locator('[data-rail="popular"]')).toHaveCount(1);
+ await expect(page.locator('[data-rail="popular-2"]')).toHaveCount(1);
+ const first=page.locator('.movies-shelf h2').first();
+ await expect(first).toHaveText('<b>Bold</b> rail');
+ expect(await first.evaluate(h=>h.querySelector('b'))).toBeNull();
+});
+
+test('a title from a section rail can be saved and survives a reload',async({page})=>{
+ const railTitle=fixtureTitle('tv-90801','Rail Saved Series','tv');
+ await page.route('**/api/movies?*',route=>{
+  const params=new URL(route.request().url()).searchParams;
+  if(params.get('rails')==='tv')return route.fulfill({json:{rails:[{id:'shows',title:'Shows rail',titles:[railTitle]}]}});
+  if(params.has('id'))return route.fulfill({json:{title:{...railTitle,seasons:[]}}});
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/tv');
+ await page.getByRole('link',{name:'Details for Rail Saved Series'}).click();
+ await expect(page.locator('.movies-detail h1')).toHaveText('Rail Saved Series');
+ await page.getByRole('button',{name:'Add to my list'}).click();
+ await page.goto('/#/movies/list');
+ await page.reload();
+ await expect(page.getByRole('link',{name:'Details for Rail Saved Series'})).toBeVisible();
+});
+
+test('a hero title from the API rails survives a reload in My list',async({page})=>{
+ const hero=fixtureTitle('movie-90501','Fixture Hero');
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.get('rails')==='home')return route.fulfill({json:{rails:[{id:'hero-rail',title:'Hero rail',titles:[hero]}]}});
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const list=page.locator('.movies-hero .movies-hero-list');
+ await expect(list).toHaveAccessibleName('Add Fixture Hero to my list');
+ await list.click();
+ await expect(list).toHaveAccessibleName('Remove Fixture Hero from my list');
+ await page.goto('/#/movies/list');
+ await page.reload();
+ await expect(page.getByRole('link',{name:'Details for Fixture Hero'})).toBeVisible();
+});
+
+test('a genre on the Movies page asks the server and keeps the local matches',async({page})=>{
+ const requests:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const url=route.request().url();
+  if(new URL(url).searchParams.get('genre')==='Science Fiction'){requests.push(url);return route.fulfill({json:{titles:[{...fixtureTitle('movie-90401','Remote Science Film'),genres:['Science Fiction']}],page:1,totalPages:1,totalResults:1}});}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await expect(page.getByRole('link',{name:'Details for Remote Science Film'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Interstellar'})).toBeVisible();
+ expect(requests).toHaveLength(1);
+ expect(new URL(requests[0]).searchParams.get('type')).toBe('movie');
+ expect(new URL(requests[0]).searchParams.get('genre')).toBe('Science Fiction');
+});
+
+test('a failed genre request keeps the local matches and offers a retry',async({page})=>{
+ let fail=true;
+ const requests:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const url=route.request().url();
+  if(new URL(url).searchParams.get('genre')==='Science Fiction'){
+   requests.push(url);
+   return fail?route.fulfill({status:503,json:{error:'metadata_unavailable'}}):route.fulfill({json:{titles:[{...fixtureTitle('movie-90402','Retried Science Film'),genres:['Science Fiction']}],page:1,totalPages:1,totalResults:1}});
+  }
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await expect(page.getByRole('link',{name:'Details for Interstellar'})).toBeVisible();
+ const status=page.locator('.movies-catalog-status');
+ await expect(status).toContainText('The titles included with this site are still shown.');
+ fail=false;
+ await status.getByRole('button',{name:'Retry',exact:true}).click();
+ await expect(page.getByRole('link',{name:'Details for Retried Science Film'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Interstellar'})).toBeVisible();
+ expect(requests).toHaveLength(2);
+});
+
+test('a later page of a genre uses the existing pagination',async({page})=>{
+ const pages:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const params=new URL(route.request().url()).searchParams;
+  if(params.get('genre')==='Science Fiction'){
+   const number=Number(params.get('page')||1);
+   pages.push(String(number));
+   return route.fulfill({json:{titles:[{...fixtureTitle(`movie-9050${number}`,`Genre Page ${number}`),genres:['Science Fiction']}],page:number,totalPages:2,totalResults:2}});
+  }
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await expect(page.locator('.movies-pagination')).toContainText('Page 1 of 2');
+ await page.locator('.movies-pagination').getByRole('button',{name:'Next',exact:true}).click();
+ await expect(page.getByRole('link',{name:'Details for Genre Page 2'})).toBeVisible();
+ await expect(page.locator('.movies-pagination')).toContainText('Page 2 of 2');
+ expect(pages).toEqual(['1','2']);
+});
+
+test('a genre response that arrives after a title opened updates state only',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let sawGenre!:()=>void;
+ const genreSeen=new Promise<void>(resolve=>{sawGenre=resolve;});
+ await page.route('**/api/movies?*',async route=>{
+  const params=new URL(route.request().url()).searchParams;
+  if(params.get('genre')==='Science Fiction'){sawGenre();await held;return route.fulfill({json:{titles:[{...fixtureTitle('movie-90601','Late Genre Film'),genres:['Science Fiction']}],page:1,totalPages:1,totalResults:1}});}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await genreSeen;
+ await page.getByRole('link',{name:'Details for Interstellar'}).click();
+ await expect(page.locator('.movies-detail h1')).toHaveText('Interstellar');
+ release();
+ await expect(page.locator('.movies-detail h1')).toHaveText('Interstellar');
+ await expect(page).toHaveURL(/#\/movies\/movie-157336$/);
+ // Back in history returns to the section with its genre, and the titles that arrived meanwhile are there.
+ await page.goBack();
+ await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);
+ await expect(page.getByRole('link',{name:'Details for Late Genre Film'})).toBeVisible();
+});
+
+test('My list emptied by a genre filter shows No titles found, not the empty-list copy',async({page})=>{
+ await seedMovies(page,savedFilm);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/list');
+ await expect(page.getByRole('link',{name:'Details for Interstellar'})).toBeVisible();
+ await page.locator('#movies-genre').selectOption('Documentary');
+ await expect(page.getByRole('heading',{name:'No titles found',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Your list is empty'})).toHaveCount(0);
+});
+
+test('My list searches its saved titles only, without a full-catalog request',async({page})=>{
+ const queries:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const params=new URL(route.request().url()).searchParams;
+  if(params.has('q'))queries.push(params.get('q')!);
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await seedMovies(page,savedFilm);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/list');
+ await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('arrival');
+ await expect(page.getByRole('heading',{name:'No titles found',exact:true})).toBeVisible();
+ await expect(page.locator('.movies-catalog-status')).toHaveCount(0);
+ expect(queries).toEqual([]);
+});
+
+test('My list shows its title block with the saved count',async({page})=>{
+ await seedMovies(page,{list:['movie-157336','movie-329865'],progress:{},meta:{},titles:{}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/list');
+ const head=page.locator('.movies-page-head');
+ await expect(head.getByRole('heading',{name:'My list',exact:true,level:1})).toBeVisible();
+ await expect(head.locator('p')).toHaveText('Titles you saved on this device.');
+ await expect(head.locator('.ui-count')).toHaveText('2 titles');
+});
+
+// Ruling 6: Study is in the header and in the island. A focus restored after a render stays in its own bar, so the island tab keeps focus.
+for(const width of [390,1440])test(`the island's Study tab keeps focus when a late rails response renders at ${width}px`,async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/movies?rails=*',async route=>{await held;return route.fulfill({status:503,json:{error:'catalog_not_configured'}});});
+ await page.setViewportSize({width,height:844});
+ await page.goto('/#/movies');
+ const study=page.locator('.movies-mobile-nav [data-action="study"]');
+ await expect(study).toBeVisible();
+ await study.focus();
+ await expect(study).toBeFocused();
+ release();
+ await expect(page.locator('.movies-rails-status')).toBeVisible();
+ await expect(study).toBeFocused();
+});
+
+// Ruling 6: Safari does not focus a link on click, so the title and rail captured by the click must still bring focus back to the card.
+test('going back to browsing returns focus to a card that a press opened without focusing it',async({page})=>{
+ await railsDown(page);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ // A cancelled mousedown leaves focus where it was, as a press in Safari does for a link.
+ await page.evaluate(()=>document.addEventListener('mousedown',event=>event.preventDefault(),{capture:true}));
+ const card=page.locator('[data-rail="sci-fi-fantasy"] [data-title="movie-157336"]');
+ await card.click();
+ await expect(page).toHaveURL(/#\/movies\/movie-157336$/);
+ await page.getByRole('link',{name:'← Back to browsing',exact:true}).click();
+ await expect(page).toHaveURL(/#\/movies$/);
+ await expect(card).toBeFocused();
 });
