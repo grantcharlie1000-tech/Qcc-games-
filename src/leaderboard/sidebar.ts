@@ -1,7 +1,7 @@
 import * as store from '../core/storage';
 import type {GameId} from '../core/types';
 import type {LeaderboardSync} from './client';
-import {scoredGame,type Board} from './shared';
+import {scoredGame,type Board,type LeaderboardKey} from './shared';
 import {formatScore} from './format';
 const trophy='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v2h3v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 14.9V18h3v3H8v-3h3v-3.1A5 5 0 0 1 8.3 12H8a4 4 0 0 1-4-4V5h3zm0 4H6v1a2 2 0 0 0 1 1.7zm10 0v2.7A2 2 0 0 0 18 8V7z" fill="currentColor"/></svg>';
 /**
@@ -12,7 +12,9 @@ export class LeaderboardSidebar {
  readonly root=document.createElement('aside');
  private readonly wide=matchMedia('(min-width: 720px)');
  private disposed=false;private request=0;private busy=false;private refreshPending=false;private lastLoaded=0;private unsubscribe:()=>void;
- constructor(private game:GameId,title:string,private sync:LeaderboardSync,open:()=>void){
+ private readonly game:LeaderboardKey;
+ constructor(game:GameId,title:string,private sync:LeaderboardSync,open:()=>void){
+  this.game=game==='minesweeper'?'minesweeper-score':game;
   this.root.className='lb-sidebar';this.root.setAttribute('aria-label',`${title} leaderboard`);
   this.root.innerHTML=`<button class="lb-toggle" type="button" aria-expanded="false" aria-controls="lb-panel">${trophy}<span>Top scores</span></button>
    <div class="lb-panel" id="lb-panel" hidden>
@@ -71,5 +73,5 @@ export class LeaderboardSidebar {
   finally{this.busy=false;if(this.refreshPending){this.refreshPending=false;void this.refresh();}}
  }
  dispose(){this.unsubscribe();document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('offline',this.visibility);this.disposed=true;this.request++;this.wide.removeEventListener('change',this.visibility);window.removeEventListener('online',this.online);this.root.remove();}
- static supports(game:GameId){return scoredGame(game)&&game!=='pool'&&game!=='minesweeper';}
+ static supports(game:GameId){return scoredGame(game)&&game!=='pool';}
 }

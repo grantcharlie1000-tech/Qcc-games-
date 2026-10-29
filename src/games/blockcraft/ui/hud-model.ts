@@ -1,6 +1,7 @@
 // HUD model: pure functions (no DOM) that turn game state into what the HUD draws, with the numbers of the
 // vanilla Java Edition 1.20/1.21 in-game GUI. Coordinates are GUI pixels relative to the bottom centre of the
 // screen (the vanilla hotbar is 182 px wide, centred; hearts start at its left edge, shanks at its right edge).
+import {mulberry32} from '../../../core/random';
 import {CS} from '../engine/constants';
 import {itemDef,type ItemStack} from '../data/items';
 import {biomeDef} from '../data/biomes';
@@ -383,6 +384,5 @@ export function debugRightLines(game:Game,width:number,height:number,guiScale:nu
 
 /** Per-tick deterministic random (the GUI reseeds with tickCount * 312871 every frame, so jitter changes per tick). */
 export function tickRandom(tick:number):()=>number{
-  let s=(Math.imul(tick|0,312871)^0x9e3779b9)>>>0;
-  return()=>{s=(s+0x6d2b79f5)>>>0;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};
+  return mulberry32((Math.imul(tick|0,312871)^0x9e3779b9)>>>0);
 }

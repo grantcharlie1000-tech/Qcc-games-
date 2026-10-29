@@ -38,9 +38,11 @@ test('correct chord, win without all flags, terminal timer and per-difficulty re
  for(const j of neighbors(b,i))if(b.cells[j]===-1)await cell(page,j).click({button:'right'});
  await cell(page,i).click();for(const j of neighbors(b,i))if(b.cells[j]!==-1)await expect(cell(page,j)).toHaveAttribute('data-state','open');
  await win(page,b);await expect(page.locator('.ms-outcome')).toHaveText('Field cleared!');await expect(page.getByRole('region',{name:'Game result'})).toBeVisible();
+ await expect(page.locator('.ms-result-title')).toContainText('Score ');await expect(page.locator('.ms-result-detail')).toContainText('Easy 0 + speed');await expect(page.locator('.ms-result-detail')).toContainText('Best score');await expect(page.locator('.ms-time')).toBeVisible();
  const result=await saved(page);expect(result.stats.beginner.played).toBe(1);expect(result.stats.beginner.wins).toBe(1);expect(result.flags.filter(Boolean).length).toBeLessThan(10);
  expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:minesweeper-easy'))).not.toBeNull();
  const elapsed=result.elapsedMs;await page.waitForTimeout(1100);expect((await saved(page)).elapsedMs).toBe(elapsed);
+ await page.getByRole('button',{name:'Score rankings'}).click();await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-score');await page.getByRole('button',{name:'Close leaderboards'}).click();
  await page.getByRole('button',{name:'New game',exact:true}).click();await expect(page.locator('.ms-time')).toHaveText('00:00');
 });
 
@@ -72,11 +74,11 @@ for(const viewport of [{width:1366,height:768},{width:390,height:844},{width:320
  await page.setViewportSize(viewport);await fixture(page);await cell(page,40).click();await page.waitForTimeout(350);
  expect(await cell(page,40).evaluate(e=>e.getBoundingClientRect().width)).toBeGreaterThanOrEqual(32);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.screenshot({path:`tests/games/minesweeper/evidence/refresh/easy-${viewport.width}.png`});
+
  page.once('dialog',d=>d.accept());await page.locator('.ms-level').selectOption('expert');await expect(page.locator('.ms-tile')).toHaveCount(480);
  const before=await cell(page,0).boundingBox();await settings(page);await page.getByRole('button',{name:'Zoom in',exact:true}).click();await closeSettings(page);expect((await cell(page,0).boundingBox())!.width).toBeGreaterThan(before!.width);
  expect(await page.locator('.ms-scroll').evaluate(el=>el.scrollWidth>el.clientWidth)).toBe(true);
- await page.screenshot({path:`tests/games/minesweeper/evidence/refresh/hard-${viewport.width}.png`});
+
  await page.locator('.ms-level').selectOption('intermediate');await expect(page.locator('.ms-tile')).toHaveCount(256);
 });
 
@@ -117,4 +119,15 @@ test('assistive activation, keyboard reveal and shared fullscreen remain dependa
 
 test('reduced motion opens the field immediately without tile animations',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});await fixture(page);await cell(page,40).click();expect(await page.locator('.ms-board').evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);await expect(cell(page,40)).toHaveAttribute('data-state','open');
+});
+
+test('timer remains visible and advances across phone, landscape, desktop and full screen',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await fixture(page);await cell(page,40).click();
+ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}]){
+  await page.setViewportSize(viewport);const timer=page.locator('.ms-time');await expect(timer).toBeVisible();
+  const box=await timer.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(viewport.width);
+  const before=await timer.textContent();await page.waitForTimeout(1200);await expect(timer).not.toHaveText(before!);
+ }
+ await settings(page);await page.getByRole('button',{name:'Enter full screen'}).click();await expect(page.locator('.ms-time')).toBeVisible();
+ const before=await page.locator('.ms-time').textContent();await page.waitForTimeout(1200);await expect(page.locator('.ms-time')).not.toHaveText(before!);
 });

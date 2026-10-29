@@ -1,3 +1,5 @@
+import {mulberry32} from '../../core/random';
+
 export interface Card {id:number;up:boolean}
 export interface State {seed:number;moves:number;recycles:number;stock:number[];waste:number[];foundations:number[][];tableau:Card[][]}
 export interface Source {kind:'waste'|'tableau'|'foundation';pile:number;index:number}
@@ -10,8 +12,7 @@ export const red=(id:number)=>suit(id)===1||suit(id)===3;
 const clone=(s:State):State=>structuredClone(s);
 const integer=(n:unknown,max=Number.MAX_SAFE_INTEGER):n is number=>Number.isSafeInteger(n)&&Number(n)>=0&&Number(n)<=max;
 export function deal(seed:number):State {
- let rng=seed>>>0;
- const random=()=>{rng=(rng+0x6D2B79F5)>>>0;let t=rng;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296;};
+ const random=mulberry32(seed);
  const deck=Array.from({length:52},(_,i)=>i);
  for(let i=51;i>0;i--){const j=Math.floor(random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
  const tableau:Card[][]=Array.from({length:7},()=>[]);
