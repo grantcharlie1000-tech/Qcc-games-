@@ -6,10 +6,10 @@ import type {MovieRoute,Title} from './model';
 export const FRAME_ORIGIN='https://framextv.cc';
 export const FRAME_MESSAGE_ORIGINS=new Set([FRAME_ORIGIN,'https://framextv.xyz']);
 export const STREAM_PROVIDERS=[
- {id:'framextv',name:'FrameXTV',origin:FRAME_ORIGIN,resume:'seek'},
- {id:'vidlink',name:'VidLink',origin:'https://vidlink.pro',resume:'startAt'},
- {id:'vixsrc',name:'VixSrc',origin:'https://vixsrc.to',resume:'startAt'},
- {id:'vidsrc',name:'VidSrc',origin:'https://vidsrc.to',resume:'none'},
+ {id:'framextv',name:'FrameXTV',origin:FRAME_ORIGIN,resume:'seek',signals:'ready'},
+ {id:'vidlink',name:'VidLink',origin:'https://vidlink.pro',resume:'startAt',signals:'playback'},
+ {id:'vixsrc',name:'VixSrc',origin:'https://vixsrc.to',resume:'startAt',signals:'playback'},
+ {id:'vidsrc',name:'VidSrc',origin:'https://vidsrc.to',resume:'none',signals:'none'},
 ] as const;
 export type StreamProviderId=typeof STREAM_PROVIDERS[number]['id'];
 export const streamProvider=(id:StreamProviderId)=>STREAM_PROVIDERS.find(provider=>provider.id===id)!;
