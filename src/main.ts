@@ -26,7 +26,7 @@ const icon=(name:string)=>{
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML=`<header class="topbar"><div class="site-brand">${mauriMark}<span>Mauri Study Notes</span></div><button class="hamburger icon-button" aria-label="Open menu">${icon('menu')}</button><div class="count-pill" aria-label="${games.length} games">${icon('grid')}<span><strong>${games.length}</strong><small>Games</small></span></div><button class="favourites-pill" aria-pressed="false">${icon('star')}<span>FAVOURITES</span></button></header><main id="content"></main>
-<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Mauri Study Notes</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Mauri Study Notes</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog"><form method="dialog" class="dialog-head"><h2>How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
@@ -114,7 +114,7 @@ function leave(saveProgress=true){
   detachFullscreen?.();detachFullscreen=undefined;
   leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
   stopFitting?.();stopFitting=undefined;
-  if(saveProgress)save();instance?.dispose();instance=undefined;activeId=undefined;
+  if(saveProgress){save();void accounts.flush(false,false).catch(()=>{});if(!document.hidden)void leaderboards.sync.flush().catch(()=>{});}instance?.dispose();instance=undefined;activeId=undefined;
   clearInterval(autosave);paused=false;pausedForDialog=false;
   document.body.classList.remove('in-game');
   syncViewportLock();
@@ -243,28 +243,31 @@ async function route(){
   document.querySelector('#game-menu')!.addEventListener('click',()=>{if(instance?.openMenu)instance.openMenu();else openMenu();});
   try {
     const loaded=await loadGame(id);if(token!==generation)return;
+    let newRecordFlushed=false;
+    const flushMilestone=()=>queueMicrotask(()=>{if(token!==generation)return;save();void accounts.flush(false,false).catch(()=>{});if(!document.hidden)void leaderboards.sync.flush().catch(()=>{});});
     const stage=document.querySelector<HTMLElement>('#game-stage')!;stage.replaceChildren();
     const mounted=await loaded.mount(stage,{
       id,settings:preferences,highScore:store.highScore(id),
       setScore(score){
         if(token!==generation)return;
         document.querySelector('#game-score strong')!.textContent=String(Math.floor(score));
-        const next=id==='minesweeper'?0:store.recordScore(id,score);
+        const previous=store.highScore(id),next=id==='minesweeper'?0:store.recordScore(id,score);
         leaderboards.sync.queue(id,Math.floor(next));
+        if(next>previous&&!newRecordFlushed){newRecordFlushed=true;flushMilestone();}
         document.querySelector('#game-best strong')!.textContent=String(Math.floor(next));
       },
       submitRecord(key,score){
         if(token!==generation||id!=='minesweeper'||!MINESWEEPER_RANKINGS.includes(key as typeof MINESWEEPER_RANKINGS[number])||!Number.isInteger(score)||score<=0)return;
-        const best=Math.max(store.read<number>('best:'+key,0),score);store.write('best:'+key,best);leaderboards.sync.queue(key,best);
+        const previous=store.read<number>('best:'+key,0),best=Math.max(previous,score);if(best>previous){store.write('best:'+key,best);leaderboards.sync.queue(key,best);flushMilestone();}
       },
       openRankings(key){if(token===generation&&scoredGame(key)){pausedForDialog=!paused;setPaused(true);leaderboards.open(key);}},
       setPaused(value){if(token===generation)setPaused(value);},
       openAppMenu(){if(token===generation)openMenu();},
       setLevel(level){if(token===generation)document.querySelector('#game-level')!.textContent=String(level);},
-      setStatus(text){if(token===generation)document.querySelector('#game-status')!.textContent=text;},
+      setStatus(text){if(token!==generation)return;const status=document.querySelector('#game-status')!;if(status.textContent!==text&&/game over|run ended|run finished|you won|you win|play again|tower is complete|trail complete/i.test(text))flushMilestone();status.textContent=text;},
       announce,
       save(data){if(token!==generation)return;store.saveGame(id,data);storageStatus();},
-      sound(kind){if(token===generation&&!paused&&!study.isOpen)playSound(preferences.sound,kind);}
+      sound(kind){if(token===generation&&!paused&&!study.isOpen){playSound(preferences.sound,kind);if(kind==='lose')flushMilestone();}}
     });
     if(token!==generation){mounted.dispose();return;}
     instance=mounted;
@@ -273,7 +276,7 @@ async function route(){
     if(!referenceGames.has(id)&&!fillGames.has(id))stopFitting=fitGameStage(stage,stage.parentElement!);
     document.querySelector('#pause-game')!.addEventListener('click',()=>setPaused(!paused));
     document.querySelector('#resume-game')!.addEventListener('click',()=>setPaused(false));
-    document.querySelector('#restart-game')!.addEventListener('click',()=>{if(instance?.restart()===false)return;setPaused(false);save();});
+    document.querySelector('#restart-game')!.addEventListener('click',()=>{if(instance?.restart()===false)return;newRecordFlushed=false;setPaused(false);save();});
     document.querySelector('#rules-game')!.addEventListener('click',()=>{
       pausedForDialog=!paused;setPaused(true);
       document.querySelector('#rules-text')!.textContent=loaded.rules;rulesDialog.showModal();
@@ -283,7 +286,7 @@ async function route(){
       (event.currentTarget as HTMLButtonElement).setAttribute('aria-pressed',String(selected));
       announce(selected?'Added to favourites':'Removed from favourites');storageStatus();
     });
-    autosave=window.setInterval(save,5000);
+    autosave=window.setInterval(()=>{if(!paused&&!document.hidden)save();},5000);
     if(paused||study.isOpen||document.hidden||menu.open||rulesDialog.open||leaderboards.root.open){
       if(!document.hidden&&(menu.open||rulesDialog.open))pausedForDialog=true;
       setPaused(true);
@@ -347,7 +350,7 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
 content.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.closest('.movies-poster-wall'))image.hidden=true;},{capture:true});
 content.addEventListener('click',event=>{const link=(event.target as Element).closest('.movies-launch');if(link&&event instanceof MouseEvent&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&event.button===0){movieOrigin=link.getBoundingClientRect();}});
 window.addEventListener('hashchange',()=>void route());
-window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true).catch(()=>{});});
+window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true,false).catch(()=>{});});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance)setPaused(true);});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
@@ -379,6 +382,7 @@ function updateAccountMenu(){
  document.querySelector<HTMLElement>('#open-accounts')!.hidden=!!session;
  document.querySelector<HTMLElement>('#logout-account')!.hidden=!session;
  document.querySelector<HTMLElement>('#switch-account')!.hidden=!session;
+ document.querySelector<HTMLElement>('#sync-account')!.hidden=!session;
  document.querySelector('#account-sync-status')!.textContent=accounts.message;
  Object.assign(preferences,store.settings());
  for(const [selector,key] of [['#sound','sound'],['#motion','reducedMotion'],['#colour','colorBlind']] as const)document.querySelector<HTMLInputElement>(selector)!.checked=preferences[key];
@@ -390,9 +394,10 @@ accounts.onChange(()=>{
  const identity=accounts.session()?.token,changed=identity!==displayedAccount;displayedAccount=identity;
  updateAccountMenu();
  if(activeId)document.querySelector('#favourite-game')?.setAttribute('aria-pressed',String(store.favourites().includes(activeId)));
- if(identity){for(const game of [...SCORED_GAMES.filter(id=>id!=='minesweeper'),...MINESWEEPER_RANKINGS])leaderboards.sync.queue(game,Math.floor(store.read<number>('best:'+game,0)));void leaderboards.sync.flush().catch(()=>{});}
+ if(identity){for(const game of [...SCORED_GAMES.filter(id=>id!=='minesweeper'),...MINESWEEPER_RANKINGS])leaderboards.sync.queue(game,Math.floor(store.read<number>('best:'+game,0)));if(changed&&!document.hidden)void leaderboards.sync.flush().catch(()=>{});}
  if(changed&&initialized&&!accountView.root.open){if(study.isOpen)accountRoutePending=true;else void route();}
 });
+document.querySelector('#sync-account')!.addEventListener('click',()=>{save();void Promise.all([accounts.flush(),leaderboards.sync.flush()]).catch(()=>{});});
 document.querySelector('#open-accounts')!.addEventListener('click',()=>{menu.close();accountView.open();});
 let signingOut=false;
 async function logoutAccount(switching=false){

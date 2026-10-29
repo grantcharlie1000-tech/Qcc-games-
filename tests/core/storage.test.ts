@@ -1,7 +1,7 @@
 import {beforeEach,expect,test,vi} from 'vitest';
 import {GAME_IDS} from '../../src/core/types';
 import {games} from '../../src/core/catalog';
-import {canRetain,probeStorage,flushPending,write,read,recordScore,highScore,savedGame,saveGame,toggleFavourite,favourites,settings} from '../../src/core/storage';
+import {canRetain,probeStorage,flushPending,write,read,recordScore,highScore,savedGame,saveGame,toggleFavourite,favourites,settings,subscribe} from '../../src/core/storage';
 beforeEach(()=>{const map=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(k:string)=>map.get(k)??null,setItem:(k:string,v:string)=>map.set(k,v),removeItem:(k:string)=>map.delete(k)});});
 test('library contains every registered game including separate Slither.io, Globle and Minecraft',()=>{expect(games).toHaveLength(21);expect(new Set(games.map(g=>g.id))).toEqual(new Set(GAME_IDS));});
 test('high scores cannot decrease',()=>{recordScore('snake',21);recordScore('snake',5);expect(highScore('snake')).toBe(21);});
@@ -28,4 +28,25 @@ test('reload persistence flush retries every pending score, preference, favourit
 test('auto-next defaults on for legacy settings and preserves an explicit choice',()=>{
  vi.stubGlobal('matchMedia',()=>({matches:false}));write('settings',{sound:true});expect(settings().autoNextEpisode).toBe(true);
  write('settings',{sound:true,autoNextEpisode:false});expect(settings().autoNextEpisode).toBe(false);expect(settings().sound).toBe(true);
+});
+
+test('unchanged snapshots, bests and settings preserve timestamps and emit no dirty writes',()=>{
+ vi.useFakeTimers();vi.setSystemTime(1000);
+ const changes:string[]=[],stop=subscribe(key=>changes.push(key));
+ try{
+  saveGame('snake',{score:2,board:[1,2]});recordScore('snake',20);write('settings',{sound:true,colorBlind:false});
+  const saved=read<any>('save:snake',null),bestUpdated=read('updated:best:snake',0),settingsUpdated=read('updated:settings',0);
+  changes.length=0;vi.advanceTimersByTime(30000);
+  saveGame('snake',{board:[1,2],score:2});recordScore('snake',20);recordScore('snake',5);write('settings',{colorBlind:false,sound:true});
+  expect(read<any>('save:snake',null).updated).toBe(saved.updated);
+  expect(read('updated:best:snake',0)).toBe(bestUpdated);expect(read('updated:settings',0)).toBe(settingsUpdated);expect(changes).toEqual([]);
+  saveGame('snake',{board:[1,3],score:2});expect(read<any>('save:snake',null).updated).toBeGreaterThan(saved.updated);
+ }finally{stop();vi.useRealTimers();}
+});
+
+test('retrying an unchanged snapshot after quota recovery persists its original timestamp',()=>{
+ const disk=new Map<string,string>();let full=true;
+ vi.stubGlobal('localStorage',{getItem:(k:string)=>disk.get(k)??null,setItem:(k:string,v:string)=>{if(full)throw Error('quota');disk.set(k,v);},removeItem:(k:string)=>disk.delete(k)});
+ expect(saveGame('quadfall',{piece:1})).toBe(false);const updated=read<any>('save:quadfall',null).updated;
+ full=false;expect(saveGame('quadfall',{piece:1})).toBe(true);expect(JSON.parse(disk.get('pocket-arcade:v1:save:quadfall')!).updated).toBe(updated);
 });

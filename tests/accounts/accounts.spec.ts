@@ -96,3 +96,16 @@ test('signup confirms passwords, clears secrets and scrolls in short landscape',
  await dialog.evaluate((el:HTMLDialogElement)=>el.showModal());await dialog.getByLabel('Password',{exact:true}).fill('long enough password');await dialog.getByLabel('Confirm password',{exact:true}).fill('long enough password');
  await dialog.getByRole('button',{name:'Play as guest',exact:true}).click();await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
 });
+
+test('manual sync fits the account panel and paused/hidden tabs make no idle requests',async({page,context})=>{
+ test.setTimeout(60000);await connect(context);await page.goto('/#/game/minesweeper');await signIn(page,`Idle_${Date.now()}`,true);
+ await expect(page.locator('.ms-tile').first()).toBeVisible();if(await page.getByRole('button',{name:'Pause game',exact:true}).isVisible())await page.getByRole('button',{name:'Pause game',exact:true}).click({force:true});await menu(page);
+ await page.getByRole('button',{name:'Sync now',exact:true}).click();await expect(page.locator('#account-sync-status')).toHaveText('Progress synced.');
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:sync:'+JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:session')!).username.toLowerCase())!).pending.length)).toBe(0);
+ await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));const requests:string[]=[];page.on('request',request=>{if(/\/\.netlify\/functions\/(accounts|leaderboard)/.test(request.url()))requests.push(request.method());});
+ await page.clock.runFor(30*60000);expect(requests).toEqual([]);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+ await page.clock.runFor(30*60000);expect(requests).toEqual([]);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
+ await expect.poll(()=>requests.filter(method=>method==='GET').length).toBe(1);expect(requests.filter(method=>method==='PUT')).toHaveLength(0);
+});

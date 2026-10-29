@@ -1,7 +1,9 @@
 import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:crypto';
 import type {Database} from '../leaderboard/server';
-import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,type Saves} from './shared';
+import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
 import {mergeSaves} from './merge';
+import {stableText} from '../core/content';
+import {writeFrozen,readOnlyResponse} from './write-freeze';
 const sha=(value:string)=>createHash('sha256').update(value).digest('hex');
 const DUMMY='scrypt$16384$8$1$00000000000000000000000000000000$'+'00'.repeat(64);
 const derive=(password:string,salt:Buffer,N:number,r:number,p:number)=>new Promise<Buffer>((resolve,reject)=>scrypt(password,salt,64,{N,r,p,maxmem:64*1024*1024},(error,key)=>error?reject(error):resolve(key)));
@@ -13,12 +15,17 @@ export async function verifyPassword(password:string,encoded:string|null):Promis
  return timingSafeEqual(actual,Buffer.from(hash!,'hex'))&&valid;
 }
 export interface Account {id:string;username:string;playerId:string}
-export async function resolveAccount(db:Pick<Database,'query'>,request:Request):Promise<Account|null>{
+export async function resolveAccount(db:Pick<Database,'query'>,request:Request,lockSession=false):Promise<Account|null>{
  const token=request.headers.get('authorization')?.match(/^Bearer (acct_[a-f0-9]{64})$/)?.[1];if(!token)return null;
- const result=await db.query(`UPDATE account_sessions s SET last_used=now() FROM accounts a
-  WHERE s.token_hash=$1 AND s.expires_at>now() AND a.id=s.account_id
-  RETURNING a.id,a.username,a.player_id AS "playerId"`,[sha(token)]);
- return result.rows[0]??null;
+ const hash=sha(token);
+ // Revalidate existence and fixed expiry every time; last_used never authenticates.
+ const result=await db.query(`SELECT a.id,a.username,a.player_id AS "playerId",s.last_used AS "lastUsed"
+  FROM account_sessions s JOIN accounts a ON a.id=s.account_id
+  WHERE s.token_hash=$1 AND s.expires_at>now()${lockSession?' FOR UPDATE OF s':''}`,[hash]);
+ const account=result.rows[0];if(!account)return null;
+ if(!writeFrozen()&&new Date(account.lastUsed).getTime()<Date.now()-3600000)await db.query(`UPDATE account_sessions SET last_used=now()
+  WHERE token_hash=$1 AND expires_at>now() AND last_used<now()-interval '1 hour'`,[hash]);
+ return {id:account.id,username:account.username,playerId:account.playerId};
 }
 async function readJson(request:Request,limit:number){
  if(Number(request.headers.get('content-length'))>limit)throw 413;
@@ -27,6 +34,14 @@ async function readJson(request:Request,limit:number){
  try{return JSON.parse(text);}catch{throw 400;}
 }
 const savesFrom=(rows:any[]):Saves=>Object.fromEntries(rows.map(row=>[row.key,{value:row.value,updated:Number(row.updated)}]));
+const sameRecord=(a:{value:unknown;updated:number},b:{value:unknown;updated:number})=>a.updated===b.updated&&stableText(a.value)===stableText(b.value);
+function sameContent(key:string,a:unknown,b:unknown):boolean {
+ if(key.startsWith('save:')){
+  const strip=(value:unknown)=>{const {updated:_,...rest}=value as Record<string,unknown>;return rest;};
+  return stableText(strip(a))===stableText(strip(b));
+ }
+ return stableText(a)===stableText(b);
+}
 export function createAccountsHandler(db:Database){
  const pending=new Map<string,Promise<void>>();
  async function lock(key:string){
@@ -56,6 +71,7 @@ export function createAccountsHandler(db:Database){
   const allowed=action==='me'?['GET']:action==='sync'?['GET','PUT']:['signup','login','logout'].includes(action??'')?['POST']:[];
   if(!allowed.length)return respond({error:'Unknown account action.'},404);
   if(!allowed.includes(request.method))return respond({error:'Method not allowed.'},405,{Allow:allowed.join(', ')});
+  if(request.method!=='GET'&&writeFrozen())return readOnlyResponse();
   try{
    let data:any;
    if(request.method!=='GET'){
@@ -118,17 +134,51 @@ export function createAccountsHandler(db:Database){
    if(action==='logout'){
     const token=request.headers.get('authorization')!.slice(7);await db.query('DELETE FROM account_sessions WHERE token_hash=$1',[sha(token)]);return respond({ok:true});
    }
-   if(request.method==='GET')return respond({saves:savesFrom((await db.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id])).rows)});
-   if(!data||typeof data!=='object'||Object.keys(data).length!==1||!validSaves(data.saves))return respond({error:'Invalid save keys or values. Oversized saves stay on this device.'},400);
-   const client=await db.connect();
+   const v2=request.headers.get('X-QCC-Sync')==='2';
+   const cursor=request.method==='GET'?(new URL(request.url).searchParams.get('cursor')??'0'):data?.cursor;
+   if(v2&&(!validRevision(cursor)||(request.method==='PUT'&&(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length!==3||!Object.hasOwn(data,'saves')||!data.bases||typeof data.bases!=='object'||Array.isArray(data.bases)||Object.entries(data.bases).some(([key,revision])=>!SAVE_KEYS.includes(key)||!validRevision(revision))))))return respond({error:'Invalid sync cursor or revisions.'},400);
+   if(request.method==='GET'&&!v2)return respond({saves:savesFrom((await db.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id])).rows)});
+   if(request.method==='PUT'&&(!data||typeof data!=='object'||(!v2&&Object.keys(data).length!==1)||!validSaves(data.saves)))return respond({error:'Invalid save keys or values. Oversized saves stay on this device.'},400);
+   const release=await lock('sync:'+account.id);let client:Awaited<ReturnType<Database['connect']>>|undefined;
    try{
-    await client.query('BEGIN');await client.query('SELECT id FROM accounts WHERE id=$1 FOR UPDATE',[account.id]);
-    const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id]) as {rows:any[]};
-    const saves=mergeSaves(savesFrom(previous.rows),data.saves);
-    for(const key of Object.keys(data.saves)){const record=saves[key]!;await client.query(`INSERT INTO account_saves(account_id,key,value,updated) VALUES ($1,$2,$3::jsonb,$4)
-     ON CONFLICT(account_id,key) DO UPDATE SET value=excluded.value,updated=excluded.updated`,[account.id,key,JSON.stringify(record.value),record.updated]);}
-    await client.query('COMMIT');return respond({saves});
-   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+    client=await db.connect();
+    const frozenRead=request.method==='GET'&&writeFrozen();
+    await client.query(frozenRead?'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY':'BEGIN');
+    await client.query('SELECT id FROM accounts WHERE id=$1'+(frozenRead?'':' FOR UPDATE'),[account.id]);
+    const submitted:Saves=request.method==='PUT'?data.saves:{};
+    const keys=Object.keys(submitted);
+    if(keys.length){
+     const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1 AND key=ANY($2::text[])',[account.id,keys]) as {rows:any[]};
+     const old=savesFrom(previous.rows),saves=mergeSaves(old,submitted);
+     for(const key of keys){
+      let record=saves[key]!;const before=old[key];
+      // Keep semantic no-ops from manufacturing timestamps (including snapshot envelopes).
+      if(before&&(key.startsWith('best:')?(submitted[key]!.value as number)<=(before.value as number):sameContent(key,before.value,submitted[key]!.value)))record=before;
+      if(before&&sameRecord(before,record))continue;
+      await client.query(`INSERT INTO account_saves(account_id,key,value,updated) VALUES ($1,$2,$3::jsonb,$4)
+       ON CONFLICT(account_id,key) DO UPDATE SET value=excluded.value,updated=excluded.updated`,[account.id,key,JSON.stringify(record.value),record.updated]);
+     }
+    }
+    if(!v2){
+     const saves=savesFrom((await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id])).rows);
+     await client.query('COMMIT');return respond({saves});
+    }
+    const current=(await client.query('SELECT sync_revision::text AS cursor FROM accounts WHERE id=$1',[account.id])).rows[0].cursor;
+    // Omit every submitted row from the delta: accepted writes are ack-only and conflicts
+    // are returned once in the explicit authoritative channel below.
+    const delta=(await client.query('SELECT key,value,updated,revision::text FROM account_saves WHERE account_id=$1 AND revision>$2::bigint AND NOT (key=ANY($3::text[]))',[account.id,cursor,keys])).rows;
+    const result:SyncV2Response={protocolVersion:2,cursor:current,saves:savesFrom(delta),revisions:{},acks:{},conflicts:{}};
+    for(const row of delta)result.revisions[row.key]=row.revision;
+    if(keys.length){
+     const accepted=(await client.query('SELECT key,value,updated,revision::text FROM account_saves WHERE account_id=$1 AND key=ANY($2::text[])',[account.id,keys])).rows;
+     for(const row of accepted){
+      const record={value:row.value,updated:Number(row.updated)};result.revisions[row.key]=row.revision;
+      if(sameRecord(record,submitted[row.key]!))result.acks[row.key]=row.revision;
+      else result.conflicts[row.key]=record;
+     }
+    }
+    await client.query('COMMIT');return respond(result);
+   }catch(error){if(client)await client.query('ROLLBACK');throw error;}finally{client?.release();release();}
   }catch(error){
    if(error===413)return respond({error:'Request too large.'},413);
    if(error===400)return respond({error:'Invalid JSON.'},400);

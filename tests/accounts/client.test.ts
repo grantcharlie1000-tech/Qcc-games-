@@ -1,41 +1,47 @@
-import {describe,it,expect,vi} from 'vitest';
+import {afterEach,describe,it,expect,vi} from 'vitest';
 import * as store from '../../src/core/storage';
 import {MAX_KEY_BYTES} from '../../src/accounts/shared';
-import {AccountsClient} from '../../src/accounts/client';
+import {AccountsClient,SYNC_BATCH_MS} from '../../src/accounts/client';
+import {mergeSaves} from '../../src/accounts/merge';
 const token='acct_'+'a'.repeat(64);
 function fixture(){
  const values=new Map<string,unknown>(),listeners=new Set<(key:string)=>void>();
  const storage={read:<T>(k:string,f:T)=>(values.get(k)??f) as T,write:(k:string,v:unknown)=>{values.set(k,v);for(const l of listeners)l(k);return true;},remove:(k:string)=>{values.delete(k);return true;},keys:()=>[...values.keys()],subscribe:(l:(key:string)=>void)=>{listeners.add(l);return ()=>{listeners.delete(l);};}};
- let offline=false;let remote:any={};
+ let offline=false;let remote:any={};let revision=0;const revisions:Record<string,string>={};
  const fetcher=vi.fn(async(url:any,init:any)=>{
   if(offline)throw new Error('offline');
   const action=new URL(String(url),'https://test').searchParams.get('action');
   if(action==='signup'||action==='login')return Response.json({token,username:'Ada'});
-  if(action==='sync'){if(init.method==='PUT')remote={...remote,...JSON.parse(init.body).saves};return Response.json({saves:remote});}
+  if(action==='sync'){
+   const data=init.body?JSON.parse(init.body):{},cursor=Number(data.cursor??new URL(String(url),'https://test').searchParams.get('cursor')??0),acks:Record<string,string>={};
+   for(const [key,record] of Object.entries(data.saves??{})){const merged=mergeSaves(remote,{[key]:record as any});if(JSON.stringify(remote[key])!==JSON.stringify(merged[key]))revisions[key]=String(++revision);remote=merged;acks[key]=revisions[key]!;}
+   return Response.json({protocolVersion:2,cursor:String(revision),saves:Object.fromEntries(Object.entries(remote).filter(([key])=>Number(revisions[key])>cursor&&!acks[key])),revisions,acks,conflicts:{}});
+  }
   return Response.json({ok:true});
  }) as unknown as typeof fetch;
- return {storage,values,fetcher,offline:(v:boolean)=>{offline=v;},remote:(v:any)=>{remote=v;}};
+ return {storage,values,fetcher,offline:(v:boolean)=>{offline=v;},remote:(v:any)=>{remote=v;for(const key of Object.keys(v))revisions[key]=String(++revision);}};
 }
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 describe('account client',()=>{
  it('pushes only dirty keys and pulls when clean',async()=>{
   const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);f.storage.write('save:snake',{version:1,data:{score:1},updated:1});await c.authenticate('signup','Ada','password1');
   f.storage.write('best:tower',10);await c.flush();expect(JSON.parse((f.fetcher as any).mock.calls.at(-1)[1].body).saves).toEqual({'best:tower':{value:10,updated:0}});
   await c.flush();expect((f.fetcher as any).mock.calls.at(-1)[1].method).toBe('GET');c.dispose();
  });
- it('debounces changes for five seconds and flushes sustained changes by twenty',async()=>{
+ it('batches genuine changes for three minutes without postponing sustained changes',async()=>{
   vi.useFakeTimers();const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);
   try{await c.authenticate('signup','Ada','password1');(f.fetcher as any).mockClear();
-   f.storage.write('best:snake',1);await vi.advanceTimersByTimeAsync(4999);expect(f.fetcher).not.toHaveBeenCalled();
+   f.storage.write('best:snake',1);await vi.advanceTimersByTimeAsync(SYNC_BATCH_MS-1);expect(f.fetcher).not.toHaveBeenCalled();
    await vi.advanceTimersByTimeAsync(1);expect((f.fetcher as any).mock.calls[0][1].method).toBe('PUT');(f.fetcher as any).mockClear();
-   for(let i=0;i<5;i++){f.storage.write('best:snake',i+2);await vi.advanceTimersByTimeAsync(4000);}
+   for(let i=0;i<18;i++){f.storage.write('best:snake',i+2);await vi.advanceTimersByTimeAsync(10000);}
    expect((f.fetcher as any).mock.calls).toHaveLength(1);
   }finally{c.dispose();vi.useRealTimers();}
  });
- it('pulls idle tabs at sixty seconds, skips hidden ticks and flushes on hiding',async()=>{
+ it('keeps idle tabs silent and flushes dirty data once on hiding',async()=>{
   vi.useFakeTimers();const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);let hidden=false,visibility:(()=>void)|undefined;
   vi.stubGlobal('document',{get hidden(){return hidden;},addEventListener:(_name:string,listener:()=>void)=>{visibility=listener;},removeEventListener:()=>{}});
   try{await c.authenticate('signup','Ada','password1');c.start();await vi.advanceTimersByTimeAsync(0);(f.fetcher as any).mockClear();
-   await vi.advanceTimersByTimeAsync(59999);expect(f.fetcher).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(1);expect((f.fetcher as any).mock.calls.at(-1)[1].method).toBe('GET');
+   await vi.advanceTimersByTimeAsync(30*60000);expect(f.fetcher).not.toHaveBeenCalled();
    (f.fetcher as any).mockClear();hidden=true;await vi.advanceTimersByTimeAsync(60000);expect(f.fetcher).not.toHaveBeenCalled();
    f.storage.write('best:snake',10);visibility!();await vi.advanceTimersByTimeAsync(0);
    expect((f.fetcher as any).mock.calls.at(-1)[1]).toMatchObject({method:'PUT',keepalive:true});
@@ -53,13 +59,13 @@ describe('account client',()=>{
   f.storage.write('best:tower',90);await c.logout();expect(c.session()).toBeNull();expect(f.storage.read('best:tower',0)).toBe(0);expect(f.storage.read('best:snake',0)).toBe(50);c.dispose();
  });
  it('does not import guest saves on login and retries offline changes',async()=>{
-  const f=fixture();f.storage.write('best:snake',50);f.remote({'best:tower':{value:10,updated:1}});const c=new AccountsClient(f.storage,f.fetcher);
+  vi.useFakeTimers();const f=fixture();f.storage.write('best:snake',50);f.remote({'best:tower':{value:10,updated:1}});const c=new AccountsClient(f.storage,f.fetcher);
   await c.authenticate('login','Ada','password1');expect(f.storage.read('best:snake',0)).toBe(0);expect(f.storage.read('best:tower',0)).toBe(10);
   f.offline(true);f.storage.write('best:tower',100);await expect(c.flush()).rejects.toThrow();expect(f.storage.read('best:tower',0)).toBe(100);
-  f.offline(false);await c.flush();expect(f.fetcher).toHaveBeenLastCalledWith(expect.stringContaining('sync'),expect.objectContaining({method:'PUT'}));c.dispose();
+  f.offline(false);await vi.advanceTimersByTimeAsync(60000);f.storage.write('best:tower',101);await c.flush();expect(f.fetcher).toHaveBeenLastCalledWith(expect.stringContaining('sync'),expect.objectContaining({method:'PUT'}));c.dispose();
  });
  it('restores unsent progress only after authenticating to the same account',async()=>{
-  const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);await c.authenticate('signup','Ada','password1');f.offline(true);f.storage.write('best:snake',200);await c.logout();expect(f.storage.read('best:snake',0)).toBe(0);f.offline(false);await c.authenticate('login','Ada','password1');expect(f.storage.read('best:snake',0)).toBe(200);c.dispose();
+  vi.useFakeTimers();const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);await c.authenticate('signup','Ada','password1');f.offline(true);f.storage.write('best:snake',200);await c.logout();expect(f.storage.read('best:snake',0)).toBe(0);f.offline(false);await c.authenticate('login','Ada','password1');expect(f.storage.read('best:snake',0)).toBe(200);c.dispose();
  });
  it('ignores delayed sync after logout and removes the local token even offline',async()=>{
   const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);await c.authenticate('signup','Ada','password1');f.offline(true);await c.logout();expect(c.session()).toBeNull();expect(f.storage.read<any[]>('accounts:revocations',[])).toHaveLength(1);expect(f.storage.read<string[]>('accounts:revocations',[])[0]).not.toBe(token);c.dispose();
@@ -112,6 +118,13 @@ describe('account client',()=>{
  it('keeps a mature oversized guest snapshot locally on signup and stages it for the same account',async()=>{
   const f=fixture(),snapshot={version:1,data:'x'.repeat(MAX_KEY_BYTES),updated:10};f.storage.write('save:blockcraft',snapshot);
   const c=new AccountsClient(f.storage,f.fetcher);await c.authenticate('signup','Ada','password1');expect(f.storage.read('save:blockcraft',null)).toEqual(snapshot);expect(f.storage.read<any>('accounts:pending:ada',{})['save:blockcraft'].value).toEqual(snapshot);c.dispose();
+ });
+
+ it('preserves unsent leaderboard scores and retry deadlines across account cleanup',async()=>{
+  const f=fixture(),c=new AccountsClient(f.storage,f.fetcher);await c.authenticate('signup','Ada','password1');
+  f.storage.write('leaderboard:pending:account:ada',{snake:70});f.storage.write('leaderboard:retry:account:ada',{attempt:2,nextAt:Date.now()+120000});f.storage.write('leaderboard:cache:snake:account:ada',{private:true});
+  const retry=f.storage.read('leaderboard:retry:account:ada',null);f.offline(true);await c.logout();
+  expect(f.storage.read('leaderboard:pending:account:ada',{})).toEqual({snake:70});expect(f.storage.read('leaderboard:retry:account:ada',null)).toEqual(retry);expect(f.storage.read('leaderboard:cache:snake:account:ada',null)).toBeNull();c.dispose();
  });
 
 });
