@@ -392,10 +392,11 @@ export class MoviesView {
   // Items come newest first, so the first item for each title is the one to resume: its latest episode, or its film.
   const shown=new Set<string>();
   for(const item of this.storage.continueItems()){
-   if(shown.has(item.id))continue;shown.add(item.id);
+   if(shown.has(item.id))continue;
    const snapshot=this.storage.snapshot(item.id);
    const title=this.lookup(item.id)??(snapshot?fromSnapshot(snapshot):undefined);
    if(!title)continue;
+   shown.add(item.id);
    const name=escape(title.name),episode=item.season!==undefined&&item.episode!==undefined;
    const route=`${titleHash(item.id)}${episode?`/season/${item.season}/episode/${item.episode}`:''}/play`;
    const image=this.artImage([asset(title.backdrop??title.poster),asset(title.poster)],'ui-card-img','alt="" width="320" height="180" loading="lazy" decoding="async" referrerpolicy="no-referrer"');
@@ -466,10 +467,10 @@ export class MoviesView {
   const retry=document.createElement('button');retry.textContent='Retry title';retry.dataset.action='retry-title';notice.append(' ',retry);
  }
  private bindPlayer(){
-  this.ended=false;
+  this.ended=false;this.frameDuration=undefined;
   this.video=this.root.querySelector('video')??undefined;
   this.frame=this.root.querySelector('iframe')??undefined;
-  if(this.frame){const title=this.catalog.titles.find(t=>t.id===this.route.id)!;this.progressKey=mediaKey(title,this.route);this.frameTime=this.storage.data.progress[this.progressKey]??0;this.frameDuration=undefined;this.lastSave=0;}
+  if(this.frame){const title=this.catalog.titles.find(t=>t.id===this.route.id)!;this.progressKey=mediaKey(title,this.route);this.frameTime=this.storage.data.progress[this.progressKey]??0;this.lastSave=0;}
   if(this.video){
    const video=this.video,t=this.catalog.titles.find(t=>t.id===this.route.id)!;
    this.progressKey=mediaKey(t,this.route);this.lastSave=0;const key=this.progressKey;
@@ -487,7 +488,10 @@ export class MoviesView {
   const signal=providerSignal(this.providerId,event.origin,event.data);if(!signal||signal.kind==='ready')return;
   if(signal.kind==='ended'){this.episodeEnded();return;}
   this.frameTime=signal.currentTime;
-  if(signal.duration){this.frameDuration=signal.duration;this.rearm(signal.currentTime,signal.duration);if(signal.duration-signal.currentTime<=1)this.episodeEnded();}
+  if(signal.duration)this.frameDuration=signal.duration;
+  // A report more than 5 seconds before the end ends a finished state. A report without a duration uses the one known for this frame.
+  this.rearm(signal.currentTime,signal.duration??this.frameDuration??NaN);
+  if(signal.duration&&signal.duration-signal.currentTime<=1)this.episodeEnded();
   if(signal.ended)this.episodeEnded();
   if(!this.ended&&Date.now()-this.lastSave>5000)this.saveProgress(this.frameTime);
  };

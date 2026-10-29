@@ -54,6 +54,16 @@ test('a finished movie is saved at 0 and leaves Continue watching',async({page})
  await expect(page.locator('a.movies-continue')).toHaveAttribute('aria-label','Resume Sherlock');
 });
 
+test('a rewind after a finished movie keeps saving its position',async({page})=>{
+ await openPlayer(page,'/#/movies/movie-157336/play');
+ await report(page,5399.5,5400);
+ expect((await stored(page)).progress['movie-157336']).toBe(0);
+ // A rewind reports no duration. The movie is in progress again, so the pause below saves the new position, not 0.
+ await report(page,100);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
+ expect((await stored(page)).progress['movie-157336']).toBe(100);
+});
+
 test('continue watching shows one tile per title, resuming its newest episode',async({page})=>{
  await seed(page,{list:[],progress:{'tv-19885:s1:e1':300,'tv-19885:s1:e2':400,'movie-157336':1800},titles:{},meta:{'tv-19885:s1:e1':{duration:2700,updated:1000},'tv-19885:s1:e2':{duration:2700,updated:2000},'movie-157336':{duration:5400,updated:1500}}});
  await page.goto('/#/movies');

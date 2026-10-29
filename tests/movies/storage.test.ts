@@ -105,6 +105,8 @@ it('keeps a known duration when a later position omits it',()=>{
 // Only an early report while the media plays keeps a resume point. A finished title and a late report always write.
 it.each<[number|undefined,number,boolean,boolean]>([
  [120,3,false,true],
+ [15,3,false,true],
+ [120,14.9,false,true],
  [120,3,true,false],
  [10,3,false,false],
  [undefined,3,false,false],
