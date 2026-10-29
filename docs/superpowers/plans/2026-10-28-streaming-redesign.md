@@ -1062,3 +1062,34 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   - Add `the island stays hidden in games and Movies on desktop` at 1440.
   - Phone tests stay.
 - **Screenshots:** 1440×900 at the top, over a rail, and hidden; plus 1024×768.
+
+---
+
+### Task 20: Remove the game-of-the-day hero (user request)
+
+The user asked to "remove game of the day" (spec §6.2 and §15). The arcade hero now appears only when there is a saved game.
+
+**Files:**
+- Modify: `src/library/home.ts`
+- Test: `tests/core/home.test.ts`, `tests/e2e/redesign-shell.spec.ts`
+
+**Interfaces:**
+- `export function featured(state:HomeState):{game:GameInfo;mode:'continue'}|undefined` returns the game with the newest `savedAt`, or `undefined` when nothing is saved. The daily pick and its `DAY` arithmetic go.
+- `homeMarkup` renders the hero only when `featured()` returns a game and no search or favourites filter is active. The continue hero's markup ("Continue playing" badge, "Continue" button, favourite toggle) is unchanged. No markup, copy or CSS for "Game of the day" remains.
+- The main.ts `[data-hero-favourite]` handler stays, because the continue hero still uses it.
+
+- [ ] **Step 1: Write failing tests.**
+  - Unit: replace `the hero prefers the newest save, else the daily pick` with `the hero shows the newest save and nothing without one`:
+    - `featured()` with no saves is `undefined`.
+    - That markup has no `arcade-hero` and no "Game of the day".
+    - With saves, it is the newest save in continue mode.
+  - E2E:
+    - Tests that need the hero (`home shows a hero, three rails and a footer`, the hero favourite tests and any others) seed a save first, for example `pocket-arcade:v1:save:snake` = `{"version":1,"data":{},"updated":<now-90000>}`, in an init script.
+    - Add `with no saves the home opens on the Movies & TV launch`. At 1440 and at 390:
+      - There is no `.arcade-hero`.
+      - No text "Game of the day" appears.
+      - `.movies-launch` is the first thing below the header.
+- [ ] **Step 2: Run** the new and changed tests. Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** `npx vitest run tests/core`, `npm run check`, `e2e.sh tests/e2e/redesign-shell.spec.ts tests/e2e/shell.spec.ts tests/e2e/branding.spec.ts tests/e2e/study.spec.ts`. Expected: PASS. Capture the home at 1440×900 and 390×844 with no saves and with one save.
+- [ ] **Step 5: Commit** "Show the arcade hero only for a saved game".

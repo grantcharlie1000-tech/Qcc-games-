@@ -154,7 +154,7 @@ Motion runs on `transform` and `opacity` only. `prefers-reduced-motion: reduce` 
   - Each game appears exactly once in the library (tests count 21 `.game-card`).
 - **Continue playing card** (`a.continue-card`, `aria-label="Continue {title}"`): 16:9 cover crop at 160/190/210 px wide, with the title and "Saved {relative time}" from the save's `updated` time, most recent first.
 - **Hero:**
-  - Featured game: the most recently saved game ("Continue playing" badge, button "Continue"). With no saves, a daily pick (`games[dayNumber % games.length]`, "Game of the day" badge, button "Play now").
+  - Featured game: the most recently saved game ("Continue playing" badge, button "Continue"). With no saves there is no hero; the page opens on the Movies & TV launch and the rails (amended in section 15: the user asked to remove "Game of the day").
   - Backdrop: the cover, blurred (28 px) and scaled to 1.15 at opacity .55. From 768 px the crisp cover also shows as a poster on the right.
   - Content: chips (genre, best score), an h2 title, mono meta, the blurb, and buttons: the primary link, plus a favourites toggle `[aria-pressed]` reading "Add to favourites" / "In favourites".
   - Button names must not contain "Play {title}".
@@ -439,3 +439,4 @@ The reference embeds its player without a sandbox. Ours keeps `allow-scripts all
 
 - **2026-10-29, user request: glass island tab bar.** The user asked for the phone bottom bar to be "an Apple glass island that disappears on scroll down". This replaces the reference's flat bar for that one component, in both the arcade and Movies & TV, because both use `.ui-tabbar`. Section 5 holds the new look and behaviour. The behaviour lives in one shared helper, `src/ui/tabbar.ts`, which the arcade binds to the window scroll and Movies binds to its own scrolling view. The glass is original CSS (tint, blur, saturation, highlights); no Apple assets or code are used.
 - **2026-10-29, user request: "For pc too".** The island shows at every width, not only below 640 px, with the same hide-on-scroll behaviour. On desktop the header keeps its section pills (the reference's look), so the island repeats Games, Movies and TV Shows and adds My list and Study. Content clearance applies at every width. Hover feedback for fine pointers is added.
+- **2026-10-29, user request: "remove game of the day".** The arcade hero no longer falls back to a daily pick. It shows only when there is a saved game ("Continue playing"). With no saves the home starts with the Movies & TV launch and the rails.
