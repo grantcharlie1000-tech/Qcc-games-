@@ -134,9 +134,9 @@ async function controlledWaitingCase(path,base){
  const c=await context.newPage();await home(c,base);deployed=W;await menu(c);await closeMenu(c);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();
  await holdActivation(a,W);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit W activation held after first save');
  await a.getByLabel('Study topic',{exact:true}).selectOption('quadratics');await a.getByLabel('Study topic',{exact:true}).selectOption('close-reading');await releaseActivation(a);await poll(async()=>await version(a)===W.version,'W activates after topic away and back');
- await poll(async()=>!await a.locator('#reload-update').isDisabled(),'topic cancellation flow settled');assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','topic away/back cancels pending reload');await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);
+ await poll(async()=>!await a.locator('#reload-update').isDisabled(),'topic cancellation flow settled');assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','topic away/back cancels pending reload');await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);
  console.log('CONTROLLED TOPIC CANCELLATION PASS',path);await c.reload();deployed=X;await menu(c);await closeMenu(c);await a.keyboard.press('Escape');await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();await holdActivation(a,X);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit X activation held');
- await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,3);await releaseActivation(a);await poll(async()=>await version(a)===X.version,'X activates without reloading resumed game');await a.getByRole('button',{name:'Pause game',exact:true}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B');
+ await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,3);await releaseActivation(a);await poll(async()=>await version(a)===X.version,'X activates without reloading resumed game');await a.getByRole('button',{name:'Pause game',exact:true}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B');
  console.log('CONTROLLED RESUME CANCELLATION PASS',path);await c.reload();deployed=Y;await menu(c);await closeMenu(c);await menu(a);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();const savedProgress=await progress(a);await holdActivation(a,Y);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit Y activation held after first durable save');
  assert.ok(await fillQuota(a)>1_000_000);await a.locator('#motion').uncheck();assert.equal(JSON.parse((await data(a)).settings).reducedMotion,true);await releaseActivation(a);
  await a.locator('#update-status').filter({hasText:'could not be saved'}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','late preference failure refuses the actual reload');
@@ -163,7 +163,7 @@ async function legacyWaitingCase(path,base,transition=false){
  }
  deployed=B;await b.reload();await poll(async()=>await version(b)===B.version,'fixed B migrates active A with already-waiting legacy L');
  assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A-with-waiting-L');await b.reload();assert.equal(await b.locator('meta[name="arcade-release"]').getAttribute('content'),'B');
- await context.setOffline(true);await a.bringToFront();await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await context.setOffline(false);
+ await context.setOffline(true);await a.bringToFront();await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await context.setOffline(false);
  assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'));await context.tracing.stop({path:`${evidence}/update-legacy-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('LEGACY ALREADY WAITING MIGRATION PASS',path);
 }
 async function legacyNavigationCase(path,base){
@@ -189,7 +189,7 @@ try{
   await poll(async()=>await version(b)===B.version,'B activation with legacy tabs retained');
   assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A','activation must not reload the old game document');
   assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'));assert.equal(B.map.has('/'+A.game),false);
-  await context.setOffline(true);await a.bringToFront();await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await a.keyboard.press('Escape');
+  await context.setOffline(true);await a.bringToFront();await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await a.keyboard.press('Escape');
   assert.equal(await a.evaluate(url=>fetch(url).then(r=>r.ok),new URL(A.game,base).href),true,'old lazy asset survives removed server copy while offline');await context.setOffline(false);
   await b.reload();assert.equal(await b.locator('meta[name="arcade-release"]').getAttribute('content'),'B');await menu(b);assert.match(await b.locator('.menu-note').textContent(),/Release B/);await closeMenu(b);
   assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A');assert.deepEqual(await data(b),before);await a.close();await b.close();await context.close();
@@ -221,7 +221,7 @@ try{
   await context.setOffline(false);
   // Fill actual browser localStorage, without replacing its methods. Only this
   // test-owned key is removed for recovery; no user storage is cleared.
-  console.log('ACTUAL QUOTA TEST',path);await a.getByRole('link',{name:'Games',exact:true}).click();const quota=await a.evaluate(()=>{
+  console.log('ACTUAL QUOTA TEST',path);await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();const quota=await a.evaluate(()=>{
    let size=0,step=1<<20;while(step){try{localStorage.setItem('update-test-quota','x'.repeat(size+step));size+=step;}catch(error){if(!(error instanceof DOMException)||error.name!=='QuotaExceededError')throw error;step=Math.floor(step/2);}}return {size};
   });assert.ok(quota.size>1_000_000);await drop(a,3);await menu(a);await a.evaluate(()=>{
    let size=0,step=1<<20;while(step){try{localStorage.setItem('update-test-quota','x'.repeat(size+step));size+=step;}catch(error){if(!(error instanceof DOMException)||error.name!=='QuotaExceededError')throw error;step=Math.floor(step/2);}}return {size};

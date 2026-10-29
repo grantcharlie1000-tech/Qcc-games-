@@ -46,7 +46,7 @@ test('interrupted, outside-start and multi-touch drags cannot fire',async({page}
  await cueDrag(page);await page.setViewportSize({width:844,height:390});await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');
  await cueDrag(page);await page.evaluate(()=>document.querySelector('.pool-table')!.dispatchEvent(new PointerEvent('pointercancel',{pointerId:1,bubbles:true})));await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');
  await cueDrag(page);await page.evaluate(()=>document.querySelector('.pool-table')!.dispatchEvent(new PointerEvent('pointerdown',{pointerId:99,pointerType:'touch',isPrimary:false,bubbles:true})));await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');await page.evaluate(()=>window.dispatchEvent(new PointerEvent('pointerup',{pointerId:99,pointerType:'touch'})));
- await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.mouse.up();await page.getByRole('link',{name:'Games',exact:true}).click();await expect(root).toHaveAttribute('data-shots','0');
+ await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.mouse.up();await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await expect(root).toHaveAttribute('data-shots','0');
 });
 test('captured release outside the canvas commits once and retains keyboard access',async({page})=>{
  const root=page.locator('.pool-game');await cueDrag(page,120);await page.mouse.move(0,0);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');await page.getByRole('button',{name:'Restart game',exact:true}).click();await page.locator('.pool-table').focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');await expect(root).toHaveAttribute('data-shots','1');
@@ -142,7 +142,7 @@ for(const transition of ['pause','Study'] as const)test(`native held touch remai
   if(transition==='pause'){
    await page.getByRole('button',{name:'Pause game',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Keep playing',exact:true}).focus();await page.keyboard.press('Enter');
   }else{
-   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.getByRole('link',{name:'Games',exact:true}).focus();await page.keyboard.press('Enter');await expect(root).toBeVisible();
+   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).focus();await page.keyboard.press('Enter');await expect(root).toBeVisible();
   }
   await cueDrag(page);await page.mouse.up();expect(await root.getAttribute('data-shots')).toBe('0');
   const heldEvents=await page.evaluate(()=>(window as unknown as {poolHeldContactEvents:{type:string;trusted:boolean;pointerType:string}[]}).poolHeldContactEvents);

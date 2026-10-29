@@ -1,4 +1,4 @@
-import adManifest from '../../src/study/fictional-ads-manifest.json';
+import adManifest from '../../src/study/fictional-ads-manifest.json' with {type:'json'};
 const localAdPaths=new Set(adManifest.map(ad=>'/study/fictional-ads/'+ad.file));
 import {GAME_IDS} from '../../src/core/types';
 import {guestTest as test,expect} from '../fixtures';

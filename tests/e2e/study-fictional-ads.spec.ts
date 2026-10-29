@@ -29,12 +29,17 @@ for(const style of ['qcc','quanta','aeon','essay']){
     for(const width of [1366,1024,390]){
       await page.setViewportSize({width,height:844});
       expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-      const paragraphs=view.locator('article p');
-      const boxes=await paragraphs.evaluateAll(ps=>ps.filter(p=>!p.closest('.fictional-ad')).map(p=>{const r=p.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
-      for(const ad of await ads.all()){
-        if(!await ad.isVisible())continue;
-        const r=await ad.boundingBox();if(!r)continue;
-        expect(boxes.some(p=>Math.min(r.x+r.width,p.right)-Math.max(r.x,p.x)>2&&Math.min(r.y+r.height,p.bottom)-Math.max(r.y,p.y)>2)).toBe(false);
+      // Closed details can report rectangles for text the browser does not paint.
+      // Check visible paragraphs both before and after opening the answers.
+      for(const open of [false,true]){
+        await view.locator('details').evaluateAll((items,open)=>items.forEach(item=>{(item as HTMLDetailsElement).open=open;}),open);
+        const paragraphs=view.locator('article p');
+        const boxes=await paragraphs.evaluateAll(ps=>ps.filter(p=>p.checkVisibility()&&!p.closest('.fictional-ad')).map(p=>{const r=p.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
+        for(const ad of await ads.all()){
+          if(!await ad.isVisible())continue;
+          const r=await ad.boundingBox();if(!r)continue;
+          expect(boxes.some(p=>Math.min(r.x+r.width,p.right)-Math.max(r.x,p.x)>2&&Math.min(r.y+r.height,p.bottom)-Math.max(r.y,p.y)>2)).toBe(false);
+        }
       }
     }
     await view.getByRole('link',{name:'Games',exact:true}).first().click();

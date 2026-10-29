@@ -260,7 +260,7 @@ test('Escape opens Study, pause stops rendering, leaving frees the WebGL canvas'
   await input(page).focus();
   await page.keyboard.press('Escape');
   await expect(page.locator('#study-view')).toBeVisible();
-  await page.getByRole('link', {name: 'Games', exact: true}).click();
+  await page.locator('.study-article-body').getByRole('link', {name: 'Games', exact: true}).click();
   await expect(page.locator('#study-view')).toBeHidden();
   await expect(page.locator('.gl-globe canvas')).toBeVisible();
   await guess(page, 'Kenya');

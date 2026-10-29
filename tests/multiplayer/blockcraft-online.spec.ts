@@ -175,7 +175,7 @@ test('host, guest and a late joiner share one world',async()=>{
     const pausedCell=at(-1,0,-1);
     await ev(guest.page,(bc,c:V)=>bc.world.set(c.x,c.y,c.z,4),pausedCell);
     await expect.poll(()=>get(guest.page,pausedCell),{timeout:15000}).toBe(ids.air);
-    await host.page.getByRole('link',{name:'Games',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
+    await host.page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
     await expect(guest.page.locator('.bc-waiting')).toBeHidden({timeout:15000});
     await guest.page.screenshot({path:test.info().outputPath('guest-after-resume.png')});
     await play(guest);
@@ -185,7 +185,7 @@ test('host, guest and a late joiner share one world',async()=>{
     await host.page.keyboard.press('Escape');await expect(host.page.locator('#study-view')).toBeVisible();
     const saves=await host.page.evaluate(()=>({solo:JSON.parse(localStorage.getItem('pocket-arcade:v1:save:blockcraft')!).data.seed,shared:JSON.parse(localStorage.getItem('pocket-arcade:v1:mp:blockcraft:world')!).world.seed}));
     expect(saves).toEqual({solo:soloSeed,shared:sharedSeed});
-    await host.page.getByRole('link',{name:'Games',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
+    await host.page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click({timeout:20000});await expect(host.page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
 
     // ---- The host leaving ends the session cleanly; each guest is back in its own single-player world.
     step('The host leaving ends the session cleanly; each guest is back in its own single-player world.');
