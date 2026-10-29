@@ -46,10 +46,11 @@ export function pillVars(tab:{left:number;width:number}|null):Record<string,stri
 function reduceMotion():boolean{
   return document.documentElement.classList.contains('reduce-motion')||matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
-// Engines without the pseudoElement option would animate the whole bar, so the stretch is skipped there.
-function canStretch():boolean{
+// Engines without the pseudoElement option would animate the whole bar, so the stretch is skipped there. The test effect
+// targets the bar itself: WebKit keeps the option only on an effect that has a target, and reports null without one.
+function canStretch(target:Element):boolean{
   return typeof KeyframeEffect==='function'&&typeof HTMLElement.prototype.animate==='function'&&
-    new KeyframeEffect(null,null,{pseudoElement:'::after'}).pseudoElement==='::after';
+    new KeyframeEffect(target,null,{pseudoElement:'::after'}).pseudoElement==='::after';
 }
 
 interface Refraction{rebuild():void;dispose():void}
@@ -129,7 +130,7 @@ function bindRefraction(bar:HTMLElement,brands:readonly Brand[]|undefined):Refra
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const brands=(navigator as NavigatorWithBrands).userAgentData?.brands;
   const refraction=isChromiumBrands(brands)?bindRefraction(bar,brands):undefined;
-  const stretchable=canStretch();
+  const stretchable=canStretch(bar);
   let disposed=false;
   let press:HTMLElement|null=null;
   let placedLeft:number|null=null;

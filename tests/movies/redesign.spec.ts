@@ -158,6 +158,31 @@ for(const width of [390,1440])test(`the Movies island hides on scroll down and r
  await expect(bar).not.toHaveAttribute('data-hidden');
 });
 
+// WebKit can run an animation frame long after it was asked for. Keeping a focused control clear of the header must not
+// wait for one, or a late frame moves the page after the reader has scrolled and the island reads it as a scroll down.
+test('a late animation frame never moves the Movies page after the reader scrolls',async({page})=>{
+ await page.addInitScript(()=>{
+  const raf=window.requestAnimationFrame.bind(window);let next=0;const pending=new Map<number,number>();
+  window.requestAnimationFrame=callback=>{const id=++next;pending.set(id,window.setTimeout(()=>{pending.delete(id);raf(callback);},600));return id;};
+  window.cancelAnimationFrame=id=>{window.clearTimeout(pending.get(id));pending.delete(id);};
+ });
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies');
+ const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const view=page.locator('.movies-view');
+ await expect(page.locator('[data-rail]').first()).toBeVisible();
+ await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
+ // A control takes focus while it is in view, and the reader scrolls a moment later.
+ await page.locator('.movies-view h1').first().evaluate(h1=>(h1 as HTMLElement).focus({preventScroll:true}));
+ await page.waitForTimeout(100);
+ await view.evaluate(e=>e.scrollTo(0,400));
+ await page.waitForTimeout(900);
+ expect(await view.evaluate(e=>e.scrollTop)).toBe(400);
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await view.evaluate(e=>e.scrollTo(0,300));
+ await expect(bar).not.toHaveAttribute('data-hidden');
+});
+
 test('the Movies island is shown again after a section change while it is hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');

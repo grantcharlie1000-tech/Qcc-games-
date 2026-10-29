@@ -840,12 +840,14 @@ export class MoviesView {
  private revealFocus=(event:FocusEvent)=>{
   const target=event.target;
   if(!(target instanceof HTMLElement)||target===this.root||target instanceof HTMLIFrameElement||target instanceof HTMLVideoElement||target.closest('.movies-top,dialog'))return;
-  requestAnimationFrame(()=>{
+  // The browser's own focus scroll is done by the next task. The check runs then, not on an animation frame: WebKit can run
+  // a frame long after it was asked for, and a late check would move the page after the reader has scrolled on.
+  window.setTimeout(()=>{
    const header=this.root.querySelector('.movies-top');
    if(document.activeElement!==target||!header)return;
    const bottom=header.getBoundingClientRect().bottom,box=target.getBoundingClientRect();
    if(box.top<bottom&&box.height<this.root.clientHeight-bottom)this.root.scrollTop-=bottom-box.top;
-  });
+  },0);
  };
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('button')){event.preventDefault();this.playNext();}};
  pause(){this.suspended=true;this.cancelNext();if(this.video){this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
