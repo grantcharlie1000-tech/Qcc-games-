@@ -54,7 +54,7 @@ test('boots, plays, opens the inventory, switches mode, pauses for Study and res
   const snapshot=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:blockcraft')!).data);
   expect(snapshot).toMatchObject({version:2,settings:{mode:'creative'}});expect(snapshot.edits.length).toBeGreaterThanOrEqual(1);
   // Back to the game: that click resumes play at once (no second Resume on Minecraft's Game Menu).
-  await page.getByRole('link',{name:'Games',exact:true}).click();
+  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
   await expect(root).toHaveAttribute('data-phase','playing');await expect(page.locator('.bc-menu')).toBeHidden();
   // Resume can legitimately advance residual movement. Freeze and capture the save
   // actually being restored, rather than comparing with the earlier Study snapshot.

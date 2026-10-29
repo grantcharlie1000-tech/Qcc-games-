@@ -1,0 +1,1648 @@
+{
+  "schemaVersion": 1,
+  "bytesDefinition": "Uncompressed UTF-8 HTTP request and response bodies recorded at the real local HTTP handler for Playwright Chromium requests; reconciled against browser request counts. Same-origin /.netlify/functions/ only. Excludes headers, TLS, compression, static assets, fixtures and teardown.",
+  "timing": "Playwright Chromium clock paused at 1793000001000; advance in 5-second steps, yielding until real local handler/browser response I/O settles after every step. Each flow begins after setup settles.",
+  "notes": [
+    "Local Vite app, real account/leaderboard handlers, fresh @netlify/database-dev Postgres-compatible database with committed migrations; no external or production network.",
+    "Legacy Blockcraft fixture is synthetic JSON of about 2 MB, seeded directly in the database because current write cap is 1 MiB. It exercises a legacy large record without weakening production validation.",
+    "Login is measured separately. Steady-state flows use an existing authenticated browser with the identical database/local fixture so baseline first-login rejection does not prevent comparison.",
+    "The small-score flow changes one score through the real storage module, dispatches the same reconnect event on both revisions, and advances 186 seconds to include the delayed leaderboard write and baseline periodic traffic. This leaves no pending improvement before clean idle.",
+    "Body lengths are captured at the real local HTTP handler boundary and request counts reconciled with Chromium request events because Chromium omits completion events for some keepalive requests.",
+    "Visible idle and hidden idle use the game library. Hidden flow excludes the one-time visibility transition flush; document.hidden/visibilityState are overridden and visibilitychange dispatched because headless tab visibility is unreliable.",
+    "Expanded leaderboard is the desktop Snake sidebar with the game paused. Paused-game flow uses the same paused Snake game after collapsing the board and settling the transition.",
+    "Body lengths are payload sizes, not billed database egress, compressed transfer bytes or predictions of physical device performance. Tokens, credentials, hashes and save contents are never written to evidence."
+  ],
+  "runs": [
+    {
+      "label": "before",
+      "gitSha": "9cfdf33128f223127b88d39d0110647ece2baa41",
+      "measuredAt": "2026-10-29T08:01:49.995Z",
+      "flows": [
+        {
+          "name": "seeded-account-login",
+          "simulatedDurationMs": 0,
+          "requests": 3,
+          "requestBytes": 148,
+          "responseBytes": 2000274,
+          "details": [
+            {
+              "endpoint": "accounts",
+              "action": "login",
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 66,
+              "responseBytes": 106,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 2000157,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "logout",
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 82,
+              "responseBytes": 11,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            }
+          ],
+          "totalBytes": 2000422,
+          "loginAccepted": false
+        },
+        {
+          "name": "small-score-update",
+          "simulatedDurationMs": 186000,
+          "requests": 5,
+          "requestBytes": 848,
+          "responseBytes": 8000970,
+          "details": [
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 48,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            }
+          ],
+          "totalBytes": 8001818
+        },
+        {
+          "name": "signed-in-visible-idle-30-minutes",
+          "simulatedDurationMs": 1800000,
+          "requests": 30,
+          "requestBytes": 6000,
+          "responseBytes": 60005070,
+          "details": [
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 200,
+              "responseBytes": 2000169,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            }
+          ],
+          "totalBytes": 60011070
+        },
+        {
+          "name": "signed-in-hidden-idle-30-minutes",
+          "simulatedDurationMs": 1800000,
+          "requests": 0,
+          "requestBytes": 0,
+          "responseBytes": 0,
+          "details": [],
+          "totalBytes": 0
+        },
+        {
+          "name": "leaderboard-expanded-10-minutes",
+          "simulatedDurationMs": 600000,
+          "requests": 51,
+          "requestBytes": 19290,
+          "responseBytes": 60024534,
+          "details": [
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            }
+          ],
+          "totalBytes": 60043824
+        },
+        {
+          "name": "paused-game-10-minutes",
+          "simulatedDurationMs": 600000,
+          "requests": 30,
+          "requestBytes": 19290,
+          "responseBytes": 60018360,
+          "details": [
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 643,
+              "responseBytes": 2000612,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            }
+          ],
+          "totalBytes": 60037650
+        }
+      ],
+      "fixture": {
+        "legacyBlockcraftRecordBytes": 1999950,
+        "databaseValueTextBytes": 1999944,
+        "smallKeys": [
+          "save:water-sort",
+          "best:snake",
+          "favourites"
+        ]
+      },
+      "browser": "156.0.8078.4",
+      "branch": "main",
+      "applicationDirty": false,
+      "trackedSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceTreeSha256": "88df100304ba40521c83d1ea0e20bcc12a0a815be02c44c9aa1de46c9c0588f9",
+      "sourcePaths": [
+        "src/accounts",
+        "src/core/storage.ts",
+        "src/core/content.ts",
+        "src/main.ts",
+        "src/leaderboard",
+        "netlify/database/migrations"
+      ],
+      "provenanceNote": "Source fingerprint added after the run; every source-file modification time was verified to precede measuredAt. Application source did not change during/after the run. after measured uncommitted implementation atop gitSha; before measured unchanged main application, ignoring the copied measurement script."
+    },
+    {
+      "label": "after",
+      "gitSha": "9cfdf33128f223127b88d39d0110647ece2baa41",
+      "measuredAt": "2026-10-29T08:01:51.159Z",
+      "flows": [
+        {
+          "name": "seeded-account-login",
+          "simulatedDurationMs": 0,
+          "requests": 4,
+          "requestBytes": 114,
+          "responseBytes": 2000792,
+          "details": [
+            {
+              "endpoint": "accounts",
+              "action": "login",
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 66,
+              "responseBytes": 106,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "2",
+              "requestBytes": 0,
+              "responseBytes": 2000307,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": true
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "2",
+              "requestBytes": 0,
+              "responseBytes": 85,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 48,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            }
+          ],
+          "totalBytes": 2000906,
+          "loginAccepted": true
+        },
+        {
+          "name": "small-score-update",
+          "simulatedDurationMs": 186000,
+          "requests": 3,
+          "requestBytes": 197,
+          "responseBytes": 705,
+          "details": [
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 48,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "2",
+              "requestBytes": 101,
+              "responseBytes": 117,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 48,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            }
+          ],
+          "totalBytes": 902
+        },
+        {
+          "name": "signed-in-visible-idle-30-minutes",
+          "simulatedDurationMs": 1800000,
+          "requests": 0,
+          "requestBytes": 0,
+          "responseBytes": 0,
+          "details": [],
+          "totalBytes": 0
+        },
+        {
+          "name": "signed-in-hidden-idle-30-minutes",
+          "simulatedDurationMs": 1800000,
+          "requests": 0,
+          "requestBytes": 0,
+          "responseBytes": 0,
+          "details": [],
+          "totalBytes": 0
+        },
+        {
+          "name": "leaderboard-expanded-10-minutes",
+          "simulatedDurationMs": 600000,
+          "requests": 6,
+          "requestBytes": 542,
+          "responseBytes": 1001,
+          "details": [
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 149,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 146,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "POST",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 48,
+              "responseBytes": 294,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 149,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "leaderboard",
+              "action": null,
+              "method": "GET",
+              "status": 200,
+              "syncProtocol": "1",
+              "requestBytes": 0,
+              "responseBytes": 146,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            },
+            {
+              "endpoint": "accounts",
+              "action": "sync",
+              "method": "PUT",
+              "status": 200,
+              "syncProtocol": "2",
+              "requestBytes": 494,
+              "responseBytes": 117,
+              "requestContainsBlockcraft": false,
+              "responseContainsBlockcraft": false
+            }
+          ],
+          "totalBytes": 1543
+        },
+        {
+          "name": "paused-game-10-minutes",
+          "simulatedDurationMs": 600000,
+          "requests": 0,
+          "requestBytes": 0,
+          "responseBytes": 0,
+          "details": [],
+          "totalBytes": 0
+        }
+      ],
+      "fixture": {
+        "legacyBlockcraftRecordBytes": 1999950,
+        "databaseValueTextBytes": 1999944,
+        "smallKeys": [
+          "save:water-sort",
+          "best:snake",
+          "favourites"
+        ]
+      },
+      "browser": "156.0.8078.4",
+      "branch": "qcc-sync-neon",
+      "applicationDirty": true,
+      "trackedSourceDiffSha256": "87f0baad14ace42ee4b3ba3901575eee6d074d71bb7547ec5c68ae04d4074aad",
+      "sourceTreeSha256": "f5edd46f85dea2bd8653bba618bb6f5f678f5058576a3e58e2f311a748db69e7",
+      "sourcePaths": [
+        "src/accounts",
+        "src/core/storage.ts",
+        "src/core/content.ts",
+        "src/main.ts",
+        "src/leaderboard",
+        "netlify/database/migrations"
+      ],
+      "provenanceNote": "Source fingerprint added after the run; every source-file modification time was verified to precede measuredAt. Application source did not change during/after the run. after measured uncommitted implementation atop gitSha; before measured unchanged main application, ignoring the copied measurement script.",
+      "verifiedImplementationCommit": "c8aaf6d"
+    }
+  ]
+}

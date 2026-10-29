@@ -1,4 +1,4 @@
-import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
+import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from 'vitest';
 import {createHash} from 'node:crypto';
 import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
@@ -30,6 +30,33 @@ it('isolates all three Minesweeper difficulty boards and ranks milliseconds',asy
   expect(board.entries).toHaveLength(1);expect(board.entries[0].score).toBe(score);
  }
  expect((await (await handle(new Request(endpoint+'?game=minesweeper'))).json()).entries).toHaveLength(0);
+});
+
+it('public v2 boards are cacheable and never resolve a session or return personal fields',async()=>{
+ const token=await signup('Public_Reader');await submit(token,'ignored',100);
+ const queries:string[]=[];const observed={query:async(sql:string,values?:unknown[])=>{queries.push(sql);return pool.query(sql,values);},connect:()=>pool.connect()};
+ const response=await createLeaderboardHandler(observed)(new Request(endpoint+'?game=snake&view=public',{headers:{Authorization:'Bearer acct_'+'f'.repeat(64)}}));
+ expect(response.status).toBe(200);expect(response.headers.get('Cache-Control')).toBe('public, max-age=30');expect(response.headers.get('Netlify-CDN-Cache-Control')).toBe('public, s-maxage=60, stale-while-revalidate=300');expect(response.headers.get('Netlify-Cache-Tag')).toBe('qcc-board-snake');
+ const data=await response.json();expect(Object.keys(data)).toEqual(['entries']);expect(data.entries[0].name).toBe('Public_Reader');expect(data.entries[0]).not.toHaveProperty('mine');expect(queries.some(sql=>sql.includes('account_sessions'))).toBe(false);
+});
+it('personal v2 reads validate the account and are always private',async()=>{
+ const token=await signup('Personal_Reader');await submit(token,'ignored',100);
+ const response=await handle(new Request(endpoint+'?game=snake&view=personal',{headers:{Authorization:'Bearer '+token}}));expect(response.headers.get('Cache-Control')).toBe('private, no-store');const body=await response.json();expect(Object.keys(body)).toEqual(['player']);expect(body.player.name).toBe('Personal_Reader');
+ expect((await handle(new Request(endpoint+'?game=snake&view=personal'))).status).toBe(401);
+});
+it('equal and lower scores never rewrite the score or player row',async()=>{
+ const token=await signup('Unchanged');await submit(token,'ignored',100);
+ const rows=()=>pool.query('SELECT p.xmin::text AS player_version,s.xmin::text AS score_version,s.reached_at FROM arcade_players p JOIN arcade_scores s ON s.player_id=p.id');
+ const before=(await rows()).rows;await submit(token,'Spoofed',100);await submit(token,'Spoofed',50);expect((await rows()).rows).toEqual(before);
+});
+
+it('freeze rejects leaderboard writes before opening a transaction while public reads stay available',async()=>{
+ const token=await signup('Frozen_Player');await submit(token,'ignored',50);
+ vi.stubEnv('QCC_WRITE_FREEZE','1');try{
+  const queries:string[]=[];const observed={query:async(sql:string,values?:unknown[])=>{queries.push(sql);return pool.query(sql,values);},connect:async()=>{throw Error('must not connect for frozen writes');}};
+  const handler=createLeaderboardHandler(observed);const response=await handler(new Request(endpoint,{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',score:100})}));expect(response.status).toBe(503);expect(await response.json()).toEqual({error:'read_only',retryable:true});expect(response.headers.get('Retry-After')).toBe('120');expect(queries).toEqual([]);
+  expect((await handler(new Request(endpoint+'?game=snake&view=public'))).status).toBe(200);expect((await pool.query("SELECT score FROM arcade_scores WHERE game_id='snake'")).rows[0].score).toBe(50);
+ }finally{vi.unstubAllEnvs();}
 });
 
 it('keeps the Minesweeper score ranking separate from legacy and time scores',async()=>{

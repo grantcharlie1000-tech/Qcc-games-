@@ -125,6 +125,18 @@ async function holdActivation(page,target){
  worker.postMessage=(message,...ports)=>{if(message.type==='ARCADE_ACTIVATE'){if(message.version!==expected)throw new Error('Wrong offered version');window.activationHeld=true;window.releaseTestActivation=()=>{window.activationHeld=false;send(message,...ports);};}else send(message,...ports);};
 },target.version);}
 async function releaseActivation(page){await page.evaluate(()=>{if(!window.activationHeld)throw new Error('Activation was not held');window.releaseTestActivation();});}
+async function releaseAndWaitForVersion(page,target,label){
+ const previous=await page.evaluateHandle(()=>navigator.serviceWorker.controller);
+ try{
+  assert.equal(await previous.evaluate(worker=>!!worker),true,'the retained page has a controller before activation');
+  await releaseActivation(page);
+  // Do not query the retiring worker while Chromium is stopping it. Once the
+  // controller changes, still verify the exact expected version within the same deadline.
+  await poll(async()=>await page.evaluate(old=>{
+   const current=navigator.serviceWorker.controller;return !!current&&current!==old&&current.state==='activated';
+  },previous)&&await version(page)===target.version,label);
+ }finally{await previous.dispose().catch(()=>{});}
+}
 async function progress(page){return await page.evaluate(()=>{
  const data=JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')).data;return {seed:data.seed,bag:data.bag,current:data.current,next:data.next,score:data.score,fruits:data.fruits.map(({id,tier})=>({id,tier}))};
 });}
@@ -133,10 +145,10 @@ async function controlledWaitingCase(path,base){
  await menu(a);await a.locator('#motion').check();await closeMenu(a);await fruitGameLink(a).click();await drop(a,1);await a.keyboard.press('Escape');await a.evaluate(()=>{window.retainedDocument='waiting-B';});
  const c=await context.newPage();await home(c,base);deployed=W;await menu(c);await closeMenu(c);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();
  await holdActivation(a,W);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit W activation held after first save');
- await a.getByLabel('Study topic',{exact:true}).selectOption('quadratics');await a.getByLabel('Study topic',{exact:true}).selectOption('close-reading');await releaseActivation(a);await poll(async()=>await version(a)===W.version,'W activates after topic away and back');
- await poll(async()=>!await a.locator('#reload-update').isDisabled(),'topic cancellation flow settled');assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','topic away/back cancels pending reload');await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);
+ await a.getByLabel('Study topic',{exact:true}).selectOption('quadratics');await a.getByLabel('Study topic',{exact:true}).selectOption('close-reading');await releaseAndWaitForVersion(a,W,'W activates after topic away and back');
+ await poll(async()=>!await a.locator('#reload-update').isDisabled(),'topic cancellation flow settled');assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','topic away/back cancels pending reload');await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);
  console.log('CONTROLLED TOPIC CANCELLATION PASS',path);await c.reload();deployed=X;await menu(c);await closeMenu(c);await a.keyboard.press('Escape');await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();await holdActivation(a,X);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit X activation held');
- await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,3);await releaseActivation(a);await poll(async()=>await version(a)===X.version,'X activates without reloading resumed game');await a.getByRole('button',{name:'Pause game',exact:true}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B');
+ await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,3);await releaseAndWaitForVersion(a,X,'X activates without reloading resumed game');await a.getByRole('button',{name:'Pause game',exact:true}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B');
  console.log('CONTROLLED RESUME CANCELLATION PASS',path);await c.reload();deployed=Y;await menu(c);await closeMenu(c);await menu(a);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();const savedProgress=await progress(a);await holdActivation(a,Y);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit Y activation held after first durable save');
  assert.ok(await fillQuota(a)>1_000_000);await a.locator('#motion').uncheck();assert.equal(JSON.parse((await data(a)).settings).reducedMotion,true);await releaseActivation(a);
  await a.locator('#update-status').filter({hasText:'could not be saved'}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','late preference failure refuses the actual reload');
@@ -163,7 +175,7 @@ async function legacyWaitingCase(path,base,transition=false){
  }
  deployed=B;await b.reload();await poll(async()=>await version(b)===B.version,'fixed B migrates active A with already-waiting legacy L');
  assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A-with-waiting-L');await b.reload();assert.equal(await b.locator('meta[name="arcade-release"]').getAttribute('content'),'B');
- await context.setOffline(true);await a.bringToFront();await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await context.setOffline(false);
+ await context.setOffline(true);await a.bringToFront();await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await context.setOffline(false);
  assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'));await context.tracing.stop({path:`${evidence}/update-legacy-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('LEGACY ALREADY WAITING MIGRATION PASS',path);
 }
 async function legacyNavigationCase(path,base){
@@ -189,7 +201,7 @@ try{
   await poll(async()=>await version(b)===B.version,'B activation with legacy tabs retained');
   assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A','activation must not reload the old game document');
   assert.ok((await cacheKeys(a)).includes('pocket-arcade:'+path+':'+A.version+':pack'));assert.equal(B.map.has('/'+A.game),false);
-  await context.setOffline(true);await a.bringToFront();await a.getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await a.keyboard.press('Escape');
+  await context.setOffline(true);await a.bringToFront();await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);await a.keyboard.press('Escape');
   assert.equal(await a.evaluate(url=>fetch(url).then(r=>r.ok),new URL(A.game,base).href),true,'old lazy asset survives removed server copy while offline');await context.setOffline(false);
   await b.reload();assert.equal(await b.locator('meta[name="arcade-release"]').getAttribute('content'),'B');await menu(b);assert.match(await b.locator('.menu-note').textContent(),/Release B/);await closeMenu(b);
   assert.equal(await a.evaluate(()=>window.retainedDocument),'legacy-A');assert.deepEqual(await data(b),before);await a.close();await b.close();await context.close();
@@ -221,7 +233,7 @@ try{
   await context.setOffline(false);
   // Fill actual browser localStorage, without replacing its methods. Only this
   // test-owned key is removed for recovery; no user storage is cleared.
-  console.log('ACTUAL QUOTA TEST',path);await a.getByRole('link',{name:'Games',exact:true}).click();const quota=await a.evaluate(()=>{
+  console.log('ACTUAL QUOTA TEST',path);await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();const quota=await a.evaluate(()=>{
    let size=0,step=1<<20;while(step){try{localStorage.setItem('update-test-quota','x'.repeat(size+step));size+=step;}catch(error){if(!(error instanceof DOMException)||error.name!=='QuotaExceededError')throw error;step=Math.floor(step/2);}}return {size};
   });assert.ok(quota.size>1_000_000);await drop(a,3);await menu(a);await a.evaluate(()=>{
    let size=0,step=1<<20;while(step){try{localStorage.setItem('update-test-quota','x'.repeat(size+step));size+=step;}catch(error){if(!(error instanceof DOMException)||error.name!=='QuotaExceededError')throw error;step=Math.floor(step/2);}}return {size};
@@ -246,7 +258,7 @@ try{
   results.push({scope:path,oldVersion:A.version,versions:[B.version,C.version,D.version],persistentProfileRestarted:true,naturalReloadDiscovery:true,noAutomaticDocumentReload:true,legacyDelayedNavigation:false,modernDelayedNavigation:true,legacyPackPinned:true,oldLazyChunkRemovedFromServer:true,oldGamePlayedOffline:true,persistentProfileWorkerRestart:true,forcedLiveWorkerRestart:false,visibleNewContent:true,scoreSettingsCookiePreserved:true,actualProgressRestored:true,quotaBlockedUserReload:true,pendingPreferenceRecovered:true,inconsistentInstallRecovery:true,modernCachesCleaned:true,futureInstallCachePreserved:true});console.log('MIGRATION PASS',path);await controlledWaitingCase(path,base);Object.assign(results.at(-1),{waitingUpdateAccepted:true,resumeCancelsPendingReload:true,lateQuotaBlocksActualReload:true});await cancelledCase(path,base);const legacyNavigation=await legacyNavigationCase(path,base);Object.assign(results.at(-1),{cancelledReservationAllowsLaterGc:true,legacyDelayedNavigation:true,legacyDelayedNavigationWorkerState:legacyNavigation});
  }
 }catch(error){
- console.error(error);if(nativeTraceEnabled)await nativeTrace.failure(error,{scope,heldGate:!!gate,heldManifest:!!manifestGate});await settleGate();manifestGate?.end();console.error('REQUESTS AT FAILURE',JSON.stringify(requests.slice(-40)));for(const [i,context] of contexts.entries()){for(const page of context.pages()){if(!page.isClosed())console.error('FAILURE WORKER',JSON.stringify(await diagnostic(page)));console.error('FAILURE PAGE',page.url(),await page.evaluate(()=>({marker:document.querySelector('meta[name="arcade-release"]')?.getAttribute('content'),focus:document.activeElement?.id,body:document.body.className,status:document.querySelector('#update-status')?.textContent,disabled:document.querySelector('#reload-update')?.disabled})).catch(()=>null));}await Promise.race([context.tracing.stop({path:`${evidence}/update-failure-${i}.zip`}).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);}throw error;
+ console.error(error);if(nativeTraceEnabled)await nativeTrace.failure(error,{scope,heldGate:!!gate,heldManifest:!!manifestGate});await settleGate();manifestGate?.end();console.error('REQUESTS AT FAILURE',JSON.stringify(requests.slice(-40)));for(const [i,context] of contexts.entries()){for(const page of context.pages()){if(!page.isClosed())console.error('FAILURE WORKER',JSON.stringify(await diagnostic(page)));console.error('FAILURE PAGE',page.url(),await page.evaluate(()=>({marker:document.querySelector('meta[name="arcade-release"]')?.getAttribute('content'),focus:document.activeElement?.id,body:document.body.className,style:document.querySelector('#study-view:not([hidden])')?(document.querySelector('#study-view')?.dataset.style||'qcc'):null,topic:document.querySelector('#study-topic')?.value,status:document.querySelector('#update-status')?.textContent,disabled:document.querySelector('#reload-update')?.disabled})).catch(()=>null));}await Promise.race([context.tracing.stop({path:`${evidence}/update-failure-${i}.zip`}).catch(()=>{}),new Promise(resolve=>setTimeout(resolve,5000))]);}throw error;
 }finally{
  gate?.end('stop');manifestGate?.end();for(const context of contexts)await context.close().catch(()=>{});server.closeAllConnections();await new Promise(resolve=>server.close(resolve));for(const profile of profiles)await rm(profile,{recursive:true,force:true});
  await writeFile(evidence+'/update-results.json',JSON.stringify({recordedAt:new Date().toISOString(),results,requests,startupInventories,retainedPageEvidence},null,2));

@@ -31,3 +31,9 @@ export function validSave(key:string,record:unknown,maxBytes=MAX_KEY_BYTES):reco
 export function validSaves(value:unknown):value is Saves {
  return object(value)&&Object.keys(value).length<=SAVE_KEYS.length&&Object.entries(value).every(([key,record])=>validSave(key,record));
 }
+
+/** Revisions travel as decimal strings; Postgres bigint exceeds JavaScript precision. */
+export type SaveRevisions=Record<string,string>;
+export interface SyncV2Request {cursor:string;bases:SaveRevisions;saves:Saves}
+export interface SyncV2Response {protocolVersion:2;cursor:string;saves:Saves;revisions:SaveRevisions;acks:SaveRevisions;conflicts:Saves}
+export const validRevision=(value:unknown):value is string=>typeof value==='string'&&/^(0|[1-9][0-9]{0,18})$/.test(value)&&BigInt(value)<=9223372036854775807n;

@@ -216,7 +216,7 @@ test('real drag and held keys steer; P pauses and resumes; Study, blur, death an
     const studied=await data(page,'x');await page.keyboard.down('ArrowLeft');await page.clock.runFor(100);expect(await data(page,'x')).toBeLessThan(studied);
     await page.keyboard.press('Escape');const studyDistance=await root.getAttribute('data-distance');
     await page.keyboard.down('d');await page.clock.runFor(200);expect(await root.getAttribute('data-distance')).toBe(studyDistance);await page.keyboard.up('d');
-    await page.getByRole('link',{name:'Games',exact:true}).click();
+    await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
     await expect(root).toHaveAttribute('data-phase','running');await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
     await page.clock.runFor(400);const settled=await data(page,'x');await page.clock.runFor(250);expect(Math.abs(await data(page,'x')-settled)).toBeLessThan(.02);
     await page.keyboard.up('ArrowLeft');
@@ -436,7 +436,9 @@ test('under reduced motion Game Over only fades; shell Restart from dying or Gam
   await page.clock.runFor(400);await expectClear(page,over);
   expect(await entrance(over)).toEqual({opacity:1,transform:'none'});
   const ended=(await saved(page)).records.hard,count2=await reports();
-  expect(ended.day).toBe(dayKey(second));expect(count2).toBeGreaterThan(count);
+  // The new day's run still commits game records, but matching the global best
+  // must not rewrite the shell high score just to report it again.
+  expect(ended.day).toBe(dayKey(second));expect(ended.allTime).toBe(dead.allTime);expect(count2).toBe(count);
   await page.clock.setSystemTime(third);await restart.click();await expect(root).toHaveAttribute('data-phase','ready');
   expect((await saved(page)).records.hard).toEqual(ended);expect(await reports()).toBe(count2);
 });

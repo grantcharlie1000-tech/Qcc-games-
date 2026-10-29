@@ -11,7 +11,7 @@ const trophy='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v2h3v3
 export class LeaderboardSidebar {
  readonly root=document.createElement('aside');
  private readonly wide=matchMedia('(min-width: 720px)');
- private disposed=false;private request=0;private busy=false;private refreshPending=false;private timer:ReturnType<typeof setTimeout>|undefined;private unsubscribe:()=>void;
+ private disposed=false;private request=0;private busy=false;private refreshPending=false;private lastLoaded=0;private unsubscribe:()=>void;
  private readonly game:LeaderboardKey;
  constructor(game:GameId,title:string,private sync:LeaderboardSync,open:()=>void){
   this.game=game==='minesweeper'?'minesweeper-score':game;
@@ -45,12 +45,12 @@ export class LeaderboardSidebar {
   if(remember)store.write('leaderboard:panel-open',open);
   this.label();
   if(hadFocus)(open?this.root.querySelector<HTMLElement>('.lb-collapse'):toggle)!.focus();
-  this.visibility();
+  const fresh=this.lastLoaded&&Date.now()-this.lastLoaded<=180000;
+  this.visibility();if(open&&this.active()&&fresh)void this.refresh();
  }
- private visibility=()=>{this.root.hidden=!this.wide.matches;clearTimeout(this.timer);if(this.active())void this.refresh();else{this.request++;if(this.wide.matches&&this.expanded&&!document.hidden)this.offline();}};
+ private visibility=()=>{this.root.hidden=!this.wide.matches;if(this.active()){if(!this.lastLoaded||Date.now()-this.lastLoaded>180000)void this.refresh();}else{this.request++;if(this.wide.matches&&this.expanded&&!document.hidden)this.offline();}};
  private offline(){this.paint(this.sync.cached(this.game));this.status('Offline · showing saved rankings.');}
  private active(){return !this.disposed&&this.wide.matches&&this.expanded&&!document.hidden&&navigator.onLine;}
- private schedule(){clearTimeout(this.timer);if(this.active())this.timer=setTimeout(()=>void this.refresh(),30000);}
  private online=()=>{void this.refresh();};
  private label(){this.root.querySelector('.lb-open')!.textContent='All rankings';}
  private status(text:string){this.root.querySelector('.lb-status')!.textContent=text;}
@@ -65,13 +65,13 @@ export class LeaderboardSidebar {
   if(!this.active())return;
   if(this.busy){this.refreshPending=true;return;}
   const request=++this.request;this.label();
-  this.busy=true;clearTimeout(this.timer);
+  this.busy=true;
   if(!this.root.querySelector('tbody')!.childElementCount)this.status('Loading…');
-  try{const board=await this.sync.load(this.game);if(this.disposed||request!==this.request)return;this.paint(board);
+  try{const board=await this.sync.load(this.game);if(this.disposed||request!==this.request)return;this.paint(board);this.lastLoaded=Date.now();
    const mine=board.player;this.status(mine?`You: #${mine.rank} · ${formatScore(this.game,mine.score)}`:board.entries.length?'Best score per player.':'No scores yet. Be the first!');}
   catch{if(this.disposed||request!==this.request)return;const cached=this.sync.cached(this.game);this.paint(cached);this.status(cached?'Offline · showing saved rankings.':'Rankings unavailable right now.');}
-  finally{this.busy=false;if(this.refreshPending){this.refreshPending=false;void this.refresh();}else this.schedule();}
+  finally{this.busy=false;if(this.refreshPending){this.refreshPending=false;void this.refresh();}}
  }
- dispose(){clearTimeout(this.timer);this.unsubscribe();document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('offline',this.visibility);this.disposed=true;this.request++;this.wide.removeEventListener('change',this.visibility);window.removeEventListener('online',this.online);this.root.remove();}
+ dispose(){this.unsubscribe();document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('offline',this.visibility);this.disposed=true;this.request++;this.wide.removeEventListener('change',this.visibility);window.removeEventListener('online',this.online);this.root.remove();}
  static supports(game:GameId){return scoredGame(game)&&game!=='pool';}
 }

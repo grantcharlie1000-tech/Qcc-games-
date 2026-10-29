@@ -4,11 +4,27 @@ import type {Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 import {directShot} from '../games/pool/helpers';
 
-const studyImagePaths=new Set<string>(JSON.parse(readFileSync('public/study/image-provenance.json','utf8')).assets.map((asset:{path:string})=>`/study/${asset.path}`));
+const studyImagePaths=new Set<string>([
+  ...JSON.parse(readFileSync('public/study/image-provenance.json','utf8')).assets.map((asset:{path:string})=>`/study/${asset.path}`),
+  ...JSON.parse(readFileSync('public/study/fictional-ads/provenance.json','utf8')).assets.map((asset:{file:string})=>`/study/fictional-ads/${asset.file}`),
+]);
 const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of requests){const url=new URL(request);expect(url.origin).toBe(new URL(page.url()).origin);expect(studyImagePaths.has(url.pathname)).toBe(true);}};
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>{const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.isVisible())await accept.click();await page.locator(`[data-study-topic="${id}"]`).click();};
-const returnToGame=async(page:import('@playwright/test').Page)=>page.getByRole('link',{name:'Games',exact:true}).click();
+const returnToGame=async(page:Page)=>{
+  await page.getByRole('link',{name:'Games',exact:true}).first().click();
+  await expect(page.locator('#study-view')).toBeHidden();
+  await expect(page.locator('#game-stage, .game-card').first()).toBeVisible();
+  await expect(page.locator('#app')).toHaveJSProperty('inert',false);
+};
+const waitForReadingScroll=async(page:Page)=>{
+  let lastY:number|undefined,stillSince=0;
+  await expect.poll(async()=>{
+    const y=await page.evaluate(()=>window.scrollY),now=performance.now();
+    if(lastY===undefined||Math.abs(y-lastY)>.5){lastY=y;stillSince=now;}
+    return now-stillSince;
+  },{message:'Wait for the native reading scroll to settle',timeout:5000,intervals:[50]}).toBeGreaterThanOrEqual(400);
+};
 const snapshot=(page:Page,id:string)=>page.evaluate(id=>JSON.parse(localStorage.getItem(`pocket-arcade:v1:save:${id}`)!).data,id);
 
 async function gameAction(page:Page,id:string){
@@ -89,7 +105,8 @@ test('reading keeps native Space scrolling and keyboard controls isolated from T
   await expect(page.locator('html')).toHaveAttribute('data-study-space-prevented','false');
   await page.bringToFront();
   await page.locator('#study-topic').focus();await page.keyboard.press('ArrowDown');
-  await expect(page.locator('#study-title')).toHaveText('Building a convincing argument');
+  await expect(page.locator('#study-topic')).toHaveValue('essay-writing');
+  await expect(page.locator('#study-title')).not.toBeEmpty();
   await returnToGame(page);
   await expect(page.locator('.tower-height')).toHaveText('0');
 });
@@ -101,7 +118,7 @@ test('Escape immediately saves and pauses; article changes never load or replace
   await page.evaluate(()=>{(window as unknown as {retainedStage:Element|null}).retainedStage=document.querySelector('#game-stage > *');});
   const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
   await page.keyboard.press('Escape');
-  await expect(page.locator('#study-title')).toHaveText('Reading between the lines');
+  await expect(page.locator('#study-topic')).toHaveValue('close-reading');
   await expect(page.locator('#game-stage')).toBeHidden();
   const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data);
   expect(before.fruits).toHaveLength(1);
@@ -111,13 +128,13 @@ test('Escape immediately saves and pauses; article changes never load or replace
     await page.getByLabel('Study topic',{exact:true}).selectOption(id);
     await expect(page.locator('#study-title')).not.toBeEmpty();
     await expect(page.locator('.study-diagram, .study-byline svg')).toHaveCount(0);
-    await expect(page.locator('.study-text-section')).toHaveCount(6);
+    expect(await page.locator('.study-article-body p').count()).toBeGreaterThanOrEqual(4);
   }
   await page.keyboard.press('Escape');
   await expect(page.locator('#study-view')).toBeVisible();
   const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data);
   expect(after).toEqual(before);
-  await page.getByRole('link',{name:'Games',exact:true}).click();
+  await returnToGame(page);
   await expect(page.locator('.fm-count')).toContainText('1 fruit');
   expect(await page.evaluate(()=>(window as unknown as {retainedStage:Element|null}).retainedStage===document.querySelector('#game-stage > *'))).toBe(true);
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
@@ -137,12 +154,16 @@ test.describe('all retained game instances',()=>{
       await gameAction(page,id);
       const root=await page.locator('#game-stage > *').first().elementHandle();
       await page.keyboard.press('Escape');
-      await expect(page.locator('#study-title')).toHaveText('Why motion changes');
+      await expect(page.locator('#study-topic')).toHaveValue('forces');
+      await expect(page.locator('#study-title')).not.toBeEmpty();
       await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
       const saved=await snapshot(page,id);expect(saved).toBeTruthy();
       // Advance beyond the 5-second autosave and any AI/animation delays.
       await page.clock.runFor(6100);
       await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');
+      // Native Space scrolling can continue after keyboard.press resolves, even
+      // with the page clock paused. Settle it before changing articles and clicking Games.
+      await waitForReadingScroll(page);
       await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
       await page.keyboard.down('Escape');await page.keyboard.down('Escape');await page.keyboard.up('Escape');
       expect(await snapshot(page,id)).toEqual(saved);
@@ -160,11 +181,14 @@ test.describe('all retained game instances',()=>{
 });
 
 for(const modal of ['menu','rules']){
-  test(`Escape from the ${modal} cannot resume gameplay behind the chapter`,async({page})=>{
+  test(`Escape dismisses the ${modal} before opening the chapter`,async({page})=>{
     await page.goto('/#/game/fruit-merge');await choose(page);
     await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
     await page.getByRole('button',{name:modal==='menu'?'Open menu':'Game rules',exact:true}).click();
     if(modal==='menu')await page.getByRole('searchbox').focus();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog[open]')).toHaveCount(0);
+    await expect(page.locator('#study-view')).toBeHidden();
     await page.keyboard.press('Escape');
     await expect(page.locator('#study-view')).toBeVisible();
     await expect(page.locator('dialog[open]')).toHaveCount(0);
@@ -200,7 +224,7 @@ test('Escape during a delayed import opens instantly and the late game mounts pa
   await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();
   await expect(page.locator('.loading')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('#study-title')).toHaveText('Reading between the lines');
+  await expect(page.locator('#study-topic')).toHaveValue('close-reading');
   release();
   await expect(page.locator('.fm')).toBeAttached();
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');

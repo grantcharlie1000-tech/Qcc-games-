@@ -77,7 +77,7 @@ test('Escape preserves host study, saves exactly, and saved continuation waits f
   await page.keyboard.press('Escape'); await expect(page.locator('#study-view')).toBeVisible();
   const before = await saved(page); await page.clock.runFor(1200); await page.keyboard.press('Space'); await page.keyboard.press('ArrowUp');
   expect(await saved(page)).toEqual(before);
-  await page.getByRole('link', { name: 'Games', exact: true }).click(); await page.clock.runFor(150);
+  await page.locator('.study-article-body').getByRole('link', { name: 'Games', exact: true }).click(); await page.clock.runFor(150);
   expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(before.ticks);
   await page.getByRole('button', { name: 'Pause game', exact: true }).click(); const paused = await saved(page);
   await page.reload(); await expect(page.getByRole('button', { name: 'Continue arena', exact: true })).toBeVisible();

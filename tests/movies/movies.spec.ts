@@ -58,7 +58,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
  await page.evaluate(()=>scrollTo(0,0));await page.mouse.wheel(0,500);await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(0);
  // Study retains the movies route and returns to the same page.
- await page.getByRole('link',{name:'Games',exact:true}).click();
+ await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
  await expect(page.locator('.movies-view')).toBeVisible();
  await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(21);await expect(launch).toBeFocused();
 });
@@ -157,7 +157,7 @@ test('provider playback is enabled and sandboxed, and Study unloads it',async({p
  await expect(frame).toHaveAttribute('sandbox','allow-scripts allow-same-origin');await expect(frame).toHaveAttribute('referrerpolicy','no-referrer');
  expect(await frame.getAttribute('allow')).toContain("camera 'none'");expect(await frame.getAttribute('src')).toContain('/embed/157336?autoplay=0');
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await expect(frame).toHaveCount(0);
- await page.getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame).toBeVisible();
+ await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame).toBeVisible();
 });
 
 test('full-catalog search, episode metadata and playback are on demand',async({page})=>{
@@ -215,7 +215,7 @@ test('external progress is local, rejects other senders and resumes through docu
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBeUndefined();
  const origin=new URL(page.url()).origin;await frame.locator('body').evaluate((_,origin)=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:42},origin),origin);
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBe(42);
- await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
+ await page.keyboard.press('Escape');await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
  await frame.locator('body').evaluate((_,origin)=>{window.addEventListener('message',event=>{if(event.data.action==='seek')document.body.dataset.seek=String(event.data.time);});parent.postMessage({event:'frameXTV:timeupdate',currentTime:0},origin);},origin);
  await expect(frame.locator('body')).toHaveAttribute('data-seek','42');
 });

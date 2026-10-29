@@ -1,6 +1,7 @@
 import type {Saves,SaveRecord} from './shared';
+import {stableText} from '../core/content';
 /** Stable ties make the merge independent of request arrival order. */
-const newest=(a:SaveRecord,b:SaveRecord)=>a.updated===b.updated?(JSON.stringify(a.value)>=JSON.stringify(b.value)?a:b):a.updated>b.updated?a:b;
+const newest=(a:SaveRecord,b:SaveRecord)=>a.updated===b.updated?(stableText(a.value)>=stableText(b.value)?a:b):a.updated>b.updated?a:b;
 export function mergeSaves(a:Saves,b:Saves):Saves {
  const result:Saves={...a};
  for(const [key,next] of Object.entries(b)){

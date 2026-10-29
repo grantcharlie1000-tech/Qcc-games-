@@ -3,6 +3,7 @@ import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
+import {articleById} from '../../src/study/articles';
 const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
 let accounts:ReturnType<typeof createAccountsHandler>,leaderboard:ReturnType<typeof createLeaderboardHandler>;
 test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);});
@@ -61,10 +62,10 @@ test('logout in another tab preserves Study and returns to a fresh guest game',a
  await connect(context);await page.goto('/#/game/minesweeper');await signIn(page,`Tabs_${Date.now()}`,true);
  await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
  const reading=await context.newPage();await reading.goto('/#/game/minesweeper');await expect(reading.locator('.ms-tile').first()).toBeVisible();await reading.keyboard.press('Escape');
- await expect(reading.locator('#study-title')).toHaveText('Reading between the lines');
+ const selected=await reading.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'));expect(selected).toMatch(/^(quanta|aeon|essay):close-reading$/);const article=articleById(selected!);expect(article).toBeDefined();await expect(reading.locator('#study-topic')).toHaveValue('close-reading');await expect(reading.locator('#study-title')).toHaveText(article!.title);
  await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page.locator('#menu')).not.toBeVisible();
- await expect(reading.locator('#account-summary')).toHaveText('Playing as guest');await expect(reading.locator('#study-title')).toBeVisible();await expect(reading.locator('.study-text-section')).toHaveCount(6);
- await reading.getByRole('link',{name:'Games',exact:true}).click();await expect(reading.locator('.ms-tile').first()).toBeVisible();await expect(reading.locator('#game-best strong')).toHaveText('0');
+ await expect(reading.locator('#account-summary')).toHaveText('Playing as guest');await expect(reading.locator('#study-title')).toHaveText(article!.title);expect(await reading.locator('.study-article-body > p').count()).toBeGreaterThanOrEqual(6);
+ await reading.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await expect(reading.locator('.ms-tile').first()).toBeVisible();await expect(reading.locator('#game-best strong')).toHaveText('0');
  expect(await reading.evaluate(()=>Number(localStorage.getItem('pocket-arcade:v1:best:minesweeper')??0))).toBe(0);
  await menu(reading);await expect(reading.getByRole('button',{name:'Log in / Sign up',exact:true})).toBeVisible();await expect(reading.getByRole('button',{name:'Log out',exact:true})).not.toBeVisible();await expect(reading.getByRole('button',{name:'Switch account',exact:true})).not.toBeVisible();
 });
@@ -72,7 +73,7 @@ test('logout in another tab preserves Study and returns to a fresh guest game',a
 test('keyboard-only signup and Escape still open Study while playing',async({page,context})=>{
  await connect(context);await page.goto('/#/game/fruit-merge');const dialog=page.locator('#accounts-dialog');await dialog.getByRole('button',{name:'Sign up',exact:true}).focus();await page.keyboard.press('Enter');
  await dialog.getByLabel('Username',{exact:true}).focus();await page.keyboard.type(`Keys_${Date.now()}`);await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Enter');
- await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#study-title')).toHaveText('Reading between the lines');
+ await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();await page.keyboard.press('Escape');const selected=await page.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'));expect(selected).toMatch(/^(quanta|aeon|essay):close-reading$/);const article=articleById(selected!);expect(article).toBeDefined();await expect(page.locator('#study-topic')).toHaveValue('close-reading');await expect(page.locator('#study-title')).toHaveText(article!.title);
 });
 
 test('guest entry and account form fit a 320px touch screen',async({browser})=>{
@@ -95,4 +96,17 @@ test('signup confirms passwords, clears secrets and scrolls in short landscape',
  await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
  await dialog.evaluate((el:HTMLDialogElement)=>el.showModal());await dialog.getByLabel('Password',{exact:true}).fill('long enough password');await dialog.getByLabel('Confirm password',{exact:true}).fill('long enough password');
  await dialog.getByRole('button',{name:'Play as guest',exact:true}).click();await expect(dialog.getByLabel('Password',{exact:true})).toHaveValue('');await expect(dialog.getByLabel('Confirm password',{exact:true})).toHaveValue('');
+});
+
+test('manual sync fits the account panel and paused/hidden tabs make no idle requests',async({page,context})=>{
+ test.setTimeout(60000);await connect(context);await page.goto('/#/game/minesweeper');await signIn(page,`Idle_${Date.now()}`,true);
+ await expect(page.locator('.ms-tile').first()).toBeVisible();if(await page.getByRole('button',{name:'Pause game',exact:true}).isVisible())await page.getByRole('button',{name:'Pause game',exact:true}).click({force:true});await menu(page);
+ await page.getByRole('button',{name:'Sync now',exact:true}).click();await expect(page.locator('#account-sync-status')).toHaveText('Progress synced.');
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:sync:'+JSON.parse(localStorage.getItem('pocket-arcade:v1:accounts:session')!).username.toLowerCase())!).pending.length)).toBe(0);
+ await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));const requests:string[]=[];page.on('request',request=>{if(/\/\.netlify\/functions\/(accounts|leaderboard)/.test(request.url()))requests.push(request.method());});
+ await page.clock.runFor(30*60000);expect(requests).toEqual([]);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+ await page.clock.runFor(30*60000);expect(requests).toEqual([]);
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
+ await expect.poll(()=>requests.filter(method=>method==='GET').length).toBe(1);expect(requests.filter(method=>method==='PUT')).toHaveLength(0);
 });

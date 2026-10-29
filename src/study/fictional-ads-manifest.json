@@ -1,0 +1,402 @@
+[
+  {
+    "id": "01",
+    "brand": "Moss & Morrow",
+    "format": "banner",
+    "file": "01-moss-morrow.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "02",
+    "brand": "Paper Finch",
+    "format": "square",
+    "file": "02-paper-finch.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "03",
+    "brand": "Tideglass",
+    "format": "portrait",
+    "file": "03-tideglass.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "04",
+    "brand": "Cloudberry Studio",
+    "format": "tall",
+    "file": "04-cloudberry-studio.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "05",
+    "brand": "Orbit Arcade",
+    "format": "landscape",
+    "file": "05-orbit-arcade.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "06",
+    "brand": "Daybreak Bikes",
+    "format": "banner",
+    "file": "06-daybreak-bikes.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "07",
+    "brand": "Northstar Paper",
+    "format": "square",
+    "file": "07-northstar-paper.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "08",
+    "brand": "Pebble Audio",
+    "format": "portrait",
+    "file": "08-pebble-audio.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "09",
+    "brand": "Fernline",
+    "format": "tall",
+    "file": "09-fernline.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "10",
+    "brand": "Sundial Socks",
+    "format": "landscape",
+    "file": "10-sundial-socks.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "11",
+    "brand": "Little Harbour",
+    "format": "banner",
+    "file": "11-little-harbour.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "12",
+    "brand": "Ramble Maps",
+    "format": "square",
+    "file": "12-ramble-maps.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "13",
+    "brand": "Afterglow Lamps",
+    "format": "portrait",
+    "file": "13-afterglow-lamps.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "14",
+    "brand": "Fieldnote Bags",
+    "format": "tall",
+    "file": "14-fieldnote-bags.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "15",
+    "brand": "Mirth Puzzles",
+    "format": "landscape",
+    "file": "15-mirth-puzzles.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "16",
+    "brand": "Kindred Kites",
+    "format": "banner",
+    "file": "16-kindred-kites.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "17",
+    "brand": "Hushwood",
+    "format": "square",
+    "file": "17-hushwood.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "18",
+    "brand": "Mooncrumb",
+    "format": "portrait",
+    "file": "18-mooncrumb.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "19",
+    "brand": "Wayfarer Works",
+    "format": "tall",
+    "file": "19-wayfarer-works.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "20",
+    "brand": "Wildflower Press",
+    "format": "landscape",
+    "file": "20-wildflower-press.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "21",
+    "brand": "Bluebird Tea",
+    "format": "banner",
+    "file": "21-bluebird-tea.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "22",
+    "brand": "Sprout Club",
+    "format": "square",
+    "file": "22-sprout-club.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "23",
+    "brand": "Prism Frames",
+    "format": "portrait",
+    "file": "23-prism-frames.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "24",
+    "brand": "Sunday Canvas",
+    "format": "tall",
+    "file": "24-sunday-canvas.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "25",
+    "brand": "Coastline Boards",
+    "format": "landscape",
+    "file": "25-coastline-boards.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "26",
+    "brand": "Lumen Desk",
+    "format": "banner",
+    "file": "26-lumen-desk.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "27",
+    "brand": "Tin Rocket",
+    "format": "square",
+    "file": "27-tin-rocket.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "28",
+    "brand": "Softlanding",
+    "format": "portrait",
+    "file": "28-softlanding.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "29",
+    "brand": "Meadow Threads",
+    "format": "tall",
+    "file": "29-meadow-threads.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "30",
+    "brand": "Oddly Useful",
+    "format": "landscape",
+    "file": "30-oddly-useful.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "31",
+    "brand": "Morning Tide",
+    "format": "banner",
+    "file": "31-morning-tide.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "32",
+    "brand": "Clover Cameras",
+    "format": "square",
+    "file": "32-clover-cameras.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "33",
+    "brand": "Puddle Jump",
+    "format": "portrait",
+    "file": "33-puddle-jump.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "34",
+    "brand": "Acorn Games",
+    "format": "tall",
+    "file": "34-acorn-games.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "35",
+    "brand": "Copperleaf",
+    "format": "landscape",
+    "file": "35-copperleaf.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "36",
+    "brand": "Open Window",
+    "format": "banner",
+    "file": "36-open-window.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "37",
+    "brand": "Fold & Flow",
+    "format": "square",
+    "file": "37-fold-flow.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "38",
+    "brand": "Harbour Blanket",
+    "format": "portrait",
+    "file": "38-harbour-blanket.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "39",
+    "brand": "Happy Trails",
+    "format": "tall",
+    "file": "39-happy-trails.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "40",
+    "brand": "Velvet Fig",
+    "format": "landscape",
+    "file": "40-velvet-fig.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "41",
+    "brand": "Raincheck Reads",
+    "format": "banner",
+    "file": "41-raincheck-reads.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "42",
+    "brand": "Brightside Pins",
+    "format": "square",
+    "file": "42-brightside-pins.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "43",
+    "brand": "Mallow House",
+    "format": "portrait",
+    "file": "43-mallow-house.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "44",
+    "brand": "Wild Current",
+    "format": "tall",
+    "file": "44-wild-current.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "45",
+    "brand": "Pocket Planet",
+    "format": "landscape",
+    "file": "45-pocket-planet.webp",
+    "width": 800,
+    "height": 533
+  },
+  {
+    "id": "46",
+    "brand": "Sunroom Seeds",
+    "format": "banner",
+    "file": "46-sunroom-seeds.webp",
+    "width": 1200,
+    "height": 400
+  },
+  {
+    "id": "47",
+    "brand": "Tempo Totes",
+    "format": "square",
+    "file": "47-tempo-totes.webp",
+    "width": 800,
+    "height": 800
+  },
+  {
+    "id": "48",
+    "brand": "Driftwood Studio",
+    "format": "portrait",
+    "file": "48-driftwood-studio.webp",
+    "width": 800,
+    "height": 1000
+  },
+  {
+    "id": "49",
+    "brand": "Skyward Strings",
+    "format": "tall",
+    "file": "49-skyward-strings.webp",
+    "width": 640,
+    "height": 1280
+  },
+  {
+    "id": "50",
+    "brand": "Good Company",
+    "format": "landscape",
+    "file": "50-good-company.webp",
+    "width": 800,
+    "height": 533
+  }
+]
