@@ -19,12 +19,12 @@ export class LeaderboardView {
    <button class="game-button secondary lb-refresh" type="button">Refresh scores</button>
    <section class="lb-login"><p class="muted">Log in to share scores. Guest games and progress stay on this device.</p><button class="game-button" type="button">Log in / Sign up</button></section>`;
   document.body.append(this.root);
-  void this.sync.flush().catch(()=>{});
+  if(!document.hidden&&navigator.onLine)void this.sync.flush().catch(()=>{});
   this.select.addEventListener('change',()=>void this.refresh());
   this.root.querySelector('.lb-refresh')!.addEventListener('click',()=>void this.refresh());
   this.root.querySelector('.lb-login button')!.addEventListener('click',()=>{this.root.close();this.signIn();});
   this.root.addEventListener('close',()=>this.request++);
-  window.addEventListener('online',()=>void this.sync.flush().then(()=>{if(this.root.open)void this.refresh();}).catch(()=>{}));
+  window.addEventListener('online',()=>{if(!document.hidden)void this.sync.flush().then(()=>{if(this.root.open)void this.refresh();}).catch(()=>{});});
  }
  private get select(){return this.root.querySelector<HTMLSelectElement>('#leaderboard-game')!;}
  private status(text:string){this.root.querySelector('.lb-status')!.textContent=text;}
@@ -46,6 +46,7 @@ export class LeaderboardView {
   this.root.querySelector('.lb-personal')!.textContent=mine?`Your rank: ${mine.rank} · Best: ${formatScore(game,mine.score)}`:this.sync.profile()?'Play and score to earn your place.':'Log in to share your scores.';
  }
  private async refresh(){
+  if(document.hidden||!this.root.open)return;
   const id=++this.request,game=this.select.value as LeaderboardKey;this.paint(null);this.status('Loading shared scores…');
   let pending=false;
   try{await this.sync.flush();}catch{pending=true;}

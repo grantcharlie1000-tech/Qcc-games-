@@ -27,3 +27,12 @@ it('accepts only boolean auto-next settings and syncs the newest choice',()=>{
  for(const value of ['true',1,null,{}])expect(validSave('settings',{value:{autoNextEpisode:value},updated:1})).toBe(false);
  expect(mergeSaves({settings:{value:{autoNextEpisode:true},updated:1}},{settings:{value:{autoNextEpisode:false},updated:2}}).settings.value).toEqual({autoNextEpisode:false});
 });
+
+it('breaks equal timestamp snapshot ties by canonical JSON despite JSONB key reordering',()=>{
+ const high={'save:snake':{value:{data:{score:9},updated:1,version:1},updated:1}};
+ const low={'save:snake':{value:{version:1,data:{score:1},updated:1},updated:1}};
+ expect((mergeSaves(high,low)['save:snake'].value as any).data.score).toBe(9);
+ expect((mergeSaves(low,high)['save:snake'].value as any).data.score).toBe(9);
+ const reorderedHigh={'save:snake':{value:{version:1,updated:1,data:{score:9}},updated:1}};
+ expect((mergeSaves(low,reorderedHigh)['save:snake'].value as any).data.score).toBe(9);
+});
