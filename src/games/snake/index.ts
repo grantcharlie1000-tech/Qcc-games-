@@ -1,6 +1,7 @@
 import type {GameModule} from '../../core/types';
 import {createState,enqueue,start as startRun,restoreState,type Direction} from './model';
 import {drawGarden} from './art';
+import {SnakeTimeline} from './timing';
 import {advancePresentation,createPresentation,restorePresentation,savePresentation} from './presentation';
 import './style.css';
 const module:GameModule={
@@ -18,7 +19,8 @@ const module:GameModule={
   let state=createState(),view=createPresentation(),paused=false,disposed=false,frame:number|null=null,last:number|null=null;
   let lastReduced=false,lastDpr=window.devicePixelRatio||1,dirty=true;
   const events=new AbortController();
-  let gesture:{x:number;y:number;id:number}|null=null;
+  let gesture:{x:number;y:number;id:number;direction?:Direction}|null=null;
+  let timeline:SnakeTimeline|null=null;
   const reduced=()=>context.settings.reducedMotion||motionQuery.matches;
   function render(){
    const reduce=reduced();lastReduced=reduce;lastDpr=window.devicePixelRatio||1;dirty=false;
@@ -61,52 +63,66 @@ const module:GameModule={
   function snapshot(){return JSON.parse(JSON.stringify({...state,presentation:savePresentation(view)})) as unknown;}
   function serialize(){advanceTo(performance.now());if(dirty&&!disposed)render();return snapshot();}
   function persist(){context.save(snapshot());}
-  function reset(){state=createState();view=createPresentation();last=null;gesture=null;update();persist();}
-  function action(d:Direction){
-   if(paused||disposed)return;advanceTo(performance.now());
-   if(state.phase==='lost'||state.phase==='won'){render();return;}
-   if(state.phase==='ready'||state.migration?.held){if(!startRun(state,d))return;last=performance.now();}
-   else enqueue(state,d);update();render();
+  function reset(){state=createState();view=createPresentation();last=null;timeline=null;gesture=null;update();persist();}
+  function action(d:Direction,eventTime:number){
+   if(paused||disposed)return;
+   const now=performance.now(),inputTime=Number.isFinite(eventTime)&&eventTime>=now-250&&eventTime<=now?eventTime:now;
+   if(state.phase==='lost'||state.phase==='won')return;
+   if(state.phase==='ready'||state.migration?.held){
+    if(!startRun(state,d))return;last=now;timeline=new SnakeTimeline(state,view,now);
+   }else if(timeline){
+    const score=state.score,phase=state.phase,ticks=state.ticks;
+    timeline.turn(d,inputTime);state=timeline.state;view=timeline.view;last=timeline.last;
+    reportChanges(score,phase,ticks);
+   }else {advanceTo(inputTime);enqueue(state,d);}
+   update();render();
   }
   const keys:Record<string,Direction>={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',a:'left',s:'down',d:'right'};
   window.addEventListener('keydown',event=>{
    if(paused||event.repeat||event.ctrlKey||event.altKey||event.metaKey||document.querySelector('dialog[open]')||(event.target instanceof HTMLElement&&event.target.closest('input,textarea,select,[contenteditable=true]')))return;
-   const d=keys[event.key]??keys[event.key.toLowerCase()];if(d){event.preventDefault();action(d);}
+   const d=keys[event.key]??keys[event.key.toLowerCase()];if(d){event.preventDefault();action(d,event.timeStamp);}
   },{signal:events.signal});
   buttons.forEach(button=>{
-   button.addEventListener('pointerdown',event=>{if(event.isPrimary&&event.button===0){event.preventDefault();action(button.dataset.direction as Direction);}},{signal:events.signal});
-   button.addEventListener('click',event=>{if(event.detail===0)action(button.dataset.direction as Direction);},{signal:events.signal});
+   button.addEventListener('pointerdown',event=>{if(event.isPrimary&&event.button===0){event.preventDefault();action(button.dataset.direction as Direction,event.timeStamp);}},{signal:events.signal});
+   button.addEventListener('click',event=>{if(event.detail===0)action(button.dataset.direction as Direction,event.timeStamp);},{signal:events.signal});
   });
   start.addEventListener('click',()=>{
    if(paused)return;if(state.phase==='lost'||state.phase==='won')reset();
-   startRun(state);last=performance.now();context.sound('tap');update();render();canvas.focus({preventScroll:true});
+   startRun(state);last=performance.now();timeline=new SnakeTimeline(state,view,last);context.sound('tap');update();render();canvas.focus({preventScroll:true});
   },{signal:events.signal});
   canvas.addEventListener('pointerdown',event=>{
    if(paused||!event.isPrimary)return;
    gesture={x:event.clientX,y:event.clientY,id:event.pointerId};canvas.setPointerCapture(event.pointerId);canvas.focus({preventScroll:true});
   },{signal:events.signal});
-  canvas.addEventListener('pointerup',event=>{
+  function swipe(event:PointerEvent){
    if(!gesture||gesture.id!==event.pointerId)return;
-   const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y;gesture=null;
+   const dx=event.clientX-gesture.x,dy=event.clientY-gesture.y;
    if(Math.max(Math.abs(dx),Math.abs(dy))<18)return;
-   action(Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up');
-  },{signal:events.signal});
+   const direction:Direction=Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up';
+   gesture.x=event.clientX;gesture.y=event.clientY;
+   if(direction!==gesture.direction){gesture.direction=direction;action(direction,event.timeStamp);}
+  }
+  canvas.addEventListener('pointermove',swipe,{signal:events.signal});
+  canvas.addEventListener('pointerup',event=>{swipe(event);if(gesture?.id===event.pointerId)gesture=null;},{signal:events.signal});
   const cancelGesture=()=>{gesture=null;};
   canvas.addEventListener('pointercancel',cancelGesture,{signal:events.signal});
   canvas.addEventListener('lostpointercapture',cancelGesture,{signal:events.signal});
   motionQuery.addEventListener('change',()=>{dirty=true;},{signal:events.signal});
+  function reportChanges(score:number,phase:typeof state.phase,ticks:number){
+   if(state.ticks!==ticks||state.score!==score||state.phase!==phase){
+    if(state.score>score){context.sound('success');context.announce(`Apple! ${state.score} points.`);}
+    if(state.phase!==phase){context.sound(state.phase==='won'?'success':'lose');context.announce(state.phase==='won'?'You earned all 256 segments!':`Run ended. ${state.score} points.`);persist();timeline=null;}
+    return true;
+   }
+   return false;
+  }
   function advanceTo(now:number){
    if(disposed||paused||state.phase!=='running'||state.migration?.held)return;
    now=Math.max(now,last??now);
    const score=state.score,phase=state.phase,ticks=state.ticks;
-   if(last!==null)advancePresentation(state,view,Math.max(0,now-last));
-   last=now;
-   if(state.ticks!==ticks||state.score!==score||state.phase!==phase){
-    if(state.score!==score){context.sound('success');context.announce(`Apple! ${state.score} points.`);}
-    if(state.phase!==phase){context.sound(state.phase==='won'?'success':'lose');context.announce(state.phase==='won'?'You earned all 256 segments!':`Run ended. ${state.score} points.`);persist();}
-    update();
-   }
-   dirty=true;
+   if(timeline){timeline.advance(now);state=timeline.state;view=timeline.view;last=timeline.last;}
+   else {if(last!==null)advancePresentation(state,view,Math.max(0,now-last));last=now;timeline=new SnakeTimeline(state,view,now);}
+   if(reportChanges(score,phase,ticks))update();dirty=true;
   }
   function loop(now:number){
    if(disposed)return;
@@ -116,11 +132,11 @@ const module:GameModule={
   }
   update();resize();render();frame=requestAnimationFrame(loop);
   return {
-   pause(){advanceTo(performance.now());paused=true;last=null;gesture=null;update();render();},
-   resume(){paused=false;last=state.phase==='running'&&!state.migration?.held?performance.now():null;update();},restart(){reset();},serialize,
+   pause(){advanceTo(performance.now());paused=true;last=null;timeline=null;gesture=null;update();render();},
+   resume(){paused=false;last=state.phase==='running'&&!state.migration?.held?performance.now():null;timeline=last===null?null:new SnakeTimeline(state,view,last);update();},restart(){reset();},serialize,
    restore(data){
     const valid=restoreState(data);
-    if(valid){state=valid;view=restorePresentation(state,(data as {presentation?:unknown}).presentation,(data as {version?:unknown}).version===1);last=state.phase==='running'&&!state.migration?.held?performance.now():null;gesture=null;update();render();}
+    if(valid){state=valid;view=restorePresentation(state,(data as {presentation?:unknown}).presentation,(data as {version?:unknown}).version===1);last=state.phase==='running'&&!state.migration?.held?performance.now():null;timeline=last===null?null:new SnakeTimeline(state,view,last);gesture=null;update();render();}
    },
    dispose(){disposed=true;events.abort();observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);container.replaceChildren();}
   };
