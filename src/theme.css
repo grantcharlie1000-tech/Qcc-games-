@@ -54,7 +54,7 @@ body{margin:0;background:var(--c-bg);color:var(--c-100);font-family:var(--font-s
 @media (min-width:768px){.ui-nav .ui-pill>.ui-icon{display:block}}
 @media (min-width:1024px){.ui-header .ui-kbd{display:inline-grid}.ui-header-actions .ui-label{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}}
 
-/* Tab bar, below 640 px only: a floating glass island. src/ui/tabbar.ts sets data-hidden while the page scrolls down. */
+/* Tab bar: a floating glass island at every width. src/ui/tabbar.ts sets data-hidden while the page scrolls down. */
 .ui-tabbar{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));z-index:50;display:flex;align-items:stretch;gap:2px;max-width:440px;margin-inline:auto;min-height:var(--tabbar-h);padding:6px;border:1px solid #ffffff1f;border-radius:999px;background:linear-gradient(180deg,#ffffff1a,#ffffff05 45%,#ffffff00),rgb(18 18 20 / .72);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 1px 0 #ffffff33,inset 0 -1px 0 #ffffff0d,0 12px 32px -8px #000000b3,0 2px 6px #00000066;transition:transform var(--t) var(--ease-drawer)}
 .ui-tabbar::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 90% at 20% 0%,#ffffff24,#ffffff00 55%);pointer-events:none}
 /* Keyboard focus anywhere in the bar keeps it on screen. A tap leaves no focus-visible, so it does not pin the bar open. */
@@ -62,7 +62,8 @@ body{margin:0;background:var(--c-bg);color:var(--c-100);font-family:var(--font-s
 .ui-tab{position:relative;display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;min-height:44px;padding:4px 2px;border:0;border-radius:999px;background:none;color:var(--c-300);font-size:10px;font-weight:500;line-height:1.2;text-decoration:none;transition:transform var(--t-fast) var(--ease)}
 .ui-tab:active{transform:scale(.95)}
 .ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]{color:#fff;font-weight:700;background:#ffffff1f;box-shadow:inset 0 1px 0 #ffffff26}
-@media (min-width:640px){.ui-tabbar{display:none}}
+/* Fine pointers get a faint lozenge. The current item keeps its own, and colour and background change at once. */
+@media (hover:hover) and (pointer:fine){.ui-tab:not([aria-current="page"]):not([aria-pressed="true"]):hover{color:#fff;background:#ffffff0f}}
 /* Fallbacks: no backdrop-filter support, reduced transparency and more contrast. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-tabbar{background:rgb(18 18 20 / .96)}}
 @media (prefers-reduced-transparency:reduce){.ui-tabbar{background:rgb(18 18 20 / .97);-webkit-backdrop-filter:none;backdrop-filter:none}}

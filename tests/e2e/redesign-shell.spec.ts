@@ -9,7 +9,11 @@ test('desktop header has brand, sections and actions',async({page})=>{
  await expect(page.locator('.ui-nav').getByRole('link',{name:'TV Shows',exact:true})).toHaveAttribute('href','#/movies/browse/tv');
  await expect(page.locator('.count-pill')).toHaveAttribute('aria-label','21 games');
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
- await expect(page.locator('.app-tabbar')).toBeHidden();
+ await expect(page.locator('.app-tabbar')).toBeVisible();
+ // On desktop the island is centred and at most 440 px wide.
+ const island=await page.locator('.app-tabbar').boundingBox();
+ expect(Math.abs(island!.x+island!.width/2-683)).toBeLessThanOrEqual(2);
+ expect(island!.width).toBeLessThanOrEqual(440);
  await page.getByRole('button',{name:'Search games',exact:true}).click();
  await expect(page.locator('#menu')).toBeVisible();
  await expect(page.locator('#search')).toBeFocused();
@@ -186,6 +190,88 @@ test('the app reduce-motion setting fades the bar too',async({page})=>{
  await expect(bar).toHaveAttribute('data-hidden','true');
  await expect(bar).toHaveCSS('transform','none');
  await expect(bar).toHaveCSS('opacity','0');
+});
+
+test('the island floats and hides on scroll on desktop too',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await expect(bar).toBeVisible();
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(900);
+ await page.evaluate(()=>window.scrollTo(0,280));
+ await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(900);
+});
+
+test('the island stays hidden in games and Movies on desktop',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/collection/1');
+ await expect(page.locator('.game-view')).toBeVisible();
+ await expect(page.locator('.app-tabbar')).toHaveCount(1);
+ await expect(page.locator('.app-tabbar')).toBeHidden();
+ await page.goto('/#/movies');
+ await expect(page.locator('.movies-view')).toBeVisible();
+ await expect(page.locator('.app-tabbar')).toHaveCount(1);
+ await expect(page.locator('.app-tabbar')).toBeHidden();
+ await page.goto('/#/collection');
+ await expect(page.locator('.app-tabbar')).toBeVisible();
+});
+
+test('a fine pointer lights up a tab and leaves the current lozenge alone',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await expect(bar).toBeVisible();
+ const alpha=(locator:ReturnType<Page['locator']>)=>locator.evaluate(element=>{const match=getComputedStyle(element).backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;});
+ const study=bar.getByRole('button',{name:'Study',exact:true});
+ const games=bar.getByRole('link',{name:'Games',exact:true});
+ expect(await alpha(study)).toBe(0);
+ await study.hover();
+ await expect.poll(()=>alpha(study)).toBeCloseTo(0.06,2);
+ expect(await study.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
+ // Hover colour and background change at once: only transform is transitioned on a tab.
+ expect(await study.evaluate(element=>getComputedStyle(element).transitionProperty)).toBe('transform');
+ await games.hover();
+ expect(await alpha(games)).toBeCloseTo(0.12,2);
+});
+
+test('the island shows again after returning from Study',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await page.evaluate(()=>window.scrollTo(0,1000));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await page.evaluate(()=>window.scrollTo(0,880));
+ await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(880);
+ await bar.getByRole('button',{name:'Study',exact:true}).click();
+ await expect(page.locator('#study-view')).toBeVisible();
+ // Reading moves the page. Returning restores the old position, and that restore must not count as a scroll down.
+ await page.evaluate(()=>window.scrollTo(0,100));
+ // The Games link in the article text returns to the arcade. It is dispatched, not clicked, so the link is not scrolled into view.
+ await page.locator('#study-view a[data-study-return][aria-label="Games"]').dispatchEvent('click');
+ await expect(page.locator('#study-view')).toBeHidden();
+ await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(880);
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ await expect(bar).toBeVisible();
+ await expect(bar).not.toHaveAttribute('data-hidden');
+});
+
+test('a resize that brings the end of the page into reach shows the island',async({page})=>{
+ // From 1000 px of viewport height the hero is capped at 500 px, so the page height changes only with the viewport.
+ await page.setViewportSize({width:390,height:1100});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await page.evaluate(()=>window.scrollTo(0,300));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ const height=await page.evaluate(()=>document.documentElement.scrollHeight-322);
+ await page.setViewportSize({width:390,height});
+ // The scrollable range is now 322 px, so 300 px is in the end zone. Nothing scrolled, so only the resize can show the island.
+ expect(await page.evaluate(()=>scrollY)).toBe(300);
+ expect(await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBe(322);
+ await expect(bar).not.toHaveAttribute('data-hidden');
 });
 
 test('home shows a hero, three rails and a footer',async({page})=>{

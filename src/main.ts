@@ -204,6 +204,8 @@ function returnFromStudy(){
   if(resumeAfterStudy&&!document.hidden)setPaused(false);
   resumeAfterStudy=false;
   window.scrollTo(scrollBeforeStudy.x,scrollBeforeStudy.y);
+  // The restored position is not the reader's scroll, so the tab bar re-bases on it.
+  tabbar.reset();
   const replacement=focusLabelBeforeStudy?[...document.querySelectorAll<HTMLElement>('#game-stage [aria-label]')]
     .find(element=>element.getAttribute('aria-label')===focusLabelBeforeStudy&&!element.matches(':disabled')):undefined;
   const target=focusBeforeStudy?.isConnected&&!focusBeforeStudy.closest('dialog')?focusBeforeStudy:replacement;

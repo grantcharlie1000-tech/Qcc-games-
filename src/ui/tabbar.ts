@@ -44,8 +44,10 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
     state=nextTabbarState(state,y,max);
     apply(state.hidden);
   };
-  const onScroll=()=>{if(!frame)frame=requestAnimationFrame(sync);};
-  target.addEventListener('scroll',onScroll,{passive:true});
+  // Scrolling and resizing both re-check the position. A resize can shorten the scrollable range with no scroll event.
+  const schedule=()=>{if(!frame)frame=requestAnimationFrame(sync);};
+  target.addEventListener('scroll',schedule,{passive:true});
+  window.addEventListener('resize',schedule,{passive:true});
   return{
     reset(){
       if(frame)cancelAnimationFrame(frame);
@@ -54,7 +56,8 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
       apply(false);
     },
     dispose(){
-      target.removeEventListener('scroll',onScroll);
+      target.removeEventListener('scroll',schedule);
+      window.removeEventListener('resize',schedule);
       if(frame)cancelAnimationFrame(frame);
       frame=0;
       apply(false);

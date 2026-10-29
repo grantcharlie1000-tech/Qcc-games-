@@ -49,6 +49,14 @@ test('values below 0 or above max are clamped',()=>{
   expect(nextTabbarState(hidden(900),1400,1000)).toEqual({hidden:false,lastY:1000,travel:0});
 });
 
+test('the short-page rule stops exactly at 48 px',()=>{
+  // At 49 px the only middle band is 24 to 25 px, so the carried-in travel is what makes the normal rule visible here.
+  const carried={hidden:false,lastY:24.25,travel:11.75};
+  expect(nextTabbarState(carried,24.5,49)).toEqual({hidden:true,lastY:24.5,travel:12});
+  // At 48 px the page is too short, so the same step is ignored.
+  expect(nextTabbarState(carried,24.5,48)).toEqual({hidden:false,lastY:24.5,travel:0});
+});
+
 test('the step returns a new state and leaves its input alone',()=>{
   const state=shown(100);
   nextTabbarState(state,120,1000);
