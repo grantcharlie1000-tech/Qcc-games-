@@ -124,8 +124,8 @@ test('episode return restores scroll and focus; keyboard stays inside the movie 
  const before=await page.locator('.movies-view').evaluate(e=>e.scrollTop);await cities.click();
  await page.getByRole('link',{name:'Back to Planet Earth II'}).click();await expect(cities).toBeFocused();
  expect(Math.abs(await page.locator('.movies-view').evaluate(e=>e.scrollTop)-before)).toBeLessThan(5);
- await expect(page.locator('.topbar')).toHaveJSProperty('inert',true);
- await page.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.topbar')).toHaveJSProperty('inert',false);
+ await expect(page.locator('.app-tabbar')).toHaveJSProperty('inert',true);
+ await page.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.app-tabbar')).toHaveJSProperty('inert',false);
 });
 
 test('game grid offset survives entering and leaving movies',async({page})=>{

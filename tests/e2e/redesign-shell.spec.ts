@@ -4,34 +4,147 @@ import type {Page} from '../fixtures';
 test('the games home is back in its original style',async({page})=>{
  await page.setViewportSize({width:1366,height:900});
  await page.goto('/');
- const topbar=page.locator('.topbar');
- await expect(topbar.locator('.site-brand')).toHaveText('Mauri Study Notes');
- await expect(topbar.getByRole('button',{name:'Open menu',exact:true})).toBeVisible();
- await expect(topbar.locator('.count-pill')).toHaveAttribute('aria-label','21 games');
- await expect(topbar.getByRole('button',{name:'FAVOURITES',exact:true})).toBeVisible();
+ // The arcade top bar is gone. Its brand, count and favourites moved into the menu, and its menu button is now the island's sixth tab.
+ await expect(page.locator('#app > header')).toHaveCount(0);
+ await expect(page.locator('.topbar')).toHaveCount(0);
+ await expect(page.locator('.count-pill,.favourites-pill,.hamburger')).toHaveCount(0);
+ await expect(page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true})).toBeVisible();
  const grid=page.locator('.game-grid');
  expect(await grid.evaluate(element=>element.firstElementChild?.classList.contains('movies-launch')??false)).toBe(true);
  await expect(grid.locator('.game-card')).toHaveCount(21);
  await expect(grid.locator('.game-card:has(h2):has(.title-line)')).toHaveCount(21);
  expect(await page.locator('.game-card h2').first().evaluate(element=>getComputedStyle(element).fontFamily)).toMatch(/^"?Arcade/);
  expect(await page.locator('html').evaluate(element=>getComputedStyle(element).backgroundColor)).toBe('rgb(25, 29, 28)');
- // Tab from the top bar into the grid until the first game card has keyboard focus.
+ // The island comes first in the page order, so the first Tab reaches its Games tab. Keep tabbing through the island and the Movies card until the first game card has focus.
+ await page.keyboard.press('Tab');
+ await expect(page.locator('.app-tabbar').getByRole('link',{name:'Games',exact:true})).toBeFocused();
  const card=grid.locator('.game-card').first();
- for(let press=0;press<8&&!(await card.evaluate(element=>element===document.activeElement));press++)await page.keyboard.press('Tab');
+ for(let press=0;press<12&&!(await card.evaluate(element=>element===document.activeElement));press++)await page.keyboard.press('Tab');
  await expect(card).toBeFocused();
  expect(await card.evaluate(element=>getComputedStyle(element).outlineWidth)).toBe('3px');
  expect(await card.evaluate(element=>getComputedStyle(element).outlineColor)).toBe('rgb(255, 224, 164)');
 });
 
-for(const width of [320,390]) test(`the phone island holds five tabs at least 44 px tall at ${width}px`,async({page})=>{
+// Six tabs fit the island: each is a 44 px target, its label sits inside it without clipping, and the bar and page stay on screen.
+async function expectIslandFits(page:Page){
+ const report=await page.locator('.app-tabbar').evaluate(bar=>{
+  const box=(element:Element)=>{const rect=element.getBoundingClientRect();return {left:rect.left,right:rect.right,width:rect.width,height:rect.height};};
+  return {
+   bar:box(bar),
+   viewport:innerWidth,
+   pageFits:document.documentElement.scrollWidth<=innerWidth,
+   tabs:[...bar.querySelectorAll<HTMLElement>('.ui-tab')].map(tab=>({name:tab.textContent?.trim(),tab:box(tab),label:box(tab.querySelector('span')!),overflows:tab.scrollWidth>tab.clientWidth}))
+  };
+ });
+ expect(report.tabs.map(tab=>tab.name)).toEqual(['Games','Movies','TV Shows','My list','Study','Menu']);
+ for(const {name,tab,label,overflows} of report.tabs){
+  expect(tab.width,`${name} width`).toBeGreaterThanOrEqual(44);
+  expect(tab.height,`${name} height`).toBeGreaterThanOrEqual(44);
+  expect(label.left,`${name} label starts inside its tab`).toBeGreaterThanOrEqual(tab.left);
+  expect(label.right,`${name} label ends inside its tab`).toBeLessThanOrEqual(tab.right);
+  expect(overflows,`${name} overflows its tab`).toBe(false);
+ }
+ expect(report.bar.left).toBeGreaterThanOrEqual(0);
+ expect(report.bar.right).toBeLessThanOrEqual(report.viewport);
+ expect(report.pageFits).toBe(true);
+}
+
+for(const width of [320,360,390]) test(`the phone island holds six tabs at least 44 px across and tall at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/');
  await expect(page.locator('.app-tabbar')).toBeVisible();
- const heights=await page.locator('.app-tabbar > *').evaluateAll(items=>items.map(item=>item.getBoundingClientRect().height));
- expect(heights).toHaveLength(5);
- for(const height of heights)expect(height).toBeGreaterThanOrEqual(44);
+ await expectIslandFits(page);
+ // The sixth tab is the menu. Its accessible name stays "Open menu", and it is the only one on the games screen.
+ const menu=page.getByRole('button',{name:'Open menu',exact:true});
+ await expect(menu).toHaveCount(1);
+ expect(await menu.evaluate(element=>!!element.closest('.app-tabbar'))).toBe(true);
+});
+
+test('the island fits at 1366px too',async({page})=>{
+ await page.setViewportSize({width:1366,height:900});
+ await page.goto('/');
+ await expect(page.locator('.app-tabbar')).toBeVisible();
+ await expectIslandFits(page);
+});
+
+for(const [width,height] of [[390,844],[1366,900]]) test(`the island's Menu opens the menu, and Escape returns focus to it at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height});
+ await page.goto('/');
+ const menu=page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true});
+ await expect(menu).toHaveAttribute('aria-haspopup','dialog');
+ await menu.click();
+ await expect(page.locator('#menu')).toBeVisible();
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#menu')).toBeHidden();
+ await expect(menu).toBeFocused();
+});
+
+test('closing Study opened from the menu returns focus to the island Menu',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+ await expect(page.locator('#study-view')).toBeVisible();
+ await page.locator('#study-view a[data-study-return][aria-label="Games"]').click();
+ await expect(page.locator('#study-view')).toBeHidden();
+ await expect(page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
+});
+
+test('Favourites only in the menu shows a notice, and Show all games clears it',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByLabel('Favourites only',{exact:true}).check();
+ await page.getByRole('button',{name:'Close menu',exact:true}).click();
+ await expect(page.locator('.empty-library')).toContainText('Your favourites');
+ await expect(page.locator('.library-filter-text')).toHaveText('Showing your favourites');
+ await page.getByRole('button',{name:'Show all games',exact:true}).click();
+ await expect(page.locator('.game-card')).toHaveCount(21);
+ await expect(page.locator('.library-filter')).toHaveCount(0);
+ await expect(page.locator('#favourites-only')).not.toBeChecked();
+ await expect(page.locator('.game-card').first()).toBeFocused();
+});
+
+test('a search is shown as literal text in the notice, which wraps at 320px',async({page})=>{
+ await page.setViewportSize({width:320,height:844});
+ let alerted=false;
+ page.on('dialog',dialog=>{alerted=true;void dialog.dismiss();});
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ const payload='<img src=x onerror=alert(1)>';
+ await page.getByRole('searchbox').fill(payload);
+ await page.getByRole('button',{name:'Close menu',exact:true}).click();
+ await expect(page.locator('.library-filter-text')).toHaveText(`Games matching “${payload}”`);
+ await expect(page.locator('.library-filter img')).toHaveCount(0);
+ // The text and the button wrap inside the phone width. Read in one evaluate, as the menu's close handler re-renders the notice.
+ expect(await page.evaluate(()=>[...document.querySelectorAll<HTMLElement>('.library-filter-text,.library-filter button')].every(element=>element.getBoundingClientRect().right<=innerWidth))).toBe(true);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await expect(page.getByRole('button',{name:'Open menu',exact:true})).toBeVisible();
+ expect(alerted).toBe(false);
+});
+
+test('the filter notice lines up with the game grid',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByLabel('Favourites only',{exact:true}).check();
+ await page.getByRole('button',{name:'Close menu',exact:true}).click();
+ // The notice's text starts where the grid's content starts, so the text is compared with the first cell, not the notice's padded box.
+ // Both edges are read in one evaluate: the menu's close handler re-renders the library, so a locator box could be read from a replaced node.
+ const [textLeft,cellLeft]=await page.evaluate(()=>[document.querySelector('.library-filter-text')!.getBoundingClientRect().left,document.querySelector('.game-grid > *')!.getBoundingClientRect().left]);
+ expect(Math.abs(textLeft-cellLeft)).toBeLessThan(1);
+});
+
+test('the library clears a notch, and a game screen does not',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ // Chromium can emulate the insets a notched phone reports to env(), so the padding is measured, not read from the CSS.
+ const session=await page.context().newCDPSession(page);
+ await session.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:47,left:0,right:0,bottom:34}});
+ await page.goto('/');
+ await expect(page.locator('.game-card').first()).toBeVisible();
+ expect(await page.locator('#content').evaluate(element=>getComputedStyle(element).paddingTop)).toBe('47px');
+ await page.goto('/#/game/snake');
+ await expect(page.locator('.game-view')).toBeVisible();
+ expect(await page.locator('#content').evaluate(element=>getComputedStyle(element).paddingTop)).toBe('0px');
 });
 
 test('tab bar hides during games and Movies & TV',async({page})=>{

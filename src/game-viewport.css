@@ -1,6 +1,5 @@
 /* A browser viewport layer, independent of native fullscreen. */
 html.game-viewport,html.game-viewport body{height:100%;overflow:hidden;overscroll-behavior:none}
-body.in-game .topbar{display:none}
 body.in-game .game-view{position:fixed;top:var(--play-top,0px);left:var(--play-left,0px);width:var(--play-width,100%);height:var(--play-height,100dvh);max-width:none;margin:0;padding:8px 12px;display:flex;flex-direction:column;overflow:hidden;background:#191d1c;touch-action:manipulation}
 body.in-game .game-toolbar{flex:0 0 46px;min-height:0;gap:5px;max-width:1080px;width:100%;margin:0 auto}
 body.in-game .game-toolbar h1{font-size:21px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

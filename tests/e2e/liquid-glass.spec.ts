@@ -38,7 +38,7 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
-  expect(await bar.evaluate(el=>el.children.length)).toBe(5);
+  expect(await bar.evaluate(el=>el.children.length)).toBe(6);
 });
 
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{

@@ -28,9 +28,8 @@ const icon=(name:string)=>{
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.grid}</svg>`;
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
-app.innerHTML=`<header class="topbar"><div class="site-brand">${mauriMark}<span>Mauri Study Notes</span></div><button class="hamburger icon-button" aria-label="Open menu">${icon('menu')}</button><div class="count-pill" aria-label="${games.length} games">${icon('grid')}<span><strong>${games.length}</strong><small>Games</small></span></div><button class="favourites-pill" aria-pressed="false">${icon('star')}<span>FAVOURITES</span></button></header><main id="content"></main>
-<nav class="app-tabbar ui-tabbar" aria-label="Sections"><a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button></nav>
-<dialog id="menu"><form method="dialog" class="dialog-head"><h2>Mauri Study Notes</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
+app.innerHTML=`<nav class="app-tabbar ui-tabbar" aria-label="Sections"><a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button><button class="ui-tab" type="button" data-action="menu" aria-label="Open menu" aria-haspopup="dialog">${uiIcon('menu')}<span>Menu</span></button></nav><main id="content"></main>
+<dialog id="menu"><form method="dialog" class="dialog-head"><h2 class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><button id="sync-account" class="game-button secondary" hidden>Sync now</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog"><form method="dialog" class="dialog-head"><h2>How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
@@ -116,7 +115,6 @@ watchUpdates(import.meta.url,status=>{
   if(newlyReady)announce('An update is ready. Open the menu, or use Reload to update in Study, when you are ready.');
 });
 function setChromeInert(value:boolean):void{
-  document.querySelector<HTMLElement>('.topbar')!.inert=value;
   document.querySelector<HTMLElement>('.app-tabbar')!.inert=value;
 }
 function leave(saveProgress=true){
@@ -131,9 +129,27 @@ function leave(saveProgress=true){
   document.body.classList.remove('in-game');
   syncViewportLock();
 }
+function filterNotice(){
+  if(onlyFavourites&&search)return `Favourites matching “${search}”`;
+  return onlyFavourites?'Showing your favourites':`Games matching “${search}”`;
+}
 function library(){
   const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1><div class="game-grid" aria-label="Game library">${moviesCard()}${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  const filtered=onlyFavourites||search!=='';
+  // The notice text is user input, so it is filled in with textContent below, never through this template.
+  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtered?'<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>':''}<div class="game-grid" aria-label="Game library">${moviesCard()}${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  if(filtered){
+    content.querySelector<HTMLElement>('.library-filter-text')!.textContent=filterNotice();
+    content.querySelector('[data-action="show-all"]')!.addEventListener('click',showAllGames);
+  }
+}
+function showAllGames(){
+  onlyFavourites=false;search='';
+  document.querySelector<HTMLInputElement>('#favourites-only')!.checked=false;
+  document.querySelector<HTMLInputElement>('#search')!.value='';
+  library();
+  content.querySelector<HTMLElement>('.game-card')?.focus();
+  announce('Showing all games');
 }
 function setPaused(value:boolean):boolean {
   if(!value&&updateBusy)updateRequest++;
@@ -194,7 +210,7 @@ function returnFromStudy(){
   const replacement=focusLabelBeforeStudy?[...document.querySelectorAll<HTMLElement>('#game-stage [aria-label]')]
     .find(element=>element.getAttribute('aria-label')===focusLabelBeforeStudy&&!element.matches(':disabled')):undefined;
   const target=focusBeforeStudy?.isConnected&&!focusBeforeStudy.closest('dialog')?focusBeforeStudy:replacement;
-  (target??document.querySelector<HTMLElement>(activeId?'#game-stage':'.hamburger'))?.focus({preventScroll:true});
+  (target??document.querySelector<HTMLElement>(activeId?'#game-stage':'.app-tabbar [data-action="menu"]'))?.focus({preventScroll:true});
   focusBeforeStudy=null;focusLabelBeforeStudy=null;
 }
 
@@ -329,7 +345,7 @@ function openMenu(){
   updateAccountMenu();
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);menu.showModal();void checkForUpdates();
 }
-document.querySelector('.hamburger')!.addEventListener('click',openMenu);
+document.querySelector('.app-tabbar [data-action="menu"]')!.addEventListener('click',()=>openMenu());
 document.querySelector('.app-tabbar [data-action="study"]')!.addEventListener('click',()=>openStudy());
 function dialogClosed(){
   if(menu.open||rulesDialog.open||leaderboards.root.open||accountView.root.open)return;
@@ -346,9 +362,8 @@ document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
 });
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
 document.querySelector('#open-study')!.addEventListener('click',()=>openStudy());
-document.querySelector('.favourites-pill')!.addEventListener('click',event=>{
-  onlyFavourites=!onlyFavourites;
-  (event.currentTarget as HTMLElement).setAttribute('aria-pressed',String(onlyFavourites));
+document.querySelector<HTMLInputElement>('#favourites-only')!.addEventListener('change',event=>{
+  onlyFavourites=(event.target as HTMLInputElement).checked;
   if(activeId)location.hash=collectionHash;else library();
 });
 document.querySelector<HTMLInputElement>('#search')!.addEventListener('input',event=>{
