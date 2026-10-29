@@ -451,3 +451,12 @@ The reference embeds its player without a sandbox. Ours keeps `allow-scripts all
   - The selection becomes one glass pill that slides and stretches between tabs with a spring, and swells under a press.
   - Reduced motion uses opacity only. Reduced transparency makes the bar opaque, with no refraction.
   - The glass, pill and motion are original CSS, SVG and TypeScript. No Apple assets or code are used.
+- **2026-10-29, user request: no top bar on the games screen.**
+  - The user said: "Now the bottom bar is there remove the top bar from the games screen".
+  - The arcade top bar is removed. It held the brand, the menu button, the game count and the Favourites pill. In-game controls are unchanged.
+  - The glass island gains a sixth item, **Menu**, that opens the same menu dialog. Its accessible name stays "Open menu", like the in-game menu button. On narrow phones the six items shrink to fit; no label is clipped.
+  - The Favourites filter moves into the menu as a "Favourites only" switch under "Find a game". While a filter (favourites or a search) is on, the games screen shows a one-line notice with a "Show all games" button. Without the pill, nothing else would show that a filter is on.
+  - The brand stays in the menu heading (mark and name) and in the page title.
+  - The island moves ahead of the main content in the page order. Keyboard users then reach the menu first, as they did with the old top bar.
+  - The library keeps clear of a phone's notch with the safe-area inset.
+  - The Movies & TV header is unchanged.

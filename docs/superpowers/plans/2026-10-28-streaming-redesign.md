@@ -1357,3 +1357,150 @@ Capture the island over busy content at 390×844 (device scale 2) and 1440×900:
 - [ ] **Step 2: Implement.**
 - [ ] **Step 3: Run** `npx vitest run tests/core tests/movies`, `npm run check`, `e2e.sh tests/e2e/liquid-glass.spec.ts tests/e2e/redesign-shell.spec.ts tests/movies/redesign.spec.ts`, then the broad set.
 - [ ] **Step 4: Commit** "Give the island a Liquid Glass look, pill and liquid exit".
+
+### Task 23: Remove the games top bar; the menu moves to the island (user request)
+
+The user said: "Now the bottom bar is there remove the top bar from the games screen".
+
+The arcade top bar (`header.topbar`) holds four things:
+- the brand;
+- the menu button (`.hamburger`, "Open menu");
+- the game count (`.count-pill`);
+- the Favourites filter (`.favourites-pill`).
+
+All of it leaves the games screen. Nothing it offered is lost:
+- **Menu:** becomes a sixth island item.
+- **Favourites filter:** moves into the menu.
+- **Brand:** moves into the menu heading.
+- **Count:** already appears in the menu note and the search placeholder.
+
+In-game controls and the Movies & TV header are unchanged.
+
+**Files:**
+- `src/main.ts`: the shell template, listeners, `setChromeInert`, the Study-close focus fallback and `library()`.
+- `src/style.css`: remove the top bar rules; add the narrow island fit, the filter notice, the menu brand and the safe-area padding.
+- `src/game-viewport.css`: remove `body.in-game .topbar{display:none}`.
+- Tests:
+  - `tests/e2e/redesign-shell.spec.ts`
+  - `tests/e2e/branding.spec.ts`
+  - `tests/e2e/shell.spec.ts`
+  - `tests/e2e/viewport.spec.ts`
+  - `tests/movies/movies.spec.ts`
+- `docs/STUDY_MODE.md`: "Study Mode also opens from the hamburger menu" becomes "from the menu".
+
+**1. Remove the top bar**
+- Delete `<header class="topbar">…</header>` from the `app.innerHTML` template.
+- Delete the `.hamburger` and `.favourites-pill` click listeners.
+- `setChromeInert(value)` sets only `.app-tabbar` inert.
+- The Study-close focus fallback (`activeId?'#game-stage':'.hamburger'`) uses the island's Menu button instead of `.hamburger`.
+- Delete every CSS rule whose selector names `.topbar`, `.hamburger`, `.count-pill`, `.favourites-pill` or `.site-brand`. Each of these rules is entirely dead; none mixes in a live selector. This includes:
+  - the copies inside media queries;
+  - the comment above `.site-brand`;
+  - any media query left empty;
+  - `body.in-game .topbar{display:none}` in `src/game-viewport.css`.
+- Keep `.icon-button`, which the in-game toolbar uses. Check with `git diff` that nothing else changed.
+
+**2. The island's Menu item**
+- Move `<nav class="app-tabbar ui-tabbar">` ahead of `<main id="content">` in the template. Keyboard users then reach the island before the games, as they reached the old top bar. The bar is fixed, so its position on screen does not change.
+- After Study, add:
+  `<button class="ui-tab" type="button" data-action="menu" aria-label="Open menu" aria-haspopup="dialog">${uiIcon('menu')}<span>Menu</span></button>`
+  - The accessible name stays "Open menu" (it contains the visible "Menu"). About 40 test call sites click "Open menu" on the games screen and keep working.
+- Listener: `document.querySelector('.app-tabbar [data-action="menu"]')!.addEventListener('click',()=>openMenu());`
+- **Fit.** The arcade island holds six items from 320 px. Measured in our Chromium:
+  - `.ui-tab` has `min-width:54px`, so six tabs need 346 px. The 320 px bar is only 296 px wide.
+  - "TV Shows" is 48.3 px wide at 10 px.
+- **Starting point:**
+  - `.app-tabbar.ui-tabbar .ui-tab{min-width:0}`;
+  - at `max-width:359px`:
+    - `.app-tabbar.ui-tabbar{left:8px;right:8px;gap:0}`;
+    - `.app-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}`.
+  - Measure, and adjust if needed.
+- **Acceptance**, at 320, 360, 390 and 1366 px:
+  - no label overflows its tab: the label's box lies inside the tab's box and `scrollWidth <= clientWidth`;
+  - every tab is at least 44 px tall and 44 px wide;
+  - the bar lies inside the viewport, and the page has no horizontal scroll.
+- The Movies island keeps its five items.
+- The glass pill and the press already handle buttons; Study is one. The Menu button is never current, so the pill returns to Games after a press.
+
+**3. Favourites in the menu**
+- Directly under the `#search` input in `#menu`, add:
+  `<div class="setting-list menu-filters"><label><span>Favourites only</span><input type="checkbox" id="favourites-only"></label></div>`
+- On `change`, keep the pill's old behaviour: `onlyFavourites=input.checked; if(activeId)location.hash=collectionHash; else library();`
+- Keep the box in step with `onlyFavourites` wherever the state changes.
+
+**4. The filter notice**
+- While `onlyFavourites` or `search` is set, `library()` renders this before the grid:
+  `<div class="library-filter"><p class="library-filter-text"></p><button type="button" class="game-button secondary" data-action="show-all">Show all games</button></div>`
+- Text, set with `textContent` (the search is user text; never put it in innerHTML):
+  - favourites and a search: `Favourites matching “{search}”`
+  - favourites only: `Showing your favourites`
+  - a search only: `Games matching “{search}”`
+- "Show all games" does the following:
+  - clears `onlyFavourites` and `search`;
+  - unchecks `#favourites-only` and empties `#search`;
+  - re-renders;
+  - focuses the first `.game-card`;
+  - calls `announce('Showing all games')`.
+- It is page content, not a bar:
+  - it scrolls with the page;
+  - it lines up with the grid's padding and max width;
+  - it uses the arcade's own colours and type (the `.empty-library` text style is a good match).
+  - At 320 px it wraps rather than overflowing.
+
+**5. Brand in the menu**
+- The menu heading becomes `<h2 class="menu-brand">${mauriMark}<span>Mauri Study Notes</span></h2>`.
+- The mark is `aria-hidden`, so the heading's name stays "Mauri Study Notes".
+- Style: an inline-flex row, 8 px gap, mark 24 px.
+
+**6. Safe area**
+- `body:not(.in-game):not(.movies-active) #content{padding-top:env(safe-area-inset-top)}`, so the grid clears a notch now that no bar sits above it.
+
+**7. Tests (deliberate updates; list each in the report)**
+- `redesign-shell.spec.ts`, "the games home is back in its original style":
+  - Replace the top bar assertions with these:
+    - `#app > header` has count 0;
+    - `.topbar` has count 0;
+    - the Menu button is inside `.app-tabbar`.
+  - Keyboard: the first Tab from a fresh page focuses the island's Games tab. Keep tabbing until the first game card has focus (raise the bound from 8 to 12), then keep the outline assertions.
+  - Fix the comment.
+- `redesign-shell.spec.ts`, "the phone island holds five tabs…":
+  - rename it to six tabs;
+  - run it at 320, 360 and 390;
+  - assert six items, each at least 44 × 44, with no clipped label (item 2's acceptance);
+  - assert that "Open menu" resolves to the island button.
+- New tests:
+  - the island's Menu opens `#menu`, and closing it with Escape returns focus to the Menu button (390 and 1366);
+  - with "Favourites only" ticked and no favourites:
+    - the empty message and the notice "Showing your favourites" show;
+    - "Show all games" brings back 21 cards, removes the notice, unticks the box, and focuses the first game card;
+  - a search for `<img src=x onerror=alert(1)>` shows the literal text in the notice and creates no `img` inside `.library-filter`;
+  - the island fits at 1366 px too.
+- `shell.spec.ts`, "menu searches, settings start muted and empty favourites explain next action": tick "Favourites only" in the menu instead of clicking the FAVOURITES pill.
+- `branding.spec.ts`:
+  - Replace the `.site-brand` and `.count-pill` assertions with these:
+    - no `.site-brand` on the games screen;
+    - the menu heading shows `.mauri-mark` and is named "Mauri Study Notes";
+    - `#menu .menu-note` contains `${count} games`.
+  - It writes screenshots under `docs/evidence/mauri-branding/`. Do not commit those; `e2e.sh` restores them.
+- `movies.spec.ts:127-128`: check `.app-tabbar` instead of `.topbar` for `inert`.
+- `viewport.spec.ts:19`: in a game, assert `.app-tabbar` is hidden instead of `.topbar`.
+
+**8. Verification**
+- Run:
+  - `npm run check`;
+  - `npx vitest run tests/core tests/movies`;
+  - the focused specs above, plus `tests/e2e/liquid-glass.spec.ts`;
+  - the games specs that click "Open menu":
+    - `tests/games/snake`
+    - `tests/games/minesweeper`
+    - `tests/games/color-blocks`
+    - `tests/games/water-sort`
+    - `tests/games/flappy-bird`
+    - `tests/games/ball-run`
+  - the broad Chromium set (`tests/e2e tests/accounts tests/leaderboard tests/movies`);
+  - `npm run verify:update` and `npm run verify:offline`, which click "Open menu".
+- Screenshots at 390×844 and 1366×900:
+  - the top of the games screen;
+  - the island with Menu;
+  - the menu open, with the brand and "Favourites only";
+  - the favourites notice.
