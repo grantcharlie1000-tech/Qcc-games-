@@ -17,8 +17,8 @@
 --page-max:1280px;--gutter:16px;--header-h:56px;--tabbar-h:64px;--tabbar-gap:12px;
 }
 @media (min-width:640px){:root{--gutter:24px}}
-body{margin:0;background:var(--c-bg);color:var(--c-100);font-family:var(--font-sans)}
-:not(#game-stage *):focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* The arcade's font, colour and background come from style.css. White focus is for Movies & TV and the island. */
+:is(.movies-view,.ui-tabbar) :focus-visible{outline:2px solid #fff;outline-offset:2px}
 [hidden]:not(#game-stage *){display:none!important}
 .ui-icon{display:block;flex-shrink:0;width:16px;height:16px}
 .ui-container{width:100%;max-width:var(--page-max);margin:0 auto;padding:0 var(--gutter)}
@@ -55,7 +55,8 @@ body{margin:0;background:var(--c-bg);color:var(--c-100);font-family:var(--font-s
 @media (min-width:1024px){.ui-header .ui-kbd{display:inline-grid}.ui-header-actions .ui-label{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}}
 
 /* Tab bar: a floating glass island at every width. src/ui/tabbar.ts sets data-hidden while the page scrolls down. */
-.ui-tabbar{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));z-index:50;display:flex;align-items:stretch;gap:2px;max-width:440px;margin-inline:auto;min-height:var(--tabbar-h);padding:6px;border:1px solid #ffffff1f;border-radius:999px;background:linear-gradient(180deg,#ffffff1a,#ffffff05 45%,#ffffff00),rgb(18 18 20 / .72);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 1px 0 #ffffff33,inset 0 -1px 0 #ffffff0d,0 12px 32px -8px #000000b3,0 2px 6px #00000066;transition:transform var(--t) var(--ease-drawer)}
+/* It sets its own type, since the arcade's global body rule is gone. */
+.ui-tabbar{font-family:var(--font-sans);color:var(--c-100);position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));z-index:50;display:flex;align-items:stretch;gap:2px;max-width:440px;margin-inline:auto;min-height:var(--tabbar-h);padding:6px;border:1px solid #ffffff1f;border-radius:999px;background:linear-gradient(180deg,#ffffff1a,#ffffff05 45%,#ffffff00),rgb(18 18 20 / .72);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 1px 0 #ffffff33,inset 0 -1px 0 #ffffff0d,0 12px 32px -8px #000000b3,0 2px 6px #00000066;transition:transform var(--t) var(--ease-drawer)}
 .ui-tabbar::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 90% at 20% 0%,#ffffff24,#ffffff00 55%);pointer-events:none}
 /* Keyboard focus anywhere in the bar keeps it on screen. A tap leaves no focus-visible, so it does not pin the bar open. */
 .ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:translateY(calc(100% + var(--tabbar-gap) + env(safe-area-inset-bottom) + 16px));pointer-events:none}

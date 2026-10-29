@@ -35,8 +35,6 @@ export function highScore(id:GameId):number { const score=read('best:'+id,0);ret
 export function recordScore(id:GameId,score:number):number { const best=Math.max(highScore(id),Number.isFinite(score)?score:0);write('best:'+id,best);return best; }
 export function saveGame(id:GameId,data:unknown):boolean { return write('save:'+id,{version:1,data,updated:Date.now()}); }
 export function savedGame(id:GameId):unknown { const value=read<{version:number,data:unknown}|null>('save:'+id,null); return value?.version===1?value.data:undefined; }
-// When the game's versioned save was last written; undefined when there is nothing restorable.
-export function savedAt(id:GameId):number|undefined { const value=read<{version:number,updated?:unknown}|null>('save:'+id,null); return value?.version===1&&typeof value.updated==='number'&&Number.isFinite(value.updated)?value.updated:undefined; }
 export function favourites():GameId[] { const result=read<GameId[]>('favourites',[]);return Array.isArray(result)?result:[]; }
 export function toggleFavourite(id:GameId):boolean { const set=new Set(favourites());if(set.has(id))set.delete(id);else set.add(id);write('favourites',[...set]);return set.has(id); }
 

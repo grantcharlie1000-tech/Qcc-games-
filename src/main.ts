@@ -5,13 +5,10 @@ import type {MoviesView} from './movies/view';
 import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
 import {uiIcon} from './ui/icons';
-import {homeMarkup} from './library/home';
-import {bindRails,updateRails} from './ui/rails';
-import {markImages,watchImages} from './ui/images';
 import {autoHideTabbar} from './ui/tabbar';
 import './style.css';
 import './game-viewport.css';
-import {games, loadGame} from './core/catalog';
+import {games, artUrl, loadGame} from './core/catalog';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';
 import {playSound} from './core/audio';
@@ -31,11 +28,7 @@ const icon=(name:string)=>{
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.grid}</svg>`;
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
-app.innerHTML=`<header class="topbar ui-header"><div class="ui-header-inner">
- <a class="site-brand ui-brand" href="#/collection"><span class="ui-brand-tile">${mauriMark}</span><span class="ui-wordmark">Mauri <span>Study Notes</span></span></a>
- <nav class="ui-nav" aria-label="Site sections"><a class="count-pill ui-pill" href="#/collection" aria-current="page" aria-label="${games.length} games">${uiIcon('grid')}<small>Games</small><strong class="ui-pill-count">${games.length}</strong></a><a class="ui-pill" href="#/movies/browse/movie">${uiIcon('film')}Movies</a><a class="ui-pill" href="#/movies/browse/tv">${uiIcon('tv')}TV Shows</a></nav>
- <div class="ui-header-actions"><button class="header-search ui-icon-btn" aria-label="Search games">${uiIcon('search')}<span class="ui-label" aria-hidden="true">Search</span><kbd class="ui-kbd" aria-hidden="true">/</kbd></button><button class="favourites-pill ui-icon-btn" aria-pressed="false">${uiIcon('star')}<span class="ui-label">Favourites</span></button><button class="hamburger icon-button ui-icon-btn" aria-label="Open menu">${uiIcon('menu')}</button></div>
-</div></header><main id="content"></main>
+app.innerHTML=`<header class="topbar"><div class="site-brand">${mauriMark}<span>Mauri Study Notes</span></div><button class="hamburger icon-button" aria-label="Open menu">${icon('menu')}</button><div class="count-pill" aria-label="${games.length} games">${icon('grid')}<span><strong>${games.length}</strong><small>Games</small></span></div><button class="favourites-pill" aria-pressed="false">${icon('star')}<span>FAVOURITES</span></button></header><main id="content"></main>
 <nav class="app-tabbar ui-tabbar" aria-label="Sections"><a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button></nav>
 <dialog id="menu"><form method="dialog" class="dialog-head"><h2>Mauri Study Notes</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog"><form method="dialog" class="dialog-head"><h2>How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
@@ -137,19 +130,9 @@ function leave(saveProgress=true){
   document.body.classList.remove('in-game');
   syncViewportLock();
 }
-// Save times are read once per game and kept here, because every library render asks for all of them.
-// Writing a game's save through the store clears its entry, so the next render reads the new time.
-const saveTimes=new Map<GameId,number|undefined>();
-store.subscribe(key=>{if(key.startsWith('save:'))saveTimes.delete(key.slice('save:'.length) as GameId);});
-// Another tab's save (or a clear) never reaches store.subscribe, so storage events drop every cached time.
-window.addEventListener('storage',event=>{if(event.key===null||event.key.startsWith('pocket-arcade:v1:save:'))saveTimes.clear();});
-function cachedSavedAt(id:GameId):number|undefined{
-  if(!saveTimes.has(id))saveTimes.set(id,store.savedAt(id));
-  return saveTimes.get(id);
-}
 function library(){
-  content.innerHTML=homeMarkup({search,onlyFavourites,favourites:store.favourites(),best:store.highScore,savedAt:cachedSavedAt,now:Date.now()},moviesCard());
-  markImages(content);updateRails(content);
+  const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
+  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1><div class="game-grid" aria-label="Game library">${moviesCard()}${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
 }
 function setPaused(value:boolean):boolean {
   if(!value&&updateBusy)updateRequest++;
@@ -228,12 +211,12 @@ async function route(){
     if(leaderboards.root.open)leaderboards.root.close();
     const token=++generation;leave();
     setChromeInert(true);
-    content.innerHTML='<p class="loading">Opening Movies &amp; TV…</p><a class="ui-btn secondary small" href="#/collection">Back to games</a>';
+    content.innerHTML='<div class="loading"><p>Opening Movies &amp; TV…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';
     try{
       const {MoviesView}=await import('./movies/view');if(token!==generation)return;
       movies=new MoviesView(content,openStudy,preferences.reducedMotion,movieOrigin,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});movieOrigin=undefined;
       movies.navigate(location.hash);
-    }catch{if(token===generation)content.innerHTML='<p class="game-error">Movies &amp; TV could not load.</p><a class="ui-btn secondary small" href="#/collection">Back to games</a>';}
+    }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;
   }
   const wasInMovies=!!movies;
@@ -334,8 +317,6 @@ function openMenu(){
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);menu.showModal();void checkForUpdates();
 }
 document.querySelector('.hamburger')!.addEventListener('click',openMenu);
-function openSearch(){openMenu();document.querySelector<HTMLInputElement>('#search')!.focus();}
-document.querySelector('.header-search')!.addEventListener('click',openSearch);
 document.querySelector('.app-tabbar [data-action="study"]')!.addEventListener('click',openStudy);
 function dialogClosed(){
   if(menu.open||rulesDialog.open||leaderboards.root.open||accountView.root.open)return;
@@ -345,12 +326,11 @@ function dialogClosed(){
 menu.addEventListener('close',()=>{if(updateBusy)updateRequest++;dialogClosed();if(!activeId&&!movies&&!location.hash.startsWith('#/movies')&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
-function openLeaderboards(){
+document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
   const resume=pausedForDialog||!!activeId&&!paused;
   pausedForDialog=false;if(menu.open)menu.close();if(activeId)setPaused(true);
   leaderboards.open(activeId);pausedForDialog=resume;
-}
-document.querySelector('#open-leaderboards')!.addEventListener('click',openLeaderboards);
+});
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
 document.querySelector('#open-study')!.addEventListener('click',openStudy);
 document.querySelector('.favourites-pill')!.addEventListener('click',event=>{
@@ -382,21 +362,6 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
 
 content.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.closest('.movies-poster-wall'))image.hidden=true;},{capture:true});
 content.addEventListener('click',event=>{const link=(event.target as Element).closest('.movies-launch');if(link&&event instanceof MouseEvent&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&event.button===0){movieOrigin=link.getBoundingClientRect();}});
-watchImages(content);
-bindRails(content,()=>preferences.reducedMotion);
-content.addEventListener('click',event=>{
-  const target=event.target as Element;
-  const favourite=target.closest<HTMLButtonElement>('[data-hero-favourite]');
-  if(favourite){
-    const id=favourite.dataset.heroFavourite as GameId;
-    if(!games.some(game=>game.id===id))return;
-    const selected=store.toggleFavourite(id);
-    favourite.innerHTML=`${uiIcon(selected?'check':'star')}${selected?'In favourites':'Add to favourites'}`;
-    announce(selected?'Added to favourites':'Removed from favourites');storageStatus();
-    return;
-  }
-  if(target.closest('[data-action="leaderboards"]'))openLeaderboards();
-});
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true).catch(()=>{});});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance)setPaused(true);});
@@ -412,14 +377,6 @@ window.addEventListener('keydown',event=>{
   event.preventDefault();event.stopImmediatePropagation();
   if(!event.repeat&&!study.isOpen)openStudy();
 },{capture:true});
-// `/` opens search from the library only: never while typing, in a game, in Movies & TV, in Study or over a dialog.
-window.addEventListener('keydown',event=>{
-  if(event.key!=='/'||event.ctrlKey||event.metaKey||event.altKey)return;
-  const target=event.target;
-  if(target instanceof HTMLElement&&(target.isContentEditable||target.matches('input,textarea,select')))return;
-  if(activeId||movies||study.isOpen||location.hash==='#/movies'||location.hash.startsWith('#/movies/')||document.querySelector('dialog[open]'))return;
-  event.preventDefault();openSearch();
-});
 window.addEventListener('keyup',event=>{if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
 void checkForUpdates();

@@ -15,3 +15,9 @@ test('cards press in, reduced motion holds them still, and the footer button res
  expect(css).toContain('.ui-footer-links button{padding:0;border:0;background:none;color:inherit;cursor:pointer}');
  expect(css).toContain('.ui-card-title{display:block;');
 });
+test('the white focus ring is scoped to Movies & TV and the island, and the arcade has no global body rule',()=>{
+ expect(css).toContain(':is(.movies-view,.ui-tabbar) :focus-visible{outline:2px solid #fff;outline-offset:2px}');
+ expect(css).not.toContain(':not(#game-stage *):focus-visible{outline:2px solid #fff');
+ expect(css).not.toMatch(/(^|[^\w.-])body\s*\{/m);
+ expect(css).toMatch(/\.ui-tabbar\{[^}]*font-family:var\(--font-sans\)/);
+});

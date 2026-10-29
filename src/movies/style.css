@@ -8,14 +8,6 @@
 .movies-mini-poster img{display:block;width:100%;height:100%;object-fit:cover}
 .movies-launch::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#000d,transparent 65%);pointer-events:none;z-index:-1}
 .movies-launch h2{color:#fff;text-shadow:0 2px 4px #000}
-/* Launch card look, now owned here rather than by the shared game-card rules. */
-.movies-launch{border:1px solid #ffffff24;border-radius:var(--r-2xl);box-shadow:var(--sh-lg);transition:transform var(--t) var(--ease)}
-.movies-launch h2{margin:22px 22px 0;font-size:clamp(20px,3.6vw,30px);font-weight:800;line-height:1.1;letter-spacing:-.025em}
-@media(min-width:640px){.movies-launch h2{margin:28px 30px 0}}
-.movies-launch:active{transform:scale(.99)}
-@media(hover:hover) and (pointer:fine){.movies-launch:hover{transform:translateY(-2px)}}
-@media(prefers-reduced-motion:reduce){.movies-launch,.movies-launch:hover{transform:none}}
-.reduce-motion .movies-launch,.reduce-motion .movies-launch:hover{transform:none}
 .movies-eyebrow{font:700 11px/1.5 Arial,sans-serif;letter-spacing:3px;color:#eee}
 @media(max-width:1000px){.movies-launch{min-height:clamp(240px,62vw,460px)}.movies-miniatures{inset:-25px -12px;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:14px 12px}}
 
