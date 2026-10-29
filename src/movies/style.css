@@ -103,7 +103,7 @@ body.movies-active.study-active{overflow:auto}.movies-shelf-head>span{margin-lef
 @media (max-width:1000px){.movies-view .ui-rail-row>.movies-poster{flex-basis:calc((100% - 48px)/3.5)}}
 @media (max-width:650px){.movies-view .ui-rail{margin:20px 0 28px}.movies-view .ui-rail-row>.movies-poster{flex-basis:60%}}
 
-/* Movies home (Task 12a): a streaming hero, a filter bar, poster cards, rails and Continue watching on the shared ui- components. */
+/* Movies home: a streaming hero, a filter bar, poster cards, rails and Continue watching on the shared ui- components. */
 /* Old hero, filter bar and card rules are gone; the rules below restate what the .movies-view button and heading rules would otherwise override. */
 .movies-view .movies-browse{max-width:var(--page-max);margin:0 auto;padding:24px var(--gutter) 40px}
 .movies-view .movies-page-title{max-width:var(--page-max);margin:40px auto 24px!important;padding:0 var(--gutter)}

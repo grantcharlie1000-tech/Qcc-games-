@@ -21,6 +21,32 @@ const cardMeta=(t:Title)=>[t.year?String(t.year):'',t.kind==='tv'?'Series':'Movi
 // A title saved in storage carries what a card or a Continue watching tile needs. Genres, overview and seasons arrive when the title loads.
 const fromSnapshot=(s:TitleSnapshot):Title=>({id:s.id,kind:s.kind,name:s.name,year:s.year,genres:[],overview:'',poster:s.poster,backdrop:s.backdrop,seasons:[]});
 const slug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+// The status lines a browse page can show. Focus falls back to the first one that exists.
+const STATUS_LINES=['movies-catalog-status','movies-rails-status','movies-result-count'];
+// A focused control is found again after a render by what it is. A finder lists the controls that match, most likely first.
+type Finder=(root:HTMLElement)=>HTMLElement[];
+const within=(root:HTMLElement,selector:string)=>[...root.querySelectorAll<HTMLElement>(selector)];
+function finderFor(el:HTMLElement):Finder|undefined{
+ const {dataset}=el,rail=el.closest<HTMLElement>('[data-rail]')?.dataset.rail;
+ if(el.id){const id=el.id;return root=>within(root,'[id]').filter(e=>e.id===id);}
+ const status=STATUS_LINES.find(name=>el.classList.contains(name));
+ if(status)return root=>within(root,'.'+status);
+ if(dataset.title){
+  const title=dataset.title;
+  // A card or tile stays in the rail it was in while that rail still shows the title, else the first card or tile for the title.
+  return root=>{const same=within(root,'[data-title]').filter(e=>e.dataset.title===title);return rail===undefined?same:[...same.filter(e=>e.closest<HTMLElement>('[data-rail]')?.dataset.rail===rail),...same];};
+ }
+ if(dataset.kind){const kind=dataset.kind,bar=el.closest('.movies-top')?'.movies-top':'.movies-mobile-nav';return root=>within(root,`${bar} [data-kind]`).filter(e=>e.dataset.kind===kind);}
+ if(dataset.action){const action=dataset.action,nav=dataset.nav;return root=>within(root,'[data-action]').filter(e=>e.dataset.action===action&&(nav===undefined||e.dataset.nav===nav));}
+ if(dataset.list){const list=dataset.list;return root=>within(root,'[data-list]').filter(e=>e.dataset.list===list);}
+ if(dataset.playRoute){const route=dataset.playRoute;return root=>within(root,'[data-play-route]').filter(e=>e.dataset.playRoute===route);}
+ if(dataset.scroll){const scroll=dataset.scroll;return root=>within(root,'[data-scroll]').filter(e=>e.dataset.scroll===scroll&&e.closest<HTMLElement>('[data-rail]')?.dataset.rail===rail);}
+ // A heading and a plain link are found again by their tag and their address.
+ if(el.tagName==='H1')return root=>within(root,'h1');
+ const href=el.getAttribute('href');
+ if(href)return root=>within(root,'a[href]').filter(e=>e.getAttribute('href')===href);
+ return undefined;
+}
 type FullscreenDocument=Document&{webkitFullscreenElement?:Element|null;webkitExitFullscreen?:()=>void};
 type FullscreenElement=HTMLElement&{webkitRequestFullscreen?:()=>void};
 interface PlaybackPreferences {autoNext:()=>boolean;setAutoNext:(value:boolean)=>void}
@@ -56,6 +82,8 @@ export class MoviesView {
  private loadedSeasons=new Set<string>();
  private browseScroll=0;
  private returnFocus='';
+ // The rail a title's card or tile was activated from, so focus can return to that rail.
+ private returnRail='';
  private positions=new Map<string,{top:number;href:string}>();
  private lastActivatedHref='';
  private video?:HTMLVideoElement;
@@ -79,10 +107,14 @@ export class MoviesView {
  private railsError=false;
  private railsRequest=0;
  private railsAbort?:AbortController;
+ // Set once the home has asked for its rails. A failed request is asked again only through Retry.
+ private railsRequested=false;
  // The query the remote titles answered. Pages and earlier results belong to that query only.
  private remoteQuery='';
  // The image URLs that have loaded here. A re-render replaces the elements, and a URL seen before skips the fade-in.
  private seenImages=new Set<string>();
+ // The image URLs that failed here. A re-render does not ask for them again: a card shows its placeholder, a backdrop its poster.
+ private failedImages=new Set<string>();
  private readonly disposeImages:()=>void;
  private onVisibility=()=>{if(document.hidden)this.pause();};
  // The island is one element that survives renders: render() swaps the page around it and refreshes its items.
@@ -92,12 +124,12 @@ export class MoviesView {
  constructor(container:HTMLElement,private study:()=>void,private reducedMotion:boolean,origin?:DOMRect,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
-  this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){if(image.dataset.poster&&image.src!==image.dataset.poster){image.src=image.dataset.poster;delete image.dataset.poster;}else image.style.opacity='0';}},{capture:true});
+  this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){const failed=image.getAttribute('src');if(failed)this.failedImages.add(failed);if(image.dataset.poster&&image.src!==image.dataset.poster){image.src=image.dataset.poster;delete image.dataset.poster;}else image.style.opacity='0';}},{capture:true});
   this.root.addEventListener('load',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.matches('img.ui-card-img,img.ui-hero-backdrop')){const src=image.getAttribute('src');if(src)this.seenImages.add(src);}},{capture:true});
   this.root.addEventListener('click',this.click);
   this.root.addEventListener('click',event=>{
    const link=(event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
-   if(link){this.lastActivatedHref=link.getAttribute('href')||'';if(link.dataset.title)this.returnFocus=link.dataset.title;}
+   if(link){this.lastActivatedHref=link.getAttribute('href')||'';if(link.dataset.title){this.returnFocus=link.dataset.title;this.returnRail=link.closest<HTMLElement>('[data-rail]')?.dataset.rail||'';}}
   },{capture:true});
   this.root.addEventListener('input',this.input);
   this.root.addEventListener('change',this.change);
@@ -127,7 +159,7 @@ export class MoviesView {
    if(this.abort.signal.aborted)return;
    this.ready=true;this.render();
    if(this.route.id){if(this.needsDetails(this.route))void this.loadTitle(this.route.id,this.route.season);}
-   else void this.fetchRails('home');
+   else this.requestHomeRails();
   }catch(error){if(!this.abort.signal.aborted){this.failed=true;this.loadError=movieNetworkMessage(error,'The collection');this.render();}}
  }
  private async fetchCatalog(query:string,page:number){
@@ -155,8 +187,10 @@ export class MoviesView {
   }
  }
  // The home asks once for all of its rails. A response that arrives after a title opened updates the state only.
+ // The home asks for its rails once: when the view opens on a section, or the first time Home is shown.
+ private requestHomeRails(){if(!this.railsRequested)void this.fetchRails('home');}
  private async fetchRails(kind:'home'|'movie'|'tv'){
-  const request=++this.railsRequest;
+  this.railsRequested=true;const request=++this.railsRequest;
   this.railsAbort?.abort();const controller=this.railsAbort=new AbortController();
   try{
    const {data}=await cachedJson('/api/movies?rails='+kind,controller.signal);
@@ -203,13 +237,28 @@ export class MoviesView {
   const input=this.root.querySelector<HTMLInputElement>('#movies-search');
   const focusedInput=!!input&&input===document.activeElement;
   const start=input?.selectionStart,top=this.root.scrollTop;
-  // A button that the re-render replaces keeps the keyboard focus, found again by its action and page.
-  const active=document.activeElement instanceof HTMLElement&&this.root.contains(document.activeElement)?document.activeElement:undefined;
-  const action=active?.dataset.action,page=active?.dataset.page;
+  // The focused control is recorded by what it is before the render, and the control that matches it takes focus after the render.
+  const active=document.activeElement instanceof HTMLElement&&document.activeElement!==this.root&&this.root.contains(document.activeElement)?document.activeElement:undefined;
+  const finder=active&&finderFor(active);
   this.render();
   if(focusedInput){const next=this.root.querySelector<HTMLInputElement>('#movies-search');next?.focus({preventScroll:true});if(start!==null&&start!==undefined)next?.setSelectionRange(start,start);}
-  else if(action)this.root.querySelector<HTMLElement>(`[data-action="${action}"]${page?`[data-page="${page}"]`:''}`)?.focus({preventScroll:true});
+  else if(active)this.restoreFocus(finder?finder(this.root):[]);
   this.root.scrollTop=top;
+ }
+ // The first candidate that can take focus does. Without one, the first status line that exists takes it, else the page heading.
+ private restoreFocus(candidates:HTMLElement[]){
+  for(const candidate of candidates){
+   if(candidate.matches(':disabled'))continue;
+   candidate.focus({preventScroll:true});
+   if(document.activeElement===candidate)return;
+  }
+  const status=STATUS_LINES.map(name=>this.root.querySelector<HTMLElement>('.'+name)).find(el=>el!==null);
+  (status??this.root.querySelector<HTMLElement>('h1'))?.focus({preventScroll:true});
+ }
+ // Focus returns to a title's card or tile: the one in the rail it was opened from while that rail still shows it, else the first one.
+ private focusTitle(id:string,rail:string){
+  const same=within(this.root,'[data-title]').filter(e=>e.dataset.title===id);
+  (same.find(e=>!!rail&&e.closest<HTMLElement>('[data-rail]')?.dataset.rail===rail)??same[0])?.focus({preventScroll:true});
  }
  private positionKey(route:MovieRoute){const title=this.catalog.titles.find(t=>t.id===route.id);return route.play?JSON.stringify(route):route.id?`${route.id}:s${route.season??title?.seasons[0]?.number??0}`:'browse';}
  navigate(hash:string){
@@ -223,7 +272,7 @@ export class MoviesView {
   this.detailRequest++;this.detailAbort?.abort();this.pendingTitle=false;this.detailError='';
   const returningFromPlayer=!!this.route.play&&!next.play&&!!this.route.id&&this.route.id===next.id;
   const returnEpisodeHref=returningFromPlayer?titleHash(this.route.id!)+'/season/'+this.route.season+'/episode/'+this.route.episode+'/play':'';
-  if(!this.route.id&&next.id){this.browseScroll=this.root.scrollTop;this.returnFocus=(document.activeElement as HTMLElement)?.dataset.title||'';}
+  if(!this.route.id&&next.id){this.browseScroll=this.root.scrollTop;const opened=document.activeElement as HTMLElement|null;this.returnFocus=opened?.dataset.title||'';this.returnRail=opened?.closest<HTMLElement>('[data-rail]')?.dataset.rail||'';}
   this.positions.set(this.positionKey(this.route),{top:this.root.scrollTop,href:this.lastActivatedHref||(document.activeElement as Element)?.closest('a')?.getAttribute('href')||''});
   this.lastActivatedHref='';
   const returning=!!this.route.id&&!next.id;
@@ -232,19 +281,30 @@ export class MoviesView {
   const title=this.catalog.titles.find(t=>t.id===next.id);
   if(inPlace&&title)this.refreshPlayer(title);else this.render();
   if(this.ready&&this.needsDetails(next))void this.loadTitle(next.id!,next.season);
+  // A session that opened a title first has no rails yet, so the first time Home is shown they are requested.
+  if(this.ready&&!next.id&&!next.kind)this.requestHomeRails();
   if(this.focusSearch){this.focusSearch=false;this.searchFocus();return;}
   if(this.homeNavigation){this.homeNavigation=false;this.root.scrollTop=0;this.root.querySelector<HTMLElement>('h1')?.focus({preventScroll:true});return;}
-  if(returning){this.root.scrollTop=this.browseScroll;this.root.querySelector<HTMLElement>(`[data-title="${this.returnFocus}"]`)?.focus({preventScroll:true});}
+  if(returning){this.root.scrollTop=this.browseScroll;this.focusTitle(this.returnFocus,this.returnRail);}
   else {const previous=this.positions.get(this.positionKey(next));this.root.scrollTop=previous?.top??0;
    const anchors=[...this.root.querySelectorAll<HTMLAnchorElement>('a')];
    const focus=returningFromPlayer?anchors.find(a=>a.getAttribute('href')===returnEpisodeHref):previous?.href?anchors.find(a=>a.getAttribute('href')===previous.href):null;
    (focus??this.root.querySelector<HTMLElement>('h1'))?.focus({preventScroll:true});}
  }
  private header(){const pills:[MovieKind,string][]=[['all','Home'],['movie','Movies'],['tv','TV Shows'],['list','My list']];return `<header class="movies-top ui-header"><div class="ui-header-inner"><a class="movies-brand ui-brand" href="#/movies" aria-label="Movies and TV home"><span class="ui-brand-tile">${mauriMark}</span><span class="ui-wordmark">Mauri <span>Study Notes</span></span></a><nav class="ui-nav" aria-label="Movies and TV navigation">${pills.map(([kind,name])=>`<button class="ui-pill" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${name}</button>`).join('')}</nav><div class="ui-header-actions"><button data-action="search" class="movies-search-toggle ui-icon-btn" aria-label="Search movies and TV">${uiIcon('search')}</button><a class="movies-back ui-icon-btn" aria-label="Games" href="#/collection">${uiIcon('grid')}<span class="ui-label" aria-hidden="true">Games</span></a><button data-action="study" class="movies-study ui-icon-btn">${uiIcon('study')}<span class="ui-label">Study Mode</span><kbd class="ui-kbd" aria-hidden="true">Esc</kbd></button></div></div></header>`;}
+ // The image a card, tile or hero requests: its first candidate that has not failed in this view, with the next usable candidate as the
+ // fallback that the error listener switches to. When every candidate failed there is no image, so the placeholder shows alone.
+ private artImage(candidates:string[],className:string,attributes:string){
+  const usable=[...new Set(candidates)].filter(url=>!this.failedImages.has(url));
+  if(!usable.length)return '';
+  const [src,fallback]=usable;
+  return `<img class="${className}${this.seenImages.has(src)?' is-seen':''}"${fallback?` data-poster="${escape(fallback)}"`:''} src="${escape(src)}" ${attributes}>`;
+ }
  private card(t:Title){
-  const name=escape(t.name),url=asset(t.poster),poster=escape(url),seen=this.seenImages.has(url)?' is-seen':'',type=t.kind==='tv'?'SERIES':'FILM';
+  const name=escape(t.name),type=t.kind==='tv'?'SERIES':'FILM';
+  const image=this.artImage([asset(t.poster)],'ui-card-img','alt="" width="320" height="480" loading="lazy" decoding="async" referrerpolicy="no-referrer"');
   const rating=t.rating===undefined?'':`<span class="ui-chip rating">★ ${t.rating.toFixed(1)}</span>`;
-  return `<a class="movies-poster ui-card" href="${titleHash(t.id)}" data-title="${t.id}" aria-label="Details for ${name}"><span class="ui-card-poster"><span class="ui-card-placeholder" aria-hidden="true">${uiIcon('image')}<span>${name}</span></span><img class="ui-card-img${seen}" data-poster="${poster}" src="${poster}" alt="" width="320" height="480" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="ui-card-chips"><span class="ui-chip">${type}</span>${rating}</span><span class="ui-card-play" aria-hidden="true">${uiIcon('play')}</span></span><span class="ui-card-caption"><strong class="ui-card-title">${name}</strong><small class="ui-card-meta">${escape(cardMeta(t))}</small></span></a>`;
+  return `<a class="movies-poster ui-card" href="${escape(titleHash(t.id))}" data-title="${escape(t.id)}" aria-label="Details for ${name}"><span class="ui-card-poster"><span class="ui-card-placeholder" aria-hidden="true">${uiIcon('image')}<span>${name}</span></span>${image}<span class="ui-card-chips"><span class="ui-chip">${type}</span>${rating}</span><span class="ui-card-play" aria-hidden="true">${uiIcon('play')}</span></span><span class="ui-card-caption"><strong class="ui-card-title">${name}</strong><small class="ui-card-meta">${escape(cardMeta(t))}</small></span></a>`;
  }
  // A rail is a head with its count, then a row of tiles between two arrows. The id must be unique on the page.
  private rail(id:string,name:string,tiles:string,count:number,subtitle=''){
@@ -254,7 +314,8 @@ export class MoviesView {
  private shelf(id:string,name:string,titles:Title[],subtitle=''){return this.rail(id,name,titles.map(t=>this.card(t)).join(''),titles.length,subtitle);}
  private footer(){return `<footer class="movies-footer" aria-label="Credits and privacy"><strong>Your screen. Your privacy.</strong><p>My list and playback progress stay on this device. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.</p><p>${this.catalog.source==='tmdb'?`${this.catalog.attributionLogo?`<img class="movies-tmdb" src="${asset(this.catalog.attributionLogo)}" alt="TMDB" width="100" height="40">`:''}This product uses the TMDB API but is not endorsed or certified by TMDB.`:'Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.'}</p>${this.catalog.updated?`<p>Catalog snapshot: ${escape(this.catalog.updated)}</p>`:''}<p>Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Movies are excluded from game offline downloads.</p><button data-action="clear">Clear my list &amp; playback progress</button><p class="movies-storage" role="status">${this.storage.durable?'Saved only on this device.':'Browser storage is unavailable. Changes last only for this visit.'}</p></footer>`;}
  private browse(){
-  const available=this.kind==='list'?this.catalog.titles.filter(t=>this.storage.data.list.includes(t.id)):this.catalog.titles;
+  // Sections filter the bundled catalog and the home rails. My list filters the same titles as its rail.
+  const available=this.kind==='list'?this.savedTitles():[...this.catalog.titles,...this.rails.flatMap(rail=>rail.titles)];
   const local=filterTitles(available,this.query,this.kind,this.genre);
   // TMDB can match aliases and translated titles absent from the display text.
   const remote=this.kind==='list'?[]:filterTitles(this.remoteTitles,'',this.kind,this.genre);
@@ -280,8 +341,8 @@ export class MoviesView {
   const playRoute=!isTv?`${titleHash(hero.id)}/play`:season&&episode?`${titleHash(hero.id)}/season/${season.number}/episode/${episode.number}/play`:titleHash(hero.id);
   const listed=this.storage.data.list.includes(hero.id);
   const info=[hero.year?String(hero.year):'',isTv?'Series':'Movie',hero.genres.slice(0,3).join(' / ')].filter(Boolean).join(' · ');
-  const backdropUrl=asset(hero.backdrop??hero.poster),poster=escape(asset(hero.poster)),backdrop=escape(backdropUrl),seen=this.seenImages.has(backdropUrl)?' is-seen':'';
-  return `<section class="movies-hero ui-hero" aria-label="Featured: ${name}"><img class="ui-hero-backdrop${seen}" data-poster="${poster}" src="${backdrop}" alt="" fetchpriority="high" referrerpolicy="no-referrer"><span class="ui-hero-shade" aria-hidden="true"></span><div class="ui-hero-content"><div class="ui-hero-badges"><span class="ui-chip">${isTv?'Featured series':'Featured film'}</span>${hero.rating===undefined?'':`<span class="ui-chip rating">★ ${hero.rating.toFixed(1)}</span>`}</div><h1 class="ui-hero-title" tabindex="-1">${name}</h1><p class="ui-hero-meta">${escape(info)}</p><p class="ui-hero-overview">${escape(hero.overview)}</p><div class="ui-hero-actions"><button class="movies-primary ui-btn primary" data-play-route="${playRoute}"${source?'':' disabled aria-describedby="movies-hero-unavailable"'}>${uiIcon('play')}Play</button><a class="ui-btn secondary" href="${titleHash(hero.id)}">${uiIcon('info')}Details</a><button class="movies-hero-list ui-btn secondary" data-list="${hero.id}" aria-label="${listed?'Remove':'Add'} ${name} ${listed?'from':'to'} my list">${uiIcon(listed?'check':'plus')}My list</button></div>${source?'':'<span class="sr-only" id="movies-hero-unavailable">No provider identifier is available</span>'}</div></section>`;
+  const backdropUrl=asset(hero.backdrop??hero.poster),posterUrl=asset(hero.poster);
+  return `<section class="movies-hero ui-hero" aria-label="Featured: ${name}">${this.artImage([backdropUrl,posterUrl],'ui-hero-backdrop','alt="" fetchpriority="high" referrerpolicy="no-referrer"')}<span class="ui-hero-shade" aria-hidden="true"></span><div class="ui-hero-content"><div class="ui-hero-badges"><span class="ui-chip">${isTv?'Featured series':'Featured film'}</span>${hero.rating===undefined?'':`<span class="ui-chip rating">★ ${hero.rating.toFixed(1)}</span>`}</div><h1 class="ui-hero-title" tabindex="-1">${name}</h1><p class="ui-hero-meta">${escape(info)}</p><p class="ui-hero-overview">${escape(hero.overview)}</p><div class="ui-hero-actions"><button class="movies-primary ui-btn primary" data-play-route="${escape(playRoute)}"${source?'':' disabled aria-describedby="movies-hero-unavailable"'}>${uiIcon('play')}Play</button><a class="ui-btn secondary" href="${escape(titleHash(hero.id))}">${uiIcon('info')}Details</a><button class="movies-hero-list ui-btn secondary" data-list="${escape(hero.id)}" aria-label="${listed?'Remove':'Add'} ${name} ${listed?'from':'to'} my list">${uiIcon(listed?'check':'plus')}My list</button></div>${source?'':'<span class="sr-only" id="movies-hero-unavailable">No provider identifier is available</span>'}</div></section>`;
  }
  // The filter bar: a search field and a genre list built from every title the page has loaded.
  private filterBar(){
@@ -295,15 +356,15 @@ export class MoviesView {
   const count=`${filtered.length} ${filtered.length===1?'title':'titles'}`;
   const listEmpty=this.kind==='list'&&!this.query;
   const body=filtered.length?`<div class="movies-results-grid ui-grid">${filtered.map(t=>this.card(t)).join('')}</div>`:`<div class="movies-empty"><h2>${listEmpty?'Make it a movie night.':'No titles found'}</h2><p>${listEmpty?'Open a title and choose “Add to my list” to keep it here.':'Try another title or clear your filters. Search covers this catalog snapshot only.'}</p><button data-action="reset">Explore all titles</button></div>`;
-  return `<p class="movies-result-count" role="status">${count}</p>${body}${this.searchStatus()}`;
+  return `<p class="movies-result-count" role="status" tabindex="-1">${count}</p>${body}${this.searchStatus()}`;
  }
  // The full-catalog status line and its pagination. A search of two characters or more shows them, and pagination only for the query its results answer.
  private searchStatus(){
   if(!(this.query.trim().length>=2||this.remoteError))return '';
   const message=this.remoteLoading?'Searching the full movie and TV catalog…':this.remoteError?`${this.remoteError} The titles included with this site are still searchable.`:this.remoteTitles.length?'Showing full-catalog results from TMDB.':'No additional matches in the full catalog.';
   const retry=this.remoteError?' <button data-action="retry-search">Retry search</button>':'';
-  const pages=this.remoteQuery===this.query.trim()&&this.remotePages>1?`<div class="movies-pagination"><button data-action="catalog-page" data-page="${this.remotePage-1}"${this.remotePage<=1?' disabled':''}>Previous</button><span>Page ${this.remotePage} of ${this.remotePages}</span><button data-action="catalog-page" data-page="${this.remotePage+1}"${this.remotePage>=this.remotePages?' disabled':''}>Next</button></div>`:'';
-  return `<p class="movies-catalog-status" role="status">${escape(message)}${retry}</p>${pages}`;
+  const pages=this.remoteQuery===this.query.trim()&&this.remotePages>1?`<div class="movies-pagination"><button data-action="catalog-page" data-nav="previous" data-page="${this.remotePage-1}"${this.remotePage<=1?' disabled':''}>Previous</button><span>Page ${this.remotePage} of ${this.remotePages}</span><button data-action="catalog-page" data-nav="next" data-page="${this.remotePage+1}"${this.remotePage>=this.remotePages?' disabled':''}>Next</button></div>`:'';
+  return `<p class="movies-catalog-status" role="status" tabindex="-1">${escape(message)}${retry}</p>${pages}`;
  }
  // The unfiltered home: Continue watching, My list, then the API rails, or the starter rails until the request answers or when it fails.
  private homeContent(){
@@ -312,7 +373,7 @@ export class MoviesView {
   const shelves:string[]=[];
   const continued=this.continueRail();if(continued)shelves.push(continued);
   const saved=this.listRail();if(saved)shelves.push(saved);
-  if(this.railsError)shelves.push('<p class="movies-rails-status" role="status">Showing the starter selection. The full catalog is unavailable right now. <button class="ui-btn secondary small" data-action="retry-rails">Retry</button></p>');
+  if(this.railsError)shelves.push('<p class="movies-rails-status" role="status" tabindex="-1">Showing the starter selection. The full catalog is unavailable right now. <button class="ui-btn secondary small" data-action="retry-rails">Retry</button></p>');
   if(this.rails.length){for(const rail of this.rails)shelves.push(this.shelf(unique(rail.id),rail.title,rail.titles));}
   else for(const [name,titles,note] of this.starterRails())if(titles.length)shelves.push(this.shelf(unique(slug(name)),name,titles,note));
   return shelves.join('');
@@ -337,28 +398,30 @@ export class MoviesView {
    if(!title)continue;
    const name=escape(title.name),episode=item.season!==undefined&&item.episode!==undefined;
    const route=`${titleHash(item.id)}${episode?`/season/${item.season}/episode/${item.episode}`:''}/play`;
-   const artUrl=asset(title.backdrop??title.poster),art=escape(artUrl),poster=escape(asset(title.poster)),seen=this.seenImages.has(artUrl)?' is-seen':'';
+   const image=this.artImage([asset(title.backdrop??title.poster),asset(title.poster)],'ui-card-img','alt="" width="320" height="180" loading="lazy" decoding="async" referrerpolicy="no-referrer"');
    const percent=item.duration?Math.round(Math.min(100,Math.max(0,item.time/item.duration*100))):undefined;
-   tiles.push(`<a class="movies-continue ui-card" href="${route}" aria-label="Resume ${name}"><span class="ui-card-poster"><span class="ui-card-placeholder" aria-hidden="true">${uiIcon('image')}<span>${name}</span></span><img class="ui-card-img${seen}" data-poster="${poster}" src="${art}" alt="" width="320" height="180" loading="lazy" decoding="async" referrerpolicy="no-referrer">${percent===undefined?'':`<span class="movies-progress" aria-hidden="true"><span style="width:${percent}%"></span></span>`}</span><span class="ui-card-caption"><strong class="ui-card-title">${name}</strong><small class="ui-card-meta">${escape(episode?`S${item.season} · E${item.episode}`:'Movie')}</small></span></a>`);
+   tiles.push(`<a class="movies-continue ui-card" href="${escape(route)}" data-title="${escape(item.id)}" aria-label="Resume ${name}"><span class="ui-card-poster"><span class="ui-card-placeholder" aria-hidden="true">${uiIcon('image')}<span>${name}</span></span>${image}${percent===undefined?'':`<span class="movies-progress" aria-hidden="true"><span style="width:${percent}%"></span></span>`}</span><span class="ui-card-caption"><strong class="ui-card-title">${name}</strong><small class="ui-card-meta">${escape(episode?`S${item.season} · E${item.episode}`:'Movie')}</small></span></a>`);
   }
   return tiles.length?this.rail('continue-watching','Continue watching',tiles.join(''),tiles.length,'Pick up where you left off'):'';
  }
- // My list: the saved titles, from the page's titles or from their saved snapshots.
- private listRail(){
+ // The saved titles in list order. Each id resolves through lookup(), else to its stored snapshot, and an id with neither is skipped.
+ private savedTitles():Title[]{
   const titles:Title[]=[];
   for(const id of this.storage.data.list){
    const snapshot=this.storage.snapshot(id),found=this.lookup(id)??(snapshot?fromSnapshot(snapshot):undefined);
    if(found)titles.push(found);
   }
-  return titles.length?this.shelf('my-list','My list',titles):'';
+  return titles;
  }
+ // My list: the saved titles, from the page's titles or from their saved snapshots.
+ private listRail(){const titles=this.savedTitles();return titles.length?this.shelf('my-list','My list',titles):'';}
  private detail(t:Title){
   const selected=this.storage.data.list.includes(t.id);
   const season=t.seasons.find(s=>s.number===this.route.season)||t.seasons[0];
   const key=mediaKey(t,this.route),source=t.kind==='movie'?(licensedSource(this.licenses,key)??frameSource(t,this.route)):undefined;
-  return `<a class="movies-detail-back" href="#/movies">← Back to browsing</a><section class="movies-detail"><img class="movies-detail-art" src="${asset(t.poster)}" alt="Poster for ${escape(t.name)}" width="320" height="480"><div><p class="movies-eyebrow">${t.kind==='tv'?'QCC SERIES COLLECTION':'QCC CINEMA COLLECTION'}</p><h1 tabindex="-1">${escape(t.name)}</h1><p class="movies-meta">${escape(meta(t))}</p><div class="movies-tags">${t.genres.map(g=>`<span>${escape(g)}</span>`).join('')}</div><p class="movies-overview">${escape(t.overview)}</p><div class="movies-actions">${t.kind==='movie'?`<button class="movies-primary" data-play="${t.id}" ${source?'':'disabled aria-describedby="movies-unavailable"'}>${source?'▶ Play movie':'Playback unavailable'}</button><a href="${titleHash(t.id)}/play">Playback information</a>`:''}<button data-list="${t.id}" aria-pressed="${selected}">${selected?'✓ In my list':'+ Add to my list'}</button></div><p id="movies-unavailable" class="movies-availability">${source?'Streaming available. An external player receives normal connection and playback information.':'Choose an episode below to stream this series.'}</p></div></section>${t.kind==='tv'?`<section class="movies-episodes"><div class="movies-shelf-head"><h2>Episodes</h2>${season?`<label>Season <select id="movies-season" aria-label="Season">${t.seasons.map(s=>`<option value="${s.number}"${s===season?' selected':''}>${escape(s.name)}</option>`).join('')}</select></label>`:''}</div>${season?season.episodes.map(e=>{
+  return `<a class="movies-detail-back" href="#/movies">← Back to browsing</a><section class="movies-detail"><img class="movies-detail-art" src="${asset(t.poster)}" alt="Poster for ${escape(t.name)}" width="320" height="480"><div><p class="movies-eyebrow">${t.kind==='tv'?'QCC SERIES COLLECTION':'QCC CINEMA COLLECTION'}</p><h1 tabindex="-1">${escape(t.name)}</h1><p class="movies-meta">${escape(meta(t))}</p><div class="movies-tags">${t.genres.map(g=>`<span>${escape(g)}</span>`).join('')}</div><p class="movies-overview">${escape(t.overview)}</p><div class="movies-actions">${t.kind==='movie'?`<button class="movies-primary" data-play="${escape(t.id)}" ${source?'':'disabled aria-describedby="movies-unavailable"'}>${source?'▶ Play movie':'Playback unavailable'}</button><a href="${escape(titleHash(t.id))}/play">Playback information</a>`:''}<button data-list="${escape(t.id)}" aria-pressed="${selected}">${selected?'✓ In my list':'+ Add to my list'}</button></div><p id="movies-unavailable" class="movies-availability">${source?'Streaming available. An external player receives normal connection and playback information.':'Choose an episode below to stream this series.'}</p></div></section>${t.kind==='tv'?`<section class="movies-episodes"><div class="movies-shelf-head"><h2>Episodes</h2>${season?`<label>Season <select id="movies-season" aria-label="Season">${t.seasons.map(s=>`<option value="${s.number}"${s===season?' selected':''}>${escape(s.name)}</option>`).join('')}</select></label>`:''}</div>${season?season.episodes.map(e=>{
    const route={id:t.id,season:season.number,episode:e.number,play:true};const href=`${titleHash(t.id)}/season/${season.number}/episode/${e.number}/play`;const source=licensedSource(this.licenses,mediaKey(t,route))??frameSource(t,route);
-   return `<article class="movies-episode"><span class="movies-episode-number">${String(e.number).padStart(2,'0')}</span><div><h3>${escape(e.name)}</h3><p>${escape(e.overview||'No description supplied.')}</p><small>${e.runtime?`${e.runtime} min · `:''}${source?'Streaming available':'Provider identifier unavailable'}</small></div><a href="${href}" aria-label="${source?'Play':'Playback information for'} ${escape(e.name)}">${source?'▶ Play':'Details →'}</a></article>`;
+   return `<article class="movies-episode"><span class="movies-episode-number">${String(e.number).padStart(2,'0')}</span><div><h3>${escape(e.name)}</h3><p>${escape(e.overview||'No description supplied.')}</p><small>${e.runtime?`${e.runtime} min · `:''}${source?'Streaming available':'Provider identifier unavailable'}</small></div><a href="${escape(href)}" aria-label="${source?'Play':'Playback information for'} ${escape(e.name)}">${source?'▶ Play':'Details →'}</a></article>`;
   }).join(''):'<p>Episode metadata has not been included in this snapshot.</p>'}</section>`:''}`;
  }
  private player(t:Title){
@@ -367,7 +430,7 @@ export class MoviesView {
   const provider=streamProvider(this.providerId);
   const external=frameSource(t,this.route,this.providerId,this.storage.data.progress[mediaKey(t,this.route)]??0);
   const back=titleHash(t.id)+(episode?`/season/${this.route.season}/episode/${this.route.episode}`:'');
-  return `<div class="movies-player"><a class="movies-detail-back" href="${back}">← Back to ${escape(t.name)}</a><p class="movies-eyebrow">QCC SCREEN / ${t.kind==='tv'?'SERIES':'CINEMA'}</p><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${this.route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-screen" data-title="${t.id}" tabindex="-1" aria-label="Player area"><div class="movies-media">${source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" src="${asset(source.path)}"></video>`:external?`<iframe class="movies-provider-frame" data-provider="${this.providerId}" data-media-key="${escape(mediaKey(t,this.route))}" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`:`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${back}">Return to title</a></div>`}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button></div>${t.kind==='tv'?`<label class="movies-auto-next"><input type="checkbox" id="movies-auto-next"${this.preferences.autoNext()?' checked':''}> Auto next episode</label>`:''}<p id="movies-player-status" role="status">${source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`:external?`External player provided by ${provider.name}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`:'No provider identifier is available for this title.'}</p>${external&&!source?`<div class="movies-source-controls" role="group" aria-label="Streaming source"><label for="movies-source">Source <select id="movies-source" aria-describedby="movies-source-help">${STREAM_PROVIDERS.map(item=>`<option value="${item.id}"${item.id===this.providerId?' selected':''}>${item.name}</option>`).join('')}</select></label><button data-action="next-source">Try another source</button><button data-action="reload-stream">Reload player</button><p id="movies-source-help">Player blocked or not loading? Try another source. Your episode stays selected. ${provider.resume==='none'?'This source may start at the beginning and cannot share playback progress.':'Playback position resumes where supported.'}</p></div>`:''}</div>`;
+  return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}">← Back to ${escape(t.name)}</a><p class="movies-eyebrow">QCC SCREEN / ${t.kind==='tv'?'SERIES':'CINEMA'}</p><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${this.route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" src="${asset(source.path)}"></video>`:external?`<iframe class="movies-provider-frame" data-provider="${this.providerId}" data-media-key="${escape(mediaKey(t,this.route))}" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`:`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${escape(back)}">Return to title</a></div>`}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button></div>${t.kind==='tv'?`<label class="movies-auto-next"><input type="checkbox" id="movies-auto-next"${this.preferences.autoNext()?' checked':''}> Auto next episode</label>`:''}<p id="movies-player-status" role="status">${source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`:external?`External player provided by ${provider.name}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`:'No provider identifier is available for this title.'}</p>${external&&!source?`<div class="movies-source-controls" role="group" aria-label="Streaming source"><label for="movies-source">Source <select id="movies-source" aria-describedby="movies-source-help">${STREAM_PROVIDERS.map(item=>`<option value="${item.id}"${item.id===this.providerId?' selected':''}>${item.name}</option>`).join('')}</select></label><button data-action="next-source">Try another source</button><button data-action="reload-stream">Reload player</button><p id="movies-source-help">Player blocked or not loading? Try another source. Your episode stays selected. ${provider.resume==='none'?'This source may start at the beginning and cannot share playback progress.':'Playback position resumes where supported.'}</p></div>`:''}</div>`;
  }
  private mobileNav(){const sections:[MovieKind,string,'grid'|'film'|'tv'|'bookmark'][]=[['all','Home','grid'],['movie','Movies','film'],['tv','TV Shows','tv'],['list','My list','bookmark']];return sections.map(([kind,name,icon])=>`<button class="ui-tab" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${uiIcon(icon)}<span>${name}</span></button>`).join('')+`<button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;}
  private render(message=''){
@@ -431,7 +494,7 @@ export class MoviesView {
  private click=(event:MouseEvent)=>{
   const target=(event.target as Element).closest<HTMLElement>('button');if(!target)return;
   if(target.dataset.kind){this.query='';this.searchRequest++;this.metadataAbort?.abort();clearTimeout(this.searchTimer);this.remoteTitles=[];this.remoteQuery='';this.remoteLoading=false;this.remoteError='';this.genre='All';this.showSection(target.dataset.kind as MovieKind);}
-  if(target.dataset.list){const id=target.dataset.list,title=this.lookup(id);this.storage.toggle(id,title?snapshotOf(title):undefined);this.render();this.root.querySelector<HTMLElement>(`[data-list="${id}"]`)?.focus({preventScroll:true});}
+  if(target.dataset.list){const id=target.dataset.list,title=this.lookup(id);this.storage.toggle(id,title?snapshotOf(title):undefined);this.render();within(this.root,'[data-list]').find(e=>e.dataset.list===id)?.focus({preventScroll:true});}
   if(target.dataset.playRoute)location.hash=target.dataset.playRoute;
   if(target.dataset.play)location.hash=titleHash(target.dataset.play)+'/play';
   switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(this.query,Number(target.dataset.page));break;case 'retry-rails':void this.fetchRails('home');break;case 'retry-search':void this.fetchCatalog(this.query,this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season);break;case 'next-source':this.switchProvider(STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===this.providerId)+1)%STREAM_PROVIDERS.length].id,'next-source');break;case 'reload-stream':this.stopVideo();this.suspended=false;this.render();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'external-stream':this.preferExternal=true;this.render();break;case 'reset':this.query='';this.searchRequest++;this.metadataAbort?.abort();this.remoteTitles=[];this.remoteQuery='';this.remoteError='';this.remoteLoading=false;this.genre='All';this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
