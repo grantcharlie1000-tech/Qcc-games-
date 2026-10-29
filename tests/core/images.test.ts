@@ -84,3 +84,12 @@ test('markImages replaces a stale state with the known one',()=>{
   markImages(root([img]) as unknown as ParentNode);
   expect([...img.classes]).toEqual(['ui-card-img','is-loaded']);
 });
+
+test('watchImages classifies images that finished before it attached',()=>{
+  const done=el('img',['ui-card-img'],{complete:true,naturalWidth:300});
+  const broken=el('img',['ui-card-img','is-loaded'],{complete:true,naturalWidth:0});
+  const r=root([done,broken]);
+  watchImages(asRoot(r));
+  expect([...done.classes]).toEqual(['ui-card-img','is-loaded']);
+  expect([...broken.classes]).toEqual(['ui-card-img','is-failed']);
+});

@@ -8,6 +8,8 @@ export const watchImages=(root:HTMLElement):()=>void=>{
   root.classList.add('ui-images');
   root.addEventListener('load',onLoad,true);
   root.addEventListener('error',onError,true);
+  // Images that finished before the listeners attached never fire load or error again.
+  markImages(root);
   return()=>{
     root.removeEventListener('load',onLoad,true);
     root.removeEventListener('error',onError,true);

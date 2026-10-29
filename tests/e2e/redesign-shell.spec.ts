@@ -93,3 +93,87 @@ test('Study tab opens Study Mode',async({page})=>{
  await page.locator('.app-tabbar').getByRole('button',{name:'Study',exact:true}).click();
  await expect(page.locator('#study-view')).toBeVisible();
 });
+
+test('home shows a hero, three rails and a footer',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ await expect(page.locator('.arcade-hero')).toBeVisible();
+ expect(await page.locator('.ui-rail').count()).toBeGreaterThanOrEqual(3);
+ await expect(page.locator('.game-card')).toHaveCount(21);
+ await expect(page.locator('.site-footer')).toBeVisible();
+});
+
+test('hero favourite toggle feeds the Favourites filter',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const toggle=page.locator('[data-hero-favourite]');
+ await toggle.click();
+ await expect(toggle).toHaveAttribute('aria-pressed','true');
+ await expect(toggle).toContainText('In favourites');
+ await page.getByRole('button',{name:'Favourites',exact:true}).click();
+ await expect(page.locator('.game-card')).toHaveCount(1);
+});
+
+for(const width of [320,390]) test(`home fits ${width}px phones`,async({page})=>{
+ await page.setViewportSize({width,height:844});
+ await page.goto('/');
+ await expect(page.locator('.game-card').first()).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('cover images mark themselves loaded once the library renders',async({page})=>{
+ await page.goto('/');
+ await expect(page.locator('.game-card img.is-loaded')).toHaveCount(21);
+});
+
+test('footer links have clean accessible names and the leaderboards action opens',async({page})=>{
+ await page.goto('/');
+ const footer=page.locator('.site-footer');
+ await expect(footer.getByRole('link',{name:'Movies',exact:true})).toHaveAttribute('href','#/movies/browse/movie');
+ await expect(footer.getByRole('link',{name:'TV Shows',exact:true})).toBeVisible();
+ await footer.getByRole('button',{name:'Leaderboards',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Leaderboards'})).toBeVisible();
+});
+
+test('rail arrows scroll the row and the flags follow the scroll position',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const rail=page.locator('[data-rail="puzzle"]');
+ const row=rail.locator('.ui-rail-row');
+ await rail.hover();
+ await rail.locator('.ui-rail-arrow.next').click();
+ await expect.poll(()=>row.evaluate(element=>element.scrollLeft)).toBeGreaterThan(0);
+ await expect(rail).toHaveAttribute('data-can-prev','true');
+ await row.evaluate(element=>{element.scrollLeft=element.scrollWidth;});
+ await expect(rail).toHaveAttribute('data-can-next','false');
+});
+
+test('the Movies loading state keeps a way back to games',async({page})=>{
+ let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
+ await page.route('**/src/movies/view.ts*',async route=>{await gate;await route.continue();});
+ await page.goto('/');
+ await page.getByRole('link',{name:'Movies & TV',exact:true}).click();
+ const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
+ await expect(back).toBeVisible();
+ await back.click();
+ await expect(page.locator('.game-card')).toHaveCount(21);
+ release();
+});
+
+test('game cards keep 2:3 posters with their captions below',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const card=page.locator('[data-rail="puzzle"] .game-card').first();
+ const poster=await card.locator('.ui-card-poster').boundingBox();
+ const caption=await card.locator('.ui-card-caption').boundingBox();
+ expect(poster!.height/poster!.width).toBeCloseTo(1.5,1);
+ expect(caption!.y).toBeGreaterThanOrEqual(poster!.y+poster!.height);
+});
+
+test('the footer brand stacks its name above the tagline',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const name=await page.locator('.ui-footer-brand strong').boundingBox();
+ const tagline=await page.locator('.ui-footer-brand > span:last-child').boundingBox();
+ expect(tagline!.y).toBeGreaterThanOrEqual(name!.y+name!.height);
+});

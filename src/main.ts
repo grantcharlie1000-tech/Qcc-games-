@@ -5,9 +5,12 @@ import type {MoviesView} from './movies/view';
 import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
 import {uiIcon} from './ui/icons';
+import {homeMarkup} from './library/home';
+import {bindRails,updateRails} from './ui/rails';
+import {markImages,watchImages} from './ui/images';
 import './style.css';
 import './game-viewport.css';
-import {games, artUrl, loadGame} from './core/catalog';
+import {games, loadGame} from './core/catalog';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';
 import {playSound} from './core/audio';
@@ -131,8 +134,8 @@ function leave(saveProgress=true){
   syncViewportLock();
 }
 function library(){
-  const items=games.filter(g=>(!onlyFavourites||store.favourites().includes(g.id))&&g.title.toLowerCase().includes(search.toLowerCase()));
-  content.innerHTML=`<h1 class="sr-only">Mauri Study Notes · Games</h1><div class="game-grid" aria-label="Game library">${moviesCard()}${items.map(g=>`<a class="game-card" href="${entryHash(g.id)}" aria-label="Play ${g.title}" style="--card:${g.color};--ink:${g.ink};--accent:${g.accent}"><h2>${g.title}</h2><span class="title-line"></span><img src="${artUrl(g.id)}" alt="" width="320" height="400" fetchpriority="${['color-blocks','water-sort'].includes(g.id)?'high':'auto'}" draggable="false"></a>`).join('')}</div>${items.length?'':'<p class="empty-library">'+(onlyFavourites?'Your favourites live here. Open a game and tap its star to add it.':'No games found. Try another name.')+'</p>'}`;
+  content.innerHTML=homeMarkup({search,onlyFavourites,favourites:store.favourites(),best:store.highScore,savedAt:store.savedAt,now:Date.now()},moviesCard());
+  markImages(content);updateRails(content);
 }
 function setPaused(value:boolean):boolean {
   if(!value&&updateBusy)updateRequest++;
@@ -208,7 +211,7 @@ async function route(){
     if(leaderboards.root.open)leaderboards.root.close();
     const token=++generation;leave();
     setChromeInert(true);
-    content.innerHTML='<p class="loading">Opening Movies &amp; TV…</p>';
+    content.innerHTML='<p class="loading">Opening Movies &amp; TV…</p><a href="#/collection">Back to games</a>';
     try{
       const {MoviesView}=await import('./movies/view');if(token!==generation)return;
       movies=new MoviesView(content,openStudy,preferences.reducedMotion,movieOrigin,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});movieOrigin=undefined;
@@ -324,11 +327,12 @@ function dialogClosed(){
 menu.addEventListener('close',()=>{if(updateBusy)updateRequest++;dialogClosed();if(!activeId&&!movies&&!location.hash.startsWith('#/movies')&&!study.isOpen)library();});
 rulesDialog.addEventListener('close',dialogClosed);
 leaderboards.root.addEventListener('close',dialogClosed);
-document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
+function openLeaderboards(){
   const resume=pausedForDialog||!!activeId&&!paused;
   pausedForDialog=false;if(menu.open)menu.close();if(activeId)setPaused(true);
   leaderboards.open(activeId);pausedForDialog=resume;
-});
+}
+document.querySelector('#open-leaderboards')!.addEventListener('click',openLeaderboards);
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
 document.querySelector('#open-study')!.addEventListener('click',openStudy);
 document.querySelector('.favourites-pill')!.addEventListener('click',event=>{
@@ -360,6 +364,22 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
 
 content.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.closest('.movies-poster-wall'))image.hidden=true;},{capture:true});
 content.addEventListener('click',event=>{const link=(event.target as Element).closest('.movies-launch');if(link&&event instanceof MouseEvent&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&event.button===0){movieOrigin=link.getBoundingClientRect();}});
+watchImages(content);
+bindRails(content,()=>preferences.reducedMotion);
+content.addEventListener('click',event=>{
+  const target=event.target as Element;
+  const favourite=target.closest<HTMLButtonElement>('[data-hero-favourite]');
+  if(favourite){
+    const id=favourite.dataset.heroFavourite as GameId;
+    if(!games.some(game=>game.id===id))return;
+    const selected=store.toggleFavourite(id);
+    favourite.setAttribute('aria-pressed',String(selected));
+    favourite.innerHTML=`${uiIcon('star')}${selected?'In favourites':'Add to favourites'}`;
+    announce(selected?'Added to favourites':'Removed from favourites');storageStatus();
+    return;
+  }
+  if(target.closest('[data-action="leaderboards"]'))openLeaderboards();
+});
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true).catch(()=>{});});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance)setPaused(true);});
