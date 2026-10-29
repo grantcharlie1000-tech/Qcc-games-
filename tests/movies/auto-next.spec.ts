@@ -40,9 +40,9 @@ test('navigation and hidden-tab pause cancel timers',async({page})=>{
  await page.goto(route());await expect(page.frameLocator('.movies-provider-frame').getByRole('button')).toBeVisible();await ended(page);
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});await page.clock.runFor(11000);await expect(overlay(page)).toBeHidden();await expect(page).toHaveURL(/episode\/1\/play$/);
 });
-test('rejects invalid duration, waits for resume seek, and re-arms after seeking back',async({page})=>{
+test('rejects invalid duration, resumes through the start time, and re-arms after seeking back',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('qcc:movies:v1',JSON.stringify({list:[],progress:{'tv-19885:s1:e1':42}})));
- await open(page);await telemetry(page);await expect(overlay(page)).toBeHidden();
+ await open(page);await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src',/[?&]t=42(&|$)/);await telemetry(page,50);await expect(overlay(page)).toBeHidden();
  for(const duration of [0,-1,NaN,Infinity])await telemetry(page,100,duration);await expect(overlay(page)).toBeHidden();
  await ended(page);await page.getByRole('button',{name:'Cancel',exact:true}).click();await telemetry(page,20);await ended(page);await expect(overlay(page)).toBeVisible();
 });
