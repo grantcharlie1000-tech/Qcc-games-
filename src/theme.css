@@ -17,6 +17,9 @@
 --page-max:1280px;--gutter:16px;--header-h:56px;--tabbar-h:64px;--tabbar-gap:12px;
 }
 @media (min-width:640px){:root{--gutter:24px}}
+/* Liquid Glass springs: linear() curves for a damped spring with about 3% (glass) and 5% (glass-pop) overshoot. Engines without linear() use the drawer curve. */
+:root{--ease-glass:var(--ease-drawer);--ease-glass-pop:var(--ease-drawer)}
+@supports (transition-timing-function:linear(0,1)){:root{--ease-glass:linear(0, 0.05, 0.167, 0.314, 0.465, 0.604, 0.723, 0.82, 0.894, 0.948, 0.985, 1.008, 1.021, 1.027, 1.028, 1.026, 1.023, 1.018, 1.014, 1.01, 1.007, 1.005, 1.003, 1.001, 1);--ease-glass-pop:linear(0, 0.061, 0.202, 0.375, 0.548, 0.702, 0.827, 0.921, 0.985, 1.026, 1.047, 1.054, 1.052, 1.046, 1.036, 1.027, 1.018, 1.011, 1.005, 1.002, 0.999, 0.998, 0.997, 0.997, 1)}}
 /* The arcade's font, colour and background come from style.css. White focus is for Movies & TV and the island. */
 :is(.movies-view,.ui-tabbar) :focus-visible{outline:2px solid #fff;outline-offset:2px}
 [hidden]:not(#game-stage *){display:none!important}
@@ -54,28 +57,43 @@
 @media (min-width:768px){.ui-nav .ui-pill>.ui-icon{display:block}}
 @media (min-width:1024px){.ui-header .ui-kbd{display:inline-grid}.ui-header-actions .ui-label{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}}
 
-/* Tab bar: a floating glass island at every width. src/ui/tabbar.ts sets data-hidden while the page scrolls down. */
+/* Tab bar: a floating Liquid Glass island at every width. src/ui/tabbar.ts sets data-hidden while the page scrolls down, and src/ui/glass.ts draws the selection pill, the press and, in Chromium, the refraction. */
 /* It sets its own type, since the arcade's global body rule is gone. */
-.ui-tabbar{font-family:var(--font-sans);color:var(--c-100);position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));z-index:50;display:flex;align-items:stretch;gap:2px;max-width:440px;margin-inline:auto;min-height:var(--tabbar-h);padding:6px;border:1px solid #ffffff1f;border-radius:999px;background:linear-gradient(180deg,#ffffff1a,#ffffff05 45%,#ffffff00),rgb(18 18 20 / .72);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 1px 0 #ffffff33,inset 0 -1px 0 #ffffff0d,0 12px 32px -8px #000000b3,0 2px 6px #00000066;transition:transform var(--t) var(--ease-drawer)}
-.ui-tabbar::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 90% at 20% 0%,#ffffff24,#ffffff00 55%);pointer-events:none}
+.ui-tabbar{--ease-out:cubic-bezier(.23,1,.32,1);font-family:var(--font-sans);color:var(--c-100);position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));z-index:50;display:flex;align-items:stretch;gap:2px;max-width:440px;margin-inline:auto;min-height:var(--tabbar-h);padding:6px;border:1px solid #ffffff14;border-radius:999px;background:rgb(20 20 24 / .22);-webkit-backdrop-filter:blur(10px) saturate(1.8) brightness(1.06);backdrop-filter:blur(10px) saturate(1.8) brightness(1.06);box-shadow:inset 0 1px 1px rgb(255 255 255 / .55),inset 0 -1px 1px rgb(255 255 255 / .22),inset 1px 0 1px rgb(255 255 255 / .25),inset -1px 0 1px rgb(255 255 255 / .25),inset 0 0 18px rgb(255 255 255 / .12),0 10px 30px -6px rgb(0 0 0 / .55),0 2px 6px rgb(0 0 0 / .35);translate:0 0;scale:1;opacity:1;transform-origin:50% 100%;transition:translate 360ms var(--ease-glass-pop),scale 420ms var(--ease-glass-pop) 80ms,opacity 140ms var(--ease)}
+.ui-tabbar::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(90% 120% at 50% -30%,rgb(255 255 255 / .32),transparent 55%);pointer-events:none}
+/* The selection pill is the bar's own ::after, placed by src/ui/glass.ts. It is not a child, so a Movies re-render leaves it alone. */
+.ui-tabbar::after{content:'';position:absolute;z-index:0;top:6px;bottom:6px;left:0;width:var(--ui-pill-w,0px);translate:var(--ui-pill-x,0px) 0;border-radius:999px;background:rgb(255 255 255 / .16);box-shadow:inset 0 1px 1px rgb(255 255 255 / .45),inset 0 -1px 1px rgb(255 255 255 / .12),0 1px 6px rgb(0 0 0 / .25);opacity:var(--ui-pill-on,0);pointer-events:none;transition:translate 340ms var(--ease-glass),scale 340ms var(--ease-glass),opacity 120ms var(--ease)}
+/* Until the first placement the pill is positioned without a transition, so it never slides in from the edge. */
+.ui-tabbar:not([data-pill-ready])::after{transition:none}
+/* A press swells the pill in 140 ms ease-out. Releasing it springs back with the glass ease, from the base rule. */
+.ui-tabbar[data-pressing]::after{scale:1.1 1.14;transition:translate 340ms var(--ease-glass),scale 140ms var(--ease-out),opacity 120ms var(--ease)}
 /* Keyboard focus anywhere in the bar keeps it on screen. A tap leaves no focus-visible, so it does not pin the bar open. */
-.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:translateY(calc(100% + var(--tabbar-gap) + env(safe-area-inset-bottom) + 16px));pointer-events:none}
-.ui-tab{position:relative;display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;min-height:44px;padding:4px 2px;border:0;border-radius:999px;background:none;color:var(--c-300);font-size:10px;font-weight:500;line-height:1.2;text-decoration:none;transition:transform var(--t-fast) var(--ease)}
+.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){translate:0 calc(100% + var(--tabbar-gap) + env(safe-area-inset-bottom) + 16px);scale:.36 .8;opacity:0;pointer-events:none;transition:scale 200ms var(--ease-out),translate 280ms var(--ease-out) 110ms,opacity 160ms var(--ease) 220ms}
+.ui-tab{position:relative;z-index:1;display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;min-height:44px;padding:4px 2px;border:0;border-radius:999px;background:none;color:rgb(255 255 255 / .82);font-size:10px;font-weight:500;line-height:1.2;text-decoration:none;text-shadow:0 1px 2px rgb(0 0 0 / .6);transition:transform var(--t-fast) var(--ease),opacity 160ms 160ms}
 .ui-tab:active{transform:scale(.95)}
-.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]{color:#fff;font-weight:700;background:#ffffff1f;box-shadow:inset 0 1px 0 #ffffff26}
-/* Fine pointers get a faint lozenge. The current item keeps its own, and colour and background change at once. */
+/* The current tab keeps its bold white text. The pill carries its highlight, so the tab has no background of its own. */
+.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]{color:#fff;font-weight:700}
+/* The labels fade out as the island squeezes into a blob, and fade back in once it has opened. */
+.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)) .ui-tab{opacity:0;transition:transform var(--t-fast) var(--ease),opacity 100ms}
+/* Fine pointers get a faint lozenge. The current item keeps none, and colour and background change at once. */
 @media (hover:hover) and (pointer:fine){.ui-tab:not([aria-current="page"]):not([aria-pressed="true"]):hover{color:#fff;background:#ffffff0f}}
+/* Chromium only (glass.ts sets is-refracting and this bar's own filter): the rim bends what is behind the bar. Keep this above the fallbacks, which must win under reduced transparency. */
+.ui-tabbar.is-refracting{-webkit-backdrop-filter:var(--ui-glass-filter) blur(5px) saturate(1.8) brightness(1.06);backdrop-filter:var(--ui-glass-filter) blur(5px) saturate(1.8) brightness(1.06)}
 /* Fallbacks: no backdrop-filter support, reduced transparency and more contrast. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-tabbar{background:rgb(18 18 20 / .96)}}
-@media (prefers-reduced-transparency:reduce){.ui-tabbar{background:rgb(18 18 20 / .97);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-reduced-transparency:reduce){.ui-tabbar,.ui-tabbar.is-refracting{background:rgb(18 18 20 / .97);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-contrast:more){.ui-tabbar{border-color:#ffffff66}}
-/* Reduced motion never slides the bar. The theme's global block sets transition:none, so the fade below is instant. */
+/* Reduced motion, from the media query or the .reduce-motion class: the island fades, and nothing moves, scales or stretches. */
 @media (prefers-reduced-motion:reduce){
 .ui-tabbar{transition:opacity var(--t-fast) var(--ease)}
-.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:none;opacity:0;pointer-events:none}
+.ui-tabbar::after,.ui-tabbar[data-pressing]::after{transition:opacity var(--t-fast) var(--ease)}
+.ui-tabbar[data-pressing]::after{scale:none}
+.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){translate:none;scale:none;opacity:0;pointer-events:none}
 }
 .reduce-motion .ui-tabbar{transition:opacity var(--t-fast) var(--ease)}
-.reduce-motion .ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:none;opacity:0;pointer-events:none}
+.reduce-motion .ui-tabbar::after,.reduce-motion .ui-tabbar[data-pressing]::after{transition:opacity var(--t-fast) var(--ease)}
+.reduce-motion .ui-tabbar[data-pressing]::after{scale:none}
+.reduce-motion .ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){translate:none;scale:none;opacity:0;pointer-events:none}
 
 /* Buttons and chips */
 .ui-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 12px;border:1px solid transparent;border-radius:var(--r-lg);background:none;font-size:12px;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;transition:transform var(--t-fast) var(--ease)}

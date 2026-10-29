@@ -130,6 +130,9 @@ test('reduced motion fades the bar instead of sliding',async({page})=>{
  await page.evaluate(()=>window.scrollTo(0,400));
  await expect(bar).toHaveAttribute('data-hidden','true');
  await expect(bar).toHaveCSS('transform','none');
+ // The liquid exit moves with translate and scale, so reduced motion must clear both as well.
+ await expect(bar).toHaveCSS('translate','none');
+ await expect(bar).toHaveCSS('scale','none');
  await expect(bar).toHaveCSS('opacity','0');
  await expect(bar).toHaveCSS('pointer-events','none');
 });
@@ -142,6 +145,8 @@ test('the app reduce-motion setting fades the bar too',async({page})=>{
  await page.evaluate(()=>window.scrollTo(0,400));
  await expect(bar).toHaveAttribute('data-hidden','true');
  await expect(bar).toHaveCSS('transform','none');
+ await expect(bar).toHaveCSS('translate','none');
+ await expect(bar).toHaveCSS('scale','none');
  await expect(bar).toHaveCSS('opacity','0');
 });
 
@@ -184,10 +189,12 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
  await study.hover();
  await expect.poll(()=>alpha(study)).toBeCloseTo(0.06,2);
  expect(await study.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
- // Hover colour and background change at once: only transform is transitioned on a tab.
- expect(await study.evaluate(element=>getComputedStyle(element).transitionProperty)).toBe('transform');
+ // Hover colour and background change at once: a tab never transitions them, only its transform and its label fade.
+ expect(await study.evaluate(element=>getComputedStyle(element).transitionProperty)).not.toMatch(/color|background/);
  await games.hover();
- expect(await alpha(games)).toBeCloseTo(0.12,2);
+ // The current tab keeps no lozenge of its own: the pill carries the highlight, and a hover leaves it alone.
+ expect(await alpha(games)).toBe(0);
+ expect(await bar.evaluate(element=>{const match=getComputedStyle(element,'::after').backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;})).toBeCloseTo(0.16,2);
 });
 
 test('the island shows again after returning from Study',async({page})=>{

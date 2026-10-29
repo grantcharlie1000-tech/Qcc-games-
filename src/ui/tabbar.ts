@@ -1,5 +1,6 @@
 // Hide-on-scroll for the tab bar island. nextTabbarState is the rule the unit tests cover. autoHideTabbar reads
-// the scroll position and sets data-hidden on the bar, which theme.css turns into a slide, or a fade under reduced motion.
+// the scroll position and sets data-hidden on the bar, which theme.css turns into a liquid exit, or a fade under reduced motion.
+import {bindGlass} from './glass';
 export interface TabbarScroll{hidden:boolean;lastY:number;travel:number}
 // px of travel in one direction before the bar changes state.
 export const TABBAR_THRESHOLD=12;
@@ -27,11 +28,13 @@ function position(scroller:Window|HTMLElement):{y:number;max:number}{
 }
 
 // One passive scroll listener per scroller, with at most one frame of work pending. Returns reset(), which shows
-// the bar and counts travel from the current position, and dispose(), which removes the listener.
+// the bar and counts travel from the current position, and dispose(), which removes the listener. The Liquid Glass
+// pill, press and refraction are bound to the same bar here, so every island gets them.
 export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{reset():void;dispose():void}{
   const target:EventTarget=scroller;
   let state:TabbarScroll={hidden:false,lastY:position(scroller).y,travel:0};
   let frame=0;
+  const glass=bindGlass(bar);
   // Writes the attribute only when the state changes.
   const apply=(hidden:boolean)=>{
     if(bar.hasAttribute('data-hidden')===hidden)return;
@@ -60,6 +63,7 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
       window.removeEventListener('resize',schedule);
       if(frame)cancelAnimationFrame(frame);
       frame=0;
+      glass.dispose();
       apply(false);
     }
   };
