@@ -1,9 +1,10 @@
 import {FIELD} from './model';
+import {VIEW_WIDTH,VIEW_HEIGHT} from './view';
 export interface Point{x:number;y:number}
 export interface Drag{kind:'aim'|'pull';start:Point;angle:number;power:number;deadzone:number}
 /** Canvas is a clockwise rotation of the unchanged, persisted physics table. */
 export function tablePoint(clientX:number,clientY:number,rect:{left:number;top:number;width:number;height:number}):Point{
- return {x:(clientY-rect.top)*440/rect.height,y:840-(clientX-rect.left)*840/rect.width};
+ return {x:(clientY-rect.top)*VIEW_HEIGHT/rect.height,y:VIEW_WIDTH-(clientX-rect.left)*VIEW_WIDTH/rect.width};
 }
 export function onFelt(p:Point){return p.x>=FIELD.left&&p.x<=FIELD.right&&p.y>=FIELD.top&&p.y<=FIELD.bottom;}
 export function beginDrag(p:Point,cue:Point,angle:number,hitRadius:number):Drag|null{

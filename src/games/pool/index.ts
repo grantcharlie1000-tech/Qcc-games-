@@ -6,6 +6,7 @@ import {RoomDialog,inviteCodeFromHash,relayOnlyFromHash} from '../../multiplayer
 import type {Room} from '../../multiplayer/room';
 import {ballColor} from './appearance';
 import {tablePoint,onFelt,beginDrag,moveDrag,releaseDrag,type Drag} from './input';
+import {VIEW_WIDTH,VIEW_HEIGHT} from './view';
 import './style.css';
 export const rules='Eight-ball: drag on the felt to aim, then drag the white ball backwards and release to shoot. Return to your starting point before releasing to cancel, or press C. A second finger cancels. The white aiming line previews the first collision, not a guaranteed pot. Arrow keys on the table adjust aim; up/down change power; Enter or Space shoots. C cancels a drag. Escape opens Study and cancels. Pocket your solids (1–7) or stripes (9–15), then pocket the 8 in your selected numbered pocket. A legal pot keeps your turn; a legal miss passes it. Hit your group first (any colored ball on an open table), then pocket a ball or reach a cushion. A scratch, wrong first hit or no rail/pot gives the opponent ball-in-hand: tap or drag to a clear spot and release (keyboard: arrows then Enter). Groups are assigned by the first legal colored pot after the break. The 8 before your group is gone, in the wrong pocket, or on a foul loses. Local simplifications from WPA: only the 8 pocket is called; player 1 always breaks from the fixed head spot with a repeatable rack; every break foul or illegal break gives ball-in-hand anywhere, with no re-rack choice; a break 8 is automatically re-spotted. A break needs a pot or four object balls reaching cushions. No safety calls, temporary open-table group claims, spin, jumps or tournament/referee fouls. Play against the offline computer or pass the device to Player 2. Easy is a forgiving beginner opponent; Medium is the original computer; Hard checks shots using table physics. Changing Players or AI difficulty starts a new rack. Multiplayer plays on two devices: one player creates a room and shares its code or invite link, the other joins. Online, the host breaks and the host’s device runs the official table.';
 /** Online names come from another device: never markup. */
@@ -14,7 +15,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  let state=createGame(),paused=false,disposed=false,frame=0,last=0,accumulator=0,aiPlan:ReturnType<typeof chooseAI>|null=null;
  let ghost:{x:number;y:number;valid:boolean}|null=null;
  const abort=new AbortController(),root=document.createElement('div');root.className='pool-game';
- root.innerHTML=`<div class="pool-players" role="group" aria-label="Ball groups and potted balls"><section class="pool-player"></section><section class="pool-player"></section></div><p class="pool-open-table"></p><div class="pool-table-area"><div class="pool-cue-meter"><span>POWER</span><div aria-hidden="true"><i></i></div><output class="pool-power-value" aria-live="off">0%</output></div><div class="pool-table-wrap"><div class="mp-waiting" hidden>Waiting for host<small>The host has paused the game.</small></div><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Drag felt to aim; pull white ball back and release to shoot. Arrow keys aim and change power; Enter shoots; C cancels." aria-describedby="pool-tip" width="840" height="440"></canvas><p class="pool-message" role="status"></p></div></div><div class="pool-inhand" hidden>Ball-in-hand: tap or drag to a clear spot and release. Keyboard: arrows to move, Enter to place.</div><div class="pool-under"><label class="pool-mode">Players <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option></select></label><button type="button" class="pool-multiplayer" aria-haspopup="dialog">Multiplayer</button><label class="pool-mode">AI <select aria-label="AI difficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((_,i)=>`<option value="${i}">${i+1} · ${['Top right','Bottom right','Top middle','Bottom middle','Top left','Bottom left'][i]}</option>`).join('')}</select></div><span class="pool-shot-count">0 shots</span></div><p class="pool-gesture-label" role="status">Drag felt to aim · pull white ball back to shoot</p><details class="pool-help"><summary>How to play</summary><p class="pool-tip" id="pool-tip">Drag the felt to aim. Pull back from the white ball, then release to shoot. Cancel: return to your starting point, add a second finger, or press C. Keyboard: ← → aim · ↑ ↓ power · Enter shoot. The top trays fill with your numbered balls as they are potted.</p></details><p class="pool-live"></p>`;
+ root.innerHTML=`<div class="pool-players" role="group" aria-label="Ball groups and potted balls"><section class="pool-player"></section><section class="pool-player"></section></div><p class="pool-open-table"></p><div class="pool-table-area"><div class="pool-cue-meter"><span>POWER</span><div aria-hidden="true"><i></i></div><output class="pool-power-value" aria-live="off">0%</output></div><div class="pool-table-wrap"><div class="mp-waiting" hidden>Waiting for host<small>The host has paused the game.</small></div><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Drag felt to aim; pull white ball back and release to shoot. Arrow keys aim and change power; Enter shoots; C cancels." aria-describedby="pool-tip" width="${VIEW_WIDTH}" height="${VIEW_HEIGHT}"></canvas><p class="pool-message" role="status"></p></div></div><div class="pool-inhand" hidden>Ball-in-hand: tap or drag to a clear spot and release. Keyboard: arrows to move, Enter to place.</div><div class="pool-under"><label class="pool-mode">Players <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option></select></label><button type="button" class="pool-multiplayer" aria-haspopup="dialog">Multiplayer</button><label class="pool-mode">AI <select aria-label="AI difficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((_,i)=>`<option value="${i}">${i+1} · ${['Top right','Bottom right','Top middle','Bottom middle','Top left','Bottom left'][i]}</option>`).join('')}</select></div><span class="pool-shot-count">0 shots</span></div><p class="pool-gesture-label" role="status">Drag felt to aim · pull white ball back to shoot</p><details class="pool-help"><summary>How to play</summary><p class="pool-tip" id="pool-tip">Drag the felt to aim. Pull back from the white ball, then release to shoot. Cancel: return to your starting point, add a second finger, or press C. Keyboard: ← → aim · ↑ ↓ power · Enter shoot. The top trays fill with your numbered balls as they are potted.</p></details><p class="pool-live"></p>`;
  container.append(root);
  const $=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
  const canvas=$<HTMLCanvasElement>('.pool-table'),pocket=$<HTMLSelectElement>('#pool-pocket'),mode=$<HTMLSelectElement>('[aria-label="Players"]');
@@ -25,14 +26,15 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  const cue=()=>state.balls.find(b=>b.id===0)!;
  /** Online play: the room, this device's seat, the host's authoritative table or the guest's mirror, and the offline
   *  game kept aside (the shell keeps saving that one, so online racks never replace it). */
- let online:{room:Room;seat:number;host:PoolHost|null;guest:PoolGuest|null;offline:PoolState;guestId:string|null;roomPaused:boolean;seq:number;off:()=>void}|null=null;
+ type OnlineSession={room:Room;seat:number;offline:PoolState;guestId:string|null;roomPaused:boolean;seq:number;off:()=>void}&({host:PoolHost;guest:null}|{host:null;guest:PoolGuest});
+ let online:OnlineSession|null=null;
  let dialog:RoomDialog|null=null,lastAimSent=0;
  const human=()=>online?state.turn===online.seat:state.mode==='two'||state.turn===0;
  const onlineReady=()=>!online||(online.host?online.host.opponent:!!online.guest?.state)&&!online.roomPaused&&online.guest?.pending==null;
  const canAim=()=>!paused&&!disposed&&state.phase==='aim'&&human()&&!state.ballInHand&&onlineReady();
  let lastStatus='';
  const setText=(selector:string,value:string)=>{const el=$(selector);if(el.textContent!==value)el.textContent=value;};
- const onlineNames=():[string,string]|null=>online?(online.host?online.host.names:online.guest!.names):null;
+ const onlineNames=():[string,string]|null=>online?(online.host?online.host.names:online.guest.names):null;
  const name=(player:number)=>{const n=onlineNames();if(n)return `${n[player]||'Waiting…'}${player===online!.seat?' (you)':''}`;return state.mode==='ai'?(player===0?'You':'Computer'):`Player ${player+1}`;};
  function save(){context.save(instance.serialize());}
  let hudKey='';
@@ -55,7 +57,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const text=state.phase==='over'?`${name(state.winner!)} won. ${state.message}`:state.phase==='moving'?`${name(state.turn)} · balls rolling…`:`${name(state.turn)} to play. ${state.message}`;setText('.pool-message',text);
   $('.pool-shot-count').textContent=`${state.shots} shot${state.shots===1?'':'s'}`;mode.value=state.mode;mode.disabled=paused||!!online;difficulty.value=state.difficulty;difficulty.disabled=paused||state.mode==='two'||!!online;
   $('.pool-multiplayer').textContent=online?'Online room':'Multiplayer';
-  root.dataset.online=online?(online.host?'host':'guest'):'off';root.dataset.rev=String(online?(online.host?online.host.rev:online.guest!.rev):0);
+  root.dataset.online=online?(online.host?'host':'guest'):'off';root.dataset.rev=String(online?(online.host?online.host.rev:online.guest.rev):0);
   $('.mp-waiting').hidden=!(online?.guest&&online.roomPaused);
   pocket.value=String(state.calledPocket);pocket.disabled=!canAim()||state.break;
   const activePower=drag?.kind==='pull'?drag.power:keyboardPower?state.power:0;
@@ -65,7 +67,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const gestureText=drag?.kind==='pull'?(drag.power>=.08?'Release to shoot · return to start to cancel':'Pull away from the aim line to build power'):drag?'Release to set aim · then pull white ball back':keyboardPower?`Aim ${Math.round(((state.angle+Math.PI/2)*180/Math.PI+360)%360)}° · ${Math.round(state.power*100)}% power · Enter to shoot`:'Drag felt to aim · pull white ball back to shoot';
   setText('.pool-gesture-label',gestureText);
   const inHand=state.ballInHand&&human()&&state.phase==='aim'&&onlineReady();$('.pool-inhand').hidden=!inHand;
-  const liveText=online&&!(online.host?online.host.opponent:online.guest!.state)?`Waiting for an opponent to join room ${online.room.code}.`:online?.roomPaused?'Waiting for host.':online?.guest?.pending!=null?'Sent to the host…':online&&state.phase==='aim'&&!human()?`Waiting for ${name(state.turn)}…`:state.phase==='over'?(online?.guest?'The host can start a new rack with Restart.':'Restart in the top toolbar to play again.'):state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';setText('.pool-live',liveText);
+  const liveText=online&&!(online.host?online.host.opponent:online.guest.state)?`Waiting for an opponent to join room ${online.room.code}.`:online?.roomPaused?'Waiting for host.':online?.guest?.pending!=null?'Sent to the host…':online&&state.phase==='aim'&&!human()?`Waiting for ${name(state.turn)}…`:state.phase==='over'?(online?.guest?'The host can start a new rack with Restart.':'Restart in the top toolbar to play again.'):state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';setText('.pool-live',liveText);
   if(!online)context.setScore(state.balls.filter(b=>b.id!==0&&!b.pocketed).length===15?0:state.balls.filter(b=>b.id!==0&&b.id!==8&&b.pocketed).length*100+(state.phase==='over'&&state.winner===0?1000:0));context.setLevel(state.phase==='over'?'Rack complete':`Shot ${state.shots+1}`);if(lastStatus!==text){context.setStatus(text);lastStatus=text;}if(announce)context.announce(text);
   draw();
  }
@@ -102,11 +104,13 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const offline=online?online.offline:JSON.parse(JSON.stringify(state)) as PoolState;
   online?.off();
   const self=room.self!;
-  const session={room,seat:self.seat,host:null as PoolHost|null,guest:null as PoolGuest|null,offline,guestId:null as string|null,roomPaused:room.paused,seq:0,off:()=>{}};
+  const common={room,seat:self.seat,offline,guestId:null as string|null,roomPaused:room.paused,seq:0,off:()=>{}};
+  let session:OnlineSession;
   if(room.role==='host'){
+   // PoolHost's constructor sends no messages; its callbacks run after session is complete.
    const host=new PoolHost(self.name,null,m=>room.send(m),(seat,m)=>{if(seat!==0&&session.guestId)room.send(m,session.guestId);});
-   session.host=host;state=host.state;
-  }else session.guest=new PoolGuest(m=>room.send(m));
+   session={...common,host,guest:null};state=host.state;
+  }else session={...common,host:null,guest:new PoolGuest(m=>room.send(m))};
   online=session;
   session.off=room.on(e=>{
    if(online!==session)return;
@@ -165,7 +169,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const rect=canvas.getBoundingClientRect(),p=tablePoint(event.clientX,event.clientY,rect);
   if(!onFelt(p))return;
   if(state.ballInHand){placing=true;ghost={...p,valid:validCuePosition(state,p.x,p.y)};}
-  else {drag=beginDrag(p,cue(),state.angle,Math.min(55,Math.max(18,22*840/rect.width)));if(!drag)return;state.angle=drag.angle;keyboardPower=false;}
+  else {drag=beginDrag(p,cue(),state.angle,Math.min(55,Math.max(18,22*VIEW_WIDTH/rect.width)));if(!drag)return;state.angle=drag.angle;keyboardPower=false;}
   pointer=event.pointerId;dragRect=rect;canvas.setPointerCapture(pointer);canvas.focus({preventScroll:true});event.preventDefault();refresh();
  }) as EventListener);
  on(canvas,'pointermove',((event:PointerEvent)=>{
