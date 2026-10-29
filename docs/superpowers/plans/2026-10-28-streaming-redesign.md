@@ -1093,3 +1093,95 @@ The user asked to "remove game of the day" (spec §6.2 and §15). The arcade her
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** `npx vitest run tests/core`, `npm run check`, `e2e.sh tests/e2e/redesign-shell.spec.ts tests/e2e/shell.spec.ts tests/e2e/branding.spec.ts tests/e2e/study.spec.ts`. Expected: PASS. Capture the home at 1440×900 and 390×844 with no saves and with one save.
 - [ ] **Step 5: Commit** "Show the arcade hero only for a saved game".
+
+---
+
+> **Plan change, 2026-10-29 (user request, spec §6 note and §15):** the games keep their original look, with only the glass island added, and Movies & TV gets the full redesign. **Task 10 is cancelled.** Its menu, dialog and in-game restyle stays unbuilt. Task 21 below restores the arcade, and Tasks 11–17 (Movies & TV) continue as planned.
+
+### Task 21: Restore the original arcade look and keep the glass island (user request)
+
+The user chose "Original look + island": the games home, the original game posters and grid, the original top bar, the menu and the in-game screens go back exactly as they were at the redesign's base commit, **2e69da3**. Only the glass island tab bar (Task 19) stays.
+
+**Files:**
+- **Restore from 2e69da3** with `git show 2e69da3:<path> > <path>`, then make only the additions listed below:
+  - `src/style.css`
+  - `src/core/catalog.ts`, which drops `genre` and `blurb`
+  - `src/core/storage.ts`, which drops `savedAt`
+  - `tests/e2e/shell.spec.ts`, where `FAVOURITES` comes back
+  - `tests/core/storage.test.ts`
+- **`src/movies/style.css`:** remove only the Task 9 "Launch card look" block, from `/* Launch card look…` up to and including its two `.reduce-motion` lines. The Movies & TV launch card then looks as it did before. Keep everything else in the file, including Task 1's removal of the Movies outline reset.
+- **`src/main.ts`:** start from the 2e69da3 shell and `library()`, then re-add the island wiring below.
+- **`src/theme.css`:** scope the global rules as described below.
+- **`tests/core/theme.test.ts` and `tests/e2e/redesign-shell.spec.ts`:** update as described below.
+- **Delete:** `src/library/home.ts` and `tests/core/home.test.ts`.
+- **Keep unchanged:**
+  - `src/ui/tabbar.ts`, `src/ui/icons.ts`, `src/ui/rails.ts`, `src/ui/images.ts` and their tests, because Movies & TV and the island use them;
+  - everything under `src/movies/` except the launch block, `netlify/` and `scripts/`;
+  - `tests/movies`, `tests/games/color-connect/play.spec.ts` and `tests/leaderboard/online.spec.ts`.
+
+**`src/main.ts` against 2e69da3:**
+- **Restore exactly:**
+  - the original `<header class="topbar">…</header>`: brand, "Open menu" hamburger, `.count-pill`, and the `.favourites-pill` with its original text;
+  - the original `library()` markup: the `.game-grid` with `moviesCard()` first, then the original `.game-card` posters;
+  - the original favourites, search and menu handlers.
+- **Keep the island:**
+  - `<nav class="app-tabbar ui-tabbar" aria-label="Sections">…</nav>` immediately after `<main id="content"></main>`, with its `uiIcon` items;
+  - the Study tab handler;
+  - `setChromeInert(value)`, which sets inert on `.topbar` and `.app-tabbar` and is called before the Movies import and from `leave()`;
+  - the `autoHideTabbar(…, window)` binding and every `tabbar.reset()` call: in `route()`, in `leave()`, after the Study return restore, and after the library scroll restores.
+- **Keep, in the original style:** the Movies loading and error "Back to games" links. Use the original button class `game-button secondary`, centred under the message.
+- **Remove:**
+  - the header search button and the `/` shortcut;
+  - the hero, rails, continue and footer code: `homeMarkup`, `featured`, `watchImages`, `markImages`, `bindRails`, `updateRails`, the save-time cache and its `storage` listener;
+  - the `[data-hero-favourite]` and footer `[data-action="leaderboards"]` handlers.
+
+**`src/theme.css`:**
+- Delete the global `body{…}` rule. The arcade's font, colour and background come from the restored `:root` in style.css.
+- Give the island its own type with `.ui-tabbar{font-family:var(--font-sans)}`, plus any other property it used to inherit from that `body` rule.
+- Scope the white focus ring to Movies & TV and the island: `:is(.movies-view,.ui-tabbar) :focus-visible{outline:2px solid #fff;outline-offset:2px}`. The arcade gets its original gold ring back from the restored style.css.
+- Keep the `[hidden]` rule and the reduced-motion blocks. They change behaviour, not the look.
+
+**`src/style.css`:** after restoring it, append:
+
+```css
+/* Glass island tab bar (theme.css .ui-tabbar): where it shows, and the room it needs at the bottom. */
+body.in-game .app-tabbar,body.movies-active .app-tabbar{display:none}
+body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
+html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
+```
+
+**Tests:**
+- **`redesign-shell.spec.ts`:**
+  - **Delete** the tests that pin the new header: brand, sections and actions; the wordmark clip loop; the `/` and header-search tests.
+  - **Delete** the tests that pin the new home: hero, rails, cards, continue cards, footer, rail arrows and keyboard rail focus, press-in, cover states, cached save times, and the no-saves launch tests.
+  - **Keep and adapt** the island tests:
+    - the phone island geometry and glass, with 5 tabs each at least 44 px tall;
+    - hide and show on scroll, on phone and desktop;
+    - near the top and after navigation;
+    - keyboard focus brings it back;
+    - a tapped tab does not pin it open;
+    - reduced motion;
+    - hidden in games and Movies & TV, on phone and desktop;
+    - the Study tab;
+    - the re-base after the Study return;
+    - resize;
+    - desktop hover;
+    - the Movies loading and error Back links.
+  - **Add** `the games home is back in its original style` at 1366×900:
+    - `.topbar` has the original brand ("Mauri Study Notes"), the "Open menu" button, `.count-pill[aria-label="21 games"]` and the "FAVOURITES" button;
+    - `.game-grid` has `.movies-launch` first, then 21 `.game-card`, each with an `h2` and a `.title-line`;
+    - the computed `font-family` of `.game-card h2` starts with `Arcade`;
+    - `html`'s computed background is `rgb(25, 29, 28)`;
+    - a keyboard-focused game card shows a 3 px `rgb(255, 224, 164)` outline.
+- **`theme.test.ts`:** assert the scoped focus rule and that there is no global `body{` rule. Keep the island token assertions.
+
+- [ ] **Step 1:** Write the new and changed tests. Run them. Expected: the original-style test FAILS.
+- [ ] **Step 2:** Restore and implement as above.
+- [ ] **Step 3: Run checks.**
+  - Run `npx vitest run tests/core tests/movies` and `npm run check`.
+  - Run the broad Chromium set `e2e.sh tests/e2e tests/accounts tests/leaderboard tests/games tests/movies`. Expected: PASS.
+- [ ] **Step 4: Check the look.**
+  - Capture the home at 1440×900, 768×1024 and 390×844.
+  - Compare each with the base's own evidence images (`git show 2e69da3:docs/evidence/home-1366.png`, `home-768.png`, `home-390.png`). The only difference should be the island.
+  - Also capture the menu and a game at 390.
+- [ ] **Step 5: Commit** "Restore the original games look and keep the glass island".
