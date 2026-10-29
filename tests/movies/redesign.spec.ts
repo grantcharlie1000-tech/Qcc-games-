@@ -1302,8 +1302,13 @@ for(const entry of ['Continue link','cold link'] as const)test(`a play route int
 test('a licensed episode in an unloaded season plays locally before any provider is asked',async({page})=>{
  await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'tv-90200:s2:e1',path:'movies/media/second-season-opener.mp4',license:'CC0-1.0',credit:'Test fixture',evidence:'docs/rights/second-season-opener.md',reviewed:true,territory:'Worldwide',expires:'2099-12-31'}]}));
  await page.route('**/movies/media/**',route=>route.fulfill({contentType:'video/mp4',body:''}));
- const providerRequests:string[]=[];
- page.on('request',request=>{if(/(^|\.)(framextv\.(cc|xyz)|vidlink\.pro|vixsrc\.to|vidsrc\.to)$/.test(new URL(request.url()).hostname))providerRequests.push(request.url());});
+ // Every request to another origin counts, not only a known provider's. TMDB artwork is the one allowed kind: an ordinary image request.
+ const requests:{url:string;type:string}[]=[];
+ page.on('request',request=>requests.push({url:request.url(),type:request.resourceType()}));
+ const thirdParty=()=>{
+  const app=new URL(page.url()).origin;
+  return requests.filter(({url,type})=>{const target=new URL(url);return !['data:','blob:'].includes(target.protocol)&&target.origin!==app&&!(type==='image'&&target.hostname==='image.tmdb.org');}).map(({url})=>url);
+ };
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
  let asked=false;
@@ -1314,11 +1319,11 @@ test('a licensed episode in an unloaded season plays locally before any provider
  await page.locator('.movies-actions a.movies-primary').click();
  await expect.poll(()=>asked).toBe(true);
  await settle(page);
- expect(providerRequests).toEqual([]);
+ expect(thirdParty()).toEqual([]);
  release();
  await expect(page.locator('.movies-media video')).toHaveAttribute('src',/\/movies\/media\/second-season-opener\.mp4$/);
  await settle(page);
- expect(providerRequests).toEqual([]);
+ expect(thirdParty()).toEqual([]);
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
 });
 
@@ -1354,6 +1359,11 @@ test('a built-in title gains its cast and related titles from the API and keeps 
  await expect(detail.locator('.movies-chips')).toContainText('2h 49m');
  await expect(detail.locator('h1')).toHaveText('Interstellar');
  await expect(detail.locator('.movies-overview')).toHaveText('A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.');
+ // The API copy's year, genres and poster do not replace the bundled ones.
+ await expect(detail.locator('.movies-chips')).toContainText('2014');
+ await expect(detail.locator('.movies-chips')).not.toContainText('2024');
+ await expect(detail.locator('.movies-tags .ui-chip')).toHaveText(['Science Fiction','Adventure']);
+ await expect(detail.locator('.movies-detail-art')).toHaveAttribute('src',/gEU2QniE6E77NI6lCU6MxlNBvIx\.jpg$/);
  await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
  await expect(page.getByRole('heading',{name:'More like this',exact:true})).toBeVisible();
  await expect(page.getByRole('link',{name:'Details for Related Feature'})).toBeVisible();
@@ -1374,6 +1384,10 @@ test('a built-in title keeps its bundled page when the API is unavailable, with 
  await expect(page.getByText('Title details')).toHaveCount(0);
  await expect(page.getByText('Loading title details')).toHaveCount(0);
  await expect(detail.locator('.movies-availability')).toHaveText('Streaming available. An external player receives normal connection and playback information.');
+ // The bundled poster, year and genres stay when the API is down.
+ await expect(detail.locator('.movies-chips')).toContainText('2014');
+ await expect(detail.locator('.movies-tags .ui-chip')).toHaveText(['Science Fiction','Adventure']);
+ await expect(detail.locator('.movies-detail-art')).toHaveAttribute('src',/gEU2QniE6E77NI6lCU6MxlNBvIx\.jpg$/);
 });
 
 // Ruling 8: nothing changes while a built-in title's details load. When they arrive the page keeps focus on Play movie (ruling 3).
@@ -1529,4 +1543,150 @@ test('a failed season load keeps the title-details notice and mounts no player',
  await settle(page);
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
  expect(await frameMounts(page)).toEqual({observed:0,renders:0});
+});
+
+// Home's one rail lists the given titles. Each title's details answer only when release runs, so a test can look at the page while they load.
+async function homeWithHeldDetails(page:Page,rail:object[],details:Record<string,object>){
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ const asked:string[]=[];
+ await page.route('**/api/movies?*',async route=>{
+  const url=new URL(route.request().url());
+  if(url.searchParams.get('rails')==='home')return route.fulfill({json:{rails:[{id:'featured',title:'Featured',titles:rail}]}});
+  const id=url.searchParams.get('id')??'';
+  if(!details[id])return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  asked.push(id);await held;
+  return route.fulfill({json:{title:details[id]}});
+ });
+ return {asked,release};
+}
+
+// Review 2, Important 2: a built-in movie that Home lists keeps its bundled page. Its details add the cast in the background, with no loading state.
+test('a built-in movie that Home lists keeps its bundled page while its details load, and gains the API cast',async({page})=>{
+ const {asked,release}=await homeWithHeldDetails(page,[{...fixtureTitle('movie-157336','Interstellar'),overview:'A rail summary, not the bundled one.'}],{
+  'movie-157336':{...fixtureTitle('movie-157336','Interstellar (API copy)'),overview:'An API summary, not the bundled one.',rating:8.6,runtime:169,cast:[{name:'Ada Lovelace',character:'Analyst'}],related:[fixtureTitle('movie-90501','Related Feature')]}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.locator('[data-rail="featured"]')).toBeVisible();
+ await page.locator('a.movies-poster[data-title="movie-157336"]').click();
+ const detail=page.locator('section.movies-detail');
+ await expect.poll(()=>asked.includes('movie-157336')).toBe(true);
+ await settle(page);
+ await expect(detail.locator('h1')).toHaveText('Interstellar');
+ await expect(detail.locator('.movies-overview')).toHaveText('A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.');
+ await expect(detail.locator('.movies-detail-art')).toHaveAttribute('src',/gEU2QniE6E77NI6lCU6MxlNBvIx\.jpg$/);
+ await expect(page.getByText('Loading title details')).toHaveCount(0);
+ release();
+ await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
+ await expect(page.getByRole('link',{name:'Details for Related Feature'})).toBeVisible();
+ await expect(detail.locator('.movies-chips')).toContainText('★ 8.6');
+ await expect(detail.locator('.movies-chips')).toContainText('2h 49m');
+ await expect(detail.locator('h1')).toHaveText('Interstellar');
+ await expect(detail.locator('.movies-overview')).toHaveText('A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.');
+});
+
+// Review 2, Important 2 and the TV check: a built-in series that Home lists keeps its bundled episodes, and gains the API cast in the background.
+test('a built-in series that Home lists keeps its bundled episodes while its details load, and gains the API cast',async({page})=>{
+ const {asked,release}=await homeWithHeldDetails(page,[{...fixtureTitle('tv-19885','Sherlock','tv'),overview:'A rail summary, not the bundled one.'}],{
+  'tv-19885':{...fixtureTitle('tv-19885','Sherlock (API copy)','tv'),overview:'An API summary, not the bundled one.',seasons:[],cast:[{name:'Ada Lovelace',character:'Analyst'}]}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.locator('[data-rail="featured"]')).toBeVisible();
+ await page.locator('a.movies-poster[data-title="tv-19885"]').click();
+ const detail=page.locator('section.movies-detail');
+ await expect.poll(()=>asked.includes('tv-19885')).toBe(true);
+ await settle(page);
+ await expect(detail.locator('h1')).toHaveText('Sherlock');
+ await expect(detail.locator('.movies-overview')).toHaveText('A consulting detective and a former army doctor unravel intricate mysteries in contemporary London.');
+ await expect(page.locator('article.movies-episode')).toHaveCount(3);
+ await expect(page.locator('article.movies-episode').first().locator('h3')).toHaveText('A Study in Pink');
+ await expect(page.getByText('Loading episodes')).toHaveCount(0);
+ release();
+ await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
+ await expect(detail.locator('h1')).toHaveText('Sherlock');
+ await expect(detail.locator('.movies-overview')).toHaveText('A consulting detective and a former army doctor unravel intricate mysteries in contemporary London.');
+ await expect(page.locator('article.movies-episode')).toHaveCount(3);
+ await expect(page.locator('article.movies-episode').first().locator('h3')).toHaveText('A Study in Pink');
+});
+
+// Review 2, Important 2: Home's hero plays a built-in movie at once. Its details still loading are no reason to show a loading state on the player.
+test('a built-in movie that Home features plays at once, while its details load',async({page})=>{
+ const {asked,release}=await homeWithHeldDetails(page,[{...fixtureTitle('movie-157336','Interstellar'),overview:'A rail summary, not the bundled one.'}],{
+  'movie-157336':{...fixtureTitle('movie-157336','Interstellar (API copy)'),cast:[{name:'Ada Lovelace',character:'Analyst'}]}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.locator('[data-rail="featured"]')).toBeVisible();
+ await page.locator('.movies-hero [data-play-route]').click();
+ await expect.poll(()=>asked.includes('movie-157336')).toBe(true);
+ await expect(page.getByText('Loading title details')).toHaveCount(0);
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);
+ await expect(page.locator('.movies-player h1').first()).toHaveText('Interstellar');
+ release();
+ await settle(page);
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);
+});
+
+// Review 2, Important 4: a built-in movie's details that arrive while it plays do not rebuild its player. The mount counter is the one the mount-once test uses.
+test('a built-in movie whose details arrive while it plays keeps its one player',async({page})=>{
+ await countFrameMounts(page);
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await page.route('**/api/movies?*',async route=>{
+  if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  asked=true;await held;
+  return route.fulfill({json:{title:{...fixtureTitle('movie-157336','Interstellar (API copy)'),cast:[{name:'Ada Lovelace',character:'Analyst'}]}}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ await expect.poll(()=>asked).toBe(true);
+ await page.getByRole('button',{name:'Play movie',exact:true}).click();
+ const frame=page.locator('iframe.movies-provider-frame');
+ await expect(frame).toHaveCount(1);
+ await frame.evaluate(element=>{(element as HTMLElement).dataset.marker='first';});
+ release();
+ await settle(page);
+ expect(await frameMounts(page)).toEqual({observed:1,renders:1});
+ await expect(frame).toHaveAttribute('data-marker','first');
+ await page.locator('.movies-detail-back').click();
+ await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
+});
+
+// Review 2, Minor 1: focus on an episode's Play link stays on that link when details arrive. Continue shares its address, so the link in the same list is the one to keep.
+test('focus stays on an episode\'s Play link when details arrive, not on Continue for the same episode',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await page.route('**/api/movies?*',async route=>{
+  if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  asked=true;await held;
+  return route.fulfill({json:{title:{...fixtureTitle('tv-19885','Sherlock (API copy)','tv'),cast:[{name:'Ada Lovelace',character:'Analyst'}]}}});
+ });
+ await savedProgress(page,{'tv-19885:s2:e1':300},{'tv-19885:s2:e1':{duration:2400,updated:2000}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/2/episode/1');
+ await expect(page.locator('.movies-actions a.movies-primary')).toHaveText('Continue S2 · E1');
+ const row=page.getByRole('link',{name:'Play A Scandal in Belgravia',exact:true});
+ await row.focus();
+ await expect.poll(()=>asked).toBe(true);
+ release();
+ await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
+ await expect(row).toBeFocused();
+});
+
+// Review 2, Minor 2: an answer for another title's id does not change a built-in page.
+test('an answer for another title leaves a built-in page as it is',async({page})=>{
+ await page.route('**/api/movies?*',route=>{
+  if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  return route.fulfill({json:{title:{...fixtureTitle('movie-90501','Some Other Film'),rating:9.1,runtime:200,cast:[{name:'Ada Lovelace',character:'Analyst'}],related:[fixtureTitle('movie-90502','Related Feature')]}}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ const detail=page.locator('section.movies-detail');
+ await expect(detail.locator('h1')).toHaveText('Interstellar');
+ await settle(page);
+ await expect(detail.locator('h1')).toHaveText('Interstellar');
+ await expect(detail.locator('.movies-chips')).not.toContainText('★ 9.1');
+ await expect(page.locator('section.movies-cast')).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'More like this'})).toHaveCount(0);
 });

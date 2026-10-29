@@ -58,4 +58,10 @@ describe('initials',()=>{
   expect(Array.from(initials('𝒜dam 𝒲est'))).toHaveLength(2);
   expect(initials('Élodie Ñúñez')).toBe('ÉÑ');
  });
+ // The same name typed with a combining accent (E followed by U+0301) gives the same letter as the precomposed one.
+ it('reads a decomposed accent as its precomposed letter',()=>{
+  expect(initials('Émile Zola')).toBe('ÉZ');
+  expect(initials('E\u0301mile Zola')).toBe('ÉZ');
+  expect(initials('E\u0301mile Zola')).toBe(initials('Émile Zola'));
+ });
 });

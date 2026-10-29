@@ -47,6 +47,8 @@ type Finder=(root:HTMLElement)=>HTMLElement[];
 const within=(root:HTMLElement,selector:string)=>[...root.querySelectorAll<HTMLElement>(selector)];
 // The bar a control sits in. Study is in the header and in the island, so a control is found again in the bar it was in.
 const barOf=(el:Element)=>el.closest('.movies-top')?'top':el.closest('.movies-mobile-nav')?'nav':'page';
+// The part of the page a control sits in: its rail, its section, the episode list or the action row. A re-render keeps the name of a part.
+const regionOf=(el:Element)=>{const part=el.closest<HTMLElement>('[data-rail],section,.movies-episodes-list,.movies-actions');return part?(part.dataset.rail?`rail:${part.dataset.rail}`:part.className):'';};
 function finderFor(el:HTMLElement):Finder|undefined{
  const {dataset}=el,rail=el.closest<HTMLElement>('[data-rail]')?.dataset.rail;
  if(el.id){const id=el.id;return root=>within(root,'[id]').filter(e=>e.id===id);}
@@ -105,6 +107,8 @@ export class MoviesView {
  private pendingTitle=false;
  private detailError='';
  private dynamicIds=new Set<string>();
+ // The ids of the bundled catalog as load() read it. A bundled title opens on its own page, and the API adds to it in the background.
+ private bundledIds=new Set<string>();
  private loadedDetails=new Set<string>();
  private loadedSeasons=new Set<string>();
  // The built-in titles whose details have been asked for. Each is asked for once, in the background.
@@ -193,6 +197,7 @@ export class MoviesView {
   try{
    this.catalog=parseCatalog(await movieJson(asset('movies/catalog.json'),this.abort.signal));
    if(!this.catalog.titles.length)throw new Error('Empty catalog');
+   this.bundledIds=new Set(this.catalog.titles.map(t=>t.id));
    // An unavailable optional registry disables local media, never discovery.
    try {this.licenses=await movieJson(asset('movies/licenses.json'),this.abort.signal,5000);}catch{this.licenses=[];}
    if(this.abort.signal.aborted)return;
@@ -286,6 +291,8 @@ export class MoviesView {
  }
  private needsDetails(route:MovieRoute){
   if(!route.id||!/^(movie|tv)-[1-9]\d*$/.test(route.id))return false;
+  // A bundled title opens on its own page, whatever the rails or the search said about its id. The API adds to it in the background.
+  if(this.bundledIds.has(route.id))return false;
   const title=this.catalog.titles.find(t=>t.id===route.id);
   if(!title||this.dynamicIds.has(route.id)&&!this.loadedDetails.has(route.id))return true;
   return this.dynamicIds.has(route.id)&&title.kind==='tv'&&!!route.season&&!this.loadedSeasons.has(route.id+':s'+route.season);
@@ -313,12 +320,13 @@ export class MoviesView {
  // A built-in title asks the API once, in the background, for what the API adds. Nothing shows while the request runs, and a failure leaves
  // the bundled page as it is. The page re-renders only while it still shows this title and is not playing, and keeps its focus.
  private async enrichTitle(id:string){
-  if(this.askedBuiltIn.has(id)||this.dynamicIds.has(id)||!this.catalog.titles.some(t=>t.id===id))return;
+  if(this.askedBuiltIn.has(id)||!this.bundledIds.has(id))return;
   this.askedBuiltIn.add(id);
   try{
    const {data}=await cachedJson('/api/movies?'+new URLSearchParams({id}),this.abort.signal);
    const detail=parseCatalog({titles:[data.title],source:'tmdb'}).titles[0];
-   if(!detail||this.abort.signal.aborted)return;
+   // An answer for another title's id changes nothing here.
+   if(!detail||detail.id!==id||this.abort.signal.aborted)return;
    this.catalog={...this.catalog,titles:this.catalog.titles.map(t=>t.id===id?mergeDetails(t,detail):t)};
    if(this.route.id===id&&!this.route.play&&!this.notFound)this.renderKeepingFocus();
   }catch{/* The bundled page stays as it is. */}
@@ -332,15 +340,17 @@ export class MoviesView {
   const start=input?.selectionStart,top=this.root.scrollTop;
   // The focused control is recorded by what it is before the render, and the control that matches it takes focus after the render.
   const active=document.activeElement instanceof HTMLElement&&document.activeElement!==this.root&&this.root.contains(document.activeElement)?document.activeElement:undefined;
-  const finder=active&&finderFor(active);
+  const finder=active&&finderFor(active),region=active?regionOf(active):'';
   this.render();
   if(focusedInput){const next=this.root.querySelector<HTMLInputElement>('#movies-search');next?.focus({preventScroll:true});if(start!==null&&start!==undefined)next?.setSelectionRange(start,start);}
-  else if(active)this.restoreFocus(finder?finder(this.root):[]);
+  else if(active)this.restoreFocus(finder?finder(this.root):[],region);
   this.root.scrollTop=top;
  }
- // The first candidate that can take focus does. Without one, the first status line that exists takes it, else the page heading.
- private restoreFocus(candidates:HTMLElement[]){
-  for(const candidate of candidates){
+ // The first candidate that can take focus does. A candidate in the region the focused control was in comes first, so a link that shares
+ // its address with another link (Continue and an episode's Play link) stays where it was. Without one, the first status line that exists takes it, else the page heading.
+ private restoreFocus(candidates:HTMLElement[],region=''){
+  const ordered=[...candidates.filter(c=>regionOf(c)===region),...candidates.filter(c=>regionOf(c)!==region)];
+  for(const candidate of ordered){
    if(candidate.matches(':disabled'))continue;
    candidate.focus({preventScroll:true});
    if(document.activeElement===candidate)return;
@@ -575,10 +585,10 @@ export class MoviesView {
  // Re-renders the page and gives focus back to the control that had it, found again by what it is. The scroll position stays.
  private renderKeepingFocus(){
   const active=document.activeElement instanceof HTMLElement&&document.activeElement!==this.root&&this.root.contains(document.activeElement)?document.activeElement:undefined;
-  const finder=active&&finderFor(active);
+  const finder=active&&finderFor(active),region=active?regionOf(active):'';
   const top=this.root.scrollTop;
   this.render();
-  if(active)this.restoreFocus(finder?finder(this.root):[]);
+  if(active)this.restoreFocus(finder?finder(this.root):[],region);
   this.root.scrollTop=top;
  }
  // A series opens its newest episode in progress, else its first episode that is loaded. With neither there is no play route.

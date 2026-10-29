@@ -19,8 +19,9 @@ export function formatClock(seconds:number):string {
 
 // The initials a person without a photo shows: the first letter of the first and the last name, letters only, so "(Adam) West" gives AW.
 // A name with no letters gives "?". Two characters at most, and a letter outside Basic Latin stays whole.
+// The name is normalised to NFC first, so a letter typed with a combining accent (E and U+0301) keeps the accent, as the precomposed letter does.
 export function initials(name:string):string {
- const letters=name.split(/\s+/).map(word=>word.match(/\p{L}/u)?.[0]??'').filter(Boolean);
+ const letters=name.normalize('NFC').split(/\s+/).map(word=>word.match(/\p{L}/u)?.[0]??'').filter(Boolean);
  const picked=letters.length>1?[letters[0],letters[letters.length-1]]:letters;
  return picked.length?Array.from(picked.join('').toUpperCase()).slice(0,2).join(''):'?';
 }
