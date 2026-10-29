@@ -9,9 +9,23 @@ export function railEdges(row:RailRow):{canPrev:boolean;canNext:boolean}{
 export function scrollStep(row:{clientWidth:number},direction:number):number{
   return direction*row.clientWidth*0.75;
 }
-function setFlags(rail:HTMLElement,row:RailRow):void{
+function setFlags(rail:HTMLElement,row:HTMLElement):void{
   const {canPrev,canNext}=railEdges(row);
   rail.dataset.canPrev=String(canPrev);rail.dataset.canNext=String(canNext);
+  keepFocus(rail,row,canPrev,canNext);
+}
+// theme.css hides an arrow that has nowhere to go, and a focused arrow that disappears drops focus to body.
+// Focus moves to the opposite arrow when it is available, otherwise to the row's first (prev) or last (next) card.
+function keepFocus(rail:HTMLElement,row:HTMLElement,canPrev:boolean,canNext:boolean):void{
+  const focused=globalThis.document?.activeElement;
+  if(!focused||!rail.contains(focused))return;
+  const onPrev=focused.matches('.ui-rail-arrow.prev');
+  const onNext=focused.matches('.ui-rail-arrow.next');
+  if(!(onPrev&&!canPrev)&&!(onNext&&!canNext))return;
+  const opposite=rail.querySelector<HTMLElement>(onPrev?'.ui-rail-arrow.next':'.ui-rail-arrow.prev');
+  if(opposite&&(onPrev?canNext:canPrev)){opposite.focus({preventScroll:true});return;}
+  const card=onPrev?row.firstElementChild:row.lastElementChild;
+  (card as HTMLElement|null)?.focus({preventScroll:true});
 }
 export function updateRails(root:ParentNode):void{
   for(const rail of root.querySelectorAll<HTMLElement>('.ui-rail')){

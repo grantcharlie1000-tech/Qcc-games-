@@ -15,7 +15,7 @@ body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar
 .site-brand .ui-wordmark{min-width:0;overflow:hidden;text-overflow:ellipsis}
 /* Arcade home: hero, rails, game cards and footer. Shared parts come from theme.css; these rules set the page layout and the game colours. */
 .game-grid>.movies-launch,.game-grid>.ui-rail{margin-bottom:40px}
-/* The hero backdrop is softened and sits behind the shade; its poster appears from 768 px, aligned with the rails' left edge. */
+/* The hero backdrop is softened behind the shade. The hero text starts on the rails' left edge, and its poster appears from 768 px on the right edge of that same container. */
 .arcade-hero .ui-hero-backdrop{filter:blur(28px);transform:scale(1.15);opacity:.55}
 .ui-images .arcade-hero .ui-hero-backdrop.is-loaded{animation-name:arcade-backdrop-in}
 @keyframes arcade-backdrop-in{from{opacity:0}to{opacity:.55}}
@@ -25,13 +25,9 @@ body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar
 /* A game's colours fill its cover placeholder until the art arrives, or if it never does. */
 .game-card .ui-card-placeholder{color:var(--ink)}
 .game-card .ui-card-placeholder::before{background:var(--card)}
-.continue-card{display:block;min-width:0;color:inherit;text-decoration:none}
-.ui-rail-row>.continue-card{flex:0 0 240px;scroll-snap-align:start}
-@media (min-width:640px){.ui-rail-row>.continue-card{flex-basis:300px}}
-.continue-cover{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--line-faint);border-radius:var(--r-lg);background:var(--c-900);box-shadow:var(--sh-md)}
-.continue-caption{display:flex;flex-direction:column;gap:2px;min-width:0;padding-top:8px}
-.continue-title{overflow:hidden;color:var(--c-300);font-size:12px;line-height:14px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
-.continue-meta{overflow:hidden;color:var(--c-400);font-family:var(--font-mono);font-size:11px;line-height:1.4;text-overflow:ellipsis;white-space:nowrap}
-@media (min-width:640px){.continue-title{font-size:14px;line-height:16px}}
-.ui-footer-links button{padding:0;border:0;background:none;color:inherit;cursor:pointer}
-@media (hover:hover) and (pointer:fine){.continue-card:hover .continue-cover{border-color:var(--line-strong)}.continue-card:hover .continue-title{color:#fff}.continue-card:hover .ui-card-img{transform:scale(1.03)}.ui-footer-links a:hover,.ui-footer-links button:hover{color:#fff}}
+/* A continue card is a shared card with a 16:9 poster in a wider rail slot. */
+.ui-rail-row>a.continue-card{flex:0 0 240px}
+@media (min-width:640px){.ui-rail-row>a.continue-card{flex-basis:300px}}
+.continue-card .ui-card-poster{aspect-ratio:16/9}
+/* Movies loading and error states: the Back link sits centred under its message. */
+#content>.ui-btn.small{display:flex;width:fit-content;margin:-24px auto 0}

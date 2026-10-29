@@ -108,8 +108,9 @@ test('hero favourite toggle feeds the Favourites filter',async({page})=>{
  await page.goto('/');
  const toggle=page.locator('[data-hero-favourite]');
  await toggle.click();
- await expect(toggle).toHaveAttribute('aria-pressed','true');
  await expect(toggle).toContainText('In favourites');
+ expect(await toggle.getAttribute('aria-pressed')).toBeNull();
+ expect(await toggle.innerHTML()).toContain('m5 12.5 4.5 4.5L19 7.5');
  await page.getByRole('button',{name:'Favourites',exact:true}).click();
  await expect(page.locator('.game-card')).toHaveCount(1);
 });
@@ -155,6 +156,9 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  await page.getByRole('link',{name:'Movies & TV',exact:true}).click();
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toBeVisible();
+ await expect(back).toHaveClass(/ui-btn/);
+ const loadingBox=await back.boundingBox();
+ expect(Math.abs(loadingBox!.x+loadingBox!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);
  await back.click();
  await expect(page.locator('.game-card')).toHaveCount(21);
  release();
@@ -176,4 +180,72 @@ test('the footer brand stacks its name above the tagline',async({page})=>{
  const name=await page.locator('.ui-footer-brand strong').boundingBox();
  const tagline=await page.locator('.ui-footer-brand > span:last-child').boundingBox();
  expect(tagline!.y).toBeGreaterThanOrEqual(name!.y+name!.height);
+});
+
+test('keyboard focus stays in a rail when its arrows reach the end of the row',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const rail=page.locator('[data-rail="puzzle"]');
+ await rail.locator('.ui-rail-arrow.next').focus();
+ for(let press=0;press<10&&await rail.getAttribute('data-can-next')!=='false';press++)await page.keyboard.press('Enter');
+ await expect(rail).toHaveAttribute('data-can-next','false');
+ // Give the browser a frame to hide the arrow, then see where focus went.
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ const focus=await page.evaluate(()=>{
+  const element=document.activeElement as HTMLElement|null;
+  const style=element?getComputedStyle(element):null;
+  return {tag:element?element.tagName:'none',inRail:!!element?.closest('[data-rail="puzzle"]'),visible:!!element&&element.getClientRects().length>0&&style!==null&&style.display!=='none'&&style.visibility!=='hidden'};
+ });
+ expect(focus.tag).not.toBe('BODY');
+ expect(focus.inRail).toBe(true);
+ expect(focus.visible).toBe(true);
+});
+
+test('library renders reuse cached save times instead of reading storage again',async({page})=>{
+ await page.goto('/');
+ await expect(page.locator('.game-card')).toHaveCount(21);
+ await page.evaluate(()=>{
+  const reads:string[]=[];
+  const getItem=Storage.prototype.getItem;
+  Storage.prototype.getItem=function(this:Storage,key:string){if(key.includes(':save:'))reads.push(key);return getItem.call(this,key);};
+  (window as unknown as {saveReads:string[]}).saveReads=reads;
+ });
+ await page.getByRole('button',{name:'Search games',exact:true}).click();
+ await page.locator('#search').fill('a');
+ await page.locator('#search').fill('ab');
+ expect(await page.evaluate(()=>(window as unknown as {saveReads:string[]}).saveReads.length)).toBe(0);
+});
+
+test('a save written in a game reaches the Continue playing rail on return',async({page})=>{
+ await page.goto('/');
+ await expect(page.locator('.game-card')).toHaveCount(21);
+ await expect(page.locator('.continue-card')).toHaveCount(0);
+ await page.goto('/#/collection/8');
+ await expect(page.locator('.game-view')).toBeVisible();
+ await expect(page.locator('#game-stage p.loading')).toHaveCount(0);
+ await page.goto('/#/collection');
+ await expect(page.locator('.continue-card')).toHaveCount(1);
+ await expect(page.locator('.continue-card')).toHaveAttribute('aria-label','Continue Snake');
+});
+
+test('the Movies error state keeps a centred way back link',async({page})=>{
+ await page.route('**/src/movies/view.ts*',route=>route.abort());
+ await page.goto('/');
+ await page.getByRole('link',{name:'Movies & TV',exact:true}).click();
+ await expect(page.locator('#content')).toContainText('Movies & TV could not load.');
+ const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
+ await expect(back).toHaveClass(/ui-btn/);
+ const box=await back.boundingBox();
+ expect(Math.abs(box!.x+box!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);
+});
+
+test('a card presses in while the pointer is down',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/');
+ const card=page.locator('[data-rail="puzzle"] .game-card').first();
+ // Hover scrolls the card into view and puts the pointer on it, so the press lands inside the viewport.
+ await card.hover();
+ await page.mouse.down();
+ await expect(card).toHaveCSS('transform','matrix(0.98, 0, 0, 0.98, 0, 0)');
+ await page.mouse.up();
 });

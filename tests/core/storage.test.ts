@@ -30,7 +30,7 @@ test('auto-next defaults on for legacy settings and preserves an explicit choice
  write('settings',{sound:true,autoNextEpisode:false});expect(settings().autoNextEpisode).toBe(false);expect(settings().sound).toBe(true);
 });
 
-test('savedAt reports when a game was last saved and ignores unversioned saves',()=>{
+test('savedAt reports when a game was last saved and ignores a save with another version',()=>{
  const stamp=vi.spyOn(Date,'now').mockReturnValue(1_700_000_000_000);
  try{
   saveGame('maze-muncher',{dots:3});

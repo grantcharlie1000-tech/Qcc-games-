@@ -133,8 +133,18 @@ function leave(saveProgress=true){
   document.body.classList.remove('in-game');
   syncViewportLock();
 }
+// Save times are read once per game and kept here, because every library render asks for all of them.
+// Writing a game's save through the store clears its entry, so the next render reads the new time.
+const saveTimes=new Map<GameId,number|undefined>();
+store.subscribe(key=>{if(key.startsWith('save:'))saveTimes.delete(key.slice('save:'.length) as GameId);});
+// Another tab's save (or a clear) never reaches store.subscribe, so storage events drop every cached time.
+window.addEventListener('storage',event=>{if(event.key===null||event.key.startsWith('pocket-arcade:v1:save:'))saveTimes.clear();});
+function cachedSavedAt(id:GameId):number|undefined{
+  if(!saveTimes.has(id))saveTimes.set(id,store.savedAt(id));
+  return saveTimes.get(id);
+}
 function library(){
-  content.innerHTML=homeMarkup({search,onlyFavourites,favourites:store.favourites(),best:store.highScore,savedAt:store.savedAt,now:Date.now()},moviesCard());
+  content.innerHTML=homeMarkup({search,onlyFavourites,favourites:store.favourites(),best:store.highScore,savedAt:cachedSavedAt,now:Date.now()},moviesCard());
   markImages(content);updateRails(content);
 }
 function setPaused(value:boolean):boolean {
@@ -211,12 +221,12 @@ async function route(){
     if(leaderboards.root.open)leaderboards.root.close();
     const token=++generation;leave();
     setChromeInert(true);
-    content.innerHTML='<p class="loading">Opening Movies &amp; TV…</p><a href="#/collection">Back to games</a>';
+    content.innerHTML='<p class="loading">Opening Movies &amp; TV…</p><a class="ui-btn secondary small" href="#/collection">Back to games</a>';
     try{
       const {MoviesView}=await import('./movies/view');if(token!==generation)return;
       movies=new MoviesView(content,openStudy,preferences.reducedMotion,movieOrigin,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});movieOrigin=undefined;
       movies.navigate(location.hash);
-    }catch{if(token===generation)content.innerHTML='<p>Movies &amp; TV could not load.</p><a href="#/collection">Back to games</a>';}
+    }catch{if(token===generation)content.innerHTML='<p class="game-error">Movies &amp; TV could not load.</p><a class="ui-btn secondary small" href="#/collection">Back to games</a>';}
     return;
   }
   const wasInMovies=!!movies;
@@ -373,8 +383,7 @@ content.addEventListener('click',event=>{
     const id=favourite.dataset.heroFavourite as GameId;
     if(!games.some(game=>game.id===id))return;
     const selected=store.toggleFavourite(id);
-    favourite.setAttribute('aria-pressed',String(selected));
-    favourite.innerHTML=`${uiIcon('star')}${selected?'In favourites':'Add to favourites'}`;
+    favourite.innerHTML=`${uiIcon(selected?'check':'star')}${selected?'In favourites':'Add to favourites'}`;
     announce(selected?'Added to favourites':'Removed from favourites');storageStatus();
     return;
   }

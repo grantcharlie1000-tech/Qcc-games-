@@ -8,3 +8,10 @@ test('image states apply only inside .ui-images and footer separators carry no t
  expect(css).toContain(".ui-footer-links>*+*::before{content:'';");
  expect(css).not.toContain("content:'•'");
 });
+test('cards press in, reduced motion holds them still, and the footer button reset lives in the theme',()=>{
+ expect(css).toContain('.ui-card:active{transform:scale(.98)}');
+ expect(css).toContain('.ui-card-img,.ui-card-play,.ui-btn,.ui-tab,.ui-card{transform:none!important}');
+ expect(css).toContain('.reduce-motion :is(.ui-card-img,.ui-card-play,.ui-btn,.ui-tab,.ui-card){transform:none!important}');
+ expect(css).toContain('.ui-footer-links button{padding:0;border:0;background:none;color:inherit;cursor:pointer}');
+ expect(css).toContain('.ui-card-title{display:block;');
+});

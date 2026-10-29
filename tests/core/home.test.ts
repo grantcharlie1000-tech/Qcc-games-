@@ -1,5 +1,6 @@
 import {expect,test} from 'vitest';
 import {games} from '../../src/core/catalog';
+import {uiIcon} from '../../src/ui/icons';
 import type {GameId} from '../../src/core/types';
 import {RAILS,featured,homeMarkup,relativeTime,type HomeState} from '../../src/library/home';
 
@@ -8,7 +9,7 @@ const NOW=Date.UTC(2026,9,29,12);
 const LAUNCH='<a class="movies-launch" href="#/movies" aria-label="Movies &amp; TV"><h2>Movies &amp; TV</h2></a>';
 const state=(over:Partial<HomeState>={}):HomeState=>({search:'',onlyFavourites:false,favourites:[],best:()=>0,savedAt:()=>undefined,now:NOW,...over});
 const cardTitles=(html:string)=>[...html.matchAll(/class="game-card[^"]*" href="[^"]*" aria-label="Play ([^"]+)"/g)].map(match=>match[1]);
-const continueTitles=(html:string)=>[...html.matchAll(/class="continue-card" href="[^"]*" aria-label="Continue ([^"]+)"/g)].map(match=>match[1]);
+const continueTitles=(html:string)=>[...html.matchAll(/class="continue-card[^"]*" href="[^"]*" aria-label="Continue ([^"]+)"/g)].map(match=>match[1]);
 const heroOf=(html:string)=>html.match(/<section class="arcade-hero[\s\S]*?<\/section>/)?.[0]??'';
 
 test('each game appears once, in catalog order, across three rails',()=>{
@@ -58,6 +59,18 @@ test('continue cards are named Continue {title}, newest first, at most 10',()=>{
   expect(html).toContain('<h2>Continue playing</h2>');
 });
 
+test('continue cards reuse the shared card parts and keep the continue name',()=>{
+  const html=homeMarkup(state({savedAt:()=>NOW-90_000}),LAUNCH);
+  const card=html.match(/<a class="continue-card[^"]*"[\s\S]*?<\/a>/)?.[0]??'';
+  expect(card).toContain('aria-label="Continue Block Blast"');
+  expect(card).toContain('<span class="ui-card-poster">');
+  expect(card).toContain('<span class="ui-card-placeholder" aria-hidden="true">');
+  expect(card).toContain('<span class="ui-card-title">Block Blast</span>');
+  expect(card).toContain('<span class="ui-card-meta">Saved 1 min ago</span>');
+  expect(card).not.toContain('game-card');
+  expect(card).not.toContain('continue-cover');
+});
+
 test('no hero control is named Play {title}',()=>{
   for(const html of [homeMarkup(state(),LAUNCH),homeMarkup(state({savedAt:()=>NOW-60_000}),LAUNCH)]){
     const hero=heroOf(html);
@@ -75,13 +88,17 @@ test('relativeTime thresholds',()=>{
   for(const [age,text] of cases)expect(relativeTime(NOW-age,NOW)).toBe(text);
 });
 
-test('the hero favourite button reports its state',()=>{
+test('the hero favourite button shows its state in the label and icon, without aria-pressed',()=>{
   const id=featured(state()).game.id;
   const off=heroOf(homeMarkup(state(),LAUNCH));
-  expect(off).toContain(`data-hero-favourite="${id}" aria-pressed="false"`);
+  expect(off).toContain(`data-hero-favourite="${id}">`);
+  expect(off).not.toContain('aria-pressed');
+  expect(off).toContain(uiIcon('star'));
   expect(off).toContain('Add to favourites</button>');
   const on=heroOf(homeMarkup(state({favourites:[id]}),LAUNCH));
-  expect(on).toContain(`data-hero-favourite="${id}" aria-pressed="true"`);
+  expect(on).toContain(`data-hero-favourite="${id}">`);
+  expect(on).not.toContain('aria-pressed');
+  expect(on).toContain(uiIcon('check'));
   expect(on).toContain('In favourites</button>');
 });
 
