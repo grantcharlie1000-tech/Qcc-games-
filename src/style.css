@@ -8,7 +8,7 @@
 body.in-game .app-tabbar,body.movies-active .app-tabbar{display:none}
 /* Movies & TV has its own header, so the arcade header stays out of its way. */
 body.movies-active .topbar{display:none}
-body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom))}
+body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 @media (min-width:640px){body:not(.in-game):not(.movies-active) #content{padding-bottom:0}}
 .favourites-pill[aria-pressed="true"]{background:#fff;border-color:#fff;color:#000}
 /* Where the header is cramped, the brand ends in an ellipsis instead of running under the header actions. */

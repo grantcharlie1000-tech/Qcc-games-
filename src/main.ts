@@ -8,6 +8,7 @@ import {uiIcon} from './ui/icons';
 import {homeMarkup} from './library/home';
 import {bindRails,updateRails} from './ui/rails';
 import {markImages,watchImages} from './ui/images';
+import {autoHideTabbar} from './ui/tabbar';
 import './style.css';
 import './game-viewport.css';
 import {games, loadGame} from './core/catalog';
@@ -41,6 +42,8 @@ app.innerHTML=`<header class="topbar ui-header"><div class="ui-header-inner">
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
 const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
+// The phone tab bar hides on scroll down and shows on scroll up. It is bound once to the window; reset() runs on every route and leave.
+const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,window);
 const preferences=store.settings();
 const accounts=new AccountsClient();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
@@ -125,6 +128,7 @@ function setChromeInert(value:boolean):void{
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
   setChromeInert(false);
+  tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
   leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
   stopFitting?.();stopFitting=undefined;
@@ -209,6 +213,7 @@ function returnFromStudy(){
 
 async function route(){
   if(!initialized)return;
+  tabbar.reset();
   accountRoutePending=false;
   // Explicit browser/hash navigation leaves the reading view as well as the old game.
   if(study.isOpen){study.hide();showArcade();resumeAfterStudy=false;focusBeforeStudy=null;focusLabelBeforeStudy=null;}
@@ -239,7 +244,8 @@ async function route(){
   if(id&&!wasInGame)libraryScroll={x:scrollX,y:scrollY};
   if(leaderboards.root.open){pausedForDialog=false;leaderboards.root.close();}
   const token=++generation;leave();
-  if(!id){library();if(wasInMovies)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);document.querySelector<HTMLElement>('.movies-launch')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId)window.scrollTo(libraryScroll.x,libraryScroll.y);});return;}
+  // A restored scroll position is part of the navigation, so the tab bar re-bases on it rather than counting it as a scroll.
+  if(!id){library();if(wasInMovies)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);tabbar.reset();document.querySelector<HTMLElement>('.movies-launch')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId){window.scrollTo(libraryScroll.x,libraryScroll.y);tabbar.reset();}});return;}
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-toolbar">

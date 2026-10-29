@@ -95,6 +95,99 @@ test('Study tab opens Study Mode',async({page})=>{
  await expect(page.locator('#study-view')).toBeVisible();
 });
 
+test('the phone tab bar is a floating glass island',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await expect(bar).toBeVisible();
+ const box=await bar.boundingBox();
+ expect(box!.x).toBeGreaterThanOrEqual(10);
+ expect(box!.x+box!.width).toBeLessThanOrEqual(380);
+ expect(box!.y+box!.height).toBeLessThanOrEqual(834);
+ expect(parseFloat(await bar.evaluate(element=>getComputedStyle(element).borderRadius))).toBeGreaterThanOrEqual(24);
+ expect(await bar.evaluate(element=>getComputedStyle(element).backdropFilter)).toContain('blur');
+ const heights=await page.locator('.app-tabbar > *').evaluateAll(items=>items.map(item=>item.getBoundingClientRect().height));
+ expect(heights).toHaveLength(5);
+ for(const height of heights)expect(height).toBeGreaterThanOrEqual(44);
+});
+
+test('scrolling down hides the tab bar and scrolling up brings it back',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await expect(bar).toBeVisible();
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(844);
+ await page.evaluate(()=>window.scrollTo(0,280));
+ await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(844);
+});
+
+test('the tab bar shows again near the top and after navigation',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await page.evaluate(()=>window.scrollTo(0,10));
+ await expect(bar).not.toHaveAttribute('data-hidden');
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ // Open a game and come back. The library restores its old scroll position, and the bar still shows.
+ await page.evaluate(()=>{location.hash='#/collection/1';});
+ await expect(page.locator('.game-view')).toBeVisible();
+ await page.evaluate(()=>{location.hash='#/collection';});
+ await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(400);
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ await expect(bar).not.toHaveAttribute('data-hidden');
+});
+
+test('keyboard focus brings a hidden tab bar back',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(844);
+ await page.keyboard.press('Tab');
+ await bar.locator('.ui-tab').first().focus();
+ await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y>=0&&box!.y+box!.height<=844;}).toBe(true);
+});
+
+test('a tapped tab does not pin the bar open',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await bar.getByRole('link',{name:'Games',exact:true}).click();
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(844);
+});
+
+test('reduced motion fades the bar instead of sliding',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveCSS('transform','none');
+ await expect(bar).toHaveCSS('opacity','0');
+ await expect(bar).toHaveCSS('pointer-events','none');
+});
+
+test('the app reduce-motion setting fades the bar too',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));
+ const bar=page.locator('.app-tabbar');
+ await page.evaluate(()=>window.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveCSS('transform','none');
+ await expect(bar).toHaveCSS('opacity','0');
+});
+
 test('home shows a hero, three rails and a footer',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/');

@@ -13,8 +13,8 @@
 --sh-lg:0 10px 15px -3px #0000001a,0 4px 6px -4px #0000001a;
 --sh-xl:0 20px 25px -5px #0000001a,0 8px 10px -6px #0000001a;
 --sh-2xl:0 25px 50px -12px #00000040;
---ease:cubic-bezier(.4,0,.2,1);--t-fast:150ms;--t:200ms;--t-slow:300ms;
---page-max:1280px;--gutter:16px;--header-h:56px;--tabbar-h:57px;
+--ease:cubic-bezier(.4,0,.2,1);--ease-drawer:cubic-bezier(.32,.72,0,1);--t-fast:150ms;--t:200ms;--t-slow:300ms;
+--page-max:1280px;--gutter:16px;--header-h:56px;--tabbar-h:64px;--tabbar-gap:12px;
 }
 @media (min-width:640px){:root{--gutter:24px}}
 body{margin:0;background:var(--c-bg);color:var(--c-100);font-family:var(--font-sans)}
@@ -54,12 +54,26 @@ body{margin:0;background:var(--c-bg);color:var(--c-100);font-family:var(--font-s
 @media (min-width:768px){.ui-nav .ui-pill>.ui-icon{display:block}}
 @media (min-width:1024px){.ui-header .ui-kbd{display:inline-grid}.ui-header-actions .ui-label{position:static;width:auto;height:auto;margin:0;overflow:visible;clip:auto;white-space:normal}}
 
-/* Tab bar, below 640 px only */
-.ui-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:stretch;min-height:var(--tabbar-h);padding:6px 0 max(6px,env(safe-area-inset-bottom));background:#000000f2;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line-faint)}
-.ui-tab{display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;min-height:44px;padding:4px 2px;border:0;background:none;color:var(--c-400);font-size:10px;font-weight:500;line-height:1.2;text-decoration:none;transition:transform var(--t-fast) var(--ease)}
+/* Tab bar, below 640 px only: a floating glass island. src/ui/tabbar.ts sets data-hidden while the page scrolls down. */
+.ui-tabbar{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));z-index:50;display:flex;align-items:stretch;gap:2px;max-width:440px;margin-inline:auto;min-height:var(--tabbar-h);padding:6px;border:1px solid #ffffff1f;border-radius:999px;background:linear-gradient(180deg,#ffffff1a,#ffffff05 45%,#ffffff00),rgb(18 18 20 / .72);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 1px 0 #ffffff33,inset 0 -1px 0 #ffffff0d,0 12px 32px -8px #000000b3,0 2px 6px #00000066;transition:transform var(--t) var(--ease-drawer)}
+.ui-tabbar::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(120% 90% at 20% 0%,#ffffff24,#ffffff00 55%);pointer-events:none}
+/* Keyboard focus anywhere in the bar keeps it on screen. A tap leaves no focus-visible, so it does not pin the bar open. */
+.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:translateY(calc(100% + var(--tabbar-gap) + env(safe-area-inset-bottom) + 16px));pointer-events:none}
+.ui-tab{position:relative;display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;min-height:44px;padding:4px 2px;border:0;border-radius:999px;background:none;color:var(--c-300);font-size:10px;font-weight:500;line-height:1.2;text-decoration:none;transition:transform var(--t-fast) var(--ease)}
 .ui-tab:active{transform:scale(.95)}
-.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]{color:#fff;font-weight:700}
+.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]{color:#fff;font-weight:700;background:#ffffff1f;box-shadow:inset 0 1px 0 #ffffff26}
 @media (min-width:640px){.ui-tabbar{display:none}}
+/* Fallbacks: no backdrop-filter support, reduced transparency and more contrast. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-tabbar{background:rgb(18 18 20 / .96)}}
+@media (prefers-reduced-transparency:reduce){.ui-tabbar{background:rgb(18 18 20 / .97);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-contrast:more){.ui-tabbar{border-color:#ffffff66}}
+/* Reduced motion never slides the bar. The theme's global block sets transition:none, so the fade below is instant. */
+@media (prefers-reduced-motion:reduce){
+.ui-tabbar{transition:opacity var(--t-fast) var(--ease)}
+.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:none;opacity:0;pointer-events:none}
+}
+.reduce-motion .ui-tabbar{transition:opacity var(--t-fast) var(--ease)}
+.reduce-motion .ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:none;opacity:0;pointer-events:none}
 
 /* Buttons and chips */
 .ui-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:32px;padding:0 12px;border:1px solid transparent;border-radius:var(--r-lg);background:none;font-size:12px;font-weight:500;line-height:1;text-decoration:none;white-space:nowrap;cursor:pointer;transition:transform var(--t-fast) var(--ease)}
