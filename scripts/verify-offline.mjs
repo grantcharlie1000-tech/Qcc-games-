@@ -9,6 +9,10 @@ const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
+const fictionalMedia=JSON.parse(await readFile('dist/study/fictional-ads/provenance.json','utf8'));
+const localAdPaths=new Set(fictionalMedia.assets.map(ad=>'study/fictional-ads/'+ad.file));
+const allowedStudyPath=path=>/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(path)||localAdPaths.has(path);
+studyMedia.assets.push(...fictionalMedia.assets.map(ad=>({path:'fictional-ads/'+ad.file,width:ad.width,height:ad.height})));
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
@@ -44,7 +48,7 @@ async function action(page,id){
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');
   // The shell's Restart asks before it replaces the world.
   const create=page.getByRole('button',{name:'Create New World',exact:true});if(await create.isVisible())await create.click();
-  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Minecraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Minecraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).click();
+  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Minecraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Minecraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).first().click();
   // Back from Study the game plays on and captures the mouse (the lock arrives a moment later): let it go (Minecraft
   // pauses on its Game Menu), so the shell's buttons take the clicks that follow.
   for(let i=0;i<40&&await root.getAttribute('data-locked')!=='true';i++)await page.waitForTimeout(50);
@@ -71,10 +75,39 @@ try{
   const readingRequests=[];const recordReading=request=>readingRequests.push(request.url());page.on('request',recordReading);
   await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>o.value));assert.equal(topics.length,20);const decodedStudyImages=new Map();
-  for(const topic of topics){await page.getByLabel('Study topic',{exact:true}).selectOption(topic);assert.ok(await page.locator('#study-title').textContent());assert.equal(await page.locator('.study-chapter svg, .study-sidebar').count(),0);assert.equal(await page.locator('.study-text-section').count(),6);assert.ok((await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length>=900);assert.equal(await page.locator('.study-byline img').count(),1);for(const image of await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(async image=>{await image.decode();return {url:image.currentSrc||image.src,width:image.naturalWidth,height:image.naturalHeight};})))){const relative=new URL(image.url).pathname.slice(new URL(base).pathname.length);const expected=studyMedia.assets.find(asset=>'study/'+asset.path===relative);assert.ok(expected,'Only declared Study images may render offline: '+relative);assert.deepEqual([image.width,image.height],[expected.width,expected.height]);decodedStudyImages.set(relative,{path:relative,width:image.width,height:image.height});}}
+  const decodeReadingImages=async()=>{
+   for(const image of await page.locator('#study-view img').evaluateAll(images=>Promise.all(images.map(async image=>{image.loading='eager';await image.decode();return {url:image.currentSrc||image.src,width:image.naturalWidth,height:image.naturalHeight};})))){
+    const relative=new URL(image.url).pathname.slice(new URL(base).pathname.length);
+    const expected=studyMedia.assets.find(asset=>'study/'+asset.path===relative);
+    assert.ok(expected,'Only declared Study images may render offline: '+relative);
+    assert.deepEqual([image.width,image.height],[expected.width,expected.height]);
+    decodedStudyImages.set(relative,{path:relative,width:image.width,height:image.height});
+   }
+  };
+  await page.evaluate(()=>{window.originalStudyQaRandom=Math.random;});
+  try{
+   for(const topic of topics){
+    await page.getByLabel('Study topic',{exact:true}).selectOption(topic);
+    assert.ok(await page.locator('#study-title').textContent());
+    assert.equal(await page.locator('.study-chapter svg, .study-sidebar').count(),0);
+    assert.equal(await page.locator('.study-text-section').count(),6);
+    assert.ok((await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length>=900);
+    assert.equal(await page.locator('.study-byline img').count(),1);
+    await decodeReadingImages();
+    for(const style of ['quanta','aeon','essay','qcc']){
+     const current=await page.locator('#study-view').getAttribute('data-style')||'qcc';
+     const choices=['qcc','quanta','aeon','essay'].filter(s=>s!==current);
+     const fraction=(choices.indexOf(style)+.5)/choices.length;
+     await page.evaluate(value=>{Math.random=()=>value;},fraction);
+     await page.getByRole('button',{name:'Next article',exact:true}).click();
+     assert.equal(await page.locator('#study-view').getAttribute('data-style')||'qcc',style);
+     await decodeReadingImages();
+    }
+   }
+  }finally{await page.evaluate(()=>{Math.random=window.originalStudyQaRandom;delete window.originalStudyQaRandom;});}
   assert.equal(decodedStudyImages.size,studyMedia.assets.length,'Every declared Study image must decode offline');
-  await page.getByRole('link',{name:'Games',exact:true}).click();page.off('request',recordReading);assert.ok(readingRequests.every(url=>new URL(url).origin===new URL(base).origin&&/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname.slice(new URL(base).pathname.length))),'Study may request only first-party offline study photographs');
-  results.push({deployment:label,studyArticlesOffline:topics.length,studyImagesOffline:[...decodedStudyImages.values()],studySwitchRequests:readingRequests});
+  await page.getByRole('link',{name:'Games',exact:true}).first().click();page.off('request',recordReading);assert.ok(readingRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),'Study may request only first-party offline study photographs');
+  results.push({deployment:label,studyArticlesOffline:topics.length*4,studyImagesOffline:[...decodedStudyImages.values()],studySwitchRequests:readingRequests});
   await page.screenshot({path:`${folder}/home-${label}-390.png`,fullPage:true});
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
   await page.setViewportSize(sizes[0]);
@@ -90,9 +123,9 @@ try{
    const frozen=await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id);
    await page.getByLabel('Study topic',{exact:true}).selectOption('quadratics');
    assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id),frozen,id+' study snapshot');
-   await page.getByRole('link',{name:'Games',exact:true}).click();page.off('request',recordSwitch);
+   await page.getByRole('link',{name:'Games',exact:true}).first().click();page.off('request',recordSwitch);
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
-   assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
+   assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');
    if(id==='minesweeper')await page.getByRole('button',{name:'Open menu',exact:true}).click();
    await page.getByRole('button',{name:'Pause game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');

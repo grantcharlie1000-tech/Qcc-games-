@@ -83,9 +83,10 @@ function save():boolean {
   catch {announce('This game could not save this time.');return false;}
 }
 let updateReady=false,updateBusy=false,updateRequest=0,updateFailure='';
-// Any new topic intent cancels the old request, even if the reader returns to
-// its starting topic before activation finishes.
+// Any new reading intent cancels the old request, even if the reader returns
+// to its starting article before activation finishes.
 study.root.addEventListener('change',event=>{if(updateBusy&&(event.target as Element).id==='study-topic')updateRequest++;});
+study.root.addEventListener('study-article-change',()=>{if(updateBusy)updateRequest++;});
 function showUpdate(message:string){
   const notice=document.querySelector<HTMLElement>('#update-notice')!;
   notice.hidden=!message;document.querySelector('#update-status')!.textContent=message;
@@ -94,9 +95,9 @@ function showUpdate(message:string){
 }
 async function reloadForUpdate(){
   if(!updateReady||updateBusy)return;
-  const request=++updateRequest,gameGeneration=generation,route=location.hash,topic=study.session.topic()?.id;
+  const request=++updateRequest,gameGeneration=generation,route=location.hash,article=study.session.article()?.id;
   updateFailure='';updateBusy=true;showUpdate('Saving your game and starting the update…');
-  const result=await reloadAfterActivation(()=>{const saved=setPaused(true);return store.flushPending()&&saved;},activateUpdate,()=>location.reload(),()=>request===updateRequest&&generation===gameGeneration&&location.hash===route&&study.session.topic()?.id===topic);
+  const result=await reloadAfterActivation(()=>{const saved=setPaused(true);return store.flushPending()&&saved;},activateUpdate,()=>location.reload(),()=>request===updateRequest&&generation===gameGeneration&&location.hash===route&&study.session.article()?.id===article);
   updateBusy=false;
   if(result==='save-failed'){updateFailure='Your game could not be saved on this device. Keep this tab open. Free some storage and try again before reloading.';showUpdate(updateFailure);}
   if(result==='cancelled')showUpdate('An update is ready. Reload when you are ready; your game will be saved first.');
@@ -156,7 +157,7 @@ function studyMessage(saved:boolean):string {
   if(!saved)return 'Game paused. This save failed, but your game remains open in memory for this visit.';
   return store.canRetain()?'Game paused. Progress saved on this device.':'Game paused. Progress is held in memory for this visit.';
 }
-function openStudy(){
+function openStudy(advance=false){
   movies?.pause();
   if(study.isOpen)return;
   focusBeforeStudy=document.activeElement instanceof HTMLElement?document.activeElement:null;
@@ -166,6 +167,7 @@ function openStudy(){
   const saved=setPaused(true); // Pause and serialize synchronously, before painting the chapter.
   pausedForDialog=false;
   if(menu.open)menu.close();if(rulesDialog.open)rulesDialog.close();if(leaderboards.root.open)leaderboards.root.close();
+  if(advance)study.advanceArticle();
   hideArcade();study.showArticle(studyMessage(saved));
 }
 function returnFromStudy(){
@@ -238,7 +240,15 @@ async function route(){
     fullscreenButton.setAttribute('aria-label',state.fallback&&state.expanded?`${label}. ${hint}`:label);
     fullscreenButton.title=state.fallback&&state.expanded?hint:label;
     fullscreenButton.innerHTML=icon(state.expanded?'exitfs':'fullscreen');
-  },()=>{if(activeId&&!study.isOpen)openStudy();});
+  },()=>{
+    if(!activeId||study.isOpen)return;
+    // Some browsers consume Escape when they leave fullscreen. Give any open
+    // dialog its usual cancel behavior before treating that exit as Study.
+    const dialog=accountView.root.open?accountView.root:menu.open?menu:rulesDialog.open?rulesDialog:leaderboards.root.open?leaderboards.root:undefined;
+    if(dialog){const cancel=new Event('cancel',{cancelable:true});if(dialog.dispatchEvent(cancel))dialog.close();return;}
+    if(instance?.dismissMenu?.())return;
+    openStudy(true);
+  });
   if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
   document.querySelector('#game-menu')!.addEventListener('click',()=>{if(instance?.openMenu)instance.openMenu();else openMenu();});
   try {
@@ -316,7 +326,7 @@ document.querySelector('#open-leaderboards')!.addEventListener('click',()=>{
   leaderboards.open(activeId);pausedForDialog=resume;
 });
 document.querySelector('.rules-done')!.addEventListener('click',()=>rulesDialog.close());
-document.querySelector('#open-study')!.addEventListener('click',openStudy);
+document.querySelector('#open-study')!.addEventListener('click',()=>openStudy());
 document.querySelector('.favourites-pill')!.addEventListener('click',event=>{
   onlyFavourites=!onlyFavourites;
   (event.currentTarget as HTMLElement).setAttribute('aria-pressed',String(onlyFavourites));
@@ -354,12 +364,13 @@ window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open)return;
-  if(event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
+  if(event.key==='Escape'&&(menu.open||rulesDialog.open||leaderboards.root.open))return;
+  if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;
   event.preventDefault();event.stopImmediatePropagation();
-  if(!event.repeat&&!study.isOpen)openStudy();
+  if(!event.repeat){if(study.isOpen)study.advanceArticle();else openStudy(true);}
 },{capture:true});
 window.addEventListener('keyup',event=>{if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
