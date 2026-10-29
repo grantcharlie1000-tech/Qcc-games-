@@ -1185,3 +1185,175 @@ html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(
   - Compare each with the base's own evidence images (`git show 2e69da3:docs/evidence/home-1366.png`, `home-768.png`, `home-390.png`). The only difference should be the island.
   - Also capture the menu and a game at 390.
 - [ ] **Step 5: Commit** "Restore the original games look and keep the glass island".
+
+---
+
+### Task 22: Make the island look and behave like Liquid Glass (user request)
+
+The user said: "I like the Liquid Glass bar but it doesn't really look or behave like Liquid Glass in the screenshots."
+
+They were asked to choose between two behaviours: shrinking to a small pill like iOS 26, or staying hidden on scroll. They chose **"Keep it disappearing"**:
+- The island still leaves the screen on scroll down.
+- It now leaves with a liquid exit: it squeezes into a glass blob and drops away.
+- It comes back the same way.
+
+It also gets the Liquid Glass look and motion: edges that bend the content behind them, bright rim highlights, a selection pill that slides and stretches between tabs, and a jelly-like press response.
+
+Everything is original CSS, SVG and TypeScript. No Apple assets or code are used.
+
+The island is one shared component, `.ui-tabbar` plus `src/ui/tabbar.ts`. The arcade uses it as `nav.app-tabbar.ui-tabbar`, bound to `window`. Movies & TV uses it as `nav.movies-mobile-nav.ui-tabbar`, bound to the `.movies-view` scroller. Both call `autoHideTabbar(bar, scroller)` and need no other code changes.
+
+Movies & TV rewrites the nav's innerHTML on every render (`this.tabbar.innerHTML=this.mobileNav()`), but the nav element itself persists. Anything you add must survive that rewrite. Put the selection pill on the bar's own `::after` pseudo-element, driven by CSS custom properties set on the bar. Do not add child elements.
+
+**Files:**
+- `src/theme.css`: the `.ui-tabbar` / `.ui-tab` rules, plus new tokens.
+- `src/ui/tabbar.ts`. You may also add `src/ui/glass.ts` and call it from `autoHideTabbar` so both bars get it.
+- Tests: `tests/core/tabbar.test.ts` and/or a new `tests/core/glass.test.ts` (node environment), `tests/e2e/redesign-shell.spec.ts`, and a new `tests/e2e/liquid-glass.spec.ts`.
+
+**1. Look (every browser)**
+- Clear glass:
+  - `background: rgb(20 20 24 / .22)`.
+  - `-webkit-backdrop-filter: blur(10px) saturate(1.8) brightness(1.06)` and the same `backdrop-filter`.
+- Remove the solid-looking border (or keep it as faint as `#ffffff14`).
+- Specular rims and depth:
+  `box-shadow: inset 0 1px 1px rgb(255 255 255 / .55), inset 0 -1px 1px rgb(255 255 255 / .22), inset 1px 0 1px rgb(255 255 255 / .25), inset -1px 0 1px rgb(255 255 255 / .25), inset 0 0 18px rgb(255 255 255 / .12), 0 10px 30px -6px rgb(0 0 0 / .55), 0 2px 6px rgb(0 0 0 / .35)`
+- Top sheen, on the existing `::before`: `radial-gradient(90% 120% at 50% -30%, rgb(255 255 255 / .32), transparent 55%)`.
+- Tab text and icons:
+  - inactive `rgb(255 255 255 / .82)`; current `#fff`, bold;
+  - both with `text-shadow: 0 1px 2px rgb(0 0 0 / .6)`;
+  - icons use `currentColor`.
+- Keep the existing fallbacks, updated to the new rules:
+  - `@supports not (backdrop-filter…)` → opaque fallback.
+  - `prefers-reduced-transparency: reduce` → opaque `rgb(18 18 20 / .97)`, no backdrop filter, no refraction.
+  - `prefers-contrast: more` → visible border.
+
+**2. Refraction (Chromium only, progressive enhancement)**
+- **Which browsers.**
+  - Only Chromium renders an SVG filter inside `backdrop-filter`. Turn refraction on only when `navigator.userAgentData?.brands` names Chromium.
+  - Never under `prefers-reduced-transparency: reduce`.
+  - Mark it with a class, e.g. `.ui-tabbar.is-refracting`.
+  - Every other browser keeps the clear blurred glass from item 1.
+- **Filter element.**
+  - Each bar gets its own hidden filter element (unique id per bar), appended to `document.body` once and removed by `dispose()`:
+    `<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">`
+  - The filter is
+    `<filter x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">`
+    containing:
+    - `feImage` holding the displacement map (`x="0" y="0"`, width and height equal to the bar's px size, `preserveAspectRatio="none"`);
+    - then `feDisplacementMap in="SourceGraphic" in2=<map> scale="34" xChannelSelector="R" yChannelSelector="G"`.
+- **Displacement map.** A pure function you unit test, for example `glassMap(width, height, edge = 16): string`, returns this SVG as a string (`width`×`height`, matching viewBox):
+  - a full-size rect filled with a horizontal linear gradient from `#f00` (left) to `#000` (right);
+  - a full-size rect filled with a vertical gradient from `#0f0` (top) to `#000` (bottom), with `mix-blend-mode:screen`;
+  - on top, a rounded rect inset by `edge` px with `rx = max(0, height/2 − edge)`, filled `rgb(128,128,128)` and blurred by an `feGaussianBlur stdDeviation = edge/2`. The blur filter needs some overflow room, e.g. `x="-20%" y="-20%" width="140%" height="140%"`.
+  - Result: the centre is neutral (no displacement) and only the rim bends the content behind it, like a lens edge.
+- **Use and resize.**
+  - Set the map as `href="data:image/svg+xml,"+encodeURIComponent(svg)`. The CSP already allows `data:` images.
+  - Rebuild it when the bar's size changes (ResizeObserver).
+- **Chromium backdrop filter** (the filter runs before the blur, so the rim bends and the centre stays a light frost):
+  `.ui-tabbar.is-refracting{-webkit-backdrop-filter:url(#<id>) blur(5px) saturate(1.8) brightness(1.06);backdrop-filter:url(#<id>) blur(5px) saturate(1.8) brightness(1.06)}`
+  Set it per bar, through an inline style or a custom property, because each bar has its own id.
+- The controller prototyped this in Chromium. These values bend the rounded ends visibly and keep the icons readable.
+
+**3. Selection pill that slides and stretches**
+- **Pseudo-element.** Draw the pill on `.ui-tabbar::after`:
+  - `position:absolute; top:6px; bottom:6px; left:0; width:var(--ui-pill-w,0px); translate:var(--ui-pill-x,0px) 0; border-radius:999px`
+  - `background:rgb(255 255 255 / .16)`
+  - `box-shadow: inset 0 1px 1px rgb(255 255 255 / .45), inset 0 -1px 1px rgb(255 255 255 / .12), 0 1px 6px rgb(0 0 0 / .25)`
+  - `opacity:var(--ui-pill-on,0)`, `pointer-events:none`, `z-index:0`
+- **Tabs and the old highlight.**
+  - Tabs get `position:relative; z-index:1`.
+  - Remove the current tab's own background and box-shadow, since the pill replaces it. Keep its bold white text.
+- **Where the pill sits.**
+  - The current tab is `.ui-tab[aria-current="page"], .ui-tab[aria-pressed="true"]`.
+  - JS sets `--ui-pill-x` / `--ui-pill-w` on the bar from that tab's `offsetLeft` / `offsetWidth`, and `--ui-pill-on` to 1, or 0 when no tab is current.
+  - Re-sync:
+    - with a MutationObserver on the bar (childList + subtree attributes `aria-current`/`aria-pressed`), which covers Movies' innerHTML rewrites and the arcade's route changes;
+    - on resize;
+    - after fonts load.
+  - The observer must not loop on its own style writes. Observe only childList and those two attributes.
+- **Motion.**
+  - `transition: translate 340ms var(--ease-glass), scale 140ms var(--ease-out), opacity 120ms var(--ease)`.
+  - **Stretch.** When the pill moves to a different tab, it also stretches along the direction of travel. Use WAAPI on the pseudo-element:
+    `bar.animate([{scale:'1 1'},{scale:'1.18 .9',offset:.4},{scale:'1 1'}],{duration:340,easing:'ease-out',pseudoElement:'::after'})`
+    Feature-detect it; if the `pseudoElement` option is unsupported, skip the stretch.
+  - The first placement after binding is instant: no slide from 0.
+- **Tokens** (add to theme.css):
+  - `--ease-glass`, a spring with about 3% overshoot:
+    `linear(0, 0.05, 0.167, 0.314, 0.465, 0.604, 0.723, 0.82, 0.894, 0.948, 0.985, 1.008, 1.021, 1.027, 1.028, 1.026, 1.023, 1.018, 1.014, 1.01, 1.007, 1.005, 1.003, 1.001, 1)`
+  - `--ease-glass-pop`, about 5% overshoot:
+    `linear(0, 0.061, 0.202, 0.375, 0.548, 0.702, 0.827, 0.921, 0.985, 1.026, 1.047, 1.054, 1.052, 1.046, 1.036, 1.027, 1.018, 1.011, 1.005, 1.002, 0.999, 0.998, 0.997, 0.997, 1)`
+  - The controller generated both from a damped-spring formula (ζ = 0.75 and 0.68).
+  - Define them inside `@supports (transition-timing-function: linear(0, 1))`. Outside it, fall back to `var(--ease-drawer)`, i.e. `cubic-bezier(.32,.72,0,1)`.
+- **Uses.**
+  - `--ease-glass`: the pill's slide.
+  - `--ease-glass-pop`: the entry pop in item 5.
+
+**4. Jelly press**
+- On `pointerdown` on a `.ui-tab` (primary button or touch):
+  - set `data-pressing` on the bar;
+  - point `--ui-pill-x` / `--ui-pill-w` at the pressed tab, so the pill moves under the finger;
+  - `.ui-tabbar[data-pressing]::after{scale:1.1 1.14}`, with its 140ms ease-out.
+- On `pointerup`, `pointercancel` or `lostpointercapture`:
+  - remove `data-pressing`; the pill springs back to scale 1 with `--ease-glass`;
+  - re-sync to the current tab, so a cancelled press slides back.
+- Keyboard activation does not swell.
+- Keep the existing `.ui-tab:active{transform:scale(.95)}` press on the tab content.
+
+**5. Liquid exit and entry**
+- Replace the slide (`transform: translateY(…)`) with the individual properties `translate` and `scale`, so each can have its own timing.
+- **Shown** (base rule):
+  - `translate:0 0; scale:1; opacity:1; transform-origin:50% 100%`
+  - `transition: translate 360ms var(--ease-glass-pop), scale 420ms var(--ease-glass-pop) 80ms, opacity 140ms var(--ease)`
+  - This rises first, then pops open with a slight overshoot.
+- **Hidden:** `.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible))`
+  - `translate: 0 calc(100% + var(--tabbar-gap) + env(safe-area-inset-bottom) + 16px); scale: .36 .8; opacity:0; pointer-events:none`
+  - `transition: scale 200ms var(--ease-out), translate 280ms var(--ease-out) 110ms, opacity 160ms var(--ease) 220ms`
+  - It squeezes into a blob first, then drops away.
+- **Labels and icons** fade out quickly as it squeezes, so the blob reads as clean glass, and fade back in after it opens:
+  - hidden: `.ui-tab{opacity:0; transition: opacity 100ms}`;
+  - shown: `opacity 160ms 160ms`.
+  - This changes the tab's `transitionProperty`. Update the existing test (`tests/e2e/redesign-shell.spec.ts` ~188) to keep its intent: colour and background change at once, and are not in the transition list.
+- **Reduced motion** (both the media query and `.reduce-motion`):
+  - hidden: `translate:none; scale:none; opacity:0`;
+  - no stretch;
+  - no WAAPI animations (check `matchMedia('(prefers-reduced-motion: reduce)')` and `.reduce-motion` before calling `animate`);
+  - the pill moves instantly.
+  - The existing reduced-motion tests (~132 and ~144, `transform` is `none`) must still pass. Also assert `translate` and `scale` are `none` there.
+- **Behaviour stays as it is:**
+  - `nextTabbarState` and its thresholds;
+  - `reset()` and `dispose()`;
+  - focus entering the bar shows it;
+  - the hidden bar ignores taps;
+  - content clearance.
+  - `dispose()` must also remove the observers, the pointer listeners and the SVG filter element.
+
+**Tests**
+- **Unit:**
+  - `glassMap()` sizes, viewBox, the inset rounded rect and its `rx`, and the blur `stdDeviation`;
+  - the pill position helper, if you extract one (pure: tab offset and width in, CSS values out).
+- **Browser** (`tests/e2e/liquid-glass.spec.ts`):
+  - The pill centre sits under the current tab's centre (±2 px), on the arcade home and on Movies & TV.
+  - It moves under the new tab after a tab change.
+  - It survives a Movies re-render (e.g. type in search).
+  - In Chromium the bar has `.is-refracting` and a filter element containing `feDisplacementMap`.
+  - With `reducedMotion: 'reduce'` and `forcedColors`/reduced transparency emulation where Playwright supports it:
+    - no refraction under reduced transparency (or inject the media query by class if emulation is unavailable);
+    - under reduced motion the hidden bar has opacity 0 and `scale` `none`.
+  - A pointerdown on a tab sets `data-pressing` and moves the pill there; pointerup removes it.
+  - The hidden bar still ignores clicks.
+- Write each new test first and see it fail.
+- Keep every existing test passing. Change an existing test only where this brief changes the behaviour it pins, and say why.
+
+**Screenshots** (the user wants to see them)
+Capture the island over busy content at 390×844 (device scale 2) and 1440×900:
+- the arcade home;
+- the Movies & TV home, with posters behind the bar;
+- the pressed state;
+- a mid-exit "blob" frame (temporarily slow the transitions ×5 in the capture script to catch it);
+- the hidden state;
+- before and after: capture the same views at cbec521's styles first, from a copy of the old CSS or via `git stash`, so the user can compare.
+
+- [ ] **Step 1: Write the failing tests.**
+- [ ] **Step 2: Implement.**
+- [ ] **Step 3: Run** `npx vitest run tests/core tests/movies`, `npm run check`, `e2e.sh tests/e2e/liquid-glass.spec.ts tests/e2e/redesign-shell.spec.ts tests/movies/redesign.spec.ts`, then the broad set.
+- [ ] **Step 4: Commit** "Give the island a Liquid Glass look, pill and liquid exit".
