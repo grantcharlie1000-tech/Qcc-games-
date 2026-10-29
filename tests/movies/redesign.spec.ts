@@ -977,6 +977,23 @@ for(const width of [390,1440])test(`the island's Study tab keeps focus when a la
  await expect(study).toBeFocused();
 });
 
+// The collection's first ready or failed render replaces the header and the island. A control focused while it opens keeps focus.
+for(const outcome of ['ready','failed'] as const)test(`the island's Study tab keeps focus when the collection opens ${outcome==='ready'?'and shows the home':'and fails'}`,async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/movies/catalog.json*',async route=>{await held;return outcome==='ready'?route.continue():route.fulfill({status:503,body:'unavailable'});});
+ await page.route('**/api/movies?rails=*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies');
+ await expect(page.getByRole('heading',{name:'Opening the collection…',exact:true})).toBeVisible();
+ const study=page.locator('.movies-mobile-nav [data-action="study"]');
+ await study.focus();
+ await expect(study).toBeFocused();
+ release();
+ await expect(outcome==='ready'?page.locator('.movies-hero'):page.getByRole('heading',{name:'The collection is unavailable',exact:true})).toBeVisible();
+ await expect(study).toBeFocused();
+});
+
 // An invalid route keeps its not-found message when a late rails answer arrives.
 test('a late rails answer keeps the not-found message on an invalid route',async({page})=>{
  await trackAnswers(page);
@@ -1236,4 +1253,280 @@ test('a series without loaded episodes shows its seasons and no play route',asyn
  await expect(page.getByRole('button',{name:/^Season 1\b/})).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('a[href$="/play"]')).toHaveCount(0);
  await expect(page.locator('.movies-actions .movies-primary')).toHaveCount(0);
+});
+
+// Task 14 review fixes. Two counters, so a second mount shows up however it happens. `observed` counts provider iframes inserted into the page
+// (MutationObserver). `renders` counts writes of the page's markup that carry a provider iframe. A same-task insert can escape the observer, so
+// the write count is the one that cannot undercount.
+const countFrameMounts=(page:Page)=>page.addInitScript(()=>{
+ if(window!==window.top)return;
+ const state=window as Window&{frameMounts?:number;playerWrites?:number};
+ state.frameMounts=0;state.playerWrites=0;
+ const mounted=(node:Node)=>node instanceof Element?(node.localName==='iframe'?1:0)+node.querySelectorAll('iframe').length:0;
+ new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)state.frameMounts!+=mounted(node);}).observe(document,{childList:true,subtree:true});
+ const markup=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML')!;
+ Object.defineProperty(Element.prototype,'innerHTML',{configurable:true,get:markup.get,set(value:string){if(this.classList.contains('movies-view')&&String(value).includes('<iframe'))state.playerWrites!++;markup.set!.call(this,value);}});
+});
+const frameMounts=(page:Page)=>page.evaluate(()=>{const state=window as Window&{frameMounts?:number;playerWrites?:number};return {observed:state.frameMounts??0,renders:state.playerWrites??0};});
+// Saved progress as the Movies storage keeps it, in place before the page loads.
+const savedProgress=(page:Page,progress:Record<string,number>,meta:Record<string,{duration:number;updated:number}>)=>page.addInitScript(({progress,meta})=>{if(window!==window.top)return;localStorage.setItem('qcc:movies:v1',JSON.stringify({list:[],titles:{},progress,meta}));},{progress,meta});
+// Lets a settled answer finish its render before the page is checked.
+const settle=(page:Page)=>page.evaluate(()=>new Promise<void>(resolve=>setTimeout(resolve,300)));
+
+// Ruling 1: a play route into a season that is still loading shows the loading text, and the player mounts once when the season arrives.
+// The Continue link and a cold link to the same route both wait for the season.
+for(const entry of ['Continue link','cold link'] as const)test(`a play route into an unloaded season mounts the player once (${entry})`,async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season),async url=>{if(url.searchParams.get('season')==='2'){asked=true;await held;}});
+ await countFrameMounts(page);
+ await page.setViewportSize({width:1440,height:900});
+ if(entry==='Continue link'){
+  await savedProgress(page,{'tv-90200:s2:e1':300},{'tv-90200:s2:e1':{duration:2400,updated:2000}});
+  await page.goto('/#/movies/tv-90200');
+  await page.locator('.movies-actions a.movies-primary').click();
+ }else await page.goto('/#/movies/tv-90200/season/2/episode/1/play');
+ await expect.poll(()=>asked).toBe(true);
+ await expect(page.locator('.movies-empty[role="status"] h1')).toHaveText('Loading title details…');
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
+ release();
+ await expect(page.getByRole('heading',{name:'S2 · E1 — Second Season Opener',exact:true})).toBeVisible();
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);
+ await settle(page);
+ expect(await frameMounts(page)).toEqual({observed:1,renders:1});
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('src',/\/embed\/90200\/2\/1\?/);
+});
+
+// Ruling 1: a licensed local episode in a season that is still loading plays from its own file, and no provider is asked for it first.
+test('a licensed episode in an unloaded season plays locally before any provider is asked',async({page})=>{
+ await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'tv-90200:s2:e1',path:'movies/media/second-season-opener.mp4',license:'CC0-1.0',credit:'Test fixture',evidence:'docs/rights/second-season-opener.md',reviewed:true,territory:'Worldwide',expires:'2099-12-31'}]}));
+ await page.route('**/movies/media/**',route=>route.fulfill({contentType:'video/mp4',body:''}));
+ const providerRequests:string[]=[];
+ page.on('request',request=>{if(/(^|\.)(framextv\.(cc|xyz)|vidlink\.pro|vixsrc\.to|vidsrc\.to)$/.test(new URL(request.url()).hostname))providerRequests.push(request.url());});
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season),async url=>{if(url.searchParams.get('season')==='2'){asked=true;await held;}});
+ await savedProgress(page,{'tv-90200:s2:e1':300},{'tv-90200:s2:e1':{duration:2400,updated:2000}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200');
+ await page.locator('.movies-actions a.movies-primary').click();
+ await expect.poll(()=>asked).toBe(true);
+ await settle(page);
+ expect(providerRequests).toEqual([]);
+ release();
+ await expect(page.locator('.movies-media video')).toHaveAttribute('src',/\/movies\/media\/second-season-opener\.mp4$/);
+ await settle(page);
+ expect(providerRequests).toEqual([]);
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
+});
+
+// Ruling 5, amended: Continue may show while seasons load. It carries its own season and episode from storage. The Play S1 E1 fallback
+// still needs loaded seasons, which "a series without loaded episodes shows its seasons and no play route" pins.
+test('Continue names its own season and episode while that season loads',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season),async url=>{if(url.searchParams.get('season')==='2'){asked=true;await held;}});
+ await savedProgress(page,{'tv-90200:s2:e1':300},{'tv-90200:s2:e1':{duration:2400,updated:2000}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200');
+ await page.getByRole('button',{name:/^Season 2\b/}).click();
+ await expect.poll(()=>asked).toBe(true);
+ const primary=page.locator('.movies-actions a.movies-primary');
+ await expect(page.locator('.movies-episodes-status')).toHaveText('Loading episodes…');
+ await expect(primary).toHaveText('Continue S2 · E1');
+ await expect(primary).toHaveAttribute('href','#/movies/tv-90200/season/2/episode/1/play');
+ release();
+ await expect(page.getByRole('heading',{name:'Second Season Opener',exact:true})).toBeVisible();
+ await expect(primary).toHaveAttribute('href','#/movies/tv-90200/season/2/episode/1/play');
+});
+
+// Ruling 8: a built-in title gains the API's cast, related titles, rating and runtime. Its bundled name, summary and artwork stay.
+test('a built-in title gains its cast and related titles from the API and keeps its bundled name',async({page})=>{
+ await answerTitle(page,()=>({...fixtureTitle('movie-157336','Interstellar (API copy)'),overview:'A different summary.',rating:8.6,runtime:169,
+  cast:[{name:'Ada Lovelace',character:'Analyst'}],related:[fixtureTitle('movie-90501','Related Feature')]}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ const detail=page.locator('section.movies-detail');
+ await expect(detail.locator('.movies-chips')).toContainText('★ 8.6');
+ await expect(detail.locator('.movies-chips')).toContainText('2h 49m');
+ await expect(detail.locator('h1')).toHaveText('Interstellar');
+ await expect(detail.locator('.movies-overview')).toHaveText('A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.');
+ await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
+ await expect(page.getByRole('heading',{name:'More like this',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Related Feature'})).toBeVisible();
+});
+
+// Ruling 8: when the API is unavailable, a built-in title keeps its bundled page and shows no error.
+test('a built-in title keeps its bundled page when the API is unavailable, with no error',async({page})=>{
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ const detail=page.locator('section.movies-detail');
+ await expect(detail.locator('h1')).toHaveText('Interstellar');
+ await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
+ await settle(page);
+ await expect(page.locator('section.movies-cast')).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'More like this'})).toHaveCount(0);
+ await expect(page.locator('.movies-detail-error')).toHaveCount(0);
+ await expect(page.getByText('Title details')).toHaveCount(0);
+ await expect(page.getByText('Loading title details')).toHaveCount(0);
+ await expect(detail.locator('.movies-availability')).toHaveText('Streaming available. An external player receives normal connection and playback information.');
+});
+
+// Ruling 8: nothing changes while a built-in title's details load. When they arrive the page keeps focus on Play movie (ruling 3).
+test('a built-in title is unchanged while its details load, and keeps focus on Play movie when they arrive',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await page.route('**/api/movies?*',async route=>{
+  if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  asked=true;await held;
+  return route.fulfill({json:{title:{...fixtureTitle('movie-157336','Interstellar'),cast:[{name:'Ada Lovelace',character:'Analyst'}]}}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ const play=page.getByRole('button',{name:'Play movie',exact:true});
+ await expect(play).toBeVisible();
+ await page.evaluate(()=>{(document.querySelector('section.movies-detail h1') as HTMLElement).dataset.held='yes';});
+ await expect.poll(()=>asked).toBe(true);
+ await settle(page);
+ await expect(page.getByText('Loading title details')).toHaveCount(0);
+ expect(await page.locator('section.movies-detail h1').getAttribute('data-held')).toBe('yes');
+ await play.focus();
+ release();
+ await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
+ await expect(play).toBeFocused();
+});
+
+// Ruling 8: a built-in series takes episode stills and ratings from the API. Its bundled episodes keep their names and overviews.
+test('a built-in series takes episode stills and ratings from the API and keeps its own episodes',async({page})=>{
+ await page.route('**/api/movies?*',route=>{
+  if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  return route.fulfill({json:{title:{...fixtureTitle('tv-19885','Sherlock (API copy)','tv'),seasons:[
+   {number:1,name:'Season 1',episodes:[{number:1,name:'API Episode Name',overview:'API overview.',still:'https://image.tmdb.org/t/p/w300/apistill1.jpg',rating:8.1}]},
+   {number:2,name:'Season 2',episodes:[]}]}}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885');
+ const first=page.locator('article.movies-episode').first();
+ await expect(first.locator('h3')).toHaveText('A Study in Pink');
+ await expect(first.locator('.movies-episode-thumb img')).toHaveAttribute('src',/apistill1\.jpg$/);
+ await expect(first.locator('.movies-episode-meta')).toContainText('★ 8.1');
+ await expect(first).toContainText('Episode information is included in this starter selection.');
+});
+
+// Ruling 3: a Play link is found again by its address, but never on its thumbnail, which is hidden from focus and shares that address.
+test('focus returns to an episode\'s Play link, not its hidden thumbnail, after a re-render',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await page.route('**/api/movies?*',async route=>{
+  if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  asked=true;await held;
+  return route.fulfill({json:{title:{...fixtureTitle('tv-19885','Sherlock','tv'),cast:[{name:'Ada Lovelace',character:'Analyst'}]}}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885');
+ const play=page.getByRole('link',{name:'Play The Blind Banker',exact:true});
+ await play.focus();
+ await expect.poll(()=>asked).toBe(true);
+ release();
+ await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
+ await expect(play).toBeFocused();
+});
+
+// Ruling 4: season pills are 44 px tall, a long season name wraps inside a 320 px phone, and the name stays Season N.
+test('season pills are 44 px tall and wrap a long season name at 320 px',async({page})=>{
+ const longName='A Season Name That Is Far Too Long To Fit On One Line At Three Hundred Twenty Pixels';
+ await answerTitle(page,season=>({...seriesFor('tv-90400','Long Pills Series',season),seasons:[
+  {number:1,name:longName,episodes:season===1?[{number:1,name:'Pilot',overview:'The first episode.'}]:[]},
+  {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.'}]:[]}]}));
+ await page.setViewportSize({width:320,height:640});
+ await page.goto('/#/movies/tv-90400');
+ const pills=page.locator('.movies-season-pills .ui-pill');
+ await expect(pills).toHaveCount(2);
+ await expect(pills.first()).toBeVisible();
+ expect(await pills.first().evaluate(e=>getComputedStyle(e).whiteSpace)).toBe('normal');
+ for(const height of await pills.evaluateAll(list=>list.map(e=>e.getBoundingClientRect().height)))expect(height).toBeGreaterThanOrEqual(44);
+ expect(await page.locator('.movies-view').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
+ const long=page.getByRole('button',{name:longName,exact:true});
+ await expect(long).toBeVisible();
+ const box=await long.boundingBox();
+ expect(box!.x+box!.width).toBeLessThanOrEqual(320);
+});
+
+// Ruling 4: the episode count is hidden from the name, so a pill is Season N before its episodes load and after.
+test('a season pill keeps the name Season N before and after its episodes load',async({page})=>{
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200');
+ const seasonOne=page.getByRole('button',{name:'Season 1',exact:true});
+ await expect(seasonOne.locator('.movies-pill-count')).toHaveText('2');
+ const seasonTwo=page.getByRole('button',{name:'Season 2',exact:true});
+ await expect(seasonTwo).toBeVisible();
+ await seasonTwo.click();
+ await expect(page.getByRole('heading',{name:'Second Season Opener',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Season 2',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('button',{name:'Season 2',exact:true}).locator('.movies-pill-count')).toHaveText('1');
+});
+
+// Ruling 5: a title whose poster failed has no poster column, on the first visit and on a later one, when the failed poster is not asked for again.
+test('a title whose poster failed drops the poster column, on the first visit and later',async({page})=>{
+ await page.route('https://image.tmdb.org/t/p/w500/fixture90600.jpg',route=>route.fulfill({status:404,headers:{'cache-control':'no-store'},body:'Unavailable'}));
+ await answerTitle(page,()=>fixtureTitle('movie-90600','No Poster Feature'));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-90600');
+ const inner=page.locator('section.movies-detail .movies-detail-inner');
+ await expect(page.locator('section.movies-detail h1')).toHaveText('No Poster Feature');
+ await expect(page.locator('.movies-detail-art')).toHaveCount(0);
+ const columns=()=>inner.evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length);
+ expect(await columns()).toBe(1);
+ await page.evaluate(()=>{location.hash='#/movies';});
+ await expect(page.locator('section.movies-detail')).toHaveCount(0);
+ await page.evaluate(()=>{location.hash='#/movies/movie-90600';});
+ await expect(page.locator('section.movies-detail h1')).toHaveText('No Poster Feature');
+ await expect(page.locator('.movies-detail-art')).toHaveCount(0);
+ expect(await columns()).toBe(1);
+});
+
+// Ruling 7: the title backdrop reuses the hero's shade from theme.css, and no longer carries its own copy of it.
+test('the title backdrop uses the shared hero shade',async({page})=>{
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ const backdrop=page.locator('section.movies-detail .movies-detail-backdrop');
+ await expect(backdrop.locator(':scope>.ui-hero-shade')).toHaveCount(1);
+ expect(await backdrop.evaluate(e=>getComputedStyle(e,'::after').content)).toBe('none');
+});
+
+// Ruling 10: a source that cannot resume (VidSrc, resume 'none') starts from the beginning, and the player promises no resume point.
+test('a source that cannot resume starts from the beginning and offers no Resume line',async({page})=>{
+ await savedProgress(page,{'movie-157336':1200},{'movie-157336':{duration:7200,updated:1000}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336/play');
+ const frame=page.locator('iframe.movies-provider-frame');
+ await expect(frame).toHaveAttribute('src',/\/embed\/157336\?autoplay=1&muted=0&t=1200$/);
+ await page.locator('#movies-source').selectOption('vidsrc');
+ await expect(frame).toHaveAttribute('src','https://vidsrc.to/embed/movie/157336');
+ await expect(page.locator('#movies-source-help')).toContainText('cannot share playback progress');
+ await expect(page.getByText('Resume at')).toHaveCount(0);
+});
+
+// A failed load keeps today's error path: a cold link into an unloaded season shows the title-details notice with a retry, and mounts no player.
+test('a failed season load keeps the title-details notice and mounts no player',async({page})=>{
+ await countFrameMounts(page);
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.get('season')==='2')return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  return route.fulfill({json:{title:seriesFor('tv-90200','Pill Series',1)}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200/season/2/episode/1/play');
+ await expect(page.getByRole('heading',{name:'Title details unavailable',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Retry title',exact:true})).toBeVisible();
+ await settle(page);
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
+ expect(await frameMounts(page)).toEqual({observed:0,renders:0});
 });

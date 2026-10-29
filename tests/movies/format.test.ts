@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {formatClock,formatRuntime} from '../../src/movies/format';
+import {formatClock,formatRuntime,initials} from '../../src/movies/format';
 
 describe('formatRuntime',()=>{
  it('writes hours and minutes, and drops whichever is zero',()=>{
@@ -33,5 +33,29 @@ describe('formatClock',()=>{
  it('reads a negative or missing position as the start',()=>{
   expect(formatClock(-3)).toBe('0:00');
   expect(formatClock(NaN)).toBe('0:00');
+ });
+});
+
+describe('initials',()=>{
+ it('takes the first letter of the first and the last name',()=>{
+  expect(initials('Grace Hopper')).toBe('GH');
+  expect(initials('ada lovelace')).toBe('AL');
+  expect(initials('Mary Ann Jackson')).toBe('MJ');
+ });
+ it('counts letters only, so punctuation never shows',()=>{
+  expect(initials('(Adam) West')).toBe('AW');
+  expect(initials('"Sherlock" Holmes')).toBe('SH');
+  expect(initials('Jean-Luc Picard')).toBe('JP');
+ });
+ it('gives one letter for a one-word name',()=>{
+  expect(initials('Cher')).toBe('C');
+ });
+ it('gives a neutral placeholder when a name has no letters',()=>{
+  for(const name of ['','   ','123','()','… ·'])expect(initials(name)).toBe('?');
+ });
+ it('keeps a letter outside Basic Latin whole, surrogate pairs included',()=>{
+  expect(initials('𝒜dam 𝒲est')).toBe('𝒜𝒲');
+  expect(Array.from(initials('𝒜dam 𝒲est'))).toHaveLength(2);
+  expect(initials('Élodie Ñúñez')).toBe('ÉÑ');
  });
 });

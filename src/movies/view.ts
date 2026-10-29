@@ -10,18 +10,35 @@ import {filterTitles,kindHash,licensedSource,mediaKey,nextEpisode,parseCatalog,p
 import type {CastMember,Catalog,Episode,MovieKind,MovieRoute,Rail,Season,Title} from './model';
 import {MovieStorage,snapshotOf,keepsResume} from './storage';
 import type {ContinueItem,TitleSnapshot} from './storage';
-import {formatClock,formatRuntime} from './format';
+import {formatClock,formatRuntime,initials} from './format';
 import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 const base=import.meta.env.BASE_URL;
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 // Absolute same-origin URLs also resolve correctly inside CSS custom properties in /assets/ stylesheets.
 const asset=(v:string)=>v.startsWith('https://')?v:new URL(base+v,document.baseURI).href;
-// The initials a cast member without a photo shows: the first letter of the first name and of the last name.
-const initials=(name:string)=>{const words=name.trim().split(/\s+/).filter(Boolean).map(word=>Array.from(word)[0]??'');return ((words[0]??'')+(words.length>1?words[words.length-1]:'')).toUpperCase();};
 const cardMeta=(t:Title)=>[t.year?String(t.year):'',t.kind==='tv'?'Series':'Movie'].filter(Boolean).join(' · ');
 // A title saved in storage carries what a card or a Continue watching tile needs. Genres, overview and seasons arrive when the title loads.
 const fromSnapshot=(s:TitleSnapshot):Title=>({id:s.id,kind:s.kind,name:s.name,year:s.year,genres:[],overview:'',poster:s.poster,backdrop:s.backdrop,seasons:[]});
+// The title page while its details load. A play route shows it until its season has loaded, so the player is built only once.
+const LOADING_TITLE='<div class="movies-empty" role="status"><h1 tabindex="-1">Loading title details…</h1><p>Fetching current movie and episode information.</p></div>';
+// What the API adds to a built-in title: its cast, related titles, rating and runtime. Its name, summary, artwork, seasons and episodes stay,
+// except that an episode without a still or a rating takes the API's for the same season and episode.
+const mergeDetails=(bundled:Title,detail:Title):Title=>({...bundled,
+ ...(detail.rating===undefined?{}:{rating:detail.rating}),
+ ...(detail.runtime===undefined?{}:{runtime:detail.runtime}),
+ ...(detail.cast?.length?{cast:detail.cast}:{}),
+ ...(detail.related?.length?{related:detail.related}:{}),
+ seasons:bundled.seasons.map(season=>{
+  const fromApi=detail.seasons.find(s=>s.number===season.number);
+  if(!fromApi)return season;
+  return {...season,episodes:season.episodes.map(episode=>{
+   const match=fromApi.episodes.find(e=>e.number===episode.number);
+   if(!match)return episode;
+   const still=episode.still??match.still,rating=episode.rating??match.rating;
+   return {...episode,...(still===undefined?{}:{still}),...(rating===undefined?{}:{rating})};
+  })};
+ })});
 const slug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 // The status lines a browse page can show. Focus falls back to the first one that exists.
 const STATUS_LINES=['movies-catalog-status','movies-rails-status','movies-result-count'];
@@ -43,13 +60,14 @@ function finderFor(el:HTMLElement):Finder|undefined{
  if(dataset.kind){const kind=dataset.kind,bar=barOf(el);return root=>within(root,'[data-kind]').filter(e=>e.dataset.kind===kind&&barOf(e)===bar);}
  if(dataset.action){const action=dataset.action,nav=dataset.nav,bar=barOf(el);return root=>within(root,'[data-action]').filter(e=>e.dataset.action===action&&(nav===undefined||e.dataset.nav===nav)&&barOf(e)===bar);}
  if(dataset.season){const season=dataset.season;return root=>within(root,'.movies-season-pills [data-season]').filter(e=>e.dataset.season===season);}
+ if(dataset.play){const play=dataset.play;return root=>within(root,'[data-play]').filter(e=>e.dataset.play===play);}
  if(dataset.list){const list=dataset.list;return root=>within(root,'[data-list]').filter(e=>e.dataset.list===list);}
  if(dataset.playRoute){const route=dataset.playRoute;return root=>within(root,'[data-play-route]').filter(e=>e.dataset.playRoute===route);}
  if(dataset.scroll){const scroll=dataset.scroll;return root=>within(root,'[data-scroll]').filter(e=>e.dataset.scroll===scroll&&e.closest<HTMLElement>('[data-rail]')?.dataset.rail===rail);}
- // A heading and a plain link are found again by their tag and their address.
+ // A heading and a plain link are found again by their tag and their address. A thumbnail with tabindex -1 repeats an episode's address, so it is skipped.
  if(el.tagName==='H1')return root=>within(root,'h1');
  const href=el.getAttribute('href');
- if(href)return root=>within(root,'a[href]').filter(e=>e.getAttribute('href')===href);
+ if(href)return root=>within(root,'a[href]:not([tabindex="-1"])').filter(e=>e.getAttribute('href')===href);
  return undefined;
 }
 // The rails of one section. A section keeps its own counter and controller, as the home does, so a late answer never replaces another's rails.
@@ -89,6 +107,8 @@ export class MoviesView {
  private dynamicIds=new Set<string>();
  private loadedDetails=new Set<string>();
  private loadedSeasons=new Set<string>();
+ // The built-in titles whose details have been asked for. Each is asked for once, in the background.
+ private askedBuiltIn=new Set<string>();
  private browseScroll=0;
  private returnFocus='';
  // The rail a title's card or tile was activated from, so focus can return to that rail.
@@ -140,7 +160,7 @@ export class MoviesView {
  constructor(container:HTMLElement,private study:()=>void,private reducedMotion:boolean,origin?:DOMRect,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
-  this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){const failed=image.getAttribute('src');if(failed)this.failedImages.add(failed);if(image.dataset.poster&&image.src!==image.dataset.poster){image.src=image.dataset.poster;delete image.dataset.poster;}else image.style.opacity='0';}},{capture:true});
+  this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){const failed=image.getAttribute('src');if(failed)this.failedImages.add(failed);if(image.dataset.poster&&image.src!==image.dataset.poster){image.src=image.dataset.poster;delete image.dataset.poster;}else if(image.classList.contains('movies-detail-art')){image.closest('.movies-detail-inner')?.classList.add('movies-detail-bare');image.remove();}else image.style.opacity='0';}},{capture:true});
   this.root.addEventListener('load',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.matches('img.ui-card-img,img.ui-hero-backdrop')){const src=image.getAttribute('src');if(src)this.seenImages.add(src);}},{capture:true});
   this.root.addEventListener('click',this.click);
   this.root.addEventListener('click',event=>{
@@ -168,17 +188,20 @@ export class MoviesView {
   this.root.style.transformOrigin='top left';this.render();void this.load();
  }
  async load(){
-  this.failed=false;this.loadError='';this.ready=false;this.render();
+  // Each state the collection passes through replaces the header and the island, so a control that has focus keeps it.
+  this.failed=false;this.loadError='';this.ready=false;this.renderKeepingFocus();
   try{
    this.catalog=parseCatalog(await movieJson(asset('movies/catalog.json'),this.abort.signal));
    if(!this.catalog.titles.length)throw new Error('Empty catalog');
    // An unavailable optional registry disables local media, never discovery.
    try {this.licenses=await movieJson(asset('movies/licenses.json'),this.abort.signal,5000);}catch{this.licenses=[];}
    if(this.abort.signal.aborted)return;
-   this.ready=true;this.render();
-   if(this.route.id){if(this.needsDetails(this.route))void this.loadTitle(this.route.id,this.route.season);}
+   this.ready=true;
+   // As in applyRoute, a route whose details are not loaded is pending before the page renders.
+   const pending=!!this.route.id&&this.needsDetails(this.route);this.pendingTitle=pending;this.renderKeepingFocus();
+   if(this.route.id){if(pending)void this.loadTitle(this.route.id,this.route.season);else void this.enrichTitle(this.route.id);}
    else{this.requestHomeRails();this.requestSectionRails();}
-  }catch(error){if(!this.abort.signal.aborted){this.failed=true;this.loadError=movieNetworkMessage(error,'The collection');this.render();}}
+  }catch(error){if(!this.abort.signal.aborted){this.failed=true;this.loadError=movieNetworkMessage(error,'The collection');this.renderKeepingFocus();}}
  }
  // The full-catalog request the page needs now. A search of two characters or more is the request. Without one, a section's genre is.
  // The server takes a genre without a query, so a search's results are filtered by the genre on this page.
@@ -287,6 +310,19 @@ export class MoviesView {
    this.pendingTitle=false;this.detailError=error instanceof MovieNetworkError&&error.status===404?'':movieNetworkMessage(error,'Title details');if(this.screenFullscreen())this.renderDetailError();else this.render();
   }
  }
+ // A built-in title asks the API once, in the background, for what the API adds. Nothing shows while the request runs, and a failure leaves
+ // the bundled page as it is. The page re-renders only while it still shows this title and is not playing, and keeps its focus.
+ private async enrichTitle(id:string){
+  if(this.askedBuiltIn.has(id)||this.dynamicIds.has(id)||!this.catalog.titles.some(t=>t.id===id))return;
+  this.askedBuiltIn.add(id);
+  try{
+   const {data}=await cachedJson('/api/movies?'+new URLSearchParams({id}),this.abort.signal);
+   const detail=parseCatalog({titles:[data.title],source:'tmdb'}).titles[0];
+   if(!detail||this.abort.signal.aborted)return;
+   this.catalog={...this.catalog,titles:this.catalog.titles.map(t=>t.id===id?mergeDetails(t,detail):t)};
+   if(this.route.id===id&&!this.route.play&&!this.notFound)this.renderKeepingFocus();
+  }catch{/* The bundled page stays as it is. */}
+ }
  // A browse request may complete after Play was pressed, or after a not-found route opened. Updating its state
  // must not replace the player's iframe, restart an active stream or replace the not-found page.
  private renderBrowseState(){
@@ -347,8 +383,11 @@ export class MoviesView {
   // A page that is not a title brings its full-catalog request in line with its query and genre.
   if(!next.id)this.syncRemote();
   const title=this.catalog.titles.find(t=>t.id===next.id);
+  // A route whose title details are not loaded yet is pending before the page renders, so a play route shows the loading text, not a player.
+  const pending=this.ready&&this.needsDetails(next);this.pendingTitle=pending;
   if(inPlace&&title)this.refreshPlayer(title);else this.render();
-  if(this.ready&&this.needsDetails(next))void this.loadTitle(next.id!,next.season);
+  if(pending)void this.loadTitle(next.id!,next.season);
+  else if(this.ready&&next.id)void this.enrichTitle(next.id);
   // A session that opened a title first has no rails yet, so the first time Home is shown they are requested.
   if(this.ready&&!next.id&&!next.kind)this.requestHomeRails();
   if(this.ready&&!next.id)this.requestSectionRails();
@@ -533,7 +572,7 @@ export class MoviesView {
   this.pillSeason=number;
   location.hash=`${titleHash(title.id)}/season/${season.number}/episode/${season.episodes[0]?.number??1}`;
  }
- // Re-renders the title page and gives focus back to the control that had it, found again by what it is. The scroll position stays.
+ // Re-renders the page and gives focus back to the control that had it, found again by what it is. The scroll position stays.
  private renderKeepingFocus(){
   const active=document.activeElement instanceof HTMLElement&&document.activeElement!==this.root&&this.root.contains(document.activeElement)?document.activeElement:undefined;
   const finder=active&&finderFor(active);
@@ -553,7 +592,7 @@ export class MoviesView {
  // The seasons as toggle pills, then the episodes of the season on screen. Episodes that are still loading say so.
  private episodesSection(t:Title,season:Season|undefined){
   const count=t.seasons.length;
-  const pills=t.seasons.map(s=>`<button class="ui-pill" data-season="${s.number}" aria-pressed="${s.number===season?.number}">${escape(s.name)}${s.episodes.length?` <span class="movies-pill-count">${s.episodes.length}</span>`:''}</button>`).join('');
+  const pills=t.seasons.map(s=>`<button class="ui-pill" data-season="${s.number}" aria-pressed="${s.number===season?.number}">${escape(s.name)}${s.episodes.length?` <span class="movies-pill-count" aria-hidden="true">${s.episodes.length}</span>`:''}</button>`).join('');
   const rows=season?.episodes.length?season.episodes.map(e=>this.episodeRow(t,season,e)).join(''):`<p class="movies-episodes-status">${this.pendingTitle?'Loading episodes…':'Episode metadata has not been included in this snapshot.'}</p>`;
   return `<section class="movies-episodes ui-container"><div class="movies-section-head"><h2>Seasons</h2>${count?`<span class="ui-count">${count} ${count===1?'season':'seasons'}</span>`:''}</div>${count?`<div class="movies-season-pills" role="group" aria-label="Seasons">${pills}</div>`:''}<div class="movies-episodes-list">${rows}</div></section>`;
  }
@@ -593,7 +632,8 @@ export class MoviesView {
    ?(source?'Streaming available. An external player receives normal connection and playback information.':'No provider identifier is available for this title.')
    :season?.episodes.length?'Choose an episode below to stream this series.':this.pendingTitle?'Loading episodes…':'Episode details are not in this snapshot.';
   const info=`<div class="movies-detail-info"><div class="movies-chips">${chips}</div><h1 tabindex="-1">${name}</h1><div class="movies-tags">${t.genres.map(g=>`<span class="ui-chip">${escape(g)}</span>`).join('')}</div><p class="movies-overview">${escape(t.overview)}</p><div class="movies-actions">${primary}${resume}${list}</div><p id="movies-unavailable" class="movies-availability">${escape(note)}</p></div>`;
-  const header=`<section class="movies-detail"><div class="movies-detail-backdrop" aria-hidden="true">${backdrop}</div><div class="movies-detail-inner ui-container">${poster}${info}</div></section>`;
+  // The backdrop carries the hero's shade from theme.css. Without a poster, the grid drops the poster column.
+  const header=`<section class="movies-detail"><div class="movies-detail-backdrop" aria-hidden="true">${backdrop}<span class="ui-hero-shade" aria-hidden="true"></span></div><div class="movies-detail-inner ui-container${poster?'':' movies-detail-bare'}">${poster}${info}</div></section>`;
   const episodes=t.kind==='tv'?this.episodesSection(t,season):'';
   const cast=t.cast?.length?this.castSection(t.cast):'';
   // The related rail sits in the page gutter, as the browse rails do, so its arrows and cards stay inside the page width.
@@ -611,9 +651,12 @@ export class MoviesView {
  private mobileNav(){const sections:[MovieKind,string,'grid'|'film'|'tv'|'bookmark'][]=[['all','Home','grid'],['movie','Movies','film'],['tv','TV Shows','tv'],['list','My list','bookmark']];return sections.map(([kind,name,icon])=>`<button class="ui-tab" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${uiIcon(icon)}<span>${name}</span></button>`).join('')+`<button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;}
  private render(){
   const title=this.catalog.titles.find(t=>t.id===this.route.id);
+  // Fullscreen on this title's own screen refreshes that screen in place, so its frame and overlay stay, even while the season is pending.
   if(this.route.play&&title&&this.screenFullscreen()&&this.root.querySelector<HTMLElement>('.movies-screen')?.dataset.title===title.id){this.refreshPlayer(title);return;}
+  // Any other play route whose season is still loading shows the loading text. The player is built once its details have loaded.
+  const loadingPlay=this.route.play&&!!this.route.id&&this.pendingTitle;
   this.stopVideo();
-  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1>That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1>Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.append(this.tabbar);
+  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1>That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return loadingPlay?LOADING_TITLE:t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1>Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.append(this.tabbar);
   markImages(this.root);
   if(this.route.id&&this.pendingTitle){
    const main=this.root.querySelector<HTMLElement>('.movies-empty');
