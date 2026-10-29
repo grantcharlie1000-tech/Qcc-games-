@@ -65,6 +65,9 @@ test('Fullscreen API, the immersive fallback, and Escape still opens Study', asy
   await page.getByRole('button', {name: 'Open menu', exact: true}).click();
   await expect(page.locator('#menu')).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(page.locator('#menu')).not.toBeVisible();
+  await expect(page.locator('#study-view')).toBeHidden();
+  await page.keyboard.press('Escape');
   await expect(page.locator('#study-view')).toBeVisible();
   await expect(page.locator('html')).not.toHaveClass(/play-locked/);
   expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();

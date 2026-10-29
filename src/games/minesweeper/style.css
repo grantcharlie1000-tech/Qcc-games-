@@ -100,5 +100,5 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
  .ms .ms-settings{margin:auto auto max(12px,env(safe-area-inset-bottom));padding:18px}
 }
 @media(max-height:500px){.ms-intro{display:none}.ms{gap:5px}.ms .ms-settings{max-height:calc(100dvh - 16px);margin:8px auto}}
-@media(prefers-reduced-motion:reduce){.ms *{animation:none!important;transition:none!important}}
-.reduce-motion .ms *{animation:none!important;transition:none!important}
+@media(prefers-reduced-motion:reduce){.ms *,.ms *::before,.ms *::after{animation:none!important;transition:none!important}}
+.reduce-motion .ms *,.reduce-motion .ms *::before,.reduce-motion .ms *::after{animation:none!important;transition:none!important}

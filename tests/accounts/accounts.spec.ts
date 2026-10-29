@@ -3,6 +3,7 @@ import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
+import {articleById} from '../../src/study/articles';
 const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
 let accounts:ReturnType<typeof createAccountsHandler>,leaderboard:ReturnType<typeof createLeaderboardHandler>;
 test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);});
@@ -61,10 +62,10 @@ test('logout in another tab preserves Study and returns to a fresh guest game',a
  await connect(context);await page.goto('/#/game/minesweeper');await signIn(page,`Tabs_${Date.now()}`,true);
  await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
  const reading=await context.newPage();await reading.goto('/#/game/minesweeper');await expect(reading.locator('.ms-tile').first()).toBeVisible();await reading.keyboard.press('Escape');
- await expect(reading.locator('#study-title')).toHaveText('Reading between the lines');
+ const selected=await reading.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'));expect(selected).toMatch(/^(quanta|aeon|essay):close-reading$/);const article=articleById(selected!);expect(article).toBeDefined();await expect(reading.locator('#study-topic')).toHaveValue('close-reading');await expect(reading.locator('#study-title')).toHaveText(article!.title);
  await menu(page);await page.getByRole('button',{name:'Log out',exact:true}).click();await expect(page.locator('#menu')).not.toBeVisible();
- await expect(reading.locator('#account-summary')).toHaveText('Playing as guest');await expect(reading.locator('#study-title')).toBeVisible();await expect(reading.locator('.study-text-section')).toHaveCount(6);
- await reading.getByRole('link',{name:'Games',exact:true}).click();await expect(reading.locator('.ms-tile').first()).toBeVisible();await expect(reading.locator('#game-best strong')).toHaveText('0');
+ await expect(reading.locator('#account-summary')).toHaveText('Playing as guest');await expect(reading.locator('#study-title')).toHaveText(article!.title);expect(await reading.locator('.study-article-body > p').count()).toBeGreaterThanOrEqual(6);
+ await reading.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await expect(reading.locator('.ms-tile').first()).toBeVisible();await expect(reading.locator('#game-best strong')).toHaveText('0');
  expect(await reading.evaluate(()=>Number(localStorage.getItem('pocket-arcade:v1:best:minesweeper')??0))).toBe(0);
  await menu(reading);await expect(reading.getByRole('button',{name:'Log in / Sign up',exact:true})).toBeVisible();await expect(reading.getByRole('button',{name:'Log out',exact:true})).not.toBeVisible();await expect(reading.getByRole('button',{name:'Switch account',exact:true})).not.toBeVisible();
 });
@@ -72,7 +73,7 @@ test('logout in another tab preserves Study and returns to a fresh guest game',a
 test('keyboard-only signup and Escape still open Study while playing',async({page,context})=>{
  await connect(context);await page.goto('/#/game/fruit-merge');const dialog=page.locator('#accounts-dialog');await dialog.getByRole('button',{name:'Sign up',exact:true}).focus();await page.keyboard.press('Enter');
  await dialog.getByLabel('Username',{exact:true}).focus();await page.keyboard.type(`Keys_${Date.now()}`);await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Enter');
- await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#study-title')).toHaveText('Reading between the lines');await page.screenshot({path:'docs/evidence/accounts/keyboard-study.png'});
+ await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();await page.keyboard.press('Escape');const selected=await page.evaluate(()=>sessionStorage.getItem('pocket-arcade:study:v1:topic'));expect(selected).toMatch(/^(quanta|aeon|essay):close-reading$/);const article=articleById(selected!);expect(article).toBeDefined();await expect(page.locator('#study-topic')).toHaveValue('close-reading');await expect(page.locator('#study-title')).toHaveText(article!.title);await page.screenshot({path:'docs/evidence/accounts/keyboard-study.png'});
 });
 
 test('guest entry and account form fit a 320px touch screen',async({browser})=>{
