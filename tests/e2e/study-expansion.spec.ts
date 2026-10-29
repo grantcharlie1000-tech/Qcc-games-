@@ -83,6 +83,13 @@ test('touch readers can advance through each new style without seeding article I
   }finally{await context.close();}
 });
 
+test('Quanta mobile paragraphs retain a clear line of separation',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await seed(page,'quanta:close-reading');await page.goto('/#/game/fruit-merge');
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  const spacing=await page.locator('.variant-prose > p').evaluateAll(ps=>{const first=ps[0],second=ps[1];return {gap:second.getBoundingClientRect().top-first.getBoundingClientRect().bottom,lineHeight:parseFloat(getComputedStyle(first).lineHeight)};});
+  expect(spacing.gap).toBeGreaterThanOrEqual(spacing.lineHeight-1);
+});
+
 test('changing article during a delayed update cancels the pending reload even after returning to the original article',async({page})=>{
   await page.route('**/src/core/offline.ts*',route=>route.fulfill({contentType:'text/javascript',body:`
     export function watchUpdates(_entry, notify){notify({available:true,message:'An update is ready.'});}

@@ -10,9 +10,11 @@
 #study-view .study-inline-ad .fictional-ad{margin:0 auto}
 #study-view .variant-rail .fictional-ad{margin:32px 0 70px}
 #study-view .variant-essay{grid-template-columns:70px minmax(0,435px) minmax(180px,280px);column-gap:24px}
-#study-view .essay-ad-rail{margin:4px 0 0 60px;min-width:0}
+#study-view .essay-ad-rail{margin:calc(100vh + 24px) 0 0 60px;min-width:0}
 #study-view .essay-ad-rail .fictional-ad{margin:0 0 70px}
 #study-view .variant-essay .fictional-ad-banner{margin:25px 0}
+#study-view .essay-ad-compact{display:contents}#study-view .essay-ad-wide{display:none}
+@media(min-width:601px){#study-view .essay-ad-compact{display:none}#study-view .essay-ad-wide{display:contents}}
 @media(max-width:1000px){#study-view .variant-essay{grid-template-columns:70px minmax(0,435px)}#study-view .essay-ad-rail{display:none}}
 @media(max-width:800px){#study-view .variant-rail .fictional-ad{display:none}#study-view .fictional-ad-landscape{max-width:430px}#study-view .fictional-ad{margin-top:25px;margin-bottom:25px}}
 @media(max-width:600px){#study-view .variant-essay{display:block}#study-view .fictional-ad-label{font-size:8px}#study-view .fictional-ad-banner{margin:24px 0}#study-view .fictional-ad-landscape{max-width:100%}}

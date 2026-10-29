@@ -46,3 +46,30 @@ for(const style of ['qcc','quanta','aeon','essay']){
     await expect(page.locator('.fictional-ad')).toHaveCount(0);
   });
 }
+
+test('essay ads preserve a text-first desktop opening and the compact reading layout',async({page})=>{
+  await page.setViewportSize({width:1180,height:900});
+  await page.addInitScript(()=>{
+    localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');
+    sessionStorage.setItem('pocket-arcade:study:v1:topic','essay:close-reading');
+  });
+  await page.goto('/#/game/fruit-merge');
+  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  const inspect=()=>page.evaluate(()=>{
+    const body=document.querySelector('.essay-article .variant-prose')!;
+    const paragraphs=[...body.children].filter(el=>el.tagName==='P'&&!el.classList.contains('study-games-sentence')).map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom};});
+    const ads=[...body.querySelectorAll('.fictional-ad')].filter(el=>el.checkVisibility()).map(el=>{const r=el.getBoundingClientRect();return {top:r.top,bottom:r.bottom,src:el.querySelector('img')!.src};});
+    const rail=document.querySelector('.essay-ad-rail .fictional-ad')!.getBoundingClientRect();
+    return {paragraphs,ads,railTop:rail.top,height:innerHeight};
+  });
+  await page.evaluate(()=>scrollTo(0,0));
+  const desktop=await inspect();expect(desktop.paragraphs).toHaveLength(6);expect(desktop.ads).toHaveLength(3);
+  expect(desktop.ads[0].top).toBeGreaterThanOrEqual(desktop.paragraphs[5].bottom);
+  expect(desktop.ads[0].top).toBeGreaterThanOrEqual(desktop.height);expect(desktop.railTop).toBeGreaterThanOrEqual(desktop.height);
+  await page.setViewportSize({width:390,height:844});
+  const mobile=await inspect();expect(mobile.ads).toHaveLength(3);
+  expect(mobile.ads[0].top).toBeGreaterThanOrEqual(mobile.paragraphs[1].bottom);expect(mobile.ads[0].bottom).toBeLessThanOrEqual(mobile.paragraphs[2].top);
+  expect(mobile.ads[1].top).toBeGreaterThanOrEqual(mobile.paragraphs[3].bottom);expect(mobile.ads[1].bottom).toBeLessThanOrEqual(mobile.paragraphs[4].top);
+  expect(mobile.ads.map(ad=>ad.src).sort()).toEqual(desktop.ads.map(ad=>ad.src).sort());
+});
