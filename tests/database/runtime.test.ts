@@ -1,12 +1,11 @@
 import {beforeAll,afterAll,beforeEach,it,expect,vi} from 'vitest';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
 import type {Database} from '../../src/leaderboard/server';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
 import {createGuardedHandler} from '../../netlify/lib/runtime.mts';
-const local=new NetlifyDB({logger:()=>{}});let pool:Database&{end():Promise<void>};
-beforeAll(async()=>{pool=getDatabase({connectionString:await local.start()}).pool;await local.applyMigrations('netlify/database/migrations');},30000);
+const local=new LocalDB();let pool:Database&{end():Promise<void>};
+beforeAll(async()=>{pool=createLocalPool(await local.start());await local.applyMigrations('db/migrations');},30000);
 afterAll(async()=>{await pool.end();await local.stop();});
 let clock=Date.now();
 beforeEach(async()=>{clock+=30000;vi.spyOn(Date,'now').mockImplementation(()=>clock);await pool.query('DELETE FROM qcc_environment');await pool.query('UPDATE qcc_runtime_flags SET write_freeze=false');});
