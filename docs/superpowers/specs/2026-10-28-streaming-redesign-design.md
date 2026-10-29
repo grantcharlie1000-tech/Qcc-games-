@@ -460,3 +460,16 @@ The reference embeds its player without a sandbox. Ours keeps `allow-scripts all
   - The island moves ahead of the main content in the page order. Keyboard users then reach the menu first, as they did with the old top bar.
   - The library keeps clear of a phone's notch with the safe-area inset.
   - The Movies & TV header is unchanged.
+- **2026-10-29, user request: Liquid Glass menus.**
+  - The user said: "Do me a favour and make the menus Liquid Glass Apple approved".
+  - Apple does not approve websites. The work follows Apple's published Liquid Glass guidance, in our own words and our own code, with no Apple assets, fonts or code. The system font stack shows Apple's own system font on Apple devices without bundling it.
+  - In scope: the four shell dialogs, `#menu` (from the island and the in-game toolbar), `#rules-dialog`, `#accounts-dialog` and `#leaderboard-dialog`.
+  - Out of scope: Minesweeper's own options panel (games keep their style) and the Study privacy dialog (Study's editorial style). Movies & TV's episode drawer (Task 15) reuses the same material.
+  - The principles we apply:
+    - Glass sits only on the floating controls layer. Its contents use plain fills, never a second glass.
+    - Text stays legible over the brightest game art.
+    - Shapes are rounded and concentric, and buttons are capsules.
+    - One tinted action per surface.
+    - A menu grows from the control that opened it and leaves quickly.
+    - Reduce Transparency, Increase Contrast, Reduce Motion and forced colours are all respected.
+  - On phones the menus are bottom sheets inset from the screen edges. On wider screens they are centred panels.

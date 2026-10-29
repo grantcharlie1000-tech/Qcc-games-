@@ -1504,3 +1504,154 @@ In-game controls and the Movies & TV header are unchanged.
   - the island with Menu;
   - the menu open, with the brand and "Favourites only";
   - the favourites notice.
+
+### Task 24: Liquid Glass menus (user request)
+
+The user said: "Do me a favour and make the menus Liquid Glass Apple approved".
+
+Apple does not approve websites. We follow Apple's published Liquid Glass guidance, restated in our own words, in original CSS and TypeScript. No Apple assets, fonts or code are used. `var(--font-sans)` (`-apple-system, BlinkMacSystemFont, …`) shows the platform's own system font without bundling it.
+
+**Scope**
+- The four shell dialogs become glass sheets:
+  - `#menu`, opened from the island's Menu, the in-game toolbar and a game's `openAppMenu`;
+  - `#rules-dialog`;
+  - `#accounts-dialog` (`src/accounts/view.ts`);
+  - `#leaderboard-dialog` (`src/leaderboard/view.ts`).
+- Not in scope:
+  - Minesweeper's `.ms-settings`, because games keep their style;
+  - Study's `.study-privacy-dialog`;
+  - Movies & TV, which has no menu yet. Task 15's drawer will use the same class.
+
+**Principles, and how each one shows**
+1. **Glass is the controls layer.** The sheet is glass. Rows, fields and buttons inside it use plain translucent fills, never a second backdrop blur (no glass on glass).
+2. **Legibility first.** Use the frosted ("regular") material with enough dark tint that white text reads over the brightest game art.
+3. **Rounded, concentric shapes.** The sheet radius is 32 px on phones and 28 px wider. Groups have 16 px corners inside it. Buttons are capsules.
+4. **Tint sparingly.** Each surface has one tinted action (the existing cream primary, `.game-button` without `.secondary`). Everything else is neutral glass.
+5. **Motion from the source.** A sheet grows from the control that opened it and leaves faster than it came.
+6. **Accessibility settings win.** Reduce Transparency and forced colours give opaque surfaces, Increase Contrast gives stronger edges and text, and Reduce Motion gives no movement.
+
+**Files:**
+- `src/theme.css`: the `.ui-glass-sheet` material, its content rules, motion and fallbacks.
+- `src/ui/sheet.ts` (new):
+  - `sheetOrigin(trigger:DOMRectReadOnly, sheet:DOMRectReadOnly):string`, pure and unit-tested;
+  - `openSheet(dialog:HTMLDialogElement, trigger?:Element|null):void`.
+- `src/main.ts`:
+  - `class="ui-glass-sheet"` on `#menu` and `#rules-dialog`;
+  - `openMenu(trigger?)` and the rules dialog open through `openSheet`;
+  - pass the island Menu button, `#game-menu` and `#rules-game` as triggers.
+- `src/accounts/view.ts` and `src/leaderboard/view.ts`: add the class to `this.root`. Open through `openSheet` without a trigger. Their own CSS:
+  - drop the Arcade font from the `h2`;
+  - give inputs and table lines the glass-field and hairline colours below.
+- `src/style.css`: scope the arcade's generic `dialog{…}` and `dialog::backdrop{…}` rules to `dialog:not(.ui-glass-sheet)`, so the other dialogs keep their look.
+- Tests:
+  - `tests/core/sheet.test.ts`;
+  - a new `tests/e2e/glass-menus.spec.ts`;
+  - deliberate updates where a test pins the old dialog look (list them).
+
+**1. Material** (`.ui-glass-sheet`)
+- Background: `linear-gradient(180deg, rgb(255 255 255 / .09), transparent 140px), rgb(28 28 32 / .62)`. The gradient is the top sheen; with the default `background-attachment` it stays at the top while the content scrolls.
+- `-webkit-backdrop-filter: blur(28px) saturate(1.7) brightness(.85)` and the same `backdrop-filter`.
+- `border: 1px solid rgb(255 255 255 / .16)`.
+- `box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), inset 0 -1px 0 rgb(255 255 255 / .06), 0 24px 60px -12px rgb(0 0 0 / .6), 0 4px 16px rgb(0 0 0 / .3)`.
+- `color: #fff; font-family: var(--font-sans); padding: 20px; overflow: auto; overscroll-behavior: contain`.
+- `::backdrop{background: rgb(0 0 0 / .32)}`: a dim only, with no blur.
+- Fallbacks:
+  - `@supports not (backdrop-filter…)` → `rgb(28 28 32 / .97)`.
+  - `prefers-reduced-transparency: reduce` → opaque `rgb(28 28 32)` with no backdrop filter.
+  - `prefers-contrast: more` → opaque `rgb(18 18 20)`, `border: 2px solid rgb(255 255 255 / .7)`, every text colour at least `rgb(255 255 255 / .9)`.
+  - `forced-colors: active` → `background: Canvas; color: CanvasText; border: 2px solid CanvasText`.
+
+**2. Placement**
+- Below 640 px: a bottom sheet.
+  - `width: calc(100% - 16px)`.
+  - `margin: auto auto calc(8px + env(safe-area-inset-bottom))`, so it sits at the bottom.
+  - `max-height: min(85dvh, calc(100dvh - 24px - env(safe-area-inset-top)))`.
+  - `border-radius: 32px`.
+- 640 px and up: a centred panel.
+  - `width: min(440px, calc(100% - 32px))`. `#leaderboard-dialog` keeps its 540 px.
+  - `max-height: min(86dvh, 760px)`.
+  - `border-radius: 28px`.
+
+**3. Contents** (inside `.ui-glass-sheet`)
+- **Head.**
+  - `.dialog-head h2`: `font: 600 20px/1.25 var(--font-sans); letter-spacing: -.01em`. The brand mark is 28 px.
+  - The close button is a 44 × 44 circle with `rgb(255 255 255 / .12)` fill, `inset 0 1px 0 rgb(255 255 255 / .25)` and a 20 px icon.
+- **Search and text inputs.**
+  - `min-height: 44px; border: 0; border-radius: 12px; background: rgb(255 255 255 / .1); color: #fff; font: 17px var(--font-sans)`.
+  - Placeholder `rgb(255 255 255 / .55)`.
+- **`.setting-list` groups.**
+  - `background: rgb(255 255 255 / .07); border-radius: 16px; padding: 0 16px; margin: 14px 0`.
+  - Rows: `min-height: 44px`, with a hairline `1px solid rgb(255 255 255 / .1)` between rows only.
+  - Labels: `17px/1.3 var(--font-sans)`, weight 400.
+- **Switches.** These are the checkboxes in `.setting-list`. They stay native checkboxes for their role and keyboard behaviour; do not add `role="switch"`.
+  - `appearance: none; width: 51px; height: 31px; border-radius: 999px; background: rgb(255 255 255 / .2)`.
+  - A 27 px white knob on `::before`, with `translate` 2 px when off and 22 px when on, and `box-shadow: 0 2px 6px rgb(0 0 0 / .3)`.
+  - On: `background: var(--c-green)`.
+  - Transitions: `background-color 200ms var(--ease-out)`; knob `translate 260ms var(--ease-glass)`.
+- **Buttons.**
+  - `.game-button` inside the sheet becomes a capsule: `border-radius: 999px; min-height: 48px; font: 600 17px/1.2 var(--font-sans); box-shadow: inset 0 1px 0 rgb(255 255 255 / .25)`.
+  - `.secondary`: `background: rgb(255 255 255 / .12); color: #fff`.
+  - The primary keeps the brand cream `#ffe0a4` with `#2a2a2e` text. It is the single tint.
+  - Pressed: `scale: .97`, 120 ms ease-out, for fine and coarse pointers.
+- **Secondary text.**
+  - `.muted`: `15px/1.45 var(--font-sans)`, `rgb(255 255 255 / .72)`.
+  - `.menu-note`: `13px`, `rgb(255 255 255 / .6)`, with a hairline top border.
+- **Focus.** Every focusable control shows `outline: 2px solid #fff; outline-offset: 2px` on `:focus-visible`.
+- **Inner content of the other dialogs.**
+  - Accounts and leaderboards keep their layout, with glass fields and hairlines `rgb(255 255 255 / .12)`.
+  - The rules text uses `.muted`'s colour at 17 px.
+
+**4. Motion** (animate skill)
+- **Gate.** Menus open a few times a session, so a standard animation is fine. Purpose: spatial consistency (the sheet comes from its control) and state indication.
+- **Tool.** CSS transitions with `@starting-style`, plus `transition-behavior: allow-discrete` on `display` and `overlay`, so `dialog[open]` animates in and out. Browsers without `overlay` close at once, which is acceptable.
+- **Properties.** `opacity`, `translate` and `scale` only.
+  - Start (`@starting-style`) and closed: `opacity: 0; scale: .94; translate: 0 12px`. On phones: `scale: .98; translate: 0 28px`. Never scale 0.
+- **Origin.**
+  - `transform-origin: var(--sheet-origin, 50% 100%)`.
+  - After `showModal()`, `openSheet` sets `--sheet-origin` from `sheetOrigin(trigger.getBoundingClientRect(), dialog.getBoundingClientRect())`.
+  - `sheetOrigin` gives the trigger's centre relative to the sheet, clamped to the sheet's box, in px.
+  - Without a trigger, `--sheet-origin` is removed.
+- **Enter.** `scale` and `translate` take 320 ms `var(--ease-glass-pop)`; `opacity` takes 180 ms `var(--ease-out)`. The backdrop fades in over 220 ms.
+- **Exit.** 180 ms `var(--ease-out)` for all three properties; the backdrop takes 160 ms.
+- **Reduce Motion.** The global rule in theme.css already removes transitions, so the sheet appears and leaves at once. Keep it that way; add nothing.
+- Define `--ease-out` for the sheet as the island does (`cubic-bezier(.23,1,.32,1)`). It is not global.
+
+**5. Tests**
+- **`tests/core/sheet.test.ts`.** `sheetOrigin` returns the trigger's centre relative to the sheet, clamped. Cases:
+  - a trigger below the sheet clamps to its bottom edge;
+  - a trigger to the left clamps to 0;
+  - the values are rounded.
+- **`tests/e2e/glass-menus.spec.ts`** (Chromium):
+  1. All four dialogs have `ui-glass-sheet`, a `backdrop-filter` containing `blur(28px)`, and the system font on their `h2`. Open each through the UI.
+  2. At 390 × 844 the menu is a bottom sheet:
+     - its bottom is 8 px above the viewport bottom;
+     - its width is the viewport minus 16 px;
+     - its radius is 32 px;
+     - it scrolls inside, not the page.
+  3. At 1366 × 900 it is centred, at most 440 px wide, with a 28 px radius.
+  4. Opening from the island's Menu sets `--sheet-origin` to a point inside the sheet near its bottom centre. Opening from `#game-menu` in a game sets it near the top right.
+  5. The settings are still checkboxes:
+     - `getByRole('checkbox',{name:'Sound'})` toggles with a click and with Space;
+     - `appearance` is `none`;
+     - the track is `var(--c-green)` when checked.
+  6. Exactly one non-secondary `.game-button` is visible in `#menu` for a guest.
+  7. Reduce Transparency (CDP `Emulation.setEmulatedMedia`, as liquid-glass.spec.ts does) gives an opaque background and no backdrop filter. `emulateMedia({contrast:'more'})` gives the 2 px border. `forcedColors: 'active'` gives `Canvas`.
+  8. Reduce Motion (media and class) leaves the transitions as `none`.
+  9. Escape closes the menu and focus returns to the island's Menu button (as Task 23 does).
+- Run the WebKit project for this spec with the local WebKit:
+  - `PLAYWRIGHT_BROWSERS_PATH=<scratchpad>/pw-webkit npx playwright test --project=webkit …`, with `ARCADE_URL` set to the dev server.
+  - Mark the Chromium-only checks (CDP) to skip on WebKit.
+
+**6. Verification and evidence**
+- Run:
+  - `npm run check`;
+  - `npx vitest run tests/core tests/movies`;
+  - the new spec, `tests/e2e/redesign-shell.spec.ts`, `tests/e2e/shell.spec.ts`, `tests/e2e/branding.spec.ts`, `tests/accounts` and `tests/leaderboard`;
+  - the broad set;
+  - the games specs that click "Open menu";
+  - WebKit for the new spec and for `tests/accounts`.
+- Screenshots:
+  - 390 × 844: the menu over the games grid; the menu over a game; How to play; the account dialog; the leaderboards dialog;
+  - 1366 × 900: the menu;
+  - Reduce Transparency and Increase Contrast versions of the 390 menu.
+- Check that white text stays readable over the brightest art (Suika, Stack, Flappy Bird).
