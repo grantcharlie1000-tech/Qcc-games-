@@ -45,11 +45,11 @@ export function deal(input:State):State{
  s.tray=hand;
  return s;
 }
-export function createGame(seed=0x43b10c):State{return deal({version:1,board:Array(64).fill(0),tray:[null,null,null],bag:[],rng:(seed>>>0)||1,score:0,combo:0,moves:0,lines:0});}
+export function createGame(seed=0x43b10c):State{return deal({version:1,board:Array(SIZE*SIZE).fill(0),tray:[null,null,null],bag:[],rng:(seed>>>0)||1,score:0,combo:0,moves:0,lines:0});}
 export function clearLines(input:readonly number[]):{board:number[];cleared:number[];lines:number}{
  const rows:number[]=[],cols:number[]=[];
  for(let i=0;i<SIZE;i++){if(Array.from({length:SIZE},(_,j)=>input[i*SIZE+j]).every(Boolean))rows.push(i);if(Array.from({length:SIZE},(_,j)=>input[j*SIZE+i]).every(Boolean))cols.push(i);}
- const cleared=Array.from({length:64},(_,i)=>i).filter(i=>rows.includes(Math.floor(i/SIZE))||cols.includes(i%SIZE));
+ const cleared=Array.from({length:SIZE*SIZE},(_,i)=>i).filter(i=>rows.includes(Math.floor(i/SIZE))||cols.includes(i%SIZE));
  const board=[...input];for(const i of cleared)board[i]=0;return {board,cleared,lines:rows.length+cols.length};
 }
 export function place(input:State,slot:number,x:number,y:number):{state:State;cleared:number[];gained:number;lines:number}|null{
@@ -62,6 +62,6 @@ export function place(input:State,slot:number,x:number,y:number):{state:State;cl
 const integer=(v:unknown,max=Number.MAX_SAFE_INTEGER):v is number=>typeof v==='number'&&Number.isSafeInteger(v)&&v>=0&&v<=max;
 export function restoreGame(data:unknown):State|null{
  if(!data||typeof data!=='object')return null;const s=data as State;
- if(s.version!==1||!Array.isArray(s.board)||s.board.length!==64||!s.board.every(v=>integer(v,7))||!Array.isArray(s.tray)||s.tray.length!==3||!s.tray.every(v=>v===null||integer(v,SHAPES.length-1))||s.tray.every(v=>v===null)||!Array.isArray(s.bag)||s.bag.length>SHAPES.length||!s.bag.every(v=>integer(v,SHAPES.length-1))||new Set(s.bag).size!==s.bag.length||!integer(s.rng,4294967295)||s.rng===0||![s.score,s.combo,s.moves,s.lines].every(v=>integer(v))||s.combo>s.moves||clearLines(s.board).lines>0)return null;
+ if(s.version!==1||!Array.isArray(s.board)||s.board.length!==SIZE*SIZE||!s.board.every(v=>integer(v,7))||!Array.isArray(s.tray)||s.tray.length!==3||!s.tray.every(v=>v===null||integer(v,SHAPES.length-1))||s.tray.every(v=>v===null)||!Array.isArray(s.bag)||s.bag.length>SHAPES.length||!s.bag.every(v=>integer(v,SHAPES.length-1))||new Set(s.bag).size!==s.bag.length||!integer(s.rng,4294967295)||s.rng===0||![s.score,s.combo,s.moves,s.lines].every(v=>integer(v))||s.combo>s.moves||clearLines(s.board).lines>0)return null;
  return {version:1,board:[...s.board],tray:[...s.tray],bag:[...s.bag],rng:s.rng,score:s.score,combo:s.combo,moves:s.moves,lines:s.lines};
 }
