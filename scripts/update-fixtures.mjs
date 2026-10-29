@@ -22,7 +22,7 @@ export function release(build,label){
  const entry=oldEntry.replace('.js',`-${label}.js`),game=oldGame.replace('.js',`-${label}.js`),version=pack.version+'-'+label;
  map.delete('/'+oldEntry);map.delete('/'+oldGame);
  map.set('/'+game,build.get('/'+oldGame));
- map.set('/'+entry,Buffer.from(build.get('/'+oldEntry).toString().replaceAll(oldGame.split('/').at(-1),game.split('/').at(-1)).replace('No ads.',`Release ${label}. No ads.`)));
+ map.set('/'+entry,Buffer.from(build.get('/'+oldEntry).toString().replaceAll(oldGame.split('/').at(-1),game.split('/').at(-1)).replace(/No ads\.(?=[^<]*<br>Made for a little time to play\.)/,`Release ${label}. No ads.`)));
  map.set('/index.html',Buffer.from(build.get('/index.html').toString().replace('<head>',`<head><meta name="arcade-release" content="${label}">`).replaceAll(oldEntry,entry).replaceAll(oldGame,game)));
  // Test-only response gate leaves legacy fetch/cache/lifecycle logic intact.
  const gate=String.raw`const observe=self.addEventListener.bind(self),debug={pending:{},done:[],skipCalls:0,skipDone:0};let eventId=0;
