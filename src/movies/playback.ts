@@ -38,6 +38,7 @@ export function clearFailures(key:string){failures.delete(key);}
 
 // One title's playback. start() begins an attempt. A failed attempt moves on to the next server until
 // the attempt limit, the time budget or the list runs out. A manual pick reports its failure and stops.
+// Playback starts a fresh budget, and a stream that dies after playing gets another one.
 // start() after stop() begins a new session with a fresh budget and no tried servers.
 export class PlaybackSupervisor{
  state:AttemptState='idle';
@@ -71,11 +72,12 @@ export class PlaybackSupervisor{
   if(!provider||!LIVE.includes(this.state))return;
   this.disarm();
   if(kind==='ready'){if(this.state==='connecting'||this.state==='loaded')this.enter('ready');return;}
-  if(this.state!=='playing')this.enter('playing');
+  if(this.state!=='playing'){this.restartBudget(provider);this.enter('playing');}
   // A status listener may have stopped or restarted the session; then this attempt no longer reports.
   if(this.state==='playing'&&!this.announced){this.announced=true;this.events.working(provider);}
  }
- violation(){if(this.state==='connecting'||this.state==='loaded')this.fail('blocked');}
+ // Any live attempt fails on a frame-src violation, including one that is already playing.
+ violation(){if(LIVE.includes(this.state))this.fail('blocked');}
  stop(){
   this.disarm();
   this.startedAt=undefined;this.attempts=0;this.tried.clear();this.announced=false;
@@ -86,16 +88,22 @@ export class PlaybackSupervisor{
   return this.order.find(provider=>!this.tried.has(provider)&&!failed.has(provider));
  }
  private fail(reason:FailReason){
-  const provider=this.provider,now=this.clock.now();
+  const provider=this.provider,now=this.clock.now(),playing=this.state==='playing';
   this.disarm();
   if(!provider)return;
   recordFailure(this.key,provider,now);
+  // A stream that dies after playing starts a fresh failover budget, so time spent playing does not count against it.
+  if(playing)this.restartBudget(provider);
   this.enter('failed');
   // A status listener may have stopped or restarted the session; then this failure is no longer ours to act on.
   if(this.manual||this.state!=='failed')return;
   const next=this.nextProvider();
   if(this.attempts>=MAX_ATTEMPTS||now-(this.startedAt??now)>=ATTEMPT_BUDGET||next===undefined)this.events.exhausted(provider);
   else this.events.switchTo(next,provider,reason);
+ }
+ // The failover budget starts over at this server: its clock, its attempt count and its tried set.
+ private restartBudget(provider:StreamProviderId){
+  this.startedAt=this.clock.now();this.attempts=1;this.tried=new Set([provider]);
  }
  private enter(state:AttemptState){
   this.state=state;

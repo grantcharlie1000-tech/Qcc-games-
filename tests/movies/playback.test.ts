@@ -79,10 +79,58 @@ it('a frame-src violation fails the attempt at once',()=>{
  sup.violation();
  expect(e.switchTo).toHaveBeenCalledWith('vidlink','framextv','blocked');
  expect(t.pending()).toBe(0);
- // Once a server is playing, a violation no longer fails the attempt.
- sup.start('vidlink',false);sup.loaded();sup.message('progress');
+});
+
+it('a violation after ready fails the attempt and switches',()=>{
+ const t=fakeClock(),e=events();
+ const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+ sup.start('framextv',false);
+ sup.loaded();
+ sup.message('ready');
  sup.violation();
- expect(e.switchTo).toHaveBeenCalledTimes(1);
+ expect(e.switchTo).toHaveBeenCalledWith('vidlink','framextv','blocked');
+ expect(e.exhausted).not.toHaveBeenCalled();
+ expect(t.pending()).toBe(0);
+});
+
+it('a violation during playback switches even after the 45 seconds have passed',()=>{
+ const t=fakeClock(),e=events();
+ const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+ sup.start('framextv',false);
+ sup.loaded();
+ sup.message('ready');
+ sup.message('progress');
+ t.advance(60000);
+ sup.violation();
+ expect(e.switchTo).toHaveBeenCalledWith('vidlink','framextv','blocked');
+ expect(e.exhausted).not.toHaveBeenCalled();
+});
+
+it('a failure during playback gets a fresh four attempts',()=>{
+ // Three blocked frames use attempts 1 to 3, so the fourth server starts on attempt 4. Playback then
+ // restarts the count, which lets the failure reach the fifth server. 'spare' is listed for this test only.
+ const t=fakeClock(),{sup,e}=autoPlayer(t.clock,[...providerOrder(),'spare' as StreamProviderId]);
+ sup.start('framextv',false);
+ sup.violation();sup.violation();sup.violation();
+ sup.loaded();sup.message('progress');
+ t.advance(60000);
+ sup.violation();
+ expect(e.switchTo.mock.calls.map(([next])=>next)).toEqual(['vidlink','vixsrc','vidsrc','spare']);
+ expect(e.exhausted).not.toHaveBeenCalled();
+});
+
+it('a violation is ignored when no attempt is live',()=>{
+ const t=fakeClock(),e=events();
+ const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+ sup.violation();                    // idle
+ sup.start('vidsrc',true);
+ t.advance(LOAD_TIMEOUT);            // the manual attempt fails
+ sup.violation();                    // failed
+ sup.stop();
+ sup.violation();                    // stopped
+ expect(e.status.mock.calls.filter(([state])=>state==='failed')).toHaveLength(1);
+ expect(e.switchTo).not.toHaveBeenCalled();
+ expect(e.exhausted).not.toHaveBeenCalled();
 });
 
 it('skips servers that failed for the same title in the last five minutes, but not after',()=>{
@@ -98,6 +146,29 @@ it('skips servers that failed for the same title in the last five minutes, but n
  const later=new PlaybackSupervisor(KEY,providerOrder(),events(),t.clock);
  later.start('vidlink',false);
  expect(later.nextProvider()).toBe('framextv');
+});
+
+it('after playback, a failed server is skipped only while its failure is fresh',()=>{
+ const fresh=fakeClock(),first=autoPlayer(fresh.clock);
+ first.sup.start('framextv',false);
+ fresh.advance(LOAD_TIMEOUT);
+ first.sup.loaded();first.sup.message('progress');
+ fresh.advance(60000);
+ first.sup.violation();
+ // framextv failed 60 seconds ago, so it is still skipped.
+ expect(first.e.switchTo.mock.calls.map(([next])=>next)).toEqual(['vidlink','vixsrc']);
+ expect(first.e.exhausted).not.toHaveBeenCalled();
+
+ clearFailures(KEY);
+ const stale=fakeClock(),second=autoPlayer(stale.clock);
+ second.sup.start('framextv',false);
+ stale.advance(LOAD_TIMEOUT);
+ second.sup.loaded();second.sup.message('progress');
+ // Once its failure is more than five minutes old, framextv may be tried again.
+ stale.advance(FAILURE_TTL+1);
+ second.sup.violation();
+ expect(second.e.switchTo.mock.calls.map(([next])=>next)).toEqual(['vidlink','framextv']);
+ expect(second.e.exhausted).not.toHaveBeenCalled();
 });
 
 it('stops after four servers or 45 seconds and reports exhaustion',()=>{
@@ -140,12 +211,36 @@ it('reports the working server once, on the first progress message',()=>{
  sup.start('framextv',false);
  sup.loaded();
  sup.message('ready');
+ // A ready message clears the no-ready watchdog, so nothing is left pending.
+ expect(t.pending()).toBe(0);
  expect(e.working).not.toHaveBeenCalled();
  sup.message('progress');
+ expect(t.pending()).toBe(0);
  sup.message('progress');
  expect(e.working).toHaveBeenCalledTimes(1);
  expect(e.working).toHaveBeenCalledWith('framextv');
  expect(sup.state).toBe('playing');
+ // A playing stream must not be failed over or prompted, however long it runs.
+ t.advance(60000);
+ expect(e.switchTo).not.toHaveBeenCalled();
+ expect(e.slow).not.toHaveBeenCalled();
+ expect(e.exhausted).not.toHaveBeenCalled();
+});
+
+it('a progress message clears the watchdog even without a ready message',()=>{
+ for(const provider of ['framextv','vidlink'] as const){
+  const t=fakeClock(),e=events();
+  const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+  sup.start(provider,false);
+  sup.loaded();
+  sup.message('progress');
+  expect(t.pending()).toBe(0);
+  t.advance(60000);
+  expect(e.switchTo).not.toHaveBeenCalled();
+  expect(e.slow).not.toHaveBeenCalled();
+  expect(e.exhausted).not.toHaveBeenCalled();
+  expect(sup.state).toBe('playing');
+ }
 });
 
 it('stop cancels pending watchdogs and ignores late signals',()=>{
