@@ -117,13 +117,16 @@ body.movies-active.study-active{overflow:auto}.movies-shelf-head>span{margin-lef
 
 /* Movies header, island and rails on the shared ui- components. The generic .movies-view button rule sets a border, padding,
    a 44 px height and a 15 px font, and it outranks a plain component rule, so each property the components need is restated here. */
-.movies-view{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom));scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
+.movies-view{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom));scroll-padding-top:var(--header-h);scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 .movies-view .ui-header{font-family:var(--font-sans)}
 .movies-view .ui-nav .ui-pill{min-height:36px;padding:6px 12px;border:0;border-radius:var(--r-lg);background:none;color:var(--c-400);font-size:12px;font-weight:500;line-height:1.2;cursor:pointer}
 .movies-view .ui-nav .ui-pill[aria-pressed="true"]{background:#fff;color:#000;font-weight:700}
 @media (hover:hover) and (pointer:fine){.movies-view .ui-nav .ui-pill:not([aria-pressed="true"]):hover{background:#18181bcc;color:#fff}}
 /* 640-699 px: the four pills, the brand and the actions only just fit side by side, so the pill padding and the row gap tighten here. */
 @media (min-width:640px) and (max-width:699px){.movies-view .ui-nav .ui-pill{padding:6px 8px}.movies-view .ui-header-inner{gap:8px}}
+/* 640-767 px: the wordmark steps down to 16 px for room. If a wider font still runs out of room, the wordmark truncates with an ellipsis rather than running into the nav. */
+@media (min-width:640px) and (max-width:767px){.movies-view .ui-wordmark{font-size:16px}}
+.movies-brand .ui-wordmark{min-width:0;overflow:hidden;text-overflow:ellipsis}
 
 .movies-view .ui-header-actions .ui-icon-btn{min-height:36px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r-lg);background:#09090bcc;color:var(--c-200);font-size:12px;font-weight:500;line-height:1.2;cursor:pointer}
 @media (min-width:768px){.movies-view .ui-header-actions .ui-icon-btn{padding:0 12px}}

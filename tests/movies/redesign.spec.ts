@@ -58,6 +58,26 @@ test('focus is visible on header controls and cards',async({page})=>{
  expect(card.width).toBeGreaterThanOrEqual(2);
 });
 
+// WCAG 2.4.11: focus must not leave a field under the sticky header. Focus scrolls it to the top edge, which has to clear the header.
+test('keyboard focus scrolls a field clear of the sticky header',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const search=page.locator('#movies-search');
+ await expect(page.locator('.movies-catalog-status')).toBeVisible();
+ await expect(search).toBeVisible();
+ // Scroll until the field sits just above the visible area, as a user scrolling past it would leave it.
+ await page.locator('.movies-view').evaluate(v=>{const f=document.querySelector('#movies-search')!;v.scrollTop+=f.getBoundingClientRect().top+12;});
+ await search.focus();
+ await expect(search).toBeFocused();
+ const hit=await page.evaluate(()=>{
+  const f=document.querySelector<HTMLInputElement>('#movies-search')!,b=f.getBoundingClientRect();
+  const e=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
+  return {top:Math.round(b.top),hit:e?e.tagName.toLowerCase():'none',clear:!!e&&(e===f||!!f.closest('label')?.contains(e))};
+ });
+ expect(hit.top,JSON.stringify(hit)).toBeGreaterThanOrEqual(56);
+ expect(hit.clear,JSON.stringify(hit)).toBe(true);
+});
+
 // Rails: an arrow scrolls its row, the ends update, and focus moves to the arrow that is still there.
 test('rail arrows scroll their row, update the ends and keep focus on an arrow',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
@@ -104,7 +124,7 @@ for(const width of [390,1440])test(`the Movies island hides on scroll down and r
  await expect(bar).toBeVisible();
  // The page must be scrollable first: wait for the catalog's rails, which render after the loading state.
  await expect(page.locator('[data-rail]').first()).toBeVisible();
- await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(400);
+ await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
  await view.evaluate(e=>e.scrollTo(0,400));
  await expect(bar).toHaveAttribute('data-hidden','true');
  await view.evaluate(e=>e.scrollTo(0,300));
@@ -117,7 +137,7 @@ test('the Movies island is shown again after a section change while it is hidden
  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
  const view=page.locator('.movies-view');
  await expect(page.locator('[data-rail]').first()).toBeVisible();
- await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(400);
+ await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
  await view.evaluate(e=>e.scrollTo(0,400));
  await expect(bar).toHaveAttribute('data-hidden','true');
  await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
