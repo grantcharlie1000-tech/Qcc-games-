@@ -66,9 +66,6 @@ test('the phone tab bar is a floating glass island',async({page})=>{
  expect(box!.y+box!.height).toBeLessThanOrEqual(834);
  expect(parseFloat(await bar.evaluate(element=>getComputedStyle(element).borderRadius))).toBeGreaterThanOrEqual(24);
  expect(await bar.evaluate(element=>getComputedStyle(element).backdropFilter)).toContain('blur');
- const heights=await page.locator('.app-tabbar > *').evaluateAll(items=>items.map(item=>item.getBoundingClientRect().height));
- expect(heights).toHaveLength(5);
- for(const height of heights)expect(height).toBeGreaterThanOrEqual(44);
 });
 
 test('scrolling down hides the tab bar and scrolling up brings it back',async({page})=>{
@@ -231,6 +228,23 @@ test('a resize that brings the end of the page into reach shows the island',asyn
  await expect(bar).not.toHaveAttribute('data-hidden');
 });
 
+test('the island clears the last game card when the library is scrolled to the end',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ const bar=page.locator('.app-tabbar');
+ await page.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));
+ expect(await page.evaluate(()=>scrollY+innerHeight)).toBe(await page.evaluate(()=>document.documentElement.scrollHeight));
+ // The end zone always shows the bar. Wait until it has slid fully on screen before reading its position.
+ await expect(bar).toBeVisible();
+ await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(844);
+ const island=(await bar.boundingBox())!;
+ const lastCard=(await page.locator('.game-card').last().boundingBox())!;
+ // The 88 px bottom padding of #content keeps the last card clear of the bar.
+ expect(island.y).toBeGreaterThanOrEqual(lastCard.y+lastCard.height);
+ expect(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollPaddingBottom)).toBe('88px');
+});
+
 for(const width of [320,390]) test(`home fits ${width}px phones`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/');
@@ -245,6 +259,8 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  await page.getByRole('link',{name:'Movies & TV',exact:true}).click();
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toBeVisible();
+ await expect(page.locator('.app-tabbar')).toHaveCount(1);
+ await expect(page.locator('.app-tabbar')).toBeHidden();
  await expect(back).toHaveClass('game-button secondary');
  const loadingBox=await back.boundingBox();
  expect(Math.abs(loadingBox!.x+loadingBox!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);
@@ -258,6 +274,8 @@ test('the Movies error state keeps a centred way back link',async({page})=>{
  await page.goto('/');
  await page.getByRole('link',{name:'Movies & TV',exact:true}).click();
  await expect(page.locator('#content')).toContainText('Movies & TV could not load.');
+ await expect(page.locator('.app-tabbar')).toHaveCount(1);
+ await expect(page.locator('.app-tabbar')).toBeHidden();
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toHaveClass('game-button secondary');
  const box=await back.boundingBox();

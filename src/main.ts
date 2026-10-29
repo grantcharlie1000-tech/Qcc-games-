@@ -35,7 +35,7 @@ app.innerHTML=`<header class="topbar"><div class="site-brand">${mauriMark}<span>
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
 const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
-// The phone tab bar hides on scroll down and shows on scroll up. It is bound once to the window; reset() runs on every route and leave.
+// The tab bar island hides on scroll down and shows on scroll up. It is bound once to the window; reset() runs on every route and leave.
 const tabbar=autoHideTabbar(document.querySelector<HTMLElement>('.app-tabbar')!,window);
 const preferences=store.settings();
 const accounts=new AccountsClient();

@@ -1,4 +1,4 @@
-// Hide-on-scroll for the phone tab bar. nextTabbarState is the rule the unit tests cover. autoHideTabbar reads
+// Hide-on-scroll for the tab bar island. nextTabbarState is the rule the unit tests cover. autoHideTabbar reads
 // the scroll position and sets data-hidden on the bar, which theme.css turns into a slide, or a fade under reduced motion.
 export interface TabbarScroll{hidden:boolean;lastY:number;travel:number}
 // px of travel in one direction before the bar changes state.
