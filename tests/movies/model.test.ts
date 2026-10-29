@@ -66,6 +66,15 @@ describe('artwork and rich title fields',()=>{
   expect([episodes[1].still,episodes[1].airDate,episodes[1].rating]).toEqual([undefined,undefined,undefined]);
   expect(episodes[2].airDate).toBeUndefined();
  });
+ it('drops air dates that are not real calendar days and keeps a real leap day',()=>{
+  const episodes=parseCatalog({titles:[{...title,id:'tv-1',kind:'tv',seasons:[{number:1,name:'One',episodes:[
+   {number:1,name:'Feb 31',overview:'',airDate:'2020-02-31'},
+   {number:2,name:'Month 13',overview:'',airDate:'2020-13-45'},
+   {number:3,name:'Not a leap year',overview:'',airDate:'2021-02-29'},
+   {number:4,name:'Leap day',overview:'',airDate:'2020-02-29'},
+  ]}]}]}).titles[0].seasons[0].episodes;
+  expect(episodes.map(e=>e.airDate)).toEqual([undefined,undefined,undefined,'2020-02-29']);
+ });
  it('caps cast at twelve members and drops invalid members, keeping only valid photos',()=>{
   const member=(name:string,extra:Record<string,unknown>={})=>({name,character:'Role',...extra});
   expect(parseCatalog({titles:[{...title,cast:Array.from({length:13},(_,i)=>member('Actor '+i))}]}).titles[0].cast).toHaveLength(12);
@@ -84,7 +93,9 @@ describe('artwork and rich title fields',()=>{
  it('caps related titles at twelve and parses them without their own cast or related lists',()=>{
   const sequel={...title,id:'movie-2',name:'Sequel',cast:[{name:'Ada',character:'Lead'}],related:[{...title,id:'movie-3'}]};
   expect(parseCatalog({titles:[{...title,related:Array.from({length:13},(_,i)=>({...title,id:'movie-'+(i+10)}))}]}).titles[0].related).toHaveLength(12);
-  const [kept]=parseCatalog({titles:[{...title,related:[sequel,{id:'bad'}]}]}).titles[0].related!;
+  const parsed=parseCatalog({titles:[{...title,related:[sequel,{id:'bad'}]}]}).titles[0].related!;
+  expect(parsed).toHaveLength(1);
+  const [kept]=parsed;
   expect(kept).toMatchObject({id:'movie-2',name:'Sequel'});
   expect(kept).not.toHaveProperty('cast');
   expect(kept).not.toHaveProperty('related');
@@ -129,9 +140,11 @@ describe('rails',()=>{
   expect(parseRails([rail('long',Array.from({length:45},(_,i)=>titleOf('movie-'+(i+1))))])[0].titles).toHaveLength(40);
   expect(parseRails(Array.from({length:15},(_,i)=>rail('rail-'+i)))).toHaveLength(12);
  });
- it('returns no rails for a value that is not an array',()=>{
-  expect(parseRails({rails:[rail('ok')]})).toEqual([]);
-  expect(parseRails(undefined)).toEqual([]);
+ it('reads the rails from the response body',()=>{
+  expect(parseRails({rails:[rail('ok')]}).map(r=>r.id)).toEqual(['ok']);
+ });
+ it('returns no rails for anything that is neither a response body nor an array',()=>{
+  for(const value of [{},{rails:'x'},null,undefined])expect(parseRails(value)).toEqual([]);
  });
 });
 
@@ -144,6 +157,14 @@ describe('previous episode',()=>{
  it('steps back within a season and across a season boundary to the last episode before it',()=>{
   expect(previousEpisode(show,2,2)).toEqual({season:2,episode:1,name:'Again'});
   expect(previousEpisode(show,2,1)).toEqual({season:1,episode:2,name:'Two'});
+ });
+ it('takes the nearest lower-numbered season even when seasons are listed out of order',()=>{
+  const unordered=parseCatalog({titles:[{...title,id:'tv-2',kind:'tv',seasons:[
+   {number:1,name:'First',episodes:[{number:1,name:'One',overview:''},{number:2,name:'Two',overview:''}]},
+   {number:3,name:'Third',episodes:[{number:1,name:'Again',overview:''}]},
+   {number:2,name:'Second',episodes:[{number:1,name:'Middle',overview:''},{number:2,name:'Last of two',overview:''}]},
+  ]}]}).titles[0];
+  expect(previousEpisode(unordered,3,1)).toEqual({season:2,episode:2,name:'Last of two'});
  });
  it('returns nothing at the first episode, for movies, unknown episodes or an unloaded previous season',()=>{
   expect(previousEpisode(show,1,1)).toBeUndefined();

@@ -11,7 +11,12 @@ const object=(v:unknown):v is Record<string,any>=>!!v&&typeof v==='object'&&!Arr
 const text=(v:unknown,max=2000):v is string=>typeof v==='string'&&v.length>0&&v.length<=max;
 const integer=(v:unknown)=>typeof v==='number'&&Number.isInteger(v)&&v>0&&v<10000;
 const ratingOf=(v:unknown)=>typeof v==='number'&&v>=0&&v<=10?v:undefined;
-const airDateOf=(v:unknown)=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)?v:undefined;
+// The round trip rejects impossible days such as 2020-02-31, which Date rolls over into March.
+const airDateOf=(v:unknown):string|undefined=>{
+ if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v))return;
+ const day=new Date(v+'T00:00:00Z');
+ return !Number.isNaN(day.getTime())&&day.toISOString().slice(0,10)===v?v:undefined;
+};
 export function localAsset(value:unknown):string|undefined {
  return typeof value==='string'&&/^movies\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.(?:svg|webp|jpg|png|mp4|webm|vtt)$/.test(value)?value:undefined;
 }
@@ -91,9 +96,11 @@ export function previousEpisode(title:Title,season:number,episode:number):{seaso
  const last=title.seasons.filter(s=>s.number<season).sort((a,b)=>b.number-a.number)[0],episodes=last?.episodes??[],final=episodes[episodes.length-1];
  if(last&&final)return {season:last.number,episode:final.number,name:final.name};
 }
+// Accepts the response body {rails:[...]} or a bare array of rails. Anything else gives no rails.
 export function parseRails(value:unknown):Rail[] {
- if(!Array.isArray(value))return [];
- return value.slice(0,12).flatMap((r:any):Rail[]=>{
+ const list=object(value)&&Array.isArray(value.rails)?value.rails:value;
+ if(!Array.isArray(list))return [];
+ return list.slice(0,12).flatMap((r:any):Rail[]=>{
   if(!object(r)||typeof r.id!=='string'||!/^[a-z0-9-]{1,40}$/.test(r.id)||!text(r.title,80)||!Array.isArray(r.titles))return [];
   const seen=new Set<string>(),titles:Title[]=[];
   for(const v of r.titles.slice(0,40)){const title=parseTitle(v);if(!title||seen.has(title.id))continue;seen.add(title.id);titles.push(title);}
