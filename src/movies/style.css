@@ -13,17 +13,17 @@
 
 .movies-active{overflow:hidden}.movies-view{position:fixed;inset:0;z-index:30;overflow:auto;overscroll-behavior:contain;background:#141414;color:#fff;font:15px/1.5 Arial,Helvetica,sans-serif;color-scheme:dark;--movies-accent:#e50914}.movies-view *{box-sizing:border-box}.movies-view [hidden]{display:none}.movies-view a{color:inherit;text-decoration:none}.movies-view button,.movies-view select,.movies-view input{font:inherit}.movies-view button,.movies-view select{cursor:pointer}.movies-view button,.movies-view select,.movies-view input{border:1px solid #777;border-radius:3px;background:#252525;color:white;padding:10px 16px;min-height:44px}.movies-view button:disabled{cursor:not-allowed;opacity:.55}.movies-view h1,.movies-view h2,.movies-view h3,.movies-view p{margin:0}.movies-view h1{font:800 clamp(38px,5vw,72px)/1.08 Arial,Helvetica,sans-serif;letter-spacing:-1.5px}.movies-view h2{font-size:23px;line-height:1.3;font-weight:700}.movies-view h3{font-size:17px}.movies-view small{color:#bcbcbc}
 .movies-view .movies-primary,.movies-view .movies-secondary{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;background:#fff;color:#111;font-weight:700;font-size:18px;padding:11px 28px;border-radius:4px;min-height:49px}.movies-view .movies-primary:disabled{opacity:.72;background:#e6e6e6;color:#333}.movies-view .movies-secondary{background:#6d6d6eb3;color:#fff;padding:11px 26px}.movies-primary>span,.movies-secondary>span{font-size:25px;line-height:1}
-.movies-shelf-head{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:13px}.movies-shelf-head>span{font-size:10px;letter-spacing:1px;color:#999}.movies-result-count{margin:20px 0!important;color:#b3b3b3;font-size:13px}.movies-empty{padding:100px 7%;text-align:center;max-width:800px;margin:auto;min-height:350px}.movies-empty p{color:#aaa;margin:18px 0 25px}.movies-empty h1{font-size:38px}.movies-empty a{display:inline-block;margin:15px}.movies-footer{margin-top:70px;border-top:1px solid #333;padding:30px 0;max-width:850px;color:#808080;font-size:12px}.movies-footer strong{color:#b3b3b3;font-size:14px}.movies-footer p{margin:12px 0;max-width:780px}.movies-footer button{font-size:12px;background:none;padding:7px 12px;color:#aaa;border-color:#555}.movies-tmdb{display:block;object-fit:contain;margin:15px 0}.movies-page-title{margin:48px 4% 100px!important;font-size:36px!important}
-.movies-detail-back{display:block;margin:28px 5%;font-size:13px;color:#aaa!important}.movies-detail{display:grid;grid-template-columns:minmax(150px,260px) 1fr;gap:50px;padding:10px 5% 40px;max-width:1300px}.movies-detail-art{width:100%;height:auto;border-radius:5px}.movies-detail h1{font-size:clamp(34px,4.5vw,62px);margin:17px 0 20px}.movies-detail .movies-eyebrow{color:#e50914;letter-spacing:2px}.movies-meta{color:#bcbcbc;font-size:14px}.movies-tags{display:flex;flex-wrap:wrap;gap:9px;margin:22px 0}.movies-tags span{border:1px solid #555;border-radius:3px;font-size:11px;padding:4px 10px;color:#ddd}.movies-overview{color:#ddd;max-width:650px;font-size:16px;line-height:1.7}.movies-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:30px 0 15px}.movies-actions a{font-size:12px;text-decoration:underline}.movies-actions .movies-primary{font-size:15px}.movies-availability{color:#999;font-size:12px;max-width:590px}.movies-episodes{padding:25px 5% 70px;max-width:1300px}.movies-episodes label{font-size:12px;color:#aaa}.movies-episodes select{margin-left:8px}.movies-episode{display:flex;gap:25px;align-items:center;border-top:1px solid #333;padding:24px 0}.movies-episode-number{font:26px Arial;color:#aaa;min-width:40px}.movies-episode>div{flex:1}.movies-episode p{font-size:13px;color:#a3a3a3;margin:7px 0}.movies-episode small{font-size:11px}.movies-episode a{font-size:12px;color:#eee;white-space:nowrap;min-height:44px;padding:12px 0}.movies-player{padding:0 5% 70px}.movies-player .movies-detail-back{margin:30px 0}.movies-player h1{font-size:36px;margin:15px 0}.movies-player>h2{font-size:17px;color:#aaa}.movies-player>.movies-eyebrow{color:#e50914}.movies-screen{margin:30px 0 20px;background:#050505;border:1px solid #333;border-radius:5px;min-height:400px;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden}.movies-player-unavailable{max-width:530px;text-align:center;padding:25px}.movies-player-unavailable>span{font:64px Arial;color:#e50914}.movies-player-unavailable p{color:#aaa;font-size:14px;margin:14px 0}.movies-player-unavailable .movies-primary{margin-top:15px;font-size:15px}.movies-screen video{width:100%;height:100%;max-height:75dvh}.movies-player>p:last-child{font-size:12px;color:#999}
+.movies-result-count{margin:20px 0!important;color:#b3b3b3;font-size:13px}.movies-empty{padding:100px 7%;text-align:center;max-width:800px;margin:auto;min-height:350px}.movies-empty p{color:#aaa;margin:18px 0 25px}.movies-empty h1{font-size:38px}.movies-empty a{display:inline-block;margin:15px}.movies-footer{margin-top:70px;border-top:1px solid #333;padding:30px 0;max-width:850px;color:#808080;font-size:12px}.movies-footer strong{color:#b3b3b3;font-size:14px}.movies-footer p{margin:12px 0;max-width:780px}.movies-footer button{font-size:12px;background:none;padding:7px 12px;color:#aaa;border-color:#555}.movies-tmdb{display:block;object-fit:contain;margin:15px 0}.movies-page-title{margin:48px 4% 100px!important;font-size:36px!important}
+.movies-detail-back{display:block;margin:28px 5%;font-size:13px;color:#aaa!important}.movies-player{padding:0 5% 70px}.movies-player .movies-detail-back{margin:30px 0}.movies-player h1{font-size:36px;margin:15px 0}.movies-player>h2{font-size:17px;color:#aaa}.movies-player>.movies-eyebrow{color:#e50914}.movies-screen{margin:30px 0 20px;background:#050505;border:1px solid #333;border-radius:5px;min-height:400px;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden}.movies-player-unavailable{max-width:530px;text-align:center;padding:25px}.movies-player-unavailable>span{font:64px Arial;color:#e50914}.movies-player-unavailable p{color:#aaa;font-size:14px;margin:14px 0}.movies-player-unavailable .movies-primary{margin-top:15px;font-size:15px}.movies-screen video{width:100%;height:100%;max-height:75dvh}.movies-player>p:last-child{font-size:12px;color:#999}
 @media(hover:hover) and (pointer:fine){.movies-view a:hover{color:#fff}.movies-view .movies-primary:not(:disabled):hover{background:#ddd}.movies-view .movies-secondary:hover{background:#6d6d6e70}}
 
-@media(max-width:650px){.movies-view .movies-primary,.movies-view .movies-secondary{font-size:15px;padding:10px 23px;min-height:44px;gap:10px}.movies-primary>span,.movies-secondary>span{font-size:22px}.movies-shelf-head{align-items:start;margin-bottom:8px}.movies-shelf-head h2{font-size:19px}.movies-shelf-head>span{display:none}.movies-detail{grid-template-columns:1fr;gap:25px}.movies-detail-art{width:140px;max-height:210px;object-fit:cover}.movies-detail h1{font-size:38px}.movies-detail-back{margin:22px 5%}.movies-episode{gap:14px;align-items:start}.movies-episode-number{font-size:22px;min-width:27px}.movies-episode a{font-size:11px}.movies-screen{aspect-ratio:auto;min-height:420px}.movies-screen:has(video){min-height:220px;aspect-ratio:16/9}.movies-player-unavailable{padding:22px}.movies-player h1{font-size:30px}.movies-footer{margin-top:50px}.movies-page-title{font-size:30px!important}}
+@media(max-width:650px){.movies-view .movies-primary,.movies-view .movies-secondary{font-size:15px;padding:10px 23px;min-height:44px;gap:10px}.movies-primary>span,.movies-secondary>span{font-size:22px}.movies-detail-back{margin:22px 5%}.movies-screen{aspect-ratio:auto;min-height:420px}.movies-screen:has(video){min-height:220px;aspect-ratio:16/9}.movies-player-unavailable{padding:22px}.movies-player h1{font-size:30px}.movies-footer{margin-top:50px}.movies-page-title{font-size:30px!important}}
 @media(prefers-reduced-motion:reduce){.movies-view *,.movies-launch *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}.reduce-motion .movies-view *,.reduce-motion .movies-launch *{animation:none!important;transition:none!important}
 /* Reference details: native vector controls, uninterrupted rows, and mobile poster-card navigation. */
 
 @media(max-width:650px){.movies-footer{padding-bottom:35px}.movies-empty{padding-top:65px}}
 /* Study reads in the document rather than the movie scroller. */
-body.movies-active.study-active{overflow:auto}.movies-shelf-head>span{margin-left:auto}
+body.movies-active.study-active{overflow:auto}
 
 .movies-provider-frame{border:0;width:100%;height:100%;min-height:400px;background:#000}.movies-screen:has(.movies-provider-frame){display:block}
 @media(max-width:650px){.movies-screen:has(.movies-provider-frame){aspect-ratio:16/9;min-height:210px}.movies-provider-frame{min-height:210px}}
@@ -31,12 +31,11 @@ body.movies-active.study-active{overflow:auto}.movies-shelf-head>span{margin-lef
 .movies-view img[hidden]{display:none!important}
 
 .movies-screen{width:100%;min-width:0;max-width:100%}.movies-provider-frame{display:block;max-width:100%;min-width:0}
-.movies-detail-art{aspect-ratio:2/3;object-fit:cover}
 
 /* FrameXTV reference: compact discovery header, title-first catalog rows, metadata badges and poster-led cards. */
 .movies-view{background:#0c1017;--movies-accent:#69d8f4}
 
-.movies-detail .movies-eyebrow,.movies-player>.movies-eyebrow,.movies-episode-number{color:var(--movies-accent)}
+.movies-player>.movies-eyebrow{color:var(--movies-accent)}
 
 .movies-view{--movies-accent:#69d8f4}
 
@@ -44,26 +43,16 @@ body.movies-active.study-active{overflow:auto}.movies-shelf-head>span{margin-lef
 .movies-view .movies-primary:not(:disabled):hover{background:#b4f2ff}
 .movies-view .movies-secondary{background:#273440bb;border-radius:7px;border:1px solid #ffffff2a}
 
-.movies-shelf-head{margin-bottom:10px}
-.movies-shelf-head h2{font-size:20px;letter-spacing:-.2px}
-.movies-shelf-head>span{padding:4px 9px;border:1px solid #273847;border-radius:999px;color:#8eb2c2;letter-spacing:.35px}
-
 .movies-result-count{color:#93aab8}
 .movies-catalog-status{margin:12px 0 16px!important;padding:11px 14px;border:1px solid #28394a;border-left:3px solid #69d8f4;border-radius:6px;background:#111a25;color:#b9d3df;font-size:13px}
 .movies-pagination{display:flex;align-items:center;justify-content:center;gap:16px;padding:26px 0 8px;color:#a8bdcb;font-size:13px}
 .movies-pagination button{border-color:#334353;border-radius:8px;background:#141e29}
 .movies-pagination button:not(:disabled):hover{border-color:#69d8f4;color:#a3edfa}
-.movies-detail-art{border-radius:10px;border:1px solid #2a3946}
-.movies-tags span{border-color:#334353;border-radius:999px;background:#111922}
-.movies-detail .movies-actions button,.movies-detail .movies-actions a{border-radius:8px}
-.movies-episode{border-color:#25313d}
-.movies-episode a{color:#7de2f3}
+
 .movies-screen{border-radius:12px;border-color:#293744}
 .movies-view button,.movies-view select,.movies-view input{border-color:#354452;border-radius:8px}
 
 @media(max-width:650px){
- .movies-shelf-head h2{font-size:17px}
- .movies-shelf-head>span{display:none}
  .movies-catalog-status{font-size:12px}
  .movies-pagination{gap:8px;font-size:11px}
  .movies-pagination button{padding:8px 10px;min-height:40px}
@@ -150,3 +139,86 @@ body.movies-active.study-active{overflow:auto}.movies-shelf-head>span{margin-lef
 /* An empty My list or an empty search keeps its message close to the filters rather than a full screen down. */
 .movies-view .movies-browse .movies-empty{min-height:0;max-width:none;margin:0;padding:56px 8px}
 @media (min-width:640px){.movies-view .movies-page-head>.movies-page-title{margin-top:56px!important}}
+
+/* Title page (redesign section 7.5). A blurred backdrop with the hero's two overlays sits behind the poster, chips, title, genres, overview and actions.
+   A series adds season pills and episode rows; the cast and the related rail follow. The generic .movies-view button rule sets a border, a padding and
+   a 44 px height, and it outranks a plain component rule, so each control restates what it needs. */
+.movies-view .movies-detail{position:relative;isolation:isolate;overflow:hidden;background:var(--c-950);color:var(--c-100);font-family:var(--font-sans)}
+.movies-view .movies-detail-backdrop{position:absolute;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+.movies-view .movies-detail-backdrop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35;filter:blur(64px);transform:scale(1.1)}
+.movies-view .movies-detail-backdrop::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,#000 0%,#00000080 50%,#0000 100%),linear-gradient(to right,#000 0%,#00000099 60%,#0000 100%)}
+.movies-view .movies-detail-inner{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;padding-top:28px;padding-bottom:36px}
+.movies-view .movies-detail-art{display:block;width:160px;max-width:100%;height:auto;aspect-ratio:2/3;object-fit:cover;border-radius:12px;border:1px solid var(--c-800);box-shadow:var(--sh-2xl);background:var(--c-900)}
+.movies-view .movies-detail-info{min-width:0}
+.movies-view .movies-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.movies-view .movies-detail h1{margin:0 0 10px;font-family:var(--font-sans);font-size:30px;line-height:1.1;font-weight:800;letter-spacing:-.025em;color:#fff;overflow-wrap:anywhere}
+.movies-view .movies-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.movies-view .movies-tags:empty{display:none}
+.movies-view .movies-overview{max-width:640px;font-size:14px;line-height:1.625;color:var(--c-300);overflow-wrap:anywhere}
+.movies-view .movies-actions{display:grid;grid-template-columns:max-content max-content;justify-content:start;align-items:center;gap:8px 12px;margin:22px 0 12px}
+.movies-view .movies-actions>.movies-primary{grid-column:1;grid-row:1}
+.movies-view .movies-actions>.movies-resume{grid-column:1;grid-row:2;justify-self:start}
+.movies-view .movies-actions>[data-list]{grid-column:2;grid-row:1}
+.movies-view .movies-resume{font-family:var(--font-mono);font-size:11px;line-height:1.4;color:var(--c-400)}
+.movies-view .movies-availability{max-width:560px;margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--c-400);overflow-wrap:anywhere}
+@media (min-width:640px){
+ .movies-view .movies-detail-inner{grid-template-columns:208px minmax(0,1fr);gap:32px;align-items:end;padding-top:40px;padding-bottom:40px}
+ .movies-view .movies-detail-art{width:208px}
+ .movies-view .movies-detail-info{grid-column:2}
+ .movies-view .movies-detail h1{font-size:36px}
+ .movies-view .movies-overview{font-size:15px}
+}
+@media (min-width:768px){
+ .movies-view .movies-detail-inner{grid-template-columns:240px minmax(0,1fr);gap:40px}
+ .movies-view .movies-detail-art{width:240px}
+ .movies-view .movies-detail h1{font-size:44px}
+}
+@media (min-width:1024px){
+ .movies-view .movies-detail-inner{grid-template-columns:288px minmax(0,1fr);gap:48px}
+ .movies-view .movies-detail-art{width:288px}
+ .movies-view .movies-detail h1{font-size:48px}
+}
+/* On a phone the actions stack at full width: Play, its resume point, then My list. */
+@media (max-width:639px){
+ .movies-view .movies-actions{grid-template-columns:minmax(0,1fr);justify-content:stretch}
+ .movies-view .movies-actions>*{justify-self:stretch}
+ .movies-view .movies-actions>.movies-resume{grid-row:2;justify-self:center;text-align:center}
+ .movies-view .movies-actions>[data-list]{grid-column:1;grid-row:3}
+}
+
+/* Seasons and episodes. The season pills are toggles, so the pressed season is white. */
+.movies-view .movies-episodes{padding-top:40px;padding-bottom:8px}
+.movies-view .movies-section-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:0 0 14px}
+.movies-view .movies-section-head h2{margin:0;font-family:var(--font-sans);font-size:20px;line-height:22px;font-weight:700;letter-spacing:-.025em;color:var(--c-100)}
+.movies-view .movies-season-pills{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.movies-view .movies-season-pills .ui-pill{min-height:36px;margin:0;padding:6px 14px;border:1px solid var(--line-strong);border-radius:999px;background:#18181b99;color:var(--c-300);font-family:var(--font-sans);font-size:13px;font-weight:500;line-height:1.2;cursor:pointer}
+.movies-view .movies-season-pills .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700}
+.movies-view .movies-pill-count{margin-left:4px;padding:2px 6px;border-radius:999px;background:var(--c-800);color:var(--c-300);font-family:var(--font-mono);font-size:10px;line-height:1}
+.movies-view .movies-season-pills .ui-pill[aria-pressed="true"] .movies-pill-count{background:var(--c-200);color:#000}
+@media (hover:hover) and (pointer:fine){.movies-view .movies-season-pills .ui-pill:not([aria-pressed="true"]):hover{background:var(--c-800);color:#fff}}
+.movies-view .movies-episodes-status{font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--c-400)}
+.movies-view .movies-episode{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"thumb" "body" "action";gap:12px;padding:18px 0;border-top:1px solid var(--line)}
+.movies-view .movies-episode-thumb{position:relative;display:block;overflow:hidden;aspect-ratio:16/9;border:1px solid var(--line-faint);border-radius:10px;background:var(--c-900);grid-area:thumb}
+.movies-view .movies-episode-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.movies-view .movies-episode-thumb>.ui-chip{position:absolute;top:8px;left:8px;z-index:2}
+.movies-view .movies-episode-thumb .ui-card-play{z-index:2;width:36px;height:36px;margin:-18px 0 0 -18px;opacity:1;transform:none}
+.movies-view .movies-episode-body{grid-area:body;min-width:0}
+.movies-view .movies-episode h3{margin:0 0 4px;font-family:var(--font-sans);font-size:15px;font-weight:600;line-height:1.3;color:var(--c-100);overflow-wrap:anywhere}
+.movies-view .movies-episode-meta{margin:0 0 6px;font-family:var(--font-mono);font-size:11px;line-height:1.4;color:var(--c-400)}
+.movies-view .movies-episode-body>p:last-child{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0;font-size:13px;line-height:1.5;color:var(--c-400);overflow-wrap:anywhere}
+.movies-view .movies-episode>.ui-btn{grid-area:action;justify-self:start}
+@media (min-width:640px){
+ .movies-view .movies-episode{grid-template-columns:220px minmax(0,1fr) auto;grid-template-areas:"thumb body action";align-items:center;gap:24px}
+ .movies-view .movies-episode>.ui-btn{justify-self:end}
+}
+
+/* Cast: up to twelve photo cards, 96 px on a phone and 112 px from 640 px. */
+.movies-view .movies-cast{padding-top:28px;padding-bottom:8px}
+.movies-view .movies-cast-row{display:flex;flex-wrap:wrap;gap:18px 12px;margin:0;padding:0;list-style:none}
+.movies-view .movies-cast-card{width:96px;min-width:0}
+@media (min-width:640px){.movies-view .movies-cast-card{width:112px}}
+.movies-view .movies-cast-photo{position:relative;display:grid;place-items:center;aspect-ratio:3/4;overflow:hidden;border:1px solid var(--line-faint);border-radius:12px;background:var(--c-800)}
+.movies-view .movies-cast-initials{font-family:var(--font-mono);font-size:20px;font-weight:600;letter-spacing:.04em;color:var(--c-400)}
+.movies-view .movies-cast-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.movies-view .movies-cast-name{display:block;margin-top:8px;font-size:12px;font-weight:600;line-height:1.3;color:var(--c-200);overflow-wrap:anywhere}
+.movies-view .movies-cast-character{display:block;margin-top:2px;font-size:11px;line-height:1.3;color:var(--c-400);overflow-wrap:anywhere}

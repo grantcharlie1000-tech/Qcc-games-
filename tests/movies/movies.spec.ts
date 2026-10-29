@@ -49,7 +49,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('sherlock');
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);
  await page.getByRole('link',{name:'Details for Sherlock'}).click();
- await page.getByLabel('Season',{exact:true}).selectOption('2');await expect(page.getByRole('heading',{name:'The Reichenbach Fall'})).toBeVisible();
+ await page.getByRole('button',{name:/^Season 2\b/}).click();await expect(page.getByRole('heading',{name:'The Reichenbach Fall'})).toBeVisible();
  await page.getByRole('link',{name:'Play The Reichenbach Fall'}).click();
  await expect(page.locator('.movies-provider-frame')).toBeVisible();await expect(page.locator('video')).toHaveCount(0);
  await page.getByRole('link',{name:'Back to Sherlock'}).click();
@@ -69,7 +69,7 @@ for(const width of [320,390,768,1366])test(`responsive allowlisted provider boun
  await page.goto('/#/movies');await expect(page.locator('#movies-search')).toBeVisible();
  await page.locator('#movies-search').fill('arrival');await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);await page.getByRole('link',{name:'Details for Arrival'}).click();
  await expect(page.getByRole('button',{name:'Play movie'})).toBeEnabled();
- await page.getByRole('link',{name:'Playback information',exact:true}).click();
+ await page.getByRole('button',{name:'Play movie'}).click();
  await expect(page.locator('.movies-provider-frame')).toBeVisible();
  expect(requests.filter(url=>![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(url).origin))).toEqual([]);
  const audit=await page.evaluate(()=>({frames:document.querySelectorAll('iframe,embed,object').length,hints:document.querySelectorAll('link[rel=preconnect],link[rel=dns-prefetch],link[rel=prefetch]').length,overflow:(document.querySelector('.movies-view')!.scrollWidth>document.querySelector('.movies-view')!.clientWidth),resources:performance.getEntriesByType('resource').map(r=>r.name)}));
@@ -180,7 +180,7 @@ test('full-catalog search, episode metadata and playback are on demand',async({p
  await page.getByRole('link',{name:'Details for Remote Expedition'}).click();
  await expect(page.getByRole('heading',{name:'Remote Expedition'})).toBeVisible();
  await expect(page.getByRole('link',{name:'Play First Contact'})).toBeVisible();
- await page.getByLabel('Season',{exact:true}).selectOption('2');
+ await page.getByRole('button',{name:/^Season 2\b/}).click();
  await expect(page.getByRole('link',{name:'Play The Long Crossing'})).toBeVisible();
  await page.getByRole('link',{name:'Play The Long Crossing'}).click();
  await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src',/\/embed\/778899\/2\/1/);

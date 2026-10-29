@@ -4,19 +4,21 @@ import {bindRails,updateRails} from '../ui/rails';
 import {markImages,watchImages} from '../ui/images';
 import {autoHideTabbar} from '../ui/tabbar';
 import mauriMark from '../assets/mauri-mark.svg?raw';
-import {frameSource,FRAME_SANDBOX,FRAME_ALLOW,STREAM_PROVIDERS,streamProvider,providerSignal} from './provider';
+import {frameSource,FRAME_SANDBOX,FRAME_ALLOW,STREAM_PROVIDERS,START_THRESHOLD,streamProvider,providerSignal} from './provider';
 import type {StreamProviderId} from './provider';
 import {filterTitles,kindHash,licensedSource,mediaKey,nextEpisode,parseCatalog,parseMovieRoute,parseRails,titleHash} from './model';
-import type {Catalog,MovieKind,MovieRoute,Rail,Title} from './model';
+import type {CastMember,Catalog,Episode,MovieKind,MovieRoute,Rail,Season,Title} from './model';
 import {MovieStorage,snapshotOf,keepsResume} from './storage';
-import type {TitleSnapshot} from './storage';
+import type {ContinueItem,TitleSnapshot} from './storage';
+import {formatClock,formatRuntime} from './format';
 import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 const base=import.meta.env.BASE_URL;
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 // Absolute same-origin URLs also resolve correctly inside CSS custom properties in /assets/ stylesheets.
 const asset=(v:string)=>v.startsWith('https://')?v:new URL(base+v,document.baseURI).href;
-const meta=(t:Title)=>[t.year||'',t.kind==='tv'?'Series':t.runtime?t.runtime+' min':'Movie',t.rating===undefined?'':'★ '+t.rating.toFixed(1)+'/10'].filter(Boolean).join(' · ');
+// The initials a cast member without a photo shows: the first letter of the first name and of the last name.
+const initials=(name:string)=>{const words=name.trim().split(/\s+/).filter(Boolean).map(word=>Array.from(word)[0]??'');return ((words[0]??'')+(words.length>1?words[words.length-1]:'')).toUpperCase();};
 const cardMeta=(t:Title)=>[t.year?String(t.year):'',t.kind==='tv'?'Series':'Movie'].filter(Boolean).join(' · ');
 // A title saved in storage carries what a card or a Continue watching tile needs. Genres, overview and seasons arrive when the title loads.
 const fromSnapshot=(s:TitleSnapshot):Title=>({id:s.id,kind:s.kind,name:s.name,year:s.year,genres:[],overview:'',poster:s.poster,backdrop:s.backdrop,seasons:[]});
@@ -40,6 +42,7 @@ function finderFor(el:HTMLElement):Finder|undefined{
  }
  if(dataset.kind){const kind=dataset.kind,bar=barOf(el);return root=>within(root,'[data-kind]').filter(e=>e.dataset.kind===kind&&barOf(e)===bar);}
  if(dataset.action){const action=dataset.action,nav=dataset.nav,bar=barOf(el);return root=>within(root,'[data-action]').filter(e=>e.dataset.action===action&&(nav===undefined||e.dataset.nav===nav)&&barOf(e)===bar);}
+ if(dataset.season){const season=dataset.season;return root=>within(root,'.movies-season-pills [data-season]').filter(e=>e.dataset.season===season);}
  if(dataset.list){const list=dataset.list;return root=>within(root,'[data-list]').filter(e=>e.dataset.list===list);}
  if(dataset.playRoute){const route=dataset.playRoute;return root=>within(root,'[data-play-route]').filter(e=>e.dataset.playRoute===route);}
  if(dataset.scroll){const scroll=dataset.scroll;return root=>within(root,'[data-scroll]').filter(e=>e.dataset.scroll===scroll&&e.closest<HTMLElement>('[data-rail]')?.dataset.rail===rail);}
@@ -92,6 +95,8 @@ export class MoviesView {
  private returnRail='';
  private positions=new Map<string,{top:number;href:string}>();
  private lastActivatedHref='';
+ // The season a pill on the title page asked for. The page that season opens keeps focus on that pill.
+ private pillSeason?:number;
  private video?:HTMLVideoElement;
  private frame?:HTMLIFrameElement;
  private preferExternal=false;
@@ -275,7 +280,7 @@ export class MoviesView {
    this.dynamicIds.add(id);this.loadedDetails.add(id);
    if(season)this.loadedSeasons.add(id+':s'+season);
    else for(const item of title.seasons)if(item.episodes.length)this.loadedSeasons.add(id+':s'+item.number);
-   this.pendingTitle=false;this.render();
+   this.pendingTitle=false;this.renderKeepingFocus();
   }catch(error){
    if(request!==this.detailRequest||this.route.id!==id)return;
    if(controller.signal.aborted)return;
@@ -334,6 +339,8 @@ export class MoviesView {
   this.lastActivatedHref='';
   const returning=!!this.route.id&&!next.id;
   const inPlace=this.route.play&&next.play&&this.route.id===next.id&&this.screenFullscreen();
+  // A season pill keeps its page, scroll position and focus when the season changes within the same title.
+  const pill=this.pillSeason;this.pillSeason=undefined;const keepPill=pill!==undefined&&!!next.id&&!next.play&&this.route.id===next.id,scroll=this.root.scrollTop;
   this.stopVideo();this.suspended=false;this.preferExternal=false;this.route=next;this.notFound=false;
   // A section change resets its genre, as the section buttons do. The typed query stays.
   const kind=next.id?this.kind:(next.kind??'all');if(kind!==this.kind)this.genre='All';this.kind=kind;
@@ -348,8 +355,10 @@ export class MoviesView {
   if(this.focusSearch){this.focusSearch=false;this.searchFocus();return;}
   if(this.homeNavigation){this.homeNavigation=false;this.root.scrollTop=0;this.root.querySelector<HTMLElement>('h1')?.focus({preventScroll:true});return;}
   if(returning){this.root.scrollTop=this.browseScroll;this.focusTitle(this.returnFocus,this.returnRail);}
+  else if(keepPill){this.root.scrollTop=scroll;this.restoreFocus(within(this.root,'.movies-season-pills [data-season]').filter(e=>e.dataset.season===String(pill)));}
   else {const previous=this.positions.get(this.positionKey(next));this.root.scrollTop=previous?.top??0;
-   const anchors=[...this.root.querySelectorAll<HTMLAnchorElement>('a')];
+   // A thumbnail link repeats an episode's play address with tabindex -1, so focus goes to the Play link that a keyboard reaches.
+   const anchors=[...this.root.querySelectorAll<HTMLAnchorElement>('a:not([tabindex="-1"])')];
    const focus=returningFromPlayer?anchors.find(a=>a.getAttribute('href')===returnEpisodeHref):previous?.href?anchors.find(a=>a.getAttribute('href')===previous.href):null;
    (focus??this.root.querySelector<HTMLElement>('h1'))?.focus({preventScroll:true});}
  }
@@ -513,14 +522,83 @@ export class MoviesView {
  }
  // My list: the saved titles, from the page's titles or from their saved snapshots.
  private listRail(){const titles=this.savedTitles();return titles.length?this.shelf('my-list','My list',titles):'';}
+ // The season the title page shows: the route's season, else the first one.
+ private shownSeason(t:Title):Season|undefined{return t.seasons.find(s=>s.number===this.route.season)||t.seasons[0];}
+ // A season pill navigates as the old season select did: the season's first episode, and a season whose episodes are not loaded loads on the way.
+ // The season already on screen is not chosen again, as choosing the current option of a select did nothing.
+ private pickSeason(number:number){
+  const title=this.catalog.titles.find(t=>t.id===this.route.id);if(!title)return;
+  const season=title.seasons.find(s=>s.number===number);
+  if(!season||season.number===this.shownSeason(title)?.number)return;
+  this.pillSeason=number;
+  location.hash=`${titleHash(title.id)}/season/${season.number}/episode/${season.episodes[0]?.number??1}`;
+ }
+ // Re-renders the title page and gives focus back to the control that had it, found again by what it is. The scroll position stays.
+ private renderKeepingFocus(){
+  const active=document.activeElement instanceof HTMLElement&&document.activeElement!==this.root&&this.root.contains(document.activeElement)?document.activeElement:undefined;
+  const finder=active&&finderFor(active);
+  const top=this.root.scrollTop;
+  this.render();
+  if(active)this.restoreFocus(finder?finder(this.root):[]);
+  this.root.scrollTop=top;
+ }
+ // A series opens its newest episode in progress, else its first episode that is loaded. With neither there is no play route.
+ private seriesPrimary(t:Title){
+  const continued=this.storage.continueItems().find((item):item is ContinueItem&{season:number;episode:number}=>item.id===t.id&&item.season!==undefined&&item.episode!==undefined);
+  const first=t.seasons.find(s=>s.episodes.length),episode=first?.episodes[0];
+  if(continued)return `<a class="movies-primary ui-btn primary" href="${escape(`${titleHash(t.id)}/season/${continued.season}/episode/${continued.episode}/play`)}">${uiIcon('play')}Continue S${continued.season} · E${continued.episode}</a>`;
+  if(first&&episode)return `<a class="movies-primary ui-btn primary" href="${escape(`${titleHash(t.id)}/season/${first.number}/episode/${episode.number}/play`)}">${uiIcon('play')}Play S${first.number} E${episode.number}</a>`;
+  return '';
+ }
+ // The seasons as toggle pills, then the episodes of the season on screen. Episodes that are still loading say so.
+ private episodesSection(t:Title,season:Season|undefined){
+  const count=t.seasons.length;
+  const pills=t.seasons.map(s=>`<button class="ui-pill" data-season="${s.number}" aria-pressed="${s.number===season?.number}">${escape(s.name)}${s.episodes.length?` <span class="movies-pill-count">${s.episodes.length}</span>`:''}</button>`).join('');
+  const rows=season?.episodes.length?season.episodes.map(e=>this.episodeRow(t,season,e)).join(''):`<p class="movies-episodes-status">${this.pendingTitle?'Loading episodes…':'Episode metadata has not been included in this snapshot.'}</p>`;
+  return `<section class="movies-episodes ui-container"><div class="movies-section-head"><h2>Seasons</h2>${count?`<span class="ui-count">${count} ${count===1?'season':'seasons'}</span>`:''}</div>${count?`<div class="movies-season-pills" role="group" aria-label="Seasons">${pills}</div>`:''}<div class="movies-episodes-list">${rows}</div></section>`;
+ }
+ // One episode: a 16:9 still with its chip and any progress, the name and its meta, the overview, and a Play link named for the episode.
+ private episodeRow(t:Title,season:Season,e:Episode){
+  const play=`${titleHash(t.id)}/season/${season.number}/episode/${e.number}/play`,name=escape(e.name);
+  const key=mediaKey(t,{id:t.id,season:season.number,episode:e.number,play:false}),saved=this.storage.data.progress[key]??0,duration=this.storage.data.meta[key]?.duration;
+  const percent=saved>0&&duration?Math.round(Math.min(100,saved/duration*100)):undefined;
+  const image=this.artImage([...(e.still?[asset(e.still)]:[]),...(t.backdrop?[asset(t.backdrop)]:[]),asset(t.poster)],'movies-episode-still','alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"');
+  const meta=[e.airDate??'',e.runtime?formatRuntime(e.runtime):'',e.rating===undefined?'':`★ ${e.rating.toFixed(1)}`].filter(Boolean).map(part=>escape(part)).join(' · ');
+  return `<article class="movies-episode"><a class="movies-episode-thumb" href="${escape(play)}" tabindex="-1" aria-hidden="true">${image}<span class="ui-chip">EP ${e.number}</span><span class="ui-card-play">${uiIcon('play')}</span>${percent===undefined?'':`<span class="movies-progress"><span style="width:${percent}%"></span></span>`}</a><div class="movies-episode-body"><h3>${name}</h3>${meta?`<p class="movies-episode-meta">${meta}</p>`:''}<p>${escape(e.overview||'No description supplied.')}</p></div><a class="ui-btn primary small" href="${escape(play)}" aria-label="Play ${name}">${uiIcon('play')}Play</a></article>`;
+ }
+ // The cast: up to twelve people as photo cards. A person with no photo, or whose photo failed, shows initials.
+ private castSection(cast:CastMember[]){
+  const cards=cast.map(person=>{
+   const photo=this.artImage(person.photo?[asset(person.photo)]:[],'movies-cast-img','alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"');
+   return `<li class="movies-cast-card"><span class="movies-cast-photo"><span class="movies-cast-initials" aria-hidden="true">${escape(initials(person.name))}</span>${photo}</span><strong class="movies-cast-name">${escape(person.name)}</strong>${person.character?`<small class="movies-cast-character">${escape(person.character)}</small>`:''}</li>`;
+  }).join('');
+  return `<section class="movies-cast ui-container"><div class="movies-section-head"><h2>Cast</h2><span class="ui-count">${cast.length} ${cast.length===1?'person':'people'}</span></div><ul class="movies-cast-row">${cards}</ul></section>`;
+ }
+ // The title page: a blurred backdrop behind the poster, the chips, title, genres, overview and actions. A series then lists its seasons
+ // and episodes, and the cast and the titles like this one follow.
  private detail(t:Title){
-  const selected=this.storage.data.list.includes(t.id);
-  const season=t.seasons.find(s=>s.number===this.route.season)||t.seasons[0];
-  const key=mediaKey(t,this.route),source=t.kind==='movie'?(licensedSource(this.licenses,key)??frameSource(t,this.route)):undefined;
-  return `<a class="movies-detail-back" href="#/movies">← Back to browsing</a><section class="movies-detail"><img class="movies-detail-art" src="${asset(t.poster)}" alt="Poster for ${escape(t.name)}" width="320" height="480"><div><p class="movies-eyebrow">${t.kind==='tv'?'QCC SERIES COLLECTION':'QCC CINEMA COLLECTION'}</p><h1 tabindex="-1">${escape(t.name)}</h1><p class="movies-meta">${escape(meta(t))}</p><div class="movies-tags">${t.genres.map(g=>`<span>${escape(g)}</span>`).join('')}</div><p class="movies-overview">${escape(t.overview)}</p><div class="movies-actions">${t.kind==='movie'?`<button class="movies-primary" data-play="${escape(t.id)}" ${source?'':'disabled aria-describedby="movies-unavailable"'}>${source?'▶ Play movie':'Playback unavailable'}</button><a href="${escape(titleHash(t.id))}/play">Playback information</a>`:''}<button data-list="${escape(t.id)}" aria-pressed="${selected}">${selected?'✓ In my list':'+ Add to my list'}</button></div><p id="movies-unavailable" class="movies-availability">${source?'Streaming available. An external player receives normal connection and playback information.':'Choose an episode below to stream this series.'}</p></div></section>${t.kind==='tv'?`<section class="movies-episodes"><div class="movies-shelf-head"><h2>Episodes</h2>${season?`<label>Season <select id="movies-season" aria-label="Season">${t.seasons.map(s=>`<option value="${s.number}"${s===season?' selected':''}>${escape(s.name)}</option>`).join('')}</select></label>`:''}</div>${season?season.episodes.map(e=>{
-   const route={id:t.id,season:season.number,episode:e.number,play:true};const href=`${titleHash(t.id)}/season/${season.number}/episode/${e.number}/play`;const source=licensedSource(this.licenses,mediaKey(t,route))??frameSource(t,route);
-   return `<article class="movies-episode"><span class="movies-episode-number">${String(e.number).padStart(2,'0')}</span><div><h3>${escape(e.name)}</h3><p>${escape(e.overview||'No description supplied.')}</p><small>${e.runtime?`${e.runtime} min · `:''}${source?'Streaming available':'Provider identifier unavailable'}</small></div><a href="${escape(href)}" aria-label="${source?'Play':'Playback information for'} ${escape(e.name)}">${source?'▶ Play':'Details →'}</a></article>`;
-  }).join(''):'<p>Episode metadata has not been included in this snapshot.</p>'}</section>`:''}`;
+  const name=escape(t.name),selected=this.storage.data.list.includes(t.id),season=this.shownSeason(t);
+  const source=t.kind==='movie'?(licensedSource(this.licenses,mediaKey(t,this.route))??frameSource(t,this.route)):undefined;
+  const saved=this.storage.data.progress[t.id]??0;
+  const chips=[`<span class="ui-chip">${t.kind==='tv'?'Series':'Movie'}</span>`,t.year?`<span class="ui-chip">${escape(String(t.year))}</span>`:'',t.rating===undefined?'':`<span class="ui-chip rating">★ ${t.rating.toFixed(1)}</span>`,t.runtime?`<span class="ui-chip">${escape(formatRuntime(t.runtime))}</span>`:''].join('');
+  const backdrop=this.artImage([...(t.backdrop?[asset(t.backdrop)]:[]),asset(t.poster)],'movies-detail-backdrop-img','alt="" referrerpolicy="no-referrer"');
+  const poster=this.artImage([asset(t.poster)],'movies-detail-art',`alt="Poster for ${name}" width="320" height="480" referrerpolicy="no-referrer"`);
+  const primary=t.kind==='movie'
+   ?`<button class="movies-primary ui-btn primary" data-play="${escape(t.id)}"${source?'':' disabled aria-describedby="movies-unavailable"'}>${uiIcon('play')}Play movie</button>`
+   :this.seriesPrimary(t);
+  // A movie's saved position is offered as a resume point only from START_THRESHOLD seconds, as the player itself starts there.
+  const resume=t.kind==='movie'&&source&&saved>=START_THRESHOLD?`<small class="movies-resume">Resume at ${escape(formatClock(saved))}</small>`:'';
+  const list=`<button class="ui-btn secondary" data-list="${escape(t.id)}">${uiIcon(selected?'check':'plus')}${selected?'In my list':'Add to my list'}</button>`;
+  const note=t.kind==='movie'
+   ?(source?'Streaming available. An external player receives normal connection and playback information.':'No provider identifier is available for this title.')
+   :season?.episodes.length?'Choose an episode below to stream this series.':this.pendingTitle?'Loading episodes…':'Episode details are not in this snapshot.';
+  const info=`<div class="movies-detail-info"><div class="movies-chips">${chips}</div><h1 tabindex="-1">${name}</h1><div class="movies-tags">${t.genres.map(g=>`<span class="ui-chip">${escape(g)}</span>`).join('')}</div><p class="movies-overview">${escape(t.overview)}</p><div class="movies-actions">${primary}${resume}${list}</div><p id="movies-unavailable" class="movies-availability">${escape(note)}</p></div>`;
+  const header=`<section class="movies-detail"><div class="movies-detail-backdrop" aria-hidden="true">${backdrop}</div><div class="movies-detail-inner ui-container">${poster}${info}</div></section>`;
+  const episodes=t.kind==='tv'?this.episodesSection(t,season):'';
+  const cast=t.cast?.length?this.castSection(t.cast):'';
+  // The related rail sits in the page gutter, as the browse rails do, so its arrows and cards stay inside the page width.
+  const related=t.related?.length?`<div class="movies-related ui-container">${this.shelf('related','More like this',t.related)}</div>`:'';
+  return `${header}${episodes}${cast}${related}`;
  }
  private player(t:Title){
   const episode=t.seasons.find(s=>s.number===this.route.season)?.episodes.find(e=>e.number===this.route.episode);
@@ -598,6 +676,7 @@ export class MoviesView {
   if(target.dataset.list){const id=target.dataset.list,title=this.lookup(id);this.storage.toggle(id,title?snapshotOf(title):undefined);this.render();within(this.root,'[data-list]').find(e=>e.dataset.list===id)?.focus({preventScroll:true});}
   if(target.dataset.playRoute)location.hash=target.dataset.playRoute;
   if(target.dataset.play)location.hash=titleHash(target.dataset.play)+'/play';
+  if(target.dataset.season)this.pickSeason(Number(target.dataset.season));
   switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season);break;case 'next-source':this.switchProvider(STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===this.providerId)+1)%STREAM_PROVIDERS.length].id,'next-source');break;case 'reload-stream':this.stopVideo();this.suspended=false;this.render();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'external-stream':this.preferExternal=true;this.render();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  // A section is a route. The current section re-renders in place; any other one changes the address, and navigate() shows it.
@@ -633,8 +712,6 @@ export class MoviesView {
    if(request&&request.key!==this.remoteWanted)void this.fetchCatalog(1);
    else this.renderBrowseState();
   }
-  if(input.id==='movies-season'&&this.route.id){const selected=this.catalog.titles.find(t=>t.id===this.route.id)?.seasons.find(s=>s.number===Number(input.value));if(selected&&!selected.episodes.length)location.hash=titleHash(this.route.id)+'/season/'+selected.number+'/episode/1';}
-  if(input.id==='movies-season'&&this.route.id){const season=this.catalog.titles.find(t=>t.id===this.route.id)?.seasons.find(s=>s.number===Number(input.value));const episode=season?.episodes[0];if(episode)location.hash=`${titleHash(this.route.id)}/season/${season!.number}/episode/${episode.number}`;}
  };
  private fullscreenElement(){return document.fullscreenElement||(document as FullscreenDocument).webkitFullscreenElement;}
  private screenFullscreen(){const screen=this.root.querySelector('.movies-screen');return !!screen&&this.fullscreenElement()===screen;}

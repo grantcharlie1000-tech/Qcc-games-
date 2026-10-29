@@ -505,7 +505,10 @@ test('going back from a title returns focus to the rail it was opened from',asyn
  await expect(card).toBeVisible();
  await card.click();
  await expect(page).toHaveURL(/#\/movies\/movie-157336$/);
- await page.getByRole('link',{name:'← Back to browsing',exact:true}).click();
+ // The title page has no back link: browser history returns to the browse page. The back step waits for the title page to take focus,
+ // which shows the app has applied the title route. Earlier, a back step could run before the title's hash change, and the page never saw the title.
+ await expect(page.locator('section.movies-detail h1')).toBeFocused();
+ await page.goBack();
  await expect(page).toHaveURL(/#\/movies$/);
  await expect(card).toBeFocused();
 });
@@ -1067,7 +1070,170 @@ test('going back to browsing returns focus to a card that a press opened without
  const card=page.locator('[data-rail="sci-fi-fantasy"] [data-title="movie-157336"]');
  await card.click();
  await expect(page).toHaveURL(/#\/movies\/movie-157336$/);
- await page.getByRole('link',{name:'← Back to browsing',exact:true}).click();
+ // The title page has no back link: browser history returns to the browse page. The back step waits for the title page to take focus,
+ // which shows the app has applied the title route. Earlier, a back step could run before the title's hash change, and the page never saw the title.
+ await expect(page.locator('section.movies-detail h1')).toBeFocused();
+ await page.goBack();
  await expect(page).toHaveURL(/#\/movies$/);
  await expect(card).toBeFocused();
+});
+
+// Task 14: the title page. The API answers a title by id. A season's episodes come only when that season is asked for, as the real route does.
+async function answerTitle(page:Page,title:(season:number)=>object,onRequest:(url:URL)=>Promise<void>|void=()=>{}){
+ await page.route('**/api/movies?*',async route=>{
+  const url=new URL(route.request().url());
+  if(!url.searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  await onRequest(url);
+  return route.fulfill({json:{title:title(Number(url.searchParams.get('season')||1))}});
+ });
+}
+const seriesFor=(id:string,name:string,season:number)=>({...fixtureTitle(id,name,'tv'),seasons:[
+ {number:1,name:'Season 1',episodes:season===1?[{number:1,name:'Pilot',overview:'The first episode.'},{number:2,name:'Second Episode',overview:'Still the first season.'}]:[]},
+ {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.'}]:[]}
+]});
+
+test('detail shows chips, cast and more like this from the API',async({page})=>{
+ await answerTitle(page,()=>({...fixtureTitle('movie-90100','Fixture Detail'),year:2014,rating:8.4,runtime:169,genres:['Adventure','Drama'],overview:'A fixture title with cast and related titles.',
+  cast:[{name:'Ada Lovelace',character:'Analyst',photo:'https://image.tmdb.org/t/p/w185/ada90100.jpg'},{name:'Grace Hopper',character:'Captain'},{name:'Mary Jackson',character:'Engineer'}],
+  related:[fixtureTitle('movie-90101','Related Feature')]}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-90100');
+ const detail=page.locator('section.movies-detail');
+ await expect(detail.locator('h1')).toHaveText('Fixture Detail');
+ await expect(detail.locator('.movies-chips .ui-chip')).toHaveText(['Movie','2014','★ 8.4','2h 49m']);
+ await expect(detail.locator('.movies-tags .ui-chip')).toHaveText(['Adventure','Drama']);
+ await expect(detail.locator('.movies-overview')).toHaveText('A fixture title with cast and related titles.');
+ const cast=page.locator('section.movies-cast');
+ await expect(cast.getByRole('heading',{name:'Cast',exact:true})).toBeVisible();
+ await expect(cast).toContainText('3 people');
+ const people=cast.locator('.movies-cast-card');
+ await expect(people).toHaveCount(3);
+ await expect(people.nth(0)).toContainText('Ada Lovelace');
+ await expect(people.nth(0)).toContainText('Analyst');
+ await expect(people.nth(0).locator('img')).toHaveCount(1);
+ // A cast member without a photo shows initials instead.
+ await expect(people.nth(1).locator('.movies-cast-initials')).toHaveText('GH');
+ await expect(people.nth(2).locator('.movies-cast-initials')).toHaveText('MJ');
+ await expect(page.getByRole('heading',{name:'More like this',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Related Feature'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Playback information'})).toHaveCount(0);
+});
+
+test('season pills mark the current season and switch episodes',async({page})=>{
+ const requested:string[]=[];
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season),url=>{requested.push(url.search);});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200');
+ await expect(page.getByRole('group',{name:'Seasons',exact:true}).getByRole('button')).toHaveCount(2);
+ const seasonOne=page.getByRole('button',{name:/^Season 1\b/}),seasonTwo=page.getByRole('button',{name:/^Season 2\b/});
+ await expect(seasonOne).toHaveAttribute('aria-pressed','true');
+ await expect(seasonTwo).toHaveAttribute('aria-pressed','false');
+ await expect(seasonOne.locator('.movies-pill-count')).toHaveText('2');
+ await expect(page.getByRole('heading',{name:'Pilot',exact:true})).toBeVisible();
+ const primary=page.locator('.movies-actions a.movies-primary');
+ await expect(primary).toHaveText('Play S1 E1');
+ await expect(primary).toHaveAttribute('href','#/movies/tv-90200/season/1/episode/1/play');
+ await seasonTwo.click();
+ await expect(page).toHaveURL(/#\/movies\/tv-90200\/season\/2\/episode\/1$/);
+ await expect(page.getByRole('heading',{name:'Second Season Opener',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Pilot',exact:true})).toHaveCount(0);
+ await expect(seasonTwo).toHaveAttribute('aria-pressed','true');
+ await expect(seasonOne).toHaveAttribute('aria-pressed','false');
+ expect(requested.some(search=>search.includes('season=2'))).toBe(true);
+});
+
+test('a season pill keeps focus after its season loads',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked=false;
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season),async url=>{if(url.searchParams.get('season')==='2'){asked=true;await held;}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200');
+ const seasonTwo=page.getByRole('button',{name:/^Season 2\b/});
+ await seasonTwo.focus();
+ await page.keyboard.press('Enter');
+ await expect.poll(()=>asked).toBe(true);
+ await expect(seasonTwo).toBeFocused();
+ await expect(seasonTwo).toHaveAttribute('aria-pressed','true');
+ release();
+ await expect(page.getByRole('heading',{name:'Second Season Opener',exact:true})).toBeVisible();
+ await expect(seasonTwo).toBeFocused();
+ await expect(seasonTwo).toHaveAttribute('aria-pressed','true');
+});
+
+test('TV detail offers to continue the newest episode in progress',async({page})=>{
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season));
+ // Two episodes are in progress. The one saved last is the newest, so Continue names it.
+ await page.addInitScript(()=>{if(window!==window.top)return;localStorage.setItem('qcc:movies:v1',JSON.stringify({list:[],titles:{},progress:{'tv-90200:s1:e2':300,'tv-90200:s2:e1':200},meta:{'tv-90200:s1:e2':{duration:2400,updated:1000},'tv-90200:s2:e1':{duration:2400,updated:2000}}}));});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200');
+ const primary=page.locator('.movies-actions a.movies-primary');
+ await expect(primary).toHaveText('Continue S2 · E1');
+ await expect(primary).toHaveAttribute('href','#/movies/tv-90200/season/2/episode/1/play');
+ await expect(page.getByRole('link',{name:'Play S1 E1',exact:true})).toHaveCount(0);
+});
+
+test('a long title fits a 320px phone',async({page})=>{
+ const longName='An Extraordinarily Long Title With Supercalifragilisticexpialidocious Words That Must Wrap Cleanly';
+ await answerTitle(page,()=>({...fixtureTitle('movie-90110',longName),year:2001,rating:7.1,runtime:215,genres:['Adventure','Science Fiction','Historical Drama','Documentary'],overview:`An overview with one unbroken run ${'x'.repeat(140)} and ordinary words after it.`,
+  cast:[{name:'Bartholomew Maximilian Featherstonehaugh',character:'The Narrator Who Never Stops Speaking'}]}));
+ await page.setViewportSize({width:320,height:640});
+ await page.goto('/#/movies/movie-90110');
+ await expect(page.locator('.movies-detail-info h1')).toHaveText(longName);
+ await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
+ expect(await page.locator('.movies-view').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
+ const widest=await page.locator('.movies-detail-inner *').evaluateAll(elements=>Math.max(...elements.map(e=>e.getBoundingClientRect().right)));
+ expect(widest).toBeLessThanOrEqual(320);
+});
+
+test('the title page list button names its action without aria-pressed',async({page})=>{
+ await answerTitle(page,()=>fixtureTitle('movie-90120','Listed Feature'));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-90120');
+ const detail=page.locator('section.movies-detail');
+ const add=detail.getByRole('button',{name:'Add to my list',exact:true});
+ await expect(add).toBeVisible();
+ await expect(add).not.toHaveAttribute('aria-pressed');
+ await add.click();
+ const remove=detail.getByRole('button',{name:'In my list',exact:true});
+ await expect(remove).toBeVisible();
+ await expect(remove).not.toHaveAttribute('aria-pressed');
+ await remove.click();
+ await expect(add).toBeVisible();
+});
+
+// A movie's saved position shows as Resume at only from START_THRESHOLD (15) seconds.
+for(const [seconds,shown] of [[14,false],[15,true]] as const)test(`a movie offers Resume at only from 15 seconds, saved ${seconds}s`,async({page})=>{
+ await page.addInitScript((time:number)=>{if(window!==window.top)return;localStorage.setItem('qcc:movies:v1',JSON.stringify({list:[],titles:{},progress:{'movie-157336':time},meta:{'movie-157336':{duration:10000,updated:1000}}}));},seconds);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ await expect(page.locator('section.movies-detail h1')).toHaveText('Interstellar');
+ const resume=page.locator('.movies-actions .movies-resume');
+ if(shown)await expect(resume).toHaveText('Resume at 0:15');
+ else await expect(resume).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
+});
+
+test('title text from the API is shown as text, never as markup',async({page})=>{
+ const markup='<img src="x" alt="" data-hostile="1">';
+ await answerTitle(page,()=>({...fixtureTitle('movie-90130',`Name ${markup}`),overview:'Overview <b data-hostile="1">bold</b>',genres:['<i data-hostile="1">Genre</i>'],
+  cast:[{name:'<u data-hostile="1">Cast</u> Name',character:'<s data-hostile="1">Role</s>'}],related:[fixtureTitle('movie-90131','<em data-hostile="1">Related</em>')]}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-90130');
+ await expect(page.locator('section.movies-detail h1')).toHaveText(`Name ${markup}`);
+ await expect(page.locator('section.movies-detail .movies-overview')).toHaveText('Overview <b data-hostile="1">bold</b>');
+ await expect(page.locator('[data-hostile]')).toHaveCount(0);
+ await expect(page.locator('.movies-cast')).toContainText('<u data-hostile="1">Cast</u> Name');
+ await expect(page.getByRole('link',{name:'Details for <em data-hostile="1">Related</em>'})).toBeVisible();
+});
+
+test('a series without loaded episodes shows its seasons and no play route',async({page})=>{
+ await answerTitle(page,()=>({...fixtureTitle('tv-90300','Empty Snapshot Series','tv'),seasons:[{number:1,name:'Season 1',episodes:[]},{number:2,name:'Season 2',episodes:[]}]}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90300');
+ await expect(page.locator('section.movies-detail h1')).toHaveText('Empty Snapshot Series');
+ await expect(page.getByRole('group',{name:'Seasons',exact:true}).getByRole('button')).toHaveCount(2);
+ await expect(page.getByRole('button',{name:/^Season 1\b/})).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('a[href$="/play"]')).toHaveCount(0);
+ await expect(page.locator('.movies-actions .movies-primary')).toHaveCount(0);
 });
