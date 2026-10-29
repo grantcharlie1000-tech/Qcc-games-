@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {resolveAccount} from '../accounts/server';
-import {writeFrozen} from '../accounts/write-freeze';
+import {writeFrozen,readOnlyResponse} from '../accounts/write-freeze';
 import {scoredGame,validScore,type Board,type Entry} from './shared';
 export interface Database {
  query(text:string,values?:unknown[]):Promise<{rows:any[]}>;
@@ -50,7 +50,7 @@ export function createLeaderboardHandler(db:Database){
     }
     return respond(await board(game,playerId));
    }
-   if(writeFrozen())return Response.json({error:'read_only',retryable:true},{status:503,headers:{...headers,'Retry-After':'120'}});
+   if(await writeFrozen(db))return readOnlyResponse();
    if(!/^Bearer acct_[a-f0-9]{64}$/.test(request.headers.get('authorization')??''))return respond({error:'Log in to submit leaderboard scores.'},401);
    const origin=request.headers.get('origin');
    if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);

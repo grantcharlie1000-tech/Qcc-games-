@@ -23,7 +23,7 @@ export async function resolveAccount(db:Pick<Database,'query'>,request:Request,l
   FROM account_sessions s JOIN accounts a ON a.id=s.account_id
   WHERE s.token_hash=$1 AND s.expires_at>now()${lockSession?' FOR UPDATE OF s':''}`,[hash]);
  const account=result.rows[0];if(!account)return null;
- if(!writeFrozen()&&new Date(account.lastUsed).getTime()<Date.now()-3600000)await db.query(`UPDATE account_sessions SET last_used=now()
+ if(!await writeFrozen(db)&&new Date(account.lastUsed).getTime()<Date.now()-3600000)await db.query(`UPDATE account_sessions SET last_used=now()
   WHERE token_hash=$1 AND expires_at>now() AND last_used<now()-interval '1 hour'`,[hash]);
  return {id:account.id,username:account.username,playerId:account.playerId};
 }
@@ -71,8 +71,8 @@ export function createAccountsHandler(db:Database){
   const allowed=action==='me'?['GET']:action==='sync'?['GET','PUT']:['signup','login','logout'].includes(action??'')?['POST']:[];
   if(!allowed.length)return respond({error:'Unknown account action.'},404);
   if(!allowed.includes(request.method))return respond({error:'Method not allowed.'},405,{Allow:allowed.join(', ')});
-  if(request.method!=='GET'&&writeFrozen())return readOnlyResponse();
   try{
+   if(request.method!=='GET'&&await writeFrozen(db))return readOnlyResponse();
    let data:any;
    if(request.method!=='GET'){
     const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);
@@ -142,7 +142,7 @@ export function createAccountsHandler(db:Database){
    const release=await lock('sync:'+account.id);let client:Awaited<ReturnType<Database['connect']>>|undefined;
    try{
     client=await db.connect();
-    const frozenRead=request.method==='GET'&&writeFrozen();
+    const frozenRead=request.method==='GET'&&await writeFrozen(db);
     await client.query(frozenRead?'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY':'BEGIN');
     await client.query('SELECT id FROM accounts WHERE id=$1'+(frozenRead?'':' FOR UPDATE'),[account.id]);
     const submitted:Saves=request.method==='PUT'?data.saves:{};
