@@ -51,3 +51,16 @@ describe("full catalog metadata endpoint",()=>{
   expect(result.status).toBe(502);expect(await result.json()).toEqual({error:"metadata_unavailable"});
  });
 });
+
+it('skips malformed search, season and episode entries',async()=>{
+ const search=await handleMoviesCatalog(request('?q=example'), 'token', async()=>tmdb([null,42,'bad',{id:1,media_type:'movie',title:'Valid'}]));
+ expect((await search.json()).titles.map((t:{id:string})=>t.id)).toEqual(['movie-1']);
+ const detail=await handleMoviesCatalog(request('?id=tv-41'), 'token', async(url)=>new Response(JSON.stringify(String(url).includes('/season/')
+  ?{episodes:[null,3,{episode_number:1,name:'First'}]}
+  :{id:41,name:'Series',seasons:[null,'bad',{season_number:1,name:'One'}]})));
+ expect((await detail.json()).title.seasons).toEqual([{number:1,name:'One',episodes:[{number:1,name:'First',overview:''}]}]);
+});
+it('returns a controlled error for malformed detail metadata',async()=>{
+ const result=await handleMoviesCatalog(request('?id=tv-41'),'token',async()=>new Response('null'));
+ expect(result.status).toBe(502);
+});
