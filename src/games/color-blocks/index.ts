@@ -1,5 +1,5 @@
 import type {GameModule} from '../../core/types';
-import {createGame,place,canPlace,hasMove,SHAPES,NAMES,colorOf,restoreGame} from './model';
+import {createGame,place,canPlace,hasMove,SHAPES,NAMES,colorOf,restoreGame,SIZE} from './model';
 import {gem,blockSvg,COLOR_NAMES} from './art';
 import {mapDrag,grabCell,type Point,type Bounds} from './input';
 import './style.css';
@@ -18,35 +18,35 @@ const module:GameModule={
   container.replaceChildren(root);
   const board=root.querySelector<HTMLElement>('.cb-board')!,tray=root.querySelector<HTMLElement>('.cb-tray')!,feedback=root.querySelector<HTMLElement>('.cb-feedback')!;
   const floating=root.querySelector<SVGSVGElement>('.cb-drag-art')!,effects=root.querySelector<HTMLElement>('.cb-effects')!;
-  const rows=Array.from({length:8},()=>{const row=document.createElement('div');row.className='cb-row';row.setAttribute('role','row');board.append(row);return row;});
-  const cells=Array.from({length:64},(_,i)=>{const c=document.createElement('button');c.className='cb-cell';c.type='button';c.dataset.cell=String(i);c.setAttribute('role','gridcell');c.setAttribute('aria-rowindex',String(Math.floor(i/8)+1));c.setAttribute('aria-colindex',String(i%8+1));c.id=`cb-cell-${i}`;rows[Math.floor(i/8)].append(c);return c;});
+  const rows=Array.from({length:SIZE},()=>{const row=document.createElement('div');row.className='cb-row';row.setAttribute('role','row');board.append(row);return row;});
+  const cells=Array.from({length:SIZE*SIZE},(_,i)=>{const c=document.createElement('button');c.className='cb-cell';c.type='button';c.dataset.cell=String(i);c.setAttribute('role','gridcell');c.setAttribute('aria-rowindex',String(Math.floor(i/SIZE)+1));c.setAttribute('aria-colindex',String(i%SIZE+1));c.id=`cb-cell-${i}`;rows[Math.floor(i/SIZE)].append(c);return c;});
   const slots=Array.from({length:3},(_,i)=>{const b=document.createElement('button');b.type='button';b.className='cb-piece';b.dataset.slot=String(i);tray.append(b);return b;});
   function active(){return !paused&&!disposed&&hasMove(state);}
   function draw(){
    root.classList.toggle('cb-patterns',context.settings.colorBlind);root.classList.toggle('cb-reduced',context.settings.reducedMotion);root.dataset.moves=String(state.moves);root.dataset.score=String(state.score);root.dataset.combo=String(state.combo);
    const shape=selected===null?null:state.tray[selected];const valid=preview&&shape!==null&&shape!==undefined&&canPlace(state.board,shape,cursor.x,cursor.y)&&active();
-   const ghosts=new Set(valid?SHAPES[shape!].map(([x,y])=>(cursor.y+y)*8+cursor.x+x):[]);
+   const ghosts=new Set(valid?SHAPES[shape!].map(([x,y])=>(cursor.y+y)*SIZE+cursor.x+x):[]);
    board.classList.toggle('cb-invalid',preview&&!valid&&selected!==null);board.setAttribute('aria-disabled',String(!active()));
-   for(let i=0;i<64;i++){
+   for(let i=0;i<SIZE*SIZE;i++){
     const value=state.board[i],ghost=ghosts.has(i),color=ghost?colorOf(shape!):value;
-    cells[i].classList.toggle('cb-ghost',ghost);cells[i].classList.toggle('cb-occupied',!!value);cells[i].classList.toggle('cb-aim',preview&&i===cursor.y*8+cursor.x);
+    cells[i].classList.toggle('cb-ghost',ghost);cells[i].classList.toggle('cb-occupied',!!value);cells[i].classList.toggle('cb-aim',preview&&i===cursor.y*SIZE+cursor.x);
     cells[i].dataset.value=String(value);cells[i].dataset.ghost=String(ghost);cells[i].innerHTML=color?blockSvg(color):'';
-    cells[i].tabIndex=selected!==null&&i===Math.max(0,Math.min(63,cursor.y*8+cursor.x))?0:-1;
-    cells[i].setAttribute('aria-label',`Row ${Math.floor(i/8)+1}, column ${i%8+1}, ${value?COLOR_NAMES[value]:'empty'}${ghost?', placement preview':''}`);
+    cells[i].tabIndex=selected!==null&&i===Math.max(0,Math.min(SIZE*SIZE-1,cursor.y*SIZE+cursor.x))?0:-1;
+    cells[i].setAttribute('aria-label',`Row ${Math.floor(i/SIZE)+1}, column ${i%SIZE+1}, ${value?COLOR_NAMES[value]:'empty'}${ghost?', placement preview':''}`);
    }
    for(let i=0;i<3;i++){
     const p=state.tray[i],b=slots[i];b.classList.toggle('cb-dragging',drag?.slot===i);b.disabled=p===null||paused||!hasMove(state);b.setAttribute('aria-pressed',String(selected===i));
     if(p===null){b.innerHTML='';b.setAttribute('aria-label',`Piece ${i+1} placed`);continue;}
     const shape=SHAPES[p],w=Math.max(...shape.map(c=>c[0]))+1,h=Math.max(...shape.map(c=>c[1]))+1;
     b.setAttribute('aria-label',`Piece ${i+1}: ${NAMES[p]}, ${shape.length} blocks, ${COLOR_NAMES[colorOf(p)]}`);
-    const cell=board.getBoundingClientRect().width/8*.5;
+    const cell=board.getBoundingClientRect().width/SIZE*.5;
     b.innerHTML=`<svg class="cb-piece-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w*32} ${h*32}" width="${w*cell}" height="${h*cell}" aria-hidden="true">${shape.map(([x,y])=>gem(colorOf(p),x*32,y*32)).join('')}</svg>`;
    }
    if(state.score!==publishedScore){context.setScore(state.score);publishedScore=state.score;}
    if(state.lines!==publishedLines){context.setLevel(`${state.lines} lines`);publishedLines=state.lines;}
    const status=paused?'Paused':hasMove(state)?`${state.moves} ${state.moves===1?'piece':'pieces'} placed · ${state.tray.filter(p=>p!==null).length} left in tray`:'No pieces fit. Restart for another run.';
    if(status!==publishedStatus){context.setStatus(status);publishedStatus=status;}
-   if(preview&&cursor.x>=0&&cursor.x<8&&cursor.y>=0&&cursor.y<8)board.setAttribute('aria-activedescendant',`cb-cell-${cursor.y*8+cursor.x}`);else board.removeAttribute('aria-activedescendant');
+   if(preview&&cursor.x>=0&&cursor.x<SIZE&&cursor.y>=0&&cursor.y<SIZE)board.setAttribute('aria-activedescendant',`cb-cell-${cursor.y*SIZE+cursor.x}`);else board.removeAttribute('aria-activedescendant');
    if(!hasMove(state)){feedback.textContent=`No pieces fit · ${state.score} points`;root.classList.add('cb-over');}else root.classList.remove('cb-over');
   }
   function choose(slot:number){if(!active()||state.tray[slot]===null)return;ignoreClick=false;selected=slot;preview=false;context.sound('tap');feedback.textContent=`${NAMES[state.tray[slot]!]} selected · fixed orientation`;draw();}
@@ -69,9 +69,9 @@ const module:GameModule={
   function celebrate(cleared:number[],gained:number,lines:number){
    if(reduced())return;
    const removed=new Set(cleared);
-   for(let i=0;i<8;i++)for(const axis of ['row','col'] as const){
-    if(!Array.from({length:8},(_,j)=>axis==='row'?i*8+j:j*8+i).every(c=>removed.has(c)))continue;
-    const streak=document.createElement('span');streak.className=`cb-clear-streak cb-clear-${axis}`;streak.style[axis==='row'?'top':'left']=`${(i+.5)*12.5}%`;effects.append(streak);
+   for(let i=0;i<SIZE;i++)for(const axis of ['row','col'] as const){
+    if(!Array.from({length:SIZE},(_,j)=>axis==='row'?i*SIZE+j:j*SIZE+i).every(c=>removed.has(c)))continue;
+    const streak=document.createElement('span');streak.className=`cb-clear-streak cb-clear-${axis}`;streak.style[axis==='row'?'top':'left']=`${(i+.5)*(100/SIZE)}%`;effects.append(streak);
     motion(streak,[{opacity:1,transform:axis==='row'?'scaleX(.7)':'scaleY(.7)'},{opacity:0,transform:axis==='row'?'scaleX(1.05)':'scaleY(1.05)'}],250,()=>streak.remove());
    }
    const pop=document.createElement('span');pop.className='cb-score-pop';pop.innerHTML=`+${gained}${lines&&state.combo>1?`<small>COMBO ${state.combo}</small>`:''}`;effects.append(pop);
@@ -117,7 +117,7 @@ const module:GameModule={
     if(Math.hypot(e.clientX-drag.start.x,e.clientY-drag.start.y)>5)drag.moved=true;
     if(!mapPointer(e))return;
    }else{
-    const r=board.getBoundingClientRect();cursor={x:Math.floor((e.clientX-r.left)/r.width*8),y:Math.floor((e.clientY-r.top)/r.height*8)};preview=cursor.x>=0&&cursor.x<8&&cursor.y>=0&&cursor.y<8;
+    const r=board.getBoundingClientRect();cursor={x:Math.floor((e.clientX-r.left)/r.width*SIZE),y:Math.floor((e.clientY-r.top)/r.height*SIZE)};preview=cursor.x>=0&&cursor.x<SIZE&&cursor.y>=0&&cursor.y<SIZE;
    }
    draw();
   },{signal});
@@ -134,7 +134,7 @@ const module:GameModule={
   root.addEventListener('click',e=>{
    if(ignoreClick&&(e as MouseEvent).detail!==0){ignoreClick=false;return;}
    if(!active())return;const target=e.target as Element;
-   const cell=target.closest<HTMLElement>('[data-cell]');if(cell&&selected!==null){const i=Number(cell.dataset.cell);cursor={x:i%8,y:Math.floor(i/8)};preview=true;commit((e as MouseEvent).detail!==0);draw();}
+   const cell=target.closest<HTMLElement>('[data-cell]');if(cell&&selected!==null){const i=Number(cell.dataset.cell);cursor={x:i%SIZE,y:Math.floor(i/SIZE)};preview=true;commit((e as MouseEvent).detail!==0);draw();}
    const slot=target.closest<HTMLElement>('[data-slot]');if(slot&&(e as MouseEvent).detail===0)choose(Number(slot.dataset.slot));
   },{signal});
   container.addEventListener('keydown',e=>{
@@ -143,7 +143,7 @@ const module:GameModule={
    if(['1','2','3'].includes(e.key)){e.preventDefault();if(e.repeat)return;choose(Number(e.key)-1);preview=true;draw();board.focus();return;}
    if(selected===null)return;
    const steps:Record<string,[number,number]>={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
-   if(steps[e.key]){e.preventDefault();const [x,y]=steps[e.key];cursor={x:Math.max(0,Math.min(7,cursor.x+x)),y:Math.max(0,Math.min(7,cursor.y+y))};preview=true;draw();}
+   if(steps[e.key]){e.preventDefault();const [x,y]=steps[e.key];cursor={x:Math.max(0,Math.min(SIZE-1,cursor.x+x)),y:Math.max(0,Math.min(SIZE-1,cursor.y+y))};preview=true;draw();}
    else if((e.key==='Enter'||e.key===' ')&&!(e.target as Element).closest('[data-slot]')){e.preventDefault();if(e.repeat)return;preview=true;commit(false);draw();}
   },{signal});
   window.addEventListener('blur',()=>{cancel();draw();},{signal});
