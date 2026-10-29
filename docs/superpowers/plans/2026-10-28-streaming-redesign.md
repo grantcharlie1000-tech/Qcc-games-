@@ -1047,3 +1047,18 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   Check that the labels are legible over the cards.
 - [ ] **Step 4: Run** `npx vitest run tests/core`, `npm run check`, `e2e.sh tests/e2e/redesign-shell.spec.ts tests/e2e/shell.spec.ts tests/e2e/branding.spec.ts tests/e2e/study.spec.ts`, and `e2e.sh tests/movies/movies.spec.ts`. Expected: PASS.
 - [ ] **Step 5: Commit** "Float the phone tab bar as a glass island that hides on scroll".
+
+#### Task 19 addendum (user request 2026-10-29: "For pc too")
+
+- **The island shows at every width.** Remove `@media (min-width:640px){.ui-tabbar{display:none}}`. Keep it hidden in games, in Study, and in Movies until Task 11 binds the Movies bar. The header's `.ui-nav` pills stay from 640 px.
+- **Hover (fine pointers only):** inside `@media (hover:hover) and (pointer:fine)`, `.ui-tab:hover` turns `#fff` on a faint lozenge, `background:#ffffff0f`. Colour and background change instantly, with no transition (spec: hover colour changes are instant).
+- **Clearance:** the `#content` bottom padding applies at every width outside games and Movies, not only below 640 px.
+- **Tests:**
+  - Update `desktop header has brand, sections and actions` (1366): `.app-tabbar` is now visible. Its box is centred (centre x within 683±2) and at most 440 px wide.
+  - Add `the island floats and hides on scroll on desktop too` at 1440×900:
+    - It is visible at the top.
+    - After scrolling down 400 px it has `data-hidden="true"` and its box top is ≥ 900.
+    - After scrolling up 120 px it is back.
+  - Add `the island stays hidden in games and Movies on desktop` at 1440.
+  - Phone tests stay.
+- **Screenshots:** 1440×900 at the top, over a rail, and hidden; plus 1024×768.

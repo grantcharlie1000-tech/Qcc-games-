@@ -81,10 +81,10 @@ Templates add these classes beside the existing hook classes (for example `class
   - `.ui-brand` is a 28 px white rounded tile holding the mauri mark, then the wordmark.
   - `.ui-pill` (nav item): padding 6×12 px, radius 8 px, 12 px text, `--c-400`. Hover: white on `--c-900` at 80%. Current (`aria-current="page"` or `aria-pressed="true"`): white fill, black text, 700, `--sh-sm`.
   - `.ui-icon-btn` (right-hand actions): 36 px minimum, radius 8 px, border `--line`, background `--c-950` at 80%, 16 px icon. Its label is visible from 768 px and visually hidden below that, so the accessible name stays.
-- **`.ui-tabbar`** (amended in section 15, at the user's request): below 640 px only, a floating glass island rather than a flat bar.
+- **`.ui-tabbar`** (amended in section 15, at the user's request): at every width, phones and desktop alike, a floating glass island rather than a flat bar. From 640 px the header's section pills stay as well, and the island adds My list and Study.
   - **Shape:** fixed, `left`/`right` 12 px, `bottom: calc(var(--tabbar-gap) + env(safe-area-inset-bottom))`, at most 440 px wide and centred, `min-height: var(--tabbar-h)`, 6 px padding, fully rounded (pill).
   - **Glass:** a dark tinted fill of at least 70% opacity (so labels keep 4.5:1 over bright art), a `backdrop-filter` of 24 px blur with saturation 1.8, a 1 px white border at about 12%, an inner top highlight, a soft drop shadow, and a faint specular sheen across the top. With no `backdrop-filter` support, or under `prefers-reduced-transparency: reduce`, the fill becomes near-opaque. Under `prefers-contrast: more` the border strengthens.
-  - **Items:** five, each at least 54×44 px, with a 16 px icon and a 10 px label. Others use `--c-300`. The current item is white 700 on a rounded glass lozenge. Press scales to .95.
+  - **Items:** five, each at least 54×44 px, with a 16 px icon and a 10 px label. Others use `--c-300`. The current item is white 700 on a rounded glass lozenge. Press scales to .95. With a fine pointer, hovering an item turns it white on a faint lozenge.
   - **Hide on scroll:** scrolling down by more than a small threshold slides the island down past the screen edge (`transform` only, `var(--t)` with `--ease-drawer`). Scrolling up by the threshold brings it back. It always shows near the top and near the end of the page, on pages too short to scroll, after every navigation, and whenever focus is inside it. While hidden it ignores pointer input. Under reduced motion it fades instead of sliding.
   - **Content clearance:** page content keeps enough bottom padding to clear the island when it is shown.
 - **`.ui-btn`:** primary is white with black text; secondary is `--c-900` at 80% with a `--c-700` border and `--c-200` text. Height 32/40 px, radius 8 px, press scale .98.
@@ -125,7 +125,7 @@ Motion runs on `transform` and `opacity` only. `prefers-reduced-motion: reduce` 
   - `button.header-search.ui-icon-btn[aria-label="Search games"]` opens the menu and focuses `#search`.
   - `button.favourites-pill.ui-icon-btn[aria-pressed]` has a star and the label "Favourites" (the label changes from "FAVOURITES"; one test updates).
   - `button.hamburger.icon-button.ui-icon-btn[aria-label="Open menu"]`.
-- **Tab bar:** below 640 px, `nav.app-tabbar.ui-tabbar[aria-label="Sections"]` is a sibling after `<main>`. Its items are Games (`#/collection`), Movies (`#/movies/browse/movie`), TV Shows (`#/movies/browse/tv`), My list (`#/movies/list`) and a Study button (`data-action="study"`, named "Study").
+- **Tab bar:** at every width (section 15), `nav.app-tabbar.ui-tabbar[aria-label="Sections"]` is a sibling after `<main>`. Its items are Games (`#/collection`), Movies (`#/movies/browse/movie`), TV Shows (`#/movies/browse/tv`), My list (`#/movies/list`) and a Study button (`data-action="study"`, named "Study").
   - It is hidden and inert whenever `.topbar` is: in a game, and while Movies & TV is open.
   - `main#content` reserves its height on phones.
 
@@ -200,7 +200,7 @@ The view derives `kind` from the route. Nav buttons set the hash; clicking the c
   - The search toggle `.movies-search-toggle` ("Search movies and TV").
   - `a.movies-back[href="#/collection"][aria-label="Games"]` (grid icon, "Games" from 768 px).
   - `button.movies-study` "Study Mode", with an `Esc` kbd from 768 px. It is hidden below 640 px.
-- **Tab bar** (`nav.movies-mobile-nav.ui-tabbar`, below 640 px): Home, Movies, TV Shows, My list, Study.
+- **Tab bar** (`nav.movies-mobile-nav.ui-tabbar`, at every width per section 15): Home, Movies, TV Shows, My list, Study.
 
 ### 7.3 Home (`#/movies`)
 
@@ -438,3 +438,4 @@ The reference embeds its player without a sandbox. Ours keeps `allow-scripts all
 ## 15. Amendments
 
 - **2026-10-29, user request: glass island tab bar.** The user asked for the phone bottom bar to be "an Apple glass island that disappears on scroll down". This replaces the reference's flat bar for that one component, in both the arcade and Movies & TV, because both use `.ui-tabbar`. Section 5 holds the new look and behaviour. The behaviour lives in one shared helper, `src/ui/tabbar.ts`, which the arcade binds to the window scroll and Movies binds to its own scrolling view. The glass is original CSS (tint, blur, saturation, highlights); no Apple assets or code are used.
+- **2026-10-29, user request: "For pc too".** The island shows at every width, not only below 640 px, with the same hide-on-scroll behaviour. On desktop the header keeps its section pills (the reference's look), so the island repeats Games, Movies and TV Shows and adds My list and Study. Content clearance applies at every width. Hover feedback for fine pointers is added.
