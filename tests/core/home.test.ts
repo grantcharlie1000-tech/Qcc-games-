@@ -41,14 +41,15 @@ test('empty favourites keep the existing guidance',()=>{
   expect(html).not.toContain('arcade-hero');
 });
 
-test('the hero prefers the newest save, else the daily pick',()=>{
+test('the hero shows the newest save and nothing without one',()=>{
   const saves:Partial<Record<GameId,number>>={tower:NOW-5*60_000,snake:NOW-60_000};
   const saved=state({savedAt:id=>saves[id]});
   expect(featured(saved)).toEqual({game:games.find(game=>game.id==='snake'),mode:'continue'});
   expect(homeMarkup(saved,LAUNCH)).toContain('Continue playing');
-  const daily=state();
-  expect(featured(daily)).toEqual({game:games[Math.floor(NOW/DAY)%games.length],mode:'daily'});
-  expect(homeMarkup(daily,LAUNCH)).toContain('Game of the day');
+  expect(featured(state())).toBeUndefined();
+  const none=homeMarkup(state(),LAUNCH);
+  expect(none).not.toContain('arcade-hero');
+  expect(none).not.toContain('Game of the day');
 });
 
 test('continue cards are named Continue {title}, newest first, at most 10',()=>{
@@ -72,11 +73,9 @@ test('continue cards reuse the shared card parts and keep the continue name',()=
 });
 
 test('no hero control is named Play {title}',()=>{
-  for(const html of [homeMarkup(state(),LAUNCH),homeMarkup(state({savedAt:()=>NOW-60_000}),LAUNCH)]){
-    const hero=heroOf(html);
-    expect(hero).not.toMatch(/aria-label="Play /);
-    expect(hero).toMatch(/>(Play now|Continue)<\/a>/);
-  }
+  const hero=heroOf(homeMarkup(state({savedAt:()=>NOW-60_000}),LAUNCH));
+  expect(hero).not.toMatch(/aria-label="Play /);
+  expect(hero).toMatch(/>Continue<\/a>/);
 });
 
 test('relativeTime thresholds',()=>{
@@ -89,13 +88,14 @@ test('relativeTime thresholds',()=>{
 });
 
 test('the hero favourite button shows its state in the label and icon, without aria-pressed',()=>{
-  const id=featured(state()).game.id;
-  const off=heroOf(homeMarkup(state(),LAUNCH));
+  const saved=state({savedAt:()=>NOW-60_000});
+  const id=featured(saved)!.game.id;
+  const off=heroOf(homeMarkup(saved,LAUNCH));
   expect(off).toContain(`data-hero-favourite="${id}">`);
   expect(off).not.toContain('aria-pressed');
   expect(off).toContain(uiIcon('star'));
   expect(off).toContain('Add to favourites</button>');
-  const on=heroOf(homeMarkup(state({favourites:[id]}),LAUNCH));
+  const on=heroOf(homeMarkup({...saved,favourites:[id]},LAUNCH));
   expect(on).toContain(`data-hero-favourite="${id}">`);
   expect(on).not.toContain('aria-pressed');
   expect(on).toContain(uiIcon('check'));

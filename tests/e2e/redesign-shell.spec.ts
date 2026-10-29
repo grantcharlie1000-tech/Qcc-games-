@@ -239,6 +239,8 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
 
 test('the island shows again after returning from Study',async({page})=>{
  await page.setViewportSize({width:390,height:844});
+ // The continue hero makes the home page long enough to rest in the middle of it.
+ await seedSnakeSave(page);
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await page.evaluate(()=>window.scrollTo(0,1000));
@@ -274,8 +276,28 @@ test('a resize that brings the end of the page into reach shows the island',asyn
  await expect(bar).not.toHaveAttribute('data-hidden');
 });
 
+// A save brings the continue hero and its rail, so the hero tests seed one before the first render.
+async function seedSnakeSave(page:Page){
+ await page.addInitScript(()=>{if(window!==window.top)return;try{localStorage.setItem('pocket-arcade:v1:save:snake',JSON.stringify({version:1,data:{},updated:Date.now()-90000}));}catch{}});
+}
+
+for(const width of [1440,390]) test(`with no saves the home opens on the Movies & TV launch at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:width===1440?900:844});
+ await page.goto('/');
+ await expect(page.locator('.movies-launch')).toBeVisible();
+ await expect(page.locator('.arcade-hero')).toHaveCount(0);
+ await expect(page.locator('body')).not.toContainText('Game of the day');
+ // The launch is the first thing in the library grid, right under the header.
+ expect(await page.locator('.game-grid').evaluate(grid=>grid.firstElementChild?.classList.contains('movies-launch')??false)).toBe(true);
+ const header=(await page.locator('.topbar').boundingBox())!;
+ const launch=(await page.locator('.movies-launch').boundingBox())!;
+ expect(launch.y).toBeGreaterThanOrEqual(header.y+header.height);
+ expect(launch.y-(header.y+header.height)).toBeLessThanOrEqual(40);
+});
+
 test('home shows a hero, three rails and a footer',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
+ await seedSnakeSave(page);
  await page.goto('/');
  await expect(page.locator('.arcade-hero')).toBeVisible();
  expect(await page.locator('.ui-rail').count()).toBeGreaterThanOrEqual(3);
@@ -285,6 +307,7 @@ test('home shows a hero, three rails and a footer',async({page})=>{
 
 test('hero favourite toggle feeds the Favourites filter',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
+ await seedSnakeSave(page);
  await page.goto('/');
  const toggle=page.locator('[data-hero-favourite]');
  await toggle.click();

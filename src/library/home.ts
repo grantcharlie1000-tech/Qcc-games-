@@ -11,16 +11,14 @@ export const RAILS:ReadonlyArray<{genre:GameInfo['genre'];title:string;subtitle:
   {genre:'Arcade',title:'Arcade action',subtitle:'Quick reflexes'},
   {genre:'Classic',title:'Classics & sandbox',subtitle:'Take your time'},
 ];
-const DAY=86_400_000;
 const esc=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const count=(n:number)=>`${n} ${n===1?'game':'games'}`;
 
-// The newest save leads; with no saves, the hero is the game of the day, which changes each day.
-export function featured(state:HomeState):{game:GameInfo;mode:'continue'|'daily'}{
+// The hero shows the newest save. With no saves there is no hero, and the library opens on the Movies & TV launch.
+export function featured(state:HomeState):{game:GameInfo;mode:'continue'}|undefined{
   let latest:{game:GameInfo;at:number}|undefined;
   for(const game of games){const at=state.savedAt(game.id);if(at!==undefined&&(!latest||at>latest.at))latest={game,at};}
-  if(latest)return {game:latest.game,mode:'continue'};
-  return {game:games[Math.floor(state.now/DAY)%games.length],mode:'daily'};
+  return latest?{game:latest.game,mode:'continue'}:undefined;
 }
 
 export function relativeTime(then:number,now:number):string{
@@ -42,12 +40,11 @@ function continueCard(game:GameInfo,at:number,now:number):string{
   return `<a class="continue-card ui-card" href="${entryHash(game.id)}" aria-label="Continue ${esc(game.title)}"><span class="ui-card-poster"><span class="ui-card-placeholder" aria-hidden="true">${uiIcon('image')}</span><img class="ui-card-img" src="${artUrl(game.id)}" alt="" width="320" height="180" decoding="async" draggable="false"></span><span class="ui-card-caption"><span class="ui-card-title">${esc(game.title)}</span><span class="ui-card-meta">Saved ${relativeTime(at,now)}</span></span></a>`;
 }
 
-function heroMarkup(state:HomeState,pick:{game:GameInfo;mode:'continue'|'daily'}):string{
-  const {game,mode}=pick;
+function heroMarkup(state:HomeState,game:GameInfo):string{
   const at=state.savedAt(game.id);
   const best=state.best(game.id);
   const favourite=state.favourites.includes(game.id);
-  return `<section class="arcade-hero ui-hero" aria-labelledby="arcade-hero-title"><img class="ui-hero-backdrop" src="${artUrl(game.id)}" alt=""><span class="ui-hero-shade"></span><div class="ui-hero-content ui-container"><div class="ui-hero-badges"><span class="ui-chip">${mode==='continue'?'Continue playing':'Game of the day'}</span><span class="ui-chip">${esc(game.genre)}</span>${best>0?`<span class="ui-chip rating">★ ${best}</span>`:''}</div><h2 class="ui-hero-title" id="arcade-hero-title">${esc(game.title)}</h2><p class="ui-hero-meta">${esc(game.genre)} · ${at!==undefined?`Saved ${relativeTime(at,state.now)}`:'New'}</p><p class="ui-hero-overview">${esc(game.blurb)}</p><div class="ui-hero-actions"><a class="ui-btn primary" href="${entryHash(game.id)}">${uiIcon('play')}${mode==='continue'?'Continue':'Play now'}</a><button class="ui-btn secondary" data-hero-favourite="${game.id}">${uiIcon(favourite?'check':'star')}${favourite?'In favourites':'Add to favourites'}</button></div></div><img class="ui-hero-poster" src="${artUrl(game.id)}" alt=""></section>`;
+  return `<section class="arcade-hero ui-hero" aria-labelledby="arcade-hero-title"><img class="ui-hero-backdrop" src="${artUrl(game.id)}" alt=""><span class="ui-hero-shade"></span><div class="ui-hero-content ui-container"><div class="ui-hero-badges"><span class="ui-chip">Continue playing</span><span class="ui-chip">${esc(game.genre)}</span>${best>0?`<span class="ui-chip rating">★ ${best}</span>`:''}</div><h2 class="ui-hero-title" id="arcade-hero-title">${esc(game.title)}</h2><p class="ui-hero-meta">${esc(game.genre)} · ${at!==undefined?`Saved ${relativeTime(at,state.now)}`:'New'}</p><p class="ui-hero-overview">${esc(game.blurb)}</p><div class="ui-hero-actions"><a class="ui-btn primary" href="${entryHash(game.id)}">${uiIcon('play')}Continue</a><button class="ui-btn secondary" data-hero-favourite="${game.id}">${uiIcon(favourite?'check':'star')}${favourite?'In favourites':'Add to favourites'}</button></div></div><img class="ui-hero-poster" src="${artUrl(game.id)}" alt=""></section>`;
 }
 
 function railMarkup(id:string,title:string,subtitle:string,total:number,row:string):string{
@@ -65,7 +62,7 @@ function footerMarkup():string{
   return `<footer class="site-footer ui-footer"><div class="ui-footer-brand"><span class="ui-brand-tile">${mauriMark}</span><strong>Mauri Study Notes</strong><span>Games, films and revision in one place</span></div><nav class="ui-footer-links" aria-label="Footer"><a href="#/collection">Games</a><a href="#/movies/browse/movie">Movies</a><a href="#/movies/browse/tv">TV Shows</a><button type="button" data-action="leaderboards">Leaderboards</button></nav><p>${games.length} games. No ads. Optional accounts.</p></footer>`;
 }
 
-// The hero is left out while filtering. `launch` is the Movies & TV card, which sits at the top of the library grid.
+// The hero shows only for a saved game and is left out while filtering. `launch` is the Movies & TV card, which sits at the top of the library grid.
 export function homeMarkup(state:HomeState,launch:string):string{
   const filtering=state.search!==''||state.onlyFavourites;
   const needle=state.search.toLowerCase();
@@ -83,5 +80,6 @@ export function homeMarkup(state:HomeState,launch:string):string{
       rails+=railMarkup(section.genre.toLowerCase(),section.title,section.subtitle,items.length,items.map(game=>gameCard(game,state,priority())).join(''));
     }
   }
-  return `<h1 class="sr-only">Mauri Study Notes · Games</h1>${filtering?'':heroMarkup(state,featured(state))}<div class="game-grid" aria-label="Game library">${launch}${rails}</div>${footerMarkup()}`;
+  const pick=filtering?undefined:featured(state);
+  return `<h1 class="sr-only">Mauri Study Notes · Games</h1>${pick?heroMarkup(state,pick.game):''}<div class="game-grid" aria-label="Game library">${launch}${rails}</div>${footerMarkup()}`;
 }
