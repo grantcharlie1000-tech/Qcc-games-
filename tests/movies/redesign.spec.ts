@@ -566,6 +566,15 @@ const seedMovies=(page:Page,state:unknown)=>page.addInitScript(value=>{
  localStorage.setItem('qcc:movies:v1',JSON.stringify(value));
 },state);
 const savedFilm={list:['movie-157336'],progress:{},meta:{},titles:{}};
+// Records each JSON answer as the page finishes reading it. The page handles an answer in the microtasks after that, before any other task runs, so a test that waits for the URL waits for the page to handle it.
+const trackAnswers=(page:Page)=>page.addInitScript(()=>{
+ if(window!==window.top)return;
+ const read=Response.prototype.json,answers:string[]=[];
+ (window as Window&{answers?:string[]}).answers=answers;
+ Response.prototype.json=function(this:Response){return read.call(this).finally(()=>{answers.push(this.url);});};
+});
+// How many recorded answers have a URL that contains the text.
+const answersRead=(page:Page,text:string)=>page.evaluate(fragment=>((window as Window&{answers?:string[]}).answers??[]).filter(url=>url.includes(fragment)).length,text);
 
 test('TV Shows shows TV rails and asks the server for a genre',async({page})=>{
  const genreRequests:string[]=[];
@@ -756,6 +765,71 @@ test('a failed genre request keeps the local matches and offers a retry',async({
  expect(requests).toHaveLength(2);
 });
 
+// A failed genre request names its own results, so its status does not read as a failed full-catalog search. Retry loads the genre.
+test('a failed genre request names its own results and Retry loads them',async({page})=>{
+ let fail=true;
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.get('genre')!=='Science Fiction')return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  return fail?route.fulfill({status:503,json:{error:'metadata_unavailable'}}):route.fulfill({json:{titles:[{...fixtureTitle('movie-90403','Named Genre Film'),genres:['Science Fiction']}],page:1,totalPages:1,totalResults:1}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ const status=page.locator('.movies-catalog-status');
+ await expect(status).toContainText('Genre results is temporarily unavailable.');
+ await expect(status).not.toContainText('Full catalog search');
+ fail=false;
+ await status.getByRole('button',{name:'Retry',exact:true}).click();
+ await expect(page.getByRole('link',{name:'Details for Named Genre Film'})).toBeVisible();
+});
+
+// A short query narrows a genre's server titles as it narrows the local ones: one letter keeps only the titles that contain it.
+test('a one-letter search narrows the server titles of a genre',async({page})=>{
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.get('genre')!=='Science Fiction')return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  return route.fulfill({json:{titles:[
+   {...fixtureTitle('movie-90901','Xenon Voyage'),genres:['Science Fiction'],overview:'Ships cross the void.'},
+   {...fixtureTitle('movie-90902','Quiet Harbour'),genres:['Science Fiction'],overview:'A calm story of the sea.'}
+  ],page:1,totalPages:1,totalResults:2}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await expect(page.getByRole('link',{name:'Details for Quiet Harbour'})).toBeVisible();
+ await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('x');
+ await expect(page.getByRole('link',{name:'Details for Xenon Voyage'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Quiet Harbour'})).toHaveCount(0);
+});
+
+// Choosing a section by its route resets the genre, as the section buttons do. The typed query is left as it is.
+test('going back to TV from Movies resets the genre that Movies had set',async({page})=>{
+ const genreRequests:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  const url=route.request().url(),params=new URL(url).searchParams;
+  if(params.get('rails')==='tv')return route.fulfill({json:{rails:[{id:'fixture-shows',title:'Fixture TV rail',titles:[fixtureTitle('tv-90231','Fixture Series','tv')]}]}});
+  if(params.get('genre')==='Science Fiction'){genreRequests.push(url);return route.fulfill({json:{titles:[{...fixtureTitle('movie-90231','Remote Science Film'),genres:['Science Fiction']}],page:1,totalPages:1,totalResults:1}});}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/tv');
+ await expect(page.getByRole('heading',{name:'Fixture TV rail',exact:true})).toBeVisible();
+ await page.locator('.movies-top').getByRole('button',{name:'Movies',exact:true}).click();
+ await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);
+ // The address changes before the page renders Movies, so the genre is chosen once its heading shows.
+ await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await expect(page.getByRole('link',{name:'Details for Remote Science Film'})).toBeVisible();
+ await page.goBack();
+ await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
+ await expect(page.getByRole('heading',{name:'TV Shows',exact:true,level:1})).toBeVisible();
+ await expect(page.locator('#movies-genre')).toHaveValue('All');
+ await expect(page.locator('.movies-catalog-status')).toHaveCount(0);
+ // Past the search debounce, so a genre request for TV would have gone out by now.
+ await page.waitForTimeout(600);
+ expect(genreRequests).toHaveLength(1);
+ expect(new URL(genreRequests[0]).searchParams.get('type')).toBe('movie');
+});
+
 test('a later page of a genre uses the existing pagination',async({page})=>{
  const pages:string[]=[];
  await page.route('**/api/movies?*',route=>{
@@ -778,6 +852,7 @@ test('a later page of a genre uses the existing pagination',async({page})=>{
 });
 
 test('a genre response that arrives after a title opened updates state only',async({page})=>{
+ await trackAnswers(page);
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
  let sawGenre!:()=>void;
@@ -794,12 +869,41 @@ test('a genre response that arrives after a title opened updates state only',asy
  await page.getByRole('link',{name:'Details for Interstellar'}).click();
  await expect(page.locator('.movies-detail h1')).toHaveText('Interstellar');
  release();
+ // The late answer has been handled once its URL is recorded, so the checks below run after it, not before it.
+ await expect.poll(()=>answersRead(page,'genre=Science')).toBe(1);
  await expect(page.locator('.movies-detail h1')).toHaveText('Interstellar');
  await expect(page).toHaveURL(/#\/movies\/movie-157336$/);
  // Back in history returns to the section with its genre, and the titles that arrived meanwhile are there.
  await page.goBack();
  await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);
  await expect(page.getByRole('link',{name:'Details for Late Genre Film'})).toBeVisible();
+});
+
+// A genre answer that arrives after a newer genre was chosen is dropped, so the grid keeps the newer genre's titles.
+test('a superseded genre answer is dropped when a newer genre answers',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let sawFirst!:()=>void;
+ const firstRequest=new Promise<void>(resolve=>{sawFirst=resolve;});
+ await page.route('**/api/movies?*',async route=>{
+  const genre=new URL(route.request().url()).searchParams.get('genre');
+  // The stale titles carry Drama too, so the newer genre's filter would keep them if they reached the grid.
+  if(genre==='Science Fiction'){sawFirst();await held;return route.fulfill({json:{titles:[{...fixtureTitle('movie-90511','Stale Science Film'),genres:['Science Fiction','Drama']}],page:1,totalPages:1,totalResults:1}});}
+  if(genre==='Drama')return route.fulfill({json:{titles:[{...fixtureTitle('movie-90512','Fresh Drama Film'),genres:['Drama']}],page:1,totalPages:1,totalResults:1}});
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await firstRequest;
+ await page.locator('#movies-genre').selectOption('Drama');
+ await expect(page.getByRole('link',{name:'Details for Fresh Drama Film'})).toBeVisible();
+ release();
+ // The page cancelled the older request when Drama was chosen. Its late answer must change nothing, and the wait gives a stale render time to show if one happened.
+ await page.waitForTimeout(600);
+ await expect(page.getByRole('link',{name:'Details for Stale Science Film'})).toHaveCount(0);
+ await expect(page.getByRole('link',{name:'Details for Fresh Drama Film'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Arrival'})).toBeVisible();
 });
 
 test('My list emptied by a genre filter shows No titles found, not the empty-list copy',async({page})=>{
@@ -825,6 +929,8 @@ test('My list searches its saved titles only, without a full-catalog request',as
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('arrival');
  await expect(page.getByRole('heading',{name:'No titles found',exact:true})).toBeVisible();
  await expect(page.locator('.movies-catalog-status')).toHaveCount(0);
+ // Past the 280 ms search debounce, so a request that was due would have gone out by now.
+ await page.waitForTimeout(600);
  expect(queries).toEqual([]);
 });
 
@@ -836,6 +942,20 @@ test('My list shows its title block with the saved count',async({page})=>{
  await expect(head.getByRole('heading',{name:'My list',exact:true,level:1})).toBeVisible();
  await expect(head.locator('p')).toHaveText('Titles you saved on this device.');
  await expect(head.locator('.ui-count')).toHaveText('2 titles');
+});
+
+// My list's no-match copy says what its search covers: the titles saved on this device. The other pages keep the catalog snapshot copy.
+test('My list says its search covers the titles saved on this device',async({page})=>{
+ await seedMovies(page,savedFilm);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/list');
+ await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('arrival');
+ await expect(page.getByRole('heading',{name:'No titles found',exact:true})).toBeVisible();
+ await expect(page.locator('.movies-empty p')).toHaveText('Try another title or clear your filters. My list search covers the titles saved on this device.');
+ await page.goto('/#/movies/browse/movie');
+ await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('zzzz');
+ await expect(page.getByRole('heading',{name:'No titles found',exact:true})).toBeVisible();
+ await expect(page.locator('.movies-empty p')).toHaveText('Try another title or clear your filters. Search covers this catalog snapshot only.');
 });
 
 // Ruling 6: Study is in the header and in the island. A focus restored after a render stays in its own bar, so the island tab keeps focus.
@@ -852,6 +972,89 @@ for(const width of [390,1440])test(`the island's Study tab keeps focus when a la
  release();
  await expect(page.locator('.movies-rails-status')).toBeVisible();
  await expect(study).toBeFocused();
+});
+
+// An invalid route keeps its not-found message when a late rails answer arrives.
+test('a late rails answer keeps the not-found message on an invalid route',async({page})=>{
+ await trackAnswers(page);
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let sawRails!:()=>void;
+ const railsRequest=new Promise<void>(resolve=>{sawRails=resolve;});
+ await page.route('**/api/movies?rails=*',async route=>{sawRails();await held;return route.fulfill({json:{rails:[{id:'late-rail',title:'Late rail',titles:[fixtureTitle('movie-90411','Late Rail Film')]}]}});});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.locator('.movies-hero')).toBeVisible();
+ await railsRequest;
+ await page.goto('/#/movies/browse/all');
+ const notFound=page.getByRole('heading',{name:'That page could not be found.',exact:true});
+ await expect(notFound).toBeVisible();
+ release();
+ await expect.poll(()=>answersRead(page,'rails=home')).toBe(1);
+ await expect(notFound).toBeVisible();
+ await expect(page.locator('.movies-hero')).toHaveCount(0);
+});
+
+// The same holds for a late genre answer: the invalid route keeps its message.
+test('a late genre answer keeps the not-found message on an invalid route',async({page})=>{
+ await trackAnswers(page);
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let sawGenre!:()=>void;
+ const genreRequest=new Promise<void>(resolve=>{sawGenre=resolve;});
+ await page.route('**/api/movies?*',async route=>{
+  if(new URL(route.request().url()).searchParams.get('genre')==='Science Fiction'){sawGenre();await held;return route.fulfill({json:{titles:[{...fixtureTitle('movie-90421','Late Genre Answer'),genres:['Science Fiction']}],page:1,totalPages:1,totalResults:1}});}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await page.locator('#movies-genre').selectOption('Science Fiction');
+ await genreRequest;
+ await page.goto('/#/movies/browse/all');
+ const notFound=page.getByRole('heading',{name:'That page could not be found.',exact:true});
+ await expect(notFound).toBeVisible();
+ release();
+ await expect.poll(()=>answersRead(page,'genre=Science')).toBe(1);
+ await expect(notFound).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Late Genre Answer'})).toHaveCount(0);
+});
+
+// A direct visit to an invalid route keeps its not-found message once the catalog has loaded.
+test('a direct visit to an invalid route keeps its not-found message',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/all');
+ await expect(page.getByRole('heading',{name:'That page could not be found.',exact:true})).toBeVisible();
+ await expect(page.locator('.movies-hero')).toHaveCount(0);
+});
+
+// A late genre or section rails answer leaves an open player alone: the same provider frame stays in place.
+for(const late of ['genre','section rails'] as const)test(`a late ${late} answer leaves an open player untouched`,async({page})=>{
+ await trackAnswers(page);
+ const pending=late==='genre'?'genre=Science':'rails=movie';
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ let sawPending!:()=>void;
+ const pendingRequest=new Promise<void>(resolve=>{sawPending=resolve;});
+ await page.route('**/api/movies?*',async route=>{
+  if(!route.request().url().includes(pending))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  sawPending();await held;
+  return route.fulfill({json:late==='genre'
+   ?{titles:[{...fixtureTitle('movie-90431','Late Player Genre'),genres:['Science Fiction']}],page:1,totalPages:1,totalResults:1}
+   :{rails:[{id:'late-picks',title:'Late picks',titles:[fixtureTitle('movie-90432','Late Player Pick')]}]}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ if(late==='genre')await page.locator('#movies-genre').selectOption('Science Fiction');
+ await pendingRequest;
+ await page.getByRole('link',{name:'Details for Interstellar'}).click();
+ await page.getByRole('button',{name:'Play movie'}).click();
+ const frame=page.locator('iframe.movies-provider-frame');
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+ await frame.evaluate(element=>{element.dataset.kept='yes';});
+ release();
+ await expect.poll(()=>answersRead(page,pending)).toBe(1);
+ await expect(frame).toHaveAttribute('data-kept','yes');
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
 });
 
 // Ruling 6: Safari does not focus a link on click, so the title and rail captured by the click must still bring focus back to the card.

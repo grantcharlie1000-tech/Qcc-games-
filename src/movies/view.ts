@@ -109,6 +109,8 @@ export class MoviesView {
  private intentionalExit=false;
  private lastSave=0;
  private route:MovieRoute={play:false};
+ // The not-found page is on screen for an invalid route. A valid route clears it, and a late answer never replaces it.
+ private notFound=false;
  private rails:Rail[]=[];
  private railsError=false;
  private railsRequest=0;
@@ -213,7 +215,7 @@ export class MoviesView {
    if(id!==this.searchRequest||this.remoteRequest()?.key!==request.key||controller.signal.aborted)return;
    // Titles from an earlier request go when this one fails. A later page of the same request keeps its results.
    if(this.remoteKey!==request.key){this.remoteTitles=[];this.remoteKey='';}
-   this.remoteLoading=false;this.remoteError=movieNetworkMessage(error,'Full catalog search');this.renderBrowseState();
+   this.remoteLoading=false;this.remoteError=movieNetworkMessage(error,request.family==='g'?'Genre results':'Full catalog search');this.renderBrowseState();
   }
  }
  // The home asks once for all of its rails. A response that arrives after a title opened updates the state only.
@@ -280,10 +282,10 @@ export class MoviesView {
    this.pendingTitle=false;this.detailError=error instanceof MovieNetworkError&&error.status===404?'':movieNetworkMessage(error,'Title details');if(this.screenFullscreen())this.renderDetailError();else this.render();
   }
  }
- // A browse request may complete after Play was pressed. Updating its state
- // must not replace the player's iframe or restart an active stream.
+ // A browse request may complete after Play was pressed, or after a not-found route opened. Updating its state
+ // must not replace the player's iframe, restart an active stream or replace the not-found page.
  private renderBrowseState(){
-  if(this.route.id)return;
+  if(this.route.id||this.notFound)return;
   const input=this.root.querySelector<HTMLInputElement>('#movies-search');
   const focusedInput=!!input&&input===document.activeElement;
   const start=input?.selectionStart,top=this.root.scrollTop;
@@ -318,7 +320,7 @@ export class MoviesView {
  }
  private applyRoute(hash:string){
   const next=parseMovieRoute(hash);
-  if(!next){this.route={play:false};this.render('That page could not be found.');return;}
+  if(!next){this.route={play:false};this.notFound=true;this.render();return;}
   this.detailRequest++;this.detailAbort?.abort();this.pendingTitle=false;this.detailError='';
   const returningFromPlayer=!!this.route.play&&!next.play&&!!this.route.id&&this.route.id===next.id;
   const returnEpisodeHref=returningFromPlayer?titleHash(this.route.id!)+'/season/'+this.route.season+'/episode/'+this.route.episode+'/play':'';
@@ -332,7 +334,9 @@ export class MoviesView {
   this.lastActivatedHref='';
   const returning=!!this.route.id&&!next.id;
   const inPlace=this.route.play&&next.play&&this.route.id===next.id&&this.screenFullscreen();
-  this.stopVideo();this.suspended=false;this.preferExternal=false;this.route=next;this.kind=next.id?this.kind:(next.kind??'all');
+  this.stopVideo();this.suspended=false;this.preferExternal=false;this.route=next;this.notFound=false;
+  // A section change resets its genre, as the section buttons do. The typed query stays.
+  const kind=next.id?this.kind:(next.kind??'all');if(kind!==this.kind)this.genre='All';this.kind=kind;
   // A page that is not a title brings its full-catalog request in line with its query and genre.
   if(!next.id)this.syncRemote();
   const title=this.catalog.titles.find(t=>t.id===next.id);
@@ -379,8 +383,8 @@ export class MoviesView {
   // Full-catalog titles show only while they answer the request the page makes, so a search never shows a genre's titles, or the reverse.
   const request=this.remoteRequest();
   const answers=!!request&&!!this.remoteKey&&this.remoteKey.startsWith(request.family+'|');
-  // TMDB can match aliases and translated titles absent from the display text.
-  const remote=answers?filterTitles(this.remoteTitles,'',this.kind,this.genre):[];
+  // A search's titles are already matched by TMDB, which can match aliases and translated titles absent from the display text. A genre's titles were asked for by genre alone, so the typed text narrows them here.
+  const remote=answers?filterTitles(this.remoteTitles,request?.family==='g'?this.query:'',this.kind,this.genre):[];
   const filtered=[...new Map([...local,...remote].map(t=>[t.id,t])).values()];
   const simple=!!this.query.trim()||this.genre!=='All'||list;
   // A section and My list open with their title block. Home keeps its hero, and a search on Home keeps its own heading.
@@ -444,7 +448,7 @@ export class MoviesView {
   const count=`${filtered.length} ${filtered.length===1?'title':'titles'}`;
   // The count line announces a filtered result. An unfiltered My list shows its count in its title block instead.
   const filtering=!!this.query.trim()||this.genre!=='All';
-  const body=filtered.length?`<div class="movies-results-grid ui-grid">${filtered.map(t=>this.card(t)).join('')}</div>`:`<div class="movies-empty"><h2>No titles found</h2><p>Try another title or clear your filters. Search covers this catalog snapshot only.</p><button data-action="reset">Explore all titles</button></div>`;
+  const body=filtered.length?`<div class="movies-results-grid ui-grid">${filtered.map(t=>this.card(t)).join('')}</div>`:`<div class="movies-empty"><h2>No titles found</h2><p>Try another title or clear your filters. ${this.kind==='list'?'My list search covers the titles saved on this device.':'Search covers this catalog snapshot only.'}</p><button data-action="reset">Explore all titles</button></div>`;
   return `${filtering?`<p class="movies-result-count" role="status" tabindex="-1">${count}</p>`:''}${body}${this.searchStatus()}`;
  }
  // The full-catalog status line and its pagination, for the request the page makes. Pagination shows only for the results that answer it.
@@ -527,11 +531,11 @@ export class MoviesView {
   return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}">← Back to ${escape(t.name)}</a><p class="movies-eyebrow">QCC SCREEN / ${t.kind==='tv'?'SERIES':'CINEMA'}</p><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${this.route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" src="${asset(source.path)}"></video>`:external?`<iframe class="movies-provider-frame" data-provider="${this.providerId}" data-media-key="${escape(mediaKey(t,this.route))}" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`:`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${escape(back)}">Return to title</a></div>`}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button></div>${t.kind==='tv'?`<label class="movies-auto-next"><input type="checkbox" id="movies-auto-next"${this.preferences.autoNext()?' checked':''}> Auto next episode</label>`:''}<p id="movies-player-status" role="status">${source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`:external?`External player provided by ${provider.name}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`:'No provider identifier is available for this title.'}</p>${external&&!source?`<div class="movies-source-controls" role="group" aria-label="Streaming source"><label for="movies-source">Source <select id="movies-source" aria-describedby="movies-source-help">${STREAM_PROVIDERS.map(item=>`<option value="${item.id}"${item.id===this.providerId?' selected':''}>${item.name}</option>`).join('')}</select></label><button data-action="next-source">Try another source</button><button data-action="reload-stream">Reload player</button><p id="movies-source-help">Player blocked or not loading? Try another source. Your episode stays selected. ${provider.resume==='none'?'This source may start at the beginning and cannot share playback progress.':'Playback position resumes where supported.'}</p></div>`:''}</div>`;
  }
  private mobileNav(){const sections:[MovieKind,string,'grid'|'film'|'tv'|'bookmark'][]=[['all','Home','grid'],['movie','Movies','film'],['tv','TV Shows','tv'],['list','My list','bookmark']];return sections.map(([kind,name,icon])=>`<button class="ui-tab" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${uiIcon(icon)}<span>${name}</span></button>`).join('')+`<button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;}
- private render(message=''){
+ private render(){
   const title=this.catalog.titles.find(t=>t.id===this.route.id);
   if(this.route.play&&title&&this.screenFullscreen()&&this.root.querySelector<HTMLElement>('.movies-screen')?.dataset.title===title.id){this.refreshPlayer(title);return;}
   this.stopVideo();
-  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button data-action="retry">Try again</button>':''}</div>`:message?`<div class="movies-empty"><h1>${escape(message)}</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1>Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.append(this.tabbar);
+  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1>That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1>Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.append(this.tabbar);
   markImages(this.root);
   if(this.route.id&&this.pendingTitle){
    const main=this.root.querySelector<HTMLElement>('.movies-empty');
