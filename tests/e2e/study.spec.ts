@@ -11,7 +11,20 @@ const studyImagePaths=new Set<string>([
 const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of requests){const url=new URL(request);expect(url.origin).toBe(new URL(page.url()).origin);expect(studyImagePaths.has(url.pathname)).toBe(true);}};
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>{const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.isVisible())await accept.click();await page.locator(`[data-study-topic="${id}"]`).click();};
-const returnToGame=async(page:import('@playwright/test').Page)=>page.getByRole('link',{name:'Games',exact:true}).first().click();
+const returnToGame=async(page:Page)=>{
+  await page.getByRole('link',{name:'Games',exact:true}).first().click();
+  await expect(page.locator('#study-view')).toBeHidden();
+  await expect(page.locator('#game-stage, .game-card').first()).toBeVisible();
+  await expect(page.locator('#app')).toHaveJSProperty('inert',false);
+};
+const waitForReadingScroll=async(page:Page)=>{
+  let lastY:number|undefined,stillSince=0;
+  await expect.poll(async()=>{
+    const y=await page.evaluate(()=>window.scrollY),now=performance.now();
+    if(lastY===undefined||Math.abs(y-lastY)>.5){lastY=y;stillSince=now;}
+    return now-stillSince;
+  },{message:'Wait for the native reading scroll to settle',timeout:5000,intervals:[50]}).toBeGreaterThanOrEqual(400);
+};
 const snapshot=(page:Page,id:string)=>page.evaluate(id=>JSON.parse(localStorage.getItem(`pocket-arcade:v1:save:${id}`)!).data,id);
 
 async function gameAction(page:Page,id:string){
@@ -148,6 +161,9 @@ test.describe('all retained game instances',()=>{
       // Advance beyond the 5-second autosave and any AI/animation delays.
       await page.clock.runFor(6100);
       await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');
+      // Native Space scrolling can continue after keyboard.press resolves, even
+      // with the page clock paused. Settle it before changing articles and clicking Games.
+      await waitForReadingScroll(page);
       await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
       await page.keyboard.down('Escape');await page.keyboard.down('Escape');await page.keyboard.up('Escape');
       expect(await snapshot(page,id)).toEqual(saved);
