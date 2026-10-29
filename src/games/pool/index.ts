@@ -26,14 +26,15 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  const cue=()=>state.balls.find(b=>b.id===0)!;
  /** Online play: the room, this device's seat, the host's authoritative table or the guest's mirror, and the offline
   *  game kept aside (the shell keeps saving that one, so online racks never replace it). */
- let online:{room:Room;seat:number;host:PoolHost|null;guest:PoolGuest|null;offline:PoolState;guestId:string|null;roomPaused:boolean;seq:number;off:()=>void}|null=null;
+ type OnlineSession={room:Room;seat:number;offline:PoolState;guestId:string|null;roomPaused:boolean;seq:number;off:()=>void}&({host:PoolHost;guest:null}|{host:null;guest:PoolGuest});
+ let online:OnlineSession|null=null;
  let dialog:RoomDialog|null=null,lastAimSent=0;
  const human=()=>online?state.turn===online.seat:state.mode==='two'||state.turn===0;
  const onlineReady=()=>!online||(online.host?online.host.opponent:!!online.guest?.state)&&!online.roomPaused&&online.guest?.pending==null;
  const canAim=()=>!paused&&!disposed&&state.phase==='aim'&&human()&&!state.ballInHand&&onlineReady();
  let lastStatus='';
  const setText=(selector:string,value:string)=>{const el=$(selector);if(el.textContent!==value)el.textContent=value;};
- const onlineNames=():[string,string]|null=>online?(online.host?online.host.names:online.guest!.names):null;
+ const onlineNames=():[string,string]|null=>online?(online.host?online.host.names:online.guest.names):null;
  const name=(player:number)=>{const n=onlineNames();if(n)return `${n[player]||'Waiting…'}${player===online!.seat?' (you)':''}`;return state.mode==='ai'?(player===0?'You':'Computer'):`Player ${player+1}`;};
  function save(){context.save(instance.serialize());}
  let hudKey='';
@@ -56,7 +57,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const text=state.phase==='over'?`${name(state.winner!)} won. ${state.message}`:state.phase==='moving'?`${name(state.turn)} · balls rolling…`:`${name(state.turn)} to play. ${state.message}`;setText('.pool-message',text);
   $('.pool-shot-count').textContent=`${state.shots} shot${state.shots===1?'':'s'}`;mode.value=state.mode;mode.disabled=paused||!!online;difficulty.value=state.difficulty;difficulty.disabled=paused||state.mode==='two'||!!online;
   $('.pool-multiplayer').textContent=online?'Online room':'Multiplayer';
-  root.dataset.online=online?(online.host?'host':'guest'):'off';root.dataset.rev=String(online?(online.host?online.host.rev:online.guest!.rev):0);
+  root.dataset.online=online?(online.host?'host':'guest'):'off';root.dataset.rev=String(online?(online.host?online.host.rev:online.guest.rev):0);
   $('.mp-waiting').hidden=!(online?.guest&&online.roomPaused);
   pocket.value=String(state.calledPocket);pocket.disabled=!canAim()||state.break;
   const activePower=drag?.kind==='pull'?drag.power:keyboardPower?state.power:0;
@@ -66,7 +67,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const gestureText=drag?.kind==='pull'?(drag.power>=.08?'Release to shoot · return to start to cancel':'Pull away from the aim line to build power'):drag?'Release to set aim · then pull white ball back':keyboardPower?`Aim ${Math.round(((state.angle+Math.PI/2)*180/Math.PI+360)%360)}° · ${Math.round(state.power*100)}% power · Enter to shoot`:'Drag felt to aim · pull white ball back to shoot';
   setText('.pool-gesture-label',gestureText);
   const inHand=state.ballInHand&&human()&&state.phase==='aim'&&onlineReady();$('.pool-inhand').hidden=!inHand;
-  const liveText=online&&!(online.host?online.host.opponent:online.guest!.state)?`Waiting for an opponent to join room ${online.room.code}.`:online?.roomPaused?'Waiting for host.':online?.guest?.pending!=null?'Sent to the host…':online&&state.phase==='aim'&&!human()?`Waiting for ${name(state.turn)}…`:state.phase==='over'?(online?.guest?'The host can start a new rack with Restart.':'Restart in the top toolbar to play again.'):state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';setText('.pool-live',liveText);
+  const liveText=online&&!(online.host?online.host.opponent:online.guest.state)?`Waiting for an opponent to join room ${online.room.code}.`:online?.roomPaused?'Waiting for host.':online?.guest?.pending!=null?'Sent to the host…':online&&state.phase==='aim'&&!human()?`Waiting for ${name(state.turn)}…`:state.phase==='over'?(online?.guest?'The host can start a new rack with Restart.':'Restart in the top toolbar to play again.'):state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';setText('.pool-live',liveText);
   if(!online)context.setScore(state.balls.filter(b=>b.id!==0&&!b.pocketed).length===15?0:state.balls.filter(b=>b.id!==0&&b.id!==8&&b.pocketed).length*100+(state.phase==='over'&&state.winner===0?1000:0));context.setLevel(state.phase==='over'?'Rack complete':`Shot ${state.shots+1}`);if(lastStatus!==text){context.setStatus(text);lastStatus=text;}if(announce)context.announce(text);
   draw();
  }
@@ -103,11 +104,13 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const offline=online?online.offline:JSON.parse(JSON.stringify(state)) as PoolState;
   online?.off();
   const self=room.self!;
-  const session={room,seat:self.seat,host:null as PoolHost|null,guest:null as PoolGuest|null,offline,guestId:null as string|null,roomPaused:room.paused,seq:0,off:()=>{}};
+  const common={room,seat:self.seat,offline,guestId:null as string|null,roomPaused:room.paused,seq:0,off:()=>{}};
+  let session:OnlineSession;
   if(room.role==='host'){
+   // PoolHost's constructor sends no messages; its callbacks run after session is complete.
    const host=new PoolHost(self.name,null,m=>room.send(m),(seat,m)=>{if(seat!==0&&session.guestId)room.send(m,session.guestId);});
-   session.host=host;state=host.state;
-  }else session.guest=new PoolGuest(m=>room.send(m));
+   session={...common,host,guest:null};state=host.state;
+  }else session={...common,host:null,guest:new PoolGuest(m=>room.send(m))};
   online=session;
   session.off=room.on(e=>{
    if(online!==session)return;
