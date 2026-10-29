@@ -12,3 +12,16 @@ it('retains changes in memory when storage is blocked',()=>{
  const s=new MovieStorage(()=>{throw new Error('blocked');});s.toggle('movie-1');s.progress('movie-1',10);
  expect(s.durable).toBe(false);expect(s.data.list).toEqual(['movie-1']);expect(s.data.progress['movie-1']).toBe(10);
 });
+it('preserves stored preferences after a transient read failure until a mutation',()=>{
+ let value='{"list":["movie-7"],"progress":{}}';
+ const storage={getItem:()=>{throw new Error('temporary');},setItem:(_k:string,v:string)=>{value=v;}} as unknown as Storage;
+ const s=new MovieStorage(()=>storage);
+ expect(s.durable).toBe(false);expect(value).toBe('{"list":["movie-7"],"progress":{}}');
+ s.toggle('movie-1');expect(s.durable).toBe(true);expect(JSON.parse(value).list).toEqual(['movie-1']);
+});
+it('does not overwrite malformed saved JSON during initialization',()=>{
+ let value='{broken';
+ const storage={getItem:()=>value,setItem:(_k:string,v:string)=>{value=v;}} as unknown as Storage;
+ const s=new MovieStorage(()=>storage);
+ expect(s.durable).toBe(false);expect(value).toBe('{broken');
+});
