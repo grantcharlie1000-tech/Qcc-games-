@@ -4,6 +4,7 @@ import './movies/style.css';
 import type {MoviesView} from './movies/view';
 import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
+import {uiIcon} from './ui/icons';
 import './style.css';
 import './game-viewport.css';
 import {games, artUrl, loadGame} from './core/catalog';
@@ -26,7 +27,12 @@ const icon=(name:string)=>{
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.grid}</svg>`;
 };
 const app=document.querySelector<HTMLDivElement>('#app')!;
-app.innerHTML=`<header class="topbar"><div class="site-brand">${mauriMark}<span>Mauri Study Notes</span></div><button class="hamburger icon-button" aria-label="Open menu">${icon('menu')}</button><div class="count-pill" aria-label="${games.length} games">${icon('grid')}<span><strong>${games.length}</strong><small>Games</small></span></div><button class="favourites-pill" aria-pressed="false">${icon('star')}<span>FAVOURITES</span></button></header><main id="content"></main>
+app.innerHTML=`<header class="topbar ui-header"><div class="ui-header-inner">
+ <a class="site-brand ui-brand" href="#/collection"><span class="ui-brand-tile">${mauriMark}</span><span class="ui-wordmark">Mauri <span>Study Notes</span></span></a>
+ <nav class="ui-nav" aria-label="Site sections"><a class="count-pill ui-pill" href="#/collection" aria-current="page" aria-label="${games.length} games">${uiIcon('grid')}<small>Games</small><strong class="ui-pill-count">${games.length}</strong></a><a class="ui-pill" href="#/movies/browse/movie">${uiIcon('film')}Movies</a><a class="ui-pill" href="#/movies/browse/tv">${uiIcon('tv')}TV Shows</a></nav>
+ <div class="ui-header-actions"><button class="header-search ui-icon-btn" aria-label="Search games">${uiIcon('search')}<span class="ui-label" aria-hidden="true">Search</span><kbd class="ui-kbd" aria-hidden="true">/</kbd></button><button class="favourites-pill ui-icon-btn" aria-pressed="false">${uiIcon('star')}<span class="ui-label">Favourites</span></button><button class="hamburger icon-button ui-icon-btn" aria-label="Open menu">${uiIcon('menu')}</button></div>
+</div></header><main id="content"></main>
+<nav class="app-tabbar ui-tabbar" aria-label="Sections"><a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button></nav>
 <dialog id="menu"><form method="dialog" class="dialog-head"><h2>Mauri Study Notes</h2><button class="icon-button" aria-label="Close menu">${icon('close')}</button></form><label class="search-label" for="search">Find a game</label><input id="search" type="search" placeholder="Search the ${games.length} games" autocomplete="off"><div class="setting-list"><label><span>Sound</span><input type="checkbox" id="sound"></label><label><span>Reduce motion</span><input type="checkbox" id="motion"></label><label><span>Colour-blind patterns</span><input type="checkbox" id="colour"></label></div><section class="account-menu" aria-label="Account"><p id="account-summary" class="muted"></p><button id="open-accounts" class="game-button secondary">Log in / Sign up</button><button id="logout-account" class="game-button secondary" hidden>Log out</button><button id="switch-account" class="game-button secondary" hidden>Switch account</button><p id="account-sync-status" class="muted" role="status"></p></section><button id="open-leaderboards" class="game-button secondary leaderboard-menu-button">Leaderboards</button><button id="open-study" class="game-button secondary study-menu-button">Study Mode</button><p id="study-menu-summary" class="muted study-menu-summary"></p><section id="update-notice" hidden><p id="update-status" class="muted" role="status"></p><button id="reload-update" class="game-button" aria-describedby="update-status" hidden>Reload to update</button></section><button class="game-button offline-button">Make all games available offline</button><progress id="download-progress" hidden></progress><p id="offline-status" class="muted">Download once while online. Caching is specific to this browser and device and may be restricted or cleared by device policy.</p><p id="storage-status" class="muted"></p><p class="menu-note">${games.length} games. No ads. Optional accounts.<br>Made for a little time to play.</p></dialog>
 <dialog id="rules-dialog"><form method="dialog" class="dialog-head"><h2>How to play</h2><button class="icon-button" aria-label="Close rules">${icon('close')}</button></form><p id="rules-text"></p><button class="game-button rules-done">Let’s play</button></dialog><div class="sr-only" id="announcer" aria-live="polite"></div>`;
 const content=document.querySelector<HTMLElement>('#content')!;
@@ -109,9 +115,13 @@ watchUpdates(import.meta.url,status=>{
   showUpdate(updateFailure||status.message);
   if(newlyReady)announce('An update is ready. Open the menu, or use Reload to update in Study, when you are ready.');
 });
+function setChromeInert(value:boolean):void{
+  document.querySelector<HTMLElement>('.topbar')!.inert=value;
+  document.querySelector<HTMLElement>('.app-tabbar')!.inert=value;
+}
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
-  document.querySelector<HTMLElement>('.topbar')!.inert=false;
+  setChromeInert(false);
   detachFullscreen?.();detachFullscreen=undefined;
   leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
   stopFitting?.();stopFitting=undefined;
@@ -201,7 +211,7 @@ async function route(){
     try{
       const {MoviesView}=await import('./movies/view');if(token!==generation)return;
       movies=new MoviesView(content,openStudy,preferences.reducedMotion,movieOrigin,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});movieOrigin=undefined;
-      document.querySelector<HTMLElement>('.topbar')!.inert=true;
+      setChromeInert(true);
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<p>Movies &amp; TV could not load.</p><a href="#/collection">Back to games</a>';}
     return;
@@ -303,6 +313,9 @@ function openMenu(){
   pausedForDialog=!!activeId&&!paused;if(activeId)setPaused(true);menu.showModal();void checkForUpdates();
 }
 document.querySelector('.hamburger')!.addEventListener('click',openMenu);
+function openSearch(){openMenu();document.querySelector<HTMLInputElement>('#search')!.focus();}
+document.querySelector('.header-search')!.addEventListener('click',openSearch);
+document.querySelector('.app-tabbar [data-action="study"]')!.addEventListener('click',openStudy);
 function dialogClosed(){
   if(menu.open||rulesDialog.open||leaderboards.root.open||accountView.root.open)return;
   const resume=pausedForDialog;pausedForDialog=false;
@@ -362,6 +375,14 @@ window.addEventListener('keydown',event=>{
   event.preventDefault();event.stopImmediatePropagation();
   if(!event.repeat&&!study.isOpen)openStudy();
 },{capture:true});
+// `/` opens search from the library only: never while typing, in a game, in Movies & TV, in Study or over a dialog.
+window.addEventListener('keydown',event=>{
+  if(event.key!=='/'||event.ctrlKey||event.metaKey||event.altKey)return;
+  const target=event.target;
+  if(target instanceof HTMLElement&&(target.isContentEditable||target.matches('input,textarea,select')))return;
+  if(activeId||movies||study.isOpen||location.hash==='#/movies'||location.hash.startsWith('#/movies/')||document.querySelector('dialog[open]'))return;
+  event.preventDefault();openSearch();
+});
 window.addEventListener('keyup',event=>{if(study.isOpen)event.stopImmediatePropagation();},{capture:true});
 updateStudySummary();
 void checkForUpdates();
