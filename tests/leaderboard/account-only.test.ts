@@ -1,14 +1,14 @@
 import {beforeAll,afterAll,beforeEach,it,expect,vi} from 'vitest';
 import {createHash} from 'node:crypto';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
-const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];let accounts:ReturnType<typeof createAccountsHandler>,leaderboard:ReturnType<typeof createLeaderboardHandler>;
+const local=new LocalDB();let pool:Pool;let accounts:ReturnType<typeof createAccountsHandler>,leaderboard:ReturnType<typeof createLeaderboardHandler>;
 const origin='https://arcade.test',endpoint=origin+'/.netlify/functions/leaderboard';
 const auth=async(username:string)=>{const r=await accounts(new Request(origin+'/.netlify/functions/accounts?action=signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:'test password'})}));expect(r.status).toBe(201);return r.json();};
 const post=(token?:string,data:unknown={game:'snake',score:100,name:'Spoofed'})=>leaderboard(new Request(endpoint,{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(data)}));
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});beforeEach(async()=>{await pool.query('TRUNCATE arcade_players CASCADE');});
 it('rejects anonymous, legacy guest, fabricated, expired and revoked sessions without adding scores',async()=>{
  for(const token of [undefined,'a'.repeat(64),'acct_'+'b'.repeat(64)])expect((await post(token)).status).toBe(401);

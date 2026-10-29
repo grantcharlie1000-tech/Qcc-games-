@@ -1,19 +1,24 @@
 // Vite plus the real leaderboard/accounts handlers and a local Postgres-compatible database.
 import {createServer} from 'vite';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
-const database=new NetlifyDB({directory:'.netlify/local-leaderboard',logger:()=>{}});
+import {LocalDB,createLocalPool} from '../tests/support/local-db.mjs';
+const database=new LocalDB({directory:'.netlify/local-leaderboard'});
 const connectionString=await database.start();
-await database.applyMigrations('netlify/database/migrations');
-const pool=getDatabase({connectionString}).pool;
+await database.applyMigrations('db/migrations');
+const pool=createLocalPool(connectionString);
+const handles=new Map();
 const server=await createServer({server:{port:Number(process.env.PORT||4173)},plugins:[{
  name:'local-leaderboard',configureServer(vite){
   vite.middlewares.use(async(req,res,next)=>{
    const accounts=req.url?.startsWith('/.netlify/functions/accounts');
    if(!accounts&&!req.url?.startsWith('/.netlify/functions/leaderboard'))return next();
    try{
-    const module=await vite.ssrLoadModule(accounts?'/src/accounts/server.ts':'/src/leaderboard/server.ts');
-    const handle=(accounts?module.createAccountsHandler:module.createLeaderboardHandler)(pool);
+    const name=accounts?'accounts':'leaderboard';
+    if(!handles.has(name)){
+     const module=await vite.ssrLoadModule(accounts?'/src/accounts/server.ts':'/src/leaderboard/server.ts');
+     const {createGuardedHandler}=await vite.ssrLoadModule('/netlify/lib/runtime.mts');
+     handles.set(name,createGuardedHandler(pool,accounts?module.createAccountsHandler:module.createLeaderboardHandler,{allowMissingMarker:false}));
+    }
+    const handle=handles.get(name);
     const chunks=[];let length=0;
     for await(const chunk of req){length+=chunk.length;if(length>(accounts?2097152:2048)){res.writeHead(413,{'Cache-Control':'no-store'});res.end('Request too large');return;}chunks.push(chunk);}
     const headers=new Headers();for(const [key,value] of Object.entries(req.headers))if(value)headers.set(key,Array.isArray(value)?value.join(','):value);

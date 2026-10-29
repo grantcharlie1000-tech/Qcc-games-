@@ -1,18 +1,18 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from 'vitest';
 import {createHash,scrypt,timingSafeEqual} from 'node:crypto';
 vi.mock('node:crypto',async original=>{const crypto=await original<typeof import('node:crypto')>();return {...crypto,scrypt:vi.fn(crypto.scrypt),timingSafeEqual:vi.fn(crypto.timingSafeEqual)};});
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createAccountsHandler,verifyPassword} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
-const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const local=new LocalDB();let pool:Pool;
 let handle:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/accounts';
 function request(action:string,body?:unknown,token?:string,method=body===undefined?'GET':'POST',extra:Record<string,string>={}){
  return handle(new Request(endpoint+'?action='+action,{method,headers:{'Content-Type':'application/json',Origin:'https://arcade.test',...(token?{Authorization:`Bearer ${token}`}:{ } ),...extra},body:body===undefined?undefined:JSON.stringify(body)}));
 }
 const signup=async(username='Player_One',guestToken?:string)=>{const response=await request('signup',{username,password:'secret password',...(guestToken?{guestToken}:{})});expect(response.status).toBe(201);return response.json();};
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createAccountsHandler(pool);},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);handle=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});
 describe('optional accounts with real Postgres',()=>{

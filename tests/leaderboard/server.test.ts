@@ -1,14 +1,14 @@
 import {beforeAll,afterAll,beforeEach,describe,it,expect,vi} from 'vitest';
 import {createHash} from 'node:crypto';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
 import {createAccountsHandler} from '../../src/accounts/server';
-const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];let handle:ReturnType<typeof createLeaderboardHandler>,accounts:ReturnType<typeof createAccountsHandler>;
+const local=new LocalDB();let pool:Pool;let handle:ReturnType<typeof createLeaderboardHandler>,accounts:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/leaderboard';
 const submit=(token:string,name:string,score:number,game='snake')=>handle(new Request(endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Origin:'https://arcade.test'},body:JSON.stringify({game,name,score})}));
 async function signup(username:string){const r=await accounts(new Request('https://arcade.test/.netlify/functions/accounts?action=signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:'test password'})}));expect(r.status).toBe(201);return (await r.json()).token as string;}
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createLeaderboardHandler(pool);accounts=createAccountsHandler(pool);},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);handle=createLeaderboardHandler(pool);accounts=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});beforeEach(async()=>{await pool.query('TRUNCATE arcade_players CASCADE');});
 describe('shared leaderboard with real Postgres',()=>{
  it('ranks Tetris scores and retains each player’s best',async()=>{const a=await signup('Ada'),b=await signup('Bobby');expect((await submit(a,'ignored',1200,'quadfall')).status).toBe(200);expect((await submit(b,'ignored',2000,'quadfall')).status).toBe(200);await submit(a,'ignored',500,'quadfall');const board=await (await handle(new Request(endpoint+'?game=quadfall'))).json();expect(board.entries.map((e:any)=>[e.name,e.score])).toEqual([['Bobby',2000],['Ada',1200]]);});
