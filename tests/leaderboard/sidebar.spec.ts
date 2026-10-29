@@ -58,12 +58,14 @@ for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','neon
  expect(pill!.y,id).toBeGreaterThan(back!.y+back!.height);expect(pill!.width,id).toBeLessThan(200);
 });
 
-test('visible rankings refresh automatically without a manual button',async({page})=>{
+test('visible rankings stay idle until manual refresh and refresh when returning stale',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await page.clock.install();let reads=0;
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[{rank:1,playerId:'c'.repeat(64),name:++reads===1?'First player':'New leader',score:99}],player:null}}));
  await page.goto('/#/game/snake');await expand(page);await expect(page.locator('.lb-sidebar')).toContainText('First player');
- await page.clock.fastForward(30001);await expect(page.locator('.lb-sidebar')).toContainText('New leader');
- await page.setViewportSize({width:390,height:844});await expect(page.locator('.lb-sidebar')).toHaveAttribute('hidden','');const before=reads;await page.clock.fastForward(60001);expect(reads).toBe(before);
+ await page.clock.fastForward(180001);expect(reads).toBe(1);await expect(page.locator('.lb-sidebar')).toContainText('First player');
+ await page.locator('.lb-sidebar .lb-refresh').click();await expect(page.locator('.lb-sidebar')).toContainText('New leader');
+ await page.setViewportSize({width:390,height:844});await expect(page.locator('.lb-sidebar')).toHaveAttribute('hidden','');const before=reads;await page.clock.fastForward(180001);expect(reads).toBe(before);
+ await page.setViewportSize({width:1440,height:900});await expect.poll(()=>reads).toBe(before+1);
 });
 test('offline entry shows cached rankings without a network request',async({page,context})=>{
  await page.setViewportSize({width:1440,height:900});

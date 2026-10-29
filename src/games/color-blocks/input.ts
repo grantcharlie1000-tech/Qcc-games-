@@ -1,11 +1,11 @@
-import {SHAPES} from './model';
+import {SHAPES,SIZE} from './model';
 export interface Point {x:number;y:number}
 export interface Bounds {left:number;top:number;width:number;height:number}
 /** Same viewport coordinates and lifted anchor are used for visual, ghost and release. */
 export function mapDrag(board:Bounds,pointer:Point,anchor:Point,pointerType:string){
- const cell=board.width/8,offsetY=pointerType==='touch'?Math.max(26,cell*1.25):0;
+ const cell=board.width/SIZE,offsetY=pointerType==='touch'?Math.max(26,cell*1.25):0;
  const liftedY=pointer.y-offsetY;
- return {x:Math.floor((pointer.x-board.left)/cell)-anchor.x,y:Math.floor((liftedY-board.top)/(board.height/8))-anchor.y,
+ return {x:Math.floor((pointer.x-board.left)/cell)-anchor.x,y:Math.floor((liftedY-board.top)/(board.height/SIZE))-anchor.y,
   left:pointer.x-(anchor.x+.5)*cell,top:liftedY-(anchor.y+.5)*cell,cell,offsetY};
 }
 /** A piece's bounding rectangle can contain holes; never anchor a missing tile. */

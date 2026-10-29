@@ -115,3 +115,16 @@ it.each<[number|undefined,number,boolean,boolean]>([
 ])('keepsResume(saved %s, time %s, ended %s) is %s',(saved,time,ended,keeps)=>{
  expect(keepsResume(saved,time,ended)).toBe(keeps);
 });
+it('preserves stored preferences after a transient read failure until a mutation',()=>{
+ let value='{"list":["movie-7"],"progress":{}}';
+ const storage={getItem:()=>{throw new Error('temporary');},setItem:(_k:string,v:string)=>{value=v;}} as unknown as Storage;
+ const s=new MovieStorage(()=>storage);
+ expect(s.durable).toBe(false);expect(value).toBe('{"list":["movie-7"],"progress":{}}');
+ s.toggle('movie-1');expect(s.durable).toBe(true);expect(JSON.parse(value).list).toEqual(['movie-1']);
+});
+it('does not overwrite malformed saved JSON during initialization',()=>{
+ let value='{broken';
+ const storage={getItem:()=>value,setItem:(_k:string,v:string)=>{value=v;}} as unknown as Storage;
+ const s=new MovieStorage(()=>storage);
+ expect(s.durable).toBe(false);expect(value).toBe('{broken');
+});

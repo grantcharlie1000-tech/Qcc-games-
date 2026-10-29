@@ -8,7 +8,7 @@ function mount(container:HTMLElement, context:GameContext):GameInstance {
  root.classList.toggle('ff-blind',context.settings.colorBlind); root.classList.toggle('ff-reduced',context.settings.reducedMotion);
  function say(s:string){message.textContent=s; context.announce(s);}
  function save(){context.save(serializeState(state));}
- function newWord(){const old=state.practice; let seed=old.seed!, next; do {seed=nextSeed(seed);next=newPractice(seed);} while(next.answer===old.answer);state.practice=next;}
+ function newWord(){const old=state.practice; let seed=old.seed, next; do {seed=nextSeed(seed);next=newPractice(seed);} while(next.answer===old.answer);state.practice=next;}
  function checkDate(){if(refreshDaily(state,aucklandDate())){clearTimeout(statsTimer);latest=-1; save(); if(state.mode==='daily'){overlay.hidden=true; say('A new daily puzzle is ready.');} return true;} return false;}
  function countdown(){const now=Date.now(), date=aucklandDate(()=>new Date(now)); let lo=now,hi=now+27*3600000; while(hi-lo>1000){const mid=Math.floor((lo+hi)/2); if(aucklandDate(()=>new Date(mid))===date)lo=mid;else hi=mid;} const sec=Math.max(0,Math.ceil((hi-now)/1000)); return `${String(Math.floor(sec/3600)).padStart(2,'0')}:${String(Math.floor(sec%3600/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;}
  function currentStreak(){const s=state.stats.daily;return s.last!==null&&s.last>=dailyAnswer(aucklandDate()).puzzle-1?s.streak:0;}

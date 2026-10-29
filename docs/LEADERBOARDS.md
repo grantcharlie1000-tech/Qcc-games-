@@ -20,7 +20,7 @@ signup, so they cannot silently repopulate the public board. Logout restores the
 for local guest play. Existing account-owned bests still synchronize on login.
 
 Subsequent personal bests sync at most once
-per ten-second queue interval; opening/refreshing the board and reconnecting also
+per three-minute queue interval; opening/refreshing the board and reconnecting also
 flush the queue. Pending improvements persist before any request. Lower scores
 never overwrite a best, and equal scores do not change the tie-break timestamp.
 Scores are reported by the local games; this is a casual scoreboard, not a
@@ -59,7 +59,7 @@ the production site during this task.
 
 The function validates game IDs, body size, positive integer scores,
 origin and the signed-in account session, uses parameterized SQL and transactional upserts,
-returns no-store responses, reuses its warm database pool, and has an IP request
+separates public cached rankings from private no-store own-rank responses, reuses its warm database pool, and has an IP request
 limit. Tables have no PUBLIC grants and are accessed only by the server connection.
 
 ## Verification
@@ -72,3 +72,8 @@ and database, checks public ranking, own rank, account identity, guest/login rec
 outage display. A separate real HTTP check exercises `dev:online` with two players.
 Client tests cover offline retry, persistent queues, in-flight score improvements
 and invalid saved rankings. Water Sort independently solves all 27 boards.
+
+
+## Traffic and cache policy
+
+The expanded sidebar has no polling timer. It refreshes on open, manual Refresh, score submission, reconnect and stale visibility regain. Score retries retain durable per-account deadlines and respect hidden tabs and Retry-After. Public `view=public` responses contain only shared entries and have a 30-second browser/60-second CDN TTL plus five-minute stale-while-revalidate; `view=personal` returns only the authenticated own-rank entry and is private/no-store. Unopted requests keep the previous response format. The server write freeze and full protocol/measurement details are documented in [SYNC.md](SYNC.md).

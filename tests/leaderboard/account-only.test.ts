@@ -35,3 +35,12 @@ it('does not import or delete legacy guest leaderboard rows when an older client
  const response=await accounts(new Request(origin+'/.netlify/functions/accounts?action=signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'Fresh_Account',password:'test password',guestToken})}));expect(response.status).toBe(201);
  expect((await pool.query('SELECT player_id,score FROM arcade_scores')).rows).toEqual([{player_id:guestId,score:700}]);
 });
+
+it('locks the validated session inside the score write transaction',async()=>{
+ const account=await auth('Locked_Score'),statements:string[]=[];
+ const observed={query:pool.query.bind(pool),connect:async()=>{const client=await pool.connect();return {release:()=>client.release(),query:async(sql:string,values?:unknown[])=>{statements.push(sql);return client.query(sql,values);}};}};
+ const response=await createLeaderboardHandler(observed)(new Request(endpoint,{method:'POST',headers:{Authorization:'Bearer '+account.token,'Content-Type':'application/json'},body:JSON.stringify({game:'snake',score:10})}));
+ expect(response.status).toBe(200);const authIndex=statements.findIndex(sql=>sql.includes('FROM account_sessions'));
+ // Local PGlite does not model concurrent tuple locks; verify the executed SQL contract.
+ expect(statements[0]).toBe('BEGIN');expect(statements[authIndex]).toContain('FOR UPDATE OF s');expect(authIndex).toBeGreaterThan(0);expect(statements.findIndex(sql=>sql.includes('INSERT INTO arcade_scores'))).toBeGreaterThan(authIndex);expect(statements.at(-1)).toBe('COMMIT');
+});

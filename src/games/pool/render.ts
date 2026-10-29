@@ -1,13 +1,14 @@
 import {FIELD,POCKETS,RAILS,pocketRadius,R,preview,legalTargets,type PoolState} from './model';
 import type {Drag} from './input';
 import {ballColor} from './appearance';
+import {VIEW_WIDTH,VIEW_HEIGHT} from './view';
 const backdrops=new WeakMap<HTMLCanvasElement,HTMLCanvasElement>();
 export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y:number;valid:boolean}|null,paused:boolean,drag:Drag|null=null,names:[string,string]|null=null){
- const ratio=Math.min(2,window.devicePixelRatio||1),width=840,height=440;
+ const ratio=Math.min(2,window.devicePixelRatio||1),width=VIEW_WIDTH,height=VIEW_HEIGHT;
  if(canvas.width!==width*ratio||canvas.height!==height*ratio){canvas.width=width*ratio;canvas.height=height*ratio;}
  const c=canvas.getContext('2d')!;c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,width,height);
  // Rotate the view, keeping all physics and saved positions in their original units.
- const rotated=()=>c.setTransform(0,ratio,-ratio,0,840*ratio,0);
+ const rotated=()=>c.setTransform(0,ratio,-ratio,0,VIEW_WIDTH*ratio,0);
  const text=(value:string,x:number,y:number)=>{c.save();c.translate(x,y);c.rotate(-Math.PI/2);c.fillText(value,0,0);c.restore();};
 
  function round(x:number,y:number,w:number,h:number,r:number,fill:string){c.fillStyle=fill;c.beginPath();c.roundRect(x,y,w,h,r);c.fill();}
@@ -43,7 +44,7 @@ export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y
   const p=POCKETS[i],middle=p.y===420,radius=pocketRadius(p);
   c.save();
   // The middle openings are inset semicircles; the four corner wells stay fully round.
-  if(middle){c.beginPath();c.rect(p.x===FIELD.left?FIELD.left-4:0,0,p.x===FIELD.left?440:FIELD.right+4,840);c.clip();}
+  if(middle){c.beginPath();c.rect(p.x===FIELD.left?FIELD.left-4:0,0,p.x===FIELD.left?VIEW_HEIGHT:FIELD.right+4,VIEW_WIDTH);c.clip();}
   const rim=c.createRadialGradient(p.x,p.y,radius-1,p.x,p.y,radius+2);
   rim.addColorStop(0,'#05090f');rim.addColorStop(.55,'#34141b');rim.addColorStop(1,'#a43b36');
   c.fillStyle=rim;c.beginPath();c.arc(p.x,p.y,radius+2,0,Math.PI*2);c.fill();

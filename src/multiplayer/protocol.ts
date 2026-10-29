@@ -78,23 +78,27 @@ export function frame(message:unknown,nextId:()=>number):string[]{
 }
 /** Reassembles frames from one peer (ordered channel). Returns parsed messages; throws on malformed input. */
 export class Reassembler{
-  private parts:string[]=[];private id=-1;private size=0;
+  private parts:string[]=[];private id=-1;private size=0;private total=0;
+  private reset(){this.parts=[];this.id=-1;this.size=0;this.total=0;}
   /** `limit`: largest whole message accepted (small for a peer that has not been admitted yet). */
   constructor(public limit=MAX_MESSAGE_CHARS){}
   push(text:string):unknown|undefined{
+    try{
     if(typeof text!=='string'||text.length>PART_CHARS*3+200)throw new Error('frame too large');
     const value=JSON.parse(text) as Record<string,unknown>;
     if(value&&typeof value==='object'&&typeof value.p==='number'&&!('t' in value)){
       const {p,n,of,s}=value as {p:number;n:number;of:number;s:string};
       if(!Number.isInteger(n)||!Number.isInteger(of)||of<2||of*PART_CHARS>this.limit||typeof s!=='string')throw new Error('bad part');
-      if(n===0){this.parts=[];this.id=p;this.size=0;}
-      if(p!==this.id||n!==this.parts.length)throw new Error('part out of order');
+      if(n===0){this.reset();this.id=p;this.total=of;}
+      if(p!==this.id||of!==this.total||n!==this.parts.length)throw new Error('part out of order');
       this.parts.push(s);this.size+=s.length;
       if(this.size>this.limit)throw new Error('message too large');
       if(this.parts.length<of)return undefined;
-      const whole=this.parts.join('');this.parts=[];this.id=-1;this.size=0;
+      const whole=this.parts.join('');this.reset();
       return JSON.parse(whole);
     }
+    if(text.length>this.limit)throw new Error('message too large');
     return value;
+    }catch(error){this.reset();throw error;}
   }
 }
