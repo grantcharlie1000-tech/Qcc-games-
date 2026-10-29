@@ -1,20 +1,26 @@
 import './style.css';
-import {movieIcon} from './icons';
 import {uiIcon} from '../ui/icons';
 import {bindRails,updateRails} from '../ui/rails';
+import {markImages,watchImages} from '../ui/images';
 import {autoHideTabbar} from '../ui/tabbar';
 import mauriMark from '../assets/mauri-mark.svg?raw';
 import {frameSource,FRAME_SANDBOX,FRAME_ALLOW,STREAM_PROVIDERS,streamProvider,providerSignal} from './provider';
 import type {StreamProviderId} from './provider';
-import {filterTitles,kindHash,licensedSource,mediaKey,nextEpisode,parseCatalog,parseMovieRoute,titleHash} from './model';
-import type {Catalog,MovieKind,MovieRoute,Title} from './model';
-import {MovieStorage} from './storage';
+import {filterTitles,kindHash,licensedSource,mediaKey,nextEpisode,parseCatalog,parseMovieRoute,parseRails,titleHash} from './model';
+import type {Catalog,MovieKind,MovieRoute,Rail,Title} from './model';
+import {MovieStorage,snapshotOf} from './storage';
+import type {TitleSnapshot} from './storage';
+import {cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
 const base=import.meta.env.BASE_URL;
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 // Absolute same-origin URLs also resolve correctly inside CSS custom properties in /assets/ stylesheets.
 const asset=(v:string)=>v.startsWith('https://')?v:new URL(base+v,document.baseURI).href;
 const meta=(t:Title)=>[t.year||'',t.kind==='tv'?'Series':t.runtime?t.runtime+' min':'Movie',t.rating===undefined?'':'★ '+t.rating.toFixed(1)+'/10'].filter(Boolean).join(' · ');
+const cardMeta=(t:Title)=>[t.year?String(t.year):'',t.kind==='tv'?'Series':'Movie'].filter(Boolean).join(' · ');
+// A title saved in storage carries what a card or a Continue watching tile needs. Genres, overview and seasons arrive when the title loads.
+const fromSnapshot=(s:TitleSnapshot):Title=>({id:s.id,kind:s.kind,name:s.name,year:s.year,genres:[],overview:'',poster:s.poster,backdrop:s.backdrop,seasons:[]});
+const slug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 type FullscreenDocument=Document&{webkitFullscreenElement?:Element|null;webkitExitFullscreen?:()=>void};
 type FullscreenElement=HTMLElement&{webkitRequestFullscreen?:()=>void};
 interface PlaybackPreferences {autoNext:()=>boolean;setAutoNext:(value:boolean)=>void}
@@ -67,6 +73,15 @@ export class MoviesView {
  private intentionalExit=false;
  private lastSave=0;
  private route:MovieRoute={play:false};
+ private rails:Rail[]=[];
+ private railsError=false;
+ private railsRequest=0;
+ private railsAbort?:AbortController;
+ // The query the remote titles answered. Pages and earlier results belong to that query only.
+ private remoteQuery='';
+ // The image URLs that have loaded here. A re-render replaces the elements, and a URL seen before skips the fade-in.
+ private seenImages=new Set<string>();
+ private readonly disposeImages:()=>void;
  private onVisibility=()=>{if(document.hidden)this.pause();};
  // The island is one element that survives renders: render() swaps the page around it and refreshes its items.
  private readonly tabbar=Object.assign(document.createElement('nav'),{className:'movies-mobile-nav ui-tabbar'});
@@ -76,6 +91,7 @@ export class MoviesView {
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
   this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){if(image.dataset.poster&&image.src!==image.dataset.poster){image.src=image.dataset.poster;delete image.dataset.poster;}else image.style.opacity='0';}},{capture:true});
+  this.root.addEventListener('load',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.matches('img.ui-card-img,img.ui-hero-backdrop')){const src=image.getAttribute('src');if(src)this.seenImages.add(src);}},{capture:true});
   this.root.addEventListener('click',this.click);
   this.root.addEventListener('click',event=>{
    const link=(event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
@@ -84,6 +100,7 @@ export class MoviesView {
   this.root.addEventListener('input',this.input);
   this.root.addEventListener('change',this.change);
   this.root.addEventListener('keydown',this.keydown);
+  this.disposeImages=watchImages(this.root);
   this.tabbar.setAttribute('aria-label','Mobile movies navigation');
   this.disposeRails=bindRails(this.root,()=>this.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);
   // Movies scrolls inside its own overlay, so the island's hide-on-scroll follows that scroller rather than the window.
@@ -107,7 +124,7 @@ export class MoviesView {
    if(this.abort.signal.aborted)return;
    this.ready=true;this.render();
    if(this.route.id){if(this.needsDetails(this.route))void this.loadTitle(this.route.id,this.route.season);}
-   else void this.fetchCatalog('',1);
+   else void this.fetchRails('home');
   }catch(error){if(!this.abort.signal.aborted){this.failed=true;this.loadError=movieNetworkMessage(error,'The collection');this.render();}}
  }
  private async fetchCatalog(query:string,page:number){
@@ -115,22 +132,40 @@ export class MoviesView {
   this.remoteRequestedPage=page;
   const request=++this.searchRequest;
   this.metadataAbort?.abort();const controller=this.metadataAbort=new AbortController();
-  this.remoteLoading=true;this.remoteError='';this.renderSearchState();
+  this.remoteLoading=true;this.remoteError='';this.renderBrowseState();
   try{
    const params=new URLSearchParams({type:this.kind==='movie'||this.kind==='tv'?this.kind:'all',page:String(page)});
    if(query)params.set('q',query);
-   const data=await movieJson('/api/movies?'+params,controller.signal);
+   const {data}=await cachedJson('/api/movies?'+params,controller.signal,{staleTime:SEARCH_STALE});
    if(request!==this.searchRequest||query!==this.query.trim())return;
    const parsed=parseCatalog({titles:data.titles,source:'tmdb'});
-   this.remoteTitles=parsed.titles;
+   this.remoteTitles=parsed.titles;this.remoteQuery=query;
    for(const title of parsed.titles)this.dynamicIds.add(title.id);
    this.remotePage=Number.isInteger(data.page)?data.page:page;
    this.remotePages=Number.isInteger(data.totalPages)?Math.max(1,Math.min(500,data.totalPages)):1;
-   this.remoteLoading=false;this.renderSearchState();
+   this.remoteLoading=false;this.renderBrowseState();
   }catch(error){
    if(request!==this.searchRequest||query!==this.query.trim()||controller.signal.aborted)return;
-   this.remoteLoading=false;this.remoteError=movieNetworkMessage(error,'Full catalog search');this.renderSearchState();
+   // Titles from an earlier query go when this query fails. A later page of the same query keeps its results.
+   if(this.remoteQuery!==query){this.remoteTitles=[];this.remoteQuery='';}
+   this.remoteLoading=false;this.remoteError=movieNetworkMessage(error,'Full catalog search');this.renderBrowseState();
   }
+ }
+ // The home asks once for all of its rails. A response that arrives after a title opened updates the state only.
+ private async fetchRails(kind:'home'|'movie'|'tv'){
+  const request=++this.railsRequest;
+  this.railsAbort?.abort();const controller=this.railsAbort=new AbortController();
+  try{
+   const {data}=await cachedJson('/api/movies?rails='+kind,controller.signal);
+   if(request!==this.railsRequest)return;
+   const rails=parseRails(data);
+   this.rails=rails;this.railsError=rails.length===0;
+   for(const rail of rails)for(const title of rail.titles)this.dynamicIds.add(title.id);
+  }catch{
+   if(request!==this.railsRequest||controller.signal.aborted)return;
+   this.rails=[];this.railsError=true;
+  }
+  this.renderBrowseState();
  }
  private needsDetails(route:MovieRoute){
   if(!route.id||!/^(movie|tv)-[1-9]\d*$/.test(route.id))return false;
@@ -142,7 +177,7 @@ export class MoviesView {
   const request=++this.detailRequest;this.detailAbort?.abort();const controller=this.detailAbort=new AbortController();this.pendingTitle=true;this.detailError='';if(this.screenFullscreen())this.renderDetailError();else this.render();
   try{
    const params=new URLSearchParams({id});if(season)params.set('season',String(season));
-   const data=await movieJson('/api/movies?'+params,controller.signal);const parsed=parseCatalog({titles:[data.title],source:'tmdb'});const title=parsed.titles[0];
+   const {data}=await cachedJson('/api/movies?'+params,controller.signal);const parsed=parseCatalog({titles:[data.title],source:'tmdb'});const title=parsed.titles[0];
    if(request!==this.detailRequest||this.route.id!==id)return;
    if(!title)throw new Error('Title details are unavailable.');
    const previous=this.catalog.titles.find(t=>t.id===id);
@@ -158,15 +193,20 @@ export class MoviesView {
    this.pendingTitle=false;this.detailError=error instanceof MovieNetworkError&&error.status===404?'':movieNetworkMessage(error,'Title details');if(this.screenFullscreen())this.renderDetailError();else this.render();
   }
  }
- private renderSearchState(){
-  // A browse request may complete after Play was pressed. Updating its state
-  // must not replace the player's iframe or restart an active stream.
+ // A browse request may complete after Play was pressed. Updating its state
+ // must not replace the player's iframe or restart an active stream.
+ private renderBrowseState(){
   if(this.route.id)return;
   const input=this.root.querySelector<HTMLInputElement>('#movies-search');
-  const focused=input===document.activeElement;
+  const focusedInput=!!input&&input===document.activeElement;
   const start=input?.selectionStart,top=this.root.scrollTop;
+  // A button that the re-render replaces keeps the keyboard focus, found again by its action and page.
+  const active=document.activeElement instanceof HTMLElement&&this.root.contains(document.activeElement)?document.activeElement:undefined;
+  const action=active?.dataset.action,page=active?.dataset.page;
   this.render();
-  if(focused){const next=this.root.querySelector<HTMLInputElement>('#movies-search');next?.focus({preventScroll:true});if(start!==null&&start!==undefined)next?.setSelectionRange(start,start);this.root.scrollTop=top;}
+  if(focusedInput){const next=this.root.querySelector<HTMLInputElement>('#movies-search');next?.focus({preventScroll:true});if(start!==null&&start!==undefined)next?.setSelectionRange(start,start);}
+  else if(action)this.root.querySelector<HTMLElement>(`[data-action="${action}"]${page?`[data-page="${page}"]`:''}`)?.focus({preventScroll:true});
+  this.root.scrollTop=top;
  }
  private positionKey(route:MovieRoute){const title=this.catalog.titles.find(t=>t.id===route.id);return route.play?JSON.stringify(route):route.id?`${route.id}:s${route.season??title?.seasons[0]?.number??0}`:'browse';}
  navigate(hash:string){
@@ -198,8 +238,17 @@ export class MoviesView {
    (focus??this.root.querySelector<HTMLElement>('h1'))?.focus({preventScroll:true});}
  }
  private header(){const pills:[MovieKind,string][]=[['all','Home'],['movie','Movies'],['tv','TV Shows'],['list','My list']];return `<header class="movies-top ui-header"><div class="ui-header-inner"><a class="movies-brand ui-brand" href="#/movies" aria-label="Movies and TV home"><span class="ui-brand-tile">${mauriMark}</span><span class="ui-wordmark">Mauri <span>Study Notes</span></span></a><nav class="ui-nav" aria-label="Movies and TV navigation">${pills.map(([kind,name])=>`<button class="ui-pill" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${name}</button>`).join('')}</nav><div class="ui-header-actions"><button data-action="search" class="movies-search-toggle ui-icon-btn" aria-label="Search movies and TV">${uiIcon('search')}</button><a class="movies-back ui-icon-btn" aria-label="Games" href="#/collection">${uiIcon('grid')}<span class="ui-label" aria-hidden="true">Games</span></a><button data-action="study" class="movies-study ui-icon-btn">${uiIcon('study')}<span class="ui-label">Study Mode</span><kbd class="ui-kbd" aria-hidden="true">Esc</kbd></button></div></div></header>`;}
- private card(t:Title){return `<a class="movies-poster" href="${titleHash(t.id)}" data-title="${t.id}" aria-label="Details for ${escape(t.name)}"><div class="movies-poster-art"><img data-poster="${asset(t.poster)}" src="${asset(t.poster)}" alt="" width="320" height="480" loading="lazy" referrerpolicy="no-referrer"><span class="movies-card-mark" aria-hidden="true">Q</span><span class="movies-poster-type">${t.kind==='tv'?'SERIES':'FILM'}</span><span class="movies-poster-logo">${escape(t.name)}</span><span class="movies-card-play" aria-hidden="true">${movieIcon('play')}</span></div><strong>${escape(t.name)}</strong><small>${escape(meta(t))}</small></a>`;}
- private shelf(name:string,titles:Title[],note=''){const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');const count=`${titles.length} ${titles.length===1?'title':'titles'}`;return `<section class="movies-shelf ui-rail" data-rail="${id}"><div class="ui-rail-head"><h2>${escape(name)}</h2><span class="ui-count">${count}</span>${note?`<p class="ui-rail-sub">${escape(note)}</p>`:''}</div><div class="ui-rail-body"><button class="ui-rail-arrow prev" data-scroll="-1" aria-label="Previous ${escape(name)}">${uiIcon('chevron-left')}</button><div class="ui-rail-row">${titles.map(t=>this.card(t)).join('')}</div><button class="ui-rail-arrow next" data-scroll="1" aria-label="Next ${escape(name)}">${uiIcon('chevron-right')}</button></div></section>`;}
+ private card(t:Title){
+  const name=escape(t.name),url=asset(t.poster),poster=escape(url),seen=this.seenImages.has(url)?' is-seen':'',type=t.kind==='tv'?'SERIES':'FILM';
+  const rating=t.rating===undefined?'':`<span class="ui-chip rating">★ ${t.rating.toFixed(1)}</span>`;
+  return `<a class="movies-poster ui-card" href="${titleHash(t.id)}" data-title="${t.id}" aria-label="Details for ${name}"><span class="ui-card-poster"><span class="ui-card-placeholder" aria-hidden="true">${uiIcon('image')}<span>${name}</span></span><img class="ui-card-img${seen}" data-poster="${poster}" src="${poster}" alt="" width="320" height="480" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="ui-card-chips"><span class="ui-chip">${type}</span>${rating}</span><span class="ui-card-play" aria-hidden="true">${uiIcon('play')}</span></span><span class="ui-card-caption"><strong class="ui-card-title">${name}</strong><small class="ui-card-meta">${escape(cardMeta(t))}</small></span></a>`;
+ }
+ // A rail is a head with its count, then a row of tiles between two arrows. The id must be unique on the page.
+ private rail(id:string,name:string,tiles:string,count:number,subtitle=''){
+  const label=escape(name);
+  return `<section class="movies-shelf ui-rail" data-rail="${escape(id)}"><div class="ui-rail-head"><h2>${label}</h2><span class="ui-count">${count} ${count===1?'title':'titles'}</span>${subtitle?`<p class="ui-rail-sub">${escape(subtitle)}</p>`:''}</div><div class="ui-rail-body"><button class="ui-rail-arrow prev" data-scroll="-1" aria-label="Previous ${label}">${uiIcon('chevron-left')}</button><div class="ui-rail-row">${tiles}</div><button class="ui-rail-arrow next" data-scroll="1" aria-label="Next ${label}">${uiIcon('chevron-right')}</button></div></section>`;
+ }
+ private shelf(id:string,name:string,titles:Title[],subtitle=''){return this.rail(id,name,titles.map(t=>this.card(t)).join(''),titles.length,subtitle);}
  private footer(){return `<footer class="movies-footer" aria-label="Credits and privacy"><strong>Your screen. Your privacy.</strong><p>My list and playback progress stay on this device. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.</p><p>${this.catalog.source==='tmdb'?`${this.catalog.attributionLogo?`<img class="movies-tmdb" src="${asset(this.catalog.attributionLogo)}" alt="TMDB" width="100" height="40">`:''}This product uses the TMDB API but is not endorsed or certified by TMDB.`:'Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.'}</p>${this.catalog.updated?`<p>Catalog snapshot: ${escape(this.catalog.updated)}</p>`:''}<p>Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Movies are excluded from game offline downloads.</p><button data-action="clear">Clear my list &amp; playback progress</button><p class="movies-storage" role="status">${this.storage.durable?'Saved only on this device.':'Browser storage is unavailable. Changes last only for this visit.'}</p></footer>`;}
  private browse(){
   const available=this.kind==='list'?this.catalog.titles.filter(t=>this.storage.data.list.includes(t.id)):this.catalog.titles;
@@ -208,13 +257,94 @@ export class MoviesView {
   const remote=this.kind==='list'?[]:filterTitles(this.remoteTitles,'',this.kind,this.genre);
   const filtered=[...new Map([...local,...remote].map(t=>[t.id,t])).values()];
   const simple=this.query.trim()||this.kind!=='all'||this.genre!=='All';
-  const hero=this.remoteTitles[0]??this.catalog.titles[0];
-  const season=hero?.seasons.find(s=>s.episodes.length);
-  const heroRoute:MovieRoute=hero?.kind==='tv'?{id:hero.id,season:season?.number,episode:season?.episodes[0]?.number,play:true}:{id:hero?.id,play:true};
-  const heroSource=hero?(licensedSource(this.licenses,mediaKey(hero,heroRoute))??frameSource(hero,heroRoute)):undefined;
-  const heroPlay=hero?titleHash(hero.id)+(hero.kind==='tv'&&season?`/season/${season.number}/episode/${season.episodes[0].number}`:'')+'/play':'';
-  return `${!simple&&hero?`<section class="movies-hero" style="--movies-hero:url('${asset(hero.backdrop??hero.poster)}');--movies-hero-fallback:url('${asset(hero.poster)}')"><div class="movies-hero-copy"><p class="movies-eyebrow"><span aria-hidden="true">Q</span> THE CINEMA COLLECTION</p><h1 tabindex="-1"><a href="${titleHash(hero.id)}">${escape(hero.name)}</a></h1><p class="movies-hero-tagline">Go further. Find your next great story.</p><p>${escape(hero.overview)}</p><div class="movies-hero-actions"><button class="movies-primary" data-play-route="${heroPlay}" ${heroSource?'':'disabled aria-describedby="movies-hero-unavailable"'}>${movieIcon("play")} Play</button><a class="movies-secondary" href="${titleHash(hero.id)}">${movieIcon("info")} More Info</a><button class="movies-hero-list" data-list="${hero.id}" aria-pressed="${this.storage.data.list.includes(hero.id)}">${movieIcon("plus")} My List</button></div><p class="movies-hero-note" id="movies-hero-unavailable">${heroSource?'Streaming available · External player':'No provider identifier is available'}</p></div><span class="movies-hero-index">${hero.year||'Year unknown'} <span>|</span> ${hero.kind==='tv'?'SERIES':'FILM'}</span></section>`:`<h1 class="movies-page-title" tabindex="-1">${this.kind==='list'?'My list':this.kind==='tv'?'Series':this.kind==='movie'?'Movies':'Find your next story'}</h1>`}
-  <div class="movies-browse"><div class="movies-filterbar"><label class="movies-search"><span aria-hidden="true">⌕</span><span class="sr-only">Search movies and TV</span><input type="search" id="movies-search" placeholder="Search movies, TV shows…" autocomplete="off" value="${escape(this.query)}"></label><label>Genre <select id="movies-genre" aria-label="Genre">${['All',...[...new Set(this.catalog.titles.flatMap(t=>t.genres))].sort()].map(g=>`<option${this.genre===g?' selected':''}>${escape(g)}</option>`).join('')}</select></label></div><div id="movies-results" aria-live="polite">${simple?`<p class="movies-result-count">${filtered.length} ${filtered.length===1?'title':'titles'}</p>${filtered.length?`<div class="movies-results-grid">${filtered.map(t=>this.card(t)).join('')}</div>`:`<div class="movies-empty"><h2>${this.kind==='list'&&!this.query?'Make it a movie night.':'No titles found'}</h2><p>${this.kind==='list'&&!this.query?'Open a title and choose “Add to my list” to keep it here.':'Try another title or clear your filters. Search covers this catalog snapshot only.'}</p><button data-action="reset">Explore all titles</button></div>`}`:`${this.shelf(this.remoteTitles.length?'Trending Movies':this.catalog.source==='tmdb'?'Trending in this snapshot':'Movies you’ll love',this.remoteTitles.length?this.remoteTitles.filter(t=>t.kind==='movie'):this.catalog.source==='tmdb'?this.catalog.titles.filter(t=>this.catalog.trending.includes(t.id)):this.catalog.titles.filter(t=>t.kind==='movie').slice(0,6),this.remoteTitles.length?'Updated weekly by TMDB':this.catalog.source==='tmdb'?'Snapshot, not live activity':'THE STARTER SELECTION')}${this.shelf(this.remoteTitles.length?'Trending TV':'TV shows to get lost in',this.remoteTitles.length?this.remoteTitles.filter(t=>t.kind==='tv'):this.catalog.titles.filter(t=>t.kind==='tv'),'SERIES')}${this.shelf('Sci-Fi & Fantasy',(this.remoteTitles.length?this.remoteTitles:this.catalog.titles).filter(t=>t.genres.includes('Science Fiction')||t.genres.includes('Fantasy')),'ESCAPE THE EVERYDAY')}`}</div>${this.footer()}</div>`;
+  const top=simple?`<h1 class="movies-page-title" tabindex="-1">${this.kind==='list'?'My list':this.kind==='tv'?'Series':this.kind==='movie'?'Movies':'Find your next story'}</h1>`:this.hero();
+  return `${top}<div class="movies-browse">${this.filterBar()}<div id="movies-results">${simple?this.results(filtered):this.homeContent()}</div>${this.footer()}</div>`;
+ }
+ // Every title the page can name by id: the bundled catalog, the rails, the search results and any loaded related titles.
+ lookup(id:string):Title|undefined{
+  const titles=[...this.catalog.titles,...this.rails.flatMap(rail=>rail.titles),...this.remoteTitles];
+  return titles.find(t=>t.id===id)??titles.flatMap(t=>t.related??[]).find(t=>t.id===id);
+ }
+ // The featured title is the first rail title, else the first bundled title. Play starts the first loaded episode of a series;
+ // without a loaded episode it opens the title page, so no play route ever lacks a season and an episode.
+ private hero(){
+  const hero=this.rails[0]?.titles[0]??this.catalog.titles[0];
+  if(!hero)return '';
+  const isTv=hero.kind==='tv',name=escape(hero.name);
+  const season=hero.seasons.find(s=>s.episodes.length),episode=season?.episodes[0];
+  const route:MovieRoute=isTv?{id:hero.id,season:season?.number,episode:episode?.number,play:true}:{id:hero.id,play:true};
+  const source=licensedSource(this.licenses,mediaKey(hero,route))??frameSource(hero,route);
+  const playRoute=!isTv?`${titleHash(hero.id)}/play`:season&&episode?`${titleHash(hero.id)}/season/${season.number}/episode/${episode.number}/play`:titleHash(hero.id);
+  const listed=this.storage.data.list.includes(hero.id);
+  const info=[hero.year?String(hero.year):'',isTv?'Series':'Movie',hero.genres.slice(0,3).join(' / ')].filter(Boolean).join(' · ');
+  const backdropUrl=asset(hero.backdrop??hero.poster),poster=escape(asset(hero.poster)),backdrop=escape(backdropUrl),seen=this.seenImages.has(backdropUrl)?' is-seen':'';
+  return `<section class="movies-hero ui-hero" aria-label="Featured: ${name}"><img class="ui-hero-backdrop${seen}" data-poster="${poster}" src="${backdrop}" alt="" fetchpriority="high" referrerpolicy="no-referrer"><span class="ui-hero-shade" aria-hidden="true"></span><div class="ui-hero-content"><div class="ui-hero-badges"><span class="ui-chip">${isTv?'Featured series':'Featured film'}</span>${hero.rating===undefined?'':`<span class="ui-chip rating">★ ${hero.rating.toFixed(1)}</span>`}</div><h1 class="ui-hero-title" tabindex="-1">${name}</h1><p class="ui-hero-meta">${escape(info)}</p><p class="ui-hero-overview">${escape(hero.overview)}</p><div class="ui-hero-actions"><button class="movies-primary ui-btn primary" data-play-route="${playRoute}"${source?'':' disabled aria-describedby="movies-hero-unavailable"'}>${uiIcon('play')}Play</button><a class="ui-btn secondary" href="${titleHash(hero.id)}">${uiIcon('info')}Details</a><button class="movies-hero-list ui-btn secondary" data-list="${hero.id}" aria-label="${listed?'Remove':'Add'} ${name} ${listed?'from':'to'} my list">${uiIcon(listed?'check':'plus')}My list</button></div>${source?'':'<span class="sr-only" id="movies-hero-unavailable">No provider identifier is available</span>'}</div></section>`;
+ }
+ // The filter bar: a search field and a genre list built from every title the page has loaded.
+ private filterBar(){
+  const genres=new Set<string>();
+  for(const title of [...this.catalog.titles,...this.rails.flatMap(rail=>rail.titles),...this.remoteTitles])for(const genre of title.genres)genres.add(genre);
+  if(this.genre!=='All')genres.add(this.genre);
+  return `<div class="movies-filterbar"><label class="movies-search"><span class="sr-only">Search movies and TV</span>${uiIcon('search')}<input type="search" id="movies-search" placeholder="Search movies, TV shows…" autocomplete="off" value="${escape(this.query)}"></label><label class="movies-genre">Genre <select id="movies-genre" aria-label="Genre">${['All',...[...genres].sort()].map(g=>`<option${this.genre===g?' selected':''}>${escape(g)}</option>`).join('')}</select></label></div>`;
+ }
+ // Filtered results: the count, then the cards (or the empty state), then the full-catalog status and its pagination.
+ private results(filtered:Title[]){
+  const count=`${filtered.length} ${filtered.length===1?'title':'titles'}`;
+  const listEmpty=this.kind==='list'&&!this.query;
+  const body=filtered.length?`<div class="movies-results-grid ui-grid">${filtered.map(t=>this.card(t)).join('')}</div>`:`<div class="movies-empty"><h2>${listEmpty?'Make it a movie night.':'No titles found'}</h2><p>${listEmpty?'Open a title and choose “Add to my list” to keep it here.':'Try another title or clear your filters. Search covers this catalog snapshot only.'}</p><button data-action="reset">Explore all titles</button></div>`;
+  return `<p class="movies-result-count" role="status">${count}</p>${body}${this.searchStatus()}`;
+ }
+ // The full-catalog status line and its pagination. A search of two characters or more shows them, and pagination only for the query its results answer.
+ private searchStatus(){
+  if(!(this.query.trim().length>=2||this.remoteError))return '';
+  const message=this.remoteLoading?'Searching the full movie and TV catalog…':this.remoteError?`${this.remoteError} The titles included with this site are still searchable.`:this.remoteTitles.length?'Showing full-catalog results from TMDB.':'No additional matches in the full catalog.';
+  const retry=this.remoteError?' <button data-action="retry-search">Retry search</button>':'';
+  const pages=this.remoteQuery===this.query.trim()&&this.remotePages>1?`<div class="movies-pagination"><button data-action="catalog-page" data-page="${this.remotePage-1}"${this.remotePage<=1?' disabled':''}>Previous</button><span>Page ${this.remotePage} of ${this.remotePages}</span><button data-action="catalog-page" data-page="${this.remotePage+1}"${this.remotePage>=this.remotePages?' disabled':''}>Next</button></div>`:'';
+  return `<p class="movies-catalog-status" role="status">${escape(message)}${retry}</p>${pages}`;
+ }
+ // The unfiltered home: Continue watching, My list, then the API rails, or the starter rails until the request answers or when it fails.
+ private homeContent(){
+  const used=new Set(['continue-watching','my-list']);
+  const unique=(id:string)=>{let next=id,n=2;while(used.has(next))next=`${id}-${n++}`;used.add(next);return next;};
+  const shelves:string[]=[];
+  const continued=this.continueRail();if(continued)shelves.push(continued);
+  const saved=this.listRail();if(saved)shelves.push(saved);
+  if(this.railsError)shelves.push('<p class="movies-rails-status" role="status">Showing the starter selection. The full catalog is unavailable right now. <button class="ui-btn secondary small" data-action="retry-rails">Retry</button></p>');
+  if(this.rails.length){for(const rail of this.rails)shelves.push(this.shelf(unique(rail.id),rail.title,rail.titles));}
+  else for(const [name,titles,note] of this.starterRails())if(titles.length)shelves.push(this.shelf(unique(slug(name)),name,titles,note));
+  return shelves.join('');
+ }
+ // The starter rails from the bundled catalog, used while the aggregated request is pending or after it fails.
+ private starterRails():[string,Title[],string][]{
+  const catalog=this.catalog;
+  const first:[string,Title[],string]=catalog.source==='tmdb'
+   ?['Trending in this snapshot',catalog.titles.filter(t=>catalog.trending.includes(t.id)),'Snapshot, not live activity']
+   :['Movies you’ll love',catalog.titles.filter(t=>t.kind==='movie').slice(0,6),'THE STARTER SELECTION'];
+  return [first,['TV shows to get lost in',catalog.titles.filter(t=>t.kind==='tv'),'SERIES'],['Sci-Fi & Fantasy',catalog.titles.filter(t=>t.genres.includes('Science Fiction')||t.genres.includes('Fantasy')),'ESCAPE THE EVERYDAY']];
+ }
+ // Continue watching: in-progress titles, newest first. An item with neither a title nor a saved snapshot is skipped.
+ private continueRail(){
+  const tiles:string[]=[];
+  for(const item of this.storage.continueItems()){
+   const snapshot=this.storage.snapshot(item.id);
+   const title=this.lookup(item.id)??(snapshot?fromSnapshot(snapshot):undefined);
+   if(!title)continue;
+   const name=escape(title.name),episode=item.season!==undefined&&item.episode!==undefined;
+   const route=`${titleHash(item.id)}${episode?`/season/${item.season}/episode/${item.episode}`:''}/play`;
+   const artUrl=asset(title.backdrop??title.poster),art=escape(artUrl),poster=escape(asset(title.poster)),seen=this.seenImages.has(artUrl)?' is-seen':'';
+   const percent=item.duration?Math.round(Math.min(100,Math.max(0,item.time/item.duration*100))):undefined;
+   tiles.push(`<a class="movies-continue ui-card" href="${route}" aria-label="Resume ${name}"><span class="ui-card-poster"><span class="ui-card-placeholder" aria-hidden="true">${uiIcon('image')}<span>${name}</span></span><img class="ui-card-img${seen}" data-poster="${poster}" src="${art}" alt="" width="320" height="180" loading="lazy" decoding="async" referrerpolicy="no-referrer">${percent===undefined?'':`<span class="movies-progress" aria-hidden="true"><span style="width:${percent}%"></span></span>`}</span><span class="ui-card-caption"><strong class="ui-card-title">${name}</strong><small class="ui-card-meta">${escape(episode?`S${item.season} · E${item.episode}`:'Movie')}</small></span></a>`);
+  }
+  return tiles.length?this.rail('continue-watching','Continue watching',tiles.join(''),tiles.length,'Pick up where you left off'):'';
+ }
+ // My list: the saved titles, from the page's titles or from their saved snapshots.
+ private listRail(){
+  const titles:Title[]=[];
+  for(const id of this.storage.data.list){
+   const snapshot=this.storage.snapshot(id),found=this.lookup(id)??(snapshot?fromSnapshot(snapshot):undefined);
+   if(found)titles.push(found);
+  }
+  return titles.length?this.shelf('my-list','My list',titles):'';
  }
  private detail(t:Title){
   const selected=this.storage.data.list.includes(t.id);
@@ -239,22 +369,7 @@ export class MoviesView {
   if(this.route.play&&title&&this.screenFullscreen()&&this.root.querySelector<HTMLElement>('.movies-screen')?.dataset.title===title.id){this.refreshPlayer(title);return;}
   this.stopVideo();
   this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button data-action="retry">Try again</button>':''}</div>`:message?`<div class="movies-empty"><h1>${escape(message)}</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1>Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.append(this.tabbar);
-  if(!this.route.id&&(this.query.trim().length>=2||this.remoteError)){
-   const results=this.root.querySelector<HTMLElement>('#movies-results');
-   if(results){
-    const status=document.createElement('p');status.className='movies-catalog-status';status.setAttribute('role','status');
-    status.textContent=this.remoteLoading?'Searching the full movie and TV catalog…':this.remoteError?this.remoteError+' The titles included with this site are still searchable.':this.remoteTitles.length?'Showing full-catalog results from TMDB.':'No additional matches in the full catalog.';
-    if(this.remoteError){const retry=document.createElement('button');retry.textContent='Retry search';retry.dataset.action='retry-search';status.append(' ',retry);}
-    results.prepend(status);
-    if(this.remotePages>1){
-     const pagination=document.createElement('div');pagination.className='movies-pagination';
-     const previous=document.createElement('button');previous.textContent='Previous';previous.dataset.action='catalog-page';previous.dataset.page=String(this.remotePage-1);previous.disabled=this.remotePage<=1;
-     const label=document.createElement('span');label.textContent='Page '+this.remotePage+' of '+this.remotePages;
-     const next=document.createElement('button');next.textContent='Next';next.dataset.action='catalog-page';next.dataset.page=String(this.remotePage+1);next.disabled=this.remotePage>=this.remotePages;
-     pagination.append(previous,label,next);results.append(pagination);
-    }
-   }
-  }
+  markImages(this.root);
   if(this.route.id&&this.pendingTitle){
    const main=this.root.querySelector<HTMLElement>('.movies-empty');
    if(main){main.querySelector('h1')!.textContent='Loading title details…';const p=main.querySelector('p');if(p)p.textContent='Fetching current movie and episode information.';}
@@ -309,11 +424,11 @@ export class MoviesView {
  };
  private click=(event:MouseEvent)=>{
   const target=(event.target as Element).closest<HTMLElement>('button');if(!target)return;
-  if(target.dataset.kind){this.query='';this.searchRequest++;this.metadataAbort?.abort();clearTimeout(this.searchTimer);this.remoteTitles=[];this.remoteLoading=false;this.remoteError='';this.genre='All';this.showSection(target.dataset.kind as MovieKind);}
-  if(target.dataset.list){this.storage.toggle(target.dataset.list);this.render();this.root.querySelector<HTMLElement>('[data-list]')?.focus();}
+  if(target.dataset.kind){this.query='';this.searchRequest++;this.metadataAbort?.abort();clearTimeout(this.searchTimer);this.remoteTitles=[];this.remoteQuery='';this.remoteLoading=false;this.remoteError='';this.genre='All';this.showSection(target.dataset.kind as MovieKind);}
+  if(target.dataset.list){const id=target.dataset.list,title=this.lookup(id);this.storage.toggle(id,title?snapshotOf(title):undefined);this.render();this.root.querySelector<HTMLElement>(`[data-list="${id}"]`)?.focus({preventScroll:true});}
   if(target.dataset.playRoute)location.hash=target.dataset.playRoute;
   if(target.dataset.play)location.hash=titleHash(target.dataset.play)+'/play';
-  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(this.query,Number(target.dataset.page));break;case 'retry-search':void this.fetchCatalog(this.query,this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season);break;case 'next-source':this.switchProvider(STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===this.providerId)+1)%STREAM_PROVIDERS.length].id,'next-source');break;case 'reload-stream':this.stopVideo();this.suspended=false;this.render();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'external-stream':this.preferExternal=true;this.render();break;case 'reset':this.query='';this.searchRequest++;this.metadataAbort?.abort();this.remoteTitles=[];this.remoteError='';this.remoteLoading=false;this.genre='All';this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
+  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(this.query,Number(target.dataset.page));break;case 'retry-rails':void this.fetchRails('home');break;case 'retry-search':void this.fetchCatalog(this.query,this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season);break;case 'next-source':this.switchProvider(STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===this.providerId)+1)%STREAM_PROVIDERS.length].id,'next-source');break;case 'reload-stream':this.stopVideo();this.suspended=false;this.render();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'external-stream':this.preferExternal=true;this.render();break;case 'reset':this.query='';this.searchRequest++;this.metadataAbort?.abort();this.remoteTitles=[];this.remoteQuery='';this.remoteError='';this.remoteLoading=false;this.genre='All';this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  // A section is a route. The current section re-renders in place; any other one changes the address, and navigate() shows it.
  private showSection(kind:MovieKind){
@@ -331,8 +446,9 @@ export class MoviesView {
   this.query=(event.target as HTMLInputElement).value;
   const start=(event.target as HTMLInputElement).selectionStart;
   this.searchRequest++;this.metadataAbort?.abort();clearTimeout(this.searchTimer);
-  this.remoteTitles=[];this.remotePage=1;this.remotePages=1;this.remoteError='';
-  this.remoteLoading=this.query.trim().length>=2;
+  // Earlier results stay on screen until the new query answers. A query too short to search has no results of its own.
+  if(this.query.trim().length<2){this.remoteTitles=[];this.remoteQuery='';}
+  this.remoteError='';this.remoteLoading=this.query.trim().length>=2;
   const top=this.root.scrollTop;this.render();const input=this.root.querySelector<HTMLInputElement>('#movies-search');input?.focus({preventScroll:true});if(start!==null)input?.setSelectionRange(start,start);this.root.scrollTop=top;
   const query=this.query.trim();if(query.length>=2)this.searchTimer=setTimeout(()=>void this.fetchCatalog(query,1),280);
  };
@@ -403,5 +519,5 @@ export class MoviesView {
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('button')){event.preventDefault();this.playNext();}};
  pause(){this.suspended=true;this.cancelNext();if(this.video){this.storage.progress(this.progressKey,this.ended?0:this.video.currentTime);this.video.pause();}if(this.frame){this.storage.progress(this.progressKey,this.ended?0:this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
  private stopVideo(){this.cancelNext();if(this.frame)this.storage.progress(this.progressKey,this.ended?0:this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;this.storage.progress(this.progressKey,this.ended?0:video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
- dispose(){this.disposeRails();this.hideTabbar.dispose();this.abort.abort();this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);this.root.remove();document.body.classList.remove('movies-active');}
 }

@@ -63,7 +63,8 @@ test('keyboard focus scrolls a field clear of the sticky header',async({page})=>
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
  const search=page.locator('#movies-search');
- await expect(page.locator('.movies-catalog-status')).toBeVisible();
+ // A failed rails request at home shows the rails status line, not the search status (Task 12a).
+ await expect(page.locator('.movies-rails-status')).toBeVisible();
  await expect(search).toBeVisible();
  // Scroll until the field sits just above the visible area, as a user scrolling past it would leave it.
  await page.locator('.movies-view').evaluate(v=>{const f=document.querySelector('#movies-search')!;v.scrollTop+=f.getBoundingClientRect().top+12;});
@@ -98,7 +99,7 @@ test('rail arrows scroll their row, update the ends and keep focus on an arrow',
 test('a heading focused by script shows no ring',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
- const heading=page.locator('.movies-hero-copy h1[tabindex="-1"]');
+ const heading=page.locator('.movies-hero h1[tabindex="-1"]');
  await expect(heading).toBeVisible();
  await page.keyboard.press('Tab');
  await heading.evaluate(e=>(e as HTMLElement).focus());
@@ -171,4 +172,162 @@ test('the Movies header fits from 320 to 1920 px without clipping the wordmark',
   },width));
  }
  expect(results.filter(r=>r.wordmark!==0||r.row!==0||r.brand!==0||r.overlap)).toEqual([]);
+});
+
+// Home rails and Continue watching (Task 12a). Fixture titles pass the same checks the app applies to API data.
+const fixtureTitle=(id:string,name:string,kind:'movie'|'tv'='movie')=>({id,kind,name,year:2024,genres:['Adventure'],overview:'A fixture title for the home rails.',poster:`https://image.tmdb.org/t/p/w500/fixture${id.replace(/\D/g,'')}.jpg`,seasons:[]});
+
+// The home asks the API for all of its rails in one request.
+test('home rails come from one aggregated request',async({page})=>{
+ const requests:string[]=[];
+ await page.route('**/api/movies?*',route=>{
+  requests.push(route.request().url());
+  return route.fulfill({json:{rails:[
+   {id:'trending',title:'Trending now',titles:[fixtureTitle('movie-90001','Fixture One')]},
+   {id:'popular-movies',title:'Popular movies',titles:[fixtureTitle('movie-90002','Fixture Two')]}
+  ]}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.getByRole('heading',{name:'Trending now',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Popular movies',exact:true})).toBeVisible();
+ expect(requests).toHaveLength(1);
+ expect(requests[0]).toContain('rails=home');
+});
+
+// The starter rails stay on screen, with one quiet line and a retry that does not offer a search retry.
+test('a failed rails request shows the starter rails and a quiet retry',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const status=page.locator('.movies-rails-status');
+ await expect(status).toBeVisible();
+ await expect(status).toContainText('Showing the starter selection. The full catalog is unavailable right now.');
+ await expect(status.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Retry search',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Movies you’ll love',exact:true})).toBeVisible();
+});
+
+// Continue watching reads what storage already holds: the most recently watched title comes first.
+test('continue watching lists in-progress titles newest first',async({page})=>{
+ await page.addInitScript(()=>{
+  if(window!==window.top)return;
+  localStorage.setItem('qcc:movies:v1',JSON.stringify({
+   list:[],
+   progress:{'movie-157336':1200,'tv-19885:s1:e2':600},
+   meta:{'movie-157336':{duration:7200,updated:1000},'tv-19885:s1:e2':{duration:2400,updated:2000}},
+   titles:{'movie-157336':{id:'movie-157336',kind:'movie',name:'Interstellar',year:2014,poster:'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg'}}
+  }));
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const tiles=page.locator('a.movies-continue');
+ await expect(tiles).toHaveCount(2);
+ await expect(tiles.nth(0)).toHaveAttribute('aria-label','Resume Sherlock');
+ await expect(tiles.nth(0)).toHaveAttribute('href','#/movies/tv-19885/season/1/episode/2/play');
+ await expect(tiles.nth(0)).toContainText('S1 · E2');
+ await expect(tiles.nth(1)).toHaveAttribute('aria-label','Resume Interstellar');
+ await expect(tiles.nth(1)).toHaveAttribute('href','#/movies/movie-157336/play');
+ // 600 of 2400 seconds is 25%, and 1200 of 7200 seconds rounds to 17%.
+ expect(await tiles.locator('.movies-progress>span').evaluateAll(bars=>bars.map(bar=>(bar as HTMLElement).style.width))).toEqual(['25%','17%']);
+});
+
+// A rail that fails validation is dropped, and the rails around it still render.
+test('malformed rails are skipped',async({page})=>{
+ await page.route('**/api/movies?*',route=>route.fulfill({json:{rails:[
+  {id:'Bad_Id',title:'Broken rail',titles:[fixtureTitle('movie-90003','Fixture Three')]},
+  {id:'good',title:'Good rail',titles:[fixtureTitle('movie-90004','Fixture Four')]}
+ ]}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.getByRole('heading',{name:'Good rail',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Broken rail',exact:true})).toHaveCount(0);
+ await expect(page.locator('.movies-rails-status')).toHaveCount(0);
+});
+
+// Ruling 1: the hero list button names its action in its label, has no aria-pressed, and shows at every width.
+for(const width of [1440,390])test(`the hero list button names its action at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:844});
+ await page.goto('/#/movies');
+ const list=page.locator('.movies-hero .movies-hero-list');
+ await expect(list).toBeVisible();
+ await expect(list).toHaveAccessibleName('Add Interstellar to my list');
+ await expect(list).not.toHaveAttribute('aria-pressed');
+ await expect(list).toContainText('My list');
+ await list.click();
+ await expect(page.locator('.movies-hero .movies-hero-list')).toHaveAccessibleName('Remove Interstellar from my list');
+ await expect(page.locator('.movies-hero .movies-hero-list')).not.toHaveAttribute('aria-pressed');
+});
+
+// Ruling 2: a series hero whose episodes are not loaded plays through the title page, never a play route without an episode.
+test('a series hero without a loaded season plays through its title page',async({page})=>{
+ const series=fixtureTitle('tv-778811','Summary Series','tv');
+ const detail={...series,seasons:[{number:1,name:'Season 1',episodes:[{number:1,name:'Pilot',overview:'The first episode.'}]}]};
+ await page.route('**/api/movies?*',route=>{
+  if(new URL(route.request().url()).searchParams.has('id'))return route.fulfill({json:{title:detail}});
+  return route.fulfill({json:{rails:[{id:'shows',title:'Shows to start',titles:[series]}]}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const play=page.locator('.movies-hero').getByRole('button',{name:'Play',exact:true});
+ await expect(play).toBeEnabled();
+ await play.click();
+ await expect(page).toHaveURL(/#\/movies\/tv-778811$/);
+ await expect(page.getByRole('heading',{name:'Summary Series',exact:true})).toBeVisible();
+});
+
+// Ruling 7: a poster that fails to load is classified as failed and its title shows on the placeholder.
+test('a card whose image fails shows its placeholder title',async({page})=>{
+ await page.route('https://image.tmdb.org/**',route=>route.fulfill({status:404,body:'Unavailable'}));
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies');
+ const card=page.locator('.movies-poster[data-title="movie-157336"]').first();
+ await expect(card.locator('img.ui-card-img')).toHaveClass(/is-failed/);
+ const label=card.locator('.ui-card-placeholder>span');
+ await expect(label).toHaveText('Interstellar');
+ await expect(label).toBeVisible();
+ await expect(label).toHaveCSS('color','rgb(159, 159, 169)');
+});
+
+// Data flow: earlier full-catalog results stay on screen while a new query waits for its answer.
+test('earlier full-catalog results stay visible until a new query answers',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/movies?*',async route=>{
+  const query=new URL(route.request().url()).searchParams.get('q');
+  if(!query)return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  if(query==='second query')await held;
+  return route.fulfill({json:{titles:[query==='first query'?fixtureTitle('movie-90101','Earlier Result'):fixtureTitle('movie-90102','Later Result')],page:1,totalPages:1,totalResults:1}});
+ });
+ await page.goto('/#/movies');
+ const search=page.getByRole('searchbox',{name:'Search movies and TV'});
+ await search.fill('first query');
+ await expect(page.getByRole('link',{name:'Details for Earlier Result'})).toBeVisible();
+ await search.fill('second query');
+ await expect(page.locator('.movies-catalog-status')).toContainText('Searching');
+ await expect(page.getByRole('link',{name:'Details for Earlier Result'})).toBeVisible();
+ release();
+ await expect(page.getByRole('link',{name:'Details for Later Result'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Details for Earlier Result'})).toHaveCount(0);
+});
+
+// Section 9: keyboard focus stays visible in the search field, with the ring on the field's box rather than the bare input.
+test('the search field shows a focus ring on its box',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await tabTo(page,page.locator('#movies-search'));
+ const box=page.locator('label.movies-search');
+ const ring=await outline(box);
+ expect(ring.style).toBe('solid');
+ expect(ring.width).toBeGreaterThanOrEqual(2);
+});
+
+// A render rebuilds the poster elements. A poster that already loaded must appear at once, not fade in again on every keystroke.
+test('a re-rendered poster does not fade in again',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.locator('.movies-poster[data-title="movie-157336"] img.ui-card-img').first()).toHaveClass(/is-loaded/);
+ await page.locator('#movies-search').fill('s');
+ const poster=page.locator('.movies-results-grid .movies-poster[data-title="movie-157336"] img.ui-card-img').first();
+ await expect(poster).toHaveClass(/is-loaded/);
+ expect(await poster.evaluate(image=>getComputedStyle(image).animationName)).toBe('none');
 });

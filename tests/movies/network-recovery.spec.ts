@@ -107,7 +107,8 @@ test('manual player reload recreates only the chosen frame and retains its restr
 });
 
 test('retry resumes the failed catalog page instead of the previous successful page',async({page})=>{
- let failures=1;
+ // all three automatic attempts fail, so the manual retry is still exercised
+ let failures=3;
  await page.route('**/api/movies?*',route=>{
   const pageNumber=Number(new URL(route.request().url()).searchParams.get('page')||1);
   if(pageNumber===2&&failures-->0)return route.abort();
