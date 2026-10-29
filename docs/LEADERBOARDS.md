@@ -37,7 +37,7 @@ npm ci
 npm run dev:online
 ```
 
-This runs Vite, the actual function handler and a persistent local Netlify database
+This runs Vite, the actual function handler and a persistent local PGlite database
 under the ignored `.netlify/local-leaderboard/` directory. The default port is 4173;
 set `PORT` to use another port. The ordinary `npm run dev` remains a frontend-only
 server and reports online score service unavailability.
@@ -46,10 +46,7 @@ server and reports online score service unavailability.
 
 The existing Netlify site must deploy this code to make the feature public. The
 function lives at `/.netlify/functions/leaderboard`; all reads and writes are
-same-origin. `@netlify/database` enables Netlify's provisioning and automatic
-migration runner. The committed migrations create separate player/score tables and
-an ordered score index, then add Corn Clicker to the allowed games. Nothing writes to an unrelated database. No secret key is
-embedded in the frontend. Function/database use follows the site's Netlify plan.
+same-origin. A server-only `pg` pool connects to standalone Neon. Migrations live in `db/migrations/` and run before context builds. Production and preview secrets and database environment markers must agree; see [database operations](DATABASE.md) for configuration, the two-deployment cutover and runtime write freeze. No database credentials are embedded in the frontend.
 
 Use a Netlify build/deploy containing `package.json`, its lockfile, the migration,
 function and frontend. A static `dist/` upload alone cannot activate the backend.
@@ -64,7 +61,7 @@ limit. Tables have no PUBLIC grants and are accessed only by the server connecti
 
 ## Verification
 
-Tests use the real local Netlify Postgres implementation and committed migration.
+Tests use PGlite through a loopback Postgres gateway and the committed migrations, with no Netlify account or CI database service.
 Separate tokens update one shared board, cannot lower an existing best, keep games
 separate and cannot overwrite another identity. Invalid requests are rejected.
 The browser test uses two isolated browser contexts connected to that real handler

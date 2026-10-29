@@ -65,3 +65,7 @@ The four corrected games, isolated specialist handoffs, original cutout/art geom
 ## Fivefold
 
 Fivefold fills the stage with a responsive DOM board and keyboard. Its deterministic model stores both modes, seeded practice and statistics in the host snapshot; daily puzzles use the Auckland calendar. See [its spec](src/games/fivefold/SPEC.md).
+
+## Server database boundary
+
+The account and leaderboard function entry points use `netlify/lib/db.mts` (server-only pg pool) and `netlify/lib/runtime.mts` (environment marker guard). A single policy in `src/accounts/write-freeze.ts` combines the cached database flag with the emergency environment override for both handlers; frozen authenticated reads skip session touches and use read-only sync snapshots. Handlers retain their injected pool contract. Standalone Neon schema migrations are explicit, transactional and tracked in `qcc_schema_migrations`, adopting all restored Netlify tracker names (including sync revisions and runtime flags) without replay; see [database operations](docs/DATABASE.md). Browser builds and GitHub Pages CI need no database credentials.

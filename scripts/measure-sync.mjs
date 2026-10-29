@@ -7,8 +7,7 @@ import {dirname,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {createServer} from 'vite';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../tests/support/local-db.mjs';
 import {chromium} from '@playwright/test';
 
 const args=process.argv.slice(2);
@@ -31,12 +30,12 @@ const fixtureBytes=Buffer.byteLength(JSON.stringify(saves['save:blockcraft']));
 assert(fixtureBytes>1900000&&fixtureBytes<2097152,'Legacy fixture size is outside measurement bounds.');
 await mkdir('.netlify',{recursive:true});
 const directory=await mkdtemp(resolve('.netlify/measure-sync-'));
-const database=new NetlifyDB({directory,logger:()=>{}});
+const database=new LocalDB({directory});
 let pool,server,browser;
 let handlerActive=0;
 let browserTraffic=null;
 const hasLarge=buffer=>{try{return !!JSON.parse(buffer.toString('utf8')).saves?.['save:blockcraft'];}catch{return false;}};
-const sourcePaths=['src/accounts','src/core/storage.ts','src/core/content.ts','src/main.ts','src/leaderboard','netlify/database/migrations'];
+const sourcePaths=['src/accounts','src/core/storage.ts','src/core/content.ts','src/main.ts','src/leaderboard','db/migrations'];
 const git=(...args)=>execFileSync('git',args,{encoding:'utf8',maxBuffer:10*1024*1024});
 const gitSha=git('rev-parse','HEAD').trim();
 const sourceHash=createHash('sha256');
@@ -46,8 +45,8 @@ const run={label,gitSha,branch:git('branch','--show-current').trim(),application
 
 try{
  const connectionString=await database.start();
- await database.applyMigrations('netlify/database/migrations');
- pool=getDatabase({connectionString}).pool;
+ await database.applyMigrations('db/migrations');
+ pool=createLocalPool(connectionString);
  server=await createServer({cacheDir:resolve(directory,'vite-cache'),server:{host:'127.0.0.1',port,strictPort:true,hmr:false,watch:null},plugins:[{
   name:'measure-real-functions',configureServer(vite){vite.middlewares.use(async(req,res,next)=>{
    res.setHeader('Content-Security-Policy',`default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://127.0.0.1:${port}`);
@@ -163,7 +162,7 @@ try{
  assert(run.flows.flatMap(f=>f.details).every(r=>r.status>0&&r.status<500),'A local function failed during measurement.');
  const previous=existsSync(output)?JSON.parse(await readFile(output,'utf8')):null;
  const evidence={schemaVersion:1,bytesDefinition:'Uncompressed UTF-8 HTTP request and response bodies recorded at the real local HTTP handler for Playwright Chromium requests; reconciled against browser request counts. Same-origin /.netlify/functions/ only. Excludes headers, TLS, compression, static assets, fixtures and teardown.',timing:'Playwright Chromium clock paused at 1793000001000; advance in 5-second steps, yielding until real local handler/browser response I/O settles after every step. Each flow begins after setup settles.',notes:[
-  'Local Vite app, real account/leaderboard handlers, fresh @netlify/database-dev Postgres-compatible database with committed migrations; no external or production network.',
+  'Local Vite app, real account/leaderboard handlers, fresh local PGlite Postgres-compatible database with committed migrations; no external or production network.',
   'Legacy Blockcraft fixture is synthetic JSON of about 2 MB, seeded directly in the database because current write cap is 1 MiB. It exercises a legacy large record without weakening production validation.',
   'Login is measured separately. Steady-state flows use an existing authenticated browser with the identical database/local fixture so baseline first-login rejection does not prevent comparison.',
   'The small-score flow changes one score through the real storage module, dispatches the same reconnect event on both revisions, and advances 186 seconds to include the delayed leaderboard write and baseline periodic traffic. This leaves no pending improvement before clean idle.',

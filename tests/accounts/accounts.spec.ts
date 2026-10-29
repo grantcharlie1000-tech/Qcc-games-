@@ -1,11 +1,11 @@
 import {test,expect,type BrowserContext,type Page} from '@playwright/test';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
-const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
+const database=new LocalDB();let pool:Pool;
 let accounts:ReturnType<typeof createAccountsHandler>,leaderboard:ReturnType<typeof createLeaderboardHandler>;
-test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);});
+test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);accounts=createAccountsHandler(pool);leaderboard=createLeaderboardHandler(pool);});
 test.afterAll(async()=>{await pool?.end();await database.stop();});
 async function connect(context:BrowserContext,topic=true){
  if(topic)await context.addInitScript(()=>{if(window!==window.top)return;localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});

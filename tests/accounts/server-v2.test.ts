@@ -1,12 +1,11 @@
 import {afterAll,beforeAll,beforeEach,describe,expect,it,vi} from 'vitest';
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
 import {createAccountsHandler} from '../../src/accounts/server';
 import {AccountsClient,type AccountStorage} from '../../src/accounts/client';
-const local=new NetlifyDB({logger:()=>{}});
-let pool:ReturnType<typeof getDatabase>['pool'],handle:ReturnType<typeof createAccountsHandler>;
+const local=new LocalDB();
+let pool:ReturnType<typeof createLocalPool>,handle:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/accounts';
 const snapshot=(data:unknown,updated=1)=>({value:{version:1,data,updated},updated});
 async function request(action:string,token?:string,body?:unknown,v2=false,cursor='0'){
@@ -15,7 +14,7 @@ async function request(action:string,token?:string,body?:unknown,v2=false,cursor
 }
 async function signup(){const response=await request('signup',undefined,{username:'Sync_User',password:'secret password'});expect(response.status).toBe(201);return response.json() as Promise<{token:string}>;}
 async function sync(token:string,saves:unknown,cursor='0',bases:Record<string,string>={}){const response=await request('sync',token,{cursor,bases,saves},true);expect(response.status).toBe(200);return response.json();}
-beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createAccountsHandler(pool);},30000);
+beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('db/migrations');pool=createLocalPool(connectionString);handle=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{vi.unstubAllEnvs();await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});
 describe('incremental accounts sync against Postgres',()=>{
@@ -124,7 +123,7 @@ describe('incremental accounts sync against Postgres',()=>{
   await pool.query('DROP FUNCTION account_save_revision()');
   await pool.query('ALTER TABLE account_saves DROP COLUMN revision');
   await pool.query('ALTER TABLE accounts DROP COLUMN sync_revision');
-  const migration=await readFile('netlify/database/migrations/20261028003000_account_sync_revisions.sql','utf8');
+  const migration=await readFile('db/migrations/20261028003000_account_sync_revisions.sql','utf8');
   await pool.query(migration);await pool.query(migration);
   expect((await pool.query('SELECT account_id,key,value,updated FROM account_saves ORDER BY key')).rows).toEqual(before);
   const pulled=await (await request('sync',token,undefined,true)).json();expect(pulled.cursor).toBe('2');expect(pulled.revisions).toEqual({'best:snake':'1',favourites:'2'});

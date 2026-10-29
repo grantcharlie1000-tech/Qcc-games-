@@ -1,11 +1,11 @@
 import {test,expect,seedStudyTopic} from '../fixtures';
 import type {BrowserContext,Page} from '@playwright/test';
-import {NetlifyDB} from '@netlify/database-dev';
-import {getDatabase} from '@netlify/database';
+import {LocalDB,createLocalPool} from '../support/local-db';
+import type {Pool} from 'pg';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
 import {createAccountsHandler} from '../../src/accounts/server';
-const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];let handle:ReturnType<typeof createLeaderboardHandler>;let accounts:ReturnType<typeof createAccountsHandler>;
-test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createLeaderboardHandler(pool);accounts=createAccountsHandler(pool);});
+const database=new LocalDB();let pool:Pool;let handle:ReturnType<typeof createLeaderboardHandler>;let accounts:ReturnType<typeof createAccountsHandler>;
+test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('db/migrations');pool=createLocalPool(connectionString);handle=createLeaderboardHandler(pool);accounts=createAccountsHandler(pool);});
 test.afterAll(async()=>{await pool?.end();await database.stop();});
 async function connect(context:BrowserContext,score:number,username?:string){
  if(username){const response=await accounts(new Request('https://arcade.test/.netlify/functions/accounts?action=signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:'test password'})}));expect(response.status).toBe(201);const session=await response.json();await context.addInitScript(session=>localStorage.setItem('pocket-arcade:v1:accounts:session',JSON.stringify(session)),session);}
