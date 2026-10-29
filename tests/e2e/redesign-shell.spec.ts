@@ -1,4 +1,5 @@
 import {test,expect} from '../fixtures';
+import type {Page} from '../fixtures';
 
 test('desktop header has brand, sections and actions',async({page})=>{
  await page.setViewportSize({width:1366,height:900});
@@ -182,12 +183,34 @@ test('the footer brand stacks its name above the tagline',async({page})=>{
  expect(tagline!.y).toBeGreaterThanOrEqual(name!.y+name!.height);
 });
 
+// Waits until a rail row has stopped moving for two frames. By then the scroll event for the last key press has
+// run, so its arrow flags and any focus move are in place before the next read or press.
+async function settleRow(page:Page,selector:string):Promise<void>{
+ await page.evaluate(async(sel)=>{
+  const row=document.querySelector<HTMLElement>(sel);
+  if(!row)return;
+  let last=row.scrollLeft,quiet=0;
+  while(quiet<2){
+   await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+   quiet=row.scrollLeft===last?quiet+1:0;
+   last=row.scrollLeft;
+  }
+ },selector);
+}
+
 test('keyboard focus stays in a rail when its arrows reach the end of the row',async({page})=>{
+ // Reduced motion makes the row scroll instantly, so each press settles in a frame rather than over a glide.
+ await page.emulateMedia({reducedMotion:'reduce'});
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/');
  const rail=page.locator('[data-rail="puzzle"]');
  await rail.locator('.ui-rail-arrow.next').focus();
- for(let press=0;press<10&&await rail.getAttribute('data-can-next')!=='false';press++)await page.keyboard.press('Enter');
+ // Press only while the next arrow is still offered, and let each press settle before reading the flag again.
+ for(let press=0;press<10;press++){
+  if(await rail.getAttribute('data-can-next')==='false')break;
+  await page.keyboard.press('Enter');
+  await settleRow(page,'[data-rail="puzzle"] .ui-rail-row');
+ }
  await expect(rail).toHaveAttribute('data-can-next','false');
  // Give the browser a frame to hide the arrow, then see where focus went.
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -243,8 +266,16 @@ test('a card presses in while the pointer is down',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/');
  const card=page.locator('[data-rail="puzzle"] .game-card').first();
- // Hover scrolls the card into view and puts the pointer on it, so the press lands inside the viewport.
+ // Smooth scrolling would still be moving the row when the press starts, so the row scrolls instantly here.
+ await page.locator('[data-rail="puzzle"] .ui-rail-row').evaluate(row=>{(row as HTMLElement).style.scrollBehavior='auto';});
  await card.hover();
+ // Put the pointer on the card's centre, and check that the card (or a child of it) is what is under it.
+ await expect.poll(async()=>{
+  const box=await card.boundingBox();
+  const x=box!.x+box!.width/2,y=box!.y+box!.height/2;
+  await page.mouse.move(x,y);
+  return page.evaluate(([px,py])=>{const hit=document.elementFromPoint(px,py);return !!hit&&!!hit.closest('[data-rail="puzzle"] .game-card');},[x,y]);
+ }).toBe(true);
  await page.mouse.down();
  await expect(card).toHaveCSS('transform','matrix(0.98, 0, 0, 0.98, 0, 0)');
  await page.mouse.up();
