@@ -22,6 +22,7 @@ const dateYear=(value:unknown)=>typeof value==="string"&&/^\d{4}/.test(value)?Nu
 const artwork=(path:unknown,size:"w500"|"w1280")=>typeof path==="string"&&/^\/[a-zA-Z0-9]+\.(jpg|png|webp)$/.test(path)?`https://image.tmdb.org/t/p/${size}${path}`:undefined;
 
 function mapResult(item:Record<string,any>,forcedKind?:MediaKind):Record<string,any>|undefined{
+  if(!item||typeof item!=="object"||Array.isArray(item))return undefined;
   const kind=forcedKind??(item.media_type==="movie"||item.media_type==="tv"?item.media_type:undefined);
   const id=Number(item.id),name=kind==="movie"?item.title:item.name,year=dateYear(item.release_date??item.first_air_date);
   const poster=artwork(item.poster_path,"w500");
@@ -52,7 +53,7 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
     if(detail instanceof Response)return detail;
     let seasons:any[]=[];
     if(kind==="tv"){
-      const summaries=Array.isArray(detail.seasons)?detail.seasons.filter((s:any)=>Number.isInteger(s.season_number)&&s.season_number>0):[];
+      const summaries=Array.isArray(detail.seasons)?detail.seasons.filter((s:any)=>s&&typeof s==="object"&&!Array.isArray(s)&&Number.isInteger(s.season_number)&&s.season_number>0):[];
       seasons=summaries.slice(0,100).map((s:any)=>({number:s.season_number,name:typeof s.name==="string"?s.name:`Season ${s.season_number}`,episodes:[]}));
       const selected=seasonNo??seasons[0]?.number;
       if(selected&&seasons.some(s=>s.number===selected)){
@@ -60,7 +61,7 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
         if(episodeData instanceof Response)return episodeData;
         const current=seasons.find(s=>s.number===selected);
         current.episodes=(Array.isArray(episodeData.episodes)?episodeData.episodes:[]).slice(0,300).flatMap((e:any)=>{
-          if(!Number.isInteger(e.episode_number)||e.episode_number<1||typeof e.name!=="string"||!e.name)return[];
+          if(!e||typeof e!=="object"||Array.isArray(e)||!Number.isInteger(e.episode_number)||e.episode_number<1||typeof e.name!=="string"||!e.name)return[];
           return [{number:e.episode_number,name:e.name.slice(0,200),overview:typeof e.overview==="string"?e.overview.slice(0,2000):"",runtime:integer(String(e.runtime??""),1,9999)}];
         });
       }
