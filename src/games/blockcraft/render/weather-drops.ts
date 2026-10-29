@@ -3,6 +3,7 @@
 // SPLASH_CAP splash droplets that writes one instance record per visible particle. Drops live in world space and
 // wrap around the camera, land on the column surface (rain splashes, snow just settles) and are never written below
 // it, so nothing is drawn inside covered spaces.
+import {mulberry32} from '../../../core/random';
 import {isLava} from '../data/blocks';
 import type {World} from '../engine/contracts';
 import {precipitationHeight,precipitationKind,surfaceTop} from '../world/weather-columns';
@@ -22,10 +23,7 @@ const SPLASH_GRAVITY=24,SPLASH_LIFE=.6,LAVA_SMOKE_INTERVAL=.25;
 const FIELD_HALF=DROP_RADIUS+1,FIELD_SIZE=FIELD_HALF*2+1;
 
 /** Small seeded PRNG for visuals and ambience (keeps game.random() for gameplay). */
-export function visualRandom(seed:number):()=>number{
-  let s=seed>>>0;
-  return()=>{s=(s+0x6d2b79f5)>>>0;let t=s;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};
-}
+export const visualRandom=mulberry32;
 const wrap=(v:number,min:number,span:number)=>min+((v-min)%span+span)%span;
 
 /** Per-column precipitation data around the camera, rebuilt when the camera changes column or height or the world changes. */
