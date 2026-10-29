@@ -56,7 +56,7 @@ body{margin:0;background:var(--c-bg);color:var(--c-100);font-family:var(--font-s
 
 /* Tab bar, below 640 px only */
 .ui-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:stretch;min-height:var(--tabbar-h);padding:6px 0 max(6px,env(safe-area-inset-bottom));background:#000000f2;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line-faint)}
-.ui-tab{display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;min-height:44px;padding:4px 2px;border:0;background:none;color:var(--c-500);font-size:10px;font-weight:500;line-height:1.2;text-decoration:none;transition:transform var(--t-fast) var(--ease)}
+.ui-tab{display:flex;flex:1 1 0;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:54px;min-height:44px;padding:4px 2px;border:0;background:none;color:var(--c-400);font-size:10px;font-weight:500;line-height:1.2;text-decoration:none;transition:transform var(--t-fast) var(--ease)}
 .ui-tab:active{transform:scale(.95)}
 .ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]{color:#fff;font-weight:700}
 @media (min-width:640px){.ui-tabbar{display:none}}
