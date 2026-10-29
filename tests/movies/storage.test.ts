@@ -81,11 +81,21 @@ it('remembers only known servers',()=>{
  s.setProvider('vixsrc');s.setProvider('nope' as never);
  expect(new MovieStorage(()=>storage).data.provider).toBe('vixsrc');
 });
-it('keeps positions the player writes for an unresolved episode route',()=>{
+it('ignores positions for an unresolved episode route',()=>{
  const s=new MovieStorage(()=>fake());
  s.progress('tv-19885:sundefined:eundefined',42);
- expect(s.data.progress['tv-19885:sundefined:eundefined']).toBe(42);
- expect(s.continueItems()).toEqual([{key:'tv-19885:sundefined:eundefined',id:'tv-19885',time:42,updated:expect.any(Number)}]);
+ expect(s.data.progress).toEqual({});expect(s.data.meta).toEqual({});expect(s.continueItems()).toEqual([]);
+});
+it('drops stored progress and meta keys that are not resolved media keys',()=>{
+ const stored={list:[],progress:{'movie-1':10,'tv-19885:sundefined:eundefined':42,'tv-19885:s1:e2':20,foo:5},titles:{},meta:{'movie-1':{updated:1},'tv-19885:sundefined:eundefined':{updated:2}}};
+ const s=new MovieStorage(()=>fake(new Map([[MOVIES_KEY,JSON.stringify(stored)]])));
+ expect(s.data.progress).toEqual({'movie-1':10,'tv-19885:s1:e2':20});
+ expect(s.data.meta).toEqual({'movie-1':{updated:1}});
+});
+it('leaves unreadable storage untouched and reports durable=false',()=>{
+ const values=new Map([[MOVIES_KEY,'{not json']]);
+ const s=new MovieStorage(()=>fake(values));
+ expect(values.get(MOVIES_KEY)).toBe('{not json');expect(s.durable).toBe(false);
 });
 it('keeps a known duration when a later position omits it',()=>{
  const s=new MovieStorage(()=>fake());

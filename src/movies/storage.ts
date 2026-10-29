@@ -9,8 +9,8 @@ export interface MediaMeta {duration?:number;updated:number}
 export interface MoviePreferences {list:string[];progress:Record<string,number>;titles:Record<string,TitleSnapshot>;meta:Record<string,MediaMeta>;provider?:StreamProviderId}
 export interface ContinueItem {key:string;id:string;season?:number;episode?:number;time:number;duration?:number;updated:number}
 const MAX_SNAPSHOTS=200,MAX_SECONDS=30*86400;
-// Progress and meta keys start with a title id and may add ':' parts (see mediaKey in model.ts). Episode keys are tv-N:sS:eE.
-const KEY=/^(?:movie|tv)-[a-z0-9-]+(?::[a-z0-9]+)*$/,EPISODE=/:s(\d{1,4}):e(\d{1,4})$/;
+// Progress and meta keys are exactly the keys mediaKey produces (see model.ts): movie-N, or tv-N:sS:eE for an episode.
+const KEY=/^(?:movie-[a-z0-9-]+|tv-[a-z0-9-]+:s\d{1,4}:e\d{1,4})$/,EPISODE=/:s(\d{1,4}):e(\d{1,4})$/;
 const isRecord=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const isText=(v:unknown,max:number):v is string=>typeof v==='string'&&v.length>0&&v.length<=max;
 const isYear=(v:unknown):v is number=>v===0||(typeof v==='number'&&Number.isInteger(v)&&v>0&&v<10000);
@@ -38,12 +38,13 @@ export class MovieStorage {
   try {
    const v=JSON.parse(this.storage().getItem(MOVIES_KEY)||'null');
    if(v&&Array.isArray(v.list)&&v.list.every((id:unknown)=>typeof id==='string'))this.data.list=v.list.slice(0,200);
-   if(v?.progress&&typeof v.progress==='object')for(const [key,time] of Object.entries(v.progress))if(typeof time==='number'&&Number.isFinite(time)&&time>=0)this.data.progress[key]=time;
+   if(v?.progress&&typeof v.progress==='object')for(const [key,time] of Object.entries(v.progress))if(KEY.test(key)&&typeof time==='number'&&Number.isFinite(time)&&time>=0)this.data.progress[key]=time;
    for(const [id,value] of Object.entries(isRecord(v?.titles)?v.titles:{})){const snapshot=parseSnapshot(id,value);if(snapshot)this.data.titles[id]=snapshot;}
    for(const [key,value] of Object.entries(isRecord(v?.meta)?v.meta:{})){const meta=KEY.test(key)?parseMeta(value):undefined;if(meta)this.data.meta[key]=meta;}
    if(isProvider(v?.provider))this.data.provider=v.provider;
+   // Only a read that succeeded may be written back, so unreadable storage is left exactly as found.
+   this.write();
   }catch{this.durable=false;}
-  this.write();
  }
  private write(){
   // Snapshots stay only while their title is listed or has a saved position, and never beyond the cap.
