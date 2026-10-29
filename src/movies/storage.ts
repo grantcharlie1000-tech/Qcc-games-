@@ -1,6 +1,6 @@
 import {imageAsset} from './model';
 import type {Title} from './model';
-import {STREAM_PROVIDERS} from './provider';
+import {STREAM_PROVIDERS,START_THRESHOLD} from './provider';
 import type {StreamProviderId} from './provider';
 // Separate namespace. Never use game saves, scores, sync, or analytics.
 export const MOVIES_KEY='qcc:movies:v1';
@@ -17,6 +17,8 @@ const isYear=(v:unknown):v is number=>v===0||(typeof v==='number'&&Number.isInte
 const isDuration=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>0&&v<=MAX_SECONDS;
 const isProvider=(v:unknown):v is StreamProviderId=>STREAM_PROVIDERS.some(provider=>provider.id===v);
 const idOf=(key:string)=>key.split(':')[0];
+// A provider can report 0 to 14 seconds before it applies its start time. That report must not replace a resume point, but a finished title always saves.
+export const keepsResume=(saved:number|undefined,time:number,ended:boolean)=>!ended&&time<START_THRESHOLD&&(saved??0)>=START_THRESHOLD;
 export const snapshotOf=(title:Title):TitleSnapshot=>{const backdrop=imageAsset(title.backdrop);return {id:title.id,kind:title.kind,name:title.name,year:title.year,poster:title.poster,...(backdrop?{backdrop}:{})};};
 // Any invalid field drops the whole snapshot, so stored artwork is always an approved image URL.
 function parseSnapshot(id:string,value:unknown):TitleSnapshot|undefined {

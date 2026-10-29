@@ -1,5 +1,5 @@
 import {it,expect,vi} from 'vitest';
-import {MovieStorage,MOVIES_KEY,snapshotOf} from '../../src/movies/storage';
+import {MovieStorage,MOVIES_KEY,snapshotOf,keepsResume} from '../../src/movies/storage';
 import type {Title} from '../../src/movies/model';
 const fake=(values=new Map<string,string>())=>({getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v)} as unknown as Storage);
 const remote:Title={id:'movie-157336',kind:'movie',name:'Interstellar',year:2014,genres:['Science Fiction'],overview:'A team travels through a wormhole.',poster:'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',backdrop:'https://image.tmdb.org/t/p/w1280/xJHokMbljvjADYdit5fK5VQsXEG.jpg',seasons:[]};
@@ -101,4 +101,15 @@ it('keeps a known duration when a later position omits it',()=>{
  const s=new MovieStorage(()=>fake());
  s.progress('movie-1',100,7200);s.progress('movie-1',160);
  expect(s.data.meta['movie-1']).toEqual({duration:7200,updated:expect.any(Number)});
+});
+// Only an early report while the media plays keeps a resume point. A finished title and a late report always write.
+it.each<[number|undefined,number,boolean,boolean]>([
+ [120,3,false,true],
+ [120,3,true,false],
+ [10,3,false,false],
+ [undefined,3,false,false],
+ [120,15,false,false],
+ [120,200,false,false],
+])('keepsResume(saved %s, time %s, ended %s) is %s',(saved,time,ended,keeps)=>{
+ expect(keepsResume(saved,time,ended)).toBe(keeps);
 });

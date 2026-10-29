@@ -113,6 +113,8 @@ test('verified local media uses native controls and stores progress only in its 
  await page.keyboard.press('Escape');await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.paused)).toBe(true);
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}'));
  expect(saved.progress['movie-329865']).toBeGreaterThan(0);
+ // The native player's own duration is saved beside the position, for the Continue watching bar.
+ expect(saved.meta['movie-329865'].duration).toBe(await video.evaluate((v:HTMLVideoElement)=>v.duration));
 });
 
 
