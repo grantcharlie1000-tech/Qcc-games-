@@ -134,7 +134,8 @@ test('the filter notice lines up with the game grid',async({page})=>{
  expect(Math.abs(textLeft-cellLeft)).toBeLessThan(1);
 });
 
-test('the library clears a notch, and a game screen does not',async({page})=>{
+test('the library clears a notch, and a game screen does not',async({page,browserName})=>{
+ test.skip(browserName!=='chromium','safe-area inset emulation is a Chromium DevTools feature');
  await page.setViewportSize({width:390,height:844});
  // Chromium can emulate the insets a notched phone reports to env(), so the padding is measured, not read from the CSS.
  const session=await page.context().newCDPSession(page);
