@@ -100,6 +100,7 @@ export class MoviesView {
   this.root.addEventListener('input',this.input);
   this.root.addEventListener('change',this.change);
   this.root.addEventListener('keydown',this.keydown);
+  this.root.addEventListener('focusin',this.revealFocus);
   this.disposeImages=watchImages(this.root);
   this.tabbar.setAttribute('aria-label','Mobile movies navigation');
   this.disposeRails=bindRails(this.root,()=>this.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -516,6 +517,18 @@ export class MoviesView {
   if(focus&&visible)this.root.querySelector<HTMLElement>('.movies-screen')?.focus({preventScroll:true});
  }
  private playNext(){const hash=this.nextHash;this.cancelNext();if(hash&&this.preferences.autoNext())location.hash=hash;}
+ // Not every browser applies scroll-padding-top to focus scrolling, so once the browser has scrolled, a focused control still
+ // under the sticky header moves clear of it. The header's own controls, the root, players and dialogs are left alone.
+ private revealFocus=(event:FocusEvent)=>{
+  const target=event.target;
+  if(!(target instanceof HTMLElement)||target===this.root||target instanceof HTMLIFrameElement||target instanceof HTMLVideoElement||target.closest('.movies-top,dialog'))return;
+  requestAnimationFrame(()=>{
+   const header=this.root.querySelector('.movies-top');
+   if(document.activeElement!==target||!header)return;
+   const bottom=header.getBoundingClientRect().bottom,box=target.getBoundingClientRect();
+   if(box.top<bottom&&box.height<this.root.clientHeight-bottom)this.root.scrollTop-=bottom-box.top;
+  });
+ };
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('button')){event.preventDefault();this.playNext();}};
  pause(){this.suspended=true;this.cancelNext();if(this.video){this.storage.progress(this.progressKey,this.ended?0:this.video.currentTime);this.video.pause();}if(this.frame){this.storage.progress(this.progressKey,this.ended?0:this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
  private stopVideo(){this.cancelNext();if(this.frame)this.storage.progress(this.progressKey,this.ended?0:this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;this.storage.progress(this.progressKey,this.ended?0:video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}

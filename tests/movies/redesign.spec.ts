@@ -70,13 +70,35 @@ test('keyboard focus scrolls a field clear of the sticky header',async({page})=>
  await page.locator('.movies-view').evaluate(v=>{const f=document.querySelector('#movies-search')!;v.scrollTop+=f.getBoundingClientRect().top+12;});
  await search.focus();
  await expect(search).toBeFocused();
- const hit=await page.evaluate(()=>{
+ const measure=()=>page.evaluate(()=>{
   const f=document.querySelector<HTMLInputElement>('#movies-search')!,b=f.getBoundingClientRect();
   const e=document.elementFromPoint(b.left+b.width/2,b.top+b.height/2);
   return {top:Math.round(b.top),hit:e?e.tagName.toLowerCase():'none',clear:!!e&&(e===f||!!f.closest('label')?.contains(e))};
  });
- expect(hit.top,JSON.stringify(hit)).toBeGreaterThanOrEqual(56);
+ // The browser may still be scrolling to the focused field (WebKit), so wait for it to settle below the header.
+ await expect.poll(async()=>(await measure()).top,{message:'top of the focused field'}).toBeGreaterThanOrEqual(56);
+ const hit=await measure();
  expect(hit.clear,JSON.stringify(hit)).toBe(true);
+});
+
+// Not every browser applies scroll-padding-top to focus scrolling. With it switched off, focus must still clear the header.
+test('focus clears the sticky header even where scroll-padding is not applied',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await page.addStyleTag({content:'.movies-view{scroll-padding:0!important}'});
+ const search=page.locator('#movies-search');
+ await expect(page.locator('.movies-rails-status')).toBeVisible();
+ await page.locator('.movies-view').evaluate(v=>{const f=document.querySelector('#movies-search')!;v.scrollTop+=f.getBoundingClientRect().top+12;});
+ await search.focus();
+ await expect(search).toBeFocused();
+ await expect.poll(()=>search.evaluate(f=>Math.round(f.getBoundingClientRect().top)),{message:'top of the focused field'}).toBeGreaterThanOrEqual(56);
+ // A control the page focuses while it is already in view stays where it is.
+ const card=page.locator('.movies-poster').first();
+ await card.scrollIntoViewIfNeeded();
+ const before=await page.locator('.movies-view').evaluate(v=>v.scrollTop);
+ await card.focus();
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ expect(await page.locator('.movies-view').evaluate(v=>v.scrollTop)).toBe(before);
 });
 
 // Rails: an arrow scrolls its row, the ends update, and focus moves to the arrow that is still there.
