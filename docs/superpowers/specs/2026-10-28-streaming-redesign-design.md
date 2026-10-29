@@ -54,7 +54,8 @@ A new `src/theme.css`, imported before every other stylesheet, defines the token
 | `--sh-2xl` | `0 25px 50px -12px #00000040` |
 | `--ease`, `--t-fast`, `--t`, `--t-slow` | `cubic-bezier(.4,0,.2,1)`, 150 ms, 200 ms, 300 ms |
 | `--page-max`, `--gutter` | 1280 px; 16 px, 24 px from 640 px |
-| `--header-h`, `--tabbar-h` | 56 px; 57 px |
+| `--header-h`, `--tabbar-h`, `--tabbar-gap` | 56 px; 64 px (the floating island's height, amended in section 15); 12 px |
+| `--ease-drawer` | `cubic-bezier(.32,.72,0,1)`, the iOS-like sheet curve used by the tab bar's hide and show |
 
 Type scale (sizes below 640 px, then from 640 px; colours as tokens):
 
@@ -80,7 +81,12 @@ Templates add these classes beside the existing hook classes (for example `class
   - `.ui-brand` is a 28 px white rounded tile holding the mauri mark, then the wordmark.
   - `.ui-pill` (nav item): padding 6×12 px, radius 8 px, 12 px text, `--c-400`. Hover: white on `--c-900` at 80%. Current (`aria-current="page"` or `aria-pressed="true"`): white fill, black text, 700, `--sh-sm`.
   - `.ui-icon-btn` (right-hand actions): 36 px minimum, radius 8 px, border `--line`, background `--c-950` at 80%, 16 px icon. Its label is visible from 768 px and visually hidden below that, so the accessible name stays.
-- **`.ui-tabbar`:** below 640 px only. Fixed to the bottom, black at 95%, 16 px blur, top border `--line-faint`, `padding-bottom: max(6px, env(safe-area-inset-bottom))`. Five items, each at least 54×44 px, with a 16 px icon and a 10 px label. Current item is white 700; others `--c-500`. Press scales to .95.
+- **`.ui-tabbar`** (amended in section 15, at the user's request): below 640 px only, a floating glass island rather than a flat bar.
+  - **Shape:** fixed, `left`/`right` 12 px, `bottom: calc(var(--tabbar-gap) + env(safe-area-inset-bottom))`, at most 440 px wide and centred, `min-height: var(--tabbar-h)`, 6 px padding, fully rounded (pill).
+  - **Glass:** a dark tinted fill of at least 70% opacity (so labels keep 4.5:1 over bright art), a `backdrop-filter` of 24 px blur with saturation 1.8, a 1 px white border at about 12%, an inner top highlight, a soft drop shadow, and a faint specular sheen across the top. With no `backdrop-filter` support, or under `prefers-reduced-transparency: reduce`, the fill becomes near-opaque. Under `prefers-contrast: more` the border strengthens.
+  - **Items:** five, each at least 54×44 px, with a 16 px icon and a 10 px label. Others use `--c-300`. The current item is white 700 on a rounded glass lozenge. Press scales to .95.
+  - **Hide on scroll:** scrolling down by more than a small threshold slides the island down past the screen edge (`transform` only, `var(--t)` with `--ease-drawer`). Scrolling up by the threshold brings it back. It always shows near the top and near the end of the page, on pages too short to scroll, after every navigation, and whenever focus is inside it. While hidden it ignores pointer input. Under reduced motion it fades instead of sliding.
+  - **Content clearance:** page content keeps enough bottom padding to clear the island when it is shown.
 - **`.ui-btn`:** primary is white with black text; secondary is `--c-900` at 80% with a `--c-700` border and `--c-200` text. Height 32/40 px, radius 8 px, press scale .98.
 - **`.ui-chip`:** mono 9 to 10 px, radius 4 px, black at 85% background, `--line` border, `--c-300` text. Rating variant is amber; saved variant is rose.
 - **`.ui-rail`:**
@@ -367,6 +373,7 @@ Invalid entries are dropped on load. Nothing else is written, and no other key i
 - A visible focus ring everywhere, including the restored Movies outlines.
 - Rail arrows are keyboard reachable and visible on focus.
 - At least 44 px touch targets in the tab bars and drawer rows.
+- A hidden tab bar shows again whenever focus enters it, so keyboard users never tab into an off-screen control.
 - Body text at `--c-300` and above. `--c-500` only for decorative or 14 px-plus text.
 - Hover effects only under `(hover:hover) and (pointer:fine)`. Touch layouts keep their controls visible.
 - Reduced motion as in section 5.
@@ -427,3 +434,7 @@ The reference embeds its player without a sandbox. Ours keeps `allow-scripts all
 - Playwright `tests/movies`, `tests/e2e`, `tests/accounts` and `tests/leaderboard` in Chromium. In this workspace that needs `ARCADE_URL` and `CHROMIUM_PATH=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`.
 - Screenshots at 1440×900 and 390×844 of every page and state in sections 6 and 7, reviewed against sections 3 to 5.
 - A reduced-motion pass and a keyboard pass.
+
+## 15. Amendments
+
+- **2026-10-29, user request: glass island tab bar.** The user asked for the phone bottom bar to be "an Apple glass island that disappears on scroll down". This replaces the reference's flat bar for that one component, in both the arcade and Movies & TV, because both use `.ui-tabbar`. Section 5 holds the new look and behaviour. The behaviour lives in one shared helper, `src/ui/tabbar.ts`, which the arcade binds to the window scroll and Movies binds to its own scrolling view. The glass is original CSS (tint, blur, saturation, highlights); no Apple assets or code are used.

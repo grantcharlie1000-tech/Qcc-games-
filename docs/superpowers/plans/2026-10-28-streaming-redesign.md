@@ -951,3 +951,99 @@ export function updateRails(root:ParentNode):void                       // sets 
   - Search results.
   - Look at every image against §3–§7 and fix what does not match.
 - [ ] **Step 4: Commit** "Document the redesign and record evidence", including the docs and `docs/evidence`.
+
+---
+
+### Task 19: Glass island tab bar that hides on scroll (user request, runs after Task 9)
+
+The user asked for the phone bottom bar to be "an Apple glass island that disappears on scroll down" (spec §5 `.ui-tabbar` and §15). It applies to every `.ui-tabbar`. The arcade binds it in this task. Task 11 binds the Movies tab bar to its own scroller.
+
+**Files:**
+- Create: `src/ui/tabbar.ts`
+- Modify: `src/theme.css`: tokens, `.ui-tabbar`, `.ui-tab`, and the hidden, reduced-motion, reduced-transparency, contrast and no-blur states.
+- Modify: `src/style.css`: `#content` bottom clearance below 640 px.
+- Modify: `src/main.ts`: bind once to `.app-tabbar` with `window`, and call `reset()` in `route()` and `leave()`.
+- Test: create `tests/core/tabbar.test.ts`; extend `tests/e2e/redesign-shell.spec.ts`.
+
+**Interfaces:**
+
+```ts
+// src/ui/tabbar.ts
+export interface TabbarScroll{hidden:boolean;lastY:number;travel:number}
+export const TABBAR_THRESHOLD=12; // px of travel in one direction before the bar changes state
+export const TABBAR_EDGE=24;      // px from the top or the end of the page where the bar always shows
+export function nextTabbarState(state:TabbarScroll,y:number,max:number):TabbarScroll
+export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{reset():void;dispose():void}
+```
+
+- **`nextTabbarState` (pure):**
+  - Clamp `y` into `[0,max]`, so rubber-band overscroll is ignored.
+  - When `max<=2*TABBAR_EDGE` (too short to scroll), when `y<=TABBAR_EDGE`, or when `y>=max-TABBAR_EDGE`, return `{hidden:false,lastY:y,travel:0}`.
+  - Otherwise take `delta=y-lastY`. If it has the same sign as `travel` (or `travel` is 0), add it to `travel`; else `travel=delta`.
+  - `travel>=TABBAR_THRESHOLD` hides; `travel<=-TABBAR_THRESHOLD` shows. Otherwise `hidden` is unchanged. Always set `lastY=y`.
+- **`autoHideTabbar`:**
+  - Use one passive `scroll` listener on `scroller`, throttled to one `requestAnimationFrame`.
+  - It reads `y` and `max` from the window (`scrollY`, `documentElement.scrollHeight-innerHeight`) or from the element (`scrollTop`, `scrollHeight-clientHeight`).
+  - It sets `data-hidden="true"` on the bar, or removes the attribute, only when the state changes.
+  - `reset()` shows the bar and re-bases `lastY` on the current position.
+  - `dispose()` removes the listener, cancels the frame and shows the bar.
+- **Tokens (theme.css `:root`):**
+  - `--tabbar-h:64px`
+  - `--tabbar-gap:12px`
+  - `--ease-drawer:cubic-bezier(.32,.72,0,1)`
+- **`.ui-tabbar` (below 640 px; the existing `min-width:640px` hide stays):**
+  - **Placement:** fixed; `left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom))`; `max-width:440px;margin-inline:auto`; `min-height:var(--tabbar-h)`; `padding:6px`; `gap:2px`; `border-radius:999px`.
+  - **Glass:**
+    - `border:1px solid #ffffff1f`.
+    - `background:linear-gradient(180deg,#ffffff1a,#ffffff05 45%,#ffffff00),rgb(18 18 20 / .72)`.
+    - `backdrop-filter` and `-webkit-backdrop-filter`: `blur(24px) saturate(1.8)`.
+    - `box-shadow:inset 0 1px 0 #ffffff33,inset 0 -1px 0 #ffffff0d,0 12px 32px -8px #000000b3,0 2px 6px #00000066`.
+    - A `::before` sheen: `radial-gradient(120% 90% at 20% 0%,#ffffff24,#ffffff00 55%)`, with `border-radius:inherit` and `pointer-events:none`. Tabs sit above it.
+  - **Motion:** `transition:transform var(--t) var(--ease-drawer)`, named properties only.
+  - **Hidden:**
+    - `.ui-tabbar[data-hidden="true"]:not(:has(:focus-visible)){transform:translateY(calc(100% + var(--tabbar-gap) + env(safe-area-inset-bottom) + 16px));pointer-events:none}`.
+    - Use `:focus-visible`, not `:focus-within`, so a tab focused by a tap does not pin the bar open, while keyboard focus always shows it.
+  - **Fallbacks:**
+    - With no `backdrop-filter` support (`@supports not`), the fill becomes `rgb(18 18 20 / .96)`.
+    - `@media (prefers-reduced-transparency:reduce)`: the fill is `rgb(18 18 20 / .97)` and there is no backdrop filter.
+    - `@media (prefers-contrast:more)`: `border-color:#ffffff66`.
+  - **Reduced motion** (the media query and `.reduce-motion`):
+    - The bar transitions only `opacity` (`var(--t-fast) var(--ease)`).
+    - When hidden it keeps `transform:none` and uses `opacity:0;pointer-events:none`.
+    - If the theme's global reduced-motion block forces near-zero durations, the fade is instant. That is acceptable; record it.
+- **`.ui-tab`:**
+  - `color:var(--c-300)`, `border-radius:999px`, `position:relative`.
+  - The current item (`[aria-current="page"]`, `[aria-pressed="true"]`) is `#fff` 700 on a lozenge: `background:#ffffff1f;box-shadow:inset 0 1px 0 #ffffff26`.
+  - Keep the 54×44 px minimum, the 10 px label and the .95 press.
+- **Clearance:** below 640 px, outside games and Movies, `#content` gets `padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))`.
+
+- [ ] **Step 1: Write failing tests.**
+  - `tests/core/tabbar.test.ts`, for `nextTabbarState`:
+    - It hides after `TABBAR_THRESHOLD` px of downward travel and not before.
+    - It shows after `TABBAR_THRESHOLD` px of upward travel.
+    - Jitter of alternating ±5 px never toggles it.
+    - It always shows within `TABBAR_EDGE` of the top and of the end.
+    - A page with `max<=48` never hides it.
+    - Values below 0 or above `max` are clamped.
+  - `redesign-shell.spec.ts`, at 390×844 unless noted:
+    - `the phone tab bar is a floating glass island`:
+      - Bar box: left ≥ 10, right ≤ 380, bottom ≤ 834.
+      - The computed `border-radius` is at least 24 px.
+      - The computed `backdrop-filter` contains `blur`.
+      - Five items, each at least 44 px tall.
+    - `scrolling down hides the tab bar and scrolling up brings it back`:
+      - Scroll down 400 px. The bar has `data-hidden="true"` and its box top is ≥ 844.
+      - Scroll up 120 px. There is no `data-hidden` and the box bottom is ≤ 844.
+    - `the tab bar shows again near the top and after navigation`.
+    - `keyboard focus brings a hidden tab bar back`: hide the bar, press Tab once, then focus the first tab. The bar box is inside the viewport.
+    - `a tapped tab does not pin the bar open`: click the Games tab with the mouse, then scroll down 400 px. The bar is hidden.
+    - `reduced motion fades the bar instead of sliding`: use `page.emulateMedia({reducedMotion:'reduce'})` before load. When hidden, the computed `transform` is `none`, `opacity` is `0` and `pointer-events` is `none`.
+- [ ] **Step 2: Run** `npx vitest run tests/core/tabbar.test.ts` and `e2e.sh tests/e2e/redesign-shell.spec.ts`. Expected: the new tests FAIL.
+- [ ] **Step 3: Implement.** Then look at it. Capture 390×844 screenshots:
+  - the island over the hero at the top;
+  - the island over the bright game cards (scroll down to a rail, then up 120 px);
+  - the hidden state;
+  - 320×700.
+  Check that the labels are legible over the cards.
+- [ ] **Step 4: Run** `npx vitest run tests/core`, `npm run check`, `e2e.sh tests/e2e/redesign-shell.spec.ts tests/e2e/shell.spec.ts tests/e2e/branding.spec.ts tests/e2e/study.spec.ts`, and `e2e.sh tests/movies/movies.spec.ts`. Expected: PASS.
+- [ ] **Step 5: Commit** "Float the phone tab bar as a glass island that hides on scroll".
