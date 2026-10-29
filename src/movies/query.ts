@@ -25,6 +25,12 @@ function retryable(error:unknown){
  return error instanceof MovieNetworkError&&(error.kind==='network'||(error.kind==='service'&&RETRY_STATUSES.includes(error.status??0)));
 }
 
+// Stale data stands in for an unavailable service only, never for a definitive answer such as 404.
+function unavailable(error:unknown){
+ if(!(error instanceof MovieNetworkError))return false;
+ return error.kind==='service'?error.status===429||(error.status??0)>=500:true;
+}
+
 export async function cachedJson<T=any>(url:string,signal:AbortSignal,options?:QueryOptions):Promise<QueryResult<T>>{
  if(signal.aborted)throw abortError();
  const{staleTime=DEFAULT_STALE,timeout}=options??{};
@@ -41,7 +47,7 @@ export async function cachedJson<T=any>(url:string,signal:AbortSignal,options?:Q
    if(attempt<RETRY_DELAYS.length&&retryable(error)){await pause(RETRY_DELAYS[attempt],signal);continue;}
    // Read the cache again: a concurrent call may have stored a newer copy while this one waited.
    const copy=cache.get(url);
-   if(copy)return{data:copy.data as T,stale:true};
+   if(copy&&unavailable(error))return{data:copy.data as T,stale:true};
    throw error;
   }
  }

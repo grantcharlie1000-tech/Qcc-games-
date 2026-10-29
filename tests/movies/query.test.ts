@@ -1,5 +1,6 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import {cachedJson,clearQueryCache} from '../../src/movies/query';
+import {MovieNetworkError} from '../../src/movies/network';
 
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
 // Like fetch, a request in flight rejects only when its signal aborts.
@@ -90,6 +91,28 @@ it('returns the cached copy marked stale when every attempt fails',async()=>{
  await vi.advanceTimersByTimeAsync(2000);
  await expect(pending).resolves.toEqual({data:{title:'Cached'},stale:true});
  expect(fetchMock).toHaveBeenCalledTimes(4);
+});
+it('a 404 with a cached copy rejects instead of serving stale data',async()=>{
+ const signal=new AbortController().signal;
+ fetchMock.mockResolvedValueOnce(json({title:'Cached'}));
+ await cachedJson('/api/movies?id=11',signal);
+ await vi.advanceTimersByTimeAsync(900_001);
+ fetchMock.mockResolvedValueOnce(new Response('',{status:404}));
+ const failure=await cachedJson('/api/movies?id=11',signal).catch(error=>error);
+ expect(failure).toBeInstanceOf(MovieNetworkError);
+ expect(failure).toMatchObject({kind:'service',status:404});
+ expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+it('a timeout with a cached copy still serves the copy marked stale',async()=>{
+ const signal=new AbortController().signal;
+ fetchMock.mockResolvedValueOnce(json({title:'Cached'}));
+ await cachedJson('/api/movies?id=12',signal);
+ await vi.advanceTimersByTimeAsync(900_001);
+ fetchMock.mockImplementationOnce(hangsUntilAborted);
+ const pending=cachedJson('/api/movies?id=12',signal).catch(error=>error);
+ await vi.advanceTimersByTimeAsync(20_000);
+ expect(await pending).toEqual({data:{title:'Cached'},stale:true});
+ expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 it('an abort during the backoff rejects and stops retrying',async()=>{
  fetchMock.mockResolvedValueOnce(new Response('',{status:502}));
