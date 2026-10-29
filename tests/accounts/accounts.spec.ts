@@ -72,13 +72,13 @@ test('logout in another tab preserves Study and returns to a fresh guest game',a
 test('keyboard-only signup and Escape still open Study while playing',async({page,context})=>{
  await connect(context);await page.goto('/#/game/fruit-merge');const dialog=page.locator('#accounts-dialog');await dialog.getByRole('button',{name:'Sign up',exact:true}).focus();await page.keyboard.press('Enter');
  await dialog.getByLabel('Username',{exact:true}).focus();await page.keyboard.type(`Keys_${Date.now()}`);await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Tab');await page.keyboard.type('long enough password');await page.keyboard.press('Enter');
- await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#study-title')).toHaveText('Reading between the lines');await page.screenshot({path:'docs/evidence/accounts/keyboard-study.png'});
+ await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#study-title')).toHaveText('Reading between the lines');
 });
 
 test('guest entry and account form fit a 320px touch screen',async({browser})=>{
  const context=await browser.newContext({baseURL:test.info().project.use.baseURL,viewport:{width:320,height:568},isMobile:true,hasTouch:true});
  try{await connect(context);const page=await context.newPage();await page.goto('/');const dialog=page.locator('#accounts-dialog');await dialog.getByRole('button',{name:'Sign up',exact:true}).tap();await expect(dialog).toContainText('Forgotten passwords cannot be recovered.');
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'docs/evidence/accounts/signup-320.png'});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   for(const button of await dialog.locator('.account-tabs button').all()){await button.scrollIntoViewIfNeeded();expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);}
   for(const name of ['Create account','Play as guest']){const button=dialog.getByRole('button',{name,exact:true});await button.scrollIntoViewIfNeeded();const box=(await button.boundingBox())!;expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(320);}
   await dialog.getByRole('button',{name:'Play as guest',exact:true}).tap();await expect(page.locator('.game-card').first()).toBeVisible();await menu(page);await page.getByRole('button',{name:'Log in / Sign up',exact:true}).tap();await expect(dialog).toBeVisible();

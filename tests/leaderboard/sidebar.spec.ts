@@ -93,11 +93,11 @@ test('Corn Clicker ranks lifetime kernels and shows them in the game number form
  await expect.poll(()=>posted.find(p=>p.game==='corn-clicker')?.score??0).toBeGreaterThan(0);
 });
 
-test('Minesweeper uses separate difficulty rankings without a floating rail',async({page})=>{
+test('Minesweeper opens score rankings and retains difficulty options',async({page})=>{
  await page.route('**/.netlify/functions/leaderboard**',route=>route.fulfill({json:{entries:[],player:null}}));
- await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();await expect(page.locator('.lb-sidebar')).toHaveCount(0);
+ await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();await page.setViewportSize({width:1440,height:900});await expect(page.locator('.lb-sidebar')).toBeVisible();
  await page.locator('.ms-level').selectOption('intermediate');await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Rankings',exact:true}).click();
- await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-medium');await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
+ await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-score');await page.locator('#leaderboard-game').selectOption('minesweeper-medium');await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-medium');await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
 });
 
 test('Tetris exposes the leaderboard and rankings selector',async({page})=>{

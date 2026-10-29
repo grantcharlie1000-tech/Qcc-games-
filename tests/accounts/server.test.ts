@@ -158,9 +158,9 @@ describe('optional accounts with real Postgres',()=>{
  });
 });
 
-it('round-trips all Minesweeper difficulty bests in account sync',async()=>{
+it('round-trips Minesweeper score and difficulty bests in account sync',async()=>{
  const a=await signup('Mines_Saves'),updated=1234;
- const saves=Object.fromEntries(['easy','medium','hard'].map((level,i)=>['best:minesweeper-'+level,{value:2147483647-(i+1)*1000,updated}]));
+ const saves={...Object.fromEntries(['easy','medium','hard'].map((level,i)=>['best:minesweeper-'+level,{value:2147483647-(i+1)*1000,updated}])), 'best:minesweeper-score':{value:26234,updated}};
  expect((await request('sync',{saves},a.token,'PUT')).status).toBe(200);
  const result=await (await request('sync',undefined,a.token)).json();
  for(const [key,value] of Object.entries(saves))expect(result.saves[key]).toEqual(value);

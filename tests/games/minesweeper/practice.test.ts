@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {create,reveal,neighbors} from '../../../src/games/minesweeper/model';
-import {hint,competitiveScore,recordStart,recordWin,emptyStats,readStats} from '../../../src/games/minesweeper/practice';
+import {hint,competitiveScore,winScore,recordStart,recordWin,emptyStats,readStats} from '../../../src/games/minesweeper/practice';
 describe('visible deductions and competitive records',()=>{
  it('does not peek at hidden cells or assume player flags are correct',()=>{
   const b=create('beginner',7);reveal(b,40);
@@ -40,5 +40,16 @@ it('only suggests safe unrevealed cells across all difficulties despite arbitrar
   const b=create(level,seed);reveal(b,Math.floor(b.cells.length/2));
   b.flags=b.flags.map((_,i)=>!b.revealed[i]&&i%3===0);
   const h=hint(b);if(h){expect(b.revealed[h.index]).toBe(false);expect(b.cells[h.index]).not.toBe(-1);expect(h.explanation.length).toBeLessThan(4000);}
+ }
+});
+
+it('scores unassisted wins by difficulty and ceiled elapsed time',()=>{
+ for(const [level,par,base] of [['beginner',60000,0],['intermediate',180000,10000],['expert',480000,20000]] as const){
+  const b=create(level,7); b.status='won'; b.elapsedMs=0; expect(winScore(b,false)).toBe(base+9999);
+  b.elapsedMs=par; expect(winScore(b,false)).toBe(base+4999);
+  b.elapsedMs=par+0.1; expect(winScore(b,false)).toBe(base+4999);
+  const scores=[0,par/2,par,par*2,par*10].map(ms=>{b.elapsedMs=ms;return winScore(b,false)});expect(scores).toEqual([...scores].sort((a,b)=>b-a));
+  b.elapsedMs=1e12; expect(winScore(b,false)).toBe(base+1);
+  expect(winScore(b,true)).toBe(0); b.status='lost'; expect(winScore(b,false)).toBe(0);
  }
 });

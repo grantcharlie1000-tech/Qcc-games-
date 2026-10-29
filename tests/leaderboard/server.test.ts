@@ -31,3 +31,12 @@ it('isolates all three Minesweeper difficulty boards and ranks milliseconds',asy
  }
  expect((await (await handle(new Request(endpoint+'?game=minesweeper'))).json()).entries).toHaveLength(0);
 });
+
+it('keeps the Minesweeper score ranking separate from legacy and time scores',async()=>{
+ const token=await signup('ScorePlayer');
+ expect((await submit(token,'ignored',26234,'minesweeper-score')).status).toBe(200);
+ expect((await submit(token,'ignored',0,'minesweeper-score')).status).toBe(400);
+ const score=await (await handle(new Request(endpoint+'?game=minesweeper-score'))).json();
+ expect(score.entries[0].score).toBe(26234);
+ expect((await (await handle(new Request(endpoint+'?game=minesweeper'))).json()).entries).toHaveLength(0);
+});

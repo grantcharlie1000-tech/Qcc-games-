@@ -11,6 +11,8 @@ export function recordStart(stats:AllStats,level:Level,assisted:boolean){if(!ass
 export function recordWin(stats:AllStats,level:Level,ms:number,assisted:boolean){if(!assisted){const s=stats[level];s.wins++;s.bestMs=Math.min(s.bestMs??Infinity,ms);}}
 /** Higher is better in QCC's shared leaderboard. One millisecond resolution, no par cap. */
 export function competitiveScore(b:Board,assisted:boolean){return b.status==='won'&&!assisted?2147483647-Math.min(2147483646,Math.max(0,Math.ceil(b.elapsedMs))):0;}
+export const SCORE_TIERS:Record<Level,{base:number;parMs:number}>={beginner:{base:0,parMs:60000},intermediate:{base:10000,parMs:180000},expert:{base:20000,parMs:480000}};
+export function winScore(b:Board,assisted:boolean){if(b.status!=='won'||assisted)return 0;const {base,parMs}=SCORE_TIERS[b.level];return base+Math.max(1,Math.floor(9999*parMs/(parMs+Math.max(0,Math.ceil(b.elapsedMs)))));}
 export const rankingKey=(level:Level)=>`minesweeper-${({beginner:'easy',intermediate:'medium',expert:'hard'} as const)[level]}` as const;
 export function formatTime(ms:number,precise=false){const sec=Math.floor(ms/1000);return `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}${precise?'.'+String(Math.floor(ms%1000)).padStart(3,'0'):''}`;}
 export interface Hint {index:number;explanation:string}
