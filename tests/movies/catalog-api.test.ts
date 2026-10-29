@@ -66,22 +66,25 @@ describe("full catalog metadata endpoint",()=>{
   expect(payload.rails.find((rail:{id:string})=>rail.id==="popular-tv").titles[0]).toMatchObject({id:"tv-1",kind:"tv",name:"Show 1"});
   expect(payload.rails.find((rail:{id:string})=>rail.id==="action").titles[0]).toMatchObject({id:"movie-1",kind:"movie",name:"Movie 1"});
   expect(parseRails(payload)).toHaveLength(7);
+  expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();
  });
  it("rails fail with 502 only when every rail fails",async()=>{
   const down=await handleMoviesCatalog(request("?rails=movie"),"secret",async()=>new Response("",{status:429}));
   expect(down.status).toBe(502);expect(await down.json()).toEqual({error:"metadata_unavailable"});
-  expect(down.headers.get("cache-control")).toBe("no-store");
+  expect(down.headers.get("cache-control")).toBe("no-store");expect(down.headers.get("netlify-cdn-cache-control")).toBeNull();
   const oneLeft=await handleMoviesCatalog(request("?rails=movie"),"secret",async(url:RequestInfo|URL)=>String(url).includes("/movie/now_playing?")?railResponse(String(url)):new Response("",{status:503}));
   const payload=await oneLeft.json();
   expect(oneLeft.status).toBe(200);
   expect(payload.rails.map((rail:{id:string})=>rail.id)).toEqual(["now-playing"]);
   expect(payload.rails[0].title).toBe("In cinemas");
+  expect(oneLeft.headers.get("netlify-cdn-cache-control")).toBeNull();
  });
  it("leaves out a rail that maps to no titles without failing the response",async()=>{
   const result=await handleMoviesCatalog(request("?rails=tv"),"secret",async(url:RequestInfo|URL)=>String(url).includes("/tv/on_the_air?")?tmdb([]):railResponse(String(url)));
   const payload=await result.json();
   expect(result.status).toBe(200);
   expect(payload.rails.map((rail:{id:string})=>rail.id)).toEqual(["trending","popular","top","drama","comedy","crime","scifi","mystery"]);
+  expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();
  });
  it("rejects unknown rails and genres with 400",async()=>{
   const fetcher=vi.fn(async()=>tmdb([]));
@@ -145,7 +148,8 @@ describe("full catalog metadata endpoint",()=>{
   const cdn="public, durable, s-maxage=900, stale-while-revalidate=3600";
   const listing=async()=>tmdb([{id:1,media_type:"movie",title:"Cached",genre_ids:[28],poster_path:"/cached.jpg",overview:"Cache",vote_count:0}]);
   const detail=async()=>new Response(JSON.stringify({id:1,title:"Cached",release_date:"2020-01-01",genres:[],poster_path:"/cached.jpg",overview:"Cache"}));
-  for(const [query,fetcher] of [["?rails=home",listing],["?id=movie-1",detail],["?type=movie&genre=Drama",listing],["?type=movie",listing]] as const){
+  const railsFetcher=async(url:RequestInfo|URL)=>railResponse(String(url));
+  for(const [query,fetcher] of [["?rails=home",railsFetcher],["?id=movie-1",detail],["?type=movie&genre=Drama",listing],["?type=movie",listing]] as const){
    const result=await handleMoviesCatalog(request(query),"secret",fetcher);
    expect(result.status).toBe(200);
    expect(result.headers.get("netlify-cdn-cache-control")).toBe(cdn);expect(result.headers.get("cache-control")).toBe("no-store");
@@ -156,5 +160,35 @@ describe("full catalog metadata endpoint",()=>{
   const missing=await handleMoviesCatalog(request("?id=movie-404"),"secret",async()=>new Response("",{status:404}));
   expect(missing.status).toBe(404);
   expect(missing.headers.get("netlify-cdn-cache-control")).toBeNull();expect(missing.headers.get("cache-control")).toBe("no-store");
+ });
+ it("rails carry the CDN header when every rail succeeds",async()=>{
+  const complete=await handleMoviesCatalog(request("?rails=home"),"secret",async(url:RequestInfo|URL)=>railResponse(String(url)));
+  expect(complete.status).toBe(200);
+  expect(complete.headers.get("netlify-cdn-cache-control")).toBe("public, durable, s-maxage=900, stale-while-revalidate=3600");expect(complete.headers.get("cache-control")).toBe("no-store");
+ });
+ it("rails with no titles at all go out without the CDN header",async()=>{
+  const result=await handleMoviesCatalog(request("?rails=tv"),"secret",async()=>tmdb([]));
+  expect(result.status).toBe(200);expect(await result.json()).toEqual({rails:[]});
+  expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();expect(result.headers.get("cache-control")).toBe("no-store");
+ });
+ it("the home trending rail keeps each item's own kind and drops people",async()=>{
+  const fetcher=vi.fn(async(url:RequestInfo|URL)=>String(url).includes("trending/all/")
+   ?tmdb([{id:11,media_type:"movie",title:"Film",genre_ids:[28],poster_path:"/film.jpg",overview:"Film overview",vote_count:1,vote_average:7},{id:22,media_type:"tv",name:"Series",genre_ids:[18],poster_path:"/series.jpg",overview:"Series overview",vote_count:1,vote_average:8},{id:33,media_type:"person",name:"Performer",known_for:[]}])
+   :railResponse(String(url)));
+  const result=await handleMoviesCatalog(request("?rails=home"),"secret",fetcher);
+  const payload=await result.json();
+  const trending=payload.rails.find((rail:{id:string})=>rail.id==="trending");
+  expect(trending.titles).toHaveLength(2);
+  expect(trending.titles).toMatchObject([{id:"movie-11",kind:"movie",name:"Film"},{id:"tv-22",kind:"tv",name:"Series"}]);
+ });
+ it("blank and long season names fall back and survive the browser parser",async()=>{
+  const fetcher=vi.fn(async(url:RequestInfo|URL)=>String(url).includes("/season/")
+   ?new Response(JSON.stringify({episodes:[]}))
+   :new Response(JSON.stringify({id:33,name:"Long Names",first_air_date:"2001-01-01",genres:[{id:18,name:"Drama"}],poster_path:"/long.jpg",overview:"Odd season names",seasons:[{season_number:1,name:""},{season_number:2,name:"x".repeat(250)},{season_number:3,name:"   "}]})));
+  const result=await handleMoviesCatalog(request("?id=tv-33"),"secret",fetcher);
+  const payload=await result.json();
+  expect(payload.title.seasons.map((s:{name:string})=>s.name)).toEqual(["Season 1","x".repeat(200),"Season 3"]);
+  const catalog=parseCatalog({titles:[payload.title],source:"tmdb"});
+  expect(catalog.titles[0].seasons.map(s=>[s.number,s.name])).toEqual([[1,"Season 1"],[2,"x".repeat(200)],[3,"Season 3"]]);
  });
 });

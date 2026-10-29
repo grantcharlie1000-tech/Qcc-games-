@@ -109,7 +109,7 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
   if(req.method!=="GET")return response({error:"method_not_allowed"},405);
   if(!token)return response({error:"catalog_not_configured",message:"The full catalog is temporarily unavailable."},503);
   const url=new URL(req.url);
-  // Search text is unbounded and personal, so any request that carries q is never cached at the CDN.
+  // Search text is personal and too varied to cache, so any request that carries q is never cached at the CDN.
   const cdn=!url.searchParams.has("q");
   const id=url.searchParams.get("id");
   if(id){
@@ -122,7 +122,7 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
     let seasons:any[]=[];
     if(kind==="tv"){
       const summaries=Array.isArray(detail.seasons)?detail.seasons.filter((s:any)=>object(s)&&Number.isInteger(s.season_number)&&s.season_number>0):[];
-      seasons=summaries.slice(0,100).map((s:any)=>({number:s.season_number,name:typeof s.name==="string"?s.name:`Season ${s.season_number}`,episodes:[]}));
+      seasons=summaries.slice(0,100).map((s:any)=>{const name=typeof s.name==="string"?s.name.trim().slice(0,200):"";return {number:s.season_number,name:name||`Season ${s.season_number}`,episodes:[]};});
       const selected=seasonNo??seasons[0]?.number;
       if(selected&&seasons.some(s=>s.number===selected)){
         const episodeData=await fetchTmdb(`tv/${tmdbId}/season/${selected}?language=en-US`,token,fetcher);
@@ -146,14 +146,16 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
     const specs=["home","movie","tv"].includes(railsName)?RAILS[railsName as RailName]:undefined;
     if(!specs)return response({error:"invalid_rails"},400);
     const settled=await Promise.allSettled(specs.map(spec=>fetchTmdb(withPage(spec.path,1),token,fetcher)));
-    if(settled.every(result=>result.status==="rejected"||result.value instanceof Response))return response({error:"metadata_unavailable"},502);
+    const failed=settled.filter(result=>result.status==="rejected"||result.value instanceof Response).length;
+    if(failed===settled.length)return response({error:"metadata_unavailable"},502);
     const rails=specs.flatMap((spec,i)=>{
       const result=settled[i];
       if(result.status!=="fulfilled"||result.value instanceof Response)return [];
       const titles=titlesOf(result.value,spec.kind).slice(0,20);
       return titles.length?[{id:spec.id,title:spec.title,titles}]:[];
     });
-    return response({rails},200,cdn);
+    // Only a complete rails response is shared at the CDN, so a failed or empty rail never reaches every viewer.
+    return response({rails},200,cdn&&failed===0&&rails.length===specs.length);
   }
   const query=(url.searchParams.get("q")??"").trim();
   const genreName=url.searchParams.get("genre");
