@@ -475,15 +475,15 @@ test('earlier full-catalog results stay visible until a new query answers',async
  await expect(page.getByRole('link',{name:'Details for Earlier Result'})).toHaveCount(0);
 });
 
-// Section 9: keyboard focus stays visible in the search field, with the ring on the field's box rather than the bare input.
-test('the search field shows a focus ring on its box',async({page})=>{
+// Section 9: keyboard focus stays visible in the search field as an inner ring on the field's box, with no outline on it or the bare input.
+test('the search field shows an inner focus ring on its box',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
  await tabTo(page,page.locator('#movies-search'));
  const box=page.locator('label.movies-search');
- const ring=await outline(box);
- expect(ring.style).toBe('solid');
- expect(ring.width).toBeGreaterThanOrEqual(2);
+ expect((await outline(box)).style).toBe('none');
+ expect(await box.evaluate(el=>getComputedStyle(el).boxShadow)).toContain('rgba(255, 255, 255, 0.7) 0px 0px 0px 1px inset');
+ expect((await outline(page.locator('#movies-search'))).style).toBe('none');
 });
 
 // A render rebuilds the poster elements. A poster that already loaded must appear at once, not fade in again on every keystroke.

@@ -1,5 +1,5 @@
 import {test as base,expect} from '@playwright/test';
-import type {BrowserContext} from '@playwright/test';
+import type {BrowserContext,Page} from '@playwright/test';
 
 // Existing game tests start after a user has chosen a topic. Study-specific tests
 // use guestTest to skip only account entry and exercise the real first-visit chooser.
@@ -18,5 +18,7 @@ export async function seedStudyTopic(context:BrowserContext){
 export const test=base.extend({
   context:async({context},use)=>{await seedStudyTopic(context);await use(context);}
 });
+// Keyboard use without moving focus: a Tab keydown on the focused element, which src/ui/focus.ts counts as keyboard input.
+export async function keyboardMode(page:Page){await page.evaluate(()=>(document.activeElement??document.body).dispatchEvent(new KeyboardEvent('keydown',{key:'Tab',bubbles:true})));}
 export {expect};
 export type {Page} from '@playwright/test';

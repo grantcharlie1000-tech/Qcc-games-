@@ -1,4 +1,4 @@
-import {test,expect} from '../fixtures';
+import {test,expect,keyboardMode} from '../fixtures';
 import type {Locator,Page,Route} from '@playwright/test';
 
 // The Movies menus are Liquid Glass. The episode drawer is a glass sheet, the Up next card takes the sheet's surface, and the
@@ -263,6 +263,8 @@ test('the Up next buttons show a white 2 px focus ring with a 2 px offset',async
  // Warning acceptance uses a pointer; enter keyboard navigation before checking its focus ring.
  await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
  await expect(play).toBeFocused();
+ // Up next focuses Play now by script, so the ring shows once the page has seen keyboard use.
+ await keyboardMode(page);
  expect(await play.evaluate(el=>el.matches(':focus-visible'))).toBe(true);
  expect(await play.evaluate(el=>{const s=getComputedStyle(el);return [s.outlineStyle,s.outlineWidth,s.outlineColor,s.outlineOffset];})).toEqual(['solid','2px','rgb(255, 255, 255)','2px']);
 });
@@ -353,7 +355,7 @@ for(const viewport of [DESKTOP,PHONE])test(`white text on the Up next card keeps
  }
 });
 
-test('the genre select is a glass capsule with a chevron, a 44 px minimum height and a white focus ring',async({page})=>{
+test('the genre select is a glass capsule with a chevron, a 44 px minimum height and an inner focus ring',async({page})=>{
  await page.setViewportSize(DESKTOP);
  await page.goto('/#/movies');
  // The home's rails fail in this suite, so the page redraws once; the select is read after that redraw.
@@ -364,7 +366,9 @@ test('the genre select is a glass capsule with a chevron, a 44 px minimum height
  await page.locator('#movies-search').focus();
  await page.keyboard.press('Tab');
  await expect(select).toBeFocused();
- await expect.poll(()=>select.evaluate(el=>{const s=getComputedStyle(el);return [s.outlineStyle,s.outlineWidth,s.outlineColor,s.outlineOffset];})).toEqual(['solid','2px','rgb(255, 255, 255)','2px']);
+ // A select takes no outer ring. Keyboard focus draws an inner ring on its rounded edge, beside the select's own top highlight.
+ await expect.poll(()=>select.evaluate(el=>{const s=getComputedStyle(el);return {outline:s.outlineStyle,shadow:s.boxShadow};})).toEqual({outline:'none',shadow:expect.stringContaining('rgba(255, 255, 255, 0.7) 0px 0px 0px 1px inset')});
+ expect(await select.evaluate(el=>getComputedStyle(el).boxShadow)).toContain('rgba(255, 255, 255, 0.18) 0px 1px 0px 0px inset');
  // The open list is the browser's own: the control is still a select with its options, and a choice still sets the genre.
  await expect(select).toHaveJSProperty('tagName','SELECT');
  const choice=(await select.locator('option').allTextContents())[1];

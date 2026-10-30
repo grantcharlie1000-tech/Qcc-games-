@@ -211,7 +211,7 @@ test('the sheet dims the page with a plain backdrop, and no control inside it ha
   expect(await menu.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').length)).toBe(0);
 });
 
-test('a keyboard focus ring is a 2 px white outline on the sheet\'s controls',async({page})=>{
+test('a keyboard focus ring is a 2 px white outline on the sheet\'s buttons, and its search field takes an inner ring',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
@@ -219,7 +219,12 @@ test('a keyboard focus ring is a 2 px white outline on the sheet\'s controls',as
   await page.keyboard.press('Tab');
   const search=page.getByRole('searchbox');
   await expect(search).toBeFocused();
-  expect(await search.evaluate(el=>[getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineColor])).toEqual(['2px','solid','rgb(255, 255, 255)']);
+  expect(await search.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).boxShadow])).toEqual(['none',expect.stringContaining('rgba(255, 255, 255, 0.7) 0px 0px 0px 1px inset')]);
+  // Shift+Tab returns to the close button, which keeps the white outline.
+  await page.keyboard.press('Shift+Tab');
+  const close=page.getByRole('button',{name:'Close menu',exact:true});
+  await expect(close).toBeFocused();
+  expect(await close.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineColor,getComputedStyle(el).outlineOffset])).toEqual(['solid','2px','rgb(255, 255, 255)','2px']);
 });
 
 test('Reduce Transparency gives an opaque sheet with no blur (Chromium only)',async({page,browserName})=>{

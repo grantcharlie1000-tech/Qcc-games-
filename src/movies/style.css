@@ -34,10 +34,10 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-pagination .ui-btn.small{min-height:40px}
 @media(max-width:650px){.movies-view .movies-catalog-status{font-size:12px}.movies-pagination{gap:8px;font-size:11px}}
 
-.movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.movies-fullscreen:focus-visible,.movies-auto-next input:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}:root[data-input="keyboard"] .movies-screen:focus-visible{outline:2px solid #fff;outline-offset:2px}
+:root[data-input="keyboard"] :is(.movies-fullscreen,.movies-auto-next input):focus-visible{outline:2px solid #fff;outline-offset:2px}
 .movies-screen>.movies-detail-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;max-height:calc(100% - 24px);overflow:auto}.movies-view .movies-screen>.movies-detail-error{margin:0}
-.movies-catalog-status button:focus-visible,.movies-empty [data-action="retry-title"]:focus-visible,.movies-player [data-action="reload-stream"]:focus-visible{outline:2px solid #fff;outline-offset:2px}
+:root[data-input="keyboard"] :is(.movies-catalog-status button,.movies-empty [data-action="retry-title"],.movies-player [data-action="reload-stream"]):focus-visible{outline:2px solid #fff;outline-offset:2px}
 
 
 
@@ -66,7 +66,8 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .ui-tabbar .ui-tab{color:rgb(255 255 255 / .9)}
 .movies-view .ui-tabbar .ui-tab[aria-pressed="true"],.movies-view .ui-tabbar .ui-tab[aria-current="page"]{color:#fff;font-weight:700}
 @media (prefers-contrast:more){.movies-view .ui-tabbar .ui-tab{color:#fff}}
-.movies-view h1[tabindex="-1"]:focus{outline:none}
+/* A page heading focused by script keeps no ring. The heading of an empty state (loading, not found) takes the keyboard ring, as its Retry button does. */
+.movies-view h1[tabindex="-1"]:focus:not(.movies-empty h1){outline:none}
 .movies-view .ui-rail{margin:24px 0 32px}
 .movies-view .ui-rail-arrow{min-height:0;padding:0;border-color:var(--line-strong);border-radius:50%;background:#09090be6}
 .movies-view .ui-rail-row>.movies-poster{flex:0 0 calc((100% - 64px)/5)}
@@ -92,17 +93,20 @@ body.movies-active.study-active{overflow:auto}
 @media (hover:hover) and (pointer:fine){.movies-view .ui-btn.primary:hover{background:var(--c-200)}.movies-view .ui-btn.secondary:hover{background:var(--c-800);color:#fff}}
 .movies-view .movies-filterbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0 0 24px;padding:12px;border:1px solid var(--line-faint);border-radius:var(--r-2xl);background:#09090b99}
 .movies-view .movies-search{display:flex;flex:1 1 260px;align-items:center;gap:10px;max-width:520px;min-height:44px;padding:0 12px;border:1px solid var(--line-strong);border-radius:var(--r-xl);background:#18181b99;color:var(--c-400);cursor:text}
-/* The ring sits on the rounded field, not on the bare input inside it, so keyboard focus stays clearly visible. */
-.movies-view .movies-search:focus-within{border-color:#fff;outline:2px solid #fff;outline-offset:2px}
+/* The field is the rounded box around the input. Its border brightens on focus, and keyboard use draws its inner ring on that box, so the bare input has none. */
+.movies-view .movies-search:focus-within{border-color:rgb(255 255 255 / .55)}
+:root[data-input="keyboard"] .movies-view .movies-search:focus-within{box-shadow:inset 0 0 0 1px rgb(255 255 255 / .7)}
 .movies-view .movies-search input:focus-visible{outline:none}
 /* A poster that already loaded in this view is rebuilt by the next render; it appears at once instead of fading in again. */
 .movies-view .is-seen.is-loaded{animation:none}
 .movies-view .movies-search input{flex:1 1 auto;width:100%;min-width:0;min-height:0;margin:0;padding:10px 0;border:0;border-radius:0;background:transparent;color:var(--c-100);font:inherit;font-size:14px;box-shadow:none}
 .movies-view .movies-search input::placeholder{color:var(--c-400);opacity:1}
 .movies-view .movies-genre{display:flex;align-items:center;gap:8px;color:var(--c-400);font-size:12px}
-/* The genre control is a glass capsule: a translucent fill, a light border, a chevron and a white focus ring from theme.css. It stays a native select, so its open list is the browser's. */
+/* The genre control is a glass capsule: a translucent fill, a light border, a chevron, and the field focus from theme.css (a brightened border, with an inner ring in keyboard mode). It stays a native select, so its open list is the browser's. */
 .movies-view .movies-filterbar select{appearance:none;min-width:160px;min-height:44px;padding:8px 40px 8px 16px;border:1px solid rgb(255 255 255 / .22);border-radius:999px;background:rgb(255 255 255 / .1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center/16px 16px;color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255 / .18)}
 .movies-view .movies-filterbar select option{background:#18181b;color:#fff}
+/* Keyboard focus on the genre select keeps its own top highlight beside the inner ring. */
+:root[data-input="keyboard"] .movies-view .movies-filterbar select:focus-visible{box-shadow:inset 0 0 0 1px rgb(255 255 255 / .7),inset 0 1px 0 rgb(255 255 255 / .18)}
 .movies-view .ui-card-meta{color:var(--c-400)}
 .movies-view .ui-card-placeholder{color:var(--c-400)}
 .movies-view .movies-continue .ui-card-poster{aspect-ratio:16/9}
@@ -295,7 +299,7 @@ body.movies-active.study-active{overflow:auto}
 }
 .movies-view .movies-auto-next{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-height:44px;color:var(--c-200);font-size:14px;cursor:pointer}
 /* The focus ring sits on the switch while its checkbox has keyboard focus. The track's own ring from theme.css is left off, so one ring shows. */
-.movies-view .movies-auto-next:has(input:focus-visible) .ui-switch{outline:2px solid #fff;outline-offset:2px;border-radius:999px}
+:root[data-input="keyboard"] .movies-view .movies-auto-next:has(input:focus-visible) .ui-switch{outline:2px solid #fff;outline-offset:2px;border-radius:999px}
 .movies-view .movies-auto-next:has(input:focus-visible) .ui-switch span{outline:0}
 .movies-view .ui-switch input{min-height:0;padding:0;border:0;border-radius:0;background:none}
 .movies-view #movies-player-status{margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--c-300);max-width:760px}
@@ -347,6 +351,8 @@ body.movies-active.study-active{overflow:auto}
  /* The countdown track is a 1 px CanvasText outline with a CanvasText fill. The track is 5 px, so the 3 px fill sits inside the outline. */
  .movies-view .movies-next-bar{height:5px;border:1px solid CanvasText}
  .movies-view .movies-next-bar>span{background:CanvasText}
+ /* Forced colours drop the search field's inner ring, so keyboard focus outlines the field inside its edge. */
+ :root[data-input="keyboard"] .movies-view .movies-search:focus-within{outline:2px solid CanvasText;outline-offset:-2px}
 }
 
 /* The warning uses the shared glass sheet, with a still surface so its message stays readable. */
