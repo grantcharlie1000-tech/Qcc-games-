@@ -134,6 +134,27 @@ test('when every server fails, Try again restarts at Server 1',async({page})=>{
  await lands(page,'framextv');
 });
 
+test('a server clicked on an exhausted title starts after a visit to another title',async({page})=>{
+ await frozenClock(page);
+ const up=new Set<string>();
+ for(const origin of ['https://framextv.cc','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])
+  await page.route(origin+'/**',route=>route.fulfill(up.has(origin)?{contentType:'text/html',body:PROVIDER_PAGE+(origin==='https://framextv.cc'?FRAMEXTV_READY:'')}:REDIRECT_OUT));
+ await page.goto('/#/movies/movie-157336/play');
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ // Title A's frame leaves its key behind. B has no frame, so that key is what a pick on B would record.
+ up.add('https://framextv.cc');
+ await page.evaluate(()=>{location.hash='#/movies/movie-438631/play';});
+ await lands(page,'framextv');
+ await expect(serversRow(page).getByRole('button',{name:/^Server 1\b/})).toHaveAttribute('data-state','working');
+ await page.clock.runFor(60000);
+ await page.evaluate(()=>{location.hash='#/movies/movie-157336/play';});
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ await expect(serversRow(page)).toBeVisible();
+ up.add('https://vidlink.pro');
+ await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
+ await lands(page,'vidlink');
+});
+
 test('the 45 second budget covers the automatic switches',async({page})=>{
  await frozenClock(page);
  // The first three servers never answer, so each one runs out its watchdog. The fourth is never asked for.

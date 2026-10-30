@@ -143,7 +143,7 @@ export class MoviesView {
  // The server the user picked this session. It wins over the remembered order and over failures, until Try again.
  private pickedServer?:StreamProviderId;
  // The media key the pick was made on. Only that title's attempts treat the pick as manual.
- private pickedKey='';
+ private pickedKey?:string;
  // The server on screen. Undefined when no server can start the title, or when the title plays from a licensed file.
  private providerId?:StreamProviderId;
  // Every automatic attempt for this title has failed, so the panel shows until Try again.
@@ -730,7 +730,7 @@ export class MoviesView {
  // once its details have loaded. A season without episodes that has not loaded yet, or whose load failed, is not judged.
  private episodeMissing(t:Title,route:MovieRoute){
   if(t.kind!=='tv')return false;
-  // A play route that names no episode has nothing to play, so it is unavailable before any metadata is judged (Task 5).
+  // A play route that names no episode has nothing to play, so it is unavailable before any metadata is judged.
   if(route.season===undefined||route.episode===undefined)return true;
   const builtIn=this.bundledIds.has(t.id);
   if(!builtIn&&!this.loadedDetails.has(t.id))return false;
@@ -740,7 +740,6 @@ export class MoviesView {
   return !season.episodes.some(e=>e.number===route.episode);
  }
  // Section 8.3: the panel links to the season the missing episode belongs to, or to the title when the season is not in its list.
- // A play route that names no episode links to the title, where its episodes are chosen.
  private episodeUnavailable(t:Title,route:MovieRoute){
   if(route.season===undefined||route.episode===undefined)return `<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Episode unavailable</h2><p>This link doesn't name an episode.</p><a class="ui-btn primary" href="${escape(titleHash(t.id))}">Choose an episode</a></div>`;
   const season=t.seasons.find(s=>s.number===route.season);
@@ -960,7 +959,8 @@ export class MoviesView {
   if(providerId===this.providerId)return;
   this.suspended=false;
   if(manual){
-   this.pickedServer=providerId;this.pickedKey=this.progressKey;this.exhausted=false;this.failoverNote='';
+   const title=this.currentTitle();
+   this.pickedServer=providerId;this.pickedKey=title?mediaKey(title,this.route):undefined;this.exhausted=false;this.failoverNote='';
    this.stopVideo();this.redrawPlayer();
    this.root.querySelector<HTMLElement>(`[data-server="${providerId}"]`)?.focus({preventScroll:true});
   }else{
@@ -972,7 +972,7 @@ export class MoviesView {
  private retryServers(){
   const title=this.currentTitle();if(!title)return;
   clearFailures(mediaKey(title,this.route));
-  this.pickedServer=undefined;this.exhausted=false;this.failoverNote='';this.suspended=false;
+  this.pickedServer=undefined;this.pickedKey=undefined;this.exhausted=false;this.failoverNote='';this.suspended=false;
   this.stopVideo();this.redrawPlayer();
   this.root.querySelector<HTMLElement>('.movies-screen')?.focus({preventScroll:true});
  }
