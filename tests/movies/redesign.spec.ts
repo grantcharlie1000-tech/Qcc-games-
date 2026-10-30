@@ -700,6 +700,27 @@ test('Movies falls back to its bundled movies with a retry line when its rails f
  expect(requests).toHaveLength(2);
 });
 
+test('a successful empty section answer shows the starter grid with no status line',async({page})=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/movies?*',async route=>{
+  if(new URL(route.request().url()).searchParams.get('rails')==='movie'){await held;return route.fulfill({json:{rails:[]}});}
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
+ // The answer waits until the starter grid is on screen. Two frames then let the page render the answer.
+ const response=page.waitForResponse(response=>response.url().includes('rails=movie'));
+ release();await (await response).finished();
+ await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+ await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
+ await expect(page.locator('.movies-rails-status')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);
+ await expect(page.getByText('No titles to show here right now.')).toHaveCount(0);
+ await expect(page.getByText('The full catalog is unavailable right now.')).toHaveCount(0);
+});
+
 test('section rails keep their ids unique and show their names as text',async({page})=>{
  await page.route('**/api/movies?*',route=>{
   if(new URL(route.request().url()).searchParams.get('rails')==='movie')return route.fulfill({json:{rails:[

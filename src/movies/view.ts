@@ -42,7 +42,6 @@ const mergeDetails=(bundled:Title,detail:Title):Title=>({...bundled,
   })};
  })});
 const slug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-// The server a button names, and the server after it. Server n is the n-th provider in STREAM_PROVIDERS.
 const serverNumber=(id?:StreamProviderId)=>STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1;
 const nextServer=(id?:StreamProviderId):StreamProviderId=>STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1)%STREAM_PROVIDERS.length].id;
 // The play route of one episode.
@@ -82,7 +81,7 @@ function finderFor(el:HTMLElement):Finder|undefined{
  return undefined;
 }
 // The rails of one section. A section keeps its own counter and controller, as the home does, so a late answer never replaces another's rails.
-interface SectionRails {rails:Rail[];error:boolean;requested:boolean;request:number;abort?:AbortController}
+interface SectionRails {rails:Rail[];error:boolean;empty:boolean;requested:boolean;request:number;abort?:AbortController}
 // A full-catalog request: a search of two characters or more, or a section's genre. Its key names it, and its family says whether it is a search (q) or a genre (g).
 interface RemoteRequest {family:'q'|'g';key:string;params:Record<string,string>}
 type FullscreenDocument=Document&{webkitFullscreenElement?:Element|null;webkitExitFullscreen?:()=>void};
@@ -178,7 +177,7 @@ export class MoviesView {
  // Set once the home has asked for its rails. A failed request is asked again only through Retry.
  private railsRequested=false;
  // Each section has its own rails, asked the first time it shows.
- private sectionRails:Record<'movie'|'tv',SectionRails>={movie:{rails:[],error:false,requested:false,request:0},tv:{rails:[],error:false,requested:false,request:0}};
+ private sectionRails:Record<'movie'|'tv',SectionRails>={movie:{rails:[],error:false,empty:false,requested:false,request:0},tv:{rails:[],error:false,empty:false,requested:false,request:0}};
  // The full-catalog request the remote titles answer, and the request the page wants now. Pages and earlier results belong to the request they answer.
  private remoteKey='';
  private remoteWanted='';
@@ -192,6 +191,8 @@ export class MoviesView {
  private readonly tabbar=Object.assign(document.createElement('nav'),{className:'movies-mobile-nav ui-tabbar'});
  private readonly disposeRails:()=>void;
  private readonly hideTabbar:{reset():void;dispose():void};
+ // The island's scroll check clears data-hidden, so while Up next shows the attribute is put back.
+ private readonly yieldGuard=new MutationObserver(()=>{if(this.root.querySelector('.movies-next:not([hidden])')&&!this.tabbar.hasAttribute('data-hidden'))this.tabbar.dataset.hidden='true';});
  constructor(container:HTMLElement,private study:()=>void,private reducedMotion:boolean,origin?:DOMRect,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
@@ -212,7 +213,7 @@ export class MoviesView {
   this.tabbar.setAttribute('aria-label','Mobile movies navigation');
   this.disposeRails=bindRails(this.root,()=>this.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);
   // Movies scrolls inside its own overlay, so the island's hide-on-scroll follows that scroller rather than the window.
-  this.hideTabbar=autoHideTabbar(this.tabbar,this.root);
+  this.hideTabbar=autoHideTabbar(this.tabbar,this.root);this.yieldGuard.observe(this.tabbar,{attributes:true,attributeFilter:['data-hidden']});
   document.addEventListener('fullscreenchange',this.fullscreenChange);document.addEventListener('webkitfullscreenchange',this.fullscreenChange);
   document.addEventListener('visibilitychange',this.onVisibility);document.addEventListener('securitypolicyviolation',this.violation);
   window.addEventListener('message',this.providerMessage);
@@ -312,7 +313,7 @@ export class MoviesView {
    const {data}=await cachedJson('/api/movies?rails='+kind,controller.signal);
    if(request!==state.request)return;
    const rails=parseRails(data);
-   state.rails=rails;state.error=rails.length===0;
+   state.rails=rails;state.error=false;state.empty=rails.length===0;
    for(const rail of rails)for(const title of rail.titles)this.dynamicIds.add(title.id);
   }catch{
    if(request!==state.request||controller.signal.aborted)return;
@@ -503,7 +504,8 @@ export class MoviesView {
    return state.rails.map(rail=>{let id=rail.id,n=2;while(used.has(id))id=`${rail.id}-${n++}`;used.add(id);return this.shelf(id,rail.title,rail.titles);}).join('');
   }
   const titles=this.catalog.titles.filter(t=>t.kind===kind);
-  const status=state.error?'<p class="movies-rails-status" role="status" tabindex="-1">Showing the starter selection. The full catalog is unavailable right now. <button class="ui-btn secondary small" data-action="retry-rails">Retry</button></p>':'';
+  const status=state.error?'<p class="movies-rails-status" role="status" tabindex="-1">Showing the starter selection. The full catalog is unavailable right now. <button class="ui-btn secondary small" data-action="retry-rails">Retry</button></p>'
+   :state.empty&&!titles.length?'<p class="movies-rails-status" role="status" tabindex="-1">No titles to show here right now.</p>':'';
   return `${status}${titles.length?`<div class="movies-results-grid ui-grid">${titles.map(t=>this.card(t)).join('')}</div>`:''}`;
  }
  // The rails of Home and of both sections.
@@ -674,7 +676,7 @@ export class MoviesView {
    ?`<button class="movies-primary ui-btn primary" data-play="${escape(t.id)}"${source?'':' disabled aria-describedby="movies-unavailable"'}>${uiIcon('play')}Play movie</button>`
    :this.seriesPrimary(t);
   // A movie's saved position is offered as a resume point only from START_THRESHOLD seconds, and only where it can start there: from a local
-  // file, or with the current server. The title page and the watch page follow the same server (ruling A).
+  // file, or with the current server. The title page and the watch page follow the same server.
   const server=this.chooseServer(mediaKey(t,this.route));const resumes=!!licensedSource(this.licenses,mediaKey(t,this.route))||(!!server&&streamProvider(server).resume!=='none');
   const resume=t.kind==='movie'&&source&&saved>=START_THRESHOLD&&resumes?`<small class="movies-resume">Resume at ${escape(formatClock(saved))}</small>`:'';
   const list=this.listButton(t.id);
@@ -694,7 +696,7 @@ export class MoviesView {
   const route=this.route;
   const episode=t.seasons.find(s=>s.number===route.season)?.episodes.find(e=>e.number===route.episode);
   const key=mediaKey(t,route),saved=this.storage.data.progress[key]??0;
-  // A licensed file plays from its own file before any provider is asked, whether or not its season has loaded (ruling R1).
+  // A licensed file plays from its own file before any provider is asked, whether or not its season has loaded.
   const source=licensedSource(this.licenses,key);
   // An episode missing from a loaded season gets no provider (section 8.3). A season still loading, or one that failed, keeps the optimistic player.
   const missing=!source&&this.episodeMissing(t,route);
@@ -918,7 +920,7 @@ export class MoviesView {
   else this.endSession();
   if(this.suspended||document.hidden)this.pause();
  }
-  // A ready or a progress report is a sign of life for the supervisor. Only the frame's own window can send one, so the page's own messages do not count (ruling R5).
+  // A ready or a progress report is a sign of life for the supervisor. Only the frame's own window can send one, so the page's own messages do not count.
  private providerMessage=(event:MessageEvent)=>{
   if(!this.frame||!this.providerId||event.source!==this.frame.contentWindow)return;
   const signal=providerSignal(this.providerId,event.origin,event.data);if(!signal)return;
@@ -964,11 +966,12 @@ export class MoviesView {
    this.stopVideo();this.redrawPlayer();
    this.root.querySelector<HTMLElement>(`[data-server="${providerId}"]`)?.focus({preventScroll:true});
   }else{
+   // The redraw rebuilds the episode controls, so an open drawer is shown again on the new ones.
+   const open=!!this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer')?.open;
    this.releaseMedia();
-   this.keepingFocus(()=>this.redrawPlayer());
+   this.keepingFocus(()=>{this.redrawPlayer();if(open)this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer')?.showModal();});
   }
  }
- // Try again clears this title's failures and the user's pick, then starts a new session at the first server.
  private retryServers(){
   const title=this.currentTitle();if(!title)return;
   clearFailures(mediaKey(title,this.route));
@@ -976,12 +979,10 @@ export class MoviesView {
   this.stopVideo();this.redrawPlayer();
   this.root.querySelector<HTMLElement>('.movies-screen')?.focus({preventScroll:true});
  }
- // An automatic switch names the server that did not start and the one being tried, then starts that one in the same session.
  private failOver(next:StreamProviderId,failed:StreamProviderId){
   this.failoverNote=`Server ${serverNumber(failed)} didn't start. Trying Server ${serverNumber(next)}…`;
   this.switchProvider(next,false);
  }
- // Every automatic attempt has failed, so the panel offers Try again.
  private exhaust(){this.exhausted=true;this.failoverNote='';this.redrawPlayer();}
  // The first sign of playback remembers the server for the next title and clears the failover line.
  private worked(provider:StreamProviderId){
@@ -1021,10 +1022,9 @@ export class MoviesView {
    if(this.supervisor?.manual){this.failoverNote=`Server ${serverNumber(provider)} didn't start. Try Server ${serverNumber(nextServer(provider))}.`;this.setFailoverText();}
    return;
   }
-  // The session stopped. A server that was still trying is no longer.
   if(state==='idle'){const button=this.root.querySelector<HTMLElement>(`[data-server="${provider}"]`);if(button?.dataset.state==='trying')button.dataset.state='idle';}
  }
- // The Resumed pill waits for the first sign of life, and never shows for a server that cannot resume (ruling R3).
+ // The Resumed pill waits for the first sign of life, and never shows for a server that cannot resume.
  private showLife(provider:StreamProviderId){
   if(this.lifeShown)return;
   this.lifeShown=true;
@@ -1126,16 +1126,17 @@ export class MoviesView {
    const overlay=this.root.querySelector<HTMLElement>('.movies-next');if(!overlay)return;
    this.nextHash=`${titleHash(title.id)}/season/${next.season}/episode/${next.episode}/play`;
    const label=`Up next: S${next.season} · E${next.episode}${next.name?' — '+next.name:''}`;
-   overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;
+   overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;this.tabbar.dataset.hidden='true';
    const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent=label+'. Playing in 10 seconds.';
-   overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});
+   // A keyboard user on the island keeps focus there, and the island stays shown while it has focus.
+   if(!this.tabbar.contains(document.activeElement))overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});
    let seconds=10;this.countdown=setInterval(()=>{if(!this.preferences.autoNext()){this.cancelNext();return;}seconds--;if(seconds<=0)this.playNext();else {const count=overlay.querySelector('.movies-next-countdown');if(count)count.textContent='Playing in '+seconds;const bar=overlay.querySelector<HTMLElement>('.movies-next-bar>span');if(bar)bar.style.width=`${seconds*10}%`;}},1000);
   };
   if(this.fullscreenElement()&&(this.fullscreenElement()===this.frame||this.fullscreenElement()===this.video))void this.exitFullscreen().then(show);else show();
  }
  private cancelNext(focus=false){
   this.countdownGeneration++;clearInterval(this.countdown);this.countdown=undefined;this.nextHash='';
-  const overlay=this.root.querySelector<HTMLElement>('.movies-next');const visible=overlay&&!overlay.hidden;if(overlay)overlay.hidden=true;
+  const overlay=this.root.querySelector<HTMLElement>('.movies-next');const visible=overlay&&!overlay.hidden;if(overlay)overlay.hidden=true;if(visible)this.hideTabbar.reset();
   const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent='';
   if(focus&&visible)this.root.querySelector<HTMLElement>('.movies-screen')?.focus({preventScroll:true});
  }
@@ -1157,9 +1158,10 @@ export class MoviesView {
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('a,button,input,select,textarea,dialog')){event.preventDefault();this.playNext();}};
  pause(){this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
  // Ends the stream and its playback session: the watchdogs stop, and the failover budget and the tried servers go with them.
- private stopVideo(){this.endSession();this.releaseMedia();}
+ private stopVideo(){this.endSession();this.closeDrawer();this.releaseMedia();}
  // Takes the stream and the local video off the screen. The session stays, so a failover or a redraw carries its budget on.
- private releaseMedia(){this.cancelNext();this.closeDrawer();this.clearResumePill();this.clearSlow();if(this.frame)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
+ // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
+ private releaseMedia(){this.cancelNext();this.clearResumePill();this.clearSlow();if(this.frame)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
- dispose(){this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

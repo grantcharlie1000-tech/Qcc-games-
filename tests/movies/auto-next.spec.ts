@@ -137,3 +137,24 @@ test('Enter on the Auto next switch does not play Up next',async({page})=>{
  await page.getByRole('checkbox',{name:'Auto next episode'}).focus();await page.keyboard.press('Enter');
  await expect(overlay(page)).toBeVisible();await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
 });
+
+const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
+test('Up next hides the island at 1440px until Cancel brings it back',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);await expect(island(page)).toHaveCSS('opacity','1');
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(island(page)).toHaveCSS('opacity','0');
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
+ await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).toHaveCSS('opacity','1');
+});
+test('keyboard focus in the island keeps it visible while Up next shows',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);
+ const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(tab).toBeFocused();
+ // The hide fades over about 380 ms, so the opacity is read after it.
+ await page.waitForTimeout(500);await expect(island(page)).toHaveCSS('opacity','1');
+});
+test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);
+ const view=page.locator('.movies-view');await view.evaluate(e=>e.scrollTo(0,300));await view.evaluate(e=>e.scrollTo(0,0));
+ // The island reads its position on the next frame, so the wait lets that check run.
+ await page.waitForTimeout(400);await expect(overlay(page)).toBeVisible();await expect(island(page)).toHaveAttribute('data-hidden','true');
+});

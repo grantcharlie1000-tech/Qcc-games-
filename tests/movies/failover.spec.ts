@@ -1,7 +1,7 @@
 import {test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';
 
-// Task 16: automatic failover, the remembered server, episode validation and the licence rule.
+// Automatic failover, the remembered server, episode validation and the licence rule.
 // Provider pages are local fixtures. A watchdog test installs the clock before goto and waits for the frame's load first,
 // so no watchdog is armed before the clock can run it.
 const PROVIDER_PAGE='<!doctype html><title>Provider fixture</title><button>Play stream</button>';
@@ -412,6 +412,18 @@ test('an episode that ends on FrameXTV opens Up next for the next episode',async
  await frame.evaluate(()=>parent.postMessage({event:'frameXTV:ended'},'*'));
  await expect(page.locator('.movies-next')).toBeVisible();
  await expect(page.getByRole('dialog',{name:'Up next'})).toContainText('Up next: S1 · E2 — The Blind Banker');
+});
+
+test('an automatic failover keeps the episode drawer open',async({page})=>{
+ await frozenClock(page);
+ await page.route('https://framextv.cc/**',()=>{});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await lands(page,'framextv');
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.locator('dialog.movies-drawer');await expect(page.getByRole('dialog',{name:'Select episode'})).toBeVisible();
+ await page.clock.runFor(15000);
+ await lands(page,'vidlink');
+ await expect(drawer).toHaveJSProperty('open',true);await expect(page.getByRole('dialog',{name:'Select episode'})).toBeVisible();
 });
 
 test('a licensed episode reached cold plays from its file once its season answers, and no provider is asked while it waits',async({page})=>{
