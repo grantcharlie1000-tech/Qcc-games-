@@ -240,6 +240,8 @@ test('Study remains usable when both storage APIs are blocked',async({page})=>{
   });
   await page.goto('/#/game/solitaire');
   await page.getByRole('button',{name:'Play as guest',exact:true}).click();
+  // The accounts sheet leaves over 180 ms and is still in the tree until then, so wait for it before the only dialog is asked for.
+  await expect(page.locator('#accounts-dialog')).toBeHidden();
   await page.getByRole('button',{name:'Customize',exact:true}).click();
   await expect(page.getByRole('dialog')).toContainText('unavailable');await page.keyboard.press('Escape');
   await page.getByRole('button',{name:'Accept All',exact:true}).click();

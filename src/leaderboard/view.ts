@@ -3,14 +3,16 @@ import type {GameId} from '../core/types';
 import {LeaderboardSync} from './client';
 import {scoredGame,MINESWEEPER_RANKINGS,type LeaderboardKey,type Board} from './shared';
 import {formatScore} from './format';
+import {openSheet} from '../ui/sheet';
+import {uiIcon} from '../ui/icons';
 import './style.css';
 export class LeaderboardView {
  readonly root=document.createElement('dialog');
  readonly sync=new LeaderboardSync();
  private request=0;
  constructor(private signIn:()=>void){
-  this.root.id='leaderboard-dialog';this.root.setAttribute('aria-labelledby','leaderboard-title');
-  this.root.innerHTML=`<form method="dialog" class="dialog-head"><h2 id="leaderboard-title">Leaderboards</h2><button class="icon-button" aria-label="Close leaderboards">×</button></form>
+  this.root.id='leaderboard-dialog';this.root.classList.add('ui-glass-sheet');this.root.setAttribute('aria-labelledby','leaderboard-title');
+  this.root.innerHTML=`<form method="dialog" class="dialog-head"><h2 id="leaderboard-title">Leaderboards</h2><button class="icon-button" aria-label="Close leaderboards">${uiIcon('close')}</button></form>
    <p class="muted">Best scores from players online. One personal best per player, per game.</p>
    <label for="leaderboard-game">Game</label><select id="leaderboard-game" class="game-select">${games.filter(g=>g.id!=='pool'&&g.id!=='minesweeper'&&scoredGame(g.id)).map(g=>`<option value="${g.id}">${g.title}</option>`).join('')}${MINESWEEPER_RANKINGS.map((key,i)=>`<option value="${key}">Minesweeper · ${['Easy','Medium','Hard','Score'][i]}</option>`).join('')}</select>
    <p class="lb-status muted" role="status"></p>
@@ -32,7 +34,7 @@ export class LeaderboardView {
   if(game==='minesweeper')game='minesweeper-score';
   if(game&&game!=='pool'&&scoredGame(game))this.select.value=game;
   this.root.querySelector<HTMLElement>('.lb-login')!.hidden=!!this.sync.profile()&&!this.sync.needsLogin;
-  this.root.showModal();void this.refresh();
+  openSheet(this.root);void this.refresh();
  }
  private paint(board:Board|null,game=this.select.value as LeaderboardKey){
   const tbody=this.root.querySelector('tbody')!;tbody.replaceChildren();

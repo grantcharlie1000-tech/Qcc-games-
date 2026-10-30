@@ -208,6 +208,83 @@
 @keyframes ui-fade-in{from{opacity:0}to{opacity:1}}
 @keyframes ui-fade-backdrop{from{opacity:0}to{opacity:.7}}
 
+/* Liquid Glass sheets: the shell's menu, rules, accounts and leaderboards dialogs. The sheet is the only glass; what sits
+   inside it uses plain fills and never a second backdrop filter. src/ui/sheet.ts sets --sheet-origin to the control that
+   opened the sheet. Phones get a bottom sheet; from 640 px it is a centred panel. */
+.ui-glass-sheet{
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  --sheet-from-scale:.98;--sheet-from-lift:28px;
+  box-sizing:border-box;width:calc(100% - 16px);max-width:none;max-height:min(85dvh,calc(100dvh - 24px - env(safe-area-inset-top)));
+  margin:auto auto calc(8px + env(safe-area-inset-bottom));padding:20px;overflow:auto;overscroll-behavior:contain;
+  border:1px solid rgb(255 255 255 / .16);border-radius:32px;
+  background:linear-gradient(180deg,rgb(255 255 255 / .09),transparent 140px),rgb(28 28 32 / .62);
+  -webkit-backdrop-filter:blur(28px) saturate(1.7) brightness(.85);backdrop-filter:blur(28px) saturate(1.7) brightness(.85);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / .28),inset 0 -1px 0 rgb(255 255 255 / .06),0 24px 60px -12px rgb(0 0 0 / .6),0 4px 16px rgb(0 0 0 / .3);
+  color:#fff;font-family:var(--font-sans);
+  transform-origin:var(--sheet-origin,50% 100%);
+  /* Closed, and the exit: 180 ms ease-out on every property. display and overlay keep the sheet on screen until it has left. */
+  opacity:0;scale:var(--sheet-from-scale);translate:0 var(--sheet-from-lift);
+  transition-property:opacity,scale,translate,display,overlay;transition-duration:180ms;transition-timing-function:var(--ease-out);
+  transition-behavior:normal,normal,normal,allow-discrete,allow-discrete;
+}
+@media (min-width:640px){
+  .ui-glass-sheet{--sheet-from-scale:.94;--sheet-from-lift:12px;width:min(440px,calc(100% - 32px));max-height:min(86dvh,760px);margin:auto;border-radius:28px}
+}
+/* Entry: scale and translate take 320 ms on the glass ease, opacity 180 ms. The starting style is where the entry begins. */
+.ui-glass-sheet[open]{
+  opacity:1;scale:1;translate:0 0;
+  transition-property:opacity,scale,translate,display,overlay;transition-duration:180ms,320ms,320ms,320ms,320ms;
+  transition-timing-function:var(--ease-out),var(--ease-glass-pop),var(--ease-glass-pop),var(--ease-glass-pop),var(--ease-glass-pop);
+  transition-behavior:normal,normal,normal,allow-discrete,allow-discrete;
+}
+@starting-style{.ui-glass-sheet[open]{opacity:0;scale:var(--sheet-from-scale);translate:0 var(--sheet-from-lift)}}
+/* The dim is a plain fade with no blur: it fades in over 220 ms and out over 160 ms. */
+.ui-glass-sheet::backdrop{background-color:rgb(0 0 0 / 0);transition:background-color 160ms var(--ease-out)}
+.ui-glass-sheet[open]::backdrop{background-color:rgb(0 0 0 / .32);transition-duration:220ms}
+@starting-style{.ui-glass-sheet[open]::backdrop{background-color:rgb(0 0 0 / 0)}}
+/* Content, scoped to the sheet. Where style.css targets the same element at equal specificity, a rule names the sheet twice to win. */
+.ui-glass-sheet h2,.ui-glass-sheet .dialog-head h2{margin:0;font:600 20px/1.25 var(--font-sans);letter-spacing:-.01em;color:#fff}
+.ui-glass-sheet .menu-brand .mauri-mark{width:28px;height:28px}
+.ui-glass-sheet .icon-button{display:inline-grid;flex-shrink:0;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:0;border-radius:50%;background:rgb(255 255 255 / .12);color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255 / .25)}
+.ui-glass-sheet .icon-button svg{width:20px;height:20px}
+@media (hover:hover) and (pointer:fine){.ui-glass-sheet .icon-button:hover{background:rgb(255 255 255 / .2)}}
+.ui-glass-sheet :is(input:not([type=checkbox]),select){box-sizing:border-box;width:100%;min-height:44px;margin:0;padding:10px 12px;border:0;border-radius:12px;background:rgb(255 255 255 / .1);color:#fff;font:17px/1.3 var(--font-sans)}
+.ui-glass-sheet input::placeholder{color:rgb(255 255 255 / .6)}
+.ui-glass-sheet .search-label{display:block;margin:14px 0 8px;font:500 15px/1.3 var(--font-sans);color:rgb(255 255 255 / .72)}
+.ui-glass-sheet .setting-list{margin:14px 0;padding:0 16px;border-radius:16px;background:rgb(255 255 255 / .07)}
+.ui-glass-sheet .setting-list label{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px;padding:10px 0;border:0;font:400 17px/1.3 var(--font-sans);color:#fff}
+.ui-glass-sheet .setting-list label+label{border-top:1px solid rgb(255 255 255 / .1)}
+/* The settings are native checkboxes, so they keep their role and keys. Only their look changes: a capsule track and a knob. */
+.ui-glass-sheet .setting-list input[type=checkbox]{position:relative;flex-shrink:0;appearance:none;-webkit-appearance:none;width:51px;height:31px;margin:0;border-radius:999px;background:rgb(255 255 255 / .2);cursor:pointer;transition:background-color 200ms var(--ease-out)}
+.ui-glass-sheet .setting-list input[type=checkbox]::before{content:'';position:absolute;top:2px;left:0;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgb(0 0 0 / .3);translate:2px 0;transition:translate 260ms var(--ease-glass)}
+.ui-glass-sheet .setting-list input[type=checkbox]:checked{background:var(--c-green)}
+.ui-glass-sheet .setting-list input[type=checkbox]:checked::before{translate:22px 0}
+/* The one tinted action is the cream primary. Every other button is neutral glass, and each is a capsule. */
+.ui-glass-sheet .game-button{min-height:48px;padding:12px 20px;border:0;border-radius:999px;background:#ffe0a4;color:#2a2a2e;font:600 17px/1.2 var(--font-sans);box-shadow:inset 0 1px 0 rgb(255 255 255 / .25);transition:scale 120ms var(--ease-out)}
+.ui-glass-sheet .game-button.secondary{background:rgb(255 255 255 / .12);color:#fff}
+.ui-glass-sheet .game-button:active{scale:.97}
+@media (prefers-reduced-motion:reduce){.ui-glass-sheet .game-button:active{scale:none}}
+.reduce-motion .ui-glass-sheet .game-button:active{scale:none}
+.ui-glass-sheet .muted{font:400 15px/1.45 var(--font-sans);color:rgb(255 255 255 / .72)}
+.ui-glass-sheet .menu-note{margin:0;padding-top:14px;border-top:1px solid rgb(255 255 255 / .1);font:400 13px/1.5 var(--font-sans);color:rgb(255 255 255 / .6)}
+.ui-glass-sheet #rules-text{font:400 17px/1.45 var(--font-sans);color:rgb(255 255 255 / .72)}
+.ui-glass-sheet :focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* Fallbacks: no backdrop filter, reduced transparency, more contrast, and forced colours. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-glass-sheet{background:rgb(28 28 32 / .97)}}
+@media (prefers-reduced-transparency:reduce){.ui-glass-sheet{background:rgb(28 28 32);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-contrast:more){
+  .ui-glass-sheet{background:rgb(18 18 20);border:2px solid rgb(255 255 255 / .7);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .ui-glass-sheet .muted,.ui-glass-sheet .menu-note,.ui-glass-sheet .search-label,.ui-glass-sheet #rules-text,.ui-glass-sheet input::placeholder{color:rgb(255 255 255 / .9)}
+}
+@media (forced-colors:active){
+  .ui-glass-sheet{background:Canvas;color:CanvasText;border:2px solid CanvasText;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+  /* A switch has no fill of its own here, so its border and knob carry its state: the track is outlined, and checked it is filled. */
+  .ui-glass-sheet .setting-list input[type=checkbox]{border:2px solid CanvasText;background:Canvas}
+  .ui-glass-sheet .setting-list input[type=checkbox]::before{background:CanvasText;box-shadow:none}
+  .ui-glass-sheet .setting-list input[type=checkbox]:checked{background:CanvasText}
+  .ui-glass-sheet .setting-list input[type=checkbox]:checked::before{background:Canvas}
+}
+
 /* Reduced motion, from the media query or the .reduce-motion class on <html>. Game internals inside #game-stage keep their own styling. */
 @media (prefers-reduced-motion: reduce){
 :not(#game-stage *),:not(#game-stage *)::before,:not(#game-stage *)::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
