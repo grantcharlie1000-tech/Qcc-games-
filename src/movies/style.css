@@ -12,16 +12,23 @@
 @media(max-width:1000px){.movies-launch{min-height:clamp(240px,62vw,460px)}.movies-miniatures{inset:-25px -12px;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:14px 12px}}
 
 .movies-active{overflow:hidden}.movies-view{position:fixed;inset:0;z-index:30;overflow:auto;overscroll-behavior:contain;background:#141414;color:#fff;font:15px/1.5 Arial,Helvetica,sans-serif;color-scheme:dark;--movies-accent:#e50914}.movies-view *{box-sizing:border-box}.movies-view [hidden]{display:none}.movies-view a{color:inherit;text-decoration:none}.movies-view button,.movies-view select,.movies-view input{font:inherit}.movies-view button,.movies-view select{cursor:pointer}.movies-view button,.movies-view select,.movies-view input{border:1px solid #777;border-radius:3px;background:#252525;color:white;padding:10px 16px;min-height:44px}.movies-view button:disabled{cursor:not-allowed;opacity:.55}.movies-view h1,.movies-view h2,.movies-view h3,.movies-view p{margin:0}.movies-view h1{font:800 clamp(38px,5vw,72px)/1.08 Arial,Helvetica,sans-serif;letter-spacing:-1.5px}.movies-view h2{font-size:23px;line-height:1.3;font-weight:700}.movies-view h3{font-size:17px}.movies-view small{color:#bcbcbc}
-.movies-view .movies-primary,.movies-view .movies-secondary{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;background:#fff;color:#111;font-weight:700;font-size:18px;padding:11px 28px;border-radius:4px;min-height:49px}.movies-view .movies-primary:disabled{opacity:.72;background:#e6e6e6;color:#333}.movies-view .movies-secondary{background:#6d6d6eb3;color:#fff;padding:11px 26px}.movies-primary>span,.movies-secondary>span{font-size:25px;line-height:1}
-.movies-result-count{margin:20px 0!important;color:#b3b3b3;font-size:13px}.movies-empty{padding:100px 7%;text-align:center;max-width:800px;margin:auto;min-height:350px}.movies-empty p{color:#aaa;margin:18px 0 25px}.movies-empty h1{font-size:38px}.movies-empty a{display:inline-block;margin:15px}.movies-footer{margin-top:70px;border-top:1px solid #333;padding:30px 0;max-width:850px;color:#808080;font-size:12px}.movies-footer strong{color:#b3b3b3;font-size:14px}.movies-footer p{margin:12px 0;max-width:780px}.movies-footer button{font-size:12px;background:none;padding:7px 12px;color:#aaa;border-color:#555}.movies-tmdb{display:block;object-fit:contain;margin:15px 0}.movies-page-title{margin:48px 4% 100px!important;font-size:36px!important}
+.movies-view .movies-primary{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;background:#fff;color:#111;font-weight:700;font-size:18px;padding:11px 28px;border-radius:4px;min-height:49px}.movies-view .movies-primary:disabled{opacity:.72;background:#e6e6e6;color:#333}.movies-primary>span{font-size:25px;line-height:1}
+.movies-result-count{color:#b3b3b3;font-size:13px}.movies-view .movies-result-count{margin:20px 0}.movies-empty{padding:100px 7%;text-align:center;max-width:800px;margin:auto;min-height:350px}.movies-empty p{color:#aaa;margin:18px 0 25px}.movies-empty h1{font-size:38px}.movies-empty a{display:inline-block;margin:15px}/* Footer: the brand and links share one row from 768 px; the privacy copy, Clear and the storage line take full rows. */
+.movies-view .movies-footer{display:grid;justify-items:start;gap:12px;margin-top:48px;padding:32px 0 8px;border-top:1px solid var(--line);background:none;color:var(--c-400);font-family:var(--font-sans);font-size:12px;line-height:1.5}
+.movies-view .movies-footer>strong,.movies-view .movies-footer>p{justify-self:stretch}
+.movies-view .movies-footer>strong{color:var(--c-200);font-size:14px;line-height:1.3}
+.movies-view .movies-footer p{margin:0;max-width:780px}
+.movies-view .ui-footer-brand strong{color:var(--c-100);font-size:14px;line-height:1.3}
+.movies-view .movies-storage{font-family:var(--font-mono);font-size:11px;color:var(--c-500)}
+@media (min-width:768px){.movies-view .movies-footer{grid-template-columns:auto auto;justify-content:space-between;align-items:center;gap:20px 24px;margin-top:56px;padding-top:36px}.movies-view .movies-footer>strong,.movies-view .movies-footer>p,.movies-view .movies-storage{grid-column:1/-1}.movies-view .movies-footer>.ui-footer-links{justify-self:end}}.movies-tmdb{display:block;object-fit:contain;margin:15px 0}.movies-page-title{font-size:36px!important}
 .movies-player-unavailable{max-width:530px;text-align:center;padding:25px}.movies-player-unavailable>span{font:64px Arial;color:#e50914}.movies-player-unavailable p{color:#aaa;font-size:14px;margin:14px 0}.movies-player-unavailable .movies-primary{margin-top:15px;font-size:15px}.movies-screen video{width:100%;height:100%;max-height:75dvh}
-@media(hover:hover) and (pointer:fine){.movies-view a:hover{color:#fff}.movies-view .movies-primary:not(:disabled):hover{background:#ddd}.movies-view .movies-secondary:hover{background:#6d6d6e70}}
+@media(hover:hover) and (pointer:fine){.movies-view a:hover{color:#fff}.movies-view .movies-primary:not(:disabled):hover{background:#ddd}}
 
-@media(max-width:650px){.movies-view .movies-primary,.movies-view .movies-secondary{font-size:15px;padding:10px 23px;min-height:44px;gap:10px}.movies-primary>span,.movies-secondary>span{font-size:22px}.movies-player-unavailable{padding:22px}.movies-footer{margin-top:50px}.movies-page-title{font-size:30px!important}}
+@media(max-width:650px){.movies-view .movies-primary{font-size:15px;padding:10px 23px;min-height:44px;gap:10px}.movies-primary>span{font-size:22px}.movies-player-unavailable{padding:22px}.movies-page-title{font-size:30px!important}}
 @media(prefers-reduced-motion:reduce){.movies-view *,.movies-launch *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}.reduce-motion .movies-view *,.reduce-motion .movies-launch *{animation:none!important;transition:none!important}
 /* Reference details: native vector controls, uninterrupted rows, and mobile poster-card navigation. */
 
-@media(max-width:650px){.movies-footer{padding-bottom:35px}.movies-empty{padding-top:65px}}
+@media(max-width:650px){.movies-empty{padding-top:65px}}
 /* Study reads in the document rather than the movie scroller. */
 body.movies-active.study-active{overflow:auto}
 
@@ -41,10 +48,8 @@ body.movies-active.study-active{overflow:auto}
 
 .movies-view .movies-primary{background:#8ce8f8;color:#0b1720;border-radius:7px}
 .movies-view .movies-primary:not(:disabled):hover{background:#b4f2ff}
-.movies-view .movies-secondary{background:#273440bb;border-radius:7px;border:1px solid #ffffff2a}
-
 .movies-result-count{color:#93aab8}
-.movies-catalog-status{margin:12px 0 16px!important;padding:11px 14px;border:1px solid #28394a;border-left:3px solid #69d8f4;border-radius:6px;background:#111a25;color:#b9d3df;font-size:13px}
+.movies-catalog-status{padding:11px 14px;border:1px solid #28394a;border-left:3px solid #69d8f4;border-radius:6px;background:#111a25;color:#b9d3df;font-size:13px}.movies-view .movies-catalog-status{margin:12px 0 16px}
 .movies-pagination{display:flex;align-items:center;justify-content:center;gap:16px;padding:26px 0 8px;color:#a8bdcb;font-size:13px}
 .movies-pagination button{border-color:#334353;border-radius:8px;background:#141e29}
 .movies-pagination button:not(:disabled):hover{border-color:#69d8f4;color:#a3edfa}
@@ -60,7 +65,7 @@ body.movies-active.study-active{overflow:auto}
 
 .movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:focus-visible{outline:2px solid #8ce8f8;outline-offset:2px}
 .movies-next button:focus-visible,.movies-fullscreen:focus-visible,.movies-auto-next input:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
-.movies-screen>.movies-detail-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;margin:0!important;max-height:calc(100% - 24px);overflow:auto}
+.movies-screen>.movies-detail-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;max-height:calc(100% - 24px);overflow:auto}.movies-view .movies-screen>.movies-detail-error{margin:0}
 .movies-catalog-status button:focus-visible,.movies-empty [data-action="retry-title"]:focus-visible,.movies-player [data-action="reload-stream"]:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
 
 
@@ -100,7 +105,7 @@ body.movies-active.study-active{overflow:auto}
 /* Movies home: a streaming hero, a filter bar, poster cards, rails and Continue watching on the shared ui- components. */
 /* Old hero, filter bar and card rules are gone; the rules below restate what the .movies-view button and heading rules would otherwise override. */
 .movies-view .movies-browse{max-width:var(--page-max);margin:0 auto;padding:24px var(--gutter) 40px}
-.movies-view .movies-page-title{max-width:var(--page-max);margin:40px auto 24px!important;padding:0 var(--gutter)}
+.movies-view .movies-page-title{max-width:var(--page-max);margin:40px auto 24px;padding:0 var(--gutter)}
 .movies-view .movies-hero{margin:0;font-family:var(--font-sans)}
 .movies-view .movies-hero .ui-hero-title{margin:0 0 8px;font-family:var(--font-sans);font-size:24px;font-weight:800;line-height:1.1;letter-spacing:-.025em;color:#fff}
 .movies-view .movies-hero .ui-hero-meta{margin:0 0 12px;font-size:12px;line-height:1.5;color:var(--c-300)}
@@ -138,12 +143,12 @@ body.movies-active.study-active{overflow:auto}
 
 /* Section and My list title blocks: the heading sits above one line of copy and the count, which wraps on a phone. */
 .movies-view .movies-page-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px}
-.movies-view .movies-page-head>.movies-page-title{flex:0 0 100%;max-width:none;margin:40px 0 6px!important;padding:0!important}
+.movies-view .movies-page-head>.movies-page-title{flex:0 0 100%;max-width:none;margin:40px 0 6px;padding:0}
 .movies-view .movies-page-head>p{flex:1 1 auto;min-width:0;margin:0;color:var(--c-400);font-size:14px;line-height:1.5}
 .movies-view .movies-page-head>.ui-count{flex:0 0 auto}
 /* An empty My list or an empty search keeps its message close to the filters rather than a full screen down. */
 .movies-view .movies-browse .movies-empty{min-height:0;max-width:none;margin:0;padding:56px 8px}
-@media (min-width:640px){.movies-view .movies-page-head>.movies-page-title{margin-top:56px!important}}
+@media (min-width:640px){.movies-view .movies-page-head>.movies-page-title{margin-top:56px}}
 
 /* Title page (redesign section 7.5). A blurred backdrop with the hero's two overlays sits behind the poster, chips, title, genres, overview and actions.
    A series adds season pills and episode rows; the cast and the related rail follow. The generic .movies-view button rule sets a border, a padding and

@@ -55,6 +55,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   // Native scrolling uses the compositor scroll tree. DOM visibility can precede
   // its first frame after releasing overflow:hidden; wait for that frame.
   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  await expect.poll(()=>page.evaluate(()=>document.scrollingElement!.scrollHeight>innerHeight+100)).toBe(true);
   await page.keyboard.press('PageDown');
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(0);
   await expect(page.locator('html')).toHaveAttribute('data-study-page-down-prevented','false');

@@ -1740,6 +1740,21 @@ for(const reduced of [false,true] as const)test(`the Up next card sits in the sc
  expect(card!.width).toBeLessThan(screen!.width*0.6);
 });
 
+test('reduced motion stops card, rail and drawer animations',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const rail=page.locator('[data-rail="movies-you-ll-love"]');
+ await rail.hover();
+ await rail.locator('.ui-card').first().hover();
+ await expect(rail.locator('.ui-card-img').first()).toHaveCSS('transition-duration','0s');
+ expect(await page.evaluate(()=>document.getAnimations().length)).toBe(0);
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Select episode',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>document.getAnimations().length)).toBe(0);
+});
+
 test('My list on the watch page keeps the stream running',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336/play');
@@ -2097,4 +2112,58 @@ test('an answer for another title leaves a built-in page as it is',async({page})
  await expect(detail.locator('.movies-chips')).not.toContainText('★ 9.1');
  await expect(page.locator('section.movies-cast')).toHaveCount(0);
  await expect(page.getByRole('heading',{name:'More like this'})).toHaveCount(0);
+});
+
+// The footer keeps its privacy copy in order, and Clear forgets the list, progress, title details, history and the remembered server.
+test('the footer keeps the privacy copy and clears saved data',async({page})=>{
+ await seedMovies(page,{list:['movie-157336'],progress:{'movie-157336':1200},meta:{'movie-157336':{duration:7200,updated:1}},titles:{},provider:'vidsrc'});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const footer=page.locator('footer.movies-footer');
+ await expect(footer).toHaveClass(/ui-footer/);
+ await expect(footer.locator('.ui-footer-brand strong')).toHaveText('Mauri Study Notes');
+ await expect(footer.locator('.ui-footer-brand .ui-brand-tile svg')).toHaveCount(1);
+ const links=footer.getByRole('navigation',{name:'Movies and TV sections',exact:true}).getByRole('link');
+ await expect(links).toHaveText(['Home','Movies','TV Shows','My list']);
+ expect(await links.evaluateAll(list=>list.map(link=>link.getAttribute('href')))).toEqual(['#/movies','#/movies/browse/movie','#/movies/browse/tv','#/movies/list']);
+ await expect(footer.locator(':scope>strong')).toHaveText('Your screen. Your privacy.');
+ await expect(footer.locator('p').nth(0)).toHaveText('My list and playback progress stay on this device. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.');
+ await expect(footer.locator('p').nth(1)).toHaveText('Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.');
+ await expect(footer.locator('p').filter({hasText:'Streaming is provided by an external service.'})).toHaveText('Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Movies are excluded from game offline downloads.');
+ const clear=footer.getByRole('button',{name:'Clear my list & watch history',exact:true});
+ await expect(clear).toBeVisible();
+ await clear.click();
+ await expect.poll(()=>page.evaluate(()=>localStorage.getItem('qcc:movies:v1'))).toBe('{"list":[],"progress":{},"titles":{},"meta":{}}');
+ await expect(clear).toBeFocused();
+ await expect(footer.locator('.movies-storage')).toHaveText('Saved only on this device.');
+});
+
+// render() rewrites the second footer paragraph once the API supplies titles, so the footer must keep that paragraph at index 1.
+test('the footer second paragraph takes the TMDB line once the API supplies titles',async({page})=>{
+ await page.route('**/api/movies?*',route=>route.fulfill({json:{rails:[{id:'trending',title:'Trending now',titles:[fixtureTitle('movie-90001','Fixture One')]}]}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await expect(page.getByRole('heading',{name:'Trending now',exact:true})).toBeVisible();
+ const paragraphs=page.locator('footer.movies-footer p');
+ await expect(paragraphs.nth(0)).toHaveText(/^My list and playback progress stay on this device\./);
+ await expect(paragraphs.nth(1)).toHaveText('Search and metadata use the TMDB database. This product uses the TMDB API but is not endorsed or certified by TMDB.');
+});
+
+// Movies spacing comes from selectors that win on specificity. These values are the computed ones the layout has always had.
+test('Movies title, count, status and notice spacing holds without !important',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/list');
+ const title=page.locator('h1.movies-page-title');
+ await expect(title).toBeVisible();
+ expect(await title.evaluate(e=>{const s=getComputedStyle(e);return [s.marginTop,s.marginBottom,s.paddingLeft,s.paddingTop];})).toEqual(['56px','6px','0px','0px']);
+ await page.goto('/#/movies');
+ await page.fill('#movies-search','the');
+ await expect(page.locator('p.movies-result-count')).toBeVisible();
+ expect(await page.locator('h1.movies-page-title').evaluate(e=>{const s=getComputedStyle(e);return [s.marginTop,s.marginBottom,s.paddingLeft];})).toEqual(['40px','24px','24px']);
+ expect(await page.locator('p.movies-result-count').evaluate(e=>{const s=getComputedStyle(e);return [s.marginTop,s.marginBottom];})).toEqual(['20px','20px']);
+ await expect(page.locator('p.movies-catalog-status')).toHaveCount(1);
+ expect(await page.locator('p.movies-catalog-status').evaluate(e=>{const s=getComputedStyle(e);return [s.marginTop,s.marginBottom];})).toEqual(['12px','16px']);
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await page.locator('.movies-screen').evaluate(screen=>{const note=document.createElement('div');note.className='movies-catalog-status movies-detail-error';note.textContent='Notice';screen.append(note);});
+ expect(await page.locator('.movies-detail-error').evaluate(e=>getComputedStyle(e).marginTop)).toBe('0px');
 });
