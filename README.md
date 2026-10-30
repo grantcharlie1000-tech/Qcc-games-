@@ -39,7 +39,7 @@ Offline play requires a successful download on the same browser, device and orig
 
 ## The look
 
-The games keep their original look: posters, their own controls and their own focus rings. The library's gold focus ring shows only after keyboard use. The library has no top bar. A glass tab bar at the bottom holds Games, Movies, TV Shows, My list, Study and Menu, at every screen width. It hides while you scroll down and returns when you scroll up. Menus and dialogs are glass sheets: bottom sheets on phones, and centred panels from 640 px.
+The games keep their original look: posters, their own controls and their own focus rings. The library's gold focus ring shows only after keyboard use. The library has no top bar. A glass tab bar at the bottom holds Games, Movies, TV Shows, My list, Study and Menu, at every screen width. Scrolling down shrinks it into a small glass capsule that keeps the current tab's icon, and scrolling up, or a tap on the capsule, brings it back. Menus and dialogs are glass sheets: bottom sheets on phones, and centred panels from 640 px.
 
 Movies & TV uses a streaming-style design system. Its tokens and shared `ui-` components are in `src/theme.css`. The reference values were read as declared text from FrameXTV's public stylesheet and script. FrameXTV's anti-DevTools guard stopped its pages from rendering for automated inspection, and we did not bypass it. No FrameXTV code, CSS, icons, logo, wordmark, artwork or wording is used. The interface is original work under the Mauri Study Notes brand. The glass follows Apple's published Liquid Glass guidance in original CSS and TypeScript, with no Apple assets. See the [design references](docs/MOVIES_TV_DESIGN_REFERENCES.md).
 

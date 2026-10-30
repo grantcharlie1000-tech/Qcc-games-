@@ -8,7 +8,7 @@ Vite 7, strict TypeScript, semantic DOM/CSS; no application framework. Hash rout
 
 `src/core/catalog.ts` contains twenty-one cards and lazy game loaders. A game imports no other game. Matter.js is only imported by physics games; Three.js only by Ball Run, Globle and Blockcraft; globe.gl only by Globle. Blockcraft also starts module Web Workers (`src/games/blockcraft/world/worker.ts`, emitted as a hashed same-origin asset and included in the offline pack) for terrain generation, and falls back to time-sliced main-thread generation if workers are unavailable. `src/main.ts` owns routes, lifecycle, toolbar, pause overlay, rules dialog, autosave, settings, sound and favourites.
 
-Shared presentation for Movies & TV and the tab bar: `src/theme.css` holds the design tokens and the `ui-` components, and it is imported first. `src/ui/` holds the icons, image load states, rail scrolling, the hide-on-scroll tab bar, the glass island (its pill, press and lens), the sheet helpers and the input mode that decides whether focus rings show (`focus.ts`). Games keep their own styles.
+Shared presentation for Movies & TV and the tab bar: `src/theme.css` holds the design tokens and the `ui-` components, and it is imported first. `src/ui/` holds the icons, image load states, rail scrolling, the tab bar that minimizes into a capsule on scroll, the glass island (its pill, press and lens), the sheet helpers and the input mode that decides whether focus rings show (`focus.ts`). Games keep their own styles.
 
 ## Study Mode
 
