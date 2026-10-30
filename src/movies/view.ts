@@ -24,6 +24,8 @@ const cardMeta=(t:Title)=>[t.year?String(t.year):'',t.kind==='tv'?'Series':'Movi
 // A title saved in storage carries what a card or a Continue watching tile needs. Genres, overview and seasons arrive when the title loads.
 const fromSnapshot=(s:TitleSnapshot):Title=>({id:s.id,kind:s.kind,name:s.name,year:s.year,genres:[],overview:'',poster:s.poster,backdrop:s.backdrop,seasons:[]});
 // The title page while its details load. A play route shows it until its season has loaded, so the player is built only once.
+// The media's own record of what it has played. A seek to a saved position adds nothing to it, so it shows real playback in every engine.
+const hasPlayed=(video:HTMLVideoElement)=>{const ranges=video.played;for(let i=0;i<ranges.length;i++)if(ranges.end(i)>ranges.start(i))return true;return false;};
 const LOADING_TITLE='<div class="movies-empty" role="status"><h1 tabindex="-1">Loading title details…</h1><p>Fetching current movie and episode information.</p></div>';
 // What the API adds to a built-in title: its cast, related titles, rating and runtime. Its name, summary, artwork, seasons and episodes stay,
 // except that an episode without a still or a rating takes the API's for the same season and episode.
@@ -926,7 +928,7 @@ export class MoviesView {
    video.addEventListener('ended',()=>{if(this.video===video)this.episodeEnded();});
    // A seek to the saved position also fires timeupdate while the video is paused, so only playback counts as a report.
    video.addEventListener('timeupdate',()=>{if(this.video!==video)return;if(!video.paused)this.videoReported=true;this.rearm(video.currentTime,video.duration);if(this.videoReported&&!this.ended&&Date.now()-this.lastSave>5000)this.saveProgress(video.currentTime);});
-   video.addEventListener('pause',()=>{if(this.video===video&&this.videoReported)this.saveProgress(video.currentTime);});
+   video.addEventListener('pause',()=>{if(this.video===video&&this.videoPlayed(video))this.saveProgress(video.currentTime);});
    video.addEventListener('error',()=>{if(this.video!==video)return;const status=this.root.querySelector('#movies-player-status');if(status)status.textContent='The local file could not be played.';});
   }
   if(this.frame&&this.providerId)this.bindAttempt(this.frame,this.providerId);
@@ -1204,12 +1206,14 @@ export class MoviesView {
   },0);
  };
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('a,button,input,select,textarea,dialog')){event.preventDefault();this.playNext();}};
- pause(){this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){if(this.videoReported)this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){if(this.frameReported)this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
+ pause(){this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){if(this.videoPlayed(this.video))this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){if(this.frameReported)this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
  // Ends the stream and its playback session: the watchdogs stop, and the failover budget and the tried servers go with them.
+ // WebKit fires timeupdate only about every 250 ms, so a video can play and stop before the first one. Its played ranges still count.
+ private videoPlayed(video:HTMLVideoElement){if(hasPlayed(video))this.videoReported=true;return this.videoReported;}
  private stopVideo(){this.endSession();this.closeDrawer();this.releaseMedia();}
  // Takes the stream and the local video off the screen. The session stays, so a failover or a redraw carries its budget on.
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
- private releaseMedia(){this.cancelNext();this.clearResumePill();this.clearSlow();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoReported)this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
+ private releaseMedia(){this.cancelNext();this.clearResumePill();this.clearSlow();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
  dispose(){this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

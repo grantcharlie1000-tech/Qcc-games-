@@ -101,6 +101,18 @@ test('verified local media uses native controls and stores progress only in its 
  expect(saved.meta['movie-329865'].duration).toBe(await video.evaluate((v:HTMLVideoElement)=>v.duration));
 });
 
+// WebKit fires timeupdate only about every 250 ms, so Escape can come before the first one of a playing video. Swallowing every timeupdate stands in for that.
+test('local media that played saves its position on Escape before any timeupdate arrives',async({page})=>{
+ await page.addInitScript(()=>window.addEventListener('timeupdate',event=>event.stopImmediatePropagation(),{capture:true}));
+ await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'movie-329865',path:'movies/media/fixture.webm',license:'CC0-1.0',credit:'QCC generated test fixture',evidence:'docs/rights/fixture.md',reviewed:true,territory:'Worldwide',expires:'2099-01-01'}]}));
+ await page.route('**/movies/media/fixture.webm',route=>route.fulfill({contentType:'video/webm',body:readFileSync('tests/fixtures/movies.webm')}));
+ await page.goto('/#/movies/movie-329865/play');const video=page.locator('video');await expect(video).toBeVisible();
+ await video.evaluate(async(v:HTMLVideoElement)=>{await v.play();});await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);
+ await page.keyboard.press('Escape');await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.paused)).toBe(true);
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}'));
+ expect(saved.progress?.['movie-329865']).toBeGreaterThan(0);
+});
+
 
 test('episode return restores scroll and focus; keyboard stays inside the movie section',async({page})=>{
  await page.setViewportSize({width:390,height:700});await page.goto('/#/movies/tv-68595');
