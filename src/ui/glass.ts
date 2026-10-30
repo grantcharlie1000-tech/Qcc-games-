@@ -153,10 +153,12 @@ function makeLens():{lens:HTMLElement;scene:SVGSVGElement;group:SVGGElement}{
 
 // An image's object-fit and object-position as SVG's preserveAspectRatio. SVG aligns only to an edge or the middle, so a position
 // takes the nearest of the three.
+const POSITION_KEYWORDS:Record<string,number>={left:0,top:0,center:50,right:100,bottom:100};
 export function aspectOf(fit:string,position:string):string{
   if(fit==='fill')return 'none';
   const [x='50%',y='50%']=position.split(' ');
-  const align=(value:string)=>{const n=parseFloat(value)||0,share=value.endsWith('%')?n:n===0?0:50;return share<34?'Min':share>66?'Max':'Mid';};
+  // A keyword is its percentage, a percentage is itself, and a length is the edge when it is zero and the middle otherwise.
+  const align=(value:string)=>{const n=parseFloat(value)||0,share=value in POSITION_KEYWORDS?POSITION_KEYWORDS[value]:value.endsWith('%')?n:n===0?0:50;return share<34?'Min':share>66?'Max':'Mid';};
   return `x${align(x)}Y${align(y)} ${fit==='cover'?'slice':'meet'}`;
 }
 

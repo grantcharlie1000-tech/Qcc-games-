@@ -176,4 +176,8 @@ test('a mirror copy fits its SVG image the way its cover fits the page',()=>{
   expect(aspectOf('cover','0px 0px')).toBe('xMinYMin slice');
   expect(aspectOf('cover','12px 50%')).toBe('xMidYMid slice');
   expect(aspectOf('none','50% 50%')).toBe('xMidYMid meet');
+  // Chromium reports a computed position in percentages, but a keyword reads the same way wherever it is kept.
+  expect(aspectOf('cover','center 30%')).toBe('xMidYMin slice');
+  expect(aspectOf('cover','right bottom')).toBe('xMaxYMax slice');
+  expect(aspectOf('cover','left top')).toBe('xMinYMin slice');
 });
