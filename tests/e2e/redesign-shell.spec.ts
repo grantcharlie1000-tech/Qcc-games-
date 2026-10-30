@@ -10,12 +10,13 @@ test('the games home is back in its original style',async({page})=>{
  await expect(page.locator('.count-pill,.favourites-pill,.hamburger')).toHaveCount(0);
  await expect(page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true})).toBeVisible();
  const grid=page.locator('.game-grid');
- expect(await grid.evaluate(element=>element.firstElementChild?.classList.contains('movies-launch')??false)).toBe(true);
+ expect(await grid.evaluate(element=>element.firstElementChild?.classList.contains('game-card')??false)).toBe(true);
+ await expect(page.locator('.movies-launch')).toHaveCount(0);
  await expect(grid.locator('.game-card')).toHaveCount(21);
  await expect(grid.locator('.game-card:has(h2):has(.title-line)')).toHaveCount(21);
  expect(await page.locator('.game-card h2').first().evaluate(element=>getComputedStyle(element).fontFamily)).toMatch(/^"?Arcade/);
  expect(await page.locator('html').evaluate(element=>getComputedStyle(element).backgroundColor)).toBe('rgb(25, 29, 28)');
- // The island comes first in the page order, so the first Tab reaches its Games tab. Keep tabbing through the island and the Movies card until the first game card has focus.
+ // The island comes first in the page order, so the first Tab reaches its Games tab. Keep tabbing through the island until the first game card has focus.
  await page.keyboard.press('Tab');
  await expect(page.locator('.app-tabbar').getByRole('link',{name:'Games',exact:true})).toBeFocused();
  const card=grid.locator('.game-card').first();
@@ -128,10 +129,11 @@ test('the filter notice lines up with the game grid',async({page})=>{
  await page.getByRole('button',{name:'Open menu',exact:true}).click();
  await page.getByLabel('Favourites only',{exact:true}).check();
  await page.getByRole('button',{name:'Close menu',exact:true}).click();
- // The notice's text starts where the grid's content starts, so the text is compared with the first cell, not the notice's padded box.
+ // The notice's text starts where the grid's content starts, so the text is compared with the grid's content edge, not the notice's padded box.
  // Both edges are read in one evaluate: the menu's close handler re-renders the library, so a locator box could be read from a replaced node.
- const [textLeft,cellLeft]=await page.evaluate(()=>[document.querySelector('.library-filter-text')!.getBoundingClientRect().left,document.querySelector('.game-grid > *')!.getBoundingClientRect().left]);
- expect(Math.abs(textLeft-cellLeft)).toBeLessThan(1);
+ // The edge comes from the grid's padding, because a favourites filter with no favourites leaves the grid with no cell.
+ const [textLeft,gridLeft]=await page.evaluate(()=>{const grid=document.querySelector<HTMLElement>('.game-grid')!;return [document.querySelector('.library-filter-text')!.getBoundingClientRect().left,grid.getBoundingClientRect().left+parseFloat(getComputedStyle(grid).paddingLeft)];});
+ expect(Math.abs(textLeft-gridLeft)).toBeLessThan(1);
 });
 
 test('the library clears a notch, and a game screen does not',async({page,browserName})=>{
@@ -269,10 +271,12 @@ test('the island floats and hides on scroll on desktop too',async({page})=>{
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await expect(bar).toBeVisible();
- await page.evaluate(()=>window.scrollTo(0,400));
+ // The library's scroll range depends on its content, so the test scrolls to fractions of it, clear of the bar's always-shown ends.
+ const range=await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight);
+ await page.evaluate(y=>window.scrollTo(0,y),Math.round(range/2));
  await expect(bar).toHaveAttribute('data-hidden','true');
  await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(900);
- await page.evaluate(()=>window.scrollTo(0,280));
+ await page.evaluate(y=>window.scrollTo(0,y),Math.round(range/4));
  await expect(bar).not.toHaveAttribute('data-hidden');
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(900);
 });
@@ -378,7 +382,7 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
  await page.route('**/src/movies/view.ts*',async route=>{await gate;await route.continue();});
  await page.goto('/');
- await page.getByRole('link',{name:'Movies & TV',exact:true}).click();
+ await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
@@ -394,7 +398,7 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
 test('the Movies error state keeps a centred way back link',async({page})=>{
  await page.route('**/src/movies/view.ts*',route=>route.abort());
  await page.goto('/');
- await page.getByRole('link',{name:'Movies & TV',exact:true}).click();
+ await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
  await expect(page.locator('#content')).toContainText('Movies & TV could not load.');
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
  await expect(page.locator('.app-tabbar')).toBeHidden();

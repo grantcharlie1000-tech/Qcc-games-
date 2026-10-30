@@ -8,43 +8,22 @@ test.beforeEach(async({page})=>{
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
-for(const width of [320,390,650,768,1280,1920])test(`launch poster cards have no duplicate sources at ${width}px`,async({page})=>{
- await page.setViewportSize({width,height:800});await page.goto('/');
- const sources=await page.locator('.movies-launch img').evaluateAll(images=>images.map(image=>(image as HTMLImageElement).src));
- expect(sources.length).toBeGreaterThan(0);
- expect(new Set(sources).size).toBe(sources.length);
+test('the games library has no Movies & TV box, and the island Movies tab opens Movies & TV',async({page})=>{
+ await page.goto('/');await expect(page.locator('.game-card')).toHaveCount(21);
+ await expect(page.locator('.movies-launch')).toHaveCount(0);await expect(page.getByRole('link',{name:'Movies & TV',exact:true})).toHaveCount(0);
+ await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
+ await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
 });
 
-test('offline launch skips remote posters and retains a readable coloured fallback',async({page})=>{
- await page.addInitScript(()=>Object.defineProperty(navigator,'onLine',{get:()=>false}));
- const remote:string[]=[];page.on('request',request=>{if(request.url().startsWith('https://image.tmdb.org/'))remote.push(request.url());});
- await page.goto('/');const launch=page.locator('.movies-launch');
- await expect(launch).toHaveText('Movies & TV');await expect(launch.locator('img')).toHaveCount(0);
- expect(remote).toEqual([]);expect(await launch.evaluate(e=>getComputedStyle(e).backgroundImage)).toContain('gradient');
- await expect(launch.getByRole('heading')).toHaveCSS('color','rgb(255, 255, 255)');
-});
-
-test('failed launch posters are hidden over the coloured fallback',async({page})=>{
- await page.route('https://image.tmdb.org/**',route=>route.abort());await page.goto('/');
- const launch=page.locator('.movies-launch');
- await expect.poll(()=>launch.locator('img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).hidden))).toBe(true);
- expect(await launch.evaluate(e=>getComputedStyle(e).backgroundImage)).toContain('gradient');
- await expect(launch.getByRole('heading')).toBeVisible();
-});
-
-test('full-width launch, local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
+test('island Movies tab opens Movies & TV: local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
  const games=page.locator('.game-card');await expect(games).toHaveCount(21);
- const launch=page.getByRole('link',{name:'Movies & TV',exact:true});
- await expect(launch).toHaveAttribute('href','#/movies');
- await expect(launch).toHaveText('Movies & TV');
- await expect(launch.locator('[aria-hidden="true"] img')).toHaveCount(8);
- await expect(launch.locator('a,button')).toHaveCount(0);
- await launch.focus();await expect(launch).toBeFocused();
- expect(await launch.evaluate(e=>getComputedStyle(e).outlineStyle)).toBe('solid');
- const [grid,card]=await Promise.all([page.locator('.game-grid').boundingBox(),launch.boundingBox()]);expect(card!.width).toBeGreaterThan(grid!.width-50);
- await expect(launch.locator('img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\/w185\//);
- await launch.press('Enter');await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
+ const tab=page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true});
+ await expect(tab).toHaveAttribute('href','#/movies/browse/movie');
+ await tab.focus();await expect(tab).toBeFocused();
+ await tab.press('Enter');await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
+ // The Movies tab searches films only, and this flow searches a series, so it goes Home from the Movies header first.
+ await page.locator('.movies-top').getByRole('button',{name:'Home',exact:true}).click();await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
  await page.screenshot({path:'test-results/movies-home.png',fullPage:true});
  await expect(page.locator('.movies-poster img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\//);
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('sherlock');
@@ -61,7 +40,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  // Study retains the movies route and returns to the same page.
  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
  await expect(page.locator('.movies-view')).toBeVisible();
- await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(21);await expect(launch).toBeFocused();
+ await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(21);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
 });
 
 for(const width of [320,390,768,1366])test(`responsive allowlisted provider boundary at ${width}px`,async({page})=>{
@@ -134,10 +113,12 @@ test('episode return restores scroll and focus; keyboard stays inside the movie 
 });
 
 test('game grid offset survives entering and leaving movies',async({page})=>{
- await page.goto('/');await page.locator('.movies-launch').waitFor();await page.evaluate(()=>scrollTo(0,130));
- const before=await page.evaluate(()=>scrollY);await page.locator('.movies-launch').evaluate((e:HTMLAnchorElement)=>e.click());
- await expect(page.locator('#movies-search')).toBeVisible();await page.getByRole('link',{name:'Games',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(before);
+ await page.goto('/');await page.locator('.game-card').first().waitFor();await page.evaluate(()=>scrollTo(0,130));
+ // Scrolling down hides the island, so it is scrolled back into view before its Movies tab is tapped.
+ await expect(page.locator('.app-tabbar')).toHaveAttribute('data-hidden','true');await page.evaluate(()=>scrollTo(0,100));await expect(page.locator('.app-tabbar')).not.toHaveAttribute('data-hidden');
+ const before=await page.evaluate(()=>scrollY);await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
+ await expect(page.locator('#movies-search')).toBeVisible();await page.locator('.movies-top').getByRole('link',{name:'Games',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(before);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
 });
 
 test('Home clears filters and search finds titles across TV/movie categories',async({page})=>{
