@@ -30,3 +30,20 @@ test('dormant ui rules and the unread custom properties are gone',()=>{
 test('forced colours take the island backdrop off, prefixed and unprefixed',()=>{
  expect(css).toMatch(/@media \(forced-colors:active\)\{\.ui-tabbar,\.ui-tabbar\.is-refracting\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/);
 });
+// The fallbacks that take the glass out hide the lens in the stylesheet too, so a solid bar does not wait for the script.
+test('reduced transparency, more contrast and forced colours hide the glass lens in CSS',()=>{
+ for(const media of ['@media (prefers-reduced-transparency:reduce)','@media (prefers-contrast:more)','@media (forced-colors:active)']){
+  const block=css.split('\n').find(line=>line.startsWith(media))??'';
+  expect(block,`${media} block`).toContain('.ui-glass-lens{display:none}');
+ }
+});
+// The mirror draws no frost of its own: its scene covers the lens with the page colour, so the lens's backdrop would be wasted work.
+test('the mirror lens has no backdrop filter of its own',()=>{
+ expect(css).toContain('.ui-tabbar[data-glass="mirror"] .ui-glass-lens{-webkit-backdrop-filter:none;backdrop-filter:none}');
+});
+// In the lens modes the bar keeps its own opacity at 1: below 1 it would become a backdrop root and the lens would lose its frost.
+// The "off" mode is left out, so the fallback bar keeps its own fade, edge and lift.
+test('the lens modes keep the bar at full opacity, and fade its layers instead',()=>{
+ expect(css).toContain('.ui-tabbar:is([data-glass="backdrop"],[data-glass="mirror"]){box-shadow:none;opacity:1}');
+ expect(css).not.toMatch(/\.ui-tabbar\[data-glass\][{\[:]/);
+});

@@ -41,7 +41,8 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
-  expect(await bar.evaluate(el=>el.children.length)).toBe(6);
+  // The lens is the bar's first child, so the tabs are the children that are not the lens.
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')).length)).toBe(6);
 });
 
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
@@ -50,7 +51,7 @@ for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}
   const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
-  expect(await bar.evaluate(el=>el.children.length)).toBe(5);
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')).length)).toBe(5);
 });
 
 test('the Movies pill slides to the section chosen',async({page})=>{
@@ -185,7 +186,9 @@ test('the island squeezes into a blob before it drops, and rises before it pops 
   expect(await motion()).toEqual({props:'translate, scale, opacity',durations:'0.36s, 0.42s, 0.14s',delays:'0s, 0.08s, 0s'});
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-hidden','true');
-  expect(await motion()).toEqual({props:'scale, translate, opacity',durations:'0.2s, 0.28s, 0.16s',delays:'0s, 0.11s, 0.22s'});
+  // The hide fade moved from the bar to its lens, with the same timing: the bar stays at full opacity, so the lens keeps the frost.
+  expect(await motion()).toEqual({props:'scale, translate',durations:'0.2s, 0.28s',delays:'0s, 0.11s'});
+  expect(await bar.locator('.ui-glass-lens').evaluate(el=>{const s=getComputedStyle(el);return {props:s.transitionProperty,durations:s.transitionDuration,delays:s.transitionDelay};})).toEqual({props:'opacity',durations:'0.16s',delays:'0.22s'});
 });
 
 test('the labels fade out as the island squeezes and fade back in once it opens',async({page})=>{
@@ -271,8 +274,9 @@ test('Chromium refracts the island through a filter that belongs to that bar',as
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveClass(/is-refracting/);
+  // The lens is the bar's first child, and its backdrop is the filter.
   const glass=async(target:Locator)=>target.evaluate(el=>{
-    const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(el).backdropFilter)?.[1]??'';
+    const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter)?.[1]??'';
     const filter=id?document.getElementById(id):null;
     return {
       id,
@@ -282,9 +286,10 @@ test('Chromium refracts the island through a filter that belongs to that bar',as
     };
   });
   const home=await glass(bar);
+  expect(await bar.getAttribute('data-glass')).toBe('backdrop');
   expect(home.isFilter).toBe(true);
   expect(home.displacement).toBe(1);
-  expect(home.map.startsWith('data:image/svg+xml,')).toBe(true);
+  expect(home.map.startsWith('data:image/png;base64,')).toBe(true);
   // The Movies island has its own filter with its own id.
   await page.goto('/#/movies');
   // The Movies bar refracts once it has a size, so its filter is referenced from the first layout onwards.
@@ -292,6 +297,22 @@ test('Chromium refracts the island through a filter that belongs to that bar',as
   const movies=await glass(page.locator('nav.movies-mobile-nav.ui-tabbar'));
   expect(movies.isFilter).toBe(true);
   expect(movies.id).not.toBe(home.id);
+});
+
+// The fallbacks turn the lens off (data-glass="off"). Reduced motion keeps the island in place, so a hidden island must still fade
+// out, and the opaque fallback bar keeps its edge and lift.
+for(const fallback of ['reduced transparency','more contrast','forced colours'] as const) test(`with reduced motion and ${fallback}, a hidden island still disappears`,async({page,browserName})=>{
+  test.skip(fallback==='reduced transparency'&&browserName!=='chromium','reduced transparency is emulated through the Chromium protocol');
+  await page.emulateMedia({reducedMotion:'reduce',...(fallback==='more contrast'?{contrast:'more' as const}:{}),...(fallback==='forced colours'?{forcedColors:'active' as const}:{})});
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  if(fallback==='reduced transparency'){const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'},{name:'prefers-reduced-motion',value:'reduce'}]});}
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toHaveAttribute('data-glass','off');
+  if(fallback!=='forced colours')expect(await bar.evaluate(el=>getComputedStyle(el).boxShadow)).not.toBe('none');
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-hidden','true');
+  await expect(bar).toHaveCSS('opacity','0');
 });
 
 test('refraction stays off under reduced transparency and returns when that ends',async({page,browserName})=>{
@@ -315,10 +336,11 @@ test('the displacement map is sized to the bar and follows a resize',async({page
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   const sizes=()=>bar.evaluate(el=>{
-    const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(el).backdropFilter)?.[1]??'';
+    const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter)?.[1]??'';
     const image=document.getElementById(id)?.getElementsByTagName('feImage')[0];
     const bar=el as HTMLElement;
-    return {mapW:Number(image?.getAttribute('width')),mapH:Number(image?.getAttribute('height')),barW:bar.offsetWidth,barH:bar.offsetHeight};
+    // The map covers the bar and the lens margin, 20 px on each side, so the margin is taken off to compare it with the bar.
+    return {mapW:Number(image?.getAttribute('width'))-40,mapH:Number(image?.getAttribute('height'))-40,barW:bar.offsetWidth,barH:bar.offsetHeight};
   });
   await expect.poll(async()=>{const s=await sizes();return s.mapW===s.barW&&s.mapH===s.barH&&s.barW>0;}).toBe(true);
   const before=(await sizes()).barW;
@@ -377,11 +399,14 @@ test('the island glass is clear: a 35% dark tint over an undimmed backdrop, with
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(16, 16, 20, 0.35)');
+  // The tint is the top layer's colour, above the lens, so the frost under it is not tinted by it.
+  expect(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(16, 16, 20, 0.35)');
   // The selection pill is a light glass lens (at least 12% white), and its label keeps its contrast with the halo.
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(0.12);
-  const backdrop=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-  expect(backdrop).toContain('blur(5px) saturate(1.9) brightness(1.03)');
+  // The frost is the lens's backdrop: a light blur, then the saturation and brightness. It has no contrast().
+  const backdrop=await bar.evaluate(el=>getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter);
+  expect(backdrop).toContain('blur(1.5px)');
+  expect(backdrop).toContain('saturate(1.9) brightness(1.03)');
   expect(backdrop).not.toContain('contrast(');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   const shadow=await movies.evaluate(el=>getComputedStyle(el).textShadow);
@@ -398,21 +423,23 @@ test('the island backdrop has no contrast(), and blurs by at most 6 px, in both 
   await page.goto('/');
   await expect(page.locator('.app-tabbar')).toBeVisible();
   const written=await page.evaluate(()=>{
-    const body=getComputedStyle(document.documentElement).getPropertyValue('--glass-body').trim();
+    const root=getComputedStyle(document.documentElement);
+    // The shared tokens are resolved from :root, so the check reads the values the lens uses.
+    const resolve=(value:string)=>value.replace(/var\((--[\w-]+)\)/g,(_,name:string)=>root.getPropertyValue(name).trim());
     const found:Record<string,string>={};
     for(const sheet of Array.from(document.styleSheets)){
       let rules:CSSRule[]=[];
       try{rules=Array.from(sheet.cssRules);}catch{}
       for(const rule of rules){
         if(!(rule instanceof CSSStyleRule))continue;
-        if(rule.selectorText!=='.ui-tabbar'&&rule.selectorText!=='.ui-tabbar.is-refracting')continue;
+        if(rule.selectorText!=='.ui-glass-lens'&&rule.selectorText!=='.ui-tabbar.is-refracting .ui-glass-lens')continue;
         const value=rule.style.getPropertyValue('backdrop-filter')||rule.style.getPropertyValue('-webkit-backdrop-filter');
-        if(value)found[rule.selectorText]=value.replace(/var\(--glass-body\)/g,body);
+        if(value)found[rule.selectorText]=resolve(value);
       }
     }
     return found;
   });
-  for(const selector of ['.ui-tabbar','.ui-tabbar.is-refracting']){
+  for(const selector of ['.ui-glass-lens','.ui-tabbar.is-refracting .ui-glass-lens']){
     const value=written[selector]??'';
     expect(value,`${selector} sets a backdrop-filter`).toContain('blur(');
     expect(value,`${selector} has no contrast()`).not.toContain('contrast(');
@@ -658,7 +685,7 @@ test('leaving Movies disposes the island: its filter goes, and a press on the ol
   await page.evaluate(()=>{
     const w=window as Window&{__island?:HTMLElement;__filterSvg?:Element|null};
     const island=document.querySelector<HTMLElement>('nav.movies-mobile-nav')!;
-    const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(island).backdropFilter)?.[1]??'';
+    const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(island.querySelector('.ui-glass-lens')!).backdropFilter)?.[1]??'';
     w.__island=island;
     w.__filterSvg=document.getElementById(id)?.closest('svg')??null;
   });
@@ -689,7 +716,8 @@ test('the rim of the island and of its pill is brighter at the top left than at 
     topLeft:Number(/rgba\(255, 255, 255, ([\d.]+)\) 1\.5px 1\.5px 1px -1px inset/.exec(shadow)?.[1]??0),
     bottomRight:Number(/rgba\(255, 255, 255, ([\d.]+)\) -1px -1px 1px -1px inset/.exec(shadow)?.[1]??0)
   });
-  for(const shadow of [await bar.evaluate(el=>getComputedStyle(el).boxShadow),await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)]){
+  // The bar's inner rim is on its top layer, above the lens, and the pill has its own rim.
+  for(const shadow of [await bar.evaluate(el=>getComputedStyle(el,'::before').boxShadow),await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)]){
     const {topLeft,bottomRight}=rim(shadow);
     expect(topLeft).toBeGreaterThan(0);
     expect(topLeft).toBeGreaterThan(bottomRight);

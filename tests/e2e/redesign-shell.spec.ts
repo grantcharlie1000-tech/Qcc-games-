@@ -181,7 +181,7 @@ test('the tab bar is a floating glass island at every width',async({page})=>{
  expect(box!.x+box!.width).toBeLessThanOrEqual(380);
  expect(box!.y+box!.height).toBeLessThanOrEqual(834);
  expect(parseFloat(await bar.evaluate(element=>getComputedStyle(element).borderRadius))).toBeGreaterThanOrEqual(24);
- expect(await bar.evaluate(element=>getComputedStyle(element).backdropFilter)).toContain('blur');
+ expect(await bar.locator('.ui-glass-lens').evaluate(element=>getComputedStyle(element).backdropFilter)).toContain('blur');
 });
 
 test('scrolling down hides the tab bar and scrolling up brings it back',async({page})=>{
