@@ -325,6 +325,9 @@ test('the sheet enters from just inside its place by scale, translate and opacit
     });
   });
   await expect(page.locator('#menu')).toBeHidden();
+  // A closing dialog stays on screen for its exit only where the overlay property can keep it in the top layer. Elsewhere (WebKit)
+  // it leaves at once, with no exit transitions to compare.
+  if(!await page.evaluate(()=>CSS.supports('overlay','auto'))){expect(exit).toEqual([]);return;}
   // Leaving has to animate first. With no exit transitions the timing check below compares nothing, because Math.max() of an empty list is -Infinity.
   expect(exit.map(transition=>transition.property)).toEqual(expect.arrayContaining(['scale','opacity']));
   // Leaving is quicker than arriving.
