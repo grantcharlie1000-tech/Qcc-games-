@@ -1320,6 +1320,9 @@ const frameMounts=(page:Page)=>page.evaluate(()=>{const state=window as Window&{
 const savedProgress=(page:Page,progress:Record<string,number>,meta:Record<string,{duration:number;updated:number}>)=>page.addInitScript(({progress,meta})=>{if(window!==window.top)return;localStorage.setItem('qcc:movies:v1',JSON.stringify({list:[],titles:{},progress,meta}));},{progress,meta});
 // Lets a settled answer finish its render before the page is checked.
 const settle=(page:Page)=>page.evaluate(()=>new Promise<void>(resolve=>setTimeout(resolve,300)));
+// The episode drawer enters over 320 ms. Playwright can judge the drawer stable at its first pose, before the entry has moved it, and then click
+// where a control was. A test that presses a control in the drawer waits for the drawer's own animations to finish first.
+const drawerSettled=(drawer:Locator)=>expect.poll(()=>drawer.evaluate(el=>el.getAnimations({subtree:true}).filter(animation=>!(animation.effect as KeyframeEffect|null)?.pseudoElement).length)).toBe(0);
 
 // Ruling 1: a play route into a season that is still loading shows the loading text, and the player mounts once when the season arrives.
 // The Continue link and a cold link to the same route both wait for the season.
@@ -1631,6 +1634,7 @@ test('the close button shuts the episode drawer and returns focus to the episode
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawerSettled(drawer);
  await expect(drawer).toBeVisible();
  await drawer.getByRole('button',{name:'Close episode list',exact:true}).click();
  await expect(drawer).toBeHidden();
@@ -1642,6 +1646,7 @@ test('an episode picked in the drawer plays and closes the drawer',async({page})
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawerSettled(drawer);
  await drawer.getByRole('link',{name:/The Blind Banker/}).click();
  await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
  await expect(page.locator('.movies-player>h2')).toHaveText('S1 · E2 — The Blind Banker');
@@ -1733,6 +1738,7 @@ test('the drawer loads an unloaded season in place and keeps the stream running'
  await frame.evaluate(element=>element.setAttribute('data-instance','original'));
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawerSettled(drawer);
  await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
  await expect(drawer.getByRole('link',{name:/Second Season Opener/})).toBeVisible();
  await expect(drawer.getByRole('button',{name:'Season 2',exact:true})).toHaveAttribute('aria-pressed','true');
@@ -1762,19 +1768,32 @@ for(const reduced of [false,true] as const)test(`the Up next card sits in the sc
  expect(card!.width).toBeLessThan(screen!.width*0.6);
 });
 
-test('reduced motion stops card, rail and drawer animations',async({page})=>{
- await page.emulateMedia({reducedMotion:'reduce'});
+// Reduced motion leaves one animation, the sheet's ::backdrop colour fade. Every other animation, pseudo-elements included, must be gone, and the
+// backdrop may change opacity or background colour only, never a transform, translate or scale.
+for(const setting of ['media query','class'] as const)test(`reduced motion (${setting}) stops card, rail and drawer animations`,async({page})=>{
+ if(setting==='media query')await page.emulateMedia({reducedMotion:'reduce'});
  await page.setViewportSize({width:1440,height:900});
+ const motion=async()=>{
+  const animations=await page.evaluate(()=>document.getAnimations().map(animation=>{
+   const effect=animation.effect as KeyframeEffect|null;
+   const properties=[...new Set((effect?.getKeyframes()??[]).flatMap(frame=>Object.keys(frame)))].filter(key=>!['offset','easing','composite','computedOffset'].includes(key));
+   return {pseudo:effect?.pseudoElement??'',properties};
+  }));
+  expect(animations.filter(animation=>animation.pseudo!=='::backdrop'),'animations other than the backdrop fade').toEqual([]);
+  for(const animation of animations)expect(animation.properties.every(key=>key==='opacity'||key==='backgroundColor'),`${animation.pseudo||'element'} animates ${animation.properties.join(', ')}`).toBe(true);
+ };
  await page.goto('/#/movies');
+ // The app's own setting puts .reduce-motion on <html> (src/main.ts), so the class case sets that class.
+ if(setting==='class')await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));
  const rail=page.locator('[data-rail="movies-you-ll-love"]');
  await rail.hover();
  await rail.locator('.ui-card').first().hover();
  await expect(rail.locator('.ui-card-img').first()).toHaveCSS('transition-duration','0s');
- expect(await page.evaluate(()=>document.getAnimations().length)).toBe(0);
+ await motion();
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Select episode',exact:true})).toBeVisible();
- expect(await page.evaluate(()=>document.getAnimations().length)).toBe(0);
+ await motion();
 });
 
 test('My list on the watch page keeps the stream running',async({page})=>{
@@ -1876,6 +1895,7 @@ test('the drawer row of the episode already playing closes the drawer',async({pa
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawerSettled(drawer);
  await expect(drawer).toBeVisible();
  await drawer.locator('[aria-current="true"]').click();
  await expect(drawer).toBeHidden();
@@ -1904,6 +1924,7 @@ test('a failed drawer season load shows its error and a retry, and the stream ke
  await frame.evaluate(element=>element.setAttribute('data-instance','original'));
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawerSettled(drawer);
  await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
  await expect(drawer.getByRole('status')).toContainText('temporarily unavailable');
  const retry=drawer.getByRole('button',{name:'Retry episodes',exact:true});
@@ -1919,6 +1940,7 @@ test('Retry episodes loads the season that failed, in the open drawer',async({pa
  await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawerSettled(drawer);
  await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
  await expect(drawer.getByRole('button',{name:'Retry episodes',exact:true})).toBeVisible();
  state.failing=false;
@@ -1948,6 +1970,7 @@ test('Previous reads unavailable until the season before loads, then links to it
  await expect(page.getByRole('button',{name:'Previous episode unavailable',exact:true})).toBeDisabled();
  await page.getByRole('button',{name:'S2 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawerSettled(drawer);
  await drawer.getByRole('button',{name:'Season 1',exact:true}).click();
  await expect(drawer.getByRole('link',{name:/Second Episode/})).toBeVisible();
  await drawer.getByRole('button',{name:'Close episode list',exact:true}).click();
@@ -1978,17 +2001,19 @@ test('a hidden page closes the episode drawer',async({page})=>{
  await expect(drawer).toBeHidden();
 });
 
-// Review 1, Important 4: below 640 px the drawer is a bottom sheet. It spans the width and its bottom edge sits on the bottom of the screen.
+// Review 1, Important 4: below 640 px the drawer is a bottom sheet. It is the glass sheet, inset 8 px from the sides and the bottom, as the menu is.
 test('the episode drawer is a bottom sheet below 640px',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
  await expect(drawer).toBeVisible();
+ // The sheet enters over 320 ms from a scale and a lift, so its box is read once its own animations have finished.
+ await drawerSettled(drawer);
  const box=await drawer.boundingBox();
- expect(box!.x).toBeCloseTo(0,0);
- expect(box!.width).toBeCloseTo(390,0);
- expect(box!.y+box!.height).toBeCloseTo(844,0);
+ expect(box!.x).toBeCloseTo(8,0);
+ expect(box!.width).toBeCloseTo(374,0);
+ expect(box!.y+box!.height).toBeCloseTo(836,0);
 });
 
 // Home's one rail lists the given titles. Each title's details answer only when release runs, so a test can look at the page while they load.

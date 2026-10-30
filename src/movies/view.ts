@@ -2,6 +2,7 @@ import './style.css';
 import {uiIcon} from '../ui/icons';
 import {bindRails,updateRails} from '../ui/rails';
 import {markImages,watchImages} from '../ui/images';
+import {openSheet} from '../ui/sheet';
 import {autoHideTabbar} from '../ui/tabbar';
 import mauriMark from '../assets/mauri-mark.svg?raw';
 import {frameSource,FRAME_SANDBOX,FRAME_ALLOW,STREAM_PROVIDERS,START_THRESHOLD,streamProvider,providerSignal} from './provider';
@@ -789,7 +790,7 @@ export class MoviesView {
   return `<button class="ui-btn primary" disabled aria-label="Final episode" data-episode-nav="next">Next${uiIcon('chevron-right')}</button>`;
  }
  // The episode drawer: a modal dialog, opened with showModal(). Its seasons are pills and its episodes are links to their play routes.
- private drawer(t:Title){return `<dialog class="movies-drawer ui-drawer" aria-label="Select episode">${this.drawerContent(t)}</dialog>`;}
+ private drawer(t:Title){return `<dialog class="movies-drawer ui-glass-sheet" aria-label="Select episode">${this.drawerContent(t)}</dialog>`;}
  private drawerContent(t:Title){
   const shown=this.drawerSeasonOf(t);
   const pills=t.seasons.map(s=>`<button class="ui-pill" data-drawer-season="${s.number}" aria-pressed="${s.number===shown?.number}">${escape(s.name)}</button>`).join('');
@@ -798,7 +799,7 @@ export class MoviesView {
   else if(shown&&this.drawerError?.season===shown.number)rows=`<p class="movies-episodes-status" role="status">${escape(this.drawerError.message)}</p><button class="ui-btn secondary movies-drawer-retry" data-drawer-season="${shown.number}">Retry episodes</button>`;
   else if(shown?.episodes.length)rows=shown.episodes.map(e=>this.drawerRow(t,shown,e)).join('');
   else rows='<p class="movies-episodes-status">Episode metadata has not been included in this snapshot.</p>';
-  return `<span class="ui-drawer-handle" aria-hidden="true"></span><div class="movies-drawer-head"><h2>Episodes</h2><button class="ui-btn secondary small" data-action="close-drawer" aria-label="Close episode list">${uiIcon('close')}</button></div><div class="movies-drawer-seasons" role="group" aria-label="Seasons">${pills}</div><div class="movies-drawer-list">${rows}</div>`;
+  return `<span class="ui-drawer-handle" aria-hidden="true"></span><div class="movies-drawer-head"><h2>Episodes</h2><button class="icon-button" data-action="close-drawer" aria-label="Close episode list">${uiIcon('close')}</button></div><div class="movies-drawer-seasons" role="group" aria-label="Seasons">${pills}</div><div class="movies-drawer-list">${rows}</div>`;
  }
  // The season the drawer shows: the one a pill chose, else the season that is playing.
  private drawerSeasonOf(t:Title){return t.seasons.find(s=>s.number===this.drawerSeason)??t.seasons.find(s=>s.number===this.route.season);}
@@ -820,13 +821,13 @@ export class MoviesView {
    (hit??dialog.querySelector<HTMLElement>('[aria-current="true"]')??dialog.querySelector<HTMLElement>('[data-action="close-drawer"]'))?.focus({preventScroll:true});
   }
  }
- private openDrawer(){
+ private openDrawer(trigger?:Element){
   const dialog=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');if(!dialog||dialog.open)return;
   // The drawer takes the reader's attention, so an Up next countdown stops while it is open.
   this.cancelNext();
   // Each opening lists the season that is playing.
   this.drawerSeason=undefined;this.drawerError=undefined;this.refreshDrawer();
-  dialog.showModal();
+  openSheet(dialog,trigger);
   (dialog.querySelector<HTMLElement>('[aria-current="true"]')??dialog.querySelector<HTMLElement>('[data-action="close-drawer"]'))?.focus();
  }
  private closeDrawer(){const dialog=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');if(dialog?.open)dialog.close();}
@@ -991,7 +992,7 @@ export class MoviesView {
   if(target.dataset.drawerSeason)this.pickDrawerSeason(Number(target.dataset.drawerSeason));
   if(target.dataset.titleSeason&&this.route.id)void this.loadDrawerSeason(this.route.id,Number(target.dataset.titleSeason));
   const server=STREAM_PROVIDERS.find(provider=>provider.id===target.dataset.server);if(server)this.switchProvider(server.id);
-  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season);break;case 'next-server':this.switchProvider(nextServer(this.providerId));break;case 'retry-servers':this.retryServers();break;case 'episodes':this.openDrawer();break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.stopVideo();this.suspended=false;this.render();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
+  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season);break;case 'next-server':this.switchProvider(nextServer(this.providerId));break;case 'retry-servers':this.retryServers();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.stopVideo();this.suspended=false;this.render();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  // A section is a route. The current section re-renders in place; any other one changes the address, and navigate() shows it.
  private showSection(kind:MovieKind){
@@ -1011,7 +1012,7 @@ export class MoviesView {
    // The redraw rebuilds the episode controls, so an open drawer is shown again on the new ones.
    const open=!!this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer')?.open;
    this.releaseMedia();
-   this.keepingFocus(()=>{this.redrawPlayer();if(open)this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer')?.showModal();});
+   this.keepingFocus(()=>{this.redrawPlayer();const drawer=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');if(open&&drawer)openSheet(drawer);});
   }
  }
  private retryServers(){

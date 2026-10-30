@@ -53,7 +53,7 @@ body.movies-active.study-active{overflow:auto}
 }
 
 .movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:focus-visible{outline:2px solid #8ce8f8;outline-offset:2px}
-.movies-next button:focus-visible,.movies-fullscreen:focus-visible,.movies-auto-next input:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
+.movies-fullscreen:focus-visible,.movies-auto-next input:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
 .movies-screen>.movies-detail-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;max-height:calc(100% - 24px);overflow:auto}.movies-view .movies-screen>.movies-detail-error{margin:0}
 .movies-catalog-status button:focus-visible,.movies-empty [data-action="retry-title"]:focus-visible,.movies-player [data-action="reload-stream"]:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
 
@@ -118,7 +118,9 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-search input{flex:1 1 auto;width:100%;min-width:0;min-height:0;margin:0;padding:10px 0;border:0;border-radius:0;background:transparent;color:var(--c-100);font:inherit;font-size:14px;box-shadow:none}
 .movies-view .movies-search input::placeholder{color:var(--c-400);opacity:1}
 .movies-view .movies-genre{display:flex;align-items:center;gap:8px;color:var(--c-400);font-size:12px}
-.movies-view .movies-filterbar select{min-width:160px;min-height:40px;padding:8px 12px;border:1px solid var(--line-strong);border-radius:var(--r-xl);background:#18181b99;color:var(--c-100)}
+/* The genre control is a glass capsule: a translucent fill, a light border, a chevron and a white focus ring from theme.css. It stays a native select, so its open list is the browser's. */
+.movies-view .movies-filterbar select{appearance:none;min-width:160px;min-height:44px;padding:8px 40px 8px 16px;border:1px solid rgb(255 255 255 / .22);border-radius:999px;background:rgb(255 255 255 / .1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center/16px 16px;color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255 / .18)}
+.movies-view .movies-filterbar select option{background:#18181b;color:#fff}
 .movies-view .ui-card-meta{color:var(--c-400)}
 .movies-view .ui-card-placeholder{color:var(--c-400)}
 .movies-view .movies-continue .ui-card-poster{aspect-ratio:16/9}
@@ -252,16 +254,20 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-connecting p{font-size:14px;color:var(--c-200)}
 .movies-view .movies-spinner{width:28px;height:28px;border:3px solid var(--c-700);border-top-color:#fff;border-radius:50%;animation:movies-spin 900ms linear infinite}
 @keyframes movies-spin{to{transform:rotate(360deg)}}
-/* Up next: a card in the screen's bottom-right corner, and a full-width overlay below 640 px. Its bar drains a tenth each second. */
-.movies-view .movies-next{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:clamp(16px,4vw,32px);overflow:auto;background:#09090bf2;color:var(--c-100)}
+/* Up next: a card in the screen's bottom-right corner, and a full-width overlay below 640 px. Its glass is the sheet's surface (theme.css). Its tint is
+   denser than the sheet's, so white text keeps 4.5:1 over a bright frame. Its bar drains a tenth each second. */
+.movies-view .movies-next{--glass-sheet-fill:rgb(28 28 32 / .74);position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:clamp(16px,4vw,32px);overflow:auto;color:var(--c-100)}
 .movies-view .movies-next[hidden]{display:none}
 /* From 640 px the card sits above the tab island (z-index 50), so the island cannot cover its buttons while the countdown runs. */
-@media (min-width:640px){.movies-view .movies-next{inset:auto 12px 12px auto;z-index:60;width:min(380px,calc(100% - 24px));justify-content:flex-start;padding:16px 18px;border:1px solid var(--line-strong);border-radius:16px;background:#09090bf5;box-shadow:var(--sh-2xl)}}
+@media (min-width:640px){.movies-view .movies-next{inset:auto 12px 12px auto;z-index:60;width:min(380px,calc(100% - 24px));justify-content:flex-start;padding:16px 18px;border-radius:24px}}
 .movies-view .movies-next h2{margin:0;font-size:clamp(16px,2.5vw,20px);line-height:1.3;font-weight:700;overflow-wrap:anywhere}
 .movies-view .movies-next-countdown{margin:0;font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--c-300);font-variant-numeric:tabular-nums}
 .movies-view .movies-next-actions{display:flex;flex-wrap:wrap;gap:10px}
-.movies-view .movies-next .ui-btn{min-width:96px;min-height:44px;height:auto;padding:10px 16px;font-size:14px}
-.movies-view .movies-next-bar{height:3px;overflow:hidden;border-radius:999px;background:var(--c-800)}
+.movies-view .movies-next .ui-btn{min-width:96px;min-height:44px;height:auto;padding:10px 16px;border-radius:999px;font-size:14px}
+/* Play now is the one tinted action, the white capsule. Cancel is a neutral glass capsule, as the sheets' secondary buttons are. */
+.movies-view .movies-next .ui-btn.secondary{border-color:transparent;background:rgb(255 255 255 / .12);color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255 / .25)}
+@media (hover:hover) and (pointer:fine){.movies-view .movies-next .ui-btn.secondary:hover{background:rgb(255 255 255 / .2);color:#fff}}
+.movies-view .movies-next-bar{height:3px;overflow:hidden;border-radius:999px;background:rgb(255 255 255 / .2)}
 .movies-view .movies-next-bar>span{display:block;height:100%;background:#fff;transition:width 1s linear}
 @media (prefers-reduced-motion:reduce){.movies-view .movies-next-bar>span{transition:none}}
 .reduce-motion .movies-view .movies-next-bar>span{transition:none}
@@ -305,27 +311,51 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-auto-next:has(input:focus-visible) .ui-switch span{outline:0}
 .movies-view .ui-switch input{min-height:0;padding:0;border:0;border-radius:0;background:none}
 .movies-view #movies-player-status{margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--c-300);max-width:760px}
-/* The episode drawer (redesign section 7.6) on the shared ui-drawer: a bottom sheet below 640 px, and a centred panel 672 px wide from 640 px. */
-.movies-view .movies-drawer{width:100%;max-width:none;max-height:85vh;margin:auto 0 0;padding:0 16px calc(16px + env(safe-area-inset-bottom));overflow:auto;border-color:var(--c-800);font-family:var(--font-sans)}
-@media (min-width:640px){.movies-view .movies-drawer{width:min(672px,calc(100% - 48px));max-width:none;max-height:85vh;margin:auto;padding:24px;border-radius:16px}}
+/* The episode drawer (redesign section 7.6) is a Liquid Glass sheet (theme.css): a bottom sheet inset 8 px below 640 px, and a centred panel from 640 px.
+   The sheet sets the max height, the blur and every fallback. The .movies-drawer modifier only widens the panel to fit the episode list. */
+@media (min-width:640px){.movies-view .movies-drawer{width:min(600px,calc(100% - 32px))}}
 .movies-view .movies-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
-.movies-view .movies-drawer-head h2{margin:0;font-family:var(--font-sans);font-size:20px;line-height:1.2;font-weight:700;letter-spacing:-.025em;color:var(--c-100)}
-.movies-view .movies-drawer-head .ui-btn{width:44px;min-width:44px;min-height:44px;height:44px;padding:0;justify-content:center}
+/* The heading keeps the sheet's own size and weight. Movies' h2 rule has the same specificity and loads later, so this names the font; the sheet's rule still gives the colour and letter spacing. */
+.movies-view .movies-drawer-head h2{font:600 20px/1.25 var(--font-sans)}
 .movies-view .movies-drawer-seasons{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
-.movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:#18181b99;color:var(--c-300);font-size:13px;font-weight:500;line-height:1.2;cursor:pointer}
+/* The season pills are plain translucent fills on the sheet. A long season name wraps inside its pill, as the title page's pills do. */
+.movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgb(255 255 255 / .1);color:var(--c-300);font-size:13px;font-weight:500;line-height:1.2;white-space:normal;max-width:100%;cursor:pointer}
 .movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700}
-@media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:var(--c-800);color:#fff}}
+@media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:rgb(255 255 255 / .18);color:#fff}}
 .movies-view .movies-drawer-list{display:grid;gap:4px}
 .movies-view .movies-drawer-row{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:12px;min-height:56px;padding:6px;border-radius:12px;color:var(--c-200)}
 @media (min-width:640px){.movies-view .movies-drawer-row{grid-template-columns:136px minmax(0,1fr)}}
 @media (hover:hover) and (pointer:fine){.movies-view .movies-drawer-row:not([aria-current="true"]):hover{background:#ffffff0d;color:#fff}}
-.movies-view .movies-drawer-row[aria-current="true"]{background:#ff205614;color:var(--c-rose)}
+/* The current row is marked without a rose title: a white 700 title on a 16% rose fill, with a 3 px rose bar on its leading edge. The bar is an
+   inset shadow, so the row's content does not move. The meta is --c-200, which holds 4.5:1 over the glass. The row's colour is set here too,
+   so the link hover colour (`.movies-view a:hover`) does not turn the current row white. */
+.movies-view .movies-drawer-row[aria-current="true"]{background:#ff205629;color:var(--c-200);box-shadow:inset 3px 0 0 var(--c-rose)}
+.movies-view .movies-drawer-row[aria-current="true"] strong{color:#fff;font-weight:700}
 .movies-view .movies-drawer-thumb{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;border-radius:8px;background:var(--c-900)}
 .movies-view .movies-drawer-still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .movies-view .movies-drawer-thumb>.ui-chip{position:absolute;top:6px;left:6px;z-index:1}
 .movies-view .movies-drawer-text{display:grid;gap:2px;min-width:0}
 .movies-view .movies-drawer-text strong{font-size:14px;font-weight:600;line-height:1.3;color:inherit;overflow-wrap:anywhere}
 .movies-view .movies-drawer-text small{font-family:var(--font-mono);font-size:11px;line-height:1.4;color:var(--c-300)}
-.movies-view .movies-drawer-row[aria-current="true"] small{color:var(--c-rose-soft)}
+.movies-view .movies-drawer-row[aria-current="true"] small{color:var(--c-200)}
 .movies-view .movies-drawer .movies-episodes-status{font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--c-300)}
 .movies-view .movies-drawer .movies-drawer-retry{min-height:44px}
+/* Forced colours: theme.css gives .ui-btn and .ui-pill a 2 px ButtonText border, but the Movies rules above win on specificity. These restate it at their
+   weight, so the Movies buttons, pills, episode rows and genre capsule keep a visible edge. The current episode row has a 4 px ButtonText leading edge, where the colour bar is, and its title is underlined, as the current tab is. */
+@media (forced-colors:active){
+ .movies-view .ui-btn,.movies-view .movies-filterbar select{border:2px solid ButtonText}
+ /* Play now and Cancel set their own border colours at this weight, so the forced rules match it and come later. */
+ .movies-view .ui-btn.primary,.movies-view .ui-btn.secondary{border-color:ButtonText}
+ .movies-view .movies-next .ui-btn.secondary{border-color:ButtonText}
+ .movies-view .movies-season-pills .ui-pill,.movies-view .movies-drawer .ui-pill{border:2px solid ButtonText;color:ButtonText}
+ .movies-view .movies-drawer-row{border:2px solid ButtonText}
+ .movies-view .movies-drawer-row[aria-current="true"]{border-inline-start:4px solid ButtonText}
+ .movies-view .movies-drawer-row[aria-current="true"] strong{text-decoration:underline}
+ /* The pressed season is marked by its border and an underline, since forced colours drop its fill. */
+ .movies-view .movies-season-pills .ui-pill[aria-pressed="true"],.movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:ButtonText;text-decoration:underline}
+ /* The genre select takes the browser's own arrow, since forced colours drop the painted chevron. */
+ .movies-view .movies-filterbar select{appearance:auto;background-image:none}
+ /* The countdown track is a 1 px CanvasText outline with a CanvasText fill. The track is 5 px, so the 3 px fill sits inside the outline. */
+ .movies-view .movies-next-bar{height:5px;border:1px solid CanvasText}
+ .movies-view .movies-next-bar>span{background:CanvasText}
+}
