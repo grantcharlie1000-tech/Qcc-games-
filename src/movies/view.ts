@@ -923,6 +923,9 @@ export class MoviesView {
   if(this.fullscreenElement()){await this.exitFullscreen();return;}
   const screen=this.root.querySelector<FullscreenElement>('.movies-screen');if(!screen)return;
   try{if(screen.requestFullscreen)await screen.requestFullscreen();else screen.webkitRequestFullscreen?.();}catch{/* The browser can deny fullscreen. */}
+  // The change event for entering can arrive late, even after an exit, so a granted request records the state itself.
+  // An exit is then still recognised, and cancels the Up next countdown.
+  if(this.fullscreenElement())this.wasFullscreen=true;
   if(!screen.isConnected||this.suspended||document.hidden)await this.exitFullscreen();
  }
  private fullscreenChange=()=>{

@@ -75,6 +75,17 @@ test('browser fullscreen exit cancels countdown without opening Study',async({pa
  await page.evaluate(()=>document.exitFullscreen());await expect(overlay(page)).toBeHidden();await page.clock.runFor(11000);await expect(page).toHaveURL(/episode\/1\/play$/);await expect(page.locator('#study-view')).toBeHidden();
 });
 
+// Under load a browser can deliver the "entered fullscreen" event late, after the exit. The exit must still cancel the countdown.
+test('a late fullscreen-enter event still lets a fullscreen exit cancel the countdown',async({page})=>{
+ await page.addInitScript(()=>{
+  let swallowed=0;
+  for(const type of ['fullscreenchange','webkitfullscreenchange'])window.addEventListener(type,event=>{if(swallowed<1&&document.fullscreenElement){event.stopImmediatePropagation();if(type==='fullscreenchange')swallowed++;}},{capture:true});
+ });
+ await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!(e.requestFullscreen||(e as HTMLElement&{webkitRequestFullscreen?:unknown}).webkitRequestFullscreen)),'Browser reports the Fullscreen API unsupported');
+ await page.getByRole('button',{name:'Full screen',exact:true}).click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);await ended(page);
+ await page.evaluate(()=>document.exitFullscreen());await expect(overlay(page)).toBeHidden();await page.clock.runFor(11000);await expect(page).toHaveURL(/episode\/1\/play$/);
+});
+
 test('provider fullscreen exits intentionally so the overlay becomes visible',async({page})=>{
  await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!e.requestFullscreen),'Browser reports the Fullscreen API unsupported');
  await page.frame({url:/framextv/})!.evaluate(()=>{document.querySelector('button')!.onclick=()=>{void document.documentElement.requestFullscreen();};});
