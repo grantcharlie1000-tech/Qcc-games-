@@ -103,6 +103,24 @@ test('a manual pick that fails does not switch by itself',async({page})=>{
  await lands(page,'vixsrc');
 });
 
+test('a server picked on one title is manual on that title only',async({page})=>{
+ await frozenClock(page);
+ await page.goto('/#/movies/movie-157336/play');
+ await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
+ await lands(page,'vidlink');
+ await loadedFrame(page,/vidlink/);
+ // On the next title VidLink never answers. FrameXTV loads without a ready message, so the failover note stays on screen.
+ await page.route('https://vidlink.pro/**',()=>{});
+ await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
+ await page.evaluate(()=>{location.hash='#/movies/movie-438631/play';});
+ await expect(providerFrame(page)).toHaveAttribute('src',/\/movie\/438631\?/);
+ await page.clock.runFor(14000);
+ await lands(page,'vidlink');
+ await page.clock.runFor(1000);
+ await lands(page,'framextv');
+ await expect(page.locator('.movies-failover')).toHaveText("Server 2 didn't start. Trying Server 1…");
+});
+
 test('when every server fails, Try again restarts at Server 1',async({page})=>{
  let blocked=true;
  for(const origin of ['https://framextv.cc','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])
@@ -163,6 +181,23 @@ test('leaving the title while connecting leaves no switch behind',async({page})=
  expect(asked).toEqual([]);
 });
 
+test('switching episode while the first episode connects leaves no switch behind',async({page})=>{
+ await frozenClock(page);
+ // The first episode's FrameXTV never answers. Its watchdog must not follow the viewer to the next episode.
+ await page.route(/framextv\.cc\/embed\/19885\/1\/1\?/,()=>{});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await lands(page,'framextv');
+ await expect(page.locator('.movies-connecting')).toBeVisible();
+ await page.clock.runFor(5000);
+ await page.getByRole('link',{name:'Next episode',exact:true}).click();
+ await expect(providerFrame(page)).toHaveAttribute('src',/\/19885\/1\/2\?/);
+ await loadedFrame(page,/framextv/);
+ await page.clock.runFor(20000);
+ await expect(page.locator('.movies-failover')).toBeEmpty();
+ await lands(page,'framextv');
+ await expect(providerFrame(page)).toHaveAttribute('src',/\/19885\/1\/2\?/);
+});
+
 test('ready messages posted by the page itself do not count',async({page})=>{
  await frozenClock(page);
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
@@ -182,6 +217,18 @@ test('a missing episode shows Episode unavailable and no iframe',async({page})=>
  await expect(page.getByText("This episode isn't in this season's list.",{exact:true})).toBeVisible();
  await expect(page.getByRole('link',{name:'Choose another episode',exact:true})).toHaveAttribute('href','#/movies/tv-19885');
  await expect(page.locator('iframe')).toHaveCount(0);
+});
+
+test('a TV play route that names no episode shows Episode unavailable and asks no provider',async({page})=>{
+ const asked:string[]=[];page.on('request',request=>{if(/framextv|vidlink|vixsrc|vidsrc/.test(new URL(request.url()).hostname))asked.push(request.url());});
+ await page.goto('/#/movies/tv-19885/play');
+ await expect(page.getByRole('heading',{name:'Episode unavailable',exact:true})).toBeVisible();
+ await expect(page.getByText("This link doesn't name an episode.",{exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Choose an episode',exact:true})).toHaveAttribute('href','#/movies/tv-19885');
+ await expect(page.locator('iframe')).toHaveCount(0);
+ await expect(serversRow(page)).toHaveCount(0);
+ await settle(page);
+ expect(asked).toEqual([]);
 });
 
 test('an episode missing from a loaded season is unavailable, and its link goes to that season',async({page})=>{
@@ -231,19 +278,20 @@ test('a server that cannot resume never shows the Resumed pill',async({page})=>{
  await expect(page.locator('.movies-resume-pill')).toBeHidden();
 });
 
-test('the connecting overlay offers the next server after eight seconds, and its button switches',async({page})=>{
+test('a playback server that loads and never reports offers the next server 12 seconds after its frame loads',async({page})=>{
  await frozenClock(page);
- await page.route('https://framextv.cc/**',()=>{});
  await page.goto('/#/movies/movie-157336/play');
- await lands(page,'framextv');
- const overlay=page.locator('.movies-connecting');
- await expect(overlay).toBeVisible();
- await page.clock.runFor(7000);
- await expect(overlay.getByText('Taking a while? Try another server.',{exact:true})).toHaveCount(0);
- await page.clock.runFor(1000);
- await expect(overlay.getByText('Taking a while? Try another server.',{exact:true})).toBeVisible();
- await overlay.getByRole('button',{name:'Try Server 2',exact:true}).click();
+ await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
  await lands(page,'vidlink');
+ await loadedFrame(page,/vidlink/);
+ await expect(page.locator('.movies-connecting')).toBeHidden();
+ const prompt=page.getByText('Taking a while? Try another server.',{exact:true});
+ await page.clock.runFor(11000);
+ await expect(prompt).toHaveCount(0);
+ await page.clock.runFor(1000);
+ await expect(prompt).toBeVisible();
+ await expect(page.locator('.movies-connecting .movies-slow')).toHaveCount(0);
+ await expect(page.locator('.movies-slow-row+.movies-servers')).toHaveCount(1);
 });
 
 test('a server that only reports playback offers the next server, and its button switches',async({page})=>{
@@ -253,10 +301,41 @@ test('a server that only reports playback offers the next server, and its button
  await lands(page,'vidlink');
  await loadedFrame(page,/vidlink/);
  await page.clock.runFor(12000);
- const overlay=page.locator('.movies-connecting');
- await expect(overlay.getByText('Taking a while? Try another server.',{exact:true})).toBeVisible();
- await overlay.getByRole('button',{name:'Try Server 3',exact:true}).click();
+ const row=page.locator('.movies-slow-row');
+ await expect(row.getByText('Taking a while? Try another server.',{exact:true})).toBeVisible();
+ await row.getByRole('button',{name:'Try Server 3',exact:true}).click();
  await lands(page,'vixsrc');
+});
+
+test('a list change on the playing title keeps the slow prompt of its stream',async({page})=>{
+ await frozenClock(page);
+ await page.goto('/#/movies/movie-157336/play');
+ await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
+ await lands(page,'vidlink');
+ await loadedFrame(page,/vidlink/);
+ await page.clock.runFor(12000);
+ const prompt=page.getByText('Taking a while? Try another server.',{exact:true});
+ await expect(prompt).toBeVisible();
+ await page.getByRole('button',{name:'Add to my list',exact:true}).click();
+ await expect(page.getByRole('button',{name:'In my list',exact:true})).toBeVisible();
+ await lands(page,'vidlink');
+ await expect(prompt).toHaveCount(1);
+});
+
+test('a server that cannot report is uncovered once its frame loads, and gets no slow prompt',async({page})=>{
+ await frozenClock(page);
+ await page.goto('/#/movies/movie-157336/play');
+ await serversRow(page).getByRole('button',{name:/^Server 4\b/}).click();
+ await lands(page,'vidsrc');
+ await loadedFrame(page,/vidsrc/);
+ await expect(page.locator('.movies-connecting')).toBeHidden();
+ await page.locator('.movies-screen').scrollIntoViewIfNeeded();
+ const hit=await page.evaluate(()=>{const box=document.querySelector('.movies-screen')!.getBoundingClientRect();const el=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);return el instanceof HTMLIFrameElement?el.dataset.provider:'';});
+ expect(hit).toBe('vidsrc');
+ await expect(serversRow(page).getByRole('button',{name:/^Server 4\b/})).toHaveAttribute('data-state','idle');
+ await page.clock.runFor(20000);
+ await expect(page.getByText('Taking a while? Try another server.',{exact:true})).toHaveCount(0);
+ await lands(page,'vidsrc');
 });
 
 test('a licensed episode in a season that is still loading plays from its file through a fullscreen rollover',async({page})=>{
@@ -303,6 +382,15 @@ test('a licensed episode whose season failed to load plays from its file, and no
  await expect(providerFrame(page)).toHaveCount(0);
  await settle(page);
  expect(thirdParty(page,requests.slice(mark))).toEqual([]);
+});
+
+test('an episode that ends on FrameXTV opens Up next for the next episode',async({page})=>{
+ await frozenClock(page);
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ const frame=await loadedFrame(page,/framextv/);
+ await frame.evaluate(()=>parent.postMessage({event:'frameXTV:ended'},'*'));
+ await expect(page.locator('.movies-next')).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Up next'})).toContainText('Up next: S1 · E2 — The Blind Banker');
 });
 
 test('a licensed episode reached cold plays from its file once its season answers, and no provider is asked while it waits',async({page})=>{

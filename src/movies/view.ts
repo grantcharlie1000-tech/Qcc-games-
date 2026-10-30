@@ -45,8 +45,6 @@ const slug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(
 // The server a button names, and the server after it. Server n is the n-th provider in STREAM_PROVIDERS.
 const serverNumber=(id?:StreamProviderId)=>STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1;
 const nextServer=(id?:StreamProviderId):StreamProviderId=>STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1)%STREAM_PROVIDERS.length].id;
-// Section 7.6: the connecting overlay offers another server after eight seconds without a sign of life.
-const SLOW_HINT_MS=8000;
 // The play route of one episode.
 const playHash=(id:string,season:number,episode:number)=>`${titleHash(id)}/season/${season}/episode/${episode}/play`;
 // The status lines a browse page can show. Focus falls back to the first one that exists.
@@ -144,6 +142,8 @@ export class MoviesView {
  private frame?:HTMLIFrameElement;
  // The server the user picked this session. It wins over the remembered order and over failures, until Try again.
  private pickedServer?:StreamProviderId;
+ // The media key the pick was made on. Only that title's attempts treat the pick as manual.
+ private pickedKey='';
  // The server on screen. Undefined when no server can start the title, or when the title plays from a licensed file.
  private providerId?:StreamProviderId;
  // Every automatic attempt for this title has failed, so the panel shows until Try again.
@@ -156,8 +156,6 @@ export class MoviesView {
  // The saved position a provider frame starts from, and whether its Resumed pill has shown for the current attempt.
  private frameStart=0;
  private lifeShown=false;
- // The eight-second hint that offers the next server while an attempt has no sign of life.
- private slowTimer?:ReturnType<typeof setTimeout>;
  private frameTime=0;
  // The duration the provider frame last reported for the media on screen. A native video reads its own.
  private frameDuration?:number;
@@ -712,7 +710,7 @@ export class MoviesView {
    :`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${escape(back)}">Return to title</a></div>`;
   const showServers=!source&&!missing&&(!!external||exhausted);
   const status=source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`
-   :server&&external?`External player provided by ${streamProvider(server).name}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`
+   :server&&external?`External player provided by ${escape(streamProvider(server).name)}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`
    :exhausted?'No server started this title.'
    :missing?''
    :'No provider identifier is available for this title.';
@@ -722,15 +720,18 @@ export class MoviesView {
  // The server a title starts on: the user's pick this session, else the first server of the remembered order that has not failed for this
  // title in the last five minutes. Once every automatic attempt has failed, no server starts until Try again.
  private chooseServer(key:string):StreamProviderId|undefined{
-  if(this.pickedServer)return this.pickedServer;
-  if(this.exhausted)return undefined;
   const failed=failedProviders(key);
+  // The pick starts the other titles too. Its failure on one of them hands that title to the remembered order.
+  if(this.pickedServer&&(key===this.pickedKey||!failed.has(this.pickedServer)))return this.pickedServer;
+  if(this.exhausted)return undefined;
   return providerOrder(this.storage.data.provider).find(id=>!failed.has(id));
  }
  // Section 8.3. A season is judged once its metadata has loaded: a built-in title's list is always known, and a fetched title's list is known
  // once its details have loaded. A season without episodes that has not loaded yet, or whose load failed, is not judged.
  private episodeMissing(t:Title,route:MovieRoute){
-  if(t.kind!=='tv'||route.season===undefined||route.episode===undefined)return false;
+  if(t.kind!=='tv')return false;
+  // A play route that names no episode has nothing to play, so it is unavailable before any metadata is judged (Task 5).
+  if(route.season===undefined||route.episode===undefined)return true;
   const builtIn=this.bundledIds.has(t.id);
   if(!builtIn&&!this.loadedDetails.has(t.id))return false;
   const season=t.seasons.find(s=>s.number===route.season);
@@ -739,7 +740,9 @@ export class MoviesView {
   return !season.episodes.some(e=>e.number===route.episode);
  }
  // Section 8.3: the panel links to the season the missing episode belongs to, or to the title when the season is not in its list.
+ // A play route that names no episode links to the title, where its episodes are chosen.
  private episodeUnavailable(t:Title,route:MovieRoute){
+  if(route.season===undefined||route.episode===undefined)return `<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Episode unavailable</h2><p>This link doesn't name an episode.</p><a class="ui-btn primary" href="${escape(titleHash(t.id))}">Choose an episode</a></div>`;
   const season=t.seasons.find(s=>s.number===route.season);
   const href=titleHash(t.id)+(season?`/season/${season.number}/episode/${season.episodes[0]?.number??1}`:'');
   return `<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Episode unavailable</h2><p>This episode isn't in this season's list.</p><a class="ui-btn primary" href="${escape(href)}">Choose another episode</a></div>`;
@@ -957,7 +960,7 @@ export class MoviesView {
   if(providerId===this.providerId)return;
   this.suspended=false;
   if(manual){
-   this.pickedServer=providerId;this.exhausted=false;this.failoverNote='';
+   this.pickedServer=providerId;this.pickedKey=this.progressKey;this.exhausted=false;this.failoverNote='';
    this.stopVideo();this.redrawPlayer();
    this.root.querySelector<HTMLElement>(`[data-server="${providerId}"]`)?.focus({preventScroll:true});
   }else{
@@ -989,7 +992,7 @@ export class MoviesView {
   return {
    status:(state,provider)=>this.attemptStatus(state,provider),
    switchTo:(next,failed)=>this.failOver(next,failed),
-   slow:()=>this.showSlow(),
+   slow:provider=>this.showSlow(provider),
    exhausted:()=>this.exhaust(),
    working:provider=>this.worked(provider),
   };
@@ -1001,15 +1004,16 @@ export class MoviesView {
   if(!supervisor||this.supervisorKey!==key){supervisor?.stop();supervisor=new PlaybackSupervisor(key,providerOrder(this.storage.data.provider),this.supervisorEvents());this.supervisor=supervisor;this.supervisorKey=key;}
   this.frameStart=this.storage.data.progress[key]??0;this.lifeShown=false;
   frame.addEventListener('load',()=>{if(this.frame===frame)this.supervisor?.loaded();});
-  supervisor.start(provider,this.pickedServer===provider);
+  supervisor.start(provider,this.pickedServer===provider&&this.pickedKey===key);
  }
- // The overlay shows while an attempt connects and goes on its first sign of life. The server buttons carry each attempt's state.
+ // The overlay covers the screen only while an attempt connects, so a loaded provider page takes its own clicks. The server buttons carry each attempt's state.
  private attemptStatus(state:AttemptState,provider:StreamProviderId){
   const overlay=this.root.querySelector<HTMLElement>('.movies-connecting');
-  if(state==='connecting')this.restartSlowHint();
-  if(state==='connecting'||state==='loaded'){this.setServerState(provider,'trying');if(overlay)overlay.hidden=false;return;}
+  if(overlay)overlay.hidden=state!=='connecting';
+  if(state==='connecting'){this.clearSlow();this.setServerState(provider,'trying');return;}
+  // A server that cannot report never shows that it plays, so it stays idle once its frame has loaded.
+  if(state==='loaded'){this.setServerState(provider,streamProvider(provider).signals==='none'?'idle':'trying');return;}
   this.clearSlow();
-  if(overlay){overlay.hidden=true;overlay.querySelectorAll('.movies-slow,[data-action="next-server"]').forEach(element=>element.remove());}
   if(state==='ready'||state==='playing'){this.setServerState(provider,'working');this.showLife(provider);return;}
   if(state==='failed'){
    this.setServerState(provider,'failed');
@@ -1026,19 +1030,14 @@ export class MoviesView {
   this.lifeShown=true;
   if(!this.suspended&&streamProvider(provider).resume!=='none'&&this.frameStart>=START_THRESHOLD)this.showResumePill(this.frameStart);
  }
- // Eight seconds without a sign of life offers the next server (section 7.6). The supervisor's slow event shows the same prompt.
- private restartSlowHint(){
-  this.clearSlow();
-  this.root.querySelector('.movies-connecting')?.querySelectorAll('.movies-slow,[data-action="next-server"]').forEach(element=>element.remove());
-  this.slowTimer=setTimeout(()=>{this.slowTimer=undefined;this.showSlow();},SLOW_HINT_MS);
+ // A server that cannot report would look slow for good, so it never gets the prompt. A stale event for another server is ignored.
+ private showSlow(provider:StreamProviderId){
+  if(provider!==this.providerId||streamProvider(provider).signals==='none'||this.root.querySelector('.movies-slow-row'))return;
+  // The prompt's button runs the next-server action, which switches by hand as the server buttons do.
+  this.root.querySelector('.movies-servers')?.insertAdjacentHTML('beforebegin',`<div class="movies-slow-row" role="status"><p class="movies-slow">Taking a while? Try another server.</p><button class="ui-btn secondary small" data-action="next-server">Try Server ${serverNumber(nextServer(provider))}</button></div>`);
  }
- private clearSlow(){clearTimeout(this.slowTimer);this.slowTimer=undefined;}
- // The prompt's button runs the next-server action, which switches by hand as the server buttons do.
- private showSlow(){
-  const overlay=this.root.querySelector<HTMLElement>('.movies-connecting');
-  if(!overlay||overlay.hidden||overlay.querySelector('[data-action="next-server"]'))return;
-  overlay.insertAdjacentHTML('beforeend',`<p class="movies-slow">Taking a while? Try another server.</p><button class="ui-btn secondary small" data-action="next-server">Try Server ${serverNumber(nextServer(this.providerId))}</button>`);
- }
+ // The prompt leaves with its attempt, and with the media that carried it.
+ private clearSlow(){this.root.querySelector('.movies-slow-row')?.remove();}
  private setServerState(provider:StreamProviderId,state:string){const button=this.root.querySelector<HTMLElement>(`[data-server="${provider}"]`);if(button)button.dataset.state=state;}
  private setFailoverText(){const line=this.root.querySelector<HTMLElement>('.movies-failover');if(line)line.textContent=this.failoverNote;}
  private searchFocus(){const search=this.root.querySelector<HTMLInputElement>('#movies-search');search?.focus({preventScroll:true});search?.scrollIntoView({block:'center'});}
@@ -1098,7 +1097,8 @@ export class MoviesView {
   const preserveVideo=!!this.video&&!!nextVideo&&this.video.getAttribute('src')===nextVideo.getAttribute('src')&&this.video.dataset.mediaKey===nextVideo.dataset.mediaKey;
   if(preserveFrame)this.frame!.title=nextFrame!.title;
   else if(!preserveVideo){this.releaseMedia();screen.querySelector('.movies-media')!.replaceChildren(...next.querySelector('.movies-media')!.childNodes);}
-  for(const child of [...player.children])if(child!==screen)child.remove();
+  // A slow prompt on a frame that stays belongs to the attempt that is still running, so it stays too.
+  for(const child of [...player.children])if(child!==screen&&!(preserveFrame&&child.classList.contains('movies-slow-row')))child.remove();
   let before=true;for(const child of [...next.children]){if(child.classList.contains('movies-screen'))before=false;else if(before)player.insertBefore(child,screen);else player.append(child);}
   if(!preserveFrame&&!preserveVideo)this.bindPlayer();this.renderDetailError();this.fullscreenChange();
  }
