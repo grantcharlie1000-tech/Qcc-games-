@@ -141,24 +141,30 @@ test('Enter on the Auto next switch does not play Up next',async({page})=>{
 });
 
 const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
+// How visible the island is. With a glass lens the bar keeps its own opacity at 1 while its lens, top layer and tabs fade; without one the
+// bar itself fades. So what shows is the bar's own opacity times the most opaque layer it paints.
+const islandShown=(page:Page)=>island(page).evaluate(bar=>{
+ const lens=bar.querySelector('.ui-glass-lens'),layers=[getComputedStyle(bar,'::before').opacity,...(lens?[getComputedStyle(lens).opacity]:[]),...[...bar.querySelectorAll('.ui-tab')].map(tab=>getComputedStyle(tab).opacity)];
+ return Number(getComputedStyle(bar).opacity)*Math.max(...layers.map(Number));
+});
 test('Up next hides the island at 1440px until Cancel brings it back',async({page})=>{
- await page.setViewportSize({width:1440,height:900});await open(page);await expect(island(page)).toHaveCSS('opacity','1');
- await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(island(page)).toHaveCSS('opacity','0');
+ await page.setViewportSize({width:1440,height:900});await open(page);await expect.poll(()=>islandShown(page)).toBe(1);
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
- await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).toHaveCSS('opacity','1');
+ await expect(island(page)).not.toHaveAttribute('data-hidden');await expect.poll(()=>islandShown(page)).toBe(1);
 });
 test('keyboard focus in the island keeps it visible while Up next shows',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(tab).toBeFocused();
- // A hide would fade over about 380 ms, so the opacity is read once no transition on the island is running.
- await expect.poll(()=>island(page).evaluate(e=>e.getAnimations().length)).toBe(0);await expect(island(page)).toHaveCSS('opacity','1');
+ // A hide would fade over about 380 ms, so the island is read once no transition on it or its layers is running.
+ await expect.poll(()=>island(page).evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);expect(await islandShown(page)).toBe(1);
 });
 test('pointer focus in the island does not keep it visible, so Up next moves focus to Play now',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  const tab=island(page).locator('[data-kind="movie"]');await page.locator('.movies-player>h2').click();await tab.evaluate(e=>(e as HTMLElement).focus());await expect(tab).toBeFocused();expect(await tab.evaluate(e=>e.matches(':focus-visible'))).toBe(false);
  // A click on a non-focusable heading, then a script focus, is not keyboard focus.
- await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(island(page)).toHaveCSS('opacity','0');
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
  await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
 });
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
