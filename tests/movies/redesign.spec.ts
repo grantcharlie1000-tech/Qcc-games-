@@ -6,7 +6,7 @@ import {readFileSync} from 'node:fs';
 test.beforeEach(async({page})=>{
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
  for(const url of ['https://framextv.cc/**','https://framextv.xyz/**','https://vidlink.pro/**','https://vixsrc.to/**','https://vidsrc.to/**'])
-  await page.route(url,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+  await page.route(url,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'+(url==='https://framextv.cc/**'?'<script>parent.postMessage({event:"frameXTV:ready"},"*")</script>':'')}));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
@@ -1762,16 +1762,6 @@ test('the watch page lays out its parts in the order of section 7.6',async({page
  await expect(serversRow(page)).toBeVisible();
  expect(await parts()).toEqual(['a.movies-detail-back','h1','div.movies-watch-actions','div.movies-screen','div.movies-servers','p']);
  await expect(page.locator('.movies-episode-controls')).toHaveCount(0);
-});
-
-test('the next-server action switches to the server after the current one',async({page})=>{
- await page.goto('/#/movies/movie-157336/play');
- await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
- // Task 16 renders the "Try another server" control. This checks the delegated click handler that control will use.
- await page.evaluate(()=>{const button=document.createElement('button');button.dataset.action='next-server';button.textContent='Try Server 2';document.querySelector('.movies-view')!.append(button);});
- await page.getByRole('button',{name:'Try Server 2',exact:true}).click();
- await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('data-provider','vidlink');
- await expect(serversRow(page).getByRole('button',{name:/^Server 2\b/})).toHaveAttribute('aria-pressed','true');
 });
 
 // A failed load keeps today's error path: a cold link into an unloaded season shows the title-details notice with a retry, and mounts no player.
