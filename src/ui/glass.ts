@@ -62,10 +62,10 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
   return data;
 }
 
-// The lens field as a PNG, the form an SVG feImage reads. The PNG has the box's size in device pixels, not in CSS px. A browser that draws
-// an feImage at its image's own pixel size would otherwise cover only part of the box on a screen with more than one device pixel per CSS
-// px, as WebKit screenshots at 2x showed. Only a browser can encode the PNG, so this is outside the unit tests. With no 2D context there is
-// no map, and the empty string tells the caller to leave the lens out, rather than bend with an all-zero map.
+// The lens field as a PNG, the form an SVG feImage reads. The PNG has the box's size in device pixels, not in CSS px, so on a screen with
+// more than one device pixel per CSS px the bend is as fine as the screen. The feImage stretches it over the box either way. Only a browser
+// can encode the PNG, so this is outside the unit tests. With no 2D context there is no map, and the empty string tells the caller to leave
+// the lens out, rather than bend with an all-zero map.
 export function lensPng(width:number,height:number,density=1):string{
   const canvas=document.createElement('canvas');
   const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
@@ -133,17 +133,31 @@ function pageColour(bar:HTMLElement):string{
 
 // The lens is the bar's first child and sits under the tint, the rim, the pill and the tabs. It is grown by LENS_MARGIN on every
 // side, so the rim can sample past the bar, and its clip-path cuts it back to the capsule. Its scene holds the mirror's copies, and
-// the scene's page colour covers the lens, so in the mirror the lens draws no frost of its own.
-function makeLens():{lens:HTMLElement;scene:HTMLElement}{
+// the scene's page colour covers the lens, so in the mirror the lens draws no frost of its own. The scene is SVG, and its group takes
+// the bend as an SVG filter attribute: under a CSS filter on an HTML element, WebKit draws the map in the wrong place and near the
+// bottom of the screen not at all, but on SVG content it places the map where it belongs.
+function makeLens():{lens:HTMLElement;scene:SVGSVGElement;group:SVGGElement}{
   const lens=document.createElement('span');
   lens.className='ui-glass-lens';
   lens.setAttribute('aria-hidden','true');
   lens.style.inset=`-${LENS_MARGIN}px`;
   lens.style.clipPath=`inset(${LENS_MARGIN}px round 999px)`;
-  const scene=document.createElement('span');
-  scene.className='ui-glass-scene';
+  const scene=document.createElementNS(SVG_NS,'svg');
+  scene.setAttribute('class','ui-glass-scene');
+  scene.setAttribute('focusable','false');
+  const group=document.createElementNS(SVG_NS,'g');
+  scene.append(group);
   lens.append(scene);
-  return {lens,scene};
+  return {lens,scene,group};
+}
+
+// An image's object-fit and object-position as SVG's preserveAspectRatio. SVG aligns only to an edge or the middle, so a position
+// takes the nearest of the three.
+export function aspectOf(fit:string,position:string):string{
+  if(fit==='fill')return 'none';
+  const [x='50%',y='50%']=position.split(' ');
+  const align=(value:string)=>{const n=parseFloat(value)||0,share=value.endsWith('%')?n:n===0?0:50;return share<34?'Min':share>66?'Max':'Mid';};
+  return `x${align(x)}Y${align(y)} ${fit==='cover'?'slice':'meet'}`;
 }
 
 // The SVG filter that bends a lens. Its displacement map is a PNG of the lens field, sized to the lens box. The map joins the filter
@@ -185,7 +199,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const queries=[matchMedia('(prefers-reduced-transparency: reduce)'),matchMedia('(prefers-contrast: more)'),matchMedia('(forced-colors: active)')];
   const id=`ui-glass-${++filterSeq}`;
   const {svg,filter,image,displace}=makeFilter(id);
-  const {lens,scene}=makeLens();
+  const {lens,scene,group}=makeLens();
   const stretchable=canStretch(bar);
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
@@ -266,11 +280,14 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   bar.addEventListener('pointerdown',down);
 
   // Chromium's bar is refracting when the lens reads the filter. The class and the variable are what the stylesheet reads. The
-  // mirror's scene stays hidden until the filter is there, so no copy shows sharp and unbent.
+  // mirror's group takes the filter as an attribute instead. The mirror's scene stays hidden until the filter is there, so no copy
+  // shows sharp and unbent.
   const paint=()=>{
     bar.classList.toggle('is-refracting',mode==='backdrop'&&ready);
     if(mode!=='off'&&ready)bar.style.setProperty('--ui-glass-filter',`url(#${id})`);
     else bar.style.removeProperty('--ui-glass-filter');
+    if(mode==='mirror'&&ready)group.setAttribute('filter',`url(#${id})`);
+    else group.removeAttribute('filter');
     scene.style.visibility=ready?'':'hidden';
   };
   // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
@@ -290,6 +307,9 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       if(token!==mapSeq||disposed)return;
       image.setAttribute('width',String(width));
       image.setAttribute('height',String(height));
+      // On SVG content the filter's box would be the copies' union, which can be the size of the page, so the mirror's filter covers
+      // the lens box in the scene's own units instead.
+      if(mode==='mirror'){filter.setAttribute('filterUnits','userSpaceOnUse');filter.setAttribute('width',String(width));filter.setAttribute('height',String(height));}
       image.setAttribute('href',url);
       image.setAttributeNS(XLINK_NS,'xlink:href',url);
       if(!ready){filter.insertBefore(image,displace);document.body.append(svg);ready=true;}
@@ -304,7 +324,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // and style first, then writes, so a scroll costs one layout at most. Each copy keeps its source's src, fit, position and radius.
   // Copies are ranked by the area each covers under the lens, the share of the glass it takes. They ignore clipping by a scroll
   // container and covering overlays: an image under a sheet still gets a copy, and a copy is not cut at a scroller's own edge.
-  const copies=new WeakMap<HTMLImageElement,HTMLImageElement>();
+  const copies=new WeakMap<HTMLImageElement,SVGImageElement>();
   let shown:HTMLImageElement[]=[];
   let mirrorFrame=0;
   // The bar is held hidden by the page's scroll, unless keyboard focus is in it (as the stylesheet's :has(:focus-visible) rule says).
@@ -355,14 +375,19 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       const source=sources[index],look=looks[index];
       let copy=copies.get(source);
       if(!copy){
-        copy=document.createElement('img');
-        copy.alt='';
-        copy.draggable=false;
+        copy=document.createElementNS(SVG_NS,'image');
         copies.set(source,copy);
       }
-      if(copy.getAttribute('src')!==source.currentSrc)copy.setAttribute('src',source.currentSrc);
-      Object.assign(copy.style,{left:`${x}px`,top:`${y}px`,width:`${width}px`,height:`${height}px`,objectFit:look.fit,objectPosition:look.position,borderRadius:look.radius,opacity:look.opacity});
-      if(copy.parentNode!==scene)scene.append(copy);
+      if(copy.getAttribute('href')!==source.currentSrc)copy.setAttribute('href',source.currentSrc);
+      copy.setAttribute('x',String(x));
+      copy.setAttribute('y',String(y));
+      copy.setAttribute('width',String(width));
+      copy.setAttribute('height',String(height));
+      copy.setAttribute('preserveAspectRatio',aspectOf(look.fit,look.position));
+      // An SVG image has no border-radius, so a rounded cover is clipped to the same corners.
+      copy.style.clipPath=parseFloat(look.radius)?`inset(0 round ${look.radius})`:'';
+      copy.style.opacity=look.opacity;
+      if(copy.parentNode!==group)group.append(copy);
       next.push(source);
     }
     for(const source of shown)if(!next.includes(source))copies.get(source)?.remove();
@@ -395,7 +420,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     watching=false;
   };
   // Any mode other than the mirror holds no copies, so a copy never outlives the mirror that drew it.
-  const clearCopies=()=>{scene.replaceChildren();scene.style.background='';shown=[];};
+  const clearCopies=()=>{group.replaceChildren();scene.style.background='';shown=[];};
 
   // Movies rewrites the bar's children on every render, which takes the lens out. The lens goes back in as the first child.
   const ensureLens=()=>{if(mode!==undefined&&mode!=='off'&&lens.parentNode!==bar)bar.prepend(lens);};
@@ -455,7 +480,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       press=null;
       stretch?.cancel();
       lens.remove();
-      scene.replaceChildren();
+      group.replaceChildren();
       svg.remove();
       mode='off';
       bar.classList.remove('is-refracting');

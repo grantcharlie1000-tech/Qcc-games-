@@ -1,5 +1,5 @@
 import {expect,test,vi} from 'vitest';
-import {glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,mirrorPlacement,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
+import {aspectOf,glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,mirrorPlacement,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
 
 // The island is 366 by 64 px at a 390 px viewport (12 px from each screen edge), and its lens field covers it plus the margin.
 const W=366,H=64;
@@ -164,4 +164,16 @@ test('pillVars turns a tab box into the pill custom properties, and no tab into 
   expect(pillVars({left:12.5,width:90.25})).toEqual({'--ui-pill-x':'12.5px','--ui-pill-w':'90.25px','--ui-pill-on':'1'});
   // With no current tab only the visibility changes, so the pill fades without sliding to the edge.
   expect(pillVars(null)).toEqual({'--ui-pill-on':'0'});
+});
+
+test('a mirror copy fits its SVG image the way its cover fits the page',()=>{
+  expect(aspectOf('cover','50% 50%')).toBe('xMidYMid slice');
+  expect(aspectOf('contain','50% 50%')).toBe('xMidYMid meet');
+  expect(aspectOf('fill','50% 50%')).toBe('none');
+  // SVG aligns to an edge or the middle, so each position takes the nearest of the three.
+  expect(aspectOf('cover','0% 100%')).toBe('xMinYMax slice');
+  expect(aspectOf('cover','20% 80%')).toBe('xMinYMax slice');
+  expect(aspectOf('cover','0px 0px')).toBe('xMinYMin slice');
+  expect(aspectOf('cover','12px 50%')).toBe('xMidYMid slice');
+  expect(aspectOf('none','50% 50%')).toBe('xMidYMid meet');
 });

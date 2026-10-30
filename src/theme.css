@@ -65,10 +65,11 @@
 /* The lens is the bar's first child, under the tint, the rim, the pill and the tabs. glass.ts grows it past the bar by its margin, and its clip-path cuts it back to the capsule. In Chromium its frost is its own backdrop. The mirror draws no frost: its scene covers the lens with the page colour, so content the mirror does not copy is replaced by the page colour, not blurred. */
 .ui-glass-lens{position:absolute;z-index:-1;pointer-events:none;-webkit-backdrop-filter:var(--glass-body);backdrop-filter:var(--glass-body);transition:opacity 140ms var(--ease)}
 .ui-tabbar[data-glass="mirror"] .ui-glass-lens{-webkit-backdrop-filter:none;backdrop-filter:none}
-.ui-glass-scene{position:absolute;inset:0;overflow:hidden}
-.ui-glass-scene img{position:absolute;display:block;max-width:none;margin:0;pointer-events:none}
-/* Every browser but Chromium (glass.ts sets data-glass="mirror"): the scene holds the page colour and copies of the images behind the bar, and the same blur and bend are applied to it. */
-.ui-tabbar[data-glass="mirror"] .ui-glass-scene{filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone)}
+/* The scene is an SVG, a replaced element, so it is sized to the lens box rather than stretched by inset alone. */
+.ui-glass-scene{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
+/* Every browser but Chromium (glass.ts sets data-glass="mirror"): the scene holds the page colour and copies of the images behind the bar.
+   Its group takes the bend as an SVG filter (glass.ts), and the frost and the tone are applied to the whole scene here. */
+.ui-tabbar[data-glass="mirror"] .ui-glass-scene{filter:var(--glass-frost) var(--glass-tone)}
 /* The selection pill is the bar's own ::after, placed by src/ui/glass.ts. It is not a child, so a Movies re-render leaves it alone. It is a glass lens: a light fill, a directional rim and a soft drop shadow. */
 .ui-tabbar::after{content:'';position:absolute;z-index:0;top:6px;bottom:6px;left:0;width:var(--ui-pill-w,0px);translate:var(--ui-pill-x,0px) 0;border-radius:999px;background:var(--glass-pill);box-shadow:var(--glass-pill-rim),0 6px 14px -4px rgb(0 0 0 / .35);opacity:var(--ui-pill-on,0);pointer-events:none;transition:translate 340ms var(--ease-glass),scale 340ms var(--ease-glass),opacity 120ms var(--ease)}
 /* Until the first placement the pill is positioned without a transition, so it never slides in from the edge. */

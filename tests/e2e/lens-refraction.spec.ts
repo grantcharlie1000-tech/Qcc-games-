@@ -33,6 +33,10 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }
 
+// The copies are SVG images, which have no complete flag. Each is decoded, so its pixels are there before the first shot. The DOM
+// typings leave out SVGImageElement.decode(), which the browsers have.
+const copiesDecoded=(page:Page)=>page.evaluate(()=>Promise.all([...document.querySelectorAll<SVGImageElement&{decode?:()=>Promise<void>}>('.ui-glass-scene image')].map(image=>image.decode?.())));
+
 // How far the bent island differs from the same island with its bend switched off. Only the bend changes between the shots, because the
 // displacement is set to zero for the flat one, so the frost is the same in both. Both shots are PNGs that the page decodes to pixels, so
 // the comparison is the same in every engine. Only pixels inside the capsule count: the corners outside it never change and would dilute
@@ -103,14 +107,16 @@ test('the mirror lens bends the stripes at the rim and leaves the centre still',
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-glass','mirror');
   await stage(page,'v');
-  await expect(page.locator('.ui-glass-scene img')).toHaveCount(1);
+  await expect(page.locator('.ui-glass-scene image')).toHaveCount(1);
   await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
-  await page.waitForFunction(()=>[...document.querySelectorAll<HTMLImageElement>('.ui-glass-scene img')].every(img=>img.complete&&img.naturalWidth>0));
+  await copiesDecoded(page);
   // The mirror has no frost of its own: the scene covers the lens, and the bend is drawn by the scene's filter.
   expect(await page.locator('.ui-glass-lens').evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('none');
   const scene=page.locator('.ui-glass-scene');
   expect(await scene.evaluate(el=>getComputedStyle(el).visibility)).toBe('visible');
   expect(await scene.evaluate(el=>getComputedStyle(el).filter)).not.toBe('none');
+  // The bend is the group's SVG filter attribute, not a CSS filter: WebKit places the map right only on SVG content.
+  expect(await scene.locator('g').getAttribute('filter')).toMatch(/^url\(#ui-glass-\d+\)$/);
   expectBend(await bend(page,bar,'v'),RIM.mirrorV);
 });
 
@@ -121,9 +127,9 @@ test('the mirror lens bends horizontal stripes at the top and bottom rims, and l
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-glass','mirror');
   await stage(page,'h');
-  await expect(page.locator('.ui-glass-scene img')).toHaveCount(1);
+  await expect(page.locator('.ui-glass-scene image')).toHaveCount(1);
   await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
-  await page.waitForFunction(()=>[...document.querySelectorAll<HTMLImageElement>('.ui-glass-scene img')].every(img=>img.complete&&img.naturalWidth>0));
+  await copiesDecoded(page);
   expectBend(await bend(page,bar,'h'),RIM.mirrorH);
 });
 
@@ -164,7 +170,7 @@ async function copies(page:Page,island:string,tolerance=1){
     const seen=(img:HTMLImageElement)=>{const style=getComputedStyle(img);return style.visibility==='visible'&&style.display!=='none'&&Number(style.opacity)>0;};
     const sources=[...document.images].filter(img=>!bar.contains(img)&&img.complete&&img.currentSrc&&seen(img)).map(img=>img.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
     const under=sources.filter(rect=>rect.right>box.left-reach&&rect.left<box.right+reach&&rect.bottom>box.top-reach&&rect.top<box.bottom+reach);
-    const placed=[...bar.querySelectorAll<HTMLImageElement>('.ui-glass-scene img')].map(img=>img.getBoundingClientRect());
+    const placed=[...bar.querySelectorAll<SVGImageElement>('.ui-glass-scene image')].map(image=>image.getBoundingClientRect());
     const near=(a:DOMRect,b:DOMRect)=>Math.abs(a.x-b.x)<=tolerance&&Math.abs(a.y-b.y)<=tolerance&&Math.abs(a.width-b.width)<=tolerance&&Math.abs(a.height-b.height)<=tolerance;
     return {
       count:placed.length,
@@ -267,8 +273,8 @@ test('a cover removed from the page takes its copy with it, without a scroll',as
   const before=(await copies(page,'.app-tabbar')).count;
   await page.evaluate(()=>{
     const bar=document.querySelector('.app-tabbar')!;
-    const copy=bar.querySelector<HTMLImageElement>('.ui-glass-scene img')!;
-    const source=[...document.images].find(image=>!bar.contains(image)&&image.currentSrc===copy.getAttribute('src'));
+    const copy=bar.querySelector<SVGImageElement>('.ui-glass-scene image')!;
+    const source=[...document.images].find(image=>!bar.contains(image)&&image.currentSrc===copy.getAttribute('href'));
     source!.remove();
   });
   await expect.poll(async()=>(await copies(page,'.app-tabbar')).count).toBe(before-1);
@@ -336,9 +342,9 @@ async function mapSize(page:Page){
   });
 }
 
-// WebKit draws a map at its own pixel size, so a map of CSS size covered only part of the lens on a screen with more than one device
-// pixel per CSS px. Chromium stretches its map, so it passes either way. These tests run the density-2 map through the same bend checks,
-// so the map that WebKit needed is exercised in every run.
+// A screen with two device pixels per CSS px gets a map of twice the lens box, and that is where WebKit misplaced the map under a CSS
+// filter on an HTML element. These tests run the mirror's bend checks at that density, so the density-2 map and the SVG filter
+// attribute are exercised in every run.
 test.describe('at two device pixels per CSS px',()=>{
   test.use({deviceScaleFactor:2});
 
@@ -349,7 +355,9 @@ test.describe('at two device pixels per CSS px',()=>{
     const bar=page.locator('.app-tabbar');
     await expect(bar).toHaveAttribute('data-glass','mirror');
     await stage(page,'v');
+    await expect(page.locator('.ui-glass-scene image')).toHaveCount(1);
     await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
+    await copiesDecoded(page);
     const size=await mapSize(page);
     expect(size.dpr).toBe(2);
     expect(size.pixels).toEqual(size.css.map(value=>value*2));
@@ -363,7 +371,9 @@ test.describe('at two device pixels per CSS px',()=>{
     const bar=page.locator('.app-tabbar');
     await expect(bar).toHaveAttribute('data-glass','mirror');
     await stage(page,'h');
+    await expect(page.locator('.ui-glass-scene image')).toHaveCount(1);
     await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
+    await copiesDecoded(page);
     expectBend(await bend(page,bar,'h'),RIM.mirrorH);
   });
 });
