@@ -2363,6 +2363,8 @@ test('a rail of another page starts at its beginning, though it has the same nam
  // Movies is opened first, so its rails are in the page when Home hands over to it, and they are drawn at once.
  await page.goto('/#/movies/browse/movie');
  await expect(page.locator('[data-rail="action"] .ui-rail-row')).toBeVisible();
+ // Where the Movies rail rests when nothing has scrolled it. Scroll snapping can put that a few px past 0 (4 in WebKit).
+ const start=await settledScroll(page.locator('[data-rail="action"] .ui-rail-row'));
  await page.locator('.movies-top [data-kind="all"]').click();
  // The rail is measured once Home's own titles are in it, not the Movies rail that is still drawn while the click lands.
  const row=page.locator('[data-rail="action"] .ui-rail-row');
@@ -2375,8 +2377,8 @@ test('a rail of another page starts at its beginning, though it has the same nam
  await page.locator('.movies-top [data-kind="movie"]').click();
  await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
  await expect(row.locator('[data-title="movie-90501"]')).toHaveCount(1);
- // The Movies rail is drawn for this page, so Home's position is not written into it.
- expect(await left()).toBe(0);
+ // The Movies rail is drawn for this page, so Home's position is not written into it: it rests where it did before.
+ await expect.poll(left).toBe(start);
 });
 
 // A season picked on a title page redraws the same page, so its More like this rail keeps the position the reader gave it.
@@ -2482,7 +2484,8 @@ test('the Movies page is black and sets the shared font stack',async({page})=>{
  await expect(view.locator('h1').first()).toBeVisible();
  expect(await view.evaluate(element=>getComputedStyle(element).backgroundColor)).toBe('rgb(0, 0, 0)');
  const stack=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--font-sans'));
- const normal=(value:string)=>value.replace(/\s+/g,'');
+ // Engines serialise a family list differently: Chromium quotes names with spaces and WebKit does not. Spaces and quotes are dropped.
+ const normal=(value:string)=>value.replace(/[\s"']+/g,'');
  expect(normal(await view.evaluate(element=>getComputedStyle(element).fontFamily))).toBe(normal(stack));
  expect(normal(await view.locator('h1').first().evaluate(element=>getComputedStyle(element).fontFamily))).toBe(normal(stack));
 });
