@@ -5,7 +5,8 @@ const route=(season=1,episode=1)=>`/#/movies/tv-19885/season/${season}/episode/$
 const overlay=(page:Page)=>page.getByRole('dialog',{name:'Up next'});
 async function telemetry(page:Page,currentTime=100,duration=100){await page.frame({url:/framextv/})!.evaluate(({currentTime,duration})=>parent.postMessage({event:'frameXTV:timeupdate',currentTime,duration},'*'),{currentTime,duration});}
 async function open(page:Page,url=route()){await page.goto(url);await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();await page.clock.install();}
-async function ended(page:Page){await telemetry(page);await expect(overlay(page)).toBeVisible();}
+// The countdown runs on the test's clock. Pausing it first makes each runFor exactly one tick, so no tick can land before a check reads it.
+async function ended(page:Page){await page.clock.pauseAt(await page.evaluate(()=>Date.now()+1000));await telemetry(page);await expect(overlay(page)).toBeVisible();}
 
 test.beforeEach(async({page})=>{
  await page.route('https://framextv.cc/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
@@ -18,7 +19,9 @@ test('end shows the next title, countdown and keyboard focus; Cancel stops and r
  await open(page);
  // The countdown must not tick before its first value is read, so time holds here until runFor advances it.
  await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));await ended(page);await expect(overlay(page)).toContainText('Up next: S1 · E2 — The Blind Banker');await expect(overlay(page)).toContainText('Playing in 10');await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
- await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.clock.runFor(11000);await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);await expect(overlay(page)).toBeHidden();await expect(page.locator('.movies-screen')).toBeFocused();
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.clock.runFor(11000);await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);await expect(overlay(page)).toBeHidden();
+ // Cancel returns focus to the element that had it before Up next took it: here the title heading, which the page focuses when the watch page opens.
+ await expect(page.locator('.movies-player>h1')).toBeFocused();
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')!).progress['tv-19885:s1:e1'])).toBe(0);
  await telemetry(page);await expect(overlay(page)).toBeHidden();
 });
@@ -50,9 +53,18 @@ test('rejects invalid duration, resumes through the start time, and re-arms afte
  await ended(page);await page.getByRole('button',{name:'Cancel',exact:true}).click();await telemetry(page,20);await ended(page);await expect(overlay(page)).toBeVisible();
 });
 test('overlay fits at 320px without motion or repeated live countdown announcements',async({page})=>{
- await page.setViewportSize({width:320,height:700});await page.emulateMedia({reducedMotion:'reduce'});await open(page);await ended(page);const dialog=overlay(page);expect(await dialog.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
+ await page.setViewportSize({width:320,height:844});await page.emulateMedia({reducedMotion:'reduce'});await open(page);await ended(page);const dialog=overlay(page);expect(await dialog.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
  const announcement=page.locator('.movies-next-announcement');const initial=await announcement.textContent();await page.clock.runFor(2000);await expect(dialog).toContainText('Playing in 8');await expect(announcement).toHaveText(initial!);expect(await dialog.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
  for(const button of await dialog.getByRole('button').all())expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ // The card, its screen and each part are compared as boxes: nothing is clipped, the card does not scroll, and every part lies inside the card.
+ const layout=await page.evaluate(()=>{
+  const box=(element:Element)=>{const r=element.getBoundingClientRect();return {name:(element.textContent||element.className).trim().slice(0,24),top:r.top,bottom:r.bottom,left:r.left,right:r.right};};
+  const card=document.querySelector('.movies-next')!,screen=document.querySelector('.movies-screen')!;
+  return {screen:box(screen),card:box(card),scrolls:card.scrollHeight>card.clientHeight,parts:[...card.querySelectorAll('h2,.movies-next-countdown,.movies-next-bar,button')].map(box)};
+ });
+ expect(layout.scrolls,'Up next scrolls inside its card').toBe(false);
+ expect(layout.card.bottom).toBeLessThanOrEqual(layout.screen.bottom);
+ for(const part of layout.parts){expect(part.top,part.name).toBeGreaterThanOrEqual(layout.card.top);expect(part.bottom,part.name).toBeLessThanOrEqual(layout.card.bottom);expect(part.left,part.name).toBeGreaterThanOrEqual(layout.card.left);expect(part.right,part.name).toBeLessThanOrEqual(layout.card.right);}
  await page.screenshot({path:'test-results/auto-next-320.png'});
 });
 test('fullscreen overlay stays in the screen and advancing preserves the fullscreen element',async({page})=>{
@@ -72,10 +84,21 @@ test('native video ended resets progress and opens the same countdown',async({pa
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')!).progress['tv-19885:s1:e1'])).toBe(0);
 });
 
-test('browser fullscreen exit cancels countdown without opening Study',async({page})=>{
+test('browser fullscreen exit cancels the countdown and opens Study on its next article, as Escape does',async({page})=>{
  await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!(e.requestFullscreen||(e as HTMLElement&{webkitRequestFullscreen?:unknown}).webkitRequestFullscreen)),'Browser reports the Fullscreen API unsupported');
  await page.getByRole('button',{name:'Full screen',exact:true}).click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);await ended(page);
- await page.evaluate(()=>document.exitFullscreen());await expect(overlay(page)).toBeHidden();await page.clock.runFor(11000);await expect(page).toHaveURL(/episode\/1\/play$/);await expect(page.locator('#study-view')).toBeHidden();
+ // Study dispatches study-article-change on its own root once for each article it advances to, so the open that advances counts once.
+ await page.evaluate(()=>{const state=window as Window&{articleChanges?:number};state.articleChanges=0;document.addEventListener('study-article-change',event=>{if((event.target as Element).id==='study-view')state.articleChanges!++;},true);});
+ await page.evaluate(()=>document.exitFullscreen());await expect(overlay(page)).toBeHidden();await expect(page.locator('#study-view')).toBeVisible();
+ await page.clock.runFor(11000);await expect(page).toHaveURL(/episode\/1\/play$/);
+ expect(await page.evaluate(()=>(window as Window&{articleChanges?:number}).articleChanges)).toBe(1);
+});
+test('leaving fullscreen with the Full screen button does not open Study',async({page})=>{
+ await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!(e.requestFullscreen||(e as HTMLElement&{webkitRequestFullscreen?:unknown}).webkitRequestFullscreen)),'Browser reports the Fullscreen API unsupported');
+ const button=page.getByRole('button',{name:'Full screen',exact:true});
+ await button.click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);
+ await button.click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(false);
+ await expect(page.locator('#study-view')).toBeHidden();await expect(page).toHaveURL(/episode\/1\/play$/);
 });
 
 // Under load a browser can deliver the "entered fullscreen" event late, after the exit. The exit must still cancel the countdown.
@@ -92,7 +115,13 @@ test('a late fullscreen-enter event still lets a fullscreen exit cancel the coun
 test('provider fullscreen exits intentionally so the overlay becomes visible',async({page})=>{
  await open(page);test.skip(!await page.locator('.movies-screen').evaluate(e=>!!e.requestFullscreen),'Browser reports the Fullscreen API unsupported');
  await page.frame({url:/framextv/})!.evaluate(()=>{document.querySelector('button')!.onclick=()=>{void document.documentElement.requestFullscreen();};});
- await page.frameLocator('.movies-provider-frame').getByRole('button').click();await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.className)).toBe('movies-provider-frame');await ended(page);await expect.poll(()=>page.evaluate(()=>document.fullscreenElement)).toBe(null);await page.clock.runFor(1000);await expect(overlay(page)).toContainText('Playing in 9');
+ // Under CPU load the first trusted click into the cross-site frame is sometimes misrouted, so the provider's handler never runs. The click is
+ // repeated until the frame's fullscreen request has been granted.
+ await expect(async()=>{
+  await page.frameLocator('.movies-provider-frame').getByRole('button').click();
+  expect(await page.evaluate(()=>document.fullscreenElement?.className)).toBe('movies-provider-frame');
+ }).toPass({timeout:15000});
+ await page.clock.pauseAt(await page.evaluate(()=>Date.now()+1000));await ended(page);await expect.poll(()=>page.evaluate(()=>document.fullscreenElement)).toBe(null);await page.clock.runFor(1000);await expect(overlay(page)).toContainText('Playing in 9');
 });
 
 const remoteTitle=(season=1)=>({id:'tv-778899',kind:'tv',name:'Remote Expedition',year:2024,genres:['Adventure'],overview:'A lazily loaded series.',poster:'https://image.tmdb.org/t/p/w500/remote.jpg',seasons:[1,2].map(number=>({number,name:'Season '+number,episodes:number===season?[{number:1,name:number===1?'First Contact':'The Long Crossing',overview:''}]:[]}))});
@@ -114,7 +143,7 @@ test('metadata arriving after Study opens cannot restart the stream or a countdo
  await expect(page.getByRole('button',{name:'Resume stream',includeHidden:true})).toBeAttached();await expect(page.locator('.movies-provider-frame')).toHaveCount(0);await page.clock.runFor(11000);await expect(page).toHaveURL(/episode\/1\/play$/);await expect(page.locator('#study-view')).toBeVisible();
 });
 
-// Task 15 review 1, Important 1: an open drawer stops the Up next countdown. Enter then goes to the control that has focus, not to Up next.
+// An open drawer stops the Up next countdown. Enter then goes to the control that has focus, not to Up next.
 test('opening the episode drawer stops Up next, and Enter on a drawer row plays that row',async({page})=>{
  await open(page);await ended(page);
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();await expect(overlay(page)).toBeHidden();
@@ -170,7 +199,83 @@ test('pointer focus in the island does not keep it visible, so Up next moves foc
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);
  const view=page.locator('.movies-view');await view.evaluate(e=>e.scrollTo(0,300));
- // The island checks its position in the frame after a scroll event, so this resolves only after that check has run.
- await view.evaluate(e=>new Promise<void>(resolve=>{e.addEventListener('scroll',()=>requestAnimationFrame(()=>resolve()),{once:true});e.scrollTo(0,0);}));
+ // The island checks its position in the frame after a scroll event. The clock is paused, which holds back frames too, so the test waits for the
+ // scroll event and then runs one frame of the clock.
+ const scrolled=view.evaluate(e=>new Promise<void>(resolve=>{const done=()=>{if(e.scrollTop===0){e.removeEventListener('scroll',done);resolve();}};e.addEventListener('scroll',done);}));
+ await view.evaluate(e=>e.scrollTo(0,0));await scrolled;await page.clock.runFor(50);
  await expect(overlay(page)).toBeVisible();await expect(island(page)).toHaveAttribute('data-hidden','true');
+});
+
+test('Cancel returns focus to the control that had it before Up next took focus',async({page})=>{
+ await open(page);
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).focus();
+ await ended(page);await expect(overlay(page)).toBeVisible();await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
+ await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toBeFocused();
+});
+test('Cancel falls back to the screen when the control that had focus has gone',async({page})=>{
+ await open(page);
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).focus();
+ await ended(page);await expect(overlay(page)).toBeVisible();
+ await page.evaluate(()=>document.querySelector<HTMLElement>('[data-action="episodes"]')?.remove());
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
+ await expect(page.locator('.movies-screen')).toBeFocused();
+});
+
+// Cancel never sends focus into the provider frame, which takes its own keys: the screen takes it instead, and Escape still opens Study.
+test('Cancel never sends focus into the provider frame, and Escape still opens Study',async({page})=>{
+ await open(page);
+ await page.locator('iframe.movies-provider-frame').focus();
+ await ended(page);await expect(overlay(page)).toBeVisible();
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
+ await expect(page.locator('.movies-screen')).toBeFocused();
+ await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
+});
+
+// Below 640 px Up next covers the whole screen, so the Full screen button sits above its text and buttons. Their boxes must not meet,
+// and each control must take a press where it is drawn.
+for(const width of [320,390,639])test(`Up next leaves the Full screen button clear of its text and buttons at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:700});
+ await open(page);await ended(page);await expect(overlay(page)).toBeVisible();
+ const layout=await page.evaluate(()=>{
+  type Box={l:number;t:number;r:number;b:number};
+  const box=(element:Element):Box=>{const r=element.getBoundingClientRect();return {l:r.left,t:r.top,r:r.right,b:r.bottom};};
+  const meet=(a:Box,b:Box)=>a.l<b.r&&b.l<a.r&&a.t<b.b&&b.t<a.b;
+  const reachable=(element:Element)=>{const r=element.getBoundingClientRect();const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return !!hit&&element.contains(hit);};
+  const button=document.querySelector<HTMLElement>('.movies-fullscreen')!;
+  const parts=[...document.querySelectorAll<HTMLElement>('.movies-next h2,.movies-next .movies-next-countdown,.movies-next button')];
+  return {
+   shown:parts.length,
+   overlapping:parts.filter(part=>meet(box(button),box(part))).map(part=>part.textContent?.trim()??''),
+   buttonReachable:reachable(button),
+   actionsReachable:parts.filter(part=>part.tagName==='BUTTON').map(reachable),
+  };
+ });
+ expect(layout.shown).toBeGreaterThan(0);
+ expect(layout.overlapping).toEqual([]);
+ expect(layout.buttonReachable).toBe(true);
+ expect(layout.actionsReachable).toEqual([true,true]);
+});
+
+// With reduced motion, from the media query or the app's own class, Up next moves nothing: no animation or transition runs on the card, and its
+// countdown bar changes width without one.
+for(const setting of ['media query','class'] as const)test(`reduced motion (${setting}) leaves Up next with no animation, transform or transition`,async({page})=>{
+ if(setting==='media query')await page.emulateMedia({reducedMotion:'reduce'});
+ await open(page);
+ if(setting==='class')await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));
+ await ended(page);await expect(overlay(page)).toBeVisible();
+ await page.clock.runFor(1000);
+ const bar=overlay(page).locator('.movies-next-bar>span');
+ await expect(bar).toHaveAttribute('style',/width: 90%/);
+ const motion=await overlay(page).evaluate(card=>{
+  const nodes=[card,...card.querySelectorAll('*')];
+  return {
+   animations:nodes.flatMap(node=>node.getAnimations()).map(animation=>((animation.effect as KeyframeEffect|null)?.getKeyframes()??[]).flatMap(frame=>Object.keys(frame)).join(',')||animation.constructor.name),
+   transforms:nodes.map(node=>getComputedStyle(node).transform).filter(transform=>transform!=='none'),
+   transitions:nodes.map(node=>getComputedStyle(node).transitionDuration).filter(duration=>duration!=='0s'),
+  };
+ });
+ expect(motion.animations).toEqual([]);
+ expect(motion.transforms).toEqual([]);
+ expect(motion.transitions).toEqual([]);
 });

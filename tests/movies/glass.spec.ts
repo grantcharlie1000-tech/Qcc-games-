@@ -1,7 +1,7 @@
 import {test,expect} from '../fixtures';
 import type {Locator,Page,Route} from '@playwright/test';
 
-// Task 26: the Movies menus are Liquid Glass. The episode drawer is a glass sheet, the Up next card takes the sheet's surface, and the
+// The Movies menus are Liquid Glass. The episode drawer is a glass sheet, the Up next card takes the sheet's surface, and the
 // genre select is a glass capsule whose open list stays native. The Movies island and forced colours are checked alongside them.
 const PHONE={width:390,height:844};
 const DESKTOP={width:1440,height:900};

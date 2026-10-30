@@ -118,6 +118,8 @@ export class MoviesView {
  private metadataAbort?:AbortController;
  private detailAbort?:AbortController;
  private pendingTitle=false;
+ // The hash of the page the rails in the DOM were drawn for. Their scroll carries over a redraw of that page only.
+ private railPage='';
  private detailError='';
  private dynamicIds=new Set<string>();
  // The ids of the bundled catalog as load() read it. A bundled title opens on its own page, and the API adds to it in the background.
@@ -171,9 +173,14 @@ export class MoviesView {
  private suspended=false;
  private countdown?:ReturnType<typeof setInterval>;
  private nextHash='';
+ // The control that had focus before Up next took it. Cancel returns focus there, or to the screen when that control has gone.
+ private nextReturn?:Element|null;
  private countdownGeneration=0;
  private wasFullscreen=false;
+ // The element that was fullscreen last, so an exit can tell whether its screen is still on the page.
+ private fullscreenTarget?:Element|null;
  private intentionalExit=false;
+ private disposed=false;
  private lastSave=0;
  private route:MovieRoute={play:false};
  // The not-found page is on screen for an invalid route. A valid route clears it, and a late answer never replaces it.
@@ -201,10 +208,10 @@ export class MoviesView {
  private readonly hideTabbar:{reset():void;dispose():void};
  // The island's scroll check clears data-hidden, so while Up next shows the attribute is put back.
  private readonly yieldGuard=new MutationObserver(()=>{if(this.root.querySelector('.movies-next:not([hidden])')&&!this.tabbar.hasAttribute('data-hidden'))this.tabbar.dataset.hidden='true';});
- constructor(container:HTMLElement,private storage:MovieStorage,private study:()=>void,private reducedMotion:boolean,origin?:DOMRect,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
+ constructor(container:HTMLElement,private storage:MovieStorage,private study:(advance?:boolean)=>void,private reducedMotion:boolean,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
-  this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){const failed=image.getAttribute('src');if(failed)this.failedImages.add(failed);if(image.dataset.poster&&image.src!==image.dataset.poster){image.src=image.dataset.poster;delete image.dataset.poster;}else if(image.classList.contains('movies-detail-art')){image.closest('.movies-detail-inner')?.classList.add('movies-detail-bare');image.remove();}else image.style.opacity='0';}},{capture:true});
+  this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){const failed=image.getAttribute('src');if(failed)this.failedImages.add(failed);const rest=(JSON.parse(image.dataset.fallbacks||'[]') as string[]).filter(url=>!this.failedImages.has(url)),next=rest.shift();if(next){image.dataset.fallbacks=JSON.stringify(rest);image.src=next;}else if(image.classList.contains('movies-detail-art')){image.closest('.movies-detail-inner')?.classList.add('movies-detail-bare');image.remove();}else image.style.opacity='0';}},{capture:true});
   this.root.addEventListener('load',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.matches('img.ui-card-img,img.ui-hero-backdrop')){const src=image.getAttribute('src');if(src)this.seenImages.add(src);}},{capture:true});
   this.root.addEventListener('click',this.click);
   this.root.addEventListener('click',event=>{
@@ -214,11 +221,12 @@ export class MoviesView {
    if(control&&!this.route.id){this.returnFocus=control.dataset.title||'';this.returnRail=control.dataset.title?control.closest<HTMLElement>('[data-rail]')?.dataset.rail||'':'';}
   },{capture:true});
   this.root.addEventListener('input',this.input);
+  this.root.addEventListener('compositionend',this.compositionEnd);
   this.root.addEventListener('change',this.change);
   this.root.addEventListener('keydown',this.keydown);
   this.root.addEventListener('focusin',this.revealFocus);
   this.disposeImages=watchImages(this.root);
-  this.tabbar.setAttribute('aria-label','Mobile movies navigation');
+  this.tabbar.setAttribute('aria-label','Sections');
   this.disposeRails=bindRails(this.root,()=>this.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);
   // Movies scrolls inside its own overlay, so the island's hide-on-scroll follows that scroller rather than the window.
   this.hideTabbar=autoHideTabbar(this.tabbar,this.root);this.yieldGuard.observe(this.tabbar,{attributes:true,attributeFilter:['data-hidden']});
@@ -226,10 +234,6 @@ export class MoviesView {
   document.addEventListener('visibilitychange',this.onVisibility);document.addEventListener('securitypolicyviolation',this.violation);
   window.addEventListener('message',this.providerMessage);window.addEventListener('storage',this.onStorage);
   this.root.focus();
-  if(origin&&!reducedMotion&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
-   this.root.animate([{transform:`translate(${origin.x}px, ${origin.y}px) scale(${origin.width/innerWidth}, ${origin.height/innerHeight})`,opacity:.45},{transform:'none',opacity:1}],{duration:260,easing:'cubic-bezier(0.23, 1, 0.32, 1)'});
-  }
-  this.root.style.transformOrigin='top left';
   // Another page may have written the saved data while Movies was closed. Storage that still holds what this page saw changes nothing.
   this.storage.reload();this.render();void this.load();
  }
@@ -245,7 +249,9 @@ export class MoviesView {
    if(this.abort.signal.aborted)return;
    this.ready=true;
    // As in applyRoute, a route whose details are not loaded is pending before the page renders.
-   const pending=!!this.route.id&&this.needsDetails(this.route);this.pendingTitle=pending;this.renderKeepingFocus();
+   const pending=!!this.route.id&&this.needsDetails(this.route);this.pendingTitle=pending;
+   // A pending title is drawn by loadTitle, so its loading page is drawn once, not here as well.
+   if(!pending)this.renderKeepingFocus();
    if(this.route.id){if(pending)void this.loadTitle(this.route.id,this.route.season);else void this.enrichTitle(this.route.id);}
    else{this.requestHomeRails();this.requestSectionRails();}
   }catch(error){if(!this.abort.signal.aborted){this.failed=true;this.loadError=movieNetworkMessage(error,'The collection');this.renderKeepingFocus();}}
@@ -339,8 +345,10 @@ export class MoviesView {
   if(!title||this.dynamicIds.has(route.id)&&!this.loadedDetails.has(route.id))return true;
   return this.dynamicIds.has(route.id)&&title.kind==='tv'&&!!route.season&&!this.loadedSeasons.has(route.id+':s'+route.season);
  }
- private async loadTitle(id:string,season?:number){
-  const request=++this.detailRequest;this.detailAbort?.abort();const controller=this.detailAbort=new AbortController();this.pendingTitle=true;this.detailError='';if(this.screenFullscreen())this.renderDetailError();else this.render();
+ private async loadTitle(id:string,season?:number,retried=false){
+  const request=++this.detailRequest;this.detailAbort?.abort();const controller=this.detailAbort=new AbortController();this.pendingTitle=true;this.detailError='';this.redrawDetail();
+  // Where focus rests once the loading page has taken Retry away. A failure brings focus back to Retry only if the reader left it there.
+  const resting=document.activeElement;
   try{
    const params=new URLSearchParams({id});if(season)params.set('season',String(season));
    const {data}=await cachedJson('/api/movies?'+params,controller.signal);const parsed=parseCatalog({titles:[data.title],source:'tmdb'});const title=parsed.titles[0];
@@ -351,9 +359,14 @@ export class MoviesView {
   }catch(error){
    if(request!==this.detailRequest||this.route.id!==id)return;
    if(controller.signal.aborted)return;
-   this.pendingTitle=false;this.detailError=error instanceof MovieNetworkError&&error.status===404?'':movieNetworkMessage(error,'Title details');if(this.screenFullscreen())this.renderDetailError();else this.render();
+   const back=retried&&(document.activeElement===resting||document.activeElement===document.body);
+   this.pendingTitle=false;this.detailError=error instanceof MovieNetworkError&&error.status===404?'':movieNetworkMessage(error,'Title details');this.redrawDetail();
+   // The loading page took the Retry button away. When the failure brings it back, focus returns to it, unless the reader moved on.
+   if(back)this.root.querySelector<HTMLElement>('[data-action="retry-title"]')?.focus({preventScroll:true});
   }
  }
+ // Redraws the title page while its details load or fail. Fullscreen keeps the screen and shows only the notice in it. Focus stays on its control.
+ private redrawDetail(){this.keepingFocus(()=>{if(this.screenFullscreen())this.renderDetailError();else this.render();});}
  // A title's details become the catalog's own. A season that comes back without episodes keeps the ones it had, and the seasons with episodes are loaded.
  private storeTitle(id:string,title:Title,season?:number){
   const previous=this.catalog.titles.find(t=>t.id===id);
@@ -382,15 +395,12 @@ export class MoviesView {
  // must not replace the player's iframe, restart an active stream or replace the not-found page.
  private renderBrowseState(){
   if(this.route.id||this.notFound)return;
-  const input=this.root.querySelector<HTMLInputElement>('#movies-search');
-  const focusedInput=!!input&&input===document.activeElement;
-  const start=input?.selectionStart,top=this.root.scrollTop;
-  // The focused control is recorded by what it is before the render, and the control that matches it takes focus after the render.
+  const top=this.root.scrollTop;
+  // The focused control is recorded by what it is before the redraw, and the control that matches it takes focus after the redraw.
   const active=document.activeElement instanceof HTMLElement&&document.activeElement!==this.root&&this.root.contains(document.activeElement)?document.activeElement:undefined;
   const finder=active&&finderFor(active),region=active?regionOf(active):'';
-  this.render();
-  if(focusedInput){const next=this.root.querySelector<HTMLInputElement>('#movies-search');next?.focus({preventScroll:true});if(start!==null&&start!==undefined)next?.setSelectionRange(start,start);}
-  else if(active)this.restoreFocus(finder?finder(this.root):[],region);
+  this.refreshBrowse();
+  if(active)this.restoreFocus(finder?finder(this.root):[],region);
   this.root.scrollTop=top;
  }
  // The first candidate that can take focus does. A candidate in the region the focused control was in comes first, so a link that shares
@@ -419,7 +429,7 @@ export class MoviesView {
  }
  private applyRoute(hash:string){
   const next=parseMovieRoute(hash);
-  if(!next){this.route={play:false};this.notFound=true;this.render();return;}
+  if(!next){this.stopVideo();this.route={play:false};this.notFound=true;this.render();this.root.querySelector<HTMLElement>('.movies-empty h1')?.focus({preventScroll:true});return;}
   this.detailRequest++;this.detailAbort?.abort();this.pendingTitle=false;this.detailError='';
   const returningFromPlayer=!!this.route.play&&!next.play&&!!this.route.id&&this.route.id===next.id;
   const returnEpisodeHref=returningFromPlayer?titleHash(this.route.id!)+'/season/'+this.route.season+'/episode/'+this.route.episode+'/play':'';
@@ -445,7 +455,8 @@ export class MoviesView {
   const title=this.catalog.titles.find(t=>t.id===next.id);
   // A route whose title details are not loaded yet is pending before the page renders, so a play route shows the loading text, not a player.
   const pending=this.ready&&this.needsDetails(next);this.pendingTitle=pending;
-  if(inPlace&&title)this.refreshPlayer(title);else this.render();
+  // A pending route is drawn by loadTitle, so it is drawn once.
+  if(inPlace&&title)this.refreshPlayer(title);else if(!pending)this.render();
   if(pending)void this.loadTitle(next.id!,next.season);
   else if(this.ready&&next.id)void this.enrichTitle(next.id);
   // A session that opened a title first has no rails yet, so the first time Home is shown they are requested.
@@ -462,13 +473,13 @@ export class MoviesView {
    (focus??this.root.querySelector<HTMLElement>('h1'))?.focus({preventScroll:true});}
  }
  private header(){const pills:[MovieKind,string][]=[['all','Home'],['movie','Movies'],['tv','TV Shows'],['list','My list']];return `<header class="movies-top ui-header"><div class="ui-header-inner"><a class="movies-brand ui-brand" href="#/movies" aria-label="Movies and TV home"><span class="ui-brand-tile">${mauriMark}</span><span class="ui-wordmark">Mauri <span>Study Notes</span></span></a><nav class="ui-nav" aria-label="Movies and TV navigation">${pills.map(([kind,name])=>`<button class="ui-pill" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${name}</button>`).join('')}</nav><div class="ui-header-actions"><button data-action="search" class="movies-search-toggle ui-icon-btn" aria-label="Search movies and TV">${uiIcon('search')}</button><a class="movies-back ui-icon-btn" aria-label="Games" href="#/collection">${uiIcon('grid')}<span class="ui-label" aria-hidden="true">Games</span></a><button data-action="study" class="movies-study ui-icon-btn">${uiIcon('study')}<span class="ui-label">Study Mode</span><kbd class="ui-kbd" aria-hidden="true">Esc</kbd></button></div></div></header>`;}
- // The image a card, tile or hero requests: its first candidate that has not failed in this view, with the next usable candidate as the
- // fallback that the error listener switches to. When every candidate failed there is no image, so the placeholder shows alone.
+ // The image a card, tile or hero requests: its first candidate that has not failed in this view. The other usable candidates are the fallbacks,
+ // which the error listener tries in order. When every candidate failed there is no image, so the placeholder shows alone.
  private artImage(candidates:string[],className:string,attributes:string){
   const usable=[...new Set(candidates)].filter(url=>!this.failedImages.has(url));
   if(!usable.length)return '';
-  const [src,fallback]=usable;
-  return `<img class="${className}${this.seenImages.has(src)?' is-seen':''}"${fallback?` data-poster="${escape(fallback)}"`:''} src="${escape(src)}" ${attributes}>`;
+  const [src,...fallbacks]=usable;
+  return `<img class="${className}${this.seenImages.has(src)?' is-seen':''}"${fallbacks.length?` data-fallbacks="${escape(JSON.stringify(fallbacks))}"`:''} src="${escape(src)}" ${attributes}>`;
  }
  private card(t:Title){
   const name=escape(t.name),type=t.kind==='tv'?'SERIES':'FILM';
@@ -483,7 +494,9 @@ export class MoviesView {
  }
  private shelf(id:string,name:string,titles:Title[],subtitle=''){return this.rail(id,name,titles.map(t=>this.card(t)).join(''),titles.length,subtitle);}
  private footer(){return `<footer class="movies-footer ui-footer" aria-label="Credits and privacy"><div class="ui-footer-brand"><span class="ui-brand-tile">${mauriMark}</span><strong>Mauri Study Notes</strong><span>Movies &amp; TV</span></div><nav class="ui-footer-links" aria-label="Movies and TV sections"><a href="#/movies">Home</a><a href="#/movies/browse/movie">Movies</a><a href="#/movies/browse/tv">TV Shows</a><a href="#/movies/list">My list</a></nav><strong>Your screen. Your privacy.</strong><p>My list and playback progress stay on this device. Full-catalog searches go through QCC’s metadata service to TMDB. Real posters and backdrops load from TMDB; its image server receives ordinary image requests.</p><p>${this.catalog.source==='tmdb'?`${this.catalog.attributionLogo?`<img class="movies-tmdb" src="${escape(asset(this.catalog.attributionLogo))}" alt="TMDB" width="100" height="40">`:''}This product uses the TMDB API but is not endorsed or certified by TMDB.`:'Starter selection · Real title artwork from TMDB. Original summaries. Ratings are not supplied. This is not a live trending feed.'}</p>${this.catalog.updated?`<p>Catalog snapshot: ${escape(this.catalog.updated)}</p>`:''}<p>Streaming is provided by an external service. QCC does not verify its availability or distribution rights. Movies are excluded from game offline downloads.</p><button data-action="clear" class="ui-btn secondary small">Clear my list &amp; watch history</button><p class="movies-storage" role="status">${this.storage.durable?'Saved only on this device.':'Browser storage is unavailable. Changes last only for this visit.'}</p></footer>`;}
- private browse(){
+ private browse(){const {head,body}=this.browseParts();return `${head}<div class="movies-browse">${this.filterBar()}<div id="movies-results">${body}</div>${this.footer()}</div>`;}
+ // The title block and the results of a browse page. A redraw in place replaces these two and leaves the rest of the page alone.
+ private browseParts(){
   const list=this.kind==='list';
   // A section filters the titles the page has loaded. My list filters its saved titles only.
   const available=list?this.savedTitles():this.loadedTitles();
@@ -498,7 +511,55 @@ export class MoviesView {
   // A section and My list open with their title block. Home keeps its hero, and a search on Home keeps its own heading.
   const head=this.kind==='all'?(simple?'<h1 class="movies-page-title" tabindex="-1">Find your next story</h1>':this.hero()):this.pageHead(this.kind,list?available.length:undefined);
   const body=simple?this.results(filtered):this.kind==='movie'||this.kind==='tv'?this.sectionContent(this.kind):this.homeContent();
-  return `${head}<div class="movies-browse">${this.filterBar()}<div id="movies-results">${body}</div>${this.footer()}</div>`;
+  return {head,body};
+ }
+ // Redraws a browse page's title block and results in place. The header, the island and the filter bar stay as they are, so the search
+ // field keeps its node, its focus and its caret while the reader types.
+ private refreshBrowse(){
+  const header=this.root.querySelector('.movies-top'),browse=this.root.querySelector<HTMLElement>('.movies-browse'),results=browse?.querySelector<HTMLElement>('#movies-results');
+  if(!header||!browse||!results){this.render();return;}
+  const scrolls=this.railScrolls(),{head,body}=this.browseParts();
+  for(const node of [...this.root.children])if(node!==header&&node!==browse&&node!==this.tabbar)node.remove();
+  browse.insertAdjacentHTML('beforebegin',head);
+  this.patchResults(results,body);
+  this.refreshGenres();this.restoreRailScrolls(scrolls);markImages(this.root);this.footerAttribution();updateRails(this.root);
+ }
+ // The genre list follows the titles the page has loaded. The select keeps its node and the reader's choice, and only its options change.
+ private refreshGenres(){
+  const select=this.root.querySelector<HTMLSelectElement>('#movies-genre');if(!select)return;
+  const incoming=document.createElement('template');incoming.innerHTML=this.filterBar();
+  const next=incoming.content.querySelector<HTMLSelectElement>('#movies-genre');if(!next)return;
+  const names=(options:HTMLOptionsCollection)=>[...options].map(option=>option.textContent).join('\n');
+  if(names(select.options)===names(next.options))return;
+  select.replaceChildren(...next.options);select.value=this.genre;
+ }
+ // Replaces the results of a browse page. The count line and the status line keep their nodes when the redraw has one of the same kind,
+ // so their live regions stay in the page and announce the new text. The grid, the empty state and the pagination are replaced around them.
+ private patchResults(results:HTMLElement,markup:string){
+  const incoming=document.createElement('template');incoming.innerHTML=markup;
+  const fresh=[...incoming.content.children] as HTMLElement[];
+  const copyOf=(cls:string)=>fresh.find(node=>node.classList.contains(cls));
+  const keep=(cls:string)=>{const copy=copyOf(cls),old=results.querySelector<HTMLElement>(':scope > .'+cls);if(!copy||!old)return undefined;old.innerHTML=copy.innerHTML;return old;};
+  const count=keep('movies-result-count'),status=keep('movies-catalog-status');
+  const countCopy=copyOf('movies-result-count'),statusCopy=copyOf('movies-catalog-status');
+  for(const node of [...results.children])if(node!==count&&node!==status)node.remove();
+  const split=statusCopy?fresh.indexOf(statusCopy):fresh.length;
+  const before=fresh.slice(0,split).filter(node=>node!==countCopy),after=statusCopy?fresh.slice(split+1):[];
+  if(countCopy&&!count)results.prepend(countCopy);
+  for(const node of before)results.insertBefore(node,status??null);
+  if(statusCopy&&!status)results.append(statusCopy);
+  const tail=status??statusCopy;
+  if(tail&&after.length)tail.after(...after);
+ }
+ // A rail keeps its scroll position through a redraw. A rail is found again by its name, which is unique on the page.
+ private railScrolls(){return new Map([...this.root.querySelectorAll<HTMLElement>('[data-rail]')].map(rail=>[rail.dataset.rail??'',rail.querySelector<HTMLElement>('.ui-rail-row')?.scrollLeft??0] as const));}
+ // The rows scroll smoothly, so the restore is made without the animation, and the row keeps its own behaviour after it.
+ private restoreRailScrolls(scrolls:Map<string,number>){for(const rail of this.root.querySelectorAll<HTMLElement>('[data-rail]')){const row=rail.querySelector<HTMLElement>('.ui-rail-row'),left=scrolls.get(rail.dataset.rail??'');if(row&&left){row.style.scrollBehavior='auto';row.scrollLeft=left;row.style.removeProperty('scroll-behavior');}}}
+ // Once a title from the API is shown, the footer names TMDB as the source of its metadata.
+ private footerAttribution(){
+  if(!this.dynamicIds.size)return;
+  const paragraphs=this.root.querySelectorAll<HTMLElement>('.movies-footer p');
+  if(paragraphs[1])paragraphs[1].textContent='Search and metadata use the TMDB database. This product uses the TMDB API but is not endorsed or certified by TMDB.';
  }
  // The title block of a section or My list: a heading, one line of copy and, when given, the count.
  private pageHead(kind:'movie'|'tv'|'list',count?:number){
@@ -553,11 +614,11 @@ export class MoviesView {
  // Filtered results: the count, then the cards (or the empty state), then the full-catalog status and its pagination.
  private results(filtered:Title[]){
   // My list with no saved titles explains how to add some. A filter that empties a list with saved titles shows the usual no-match state.
-  if(this.kind==='list'&&!this.savedTitles().length)return `<div class="movies-empty"><h2>Your list is empty</h2><p>Open a title and choose Add to my list to save it here.</p><button data-action="reset">Explore all titles</button></div>`;
+  if(this.kind==='list'&&!this.savedTitles().length)return `<div class="movies-empty"><h2>Your list is empty</h2><p>Open a title and choose Add to my list to save it here.</p><button class="ui-btn secondary" data-action="reset">Explore all titles</button></div>`;
   const count=`${filtered.length} ${filtered.length===1?'title':'titles'}`;
   // The count line announces a filtered result. An unfiltered My list shows its count in its title block instead.
   const filtering=!!this.query.trim()||this.genre!=='All';
-  const body=filtered.length?`<div class="movies-results-grid ui-grid">${filtered.map(t=>this.card(t)).join('')}</div>`:`<div class="movies-empty"><h2>No titles found</h2><p>Try another title or clear your filters. ${this.kind==='list'?'My list search covers the titles saved on this device.':'Search covers this catalog snapshot only.'}</p><button data-action="reset">Explore all titles</button></div>`;
+  const body=filtered.length?`<div class="movies-results-grid ui-grid">${filtered.map(t=>this.card(t)).join('')}</div>`:`<div class="movies-empty"><h2>No titles found</h2><p>Try another title or clear your filters. ${this.kind==='list'?'My list search covers the titles saved on this device.':'Search covers this catalog snapshot only.'}</p><button class="ui-btn secondary" data-action="reset">Explore all titles</button></div>`;
   return `${filtering?`<p class="movies-result-count" role="status" tabindex="-1">${count}</p>`:''}${body}${this.searchStatus()}`;
  }
  // The full-catalog status line and its pagination, for the request the page makes. Pagination shows only for the results that answer it.
@@ -568,8 +629,8 @@ export class MoviesView {
   const message=this.remoteLoading?(genre?'Loading this genre from the full movie and TV catalog…':'Searching the full movie and TV catalog…')
    :this.remoteError?`${this.remoteError} ${genre?'The titles included with this site are still shown.':'The titles included with this site are still searchable.'}`
    :answers&&this.remoteTitles.length?'Showing full-catalog results from TMDB.':'No additional matches in the full catalog.';
-  const retry=this.remoteError?` <button data-action="retry-search">${genre?'Retry':'Retry search'}</button>`:'';
-  const pages=answers&&this.remotePages>1?`<div class="movies-pagination"><button data-action="catalog-page" data-nav="previous" data-page="${this.remotePage-1}"${this.remotePage<=1?' disabled':''}>Previous</button><span>Page ${this.remotePage} of ${this.remotePages}</span><button data-action="catalog-page" data-nav="next" data-page="${this.remotePage+1}"${this.remotePage>=this.remotePages?' disabled':''}>Next</button></div>`:'';
+  const retry=this.remoteError?` <button class="ui-btn secondary small" data-action="retry-search">${genre?'Retry':'Retry search'}</button>`:'';
+  const pages=answers&&this.remotePages>1?`<div class="movies-pagination"><button class="ui-btn secondary small" data-action="catalog-page" data-nav="previous" data-page="${this.remotePage-1}"${this.remotePage<=1?' disabled':''}>Previous</button><span>Page ${this.remotePage} of ${this.remotePages}</span><button class="ui-btn secondary small" data-action="catalog-page" data-nav="next" data-page="${this.remotePage+1}"${this.remotePage>=this.remotePages?' disabled':''}>Next</button></div>`:'';
   return `<p class="movies-catalog-status" role="status" tabindex="-1">${escape(message)}${retry}</p>${pages}`;
  }
  // The unfiltered home: Continue watching, My list, then the API rails, or the starter rails until the request answers or when it fails.
@@ -724,7 +785,7 @@ export class MoviesView {
    :missing?this.episodeUnavailable(t,route)
    :external?`<iframe class="movies-provider-frame" data-provider="${server}" data-media-key="${escape(key)}" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`
    :exhausted?`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback didn't start</h2><p>This title would not start on any server.</p><button class="ui-btn primary" data-action="retry-servers">Try again</button></div>`
-   :`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${escape(back)}">Return to title</a></div>`;
+   :`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="ui-btn primary" href="${escape(back)}">Return to title</a></div>`;
   const showServers=!source&&!missing&&(!!external||exhausted);
   const status=source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`
    :server&&external?`External player provided by ${escape(streamProvider(server).name)}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`
@@ -885,20 +946,17 @@ export class MoviesView {
   const title=this.catalog.titles.find(t=>t.id===this.route.id);
   // Fullscreen on this title's own screen refreshes that screen in place, so its frame and overlay stay, even while the season is pending.
   if(this.route.play&&title&&this.screenFullscreen()&&this.root.querySelector<HTMLElement>('.movies-screen')?.dataset.title===title.id){this.refreshPlayer(title);return;}
-  // Any other play route whose season is still loading shows the loading text. The player is built once its details have loaded.
-  const loadingPlay=this.route.play&&!!this.route.id&&this.pendingTitle;
   this.releaseMedia();
-  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1>That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return loadingPlay?LOADING_TITLE:t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1>Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.append(this.tabbar);
+  // A rail of another page with the same name starts at its beginning, so only a redraw of this page keeps the scroll. A season
+  // change redraws the same title page, so the season part of its address does not count.
+  const page=location.hash.replace(/\/season\/\d+$/,''),scrolls=page===this.railPage?this.railScrolls():new Map<string,number>();
+  // A title whose details are pending shows the loading text, never a not-found message. A play route builds its player once the details have loaded.
+  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button class="ui-btn secondary" data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1 tabindex="-1">That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return this.pendingTitle&&(this.route.play||!t)?LOADING_TITLE:t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1 tabindex="-1">Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.querySelector('.movies-top')?.after(this.tabbar);
   markImages(this.root);
-  if(this.route.id&&this.pendingTitle){
-   const main=this.root.querySelector<HTMLElement>('.movies-empty');
-   if(main){main.querySelector('h1')!.textContent='Loading title details…';const p=main.querySelector('p');if(p)p.textContent='Fetching current movie and episode information.';}
-  }
   this.renderDetailError();
-  if(this.dynamicIds.size){
-   const paragraphs=this.root.querySelectorAll<HTMLElement>('.movies-footer p');
-   if(paragraphs[1])paragraphs[1].textContent='Search and metadata use the TMDB database. This product uses the TMDB API but is not endorsed or certified by TMDB.';
-  }
+  this.footerAttribution();
+  this.restoreRailScrolls(scrolls);
+  this.railPage=page;
   updateRails(this.root);
   this.bindPlayer();
  }
@@ -914,7 +972,7 @@ export class MoviesView {
    if(screen)screen.append(notice);
    else this.root.querySelector('.movies-top')?.after(notice);
   }
-  const retry=document.createElement('button');retry.textContent='Retry title';retry.dataset.action='retry-title';notice.append(' ',retry);
+  const retry=document.createElement('button');retry.className='ui-btn secondary small';retry.textContent='Retry title';retry.dataset.action='retry-title';notice.append(' ',retry);
  }
  private bindPlayer(){
   this.ended=false;this.frameDuration=undefined;this.frameReported=false;this.videoReported=false;
@@ -959,7 +1017,8 @@ export class MoviesView {
   const before=this.memberships();
   if(!this.storage.reload()||this.memberships()===before||this.notFound)return;
   if(this.route.id){this.refreshListControls();return;}
-  if(this.kind==='list'||(this.kind==='all'&&!this.query.trim()&&this.genre==='All'))this.renderKeepingFocus();
+  // A browse page is redrawn in place, so a typed query keeps its search field. Its node and text stay as they are.
+  if(this.kind==='list'||(this.kind==='all'&&!this.query.trim()&&this.genre==='All'))this.renderBrowseState();
  };
  // What a viewer can see of the saved data: the titles in My list, and the titles with a position above zero.
  private memberships(){return `${this.storage.data.list.join(',')}|${[...new Set(Object.entries(this.storage.data.progress).filter(([,time])=>time>0).map(([key])=>key.split(':')[0]))].sort().join(',')}`;}
@@ -992,7 +1051,7 @@ export class MoviesView {
   if(target.dataset.drawerSeason)this.pickDrawerSeason(Number(target.dataset.drawerSeason));
   if(target.dataset.titleSeason&&this.route.id)void this.loadDrawerSeason(this.route.id,Number(target.dataset.titleSeason));
   const server=STREAM_PROVIDERS.find(provider=>provider.id===target.dataset.server);if(server)this.switchProvider(server.id);
-  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season);break;case 'next-server':this.switchProvider(nextServer(this.providerId));break;case 'retry-servers':this.retryServers();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.stopVideo();this.suspended=false;this.render();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.render();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
+  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season,true);break;case 'next-server':this.switchProvider(nextServer(this.providerId));break;case 'retry-servers':this.retryServers();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.stopVideo();this.suspended=false;this.renderKeepingFocus();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.renderKeepingFocus();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  // A section is a route. The current section re-renders in place; any other one changes the address, and navigate() shows it.
  private showSection(kind:MovieKind){
@@ -1029,7 +1088,7 @@ export class MoviesView {
  // A server that had played stopped. One that never reported playback did not start. The failure is reported while its attempt is still current.
  private failureWording(){return this.supervisor?.played?'stopped':"didn't start";}
  // Every automatic attempt has failed, so the panel offers Try again.
- private exhaust(){this.exhausted=true;this.failoverNote='';this.redrawPlayer();}
+ private exhaust(){this.exhausted=true;this.failoverNote='';this.keepingFocus(()=>this.redrawPlayer());}
  // The first sign of playback remembers the server for the next title and clears the failover line.
  private worked(provider:StreamProviderId){
   this.storage.setProvider(provider);
@@ -1094,14 +1153,20 @@ export class MoviesView {
  private searchFocus(){const search=this.root.querySelector<HTMLInputElement>('#movies-search');search?.focus({preventScroll:true});search?.scrollIntoView({block:'center'});}
  private input=(event:Event)=>{
   if((event.target as HTMLElement).id!=='movies-search')return;
-  this.query=(event.target as HTMLInputElement).value;
-  const start=(event.target as HTMLInputElement).selectionStart;
+  // Text still being composed is not a query yet. The composed text is searched when the composition ends.
+  if((event as InputEvent).isComposing)return;
+  this.searchTyped(event.target as HTMLInputElement);
+ };
+ private compositionEnd=(event:CompositionEvent)=>{if((event.target as HTMLElement).id==='movies-search')this.searchTyped(event.target as HTMLInputElement);};
+ // The typed text is the query. The page is redrawn around the field, which keeps its node, its focus and its caret.
+ private searchTyped(input:HTMLInputElement){
+  this.query=input.value;
   const request=this.remoteRequest();
   // A page with no request drops its results. A request the page already wants keeps running. A new one stops the old, and a search waits out its debounce.
   if(!request)this.resetRemote();
   else if(request.key!==this.remoteWanted){this.stopRemote();this.remoteWanted=request.key;this.remoteLoading=true;this.searchTimer=setTimeout(()=>void this.fetchCatalog(1),request.family==='q'?280:0);}
-  const top=this.root.scrollTop;this.render();const input=this.root.querySelector<HTMLInputElement>('#movies-search');input?.focus({preventScroll:true});if(start!==null)input?.setSelectionRange(start,start);this.root.scrollTop=top;
- };
+  const top=this.root.scrollTop;this.refreshBrowse();this.root.scrollTop=top;
+ }
  private change=(event:Event)=>{
   const input=event.target as HTMLSelectElement;
   if(input.id==='movies-auto-next'){const value=(event.target as HTMLInputElement).checked;this.preferences.setAutoNext(value);if(!value)this.cancelNext();}
@@ -1128,15 +1193,26 @@ export class MoviesView {
   try{if(screen.requestFullscreen)await screen.requestFullscreen();else screen.webkitRequestFullscreen?.();}catch{/* The browser can deny fullscreen. */}
   // The change event for entering can arrive late, even after an exit, so a granted request records the state itself.
   // An exit is then still recognised, and cancels the Up next countdown.
-  if(this.fullscreenElement())this.wasFullscreen=true;
+  if(this.fullscreenElement()){this.wasFullscreen=true;this.fullscreenTarget=screen;}
   if(!screen.isConnected||this.suspended||document.hidden)await this.exitFullscreen();
  }
  private fullscreenChange=()=>{
   const active=!!this.fullscreenElement();
-  if(this.wasFullscreen&&!active){if(!this.intentionalExit)this.cancelNext(true);this.intentionalExit=false;}
+  if(active)this.fullscreenTarget=this.fullscreenElement();
+  if(this.wasFullscreen&&!active){const intentional=this.intentionalExit;this.intentionalExit=false;if(!intentional)this.browserExit();}
   this.wasFullscreen=active;
   const button=this.root.querySelector('[data-action="fullscreen"]');button?.setAttribute('aria-pressed',String(this.screenFullscreen()));
  };
+ // The browser consumed the Escape that left fullscreen, so the exit stands in for it, as the games' browser exit does. An open episode
+ // drawer takes it as its cancel. Otherwise Up next is cancelled, and Study opens on its next article unless the page is hidden or
+ // suspended, the view is disposed, or the screen has left the page.
+ private browserExit(){
+  const drawer=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');
+  if(drawer?.open){const cancel=new Event('cancel',{cancelable:true});if(drawer.dispatchEvent(cancel))drawer.close();return;}
+  this.cancelNext(true);
+  if(this.disposed||this.suspended||document.hidden||!this.fullscreenTarget?.isConnected)return;
+  this.pause();this.study(true);
+ }
  private refreshPlayer(title:Title){
   const screen=this.root.querySelector<HTMLElement>('.movies-screen'),player=screen?.parentElement;if(!screen||!player)return;
   const template=document.createElement('template');template.innerHTML=this.player(title);const next=template.content.firstElementChild!;
@@ -1180,23 +1256,28 @@ export class MoviesView {
    overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;this.tabbar.dataset.hidden='true';
    const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent=label+'. Playing in 10 seconds.';
    // The island stays shown only while a keyboard focus is inside it. Any other focus there would sit on a hidden tab.
-   if(!this.tabbar.querySelector(':focus-visible'))overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});
+   if(!this.tabbar.querySelector(':focus-visible')){const before=document.activeElement;this.nextReturn=before===this.root||before===document.body?undefined:before;overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});}
    let seconds=10;this.countdown=setInterval(()=>{if(!this.preferences.autoNext()){this.cancelNext();return;}seconds--;if(seconds<=0)this.playNext();else {const count=overlay.querySelector('.movies-next-countdown');if(count)count.textContent='Playing in '+seconds;const bar=overlay.querySelector<HTMLElement>('.movies-next-bar>span');if(bar)bar.style.width=`${seconds*10}%`;}},1000);
   };
   if(this.fullscreenElement()&&(this.fullscreenElement()===this.frame||this.fullscreenElement()===this.video))void this.exitFullscreen().then(show);else show();
  }
  private cancelNext(focus=false){
   this.countdownGeneration++;clearInterval(this.countdown);this.countdown=undefined;this.nextHash='';
+  const back=this.nextReturn;this.nextReturn=undefined;
   const overlay=this.root.querySelector<HTMLElement>('.movies-next');const visible=overlay&&!overlay.hidden;if(overlay)overlay.hidden=true;if(visible)this.hideTabbar.reset();
   const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent='';
-  if(focus&&visible)this.root.querySelector<HTMLElement>('.movies-screen')?.focus({preventScroll:true});
+  if(focus&&visible)(this.isPageControl(back)?back:this.root.querySelector<HTMLElement>('.movies-screen'))?.focus({preventScroll:true});
  }
  private playNext(){const hash=this.nextHash;this.cancelNext();if(hash&&this.preferences.autoNext())location.hash=hash;}
+ // A control of the page itself. The root, a provider frame and a video take their own keys, so focus never rests on them.
+ private isPageControl(target:EventTarget|null|undefined):target is HTMLElement{
+  return target instanceof HTMLElement&&target!==this.root&&this.root.contains(target)&&!(target instanceof HTMLIFrameElement||target instanceof HTMLVideoElement);
+ }
  // Not every browser applies scroll-padding-top to focus scrolling, so once the browser has scrolled, a focused control still
  // under the sticky header moves clear of it. The header's own controls, the root, players and dialogs are left alone.
  private revealFocus=(event:FocusEvent)=>{
   const target=event.target;
-  if(!(target instanceof HTMLElement)||target===this.root||target instanceof HTMLIFrameElement||target instanceof HTMLVideoElement||target.closest('.movies-top,dialog'))return;
+  if(!this.isPageControl(target)||target.closest('.movies-top,dialog'))return;
   // The browser's own focus scroll is done by the next task. The check runs then, not on an animation frame: WebKit can run
   // a frame long after it was asked for, and a late check would move the page after the reader has scrolled on.
   window.setTimeout(()=>{
@@ -1207,7 +1288,7 @@ export class MoviesView {
   },0);
  };
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('a,button,input,select,textarea,dialog')){event.preventDefault();this.playNext();}};
- pause(){this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){if(this.videoPlayed(this.video))this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){if(this.frameReported)this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
+ pause(){this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){if(this.videoPlayed(this.video))this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){if(this.frameReported)this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="ui-btn primary" data-action="resume-stream">Resume stream</button></div>';}}
  // Ends the stream and its playback session: the watchdogs stop, and the failover budget and the tried servers go with them.
  // WebKit fires timeupdate only about every 250 ms, so a video can play and stop before the first one. Its played ranges still count.
  private videoPlayed(video:HTMLVideoElement){if(hasPlayed(video))this.videoReported=true;return this.videoReported;}
@@ -1216,5 +1297,5 @@ export class MoviesView {
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.cancelNext();this.clearResumePill();this.clearSlow();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
- dispose(){this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

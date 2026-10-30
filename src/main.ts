@@ -238,7 +238,7 @@ async function route(){
     try{
       const [{MoviesView},storage]=await Promise.all([import('./movies/view'),import('./movies/storage')]);if(token!==generation)return;
       movieStorage??=new storage.MovieStorage();
-      movies=new MoviesView(content,movieStorage,openStudy,preferences.reducedMotion,undefined,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});
+      movies=new MoviesView(content,movieStorage,openStudy,preferences.reducedMotion,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;

@@ -1,6 +1,6 @@
 /* A self-contained streaming UI; game layout and typography stay unchanged. */
 
-.movies-active{overflow:hidden}.movies-view{position:fixed;inset:0;z-index:30;overflow:auto;overscroll-behavior:contain;background:#141414;color:#fff;font:15px/1.5 Arial,Helvetica,sans-serif;color-scheme:dark;--movies-accent:#e50914}.movies-view *{box-sizing:border-box}.movies-view [hidden]{display:none}.movies-view a{color:inherit;text-decoration:none}.movies-view button,.movies-view select,.movies-view input{font:inherit}.movies-view button,.movies-view select{cursor:pointer}.movies-view button,.movies-view select,.movies-view input{border:1px solid #777;border-radius:3px;background:#252525;color:white;padding:10px 16px;min-height:44px}.movies-view button:disabled{cursor:not-allowed;opacity:.55}.movies-view h1,.movies-view h2,.movies-view h3,.movies-view p{margin:0}.movies-view h1{font:800 clamp(38px,5vw,72px)/1.08 Arial,Helvetica,sans-serif;letter-spacing:-1.5px}.movies-view h2{font-size:23px;line-height:1.3;font-weight:700}.movies-view h3{font-size:17px}.movies-view small{color:#bcbcbc}
+.movies-active{overflow:hidden}.movies-view{position:fixed;inset:0;z-index:30;overflow:auto;overscroll-behavior:contain;background:var(--c-bg);color:#fff;font:15px/1.5 var(--font-sans);color-scheme:dark}.movies-view *{box-sizing:border-box}.movies-view [hidden]{display:none}.movies-view a{color:inherit;text-decoration:none}.movies-view button,.movies-view select,.movies-view input{font:inherit}.movies-view button,.movies-view select{cursor:pointer}.movies-view button,.movies-view select,.movies-view input{border:1px solid #777;border-radius:3px;background:#252525;color:white;padding:10px 16px;min-height:44px}.movies-view button:disabled{cursor:not-allowed;opacity:.55}.movies-view h1,.movies-view h2,.movies-view h3,.movies-view p{margin:0}.movies-view h1{font:800 clamp(38px,5vw,72px)/1.08 var(--font-sans);letter-spacing:-1.5px}.movies-view h2{font-size:23px;line-height:1.3;font-weight:700}.movies-view h3{font-size:17px}.movies-view small{color:#bcbcbc}
 .movies-view .movies-primary{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;background:#fff;color:#111;font-weight:700;font-size:18px;padding:11px 28px;border-radius:4px;min-height:49px}.movies-view .movies-primary:disabled{opacity:.72;background:#e6e6e6;color:#333}.movies-primary>span{font-size:25px;line-height:1}
 .movies-result-count{color:#b3b3b3;font-size:13px}.movies-view .movies-result-count{margin:20px 0}.movies-empty{padding:100px 7%;text-align:center;max-width:800px;margin:auto;min-height:350px}.movies-empty p{color:#aaa;margin:18px 0 25px}.movies-empty h1{font-size:38px}.movies-empty a{display:inline-block;margin:15px}/* Footer: the brand and links share one row from 768 px; the privacy copy, Clear and the storage line take full rows. */
 .movies-view .movies-footer{display:grid;justify-items:start;gap:12px;margin-top:48px;padding:32px 0 8px;border-top:1px solid var(--line);background:none;color:var(--c-400);font-family:var(--font-sans);font-size:12px;line-height:1.5}
@@ -8,9 +8,9 @@
 .movies-view .movies-footer>strong{color:var(--c-200);font-size:14px;line-height:1.3}
 .movies-view .movies-footer p{margin:0;max-width:780px}
 .movies-view .ui-footer-brand strong{color:var(--c-100);font-size:14px;line-height:1.3}
-.movies-view .movies-storage{font-family:var(--font-mono);font-size:11px;color:var(--c-500)}
+.movies-view .movies-storage{font-family:var(--font-mono);font-size:11px;color:var(--c-400)}
 @media (min-width:768px){.movies-view .movies-footer{grid-template-columns:auto auto;justify-content:space-between;align-items:center;gap:20px 24px;margin-top:56px;padding-top:36px}.movies-view .movies-footer>strong,.movies-view .movies-footer>p,.movies-view .movies-storage{grid-column:1/-1}.movies-view .movies-footer>.ui-footer-links{justify-self:end}}.movies-tmdb{display:block;object-fit:contain;margin:15px 0}.movies-page-title{font-size:36px!important}
-.movies-player-unavailable{max-width:530px;text-align:center;padding:25px}.movies-player-unavailable>span{font:64px Arial;color:#e50914}.movies-player-unavailable p{color:#aaa;font-size:14px;margin:14px 0}.movies-player-unavailable .movies-primary{margin-top:15px;font-size:15px}.movies-screen video{width:100%;height:100%;max-height:75dvh}
+.movies-player-unavailable{max-width:530px;text-align:center;padding:25px}.movies-player-unavailable>span{font:64px var(--font-sans);color:var(--c-red)}.movies-player-unavailable p{color:#aaa;font-size:14px;margin:14px 0}.movies-view .movies-player-unavailable>.ui-btn{margin-top:15px}.movies-screen video{width:100%;height:100%;max-height:75dvh}
 @media(hover:hover) and (pointer:fine){.movies-view a:hover{color:#fff}.movies-view .movies-primary:not(:disabled):hover{background:#ddd}}
 
 @media(max-width:650px){.movies-view .movies-primary{font-size:15px;padding:10px 23px;min-height:44px;gap:10px}.movies-primary>span{font-size:22px}.movies-player-unavailable{padding:22px}.movies-page-title{font-size:30px!important}}
@@ -28,34 +28,16 @@ body.movies-active.study-active{overflow:auto}
 
 .movies-screen{width:100%;min-width:0;max-width:100%}.movies-provider-frame{display:block;max-width:100%;min-width:0}
 
-/* FrameXTV reference: compact discovery header, title-first catalog rows, metadata badges and poster-led cards. */
-.movies-view{background:#0c1017;--movies-accent:#69d8f4}
+/* Results: the status line is a neutral panel, the count keeps its margin, and pagination uses the secondary buttons. */
+.movies-view .movies-catalog-status{margin:12px 0 16px;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-xl);background:#18181b99;color:var(--c-300);font-size:13px;line-height:1.5}
+.movies-pagination{display:flex;align-items:center;justify-content:center;gap:16px;padding:26px 0 8px;color:var(--c-300);font-size:13px}
+.movies-view .movies-pagination .ui-btn.small{min-height:40px}
+@media(max-width:650px){.movies-view .movies-catalog-status{font-size:12px}.movies-pagination{gap:8px;font-size:11px}}
 
-
-
-.movies-view{--movies-accent:#69d8f4}
-
-.movies-view .movies-primary{background:#8ce8f8;color:#0b1720;border-radius:7px}
-@media (hover:hover) and (pointer:fine){.movies-view .movies-primary:not(:disabled):hover{background:#b4f2ff}}
-.movies-result-count{color:#93aab8}
-.movies-catalog-status{padding:11px 14px;border:1px solid #28394a;border-left:3px solid #69d8f4;border-radius:6px;background:#111a25;color:#b9d3df;font-size:13px}.movies-view .movies-catalog-status{margin:12px 0 16px}
-.movies-pagination{display:flex;align-items:center;justify-content:center;gap:16px;padding:26px 0 8px;color:#a8bdcb;font-size:13px}
-.movies-pagination button{border-color:#334353;border-radius:8px;background:#141e29}
-@media (hover:hover) and (pointer:fine){.movies-pagination button:not(:disabled):hover{border-color:#69d8f4;color:#a3edfa}}
-
-
-.movies-view button,.movies-view select,.movies-view input{border-color:#354452;border-radius:8px}
-
-@media(max-width:650px){
- .movies-catalog-status{font-size:12px}
- .movies-pagination{gap:8px;font-size:11px}
- .movies-pagination button{padding:8px 10px;min-height:40px}
-}
-
-.movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:focus-visible{outline:2px solid #8ce8f8;outline-offset:2px}
-.movies-fullscreen:focus-visible,.movies-auto-next input:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
+.movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.movies-fullscreen:focus-visible,.movies-auto-next input:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .movies-screen>.movies-detail-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;max-height:calc(100% - 24px);overflow:auto}.movies-view .movies-screen>.movies-detail-error{margin:0}
-.movies-catalog-status button:focus-visible,.movies-empty [data-action="retry-title"]:focus-visible,.movies-player [data-action="reload-stream"]:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
+.movies-catalog-status button:focus-visible,.movies-empty [data-action="retry-title"]:focus-visible,.movies-player [data-action="reload-stream"]:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
 
 
@@ -248,7 +230,7 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-media video{display:block;width:100%;height:100%;max-height:none;object-fit:contain}
 .movies-view .movies-provider-frame{display:block;width:100%;height:100%;min-height:0;border:0;background:#000}
 .movies-view .movies-media>.movies-player-unavailable{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;max-width:none;overflow:auto}
-/* The connecting overlay is hidden until a server is being tried (Task 16 shows it). */
+/* The connecting overlay is hidden until a server is being tried. */
 .movies-view .movies-connecting{position:absolute;inset:0;z-index:4;display:grid;place-content:center;justify-items:center;gap:12px;padding:16px;background:#000000d9;text-align:center}
 .movies-view .movies-connecting[hidden]{display:none}
 .movies-view .movies-connecting p{font-size:14px;color:var(--c-200)}
@@ -260,14 +242,20 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-next[hidden]{display:none}
 /* From 640 px the card sits above the tab island (z-index 50), so the island cannot cover its buttons while the countdown runs. */
 @media (min-width:640px){.movies-view .movies-next{inset:auto 12px 12px auto;z-index:60;width:min(380px,calc(100% - 24px));justify-content:flex-start;padding:16px 18px;border-radius:24px}}
+/* Below 640 px the card fills the screen, so its content starts under the Full screen button (top 10 px, 44 px tall). The content is centred in the
+   room left below that band, and an auto margin lets it scroll rather than clip when the screen is too short for it. */
+@media (max-width:639px){.movies-view .movies-next{justify-content:flex-start;padding-top:64px}.movies-view .movies-next>:first-child{margin-top:auto}.movies-view .movies-next>:last-child{margin-bottom:auto}}
 .movies-view .movies-next h2{margin:0;font-size:clamp(16px,2.5vw,20px);line-height:1.3;font-weight:700;overflow-wrap:anywhere}
 .movies-view .movies-next-countdown{margin:0;font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--c-300);font-variant-numeric:tabular-nums}
+/* Below 400 px the card is 16:9, so at 320 px wide it is 178 px tall. Its type and gaps tighten there, and the heading, countdown, buttons and bar fit
+   under the Full screen button (its bottom is 54 px down) instead of scrolling. */
+@media (max-width:399px){.movies-view .movies-next{padding-bottom:4px;gap:4px}.movies-view .movies-next h2{font-size:14px;line-height:1.25}.movies-view .movies-next-countdown{line-height:1.25}}
 .movies-view .movies-next-actions{display:flex;flex-wrap:wrap;gap:10px}
 .movies-view .movies-next .ui-btn{min-width:96px;min-height:44px;height:auto;padding:10px 16px;border-radius:999px;font-size:14px}
 /* Play now is the one tinted action, the white capsule. Cancel is a neutral glass capsule, as the sheets' secondary buttons are. */
 .movies-view .movies-next .ui-btn.secondary{border-color:transparent;background:rgb(255 255 255 / .12);color:#fff;box-shadow:inset 0 1px 0 rgb(255 255 255 / .25)}
 @media (hover:hover) and (pointer:fine){.movies-view .movies-next .ui-btn.secondary:hover{background:rgb(255 255 255 / .2);color:#fff}}
-.movies-view .movies-next-bar{height:3px;overflow:hidden;border-radius:999px;background:rgb(255 255 255 / .2)}
+.movies-view .movies-next-bar{height:3px;flex-shrink:0;overflow:hidden;border-radius:999px;background:rgb(255 255 255 / .2)}
 .movies-view .movies-next-bar>span{display:block;height:100%;background:#fff;transition:width 1s linear}
 @media (prefers-reduced-motion:reduce){.movies-view .movies-next-bar>span{transition:none}}
 .reduce-motion .movies-view .movies-next-bar>span{transition:none}
@@ -307,7 +295,7 @@ body.movies-active.study-active{overflow:auto}
 }
 .movies-view .movies-auto-next{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-height:44px;color:var(--c-200);font-size:14px;cursor:pointer}
 /* The focus ring sits on the switch while its checkbox has keyboard focus. The track's own ring from theme.css is left off, so one ring shows. */
-.movies-view .movies-auto-next:has(input:focus-visible) .ui-switch{outline:2px solid #fff;outline-offset:3px;border-radius:999px}
+.movies-view .movies-auto-next:has(input:focus-visible) .ui-switch{outline:2px solid #fff;outline-offset:2px;border-radius:999px}
 .movies-view .movies-auto-next:has(input:focus-visible) .ui-switch span{outline:0}
 .movies-view .ui-switch input{min-height:0;padding:0;border:0;border-radius:0;background:none}
 .movies-view #movies-player-status{margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--c-300);max-width:760px}

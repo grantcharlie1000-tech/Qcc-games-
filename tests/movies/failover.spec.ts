@@ -134,6 +134,19 @@ test('when every server fails, Try again restarts at Server 1',async({page})=>{
  await lands(page,'framextv');
 });
 
+// The first server waits until the test has focused Reload player, then every server fails, so the panel redraws with its controls.
+test('an exhausted failover keeps keyboard focus on Reload player',async({page})=>{
+ let release!:()=>void;const released=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('https://framextv.cc/**',async route=>{await released;await route.fulfill(REDIRECT_OUT);});
+ for(const origin of ['https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])await page.route(origin+'/**',route=>route.fulfill(REDIRECT_OUT));
+ await page.goto('/#/movies/movie-157336/play');
+ const reload=page.getByRole('button',{name:'Reload player',exact:true});
+ await expect(reload).toBeVisible();
+ await reload.focus();release();
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ await expect(reload).toBeFocused();
+});
+
 test('a server clicked on an exhausted title starts after a visit to another title',async({page})=>{
  await frozenClock(page);
  const up=new Set<string>();

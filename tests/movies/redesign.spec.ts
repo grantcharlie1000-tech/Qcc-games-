@@ -97,13 +97,15 @@ test('focus clears the sticky header even where scroll-padding is not applied',a
  await search.focus();
  await expect(search).toBeFocused();
  await expect.poll(()=>search.evaluate(f=>Math.round(f.getBoundingClientRect().top)),{message:'top of the focused field'}).toBeGreaterThanOrEqual(56);
- // A control the page focuses while it is already in view stays where it is.
+ // A control the page focuses while it is already in view stays where it is. The check waits until the scroll position stops changing first.
  const card=page.locator('.movies-poster').first();
  await card.scrollIntoViewIfNeeded();
- const before=await page.locator('.movies-view').evaluate(v=>v.scrollTop);
+ const scrollTop=()=>page.locator('.movies-view').evaluate(v=>v.scrollTop);
+ const before=await scrollTop();
  await card.focus();
- await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
- expect(await page.locator('.movies-view').evaluate(v=>v.scrollTop)).toBe(before);
+ let previous=-1;
+ await expect.poll(async()=>{const now=await scrollTop();const stable=now===previous;previous=now;return stable;}).toBe(true);
+ expect(await scrollTop()).toBe(before);
 });
 
 // Rails: an arrow scrolls its row, the ends update, and focus moves to the arrow that is still there.
@@ -122,7 +124,7 @@ test('rail arrows scroll their row, update the ends and keep focus on an arrow',
  await expect(rail.locator('.ui-rail-arrow.prev')).toBeFocused();
 });
 
-// Ruling 4: a heading focused by script shows no ring. The Tab press first makes script focus count as keyboard focus.
+// A heading focused by script shows no ring. The Tab press first makes script focus count as keyboard focus.
 test('a heading focused by script shows no ring',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
@@ -134,7 +136,7 @@ test('a heading focused by script shows no ring',async({page})=>{
  expect((await outline(heading)).style).toBe('none');
 });
 
-// Ruling 1: the Movies tab bar is the glass island at every width.
+// The Movies tab bar is the glass island at every width.
 for(const width of [1440,390])test(`the Movies island is visible at ${width}px, with 5 items`,async({page})=>{
  await page.setViewportSize({width,height:900});
  await page.goto('/#/movies');
@@ -143,7 +145,7 @@ for(const width of [1440,390])test(`the Movies island is visible at ${width}px, 
  await expect(bar.locator('.ui-tab')).toHaveCount(5);
 });
 
-// Ruling 2: the island's hide-on-scroll follows the Movies scroller.
+// The island's hide-on-scroll follows the Movies scroller.
 for(const width of [390,1440])test(`the Movies island hides on scroll down and returns on scroll up at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/#/movies');
@@ -164,7 +166,8 @@ for(const width of [390,1440])test(`the Movies island hides on scroll down and r
 test('a late animation frame never moves the Movies page after the reader scrolls',async({page})=>{
  await page.addInitScript(()=>{
   const raf=window.requestAnimationFrame.bind(window);let next=0;const pending=new Map<number,number>();
-  window.requestAnimationFrame=callback=>{const id=++next;pending.set(id,window.setTimeout(()=>{pending.delete(id);raf(callback);},600));return id;};
+  const frameState={requested:0,ran:0};(window as Window&{frameState?:typeof frameState}).frameState=frameState;
+  window.requestAnimationFrame=callback=>{const id=++next;frameState.requested++;pending.set(id,window.setTimeout(()=>{pending.delete(id);raf(time=>{try{callback(time);}finally{frameState.ran++;}});},600));return id;};
   window.cancelAnimationFrame=id=>{window.clearTimeout(pending.get(id));pending.delete(id);};
  });
  await page.setViewportSize({width:390,height:844});
@@ -173,11 +176,13 @@ test('a late animation frame never moves the Movies page after the reader scroll
  const view=page.locator('.movies-view');
  await expect(page.locator('[data-rail]').first()).toBeVisible();
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
- // A control takes focus while it is in view, and the reader scrolls a moment later.
+ // A control takes focus while it is in view, and the reader scrolls. The island's frame is requested by the scroll event, so the check waits for
+ // that event, and then for every frame requested so far to have run, before it reads the page.
  await page.locator('.movies-view h1').first().evaluate(h1=>(h1 as HTMLElement).focus({preventScroll:true}));
- await page.waitForTimeout(100);
+ const scrolled=view.evaluate(e=>new Promise<void>(resolve=>e.addEventListener('scroll',()=>resolve(),{once:true})));
  await view.evaluate(e=>e.scrollTo(0,400));
- await page.waitForTimeout(900);
+ await scrolled;
+ await expect.poll(()=>page.evaluate(()=>{const state=(window as Window&{frameState?:{requested:number;ran:number}}).frameState!;return state.requested-state.ran;})).toBe(0);
  expect(await view.evaluate(e=>e.scrollTop)).toBe(400);
  await expect(bar).toHaveAttribute('data-hidden','true');
  await view.evaluate(e=>e.scrollTo(0,300));
@@ -198,7 +203,7 @@ test('the Movies island is shown again after a section change while it is hidden
  await expect(bar.locator('[data-kind="tv"]')).toHaveAttribute('aria-pressed','true');
 });
 
-// Ruling 3: content and keyboard focus clear the island at every width.
+// Content and keyboard focus clear the island at every width.
 for(const width of [390,1440])test(`the Movies scroller keeps 88px of bottom clearance at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/#/movies');
@@ -207,7 +212,7 @@ for(const width of [390,1440])test(`the Movies scroller keeps 88px of bottom cle
  expect(await view.evaluate(e=>getComputedStyle(e).paddingBottom)).toBe('88px');
 });
 
-// Ruling 5: the header never clips the wordmark, overflows its row, or lets the brand, nav and actions overlap, from 320 to 1920 px.
+// The header never clips the wordmark, overflows its row, or lets the brand, nav and actions overlap, from 320 to 1920 px.
 test('the Movies header fits from 320 to 1920 px without clipping the wordmark',async({page})=>{
  const widths=[320,360,390,639,640,700,768,900,1023,1024,1280,1920];
  const results:{width:number;wordmark:number;row:number;brand:number;overlap:boolean}[]=[];
@@ -358,11 +363,11 @@ test('My list page shows a saved title that only its stored snapshot holds',asyn
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/list');
  await expect(page.getByRole('link',{name:'Details for Snapshot Only'})).toBeVisible();
- // The empty-list copy is replaced by the Task 13 copy, so it is the one that must stay away from a list with titles.
+ // A list with titles never shows the empty-list copy, whether its titles come from the catalog or from a stored snapshot.
  await expect(page.getByText('Your list is empty')).toHaveCount(0);
 });
 
-// Ruling 1: the hero list button names its action in its label, has no aria-pressed, and shows at every width.
+// The hero list button names its action in its label, has no aria-pressed, and shows at every width.
 for(const width of [1440,390])test(`the hero list button names its action at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/#/movies');
@@ -376,7 +381,7 @@ for(const width of [1440,390])test(`the hero list button names its action at ${w
  await expect(page.locator('.movies-hero .movies-hero-list')).not.toHaveAttribute('aria-pressed');
 });
 
-// Ruling 2: a series hero whose episodes are not loaded plays through the title page, never a play route without an episode.
+// A series hero whose episodes are not loaded plays through the title page, never a play route without an episode.
 test('a series hero without a loaded season plays through its title page',async({page})=>{
  const series=fixtureTitle('tv-778811','Summary Series','tv');
  const detail={...series,seasons:[{number:1,name:'Season 1',episodes:[{number:1,name:'Pilot',overview:'The first episode.'}]}]};
@@ -393,7 +398,7 @@ test('a series hero without a loaded season plays through its title page',async(
  await expect(page.getByRole('heading',{name:'Summary Series',exact:true})).toBeVisible();
 });
 
-// Ruling 7: a poster that fails to load is classified as failed and its title shows on the placeholder.
+// A poster that fails to load is classified as failed and its title shows on the placeholder.
 test('a card whose image fails shows its placeholder title',async({page})=>{
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({status:404,body:'Unavailable'}));
  await page.setViewportSize({width:390,height:844});
@@ -589,7 +594,7 @@ test('a late rails response keeps focus on the card that had it',async({page})=>
  await expect(page.locator('[data-rail] [data-title="movie-157336"]')).toBeFocused();
 });
 
-// Section pages and My list (Task 13). Each fixture answers by the request's own parameters, so a test states what the server returns.
+// Section pages and My list. Each fixture answers by the request's own parameters, so a test states what the server returns.
 const seedMovies=(page:Page,state:unknown)=>page.addInitScript(value=>{
  if(window!==window.top)return;
  localStorage.setItem('qcc:movies:v1',JSON.stringify(value));
@@ -870,13 +875,14 @@ test('going back to TV from Movies resets the genre that Movies had set',async({
  await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
  await page.locator('#movies-genre').selectOption('Science Fiction');
  await expect(page.getByRole('link',{name:'Details for Remote Science Film'})).toBeVisible();
+ await page.clock.install();
  await page.goBack();
  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
  await expect(page.getByRole('heading',{name:'TV Shows',exact:true,level:1})).toBeVisible();
  await expect(page.locator('#movies-genre')).toHaveValue('All');
  await expect(page.locator('.movies-catalog-status')).toHaveCount(0);
- // Past the search debounce, so a genre request for TV would have gone out by now.
- await page.waitForTimeout(600);
+ // Past the search debounce on the clock, so a genre request for TV would have gone out by now.
+ await page.clock.runFor(300);
  expect(genreRequests).toHaveLength(1);
  expect(new URL(genreRequests[0]).searchParams.get('type')).toBe('movie');
 });
@@ -933,13 +939,14 @@ test('a genre response that arrives after a title opened updates state only',asy
 // A genre answer that arrives after a newer genre was chosen is dropped, so the grid keeps the newer genre's titles.
 test('a superseded genre answer is dropped when a newer genre answers',async({page})=>{
  let release!:()=>void;
+ let lateAnswers=0;
  const held=new Promise<void>(resolve=>{release=resolve;});
  let sawFirst!:()=>void;
  const firstRequest=new Promise<void>(resolve=>{sawFirst=resolve;});
  await page.route('**/api/movies?*',async route=>{
   const genre=new URL(route.request().url()).searchParams.get('genre');
   // The stale titles carry Drama too, so the newer genre's filter would keep them if they reached the grid.
-  if(genre==='Science Fiction'){sawFirst();await held;return route.fulfill({json:{titles:[{...fixtureTitle('movie-90511','Stale Science Film'),genres:['Science Fiction','Drama']}],page:1,totalPages:1,totalResults:1}});}
+  if(genre==='Science Fiction'){sawFirst();await held;await route.fulfill({json:{titles:[{...fixtureTitle('movie-90511','Stale Science Film'),genres:['Science Fiction','Drama']}],page:1,totalPages:1,totalResults:1}}).catch(()=>{});lateAnswers++;return;}
   if(genre==='Drama')return route.fulfill({json:{titles:[{...fixtureTitle('movie-90512','Fresh Drama Film'),genres:['Drama']}],page:1,totalPages:1,totalResults:1}});
   return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
  });
@@ -950,8 +957,8 @@ test('a superseded genre answer is dropped when a newer genre answers',async({pa
  await page.locator('#movies-genre').selectOption('Drama');
  await expect(page.getByRole('link',{name:'Details for Fresh Drama Film'})).toBeVisible();
  release();
- // The page cancelled the older request when Drama was chosen. Its late answer must change nothing, and the wait gives a stale render time to show if one happened.
- await page.waitForTimeout(600);
+ // The page cancelled the older request when Drama was chosen. Its late answer must change nothing, so the checks run once the page has read that answer.
+ await expect.poll(()=>lateAnswers).toBe(1);
  await expect(page.getByRole('link',{name:'Details for Stale Science Film'})).toHaveCount(0);
  await expect(page.getByRole('link',{name:'Details for Fresh Drama Film'})).toBeVisible();
  await expect(page.getByRole('link',{name:'Details for Arrival'})).toBeVisible();
@@ -977,11 +984,12 @@ test('My list searches its saved titles only, without a full-catalog request',as
  await seedMovies(page,savedFilm);
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/list');
+ await page.clock.install();
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('arrival');
  await expect(page.getByRole('heading',{name:'No titles found',exact:true})).toBeVisible();
  await expect(page.locator('.movies-catalog-status')).toHaveCount(0);
- // Past the 280 ms search debounce, so a request that was due would have gone out by now.
- await page.waitForTimeout(600);
+ // Past the 280 ms search debounce on the clock, so a request that was due would have gone out by now.
+ await page.clock.runFor(300);
  expect(queries).toEqual([]);
 });
 
@@ -1009,7 +1017,7 @@ test('My list says its search covers the titles saved on this device',async({pag
  await expect(page.locator('.movies-empty p')).toHaveText('Try another title or clear your filters. Search covers this catalog snapshot only.');
 });
 
-// Ruling 6: Study is in the header and in the island. A focus restored after a render stays in its own bar, so the island tab keeps focus.
+// Study is in the header and in the island. A focus restored after a render stays in its own bar, so the island tab keeps focus.
 for(const width of [390,1440])test(`the island's Study tab keeps focus when a late rails response renders at ${width}px`,async({page})=>{
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
@@ -1125,7 +1133,7 @@ for(const late of ['genre','section rails'] as const)test(`a late ${late} answer
  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
 });
 
-// Ruling 6: Safari does not focus a link on click, so the title and rail captured by the click must still bring focus back to the card.
+// Safari does not focus a link on click, so the title and rail captured by the click must still bring focus back to the card.
 test('going back to browsing returns focus to a card that a press opened without focusing it',async({page})=>{
  await railsDown(page);
  await page.setViewportSize({width:1440,height:900});
@@ -1143,7 +1151,7 @@ test('going back to browsing returns focus to a card that a press opened without
  await expect(card).toBeFocused();
 });
 
-// Task 14: the title page. The API answers a title by id. A season's episodes come only when that season is asked for, as the real route does.
+// The title page. The API answers a title by id. A season's episodes come only when that season is asked for, as the real route does.
 async function answerTitle(page:Page,title:(season:number)=>object,onRequest:(url:URL)=>Promise<void>|void=()=>{}){
  await page.route('**/api/movies?*',async route=>{
   const url=new URL(route.request().url());
@@ -1247,8 +1255,9 @@ test('a long title fits a 320px phone',async({page})=>{
  await expect(page.locator('.movies-detail-info h1')).toHaveText(longName);
  await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
  expect(await page.locator('.movies-view').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
- const widest=await page.locator('.movies-detail-inner *').evaluateAll(elements=>Math.max(...elements.map(e=>e.getBoundingClientRect().right)));
- expect(widest).toBeLessThanOrEqual(320);
+ const rights=await page.locator('.movies-detail-inner *').evaluateAll(elements=>elements.map(e=>e.getBoundingClientRect().right));
+ expect(rights.length).toBeGreaterThan(0);
+ expect(Math.max(...rights)).toBeLessThanOrEqual(320);
 });
 
 test('the title page list button names its action without aria-pressed',async({page})=>{
@@ -1303,7 +1312,7 @@ test('a series without loaded episodes shows its seasons and no play route',asyn
  await expect(page.locator('.movies-actions .movies-primary')).toHaveCount(0);
 });
 
-// Task 14 review fixes. Two counters, so a second mount shows up however it happens. `observed` counts provider iframes inserted into the page
+// Two counters, so a second mount shows up however it happens. `observed` counts provider iframes inserted into the page
 // (MutationObserver). `renders` counts writes of the page's markup that carry a provider iframe. A same-task insert can escape the observer, so
 // the write count is the one that cannot undercount.
 const countFrameMounts=(page:Page)=>page.addInitScript(()=>{
@@ -1324,7 +1333,7 @@ const settle=(page:Page)=>page.evaluate(()=>new Promise<void>(resolve=>setTimeou
 // where a control was. A test that presses a control in the drawer waits for the drawer's own animations to finish first.
 const drawerSettled=(drawer:Locator)=>expect.poll(()=>drawer.evaluate(el=>el.getAnimations({subtree:true}).filter(animation=>!(animation.effect as KeyframeEffect|null)?.pseudoElement).length)).toBe(0);
 
-// Ruling 1: a play route into a season that is still loading shows the loading text, and the player mounts once when the season arrives.
+// A play route into a season that is still loading shows the loading text, and the player mounts once when the season arrives.
 // The Continue link and a cold link to the same route both wait for the season.
 for(const entry of ['Continue link','cold link'] as const)test(`a play route into an unloaded season mounts the player once (${entry})`,async({page})=>{
  let release!:()=>void;
@@ -1332,6 +1341,7 @@ for(const entry of ['Continue link','cold link'] as const)test(`a play route int
  let asked=false;
  await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season),async url=>{if(url.searchParams.get('season')==='2'){asked=true;await held;}});
  await countFrameMounts(page);
+ await trackAnswers(page);
  await page.setViewportSize({width:1440,height:900});
  if(entry==='Continue link'){
   await savedProgress(page,{'tv-90200:s2:e1':300},{'tv-90200:s2:e1':{duration:2400,updated:2000}});
@@ -1344,12 +1354,12 @@ for(const entry of ['Continue link','cold link'] as const)test(`a play route int
  release();
  await expect(page.getByRole('heading',{name:'S2 · E1 — Second Season Opener',exact:true})).toBeVisible();
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);
- await settle(page);
+ await expect.poll(()=>answersRead(page,'season=2')).toBe(1);
  expect(await frameMounts(page)).toEqual({observed:1,renders:1});
  await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('src',/\/embed\/90200\/2\/1\?/);
 });
 
-// Ruling 1: a licensed local episode in a season that is still loading plays from its own file, and no provider is asked for it first.
+// A licensed local episode in a season that is still loading plays from its own file, and no provider is asked for it first.
 test('a licensed episode in an unloaded season plays locally before any provider is asked',async({page})=>{
  await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'tv-90200:s2:e1',path:'movies/media/second-season-opener.mp4',license:'CC0-1.0',credit:'Test fixture',evidence:'docs/rights/second-season-opener.md',reviewed:true,territory:'Worldwide',expires:'2099-12-31'}]}));
  await page.route('**/movies/media/**',route=>route.fulfill({contentType:'video/mp4',body:''}));
@@ -1369,16 +1379,16 @@ test('a licensed episode in an unloaded season plays locally before any provider
  await page.goto('/#/movies/tv-90200');
  await page.locator('.movies-actions a.movies-primary').click();
  await expect.poll(()=>asked).toBe(true);
- await settle(page);
+ await expect(page.locator('.movies-empty[role="status"] h1')).toHaveText('Loading title details…');
  expect(thirdParty()).toEqual([]);
  release();
  await expect(page.locator('.movies-media video')).toHaveAttribute('src',/\/movies\/media\/second-season-opener\.mp4$/);
- await settle(page);
+ await expect.poll(()=>requests.some(request=>request.url.includes('second-season-opener.mp4'))).toBe(true);
  expect(thirdParty()).toEqual([]);
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
 });
 
-// Ruling 5, amended: Continue may show while seasons load. It carries its own season and episode from storage. The Play S1 E1 fallback
+// Continue may show while seasons load. It carries its own season and episode from storage. The Play S1 E1 fallback
 // still needs loaded seasons, which "a series without loaded episodes shows its seasons and no play route" pins.
 test('Continue names its own season and episode while that season loads',async({page})=>{
  let release!:()=>void;
@@ -1399,7 +1409,7 @@ test('Continue names its own season and episode while that season loads',async({
  await expect(primary).toHaveAttribute('href','#/movies/tv-90200/season/2/episode/1/play');
 });
 
-// Ruling 8: a built-in title gains the API's cast, related titles, rating and runtime. Its bundled name, summary and artwork stay.
+// A built-in title gains the API's cast, related titles, rating and runtime. Its bundled name, summary and artwork stay.
 test('a built-in title gains its cast and related titles from the API and keeps its bundled name',async({page})=>{
  await answerTitle(page,()=>({...fixtureTitle('movie-157336','Interstellar (API copy)'),overview:'A different summary.',rating:8.6,runtime:169,
   cast:[{name:'Ada Lovelace',character:'Analyst'}],related:[fixtureTitle('movie-90501','Related Feature')]}));
@@ -1420,15 +1430,16 @@ test('a built-in title gains its cast and related titles from the API and keeps 
  await expect(page.getByRole('link',{name:'Details for Related Feature'})).toBeVisible();
 });
 
-// Ruling 8: when the API is unavailable, a built-in title keeps its bundled page and shows no error.
+// When the API is unavailable, a built-in title keeps its bundled page and shows no error.
 test('a built-in title keeps its bundled page when the API is unavailable, with no error',async({page})=>{
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
  await page.setViewportSize({width:1440,height:900});
+ const answered=page.waitForResponse(response=>response.url().includes('id=movie-157336'));
  await page.goto('/#/movies/movie-157336');
  const detail=page.locator('section.movies-detail');
  await expect(detail.locator('h1')).toHaveText('Interstellar');
  await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
- await settle(page);
+ await answered;
  await expect(page.locator('section.movies-cast')).toHaveCount(0);
  await expect(page.getByRole('heading',{name:'More like this'})).toHaveCount(0);
  await expect(page.locator('.movies-detail-error')).toHaveCount(0);
@@ -1441,7 +1452,7 @@ test('a built-in title keeps its bundled page when the API is unavailable, with 
  await expect(detail.locator('.movies-detail-art')).toHaveAttribute('src',/gEU2QniE6E77NI6lCU6MxlNBvIx\.jpg$/);
 });
 
-// Ruling 8: nothing changes while a built-in title's details load. When they arrive the page keeps focus on Play movie (ruling 3).
+// Nothing changes while a built-in title's details load. When they arrive the page keeps focus on Play movie.
 test('a built-in title is unchanged while its details load, and keeps focus on Play movie when they arrive',async({page})=>{
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
@@ -1466,7 +1477,7 @@ test('a built-in title is unchanged while its details load, and keeps focus on P
  await expect(play).toBeFocused();
 });
 
-// Ruling 8: a built-in series takes episode stills and ratings from the API. Its bundled episodes keep their names and overviews.
+// A built-in series takes episode stills and ratings from the API. Its bundled episodes keep their names and overviews.
 test('a built-in series takes episode stills and ratings from the API and keeps its own episodes',async({page})=>{
  await page.route('**/api/movies?*',route=>{
   if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
@@ -1483,7 +1494,7 @@ test('a built-in series takes episode stills and ratings from the API and keeps 
  await expect(first).toContainText('Episode information is included in this starter selection.');
 });
 
-// Ruling 3: a Play link is found again by its address, but never on its thumbnail, which is hidden from focus and shares that address.
+// A Play link is found again by its address, but never on its thumbnail, which is hidden from focus and shares that address.
 test('focus returns to an episode\'s Play link, not its hidden thumbnail, after a re-render',async({page})=>{
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
@@ -1503,7 +1514,7 @@ test('focus returns to an episode\'s Play link, not its hidden thumbnail, after 
  await expect(play).toBeFocused();
 });
 
-// Ruling 4: season pills are 44 px tall, a long season name wraps inside a 320 px phone, and the name stays Season N.
+// Season pills are 44 px tall, a long season name wraps inside a 320 px phone, and the name stays Season N.
 test('season pills are 44 px tall and wrap a long season name at 320 px',async({page})=>{
  const longName='A Season Name That Is Far Too Long To Fit On One Line At Three Hundred Twenty Pixels';
  await answerTitle(page,season=>({...seriesFor('tv-90400','Long Pills Series',season),seasons:[
@@ -1523,7 +1534,7 @@ test('season pills are 44 px tall and wrap a long season name at 320 px',async({
  expect(box!.x+box!.width).toBeLessThanOrEqual(320);
 });
 
-// Ruling 4: the episode count is hidden from the name, so a pill is Season N before its episodes load and after.
+// The episode count is hidden from the name, so a pill is Season N before its episodes load and after.
 test('a season pill keeps the name Season N before and after its episodes load',async({page})=>{
  await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season));
  await page.setViewportSize({width:1440,height:900});
@@ -1538,7 +1549,7 @@ test('a season pill keeps the name Season N before and after its episodes load',
  await expect(page.getByRole('button',{name:'Season 2',exact:true}).locator('.movies-pill-count')).toHaveText('1');
 });
 
-// Ruling 5: a title whose poster failed has no poster column, on the first visit and on a later one, when the failed poster is not asked for again.
+// A title whose poster failed has no poster column, on the first visit and on a later one, when the failed poster is not asked for again.
 test('a title whose poster failed drops the poster column, on the first visit and later',async({page})=>{
  await page.route('https://image.tmdb.org/t/p/w500/fixture90600.jpg',route=>route.fulfill({status:404,headers:{'cache-control':'no-store'},body:'Unavailable'}));
  await answerTitle(page,()=>fixtureTitle('movie-90600','No Poster Feature'));
@@ -1557,7 +1568,7 @@ test('a title whose poster failed drops the poster column, on the first visit an
  expect(await columns()).toBe(1);
 });
 
-// Ruling 7: the title backdrop reuses the hero's shade from theme.css, and no longer carries its own copy of it.
+// The title backdrop reuses the hero's shade from theme.css, and no longer carries its own copy of it.
 test('the title backdrop uses the shared hero shade',async({page})=>{
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
  await page.setViewportSize({width:1440,height:900});
@@ -1567,9 +1578,9 @@ test('the title backdrop uses the shared hero shade',async({page})=>{
  expect(await backdrop.evaluate(e=>getComputedStyle(e,'::after').content)).toBe('none');
 });
 
-// The servers row of the watch page (Task 15). Server n is the n-th provider in STREAM_PROVIDERS.
+// The servers row of the watch page. Server n is the n-th provider in STREAM_PROVIDERS.
 const serversRow=(page:Page)=>page.getByRole('group',{name:'Servers',exact:true});
-// Ruling 10: a source that cannot resume (VidSrc, resume 'none') starts from the beginning, and the player promises no resume point.
+// A source that cannot resume (VidSrc, resume 'none') starts from the beginning, and the player promises no resume point.
 test('a source that cannot resume starts from the beginning and offers no Resume line',async({page})=>{
  await savedProgress(page,{'movie-157336':1200},{'movie-157336':{duration:7200,updated:1000}});
  await page.setViewportSize({width:1440,height:900});
@@ -1582,7 +1593,7 @@ test('a source that cannot resume starts from the beginning and offers no Resume
  await expect(page.getByText('Resume at')).toHaveCount(0);
 });
 
-// Task 15: the watch page with servers, episode controls, the episode drawer, the Up next card and the resume pill.
+// The watch page with servers, episode controls, the episode drawer, the Up next card and the resume pill.
 test('the servers row switches provider and marks it pressed',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336/play');
@@ -1665,8 +1676,9 @@ test('the watch page fits a 320px phone',async({page})=>{
  await expect(serversRow(page)).toBeVisible();
  await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toBeVisible();
  expect(await page.locator('.movies-view').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
- const widest=await page.locator('.movies-player').evaluate(player=>Math.max(...[...player.querySelectorAll('*')].filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().right)));
- expect(widest).toBeLessThanOrEqual(320);
+ const rights=await page.locator('.movies-player').evaluate(player=>[...player.querySelectorAll('*')].filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().right));
+ expect(rights.length).toBeGreaterThan(0);
+ expect(Math.max(...rights)).toBeLessThanOrEqual(320);
  for(const control of await page.locator('.movies-server,.movies-episode-controls > .ui-btn').all())expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
 
@@ -1686,6 +1698,8 @@ test('the Up next card is above the tab island at 1440px',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+ // The clock is paused before the countdown starts, so the card holds still while the check reads it.
+ await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
  await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
  const playNow=page.getByRole('button',{name:'Play now',exact:true});
  await expect(playNow).toBeVisible();
@@ -1693,7 +1707,7 @@ test('the Up next card is above the tab island at 1440px',async({page})=>{
  expect(topmost).toBe(true);
 });
 
-// Ruling A: the title page and the current server agree. A server that cannot resume removes the Resume line from the title page too,
+// The title page and the current server agree. A server that cannot resume removes the Resume line from the title page too,
 // and picking a server that can resume brings it back.
 test('a server that cannot resume removes the Resume line from the title page too',async({page})=>{
  await savedProgress(page,{'movie-157336':1200},{'movie-157336':{duration:7200,updated:1000}});
@@ -1831,15 +1845,16 @@ test('a failed season load keeps the title-details notice and mounts no player',
   return route.fulfill({json:{title:seriesFor('tv-90200','Pill Series',1)}});
  });
  await page.setViewportSize({width:1440,height:900});
+ const answered=page.waitForResponse(response=>response.url().includes('season=2'));
  await page.goto('/#/movies/tv-90200/season/2/episode/1/play');
  await expect(page.getByRole('heading',{name:'Title details unavailable',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Retry title',exact:true})).toBeVisible();
- await settle(page);
+ await answered;
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
  expect(await frameMounts(page)).toEqual({observed:0,renders:0});
 });
 
-// Task 15 review 1. The Auto next switch paints its focus ring on the switch itself while its checkbox has keyboard focus.
+// The Auto next switch paints its focus ring on the switch itself while its checkbox has keyboard focus.
 test('the Auto next switch shows a focus ring when its checkbox has keyboard focus',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
@@ -1849,7 +1864,7 @@ test('the Auto next switch shows a focus ring when its checkbox has keyboard foc
  expect(ring).toEqual({style:'solid',width:2,color:'rgb(255, 255, 255)'});
 });
 
-// Review 1, Important 3: My list keeps a licensed local video that is playing, as it keeps a provider frame. A video that was rebuilt would seek back
+// My list keeps a licensed local video that is playing, as it keeps a provider frame. A video that was rebuilt would seek back
 // to its resume point and show the Resumed pill again.
 test('My list keeps a playing licensed video, and its resume pill does not come back',async({page})=>{
  await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'movie-157336',path:'movies/media/long-resume.webm',license:'CC0-1.0',credit:'QCC fixture',evidence:'docs/rights/fixture.md',reviewed:true,territory:'Worldwide',expires:'2099-12-31'}]}));
@@ -1874,12 +1889,11 @@ test('My list keeps a playing licensed video, and its resume pill does not come 
  await page.locator('.movies-watch-actions').getByRole('button',{name:'Add to my list',exact:true}).click();
  await expect(page.locator('.movies-watch-actions').getByRole('button',{name:'In my list',exact:true})).toBeFocused();
  await expect(video).toHaveAttribute('data-instance','original');
- expect(await video.evaluate((element:HTMLVideoElement)=>element.currentTime)).toBeGreaterThan(21);
- await settle(page);
+ await expect.poll(()=>video.evaluate((element:HTMLVideoElement)=>element.currentTime)).toBeGreaterThan(21);
  expect(await page.evaluate(()=>(window as Window&{pillShown?:number}).pillShown)).toBe(0);
 });
 
-// Review 1, Minor 6: fullscreen drops the screen's border and radius. The fullscreen rule has to win over the windowed rule that sets both.
+// Fullscreen drops the screen's border and radius. The fullscreen rule has to win over the windowed rule that sets both.
 test('fullscreen drops the screen border and radius',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336/play');
@@ -1892,7 +1906,7 @@ test('fullscreen drops the screen border and radius',async({page})=>{
  expect(await screen.evaluate(element=>{const style=getComputedStyle(element);return {border:style.borderTopWidth,radius:style.borderTopLeftRadius};})).toEqual({border:'0px',radius:'0px'});
 });
 
-// Review 1, Minor 5: the drawer row of the episode already playing sets the address it has, so the drawer closes instead of staying open.
+// The drawer row of the episode already playing sets the address it has, so the drawer closes instead of staying open.
 test('the drawer row of the episode already playing closes the drawer',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
@@ -1906,7 +1920,7 @@ test('the drawer row of the episode already playing closes the drawer',async({pa
  await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);
 });
 
-// Review 1, Important 4: a season that fails to load in the drawer shows its error and a Retry button. A season that loads later is shown by Retry.
+// A season that fails to load in the drawer shows its error and a Retry button. A season that loads later is shown by Retry.
 async function failingSeasonTwo(page:Page){
  const state={failing:true};
  await page.route('**/api/movies?*',route=>{
@@ -1953,7 +1967,7 @@ test('Retry episodes loads the season that failed, in the open drawer',async({pa
  await expect(drawer.getByRole('button',{name:'Season 2',exact:true})).toHaveAttribute('aria-pressed','true');
 });
 
-// Review 1, Important 4: Previous across a season boundary. On a season's first episode, Previous is the last episode of the season before, once that season has loaded.
+// Previous across a season boundary. On a season's first episode, Previous is the last episode of the season before, once that season has loaded.
 test('Previous on a season\'s first episode goes to the last episode of the season before',async({page})=>{
  await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season));
  await page.setViewportSize({width:1440,height:900});
@@ -1981,7 +1995,7 @@ test('Previous reads unavailable until the season before loads, then links to it
  await expect(page.getByRole('link',{name:'Previous episode',exact:true})).toHaveAttribute('href',/season\/1\/episode\/2\/play$/);
 });
 
-// Review 1, Important 4: the drawer closes on a server switch and when the page is hidden. Its modal makes the server row inert, so the switch is sent from the page.
+// The drawer closes on a server switch and when the page is hidden. Its modal makes the server row inert, so the switch is sent from the page.
 test('switching server closes the episode drawer',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
@@ -2004,7 +2018,7 @@ test('a hidden page closes the episode drawer',async({page})=>{
  await expect(drawer).toBeHidden();
 });
 
-// Review 1, Important 4: below 640 px the drawer is a bottom sheet. It is the glass sheet, inset 8 px from the sides and the bottom, as the menu is.
+// Below 640 px the drawer is a bottom sheet. It is the glass sheet, inset 8 px from the sides and the bottom, as the menu is.
 test('the episode drawer is a bottom sheet below 640px',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
@@ -2035,7 +2049,7 @@ async function homeWithHeldDetails(page:Page,rail:object[],details:Record<string
  return {asked,release};
 }
 
-// Review 2, Important 2: a built-in movie that Home lists keeps its bundled page. Its details add the cast in the background, with no loading state.
+// A built-in movie that Home lists keeps its bundled page. Its details add the cast in the background, with no loading state.
 test('a built-in movie that Home lists keeps its bundled page while its details load, and gains the API cast',async({page})=>{
  const {asked,release}=await homeWithHeldDetails(page,[{...fixtureTitle('movie-157336','Interstellar'),overview:'A rail summary, not the bundled one.'}],{
   'movie-157336':{...fixtureTitle('movie-157336','Interstellar (API copy)'),overview:'An API summary, not the bundled one.',rating:8.6,runtime:169,cast:[{name:'Ada Lovelace',character:'Analyst'}],related:[fixtureTitle('movie-90501','Related Feature')]}});
@@ -2059,7 +2073,7 @@ test('a built-in movie that Home lists keeps its bundled page while its details 
  await expect(detail.locator('.movies-overview')).toHaveText('A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.');
 });
 
-// Review 2, Important 2 and the TV check: a built-in series that Home lists keeps its bundled episodes, and gains the API cast in the background.
+// A built-in series that Home lists keeps its bundled episodes, and gains the API cast in the background.
 test('a built-in series that Home lists keeps its bundled episodes while its details load, and gains the API cast',async({page})=>{
  const {asked,release}=await homeWithHeldDetails(page,[{...fixtureTitle('tv-19885','Sherlock','tv'),overview:'A rail summary, not the bundled one.'}],{
   'tv-19885':{...fixtureTitle('tv-19885','Sherlock (API copy)','tv'),overview:'An API summary, not the bundled one.',seasons:[],cast:[{name:'Ada Lovelace',character:'Analyst'}]}});
@@ -2083,10 +2097,11 @@ test('a built-in series that Home lists keeps its bundled episodes while its det
  await expect(page.locator('article.movies-episode').first().locator('h3')).toHaveText('A Study in Pink');
 });
 
-// Review 2, Important 2: Home's hero plays a built-in movie at once. Its details still loading are no reason to show a loading state on the player.
+// Home's hero plays a built-in movie at once. Its details still loading are no reason to show a loading state on the player.
 test('a built-in movie that Home features plays at once, while its details load',async({page})=>{
  const {asked,release}=await homeWithHeldDetails(page,[{...fixtureTitle('movie-157336','Interstellar'),overview:'A rail summary, not the bundled one.'}],{
   'movie-157336':{...fixtureTitle('movie-157336','Interstellar (API copy)'),cast:[{name:'Ada Lovelace',character:'Analyst'}]}});
+ await trackAnswers(page);
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
  await expect(page.locator('[data-rail="featured"]')).toBeVisible();
@@ -2096,13 +2111,14 @@ test('a built-in movie that Home features plays at once, while its details load'
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);
  await expect(page.locator('.movies-player h1').first()).toHaveText('Interstellar');
  release();
- await settle(page);
+ await expect.poll(()=>answersRead(page,'id=movie-157336')).toBe(1);
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);
 });
 
-// Review 2, Important 4: a built-in movie's details that arrive while it plays do not rebuild its player. The mount counter is the one the mount-once test uses.
+// A built-in movie's details that arrive while it plays do not rebuild its player. The mount counter is the one the mount-once test uses.
 test('a built-in movie whose details arrive while it plays keeps its one player',async({page})=>{
  await countFrameMounts(page);
+ await trackAnswers(page);
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
  let asked=false;
@@ -2119,14 +2135,14 @@ test('a built-in movie whose details arrive while it plays keeps its one player'
  await expect(frame).toHaveCount(1);
  await frame.evaluate(element=>{(element as HTMLElement).dataset.marker='first';});
  release();
- await settle(page);
+ await expect.poll(()=>answersRead(page,'id=movie-157336')).toBe(1);
  expect(await frameMounts(page)).toEqual({observed:1,renders:1});
  await expect(frame).toHaveAttribute('data-marker','first');
  await page.locator('.movies-detail-back').click();
  await expect(page.locator('section.movies-cast')).toContainText('Ada Lovelace');
 });
 
-// Review 2, Minor 1: focus on an episode's Play link stays on that link when details arrive. Continue shares its address, so the link in the same list is the one to keep.
+// Focus on an episode's Play link stays on that link when details arrive. Continue shares its address, so the link in the same list is the one to keep.
 test('focus stays on an episode\'s Play link when details arrive, not on Continue for the same episode',async({page})=>{
  let release!:()=>void;
  const held=new Promise<void>(resolve=>{release=resolve;});
@@ -2148,17 +2164,18 @@ test('focus stays on an episode\'s Play link when details arrive, not on Continu
  await expect(row).toBeFocused();
 });
 
-// Review 2, Minor 2: an answer for another title's id does not change a built-in page.
+// An answer for another title's id does not change a built-in page.
 test('an answer for another title leaves a built-in page as it is',async({page})=>{
  await page.route('**/api/movies?*',route=>{
   if(!new URL(route.request().url()).searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
   return route.fulfill({json:{title:{...fixtureTitle('movie-90501','Some Other Film'),rating:9.1,runtime:200,cast:[{name:'Ada Lovelace',character:'Analyst'}],related:[fixtureTitle('movie-90502','Related Feature')]}}});
  });
+ await trackAnswers(page);
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336');
  const detail=page.locator('section.movies-detail');
  await expect(detail.locator('h1')).toHaveText('Interstellar');
- await settle(page);
+ await expect.poll(()=>answersRead(page,'id=movie-157336')).toBe(1);
  await expect(detail.locator('h1')).toHaveText('Interstellar');
  await expect(detail.locator('.movies-chips')).not.toContainText('★ 9.1');
  await expect(page.locator('section.movies-cast')).toHaveCount(0);
@@ -2217,4 +2234,287 @@ test('Movies title, count, status and notice spacing holds without !important',a
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await page.locator('.movies-screen').evaluate(screen=>{const note=document.createElement('div');note.className='movies-catalog-status movies-detail-error';note.textContent='Notice';screen.append(note);});
  expect(await page.locator('.movies-detail-error').evaluate(e=>getComputedStyle(e).marginTop)).toBe('0px');
+});
+
+// A title that is still loading shows the loading text from its first render. Every write of the page while its details are held is recorded,
+// so a not-found render that is replaced before the next paint is still seen.
+const pageWrites=(page:Page)=>page.addInitScript(()=>{
+ if(window!==window.top)return;
+ const state=window as Window&{pageWrites?:string[]};state.pageWrites=[];
+ const markup=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML')!;
+ Object.defineProperty(Element.prototype,'innerHTML',{configurable:true,get:markup.get,set(value:string){if(this.classList.contains('movies-view'))state.pageWrites!.push(String(value));markup.set!.call(this,value);}});
+});
+const writesSoFar=(page:Page)=>page.evaluate(()=>(window as Window&{pageWrites?:string[]}).pageWrites?.length??0);
+test('a title route that is still loading never renders the not-found text',async({page})=>{
+ await pageWrites(page);
+ let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/movies?*',async route=>{await held;return route.fulfill({json:{title:fixtureTitle('movie-90700','Held Title')}});});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-90700');
+ await expect(page.getByRole('heading',{name:'Loading title details…',exact:true})).toBeVisible();
+ release();
+ await expect(page.getByRole('heading',{name:'Held Title',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as Window&{pageWrites?:string[]}).pageWrites!.filter(markup=>markup.includes('Title not found')))).toEqual([]);
+});
+test('an unloaded title renders its loading page once when it is opened from another page',async({page})=>{
+ await pageWrites(page);
+ let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+ let asked!:()=>void;const sawRequest=new Promise<void>(resolve=>{asked=resolve;});
+ await page.route('**/api/movies?*',async route=>{asked();await held;return route.fulfill({json:{title:fixtureTitle('movie-90701','Single Render Title')}});});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/browse/movie');
+ await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
+ const before=await writesSoFar(page);
+ await page.evaluate(()=>{location.hash='#/movies/movie-90701';});
+ await sawRequest;
+ await expect(page.getByRole('heading',{name:'Loading title details…',exact:true})).toBeVisible();
+ expect(await writesSoFar(page)-before).toBe(1);
+ release();
+ await expect(page.getByRole('heading',{name:'Single Render Title',exact:true})).toBeVisible();
+});
+test('a title opened directly draws its loading page once',async({page})=>{
+ await pageWrites(page);
+ let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/api/movies?*',async route=>{await held;return route.fulfill({json:{title:fixtureTitle('movie-90702','Cold Open Title')}});});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-90702');
+ await expect(page.getByRole('heading',{name:'Loading title details…',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as Window&{pageWrites?:string[]}).pageWrites!.filter(markup=>markup.includes('Loading title details')))).toHaveLength(1);
+ release();
+ await expect(page.getByRole('heading',{name:'Cold Open Title',exact:true})).toBeVisible();
+});
+test('an unknown Movies route moves focus to its not-found heading and leaves no stream behind',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336/play');
+ const frame=page.locator('iframe.movies-provider-frame');await expect(frame).toBeVisible();
+ await page.evaluate(()=>{location.hash='#/movies/browse/all';});
+ const heading=page.getByRole('heading',{name:'That page could not be found.',exact:true});
+ await expect(heading).toBeVisible();
+ await expect(heading).toHaveAttribute('tabindex','-1');
+ await expect(heading).toBeFocused();
+ await expect(frame).toHaveCount(0);
+});
+
+// An episode still that fails falls back to the backdrop, then to the poster, one candidate at a time. The watch page's drawer loads these
+// stills, and the title's backdrop has not been asked for on that page, so only the walk through the list reaches the poster.
+test('an episode still that fails walks the backdrop and then the poster',async({page})=>{
+ await page.route('https://image.tmdb.org/t/p/w300/stillfail90800.jpg',route=>route.fulfill({status:404,body:'Unavailable'}));
+ await page.route('https://image.tmdb.org/t/p/w780/backdropfail90800.jpg',route=>route.fulfill({status:404,body:'Unavailable'}));
+ await answerTitle(page,season=>({...seriesFor('tv-90800','Still Series',season),backdrop:'https://image.tmdb.org/t/p/w780/backdropfail90800.jpg',seasons:[
+  {number:1,name:'Season 1',episodes:[{number:1,name:'Pilot',overview:'The first episode.',still:'https://image.tmdb.org/t/p/w300/stillfail90800.jpg'}]},
+  {number:2,name:'Season 2',episodes:[]}
+ ]}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90800/season/1/episode/1/play');
+ await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const still=page.getByRole('dialog',{name:'Select episode'}).locator('.movies-drawer-still').first();
+ await expect(still).toHaveAttribute('src',/\/t\/p\/w500\/fixture90800\.jpg$/);
+ await expect.poll(()=>still.evaluate(image=>(image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+});
+
+// The island follows the header in the page, so its tabs come before the content they navigate to. It is labelled as the games' island is.
+test('the Movies island follows the header and comes before the page content',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies');
+ await expect(page.locator('nav.movies-mobile-nav')).toBeVisible();
+ expect(await page.evaluate(()=>document.querySelector('.movies-top')!.nextElementSibling===document.querySelector('nav.movies-mobile-nav'))).toBe(true);
+ expect(await page.evaluate(()=>{const bar=document.querySelector('nav.movies-mobile-nav')!,main=document.querySelector('.movies-browse')!;return !!(bar.compareDocumentPosition(main)&Node.DOCUMENT_POSITION_FOLLOWING);})).toBe(true);
+ await expect(page.locator('nav.movies-mobile-nav')).toHaveAttribute('aria-label','Sections');
+});
+
+// A rail's scroll is settled when three reads, spaced by the poll, agree. Smooth scrolling moves a rail over several frames, and a read
+// taken in the middle of that move is not a position the page keeps.
+async function settledScroll(row:Locator){
+ const reads:number[]=[];
+ await expect.poll(async()=>{reads.push(await row.evaluate(element=>element.scrollLeft));const last=reads.slice(-3);return last.length===3&&last[0]===last[1]&&last[1]===last[2]&&last[0]>0;}).toBe(true);
+ return reads[reads.length-1];
+}
+// A rail keeps its scroll position when the page redraws. The rail is found again by its name.
+test('a rail keeps its scroll position when the page redraws',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const row=page.locator('[data-rail="movies-you-ll-love"] .ui-rail-row');
+ await expect(row).toBeVisible();
+ // Smooth scrolling is off for this one scroll, so the row is at its position at once. The style goes before the redraw, so the redraw
+ // still has to put the position back into rows that scroll smoothly.
+ const still=await page.addStyleTag({content:'.ui-rail-row{scroll-behavior:auto!important}'});
+ await row.evaluate(element=>{element.scrollLeft=200;});
+ // The row may snap to a card edge after the scroll, so the test keeps the position the browser settles on.
+ const left=()=>row.evaluate(element=>element.scrollLeft);
+ const settledAt=await settledScroll(row);
+ await still.evaluate(node=>(node as Element).remove());
+ // Saving a title redraws Home, as another tab's change does.
+ await page.evaluate(()=>{const key='qcc:movies:v1';localStorage.setItem(key,JSON.stringify({list:['movie-157336'],progress:{},meta:{},titles:{}}));window.dispatchEvent(new StorageEvent('storage',{key}));});
+ await expect(page.locator('[data-rail="my-list"]')).toBeVisible();
+ expect(await left()).toBe(settledAt);
+});
+
+// A rail's scroll belongs to the page it was scrolled on. A rail of another page with the same name starts at its beginning.
+test('a rail of another page starts at its beginning, though it has the same name',async({page})=>{
+ const titles=(prefix:string,label:string)=>Array.from({length:12},(_,index)=>fixtureTitle(`movie-${prefix}${index+1}`,`${label} ${index+1}`));
+ await page.route('**/api/movies?*',route=>{
+  const rails=new URL(route.request().url()).searchParams.get('rails');
+  if(rails==='home')return route.fulfill({json:{rails:[{id:'action',title:'Action',titles:titles('9040','Home pick')}]}});
+  if(rails==='movie')return route.fulfill({json:{rails:[{id:'action',title:'Action',titles:titles('9050','Movie pick')}]}});
+  return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+ });
+ await page.setViewportSize({width:1440,height:900});
+ // Movies is opened first, so its rails are in the page when Home hands over to it, and they are drawn at once.
+ await page.goto('/#/movies/browse/movie');
+ await expect(page.locator('[data-rail="action"] .ui-rail-row')).toBeVisible();
+ await page.locator('.movies-top [data-kind="all"]').click();
+ // The rail is measured once Home's own titles are in it, not the Movies rail that is still drawn while the click lands.
+ const row=page.locator('[data-rail="action"] .ui-rail-row');
+ await expect(row.locator('[data-title="movie-90401"]')).toHaveCount(1);
+ expect(await row.evaluate(element=>element.scrollWidth>element.clientWidth)).toBe(true);
+ const left=()=>row.evaluate(element=>element.scrollLeft);
+ await row.evaluate(element=>{element.scrollLeft=248;});
+ // Home's rail has moved before the page is left, so there is a position to carry over, and the settled position is above zero.
+ expect(await settledScroll(row)).toBeGreaterThan(0);
+ await page.locator('.movies-top [data-kind="movie"]').click();
+ await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
+ await expect(row.locator('[data-title="movie-90501"]')).toHaveCount(1);
+ // The Movies rail is drawn for this page, so Home's position is not written into it.
+ expect(await left()).toBe(0);
+});
+
+// Typing keeps the search field in the page: the same node, with the text typed so far.
+test('the search field is the same node while three characters are typed',async({page})=>{
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const search=page.locator('#movies-search');
+ await search.focus();
+ await page.evaluate(()=>{(window as Window&{field?:Element}).field=document.querySelector('#movies-search')!;});
+ await page.keyboard.type('the');
+ await expect(search).toHaveValue('the');
+ await expect(search).toBeFocused();
+ expect(await page.evaluate(()=>(window as Window&{field?:Element}).field===document.querySelector('#movies-search'))).toBe(true);
+});
+
+// The status line under the results is the same node as the reader types, and it shows the new state.
+test('the status line keeps its node while the search changes',async({page})=>{
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const search=page.locator('#movies-search');
+ await search.focus();await page.keyboard.type('the');
+ const status=page.locator('.movies-catalog-status');
+ await expect(status).toContainText('Full catalog search');
+ await page.evaluate(()=>{(window as Window&{statusNode?:Element}).statusNode=document.querySelector('.movies-catalog-status')!;});
+ await page.keyboard.type('re');
+ await expect(status).toContainText('Full catalog search');
+ await expect(search).toHaveValue('there');
+ expect(await page.evaluate(()=>(window as Window&{statusNode?:Element}).statusNode===document.querySelector('.movies-catalog-status'))).toBe(true);
+});
+
+// Text being composed is not a query. The field keeps its node while it composes, no request goes out for the partial text, and the
+// composed text is searched once the composition ends. Requests are logged in the page, so the log is complete when the test reads it.
+test('a composition keeps the search field and sends one query for the text it ends with',async({page})=>{
+ await page.addInitScript(()=>{
+  if(window!==window.top)return;
+  const state=window as Window&{searches?:string[]};state.searches=[];
+  const send=window.fetch.bind(window);
+  window.fetch=(input:RequestInfo|URL,init?:RequestInit)=>{const url=new URL(input instanceof Request?input.url:String(input),location.href);const query=url.searchParams.get('q');if(url.pathname==='/api/movies'&&query)state.searches!.push(query);return send(input,init);};
+ });
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
+ const searches=()=>page.evaluate(()=>(window as Window&{searches?:string[]}).searches);
+ const search=page.locator('#movies-search');
+ await search.focus();
+ await page.evaluate(()=>{const field=document.querySelector<HTMLInputElement>('#movies-search')!;(window as Window&{field?:Element}).field=field;field.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true,data:''}));field.value='にほ';field.dispatchEvent(new InputEvent('input',{bubbles:true,isComposing:true,inputType:'insertCompositionText',data:'にほ'}));});
+ await expect(search).toHaveValue('にほ');
+ // The debounce is 280 ms. Running the clock past it shows that the partial text sent no request.
+ await page.clock.runFor(300);
+ expect(await searches()).toEqual([]);
+ await page.evaluate(()=>{const field=document.querySelector<HTMLInputElement>('#movies-search')!;field.value='日本';field.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'日本'}));});
+ await page.clock.runFor(300);
+ expect(await searches()).toEqual(['日本']);
+ await expect(search).toHaveValue('日本');
+ expect(await page.evaluate(()=>(window as Window&{field?:Element}).field===document.querySelector('#movies-search'))).toBe(true);
+});
+
+// A change to My list redraws the list in place: the search field stays the same node, with the text typed in it.
+test('a change to My list keeps the search field and what was typed in it',async({page})=>{
+ await seedMovies(page,savedFilm);
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/list');
+ const search=page.locator('#movies-search');
+ await search.focus();await page.keyboard.type('inter');
+ await expect(search).toHaveValue('inter');
+ await page.evaluate(()=>{(window as Window&{field?:Element}).field=document.querySelector('#movies-search')!;});
+ // Another tab saves a second title, which the storage event reports.
+ await page.evaluate(()=>{const key='qcc:movies:v1';localStorage.setItem(key,JSON.stringify({list:['movie-157336','movie-329865'],progress:{},meta:{},titles:{}}));window.dispatchEvent(new StorageEvent('storage',{key}));});
+ await expect(page.locator('.movies-page-head .ui-count')).toHaveText('2 titles');
+ expect(await page.evaluate(()=>(window as Window&{field?:Element}).field===document.querySelector('#movies-search'))).toBe(true);
+ await expect(search).toHaveValue('inter');
+ await expect(search).toBeFocused();
+});
+
+// The Movies page is black with the shared type. Its colours are checked in the stylesheet text by a unit test.
+test('the Movies page is black and sets the shared font stack',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const view=page.locator('.movies-view');
+ await expect(view.locator('h1').first()).toBeVisible();
+ expect(await view.evaluate(element=>getComputedStyle(element).backgroundColor)).toBe('rgb(0, 0, 0)');
+ const stack=await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--font-sans'));
+ const normal=(value:string)=>value.replace(/\s+/g,'');
+ expect(normal(await view.evaluate(element=>getComputedStyle(element).fontFamily))).toBe(normal(stack));
+ expect(normal(await view.locator('h1').first().evaluate(element=>getComputedStyle(element).fontFamily))).toBe(normal(stack));
+});
+
+// The storage line is meant for reading, so it keeps 4.5:1 against the page it sits on.
+test('the storage line keeps 4.5:1 contrast on the Movies page',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const storage=page.locator('.movies-storage');
+ await expect(storage).toBeVisible();
+ const ratio=await storage.evaluate(element=>{
+  const channels=(value:string)=>value.match(/[\d.]+/g)!.slice(0,3).map(Number);
+  const luminance=([r,g,b]:number[])=>{const linear=(v:number)=>{const c=v/255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;};return 0.2126*linear(r)+0.7152*linear(g)+0.0722*linear(b);};
+  const ink=luminance(channels(getComputedStyle(element).color)),paper=luminance(channels(getComputedStyle(element.closest('.movies-view')!).backgroundColor));
+  return (Math.max(ink,paper)+0.05)/(Math.min(ink,paper)+0.05);
+ });
+ expect(ratio).toBeGreaterThanOrEqual(4.5);
+});
+
+// Home, a section and a title fit the page at every width from a 320 px phone to a 1366 px laptop, with no sideways scrolling.
+for(const width of [320,390,768,1366])test(`Home, a section and a title fit ${width} px without horizontal scrolling`,async({page})=>{
+ await page.setViewportSize({width,height:844});
+ for(const [url,ready] of [['/#/movies','.movies-hero h1'],['/#/movies/browse/movie','h1.movies-page-title'],['/#/movies/movie-157336','.movies-detail h1']] as const){
+  await page.goto(url);
+  await expect(page.locator(ready).first()).toBeVisible();
+  expect(await page.locator('.movies-view').evaluate(view=>view.scrollWidth<=view.clientWidth),url).toBe(true);
+ }
+});
+
+// Without the Fullscreen API the Full screen button has nothing to do, so it is hidden.
+test('the Full screen button is hidden where the Fullscreen API is missing',async({page})=>{
+ await page.addInitScript(()=>{for(const name of ['requestFullscreen','webkitRequestFullscreen'])Object.defineProperty(Element.prototype,name,{value:undefined,configurable:true});});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336/play');
+ await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
+ // The button is still in the page with the hidden attribute, so the check reads it by its class: a role query leaves hidden controls out.
+ const button=page.locator('button.movies-fullscreen');
+ await expect(button).toHaveCount(1);
+ await expect(button).toBeHidden();
+});
+
+// Episode rows in the drawer are at least 44 px tall, so each one is a usable touch target on a phone and on a laptop.
+for(const width of [390,1440])test(`drawer episode rows are at least 44 px tall at ${width} px`,async({page})=>{
+ await page.setViewportSize({width,height:844});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode'});
+ const rows=drawer.locator('.movies-drawer-row');
+ await expect(rows.first()).toBeVisible();
+ await drawerSettled(drawer);
+ const heights=await rows.evaluateAll(elements=>elements.map(element=>element.getBoundingClientRect().height));
+ expect(heights.length).toBeGreaterThan(1);
+ for(const height of heights)expect(height).toBeGreaterThanOrEqual(44);
 });

@@ -74,15 +74,19 @@ test('the Movies pill slides to the section chosen',async({page})=>{
   await expectPillUnder(bar,tv);
 });
 
-test('the Movies pill survives a re-render from typing in search',async({page})=>{
+test('the Movies pill survives a re-render of the page',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies/browse/movie');
   const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
   const movie=bar.locator('[data-kind="movie"]');
   await expect(movie).toHaveAttribute('aria-pressed','true');
   const before=await movie.elementHandle();
-  await page.locator('#movies-search').fill('in');
-  // The page rebuilds its nav on every render, so the tab element it started with is gone.
+  // Search updates its results in place, so a route change is what renders the page again. Each render rebuilds the nav, so the tab
+  // element the test started with is gone, and the pill must find the new one.
+  await page.evaluate(()=>{location.hash='#/movies';});
+  await expect(bar.locator('[data-kind="movie"]')).not.toHaveAttribute('aria-pressed','true');
+  await page.evaluate(()=>{location.hash='#/movies/browse/movie';});
+  await expect(bar.locator('[data-kind="movie"]')).toHaveAttribute('aria-pressed','true');
   await expect.poll(()=>before!.evaluate(el=>el.isConnected)).toBe(false);
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
 });
