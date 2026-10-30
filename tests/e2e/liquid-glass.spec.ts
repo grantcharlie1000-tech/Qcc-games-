@@ -1,13 +1,10 @@
 import {test,expect} from '../fixtures';
 import type {Locator,Page} from '@playwright/test';
 
-// The frost as the browser applies it. In Chromium it is the lens's backdrop-filter. In the mirror the lens has no backdrop-filter of its
-// own, so the frost is the scene's filter, which is set once the mirror's map is ready: the test waits for that first.
-async function frostFilter(page:Page,bar:Locator):Promise<string>{
-  if(await bar.getAttribute('data-glass')==='mirror')await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
-  return bar.evaluate(el=>el.getAttribute('data-glass')==='mirror'
-    ?getComputedStyle(el.querySelector('.ui-glass-scene')!).filter
-    :getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter);
+// The frost as the browser applies it. In Chromium's backdrop it is the lens's backdrop-filter. In the frost the lens is absent, and the
+// frost is the bar's own backdrop-filter.
+async function frostFilter(bar:Locator):Promise<string>{
+  return bar.evaluate(el=>getComputedStyle(el.querySelector('.ui-glass-lens')??el).backdropFilter);
 }
 
 // The alpha of a computed rgba colour. The pill is at least 12% white, so the tests read its alpha and not one exact value.
@@ -50,8 +47,8 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
-  // The lens is the bar's first child, so the tabs are the children that are not the lens.
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')).length)).toBe(6);
+  // The lens and the glow are the bar's layers, so the tabs are the children that are neither.
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(6);
 });
 
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
@@ -60,7 +57,7 @@ for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}
   const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')).length)).toBe(5);
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
 });
 
 test('the Movies pill slides to the section chosen',async({page})=>{
@@ -199,9 +196,13 @@ test('the island squeezes into a blob before it drops, and rises before it pops 
   expect(await motion()).toEqual({props:'translate, scale, opacity',durations:'0.36s, 0.42s, 0.14s',delays:'0s, 0.08s, 0s'});
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-hidden','true');
-  // The hide fade moved from the bar to its lens, with the same timing: the bar stays at full opacity, so the lens keeps the frost.
-  expect(await motion()).toEqual({props:'scale, translate',durations:'0.2s, 0.28s',delays:'0s, 0.11s'});
-  expect(await bar.locator('.ui-glass-lens').evaluate(el=>{const s=getComputedStyle(el);return {props:s.transitionProperty,durations:s.transitionDuration,delays:s.transitionDelay};})).toEqual({props:'opacity',durations:'0.16s',delays:'0.22s'});
+  // The backdrop keeps the bar at full opacity, so its lens keeps the frost, and the lens fades instead. The frost fades the bar itself.
+  if(await bar.getAttribute('data-glass')==='frost'){
+    expect(await motion()).toEqual({props:'scale, translate, opacity',durations:'0.2s, 0.28s, 0.16s',delays:'0s, 0.11s, 0.22s'});
+  }else{
+    expect(await motion()).toEqual({props:'scale, translate',durations:'0.2s, 0.28s',delays:'0s, 0.11s'});
+    expect(await bar.locator('.ui-glass-lens').evaluate(el=>{const s=getComputedStyle(el);return {props:s.transitionProperty,durations:s.transitionDuration,delays:s.transitionDelay};})).toEqual({props:'opacity',durations:'0.16s',delays:'0.22s'});
+  }
 });
 
 test('the labels fade out as the island squeezes and fade back in once it opens',async({page})=>{
@@ -352,8 +353,8 @@ test('the displacement map is sized to the bar and follows a resize',async({page
     const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter)?.[1]??'';
     const image=document.getElementById(id)?.getElementsByTagName('feImage')[0];
     const bar=el as HTMLElement;
-    // The map covers the bar and the lens margin, 20 px on each side, so the margin is taken off to compare it with the bar.
-    return {mapW:Number(image?.getAttribute('width'))-40,mapH:Number(image?.getAttribute('height'))-40,barW:bar.offsetWidth,barH:bar.offsetHeight};
+    // The map covers the bar and the lens margin, 14 px on each side (LENS_MARGIN in src/ui/glass.ts), so 28 px is taken off to compare it with the bar.
+    return {mapW:Number(image?.getAttribute('width'))-28,mapH:Number(image?.getAttribute('height'))-28,barW:bar.offsetWidth,barH:bar.offsetHeight};
   });
   await expect.poll(async()=>{const s=await sizes();return s.mapW===s.barW&&s.mapH===s.barH&&s.barW>0;}).toBe(true);
   const before=(await sizes()).barW;
@@ -416,11 +417,16 @@ test('the island glass is clear: a 35% dark tint over an undimmed backdrop, with
   expect(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(16, 16, 20, 0.35)');
   // The selection pill is a light glass lens (at least 12% white), and its label keeps its contrast with the halo.
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(0.12);
-  // The frost is a light blur, then the saturation and brightness, and it has no contrast(). In Chromium it is the lens's backdrop; in
-  // the mirror the lens has no backdrop of its own, so the frost is the scene's filter.
-  const frost=await frostFilter(page,bar);
-  expect(frost).toContain('blur(1.5px)');
-  expect(frost).toContain('saturate(1.9) brightness(1.03)');
+  // The frost is a blur, then the saturation and brightness, and it has no contrast(). In Chromium's backdrop it is the lens's backdrop,
+  // with a 3 px blur. In the frost it is the bar's own, with a 10 px blur.
+  const frost=await frostFilter(bar);
+  if(await bar.getAttribute('data-glass')==='frost'){
+    expect(frost).toContain('blur(10px)');
+    expect(frost).toContain('saturate(1.8) brightness(1.04)');
+  }else{
+    expect(frost).toContain('blur(3px)');
+    expect(frost).toContain('saturate(1.9) brightness(1.03)');
+  }
   expect(frost).not.toContain('contrast(');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   const shadow=await movies.evaluate(el=>getComputedStyle(el).textShadow);
@@ -430,9 +436,9 @@ test('the island glass is clear: a 35% dark tint over an undimmed backdrop, with
   expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toContain('drop-shadow(rgb(0, 0, 0) 0px 0px 1px)');
 });
 
-// contrast() never reaches the island's backdrop, and the blur stays at most 6 px. Both rules are read from the stylesheet with the
-// shared --glass-body token resolved, so the check holds even in an engine that does not draw backdrop-filter.
-test('the island backdrop has no contrast(), and blurs by at most 6 px, in both the plain and the refracting rule',async({page})=>{
+// contrast() never reaches the island's frost, and the blur stays at most 6 px in the lens and 10 px in the frost. The rules are read from the
+// stylesheet with the shared tokens resolved, so the check holds even in an engine that does not draw backdrop-filter.
+test('the island frost has no contrast(), and blurs by at most 6 px in the lens and 10 px in the frost',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   await expect(page.locator('.app-tabbar')).toBeVisible();
@@ -446,18 +452,18 @@ test('the island backdrop has no contrast(), and blurs by at most 6 px, in both 
       try{rules=Array.from(sheet.cssRules);}catch{}
       for(const rule of rules){
         if(!(rule instanceof CSSStyleRule))continue;
-        if(rule.selectorText!=='.ui-glass-lens'&&rule.selectorText!=='.ui-tabbar.is-refracting .ui-glass-lens')continue;
+        if(!['.ui-glass-lens','.ui-tabbar.is-refracting .ui-glass-lens','.ui-tabbar[data-glass="frost"]'].includes(rule.selectorText))continue;
         const value=rule.style.getPropertyValue('backdrop-filter')||rule.style.getPropertyValue('-webkit-backdrop-filter');
         if(value)found[rule.selectorText]=resolve(value);
       }
     }
     return found;
   });
-  for(const selector of ['.ui-glass-lens','.ui-tabbar.is-refracting .ui-glass-lens']){
+  for(const [selector,limit] of [['.ui-glass-lens',6],['.ui-tabbar.is-refracting .ui-glass-lens',6],['.ui-tabbar[data-glass="frost"]',10]] as const){
     const value=written[selector]??'';
     expect(value,`${selector} sets a backdrop-filter`).toContain('blur(');
     expect(value,`${selector} has no contrast()`).not.toContain('contrast(');
-    expect(Number(/blur\((\d+(?:\.\d+)?)px\)/.exec(value)?.[1]),`${selector} blurs by at most 6 px`).toBeLessThanOrEqual(6);
+    expect(Number(/blur\((\d+(?:\.\d+)?)px\)/.exec(value)?.[1]),`${selector} blur`).toBeLessThanOrEqual(limit);
   }
 });
 

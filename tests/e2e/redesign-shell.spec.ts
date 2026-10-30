@@ -2,13 +2,10 @@ import {test,expect} from '../fixtures';
 import type {Page} from '../fixtures';
 import type {Locator} from '@playwright/test';
 
-// The frost as the browser applies it. In Chromium it is the lens's backdrop-filter. In the mirror the lens has no backdrop-filter of its
-// own, so the frost is the scene's filter, which is set once the mirror's map is ready: the test waits for that first.
+// The frost as the browser applies it. In Chromium's backdrop it is the lens's backdrop-filter. In the frost the lens is absent, and the
+// frost is the bar's own backdrop-filter.
 async function frostFilter(bar:Locator):Promise<string>{
-  if(await bar.getAttribute('data-glass')==='mirror')await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
-  return bar.evaluate(el=>el.getAttribute('data-glass')==='mirror'
-    ?getComputedStyle(el.querySelector('.ui-glass-scene')!).filter
-    :getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter);
+  return bar.evaluate(el=>getComputedStyle(el.querySelector('.ui-glass-lens')??el).backdropFilter);
 }
 
 // The menu sheet enters by scale and translate. Under load, a click sent while it still moves can miss its target (CI once clicked Study Mode

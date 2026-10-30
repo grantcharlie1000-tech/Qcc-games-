@@ -30,20 +30,29 @@ test('dormant ui rules and the unread custom properties are gone',()=>{
 test('forced colours take the island backdrop off, prefixed and unprefixed',()=>{
  expect(css).toMatch(/@media \(forced-colors:active\)\{\.ui-tabbar,\.ui-tabbar\.is-refracting\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/);
 });
-// The fallbacks that take the glass out hide the lens in the stylesheet too, so a solid bar does not wait for the script.
-test('reduced transparency, more contrast and forced colours hide the glass lens in CSS',()=>{
+// The fallbacks that take the glass out hide the lens, its glow and the scroll edge in the stylesheet too, so a solid bar does not wait for the script.
+// They also switch off the frost, which is the bar's own backdrop filter, before the script has read the new mode.
+test('reduced transparency, more contrast and forced colours hide the glass layers and the scroll edge in CSS',()=>{
  for(const media of ['@media (prefers-reduced-transparency:reduce)','@media (prefers-contrast:more)','@media (forced-colors:active)']){
   const block=css.split('\n').find(line=>line.startsWith(media))??'';
   expect(block,`${media} block`).toContain('.ui-glass-lens{display:none}');
+  expect(block,`${media} block`).toContain('.ui-glass-glow{display:none}');
+  expect(block,`${media} block`).toContain('.ui-scroll-edge{display:none}');
+  expect(block,`${media} block`).toContain('.ui-tabbar[data-glass="frost"]{-webkit-backdrop-filter:none;backdrop-filter:none}');
  }
 });
-// The mirror draws no frost of its own: its scene covers the lens with the page colour, so the lens's backdrop would be wasted work.
-test('the mirror lens has no backdrop filter of its own',()=>{
- expect(css).toContain('.ui-tabbar[data-glass="mirror"] .ui-glass-lens{-webkit-backdrop-filter:none;backdrop-filter:none}');
-});
-// In the lens modes the bar keeps its own opacity at 1: below 1 it would become a backdrop root and the lens would lose its frost.
-// The "off" mode is left out, so the fallback bar keeps its own fade, edge and lift.
-test('the lens modes keep the bar at full opacity, and fade its layers instead',()=>{
- expect(css).toContain('.ui-tabbar:is([data-glass="backdrop"],[data-glass="mirror"]){box-shadow:none;opacity:1}');
+// The frost is the bar's own blur, so the bar is a backdrop root and fades its own opacity. Only the backdrop keeps the bar at full opacity
+// and fades its children: below 1 the backdrop lens would lose its frost.
+test('the frost bar carries its own blur, and only the backdrop keeps the bar at full opacity',()=>{
+ expect(css).toMatch(/\.ui-tabbar\[data-glass="frost"\]\{[^}]*-webkit-backdrop-filter:var\(--glass-frost-body\)/);
+ expect(css).toMatch(/\.ui-tabbar\[data-glass="frost"\]\{[^}]*(?<![-\w])backdrop-filter:var\(--glass-frost-body\)/);
+ expect(css).toMatch(/\.ui-tabbar\[data-glass="backdrop"\]\{[^}]*opacity:1/);
  expect(css).not.toMatch(/\.ui-tabbar\[data-glass\][{\[:]/);
+ expect(css).not.toContain('data-glass="mirror"');
+});
+// The scroll edge is a phone effect. It is a sibling after the island, so the stylesheet fades it with the island, and it takes no taps.
+test('the scroll edge is phone-only, takes no taps, and fades with the island',()=>{
+ expect(css).toMatch(/\.ui-scroll-edge\{[^}]*pointer-events:none/);
+ expect(css).toMatch(/@media \(min-width:640px\)\{\.ui-scroll-edge\{display:none\}\}/);
+ expect(css).toMatch(/\.ui-tabbar\[data-hidden="true"\]:not\(:has\(:focus-visible\)\)\+\.ui-scroll-edge\{opacity:0/);
 });

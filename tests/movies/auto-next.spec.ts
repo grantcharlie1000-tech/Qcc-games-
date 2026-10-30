@@ -184,6 +184,15 @@ test('Up next hides the island at 1440px until Cancel brings it back',async({pag
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
  await expect(island(page)).not.toHaveAttribute('data-hidden');await expect.poll(()=>islandShown(page)).toBe(1);
 });
+// Hiding userAgentData takes the Chromium lens away, so the island is frost: the bar is its own backdrop and fades its own opacity.
+test('Up next hides a frost island until Cancel brings it back',async({page})=>{
+ await page.addInitScript(()=>{Object.defineProperty(navigator,'userAgentData',{get:()=>undefined,configurable:true});});
+ await page.setViewportSize({width:1440,height:900});await open(page);await expect(island(page)).toHaveAttribute('data-glass','frost');
+ await expect.poll(()=>islandShown(page)).toBe(1);
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
+ await expect(island(page)).not.toHaveAttribute('data-hidden');await expect.poll(()=>islandShown(page)).toBe(1);
+});
 test('keyboard focus in the island keeps it visible while Up next shows',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();

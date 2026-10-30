@@ -1,10 +1,10 @@
-// Liquid Glass for the island: the selection pill, the jelly press, and a lens that bends what is behind the bar. Chromium
-// refracts its backdrop with an SVG filter. Every other browser refracts a copy of the images behind the bar, drawn in the
-// bar's lens. tabbar.ts calls bindGlass from autoHideTabbar, so the arcade bar and the Movies bar both get it.
+// Liquid Glass for the island: the selection pill, the jelly press, and the material behind the bar. Chromium bends its backdrop with an
+// SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
+// In the frost, phones also get a scroll edge behind the bar. tabbar.ts calls bindGlass from autoHideTabbar, so the arcade bar and the Movies
+// bar both get it.
 export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
-export type GlassMode='backdrop'|'mirror'|'off';
-export interface Box{x:number;y:number;width:number;height:number}
+export type GlassMode='backdrop'|'frost'|'off';
 
 const SVG_NS='http://www.w3.org/2000/svg';
 const XLINK_NS='http://www.w3.org/1999/xlink';
@@ -13,15 +13,11 @@ const XLINK_NS='http://www.w3.org/1999/xlink';
 // edge, so a full bend there would pull the screen's own dark margin into the ends. The map's channels run from -scale/2 to
 // +scale/2, so the filter's scale is twice the bend. The lens reaches LENS_MARGIN px past the bar, which is where the rim samples
 // its content from.
-export const LENS_BEVEL=22;
-export const LENS_BEND=16;
+export const LENS_BEVEL=20;
+export const LENS_BEND=10;
 export const LENS_CAP=0.5;
 export const REFRACTION_SCALE=2*LENS_BEND;
 export const LENS_MARGIN=LENS_BEND+4;
-// The mirror copies at most this many images. When there are more, the ones that cover the least of the glass are left out: they are
-// ranked by the area each covers under the lens.
-export const MIRROR_LIMIT=16;
-const PAGE_FALLBACK='#191d1c';
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
 const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
@@ -80,28 +76,15 @@ export function lensDensity(devicePixelRatio:number):number{
   return Math.min(3,Math.max(1,devicePixelRatio||1));
 }
 
-// The images the mirror copies, placed in the lens's own box: the bar grown by the margin on every side, with the box's top left
-// corner as the origin. An image that does not reach the box is left out. At most `limit` are kept, ranked by the area each covers
-// under the box (the share of the glass it takes), and they come back in document order.
-export function mirrorPlacement(bar:Box,sources:readonly Box[],margin=LENS_MARGIN,limit=MIRROR_LIMIT):{index:number;x:number;y:number;width:number;height:number}[]{
-  const left=bar.x-margin,top=bar.y-margin,right=bar.x+bar.width+margin,bottom=bar.y+bar.height+margin;
-  const kept:{index:number;area:number;x:number;y:number;width:number;height:number}[]=[];
-  sources.forEach((source,index)=>{
-    const area=Math.max(0,Math.min(source.x+source.width,right)-Math.max(source.x,left))*Math.max(0,Math.min(source.y+source.height,bottom)-Math.max(source.y,top));
-    if(area>0)kept.push({index,area,x:source.x-left,y:source.y-top,width:source.width,height:source.height});
-  });
-  return kept.sort((a,b)=>b.area-a.area||a.index-b.index).slice(0,limit).sort((a,b)=>a.index-b.index)
-    .map(({index,x,y,width,height})=>({index,x,y,width,height}));
-}
-
 // Only Chromium-based browsers report the Chromium brand, and only Chromium draws an SVG filter inside backdrop-filter.
 export function isChromiumBrands(brands:readonly Brand[]|undefined):boolean{
   return !!brands?.some(entry=>entry.brand==='Chromium');
 }
-// Which lens a bar gets. Reduced transparency, more contrast and forced colours get none, so the bar is a flat solid island.
+// Which material a bar gets: Chromium refracts its backdrop, and every other browser frosts the bar. Reduced transparency, more contrast and
+// forced colours get none, so the bar is a flat solid island.
 export function glassMode(brands:readonly Brand[]|undefined,flags:{reducedTransparency:boolean;moreContrast:boolean;forcedColours:boolean}):GlassMode{
   if(flags.reducedTransparency||flags.moreContrast||flags.forcedColours)return 'off';
-  return isChromiumBrands(brands)?'backdrop':'mirror';
+  return isChromiumBrands(brands)?'backdrop':'frost';
 }
 
 const round=(value:number)=>Math.round(value*100)/100;
@@ -122,44 +105,24 @@ function canStretch(target:Element):boolean{
     new KeyframeEffect(target,null,{pseudoElement:'::after'}).pseudoElement==='::after';
 }
 
-// The page colour behind the bar: the first background that is not transparent, looking up from the bar's parent.
-function pageColour(bar:HTMLElement):string{
-  for(let element:HTMLElement|null=bar.parentElement;element;element=element.parentElement){
-    const colour=getComputedStyle(element).backgroundColor;
-    if(colour!=='transparent'&&colour!=='rgba(0, 0, 0, 0)')return colour;
-  }
-  return PAGE_FALLBACK;
-}
-
-// The lens is the bar's first child and sits under the tint, the rim, the pill and the tabs. It is grown by LENS_MARGIN on every
-// side, so the rim can sample past the bar, and its clip-path cuts it back to the capsule. Its scene holds the mirror's copies, and
-// the scene's page colour covers the lens, so in the mirror the lens draws no frost of its own. The scene is SVG, and its group takes
-// the bend as an SVG filter attribute: under a CSS filter on an HTML element, WebKit draws the map in the wrong place and near the
-// bottom of the screen not at all, but on SVG content it places the map where it belongs.
-function makeLens():{lens:HTMLElement;scene:SVGSVGElement;group:SVGGElement}{
+// The lens is the bar's first child in the backdrop, and it sits under everything else in the bar. It is grown by LENS_MARGIN on every
+// side, so the rim can sample past the bar, and its clip-path cuts it back to the capsule. Its frost is its own backdrop, which Chromium
+// bends with the filter.
+function makeLens():HTMLElement{
   const lens=document.createElement('span');
   lens.className='ui-glass-lens';
   lens.setAttribute('aria-hidden','true');
   lens.style.inset=`-${LENS_MARGIN}px`;
   lens.style.clipPath=`inset(${LENS_MARGIN}px round 999px)`;
-  const scene=document.createElementNS(SVG_NS,'svg');
-  scene.setAttribute('class','ui-glass-scene');
-  scene.setAttribute('focusable','false');
-  const group=document.createElementNS(SVG_NS,'g');
-  scene.append(group);
-  lens.append(scene);
-  return {lens,scene,group};
+  return lens;
 }
-
-// An image's object-fit and object-position as SVG's preserveAspectRatio. SVG aligns only to an edge or the middle, so a position
-// takes the nearest of the three.
-const POSITION_KEYWORDS:Record<string,number>={left:0,top:0,center:50,right:100,bottom:100};
-export function aspectOf(fit:string,position:string):string{
-  if(fit==='fill')return 'none';
-  const [x='50%',y='50%']=position.split(' ');
-  // A keyword is its percentage, a percentage is itself, and a length is the edge when it is zero and the middle otherwise.
-  const align=(value:string)=>{const n=parseFloat(value)||0,share=value in POSITION_KEYWORDS?POSITION_KEYWORDS[value]:value.endsWith('%')?n:n===0?0:50;return share<34?'Min':share>66?'Max':'Mid';};
-  return `x${align(x)}Y${align(y)} ${fit==='cover'?'slice':'meet'}`;
+// The glow is the bar's edge light. Its inset shadow brightens the rim, and plus-lighter lets that light add to what shows through the bar.
+// It sits above the tint and below the pill and the tabs.
+function makeGlow():HTMLElement{
+  const glow=document.createElement('span');
+  glow.className='ui-glass-glow';
+  glow.setAttribute('aria-hidden','true');
+  return glow;
 }
 
 // The SVG filter that bends a lens. Its displacement map is a PNG of the lens field, sized to the lens box. The map joins the filter
@@ -194,14 +157,17 @@ function makeFilter(id:string){
   return {svg,filter,image,displace};
 }
 
-// Binds the pill, the press and the lens to one bar. The lens is Chromium's backdrop refraction, or the mirror elsewhere. Nothing here
-// writes to the bar's children except the lens itself, and the observer ignores the lens's own copies, so no write loops back in.
+// Binds the pill, the press and the material to one bar. The lens is Chromium's backdrop refraction, and every other browser frosts the bar.
+// Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const brands=(navigator as NavigatorWithBrands).userAgentData?.brands;
   const queries=[matchMedia('(prefers-reduced-transparency: reduce)'),matchMedia('(prefers-contrast: more)'),matchMedia('(forced-colors: active)')];
   const id=`ui-glass-${++filterSeq}`;
   const {svg,filter,image,displace}=makeFilter(id);
-  const {lens,scene,group}=makeLens();
+  const lens=makeLens(),glow=makeGlow();
+  const edge=document.createElement('div');
+  edge.className='ui-scroll-edge';
+  edge.setAttribute('aria-hidden','true');
   const stretchable=canStretch(bar);
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
@@ -281,185 +247,93 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const hidden=()=>{if(document.hidden)release(null,true);};
   bar.addEventListener('pointerdown',down);
 
-  // Chromium's bar is refracting when the lens reads the filter. The class and the variable are what the stylesheet reads. The
-  // mirror's group takes the filter as an attribute instead. The mirror's scene stays hidden until the filter is there, so no copy
-  // shows sharp and unbent.
+  // Chromium's bar is refracting when the lens reads the filter. The class and the variable are what the stylesheet reads.
   const paint=()=>{
     bar.classList.toggle('is-refracting',mode==='backdrop'&&ready);
-    if(mode!=='off'&&ready)bar.style.setProperty('--ui-glass-filter',`url(#${id})`);
+    if(mode==='backdrop'&&ready)bar.style.setProperty('--ui-glass-filter',`url(#${id})`);
     else bar.style.removeProperty('--ui-glass-filter');
-    if(mode==='mirror'&&ready)group.setAttribute('filter',`url(#${id})`);
-    else group.removeAttribute('filter');
-    scene.style.visibility=ready?'':'hidden';
   };
   // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
-  // keeps its last map.
+  // keeps its last map. Only the backdrop has a map.
   const rebuild=()=>{
     const width=bar.offsetWidth+2*LENS_MARGIN,height=bar.offsetHeight+2*LENS_MARGIN,density=lensDensity(window.devicePixelRatio);
-    if(mode==='off'||!bar.offsetWidth||!bar.offsetHeight||(width===mapWidth&&height===mapHeight&&density===mapDensity))return;
+    if(mode!=='backdrop'||!bar.offsetWidth||!bar.offsetHeight||(width===mapWidth&&height===mapHeight&&density===mapDensity))return;
     mapWidth=width;
     mapHeight=height;
     mapDensity=density;
     const token=++mapSeq;
     const url=lensPng(width,height,density);
-    // A lens without its map would draw unbent copies, or shift everything by the full scale, so without one the lens is left out.
+    // A lens without its map would shift everything by the full scale, so without one the lens is left out.
     if(!url){lensless=true;applyMode();return;}
     const probe=new Image();
     probe.onload=()=>{
       if(token!==mapSeq||disposed)return;
       image.setAttribute('width',String(width));
       image.setAttribute('height',String(height));
-      // On SVG content the filter's box would be the copies' union, which can be the size of the page, so the mirror's filter covers
-      // the lens box in the scene's own units instead.
-      if(mode==='mirror'){filter.setAttribute('filterUnits','userSpaceOnUse');filter.setAttribute('width',String(width));filter.setAttribute('height',String(height));}
       image.setAttribute('href',url);
       image.setAttributeNS(XLINK_NS,'xlink:href',url);
       if(!ready){filter.insertBefore(image,displace);document.body.append(svg);ready=true;}
       paint();
-      scheduleMirror();
     };
     probe.onerror=()=>{if(token===mapSeq&&!disposed){lensless=true;applyMode();}};
     probe.src=url;
   };
 
-  // The mirror copies the images behind the bar into the lens's scene, which holds the page colour under them. It reads every rect
-  // and style first, then writes, so a scroll costs one layout at most. Each copy keeps its source's src, fit, position and radius.
-  // Copies are ranked by the area each covers under the lens, the share of the glass it takes. They ignore clipping by a scroll
-  // container and covering overlays: an image under a sheet still gets a copy, and a copy is not cut at a scroller's own edge.
-  const copies=new WeakMap<HTMLImageElement,SVGImageElement>();
-  let shown:HTMLImageElement[]=[];
-  let mirrorFrame=0;
-  // The bar is held hidden by the page's scroll, unless keyboard focus is in it (as the stylesheet's :has(:focus-visible) rule says).
-  const hiddenNow=()=>bar.hasAttribute('data-hidden')&&!bar.querySelector(':focus-visible');
-  // True while a translate or scale transition of the bar itself runs. A pill or tab transition does not count.
-  const moving=()=>bar.getAnimations().some(animation=>animation instanceof CSSTransition&&!(animation.effect as KeyframeEffect|null)?.pseudoElement&&animation.playState!=='finished');
-  // The bar is on screen when it is not held hidden, or while its own hide or show still moves it.
-  const onScreen=()=>bar.offsetWidth>0&&(!hiddenNow()||moving());
-  // The removal observer runs only while the bar is on screen in mirror mode, so a cover that leaves the page takes its copy with it.
-  let watching=false;
-  const removals=new MutationObserver(records=>{
-    if(records.some(record=>[...record.removedNodes].some(node=>node instanceof Element&&(node.localName==='img'||node.querySelector('img')!==null))))scheduleMirror();
-  });
-  const syncWatch=()=>{
-    const want=!disposed&&mode==='mirror'&&onScreen();
-    if(want&&!watching){removals.observe(bar.ownerDocument.body,{childList:true,subtree:true});watching=true;}
-    else if(!want&&watching){removals.disconnect();watching=false;}
+  // Movies rewrites the bar's children on every render, which takes the layers out. They go back in as the first children: the glow, and the
+  // lens in front of it in the backdrop.
+  const ensureLayers=()=>{
+    if(mode!=='backdrop'&&mode!=='frost')return;
+    if(glow.parentNode!==bar)bar.prepend(glow);
+    if(mode==='backdrop'&&lens.parentNode!==bar)bar.prepend(lens);
   };
-  // The visible state is checked before a frame is asked for, so a hidden bar costs no frame.
-  const scheduleMirror=()=>{
-    syncWatch();
-    if(!mirrorFrame&&mode==='mirror'&&onScreen())mirrorFrame=requestAnimationFrame(()=>{mirrorFrame=0;mirror();});
+  // The scroll edge is a frost layer, and it exists only in the frost: in the backdrop it would sit under the lens and blur the page that the
+  // lens bends. It sits right after the island, so the stylesheet can fade it with the island's own hide. It is a sibling, not a child: a bar
+  // with a backdrop filter is a backdrop root, so its children could not blur the page behind it. Movies re-renders its children, so the edge
+  // goes back in whenever the island's parent changes. It is hidden while the island has no size, which is what the arcade does in a game
+  // and in Movies.
+  let watched:Node|null=null;
+  const parentWatch=new MutationObserver(()=>keepEdge());
+  const keepEdge=()=>{
+    const parent=bar.parentNode;
+    if(parent!==watched){parentWatch.disconnect();watched=parent;if(parent)parentWatch.observe(parent,{childList:true});}
+    if(!parent||mode!=='frost'){edge.remove();return;}
+    if(bar.nextSibling!==edge)bar.after(edge);
+    edge.hidden=!bar.offsetWidth;
   };
-  const mirror=()=>{
-    if(disposed||mode!=='mirror'||!onScreen())return;
-    const bounds=bar.getBoundingClientRect();
-    // The bar may be part-way through its own scale or slide, and the lens moves with it. So each rect is taken into the bar's own
-    // coordinates, where the lens is laid out, by removing the offset and dividing by the bar's current scale.
-    const kx=bar.offsetWidth?bounds.width/bar.offsetWidth:1,ky=bar.offsetHeight?bounds.height/bar.offsetHeight:1;
-    const reach=LENS_MARGIN;
-    // Every value is read into plain data before the first write, so no read after a write forces a style recalc.
-    const sources:HTMLImageElement[]=[],boxes:Box[]=[],looks:{fit:string;position:string;radius:string;opacity:string}[]=[];
-    for(const img of bar.ownerDocument.images){
-      if(bar.contains(img)||!img.complete||!img.naturalWidth||!img.currentSrc)continue;
-      const rect=img.getBoundingClientRect();
-      if(!rect.width||!rect.height||rect.right<bounds.left-reach||rect.left>bounds.right+reach||rect.bottom<bounds.top-reach||rect.top>bounds.bottom+reach)continue;
-      const style=getComputedStyle(img);
-      if(style.visibility!=='visible'||style.display==='none'||Number(style.opacity)===0)continue;
-      sources.push(img);
-      boxes.push({x:(rect.left-bounds.left)/kx,y:(rect.top-bounds.top)/ky,width:rect.width/kx,height:rect.height/ky});
-      looks.push({fit:style.objectFit,position:style.objectPosition,radius:style.borderRadius,opacity:style.opacity});
-    }
-    const placed=mirrorPlacement({x:0,y:0,width:bar.offsetWidth,height:bar.offsetHeight},boxes,LENS_MARGIN,MIRROR_LIMIT);
-    const background=pageColour(bar);
-    scene.style.background=background;
-    const next:HTMLImageElement[]=[];
-    for(const {index,x,y,width,height} of placed){
-      const source=sources[index],look=looks[index];
-      let copy=copies.get(source);
-      if(!copy){
-        copy=document.createElementNS(SVG_NS,'image');
-        copies.set(source,copy);
-      }
-      if(copy.getAttribute('href')!==source.currentSrc)copy.setAttribute('href',source.currentSrc);
-      copy.setAttribute('x',String(x));
-      copy.setAttribute('y',String(y));
-      copy.setAttribute('width',String(width));
-      copy.setAttribute('height',String(height));
-      copy.setAttribute('preserveAspectRatio',aspectOf(look.fit,look.position));
-      // An SVG image has no border-radius, so a rounded cover is clipped to the same corners.
-      copy.style.clipPath=parseFloat(look.radius)?`inset(0 round ${look.radius})`:'';
-      copy.style.opacity=look.opacity;
-      if(copy.parentNode!==group)group.append(copy);
-      next.push(source);
-    }
-    for(const source of shown)if(!next.includes(source))copies.get(source)?.remove();
-    shown=next;
-    // While the bar's own transition runs, the glass moves under the page, so the copies are placed again on every frame until it settles.
-    if(moving())scheduleMirror();
-  };
-  // Events that move or show the images behind the bar. A capture listener on the document also catches the Movies overlay's own
-  // scroll. An image still fading in has no copy yet: its copy comes in with the end of the fade, and a load or an error brings it
-  // in too. The bar's own transitions move the glass, so they are followed as well, and so is keyboard focus, which holds the bar open.
-  const IMAGE_EVENTS=['load','error','animationstart','animationend','transitionrun','transitionend','transitioncancel'];
-  const imageEvent=(event:Event)=>{
-    const motion=event.target===bar&&!(event as TransitionEvent).pseudoElement;
-    if(event.target instanceof HTMLImageElement||motion)scheduleMirror();
-  };
-  const mirrorEvents=()=>{
-    document.addEventListener('scroll',scheduleMirror,{capture:true,passive:true});
-    window.addEventListener('resize',scheduleMirror,{passive:true});
-    bar.addEventListener('focusin',scheduleMirror);
-    bar.addEventListener('focusout',scheduleMirror);
-    for(const type of IMAGE_EVENTS)document.addEventListener(type,imageEvent,{capture:true});
-  };
-  const unmirrorEvents=()=>{
-    document.removeEventListener('scroll',scheduleMirror,{capture:true});
-    window.removeEventListener('resize',scheduleMirror);
-    bar.removeEventListener('focusin',scheduleMirror);
-    bar.removeEventListener('focusout',scheduleMirror);
-    for(const type of IMAGE_EVENTS)document.removeEventListener(type,imageEvent,{capture:true});
-    removals.disconnect();
-    watching=false;
-  };
-  // Any mode other than the mirror holds no copies, so a copy never outlives the mirror that drew it.
-  const clearCopies=()=>{group.replaceChildren();scene.style.background='';shown=[];};
-
-  // Movies rewrites the bar's children on every render, which takes the lens out. The lens goes back in as the first child.
-  const ensureLens=()=>{if(mode!==undefined&&mode!=='off'&&lens.parentNode!==bar)bar.prepend(lens);};
-  const applyMode=()=>{
-    const next=lensless?'off':glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
-    if(next===mode)return;
-    if(mode==='mirror')unmirrorEvents();
-    mode=next;
-    bar.dataset.glass=mode;
-    if(mode==='off')lens.remove();
-    else{ensureLens();rebuild();if(mode==='mirror')mirrorEvents();}
-    if(mode!=='mirror')clearCopies();
-    paint();
-    scheduleMirror();
-  };
-
-  const observer=new MutationObserver(records=>{
-    ensureLens();
-    // Changes inside the lens are its own copies: they neither move the pill nor need another copy.
-    if(records.some(record=>!lens.contains(record.target))){sync(true);scheduleMirror();}
-  });
-  observer.observe(bar,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-current','aria-pressed','data-hidden']});
-  // A resize changes the tab positions with no mutation, and a size change also covers a bar that was hidden or detached.
-  const resize=typeof ResizeObserver==='function'?new ResizeObserver(()=>{rebuild();sync(false);scheduleMirror();}):undefined;
-  resize?.observe(bar);
-  void document.fonts?.ready.then(()=>{if(!disposed){sync(false);scheduleMirror();}});
-  for(const query of queries)query.addEventListener('change',applyMode);
-  // A change of pixel density (a zoom, or a window dragged to another screen) rebuilds the map. A resolution query matches only the
-  // density it names, so the watch moves on to each new density as it arrives.
+  // A change of pixel density (a zoom, or a window dragged to another screen) rebuilds the map. A resolution query matches only the density it
+  // names, so the watch moves on to each new density as it arrives. Only the backdrop has a map, so only the backdrop watches.
   let densityQuery:MediaQueryList|undefined;
   const onDensity=()=>{watchDensity();rebuild();};
   const watchDensity=()=>{
     densityQuery?.removeEventListener('change',onDensity);
-    densityQuery=matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    densityQuery.addEventListener('change',onDensity);
+    densityQuery=mode==='backdrop'&&!disposed?matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`):undefined;
+    densityQuery?.addEventListener('change',onDensity);
   };
-  watchDensity();
+  // A change of mode takes out what the new mode does not draw, and draws what it does.
+  const applyMode=()=>{
+    const next=lensless?'off':glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
+    if(next===mode)return;
+    mode=next;
+    bar.dataset.glass=mode;
+    if(mode!=='backdrop'){lens.remove();svg.remove();ready=false;mapSeq++;mapWidth=mapHeight=mapDensity=0;}
+    if(mode==='off')glow.remove();
+    else{ensureLayers();rebuild();}
+    watchDensity();
+    keepEdge();
+    paint();
+  };
+
+  const observer=new MutationObserver(records=>{
+    ensureLayers();
+    // Changes inside the layers are their own, so they neither move the pill nor need another sync.
+    if(records.some(record=>!lens.contains(record.target)&&!glow.contains(record.target)))sync(true);
+  });
+  observer.observe(bar,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-current','aria-pressed','data-hidden']});
+  // A resize changes the tab positions with no mutation, and a size change also covers a bar that was hidden or detached.
+  const resize=typeof ResizeObserver==='function'?new ResizeObserver(()=>{rebuild();sync(false);keepEdge();}):undefined;
+  resize?.observe(bar);
+  void document.fonts?.ready.then(()=>{if(!disposed)sync(false);});
+  for(const query of queries)query.addEventListener('change',applyMode);
 
   applyMode();
   sync(false);
@@ -470,19 +344,17 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       disposed=true;
       observer.disconnect();
       resize?.disconnect();
+      parentWatch.disconnect();
       for(const query of queries)query.removeEventListener('change',applyMode);
       densityQuery?.removeEventListener('change',onDensity);
       densityQuery=undefined;
-      unmirrorEvents();
-      removals.disconnect();
-      if(mirrorFrame)cancelAnimationFrame(mirrorFrame);
-      mirrorFrame=0;
       bar.removeEventListener('pointerdown',down);
       stopListening();
       press=null;
       stretch?.cancel();
       lens.remove();
-      group.replaceChildren();
+      glow.remove();
+      edge.remove();
       svg.remove();
       mode='off';
       bar.classList.remove('is-refracting');

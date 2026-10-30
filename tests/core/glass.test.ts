@@ -1,5 +1,5 @@
 import {expect,test,vi} from 'vitest';
-import {aspectOf,glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,mirrorPlacement,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
+import {glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
 
 // The island is 366 by 64 px at a 390 px viewport (12 px from each screen edge), and its lens field covers it plus the margin.
 const W=366,H=64;
@@ -28,23 +28,24 @@ for(const density of DENSITIES){
     expect(data.every((_,i)=>i%4!==3||data[i]===255)).toBe(true);
   });
 
-  test(`at density ${density} the lens samples from beyond the rim: the straight rims bend by at least 15 px, and the ends by half that`,()=>{
+  test(`at density ${density} the lens samples from beyond the rim: the straight rims bend about 10 px, and the ends half that`,()=>{
     const middle=H/2;
     // The top and bottom rims are straight, so they carry the full bend, and each end carries LENS_CAP of it.
-    expect(inBar(W/2,0)[1]).toBeLessThanOrEqual(-15);
-    expect(inBar(W/2,H-1)[1]).toBeGreaterThanOrEqual(15);
-    expect(inBar(0,middle)[0]).toBeLessThanOrEqual(-7);
-    expect(inBar(W-1,middle)[0]).toBeGreaterThanOrEqual(7);
-    expect(LENS_BEND).toBeGreaterThanOrEqual(15);
+    expect(-inBar(W/2,0)[1]).toBeGreaterThanOrEqual(9);
+    expect(-inBar(W/2,0)[1]).toBeLessThanOrEqual(10);
+    expect(inBar(W/2,H-1)[1]).toBeGreaterThanOrEqual(9);
+    expect(inBar(W/2,H-1)[1]).toBeLessThanOrEqual(10);
+    expect(inBar(0,middle)[0]).toBeLessThanOrEqual(-4);
+    expect(inBar(W-1,middle)[0]).toBeGreaterThanOrEqual(4);
     // The lens reaches far enough past the bar for the whole bend.
     expect(LENS_MARGIN).toBeGreaterThanOrEqual(LENS_BEND);
   });
 
-  test(`at density ${density} the ends shift between 7 and 9 px, so the end caps are eased by half against the straight rims`,()=>{
-    expect(inBar(0,H/2)[0]).toBeGreaterThanOrEqual(-9);
-    expect(inBar(0,H/2)[0]).toBeLessThanOrEqual(-7);
-    expect(inBar(W-1,H/2)[0]).toBeGreaterThanOrEqual(7);
-    expect(inBar(W-1,H/2)[0]).toBeLessThanOrEqual(9);
+  test(`at density ${density} the ends shift between 4 and 6 px, so the end caps are eased by half against the straight rims`,()=>{
+    expect(inBar(0,H/2)[0]).toBeGreaterThanOrEqual(-6);
+    expect(inBar(0,H/2)[0]).toBeLessThanOrEqual(-4);
+    expect(inBar(W-1,H/2)[0]).toBeGreaterThanOrEqual(4);
+    expect(inBar(W-1,H/2)[0]).toBeLessThanOrEqual(6);
   });
 
   test(`at density ${density} the shift changes by at most 1.5 px per CSS px between neighbouring pixels, so the bend has no sharp step`,()=>{
@@ -80,7 +81,7 @@ for(const density of DENSITIES){
     const [cx,cy]=inBar(W/2,H/2);
     expect(Math.abs(cx)).toBeLessThan(0.2);
     expect(Math.abs(cy)).toBeLessThan(0.2);
-    // 24 px in from the left rim, past the 22 px bevel.
+    // 24 px in from the left rim, past the 20 px bevel.
     expect(Math.abs(inBar(24,H/2)[0])).toBeLessThan(0.2);
   });
 
@@ -122,21 +123,6 @@ test('a browser with no 2D canvas context gets no lens map, so the lens is left 
   try{expect(lensPng(40,40)).toBe('');expect(lensPng(40,40,2)).toBe('');}finally{vi.unstubAllGlobals();}
 });
 
-test('the mirror places each copy where its image sits, relative to the lens box',()=>{
-  const bar={x:12,y:600,width:366,height:64};
-  const images=[{x:12,y:560,width:170,height:200},{x:300,y:200,width:50,height:50}];
-  // The lens box starts LENS_MARGIN before the bar, so the copy's origin is the image's offset from that corner.
-  expect(mirrorPlacement(bar,images)).toEqual([{index:0,x:12-(12-LENS_MARGIN),y:560-(600-LENS_MARGIN),width:170,height:200}]);
-});
-
-test('the mirror keeps the sixteen copies with the most area under the lens, in document order',()=>{
-  const bar={x:0,y:0,width:400,height:64};
-  const images=Array.from({length:20},(_,i)=>({x:i*10,y:10,width:10+i,height:20}));
-  const kept=mirrorPlacement(bar,images).map(placement=>placement.index);
-  expect(kept).toEqual(Array.from({length:16},(_,i)=>i+4));
-  expect(mirrorPlacement(bar,[{x:0,y:0,width:0,height:20}])).toEqual([]);
-});
-
 test('only Chromium-based browsers report the Chromium brand',()=>{
   expect(isChromiumBrands([{brand:'Not:A-Brand',version:'99'},{brand:'Chromium',version:'131'},{brand:'Google Chrome',version:'131'}])).toBe(true);
   expect(isChromiumBrands([{brand:'Not A(Brand',version:'8'},{brand:'Chromium',version:'131'},{brand:'Microsoft Edge',version:'131'}])).toBe(true);
@@ -146,12 +132,12 @@ test('only Chromium-based browsers report the Chromium brand',()=>{
   expect(isChromiumBrands(undefined)).toBe(false);
 });
 
-test('Chromium refracts its backdrop, every other browser mirrors, and the flat modes get no lens',()=>{
+test('Chromium refracts its backdrop, every other browser frosts its bar, and the flat modes get no lens',()=>{
   const chromium=[{brand:'Chromium',version:'131'}];
   const plain={reducedTransparency:false,moreContrast:false,forcedColours:false};
   expect(glassMode(chromium,plain)).toBe('backdrop');
-  expect(glassMode(undefined,plain)).toBe('mirror');
-  expect(glassMode([{brand:'Not A(Brand',version:'24'}],plain)).toBe('mirror');
+  expect(glassMode(undefined,plain)).toBe('frost');
+  expect(glassMode([{brand:'Not A(Brand',version:'24'}],plain)).toBe('frost');
   for(const brands of [chromium,undefined]){
     expect(glassMode(brands,{...plain,reducedTransparency:true})).toBe('off');
     expect(glassMode(brands,{...plain,moreContrast:true})).toBe('off');
@@ -164,20 +150,4 @@ test('pillVars turns a tab box into the pill custom properties, and no tab into 
   expect(pillVars({left:12.5,width:90.25})).toEqual({'--ui-pill-x':'12.5px','--ui-pill-w':'90.25px','--ui-pill-on':'1'});
   // With no current tab only the visibility changes, so the pill fades without sliding to the edge.
   expect(pillVars(null)).toEqual({'--ui-pill-on':'0'});
-});
-
-test('a mirror copy fits its SVG image the way its cover fits the page',()=>{
-  expect(aspectOf('cover','50% 50%')).toBe('xMidYMid slice');
-  expect(aspectOf('contain','50% 50%')).toBe('xMidYMid meet');
-  expect(aspectOf('fill','50% 50%')).toBe('none');
-  // SVG aligns to an edge or the middle, so each position takes the nearest of the three.
-  expect(aspectOf('cover','0% 100%')).toBe('xMinYMax slice');
-  expect(aspectOf('cover','20% 80%')).toBe('xMinYMax slice');
-  expect(aspectOf('cover','0px 0px')).toBe('xMinYMin slice');
-  expect(aspectOf('cover','12px 50%')).toBe('xMidYMid slice');
-  expect(aspectOf('none','50% 50%')).toBe('xMidYMid meet');
-  // Chromium reports a computed position in percentages, but a keyword reads the same way wherever it is kept.
-  expect(aspectOf('cover','center 30%')).toBe('xMidYMin slice');
-  expect(aspectOf('cover','right bottom')).toBe('xMaxYMax slice');
-  expect(aspectOf('cover','left top')).toBe('xMinYMin slice');
 });
