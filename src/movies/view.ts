@@ -948,8 +948,8 @@ export class MoviesView {
   if(this.route.play&&title&&this.screenFullscreen()&&this.root.querySelector<HTMLElement>('.movies-screen')?.dataset.title===title.id){this.refreshPlayer(title);return;}
   this.releaseMedia();
   // A rail of another page with the same name starts at its beginning, so only a redraw of this page keeps the scroll. A season
-  // change redraws the same title page, so the season part of its address does not count.
-  const page=location.hash.replace(/\/season\/\d+$/,''),scrolls=page===this.railPage?this.railScrolls():new Map<string,number>();
+  // picked on a title page redraws the same page, so the season and episode at the end of its address do not count.
+  const page=location.hash.replace(/\/season\/\d+(\/episode\/\d+)?$/,''),scrolls=page===this.railPage?this.railScrolls():new Map<string,number>();
   // A title whose details are pending shows the loading text, never a not-found message. A play route builds its player once the details have loaded.
   this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button class="ui-btn secondary" data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1 tabindex="-1">That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return this.pendingTitle&&(this.route.play||!t)?LOADING_TITLE:t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1 tabindex="-1">Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.querySelector('.movies-top')?.after(this.tabbar);
   markImages(this.root);

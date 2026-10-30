@@ -2379,6 +2379,25 @@ test('a rail of another page starts at its beginning, though it has the same nam
  expect(await left()).toBe(0);
 });
 
+// A season picked on a title page redraws the same page, so its More like this rail keeps the position the reader gave it.
+test('a season picked on a title page keeps the More like this rail where it was',async({page})=>{
+ const related=Array.from({length:12},(_,index)=>fixtureTitle(`movie-906${String(index).padStart(2,'0')}`,`Related pick ${index+1}`));
+ await answerTitle(page,()=>({...fixtureTitle('tv-19885','Sherlock (API copy)','tv'),related}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885');
+ const row=page.locator('[data-rail="related"] .ui-rail-row');
+ await expect(row.locator('[data-title="movie-90600"]')).toHaveCount(1);
+ expect(await row.evaluate(element=>element.scrollWidth>element.clientWidth)).toBe(true);
+ await row.evaluate(element=>{element.scrollLeft=248;});
+ const settledAt=await settledScroll(row);
+ expect(settledAt).toBeGreaterThan(0);
+ const second=page.getByRole('button',{name:'Season 2',exact:true});
+ await second.click();
+ await expect(page).toHaveURL(/\/season\/2\/episode\/\d+$/);
+ await expect(second).toHaveAttribute('aria-pressed','true');
+ await expect.poll(()=>row.evaluate(element=>element.scrollLeft)).toBe(settledAt);
+});
+
 // Typing keeps the search field in the page: the same node, with the text typed so far.
 test('the search field is the same node while three characters are typed',async({page})=>{
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
