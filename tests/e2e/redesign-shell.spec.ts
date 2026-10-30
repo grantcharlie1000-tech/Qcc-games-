@@ -309,7 +309,7 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
  await games.hover();
  // The current tab keeps no lozenge of its own: the pill carries the highlight, and a hover leaves it alone.
  expect(await alpha(games)).toBe(0);
- expect(await bar.evaluate(element=>{const match=getComputedStyle(element,'::after').backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;})).toBeCloseTo(0.16,2);
+ expect(await bar.evaluate(element=>{const match=getComputedStyle(element,'::after').backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;})).toBeCloseTo(0.06,2);
 });
 
 test('the island shows again after returning from Study',async({page})=>{

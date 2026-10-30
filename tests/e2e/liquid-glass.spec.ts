@@ -369,18 +369,48 @@ test('the Movies island tabs are 90% white, and the current tab is solid bold wh
   expect(await tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
 });
 
-test('the island glass is darker and tinted, and its labels and icons have a halo',async({page})=>{
+test('the island glass compresses its backdrop before it darkens it, keeps its tint, and its labels and icons have a halo',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(20, 20, 24, 0.24)');
+  // The selection pill is 6% white: over a white backdrop, the current label keeps 4.5:1 only with a fill this light.
+  expect(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(255, 255, 255, 0.06)');
   const backdrop=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-  expect(backdrop).toContain('brightness(0.8)');
+  expect(backdrop).toContain('contrast(0.6) brightness(0.65)');
   expect(backdrop).not.toContain('brightness(1.06)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('rgba(0, 0, 0, 0.65) 0px 1px 2px, rgba(0, 0, 0, 0.45) 0px 0px 8px');
   expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toBe('drop-shadow(rgba(0, 0, 0, 0.6) 0px 1px 1px)');
+});
+
+// contrast() comes before brightness() in the plain rule and in the Chromium refraction rule. The order is read from the
+// stylesheet, so it holds even in an engine that does not draw backdrop-filter.
+test('the island backdrop applies contrast before brightness, in both the plain and the refracting rule',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  await expect(page.locator('.app-tabbar')).toBeVisible();
+  const written=await page.evaluate(()=>{
+    const found:Record<string,string>={};
+    for(const sheet of Array.from(document.styleSheets)){
+      let rules:CSSRule[]=[];
+      try{rules=Array.from(sheet.cssRules);}catch{}
+      for(const rule of rules){
+        if(!(rule instanceof CSSStyleRule))continue;
+        if(rule.selectorText!=='.ui-tabbar'&&rule.selectorText!=='.ui-tabbar.is-refracting')continue;
+        const value=rule.style.getPropertyValue('backdrop-filter')||rule.style.getPropertyValue('-webkit-backdrop-filter');
+        if(value)found[rule.selectorText]=value;
+      }
+    }
+    return found;
+  });
+  for(const selector of ['.ui-tabbar','.ui-tabbar.is-refracting']){
+    const value=written[selector]??'';
+    expect(value,`${selector} sets a backdrop-filter`).toContain('contrast(');
+    expect(value,`${selector} sets a backdrop-filter`).toContain('brightness(');
+    expect(value.indexOf('contrast('),`${selector} puts contrast before brightness`).toBeLessThan(value.indexOf('brightness('));
+  }
 });
 
 test('more contrast makes the island opaque with white labels, and keeps its border',async({page})=>{
