@@ -91,17 +91,21 @@ test('blocked storage, catalog failure, invalid deep links and malicious metadat
 test('CSP blocks unapproved frames, media, images, scripts and connections',async({page})=>{
  await page.goto('/#/movies');await expect(page.locator('#movies-search')).toBeVisible();
  const responses:string[]=[];page.on('response',r=>{if(![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(r.url()).origin))responses.push(r.url());});
- const directives=await page.evaluate(async()=>{
-  const violations:string[]=[];document.addEventListener('securitypolicyviolation',e=>violations.push(e.effectiveDirective));
+ await page.evaluate(async()=>{
+  const violations:string[]=[];(window as unknown as {violations:string[]}).violations=violations;document.addEventListener('securitypolicyviolation',e=>violations.push(e.effectiveDirective));
   const host='https://unapproved-provider.invalid';
   const frame=document.createElement('iframe');frame.src=host+'/blocked';document.body.append(frame);
   const media=document.createElement('video');media.src=host+'/blocked.mp4';document.body.append(media);media.load();
   const image=new Image();image.src=host+'/blocked.png';
   const script=document.createElement('script');script.src=host+'/blocked.js';document.body.append(script);
   await fetch(host+'/blocked').catch(()=>{});
-  await new Promise(r=>setTimeout(r,100));return violations;
  });
- for(const name of ['frame-src','media-src','img-src','script-src-elem','connect-src'])expect(directives).toContain(name);
+ // Frame and media reports arrive after these calls, so the test polls until all five are on the window.
+ const names=['frame-src','media-src','img-src','script-src-elem','connect-src'];
+ const reported=()=>page.evaluate(()=>(window as unknown as {violations:string[]}).violations);
+ await expect.poll(reported,{timeout:5000}).toEqual(expect.arrayContaining(names));
+ const directives=await reported();
+ for(const name of names)expect(directives).toContain(name);
  // Chromium reports CSP-blocked attempts as requestfailed; they must never receive a response.
  expect(responses).toEqual([]);await expect(page.locator('iframe')).toHaveCount(1);
 });

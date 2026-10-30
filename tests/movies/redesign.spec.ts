@@ -710,10 +710,11 @@ test('a successful empty section answer shows the starter grid with no status li
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/browse/movie');
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
- // The answer waits until the starter grid is on screen. Two frames then let the page render the answer.
+ // The answer waits until the starter grid is on screen. The answer replaces that grid, so the checks wait for the swap.
+ const loading=await page.locator('.movies-results-grid').elementHandle();
  const response=page.waitForResponse(response=>response.url().includes('rails=movie'));
  release();await (await response).finished();
- await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+ await expect.poll(()=>loading.evaluate(grid=>grid.isConnected)).toBe(false);
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(6);
  await expect(page.locator('.movies-rails-status')).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);

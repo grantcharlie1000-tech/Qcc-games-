@@ -47,12 +47,12 @@ body.movies-active.study-active{overflow:auto}
 .movies-view{--movies-accent:#69d8f4}
 
 .movies-view .movies-primary{background:#8ce8f8;color:#0b1720;border-radius:7px}
-.movies-view .movies-primary:not(:disabled):hover{background:#b4f2ff}
+@media (hover:hover) and (pointer:fine){.movies-view .movies-primary:not(:disabled):hover{background:#b4f2ff}}
 .movies-result-count{color:#93aab8}
 .movies-catalog-status{padding:11px 14px;border:1px solid #28394a;border-left:3px solid #69d8f4;border-radius:6px;background:#111a25;color:#b9d3df;font-size:13px}.movies-view .movies-catalog-status{margin:12px 0 16px}
 .movies-pagination{display:flex;align-items:center;justify-content:center;gap:16px;padding:26px 0 8px;color:#a8bdcb;font-size:13px}
 .movies-pagination button{border-color:#334353;border-radius:8px;background:#141e29}
-.movies-pagination button:not(:disabled):hover{border-color:#69d8f4;color:#a3edfa}
+@media (hover:hover) and (pointer:fine){.movies-pagination button:not(:disabled):hover{border-color:#69d8f4;color:#a3edfa}}
 
 
 .movies-view button,.movies-view select,.movies-view input{border-color:#354452;border-radius:8px}

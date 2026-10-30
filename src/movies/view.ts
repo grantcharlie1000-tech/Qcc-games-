@@ -42,6 +42,7 @@ const mergeDetails=(bundled:Title,detail:Title):Title=>({...bundled,
   })};
  })});
 const slug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+// The server a button names, and the server after it. Server n is the n-th provider in STREAM_PROVIDERS.
 const serverNumber=(id?:StreamProviderId)=>STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1;
 const nextServer=(id?:StreamProviderId):StreamProviderId=>STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1)%STREAM_PROVIDERS.length].id;
 // The play route of one episode.
@@ -983,6 +984,7 @@ export class MoviesView {
   this.failoverNote=`Server ${serverNumber(failed)} didn't start. Trying Server ${serverNumber(next)}…`;
   this.switchProvider(next,false);
  }
+ // Every automatic attempt has failed, so the panel offers Try again.
  private exhaust(){this.exhausted=true;this.failoverNote='';this.redrawPlayer();}
  // The first sign of playback remembers the server for the next title and clears the failover line.
  private worked(provider:StreamProviderId){
@@ -1128,8 +1130,8 @@ export class MoviesView {
    const label=`Up next: S${next.season} · E${next.episode}${next.name?' — '+next.name:''}`;
    overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;this.tabbar.dataset.hidden='true';
    const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent=label+'. Playing in 10 seconds.';
-   // A keyboard user on the island keeps focus there, and the island stays shown while it has focus.
-   if(!this.tabbar.contains(document.activeElement))overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});
+   // The island stays shown only while a keyboard focus is inside it. Any other focus there would sit on a hidden tab.
+   if(!this.tabbar.querySelector(':focus-visible'))overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});
    let seconds=10;this.countdown=setInterval(()=>{if(!this.preferences.autoNext()){this.cancelNext();return;}seconds--;if(seconds<=0)this.playNext();else {const count=overlay.querySelector('.movies-next-countdown');if(count)count.textContent='Playing in '+seconds;const bar=overlay.querySelector<HTMLElement>('.movies-next-bar>span');if(bar)bar.style.width=`${seconds*10}%`;}},1000);
   };
   if(this.fullscreenElement()&&(this.fullscreenElement()===this.frame||this.fullscreenElement()===this.video))void this.exitFullscreen().then(show);else show();

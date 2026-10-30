@@ -15,7 +15,9 @@ test.beforeEach(async({page})=>{
 });
 
 test('end shows the next title, countdown and keyboard focus; Cancel stops and restores focus',async({page})=>{
- await open(page);await ended(page);await expect(overlay(page)).toContainText('Up next: S1 · E2 — The Blind Banker');await expect(overlay(page)).toContainText('Playing in 10');await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
+ await open(page);
+ // The countdown must not tick before its first value is read, so time holds here until runFor advances it.
+ await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));await ended(page);await expect(overlay(page)).toContainText('Up next: S1 · E2 — The Blind Banker');await expect(overlay(page)).toContainText('Playing in 10');await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.clock.runFor(11000);await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);await expect(overlay(page)).toBeHidden();await expect(page.locator('.movies-screen')).toBeFocused();
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')!).progress['tv-19885:s1:e1'])).toBe(0);
  await telemetry(page);await expect(overlay(page)).toBeHidden();
@@ -149,12 +151,20 @@ test('keyboard focus in the island keeps it visible while Up next shows',async({
  await page.setViewportSize({width:1440,height:900});await open(page);
  const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(tab).toBeFocused();
- // The hide fades over about 380 ms, so the opacity is read after it.
- await page.waitForTimeout(500);await expect(island(page)).toHaveCSS('opacity','1');
+ // A hide would fade over about 380 ms, so the opacity is read once no transition on the island is running.
+ await expect.poll(()=>island(page).evaluate(e=>e.getAnimations().length)).toBe(0);await expect(island(page)).toHaveCSS('opacity','1');
+});
+test('pointer focus in the island does not keep it visible, so Up next moves focus to Play now',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);
+ const tab=island(page).locator('[data-kind="movie"]');await page.locator('.movies-player>h2').click();await tab.evaluate(e=>(e as HTMLElement).focus());await expect(tab).toBeFocused();expect(await tab.evaluate(e=>e.matches(':focus-visible'))).toBe(false);
+ // A click on a non-focusable heading, then a script focus, is not keyboard focus.
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(island(page)).toHaveCSS('opacity','0');
+ await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
 });
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);
- const view=page.locator('.movies-view');await view.evaluate(e=>e.scrollTo(0,300));await view.evaluate(e=>e.scrollTo(0,0));
- // The island reads its position on the next frame, so the wait lets that check run.
- await page.waitForTimeout(400);await expect(overlay(page)).toBeVisible();await expect(island(page)).toHaveAttribute('data-hidden','true');
+ const view=page.locator('.movies-view');await view.evaluate(e=>e.scrollTo(0,300));
+ // The island checks its position in the frame after a scroll event, so this resolves only after that check has run.
+ await view.evaluate(e=>new Promise<void>(resolve=>{e.addEventListener('scroll',()=>requestAnimationFrame(()=>resolve()),{once:true});e.scrollTo(0,0);}));
+ await expect(overlay(page)).toBeVisible();await expect(island(page)).toHaveAttribute('data-hidden','true');
 });
