@@ -4,6 +4,8 @@ import {readFileSync} from 'node:fs';
 
 // Same network fixtures as movies.spec.ts. The streaming hosts also answer with the provider fixture page.
 test.beforeEach(async({page})=>{
+ // Existing playback coverage accepts each fresh third-party playback warning.
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
  for(const url of ['https://framextv.cc/**','https://framextv.xyz/**','https://vidlink.pro/**','https://vixsrc.to/**','https://vidsrc.to/**'])
   await page.route(url,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'+(url==='https://framextv.cc/**'?'<script>parent.postMessage({event:"frameXTV:ready"},"*")</script>':'')}));
@@ -1348,8 +1350,8 @@ for(const entry of ['Continue link','cold link'] as const)test(`a play route int
   await page.goto('/#/movies/tv-90200');
   await page.locator('.movies-actions a.movies-primary').click();
  }else await page.goto('/#/movies/tv-90200/season/2/episode/1/play');
- await expect.poll(()=>asked).toBe(true);
  await expect(page.locator('.movies-empty[role="status"] h1')).toHaveText('Loading title details…');
+ await expect.poll(()=>asked).toBe(true);
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
  release();
  await expect(page.getByRole('heading',{name:'S2 · E1 — Second Season Opener',exact:true})).toBeVisible();
@@ -1378,8 +1380,8 @@ test('a licensed episode in an unloaded season plays locally before any provider
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/tv-90200');
  await page.locator('.movies-actions a.movies-primary').click();
- await expect.poll(()=>asked).toBe(true);
  await expect(page.locator('.movies-empty[role="status"] h1')).toHaveText('Loading title details…');
+ await expect.poll(()=>asked).toBe(true);
  expect(thirdParty()).toEqual([]);
  release();
  await expect(page.locator('.movies-media video')).toHaveAttribute('src',/\/movies\/media\/second-season-opener\.mp4$/);
@@ -2106,6 +2108,7 @@ test('a built-in movie that Home features plays at once, while its details load'
  await page.goto('/#/movies');
  await expect(page.locator('[data-rail="featured"]')).toBeVisible();
  await page.locator('.movies-hero [data-play-route]').click();
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);
  await expect.poll(()=>asked.includes('movie-157336')).toBe(true);
  await expect(page.getByText('Loading title details')).toHaveCount(0);
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(1);

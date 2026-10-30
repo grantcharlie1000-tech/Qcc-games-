@@ -1,7 +1,8 @@
 export interface Episode {number:number;name:string;overview:string;runtime?:number;still?:string;airDate?:string;rating?:number}
 export interface Season {number:number;name:string;episodes:Episode[]}
 export interface CastMember {name:string;character:string;photo?:string}
-export interface Title {id:string;kind:'movie'|'tv';name:string;year:number;genres:string[];overview:string;poster:string;backdrop?:string;rating?:number;runtime?:number;seasons:Season[];cast?:CastMember[];related?:Title[]}
+export type TitleSource={type:'third-party'}|{type:'archive';archiveId:string;license:string;evidence:string};
+export interface Title {id:string;source:TitleSource;kind:'movie'|'tv';name:string;year:number;genres:string[];overview:string;poster:string;backdrop?:string;rating?:number;runtime?:number;seasons:Season[];cast?:CastMember[];related?:Title[]}
 export interface Catalog {titles:Title[];source:'starter'|'tmdb';updated?:string;attributionLogo?:string;trending:string[]}
 export interface MovieRoute {id?:string;season?:number;episode?:number;play:boolean;kind?:'movie'|'tv'|'list'}
 export type MovieKind='all'|'movie'|'tv'|'list';
@@ -31,8 +32,13 @@ function parseEpisode(e:any):Episode {
 function parseCast(value:unknown):CastMember[] {
  return Array.isArray(value)?value.slice(0,12).filter((c:any)=>object(c)&&text(c.name,120)&&typeof c.character==='string'&&c.character.length<=120).map((c:any)=>{const photo=imageAsset(c.photo);return {name:c.name,character:c.character,...(photo===undefined?{}:{photo})};}):[];
 }
+// Only operator-controlled static metadata can declare an Archive.org source.
+function titleSource(value:unknown,remote:boolean):TitleSource {
+ if(!remote&&object(value)&&value.type==='archive'&&typeof value.archiveId==='string'&&/^[A-Za-z0-9._-]{1,100}$/.test(value.archiveId)&&text(value.license,200)&&value.license.trim()&&text(value.evidence,2000)&&value.evidence.trim())return {type:'archive',archiveId:value.archiveId,license:value.license.trim(),evidence:value.evidence.trim()};
+ return {type:'third-party'};
+}
 // Nested titles (related entries) skip their own cast and related lists, which keeps the nesting to one level.
-export function parseTitle(value:unknown,nested=false):Title|undefined {
+export function parseTitle(value:unknown,nested=false,remote=false):Title|undefined {
  if(!object(value)||!text(value.id,80)||!/^((movie|tv)-[a-z0-9-]+)$/.test(value.id)||(value.kind!=='movie'&&value.kind!=='tv')||!text(value.name,200)||!(value.year===0||integer(value.year))||!text(value.overview)||!imageAsset(value.poster)||!Array.isArray(value.genres)||!value.genres.every((g:unknown)=>text(g,80)))return;
  const seasons:Season[]=[];
  for(const s of (Array.isArray(value.seasons)?value.seasons:[]).slice(0,100)){
@@ -41,10 +47,10 @@ export function parseTitle(value:unknown,nested=false):Title|undefined {
   seasons.push({number:s.number,name:s.name,episodes});
  }
  const cast:CastMember[]=nested?[]:parseCast(value.cast);
- const related:Title[]=nested||!Array.isArray(value.related)?[]:value.related.slice(0,12).flatMap((r:unknown)=>parseTitle(r,true)??[]);
- return {id:value.id,kind:value.kind,name:value.name,year:value.year,genres:value.genres,overview:value.overview,poster:value.poster,backdrop:imageAsset(value.backdrop),rating:ratingOf(value.rating),runtime:integer(value.runtime)?value.runtime:undefined,seasons,...(cast.length?{cast}:{}),...(related.length?{related}:{})};
+ const related:Title[]=nested||!Array.isArray(value.related)?[]:value.related.slice(0,12).flatMap((r:unknown)=>parseTitle(r,true,true)??[]);
+ return {id:value.id,source:titleSource(value.source,remote),kind:value.kind,name:value.name,year:value.year,genres:value.genres,overview:value.overview,poster:value.poster,backdrop:imageAsset(value.backdrop),rating:ratingOf(value.rating),runtime:integer(value.runtime)?value.runtime:undefined,seasons,...(cast.length?{cast}:{}),...(related.length?{related}:{})};
 }
-export function parseCatalog(value:unknown):Catalog {
+export function parseCatalog(value:unknown,remote=false):Catalog {
  const result:Catalog={titles:[],source:'starter',trending:[]};
  if(!object(value)||!Array.isArray(value.titles))return result;
  result.source=value.source==='tmdb'?'tmdb':'starter';
@@ -52,7 +58,7 @@ export function parseCatalog(value:unknown):Catalog {
  if(localAsset(value.attributionLogo))result.attributionLogo=value.attributionLogo;
  const seen=new Set<string>();
  for(const v of value.titles.slice(0,200)){
-  const title=parseTitle(v);
+  const title=parseTitle(v,false,remote);
   if(!title||seen.has(title.id))continue;
   result.titles.push(title);seen.add(title.id);
  }
@@ -103,7 +109,7 @@ export function parseRails(value:unknown):Rail[] {
  return list.slice(0,12).flatMap((r:any):Rail[]=>{
   if(!object(r)||typeof r.id!=='string'||!/^[a-z0-9-]{1,40}$/.test(r.id)||!text(r.title,80)||!Array.isArray(r.titles))return [];
   const seen=new Set<string>(),titles:Title[]=[];
-  for(const v of r.titles.slice(0,40)){const title=parseTitle(v);if(!title||seen.has(title.id))continue;seen.add(title.id);titles.push(title);}
+  for(const v of r.titles.slice(0,40)){const title=parseTitle(v,false,true);if(!title||seen.has(title.id))continue;seen.add(title.id);titles.push(title);}
   return titles.length?[{id:r.id,title:r.title,titles}]:[];
  });
 }

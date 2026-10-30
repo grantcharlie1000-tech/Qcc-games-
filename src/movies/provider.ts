@@ -16,6 +16,7 @@ export const streamProvider=(id:StreamProviderId)=>STREAM_PROVIDERS.find(provide
 // Saved positions under START_THRESHOLD seconds play from the beginning.
 export const START_THRESHOLD=15;
 export function frameSource(title:Title,route:MovieRoute,providerId:StreamProviderId='framextv',startAt=0):string|undefined {
+ if(title.source.type==='archive')return;
  const match=title.id.match(/^(movie|tv)-([1-9]\d*)$/);if(!match||match[1]!==title.kind)return;
  const episode=title.kind==='tv'?`/${route.season??title.seasons.find(s=>s.episodes.length)?.number??1}/${route.episode??title.seasons.find(s=>s.episodes.length)?.episodes[0]?.number??1}`:'';
  const provider=streamProvider(providerId);

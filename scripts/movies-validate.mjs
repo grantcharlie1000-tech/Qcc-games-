@@ -1,4 +1,12 @@
+// Static sources require explicit operator classification; runtime metadata is never trusted for this.
 import {readFile,stat} from 'node:fs/promises';
+const catalog=JSON.parse(await readFile('public/movies/catalog.json','utf8'));
+if(!Array.isArray(catalog.titles))throw new Error('Movie catalog titles must be an array');
+for(const title of catalog.titles){
+ const source=title?.source;
+ const nonblank=(value,max)=>typeof value==='string'&&value.trim().length>0&&value.length<=max;
+ if(!source||typeof source!=='object'||Array.isArray(source)||(source.type!=='third-party'&&(source.type!=='archive'||typeof source.archiveId!=='string'||!/^[A-Za-z0-9._-]{1,100}$/.test(source.archiveId)||!nonblank(source.license,200)||!nonblank(source.evidence,2000))))throw new Error(`Missing or invalid movie source: ${title?.id??'unknown'}`);
+}
 // A build cannot publish a registry entry without its media and documented rights review.
 const entries=JSON.parse(await readFile('public/movies/licenses.json','utf8'));
 if(!Array.isArray(entries))throw new Error('Movie licenses must be an array');

@@ -102,7 +102,7 @@ describe('artwork and rich title fields',()=>{
  });
  it('adds none of the new keys when their values are absent or invalid',()=>{
   const parsed=parseCatalog({titles:[{...title,cast:'nope',related:[null],seasons:[{number:1,name:'One',episodes:[{number:1,name:'Pilot',overview:'',still:'https://evil.test/s.jpg',airDate:'2020',rating:'9'}]}]}]}).titles[0];
-  expect(Object.keys(parsed)).toEqual(['id','kind','name','year','genres','overview','poster','backdrop','rating','runtime','seasons']);
+  expect(Object.keys(parsed)).toEqual(['id','source','kind','name','year','genres','overview','poster','backdrop','rating','runtime','seasons']);
   expect(Object.keys(parsed.seasons[0].episodes[0])).toEqual(['number','name','overview','runtime']);
  });
 });
@@ -171,5 +171,23 @@ describe('previous episode',()=>{
   expect(previousEpisode(show,1,9)).toBeUndefined();
   expect(previousEpisode({...show,kind:'movie'},2,1)).toBeUndefined();
   expect(previousEpisode({...show,seasons:[{number:1,name:'First',episodes:[]},show.seasons[1]]},2,1)).toBeUndefined();
+ });
+});
+
+
+describe('title source trust boundary',()=>{
+ const archive={type:'archive',archiveId:'Example_film-1920.1',license:'Public domain',evidence:'Reviewed collection note'};
+ it('keeps a complete static archive source even in a TMDB metadata snapshot',()=>{
+  expect(parseCatalog({source:'tmdb',titles:[{...title,source:archive}]}).titles[0].source).toEqual(archive);
+ });
+ it('falls back to third-party for missing or malformed static sources',()=>{
+  for(const source of [undefined,null,{type:'unknown'},{...archive,archiveId:'../bad'},{...archive,archiveId:'x'.repeat(101)},{...archive,license:' '},{...archive,license:'x'.repeat(201)},{...archive,evidence:' '}])expect(parseCatalog({titles:[{...title,source}]}).titles[0].source).toEqual({type:'third-party'});
+ });
+ it('never trusts archive claims in remote catalogs, rails or related titles',()=>{
+  const entry={...title,source:archive};
+  expect(parseCatalog({titles:[entry]},true).titles[0].source).toEqual({type:'third-party'});
+  expect(parseTitle(entry,false,true)?.source).toEqual({type:'third-party'});
+  expect(parseRails({rails:[{id:'trending',title:'Trending',titles:[entry]}]})[0].titles[0].source).toEqual({type:'third-party'});
+  expect(parseCatalog({titles:[{...entry,related:[entry]}]}).titles[0].related?.[0].source).toEqual({type:'third-party'});
  });
 });

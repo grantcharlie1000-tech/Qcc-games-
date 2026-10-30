@@ -23,7 +23,7 @@ const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const asset=(v:string)=>v.startsWith('https://')?v:new URL(base+v,document.baseURI).href;
 const cardMeta=(t:Title)=>[t.year?String(t.year):'',t.kind==='tv'?'Series':'Movie'].filter(Boolean).join(' · ');
 // A title saved in storage carries what a card or a Continue watching tile needs. Genres, overview and seasons arrive when the title loads.
-const fromSnapshot=(s:TitleSnapshot):Title=>({id:s.id,kind:s.kind,name:s.name,year:s.year,genres:[],overview:'',poster:s.poster,backdrop:s.backdrop,seasons:[]});
+const fromSnapshot=(s:TitleSnapshot):Title=>({id:s.id,kind:s.kind,name:s.name,year:s.year,genres:[],overview:'',poster:s.poster,backdrop:s.backdrop,seasons:[],source:{type:'third-party'}});
 // The title page while its details load. A play route shows it until its season has loaded, so the player is built only once.
 // The media's own record of what it has played. A seek to a saved position adds nothing to it, so it shows real playback in every engine.
 const hasPlayed=(video:HTMLVideoElement)=>{const ranges=video.played;for(let i=0;i<ranges.length;i++)if(ranges.end(i)>ranges.start(i))return true;return false;};
@@ -97,6 +97,8 @@ export class MoviesView {
  readonly root=document.createElement('section');
  private catalog:Catalog={titles:[],source:'starter',trending:[]};
  private licenses:unknown=[];
+ private confirmedPlayback='';
+ private warning?:HTMLDialogElement;
  private abort=new AbortController();
  private ready=false;
  private failed=false;
@@ -286,7 +288,7 @@ export class MoviesView {
   try{
    const {data}=await cachedJson('/api/movies?'+new URLSearchParams({...request.params,page:String(page)}),controller.signal,{staleTime:SEARCH_STALE});
    if(id!==this.searchRequest||!answersRequest(this.remoteRequest()?.key,request.key))return;
-   const parsed=parseCatalog({titles:data.titles,source:'tmdb'});
+   const parsed=parseCatalog({titles:data.titles,source:'tmdb'},true);
    this.remoteTitles=parsed.titles;this.remoteKey=request.key;
    for(const title of parsed.titles)this.dynamicIds.add(title.id);
    this.remotePage=Number.isInteger(data.page)?data.page:page;
@@ -351,7 +353,7 @@ export class MoviesView {
   const resting=document.activeElement;
   try{
    const params=new URLSearchParams({id});if(season)params.set('season',String(season));
-   const {data}=await cachedJson('/api/movies?'+params,controller.signal);const parsed=parseCatalog({titles:[data.title],source:'tmdb'});const title=parsed.titles[0];
+   const {data}=await cachedJson('/api/movies?'+params,controller.signal);const parsed=parseCatalog({titles:[data.title],source:'tmdb'},true);const title=parsed.titles[0];
    if(request!==this.detailRequest||this.route.id!==id)return;
    if(!title||title.id!==id)throw new Error('Title details are unavailable.');
    this.storeTitle(id,title,season);
@@ -370,6 +372,7 @@ export class MoviesView {
  // A title's details become the catalog's own. A season that comes back without episodes keeps the ones it had, and the seasons with episodes are loaded.
  private storeTitle(id:string,title:Title,season?:number){
   const previous=this.catalog.titles.find(t=>t.id===id);
+  if(previous&&this.bundledIds.has(id))title={...title,source:previous.source};
   if(previous)for(const item of title.seasons)if(!item.episodes.length)item.episodes=previous.seasons.find(s=>s.number===item.number)?.episodes??[];
   this.catalog={...this.catalog,titles:[...this.catalog.titles.filter(t=>t.id!==id),title]};
   this.dynamicIds.add(id);this.loadedDetails.add(id);
@@ -384,7 +387,7 @@ export class MoviesView {
   this.askedBuiltIn.add(id);
   try{
    const {data}=await cachedJson('/api/movies?'+new URLSearchParams({id}),this.abort.signal);
-   const detail=parseCatalog({titles:[data.title],source:'tmdb'}).titles[0];
+   const detail=parseCatalog({titles:[data.title],source:'tmdb'},true).titles[0];
    // An answer for another title's id changes nothing here.
    if(!detail||detail.id!==id||this.abort.signal.aborted)return;
    this.catalog={...this.catalog,titles:this.catalog.titles.map(t=>t.id===id?mergeDetails(t,detail):t)};
@@ -422,6 +425,8 @@ export class MoviesView {
  }
  private positionKey(route:MovieRoute){const title=this.catalog.titles.find(t=>t.id===route.id);return route.play?JSON.stringify(route):route.id?`${route.id}:s${route.season??title?.seasons[0]?.number??0}`:'browse';}
  navigate(hash:string){
+  this.dismissWarning();
+  if(this.confirmedPlayback!==hash)this.confirmedPlayback='';
   this.closeDrawer();
   this.applyRoute(hash);
   // Every route shows the island again, and scroll travel counts from wherever the new page lands.
@@ -597,7 +602,7 @@ export class MoviesView {
   const isTv=hero.kind==='tv',name=escape(hero.name);
   const season=hero.seasons.find(s=>s.episodes.length),episode=season?.episodes[0];
   const route:MovieRoute=isTv?{id:hero.id,season:season?.number,episode:episode?.number,play:true}:{id:hero.id,play:true};
-  const source=licensedSource(this.licenses,mediaKey(hero,route))??frameSource(hero,route);
+  const source=hero.source.type==='archive'||(licensedSource(this.licenses,mediaKey(hero,route))??frameSource(hero,route));
   const playRoute=!isTv?`${titleHash(hero.id)}/play`:season&&episode?`${titleHash(hero.id)}/season/${season.number}/episode/${episode.number}/play`:titleHash(hero.id);
   const listed=this.storage.data.list.includes(hero.id);
   const info=[hero.year?String(hero.year):'',isTv?'Series':'Movie',hero.genres.slice(0,3).join(' / ')].filter(Boolean).join(' · ');
@@ -743,7 +748,7 @@ export class MoviesView {
  // and episodes, and the cast and the titles like this one follow.
  private detail(t:Title){
   const name=escape(t.name),season=this.shownSeason(t);
-  const source=t.kind==='movie'?(licensedSource(this.licenses,mediaKey(t,this.route))??frameSource(t,this.route)):undefined;
+  const source=t.kind==='movie'?(t.source.type==='archive'||(licensedSource(this.licenses,mediaKey(t,this.route))??frameSource(t,this.route))):undefined;
   const saved=this.storage.data.progress[t.id]??0;
   const chips=[`<span class="ui-chip">${t.kind==='tv'?'Series':'Movie'}</span>`,t.year?`<span class="ui-chip">${escape(String(t.year))}</span>`:'',t.rating===undefined?'':`<span class="ui-chip rating">★ ${t.rating.toFixed(1)}</span>`,t.runtime?`<span class="ui-chip">${escape(formatRuntime(t.runtime))}</span>`:''].join('');
   const backdrop=this.artImage([...(t.backdrop?[asset(t.backdrop)]:[]),asset(t.poster)],'movies-detail-backdrop-img','alt="" referrerpolicy="no-referrer"');
@@ -768,26 +773,64 @@ export class MoviesView {
   const related=t.related?.length?`<div class="movies-related ui-container">${this.shelf('related','More like this',t.related)}</div>`:'';
   return `${header}${episodes}${cast}${related}`;
  }
+ private playbackHash(){return titleHash(this.route.id!)+(this.route.season?`/season/${this.route.season}/episode/${this.route.episode}`:'')+'/play';}
+ private dismissWarning(){this.warning?.close();this.warning?.remove();this.warning=undefined;}
+ private warnBeforePlayback(trigger:HTMLElement|undefined,proceed:()=>void,cancel:()=>void=()=>{}){
+  if(this.warning?.open||this.disposed)return;
+  const drawer=trigger?.closest<HTMLDialogElement>('dialog.movies-drawer');
+  const reopenDrawer=!!drawer?.open;
+  const hadMedia=!!this.frame||!!this.video;
+  if(hadMedia)this.pause();
+  this.stopVideo();
+  if(hadMedia){const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><button class="ui-btn primary" data-action="resume-stream">Resume stream</button></div>';}
+  const dialog=document.createElement('dialog');this.warning=dialog;
+  dialog.className='movies-warning ui-glass-sheet';
+  dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
+  dialog.setAttribute('aria-labelledby','movies-warning-title');dialog.setAttribute('aria-describedby','movies-warning-description');
+  dialog.innerHTML=`<h2 id="movies-warning-title">Before you watch</h2><p id="movies-warning-description">This video player is run by an outside website, not QCC. It may show ads that are inappropriate or harmful, and QCC can't control or block them. We're doing everything we can to prevent this.</p><div class="movies-warning-actions"><button class="ui-btn secondary" autofocus>Go back</button><button class="ui-btn primary">Continue</button></div>`;
+  const [back,forward]=dialog.querySelectorAll<HTMLButtonElement>('button');
+  const finder=trigger?finderFor(trigger):undefined;
+  const finish=(accepted:boolean)=>{
+   this.dismissWarning();
+   if(accepted){this.suspended=false;proceed();}else {cancel();if(reopenDrawer&&drawer?.isConnected)openSheet(drawer);(trigger?.isConnected?trigger:finder?.(this.root)[0])?.focus({preventScroll:true});}
+  };
+  back.addEventListener('click',()=>finish(false));forward.addEventListener('click',()=>finish(true));
+  dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});
+  dialog.addEventListener('keydown',event=>{
+   if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(false);}
+   if(event.key==='Tab'){event.preventDefault();(document.activeElement===back?forward:back).focus();}
+  });
+  document.body.append(dialog);openSheet(dialog,trigger);back.focus({preventScroll:true});
+ }
  private player(t:Title){
   const route=this.route;
   const episode=t.seasons.find(s=>s.number===route.season)?.episodes.find(e=>e.number===route.episode);
   const key=mediaKey(t,route),saved=this.storage.data.progress[key]??0;
   // A licensed file plays from its own file before any provider is asked, whether or not its season has loaded.
-  const source=licensedSource(this.licenses,key);
+  const archive=t.source.type==='archive'?t.source:undefined;
+  const source=archive?undefined:licensedSource(this.licenses,key);
+  const needsWarning=!archive&&this.confirmedPlayback!==this.playbackHash();
+  if(needsWarning&&!this.suspended)queueMicrotask(()=>{
+   if(!this.disposed&&this.route.play&&this.currentTitle()?.id===t.id&&!this.suspended&&this.confirmedPlayback!==this.playbackHash())this.warnBeforePlayback(undefined,()=>{this.confirmedPlayback=this.playbackHash();this.renderKeepingFocus();},()=>{location.hash=titleHash(t.id);});
+  });
   // An episode missing from a loaded season gets no provider (section 8.3). A season still loading, or one that failed, keeps the optimistic player.
   const missing=!source&&this.episodeMissing(t,route);
-  const server=source||missing?undefined:this.chooseServer(key);
+  const server=archive||needsWarning||source||missing?undefined:this.chooseServer(key);
   this.providerId=server;
-  const exhausted=!source&&!missing&&!server;
+  const exhausted=!archive&&!needsWarning&&!source&&!missing&&!server;
   const external=server?frameSource(t,route,server,saved):undefined;
   const back=titleHash(t.id)+(episode?`/season/${route.season}/episode/${route.episode}`:'');
-  const media=source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" data-media-key="${escape(key)}" src="${escape(asset(source.path))}"></video>`
+  const media=archive?`<iframe class="movies-archive-frame" data-media-key="${escape(key)}" src="https://archive.org/embed/${archive.archiveId}" title="${escape(t.name)} Internet Archive player" sandbox="allow-scripts allow-same-origin allow-presentation" referrerpolicy="no-referrer" allowfullscreen></iframe>`
+   :needsWarning?`<div class="movies-player-unavailable"><h2>${this.suspended?'Stream paused':'Before you watch'}</h2>${this.suspended?'<button class="ui-btn primary" data-action="resume-stream">Resume stream</button>':''}</div>`
+   :source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" data-media-key="${escape(key)}" src="${escape(asset(source.path))}"></video>`
    :missing?this.episodeUnavailable(t,route)
    :external?`<iframe class="movies-provider-frame" data-provider="${server}" data-media-key="${escape(key)}" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`
    :exhausted?`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback didn't start</h2><p>This title would not start on any server.</p><button class="ui-btn primary" data-action="retry-servers">Try again</button></div>`
    :`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="ui-btn primary" href="${escape(back)}">Return to title</a></div>`;
-  const showServers=!source&&!missing&&(!!external||exhausted);
-  const status=source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`
+  const showServers=!archive&&!needsWarning&&!source&&!missing&&(!!external||exhausted);
+  const status=archive?`From the Internet Archive · ${escape(archive.license)}`
+   :needsWarning?'Playback is waiting for your confirmation.'
+   :source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`
    :server&&external?`External player provided by ${escape(streamProvider(server).name)}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`
    :exhausted?'No server started this title.'
    :missing?''
@@ -905,7 +948,7 @@ export class MoviesView {
   this.drawerLoading=number;this.drawerError=undefined;this.refreshDrawer();
   try{
    const {data}=await cachedJson('/api/movies?'+new URLSearchParams({id,season:String(number)}),controller.signal);
-   const title=parseCatalog({titles:[data.title],source:'tmdb'}).titles[0];
+   const title=parseCatalog({titles:[data.title],source:'tmdb'},true).titles[0];
    if(request!==this.drawerRequest||this.route.id!==id)return;
    if(!title||title.id!==id)throw new Error('Episode details are unavailable.');
    this.storeTitle(id,title,number);this.drawerLoading=undefined;if(this.route.play)this.refreshWatchPanel();else this.renderKeepingFocus();
@@ -1039,6 +1082,25 @@ export class MoviesView {
  // A provider frame that our frame-src policy blocks fails its live attempt. The listener only reads the event.
  private violation=(event:SecurityPolicyViolationEvent)=>{if(event.effectiveDirective==='frame-src')this.supervisor?.violation();};
  private click=(event:MouseEvent)=>{
+  const control=(event.target as Element).closest<HTMLElement>('a,button');
+  const play=control?.dataset.playRoute??(control?.dataset.play?titleHash(control.dataset.play)+'/play':control?.getAttribute('href'));
+  const playRoute=play?parseMovieRoute(play):undefined;
+  if(control&&playRoute?.play){
+   const title=this.lookup(playRoute.id!);
+   this.confirmedPlayback='';
+   if(title?.source.type!=='archive'){
+    event.preventDefault();
+    this.warnBeforePlayback(control,()=>{this.confirmedPlayback=play!;if(location.hash===play){this.suspended=false;this.renderKeepingFocus();}else location.hash=play!;});return;
+   }
+  }
+  if(control?.dataset.action==='resume-stream'||control?.dataset.action==='reload-stream'){
+   const title=this.currentTitle();
+   if(title?.source.type!=='archive'){
+    event.preventDefault();this.confirmedPlayback='';
+    this.warnBeforePlayback(control,()=>{this.confirmedPlayback=this.playbackHash();this.suspended=false;this.renderKeepingFocus();});return;
+   }
+  }
+
   // The drawer row of the episode already playing would set the address it has. The drawer closes instead, as its close button does.
   const playing=(event.target as Element).closest<HTMLElement>('.movies-drawer-row[aria-current="true"]');
   if(playing){event.preventDefault();this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});return;}
@@ -1060,6 +1122,7 @@ export class MoviesView {
  }
  // A pick by the user starts a new playback session on that server. A failover moves on inside the session, so its budget counts across servers.
  private switchProvider(providerId:StreamProviderId,manual=true){
+  if(this.currentTitle()?.source.type==='archive'||this.confirmedPlayback!==this.playbackHash())return;
   if(providerId===this.providerId)return;
   this.suspended=false;
   if(manual){
@@ -1207,6 +1270,7 @@ export class MoviesView {
  // drawer takes it as its cancel. Otherwise Up next is cancelled, and Study opens on its next article unless the page is hidden or
  // suspended, the view is disposed, or the screen has left the page.
  private browserExit(){
+  if(this.warning?.open){const cancel=new Event('cancel',{cancelable:true});this.warning.dispatchEvent(cancel);return;}
   const drawer=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');
   if(drawer?.open){const cancel=new Event('cancel',{cancelable:true});if(drawer.dispatchEvent(cancel))drawer.close();return;}
   this.cancelNext(true);
@@ -1268,7 +1332,7 @@ export class MoviesView {
   const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent='';
   if(focus&&visible)(this.isPageControl(back)?back:this.root.querySelector<HTMLElement>('.movies-screen'))?.focus({preventScroll:true});
  }
- private playNext(){const hash=this.nextHash;this.cancelNext();if(hash&&this.preferences.autoNext())location.hash=hash;}
+ private playNext(){const hash=this.nextHash;this.cancelNext();if(hash&&this.preferences.autoNext()){this.confirmedPlayback='';location.hash=hash;}}
  // A control of the page itself. The root, a provider frame and a video take their own keys, so focus never rests on them.
  private isPageControl(target:EventTarget|null|undefined):target is HTMLElement{
   return target instanceof HTMLElement&&target!==this.root&&this.root.contains(target)&&!(target instanceof HTMLIFrameElement||target instanceof HTMLVideoElement);
@@ -1288,7 +1352,7 @@ export class MoviesView {
   },0);
  };
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('a,button,input,select,textarea,dialog')){event.preventDefault();this.playNext();}};
- pause(){this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){if(this.videoPlayed(this.video))this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){if(this.frameReported)this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="ui-btn primary" data-action="resume-stream">Resume stream</button></div>';}}
+ pause(){this.dismissWarning();this.confirmedPlayback='';this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){if(this.videoPlayed(this.video))this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){if(this.frameReported)this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="ui-btn primary" data-action="resume-stream">Resume stream</button></div>';}}
  // Ends the stream and its playback session: the watchdogs stop, and the failover budget and the tried servers go with them.
  // WebKit fires timeupdate only about every 250 ms, so a video can play and stop before the first one. Its played ranges still count.
  private videoPlayed(video:HTMLVideoElement){if(hasPlayed(video))this.videoReported=true;return this.videoReported;}
@@ -1297,5 +1361,5 @@ export class MoviesView {
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.cancelNext();this.clearResumePill();this.clearSlow();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
- dispose(){this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

@@ -2,7 +2,7 @@ import {it,expect,vi} from 'vitest';
 import {MovieStorage,MOVIES_KEY,snapshotOf,keepsResume} from '../../src/movies/storage';
 import type {Title} from '../../src/movies/model';
 const fake=(values=new Map<string,string>())=>({getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v)} as unknown as Storage);
-const remote:Title={id:'movie-157336',kind:'movie',name:'Interstellar',year:2014,genres:['Science Fiction'],overview:'A team travels through a wormhole.',poster:'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',backdrop:'https://image.tmdb.org/t/p/w1280/xJHokMbljvjADYdit5fK5VQsXEG.jpg',seasons:[]};
+const remote:Title={source:{type:'third-party'},id:'movie-157336',kind:'movie',name:'Interstellar',year:2014,genres:['Science Fiction'],overview:'A team travels through a wormhole.',poster:'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',backdrop:'https://image.tmdb.org/t/p/w1280/xJHokMbljvjADYdit5fK5VQsXEG.jpg',seasons:[]};
 it('keeps list and progress local under a separate key',()=>{
  const values=new Map<string,string>();
  const storage={getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v)} as unknown as Storage;

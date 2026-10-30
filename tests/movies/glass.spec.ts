@@ -10,6 +10,8 @@ const DRAWER={name:'Select episode',exact:true} as const;
 const TRIGGER={name:'S1 · E1',exact:true} as const;
 
 test.beforeEach(async({page})=>{
+ // Existing playback coverage accepts each fresh third-party playback warning.
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
  for(const url of ['https://framextv.cc/**','https://framextv.xyz/**','https://vidlink.pro/**','https://vixsrc.to/**','https://vidsrc.to/**'])
   await page.route(url,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'+(url==='https://framextv.cc/**'?'<script>parent.postMessage({event:"frameXTV:ready"},"*")</script>':'')}));
@@ -258,6 +260,8 @@ test('Play now is the one white capsule, and Cancel a neutral glass capsule',asy
 test('the Up next buttons show a white 2 px focus ring with a 2 px offset',async({page})=>{
  const overlay=await showUpNext(page);
  const play=overlay.getByRole('button',{name:'Play now',exact:true});
+ // Warning acceptance uses a pointer; enter keyboard navigation before checking its focus ring.
+ await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
  await expect(play).toBeFocused();
  expect(await play.evaluate(el=>el.matches(':focus-visible'))).toBe(true);
  expect(await play.evaluate(el=>{const s=getComputedStyle(el);return [s.outlineStyle,s.outlineWidth,s.outlineColor,s.outlineOffset];})).toEqual(['solid','2px','rgb(255, 255, 255)','2px']);

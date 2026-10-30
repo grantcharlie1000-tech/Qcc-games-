@@ -348,3 +348,11 @@ body.movies-active.study-active{overflow:auto}
  .movies-view .movies-next-bar{height:5px;border:1px solid CanvasText}
  .movies-view .movies-next-bar>span{background:CanvasText}
 }
+
+/* The warning uses the shared glass sheet, with a still surface so its message stays readable. */
+.movies-warning.ui-glass-sheet{width:min(480px,calc(100% - 32px));padding:24px;color:var(--c-200);animation:none;transition:none}
+.movies-warning h2{margin:0 0 16px;font:600 24px/1.25 var(--font-sans)}
+.movies-warning p{margin:0;line-height:1.65}
+.movies-warning-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:24px}
+.movies-warning-actions button{min-width:110px;min-height:48px}
+.movies-view .movies-archive-frame{display:block;width:100%;height:100%;border:0}

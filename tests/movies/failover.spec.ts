@@ -10,7 +10,7 @@ const FRAMEXTV_READY="<script>parent.postMessage({event:'frameXTV:ready'},'*')</
 // the browser checks the navigation against the same policy either way, so the violation is the same.
 const REDIRECT_OUT={contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><meta http-equiv="refresh" content="0;url=https://example.org/">'};
 // The watch page renders once the collection has answered, so a provider frame is awaited before it is read.
-const loadedFrame=async(page:Page,host:RegExp)=>{await expect.poll(()=>page.frame({url:host})).not.toBeNull();const frame=page.frame({url:host})!;await frame.waitForLoadState('load');return frame;};
+const loadedFrame=async(page:Page,host:RegExp)=>{await expect(page.locator('iframe.movies-provider-frame')).toBeAttached();await expect.poll(()=>page.frame({url:host})).not.toBeNull();const frame=page.frame({url:host})!;await frame.waitForLoadState('load');return frame;};
 // Installed alone, the clock runs in real time. Pausing it leaves time to runFor, so every watchdog fires when the test says.
 const frozenClock=async(page:Page)=>{await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));};
 const providerFrame=(page:Page)=>page.locator('iframe.movies-provider-frame');
@@ -31,6 +31,8 @@ const seasonOf=(url:string)=>Number(new URL(url).searchParams.get('season')||1);
 const licensedOpener={key:'tv-90200:s2:e1',path:'movies/media/second-season-opener.mp4',license:'CC0-1.0',credit:'QCC fixture',evidence:'docs/rights/fixture.md',reviewed:true,territory:'Worldwide',expires:'2099-12-31'};
 
 test.beforeEach(async({page})=>{
+ // Existing playback coverage accepts each fresh third-party playback warning.
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE+FRAMEXTV_READY}));
  for(const url of ['https://framextv.xyz/**','https://vidlink.pro/**','https://vixsrc.to/**','https://vidsrc.to/**'])

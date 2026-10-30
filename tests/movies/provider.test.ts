@@ -49,3 +49,11 @@ it('allows actual TMDB image variants and rejects arbitrary remote/tracking imag
  expect(imageAsset(title.poster)).toBe(title.poster);
  for(const url of ['https://evil.test/poster.jpg','https://image.tmdb.org.evil.test/t/p/w500/a.jpg','https://image.tmdb.org/t/p/w500/a.jpg?tracking=1','https://image.tmdb.org/t/p/w500/../a.jpg'])expect(imageAsset(url)).toBeUndefined();
 });
+
+it('never routes archive titles through any third-party provider even with numeric TMDB ids',()=>{
+ const archive={...title,source:{type:'archive' as const,archiveId:'example',license:'Public domain',evidence:'Collection review'}};
+ for(const provider of ['framextv','vidlink','vixsrc','vidsrc'] as const){
+  expect(frameSource(archive,{play:true},provider,42)).toBeUndefined();
+  expect(frameSource({...archive,id:'tv-19885',kind:'tv'},{play:true,season:2,episode:3},provider)).toBeUndefined();
+ }
+});

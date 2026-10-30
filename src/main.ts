@@ -403,7 +403,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance)s
 window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
-  if(accountView.root.open)return;
+  if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(event.key==='Escape'&&(menu.open||rulesDialog.open||leaderboards.root.open))return;
   if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}

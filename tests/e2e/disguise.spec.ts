@@ -43,6 +43,7 @@ test('the document title is the same on every route, Study included',async({page
   await expectTitle(page,recorded);
 
   await page.goto('/#/movies/movie-157336/play');
+  await page.getByRole('dialog',{name:'Before you watch'}).getByRole('button',{name:'Continue',exact:true}).click();
   await expect(page.locator('iframe.movies-provider-frame')).toBeAttached();
   await expectTitle(page,recorded);
 

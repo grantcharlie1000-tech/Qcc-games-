@@ -2,6 +2,8 @@ import {test,expect} from '../fixtures';
 import {readFileSync} from 'node:fs';
 // Network fixtures isolate browser security tests from provider uptime and workspace egress restrictions.
 test.beforeEach(async({page})=>{
+ // Existing playback coverage accepts each fresh third-party playback warning.
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
  for(const origin of ['https://framextv.xyz','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])await page.route(origin+'/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
