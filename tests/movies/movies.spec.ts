@@ -128,8 +128,8 @@ test('episode return restores scroll and focus; keyboard stays inside the movie 
 
 test('game grid offset survives entering and leaving movies',async({page})=>{
  await page.goto('/');await page.locator('.game-card').first().waitFor();await page.evaluate(()=>scrollTo(0,130));
- // Scrolling down hides the island, so it is scrolled back into view before its Movies tab is tapped.
- await expect(page.locator('.app-tabbar')).toHaveAttribute('data-hidden','true');await page.evaluate(()=>scrollTo(0,100));await expect(page.locator('.app-tabbar')).not.toHaveAttribute('data-hidden');
+ // Scrolling down minimizes the island, so it is scrolled back up to expand it before its Movies tab is tapped.
+ await expect(page.locator('.app-tabbar')).toHaveAttribute('data-minimized','true');await page.evaluate(()=>scrollTo(0,60));await expect(page.locator('.app-tabbar')).not.toHaveAttribute('data-minimized');
  const before=await page.evaluate(()=>scrollY);await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
  await expect(page.locator('#movies-search')).toBeVisible();await page.locator('.movies-top').getByRole('link',{name:'Games',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(before);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();

@@ -17,6 +17,7 @@ for(const size of [{width:390,height:844},{width:844,height:390}]){
       const bounds=await page.locator('.game-view').boundingBox();
       expect(bounds, id).toEqual({x:0,y:0,...size});
       await expect(page.locator('.app-tabbar')).toBeHidden();
+      await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
       await page.mouse.move(size.width/2,size.height/2);
       await page.mouse.wheel(0,1200);
       await page.keyboard.press('PageDown');

@@ -41,6 +41,45 @@ async function expectPillUnder(bar:Locator,tab:Locator){
 }
 const oneFrame=(page:import('@playwright/test').Page)=>page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
 
+// What the island paints now. The frost and the off bars are their own body, so their opacity is what shows. A backdrop bar keeps its opacity at 1
+// while its lens and layers fade, so its most opaque layer (the lens, the pill or a tab) is what shows.
+const barShown=(bar:Locator)=>bar.evaluate(el=>{
+  if(el.getAttribute('data-glass')!=='backdrop')return Number(getComputedStyle(el).opacity);
+  const lens=el.querySelector('.ui-glass-lens');
+  const layers=[getComputedStyle(el,'::before').opacity,getComputedStyle(el,'::after').opacity,...(lens?[getComputedStyle(lens).opacity]:[]),...[...el.querySelectorAll('.ui-tab')].map(tab=>getComputedStyle(tab).opacity)];
+  return Number(getComputedStyle(el).opacity)*Math.max(...layers.map(Number));
+});
+// The capsule's own opacity.
+const capsuleShown=(page:Page)=>page.locator('.ui-tabbar-mini').evaluate(el=>Number(getComputedStyle(el).opacity));
+// The transition one property runs on an element in its current state: its duration, delay and timing function.
+const transitionOf=(target:Locator,property:string)=>target.evaluate((el,name)=>{
+  const style=getComputedStyle(el),index=style.transitionProperty.split(', ').indexOf(name);
+  if(index<0)return null;
+  return {duration:style.transitionDuration.split(', ')[index],delay:style.transitionDelay.split(', ')[index],curve:style.transitionTimingFunction.match(/cubic-bezier\([^)]*\)|linear\([^)]*\)|[a-z-]+/g)?.[index]};
+},property);
+// Pauses the island's transitions at a moment, so a frame can be read there. The island and the capsule run no other animation.
+// It returns how many transitions it paused, so a check can tell that the morph was still running.
+const seekIsland=(page:Page,ms:number)=>page.evaluate(time=>{
+  void document.body.offsetHeight;
+  let paused=0;
+  for(const animation of document.getAnimations()){
+    const target=(animation.effect as KeyframeEffect|null)?.target;
+    if(!(animation instanceof CSSTransition)||!(target instanceof Element)||!target.closest('.app-tabbar,.ui-tabbar-mini'))continue;
+    animation.pause();
+    animation.currentTime=time;
+    paused++;
+  }
+  return paused;
+},ms);
+// The island's and the capsule's boxes, once no transition runs on either.
+async function settledBoxes(page:Page){
+  const bar=page.locator('.app-tabbar'),capsule=page.locator('.ui-tabbar-mini');
+  await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(animation=>{
+    const target=(animation.effect as KeyframeEffect|null)?.target;
+    return target instanceof Element&&!!target.closest('.app-tabbar,.ui-tabbar-mini');
+  }).length)).toBe(0);
+  return {bar:(await bar.boundingBox())!,capsule:(await capsule.boundingBox())!};
+}
 for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width}px, and the bar holds only its tabs`,async({page})=>{
   await page.setViewportSize({width,height:844});
   await page.goto('/');
@@ -169,54 +208,304 @@ test('keyboard activation moves the pill but never swells it',async({page})=>{
   expect(await page.evaluate(()=>(window as Window&{__sawPressing?:boolean}).__sawPressing)).toBe(false);
 });
 
-test('a hidden island ignores taps where it used to be',async({page})=>{
+test('the island shrinks in 300 ms on the drawer curve, its glass fades from 120 to 240 ms, and its tabs fade in the first 80 ms',async({page,browserName})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
-  const box=await boxOf(bar.getByRole('link',{name:'Movies',exact:true}));
+  const tab=bar.locator('[aria-current="page"]');
+  const capsule=page.locator('.ui-tabbar-mini');
+  const icon=capsule.locator('.ui-icon');
+  await expect(bar).toBeVisible();
+  // At rest the island is expanded, and these are the transitions it runs when it expands: its glass returns in the first 100 ms.
+  expect(await transitionOf(bar,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  expect(await transitionOf(bar,'scale')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  expect(await transitionOf(bar,'opacity')).toMatchObject({duration:'0.1s',delay:'0s'});
+  expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.16s',delay:'0.14s'});
+  // The capsule fades out in 120 ms, riding the island's leading edge, and takes its stretched size only once it is gone. Its icon holds until then.
+  expect(await transitionOf(capsule,'opacity')).toMatchObject({duration:'0.12s',delay:'0s'});
+  expect(await transitionOf(capsule,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  expect(await transitionOf(capsule,'scale')).toMatchObject({duration:'0s',delay:'0.12s'});
+  expect(await transitionOf(icon,'opacity')).toMatchObject({duration:'0s',delay:'0.12s'});
   await page.evaluate(()=>window.scrollTo(0,400));
-  await expect(bar).toHaveAttribute('data-hidden','true');
-  await expect(bar).toHaveCSS('pointer-events','none');
-  // A real click at the old spot. Its target is the page underneath, never the island, so the island's Movies link is not activated.
-  await page.evaluate(()=>{
-    const w=window as Window&{__clickedIn?:string};
-    document.addEventListener('click',event=>{w.__clickedIn=(event.target as Element).closest('.app-tabbar')?'island':'page';},{capture:true,once:true});
-  });
-  await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
-  await expect.poll(()=>page.evaluate(()=>(window as Window&{__clickedIn?:string}).__clickedIn)).toBe('page');
-  expect(page.url()).not.toContain('#/movies');
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  // Minimized, these are the transitions it runs on the way down.
+  expect(await transitionOf(bar,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  expect(await transitionOf(bar,'scale')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  expect(await transitionOf(bar,'opacity')).toMatchObject({duration:'0.12s',delay:'0.12s'});
+  expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.08s',delay:'0s'});
+  // In Chromium the lens fades in the first 80 ms, before the bar narrows.
+  if(browserName==='chromium')expect(await transitionOf(bar.locator('.ui-glass-lens'),'opacity')).toMatchObject({duration:'0.08s',delay:'0s'});
+  // The capsule travels the same 300 ms and fades in from 80 to 260 ms. Its icon shows from 160 ms, once the capsule is nearly round.
+  expect(await transitionOf(capsule,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
+  expect(await transitionOf(capsule,'opacity')).toMatchObject({duration:'0.18s',delay:'0.08s'});
+  expect(await transitionOf(icon,'opacity')).toMatchObject({duration:'0.12s',delay:'0.16s'});
 });
 
-test('the island squeezes into a blob before it drops, and rises before it pops open',async({page})=>{
+test('the capsule and the island share one box: the island lands exactly on the capsule, and the capsule starts exactly on the island',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  const motion=()=>bar.evaluate(el=>{const s=getComputedStyle(el);return {props:s.transitionProperty,durations:s.transitionDuration,delays:s.transitionDelay};});
-  expect(await motion()).toEqual({props:'translate, scale, opacity',durations:'0.36s, 0.42s, 0.14s',delays:'0s, 0.08s, 0s'});
+  const expanded=await settledBoxes(page);
+  // The capsule starts where the island is, so the morph begins as one shape.
+  const start=expanded.capsule;
+  expect(Math.abs(start.x-expanded.bar.x)).toBeLessThan(1);
+  expect(Math.abs(start.y-expanded.bar.y)).toBeLessThan(1);
+  expect(Math.abs(start.width-expanded.bar.width)).toBeLessThan(1);
+  expect(Math.abs(start.height-expanded.bar.height)).toBeLessThan(1);
   await page.evaluate(()=>window.scrollTo(0,400));
-  await expect(bar).toHaveAttribute('data-hidden','true');
-  // The backdrop keeps the bar at full opacity, so its lens keeps the frost, and the lens fades instead. The frost fades the bar itself.
-  if(await bar.getAttribute('data-glass')==='frost'){
-    expect(await motion()).toEqual({props:'scale, translate, opacity',durations:'0.2s, 0.28s, 0.16s',delays:'0s, 0.11s, 0.22s'});
-  }else{
-    expect(await motion()).toEqual({props:'scale, translate',durations:'0.2s, 0.28s',delays:'0s, 0.11s'});
-    expect(await bar.locator('.ui-glass-lens').evaluate(el=>{const s=getComputedStyle(el);return {props:s.transitionProperty,durations:s.transitionDuration,delays:s.transitionDelay};})).toEqual({props:'opacity',durations:'0.16s',delays:'0.22s'});
-  }
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  // Once settled the island has shrunk onto the capsule, and the capsule sits in its own place.
+  const settled=await settledBoxes(page);
+  expect(Math.abs(settled.bar.x-settled.capsule.x)).toBeLessThan(1);
+  expect(Math.abs(settled.bar.y-settled.capsule.y)).toBeLessThan(1);
+  expect(Math.abs(settled.bar.width-settled.capsule.width)).toBeLessThan(1);
+  expect(Math.abs(settled.bar.height-settled.capsule.height)).toBeLessThan(1);
 });
 
-test('the labels fade out as the island squeezes and fade back in once it opens',async({page})=>{
+test('the morph is a CSS transition of transform and opacity only, with no script animation',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  // Each transition is recorded as it starts, so the check does not race the 300 ms morph to its end.
+  await page.evaluate(()=>{
+    const w=window as Window&{__runs?:string[]};
+    w.__runs=[];
+    document.addEventListener('transitionrun',event=>{if(event.target instanceof Element&&event.target.closest('.app-tabbar,.ui-tabbar-mini'))w.__runs!.push(event.propertyName);});
+  });
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  // The browser sends transitionrun on the frame after the state changes, so the check waits for the first one.
+  await expect.poll(()=>page.evaluate(()=>((window as Window&{__runs?:string[]}).__runs??[]).length)).toBeGreaterThan(0);
+  const {runs,scripted}=await page.evaluate(()=>({
+    runs:(window as Window&{__runs?:string[]}).__runs??[],
+    scripted:document.getAnimations().filter(animation=>{
+      const target=(animation.effect as KeyframeEffect|null)?.target;
+      return !(animation instanceof CSSTransition)&&target instanceof Element&&!!target.closest('.app-tabbar,.ui-tabbar-mini');
+    }).length,
+  }));
+  expect(runs.length).toBeGreaterThan(0);
+  for(const property of runs)expect(['translate','scale','opacity']).toContain(property);
+  expect(scripted).toBe(0);
+});
+
+// Every frame of the minimize shows the island or the capsule, so the glass hands over to the capsule without a blank frame.
+test('the minimize morph has no blank frame: at every moment the island or its capsule is shown',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  const frames:number[]=[];
+  for(let ms=0;ms<=300;ms+=20){
+    const paused=await seekIsland(page,ms);
+    if(ms===0)expect(paused).toBeGreaterThan(0);
+    frames.push(Math.max(await barShown(bar),await capsuleShown(page)));
+  }
+  expect(frames[0]).toBe(1);
+  expect(frames[frames.length-1]).toBe(1);
+  expect(Math.min(...frames)).toBeGreaterThanOrEqual(0.5);
+});
+
+test('the expand morph has no blank frame either',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  await page.evaluate(()=>window.scrollTo(0,368));
+  await expect(bar).not.toHaveAttribute('data-minimized');
+  const frames:number[]=[];
+  for(let ms=0;ms<=300;ms+=20){
+    const paused=await seekIsland(page,ms);
+    if(ms===0)expect(paused).toBeGreaterThan(0);
+    frames.push(Math.max(await barShown(bar),await capsuleShown(page)));
+  }
+  expect(frames[0]).toBe(1);
+  expect(frames[frames.length-1]).toBe(1);
+  expect(Math.min(...frames)).toBeGreaterThanOrEqual(0.5);
+});
+
+test('the labels fade out as the island shrinks and fade back in once it opens',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   const label=bar.getByRole('link',{name:'Games',exact:true});
   await expect(bar).toBeVisible();
   await page.evaluate(()=>window.scrollTo(0,400));
-  await expect(bar).toHaveAttribute('data-hidden','true');
+  await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>label.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
-  await page.evaluate(()=>window.scrollTo(0,380));
-  await expect(bar).not.toHaveAttribute('data-hidden');
+  await page.evaluate(()=>window.scrollTo(0,368));
+  await expect(bar).not.toHaveAttribute('data-minimized');
   await expect.poll(()=>label.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+});
+
+// A short scroll is not a deliberate one: 40 px down, from an expanded island, leaves it expanded.
+test('a 40 px scroll does not minimize the island',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,500));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).not.toHaveAttribute('data-minimized');
+  await page.evaluate(()=>window.scrollTo(0,440));
+  await oneFrame(page);
+  await oneFrame(page);
+  expect(await page.evaluate(()=>scrollY)).toBe(440);
+  await expect(bar).not.toHaveAttribute('data-minimized');
+});
+
+test('scrolling down minimizes the island, and 32 px back up expands it, though 31 px does not',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await page.evaluate(()=>window.scrollTo(0,369));
+  await oneFrame(page);
+  await oneFrame(page);
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await page.evaluate(()=>window.scrollTo(0,368));
+  await expect(bar).not.toHaveAttribute('data-minimized');
+});
+
+// The capsule is a pointer affordance: a button that is hidden from assistive technology and out of the tab order.
+test('the minimized island leaves a capsule with the current tab icon, at the bottom-leading corner',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  const capsule=page.locator('.ui-tabbar-mini');
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
+  // The icon is a copy of the current tab's icon, centred and white.
+  expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
+  expect(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+  const box=(await capsule.boundingBox())!;
+  const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
+  expect(box.width).toBeCloseTo(56,0);
+  expect(box.height).toBeCloseTo(48,0);
+  expect(box.x).toBeCloseTo(12,0);
+  expect(box.y+box.height).toBeCloseTo(832,0);
+  expect(icon.x+icon.width/2).toBeCloseTo(box.x+box.width/2,0);
+  expect(icon.y+icon.height/2).toBeCloseTo(box.y+box.height/2,0);
+  // Its pointer box is the capsule, and the bar's own tabs are no longer reachable by a tap.
+  expect(await page.evaluate(([x,y])=>!!document.elementFromPoint(x,y)?.closest('.ui-tabbar-mini'),[box.x+box.width/2,box.y+box.height/2])).toBe(true);
+});
+
+for(const width of [320,390,1440]) test(`the minimized capsule sits fully inside the viewport at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  const box=(await page.locator('.ui-tabbar-mini').boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x+box.width).toBeLessThanOrEqual(width);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y+box.height).toBeLessThanOrEqual(844);
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+});
+
+// A tap on the capsule expands the island and does not navigate. The travel count restarts, so the island stays open until the next
+// deliberate scroll down.
+test('tapping the capsule expands the island without changing the route, and the next scroll down must be deliberate',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  const capsule=page.locator('.ui-tabbar-mini');
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  const url=page.url();
+  const box=(await capsule.boundingBox())!;
+  await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+  await expect(bar).not.toHaveAttribute('data-minimized');
+  await expect(capsule).not.toBeFocused();
+  await expect.poll(()=>capsuleShown(page)).toBe(0);
+  expect(page.url()).toBe(url);
+  // 40 px more down does not minimize it again. The count restarted at the tap, so only 64 px of new travel does.
+  await page.evaluate(()=>window.scrollTo(0,440));
+  await oneFrame(page);
+  await oneFrame(page);
+  await expect(bar).not.toHaveAttribute('data-minimized');
+  await page.evaluate(()=>window.scrollTo(0,480));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+});
+
+test('a minimized island ignores taps where its tabs used to be',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  const box=await boxOf(bar.getByRole('link',{name:'Movies',exact:true}));
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect(bar).toHaveCSS('pointer-events','none');
+  // While the morph runs, the capsule still covers the island's place, and a tap there expands the island. Once it has landed, the old spot is clear.
+  await settledBoxes(page);
+  // A real click at the old spot. Its target is the page underneath, never the island or its capsule, so the island's Movies link is not activated.
+  await page.evaluate(()=>{
+    const w=window as Window&{__clickedIn?:string};
+    document.addEventListener('click',event=>{w.__clickedIn=(event.target as Element).closest('.app-tabbar,.ui-tabbar-mini')?'island':'page';},{capture:true,once:true});
+  });
+  await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+  await expect.poll(()=>page.evaluate(()=>(window as Window&{__clickedIn?:string}).__clickedIn)).toBe('page');
+  expect(page.url()).not.toContain('#/movies');
+});
+
+// Up next hides the island fully with data-hidden. Nothing else sets it, so the test sets it as Movies does.
+test('the full hide drops the island below the screen edge, and its capsule fades where it is',async({page})=>{
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  const capsule=page.locator('.ui-tabbar-mini');
+  await expect(bar).toBeVisible();
+  const range=await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight);
+  await page.evaluate(y=>window.scrollTo(0,y),Math.round(range/2));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  const before=await settledBoxes(page);
+  await bar.evaluate(el=>el.setAttribute('data-hidden','true'));
+  await expect.poll(()=>capsuleShown(page)).toBe(0);
+  const after=await settledBoxes(page);
+  // At 1440 px the island's place is far from the capsule's, so a capsule sent back there would cross the screen as it faded.
+  expect(Math.abs(after.capsule.x-before.capsule.x)).toBeLessThan(1);
+  await expect(bar).toHaveCSS('pointer-events','none');
+  await expect(capsule).toHaveCSS('pointer-events','none');
+  expect(after.bar.y).toBeGreaterThanOrEqual(900);
+  expect(await barShown(bar)).toBe(0);
+});
+
+// The capsule is hidden from keyboard users, and the island's own tabs stay in the tab order while it is minimized. Focus that arrives by
+// keyboard expands the island, and the capsule steps aside for it.
+test('keyboard focus expands a minimized island, and the capsule steps aside',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  const games=bar.getByRole('link',{name:'Games',exact:true});
+  await expect(bar).toBeVisible();
+  await page.evaluate(()=>window.scrollTo(0,400));
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  await page.evaluate(()=>(document.activeElement as HTMLElement|null)?.blur());
+  await page.keyboard.press('Tab');
+  await expect(games).toBeFocused();
+  await expect.poll(()=>capsuleShown(page)).toBe(0);
+  await expect.poll(async()=>(await bar.boundingBox())!.width).toBeGreaterThan(300);
 });
 
 test('a pill move stretches the pill with a web animation',async({page})=>{
@@ -234,20 +523,33 @@ test('a pill move stretches the pill with a web animation',async({page})=>{
   }))).toBe(true);
 });
 
-for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) hides the island at once, without moving or scaling it`,async({page})=>{
+for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) only cross-fades the island and its capsule`,async({page})=>{
   if(mode==='media')await page.emulateMedia({reducedMotion:'reduce'});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   if(mode==='class')await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));
   const bar=page.locator('.app-tabbar');
+  const capsule=page.locator('.ui-tabbar-mini');
   await page.evaluate(()=>window.scrollTo(0,400));
-  await expect(bar).toHaveAttribute('data-hidden','true');
-  await expect(bar).toHaveCSS('opacity','0');
-  await expect(bar).toHaveCSS('scale','none');
-  await expect(bar).toHaveCSS('translate','none');
-  await expect(bar).toHaveCSS('transform','none');
-  // No transition runs at all, so the island leaves at once: there is no fade to wait for.
-  await expect(bar).toHaveCSS('transition-property','none');
+  await expect(bar).toHaveAttribute('data-minimized','true');
+  await expect.poll(()=>barShown(bar)).toBe(0);
+  await expect.poll(()=>capsuleShown(page)).toBe(1);
+  // Nothing moves or scales, and the cross-fade is the only transition.
+  for(const element of [bar,capsule]){
+    await expect(element).toHaveCSS('translate','none');
+    await expect(element).toHaveCSS('scale','none');
+    await expect(element).toHaveCSS('transform','none');
+    await expect(element).toHaveCSS('transition-property','opacity');
+    await expect(element).toHaveCSS('transition-duration','0.15s');
+  }
+  // A minimized island is gone: it takes no taps, and the capsule does.
+  await expect(bar).toHaveCSS('pointer-events','none');
+  await expect(capsule).toHaveCSS('pointer-events','auto');
+  // Both states are reachable: scrolling up brings the island back by the same fade.
+  await page.evaluate(()=>window.scrollTo(0,368));
+  await expect(bar).not.toHaveAttribute('data-minimized');
+  await expect.poll(()=>barShown(bar)).toBe(1);
+  await expect.poll(()=>capsuleShown(page)).toBe(0);
 });
 
 test('reduced motion does not swell the pill under a press',async({page})=>{
@@ -325,7 +627,7 @@ for(const fallback of ['reduced transparency','more contrast','forced colours'] 
   await expect(bar).toHaveAttribute('data-glass','off');
   if(fallback!=='forced colours')expect(await bar.evaluate(el=>getComputedStyle(el).boxShadow)).not.toBe('none');
   await page.evaluate(()=>window.scrollTo(0,400));
-  await expect(bar).toHaveAttribute('data-hidden','true');
+  await expect(bar).toHaveAttribute('data-minimized','true');
   await expect(bar).toHaveCSS('opacity','0');
 });
 

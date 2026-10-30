@@ -258,7 +258,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     expect(await onEdge(box.x+box.width/2,box.y+4)).toBe(false);
   });
 
-  test('the scroll edge fades with the island when it hides, and comes back with it',async({page})=>{
+  test('the scroll edge stays while the island is minimized, and fades only with the full hide',async({page})=>{
     await asFrost(page);
     await page.setViewportSize({width:390,height:844});
     await page.goto('/');
@@ -266,26 +266,30 @@ test.describe('frost, in every browser but Chromium',()=>{
     const edge=page.locator('.ui-scroll-edge');
     await expect(edge).toHaveCount(1);
     await page.evaluate(()=>window.scrollTo(0,400));
-    await expect(bar).toHaveAttribute('data-hidden','true');
+    await expect(bar).toHaveAttribute('data-minimized','true');
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    expect(await edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+    // Only the full hide, which Up next sets, fades the edge with the island.
+    await page.evaluate(()=>document.querySelector('.app-tabbar')!.setAttribute('data-hidden','true'));
     await expect.poll(()=>edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
-    await page.evaluate(()=>window.scrollTo(0,380));
-    await expect(bar).not.toHaveAttribute('data-hidden');
+    await page.evaluate(()=>document.querySelector('.app-tabbar')!.removeAttribute('data-hidden'));
     await expect.poll(()=>edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
   });
 
-  test('the frost bar fades its own opacity when it hides, and reduced motion still hides it',async({page})=>{
+  test('the frost bar fades its own opacity when it minimizes, and reduced motion still fades it',async({page})=>{
     await asFrost(page);
     await page.setViewportSize({width:390,height:844});
     await page.goto('/');
     const bar=page.locator('.app-tabbar');
     await page.evaluate(()=>window.scrollTo(0,400));
-    await expect(bar).toHaveAttribute('data-hidden','true');
+    await expect(bar).toHaveAttribute('data-minimized','true');
     await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
     await page.emulateMedia({reducedMotion:'reduce'});
-    await page.evaluate(()=>window.scrollTo(0,380));
-    await expect(bar).not.toHaveAttribute('data-hidden');
-    await page.evaluate(()=>window.scrollTo(0,400));
-    await expect(bar).toHaveAttribute('data-hidden','true');
+    await page.evaluate(()=>window.scrollTo(0,368));
+    await expect(bar).not.toHaveAttribute('data-minimized');
+    // 64 px of downward travel from 368 minimizes the island again.
+    await page.evaluate(()=>window.scrollTo(0,432));
+    await expect(bar).toHaveAttribute('data-minimized','true');
     await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
     expect(await bar.evaluate(el=>getComputedStyle(el).translate)).toBe('none');
   });

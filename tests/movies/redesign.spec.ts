@@ -147,8 +147,8 @@ for(const width of [1440,390])test(`the Movies island is visible at ${width}px, 
  await expect(bar.locator('.ui-tab')).toHaveCount(5);
 });
 
-// The island's hide-on-scroll follows the Movies scroller.
-for(const width of [390,1440])test(`the Movies island hides on scroll down and returns on scroll up at ${width}px`,async({page})=>{
+// The island's minimize-on-scroll follows the Movies scroller.
+for(const width of [390,1440])test(`the Movies island minimizes on scroll down and expands on scroll up at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/#/movies');
  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
@@ -158,9 +158,9 @@ for(const width of [390,1440])test(`the Movies island hides on scroll down and r
  await expect(page.locator('[data-rail]').first()).toBeVisible();
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
  await view.evaluate(e=>e.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  await view.evaluate(e=>e.scrollTo(0,300));
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
 });
 
 // WebKit can run an animation frame long after it was asked for. Keeping a focused control clear of the header must not
@@ -186,12 +186,12 @@ test('a late animation frame never moves the Movies page after the reader scroll
  await scrolled;
  await expect.poll(()=>page.evaluate(()=>{const state=(window as Window&{frameState?:{requested:number;ran:number}}).frameState!;return state.requested-state.ran;})).toBe(0);
  expect(await view.evaluate(e=>e.scrollTop)).toBe(400);
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  await view.evaluate(e=>e.scrollTo(0,300));
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
 });
 
-test('the Movies island is shown again after a section change while it is hidden',async({page})=>{
+test('the Movies island is expanded again after a section change while it is minimized',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
@@ -199,10 +199,57 @@ test('the Movies island is shown again after a section change while it is hidden
  await expect(page.locator('[data-rail]').first()).toBeVisible();
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
  await view.evaluate(e=>e.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
  await expect(bar.locator('[data-kind="tv"]')).toHaveAttribute('aria-pressed','true');
+});
+
+// Typing holds the island where it is, so a scroll while the search field has focus does not minimize it.
+test('typing in the Movies search field never minimizes the island',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies');
+ const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const view=page.locator('.movies-view');
+ await expect(page.locator('[data-rail]').first()).toBeVisible();
+ await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
+ await page.locator('#movies-search').focus();
+ await page.keyboard.type('zebra');
+ await view.evaluate(e=>e.scrollTo(0,400));
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ expect(await view.evaluate(e=>e.scrollTop)).toBe(400);
+ await expect(bar).not.toHaveAttribute('data-minimized');
+ // Once the field has no focus, the same scroll minimizes the island.
+ await page.locator('#movies-search').evaluate(el=>(el as HTMLElement).blur());
+ await view.evaluate(e=>e.scrollTo(0,0));
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ await view.evaluate(e=>e.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-minimized','true');
+});
+
+// The capsule shows the icon of the section that is current, and a section change puts the new icon in it.
+test('the Movies capsule shows the current section icon, and follows a section change',async({page})=>{
+ // The header's section buttons show from 640 px, so the section change is made at a desktop width.
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies');
+ const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const view=page.locator('.movies-view');
+ const capsule=page.locator('.movies-view > .ui-tabbar-mini');
+ await expect(page.locator('[data-rail]').first()).toBeVisible();
+ await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
+ await view.evaluate(e=>e.scrollTo(0,400));
+ await expect(bar).toHaveAttribute('data-minimized','true');
+ await expect.poll(()=>capsule.locator('svg').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-pressed="true"] svg').evaluate(el=>el.innerHTML));
+ await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
+ await expect(bar.locator('[data-kind="tv"]')).toHaveAttribute('aria-pressed','true');
+ await expect(bar).not.toHaveAttribute('data-minimized');
+ // The TV page is shorter than the home page at this height, so the second half scrolls to 300 px, clear of the end zone.
+ await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(330);
+ await view.evaluate(e=>e.scrollTo(0,0));
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ await view.evaluate(e=>e.scrollTo(0,300));
+ await expect(bar).toHaveAttribute('data-minimized','true');
+ await expect.poll(()=>capsule.locator('svg').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-pressed="true"] svg').evaluate(el=>el.innerHTML));
 });
 
 // Content and keyboard focus clear the island at every width.

@@ -174,10 +174,13 @@ test('Enter on the Auto next switch does not play Up next',async({page})=>{
 const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
 // How visible the island is. With a glass lens the bar keeps its own opacity at 1 while its lens, top layer and tabs fade; without one the
 // bar itself fades. So what shows is the bar's own opacity times the most opaque layer it paints.
+// The island and its capsule count together: the shown state is the more visible of the two.
 const islandShown=(page:Page)=>island(page).evaluate(bar=>{
  const lens=bar.querySelector('.ui-glass-lens'),layers=[getComputedStyle(bar,'::before').opacity,...(lens?[getComputedStyle(lens).opacity]:[]),...[...bar.querySelectorAll('.ui-tab')].map(tab=>getComputedStyle(tab).opacity)];
- return Number(getComputedStyle(bar).opacity)*Math.max(...layers.map(Number));
+ const capsule=bar.parentElement?.querySelector(':scope > .ui-tabbar-mini');
+ return Math.max(Number(getComputedStyle(bar).opacity)*Math.max(...layers.map(Number)),capsule?Number(getComputedStyle(capsule).opacity):0);
 });
+const capsuleShown=(page:Page)=>page.locator('.movies-view > .ui-tabbar-mini').evaluate(el=>Number(getComputedStyle(el).opacity));
 test('Up next hides the island at 1440px until Cancel brings it back',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await expect.poll(()=>islandShown(page)).toBe(1);
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
@@ -192,6 +195,16 @@ test('Up next hides a frost island until Cancel brings it back',async({page})=>{
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
  await expect(island(page)).not.toHaveAttribute('data-hidden');await expect.poll(()=>islandShown(page)).toBe(1);
+});
+// Up next takes a minimized island and its capsule away together. Cancel brings the island back, expanded, since the travel count restarts.
+test('Up next hides a minimized island and its capsule, and Cancel brings the island back expanded',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);
+ await page.locator('.movies-view').evaluate(e=>e.scrollTo(0,300));
+ await expect(island(page)).toHaveAttribute('data-minimized','true');await expect.poll(()=>capsuleShown(page)).toBe(1);
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
+ await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).not.toHaveAttribute('data-minimized');
+ await expect.poll(()=>islandShown(page)).toBe(1);await expect.poll(()=>capsuleShown(page)).toBe(0);
 });
 test('keyboard focus in the island keeps it visible while Up next shows',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);

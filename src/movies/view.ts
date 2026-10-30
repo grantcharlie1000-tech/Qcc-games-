@@ -208,8 +208,11 @@ export class MoviesView {
  private readonly tabbar=Object.assign(document.createElement('nav'),{className:'movies-mobile-nav ui-tabbar'});
  private readonly disposeRails:()=>void;
  private readonly hideTabbar:{reset():void;dispose():void};
- // The island's scroll check clears data-hidden, so while Up next shows the attribute is put back.
- private readonly yieldGuard=new MutationObserver(()=>{if(this.root.querySelector('.movies-next:not([hidden])')&&!this.tabbar.hasAttribute('data-hidden'))this.tabbar.dataset.hidden='true';});
+ // Up next takes the island away while it shows. The island's scroll logic never touches data-hidden, so this only mirrors the overlay.
+ private readonly yieldGuard=new MutationObserver(()=>{
+  if(this.root.querySelector('.movies-next:not([hidden])'))this.tabbar.setAttribute('data-hidden','true');
+  else this.tabbar.removeAttribute('data-hidden');
+ });
  constructor(container:HTMLElement,private storage:MovieStorage,private study:(advance?:boolean)=>void,private reducedMotion:boolean,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
@@ -230,8 +233,8 @@ export class MoviesView {
   this.disposeImages=watchImages(this.root);
   this.tabbar.setAttribute('aria-label','Sections');
   this.disposeRails=bindRails(this.root,()=>this.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);
-  // Movies scrolls inside its own overlay, so the island's hide-on-scroll follows that scroller rather than the window.
-  this.hideTabbar=autoHideTabbar(this.tabbar,this.root);this.yieldGuard.observe(this.tabbar,{attributes:true,attributeFilter:['data-hidden']});
+  // Movies scrolls inside its own overlay, so the island's minimize-on-scroll follows that scroller rather than the window.
+  this.hideTabbar=autoHideTabbar(this.tabbar,this.root);this.yieldGuard.observe(this.root,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
   document.addEventListener('fullscreenchange',this.fullscreenChange);document.addEventListener('webkitfullscreenchange',this.fullscreenChange);
   document.addEventListener('visibilitychange',this.onVisibility);document.addEventListener('securitypolicyviolation',this.violation);
   window.addEventListener('message',this.providerMessage);window.addEventListener('storage',this.onStorage);
@@ -1317,7 +1320,7 @@ export class MoviesView {
    const overlay=this.root.querySelector<HTMLElement>('.movies-next');if(!overlay)return;
    this.nextHash=`${titleHash(title.id)}/season/${next.season}/episode/${next.episode}/play`;
    const label=`Up next: S${next.season} · E${next.episode}${next.name?' — '+next.name:''}`;
-   overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;this.tabbar.dataset.hidden='true';
+   overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;
    const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent=label+'. Playing in 10 seconds.';
    // The island stays shown only while a keyboard focus is inside it. Any other focus there would sit on a hidden tab.
    if(!this.tabbar.querySelector(':focus-visible')){const before=document.activeElement;this.nextReturn=before===this.root||before===document.body?undefined:before;overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});}

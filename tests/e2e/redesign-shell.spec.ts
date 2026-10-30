@@ -204,10 +204,12 @@ test('tab bar hides during games and Movies & TV',async({page})=>{
  await expect(page.locator('.game-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
  await expect(page.locator('.app-tabbar')).toBeHidden();
+ await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
  await page.goto('/#/movies');
  await expect(page.locator('.movies-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
  await expect(page.locator('.app-tabbar')).toBeHidden();
+ await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
  await page.goto('/#/collection');
  await expect(page.locator('.app-tabbar')).toBeVisible();
 });
@@ -233,16 +235,16 @@ for(const [width,height] of [[390,844],[1440,900]]) test(`the tab bar is a float
  expect(await frostFilter(bar)).toContain('blur');
 });
 
-test('scrolling down hides the tab bar and scrolling up brings it back',async({page})=>{
+test('scrolling down minimizes the tab bar into a capsule and scrolling up brings it back',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await expect(bar).toBeVisible();
  await page.evaluate(()=>window.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
- await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(844);
+ await expect(bar).toHaveAttribute('data-minimized','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.width).toBeLessThanOrEqual(56);
  await page.evaluate(()=>window.scrollTo(0,280));
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(844);
 });
 
@@ -251,27 +253,27 @@ test('the tab bar shows again near the top and after navigation',async({page})=>
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await page.evaluate(()=>window.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  await page.evaluate(()=>window.scrollTo(0,10));
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
  await page.evaluate(()=>window.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  // Open a game and come back. The library restores its old scroll position, and the bar still shows.
  await page.evaluate(()=>{location.hash='#/collection/1';});
  await expect(page.locator('.game-view')).toBeVisible();
  await page.evaluate(()=>{location.hash='#/collection';});
  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(400);
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
 });
 
-test('keyboard focus brings a hidden tab bar back',async({page})=>{
+test('keyboard focus brings a minimized tab bar back',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await page.evaluate(()=>window.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
- await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(844);
+ await expect(bar).toHaveAttribute('data-minimized','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.width).toBeLessThanOrEqual(56);
  await page.keyboard.press('Tab');
  await bar.locator('.ui-tab').first().focus();
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y>=0&&box!.y+box!.height<=844;}).toBe(true);
@@ -283,17 +285,17 @@ test('a tapped tab does not pin the bar open',async({page})=>{
  const bar=page.locator('.app-tabbar');
  await bar.getByRole('link',{name:'Games',exact:true}).click();
  await page.evaluate(()=>window.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
- await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(844);
+ await expect(bar).toHaveAttribute('data-minimized','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.width).toBeLessThanOrEqual(56);
 });
 
-test('reduced motion hides the bar at once instead of sliding',async({page})=>{
+test('reduced motion only fades the minimized tab bar, with no slide or scale',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await page.evaluate(()=>window.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  await expect(bar).toHaveCSS('transform','none');
  // The liquid exit moves with translate and scale, so reduced motion must clear both as well.
  await expect(bar).toHaveCSS('translate','none');
@@ -302,20 +304,20 @@ test('reduced motion hides the bar at once instead of sliding',async({page})=>{
  await expect(bar).toHaveCSS('pointer-events','none');
 });
 
-test('the app reduce-motion setting hides the bar at once instead of fading',async({page})=>{
+test('the app reduce-motion setting only fades the minimized tab bar',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));
  const bar=page.locator('.app-tabbar');
  await page.evaluate(()=>window.scrollTo(0,400));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  await expect(bar).toHaveCSS('transform','none');
  await expect(bar).toHaveCSS('translate','none');
  await expect(bar).toHaveCSS('scale','none');
  await expect(bar).toHaveCSS('opacity','0');
 });
 
-test('the island floats and hides on scroll on desktop too',async({page})=>{
+test('the island floats and minimizes on scroll on desktop too',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
@@ -323,10 +325,10 @@ test('the island floats and hides on scroll on desktop too',async({page})=>{
  // The library's scroll range depends on its content, so the test scrolls to fractions of it, clear of the bar's always-shown ends.
  const range=await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight);
  await page.evaluate(y=>window.scrollTo(0,y),Math.round(range/2));
- await expect(bar).toHaveAttribute('data-hidden','true');
- await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(900);
+ await expect(bar).toHaveAttribute('data-minimized','true');
+ await expect.poll(async()=>(await bar.boundingBox())!.width).toBeLessThanOrEqual(56);
  await page.evaluate(y=>window.scrollTo(0,y),Math.round(range/4));
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(900);
 });
 
@@ -337,10 +339,12 @@ test('the island stays hidden in games and Movies on desktop',async({page})=>{
  await expect(page.locator('.game-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
  await expect(page.locator('.app-tabbar')).toBeHidden();
+ await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
  await page.goto('/#/movies');
  await expect(page.locator('.movies-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
  await expect(page.locator('.app-tabbar')).toBeHidden();
+ await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
  await page.goto('/#/collection');
  await expect(page.locator('.app-tabbar')).toBeVisible();
 });
@@ -372,9 +376,9 @@ test('the island shows again after returning from Study',async({page})=>{
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await page.evaluate(()=>window.scrollTo(0,1000));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  await page.evaluate(()=>window.scrollTo(0,880));
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(880);
  await bar.getByRole('button',{name:'Study',exact:true}).click();
  await expect(page.locator('#study-view')).toBeVisible();
@@ -386,7 +390,7 @@ test('the island shows again after returning from Study',async({page})=>{
  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(880);
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  await expect(bar).toBeVisible();
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
 });
 
 test('a resize that brings the end of the page into reach shows the island',async({page})=>{
@@ -395,13 +399,13 @@ test('a resize that brings the end of the page into reach shows the island',asyn
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await page.evaluate(()=>window.scrollTo(0,300));
- await expect(bar).toHaveAttribute('data-hidden','true');
+ await expect(bar).toHaveAttribute('data-minimized','true');
  const height=await page.evaluate(()=>document.documentElement.scrollHeight-322);
  await page.setViewportSize({width:390,height});
  // The scrollable range is now 322 px, so 300 px is in the end zone. Nothing scrolled, so only the resize can show the island.
  expect(await page.evaluate(()=>scrollY)).toBe(300);
  expect(await page.evaluate(()=>document.documentElement.scrollHeight-innerHeight)).toBe(322);
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
 });
 
 test('the island clears the last game card when the library is scrolled to the end',async({page})=>{
@@ -412,7 +416,7 @@ test('the island clears the last game card when the library is scrolled to the e
  expect(await page.evaluate(()=>scrollY+innerHeight)).toBe(await page.evaluate(()=>document.documentElement.scrollHeight));
  // The end zone always shows the bar. Wait until it has slid fully on screen before reading its position.
  await expect(bar).toBeVisible();
- await expect(bar).not.toHaveAttribute('data-hidden');
+ await expect(bar).not.toHaveAttribute('data-minimized');
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(844);
  const island=(await bar.boundingBox())!;
  const lastCard=(await page.locator('.game-card').last().boundingBox())!;
@@ -437,6 +441,7 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  await expect(back).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
  await expect(page.locator('.app-tabbar')).toBeHidden();
+ await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
  await expect(back).toHaveClass('game-button secondary');
  const loadingBox=await back.boundingBox();
  expect(Math.abs(loadingBox!.x+loadingBox!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);
@@ -452,6 +457,7 @@ test('the Movies error state keeps a centred way back link',async({page})=>{
  await expect(page.locator('#content')).toContainText('Movies & TV could not load.');
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
  await expect(page.locator('.app-tabbar')).toBeHidden();
+ await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toHaveClass('game-button secondary');
  const box=await back.boundingBox();
