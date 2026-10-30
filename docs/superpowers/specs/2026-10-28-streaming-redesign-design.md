@@ -15,7 +15,7 @@ Date: 2026-10-28. Requested by the user: "Crawl [FrameXTV], reverse engineer the
 1. **Original work only.** FrameXTV's code, stylesheets, icons, logo, wordmark, artwork and copy are not reused. Their measured sizes, colours and layouts (section 3) are reference values for our own CSS and templates. Copy is written fresh. Icons are drawn for this project.
 2. **Brand:** "Mauri Study Notes" with the existing mauri mark (pinned by branding tests). Legal and privacy sentences that name "QCC" as the operator keep their wording.
 3. **Playback boundary unchanged:** sandboxed cross-origin iframe (`allow-scripts allow-same-origin`), `referrerpolicy="no-referrer"`, progress accepted only from the current frame and an approved origin, commands posted only to the exact provider origin. No stream extraction, proxying, DRM handling or token forwarding. No calls to FrameXTV's private endpoints (their API host, `/api/providers`, `/api/stream/*`), no `origin=internal`, no server-side provider probes.
-4. **Study Mode stays a disguise:** Escape always opens Study (it also closes any open drawer), and `document.title` stays static on every route so a tab never names what is playing.
+4. **Study Mode stays a disguise:** Escape opens Study in a game and in Movies & TV, and it closes the Movies & TV episode drawer. With the Menu, rules, accounts or leaderboard sheet open, Escape closes that sheet first and does not open Study. On the games library, with no game or Movies & TV page open, Escape does nothing. `document.title` stays static on every route so a tab never names what is playing.
 5. **Scope of restyling:** the shell (header, library, menus, dialogs, in-game toolbar and metrics) and Movies & TV. Game internals (`#game-stage` contents) and the light Study reading view are not restyled.
 6. **No new runtime dependencies.** Plain TypeScript templates and CSS. No framework or Tailwind.
 
@@ -298,7 +298,7 @@ The view derives `kind` from the route. Nav buttons set the hash; clicking the c
   - Below 768 px the controls wrap into two rows.
 - **Episode drawer:** `dialog.movies-drawer[aria-label="Select episode"]`, opened with `showModal()`. It holds season pills and episode rows (thumbnail, name, runtime), with the current episode highlighted in rose.
   - Below 640 px it is a bottom sheet; from 640 px a centred panel 672 px wide.
-  - `pause()`, `navigate()` and `dispose()` close it. Escape opens Study (boundary 4), which pauses and closes it.
+  - `pause()`, `navigate()` and `dispose()` close it. Escape opens Study (boundary 4). Opening Study pauses the title and closes the drawer, so Escape closes the open drawer as well.
 - **Auto-next** (`.movies-next[role=dialog][aria-label="Up next"]`): restyled as a card in the screen's bottom-right corner (full-width overlay below 640 px). It keeps the h2 "Up next: …", "Playing in {n}", "Play now" (primary) and "Cancel". It adds a 10 s progress bar that does not animate when motion is reduced.
 - **Resume pill:** "Resumed at {m:ss}" in the top-left of the screen for 4 s when playback starts at the saved time.
 
@@ -473,3 +473,33 @@ The reference embeds its player without a sandbox. Ours keeps `allow-scripts all
     - A menu grows from the control that opened it and leaves quickly.
     - Reduce Transparency, Increase Contrast, Reduce Motion and forced colours are all respected.
   - On phones the menus are bottom sheets inset from the screen edges. On wider screens they are centred panels.
+- **2026-10-30, user request: remove the Movies & TV box from the games screen.**
+  - The user said: "One point remove the box for movies in the game screen as it's now in the side bar".
+  - The full-width Movies & TV card at the top of the games grid is removed, with its poster wall, image handling, entrance origin and CSS. Movies and TV Shows are tabs on the island, and My list is a third tab.
+  - Entering Movies & TV no longer zooms out of the card. Returning from it restores the library's scroll position and focuses the island's Games tab.
+- **2026-10-30, user request: Movies menus.**
+  - The user said: "Menus in the movies also need to be Liquid Glass styled".
+  - The episode drawer is a glass sheet (`.ui-glass-sheet` with the `movies-drawer` modifier). It grows from the episode control that opened it. On a phone it is a bottom sheet inset 8 px from the edges. From 640 px it is a centred panel, `min(600px, 100% - 32px)` wide. Its season pills use a translucent fill, and its episode rows have no fill of their own, except the playing row and a hover fill. A long season name wraps inside its pill. The playing episode has a white 700 title, a 16% rose fill and a 3 px rose bar on its leading edge.
+  - `.ui-drawer` is gone, and the modal panel in §5 is now the glass sheet. The drag handle keeps its own rule, `.ui-drawer-handle`, in `src/theme.css`.
+  - The Up next card takes the sheets' glass surface from one rule in `src/theme.css`. Its tint is denser, at 74% against the sheets' 62%, so white text keeps 4.5:1 over a white frame. Play now is the white capsule, and Cancel is a neutral glass capsule.
+  - The genre select is a glass capsule. Its open list is still the browser's own.
+  - Under forced colours, the Movies buttons, pills, episode rows, genre select and Up next buttons get a 2 px system-colour edge. The playing row has a 4 px leading edge and an underlined title, and the countdown track is outlined.
+- **2026-10-30, user feedback: Liquid Glass.**
+  - The user said: "Liquid Glass still doesn't look like apple Liquid Glass".
+  - The island is a clear body under a 35% dark tint, with no contrast step. Its rim is directional, bright at the top left and faint at the bottom right. Its selection is a 16% white pill with a rim of its own.
+  - Labels and icons carry a dense halo that hugs each glyph, so only the strokes' immediate surround darkens.
+- **2026-10-30, user feedback: refraction.**
+  - The user said: "The issue is with the fact that Liquid Glass doesn't just frost it refracts and your isn't going that. Is it something you can do?"
+  - In Chromium the lens refracts the backdrop through an SVG displacement map, built at the screen's device pixel density, clamped to 1 to 3 device pixels per CSS px. The bend is up to 16 px at the top and bottom rims and half that at the ends, over a 22 px bevel, so the centre stays still. In the Chromium test in `tests/e2e/lens-refraction.spec.ts`, rows 3 to 11 of the top rim and rows 53 to 61 of the bottom rim of the 64 px bar stay unbent, although the map bends them. The cause is not established.
+  - Only Chromium draws an SVG filter inside `backdrop-filter` (`src/ui/glass.ts`), so Safari, the iPhone browsers and Firefox get a mirror instead. Its lens is an SVG scene that holds the page colour and copies of up to 16 `<img>` elements behind the bar, ranked by the area each covers under the lens. Each copy keeps its source's fit and position (`preserveAspectRatio`), its corners (`clip-path`) and its opacity. The copies sit in a group, and the bend is an SVG filter on that group, sized to the lens box. The frost and tone are CSS filters on the scene, so the mirror's order is bend, frost, tone, where Chromium's is frost, bend, tone. The bend is an SVG filter because, under a CSS filter on an HTML element, WebKit drew the map in the wrong place, and near the bottom of the screen not at all. Text, gradients and card frames behind the bar are not copied.
+  - In the lens modes the bar keeps full opacity, and its hide fades the lens and layers, so the frost survives the fade. Reduced transparency, more contrast and forced colours take the lens out.
+  - The glass is original CSS, SVG and TypeScript. No Apple assets or code are used.
+- **2026-10-30, user decision: browser fullscreen exit in Movies & TV.**
+  - The user chose "Open Study" for a browser fullscreen exit in Movies & TV, as in the games.
+  - A browser exit from fullscreen that the view did not start, such as Escape, is handled as follows. If the episode drawer is open, the exit cancels it and closes it, and Study does not open. Otherwise the exit cancels the Up next countdown and opens Study, which moves to another reading style of the same chapter when one is available, as Escape does. Study does not open if the page is hidden or suspended, the view has been disposed, or the screen has left the page. The view's own exits, from the Full screen button and from the exit that reveals Up next over a fullscreen player, do not open Study.
+- **2026-10-30, clarification: Escape.**
+  - Escape opens Study in a game or in Movies & TV, and it closes the episode drawer there. It also moves to another reading style of the same chapter, when one is available.
+  - With the Menu, rules, accounts or leaderboard sheet open, Escape closes that sheet and does not open Study. On the games library, with no game or Movies & TV page open, Escape does nothing.
+- **2026-10-30, clarification: CDN cache header.**
+  - Successful non-search responses carry the CDN header, with these exceptions. A rails response with a failed or empty rail is sent without it, because a partial rails response is not shared with every viewer. A bare title response whose default season failed is sent with that season empty and without the header. An incomplete answer is not cached, so the next request can retry. A named season that fails is a 502 with no header. A request with `q` never carries the header.
+  - A named season that the title does not list is not an exception. The answer is the title with no episodes for that season, sent with the CDN header, because that answer does not change.

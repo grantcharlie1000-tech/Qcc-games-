@@ -28,7 +28,7 @@
   - No new dependencies, frameworks or Tailwind.
   - Match the surrounding code style: compact TypeScript, template strings, terse names, few comments.
   - Escape every interpolated string with the existing `escape()` helper.
-- **Study disguise:** `document.title` never changes, and Escape always opens Study.
+- **Study disguise:** `document.title` never changes. Escape closes an open shell menu or sheet and does not open Study. Otherwise it opens Study in a game or in Movies & TV, and on the games library it does nothing.
 - **Unchanged areas:**
   - CSP strings in `netlify.toml`, `public/_headers` and `vite.config.ts`.
   - Movies storage only under `qcc:movies:v1`; arcade storage keys unchanged.

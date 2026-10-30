@@ -4,8 +4,6 @@ A static, private browser arcade with twenty-one playable games: **Suika Game, W
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
-![The arcade library](docs/evidence/home-1366.png)
-
 ## Run and build
 
 Node.js 22 is recommended.
@@ -39,6 +37,14 @@ Scores, settings, favourites and compact game snapshots stay in this browser's l
 
 Offline play requires a successful download on the same browser, device and origin, using HTTPS or localhost. Browser eviction, private browsing, managed-device policies and network controls can prevent retention. The app cannot bypass them. After an update, close older arcade tabs so the new worker can activate; download the new pack to make all of that release available offline.
 
+## The look
+
+The games keep their original look: posters, the gold focus ring and their own controls. The library has no top bar. A glass tab bar at the bottom holds Games, Movies, TV Shows, My list, Study and Menu, at every screen width. It hides while you scroll down and returns when you scroll up. Menus and dialogs are glass sheets: bottom sheets on phones, and centred panels from 640 px.
+
+Movies & TV uses a streaming-style design system. Its tokens and shared `ui-` components are in `src/theme.css`. The reference values were read as declared text from FrameXTV's public stylesheet and script. FrameXTV's anti-DevTools guard stopped its pages from rendering for automated inspection, and we did not bypass it. No FrameXTV code, CSS, icons, logo, wordmark, artwork or wording is used. The interface is original work under the Mauri Study Notes brand. The glass follows Apple's published Liquid Glass guidance in original CSS and TypeScript, with no Apple assets. See the [design references](docs/MOVIES_TV_DESIGN_REFERENCES.md).
+
+![The games library with the glass tab bar](docs/evidence/redesign/arcade-home-1440.png)
+
 ## Deploy the same output
 
 `npm run build` creates `dist/` with relative asset paths, hash routes and a service worker scoped to the directory in which it is served. The unchanged build supports an origin root and a repository subpath.
@@ -69,9 +75,9 @@ Corn Clicker is an original corn-themed incremental game: click the cob, hire pr
 
 ## Movies & TV
 
-The cinema card opens a Netflix-reference-based section with real TMDB posters/backdrops, local search, genres, details, seasons, episodes and a device-local list. Streaming remains enabled for supported titles through the documented FrameXTV player, isolated in a cross-origin sandbox. Study Mode unloads the external player and offers manual resume. Game scores, saves and offline downloads remain separate.
+Movies & TV opens from the Movies, TV Shows and My list tabs on the glass island. It is a streaming-style section with real TMDB posters and backdrops, full-catalog search, genres, rails, title and season pages, episodes and a device-local list. Playback uses one of four public iframe players (FrameXTV, VidLink, VixSrc or VidSrc), isolated in a cross-origin sandbox. If a server does not start, QCC tries the next one and remembers the one that worked. Where a server can, playback resumes at the saved time. Study Mode unloads the player and offers manual resume. Game scores, saves and offline downloads remain separate.
 
-TMDB and streaming providers receive ordinary image/playback requests. External availability, tracking and distribution rights are not verified by QCC. No provider scripts run in the parent page, and no DRM bypass, stream extraction or account forwarding is implemented. See [setup and provider/privacy details](docs/MOVIES_TV.md), [Netflix design references](docs/MOVIES_TV_DESIGN_REFERENCES.md) and [verification results](docs/MOVIES_TV_TEST_RESULTS.md).
+TMDB and the streaming servers receive ordinary image and playback requests. External availability, tracking and distribution rights are not verified by QCC. No provider scripts run in the parent page, and no DRM bypass, stream extraction or account forwarding is implemented. See [setup and provider/privacy details](docs/MOVIES_TV.md), [design references](docs/MOVIES_TV_DESIGN_REFERENCES.md) and [verification results](docs/MOVIES_TV_TEST_RESULTS.md), which predate the redesign.
 
 **Slipline** is a deterministic arrow-extraction puzzle: clear each route in its direction, avoid blocked moves, and preserve hearts through an endless campaign.
 
