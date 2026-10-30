@@ -318,8 +318,9 @@ body.movies-active.study-active{overflow:auto}
 /* The heading keeps the sheet's own size and weight. Movies' h2 rule has the same specificity and loads later, so this names the font; the sheet's rule still gives the colour and letter spacing. */
 .movies-view .movies-drawer-head h2{font:600 20px/1.25 var(--font-sans)}
 .movies-view .movies-drawer-seasons{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
-/* The season pills are plain translucent fills on the sheet. A long season name wraps inside its pill, as the title page's pills do. */
-.movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgb(255 255 255 / .1);color:var(--c-300);font-size:13px;font-weight:500;line-height:1.2;white-space:normal;max-width:100%;cursor:pointer}
+/* The season pills are plain translucent fills on the sheet. A long season name wraps inside its pill, as the title page's pills do. An idle
+   pill's label is white: WebKit renders a bright frame lighter through the glass, and a grey label fell below 4.5:1 over a white frame there. */
+.movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgb(255 255 255 / .1);color:#fff;font-size:13px;font-weight:500;line-height:1.2;white-space:normal;max-width:100%;cursor:pointer}
 .movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700}
 @media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:rgb(255 255 255 / .18);color:#fff}}
 .movies-view .movies-drawer-list{display:grid;gap:4px}
