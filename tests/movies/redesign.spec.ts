@@ -1768,6 +1768,9 @@ for(const reduced of [false,true] as const)test(`the Up next card sits in the sc
  expect(card!.width).toBeLessThan(screen!.width*0.6);
 });
 
+// WebKit reports a sheet's ::backdrop fade with no pseudo-element, on the open dialog itself. The dialog's own transitions never
+// include background-color, so an animation of nothing but background-color on an open dialog is that fade.
+const backdropFade=(animation:{pseudo:string;dialog:boolean;properties:string[]})=>animation.pseudo==='::backdrop'||(animation.pseudo===''&&animation.dialog&&animation.properties.every(key=>key==='backgroundColor'));
 // Reduced motion leaves one animation, the sheet's ::backdrop colour fade. Every other animation, pseudo-elements included, must be gone, and the
 // backdrop may change opacity or background colour only, never a transform, translate or scale.
 for(const setting of ['media query','class'] as const)test(`reduced motion (${setting}) stops card, rail and drawer animations`,async({page})=>{
@@ -1777,9 +1780,9 @@ for(const setting of ['media query','class'] as const)test(`reduced motion (${se
   const animations=await page.evaluate(()=>document.getAnimations().map(animation=>{
    const effect=animation.effect as KeyframeEffect|null;
    const properties=[...new Set((effect?.getKeyframes()??[]).flatMap(frame=>Object.keys(frame)))].filter(key=>!['offset','easing','composite','computedOffset'].includes(key));
-   return {pseudo:effect?.pseudoElement??'',properties};
+   return {pseudo:effect?.pseudoElement??'',dialog:effect?.target instanceof HTMLDialogElement&&effect.target.open,properties};
   }));
-  expect(animations.filter(animation=>animation.pseudo!=='::backdrop'),'animations other than the backdrop fade').toEqual([]);
+  expect(animations.filter(animation=>!backdropFade(animation)),'animations other than the backdrop fade').toEqual([]);
   for(const animation of animations)expect(animation.properties.every(key=>key==='opacity'||key==='backgroundColor'),`${animation.pseudo||'element'} animates ${animation.properties.join(', ')}`).toBe(true);
  };
  await page.goto('/#/movies');
