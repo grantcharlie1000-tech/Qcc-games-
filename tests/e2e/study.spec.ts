@@ -12,7 +12,11 @@ const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>{const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.isVisible())await accept.click();await page.locator(`[data-study-topic="${id}"]`).click();};
 const returnToGame=async(page:Page)=>{
-  await page.getByRole('link',{name:'Games',exact:true}).first().click();
+  const studyView=page.locator('#study-view'),games=page.getByRole('link',{name:'Games',exact:true}).first();
+  await expect(async()=>{
+    if(await studyView.isVisible())await games.click({timeout:1000});
+    await expect(studyView).toBeHidden({timeout:1000});
+  }).toPass({timeout:7000});
   await expect(page.locator('#study-view')).toBeHidden();
   await expect(page.locator('#game-stage, .game-card').first()).toBeVisible();
   await expect(page.locator('#app')).toHaveJSProperty('inert',false);
@@ -107,6 +111,7 @@ test('reading keeps native Space scrolling and keyboard controls isolated from T
   await page.locator('#study-topic').focus();await page.keyboard.press('ArrowDown');
   await expect(page.locator('#study-topic')).toHaveValue('essay-writing');
   await expect(page.locator('#study-title')).not.toBeEmpty();
+  await waitForReadingScroll(page);
   await returnToGame(page);
   await expect(page.locator('.tower-height')).toHaveText('0');
 });
@@ -134,6 +139,7 @@ test('Escape immediately saves and pauses; article changes never load or replace
   await expect(page.locator('#study-view')).toBeVisible();
   const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data);
   expect(after).toEqual(before);
+  await waitForReadingScroll(page);
   await returnToGame(page);
   await expect(page.locator('.fm-count')).toContainText('1 fruit');
   expect(await page.evaluate(()=>(window as unknown as {retainedStage:Element|null}).retainedStage===document.querySelector('#game-stage > *'))).toBe(true);
@@ -167,6 +173,7 @@ test.describe('all retained game instances',()=>{
       await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
       await page.keyboard.down('Escape');await page.keyboard.down('Escape');await page.keyboard.up('Escape');
       expect(await snapshot(page,id)).toEqual(saved);
+      await waitForReadingScroll(page);
       await returnToGame(page);
       expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
       await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
@@ -196,6 +203,7 @@ for(const modal of ['menu','rules']){
     const saved=await snapshot(page,'fruit-merge');
     await page.getByLabel('Study topic',{exact:true}).selectOption('te-tiriti');
     expect(await snapshot(page,'fruit-merge')).toEqual(saved);
+    await waitForReadingScroll(page);
     await returnToGame(page);
     await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
     await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
@@ -211,6 +219,7 @@ test('manual pause survives Study and topic navigation keeps the game route inta
   await page.keyboard.press('Escape');
   await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
   expect(new URL(page.url()).hash).toBe('#/collection/10');
+  await waitForReadingScroll(page);
   await returnToGame(page);
   await expect(page.locator('#pause-overlay')).toBeVisible();
   await page.getByRole('button',{name:'Keep playing',exact:true}).click();
