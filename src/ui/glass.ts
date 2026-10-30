@@ -4,14 +4,18 @@ export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
 
 const SVG_NS='http://www.w3.org/2000/svg';
+// The rim's depth and the refraction's bend. The bend times the steepest step of the rim's falloff stays under one (tests/core/glass.test.ts).
+export const RIM_EDGE=14;
+export const REFRACTION_SCALE=28;
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
 const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
 
 // The displacement map for the refraction filter. A red ramp (x) and a green ramp (y) run across and down the bar and are
-// screened together, then a neutral rounded rect sits inside the rim and is blurred. The centre does not move the content
-// behind it, and only the rim bends it, like the edge of a lens.
-export function glassMap(width:number,height:number,edge=16):string{
+// screened together, then a neutral capsule sits one edge inside the rim and is blurred by half the edge. The bend is full
+// at the rim, half at one edge in and gone by two, so the centre stays still. The scale keeps that slope under one, so the
+// content near the rim bends without folding.
+export function glassMap(width:number,height:number,edge=RIM_EDGE):string{
   const rx=Math.max(0,height/2-edge);
   const innerWidth=Math.max(0,width-2*edge);
   const innerHeight=Math.max(0,height-2*edge);
@@ -19,7 +23,7 @@ export function glassMap(width:number,height:number,edge=16):string{
     '<defs>'+
     '<linearGradient id="x" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#f00"/><stop offset="1" stop-color="#000"/></linearGradient>'+
     '<linearGradient id="y" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0f0"/><stop offset="1" stop-color="#000"/></linearGradient>'+
-    `<filter id="b" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${edge/2}"/></filter>`+
+    `<filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="${edge/2}"/></filter>`+
     '</defs>'+
     `<rect width="${width}" height="${height}" fill="url(#x)"/>`+
     `<rect width="${width}" height="${height}" fill="url(#y)" style="mix-blend-mode:screen"/>`+
@@ -79,7 +83,7 @@ function bindRefraction(bar:HTMLElement,brands:readonly Brand[]|undefined):Refra
   const displace=document.createElementNS(SVG_NS,'feDisplacementMap');
   displace.setAttribute('in','SourceGraphic');
   displace.setAttribute('in2','map');
-  displace.setAttribute('scale','34');
+  displace.setAttribute('scale',String(REFRACTION_SCALE));
   displace.setAttribute('xChannelSelector','R');
   displace.setAttribute('yChannelSelector','G');
   // The map goes in before the filter joins the document. Chromium fetches an feImage as soon as it is in the document,

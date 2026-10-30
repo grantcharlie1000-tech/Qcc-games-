@@ -1,6 +1,9 @@
 import {test,expect} from '../fixtures';
 import type {Locator} from '@playwright/test';
 
+// The alpha of a computed rgba colour. The pill is at least 12% white, so the tests read its alpha and not one exact value.
+const alphaOf=(rgba:string)=>{const parts=rgba.match(/[\d.]+/g)?.map(Number)??[];return parts.length===4?parts[3]:(parts.length===3?1:0);};
+
 // The island as Liquid Glass: the selection pill, the press, the Chromium refraction and the liquid exit and entry.
 test.beforeEach(async({page})=>{
   await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
@@ -369,29 +372,33 @@ test('the Movies island tabs are 90% white, and the current tab is solid bold wh
   expect(await tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
 });
 
-test('the island glass compresses its backdrop before it darkens it, keeps its tint, and its labels and icons have a halo',async({page})=>{
+test('the island glass is clear: a 35% dark tint over an undimmed backdrop, with a dense halo on its labels and icons',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(20, 20, 24, 0.24)');
-  // The selection pill is 6% white: over a white backdrop, the current label keeps 4.5:1 only with a fill this light.
-  expect(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe('rgba(255, 255, 255, 0.06)');
+  expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(16, 16, 20, 0.35)');
+  // The selection pill is a light glass lens (at least 12% white), and its label keeps its contrast with the halo.
+  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(0.12);
   const backdrop=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-  expect(backdrop).toContain('contrast(0.6) brightness(0.65)');
-  expect(backdrop).not.toContain('brightness(1.06)');
+  expect(backdrop).toContain('blur(5px) saturate(1.9) brightness(1.03)');
+  expect(backdrop).not.toContain('contrast(');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
-  expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('rgba(0, 0, 0, 0.65) 0px 1px 2px, rgba(0, 0, 0, 0.45) 0px 0px 8px');
-  expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toBe('drop-shadow(rgba(0, 0, 0, 0.6) 0px 1px 1px)');
+  const shadow=await movies.evaluate(el=>getComputedStyle(el).textShadow);
+  expect(shadow).toContain('rgb(0, 0, 0) 0px 0px 1px');
+  expect(shadow).toContain('rgba(0, 0, 0, 0.6) 0px 1px 2px');
+  // An SVG has no text-shadow, so the icons carry the same halo as a drop shadow.
+  expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toContain('drop-shadow(rgb(0, 0, 0) 0px 0px 1px)');
 });
 
-// contrast() comes before brightness() in the plain rule and in the Chromium refraction rule. The order is read from the
-// stylesheet, so it holds even in an engine that does not draw backdrop-filter.
-test('the island backdrop applies contrast before brightness, in both the plain and the refracting rule',async({page})=>{
+// contrast() never reaches the island's backdrop, and the blur stays at most 6 px. Both rules are read from the stylesheet with the
+// shared --glass-body token resolved, so the check holds even in an engine that does not draw backdrop-filter.
+test('the island backdrop has no contrast(), and blurs by at most 6 px, in both the plain and the refracting rule',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   await expect(page.locator('.app-tabbar')).toBeVisible();
   const written=await page.evaluate(()=>{
+    const body=getComputedStyle(document.documentElement).getPropertyValue('--glass-body').trim();
     const found:Record<string,string>={};
     for(const sheet of Array.from(document.styleSheets)){
       let rules:CSSRule[]=[];
@@ -400,16 +407,16 @@ test('the island backdrop applies contrast before brightness, in both the plain 
         if(!(rule instanceof CSSStyleRule))continue;
         if(rule.selectorText!=='.ui-tabbar'&&rule.selectorText!=='.ui-tabbar.is-refracting')continue;
         const value=rule.style.getPropertyValue('backdrop-filter')||rule.style.getPropertyValue('-webkit-backdrop-filter');
-        if(value)found[rule.selectorText]=value;
+        if(value)found[rule.selectorText]=value.replace(/var\(--glass-body\)/g,body);
       }
     }
     return found;
   });
   for(const selector of ['.ui-tabbar','.ui-tabbar.is-refracting']){
     const value=written[selector]??'';
-    expect(value,`${selector} sets a backdrop-filter`).toContain('contrast(');
-    expect(value,`${selector} sets a backdrop-filter`).toContain('brightness(');
-    expect(value.indexOf('contrast('),`${selector} puts contrast before brightness`).toBeLessThan(value.indexOf('brightness('));
+    expect(value,`${selector} sets a backdrop-filter`).toContain('blur(');
+    expect(value,`${selector} has no contrast()`).not.toContain('contrast(');
+    expect(Number(/blur\((\d+(?:\.\d+)?)px\)/.exec(value)?.[1]),`${selector} blurs by at most 6 px`).toBeLessThanOrEqual(6);
   }
 });
 
@@ -431,22 +438,22 @@ test('more contrast makes the island opaque with white labels, and keeps its bor
   expect(await tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
 });
 
-// The opaque fallbacks lift the pill to 16% white, since at 6% it nearly vanishes against the opaque bar.
-test('the pill is 16% white under more contrast, and 6% without it',async({page})=>{
+// The pill is a light lens (at least 12% white) in every mode, so the opaque fallbacks keep a fill of their own.
+test('the pill is at least 12% white with or without more contrast',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   const pill=()=>bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
-  await expect.poll(pill).toBe('rgba(255, 255, 255, 0.06)');
+  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
   await page.emulateMedia({contrast:'more'});
-  await expect.poll(pill).toBe('rgba(255, 255, 255, 0.16)');
+  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
   await page.emulateMedia({contrast:null});
-  await expect.poll(pill).toBe('rgba(255, 255, 255, 0.06)');
+  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
 });
 
 // Playwright cannot emulate reduced transparency, and every test browser supports backdrop-filter, so both rules are read from the stylesheet.
-test('the reduced-transparency and no-backdrop-filter fallbacks set the pill to 16% white',async({page})=>{
+test('the reduced-transparency and no-backdrop-filter fallbacks set the pill to at least 12% white',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   await expect(page.locator('.app-tabbar')).toBeVisible();
@@ -459,8 +466,8 @@ test('the reduced-transparency and no-backdrop-filter fallbacks set the pill to 
     }
     return found;
   });
-  expect(Object.entries(pills).find(([condition])=>condition.includes('prefers-reduced-transparency'))?.[1]).toBe('rgba(255, 255, 255, 0.16)');
-  expect(Object.entries(pills).find(([condition])=>condition.startsWith('not'))?.[1]).toBe('rgba(255, 255, 255, 0.16)');
+  expect(alphaOf(Object.entries(pills).find(([condition])=>condition.includes('prefers-reduced-transparency'))?.[1]??'')).toBeGreaterThanOrEqual(0.12);
+  expect(alphaOf(Object.entries(pills).find(([condition])=>condition.startsWith('not'))?.[1]??'')).toBeGreaterThanOrEqual(0.12);
 });
 
 // A press is keyed to the pointer that began it, so another pointer's release does not end it.
@@ -670,4 +677,46 @@ test('leaving Movies disposes the island: its filter goes, and a press on the ol
   });
   expect(pressedWhileDown).toBe(false);
   expect(await page.evaluate(()=>(window as Window&{__island?:HTMLElement}).__island!.style.getPropertyValue('--ui-pill-on'))).toBe('');
+});
+
+// The rim is directional: the top-left highlight is brighter than the bottom-right one, on the bar and on its pill.
+test('the rim of the island and of its pill is brighter at the top left than at the bottom right',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  const rim=(shadow:string)=>({
+    topLeft:Number(/rgba\(255, 255, 255, ([\d.]+)\) 1\.5px 1\.5px 1px -1px inset/.exec(shadow)?.[1]??0),
+    bottomRight:Number(/rgba\(255, 255, 255, ([\d.]+)\) -1px -1px 1px -1px inset/.exec(shadow)?.[1]??0)
+  });
+  for(const shadow of [await bar.evaluate(el=>getComputedStyle(el).boxShadow),await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)]){
+    const {topLeft,bottomRight}=rim(shadow);
+    expect(topLeft).toBeGreaterThan(0);
+    expect(topLeft).toBeGreaterThan(bottomRight);
+  }
+});
+
+// Forced colours drop box shadows and backgrounds: the pill keeps its edge from a 2 px outline, and the current tab is underlined.
+test('forced colours give the island pill a 2 px outline and underline the current tab',async({page})=>{
+  await page.emulateMedia({forcedColors:'active'});
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  const system=await page.evaluate(()=>{const probe=document.createElement('p');probe.style.color='CanvasText';document.body.append(probe);const colour=getComputedStyle(probe).color;probe.remove();return colour;});
+  expect(await bar.evaluate(el=>{const style=getComputedStyle(el,'::after');return [style.outlineWidth,style.outlineStyle,style.outlineColor];})).toEqual(['2px','solid',system]);
+  expect(await bar.getByRole('link',{name:'Games',exact:true}).evaluate(el=>getComputedStyle(el).textDecorationLine)).toBe('underline');
+  expect(await bar.getByRole('link',{name:'Movies',exact:true}).evaluate(el=>getComputedStyle(el).textDecorationLine)).toBe('none');
+  // Forced colours also take the backdrop filter off, so the bar is the flat system colour. The prefixed declaration is an alias in
+  // Chromium, so tests/core/theme.test.ts reads it from the stylesheet.
+  expect(await bar.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('none');
+  expect(await page.evaluate(()=>{
+    for(const sheet of Array.from(document.styleSheets))for(const media of Array.from(sheet.cssRules)){
+      if(!(media instanceof CSSMediaRule)||!media.media.mediaText.includes('forced-colors'))continue;
+      for(const rule of Array.from(media.cssRules)){
+        if(rule instanceof CSSStyleRule&&rule.selectorText.split(',').map(selector=>selector.trim()).includes('.ui-tabbar'))return rule.style.getPropertyValue('backdrop-filter');
+      }
+    }
+    return '';
+  })).toBe('none');
 });

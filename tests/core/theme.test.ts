@@ -26,3 +26,7 @@ test('dormant ui rules and the unread custom properties are gone',()=>{
  for(const selector of ['.ui-empty','.ui-hero-poster','.ui-panel','.ui-pill-count','.ui-sheet','.ui-skeleton','.ui-status','.ui-chip.saved'])expect(css).not.toMatch(new RegExp(literal(selector)+'(?![\\w-])'));
  expect(readFileSync('src/style.css','utf8')).not.toMatch(/--(purple|cream):/);
 });
+// The forced-colours block takes the island's backdrop off, prefixed and unprefixed, so the bar is the flat system colour.
+test('forced colours take the island backdrop off, prefixed and unprefixed',()=>{
+ expect(css).toMatch(/@media \(forced-colors:active\)\{\.ui-tabbar,\.ui-tabbar\.is-refracting\{[^}]*-webkit-backdrop-filter:none;backdrop-filter:none/);
+});

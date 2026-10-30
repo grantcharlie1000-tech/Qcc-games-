@@ -1,5 +1,5 @@
 import {expect,test} from 'vitest';
-import {glassMap,isChromiumBrands,pillVars,refractionAllowed} from '../../src/ui/glass';
+import {glassMap,isChromiumBrands,pillVars,refractionAllowed,REFRACTION_SCALE,RIM_EDGE} from '../../src/ui/glass';
 
 // The attributes of every <name> tag in an SVG string, in document order.
 function tags(svg:string,name:string):Record<string,string>[]{
@@ -32,7 +32,7 @@ test('glassMap runs red to black across and green to black down, screened togeth
 
 test('glassMap puts a neutral rounded rect inset by the edge, with rx of half the inset height',()=>{
   const rim=tags(glassMap(390,64),'rect').find(r=>r.fill==='rgb(128,128,128)');
-  expect(rim).toMatchObject({x:'16',y:'16',width:'358',height:'32',rx:'16'});
+  expect(rim).toMatchObject({x:'14',y:'14',width:'362',height:'36',rx:'18'});
   expect(tags(glassMap(390,64,10),'rect').find(r=>r.fill==='rgb(128,128,128)')).toMatchObject({x:'10',y:'10',width:'370',height:'44',rx:'22'});
 });
 
@@ -42,8 +42,9 @@ test('glassMap blurs the rim by half the edge and gives the blur room to spread'
   const blur=rim.filter.match(/^url\(#([^)]+)\)$/);
   expect(blur).not.toBeNull();
   const filter=tags(svg,'filter').find(f=>f.id===blur![1]);
-  expect(filter).toMatchObject({x:'-20%',y:'-20%',width:'140%',height:'140%'});
-  expect(tags(svg,'feGaussianBlur')[0].stdDeviation).toBe('8');
+  // The region grows by half the rim on each side, so the blur's tail is never cut where the bend is still strong.
+  expect(filter).toMatchObject({x:'-50%',y:'-50%',width:'200%',height:'200%'});
+  expect(tags(svg,'feGaussianBlur')[0].stdDeviation).toBe('7');
   expect(tags(glassMap(390,64,10),'feGaussianBlur')[0].stdDeviation).toBe('5');
 });
 
@@ -56,9 +57,18 @@ test('glassMap clamps the rim on bars too small for the edge, so no size goes ne
   }
 });
 
-test('glassMap defaults to a 16 px edge and is deterministic',()=>{
-  expect(glassMap(390,64)).toBe(glassMap(390,64,16));
+test('glassMap defaults to the 14 px rim and is deterministic',()=>{
+  expect(glassMap(390,64)).toBe(glassMap(390,64,RIM_EDGE));
+  expect(RIM_EDGE).toBe(14);
   expect(glassMap(366,64)).toBe(glassMap(366,64));
+});
+
+// The bend is half the scale each way, and the rim falls off as a Gaussian edge with the blur's deviation. The steepest step
+// of that falloff times the bend must stay under one, or the content folds over itself.
+test('the refraction bends the rim without folding the content',()=>{
+  const steepest=(REFRACTION_SCALE/2)*(1/((RIM_EDGE/2)*Math.sqrt(2*Math.PI)));
+  expect(steepest).toBeLessThan(1);
+  expect(steepest).toBeGreaterThan(0.5);
 });
 
 test('only Chromium-based browsers report the Chromium brand',()=>{

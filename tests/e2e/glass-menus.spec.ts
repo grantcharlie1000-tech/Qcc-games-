@@ -337,3 +337,15 @@ test('the account sheet tints only Play as guest',async({page})=>{
   const tinted=await dialog.locator('.game-button:not(.secondary)').evaluateAll(buttons=>buttons.filter(button=>button.getClientRects().length>0).map(button=>button.textContent?.trim()));
   expect(tinted).toEqual(['Play as guest']);
 });
+
+// Forced colours drop the sheet's fills, so its controls and fields get a 2 px ButtonText edge. Checkboxes keep their own track.
+test('forced colours give the sheet controls and fields a 2 px ButtonText border',async({page})=>{
+  await page.emulateMedia({forcedColors:'active'});
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await openMenuFromIsland(page);
+  const system=await page.evaluate(()=>{const probe=document.createElement('p');probe.style.borderTop='2px solid ButtonText';document.body.append(probe);const colour=getComputedStyle(probe).borderTopColor;probe.remove();return colour;});
+  for(const control of [page.locator('#open-accounts'),page.locator('#search'),page.getByRole('button',{name:'Close menu',exact:true})]){
+    expect(await control.evaluate(el=>{const style=getComputedStyle(el);return [style.borderTopStyle,style.borderTopWidth,style.borderTopColor];})).toEqual(['solid','2px',system]);
+  }
+});

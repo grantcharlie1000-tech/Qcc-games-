@@ -57,6 +57,15 @@ test('the short-page rule stops exactly at 48 px',()=>{
   expect(nextTabbarState(carried,24.5,48)).toEqual({hidden:false,lastY:24.5,travel:0});
 });
 
+// A sample that does not move keeps the travel built so far: only a real reversal starts the count again.
+test('a sample with no change in position keeps the travel built so far',()=>{
+  const built=nextTabbarState(shown(100),108,1000);
+  expect(built.travel).toBe(8);
+  const still=nextTabbarState(built,108,1000);
+  expect(still).toEqual({hidden:false,lastY:108,travel:8});
+  expect(nextTabbarState(still,112,1000).hidden).toBe(true);
+});
+
 test('the step returns a new state and leaves its input alone',()=>{
   const state=shown(100);
   nextTabbarState(state,120,1000);

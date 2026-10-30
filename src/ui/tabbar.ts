@@ -14,7 +14,8 @@ export function nextTabbarState(state:TabbarScroll,y:number,max:number):TabbarSc
   if(limit<=2*TABBAR_EDGE||at<=TABBAR_EDGE||at>=limit-TABBAR_EDGE)return {hidden:false,lastY:at,travel:0};
   const delta=at-state.lastY;
   // Travel counts in one direction. A reversal starts the count again, so jitter never adds up to a toggle.
-  const sameWay=state.travel===0||Math.sign(delta)===Math.sign(state.travel);
+  // A sample that did not move keeps the travel built so far: it is neither a reversal nor a step the same way.
+  const sameWay=state.travel===0||delta===0||Math.sign(delta)===Math.sign(state.travel);
   const travel=sameWay?state.travel+delta:delta;
   let hidden=state.hidden;
   if(travel>=TABBAR_THRESHOLD)hidden=true;
