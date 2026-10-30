@@ -31,6 +31,17 @@ async function expectGlassSheet(dialog:Locator){
   expect(family).toContain('-apple-system');
   expect(family).not.toContain('Arcade');
 }
+// The update module is replaced, so a test can show a ready update and then clear it. window.notifyUpdate sends the page a status.
+async function routeUpdateStatus(page:Page){
+  await page.route('**/src/core/offline.ts*',route=>route.fulfill({contentType:'text/javascript',body:`
+    export function watchUpdates(_entry, notify){window.notifyUpdate=notify;notify({available:true,message:'An update is ready.'});}
+    export async function checkForUpdates(){}
+    export async function cacheAll(){return 0;}
+    export function activateUpdate(){return new Promise(()=>{});}
+  `}));
+}
+// The menu's tinted buttons that are showing, by their text.
+const tintedMenuActions=(page:Page)=>page.locator('#menu .game-button:not(.secondary)').evaluateAll(buttons=>buttons.filter(button=>button.getClientRects().length>0).map(button=>button.textContent?.trim()));
 
 test('the four shell dialogs are glass sheets with the blur and the system font',async({page})=>{
   await page.setViewportSize(PHONE);
@@ -48,6 +59,19 @@ test('the four shell dialogs are glass sheets with the blur and the system font'
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
   await page.getByRole('button',{name:'Game rules',exact:true}).click();
   await expectGlassSheet(page.locator('#rules-dialog'));
+});
+
+// A sheet's accessible name is its heading, so a screen reader announces what the sheet is.
+test('the menu and the rules sheet are named by their headings',async({page})=>{
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await openMenuFromIsland(page);
+  await expect(page.getByRole('dialog',{name:'Mauri Study Notes',exact:true})).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.goto('/#/game/fruit-merge');
+  await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
+  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await expect(page.getByRole('dialog',{name:'How to play',exact:true})).toBeVisible();
 });
 
 test('at 390 px the menu is a bottom sheet inset from the screen edges, and it scrolls inside itself',async({page})=>{
@@ -138,6 +162,32 @@ test('a guest sees exactly one tinted action in the menu',async({page})=>{
   await openMenuFromIsland(page);
   const tinted=await page.locator('#menu .game-button:not(.secondary)').evaluateAll(buttons=>buttons.filter(button=>button.getClientRects().length>0).map(button=>button.textContent?.trim()));
   expect(tinted).toEqual(['Make all games available offline']);
+});
+
+// While an update is ready, the reload is the menu's one tinted action. The offline download steps back to secondary until the notice clears.
+test('a ready update leaves the reload as the menu\'s only tinted action, until the notice clears',async({page})=>{
+  await routeUpdateStatus(page);
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await openMenuFromIsland(page);
+  await expect(page.locator('#reload-update')).toBeVisible();
+  expect(await tintedMenuActions(page)).toEqual(['Reload to update']);
+  await page.evaluate(()=>(window as any).notifyUpdate({available:false,message:''}));
+  await expect(page.locator('#update-notice')).toBeHidden();
+  expect(await tintedMenuActions(page)).toEqual(['Make all games available offline']);
+});
+
+// A failed update check also shows the notice, with no reload. The offline download is the menu's only action then, so it keeps its tint.
+test('a failed update check keeps the offline download tinted',async({page})=>{
+  await routeUpdateStatus(page);
+  await page.setViewportSize(PHONE);
+  await page.goto('/');
+  await openMenuFromIsland(page);
+  await expect(page.locator('#reload-update')).toBeVisible();
+  await page.evaluate(()=>(window as any).notifyUpdate({available:false,message:'Could not check for updates. Your current game remains available. Try again when online.'}));
+  await expect(page.locator('#update-status')).toHaveText('Could not check for updates. Your current game remains available. Try again when online.');
+  await expect(page.locator('#reload-update')).toBeHidden();
+  expect(await tintedMenuActions(page)).toEqual(['Make all games available offline']);
 });
 
 test('the one tinted action in the rules is cream with dark ink in a 48 px capsule',async({page})=>{
@@ -275,6 +325,8 @@ test('the sheet enters from just inside its place by scale, translate and opacit
     });
   });
   await expect(page.locator('#menu')).toBeHidden();
+  // Leaving has to animate first. With no exit transitions the timing check below compares nothing, because Math.max() of an empty list is -Infinity.
+  expect(exit.map(transition=>transition.property)).toEqual(expect.arrayContaining(['scale','opacity']));
   // Leaving is quicker than arriving.
   expect(Math.max(...exit.map(transition=>transition.duration))).toBeLessThan(Math.max(...entry.map(transition=>transition.duration)));
 });

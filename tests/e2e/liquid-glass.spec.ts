@@ -388,10 +388,10 @@ test('the Movies island tabs are 90% white, and the current tab is solid bold wh
   await page.goto('/#/movies');
   const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
-  // Movies rebuilds its nav when the rail requests settle, so the tabs are read once the page is idle.
-  await page.waitForLoadState('networkidle');
-  expect(await tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgba(255, 255, 255, 0.9)',weight:'500'});
-  expect(await tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
+  // The failed rails draw the starter line, and that draw rebuilds the nav, so the tabs are read once the line is there.
+  await expect(page.locator('.movies-rails-status')).toBeVisible();
+  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgba(255, 255, 255, 0.9)',weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
 });
 
 test('the island glass is clear: a 35% dark tint over an undimmed backdrop, with a dense halo on its labels and icons',async({page})=>{
@@ -460,9 +460,9 @@ test('more contrast makes the island opaque with white labels, and keeps its bor
   await page.goto('/#/movies');
   const movies=page.locator('nav.movies-mobile-nav.ui-tabbar');
   await expect(movies).toBeVisible();
-  await page.waitForLoadState('networkidle');
+  await expect(page.locator('.movies-rails-status')).toBeVisible();
   expect(await movies.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(18, 18, 20, 0.96)');
-  expect(await tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
+  await expect.poll(()=>tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
 });
 
 // The pill is a light lens (at least 12% white) in every mode, so the opaque fallbacks keep a fill of their own.
@@ -650,8 +650,8 @@ test('a touch that slides off the tab springs the pill back and selects nothing'
 test('a tap that selects nothing puts the pill back under the current tab',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  // The catalog requests settle first, because a render rebuilds the nav and would undo the change below.
-  await page.waitForLoadState('networkidle');
+  // The failed rails draw the starter line last. That draw rebuilds the nav, so it must finish before the change below, or it would undo it.
+  await expect(page.locator('.movies-rails-status')).toBeVisible();
   const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   await page.evaluate(()=>{
@@ -674,25 +674,35 @@ test('a tap that selects nothing puts the pill back under the current tab',async
   await expect(page).toHaveURL(/#\/movies$/);
 });
 
-// Leaving Movies disposes the island. Its filter goes, and a press on the old island is ignored.
-test('leaving Movies disposes the island: its filter goes, and a press on the old island does nothing',async({page,browserName})=>{
+// Leaving Movies removes the SVG filter that the island added. The arcade island's own filter stays.
+test('leaving Movies removes the SVG filter the island added (Chromium only)',async({page,browserName})=>{
   test.skip(browserName!=='chromium','the SVG displacement filter renders only in Chromium');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
   await expect(bar).toHaveClass(/is-refracting/);
-  // Keep the island and its filter's <svg>, to check them after Movies has gone.
+  // Keep the filter's <svg>, to check it after Movies has gone.
   await page.evaluate(()=>{
-    const w=window as Window&{__island?:HTMLElement;__filterSvg?:Element|null};
+    const w=window as Window&{__filterSvg?:Element|null};
     const island=document.querySelector<HTMLElement>('nav.movies-mobile-nav')!;
     const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(island.querySelector('.ui-glass-lens')!).backdropFilter)?.[1]??'';
-    w.__island=island;
     w.__filterSvg=document.getElementById(id)?.closest('svg')??null;
   });
   await page.goto('/#/collection');
   await expect(page.locator('.game-grid')).toBeVisible();
   expect(await page.evaluate(()=>(window as Window&{__filterSvg?:Element|null}).__filterSvg?.isConnected)).toBe(false);
   expect(await page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length)).toBe(1);
+});
+
+// Leaving Movies disposes the island, so a press on the old island is ignored. This runs in every browser: it checks listeners, not the filter.
+test('a press on the island that Movies left behind does nothing',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/movies');
+  await expect(page.locator('nav.movies-mobile-nav.ui-tabbar')).toBeVisible();
+  // Keep the island, to press it after Movies has gone.
+  await page.evaluate(()=>{(window as Window&{__island?:HTMLElement}).__island=document.querySelector<HTMLElement>('nav.movies-mobile-nav')!;});
+  await page.goto('/#/collection');
+  await expect(page.locator('.game-grid')).toBeVisible();
   // The state is read during the press, before the release, so a listener left on the old island would show.
   const pressedWhileDown=await page.evaluate(()=>{
     const w=window as Window&{__island?:HTMLElement};

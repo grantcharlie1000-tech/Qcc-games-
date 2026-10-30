@@ -3,7 +3,9 @@ import type {BrowserContext} from '@playwright/test';
 
 // Existing game tests start after a user has chosen a topic. Study-specific tests
 // use guestTest to skip only account entry and exercise the real first-visit chooser.
+// Every request for a TMDB image gets a 1x1 PNG, so no test reaches the image server. seedStudyTopic calls this too.
 export async function seedGuest(context:BrowserContext){
+  await context.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
   await context.addInitScript(()=>{if(window!==window.top)return;try{localStorage.setItem('pocket-arcade:v1:accounts:guest','true');}catch{/* blocked storage tests choose guest explicitly */}});
 }
 export const guestTest=base.extend({

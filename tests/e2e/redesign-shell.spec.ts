@@ -150,8 +150,38 @@ test('the library clears a notch, and a game screen does not',async({page,browse
  expect(await page.locator('#content').evaluate(element=>getComputedStyle(element).paddingTop)).toBe('0px');
 });
 
+test('the shell content pads the side insets as well as the top one',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ await expect(page.locator('.game-card').first()).toBeVisible();
+ // Every rule for the shell's content is read, so the sides count wherever the rule declares them.
+ const sides=await page.evaluate(()=>{
+  const rules=[...document.styleSheets].flatMap(sheet=>[...sheet.cssRules]).filter((rule):rule is CSSStyleRule=>rule instanceof CSSStyleRule&&rule.selectorText==='body:not(.in-game):not(.movies-active) #content');
+  return {count:rules.length,left:rules.map(rule=>rule.style.paddingLeft).join(' '),right:rules.map(rule=>rule.style.paddingRight).join(' ')};
+ });
+ expect(sides.count).toBeGreaterThan(0);
+ expect(sides.left).toContain('env(safe-area-inset-left)');
+ expect(sides.right).toContain('env(safe-area-inset-right)');
+ // With no inset the content has no side padding.
+ expect(await page.locator('#content').evaluate(element=>[getComputedStyle(element).paddingLeft,getComputedStyle(element).paddingRight])).toEqual(['0px','0px']);
+});
+
+test('a notch on either side moves the shell content in from that edge (Chromium only)',async({page,browserName})=>{
+ test.skip(browserName!=='chromium','safe-area inset emulation is a Chromium DevTools feature');
+ await page.setViewportSize({width:390,height:844});
+ const session=await page.context().newCDPSession(page);
+ await session.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:0,left:44,right:34,bottom:0}});
+ await page.goto('/');
+ await expect(page.locator('.game-card').first()).toBeVisible();
+ expect(await page.locator('#content').evaluate(element=>[getComputedStyle(element).paddingLeft,getComputedStyle(element).paddingRight])).toEqual(['44px','34px']);
+ await page.goto('/#/game/snake');
+ await expect(page.locator('.game-view')).toBeVisible();
+ expect(await page.locator('#content').evaluate(element=>[getComputedStyle(element).paddingLeft,getComputedStyle(element).paddingRight])).toEqual(['0px','0px']);
+});
+
 test('tab bar hides during games and Movies & TV',async({page})=>{
  await page.setViewportSize({width:390,height:844});
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
  await page.goto('/#/collection/1');
  await expect(page.locator('.game-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
@@ -171,15 +201,16 @@ test('Study tab opens Study Mode',async({page})=>{
  await expect(page.locator('#study-view')).toBeVisible();
 });
 
-test('the tab bar is a floating glass island at every width',async({page})=>{
- await page.setViewportSize({width:390,height:844});
+// The island keeps 10 px clear of the left, right and bottom edges, at a phone width and at a desktop one.
+for(const [width,height] of [[390,844],[1440,900]]) test(`the tab bar is a floating glass island at ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height});
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
  await expect(bar).toBeVisible();
  const box=await bar.boundingBox();
  expect(box!.x).toBeGreaterThanOrEqual(10);
- expect(box!.x+box!.width).toBeLessThanOrEqual(380);
- expect(box!.y+box!.height).toBeLessThanOrEqual(834);
+ expect(box!.x+box!.width).toBeLessThanOrEqual(width-10);
+ expect(box!.y+box!.height).toBeLessThanOrEqual(height-10);
  expect(parseFloat(await bar.evaluate(element=>getComputedStyle(element).borderRadius))).toBeGreaterThanOrEqual(24);
  expect(await bar.locator('.ui-glass-lens').evaluate(element=>getComputedStyle(element).backdropFilter)).toContain('blur');
 });
@@ -283,6 +314,7 @@ test('the island floats and hides on scroll on desktop too',async({page})=>{
 
 test('the island stays hidden in games and Movies on desktop',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
+ await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
  await page.goto('/#/collection/1');
  await expect(page.locator('.game-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
