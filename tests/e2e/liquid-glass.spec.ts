@@ -1,5 +1,14 @@
 import {test,expect} from '../fixtures';
-import type {Locator} from '@playwright/test';
+import type {Locator,Page} from '@playwright/test';
+
+// The frost as the browser applies it. In Chromium it is the lens's backdrop-filter. In the mirror the lens has no backdrop-filter of its
+// own, so the frost is the scene's filter, which is set once the mirror's map is ready: the test waits for that first.
+async function frostFilter(page:Page,bar:Locator):Promise<string>{
+  if(await bar.getAttribute('data-glass')==='mirror')await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
+  return bar.evaluate(el=>el.getAttribute('data-glass')==='mirror'
+    ?getComputedStyle(el.querySelector('.ui-glass-scene')!).filter
+    :getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter);
+}
 
 // The alpha of a computed rgba colour. The pill is at least 12% white, so the tests read its alpha and not one exact value.
 const alphaOf=(rgba:string)=>{const parts=rgba.match(/[\d.]+/g)?.map(Number)??[];return parts.length===4?parts[3]:(parts.length===3?1:0);};
@@ -403,11 +412,12 @@ test('the island glass is clear: a 35% dark tint over an undimmed backdrop, with
   expect(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(16, 16, 20, 0.35)');
   // The selection pill is a light glass lens (at least 12% white), and its label keeps its contrast with the halo.
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(0.12);
-  // The frost is the lens's backdrop: a light blur, then the saturation and brightness. It has no contrast().
-  const backdrop=await bar.evaluate(el=>getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter);
-  expect(backdrop).toContain('blur(1.5px)');
-  expect(backdrop).toContain('saturate(1.9) brightness(1.03)');
-  expect(backdrop).not.toContain('contrast(');
+  // The frost is a light blur, then the saturation and brightness, and it has no contrast(). In Chromium it is the lens's backdrop; in
+  // the mirror the lens has no backdrop of its own, so the frost is the scene's filter.
+  const frost=await frostFilter(page,bar);
+  expect(frost).toContain('blur(1.5px)');
+  expect(frost).toContain('saturate(1.9) brightness(1.03)');
+  expect(frost).not.toContain('contrast(');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   const shadow=await movies.evaluate(el=>getComputedStyle(el).textShadow);
   expect(shadow).toContain('rgb(0, 0, 0) 0px 0px 1px');

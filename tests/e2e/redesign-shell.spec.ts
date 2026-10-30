@@ -1,5 +1,15 @@
 import {test,expect} from '../fixtures';
 import type {Page} from '../fixtures';
+import type {Locator} from '@playwright/test';
+
+// The frost as the browser applies it. In Chromium it is the lens's backdrop-filter. In the mirror the lens has no backdrop-filter of its
+// own, so the frost is the scene's filter, which is set once the mirror's map is ready: the test waits for that first.
+async function frostFilter(bar:Locator):Promise<string>{
+  if(await bar.getAttribute('data-glass')==='mirror')await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
+  return bar.evaluate(el=>el.getAttribute('data-glass')==='mirror'
+    ?getComputedStyle(el.querySelector('.ui-glass-scene')!).filter
+    :getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter);
+}
 
 test('the games home is back in its original style',async({page})=>{
  await page.setViewportSize({width:1366,height:900});
@@ -212,7 +222,7 @@ for(const [width,height] of [[390,844],[1440,900]]) test(`the tab bar is a float
  expect(box!.x+box!.width).toBeLessThanOrEqual(width-10);
  expect(box!.y+box!.height).toBeLessThanOrEqual(height-10);
  expect(parseFloat(await bar.evaluate(element=>getComputedStyle(element).borderRadius))).toBeGreaterThanOrEqual(24);
- expect(await bar.locator('.ui-glass-lens').evaluate(element=>getComputedStyle(element).backdropFilter)).toContain('blur');
+ expect(await frostFilter(bar)).toContain('blur');
 });
 
 test('scrolling down hides the tab bar and scrolling up brings it back',async({page})=>{

@@ -27,19 +27,25 @@ const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
 
 const smoothstep=(t:number)=>t*t*(3-2*t);
-// The lens's height field. For each pixel of a width by height box, it gives the displacement the lens applies there. The bar is a
-// capsule that sits LENS_MARGIN inside the box. A pixel moves outward along the capsule's normal, by LENS_BEND at the rim (LENS_CAP
+// The lens's height field. For each device pixel of a width by height box (in CSS px), it gives the displacement the lens applies there,
+// sampled at the screen's pixel density. The bar is a capsule that sits LENS_MARGIN inside the box. A pixel moves outward along the capsule's normal, by LENS_BEND at the rim (LENS_CAP
 // of that on the end caps), and that falls smoothly to zero LENS_BEVEL px inside. So each pixel samples from beyond the rim, which
 // compresses the content into the rim like the edge of a thick glass, and along any normal the sample position only moves forward:
 // nothing folds. The result is RGBA bytes. Red carries the x displacement and green the y one, each as 0 to 255 for -scale/2 to
 // +scale/2, so 128 is no shift.
-export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LENS_BEVEL,bend=LENS_BEND,cap=LENS_CAP):Uint8ClampedArray<ArrayBuffer>{
-  const data=new Uint8ClampedArray(new ArrayBuffer(width*height*4));
+// The map has round(width * density) by round(height * density) pixels. Each pixel samples the field at its own centre, so at a whole
+// density that centre is (x + 0.5) / density, and a map at density 2 is the same field drawn twice as finely.
+export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LENS_BEVEL,bend=LENS_BEND,cap=LENS_CAP,density=1):Uint8ClampedArray<ArrayBuffer>{
+  const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
+  const data=new Uint8ClampedArray(new ArrayBuffer(pixelWidth*pixelHeight*4));
   const scale=2*bend;
   const bw=width-2*margin,radius=(height-2*margin)/2;
-  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-    // The pixel centre in the bar's coordinates, with the capsule's core on the line v=0 between the two cap centres.
-    const u=x+0.5-margin,v=y+0.5-margin-radius;
+  for(let y=0;y<pixelHeight;y++)for(let x=0;x<pixelWidth;x++){
+    // The device pixel's centre, in CSS px across the box. The map is stretched over the box, so this is also right when the size
+    // times the density is not a whole number.
+    const px=(x+0.5)*width/pixelWidth,py=(y+0.5)*height/pixelHeight;
+    // The point in the bar's coordinates, with the capsule's core on the line v=0 between the two cap centres.
+    const u=px-margin,v=py-margin-radius;
     const cx=Math.min(Math.max(u,radius),Math.max(bw-radius,radius));
     const dx=u-cx,dist=Math.hypot(dx,v);
     // Depth is the distance inside the rim. Outside the rim it stays at the rim's bend, so the field has no step at the edge. The
@@ -47,7 +53,7 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
     const share=cap+(1-cap)*(dist>0?Math.abs(v)/dist:0);
     const push=bend*share*(1-smoothstep(Math.min(1,Math.max(0,radius-dist)/bevel)));
     const ox=dist>0?push*dx/dist:0,oy=dist>0?push*v/dist:0;
-    const i=(y*width+x)*4;
+    const i=(y*pixelWidth+x)*4;
     data[i]=Math.round(255*(0.5+ox/scale));
     data[i+1]=Math.round(255*(0.5+oy/scale));
     data[i+2]=128;
@@ -56,15 +62,22 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
   return data;
 }
 
-// The lens field as a PNG, the form an SVG feImage reads. Only a browser can encode the PNG, so this is outside the unit tests. With no
-// 2D context there is no map, and the empty string tells the caller to leave the lens out, rather than bend with an all-zero map.
-export function lensPng(width:number,height:number):string{
+// The lens field as a PNG, the form an SVG feImage reads. The PNG has the box's size in device pixels, not in CSS px. A browser that draws
+// an feImage at its image's own pixel size would otherwise cover only part of the box on a screen with more than one device pixel per CSS
+// px, as WebKit screenshots at 2x showed. Only a browser can encode the PNG, so this is outside the unit tests. With no 2D context there is
+// no map, and the empty string tells the caller to leave the lens out, rather than bend with an all-zero map.
+export function lensPng(width:number,height:number,density=1):string{
   const canvas=document.createElement('canvas');
-  canvas.width=width;canvas.height=height;
+  const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
+  canvas.width=pixelWidth;canvas.height=pixelHeight;
   const context=canvas.getContext('2d');
   if(!context)return '';
-  context.putImageData(new ImageData(lensField(width,height),width,height),0,0);
+  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,LENS_BEVEL,LENS_BEND,LENS_CAP,density),pixelWidth,pixelHeight),0,0);
   return canvas.toDataURL('image/png');
+}
+// The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.
+export function lensDensity(devicePixelRatio:number):number{
+  return Math.min(3,Math.max(1,devicePixelRatio||1));
 }
 
 // The images the mirror copies, placed in the lens's own box: the bar grown by the margin on every side, with the box's top left
@@ -177,7 +190,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
   let ready=false,disposed=false;
-  let mapWidth=0,mapHeight=0,mapSeq=0;
+  let mapWidth=0,mapHeight=0,mapDensity=0,mapSeq=0;
   // Set when the browser cannot make the map (no 2D canvas context, or a map that fails to decode). Such a bar has no lens at all.
   let lensless=false;
   let press:{tab:HTMLElement;pointerId:number}|null=null;
@@ -260,14 +273,16 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     else bar.style.removeProperty('--ui-glass-filter');
     scene.style.visibility=ready?'':'hidden';
   };
-  // The map is rebuilt only when the bar changes size. A detached or hidden bar has no size, so it keeps its last map.
+  // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
+  // keeps its last map.
   const rebuild=()=>{
-    const width=bar.offsetWidth+2*LENS_MARGIN,height=bar.offsetHeight+2*LENS_MARGIN;
-    if(mode==='off'||!bar.offsetWidth||!bar.offsetHeight||(width===mapWidth&&height===mapHeight))return;
+    const width=bar.offsetWidth+2*LENS_MARGIN,height=bar.offsetHeight+2*LENS_MARGIN,density=lensDensity(window.devicePixelRatio);
+    if(mode==='off'||!bar.offsetWidth||!bar.offsetHeight||(width===mapWidth&&height===mapHeight&&density===mapDensity))return;
     mapWidth=width;
     mapHeight=height;
+    mapDensity=density;
     const token=++mapSeq;
-    const url=lensPng(width,height);
+    const url=lensPng(width,height,density);
     // A lens without its map would draw unbent copies, or shift everything by the full scale, so without one the lens is left out.
     if(!url){lensless=true;applyMode();return;}
     const probe=new Image();
@@ -408,6 +423,16 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   resize?.observe(bar);
   void document.fonts?.ready.then(()=>{if(!disposed){sync(false);scheduleMirror();}});
   for(const query of queries)query.addEventListener('change',applyMode);
+  // A change of pixel density (a zoom, or a window dragged to another screen) rebuilds the map. A resolution query matches only the
+  // density it names, so the watch moves on to each new density as it arrives.
+  let densityQuery:MediaQueryList|undefined;
+  const onDensity=()=>{watchDensity();rebuild();};
+  const watchDensity=()=>{
+    densityQuery?.removeEventListener('change',onDensity);
+    densityQuery=matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    densityQuery.addEventListener('change',onDensity);
+  };
+  watchDensity();
 
   applyMode();
   sync(false);
@@ -419,6 +444,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       observer.disconnect();
       resize?.disconnect();
       for(const query of queries)query.removeEventListener('change',applyMode);
+      densityQuery?.removeEventListener('change',onDensity);
+      densityQuery=undefined;
       unmirrorEvents();
       removals.disconnect();
       if(mirrorFrame)cancelAnimationFrame(mirrorFrame);

@@ -43,13 +43,15 @@ async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
   const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const shot=async()=>{await settle();return (await bar.screenshot({animations:'disabled'})).toString('base64');};
   const scale=await page.evaluate(()=>document.querySelector('filter[id^="ui-glass-"] feDisplacementMap')!.getAttribute('scale'));
+  // The bands and the centre are in CSS px, so the device pixel ratio scales them to the screenshot's pixels.
+  const dpr=await page.evaluate(()=>window.devicePixelRatio);
   const setScale=(value:string)=>page.evaluate(v=>document.querySelector('filter[id^="ui-glass-"] feDisplacementMap')!.setAttribute('scale',v),value);
   const bent=await shot();
   await setScale('0');
   const flat=await shot();
   await setScale(scale??'32');
   const again=await shot();
-  return page.evaluate(async([flat,bent,again,orientation])=>{
+  return page.evaluate(async({flat,bent,again,orientation,dpr})=>{
     type Pixels={width:number;height:number;data:Uint8ClampedArray};
     const pixels=async(base64:string):Promise<Pixels>=>{
       const image=new Image();
@@ -63,7 +65,7 @@ async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
       return {width:canvas.width,height:canvas.height,data:context.getImageData(0,0,canvas.width,canvas.height).data};
     };
     const [a,b,c]=[await pixels(flat),await pixels(bent),await pixels(again)];
-    const w=a.width,h=a.height,radius=h/2,edge=orientation==='v'?12:20;
+    const w=a.width,h=a.height,radius=h/2,edge=(orientation==='v'?12:20)*dpr;
     const inside=(x:number,y:number)=>{const cx=Math.min(Math.max(x+0.5,radius),Math.max(w-radius,radius));return Math.hypot(x+0.5-cx,y+0.5-radius)<=radius;};
     const mean=(values:number[])=>values.length?values.reduce((sum,value)=>sum+value,0)/values.length:0;
     // The centre is judged by its median. The 8-bit map cannot hold exactly no shift, so the stripes' edges resample by a fraction
@@ -74,12 +76,12 @@ async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
       // The values inside a band of the image, along the axis that the stripes vary on.
       const band=(from:number,to:number)=>{const out:number[]=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++){const pos=orientation==='v'?x:y;if(pos>=from&&pos<to&&inside(x,y))out.push(diff(x,y));}return out;};
       const low=band(0,edge),high=band(orientation==='v'?w-edge:h-edge,orientation==='v'?w:h);
-      const centre=orientation==='v'?band(w/2-30,w/2+30):band(h/2-8,h/2+8);
+      const centre=orientation==='v'?band(w/2-30*dpr,w/2+30*dpr):band(h/2-8*dpr,h/2+8*dpr);
       const rimLow=mean(low),rimHigh=mean(high);
       return {rimLow,rimHigh,rim:Math.min(rimLow,rimHigh),centre:median(centre),centreMean:mean(centre),whole:mean(band(-Infinity,Infinity))};
     };
     return {...measure(a,b),still:measure(b,c).whole};
-  },[flat,bent,again,orientation]);
+  },{flat,bent,again,orientation,dpr});
 }
 
 // The rim thresholds, from the measured lower side of each rim (scratch profile at 390 px, dpr 1): mirror vertical 55.9, backdrop vertical
@@ -319,4 +321,86 @@ test('reduced transparency takes the mirror lens out, and puts it back when that
   await cdp.send('Emulation.setEmulatedMedia',{features:[]});
   await expect(bar).toHaveAttribute('data-glass','mirror');
   await expect(page.locator('.ui-glass-lens')).toHaveCount(1);
+});
+
+// The lens map, decoded: its pixel size (read through the feImage's href) and the lens box in CSS px. The map is the box at the screen's
+// pixel density, so the pixel size is the box times the density.
+async function mapSize(page:Page){
+  return page.evaluate(async()=>{
+    const href=document.querySelector('filter[id^="ui-glass-"] feImage')!.getAttribute('href')!;
+    const image=new Image();
+    image.src=href;
+    await image.decode();
+    const lens=document.querySelector('.ui-glass-lens')!.getBoundingClientRect();
+    return {pixels:[image.naturalWidth,image.naturalHeight],css:[lens.width,lens.height],dpr:window.devicePixelRatio};
+  });
+}
+
+// WebKit draws a map at its own pixel size, so a map of CSS size covered only part of the lens on a screen with more than one device
+// pixel per CSS px. Chromium stretches its map, so it passes either way. These tests run the density-2 map through the same bend checks,
+// so the map that WebKit needed is exercised in every run.
+test.describe('at two device pixels per CSS px',()=>{
+  test.use({deviceScaleFactor:2});
+
+  test('the mirror lens map is twice the lens box, and the lens bends the stripes at the rim',async({page})=>{
+    await asOtherBrowser(page);
+    await page.setViewportSize({width:390,height:844});
+    await page.goto('/');
+    const bar=page.locator('.app-tabbar');
+    await expect(bar).toHaveAttribute('data-glass','mirror');
+    await stage(page,'v');
+    await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
+    const size=await mapSize(page);
+    expect(size.dpr).toBe(2);
+    expect(size.pixels).toEqual(size.css.map(value=>value*2));
+    expectBend(await bend(page,bar,'v'),RIM.mirrorV);
+  });
+
+  test('the mirror lens bends horizontal stripes at the top and bottom rims, at two device pixels per CSS px',async({page})=>{
+    await asOtherBrowser(page);
+    await page.setViewportSize({width:390,height:844});
+    await page.goto('/');
+    const bar=page.locator('.app-tabbar');
+    await expect(bar).toHaveAttribute('data-glass','mirror');
+    await stage(page,'h');
+    await expect.poll(()=>bar.evaluate(el=>el.style.getPropertyValue('--ui-glass-filter'))).not.toBe('');
+    expectBend(await bend(page,bar,'h'),RIM.mirrorH);
+  });
+});
+
+// A change of pixel density rebuilds the map. Chromium's device-metrics emulation changes devicePixelRatio but raises no change event on a
+// resolution query, so this script records each such listener, and the test raises the change itself after it sets the ratio. That tests
+// the lens's own handling (the rebuild, and the watch moving on to each new density); the browser's own event is not under test.
+function densityHook(){
+  const realMatchMedia=window.matchMedia.bind(window);
+  const realRatio=window.devicePixelRatio;
+  const listeners:EventListener[]=[];
+  let ratio:number|undefined;
+  Object.defineProperty(window,'devicePixelRatio',{configurable:true,get:()=>ratio??realRatio});
+  window.matchMedia=(query:string)=>{
+    const list=realMatchMedia(query);
+    if(!query.includes('resolution'))return list;
+    return new Proxy(list,{get:(target,key)=>{
+      if(key==='addEventListener')return (type:string,listener:EventListener,options?:AddEventListenerOptions)=>{if(type==='change')listeners.push(listener);target.addEventListener(type,listener,options);};
+      const value=Reflect.get(target,key,target);
+      return typeof value==='function'?value.bind(target):value;
+    }});
+  };
+  (window as unknown as {__setDensity:(value:number)=>void}).__setDensity=(value:number)=>{ratio=value;for(const listener of [...listeners])listener(new Event('change'));};
+}
+
+test('the lens map follows a change of pixel density, and is built again for each new density (Chromium only)',async({page,browserName})=>{
+  test.skip(browserName!=='chromium','the density hook records Chromium resolution queries');
+  await asOtherBrowser(page);
+  await page.addInitScript(densityHook);
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass','mirror');
+  const atDensity=async(density:number)=>{
+    await page.evaluate(value=>(window as unknown as {__setDensity:(value:number)=>void}).__setDensity(value),density);
+    await expect.poll(async()=>{const size=await mapSize(page);return size.dpr===density&&size.pixels.every((value,i)=>value===size.css[i]*density);}).toBe(true);
+  };
+  await atDensity(3);
+  await atDensity(2);
+  await atDensity(1);
 });
