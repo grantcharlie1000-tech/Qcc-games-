@@ -11,6 +11,13 @@ async function frostFilter(bar:Locator):Promise<string>{
     :getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter);
 }
 
+// The menu sheet enters by scale and translate. Under load, a click sent while it still moves can miss its target (CI once clicked Study Mode
+// 95 ms into the entry and nothing opened), so a test waits for the sheet and its backdrop to settle before it clicks inside.
+async function menuSettled(page:Page){
+ await expect(page.locator('#menu')).toBeVisible();
+ await expect.poll(()=>page.locator('#menu').evaluate(el=>el.getAnimations({subtree:true}).length)).toBe(0);
+}
+
 test('the games home is back in its original style',async({page})=>{
  await page.setViewportSize({width:1366,height:900});
  await page.goto('/');
@@ -94,6 +101,7 @@ test('closing Study opened from the menu returns focus to the island Menu',async
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).click();
+ await menuSettled(page);
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  await expect(page.locator('#study-view')).toBeVisible();
  await page.locator('#study-view a[data-study-return][aria-label="Games"]').click();
@@ -105,6 +113,7 @@ test('Favourites only in the menu shows a notice, and Show all games clears it',
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await menuSettled(page);
  await page.getByLabel('Favourites only',{exact:true}).check();
  await page.getByRole('button',{name:'Close menu',exact:true}).click();
  await expect(page.locator('.empty-library')).toContainText('Your favourites');
@@ -122,6 +131,7 @@ test('a search is shown as literal text in the notice, which wraps at 320px',asy
  page.on('dialog',dialog=>{alerted=true;void dialog.dismiss();});
  await page.goto('/');
  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await menuSettled(page);
  const payload='<img src=x onerror=alert(1)>';
  await page.getByRole('searchbox').fill(payload);
  await page.getByRole('button',{name:'Close menu',exact:true}).click();
@@ -137,6 +147,7 @@ test('the filter notice lines up with the game grid',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await menuSettled(page);
  await page.getByLabel('Favourites only',{exact:true}).check();
  await page.getByRole('button',{name:'Close menu',exact:true}).click();
  // The notice's text starts where the grid's content starts, so the text is compared with the grid's content edge, not the notice's padded box.
