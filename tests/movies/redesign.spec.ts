@@ -1541,6 +1541,8 @@ test('the title backdrop uses the shared hero shade',async({page})=>{
  expect(await backdrop.evaluate(e=>getComputedStyle(e,'::after').content)).toBe('none');
 });
 
+// The servers row of the watch page (Task 15). Server n is the n-th provider in STREAM_PROVIDERS.
+const serversRow=(page:Page)=>page.getByRole('group',{name:'Servers',exact:true});
 // Ruling 10: a source that cannot resume (VidSrc, resume 'none') starts from the beginning, and the player promises no resume point.
 test('a source that cannot resume starts from the beginning and offers no Resume line',async({page})=>{
  await savedProgress(page,{'movie-157336':1200},{'movie-157336':{duration:7200,updated:1000}});
@@ -1548,10 +1550,227 @@ test('a source that cannot resume starts from the beginning and offers no Resume
  await page.goto('/#/movies/movie-157336/play');
  const frame=page.locator('iframe.movies-provider-frame');
  await expect(frame).toHaveAttribute('src',/\/embed\/157336\?autoplay=1&muted=0&t=1200$/);
- await page.locator('#movies-source').selectOption('vidsrc');
+ await serversRow(page).getByRole('button',{name:/^Server 4\b/}).click();
  await expect(frame).toHaveAttribute('src','https://vidsrc.to/embed/movie/157336');
- await expect(page.locator('#movies-source-help')).toContainText('cannot share playback progress');
+ await expect(page.locator('#movies-source-help')).toContainText('This server starts from the beginning.');
  await expect(page.getByText('Resume at')).toHaveCount(0);
+});
+
+// Task 15: the watch page with servers, episode controls, the episode drawer, the Up next card and the resume pill.
+test('the servers row switches provider and marks it pressed',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336/play');
+ const first=serversRow(page).getByRole('button',{name:/^Server 1\b/}),second=serversRow(page).getByRole('button',{name:/^Server 2\b/});
+ await expect(serversRow(page).getByRole('button')).toHaveCount(5);
+ await expect(first).toHaveAttribute('aria-pressed','true');
+ await expect(second).toHaveAttribute('aria-pressed','false');
+ await second.click();
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('data-provider','vidlink');
+ await expect(second).toHaveAttribute('aria-pressed','true');
+ await expect(first).toHaveAttribute('aria-pressed','false');
+ await expect(second).toBeFocused();
+});
+
+test('episode controls step between episodes and stop at the ends',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await expect(page.getByRole('button',{name:'First episode',exact:true})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toHaveAttribute('aria-haspopup','dialog');
+ await page.getByRole('link',{name:'Next episode',exact:true}).click();
+ await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
+ await expect(page.locator('.movies-player>h2')).toHaveText('S1 · E2 — The Blind Banker');
+ await expect(page.getByRole('link',{name:'Previous episode',exact:true})).toHaveAttribute('href',/season\/1\/episode\/1\/play$/);
+ await page.goto('/#/movies/tv-19885/season/2/episode/3/play');
+ await expect(page.getByRole('button',{name:'Final episode',exact:true})).toBeDisabled();
+ await expect(page.getByRole('link',{name:'Next episode',exact:true})).toHaveCount(0);
+});
+
+test('the episode drawer lists the season and closes for Study',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await expect(drawer).toBeHidden();
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ await expect(drawer).toBeVisible();
+ await expect(drawer.getByRole('heading',{name:'Episodes',exact:true})).toBeVisible();
+ await expect(drawer.getByRole('link')).toHaveCount(3);
+ await expect(drawer.locator('[aria-current="true"]')).toHaveAttribute('href',/season\/1\/episode\/1\/play$/);
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#study-view')).toBeVisible();
+ // The watch page is hidden while Study is open, so the drawer is read by its element rather than by role.
+ await expect(page.locator('dialog.movies-drawer')).toHaveJSProperty('open',false);
+ await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Resume stream'})).toBeVisible();
+});
+
+test('the close button shuts the episode drawer and returns focus to the episode button',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await expect(drawer).toBeVisible();
+ await drawer.getByRole('button',{name:'Close episode list',exact:true}).click();
+ await expect(drawer).toBeHidden();
+ await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toBeFocused();
+});
+
+test('an episode picked in the drawer plays and closes the drawer',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawer.getByRole('link',{name:/The Blind Banker/}).click();
+ await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
+ await expect(page.locator('.movies-player>h2')).toHaveText('S1 · E2 — The Blind Banker');
+ await expect(page.locator('dialog.movies-drawer')).toHaveJSProperty('open',false);
+});
+
+test('the watch page fits a 320px phone',async({page})=>{
+ const longName='An Extraordinarily Long Series Title With Supercalifragilisticexpialidocious Words That Must Wrap';
+ const longEpisode='AnEpisodeNameWithoutSpacesThatRunsOnForeverAndEverAndEverAndEverAndEverAndEverAndEnd';
+ await answerTitle(page,season=>({...seriesFor('tv-90500',longName,season),seasons:[
+  {number:1,name:'Season 1',episodes:season===1?[{number:1,name:longEpisode,overview:'A long episode.'},{number:2,name:'Second Episode',overview:'Still the first season.'}]:[]},
+  {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.'}]:[]}
+ ]}));
+ await page.setViewportSize({width:320,height:640});
+ await page.goto('/#/movies/tv-90500/season/1/episode/1/play');
+ await expect(serversRow(page)).toBeVisible();
+ await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toBeVisible();
+ expect(await page.locator('.movies-view').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
+ const widest=await page.locator('.movies-player').evaluate(player=>Math.max(...[...player.querySelectorAll('*')].filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().right)));
+ expect(widest).toBeLessThanOrEqual(320);
+ for(const control of await page.locator('.movies-server,.movies-episode-controls > .ui-btn').all())expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+});
+
+// On a phone the screen runs edge to edge: its negative gutter margins stretch it over the page padding, so it is as wide as the viewport.
+test('the watch screen spans a 390px phone edge to edge',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies/movie-157336/play');
+ await expect(serversRow(page)).toBeVisible();
+ const box=await page.locator('.movies-screen').boundingBox();
+ expect(box!.x).toBeCloseTo(0,0);
+ expect(box!.width).toBeCloseTo(390,0);
+});
+
+// The Up next card stays above the tab island while it counts down, so the island cannot cover its Play now button.
+test('the Up next card is above the tab island at 1440px',async({page})=>{
+ await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+ await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
+ const playNow=page.getByRole('button',{name:'Play now',exact:true});
+ await expect(playNow).toBeVisible();
+ const topmost=await playNow.evaluate(button=>{const r=button.getBoundingClientRect();const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !!hit&&(hit===button||button.contains(hit));});
+ expect(topmost).toBe(true);
+});
+
+// Ruling A: the title page and the current server agree. A server that cannot resume removes the Resume line from the title page too,
+// and picking a server that can resume brings it back.
+test('a server that cannot resume removes the Resume line from the title page too',async({page})=>{
+ await savedProgress(page,{'movie-157336':1200},{'movie-157336':{duration:7200,updated:1000}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336');
+ const resume=page.locator('.movies-actions .movies-resume');
+ await expect(resume).toHaveText('Resume at 20:00');
+ await page.getByRole('button',{name:'Play movie',exact:true}).click();
+ await expect(page.locator('.movies-resume-pill')).toHaveText('Resumed at 20:00');
+ await expect(page.locator('#movies-source-help')).not.toContainText('starts from the beginning');
+ await serversRow(page).getByRole('button',{name:/^Server 4\b/}).click();
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('src','https://vidsrc.to/embed/movie/157336');
+ await expect(page.locator('.movies-resume-pill')).toBeHidden();
+ await expect(page.locator('#movies-source-help')).toContainText('This server starts from the beginning.');
+ await page.getByRole('link',{name:'Back to Interstellar',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
+ await expect(page.getByText('Resume at')).toHaveCount(0);
+ await page.getByRole('button',{name:'Play movie',exact:true}).click();
+ await serversRow(page).getByRole('button',{name:/^Server 1\b/}).click();
+ await page.getByRole('link',{name:'Back to Interstellar',exact:true}).click();
+ await expect(resume).toHaveText('Resume at 20:00');
+});
+
+test('a saved position shows a Resumed pill for four seconds',async({page})=>{
+ await savedProgress(page,{'movie-157336':42},{'movie-157336':{duration:7200,updated:1000}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.clock.install();
+ await page.goto('/#/movies/movie-157336/play');
+ const pill=page.locator('.movies-resume-pill');
+ await expect(pill).toHaveText('Resumed at 0:42');
+ await page.clock.runFor(4100);
+ await expect(pill).toBeHidden();
+});
+
+test('the drawer loads an unloaded season in place and keeps the stream running',async({page})=>{
+ const requested:string[]=[];
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season),url=>{requested.push(url.search);});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200/season/1/episode/1/play');
+ const frame=page.locator('iframe.movies-provider-frame');
+ await expect(frame).toBeVisible();
+ await frame.evaluate(element=>element.setAttribute('data-instance','original'));
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
+ await expect(drawer.getByRole('link',{name:/Second Season Opener/})).toBeVisible();
+ await expect(drawer.getByRole('button',{name:'Season 2',exact:true})).toHaveAttribute('aria-pressed','true');
+ expect(requested.some(search=>search.includes('season=2'))).toBe(true);
+ await expect(frame).toHaveAttribute('data-instance','original');
+ await expect(drawer).toHaveJSProperty('open',true);
+});
+
+// The Up next card sits in the screen's corner, and its bar drains one tenth each second. Under reduced motion the bar does not transition.
+for(const reduced of [false,true] as const)test(`the Up next card sits in the screen corner and its bar drains${reduced?' without motion':''}`,async({page})=>{
+ if(reduced)await page.emulateMedia({reducedMotion:'reduce'});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+ // The clock is paused before the countdown starts, so each runFor is exactly one tick of the bar.
+ await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
+ await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
+ const overlay=page.getByRole('dialog',{name:'Up next'}),bar=overlay.locator('.movies-next-bar>span');
+ await expect(overlay).toBeVisible();
+ await expect.poll(()=>bar.evaluate(e=>(e as HTMLElement).style.width)).toBe('100%');
+ await page.clock.runFor(1000);
+ await expect.poll(()=>bar.evaluate(e=>(e as HTMLElement).style.width)).toBe('90%');
+ expect(await bar.evaluate(e=>getComputedStyle(e).transitionProperty)).toBe(reduced?'none':'width');
+ const [card,screen]=await Promise.all([overlay.boundingBox(),page.locator('.movies-screen').boundingBox()]);
+ expect(card!.x+card!.width).toBeGreaterThan(screen!.x+screen!.width-40);
+ expect(card!.y+card!.height).toBeGreaterThan(screen!.y+screen!.height-40);
+ expect(card!.width).toBeLessThan(screen!.width*0.6);
+});
+
+test('My list on the watch page keeps the stream running',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336/play');
+ const frame=page.locator('iframe.movies-provider-frame');
+ await expect(frame).toBeVisible();
+ await frame.evaluate(element=>element.setAttribute('data-instance','original'));
+ const actions=page.locator('.movies-watch-actions');
+ await actions.getByRole('button',{name:'Add to my list',exact:true}).click();
+ await expect(actions.getByRole('button',{name:'In my list',exact:true})).toBeFocused();
+ await expect(frame).toHaveAttribute('data-instance','original');
+});
+
+test('the watch page lays out its parts in the order of section 7.6',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ const parts=()=>page.locator('.movies-player>*').evaluateAll(list=>list.map(e=>e.tagName.toLowerCase()+(e.classList[0]?'.'+e.classList[0]:'')));
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await expect(serversRow(page)).toBeVisible();
+ expect(await parts()).toEqual(['a.movies-detail-back','h1','h2','div.movies-watch-actions','div.movies-screen','div.movies-servers','div.movies-episode-controls','p']);
+ await page.goto('/#/movies/movie-157336/play');
+ await expect(serversRow(page)).toBeVisible();
+ expect(await parts()).toEqual(['a.movies-detail-back','h1','div.movies-watch-actions','div.movies-screen','div.movies-servers','p']);
+ await expect(page.locator('.movies-episode-controls')).toHaveCount(0);
+});
+
+test('the next-server action switches to the server after the current one',async({page})=>{
+ await page.goto('/#/movies/movie-157336/play');
+ await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
+ // Task 16 renders the "Try another server" control. This checks the delegated click handler that control will use.
+ await page.evaluate(()=>{const button=document.createElement('button');button.dataset.action='next-server';button.textContent='Try Server 2';document.querySelector('.movies-view')!.append(button);});
+ await page.getByRole('button',{name:'Try Server 2',exact:true}).click();
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('data-provider','vidlink');
+ await expect(serversRow(page).getByRole('button',{name:/^Server 2\b/})).toHaveAttribute('aria-pressed','true');
 });
 
 // A failed load keeps today's error path: a cold link into an unloaded season shows the title-details notice with a retry, and mounts no player.

@@ -8,16 +8,16 @@
 .movies-mini-poster img{display:block;width:100%;height:100%;object-fit:cover}
 .movies-launch::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#000d,transparent 65%);pointer-events:none;z-index:-1}
 .movies-launch h2{color:#fff;text-shadow:0 2px 4px #000}
-.movies-eyebrow{font:700 11px/1.5 Arial,sans-serif;letter-spacing:3px;color:#eee}
+
 @media(max-width:1000px){.movies-launch{min-height:clamp(240px,62vw,460px)}.movies-miniatures{inset:-25px -12px;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:14px 12px}}
 
 .movies-active{overflow:hidden}.movies-view{position:fixed;inset:0;z-index:30;overflow:auto;overscroll-behavior:contain;background:#141414;color:#fff;font:15px/1.5 Arial,Helvetica,sans-serif;color-scheme:dark;--movies-accent:#e50914}.movies-view *{box-sizing:border-box}.movies-view [hidden]{display:none}.movies-view a{color:inherit;text-decoration:none}.movies-view button,.movies-view select,.movies-view input{font:inherit}.movies-view button,.movies-view select{cursor:pointer}.movies-view button,.movies-view select,.movies-view input{border:1px solid #777;border-radius:3px;background:#252525;color:white;padding:10px 16px;min-height:44px}.movies-view button:disabled{cursor:not-allowed;opacity:.55}.movies-view h1,.movies-view h2,.movies-view h3,.movies-view p{margin:0}.movies-view h1{font:800 clamp(38px,5vw,72px)/1.08 Arial,Helvetica,sans-serif;letter-spacing:-1.5px}.movies-view h2{font-size:23px;line-height:1.3;font-weight:700}.movies-view h3{font-size:17px}.movies-view small{color:#bcbcbc}
 .movies-view .movies-primary,.movies-view .movies-secondary{display:inline-flex;align-items:center;justify-content:center;gap:14px;border:0;background:#fff;color:#111;font-weight:700;font-size:18px;padding:11px 28px;border-radius:4px;min-height:49px}.movies-view .movies-primary:disabled{opacity:.72;background:#e6e6e6;color:#333}.movies-view .movies-secondary{background:#6d6d6eb3;color:#fff;padding:11px 26px}.movies-primary>span,.movies-secondary>span{font-size:25px;line-height:1}
 .movies-result-count{margin:20px 0!important;color:#b3b3b3;font-size:13px}.movies-empty{padding:100px 7%;text-align:center;max-width:800px;margin:auto;min-height:350px}.movies-empty p{color:#aaa;margin:18px 0 25px}.movies-empty h1{font-size:38px}.movies-empty a{display:inline-block;margin:15px}.movies-footer{margin-top:70px;border-top:1px solid #333;padding:30px 0;max-width:850px;color:#808080;font-size:12px}.movies-footer strong{color:#b3b3b3;font-size:14px}.movies-footer p{margin:12px 0;max-width:780px}.movies-footer button{font-size:12px;background:none;padding:7px 12px;color:#aaa;border-color:#555}.movies-tmdb{display:block;object-fit:contain;margin:15px 0}.movies-page-title{margin:48px 4% 100px!important;font-size:36px!important}
-.movies-detail-back{display:block;margin:28px 5%;font-size:13px;color:#aaa!important}.movies-player{padding:0 5% 70px}.movies-player .movies-detail-back{margin:30px 0}.movies-player h1{font-size:36px;margin:15px 0}.movies-player>h2{font-size:17px;color:#aaa}.movies-player>.movies-eyebrow{color:#e50914}.movies-screen{margin:30px 0 20px;background:#050505;border:1px solid #333;border-radius:5px;min-height:400px;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden}.movies-player-unavailable{max-width:530px;text-align:center;padding:25px}.movies-player-unavailable>span{font:64px Arial;color:#e50914}.movies-player-unavailable p{color:#aaa;font-size:14px;margin:14px 0}.movies-player-unavailable .movies-primary{margin-top:15px;font-size:15px}.movies-screen video{width:100%;height:100%;max-height:75dvh}.movies-player>p:last-child{font-size:12px;color:#999}
+.movies-player-unavailable{max-width:530px;text-align:center;padding:25px}.movies-player-unavailable>span{font:64px Arial;color:#e50914}.movies-player-unavailable p{color:#aaa;font-size:14px;margin:14px 0}.movies-player-unavailable .movies-primary{margin-top:15px;font-size:15px}.movies-screen video{width:100%;height:100%;max-height:75dvh}
 @media(hover:hover) and (pointer:fine){.movies-view a:hover{color:#fff}.movies-view .movies-primary:not(:disabled):hover{background:#ddd}.movies-view .movies-secondary:hover{background:#6d6d6e70}}
 
-@media(max-width:650px){.movies-view .movies-primary,.movies-view .movies-secondary{font-size:15px;padding:10px 23px;min-height:44px;gap:10px}.movies-primary>span,.movies-secondary>span{font-size:22px}.movies-detail-back{margin:22px 5%}.movies-screen{aspect-ratio:auto;min-height:420px}.movies-screen:has(video){min-height:220px;aspect-ratio:16/9}.movies-player-unavailable{padding:22px}.movies-player h1{font-size:30px}.movies-footer{margin-top:50px}.movies-page-title{font-size:30px!important}}
+@media(max-width:650px){.movies-view .movies-primary,.movies-view .movies-secondary{font-size:15px;padding:10px 23px;min-height:44px;gap:10px}.movies-primary>span,.movies-secondary>span{font-size:22px}.movies-player-unavailable{padding:22px}.movies-footer{margin-top:50px}.movies-page-title{font-size:30px!important}}
 @media(prefers-reduced-motion:reduce){.movies-view *,.movies-launch *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}.reduce-motion .movies-view *,.reduce-motion .movies-launch *{animation:none!important;transition:none!important}
 /* Reference details: native vector controls, uninterrupted rows, and mobile poster-card navigation. */
 
@@ -25,8 +25,8 @@
 /* Study reads in the document rather than the movie scroller. */
 body.movies-active.study-active{overflow:auto}
 
-.movies-provider-frame{border:0;width:100%;height:100%;min-height:400px;background:#000}.movies-screen:has(.movies-provider-frame){display:block}
-@media(max-width:650px){.movies-screen:has(.movies-provider-frame){aspect-ratio:16/9;min-height:210px}.movies-provider-frame{min-height:210px}}
+.movies-provider-frame{border:0;width:100%;height:100%;min-height:0;background:#000}
+
 
 .movies-view img[hidden]{display:none!important}
 
@@ -35,7 +35,7 @@ body.movies-active.study-active{overflow:auto}
 /* FrameXTV reference: compact discovery header, title-first catalog rows, metadata badges and poster-led cards. */
 .movies-view{background:#0c1017;--movies-accent:#69d8f4}
 
-.movies-player>.movies-eyebrow{color:var(--movies-accent)}
+
 
 .movies-view{--movies-accent:#69d8f4}
 
@@ -49,7 +49,7 @@ body.movies-active.study-active{overflow:auto}
 .movies-pagination button{border-color:#334353;border-radius:8px;background:#141e29}
 .movies-pagination button:not(:disabled):hover{border-color:#69d8f4;color:#a3edfa}
 
-.movies-screen{border-radius:12px;border-color:#293744}
+
 .movies-view button,.movies-view select,.movies-view input{border-color:#354452;border-radius:8px}
 
 @media(max-width:650px){
@@ -58,13 +58,13 @@ body.movies-active.study-active{overflow:auto}
  .movies-pagination button{padding:8px 10px;min-height:40px}
 }
 
-.movies-screen{position:relative}.movies-media{width:100%;height:100%;min-height:inherit}.movies-media video{display:block;width:100%;height:100%}.movies-next{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:clamp(12px,4vw,40px);background:#0b121bf2;overflow:auto}.movies-next h2{font-size:clamp(16px,2.5vw,26px);overflow-wrap:anywhere}.movies-next>div{display:flex;flex-wrap:wrap;gap:10px}.movies-next button{min-width:90px;min-height:44px}.movies-next-countdown{color:#b4c8d8;font-variant-numeric:tabular-nums}.movies-fullscreen{position:absolute;right:10px;top:10px;z-index:1;min-height:44px;background:#101923e8!important}.movies-auto-next{display:flex;align-items:center;gap:10px;min-height:44px;width:fit-content;margin-top:12px;cursor:pointer}.movies-view .movies-auto-next input{width:22px;height:22px;min-height:22px;padding:0;accent-color:#8ce8f8}.movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:focus-visible{outline:2px solid #8ce8f8;outline-offset:2px}
+.movies-screen:fullscreen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:-webkit-full-screen{width:100%;height:100%;max-width:none;border:0;border-radius:0;background:#000}.movies-screen:focus-visible{outline:2px solid #8ce8f8;outline-offset:2px}
 .movies-next button:focus-visible,.movies-fullscreen:focus-visible,.movies-auto-next input:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
 .movies-screen>.movies-detail-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:3;margin:0!important;max-height:calc(100% - 24px);overflow:auto}
 .movies-catalog-status button:focus-visible,.movies-empty [data-action="retry-title"]:focus-visible,.movies-player [data-action="reload-stream"]:focus-visible{outline:2px solid #8ce8f8;outline-offset:3px}
 
-.movies-source-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:18px}.movies-source-controls label{display:flex;align-items:center;gap:10px}.movies-source-controls p{flex-basis:100%;font-size:13px;color:#bcbcbc;max-width:760px}.movies-source-controls :is(button,select):focus-visible{outline:2px solid #fff;outline-offset:3px}#movies-player-status{font-size:12px;color:#999}
-@media(max-width:650px){.movies-source-controls label{flex-basis:100%}.movies-source-controls select{flex:1;min-width:0}.movies-source-controls button{flex:1}}
+
+
 
 /* Movies header, island and rails on the shared ui- components. The generic .movies-view button rule sets a border, padding,
    a 44 px height and a 15 px font, and it outranks a plain component rule, so each property the components need is restated here. */
@@ -227,3 +227,96 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-cast-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .movies-view .movies-cast-name{display:block;margin-top:8px;font-size:12px;font-weight:600;line-height:1.3;color:var(--c-200);overflow-wrap:anywhere}
 .movies-view .movies-cast-character{display:block;margin-top:2px;font-size:11px;line-height:1.3;color:var(--c-400);overflow-wrap:anywhere}
+
+/* Watch page (redesign section 7.6). The parts are direct children of .movies-player, in the order the section gives. */
+.movies-view .movies-player{display:grid;gap:12px;align-content:start;width:100%;min-width:0;max-width:var(--page-max);margin:0 auto;padding:0 var(--gutter) 40px;font-family:var(--font-sans)}
+.movies-view .movies-detail-back{justify-self:start;display:inline-flex;align-items:center;gap:6px;min-height:44px;margin-top:8px;padding:0 4px;border:0;background:none;color:var(--c-300);font-size:13px;font-weight:500}
+.movies-view .movies-player>h1{margin:0;font-family:var(--font-sans);font-size:22px;line-height:1.15;font-weight:800;letter-spacing:-.025em;color:#fff;overflow-wrap:anywhere}
+.movies-view .movies-player>h2{margin:0;font-family:var(--font-sans);font-size:14px;line-height:1.4;font-weight:600;color:var(--c-300);overflow-wrap:anywhere}
+@media (min-width:768px){.movies-view .movies-player>h1{font-size:30px}.movies-view .movies-player>h2{font-size:16px}}
+.movies-view .movies-watch-actions{display:flex;flex-wrap:wrap;gap:8px}
+.movies-view .movies-watch-actions .ui-btn{min-height:44px}
+/* The screen is 16:9 and at most 1152 px wide. Below 640 px it runs edge to edge, without a radius. */
+.movies-view .movies-screen{position:relative;display:block;width:100%;max-width:1152px;aspect-ratio:16/9;min-width:0;margin:0;overflow:hidden;border:1px solid var(--c-800);border-radius:16px;background:#000;box-shadow:var(--sh-2xl)}
+/* Width auto lets the negative margins stretch the screen over the gutters; a 100% width would stop short by the gutter. */
+@media (max-width:639px){.movies-view .movies-screen{width:auto;max-width:none;margin:0 calc(-1*var(--gutter));border-width:1px 0;border-radius:0}}
+.movies-view .movies-screen:has(.movies-player-unavailable){aspect-ratio:auto;min-height:340px}
+.movies-view .movies-media{position:absolute;inset:0;background:#000}
+.movies-view .movies-media video{display:block;width:100%;height:100%;max-height:none;object-fit:contain}
+.movies-view .movies-provider-frame{display:block;width:100%;height:100%;min-height:0;border:0;background:#000}
+.movies-view .movies-media>.movies-player-unavailable{position:absolute;inset:0;display:grid;align-content:center;justify-items:center;max-width:none;overflow:auto}
+/* The connecting overlay is hidden until a server is being tried (Task 16 shows it). */
+.movies-view .movies-connecting{position:absolute;inset:0;z-index:4;display:grid;place-content:center;justify-items:center;gap:12px;padding:16px;background:#000000d9;text-align:center}
+.movies-view .movies-connecting[hidden]{display:none}
+.movies-view .movies-connecting p{font-size:14px;color:var(--c-200)}
+.movies-view .movies-spinner{width:28px;height:28px;border:3px solid var(--c-700);border-top-color:#fff;border-radius:50%;animation:movies-spin 900ms linear infinite}
+@keyframes movies-spin{to{transform:rotate(360deg)}}
+/* Up next: a card in the screen's bottom-right corner, and a full-width overlay below 640 px. Its bar drains a tenth each second. */
+.movies-view .movies-next{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:clamp(16px,4vw,32px);overflow:auto;background:#09090bf2;color:var(--c-100)}
+.movies-view .movies-next[hidden]{display:none}
+/* From 640 px the card sits above the tab island (z-index 50), so the island cannot cover its buttons while the countdown runs. */
+@media (min-width:640px){.movies-view .movies-next{inset:auto 12px 12px auto;z-index:60;width:min(380px,calc(100% - 24px));justify-content:flex-start;padding:16px 18px;border:1px solid var(--line-strong);border-radius:16px;background:#09090bf5;box-shadow:var(--sh-2xl)}}
+.movies-view .movies-next h2{margin:0;font-size:clamp(16px,2.5vw,20px);line-height:1.3;font-weight:700;overflow-wrap:anywhere}
+.movies-view .movies-next-countdown{margin:0;font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--c-300);font-variant-numeric:tabular-nums}
+.movies-view .movies-next-actions{display:flex;flex-wrap:wrap;gap:10px}
+.movies-view .movies-next .ui-btn{min-width:96px;min-height:44px;height:auto;padding:10px 16px;font-size:14px}
+.movies-view .movies-next-bar{height:3px;overflow:hidden;border-radius:999px;background:var(--c-800)}
+.movies-view .movies-next-bar>span{display:block;height:100%;background:#fff;transition:width 1s linear}
+@media (prefers-reduced-motion:reduce){.movies-view .movies-next-bar>span{transition:none}}
+.reduce-motion .movies-view .movies-next-bar>span{transition:none}
+.movies-view .movies-fullscreen{position:absolute;right:10px;top:10px;z-index:3;min-height:44px;border-color:#ffffff33;background:#101923e8;color:#fff}
+/* The resume pill names the position a stream starts from. It sits top left and clears the Full screen button. */
+.movies-view .movies-resume-pill{position:absolute;left:12px;top:12px;z-index:2;max-width:calc(100% - 150px);padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:#000000b3;color:#fff;font-family:var(--font-mono);font-size:12px;line-height:1.4;pointer-events:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.movies-view .movies-resume-pill[hidden]{display:none}
+/* Servers: Server n is the n-th provider. The pressed server is white. The dot shows trying, working or failed. */
+.movies-view .movies-servers{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
+.movies-view .movies-servers-label{flex:1 1 100%;font-family:var(--font-mono);font-size:10px;line-height:1.4;letter-spacing:.08em;text-transform:uppercase;color:var(--c-400)}
+.movies-view .movies-server{display:inline-grid;grid-template-columns:auto auto;align-items:center;column-gap:8px;min-height:44px;padding:6px 12px;border:1px solid var(--c-700);border-radius:var(--r-lg);background:#18181bcc;color:var(--c-200);font-size:13px;font-weight:600;line-height:1.2;text-align:left;cursor:pointer}
+.movies-view .movies-server small{grid-column:2;font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--c-400)}
+.movies-view .movies-server-dot{grid-row:1/3;width:8px;height:8px;border-radius:50%;background:var(--c-600)}
+.movies-view .movies-server[data-state="trying"] .movies-server-dot{background:var(--c-amber)}
+.movies-view .movies-server[data-state="working"] .movies-server-dot{background:var(--c-green)}
+.movies-view .movies-server[data-state="failed"] .movies-server-dot{background:var(--c-red)}
+.movies-view .movies-server[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000}
+.movies-view .movies-server[aria-pressed="true"] small{color:var(--c-700)}
+@media (hover:hover) and (pointer:fine){.movies-view .movies-server:not([aria-pressed="true"]):hover{border-color:var(--c-600);color:#fff}}
+.movies-view .movies-servers .ui-btn.small{min-height:40px;padding:0 14px}
+.movies-view #movies-source-help,.movies-view .movies-failover{flex:1 1 100%;max-width:680px;margin:0;font-size:12px;line-height:1.5;color:var(--c-300)}
+.movies-view .movies-failover{color:var(--c-amber)}
+.movies-view .movies-failover:empty{display:none}
+/* Episode controls: three buttons on a row below 768 px, with the Auto next switch on a row of its own. From 768 px they share one row. */
+.movies-view .movies-episode-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:8px}
+.movies-view .movies-episode-controls>.ui-btn{min-width:0;min-height:44px;height:auto;padding:8px;white-space:normal;text-align:center}
+.movies-view .movies-episode-controls>button[data-action="episodes"]{font-family:var(--font-mono);font-size:13px;letter-spacing:.02em}
+@media (max-width:639px){.movies-view .movies-episode-controls>.ui-btn .ui-icon{display:none}}
+@media (min-width:768px){
+ .movies-view .movies-episode-controls{display:flex;flex-wrap:wrap;gap:10px}
+ .movies-view .movies-episode-controls>.ui-btn{padding:8px 14px;white-space:nowrap}
+ .movies-view .movies-auto-next{margin-left:auto}
+}
+.movies-view .movies-auto-next{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-height:44px;color:var(--c-200);font-size:14px;cursor:pointer}
+.movies-view .ui-switch input{min-height:0;padding:0;border:0;border-radius:0;background:none}
+.movies-view #movies-player-status{margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--c-400);max-width:760px}
+/* The episode drawer (redesign section 7.6) on the shared ui-drawer: a bottom sheet below 640 px, and a centred panel 672 px wide from 640 px. */
+.movies-view .movies-drawer{width:100%;max-width:none;max-height:85vh;margin:auto 0 0;padding:0 16px calc(16px + env(safe-area-inset-bottom));overflow:auto;border-color:var(--c-800);font-family:var(--font-sans)}
+@media (min-width:640px){.movies-view .movies-drawer{width:min(672px,calc(100% - 48px));max-width:none;max-height:85vh;margin:auto;padding:24px;border-radius:16px}}
+.movies-view .movies-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+.movies-view .movies-drawer-head h2{margin:0;font-family:var(--font-sans);font-size:20px;line-height:1.2;font-weight:700;letter-spacing:-.025em;color:var(--c-100)}
+.movies-view .movies-drawer-head .ui-btn{width:44px;min-width:44px;min-height:44px;height:44px;padding:0;justify-content:center}
+.movies-view .movies-drawer-seasons{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:#18181b99;color:var(--c-300);font-size:13px;font-weight:500;line-height:1.2;cursor:pointer}
+.movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700}
+@media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:var(--c-800);color:#fff}}
+.movies-view .movies-drawer-list{display:grid;gap:4px}
+.movies-view .movies-drawer-row{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:12px;min-height:56px;padding:6px;border-radius:12px;color:var(--c-200)}
+@media (min-width:640px){.movies-view .movies-drawer-row{grid-template-columns:136px minmax(0,1fr)}}
+@media (hover:hover) and (pointer:fine){.movies-view .movies-drawer-row:not([aria-current="true"]):hover{background:#ffffff0d;color:#fff}}
+.movies-view .movies-drawer-row[aria-current="true"]{background:#ff205614;color:var(--c-rose)}
+.movies-view .movies-drawer-thumb{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;border-radius:8px;background:var(--c-900)}
+.movies-view .movies-drawer-still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.movies-view .movies-drawer-thumb>.ui-chip{position:absolute;top:6px;left:6px;z-index:1}
+.movies-view .movies-drawer-text{display:grid;gap:2px;min-width:0}
+.movies-view .movies-drawer-text strong{font-size:14px;font-weight:600;line-height:1.3;color:inherit;overflow-wrap:anywhere}
+.movies-view .movies-drawer-text small{font-family:var(--font-mono);font-size:11px;line-height:1.4;color:var(--c-400)}
+.movies-view .movies-drawer-row[aria-current="true"] small{color:var(--c-rose-soft)}
+.movies-view .movies-drawer .movies-episodes-status{font-family:var(--font-mono);font-size:12px;line-height:1.5;color:var(--c-400)}
