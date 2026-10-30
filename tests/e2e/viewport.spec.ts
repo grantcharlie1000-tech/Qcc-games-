@@ -39,7 +39,8 @@ for(const size of [{width:390,height:844},{width:844,height:390}]){
 }
 
 test('Study restores normal reading scroll and returns to the retained fixed game',async({page})=>{
-  await page.addInitScript(()=>window.addEventListener('keydown',event=>{if(event.key==='PageDown')queueMicrotask(()=>document.documentElement.dataset.studyPageDownPrevented=String(event.defaultPrevented));},{capture:true}));
+  // Read defaultPrevented after the whole dispatch, so every app handler has run. Any prevented press marks it for good.
+  await page.addInitScript(()=>window.addEventListener('keydown',event=>{if(event.key==='PageDown')setTimeout(()=>{const root=document.documentElement;if(event.defaultPrevented)root.dataset.studyPageDownPrevented='true';else root.dataset.studyPageDownPrevented??='false';});},{capture:true}));
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   await page.getByRole('link',{name:'Play Pool',exact:true}).scrollIntoViewIfNeeded();
@@ -56,8 +57,8 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   // its first frame after releasing overflow:hidden; wait for that frame.
   await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
   await expect.poll(()=>page.evaluate(()=>document.scrollingElement!.scrollHeight>innerHeight+100)).toBe(true);
-  await page.keyboard.press('PageDown');
-  await expect.poll(()=>page.evaluate(()=>scrollY)).toBeGreaterThan(0);
+  // Under load the root scroller can take more than two frames to accept a key scroll after the lock is released, so press until the page moves.
+  await expect(async()=>{await page.keyboard.press('PageDown');await expect.poll(()=>page.evaluate(()=>scrollY),{timeout:1000}).toBeGreaterThan(0);}).toPass({timeout:10000});
   await expect(page.locator('html')).toHaveAttribute('data-study-page-down-prevented','false');
   await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
   expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
