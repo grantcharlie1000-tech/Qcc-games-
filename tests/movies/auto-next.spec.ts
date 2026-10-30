@@ -110,3 +110,29 @@ test('metadata arriving after Study opens cannot restart the stream or a countdo
  await page.goto('/#/movies/tv-778899/season/1/episode/1/play');await expect(page.getByRole('heading',{name:'Loading title details…'})).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();release();await page.clock.install();
  await expect(page.getByRole('button',{name:'Resume stream',includeHidden:true})).toBeAttached();await expect(page.locator('.movies-provider-frame')).toHaveCount(0);await page.clock.runFor(11000);await expect(page).toHaveURL(/episode\/1\/play$/);await expect(page.locator('#study-view')).toBeVisible();
 });
+
+// Task 15 review 1, Important 1: an open drawer stops the Up next countdown. Enter then goes to the control that has focus, not to Up next.
+test('opening the episode drawer stops Up next, and Enter on a drawer row plays that row',async({page})=>{
+ await open(page);await ended(page);
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();await expect(overlay(page)).toBeHidden();
+ await page.clock.runFor(11000);await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);
+ await page.getByRole('dialog',{name:'Select episode'}).getByRole('link',{name:/The Great Game/}).focus();await page.keyboard.press('Enter');
+ await expect(page).toHaveURL(/season\/1\/episode\/3\/play$/);await expect(page.locator('.movies-player>h2')).toHaveText('S1 · E3 — The Great Game');
+});
+test('Enter on the Previous link follows it while Up next counts down',async({page})=>{
+ await open(page,route(1,2));await ended(page);
+ await page.getByRole('link',{name:'Previous episode',exact:true}).focus();await page.keyboard.press('Enter');
+ await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);await expect(page.locator('.movies-player>h2')).toHaveText('S1 · E1 — A Study in Pink');
+});
+test('Enter on the Next link follows it while Up next counts down',async({page})=>{
+ await open(page,route(1,2));await ended(page);
+ await page.evaluate(()=>{const state=window as Window&{followed?:string[]};state.followed=[];window.addEventListener('click',event=>{const link=(event.target as Element).closest('a[data-episode-nav]');if(link)state.followed!.push(link.getAttribute('data-episode-nav')!);},true);});
+ await page.getByRole('link',{name:'Next episode',exact:true}).focus();await page.keyboard.press('Enter');
+ await expect(page).toHaveURL(/season\/1\/episode\/3\/play$/);
+ expect(await page.evaluate(()=>(window as Window&{followed?:string[]}).followed)).toEqual(['next']);
+});
+test('Enter on the Auto next switch does not play Up next',async({page})=>{
+ await open(page,route(1,2));await ended(page);
+ await page.getByRole('checkbox',{name:'Auto next episode'}).focus();await page.keyboard.press('Enter');
+ await expect(overlay(page)).toBeVisible();await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
+});

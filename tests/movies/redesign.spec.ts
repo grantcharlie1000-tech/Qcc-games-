@@ -1,5 +1,6 @@
 import {test,expect} from '../fixtures';
 import type {Locator,Page} from '@playwright/test';
+import {readFileSync} from 'node:fs';
 
 // Same network fixtures as movies.spec.ts. The streaming hosts also answer with the provider fixture page.
 test.beforeEach(async({page})=>{
@@ -1787,6 +1788,179 @@ test('a failed season load keeps the title-details notice and mounts no player',
  await settle(page);
  await expect(page.locator('iframe.movies-provider-frame')).toHaveCount(0);
  expect(await frameMounts(page)).toEqual({observed:0,renders:0});
+});
+
+// Task 15 review 1. The Auto next switch paints its focus ring on the switch itself while its checkbox has keyboard focus.
+test('the Auto next switch shows a focus ring when its checkbox has keyboard focus',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await expect(serversRow(page)).toBeVisible();
+ await tabTo(page,page.getByRole('checkbox',{name:'Auto next episode'}));
+ const ring=await page.locator('.movies-auto-next .ui-switch').evaluate(element=>{const style=getComputedStyle(element);return {style:style.outlineStyle,width:parseFloat(style.outlineWidth),color:style.outlineColor};});
+ expect(ring).toEqual({style:'solid',width:2,color:'rgb(255, 255, 255)'});
+});
+
+// Review 1, Important 3: My list keeps a licensed local video that is playing, as it keeps a provider frame. A video that was rebuilt would seek back
+// to its resume point and show the Resumed pill again.
+test('My list keeps a playing licensed video, and its resume pill does not come back',async({page})=>{
+ await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'movie-157336',path:'movies/media/long-resume.webm',license:'CC0-1.0',credit:'QCC fixture',evidence:'docs/rights/fixture.md',reviewed:true,territory:'Worldwide',expires:'2099-12-31'}]}));
+ // The fixture answers byte ranges, as a file server does, so the saved position can be seeked to.
+ await page.route('**/movies/media/long-resume.webm',route=>{
+  const body=readFileSync('tests/movies/fixtures/long-resume.webm'),size=body.length;
+  const [,first='',last='']=/^bytes=(\d*)-(\d*)$/.exec(route.request().headers().range??'')??[];
+  if(!first&&!last)return route.fulfill({contentType:'video/webm',headers:{'accept-ranges':'bytes'},body});
+  const start=first?Number(first):Math.max(0,size-Number(last)),end=first&&last?Math.min(Number(last),size-1):size-1;
+  return route.fulfill({status:206,contentType:'video/webm',headers:{'accept-ranges':'bytes','content-range':`bytes ${start}-${end}/${size}`},body:body.subarray(start,end+1)});
+ });
+ await savedProgress(page,{'movie-157336':20},{'movie-157336':{duration:40,updated:1000}});
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336/play');
+ const video=page.locator('.movies-media video'),pill=page.locator('.movies-resume-pill');
+ await expect(video).toBeVisible();
+ await expect(pill).toHaveText('Resumed at 0:20');
+ await video.evaluate(async(element:HTMLVideoElement)=>{element.dataset.instance='original';await element.play();});
+ await expect.poll(()=>video.evaluate((element:HTMLVideoElement)=>element.currentTime)).toBeGreaterThan(21);
+ // Counts each time the pill is shown from here on.
+ await pill.evaluate(element=>{const state=window as Window&{pillShown?:number};state.pillShown=0;new MutationObserver(()=>{if(!(element as HTMLElement).hidden)state.pillShown!++;}).observe(element,{attributes:true,attributeFilter:['hidden']});});
+ await page.locator('.movies-watch-actions').getByRole('button',{name:'Add to my list',exact:true}).click();
+ await expect(page.locator('.movies-watch-actions').getByRole('button',{name:'In my list',exact:true})).toBeFocused();
+ await expect(video).toHaveAttribute('data-instance','original');
+ expect(await video.evaluate((element:HTMLVideoElement)=>element.currentTime)).toBeGreaterThan(21);
+ await settle(page);
+ expect(await page.evaluate(()=>(window as Window&{pillShown?:number}).pillShown)).toBe(0);
+});
+
+// Review 1, Minor 6: fullscreen drops the screen's border and radius. The fullscreen rule has to win over the windowed rule that sets both.
+test('fullscreen drops the screen border and radius',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/movie-157336/play');
+ const screen=page.locator('.movies-screen');
+ await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
+ const supported=await screen.evaluate(element=>typeof element.requestFullscreen==='function'||typeof (element as HTMLElement&{webkitRequestFullscreen?:unknown}).webkitRequestFullscreen==='function');
+ test.skip(!supported,'Browser reports the Fullscreen API unsupported');
+ await page.getByRole('button',{name:'Full screen',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.className)).toBe('movies-screen');
+ expect(await screen.evaluate(element=>{const style=getComputedStyle(element);return {border:style.borderTopWidth,radius:style.borderTopLeftRadius};})).toEqual({border:'0px',radius:'0px'});
+});
+
+// Review 1, Minor 5: the drawer row of the episode already playing sets the address it has, so the drawer closes instead of staying open.
+test('the drawer row of the episode already playing closes the drawer',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await expect(drawer).toBeVisible();
+ await drawer.locator('[aria-current="true"]').click();
+ await expect(drawer).toBeHidden();
+ await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toBeFocused();
+ await expect(page).toHaveURL(/season\/1\/episode\/1\/play$/);
+});
+
+// Review 1, Important 4: a season that fails to load in the drawer shows its error and a Retry button. A season that loads later is shown by Retry.
+async function failingSeasonTwo(page:Page){
+ const state={failing:true};
+ await page.route('**/api/movies?*',route=>{
+  const url=new URL(route.request().url());
+  if(!url.searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  if(url.searchParams.get('season')==='2'&&state.failing)return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  return route.fulfill({json:{title:seriesFor('tv-90200','Pill Series',Number(url.searchParams.get('season')||1))}});
+ });
+ return state;
+}
+test('a failed drawer season load shows its error and a retry, and the stream keeps playing',async({page})=>{
+ await failingSeasonTwo(page);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200/season/1/episode/1/play');
+ const frame=page.locator('iframe.movies-provider-frame');
+ await expect(frame).toBeVisible();
+ await frame.evaluate(element=>element.setAttribute('data-instance','original'));
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
+ await expect(drawer.getByRole('status')).toContainText('temporarily unavailable');
+ const retry=drawer.getByRole('button',{name:'Retry episodes',exact:true});
+ await expect(retry).toBeVisible();
+ expect((await retry.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ await expect(frame).toHaveAttribute('data-instance','original');
+ await expect(drawer).toHaveJSProperty('open',true);
+});
+test('Retry episodes loads the season that failed, in the open drawer',async({page})=>{
+ const state=await failingSeasonTwo(page);
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200/season/1/episode/1/play');
+ await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
+ await expect(drawer.getByRole('button',{name:'Retry episodes',exact:true})).toBeVisible();
+ state.failing=false;
+ await drawer.getByRole('button',{name:'Retry episodes',exact:true}).click();
+ await expect(drawer.getByRole('link',{name:/Second Season Opener/})).toBeVisible();
+ await expect(drawer.getByRole('status')).toHaveCount(0);
+ await expect(drawer.getByRole('button',{name:'Season 2',exact:true})).toHaveAttribute('aria-pressed','true');
+});
+
+// Review 1, Important 4: Previous across a season boundary. On a season's first episode, Previous is the last episode of the season before, once that season has loaded.
+test('Previous on a season\'s first episode goes to the last episode of the season before',async({page})=>{
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200/season/1/episode/1/play');
+ await expect(page.getByRole('heading',{name:'S1 · E1 — Pilot',exact:true})).toBeVisible();
+ await page.getByRole('link',{name:'Next episode',exact:true}).click();
+ await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
+ await page.getByRole('link',{name:'Next episode',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'S2 · E1 — Second Season Opener',exact:true})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Previous episode',exact:true})).toHaveAttribute('href',/season\/1\/episode\/2\/play$/);
+});
+test('Previous reads unavailable until the season before loads, then links to its last episode',async({page})=>{
+ await answerTitle(page,season=>seriesFor('tv-90200','Pill Series',season));
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-90200/season/2/episode/1/play');
+ await expect(page.getByRole('heading',{name:'S2 · E1 — Second Season Opener',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Previous episode unavailable',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'S2 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await drawer.getByRole('button',{name:'Season 1',exact:true}).click();
+ await expect(drawer.getByRole('link',{name:/Second Episode/})).toBeVisible();
+ await drawer.getByRole('button',{name:'Close episode list',exact:true}).click();
+ await expect(drawer).toBeHidden();
+ await expect(page.getByRole('link',{name:'Previous episode',exact:true})).toHaveAttribute('href',/season\/1\/episode\/2\/play$/);
+});
+
+// Review 1, Important 4: the drawer closes on a server switch and when the page is hidden. Its modal makes the server row inert, so the switch is sent from the page.
+test('switching server closes the episode drawer',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ await expect(drawer).toBeVisible();
+ await page.locator('[data-server="vidlink"]').evaluate(element=>(element as HTMLElement).click());
+ await expect(drawer).toBeHidden();
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('data-provider','vidlink');
+});
+test('a hidden page closes the episode drawer',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ await expect(drawer).toBeVisible();
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
+ await expect(drawer).toBeHidden();
+});
+
+// Review 1, Important 4: below 640 px the drawer is a bottom sheet. It spans the width and its bottom edge sits on the bottom of the screen.
+test('the episode drawer is a bottom sheet below 640px',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
+ await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
+ const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
+ await expect(drawer).toBeVisible();
+ const box=await drawer.boundingBox();
+ expect(box!.x).toBeCloseTo(0,0);
+ expect(box!.width).toBeCloseTo(390,0);
+ expect(box!.y+box!.height).toBeCloseTo(844,0);
 });
 
 // Home's one rail lists the given titles. Each title's details answer only when release runs, so a test can look at the page while they load.

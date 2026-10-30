@@ -679,7 +679,7 @@ export class MoviesView {
   const provider=streamProvider(this.providerId),server=STREAM_PROVIDERS.findIndex(item=>item.id===this.providerId)+1;
   const external=frameSource(t,route,this.providerId,saved);
   const back=titleHash(t.id)+(episode?`/season/${route.season}/episode/${route.episode}`:'');
-  const media=source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" src="${asset(source.path)}"></video>`
+  const media=source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" data-media-key="${escape(key)}" src="${asset(source.path)}"></video>`
    :external?`<iframe class="movies-provider-frame" data-provider="${this.providerId}" data-media-key="${escape(key)}" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`
    :`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="movies-primary" href="${escape(back)}">Return to title</a></div>`;
   // Section 7.6 order: back, title, episode heading, My list, screen, servers, episode controls (TV), status.
@@ -716,7 +716,7 @@ export class MoviesView {
   const pills=t.seasons.map(s=>`<button class="ui-pill" data-drawer-season="${s.number}" aria-pressed="${s.number===shown?.number}">${escape(s.name)}</button>`).join('');
   let rows:string;
   if(shown&&this.drawerLoading===shown.number)rows='<p class="movies-episodes-status" role="status">Loading episodes…</p>';
-  else if(shown&&this.drawerError?.season===shown.number)rows=`<p class="movies-episodes-status" role="status">${escape(this.drawerError.message)}</p>`;
+  else if(shown&&this.drawerError?.season===shown.number)rows=`<p class="movies-episodes-status" role="status">${escape(this.drawerError.message)}</p><button class="ui-btn secondary movies-drawer-retry" data-drawer-season="${shown.number}">Retry episodes</button>`;
   else if(shown?.episodes.length)rows=shown.episodes.map(e=>this.drawerRow(t,shown,e)).join('');
   else rows='<p class="movies-episodes-status">Episode metadata has not been included in this snapshot.</p>';
   return `<span class="ui-drawer-handle" aria-hidden="true"></span><div class="movies-drawer-head"><h2>Episodes</h2><button class="ui-btn secondary small" data-action="close-drawer" aria-label="Close episode list">${uiIcon('close')}</button></div><div class="movies-drawer-seasons" role="group" aria-label="Seasons">${pills}</div><div class="movies-drawer-list">${rows}</div>`;
@@ -743,6 +743,8 @@ export class MoviesView {
  }
  private openDrawer(){
   const dialog=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');if(!dialog||dialog.open)return;
+  // The drawer takes the reader's attention, so an Up next countdown stops while it is open.
+  this.cancelNext();
   // Each opening lists the season that is playing.
   this.drawerSeason=undefined;this.drawerError=undefined;this.refreshDrawer();
   dialog.showModal();
@@ -866,6 +868,9 @@ export class MoviesView {
   if(!this.ended&&Date.now()-this.lastSave>5000)this.saveProgress(this.frameTime);
  };
  private click=(event:MouseEvent)=>{
+  // The drawer row of the episode already playing would set the address it has. The drawer closes instead, as its close button does.
+  const playing=(event.target as Element).closest<HTMLElement>('.movies-drawer-row[aria-current="true"]');
+  if(playing){event.preventDefault();this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});return;}
   const target=(event.target as Element).closest<HTMLElement>('button');if(!target)return;
   if(target.dataset.kind){this.query='';this.genre='All';this.resetRemote();this.showSection(target.dataset.kind as MovieKind);}
   if(target.dataset.list){const id=target.dataset.list,title=this.lookup(id);this.storage.toggle(id,title?snapshotOf(title):undefined);this.redrawPlayer();within(this.root,'[data-list]').find(e=>e.dataset.list===id)?.focus({preventScroll:true});}
@@ -937,13 +942,15 @@ export class MoviesView {
  private refreshPlayer(title:Title){
   const screen=this.root.querySelector<HTMLElement>('.movies-screen'),player=screen?.parentElement;if(!screen||!player)return;
   const template=document.createElement('template');template.innerHTML=this.player(title);const next=template.content.firstElementChild!;
-  const nextFrame=next.querySelector('iframe');
+  const nextFrame=next.querySelector('iframe'),nextVideo=next.querySelector('video');
   const preserveFrame=!!this.frame&&!!nextFrame&&this.frame.dataset.provider===nextFrame.dataset.provider&&this.frame.dataset.mediaKey===nextFrame.dataset.mediaKey;
+  // A local video keeps its element while its file and episode are the same, as a provider frame does, so it goes on from where it is.
+  const preserveVideo=!!this.video&&!!nextVideo&&this.video.getAttribute('src')===nextVideo.getAttribute('src')&&this.video.dataset.mediaKey===nextVideo.dataset.mediaKey;
   if(preserveFrame)this.frame!.title=nextFrame!.title;
-  else{this.stopVideo();screen.querySelector('.movies-media')!.replaceChildren(...next.querySelector('.movies-media')!.childNodes);}
+  else if(!preserveVideo){this.stopVideo();screen.querySelector('.movies-media')!.replaceChildren(...next.querySelector('.movies-media')!.childNodes);}
   for(const child of [...player.children])if(child!==screen)child.remove();
   let before=true;for(const child of [...next.children]){if(child.classList.contains('movies-screen'))before=false;else if(before)player.insertBefore(child,screen);else player.append(child);}
-  if(!preserveFrame)this.bindPlayer();this.renderDetailError();this.fullscreenChange();
+  if(!preserveFrame&&!preserveVideo)this.bindPlayer();this.renderDetailError();this.fullscreenChange();
  }
  // The one write path for playback progress. A finished title saves 0, and an early report never replaces a saved resume point.
  private saveProgress(time:number){
@@ -997,7 +1004,7 @@ export class MoviesView {
    if(box.top<bottom&&box.height<this.root.clientHeight-bottom)this.root.scrollTop-=bottom-box.top;
   },0);
  };
- private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('button')){event.preventDefault();this.playNext();}};
+ private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('a,button,input,select,textarea,dialog')){event.preventDefault();this.playNext();}};
  pause(){this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();if(this.video){this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="movies-primary" data-action="resume-stream">Resume stream</button></div>';}}
  private stopVideo(){this.cancelNext();this.closeDrawer();this.clearResumePill();if(this.frame)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  dispose(){this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);this.root.remove();document.body.classList.remove('movies-active');}
