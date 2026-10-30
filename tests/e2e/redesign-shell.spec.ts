@@ -236,7 +236,7 @@ test('a tapped tab does not pin the bar open',async({page})=>{
  await expect.poll(async()=>(await bar.boundingBox())!.y).toBeGreaterThanOrEqual(844);
 });
 
-test('reduced motion fades the bar instead of sliding',async({page})=>{
+test('reduced motion hides the bar at once instead of sliding',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
@@ -304,7 +304,8 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
  await expect.poll(()=>alpha(study)).toBeCloseTo(0.06,2);
  expect(await study.evaluate(element=>getComputedStyle(element).color)).toBe('rgb(255, 255, 255)');
  // Hover colour and background change at once: a tab never transitions them, only its transform and its label fade.
- expect(await study.evaluate(element=>getComputedStyle(element).transitionProperty)).not.toMatch(/color|background/);
+ // The exact list: a tab moves its transform and fades its label, and its colour and background change at once.
+ expect(await study.evaluate(element=>getComputedStyle(element).transitionProperty)).toBe('transform, opacity');
  await games.hover();
  // The current tab keeps no lozenge of its own: the pill carries the highlight, and a hover leaves it alone.
  expect(await alpha(games)).toBe(0);

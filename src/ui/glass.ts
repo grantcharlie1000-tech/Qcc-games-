@@ -132,7 +132,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const refraction=isChromiumBrands(brands)?bindRefraction(bar,brands):undefined;
   const stretchable=canStretch(bar);
   let disposed=false;
-  let press:HTMLElement|null=null;
+  // The tab a press began on, and the pointer that began it. Only that pointer can end the press.
+  let press:{tab:HTMLElement;pointerId:number}|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
 
@@ -160,35 +161,46 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const sync=(animate:boolean)=>{if(!press)place(current(),animate);};
 
   // A press moves the pill under the finger and swells it. Keyboard activation sends no pointer events, so it never swells.
-  // The release can land anywhere on the page, so the press listens on the document until it ends.
+  // The release can land anywhere on the page, so the press listens on the document until it ends. Only the pointer that
+  // began the press can end it. A window that loses focus or a page that is hidden ends it too, since no pointer-up may come.
   const down=(event:PointerEvent)=>{
     if(event.button!==0||press)return;
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
-    press=tab;
+    press={tab,pointerId:event.pointerId};
     bar.setAttribute('data-pressing','');
     document.addEventListener('pointerup',up);
     document.addEventListener('pointercancel',cancel);
     document.addEventListener('lostpointercapture',cancel);
+    window.addEventListener('blur',lost);
+    document.addEventListener('visibilitychange',hidden);
     place(tab,false,true);
   };
-  const release=(event:PointerEvent|null,cancelled:boolean)=>{
-    if(!press)return;
-    const tab=press;
-    press=null;
+  const stopListening=()=>{
     document.removeEventListener('pointerup',up);
     document.removeEventListener('pointercancel',cancel);
     document.removeEventListener('lostpointercapture',cancel);
+    window.removeEventListener('blur',lost);
+    document.removeEventListener('visibilitychange',hidden);
+  };
+  const release=(event:PointerEvent|null,cancelled:boolean)=>{
+    if(!press)return;
+    const {tab}=press;
+    press=null;
+    stopListening();
     bar.removeAttribute('data-pressing');
     // A tap ends over the same tab. The point decides, not the target, because a touch keeps its target after the finger leaves.
     const tapped=!cancelled&&!!event&&document.elementFromPoint(event.clientX,event.clientY)?.closest('.ui-tab')===tab;
-    // A completed tap on a tab that selects itself keeps the pill under the finger: its click makes that tab current,
-    // and the observer below follows the change. Anything else springs back to the current tab.
-    if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed')))return;
+    // A completed tap on a tab that selects itself keeps the pill under the finger: its click makes that tab current, and the
+    // observer below follows the change. If the click changes nothing, the pill still sits under the tapped tab, so the next
+    // frame puts it back under the current one. Anything else springs back to the current tab now.
+    if(tapped&&(tab.tagName==='A'||tab.hasAttribute('aria-pressed'))){requestAnimationFrame(()=>sync(false));return;}
     sync(true);
   };
-  const up=(event:PointerEvent)=>release(event,false);
-  const cancel=()=>release(null,true);
+  const up=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(event,false);};
+  const cancel=(event:PointerEvent)=>{if(event.pointerId===press?.pointerId)release(null,true);};
+  const lost=()=>release(null,true);
+  const hidden=()=>{if(document.hidden)release(null,true);};
   bar.addEventListener('pointerdown',down);
 
   // The observer covers the Movies re-render (the nav's innerHTML is replaced) and the aria changes that move the selection.
@@ -209,9 +221,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       observer.disconnect();
       resize?.disconnect();
       bar.removeEventListener('pointerdown',down);
-      document.removeEventListener('pointerup',up);
-      document.removeEventListener('pointercancel',cancel);
-      document.removeEventListener('lostpointercapture',cancel);
+      stopListening();
+      press=null;
       stretch?.cancel();
       refraction?.dispose();
       bar.removeAttribute('data-pressing');
