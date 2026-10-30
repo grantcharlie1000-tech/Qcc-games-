@@ -169,7 +169,7 @@ test('Study tab opens Study Mode',async({page})=>{
  await expect(page.locator('#study-view')).toBeVisible();
 });
 
-test('the phone tab bar is a floating glass island',async({page})=>{
+test('the tab bar is a floating glass island at every width',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  const bar=page.locator('.app-tabbar');
