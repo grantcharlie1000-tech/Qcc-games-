@@ -1,7 +1,7 @@
 import {GAME_IDS} from '../core/types';
 export const MAX_KEY_BYTES=1024*1024;
 export const MAX_BODY_BYTES=2*1024*1024;
-export const SAVE_KEYS:readonly string[]=['settings','favourites',...GAME_IDS.flatMap(id=>['best:'+id,'save:'+id]),...['easy','medium','hard'].map(level=>'best:minesweeper-'+level)];
+export const SAVE_KEYS:readonly string[]=['settings','favourites',...GAME_IDS.flatMap(id=>['best:'+id,'save:'+id]),...['easy','medium','hard','score'].map(level=>'best:minesweeper-'+level)];
 export interface SaveRecord {value:unknown;updated:number}
 export type Saves=Record<string,SaveRecord>;
 export const validUsername=(value:unknown):value is string=>typeof value==='string'&&/^[a-zA-Z0-9_.-]{3,24}$/.test(value);

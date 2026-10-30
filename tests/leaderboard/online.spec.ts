@@ -4,6 +4,7 @@ import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
 import {createAccountsHandler} from '../../src/accounts/server';
+import {create} from '../../src/games/minesweeper/model';
 const database=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];let handle:ReturnType<typeof createLeaderboardHandler>;let accounts:ReturnType<typeof createAccountsHandler>;
 test.beforeAll(async()=>{const connectionString=await database.start();await database.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createLeaderboardHandler(pool);accounts=createAccountsHandler(pool);});
 test.afterAll(async()=>{await pool?.end();await database.stop();});
@@ -19,7 +20,7 @@ async function connect(context:BrowserContext,score:number,username?:string){
 async function appMenu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Account & app settings',exact:true}).click();}
 async function join(page:Page,name:string){
  await page.goto('/#/');await appMenu(page);await page.locator('#menu').getByRole('button',{name:'Leaderboards',exact:true}).click();
- await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(18);
+ await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(19);
  await page.getByLabel('Game',{exact:true}).selectOption('snake');
  await expect(page.locator('.lb-table tbody')).toContainText(name);
 }
@@ -53,16 +54,17 @@ test('opening leaderboards pauses the active game and closing them restores its 
 });
 
 test('a score earned in a real game is published only for the signed-in account',async({page,context})=>{
- await connect(context,0,'Active_Player');await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();
+ await connect(context,0,'Active_Player');await context.addInitScript(board=>localStorage.setItem('pocket-arcade:v1:save:minesweeper',JSON.stringify({version:1,data:{...board,assisted:false}})),create('beginner',7));await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();
  const open=async()=>{await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();};
  await open();await expect(page.locator('.lb-login')).toBeHidden();await page.getByRole('button',{name:'Close leaderboards'}).click();
  await page.locator('.ms-tile[data-index="0"]').click();await expect(page.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
- await open();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('minesweeper-easy');
+ await open();await expect(page.getByLabel('Game',{exact:true})).toHaveValue('minesweeper-score');
  await expect(page.locator('#leaderboard-dialog .lb-you')).toHaveCount(0);await page.getByRole('button',{name:'Close leaderboards'}).click();
  const b=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:minesweeper')!).data);
  for(let i=0;i<b.cells.length;i++)if(b.cells[i]!==-1&&await page.locator(`.ms-tile[data-index="${i}"]`).getAttribute('data-state')!=='open')await page.locator(`.ms-tile[data-index="${i}"]`).click();
  await open();await expect(page.locator('#leaderboard-dialog .lb-you')).toContainText('Active_Player');
- await expect(page.locator('.lb-personal')).toContainText(' s');
+ await expect(page.locator('#leaderboard-dialog .lb-personal')).toHaveText(/Best: [\d,]+$/);
+ await page.getByLabel('Game',{exact:true}).selectOption('minesweeper-easy');await expect(page.locator('#leaderboard-dialog .lb-you')).toContainText('Active_Player');await expect(page.locator('#leaderboard-dialog .lb-personal')).toContainText(' s');
 });
 
 test('guests can read rankings and keep local progress while the sharing action opens account login',async({page,context})=>{

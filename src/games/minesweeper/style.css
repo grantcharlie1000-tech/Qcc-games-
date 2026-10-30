@@ -18,7 +18,7 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 .ms-toolbar{display:grid;grid-template-columns:minmax(0,1fr) 90px 90px 44px;align-items:center;gap:16px;padding:8px 12px;background:#24332a;border-radius:12px;flex-shrink:0}
 .ms-field{display:flex;flex-direction:column;min-width:0;max-width:215px}
 .ms-field>span,.ms-instrument>span{font:600 10px/1.3 system-ui,sans-serif;color:#b6c2ad}
-.ms-field select{min-height:36px;padding:2px 20px 2px 0;width:100%;border:0;background:transparent;font-size:14px;font-weight:650}
+.ms-field select{min-height:44px;padding:2px 20px 2px 0;width:100%;border:0;background:transparent;font-size:14px;font-weight:650}
 .ms-field select option{background:#26372c}
 .ms-instrument{display:flex;flex-direction:column;gap:3px;min-width:0}
 .ms-instrument strong{font:800 22px/1 Arcade,sans-serif;color:#f6e6bf;font-variant-numeric:tabular-nums;letter-spacing:.5px}
@@ -44,6 +44,7 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 .ms-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:#31452d;flex-shrink:0}
 .ms-result strong{font:800 19px/1.2 Arcade,sans-serif;color:#e5efcc}
 .ms-result p{font-size:11px;line-height:1.5;margin:4px 0 0;color:#d0dcbc}
+.ms-result-actions{display:flex;gap:8px;flex-wrap:wrap}
 .ms-result button{background:#d5dfb1;color:#243523;white-space:nowrap}
 .ms[data-status=lost] .ms-result{background:#44382d}
 .ms[data-status=lost] .ms-result strong{color:#f3d6b5}
@@ -94,7 +95,7 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
  .ms-instructions{display:none}
  .ms-outcome{font-size:11px}
  .ms-badge{font-size:10px}
- .ms-result{padding:10px}
+ .ms-result{padding:10px;flex-wrap:wrap}
  .ms-result strong{font-size:16px}
  .ms-result button{padding-inline:10px}
  .ms .ms-settings{margin:auto auto max(12px,env(safe-area-inset-bottom));padding:18px}

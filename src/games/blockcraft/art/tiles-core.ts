@@ -2,6 +2,8 @@
 // art painted in code: a Painter returns the colour of one pixel (x right, y down, both 0..15).
 // Textures use small discrete palettes ("ramps") picked by tileable noise, which gives the crisp,
 // lightly shaded look of classic block games without copying any existing texture.
+import {mulberry32} from '../../../core/random';
+
 export const T=16;
 export type RGBA=[number,number,number,number?];
 /** Paints one pixel of a tile: x,y in 0..15 (y down), n and m are two independent hash values in [0,1). */
@@ -38,10 +40,7 @@ export function hashN(x:number,y:number,salt:number):number{
 }
 export function hashName(name:string){let h=2166136261;for(let i=0;i<name.length;i++)h=Math.imul(h^name.charCodeAt(i),16777619);return h>>>0;}
 /** Seeded generator for painters that build a shape step by step (cracks, fibres). */
-export function rng(seed:number){
-  let a=seed>>>0;
-  return()=>{a=(a+0x6d2b79f5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};
-}
+export const rng=mulberry32;
 
 /** Tileable value noise over the 16×16 tile: lattice cells of cw×ch pixels (each must divide 16), smoothly interpolated. */
 export function valueNoise(x:number,y:number,cw:number,ch:number,salt:number):number{

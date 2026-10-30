@@ -1,5 +1,8 @@
+import {mulberry32} from '../../core/random';
 import {COUNTRIES, NOT_PLAYABLE, AMBIGUOUS} from './countries';
 import table from './data/distances.json';
+
+export {mulberry32};
 
 export type Mode = 'daily' | 'practice';
 export type Band = 'correct' | 'neighbour' | 'very-close' | 'close' | 'far';
@@ -140,16 +143,6 @@ export function aucklandDate(now: Date = new Date()): string {
 const dayNumber = (date: string) => {const [y, m, d] = date.split('-').map(Number); return Date.UTC(y, m - 1, d) / 86400000;};
 export const isDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(dayNumber(value));
 export const previousDate = (date: string) => new Date((dayNumber(date) - 1) * 86400000).toISOString().slice(0, 10);
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 /** Everyone gets the same answer for a date: each cycle of 197 days visits every country once. */
 export function dailyAnswer(date: string): {answer: string; puzzle: number} {
   const offset = dayNumber(date) - EPOCH_DAY, n = IDS.length;

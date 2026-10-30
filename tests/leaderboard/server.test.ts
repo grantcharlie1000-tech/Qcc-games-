@@ -58,3 +58,12 @@ it('freeze rejects leaderboard writes before opening a transaction while public 
   expect((await handler(new Request(endpoint+'?game=snake&view=public'))).status).toBe(200);expect((await pool.query("SELECT score FROM arcade_scores WHERE game_id='snake'")).rows[0].score).toBe(50);
  }finally{vi.unstubAllEnvs();}
 });
+
+it('keeps the Minesweeper score ranking separate from legacy and time scores',async()=>{
+ const token=await signup('ScorePlayer');
+ expect((await submit(token,'ignored',26234,'minesweeper-score')).status).toBe(200);
+ expect((await submit(token,'ignored',0,'minesweeper-score')).status).toBe(400);
+ const score=await (await handle(new Request(endpoint+'?game=minesweeper-score'))).json();
+ expect(score.entries[0].score).toBe(26234);
+ expect((await (await handle(new Request(endpoint+'?game=minesweeper'))).json()).entries).toHaveLength(0);
+});

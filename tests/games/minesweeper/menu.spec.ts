@@ -20,10 +20,9 @@ for(const viewport of [{width:1366,height:768},{width:390,height:844},{width:320
  await page.setViewportSize(viewport);await page.goto('/#/game/minesweeper');await page.locator('.ms-tile[data-index="40"]').click();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const toolbar=await page.locator('.ms-toolbar').boundingBox();expect(toolbar!.height).toBeLessThan(76);
- await page.screenshot({path:`tests/games/minesweeper/evidence/cleanup/game-${viewport.width}.png`});
  await page.getByRole('button',{name:'Open menu',exact:true}).click();const menu=page.getByRole('dialog',{name:'Game options'});await expect(menu).toBeVisible();
  expect(await menu.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
  for(const target of ['.ms-close','.ms-plus','.ms-return']){const button=menu.locator(target);await button.scrollIntoViewIfNeeded();const box=(await button.boundingBox())!;expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(viewport.width);}
- await menu.evaluate(e=>e.scrollTop=0);await page.screenshot({path:`tests/games/minesweeper/evidence/cleanup/options-${viewport.width}.png`});
+ await menu.evaluate(e=>e.scrollTop=0);
  await page.getByRole('button',{name:'Close game options'}).click();await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
 });
