@@ -59,7 +59,7 @@
 
 /* Tab bar: a floating Liquid Glass island at every width. src/ui/tabbar.ts sets data-hidden while the page scrolls down, and src/ui/glass.ts draws the selection pill, the press and, in Chromium, the refraction. */
 /* It sets its own type, since the arcade's global body rule is gone. */
-/* The backdrop is compressed before it is darkened: contrast(.6) pulls its bright end down and lifts its dark end, then brightness(.65) sets the level. Over white the bar reads about 106, so its 90% white labels reach 4.5:1. The pill is 6% white for the same reason: a stronger fill would lift the ground behind the current label past 4.5:1. */
+/* The backdrop is compressed before it is darkened: contrast(.6) pulls its bright end down and lifts its dark end, then brightness(.65) sets the level. Over white the bar reads about 106, so its 90% white labels reach 4.5:1. The glass pill is 6% white for the same reason: a stronger fill would lift the ground behind the current label past 4.5:1. */
 .ui-tabbar{--ease-out:cubic-bezier(.23,1,.32,1);font-family:var(--font-sans);color:var(--c-100);position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));z-index:50;display:flex;align-items:stretch;gap:2px;max-width:440px;margin-inline:auto;min-height:var(--tabbar-h);padding:6px;border:1px solid #ffffff14;border-radius:999px;background:rgb(20 20 24 / .24);-webkit-backdrop-filter:blur(10px) saturate(1.8) contrast(.6) brightness(.65);backdrop-filter:blur(10px) saturate(1.8) contrast(.6) brightness(.65);box-shadow:inset 0 1px 1px rgb(255 255 255 / .55),inset 0 -1px 1px rgb(255 255 255 / .22),inset 1px 0 1px rgb(255 255 255 / .25),inset -1px 0 1px rgb(255 255 255 / .25),inset 0 0 18px rgb(255 255 255 / .12),0 10px 30px -6px rgb(0 0 0 / .55),0 2px 6px rgb(0 0 0 / .35);translate:0 0;scale:1;opacity:1;transform-origin:50% 100%;transition:translate 360ms var(--ease-glass-pop),scale 420ms var(--ease-glass-pop) 80ms,opacity 140ms var(--ease)}
 .ui-tabbar::before{content:'';position:absolute;inset:0;border-radius:inherit;background:radial-gradient(90% 120% at 50% -30%,rgb(255 255 255 / .32),transparent 55%);pointer-events:none}
 /* The selection pill is the bar's own ::after, placed by src/ui/glass.ts. It is not a child, so a Movies re-render leaves it alone. */
@@ -82,11 +82,11 @@
 @media (hover:hover) and (pointer:fine){.ui-tab:not([aria-current="page"]):not([aria-pressed="true"]):hover{color:#fff;background:#ffffff0f}}
 /* Chromium only (glass.ts sets is-refracting and this bar's own filter): the rim bends what is behind the bar. Keep this above the fallbacks, which must win under reduced transparency. */
 .ui-tabbar.is-refracting{-webkit-backdrop-filter:var(--ui-glass-filter) blur(5px) saturate(1.8) contrast(.6) brightness(.65);backdrop-filter:var(--ui-glass-filter) blur(5px) saturate(1.8) contrast(.6) brightness(.65)}
-/* Fallbacks: no backdrop-filter support, reduced transparency and more contrast. */
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-tabbar{background:rgb(18 18 20 / .96)}}
-@media (prefers-reduced-transparency:reduce){.ui-tabbar,.ui-tabbar.is-refracting{background:rgb(18 18 20 / .97);-webkit-backdrop-filter:none;backdrop-filter:none}}
+/* Fallbacks: no backdrop-filter support, reduced transparency and more contrast. Each bar is opaque there, so its pill is 16% white: at the glass 6% it would nearly vanish. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.ui-tabbar{background:rgb(18 18 20 / .96)}.ui-tabbar::after{background:rgb(255 255 255 / .16)}}
+@media (prefers-reduced-transparency:reduce){.ui-tabbar,.ui-tabbar.is-refracting{background:rgb(18 18 20 / .97);-webkit-backdrop-filter:none;backdrop-filter:none}.ui-tabbar::after,.ui-tabbar.is-refracting::after{background:rgb(255 255 255 / .16)}}
 /* More contrast: an opaque bar with white labels. The border stays visible. */
-@media (prefers-contrast:more){.ui-tabbar,.ui-tabbar.is-refracting{border-color:#ffffff66;background:rgb(18 18 20 / .96);-webkit-backdrop-filter:none;backdrop-filter:none}.ui-tab{color:#fff}}
+@media (prefers-contrast:more){.ui-tabbar,.ui-tabbar.is-refracting{border-color:#ffffff66;background:rgb(18 18 20 / .96);-webkit-backdrop-filter:none;backdrop-filter:none}.ui-tabbar::after,.ui-tabbar.is-refracting::after{background:rgb(255 255 255 / .16)}.ui-tab{color:#fff}}
 /* Reduced motion, from the media query or the .reduce-motion class: nothing moves, scales or stretches, and the island appears and
    leaves at once. The global rule near the end of this file sets transition:none, so no transition is declared here. */
 @media (prefers-reduced-motion:reduce){

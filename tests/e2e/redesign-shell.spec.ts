@@ -251,7 +251,7 @@ test('reduced motion hides the bar at once instead of sliding',async({page})=>{
  await expect(bar).toHaveCSS('pointer-events','none');
 });
 
-test('the app reduce-motion setting fades the bar too',async({page})=>{
+test('the app reduce-motion setting hides the bar at once instead of fading',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));

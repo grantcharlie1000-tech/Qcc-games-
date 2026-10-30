@@ -431,6 +431,38 @@ test('more contrast makes the island opaque with white labels, and keeps its bor
   expect(await tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
 });
 
+// The opaque fallbacks lift the pill to 16% white, since at 6% it nearly vanishes against the opaque bar.
+test('the pill is 16% white under more contrast, and 6% without it',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  const bar=page.locator('.app-tabbar');
+  await expect(bar).toBeVisible();
+  const pill=()=>bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
+  await expect.poll(pill).toBe('rgba(255, 255, 255, 0.06)');
+  await page.emulateMedia({contrast:'more'});
+  await expect.poll(pill).toBe('rgba(255, 255, 255, 0.16)');
+  await page.emulateMedia({contrast:null});
+  await expect.poll(pill).toBe('rgba(255, 255, 255, 0.06)');
+});
+
+// Playwright cannot emulate reduced transparency, and every test browser supports backdrop-filter, so both rules are read from the stylesheet.
+test('the reduced-transparency and no-backdrop-filter fallbacks set the pill to 16% white',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/');
+  await expect(page.locator('.app-tabbar')).toBeVisible();
+  const pills=await page.evaluate(()=>{
+    const found:Record<string,string>={};
+    for(const sheet of Array.from(document.styleSheets))for(const rule of Array.from(sheet.cssRules)){
+      if(!(rule instanceof CSSMediaRule||rule instanceof CSSSupportsRule))continue;
+      const pill=Array.from(rule.cssRules).find((inner):inner is CSSStyleRule=>inner instanceof CSSStyleRule&&inner.selectorText.split(',').map(selector=>selector.trim()).includes('.ui-tabbar::after'));
+      if(pill)found[rule instanceof CSSMediaRule?rule.media.mediaText:rule.conditionText]=pill.style.backgroundColor;
+    }
+    return found;
+  });
+  expect(Object.entries(pills).find(([condition])=>condition.includes('prefers-reduced-transparency'))?.[1]).toBe('rgba(255, 255, 255, 0.16)');
+  expect(Object.entries(pills).find(([condition])=>condition.startsWith('not'))?.[1]).toBe('rgba(255, 255, 255, 0.16)');
+});
+
 // A press is keyed to the pointer that began it, so another pointer's release does not end it.
 test('a press ends only with the pointer that began it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
@@ -513,6 +545,32 @@ test('a pointer cancel ends a press, springs the pill back and selects nothing',
   await expect(home).toHaveAttribute('aria-pressed','true');
   await expect(tv).toHaveAttribute('aria-pressed','false');
   await expect(page).toHaveURL(/#\/movies$/);
+});
+
+// A press whose pointer-up never arrived ends at the next primary press on the bar, so the pill cannot stay swollen.
+test('a new press ends a press whose pointer-up never arrived, and the pill follows the tap',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/#/movies');
+  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const home=bar.locator('[data-kind="all"]');
+  const tv=bar.locator('[data-kind="tv"]');
+  const movie=bar.locator('[data-kind="movie"]');
+  await expectPillUnder(bar,home);
+  const tvBox=await boxOf(tv);
+  // Pointer 5 presses TV, and its pointer-up never arrives.
+  await tv.evaluate((el,[x,y])=>el.dispatchEvent(new PointerEvent('pointerdown',{pointerId:5,button:0,bubbles:true,clientX:x,clientY:y})),[tvBox.x+tvBox.width/2,tvBox.y+tvBox.height/2]);
+  await expect(bar).toHaveAttribute('data-pressing','');
+  // Pointer 6 taps Movies. The stale press ends as cancelled, so TV selects nothing and the bar stops pressing.
+  const movieBox=await boxOf(movie);
+  await movie.evaluate((el,[x,y])=>{
+    el.dispatchEvent(new PointerEvent('pointerdown',{pointerId:6,button:0,bubbles:true,clientX:x,clientY:y}));
+    el.dispatchEvent(new PointerEvent('pointerup',{pointerId:6,bubbles:true,clientX:x,clientY:y}));
+  },[movieBox.x+movieBox.width/2,movieBox.y+movieBox.height/2]);
+  await expect(bar).not.toHaveAttribute('data-pressing');
+  await expect(tv).toHaveAttribute('aria-pressed','false');
+  await movie.click();
+  await expect(movie).toHaveAttribute('aria-pressed','true');
+  await expectPillUnder(bar,movie);
 });
 
 test('a touch press shows the press, and lifting on the tab selects it',async({page,browserName})=>{

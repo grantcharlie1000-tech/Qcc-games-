@@ -132,7 +132,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const refraction=isChromiumBrands(brands)?bindRefraction(bar,brands):undefined;
   const stretchable=canStretch(bar);
   let disposed=false;
-  // The tab a press began on, and the pointer that began it. Only that pointer can end the press.
+  // The tab a press began on, and the pointer that began it. Only that pointer's pointer-up or cancel ends the press,
+  // and a new primary press on the bar ends it too.
   let press:{tab:HTMLElement;pointerId:number}|null=null;
   let placedLeft:number|null=null;
   let stretch:Animation|undefined;
@@ -162,9 +163,11 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
 
   // A press moves the pill under the finger and swells it. Keyboard activation sends no pointer events, so it never swells.
   // The release can land anywhere on the page, so the press listens on the document until it ends. Only the pointer that
-  // began the press can end it. A window that loses focus or a page that is hidden ends it too, since no pointer-up may come.
+  // began the press can end it, but a new primary press on the bar ends a stale one, since its pointer-up may never come.
+  // A window that loses focus or a page that is hidden ends it too, for the same reason.
   const down=(event:PointerEvent)=>{
-    if(event.button!==0||press)return;
+    if(event.button!==0)return;
+    if(press)release(null,true);
     const tab=event.target instanceof Element?event.target.closest<HTMLElement>('.ui-tab'):null;
     if(!tab||!bar.contains(tab))return;
     press={tab,pointerId:event.pointerId};
