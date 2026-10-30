@@ -1,6 +1,7 @@
 import './theme.css';
 import './movies/style.css';
 import type {MoviesView} from './movies/view';
+import type {MovieStorage} from './movies/storage';
 import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
 import {uiIcon} from './ui/icons';
@@ -48,6 +49,8 @@ let focusLabelBeforeStudy:string|null=null;
 let accountRoutePending=false;
 let libraryScroll={x:0,y:0};
 let movies:MoviesView|undefined;
+// The saved Movies data is one copy for the page, so it outlives each MoviesView and keeps unsaved changes across a visit to the games.
+let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
@@ -230,8 +233,9 @@ async function route(){
     setChromeInert(true);
     content.innerHTML='<div class="loading"><p>Opening Movies &amp; TV…</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';
     try{
-      const {MoviesView}=await import('./movies/view');if(token!==generation)return;
-      movies=new MoviesView(content,openStudy,preferences.reducedMotion,undefined,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});
+      const [{MoviesView},storage]=await Promise.all([import('./movies/view'),import('./movies/storage')]);if(token!==generation)return;
+      movieStorage??=new storage.MovieStorage();
+      movies=new MoviesView(content,movieStorage,openStudy,preferences.reducedMotion,undefined,{autoNext:()=>preferences.autoNextEpisode,setAutoNext:value=>{preferences.autoNextEpisode=value;store.write('settings',preferences);}});
       movies.navigate(location.hash);
     }catch{if(token===generation)content.innerHTML='<div class="game-error"><p>Movies &amp; TV could not load.</p><a class="game-button secondary" href="#/collection">Back to games</a></div>';}
     return;

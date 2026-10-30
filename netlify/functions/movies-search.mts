@@ -116,19 +116,29 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
     const match=id.match(/^(movie|tv)-([1-9]\d{0,7})$/);
     const seasonNo=integer(url.searchParams.get("season"),1,999);
     if(!match)return response({error:"invalid_title"},400);
+    if(url.searchParams.has("season")&&seasonNo===undefined)return response({error:"invalid_season"},400);
     const kind=match[1] as MediaKind,tmdbId=match[2];
     const detail=await fetchTmdb(`${kind}/${tmdbId}?language=en-US&append_to_response=credits,recommendations`,token,fetcher);
     if(detail instanceof Response)return detail;
+    // A TV detail without a seasons array cannot say which seasons exist, so it is not answered or cached as a title.
+    if(kind==="tv"&&!Array.isArray(detail.seasons))return response({error:"invalid_metadata"},502);
     let seasons:any[]=[];
+    // A bare title request whose default season fails goes out with that season empty, and without the CDN header.
+    let complete=true;
     if(kind==="tv"){
       const summaries=Array.isArray(detail.seasons)?detail.seasons.filter((s:any)=>object(s)&&Number.isInteger(s.season_number)&&s.season_number>0):[];
       seasons=summaries.slice(0,100).map((s:any)=>{const name=typeof s.name==="string"?s.name.trim().slice(0,200):"";return {number:s.season_number,name:name||`Season ${s.season_number}`,episodes:[]};});
       const selected=seasonNo??seasons[0]?.number;
       if(selected&&seasons.some(s=>s.number===selected)){
         const episodeData=await fetchTmdb(`tv/${tmdbId}/season/${selected}?language=en-US`,token,fetcher);
-        if(episodeData instanceof Response)return episodeData;
         const current=seasons.find(s=>s.number===selected);
-        current.episodes=(Array.isArray(episodeData.episodes)?episodeData.episodes:[]).slice(0,300).flatMap((e:any)=>{
+        if(episodeData instanceof Response||!Array.isArray(episodeData.episodes)){
+          // A request that names a season is answered by that season, so its failure is the failure. Only a bare title request
+          // keeps the title with its default season empty.
+          if(url.searchParams.has("season"))return response({error:episodeData instanceof Response?"metadata_unavailable":"invalid_metadata"},502);
+          complete=false;
+        }
+        else current.episodes=episodeData.episodes.slice(0,300).flatMap((e:any)=>{
           if(!object(e)||!Number.isInteger(e.episode_number)||e.episode_number<1||typeof e.name!=="string"||!e.name)return[];
           return [{number:e.episode_number,name:e.name.slice(0,200),overview:typeof e.overview==="string"?e.overview.slice(0,2000):"",runtime:integer(String(e.runtime??""),1,9999),still:artwork(e.still_path,"w300"),airDate:airDate(e.air_date),rating:ratingOf(e.vote_average,e.vote_count)}];
         });
@@ -139,18 +149,20 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
     title.seasons=seasons;
     title.cast=castOf(detail);
     title.related=relatedOf(detail,kind);
-    return response({title},200,cdn);
+    return response({title},200,cdn&&complete);
   }
   const railsName=url.searchParams.get("rails");
   if(railsName!==null){
     const specs=["home","movie","tv"].includes(railsName)?RAILS[railsName as RailName]:undefined;
     if(!specs)return response({error:"invalid_rails"},400);
     const settled=await Promise.allSettled(specs.map(spec=>fetchTmdb(withPage(spec.path,1),token,fetcher)));
-    const failed=settled.filter(result=>result.status==="rejected"||result.value instanceof Response).length;
+    // A rail counts only when TMDB answered with a results array. Any other body is a failed rail.
+    const usable=(result:PromiseSettledResult<unknown>):result is PromiseFulfilledResult<Record<string,any>>=>result.status==="fulfilled"&&!(result.value instanceof Response)&&Array.isArray(object(result.value)?result.value.results:undefined);
+    const failed=settled.filter(result=>!usable(result)).length;
     if(failed===settled.length)return response({error:"metadata_unavailable"},502);
     const rails=specs.flatMap((spec,i)=>{
       const result=settled[i];
-      if(result.status!=="fulfilled"||result.value instanceof Response)return [];
+      if(!usable(result))return [];
       const titles=titlesOf(result.value,spec.kind).slice(0,20);
       return titles.length?[{id:spec.id,title:spec.title,titles}]:[];
     });
@@ -168,6 +180,7 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
     if(!genrePage)return response({error:"invalid_page"},400);
     const genreData=await fetchTmdb(withPage(discoverPath(genreKind,genreId),genrePage),token,fetcher);
     if(genreData instanceof Response)return genreData;
+    if(!Array.isArray(genreData.results))return response({error:"invalid_metadata"},502);
     return response(browseBody(genreData,genrePage,genreKind),200,cdn);
   }
   if(query.length>100)return response({error:"query_too_long"},400);
@@ -181,6 +194,7 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
     :`trending/${kindValue==="all"?"all":kindValue}/week?language=en-US&page=${page}`;
   const data=await fetchTmdb(path,token,fetcher);
   if(data instanceof Response)return data;
+  if(!Array.isArray(data.results))return response({error:"invalid_metadata"},502);
   return response(browseBody(data,page,kindValue==="all"?undefined:kindValue as MediaKind),200,cdn);
 }
 

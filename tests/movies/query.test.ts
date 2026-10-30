@@ -1,5 +1,5 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
-import {cachedJson,clearQueryCache} from '../../src/movies/query';
+import {answersRequest,cachedJson,clearQueryCache} from '../../src/movies/query';
 import {MovieNetworkError} from '../../src/movies/network';
 
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
@@ -161,4 +161,12 @@ it('evicts the least recently stored copy first',async()=>{
  await cachedJson('/api/movies?id=0',signal);
  await cachedJson('/api/movies?id=1',signal);
  expect(fetchMock.mock.calls.map(([url])=>url)).toEqual(['/api/movies?id=1']);
+});
+
+// An answer is used only while the page still wants the request it answers. A genre that was switched away from is dropped.
+it('an answer counts only for the request the page still wants',()=>{
+ expect(answersRequest('g|movie|Drama','g|movie|Drama')).toBe(true);
+ expect(answersRequest('g|movie|Comedy','g|movie|Drama')).toBe(false);
+ expect(answersRequest(undefined,'g|movie|Drama')).toBe(false);
+ expect(answersRequest('q|all|arrival','g|all|Drama')).toBe(false);
 });

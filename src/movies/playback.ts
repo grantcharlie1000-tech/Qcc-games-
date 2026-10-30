@@ -35,6 +35,8 @@ export function failedProviders(key:string,now=Date.now()):Set<StreamProviderId>
  return failed;
 }
 export function clearFailures(key:string){failures.delete(key);}
+// A server that has played is working, so its failure no longer counts for this title.
+function clearFailure(key:string,provider:StreamProviderId){failures.get(key)?.delete(provider);}
 
 // One title's playback. start() begins an attempt. A failed attempt moves on to the next server until
 // the attempt limit, the time budget or the list runs out. A manual pick reports its failure and stops.
@@ -44,6 +46,8 @@ export class PlaybackSupervisor{
  state:AttemptState='idle';
  provider?:StreamProviderId;
  manual=false;
+ // Whether this attempt has reported playback. A failed attempt that played is a stream that stopped, not one that never started.
+ played=false;
  private startedAt?:number;
  private attempts=0;
  private tried=new Set<StreamProviderId>();
@@ -55,7 +59,7 @@ export class PlaybackSupervisor{
   this.disarm();
   this.startedAt??=this.clock.now();
   this.attempts++;this.tried.add(provider);
-  this.provider=provider;this.manual=manual;this.announced=false;
+  this.provider=provider;this.manual=manual;this.announced=false;this.played=false;
   this.arm(LOAD_TIMEOUT,()=>this.fail('no-load'));
   this.enter('connecting');
  }
@@ -69,10 +73,14 @@ export class PlaybackSupervisor{
  }
  message(kind:'ready'|'progress'){
   const provider=this.provider;
-  if(!provider||!LIVE.includes(this.state))return;
+  // A manual pick that failed on its watchdog is still the pick on screen, so its own frame can bring it back. An automatic failure
+  // was replaced by the next server, or it ended the session, so it stays failed.
+  const revive=this.state==='failed'&&this.manual;
+  if(!provider||!(revive||LIVE.includes(this.state)))return;
   this.disarm();
-  if(kind==='ready'){if(this.state==='connecting'||this.state==='loaded')this.enter('ready');return;}
-  if(this.state!=='playing'){this.restartBudget(provider);this.enter('playing');}
+  if(revive)clearFailure(this.key,provider);
+  if(kind==='ready'){if(this.state==='connecting'||this.state==='loaded'||revive)this.enter('ready');return;}
+  if(this.state!=='playing'){this.restartBudget(provider);this.announced=false;this.played=true;this.enter('playing');}
   // A status listener may have stopped or restarted the session; then this attempt no longer reports.
   if(this.state==='playing'&&!this.announced){this.announced=true;this.events.working(provider);}
  }
@@ -80,7 +88,7 @@ export class PlaybackSupervisor{
  violation(){if(LIVE.includes(this.state))this.fail('blocked');}
  stop(){
   this.disarm();
-  this.startedAt=undefined;this.attempts=0;this.tried.clear();this.announced=false;
+  this.startedAt=undefined;this.attempts=0;this.tried.clear();this.announced=false;this.played=false;
   if(this.state!=='idle')this.enter('idle');
  }
  nextProvider(){

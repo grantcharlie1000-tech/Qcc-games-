@@ -117,7 +117,7 @@ describe("full catalog metadata endpoint",()=>{
   expect(result.headers.get("cache-control")).toBe("no-store");
  });
  it("details carry cast and related titles",async()=>{
-  const fetcher=vi.fn(async(_url:RequestInfo|URL)=>new Response(JSON.stringify({id:12,name:"Parent",first_air_date:"2010-07-16",genres:[{id:18,name:"Drama"}],poster_path:"/parent.jpg",overview:"Parent overview",vote_count:9,vote_average:8.2,
+  const fetcher=vi.fn(async(_url:RequestInfo|URL)=>new Response(JSON.stringify({id:12,name:"Parent",first_air_date:"2010-07-16",genres:[{id:18,name:"Drama"}],poster_path:"/parent.jpg",overview:"Parent overview",vote_count:9,vote_average:8.2,seasons:[],
    credits:{cast:[{name:"Ada Actor",character:"Hero",profile_path:"/ada.jpg"},{name:"Bo Bit",character:"",profile_path:null},{name:"",character:"Dropped"},{name:"Cy Crowd",character:"Background"}]},
    recommendations:{results:[{id:55,name:"Sibling Show",first_air_date:"2011-01-01",genre_ids:[18],poster_path:"/sibling.jpg",overview:"Next",vote_count:1,vote_average:6}]}})));
   const result=await handleMoviesCatalog(request("?id=tv-12"),"secret",fetcher);
@@ -204,4 +204,74 @@ it('skips malformed search, season and episode entries',async()=>{
 it('returns a controlled error for malformed detail metadata',async()=>{
  const result=await handleMoviesCatalog(request('?id=tv-41'),'token',async()=>new Response('null'));
  expect(result.status).toBe(502);
+});
+
+// A season outside 1 to 999 is a bad request. It must not fall back to the first season, and nothing is asked upstream.
+it('rejects a season outside 1 to 999 with 400 and asks TMDB for nothing',async()=>{
+ const fetcher=vi.fn(async()=>tmdb([]));
+ for(const query of ["?id=tv-41&season=0","?id=tv-41&season=1000","?id=tv-41&season=abc","?id=tv-41&season=1.5"]){
+  const result=await handleMoviesCatalog(request(query),"secret",fetcher);
+  expect(result.status).toBe(400);expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();
+ }
+ expect(fetcher).not.toHaveBeenCalled();
+});
+
+// A TMDB 200 without a results array is an upstream failure. Caching it would give every viewer an empty list.
+it('answers 502 without the CDN header when a TMDB 200 has no results array, for search, genre and browse',async()=>{
+ const body=async()=>new Response(JSON.stringify({page:1,total_pages:1}),{status:200,headers:{"content-type":"application/json"}});
+ for(const query of ["?q=arrival","?type=movie&genre=Drama","?type=movie"]){
+  const result=await handleMoviesCatalog(request(query),"secret",body);
+  expect(result.status).toBe(502);expect(await result.json()).toEqual({error:"invalid_metadata"});
+  expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();expect(result.headers.get("cache-control")).toBe("no-store");
+ }
+});
+
+// A rail whose body has no results array is a failed rail. Every rail failing is a 502, and a partial answer has no CDN header.
+it('treats a rail without a results array as a failed rail',async()=>{
+ const everyRail=await handleMoviesCatalog(request("?rails=movie"),"secret",async()=>new Response(JSON.stringify({}),{status:200}));
+ expect(everyRail.status).toBe(502);expect(await everyRail.json()).toEqual({error:"metadata_unavailable"});
+ expect(everyRail.headers.get("netlify-cdn-cache-control")).toBeNull();
+ const oneRail=await handleMoviesCatalog(request("?rails=movie"),"secret",async(url:RequestInfo|URL)=>String(url).includes("/movie/now_playing?")?new Response(JSON.stringify({}),{status:200}):railResponse(String(url)));
+ const payload=await oneRail.json();
+ expect(oneRail.status).toBe(200);
+ expect(payload.rails.map((rail:{id:string})=>rail.id)).not.toContain("now-playing");
+ expect(payload.rails).toHaveLength(8);
+ expect(oneRail.headers.get("netlify-cdn-cache-control")).toBeNull();
+});
+
+// A request that names a season is answered by that season, so when the season fails the request fails: 502, and nothing is cached.
+it('a request that names a season answers 502 when that season fails, with no CDN cache',async()=>{
+ const fetcher=vi.fn(async(url:RequestInfo|URL)=>String(url).includes("/season/2?")
+  ?new Response("",{status:500})
+  :new Response(JSON.stringify({id:41,name:"Series",first_air_date:"2020-01-01",genres:[{id:18,name:"Drama"}],poster_path:"/series.jpg",overview:"Series",seasons:[{season_number:1,name:"Season 1"},{season_number:2,name:"Season 2"}]})));
+ const result=await handleMoviesCatalog(request("?id=tv-41&season=2"),"secret",fetcher);
+ expect(result.status).toBe(502);expect(await result.json()).toEqual({error:"metadata_unavailable"});
+ expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();expect(result.headers.get("cache-control")).toBe("no-store");
+});
+
+it('a request that names a season answers 502 when that season has no episodes array',async()=>{
+ const fetcher=vi.fn(async(url:RequestInfo|URL)=>String(url).includes("/season/2?")
+  ?new Response(JSON.stringify({page:1}),{status:200})
+  :new Response(JSON.stringify({id:41,name:"Series",first_air_date:"2020-01-01",genres:[{id:18,name:"Drama"}],poster_path:"/series.jpg",overview:"Series",seasons:[{season_number:1,name:"Season 1"},{season_number:2,name:"Season 2"}]})));
+ const result=await handleMoviesCatalog(request("?id=tv-41&season=2"),"secret",fetcher);
+ expect(result.status).toBe(502);expect(await result.json()).toEqual({error:"invalid_metadata"});
+ expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();
+});
+
+// A bare title request has no season of its own, so its default season may come back empty: 200, and the title is not cached.
+it('a bare title request whose default season fails answers 200 with that season empty and no CDN cache',async()=>{
+ const fetcher=vi.fn(async(url:RequestInfo|URL)=>String(url).includes("/season/1?")
+  ?new Response("",{status:503})
+  :new Response(JSON.stringify({id:41,name:"Series",first_air_date:"2020-01-01",genres:[{id:18,name:"Drama"}],poster_path:"/series.jpg",overview:"Series",seasons:[{season_number:1,name:"Season 1"}]})));
+ const result=await handleMoviesCatalog(request("?id=tv-41"),"secret",fetcher);
+ expect(result.status).toBe(200);
+ expect((await result.json()).title.seasons).toEqual([{number:1,name:"Season 1",episodes:[]}]);
+ expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();
+});
+
+// A TV detail without a seasons array cannot say which seasons exist, so the answer is an upstream failure and is not cached.
+it('answers 502 with no CDN cache when a TV detail has no seasons array',async()=>{
+ const result=await handleMoviesCatalog(request("?id=tv-41"),"secret",async()=>new Response(JSON.stringify({id:41,name:"Series",first_air_date:"2020-01-01",genres:[{id:18,name:"Drama"}],poster_path:"/series.jpg",overview:"Series",seasons:"none"}),{status:200}));
+ expect(result.status).toBe(502);expect(await result.json()).toEqual({error:"invalid_metadata"});
+ expect(result.headers.get("netlify-cdn-cache-control")).toBeNull();expect(result.headers.get("cache-control")).toBe("no-store");
 });

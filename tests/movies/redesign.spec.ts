@@ -1889,7 +1889,8 @@ async function failingSeasonTwo(page:Page){
  await page.route('**/api/movies?*',route=>{
   const url=new URL(route.request().url());
   if(!url.searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
-  if(url.searchParams.get('season')==='2'&&state.failing)return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
+  // A named season that fails answers 502, as movies-search.mts does. The client retries 502 twice before it shows Retry.
+  if(url.searchParams.get('season')==='2'&&state.failing)return route.fulfill({status:502,json:{error:'metadata_unavailable'}});
   return route.fulfill({json:{title:seriesFor('tv-90200','Pill Series',Number(url.searchParams.get('season')||1))}});
  });
  return state;

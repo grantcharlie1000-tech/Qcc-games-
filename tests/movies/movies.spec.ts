@@ -199,7 +199,8 @@ test('external player cannot read the parent document, open popups or navigate t
 
 test('external progress is local, rejects other senders and resumes through documented controls',async({page})=>{
  await page.goto('/#/movies/movie-157336/play');const frame=page.frameLocator('.movies-provider-frame');await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
- await page.evaluate(()=>window.postMessage({event:'frameXTV:timeupdate',currentTime:999},location.origin));
+ // The page's own message reaches its listeners, as a real one would. The handshake waits until the page has handled it before storage is read.
+ await page.evaluate(()=>new Promise<void>(resolve=>{window.addEventListener('message',event=>{if(event.data?.event==='frameXTV:timeupdate'&&event.data.currentTime===999)resolve();});window.postMessage({event:'frameXTV:timeupdate',currentTime:999},location.origin);}));
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBeUndefined();
  const origin=new URL(page.url()).origin;await frame.locator('body').evaluate((_,origin)=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:42},origin),origin);
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBe(42);

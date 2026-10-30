@@ -292,3 +292,78 @@ it('providerOrder puts the remembered server first',()=>{
 it('gives each server the signal it reports',()=>{
  expect(STREAM_PROVIDERS.map(provider=>[provider.id,provider.signals])).toEqual([['framextv','ready'],['vidlink','playback'],['vixsrc','playback'],['vidsrc','none']]);
 });
+
+// A manual pick that missed its watchdog is still the pick on screen, so its own frame can bring it back as working.
+it('a manual pick that failed on its watchdog revives when its own frame reports playback',()=>{
+ const t=fakeClock(),e=events();
+ const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+ sup.start('vixsrc',true);
+ t.advance(LOAD_TIMEOUT);
+ expect(sup.state).toBe('failed');
+ sup.message('progress');
+ expect(sup.state).toBe('playing');
+ expect(e.status).toHaveBeenLastCalledWith('playing','vixsrc');
+ expect(e.working).toHaveBeenCalledTimes(1);expect(e.working).toHaveBeenCalledWith('vixsrc');
+ expect(e.switchTo).not.toHaveBeenCalled();expect(e.exhausted).not.toHaveBeenCalled();
+ // The failure it recorded no longer applies, so this server is not skipped for the title.
+ expect(failedProviders(KEY,t.clock.now())).toEqual(new Set());
+ t.advance(60000);
+ expect(sup.state).toBe('playing');expect(e.switchTo).not.toHaveBeenCalled();expect(t.pending()).toBe(0);
+});
+
+it('a manual pick that failed on its watchdog moves to ready when its own frame reports ready',()=>{
+ const t=fakeClock(),e=events();
+ const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+ sup.start('framextv',true);
+ t.advance(LOAD_TIMEOUT);
+ sup.message('ready');
+ expect(sup.state).toBe('ready');
+ expect(e.working).not.toHaveBeenCalled();expect(t.pending()).toBe(0);
+});
+
+// Only a manual pick comes back. An automatic failure is replaced by the next server, or ends the session.
+it('an automatic failed attempt that was not replaced does not revive from a late message',()=>{
+ const t=fakeClock(),e=events();
+ const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+ sup.start('vixsrc',false);
+ t.advance(LOAD_TIMEOUT);
+ expect(sup.state).toBe('failed');
+ sup.message('progress');sup.message('ready');
+ expect(sup.state).toBe('failed');
+ expect(e.working).not.toHaveBeenCalled();
+});
+
+it('an automatic failed attempt that was replaced does not revive, and its replacement reports for itself',()=>{
+ const t=fakeClock(),{sup,e}=autoPlayer(t.clock);
+ sup.start('framextv',false);
+ t.advance(LOAD_TIMEOUT);
+ expect(sup.provider).toBe('vidlink');expect(sup.state).toBe('connecting');
+ expect(e.status).not.toHaveBeenCalledWith('playing','framextv');
+ sup.message('progress');
+ expect(e.working.mock.calls).toEqual([['vidlink']]);
+ expect(e.status).toHaveBeenLastCalledWith('playing','vidlink');
+});
+
+// The failover note says "stopped" for a stream that had played. The flag must already be set when the failure is reported.
+it('marks an attempt as played once it reports playback, and the failure event sees it',()=>{
+ const t=fakeClock(),e=events();
+ const seen:boolean[]=[];
+ const sup:PlaybackSupervisor=new PlaybackSupervisor(KEY,providerOrder(),{...e,switchTo(){seen.push(sup.played);}},t.clock);
+ sup.start('vidlink',false);sup.loaded();
+ expect(sup.played).toBe(false);
+ sup.message('progress');
+ expect(sup.played).toBe(true);
+ sup.violation();
+ expect(seen).toEqual([true]);
+ sup.start('vixsrc',false);
+ expect(sup.played).toBe(false);
+});
+
+it('an attempt that never reported playback is not played when it fails',()=>{
+ const t=fakeClock(),e=events();
+ const sup=new PlaybackSupervisor(KEY,providerOrder(),e,t.clock);
+ sup.start('framextv',false);sup.loaded();
+ sup.violation();
+ expect(sup.played).toBe(false);
+ expect(e.switchTo).toHaveBeenCalledWith('vidlink','framextv','blocked');
+});

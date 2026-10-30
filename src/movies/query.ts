@@ -54,3 +54,5 @@ export async function cachedJson<T=any>(url:string,signal:AbortSignal,options?:Q
 }
 
 export function clearQueryCache(){cache.clear();}
+// An answer is used only while the page still wants the request it answers. A genre or search the page has moved away from is dropped.
+export const answersRequest=(wantedKey:string|undefined,answerKey:string)=>wantedKey===answerKey;
