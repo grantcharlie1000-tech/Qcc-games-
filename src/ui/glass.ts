@@ -28,13 +28,23 @@ const smoothstep=(t:number)=>t*t*(3-2*t);
 // Unlike the legacy outward smear, this samples inward: the rim magnifies the
 // content inside the lens. Precompute the radial profile once per map.
 function convexProfile(bevel:number,bend:number):number[]{
-  return Array.from({length:129},(_,i)=>{
+  const rays=Array.from({length:129},(_,i)=>{
     const t=Math.max(.0001,i/128),u=1-t,height=Math.pow(1-u**4,.25);
     const slope=u**3/height**3;
     const incidence=Math.atan(slope);
     const refraction=incidence-Math.asin(Math.sin(incidence)/1.5);
-    return -Math.min(bend,Math.tan(refraction)*(3+bevel*.65*height));
+    return Math.min(bend,5*Math.tan(refraction)*(3+bevel*.65*height));
   });
+  // Give the ray field a wider optical depth, then bound its radial derivative.
+  // A sampled coordinate is depth + displacement: its derivative must stay
+  // positive or the texture folds. .62 leaves room for 8-bit quantisation and
+  // bilinear interpolation around curved caps even at DPR 3. Integrating back
+  // from the clear centre also removes the caustic
+  // spike at the rim, without changing the legacy Movies field.
+  const step=bevel/128*.62;
+  for(let i=127;i>=0;i--)rays[i]=Math.min(rays[i],rays[i+1]+step);
+  for(let i=1;i<=128;i++)rays[i]=Math.min(rays[i],rays[i-1]);
+  return rays.map(ray=>-ray);
 }
 // The lens's height field. For each device pixel of a width by height box (in CSS px), it gives the displacement the lens applies there,
 // sampled at the screen's pixel density. The bar is a capsule that sits LENS_MARGIN inside the box. A pixel moves outward along the capsule's normal, by LENS_BEND at the rim (LENS_CAP
@@ -86,7 +96,7 @@ export function lensPng(width:number,height:number,density=1,arcade=false):strin
   canvas.width=pixelWidth;canvas.height=pixelHeight;
   const context=canvas.getContext('2d');
   if(!context)return '';
-  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,arcade?12:LENS_BEVEL,LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
+  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,arcade?14:LENS_BEVEL,LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
   return canvas.toDataURL('image/png');
 }
 // The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.

@@ -79,12 +79,54 @@ test('pointer press lifts the individual button and reduced motion removes the l
   await button.hover();await page.mouse.down();
   await expect(button).toHaveAttribute('data-pressing','');
   await expect.poll(()=>button.evaluate(e=>parseFloat(getComputedStyle(e).scale))).toBeGreaterThanOrEqual(1.08);
+  await expect(button.locator('.ui-glass-lens')).toHaveCSS('backdrop-filter',/blur\(1.5px\)/);
   await page.mouse.move(1,1);await page.mouse.up();
   await expect(button).not.toHaveAttribute('data-pressing');
   await page.emulateMedia({reducedMotion:'reduce'});
   await button.hover();await page.mouse.down();
   await expect(button).toHaveCSS('scale','none');
   await page.mouse.move(1,1);await page.mouse.up();
+});
+
+test('light desktop controls keep dark hover ink and an opaque accessible surface',async({page})=>{
+  await page.setViewportSize({width:1366,height:768});await page.goto('/#/game/fruit-merge');
+  const menu=page.locator('#game-menu');await menu.hover();
+  await expect(menu).toHaveCSS('color','rgb(11, 16, 21)');
+  await expect(menu).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  await page.emulateMedia({contrast:'more'});
+  await expect(menu).toHaveAttribute('data-glass','off');
+  await expect(menu).toHaveCSS('background-color','rgb(241, 243, 245)');
+  await expect(menu).toHaveCSS('color','rgb(11, 16, 21)');
+});
+
+for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density}`,()=>{
+  test.use({deviceScaleFactor:density});
+  test('the home lens treats both halves equally and shares the dock clarity',async({page,browserName})=>{
+    test.skip(browserName!=='chromium','SVG backdrop coverage is a Chromium feature');
+    await page.setViewportSize({width:390,height:844});await page.goto('/');
+    const home=page.locator('.app-tabbar');await expect(home).toHaveClass(/is-refracting/);
+    const homeBlur=await home.locator('.ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
+    await page.addStyleTag({content:'#content{visibility:hidden}body{background:repeating-linear-gradient(90deg,#172b38 0 10px,#dfc9a6 10px 20px)!important}.app-tabbar::after{display:none}.app-tabbar .ui-tab{visibility:hidden}'});
+    const shot=(await home.screenshot({animations:'disabled'})).toString('base64');
+    const rendered=await page.evaluate(async({shot,density})=>{
+      const image=new Image();image.src='data:image/png;base64,'+shot;await image.decode();
+      const c=document.createElement('canvas');c.width=image.width;c.height=image.height;
+      const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);
+      const pixels=ctx.getImageData(0,Math.floor(c.height/2),c.width,1).data;
+      let difference=0,min=255,max=0;
+      for(let x=60*density;x<100*density;x++){
+        for(let channel=0;channel<3;channel++)difference+=Math.abs(pixels[x*4+channel]-pixels[(x+200*density)*4+channel]);
+        min=Math.min(min,pixels[x*4]);max=Math.max(max,pixels[x*4]);
+      }
+      return {difference:difference/(40*density*3),contrast:max-min};
+    },{shot,density});
+    expect(rendered.difference).toBeLessThan(1);
+    expect(rendered.contrast).toBeGreaterThan(80);
+    await page.goto('/#/game/neon-coil');
+    await expect(page.locator('#game-menu')).toHaveClass(/is-refracting/);
+    const gameBlur=await page.locator('#game-menu .ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
+    expect(gameBlur).toBe(homeBlur);
+  });
 });
 
 // Read the actual rendered background under the glyph boxes with the glyphs

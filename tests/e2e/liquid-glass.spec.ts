@@ -714,10 +714,10 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
   expect(tint).toBeGreaterThanOrEqual(.35);expect(tint).toBeLessThanOrEqual(.55);
-  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.12);
+  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.08);
   const frost=await frostFilter(bar);
-  expect(frost).toContain(await bar.getAttribute('data-glass')==='frost'?'blur(5px)':'blur(3px)');
-  expect(frost).toContain('saturate(1.7) brightness(1.06)');expect(frost).not.toContain('contrast(');
+  expect(frost).toContain('blur(2.5px)');
+  expect(frost).toContain('saturate(1.4) brightness(1.02)');expect(frost).not.toContain('contrast(');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toBe('none');
@@ -772,18 +772,19 @@ test('more contrast makes the arcade island opaque with dark ink, while Movies r
   await expect.poll(()=>tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
 });
 
-// The pill is a light lens (at least 12% white) in every mode, so the opaque fallbacks keep a fill of their own.
-test('the pill is at least 12% white with or without more contrast',async({page})=>{
+// A pale regular lens uses a subtly darker selection. Opaque accessibility
+// surfaces keep the stronger legacy selection fill.
+test('the arcade pill has a grey selection and keeps its stronger opaque fallback',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   const pill=()=>bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
-  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
+  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.08);
   await page.emulateMedia({contrast:'more'});
   await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
   await page.emulateMedia({contrast:null});
-  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
+  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.08);
 });
 
 // Playwright cannot emulate reduced transparency, and every test browser supports backdrop-filter, so both rules are read from the stylesheet.
@@ -1023,14 +1024,16 @@ test('a press on the island that Movies left behind does nothing',async({page})=
   expect(await page.evaluate(()=>(window as Window&{__island?:HTMLElement}).__island!.style.getPropertyValue('--ui-pill-on'))).toBe('');
 });
 
-// The specular layer masks a thin edge, with two bright arcs and faint sides.
+// The specular layer masks a thin edge, with two bright arcs and a continuous rim.
 test('the arcade rim has two directional specular arcs around a clear centre',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const rim=page.locator('.app-tabbar > .ui-glass-glow');
   await expect(rim).toBeVisible();
   const style=await rim.evaluate(el=>{const s=getComputedStyle(el);return {image:s.backgroundImage,mask:s.maskComposite,padding:s.paddingTop};});
   expect(style.image).toContain('conic-gradient');
-  expect(style.image).toContain('0.85');expect(style.image).toContain('0.65');
+  const alphas=[...style.image.matchAll(/rgba\(255, 255, 255, ([\d.]+)\)/g)].map(match=>Number(match[1]));
+  expect(Math.min(...alphas)).toBeGreaterThanOrEqual(.35);
+  expect(alphas.filter(alpha=>alpha>=.85)).toHaveLength(2);
   expect(style.mask).toContain('exclude');expect(parseFloat(style.padding)).toBeLessThanOrEqual(1);
 });
 

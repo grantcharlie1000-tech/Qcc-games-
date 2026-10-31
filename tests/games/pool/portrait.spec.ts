@@ -39,6 +39,9 @@ test('rotating the viewport cancels a held pull without changing the rack',async
   await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y);await expect(page.locator('.pool-game')).toHaveAttribute('data-gesture','pull');
   await page.setViewportSize({width:844,height:390});await page.mouse.up();
   await expect(page.locator('.pool-game')).toHaveAttribute('data-gesture','idle');expect((await state(page)).shots).toBe(0);expect((await state(page)).balls).toEqual(before.balls);
+  // Pointer cancellation can finish before the browser dispatches the media
+  // query change. Wait for that existing orientation state before measuring.
+  await expect(page.locator('.pool-game')).toHaveAttribute('data-portrait','false');
   const box=(await page.locator('.pool-table').boundingBox())!;expect(box.width/box.height).toBeCloseTo(840/440,2);
 });
 

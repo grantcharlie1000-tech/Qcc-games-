@@ -20,8 +20,22 @@ async function capture(page,id,format,errors){
   const d=geometry.dock,v=page.viewportSize();
   if(!d)throw new Error('Dock has no capture rectangle');
   const x=Math.max(0,d.x-24),y=Math.max(0,d.y-24);
-  await page.screenshot({path:dockPath,clip:{x,y,width:Math.min(v.width,d.x+d.width+24)-x,height:Math.min(v.height,d.y+d.height+24)-y},animations:'disabled'});
-  results.push({id,format,path,dockPath,errors,...geometry});
+  const clip={x,y,width:Math.min(v.width,d.x+d.width+24)-x,height:Math.min(v.height,d.y+d.height+24)-y};
+  await page.screenshot({path:dockPath,clip,animations:'disabled'});
+  let press;
+  if(format==='mobile'&&['neon-coil','fruit-merge'].includes(id)){
+    const menu=page.locator('#game-menu'),box=await menu.boundingBox();
+    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();
+    const pressPath=`${directory}/press-${geometry.tone}.png`;
+    // Finish the finite CSS transition while keeping the pointer held. Releasing
+    // outside the control cancels the press without opening the game menu.
+    await page.screenshot({path:pressPath,clip,animations:'disabled'});
+    press={path:pressPath,...await menu.evaluate(e=>({scale:getComputedStyle(e).scale,held:e.hasAttribute('data-pressing'),filter:getComputedStyle(e.querySelector('.ui-glass-lens')).backdropFilter}))};
+    await page.mouse.move(0,0);await page.mouse.up();
+    const scale=Number(press.scale);
+    if(!press.held||!Number.isFinite(scale)||scale<1.08)throw new Error('Pressed capture did not hold a lifted control');
+  }
+  results.push({id,format,path,dockPath,press,errors,...geometry});
   console.log(`${id} ${format}: captured full view + dock${errors.length?' — '+errors.join('; '):''}`);
 }
 try{
@@ -78,7 +92,24 @@ try{
         case 'animal-stack':await click(page.locator('.animal-stack__drop'));await page.waitForFunction(()=>!document.querySelector('.animal-stack__drop')?.disabled);break;
         case 'flappy-bird':await click(page.locator('.fb-start'));await page.clock.runFor(250);await click(page.locator('.fb-flap'));await page.clock.runFor(250);break;
         case 'globle':await page.locator('.gl-globe[data-land="ready"]').waitFor({timeout:60000});await page.getByLabel('Country name',{exact:true}).fill('Australia');await click(page.locator('.gl-submit'));await page.locator('.gl-guess').first().waitFor();await page.locator('.gl-globe[data-rendering="false"]').waitFor();break;
-        case 'blockcraft':await page.waitForFunction(()=>document.querySelector('.blockcraft')?.getAttribute('data-ready')==='true',null,{timeout:60000});await click(page.getByRole('button',{name:'Play',exact:true}));await page.waitForFunction(()=>document.querySelector('.blockcraft')?.getAttribute('data-phase')==='playing');break;
+        case 'blockcraft':{
+          await page.waitForFunction(()=>document.querySelector('.blockcraft')?.getAttribute('data-ready')==='true',null,{timeout:60000});
+          await click(page.getByRole('button',{name:'Play',exact:true}));
+          await page.waitForFunction(()=>document.querySelector('.blockcraft')?.getAttribute('data-phase')==='playing');
+          // Look down using the real controls so terrain, rather than uniform
+          // sky, crosses the top dock and exposes its edge refraction.
+          if(mobile){
+            const cdp=await context.newCDPSession(page);
+            await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:280,y:280,id:1}]});
+            for(let n=1;n<=10;n++)await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:280,y:280+n*20,id:1}]});
+            await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();
+          }else{
+            await page.mouse.move(683,384);
+            for(let n=1;n<=12;n++)await page.mouse.move(683,384+n*28);
+          }
+          await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+          break;
+        }
         case 'maze-muncher':await click(page.locator('.mm-start'));await page.clock.runFor(2500);break;
         case 'corn-clicker':for(let n=0;n<3;n++)await click(page.locator('.cc-cob'));if(await page.locator('.cc-tip-done').isVisible())await click(page.locator('.cc-tip-done'));break;
         case 'slipline':{
