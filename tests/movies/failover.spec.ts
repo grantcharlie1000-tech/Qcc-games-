@@ -413,7 +413,7 @@ test('late ready and playback messages cannot revive a failed FrameXTV attempt',
  await page.evaluate(()=>{(window as Window&{oldFrame?:Window|null}).oldFrame=document.querySelector<HTMLIFrameElement>('.movies-provider-frame')!.contentWindow;});
  await page.clock.runFor(12000);
  await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
- await page.evaluate(()=>{for(const data of [{event:'frameXTV:ready'},{event:'frameXTV:timeupdate',currentTime:42,duration:100}])window.dispatchEvent(new MessageEvent('message',{origin:'https://framextv.cc',source:(window as Window&{oldFrame?:Window|null}).oldFrame,data}));});
+ await page.evaluate(()=>{for(const data of [{event:'frameXTV:ready'},{event:'frameXTV:timeupdate',currentTime:42,duration:100}]){const event=new MessageEvent('message',{origin:'https://framextv.cc',data});Object.defineProperty(event,'source',{value:(window as Window&{oldFrame?:Window|null}).oldFrame});window.dispatchEvent(event);}});
  await expect(providerFrame(page)).toHaveCount(0);
  expect((await stored(page)).provider).toBeUndefined();
  expect((await stored(page)).progress['movie-157336']).toBeUndefined();
