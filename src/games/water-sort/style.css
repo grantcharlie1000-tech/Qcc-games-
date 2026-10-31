@@ -4,3 +4,8 @@
 @media(max-height:500px){.ws-game{padding-bottom:5px}.ws-heading{flex-basis:83px;padding-top:23px}.ws-level-name{font-size:20px}.ws-difficulty{font-size:9px}.ws-level{bottom:5px}.ws-footer{flex-basis:69px}.ws-message{font-size:8px;line-height:9px;margin:0 44px;height:18px;min-height:18px}.ws-actions{padding-top:0}.ws-actions button{width:40px;height:40px;padding:7px}.ws-actions button span{top:41px;font-size:9px}.ws-tubes{inset:14% 0 0}.ws-victory strong{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.ws-bubbles{display:none}.ws-victory{animation-duration:500ms}.ws-stream{display:none}}
 .ws-game[data-reduced=true] .ws-bubbles{display:none}.ws-game[data-reduced=true] .ws-victory{animation-duration:500ms}
+
+/* Level and difficulty are in the dock/menu; tubes use the recovered space. */
+.ws-game{padding:0 8px 8px}.ws-heading{display:none}
+.ws-tubes{inset:8% 0 3%}.ws-footer{flex-basis:118px}
+@media(max-height:500px){.ws-footer{flex-basis:82px}.ws-actions button{width:44px;height:44px}.ws-actions button span{top:46px}.ws-tubes{inset:4% 0 0}}

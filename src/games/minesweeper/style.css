@@ -1,11 +1,5 @@
 /* One quiet toolbar, a readable field, and secondary controls in a native dialog. */
 body.in-game .game-view[data-game-id=minesweeper]{padding:8px 12px max(12px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
-body.in-game .game-view[data-game-id=minesweeper] .game-toolbar{max-width:960px;flex-basis:48px}
-body.in-game .game-view[data-game-id=minesweeper] .game-toolbar h1{font-size:19px;color:#e4e9d9}
-body.in-game .game-view[data-game-id=minesweeper] .game-toolbar .icon-button{min-width:44px;min-height:44px}
-body.in-game .game-view[data-game-id=minesweeper] .game-metrics,
-body.in-game .game-view[data-game-id=minesweeper] #game-status,
-body.in-game .game-view[data-game-id=minesweeper] #pause-game{display:none}
 body.in-game .game-view[data-game-id=minesweeper] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=minesweeper] #game-stage{height:100%;max-height:none}
 body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#18231f}
@@ -103,3 +97,8 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 @media(max-height:500px){.ms-intro{display:none}.ms{gap:5px}.ms .ms-settings{max-height:calc(100dvh - 16px);margin:8px auto}}
 @media(prefers-reduced-motion:reduce){.ms *,.ms *::before,.ms *::after{animation:none!important;transition:none!important}}
 .reduce-motion .ms *,.reduce-motion .ms *::before,.reduce-motion .ms *::after{animation:none!important;transition:none!important}
+
+/* Flags/time are mirrored in the dock; settings are in the expanded menu. */
+.ms-toolbar{display:none}
+.ms-frame{border:0;background:transparent;box-shadow:none}
+.ms-bottom{justify-content:center}.ms-instructions{display:none}

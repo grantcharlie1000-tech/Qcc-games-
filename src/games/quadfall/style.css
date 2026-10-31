@@ -59,3 +59,17 @@
  .qf-next{height:108px}.qf-next canvas{height:80px}.qf-stats{height:50px}
 }
 @media(max-width:360px){body.in-game .game-view[data-game-id=quadfall] .game-toolbar{gap:0}}
+
+/* Score/level are in the dock; Hold and Next remain adjacent to the board. */
+.qf-game{padding:8px;border:0;border-radius:16px;gap:8px;--qf-board-h:min(760px,calc(100cqh - 8px),calc((100cqw - 308px)*2))}
+.qf-stats,.qf-guide{display:none}
+.game-view[data-touch-controls=false] .qf-pad{display:none}
+.game-view[data-touch-controls=true] .qf-pad{display:grid}
+.game-view[data-touch-controls=true] .qf-game{--qf-board-h:min(760px,calc(100cqh - 108px),calc((100cqw - 308px)*2))}
+@media(max-width:599px){
+ .qf-game{--qf-board-h:min(calc(100cqh - 68px),calc((100cqw - 8px)*2))}
+ .game-view[data-touch-controls=true] .qf-game{--qf-board-h:min(calc(100cqh - 168px),calc((100cqw - 8px)*2))}
+ .qf-side{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-height:500px) and (orientation:landscape){.qf-game,.game-view[data-touch-controls=true] .qf-game{--qf-board-h:calc(100cqh - 8px)}}
+@media(max-height:650px) and (orientation:portrait) and (max-width:599px){.game-view[data-touch-controls=true] .qf-game{--qf-board-h:calc(100cqh - 102px)}.qf-game{--qf-board-h:calc(100cqh - 8px)}}

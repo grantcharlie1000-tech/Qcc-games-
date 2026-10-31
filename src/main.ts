@@ -6,6 +6,7 @@ import {collectionHash,entryHash,entryFromHash} from './core/navigation';
 import mauriMark from './assets/mauri-mark.svg?raw';
 import {uiIcon} from './ui/icons';
 import {autoHideTabbar} from './ui/tabbar';
+import {bindGameChrome} from './ui/game-chrome';
 import {openSheet} from './ui/sheet';
 import {trackInputMode} from './ui/focus';
 import './style.css';
@@ -23,7 +24,6 @@ import {AccountsClient} from './accounts/client';
 import {AccountsView} from './accounts/view';
 import {LeaderboardView} from './leaderboard/view';
 import {SCORED_GAMES,MINESWEEPER_RANKINGS,scoredGame} from './leaderboard/shared';
-import {LeaderboardSidebar} from './leaderboard/sidebar';
 
 const icon=(name:string)=>{
   const paths:Record<string,string>={menu:'<path d="M4 7h16M4 12h10"/>',back:'<path d="m14 5-7 7 7 7M7 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',fullscreen:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',exitfs:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
@@ -44,7 +44,8 @@ const preferences=store.settings();
 const accounts=new AccountsClient();
 const accountView=new AccountsView(accounts,()=>{if(activeId)setPaused(true);},finishEntry);
 const leaderboards=new LeaderboardView(()=>{pausedForDialog=false;if(activeId)setPaused(true);accountView.open();});
-let leaderboardSidebar:LeaderboardSidebar|undefined;
+let gameMenu:HTMLDialogElement|undefined;
+let gameChrome:ReturnType<typeof bindGameChrome>|undefined;
 let onlyFavourites=false, search='', instance:GameInstance|undefined, activeId:GameId|undefined;
 let paused=false, generation=0, autosave:number|undefined, pausedForDialog=false;
 let initialized=false, resumeAfterStudy=false, focusBeforeStudy:HTMLElement|null=null, scrollBeforeStudy={x:0,y:0};
@@ -130,7 +131,8 @@ function leave(saveProgress=true){
   setChromeInert(false);
   tabbar.reset();
   detachFullscreen?.();detachFullscreen=undefined;
-  leaderboardSidebar?.dispose();leaderboardSidebar=undefined;
+  gameChrome?.dispose();gameChrome=undefined;
+  gameMenu?.close();gameMenu=undefined;
   stopFitting?.();stopFitting=undefined;
   if(saveProgress){save();void accounts.flush(false,false).catch(()=>{});if(!document.hidden)void leaderboards.sync.flush().catch(()=>{});}instance?.dispose();instance=undefined;activeId=undefined;
   clearInterval(autosave);paused=false;pausedForDialog=false;
@@ -167,7 +169,7 @@ function setPaused(value:boolean):boolean {
   if(!instance)return true;
   value?instance.pause():instance.resume();
   const button=document.querySelector<HTMLButtonElement>('#pause-game');
-  if(button){button.innerHTML=icon(value?'play':'pause');button.setAttribute('aria-label',value?'Resume game':'Pause game');}
+  if(button){button.innerHTML=icon(value?'play':'pause')+`<span>${value?'Keep playing':'Pause game'}</span>`;button.setAttribute('aria-label',value?'Resume game':'Pause game');}
   const overlay=document.querySelector<HTMLElement>('#pause-overlay');if(overlay)overlay.hidden=!value;
   return value?save():true;
 }
@@ -201,7 +203,7 @@ function openStudy(advance=false){
   resumeAfterStudy=!!activeId&&(!paused||pausedForDialog);
   const saved=setPaused(true); // Pause and serialize synchronously, before painting the chapter.
   pausedForDialog=false;
-  if(menu.open)menu.close();if(rulesDialog.open)rulesDialog.close();if(leaderboards.root.open)leaderboards.root.close();
+  if(menu.open)menu.close();if(rulesDialog.open)rulesDialog.close();if(leaderboards.root.open)leaderboards.root.close();if(gameMenu?.open)gameMenu.close();
   if(advance)study.advanceArticle();
   hideArcade();study.showArticle(studyMessage(saved));
 }
@@ -260,18 +262,44 @@ async function route(){
   if(!id){library();if(wasInMovies)requestAnimationFrame(()=>{window.scrollTo(movieScroll.x,movieScroll.y);tabbar.reset();document.querySelector<HTMLElement>('.app-tabbar .ui-tab[href="#/collection"]')?.focus({preventScroll:true});});if(wasInGame)requestAnimationFrame(()=>{if(!activeId){window.scrollTo(libraryScroll.x,libraryScroll.y);tabbar.reset();}});return;}
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
-    <div class="game-toolbar">
-      <a class="icon-button" href="${collectionHash}" aria-label="Back to game library">${icon('back')}</a><h1 id="game-title">${info.title}</h1>
-      <button id="favourite-game" class="icon-button" aria-label="Favourite ${info.title}" aria-pressed="${store.favourites().includes(id)}">${icon('star')}</button>
-      <button id="pause-game" class="icon-button" aria-label="Pause game">${icon('pause')}</button>
-      <button id="restart-game" class="icon-button" aria-label="Restart game">${icon('restart')}</button>
-      <button id="rules-game" class="icon-button" aria-label="Game rules">${icon('rules')}</button>
-      <button id="fullscreen-game" class="icon-button" type="button" aria-label="Enter full screen" aria-pressed="false" title="Enter full screen">${icon('fullscreen')}</button>
-      <button id="game-menu" class="icon-button game-menu-button" aria-label="Open menu">${icon('menu')}</button>
-    </div>
-    <div class="game-metrics"><span id="game-score"><span class="metric-label">${referenceGames.has(id)?id==='animal-stack'?'SOLO':'SCORE':'Score'}</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">${referenceGames.has(id)?'RECORD':'Best'}</span><strong>${store.highScore(id)}</strong><svg class="record-crown" viewBox="0 0 28 12" aria-hidden="true"><path d="m2 9-1-7 7 4 6-6 6 6 7-4-1 7z" fill="currentColor"/></svg></span></div>
+    <nav class="game-dock ui-tabbar" aria-label="Game controls">
+      <a class="ui-tab" href="${collectionHash}" aria-label="Back to game library">${icon('back')}<span>Games</span></a>
+      <div class="game-hud" aria-label="Game information"></div>
+      <button id="game-menu" class="ui-tab" type="button" aria-label="Open menu" aria-haspopup="dialog" aria-expanded="false">${icon('pause')}<span>Menu</span></button>
+    </nav>
+    <dialog id="game-options" class="ui-glass-sheet game-chrome-menu" aria-labelledby="game-title">
+      <form method="dialog" class="dialog-head"><div><p class="game-menu-eyebrow">GAME MENU</p><h1 id="game-title">${info.title}<span class="sr-only"> menu</span></h1></div><button class="icon-button" aria-label="Close game menu">${icon('close')}</button></form>
+      <div class="game-metrics"><span id="game-score"><span class="metric-label">Score</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">Best</span><strong>${store.highScore(id)}</strong></span></div>
+      <div class="game-menu-options"></div>
+      <div class="game-menu-actions">
+        <button id="pause-game" class="game-menu-action" aria-label="Pause game">${icon('pause')}<span>Pause game</span></button>
+        <button id="restart-game" class="game-menu-action" aria-label="Restart game">${icon('restart')}<span>Restart</span></button>
+        <button id="rules-game" class="game-menu-action" aria-label="Game rules">${icon('rules')}<span>How to play</span></button>
+        <button id="favourite-game" class="game-menu-action" aria-label="Favourite ${info.title}" aria-pressed="${store.favourites().includes(id)}">${icon('star')}<span>Favourite</span></button>
+        <button id="fullscreen-game" class="game-menu-action" type="button" aria-label="Enter full screen" aria-pressed="false" title="Enter full screen">${icon('fullscreen')}<span>Full screen</span></button>
+        <button id="game-settings" class="game-menu-action">${icon('menu')}<span>Settings</span></button>
+        <button id="game-rankings" class="game-menu-action">${icon('star')}<span>Leaderboards</span></button>
+        <button id="game-local-options" class="game-menu-action" hidden>Game options</button>
+      </div>
+      <label class="game-touch-setting" hidden><span>Show touch controls</span><input id="game-touch-controls" type="checkbox"></label>
+    </dialog>
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
     <p id="game-status" role="status"${id==='pool'?' aria-hidden="true"':''}></p></section>`;
+  gameMenu=document.querySelector<HTMLDialogElement>('#game-options')!;
+  const currentMenu=gameMenu,view=document.querySelector<HTMLElement>('.game-view')!,menuButton=document.querySelector<HTMLButtonElement>('#game-menu')!;
+  const closeGameMenu=()=>{menuButton.setAttribute('aria-expanded','false');currentMenu.close();};
+  const transferDialog=(open:()=>void)=>{const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();open();pausedForDialog=resume;};
+  const activateOption=(action:()=>void)=>{
+    const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();
+    setPaused(false);action();if(!resume)setPaused(true);
+  };
+  currentMenu.addEventListener('close',()=>{if(token!==generation)return;menuButton.setAttribute('aria-expanded','false');dialogClosed();});
+  menuButton.addEventListener('click',()=>{
+    gameChrome?.options(currentMenu.querySelector<HTMLElement>('.game-menu-options')!,activateOption);
+    pausedForDialog=!paused;setPaused(true);menuButton.setAttribute('aria-expanded','true');openSheet(currentMenu,menuButton);
+  });
+  document.querySelector('#game-settings')!.addEventListener('click',()=>transferDialog(()=>openMenu(menuButton)));
+  document.querySelector('#game-rankings')!.addEventListener('click',()=>transferDialog(()=>leaderboards.open(id==='minesweeper'?'minesweeper-score':id)));
   const fullscreenButton=document.querySelector<HTMLButtonElement>('#fullscreen-game')!;
   detachFullscreen=attachFullscreen(fullscreenButton,state=>{
     fullscreenButton.setAttribute('aria-pressed',String(state.expanded));
@@ -279,18 +307,17 @@ async function route(){
     const hint='This browser keeps its own controls. The game fills the screen.';
     fullscreenButton.setAttribute('aria-label',state.fallback&&state.expanded?`${label}. ${hint}`:label);
     fullscreenButton.title=state.fallback&&state.expanded?hint:label;
-    fullscreenButton.innerHTML=icon(state.expanded?'exitfs':'fullscreen');
+    fullscreenButton.innerHTML=icon(state.expanded?'exitfs':'fullscreen')+`<span>${label}</span>`;
   },()=>{
     if(!activeId||study.isOpen)return;
     // Some browsers consume Escape when they leave fullscreen. Give any open
     // dialog its usual cancel behavior before treating that exit as Study.
-    const dialog=accountView.root.open?accountView.root:menu.open?menu:rulesDialog.open?rulesDialog:leaderboards.root.open?leaderboards.root:undefined;
+    const dialog=accountView.root.open?accountView.root:menu.open?menu:rulesDialog.open?rulesDialog:gameMenu?.open?gameMenu:leaderboards.root.open?leaderboards.root:undefined;
     if(dialog){const cancel=new Event('cancel',{cancelable:true});if(dialog.dispatchEvent(cancel))dialog.close();return;}
     if(instance?.dismissMenu?.())return;
     openStudy(true);
   });
-  if(LeaderboardSidebar.supports(id))leaderboardSidebar=new LeaderboardSidebar(id,info.title,leaderboards.sync,()=>{pausedForDialog=!paused;setPaused(true);leaderboards.open(id);});
-  document.querySelector('#game-menu')!.addEventListener('click',event=>{if(instance?.openMenu)instance.openMenu();else openMenu(event.currentTarget as Element);});
+  fullscreenButton.addEventListener('click',closeGameMenu);
   try {
     const loaded=await loadGame(id);if(token!==generation)return;
     let newRecordFlushed=false;
@@ -321,15 +348,34 @@ async function route(){
     });
     if(token!==generation){mounted.dispose();return;}
     instance=mounted;
+    gameChrome=bindGameChrome(view,id);
+    const localOptions=currentMenu.querySelector<HTMLButtonElement>('#game-local-options')!;
+    localOptions.hidden=!instance.openMenu;
+    localOptions.addEventListener('click',()=>{
+      // A native game menu remembers its own resume intent. Preserve an explicit pause.
+      const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();
+      if(resume)setPaused(false);
+      instance?.openMenu?.();
+    });
+    if(['snake','maze-muncher','quadfall'].includes(id)){
+      const touch=currentMenu.querySelector<HTMLInputElement>('#game-touch-controls')!;
+      touch.parentElement!.hidden=false;touch.checked=matchMedia('(any-pointer:coarse)').matches;
+      view.dataset.touchControls=String(touch.checked);
+      touch.addEventListener('change',()=>{view.dataset.touchControls=String(touch.checked);window.dispatchEvent(new Event('resize'));});
+    }
     const saved=store.savedGame(id);
     if(saved!==undefined){try{instance.restore(saved);}catch{announce('The previous save was not compatible. Starting a fresh game.');}}
     if(!referenceGames.has(id)&&!fillGames.has(id))stopFitting=fitGameStage(stage,stage.parentElement!);
-    document.querySelector('#pause-game')!.addEventListener('click',()=>setPaused(!paused));
+    document.querySelector('#pause-game')!.addEventListener('click',()=>{pausedForDialog=false;closeGameMenu();setPaused(!paused);});
     document.querySelector('#resume-game')!.addEventListener('click',()=>setPaused(false));
-    document.querySelector('#restart-game')!.addEventListener('click',()=>{if(instance?.restart()===false)return;newRecordFlushed=false;setPaused(false);save();});
+    document.querySelector('#restart-game')!.addEventListener('click',()=>{
+      const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();
+      if(instance?.restart()===false){if(resume)setPaused(false);return;}
+      newRecordFlushed=false;setPaused(false);save();
+    });
     document.querySelector('#rules-game')!.addEventListener('click',event=>{
-      pausedForDialog=!paused;setPaused(true);
-      document.querySelector('#rules-text')!.textContent=loaded.rules;openSheet(rulesDialog,event.currentTarget as Element);
+      const resume=pausedForDialog||!paused;setPaused(true);
+      transferDialog(()=>{document.querySelector('#rules-text')!.textContent=loaded.rules;openSheet(rulesDialog,event.currentTarget as Element);});pausedForDialog=resume;
     });
     document.querySelector('#favourite-game')!.addEventListener('click',event=>{
       const selected=store.toggleFavourite(id);
@@ -337,11 +383,11 @@ async function route(){
       announce(selected?'Added to favourites':'Removed from favourites');storageStatus();
     });
     autosave=window.setInterval(()=>{if(!paused&&!document.hidden)save();},5000);
-    if(paused||study.isOpen||document.hidden||menu.open||rulesDialog.open||leaderboards.root.open){
-      if(!document.hidden&&(menu.open||rulesDialog.open))pausedForDialog=true;
+    if(paused||study.isOpen||document.hidden||menu.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open){
+      if(!document.hidden&&(menu.open||rulesDialog.open||gameMenu?.open))pausedForDialog=true;
       setPaused(true);
     }
-    if(!study.isOpen&&!menu.open&&!rulesDialog.open&&!leaderboards.root.open)stage.focus();
+    if(!study.isOpen&&!menu.open&&!rulesDialog.open&&!gameMenu?.open&&!leaderboards.root.open)stage.focus();
   }catch(error){
     if(token!==generation)return;
     const stage=document.querySelector('#game-stage')!;
@@ -359,7 +405,7 @@ function openMenu(trigger?:Element|null){
 document.querySelector('.app-tabbar [data-action="menu"]')!.addEventListener('click',event=>openMenu(event.currentTarget as Element));
 document.querySelector('.app-tabbar [data-action="study"]')!.addEventListener('click',()=>openStudy());
 function dialogClosed(){
-  if(menu.open||rulesDialog.open||leaderboards.root.open||accountView.root.open)return;
+  if(menu.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open||accountView.root.open)return;
   const resume=pausedForDialog;pausedForDialog=false;
   if(resume&&!study.isOpen&&!document.hidden)setPaused(false);
 }
@@ -401,14 +447,14 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
 
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true,false).catch(()=>{});});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance)setPaused(true);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){pausedForDialog=false;setPaused(true);}});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
-  if(event.key==='Escape'&&(menu.open||rulesDialog.open||leaderboards.root.open))return;
+  if(event.key==='Escape'&&(menu.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open))return;
   if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;

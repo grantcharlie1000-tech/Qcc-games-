@@ -31,3 +31,6 @@ body.in-game .game-view[data-game-id=snake] #game-stage.viewport-fitted{position
 .snake-sideways .snake-card p{font-size:13px}
 @media(max-height:600px){.snake-game:not(.snake-sideways) .snake-note{display:none}.snake-controls{gap:5px}}
 @media(max-width:420px){.snake-garden{padding:7px;border-width:2px;border-radius:24px}.snake-garden::after{inset:7px;border-radius:15px}.snake-canvas{border-radius:min(15px,3.125%)}.snake-note{font-size:11px}}
+
+.snake-instructions,.snake-note{display:none}
+.game-view[data-touch-controls=false] .snake-controls{display:none}

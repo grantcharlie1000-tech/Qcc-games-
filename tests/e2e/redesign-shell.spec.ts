@@ -1,3 +1,4 @@
+import {appSettings} from '../game-menu';
 import {test,expect} from '../fixtures';
 import type {Page} from '../fixtures';
 import type {Locator} from '@playwright/test';
@@ -109,7 +110,7 @@ test('closing Study opened from the menu returns focus to the island Menu',async
 test('Favourites only in the menu shows a notice, and Show all games clears it',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
- await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await appSettings(page);
  await menuSettled(page);
  await page.getByLabel('Favourites only',{exact:true}).check();
  await page.getByRole('button',{name:'Close menu',exact:true}).click();
@@ -127,7 +128,7 @@ test('a search is shown as literal text in the notice, which wraps at 320px',asy
  let alerted=false;
  page.on('dialog',dialog=>{alerted=true;void dialog.dismiss();});
  await page.goto('/');
- await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await appSettings(page);
  await menuSettled(page);
  const payload='<img src=x onerror=alert(1)>';
  await page.getByRole('searchbox').fill(payload);
@@ -143,7 +144,7 @@ test('a search is shown as literal text in the notice, which wraps at 320px',asy
 test('the filter notice lines up with the game grid',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
- await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await appSettings(page);
  await menuSettled(page);
  await page.getByLabel('Favourites only',{exact:true}).check();
  await page.getByRole('button',{name:'Close menu',exact:true}).click();

@@ -18,9 +18,9 @@ for(const size of [{width:390,height:844},{width:1440,height:900}]) test(`refere
   expect(pixels.bright).toBeGreaterThan(20); expect(pixels.base).toBeGreaterThan(20);
   expect(await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.scrollHeight])).toEqual([size.width,size.height]);
   await expect(page.locator('.nc-score .nc-difficulty')).toHaveText('CLASSIC');
-  const caption=(await page.locator('.nc-difficulty').boundingBox())!,score=(await page.locator('.nc-mass').boundingBox())!;
+  const caption=(await page.locator('.game-hud small').boundingBox())!,score=(await page.locator('.game-hud strong').boundingBox())!;
   expect(caption.y+caption.height).toBeLessThanOrEqual(score.y+1);
-  const font=await page.locator('.nc-mass').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)); expect(font).toBeGreaterThanOrEqual(24); expect(font).toBeLessThanOrEqual(30);
+  const font=await page.locator('.game-hud strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)); expect(font).toBeGreaterThanOrEqual(15); expect(font).toBeLessThanOrEqual(20);
   expect(await page.locator('.nc-ranking').evaluate(el=>getComputedStyle(el).backgroundColor)).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
   await expect(page.locator('.nc-ranking li')).toHaveCount(size.width<600?5:10); await expect(page.locator('.nc-you')).toBeVisible();
   const boost=page.getByRole('button',{name:'Hold to boost',exact:true}),b=(await boost.boundingBox())!;

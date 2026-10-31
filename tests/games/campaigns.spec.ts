@@ -1,3 +1,4 @@
+import {openGameMenu} from '../game-menu';
 import { test, expect } from '../fixtures';
 import { LEVELS, emptyPaths, solve } from '../../src/games/color-connect/model';
 
@@ -17,7 +18,7 @@ test.afterEach(async({page},info)=>{
 test('the final 9×9 connection puzzle is selectable, playable, saved and wraps after completion',async({page})=>{
  test.setTimeout(60000);await page.setViewportSize({width:390,height:844});
  await page.goto('/#/game/color-connect');
- const picker=page.getByRole('combobox',{name:'Choose puzzle'});
+ await openGameMenu(page);const picker=page.locator('#game-options').getByRole('combobox',{name:'Choose puzzle'});
  await expect(picker.locator('option')).toHaveCount(32);await picker.selectOption('31');
  await expect(page.locator('.cc-cell')).toHaveCount(81);
  const result=solve(LEVELS[31],emptyPaths(LEVELS[31]));expect(result.kind).toBe('solved');
@@ -46,6 +47,6 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
  }
  await expect(page.locator('.cc-win')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.reload();await expect(picker).toHaveValue('31');await expect(page.locator('.cc-win')).toBeVisible();
- await page.getByRole('button',{name:'Play first puzzle',exact:true}).click();await expect(picker).toHaveValue('0');
+ await page.reload();await expect(page.locator('.cc-picker')).toHaveValue('31');await expect(page.locator('.cc-win')).toBeVisible();
+ await page.getByRole('button',{name:'Play first puzzle',exact:true}).click();await expect(page.locator('.cc-picker')).toHaveValue('0');
 });

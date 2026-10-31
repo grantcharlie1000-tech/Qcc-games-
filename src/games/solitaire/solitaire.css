@@ -3,3 +3,5 @@
 .sol-paused .sol-foundation{animation-play-state:paused}
 
 .sol-column{display:flow-root}.sol-column:after{content:"";display:block;margin-top:var(--sol-last-y,0px);padding-top:140%;pointer-events:none}
+
+.sol-summary,.sol-help{display:none}

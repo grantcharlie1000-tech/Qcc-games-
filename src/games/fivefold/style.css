@@ -2,3 +2,11 @@
 
 .ff-pop{animation:ff-pop .12s ease-out}.ff-win .ff-tile{animation:ff-flip .5s both,ff-bounce .35s ease-out 1s;animation-delay:calc(var(--ff-i)*.12s),calc(1s + var(--ff-i)*.08s)}@keyframes ff-pop{50%{transform:scale(1.08)}}@keyframes ff-bounce{50%{transform:translateY(-5px)}}
 .ff-key.ff-absent{background:#27332d;color:#86948b!important}
+
+/* Mode/stats/new word live in the menu; the dock carries the current puzzle. */
+.ff-top,.ff-heading{display:none}
+.ff{border-radius:16px;padding:10px;gap:8px}
+.ff-board{--ff-tile-size:min(17vw,max(12px,calc((100cqh - 202px)/6)),76px)}
+.ff-message{flex:none;min-height:20px}
+.ff-keyboard{margin-top:auto}.ff-key{height:48px}
+@media(max-height:650px){.ff-key{height:44px}.ff{padding:4px 8px;gap:4px}.ff-board{--ff-tile-size:min(17vw,max(12px,calc((100cqh - 184px)/6)),76px)}}

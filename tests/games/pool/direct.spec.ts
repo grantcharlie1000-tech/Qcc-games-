@@ -1,3 +1,4 @@
+import {gameAction,gameOption,resumeGame} from '../../game-menu';
 import {test,expect,type Page} from '../../fixtures';
 import {settledPoolGeometry} from '../../../scripts/pool-verifier-shot.mjs';
 async function table(page:Page){const canvas=page.locator('.pool-table');await expect(canvas).toBeVisible();return (await canvas.boundingBox())!;}
@@ -32,7 +33,7 @@ async function expectNativePower(page:Page,endType:'pointermove'|'pointerup'){
  }
  return {down,end,power};
 }
-test.beforeEach(async({page})=>{await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');});
+test.beforeEach(async({page})=>{await page.goto('/#/game/pool');await gameOption(page,'Players','two');});
 test('horizontal direct break separates aim, pull, cancel and release',async({page})=>{
  await page.setViewportSize({width:1440,height:1000});const b=await settledPoolGeometry(page),root=page.locator('.pool-game');expect(b.width/b.height).toBeCloseTo(840/440,1);expect(b.width).toBeGreaterThan(800);
  await page.mouse.move(b.x+b.width*.5,b.y+b.height*.5);await page.mouse.down();await page.mouse.move(b.x+b.width*.7,b.y+b.height*.5);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');
@@ -49,12 +50,12 @@ test('interrupted, outside-start and multi-touch drags cannot fire',async({page}
  await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.mouse.up();await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await expect(root).toHaveAttribute('data-shots','0');
 });
 test('captured release outside the canvas commits once and retains keyboard access',async({page})=>{
- const root=page.locator('.pool-game');await cueDrag(page,120);await page.mouse.move(0,0);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');await page.getByRole('button',{name:'Restart game',exact:true}).click();await page.locator('.pool-table').focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');await expect(root).toHaveAttribute('data-shots','1');
+ const root=page.locator('.pool-game');await cueDrag(page,120);await page.mouse.move(0,0);await page.mouse.up();await expect(root).toHaveAttribute('data-shots','1');await gameAction(page,'Restart game');await page.locator('.pool-table').focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');await expect(root).toHaveAttribute('data-shots','1');
 });
 test('pause, restart and CSS scaling discard a loaded stroke before release',async({page})=>{
  const root=page.locator('.pool-game');
- await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.getByRole('button',{name:'Pause game',exact:true}).focus();await page.keyboard.press('Enter');await page.mouse.up();await page.getByRole('button',{name:'Keep playing',exact:true}).click();await expect(root).toHaveAttribute('data-shots','0');
- await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.getByRole('button',{name:'Restart game',exact:true}).focus();await page.keyboard.press('Enter');await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');
+ await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.locator('#game-menu').focus();await page.keyboard.press('Enter');await page.mouse.up();await resumeGame(page);await expect(root).toHaveAttribute('data-shots','0');
+ await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.locator('#game-menu').focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Restart game',exact:true}).focus();await page.keyboard.press('Enter');await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');
  await cueDrag(page);await expect(root).toHaveAttribute('data-gesture','pull');await page.locator('.pool-table').evaluate(el=>el.style.transform='scale(.9)');await page.mouse.up();await expect(root).toHaveAttribute('data-shots','0');await page.locator('.pool-table').evaluate(el=>el.style.transform='');
 });
 test('native touch captures at high DPI, rejects a second finger outside the table and recovers',async({browser,browserName})=>{
@@ -81,7 +82,7 @@ test('native touch captures at high DPI, rejects a second finger outside the tab
    document.addEventListener('visibilitychange',event=>record('document:visibilitychange',event));
    for(const type of ['pointerdown','pointerup','pointercancel','gotpointercapture'])window.addEventListener(type,event=>{const e=event as PointerEvent;events.push({type,trusted:e.isTrusted,captured:(e.target as Element).hasPointerCapture?.(e.pointerId)||false});},{capture:true});
   });
-  const page=await context.newPage();await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');
+  const page=await context.newPage();await page.goto('/#/game/pool');await gameOption(page,'Players','two');
   const root=page.locator('.pool-game'),session=await context.newCDPSession(page);
   const touch=(type:'touchStart'|'touchMove'|'touchEnd'|'touchCancel',touchPoints:{x:number;y:number;id:number}[]=[])=>session.send('Input.dispatchTouchEvent',{type,touchPoints});
   await page.locator('.pool-table').evaluate(canvas=>{
@@ -135,12 +136,12 @@ for(const transition of ['pause','Study'] as const)test(`native held touch remai
    const events:{type:string;trusted:boolean;pointerType:string}[]=[];Object.assign(window,{poolHeldContactEvents:events});
    for(const type of ['pointerdown','pointerup','pointercancel'])window.addEventListener(type,event=>{const e=event as PointerEvent;events.push({type,trusted:e.isTrusted,pointerType:e.pointerType});},{capture:true});
   });
-  const page=await context.newPage();await page.goto('/#/game/pool');await page.getByLabel('Players',{exact:true}).selectOption('two');
+  const page=await context.newPage();await page.goto('/#/game/pool');await gameOption(page,'Players','two');
   const root=page.locator('.pool-game'),session=await context.newCDPSession(page),brand=(await page.locator('.pool-player-heading').first().boundingBox())!;
   await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:brand.x+5,y:brand.y+brand.height/2,id:7}]});
   await cueDrag(page);await page.mouse.up();expect(await root.getAttribute('data-shots')).toBe('0');
   if(transition==='pause'){
-   await page.getByRole('button',{name:'Pause game',exact:true}).focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Keep playing',exact:true}).focus();await page.keyboard.press('Enter');
+   await page.locator('#game-menu').focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Keep playing',exact:true}).focus();await page.keyboard.press('Enter');
   }else{
    await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).focus();await page.keyboard.press('Enter');await expect(root).toBeVisible();
   }

@@ -1,3 +1,4 @@
+import {gameOption,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect} from '../../fixtures';
 import type {Page} from '@playwright/test';
 const root=(page:Page)=>page.locator('.ws-game');
@@ -25,10 +26,10 @@ test('travelling glass pours level liquid into destination, pause retains the sa
     const p=node as SVGPathElement,a=p.getPointAtLength(0),b=p.getPointAtLength(p.getTotalLength());return{x1:a.x,x2:b.x,y1:a.y,y2:b.y};
   });
   expect(streamLine.x1).toBeCloseTo(streamLine.x2,1);expect(streamLine.y1).toBeLessThan(streamLine.y2);
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
+  await pauseGame(page);
   await page.clock.runFor(3000);
   expect(await volume(page,0)).toBeCloseTo(source,4);expect(await volume(page,2)).toBeCloseTo(target,4);
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await resumeGame(page);
   await page.clock.runFor(1000);
   await expect(root(page)).toHaveAttribute('data-moves','1');await expect(root(page)).toHaveAttribute('data-phase','ready');
   const returned=await tube(page,0).locator('.ws-glass').boundingBox();expect(returned!.x).toBeCloseTo(original!.x,1);expect(returned!.y).toBeCloseTo(original!.y,1);
@@ -53,10 +54,11 @@ test('native keyboard source and destination selection ignores held Enter and su
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}]){
   test(`open scene and all seven tubes fit ${viewport.width}x${viewport.height}`,async({page})=>{
     await page.setViewportSize(viewport);await open(page);
-    await page.getByRole('combobox',{name:'Level',exact:true}).selectOption('7');
+    await gameOption(page,'Level','7');
     await expect(page.locator('.ws-tube')).toHaveCount(7);
     const boxes=await page.locator('.ws-tube').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};}));
-    for(const box of boxes){expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(76);expect(box.right).toBeLessThanOrEqual(viewport.width);expect(box.bottom).toBeLessThanOrEqual(viewport.height-55);}
+    const stage=(await page.locator('.stage-wrap').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
+    for(const box of boxes){expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(stage.y);expect(box.right).toBeLessThanOrEqual(viewport.width);expect(box.bottom).toBeLessThanOrEqual(dock.y);}
     expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight)).toBe(true);
     await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeVisible();
     await page.screenshot({path:`tests/games/water-sort/evidence/correction-${viewport.width}x${viewport.height}.png`});
@@ -121,12 +123,12 @@ test('cancel, lost capture, blur, resize, pause and disposal release drag captur
     // Viewport changes and ResizeObserver notifications are asynchronous. Wait
     // for cancellation before sending the next native move/up sequence.
     if(reason.startsWith('resize'))await expect.poll(()=>source!.evaluate((el,id)=>el.hasPointerCapture(id),id),{message:reason}).toBe(false);
-    if(reason==='pause')await page.getByRole('button',{name:'Pause game',exact:true}).evaluate(el=>(el as HTMLButtonElement).click());
+    if(reason==='pause')await page.locator('#game-menu').evaluate(el=>(el as HTMLButtonElement).click());
     if(reason==='dispose')await page.evaluate(()=>{location.hash='#/';});
     await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:3});
     expect(await source!.evaluate((el,id)=>el.hasPointerCapture(id),id),reason).toBe(false);
     await page.mouse.up();
-    if(reason==='pause')await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+    if(reason==='pause')await resumeGame(page);
     if(reason==='dispose'){await expect(root(page)).toHaveCount(0);await open(page);}
     await expect(root(page),reason).toHaveAttribute('data-moves','0');
     await expect(root(page),reason).toHaveAttribute('data-phase','ready');

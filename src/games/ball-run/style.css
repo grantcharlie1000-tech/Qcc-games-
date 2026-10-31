@@ -191,3 +191,7 @@
 /* Large screens: the same layouts, a size up. */
 /* Only the HUD itself is zoomed: its grid (and the 1020 px limit) stays in unzoomed px. */
 @media(min-width:900px) and (min-height:640px){.br-panel,.br-hud{zoom:1.2}.br-speed{font-size:12px}}
+
+/* The dock mirrors the live score; speed remains immediately below it. */
+.br-hud{visibility:hidden;height:56px}
+.br-top{grid-template-columns:1fr auto 1fr}

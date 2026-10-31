@@ -1,3 +1,4 @@
+import {appSettings,gameAction} from '../game-menu';
 import {test,expect} from '../fixtures';
 import type {Locator,Page} from '@playwright/test';
 
@@ -57,7 +58,7 @@ test('the four shell dialogs are glass sheets with the blur and the system font'
   await page.getByRole('button',{name:'Close leaderboards',exact:true}).click();
   await page.goto('/#/game/fruit-merge');
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await gameAction(page,'Game rules');
   await expectGlassSheet(page.locator('#rules-dialog'));
 });
 
@@ -70,7 +71,7 @@ test('the menu and the rules sheet are named by their headings',async({page})=>{
   await page.keyboard.press('Escape');
   await page.goto('/#/game/fruit-merge');
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await gameAction(page,'Game rules');
   await expect(page.getByRole('dialog',{name:'How to play',exact:true})).toBeVisible();
 });
 
@@ -194,7 +195,7 @@ test('the one tinted action in the rules is cream with dark ink in a 48 px capsu
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/fruit-merge');
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await gameAction(page,'Game rules');
   const done=page.getByRole('button',{name:'Let’s play',exact:true});
   expect(await done.evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.color,s.borderTopLeftRadius,s.minHeight];})).toEqual(['rgb(255, 224, 164)','rgb(42, 42, 46)','999px','48px']);
   expect(await page.locator('#rules-text').evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.color];})).toEqual(['17px','rgba(255, 255, 255, 0.72)']);
@@ -369,7 +370,7 @@ test('Minesweeper options and the Study privacy dialog keep their own look',asyn
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms-board')).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await appSettings(page);
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
   expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgb(35, 49, 40)','18px']);
