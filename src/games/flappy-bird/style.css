@@ -11,3 +11,6 @@
 .fb-help{display:none}
 .fb-scene{width:min(100%,420px,calc((var(--play-height,100dvh) - 144px)*2/3))}
 @media(max-height:480px){.fb-scene{width:min(100%,calc((var(--play-height,100dvh) - 100px)*2/3))}}
+
+/* A taller phone presentation uses the reserved flight area; simulation units stay fixed. */
+@media(max-width:600px) and (min-height:700px){.fb-scene{height:calc(var(--play-height,100dvh) - 154px);aspect-ratio:auto}}

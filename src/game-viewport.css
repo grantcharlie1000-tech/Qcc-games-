@@ -22,13 +22,13 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-view:is([data-game-id=quadfall],[data-game-id=fivefold]) .game-dock{order:0}
 /* These scenes already reserve their top HUD area. Keep their canvas/input mapping intact. */
 .game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(var(--play-height,100dvh) * .54));--scene-bg:#55c3ec}
-.game-view[data-game-id=water-sort]{--scene-width:min(100%,calc(var(--play-height,100dvh) * .7));--scene-bg:#221b2e}
+.game-view[data-game-id=water-sort]{--scene-width:min(100%,1100px);--scene-bg:#221b2e}
 .game-view[data-game-id=color-blocks]{--scene-width:min(100%,calc(var(--play-height,100dvh) * .85));--scene-bg:#30223b}
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]){padding:0;display:block;background:var(--scene-bg,#101a25)}
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) .stage-wrap,
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) .game-dock{position:absolute;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);width:min(calc(100% - 24px),360px);margin:0}
-body.in-game .game-view:is([data-game-id=globle],[data-game-id=corn-clicker],[data-game-id=minesweeper],[data-game-id=slipline],[data-game-id=quadfall],[data-game-id=fivefold],[data-game-id=water-sort],[data-game-id=color-blocks]) #game-stage{height:100%;max-height:none;min-height:0}
+body.in-game .game-view:is([data-game-id=globle],[data-game-id=corn-clicker],[data-game-id=minesweeper],[data-game-id=slipline],[data-game-id=quadfall],[data-game-id=fivefold],[data-game-id=water-sort],[data-game-id=color-blocks],[data-game-id=pool]) #game-stage{height:100%;max-height:none;min-height:0}
 body.in-game .game-view[data-game-id=corn-clicker] #game-stage{container-type:inline-size}
 body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}
 .game-chrome-menu .dialog-head h1{font-size:26px;line-height:1.15;margin:0}

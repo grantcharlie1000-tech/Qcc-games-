@@ -26,8 +26,15 @@ test('travelling glass pours level liquid into destination, pause retains the sa
     const p=node as SVGPathElement,a=p.getPointAtLength(0),b=p.getPointAtLength(p.getTotalLength());return{x1:a.x,x2:b.x,y1:a.y,y2:b.y};
   });
   expect(streamLine.x1).toBeCloseTo(streamLine.x2,1);expect(streamLine.y1).toBeLessThan(streamLine.y2);
+  const lip=await page.locator('.ws-stream path').evaluate(node=>{const p=node as SVGPathElement,a=p.getPointAtLength(0);return new DOMPoint(a.x,a.y).matrixTransform(p.getScreenCTM()!).y;});
+  const opening=await tube(page,2).locator('.ws-glass').evaluate(node=>new DOMPoint(40,26).matrixTransform((node as SVGSVGElement).getScreenCTM()!).y);
+  expect(lip).toBeLessThan(opening);
   await pauseGame(page);
   await page.clock.runFor(3000);
+  const viewport=page.viewportSize()!;
+  await page.setViewportSize({width:390,height:844});await page.clock.runFor(16);await expect(root(page)).toHaveAttribute('data-layout','rows');
+  expect(await volume(page,0)).toBeCloseTo(source,4);expect(await volume(page,2)).toBeCloseTo(target,4);
+  await page.setViewportSize(viewport);await page.clock.runFor(16);
   expect(await volume(page,0)).toBeCloseTo(source,4);expect(await volume(page,2)).toBeCloseTo(target,4);
   await resumeGame(page);
   await page.clock.runFor(1000);
@@ -37,6 +44,7 @@ test('travelling glass pours level liquid into destination, pause retains the sa
 });
 
 test('native keyboard source and destination selection ignores held Enter and survives a cancelled pointer',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
   await open(page);await tube(page,0).focus();await page.keyboard.press('Enter');
   await page.keyboard.down('Enter');await page.keyboard.down('Enter');await page.keyboard.up('Enter');
   // The first non-repeated press clears selection; the repeated press must not select again.
@@ -49,6 +57,17 @@ test('native keyboard source and destination selection ignores held Enter and su
   await expect(tube(page,2)).toBeFocused();await page.keyboard.press('Enter');
   await expect(root(page)).toHaveAttribute('data-moves','1');
   await expect(tube(page,2)).toBeFocused();
+});
+
+test('arrow focus follows the displayed one-row and two-row arrangements',async({page})=>{
+  await page.setViewportSize({width:1366,height:768});await open(page);await expect(root(page)).toHaveAttribute('data-layout','single');
+  await tube(page,0).focus();await page.keyboard.press('ArrowDown');await expect(tube(page,0)).toBeFocused();
+  await page.keyboard.press('ArrowRight');await expect(tube(page,1)).toBeFocused();
+  await page.keyboard.press('ArrowLeft');await expect(tube(page,0)).toBeFocused();
+  await page.setViewportSize({width:390,height:844});await expect(root(page)).toHaveAttribute('data-layout','rows');
+  await page.keyboard.press('ArrowDown');await expect(tube(page,2)).toBeFocused();
+  await page.keyboard.press('ArrowUp');await expect(tube(page,0)).toBeFocused();
+  await expect(root(page)).toHaveAttribute('data-moves','0');
 });
 
 for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}]){
@@ -140,4 +159,9 @@ test('cancel, lost capture, blur, resize, pause and disposal release drag captur
   }
   // A cancelled captured drag must not swallow the next native keyboard click.
   await tube(page,0).focus();await page.keyboard.press('Enter');await expect(tube(page,0)).toHaveAttribute('aria-pressed','true');
+});
+
+test('mobile Hint wraps without clipping its instruction',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await open(page);await page.getByRole('button',{name:'Hint',exact:true}).click();
+  expect(await page.locator('.ws-message').evaluate(e=>e.scrollHeight<=e.clientHeight)).toBe(true);
 });

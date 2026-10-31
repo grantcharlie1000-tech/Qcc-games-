@@ -18,8 +18,10 @@ const settledEqual=async(a:Player,b:Player)=>{
 
 test('two independent browsers play a full online rack and agree on the result',async()=>{
   test.setTimeout(600_000);
-  const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama'),extra=await launchPlayer('Rua');
+  const host=await launchPlayer('WWWWWWWWWWWWWWWW'),guest=await launchPlayer('Tama'),extra=await launchPlayer('Rua');
   try{
+    // Different display orientations must still share exactly one authoritative table.
+    await host.page.setViewportSize({width:390,height:844});
     await host.page.goto(`${BASE}/#/game/pool`);
     const table=await host.page.locator('.pool-table').boundingBox();
     await gameAction(host.page,'Multiplayer');
@@ -46,7 +48,8 @@ test('two independent browsers play a full online rack and agree on the result',
     await guest.page.getByRole('button',{name:'Join by code'}).click();
     await expect(guest.page.locator('.pool-game')).toHaveAttribute('data-online','guest',{timeout:30000});
     await expect(host.page.locator('.mp-players')).toContainText('Tama');
-    await expect(guest.page.locator('.pool-player').first()).toContainText('Hana');
+    await expect(guest.page.locator('.pool-player').first()).toContainText('WWWWWWWWWWWWWWWW');
+    for(const card of await host.page.locator('.pool-player').all())expect(await card.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
     await expect(guest.page.getByRole('dialog')).toBeHidden();
     await expect(host.page.locator('.mp-link')).toContainText(/Direct peer-to-peer|TURN relay/,{timeout:15000});
     await host.page.getByRole('button',{name:'Close multiplayer menu'}).click();

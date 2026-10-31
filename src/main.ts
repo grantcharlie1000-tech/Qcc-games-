@@ -59,8 +59,8 @@ let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
-// Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
-const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold']);
+// Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool']);
 
 function syncViewportLock(){
   const playing=!!activeId&&!document.body.classList.contains('study-active');
