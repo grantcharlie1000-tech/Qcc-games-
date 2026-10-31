@@ -267,26 +267,9 @@ body.movies-active.study-active{overflow:auto}
 /* The resume pill names the position a stream starts from. It sits top left and clears the Full screen button. */
 .movies-view .movies-resume-pill{position:absolute;left:12px;top:12px;z-index:2;max-width:calc(100% - 150px);padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:#000000b3;color:#fff;font-family:var(--font-mono);font-size:12px;line-height:1.4;pointer-events:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .movies-view .movies-resume-pill[hidden]{display:none}
-/* Servers: Server n is the n-th provider. The pressed server is white. The dot shows trying, working or failed. */
-.movies-view .movies-servers{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
-.movies-view .movies-servers-label{flex:1 1 100%;font-family:var(--font-mono);font-size:10px;line-height:1.4;letter-spacing:.08em;text-transform:uppercase;color:var(--c-300)}
-.movies-view .movies-server{display:inline-grid;grid-template-columns:auto auto;align-items:center;column-gap:8px;min-height:44px;padding:6px 12px;border:1px solid var(--c-700);border-radius:var(--r-lg);background:#18181bcc;color:var(--c-200);font-size:13px;font-weight:600;line-height:1.2;text-align:left;cursor:pointer}
-.movies-view .movies-server small{grid-column:2;font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--c-300)}
-.movies-view .movies-server-dot{grid-row:1/3;width:8px;height:8px;border-radius:50%;background:var(--c-600)}
-.movies-view .movies-server[data-state="trying"] .movies-server-dot{background:var(--c-amber)}
-.movies-view .movies-server[data-state="working"] .movies-server-dot{background:var(--c-green)}
-.movies-view .movies-server[data-state="failed"] .movies-server-dot{background:var(--c-red)}
-.movies-view .movies-server[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000}
-.movies-view .movies-server[aria-pressed="true"] small{color:var(--c-700)}
-@media (hover:hover) and (pointer:fine){.movies-view .movies-server:not([aria-pressed="true"]):hover{border-color:var(--c-600);color:#fff}}
-.movies-view .movies-servers .ui-btn.small{min-height:40px;padding:0 14px}
-.movies-view #movies-source-help,.movies-view .movies-failover{flex:1 1 100%;max-width:680px;margin:0;font-size:12px;line-height:1.5;color:var(--c-300)}
-.movies-view .movies-failover{color:var(--c-amber)}
-.movies-view .movies-failover:empty{display:none}
-/* The slow prompt sits below the screen, before the servers row. It has no animation. */
-.movies-view .movies-slow-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
-.movies-view .movies-slow{font-size:12px;line-height:1.5;color:var(--c-300)}
-.movies-view .movies-slow-row .ui-btn.small{min-height:40px;padding:0 14px}
+/* The single-provider player keeps its reload control below the screen. */
+.movies-view .movies-player-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
+.movies-view .movies-player-controls .ui-btn.small{min-height:44px;padding:0 14px}
 /* Episode controls: three buttons on a row below 768 px, with the Auto next switch on a row of its own. From 768 px they share one row. */
 .movies-view .movies-episode-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:8px}
 .movies-view .movies-episode-controls>.ui-btn{min-width:0;min-height:44px;height:auto;padding:8px;white-space:normal;text-align:center}

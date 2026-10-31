@@ -15,7 +15,7 @@ import type {ContinueItem,TitleSnapshot} from './storage';
 import {formatClock,formatRuntime,initials} from './format';
 import {answersRequest,cachedJson,SEARCH_STALE} from './query';
 import {movieJson,movieNetworkMessage,MovieNetworkError} from './network';
-import {PlaybackSupervisor,clearFailures,failedProviders,providerOrder} from './playback';
+import {PlaybackSupervisor,clearFailures,failedProviders} from './playback';
 import type {AttemptState,SupervisorEvents} from './playback';
 const base=import.meta.env.BASE_URL;
 const escape=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
@@ -46,9 +46,6 @@ const mergeDetails=(bundled:Title,detail:Title):Title=>({...bundled,
   })};
  })});
 const slug=(name:string)=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-// The server a button names, and the server after it. Server n is the n-th provider in STREAM_PROVIDERS.
-const serverNumber=(id?:StreamProviderId)=>STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1;
-const nextServer=(id?:StreamProviderId):StreamProviderId=>STREAM_PROVIDERS[(STREAM_PROVIDERS.findIndex(provider=>provider.id===id)+1)%STREAM_PROVIDERS.length].id;
 // The play route of one episode.
 const playHash=(id:string,season:number,episode:number)=>`${titleHash(id)}/season/${season}/episode/${episode}/play`;
 // The status lines a browse page can show. Focus falls back to the first one that exists.
@@ -72,7 +69,6 @@ function finderFor(el:HTMLElement):Finder|undefined{
  }
  if(dataset.kind){const kind=dataset.kind,bar=barOf(el);return root=>within(root,'[data-kind]').filter(e=>e.dataset.kind===kind&&barOf(e)===bar);}
  if(dataset.action){const action=dataset.action,nav=dataset.nav,bar=barOf(el);return root=>within(root,'[data-action]').filter(e=>e.dataset.action===action&&(nav===undefined||e.dataset.nav===nav)&&barOf(e)===bar);}
- if(dataset.server){const server=dataset.server;return root=>within(root,'[data-server]').filter(e=>e.dataset.server===server);}
  if(dataset.drawerSeason){const season=dataset.drawerSeason;return root=>within(root,'[data-drawer-season]').filter(e=>e.dataset.drawerSeason===season);}
  if(dataset.titleSeason){const season=dataset.titleSeason;return root=>within(root,'[data-title-season]').filter(e=>e.dataset.titleSeason===season);}
  if(dataset.season){const season=dataset.season;return root=>within(root,'.movies-season-pills [data-season]').filter(e=>e.dataset.season===season);}
@@ -148,16 +144,11 @@ export class MoviesView {
  private resumeTimer?:ReturnType<typeof setTimeout>;
  private video?:HTMLVideoElement;
  private frame?:HTMLIFrameElement;
- // The server the user picked this session. It wins over the remembered order and over failures, until Try again.
- private pickedServer?:StreamProviderId;
- // The media key the pick was made on. Only that title's attempts treat the pick as manual.
- private pickedKey?:string;
  // The server on screen. Undefined when no server can start the title, or when the title plays from a licensed file.
  private providerId?:StreamProviderId;
- // Every automatic attempt for this title has failed, so the panel shows until Try again.
+ // FrameXTV failed for this title, so the panel shows until Try again.
  private exhausted=false;
- // The failover line: what did not start and what is being tried.
- private failoverNote='';
+ private playbackStopped=false;
  // The playback session of the title on screen. Its supervisor is stopped by stopVideo, pause and dispose.
  private supervisor?:PlaybackSupervisor;
  private supervisorKey='';
@@ -453,7 +444,7 @@ export class MoviesView {
   const inPlace=this.route.play&&next.play&&this.route.id===next.id&&this.screenFullscreen();
   // A season pill keeps its page, scroll position and focus when the season changes within the same title.
   const pill=this.pillSeason;this.pillSeason=undefined;const keepPill=pill!==undefined&&!!next.id&&!next.play&&this.route.id===next.id,scroll=this.root.scrollTop;
-  this.stopVideo();this.suspended=false;this.exhausted=false;this.failoverNote='';this.route=next;this.notFound=false;
+  this.stopVideo();this.suspended=false;this.exhausted=false;this.playbackStopped=false;this.route=next;this.notFound=false;
   // A page change starts the drawer again on the season playing, and drops a season that was loading for the page before.
   this.drawerRequest++;this.drawerAbort?.abort();this.drawerSeason=undefined;this.drawerLoading=undefined;this.drawerError=undefined;
   // A section change resets its genre, as the section buttons do. The typed query stays.
@@ -761,7 +752,7 @@ export class MoviesView {
    :this.seriesPrimary(t);
   // A movie's saved position is offered as a resume point only from START_THRESHOLD seconds, and only where it can start there: from a local
   // file, or with the current server. The title page and the watch page follow the same server.
-  const server=this.chooseServer(mediaKey(t,this.route));const resumes=!!licensedSource(this.licenses,mediaKey(t,this.route))||(!!server&&streamProvider(server).resume!=='none');
+  const server=this.chooseServer(mediaKey(t,this.route));const resumes=!!licensedSource(this.licenses,mediaKey(t,this.route))||!!server;
   const resume=t.kind==='movie'&&source&&saved>=START_THRESHOLD&&resumes?`<small class="movies-resume">Resume at ${escape(formatClock(saved))}</small>`:'';
   const list=this.listButton(t.id);
   const note=t.kind==='movie'
@@ -821,6 +812,7 @@ export class MoviesView {
   const server=archive||needsWarning||source||missing?undefined:this.chooseServer(key);
   this.providerId=server;
   const exhausted=!archive&&!needsWarning&&!source&&!missing&&!server;
+  const stopped=exhausted&&this.playbackStopped;
   const external=server?frameSource(t,route,server,saved):undefined;
   const back=titleHash(t.id)+(episode?`/season/${route.season}/episode/${route.episode}`:'');
   const media=archive?`<iframe class="movies-archive-frame" data-media-key="${escape(key)}" src="https://archive.org/embed/${archive.archiveId}" title="${escape(t.name)} Internet Archive player" sandbox="allow-scripts allow-same-origin allow-presentation" referrerpolicy="no-referrer" allowfullscreen></iframe>`
@@ -828,27 +820,24 @@ export class MoviesView {
    :source?`<video controls playsinline preload="metadata" referrerpolicy="no-referrer" aria-label="${escape(t.name)} player" data-media-key="${escape(key)}" src="${escape(asset(source.path))}"></video>`
    :missing?this.episodeUnavailable(t,route)
    :external?`<iframe class="movies-provider-frame" data-provider="${server}" data-media-key="${escape(key)}" src="${escape(external)}" title="${escape(t.name)} streaming player" sandbox="${FRAME_SANDBOX}" allow="${FRAME_ALLOW}" referrerpolicy="no-referrer" allowfullscreen></iframe>`
-   :exhausted?`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback didn't start</h2><p>This title would not start on any server.</p><button class="ui-btn primary" data-action="retry-servers">Try again</button></div>`
+   :exhausted?`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>${stopped?'Playback stopped':"Playback didn't start"}</h2><p>${stopped?'The stream stopped on FrameXTV.':'This title would not start on FrameXTV.'}</p><button class="ui-btn primary" data-action="retry-stream">Try again</button></div>`
    :`<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Playback unavailable</h2><p>${t.kind==='tv'&&!episode?'This episode is not in the current catalog.':'This title has no valid provider identifier.'}</p><p>Choose a title with a supported movie or series identifier.</p><a class="ui-btn primary" href="${escape(back)}">Return to title</a></div>`;
-  const showServers=!archive&&!needsWarning&&!source&&!missing&&(!!external||exhausted);
+  const showReload=!archive&&!needsWarning&&!source&&!missing&&(!!external||exhausted);
   const status=archive?`From the Internet Archive · ${escape(archive.license)}`
    :needsWarning?'Playback is waiting for your confirmation.'
    :source?`Licensed under ${escape(source.license)} · ${escape(source.credit)}. Progress stays on this device.`
    :server&&external?`External player provided by ${escape(streamProvider(server).name)}. It and its streaming providers receive your IP address and normal playback requests and may serve ads or use cookies. Availability and distribution rights are not verified by QCC. No account data or watchlist is sent by QCC.`
-   :exhausted?'No server started this title.'
+   :exhausted?'FrameXTV could not play this title.'
    :missing?''
    :'No provider identifier is available for this title.';
-  // Section 7.6 order: back, title, episode heading, My list, screen, servers, episode controls (TV), status.
-  return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}" aria-label="Back to ${escape(t.name)}">${uiIcon('back')}Back</a><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-watch-actions">${this.listButton(t.id)}</div><div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${media}</div><div class="movies-connecting" hidden><span class="movies-spinner" aria-hidden="true"></span>${server?`<p>Connecting to Server ${serverNumber(server)}…</p>`:''}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button><div class="movies-resume-pill" hidden></div></div>${showServers?this.serversRow(key):''}${t.kind==='tv'&&episode?this.episodeControls(t,route.season!,route.episode!):''}<p id="movies-player-status" role="status">${status}</p></div>`;
+  // Watch page order: back, title, episode heading, My list, screen, reload, episode controls (TV), status.
+  return `<div class="movies-player"><a class="movies-detail-back" href="${escape(back)}" aria-label="Back to ${escape(t.name)}">${uiIcon('back')}Back</a><h1 tabindex="-1">${escape(t.name)}</h1>${episode?`<h2>S${route.season} · E${episode.number} — ${escape(episode.name)}</h2>`:''}<div class="movies-watch-actions">${this.listButton(t.id)}</div><div class="movies-screen" data-title="${escape(t.id)}" tabindex="-1" aria-label="Player area"><div class="movies-media">${media}</div><div class="movies-connecting" hidden><span class="movies-spinner" aria-hidden="true"></span>${server?`<p>Connecting to FrameXTV…</p>`:''}</div><div class="movies-next" role="dialog" aria-label="Up next" hidden></div><p class="movies-next-announcement sr-only" role="status" aria-live="polite"></p><button data-action="fullscreen" class="movies-fullscreen"${this.fullscreenSupported()?'':' hidden'} aria-pressed="false">Full screen</button><div class="movies-resume-pill" hidden></div></div>${showReload?'<div class="movies-player-controls"><button data-action="reload-stream" class="ui-btn secondary small">Reload player</button></div>':''}${t.kind==='tv'&&episode?this.episodeControls(t,route.season!,route.episode!):''}<p id="movies-player-status" role="status">${status}</p></div>`;
  }
- // The server a title starts on: the user's pick this session, else the first server of the remembered order that has not failed for this
- // title in the last five minutes. Once every automatic attempt has failed, no server starts until Try again.
+ // A failed title waits for a retry rather than trying another provider.
  private chooseServer(key:string):StreamProviderId|undefined{
+  if(this.exhausted)return;
   const failed=failedProviders(key);
-  // The pick starts the other titles too. Its failure on one of them hands that title to the remembered order.
-  if(this.pickedServer&&(key===this.pickedKey||!failed.has(this.pickedServer)))return this.pickedServer;
-  if(this.exhausted)return undefined;
-  return providerOrder(this.storage.data.provider).find(id=>!failed.has(id));
+  return STREAM_PROVIDERS.find(provider=>!failed.has(provider.id))?.id;
  }
  // Section 8.3. A season is judged once its metadata has loaded: a built-in title's list is always known, and a fetched title's list is known
  // once its details have loaded. A season without episodes that has not loaded yet, or whose load failed, is not judged.
@@ -869,14 +858,6 @@ export class MoviesView {
   const season=t.seasons.find(s=>s.number===route.season);
   const href=titleHash(t.id)+(season?`/season/${season.number}/episode/${season.episodes[0]?.number??1}`:'');
   return `<div class="movies-player-unavailable"><span aria-hidden="true">▷</span><h2>Episode unavailable</h2><p>This episode isn't in this season's list.</p><a class="ui-btn primary" href="${escape(href)}">Choose another episode</a></div>`;
- }
- // The servers row. Server n is the n-th provider in STREAM_PROVIDERS. A server that failed for this title in the last five minutes stays marked.
- // The help says so when the current server cannot resume.
- private serversRow(key:string){
-  const failed=failedProviders(key);
-  const buttons=STREAM_PROVIDERS.map((provider,index)=>`<button class="movies-server" data-server="${provider.id}" aria-pressed="${provider.id===this.providerId}" data-state="${failed.has(provider.id)?'failed':'idle'}"><span class="movies-server-dot" aria-hidden="true"></span>Server ${index+1} <small>${escape(provider.name)}</small></button>`).join('');
-  const beginning=this.providerId&&streamProvider(this.providerId).resume==='none'?' This server starts from the beginning.':'';
-  return `<div class="movies-servers" role="group" aria-label="Servers" aria-describedby="movies-source-help"><span class="movies-servers-label">Servers</span>${buttons}<button data-action="reload-stream" class="ui-btn secondary small">Reload player</button><p id="movies-source-help">If a server will not start we try the next one automatically. You can also pick one.${beginning}</p><p class="movies-failover" role="status">${escape(this.failoverNote)}</p></div>`;
  }
  private listButton(id:string){const selected=this.storage.data.list.includes(id);return `<button class="ui-btn secondary" data-list="${escape(id)}">${uiIcon(selected?'check':'plus')}${selected?'In my list':'Add to my list'}</button>`;}
  private currentTitle(){return this.catalog.titles.find(t=>t.id===this.route.id);}
@@ -1100,7 +1081,7 @@ export class MoviesView {
    const title=this.currentTitle();
    if(title?.source.type!=='archive'){
     event.preventDefault();this.confirmedPlayback='';
-    this.warnBeforePlayback(control,()=>{this.confirmedPlayback=this.playbackHash();this.suspended=false;this.renderKeepingFocus();});return;
+    this.warnBeforePlayback(control,()=>{this.confirmedPlayback=this.playbackHash();this.suspended=false;if(control.dataset.action==='reload-stream')this.retryStream(true);else this.renderKeepingFocus();});return;
    }
   }
 
@@ -1115,107 +1096,58 @@ export class MoviesView {
   if(target.dataset.season)this.pickSeason(Number(target.dataset.season));
   if(target.dataset.drawerSeason)this.pickDrawerSeason(Number(target.dataset.drawerSeason));
   if(target.dataset.titleSeason&&this.route.id)void this.loadDrawerSeason(this.route.id,Number(target.dataset.titleSeason));
-  const server=STREAM_PROVIDERS.find(provider=>provider.id===target.dataset.server);if(server)this.switchProvider(server.id);
-  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season,true);break;case 'next-server':this.switchProvider(nextServer(this.providerId));break;case 'retry-servers':this.retryServers();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.stopVideo();this.suspended=false;this.renderKeepingFocus();break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.renderKeepingFocus();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
+  switch(target.dataset.action){case 'search':{this.kind='all';this.genre='All';if(location.hash!=='#/movies'){this.focusSearch=true;location.hash='#/movies';}else{this.render();this.searchFocus();}break;}case 'catalog-page':void this.fetchCatalog(Number(target.dataset.page));break;case 'retry-rails':this.retryRails();break;case 'retry-search':void this.fetchCatalog(this.remoteRequestedPage);break;case 'retry-title':if(this.route.id)void this.loadTitle(this.route.id,this.route.season,true);break;case 'retry-stream':this.retryStream();break;case 'episodes':this.openDrawer(target);break;case 'close-drawer':this.closeDrawer();this.root.querySelector<HTMLElement>('[data-action="episodes"]')?.focus({preventScroll:true});break;case 'reload-stream':this.retryStream(true);break;case 'study':this.pause();this.study();break;case 'retry':void this.load();break;case 'play-next':this.playNext();break;case 'cancel-next':this.cancelNext(true);break;case 'fullscreen':void this.toggleFullscreen();break;case 'resume-stream':this.suspended=false;this.renderKeepingFocus();break;case 'reset':this.query='';this.genre='All';this.resetRemote();this.showSection('all');break;case 'clear':this.storage.clear();this.render();this.root.querySelector<HTMLElement>('[data-action="clear"]')?.focus();break;}
  };
  // A section is a route. The current section re-renders in place; any other one changes the address, and navigate() shows it.
  private showSection(kind:MovieKind){
   if(location.hash===kindHash(kind)){this.render();this.root.scrollTop=0;this.root.querySelector<HTMLElement>('h1')?.focus({preventScroll:true});}
   else{this.homeNavigation=true;location.hash=kindHash(kind);}
  }
- // A pick by the user starts a new playback session on that server. A failover moves on inside the session, so its budget counts across servers.
- private switchProvider(providerId:StreamProviderId,manual=true){
-  if(this.currentTitle()?.source.type==='archive'||this.confirmedPlayback!==this.playbackHash())return;
-  if(providerId===this.providerId)return;
-  this.suspended=false;
-  if(manual){
-   const title=this.currentTitle();
-   this.pickedServer=providerId;this.pickedKey=title?mediaKey(title,this.route):undefined;this.exhausted=false;this.failoverNote='';
-   this.stopVideo();this.redrawPlayer();
-   this.root.querySelector<HTMLElement>(`[data-server="${providerId}"]`)?.focus({preventScroll:true});
-  }else{
-   // The redraw rebuilds the episode controls, so an open drawer is shown again on the new ones.
-   const open=!!this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer')?.open;
-   this.releaseMedia();
-   this.keepingFocus(()=>{this.redrawPlayer();const drawer=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');if(open&&drawer)openSheet(drawer);});
-  }
- }
- private retryServers(){
+ private retryStream(reload=false){
   const title=this.currentTitle();if(!title)return;
   clearFailures(mediaKey(title,this.route));
-  this.pickedServer=undefined;this.pickedKey=undefined;this.exhausted=false;this.failoverNote='';this.suspended=false;
+  this.exhausted=false;this.playbackStopped=false;this.suspended=false;
   this.stopVideo();this.redrawPlayer();
-  this.root.querySelector<HTMLElement>('.movies-screen')?.focus({preventScroll:true});
+  this.root.querySelector<HTMLElement>(reload?'[data-action="reload-stream"]':'.movies-screen')?.focus({preventScroll:true});
  }
- private failOver(next:StreamProviderId,failed:StreamProviderId){
-  this.failoverNote=`Server ${serverNumber(failed)} ${this.failureWording()}. Trying Server ${serverNumber(next)}…`;
-  this.switchProvider(next,false);
- }
- // A server that had played stopped. One that never reported playback did not start. The failure is reported while its attempt is still current.
- private failureWording(){return this.supervisor?.played?'stopped':"didn't start";}
- // Every automatic attempt has failed, so the panel offers Try again.
- private exhaust(){this.exhausted=true;this.failoverNote='';this.keepingFocus(()=>this.redrawPlayer());}
- // The first sign of playback remembers the server for the next title and clears the failover line.
- private worked(provider:StreamProviderId){
-  this.storage.setProvider(provider);
-  this.failoverNote='';this.setFailoverText();
+ // The attempt failed, so the panel offers Try again.
+ private exhaust(){
+  const open=!!this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer')?.open;
+  this.playbackStopped=!!this.supervisor?.played;
+  this.exhausted=true;
+  this.keepingFocus(()=>{
+   this.redrawPlayer();
+   const drawer=this.root.querySelector<HTMLDialogElement>('dialog.movies-drawer');if(open&&drawer)openSheet(drawer);
+  });
  }
  private supervisorEvents():SupervisorEvents{
   return {
-   status:(state,provider)=>this.attemptStatus(state,provider),
-   switchTo:(next,failed)=>this.failOver(next,failed),
-   slow:provider=>this.showSlow(provider),
+   status:state=>this.attemptStatus(state),
    exhausted:()=>this.exhaust(),
-   working:provider=>this.worked(provider),
+   working:provider=>this.storage.setProvider(provider),
   };
  }
  // A provider frame starts an attempt in the playback session. Its load and its messages drive the supervisor, which reports back here.
  private bindAttempt(frame:HTMLIFrameElement,provider:StreamProviderId){
   const key=this.progressKey;
   let supervisor=this.supervisor;
-  if(!supervisor||this.supervisorKey!==key){supervisor?.stop();supervisor=new PlaybackSupervisor(key,providerOrder(this.storage.data.provider),this.supervisorEvents());this.supervisor=supervisor;this.supervisorKey=key;}
+  if(!supervisor||this.supervisorKey!==key){supervisor?.stop();supervisor=new PlaybackSupervisor(key,this.supervisorEvents());this.supervisor=supervisor;this.supervisorKey=key;}
   this.frameStart=this.storage.data.progress[key]??0;this.lifeShown=false;
   frame.addEventListener('load',()=>{if(this.frame===frame)this.supervisor?.loaded();});
-  supervisor.start(provider,this.pickedServer===provider&&this.pickedKey===key);
+  supervisor.start(provider);
  }
- // The overlay covers the screen only while an attempt connects, so a loaded provider page takes its own clicks. The server buttons carry each attempt's state.
- private attemptStatus(state:AttemptState,provider:StreamProviderId){
+ // A loaded provider page takes its own clicks; a ready or playing frame may show its resume pill.
+ private attemptStatus(state:AttemptState){
   const overlay=this.root.querySelector<HTMLElement>('.movies-connecting');
   if(overlay)overlay.hidden=state!=='connecting';
-  if(state==='connecting'){this.clearSlow();this.setServerState(provider,'trying');return;}
-  // A server that cannot report never shows that it plays, so it stays idle once its frame has loaded.
-  if(state==='loaded'){this.setServerState(provider,streamProvider(provider).signals==='none'?'idle':'trying');return;}
-  this.clearSlow();
-  if(state==='ready'||state==='playing'){
-   this.setServerState(provider,'working');this.showLife(provider);
-   // A manual pick that comes back is working, so the line that said it failed no longer applies.
-   if(this.supervisor?.manual){this.failoverNote='';this.setFailoverText();}
-   return;
-  }
-  if(state==='failed'){
-   this.setServerState(provider,'failed');
-   // A pick the user made does not switch by itself, so its failure names the next server to try.
-   if(this.supervisor?.manual){this.failoverNote=`Server ${serverNumber(provider)} ${this.failureWording()}. Try Server ${serverNumber(nextServer(provider))}.`;this.setFailoverText();}
-   return;
-  }
-  if(state==='idle'){const button=this.root.querySelector<HTMLElement>(`[data-server="${provider}"]`);if(button?.dataset.state==='trying')button.dataset.state='idle';}
+  if(state==='ready'||state==='playing')this.showLife();
  }
- // The Resumed pill waits for the first sign of life, and never shows for a server that cannot resume.
- private showLife(provider:StreamProviderId){
+ // The Resumed pill waits for the first sign of life.
+ private showLife(){
   if(this.lifeShown)return;
   this.lifeShown=true;
-  if(!this.suspended&&streamProvider(provider).resume!=='none'&&this.frameStart>=START_THRESHOLD)this.showResumePill(this.frameStart);
+  if(!this.suspended&&this.frameStart>=START_THRESHOLD)this.showResumePill(this.frameStart);
  }
- // A server that cannot report would look slow for good, so it never gets the prompt. A stale event for another server is ignored.
- private showSlow(provider:StreamProviderId){
-  if(provider!==this.providerId||streamProvider(provider).signals==='none'||this.root.querySelector('.movies-slow-row'))return;
-  // The prompt's button runs the next-server action, which switches by hand as the server buttons do.
-  this.root.querySelector('.movies-servers')?.insertAdjacentHTML('beforebegin',`<div class="movies-slow-row" role="status"><p class="movies-slow">Taking a while? Try another server.</p><button class="ui-btn secondary small" data-action="next-server">Try Server ${serverNumber(nextServer(provider))}</button></div>`);
- }
- // The prompt leaves with its attempt, and with the media that carried it.
- private clearSlow(){this.root.querySelector('.movies-slow-row')?.remove();}
- private setServerState(provider:StreamProviderId,state:string){const button=this.root.querySelector<HTMLElement>(`[data-server="${provider}"]`);if(button)button.dataset.state=state;}
- private setFailoverText(){const line=this.root.querySelector<HTMLElement>('.movies-failover');if(line)line.textContent=this.failoverNote;}
  private searchFocus(){const search=this.root.querySelector<HTMLInputElement>('#movies-search');search?.focus({preventScroll:true});search?.scrollIntoView({block:'center'});}
  private input=(event:Event)=>{
   if((event.target as HTMLElement).id!=='movies-search')return;
@@ -1291,8 +1223,7 @@ export class MoviesView {
   const preserveVideo=!!this.video&&!!nextVideo&&this.video.getAttribute('src')===nextVideo.getAttribute('src')&&this.video.dataset.mediaKey===nextVideo.dataset.mediaKey;
   if(preserveFrame)this.frame!.title=nextFrame!.title;
   else if(!preserveVideo){this.releaseMedia();screen.querySelector('.movies-media')!.replaceChildren(...next.querySelector('.movies-media')!.childNodes);}
-  // A slow prompt on a frame that stays belongs to the attempt that is still running, so it stays too.
-  for(const child of [...player.children])if(child!==screen&&!(preserveFrame&&child.classList.contains('movies-slow-row')))child.remove();
+  for(const child of [...player.children])if(child!==screen)child.remove();
   let before=true;for(const child of [...next.children]){if(child.classList.contains('movies-screen'))before=false;else if(before)player.insertBefore(child,screen);else player.append(child);}
   if(!preserveFrame&&!preserveVideo)this.bindPlayer();this.renderDetailError();this.fullscreenChange();
  }
@@ -1356,13 +1287,13 @@ export class MoviesView {
  };
  private keydown=(event:KeyboardEvent)=>{if(event.key==='Enter'&&this.nextHash&&!(event.target as Element).closest('a,button,input,select,textarea,dialog')){event.preventDefault();this.playNext();}};
  pause(){this.dismissWarning();this.confirmedPlayback='';this.suspended=true;this.cancelNext();this.closeDrawer();this.clearResumePill();this.endSession();if(this.video){if(this.videoPlayed(this.video))this.saveProgress(this.video.currentTime);this.video.pause();}if(this.frame){if(this.frameReported)this.saveProgress(this.frameTime);this.frame.remove();this.frame=undefined;const media=this.root.querySelector('.movies-media');if(media)media.innerHTML='<div class="movies-player-unavailable"><h2>Stream paused</h2><p>The external player was unloaded while you read or left the tab.</p><button class="ui-btn primary" data-action="resume-stream">Resume stream</button></div>';}}
- // Ends the stream and its playback session: the watchdogs stop, and the failover budget and the tried servers go with them.
+ // Ends the stream and its playback session, cancelling its watchdogs.
  // WebKit fires timeupdate only about every 250 ms, so a video can play and stop before the first one. Its played ranges still count.
  private videoPlayed(video:HTMLVideoElement){if(hasPlayed(video))this.videoReported=true;return this.videoReported;}
  private stopVideo(){this.endSession();this.closeDrawer();this.releaseMedia();}
- // Takes the stream and the local video off the screen. The session stays, so a failover or a redraw carries its budget on.
+ // Takes the stream and the local video off the screen during a redraw.
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
- private releaseMedia(){this.cancelNext();this.clearResumePill();this.clearSlow();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
+ private releaseMedia(){this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
  dispose(){this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

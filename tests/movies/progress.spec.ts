@@ -25,7 +25,7 @@ test.beforeEach(async({page})=>{
  // Existing playback coverage accepts each fresh third-party playback warning.
  await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://framextv.cc/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
- for(const origin of ['https://framextv.xyz','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])await page.route(origin+'/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ for(const origin of ['https://framextv.xyz'])await page.route(origin+'/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
  await page.route('https://image.tmdb.org/**',r=>r.abort());
  await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });

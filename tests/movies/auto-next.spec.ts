@@ -12,7 +12,7 @@ test.beforeEach(async({page})=>{
  // Existing playback coverage accepts each fresh third-party playback warning.
  await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://framextv.cc/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
- for(const origin of ['https://framextv.xyz','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])await page.route(origin+'/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ for(const origin of ['https://framextv.xyz'])await page.route(origin+'/**',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
  await page.route('https://image.tmdb.org/**',r=>r.abort());
  await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
@@ -199,7 +199,8 @@ test('Up next hides a frost island until Cancel brings it back',async({page})=>{
 // Up next takes a minimized island and its capsule away together. Cancel brings the island back, expanded, since the travel count restarts.
 test('Up next hides a minimized island and its capsule, and Cancel brings the island back expanded',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
- await page.locator('.movies-view').evaluate(e=>e.scrollTo(0,300));
+ // The single-provider player is shorter; keep this scroll outside the bottom zone that expands the island.
+ await page.locator('.movies-view').evaluate(e=>e.scrollTo(0,180));
  await expect(island(page)).toHaveAttribute('data-minimized','true');await expect.poll(()=>capsuleShown(page)).toBe(1);
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();

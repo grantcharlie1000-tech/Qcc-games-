@@ -9,11 +9,11 @@ Screenshots of each screen are at the end of this page.
 The user explicitly authorized ordinary provider and image requests, and asked that streaming stay enabled. The initial zero-contact requirement therefore no longer describes this implementation.
 
 - **Artwork:** actual movie and TV posters and backdrops load from the allowlisted `image.tmdb.org` CDN, at approved TMDB sizes. No generated movie pictures are included. Starter titles and their artwork URLs are recorded in `public/movies/catalog.json`: each has a poster URL, and only some have a backdrop URL. Optional imported snapshots can use locally cached TMDB artwork instead.
-- **Playback:** the watch page loads one of four public iframe players: FrameXTV, VidLink, VixSrc or VidSrc (see Playback). The FrameXTV documentation at [FrameXTV's API & Embed Documentation](https://framextv.cc/api) describes the movie `/embed/<id>` and series `/embed/<id>/<season>/<episode>` routes. It names `https://framextv.xyz` as the default player origin. The app uses `https://framextv.cc` directly, because the `.xyz` host adds a cross-domain redirect (`src/movies/provider.ts`).
-- **Local files:** explicitly licensed MP4 or WebM entries take priority over the four players. A file that fails to play shows "The local file could not be played." in the status line. It does not start a streaming server.
+- **Playback:** the watch page uses FrameXTV with `no_ads=1` on every embed URL to disable its optional ad script (see Playback). The FrameXTV documentation at [FrameXTV's API & Embed Documentation](https://framextv.cc/api) describes the movie `/embed/<id>` and series `/embed/<id>/<season>/<episode>` routes. It names `https://framextv.xyz` as the default player origin. The app uses `https://framextv.cc` directly, because the `.xyz` host adds a cross-domain redirect (`src/movies/provider.ts`).
+- **Local files:** explicitly licensed MP4 or WebM entries take priority over FrameXTV. A file that fails to play shows "The local file could not be played." in the status line. It does not start a streaming server.
 - **Actual exposure:** TMDB receives image requests. The metadata function receives search text and sends it to TMDB; no streaming server receives it. A streaming server receives normal connection and playback information, including its IP address, the title and episode being played, and timing. Its player may use cookies, advertising or tracking. QCC cannot audit or guarantee provider behaviour, availability or distribution rights. No claim of zero exposure or verified streaming licensing is made.
 - **Browser isolation:** the player is a cross-origin iframe with `sandbox="allow-scripts allow-same-origin"` and nothing more, so popups, top navigation, forms and downloads are not granted (`FRAME_SANDBOX`, `src/movies/provider.ts`). Its `allow` list grants fullscreen, picture-in-picture, autoplay and encrypted media. Camera, microphone, geolocation, clipboard, USB, serial and payment are denied (`FRAME_ALLOW`). Referrers are suppressed. Parent-page provider scripts, stream extraction, proxies, DRM bypasses, account credentials and authentication tokens are not implemented.
-- **CSP:** `netlify.toml`, `public/_headers` and `vite.config.ts` carry the same policy. Images additionally allow `image.tmdb.org`. Frames allow only `framextv.xyz`, `framextv.cc`, `vidlink.pro`, `vixsrc.to`, `vidsrc.to` and `archive.org`. Scripts, fonts, workers and media stay same-origin. The existing optional PeerJS permissions for games remain. No first-party analytics or advertising scripts were added.
+- **CSP:** `netlify.toml`, `public/_headers` and `vite.config.ts` carry the same policy. Images additionally allow `image.tmdb.org`. Frames allow only `framextv.xyz`, `framextv.cc` and `archive.org`. Scripts, fonts, workers and media stay same-origin. The existing optional PeerJS permissions for games remain. No first-party analytics or advertising scripts were added.
 - **Local data:** `qcc:movies:v1` stores QCC's list, progress, title snapshots, durations and the remembered server (see Storage). The stored list and progress are not synchronized to any provider. Catalog search runs through the same-origin `/api/movies` Netlify function, which queries TMDB. Search terms are never sent to a streaming server. The service worker bypasses `/api/movies` and the `movies/` folder, so catalog responses are not kept in its offline caches.
 
 Study Mode and tab backgrounding unload the player, stopping its media and network activity. Returning shows "Stream paused" with a Resume stream button; it does not silently recreate the player. Native files pause and keep local progress. Provider messages are accepted only from the current frame and an approved origin, then saved locally. Escape opens Study while the page has keyboard focus, and it closes the episode drawer if that is open. Keys focused inside a cross-origin player belong to that player. With the Menu, rules, accounts or leaderboard sheet open, Escape closes that sheet first. On the games library, with no game or Movies & TV page open, Escape does nothing. Study is on the island at every width, and in the Movies header from 640 px.
@@ -89,55 +89,44 @@ The arcade and Movies & TV share a floating glass tab bar (`.ui-tabbar`). Its gl
 
 ## Playback
 
-### Servers and parameters
+### Provider and parameters
 
-The player tries servers in order: the remembered server first, then FrameXTV, VidLink, VixSrc and VidSrc.
+FrameXTV is the only third-party stream provider. VidLink, VixSrc and VidSrc were removed because they refuse our sandbox/referrer policy and carry ad networks. No titles were removed.
 
-| Server | Player origin | Movie and episode URLs | Start time | What it reports |
+| Provider | Player origin | Movie and episode URLs | Start time | What it reports |
 | --- | --- | --- | --- | --- |
-| FrameXTV | `https://framextv.cc` | `/embed/{id}`, or `/embed/{id}/{season}/{episode}`, with `autoplay=1&muted=0` | `&t={seconds}` | Ready and playback messages |
-| VidLink | `https://vidlink.pro` | `/movie/{id}`, or `/tv/{id}/{season}/{episode}`, with `autoplay=true` and `nextbutton=false` | `startAt={seconds}` | Playback messages only |
-| VixSrc | `https://vixsrc.to` | `/movie/{id}`, or `/tv/{id}/{season}/{episode}`, with `autoplay=true` | `startAt={seconds}` | Playback messages only |
-| VidSrc | `https://vidsrc.to` | `/embed/movie/{id}`, or `/embed/tv/{id}/{season}/{episode}`, with no autoplay parameter | None. It starts from the beginning. | Nothing |
+| FrameXTV | `https://framextv.cc` | `/embed/{id}`, or `/embed/{id}/{season}/{episode}`, with `autoplay=1&muted=0&no_ads=1` | `&t={seconds}` | Ready and playback messages |
 
+- `no_ads=1` tells FrameXTV not to inject its optional ad script when embedded on another host.
 - A start time is sent only from 15 seconds (`START_THRESHOLD`, `src/movies/provider.ts`). Earlier positions start from the beginning. Positions above 30 days are ignored.
-- FrameXTV's messages are accepted from `framextv.cc` and `framextv.xyz`. Each other server's messages are accepted only from its own origin (`providerSignal`).
-- A series URL names the season and episode of the route.
+- FrameXTV's messages are accepted only from `framextv.cc` and `framextv.xyz`, and only from the current player frame (`providerSignal` and `providerMessage`).
+- A series URL names the season and episode of the route. Archive.org titles keep their separate Archive embed.
 
-### Failover limits
+### Playback timeouts and retry
 
 These values are in `src/movies/playback.ts`.
 
 | Limit | Value |
 | --- | --- |
 | Load timeout, from the start of an attempt to the frame's load event | 15 s |
-| Ready timeout, FrameXTV only, from load to its ready message | 12 s |
-| Slow prompt, for the other servers, from load | 12 s |
-| Maximum attempts for one title | 4 |
-| Time budget for one failover run | 45 s |
-| Failure memory, per title and server, in memory only | 5 minutes |
+| Ready timeout, from load to a ready or playback message | 12 s |
+| Failure memory, per title, in memory only | 5 minutes |
 
-- An attempt fails with the reason `no-load`, `no-ready` or `blocked`. A frame-src policy violation blocks an attempt at any time, even while it plays (`securitypolicyviolation` in `src/movies/view.ts`).
-- Automatic failover applies only to servers the app picked. A failed attempt moves on to the next server in order. Servers that failed for the same title in the last five minutes are skipped.
-- When the attempts or the time budget run out, or no server is left, the page shows "This title would not start on any server." with a "Try again" button.
-- The budget starts again when a stream starts playing, and when a playing stream fails.
-- The first playback report from a server stores it as the remembered server. A stored value that is not one of the four servers is ignored.
-- **Manual pick:** choosing a server button starts that server for this title. If it fails, the page says "Server N didn't start. Try Server M." and does not switch by itself. A pick counts as manual only on the title it was made on. On other titles, it starts first, and its failure there triggers the automatic failover. A pick that failed on its watchdog comes back if its own frame later reports ready or playback.
-- **Try again** clears the failure memory for this title, drops any manual pick and starts again from the top of the server order. Focus moves to the player screen.
-- **Reload player** restarts the stream without clearing failures. Focus stays on the button.
-- **Servers that cannot report:** VidSrc sends no messages, so the page cannot judge it. Before its frame loads it has the 15 s load timeout. After that, only a frame-src violation can fail it. Once it loads, its button stays idle, it never gets the slow prompt, and no timer moves the page on from it. It is never remembered. It cannot start at a saved time, so the watch page does not offer Resume for it, and its help line says it starts from the beginning.
-- **Playback-only servers:** VidLink and VixSrc report playback but not readiness. If no playback report arrives 12 s after the frame loads, the slow prompt appears. The slow prompt never switches the server on its own. Only a load timeout before the frame loads, or a frame-src violation, moves the page on.
+- A load timeout, ready timeout or frame-src policy violation fails the attempt. A frame-src violation can fail an attempt even while it plays (`securitypolicyviolation` in `src/movies/view.ts`).
+- Failure removes the provider frame and shows "Playback didn't start" with "This title would not start on FrameXTV." and a "Try again" button. A stream that had played instead shows "Playback stopped" and "The stream stopped on FrameXTV."
+- There is no automatic switch to another provider. Late messages cannot revive a failed attempt.
+- The first playback report remembers `framextv`. Retired provider preferences are discarded without removing the viewer's list, progress or title snapshots.
+- **Try again** clears this title's failure and starts a fresh FrameXTV attempt. Focus moves to the player screen.
+- **Reload player** asks for the playback warning again, then clears this title's failure and starts a fresh FrameXTV attempt. Focus stays on Reload player.
 
 ### On the watch page
 
-- **Connecting overlay:** "Connecting to Server N…" covers the screen while an attempt connects. It hides when the frame loads.
-- **Slow prompt:** "Taking a while? Try another server." appears as a row under the screen, above the server buttons, with a button for the next server. It goes away when the attempt moves on. It never appears for VidSrc.
-- **Servers row:** a "Server N" button for each server, with the provider name and a status dot: amber while trying, green while working and red when failed. The row also has the "Reload player" button and a help line: "If a server will not start we try the next one automatically. You can also pick one."
-- **Failover line:** "Server N didn't start. Trying Server M…" appears when the page moves on by itself. If that server had played, it reads "Server N stopped. Trying Server M…". A manual pick that fails reads "Server N didn't start. Try Server M." (or "stopped", if it had played), and it does not switch by itself. The line clears when a server reports playback.
-- **Resume:** a movie's "Resume at m:ss" note, and a "Resumed at m:ss" pill for four seconds, appear only from 15 seconds, and only for a server that can start at a saved time.
+- **Connecting overlay:** "Connecting to FrameXTV…" covers the screen while an attempt connects. It hides when the frame loads.
+- **Player controls:** Reload player appears below the screen; there is no server picker or next-server prompt.
+- **Resume:** a movie's "Resume at m:ss" note, and a "Resumed at m:ss" pill for four seconds, appear from 15 seconds for FrameXTV and licensed local files.
 - **Episode check:** a series episode that is not in a loaded season gets no provider frame. The page shows "Episode unavailable" with a link to the season's first episode, or to the title. While the season is still loading, the player starts, and the check runs when its episodes arrive.
 - **Episode controls** (series only): Previous, the episode button that opens the drawer, Next, and the Auto next switch. At the first and last episode, Previous and Next are disabled and named "First episode" and "Final episode". Previous is also disabled, as "Previous episode unavailable", at the first episode of a season when an earlier season is listed but its episodes are not loaded, so the last episode before it is not known.
-- **Focus after recovery:** Reload player and Resume stream keep focus on their control. When automatic failover runs out, the panel takes the player's place and focus stays on the control that had it. In each case, if that control has gone, focus goes to the page heading.
+- **Focus after recovery:** Reload player keeps focus on its button. Resume stream moves focus to the player heading. A failed attempt preserves focus on the control that had it, or falls back to the page heading if that control is gone. An open episode drawer stays open through a failure.
 - **Episode drawer:** a modal dialog with season pills and episode rows. It is a glass sheet, and it grows from the episode control that opened it. Below 640 px it is a bottom sheet inset 8 px from the edges, with a drag handle. From 640 px it is a centred panel, `min(600px, 100% - 32px)` wide. Season pills use a translucent fill with a white label, and a long season name wraps inside its pill. Episode rows have no fill of their own, except the playing row and a hover fill. The playing episode has a white bold title, a 16% rose fill and a 3 px rose bar on its leading edge, and its meta is `--c-200`. The close button is the sheet's round icon button. Opening the drawer cancels an Up next countdown.
 - **Screen:** the player area keeps a 16:9 ratio and is at most 1152 px wide. It runs full width below 640 px, and has a 16 px radius from 640 px.
 
@@ -145,7 +134,7 @@ These values are in `src/movies/playback.ts`.
 
 TV episodes offer **Auto next episode**, on by default. At the end of an episode, an "Up next" card offers Play now or Cancel, and counts down for ten seconds. The card sits in the screen's bottom-right corner, or fills the screen below 640 px. It uses the glass surface described under Glass tab bar and sheets, so it is opaque where the sheets are. Play now is the white capsule, and Cancel is a neutral glass capsule. Cancel returns focus to the control that had it before the card took it. A provider frame or a video is never the target, so focus goes to the screen instead. Below 400 px the card's type and gaps tighten, so its buttons fit at 320 px. Its bar shrinks over the ten seconds, as a white bar on a translucent track. The bar does not animate when motion is reduced. The countdown follows the current season's episode order, then the first episode of the next numbered season. The final episode has no countdown. A finished episode is saved at zero. The preference is saved with settings and syncs for signed-in users. Watch progress and lists remain on this device.
 
-End detection uses the native video's `ended` event, or a provider's playback report within one second of a known duration. Some servers do not report this, so no countdown appears for them. QCC changes the selected episode; the external player may still require its own play action.
+End detection uses the native video's `ended` event, or a provider's playback report within one second of a known duration. FrameXTV also reports an explicit ended event. Archive embeds do not report playback to QCC, so they have no countdown. QCC changes the selected episode; the external player may still require its own play action.
 
 Full screen expands the QCC screen when the browser supports it and keeps that screen open when advancing. Provider-owned fullscreen exits to reveal the overlay. Cancel, navigation, tab hiding, Study Mode and opening the episode drawer cancel the countdown. A browser exit from fullscreen that the view did not start, such as Escape, is handled as follows. If the episode drawer is open, the exit cancels it and closes it, and Study does not open. Otherwise the exit cancels the countdown and opens Study, which moves to another reading style of the same chapter when one is available, as Escape does. Study does not open if the page is hidden or suspended, the view has been disposed, or the screen has left the page. The view's own exits, from the Full screen button and from the exit that reveals Up next over a fullscreen player, do not open Study. Escape keeps the site's Study hotkey, and returning from Study leaves the stream paused on the same episode.
 
@@ -159,7 +148,7 @@ Movies uses its own key, separate from game saves, scores and sync. The record h
 | `progress` | Media key to saved position, in seconds | Keys are `movie-N` or `tv-N:sS:eE`. Positions are capped at 30 days. |
 | `titles` | Title ID to a snapshot of its ID, kind, name, year, poster and backdrop | Kept while the title is in My list or has a saved position above zero. Titles outside My list share a cap of 200, and the oldest go first. Artwork must be an approved TMDB size or a local `movies/` path. |
 | `meta` | Media key to duration and update time | The duration is in seconds, above zero and at most 30 days. An entry with a longer duration is dropped when the record loads. The update time is in milliseconds. |
-| `provider` | The remembered server ID | Ignored unless it is one of the four servers. |
+| `provider` | The remembered provider ID | Ignored unless it is `framextv`; the other saved fields survive a retired provider preference. |
 
 - Invalid entries are dropped when the record loads. Nothing else is written, and no other key is used.
 - Progress is saved about every five seconds while a title plays, and when playback pauses or ends. A finished title is saved at zero, so it leaves Continue watching. An early report, before the 15-second start point, does not replace a saved resume point. A position is written only after the media has reported a time in this visit, so opening a title and leaving at once writes nothing.
@@ -260,9 +249,9 @@ ARCADE_URL=http://localhost:5173 CHROMIUM_PATH=/path/to/chromium npx playwright 
 - The Movies specs route the streaming origins and the TMDB image host to local fixture pages, so the tests do not contact a real provider.
 - Unit tests run with `npx vitest run`, the type check with `npm run check`, and the build with `npm run build`.
 
-## Open question for the owner
+## Ad exposure hardening
 
-The reference embeds its player without a sandbox. Ours keeps `allow-scripts allow-same-origin`, which blocks popups and top navigation. If titles still fail on every server after this work, the likely cause is a provider that refuses to run in a sandbox. Relaxing the sandbox would expose visitors to popups and ads, so the choice belongs to the owner. Nothing has been changed for this question.
+FrameXTV keeps `sandbox="allow-scripts allow-same-origin"` and `referrerpolicy="no-referrer"`. Every FrameXTV URL includes `no_ads=1`. Providers that refuse these iframe settings and carry ad networks have been removed; failed playback offers retry. Archive.org playback and all catalog titles remain available.
 
 ## Known gaps
 
@@ -298,5 +287,5 @@ Movies & TV:
 - [TV page](evidence/redesign/tv-detail-1440.png)
 - [Watch page with the episode drawer open](evidence/redesign/watch-drawer-1440.png)
 - [Watch page with the Up next card](evidence/redesign/watch-up-next-1440.png)
-- [Watch page with a failover](evidence/redesign/watch-failover-1440.png)
+- [Historical watch page with a failover](evidence/redesign/watch-failover-1440.png)
 - [Search results](evidence/redesign/search-1440.png)

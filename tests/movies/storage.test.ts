@@ -52,15 +52,15 @@ it('orders continue items newest first and reads episode keys',()=>{
 });
 it('clear removes list, progress, snapshots, meta and server',()=>{
  const values=new Map<string,string>(),storage=fake(values),s=new MovieStorage(()=>storage);
- s.toggle(remote.id,snapshotOf(remote));s.progress(remote.id,42,8640);s.setProvider('vidlink');
+ s.toggle(remote.id,snapshotOf(remote));s.progress(remote.id,42,8640);s.setProvider('framextv');
  s.clear();
  expect(s.data).toEqual({list:[],progress:{},titles:{},meta:{}});
  expect(new MovieStorage(()=>storage).data).toEqual({list:[],progress:{},titles:{},meta:{}});
 });
 it('blocked storage keeps snapshots and the server in memory and reports durable=false',()=>{
  const s=new MovieStorage(()=>{throw new Error('blocked');});
- s.toggle(remote.id,snapshotOf(remote));s.setProvider('vidlink');
- expect(s.durable).toBe(false);expect(s.snapshot(remote.id)).toEqual(snapshotOf(remote));expect(s.data.provider).toBe('vidlink');
+ s.toggle(remote.id,snapshotOf(remote));s.setProvider('framextv');
+ expect(s.durable).toBe(false);expect(s.snapshot(remote.id)).toEqual(snapshotOf(remote));expect(s.data.provider).toBe('framextv');
 });
 it('forgets a snapshot once its title leaves the list without progress',()=>{
  const s=new MovieStorage(()=>fake());
@@ -139,16 +139,23 @@ it('reload keeps the data and reports durable=false when storage cannot be read'
 it('keeps the list, snapshot and server in memory when only writes fail',()=>{
  const storage={getItem:()=>null,setItem:()=>{throw new Error('full');}} as unknown as Storage;
  const s=new MovieStorage(()=>storage);
- s.toggle(remote.id,snapshotOf(remote));s.setProvider('vidlink');
+ s.toggle(remote.id,snapshotOf(remote));s.setProvider('framextv');
  expect(s.durable).toBe(false);
  expect(s.data.list).toEqual([remote.id]);
  expect(s.snapshot(remote.id)).toEqual(snapshotOf(remote));
- expect(s.data.provider).toBe('vidlink');
+ expect(s.data.provider).toBe('framextv');
 });
 it('remembers only known servers',()=>{
  const storage=fake(),s=new MovieStorage(()=>storage);
- s.setProvider('vixsrc');s.setProvider('nope' as never);
- expect(new MovieStorage(()=>storage).data.provider).toBe('vixsrc');
+ s.setProvider('framextv');s.setProvider('nope' as never);
+ expect(new MovieStorage(()=>storage).data.provider).toBe('framextv');
+});
+it.each(['vidlink','vixsrc','vidsrc'])('drops the retired %s preference while preserving the list, progress and snapshots',provider=>{
+ const saved={list:[remote.id],progress:{[remote.id]:42},titles:{[remote.id]:snapshotOf(remote)},meta:{[remote.id]:{duration:7200,updated:1}},provider};
+ const values=new Map([[MOVIES_KEY,JSON.stringify(saved)]]),s=new MovieStorage(()=>fake(values));
+ const {provider:_retired,...expected}=saved;
+ expect(s.data).toEqual(expected);
+ expect(JSON.parse(values.get(MOVIES_KEY)!)).toEqual(expected);
 });
 it('ignores positions for an unresolved episode route',()=>{
  const s=new MovieStorage(()=>fake());
