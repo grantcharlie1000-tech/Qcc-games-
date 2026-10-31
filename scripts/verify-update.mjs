@@ -17,7 +17,7 @@ const nativeTrace=nativeTraceEnabled?createUpdateNativeTrace({enabled:true,direc
 let deployed=A,scope='/',gate,holdManifest=false,manifestGate;
 const requests=[],contexts=[],profiles=[],results=[],startupInventories=[],retainedPageEvidence=[];const primaryPages=new WeakMap();
 const mime={js:'application/javascript',html:'text/html',css:'text/css',json:'application/json',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json'};
-const contentSecurityPolicy="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; worker-src 'self'; media-src 'self'; frame-src https://framextv.xyz https://framextv.cc https://vidlink.pro https://vixsrc.to https://vidsrc.to https://archive.org; form-action 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
+const contentSecurityPolicy="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org; connect-src 'self' https://0.peerjs.com wss://0.peerjs.com; worker-src 'self'; media-src 'self'; frame-src https://framextv.xyz https://framextv.cc https://archive.org; form-action 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
 const server=http.createServer((req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname,relative=pathname.startsWith(scope)?'/'+pathname.slice(scope.length):'/missing',file=relative==='/'?'/index.html':relative;
  requests.push({release:deployed.label,file,destination:req.headers['sec-fetch-dest']});

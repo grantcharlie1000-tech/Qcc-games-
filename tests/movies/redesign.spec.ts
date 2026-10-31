@@ -7,7 +7,7 @@ test.beforeEach(async({page})=>{
  // Existing playback coverage accepts each fresh third-party playback warning.
  await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
- for(const url of ['https://framextv.cc/**','https://framextv.xyz/**','https://vidlink.pro/**','https://vixsrc.to/**','https://vidsrc.to/**'])
+ for(const url of ['https://framextv.cc/**','https://framextv.xyz/**'])
   await page.route(url,route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'+(url==='https://framextv.cc/**'?'<script>parent.postMessage({event:"frameXTV:ready"},"*")</script>':'')}));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
@@ -1627,34 +1627,33 @@ test('the title backdrop uses the shared hero shade',async({page})=>{
  expect(await backdrop.evaluate(e=>getComputedStyle(e,'::after').content)).toBe('none');
 });
 
-// The servers row of the watch page. Server n is the n-th provider in STREAM_PROVIDERS.
-const serversRow=(page:Page)=>page.getByRole('group',{name:'Servers',exact:true});
-// A source that cannot resume (VidSrc, resume 'none') starts from the beginning, and the player promises no resume point.
-test('a source that cannot resume starts from the beginning and offers no Resume line',async({page})=>{
+// The single-provider watch page keeps a reload control below the screen.
+const playbackControls=(page:Page)=>page.locator('.movies-player-controls');
+// The remaining provider supports resume positions and disables its optional embed ad script.
+test('FrameXTV resumes from the saved position with embed ads disabled',async({page})=>{
  await savedProgress(page,{'movie-157336':1200},{'movie-157336':{duration:7200,updated:1000}});
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336/play');
  const frame=page.locator('iframe.movies-provider-frame');
- await expect(frame).toHaveAttribute('src',/\/embed\/157336\?autoplay=1&muted=0&t=1200$/);
- await serversRow(page).getByRole('button',{name:/^Server 4\b/}).click();
- await expect(frame).toHaveAttribute('src','https://vidsrc.to/embed/movie/157336');
- await expect(page.locator('#movies-source-help')).toContainText('This server starts from the beginning.');
- await expect(page.getByText('Resume at')).toHaveCount(0);
+ await expect(frame).toHaveAttribute('src','https://framextv.cc/embed/157336?autoplay=1&muted=0&no_ads=1&t=1200');
+ await expect(page.locator('.movies-resume-pill')).toHaveText('Resumed at 20:00');
+ await expect(page.locator('[data-server],#movies-source-help')).toHaveCount(0);
 });
 
-// The watch page with servers, episode controls, the episode drawer, the Up next card and the resume pill.
-test('the servers row switches provider and marks it pressed',async({page})=>{
+// The watch page with reload, episode controls, the episode drawer, the Up next card and the resume pill.
+test('the single-provider controls reload FrameXTV without a server picker',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336/play');
- const first=serversRow(page).getByRole('button',{name:/^Server 1\b/}),second=serversRow(page).getByRole('button',{name:/^Server 2\b/});
- await expect(serversRow(page).getByRole('button')).toHaveCount(5);
- await expect(first).toHaveAttribute('aria-pressed','true');
- await expect(second).toHaveAttribute('aria-pressed','false');
- await second.click();
- await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('data-provider','vidlink');
- await expect(second).toHaveAttribute('aria-pressed','true');
- await expect(first).toHaveAttribute('aria-pressed','false');
- await expect(second).toBeFocused();
+ const frame=page.locator('iframe.movies-provider-frame');
+ await expect(frame).toHaveAttribute('data-provider','framextv');
+ await frame.evaluate(element=>element.setAttribute('data-instance','original'));
+ await expect(playbackControls(page).getByRole('button')).toHaveCount(1);
+ await expect(page.getByRole('group',{name:'Servers',exact:true})).toHaveCount(0);
+ await playbackControls(page).getByRole('button',{name:'Reload player',exact:true}).click();
+ await expect(frame).toHaveAttribute('data-provider','framextv');
+ await expect(frame).not.toHaveAttribute('data-instance','original');
+ expect(new URL((await frame.getAttribute('src'))!).searchParams.get('no_ads')).toBe('1');
+ await expect(playbackControls(page).getByRole('button',{name:'Reload player',exact:true})).toBeFocused();
 });
 
 test('episode controls step between episodes and stop at the ends',async({page})=>{
@@ -1722,20 +1721,20 @@ test('the watch page fits a 320px phone',async({page})=>{
  ]}));
  await page.setViewportSize({width:320,height:640});
  await page.goto('/#/movies/tv-90500/season/1/episode/1/play');
- await expect(serversRow(page)).toBeVisible();
+ await expect(playbackControls(page)).toBeVisible();
  await expect(page.getByRole('button',{name:'S1 · E1',exact:true})).toBeVisible();
  expect(await page.locator('.movies-view').evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
  const rights=await page.locator('.movies-player').evaluate(player=>[...player.querySelectorAll('*')].filter(e=>e.getClientRects().length).map(e=>e.getBoundingClientRect().right));
  expect(rights.length).toBeGreaterThan(0);
  expect(Math.max(...rights)).toBeLessThanOrEqual(320);
- for(const control of await page.locator('.movies-server,.movies-episode-controls > .ui-btn').all())expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ for(const control of await page.locator('.movies-player-controls > .ui-btn,.movies-episode-controls > .ui-btn').all())expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 });
 
 // On a phone the screen runs edge to edge: its negative gutter margins stretch it over the page padding, so it is as wide as the viewport.
 test('the watch screen spans a 390px phone edge to edge',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/#/movies/movie-157336/play');
- await expect(serversRow(page)).toBeVisible();
+ await expect(playbackControls(page)).toBeVisible();
  const box=await page.locator('.movies-screen').boundingBox();
  expect(box!.x).toBeCloseTo(0,0);
  expect(box!.width).toBeCloseTo(390,0);
@@ -1756,9 +1755,8 @@ test('the Up next card is above the tab island at 1440px',async({page})=>{
  expect(topmost).toBe(true);
 });
 
-// The title page and the current server agree. A server that cannot resume removes the Resume line from the title page too,
-// and picking a server that can resume brings it back.
-test('a server that cannot resume removes the Resume line from the title page too',async({page})=>{
+// The title page and the FrameXTV player agree on the saved resume position after a reload.
+test('FrameXTV keeps the title resume line after reloading its player',async({page})=>{
  await savedProgress(page,{'movie-157336':1200},{'movie-157336':{duration:7200,updated:1000}});
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336');
@@ -1766,17 +1764,11 @@ test('a server that cannot resume removes the Resume line from the title page to
  await expect(resume).toHaveText('Resume at 20:00');
  await page.getByRole('button',{name:'Play movie',exact:true}).click();
  await expect(page.locator('.movies-resume-pill')).toHaveText('Resumed at 20:00');
- await expect(page.locator('#movies-source-help')).not.toContainText('starts from the beginning');
- await serversRow(page).getByRole('button',{name:/^Server 4\b/}).click();
- await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('src','https://vidsrc.to/embed/movie/157336');
- await expect(page.locator('.movies-resume-pill')).toBeHidden();
- await expect(page.locator('#movies-source-help')).toContainText('This server starts from the beginning.');
+ await page.getByRole('button',{name:'Reload player',exact:true}).click();
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('src',/[?&]t=1200$/);
+ await expect(page.locator('.movies-resume-pill')).toHaveText('Resumed at 20:00');
  await page.getByRole('link',{name:'Back to Interstellar',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
- await expect(page.getByText('Resume at')).toHaveCount(0);
- await page.getByRole('button',{name:'Play movie',exact:true}).click();
- await serversRow(page).getByRole('button',{name:/^Server 1\b/}).click();
- await page.getByRole('link',{name:'Back to Interstellar',exact:true}).click();
  await expect(resume).toHaveText('Resume at 20:00');
 });
 
@@ -1878,11 +1870,11 @@ test('the watch page lays out its parts in the order of section 7.6',async({page
  await page.setViewportSize({width:1440,height:900});
  const parts=()=>page.locator('.movies-player>*').evaluateAll(list=>list.map(e=>e.tagName.toLowerCase()+(e.classList[0]?'.'+e.classList[0]:'')));
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
- await expect(serversRow(page)).toBeVisible();
- expect(await parts()).toEqual(['a.movies-detail-back','h1','h2','div.movies-watch-actions','div.movies-screen','div.movies-servers','div.movies-episode-controls','p']);
+ await expect(playbackControls(page)).toBeVisible();
+ expect(await parts()).toEqual(['a.movies-detail-back','h1','h2','div.movies-watch-actions','div.movies-screen','div.movies-player-controls','div.movies-episode-controls','p']);
  await page.goto('/#/movies/movie-157336/play');
- await expect(serversRow(page)).toBeVisible();
- expect(await parts()).toEqual(['a.movies-detail-back','h1','div.movies-watch-actions','div.movies-screen','div.movies-servers','p']);
+ await expect(playbackControls(page)).toBeVisible();
+ expect(await parts()).toEqual(['a.movies-detail-back','h1','div.movies-watch-actions','div.movies-screen','div.movies-player-controls','p']);
  await expect(page.locator('.movies-episode-controls')).toHaveCount(0);
 });
 
@@ -1907,7 +1899,7 @@ test('a failed season load keeps the title-details notice and mounts no player',
 test('the Auto next switch shows a focus ring when its checkbox has keyboard focus',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
- await expect(serversRow(page)).toBeVisible();
+ await expect(playbackControls(page)).toBeVisible();
  await tabTo(page,page.getByRole('checkbox',{name:'Auto next episode'}));
  const ring=await page.locator('.movies-auto-next .ui-switch').evaluate(element=>{const style=getComputedStyle(element);return {style:style.outlineStyle,width:parseFloat(style.outlineWidth),color:style.outlineColor};});
  expect(ring).toEqual({style:'solid',width:2,color:'rgb(255, 255, 255)'});
@@ -2044,17 +2036,17 @@ test('Previous reads unavailable until the season before loads, then links to it
  await expect(page.getByRole('link',{name:'Previous episode',exact:true})).toHaveAttribute('href',/season\/1\/episode\/2\/play$/);
 });
 
-// The drawer closes on a server switch and when the page is hidden. Its modal makes the server row inert, so the switch is sent from the page.
-test('switching server closes the episode drawer',async({page})=>{
+// The drawer closes on reload and when the page is hidden. Its modal makes the reload control inert, so this click is sent from the page.
+test('reloading the player closes the episode drawer',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
  const drawer=page.getByRole('dialog',{name:'Select episode',exact:true});
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  await expect(drawer).toBeVisible();
- await page.locator('[data-server="vidlink"]').evaluate(element=>(element as HTMLElement).click());
+ await page.locator('[data-action="reload-stream"]').evaluate(element=>(element as HTMLElement).click());
  await expect(drawer).toBeHidden();
- await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('data-provider','vidlink');
+ await expect(page.locator('iframe.movies-provider-frame')).toHaveAttribute('data-provider','framextv');
 });
 test('a hidden page closes the episode drawer',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
@@ -2234,7 +2226,7 @@ test('an answer for another title leaves a built-in page as it is',async({page})
 
 // The footer keeps its privacy copy in order, and Clear forgets the list, progress, title details, history and the remembered server.
 test('the footer keeps the privacy copy and clears saved data',async({page})=>{
- await seedMovies(page,{list:['movie-157336'],progress:{'movie-157336':1200},meta:{'movie-157336':{duration:7200,updated:1}},titles:{},provider:'vidsrc'});
+ await seedMovies(page,{list:['movie-157336'],progress:{'movie-157336':1200},meta:{'movie-157336':{duration:7200,updated:1}},titles:{},provider:'framextv'});
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
  const footer=page.locator('footer.movies-footer');

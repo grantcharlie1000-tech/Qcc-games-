@@ -1,7 +1,7 @@
 import {test,expect} from '../fixtures';
-import type {Page,Route} from '@playwright/test';
+import type {Page} from '@playwright/test';
 
-// Automatic failover, the remembered server, episode validation and the licence rule.
+// FrameXTV failure/retry, remembered playback, episode validation and the licence rule.
 // Provider pages are local fixtures. A watchdog test installs the clock before goto and waits for the frame's load first,
 // so no watchdog is armed before the clock can run it.
 const PROVIDER_PAGE='<!doctype html><title>Provider fixture</title><button>Play stream</button>';
@@ -35,32 +35,43 @@ test.beforeEach(async({page})=>{
  await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE+FRAMEXTV_READY}));
- for(const url of ['https://framextv.xyz/**','https://vidlink.pro/**','https://vixsrc.to/**','https://vidsrc.to/**'])
+ for(const url of ['https://framextv.xyz/**'])
   await page.route(url,route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
-test('a provider redirect blocked by the CSP moves to Server 2',async({page})=>{
- await page.route('https://framextv.cc/**',route=>route.fulfill(REDIRECT_OUT));
+test('FrameXTV playback hides the server picker and disables its embed ads',async({page})=>{
  await page.goto('/#/movies/movie-157336/play');
- await lands(page,'vidlink');
- await expect(page.locator('.movies-failover')).toHaveText("Server 1 didn't start. Trying Server 2…");
- // The overlay stays on the screen through a redraw, so its server name must follow the switch.
- await expect(page.locator('.movies-connecting p')).toHaveText('Connecting to Server 2…');
+ await lands(page,'framextv');
+ expect(new URL((await providerFrame(page).getAttribute('src'))!).searchParams.get('no_ads')).toBe('1');
+ await expect(serversRow(page)).toHaveCount(0);
+ await expect(page.locator('[data-server],[data-action="next-server"],.movies-failover,.movies-slow-row')).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Reload player',exact:true})).toBeVisible();
 });
 
-test('a server that never loads is replaced after 15 seconds',async({page})=>{
+test('a provider redirect blocked by the CSP shows the failure and retry state',async({page})=>{
+ await page.route('https://framextv.cc/**',route=>route.fulfill(REDIRECT_OUT));
+ await page.goto('/#/movies/movie-157336/play');
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Try again',exact:true})).toBeVisible();
+ await expect(providerFrame(page)).toHaveCount(0);
+ await expect(page.locator('.movies-connecting')).toBeHidden();
+});
+
+test('a FrameXTV frame that never loads fails after 15 seconds',async({page})=>{
  await frozenClock(page);
  await page.route('https://framextv.cc/**',()=>{});
  await page.goto('/#/movies/movie-157336/play');
  await lands(page,'framextv');
+ await expect(page.locator('.movies-connecting p')).toHaveText('Connecting to FrameXTV…');
  await page.clock.runFor(14000);
  await lands(page,'framextv');
  await page.clock.runFor(1000);
- await lands(page,'vidlink');
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ await expect(providerFrame(page)).toHaveCount(0);
 });
 
-test('FrameXTV that loads without a ready message is replaced after 12 seconds',async({page})=>{
+test('FrameXTV that loads without a ready message fails after 12 seconds',async({page})=>{
  await frozenClock(page);
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
  await page.goto('/#/movies/movie-157336/play');
@@ -68,7 +79,8 @@ test('FrameXTV that loads without a ready message is replaced after 12 seconds',
  await page.clock.runFor(11000);
  await lands(page,'framextv');
  await page.clock.runFor(1000);
- await lands(page,'vidlink');
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ await expect(providerFrame(page)).toHaveCount(0);
 });
 
 test('a ready FrameXTV stays selected',async({page})=>{
@@ -80,112 +92,72 @@ test('a ready FrameXTV stays selected',async({page})=>{
  await expect(page.locator('.movies-connecting')).toBeHidden();
 });
 
-test('the server that played is remembered after a reload',async({page})=>{
- await page.route('https://framextv.cc/**',route=>route.fulfill(REDIRECT_OUT));
+test('FrameXTV playback is remembered and still used after a reload',async({page})=>{
  await page.goto('/#/movies/movie-157336/play');
- await lands(page,'vidlink');
- await (await loadedFrame(page,/vidlink/)).evaluate(()=>parent.postMessage({type:'PLAYER_EVENT',data:{event:'timeupdate',currentTime:5,duration:100}},'*'));
- await expect.poll(async()=>(await stored(page)).provider).toBe('vidlink');
- await expect(page.locator('.movies-failover')).toBeEmpty();
- const asked:string[]=[];page.on('request',request=>{if(request.url().includes('framextv'))asked.push(request.url());});
+ await (await loadedFrame(page,/framextv/)).evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:5,duration:100},'*'));
+ await expect.poll(async()=>(await stored(page)).provider).toBe('framextv');
  await page.reload();
- await lands(page,'vidlink');
- await settle(page);
- expect(asked).toEqual([]);
-});
-
-test('a manual pick that fails does not switch by itself',async({page})=>{
- await frozenClock(page);
- await page.route('https://vixsrc.to/**',()=>{});
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 3\b/}).click();
- await lands(page,'vixsrc');
- await page.clock.runFor(15000);
- await expect(page.locator('.movies-failover')).toHaveText("Server 3 didn't start. Try Server 4.");
- await lands(page,'vixsrc');
-});
-
-test('a server picked on one title is manual on that title only',async({page})=>{
- await frozenClock(page);
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await loadedFrame(page,/vidlink/);
- // On the next title VidLink never answers. FrameXTV loads without a ready message, so the failover note stays on screen.
- await page.route('https://vidlink.pro/**',()=>{});
- await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
- await page.evaluate(()=>{location.hash='#/movies/movie-438631/play';});
- await expect(providerFrame(page)).toHaveAttribute('src',/\/movie\/438631\?/);
- await page.clock.runFor(14000);
- await lands(page,'vidlink');
- await page.clock.runFor(1000);
  await lands(page,'framextv');
- await expect(page.locator('.movies-failover')).toHaveText("Server 2 didn't start. Trying Server 1…");
+ await expect(page.locator('.movies-failover')).toHaveCount(0);
 });
 
-test('when every server fails, Try again restarts at Server 1',async({page})=>{
+test('when FrameXTV fails, Try again starts a fresh FrameXTV attempt',async({page})=>{
  let blocked=true;
- for(const origin of ['https://framextv.cc','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])
-  await page.route(origin+'/**',route=>blocked?route.fulfill(REDIRECT_OUT):route.fulfill({contentType:'text/html',body:PROVIDER_PAGE+(origin==='https://framextv.cc'?FRAMEXTV_READY:'')}));
+ await page.route('https://framextv.cc/**',route=>route.fulfill(blocked?REDIRECT_OUT:{contentType:'text/html',body:PROVIDER_PAGE+FRAMEXTV_READY}));
  await page.goto('/#/movies/movie-157336/play');
  await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
- await expect(page.getByText('This title would not start on any server.',{exact:true})).toBeVisible();
+ await expect(page.getByText('This title would not start on FrameXTV.',{exact:true})).toBeVisible();
  await expect(providerFrame(page)).toHaveCount(0);
  blocked=false;
  await page.getByRole('button',{name:'Try again',exact:true}).click();
  await lands(page,'framextv');
+ await loadedFrame(page,/framextv/);
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toHaveCount(0);
 });
 
-// The first server waits until the test has focused Reload player, then every server fails, so the panel redraws with its controls.
-test('an exhausted failover keeps keyboard focus on Reload player',async({page})=>{
+// The provider waits until Reload player has focus, then fails and redraws its controls.
+test('a failed attempt keeps keyboard focus on Reload player, which retries',async({page})=>{
  let release!:()=>void;const released=new Promise<void>(resolve=>{release=resolve;});
  await page.route('https://framextv.cc/**',async route=>{await released;await route.fulfill(REDIRECT_OUT);});
- for(const origin of ['https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])await page.route(origin+'/**',route=>route.fulfill(REDIRECT_OUT));
  await page.goto('/#/movies/movie-157336/play');
  const reload=page.getByRole('button',{name:'Reload player',exact:true});
  await expect(reload).toBeVisible();
  await reload.focus();release();
  await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
  await expect(reload).toBeFocused();
+ await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE+FRAMEXTV_READY}));
+ await reload.click();
+ await lands(page,'framextv');
 });
 
-test('a server clicked on an exhausted title starts after a visit to another title',async({page})=>{
- await frozenClock(page);
- const up=new Set<string>();
- for(const origin of ['https://framextv.cc','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])
-  await page.route(origin+'/**',route=>route.fulfill(up.has(origin)?{contentType:'text/html',body:PROVIDER_PAGE+(origin==='https://framextv.cc'?FRAMEXTV_READY:'')}:REDIRECT_OUT));
+test('a failed title stays failed after visiting another title and can then be retried',async({page})=>{
+ await page.route('https://framextv.cc/embed/157336?*',route=>route.fulfill(REDIRECT_OUT));
  await page.goto('/#/movies/movie-157336/play');
  await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
- // Title A's frame leaves its key behind. B has no frame, so that key is what a pick on B would record.
- up.add('https://framextv.cc');
  await page.evaluate(()=>{location.hash='#/movies/movie-438631/play';});
- await lands(page,'framextv');
- await expect(serversRow(page).getByRole('button',{name:/^Server 1\b/})).toHaveAttribute('data-state','working');
- await page.clock.runFor(60000);
+ await loadedFrame(page,/framextv/);
+ await expect(providerFrame(page)).toHaveAttribute('src',/\/438631\?/);
  await page.evaluate(()=>{location.hash='#/movies/movie-157336/play';});
  await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
- await expect(serversRow(page)).toBeVisible();
- up.add('https://vidlink.pro');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
+ await page.route('https://framextv.cc/embed/157336?*',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE+FRAMEXTV_READY}));
+ await page.getByRole('button',{name:'Try again',exact:true}).click();
+ await lands(page,'framextv');
 });
 
-test('the 45 second budget covers the automatic switches',async({page})=>{
+test('FrameXTV failure never requests any retired provider, even with a saved preference',async({page})=>{
  await frozenClock(page);
- // The first three servers never answer, so each one runs out its watchdog. The fourth is never asked for.
- const asked:string[]=[];
- for(const origin of ['https://framextv.cc','https://vidlink.pro','https://vixsrc.to'])
-  await page.route(origin+'/**',()=>{asked.push(origin);});
- await page.route('https://vidsrc.to/**',route=>{asked.push('https://vidsrc.to');return route.fulfill({contentType:'text/html',body:PROVIDER_PAGE});});
+ await page.addInitScript(()=>{if(window===window.top)localStorage.setItem('qcc:movies:v1',JSON.stringify({list:['movie-157336'],progress:{'movie-157336':42},provider:'vidlink'}));});
+ const retired=['vidlink.pro','vixsrc.to','vidsrc.to'],asked:string[]=[];
+ page.on('request',request=>{if(retired.includes(new URL(request.url()).hostname))asked.push(request.url());});
+ await page.route('https://framextv.cc/**',()=>{});
  await page.goto('/#/movies/movie-157336/play');
  await lands(page,'framextv');
  await page.clock.runFor(15000);
- await lands(page,'vidlink');
- await page.clock.runFor(15000);
- await lands(page,'vixsrc');
- await page.clock.runFor(15000);
  await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
- expect(asked.includes('https://vidsrc.to')).toBe(false);
+ await page.clock.runFor(60000);
+ expect(asked).toEqual([]);
+ expect(await stored(page)).toMatchObject({list:['movie-157336'],progress:{'movie-157336':42}});
+ expect((await stored(page)).provider).toBeUndefined();
 });
 
 test('opening Study while connecting stops the watchdog',async({page})=>{
@@ -206,9 +178,10 @@ test('opening Study while connecting stops the watchdog',async({page})=>{
 test('leaving the title while connecting leaves no switch behind',async({page})=>{
  await frozenClock(page);
  await page.route('https://framextv.cc/**',()=>{});
- const asked:string[]=[];page.on('request',request=>{if(request.url().includes('vidlink'))asked.push(request.url());});
+ const asked:string[]=[];page.on('request',request=>{if(request.url().includes('framextv'))asked.push(request.url());});
  await page.goto('/#/movies/movie-157336/play');
  await lands(page,'framextv');
+ asked.length=0;
  await page.getByRole('link',{name:'Back to Interstellar',exact:true}).click();
  await expect(page.getByRole('button',{name:'Play movie',exact:true})).toBeVisible();
  await page.clock.runFor(20000);
@@ -229,7 +202,7 @@ test('switching episode while the first episode connects leaves no switch behind
  await expect(providerFrame(page)).toHaveAttribute('src',/\/19885\/1\/2\?/);
  await loadedFrame(page,/framextv/);
  await page.clock.runFor(20000);
- await expect(page.locator('.movies-failover')).toBeEmpty();
+ await expect(page.locator('.movies-failover')).toHaveCount(0);
  await lands(page,'framextv');
  await expect(providerFrame(page)).toHaveAttribute('src',/\/19885\/1\/2\?/);
 });
@@ -244,7 +217,7 @@ test('ready messages posted by the page itself do not count',async({page})=>{
  await page.clock.runFor(11000);
  await lands(page,'framextv');
  await page.clock.runFor(1000);
- await lands(page,'vidlink');
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
 });
 
 test('a missing episode shows Episode unavailable and no iframe',async({page})=>{
@@ -304,74 +277,42 @@ test('the Resumed pill waits for the first sign of life from the server',async({
  await expect(pill).toHaveText('Resumed at 0:42');
 });
 
-test('a server that cannot resume never shows the Resumed pill',async({page})=>{
- await savedProgress(page,{'movie-157336':42},{'movie-157336':{duration:7200,updated:1000}});
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 4\b/}).click();
- await lands(page,'vidsrc');
- await (await loadedFrame(page,/vidsrc/)).evaluate(()=>parent.postMessage({type:'PLAYER_EVENT',data:{event:'timeupdate',currentTime:50,duration:100}},'*'));
- await settle(page);
- await expect(page.locator('.movies-resume-pill')).toBeHidden();
+test('FrameXTV resumes movies and episodes with its ad flag still enabled',async({page})=>{
+ await savedProgress(page,{'movie-157336':42,'tv-19885:s1:e1':120},{'movie-157336':{duration:7200,updated:1000},'tv-19885:s1:e1':{duration:2700,updated:1000}});
+ for(const [path,time] of [['movie-157336/play','42'],['tv-19885/season/1/episode/1/play','120']]){
+  await page.goto('/#/movies/'+path);
+  await lands(page,'framextv');
+  const url=new URL((await providerFrame(page).getAttribute('src'))!);
+  expect(url.searchParams.get('no_ads')).toBe('1');
+  expect(url.searchParams.get('t')).toBe(time);
+ }
 });
 
-test('a playback server that loads and never reports offers the next server 12 seconds after its frame loads',async({page})=>{
+test('a list change while connecting preserves the original ready watchdog',async({page})=>{
  await frozenClock(page);
+ await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
  await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await loadedFrame(page,/vidlink/);
- await expect(page.locator('.movies-connecting')).toBeHidden();
- const prompt=page.getByText('Taking a while? Try another server.',{exact:true});
+ await loadedFrame(page,/framextv/);
+ await providerFrame(page).evaluate(frame=>frame.setAttribute('data-instance','original'));
  await page.clock.runFor(11000);
- await expect(prompt).toHaveCount(0);
- await page.clock.runFor(1000);
- await expect(prompt).toBeVisible();
- await expect(page.locator('.movies-connecting .movies-slow')).toHaveCount(0);
- await expect(page.locator('.movies-slow-row+.movies-servers')).toHaveCount(1);
-});
-
-test('a server that only reports playback offers the next server, and its button switches',async({page})=>{
- await frozenClock(page);
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await loadedFrame(page,/vidlink/);
- await page.clock.runFor(12000);
- const row=page.locator('.movies-slow-row');
- await expect(row.getByText('Taking a while? Try another server.',{exact:true})).toBeVisible();
- await row.getByRole('button',{name:'Try Server 3',exact:true}).click();
- await lands(page,'vixsrc');
-});
-
-test('a list change on the playing title keeps the slow prompt of its stream',async({page})=>{
- await frozenClock(page);
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await loadedFrame(page,/vidlink/);
- await page.clock.runFor(12000);
- const prompt=page.getByText('Taking a while? Try another server.',{exact:true});
- await expect(prompt).toBeVisible();
  await page.getByRole('button',{name:'Add to my list',exact:true}).click();
  await expect(page.getByRole('button',{name:'In my list',exact:true})).toBeVisible();
- await lands(page,'vidlink');
- await expect(prompt).toHaveCount(1);
+ await expect(providerFrame(page)).toHaveAttribute('data-instance','original');
+ await page.clock.runFor(1000);
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
 });
 
-test('a server that cannot report is uncovered once its frame loads, and gets no slow prompt',async({page})=>{
+test('FrameXTV is uncovered once its frame loads and gets no server-switch prompt',async({page})=>{
  await frozenClock(page);
  await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 4\b/}).click();
- await lands(page,'vidsrc');
- await loadedFrame(page,/vidsrc/);
+ await loadedFrame(page,/framextv/);
  await expect(page.locator('.movies-connecting')).toBeHidden();
  await page.locator('.movies-screen').scrollIntoViewIfNeeded();
  const hit=await page.evaluate(()=>{const box=document.querySelector('.movies-screen')!.getBoundingClientRect();const el=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);return el instanceof HTMLIFrameElement?el.dataset.provider:'';});
- expect(hit).toBe('vidsrc');
- await expect(serversRow(page).getByRole('button',{name:/^Server 4\b/})).toHaveAttribute('data-state','idle');
+ expect(hit).toBe('framextv');
  await page.clock.runFor(20000);
- await expect(page.getByText('Taking a while? Try another server.',{exact:true})).toHaveCount(0);
- await lands(page,'vidsrc');
+ await expect(page.locator('.movies-slow-row,[data-action="next-server"]')).toHaveCount(0);
+ await lands(page,'framextv');
 });
 
 test('a licensed episode in a season that is still loading plays from its file through a fullscreen rollover',async({page})=>{
@@ -429,7 +370,7 @@ test('an episode that ends on FrameXTV opens Up next for the next episode',async
  await expect(page.getByRole('dialog',{name:'Up next'})).toContainText('Up next: S1 · E2 — The Blind Banker');
 });
 
-test('an automatic failover keeps the episode drawer open',async({page})=>{
+test('a failed FrameXTV attempt keeps the episode drawer open',async({page})=>{
  await frozenClock(page);
  await page.route('https://framextv.cc/**',()=>{});
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
@@ -437,7 +378,7 @@ test('an automatic failover keeps the episode drawer open',async({page})=>{
  await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
  const drawer=page.locator('dialog.movies-drawer');await expect(page.getByRole('dialog',{name:'Select episode'})).toBeVisible();
  await page.clock.runFor(15000);
- await lands(page,'vidlink');
+ await expect(providerFrame(page)).toHaveCount(0);
  await expect(drawer).toHaveJSProperty('open',true);await expect(page.getByRole('dialog',{name:'Select episode'})).toBeVisible();
 });
 
@@ -463,81 +404,67 @@ test('a licensed episode reached cold plays from its file once its season answer
  await expect(providerFrame(page)).toHaveCount(0);
 });
 
-// A manual pick whose frame answers only after its watchdog has failed it. The late frame's playback revives the pick.
-test('a manual pick that fails on its watchdog and then plays is remembered and its note clears',async({page})=>{
- await frozenClock(page);
- const late:{route?:Route}={};
- await page.route('https://vidlink.pro/**',route=>{late.route=route;});
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await page.clock.runFor(15000);
- await expect(page.locator('.movies-failover')).toHaveText("Server 2 didn't start. Try Server 3.");
- await late.route!.fulfill({contentType:'text/html',body:"<!doctype html><title>Provider fixture</title><script>parent.postMessage({type:'PLAYER_EVENT',data:{event:'timeupdate',currentTime:5,duration:100}},'*')</script>"});
- await expect(page.locator('.movies-failover')).toBeEmpty();
- await expect(serversRow(page).getByRole('button',{name:/^Server 2\b/})).toHaveAttribute('data-state','working');
- await expect.poll(async()=>(await stored(page)).provider).toBe('vidlink');
- await lands(page,'vidlink');
-});
-
-// A stream that played and then lost its frame to a blocked frame-src says it stopped, not that it never started.
-test('a server that stopped after playing says so in the failover note, and the next server starts',async({page})=>{
- await frozenClock(page);
- await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE+FRAMEXTV_READY}));
- await page.goto('/#/movies/movie-157336/play');
- await lands(page,'framextv');
- await (await loadedFrame(page,/framextv/)).evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:5,duration:100},'*'));
- await expect(serversRow(page).getByRole('button',{name:/^Server 1\b/})).toHaveAttribute('data-state','working');
- await page.evaluate(()=>{const blocked=document.createElement('iframe');blocked.src='https://unapproved-provider.invalid/blocked';document.body.append(blocked);});
- await expect(page.locator('.movies-failover')).toHaveText('Server 1 stopped. Trying Server 2…');
- await lands(page,'vidlink');
-});
-
-test('a manual pick that stopped after playing says so, names the next server and stays on screen',async({page})=>{
- await frozenClock(page);
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await (await loadedFrame(page,/vidlink/)).evaluate(()=>parent.postMessage({type:'PLAYER_EVENT',data:{event:'timeupdate',currentTime:5,duration:100}},'*'));
- await expect(serversRow(page).getByRole('button',{name:/^Server 2\b/})).toHaveAttribute('data-state','working');
- await page.evaluate(()=>{const blocked=document.createElement('iframe');blocked.src='https://unapproved-provider.invalid/blocked';document.body.append(blocked);});
- await expect(page.locator('.movies-failover')).toHaveText('Server 2 stopped. Try Server 3.');
- await lands(page,'vidlink');
-});
-
-// The frame loads with no ready message, so FrameXTV's 12 second watchdog is the one under test. A frame at another provider's origin
-// sends a ready, a NaN time and a valid time. None of it may count as FrameXTV's, save progress or clear the watchdog.
-test('messages from an unapproved origin cannot mark FrameXTV working, save progress or clear its watchdog',async({page})=>{
+// A failed attempt cannot be restored by messages from its removed iframe.
+test('late ready and playback messages cannot revive a failed FrameXTV attempt',async({page})=>{
  await frozenClock(page);
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
- // The spoof frame is vixsrc.to: an approved frame origin for another provider, so the source and provider checks run. provider.test.ts covers the origin check.
- await page.route('https://vixsrc.to/spoof',route=>route.fulfill({contentType:'text/html',body:"<!doctype html><title>Spoof</title><script>parent.postMessage({event:'frameXTV:ready'},'*');parent.postMessage({event:'frameXTV:timeupdate',currentTime:NaN},'*');parent.postMessage({event:'frameXTV:timeupdate',currentTime:42,duration:100},'*');</script>"}));
  await page.goto('/#/movies/movie-157336/play');
  await loadedFrame(page,/framextv/);
- await page.evaluate(()=>{const spoof=document.createElement('iframe');spoof.src='https://vixsrc.to/spoof';document.body.append(spoof);});
- await loadedFrame(page,/vixsrc\.to\/spoof/);
- await expect(serversRow(page).getByRole('button',{name:/^Server 1\b/})).toHaveAttribute('data-state','trying');
- await page.clock.runFor(11000);
- await lands(page,'framextv');
- await page.clock.runFor(1000);
- await lands(page,'vidlink');
+ await page.evaluate(()=>{(window as Window&{oldFrame?:Window|null}).oldFrame=document.querySelector<HTMLIFrameElement>('.movies-provider-frame')!.contentWindow;});
+ await page.clock.runFor(12000);
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ await page.evaluate(()=>{for(const data of [{event:'frameXTV:ready'},{event:'frameXTV:timeupdate',currentTime:42,duration:100}])window.dispatchEvent(new MessageEvent('message',{origin:'https://framextv.cc',source:(window as Window&{oldFrame?:Window|null}).oldFrame,data}));});
+ await expect(providerFrame(page)).toHaveCount(0);
+ expect((await stored(page)).provider).toBeUndefined();
  expect((await stored(page)).progress['movie-157336']).toBeUndefined();
 });
 
-// Only a frame-src violation fails a live attempt. An image blocked by the same policy leaves the stream alone.
-test('an image blocked by the CSP during playback does not fail the stream over',async({page})=>{
+// A blocked stream that had played reports that it stopped.
+test('FrameXTV that stops after playing shows a stopped state with retry',async({page})=>{
  await frozenClock(page);
  await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await (await loadedFrame(page,/vidlink/)).evaluate(()=>parent.postMessage({type:'PLAYER_EVENT',data:{event:'timeupdate',currentTime:5,duration:100}},'*'));
- await expect(serversRow(page).getByRole('button',{name:/^Server 2\b/})).toHaveAttribute('data-state','working');
+ await (await loadedFrame(page,/framextv/)).evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:5,duration:100},'*'));
+ await expect.poll(async()=>(await stored(page)).provider).toBe('framextv');
+ await page.evaluate(()=>{const blocked=document.createElement('iframe');blocked.src='https://unapproved-provider.invalid/blocked';document.body.append(blocked);});
+ await expect(page.getByRole('heading',{name:'Playback stopped',exact:true})).toBeVisible();
+ await expect(page.getByText('The stream stopped on FrameXTV.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Try again',exact:true})).toBeVisible();
+ await expect(providerFrame(page)).toHaveCount(0);
+ await page.getByRole('button',{name:'Add to my list',exact:true}).click();
+ await expect(page.getByRole('button',{name:'In my list',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Playback stopped',exact:true})).toBeVisible();
+});
+
+// Another frame at an approved origin must not count as the current provider frame.
+test('messages from a different frame cannot mark FrameXTV working, save progress or clear its watchdog',async({page})=>{
+ await frozenClock(page);
+ await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:PROVIDER_PAGE}));
+ // The other approved FrameXTV origin passes the origin check but still has the wrong source window.
+ await page.route('https://framextv.xyz/spoof',route=>route.fulfill({contentType:'text/html',body:"<!doctype html><title>Spoof</title><script>parent.postMessage({event:'frameXTV:ready'},'*');parent.postMessage({event:'frameXTV:timeupdate',currentTime:NaN},'*');parent.postMessage({event:'frameXTV:timeupdate',currentTime:42,duration:100},'*');</script>"}));
+ await page.goto('/#/movies/movie-157336/play');
+ await loadedFrame(page,/framextv\.cc/);
+ await page.evaluate(()=>{const spoof=document.createElement('iframe');spoof.src='https://framextv.xyz/spoof';document.body.append(spoof);});
+ const spoof=page.frame({url:/framextv\.xyz\/spoof/});
+ await expect.poll(()=>page.frame({url:/framextv\.xyz\/spoof/})).not.toBeNull();
+ await (spoof??page.frame({url:/framextv\.xyz\/spoof/})!).waitForLoadState('load');
+ await page.clock.runFor(11000);
+ await lands(page,'framextv');
+ await page.clock.runFor(1000);
+ await expect(page.getByRole('heading',{name:"Playback didn't start",exact:true})).toBeVisible();
+ expect((await stored(page)).progress['movie-157336']).toBeUndefined();
+ expect((await stored(page)).provider).toBeUndefined();
+});
+
+// Only a frame-src violation fails a live attempt. An image blocked by the same policy leaves the stream alone.
+test('an image blocked by the CSP during playback does not fail FrameXTV',async({page})=>{
+ await frozenClock(page);
+ await page.goto('/#/movies/movie-157336/play');
+ await (await loadedFrame(page,/framextv/)).evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:5,duration:100},'*'));
+ await expect.poll(async()=>(await stored(page)).provider).toBe('framextv');
  await page.evaluate(()=>{const w=window as unknown as {csp:string[]};w.csp=[];document.addEventListener('securitypolicyviolation',event=>{w.csp.push(event.effectiveDirective);});const image=new Image();image.src='https://unapproved-provider.invalid/blocked.png';document.body.append(image);});
- // The page's own listener is registered after the player's, so once the violation is on the window, the player has handled it too.
  await expect.poll(()=>page.evaluate(()=>(window as unknown as {csp:string[]}).csp)).toContain('img-src');
- await expect(page.locator('.movies-failover')).toBeEmpty();
- await lands(page,'vidlink');
- await expect(serversRow(page).getByRole('button',{name:/^Server 2\b/})).toHaveAttribute('data-state','working');
+ await lands(page,'framextv');
+ await expect(page.getByRole('heading',{name:'Playback stopped',exact:true})).toHaveCount(0);
  await expect(page.locator('.movies-connecting')).toBeHidden();
 });
 
@@ -549,23 +476,6 @@ test('an episode whose season comes back without episodes keeps the provider pla
  await page.evaluate(()=>{location.hash='#/movies/tv-90200/season/2/episode/1/play';});
  await lands(page,'framextv');
  await expect(page.getByRole('heading',{name:'Episode unavailable',exact:true})).toHaveCount(0);
-});
-
-// A manual pick whose frame answers only after its watchdog failed it. Its own ready message revives it, and its failover line goes at once.
-test('a manual pick that fails on its watchdog and then reports ready clears its failover line at once',async({page})=>{
- await frozenClock(page);
- const late:{route?:Route}={};
- await page.route('https://framextv.cc/**',route=>{late.route=route;});
- await page.goto('/#/movies/movie-157336/play');
- await serversRow(page).getByRole('button',{name:/^Server 2\b/}).click();
- await lands(page,'vidlink');
- await serversRow(page).getByRole('button',{name:/^Server 1\b/}).click();
- await lands(page,'framextv');
- await page.clock.runFor(15000);
- await expect(page.locator('.movies-failover')).toHaveText("Server 1 didn't start. Try Server 2.");
- await late.route!.fulfill({contentType:'text/html',body:"<!doctype html><title>Provider fixture</title><script>parent.postMessage({event:'frameXTV:ready'},'*')</script>"});
- await expect(page.locator('.movies-failover')).toBeEmpty();
- await expect(serversRow(page).getByRole('button',{name:/^Server 1\b/})).toHaveAttribute('data-state','working');
 });
 
 // A bare title answer whose default season is empty. The season says its episodes are not available, and Retry loads that season.

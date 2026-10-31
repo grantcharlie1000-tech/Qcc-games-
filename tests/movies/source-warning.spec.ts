@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {readFileSync} from 'node:fs';
-const providers=['framextv.cc','framextv.xyz','vidlink.pro','vixsrc.to','vidsrc.to'];
+const providers=['framextv.cc','framextv.xyz'];
 test.beforeEach(async({page})=>{
  await page.route('https://image.tmdb.org/**',r=>r.fulfill({status:204,body:''}));
  await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'fixture'}}));

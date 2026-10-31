@@ -22,10 +22,10 @@ it('permits only approved image/frame origins and narrowly scopes the offline th
  expect(isLibraryMovieArtwork('https://image.tmdb.org/t/p/w185/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg')).toBe(true);
  for(const url of ['https://framextv.xyz/embed/1','https://image.tmdb.org/t/p/w500/a.jpg','https://image.tmdb.org/t/p/w185/a.jpg?track=1','https://image.tmdb.org.evil.test/t/p/w185/a.jpg'])expect(isLibraryMovieArtwork(url)).toBe(false);
  const html=readFileSync('index.html','utf8');expect(html).not.toContain('Content-Security-Policy');
- for(const path of ['netlify.toml','vite.config.ts','public/_headers']){
+ for(const path of ['netlify.toml','vite.config.ts','public/_headers','scripts/serve-built.mjs','scripts/verify-update.mjs']){
   const text=readFileSync(path,'utf8');
   for(const policy of ["media-src 'self'","frame-src https://framextv.xyz https://framextv.cc","script-src 'self'","object-src 'none'","https://image.tmdb.org"])expect(text).toContain(policy);
-  if(path!=='vite.config.ts')expect(text).toContain('https://vidsrc.to https://archive.org; form-action');
+  expect(text.match(/frame-src [^;]+/)?.[0]).toBe('frame-src https://framextv.xyz https://framextv.cc https://archive.org');
   expect(text).not.toContain('unsafe-eval');
  }
 });
