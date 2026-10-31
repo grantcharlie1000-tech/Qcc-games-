@@ -7,6 +7,31 @@ const WIDTH=W+2*LENS_MARGIN,HEIGHT=H+2*LENS_MARGIN;
 const DENSITIES=[1,2,3];
 // One channel step, in CSS px of shift: the 8-bit channel spans the scale in 255 steps.
 const STEP=REFRACTION_SCALE/255;
+
+test('the arcade convex bezel samples inward at both circle edges and leaves the centre clear',()=>{
+  const width=48+2*LENS_MARGIN;
+  const data=lensField(width,width,LENS_MARGIN,12,LENS_BEND,1,2,'convex');
+  const shift=(x:number,y:number)=>{
+    const i=(Math.floor((y+LENS_MARGIN)*2)*width*2+Math.floor((x+LENS_MARGIN)*2))*4;
+    return [REFRACTION_SCALE*(data[i]/255-.5),REFRACTION_SCALE*(data[i+1]/255-.5)];
+  };
+  expect(shift(1,24)[0]).toBeGreaterThan(2);
+  expect(shift(46,24)[0]).toBeLessThan(-2);
+  expect(shift(24,1)[1]).toBeGreaterThan(2);
+  expect(shift(24,46)[1]).toBeLessThan(-2);
+  for(const v of shift(24,24))expect(Math.abs(v)).toBeLessThan(.1);
+  for(const v of shift(14,24))expect(Math.abs(v)).toBeLessThan(.1);
+});
+
+test('the convex capsule preserves an undistorted centre between its two 12px bezels',()=>{
+  const width=240+2*LENS_MARGIN,height=56+2*LENS_MARGIN;
+  const data=lensField(width,height,LENS_MARGIN,12,LENS_BEND,1,1,'convex');
+  for(let y=13;y<43;y++)for(let x=28;x<212;x++){
+    const i=((y+LENS_MARGIN)*width+x+LENS_MARGIN)*4;
+    expect(Math.abs(data[i]-127.5)).toBeLessThanOrEqual(.5);
+    expect(Math.abs(data[i+1]-127.5)).toBeLessThanOrEqual(.5);
+  }
+});
 // The lens map at a pixel density: round(size * density) pixels a side, each sampling the same field in CSS px. The shift the lens applies
 // at a map pixel is read as the SVG filter reads it (channel/255 - 1/2, times the scale), in CSS px. inBar takes a point in the bar's own
 // CSS px and reads the map pixel that covers it.

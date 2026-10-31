@@ -23,6 +23,19 @@ const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
 
 const smoothstep=(t:number)=>t*t*(3-2*t);
+// A convex squircle cross-section, y=(1-(1-t)^4)^1/4. Refract a vertical ray
+// through its normal (air 1 → glass 1.5), then project it through the glass.
+// Unlike the legacy outward smear, this samples inward: the rim magnifies the
+// content inside the lens. Precompute the radial profile once per map.
+function convexProfile(bevel:number,bend:number):number[]{
+  return Array.from({length:129},(_,i)=>{
+    const t=Math.max(.0001,i/128),u=1-t,height=Math.pow(1-u**4,.25);
+    const slope=u**3/height**3;
+    const incidence=Math.atan(slope);
+    const refraction=incidence-Math.asin(Math.sin(incidence)/1.5);
+    return -Math.min(bend,Math.tan(refraction)*(3+bevel*.65*height));
+  });
+}
 // The lens's height field. For each device pixel of a width by height box (in CSS px), it gives the displacement the lens applies there,
 // sampled at the screen's pixel density. The bar is a capsule that sits LENS_MARGIN inside the box. A pixel moves outward along the capsule's normal, by LENS_BEND at the rim (LENS_CAP
 // of that on the end caps), and that falls smoothly to zero LENS_BEVEL px inside. So each pixel samples from beyond the rim, which
@@ -31,11 +44,12 @@ const smoothstep=(t:number)=>t*t*(3-2*t);
 // +scale/2, so 128 is no shift.
 // The map has round(width * density) by round(height * density) pixels. Each pixel samples the field at its own centre, so at a whole
 // density that centre is (x + 0.5) / density, and a map at density 2 is the same field drawn twice as finely.
-export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LENS_BEVEL,bend=LENS_BEND,cap=LENS_CAP,density=1):Uint8ClampedArray<ArrayBuffer>{
+export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LENS_BEVEL,bend=LENS_BEND,cap=LENS_CAP,density=1,profile:'legacy'|'convex'='legacy'):Uint8ClampedArray<ArrayBuffer>{
   const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
   const data=new Uint8ClampedArray(new ArrayBuffer(pixelWidth*pixelHeight*4));
   const scale=2*bend;
   const bw=width-2*margin,radius=(height-2*margin)/2;
+  const convex=profile==='convex'?convexProfile(bevel,bend):null;
   for(let y=0;y<pixelHeight;y++)for(let x=0;x<pixelWidth;x++){
     // The device pixel's centre, in CSS px across the box. The map is stretched over the box, so this is also right when the size
     // times the density is not a whole number.
@@ -47,7 +61,11 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
     // Depth is the distance inside the rim. Outside the rim it stays at the rim's bend, so the field has no step at the edge. The
     // share is 1 where the normal is vertical (the straight rims) and cap where it is horizontal (the ends).
     const share=cap+(1-cap)*(dist>0?Math.abs(v)/dist:0);
-    const push=bend*share*(1-smoothstep(Math.min(1,Math.max(0,radius-dist)/bevel)));
+    const depth=Math.min(1,Math.max(0,radius-dist)/bevel);
+    const sample=depth*128,lo=Math.floor(sample);
+    const push=convex
+      ?share*(convex[lo]+(convex[Math.min(128,lo+1)]-convex[lo])*(sample-lo))
+      :bend*share*(1-smoothstep(depth));
     const ox=dist>0?push*dx/dist:0,oy=dist>0?push*v/dist:0;
     const i=(y*pixelWidth+x)*4;
     data[i]=Math.round(255*(0.5+ox/scale));
@@ -62,13 +80,13 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
 // more than one device pixel per CSS px the bend is as fine as the screen. The feImage stretches it over the box either way. Only a browser
 // can encode the PNG, so this is outside the unit tests. With no 2D context there is no map, and the empty string tells the caller to leave
 // the lens out, rather than bend with an all-zero map.
-export function lensPng(width:number,height:number,density=1):string{
+export function lensPng(width:number,height:number,density=1,arcade=false):string{
   const canvas=document.createElement('canvas');
   const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
   canvas.width=pixelWidth;canvas.height=pixelHeight;
   const context=canvas.getContext('2d');
   if(!context)return '';
-  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,LENS_BEVEL,LENS_BEND,LENS_CAP,density),pixelWidth,pixelHeight),0,0);
+  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,arcade?12:LENS_BEVEL,LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
   return canvas.toDataURL('image/png');
 }
 // The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.
@@ -160,6 +178,8 @@ function makeFilter(id:string){
 // Binds the pill, the press and the material to one bar. The lens is Chromium's backdrop refraction, and every other browser frosts the bar.
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
+  const arcade=bar.classList.contains('arcade-glass');
+  const standalone=bar.classList.contains('game-glass');
   const brands=(navigator as NavigatorWithBrands).userAgentData?.brands;
   const queries=[matchMedia('(prefers-reduced-transparency: reduce)'),matchMedia('(prefers-contrast: more)'),matchMedia('(forced-colors: active)')];
   const id=`ui-glass-${++filterSeq}`;
@@ -218,7 +238,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     document.addEventListener('lostpointercapture',cancel);
     window.addEventListener('blur',lost);
     document.addEventListener('visibilitychange',hidden);
-    place(tab,false,true);
+    if(!standalone)place(tab,false,true);
   };
   const stopListening=()=>{
     document.removeEventListener('pointerup',up);
@@ -262,7 +282,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     mapHeight=height;
     mapDensity=density;
     const token=++mapSeq;
-    const url=lensPng(width,height,density);
+    const url=lensPng(width,height,density,arcade);
     // A lens without its map would shift everything by the full scale, so without one the lens is left out.
     if(!url){lensless=true;applyMode();return;}
     const probe=new Image();
@@ -296,7 +316,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const keepEdge=()=>{
     const parent=bar.parentNode;
     if(parent!==watched){parentWatch.disconnect();watched=parent;if(parent)parentWatch.observe(parent,{childList:true});}
-    if(!parent||mode!=='frost'){edge.remove();return;}
+    if(!parent||mode!=='frost'||standalone){edge.remove();return;}
     if(bar.nextSibling!==edge)bar.after(edge);
     edge.hidden=!bar.offsetWidth;
   };

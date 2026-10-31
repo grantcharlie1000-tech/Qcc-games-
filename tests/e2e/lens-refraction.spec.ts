@@ -17,7 +17,7 @@ const asFrost=(page:Page)=>page.addInitScript(()=>{Object.defineProperty(navigat
 // top and bottom rims. Both are sharp edges, so any shift of the rim shows as a change in the pixels.
 const stripes=(orientation:'v'|'h')=>'data:image/svg+xml,'+encodeURIComponent(orientation==='v'
   ?'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="16" height="32" fill="#000"/><rect x="16" width="16" height="32" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>'
-  :'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#000"/><rect y="16" width="32" height="16" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>');
+  :'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" y="8" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#000"/><rect y="16" width="32" height="16" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>');
 
 // Puts the stripes behind the island, and hides the covers and the tabs, so the pixels are the stripes only.
 async function stage(page:Page,orientation:'v'|'h'='v'){
@@ -30,7 +30,7 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
     image.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none';
     document.body.append(image);
   },stripes(orientation));
-  await page.addStyleTag({content:'.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
+  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }
 
@@ -85,9 +85,9 @@ async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
   },{flat,bent,again,orientation,dpr});
 }
 
-// The rim thresholds, from the measured lower side of each rim at the 10 px bend, with no scroll edge under the backdrop lens (scratch probe
-// at 390 px): vertical 31.7 at density 1 and 31.8 at density 2, horizontal 7.3 and 7.7. Each threshold sits about half its measured value,
-// and well above the zero that a flat bar gives, so a lens with its scale at 0, or a dropped filter, fails clearly.
+// Optical fixture: disable the tint so the same thresholds measure bending
+// independently of light/dark material opacity. Both rim axes must visibly move;
+// the undistorted centre and repeated shot still guard against false positives.
 const RIM={backdropV:15,backdropH:3.5};
 
 // The bend passes when the bar holds still between shots, the rim moves past its threshold, and the centre does not move.
@@ -109,9 +109,8 @@ test('Chromium refracts the backdrop itself, with the same bend at the rim and a
   expectBend(await bend(page,bar,'v'),RIM.backdropV);
 });
 
-// The backdrop does not bend the outer rows of the top and bottom rims. Rows 3 to 11 of the top rim, and rows 53 to 61 of the bottom,
-// stay unbent (0 to 3), while the vertical rims bend fully. The cause is not established: removing the clip-path leaves the profile
-// unchanged. The test measures the whole 20 px band, so it checks the part of the rim that this path does bend.
+// Place a stripe boundary 8px inside each rim. A convex bezel samples inward;
+// a boundary outside the glass (the legacy fixture) cannot reveal that bending.
 test('Chromium refracts the backdrop along the top and bottom rims, and leaves the centre still',async({page,browserName})=>{
   test.skip(browserName!=='chromium','the backdrop lens is Chromium only');
   await page.setViewportSize({width:390,height:844});
@@ -228,8 +227,8 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-    expect(frost).toContain('blur(10px)');
-    expect(frost).toContain('saturate(1.8)');
+    expect(frost).toContain('blur(5px)');
+    expect(frost).toContain('saturate(1.7)');
   });
 
   test('frost has a glow layer on the bar\'s edge, hidden from assistive technology',async({page})=>{
@@ -239,7 +238,8 @@ test.describe('frost, in every browser but Chromium',()=>{
     const glow=page.locator('.app-tabbar>.ui-glass-glow');
     await expect(glow).toHaveCount(1);
     expect(await glow.getAttribute('aria-hidden')).toBe('true');
-    expect(await glow.evaluate(el=>getComputedStyle(el).boxShadow)).toContain('inset');
+    expect(await glow.evaluate(el=>getComputedStyle(el).backgroundImage)).toContain('conic-gradient');
+    expect(await glow.evaluate(el=>getComputedStyle(el).maskComposite)).toContain('exclude');
     expect(await glow.evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
   });
 

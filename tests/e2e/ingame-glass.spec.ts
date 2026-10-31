@@ -161,7 +161,7 @@ test('optional pads, shrinking viewport and disposal keep the dock usable',async
   }
   for(let i=0;i<3;i++){
     await page.goto('/#/game/block-fill');await expect(page.locator('.game-hud')).toContainText('Covered');
-    await page.getByRole('link',{name:'Back to game library'}).click();
+    await page.getByRole('link',{name:'Games'}).click();
     await expect(page.locator('.game-dock')).toHaveCount(0);
     expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(1);
   }
@@ -169,7 +169,7 @@ test('optional pads, shrinking viewport and disposal keep the dock usable',async
 
 test('shared glass fallbacks and keyboard focus work in the game dock',async({page,browserName})=>{
   await page.emulateMedia({reducedMotion:'reduce',contrast:'more'});
-  await page.goto('/#/game/snake');const dock=page.locator('.game-dock');
+  await page.goto('/#/game/snake');const dock=page.locator('#game-menu');
   await expect(dock).toHaveAttribute('data-glass','off');await expect(dock).toHaveCSS('backdrop-filter','none');
   await page.locator('#game-menu').focus();await page.keyboard.press('Enter');
   await expect(page.locator('#game-options')).toHaveAttribute('open','');
@@ -178,7 +178,7 @@ test('shared glass fallbacks and keyboard focus work in the game dock',async({pa
     await page.emulateMedia({contrast:'no-preference',reducedMotion:'no-preference'});
     const cdp=await page.context().newCDPSession(page);
     await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
-    await expect(dock).toHaveAttribute('data-glass','off');await expect(dock).toHaveCSS('background-color','rgba(18, 18, 20, 0.97)');
+    await expect(dock).toHaveAttribute('data-glass','off');await expect(dock).toHaveCSS('background-color','rgb(32, 38, 43)');
   }
 });
 

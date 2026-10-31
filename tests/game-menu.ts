@@ -33,5 +33,5 @@ export async function gameOption(page:Page,label:string,value:string){
 }
 export async function backToGames(page:Page){
   if(await page.locator('#game-options[open]').count())await page.getByRole('button',{name:'Close game menu',exact:true}).click();
-  await page.getByRole('link',{name:'Back to game library',exact:true}).click();
+  await page.getByRole('link',{name:'Games',exact:true}).click();
 }

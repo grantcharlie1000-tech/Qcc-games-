@@ -4,12 +4,26 @@ import {existsSync} from 'node:fs';
 
 const round=process.argv[2]??'round-1';
 if(!/^[a-zA-Z0-9_-]+$/.test(round))throw new Error('Use a plain round name');
-const ids=['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold'];
+const ids=['home','fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold'];
 const selected=process.argv.slice(3);
 const directory=`/workspace/qcc-liquid-glass/${round}`;
 await mkdir(directory,{recursive:true});
 const browser=await chromium.launch({channel:'chromium',executablePath:process.env.CHROMIUM_PATH??(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const results=[];
+async function capture(page,id,format,errors){
+  const geometry=await page.evaluate(home=>{
+    const box=selector=>{const e=document.querySelector(selector);if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
+    return {dock:box(home?'.app-tabbar':'.game-dock'),stage:box('.stage-wrap'),root:box('#game-stage > :first-child'),tone:document.querySelector(home?'.app-tabbar':'.game-view')?.getAttribute('data-glass-tone'),scroll:{x:scrollX,y:scrollY,width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight}};
+  },id==='home');
+  const path=`${directory}/${id}-${format}.png`,dockPath=`${directory}/${id}-${format}-dock.png`;
+  await page.screenshot({path,animations:'disabled'});
+  const d=geometry.dock,v=page.viewportSize();
+  if(!d)throw new Error('Dock has no capture rectangle');
+  const x=Math.max(0,d.x-24),y=Math.max(0,d.y-24);
+  await page.screenshot({path:dockPath,clip:{x,y,width:Math.min(v.width,d.x+d.width+24)-x,height:Math.min(v.height,d.y+d.height+24)-y},animations:'disabled'});
+  results.push({id,format,path,dockPath,errors,...geometry});
+  console.log(`${id} ${format}: captured full view + dock${errors.length?' — '+errors.join('; '):''}`);
+}
 try{
   for(const format of ['mobile','pc'])for(const id of ids.filter(id=>!selected.length||selected.includes(id))){
     const mobile=format==='mobile';
@@ -22,7 +36,14 @@ try{
     const page=await context.newPage(),errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     try{
-      await page.goto(`${process.env.ARCADE_URL??'http://127.0.0.1:4173'}/#/game/${id}`);
+      await page.goto(`${process.env.ARCADE_URL??'http://127.0.0.1:4173'}/${id==='home'?'#/collection':`#/game/${id}`}`);
+      if(id==='home'){
+        await page.locator('.game-card').first().waitFor({state:'visible'});
+        await page.locator('.app-tabbar.is-refracting').waitFor({state:'visible'});
+        await page.evaluate(()=>document.fonts.ready);
+        await capture(page,id,format,errors);
+        continue;
+      }
       await page.locator('#game-stage > *').first().waitFor({state:'visible'});
       await page.locator('.loading').waitFor({state:'detached'});
       await page.locator('.game-hud strong').first().waitFor({state:'visible'});
@@ -69,13 +90,8 @@ try{
       }
       if(!timed)await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
       if(id==='fivefold')await page.waitForFunction(()=>document.querySelectorAll('.ff-reveal .ff-tile').length===5);
-      await page.screenshot({path:`${directory}/${id}-${format}.png`,animations:'disabled'});
-      const geometry=await page.evaluate(()=>{
-        const box=selector=>{const e=document.querySelector(selector);if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
-        return {dock:box('.game-dock'),stage:box('.stage-wrap'),root:box('#game-stage > :first-child'),scroll:{x:scrollX,y:scrollY,width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight}};
-      });
-      results.push({id,format,path:`${directory}/${id}-${format}.png`,errors,...geometry});
-      console.log(`${id} ${format}: captured${errors.length?' — '+errors.join('; '):''}`);
+      await page.waitForFunction(()=>[...document.querySelectorAll('.game-dock > .arcade-glass')].every(e=>e.classList.contains('is-refracting')||e.getAttribute('data-glass')!=='backdrop'));
+      await capture(page,id,format,errors);
     }catch(error){results.push({id,format,error:String(error),errors});console.error(`${id} ${format}: ${error}`);}
     finally{await context.close();}
   }

@@ -80,8 +80,8 @@ async function expectClear(page:Page,panel:Locator){
   const box=(await panel.boundingBox())!,size=page.viewportSize()!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height-12);
-  for(const name of ['Back to game library','Pause game','Resume game','Restart game','Game rules','Open menu','Favourite Ball Run','Rankings']){
-    const control=name==='Rankings'?page.locator('.lb-toggle'):page.getByRole(name.startsWith('Back')?'link':'button',{name,exact:true});
+  for(const name of ['Games','Pause game','Resume game','Restart game','Game rules','Menu','Favourite Ball Run','Rankings']){
+    const control=name==='Rankings'?page.locator('.lb-toggle'):page.getByRole(name==='Games'?'link':'button',{name,exact:true});
     if(!await control.isVisible())continue;
     expect(apart(box,(await control.boundingBox())!),`${name} overlaps the panel`).toBe(true);
   }
@@ -502,7 +502,7 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   const ballY=await data(page,'ball-screen-y');expect(ballY).toBeGreaterThan(.60);expect(ballY).toBeLessThan(.80);
   await expect(page.locator('.game-hud')).toBeVisible();
   const hud=(await page.locator('.game-hud').boundingBox())!,speed=(await root.locator('.br-speed').boundingBox())!;
-  const back=(await page.getByRole('link',{name:'Back to game library'}).boundingBox())!,pause=(await page.locator('#game-menu').boundingBox())!;
+  const back=(await page.getByRole('link',{name:'Games'}).boundingBox())!,pause=(await page.locator('#game-menu').boundingBox())!;
   for(const control of [back,pause])expect(apart(hud,control)).toBe(true);
   const mid=(b:Box)=>b.x+b.width/2;
   expect(Math.abs(mid(hud)-viewport.width/2)).toBeLessThanOrEqual(1);

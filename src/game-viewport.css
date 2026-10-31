@@ -6,19 +6,49 @@ body.in-game #game-stage{min-height:0;width:100%;max-height:100%;outline:none}
 body.in-game #game-stage.viewport-fitted{position:absolute;left:50%;top:50%;max-height:none;transform-origin:center;overflow:visible}
 body.in-game #game-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 body.in-game #pause-overlay{border-radius:16px}
-/* Share the island's material, pill, focus and press. Only its layout and tint differ. */
-.game-dock.ui-tabbar{--glass-tint:rgb(16 16 20 / .72);position:relative;inset:auto;order:2;flex:0 0 56px;width:min(100%,440px);max-width:440px;min-height:56px;height:56px;margin:0 auto;padding:6px;gap:4px;z-index:30;transition:none}
-.game-dock>.ui-tab{flex:0 0 56px;min-width:56px;min-height:44px;padding:1px 2px;gap:1px;font-size:12px}
-.game-dock>.ui-tab svg{width:24px;height:24px;flex:none;filter:var(--glass-glyph-icon)}
-.game-hud{position:relative;z-index:1;display:flex;justify-content:center;align-items:center;gap:18px;flex:1;min-width:0;padding:0 4px;text-shadow:var(--glass-glyph);font-family:var(--font-sans);color:#fff;font-variant-numeric:tabular-nums}
+/* The play area keeps its reserved space; the game's background continues under
+   the three floating controls. The nav itself paints nothing. */
+.game-surface{position:absolute;inset:0;pointer-events:none;background:var(--game-surface,#191d1c)}
+.game-view[data-game-id=fruit-merge]{--game-surface:#fff2ca}
+.game-view[data-game-id=tower]{--game-surface:#cda1d2 url('/game-art/tower/skyline.svg') center/cover}
+.game-view[data-game-id=flappy-bird]{--game-surface:#f9d9a7}
+.game-view[data-game-id=snake]{--game-surface:#19251f}
+.game-view[data-game-id=maze-muncher]{--game-surface:#090e25}
+.game-view[data-game-id=globle]{--game-surface:#0d1726}
+.game-view[data-game-id=pool]{--game-surface:#162621}
+.game-view[data-game-id=corn-clicker]{--game-surface:#242617}
+.game-view[data-game-id=minesweeper]{--game-surface:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
+/* Native full-bleed canvas scenes already paint behind their top dock. */
+.game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) .game-surface{background:transparent}
+.game-dock{position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;gap:10px;z-index:30;font-family:var(--font-sans)}
+.game-dock>.game-glass{position:relative;border-radius:999px;height:52px;min-height:52px;min-width:0}
+.game-dock>.ui-tab{flex:0 0 52px;min-width:52px;display:flex;flex-direction:row;gap:8px;padding:0;font-size:14px;font-weight:550}
+.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:none}
+.game-dock>.ui-tab svg{width:24px;height:24px;flex:none}
+.game-hud{display:flex;justify-content:center;align-items:center;gap:18px;flex:1;min-width:0;padding:0 14px;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
 .game-hud-item{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;text-align:center;line-height:1.2}
-.game-hud small{font-size:12px;color:#dce0e6;white-space:nowrap}
+.game-hud small{font-size:12px;color:inherit;white-space:nowrap}
 .game-hud small:empty{display:none}
-.game-hud strong{font-size:18px;font-weight:750;line-height:1.25;text-wrap:balance}
-.game-hud-item:only-child strong{font-size:20px}
-/* Keep the labelled ratio on one line; the garden name can wrap on narrow phones. */
+.game-hud strong{font-size:18px;font-weight:650;line-height:1.25;text-wrap:balance}
+/* The lens and rim are siblings too; count HUD fields, not decorative layers. */
+.game-hud:not(:has(.game-hud-item~.game-hud-item)) strong{font-size:20px}
 .game-view[data-game-id=block-fill] .game-hud-item:last-child{flex-shrink:0}
-@media(min-width:700px){.game-dock.ui-tabbar{flex-basis:60px;min-height:60px;height:60px}.game-dock>.ui-tab{min-height:48px}.game-dock>.ui-tab,.game-hud small{font-size:14px}.game-dock>.ui-tab svg{width:28px;height:28px}.game-hud strong{font-size:20px}.game-hud-item:only-child strong{font-size:22px}}
+@media(min-width:700px){
+  .game-dock>.ui-tab{flex-basis:108px;padding:0 18px}
+  .game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:inline}
+  .game-dock>.ui-tab svg{width:28px;height:28px}
+  .game-hud small{font-size:14px}
+  .game-hud strong{font-size:20px}
+  .game-hud:not(:has(.game-hud-item~.game-hud-item)) strong{font-size:22px}
+}
+@media(max-width:359px){.game-dock{gap:8px}.game-hud{gap:10px;padding-inline:10px}.game-hud:not(:has(.game-hud-item~.game-hud-item)) strong{font-size:18px}}
+/* Blockcraft's status icons share the phone's upper corner with the dock.
+   Leave room for the 52px control and its press lift, including a safe inset. */
+@media(max-width:699px){.game-view[data-game-id=blockcraft] .bc-effects{top:max(72px,calc(env(safe-area-inset-top,0px) + 64px))}}
+/* These captions were drawn on the page's dark surround; they now sit on the
+   fruit game's cream surface, so use the game's brown ink. */
+.game-view[data-game-id=fruit-merge] :is(.fm-eyebrow,.fm-next-name,.fm-count){color:#694b38}
+.game-view[data-game-id=tower] .tower-feedback{text-shadow:0 1px #5a496f}
 .game-view:is([data-game-id=quadfall],[data-game-id=fivefold]) .game-dock{order:0}
 /* These scenes already reserve their top HUD area. Keep their canvas/input mapping intact. */
 .game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(var(--play-height,100dvh) * .54));--scene-bg:#55c3ec}
@@ -27,7 +57,7 @@ body.in-game #pause-overlay{border-radius:16px}
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]){padding:0;display:block;background:var(--scene-bg,#101a25)}
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) .stage-wrap,
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
-body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) .game-dock{position:absolute;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);width:min(calc(100% - 24px),360px);margin:0}
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) .game-dock{position:absolute;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);width:min(calc(100% - 24px),560px);margin:0}
 body.in-game .game-view:is([data-game-id=globle],[data-game-id=corn-clicker],[data-game-id=minesweeper],[data-game-id=slipline],[data-game-id=quadfall],[data-game-id=fivefold],[data-game-id=water-sort],[data-game-id=color-blocks],[data-game-id=pool]) #game-stage{height:100%;max-height:none;min-height:0}
 body.in-game .game-view[data-game-id=corn-clicker] #game-stage{container-type:inline-size}
 body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}

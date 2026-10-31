@@ -42,12 +42,12 @@ test('two browsers carry account scores and favourites, then logout restores gue
   for(let i=0;i<field.cells.length;i++)if(field.cells[i]!==-1&&await first.locator(`.ms-tile[data-index="${i}"]`).getAttribute('data-state')!=='open')await first.locator(`.ms-tile[data-index="${i}"]`).click();
   await expect(first.locator('.ms-outcome')).toHaveText('Field cleared!');
   // Leaving saves the real game snapshot; the debounced account sync sends it without blocking play.
-  await first.getByRole('link',{name:'Back to game library',exact:true}).click();
+  await first.getByRole('link',{name:'Games',exact:true}).click();
   await expect.poll(async()=>Number((await pool.query(`SELECT count(*) AS n FROM account_saves WHERE key='best:minesweeper-easy'`)).rows[0].n)).toBeGreaterThan(0);
   await second.goto('/#/game/minesweeper');await signIn(second,name);await expect(second.locator('#favourite-game')).toHaveAttribute('aria-pressed','true');await expect(second.locator('.ms-tile[data-index="0"]')).toHaveAttribute('data-state','open');
   await expect(second.locator('.ms-result-detail')).toContainText('Best');expect(await second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual(['minesweeper']);await menu(second);await expect(second.locator('#menu')).toContainText(`Signed in as ${name}`);await expect(second.getByRole('button',{name:'Log in / Sign up',exact:true})).not.toBeVisible();
   await second.locator('#menu').getByRole('button',{name:'Leaderboards',exact:true}).click();await expect(second.locator('#leaderboard-dialog .lb-you')).toContainText(name);await expect(second.locator('#leaderboard-dialog .lb-you')).toContainText('· account');await second.getByRole('button',{name:'Close leaderboards',exact:true}).click();
-  await first.goto('/#/game/minesweeper');await gameAction(first,'Favourite Minesweeper');await expect(first.locator('#favourite-game')).toHaveAttribute('aria-pressed','false');await first.getByRole('link',{name:'Back to game library',exact:true}).click();
+  await first.goto('/#/game/minesweeper');await gameAction(first,'Favourite Minesweeper');await expect(first.locator('#favourite-game')).toHaveAttribute('aria-pressed','false');await first.getByRole('link',{name:'Games',exact:true}).click();
   await expect.poll(async()=>((await pool.query("SELECT value FROM account_saves WHERE key='favourites' AND account_id=(SELECT id FROM accounts WHERE username=$1)",[name])).rows[0]?.value)).toEqual([]);
   expect(await first.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual([]);
   await second.evaluate(()=>window.dispatchEvent(new Event('online')));await expect.poll(()=>second.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:favourites')!))).toEqual([]);await expect(second.locator('#favourite-game')).toHaveAttribute('aria-pressed','false');

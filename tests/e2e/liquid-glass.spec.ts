@@ -388,9 +388,9 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
   expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
-  // The icon is a copy of the current tab's icon, centred and white.
+  // The icon is a copy of the current tab's icon, centred with dark ink on pale glass.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
-  expect(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(255, 255, 255)');
+  expect(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(11, 16, 21)');
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
   expect(box.width).toBeCloseTo(56,0);
@@ -625,7 +625,7 @@ for(const fallback of ['reduced transparency','more contrast','forced colours'] 
   if(fallback==='reduced transparency'){const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'},{name:'prefers-reduced-motion',value:'reduce'}]});}
   const bar=page.locator('.app-tabbar');
   await expect(bar).toHaveAttribute('data-glass','off');
-  if(fallback!=='forced colours')expect(await bar.evaluate(el=>getComputedStyle(el).boxShadow)).not.toBe('none');
+  expect(parseFloat(await bar.evaluate(el=>getComputedStyle(el).borderTopWidth))).toBeGreaterThanOrEqual(1);
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect(bar).toHaveCSS('opacity','0');
@@ -641,7 +641,7 @@ test('refraction stays off under reduced transparency and returns when that ends
   await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
   await expect(bar).not.toHaveClass(/is-refracting/);
   expect(await bar.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('none');
-  expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(18, 18, 20, 0.97)');
+  expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(241, 243, 245)');
   await cdp.send('Emulation.setEmulatedMedia',{features:[]});
   await expect(bar).toHaveClass(/is-refracting/);
 });
@@ -690,13 +690,12 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
 // A tab's computed colour and weight.
 const tabInk=(locator:Locator)=>locator.evaluate(el=>{const style=getComputedStyle(el);return {color:style.color,weight:style.fontWeight};});
 
-test('the arcade island tabs are 90% white, and the current tab is solid bold white',async({page})=>{
-  await page.setViewportSize({width:390,height:844});
-  await page.goto('/');
+test('the arcade light island uses dark ink and a bold current tab',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar');
-  await expect(bar).toBeVisible();
-  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgba(255, 255, 255, 0.9)',weight:'500'});
-  expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
+  await expect(bar).toHaveAttribute('data-glass-tone','light');
+  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
+  expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
 });
 
 test('the Movies island tabs are 90% white, and the current tab is solid bold white',async({page})=>{
@@ -710,32 +709,18 @@ test('the Movies island tabs are 90% white, and the current tab is solid bold wh
   await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
 });
 
-test('the island glass is clear: a 35% dark tint over an undimmed backdrop, with a dense halo on its labels and icons',async({page})=>{
-  await page.setViewportSize({width:390,height:844});
-  await page.goto('/');
-  const bar=page.locator('.app-tabbar');
-  await expect(bar).toBeVisible();
-  // The tint is the top layer's colour, above the lens, so the frost under it is not tinted by it.
-  expect(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(16, 16, 20, 0.35)');
-  // The selection pill is a light glass lens (at least 12% white), and its label keeps its contrast with the halo.
-  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(0.12);
-  // The frost is a blur, then the saturation and brightness, and it has no contrast(). In Chromium's backdrop it is the lens's backdrop,
-  // with a 3 px blur. In the frost it is the bar's own, with a 10 px blur.
+test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');
+  const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
+  const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
+  expect(tint).toBeGreaterThanOrEqual(.35);expect(tint).toBeLessThanOrEqual(.55);
+  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.12);
   const frost=await frostFilter(bar);
-  if(await bar.getAttribute('data-glass')==='frost'){
-    expect(frost).toContain('blur(10px)');
-    expect(frost).toContain('saturate(1.8) brightness(1.04)');
-  }else{
-    expect(frost).toContain('blur(3px)');
-    expect(frost).toContain('saturate(1.9) brightness(1.03)');
-  }
-  expect(frost).not.toContain('contrast(');
+  expect(frost).toContain(await bar.getAttribute('data-glass')==='frost'?'blur(5px)':'blur(3px)');
+  expect(frost).toContain('saturate(1.7) brightness(1.06)');expect(frost).not.toContain('contrast(');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
-  const shadow=await movies.evaluate(el=>getComputedStyle(el).textShadow);
-  expect(shadow).toContain('rgb(0, 0, 0) 0px 0px 1px');
-  expect(shadow).toContain('rgba(0, 0, 0, 0.6) 0px 1px 2px');
-  // An SVG has no text-shadow, so the icons carry the same halo as a drop shadow.
-  expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toContain('drop-shadow(rgb(0, 0, 0) 0px 0px 1px)');
+  expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
+  expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toBe('none');
 });
 
 // contrast() never reaches the island's frost, and the blur stays at most 6 px in the lens and 10 px in the frost. The rules are read from the
@@ -769,16 +754,16 @@ test('the island frost has no contrast(), and blurs by at most 6 px in the lens 
   }
 });
 
-test('more contrast makes the island opaque with white labels, and keeps its border',async({page})=>{
+test('more contrast makes the arcade island opaque with dark ink, while Movies retains white ink',async({page})=>{
   await page.emulateMedia({contrast:'more'});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(18, 18, 20, 0.96)');
+  expect(await bar.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(241, 243, 245)');
   expect(await bar.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('none');
-  expect(await bar.evaluate(el=>getComputedStyle(el).borderTopColor)).toBe('rgba(255, 255, 255, 0.4)');
-  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
+  expect(await bar.evaluate(el=>getComputedStyle(el).borderTopColor)).toBe('rgb(11, 16, 21)');
+  expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
   await page.goto('/#/movies');
   const movies=page.locator('nav.movies-mobile-nav.ui-tabbar');
   await expect(movies).toBeVisible();
@@ -1038,22 +1023,15 @@ test('a press on the island that Movies left behind does nothing',async({page})=
   expect(await page.evaluate(()=>(window as Window&{__island?:HTMLElement}).__island!.style.getPropertyValue('--ui-pill-on'))).toBe('');
 });
 
-// The rim is directional: the top-left highlight is brighter than the bottom-right one, on the bar and on its pill.
-test('the rim of the island and of its pill is brighter at the top left than at the bottom right',async({page})=>{
-  await page.setViewportSize({width:390,height:844});
-  await page.goto('/');
-  const bar=page.locator('.app-tabbar');
-  await expect(bar).toBeVisible();
-  const rim=(shadow:string)=>({
-    topLeft:Number(/rgba\(255, 255, 255, ([\d.]+)\) 1\.5px 1\.5px 1px -1px inset/.exec(shadow)?.[1]??0),
-    bottomRight:Number(/rgba\(255, 255, 255, ([\d.]+)\) -1px -1px 1px -1px inset/.exec(shadow)?.[1]??0)
-  });
-  // The bar's inner rim is on its top layer, above the lens, and the pill has its own rim.
-  for(const shadow of [await bar.evaluate(el=>getComputedStyle(el,'::before').boxShadow),await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)]){
-    const {topLeft,bottomRight}=rim(shadow);
-    expect(topLeft).toBeGreaterThan(0);
-    expect(topLeft).toBeGreaterThan(bottomRight);
-  }
+// The specular layer masks a thin edge, with two bright arcs and faint sides.
+test('the arcade rim has two directional specular arcs around a clear centre',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');
+  const rim=page.locator('.app-tabbar > .ui-glass-glow');
+  await expect(rim).toBeVisible();
+  const style=await rim.evaluate(el=>{const s=getComputedStyle(el);return {image:s.backgroundImage,mask:s.maskComposite,padding:s.paddingTop};});
+  expect(style.image).toContain('conic-gradient');
+  expect(style.image).toContain('0.85');expect(style.image).toContain('0.65');
+  expect(style.mask).toContain('exclude');expect(parseFloat(style.padding)).toBeLessThanOrEqual(1);
 });
 
 // Forced colours drop box shadows and backgrounds: the pill keeps its edge from a 2 px outline, and the current tab is underlined.

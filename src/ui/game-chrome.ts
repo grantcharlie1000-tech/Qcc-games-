@@ -32,10 +32,44 @@ const choices:Partial<Record<GameId,Choice[]>>={
   'corn-clicker':[{selector:'.cc-face-toggle'}]
 };
 
+// Presentation backgrounds only. Copy the existing game's surface through the
+// reserved dock area; no canvas copies, game-state reads or per-frame sampling.
+const surfaceSources:Partial<Record<GameId,string>>={
+  'fruit-merge':'.fm-board',tower:'.tower-viewport',solitaire:'.solitaire','block-fill':'.bf-game',
+  'color-connect':'.cc-game','water-sort':'.ws-game','color-blocks':'.cb-game',
+  fivefold:'.ff',quadfall:'.qf-game',slipline:'.sl-game'
+};
+const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft']);
+
 export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLElement,activate:(action:()=>void)=>void):void;dispose():void}{
   const dock=view.querySelector<HTMLElement>('.game-dock')!;
   const hud=dock.querySelector<HTMLElement>('.game-hud')!;
-  const glass=bindGlass(dock);
+  view.dataset.glassTone=lightSurfaces.has(id)?'light':'dark';
+  const surface=view.querySelector<HTMLElement>('.game-surface')!;
+  const source=surfaceSources[id]?view.querySelector(surfaceSources[id]!):null;
+  if(source){
+    const style=getComputedStyle(source);
+    surface.style.backgroundColor=style.backgroundColor;
+    surface.style.backgroundImage=style.backgroundImage;
+    surface.style.backgroundSize=style.backgroundSize;
+    surface.style.backgroundPosition=style.backgroundPosition;
+  }
+  // Continue Fruit Merge's existing 32px checkerboard outside its basket. Its
+  // artwork is painted into a 360px canvas; align the CSS continuation to that
+  // canvas after layout, including when a phone rotates. This is background art
+  // only and never copies the moving fruit or consumes input.
+  const alignSurface=()=>{
+    if(id!=='fruit-merge'||!source)return;
+    const board=source.getBoundingClientRect(),box=view.getBoundingClientRect(),scale=board.width/360;
+    surface.style.backgroundImage='repeating-conic-gradient(#eed6a842 0% 25%, transparent 0% 50%)';
+    surface.style.backgroundSize=`${64*scale}px ${64*scale}px`;
+    surface.style.backgroundPosition=`${board.x-box.x}px ${board.y-box.y+90*scale}px`;
+  };
+  const surfaceResize=id==='fruit-merge'?new ResizeObserver(alignSurface):undefined;
+  if(source)surfaceResize?.observe(source);
+  surfaceResize?.observe(view.querySelector('.stage-wrap')!);
+  alignSurface();
+  const glass=[...dock.querySelectorAll<HTMLElement>('.arcade-glass')].map(bindGlass);
   const observers:MutationObserver[]=[];
   for(const field of fields[id]){
     const source=view.querySelector<HTMLElement>(field.source);
@@ -80,6 +114,6 @@ export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLEle
       }
       host.hidden=!host.childElementCount;
     },
-    dispose(){glass.dispose();for(const observer of observers)observer.disconnect();}
+    dispose(){surfaceResize?.disconnect();for(const binding of glass)binding.dispose();for(const observer of observers)observer.disconnect();}
   };
 }
