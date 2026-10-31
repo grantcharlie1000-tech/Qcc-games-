@@ -4,7 +4,7 @@
 
 **Architecture:** Keep the pg-style handlers, localStorage envelopes and existing merge rules. Add an explicitly opted-in v2 delta protocol, transactionally assigned per-account revisions (including legacy writes), durable client metadata and retry scheduling. Keep v1 snapshots intact. Separate cacheable public rankings from private own-rank reads.
 
-**Constraints:** Work on `qcc-sync-neon`, no push; no changes outside this repository except the requested temporary main measurement worktree. Preserve all rows and timestamps in an additive migration after `20261028002000`. Never output credentials or saves. Preserve 1 MiB write/2 MiB request caps; accept existing larger server records on reads.
+**Constraints:** Work on `qcc-sync-neon`, no push; no changes outside this repository except the requested temporary main measurement worktree. Preserve all rows and timestamps in an additive migration after the Minesweeper score migration (subsequently renamed to `20261030190000_minesweeper_score.sql`). Never output credentials or saves. Preserve 1 MiB write/2 MiB request caps; accept existing larger server records on reads.
 
 ## Tasks
 

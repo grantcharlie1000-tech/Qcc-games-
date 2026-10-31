@@ -5,7 +5,7 @@ import {isLibraryMovieArtwork} from '../../scripts/movies-network-policy.mjs';
 import {parseCatalog,imageAsset} from '../../src/movies/model';
 it('ships real TMDB artwork rather than generated substitutes',()=>{
  const raw=JSON.parse(readFileSync('public/movies/catalog.json','utf8'));const catalog=parseCatalog(raw);
- expect(catalog.titles).toHaveLength(raw.titles.length);expect(catalog.titles.length).toBeGreaterThanOrEqual(6);
+ expect(catalog.titles).toHaveLength(raw.titles.length);expect(raw.titles).toHaveLength(8);expect(raw.titles.every((t:any)=>t.source?.type==='third-party')).toBe(true);expect(catalog.titles.length).toBeGreaterThanOrEqual(6);
  for(const title of catalog.titles)expect(imageAsset(title.poster)).toMatch(/^https:\/\/image\.tmdb\.org\//);
  expect(catalog.titles.some(t=>t.seasons.some(s=>s.episodes.length>1))).toBe(true);
  expect(JSON.parse(readFileSync('public/movies/licenses.json','utf8'))).toEqual([]);
@@ -25,6 +25,7 @@ it('permits only approved image/frame origins and narrowly scopes the offline th
  for(const path of ['netlify.toml','vite.config.ts','public/_headers']){
   const text=readFileSync(path,'utf8');
   for(const policy of ["media-src 'self'","frame-src https://framextv.xyz https://framextv.cc","script-src 'self'","object-src 'none'","https://image.tmdb.org"])expect(text).toContain(policy);
+  if(path!=='vite.config.ts')expect(text).toContain('https://vidsrc.to https://archive.org; form-action');
   expect(text).not.toContain('unsafe-eval');
  }
 });

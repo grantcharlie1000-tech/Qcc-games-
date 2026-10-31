@@ -1,4 +1,36 @@
+# Movies & TV verification — 2026-10-30
+
+These are the results for the streaming-style redesign and the glass island.
+
+CI ran on bcc9197 ("Verify and deploy arcade", run 285) and passed every job:
+
+| Check | Result |
+| --- | --- |
+| Unit tests (`npm test`) | Passed |
+| Build, `verify:update` and `verify:offline` | Passed |
+| Campaign regression, Chromium and WebKit | Passed |
+| Full browser suite, Chromium | 828 passed, 1 skipped |
+| Full browser suite, WebKit (Desktop Safari, two device pixels per CSS px) | 785 passed |
+
+The later commits were checked in Chromium before they were pushed. The pull request shows CI for the latest commit.
+
+| Commit | Checks |
+| --- | --- |
+| 303c3db, Movies focus, search, look and tests | `npm run check`; 365 unit tests in `tests/core` and `tests/movies`; 432 browser tests in `tests/movies` and the four glass specs |
+| db48f6d and 4b0627b | 25 rail tests, 14 lens tests and 33 lens unit tests |
+| b76d116, main's #77 merged in | the study spec, 36 passed |
+
+What these runs do not cover:
+
+- WebKit runs as Desktop Safari at two device pixels per CSS px. An iPhone draws three, and no CI job runs on an iPhone.
+- Playback runs against local fixture pages. No real streaming provider is contacted.
+- The island's label legibility was judged by measurement in Chromium over the games' real artwork, not by a committed test.
+
+---
+
 # Movies & TV verification — 2026-10-25
+
+This is the record from 2026-10-25, before the streaming-style redesign and the glass island. It is kept as history.
 
 ## Final feature model
 

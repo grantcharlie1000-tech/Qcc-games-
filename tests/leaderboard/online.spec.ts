@@ -19,7 +19,7 @@ async function connect(context:BrowserContext,score:number,username?:string){
 }
 async function appMenu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Account & app settings',exact:true}).click();}
 async function join(page:Page,name:string){
- await page.goto('/#/');await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
+ await page.goto('/#/');await appMenu(page);await page.locator('#menu').getByRole('button',{name:'Leaderboards',exact:true}).click();
  await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(19);
  await page.getByLabel('Game',{exact:true}).selectOption('snake');
  await expect(page.locator('.lb-table tbody')).toContainText(name);
@@ -79,6 +79,6 @@ test('guests can read rankings and keep local progress while the sharing action 
 
 test('an expired session offers login recovery while scores remain local',async({page,context})=>{
  await connect(context,0,'Expired_Player');await pool.query("UPDATE account_sessions SET expires_at=now()-interval '1 second' WHERE account_id=(SELECT id FROM accounts WHERE username='Expired_Player')");
- await page.goto('/');await appMenu(page);await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
+ await page.goto('/');await appMenu(page);await page.locator('#menu').getByRole('button',{name:'Leaderboards',exact:true}).click();
  await expect(page.locator('.lb-status')).toContainText('Log in again');await expect(page.locator('.lb-login')).toBeVisible();await page.locator('.lb-login button').click();await expect(page.locator('#accounts-dialog')).toBeVisible();
 });

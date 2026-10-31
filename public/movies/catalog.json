@@ -15,7 +15,10 @@
       "overview": "A pilot and a team of explorers leave a struggling Earth to search for a future among the stars.",
       "poster": "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
       "seasons": [],
-      "backdrop": "https://image.tmdb.org/t/p/w1280/pbrkL804c8yAv3zBZR4QPEafpAR.jpg"
+      "backdrop": "https://image.tmdb.org/t/p/w1280/pbrkL804c8yAv3zBZR4QPEafpAR.jpg",
+      "source": {
+        "type": "third-party"
+      }
     },
     {
       "id": "movie-438631",
@@ -28,7 +31,10 @@
       ],
       "overview": "On a desert world, a young heir must navigate rival powers and a destiny larger than his family.",
       "poster": "https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg",
-      "seasons": []
+      "seasons": [],
+      "source": {
+        "type": "third-party"
+      }
     },
     {
       "id": "movie-329865",
@@ -41,7 +47,10 @@
       ],
       "overview": "A linguist works to understand visitors from another world, and discovers a new way to think about time.",
       "poster": "https://image.tmdb.org/t/p/w500/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg",
-      "seasons": []
+      "seasons": [],
+      "source": {
+        "type": "third-party"
+      }
     },
     {
       "id": "movie-129",
@@ -54,7 +63,10 @@
       ],
       "overview": "A girl enters a mysterious spirit world and finds courage while trying to bring her parents home.",
       "poster": "https://image.tmdb.org/t/p/w500/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
-      "seasons": []
+      "seasons": [],
+      "source": {
+        "type": "third-party"
+      }
     },
     {
       "id": "movie-120467",
@@ -67,7 +79,10 @@
       ],
       "overview": "A hotel concierge and his young colleague become unlikely partners in an adventure through a changing Europe.",
       "poster": "https://image.tmdb.org/t/p/w500/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg",
-      "seasons": []
+      "seasons": [],
+      "source": {
+        "type": "third-party"
+      }
     },
     {
       "id": "movie-286217",
@@ -80,7 +95,10 @@
       ],
       "overview": "Stranded far from home, an astronaut turns to science, ingenuity and a little humour to stay alive.",
       "poster": "https://image.tmdb.org/t/p/w500/sGz80DpcdpYWl5aKM0wIA2C90rc.jpg",
-      "seasons": []
+      "seasons": [],
+      "source": {
+        "type": "third-party"
+      }
     },
     {
       "id": "tv-19885",
@@ -136,7 +154,10 @@
             }
           ]
         }
-      ]
+      ],
+      "source": {
+        "type": "third-party"
+      }
     },
     {
       "id": "tv-68595",
@@ -186,7 +207,10 @@
             }
           ]
         }
-      ]
+      ],
+      "source": {
+        "type": "third-party"
+      }
     }
   ],
   "artworkProvider": "TMDB"

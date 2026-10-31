@@ -4,8 +4,10 @@ const remoteTitle={id:'movie-778899',kind:'movie',name:'Remote Expedition',year:
 const results={titles:[remoteTitle],page:1,totalPages:1,totalResults:1};
 
 test.beforeEach(async({page})=>{
+ // Existing playback coverage accepts each fresh third-party playback warning.
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
- for(const origin of ['https://framextv.cc','https://framextv.xyz'])await page.route(origin+'/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ for(const origin of ['https://framextv.cc','https://framextv.xyz','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])await page.route(origin+'/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'+(origin==='https://framextv.cc'?'<script>parent.postMessage({event:"frameXTV:ready"},"*")</script>':'')}));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
@@ -107,7 +109,8 @@ test('manual player reload recreates only the chosen frame and retains its restr
 });
 
 test('retry resumes the failed catalog page instead of the previous successful page',async({page})=>{
- let failures=1;
+ // all three automatic attempts fail, so the manual retry is still exercised
+ let failures=3;
  await page.route('**/api/movies?*',route=>{
   const pageNumber=Number(new URL(route.request().url()).searchParams.get('page')||1);
   if(pageNumber===2&&failures-->0)return route.abort();
@@ -151,4 +154,64 @@ test('fullscreen lazy-season failures expose retry without replacing the screen 
  await expect(frame).toHaveAttribute('data-instance','season-two-frame');
  expect(await page.evaluate(()=>document.fullscreenElement?.className)).toBe('movies-screen');
  await expect(retry).toHaveCount(0);
+});
+
+// A control that re-renders the page keeps keyboard focus: the same control when it still exists, else the heading of the page.
+test('Retry title keeps focus on the Retry title button when the title still fails',async({page})=>{
+ await page.route('**/api/movies?*',route=>route.abort());
+ await page.goto('/#/movies/movie-778899');
+ const retry=page.getByRole('button',{name:'Retry title',exact:true});
+ await expect(retry).toBeVisible();
+ await retry.focus();await page.keyboard.press('Enter');
+ // The notice and its Retry button come back, and focus returns to that button.
+ await expect(page.getByRole('button',{name:'Retry title',exact:true})).toBeFocused();
+});
+
+test('a failed Retry title leaves focus where the reader moved it while the title loaded',async({page})=>{
+ let holding=false;const held:(()=>void)[]=[];
+ await page.route('**/api/movies?*',route=>holding?new Promise<void>(resolve=>held.push(()=>{void route.abort();resolve();})):route.abort());
+ await page.goto('/#/movies/movie-778899');
+ const retry=page.getByRole('button',{name:'Retry title',exact:true});
+ await expect(retry).toBeVisible();
+ holding=true;
+ await retry.focus();await page.keyboard.press('Enter');
+ await expect.poll(()=>held.length).toBeGreaterThan(0);
+ // The reader moves on while the title loads, so the failure must not pull focus back to Retry.
+ const search=page.getByRole('button',{name:'Search movies and TV',exact:true});
+ await search.focus();
+ holding=false;for(const release of held.splice(0))release();
+ await expect(page.getByRole('button',{name:'Retry title',exact:true})).toBeVisible();
+ await expect(search).toBeFocused();
+});
+
+test('Retry title moves focus to the title heading once the title loads',async({page})=>{
+ let blocked=true;
+ await page.route('**/api/movies?*',route=>blocked?route.abort():route.fulfill({json:{title:remoteTitle}}));
+ await page.goto('/#/movies/movie-778899');
+ const retry=page.getByRole('button',{name:'Retry title',exact:true});
+ await expect(retry).toBeVisible();
+ blocked=false;await retry.focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('heading',{name:'Remote Expedition',exact:true})).toBeVisible();
+ await expect(page.locator('.movies-detail h1')).toBeFocused();
+});
+
+test('Reload player keeps keyboard focus on Reload player',async({page})=>{
+ await page.goto('/#/movies/movie-157336/play');
+ const frame=page.locator('iframe.movies-provider-frame');await expect(frame).toBeVisible();
+ await frame.evaluate(element=>element.setAttribute('data-instance','original'));
+ const reload=page.getByRole('button',{name:'Reload player',exact:true});
+ await reload.focus();await page.keyboard.press('Enter');
+ await expect(frame).not.toHaveAttribute('data-instance','original');
+ await expect(reload).toBeFocused();
+});
+
+test('Resume stream moves keyboard focus to the player heading once the stream is back',async({page})=>{
+ await page.goto('/#/movies/movie-157336/play');
+ await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
+ await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
+ await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+ const resume=page.getByRole('button',{name:'Resume stream',exact:true});
+ await resume.focus();await page.keyboard.press('Enter');
+ await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
+ await expect(page.locator('.movies-player>h1')).toBeFocused();
 });

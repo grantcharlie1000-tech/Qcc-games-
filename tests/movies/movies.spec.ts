@@ -2,54 +2,36 @@ import {test,expect} from '../fixtures';
 import {readFileSync} from 'node:fs';
 // Network fixtures isolate browser security tests from provider uptime and workspace egress restrictions.
 test.beforeEach(async({page})=>{
+ // Existing playback coverage accepts each fresh third-party playback warning.
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>{await dialog.getByRole('button',{name:'Continue',exact:true}).click();});
  await page.route('https://image.tmdb.org/**',route=>route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6WQAAAAASUVORK5CYII=','base64')}));
- await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
+ await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
+ for(const origin of ['https://framextv.xyz','https://vidlink.pro','https://vixsrc.to','https://vidsrc.to'])await page.route(origin+'/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><button>Play stream</button>'}));
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
 });
 
-for(const width of [320,390,650,768,1280,1920])test(`launch poster cards have no duplicate sources at ${width}px`,async({page})=>{
- await page.setViewportSize({width,height:800});await page.goto('/');
- const sources=await page.locator('.movies-launch img').evaluateAll(images=>images.map(image=>(image as HTMLImageElement).src));
- expect(sources.length).toBeGreaterThan(0);
- expect(new Set(sources).size).toBe(sources.length);
+test('the games library has no Movies & TV box, and the island Movies tab opens Movies & TV',async({page})=>{
+ await page.goto('/');await expect(page.locator('.game-card')).toHaveCount(21);
+ await expect(page.locator('.movies-launch')).toHaveCount(0);await expect(page.getByRole('link',{name:'Movies & TV',exact:true})).toHaveCount(0);
+ await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
+ await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
 });
 
-test('offline launch skips remote posters and retains a readable coloured fallback',async({page})=>{
- await page.addInitScript(()=>Object.defineProperty(navigator,'onLine',{get:()=>false}));
- const remote:string[]=[];page.on('request',request=>{if(request.url().startsWith('https://image.tmdb.org/'))remote.push(request.url());});
- await page.goto('/');const launch=page.locator('.movies-launch');
- await expect(launch).toHaveText('Movies & TV');await expect(launch.locator('img')).toHaveCount(0);
- expect(remote).toEqual([]);expect(await launch.evaluate(e=>getComputedStyle(e).backgroundImage)).toContain('gradient');
- await expect(launch.getByRole('heading')).toHaveCSS('color','rgb(255, 255, 255)');
-});
-
-test('failed launch posters are hidden over the coloured fallback',async({page})=>{
- await page.route('https://image.tmdb.org/**',route=>route.abort());await page.goto('/');
- const launch=page.locator('.movies-launch');
- await expect.poll(()=>launch.locator('img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).hidden))).toBe(true);
- expect(await launch.evaluate(e=>getComputedStyle(e).backgroundImage)).toContain('gradient');
- await expect(launch.getByRole('heading')).toBeVisible();
-});
-
-test('full-width launch, local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
+test('island Movies tab opens Movies & TV: local discovery, episodes, enabled playback, back and Study Mode',async({page})=>{
  await page.goto('/');
  const games=page.locator('.game-card');await expect(games).toHaveCount(21);
- const launch=page.getByRole('link',{name:'Movies & TV',exact:true});
- await expect(launch).toHaveAttribute('href','#/movies');
- await expect(launch).toHaveText('Movies & TV');
- await expect(launch.locator('[aria-hidden="true"] img')).toHaveCount(8);
- await expect(launch.locator('a,button')).toHaveCount(0);
- await launch.focus();await expect(launch).toBeFocused();
- expect(await launch.evaluate(e=>getComputedStyle(e).outlineStyle)).toBe('solid');
- const [grid,card]=await Promise.all([page.locator('.game-grid').boundingBox(),launch.boundingBox()]);expect(card!.width).toBeGreaterThan(grid!.width-50);
- await expect(launch.locator('img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\/w185\//);
- await launch.press('Enter');await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
+ const tab=page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true});
+ await expect(tab).toHaveAttribute('href','#/movies/browse/movie');
+ await tab.focus();await expect(tab).toBeFocused();
+ await tab.press('Enter');await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
+ // The Movies tab searches films only, and this flow searches a series, so it goes Home from the Movies header first.
+ await page.locator('.movies-top').getByRole('button',{name:'Home',exact:true}).click();await expect(page.getByRole('heading',{name:'Interstellar',exact:true})).toBeVisible();
  await page.screenshot({path:'test-results/movies-home.png',fullPage:true});
  await expect(page.locator('.movies-poster img').first()).toHaveAttribute('src',/^https:\/\/image\.tmdb\.org\/t\/p\//);
  await page.getByRole('searchbox',{name:'Search movies and TV'}).fill('sherlock');
  await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);
  await page.getByRole('link',{name:'Details for Sherlock'}).click();
- await page.getByLabel('Season',{exact:true}).selectOption('2');await expect(page.getByRole('heading',{name:'The Reichenbach Fall'})).toBeVisible();
+ await page.getByRole('button',{name:/^Season 2\b/}).click();await expect(page.getByRole('heading',{name:'The Reichenbach Fall'})).toBeVisible();
  await page.getByRole('link',{name:'Play The Reichenbach Fall'}).click();
  await expect(page.locator('.movies-provider-frame')).toBeVisible();await expect(page.locator('video')).toHaveCount(0);
  await page.getByRole('link',{name:'Back to Sherlock'}).click();
@@ -60,7 +42,7 @@ test('full-width launch, local discovery, episodes, enabled playback, back and S
  // Study retains the movies route and returns to the same page.
  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
  await expect(page.locator('.movies-view')).toBeVisible();
- await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(21);await expect(launch).toBeFocused();
+ await page.getByRole('link',{name:'Games',exact:true}).click();await expect(games).toHaveCount(21);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
 });
 
 for(const width of [320,390,768,1366])test(`responsive allowlisted provider boundary at ${width}px`,async({page})=>{
@@ -69,7 +51,7 @@ for(const width of [320,390,768,1366])test(`responsive allowlisted provider boun
  await page.goto('/#/movies');await expect(page.locator('#movies-search')).toBeVisible();
  await page.locator('#movies-search').fill('arrival');await expect(page.locator('.movies-results-grid .movies-poster')).toHaveCount(1);await page.getByRole('link',{name:'Details for Arrival'}).click();
  await expect(page.getByRole('button',{name:'Play movie'})).toBeEnabled();
- await page.getByRole('link',{name:'Playback information',exact:true}).click();
+ await page.getByRole('button',{name:'Play movie'}).click();
  await expect(page.locator('.movies-provider-frame')).toBeVisible();
  expect(requests.filter(url=>![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(url).origin))).toEqual([]);
  const audit=await page.evaluate(()=>({frames:document.querySelectorAll('iframe,embed,object').length,hints:document.querySelectorAll('link[rel=preconnect],link[rel=dns-prefetch],link[rel=prefetch]').length,overflow:(document.querySelector('.movies-view')!.scrollWidth>document.querySelector('.movies-view')!.clientWidth),resources:performance.getEntriesByType('resource').map(r=>r.name)}));
@@ -90,17 +72,21 @@ test('blocked storage, catalog failure, invalid deep links and malicious metadat
 test('CSP blocks unapproved frames, media, images, scripts and connections',async({page})=>{
  await page.goto('/#/movies');await expect(page.locator('#movies-search')).toBeVisible();
  const responses:string[]=[];page.on('response',r=>{if(![new URL(page.url()).origin,'https://image.tmdb.org','https://framextv.cc'].includes(new URL(r.url()).origin))responses.push(r.url());});
- const directives=await page.evaluate(async()=>{
-  const violations:string[]=[];document.addEventListener('securitypolicyviolation',e=>violations.push(e.effectiveDirective));
+ await page.evaluate(async()=>{
+  const violations:string[]=[];(window as unknown as {violations:string[]}).violations=violations;document.addEventListener('securitypolicyviolation',e=>violations.push(e.effectiveDirective));
   const host='https://unapproved-provider.invalid';
   const frame=document.createElement('iframe');frame.src=host+'/blocked';document.body.append(frame);
   const media=document.createElement('video');media.src=host+'/blocked.mp4';document.body.append(media);media.load();
   const image=new Image();image.src=host+'/blocked.png';
   const script=document.createElement('script');script.src=host+'/blocked.js';document.body.append(script);
   await fetch(host+'/blocked').catch(()=>{});
-  await new Promise(r=>setTimeout(r,100));return violations;
  });
- for(const name of ['frame-src','media-src','img-src','script-src-elem','connect-src'])expect(directives).toContain(name);
+ // Frame and media reports arrive after these calls, so the test polls until all five are on the window.
+ const names=['frame-src','media-src','img-src','script-src-elem','connect-src'];
+ const reported=()=>page.evaluate(()=>(window as unknown as {violations:string[]}).violations);
+ await expect.poll(reported,{timeout:5000}).toEqual(expect.arrayContaining(names));
+ const directives=await reported();
+ for(const name of names)expect(directives).toContain(name);
  // Chromium reports CSP-blocked attempts as requestfailed; they must never receive a response.
  expect(responses).toEqual([]);await expect(page.locator('iframe')).toHaveCount(1);
 });
@@ -113,6 +99,20 @@ test('verified local media uses native controls and stores progress only in its 
  await page.keyboard.press('Escape');await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.paused)).toBe(true);
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}'));
  expect(saved.progress['movie-329865']).toBeGreaterThan(0);
+ // The native player's own duration is saved beside the position, for the Continue watching bar.
+ expect(saved.meta['movie-329865'].duration).toBe(await video.evaluate((v:HTMLVideoElement)=>v.duration));
+});
+
+// WebKit fires timeupdate only about every 250 ms, so Escape can come before the first one of a playing video. Swallowing every timeupdate stands in for that.
+test('local media that played saves its position on Escape before any timeupdate arrives',async({page})=>{
+ await page.addInitScript(()=>window.addEventListener('timeupdate',event=>event.stopImmediatePropagation(),{capture:true}));
+ await page.route('**/movies/licenses.json',route=>route.fulfill({json:[{key:'movie-329865',path:'movies/media/fixture.webm',license:'CC0-1.0',credit:'QCC generated test fixture',evidence:'docs/rights/fixture.md',reviewed:true,territory:'Worldwide',expires:'2099-01-01'}]}));
+ await page.route('**/movies/media/fixture.webm',route=>route.fulfill({contentType:'video/webm',body:readFileSync('tests/fixtures/movies.webm')}));
+ await page.goto('/#/movies/movie-329865/play');const video=page.locator('video');await expect(video).toBeVisible();
+ await video.evaluate(async(v:HTMLVideoElement)=>{await v.play();});await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.currentTime)).toBeGreaterThan(.1);
+ await page.keyboard.press('Escape');await expect.poll(()=>video.evaluate((v:HTMLVideoElement)=>v.paused)).toBe(true);
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}'));
+ expect(saved.progress?.['movie-329865']).toBeGreaterThan(0);
 });
 
 
@@ -122,15 +122,17 @@ test('episode return restores scroll and focus; keyboard stays inside the movie 
  const before=await page.locator('.movies-view').evaluate(e=>e.scrollTop);await cities.click();
  await page.getByRole('link',{name:'Back to Planet Earth II'}).click();await expect(cities).toBeFocused();
  expect(Math.abs(await page.locator('.movies-view').evaluate(e=>e.scrollTop)-before)).toBeLessThan(5);
- await expect(page.locator('.topbar')).toHaveJSProperty('inert',true);
- await page.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.topbar')).toHaveJSProperty('inert',false);
+ await expect(page.locator('.app-tabbar')).toHaveJSProperty('inert',true);
+ await page.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.app-tabbar')).toHaveJSProperty('inert',false);
 });
 
 test('game grid offset survives entering and leaving movies',async({page})=>{
- await page.goto('/');await page.locator('.movies-launch').waitFor();await page.evaluate(()=>scrollTo(0,130));
- const before=await page.evaluate(()=>scrollY);await page.locator('.movies-launch').evaluate((e:HTMLAnchorElement)=>e.click());
- await expect(page.locator('#movies-search')).toBeVisible();await page.getByRole('link',{name:'Games',exact:true}).click();
- await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(before);
+ await page.goto('/');await page.locator('.game-card').first().waitFor();await page.evaluate(()=>scrollTo(0,130));
+ // Scrolling down minimizes the island, so it is scrolled back up to expand it before its Movies tab is tapped.
+ await expect(page.locator('.app-tabbar')).toHaveAttribute('data-minimized','true');await page.evaluate(()=>scrollTo(0,60));await expect(page.locator('.app-tabbar')).not.toHaveAttribute('data-minimized');
+ const before=await page.evaluate(()=>scrollY);await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
+ await expect(page.locator('#movies-search')).toBeVisible();await page.locator('.movies-top').getByRole('link',{name:'Games',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(before);await expect(page.locator('.app-tabbar .ui-tab[href="#/collection"]')).toBeFocused();
 });
 
 test('Home clears filters and search finds titles across TV/movie categories',async({page})=>{
@@ -155,7 +157,7 @@ test('a featured licensed TV show plays its first included episode',async({page}
 test('provider playback is enabled and sandboxed, and Study unloads it',async({page})=>{
  await page.goto('/#/movies/movie-157336/play');const frame=page.locator('.movies-provider-frame');await expect(frame).toBeVisible();
  await expect(frame).toHaveAttribute('sandbox','allow-scripts allow-same-origin');await expect(frame).toHaveAttribute('referrerpolicy','no-referrer');
- expect(await frame.getAttribute('allow')).toContain("camera 'none'");expect(await frame.getAttribute('src')).toContain('/embed/157336?autoplay=0');
+ expect(await frame.getAttribute('allow')).toContain("camera 'none'");expect(await frame.getAttribute('src')).toContain('/embed/157336?autoplay=1');
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await expect(frame).toHaveCount(0);
  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame).toBeVisible();
 });
@@ -178,7 +180,7 @@ test('full-catalog search, episode metadata and playback are on demand',async({p
  await page.getByRole('link',{name:'Details for Remote Expedition'}).click();
  await expect(page.getByRole('heading',{name:'Remote Expedition'})).toBeVisible();
  await expect(page.getByRole('link',{name:'Play First Contact'})).toBeVisible();
- await page.getByLabel('Season',{exact:true}).selectOption('2');
+ await page.getByRole('button',{name:/^Season 2\b/}).click();
  await expect(page.getByRole('link',{name:'Play The Long Crossing'})).toBeVisible();
  await page.getByRole('link',{name:'Play The Long Crossing'}).click();
  await expect(page.locator('.movies-provider-frame')).toHaveAttribute('src',/\/embed\/778899\/2\/1/);
@@ -211,13 +213,13 @@ test('external player cannot read the parent document, open popups or navigate t
 
 test('external progress is local, rejects other senders and resumes through documented controls',async({page})=>{
  await page.goto('/#/movies/movie-157336/play');const frame=page.frameLocator('.movies-provider-frame');await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
- await page.evaluate(()=>window.postMessage({event:'frameXTV:timeupdate',currentTime:999},location.origin));
+ // The page's own message reaches its listeners, as a real one would. The handshake waits until the page has handled it before storage is read.
+ await page.evaluate(()=>new Promise<void>(resolve=>{window.addEventListener('message',event=>{if(event.data?.event==='frameXTV:timeupdate'&&event.data.currentTime===999)resolve();});window.postMessage({event:'frameXTV:timeupdate',currentTime:999},location.origin);}));
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBeUndefined();
  const origin=new URL(page.url()).origin;await frame.locator('body').evaluate((_,origin)=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:42},origin),origin);
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('qcc:movies:v1')||'{}').progress['movie-157336'])).toBe(42);
  await page.keyboard.press('Escape');await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Resume stream'}).click();await expect(frame.getByRole('button',{name:'Play stream'})).toBeVisible();
- await frame.locator('body').evaluate((_,origin)=>{window.addEventListener('message',event=>{if(event.data.action==='seek')document.body.dataset.seek=String(event.data.time);});parent.postMessage({event:'frameXTV:timeupdate',currentTime:0},origin);},origin);
- await expect(frame.locator('body')).toHaveAttribute('data-seek','42');
+ expect(await page.locator('.movies-provider-frame').getAttribute('src')).toContain('t=42');
 });
 
 

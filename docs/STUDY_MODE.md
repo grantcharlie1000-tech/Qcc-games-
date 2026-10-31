@@ -4,7 +4,7 @@ On the first visit in a tab, choose one of 20 NCEA-related revision chapters. Th
 
 During gameplay, **Esc** pauses the game and serializes progress before opening the chapter. A discreet **Return to Arcade** control restores the same game instance and DOM. Previously running games resume; manual pauses remain paused. A hidden tab is never resumed by returning. Esc also works from rules, the shared menu and a pending game import. Holding Esc does not toggle back into play.
 
-Change chapters using the Study topic selector. Each has a learning focus, three explanatory sections, an original SVG diagram with an accessible description, a worked example and a self-check with an expandable explanation. Contents links scroll within the article without touching the game route. Study Mode also opens from the hamburger menu.
+Change chapters using the Study topic selector. Each has a learning focus, three explanatory sections, an original SVG diagram with an accessible description, a worked example and a self-check with an expandable explanation. Contents links scroll within the article without touching the game route. Study Mode also opens from the menu.
 
 ## Chapters
 

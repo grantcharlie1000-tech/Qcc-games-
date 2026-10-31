@@ -33,7 +33,7 @@ export async function importCatalog({token,logo,output='public/movies',fetcher=f
    const data=await api(`tv/${item.id}/season/${s.season_number}?language=en-US`);
    seasons.push({number:s.season_number,name:s.name,episodes:(data.episodes||[]).map(e=>({number:e.episode_number,name:e.name,overview:e.overview||'',runtime:e.runtime}))});
   }
-  titles.push({id:`${kind}-${item.id}`,kind,name:d.title||d.name,year:Number((d.release_date||d.first_air_date||'').slice(0,4)),genres:(d.genres||[]).map(g=>g.name),overview:d.overview||'No description supplied.',poster,backdrop,rating:d.vote_count>0?d.vote_average:undefined,runtime:d.runtime,seasons});
+  titles.push({source:{type:'third-party'},id:`${kind}-${item.id}`,kind,name:d.title||d.name,year:Number((d.release_date||d.first_air_date||'').slice(0,4)),genres:(d.genres||[]).map(g=>g.name),overview:d.overview||'No description supplied.',poster,backdrop,rating:d.vote_count>0?d.vote_average:undefined,runtime:d.runtime,seasons});
  }
  if(!titles.length)throw new Error('No titles imported; previous catalog preserved');
  await writeFile(staged+'/art/tmdb-logo.png',logoBytes);

@@ -18,7 +18,7 @@ it('imports a static TMDB snapshot without enabling playback or sending user con
   return Response.json({name:'Example series',first_air_date:'2020-01-01',poster_path:'/abc.jpg',overview:'Original metadata',genres:[{name:'Drama'}],seasons:[{season_number:1,name:'Season 1'}],vote_count:12,vote_average:8});
  }});
  expect(count).toBe(1);const catalog=parseCatalog(JSON.parse(await readFile(join(dir,'movies/catalog.json'),'utf8')));
- expect(catalog.source).toBe('tmdb');expect(catalog.titles[0].seasons[0].episodes[0].name).toBe('Episode one');
+ expect(JSON.parse(await readFile(join(dir,'movies/catalog.json'),'utf8')).titles[0].source).toEqual({type:'third-party'});expect(catalog.source).toBe('tmdb');expect(catalog.titles[0].seasons[0].episodes[0].name).toBe('Episode one');
  expect(calls).toHaveLength(4);expect(calls.every(url=>!url.includes('search')&&!url.includes('framextv'))).toBe(true);
  }finally{await rm(dir,{recursive:true,force:true});}
 });

@@ -105,7 +105,7 @@ test('module lifecycle rejects corrupted snapshots, gates paused input, restarts
  });
  expect(result).toEqual({pausedUnchanged:true,restarted:true,disabledAfterRestart:true,restored:true,rejected:true,disposed:true,score:0});
  await page.getByRole('link',{name:'Back to game library'}).click();
- await page.getByRole('link',{name:/Flow Free/i}).click();
+ await page.getByRole('link',{name:'Play Flow Free',exact:true}).click();
  await expect(board(page)).toBeVisible();
 });
 

@@ -1,10 +1,11 @@
 import {AccountsClient} from './client';
+import {openSheet} from '../ui/sheet';
 import './style.css';
 export class AccountsView {
  readonly root=document.createElement('dialog');
  private signup=false;private busy=false;
  constructor(readonly client:AccountsClient,private prepare:()=>void,private done:()=>void){
-  this.root.id='accounts-dialog';this.root.setAttribute('aria-labelledby','accounts-title');
+  this.root.id='accounts-dialog';this.root.classList.add('ui-glass-sheet');this.root.setAttribute('aria-labelledby','accounts-title');
   this.root.innerHTML=`<h2 id="accounts-title">Play your way</h2><p>Use an optional account to carry game saves and scores across devices, or play locally as a guest.</p>
    <button type="button" class="game-button account-guest">Play as guest</button>
    <div class="account-tabs"><button type="button" class="game-button secondary account-login">Log in</button><button type="button" class="game-button secondary account-signup">Sign up</button></div>
@@ -12,7 +13,7 @@ export class AccountsView {
    <label for="account-password">Password</label><input id="account-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required>
    <div class="account-confirm" hidden><label for="account-confirm">Confirm password</label><input id="account-confirm" name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" disabled required></div>
    <p class="account-warning" hidden>Forgotten passwords cannot be recovered. No email or other personal information is collected. Keep your password somewhere safe.</p>
-   <p class="account-status muted" role="status" aria-live="polite"></p><button type="submit" class="game-button account-submit">Log in</button></form>
+   <p class="account-status muted" role="status" aria-live="polite"></p><button type="submit" class="game-button secondary account-submit">Log in</button></form>
    <p class="muted account-local">Guest scores stay on this browser. Sign in before playing to share scores. Scored guest runs stay separate when you sign up or log in. Logging out removes account saves here and restores this browser’s guest progress.</p>`;
   document.body.append(this.root);
   this.root.querySelector('.account-login')!.addEventListener('click',()=>this.mode(false));
@@ -34,7 +35,7 @@ export class AccountsView {
  private status(message:string){this.root.querySelector('.account-status')!.textContent=message;}
  private clearPasswords(){for(const input of this.root.querySelectorAll<HTMLInputElement>('input[type=password]'))input.value='';}
  private guest(){this.clearPasswords();this.client.guest();this.root.close();this.done();}
- open(){if(this.root.open)return;this.mode(false);this.root.querySelector<HTMLFormElement>('form')!.reset();this.root.showModal();}
+ open(){if(this.root.open)return;this.mode(false);this.root.querySelector<HTMLFormElement>('form')!.reset();openSheet(this.root);}
  private async submit(){
   if(this.busy)return;
   if(this.signup&&this.root.querySelector<HTMLInputElement>('#account-password')!.value!==this.root.querySelector<HTMLInputElement>('#account-confirm')!.value){this.status('Passwords do not match.');return;}
