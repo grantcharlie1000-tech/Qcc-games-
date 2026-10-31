@@ -8,14 +8,17 @@ body.in-game #game-status{position:absolute;width:1px;height:1px;padding:0;margi
 body.in-game #pause-overlay{border-radius:16px}
 /* Share the island's material, pill, focus and press. Only its layout and tint differ. */
 .game-dock.ui-tabbar{--glass-tint:rgb(16 16 20 / .72);position:relative;inset:auto;order:2;flex:0 0 56px;width:min(100%,440px);max-width:440px;min-height:56px;height:56px;margin:0 auto;padding:6px;gap:4px;z-index:30;transition:none}
-.game-dock>.ui-tab{flex:0 0 50px;min-width:50px;min-height:44px;padding:2px;gap:1px;font-size:9px}
-.game-dock>.ui-tab svg{width:22px;height:22px;filter:var(--glass-glyph-icon)}
+.game-dock>.ui-tab{flex:0 0 56px;min-width:56px;min-height:44px;padding:1px 2px;gap:1px;font-size:12px}
+.game-dock>.ui-tab svg{width:24px;height:24px;flex:none;filter:var(--glass-glyph-icon)}
 .game-hud{position:relative;z-index:1;display:flex;justify-content:center;align-items:center;gap:18px;flex:1;min-width:0;padding:0 4px;text-shadow:var(--glass-glyph);font-family:var(--font-sans);color:#fff;font-variant-numeric:tabular-nums}
 .game-hud-item{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;text-align:center;line-height:1.2}
-.game-hud small{font-size:10px;color:#dce0e6;white-space:nowrap}
+.game-hud small{font-size:12px;color:#dce0e6;white-space:nowrap}
 .game-hud small:empty{display:none}
-.game-hud strong{font-size:15px;font-weight:750;line-height:1.25;text-wrap:balance}
-.game-hud-item:only-child strong{font-size:17px}
+.game-hud strong{font-size:18px;font-weight:750;line-height:1.25;text-wrap:balance}
+.game-hud-item:only-child strong{font-size:20px}
+/* Keep the labelled ratio on one line; the garden name can wrap on narrow phones. */
+.game-view[data-game-id=block-fill] .game-hud-item:last-child{flex-shrink:0}
+@media(min-width:700px){.game-dock.ui-tabbar{flex-basis:60px;min-height:60px;height:60px}.game-dock>.ui-tab{min-height:48px}.game-dock>.ui-tab,.game-hud small{font-size:14px}.game-dock>.ui-tab svg{width:28px;height:28px}.game-hud strong{font-size:20px}.game-hud-item:only-child strong{font-size:22px}}
 .game-view:is([data-game-id=quadfall],[data-game-id=fivefold]) .game-dock{order:0}
 /* These scenes already reserve their top HUD area. Keep their canvas/input mapping intact. */
 .game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(var(--play-height,100dvh) * .54));--scene-bg:#55c3ec}

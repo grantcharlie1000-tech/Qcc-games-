@@ -1,6 +1,64 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
+import {generateLevel} from '../../src/games/block-fill/logic';
 test.use({hasTouch:true});
+
+for(const viewport of [{width:390,height:844},{width:1366,height:768}]){
+  test(`dock text and icons remain readable at ${viewport.width}px`,async({page})=>{
+    await page.setViewportSize(viewport);await page.goto('/#/game/snake');
+    await expect(page.locator('.game-hud strong')).toBeVisible();
+    const sizes=await page.locator('.game-dock').evaluate(dock=>({
+      labels:[...dock.querySelectorAll('.ui-tab,.game-hud small')].map(e=>parseFloat(getComputedStyle(e).fontSize)),
+      values:[...dock.querySelectorAll('.game-hud strong')].map(e=>parseFloat(getComputedStyle(e).fontSize)),
+      icons:[...dock.querySelectorAll('.ui-tab svg')].map(e=>e.getBoundingClientRect().width)
+    }));
+    expect(Math.min(...sizes.labels)).toBeGreaterThanOrEqual(viewport.width>=700?14:12);
+    expect(Math.min(...sizes.values)).toBeGreaterThanOrEqual(18);
+    expect(Math.min(...sizes.icons)).toBeGreaterThanOrEqual(viewport.width>=700?28:24);
+  });
+}
+
+test('Slipline keeps Hint next to the centred puzzle on a phone',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/slipline');
+  const board=(await page.locator('.sl-board').boundingBox())!,hint=(await page.locator('.sl-hint').boundingBox())!;
+  expect(hint.y-(board.y+board.height)).toBeGreaterThanOrEqual(0);
+  expect(hint.y-(board.y+board.height)).toBeLessThanOrEqual(24);
+});
+
+test('late Block Fill counters stay inside the dock on a narrow phone',async({page})=>{
+  await page.setViewportSize({width:320,height:568});
+  await page.addInitScript(path=>localStorage.setItem('pocket-arcade:v1:save:block-fill',JSON.stringify({version:1,data:{version:1,level:31,path,rewarded:false,steps:48,hints:0,best:{}}})),generateLevel(31).solution.slice(0,49));
+  await page.goto('/#/game/block-fill');
+  await expect(page.locator('.game-hud')).toContainText('49 / 56');
+  const bounds=await page.locator('.game-dock').evaluate(dock=>{
+    const bar=dock.getBoundingClientRect();
+    const text=[...dock.querySelectorAll('.game-hud small,.game-hud strong')].filter(e=>e.textContent).map(e=>{const range=document.createRange();range.selectNodeContents(e);const box=range.getBoundingClientRect();return {top:box.top,bottom:box.bottom};});
+    return {top:bar.top,bottom:bar.bottom,text};
+  });
+  for(const text of bounds.text){
+    expect(text.top).toBeGreaterThanOrEqual(bounds.top+4);
+    expect(text.bottom).toBeLessThanOrEqual(bounds.bottom-4);
+  }
+});
+
+test('Pool keeps shot status clear of all six pockets',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/pool');
+  await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
+  await expect(page.locator('.pool-message')).toContainText('balls rolling');
+  const table=(await page.locator('.pool-table').boundingBox())!,status=(await page.locator('.pool-message').boundingBox())!;
+  expect(status.y).toBeGreaterThanOrEqual(table.y+table.height);
+});
+
+for(const viewport of [{width:1366,height:768},{width:390,height:644},{width:320,height:568},{width:844,height:390}]){
+  test(`Wordle keeps all keys and grid inside its panel at ${viewport.width}x${viewport.height}`,async({page})=>{
+    await page.setViewportSize(viewport);await page.goto('/#/game/fivefold');
+    await expect(page.locator('.ff-key').last()).toBeVisible();
+    const panel=(await page.locator('.ff').boundingBox())!,board=(await page.locator('.ff-board').boundingBox())!,key=(await page.locator('.ff-key').last().boundingBox())!;
+    expect(board.y).toBeGreaterThanOrEqual(panel.y);
+    expect(key.y+key.height).toBeLessThanOrEqual(panel.y+panel.height-4);
+    expect(await page.locator('.ff').evaluate(e=>e.scrollHeight<=e.clientHeight)).toBe(true);
+  });
+}
 
 test('compact dock reserves play space and the menu pauses, restores focus and resumes',async({page})=>{
   await page.setViewportSize({width:390,height:844});
@@ -140,6 +198,12 @@ test('Minesweeper dock follows flags and time while Reveal and Flag stay by the 
   await page.getByRole('button',{name:'Reveal',exact:true}).click();
   await page.locator('.ms-tile[data-index="40"]').tap();
   await expect(page.locator('.game-hud')).toContainText('Time00:0');
+  const board=(await page.locator('.ms-board').boundingBox())!,status=(await page.locator('.ms-underboard').boundingBox())!,controls=(await page.locator('.ms-bottom').boundingBox())!,stage=(await page.locator('.stage-wrap').boundingBox())!;
+  expect(status.y-(board.y+board.height)).toBeGreaterThanOrEqual(0);
+  expect(status.y-(board.y+board.height)).toBeLessThanOrEqual(24);
+  expect(controls.y-(status.y+status.height)).toBeLessThanOrEqual(16);
+  const above=board.y-stage.y,below=stage.y+stage.height-(controls.y+controls.height);
+  expect(Math.abs(above-below)).toBeLessThanOrEqual(24);
   await page.locator('#game-menu').click();
   page.once('dialog',dialog=>dialog.accept());
   await page.locator('#game-options').getByLabel('Difficulty',{exact:true}).selectOption('expert');
@@ -163,5 +227,6 @@ test('Fivefold mode controls remain usable in the menu and the keyboard keeps it
   const dock=(await page.locator('.game-dock').boundingBox())!,board=(await page.locator('.ff-board').boundingBox())!,keys=(await page.locator('.ff-keyboard').boundingBox())!;
   expect(dock.y+dock.height).toBeLessThanOrEqual(board.y);
   expect(board.y+board.height).toBeLessThanOrEqual(keys.y);
+  expect(keys.y-(board.y+board.height)).toBeLessThanOrEqual(32);
   expect(keys.y+keys.height).toBeLessThanOrEqual(844);
 });

@@ -56,6 +56,8 @@ test('keyboard, legal current-state hints, undo, reset, pause, restart and reloa
   await pauseGame(page);await gameAction(page,'Restart game');
   await expect(board(page)).toHaveAttribute('data-covered','1');await expect(page.locator('#game-menu')).toBeVisible();
   await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('exactly once');await page.getByRole('button',{name:'Let’s play'}).click();await expect(page.locator('#rules-dialog')).not.toBeVisible();await expect(page.locator('#game-menu')).toBeVisible();
+  // The native dialog close event resumes the game after the dialog is hidden.
+  await expect(page.locator('#pause-overlay')).toBeHidden();
   await keyboardPath(page,solution,level.size);await expect(board(page)).toHaveAttribute('data-covered','9');
 });
 test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',async({page,context,browserName})=>{

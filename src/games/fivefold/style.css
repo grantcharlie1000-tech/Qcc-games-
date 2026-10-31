@@ -6,7 +6,8 @@
 /* Mode/stats/new word live in the menu; the dock carries the current puzzle. */
 .ff-top,.ff-heading{display:none}
 .ff{border-radius:16px;padding:10px;gap:8px}
-.ff-board{--ff-tile-size:min(17vw,max(12px,calc((100cqh - 202px)/6)),76px)}
-.ff-message{flex:none;min-height:20px}
-.ff-keyboard{margin-top:auto}.ff-key{height:48px}
-@media(max-height:650px){.ff-key{height:44px}.ff{padding:4px 8px;gap:4px}.ff-board{--ff-tile-size:min(17vw,max(12px,calc((100cqh - 184px)/6)),76px)}}
+/* Height budget: message + row gaps + keyboard + flex gaps/margin (228px; 204px on short screens). */
+.ff-board{--ff-tile-size:min(calc((100cqw - 16px)/5),max(12px,calc((100cqh - 228px)/6)),76px)}
+.ff-message{flex:none;min-height:20px;margin-top:auto}
+.ff-keyboard{margin-top:8px;margin-bottom:auto;flex:none}.ff-key{height:48px}
+@media(max-height:650px){.ff-key{height:44px}.ff{padding:4px 8px;gap:4px}.ff-keyboard{margin-top:4px}.ff-board{--ff-tile-size:min(calc((100cqw - 16px)/5),max(12px,calc((100cqh - 204px)/6)),76px)}}

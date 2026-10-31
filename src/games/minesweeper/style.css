@@ -26,8 +26,8 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 .ms-board{display:flex;flex-direction:column;width:max-content;max-width:none;margin:auto;background:#cabd9b;padding:3px;border-radius:8px;overflow:hidden}.ms-row{display:flex}.ms-row>[role=gridcell]{width:var(--ms-size);height:var(--ms-size);flex-shrink:0}
 .ms .ms-tile{position:relative;display:flex;align-items:center;justify-content:center;width:var(--ms-size);height:var(--ms-size);min-height:0;min-width:0;border:0;border-radius:1px;padding:2px;background:#a7c28b;color:var(--ms-ink);box-shadow:inset 0 2px #d7e9b555,inset 0 -3px #47613b33;font:800 calc(var(--ms-size)*.56)/1 'Trebuchet MS',system-ui,sans-serif;touch-action:none;transition:filter 100ms ease,transform 100ms var(--ease-out)}
 .ms .ms-tile.ms-alternate{background:#97b57c}.ms .ms-tile:active{transform:translateY(1px);filter:brightness(.94);background:#89a86f;box-shadow:inset 0 2px 3px #344e3f44}.ms .ms-tile[data-state=open]{background:#e2d5b5;box-shadow:inset 0 1px 2px #584c2920}.ms .ms-tile.ms-alternate[data-state=open]{background:#d8caab}.ms .ms-tile[data-state=mine]{background:#d9cbae;box-shadow:inset 0 1px 2px #584c2920}.ms .ms-tile.ms-exploded{background:#e69379;box-shadow:inset 0 0 0 3px #903c31}.ms .ms-tile.ms-wrong{background:#e4b99b}.ms-tile img{width:76%;height:76%;pointer-events:none;user-select:none}.ms-cross{position:absolute;font:900 calc(var(--ms-size)*.95)/1 system-ui,sans-serif;color:#842e2a;text-shadow:0 1px #ffecd2}.ms .ms-n1[data-state=open]{color:#225e9c}.ms .ms-n2[data-state=open]{color:#346126}.ms .ms-n3[data-state=open]{color:#a33a29}.ms .ms-n4[data-state=open]{color:#643e94}.ms .ms-n5[data-state=open]{color:#813d25}.ms .ms-n6[data-state=open]{color:#07676c}.ms .ms-n7[data-state=open]{color:#2b352e}.ms .ms-n8[data-state=open]{color:#57503f}.ms .ms-tile:focus-visible{outline:3px solid #fff7d9;outline-offset:-4px;z-index:2;box-shadow:inset 0 0 0 6px #283e39}.ms .ms-tile.ms-hinted{outline:3px dashed #183f50;outline-offset:-5px;z-index:1}.ms[data-paused=true] .ms-board{visibility:hidden}.ms-underboard{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 3px;flex-shrink:0}
-.ms-outcome{font:12px/1.5 system-ui,sans-serif;color:#aebe9f;margin:0}
-.ms-badge{font-size:11px;color:#e8ce9c}
+.ms-outcome{font:13px/1.5 system-ui,sans-serif;color:#aebe9f;margin:0}
+.ms-badge{font-size:12px;color:#e8ce9c}
 .ms-hint-message{font:12px/1.5 system-ui,sans-serif;color:#e8d9af;margin:0;padding:8px 12px;border-left:2px solid #9dbb7c;background:#c9dc9f08;flex-shrink:0}
 .ms-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;padding-bottom:4px}
 .ms-mode-switch{display:flex;gap:3px;padding:3px;border-radius:12px;background:#24352b}
@@ -88,8 +88,6 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
  .ms-mode-switch{width:100%}
  .ms-mode-switch button{flex:1;min-height:46px}
  .ms-instructions{display:none}
- .ms-outcome{font-size:11px}
- .ms-badge{font-size:10px}
  .ms-result{padding:10px;flex-wrap:wrap}
  .ms-result strong{font-size:16px}
  .ms-result button{padding-inline:10px}
@@ -101,6 +99,6 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 
 /* Flags/time are mirrored in the dock; settings are in the expanded menu. */
 .ms-toolbar{display:none}
-.ms-frame{border:0;background:transparent;box-shadow:none}
+.ms-frame{flex:0 1 auto;margin-top:auto;border:0;background:transparent;box-shadow:none}
 .ms-underboard{justify-content:center;flex-wrap:wrap}
-.ms-bottom{justify-content:center}.ms-instructions{display:none}
+.ms-bottom{justify-content:center;margin-bottom:auto}.ms-instructions{display:none}
