@@ -79,7 +79,7 @@ async function expectClear(page:Page,panel:Locator){
   await expect(panel.locator('..')).toHaveCSS('opacity','1');await expect(panel).toHaveCSS('transform','none');
   const box=(await panel.boundingBox())!,size=page.viewportSize()!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
-  expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height-52);
+  expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height-12);
   for(const name of ['Back to game library','Pause game','Resume game','Restart game','Game rules','Open menu','Favourite Ball Run','Rankings']){
     const control=name==='Rankings'?page.locator('.lb-toggle'):page.getByRole(name.startsWith('Back')?'link':'button',{name,exact:true});
     if(!await control.isVisible())continue;
@@ -417,13 +417,13 @@ test('under reduced motion Game Over only fades; shell Restart from dying or Gam
   await seed(page,snapshot(run,emptyRecords()));const reports=await countReports(page);
   await page.clock.install({time:first});await page.clock.pauseAt(new Date(first.getTime()+1000));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page),over=root.locator('.br-over'),restart=page.getByRole('button',{name:'Restart game',exact:true});
+  const root=game(page),over=root.locator('.br-over'),restart=()=>gameAction(page,'Restart game');
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await runUntilPhase(page,'dying');
   const dead=(await saved(page)).records.hard,count=await reports();
   expect(dead.day).toBe(dayKey(first));expect(dead.dayBest).toBe(score);
   // A day later a second commit would set a new today's best, and report the score again.
-  await page.clock.setSystemTime(second);await restart.click();
+  await page.clock.setSystemTime(second);await restart();
   await expect(root).toHaveAttribute('data-phase','ready');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
   expect((await saved(page)).records.hard).toEqual(dead);expect(await reports()).toBe(count);
   await page.getByRole('button',{name:'Play',exact:true}).click();
@@ -440,7 +440,7 @@ test('under reduced motion Game Over only fades; shell Restart from dying or Gam
   // The new day's run still commits game records, but matching the global best
   // must not rewrite the shell high score just to report it again.
   expect(ended.day).toBe(dayKey(second));expect(ended.allTime).toBe(dead.allTime);expect(count2).toBe(count);
-  await page.clock.setSystemTime(third);await restart.click();await expect(root).toHaveAttribute('data-phase','ready');
+  await page.clock.setSystemTime(third);await restart();await expect(root).toHaveAttribute('data-phase','ready');
   expect((await saved(page)).records.hard).toEqual(ended);expect(await reports()).toBe(count2);
 });
 

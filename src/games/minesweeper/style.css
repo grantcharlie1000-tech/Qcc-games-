@@ -1,5 +1,5 @@
 /* One quiet toolbar, a readable field, and secondary controls in a native dialog. */
-body.in-game .game-view[data-game-id=minesweeper]{padding:8px 12px max(12px,env(safe-area-inset-bottom));background:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
+body.in-game .game-view[data-game-id=minesweeper]{padding:max(8px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
 body.in-game .game-view[data-game-id=minesweeper] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=minesweeper] #game-stage{height:100%;max-height:none}
 body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#18231f}
@@ -34,6 +34,7 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 .ms-mode-switch button{display:flex;gap:6px;align-items:center;justify-content:center;border:0;background:transparent;min-width:100px}
 .ms-mode-switch img{width:22px;height:22px}
 .ms-mode-switch button[aria-pressed=true]{color:#243323;background:#c0d1a1}
+.ms-mode-switch button[aria-pressed=true]:active:not(:disabled){color:#243323;background:#aec18c}
 .ms-instructions{margin:0;color:#9aad94;font:11px/1.5 system-ui,sans-serif;text-align:right}
 .ms-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:#31452d;flex-shrink:0}
 .ms-result strong{font:800 19px/1.2 Arcade,sans-serif;color:#e5efcc}
@@ -76,7 +77,7 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 @keyframes ms-finish{from{opacity:.65;transform:scale(.99)}to{opacity:1;transform:scale(1)}}
 @media(hover:hover) and (pointer:fine){.ms .ms-tile[data-state=hidden]:hover,.ms .ms-tile[data-state=flagged]:hover{filter:brightness(1.12)}.ms button:not(.ms-tile):hover{filter:brightness(1.1)}}
 @media(max-width:600px){
- body.in-game .game-view[data-game-id=minesweeper]{padding-inline:8px}
+ body.in-game .game-view[data-game-id=minesweeper]{padding-inline:max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right))}
  .ms{gap:8px}
  .ms-toolbar{grid-template-columns:minmax(0,1fr) 50px 64px 44px;gap:6px;padding:8px 10px}
  .ms-field select{font-size:12px}
@@ -101,4 +102,5 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 /* Flags/time are mirrored in the dock; settings are in the expanded menu. */
 .ms-toolbar{display:none}
 .ms-frame{border:0;background:transparent;box-shadow:none}
+.ms-underboard{justify-content:center;flex-wrap:wrap}
 .ms-bottom{justify-content:center}.ms-instructions{display:none}

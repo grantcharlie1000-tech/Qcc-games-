@@ -27,14 +27,14 @@
 
 ### Task 1: Shared dock and menu
 
-Files: `src/main.ts`, `src/ui/game-chrome.ts`, `src/game-viewport.css`, `src/theme.css`, `tests/e2e/ingame-glass.spec.ts`.
+Files: `src/main.ts`, `src/ui/game-chrome.ts`, `src/game-viewport.css`, `tests/e2e/ingame-glass.spec.ts`. Reuses `src/theme.css` without modifying its glass styles.
 
-Interfaces: consumes existing `bindGlass` / `openSheet`; produces presentation-only `setGameHud(container, items)` and secondary-controls registration with cleanup. Existing score/level/status callbacks and action IDs remain available.
+Interfaces: consumes existing `bindGlass` / `openSheet`; produces presentation-only `bindGameChrome(view, id)` with menu options and disposal. Existing score/level/status callbacks and action IDs remain available; game-owned HUD DOM supplies display values.
 
-- [ ] Write browser coverage for actual pause/resume, rules/settings transitions, accessible focus, useful centre metrics, dock-stage separation and lifecycle.
-- [ ] Run focused browser tests and observe missing-dock failures.
-- [ ] Implement dock, menu and responsive exclusion geometry; preserve score/storage callbacks.
-- [ ] Run focused coverage and typecheck; commit.
+- [x] Write browser coverage for actual pause/resume, rules/settings transitions, accessible focus, useful centre metrics, dock-stage separation and lifecycle.
+- [x] Run focused browser tests and observe missing-dock failures.
+- [x] Implement dock, menu and responsive exclusion geometry; preserve score/storage callbacks.
+- [x] Run focused coverage and typecheck; commit.
 
 ### Task 2: Catalogue adaptation and visual evidence
 
@@ -42,11 +42,11 @@ Files: relevant `src/games/*/index.ts` presentation sections and styles; `script
 
 Interfaces: consumes Task 1’s HUD/secondary-control helpers; no model API changes.
 
-- [ ] Inspect all game layouts and record per-game choices from the spec.
-- [ ] Adapt local presentation; preserve all essential actions and control hit areas.
-- [ ] Capture every started game at both requested sizes; inspect every image, fix/re-shoot defects.
-- [ ] Update old-toolbar browser assertions without removing behavioural coverage.
-- [ ] Verify dynamic board, short viewport, focus/preferences and pause cases; commit.
+- [x] Inspect all game layouts and record per-game choices from the spec.
+- [x] Adapt local presentation; preserve all essential actions and control hit areas.
+- [x] Capture every started game at both requested sizes; inspect every image, fix/re-shoot defects.
+- [x] Update old-toolbar browser assertions without removing behavioural coverage.
+- [x] Verify dynamic board, short viewport, focus/preferences and pause cases; commit.
 
 ### Task 3: Verification, review and delivery
 
@@ -54,7 +54,16 @@ Files: review fixes, report and plan progress only.
 
 Interfaces: consumes all prior changes and screenshot evidence.
 
-- [ ] Run `npm run check`, `npm test`, affected Chromium and WebKit specs; diagnose and compare unrelated failures with `origin/main`.
-- [ ] Independently review the full diff and audit it as author; fix verified findings and rerun affected checks.
-- [ ] Capture and personally inspect the full final screenshot round.
-- [ ] Write `/workspace/qcc-liquid-glass/REPORT.md`, commit branch changes and print report; no publication.
+- [x] Run `npm run check`, `npm test`, affected Chromium and WebKit specs; diagnose and compare unrelated failures with `origin/main`.
+- [x] Independently review the full diff and audit it as author; fix verified findings and rerun affected checks.
+- [x] Capture and personally inspect the full final screenshot round.
+- [x] Write `/workspace/qcc-liquid-glass/REPORT.md`, commit branch changes and print report; no publication.
+
+## Verification record
+
+- TypeScript and production build pass; unit suite: 160 files / 3,262 tests pass.
+- Broad Chromium run: 478 passed, 5 failed, 1 optional screenshot case skipped. The failures exposed two 300px landscape overlaps and three obsolete navigation/geometry assertions. Fixed; the complete affected Ball Run/shared-dock rerun passes all 46 tests.
+- Account browser navigation: 7 passed after updating old-toolbar helpers. Pool online tests: both passed, including a complete rack and host pause/resume.
+- Production offline verification: all 21 games at root and repository subpath (42 game/deployment checks). Update migration verification: both paths pass.
+- WebKit: launch blocked by six missing system libraries; dependency installation failed at the package mirror. The identical launch failure occurs on untouched `origin/main`. No Safari pass is claimed.
+- Final screenshot evidence: `/workspace/qcc-liquid-glass/round-4/`; all 42 active-game images personally opened, including final Minesweeper replacements. Report, exact commands, review notes and visual audit remain outside git.

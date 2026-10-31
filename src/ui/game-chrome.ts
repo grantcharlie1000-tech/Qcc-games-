@@ -26,7 +26,7 @@ const choices:Partial<Record<GameId,Choice[]>>={
   'water-sort':[{selector:'.ws-difficulty'},{selector:'.ws-level'}],
   minesweeper:[{selector:'.ms-level'}],
   'color-connect':[{selector:'.cc-picker'}],
-  pool:[{selector:'.pool-mode select'},{selector:'.pool-multiplayer',label:'Multiplayer'}],
+  pool:[{selector:'.pool-mode select'},{selector:'.pool-multiplayer'}],
   fivefold:[{selector:'.ff-modes button'},{selector:'.ff-stats-button',label:'Stats'},{selector:'.ff-new',label:'New practice word'}],
   globle:[{selector:'.gl-mode'}],
   'corn-clicker':[{selector:'.cc-face-toggle'}]

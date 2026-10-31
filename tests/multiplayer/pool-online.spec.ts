@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {gameAction,openGameMenu,pauseGame,resumeGame} from '../game-menu';
 import {BASE,closeAll,launchPlayer,type Player} from './peers';
 import {chooseAI,placeAICue,type PoolState} from '../../src/games/pool/model';
 
@@ -21,7 +22,7 @@ test('two independent browsers play a full online rack and agree on the result',
   try{
     await host.page.goto(`${BASE}/#/game/pool`);
     const table=await host.page.locator('.pool-table').boundingBox();
-    await host.page.getByRole('button',{name:'Multiplayer'}).click();
+    await gameAction(host.page,'Multiplayer');
     await expect(host.page.getByRole('dialog',{name:'Pool multiplayer'})).toBeVisible();
     // The menu floats over the game: the table keeps its size and place.
     expect(await host.page.locator('.pool-table').boundingBox()).toEqual(table);
@@ -33,7 +34,7 @@ test('two independent browsers play a full online rack and agree on the result',
 
     // Invalid and unknown codes are explained.
     await guest.page.goto(`${BASE}/#/game/pool`);
-    await guest.page.getByRole('button',{name:'Multiplayer'}).click();
+    await gameAction(guest.page,'Multiplayer');
     await guest.page.getByLabel('Room code').fill('ABC');await guest.page.getByRole('button',{name:'Join by code'}).click();
     await expect(guest.page.locator('.mp-status')).toHaveText(/6 letters and numbers/);
     await guest.page.getByLabel('Room code').fill(code==='ZZZZZZ'?'YYYYYY':'ZZZZZZ');await guest.page.getByRole('button',{name:'Join by code'}).click();
@@ -50,7 +51,7 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(host.page.locator('.mp-link')).toContainText(/Direct peer-to-peer|TURN relay/,{timeout:15000});
     await host.page.getByRole('button',{name:'Close multiplayer menu'}).click();
     await expect(host.page.getByRole('dialog')).toBeHidden();
-    await expect(host.page.getByRole('button',{name:'Online room'})).toBeVisible();
+    await openGameMenu(host.page);await expect(host.page.getByRole('button',{name:'Online room'})).toBeVisible();await resumeGame(host.page);
 
     // A third player is refused: the room is full.
     await extra.page.goto(`${BASE}/#/game/pool?room=${code}`);
@@ -63,10 +64,10 @@ test('two independent browsers play a full online rack and agree on the result',
     await expect(guest.page.locator('#game-status')).toHaveText('It is not your turn.');
 
     // Host pause pauses the room; guest commands are refused meanwhile; resume resynchronises.
-    await host.page.getByRole('button',{name:'Pause game',exact:true}).click();
+    await pauseGame(host.page);
     await expect(guest.page.locator('.mp-waiting')).toBeVisible();
     await expect(guest.page.locator('.mp-waiting')).toContainText('Waiting for host');
-    await host.page.getByRole('button',{name:'Keep playing'}).click();
+    await resumeGame(host.page);
     await expect(guest.page.locator('.mp-waiting')).toBeHidden();
 
     const players=[host,guest];let shots=0;
@@ -114,7 +115,7 @@ test('forcing the relay without private TURN credentials never connects directly
   const host=await launchPlayer('Hana'),guest=await launchPlayer('Tama');
   try{
     await host.page.goto(`${BASE}/#/game/pool?relay=1`);
-    await host.page.getByRole('button',{name:'Multiplayer'}).click();
+    await gameAction(host.page,'Multiplayer');
     await host.page.getByRole('button',{name:'Create room'}).click();
     await expect(host.page.locator('.mp-room-code')).toHaveText(/^[A-Z2-9]{6}$/,{timeout:25000});
     await expect(host.page.locator('.mp-link')).toContainText('private relay is not configured');

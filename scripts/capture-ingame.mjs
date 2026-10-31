@@ -46,7 +46,8 @@ try{
           await click(page.locator('.ms-tile[data-index="40"]'));
           const covered=page.locator('.ms-tile[data-state="hidden"]').first();
           if(mobile){await click(page.locator('.ms-mode'));await covered.tap();await click(page.locator('.ms-reveal-mode'));}
-          else await covered.click({button:'right'});break;
+          else await covered.click({button:'right'});
+          await page.waitForFunction(()=>!document.querySelector('.ms-mode-switch button:active'));break;
         }
         case 'solitaire':await click(page.locator('[data-action="draw"]'));break;
         case 'block-fill':await page.locator('.bf-board').focus();await page.keyboard.press('ArrowRight');break;

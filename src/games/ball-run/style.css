@@ -148,7 +148,7 @@
 }
 /* Landscape phones with browser bars (down to about 300 px of height): everything a step smaller. */
 @media(max-height:360px) and (min-width:480px){
-  .br-layer{padding-top:calc(var(--br-top) + 42px)}
+  .br-layer{padding-top:calc(max(8px,env(safe-area-inset-top)) + 64px);padding-bottom:max(12px,env(safe-area-inset-bottom))}
   .br-title{font-size:21px}
   .br-copy{font-size:13px;line-height:1.28}
   .br-head{padding:14px 16px;gap:8px}
