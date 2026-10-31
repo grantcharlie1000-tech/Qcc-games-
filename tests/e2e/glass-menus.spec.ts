@@ -106,7 +106,7 @@ test('at 1366 px the menu is a centred panel at most 440 px wide, with a 28 px r
   expect(await menu.evaluate(el=>getComputedStyle(el).borderTopLeftRadius)).toBe('28px');
 });
 
-test('the menu grows from the control that opened it, the island Menu at the bottom and the game menu at the top',async({page})=>{
+test('the menu grows from the control that opened it in the island and in-game dock',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   const menu=page.locator('#menu');
@@ -128,15 +128,16 @@ test('the menu grows from the control that opened it, the island Menu at the bot
   const gameMenu=await page.locator('#game-menu').boundingBox();
   if(!gameMenu)throw new Error('The game menu button has no box');
   await page.locator('#game-menu').click();
-  const gameBox=await settledBox(menu);
-  const fromGame=await originOf(menu);
-  // The game's menu button sits above a bottom sheet, so its y clamps to the sheet's top edge.
+  const gameSheet=page.locator('#game-options');
+  const gameBox=await settledBox(gameSheet);
+  const fromGame=await originOf(gameSheet);
+  // The game dock and home island both anchor the sheet near its bottom-right corner.
   const expectedX=Math.min(Math.max(gameMenu.x+gameMenu.width/2-gameBox.x,0),gameBox.width);
   const expectedY=Math.min(Math.max(gameMenu.y+gameMenu.height/2-gameBox.y,0),gameBox.height);
   expect(Math.abs(fromGame.x-expectedX)).toBeLessThanOrEqual(1);
   expect(Math.abs(fromGame.y-expectedY)).toBeLessThanOrEqual(1);
   expect(fromGame.x).toBeGreaterThan(gameBox.width*0.75);
-  expect(fromGame.y).toBeLessThan(gameBox.height*0.25);
+  expect(fromGame.y).toBeGreaterThan(gameBox.height*0.75);
 });
 
 test('the settings are still native checkboxes: a click and Space toggle them, and the track is green when on',async({page})=>{
@@ -370,7 +371,7 @@ test('Minesweeper options and the Study privacy dialog keep their own look',asyn
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms-board')).toBeVisible();
-  await appSettings(page);
+  await gameAction(page,'Game options');
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
   expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgb(35, 49, 40)','18px']);

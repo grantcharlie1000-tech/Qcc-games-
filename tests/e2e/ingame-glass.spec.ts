@@ -66,6 +66,29 @@ test('Minesweeper local options preserve an explicitly paused game',async({page}
   await expect(page.locator('#pause-overlay')).toBeVisible();
 });
 
+test('Minesweeper native options cannot resume a game after a hidden tab',async({page})=>{
+  await page.goto('/#/game/minesweeper');await gameAction(page,'Game options');
+  await page.evaluate(()=>{
+    Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));
+    Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));
+  });
+  if(await page.locator('.ms-settings[open]').count())await page.getByRole('button',{name:'Close game options',exact:true}).click();
+  await expect(page.locator('#pause-overlay')).toBeVisible();
+});
+
+test('Ball Run keeps the live mode and next record target in its dock',async({page})=>{
+  await page.goto('/#/game/ball-run');await page.getByRole('button',{name:'Play',exact:true}).click();
+  const hud=page.locator('.game-hud');
+  await expect(hud).toContainText('MEDIUM MODE');await expect(hud).toContainText('NEW BEST');
+  await expect.poll(async()=>Number(await hud.locator('strong').first().textContent())).toBeGreaterThan(0);
+});
+
+test('Wordle Statistics returns keyboard focus to the dock',async({page})=>{
+  await page.goto('/#/game/fivefold');await gameAction(page,'Stats');
+  await page.getByRole('button',{name:'Close stats',exact:true}).click();
+  await expect(page.locator('#game-menu')).toBeFocused();
+});
+
 test('optional pads, shrinking viewport and disposal keep the dock usable',async({page})=>{
   await page.goto('/#/game/quadfall');await page.getByRole('button',{name:'Start',exact:true}).click();
   await openGameMenu(page);await page.getByLabel('Show touch controls').uncheck();
@@ -105,6 +128,8 @@ test('Pool multiplayer remains reachable from the secondary menu',async({page})=
   await page.goto('/#/game/pool');await gameAction(page,'Multiplayer');
   await expect(page.getByRole('dialog',{name:'Pool multiplayer',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Create room',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Close multiplayer menu',exact:true}).click();
+  await expect(page.locator('#game-menu')).toBeFocused();
 });
 
 test('Minesweeper dock follows flags and time while Reveal and Flag stay by the board',async({page})=>{

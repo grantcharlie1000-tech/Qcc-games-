@@ -447,7 +447,7 @@ document.querySelector<HTMLButtonElement>('.offline-button')!.addEventListener('
 
 window.addEventListener('hashchange',()=>void route());
 window.addEventListener('pagehide',()=>{save();movies?.pause();void accounts.flush(true,false).catch(()=>{});});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){pausedForDialog=false;setPaused(true);}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&instance){instance.dismissMenu?.();pausedForDialog=false;setPaused(true);}});
 // Capture on window precedes native dialog cancellation and game-local Escape handlers.
 window.addEventListener('keydown',event=>{
   // Inert affects DOM targets, not document/window listeners retained by games.

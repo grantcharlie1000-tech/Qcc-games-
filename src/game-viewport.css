@@ -10,7 +10,6 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-dock.ui-tabbar{--glass-tint:rgb(16 16 20 / .72);position:relative;inset:auto;order:2;flex:0 0 56px;width:min(100%,440px);max-width:440px;min-height:56px;height:56px;margin:0 auto;padding:6px;gap:4px;z-index:30;transition:none}
 .game-dock>.ui-tab{flex:0 0 50px;min-width:50px;min-height:44px;padding:2px;gap:1px;font-size:9px}
 .game-dock>.ui-tab svg{width:22px;height:22px;filter:var(--glass-glyph-icon)}
-.game-dock+.ui-scroll-edge{display:none}
 .game-hud{position:relative;z-index:1;display:flex;justify-content:center;align-items:center;gap:18px;flex:1;min-width:0;padding:0 4px;text-shadow:var(--glass-glyph);font-family:var(--font-sans);color:#fff;font-variant-numeric:tabular-nums}
 .game-hud-item{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;text-align:center;line-height:1.2}
 .game-hud small{font-size:10px;color:#dce0e6;white-space:nowrap}
@@ -51,4 +50,3 @@ body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}
 html.play-locked,html.play-locked body{touch-action:manipulation;-webkit-text-size-adjust:100%}
 html.play-locked body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html.play-locked input,html.play-locked textarea,html.play-locked select,html.play-locked [contenteditable]{-webkit-user-select:text;user-select:text;touch-action:manipulation}
-

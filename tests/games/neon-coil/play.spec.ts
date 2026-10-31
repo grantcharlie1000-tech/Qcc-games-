@@ -201,6 +201,8 @@ for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { 
     // Reproduce rotating the supported small portrait phone while the intro is open.
     await page.setViewportSize(size.width === 568 ? { width: 320, height: 568 } : size); await open(page);
     if (size.width === 568) await page.setViewportSize(size);
+    // The shell commits visual-viewport changes on RAF, which this test freezes.
+    await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.nc-game').evaluate(e=>e.getBoundingClientRect().height);}).toBe(size.height);
     const bounds = async (selector: string) => (await page.locator(selector).boundingBox())!;
     const card = await bounds('.nc-card'), enter = await bounds('.nc-start');
     const dock = await bounds('.game-dock');

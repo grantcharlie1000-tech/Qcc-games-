@@ -1,7 +1,7 @@
 import type {GameId} from '../core/types';
 import {bindGlass} from './glass';
 
-type Field={label:string;source:string;attribute?:string};
+type Field={label:string;source:string;attribute?:string;labelSource?:string};
 const score:Field={label:'Score',source:'#game-score strong'};
 const level:Field={label:'',source:'#game-level'};
 /** Read the game's existing presentation. Models and the frozen context API remain the owners of state. */
@@ -12,7 +12,7 @@ const fields:Record<GameId,Field[]>={
   minesweeper:[{label:'Flags',source:'.ms-count'},{label:'Time',source:'.ms-time'}],
   solitaire:[level], 'block-fill':[level,{label:'Covered',source:'.bf-counter strong'}],
   'color-connect':[{label:'',source:'.cc-pairs'},{label:'',source:'.cc-progress'}],
-  'ball-run':[{label:'Score',source:'.br-score'}], pool:[level], 'animal-stack':[score,level],
+  'ball-run':[{label:'Score',source:'.br-score',labelSource:'.br-mode-label'},{label:'Next record',source:'.br-target-value',labelSource:'.br-target-label'}], pool:[level], 'animal-stack':[score,level],
   'flappy-bird':[{...score,label:'Gates'}],
   globle:[{label:'',source:'.gl-round'},{label:'Guesses',source:'.gl-count'}],
   blockcraft:[level], 'maze-muncher':[score,level],
@@ -46,6 +46,8 @@ export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLEle
       // Some games replace the value element on each render (for example Block Fill).
       const current=view.querySelector<HTMLElement>(field.source);
       const next=(field.attribute?current?.getAttribute(field.attribute):current?.textContent)?.trim()??'';
+      const nextLabel=field.labelSource?view.querySelector(field.labelSource)?.textContent?.trim()||field.label:field.label;
+      if(label.textContent!==nextLabel)label.textContent=nextLabel;
       if(value.textContent!==next)value.textContent=next;
       item.hidden=!next;
     };
