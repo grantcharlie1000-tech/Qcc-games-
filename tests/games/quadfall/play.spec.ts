@@ -148,3 +148,30 @@ test('rules describe mobile gestures and shared pause',async({page})=>{
  const rules=page.locator('#rules-text');await expect(rules).toContainText('downward flick');
  await expect(rules).toContainText('swipe up');await expect(rules).toContainText('Escape');
 });
+
+test('held Space cannot automatically replay after the hard drop ends a run',async({page})=>{
+ const board=Array.from({length:22},()=>Array(10).fill(null));
+ for(let x=3;x<=6;x++)for(let y=0;y<=3;y++)board[y][x]='O';
+ await running(page,{board,active:{id:'O',x:3,y:19,r:0},score:123});
+ await page.keyboard.down('Space');await expect(gameRoot(page)).toHaveAttribute('data-phase','lost');
+ await page.keyboard.down('Space');await page.keyboard.up('Space');
+ await expect(gameRoot(page)).toHaveAttribute('data-phase','lost');
+ await expect(page.getByRole('dialog',{name:'Game over',exact:true})).toBeVisible();
+ await page.keyboard.press('Space');await expect(gameRoot(page)).toHaveAttribute('data-phase','running');
+});
+
+test('results can be dismissed to reach the shared dock without resetting the lost run',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ const board=Array.from({length:22},()=>Array(10).fill(null));
+ for(let x=3;x<=6;x++)for(let y=0;y<=3;y++)board[y][x]='O';
+ await running(page,{board,active:{id:'O',x:3,y:19,r:0},score:123});await page.keyboard.press('Space');
+ const sheet=page.getByRole('dialog',{name:'Game over',exact:true});await expect(sheet).toBeVisible();
+ const score=await gameRoot(page).getAttribute('data-score');
+ await page.getByRole('button',{name:'Close results',exact:true}).tap();await page.clock.runFor(400);
+ await expect(sheet).toBeHidden();await expect(page.getByRole('link',{name:'Games',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Menu',exact:true}).tap();await page.clock.runFor(400);
+ await expect(page.locator('#game-options')).toBeVisible();await page.getByRole('button',{name:'Close game menu',exact:true}).tap();await page.clock.runFor(400);
+ await expect(sheet).toBeHidden();await expect(gameRoot(page)).toHaveAttribute('data-phase','lost');
+ await expect(gameRoot(page)).toHaveAttribute('data-score',score!);
+ await page.getByRole('link',{name:'Games',exact:true}).tap();await expect(gameRoot(page)).toHaveCount(0);
+});

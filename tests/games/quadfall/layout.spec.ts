@@ -62,3 +62,27 @@ test('fullscreen preserves the run',async({page,browserName})=>{
  }
  await expect(gameRoot(page)).toHaveAttribute('data-active',before!);
 });
+
+for(const [width,height] of [[768,1366],[820,1180]])test(`portrait-tablet previews do not cover spawn cells at ${width}x${height}`,async({page})=>{
+ await page.setViewportSize({width,height});await page.goto('/#/game/quadfall');
+ await expect(page.getByRole('button',{name:'Tap to play',exact:true})).toBeVisible();
+ const board=(await page.locator('.qf-board').boundingBox())!;
+ expect(board.x).toBeGreaterThanOrEqual(0);expect(board.x+board.width).toBeLessThanOrEqual(width);
+ for(const selector of ['.qf-hold','.qf-next']){
+  const chip=(await page.locator(selector).boundingBox())!;
+  expect(chip.y+chip.height<=board.y||chip.x+chip.width<=board.x||chip.x>=board.x+board.width).toBe(true);
+ }
+});
+
+test('browser fullscreen exit opens the shared pause menu',async({page,browserName})=>{
+ test.skip(browserName!=='chromium','Native fullscreen exit requires Chromium.');await running(page);
+ await gameAction(page,'Enter full screen');await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);
+ await page.evaluate(()=>document.exitFullscreen());await page.clock.runFor(400);
+ // Native fullscreen events may arrive after the prior menu's closing paint.
+ await expect(page.locator('#game-options')).toHaveJSProperty('open',true);
+ await expect(page.locator('#pause-overlay')).toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
+ const before=await gameRoot(page).getAttribute('data-active');
+ await page.evaluate(()=>document.dispatchEvent(new Event('fullscreenchange')));await page.clock.runFor(1200);
+ await expect(page.locator('#game-options')).toHaveJSProperty('open',true);
+ await expect(gameRoot(page)).toHaveAttribute('data-active',before!);
+});

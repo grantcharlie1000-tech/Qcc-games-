@@ -324,6 +324,8 @@ async function route(){
     // Some browsers consume Escape when they leave fullscreen. Give any open
     // dialog its usual cancel behavior before treating that exit as Study.
     const dialog=accountView.root.open?accountView.root:menu.open?menu:rulesDialog.open?rulesDialog:gameMenu?.open?gameMenu:leaderboards.root.open?leaderboards.root:undefined;
+    // Delayed enter/exit notices can both arrive after fullscreen has ended.
+    if(id==='quadfall'&&(!dialog||dialog===currentMenu)){if(!currentMenu.open)menuButton.click();return;}
     if(dialog){const cancel=new Event('cancel',{cancelable:true});if(dialog.dispatchEvent(cancel))dialog.close();return;}
     if(instance?.dismissMenu?.())return;
     openStudy(true);

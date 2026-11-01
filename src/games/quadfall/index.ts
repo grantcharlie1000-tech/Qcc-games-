@@ -2,6 +2,7 @@ import type {GameModule} from '../../core/types';
 import {createState,restoreState,advance,cells,ghost,move,rotate,softDrop,hardDrop,hold,level,ROWS,type State} from './model';
 import {PieceGesture,RepeatInput,type Action} from './input';
 import {createRenderer,type ClearEffect} from './renderer';
+import {uiIcon} from '../../ui/icons';
 import './style.css';
 
 const keys:Record<string,Action>={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowDown:'soft',s:'soft',ArrowUp:'cw',w:'cw',x:'cw',z:'ccw',' ':'hard',c:'hold',Shift:'hold'};
@@ -9,9 +10,9 @@ const game:GameModule={
  id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cover.svg',
  rules:'Fit falling pieces together and clear complete horizontal lines. A ghost shows where your piece will land. Clear lines to raise your level. On phones: tap to rotate; drag horizontally to move by whole cells; drag down to soft drop; use a fast downward flick to hard drop; swipe up or tap Hold to hold a piece once per drop. Keyboard: Left/Right or A/D move, Down or S soft drops, Up/X/W rotates clockwise, Z rotates counterclockwise, Space hard drops, and C or Shift holds. Enter or Space starts a game. Escape opens the pause menu.',
  mount(container,context){
-  let state=createState(),paused=false,disposed=false,awaitingContinue=false,last:number|null=null,frame=0,best=context.highScore,dirty=true;
+  let state=createState(),paused=false,disposed=false,awaitingContinue=false,resultsDismissed=false,last:number|null=null,frame=0,best=context.highScore,dirty=true;
   let effect:ClearEffect|null=null,gesture:{id:number;input:PieceGesture}|null=null;
-  const events=new AbortController(),repeat=new RepeatInput();
+  const events=new AbortController(),repeat=new RepeatInput(),consumedKeys=new Set<string>();
   container.innerHTML=`<div class="qf-game">
    <div class="qf-previews">
     <button class="qf-hold qf-chip arcade-glass-mini" type="button" aria-label="Hold"><span>Hold</span><canvas aria-label="Held piece"></canvas><span class="qf-empty" aria-hidden="true">—</span></button>
@@ -21,20 +22,25 @@ const game:GameModule={
     <canvas class="qf-canvas" aria-label="Tetris board" aria-description="Tap to rotate. Drag to move or soft drop. Flick down to hard drop. Swipe up to hold." tabindex="0"></canvas>
     <button class="qf-start arcade-glass-mini" type="button">Tap to play</button>
     <dialog class="qf-over ui-glass-sheet" aria-labelledby="qf-over-title">
-     <h2 id="qf-over-title">Game over</h2>
+     <div class="dialog-head"><h2 id="qf-over-title">Game over</h2><button class="qf-dismiss icon-button" type="button" aria-label="Close results">${uiIcon('close')}</button></div>
      <dl class="qf-result"><div><dt>Score</dt><dd data-result="score">0</dd></div><div><dt>Best</dt><dd data-result="best">0</dd></div></dl>
-     <button class="game-button" type="button">Play again</button>
+     <button class="qf-replay game-button" type="button" autofocus>Play again</button>
     </dialog>
    </div>
   </div>`;
   const root=container.querySelector<HTMLElement>('.qf-game')!,canvas=root.querySelector<HTMLCanvasElement>('.qf-canvas')!;
   const start=root.querySelector<HTMLButtonElement>('.qf-start')!,holdChip=root.querySelector<HTMLButtonElement>('.qf-hold')!;
-  const over=root.querySelector<HTMLDialogElement>('.qf-over')!,again=over.querySelector<HTMLButtonElement>('button')!;
+  const over=root.querySelector<HTMLDialogElement>('.qf-over')!,again=over.querySelector<HTMLButtonElement>('.qf-replay')!;
   const empty=root.querySelector<HTMLElement>('.qf-empty')!,resultScore=root.querySelector<HTMLElement>('[data-result=score]')!,resultBest=root.querySelector<HTMLElement>('[data-result=best]')!;
   const renderer=createRenderer(canvas,holdChip.querySelector('canvas')!,root.querySelector('.qf-next canvas')!,context.settings,()=>{dirty=true;});
   let reportedScore=-1,reportedLevel=-1,reportedStatus='';
   const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
   function resetInput(){repeat.clear();gesture?.input.cancel();gesture=null;}
+  const layout=new ResizeObserver(([entry])=>{
+   root.dataset.previewLayout=entry.contentRect.width>=entry.contentRect.height/2+340?'corners':'band';
+   resetInput();dirty=true;
+  });
+  layout.observe(root);
   function playable(){return !paused&&!awaitingContinue&&!effect&&state.phase==='running';}
   function attribute(name:string,value:string){if(root.getAttribute(name)!==value)root.setAttribute(name,value);}
   function update(){
@@ -49,7 +55,7 @@ const game:GameModule={
    start.hidden=state.phase!=='ready'&&!awaitingContinue;start.textContent=awaitingContinue?'Continue':'Tap to play';
    if(state.phase==='lost'){
     resultScore.textContent=String(state.score);resultBest.textContent=String(best);
-    if(!over.open)over.show();
+    if(!over.open&&!resultsDismissed)over.show();
    }else if(over.open)over.close();
    dirty=true;
   }
@@ -82,25 +88,28 @@ const game:GameModule={
   function play(){
    if(paused)return;
    if(state.phase==='lost')state=createState();
-   awaitingContinue=false;state.phase='running';last=null;effect=null;resetInput();
+   awaitingContinue=false;resultsDismissed=false;state.phase='running';last=null;effect=null;resetInput();
    context.save(state);update();canvas.focus({preventScroll:true});
   }
   start.addEventListener('click',play,{signal:events.signal});again.addEventListener('click',play,{signal:events.signal});
+  over.querySelector('.qf-dismiss')!.addEventListener('click',()=>{resultsDismissed=true;over.close();canvas.focus({preventScroll:true});},{signal:events.signal});
   holdChip.addEventListener('click',()=>{action('hold');canvas.focus({preventScroll:true});},{signal:events.signal});
   window.addEventListener('keydown',e=>{
-   if(paused||e.ctrlKey||e.altKey||e.metaKey||e.repeat||document.querySelector('dialog[open]:not(.qf-over)')||(e.target instanceof HTMLElement&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)))return;
    const key=e.key.length===1?e.key.toLowerCase():e.key;
+   // A hard drop can focus replay before keyup. Its held Space still belongs to play.
+   if(e.repeat){if(consumedKeys.has(key))e.preventDefault();return;}
+   if(paused||e.ctrlKey||e.altKey||e.metaKey||document.querySelector('dialog[open]:not(.qf-over)')||(e.target instanceof HTMLElement&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)))return;
    // Native buttons own Enter/Space, including the replay button focused by the sheet.
    if(e.target instanceof HTMLElement&&e.target.closest('button,a')&&(key===' '||key==='Enter'))return;
-   if((state.phase!=='running'||awaitingContinue)&&(key===' '||key==='Enter')){e.preventDefault();play();return;}
-   const a=keys[key];if(!a||!playable())return;e.preventDefault();
+   if((state.phase!=='running'||awaitingContinue)&&(key===' '||key==='Enter')){e.preventDefault();consumedKeys.add(key);play();return;}
+   const a=keys[key];if(!a||!playable())return;e.preventDefault();consumedKeys.add(key);
    if(a==='left'||a==='right'||a==='soft')for(const next of repeat.press(key,a,performance.now()))action(next);
    else action(a);
   },{signal:events.signal});
-  window.addEventListener('keyup',e=>repeat.release(e.key.length===1?e.key.toLowerCase():e.key,performance.now()),{signal:events.signal});
-  window.addEventListener('blur',resetInput,{signal:events.signal});
+  window.addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCase():e.key;repeat.release(key,performance.now());consumedKeys.delete(key);},{signal:events.signal});
+  window.addEventListener('blur',()=>{resetInput();consumedKeys.clear();},{signal:events.signal});
   canvas.addEventListener('pointerdown',e=>{
-   if(!e.isPrimary||e.button!==0||gesture||!playable())return;
+   if(!e.isPrimary||e.button!==0||gesture||!playable()||!renderer.cellSize())return;
    e.preventDefault();canvas.focus({preventScroll:true});
    gesture={id:e.pointerId,input:new PieceGesture(e.clientX,e.clientY,performance.now(),renderer.cellSize())};
    canvas.setPointerCapture(e.pointerId);
@@ -139,10 +148,10 @@ const game:GameModule={
   return {
    pause(){paused=true;last=null;resetInput();update();},
    resume(){paused=false;last=null;update();},
-   restart(){state=createState();awaitingContinue=false;last=null;effect=null;resetInput();context.save(state);update();},
+   restart(){state=createState();awaitingContinue=false;resultsDismissed=false;last=null;effect=null;resetInput();context.save(state);update();},
    serialize(){return structuredClone(state);},
-   restore(value){const restored=restoreState(value);if(restored){state=restored;awaitingContinue=state.phase==='running';last=null;effect=null;resetInput();update();}},
-   dispose(){disposed=true;events.abort();renderer.dispose();cancelAnimationFrame(frame);if(over.open)over.close();container.replaceChildren();}
+   restore(value){const restored=restoreState(value);if(restored){state=restored;awaitingContinue=state.phase==='running';resultsDismissed=false;last=null;effect=null;resetInput();update();}},
+   dispose(){disposed=true;events.abort();layout.disconnect();renderer.dispose();cancelAnimationFrame(frame);if(over.open)over.close();container.replaceChildren();}
   };
  }
 };
