@@ -1,6 +1,7 @@
 import type {GameId} from './types';
+import {SHOOTER} from '../games/shooter/meta';
 // Permanent public references: keep these IDs stable when the catalog is reordered.
-const entries:readonly GameId[]=['color-blocks','water-sort','fruit-merge','tower','flappy-bird','ball-run','animal-stack','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','pool','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold'];
+const entries:readonly GameId[]=['color-blocks','water-sort','fruit-merge','tower','flappy-bird','ball-run','animal-stack','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','pool','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold',SHOOTER.id];
 export const collectionHash='#/collection';
 export const entryHash=(id:GameId)=>`${collectionHash}/${entries.indexOf(id)+1}`;
 export function entryFromHash(hash:string):GameId|undefined{
