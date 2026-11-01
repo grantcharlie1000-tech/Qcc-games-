@@ -1,7 +1,7 @@
 /** CrossyRoad's voxel models: pure builders that return merged box geometry with a linear `color`
  * attribute (vertex colours). No materials or meshes are created here, and nothing touches the DOM.
  *
- * Units are tiles (1 unit = 1 lane = 1 column). Unless a builder says otherwise the origin is the
+ * Units are column widths; rendered rows have ROW_DEPTH depth. Unless a builder says otherwise the origin is the
  * bottom centre of the model (x and z centred, y = 0 at the base) and vehicles face +x, so a
  * renderer turns a vehicle by a yaw of π to face −x. The bird faces −z (forward).
  *
@@ -166,6 +166,14 @@ export function chickenGeometry(): THREE.BufferGeometry {
 /** The result for tinted vehicles: draw `body` with an instance tint and `detail` untinted. */
 export interface VehicleParts { body: THREE.BufferGeometry; detail: THREE.BufferGeometry }
 
+/** Keep complete roofs and wheels inside the projected lane, as well as its ground footprint.
+ * Length stays equal to the collision span; body and details receive the same proportions. */
+function laneVehicle(parts: VehicleParts, height: number, depth: number): VehicleParts {
+  parts.body.scale(1, height, depth);
+  parts.detail.scale(1, height, depth);
+  return parts;
+}
+
 /** Lane-specific bodies are authored at their collision length. Wheels and windows
  * keep their physical dimensions; compact cars are not stretched sedans. */
 export function carGeometry(style: CarStyle): VehicleParts {
@@ -188,11 +196,11 @@ export function carGeometry(style: CarStyle): VehicleParts {
   }
   if (style === 'taxi') parts.push([cx, 0.59, 0, 0.13, 0.075, 0.25, 0xf2d238]);
   const hood = style === 'compact' ? 0.22 : 0.37;
-  return {body: voxel([
+  return laneVehicle({body: voxel([
     [0, 0.1, 0, len, 0.25, 0.66, WHITE],
     [e - hood / 2, 0.35, 0, hood, 0.035, 0.64, WHITE],
     [-e + 0.13, 0.35, 0, 0.26, 0.02, 0.64, WHITE],
-  ]), detail: voxel(parts)};
+  ]), detail: voxel(parts)}, 1, 0.88);
 }
 
 /** A truck of 2 or 3 tiles (x), 0.84 wide: a tall tinted cab and hood at the front (+x), then a long
@@ -208,7 +216,7 @@ export function truckGeometry(len: 2 | 3): VehicleParts {
   axle(e - 0.34);
   axle(-e + 0.38);
   if (len === 3) axle(-e + 1.0);
-  return {
+  return laneVehicle({
     body: voxel([
       // Coloured cab and short hood. The cargo stays cool white/lavender.
       [e - cab / 2 - 0.1, 0.16, 0, cab - 0.2, 0.7, 0.8, WHITE],
@@ -227,7 +235,7 @@ export function truckGeometry(len: 2 | 3): VehicleParts {
       [-e + 0.01, 0.2, 0.3, 0.03, 0.08, 0.12, 0xff5a5a], [-e + 0.01, 0.2, -0.3, 0.03, 0.08, 0.12, 0xff5a5a],
       ...wheels,
     ]),
-  };
+  }, 0.79, 0.66);
 }
 
 /** Train pieces, each 2.0 long (x, front at +x), 0.8 wide, drawn 0.1 above the rails: a locomotive
@@ -244,7 +252,7 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
     [0.62, 0.0, 0.3, 0.5, 0.1, 0.06, 0x8a929c], [0.62, 0.0, -0.3, 0.5, 0.1, 0.06, 0x8a929c],
   ];
   return {
-    carriage: {
+    carriage: laneVehicle({
       body: voxel([[0, 0.12, 0, 2.0, 0.64, 0.8, WHITE]]),
       detail: voxel([
         [0, 0.76, 0, 1.96, 0.08, 0.68, roof],
@@ -252,8 +260,8 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
         ...windows, ...bogies,
         [0.97, 0.2, 0, 0.08, 0.06, 0.2, dark], [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
       ]),
-    },
-    nose: {
+    }, 0.78, 0.65),
+    nose: laneVehicle({
       body: voxel([
         [-0.275, 0.12, 0, 1.45, 0.72, 0.8, WHITE],
         [0.58, 0.12, 0, 0.26, 0.5, 0.8, WHITE],
@@ -274,7 +282,7 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
         ...bogies,
         [-0.97, 0.2, 0, 0.08, 0.06, 0.2, dark],
       ]),
-    },
+    }, 0.78, 0.65),
   };
 }
 

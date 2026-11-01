@@ -6,7 +6,7 @@
  * nothing per frame. Deaths, splashes and the UFO are analytic functions of `state.t − death.t`, so
  * pausing, restoring and replaying are exact.
  *
- * World: 1 unit = 1 tile, x = column, y = up, z = −row (forward is −z). Lanes are drawn across
+ * World: x = column, y = up, z = −row × ROW_DEPTH (forward is −z). Lanes are drawn across
  * x ∈ [RENDER_X_MIN − 0.5, RENDER_X_MAX + 0.5]; the playable band [BAND_MIN, BAND_MAX] is bright and
  * the zones outside it are darkened. Orthographic camera, pitched 45° and yawed 20° (lanes fall to
  * the right on screen). */
@@ -14,7 +14,7 @@ import * as THREE from 'three';
 import {carImpact, ufoFlight} from './motion';
 import {
   BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, EDGE_COLS, HOP_TIME, IDLE_LIMIT, IDLE_WARN, RENDER_X_MAX, RENDER_X_MIN, SAFE_LAG, SQUASH_TIME,
-  TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, clamp, lerp,
+  TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, ROW_DEPTH, TRAFFIC_ROW_Z, TRAIN_BASE_Y, clamp, lerp,
   type CarStyle, type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
 } from './config';
 import { forEachMover, laneVelocity, platformAt, railWarning, trainSpan } from './lanes';
@@ -30,15 +30,15 @@ const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
 /** The camera's right axis and its forward axis along the ground, in world x and z. */
 const RX = Math.cos(YAW), RZ = -Math.sin(YAW), FX = -Math.sin(YAW), FZ = -Math.cos(YAW);
 /** Ground-cell framing and the player's height share when grounded. */
-const PHONE_CELLS = 8, PC_CELLS = 16, PLAYER_SCREEN = 0.35;
+const PHONE_CELLS = 8, PC_HEIGHT_UNITS = 16, PLAYER_SCREEN = 0.35;
 const CAMERA_DIST = 40;
 const SHAKE_TIME = 0.25, SHAKE_AMP = 0.12;
 
-/** Eight ground cells across a phone and fourteen central cells plus a dimmed edge cell on each side in landscape.
- * The yaw is included in the fit, so the horizontal cell pitch is width / cells. */
+/** Phones fit eight cells across. Landscape fits by height, exposing the same 15–17 rows
+ * instead of enlarging the whole scene with screen width. The yaw is included in the phone fit. */
 export function cameraFit(width: number, height: number): { tilePx: number; halfWidth: number; halfHeight: number } {
   const w = Math.max(1, width), h = Math.max(1, height);
-  const tilePx = w / ((w <= h ? PHONE_CELLS : PC_CELLS) * RX);
+  const tilePx = w <= h ? w / (PHONE_CELLS * RX) : h / PC_HEIGHT_UNITS;
   return { tilePx, halfWidth: w / tilePx / 2, halfHeight: h / tilePx / 2 };
 }
 
@@ -93,7 +93,7 @@ const CLEAR_COLOR = 0x27342c;
 
 // Geometry constants -----------------------------------------------------------
 
-const WATER_Y = -0.18, LOG_TOP = -0.02, PAD_TOP = -0.132, LOG_BASE = -0.26, PAD_BASE = -0.185, TRAIN_Y = 0.09;
+const WATER_Y = -0.12, LOG_TOP = 0.04, PAD_TOP = -0.072, LOG_BASE = -0.20, PAD_BASE = -0.125, TRAIN_Y = TRAIN_BASE_Y;
 const NOSE_LEN = 2, CARRIAGE_LEN = 2;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
 const MARGIN = 2;
@@ -377,12 +377,12 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     // The look-at point sits ahead of the focus along the camera's ground axis, so the player is 35% up.
     const ahead = ((0.5 - PLAYER_SCREEN) * 2 * fit.halfHeight) / SIN_P, back = shakeY / SIN_P;
     lookX = focusX + FX * (ahead + back) + RX * shakeX;
-    lookZ = -focusRow + FZ * (ahead + back) + RZ * shakeX;
+    lookZ = -focusRow * ROW_DEPTH + FZ * (ahead + back) + RZ * shakeX;
     camera.position.set(lookX - FX * COS_P * CAMERA_DIST, SIN_P * CAMERA_DIST, lookZ - FZ * COS_P * CAMERA_DIST);
     // Every row whose strip can touch the screen, plus one each side.
     const zr = fit.halfWidth * Math.abs(RZ) + (fit.halfHeight / SIN_P) * -FZ;
-    rowLo = Math.ceil(-0.5 - (lookZ + zr)) - 1;
-    rowHi = Math.floor(0.5 - (lookZ - zr)) + 1;
+    rowLo = Math.ceil(-0.5 - (lookZ + zr) / ROW_DEPTH) - 1;
+    rowHi = Math.floor(0.5 - (lookZ - zr) / ROW_DEPTH) + 1;
     if (rowHi - rowLo >= MAX_ROWS) rowHi = rowLo + MAX_ROWS - 1;
     // The sun follows the view, snapped to shadow texels so edges do not crawl.
     const texel = (2 * sun.shadow.camera.right) / SHADOW_MAP;
@@ -395,7 +395,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   /** Sets the row being drawn and the x window of objects that can be on screen on it. */
   function windowFor(row: number): void {
-    curZ = -row;
+    curZ = -row * ROW_DEPTH;
     const off = (curZ - lookZ) * RZ;
     winLo = lookX + (-fit.halfWidth - off) / RX - MARGIN;
     winHi = lookX + (fit.halfWidth - off) / RX + MARGIN;
@@ -427,7 +427,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function drawGrass(lane: GrassLane, row: number): void {
-    band(C_GRASS + lane.shade, -0.5, 0.5, curZ, 1);
+    band(C_GRASS + lane.shade, -0.5, 0.5, curZ, ROW_DEPTH);
     for (let c = 0; c < COLS; c++) {
       if (c < winLo || c > winHi) continue;
       const rear = row < 0 ? hash(row, c) : 0;
@@ -451,22 +451,22 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     if (curRoad.vehicle === 'car') {
       const style = curRoad.style ?? (mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
       const i = carStyles.indexOf(style), size = style === 'compact' ? 1.2 : 1.8;
-      carBody[i].put(cx, 0, curZ, len / size, 1, 1, yaw, tint, 1);
-      carDetail[i].put(cx, 0, curZ, len / size, 1, 1, yaw, C_WHITE, 1);
-      if (low) blob(cx, 0, curZ, len + 0.3, 0.92);
+      carBody[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, len / size, 1, 1, yaw, tint, 1);
+      carDetail[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, len / size, 1, 1, yaw, C_WHITE, 1);
+      if (low) blob(cx, 0, curZ + TRAFFIC_ROW_Z, len + 0.3, 0.92);
     } else {
       const i = len > 2.5 ? 1 : 0, s = len / (i + 2);
-      truckBody[i].put(cx, 0, curZ, s, 1, 1, yaw, C_TRUCK + (mover.color % VEHICLE_PALETTE), 1);
-      truckDetail[i].put(cx, 0, curZ, s, 1, 1, yaw, C_WHITE, 1);
-      if (low) blob(cx, 0, curZ, len + 0.3, 0.98);
+      truckBody[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, s, 1, 1, yaw, C_TRUCK + (mover.color % VEHICLE_PALETTE), 1);
+      truckDetail[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, s, 1, 1, yaw, C_WHITE, 1);
+      if (low) blob(cx, 0, curZ + TRAFFIC_ROW_Z, len + 0.3, 0.98);
     }
   };
 
   function drawRoad(lane: RoadLane, ahead: Lane): void {
-    band(C_ROAD, -0.5, 0.5, curZ, 1);
+    band(C_ROAD, -0.5, 0.5, curZ, ROW_DEPTH);
     if (ahead.kind === 'road') {
       // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
-      const zb = curZ - 0.5;
+      const zb = curZ - ROW_DEPTH / 2;
       for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, k < BAND_MIN || k > BAND_MAX ? DARK : 1);
     }
     curRoad = lane;
@@ -480,16 +480,16 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   };
 
   function drawWater(lane: RiverLane | LilyLane, row: number, ahead: Lane, behind: Lane): void {
-    band(C_WATER, WATER_Y - 0.6, 0.6, curZ, 1, C_WATER_EDGE, 1);
+    band(C_WATER, WATER_Y - 0.6, 0.6, curZ, ROW_DEPTH, C_WATER_EDGE, 1);
     // Both shorelines end at the exact half-cell boundary. The soil wall and
     // narrow rim stay inside this water cell; adjacent road/rail strips remain whole.
     for (const side of [-1, 1]) if (!isWater(side < 0 ? ahead : behind)) {
-      band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * 0.494, 0.012);
-      band(C_RIPPLE, WATER_Y, 0.008, curZ + side * 0.472, 0.025);
+      band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * (ROW_DEPTH / 2 - 0.006), 0.012);
+      band(C_RIPPLE, WATER_Y, 0.008, curZ + side * (ROW_DEPTH / 2 - 0.028), 0.025);
     }
     // A few light ripples drifting slowly, repeating every 14 tiles.
     for (let k = 0; k < 1; k++) {
-      const h = hash(row, 200 + k), len = 0.5 + 0.7 * ((h >>> 19) & 63) / 63, zz = curZ + (((h >>> 25) & 31) / 31 - 0.5) * 0.52;
+      const h = hash(row, 200 + k), len = 0.5 + 0.7 * ((h >>> 19) & 63) / 63, zz = curZ + (((h >>> 25) & 31) / 31 - 0.5) * 0.52 * ROW_DEPTH;
       const speed = (0.1 + 0.18 * ((h >>> 10) & 255) / 255) * ((h >>> 18) & 1 ? -1 : 1);
       const at = ((((h & 1023) / 1024) * 14 + speed * anim) % 14 + 14) % 14;
       for (let x = at + Math.ceil((winLo - len - at) / 14) * 14; x <= winHi + len; x += 14)
@@ -499,9 +499,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     const foamAt = (hash(Math.floor(row / 2), 823) % 90) / 10 + anim * flow;
     for (let x = foamAt + Math.ceil((winLo - foamAt) / 9) * 9; x <= winHi; x += 9) {
       const k = x < BAND_MIN || x > BAND_MAX ? 0.90 : 1, shape = hash(row, 825);
-      ground.put(x, WATER_Y + 0.002, curZ - 0.27, 0.60 + (shape & 3) * 0.05, 0.012, 0.28, 0, C_FOAM, k);
-      ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02, 0.75 + ((shape >>> 2) & 3) * 0.035, 0.012, 0.32, 0, C_FOAM, k);
-      ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24, 0.50 + ((shape >>> 4) & 3) * 0.03, 0.012, 0.24, 0, C_FOAM, k);
+      ground.put(x, WATER_Y + 0.002, curZ - 0.27 * ROW_DEPTH, 0.60 + (shape & 3) * 0.05, 0.012, 0.28 * ROW_DEPTH, 0, C_FOAM, k);
+      ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02 * ROW_DEPTH, 0.75 + ((shape >>> 2) & 3) * 0.035, 0.012, 0.32 * ROW_DEPTH, 0, C_FOAM, k);
+      ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24 * ROW_DEPTH, 0.50 + ((shape >>> 4) & 3) * 0.03, 0.012, 0.24 * ROW_DEPTH, 0, C_FOAM, k);
     }
     if (lane.kind === 'river') {
       forEachMover(lane, now, winLo, winHi, onLog);
@@ -513,10 +513,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   function signal(x: number, on: boolean, lit: boolean): void {
     if (x < winLo || x > winHi) return;
     // Beside the track, on the near edge, so a passing train never clips it.
-    const z = curZ + 0.45;
+    const z = curZ + ROW_DEPTH / 2 - 0.05;
     posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
     const s = on ? (lit ? 1.1 : 1) + (colorBlind ? 0.2 : 0) : 0.85;
-    lamps.put(x, 1.27, curZ + 0.493, s, s, 0.05, 0, lit ? C_LAMP_ON : C_LAMP_OFF, 1);
+    lamps.put(x, 1.27, curZ + ROW_DEPTH / 2 - 0.007, s, s, 0.05, 0, lit ? C_LAMP_ON : C_LAMP_OFF, 1);
     if (lit) glows.put(x, 0.112, z, 1.05, 1, 1.05, 0, C_WHITE, 1);
   }
 
@@ -524,26 +524,26 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     const dir = lane.dir, yaw = dir > 0 ? 0 : Math.PI, tint = C_TRAIN + (lane.color % TRAIN_PALETTE), front = dir > 0 ? x1 : x0;
     const nose = front - (dir * NOSE_LEN) / 2;
     if (nose >= winLo - 2 && nose <= winHi + 2) {
-      noseBody.put(nose, TRAIN_Y, curZ, 1, 1, 1, yaw, tint, 1);
-      noseDetail.put(nose, TRAIN_Y, curZ, 1, 1, 1, yaw, C_WHITE, 1);
+      noseBody.put(nose, TRAIN_Y, curZ + TRAFFIC_ROW_Z, 1, 1, 1, yaw, tint, 1);
+      noseDetail.put(nose, TRAIN_Y, curZ + TRAFFIC_ROW_Z, 1, 1, 1, yaw, C_WHITE, 1);
     }
     const bodyLen = x1 - x0 - NOSE_LEN, n = Math.max(1, Math.round(bodyLen / CARRIAGE_LEN)), each = bodyLen / n, sx = each / CARRIAGE_LEN;
     for (let i = 0; i < n; i++) {
       const cc = front - dir * (NOSE_LEN + each * (i + 0.5));
       if (cc < winLo - 2 || cc > winHi + 2) continue;
-      carriageBody.put(cc, TRAIN_Y, curZ, sx, 1, 1, yaw, tint, 1);
-      carriageDetail.put(cc, TRAIN_Y, curZ, sx, 1, 1, yaw, C_WHITE, 1);
+      carriageBody.put(cc, TRAIN_Y, curZ + TRAFFIC_ROW_Z, sx, 1, 1, yaw, tint, 1);
+      carriageDetail.put(cc, TRAIN_Y, curZ + TRAFFIC_ROW_Z, sx, 1, 1, yaw, C_WHITE, 1);
     }
-    if (low) blob((x0 + x1) / 2, 0, curZ, x1 - x0 + 0.2, 0.98);
+    if (low) blob((x0 + x1) / 2, 0, curZ + TRAFFIC_ROW_Z, x1 - x0 + 0.2, 0.98);
   }
 
   function drawRail(lane: RailLane): void {
-    band(C_BALLAST, -0.5, 0.5, curZ, 1);
+    band(C_BALLAST, -0.5, 0.5, curZ, ROW_DEPTH);
     for (let x = Math.ceil(winLo); x <= winHi; x++) {
-      ground.put(x, 0, curZ, 0.11, 0.045, 0.88, 0, C_SLEEPER, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
+      ground.put(x, 0, curZ + TRAFFIC_ROW_Z, 0.11, 0.045, 0.70, 0, C_SLEEPER, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
     }
-    band(C_STEEL, 0.045, 0.06, curZ - 0.25, 0.07);
-    band(C_STEEL, 0.045, 0.06, curZ + 0.25, 0.07);
+    band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z - 0.20, 0.07);
+    band(C_STEEL, 0.045, 0.06, curZ + TRAFFIC_ROW_Z + 0.20, 0.07);
     const s = trainSpan(lane, now, span);
     if (s !== null) drawTrain(lane, s.x0, s.x1);
     // The warning: the lamp alternates bright and dark at 2.5 Hz (under the three-flashes-a-second photosensitivity limit
@@ -600,7 +600,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     else groundY = surfaceAt(world.lane(state.row), pose.x, t);
     // The ground ellipse sits just above the surface (above the steel on a rail row).
     dropY = groundY + (world.lane(state.row).kind === 'rail' ? 0.11 : 0.04);
-    pX = pose.x; pZ = -pose.z; pY = groundY + pose.lift; pYaw = YAWS[pose.facing];
+    pX = pose.x; pZ = -pose.z * ROW_DEPTH; pY = groundY + pose.lift; pYaw = YAWS[pose.facing];
     if (reduced) return;
     let sy = 1;
     if (hopping) {
@@ -626,10 +626,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     pX = anchorX; pY = anchorY; pZ = anchorZ; pYaw = anchorYaw;
     switch (death.cause) {
       case 'car': {
-        const contact = carImpact(reduced ? 0.15 : age, -anchorZ, death.row, anchorY, death.contact?.mode === 'hop-in');
-        pX += dir * contact.slide; pZ = -contact.row; pY = contact.height;
+        const contact = carImpact(reduced ? 0.15 : age, -anchorZ / ROW_DEPTH, death.row, anchorY, death.contact?.mode === 'hop-in');
+        pX += dir * contact.slide; pZ = -contact.row * ROW_DEPTH; pY = contact.height;
         pSY = contact.sy; pSX = pSZ = contact.sx;
-        if (!reduced) burst(anchorX, 0.12, -death.row, age, 8, 1.4, 1.6, 0.1, 11, C_FLUFF);
+        if (!reduced) burst(anchorX, 0.12, -death.row * ROW_DEPTH, age, 8, 1.4, 1.6, 0.1, 11, C_FLUFF);
         break;
       }
       case 'train': {

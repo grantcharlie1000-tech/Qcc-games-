@@ -48,7 +48,7 @@ export interface RunState {
   v: 1;
   seed: number;
   /** Old saves without a revision replay the original generator. */
-  worldVersion?: 1 | 2;
+  worldVersion?: 1 | 2 | 3;
   /** World time in seconds; hazards are pure functions of it. */
   t: number;
   phase: Phase;
@@ -132,6 +132,11 @@ export const SCROLL_MAX = 0.9;
 // Generation (§5).
 export const DIFFICULTY_ROWS = 300;
 export const SAFE_ROWS = 5;
+/** Presentation units: one logical row has this depth, measured against t047/t119 road boundaries. */
+export const ROW_DEPTH = 1.38;
+/** Near-side vehicle placement keeps their elevated silhouettes inside their own rendered row. */
+export const TRAFFIC_ROW_Z = 0.32;
+export const TRAIN_BASE_Y = 0.09;
 export const AHEAD_ROWS = 40;
 export const BEHIND_ROWS = 20;
 export const MOVERS = 3;

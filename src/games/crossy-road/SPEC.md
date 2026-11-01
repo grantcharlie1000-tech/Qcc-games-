@@ -60,10 +60,11 @@ A death sets the phase to `dying` for 0.9 s (0.3 s with reduced motion), then to
 
 ## Lane generation
 
-New runs store `worldVersion=2`; saves without the field replay revision one unchanged. Each chunk has its own PRNG, `mulberry32(mix(seed, k))`, so chunk `k` does not depend on how many rows were requested. Difficulty is `d = clamp(row / 300, 0, 1)`. Hazard positions are pure functions of the lane and `t`. Rows below 0 form a fully blocked grass lane.
+New runs store `worldVersion=3`. Saves with revision one or two replay their original generator and random draw order; saves without the field use revision one. Each chunk has its own PRNG, `mulberry32(mix(seed, k))`, so chunk `k` does not depend on how many rows were requested. Difficulty is `d = clamp(row / 300, 0, 1)`. Hazard positions are pure functions of the lane and `t`. Rows below 0 form a fully blocked grass lane.
 
 - Chunk 0 (rows 0–4) is grass with columns 2–6 clear.
 - Chunk weights, lerped by `d`: grass 0.40 → 0.22, road 0.32 → 0.38, river 0.16 → 0.22, rail 0.12 → 0.18. A pick equal to the previous chunk kind becomes grass (or road after grass). Hazard chunks in a row: at most 2 before row 60, then at most 3; otherwise grass is forced.
+- Revision three requires grass immediately before and after every river block (logs and lilies form one block). A river pick after road/rail becomes grass, and the next chunk after a river is always grass. Revisions one and two keep their original adjacencies.
 - Thickness: grass 1–5 before row 20, else 1–3; road 1–2 before row 20, else 1–4; river 1/2/3 with probabilities 20/60/20 %, with an optional lily as the second row of a pair or middle row of three (p = 0.3); rail 1/2/3 with probabilities 63/25/12 % from the start.
 - Road: speed `lerp(1.5, 4.5, d)` ±15 %; truck lanes with p `lerp(0.2, 0.4, d)` (trucks 2–3 tiles, compact cars 1.2, sedans/taxis 1.8); 2–5 movers per road pattern; each gap is `max(gapMin(speed), lerp(4.2, 3, d)·(0.85 + 0.6·r))`, with `gapMin(s) = max(3, 0.4 + s·(3·HOP_TIME + 0.25))` and `r` a PRNG draw in [0, 1); adjacent road rows take the opposite direction with p 0.7.
 - River: speed `lerp(1.0, 2.6, d)` ±15 %; log lengths 2, 3 or 4 with weights .2/.6/.2 initially, lerped to .6/.3/.1; gaps `clamp(lerp(2, 4, d)·jitter, 2, min(4, 2·PLATFORM_GRACE + 2.5·speed))`; adjacent river rows alternate direction; lily rows have 3–5 static pads.
@@ -85,7 +86,9 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 ## Camera
 
 - Orthographic, pitched 45° down and yawed 20°, so lanes fall slightly to the right.
-- Portrait: eight ground cells span the width (48.75 CSS px horizontal pitch at 390 wide). Landscape: fourteen central cells plus a dim edge cell on either side span the width, keeping the nine-column playable band dominant. This full-width adaptation trades vertical coverage for scale.
+- Portrait: eight ground cells span the width (48.75 CSS px horizontal pitch at 390 wide). Every rendered row has depth 1.38 column units: about 53.9 CSS px per row at a fixed screen x, or a row-to-cell ratio of 1.105, measured from the road boundaries in t047/t119. Road, water, grass and gravel all occupy the same full row depth, with bank rims and sleepers inside their boundaries.
+- Landscape fits sixteen camera units vertically, independent of width. At 1366×768, column scale is 48 CSS px (45.1 horizontal pitch), with about 15.4 rows visible. Phone 390×844 has about 15.7 rows. The nine-column band stays centred, with subtle dimming outside it.
+- Traffic keeps its collision length but uses narrower depth and matched body/detail height. Vehicles sit towards the near part of their row, and the complete elevated silhouette of both directions fits between the projected lane edges. Rails and sleepers follow the train's ground centre; water is recessed by only 0.12 units.
 - Focus row target is `max(renderRow, safeLine + min(SAFE_LAG, maxRow))` after starting, with `SAFE_LAG = 2`, so it never moves backward. The bird sits about 35 % up from the bottom.
 - Focus x target is `lerp(4, pose.x, 0.6)`, clamped to centre ±1 cell on a cropped phone, or ±2.4 cells on desktop.
 - Smoothing factor is `1 − 0.9^(dt·60)`.
