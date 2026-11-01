@@ -26,7 +26,7 @@ test('mouse aim, real drops and merge, pause, keyboard, saved return and restart
  await pauseGame(page);await gameAction(page,'Restart game');await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');
  await expect(basket).toHaveAttribute('aria-busy','false');expect(errors).toEqual([]);
 });
-test('responsive touch aim, accessible fruit tiers and a real merge',async({page})=>{
+test('responsive touch aim, next fruit preview and a real merge',async({page},testInfo)=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/fruit-merge');const basket=page.getByRole('img',{name:/Fruit basket/});await expect(basket).toBeVisible();
  const box=await basket.boundingBox();if(!box)throw Error('No basket');
  for(let n=0;n<8;n++){
@@ -34,15 +34,15 @@ test('responsive touch aim, accessible fruit tiers and a real merge',async({page
   await page.touchscreen.tap(box.x+box.width*.5,box.y+box.height*.45);
  }
  await expect.poll(async()=>Number(await page.locator('#game-score strong').textContent())).toBeGreaterThan(0);
- await expect(page.locator('.fm-evolution [title]')).toHaveCount(11);
+ await expect(page.locator('.fm-next-name')).not.toBeEmpty();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const sample=await page.evaluate(async()=>{
   const intervals:number[]=[];let previous=performance.now();for(let n=0;n<61;n++)await new Promise<void>(resolve=>requestAnimationFrame(now=>{if(n>0)intervals.push(now-previous);previous=now;resolve();}));
   const sorted=[...intervals].sort((a,b)=>a-b);return {browser:navigator.userAgent,viewport:{width:innerWidth,height:innerHeight},frames:intervals.length,meanMs:intervals.reduce((a,b)=>a+b,0)/intervals.length,p95Ms:sorted[Math.floor(sorted.length*.95)],maxMs:Math.max(...intervals),note:'Headless Chromium in a shared Linux execution container; not a physical Chromebook measurement.'};
  });
- await writeFile('tests/games/fruit-merge/evidence/performance-chromium.json',JSON.stringify(sample,null,2));
- await page.screenshot({path:'tests/games/fruit-merge/evidence/chromium.png',fullPage:true});
- for(const size of [{width:768,height:1024},{width:1366,height:768}]){await page.setViewportSize(size);await expect(basket).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:`tests/games/fruit-merge/evidence/chromium-${size.width}.png`,fullPage:true});}
+ await writeFile(testInfo.outputPath('performance-chromium.json'),JSON.stringify(sample,null,2));
+ await page.screenshot({path:testInfo.outputPath('chromium.png'),fullPage:true});
+ for(const size of [{width:768,height:1024},{width:1366,height:768}]){await page.setViewportSize(size);await expect(basket).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:testInfo.outputPath(`chromium-${size.width}.png`),fullPage:true});}
 });
 test('invalid saved data is ignored and navigation disposes stale controls',async({page})=>{
  await page.goto('/');await page.evaluate(()=>localStorage.setItem('pocket-arcade:v1:save:fruit-merge',JSON.stringify({version:1,data:{version:1,fruits:'broken'}})));
@@ -58,6 +58,6 @@ test('restores a full supported pile, ends after settled grace, and restarts',as
   localStorage.setItem('pocket-arcade:v1:save:fruit-merge',JSON.stringify({version:1,data}));
  });
  await page.goto('/#/game/fruit-merge');await expect(page.locator('#game-score strong')).toHaveText('123');
- await expect(page.locator('.fm-banner')).toContainText('Basket full');await expect(page.locator('.fm-board')).toHaveAttribute('aria-disabled','true');
- await gameAction(page,'Restart game');await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');await expect(page.locator('#game-score strong')).toHaveText('0');await expect(page.locator('#game-best strong')).toHaveText('123');
+ await expect(page.locator('.fm .game-sheet').getByRole('button',{name:'Play again',exact:true})).toBeVisible();await expect(page.locator('.fm-board')).toHaveAttribute('aria-disabled','true');
+ await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');await expect(page.locator('#game-score strong')).toHaveText('0');await expect(page.locator('#game-best strong')).toHaveText('123');
 });

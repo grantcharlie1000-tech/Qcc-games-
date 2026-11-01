@@ -141,7 +141,7 @@ for(const transition of ['pause','Study'] as const)test(`native held touch remai
   await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:brand.x+5,y:brand.y+brand.height/2,id:7}]});
   await cueDrag(page);await page.mouse.up();expect(await root.getAttribute('data-shots')).toBe('0');
   if(transition==='pause'){
-   await page.locator('#game-menu').focus();await page.keyboard.press('Enter');await page.getByRole('button',{name:'Keep playing',exact:true}).focus();await page.keyboard.press('Enter');
+   await page.locator('#game-menu').focus();await page.keyboard.press('Enter');await page.locator('#pause-game').focus();await page.keyboard.press('Enter');
   }else{
    await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).focus();await page.keyboard.press('Enter');await expect(root).toBeVisible();
   }

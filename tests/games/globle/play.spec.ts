@@ -66,7 +66,7 @@ test('spelling corrections submit a guess on click and keyboard activation', asy
   await winner.focus();
   await winner.press('Enter');
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
-  await expect(page.locator('.gl-win-text')).toContainText('2 guesses');
+  await expect(page.locator('.globle .game-sheet-stats')).toContainText('Score2');
   await page.reload();
   await expect(page.locator('.gl-guess[data-id=DEU]')).toBeVisible();
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
@@ -115,14 +115,14 @@ test('complete winning round with neighbours, aliases, duplicates and invalid en
 
   await guess(page, 'France');
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
-  await expect(page.locator('.gl-win')).toBeVisible();
-  await expect(page.locator('.gl-win-text')).toContainText('France');
-  await expect(page.locator('.gl-win-text')).toContainText('6 guesses');
+  await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+  await expect(page.locator('.globle .game-sheet-stats')).toContainText('Score6');
   await expect(page.locator('.gl-guess').first()).toHaveAttribute('data-id', 'FRA');
   expect(await colour('FRA')).toBe('rgb(47, 168, 79)');
   await expect(input(page)).toBeDisabled();
-  await page.locator('.gl-more summary').click();
+  await gameAction(page,'Stats and options');
   await expect(page.locator('.gl-stats')).toContainText('Practice best6');
+  await page.locator('.gl-close').click();
   await page.screenshot({path: 'tests/games/globle/evidence/chromium.png'});
 
   await page.getByRole('button', {name: 'Play again'}).click();
@@ -294,3 +294,8 @@ test('a stale second tab cannot overwrite a daily win made in another tab', asyn
   expect(saved.stats.daily.wins).toBe(1);
   await other.close();
 });
+
+for(const width of [320,390,1366])test(`no info card, compact HUD and larger globe at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:width===1366?768:844});await open(page);await expect(page.locator('.gl-side,.gl-legend,.gl-empty,.gl-hint,.gl-more')).toHaveCount(0);await expect(page.locator('.gl-chip')).toBeHidden();await expect(page.locator('.game-dock')).toHaveCount(1);const hud=page.locator('.game-compact-hud');expect(await hud.evaluate(e=>e.scrollWidth<=e.clientWidth&&e.getBoundingClientRect().height<20)).toBe(true);const g=(await globe(page).boundingBox())!;expect(g.height).toBeGreaterThan((width===1366?768:844)-140);await expect(page.locator('.gl-search,.gl-submit')).toHaveCount(2);await gameAction(page,'Stats and options');await expect(page.locator('.gl-options')).toBeVisible();await page.getByLabel('Colour-blind palette').check();await page.locator('.gl-close').click();await expect(page.locator('#pause-overlay')).toBeHidden();
+});
+test('closest chip keeps the nearest guess when a farther country is guessed',async({page})=>{await practice(page,'FRA');await guess(page,'Spain');const closest=await page.locator('.gl-chip').textContent();await guess(page,'New Zealand');await expect(page.locator('.gl-chip')).toHaveText(closest!);});

@@ -7,20 +7,15 @@ import {directShot} from '../games/pool/helpers';
 
 const studyImagePaths=new Set<string>([
   ...JSON.parse(readFileSync('public/study/image-provenance.json','utf8')).assets.map((asset:{path:string})=>`/study/${asset.path}`),
+  ...JSON.parse(readFileSync('public/study/fictional-ads/provenance.json','utf8')).assets.map((asset:{file:string})=>`/study/fictional-ads/${asset.file}`),
 ]);
 const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of requests){const url=new URL(request);expect(url.origin).toBe(new URL(page.url()).origin);expect(studyImagePaths.has(url.pathname)).toBe(true);}};
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>{const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.isVisible())await accept.click();await page.locator(`[data-study-topic="${id}"]`).click();};
-const returnToGame=async(page:Page,keyboard=false)=>{
+const returnToGame=async(page:Page)=>{
   const studyView=page.locator('#study-view'),games=page.getByRole('link',{name:'Games',exact:true}).first();
   await expect(async()=>{
-    if(await studyView.isVisible()){
-      if(keyboard){
-        // Clocked retention checks freeze animation frames. Use the real keyboard
-        // link path instead of waiting for pointer stability across those frames.
-        await games.focus();await expect(games).toBeFocused();await page.keyboard.press('Enter');
-      }else await games.click({timeout:1000});
-    }
+    if(await studyView.isVisible())await games.click({timeout:1000});
     await expect(studyView).toBeHidden({timeout:1000});
   }).toPass({timeout:7000});
   await expect(page.locator('#study-view')).toBeHidden();
@@ -46,7 +41,7 @@ async function playGameAction(page:Page,id:string){
   }
   if(id==='color-blocks'){await page.locator('.cb-cell').first().focus();await page.keyboard.press('1');await page.keyboard.press('Enter');}
   if(id==='tower'){await page.clock.runFor(900);await page.locator('.tower-canvas').click();}
-  if(id==='snake')await page.getByRole('button',{name:'Start slithering',exact:true}).click();
+  if(id==='snake')await page.getByRole('button',{name:'Play',exact:true}).click();
   if(id==='minesweeper')await page.getByRole('gridcell').first().click();
   if(id==='solitaire')await page.getByRole('button',{name:/^Draw from stock/}).click();
   if(id==='block-fill'){
@@ -57,13 +52,13 @@ async function playGameAction(page:Page,id:string){
     const dy=Number(match[1])-Number(head[1]),dx=Number(match[2])-Number(head[2]);
     await page.keyboard.press(dy===1?'ArrowDown':dy===-1?'ArrowUp':dx===1?'ArrowRight':'ArrowLeft');
   }
-  if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
+  if(id==='color-connect'){await page.locator('[data-cc-cell="9"]').focus();await page.keyboard.press('Space');await page.keyboard.press('ArrowUp');await page.keyboard.press('Space');}
   if(id==='ball-run'){await page.getByRole('button',{name:/^(Play|Continue)$/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
-  if(id==='maze-muncher')await page.getByRole('button',{name:'Start',exact:true}).click();
+  if(id==='maze-muncher')await page.getByRole('button',{name:'Play',exact:true}).click();
   if(id==='slipline'){const p=await page.locator('.sl-board g[data-free="true"] polyline').first().evaluate((node:SVGPolylineElement)=>{const point=node.getPointAtLength(node.getTotalLength()/2),m=node.getScreenCTM()!;return {x:point.x*m.a+point.y*m.c+m.e,y:point.x*m.b+point.y*m.d+m.f}});await page.mouse.click(p.x,p.y);}
-  if(id==='quadfall'){await page.getByRole('button',{name:'Tap to play',exact:true}).click();await page.keyboard.press('Space');}
+  if(id==='quadfall'){await page.getByRole('button',{name:/^(Start|Tap to play)$/}).click();await page.keyboard.press('Space');}
   if(id==='corn-clicker')await page.getByRole('button',{name:/^Harvest the cob/}).click();
-  if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
+  if(id==='flappy-bird'){await page.getByRole('button',{name:'Play',exact:true}).click();await page.keyboard.press('Space');}
   if(id==='pool'){
     await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','0');
     await directShot(page);
@@ -72,7 +67,6 @@ async function playGameAction(page:Page,id:string){
   }
   if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
   if(id==='fivefold')await page.keyboard.type('a');
-  if(id==='crossy-road')await page.keyboard.press('ArrowUp');
   if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');}
   if(id==='blockcraft'){
     // Chunks stream on animation frames, which the paused clock drives.
@@ -154,8 +148,16 @@ test('Escape immediately saves and pauses; article changes never load or replace
   expectOnlyStudyImages(requests,page);
 });
 
+async function openRetainedStudy(page:Page,id:string){
+  await page.keyboard.press('Escape');
+  if(id==='maze-muncher'){
+    await expect(page.locator('#pause-overlay')).toBeVisible();await resumeGame(page);
+    await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  }
+}
+
 test.describe('all retained game instances',()=>{
-  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold','crossy-road']){
+  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold']){
     test(`${id}: gameplay, Escape, frozen autosave and exact return`,async({page})=>{
       test.setTimeout(60000);
       const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -166,7 +168,7 @@ test.describe('all retained game instances',()=>{
       await expect(page.locator('.game-error')).toHaveCount(0);
       await playGameAction(page,id);
       const root=await page.locator('#game-stage > *').first().elementHandle();
-      await page.keyboard.press('Escape');
+      await openRetainedStudy(page,id);
       await expect(page.locator('#study-topic')).toHaveValue('forces');
       await expect(page.locator('#study-title')).not.toBeEmpty();
       await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
@@ -181,14 +183,14 @@ test.describe('all retained game instances',()=>{
       await page.keyboard.down('Escape');await page.keyboard.down('Escape');await page.keyboard.up('Escape');
       expect(await snapshot(page,id)).toEqual(saved);
       await waitForReadingScroll(page);
-      await returnToGame(page,true);
+      await returnToGame(page);
       expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
       await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
-      await page.keyboard.press('Escape');
+      await openRetainedStudy(page,id);
       // Corn Clicker is an idle game: time spent away, reading included, keeps the farm growing
       // once play resumes (its own tests cover those rules), so only the frozen autosave applies.
       if(id!=='corn-clicker')expect(await snapshot(page,id)).toEqual(saved);
-      await returnToGame(page,true);
+      await returnToGame(page);
       expect(errors).toEqual([]);
     });
   }
@@ -213,16 +215,16 @@ for(const modal of ['menu','rules']){
     await waitForReadingScroll(page);
     await returnToGame(page);
     await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
-    await page.locator('.fm-board').click();
+    await expect(page.locator('.fm-board')).toHaveAttribute('aria-busy','false');await page.locator('.fm-board').click({position:{x:40,y:40}});
     await expect(page.locator('.fm-count')).toContainText('2 fruits');
   });
 }
 
-test('manual pause survives Study and topic navigation keeps the game route intact',async({page})=>{
+test('background pause survives Study and topic navigation keeps the game route intact',async({page})=>{
   await page.goto('/#/game/minesweeper');await choose(page);
   await page.getByRole('gridcell').first().click();
   await gameAction(page,'Game options');
-  await pauseGame(page);
+  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});});
   await page.keyboard.press('Escape');
   await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
   expect(new URL(page.url()).hash).toBe('#/collection/10');

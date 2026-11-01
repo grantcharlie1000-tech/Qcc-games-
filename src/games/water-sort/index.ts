@@ -4,6 +4,8 @@ import { cloneBoard, pour, won } from './rules';
 import { campaignScore, readSnapshot, Session } from './session';
 import { bandsFor, COLOURS, liquidArt, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
+import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
+import {mountCompactHud,mountDockActions} from '../../ui/game-controls-adapter';
 import './style.css';
 
 const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-6 5 6 5M3 10h10a6 6 0 0 1 0 12H6"/></svg>';
@@ -14,11 +16,17 @@ const module:GameModule={
   mount(container,context) {
     const session=new Session(),abort=new AbortController(),root=document.createElement('section');
     root.className='ws-game';root.setAttribute('aria-label','Water Sort puzzle');
-    root.innerHTML=`<div class="ws-heading"><select class="ws-difficulty" aria-label="Difficulty"><option>Gentle</option><option>Flow</option><option>Deep</option></select><h2 class="ws-level-name">Level 1</h2><select class="ws-level" aria-label="Level">${LEVELS.map((l,i)=>`<option value="${i}">Level ${i+1} · ${l.name}</option>`).join('')}</select></div><div class="ws-playfield"><div class="ws-tubes" aria-label="Liquid tubes"></div><svg class="ws-stream" aria-hidden="true"><path fill="none" stroke-linecap="round"/></svg><div class="ws-victory" hidden><span class="ws-victory-mark">✓</span><strong>Beautifully sorted!</strong></div></div><div class="ws-footer"><p class="ws-message" role="status"></p><div class="ws-actions"><button type="button" data-action="undo" aria-label="Undo">${undoIcon}<span>Undo</span></button><button type="button" class="ws-next" data-action="next" hidden>Next level</button><button type="button" data-action="hint" aria-label="Hint">${hintIcon}<span>Hint</span></button></div></div>`;
+    root.innerHTML=`<div class="ws-heading"><select class="ws-difficulty" aria-label="Difficulty"><option>Gentle</option><option>Flow</option><option>Deep</option></select><h2 class="ws-level-name">Level 1</h2><select class="ws-level" aria-label="Level">${LEVELS.map((l,i)=>`<option value="${i}">Level ${i+1} · ${l.name}</option>`).join('')}</select></div><div class="ws-playfield"><div class="ws-tubes" aria-label="Liquid tubes"></div><svg class="ws-stream" aria-hidden="true"><path fill="none" stroke-linecap="round"/></svg></div><p class="ws-message sr-only" role="status"></p><div class="ws-actions"><button type="button" data-action="undo" aria-label="Undo">${undoIcon}</button><button type="button" data-action="hint" aria-label="Hint">${hintIcon}</button></div>`;
     container.replaceChildren(root);
     const tubes=root.querySelector<HTMLElement>('.ws-tubes')!,field=root.querySelector<HTMLElement>('.ws-playfield')!;
     const difficulty=root.querySelector<HTMLSelectElement>('.ws-difficulty')!,levelSelect=root.querySelector<HTMLSelectElement>('.ws-level')!;
     const stream=root.querySelector<SVGSVGElement>('.ws-stream')!,streamPath=stream.querySelector('path')!;
+    const undo=root.querySelector<HTMLButtonElement>('[data-action=undo]')!,hintButton=root.querySelector<HTMLButtonElement>('[data-action=hint]')!;
+    const actions=mountDockActions(container,undo,hintButton);root.querySelector('.ws-actions')!.remove();
+    const hud=mountCompactHud(container);
+    const controls={touch:'Tap a tube, then its destination.',keyboard:'Arrows to move · Enter to pour.'};
+    const pauseSheet=bindGamePauseSheet(container,{title:'Water Sort',controls});
+    const sheet=createGameSheet(root,{title:'Water Sort',controls,onPlay(){if(!session.paused)reset((session.state.level+1)%LEVELS.length)}});sheet.button.dataset.action='next';
     let focusAfterPour:number|null=null;
     let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
     let message='Tap a tube, then its destination.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
@@ -40,7 +48,7 @@ const module:GameModule={
       const single=rect.width>=700&&rect.height>=300&&count<=7;
       root.dataset.layout=single?'single':'rows';
       const columns=Math.ceil(count/2);
-      const width=single?Math.min(144,(rect.width-32-(count-1)*40)/count,rect.height*.84/3.2):Math.max(20,Math.min(92,(rect.width-12)/(columns+.45),(rect.height*.77-16)/6.4));
+      const width=single?Math.min(144,(rect.width-32-(count-1)*40)/count,rect.height*.9/3.2):Math.max(20,Math.min(92,(rect.width-12)/(columns+.45),(rect.height*.9-16)/6.4));
       root.style.setProperty('--ws-tube-width',`${width}px`);
       if(session.pending)paintPour();
     }
@@ -64,12 +72,11 @@ const module:GameModule={
       });
       tubes.innerHTML=`<div class="ws-row">${buttons.slice(0,count).join('')}</div><div class="ws-row">${buttons.slice(count).join('')}</div>`;
       if(focused!==undefined&&!busy&&!session.paused)tubes.querySelector<HTMLButtonElement>(`[data-tube="${focused}"]`)?.focus({preventScroll:true});
-      const undo=root.querySelector<HTMLButtonElement>('[data-action="undo"]')!;
       undo.disabled=session.paused||busy||!state.history.length;undo.classList.toggle('ws-undo-hint',hint?.kind==='undo');
-      root.querySelector<HTMLButtonElement>('[data-action="hint"]')!.disabled=session.paused||busy||complete;
-      const next=root.querySelector<HTMLButtonElement>('[data-action="next"]')!;
-      next.hidden=!complete;next.disabled=session.paused;next.textContent=state.level===LEVELS.length-1?'Play again':'Next level';
-      root.querySelector<HTMLElement>('.ws-victory')!.hidden=!complete;
+      hintButton.disabled=session.paused||busy||complete;
+      hud.set(`Level ${state.level+1}`);
+      if(complete)sheet.show('game-over',{score:campaignScore(state.best),best:Math.max(context.highScore,campaignScore(state.best))});else sheet.hide();
+      sheet.button.disabled=session.paused;
       const status=complete?`All colours home in ${state.history.length} pours.`:message;
       root.querySelector('.ws-message')!.textContent=status;
       context.setLevel(`Level ${state.level+1} · ${level.difficulty}`);context.setScore(campaignScore(state.best));context.setStatus(status);
@@ -130,7 +137,7 @@ const module:GameModule={
         else message='Tap a tube, then its destination.';
         render(true);
         if(focusAfterPour!==null){
-          const next=won(session.state.tubes)?root.querySelector<HTMLButtonElement>('[data-action="next"]'):tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
+          const next=won(session.state.tubes)?sheet.button:tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
           next?.focus({preventScroll:true});focusAfterPour=null;
         }
       }else{paintPour();raf=requestAnimationFrame(frame);}
@@ -156,17 +163,22 @@ const module:GameModule={
       context.sound('tap');render();
     }
     function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Tap a tube, then its destination.');render(true);}
-    root.addEventListener('click',event=>{
-      if(suppressClick&&(event as MouseEvent).detail!==0){suppressClick=false;return;}
-      const target=(event.target as Element).closest<HTMLElement>('button');if(!target||session.paused||session.pending)return;
-      if(target.dataset.tube!==undefined)choose(Number(target.dataset.tube),(event as MouseEvent).detail===0);
-      else if(target.dataset.action==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}
-      else if(target.dataset.action==='hint'&&!won(session.state.tubes)){
+    function useAction(kind:'undo'|'hint'){
+      if(session.paused||session.pending)return;
+      if(kind==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}
+      else if(kind==='hint'&&!won(session.state.tubes)){
         selected=null;hint=session.hint();
         if(hint.kind==='pour')tell(`Hint: pour tube ${hint.from+1} into tube ${hint.to+1}. ${hint.remaining} pours from a solution.`);
         else if(hint.kind==='undo')tell(`Undo ${hint.steps} ${hint.steps===1?'pour':'pours'} to reach a winning route.`);
         render();
-      }else if(target.dataset.action==='next'&&won(session.state.tubes))reset((session.state.level+1)%LEVELS.length);
+      }
+    }
+    undo.addEventListener('click',()=>useAction('undo'),{signal:abort.signal});
+    hintButton.addEventListener('click',()=>useAction('hint'),{signal:abort.signal});
+    root.addEventListener('click',event=>{
+      if(suppressClick&&(event as MouseEvent).detail!==0){suppressClick=false;return;}
+      const target=(event.target as Element).closest<HTMLElement>('[data-tube]');
+      if(target)choose(Number(target.dataset.tube),(event as MouseEvent).detail===0);
     },{signal:abort.signal});
     root.addEventListener('keydown',event=>{
       const button=(event.target as Element).closest<HTMLElement>('[data-tube]');if(!button)return;
@@ -216,7 +228,7 @@ const module:GameModule={
       pause(){session.paused=true;clearPointer(true);cancelAnimationFrame(raf);raf=0;render();},
       resume(){session.paused=false;render();animate();},restart(){reset();},serialize:snapshot,
       restore(data){const restored=readSnapshot(data);if(!restored)return;clearPointer(true);clearAnimation();session.pending=null;session.state=restored;focusAfterPour=null;selected=null;hint=null;celebrate=null;message='Your colours are right where you left them.';render();},
-      dispose(){clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();root.remove();},
+      dispose(){clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();sheet.dispose();pauseSheet.dispose();hud.dispose();actions.dispose();root.remove();},
     };
   },
 };

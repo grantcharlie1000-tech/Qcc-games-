@@ -15,7 +15,7 @@ export async function openStage(page:Page){
   await page.setViewportSize({width:960,height:600});
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-ready','true',{timeout:90000});
-  await page.getByRole('button',{name:'Game mode'}).click();
+  await page.locator('.bc-world-config > summary').click();await page.getByRole('button',{name:'Game mode'}).click();
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing',{timeout:30000});
   // Hide the HUD and the hand, freeze the clock at noon with clear weather, no natural spawns.

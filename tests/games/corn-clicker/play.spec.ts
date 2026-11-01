@@ -134,6 +134,7 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await page.clock.runFor(500);
   const golden=page.getByRole('button',{name:/^Golden cob/});
   await expect(golden).toBeVisible();
+  await expect(golden).not.toHaveAccessibleName(/press G/);
   const box=(await golden.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(390);
   // The glint rotates/scales forever. Its centre is stationary and hit-testable;

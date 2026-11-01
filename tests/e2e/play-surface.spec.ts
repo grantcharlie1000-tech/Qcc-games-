@@ -113,7 +113,7 @@ test('a fullscreen request that finishes after leaving does not capture the libr
 test('dock and menu controls stay clear of game information on a short scene', async ({page}) => {
  await page.setViewportSize({width:844,height:390});
  for(const id of ['animal-stack','color-blocks','water-sort']){
-  await page.goto(`/#/game/${id}`);await expect(page.locator('.game-hud strong').first()).toBeVisible();
+  await page.goto(`/#/game/${id}`);await expect(page.locator('.game-hud strong,.game-compact-hud').filter({visible:true}).first()).toBeVisible();
   for(const [button,metric] of [['#game-menu','.game-hud'],['#fullscreen-game','#game-best']]){
    if(button==='#fullscreen-game')await openGameMenu(page);
    const control=page.locator(button);await control.scrollIntoViewIfNeeded();

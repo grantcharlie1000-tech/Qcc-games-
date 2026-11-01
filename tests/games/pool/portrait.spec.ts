@@ -25,6 +25,7 @@ test('portrait ball-in-hand uses screen axes and native placement',async({page})
   const saved=createGame('two');saved.break=false;saved.ballInHand=true;
   await page.addInitScript(data=>localStorage.setItem('pocket-arcade:v1:save:pool',JSON.stringify({version:1,data})),saved);
   await page.goto('/#/game/pool');await page.locator('.pool-table').hover();
+  await expect(page.locator('.pool-inhand')).not.toContainText(/keyboard|arrow|enter/i);
   await page.locator('.pool-table').focus();await page.keyboard.press('ArrowLeft');await page.keyboard.press('Enter');
   expect((await state(page)).balls.find(b=>b.id===0)!.x).toBe(212);expect((await state(page)).balls.find(b=>b.id===0)!.y).toBe(615);
   await page.reload();

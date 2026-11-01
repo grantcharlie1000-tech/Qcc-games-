@@ -22,7 +22,7 @@ test('mouse, scoped keyboard, exact save, hidden pause and confirmed restart',as
  expect((await saved(page)).cells).toEqual(b.cells);expect(b.cells[40]).toBe(0);
  const hidden=b.revealed.findIndex(v=>!v);await cell(page,hidden).focus();await page.keyboard.press('f');await expect(cell(page,hidden)).toHaveAttribute('data-state','flagged');
  await page.keyboard.press('ArrowRight');await expect(cell(page,hidden+1)).toBeFocused();
- await settings(page);await pauseGame(page);await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
+ await settings(page);await closeSettings(page);await pauseGame(page);await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
  const time=await page.locator('.ms-time').textContent();await page.waitForTimeout(1100);await expect(page.locator('.ms-time')).toHaveText(time!);
  await cell(page,0).dispatchEvent('click');await expect(cell(page,40)).toHaveAttribute('data-state','open');
  await resumeGame(page);
@@ -39,13 +39,13 @@ test('correct chord, win without all flags, terminal timer and per-difficulty re
  await cell(page,i).click();await expect(page.locator('.ms-outcome')).not.toHaveText('Mine found!');
  for(const j of neighbors(b,i))if(b.cells[j]===-1)await cell(page,j).click({button:'right'});
  await cell(page,i).click();for(const j of neighbors(b,i))if(b.cells[j]!==-1)await expect(cell(page,j)).toHaveAttribute('data-state','open');
- await win(page,b);await expect(page.locator('.ms-outcome')).toHaveText('Field cleared!');await expect(page.getByRole('region',{name:'Game result'})).toBeVisible();
- await expect(page.locator('.ms-result-title')).toContainText('Score ');await expect(page.locator('.ms-result-detail')).toContainText('Easy 0 + speed');await expect(page.locator('.ms-result-detail')).toContainText('Best score');await expect(page.locator('.game-hud-item').filter({hasText:'Time'})).toBeVisible();
+ await win(page,b);await expect(page.locator('.ms-outcome')).toHaveText('Field cleared!');await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+ await expect(page.locator('.game-sheet[data-state="game-over"] .game-sheet-stats')).toContainText('Score');await expect(page.locator('.game-sheet[data-state="game-over"] .game-sheet-stats')).toContainText('Best');await expect(page.locator('.game-hud-item').filter({hasText:'Time'})).toBeVisible();
  const result=await saved(page);expect(result.stats.beginner.played).toBe(1);expect(result.stats.beginner.wins).toBe(1);expect(result.flags.filter(Boolean).length).toBeLessThan(10);
  expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:minesweeper-easy'))).not.toBeNull();
  const elapsed=result.elapsedMs;await page.waitForTimeout(1100);expect((await saved(page)).elapsedMs).toBe(elapsed);
- await page.getByRole('button',{name:'Score rankings'}).click();await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-score');await page.getByRole('button',{name:'Close leaderboards'}).click();
- await page.getByRole('button',{name:'New game',exact:true}).click();await expect(page.locator('.ms-time')).toHaveText('00:00');
+ await gameAction(page,'Leaderboards');await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-score');await page.getByRole('button',{name:'Close leaderboards'}).click();
+ await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.ms-time')).toHaveText('00:00');
 });
 
 test('incorrect chord distinguishes triggered mine, other mines and wrong flags',async({page})=>{
@@ -115,7 +115,7 @@ test('assistive activation, keyboard reveal and shared fullscreen remain dependa
  await page.getByRole('button',{name:'Flag mode',exact:true}).click();await cell(page,0).dispatchEvent('click',{detail:0});await expect(cell(page,0)).toHaveAttribute('data-state','flagged');
  await cell(page,0).focus();await page.keyboard.press('Enter');await expect(cell(page,0)).toHaveAttribute('data-state','flagged');await page.keyboard.press('f');await page.keyboard.press('Space');await expect(cell(page,0)).toHaveAttribute('data-state','open');
  const count=await page.locator('.ms-tile[data-state=flagged]').count();await openGameMenu(page);await page.locator('#game-options').getByLabel('Difficulty',{exact:true}).focus();await page.keyboard.press('f');expect(await page.locator('.ms-tile[data-state=flagged]').count()).toBe(count);
- await settings(page);await gameAction(page,'Enter full screen');await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','true');await settings(page);await openGameMenu(page);await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','true');await gameAction(page,/^Exit full screen(?:$|\. This browser keeps its own controls)/);await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','false');
+ await settings(page);await gameAction(page,'Enter full screen');await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','true');await settings(page);await closeSettings(page);await gameAction(page,/^Exit full screen(?:$|\. This browser keeps its own controls)/);
  await settings(page);await gameAction(page,'Game rules');await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
 });
 

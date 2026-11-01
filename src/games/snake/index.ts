@@ -2,18 +2,21 @@ import type {GameModule} from '../../core/types';
 import {createState,enqueue,start as startRun,restoreState,type Direction} from './model';
 import {drawGarden} from './art';
 import {advancePresentation,createPresentation,restorePresentation,savePresentation} from './presentation';
+import {bindGamePauseSheet,createGameSheet} from '../../ui/game-sheet';
 import './style.css';
 const module:GameModule={
  id:'snake',title:'Snake',cover:'game-art/snake/cover.svg',
- rules:'Guide the snake with arrow keys, WASD or swipes. It moves smoothly at one square every 0.16 seconds. Turns queue for the center of the next square, with at most two saved turns and no reversal. Once a leg starts, a later turn cannot redirect it, even to avoid a wall. Touch apples for 10 points each and grow one segment. Your tail stays in place briefly as you grow. Touching a wall or your body ends the run. A moving tail is safe only if it clears before your head touches it; growth keeps it in place longer. Earn all 256 segments to win. Pause freezes travel, effects and controls. Older grid saves wait for Continue saved run; your progress is kept and turns use the new timing.',
+ rules:'Guide the snake with arrow keys, WASD or swipes. It moves smoothly at one square every 0.16 seconds. Turns queue for the center of the next square, with at most two saved turns and no reversal. Once a leg starts, a later turn cannot redirect it, even to avoid a wall. Touch apples for 10 points each and grow one segment. Your tail stays in place briefly as you grow. Touching a wall or your body ends the run. A moving tail is safe only if it clears before your head touches it; growth keeps it in place longer. Earn all 256 segments to win. Pause freezes travel, effects and controls. Older grid saves wait for you to choose Play; your progress is kept and turns use the new timing.',
  mount(container,context){
-  container.innerHTML=`<div class="snake-game"><div class="snake-garden"><canvas class="snake-canvas" width="480" height="480" tabindex="0" role="img" aria-label="Snake garden. Use arrow keys, WASD or swipe to steer."></canvas><div class="snake-card"><strong>Apple appetite</strong><p>A little snake. A big garden.<br>How long can you grow?</p><button class="game-button snake-start">Start slithering</button></div></div></div>`;
+  container.innerHTML=`<div class="snake-game"><div class="snake-garden"><canvas class="snake-canvas" width="480" height="480" tabindex="0" role="img" aria-label="Snake garden. Use arrow keys, WASD or swipe to steer."></canvas></div></div>`;
   const root=container.querySelector<HTMLElement>('.snake-game')!;
   const canvas=root.querySelector<HTMLCanvasElement>('canvas')!;
-  const card=root.querySelector<HTMLElement>('.snake-card')!,heading=card.querySelector('strong')!,message=card.querySelector('p')!,start=card.querySelector<HTMLButtonElement>('button')!;
+  const controls={touch:'Swipe to steer.',keyboard:'Arrow keys or WASD to steer.'};
+  const sheet=createGameSheet(root.querySelector<HTMLElement>('.snake-garden')!,{title:'Snake',controls,buttonClass:'snake-start',onPlay:play});
+  const pauseSheet=bindGamePauseSheet(container,{title:'Snake',controls});
   const available=container.parentElement!;
   const motionQuery=matchMedia('(prefers-reduced-motion: reduce)');
-  let state=createState(),view=createPresentation(),paused=false,disposed=false,frame:number|null=null,last:number|null=null;
+  let state=createState(),view=createPresentation(),paused=false,disposed=false,frame:number|null=null,last:number|null=null,best=context.highScore;
   let lastReduced=false,lastDpr=window.devicePixelRatio||1,dirty=true;
   const events=new AbortController();
   let gesture:{x:number;y:number;id:number}|null=null;
@@ -33,19 +36,12 @@ const module:GameModule={
   }
   const observer=new ResizeObserver(resize);observer.observe(available);
   function update(){
+   best=Math.max(best,state.score);
    context.setScore(state.score);context.setLevel(`Length ${state.segments}`);
    const finished=state.phase==='lost'||state.phase==='won';
-   card.hidden=state.phase==='running'&&!state.migration?.held;
-   if(state.migration?.held){
-    heading.textContent='Welcome back';message.textContent='Your grid save is safe. Continue from this square with the new turn timing.';start.textContent='Continue saved run';
-   }else if(state.phase==='ready'){
-    heading.textContent='Apple appetite';message.innerHTML='A little snake. A big garden.<br>How long can you grow?';start.textContent='Start slithering';
-   }else if(finished){
-    heading.textContent=state.phase==='won'?'Garden complete!':'One more apple?';
-    message.textContent=`${state.score} points · ${state.segments} segments. ${state.phase==='won'?'You earned all 256 segments!':'Give that hungry snake another go.'}`;
-    start.textContent='Play again';
-   }
-   start.disabled=paused;
+   if(state.phase==='running'&&!state.migration?.held)sheet.hide();
+   else sheet.show(finished?'game-over':'start',{...(finished?{score:state.score.toLocaleString()}:{}),best:best.toLocaleString()});
+   sheet.button.disabled=paused;
    context.setStatus(paused?'Paused':finished?(state.phase==='won'?'All 256 segments earned. You win!':'Run ended. Play again to grow a new snake.'):'Turns wait for the next square’s center. Eat apples; avoid contact with walls and your body.');
    dirty=true;
   }
@@ -64,10 +60,10 @@ const module:GameModule={
    if(paused||event.repeat||event.ctrlKey||event.altKey||event.metaKey||document.querySelector('dialog[open]')||(event.target instanceof HTMLElement&&event.target.closest('input,textarea,select,[contenteditable=true]')))return;
    const d=keys[event.key]??keys[event.key.toLowerCase()];if(d){event.preventDefault();action(d);}
   },{signal:events.signal});
-  start.addEventListener('click',()=>{
+  function play(){
    if(paused)return;if(state.phase==='lost'||state.phase==='won')reset();
    startRun(state);last=performance.now();context.sound('tap');update();render();canvas.focus({preventScroll:true});
-  },{signal:events.signal});
+  }
   canvas.addEventListener('pointerdown',event=>{
    if(paused||!event.isPrimary)return;
    gesture={x:event.clientX,y:event.clientY,id:event.pointerId};canvas.setPointerCapture(event.pointerId);canvas.focus({preventScroll:true});
@@ -109,7 +105,7 @@ const module:GameModule={
     const valid=restoreState(data);
     if(valid){state=valid;view=restorePresentation(state,(data as {presentation?:unknown}).presentation,(data as {version?:unknown}).version===1);last=state.phase==='running'&&!state.migration?.held?performance.now():null;gesture=null;update();render();}
    },
-   dispose(){disposed=true;events.abort();observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);container.replaceChildren();}
+   dispose(){disposed=true;events.abort();observer.disconnect();sheet.dispose();pauseSheet.dispose();if(frame!==null)cancelAnimationFrame(frame);container.replaceChildren();}
   };
  }
 };

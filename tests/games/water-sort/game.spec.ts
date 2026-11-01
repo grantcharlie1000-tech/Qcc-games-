@@ -33,12 +33,12 @@ test('real illegal pour, winning hints, undo, next level and restart', async({pa
   const solved=await readBoard(page);
   expect(solved.every(t=>new Set(t).size<=1)).toBe(true);
   expect(solved.every(t=>t.length===0||t.length===4)).toBe(true);
-  await expect(page.locator('.ws-victory')).toBeVisible();
+  await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
   await page.getByRole('button',{name:'Undo',exact:true}).click();
   await expect(root(page)).toHaveAttribute('data-phase','ready');
   await hintPour(page);
   await expect(root(page)).toHaveAttribute('data-phase','won');
-  await page.getByRole('button',{name:'Next level',exact:true}).click();
+  await page.getByRole('button',{name:'Play again',exact:true}).click();
   await expect(page.locator('.ws-level')).toHaveValue('1');
   await gameOption(page,'Level','0');
   await hintPour(page);
@@ -155,3 +155,5 @@ test('all 77 levels are selectable and the final added level wins, restores and 
  await expect(root(page)).toHaveAttribute('data-phase','won');
  await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.ws-level')).toHaveValue('0');
 });
+
+for(const width of [320,390,1366])test(`dock owns Undo and Hint, with room for tubes at ${width}`,async({page})=>{await page.setViewportSize({width,height:width===1366?768:844});await open(page);await expect(page.locator('.ws-actions,.ws-footer')).toHaveCount(0);for(const name of ['Undo','Hint']){const action=page.locator('.game-dock').getByRole('button',{name,exact:true});await expect(action).toBeVisible();await expect(action).toHaveClass(/arcade-glass/);const b=(await action.boundingBox())!;expect(b.width).toBeGreaterThanOrEqual(44);expect(b.height).toBeGreaterThanOrEqual(44);}const hud=page.locator('.game-compact-hud');await expect(hud).toHaveText('Level 1');const dock=(await page.locator('.game-dock').boundingBox())!;const button=(await page.locator('#game-menu').boundingBox())!;expect(button.x+button.width).toBeLessThanOrEqual(dock.x+dock.width+1);const tube=(await page.locator('.ws-tube').first().boundingBox())!;if(width===390)expect(tube.height).toBeGreaterThan(280);});

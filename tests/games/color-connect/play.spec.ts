@@ -6,33 +6,24 @@ async function center(page:Page, cell:number) {const box=await page.locator(`[da
 async function draw(page:Page,cells:number[]) {const start=await center(page,cells[0]);await page.mouse.move(start.x,start.y);await page.mouse.down();for(const cell of cells.slice(1)){const p=await center(page,cell);await page.mouse.move(p.x,p.y);}await page.mouse.up();}
 test.beforeEach(async({page})=>{const errors:string[]=[];errorsByPage.set(page,errors);page.on('pageerror',error=>errors.push(error.message));await page.goto('/#/game/color-connect');await expect(board(page)).toBeVisible();});
 test.afterEach(async({page})=>{expect(errorsByPage.get(page)).toEqual([])});
-test('draw, erase, undo, pause, restart and reload saved paths',async({page})=>{
+test('direct drawing, erase, pause, restart and reload saved paths',async({page})=>{
  const start=await page.locator('.cc-progress').textContent();
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- await expect(page.locator('.cc-grid [data-path]')).toHaveCount(2);
- await page.getByRole('button',{name:'Undo',exact:true}).click();
- await expect(page.locator('.cc-progress')).toHaveText(start!);
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- await page.getByRole('button',{name:'Erase selected',exact:true}).click();
- await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- const progress=await page.locator('.cc-progress').textContent();
- await pauseGame(page);
- await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeDisabled();
- await page.reload();
- await expect(page.locator('.cc-progress')).toHaveText(progress!);
- await gameAction(page,'Restart game');
- await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
- await expect(page.locator('.cc-progress')).toHaveText(start!);
+ await draw(page,[9,5]);await expect(page.locator('.cc-grid [data-path]')).toHaveCount(2);
+ await page.locator('[data-cc-cell="9"]').focus();await page.keyboard.press('Delete');await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
+ await draw(page,[9,5]);const progress=await page.locator('.cc-progress').textContent();
+ await pauseGame(page);await expect(page.locator('[data-cc-cell="9"]')).toBeDisabled();
+ await page.reload();await expect(page.locator('.cc-progress')).toHaveText(progress!);
+ await gameAction(page,'Restart game');await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);await expect(page.locator('.cc-progress')).toHaveText(start!);
+ await expect(page.locator('.cc-actions,.cc-legend,.cc-undo,.cc-hint,.cc-erase')).toHaveCount(0);
 });
 test('actual pointer paths fill the entire board, award a win and advance',async({page})=>{
  // Hand-checked full first-board solution, independent of the runtime solver.
  const solution:number[][]=[[9,5,6,10,11,15],[14,13,12],[8,4,0,1,2,3,7]];
  for(const path of solution) await draw(page,path);
- await expect(page.locator('.cc-win')).toBeVisible();
+ await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
  await expect(page.locator('.cc-progress')).toContainText('100%');
  await expect(page.locator('#game-score')).toContainText('2200');
- await page.getByRole('button',{name:'Next puzzle',exact:true}).click();
+ await page.getByRole('button',{name:'Play again',exact:true}).click();
  await expect(page.locator('.cc-puzzle-name')).toContainText('Little bends');
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
 });
@@ -42,11 +33,11 @@ test('keyboard creates a path; redraw trims; fast pointer movement interpolates'
  await page.keyboard.press('ArrowUp');
  await page.keyboard.press('Space');
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(2);
- await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await page.locator('[data-cc-cell="9"]').focus();await page.keyboard.press('Delete');
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
  await draw(page,[14,12]);
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(3);
- await page.getByRole('button',{name:'Undo',exact:true}).click();
+ await page.locator('[data-cc-cell="14"]').focus();await page.keyboard.press('Delete');
  const solution:number[][]=[[9,5,6,10,11,15],[14,13,12],[8,4,0,1,2,3,7]];
  await draw(page,solution[0]);
  const peg=await center(page,solution[0][0]); await page.mouse.click(peg.x,peg.y);
@@ -56,7 +47,6 @@ test('responsive board and genuine touch path',async({page,browserName})=>{
  test.skip(browserName!=='chromium','Native CDP touch is specific to Chromium.');
  await page.setViewportSize({width:390,height:844});
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
- await page.getByRole('button',{name:'Hint',exact:true}).click();
  await draw(page,[9,5,6,10,11,15]);
  await draw(page,[14,12]);
  if(browserName==='chromium')await page.screenshot({path:'tests/games/color-connect/evidence/chromium.png',fullPage:true});
@@ -81,7 +71,7 @@ test('wrong endpoints are blocked and legal backtracking removes the traversed s
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(1);
  await draw(page,[9,5,6,5]);
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(2);
- await page.getByRole('button',{name:'Hint',exact:true}).click();
+ await draw(page,[9,5,6]);
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(3);
 });
 test('module lifecycle rejects corrupted snapshots, gates paused input, restarts while paused and disposes handlers',async({page})=>{
@@ -90,17 +80,17 @@ test('module lifecycle rejects corrupted snapshots, gates paused input, restarts
   const host=document.createElement('div');document.body.append(host);
   let saves=0,score=0;
   const instance=await imported.default.mount(host,{id:'color-connect',settings:{sound:false,reducedMotion:true,colorBlind:true},highScore:0,setScore(value:number){score=value},setLevel(){},setStatus(){},announce(){},save(){saves++},sound(){}});
-  const hint=host.querySelector<HTMLButtonElement>('.cc-hint')!;
-  hint.click();const good=instance.serialize();
+  const origin=host.querySelector<HTMLButtonElement>('[data-cc-cell="9"]')!;
+  const key=(key:string)=>origin.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true}));key(' ');key('ArrowUp');key(' ');const good=instance.serialize();
   instance.pause();
-  hint.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+  origin.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
   host.querySelector('[data-cc-cell="9"]')!.dispatchEvent(new KeyboardEvent('keydown',{key:' ',bubbles:true}));
   const pausedUnchanged=JSON.stringify(instance.serialize())===JSON.stringify(good);
-  instance.restart();const restarted=instance.serialize();const disabledAfterRestart=hint.disabled;
+  instance.restart();const restarted=instance.serialize();const disabledAfterRestart=origin.disabled;
   instance.resume();instance.restore(good);
   const restored=JSON.stringify(instance.serialize())===JSON.stringify(good);
   instance.restore({...good,paths:[[999],[],[]]});const rejected=JSON.stringify(instance.serialize())===JSON.stringify(good);
-  instance.dispose();const count=saves;hint.dispatchEvent(new MouseEvent('click',{bubbles:true}));instance.restart();instance.restore(good);
+  instance.dispose();const count=saves;origin.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));instance.restart();instance.restore(good);
   const disposed=host.childElementCount===0&&count===saves;host.remove();
   return {pausedUnchanged,restarted:restarted.paths.every((p:number[])=>p.length===0)&&restarted.moves===0&&restarted.completed.length===0,disabledAfterRestart,restored,rejected,disposed,score};
  });
@@ -110,27 +100,11 @@ test('module lifecycle rejects corrupted snapshots, gates paused input, restarts
  await expect(board(page)).toBeVisible();
 });
 
-test('rules explain full coverage and returning from the dialog resumes play',async({page})=>{
- await gameAction(page,'Game rules');
- await expect(page.locator('#rules-dialog')).toBeVisible();
- await expect(page.locator('#rules-text')).toContainText('fill the ENTIRE board');
- await page.getByRole('button',{name:'Let’s play',exact:true}).click();
- await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeEnabled();
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- await expect(page.locator('.cc-grid [data-path]')).toHaveCount(2);
+test('rules explain shapes and full coverage, and direct corrections resume',async({page})=>{
+ await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('fill the ENTIRE board');await expect(page.locator('#rules-text')).toContainText('A is a circle');await page.getByRole('button',{name:'Let’s play',exact:true}).click();await draw(page,[9,5]);await expect(page.locator('.cc-grid [data-path]')).toHaveCount(2);
 });
-test('current-board hint respects an alternative completed path and truthfully requests a required backtrack',async({page})=>{
- await draw(page,[9,10,11,15]);
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- await expect(page.locator('[data-path="A"]')).toHaveCount(4);
- await expect(page.locator('[data-path="B"]')).toHaveCount(2);
- await gameAction(page,'Restart game');
- await draw(page,[9,13]);
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- await expect(page.locator('.cc-feedback')).toContainText('backtrack is needed');
- await expect(page.locator('.cc-grid [data-path]')).toHaveCount(2);
- await page.getByRole('button',{name:'Erase selected',exact:true}).click();
- await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
+test('redrawing a peg replaces an alternative trail',async({page})=>{
+ await draw(page,[9,10,11,15]);await expect(page.locator('[data-path="A"]')).toHaveCount(4);await draw(page,[9,5,6]);await expect(page.locator('[data-path="A"]')).toHaveCount(3);
 });
 test('a save during the held final gesture restores its move, undo record and one completion award',async({page})=>{
  await page.evaluate(async()=>{
@@ -149,7 +123,7 @@ test('a save during the held final gesture restores its move, undo record and on
  const second=await page.evaluate(()=>{const h=window as unknown as {ccSnapshotInstance:any};return h.ccSnapshotInstance.serialize()});expect(second).toEqual(saved);
  await page.evaluate(data=>{const h=window as unknown as {ccSnapshotInstance:any};h.ccSnapshotInstance.restore(data)},saved);await page.mouse.up();
  expect(await page.evaluate(()=>(window as unknown as {ccSnapshotScore:number}).ccSnapshotScore)).toBe(2200);
- await page.locator('#cc-snapshot-test .cc-undo').click();await expect(page.locator('#cc-snapshot-test [data-path]')).toHaveCount(9);
+ await page.evaluate(data=>{(window as unknown as {ccSnapshotInstance:any}).ccSnapshotInstance.restore({...data,paths:data.history[2],moves:2,history:data.history.slice(0,2)})},saved);await expect(page.locator('#cc-snapshot-test [data-path]')).toHaveCount(9);
  const redoStart=await cellCenter(8);await page.mouse.move(redoStart.x,redoStart.y);await page.mouse.down();
  for(const cell of [4,0,1,2,3,7]){const p=await cellCenter(cell);await page.mouse.move(p.x,p.y)}await page.mouse.up();
  const final=await page.evaluate(()=>{const h=window as unknown as {ccSnapshotInstance:any;ccSnapshotScore:number};const result={score:h.ccSnapshotScore,completed:h.ccSnapshotInstance.serialize().completed};h.ccSnapshotInstance.dispose();document.querySelector('#cc-snapshot-test')?.remove();return result});
@@ -160,6 +134,16 @@ test('pointer release synchronizes the trail-tip keyboard focus without stealing
  await expect(page.locator('[data-cc-cell="5"]')).toBeFocused();
  await page.keyboard.press('ArrowRight');
  await expect(page.locator('[data-cc-cell="6"]')).toBeFocused();
- await page.getByRole('button',{name:'Hint',exact:true}).click();
- await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeFocused();
+ await page.locator('#game-menu').click();await expect(page.locator('#game-options')).toBeVisible();
+});
+
+for(const width of [320,390,1366])test(`compact HUD and enlarged board at ${width}`,async({page})=>{await page.setViewportSize({width,height:width===1366?768:844});await page.goto('/#/game/color-connect');await expect(page.locator('.game-dock')).toHaveCount(1);const hud=page.locator('.game-compact-hud');await expect(hud).toHaveText('0 / 3 pairs · 38% covered');expect(await hud.evaluate(e=>e.scrollWidth<=e.clientWidth&&e.getBoundingClientRect().height<20)).toBe(true);const board=(await page.locator('.cc-playfield').boundingBox())!;expect(board.width).toBeGreaterThanOrEqual(Math.min(width-36,678)-2);});
+
+test('Enter on the winning board advances through the shared result action',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:save:color-connect',JSON.stringify({version:1,data:{version:1,level:0,paths:[[9,5,6,10,11,15],[14,13,12],[]],completed:[],moves:2,history:[],assists:0,best:{}}})));
+  await page.reload();await page.locator('[data-cc-cell="8"]').focus();await page.keyboard.press('Space');
+  for(const key of ['ArrowUp','ArrowUp','ArrowRight','ArrowRight','ArrowRight','ArrowDown'])await page.keyboard.press(key);
+  await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+  await page.keyboard.press('Enter');await expect(page.locator('.cc-puzzle-name')).toContainText('Little bends');
+  await expect(page.locator('#game-score')).toContainText('2200');
 });

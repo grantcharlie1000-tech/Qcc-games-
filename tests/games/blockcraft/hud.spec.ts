@@ -187,7 +187,7 @@ for(const [width,height] of [[390,844],[320,568]] as const)test.describe(`phone 
     await page.goto('/#/game/blockcraft');await ready(page);
     // The start menu fits between the toolbar and the bottom edge.
     for(const b of await boxes(page,'.bc-menu .bc-btn')){expect(b.y).toBeGreaterThanOrEqual(56);expect(b.x+b.width).toBeLessThanOrEqual(width);expect(b.y+b.height).toBeLessThanOrEqual(height);}
-    await expect(page.locator('.bc-menu-message')).toContainText('Drag');
+    await expect(page.locator('.bc-menu .game-sheet-controls')).toContainText('Drag');
     await page.screenshot({path:evidence(`menu-${width}x${height}`)});
     await play(page);
     await setSurvival(page,{health:20,absorption:0,food:20,saturation:5,xpLevel:3,xpProgress:.25},4);await give(page);
@@ -230,11 +230,11 @@ test.describe('menus',()=>{
     await page.goto('/#/game/blockcraft');await ready(page);
     const root=page.locator('.blockcraft');
     const settings=()=>page.evaluate(()=>({...(window as unknown as {blockcraft:{settings:Record<string,unknown>}}).blockcraft.settings}));
-    await expect(page.locator('.bc-menu-title')).toHaveText('Minecraft');
+    await expect(page.getByRole('heading',{name:'Minecraft',exact:true})).toBeVisible();
     await shellHiddenUnderMenu(page);
-    await page.getByRole('button',{name:'Game mode'}).click();
+    if(await page.locator('.bc-world-config').getAttribute('open')===null)await page.locator('.bc-world-config > summary').click();await page.getByRole('button',{name:'Game mode'}).click();
     await expect(root).toHaveAttribute('data-mode','creative');await expect(page.getByRole('button',{name:'Game Mode: Creative'})).toBeVisible();
-    await page.getByRole('button',{name:'Game mode'}).click();await expect(root).toHaveAttribute('data-mode','survival');
+    if(await page.locator('.bc-world-config').getAttribute('open')===null)await page.locator('.bc-world-config > summary').click();await page.getByRole('button',{name:'Game mode'}).click();await expect(root).toHaveAttribute('data-mode','survival');
 
     await page.getByRole('button',{name:'Options…'}).click();
     await page.getByRole('button',{name:'Difficulty: Normal'}).click();
@@ -259,11 +259,8 @@ test.describe('menus',()=>{
     await page.screenshot({path:evidence('menu-options-1280x720')});
     await page.getByRole('button',{name:'Done'}).click();
 
-    await page.getByRole('button',{name:'Controls'}).click();
-    const list=page.locator('.bc-controls');
-    await expect(list).toContainText('Walk forward');await expect(list).toContainText('Hide HUD');await expect(list).toContainText('F3');
-    await page.getByRole('button',{name:'Done'}).click();
-    await expect(page.getByRole('button',{name:'Controls'})).toBeFocused();
+    await expect(page.locator('.bc-controls')).toHaveCount(0);
+    await expect(page.locator('.bc-menu .game-sheet-controls')).toHaveText('WASD moves · Mouse looks');
 
     // Advancements opens the ui's screen; closing it returns to the menu or to the game.
     await page.getByRole('button',{name:'Advancements'}).click();
@@ -276,15 +273,15 @@ test.describe('menus',()=>{
     // Death screen: message, score (the experience collected, as in vanilla) and a Respawn button enabled after a second.
     await page.evaluate(()=>{const s=(window as unknown as {blockcraft:{survival:{kill(m:string):void}}}).blockcraft.survival;
       Object.defineProperty(s,'xpTotal',{configurable:true,get:()=>37});s.kill('Steve hit the ground too hard');});
-    await expect(page.getByRole('heading',{name:'You died!'})).toBeVisible();
-    await expect(page.locator('.bc-menu')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu-score')).toHaveText('Score: 37');
-    const respawn=page.getByRole('button',{name:'Respawn'});
+    await expect(page.locator('.bc-menu .game-sheet-state').filter({hasText:'Game over'})).toBeVisible();
+    await expect(page.locator('#announcer')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu .game-sheet-stats')).toHaveText('Score37');
+    const respawn=page.getByRole('button',{name:'Play again',exact:true});
     await expect(respawn).toBeDisabled();await expect(respawn).toBeEnabled({timeout:5000});
     await shellHiddenUnderMenu(page);
     await page.screenshot({path:evidence('death-1280x720')});
     await respawn.click();
     await expect.poll(()=>root.getAttribute('data-phase'),{timeout:20000}).not.toBe('dead');
-    await expect(page.getByRole('heading',{name:'You died!'})).toBeHidden();
+    await expect(page.locator('.bc-menu .game-sheet-state').filter({hasText:'Game over'})).toBeHidden();
 
     // Losing the WebGL context shows the lost-graphics screen without buttons.
     await page.evaluate(()=>(document.querySelector('.blockcraft canvas') as HTMLCanvasElement).getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext());

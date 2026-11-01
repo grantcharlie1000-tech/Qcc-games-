@@ -3,6 +3,7 @@
  * and cross-tab ownership. Rules live in model.ts; content lives in data.ts.
  */
 import type {GameContext} from '../../core/types';
+import {bindGamePauseSheet} from '../../ui/game-sheet';
 import {canRetain} from '../../core/storage';
 import {cobArt,producerArt,sceneArt,goldenArt,pestArt,scarecrowArt,kernelArt,kernelUrl,seedArt,butterArt,mouseArt,sparkleArt} from './art';
 import {Big,format,type NumberStyle} from './big';
@@ -38,6 +39,7 @@ const TIPS:Tip[]=[
 export class CornClicker {
   private game:CornGame;
   private readonly root:HTMLElement;
+  private readonly pauseSheet:{dispose():void};
   private readonly sfx=new Sfx();
   private readonly guard:TabGuard;
   private paused=false;private passive=false;private disposed=false;private pausedAt=0;
@@ -68,6 +70,7 @@ export class CornClicker {
     this.root.className='cc-root';this.root.dataset.top=this.top;
     this.root.innerHTML=this.template();
     container.append(this.root);
+    this.pauseSheet=bindGamePauseSheet(container,{title:'Corn Clicker',controls:{touch:'Tap the cob to harvest.',keyboard:'Click, Space or Enter harvests.'}});
     const q=(s:string)=>this.root.querySelector<HTMLElement>(s)!;
     this.el={kernels:q('.cc-kernels-num'),cps:q('.cc-cps'),cpc:q('.cc-cpc'),hudK:q('.cc-hud-k'),hudC:q('.cc-hud-c'),buffs:q('.cc-buffs'),cob:q('.cc-cob'),fx:q('.cc-fx'),pests:q('.cc-pests'),
       tip:q('.cc-tip'),goal:q('.cc-goal-main'),unlock:q('.cc-goal-unlock'),saved:q('.cc-saved'),ticker:q('.cc-ticker'),news:q('.cc-news'),scene:q('.cc-scene'),farmBar:q('.cc-farm-bar'),
@@ -191,7 +194,7 @@ export class CornClicker {
     this.disposed=true;this.stop();clearTimeout(this.saveTimer);
     this.guard.dispose();this.sfx.dispose();this.garden.dispose();
     removeEventListener('keydown',this.onKey);removeEventListener('resize',this.hideTooltip);
-    this.root.remove();
+    this.pauseSheet.dispose();this.root.remove();
   }
 
   // ───────────────────────── Multiple tabs ─────────────────────────
@@ -524,7 +527,7 @@ export class CornClicker {
     button.style.left=`${g.x*100}%`;button.style.top=`${g.y*100}%`;
     button.style.setProperty('--life',String(Math.max(0,g.life/g.maxLife)));
     button.classList.toggle('cc-fading',g.life<3);
-    const label=`Golden cob: collect it (${Math.ceil(g.life)} seconds left, or press G)`;
+    const label=`Golden cob: collect it (${Math.ceil(g.life)} seconds left${matchMedia('(pointer: coarse)').matches?'':', or press G'})`;
     if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
   }
   private collectGolden(){
@@ -719,7 +722,8 @@ export class CornClicker {
     for(const t of TIPS)if(!g.s.tutorial.has(t.id)&&t.done(g))g.s.tutorial.add(t.id);
     const el=this.el.tip;
     if(!tip){el.hidden=true;delete el.dataset.tip;return;}
-    if(el.dataset.tip!==tip.id){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=tip.text;el.hidden=false;}
+    const text=tip.id==='golden'&&matchMedia('(pointer: coarse)').matches?'Tap the golden cob.':tip.text;
+    if(el.dataset.tip!==tip.id||el.querySelector('p')!.textContent!==text){el.dataset.tip=tip.id;el.querySelector('p')!.textContent=text;el.hidden=false;}
     this.root.querySelectorAll('.cc-tab').forEach(t=>t.classList.toggle('cc-attention',!!tip.tab&&(t as HTMLElement).dataset.top===tip.tab&&this.top!==tip.tab));
     if(tip.sub)this.root.querySelector(`#cc-subtab-${tip.sub}`)?.classList.toggle('cc-attention',this.sub!==tip.sub);
   }

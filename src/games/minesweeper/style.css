@@ -2,7 +2,6 @@
 body.in-game .game-view[data-game-id=minesweeper]{padding:env(safe-area-inset-top,0px) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
 body.in-game .game-view[data-game-id=minesweeper] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=minesweeper] #game-stage{height:100%;max-height:none}
-body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#18231f}
 .ms{--ms-size:44px;--ms-ink:#27392e;display:flex;flex-direction:column;gap:10px;width:100%;height:100%;min-height:0;max-width:960px;margin:auto;color:#e9ead8;font-family:system-ui,sans-serif;overflow:auto;scrollbar-width:thin}
 .ms [hidden]{display:none!important}
 .ms button,.ms select{min-height:44px;border:1px solid transparent;border-radius:10px;background:#2e4035;color:#eceddd;font:600 13px/1.3 system-ui,sans-serif;padding:8px 12px}
@@ -35,19 +34,11 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
 .ms-mode-switch button[aria-pressed=true]{color:#243323;background:#c0d1a1}
 .ms-mode-switch button[aria-pressed=true]:active:not(:disabled){color:#243323;background:#aec18c}
 .ms-instructions{margin:0;color:#9aad94;font:11px/1.5 system-ui,sans-serif;text-align:right}
-.ms-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;background:#31452d;flex-shrink:0}
-.ms-result strong{font:800 19px/1.2 Arcade,sans-serif;color:#e5efcc}
-.ms-result p{font-size:11px;line-height:1.5;margin:4px 0 0;color:#d0dcbc}
-.ms-result-actions{display:flex;gap:8px;flex-wrap:wrap}
-.ms-result button{background:#d5dfb1;color:#243523;white-space:nowrap}
-.ms[data-status=lost] .ms-result{background:#44382d}
-.ms[data-status=lost] .ms-result strong{color:#f3d6b5}
 .ms[data-status=won] .ms-frame{border-color:#a8c77d;animation:ms-finish 250ms var(--ease-out)}
 .ms[data-status=lost] .ms-exploded img{animation:ms-finish 250ms var(--ease-out)}
 /* Native dialog supplies focus containment and makes the board inert behind it. */
 .ms .ms-settings{width:min(380px,calc(100% - 24px));max-height:calc(100dvh - 32px);padding:20px;border:1px solid #50634c;border-radius:18px;background:#233128;color:#e7ebdf;font:13px/1.5 system-ui,sans-serif;box-shadow:0 20px 70px #0007;scrollbar-width:thin}
 .ms-settings::backdrop{background:#0b130fe6}
-.ms:has(.ms-settings[open]) #pause-overlay{visibility:hidden}
 .ms-menu-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
 .ms-menu-heading h2{font:800 23px/1.2 Arcade,sans-serif;margin:0;color:#eceddb}
 .ms-menu-subtitle{font-size:12px;color:#aebb9f;margin:4px 0 0}
@@ -80,9 +71,6 @@ body.in-game .game-view[data-game-id=minesweeper] #pause-overlay{background:#182
  .ms-mode-switch{width:100%}
  .ms-mode-switch button{flex:1;min-height:46px}
  .ms-instructions{display:none}
- .ms-result{padding:10px;flex-wrap:wrap}
- .ms-result strong{font-size:16px}
- .ms-result button{padding-inline:10px}
  .ms .ms-settings{margin:auto auto max(12px,env(safe-area-inset-bottom));padding:18px}
 }
 @media(max-height:500px){.ms-intro{display:none}.ms{gap:5px}.ms .ms-settings{max-height:calc(100dvh - 16px);margin:8px auto}}
