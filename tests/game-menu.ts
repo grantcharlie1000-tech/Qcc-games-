@@ -5,12 +5,14 @@ export async function openGameMenu(page:Page){
   if(await page.locator('#game-options[open]').count())return;
   const local=page.locator('#game-stage dialog[open]');
   if(await local.count())await page.keyboard.press('Escape');
-  await page.locator('#game-menu').click();
+  const menu=page.locator('#game-menu');
+  if(await page.evaluate(()=>!!document.pointerLockElement)){await menu.focus();await menu.press('Enter');}
+  else await menu.click();
   await expect(page.locator('#game-options')).toBeVisible();
 }
 export async function pauseGame(page:Page){
-  if(await page.locator('.ms-settings[open]').count())await page.locator('.ms-pause').click();
-  else {await openGameMenu(page);await page.locator('#game-options').focus();}
+  if(await page.locator('.ms-settings[open]').count())await page.locator('.ms-close').click();
+  await openGameMenu(page);await page.locator('#game-options').focus();
 }
 export async function resumeGame(page:Page){
   if(await page.locator('#game-options[open]').count())await page.locator('#pause-game').click();
@@ -23,7 +25,7 @@ export async function gameAction(page:Page,name:string|RegExp){
   if(typeof name==='string'&&name.startsWith('Favourite '))await page.getByRole('button',{name:'Close game menu',exact:true}).click();
 }
 export async function appSettings(page:Page){
-  if(await page.locator('#game-menu').isVisible())await gameAction(page,'Settings');
+  if(await page.locator('#game-menu').count()&&!await page.locator('#study-view').isVisible())await gameAction(page,'Settings');
   else await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
   await expect(page.locator('#menu')).toBeVisible();
 }
