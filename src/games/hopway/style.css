@@ -9,7 +9,8 @@
 .hw-hint[data-gone=true]{opacity:0}
 
 /* Cards share the arcade's dialog look: dark panel, soft rim, yellow headline, shared .game-button actions. */
-.hw-layer{position:absolute;inset:0;z-index:3;display:grid;place-items:center;padding:16px;background:#111619a6;pointer-events:none}
+/* Cards sit in the upper part of the stage so the bunny (about 35% up from the bottom) and what got it stay visible. */
+.hw-layer{position:absolute;inset:0;z-index:3;display:grid;justify-items:center;align-items:start;padding:max(16px,5%) 16px 16px;background:linear-gradient(#111619b3,#11161933 70%);pointer-events:none}
 .hw-layer[hidden]{display:none}
 .hw-card{pointer-events:auto;width:min(320px,100%);padding:20px 18px 18px;border:3px solid #55505c;border-radius:24px;background:#25282a;box-shadow:0 20px 60px #000a;text-align:center;transition:opacity 240ms var(--ease-out),transform 240ms var(--ease-out)}
 .hw-card[hidden]{display:none}
