@@ -156,4 +156,20 @@ test('all 77 levels are selectable and the final added level wins, restores and 
  await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.ws-level')).toHaveValue('0');
 });
 
-for(const width of [320,390,1366])test(`dock owns Undo and Hint, with room for tubes at ${width}`,async({page})=>{await page.setViewportSize({width,height:width===1366?768:844});await open(page);await expect(page.locator('.ws-actions,.ws-footer')).toHaveCount(0);for(const name of ['Undo','Hint']){const action=page.locator('.game-dock').getByRole('button',{name,exact:true});await expect(action).toBeVisible();await expect(action).toHaveClass(/arcade-glass/);const b=(await action.boundingBox())!;expect(b.width).toBeGreaterThanOrEqual(44);expect(b.height).toBeGreaterThanOrEqual(44);}const hud=page.locator('.game-compact-hud');await expect(hud).toHaveText('Level 1');const dock=(await page.locator('.game-dock').boundingBox())!;const button=(await page.locator('#game-menu').boundingBox())!;expect(button.x+button.width).toBeLessThanOrEqual(dock.x+dock.width+1);const tube=(await page.locator('.ws-tube').first().boundingBox())!;if(width===390)expect(tube.height).toBeGreaterThan(280);});
+for(const width of [320,390,1366])test(`dock owns Undo and Hint, with room for tubes at ${width}`,async({page})=>{
+ await page.setViewportSize({width,height:width===1366?768:844});await open(page);
+ await expect(page.locator('.ws-actions,.ws-footer')).toHaveCount(0);
+ const menu=page.locator('#game-menu'),menuBox=(await menu.boundingBox())!;
+ const radius=await menu.evaluate(e=>getComputedStyle(e).borderRadius);
+ for(const name of ['Undo','Hint']){
+  const action=page.locator('.game-dock').getByRole('button',{name,exact:true});
+  await expect(action).toBeVisible();await expect(action).toHaveClass(/ui-tab arcade-glass game-glass/);
+  await expect(action).toHaveText('');await expect(action).toHaveCSS('border-radius',radius);
+  const box=(await action.boundingBox())!;expect(box.width).toBe(menuBox.width);expect(box.height).toBe(menuBox.height);
+ }
+ expect(await page.locator('.game-dock').evaluate(e=>[...e.children].map(e=>e.getAttribute('aria-label')))).toEqual(['Games','Undo','Game information','Hint','Menu']);
+ const hud=page.locator('.game-compact-hud');await expect(hud).toHaveText('Level 1');
+ const dock=(await page.locator('.game-dock').boundingBox())!;expect(menuBox.x+menuBox.width).toBeLessThanOrEqual(dock.x+dock.width+1);
+ const tube=(await page.locator('.ws-tube').first().boundingBox())!;if(width===390)expect(tube.height).toBeGreaterThan(280);
+ expect(await page.locator('.ws-message').evaluate(e=>e.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+});

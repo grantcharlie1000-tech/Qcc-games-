@@ -24,12 +24,12 @@ const module:GameModule={
     const undo=root.querySelector<HTMLButtonElement>('[data-action=undo]')!,hintButton=root.querySelector<HTMLButtonElement>('[data-action=hint]')!;
     const actions=mountDockActions(container,undo,hintButton);root.querySelector('.ws-actions')!.remove();
     const hud=mountCompactHud(container);
-    const controls={touch:'Tap a tube, then its destination.',keyboard:'Arrows to move · Enter to pour.'};
+    const controls={touch:'Tap matching colours to pour.',keyboard:'Arrows to move · Enter to pour.'};
     const pauseSheet=bindGamePauseSheet(container,{title:'Water Sort',controls});
     const sheet=createGameSheet(root,{title:'Water Sort',controls,onPlay(){if(!session.paused)reset((session.state.level+1)%LEVELS.length)}});sheet.button.dataset.action='next';
     let focusAfterPour:number|null=null;
     let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
-    let message='Tap a tube, then its destination.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
+    let message='Choose a source tube.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
     let pointer:{id:number;x:number;y:number;from:number;target:HTMLElement}|null=null,suppressClick=false;
     const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
     const snapshot=()=>({...session.state,tubes:cloneBoard(session.state.tubes),history:session.state.history.map(cloneBoard),best:{...session.state.best}});
@@ -134,7 +134,7 @@ const module:GameModule={
       if(committed){
         clearAnimation();const values=session.state.tubes[destination];celebrate=values.length&&values.every(c=>c===values[0])?destination:null;
         if(won(session.state.tubes)){tell('Beautifully sorted! Every colour has a home.');context.sound('success');}
-        else message='Tap a tube, then its destination.';
+        else message='Choose a source tube.';
         render(true);
         if(focusAfterPour!==null){
           const next=won(session.state.tubes)?sheet.button:tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
@@ -162,7 +162,7 @@ const module:GameModule={
       }
       context.sound('tap');render();
     }
-    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Tap a tube, then its destination.');render(true);}
+    function reset(level=session.state.level){clearPointer(true);clearAnimation();session.pending=null;session.state=new Session(level,session.state.best).state;focusAfterPour=null;selected=null;hint=null;celebrate=null;tell('Choose a source tube.');render(true);}
     function useAction(kind:'undo'|'hint'){
       if(session.paused||session.pending)return;
       if(kind==='undo'&&session.undo()){selected=null;hint=null;celebrate=null;tell('Pour undone. Try a new route.');render(true);}

@@ -147,3 +147,8 @@ test('Enter on the winning board advances through the shared result action',asyn
   await page.keyboard.press('Enter');await expect(page.locator('.cc-puzzle-name')).toContainText('Little bends');
   await expect(page.locator('#game-score')).toContainText('2200');
 });
+
+test('removed action row and shape legend leave meanings in How to play',async({page})=>{
+ await expect(page.locator('.cc-actions,.cc-legend,.cc-undo,.cc-hint,.cc-erase')).toHaveCount(0);
+ await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('A is a circle, B a diamond, C a square');
+});

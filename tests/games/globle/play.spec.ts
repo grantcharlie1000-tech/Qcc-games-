@@ -299,3 +299,8 @@ for(const width of [320,390,1366])test(`no info card, compact HUD and larger glo
  await page.setViewportSize({width,height:width===1366?768:844});await open(page);await expect(page.locator('.gl-side,.gl-legend,.gl-empty,.gl-hint,.gl-more')).toHaveCount(0);await expect(page.locator('.gl-chip')).toBeHidden();await expect(page.locator('.game-dock')).toHaveCount(1);const hud=page.locator('.game-compact-hud');expect(await hud.evaluate(e=>e.scrollWidth<=e.clientWidth&&e.getBoundingClientRect().height<20)).toBe(true);const g=(await globe(page).boundingBox())!;expect(g.height).toBeGreaterThan((width===1366?768:844)-140);await expect(page.locator('.gl-search,.gl-submit')).toHaveCount(2);await gameAction(page,'Stats and options');await expect(page.locator('.gl-options')).toBeVisible();await page.getByLabel('Colour-blind palette').check();await page.locator('.gl-close').click();await expect(page.locator('#pause-overlay')).toBeHidden();
 });
 test('closest chip keeps the nearest guess when a farther country is guessed',async({page})=>{await practice(page,'FRA');await guess(page,'Spain');const closest=await page.locator('.gl-chip').textContent();await guess(page,'New Zealand');await expect(page.locator('.gl-chip')).toHaveText(closest!);});
+
+test('removed globe legend remains available in How to play',async({page})=>{
+ await open(page);await expect(page.locator('.gl-legend,.gl-hint,.gl-side')).toHaveCount(0);
+ await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('pale cream is far away, orange is closer, red is very close and dark red');
+});

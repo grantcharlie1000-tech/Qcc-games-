@@ -161,7 +161,7 @@ test('cancel, lost capture, blur, resize, pause and disposal release drag captur
   await tube(page,0).focus();await page.keyboard.press('Enter');await expect(tube(page,0)).toHaveAttribute('aria-pressed','true');
 });
 
-test('mobile Hint wraps without clipping its instruction',async({page})=>{
+test('Hint uses the dock icon and keeps its status accessible offscreen',async({page})=>{
   await page.setViewportSize({width:390,height:844});await open(page);await page.getByRole('button',{name:'Hint',exact:true}).click();
   await expect(page.locator('.ws-message')).toHaveClass(/sr-only/);await expect(page.locator('.game-dock').getByRole('button',{name:'Hint',exact:true})).toBeVisible();
 });
