@@ -24,7 +24,7 @@ export type Part = readonly [x: number, y: number, z: number, w: number, h: numb
 export const VEHICLE_COLORS: readonly number[] = [0xe43135, 0x23c6ed, 0xf4d33e, 0x9a4adb, 0x85bd42, 0x3f75bc];
 export const TRUCK_COLORS: readonly number[] = [0xbd163c, 0x13bfdc, 0xbd163c, 0x8a3e92, 0x477db3, 0x18bdd8];
 export const TRAIN_COLORS: readonly number[] = [0xe94f64, 0x3a86ff, 0x2bb673, 0xf4a259];
-export const LOG_COLORS: readonly number[] = [0x733e46, 0x7b424d, 0x6a3745];
+export const LOG_COLORS: readonly number[] = [0x743e46, 0x7c424d, 0x6b3745];
 
 const WHITE = 0xffffff;
 const scratch = new THREE.Color();
@@ -187,7 +187,12 @@ export function carGeometry(style: CarStyle): VehicleParts {
     parts.push([x, 0, z, 0.23, 0.23, 0.115, wheel], [x, 0.07, z + Math.sign(z) * 0.06, 0.085, 0.085, 0.012, hub]);
   }
   if (style === 'taxi') parts.push([cx, 0.59, 0, 0.13, 0.075, 0.25, 0xf2d238]);
-  return {body: voxel([[0, 0.1, 0, len, 0.25, 0.66, WHITE]]), detail: voxel(parts)};
+  const hood = style === 'compact' ? 0.22 : 0.37;
+  return {body: voxel([
+    [0, 0.1, 0, len, 0.25, 0.66, WHITE],
+    [e - hood / 2, 0.35, 0, hood, 0.035, 0.64, WHITE],
+    [-e + 0.13, 0.35, 0, 0.26, 0.02, 0.64, WHITE],
+  ]), detail: voxel(parts)};
 }
 
 /** A truck of 2 or 3 tiles (x), 0.84 wide: a tall tinted cab and hood at the front (+x), then a long
@@ -196,6 +201,8 @@ export function carGeometry(style: CarStyle): VehicleParts {
 export function truckGeometry(len: 2 | 3): VehicleParts {
   const e = len / 2, cab = 0.76, cargoLen = len - cab - 0.06, cargoX = -e + cargoLen / 2;
   const glass = 0x2b3040, wheel = 0x20232b, chassis = 0x373c48, cargo = 0xe7eef2;
+  // Baked side lift keeps the cargo lavender under the weak side-facing hemisphere light.
+  const cargoSide: Rgb = [1.36, 1.51, 2.23];
   const wheels: Part[] = [];
   const axle = (x: number): void => { wheels.push([x, 0, 0.375, 0.26, 0.26, 0.12, wheel], [x, 0, -0.375, 0.26, 0.26, 0.12, wheel]); };
   axle(e - 0.34);
@@ -209,7 +216,7 @@ export function truckGeometry(len: 2 | 3): VehicleParts {
     ]),
     detail: voxel([
       [0, 0.1, 0, len, 0.13, 0.7, chassis],
-      [cargoX, 0.22, 0, cargoLen, 0.74, 0.84, cargo, 0, 0, 0xb8bfdf],
+      [cargoX, 0.22, 0, cargoLen, 0.74, 0.84, cargo, 0, 0, cargoSide],
       [e - 0.48, 0.86, 0, 0.14, 0.08, 0.55, 0xe6eafa, 0, 0, 0x8c94b3],
       // windscreen and side windows
       [e - 0.205, 0.52, 0, 0.05, 0.24, 0.62, glass],
@@ -274,7 +281,7 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
 /** Narrow reddish-purple logs, with irregular low bark steps rather than a frame. */
 export function logGeometry(len: 2 | 3 | 4): THREE.BufferGeometry {
   const dark: Rgb = [0.69, 0.64, 0.71], light: Rgb = [1.10, 1.06, 1.10];
-  const parts: Part[] = [[0, 0, 0, len, 0.18, 0.48, WHITE], [0.035, 0.18, -0.012, len - 0.18, 0.06, 0.40, WHITE]];
+  const parts: Part[] = [[0, 0, 0, len, 0.24, 0.48, WHITE]];
   // A local integer hash gives each length a stable, uneven bark pattern without world RNG draws.
   for (let i=0; i<len+1; i++) {
     const h = (Math.imul(i+len*13, 0x45d9f3b) >>> 0);
@@ -302,7 +309,7 @@ export function treeGeometry(variant: number): THREE.BufferGeometry {
   ], 0.9);
   const count = variant <= 0 ? 1 : variant === 1 ? 2 : 3;
   const parts: Part[] = [[0, 0, 0, 0.21, 0.46, 0.21, 0x4b2d3b]];
-  for(let i=0;i<count;i++) parts.push([0, 0.45+i*0.55, 0, 0.62, 0.55, 0.62, 0x9cc926, 0, 0, i&1?0x8fa72b:0x88a029]);
+  for(let i=0;i<count;i++) parts.push([0, 0.45+i*0.55, 0, 0.62, 0.55, 0.62, 0x9dc826, 0, 0, i&1?[0.69,1.21,0.060]:[0.65,1.15,0.056]]);
   const g=voxel(parts,0.96), old=g.getIndex()!, keep: number[]=[];
   for(let p=0;p<parts.length;p++) for(let f=0;f<6;f++) {
     if(p>0 && ((f===2 && p!==parts.length-1)||(f===3 && p!==1))) continue;
@@ -314,7 +321,7 @@ export function treeGeometry(variant: number): THREE.BufferGeometry {
 
 /** Lavender notched boulders, split tops and low clusters. */
 export function rockGeometry(variant: number): THREE.BufferGeometry {
-  const top=0xaa9ac9, side=0x756391;
+  const top=0xab99c9, side=0x7e6c9a;
   if(variant<=0) return voxel([
     [0,0,0,0.77,0.30,0.64,top,0,0,side],
     [-0.10,0.30,-0.12,0.56,0.15,0.37,top,0,0,side],
@@ -336,12 +343,12 @@ export function rockGeometry(variant: number): THREE.BufferGeometry {
 export function signalPostGeometry(): THREE.BufferGeometry {
   const red = 0xa94750, white = 0xe5deef;
   const parts: Part[] = [
-    [0, 0, 0, 0.2, 0.06, 0.2, 0x4b505c],
+    [0, 0, 0, 0.2, 0.06, 0.10, 0x4b505c],
     [0, 0.06, 0, 0.1, 1.12, 0.1, white],
-    [0, 1.12, 0, 0.5, 0.3, 0.19, 0x24232f],
-    [0, 1.42, 0, 0.115, 0.11, 0.115, white],
+    [0, 1.12, 0, 0.5, 0.3, 0.08, 0x24232f],
+    [0, 1.42, 0, 0.115, 0.11, 0.09, white],
   ];
-  for (const y of [0.12, 0.38, 0.64, 0.9]) parts.push([0, y, 0, 0.112, 0.13, 0.112, red]);
+  for (const y of [0.12, 0.38, 0.64, 0.9]) parts.push([0, y, 0, 0.112, 0.13, 0.096, red]);
   return voxel(parts, 0.92);
 }
 

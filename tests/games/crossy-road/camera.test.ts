@@ -31,16 +31,16 @@ describe('cameraFit portrait', () => {
 });
 
 describe('cameraFit landscape', () => {
-  it('fits fourteen cells across landscape screens', () => {
+  it('fits fourteen central cells and two dim edge cells across landscape screens', () => {
     for (const [w,h] of [[1366,768], [1920,1080], [800,400]]) {
-      expect(cameraFit(w,h).tilePx * Math.cos(YAW) * 14).toBeCloseTo(w, 6);
+      expect(cameraFit(w,h).tilePx * Math.cos(YAW) * 16).toBeCloseTo(w, 6);
     }
   });
 
   it('uses the portrait fit on square and taller screens', () => {
     const square = cameraFit(500, 500), portrait = cameraFit(500, 501);
     expect(square.tilePx).toBeCloseTo(portrait.tilePx, 9);
-    expect(cameraFit(501, 500).tilePx * Math.cos(YAW) * 14).toBeCloseTo(501, 6);
+    expect(cameraFit(501, 500).tilePx * Math.cos(YAW) * 16).toBeCloseTo(501, 6);
   });
 });
 

@@ -19,7 +19,7 @@
 .hw-cause{margin:8px 0 0;font:15px/1.45 system-ui,sans-serif;color:var(--sheet-muted);text-wrap:balance}
 .hw-stats{display:flex;justify-content:center;gap:28px;margin:16px 0 0}
 .hw-stats div{min-width:72px}
-.hw-stats dt{font:700 11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#bfc6c3}
+.hw-stats dt{font:700 11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--sheet-muted)}
 .hw-stats dd{margin:6px 0 0;font:650 32px/1 var(--font-sans);color:var(--sheet-ink);font-variant-numeric:tabular-nums}
 .hw-best{color:var(--sheet-ink)}
 .hw-new{margin:10px 0 0;font:650 14px/1.2 var(--font-sans);color:var(--sheet-ink);letter-spacing:.06em}

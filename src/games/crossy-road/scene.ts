@@ -29,12 +29,12 @@ const PITCH = (45 * Math.PI) / 180, YAW = (20 * Math.PI) / 180;
 const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
 /** The camera's right axis and its forward axis along the ground, in world x and z. */
 const RX = Math.cos(YAW), RZ = -Math.sin(YAW), FX = -Math.sin(YAW), FZ = -Math.cos(YAW);
-/** World x ends of the span fitted to a portrait screen, and the player's height share when grounded. */
-const PHONE_CELLS = 8, PC_CELLS = 14, PLAYER_SCREEN = 0.35;
+/** Ground-cell framing and the player's height share when grounded. */
+const PHONE_CELLS = 8, PC_CELLS = 16, PLAYER_SCREEN = 0.35;
 const CAMERA_DIST = 40;
 const SHAKE_TIME = 0.25, SHAKE_AMP = 0.12;
 
-/** Eight ground cells across a phone and fourteen across a landscape viewport.
+/** Eight ground cells across a phone and fourteen central cells plus a dimmed edge cell on each side in landscape.
  * The yaw is included in the fit, so the horizontal cell pitch is width / cells. */
 export function cameraFit(width: number, height: number): { tilePx: number; halfWidth: number; halfHeight: number } {
   const w = Math.max(1, width), h = Math.max(1, height);
@@ -69,9 +69,9 @@ export function focusXTarget(playerX: number, halfWidth: number): number {
 
 const COLORS: number[] = [];
 const reg = (...hex: number[]): number => { const i = COLORS.length; COLORS.push(...hex); return i; };
-const C_WHITE = reg(0xffffff), C_GRASS = reg(0xa6e85b, 0x9fde54), C_ROAD = reg(0x434856), C_WATER = reg(0x74e4fc), C_BALLAST = reg(0x343a48);
-const C_DASH = reg(0x686e82), C_SLEEPER = reg(0x563342), C_STEEL = reg(0x807ba3), C_FOAM = reg(0xf5fcff), C_RIPPLE = reg(0xb8f1ff);
-const C_WATER_EDGE = reg(0x59c4fc);
+const C_WHITE = reg(0xffffff), C_GRASS = reg(0xa7e85c, 0xa0de55), C_ROAD = reg(0x424856), C_WATER = reg(0x75e3fc), C_BALLAST = reg(0x343a48);
+const C_DASH = reg(0x6b6f83), C_SLEEPER = reg(0x563342), C_STEEL = reg(0x817ba3), C_FOAM = reg(0xfaffff), C_RIPPLE = reg(0xb8f1ff);
+const C_WATER_EDGE = reg(0x5ac3fc);
 const C_DIRT = reg(0x633642);
 const C_TRUCK = reg(...TRUCK_COLORS);
 const C_VEHICLE = reg(...VEHICLE_COLORS), C_TRAIN = reg(...TRAIN_COLORS), C_LOG = reg(...LOG_COLORS);
@@ -84,7 +84,7 @@ const PAL = (() => {
 })();
 
 /** Lane colour multiplier for the zones outside the band, and for decor standing in them. */
-const DARK = 0.78, EDGE_SHADE = 0.85;
+const DARK = 0.80, EDGE_SHADE = 0.85;
 /** The darker zones either side of the band run out to the render span's edges, so no view (even one following a player
  * swept to the band's edge on a wide screen) reaches the end of a lane. */
 const LEFT_ZONE_W = BAND_MIN - (RENDER_X_MIN - 0.5), LEFT_ZONE_X = (RENDER_X_MIN - 0.5 + BAND_MIN) / 2;
@@ -221,8 +221,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   camera.position.set(-FX * COS_P * CAMERA_DIST, SIN_P * CAMERA_DIST, -FZ * COS_P * CAMERA_DIST);
   camera.lookAt(0, 0, 0);
 
-  const hemisphere = new THREE.HemisphereLight(0xbcb7e6, 0x50535f, 2.3);
-  const sun = new THREE.DirectionalLight(0xf9ffd5, 2.8);
+  const hemisphere = new THREE.HemisphereLight(0xbcb7dc, 0x50535f, 2.0);
+  const sun = new THREE.DirectionalLight(0xf9ffe2, 3.05);
   sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
   sun.shadow.bias = -0.00015;
   sun.shadow.normalBias = 0.012;
@@ -281,7 +281,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const beam = new THREE.Mesh(geo(beamGeometry()), beamMaterial);
   const spot = new THREE.Mesh(geo(spotRingGeometry()), spotMaterial);
   const shade = new THREE.Mesh(geo(ufoShadowGeometry()), shadeMaterial);
-  // The soft ellipse on the ground under the bird, in both quality tiers.
+  // Low-quality contact fallback; High uses the directional silhouette alone.
   const drop = new THREE.Mesh(geo(dropShadowGeometry()), dropMaterial);
   drop.renderOrder = 1;
   beam.renderOrder = 5;
@@ -323,7 +323,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function applyPixelRatio(): void {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality === 'high' ? 3 : 1.5));
+    const ratio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? 3 : 1.5);
+    if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
   }
 
   function setQuality(next: Quality): void {
@@ -347,6 +348,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function resize(w: number, h: number): void {
     if (disposed || !(w >= 1 && h >= 1)) return;
+    applyPixelRatio();
     renderer.setSize(w, h, false);
     fit = cameraFit(w, h);
     camera.left = -fit.halfWidth; camera.right = fit.halfWidth; camera.top = fit.halfHeight; camera.bottom = -fit.halfHeight;
@@ -445,7 +447,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   const onVehicle = (x0: number, x1: number, mover: Mover): void => {
-    const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI, tint = C_VEHICLE + (mover.color % VEHICLE_PALETTE);
+    const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI, tint = C_VEHICLE + (curRoad.style === 'compact' ? 1 : mover.color % VEHICLE_PALETTE);
     if (curRoad.vehicle === 'car') {
       const style = curRoad.style ?? (mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
       const i = carStyles.indexOf(style), size = style === 'compact' ? 1.2 : 1.8;
@@ -479,13 +481,12 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function drawWater(lane: RiverLane | LilyLane, row: number, ahead: Lane, behind: Lane): void {
     band(C_WATER, WATER_Y - 0.6, 0.6, curZ, 1, C_WATER_EDGE, 1);
-    // Banks: a soil wall under the land ahead with a thin line of foam at its foot, and a thin foam line along the
-    // near bank. Kept narrow so the gaps between logs read as open water, not as pale glass.
-    if (!isWater(ahead)) {
-      band(C_DIRT, WATER_Y - 0.02, -WATER_Y + 0.019, curZ - 0.498, 0.004);
-      band(C_RIPPLE, WATER_Y, 0.009, curZ - 0.46, 0.045);
+    // Both shorelines end at the exact half-cell boundary. The soil wall and
+    // narrow rim stay inside this water cell; adjacent road/rail strips remain whole.
+    for (const side of [-1, 1]) if (!isWater(side < 0 ? ahead : behind)) {
+      band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * 0.494, 0.012);
+      band(C_RIPPLE, WATER_Y, 0.008, curZ + side * 0.472, 0.025);
     }
-    if (!isWater(behind)) band(C_RIPPLE, WATER_Y, 0.009, curZ + 0.46, 0.045);
     // A few light ripples drifting slowly, repeating every 14 tiles.
     for (let k = 0; k < 1; k++) {
       const h = hash(row, 200 + k), len = 0.5 + 0.7 * ((h >>> 19) & 63) / 63, zz = curZ + (((h >>> 25) & 31) / 31 - 0.5) * 0.52;
@@ -497,10 +498,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     const flow = lane.kind === 'river' ? lane.dir * 0.35 : 0.12;
     const foamAt = (hash(Math.floor(row / 2), 823) % 90) / 10 + anim * flow;
     for (let x = foamAt + Math.ceil((winLo - foamAt) / 9) * 9; x <= winHi; x += 9) {
-      const k = x < BAND_MIN || x > BAND_MAX ? DARK : 1;
-      ground.put(x, WATER_Y + 0.002, curZ - 0.27, 0.65, 0.012, 0.28, 0, C_FOAM, k);
-      ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02, 0.80, 0.012, 0.32, 0, C_FOAM, k);
-      ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24, 0.52, 0.012, 0.24, 0, C_FOAM, k);
+      const k = x < BAND_MIN || x > BAND_MAX ? 0.90 : 1, shape = hash(row, 825);
+      ground.put(x, WATER_Y + 0.002, curZ - 0.27, 0.60 + (shape & 3) * 0.05, 0.012, 0.28, 0, C_FOAM, k);
+      ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02, 0.75 + ((shape >>> 2) & 3) * 0.035, 0.012, 0.32, 0, C_FOAM, k);
+      ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24, 0.50 + ((shape >>> 4) & 3) * 0.03, 0.012, 0.24, 0, C_FOAM, k);
     }
     if (lane.kind === 'river') {
       forEachMover(lane, now, winLo, winHi, onLog);
@@ -512,10 +513,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   function signal(x: number, on: boolean, lit: boolean): void {
     if (x < winLo || x > winHi) return;
     // Beside the track, on the near edge, so a passing train never clips it.
-    const z = curZ + 0.46;
+    const z = curZ + 0.45;
     posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
     const s = on ? (lit ? 1.1 : 1) + (colorBlind ? 0.2 : 0) : 0.85;
-    lamps.put(x, 1.27, z + 0.1, s, s, s, 0, lit ? C_LAMP_ON : C_LAMP_OFF, 1);
+    lamps.put(x, 1.27, curZ + 0.493, s, s, 0.05, 0, lit ? C_LAMP_ON : C_LAMP_OFF, 1);
     if (lit) glows.put(x, 0.112, z, 1.05, 1, 1.05, 0, C_WHITE, 1);
   }
 

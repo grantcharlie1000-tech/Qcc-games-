@@ -29,7 +29,7 @@ Crossy Road is an original endless lane-hopping game for QCC Games. A white voxe
 - Touch uses pointer events with `touch-action: none` on the game host only.
 - Key auto-repeat (`e.repeat`) is ignored. Keys are ignored while a `dialog[open]` exists or focus is in a text field.
 - `Escape` is never captured, swallowed or prevented, so the shell always opens the Study article.
-- The game-over card shows the cause, the score and the best, with a Play again button and visible keyboard focus. Rankings are opened through the shared shell Menu; there is no duplicate game-owned rankings control.
+- The game-over card shows the cause, the score and the best, with a Play again button and visible keyboard focus. Rankings are opened through the shared shell Menu or its floating Top scores control; there is no game-owned rankings button.
 
 ## Rules
 
@@ -85,7 +85,7 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 ## Camera
 
 - Orthographic, pitched 45° down and yawed 20°, so lanes fall slightly to the right.
-- Portrait: eight ground cells span the width (48.75 CSS px horizontal pitch at 390 wide). Landscape: fourteen cells span the width, keeping the nine-column playable band dominant. This full-width adaptation trades vertical coverage for scale.
+- Portrait: eight ground cells span the width (48.75 CSS px horizontal pitch at 390 wide). Landscape: fourteen central cells plus a dim edge cell on either side span the width, keeping the nine-column playable band dominant. This full-width adaptation trades vertical coverage for scale.
 - Focus row target is `max(renderRow, safeLine + min(SAFE_LAG, maxRow))` after starting, with `SAFE_LAG = 2`, so it never moves backward. The bird sits about 35 % up from the bottom.
 - Focus x target is `lerp(4, pose.x, 0.6)`, clamped to centre ±1 cell on a cropped phone, or ±2.4 cells on desktop.
 - Smoothing factor is `1 − 0.9^(dt·60)`.
@@ -116,7 +116,7 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 - `renderer.setPixelRatio(Math.min(devicePixelRatio, 3))` with antialiasing enabled.
 - Low quality starts automatically when the 2 s rolling average falls below 50 fps. It uses pixel ratio capped at 1.5, no shadow map, blob decals in place of shadows, and less decor.
 - High quality uses a 4096-square hard shadow map and a tight, texel-snapped shadow camera following the visible ground; every vehicle, tree, rock, log and the bird casts a shadow. Darker base vertices provide baked ambient shading.
-- At most about 120 draw calls per frame (under 40 in r5 captures): every repeated thing (lane strips, markings, trees, rocks, vehicles, train segments, logs, pads, signals, particles) is an instanced mesh, and each voxel model is one merged geometry.
+- At most about 120 draw calls per frame (under 40 in review captures): every repeated thing (lane strips, markings, trees, rocks, vehicles, train segments, logs, pads, signals, particles) is an instanced mesh, and each voxel model is one merged geometry.
 - No per-frame allocation in the hot loop; geometries and materials are reused.
 - The render loop stops on pause and when the tab is hidden.
 - `dispose()` frees every geometry, material and render target, the renderer, the animation frame, timers, observers and listeners.
@@ -125,7 +125,7 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 ## Deviations from REFERENCE.md
 
 - Charlie keeps the UFO in place of the eagle: warning at 5 seconds, swoop at 7 seconds without a new furthest row, or immediately at 3 rows back/behind. The saucer grabs and carries the bird off the top within 0.7 seconds.
-- Charlie requests High rendering at device pixel ratio capped at 3, with antialiasing and crisp real shadow maps (overriding the pack's caps). The full-screen canvas paints behind the translucent shared shell bar.
+- Charlie requests High rendering at device pixel ratio capped at 3, with antialiasing and crisp real shadow maps (overriding the pack's caps). The full-screen canvas paints behind the shared floating Liquid Glass controls, without a header strip or reserved band.
 - Outcome and Continue cards use shared `ui-glass-sheet`, `arcade-sheet`, and `game-button` classes; no live HUD is drawn by the game.
 - Compact car spans are 1.2 tiles; sedans and taxis are 1.8, overriding the pack’s 1-tile cars. Rendered body and collision spans agree; the generator still adds the same minimum free gap after each vehicle. The renamed id has its own save namespace.
 - Road lanes use 2–5 movers per pattern; log lanes use three. The road gap base is 4.2 → 3 tiles, bounded by the same minimum crossing window.

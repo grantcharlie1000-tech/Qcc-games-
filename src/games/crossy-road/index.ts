@@ -55,7 +55,7 @@ type Layer = 'over' | 'continue' | 'lost' | null;
 function mount(container: HTMLElement, context: GameContext): GameInstance {
   const root = document.createElement('div');
   root.className = 'crossy-road';
-  root.dataset.renderVersion = 'fidelity-1';
+  root.dataset.renderVersion = 'fidelity-6';
   root.innerHTML = TEMPLATE;
   container.append(root);
   const canvas = root.querySelector<HTMLCanvasElement>('.hw-canvas')!;
@@ -334,14 +334,26 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     context.setStatus('Graphics interrupted. Your run is saved. Leave and reopen Crossy Road.');
   }, { signal });
 
-  const resize = new ResizeObserver(() => {
+  const resizeCanvas = () => {
     if (disposed || lost) return;
     const width = canvas.clientWidth, height = canvas.clientHeight;
     if (width < 1 || height < 1) return;
     scene.resize(width, height);
     if (!frameId) draw(0);
-  });
+  };
+  const resize = new ResizeObserver(resizeCanvas);
   resize.observe(canvas);
+  window.addEventListener('resize', resizeCanvas, {signal});
+  window.addEventListener('orientationchange', resizeCanvas, {signal});
+  // A display-density change may leave CSS dimensions unchanged.
+  let densityQuery: MediaQueryList | undefined;
+  function densityChanged() { watchDensity(); resizeCanvas(); }
+  function watchDensity() {
+    densityQuery?.removeEventListener('change', densityChanged);
+    densityQuery = matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+    densityQuery.addEventListener('change', densityChanged, {signal});
+  }
+  watchDensity();
 
   /** The shell focuses its stage synchronously right after restore(), so a restored card's button takes focus back in a
    * microtask (unless the card has gone, or the player has already moved focus somewhere else). */

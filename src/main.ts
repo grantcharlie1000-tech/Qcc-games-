@@ -306,7 +306,9 @@ async function route(){
   document.querySelector('#game-settings')!.addEventListener('click',()=>transferDialog(()=>openMenu(menuButton)));
   document.querySelector('#game-rankings')!.addEventListener('click',()=>transferDialog(()=>leaderboards.open(id==='minesweeper'?'minesweeper-score':id)));
   // Optional direct access uses the same shell glass binding and ranking dialog.
-  document.querySelector('#game-quick-rankings')?.addEventListener('click',()=>leaderboards.open(id));
+  document.querySelector('#game-quick-rankings')?.addEventListener('click',()=>{
+    pausedForDialog=!paused;setPaused(true);leaderboards.open(id);
+  });
   const fullscreenButton=document.querySelector<HTMLButtonElement>('#fullscreen-game')!;
   detachFullscreen=attachFullscreen(fullscreenButton,state=>{
     fullscreenButton.setAttribute('aria-pressed',String(state.expanded));

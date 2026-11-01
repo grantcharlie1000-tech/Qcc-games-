@@ -16,6 +16,11 @@ test('a DSF3 phone fills the viewport and renders at native resolution with anti
     });
     expect(size).toMatchObject({width: 1170, height: 2532, x: 0, y: 0, cssWidth: 390, cssHeight: 844, antialias: true, transform: 'none'});
     await expect(page.locator('#game-status')).toHaveCSS('position', 'absolute');
+    // Moving to a different-density screen can change DPR without changing CSS size.
+    await page.evaluate(()=>{Object.defineProperty(window,'devicePixelRatio',{value:2,configurable:true});dispatchEvent(new Event('resize'));});
+    await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([780,1688]);
+    await page.evaluate(()=>{Object.defineProperty(window,'devicePixelRatio',{value:3,configurable:true});dispatchEvent(new Event('orientationchange'));});
+    await expect.poll(()=>canvas.evaluate((c:HTMLCanvasElement)=>[c.width,c.height])).toEqual([1170,2532]);
     // Resize/orientation must replace the drawing buffer, not stretch the old bitmap.
     await page.setViewportSize({width: 844, height: 390});
     await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([2532, 1170]);
@@ -61,10 +66,13 @@ for (const viewport of [{width:390,height:844},{width:1366,height:768}]) {
     for(const selector of ['.game-dock a','#game-menu','#game-quick-rankings']) {
       expect(await page.locator(selector).evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<innerHeight&&e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
     }
+    await page.evaluate(()=>{window.__crossyRoadTest!.hop('up');window.__crossyRoadTest!.advance(0.2);});
     await page.getByRole('button',{name:'Top scores',exact:true}).click();
+    expect((await hook(page).stats()).looping).toBe(false);
     await expect(page.locator('#leaderboard-dialog')).toBeVisible();
     await expect(page.locator('#leaderboard-dialog')).toHaveClass(/arcade-sheet/);
     await page.getByRole('button',{name:'Close leaderboards',exact:true}).click();
+    await expect.poll(async()=>(await hook(page).stats()).looping).toBe(true);
     await page.locator('#game-menu').click();
     await expect(page.locator('#game-options')).toHaveClass(/arcade-sheet/);
   });
