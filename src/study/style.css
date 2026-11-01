@@ -32,3 +32,7 @@
 #study-view :is(.study-sources,.variant-sources) a{display:inline-flex;align-items:center;min-height:44px}
 #study-view .study-games-sentence a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;vertical-align:baseline}
 @media(max-width:600px){.study-chapter-footer button{flex-basis:100%}.study-article-meta{gap:16px}}
+
+/* The topic selector sits on a light article page, so it needs a dark ring. */
+#study-view #study-topic:focus{border-color:var(--study-accent)}
+:root[data-input="keyboard"] #study-view #study-topic:focus-visible{outline:3px solid var(--study-accent);outline-offset:3px;box-shadow:none}

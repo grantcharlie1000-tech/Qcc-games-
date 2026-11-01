@@ -42,6 +42,18 @@
 
 - [x] Audit every article and picker with the standing nine-item checklist on both browsers and sizes; measure geometry, targets, typography, surface samples and focus. Inspect contact sheets and fix findings.
 - [x] Capture after screenshots at matching content anchors through former ad positions. Produce `ARTICLES_BEFORE_AFTER.jpg`, `polish-audit/AUDIT.md` and `polish-audit/AUDIT_SHEET.jpg`.
-- [ ] Run `npm run check`, `npm test`, `npm run build`, and all study e2e in Chromium and WebKit; require exit 0.
+- [x] Run `npm run check`, `npm test`, `npm run build`, and all study e2e in Chromium and WebKit; require exit 0.
 - [x] Request an independent code review against the user scope; address material findings and verify the fixes.
-- [ ] Restore generated tracked evidence, verify the scoped diff, and commit remaining verified changes. Report removals, test results and evidence paths.
+- [x] Restore generated tracked evidence, verify the scoped diff, and commit remaining verified changes. Report removals, test results and evidence paths.
+
+## Verification record
+
+- `npm run check`: passed.
+- `npm test -- --maxWorkers=1 --testTimeout=30000`: 161 files, 3,350 tests passed. A prior two-worker run also passed all 3,350 tests; final runs were serialized to avoid host contention.
+- `npm run build`: passed; 124-file offline pack contains no retired ad or contributor assets.
+- All study Playwright suites: 182 passed in Chromium and WebKit, one worker, using port 4199.
+- Standing polish audit: 324/324 article/picker combinations pass at 390×844 and 1366×768, plus independent 320 px reflow review. Five background samples per surface pass (1,620 samples).
+- Independent review: no critical or important issues; its minor grammar finding was corrected.
+- Evidence and findings: `/workspace/qcc-liquid-glass/articles/ARTICLES_BEFORE_AFTER.jpg` and `/workspace/qcc-liquid-glass/articles/polish-audit/AUDIT.md` / `AUDIT_SHEET.jpg`.
+- The protected standalone `scripts/verify-offline.mjs` retains retired-asset assertions for its owner to update; the requested build and study suites use the current media manifest.
+- Shared shell/glass, session, game/save/scoring, online and deployment code remain outside this change.
