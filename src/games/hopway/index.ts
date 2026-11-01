@@ -103,12 +103,13 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   function loop(now: number) {
     frameId = 0;
     if (!active()) return;
-    const dt = last ? Math.min((now - last) / 1000, 0.1) : 0;
+    // The simulation catches up at most 0.1 s per frame; the frame-rate check sees the real interval.
+    const interval = last ? (now - last) / 1000 : 0, dt = Math.min(interval, 0.1);
     last = now;
     frames++;
     const begun = import.meta.env.DEV ? performance.now() : 0;
     if (import.meta.env.DEV) (window as unknown as { __hopwayFrames?: number }).__hopwayFrames = ((window as unknown as { __hopwayFrames?: number }).__hopwayFrames ?? 0) + 1;
-    measure(dt);
+    measure(interval);
     if (!frozen) advance(dt);
     draw(dt);
     if (import.meta.env.DEV) { const spent = performance.now() - begun; cpuMs = cpuMs ? cpuMs * 0.95 + spent * 0.05 : spent; }
@@ -239,9 +240,10 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     setData('held', String(held));
   }
 
-  /** Auto quality: a FPS_WINDOW-second average below FPS_FLOOR drops to Low for the rest of the visit. */
+  /** Auto quality: a FPS_WINDOW-second average below FPS_FLOOR drops to Low for the rest of the visit. An interval of a
+   * second or more is a hitch (tab switch, debugger), not a frame rate, so it is left out. */
   function measure(dt: number) {
-    if (dt <= 0 || dt > 0.25) return;
+    if (dt <= 0 || dt >= 1) return;
     fpsTime += dt;
     fpsFrames++;
     if (fpsTime < FPS_WINDOW) return;
@@ -345,13 +347,14 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   });
   resize.observe(canvas);
 
-  /** The shell focuses its stage right after restore(); a restored game over takes focus back. */
-  function focusAgain() {
-    again.focus({ preventScroll: true });
+  /** The shell focuses its stage synchronously right after restore(), so a restored card's button takes focus back in a
+   * microtask (unless the card has gone, or the player has already moved focus somewhere else). */
+  function refocus(button: HTMLButtonElement) {
+    button.focus({ preventScroll: true });
     queueMicrotask(() => {
       const focused = document.activeElement;
-      if (disposed || run.phase !== 'over' || !(focused === container || focused === document.body || root.contains(focused))) return;
-      again.focus({ preventScroll: true });
+      if (disposed || button.closest('[hidden]') || !(focused === container || focused === document.body || root.contains(focused))) return;
+      button.focus({ preventScroll: true });
     });
   }
 
@@ -425,12 +428,12 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         const cause = fillCard();
         show('over');
         context.setStatus(`Game over: ${cause}. Score ${run.maxRow}. Press Space or Play again.`);
-        focusAgain();
+        refocus(again);
       } else if (held) {
         continueRow.textContent = String(run.row);
         show('continue');
         context.setStatus(`Saved run at row ${run.row}. Press Continue or any arrow key.`);
-        resumeButton.focus({ preventScroll: true });
+        refocus(resumeButton);
       } else {
         root.dataset.cause = '';
         show(null);

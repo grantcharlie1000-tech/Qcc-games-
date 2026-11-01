@@ -16,7 +16,7 @@
 .hw-card[hidden]{display:none}
 @starting-style{.hw-card{opacity:0;transform:scale(.96)}}
 .hw-title{margin:0;font:800 clamp(24px,6.5vw,30px)/1.1 Arcade,sans-serif;color:#ffe0a4;letter-spacing:.02em;outline:none}
-.hw-cause{margin:8px 0 0;font:15px/1.45 system-ui,sans-serif;color:#e6e3da}
+.hw-cause{margin:8px 0 0;font:15px/1.45 system-ui,sans-serif;color:#e6e3da;text-wrap:balance}
 .hw-stats{display:flex;justify-content:center;gap:28px;margin:16px 0 0}
 .hw-stats div{min-width:72px}
 .hw-stats dt{font:700 11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#bfc6c3}
