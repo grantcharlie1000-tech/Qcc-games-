@@ -5,14 +5,14 @@ import { test, expect } from '../../fixtures';
 const saved=async(page:import('@playwright/test').Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:snake')!).data);
 async function waitForPhoneReady(page:import('@playwright/test').Page){
  await expect(page.locator('.snake-canvas')).toBeVisible();
- await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Start slithering',exact:true})).toBeVisible();
  await expect(page.locator('.snake-pad,[data-direction]')).toHaveCount(0);
 }
 test('keyboard eating, turning, loss, replay, pause and saved continuation',async({page},testInfo)=>{
  test.setTimeout(60000);
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
- await expect(page.getByRole('button',{name:'Play'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Start slithering'})).toBeVisible();
  await page.keyboard.press('ArrowRight');await page.clock.runFor(690);
  await expect(page.locator('#game-score strong')).toHaveText('10');
  await page.keyboard.press('ArrowUp');await page.clock.runFor(170);
@@ -25,12 +25,12 @@ test('keyboard eating, turning, loss, replay, pause and saved continuation',asyn
  await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('#game-score strong')).toHaveText('0');
  await page.keyboard.press('d');await page.clock.runFor(170);await page.keyboard.press('s');await page.clock.runFor(170);
  await pauseGame(page);expect((await saved(page)).direction).toBe('down');
- await gameAction(page,'Restart game');await expect(page.getByRole('button',{name:'Play'})).toBeVisible();
+ await gameAction(page,'Restart game');await expect(page.getByRole('button',{name:'Start slithering'})).toBeVisible();
  await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('tail');await page.getByRole('button',{name:'Let’s play'}).click();
  await appSettings(page);await page.locator('#search').fill('wasd');await expect(page.locator('#search')).toHaveValue('wasd');await page.getByRole('button',{name:'Close menu'}).click();
  await expect(page.locator('.empty-library')).toContainText('No games found');
  await appSettings(page);await page.locator('#search').fill('');await page.getByRole('button',{name:'Close menu'}).click();await page.getByRole('link',{name:'Play Snake',exact:true}).click();await gameAction(page,'Restart game');
- await page.getByRole('button',{name:'Play'}).click();await page.clock.runFor(170);await page.screenshot({path:testInfo.outputPath('desktop.png'),fullPage:true});expect(errors).toEqual([]);
+ await page.getByRole('button',{name:'Start slithering'}).click();await page.clock.runFor(170);await page.screenshot({path:testInfo.outputPath('desktop.png'),fullPage:true});expect(errors).toEqual([]);
 });
 test('two native swipes turn the snake and fit a phone without a D-pad',async({browser,browserName},testInfo)=>{
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
@@ -40,7 +40,7 @@ test('two native swipes turn the snake and fit a phone without a D-pad',async({b
   document.addEventListener('click',event=>{const target=(event.target as HTMLElement).closest('button');if(target?.classList.contains('snake-start'))times.start=performance.now();if(target?.id==='game-menu')times.pause=performance.now();},true);
   document.querySelector('canvas')!.addEventListener('pointerup',()=>{times[times.swipe===undefined?'swipe':'left']=performance.now();},true);
  });
- await page.getByRole('button',{name:'Play'}).tap();await page.clock.runFor(170);
+ await page.getByRole('button',{name:'Start slithering'}).tap();await page.clock.runFor(170);
  const box=(await page.locator('.snake-canvas').boundingBox())!;
  const x=box.x+box.width/2,y=box.y+box.height/2;
  if(browserName==='chromium'){
@@ -96,11 +96,12 @@ test('invalid saves recover and repeated exit/reentry has no stale controls',asy
  }expect(errors).toEqual([]);
 });
 
-test('the result sheet keeps the session record after a lower-scoring replay',async({page})=>{
+test('the original result card and HUD keep the session record after a lower-scoring replay',async({page})=>{
  await page.clock.install({time:new Date('2026-11-01T09:00:00Z')});await page.clock.pauseAt(new Date('2026-11-01T09:00:01Z'));
- await page.goto('/#/game/snake');await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(2000);
- const stats=page.locator('.snake-game .game-sheet-stats');
- await expect(stats).toContainText('Score10');await expect(stats).toContainText('Best10');
+ await page.goto('/#/game/snake');await page.getByRole('button',{name:'Start slithering',exact:true}).click();await page.clock.runFor(2000);
+ const result=page.locator('.snake-card p');
+ await expect(page.locator('.snake-card strong')).toHaveText('One more apple?');
+ await expect(result).toContainText('10 points · 4 segments.');await expect(page.locator('#game-best strong')).toHaveText('10');
  await page.getByRole('button',{name:'Play again',exact:true}).click();await page.keyboard.press('ArrowUp');await page.clock.runFor(1600);
- await expect(stats).toContainText('Score0');await expect(stats).toContainText('Best10');
+ await expect(result).toContainText('0 points · 3 segments.');await expect(page.locator('#game-best strong')).toHaveText('10');
 });

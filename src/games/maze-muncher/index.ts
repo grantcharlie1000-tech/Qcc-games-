@@ -1,19 +1,16 @@
 import type {GameModule} from '../../core/types';
 import {createState, restoreState, start, steer, step, tileOf, TICKS_PER_SECOND, type Dir, type GameEvent} from './model';
 import {createBoard} from './art';
-import {bindGamePauseSheet,createGameSheet} from '../../ui/game-sheet';
 import './style.css';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 const module: GameModule = {
   id: 'maze-muncher', title: 'Pac-Man', cover: 'game-art/maze-muncher/cover.svg',
-  rules: 'Independent browser adaptation. Tap Play or press Enter. Steer Nib through the maze with the arrow keys, WASD or a short swipe anywhere in the play area. A turn you press early stays queued until the next opening or until you choose another direction. Escape pauses; the shared menu has pause and restart. Eat every dot (10 points) to clear the maze. The four glowing power berries (50 points) frighten the chasers for a few seconds: they turn blue, slow down and can be eaten for 200, 400, 800 and 1,600 points. They flash just before they recover. Rook chases you directly, Vex aims ahead of you, Drift works with Rook to cut you off, and Mope gives up when it gets close. Every so often they all scatter to their own corners and turn around. A bonus treat appears under the house twice per maze. The side tunnel wraps around and slows the chasers. You start with three lives and earn one more at 10,000 points. Each new maze is faster and frightens the chasers for less time.',
+  rules: 'Independent browser adaptation. Tap Start or press Enter. Steer Nib through the maze with the arrow keys, WASD or a short swipe anywhere in the play area. A turn you press early stays queued until the next opening or until you choose another direction. Escape pauses; the shared menu has pause and restart. Eat every dot (10 points) to clear the maze. The four glowing power berries (50 points) frighten the chasers for a few seconds: they turn blue, slow down and can be eaten for 200, 400, 800 and 1,600 points. They flash just before they recover. Rook chases you directly, Vex aims ahead of you, Drift works with Rook to cut you off, and Mope gives up when it gets close. Every so often they all scatter to their own corners and turn around. A bonus treat appears under the house twice per maze. The side tunnel wraps around and slows the chasers. You start with three lives and earn one more at 10,000 points. Each new maze is faster and frightens the chasers for less time.',
   mount(container, context) {
-    container.innerHTML = `<div class="mm-game"><div class="mm-frame"></div></div>`;
+    container.innerHTML = `<div class="mm-game"><div class="mm-frame"><div class="mm-card"><strong>Pac-Man</strong><p hidden></p><button class="game-button mm-start">Start</button></div></div></div>`;
     const root = container.querySelector<HTMLElement>('.mm-game')!, frame = root.querySelector<HTMLElement>('.mm-frame')!;
-    const controls = {touch: 'Swipe to steer.', keyboard: 'Arrow keys or WASD to steer.'};
-    const sheet = createGameSheet(frame, {title: 'Pac-Man', controls, buttonClass: 'mm-start', onPlay() {begin(); board.svg.focus({preventScroll: true});}});
-    const pauseSheet = bindGamePauseSheet(container, {title: 'Pac-Man', controls});
+    const card = root.querySelector<HTMLElement>('.mm-card')!, heading = card.querySelector('strong')!, message = card.querySelector('p')!, startButton = card.querySelector('button')!;
     // Extend the existing shared glass HUD; the shell still owns its dock and actions.
     const lives = document.createElement('span');
     lives.className = 'game-hud-item mm-lives';
@@ -25,7 +22,7 @@ const module: GameModule = {
     const available = container.parentElement!;
     const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
     const events = new AbortController();
-    let state = createState(Date.now() | 0), paused = false, disposed = false, frameId: number | null = null, last: number | null = null, carry = 0, best = context.highScore;
+    let state = createState(Date.now() | 0), paused = false, disposed = false, frameId: number | null = null, last: number | null = null, carry = 0;
     let gesture: {x: number; y: number; id: number} | null = null, label = '';
     const reduced = () => context.settings.reducedMotion || motionQuery.matches;
 
@@ -49,14 +46,17 @@ const module: GameModule = {
       describe();
     }
     function update() {
-      best = Math.max(best, state.score);
       context.setScore(state.score);
       context.setLevel(`Level ${state.level}`);
-      if (state.phase === 'ready' || state.phase === 'over') sheet.show(state.phase === 'over' ? 'game-over' : 'start', {...(state.phase === 'over' ? {score: state.score.toLocaleString()} : {}), best: best.toLocaleString()});
-      else sheet.hide();
+      const showCard = state.phase === 'ready' || state.phase === 'over';
+      card.hidden = !showCard;
+      heading.hidden = state.phase !== 'over';
+      message.hidden = state.phase !== 'over';
+      if (state.phase === 'over') {heading.textContent = 'Game over'; message.textContent = `${state.score.toLocaleString()} points · Level ${state.level}`; startButton.textContent = 'Play again';}
+      else if (state.phase === 'ready') {heading.textContent = 'Pac-Man'; startButton.textContent = 'Start';}
       lives.querySelector('strong')!.textContent = String(state.phase === 'over' ? 0 : state.lives + 1);
-      sheet.button.disabled = paused;
-      context.setStatus(paused ? 'Paused' : state.phase === 'over' ? 'Game over. Play again for a new run.' : state.phase === 'ready' ? 'Press Play or any direction to begin.' : state.fright > 0 ? 'Power berry! Eat the blue chasers.' : 'Eat every dot and dodge the chasers.');
+      startButton.disabled = paused;
+      context.setStatus(paused ? 'Paused' : state.phase === 'over' ? 'Game over. Play again for a new run.' : state.phase === 'ready' ? 'Press Start or any direction to begin.' : state.fright > 0 ? 'Power berry! Eat the blue chasers.' : 'Eat every dot and dodge the chasers.');
     }
     const persist = () => context.save(JSON.parse(JSON.stringify(state)));
     function react(list: GameEvent[]) {
@@ -98,9 +98,12 @@ const module: GameModule = {
     const keys: Record<string, Dir> = {ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', a: 'left', s: 'down', d: 'right'};
     window.addEventListener('keydown', event => {
       if (paused || event.ctrlKey || event.altKey || event.metaKey || document.querySelector('dialog[open]') || (event.target instanceof HTMLElement && event.target.closest('input,textarea,select,[contenteditable=true]'))) return;
+      if (event.key === 'Enter' && event.target instanceof HTMLElement && event.target.closest('button,a')) return;
+      if (event.key === 'Enter' && !event.repeat) {event.preventDefault(); begin(); board.svg.focus({preventScroll: true}); return;}
       const dir = keys[event.key] ?? keys[event.key.toLowerCase()];
       if (dir) {event.preventDefault(); action(dir);}
     }, {signal: events.signal});
+    startButton.addEventListener('click', () => {begin(); board.svg.focus({preventScroll: true});}, {signal: events.signal});
     root.addEventListener('pointerdown', event => {
       if (paused || !event.isPrimary || event.button !== 0 || (event.target instanceof Element && event.target.closest('button')) || document.querySelector('dialog[open]')) return;
       event.preventDefault();
@@ -137,7 +140,7 @@ const module: GameModule = {
         if (valid.phase === 'playing') {valid.phase = 'intro'; valid.timer = 120;}
         state = valid; last = null; carry = 0; update(); render();
       },
-      dispose() {disposed = true; events.abort(); observer.disconnect(); lives.remove(); sheet.dispose(); pauseSheet.dispose(); if (frameId !== null) cancelAnimationFrame(frameId); container.replaceChildren();}
+      dispose() {disposed = true; events.abort(); observer.disconnect(); lives.remove(); if (frameId !== null) cancelAnimationFrame(frameId); container.replaceChildren();}
     };
   }
 };

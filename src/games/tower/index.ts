@@ -1,27 +1,23 @@
 import type { GameModule } from '../../core/types';
 import { advance, createTower, drop, restoreTower } from './model';
 import { renderTower } from './renderer';
-import { bindGamePauseSheet, createGameSheet } from '../../ui/game-sheet';
 import './style.css';
 
 const game:GameModule={
   id:'tower',title:'Stack',cover:'game-art/tower/cover.svg',
   rules:'Independent browser adaptation. Click or tap the tower, or press Space/Enter to place the sliding slab. Only the overlap with the previous slab survives: the overhang falls away. A complete miss ends your tower. Near-perfect alignment snaps into place and preserves the full size. Consecutive perfects earn a bonus of up to five points per slab. Travel alternates across the two axes and gradually gets faster. Build as high as you can! Pause freezes the action; restart begins a fresh tower.',
   mount(container,context){
-    container.innerHTML=`<div class="tower-game" data-phase="sliding"><div class="tower-viewport"><canvas class="tower-canvas" tabindex="0" role="button" aria-label="Stack playfield. Tap or press Space to drop the moving block."></canvas><div class="tower-stats"><span>Floors<strong class="tower-height">0</strong></span><span>Perfect streak<strong class="tower-combo">0</strong></span></div><div class="tower-feedback" aria-hidden="true"></div></div></div>`;
-    const root=container.querySelector<HTMLElement>('.tower-game')!,canvas=container.querySelector<HTMLCanvasElement>('canvas')!,feedback=container.querySelector<HTMLElement>('.tower-feedback')!;
-    const controls={touch:'Tap to place a block.',keyboard:'Space, Enter or click to place a block.'};
-    const sheet=createGameSheet(root.querySelector<HTMLElement>('.tower-viewport')!,{title:'Stack',controls,buttonClass:'tower-again',onPlay(){restart();canvas.focus({preventScroll:true});}});
-    const pauseSheet=bindGamePauseSheet(container,{title:'Stack',controls});
+    container.innerHTML=`<div class="tower-game" data-phase="sliding"><div class="tower-viewport"><canvas class="tower-canvas" tabindex="0" role="button" aria-label="Stack playfield. Tap or press Space to drop the moving block."></canvas><div class="tower-stats"><span>Floors<strong class="tower-height">0</strong></span><span>Perfect streak<strong class="tower-combo">0</strong></span></div><div class="tower-feedback" aria-hidden="true"></div><div class="tower-end" hidden><div class="tower-end-card"><h2>One more floor?</h2><p class="tower-result"></p><button class="game-button tower-again">Build again</button></div></div></div></div>`;
+    const root=container.querySelector<HTMLElement>('.tower-game')!,canvas=container.querySelector<HTMLCanvasElement>('canvas')!,again=container.querySelector<HTMLButtonElement>('.tower-again')!,end=container.querySelector<HTMLElement>('.tower-end')!,feedback=container.querySelector<HTMLElement>('.tower-feedback')!;
     container.querySelector<HTMLElement>('.tower-viewport')!.style.backgroundImage=`url("${import.meta.env.BASE_URL}game-art/tower/skyline.svg")`;
-    let state=createTower(),paused=false,disposed=false,raf:number|null=null,lastTick=performance.now(),feedbackText='',best=context.highScore;
+    let state=createTower(),paused=false,disposed=false,raf:number|null=null,lastTick=performance.now(),feedbackText='';
     function reduced(){return context.settings.reducedMotion;}
     function draw(){renderTower(canvas,state,reduced(),paused);const fresh=state.last&&state.time-state.last.time<.9;feedback.textContent=fresh&&state.last!.kind==='perfect'?`PERFECT${state.combo>1?' ×'+state.combo:''}`:'';}
     function update(){
-      best=Math.max(best,state.score);
       root.dataset.phase=state.phase;
       root.querySelector('.tower-height')!.textContent=String(state.blocks.length-1);root.querySelector('.tower-combo')!.textContent=String(state.combo);
-      if(state.phase==='over')sheet.show('game-over',{score:state.score.toLocaleString(),best:best.toLocaleString()});else sheet.hide();
+      end.hidden=state.phase!=='over';
+      if(!end.hidden)root.querySelector('.tower-result')!.textContent=`${state.blocks.length-1} floors · ${state.score} points. Your best perfect streak: ${state.bestCombo}.`;
       context.setScore(state.score);context.setLevel(`${state.blocks.length-1} floors`);
       feedbackText=state.phase==='over'?'No overlap! Your tower is complete.':state.last?.kind==='perfect'?`Perfect${state.combo>1?' ×'+state.combo:''}! Full size preserved.`:state.last?.kind==='cut'?'Overhang trimmed. Keep building!':'Tap when the slab lines up with the tower.';
       context.setStatus(feedbackText);canvas.setAttribute('aria-label',`Stack playfield, ${state.blocks.length-1} floors. ${state.phase==='over'?'Run finished.':'Tap or press Space to drop the moving block.'}`);draw();
@@ -45,7 +41,7 @@ const game:GameModule={
     function restart(){if(disposed)return;state=createTower();lastTick=performance.now();update();context.save(state);schedule();}
     function resize(){if(disposed)return;const rect=canvas.getBoundingClientRect(),ratio=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(rect.width*ratio));canvas.height=Math.max(1,Math.round(rect.height*ratio));draw();}
     const observer=new ResizeObserver(resize);observer.observe(canvas);
-    canvas.addEventListener('pointerdown',pointer);document.addEventListener('keydown',key);
+    canvas.addEventListener('pointerdown',pointer);document.addEventListener('keydown',key);again.addEventListener('click',restart);
     update();resize();schedule();
     return {
       pause(){if(disposed||paused)return;tick(performance.now());paused=true;stop();update();},
@@ -53,7 +49,7 @@ const game:GameModule={
       restart,
       serialize(){if(!paused&&!disposed){const phase=state.phase;tick(performance.now());if(state.phase!==phase)update();}return JSON.parse(JSON.stringify(state)) as unknown;},
       restore(data){const restored=restoreTower(data);if(!restored||disposed)return;state=restored;lastTick=performance.now();update();schedule();},
-      dispose(){if(disposed)return;disposed=true;stop();observer.disconnect();canvas.removeEventListener('pointerdown',pointer);document.removeEventListener('keydown',key);sheet.dispose();pauseSheet.dispose();container.replaceChildren();}
+      dispose(){if(disposed)return;disposed=true;stop();observer.disconnect();canvas.removeEventListener('pointerdown',pointer);document.removeEventListener('keydown',key);again.removeEventListener('click',restart);container.replaceChildren();}
     };
   }
 };

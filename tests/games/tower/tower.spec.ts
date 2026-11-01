@@ -27,12 +27,12 @@ test('timed mouse and keyboard build a real tower, pause freezes it, save restor
   await pauseGame(page);await gameAction(page,'Restart game');await expect(page.locator('.tower-height')).toHaveText('0');
   await expect(page.locator('#game-score strong')).toHaveText('0');
 });
-test('a complete keyboard miss ends the run and the play-again action resets it',async({page})=>{
+test('a complete keyboard miss ends the run and Build again resets it',async({page})=>{
   await start(page);await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading',{name:'Stack',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'One more floor?',exact:true})).toBeVisible();
   expect((await page.locator('.tower-again').boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect(page.locator('.tower-game')).toHaveAttribute('data-phase','over');
-  await page.getByRole('button',{name:'Play again'}).click();await expect(page.locator('.tower-height')).toHaveText('0');
+  await page.getByRole('button',{name:'Build again'}).click();await expect(page.locator('.tower-height')).toHaveText('0');
   await page.clock.runFor(1526);await page.locator('.tower-canvas').click();
   await expect(page.locator('.tower-height')).toHaveText('1');await expect(page.locator('.tower-combo')).toHaveText('1');
 });

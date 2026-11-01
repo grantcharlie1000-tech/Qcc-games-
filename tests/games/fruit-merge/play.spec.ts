@@ -58,6 +58,6 @@ test('restores a full supported pile, ends after settled grace, and restarts',as
   localStorage.setItem('pocket-arcade:v1:save:fruit-merge',JSON.stringify({version:1,data}));
  });
  await page.goto('/#/game/fruit-merge');await expect(page.locator('#game-score strong')).toHaveText('123');
- await expect(page.locator('.fm .game-sheet').getByRole('button',{name:'Play again',exact:true})).toBeVisible();await expect(page.locator('.fm-board')).toHaveAttribute('aria-disabled','true');
- await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');await expect(page.locator('#game-score strong')).toHaveText('0');await expect(page.locator('#game-best strong')).toHaveText('123');
+ await expect(page.locator('.fm-banner')).toHaveText('Basket full — a fresh start awaits!');await expect(page.locator('.fm-board')).toHaveAttribute('aria-disabled','true');
+ await gameAction(page,'Restart game');await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');await expect(page.locator('#game-score strong')).toHaveText('0');await expect(page.locator('#game-best strong')).toHaveText('123');
 });

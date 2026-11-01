@@ -15,7 +15,7 @@ async function setup(page:Page){
   if(button?.classList.contains('snake-start'))(window as unknown as {snakeTestStart:number}).snakeTestStart=performance.now();
   if(button?.id==='game-menu')(window as unknown as {snakeTestPause:number}).snakeTestPause=performance.now();
  },true));
- await page.getByRole('button',{name:'Play',exact:true}).click();
+ await page.getByRole('button',{name:'Start slithering',exact:true}).click();
  await page.clock.runFor(20); // Establish the RAF timestamp; no simulation tick yet.
 }
 async function pause(page:Page){await pauseGame(page);return saved(page);}
@@ -39,7 +39,7 @@ test('continuous authoritative travel, junction-buffered turn, frozen v2 save an
  expect(turned.body[0].x).toBe(6);expect(turned.body[0].y).toBeLessThan(6);expect(turned.body[0].y).toBeGreaterThan(5);expect(await pixels(page)).not.toBe(restoredFrozen);
  // Save inside the apple/growth interval, including the active 200 ms feedback.
  await gameAction(page,'Restart game');
- await page.getByRole('button',{name:'Play',exact:true}).click();
+ await page.getByRole('button',{name:'Start slithering',exact:true}).click();
  await page.clock.runFor(620);const grown=await pause(page);
  expect(grown.score).toBe(10);expect(grown.segments).toBe(4);
  const growingPixels=await pixels(page);await page.reload();expect(await pixels(page)).toBe(growingPixels);
@@ -63,12 +63,12 @@ test('a dropped RAF catches up to the same final grid and committed edge',async(
   await target.evaluate(()=>{
    const times:number[]=[];(window as unknown as {snakeTestFrames:number[]}).snakeTestFrames=times;
    const observe=(time:number)=>{
-    if(document.querySelector('.snake-game .game-sheet')?.hasAttribute('hidden') && document.querySelector('#pause-game')?.getAttribute('aria-label')==='Pause game')times.push(time);
+    if(document.querySelector('.snake-card')?.hasAttribute('hidden') && document.querySelector('#pause-game')?.getAttribute('aria-label')==='Pause game')times.push(time);
     requestAnimationFrame(observe);
    };
    requestAnimationFrame(observe);
   });
-  await target.getByRole('button',{name:'Play',exact:true}).click();
+  await target.getByRole('button',{name:'Start slithering',exact:true}).click();
   await target.keyboard.press('ArrowUp');await target.keyboard.press('ArrowLeft');
   await target.clock.runFor(20); // Establish the first active RAF in both scenarios before the gap.
   const baseline=await target.evaluate(()=>(window as unknown as {snakeTestStart:number}).snakeTestStart);

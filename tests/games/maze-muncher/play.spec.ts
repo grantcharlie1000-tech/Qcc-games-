@@ -7,10 +7,10 @@ test('start, eat dots, turn, pause freezes play and a reload resumes the run',as
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.clock.install({time:new Date('2026-10-22T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-22T09:00:01Z'));
  await page.goto('/#/game/maze-muncher');
- await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Start',exact:true})).toBeVisible();
  await expect(page.locator('.mm-wall')).toHaveAttribute('d',/^M/);
  await expect(page.locator('.mm-dot')).toHaveCount(242);await expect(page.locator('.mm-berry')).toHaveCount(4);
- await page.getByRole('button',{name:'Play',exact:true}).click();
+ await page.getByRole('button',{name:'Start',exact:true}).click();
  await expect(page.locator('.mm-banner')).toHaveText('READY!');
  await page.clock.runFor(2100);await expect(page.locator('.mm-banner')).toHaveText('');
  await page.clock.runFor(800);
@@ -76,13 +76,13 @@ test('arrows and WASD buffer all directions and Escape uses shared pause',async(
  const before=await current(page);await page.keyboard.press('ArrowUp');await page.clock.runFor(1000);expect(await current(page)).toEqual(before);
 });
 
-test('Enter starts play and game over has a clean replay sheet',async({page})=>{
- await page.goto('/#/game/maze-muncher');await expect(page.locator('.mm-start')).toHaveText('Play');await page.keyboard.press('Enter');await expect(page.locator('.mm-banner')).toHaveText('READY!');
+test('Enter starts play and game over restores the original replay card',async({page})=>{
+ await page.goto('/#/game/maze-muncher');await expect(page.locator('.mm-start')).toHaveText('Start');await page.keyboard.press('Enter');await expect(page.locator('.mm-banner')).toHaveText('READY!');
  const data=createState(9);data.phase='over';data.lives=0;data.score=1230;data.level=2;
  await page.addInitScript(data=>localStorage.setItem('pocket-arcade:v1:save:maze-muncher',JSON.stringify({version:1,data})),data);await page.reload();
- await expect(page.locator('.mm-frame .game-sheet').getByRole('heading')).toHaveText('Pac-Man');await expect(page.locator('.mm-frame .game-sheet-stats')).toContainText('Score1,230');await expect(page.locator('.mm-lives strong')).toHaveText('0');
+ await expect(page.locator('.mm-card strong')).toHaveText('Game over');await expect(page.locator('.mm-card p')).toHaveText('1,230 points · Level 2');await expect(page.locator('.mm-lives strong')).toHaveText('0');
  await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.mm-banner')).toHaveText('READY!');await expect(page.locator('.mm-lives strong')).toHaveText('3');
- await gameAction(page,'Restart game');await expect(page.locator('.mm-frame .game-sheet-stats')).toContainText('Best1,230');
+ await gameAction(page,'Restart game');await expect(page.locator('.mm-start')).toHaveText('Start');await expect(page.locator('#game-best strong')).toHaveText('1230');
 });
 
 test('native phone touch swipes steer in all four directions without moving the page',async({browser,browserName})=>{
