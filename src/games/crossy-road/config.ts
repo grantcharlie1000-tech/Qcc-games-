@@ -48,7 +48,7 @@ export interface RunState {
   v: 1;
   seed: number;
   /** Old saves without a revision replay the original generator. */
-  worldVersion?: 1 | 2 | 3;
+  worldVersion?: 1 | 2 | 3 | 4;
   /** World time in seconds; hazards are pure functions of it. */
   t: number;
   phase: Phase;
@@ -167,7 +167,7 @@ export const STEP = 1 / 60;
 // view with the camera's yaw; only what is inside the camera's window is drawn, so a wider span costs nothing.
 export const RENDER_X_MIN = -40;
 export const RENDER_X_MAX = 48;
-export const VEHICLE_PALETTE = 6;
+export const VEHICLE_PALETTE = 7;
 /** Charlie's reference proportions: longer car silhouette; collision uses this same span. */
 export const CAR_LENGTH = 1.5;
 export const TRAIN_PALETTE = 4;

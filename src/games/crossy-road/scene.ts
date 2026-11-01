@@ -447,7 +447,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   const onVehicle = (x0: number, x1: number, mover: Mover): void => {
-    const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI, tint = C_VEHICLE + (curRoad.style === 'compact' ? 1 : mover.color % VEHICLE_PALETTE);
+    const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI, tint = C_VEHICLE + (mover.color % VEHICLE_PALETTE);
     if (curRoad.vehicle === 'car') {
       const style = curRoad.style ?? (mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
       const i = carStyles.indexOf(style), size = style === 'compact' ? 1.2 : 1.8;
