@@ -20,7 +20,7 @@ import {
 import { forEachMover, laneVelocity, platformAt, railWarning, trainSpan } from './lanes';
 import {
   LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
-  dropShadowGeometry, signalGlowGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry,
+  signalGlowGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry, mergeVehicle, type VehicleParts,
 } from './models';
 
 // Camera ---------------------------------------------------------------------
@@ -105,14 +105,6 @@ const DIR_Z: Readonly<Record<Dir, number>> = { up: -1, down: 1, left: 0, right: 
 
 // Light: from the upper left and the front, so the faces the camera sees (top, front, left) are lit.
 const SUN_X = -0.85, SUN_Y = 0.9, SUN_Z = 0;
-const SUN_LEN = Math.hypot(SUN_X, SUN_Y, SUN_Z);
-const SUN_DIR = { x: SUN_X / SUN_LEN, y: SUN_Y / SUN_LEN, z: SUN_Z / SUN_LEN };
-/** The shadow camera's right and up axes (horizontal right, and up in its image plane), for texel snapping. */
-const SHADOW_RIGHT_LEN = Math.hypot(SUN_DIR.x, SUN_DIR.z);
-const SR = { x: SUN_DIR.z / SHADOW_RIGHT_LEN, z: -SUN_DIR.x / SHADOW_RIGHT_LEN };
-const SU = { x: SUN_DIR.y * SR.z, y: SUN_DIR.z * SR.x - SUN_DIR.x * SR.z, z: -SUN_DIR.y * SR.x };
-const SHADOW_DIST = 40, SHADOW_MAP = 4096, SHADOW_MAX_RADIUS = 20, SHADOW_PAD = 1.5;
-
 const ease = { out: (k: number): number => 1 - (1 - k) * (1 - k) * (1 - k), in: (k: number): number => k * k * k };
 
 /** Deterministic 30-bit integer from two integers (the flowers, ripples, rock turns and edge variants).
@@ -137,69 +129,105 @@ const isWater = (lane: Lane): boolean => lane.kind === 'river' || lane.kind === 
  * arrays: translation, per-axis scale and a yaw about y, with a palette colour times a brightness. */
 class Pool {
   readonly mesh: THREE.InstancedMesh;
+  readonly shadow?: THREE.InstancedMesh;
+  shadowFloor: number;
+  shadowOpacity = 1;
   n = 0;
   private readonly m: Float32Array;
   private readonly c: Float32Array;
+  private readonly previous: Float64Array;
+  private matrixDirty = false;
+  private colorDirty = false;
   private readonly rm = { start: 0, count: 0 };
   private readonly rc = { start: 0, count: 0 };
 
-  constructor(readonly cap: number, geometry: THREE.BufferGeometry, material: THREE.Material, cast: boolean, receive: boolean) {
+  constructor(readonly cap: number, geometry: THREE.BufferGeometry, material: THREE.Material, cast: boolean,
+    shadowMaterial: THREE.ShaderMaterial, floor: number) {
     const mesh = new THREE.InstancedMesh(geometry, material, cap);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    // The colour buffer exists from the start so every program is compiled with instance colours.
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3).fill(1), 3);
     mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
-    mesh.castShadow = cast;
-    mesh.receiveShadow = receive;
+    mesh.matrixAutoUpdate = false;
+    mesh.matrixWorldAutoUpdate = false;
     mesh.count = 0;
     this.mesh = mesh;
+    this.shadowFloor = floor;
     this.m = mesh.instanceMatrix.array as Float32Array;
     this.c = mesh.instanceColor.array as Float32Array;
+    this.previous = new Float64Array(cap * 9).fill(NaN);
     keepRange(mesh.instanceMatrix, this.rm);
     keepRange(mesh.instanceColor, this.rc);
+    if (cast) {
+      // Project the actual voxel triangles in the main pass. One stencil mark
+      // unions overlapping faces/casters, so shadows never darken themselves.
+      const shadow = new THREE.InstancedMesh(geometry, shadowMaterial, cap);
+      shadow.instanceMatrix = mesh.instanceMatrix;
+      shadow.frustumCulled = false;
+      shadow.matrixAutoUpdate = false;
+      shadow.matrixWorldAutoUpdate = false;
+      shadow.renderOrder = 1;
+      shadow.count = 0;
+      shadow.onBeforeRender = () => {
+        shadowMaterial.uniforms.uFloor.value = this.shadowFloor;
+        shadowMaterial.uniforms.uFade.value = this.shadowOpacity;
+        shadowMaterial.uniformsNeedUpdate = true;
+      };
+      this.shadow = shadow;
+    }
   }
 
-  begin(): void { this.n = 0; }
+  begin(): void { this.n = 0; this.matrixDirty = this.colorDirty = false; }
 
-  /** Adds an instance (dropped silently when full): position of the base centre, scale along its own
-   * axes, a yaw, and palette entry `pi` (see PAL) times brightness `k`. */
   put(x: number, y: number, z: number, sx: number, sy: number, sz: number, yaw: number, pi: number, k: number): void {
     const n = this.n;
     if (n >= this.cap) return;
-    const m = this.m, o = n * 16;
-    let c = 1, s = 0;
-    if (yaw !== 0) { c = Math.cos(yaw); s = Math.sin(yaw); }
-    m[o] = sx * c; m[o + 1] = 0; m[o + 2] = -sx * s; m[o + 3] = 0;
-    m[o + 4] = 0; m[o + 5] = sy; m[o + 6] = 0; m[o + 7] = 0;
-    m[o + 8] = sz * s; m[o + 9] = 0; m[o + 10] = sz * c; m[o + 11] = 0;
-    m[o + 12] = x; m[o + 13] = y; m[o + 14] = z; m[o + 15] = 1;
-    const q = n * 3, p = pi * 3;
-    this.c[q] = PAL[p] * k; this.c[q + 1] = PAL[p + 1] * k; this.c[q + 2] = PAL[p + 2] * k;
+    const a = n * 9, previous = this.previous;
+    if (previous[a] !== x || previous[a+1] !== y || previous[a+2] !== z || previous[a+3] !== sx || previous[a+4] !== sy || previous[a+5] !== sz || previous[a+6] !== yaw) {
+      previous[a]=x; previous[a+1]=y; previous[a+2]=z; previous[a+3]=sx; previous[a+4]=sy; previous[a+5]=sz; previous[a+6]=yaw;
+      const m = this.m, o = n * 16, c = yaw === 0 ? 1 : Math.cos(yaw), sn = yaw === 0 ? 0 : Math.sin(yaw);
+      m[o]=sx*c; m[o+1]=0; m[o+2]=-sx*sn; m[o+3]=0;
+      m[o+4]=0; m[o+5]=sy; m[o+6]=0; m[o+7]=0;
+      m[o+8]=sz*sn; m[o+9]=0; m[o+10]=sz*c; m[o+11]=0;
+      m[o+12]=x; m[o+13]=y; m[o+14]=z; m[o+15]=1;
+      this.matrixDirty = true;
+    }
+    this.tint(n, pi, k);
     this.n = n + 1;
   }
 
-  /** Adds an instance with a ready-made matrix (the player and the UFO turn and tumble freely). */
+  private tint(n: number, pi: number, k: number): void {
+    const a=n*9, previous=this.previous;
+    if(previous[a+7]===pi && previous[a+8]===k)return;
+    previous[a+7]=pi; previous[a+8]=k;
+    const q=n*3,p=pi*3;
+    this.c[q]=PAL[p]*k; this.c[q+1]=PAL[p+1]*k; this.c[q+2]=PAL[p+2]*k;
+    this.colorDirty=true;
+  }
+
   putMatrix(matrix: THREE.Matrix4, pi: number, k: number): void {
-    const n = this.n;
-    if (n >= this.cap) return;
-    matrix.toArray(this.m, n * 16);
-    const q = n * 3, p = pi * 3;
-    this.c[q] = PAL[p] * k; this.c[q + 1] = PAL[p + 1] * k; this.c[q + 2] = PAL[p + 2] * k;
-    this.n = n + 1;
+    const n=this.n;
+    if(n>=this.cap)return;
+    const o=n*16, values=matrix.elements;
+    for(let i=0;i<16;i++){
+      const value=Math.fround(values[i]);
+      if(this.m[o+i]!==value){this.m[o+i]=value;this.matrixDirty=true;}
+    }
+    this.previous[n*9]=NaN;
+    this.tint(n,pi,k);
+    this.n=n+1;
   }
 
-  /** Shows the first `n` instances and uploads only those. */
   commit(): void {
-    const mesh = this.mesh, n = this.n;
-    mesh.count = n;
-    mesh.visible = n > 0;
-    if (n === 0) return;
-    this.rm.count = n * 16;
-    this.rc.count = n * 3;
-    mesh.instanceMatrix.needsUpdate = true;
-    (mesh.instanceColor as THREE.InstancedBufferAttribute).needsUpdate = true;
+    const mesh=this.mesh,n=this.n;
+    mesh.count=n; mesh.visible=n>0;
+    if(this.shadow){this.shadow.count=n;this.shadow.visible=n>0&&this.shadowOpacity>0;}
+    if(!n)return;
+    if(this.matrixDirty){this.rm.count=n*16;mesh.instanceMatrix.needsUpdate=true;}
+    if(this.colorDirty){this.rc.count=n*3;mesh.instanceColor!.needsUpdate=true;}
   }
+
+  dispose(): void { this.shadow?.dispose(); this.mesh.dispose(); }
 }
 
 /** Gives an attribute one update range for good, so an upload sends only the first `count` values (the
@@ -212,9 +240,9 @@ function keepRange(attribute: THREE.BufferAttribute, range: { start: number; cou
 
 /** Throws when a WebGL renderer cannot be created. */
 export function createScene(canvas: HTMLCanvasElement, options: { quality?: Quality } = {}): CrossyRoadScene {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, stencil: true, powerPreference: 'high-performance' });
   renderer.setClearColor(CLEAR_COLOR);
-  renderer.shadowMap.type = THREE.BasicShadowMap;
+  renderer.shadowMap.enabled = false;
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 2 * CAMERA_DIST + 10);
   // The orientation never changes: look at the origin once, then only move the camera.
@@ -223,76 +251,91 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   const hemisphere = new THREE.HemisphereLight(0xbcb7dc, 0x50535f, 2.0);
   const sun = new THREE.DirectionalLight(0xf9ffe2, 3.05);
-  sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
-  sun.shadow.bias = -0.00015;
-  sun.shadow.normalBias = 0.012;
-  sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = SHADOW_DIST * 2;
+  sun.position.set(SUN_X, SUN_Y, SUN_Z);
   scene.add(hemisphere, sun, sun.target);
 
-  const geometries: THREE.BufferGeometry[] = [], materials: THREE.Material[] = [], pools: Pool[] = [], litMaterials: THREE.Material[] = [];
+  const geometries: THREE.BufferGeometry[] = [], materials: THREE.Material[] = [], pools: Pool[] = [];
   const geo = (g: THREE.BufferGeometry): THREE.BufferGeometry => { geometries.push(g); return g; };
-  const mat = <M extends THREE.Material>(m: M, lit = false): M => { materials.push(m); if (lit) litMaterials.push(m); return m; };
-  const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, cap: number, cast = false, receive = false, order = 0): Pool => {
-    const p = new Pool(cap, geometry, material, cast, receive);
+  const mat = <M extends THREE.Material>(m: M): M => { materials.push(m); return m; };
+  const shadowMaterial = mat(new THREE.ShaderMaterial({
+    uniforms: {uFloor:{value:0},uFade:{value:1},uSlope:{value:-SUN_X/SUN_Y},uTint:{value:new THREE.Color(0x171b1a)}},
+    vertexShader: `uniform float uFloor; uniform float uSlope;
+      void main(){vec4 world=instanceMatrix*vec4(position,1.0);
+        world.x+=(world.y-uFloor)*uSlope;world.y=uFloor+0.018;
+        gl_Position=projectionMatrix*modelViewMatrix*world;}`,
+    fragmentShader: `uniform vec3 uTint; uniform float uFade;
+      void main(){gl_FragColor=vec4(uTint,0.47*uFade);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+    transparent:true,depthWrite:false,side:THREE.DoubleSide,forceSinglePass:true,
+    stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp,
+  }));
+  const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, cap: number, cast = false, _receive = false, order = 0, floor = 0): Pool => {
+    const p = new Pool(cap, geometry, material, cast, shadowMaterial, floor);
     p.mesh.renderOrder = order;
     scene.add(p.mesh);
+    if(p.shadow)scene.add(p.shadow);
     pools.push(p);
     return p;
   };
 
-  const lit = mat(new THREE.MeshLambertMaterial({ vertexColors: true }), true);
-  const playerMaterial = mat(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true }), true);
+  const lit = mat(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const painted = mat(new THREE.MeshLambertMaterial({ vertexColors: true }));
+  painted.onBeforeCompile = shader => {
+    shader.vertexShader = 'attribute float paint;\n' + shader.vertexShader.replace('#include <color_vertex>',
+      THREE.ShaderChunk.color_vertex.replace('vColor.xyz *= instanceColor.xyz;', 'vColor.xyz *= mix(vec3(1.0), instanceColor.xyz, paint);'));
+  };
+  painted.customProgramCacheKey = () => 'crossy-vehicle-paint-v1';
+  const playerMaterial = mat(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true }));
   const unlit = mat(new THREE.MeshBasicMaterial({ vertexColors: true }));
   const glowMaterial = mat(new THREE.MeshBasicMaterial({vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true}));
-  const blobMaterial = mat(new THREE.MeshBasicMaterial({ color: 0x0b140e, transparent: true, opacity: 0.26, depthWrite: false }));
   // Transparent double-sided materials are single pass: three would otherwise draw them twice (back faces,
   // then front) and rebuild their program every frame.
   const beamMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
   const spotMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
   const shadeMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
-  const dropMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
 
   const box = geo(unitBoxGeometry());
   const carStyles: CarStyle[] = ['compact', 'sedan', 'taxi'];
-  const train = trainGeometry(), cars = carStyles.map(carGeometry), trucks = [truckGeometry(2), truckGeometry(3)];
-  for (const g of [...cars.flatMap(t => [t.body, t.detail]), train.nose.body, train.nose.detail, train.carriage.body, train.carriage.detail, ...trucks.flatMap(t => [t.body, t.detail])]) geo(g);
+  const merged = (parts: VehicleParts): THREE.BufferGeometry => {
+    const geometry = geo(mergeVehicle(parts));
+    parts.body.dispose(); parts.detail.dispose();
+    return geometry;
+  };
+  const train = trainGeometry(), cars = carStyles.map(style => merged(carGeometry(style))), trucks = [merged(truckGeometry(2)), merged(truckGeometry(3))];
 
   // Pools: ground details first, then objects (casters), then the effects drawn last.
   const ground = pool(box, lit, 2600, false, true);
   const trees = [0, 1, 2, 3].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
   const rocks = [0, 1, 2].map(v => pool(geo(rockGeometry(v)), lit, 160, true));
-  const carBody = cars.map(t => pool(t.body, lit, 160, true)), carDetail = cars.map(t => pool(t.detail, lit, 160, true));
-  const truckBody = trucks.map(t => pool(t.body, lit, 96, true)), truckDetail = trucks.map(t => pool(t.detail, lit, 96, true));
-  const noseBody = pool(train.nose.body, lit, 16, true), noseDetail = pool(train.nose.detail, lit, 16, true);
-  const carriageBody = pool(train.carriage.body, lit, 96, true), carriageDetail = pool(train.carriage.detail, lit, 96, true);
-  const logs = ([2, 3, 4] as const).map(len => pool(geo(logGeometry(len)), lit, 192, true));
+  const carBody = cars.map(g => pool(g, painted, 160, true));
+  const truckBody = trucks.map(g => pool(g, painted, 96, true));
+  const noseBody = pool(merged(train.nose), painted, 16, true);
+  const carriageBody = pool(merged(train.carriage), painted, 96, true);
+  const logs = ([2, 3, 4] as const).map(len => pool(geo(logGeometry(len)), lit, 192, true, false, 0, WATER_Y));
   const lilies = pool(geo(lilyGeometry()), lit, 160);
   const posts = pool(geo(signalPostGeometry()), lit, 48, true);
   const lampGeo = geo(lampGeometry());
   const lamps = pool(lampGeo, unlit, 48), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
   const fx = pool(box, unlit, 96);
-  const blobs = pool(box, blobMaterial, 640, false, false, 1);
 
-  // The bird and the UFO are one-instance pools, so every shadow caster is instanced and the shared
-  // depth material never switches program between instanced and plain meshes.
+  // The bird and the UFO use the same pooled transforms and projected shadows.
   const playerPool = pool(geo(chickenGeometry().scale(0.78, 1, 0.78)), playerMaterial, 1, true);
   const ufoPool = pool(geo(ufoGeometry()), lit, 1, true);
   const beam = new THREE.Mesh(geo(beamGeometry()), beamMaterial);
   const spot = new THREE.Mesh(geo(spotRingGeometry()), spotMaterial);
   const shade = new THREE.Mesh(geo(ufoShadowGeometry()), shadeMaterial);
-  // Low-quality contact fallback; High uses the directional silhouette alone.
-  const drop = new THREE.Mesh(geo(dropShadowGeometry()), dropMaterial);
-  drop.renderOrder = 1;
   beam.renderOrder = 5;
   spot.renderOrder = 3;
   shade.renderOrder = 2;
-  for (const m of [beam, spot, shade, drop]) { m.frustumCulled = false; scene.add(m); }
+  for (const m of [beam, spot, shade]) { m.frustumCulled = false; scene.add(m); }
 
   // State ----------------------------------------------------------------------
 
   const stats: SceneStats = { calls: 0, triangles: 0, geometries: 0, textures: 0, programs: 0, quality: options.quality ?? 'high' };
   let quality: Quality = stats.quality, low = quality === 'low';
+  let resolutionCap = 3, cssWidth = 0, cssHeight = 0;
   let disposed = false, fit = cameraFit(1, 1);
   /** Smoothed focus (row and x), the look-at point on the ground, and the shake offset. */
   let snap = true, focusRow = 0, focusX = 4, lookX = 4, lookZ = 0, shakeX = 0, shakeY = 0;
@@ -303,7 +346,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   let curZ = 0, winLo = 0, winHi = 0, curDir = 1;
   let curRoad = null as unknown as RoadLane;
   /** The death being shown: its time, the captured anchor and the surface under it. */
-  let deathT = NaN, anchorX = 0, anchorZ = 0, anchorY = 0, anchorYaw = 0, anchorDrop = 0, groundY = 0, dropY = 0;
+  let deathT = NaN, anchorX = 0, anchorZ = 0, anchorY = 0, anchorYaw = 0, groundY = 0;
   /** The player's computed transform for this frame. */
   let pX = 0, pY = 0, pZ = 0, pSX = 1, pSY = 1, pSZ = 1, pYaw = 0, pRoll = 0, pTumbleZ = false, pAlpha = 1, pShow = true;
   /** The UFO's transform for this frame. */
@@ -315,16 +358,17 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   // Quality ---------------------------------------------------------------------
 
-  function applyShadows(on: boolean): void {
-    renderer.shadowMap.enabled = on;
-    sun.castShadow = on;
-    for (const m of litMaterials) m.needsUpdate = true;
-    if (!on && sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  function applyPixelRatio(): void {
+    const ratio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? resolutionCap : 1.5);
+    const width = cssWidth || 1, height = cssHeight || 1;
+    if (renderer.getPixelRatio() === ratio && canvas.width === Math.floor(width * ratio) && canvas.height === Math.floor(height * ratio)) return;
+    renderer.setDrawingBufferSize(width, height, ratio);
   }
 
-  function applyPixelRatio(): void {
-    const ratio = Math.min(window.devicePixelRatio || 1, quality === 'high' ? 3 : 1.5);
-    if (renderer.getPixelRatio() !== ratio) renderer.setPixelRatio(ratio);
+  function setResolutionCap(cap: number): void {
+    if (disposed) return;
+    resolutionCap = clamp(cap, 1.5, 3);
+    applyPixelRatio();
   }
 
   function setQuality(next: Quality): void {
@@ -332,28 +376,20 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     quality = next;
     low = next === 'low';
     stats.quality = next;
-    applyShadows(!low);
     applyPixelRatio();
   }
 
   // Layout ------------------------------------------------------------------------
 
-  /** Fits the shadow camera to the visible ground: a square around the view, snapped to texels. */
-  function fitShadow(): void {
-    const reach = Math.hypot(fit.halfWidth, fit.halfHeight / SIN_P) + SHADOW_PAD;
-    const r = Math.min(reach, SHADOW_MAX_RADIUS), cam = sun.shadow.camera;
-    cam.left = -r; cam.right = r; cam.top = r; cam.bottom = -r;
-    cam.updateProjectionMatrix();
-  }
-
   function resize(w: number, h: number): void {
     if (disposed || !(w >= 1 && h >= 1)) return;
+    const changed = w !== cssWidth || h !== cssHeight;
+    cssWidth = w; cssHeight = h;
     applyPixelRatio();
-    renderer.setSize(w, h, false);
+    if (!changed) return;
     fit = cameraFit(w, h);
     camera.left = -fit.halfWidth; camera.right = fit.halfWidth; camera.top = fit.halfHeight; camera.bottom = -fit.halfHeight;
     camera.updateProjectionMatrix();
-    fitShadow();
   }
 
   /** Moves the focus toward the player (never backward), places the camera and finds the rows on screen. */
@@ -384,13 +420,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     rowLo = Math.ceil(-0.5 - (lookZ + zr) / ROW_DEPTH) - 1;
     rowHi = Math.floor(0.5 - (lookZ - zr) / ROW_DEPTH) + 1;
     if (rowHi - rowLo >= MAX_ROWS) rowHi = rowLo + MAX_ROWS - 1;
-    // The sun follows the view, snapped to shadow texels so edges do not crawl.
-    const texel = (2 * sun.shadow.camera.right) / SHADOW_MAP;
-    const a = lookX * SR.x + lookZ * SR.z, b = lookX * SU.x + lookZ * SU.z;
-    const da = Math.round(a / texel) * texel - a, db = Math.round(b / texel) * texel - b;
-    const sx = lookX + SR.x * da + SU.x * db, sy = SU.y * db, sz = lookZ + SR.z * da + SU.z * db;
-    sun.target.position.set(sx, sy, sz);
-    sun.position.set(sx + SUN_DIR.x * SHADOW_DIST, sy + SUN_DIR.y * SHADOW_DIST, sz + SUN_DIR.z * SHADOW_DIST);
+
   }
 
   /** Sets the row being drawn and the x window of objects that can be on screen on it. */
@@ -410,20 +440,13 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     ground.put(RIGHT_ZONE_X, y, zc, RIGHT_ZONE_W, h, depth, 0, edge, shade);
   }
 
-  /** A flat dark square under a thing (low quality): thrown a little to the right and back, like the sun's shadow. */
-  function blob(x: number, y: number, z: number, w: number, d: number): void {
-    blobs.put(x + 0.1, y + 0.012, z - 0.08, w, 0.02, d, 0, C_WHITE, 1);
-  }
-
   function putTree(x: number, variant: number, k: number): void {
     trees[clamp(variant | 0, 0, 3)].put(x, 0, curZ, 1, 1, 1, 0, C_WHITE, k);
-    if (low) blob(x, 0, curZ, 0.98, 0.96);
   }
 
   function putRock(x: number, variant: number, row: number, k: number): void {
     const turn = (hash(row, x + 400) & 3) * (Math.PI / 2);
     rocks[variant < 0 ? 0 : variant > 2 ? 2 : variant | 0].put(x, 0, curZ, 1, 1, 1, turn, C_WHITE, k);
-    if (low) blob(x, 0, curZ, 0.9, 0.84);
   }
 
   function drawGrass(lane: GrassLane, row: number): void {
@@ -452,13 +475,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       const style = curRoad.style ?? (mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
       const i = carStyles.indexOf(style), size = style === 'compact' ? 1.2 : 1.8;
       carBody[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, len / size, 1, 1, yaw, tint, 1);
-      carDetail[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, len / size, 1, 1, yaw, C_WHITE, 1);
-      if (low) blob(cx, 0, curZ + TRAFFIC_ROW_Z, len + 0.3, 0.92);
     } else {
       const i = len > 2.5 ? 1 : 0, s = len / (i + 2);
       truckBody[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, s, 1, 1, yaw, C_TRUCK + (mover.color % VEHICLE_PALETTE), 1);
-      truckDetail[i].put(cx, 0, curZ + TRAFFIC_ROW_Z, s, 1, 1, yaw, C_WHITE, 1);
-      if (low) blob(cx, 0, curZ + TRAFFIC_ROW_Z, len + 0.3, 0.98);
     }
   };
 
@@ -483,7 +502,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     band(C_WATER, WATER_Y - 0.6, 0.6, curZ, ROW_DEPTH, C_WATER_EDGE, 1);
     // Both shorelines end at the exact half-cell boundary. The soil wall and
     // narrow rim stay inside this water cell; adjacent road/rail strips remain whole.
-    for (const side of [-1, 1]) if (!isWater(side < 0 ? ahead : behind)) {
+    for (let side = -1; side <= 1; side += 2) if (!isWater(side < 0 ? ahead : behind)) {
       band(C_DIRT, WATER_Y, -WATER_Y, curZ + side * (ROW_DEPTH / 2 - 0.006), 0.012);
       band(C_RIPPLE, WATER_Y, 0.008, curZ + side * (ROW_DEPTH / 2 - 0.028), 0.025);
     }
@@ -525,16 +544,13 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     const nose = front - (dir * NOSE_LEN) / 2;
     if (nose >= winLo - 2 && nose <= winHi + 2) {
       noseBody.put(nose, TRAIN_Y, curZ + TRAFFIC_ROW_Z, 1, 1, 1, yaw, tint, 1);
-      noseDetail.put(nose, TRAIN_Y, curZ + TRAFFIC_ROW_Z, 1, 1, 1, yaw, C_WHITE, 1);
     }
     const bodyLen = x1 - x0 - NOSE_LEN, n = Math.max(1, Math.round(bodyLen / CARRIAGE_LEN)), each = bodyLen / n, sx = each / CARRIAGE_LEN;
     for (let i = 0; i < n; i++) {
       const cc = front - dir * (NOSE_LEN + each * (i + 0.5));
       if (cc < winLo - 2 || cc > winHi + 2) continue;
       carriageBody.put(cc, TRAIN_Y, curZ + TRAFFIC_ROW_Z, sx, 1, 1, yaw, tint, 1);
-      carriageDetail.put(cc, TRAIN_Y, curZ + TRAFFIC_ROW_Z, sx, 1, 1, yaw, C_WHITE, 1);
     }
-    if (low) blob((x0 + x1) / 2, 0, curZ + TRAFFIC_ROW_Z, x1 - x0 + 0.2, 0.98);
   }
 
   function drawRail(lane: RailLane): void {
@@ -598,8 +614,6 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     const p = hopping ? clamp(state.hop / HOP_TIME, 0, 1) : 1;
     if (hopping) groundY = lerp(surfaceAt(world.lane(state.fromRow), state.fromX, t - state.hop), surfaceAt(world.lane(state.row), state.x, t), p);
     else groundY = surfaceAt(world.lane(state.row), pose.x, t);
-    // The ground ellipse sits just above the surface (above the steel on a rail row).
-    dropY = groundY + (world.lane(state.row).kind === 'rail' ? 0.11 : 0.04);
     pX = pose.x; pZ = -pose.z * ROW_DEPTH; pY = groundY + pose.lift; pYaw = YAWS[pose.facing];
     if (reduced) return;
     let sy = 1;
@@ -608,7 +622,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       sy = (state.hop < SQUASH_TIME ? lerp(0.8, 1, state.hop / SQUASH_TIME) : 1) + 0.18 * Math.sin(Math.PI * p);
     } else {
       const land = t - state.landedAt, bonk = t - state.bonkAt;
-      if (land >= 0 && land < 0.08) sy = 1 - 0.18 * (1 - land / 0.08) * (1 - land / 0.08);
+      if(frame.pressed) sy=0.8;
+      else if (land >= 0 && land < 0.08) sy = 1 - 0.18 * (1 - land / 0.08) * (1 - land / 0.08);
       else if (state.phase !== 'over') sy = 1 + 0.018 * Math.sin(t * 5.5);
       if (bonk >= 0 && bonk < 0.12) {
         // A small nudge toward the blocked tile and back, with a squash.
@@ -700,7 +715,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         // First frame of this death: remember where the bird was, so the animation is anchored there.
         deathT = death.t;
         alive(frame);
-        anchorX = pX; anchorZ = pZ; anchorY = pY; anchorYaw = pYaw; anchorDrop = dropY;
+        anchorX = pX; anchorZ = pZ; anchorY = pY; anchorYaw = pYaw;
         pSX = pSY = pSZ = 1;
       }
       dying(frame, death, Math.max(0, state.t - death.t));
@@ -718,7 +733,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       playerPool.putMatrix(proxy.matrix, C_WHITE, 1);
     }
     playerMaterial.opacity = pAlpha;
-    playerPool.mesh.castShadow = pAlpha > 0.5;
+    playerPool.shadowOpacity = pAlpha > 0.5 ? 1 : 0;
+    playerPool.shadowFloor = isWater(frame.world.lane(state.row)) ? WATER_Y : 0;
+    ufoPool.shadowFloor = playerPool.shadowFloor;
     if (uShow) {
       proxy.position.set(uX, uY, uZ);
       proxy.scale.set(1, 1, 1);
@@ -726,27 +743,6 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       proxy.updateMatrix();
       ufoPool.putMatrix(proxy.matrix, C_WHITE, 1);
     }
-    // Low quality alone uses a small contact ellipse: it stays on the surface
-    // while the bird is in the air and shrinks and fades a little with height, so a hop reads even when
-    // the real shadow is tiny or off.
-    let dropOn = low && pShow, dropScale = 1, dropAlpha = 1, dropAt = dropY;
-    if (death === null) {
-      const lift = frame.pose.lift;
-      dropScale = 1 - 0.5 * lift;
-      dropAlpha = 1 - 0.8 * lift;
-    } else if (death.cause === 'car') {
-      dropScale = 1.3;
-      dropAt = anchorDrop;
-    } else if (death.cause === 'ufo-idle' || death.cause === 'ufo-behind') {
-      const lift = Math.max(0, pY - anchorY);
-      dropScale = Math.max(0.3, 1 - 0.4 * lift);
-      dropAlpha = pAlpha * Math.max(0, 1 - lift / 1.6);
-      dropAt = anchorDrop;
-    } else dropOn = false;
-    drop.visible = low && dropOn && dropAlpha > 0.02;
-    dropMaterial.opacity = dropAlpha;
-    drop.position.set(pX, dropAt, pZ);
-    drop.scale.set(0.38 * dropScale, 1, 0.4 * dropScale);
     // The idle warning: a pulsing pale-yellow ring on the ground and a soft UFO shadow closing in.
     const warn = frame.ufoWarn && death === null;
     spot.visible = warn;
@@ -797,7 +793,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   function dispose(): void {
     if (disposed) return;
     disposed = true;
-    for (const p of pools) p.mesh.dispose();
+    for (const p of pools) p.dispose();
     for (const g of geometries) g.dispose();
     for (const m of materials) m.dispose();
     hemisphere.dispose();
@@ -812,16 +808,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   resize(canvas.clientWidth || 1, canvas.clientHeight || 1);
-  // Every pool is still visible with no instances: render once with shadows and once without so
-  // every program (including the shadow depth ones) is compiled now, then settle on the quality.
+  // Compile each shared program once without allocating a shadow framebuffer.
+  renderer.compile(scene, camera);
+  for (const p of pools) {p.mesh.visible=false;if(p.shadow)p.shadow.visible=false;}
+  for (const m of [beam, spot, shade]) m.visible=false;
   applyPixelRatio();
-  applyShadows(true);
-  renderer.render(scene, camera);
-  applyShadows(false);
-  renderer.render(scene, camera);
-  for (const p of pools) p.mesh.visible = false;
-  for (const m of [beam, spot, shade, drop]) m.visible = false;
-  applyShadows(!low);
-  applyPixelRatio();
-  return { resize, render, setQuality, stats, reset, dispose };
+  return { resize, render, setQuality, setResolutionCap, stats, reset, dispose };
 }

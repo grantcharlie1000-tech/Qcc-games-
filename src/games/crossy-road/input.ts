@@ -41,6 +41,8 @@ export interface InputOptions {
   /** Directional input is accepted only while this returns true. */
   enabled(): boolean;
   onDir(dir: Dir): void;
+  /** Immediate take-off feedback, before a contact has a swipe direction. */
+  onPress?(pressed: boolean): void;
   onPause(): void;
   /** Space/Enter/R: return true when it started a new run (game over showing) so the key is consumed. */
   onAgain(): boolean;
@@ -74,7 +76,8 @@ function defaultBlocked(event: Event): boolean {
  *
  * Keyboard: one bubble-phase `keydown` listener. Escape is never inspected, prevented or stopped (the shell owns it
  * and opens the Study article). Key repeats, Ctrl/Alt/Meta combinations and keys meant for a dialog or text field are
- * ignored. Pointer: one gesture at a time on `target`, classified on release (a tap hops forward).
+ * ignored. Pointer: immediate press feedback, then one hop when a swipe is clear
+ * or a tap releases. A swipe never waits for pointerup and never adds a second hop.
  */
 export function attachInput(options: InputOptions): void {
   const { target, signal } = options;
@@ -102,29 +105,41 @@ export function attachInput(options: InputOptions): void {
     }
   }, { signal });
 
-  // One pointer at a time. The hop is decided on release from the travel since the press.
-  let active: { id: number; x: number; y: number } | null = null;
+  let active: { id: number; x: number; y: number; committed: boolean } | null = null;
 
   target.addEventListener('pointerdown', event => {
     // A mouse must use its primary button; a touch or pen contact always counts.
     const contact = event.pointerType === 'touch' || event.pointerType === 'pen';
-    if (active !== null || !event.isPrimary || (!contact && event.button !== 0)) return;
-    active = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    if (active !== null || !event.isPrimary || (!contact && event.button !== 0) || blocked(event)) return;
+    active = { id: event.pointerId, x: event.clientX, y: event.clientY, committed: false };
     try { target.setPointerCapture(event.pointerId); } catch { /* the pointer is already gone */ }
     event.preventDefault();
-    target.focus({ preventScroll: true });
+    if(typeof document==='undefined'||document.activeElement!==target) target.focus({ preventScroll: true });
+    if(options.enabled()) options.onPress?.(true);
+  }, { signal });
+
+  target.addEventListener('pointermove', event => {
+    if(active===null || event.pointerId!==active.id || active.committed) return;
+    const dx=event.clientX-active.x,dy=event.clientY-active.y,ax=Math.abs(dx),ay=Math.abs(dy);
+    if(Math.max(ax,ay)<SWIPE_MIN || (ax<SWIPE_DOMINANCE*ay && ay<SWIPE_DOMINANCE*ax)) return;
+    if(!options.enabled() || blocked(event)) return;
+    active.committed=true;
+    options.onPress?.(false);
+    event.preventDefault();
+    options.onDir(classifySwipe(dx,dy));
   }, { signal });
 
   target.addEventListener('pointerup', event => {
     if (active === null || event.pointerId !== active.id) return;
-    const { id, x, y } = active;
+    const { id, x, y, committed } = active;
     active = null;
     try { target.releasePointerCapture(id); } catch { /* already released */ }
-    if (options.enabled()) options.onDir(classifySwipe(event.clientX - x, event.clientY - y));
+    options.onPress?.(false);
+    if (!committed && options.enabled() && !blocked(event)) options.onDir(classifySwipe(event.clientX - x, event.clientY - y));
   }, { signal });
 
   const forget = (event: PointerEvent): void => {
-    if (event.pointerId === active?.id) active = null;
+    if (event.pointerId === active?.id) {active = null;options.onPress?.(false);}
   };
   target.addEventListener('pointercancel', forget, { signal });
   target.addEventListener('lostpointercapture', forget, { signal });

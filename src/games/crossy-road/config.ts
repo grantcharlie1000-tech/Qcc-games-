@@ -92,12 +92,16 @@ export interface SceneFrame {
   colorBlind: boolean;
   /** Idle warning showing: spotlight ring and pulse. */
   ufoWarn: boolean;
+  /** Contact-down squash before a tap/swipe direction is committed. */
+  pressed?: boolean;
 }
 export interface SceneStats { calls: number; triangles: number; geometries: number; textures: number; programs: number; quality: Quality }
 export interface CrossyRoadScene {
   resize(width: number, height: number): void;
   render(frame: SceneFrame): void;
   setQuality(quality: Quality): void;
+  /** Adaptive resolution leaves model detail and directional shadows intact. */
+  setResolutionCap(cap: number): void;
   readonly stats: SceneStats;
   /** Snap the camera to the player on the next render (new run or restore). */
   reset(): void;

@@ -60,14 +60,14 @@ A death sets the phase to `dying` for 0.9 s (0.3 s with reduced motion), then to
 
 ## Lane generation
 
-New runs store `worldVersion=3`. Saves with revision one or two replay their original generator and random draw order; saves without the field use revision one. Each chunk has its own PRNG, `mulberry32(mix(seed, k))`, so chunk `k` does not depend on how many rows were requested. Difficulty is `d = clamp(row / 300, 0, 1)`. Hazard positions are pure functions of the lane and `t`. Rows below 0 form a fully blocked grass lane.
+New runs store `worldVersion=4`. Saves with revision one, two or three replay their original generator and random draw order; saves without the field use revision one. Each chunk has its own PRNG, `mulberry32(mix(seed, k))`, so chunk `k` does not depend on how many rows were requested. Difficulty is `d = clamp(row / 300, 0, 1)`. Hazard positions are pure functions of the lane and `t`. Rows below 0 form a fully blocked grass lane.
 
 - Chunk 0 (rows 0–4) is grass with columns 2–6 clear.
 - Chunk weights, lerped by `d`: grass 0.40 → 0.22, road 0.32 → 0.38, river 0.16 → 0.22, rail 0.12 → 0.18. A pick equal to the previous chunk kind becomes grass (or road after grass). Hazard chunks in a row: at most 2 before row 60, then at most 3; otherwise grass is forced.
 - Revision three requires grass immediately before and after every river block (logs and lilies form one block). A river pick after road/rail becomes grass, and the next chunk after a river is always grass. Revisions one and two keep their original adjacencies.
 - Thickness: grass 1–5 before row 20, else 1–3; road 1–2 before row 20, else 1–4; river 1/2/3 with probabilities 20/60/20 %, with an optional lily as the second row of a pair or middle row of three (p = 0.3); rail 1/2/3 with probabilities 63/25/12 % from the start.
-- Road: speed `lerp(1.5, 4.5, d)` ±15 %; truck lanes with p `lerp(0.2, 0.4, d)` (trucks 2–3 tiles, compact cars 1.2, sedans/taxis 1.8); 2–5 movers per road pattern; each gap is `max(gapMin(speed), lerp(4.2, 3, d)·(0.85 + 0.6·r))`, with `gapMin(s) = max(3, 0.4 + s·(3·HOP_TIME + 0.25))` and `r` a PRNG draw in [0, 1); adjacent road rows take the opposite direction with p 0.7.
-- River: speed `lerp(1.0, 2.6, d)` ±15 %; log lengths 2, 3 or 4 with weights .2/.6/.2 initially, lerped to .6/.3/.1; gaps `clamp(lerp(2, 4, d)·jitter, 2, min(4, 2·PLATFORM_GRACE + 2.5·speed))`; adjacent river rows alternate direction; lily rows have 3–5 static pads.
+- Road: one paint per lane, red/cyan/purple/green/blue/orange plus yellow taxis; speed `lerp(1.5, 4.5, d)` ±15 %; truck lanes with p `lerp(0.2, 0.4, d)` (trucks 2–3 tiles, compact cars 1.2, sedans/taxis 1.8); 2–5 movers per road pattern; each gap is `max(gapMin(speed), lerp(4.2, 3, d)·(0.85 + 0.6·r))`, with `gapMin(s) = max(3, 0.4 + s·(3·HOP_TIME + 0.25))` and `r` a PRNG draw in [0, 1); adjacent road rows take the opposite direction with p 0.7.
+- River: speed `lerp(1.0, 2.6, d)` ±15 %; log lengths 2, 3 or 4 with weights .25/.5/.25 at every difficulty; gaps uniformly .55–.85 cells (at least 70% log coverage); adjacent river rows alternate direction; lily rows have 3–5 static pads.
 - Rail: train speed 18, length 12–20 tiles; period `max(5, lerp(9, 5, d)·jitter)` with a random phase; warning lead `WARN_LEAD = 1.1 s`, never below 1.0 s.
 - Grass: obstacle density `lerp(0.10, 0.30, d)` per column (70 % trees, 30 % rocks); shade alternates by row parity; decorative edge obstacles at x −6 to −1 and 9 to 14, outside the band.
 - Repair (deterministic): the generator tracks `reach`, the columns reachable from the row before. A grass row with no column that is both reachable and open clears the reachable column nearest the centre. A grass row with fewer than 3 open columns clears the columns nearest the centre until 3 are open. Hazard rows count as fully reachable; lily rows reach their pads.
@@ -117,8 +117,8 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 
 - Target 60 fps. School Chromebooks at 1366×768 must never drop below 45 fps.
 - `renderer.setPixelRatio(Math.min(devicePixelRatio, 3))` with antialiasing enabled.
-- Low quality starts automatically when the 2 s rolling average falls below 50 fps. It uses pixel ratio capped at 1.5, no shadow map, blob decals in place of shadows, and less decor.
-- High quality uses a 4096-square hard shadow map and a tight, texel-snapped shadow camera following the visible ground; every vehicle, tree, rock, log and the bird casts a shadow. Darker base vertices provide baked ambient shading.
+- Native High starts at `min(devicePixelRatio,3)`. Two consecutive one-second windows above 20 ms per frame step DPR down through 2.5 and 2. Four further bad seconds at DPR2 permit automatic Low at DPR1.5 with less distant decor. Every recovery step requires eight seconds below 17.5 ms, so quality does not oscillate. Resizing happens at a landing or grounded frame, including continuously buffered hops. An interruption contributes at most .25 s, so one isolated hitch cannot cause a drop; persistent or alternating slow frames still count.
+- Directional shadows project the pooled voxel geometry onto the lane/water surface. A shared stencil unions overlapping silhouettes without double darkening. Trees, rocks, vehicles, logs and the bird retain crisp rightward shadows at every tier, without an offscreen shadow-map allocation or a fuzzy player blob. Darker base vertices provide baked ambient shading. Body paint and fixed vehicle details share one draw; unchanged instance matrices and colours are not re-uploaded.
 - At most about 120 draw calls per frame (under 40 in review captures): every repeated thing (lane strips, markings, trees, rocks, vehicles, train segments, logs, pads, signals, particles) is an instanced mesh, and each voxel model is one merged geometry.
 - No per-frame allocation in the hot loop; geometries and materials are reused.
 - The render loop stops on pause and when the tab is hidden.
@@ -128,7 +128,7 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 ## Deviations from REFERENCE.md
 
 - Charlie keeps the UFO in place of the eagle: warning at 5 seconds, swoop at 7 seconds without a new furthest row, or immediately at 3 rows back/behind. The saucer grabs and carries the bird off the top within 0.7 seconds.
-- Charlie requests High rendering at device pixel ratio capped at 3, with antialiasing and crisp real shadow maps (overriding the pack's caps). The full-screen canvas paints behind the shared floating Liquid Glass controls, without a header strip or reserved band.
+- Charlie requests High rendering at device pixel ratio capped at 3, with antialiasing and crisp shadows (overriding the pack's caps); r8b permits an equivalent projected/static-shadow approach and sustained adaptive quality. The full-screen canvas paints behind the shared floating Liquid Glass controls, without a header strip or reserved band.
 - Outcome and Continue cards use shared `ui-glass-sheet`, `arcade-sheet`, and `game-button` classes; no live HUD is drawn by the game.
 - Compact car spans are 1.2 tiles; sedans and taxis are 1.8, overriding the pack’s 1-tile cars. Rendered body and collision spans agree; the generator still adds the same minimum free gap after each vehicle. The renamed id has its own save namespace.
 - Road lanes use 2–5 movers per pattern; log lanes use three. The road gap base is 4.2 → 3 tiles, bounded by the same minimum crossing window.

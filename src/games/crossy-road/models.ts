@@ -166,6 +166,16 @@ export function chickenGeometry(): THREE.BufferGeometry {
 /** The result for tinted vehicles: draw `body` with an instance tint and `detail` untinted. */
 export interface VehicleParts { body: THREE.BufferGeometry; detail: THREE.BufferGeometry }
 
+/** One instanced draw for both paint and fixed details. The paint mask keeps
+ * windows, cargo and wheels unchanged when the body receives a lane colour.
+ * The caller retains ownership of the two input geometries. */
+export function mergeVehicle(parts: VehicleParts): THREE.BufferGeometry {
+  for (const [geometry, paint] of [[parts.body, 1], [parts.detail, 0]] as const) {
+    geometry.setAttribute('paint', new THREE.BufferAttribute(new Float32Array(geometry.getAttribute('position').count).fill(paint), 1));
+  }
+  return mergeGeometries([parts.body, parts.detail]);
+}
+
 /** Keep complete roofs and wheels inside the projected lane, as well as its ground footprint.
  * Length stays equal to the collision span; body and details receive the same proportions. */
 function laneVehicle(parts: VehicleParts, height: number, depth: number): VehicleParts {

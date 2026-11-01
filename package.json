@@ -12,6 +12,7 @@
     "check": "tsc --noEmit",
     "verify:offline": "node scripts/verify-offline.mjs",
     "verify:update": "node scripts/verify-update.mjs",
+    "perf:crossy": "node scripts/perf-crossy.mjs",
     "dev:online": "node scripts/leaderboard-dev.mjs",
     "movies:import": "node scripts/movies-import.mjs"
   },

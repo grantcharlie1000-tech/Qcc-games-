@@ -93,8 +93,8 @@ function die(s: RunState, events: StepEvents, cause: DeathCause, lane: Lane): vo
  * every segment, so callers should step in increments well under HOP_TIME (the game loop uses STEP): a coarser step can carry a
  * vehicle past the player or skip a check between two buffered hops. Time `t` runs while ready, running and dying, and stops
  * once the run is over. */
-export function step(s: RunState, dt: number, world: LaneSource, reducedMotion = false): StepEvents {
-  const events: StepEvents = { landed: false, newMax: false, chime: false, died: null, over: false, ufoWarn: false };
+export function step(s: RunState, dt: number, world: LaneSource, reducedMotion = false, events: StepEvents = { landed: false, newMax: false, chime: false, died: null, over: false, ufoWarn: false }): StepEvents {
+  events.landed = events.newMax = events.chime = events.over = events.ufoWarn = false; events.died = null;
   if (s.phase === 'over') return events;
   let remaining = dt;
   while (remaining > 1e-12 && s.phase !== 'over') {
@@ -157,12 +157,12 @@ export function renderX(s: RunState): number {
 }
 
 /** Where to draw the player this instant. */
-export function pose(s: RunState): PlayerPose {
+export function pose(s: RunState, out: PlayerPose = {x:0,z:0,lift:0,facing:'up',progress:0}): PlayerPose {
   const hopping = s.hop >= 0, p = hopping ? Math.min(1, s.hop / HOP_TIME) : 1;
-  return {
-    x: renderX(s), z: hopping ? lerp(s.fromRow, s.row, p) : s.row,
-    lift: hopping ? Math.sin(p * Math.PI) * HOP_HEIGHT : 0, facing: s.facing, progress: hopping ? p : -1,
-  };
+  out.x = renderX(s); out.z = hopping ? lerp(s.fromRow, s.row, p) : s.row;
+  out.lift = hopping ? Math.sin(p * Math.PI) * HOP_HEIGHT : 0;
+  out.facing = s.facing; out.progress = hopping ? p : -1;
+  return out;
 }
 
 /** The persisted form of a run: exactly the state that decides what happens next. Visual-only fields (`bonkAt`, `bonkDir`,

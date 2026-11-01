@@ -2,7 +2,7 @@
  * game over) and the wiring between the pure rules over the seeded World and the Three.js scene.
  * All gameplay lives in rules.ts; this file decides when to step, draw, report and announce. */
 import type { GameContext, GameInstance, GameModule } from '../../core/types';
-import { AHEAD_ROWS, BEHIND_ROWS, DEATH_TIME, STEP, type DeathCause, type Dir, type CrossyRoadScene, type Quality, type RunState, type SceneFrame } from './config';
+import { AHEAD_ROWS, BEHIND_ROWS, DEATH_TIME, STEP, type DeathCause, type Dir, type CrossyRoadScene, type Quality, type RunState, type SceneFrame, type StepEvents } from './config';
 import { railWarning, trainEntry } from './lanes';
 import { createRun, input as hop, pose, restore as restoreRun, serialize, step, ufoWarning } from './rules';
 import { World } from './world';
@@ -10,6 +10,7 @@ import { createScene } from './scene';
 import { attachInput } from './input';
 import { createSfx } from './audio';
 import { installTestHook } from './test-hook';
+import {AdaptiveResolution} from './quality';
 import './style.css';
 
 const ID = 'crossy-road';
@@ -18,8 +19,8 @@ const START_STATUS = 'Tap, swipe or press an arrow key to start hopping.';
 const RUN_STATUS = 'Keep hopping forward. Wait too long and a UFO beams you up.';
 /** Seconds between signal bell rings while a nearby light flashes. */
 const BELL_GAP = 0.45;
-/** The auto-quality check: below this average over FPS_WINDOW seconds, drop to Low. */
-const FPS_FLOOR = 50, FPS_WINDOW = 2;
+/** Interval for reporting the observed frame rate to the development hook. */
+const FPS_WINDOW = 2;
 
 const seedFor = (run: number) => ((Date.now() ^ run) >>> 0) || 1;
 /** `#/game/crossy-road?seed=123` picks the first run's seed, in development builds only. */
@@ -55,7 +56,7 @@ type Layer = 'over' | 'continue' | 'lost' | null;
 function mount(container: HTMLElement, context: GameContext): GameInstance {
   const root = document.createElement('div');
   root.className = 'crossy-road';
-  root.dataset.renderVersion = 'fidelity-7';
+  root.dataset.renderVersion = 'fidelity-8';
   root.innerHTML = TEMPLATE;
   container.append(root);
   const canvas = root.querySelector<HTMLCanvasElement>('.hw-canvas')!;
@@ -90,17 +91,21 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let best = Math.max(0, Math.floor(context.highScore) || 0), bestAtStart = best, announcedBest = false, warned = false;
   let reportedScore = -1, reportedRow = -1, nextBell = 0;
   let quality: Quality = 'high', fpsTime = 0, fpsFrames = 0, fps = 0;
+  const resolution = new AdaptiveResolution();
+  let appliedResolution = 3;
+  let landedThisFrame = false;
   /** Development builds only: a moving average of the main-thread milliseconds one frame takes (simulation plus render submission). */
   let cpuMs = 0;
   /** Train passes already rumbled, by rail row. */
   const rumbled = new Map<number, number>();
+  const stepEvents: StepEvents = {landed:false,newMax:false,chime:false,died:null,over:false,ufoWarn:false};
   const frame: SceneFrame = { state: run, pose: pose(run), world, dt: 0, reducedMotion: false, colorBlind: false, ufoWarn: false };
   const data: Record<string, string> = {};
   const setData = (key: string, value: string) => { if (data[key] !== value) { data[key] = value; root.dataset[key] = value; } };
 
   const active = () => !paused && !disposed && !lost && !held;
   function schedule() { if (!frameId && active() && run.phase !== 'over') { last = 0; frameId = requestAnimationFrame(loop); } }
-  function cancel() { if (frameId) cancelAnimationFrame(frameId); frameId = 0; }
+  function cancel() { if (frameId) cancelAnimationFrame(frameId); frameId = 0; frame.pressed=false; }
 
   function loop(now: number) {
     frameId = 0;
@@ -112,7 +117,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const begun = import.meta.env.DEV ? performance.now() : 0;
     if (import.meta.env.DEV) (window as unknown as { __crossyRoadFrames?: number }).__crossyRoadFrames = ((window as unknown as { __crossyRoadFrames?: number }).__crossyRoadFrames ?? 0) + 1;
     measure(interval);
+    landedThisFrame=false;
     if (!frozen) advance(dt);
+    if(landedThisFrame) applyResolution();
     draw(dt);
     if (import.meta.env.DEV) { const spent = performance.now() - begun; cpuMs = cpuMs ? cpuMs * 0.95 + spent * 0.05 : spent; }
     if (run.phase !== 'over' && active()) frameId = requestAnimationFrame(loop);
@@ -127,7 +134,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   function tick(dt: number) {
     const before = run.maxRow;
-    const events = step(run, dt, world, reduced());
+    const events = step(run, dt, world, reduced(), stepEvents);
+    if(events.landed) landedThisFrame=true;
     if (run.maxRow !== before) progressed(before);
     if (events.died) died(events.died);
     if (events.ufoWarn && !warned) {
@@ -222,7 +230,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   function draw(dt: number) {
     if (disposed || lost) return;
     frame.state = run;
-    frame.pose = pose(run);
+    frame.pose = pose(run, frame.pose);
     frame.world = world;
     frame.dt = dt;
     frame.reducedMotion = reduced();
@@ -235,11 +243,17 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     setData('score', String(run.maxRow));
     setData('warn', String(frame.ufoWarn));
     setData('held', String(held));
+    setData('pressed', String(Boolean(frame.pressed)));
   }
 
-  /** Auto quality: a FPS_WINDOW-second average below FPS_FLOOR drops to Low for the rest of the visit. An interval of a
-   * second or more is a hitch (tab switch, debugger), not a frame rate, so it is left out. */
+  /** Resolution changes require sustained pressure and recover with hysteresis.
+   * Model detail and shadows stay intact; explicit High starts at native DPR. */
   function measure(dt: number) {
+    if(!frozen&&quality==='high'){
+      resolution.observe(dt);
+      // Reallocate a drawing buffer between hops, never in the middle of one.
+      if(run.hop<0) applyResolution();
+    }
     if (dt <= 0 || dt >= 1) return;
     fpsTime += dt;
     fpsFrames++;
@@ -247,10 +261,21 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     fps = fpsFrames / fpsTime;
     fpsTime = 0;
     fpsFrames = 0;
-    if (quality === 'high' && !frozen && fps < FPS_FLOOR) setQuality('low');
+  }
+  function applyResolution() {
+    // A queued hop starts in the very step that lands the previous one. The
+    // landing is still a safe boundary even when no grounded frame is exposed.
+    if(!frozen&&quality==='high'&&run.phase!=='dying'&&resolution.cap!==appliedResolution){
+      appliedResolution=resolution.cap;
+      scene.setResolutionCap(appliedResolution);
+      scene.setQuality(resolution.low?'low':'high');
+      setData('quality',scene.stats.quality);
+    }
   }
   function setQuality(next: Quality) {
     quality = next;
+    resolution.reset();appliedResolution=3;
+    scene.setResolutionCap(3);
     scene.setQuality(next);
     setData('quality', next);
     if (!frameId) draw(0);
@@ -258,6 +283,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   function move(dir: Dir) {
     if (!active() || (run.phase !== 'ready' && run.phase !== 'running')) return;
+    frame.pressed=false;
     const before = run.maxRow, phase = run.phase;
     const result = hop(run, dir, world);
     if (result === 'hop') {
@@ -316,6 +342,11 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     signal,
     enabled: () => !paused && !disposed && !lost && (held || run.phase === 'ready' || run.phase === 'running'),
     onDir: dir => { if (held) proceed(); else move(dir); },
+    onPress: pressed => {
+      frame.pressed=pressed && active() && !held && (run.phase==='ready'||run.phase==='running');
+      // Submit the squash in this input task, even before the next animation frame.
+      if(frame.pressed) draw(0);
+    },
     // P toggles the shell's own pause (its button, overlay and save), exactly like the toolbar's pause button.
     onPause: () => { if (context.setPaused) context.setPaused(!paused); else document.querySelector<HTMLButtonElement>('#pause-game')?.click(); },
     onAgain: playAgain,
@@ -377,7 +408,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     advance: seconds => { if (disposed) return; advance(seconds); draw(0); },
     redraw: () => draw(0),
     move,
-    quality: () => quality,
+    quality: () => scene.stats.quality,
     setQuality,
     fps: () => fps,
     cpuMs: () => cpuMs,
