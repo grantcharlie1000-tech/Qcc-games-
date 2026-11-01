@@ -164,30 +164,31 @@ export function chickenGeometry(): THREE.BufferGeometry {
 /** The result for tinted vehicles: draw `body` with an instance tint and `detail` untinted. */
 export interface VehicleParts { body: THREE.BufferGeometry; detail: THREE.BufferGeometry }
 
-/** Car body, white (tinted per instance): 1.0 long (x), 0.74 wide, y 0.1 to 0.36. Front at +x. */
+/** Car geometry is authored at unit length and instanced to the mover's exact
+ * collision span. A broad white cabin and black wheels keep the chunky silhouette. */
 export function carBodyGeometry(): THREE.BufferGeometry {
-  return voxel([[0, 0.1, 0, 1, 0.3, 0.78, WHITE]]);
+  return voxel([[0, 0.1, 0, 1, 0.27, 0.66, WHITE]]);
 }
 
-/** Car details: pale cabin, dark window band, headlights, tail lights and four dark wheels. The
- * whole car is 1.0 long, 0.74 wide and 0.62 tall. */
 export function carDetailGeometry(): THREE.BufferGeometry {
-  const cabin = 0xf4f1ea, glass = 0x2b3040, wheel = 0x20232b;
+  const cabin = 0xf8f9ff, glass = 0x20283b, wheel = 0x151923, hub = 0xa6adbc;
   return voxel([
-    [-0.07, 0.4, 0, 0.58, 0.31, 0.68, cabin],
-    [-0.07, 0.46, 0.345, 0.46, 0.16, 0.025, glass], [-0.07, 0.46, -0.345, 0.46, 0.16, 0.025, glass],
-    [0.225, 0.46, 0, 0.025, 0.16, 0.52, glass], [-0.365, 0.46, 0, 0.025, 0.16, 0.52, glass],
-    [-0.1, 0.455, 0.355, 0.045, 0.18, 0.025, cabin], [-0.1, 0.455, -0.355, 0.045, 0.18, 0.025, cabin],
-    [0.49, 0.18, 0.2, 0.03, 0.08, 0.13, 0xffe08a], [0.49, 0.18, -0.2, 0.03, 0.08, 0.13, 0xffe08a],
-    [-0.49, 0.18, 0.25, 0.03, 0.08, 0.11, 0xff5a5a], [-0.49, 0.18, -0.25, 0.03, 0.08, 0.11, 0xff5a5a],
-    [0.29, 0, 0.35, 0.22, 0.22, 0.11, wheel], [0.29, 0, -0.35, 0.22, 0.22, 0.11, wheel],
-    [-0.29, 0, 0.35, 0.22, 0.22, 0.11, wheel], [-0.29, 0, -0.35, 0.22, 0.22, 0.11, wheel],
+    [-0.05, 0.37, 0, 0.64, 0.27, 0.51, cabin],
+    [-0.05, 0.425, 0.26, 0.53, 0.15, 0.02, glass], [-0.05, 0.425, -0.26, 0.53, 0.15, 0.02, glass],
+    [0.275, 0.425, 0, 0.02, 0.15, 0.43, glass], [-0.375, 0.425, 0, 0.02, 0.15, 0.43, glass],
+    [-0.08, 0.42, 0.27, 0.045, 0.17, 0.02, cabin], [-0.08, 0.42, -0.27, 0.045, 0.17, 0.02, cabin],
+    [0.49, 0.18, 0.21, 0.025, 0.07, 0.11, 0xffedbb], [0.49, 0.18, -0.21, 0.025, 0.07, 0.11, 0xffedbb],
+    [-0.49, 0.18, 0.22, 0.025, 0.07, 0.1, 0xc8383b], [-0.49, 0.18, -0.22, 0.025, 0.07, 0.1, 0xc8383b],
+    [0.29, 0, 0.32, 0.22, 0.22, 0.11, wheel], [0.29, 0, -0.32, 0.22, 0.22, 0.11, wheel],
+    [-0.29, 0, 0.32, 0.22, 0.22, 0.11, wheel], [-0.29, 0, -0.32, 0.22, 0.22, 0.11, wheel],
+    [0.29, 0.065, 0.379, 0.08, 0.08, 0.012, hub], [-0.29, 0.065, 0.379, 0.08, 0.08, 0.012, hub],
+    [0.29, 0.065, -0.379, 0.08, 0.08, 0.012, hub], [-0.29, 0.065, -0.379, 0.08, 0.08, 0.012, hub],
   ]);
 }
 
 /** A truck of 2 or 3 tiles (x), 0.84 wide: a tall tinted cab and hood at the front (+x), then a long
  * light cargo box (`detail`) with a tinted stripe (`body`), a dark chassis and wheels. The cab is
- * 0.86 tall and the cargo 0.74. */
+ * 0.86 tall and the cargo 0.96. */
 export function truckGeometry(len: 2 | 3): VehicleParts {
   const e = len / 2, cab = 0.76, cargoLen = len - cab - 0.06, cargoX = -e + cargoLen / 2;
   const glass = 0x2b3040, wheel = 0x20232b, chassis = 0x373c48, cargo = 0xe7eef2;
@@ -206,7 +207,7 @@ export function truckGeometry(len: 2 | 3): VehicleParts {
     ]),
     detail: voxel([
       [0, 0.1, 0, len, 0.13, 0.7, chassis],
-      [cargoX, 0.2, 0, cargoLen, 0.54, 0.84, cargo],
+      [cargoX, 0.22, 0, cargoLen, 0.74, 0.84, cargo],
       // windscreen and side windows
       [e - 0.205, 0.52, 0, 0.05, 0.24, 0.62, glass],
       [e - 0.5, 0.52, 0.405, 0.34, 0.22, 0.03, glass], [e - 0.5, 0.52, -0.405, 0.34, 0.22, 0.03, glass],
@@ -284,15 +285,15 @@ export function logGeometry(len: 2 | 3 | 4): THREE.BufferGeometry {
   return voxel(parts, 0.86);
 }
 
-/** A lily pad, 0.8 × 0.8 (x, z) and 0.07 thick with rounded corners and a dark notch. Origin at the
- * bottom centre; draw it with its base 0.01 above the water so the top sits at y = −0.22. */
+/** A small, stepped lily pad, with a dark notch. Safe support still uses its
+ * whole grid cell; the smaller silhouette lets the water show around it. */
 export function lilyGeometry(): THREE.BufferGeometry {
-  const pad = 0x3fa34d, notch = 0x2a7a38;
+  const pad = 0x35a751, top = 0x49bc61, notch = 0x277f40;
   return voxel([
-    [0, 0, 0, 0.8, 0.07, 0.56, pad],
-    [0, 0, 0, 0.56, 0.07, 0.8, pad],
-    [0, 0, 0, 0.7, 0.07, 0.7, pad],
-    [0.2, 0.066, 0, 0.34, 0.012, 0.1, notch],
+    [0, 0, 0, 0.56, 0.045, 0.38, pad],
+    [0, 0, 0, 0.38, 0.045, 0.56, pad],
+    [-0.02, 0.045, -0.02, 0.36, 0.03, 0.36, top],
+    [0.18, 0.045, 0, 0.2, 0.008, 0.07, notch],
   ], 0.9);
 }
 
@@ -300,10 +301,10 @@ export function lilyGeometry(): THREE.BufferGeometry {
  * cubes with nearly constant footprint. Subtle side bands suggest stacked voxels. */
 export function treeGeometry(variant: number): THREE.BufferGeometry {
   const count = variant <= 0 ? 1 : variant === 1 ? 2 : 3, h = 0.55;
-  const parts: Part[] = [[0, 0, 0, 0.23, 0.34, 0.23, 0x694737]];
+  const parts: Part[] = [[0, 0, 0, 0.23, 0.42, 0.23, 0x694737]];
   for (let i = 0; i < count; i++) {
-    const w = i === count - 1 ? 0.64 : 0.67;
-    parts.push([0, 0.27 + i * h, 0, w, h, w, i === count - 1 ? 0xa0c632 : 0x8aaf2e, 0, 0, i & 1 ? 0x739828 : 0x6e9127]);
+    const w = 0.66;
+    parts.push([0, 0.39 + i * h, 0, w, h, w, i === count - 1 ? 0xa0c632 : 0x8aaf2e, 0, 0, i & 1 ? 0x8daf32 : 0x86a630]);
   }
   return voxel(parts, 0.9);
 }
@@ -317,19 +318,18 @@ export function rockGeometry(variant: number): THREE.BufferGeometry {
   return voxel([[0, 0, 0, 0.8, 0.26, 0.7, shade], [0.1, 0.26, -0.05, 0.5, 0.24, 0.42, base], [-0.22, 0.26, 0.16, 0.26, 0.16, 0.26, lit]], 0.9);
 }
 
-/** The railway signal post: a white pole with red bands, a big crossbuck (red boards under white ones,
- * facing +z) and a dark lamp housing on top, 1.3 tall. Origin at the bottom centre; the lamp bulb is a
- * separate instance (`lampGeometry`) drawn at y = 1.12, 0.1 in front of the post's centre. */
+/** A striped post with a wide black lamp box, red front bulb and white cap.
+ * The separate bulb is centred at y=1.27 so it can flash and swell visibly. */
 export function signalPostGeometry(): THREE.BufferGeometry {
-  const red = 0xe03a3e, white = 0xf8f8f2, a = 0.6;
-  return voxel([
-    [0, 0, 0, 0.2, 0.05, 0.2, 0x4b505c],
-    [0, 0.05, 0, 0.1, 0.95, 0.1, white],
-    [0, 0.15, 0, 0.115, 0.11, 0.115, red], [0, 0.4, 0, 0.115, 0.11, 0.115, red],
-    [0, 0.6, 0.01, 0.9, 0.17, 0.035, red, a], [0, 0.6, 0.01, 0.9, 0.17, 0.035, red, -a],
-    [0, 0.623, 0.035, 0.84, 0.125, 0.035, white, a], [0, 0.623, 0.035, 0.84, 0.125, 0.035, white, -a],
-    [0, 0.98, 0, 0.34, 0.3, 0.16, 0x2d3039],
-  ], 0.92);
+  const red = 0xa94750, white = 0xe5deef;
+  const parts: Part[] = [
+    [0, 0, 0, 0.2, 0.06, 0.2, 0x4b505c],
+    [0, 0.06, 0, 0.1, 1.12, 0.1, white],
+    [0, 1.12, 0, 0.5, 0.3, 0.19, 0x24232f],
+    [0, 1.42, 0, 0.115, 0.11, 0.115, white],
+  ];
+  for (const y of [0.12, 0.38, 0.64, 0.9]) parts.push([0, y, 0, 0.112, 0.13, 0.112, red]);
+  return voxel(parts, 0.92);
 }
 
 /** The signal lamp bulb: a 0.2 cube centred on its origin so it pulses about its centre. */

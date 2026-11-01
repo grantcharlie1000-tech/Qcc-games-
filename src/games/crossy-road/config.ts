@@ -157,6 +157,8 @@ export const STEP = 1 / 60;
 export const RENDER_X_MIN = -40;
 export const RENDER_X_MAX = 48;
 export const VEHICLE_PALETTE = 6;
+/** Charlie's reference proportions: longer car silhouette; collision uses this same span. */
+export const CAR_LENGTH = 1.5;
 export const TRAIN_PALETTE = 4;
 export const LOG_PALETTE = 3;
 

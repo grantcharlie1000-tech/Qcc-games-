@@ -11,7 +11,7 @@
  * Fairness (F1-F7 in PLAN.md) is built into the rows: grass is repaired deterministically (no random draws), road and river
  * gaps are bounded by roadGapMin/riverGapMax, rail periods leave quiet time, and adjacent log rows are checked with logBridgeOk. */
 import {
-  COLS, EDGE_COLS, HOP_TIME, LOG_PALETTE, MOVERS, RAIL_PERIOD_MIN, SAFE_ROWS, START_COL, TRAIN_MAX, TRAIN_MIN, TRAIN_PALETTE, TRAIN_SPEED,
+  CAR_LENGTH, COLS, EDGE_COLS, HOP_TIME, LOG_PALETTE, MOVERS, RAIL_PERIOD_MIN, SAFE_ROWS, START_COL, TRAIN_MAX, TRAIN_MIN, TRAIN_PALETTE, TRAIN_SPEED,
   VEHICLE_PALETTE, clamp, difficulty, lerp, riverGapMax, roadGapMin,
   type GrassLane, type Lane, type LaneKind, type LilyLane, type Mover, type Obstacle, type RailLane, type RiverLane, type RoadLane,
 } from './config';
@@ -159,7 +159,7 @@ function roadRow(row: number, rng: Rng, dir: Heading): RoadLane {
   const lens: number[] = [], gaps: number[] = [], colors: number[] = [];
   const gapMin = roadGapMin(speed), gapScale = lerp(6, 3, d);
   for (let i = 0; i < MOVERS; i++) {
-    lens.push(truck ? (rng() < 0.5 ? 2 : 3) : 1);
+    lens.push(truck ? (rng() < 0.5 ? 2 : 3) : CAR_LENGTH);
     gaps.push(Math.max(gapMin, gapScale * (0.85 + 0.6 * rng())));
     colors.push(Math.floor(rng() * VEHICLE_PALETTE));
   }

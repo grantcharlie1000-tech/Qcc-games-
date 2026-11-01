@@ -193,7 +193,7 @@ function checkRoad(S: Sweep, at: string, lane: RoadLane, r: number): void {
   const truck = lane.vehicle === 'truck';
   if (!truck && lane.vehicle !== 'car') S.shapes.add(`${at}: vehicle ${String(lane.vehicle)}`);
   if (truck) count(S, 'truck');
-  for (const m of lane.movers) if (truck ? !(m.len === 2 || m.len === 3) : m.len !== 1) S.shapes.add(`${at}: ${lane.vehicle} of length ${m.len}`);
+  for (const m of lane.movers) if (truck ? !(m.len === 2 || m.len === 3) : m.len !== 1.5) S.shapes.add(`${at}: ${lane.vehicle} of length ${m.len}`);
   const min = roadGapMin(lane.speed);
   for (const gap of gapsOf(lane)) {
     if (gap < min - EPS || gap < 3 - EPS) S.f3.add(`${at}: road gap ${gap} below ${min}`);
@@ -1081,12 +1081,14 @@ describe('World', () => {
 });
 
 describe('the world a seed produces stays the same', () => {
+  // Crossy Road starts its own save namespace. These first-release pins include
+  // the 1.5-tile car silhouette; saves under any previous game id are not imported.
   // GOLDEN MASTER. A saved run stores only its seed and rebuilds its world from it. Rows 0-59 of seeds 1 and 2024 are pinned to
   // a fingerprint of the generator as it is now. If this fails, "changing this means saved runs replay a different world: bump
   // the save version or migrate" (and only then update the constants below).
   const GOLDEN: ReadonlyArray<readonly [seed: number, fingerprint: string]> = [
-    [1, 'e2fb2c7b'],
-    [2024, '84c04f00'],
+    [1, '1d9a2a2a'],
+    [2024, '76f3dd25'],
   ];
 
   /** Numbers rounded to 1e-9 and object keys sorted, so only a change to the world (not float noise below 1e-9, nor the order
@@ -1152,6 +1154,12 @@ describe('F6 determinism: hazards', () => {
     const starts = [1, 2, 3, 4, 5, 6].map((seed) => JSON.stringify(lanesOf(seed).slice(0, 5)));
     expect(new Set(starts).size).toBe(starts.length);
   });
+});
+
+it('generated cars have the longer 1.5-tile reference silhouette with matching collision spans', () => {
+  const cars = lanesOf(7).filter((l): l is RoadLane => l.kind === 'road' && l.vehicle === 'car');
+  expect(cars.length).toBeGreaterThan(0);
+  for (const lane of cars) for (const mover of lane.movers) expect(mover.len).toBe(1.5);
 });
 
 describe(`CrossyRoad worlds over ${SEEDS} seeds x ${ROWS} rows`, () => {
