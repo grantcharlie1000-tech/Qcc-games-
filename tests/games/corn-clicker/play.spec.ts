@@ -102,10 +102,12 @@ test('a second tab never runs the same farm at once and can take over without lo
 });
 
 test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser})=>{
+  test.setTimeout(60000);
   const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
   await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
   const page=await context.newPage();
   const errors=errorsOf(page);
+  const farmTime=new Date('2026-11-01T09:00:00Z');await page.clock.setFixedTime(farmTime);
   await seed(page,{kernels:'114',run:{clicks:20},life:{clicks:20},golden:{next:0.4}});
   await cob(page).tap();
   await expect(page.locator('.cc-kernels-num')).toHaveText('115');
@@ -115,6 +117,8 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await expect(page.locator('#cc-pane-cob')).toBeHidden();
   await page.locator('[data-producer=farmhand]').tap();
   await expect(page.locator('[data-producer=farmhand] .cc-prod-owned')).toHaveText('1');
+  // Let the first producer earn a fraction before buying at the displayed balance.
+  await page.clock.setFixedTime(new Date(farmTime.getTime()+100));
   // Touch: the first tap on an upgrade explains it, the second buys it.
   const thumbs=page.locator('[data-upgrade=click-1]');
   await thumbs.tap();
@@ -126,11 +130,13 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await expect(page.locator('.game-hud')).toContainText('Per second');
   await tabs.getByRole('tab',{name:'Farm'}).tap();
   await expect(page.locator('.cc-lot[data-lot=farmhand]')).toBeVisible();
+  await page.clock.setFixedTime(new Date(farmTime.getTime()+1000));
   const golden=page.getByRole('button',{name:/^Golden cob/});
   await expect(golden).toBeVisible();
   const box=(await golden.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(390);
-  await golden.tap();
+  // The glowing cob animates continuously; use a real touch at its measured centre.
+  await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);
   await expect(page.locator('.cc-toasts')).toContainText(/Lucky!|Bumper Crop|Kernel Storm/);
   await tabs.getByRole('tab',{name:'Cob'}).tap();
   const layout=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth<=innerWidth,stage:document.querySelector('.cc-root')!.getBoundingClientRect().bottom<=innerHeight+1}));
