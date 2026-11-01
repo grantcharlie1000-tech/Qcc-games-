@@ -90,12 +90,12 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
 });
 
-for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
+for(const width of [390,1440]) test(`the Movies pill sits under Movies at ${width}px, and the bar holds only its tabs`,async({page})=>{
   await page.setViewportSize({width,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
 });
 
@@ -103,10 +103,10 @@ test('the Movies pill slides to the section chosen',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  const tv=bar.locator('[data-section="tv"]');
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   await tv.click();
-  await expect(tv).toHaveAttribute('aria-pressed','true');
+  await expect(tv).toHaveAttribute('aria-current','page');
   await expectPillUnder(bar,tv);
 });
 
@@ -114,17 +114,16 @@ test('the Movies pill survives a re-render of the page',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies/browse/movie');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const movie=bar.locator('[data-kind="movie"]');
-  await expect(movie).toHaveAttribute('aria-pressed','true');
+  const movie=bar.locator('[data-section="movies"]');
+  await expect(movie).toHaveAttribute('aria-current','page');
   const before=await movie.elementHandle();
-  // Search updates its results in place, so a route change is what renders the page again. Each render rebuilds the nav, so the tab
-  // element the test started with is gone, and the pill must find the new one.
-  await page.evaluate(()=>{location.hash='#/movies';});
-  await expect(bar.locator('[data-kind="movie"]')).not.toHaveAttribute('aria-pressed','true');
+  // Route content can re-render while the shared shell and its tab keep their identity.
+  await page.evaluate(()=>{location.hash='#/movies/browse/tv';});
+  await expect(bar.locator('[data-section="movies"]')).not.toHaveAttribute('aria-current','page');
   await page.evaluate(()=>{location.hash='#/movies/browse/movie';});
-  await expect(bar.locator('[data-kind="movie"]')).toHaveAttribute('aria-pressed','true');
-  await expect.poll(()=>before!.evaluate(el=>el.isConnected)).toBe(false);
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  await expect(bar.locator('[data-section="movies"]')).toHaveAttribute('aria-current','page');
+  await expect.poll(()=>before!.evaluate(el=>el.isConnected)).toBe(true);
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
 });
 
 test('the pill appears under the current tab on load without sliding in from the edge',async({page})=>{
@@ -155,8 +154,8 @@ test('a press moves the pill under the finger and swells it, and release takes t
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  const tv=bar.locator('[data-section="tv"]');
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   const box=await boxOf(tv);
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.down();
@@ -166,7 +165,7 @@ test('a press moves the pill under the finger and swells it, and release takes t
   await page.mouse.up();
   await expect(bar).not.toHaveAttribute('data-pressing');
   // The tap selects the TV tab, so the pill stays under it.
-  await expect(tv).toHaveAttribute('aria-pressed','true');
+  await expect(tv).toHaveAttribute('aria-current','page');
   await expectPillUnder(bar,tv);
   await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el,'::after').scale)).toBe('none');
 });
@@ -175,8 +174,8 @@ test('a press that slides off the tab springs the pill back and selects nothing'
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const home=bar.locator('[data-kind="all"]');
-  const tv=bar.locator('[data-kind="tv"]');
+  const home=bar.locator('[data-section="movies"]');
+  const tv=bar.locator('[data-section="tv"]');
   const box=await boxOf(tv);
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.down();
@@ -185,7 +184,7 @@ test('a press that slides off the tab springs the pill back and selects nothing'
   await page.mouse.up();
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expectPillUnder(bar,home);
-  await expect(home).toHaveAttribute('aria-pressed','true');
+  await expect(home).toHaveAttribute('aria-current','page');
   await expect(page).toHaveURL(/#\/movies$/);
 });
 
@@ -193,7 +192,7 @@ test('keyboard activation moves the pill but never swells it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
+  const tv=bar.locator('[data-section="tv"]');
   await expect(bar).toBeVisible();
   await page.evaluate(()=>{
     const w=window as Window&{__sawPressing?:boolean};
@@ -203,7 +202,7 @@ test('keyboard activation moves the pill but never swells it',async({page})=>{
   });
   await tv.focus();
   await page.keyboard.press('Enter');
-  await expect(tv).toHaveAttribute('aria-pressed','true');
+  await expect(tv).toHaveAttribute('aria-current','page');
   await expectPillUnder(bar,tv);
   expect(await page.evaluate(()=>(window as Window&{__sawPressing?:boolean}).__sawPressing)).toBe(false);
 });
@@ -479,7 +478,7 @@ test('keyboard focus expands a minimized island, and the capsule steps aside',as
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   const games=bar.getByRole('link',{name:'Games',exact:true});
-  await expect(bar).toBeVisible();
+  await expect(bar).toBeVisible();const expandedWidth=(await bar.boundingBox())!.width;
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
@@ -487,17 +486,17 @@ test('keyboard focus expands a minimized island, and the capsule steps aside',as
   await page.keyboard.press('Tab');
   await expect(games).toBeFocused();
   await expect.poll(()=>capsuleShown(page)).toBe(0);
-  await expect.poll(async()=>(await bar.boundingBox())!.width).toBeGreaterThan(300);
+  await expect.poll(async()=>(await bar.boundingBox())!.width).toBe(expandedWidth);
 });
 
 test('a pill move stretches the pill with a web animation',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  const tv=bar.locator('[data-section="tv"]');
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   await tv.click();
-  await expect(tv).toHaveAttribute('aria-pressed','true');
+  await expect(tv).toHaveAttribute('aria-current','page');
   // A three-keyframe scale animation on the pill itself, not a transition of the bar.
   await expect.poll(()=>page.evaluate(()=>document.getAnimations().some(animation=>{
     const effect=animation.effect as KeyframeEffect|null;
@@ -540,8 +539,8 @@ test('reduced motion does not swell the pill under a press',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  const tv=bar.locator('[data-section="tv"]');
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   const box=await boxOf(tv);
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.down();
@@ -557,10 +556,10 @@ test('reduced motion moves the pill at once and never stretches it',async({page}
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  const tv=bar.locator('[data-section="tv"]');
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   await tv.click();
-  await expect(tv).toHaveAttribute('aria-pressed','true');
+  await expect(tv).toHaveAttribute('aria-current','page');
   await oneFrame(page);
   // One frame after the change the pill is already under TV, so nothing is in transit.
   expect(Math.abs((await pillCentre(bar))-(await centreOf(tv)))).toBeLessThanOrEqual(2);
@@ -589,13 +588,14 @@ test('Chromium refracts the island through a filter that belongs to that bar',as
   expect(home.isFilter).toBe(true);
   expect(home.displacement).toBe(1);
   expect(home.map.startsWith('data:image/png;base64,')).toBe(true);
-  // The Movies island has its own filter with its own id.
+  // The shared island keeps its filter; its companion has a separate map.
   await page.goto('/#/movies');
   // The Movies bar refracts once it has a size, so its filter is referenced from the first layout onwards.
   await expect(page.locator('.movies-mobile-nav.ui-tabbar')).toHaveClass(/is-refracting/);
   const movies=await glass(page.locator('.movies-mobile-nav.ui-tabbar'));
   expect(movies.isFilter).toBe(true);
-  expect(movies.id).not.toBe(home.id);
+  expect(movies.id).toBe(home.id);
+  const companion=await glass(page.locator('.section-menu'));expect(companion.isFilter).toBe(true);expect(companion.id).not.toBe(home.id);
 });
 
 // The fallbacks turn the lens off (data-glass="off"). Reduced motion keeps the island in place, so a hidden island must still fade
@@ -664,13 +664,13 @@ test('leaving Movies disposes the filters its floating controls added',async({pa
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const filters=()=>page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length);
-  await expect.poll(filters).toBe(2);
+  await expect.poll(filters).toBe(4);
   await page.goto('/#/movies');
   // Phone Movies adds its bottom pill/Menu and the two visible floating
   // header groups (brand/actions); the desktop section group stays hidden.
-  await expect.poll(filters).toBe(6);
+  await expect.poll(filters).toBe(4);
   await page.getByRole('link',{name:'Games',exact:true}).click();
-  await expect.poll(filters).toBe(2);
+  await expect.poll(filters).toBe(4);
 });
 
 // A tab's computed colour and weight.
@@ -691,8 +691,8 @@ test('the Movies island uses the same dark ink and bold selection as Games',asyn
   await expect(bar).toBeVisible();
   // The failed rails draw the starter line, and that draw rebuilds the nav, so the tabs are read once the line is there.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
-  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
+  await expect.poll(()=>tabInk(bar.locator('[data-section="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-current="page"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
 });
 
 test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',async({page})=>{
@@ -755,7 +755,7 @@ test('more contrast gives Games and Movies the same opaque surface and dark ink'
   await expect(movies).toBeVisible();
   await expect(page.locator('.movies-rails-status')).toBeVisible();
   expect(await movies.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(241, 243, 245)');
-  await expect.poll(()=>tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
+  await expect.poll(()=>tabInk(movies.locator('[data-section="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
 });
 
 // A pale regular lens uses a subtly darker selection. Opaque accessibility
@@ -796,8 +796,8 @@ test('a press ends only with the pointer that began it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  const tv=bar.locator('[data-section="tv"]');
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   const box=await boxOf(tv);
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.down();
@@ -808,7 +808,7 @@ test('a press ends only with the pointer that began it',async({page})=>{
   await expectPillUnder(bar,tv);
   await page.mouse.up();
   await expect(bar).not.toHaveAttribute('data-pressing');
-  await expect(tv).toHaveAttribute('aria-pressed','true');
+  await expect(tv).toHaveAttribute('aria-current','page');
 });
 
 // A press whose pointer-up never arrives must not leave the pill swollen: losing the window ends it.
@@ -816,8 +816,8 @@ test('losing the window ends a press, so the pill goes back to the current tab',
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const home=bar.locator('[data-kind="all"]');
-  const tv=bar.locator('[data-kind="tv"]');
+  const home=bar.locator('[data-section="movies"]');
+  const tv=bar.locator('[data-section="tv"]');
   await expectPillUnder(bar,home);
   const box=await boxOf(tv);
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
@@ -828,7 +828,7 @@ test('losing the window ends a press, so the pill goes back to the current tab',
   await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expectPillUnder(bar,home);
-  await expect(tv).toHaveAttribute('aria-pressed','false');
+  await expect(tv).not.toHaveAttribute('aria-current','page');
 });
 
 // The same for a hidden page. A visibility change while the page stays visible keeps the press.
@@ -836,8 +836,8 @@ test('a hidden page ends a press, but a visibility change while the page stays v
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const home=bar.locator('[data-kind="all"]');
-  const tv=bar.locator('[data-kind="tv"]');
+  const home=bar.locator('[data-section="movies"]');
+  const tv=bar.locator('[data-section="tv"]');
   const box=await boxOf(tv);
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.down();
@@ -859,8 +859,8 @@ test('a pointer cancel ends a press, springs the pill back and selects nothing',
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const home=bar.locator('[data-kind="all"]');
-  const tv=bar.locator('[data-kind="tv"]');
+  const home=bar.locator('[data-section="movies"]');
+  const tv=bar.locator('[data-section="tv"]');
   await expectPillUnder(bar,home);
   const box=await boxOf(tv);
   const at=[box.x+box.width/2,box.y+box.height/2];
@@ -870,8 +870,8 @@ test('a pointer cancel ends a press, springs the pill back and selects nothing',
   await tv.evaluate((el,[x,y])=>el.dispatchEvent(new PointerEvent('pointercancel',{pointerId:5,bubbles:true,clientX:x,clientY:y})),at);
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expectPillUnder(bar,home);
-  await expect(home).toHaveAttribute('aria-pressed','true');
-  await expect(tv).toHaveAttribute('aria-pressed','false');
+  await expect(home).toHaveAttribute('aria-current','page');
+  await expect(tv).not.toHaveAttribute('aria-current','page');
   await expect(page).toHaveURL(/#\/movies$/);
 });
 
@@ -880,25 +880,25 @@ test('a new press ends a press whose pointer-up never arrived, and the pill foll
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const home=bar.locator('[data-kind="all"]');
-  const tv=bar.locator('[data-kind="tv"]');
-  const movie=bar.locator('[data-kind="movie"]');
+  const home=bar.locator('[data-section="movies"]');
+  const tv=bar.locator('[data-section="tv"]');
+  const games=bar.locator('[data-section="games"]');
   await expectPillUnder(bar,home);
   const tvBox=await boxOf(tv);
   // Pointer 5 presses TV, and its pointer-up never arrives.
   await tv.evaluate((el,[x,y])=>el.dispatchEvent(new PointerEvent('pointerdown',{pointerId:5,button:0,bubbles:true,clientX:x,clientY:y})),[tvBox.x+tvBox.width/2,tvBox.y+tvBox.height/2]);
   await expect(bar).toHaveAttribute('data-pressing','');
-  // Pointer 6 taps Movies. The stale press ends as cancelled, so TV selects nothing and the bar stops pressing.
-  const movieBox=await boxOf(movie);
-  await movie.evaluate((el,[x,y])=>{
+  // Pointer 6 taps Games. The stale press ends as cancelled, so TV selects nothing and the bar stops pressing.
+  const gamesBox=await boxOf(games);
+  await games.evaluate((el,[x,y])=>{
     el.dispatchEvent(new PointerEvent('pointerdown',{pointerId:6,button:0,bubbles:true,clientX:x,clientY:y}));
     el.dispatchEvent(new PointerEvent('pointerup',{pointerId:6,bubbles:true,clientX:x,clientY:y}));
-  },[movieBox.x+movieBox.width/2,movieBox.y+movieBox.height/2]);
+  },[gamesBox.x+gamesBox.width/2,gamesBox.y+gamesBox.height/2]);
   await expect(bar).not.toHaveAttribute('data-pressing');
-  await expect(tv).toHaveAttribute('aria-pressed','false');
-  await movie.click();
-  await expect(movie).toHaveAttribute('aria-pressed','true');
-  await expectPillUnder(bar,movie);
+  await expect(tv).not.toHaveAttribute('aria-current','page');
+  await games.click();
+  await expect(games).toHaveAttribute('aria-current','page');
+  await expectPillUnder(bar,games);
 });
 
 test('a touch press shows the press, and lifting on the tab selects it',async({page,browserName})=>{
@@ -906,8 +906,8 @@ test('a touch press shows the press, and lifting on the tab selects it',async({p
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const tv=bar.locator('[data-kind="tv"]');
-  await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
+  const tv=bar.locator('[data-section="tv"]');
+  await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   const box=await boxOf(tv);
   const cdp=await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2,y:box.y+box.height/2}]});
@@ -915,7 +915,7 @@ test('a touch press shows the press, and lifting on the tab selects it',async({p
   await expectPillUnder(bar,tv);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await expect(bar).not.toHaveAttribute('data-pressing');
-  await expect(tv).toHaveAttribute('aria-pressed','true');
+  await expect(tv).toHaveAttribute('aria-current','page');
   await expectPillUnder(bar,tv);
 });
 
@@ -924,8 +924,8 @@ test('a touch that slides off the tab springs the pill back and selects nothing'
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const home=bar.locator('[data-kind="all"]');
-  const tv=bar.locator('[data-kind="tv"]');
+  const home=bar.locator('[data-section="movies"]');
+  const tv=bar.locator('[data-section="tv"]');
   await expectPillUnder(bar,home);
   const box=await boxOf(tv);
   const x=box.x+box.width/2,y=box.y+box.height/2;
@@ -936,8 +936,8 @@ test('a touch that slides off the tab springs the pill back and selects nothing'
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expectPillUnder(bar,home);
-  await expect(home).toHaveAttribute('aria-pressed','true');
-  await expect(tv).toHaveAttribute('aria-pressed','false');
+  await expect(home).toHaveAttribute('aria-current','page');
+  await expect(tv).not.toHaveAttribute('aria-current','page');
 });
 
 // The Study tab becomes a tab that selects nothing, so a tap changes nothing. The pill must not stay under the tapped tab.
@@ -947,14 +947,14 @@ test('a tap that selects nothing puts the pill back under the current tab',async
   // The failed rails draw the starter line last. That draw rebuilds the nav, so it must finish before the change below, or it would undo it.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
-  const home=bar.locator('[data-kind="all"]');
+  const home=bar.locator('[data-section="movies"]');
   await page.evaluate(()=>{
     const tab=document.querySelector('.movies-mobile-nav [data-action="study"]')!;
-    tab.removeAttribute('data-action');
+    tab.removeAttribute('data-action');tab.removeAttribute('data-section');
     tab.setAttribute('aria-pressed','false');
   });
   const inert=bar.locator('.ui-tab').last();
-  await expect(inert).toHaveAttribute('aria-pressed','false');
+  await expect(inert).not.toHaveAttribute('aria-current','page');
   const box=await boxOf(inert);
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
   await page.mouse.down();
@@ -963,13 +963,13 @@ test('a tap that selects nothing puts the pill back under the current tab',async
   await page.mouse.up();
   await expect(bar).not.toHaveAttribute('data-pressing');
   await expectPillUnder(bar,home);
-  await expect(home).toHaveAttribute('aria-pressed','true');
-  await expect(inert).toHaveAttribute('aria-pressed','false');
+  await expect(home).toHaveAttribute('aria-current','page');
+  await expect(inert).not.toHaveAttribute('aria-current','page');
   await expect(page).toHaveURL(/#\/movies$/);
 });
 
-// Leaving Movies removes the SVG filter that the island added. The arcade island's own filter stays.
-test('leaving Movies removes the SVG filter the island added (Chromium only)',async({page,browserName})=>{
+// Route content disposes its floating groups; the shared island filter stays.
+test('leaving Movies keeps the shared island filter (Chromium only)',async({page,browserName})=>{
   test.skip(browserName!=='chromium','the SVG displacement filter renders only in Chromium');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
@@ -984,12 +984,12 @@ test('leaving Movies removes the SVG filter the island added (Chromium only)',as
   });
   await page.goto('/#/collection');
   await expect(page.locator('.game-grid')).toBeVisible();
-  expect(await page.evaluate(()=>(window as Window&{__filterSvg?:Element|null}).__filterSvg?.isConnected)).toBe(false);
-  expect(await page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length)).toBe(2);
+  expect(await page.evaluate(()=>(window as Window&{__filterSvg?:Element|null}).__filterSvg?.isConnected)).toBe(true);
+  expect(await page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length)).toBe(4);
 });
 
-// Leaving Movies disposes the island, so a press on the old island is ignored. This runs in every browser: it checks listeners, not the filter.
-test('a press on the island that Movies left behind does nothing',async({page})=>{
+// A route crossing keeps one live island and its original press listeners.
+test('the shared island remains interactive after leaving Movies',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   await expect(page.locator('.movies-mobile-nav.ui-tabbar')).toBeVisible();
@@ -1000,14 +1000,14 @@ test('a press on the island that Movies left behind does nothing',async({page})=
   // The state is read during the press, before the release, so a listener left on the old island would show.
   const pressedWhileDown=await page.evaluate(()=>{
     const w=window as Window&{__island?:HTMLElement};
-    const tab=w.__island!.querySelector<HTMLElement>('[data-kind="tv"]')!;
+    const tab=w.__island!.querySelector<HTMLElement>('[data-section="tv"]')!;
     tab.dispatchEvent(new PointerEvent('pointerdown',{pointerId:6,button:0,bubbles:true,clientX:10,clientY:10}));
     const during=w.__island!.hasAttribute('data-pressing');
     document.dispatchEvent(new PointerEvent('pointerup',{pointerId:6,bubbles:true,clientX:10,clientY:10}));
     return during;
   });
-  expect(pressedWhileDown).toBe(false);
-  expect(await page.evaluate(()=>(window as Window&{__island?:HTMLElement}).__island!.style.getPropertyValue('--ui-pill-on'))).toBe('');
+  expect(pressedWhileDown).toBe(true);
+  expect(await page.evaluate(()=>(window as Window&{__island?:HTMLElement}).__island!.style.getPropertyValue('--ui-pill-on'))).toBe('1');
 });
 
 // The specular layer masks a thin edge, with two bright arcs and a continuous rim.

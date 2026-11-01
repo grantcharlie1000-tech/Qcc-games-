@@ -17,7 +17,7 @@ export function openSheet(dialog:HTMLDialogElement,trigger?:Element|null):void{
   // Shared app dialogs opt in. Movies-specific sheets retain their material.
   if(['menu','game-options','rules-dialog','accounts-dialog','leaderboard-dialog'].includes(dialog.id)){
     dialog.classList.add('arcade-sheet');
-    dialog.dataset.glassTone=document.querySelector<HTMLElement>('.game-view')?.dataset.glassTone??(document.body.classList.contains('movies-active')?'dark':'light');
+    dialog.dataset.glassTone=document.body.classList.contains('study-active')?'light':document.querySelector<HTMLElement>('.game-view')?.dataset.glassTone??(document.body.classList.contains('movies-active')?'dark':'light');
   }
   dialog.showModal();
   if(!trigger){dialog.style.removeProperty('--sheet-origin');return;}

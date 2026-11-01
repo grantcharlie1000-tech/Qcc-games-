@@ -306,11 +306,11 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
   });
 
-  test('leaving Movies disposes its companion and restores the Games fallback',async({page})=>{
+  test('leaving Movies retains the shared fallback companion',async({page})=>{
     await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/#/movies');
     const menu=page.locator('.movies-menu');await expect(menu).toHaveAttribute('data-glass','frost');const original=await menu.elementHandle();
-    await page.goto('/#/collection');await expect(page.locator('.movies-navigation')).toHaveCount(0);
-    expect(await original!.evaluate(e=>e.isConnected)).toBe(false);
+    await page.goto('/#/collection');await expect(page.locator('.section-navigation')).toHaveCount(1);
+    expect(await original!.evaluate(e=>e.isConnected)).toBe(true);
     await expect(page.locator('.app-menu')).toBeVisible();await expect(page.locator('.app-menu')).toHaveAttribute('data-glass','frost');
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
   });

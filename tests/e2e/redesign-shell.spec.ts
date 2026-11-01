@@ -102,7 +102,7 @@ test('closing Study opened from the menu returns focus to the island Menu',async
  await menuSettled(page);
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  await expect(page.locator('#study-view')).toBeVisible();
- await page.locator('#study-view a[data-study-return][aria-label="Games"]').click();
+ await page.locator('#study-view a[data-study-return][aria-label="Return to previous view"]').click();
  await expect(page.locator('#study-view')).toBeHidden();
  await expect(page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
 });
@@ -163,7 +163,7 @@ test('the library clears a notch, and a game screen does not',async({page,browse
  await session.send('Emulation.setSafeAreaInsetsOverride',{insets:{top:47,left:0,right:0,bottom:34}});
  await page.goto('/');
  await expect(page.locator('.game-card').first()).toBeVisible();
- expect(await page.locator('#content').evaluate(element=>getComputedStyle(element).paddingTop)).toBe('47px');
+ expect(await page.locator('#content').evaluate(element=>getComputedStyle(element).paddingTop)).toBe('111px');
  await page.goto('/#/game/snake');
  await expect(page.locator('.game-view')).toBeVisible();
  expect(await page.locator('#content').evaluate(element=>getComputedStyle(element).paddingTop)).toBe('0px');
@@ -198,7 +198,7 @@ test('a notch on either side moves the shell content in from that edge (Chromium
  expect(await page.locator('#content').evaluate(element=>[getComputedStyle(element).paddingLeft,getComputedStyle(element).paddingRight])).toEqual(['0px','0px']);
 });
 
-test('tab bar hides during games and Movies & TV',async({page})=>{
+test('the shared tab bar hides during games and stays visible in Movies & TV',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
  await page.goto('/#/collection/1');
@@ -209,8 +209,9 @@ test('tab bar hides during games and Movies & TV',async({page})=>{
  await page.goto('/#/movies');
  await expect(page.locator('.movies-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
- await expect(page.locator('.app-tabbar')).toBeHidden();
- await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
+ await expect(page.locator('.app-tabbar')).toBeVisible();
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('opacity','0');
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('pointer-events','none');
  await page.goto('/#/collection');
  await expect(page.locator('.app-tabbar')).toBeVisible();
 });
@@ -335,7 +336,7 @@ test('the island floats and minimizes on scroll on desktop too',async({page})=>{
  await expect.poll(async()=>{const box=await bar.boundingBox();return box!.y+box!.height;}).toBeLessThanOrEqual(900);
 });
 
-test('the island stays hidden in games and Movies on desktop',async({page})=>{
+test('the shared island hides in games and stays visible in Movies on desktop',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
  await page.goto('/#/collection/1');
@@ -346,8 +347,9 @@ test('the island stays hidden in games and Movies on desktop',async({page})=>{
  await page.goto('/#/movies');
  await expect(page.locator('.movies-view')).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
- await expect(page.locator('.app-tabbar')).toBeHidden();
- await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
+ await expect(page.locator('.app-tabbar')).toBeVisible();
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('opacity','0');
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('pointer-events','none');
  await page.goto('/#/collection');
  await expect(page.locator('.app-tabbar')).toBeVisible();
 });
@@ -388,7 +390,7 @@ test('the island shows again after returning from Study',async({page})=>{
  // Reading moves the page. Returning restores the old position, and that restore must not count as a scroll down.
  await page.evaluate(()=>window.scrollTo(0,100));
  // The Games link in the article text returns to the arcade. It is dispatched, not clicked, so the link is not scrolled into view.
- await page.locator('#study-view a[data-study-return][aria-label="Games"]').dispatchEvent('click');
+ await page.locator('#study-view a[data-study-return][aria-label="Return to previous view"]').dispatchEvent('click');
  await expect(page.locator('#study-view')).toBeHidden();
  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(880);
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -443,8 +445,9 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toBeVisible();
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
- await expect(page.locator('.app-tabbar')).toBeHidden();
- await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
+ await expect(page.locator('.app-tabbar')).toBeVisible();
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('opacity','0');
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('pointer-events','none');
  await expect(back).toHaveClass('game-button secondary');
  const loadingBox=await back.boundingBox();
  expect(Math.abs(loadingBox!.x+loadingBox!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);
@@ -459,8 +462,9 @@ test('the Movies error state keeps a centred way back link',async({page})=>{
  await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();
  await expect(page.locator('#content')).toContainText('Movies & TV could not load.');
  await expect(page.locator('.app-tabbar')).toHaveCount(1);
- await expect(page.locator('.app-tabbar')).toBeHidden();
- await expect(page.locator('.ui-tabbar-mini').first()).toBeHidden();
+ await expect(page.locator('.app-tabbar')).toBeVisible();
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('opacity','0');
+ await expect(page.locator('.ui-tabbar-mini').first()).toHaveCSS('pointer-events','none');
  const back=page.locator('#content').getByRole('link',{name:'Back to games',exact:true});
  await expect(back).toHaveClass('game-button secondary');
  const box=await back.boundingBox();

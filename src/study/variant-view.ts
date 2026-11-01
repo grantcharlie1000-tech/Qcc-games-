@@ -6,7 +6,7 @@ import {renderFictionalAd,renderFictionalAdRail} from './fictional-ads';
 const html=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const fallback={file:'reading-writing',alt:'An open notebook and reading materials on a desk',caption:'Generated illustration of a study workspace.'};
 const photo=(topicId:string)=>topicImage(topicId)??fallback;
-const games=()=>`<a href="${html(window.location.hash||'#/')}" data-study-return>Games</a>`;
+const games=()=>`<a href="${html(window.location.hash||'#/')}" data-study-return aria-label="Return to previous view">Return</a>`;
 const choices=()=>'<button class="variant-choices" data-reading-choices>Reading storage choices</button>';
 const wordmark='<span class="variant-wordmark">Mauri Study Notes</span>';
 const sourceList=(article:StudyArticle)=>`<section class="variant-sources"><h2>Further reading</h2><ul>${article.sources.map(([label,url])=>`<li><a href="${html(url)}" target="_blank" rel="noopener">${html(label)}</a></li>`).join('')}</ul></section>`;

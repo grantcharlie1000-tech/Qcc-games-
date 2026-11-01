@@ -45,45 +45,10 @@ body.movies-active.study-active{overflow:auto}
 /* Movies header, island and rails on the shared ui- components. The generic .movies-view button rule sets a border, padding,
    a 44 px height and a 15 px font, and it outranks a plain component rule, so each property the components need is restated here. */
 .movies-view{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom));scroll-padding-top:var(--header-h);scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
-.movies-view .ui-header{font-family:var(--font-sans)}
-/* The row itself paints nothing and occupies no document space. Only the
-   bounded groups float over the page; backgrounds continue to the top edge. */
-.movies-view .movies-top.ui-header{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;border:0;pointer-events:none}
-.movies-view .movies-top .ui-header-inner{padding-block:6px;gap:8px;padding-inline:max(var(--floating-gutter,12px),env(safe-area-inset-left,0px)) max(var(--floating-gutter,12px),env(safe-area-inset-right,0px))}
-@media(min-width:640px){.movies-view .movies-top{--floating-gutter:24px}}
-.movies-view .movies-top .floating-glass-group{pointer-events:auto;color:var(--glass-ink);padding:4px;min-height:44px}
-.movies-view .movies-top .movies-brand{padding:4px 10px 4px 6px;flex-shrink:1}
-.movies-view .movies-top .ui-wordmark span{color:inherit}
-.movies-view .movies-top .ui-nav{gap:0}
-.movies-view .movies-top .ui-header-actions{gap:0}
-.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn){min-height:36px;color:inherit;background:none;border:0;border-radius:20px}
-.movies-view .movies-top .floating-glass-group .ui-pill[aria-pressed=true]{background:rgb(0 0 0 / .09);color:inherit;box-shadow:none}
-.movies-view .movies-top .ui-kbd{background:rgb(0 0 0 / .05);color:inherit;border-color:rgb(0 0 0 / .15)}
-@media(hover:hover) and (pointer:fine){.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn):hover{background:rgb(0 0 0 / .07);color:inherit}}
 .movies-view>.movies-page-head{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view>.movies-page-title{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view .movies-player.movies-player{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view .movies-detail-inner{margin-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
-.movies-view .ui-nav .ui-pill{min-height:36px;padding:6px 12px;border:0;border-radius:var(--r-lg);background:none;color:var(--c-400);font-size:12px;font-weight:500;line-height:1.2;cursor:pointer}
-.movies-view .ui-nav .ui-pill[aria-pressed="true"]{background:#fff;color:#000;font-weight:700}
-@media (hover:hover) and (pointer:fine){.movies-view .ui-nav .ui-pill:not([aria-pressed="true"]):hover{background:#18181bcc;color:#fff}}
-/* 640-699 px: the four pills, the brand and the actions only just fit side by side, so the pill padding and the row gap tighten here. */
-@media (min-width:640px) and (max-width:699px){.movies-view .ui-nav .ui-pill{padding:6px 8px}.movies-view .ui-header-inner{gap:8px}}
-/* 640-767 px: the wordmark steps down to 16 px for room. If a wider font still runs out of room, the wordmark truncates with an ellipsis rather than running into the nav. */
-@media (min-width:640px) and (max-width:767px){.movies-view .ui-wordmark{font-size:16px}}
-.movies-brand .ui-wordmark{min-width:0;overflow:hidden;text-overflow:ellipsis}
-
-.movies-view .ui-header-actions .ui-icon-btn{min-height:36px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r-lg);background:#09090bcc;color:var(--c-200);font-size:12px;font-weight:500;line-height:1.2;cursor:pointer}
-@media (min-width:768px){.movies-view .ui-header-actions .ui-icon-btn{padding:0 12px}}
-@media (hover:hover) and (pointer:fine){.movies-view .ui-header-actions .ui-icon-btn:hover{color:#fff;border-color:var(--line-strong)}}
-@media (max-width:639px){.movies-view .movies-study{display:none}}
-/* The island's tab colours and the selection pill come from theme.css. A tab here paints no highlight of its own. */
-.movies-view .ui-tabbar .ui-tab{min-height:44px;padding:4px 2px;border:0;border-radius:999px;background:none;font-size:10px;font-weight:500;line-height:1.2;cursor:pointer}
-/* The generic .movies-view button rule paints every button white, and the rule above sets a weight of 500 for all of them. These win:
-   the idle tabs are 90% white, and the current tab is solid bold white. More contrast makes every tab solid white. */
-.movies-view .ui-tabbar .ui-tab{color:var(--glass-ink,#fff)}
-.movies-view .ui-tabbar .ui-tab[aria-pressed="true"],.movies-view .ui-tabbar .ui-tab[aria-current="page"]{color:var(--glass-ink,#fff);font-weight:700}
-@media (prefers-contrast:more){.movies-view .ui-tabbar .ui-tab{color:var(--glass-ink,#fff)}}
 /* A page heading focused by script keeps no ring. The heading of an empty state (loading, not found) takes the keyboard ring, as its Retry button does. */
 .movies-view h1[tabindex="-1"]:focus:not(.movies-empty h1){outline:none}
 .movies-view .ui-rail{margin:24px 0 32px}
@@ -363,7 +328,3 @@ body.movies-active.study-active{overflow:auto}
 .movies-warning-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;margin-top:24px}
 .movies-warning-actions button{min-width:110px;min-height:48px}
 .movies-view .movies-archive-frame{display:block;width:100%;height:100%;border:0}
-
-/* Companion uses the same navigation geometry/material as Games. */
-.movies-view .section-menu{min-height:var(--home-action);padding:0;border-radius:999px;color:var(--glass-ink)}
-@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.movies-view .section-menu:where([data-glass=backdrop],[data-glass=frost]){background:none;border:0}}

@@ -1,7 +1,7 @@
 import './modal-navigation.css';
 
-const CHROME='.section-navigation,.game-dock';
-const PANELS='dialog,[role="dialog"]';
+const CHROME='.section-navigation,.section-header,.game-dock';
+const PANELS='dialog,[role="dialog"],.study-cookie-panel';
 
 /** Navigation is a lower functional layer: never leave its paint under a sheet.
  * Watches presentation only; owners retain their actions, traps and Escape. */
