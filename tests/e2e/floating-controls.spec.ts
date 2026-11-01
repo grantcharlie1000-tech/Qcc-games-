@@ -46,13 +46,19 @@ for(const width of [390,1366])test(`Movies/TV header floats as bounded glass gro
   for(const route of ['movie','tv']){
     await page.goto(`/#/movies/browse/${route}`);
     const header=page.locator('.movies-top');await expect(header).toBeVisible();
-    await expect(header).toHaveCSS('background-color','rgba(0, 0, 0, 0)');await expect(header).toHaveCSS('backdrop-filter','none');await expect(header).toHaveCSS('border-bottom-width','0px');
-    await expect(header.locator('.floating-glass-group')).toHaveCount(3);
-    for(const group of await header.locator('.floating-glass-group').all()){
-      if(!await group.isVisible())continue;
-      await expect(group).toHaveAttribute('data-glass',/backdrop|frost/);
-      expect((await group.boundingBox())!.width).toBeLessThan(width-24);
-    }
-    expect((await page.locator('.movies-page-head').boundingBox())!.y).toBe(0);
+    // Catalog completion replaces this header. Read its paint and all group
+    // geometry together, so a replacement cannot detach a measured handle.
+    await expect.poll(()=>header.evaluate((h,width)=>{
+      if(!h.isConnected)return null;
+      const s=getComputedStyle(h),groups=[...h.querySelectorAll('.floating-glass-group')];
+      const head=h.closest('.movies-view')?.querySelector('.movies-page-head')?.getBoundingClientRect();
+      return{paint:[s.backgroundColor,s.backdropFilter,s.borderBottomWidth],count:groups.length,
+        visible:groups.flatMap(group=>{
+          const box=group.getBoundingClientRect();
+          if(!box.width||!box.height||getComputedStyle(group).visibility==='hidden')return[];
+          return[{width:box.width,bounded:box.width<width-24,mode:group.getAttribute('data-glass')}];
+        }),headVisible:!!head?.width,headY:head?.y};
+    },width)).toMatchObject({paint:['rgba(0, 0, 0, 0)','none','0px'],count:3,
+      visible:Array.from({length:width===390?2:3},()=>({bounded:true,mode:expect.stringMatching(/backdrop|frost/)})),headVisible:true,headY:0});
   }
 });
