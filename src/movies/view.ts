@@ -5,6 +5,7 @@ import {markImages,watchImages} from '../ui/images';
 import {openSheet} from '../ui/sheet';
 import {autoHideTabbar} from '../ui/tabbar';
 import {bindGlass} from '../ui/glass';
+import {bindFloatingGroups} from '../ui/floating-controls';
 import {createSectionNavigation} from '../ui/navigation';
 import {loadWithDeadline} from '../ui/load-deadline';
 import mauriMark from '../assets/mauri-mark.svg?raw';
@@ -202,6 +203,7 @@ export class MoviesView {
  private readonly navigation=createSectionNavigation('movies');
  private readonly tabbar=this.navigation.bar;
  private readonly menuGlass=bindGlass(this.navigation.menu);
+ private headerGlass:ReturnType<typeof bindFloatingGroups>|undefined;
  private readonly disposeRails:()=>void;
  private readonly hideTabbar:{reset():void;dispose():void};
  // Up next takes the island away while it shows. The island's scroll logic never touches data-hidden, so this only mirrors the overlay.
@@ -476,7 +478,7 @@ export class MoviesView {
    const focus=returningFromPlayer?anchors.find(a=>a.getAttribute('href')===returnEpisodeHref):previous?.href?anchors.find(a=>a.getAttribute('href')===previous.href):null;
    (focus??this.root.querySelector<HTMLElement>('h1'))?.focus({preventScroll:true});}
  }
- private header(){const pills:[MovieKind,string][]=[['all','Home'],['movie','Movies'],['tv','TV Shows'],['list','My list']];return `<header class="movies-top ui-header"><div class="ui-header-inner"><a class="movies-brand ui-brand" href="#/movies" aria-label="Movies and TV home"><span class="ui-brand-tile">${mauriMark}</span><span class="ui-wordmark">Mauri <span>Study Notes</span></span></a><nav class="ui-nav" aria-label="Movies and TV navigation">${pills.map(([kind,name])=>`<button class="ui-pill" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${name}</button>`).join('')}</nav><div class="ui-header-actions"><button data-action="search" class="movies-search-toggle ui-icon-btn" aria-label="Search movies and TV">${uiIcon('search')}</button><a class="movies-back ui-icon-btn" aria-label="Games" href="#/collection">${uiIcon('grid')}<span class="ui-label" aria-hidden="true">Games</span></a><button data-action="study" class="movies-study ui-icon-btn">${uiIcon('study')}<span class="ui-label">Study Mode</span><kbd class="ui-kbd" aria-hidden="true">Esc</kbd></button></div></div></header>`;}
+ private header(){const pills:[MovieKind,string][]=[['all','Home'],['movie','Movies'],['tv','TV Shows'],['list','My list']];return `<header class="movies-top ui-header"><div class="ui-header-inner"><a class="movies-brand ui-brand arcade-glass floating-glass-group" data-glass-tone="light" href="#/movies" aria-label="Movies and TV home"><span class="ui-brand-tile">${mauriMark}</span><span class="ui-wordmark">Mauri <span>Study Notes</span></span></a><nav class="ui-nav arcade-glass floating-glass-group" data-glass-tone="light" aria-label="Movies and TV navigation">${pills.map(([kind,name])=>`<button class="ui-pill" data-kind="${kind}" aria-pressed="${this.kind===kind&&!this.route.id}">${name}</button>`).join('')}</nav><div class="ui-header-actions arcade-glass floating-glass-group" data-glass-tone="light"><button data-action="search" class="movies-search-toggle ui-icon-btn" aria-label="Search movies and TV">${uiIcon('search')}</button><a class="movies-back ui-icon-btn" aria-label="Games" href="#/collection">${uiIcon('grid')}<span class="ui-label" aria-hidden="true">Games</span></a><button data-action="study" class="movies-study ui-icon-btn">${uiIcon('study')}<span class="ui-label">Study Mode</span><kbd class="ui-kbd" aria-hidden="true">Esc</kbd></button></div></div></header>`;}
  // The image a card, tile or hero requests: its first candidate that has not failed in this view. The other usable candidates are the fallbacks,
  // which the error listener tries in order. When every candidate failed there is no image, so the placeholder shows alone.
  private artImage(candidates:string[],className:string,attributes:string){
@@ -983,7 +985,9 @@ export class MoviesView {
   // picked on a title page redraws the same page, so the season and episode at the end of its address do not count.
   const page=location.hash.replace(/\/season\/\d+(\/episode\/\d+)?$/,''),scrolls=page===this.railPage?this.railScrolls():new Map<string,number>();
   // A title whose details are pending shows the loading text, never a not-found message. A play route builds its player once the details have loaded.
+  this.headerGlass?.dispose();
   this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button class="ui-btn secondary" data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1 tabindex="-1">That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return this.pendingTitle&&(this.route.play||!t)?LOADING_TITLE:t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1 tabindex="-1">Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.navigation.root.prepend(this.tabbar);this.root.querySelector('.movies-top')?.after(this.navigation.root);
+  this.headerGlass=bindFloatingGroups(this.root.querySelector('.movies-top')!);
   markImages(this.root);
   this.renderDetailError();
   this.footerAttribution();
@@ -1267,7 +1271,7 @@ export class MoviesView {
  private cancelNext(focus=false){
   this.countdownGeneration++;clearInterval(this.countdown);this.countdown=undefined;this.nextHash='';
   const back=this.nextReturn;this.nextReturn=undefined;
-  const overlay=this.root.querySelector<HTMLElement>('.movies-next');const visible=overlay&&!overlay.hidden;if(overlay)overlay.hidden=true;if(visible)this.hideTabbar.reset();
+  const overlay=this.root.querySelector<HTMLElement>('.movies-next');const visible=overlay&&!overlay.hidden;if(overlay)overlay.hidden=true;
   const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent='';
   if(focus&&visible)(this.isPageControl(back)?back:this.root.querySelector<HTMLElement>('.movies-screen'))?.focus({preventScroll:true});
  }
@@ -1300,5 +1304,5 @@ export class MoviesView {
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
- dispose(){this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.headerGlass?.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

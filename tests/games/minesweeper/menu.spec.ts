@@ -4,7 +4,7 @@ import {test,expect} from '../../fixtures';
 test('quiet surface and one accessible game menu preserve pause and navigation',async({page})=>{
  await page.goto('/#/game/minesweeper');await expect(page.locator('.ms-tile').first()).toBeVisible();
  await expect(page.locator('.ms-heading')).toHaveCount(0);await expect(page.locator('.ms-zoom')).toBeHidden();
- expect(await page.locator('.ms-toolbar').evaluate(e=>e.getBoundingClientRect().height)).toBeLessThan(76);
+ await expect(page.locator('.ms-toolbar')).toBeHidden();await expect(page.locator('.game-hud')).toContainText('Flags10Time00:00');
  await page.locator('.ms-tile[data-index="40"]').click();
  await gameAction(page,'Game options');await expect(page.getByRole('dialog',{name:'Game options'})).toBeVisible();await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
  const time=await page.locator('.ms-time').textContent();await page.waitForTimeout(1100);await expect(page.locator('.ms-time')).toHaveText(time!);

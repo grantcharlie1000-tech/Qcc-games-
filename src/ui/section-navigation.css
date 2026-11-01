@@ -1,6 +1,6 @@
 /* One material and one painted surface through every navigation state/route.
    The mini button supplies only an icon and a hit target over the same pill. */
-.section-navigation>.arcade-glass,.section-navigation>.arcade-glass-mini{
+.section-navigation>.arcade-glass,.section-navigation>.arcade-glass-mini,.floating-glass-group.arcade-glass[data-glass-tone=light]{
   --glass-tint:rgb(255 255 255 / .38);--glass-frost:blur(4px);
   --glass-tone:saturate(.08) contrast(.22) brightness(1.65);
   --glass-ink:#0b1015;--glass-solid:#f1f3f5;--glass-pill:rgb(0 0 0 / .09);
