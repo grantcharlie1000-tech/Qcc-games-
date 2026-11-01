@@ -12,12 +12,12 @@ html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(
 
 /* Five destinations share a lens. Menu is a sibling lens, so a frosted fallback
    never traps its backdrop inside the tab bar's backdrop root. */
-.section-navigation{--home-inset:12px;--home-action:52px;--home-gap:12px;position:fixed;left:var(--home-inset);right:var(--home-inset);bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));max-width:440px;height:var(--tabbar-h);margin-inline:auto;z-index:50;pointer-events:none}
+.section-navigation{--home-inset:12px;--home-action:var(--tabbar-h);--home-gap:12px;position:fixed;left:var(--home-inset);right:var(--home-inset);bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));max-width:440px;height:var(--tabbar-h);margin-inline:auto;z-index:50;pointer-events:none}
 .section-tabbar.ui-tabbar{left:max(var(--home-inset),calc((100vw - 440px)/2));right:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + var(--home-action) + var(--home-gap));max-width:none;margin:0;pointer-events:auto}
 .section-tabbar.ui-tabbar .ui-tab{min-width:44px;white-space:nowrap}
 .section-menu{position:absolute;right:0;top:50%;margin-top:calc(var(--home-action)/-2);width:var(--home-action);height:var(--home-action);min-width:var(--home-action);padding:0;pointer-events:auto;font-family:var(--font-sans)}
 .section-menu>.ui-icon{width:24px;height:24px}
-@media(max-width:359px){.section-navigation{--home-inset:8px;--home-action:48px;--home-gap:8px}.section-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}}
+@media(max-width:359px){.section-navigation{--home-inset:8px;--home-gap:8px}.section-tabbar.ui-tabbar{padding:4px;gap:0}.section-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}}
 /* The companion follows the existing island controller. Focus in either lens
    reveals the group; pointer focus does not pin it open while scrolling. */
 .section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible)) .section-menu{opacity:0;pointer-events:none}

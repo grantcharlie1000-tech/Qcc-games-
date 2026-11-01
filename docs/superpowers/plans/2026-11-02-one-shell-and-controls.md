@@ -44,9 +44,9 @@
 
 **Interface:** shared navigation's `--home-action` consumes the actual bar height. Existing glass classes/recipe stay unchanged.
 
-- [ ] Add failing Games/Movies/TV tests at320/390/1366 for equal circle/bar heights and top/bottom edges, no overlap and44px targets; cover collapsed/keyboard-restored states.
-- [ ] Unify only dimensions/radii/spacing. Use a documented compact size at narrow/landscape breakpoints if necessary; all controls in an individual game dock keep one height.
-- [ ] Capture production after views beside existing `menu-size/before-*.png`, build/open `MENU_SIZE_BEFORE_AFTER.jpg`, run targeted geometry/glass/focus checks and commit separately.
+- [x] Add failing Games/Movies/TV tests at320/390/1366 for equal circle/bar heights and top/bottom edges, no overlap and44px targets; cover collapsed/keyboard-restored states.
+- [x] Unify only dimensions/radii/spacing. Use a documented compact size at narrow/landscape breakpoints if necessary; all controls in an individual game dock keep one height.
+- [x] Capture production after views beside existing `menu-size/before-*.png`, build/open `MENU_SIZE_BEFORE_AFTER.jpg`, run targeted geometry/glass/focus checks and commit separately.
 
 ### Task 3: One persistent shell (step 6)
 
