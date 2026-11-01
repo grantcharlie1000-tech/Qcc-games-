@@ -1,11 +1,5 @@
 /* One material and one painted surface through every navigation state/route.
    The mini button supplies only an icon and a hit target over the same pill. */
-.section-navigation>.arcade-glass,.section-navigation>.arcade-glass-mini{
-  --glass-tint:rgb(255 255 255 / .38);--glass-frost:blur(4px);
-  --glass-tone:saturate(.08) contrast(.22) brightness(1.65);
-  --glass-ink:#0b1015;--glass-solid:#f1f3f5;--glass-pill:rgb(0 0 0 / .09);
-  --glass-lift:0 10px 28px -6px rgb(0 0 0 / .16),0 2px 6px rgb(0 0 0 / .06);
-}
 .section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
   background:none;border:0;box-shadow:none;
 }

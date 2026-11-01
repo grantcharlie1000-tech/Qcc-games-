@@ -1,5 +1,6 @@
 import {test,expect} from '../fixtures';
 import {readFileSync} from 'node:fs';
+import {glyphContrast} from '../glass-contrast';
 const catalog=readFileSync('public/movies/catalog.json','utf8');
 test.use({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
 test.beforeEach(async({page})=>{await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));});
@@ -53,7 +54,7 @@ for(const route of ['movies','movies/browse/tv'])test(`${route} canvas covers to
 for(const width of [390,1366])test(`Movies shares navigation geometry, actions and companion focus at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/#/movies/browse/tv');await expect(page.locator('.movies-poster').first()).toBeVisible();
  const nav=page.locator('.movies-navigation'),bar=nav.locator('.section-tabbar'),menu=nav.getByRole('button',{name:'Open menu',exact:true});
- await expect(bar.locator('.ui-tab')).toHaveText(['Home','Movies','TV Shows','My list','Study']);await expect(bar).toHaveAttribute('data-glass-tone','dark');
+ await expect(bar.locator('.ui-tab')).toHaveText(['Home','Movies','TV Shows','My list','Study']);await expect(bar).toHaveAttribute('data-glass-tone','light');
  const gap=await nav.evaluate(e=>{const b=e.querySelector('.section-tabbar')!.getBoundingClientRect(),m=e.querySelector('.section-menu')!.getBoundingClientRect();return m.left-b.right;});expect(gap).toBeGreaterThanOrEqual(8);
  await bar.getByRole('button',{name:'Study',exact:true}).focus();await page.keyboard.press('Tab');await expect(menu).toBeFocused();
  await page.keyboard.press('Enter');await expect(page.locator('#menu')).toBeVisible();await expect(page.locator('#menu')).toHaveAttribute('data-glass-tone','dark');
@@ -113,9 +114,9 @@ for(const route of ['collection','movies'])test(`${route} fallback Menu ink reta
  // High-frequency black and white exercise both ends of backdrop luminance.
  await page.evaluate(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none;background:repeating-conic-gradient(#000 0% 25%,#fff 0% 50%) 0 0 / 24px 24px';(document.querySelector('.section-navigation:not(.app-navigation)')?.parentElement??document.body).append(art);});
  const actual=(await menu.screenshot({animations:'disabled'})).toString('base64');
- const hide=await page.addStyleTag({content:'.section-menu>.ui-icon{visibility:hidden!important}'});
+ const hide=await page.addStyleTag({content:'.section-menu>.ui-icon{color:transparent!important}'});
  const backdrop=(await menu.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
- await page.addStyleTag({content:'.section-menu,.section-menu::before{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important}.section-menu .ui-glass-glow,.section-menu .ui-glass-lens{display:none!important}'});
+ await page.addStyleTag({content:'.section-menu,.section-menu::before{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important}.section-menu .ui-glass-glow,.section-menu .ui-glass-lens{display:none!important}.section-menu>.ui-icon{color:#fff!important;background:none!important;box-shadow:none!important}'});
  const mask=(await menu.screenshot({animations:'disabled'})).toString('base64');
  const result=await page.evaluate(async({actual,backdrop,mask})=>{
   const decode=async(source:string)=>{const image=new Image();image.src='data:image/png;base64,'+source;await image.decode();const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);return {data:ctx.getImageData(0,0,c.width,c.height).data,width:c.width,height:c.height};};
@@ -163,18 +164,13 @@ for(const press of [false,true])test(`dark selected tab retains 4.5:1 over white
  await page.evaluate(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none;background:white';document.querySelector('.movies-view')!.append(art);});
  const tab=page.locator('.movies-mobile-nav [aria-pressed=true]');await tab.evaluate(e=>e.classList.add('contrast-target'));
  if(press){await tab.hover();await page.mouse.down();}
- const actual=(await tab.screenshot({animations:'disabled'})).toString('base64');
- const boxes=await tab.evaluate(e=>{const box=e.getBoundingClientRect();return [...e.querySelectorAll('.ui-icon,span')].map(child=>{const b=child.getBoundingClientRect();return {x:b.x-box.x,y:b.y-box.y,w:b.width,h:b.height};});});
- const hide=await page.addStyleTag({content:'.contrast-target>*{visibility:hidden!important}'});const backdrop=(await tab.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
- await page.addStyleTag({content:'.contrast-target{color:white!important;background:black!important;text-shadow:none!important}.contrast-target>*{color:white!important;filter:none!important}'});
+ await tab.screenshot({animations:'disabled'});
+ const boxes=await tab.evaluate(e=>{const box=e.getBoundingClientRect();return [...e.querySelectorAll('.ui-icon,span')].map(child=>{const b=child.getBoundingClientRect();return {x:(b.x-box.x)*devicePixelRatio,y:(b.y-box.y)*devicePixelRatio,w:b.width*devicePixelRatio,h:b.height*devicePixelRatio,color:getComputedStyle(child).color};});});
+ const hide=await page.addStyleTag({content:'.contrast-target>*{color:transparent!important}'});
+ const backdrop=(await tab.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
+ await page.addStyleTag({content:'.contrast-target{color:white!important;background:black!important;text-shadow:none!important}.contrast-target>*{color:white!important;filter:none!important;background:none!important;box-shadow:none!important}'});
  const mask=(await tab.screenshot({animations:'disabled'})).toString('base64');
- const result=await page.evaluate(async({actual,backdrop,mask,boxes})=>{
-  const read=async(source:string)=>{const image=new Image();image.src='data:image/png;base64,'+source;await image.decode();const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);return {data:ctx.getImageData(0,0,c.width,c.height).data,w:c.width,h:c.height};};
-  const a=await read(actual),b=await read(backdrop),m=await read(mask);let worst=Infinity,cores=0;
-  const lum=(d:Uint8ClampedArray,i:number)=>[.2126,.7152,.0722].reduce((l,w,c)=>{const v=d[i+c]/255;return l+w*(v<=.04045?v/12.92:((v+.055)/1.055)**2.4);},0);
-  for(const box of boxes)for(let y=Math.ceil(box.y*devicePixelRatio);y<Math.floor((box.y+box.h)*devicePixelRatio);y++)for(let x=Math.ceil(box.x*devicePixelRatio);x<Math.floor((box.x+box.w)*devicePixelRatio);x++){const i=(y*m.w+x)*4;if(Math.min(...m.data.slice(i,i+3))<250)continue;const ink=lum(a.data,i),bg=lum(b.data,i);worst=Math.min(worst,(Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05));cores++;}
-  return {worst,cores};
- },{actual,backdrop,mask,boxes});
+ const ratios=await glyphContrast(page,backdrop,mask,boxes);
  if(press){await page.mouse.move(0,0);await page.mouse.up();}
- expect(result.cores).toBeGreaterThan(20);expect(result.worst).toBeGreaterThanOrEqual(4.5);
+ expect(ratios.length).toBeGreaterThanOrEqual(2);expect(Math.min(...ratios)).toBeGreaterThanOrEqual(4.5);
 });

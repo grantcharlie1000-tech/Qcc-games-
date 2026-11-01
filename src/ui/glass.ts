@@ -1,6 +1,7 @@
 // Liquid Glass for the island: the selection pill, the jelly press, and the material behind the bar. Chromium bends its backdrop with an
 // SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
 // Legacy unmarked frost bars retain a scroll edge. autoHideTabbar binds this controller for both Games and Movies.
+import {bindGlassInk} from './glass-ink';
 export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
 export type GlassMode='backdrop'|'frost'|'off';
@@ -94,6 +95,7 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
 // can encode the PNG, so this is outside the unit tests. With no 2D context there is no map, and the empty string tells the caller to leave
 // the lens out, rather than bend with an all-zero map.
 export function lensPng(width:number,height:number,density=1,arcade=false,margin=LENS_MARGIN):string{
+  try{
   const canvas=document.createElement('canvas');
   const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
   canvas.width=pixelWidth;canvas.height=pixelHeight;
@@ -101,6 +103,7 @@ export function lensPng(width:number,height:number,density=1,arcade=false,margin
   if(!context)return '';
   context.putImageData(new ImageData(lensField(width,height,margin,arcade?ARCADE_LENS_BEVEL:LENS_BEVEL,arcade?ARCADE_LENS_BEND:LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
   return canvas.toDataURL('image/png');
+  }catch{return '';}
 }
 // The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.
 export function lensDensity(devicePixelRatio:number):number{
@@ -355,7 +358,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   // A change of mode takes out what the new mode does not draw, and draws what it does.
   const applyMode=()=>{
-    const next=lensless?'off':glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
+    const preferred=glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
+    const next=lensless&&preferred==='backdrop'?'frost':preferred;
     if(next===mode)return;
     mode=next;
     bar.dataset.glass=mode;
@@ -381,11 +385,13 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
 
   applyMode();
   sync(false);
+  const disposeInk=arcade?bindGlassInk(bar):undefined;
 
   return{
     dispose(){
       if(disposed)return;
       disposed=true;
+      disposeInk?.();
       observer.disconnect();
       resize?.disconnect();
       parentWatch.disconnect();

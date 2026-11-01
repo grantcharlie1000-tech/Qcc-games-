@@ -232,7 +232,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
     expect(frost).toContain('blur(4px)');
-    expect(frost).toContain('saturate(0.08)');
+    expect(frost).toContain('saturate(1)');
   });
 
   test('frost has a glow layer on the bar\'s edge, hidden from assistive technology',async({page})=>{

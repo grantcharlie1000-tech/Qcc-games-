@@ -370,9 +370,9 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
   expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
-  // The icon is a copy of the current tab's icon, centred with dark ink on pale glass.
+  // The icon is a copy of the current tab's icon, centred with adaptive ink on clear glass.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
-  expect(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(11, 16, 21)');
+  expect(['rgb(11, 16, 21)','rgb(255, 255, 255)']).toContain(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color));
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
   expect(box.width).toBeCloseTo(56,0);
@@ -697,11 +697,11 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
-  expect(tint).toBeGreaterThanOrEqual(.35);expect(tint).toBeLessThanOrEqual(.55);
+  expect(tint).toBeGreaterThanOrEqual(.10);expect(tint).toBeLessThanOrEqual(.18);
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.08);
   const frost=await frostFilter(bar);
   expect(frost).toContain('blur(4px)');
-  expect(frost).toContain('saturate(0.08) contrast(0.22) brightness(1.65)');
+  expect(frost).toContain('saturate(1)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toBe('none');
@@ -1016,8 +1016,8 @@ test('the arcade rim has two directional specular arcs around a clear centre',as
   const style=await rim.evaluate(el=>{const s=getComputedStyle(el);return {image:s.backgroundImage,mask:s.maskComposite,padding:s.paddingTop};});
   expect(style.image).toContain('conic-gradient');
   const alphas=[...style.image.matchAll(/rgba\(255, 255, 255, ([\d.]+)\)/g)].map(match=>Number(match[1]));
-  expect(Math.min(...alphas)).toBeGreaterThanOrEqual(.35);
-  expect(alphas.filter(alpha=>alpha>=.85)).toHaveLength(2);
+  expect(Math.min(...alphas)).toBeGreaterThanOrEqual(.03);expect(Math.max(...alphas)).toBeLessThanOrEqual(.3);
+  expect(alphas.filter(alpha=>alpha>=.2)).toHaveLength(2);
   expect(style.mask).toContain('exclude');expect(parseFloat(style.padding)).toBeLessThanOrEqual(1);
 });
 
