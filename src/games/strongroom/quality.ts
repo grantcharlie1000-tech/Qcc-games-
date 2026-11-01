@@ -38,6 +38,7 @@ export class AutoQuality{
 export class HostGuard{
  thinkHz:number;farAnimationHz=15;private sum=0;private count=0;private since=0;private stage=0;
  constructor(hz:number){this.thinkHz=hz;}
+ setTier(hz:number){this.thinkHz=this.stage>0?Math.max(4,hz/2):hz;this.sum=0;this.count=0;this.since=performance.now();}
  sample(ms:number,now:number){
   this.sum+=ms;this.count++;if(now-this.since<5000)return;
   if(this.sum/this.count>6){if(this.stage===0){this.thinkHz=Math.max(4,this.thinkHz/2);console.info('Strongroom: reduced bot thinking to keep host simulation within budget.');}else this.farAnimationHz=10;this.stage++;}

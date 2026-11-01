@@ -510,6 +510,7 @@ export default class Input {
     if (e.repeat || this._down.has(key)) return;
     const alreadyDown = this.isDown(key);
     this._down.add(key);
+    this._syncButtonFlags();
     if (alreadyDown) return;
     this._justPressed.add(key);
     this.game.events.emit('input:keydown', { key });
@@ -521,6 +522,7 @@ export default class Input {
     const key = this._resolveHardwareKey(physicalKey);
     if (key === null) return;
     this._down.delete(key);
+    this._syncButtonFlags();
   }
 
   /**
@@ -556,6 +558,11 @@ export default class Input {
   // -------------------------------------------------------------------------
 
   _onMouseDown(e) {
+    if (this._keyCapture && !e.target?.closest?.('button,input,select,textarea')) {
+      e.preventDefault?.();const capture=this._keyCapture;this._keyCapture=null;
+      capture.complete(`mouse${e.button|0}`,{cancelled:false});return;
+    }
+    if (this.game.paused || this.game.disposed) return;
     if (e.target?.closest?.('button,input,select,textarea,dialog')) return;
     // Touch UI buttons can emit compatibility mouse events after their
     // pointer events. They are already represented by the virtual controls;
@@ -594,6 +601,8 @@ export default class Input {
     const button = e.button | 0;
     const alreadyDown = this._buttonIsDown(button);
     this._buttonsDown.add(button);
+    const key=this._resolveHardwareKey(`mouse${button}`);
+    if(key!==null&&!this._down.has(key)){this._down.add(key);this._justPressed.add(key);this.game.events.emit('input:keydown',{key});}
     this._syncButtonFlags();
     if (!alreadyDown) this.game.events.emit('input:mousedown', { button });
   }
@@ -601,6 +610,7 @@ export default class Input {
   _onMouseUp(e) {
     const button = e.button | 0;
     const wasDown = this._buttonsDown.delete(button);
+    const key=this._resolveHardwareKey(`mouse${button}`);if(key!==null)this._down.delete(key);
     this._syncButtonFlags();
     // The event itself only exists inside the lock (spec), and only for
     // presses we actually saw go down — a stray mouseup (e.g. the release
@@ -734,12 +744,13 @@ export default class Input {
   }
 
   _syncButtonFlags() {
-    this.firing = this._buttonIsDown(0);
-    this.aiming = this._buttonIsDown(2);
+    this.firing = this._down.has('mouse0') || this._virtualButtonsDown.has(0);
+    this.aiming = this._down.has('mouse2') || this._virtualButtonsDown.has(2);
   }
 
   _releaseHardwareKeys() {
     this._down.clear();
+    this._buttonsDown.clear();this._syncButtonFlags();
     for (const key of [...this._justPressed]) {
       if (!this._virtualJustPressed.has(key)) this._justPressed.delete(key);
     }
@@ -759,9 +770,9 @@ export default class Input {
     }
     this._buttonsDown.clear();
     this._virtualButtonsDown.clear();
-    this._syncButtonFlags();
     this._down.clear();
     this._virtualDown.clear();
+    this._syncButtonFlags();
     this.setMoveVector(0, 0);
     this._justPressed.clear();
     this._virtualJustPressed.clear();

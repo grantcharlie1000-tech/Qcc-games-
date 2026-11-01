@@ -3,6 +3,10 @@ import type {Page} from '@playwright/test';
 const route='/?quality=potato&test&seed=42#/game/strongroom';
 const ready=async(page:Page)=>{await page.goto(route);await expect(page.locator('.strongroom-game')).toHaveAttribute('data-ready','true',{timeout:120000});};
 const start=async(page:Page)=>{await page.getByRole('button',{name:'Play vs bots',exact:true}).click();await page.getByRole('button',{name:'Start match',exact:true}).click();};
+test('returning from a guest seat starts solo with a fresh human seat and controls',async({page})=>{
+ test.setTimeout(120000);await ready(page);await start(page);await page.evaluate(()=>{const g=(window as any).__game;g.net.hooks.state(g.state,3);g.input.setVirtualAction('crouch',true);});
+ await page.evaluate(()=>(window as any).__game.instance.openMenu());await page.getByRole('button',{name:'Leave match',exact:true}).click();await start(page);expect(await page.evaluate(()=>(window as any).__game.localSeat)).toBe(0);expect(await page.evaluate(()=>(window as any).__game.player.bot)).toBe(false);expect(await page.evaluate(()=>(window as any).__game.player.crouch)).toBe(false);
+});
 test('full-screen shared glass shell, remapping, scores and Escape to Study',async({page})=>{
  test.setTimeout(180000);await page.setViewportSize({width:1440,height:900});await ready(page);
  await expect(page.getByRole('button',{name:'Play vs bots',exact:true})).toBeVisible();

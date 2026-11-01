@@ -7,13 +7,13 @@ export interface OnlineHooks{world():SimWorld;input():InputFrame;state(sim:Simul
 export class OnlineController{
  session:OnlineSession|null=null;private panel:RoomPanel;private dialog:HTMLDialogElement|null=null;private roster:HTMLElement|null=null;private options:HTMLElement|null=null;private startButton:HTMLButtonElement|null=null;private disposed=false;private closing=false;private dragPeer:string|null=null;private lastLobby:Lobby|null=null;
  constructor(private hud:HUD,private hooks:OnlineHooks,seed:number){
-  this.panel=new RoomPanel({game:'strongroom',title:'Strongroom',version:ONLINE_VERSION,maxPlayers:hooks.rates().maxTeam*2,inviteCode:inviteCodeFromHash(location.hash),relayOnly:relayOnlyFromHash(location.hash)||new URLSearchParams(location.search).get('relay')==='1',onOpen:room=>this.attach(room,seed),onClosed:message=>this.stop(message)});
+  this.panel=new RoomPanel({game:'strongroom',title:'Strongroom',version:ONLINE_VERSION,maxPlayers:6,inviteCode:inviteCodeFromHash(location.hash),relayOnly:relayOnlyFromHash(location.hash)||new URLSearchParams(location.search).get('relay')==='1',onOpen:room=>this.attach(room,seed),onClosed:message=>this.stop(message)});
   if(inviteCodeFromHash(location.hash))queueMicrotask(()=>{if(!this.disposed)this.open();});
  }
  get isOpen(){return !!this.dialog?.open;}
  get connected(){return !!this.session&&!this.session.room.closed;}
  private attach(room:Room,seed:number){
-  this.closing=false;this.session=new OnlineSession(room,this.hooks.world(),{...this.hooks,lobby:l=>this.paint(l),paused:on=>this.hud.notice(on?'Host is reading (paused)':''),closed:m=>this.stop(m)},seed,new URLSearchParams(location.search).get('netsim')==='1');
+  this.closing=false;this.session=new OnlineSession(room,this.hooks.world(),{...this.hooks,lobby:l=>this.paint(l),paused:on=>{this.hooks.release();this.hud.notice(on?'Host is reading (paused)':'');},closed:m=>this.stop(m)},seed,new URLSearchParams(location.search).get('netsim')==='1');
   this.paint(this.session.lobby);this.panel.setNote('Bots fill every empty seat. The host starts the match.');
  }
  open(){

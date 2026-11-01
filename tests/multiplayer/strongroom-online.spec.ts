@@ -40,7 +40,9 @@ async function online(impaired:boolean,relay=false){
   // Guest Study is Away while the room keeps running.
   await guest.page.keyboard.press('Escape');await expect(guest.page.locator('#study-view')).toBeVisible();await expect.poll(()=>ev(host.page,g=>g.state.entities.find((e:any)=>e.seat===3).away!==null),{timeout:10000}).toBe(true);expect(await ev(host.page,g=>g.state.paused)).toBe(false);
   await guest.page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+  await guest.page.getByRole('button',{name:'Click to play',exact:true}).click();await guest.page.keyboard.down('d');await guest.page.mouse.down();await ev(guest.page,g=>{g.input.setVirtualButton(0,true);g.input.setMoveVector(1,0);});
   await host.page.keyboard.press('Escape');await expect(host.page.locator('#study-view')).toBeVisible();await expect.poll(()=>ev(guest.page,g=>g.state.paused),{timeout:10000}).toBe(true);await expect(guest.page.locator('.sr-status')).toContainText('Host is reading');
+  expect(await ev(guest.page,g=>[g.input.isActionDown('moveRight'),g.input.firing,g.input.moveVector().magnitude])).toEqual([false,false,0]);await guest.page.keyboard.up('d');await guest.page.mouse.up();
   const timer=await ev(host.page,g=>g.state.timer);await host.page.waitForTimeout(250);expect(await ev(host.page,g=>g.state.timer)).toBe(timer);
   await host.page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await expect.poll(()=>ev(guest.page,g=>g.state.paused),{timeout:10000}).toBe(false);
   await ev(host.page,g=>g.state.timer=.05);await expect.poll(()=>ev(host.page,g=>g.state.phase),{timeout:10000}).toBe('roundEnd');await expect.poll(()=>ev(guest.page,g=>g.state.phase),{timeout:10000}).toBe('roundEnd');expect(await ev(guest.page,g=>g.state.scores)).toEqual(await ev(host.page,g=>g.state.scores));

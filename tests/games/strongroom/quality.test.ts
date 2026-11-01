@@ -40,3 +40,7 @@ test('host guard cuts AI before animation and low devices cannot offer 5v5',()=>
  expect(hostRates('medium',false)).toEqual({tickHz:30,snapshotHz:20,maxTeam:3});
  expect(hostRates('potato',true)).toEqual({tickHz:30,snapshotHz:15,maxTeam:3});
 });
+test('host guard applies tier budgets while retaining stronger overload reductions',()=>{
+ const guard=new HostGuard(10);guard.setTier(5);expect(guard.thinkHz).toBe(5);guard.setTier(10);expect(guard.thinkHz).toBe(10);
+ const at=performance.now();for(let t=0;t<=5100;t+=100)guard.sample(8,at+t);expect(guard.thinkHz).toBe(5);guard.setTier(8);expect(guard.thinkHz).toBe(4);guard.setTier(5);expect(guard.thinkHz).toBe(4);
+});

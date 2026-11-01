@@ -2,6 +2,7 @@
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
 import Input from '../../../src/games/strongroom/engine/core/input.js';
 import {EventBus} from '../../../src/games/strongroom/engine/shared/events.js';
+import Settings from '../../../src/games/strongroom/engine/core/settings.js';
 
 let doc,canvas,game,input,rejectRequest,resolveRequest;
 beforeEach(()=>{
@@ -47,4 +48,11 @@ it.each(['paused','text field'])('typing P in %s never opens a gameplay menu',st
  let actions=0;game.events.on('input:keydown',()=>actions++);game.paused=state==='paused';
  input._onKeyDown({key:'p',target:state==='text field'?{closest:()=>({tagName:'INPUT'})}:null});
  expect(actions).toBe(0);expect(input.isDown('p')).toBe(false);
+});
+it('mouse actions follow swaps and a mouse button can restore a captured binding',()=>{
+ game.settings=new Settings(game,null);game.settings.rebind('fire','w');input.locked=true;
+ input._onMouseDown({button:0,target:canvas});expect(input.isActionDown('moveForward')).toBe(true);expect(input.firing).toBe(false);
+ input._onMouseUp({button:0});expect(input.isActionDown('moveForward')).toBe(false);
+ input._onKeyDown({key:'w'});expect(input.isActionDown('fire')).toBe(true);input._onKeyUp({key:'w'});
+ input.locked=false;const capture=vi.fn();input.captureNextKey(capture);input._onMouseDown({button:2,target:canvas});expect(capture).toHaveBeenCalledWith('mouse2',{cancelled:false});expect(input.locked).toBe(false);
 });

@@ -229,6 +229,7 @@ export default class GameSettings {
     this._rebuildLookup();
     this._commit('reset');
   }
+  resetBindings(){this.bindings=defaultBindings();this._rebuildLookup();this._commit('bindings');}
 
   snapshot() {
     return Object.freeze({
