@@ -133,6 +133,7 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await page.clock.setFixedTime(new Date(farmTime.getTime()+1000));
   const golden=page.getByRole('button',{name:/^Golden cob/});
   await expect(golden).toBeVisible();
+  await expect(golden).not.toHaveAccessibleName(/press G/);
   const box=(await golden.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(390);
   // The glowing cob animates continuously; use a real touch at its measured centre.

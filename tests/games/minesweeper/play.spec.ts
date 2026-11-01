@@ -39,13 +39,13 @@ test('correct chord, win without all flags, terminal timer and per-difficulty re
  await cell(page,i).click();await expect(page.locator('.ms-outcome')).not.toHaveText('Mine found!');
  for(const j of neighbors(b,i))if(b.cells[j]===-1)await cell(page,j).click({button:'right'});
  await cell(page,i).click();for(const j of neighbors(b,i))if(b.cells[j]!==-1)await expect(cell(page,j)).toHaveAttribute('data-state','open');
- await win(page,b);await expect(page.locator('.ms-outcome')).toHaveText('Field cleared!');await expect(page.getByRole('region',{name:'Game result'})).toBeVisible();
- await expect(page.locator('.ms-result-title')).toContainText('Score ');await expect(page.locator('.ms-result-detail')).toContainText('Easy 0 + speed');await expect(page.locator('.ms-result-detail')).toContainText('Best score');await expect(page.locator('.game-hud-item').filter({hasText:'Time'})).toBeVisible();
+ await win(page,b);await expect(page.locator('.ms-outcome')).toHaveText('Field cleared!');await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+ await expect(page.locator('.game-sheet[data-state="game-over"] .game-sheet-stats')).toContainText('Score');await expect(page.locator('.game-sheet[data-state="game-over"] .game-sheet-stats')).toContainText('Best');await expect(page.locator('.game-hud-item').filter({hasText:'Time'})).toBeVisible();
  const result=await saved(page);expect(result.stats.beginner.played).toBe(1);expect(result.stats.beginner.wins).toBe(1);expect(result.flags.filter(Boolean).length).toBeLessThan(10);
  expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:minesweeper-easy'))).not.toBeNull();
  const elapsed=result.elapsedMs;await page.waitForTimeout(1100);expect((await saved(page)).elapsedMs).toBe(elapsed);
  await gameAction(page,'Leaderboards');await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-score');await page.getByRole('button',{name:'Close leaderboards'}).click();
- await page.getByRole('button',{name:'New game',exact:true}).click();await expect(page.locator('.ms-time')).toHaveText('00:00');
+ await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.ms-time')).toHaveText('00:00');
 });
 
 test('incorrect chord distinguishes triggered mine, other mines and wrong flags',async({page})=>{
