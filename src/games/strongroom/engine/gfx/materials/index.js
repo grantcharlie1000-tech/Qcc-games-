@@ -48,7 +48,9 @@ export class MaterialSystem {
     this._built = false;
     this._warned = false;
     /** Texture budget scales with the quality preset; 1K is the reference. */
-    this._quality = opts.quality === 'low' ? 0.5 : opts.quality === 'medium' ? 0.75 : 1;
+    this._quality = opts.quality === 'potato' ? .25 : opts.quality === 'high' ? 1 : .5;
+    this._simpleTextures = new Map();
+    this._simple = opts.quality === 'potato' || opts.quality === 'low';
     this._anisotropy = opts.anisotropy ?? 8;
     /** seconds since the last bake, for the scratch-target release below */
     this._idle = 0;
@@ -172,6 +174,19 @@ export class MaterialSystem {
    * meshes batch; pass any override to get a distinct variant.
    */
   get(name, opts = {}) {
+    if (this._simple) {
+      const key=JSON.stringify([name,opts.tint,opts.three?.color,opts.vertexColors]);
+      if(this._materials.has(key))return this._materials.get(key);
+      const color=new THREE.Color(opts.tint ?? opts.three?.color ?? 0x899394);
+      let texture=this._simpleTextures.get(name);
+      if(!texture){
+        const size=this._quality===.25?256:512,canvas=document.createElement('canvas');canvas.width=canvas.height=size;const ctx=canvas.getContext('2d'),data=ctx.createImageData(size,size);let seed=17;for(const c of name)seed=Math.imul(seed,31)+c.charCodeAt(0);
+        for(let n=0;n<data.data.length;n+=4){seed=(Math.imul(seed,1664525)+1013904223)|0;const value=225+((seed>>>24)&15);data.data[n]=data.data[n+1]=data.data[n+2]=value;data.data[n+3]=255;}ctx.putImageData(data,0,0);texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;this._simpleTextures.set(name,texture);
+      }
+      const material=new THREE.MeshLambertMaterial({color,map:texture,side:opts.three?.side??THREE.FrontSide,vertexColors:!!opts.vertexColors});
+      material.userData.surface=this.surfaceOf(name);this._materials.set(key,material);return material;
+    }
+
     const key = this._resolve(name);
     const def = LIBRARY[key];
 
@@ -286,6 +301,7 @@ export class MaterialSystem {
   }
 
   dispose() {
+    for(const texture of this._simpleTextures.values())texture.dispose();this._simpleTextures.clear();
     for (const m of this._materials.values()) m.dispose();
     this._materials.clear();
     this._sets.clear();

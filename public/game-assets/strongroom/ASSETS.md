@@ -1,4 +1,4 @@
-# Shooter asset and source provenance
+# Strongroom asset and source provenance
 
 Based on **Tiny Strike by Guy Zyskind (ISC)**, imported read-only from
 <https://github.com/guyz/tinystrike> at
@@ -8,7 +8,7 @@ Copyright (c) 2026 Guy Zyskind.
 
 ## Runtime models
 
-Paths below are under `public/game-assets/shooter/`. Each model is copied
+Paths below are under `public/game-assets/strongroom/`. Each model is copied
 unchanged from Tiny Strike's matching `assets/` path. URLs use Vite's base
 URL; the existing offline manifest includes every file in `public/`.
 
@@ -31,16 +31,16 @@ Thanks to Quaternius; attribution is voluntary under CC0.
 - Every file under `gfx/` comes from Tiny Strike `src/gfx/`, originally ported
   from [mshumer/Claude-of-Duty](https://github.com/mshumer/Claude-of-Duty)
   (OVERWATCH), **MIT**, Copyright (c) 2026 mshumer. The unchanged notice is
-  [gfx/LICENSE](GFX-LICENSE). It covers the material/texture generator and
+  [gfx/LICENSE](gfx/LICENSE). It covers the material/texture generator and
   GLSL surfaces, sky/atmosphere/cloud/star rendering, postprocessing, geometry
   toolkit and procedural weapon builders. No external raster art is used.
   QCC's weapon-template teardown adaptation is kept under that notice.
-- All other imported client modules (`ai/`, `audio/`, `combat/`, `core/`,
-  `effects/`, `game/`, `maps/`, `player/`, `shared/`, `ui/`, `weapons/`,
-  `world/`) come from the corresponding Tiny Strike `src/` directories,
-  **ISC**. Their generated world textures, effects, HUD SVG silhouettes,
-  maps and synthesized Web Audio are covered by the project notice.
-- `public/game-art/shooter/cover.svg` is a new QCC placeholder vector poster,
+- The retained `core/input.js`, `core/settings.js`, `maps/`, `shared/`, and `world/`
+  modules come from Tiny Strike (**ISC**). The unused economy, career, HUD,
+  combat, round, AI, WebSocket, room directory and four map implementations
+  were deleted in Round 2. The application simulation, rendering adapter, HUD,
+  synthesised audio and online session are QCC TypeScript.
+- `public/game-art/strongroom/cover.svg` is a final original QCC vector poster by the game designer,
   drawn for this integration; it contains no third-party art.
 - The mounted menu and arcade Game rules display the Tiny Strike credit.
   Copies of both code notices and this inventory are also shipped beside
@@ -57,9 +57,9 @@ room directory, leaderboard client, or leaderboard/room service core is imported
 
 ## Local adaptations
 
-The client bootstrap now follows QCC's mount/pause/resume/dispose contract.
-Model URLs use the QCC base URL; event listeners and deferred callbacks are
-owned by the mount; menus/styles are scoped to the game; P replaces local
-Escape handling; the canvas renders at the full device pixel ratio. The
-online/career/ranking UI is disabled and neither upstream services nor QCC
-score submissions are called. Three uses QCC's existing 0.180 dependency.
+The bootstrap follows QCC's lifecycle and shared Liquid Glass controls. Models
+are unchanged; the separate character optimisation pipeline is deferred. Low
+rendering uses Lambert albedo only; high rendering retains the licensed PBR
+and atmosphere. The canvas pixel ratio follows the selected quality tier.
+Strongroom never calls QCC score or leaderboard submission APIs. Networking
+uses QCC Room; no Tiny Strike services are imported. Three is QCC's r180.

@@ -1,33 +1,39 @@
-/* QCC's play surface owns the viewport; game visuals stay inside it. */
-.strongroom-game{position:absolute;inset:0;isolation:isolate;overflow:hidden;background:#04070a;color:#d6e5b8;font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none}
-.strongroom-game>canvas{width:100%;height:100%;display:block;touch-action:none;outline:none}
-.strongroom-game #hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10}
-.strongroom-game #hud [hidden]{display:none!important}
-.strongroom-game .qcc-strongroom-credit{font-size:11px;color:#aabd8c;text-align:center;line-height:1.4}
-.strongroom-game .mn-title{font-size:clamp(30px,5vw,64px)}
-.strongroom-game #hud-menu{padding-top:60px}
-.strongroom-game #hud-radar{top:60px}
-/* Disabled upstream panels have no service or active control. */
-.strongroom-game :is(#hud-career,#hud-online-open,#hud-leaderboard-open,#hud-leaderboard,#hud-end-leaderboard,#hud-end-rewards,#hud-end-rank,#hud-progress-details,#hud-progression-toasts){display:none!important}
-body.in-game .game-view:has(.strongroom-game){--scene-width:var(--play-width,100vw);--scene-bg:#04070a;padding:0;display:block}
-body.in-game .game-view:has(.strongroom-game) .game-metrics{display:none}
-body.in-game .game-view:has(.strongroom-game) .game-toolbar{top:max(8px,env(safe-area-inset-top));left:0;width:100%;height:36px;padding:0 8px}
-body.in-game .game-view:has(.strongroom-game) .game-toolbar .icon-button{position:absolute;top:0;bottom:auto;width:32px;height:32px;min-width:32px;min-height:32px;padding:6px;background:#0008}
-body.in-game .game-view:has(.strongroom-game) .game-toolbar .icon-button svg{width:20px;height:20px}
-body.in-game .game-view:has(.strongroom-game) .game-toolbar button:is(#pause-game,#fullscreen-game,#game-menu,#rules-game,#restart-game,#favourite-game){position:absolute;top:0;bottom:auto;width:32px;height:32px;min-width:32px;min-height:32px;padding:6px;background:#0008}
-body.in-game .game-view:has(.strongroom-game) .game-toolbar>a{left:max(8px,env(safe-area-inset-left))}
-body.in-game .game-view:has(.strongroom-game) #pause-game{right:max(8px,env(safe-area-inset-right));margin:0}
-body.in-game .game-view:has(.strongroom-game) #fullscreen-game{right:calc(max(8px,env(safe-area-inset-right)) + 36px)}
-body.in-game .game-view:has(.strongroom-game) #game-menu{right:calc(max(8px,env(safe-area-inset-right)) + 72px)}
-body.in-game .game-view:has(.strongroom-game) #rules-game{right:calc(max(8px,env(safe-area-inset-right)) + 108px)}
-body.in-game .game-view:has(.strongroom-game) #restart-game{right:calc(max(8px,env(safe-area-inset-right)) + 144px)}
-body.in-game .game-view:has(.strongroom-game) #favourite-game{right:calc(max(8px,env(safe-area-inset-right)) + 180px)}
-.game-view .strongroom-game.touch-device #hud-menu{padding-top:50px}
-.game-view .strongroom-game.touch-device #hud-radar{top:52px;width:100px;height:100px}
-.game-view .strongroom-game.touch-device #hud-radar-canvas{width:94px;height:94px}
-.game-view .strongroom-game.touch-device .tc-utilities{top:calc(var(--safe-t) + 48px)}
-.game-view .strongroom-game.touch-device #hud-ammo{top:calc(env(safe-area-inset-top,0px) + 100px)}
-.game-view .strongroom-game.touch-device #hud-killfeed{top:158px}
-.game-view .strongroom-game.touch-device .mn-map-art{height:38px}
-@media(prefers-reduced-motion:reduce){.strongroom-game *,.strongroom-game *::before,.strongroom-game *::after{animation:none!important;transition:none!important}}
-.reduce-motion .strongroom-game *,.reduce-motion .strongroom-game *::before,.reduce-motion .strongroom-game *::after{animation:none!important;transition:none!important}
+/* Layout only. All control, pill and sheet materials come from QCC's shared glass. */
+body.in-game .game-view[data-game-id=strongroom]{padding:0;display:block;background:#141922}
+body.in-game .game-view[data-game-id=strongroom] :is(.stage-wrap,#game-stage){position:absolute;inset:0;width:100%;height:100%;max-height:none;display:block}
+.game-view[data-game-id=strongroom] .game-surface{background:transparent}
+.game-view[data-game-id=strongroom] .game-dock{position:absolute;inset:max(8px,env(safe-area-inset-top)) 12px auto;width:auto;margin:0;justify-content:space-between;pointer-events:none}
+.game-view[data-game-id=strongroom] .game-dock>.ui-tab{pointer-events:auto}
+.game-view[data-game-id=strongroom] .game-hud{display:none}
+.strongroom-game{position:absolute;inset:0;overflow:hidden;isolation:isolate;background:#141922;color:#fff;font-family:var(--font-sans);user-select:none;-webkit-user-select:none;touch-action:none}
+.strongroom-game>canvas{display:block;width:100%;height:100%;outline:none;touch-action:none}
+.strongroom-game [hidden]{display:none!important}
+.sr-hud{position:absolute;inset:0;pointer-events:none;z-index:10;font-variant-numeric:tabular-nums}
+.sr-hud button,.sr-sheet{pointer-events:auto}
+.sr-pill{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;border-radius:999px;padding:10px 18px;font:550 16px/1.25 var(--font-sans);white-space:nowrap;touch-action:none}
+.sr-pill>span{position:relative;z-index:1}
+.sr-home{position:absolute;top:50%;left:50%;width:min(600px,calc(100% - 32px));text-align:center;transform:translate(-50%,-42%);text-shadow:0 2px 8px #000}
+.sr-home h1{margin:12px 0;font-size:clamp(34px,7vw,76px);line-height:1;letter-spacing:-.05em}
+.sr-home p{margin:12px 0;font-size:16px}.sr-home .sr-eyebrow{font-size:12px;letter-spacing:.16em}.sr-home-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:28px}.sr-home .sr-credit{font-size:12px;line-height:1.5;margin-top:24px;color:#e2e4e8}
+.sr-settings{position:absolute;right:max(12px,env(safe-area-inset-right));top:80px}
+.sr-score{position:absolute;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100% - 260px);font-size:16px}
+.sr-health{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom));left:calc(16px + env(safe-area-inset-left))}
+.sr-ammo{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom));right:calc(16px + env(safe-area-inset-right))}
+.sr-status{position:absolute;top:76px;left:50%;max-width:calc(100% - 260px);white-space:normal;text-align:center;transform:translateX(-50%);font-size:14px;pointer-events:none}
+.sr-lock{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%)}
+.sr-crosshair{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;text-shadow:0 1px 2px #000}
+.sr-playing .sr-crosshair{display:block}.sr-hit .sr-crosshair{color:#FF8A1F;font-size:32px}
+.sr-feed{position:absolute;right:16px;top:148px;display:grid;gap:6px;max-width:260px;font-size:14px}.sr-feed .sr-pill{font-size:14px;min-height:32px;padding:7px 14px}
+.sr-sheet.ui-glass-sheet{font-family:var(--font-sans);width:min(620px,calc(100% - 24px));max-height:calc(var(--play-height,100dvh) - 24px);padding:20px;color:#fff}
+.sr-sheet .dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.sr-sheet .dialog-head button{width:48px;height:48px;padding:0;flex-shrink:0;font-size:22px}
+.sr-sheet-body{display:flex;flex-direction:column;gap:14px;min-width:0}.sr-sheet-body p{margin:0;line-height:1.5}.sr-sheet-body label{display:grid;grid-template-columns:1fr minmax(100px,55%);align-items:center;gap:12px;font-size:16px}.sr-sheet select option{color:#fff;background:#23272d}
+.sr-binding{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}.sr-binding button{min-width:104px;min-height:48px}.sr-sheet table{border-collapse:collapse;width:100%;font-size:14px}.sr-sheet td,.sr-sheet th{text-align:left;padding:10px 5px;border-bottom:1px solid #ffffff20}.sr-sheet th{font-size:12px;white-space:normal}
+.sr-touch{display:none;position:absolute;inset:0;pointer-events:none;touch-action:none}.sr-touch-mode .sr-touch{display:block}.sr-touch button{pointer-events:auto}.sr-look-zone{position:absolute;inset:25% 0 0 40%;pointer-events:auto}
+.sr-stick{position:absolute;left:calc(18px + env(safe-area-inset-left));bottom:calc(18px + env(safe-area-inset-bottom));width:112px;height:112px;min-width:112px;border-radius:50%;border:0;font-size:12px;padding:0}
+.sr-touch-button{position:absolute;display:grid;place-items:center;width:52px;height:52px;min-width:48px;min-height:48px;border-radius:50%;border:0;padding:0;font-size:12px}.sr-fire{right:calc(18px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:76px;height:76px}.sr-aim{right:106px;bottom:70px;width:60px;height:60px}.sr-reload{right:174px;bottom:82px}.sr-crouch{right:116px;bottom:10px}.sr-jump{right:184px;bottom:10px}.sr-scores{top:82px;right:120px;border-radius:999px;width:70px}
+.sr-touch-mode .sr-health{top:80px;bottom:auto}.sr-touch-mode .sr-ammo{bottom:150px;left:18px;right:auto;font-size:14px}.sr-touch-mode .sr-score{font-size:14px;min-height:40px;max-width:calc(100% - 150px);padding:8px 14px}.sr-touch-mode .sr-settings{font-size:14px}.sr-touch-mode .sr-feed{top:142px;max-width:230px}.sr-touch-mode .sr-feed .sr-pill:nth-child(n+3){display:none}
+.sr-orientation{position:absolute;inset:0;width:100%;max-width:none;max-height:none;margin:0;border-radius:0!important;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;text-align:center;padding:24px}.sr-orientation p{font-size:56px}.sr-orientation h2{max-width:280px}
+@media(max-height:480px){.sr-home{transform:translate(-50%,-36%)}.sr-home h1{font-size:40px}.sr-home-actions{margin-top:18px}.sr-home .sr-credit{margin-top:14px}.sr-home p{margin:8px 0}.sr-home .sr-eyebrow{font-size:10px}.sr-sheet.ui-glass-sheet{padding:16px;max-height:calc(100dvh - 16px)}.sr-sheet .dialog-head{margin-bottom:8px}.sr-sheet-body{gap:10px}}
+@media(max-width:699px){.sr-score{max-width:calc(100% - 148px);font-size:14px}.sr-status{max-width:calc(100% - 240px)}.sr-sheet td,.sr-sheet th{padding:8px 3px}}
+@media(prefers-reduced-motion:reduce){.strongroom-game *{animation:none!important;transition:none!important}}
+.reduce-motion .strongroom-game *{animation:none!important;transition:none!important}

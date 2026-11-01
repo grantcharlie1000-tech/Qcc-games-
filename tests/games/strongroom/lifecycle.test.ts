@@ -1,7 +1,7 @@
 // @ts-nocheck -- tests the imported JS facade without broadening repo TS options.
 import {afterEach,beforeEach,expect,it,vi} from 'vitest';
-import Input from '../../../src/games/strongroom/core/input.js';
-import {EventBus} from '../../../src/games/strongroom/shared/events.js';
+import Input from '../../../src/games/strongroom/engine/core/input.js';
+import {EventBus} from '../../../src/games/strongroom/engine/shared/events.js';
 
 let doc,canvas,game,input,rejectRequest,resolveRequest;
 beforeEach(()=>{

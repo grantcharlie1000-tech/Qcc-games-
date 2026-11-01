@@ -88,7 +88,7 @@ export default class World {
       if (query) return normalizeMapId(query);
     }
     if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('tiny-strike-map');
+      const saved = localStorage.getItem('strongroom-map');
       if (saved) return normalizeMapId(saved);
     }
     return DEFAULT_MAP_ID;
@@ -144,7 +144,7 @@ export default class World {
     this._loaded = true;
     this.game.selectedMapId = mapId;
     if (this.game.state) this.game.state.mapId = mapId;
-    if (typeof localStorage !== 'undefined') localStorage.setItem('tiny-strike-map', mapId);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('strongroom-map', mapId);
 
     if (this.game.debug) this._validateNav();
     if (this.game.events && typeof this.game.events.emit === 'function') {
@@ -193,15 +193,7 @@ export default class World {
   // Materials / textures
   // =========================================================================
   _initMaterials() {
-    const theme = this.mapDefinition ? this.mapDefinition.theme : {
-      key: 'desert',
-      wall: '#c8a878', wallA: '#cfa368', wallB: '#a8a69c', floor: '#b3a07c',
-      trim: '#8f7a58', metal: '#7a7f85', wood: '#9c8a6a', fog: 0xd9b48a,
-      fogNear: 70, fogFar: 165, skyTint: 0xffffff, sun: 0xffd9a6,
-      sunIntensity: 2.6, sunPosition: [58, 52, -26], hemiSky: 0x9db0d6,
-      hemiGround: 0x9a7a52, ambient: 0x4a4038, ambientIntensity: 0.5,
-      accentA: '#d98e3f', accentB: '#657f91', markerA: '#ffb050', markerB: '#7fb2d9',
-    };
+    const theme = this.mapDefinition.theme;
     this.theme = theme;
 
     // Surfaces come from the procedural PBR library (src/gfx/materials): each
@@ -232,6 +224,7 @@ export default class World {
     // Headless (the Node map tests build a World with no renderer): the layout,
     // collision and navigation are all that exist to check there.
     if (!this.game.renderer) return;
+    if (this.game.gfxQuality !== 'high') return this.game.buildSimpleSky(this);
 
     if (!this.sky) {
       this.sky = new SkySystem({
@@ -239,7 +232,7 @@ export default class World {
         scene,
         camera: this.game.camera,
         events: this.game.events,
-        quality: this.game.gfxQuality || 'high',
+        quality: this.game.gfxQuality === 'low' ? 'low' : 'high',
         exposure: this.game.renderer.toneMappingExposure,
         getBrightnessEv: () => this.game.settings?.brightnessEv ?? 0,
         debug: this.game.debug,
@@ -276,7 +269,7 @@ export default class World {
    * material — about 3 draw calls and 2k triangles for the whole horizon.
    */
   _buildBackdrop() {
-    if (!this.game.renderer) return;
+    if (!this.game.renderer || this.game.gfxQuality === 'potato') return;
     const bounds = this.mapDefinition
       ? this.mapDefinition.bounds
       : { x0: -52, x1: 52, z0: -42, z1: 42 };
@@ -411,7 +404,7 @@ export default class World {
   }
 
   update(dt) {
-    if (!this.sky) return;
+    if (!this.sky || this.game.gfxQuality !== 'high') return;
     this.sky.update(dt);
 
     // Retint the bounce fill from the light the sky is actually making. The
@@ -544,7 +537,15 @@ export default class World {
   _dress() {
     if (!this.game.renderer) return;
     const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
-    const result = dressMap(this, { quality: this.game.gfxQuality || 'high' });
+    const previous = new Set(this.environment.children);
+    const result = dressMap(this, { quality: 'high' });
+    // Build the same collision proxies on every tier; discard only visual dressing.
+    if (this.game.quality.dressing === 'off') {
+      for (const object of [...this.environment.children]) if (!previous.has(object)) {
+        this.environment.remove(object);
+        object.traverse(child => {if(child.geometry && child.geometry !== this._unitBox && child.geometry !== this._cylGeo)child.geometry.dispose();});
+      }
+    }
     if (this.game.debug && t0) {
       console.info(
         `[world] ${this.mapId} dressing: ${(result.tris / 1000).toFixed(1)}k tris, ` +
@@ -1030,400 +1031,17 @@ export default class World {
       buildDefinitionGeometry(this, this.mapDefinition);
       return;
     }
-    this._buildDustyardMap();
+    buildDefinitionGeometry(this, this.mapDefinition);
   }
 
-  _buildDustyardMap() {
-    const M = this.mats;
-    const H = WALL_H;
-
-    // ---- ground + zone tint pads ----------------------------------------
-    const ground = this.slab(-52, 52, -1, 0, -42, 42, M.ground, 'sand');
-    ground.castShadow = false;
-    this.slab(-46, -14, 0, 0.06, -26, -2, M.padCool, 'concrete');   // B room floor
-    this.slab(14, 38, 0, 0.06, 2, 26, M.padWarm, 'sand');           // A courtyard
-    this.slab(38, 50, 0, 0.06, -8, 26, M.padWarm, 'sand');          // long A lane
-    this.slab(-46, 34, 0, 0.06, 26, 40, M.padWarm, 'sand');         // T plaza
-    this.slab(-26, 34, 0, 0.06, -40, -26, M.padCool, 'concrete');   // CT plaza
-
-    // ---- perimeter (h9) ---------------------------------------------------
-    this.slab(-51.5, 51.5, 0, 9, -41.5, -40, M.wallN);
-    this.slab(-51.5, 51.5, 0, 9, 40, 41.5, M.wallN);
-    this.slab(-51.5, -50, 0, 9, -40, 40, M.wallN);
-    this.slab(50, 51.5, 0, 9, -40, 40, M.wallN);
-
-    // ---- big corner building masses (varied heights for skyline) ---------
-    this.slab(-50, -26, 0, 7, -40, -26, M.wallB);    // NW block (behind B)
-    this.slab(34, 50, 0, 6, -40, -26, M.wallA);      // NE block (behind A)
-    this.slab(-50, -46, 0, 6, 26, 40, M.wallN);      // SW sliver
-    this.slab(34, 50, 0, 6.5, 32, 40, M.wallA);      // SE block (leaves long approach open)
-    this.slab(-50, -46, 0, 6, -26, 26, M.wallB);     // west band
-
-    // ---- CT plaza south wall (z=-26) with openings ------------------------
-    // openings: B door x[-22,-18], mid doors x[-6,6] (framed), CT ramp x[11,22],
-    // A stairs x[26,32]; catwalk base occupies x[6,11]; platform covers x[22,42].
-    this.slab(-26, -22, 0, H, -26.3, -25.7, M.wallB);
-    this.slab(-18, -6, 0, H, -26.3, -25.7, M.wallN);
-    this.arch(-20, -26, 4, 'x', 0.6, 3.4, 4.7, M.wallBs);           // B door arch
-
-    // ---- Mid double doors (chokepoint at z=-26, gap x[-1.5,1.5]) ----------
-    this.slab(-6, -1.5, 0, H, -26.3, -25.7, M.wallN);
-    this.slab(1.5, 6, 0, H, -26.3, -25.7, M.wallN);
-    this.arch(0, -26, 3, 'x', 0.6, 3.3, 4.4, M.wallNs);
-    // metal door leaves swung fully open, flat against the plaza-side wall
-    this.slab(-3.0, -1.6, 0, 2.9, -26.44, -26.3, M.metalDoor, 'metal');
-    this.slab(1.6, 3.0, 0, 2.9, -26.44, -26.3, M.metalDoor, 'metal');
-
-    // ---- T plaza north wall (z=26) with openings --------------------------
-    // openings: tunnels x[-42,-38], mid x[-6,6], courtyard x[16,24], long x[40,48]
-    this.slab(-46, -42, 0, H, 25.7, 26.3, M.wallB);
-    this.slab(-38, -6, 0, H, 25.7, 26.3, M.wallN);
-    this.slab(6, 16, 0, H, 25.7, 26.3, M.wallN);
-    this.slab(24, 40, 0, H, 25.7, 26.3, M.wallA);
-    this.slab(48, 50, 0, H, 25.7, 26.3, M.wallA);
-    this.arch(0, 26, 12, 'x', 0.6, 3.6, 4.9, M.wallNs);             // mid arch
-    this.arch(20, 26, 8, 'x', 0.6, 3.5, 4.8, M.wallAs);             // courtyard arch
-    this.arch(44, 26, 8, 'x', 0.6, 3.6, 5, M.wallAs);               // long A arch
-    this.arch(-40, 26, 4, 'x', 0.6, 2.5, 4.2, M.wallBs);            // tunnel mouth
-
-    // ---- B lower mass (south of B room) with tunnel cut -------------------
-    // tunnels: seg1 x[-42,-38] z[10,26]; chamber x[-42,-30] z[4,10]; seg2 x[-38,-34] z[-2,4]
-    this.slab(-46, -42, 0, 6, -2, 26, M.wallB);
-    this.slab(-38, -14, 0, 6, 10, 26, M.wallB);
-    this.slab(-30, -14, 0, 6, 4, 10, M.wallB);
-    this.slab(-42, -38, 0, 6, -2, 4, M.wallB);
-    this.slab(-34, -14, 0, 6, -2, 4, M.wallB);
-    // tunnel ceilings (dim, tight) + solid above
-    this.slab(-42, -38, 2.5, 6, 10, 26, M.wallB);
-    this.slab(-42, -30, 2.5, 6, 4, 10, M.wallB);
-    this.slab(-38, -34, 2.5, 6, -2, 4, M.wallB);
-    this.arch(-36, -2, 4, 'x', 0.5, 2.2, 2.5, M.wallBs);            // B-side tunnel exit
-
-    // ---- mid west mass with B corridor cut (x[-14,-6]) --------------------
-    this.slab(-14, -6, 0, 6, -26, -16, M.wallN);
-    this.slab(-14, -6, 0, 6, -12, 26, M.wallN);
-    this.slab(-14, -6, 2.6, 6, -16, -12, M.wallN);                  // corridor ceiling
-    this.arch(-14, -14, 4, 'z', 0.5, 2.6, 3, M.wallBs);             // B-side mouth
-    this.arch(-6, -14, 4, 'z', 0.5, 2.6, 3, M.wallNs);              // mid-side mouth
-
-    // ---- B site room interior ---------------------------------------------
-    const bPlat = this.slab(-44, -30, 0, 1.0, -22, -8, M.padPlatB, 'concrete');
-    bPlat.userData.surface = 'concrete';
-    this.slab(-30, -28.7, 0, 0.5, -18, -12, M.padPlatB);            // east step
-    this.slab(-40, -34, 0, 0.5, -8, -6.7, M.padPlatB);              // south step
-    this.siteMarker('B', '#7fb2d9', -37, 1.0, -15, 6.5);
-    // props
-    this.crate(-42.6, -20.5, 1.2, 1.0);
-    this.crate(-41.3, -19.6, 1.2, 1.0, this.mats.crateDark);
-    this.crate(-42.0, -20.0, 1.1, 2.2);                              // stacked
-    this.crate(-32, -10.5, 1.2, 1.0);
-    this.barrel(-16.2, -22.5);
-    this.barrel(-17.3, -21.6, true);
-    this.crate(-16.5, -5.2, 1.4, 0);
-    this.sandbags(-27.4, -24.2, -4.6, -3.6, 1.0);                    // covers tunnel exit
-    // pillars
-    this.slab(-26.5, -25.5, 0, 6, -8.5, -7.5, M.wallBs);
-    this.slab(-18.5, -17.5, 0, 6, -19.5, -18.5, M.wallBs);
-
-    // ---- catwalk base + deck rails + stairs -------------------------------
-    this.slab(6, 11, 0, 2.4, -26, 10, M.wallN);                      // solid base, deck top 2.4
-    // west rail (overlooks mid) with drop gaps
-    this.slab(6, 6.15, 2.4, 3.0, -26, -20, M.wood, 'wood');
-    this.slab(6, 6.15, 2.4, 3.0, -16, -6, M.wood, 'wood');
-    this.slab(6, 6.15, 2.4, 3.0, -2, 6, M.wood, 'wood');
-    // east rail (over CT ramp area), gap z[-14,-10] = bridge
-    this.slab(10.85, 11, 2.4, 3.0, -26, -14, M.wood, 'wood');
-    this.slab(10.85, 11, 2.4, 3.0, -10, -8, M.wood, 'wood');
-    // north rail (overlooks CT plaza)
-    this.slab(6, 11, 2.4, 3.0, -26, -25.85, M.wood, 'wood');
-    this.sandbags(6.6, 8.4, -25.2, -24.2, 0.7, 2.4);                 // deck cover (on top)
-    // mid -> catwalk stairs (5 treads x 0.48 = 2.4, climbing north)
-    this.stairs(6, 11, 10, 16, 5, 0.48, '-z', M.wallNs);
-    // Building south of stairs. A 0.4 m visual seam leaves enough capsule
-    // clearance for separation steering at the lowest tread without opening a
-    // new walkable route between the stair and building.
-    this.slab(6, 11, 0, 6, 16.4, 26, M.wallN);
-    this.slab(11, 14, 0, 6, -8, 26, M.wallN);                        // courtyard west wall
-
-    // ---- bridge (catwalk -> A platform, over CT ramp area) ----------------
-    this.slab(11, 22, 2.1, 2.4, -14, -10, M.wood, 'wood');
-    this.slab(11, 22, 2.4, 3.0, -14, -13.88, M.wood, 'wood');        // rails
-    this.slab(11, 22, 2.4, 3.0, -10.12, -10, M.wood, 'wood');
-    this.slab(13.8, 14.2, 0, 2.1, -13.6, -13.2, M.wood, 'wood');     // posts
-    this.slab(13.8, 14.2, 0, 2.1, -10.8, -10.4, M.wood, 'wood');
-    this.slab(18.8, 19.2, 0, 2.1, -13.6, -13.2, M.wood, 'wood');
-    this.slab(18.8, 19.2, 0, 2.1, -10.8, -10.4, M.wood, 'wood');
-
-    // ---- A platform + parapets + CT stairs --------------------------------
-    this.slab(22, 42, 0, 2, -26, -8, M.padPlat, 'concrete');
-    // north parapets (stair gap x[26,32])
-    this.slab(22, 26, 2, 3.1, -26.2, -25.8, M.wallAs);
-    this.slab(32, 42, 2, 3.1, -26.2, -25.8, M.wallAs);
-    // partial west parapet (bridge lands z[-14,-10])
-    this.slab(21.8, 22.2, 2, 2.9, -20, -14, M.wallAs);
-    this.siteMarker('A', '#ffb050', 32, 2.0, -17, 7);
-    // CT plaza -> A stairs (4 treads x 0.5, climbing south)
-    this.stairs(26, 32, -30, -26, 4, 0.5, '+z', M.wallAs);
-    // A site props: classic default boxes
-    this.crate(31.6, -18.4, 1.3, 2.0);
-    this.crate(32.9, -17.1, 1.3, 2.0, this.mats.crateDark);
-    this.crate(32.2, -17.8, 1.2, 3.3);                               // double stack
-    this.crate(25.5, -10.3, 1.1, 2.0);
-    this.crate(38.6, -23.2, 1.5, 2.0);
-    this.barrel(40.8, -10.0);
-    this.sandbags(33.5, 36.5, -25.4, -24.4, 1.0, 2.0);               // on plat, facing site
-
-    // ---- A ramp (long A -> platform) + east pocket ------------------------
-    this.stairs(34, 42, -8, -2, 4, 0.5, '-z', M.wallAs);
-    this.slab(42, 50, 0, 6, -26, -8, M.wallA);                       // east-of-plat mass
-    // pocket x[42,50] z[-8,-2]: burnt-out car suggestion + barrels
-    this.box(47.3, 0.55, -4.6, 3.4, 1.1, 1.7, M.metal, 'metal');
-    this.box(47.3, 1.32, -4.7, 1.9, 0.55, 1.5, M.metalDoor, 'metal');
-    this.barrel(42.6, -7.4, true);
-
-    // ---- courtyard masses + short corridor to ramp ------------------------
-    this.slab(14, 30, 0, 6, -8, 2, M.wallA);                         // big north mass
-    this.slab(34, 38, 0, 6, -2, 2, M.wallA);                         // notch filler
-    this.arch(32, 2, 4, 'x', 0.5, 3, 3.5, M.wallAs);                 // short corridor mouth
-    // long A west wall with courtyard arch (z[6,12])
-    this.slab(37.7, 38.3, 0, H, -2, 6, M.wallA);
-    this.slab(37.7, 38.3, 0, H, 12, 26, M.wallA);
-    this.arch(38, 9, 6, 'z', 0.6, 3.4, 4.7, M.wallAs);
-    // courtyard props
-    this.crate(16.3, 9.5, 1.4, 0);
-    this.crate(17.7, 10.6, 1.2, 0);
-    this.crate(17.0, 10.0, 1.1, 1.4);
-    this.crate(29, 17, 1.3, 0);
-    this.barrel(35.4, 4.2);
-
-    // ---- long A props ------------------------------------------------------
-    this.crate(47.8, 8, 1.5, 0);
-    this.crate(47.6, 9.6, 1.3, 0);
-    this.barrel(39.6, 16.5);
-    this.barrel(40.6, 17.3, true);
-    this.sandbags(43, 46, 20.6, 21.6, 1.0);
-
-    // ---- CT ramp area (under bridge) props: climb crates to A -------------
-    this.crate(20.6, -20.4, 0.9, 0);
-    this.crate(20.7, -19.0, 0.9, 0.9);                               // 0.9 -> 1.8 -> plat 2.0
-    this.barrel(12.6, -24.0);
-
-    // ---- CT plaza props ----------------------------------------------------
-    this.sandbags(-2.6, 2.6, -30.4, -29.4, 1.0);                     // facing mid doors
-    this.crate(-24.5, -37.5, 1.4, 0);
-    this.crate(-23.1, -37.2, 1.2, 0);
-    this.crate(18, -37.6, 1.3, 0);
-    this.crate(19.3, -36.9, 1.1, 0);
-    this.box(30, 0.5, -37.8, 2.6, 1.0, 1.4, M.metal, 'metal');       // ammo cache
-
-    // ---- T plaza props -----------------------------------------------------
-    this.box(-12, 0.9, 36.8, 3.6, 1.8, 1.7, M.metal, 'metal');       // van-ish block
-    this.crate(2, 36.5, 1.4, 0);
-    this.crate(3.4, 36.2, 1.2, 0);
-    this.crate(2.7, 36.4, 1.0, 1.4);
-    this.barrel(-27, 28.5);
-    this.barrel(-28, 29.3, true);
-    this.crate(30.5, 36.8, 1.3, 0);
-
-    // ---- mid props ---------------------------------------------------------
-    this.crate(-4.4, 8, 1.3, 0);
-    this.crate(3.8, -2, 1.2, 0);
-    this.barrel(4.4, 17.5);
-    this.barrel(-4.6, -18.7);
-
-    // ---- tunnels props -----------------------------------------------------
-    this.barrel(-40.6, 5.2);
-    this.barrel(-31.4, 8.6, true);
-    this.crate(-38.9, 18.5, 0.9, 0);
-
-    // ---- cornice trims on a few masses (skyline detail, non-solid) --------
-    this.deco(0, 5.08, -26, 12.6, 0.24, 1.0, M.trim);
-    this.deco(-10, 6.1, 0, 8.4, 0.28, 52.4, M.trim);
-    this.deco(8.5, 6.1, 21, 5.4, 0.28, 10.4, M.trim);
-    this.deco(22, 6.1, -3, 16.4, 0.28, 10.4, M.trim);
-    this.deco(-30, 6.1, 12, 32.4, 0.28, 28.4, M.trim);
-    this.deco(46, 6.1, -17, 8.4, 0.28, 18.4, M.trim);
-
-    // ---- spawns ------------------------------------------------------------
-    const CT_YAW = Math.PI;  // facing +Z (south, toward mid)
-    const T_YAW = 0;         // facing -Z (north)
-    const ct = [
-      [-14, -34], [-8, -36], [-2, -34], [4, -36], [10, -34], [15, -36],
-    ];
-    const t = [
-      [-34, 33], [-22, 35], [-14, 31], [-2, 33], [8, 31], [24, 33],
-    ];
-    for (const [x, z] of ct) this.spawns.ct.push({ pos: new THREE.Vector3(x, 0.06, z), yaw: CT_YAW });
-    for (const [x, z] of t) this.spawns.t.push({ pos: new THREE.Vector3(x, 0.06, z), yaw: T_YAW });
-
-    // ---- bomb sites --------------------------------------------------------
-    this.bombSites = [
-      {
-        name: 'A',
-        center: new THREE.Vector3(32, 2, -17),
-        box: new THREE.Box3(new THREE.Vector3(27, 1.8, -22), new THREE.Vector3(37, 4.6, -12)),
-      },
-      {
-        name: 'B',
-        center: new THREE.Vector3(-37, 1, -15),
-        box: new THREE.Box3(new THREE.Vector3(-43, 0.8, -21), new THREE.Vector3(-31, 3.6, -9)),
-      },
-    ];
-  }
-
-  // =========================================================================
-  // Waypoint graph (hand-authored, ~70 nodes covering every lane)
-  // =========================================================================
   _buildWaypoints() {
     if (this.mapDefinition) {
       buildDefinitionNavigation(this, this.mapDefinition);
       return;
     }
-    this._buildDustyardWaypoints();
+    buildDefinitionNavigation(this, this.mapDefinition);
   }
 
-  _buildDustyardWaypoints() {
-    const nodes = this.waypoints.nodes;
-    const edges = this.waypoints.edges;
-    const W = (x, y, z, key = null) => {
-      const id = nodes.length;
-      nodes.push({ id, key, pos: new THREE.Vector3(x, y, z) });
-      return id;
-    };
-    const E = (a, b) => edges.push([a, b]);
-
-    // T plaza (south)
-    const T1 = W(-40, 0, 31), T2 = W(-30, 0, 34), T3 = W(-20, 0, 31);
-    const T4 = W(-10, 0, 34), T5 = W(0, 0, 31), T6 = W(10, 0, 34);
-    const T7 = W(20, 0, 31), T8 = W(30, 0, 31), T9 = W(44, 0, 29);
-    E(T1, T2); E(T2, T3); E(T3, T4); E(T4, T5); E(T5, T6); E(T6, T7); E(T7, T8); E(T8, T9);
-    E(T3, T5); E(T5, T7);
-
-    // B tunnels (T -> B): seg1, chamber, seg2
-    const U1 = W(-40, 0, 23), U2 = W(-40, 0, 15), U3 = W(-40, 0, 8);
-    const U4 = W(-34, 0, 7), U5 = W(-36, 0, 1);
-    E(T1, U1); E(U1, U2); E(U2, U3); E(U3, U4); E(U4, U5);
-
-    // B site room (floor y0, platform y1)
-    const B1 = W(-36, 0, -4), B2 = W(-24, 0, -6), B3 = W(-18, 0, -14);
-    const B4 = W(-20, 0, -23), B5 = W(-42, 0, -24), BS = W(-27, 0, -15);
-    const BP1 = W(-37, 1, -15), BP2 = W(-32, 1, -15), BP3 = W(-40, 1, -18), BP4 = W(-37, 1, -10);
-    E(U5, B1); E(B1, B2); E(B2, B3); E(B3, B4); E(B4, B5);
-    E(B2, BS); E(B3, BS); E(BS, BP2); E(B1, BP4);
-    E(BP1, BP2); E(BP1, BP3); E(BP1, BP4); E(BP2, BP4);
-
-    // Mid corridor to B
-    const C1 = W(-10, 0, -14);
-    E(B3, C1);
-
-    // Mid lane
-    const M1 = W(0, 0, 22), M2 = W(0, 0, 14), M3 = W(0, 0, 6);
-    const M4 = W(0, 0, -4), M5 = W(0, 0, -14), M6 = W(0, 0, -21);
-    const D1 = W(0, 0, -26); // between the double doors
-    E(T5, M1); E(M1, M2); E(M2, M3); E(M3, M4); E(M4, M5); E(M5, M6); E(M6, D1);
-    E(C1, M5);
-
-    // Catwalk stairs + deck + bridge
-    const S1 = W(3, 0, 18, 'S1'), S2 = W(8.5, 1.44, 13, 'S2');
-    // Approach the catwalk stairs beside their lowest tread, step onto it
-    // laterally, then climb north. The former diagonal S1 -> S2 met the west
-    // face at the 1.44 m tread, where separation steering could pin a bot.
-    const S1StairWest = W(5.2, 0, 15.4, 'S1_STAIR_WEST');
-    const S1StairEntry = W(8.5, 0.48, 15.4, 'S1_STAIR_ENTRY');
-    const K1 = W(8.5, 2.4, 8), K2 = W(8.5, 2.4, 0), K3 = W(8.5, 2.4, -8);
-    const K4 = W(8.5, 2.4, -13), K5 = W(8.5, 2.4, -23);
-    const G1 = W(14, 2.4, -12), G2 = W(19, 2.4, -12);
-    E(M1, S1); E(M2, S1); E(S1, S1StairWest); E(S1StairWest, S1StairEntry); E(S1StairEntry, S2); E(S2, K1);
-    E(K1, K2); E(K2, K3); E(K3, K4); E(K4, K5); E(K4, G1); E(G1, G2);
-
-    // A platform (edges route AROUND the central crate stack)
-    const A1 = W(29, 2, -23), A2 = W(34.8, 2, -15), A3 = W(38, 2, -21);
-    const A4 = W(38, 2, -11), A5 = W(24, 2, -12), A6 = W(25.5, 2, -20);
-    E(G2, A5); E(A5, A2); E(A5, A6); E(A6, A1); E(A1, A3); E(A3, A2); E(A2, A4); E(A3, A4);
-
-    // A ramp down to long + pocket (RF sits on the lowest tread)
-    // R1 sits on the second ramp tread. Keep its center far enough from the
-    // taller tread that a full-size bot resolves to the authored 1 m floor.
-    const R1 = W(38, 1, -4.3), RF = W(40, 0.5, -2.75, 'RF'), F1 = W(40, 0, 0), F2 = W(44, 0, -6);
-    E(A4, R1); E(R1, F1); E(RF, F1); E(F1, F2);
-
-    // Long A lane
-    const L1 = W(44, 0, 2), L2 = W(44, 0, 10), L3 = W(44, 0, 18), L4 = W(44, 0, 24);
-    // The long-lane sandbags span x[43,46], z[20.6,21.6]. Route around their
-    // west end instead of sending the nav edge through the cover collider.
-    const LX1 = W(42, 0, 19.5), LX2 = W(42, 0, 22.7);
-    E(F1, L1); E(L1, L2); E(L2, L3); E(L3, LX1); E(LX1, LX2); E(LX2, L4); E(L4, T9);
-
-    // Courtyard (A short) + corridor to ramp
-    const Q0 = W(20, 0, 24), Q1 = W(20, 0, 17), Q2 = W(20, 0, 8);
-    const Q3 = W(28, 0, 13), Q4 = W(35, 0, 9), Q5a = W(32, 0, 3), Q5 = W(32, 0, -5, 'Q5');
-    // Enter the A ramp beside its lowest tread. The old diagonal Q5 -> RF
-    // relied on collision sliding along the west stair face; teammate
-    // separation could push the capsule into the taller tread and strand it.
-    const Q5RampSouth = W(32, 0, -2.75, 'Q5_RAMP_SOUTH');
-    const Q5RampEntry = W(33.2, 0, -2.75, 'Q5_RAMP_ENTRY');
-    E(T7, Q0); E(Q0, Q1); E(Q1, Q2); E(Q1, Q3); E(Q2, Q4); E(Q3, Q4);
-    E(Q3, Q5a); E(Q5a, Q5); E(Q5, Q5RampSouth); E(Q5RampSouth, Q5RampEntry); E(Q5RampEntry, RF); E(Q4, L2);
-
-    // CT plaza
-    const P1 = W(-20, 0, -30), P2 = W(-10, 0, -34), P3 = W(5, 0, -31);
-    const P4 = W(8, 0, -34), P5 = W(16, 0, -29), P6 = W(24, 0, -34), P7 = W(29, 0, -31);
-    E(P1, P2); E(P2, P3); E(P3, P4); E(P4, P5); E(P5, P6); E(P6, P7);
-    E(D1, P3); E(B4, P1); E(P7, A1);
-
-    // CT ramp / under-bridge pocket
-    const R2 = W(16, 0, -20), R3 = W(16, 0, -11);
-    E(P5, R2); E(R2, R3);
-
-    // adjacency for A*
-    const adj = nodes.map(() => []);
-    for (const [a, b] of edges) {
-      const cost = nodes[a].pos.distanceTo(nodes[b].pos);
-      adj[a].push({ id: b, cost });
-      adj[b].push({ id: a, cost });
-    }
-    this._adjacency = adj;
-
-    // Tactical lane metadata reuses the validated nav nodes above. Attackers
-    // receive one of these authored approaches before converging on the bomb
-    // site; defenders receive a compact patrol area instead of sharing the
-    // exact site-center anchor. This preserves objective play while ensuring
-    // the whole team does not choose the same shortest A* path every round.
-    const route = (name, ids) => ({
-      name,
-      points: ids.map((id) => nodes[id].pos.clone()),
-    });
-    const area = (name, sector, anchorId, ids) => ({
-      name,
-      sector,
-      anchor: nodes[anchorId].pos.clone(),
-      points: ids.map((id) => nodes[id].pos.clone()),
-    });
-    this.botTactics = {
-      attackRoutes: {
-        A: [
-          route('long', [T9, L4, L2, F1, R1]),
-          route('courtyard', [T7, Q0, Q3, Q5, RF]),
-          route('catwalk', [M1, S2, K3, K4, G2]),
-        ],
-        B: [
-          route('tunnels', [T1, U2, U4, U5, B1]),
-          route('mid split', [M1, M3, M5, C1, B3]),
-        ],
-      },
-      defenseAreas: [
-        area('A platform', 'A', A2, [A1, A2, A3, A4, A5, A6]),
-        area('B platform', 'B', BP1, [B1, B2, BS, BP1, BP2, BP3, BP4]),
-        area('mid doors', 'mid', M6, [M4, M5, M6, D1, C1]),
-        area('A long', 'A', F1, [R1, RF, F1, F2, L1, L2]),
-        area('B tunnels', 'B', U5, [U3, U4, U5, B1, BP4]),
-        area('catwalk', 'mid', K4, [K2, K3, K4, K5, G1, G2]),
-      ],
-    };
-  }
-
-  // Debug-only: raycast every edge at torso height and warn about blockers,
-  // and warn if any node sits inside a collider.
   _validateNav() {
     const from = _v1;
     const to = _v2;

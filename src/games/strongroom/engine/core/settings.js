@@ -2,7 +2,7 @@
 // player profile: aim feel, display brightness and physical keyboard layout
 // belong to this browser, not to a ranked identity shared between devices.
 
-export const SETTINGS_STORAGE_KEY = 'tiny-strike-settings-v1';
+export const SETTINGS_STORAGE_KEY = 'strongroom-settings-v2';
 
 export const SETTINGS_LIMITS = Object.freeze({
   lookSensitivity: Object.freeze({ min: 0.25, max: 3, step: 0.05, default: 1 }),
@@ -10,28 +10,32 @@ export const SETTINGS_LIMITS = Object.freeze({
 });
 
 export const KEY_BINDING_DEFINITIONS = Object.freeze([
-  Object.freeze({ id: 'moveForward', label: 'Move Forward', canonicalKey: 'w', defaultKey: 'w' }),
-  Object.freeze({ id: 'moveBackward', label: 'Move Backward', canonicalKey: 's', defaultKey: 's' }),
-  Object.freeze({ id: 'moveLeft', label: 'Move Left', canonicalKey: 'a', defaultKey: 'a' }),
-  Object.freeze({ id: 'moveRight', label: 'Move Right', canonicalKey: 'd', defaultKey: 'd' }),
-  Object.freeze({ id: 'walk', label: 'Walk', canonicalKey: 'shift', defaultKey: 'shift' }),
-  Object.freeze({ id: 'crouch', label: 'Crouch', canonicalKey: 'control', defaultKey: 'control' }),
-  Object.freeze({ id: 'jump', label: 'Jump / Next View', canonicalKey: ' ', defaultKey: ' ' }),
-  Object.freeze({ id: 'use', label: 'Use / Objective', canonicalKey: 'e', defaultKey: 'e' }),
-  Object.freeze({ id: 'reload', label: 'Reload', canonicalKey: 'r', defaultKey: 'r' }),
-  Object.freeze({ id: 'buy', label: 'Buy Menu', canonicalKey: 'b', defaultKey: 'b' }),
-  Object.freeze({ id: 'scoreboard', label: 'Scoreboard', canonicalKey: 'tab', defaultKey: 'tab' }),
-  Object.freeze({ id: 'lastWeapon', label: 'Last Weapon', canonicalKey: 'q', defaultKey: 'q' }),
-  Object.freeze({ id: 'weapon1', label: 'Primary Weapon', canonicalKey: '1', defaultKey: '1' }),
-  Object.freeze({ id: 'weapon2', label: 'Sidearm', canonicalKey: '2', defaultKey: '2' }),
-  Object.freeze({ id: 'weapon3', label: 'Knife', canonicalKey: '3', defaultKey: '3' }),
-  Object.freeze({ id: 'weapon4', label: 'Grenade', canonicalKey: '4', defaultKey: '4' }),
+  Object.freeze({id:'moveForward',label:'Move forward',canonicalKey:'w',defaultKey:'w'}),
+  Object.freeze({id:'moveBackward',label:'Move backward',canonicalKey:'s',defaultKey:'s'}),
+  Object.freeze({id:'moveLeft',label:'Move left',canonicalKey:'a',defaultKey:'a'}),
+  Object.freeze({id:'moveRight',label:'Move right',canonicalKey:'d',defaultKey:'d'}),
+  Object.freeze({id:'walk',label:'Walk',canonicalKey:'shift',defaultKey:'shift'}),
+  Object.freeze({id:'crouch',label:'Crouch',canonicalKey:'c',defaultKey:'c'}),
+  Object.freeze({id:'jump',label:'Vault / jump',canonicalKey:' ',defaultKey:' '}),
+  Object.freeze({id:'use',label:'Interact',canonicalKey:'f',defaultKey:'f'}),
+  Object.freeze({id:'reload',label:'Reload',canonicalKey:'r',defaultKey:'r'}),
+  Object.freeze({id:'leanLeft',label:'Lean left',canonicalKey:'q',defaultKey:'q'}),
+  Object.freeze({id:'leanRight',label:'Lean right',canonicalKey:'e',defaultKey:'e'}),
+  Object.freeze({id:'gadget',label:'Unique gadget',canonicalKey:'g',defaultKey:'g'}),
+  Object.freeze({id:'weapon3',label:'General gadget',canonicalKey:'3',defaultKey:'3'}),
+  Object.freeze({id:'weapon1',label:'Primary',canonicalKey:'1',defaultKey:'1'}),
+  Object.freeze({id:'weapon2',label:'Secondary',canonicalKey:'2',defaultKey:'2'}),
+  Object.freeze({id:'melee',label:'Melee',canonicalKey:'v',defaultKey:'v'}),
+  Object.freeze({id:'intel',label:'Intel',canonicalKey:'t',defaultKey:'t'}),
+  Object.freeze({id:'ping',label:'Ping',canonicalKey:'z',defaultKey:'z'}),
+  Object.freeze({id:'scoreboard',label:'Scoreboard',canonicalKey:'tab',defaultKey:'tab'}),
+  Object.freeze({id:'menu',label:'Game menu',canonicalKey:'p',defaultKey:'p'}),
 ]);
 
 const DEFINITION_BY_ID = new Map(KEY_BINDING_DEFINITIONS.map((entry) => [entry.id, entry]));
 const CANONICAL_KEYS = new Set(KEY_BINDING_DEFINITIONS.map((entry) => entry.canonicalKey));
 const FORBIDDEN_BINDINGS = new Set([
-  'escape', 'p', 'meta', 'os', 'dead', 'unidentified', 'process', 'compose',
+  'escape', 'meta', 'os', 'dead', 'unidentified', 'process', 'compose',
 ]);
 
 function defaultStorage() {
@@ -205,7 +209,7 @@ export default class GameSettings {
    */
   resolveInputKey(physicalKey) {
     const key = normalizePhysicalKey(physicalKey);
-    if (!key) return null;
+    if (!key || FORBIDDEN_BINDINGS.has(key)) return null;
     const canonical = this._physicalToCanonical.get(key);
     if (canonical) return canonical;
     return CANONICAL_KEYS.has(key) ? null : key;
