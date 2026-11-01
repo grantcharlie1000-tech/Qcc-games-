@@ -84,6 +84,9 @@ export class View{
    if(this.tier==='potato'||this.tier==='low')this.addWeaponProxy(gltf.scene);
    this.templates.set(team,gltf.scene);this.clips.set(team,gltf.animations);
   }));
+  // Warm the actual world, both soldier skins and both hidden viewmodels before play.
+  // Future wall/gadget variants join this pass when their milestones add them.
+  for(const target of [this.scene,...this.templates.values()]){if(this.disposed)return;await this.renderer.compileAsync(target,this.camera,this.scene);}
  }
  private addWeaponProxy(root:THREE.Group){
   const anchor=root.getObjectByName('AK');if(!anchor?.parent)return;

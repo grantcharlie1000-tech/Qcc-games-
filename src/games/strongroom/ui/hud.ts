@@ -18,6 +18,7 @@ export class HUD{
   this.restGlass();if(touch)r.classList.add('sr-touch-mode');
  }
  get touchRoot(){return this.controls;}
+ ready(on:boolean){for(const b of this.root.querySelectorAll<HTMLButtonElement>('[data-do=solo],[data-do=online]'))b.disabled=!on;}
  private text(el:HTMLElement,text:string){const span=el.querySelector('span')??el;if(span.textContent!==text)span.textContent=text;}
  restGlass(){for(const g of this.glass.values())g.dispose();this.glass.clear();const cheap=['potato','low'].includes(this.hooks.currentTier());for(const el of this.host.querySelectorAll<HTMLElement>('.arcade-glass')){if(cheap)el.dataset.glass='frost';else this.glass.set(el,bindGlass(el));}}
  releaseGlass(root:HTMLElement){for(const el of [root,...root.querySelectorAll<HTMLElement>('.arcade-glass')]){this.glass.get(el)?.dispose();this.glass.delete(el);}}
