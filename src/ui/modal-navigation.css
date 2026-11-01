@@ -13,3 +13,5 @@
 
 .section-header[data-sheet-hidden]{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .section-header>.ui-header-inner{transition:translate 180ms var(--ease-out)}
+/* The paused overlay is hidden while a sheet owns the dimming/filter layer. */
+body[data-sheet-open] #pause-overlay{-webkit-backdrop-filter:none;backdrop-filter:none}

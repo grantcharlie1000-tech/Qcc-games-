@@ -65,10 +65,10 @@
 
 **Files:** `src/main.ts`, shared game-chrome/stats presentation, shell icons and nonmaterial sheet layout CSS.
 
-- [ ] Open Charlie's Snake menu shot; measure label/value fonts and baselines across all21 game menus. Add failing stats and distinct-icon assertions.
-- [ ] Render extra stats using the same label/value component as Score/Best without changing game-owned values or callbacks. Use a trophy/podium for Leaderboards, retaining Favourite's star.
-- [ ] Sample five sheet heights and inspect nested groups/backdrop boundaries. Remove an accidental nested material structurally; if the remaining difference requires Astra's recipe values, document the exact cause and requested fix instead of editing them.
-- [ ] Capture before/after evidence, verify menu actions/accessibility, review and commit separately.
+- [x] Open Charlie's Snake menu shot; measure label/value fonts and baselines across all21 game menus. Add failing stats and distinct-icon assertions.
+- [x] Render extra stats using the same label/value component as Score/Best without changing game-owned values or callbacks. Use a trophy/podium for Leaderboards, retaining Favourite's star.
+- [x] Sample five sheet heights and inspect nested groups/backdrop boundaries. Remove an accidental nested material structurally; if the remaining difference requires Astra's recipe values, document the exact cause and requested fix instead of editing them.
+- [x] Capture before/after evidence, verify menu actions/accessibility, review and commit separately.
 
 ### Task 5: Shared interactive sheet dismissal (step 8)
 

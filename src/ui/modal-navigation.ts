@@ -23,6 +23,7 @@ export function suppressNavigationUnderSheets():void{
   const sync=()=>{
     const panels=[...document.querySelectorAll<HTMLElement>(PANELS)].filter(visible);
     const next=panels.length>0;
+    document.body.toggleAttribute('data-sheet-open',next);
     const active=document.activeElement;
     // Non-native panels such as Up next may open while a navigation item has
     // keyboard focus. Move it to the existing panel controls before inerting.

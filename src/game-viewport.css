@@ -12,7 +12,14 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-view[data-game-id=fruit-merge]{--game-surface:#fff2ca}
 .game-view[data-game-id=tower]{--game-surface:#cda1d2 url('/game-art/tower/skyline.svg') center/cover}
 .game-view[data-game-id=flappy-bird]{--game-surface:#f9d9a7}
+/* Continue the canvas garden's two grass stops behind the whole sheet. A dark
+   page below the finite board otherwise looks like a second sheet material. */
 .game-view[data-game-id=snake]{--game-surface:#19251f}
+body[data-sheet-open] .game-view[data-game-id=snake]{--game-surface:linear-gradient(135deg,#c8de94,#a4c976)}
+/* The finite decorative bezel must not draw a second dark band through a sheet.
+   The canvas, input geometry and running view keep their original treatment. */
+body[data-sheet-open] .game-view[data-game-id=snake] .snake-garden{background:transparent;border-color:transparent;box-shadow:none}
+body[data-sheet-open] .game-view[data-game-id=snake] .snake-canvas{box-shadow:none}
 .game-view[data-game-id=maze-muncher]{--game-surface:#090e25}
 .game-view[data-game-id=globle]{--game-surface:#0d1726}
 .game-view[data-game-id=pool]{--game-surface:#162621}
@@ -71,6 +78,10 @@ body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}
 .game-chrome-menu.ui-glass-sheet{font-family:var(--font-sans);width:min(420px,calc(100% - 24px));max-height:calc(var(--play-height,100dvh) - 24px);padding:20px}
 .game-chrome-menu .game-metrics{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 16px;padding:12px;background:#ffffff09;border:1px solid var(--line);border-radius:16px;font:12px/1.4 var(--font-sans)}
 .game-chrome-menu .game-metrics strong{font:700 16px/1.4 var(--font-sans);margin-left:6px;color:#fff}
+.game-extra-stats{display:contents}
+.game-metrics :is(#game-score,#game-best,.game-metric){display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}
+.game-chrome-menu .game-metrics strong{margin-left:0}
+.leaderboard-menu-button .ui-icon{width:20px;height:20px;vertical-align:middle;margin-right:8px}
 .game-menu-actions,.game-menu-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .game-menu-options{margin-bottom:16px}
 .game-menu-action{min-height:48px;min-width:0;display:flex;align-items:center;justify-content:flex-start;gap:9px;padding:12px;border:1px solid var(--line-strong);border-radius:14px;background:#ffffff09;color:#f4f4f5;text-align:left;font:600 13px/1.3 var(--font-sans)}
