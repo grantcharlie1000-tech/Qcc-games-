@@ -72,6 +72,20 @@ test('Corn guidance adds no second material inside its clear column',async({page
   expect(Math.min(...edges)).toBeGreaterThanOrEqual(4.5);
 });
 
+test('native Minesweeper pause keeps the shared clear material and the board hidden',async({page})=>{
+  await page.goto('/#/game/minesweeper');
+  await gameAction(page,'Game options');
+  await page.locator('.ms-pause').click();
+  const pause=page.locator('#pause-overlay');
+  await expect(pause).toBeVisible();
+  await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
+  await expect(pause).toHaveCSS('background-color','rgba(184, 184, 184, 0.02)');
+  await expect(pause).toHaveCSS('backdrop-filter','blur(0.3px) saturate(1)');
+  await page.locator('#resume-game').click();
+  await expect(pause).toBeHidden();
+  await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
+});
+
 test('Blockcraft Controls and Advancements keep clear content and one readable label',async({page})=>{
   await page.goto('/#/game/blockcraft');
   await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
