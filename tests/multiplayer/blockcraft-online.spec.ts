@@ -83,7 +83,8 @@ test('host, guest and a late joiner share one world',async()=>{
     await expect(guest.page.locator('.bc-waiting')).toBeHidden({timeout:30000});
     expect(await ev(guest.page,bc=>bc.terrain.seed)).toBe(sharedSeed);
     await expect.poll(()=>get(guest.page,at(3,3,3)),{timeout:30000}).toBe(ids.glass);
-    expect(await get(guest.page,at(-3,0,3))).toBe(ids.chest);
+    // The pillar and chest may occupy separate asynchronously generated chunks.
+    await expect.poll(()=>get(guest.page,at(-3,0,3)),{timeout:30000}).toBe(ids.chest);
     await expect(host.page.locator('.mp-players')).toContainText('Tama');
     await play(guest);
     // Each player is visible to the other as a character with a name tag.

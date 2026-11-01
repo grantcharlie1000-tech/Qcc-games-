@@ -5,6 +5,12 @@ describe('direct table input',()=>{
  it('maps a scaled horizontal canvas back to the saved physics coordinates',()=>{
   expect(tablePoint(220,130,{left:100,top:20,width:420,height:220})).toEqual({x:220,y:600});
  });
+ it('maps portrait screen positions into the same persisted table coordinates',()=>{
+  const rect={left:10,top:100,width:220,height:420};
+  expect(tablePoint(120,407.5,rect,true)).toEqual({x:220,y:615});
+  expect(tablePoint(30,130,rect,true)).toEqual({x:40,y:60});
+  expect(tablePoint(210,490,rect,true)).toEqual({x:400,y:780});
+ });
  it('aiming on the felt never releases a shot',()=>{
   const drag=beginDrag({x:220,y:300},cue,-Math.PI/2,30)!;
   moveDrag(drag,{x:240,y:200},cue);

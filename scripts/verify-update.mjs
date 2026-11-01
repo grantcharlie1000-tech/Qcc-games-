@@ -34,7 +34,15 @@ async function version(page){return await bounded(page.evaluate(()=>new Promise(
  channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();channel.port2.close();known.set(worker,e.data.version);resolve(e.data.version);};worker.postMessage({type:'ARCADE_VERSION'},[channel.port2]);
 })),3000,'worker version RPC (Node deadline)').catch(error=>{if(error.message.includes('version RPC')){console.log('TRANSIENT VERSION OBSERVATION',error.message);return undefined;}throw error;});}
 async function home(page,base){await page.goto(base);await page.locator('#accounts-dialog[open],[data-study-topic],.game-card').first().waitFor();if(await page.locator('#accounts-dialog[open]').count())await page.getByRole('button',{name:'Play as guest',exact:true}).click();await page.locator('[data-study-topic],.game-card').first().waitFor();if(await page.locator('[data-study-topic]').count()){const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.count())await accept.click();await page.locator('[data-study-topic="close-reading"]').click();}}
-async function menu(page){await page.getByRole('button',{name:'Open menu',exact:true}).click();}
+async function menu(page){
+ if(await page.locator('#menu[open]').count())return;
+ if(!await page.locator('#game-options[open]').count()){
+  const game=page.locator('#game-menu');
+  if(await game.count())await game.click();else await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ }
+ if(await page.locator('#game-options[open]').count())await page.locator('#game-options').getByRole('button',{name:'Settings',exact:true}).click();
+}
+async function pause(page){if(await page.locator('#game-options').count())await page.locator('#game-menu').click();else await page.getByRole('button',{name:'Pause game',exact:true}).click();}
 // The glass sheet animates out after the click, so wait until #menu is hidden.
 async function closeMenu(page){await page.getByRole('button',{name:'Close menu',exact:true}).click();await page.locator('#menu').waitFor({state:'hidden'});}
 async function download(page){await menu(page);await page.getByRole('button',{name:'Make all games available offline',exact:true}).click();await page.getByRole('button',{name:'Offline pack downloaded',exact:true}).waitFor();await closeMenu(page);}
@@ -74,12 +82,17 @@ async function diagnostic(page){return await bounded(page.evaluate(async()=>{
 }),5000,'worker/ledger diagnostic (Node deadline)').catch(error=>({unavailable:error.message}));}
 async function cacheKeys(page){return await page.evaluate(()=>caches.keys());}
 async function settleGate(){gate?.writeHead(200,{'Cache-Control':'no-store'});gate?.end('continue');gate=undefined;}
+function onlineDiscovery(page){
+ let next=0;
+ return async()=>{if(Date.now()>=next){next=Date.now()+1000;await page.evaluate(()=>window.dispatchEvent(new Event('online')));}};
+}
 async function delayedNavigation(context,base,discover,expected){
  const delayed=await context.newPage();const navigation=delayed.goto(base+'?delayed-navigation=1');navigation.catch(()=>{});
  await poll(()=>!!gate,'old navigation response held before document commit');
  await discover();
+ const page=context.pages().find(page=>page!==delayed&&page.url().startsWith(base)),retryDiscovery=onlineDiscovery(page);
  let discoveryDeferred=false;try{await poll(async()=>{
- const page=context.pages().find(page=>page!==delayed&&page.url().startsWith(base));
+ if(expected)await retryDiscovery();
  if(expected)return await bounded(page.evaluate(expected=>new Promise(resolve=>{
  const query=worker=>{if(!worker){resolve(false);return;}const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();channel.port2.close();resolve(false);},3000);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();channel.port2.close();resolve(event.data.version===expected);};worker.postMessage({type:'ARCADE_VERSION'},[channel.port2]);};
  navigator.serviceWorker.getRegistration().then(r=>query(r?.waiting?.state==='installed'?r.waiting:r?.active));
@@ -93,7 +106,14 @@ async function delayedNavigation(context,base,discover,expected){
  console.log('DELAYED NAVIGATION OBSERVED',JSON.stringify({state,discoveryDeferred}));return {delayed,state,discoveryDeferred};
 }
 async function acceptVersion(page,target){
- await poll(async()=>await version(page)===target.version||await page.evaluate(async expected=>{const r=await navigator.serviceWorker.getRegistration();if(r?.waiting?.state!=='installed')return false;return await new Promise(resolve=>{const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();resolve(false);},1000);c.port1.onmessage=e=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(e.data.version===expected);};r.waiting.postMessage({type:'ARCADE_VERSION'},[c.port2]);});},target.version),'expected active or installed waiting '+target.label);
+ const retryDiscovery=onlineDiscovery(page);
+ await poll(async()=>{
+  // Menu entry can coalesce with the preceding build's in-flight check. Retry
+  // the same production online entry point after it settles; never force a
+  // worker update or activation, and still require the exact offered build.
+  await retryDiscovery();
+  return await version(page)===target.version||await page.evaluate(async expected=>{const r=await navigator.serviceWorker.getRegistration();if(r?.waiting?.state!=='installed')return false;return await new Promise(resolve=>{const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();resolve(false);},1000);c.port1.onmessage=e=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(e.data.version===expected);};r.waiting.postMessage({type:'ARCADE_VERSION'},[c.port2]);});},target.version);
+ },'expected active or installed waiting '+target.label);
  if(await version(page)!==target.version){
   if(!await page.getByRole('button',{name:'Close menu',exact:true}).isVisible())await menu(page);
   const button=page.getByRole('button',{name:'Reload to update',exact:true});await button.waitFor();await button.click();
@@ -149,11 +169,11 @@ async function controlledWaitingCase(path,base){
  await a.getByLabel('Study topic',{exact:true}).selectOption('quadratics');await a.getByLabel('Study topic',{exact:true}).selectOption('close-reading');await releaseAndWaitForVersion(a,W,'W activates after topic away and back');
  await poll(async()=>!await a.locator('#reload-update').isDisabled(),'topic cancellation flow settled');assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','topic away/back cancels pending reload');await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,2);
  console.log('CONTROLLED TOPIC CANCELLATION PASS',path);await c.reload();deployed=X;await menu(c);await closeMenu(c);await a.keyboard.press('Escape');await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();await holdActivation(a,X);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit X activation held');
- await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,3);await releaseAndWaitForVersion(a,X,'X activates without reloading resumed game');await a.getByRole('button',{name:'Pause game',exact:true}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B');
+ await a.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await drop(a,3);await releaseAndWaitForVersion(a,X,'X activates without reloading resumed game');await a.locator('#pause-game[aria-label="Pause game"]').waitFor({state:'attached'});assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B');
  console.log('CONTROLLED RESUME CANCELLATION PASS',path);await c.reload();deployed=Y;await menu(c);await closeMenu(c);await menu(a);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();const savedProgress=await progress(a);await holdActivation(a,Y);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit Y activation held after first durable save');
  assert.ok(await fillQuota(a)>1_000_000);await a.locator('#motion').uncheck();assert.equal(JSON.parse((await data(a)).settings).reducedMotion,true);await releaseActivation(a);
  await a.locator('#update-status').filter({hasText:'could not be saved'}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','late preference failure refuses the actual reload');
- await a.evaluate(()=>localStorage.removeItem('update-test-quota'));await a.getByRole('button',{name:'Reload to update',exact:true}).click();await a.locator('.fm-count').filter({hasText:savedProgress.fruits.length===1?'1 fruit':`${savedProgress.fruits.length} fruits`}).waitFor();await a.getByRole('button',{name:'Pause game',exact:true}).click();assert.deepEqual(await progress(a),savedProgress,'the mounted game restores the saved basket and sequence');assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'Y');assert.equal(JSON.parse((await data(a)).settings).reducedMotion,false);
+ await a.evaluate(()=>localStorage.removeItem('update-test-quota'));await a.getByRole('button',{name:'Reload to update',exact:true}).click();await a.locator('.fm-count').filter({hasText:savedProgress.fruits.length===1?'1 fruit':`${savedProgress.fruits.length} fruits`}).waitFor();await pause(a);assert.deepEqual(await progress(a),savedProgress,'the mounted game restores the saved basket and sequence');assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'Y');assert.equal(JSON.parse((await data(a)).settings).reducedMotion,false);
  await context.tracing.stop({path:`${evidence}/update-controlled-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('CONTROLLED WAITING PASS',path);
 }
 async function legacyWaitingCase(path,base,transition=false){
@@ -193,6 +213,7 @@ try{
   if(process.env.ARCADE_UPDATE_CASE==='legacy-transition'){await legacyWaitingCase(path,base,true);results.push({scope:path,legacyWaitingActivatedDuringInstall:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='legacy-waiting'){await legacyWaitingCase(path,base);results.push({scope:path,legacyAlreadyWaitingMigration:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='waiting'){await controlledWaitingCase(path,base);results.push({scope:path,controlledWaiting:true});continue;}
+  if(process.env.ARCADE_UPDATE_CASE==='cancelled'){await cancelledCase(path,base);results.push({scope:path,cancelledReservationAllowsLaterGc:true});continue;}
   if(!process.env.ARCADE_UPDATE_CASE){await legacyWaitingCase(path,base);await legacyWaitingCase(path,base,true);deployed=A;}
   console.log('SEED LEGACY',path);let context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller),'legacy control');assert.equal(await version(a),A.version);
   await a.evaluate(()=>{localStorage.setItem('pocket-arcade:v1:best:fruit-merge','1234');localStorage.setItem('pocket-arcade:v1:settings',JSON.stringify({sound:false,reducedMotion:true,colorBlind:true}));document.cookie='retainedCookie=unchanged; path=/';});await context.close();

@@ -4,3 +4,9 @@
 .sl-board:focus:not(:focus-visible){outline:none}
 
 /* SVG transforms use board units: keep blocked feedback within the route hit area. */
+
+/* Level/hearts move to the shared dock; the board grows into their old row. */
+.sl-header{display:none}
+.sl-board{width:min(96%,calc(100cqh - 78px),900px);max-height:calc(100% - 78px);margin:auto auto 0}
+.sl-footer{height:66px;width:min(96%,calc(100cqh - 78px),900px);margin-bottom:auto}.sl-hint{width:48px;height:48px}
+@media(max-height:500px) and (orientation:landscape){.sl-game{display:flex;flex-direction:row}.sl-board{width:min(calc(100% - 70px),calc(100cqh - 16px));max-height:100%;margin:auto}.sl-footer{width:64px;height:100%;justify-content:center}}

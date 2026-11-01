@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame} from '../../game-menu';
 import {seedStudyTopic,test,expect} from '../../fixtures';
 import type {Locator,Page} from '@playwright/test';
 import {CONFIG,STEP,WARMUP,speedAt,type Difficulty,type Gate,type ObstaclePose,type Run} from '../../../src/games/ball-run/config';
@@ -78,9 +79,9 @@ async function expectClear(page:Page,panel:Locator){
   await expect(panel.locator('..')).toHaveCSS('opacity','1');await expect(panel).toHaveCSS('transform','none');
   const box=(await panel.boundingBox())!,size=page.viewportSize()!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
-  expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height-52);
-  for(const name of ['Back to game library','Pause game','Resume game','Restart game','Game rules','Open menu','Favourite Ball Run','Rankings']){
-    const control=name==='Rankings'?page.locator('.lb-toggle'):page.getByRole(name.startsWith('Back')?'link':'button',{name,exact:true});
+  expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height-12);
+  for(const name of ['Games','Pause game','Resume game','Restart game','Game rules','Menu','Favourite Ball Run','Rankings']){
+    const control=name==='Rankings'?page.locator('.lb-toggle'):page.getByRole(name==='Games'?'link':'button',{name,exact:true});
     if(!await control.isVisible())continue;
     expect(apart(box,(await control.boundingBox())!),`${name} overlaps the panel`).toBe(true);
   }
@@ -164,9 +165,9 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
   await expectClear(page,root.locator('.br-setup'));
   await help.click();await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();
   // The shell's Restart gives a fresh setup panel with help closed.
-  await help.click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
+  await help.click();await gameAction(page,'Restart game');
   await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
-  await page.getByRole('button',{name:'Game rules'}).click();await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
+  await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
   await expect(root.locator('.br-mode-label')).toHaveText('HARD MODE');await expect(root.locator('.br-target-label')).toHaveText('NEW BEST');
@@ -229,14 +230,14 @@ test('real drag and held keys steer; P pauses and resumes; Study, blur, death an
     await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
     await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await expect(root.locator('.br-reason')).toHaveText('You fell off the track');
     await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(root).toHaveAttribute('data-phase','running');
-    await page.getByRole('button',{name:'Restart game',exact:true}).click();
+    await gameAction(page,'Restart game');
     await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-distance','0.000');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(400);await waitDistance(page,3);await page.getByRole('button',{name:'Pause game',exact:true}).click();
+    await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(400);await waitDistance(page,3);await pauseGame(page);
     const kept=await root.getAttribute('data-distance');await page.reload();
     await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible();await expect(root).toHaveAttribute('data-distance',kept!);
     await expect(page.getByRole('heading',{name:'Your run is waiting'})).toBeVisible();
     await page.evaluate(()=>{(window as unknown as {oldBallCanvas:HTMLCanvasElement}).oldBallCanvas=document.querySelector('.ball-run canvas')!;});
-    await page.getByRole('link',{name:'Back to game library'}).click();await expect(root).toHaveCount(0);
+    await backToGames(page);await expect(root).toHaveCount(0);
     expect(await page.evaluate(()=>{const c=(window as unknown as {oldBallCanvas:HTMLCanvasElement}).oldBallCanvas;return c.getContext('webgl2')!.isContextLost();})).toBe(true);
     await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible();
     expect(errors).toEqual([]);
@@ -334,7 +335,7 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   await expect(root.locator('.br-target-label')).toHaveText('THIS WEEK');await expect(root.locator('.br-target-value')).toHaveText('4000');
   for(let t=0;t<6000&&await data(page,'distance')<25;t+=50)await page.clock.runFor(50);
   expect(await data(page,'distance')).toBeGreaterThanOrEqual(25);await expect(root).toHaveAttribute('data-phase','running');
-  await page.getByRole('button',{name:'Restart game',exact:true}).click();
+  await gameAction(page,'Restart game');
   await expect(root).toHaveAttribute('data-phase','ready');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
   // Running reports are at least 250 ms apart; only the final one, at the commit, is not throttled.
   const writes=await page.evaluate(()=>(window as unknown as {bestWrites:number[]}).bestWrites);
@@ -349,7 +350,7 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   // on the next day a commit would change the records (today's best starts afresh) and report the score again.
   await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-distance','0.000');
   const count=await reports();await page.clock.setSystemTime(tomorrow);
-  await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(root).toHaveAttribute('data-phase','ready');
+  await gameAction(page,'Restart game');await expect(root).toHaveAttribute('data-phase','ready');
   expect((await saved(page)).records.medium).toEqual(kept);expect(await reports()).toBe(count);
 });
 
@@ -416,13 +417,13 @@ test('under reduced motion Game Over only fades; shell Restart from dying or Gam
   await seed(page,snapshot(run,emptyRecords()));const reports=await countReports(page);
   await page.clock.install({time:first});await page.clock.pauseAt(new Date(first.getTime()+1000));
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/ball-run');
-  const root=game(page),over=root.locator('.br-over'),restart=page.getByRole('button',{name:'Restart game',exact:true});
+  const root=game(page),over=root.locator('.br-over'),restart=()=>gameAction(page,'Restart game');
   await page.getByRole('button',{name:'Continue',exact:true}).click();
   await runUntilPhase(page,'dying');
   const dead=(await saved(page)).records.hard,count=await reports();
   expect(dead.day).toBe(dayKey(first));expect(dead.dayBest).toBe(score);
   // A day later a second commit would set a new today's best, and report the score again.
-  await page.clock.setSystemTime(second);await restart.click();
+  await page.clock.setSystemTime(second);await restart();
   await expect(root).toHaveAttribute('data-phase','ready');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
   expect((await saved(page)).records.hard).toEqual(dead);expect(await reports()).toBe(count);
   await page.getByRole('button',{name:'Play',exact:true}).click();
@@ -439,7 +440,7 @@ test('under reduced motion Game Over only fades; shell Restart from dying or Gam
   // The new day's run still commits game records, but matching the global best
   // must not rewrite the shell high score just to report it again.
   expect(ended.day).toBe(dayKey(second));expect(ended.allTime).toBe(dead.allTime);expect(count2).toBe(count);
-  await page.clock.setSystemTime(third);await restart.click();await expect(root).toHaveAttribute('data-phase','ready');
+  await page.clock.setSystemTime(third);await restart();await expect(root).toHaveAttribute('data-phase','ready');
   expect((await saved(page)).records.hard).toEqual(ended);expect(await reports()).toBe(count2);
 });
 
@@ -499,19 +500,14 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   expect(box.x).toBeCloseTo(0,0);expect(box.width).toBeCloseTo(viewport.width,0);expect(box.height).toBeCloseTo(viewport.height,0);
   expect(await data(page,'aspect')).toBeCloseTo(viewport.width/viewport.height,4);
   const ballY=await data(page,'ball-screen-y');expect(ballY).toBeGreaterThan(.60);expect(ballY).toBeLessThan(.80);
-  await expect(root.locator('.br-hud')).toBeVisible();
-  // The HUD shares the toolbar row, which stops at 1080 px: it stays between back and pause at every width.
-  const hud=(await root.locator('.br-hud').boundingBox())!,speed=(await root.locator('.br-speed').boundingBox())!;
-  for(const control of [page.getByRole('link',{name:'Back to game library'}),page.getByRole('button',{name:'Pause game',exact:true})])expect(apart(hud,(await control.boundingBox())!)).toBe(true);
-  // Centred over the track (the middle of the canvas), unless that would bring it within 12 px of pause;
-  // it never does. 1366 px is wide enough to centre; at 1920 px pause (at 1032–1068 px) holds it back.
-  const pause=(await page.getByRole('button',{name:'Pause game',exact:true}).boundingBox())!,mid=(b:Box)=>b.x+b.width/2;
-  const fits=viewport.width/2+hud.width/2<=pause.x-12;
-  expect(hud.x+hud.width).toBeLessThanOrEqual(pause.x-12+.5);
-  if(viewport.width===1366)expect(fits).toBe(true);
-  if(viewport.width===1920)expect(fits).toBe(false);
-  if(fits)expect(Math.abs(mid(hud)-viewport.width/2)).toBeLessThanOrEqual(1);
+  await expect(page.locator('.game-hud')).toBeVisible();
+  const hud=(await page.locator('.game-hud').boundingBox())!,speed=(await root.locator('.br-speed').boundingBox())!;
+  const back=(await page.getByRole('link',{name:'Games'}).boundingBox())!,pause=(await page.locator('#game-menu').boundingBox())!;
+  for(const control of [back,pause])expect(apart(hud,control)).toBe(true);
+  const mid=(b:Box)=>b.x+b.width/2;
+  expect(Math.abs(mid(hud)-viewport.width/2)).toBeLessThanOrEqual(1);
   expect(Math.abs(mid(speed)-mid(hud))).toBeLessThanOrEqual(1);
+  expect(speed.y).toBeGreaterThanOrEqual(hud.y+hud.height);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await evidence(page,`${viewport.width}x${viewport.height}.png`);
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');await page.clock.runFor(400);
@@ -534,7 +530,7 @@ test('lost WebGL visibly saves and remains stopped until exit and re-entry',asyn
   await expect(page.getByRole('button',{name:/^(Play|Continue|Play again)$/})).toHaveCount(0);
   const distance=(await saved(page)).run.distance;
   await frames(page,10);expect((await saved(page)).run.distance).toBe(distance);
-  await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();
+  await backToGames(page);await page.getByRole('link',{name:'Play Ball Run',exact:true}).click();
   await expect(page.getByRole('button',{name:'Continue',exact:true})).toBeVisible();expect(await data(page,'distance')).toBeCloseTo(distance,2);
 });
 
@@ -552,7 +548,7 @@ test('unsupported WebGL gives a visible useful fallback and never overwrites the
   await seed(page,value);
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){if(type==='webgl2')return null;return Reflect.apply(original,this,[type,...args]);} as typeof original;});
   await page.goto('/#/game/ball-run');await expect(page.getByRole('heading',{name:'3D graphics unavailable'})).toBeVisible();await expect(page.getByRole('link',{name:'Choose another game'})).toBeVisible();
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
+  await pauseGame(page);await gameAction(page,'Restart game');
   await page.getByRole('link',{name:'Choose another game'}).click();
   expect(await saved(page)).toEqual(JSON.parse(JSON.stringify(value)));
 });
@@ -564,7 +560,7 @@ test('repeated restarts release held input and reuse the same GPU resources',asy
   for(let i=0;i<3;i++){
     await page.getByRole('button',{name:'Play',exact:true}).click();await page.keyboard.down('ArrowRight');
     await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.2);
-    await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();await page.keyboard.up('ArrowRight');
+    await pauseGame(page);await gameAction(page,'Restart game');await page.keyboard.up('ArrowRight');
     await expect(root).toHaveAttribute('data-x','0.000');await expect(root).toHaveAttribute('data-geometries',geometries!);
   }
   await page.keyboard.down('ArrowRight');await page.getByRole('button',{name:'Play',exact:true}).click();await waitDistance(page,2);await page.keyboard.up('ArrowRight');

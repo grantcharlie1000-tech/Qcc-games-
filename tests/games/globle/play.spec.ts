@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import {test, expect} from '../../fixtures';
 import type {Page} from '@playwright/test';
 import {COUNTRIES} from '../../../src/games/globle/countries';
@@ -24,8 +25,8 @@ async function guess(page: Page, text: string, submit: 'enter' | 'button' = 'ent
 /** Starts a practice round with a known answer through the real save/restore path. */
 async function practice(page: Page, answer: string) {
   await open(page);
-  await page.getByRole('button', {name: 'Practice', exact: true}).click();
-  await page.getByRole('link', {name: 'Back to game library'}).click();
+  await gameAction(page,'Practice');
+  await backToGames(page);
   await expect(page.locator('.game-card').first()).toBeVisible();
   await page.evaluate(([key, answer]) => {
     const saved = JSON.parse(localStorage.getItem(key)!);
@@ -139,7 +140,7 @@ test('tiny countries, markers and saved-game restoration across reloads and mode
   for (const id of ['VAT', 'MCO', 'NRU', 'TUV', 'SGP', 'STP']) await expect(page.locator(`.gl-guess[data-id=${id}]`)).toBeVisible();
 
   // Daily progress is separate; switch, guess, then reload the page.
-  await page.getByRole('button', {name: 'Daily', exact: true}).click();
+  await gameAction(page,'Daily');
   await expect(page.locator('.globle')).toHaveAttribute('data-mode', 'daily');
   const dailyAnswer = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.daily.answer, KEY);
   const first = dailyAnswer === 'NZL' ? 'Australia' : 'New Zealand';
@@ -150,10 +151,10 @@ test('tiny countries, markers and saved-game restoration across reloads and mode
   await expect(page.locator('.globle')).toHaveAttribute('data-mode', 'daily');
   await expect(page.locator('.gl-guess')).toHaveCount(1);
   expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).data.daily.answer, KEY)).toBe(dailyAnswer);
-  await page.getByRole('button', {name: 'Practice', exact: true}).click();
+  await gameAction(page,'Practice');
   await expect(page.locator('.gl-guess')).toHaveCount(6);
   // Malformed saves are ignored without breaking the game.
-  await page.getByRole('link', {name: 'Back to game library'}).click();
+  await backToGames(page);
   await expect(page.locator('.game-card').first()).toBeVisible(); // the shell has saved on leaving
   await page.evaluate(key => localStorage.setItem(key, JSON.stringify({version: 1, data: {version: 1, mode: 'practice', practice: {answer: 'NOPE'}}})), KEY);
   await open(page);
@@ -264,11 +265,11 @@ test('Escape opens Study, pause stops rendering, leaving frees the WebGL canvas'
   await expect(page.locator('#study-view')).toBeHidden();
   await expect(page.locator('.gl-globe canvas')).toBeVisible();
   await guess(page, 'Kenya');
-  await page.getByRole('button', {name: 'Pause game', exact: true}).click();
+  await pauseGame(page);
   await expect(globe(page)).toHaveAttribute('data-rendering', 'false');
-  await page.getByRole('button', {name: 'Resume game', exact: true}).click();
+  await resumeGame(page);
   for (let i = 0; i < 3; i++) {
-    await page.getByRole('link', {name: 'Back to game library'}).click();
+    await backToGames(page);
     await expect(page.locator('.game-card').first()).toBeVisible();
     expect(await page.locator('canvas').count()).toBe(0);
     await page.goto(url);

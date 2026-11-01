@@ -19,7 +19,7 @@ async function boxes(page:Page,selector:string):Promise<Box[]>{
     .map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};}));
 }
 const HUD_PARTS='.bc-hotbar-bg,.bc-offhand,.bc-xp,.bc-level,.bc-hearts .bc-icon,.bc-food .bc-icon,.bc-armor .bc-icon,.bc-air .bc-icon,.bc-readouts[data-place=right] .bc-dial,.bc-held-name,.bc-effect';
-const SHELL='.game-toolbar a,.game-toolbar button';
+const SHELL='.game-dock a,.game-dock button';
 /** Sets survival values through the live service (test-only overrides of its getters). */
 async function setSurvival(page:Page,values:Record<string,number>,armor?:number){
   await page.evaluate(([v,a])=>{
@@ -35,12 +35,15 @@ async function give(page:Page){
     inv.setOffhand({id:'clock',count:1});inv.select(0);
   });
 }
-/** Every shell toolbar and corner button is on top (hit-testable) while a Minecraft menu is open. */
-async function shellOnTop(page:Page){
-  const hits=await page.locator(SHELL).evaluateAll(els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden';})
+/** The game-owned menu is the active layer; shell controls leave no paint/input underneath. */
+async function shellHiddenUnderMenu(page:Page){
+  await expect(page.locator('.game-dock')).toHaveAttribute('inert');
+  await expect(page.locator('.game-dock')).toHaveCSS('visibility','hidden');
+  expect(await page.locator('.game-dock').evaluate(e=>[...e.querySelectorAll('*')].every(el=>getComputedStyle(el).backdropFilter==='none'))).toBe(true);
+  const hits=await page.locator(SHELL).evaluateAll(els=>els
     .map(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{id:e.id||e.getAttribute('aria-label'),ok:!!hit&&e.contains(hit)};}));
-  expect(hits.length).toBeGreaterThan(2);
-  for(const h of hits)expect(h.ok,`shell control ${h.id} is covered`).toBe(true);
+  expect(hits.length).toBe(2);
+  for(const h of hits)expect(h.ok,`shell control ${h.id} must be absent under a menu`).toBe(false);
 }
 /** A CSS variable the HUD publishes on the game root, in px. */
 const rootVar=(page:Page,name:string)=>page.locator('.blockcraft').evaluate((e,n)=>parseFloat(getComputedStyle(e).getPropertyValue(n)),name);
@@ -228,7 +231,7 @@ test.describe('menus',()=>{
     const root=page.locator('.blockcraft');
     const settings=()=>page.evaluate(()=>({...(window as unknown as {blockcraft:{settings:Record<string,unknown>}}).blockcraft.settings}));
     await expect(page.locator('.bc-menu-title')).toHaveText('Minecraft');
-    await shellOnTop(page);
+    await shellHiddenUnderMenu(page);
     await page.getByRole('button',{name:'Game mode'}).click();
     await expect(root).toHaveAttribute('data-mode','creative');await expect(page.getByRole('button',{name:'Game Mode: Creative'})).toBeVisible();
     await page.getByRole('button',{name:'Game mode'}).click();await expect(root).toHaveAttribute('data-mode','survival');
@@ -277,7 +280,7 @@ test.describe('menus',()=>{
     await expect(page.locator('.bc-menu')).toContainText('Steve hit the ground too hard');await expect(page.locator('.bc-menu-score')).toHaveText('Score: 37');
     const respawn=page.getByRole('button',{name:'Respawn'});
     await expect(respawn).toBeDisabled();await expect(respawn).toBeEnabled({timeout:5000});
-    await shellOnTop(page);
+    await shellHiddenUnderMenu(page);
     await page.screenshot({path:evidence('death-1280x720')});
     await respawn.click();
     await expect.poll(()=>root.getAttribute('data-phase'),{timeout:20000}).not.toBe('dead');
