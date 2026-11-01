@@ -1,5 +1,5 @@
 import {test, expect, seedStudyTopic} from '../../fixtures';
-import {hook, openGame} from './helpers';
+import {advance, carDeath, expectDeathCard, hook, openGame} from './helpers';
 
 test('a DSF3 phone fills the viewport and renders at native resolution with antialiasing', async ({browser}) => {
   const context = await browser.newContext({baseURL: process.env.ARCADE_URL || 'http://127.0.0.1:4190', viewport: {width: 390, height: 844}, deviceScaleFactor: 3});
@@ -25,4 +25,24 @@ test('a DSF3 phone fills the viewport and renders at native resolution with anti
     await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => [c.width, c.height])).toEqual([2532, 1170]);
     expect(errors).toEqual([]);
   } finally { await context.close(); }
+});
+
+test('reduced-motion game over keeps its shared card and Play again reachable in short landscape', async ({page}) => {
+  await page.emulateMedia({reducedMotion: 'reduce'});
+  const errors = await openGame(page, {viewport: {width: 844, height: 390}});
+  await carDeath(page);
+  await advance(page, 0.3);
+  await expectDeathCard(page, 'car', 'Hit by a car');
+  const card = page.locator('.hw-over');
+  await expect(card).toHaveClass(/ui-glass-sheet/);
+  await expect(card).toHaveCSS('opacity', '1');
+  await expect(card).toHaveCSS('scale', '1');
+  const again = page.getByRole('button', {name: 'Play again', exact: true});
+  expect(await again.evaluate(button => {
+    const r = button.getBoundingClientRect();
+    return r.y >= 0 && r.bottom <= innerHeight && button.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  })).toBe(true);
+  await again.click();
+  await expect(page.locator('.crossy-road')).toHaveAttribute('data-phase', 'ready');
+  expect(errors).toEqual([]);
 });

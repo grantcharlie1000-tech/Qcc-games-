@@ -89,4 +89,4 @@ Wordle is a daily five-letter puzzle with unlimited practice rounds, separate st
 
 ## Crossy Road
 
-Crossy Road is an original endless lane-hopping game in 3D voxels, with seeded lanes that pass tested fairness rules and keyboard, tap and swipe controls. A UFO beams the bunny up after 7 seconds without a new furthest row, or when it steps three rows back or falls three rows behind the slowly advancing view, and the furthest row reached is the score synced to the shared rankings. See [its spec](src/games/crossy-road/SPEC.md).
+Crossy Road is a 3D voxel lane-hopping remake with a white bird, chunky traffic, rivers and railways, seeded lanes that pass tested fairness rules, and keyboard, tap and swipe controls. Its full-screen canvas uses antialiasing and native device resolution capped at 3. A UFO beams the bird up after 7 seconds without a new furthest row (warning at 5 seconds), or when it steps three rows back or falls three rows behind the slowly advancing view, and the furthest row reached is the score synced to the shared rankings. See [its spec](src/games/crossy-road/SPEC.md).
