@@ -163,5 +163,5 @@ test('cancel, lost capture, blur, resize, pause and disposal release drag captur
 
 test('mobile Hint wraps without clipping its instruction',async({page})=>{
   await page.setViewportSize({width:390,height:844});await open(page);await page.getByRole('button',{name:'Hint',exact:true}).click();
-  expect(await page.locator('.ws-message').evaluate(e=>e.scrollHeight<=e.clientHeight)).toBe(true);
+  await expect(page.locator('.ws-message')).toHaveClass(/sr-only/);await expect(page.locator('.game-dock').getByRole('button',{name:'Hint',exact:true})).toBeVisible();
 });

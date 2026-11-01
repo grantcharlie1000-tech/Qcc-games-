@@ -1,9 +1,13 @@
 import type {GameContext, GameInstance, GameModule} from '../../core/types';
 import {
-  BAND_LABEL, applyGuess, aucklandDate, band, createState, distanceKm, evaluate, guessColour, legend, liveStreak, nameOf,
+  BAND_LABEL, applyGuess, aucklandDate, band, createState, distanceKm, evaluate, guessColour, liveStreak, nameOf,
   mergeState, newPractice, proximity, refreshDaily, restoreState, serializeState, type GameState, type Mode
 } from './model';
 import {GlobeView} from './globe';
+import {bindGlass} from '../../ui/glass';
+import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
+import {mountCompactHud} from '../../ui/game-controls-adapter';
+import {openSheet} from '../../ui/sheet';
 import './style.css';
 
 const km = (value: number) => `${value.toLocaleString('en-NZ')} km`;
@@ -20,40 +24,48 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       </div>
       <form class="gl-form" novalidate>
         <label class="sr-only" for="gl-input">Country name</label>
-        <input id="gl-input" class="gl-input" type="text" name="country" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="Type a country…" maxlength="60">
-        <button type="submit" class="game-button gl-submit">Guess</button>
+        <div class="gl-search arcade-glass game-glass"><input id="gl-input" class="gl-input" type="text" name="country" autocomplete="off" autocapitalize="words" autocorrect="off" spellcheck="false" enterkeyhint="go" placeholder="Type a country…" maxlength="60"></div>
+        <button type="submit" class="ui-tab arcade-glass game-glass gl-submit">Guess</button>
       </form>
     </div>
     <p class="gl-message" data-tone="info"></p>
     <div class="gl-main">
       <div class="gl-globe-wrap">
         <div class="gl-globe" tabindex="0" role="application" aria-roledescription="globe" aria-label="Globe. Drag to spin, scroll or pinch to zoom. With the globe focused, arrow keys spin it and plus or minus zoom."></div>
-        <p class="gl-chip" hidden></p>
-        <p class="gl-hint" aria-hidden="true">Drag to spin · scroll or pinch to zoom</p>
+        <p class="gl-chip arcade-glass-mini" hidden></p>
       </div>
-      <aside class="gl-side" aria-label="Your guesses">
-        <div class="gl-summary"><span class="gl-round"></span><span><strong class="gl-count">0</strong> <span class="gl-count-label">guesses</span></span><span>Closest <strong class="gl-closest">–</strong></span></div>
-        <section class="gl-win" hidden><h2 class="gl-win-title">Found it!</h2><p class="gl-win-text"></p><button type="button" class="game-button gl-again">Play again</button></section>
-        <ol class="gl-history" aria-label="Guesses, closest first"></ol>
-        <p class="gl-empty">Guess any country. Each guess is coloured by how close its land is to the hidden country.</p>
-        <ul class="gl-legend" aria-label="Colour key"></ul>
-        <details class="gl-more"><summary>Stats and options</summary>
-          <dl class="gl-stats"></dl>
-          <label class="gl-option"><input type="checkbox" class="gl-cb"> Colour-blind palette</label>
-        </details>
-      </aside>
-    </div>`;
+      <ol class="gl-history" aria-label="Guesses, closest first"></ol>
+    </div>
+    <div class="gl-summary" hidden><span class="gl-round"></span><span><strong class="gl-count">0</strong> <span class="gl-count-label">guesses</span></span></div>
+    <dialog class="gl-options ui-glass-sheet arcade-sheet" aria-labelledby="gl-options-title">
+      <div class="dialog-head"><h2 id="gl-options-title">Stats and options</h2><button type="button" class="icon-button gl-close" aria-label="Close stats and options">×</button></div>
+      <dl class="gl-stats"></dl>
+      <label class="gl-option"><input type="checkbox" class="gl-cb"> Colour-blind palette</label>
+    </dialog>`;
   container.append(root);
 
   const $ = <T extends Element>(selector: string) => root.querySelector<T>(selector)!;
   const form = $<HTMLFormElement>('.gl-form'), input = $<HTMLInputElement>('.gl-input'), message = $<HTMLElement>('.gl-message');
-  const history = $<HTMLOListElement>('.gl-history'), empty = $<HTMLElement>('.gl-empty'), win = $<HTMLElement>('.gl-win');
+  const history = $<HTMLOListElement>('.gl-history');
   const chip = $<HTMLElement>('.gl-chip'), globeHost = $<HTMLElement>('.gl-globe'), colourBox = $<HTMLInputElement>('.gl-cb');
   const abort = new AbortController(), signal = abort.signal;
   let today = aucklandDate();
   let state: GameState = createState(today);
   let paused = false, disposed = false, globe: GlobeView | undefined;
 
+  const controls={touch:'Type a country · Drag to explore.',keyboard:'Type a country · Enter to guess.'};
+  const pauseSheet=bindGamePauseSheet(container,{title:'Globle',controls});
+  const sheet=createGameSheet(root,{title:'Globle',controls,buttonClass:'gl-again',onPlay(){newRound();say('');input.focus({preventScroll:true});}});
+  const hud=mountCompactHud(container);
+  const materials=[...root.querySelectorAll<HTMLElement>('.gl-search,.gl-submit')].map(bindGlass);
+  const options=$<HTMLDialogElement>('.gl-options');let resumeAfterStats=false;
+  const localOptions=container.closest('.game-view')?.querySelector('#game-local-options');if(localOptions)localOptions.textContent='Stats and options';
+  function finishStats(){const resume=resumeAfterStats;resumeAfterStats=false;if(resume&&!document.hidden)context.setPaused?.(false);}
+  function closeStats(resume=true){if(!options.open)return false;if(!resume)resumeAfterStats=false;options.close();finishStats();container.closest('.game-view')?.querySelector<HTMLElement>('#game-menu')?.focus({preventScroll:true});return true;}
+  function openStats(){if(options.open)return;resumeAfterStats=!paused;context.setPaused?.(true);openSheet(options,localOptions);}
+  options.addEventListener('close',finishStats,{signal});
+  options.addEventListener('cancel',event=>{event.preventDefault();closeStats();},{signal});
+  $('.gl-close').addEventListener('click',()=>closeStats(),{signal});
   const colourBlind = () => state.colorBlind ?? context.settings.colorBlind;
   const round = () => state[state.mode];
   function lost() {
@@ -76,9 +88,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     $('.gl-round').textContent = state.mode === 'daily' ? `Daily #${r.puzzle}` : 'Practice';
     $('.gl-count').textContent = String(r.guesses.length);
     $('.gl-count-label').textContent = r.guesses.length === 1 ? 'guess' : 'guesses';
-    const wrong = r.guesses.filter(id => id !== r.answer);
-    const closest = wrong.length ? Math.min(...wrong.map(id => distanceKm(id, r.answer))) : undefined;
-    $('.gl-closest').textContent = r.won ? '0 km ✓' : closest === undefined ? '–' : km(closest);
     const ordered = r.guesses.map((id, i) => ({id, n: i + 1, km: distanceKm(id, r.answer)}))
       .sort((a, b) => Number(b.id === r.answer) - Number(a.id === r.answer) || a.km - b.km || b.n - a.n);
     const latest = r.guesses[r.guesses.length - 1];
@@ -91,22 +100,15 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         <span class="gl-band">${BAND_LABEL[b]}${g.id === r.answer ? '' : ` · ${proximity(g.km)}%`} · #${g.n}</span>
       </li>`;
     }).join('');
-    empty.hidden = r.guesses.length > 0;
-    $('.gl-legend').innerHTML = legend(cb).map(item => `<li><span class="gl-swatch" style="background:${item.colour}" aria-hidden="true"></span>${item.label}</li>`).join('');
-    win.hidden = !r.won;
-    if (r.won) {
-      const n = r.guesses.length;
-      $('.gl-win-text').textContent = `It’s ${nameOf(r.answer)}. You found it in ${n} ${n === 1 ? 'guess' : 'guesses'}.` +
-        (state.mode === 'daily' ? ` Daily streak: ${liveStreak(state.stats.daily, today)}. A new daily puzzle arrives at midnight New Zealand time.` : '');
-      $('.gl-again').textContent = state.mode === 'daily' ? 'Play a practice round' : 'Play again';
-    }
+    if(r.won)sheet.show('game-over',{score:r.guesses.length,best:state.mode==='practice'?state.stats.practice.best??undefined:undefined});else sheet.hide();
+    hud.set(`${state.mode==='daily'?`Daily #${r.puzzle}`:'Practice'} · ${r.guesses.length} ${r.guesses.length===1?'guess':'guesses'}`);
     input.disabled = r.won; $<HTMLButtonElement>('.gl-submit').disabled = r.won;
     input.placeholder = r.won ? 'Solved!' : 'Type a country…';
     colourBox.checked = cb;
     renderStats();
     if (latest) {
       chip.hidden = false;
-      chip.textContent = latest === r.answer ? `${nameOf(latest)} · correct` : `${nameOf(latest)} · ${km(distanceKm(latest, r.answer))}`;
+      const closest=ordered[0];chip.textContent=closest.id===r.answer?`${nameOf(closest.id)} · correct`:`Closest: ${nameOf(closest.id)} · ${km(closest.km)}`;chip.setAttribute('aria-label',chip.textContent);
     } else chip.hidden = true;
     globe?.show(r.guesses.map(id => ({id, colour: guessColour(id, r.answer, cb)})));
     if (fly && latest) globe?.flyTo(latest);
@@ -172,7 +174,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       context.sound('tap');
     }
     render(true);
-    if (round().won) $<HTMLButtonElement>('.gl-again').focus({preventScroll: true});
+    if (round().won) sheet.button.focus({preventScroll: true});
   }
   form.addEventListener('submit', event => {event.preventDefault(); submit();}, {signal});
 
@@ -190,10 +192,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     state.mode = 'practice';
     persist(); render(true);
   }
-  $('.gl-again').addEventListener('click', () => {
-    newRound(); say('New practice round. A different country is hidden.');
-    input.focus({preventScroll: true});
-  }, {signal});
   colourBox.addEventListener('change', () => {state.colorBlind = colourBox.checked; persist(); render();}, {signal});
 
   // Keep the input usable when an on-screen keyboard shrinks the visual viewport.
@@ -227,6 +225,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   render();
 
   return {
+    openMenu:openStats,dismissMenu:()=>closeStats(),
     pause() {paused = true; globe?.pause();},
     resume() {paused = false; checkDate(); render(); globe?.resume();},
     restart() {
@@ -248,7 +247,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       if (disposed) return;
       disposed = true;
       clearInterval(clock);
-      abort.abort();
+      closeStats(false);abort.abort();sheet.dispose();pauseSheet.dispose();hud.dispose();materials.forEach(material=>material.dispose());
       globe?.dispose(); globe = undefined;
       root.remove();
     }
