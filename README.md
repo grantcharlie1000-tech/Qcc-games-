@@ -1,6 +1,6 @@
 # Pocket Arcade
 
-A static, private browser arcade with twenty-two playable games: **Suika Game, Water Sort, Block Blast, Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle and Hopway**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a Netlify score service, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
+A static, private browser arcade with twenty-two playable games: **Suika Game, Water Sort, Block Blast, Stack, Snake, Slither.io, Minesweeper, Solitaire, Block Fill, Flow Free, Ball Run, Pool, Animal Stack, Flappy Bird, Globle, Minecraft, Pac-Man, Corn Clicker, Slipline, Tetris, Wordle and Crossy Road**. Original SVG covers, a compact portrait-card library, favourites, local saves and an explicit offline download. No advertisements or currency. Accounts are optional for play and required for publishing leaderboard scores. Gameplay stays local; optional shared leaderboards use a Netlify score service, and Pool and Minecraft can be played online between devices ([setup](docs/MULTIPLAYER.md)).
 
 The latest [gameplay correction record](docs/GAMEPLAY_CORRECTIONS.md) includes the four referenced scenes, six Animal Stack cutouts, actual interaction recordings and viewport checks.
 
@@ -87,6 +87,6 @@ Tetris is a falling-piece puzzle: arrange seven kinds of quads, clear lines, and
 
 Wordle is a daily five-letter puzzle with unlimited practice rounds, separate statistics and accessible colour cues. See [its spec](src/games/fivefold/SPEC.md).
 
-## Hopway
+## Crossy Road
 
-Hopway is an original endless lane-hopping game in 3D voxels, with seeded lanes that pass tested fairness rules and keyboard, tap and swipe controls. A UFO beams the bunny up after 7 seconds without a new furthest row, or when it steps three rows back or falls three rows behind the slowly advancing view, and the furthest row reached is the score synced to the shared rankings. See [its spec](src/games/hopway/SPEC.md).
+Crossy Road is an original endless lane-hopping game in 3D voxels, with seeded lanes that pass tested fairness rules and keyboard, tap and swipe controls. A UFO beams the bunny up after 7 seconds without a new furthest row, or when it steps three rows back or falls three rows behind the slowly advancing view, and the furthest row reached is the score synced to the shared rankings. See [its spec](src/games/crossy-road/SPEC.md).

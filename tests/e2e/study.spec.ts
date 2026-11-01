@@ -66,7 +66,7 @@ async function gameAction(page:Page,id:string){
   }
   if(id==='animal-stack')await page.getByRole('button',{name:/^Drop /}).click();
   if(id==='fivefold')await page.keyboard.type('a');
-  if(id==='hopway')await page.keyboard.press('ArrowUp');
+  if(id==='crossy-road')await page.keyboard.press('ArrowUp');
   if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');}
   if(id==='blockcraft'){
     // Chunks stream on animation frames, which the paused clock drives.
@@ -149,7 +149,7 @@ test('Escape immediately saves and pauses; article changes never load or replace
 });
 
 test.describe('all retained game instances',()=>{
-  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold','hopway']){
+  for(const id of ['fruit-merge','water-sort','color-blocks','tower','snake','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold','crossy-road']){
     test(`${id}: gameplay, Escape, frozen autosave and exact return`,async({page})=>{
       test.setTimeout(60000);
       const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
