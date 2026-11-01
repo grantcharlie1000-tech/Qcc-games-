@@ -4,7 +4,6 @@ import { cloneBoard, pour, won } from './rules';
 import { campaignScore, readSnapshot, Session } from './session';
 import { bandsFor, COLOURS, liquidArt, tubeArt } from './art';
 import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
-import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
 import {mountCompactHud,mountDockActions} from '../../ui/game-controls-adapter';
 import './style.css';
 
@@ -16,7 +15,7 @@ const module:GameModule={
   mount(container,context) {
     const session=new Session(),abort=new AbortController(),root=document.createElement('section');
     root.className='ws-game';root.setAttribute('aria-label','Water Sort puzzle');
-    root.innerHTML=`<div class="ws-heading"><select class="ws-difficulty" aria-label="Difficulty"><option>Gentle</option><option>Flow</option><option>Deep</option></select><h2 class="ws-level-name">Level 1</h2><select class="ws-level" aria-label="Level">${LEVELS.map((l,i)=>`<option value="${i}">Level ${i+1} · ${l.name}</option>`).join('')}</select></div><div class="ws-playfield"><div class="ws-tubes" aria-label="Liquid tubes"></div><svg class="ws-stream" aria-hidden="true"><path fill="none" stroke-linecap="round"/></svg></div><p class="ws-message sr-only" role="status"></p><div class="ws-actions"><button type="button" data-action="undo" aria-label="Undo">${undoIcon}</button><button type="button" data-action="hint" aria-label="Hint">${hintIcon}</button></div>`;
+    root.innerHTML=`<div class="ws-heading"><select class="ws-difficulty" aria-label="Difficulty"><option>Gentle</option><option>Flow</option><option>Deep</option></select><h2 class="ws-level-name">Level 1</h2><select class="ws-level" aria-label="Level">${LEVELS.map((l,i)=>`<option value="${i}">Level ${i+1} · ${l.name}</option>`).join('')}</select></div><div class="ws-playfield"><div class="ws-tubes" aria-label="Liquid tubes"></div><svg class="ws-stream" aria-hidden="true"><path fill="none" stroke-linecap="round"/></svg><div class="ws-victory" hidden><span class="ws-victory-mark">✓</span><strong>Beautifully sorted!</strong></div></div><button type="button" class="ws-next" data-action="next" hidden>Next level</button><p class="ws-message sr-only" role="status"></p><div class="ws-actions"><button type="button" data-action="undo" aria-label="Undo">${undoIcon}</button><button type="button" data-action="hint" aria-label="Hint">${hintIcon}</button></div>`;
     container.replaceChildren(root);
     const tubes=root.querySelector<HTMLElement>('.ws-tubes')!,field=root.querySelector<HTMLElement>('.ws-playfield')!;
     const difficulty=root.querySelector<HTMLSelectElement>('.ws-difficulty')!,levelSelect=root.querySelector<HTMLSelectElement>('.ws-level')!;
@@ -24,9 +23,7 @@ const module:GameModule={
     const undo=root.querySelector<HTMLButtonElement>('[data-action=undo]')!,hintButton=root.querySelector<HTMLButtonElement>('[data-action=hint]')!;
     const actions=mountDockActions(container,undo,hintButton);root.querySelector('.ws-actions')!.remove();
     const hud=mountCompactHud(container);
-    const controls={touch:'Tap matching colours to pour.',keyboard:'Arrows to move · Enter to pour.'};
-    const pauseSheet=bindGamePauseSheet(container,{title:'Water Sort',controls});
-    const sheet=createGameSheet(root,{title:'Water Sort',controls,onPlay(){if(!session.paused)reset((session.state.level+1)%LEVELS.length)}});sheet.button.dataset.action='next';
+    const next=root.querySelector<HTMLButtonElement>('[data-action=next]')!;
     let focusAfterPour:number|null=null;
     let selected:number|null=null,hint:ReturnType<Session['hint']>|null=null;
     let message='Choose a source tube.',disposed=false,raf=0,lastFrame=0,celebrate:number|null=null;
@@ -75,8 +72,8 @@ const module:GameModule={
       undo.disabled=session.paused||busy||!state.history.length;undo.classList.toggle('ws-undo-hint',hint?.kind==='undo');
       hintButton.disabled=session.paused||busy||complete;
       hud.set(`Level ${state.level+1}`);
-      if(complete)sheet.show('game-over',{score:campaignScore(state.best),best:Math.max(context.highScore,campaignScore(state.best))});else sheet.hide();
-      sheet.button.disabled=session.paused;
+      next.hidden=!complete;next.disabled=session.paused;next.textContent=state.level===LEVELS.length-1?'Play again':'Next level';
+      root.querySelector<HTMLElement>('.ws-victory')!.hidden=!complete;
       const status=complete?`All colours home in ${state.history.length} pours.`:message;
       root.querySelector('.ws-message')!.textContent=status;
       context.setLevel(`Level ${state.level+1} · ${level.difficulty}`);context.setScore(campaignScore(state.best));context.setStatus(status);
@@ -137,8 +134,8 @@ const module:GameModule={
         else message='Choose a source tube.';
         render(true);
         if(focusAfterPour!==null){
-          const next=won(session.state.tubes)?sheet.button:tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
-          next?.focus({preventScroll:true});focusAfterPour=null;
+          const destination=won(session.state.tubes)?next:tubes.querySelector<HTMLButtonElement>(`[data-tube="${focusAfterPour}"]`);
+          destination?.focus({preventScroll:true});focusAfterPour=null;
         }
       }else{paintPour();raf=requestAnimationFrame(frame);}
     }
@@ -173,6 +170,7 @@ const module:GameModule={
         render();
       }
     }
+    next.addEventListener('click',()=>{if(!session.paused&&!session.pending&&won(session.state.tubes))reset((session.state.level+1)%LEVELS.length)},{signal:abort.signal});
     undo.addEventListener('click',()=>useAction('undo'),{signal:abort.signal});
     hintButton.addEventListener('click',()=>useAction('hint'),{signal:abort.signal});
     root.addEventListener('click',event=>{
@@ -228,7 +226,7 @@ const module:GameModule={
       pause(){session.paused=true;clearPointer(true);cancelAnimationFrame(raf);raf=0;render();},
       resume(){session.paused=false;render();animate();},restart(){reset();},serialize:snapshot,
       restore(data){const restored=readSnapshot(data);if(!restored)return;clearPointer(true);clearAnimation();session.pending=null;session.state=restored;focusAfterPour=null;selected=null;hint=null;celebrate=null;message='Your colours are right where you left them.';render();},
-      dispose(){clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();sheet.dispose();pauseSheet.dispose();hud.dispose();actions.dispose();root.remove();},
+      dispose(){clearPointer(true);disposed=true;clearAnimation();observer.disconnect();abort.abort();hud.dispose();actions.dispose();root.remove();},
     };
   },
 };

@@ -66,7 +66,7 @@ test('spelling corrections submit a guess on click and keyboard activation', asy
   await winner.focus();
   await winner.press('Enter');
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
-  await expect(page.locator('.globle .game-sheet-stats')).toContainText('Score2');
+  await expect(page.locator('.gl-win-text')).toContainText('You found it in 2 guesses.');
   await page.reload();
   await expect(page.locator('.gl-guess[data-id=DEU]')).toBeVisible();
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
@@ -115,8 +115,8 @@ test('complete winning round with neighbours, aliases, duplicates and invalid en
 
   await guess(page, 'France');
   await expect(page.locator('.globle')).toHaveAttribute('data-won', 'true');
-  await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
-  await expect(page.locator('.globle .game-sheet-stats')).toContainText('Score6');
+  await expect(page.locator('.gl-win')).toBeVisible();
+  await expect(page.locator('.gl-win-text')).toContainText('You found it in 6 guesses.');
   await expect(page.locator('.gl-guess').first()).toHaveAttribute('data-id', 'FRA');
   expect(await colour('FRA')).toBe('rgb(47, 168, 79)');
   await expect(input(page)).toBeDisabled();

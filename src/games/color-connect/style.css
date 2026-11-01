@@ -9,3 +9,10 @@
 .cc-game{position:relative;width:min(100%,100cqh);max-width:none;padding:0;background:transparent;border-radius:20px}
 .cc-feedback{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .cc-frame{padding:8px}
+
+/* Original result UI; removed play controls stay absent. */
+.cc-win{display:flex;align-items:center;flex-direction:column;gap:5px;padding:12px;border:1px solid #f9d17d88;border-radius:16px;background:#ffe9a512;color:#fff0bf}.cc-win[hidden]{display:none}.cc-win strong{font:400 24px Arcade,system-ui,sans-serif}.cc-win span{font:600 12px system-ui,sans-serif}.cc-win button{margin-top:7px;min-height:44px}
+.cc-game:has(.cc-win:not([hidden])){width:min(100%,calc(100cqh - 152px))}
+
+/* The original result strip can stay wider than the square board in landscape. */
+.cc-win{box-sizing:border-box;position:relative;left:50%;transform:translateX(-50%);width:min(100cqw,530px)}

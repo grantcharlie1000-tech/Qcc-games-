@@ -5,7 +5,6 @@ import {
 } from './model';
 import {GlobeView} from './globe';
 import {bindGlass} from '../../ui/glass';
-import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
 import {mountCompactHud} from '../../ui/game-controls-adapter';
 import {openSheet} from '../../ui/sheet';
 import './style.css';
@@ -37,6 +36,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       <ol class="gl-history" aria-label="Guesses, closest first"></ol>
     </div>
     <div class="gl-summary" hidden><span class="gl-round"></span><span><strong class="gl-count">0</strong> <span class="gl-count-label">guesses</span></span></div>
+    <section class="gl-win" hidden><h2 class="gl-win-title">Found it!</h2><p class="gl-win-text"></p><button type="button" class="game-button gl-again">Play again</button></section>
     <dialog class="gl-options ui-glass-sheet arcade-sheet" aria-labelledby="gl-options-title">
       <div class="dialog-head"><h2 id="gl-options-title">Stats and options</h2><button type="button" class="icon-button gl-close" aria-label="Close stats and options">×</button></div>
       <dl class="gl-stats"></dl>
@@ -46,16 +46,13 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
 
   const $ = <T extends Element>(selector: string) => root.querySelector<T>(selector)!;
   const form = $<HTMLFormElement>('.gl-form'), input = $<HTMLInputElement>('.gl-input'), message = $<HTMLElement>('.gl-message');
-  const history = $<HTMLOListElement>('.gl-history');
+  const history = $<HTMLOListElement>('.gl-history'), win = $<HTMLElement>('.gl-win');
   const chip = $<HTMLElement>('.gl-chip'), globeHost = $<HTMLElement>('.gl-globe'), colourBox = $<HTMLInputElement>('.gl-cb');
   const abort = new AbortController(), signal = abort.signal;
   let today = aucklandDate();
   let state: GameState = createState(today);
   let paused = false, disposed = false, globe: GlobeView | undefined;
 
-  const controls={touch:'Type a country · Drag to explore.',keyboard:'Type a country · Enter to guess.'};
-  const pauseSheet=bindGamePauseSheet(container,{title:'Globle',controls});
-  const sheet=createGameSheet(root,{title:'Globle',controls,buttonClass:'gl-again',onPlay(){newRound();say('');input.focus({preventScroll:true});}});
   const hud=mountCompactHud(container);
   const materials=[...root.querySelectorAll<HTMLElement>('.gl-search,.gl-submit')].map(bindGlass);
   const options=$<HTMLDialogElement>('.gl-options');let resumeAfterStats=false;
@@ -100,7 +97,13 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
         <span class="gl-band">${BAND_LABEL[b]}${g.id === r.answer ? '' : ` · ${proximity(g.km)}%`} · #${g.n}</span>
       </li>`;
     }).join('');
-    if(r.won)sheet.show('game-over',{score:r.guesses.length,best:state.mode==='practice'?state.stats.practice.best??undefined:undefined});else sheet.hide();
+    win.hidden = !r.won;
+    if (r.won) {
+      const n = r.guesses.length;
+      $('.gl-win-text').textContent = `It’s ${nameOf(r.answer)}. You found it in ${n} ${n === 1 ? 'guess' : 'guesses'}.` +
+        (state.mode === 'daily' ? ` Daily streak: ${liveStreak(state.stats.daily, today)}. A new daily puzzle arrives at midnight New Zealand time.` : '');
+      $('.gl-again').textContent = state.mode === 'daily' ? 'Play a practice round' : 'Play again';
+    }
     hud.set(`${state.mode==='daily'?`Daily #${r.puzzle}`:'Practice'} · ${r.guesses.length} ${r.guesses.length===1?'guess':'guesses'}`);
     input.disabled = r.won; $<HTMLButtonElement>('.gl-submit').disabled = r.won;
     input.placeholder = r.won ? 'Solved!' : 'Type a country…';
@@ -174,7 +177,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       context.sound('tap');
     }
     render(true);
-    if (round().won) sheet.button.focus({preventScroll: true});
+    if (round().won) $<HTMLButtonElement>('.gl-again').focus({preventScroll: true});
   }
   form.addEventListener('submit', event => {event.preventDefault(); submit();}, {signal});
 
@@ -192,6 +195,11 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     state.mode = 'practice';
     persist(); render(true);
   }
+  $('.gl-again').addEventListener('click', () => {
+    if(paused)return;
+    newRound(); say('New practice round. A different country is hidden.');
+    input.focus({preventScroll: true});
+  }, {signal});
   colourBox.addEventListener('change', () => {state.colorBlind = colourBox.checked; persist(); render();}, {signal});
 
   // Keep the input usable when an on-screen keyboard shrinks the visual viewport.
@@ -247,7 +255,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       if (disposed) return;
       disposed = true;
       clearInterval(clock);
-      closeStats(false);abort.abort();sheet.dispose();pauseSheet.dispose();hud.dispose();materials.forEach(material=>material.dispose());
+      closeStats(false);abort.abort();hud.dispose();materials.forEach(material=>material.dispose());
       globe?.dispose(); globe = undefined;
       root.remove();
     }

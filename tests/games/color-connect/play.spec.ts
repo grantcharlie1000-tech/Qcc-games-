@@ -20,10 +20,10 @@ test('actual pointer paths fill the entire board, award a win and advance',async
  // Hand-checked full first-board solution, independent of the runtime solver.
  const solution:number[][]=[[9,5,6,10,11,15],[14,13,12],[8,4,0,1,2,3,7]];
  for(const path of solution) await draw(page,path);
- await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+ await expect(page.locator('.cc-win')).toBeVisible();
  await expect(page.locator('.cc-progress')).toContainText('100%');
  await expect(page.locator('#game-score')).toContainText('2200');
- await page.getByRole('button',{name:'Play again',exact:true}).click();
+ await page.getByRole('button',{name:'Next puzzle',exact:true}).click();
  await expect(page.locator('.cc-puzzle-name')).toContainText('Little bends');
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
 });
@@ -139,12 +139,12 @@ test('pointer release synchronizes the trail-tip keyboard focus without stealing
 
 for(const width of [320,390,1366])test(`compact HUD and enlarged board at ${width}`,async({page})=>{await page.setViewportSize({width,height:width===1366?768:844});await page.goto('/#/game/color-connect');await expect(page.locator('.game-dock')).toHaveCount(1);const hud=page.locator('.game-compact-hud');await expect(hud).toHaveText('0 / 3 pairs · 38% covered');expect(await hud.evaluate(e=>e.scrollWidth<=e.clientWidth&&e.getBoundingClientRect().height<20)).toBe(true);const board=(await page.locator('.cc-playfield').boundingBox())!;expect(board.width).toBeGreaterThanOrEqual(Math.min(width-36,678)-2);});
 
-test('Enter on the winning board advances through the shared result action',async({page})=>{
+test('the original Next puzzle action advances with Enter',async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('pocket-arcade:v1:save:color-connect',JSON.stringify({version:1,data:{version:1,level:0,paths:[[9,5,6,10,11,15],[14,13,12],[]],completed:[],moves:2,history:[],assists:0,best:{}}})));
   await page.reload();await page.locator('[data-cc-cell="8"]').focus();await page.keyboard.press('Space');
   for(const key of ['ArrowUp','ArrowUp','ArrowRight','ArrowRight','ArrowRight','ArrowDown'])await page.keyboard.press(key);
-  await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
-  await page.keyboard.press('Enter');await expect(page.locator('.cc-puzzle-name')).toContainText('Little bends');
+  await expect(page.locator('.cc-win')).toBeVisible();
+  await page.getByRole('button',{name:'Next puzzle',exact:true}).focus();await page.keyboard.press('Enter');await expect(page.locator('.cc-puzzle-name')).toContainText('Little bends');
   await expect(page.locator('#game-score')).toContainText('2200');
 });
 

@@ -21,3 +21,11 @@
 .ws-game .ws-tubes{inset:4% 0;gap:16px}
 .ws-game[data-layout=single] .ws-tubes{inset:4% 0;gap:40px}
 .game-view[data-game-id=water-sort] .game-dock button[data-action] svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Original victory animation and next-level CTA, without the removed footer. */
+.ws-victory{position:absolute;inset:0;z-index:7;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#221b2ed9;text-align:center;animation:ws-victory 1800ms var(--ease-out,cubic-bezier(.23,1,.32,1)) forwards}.ws-victory strong{font-size:25px;letter-spacing:.1px}.ws-victory-mark{width:62px;height:62px;border:2px solid #8af3d7;color:#8af3d7;border-radius:50%;display:grid;place-items:center;font-size:40px}@keyframes ws-victory{0%{opacity:0}12%,72%{opacity:1}100%{opacity:0}}
+.ws-next{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:8;width:auto;min-height:44px;max-width:160px;border:1px solid #ffd471;border-radius:24px;padding:8px 16px;background:#ffba25;color:#3a2609;font:800 12px system-ui,sans-serif;cursor:pointer}
+.ws-game[data-phase=paused] .ws-victory{animation-play-state:paused}
+@media(max-height:500px){.ws-victory strong{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.ws-victory{animation-duration:500ms}}
+.ws-game[data-reduced=true] .ws-victory{animation-duration:500ms}

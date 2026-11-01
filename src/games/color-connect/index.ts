@@ -1,7 +1,6 @@
 import type { GameModule, GameContext } from '../../core/types';
 import { LEVELS, copyPaths, emptyPaths, endpoint, connected, begin, extend, isWon, traverse, restoreSnapshot, recordWin, campaignScore } from './model';
 import type { Paths, Point, Snapshot } from './model';
-import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
 import {mountCompactHud} from '../../ui/game-controls-adapter';
 import './style.css';
 
@@ -34,13 +33,10 @@ const game: GameModule = {
   let paused=false,disposed=false,selected=-1,active=-1,focusCell=0,pointerId:number|null=null,lastPoint:Point|null=null,gesture:Paths|null=null,keyboardDrawing=false;
   let feedback='Start at any matching peg. Fill every cell.';
   const root=document.createElement('section');root.className='cc-game';
-  root.innerHTML=`<div class="cc-heading"><div><span class="cc-eyebrow">THREAD THE COLOURS</span><h2 class="cc-puzzle-name"></h2></div><label class="cc-picker-label"><span class="sr-only">Choose puzzle</span><select class="game-select cc-picker" aria-label="Choose puzzle"></select></label></div><div class="cc-stats"><span class="cc-progress"></span><span class="cc-pairs"></span><span class="cc-moves"></span></div><div class="cc-frame"><div class="cc-playfield"><svg class="cc-art" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg><div class="cc-grid" role="grid" aria-label="Flow Free board" aria-describedby="${svgPrefix}-help"></div></div></div><p class="cc-feedback" role="status"></p><p id="${svgPrefix}-help" class="cc-help sr-only">Drag from a peg • Cover the whole board<br>Keyboard: arrows to move, Space to draw, Delete to erase.</p>`;
+  root.innerHTML=`<div class="cc-heading"><div><span class="cc-eyebrow">THREAD THE COLOURS</span><h2 class="cc-puzzle-name"></h2></div><label class="cc-picker-label"><span class="sr-only">Choose puzzle</span><select class="game-select cc-picker" aria-label="Choose puzzle"></select></label></div><div class="cc-stats"><span class="cc-progress"></span><span class="cc-pairs"></span><span class="cc-moves"></span></div><div class="cc-frame"><div class="cc-playfield"><svg class="cc-art" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg><div class="cc-grid" role="grid" aria-label="Flow Free board" aria-describedby="${svgPrefix}-help"></div></div></div><p class="cc-feedback" role="status"></p><div class="cc-win" hidden><strong>Beautifully connected!</strong><span>Every pair. Every cell.</span><button type="button" class="game-button cc-next">Next puzzle</button></div><p id="${svgPrefix}-help" class="cc-help sr-only">Drag from a peg • Cover the whole board<br>Keyboard: arrows to move, Space to draw, Delete to erase.</p>`;
   container.append(root);
   const find=<T extends Element>(selector:string)=>root.querySelector<T>(selector)!;
-  const grid=find<HTMLElement>('.cc-grid'), art=find<SVGSVGElement>('.cc-art'), picker=find<HTMLSelectElement>('.cc-picker');
-  const controls={touch:'Drag between matching pegs · Fill every cell.',keyboard:'Arrows to move · Space to draw.'};
-  const pauseSheet=bindGamePauseSheet(container,{title:'Flow Free',controls});
-  const sheet=createGameSheet(root,{title:'Flow Free',controls,buttonClass:'cc-next',onPlay(){if(!paused&&isWon(level(),state.paths))changePuzzle((state.level+1)%LEVELS.length)}});
+  const grid=find<HTMLElement>('.cc-grid'), art=find<SVGSVGElement>('.cc-art'), picker=find<HTMLSelectElement>('.cc-picker'),next=find<HTMLButtonElement>('.cc-next');
   const hud=mountCompactHud(container);
   LEVELS.forEach((level,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=`${i+1} / ${LEVELS.length} · ${level.size}×${level.size}`;picker.append(option)});
   let buttons:HTMLButtonElement[]=[];
@@ -84,8 +80,9 @@ const game: GameModule = {
    context.setStatus(won?'All pairs connected · Board completely filled':`${pairs} of ${current.pairs.length} pairs · ${percent}% covered`);
    find<HTMLElement>('.cc-feedback').textContent=feedback;
    hud.set(`${pairs} / ${current.pairs.length} pairs · ${percent}% covered`);
-   if(won)sheet.show('game-over',{score:campaignScore(state.best),best:Math.max(context.highScore,campaignScore(state.best))});else sheet.hide();
-   picker.disabled=paused;
+   find<HTMLElement>('.cc-win').hidden=!won;
+   next.textContent=state.level===LEVELS.length-1?'Play first puzzle':'Next puzzle';
+   picker.disabled=paused;next.disabled=paused;
    root.dataset.paused=String(paused);grid.setAttribute('aria-disabled',String(paused));
    buttons.forEach((button,cell)=>{
     const peg=endpoint(current,cell),trail=state.paths.findIndex(path=>path.includes(cell)),color=peg===-1?trail:peg;
@@ -182,6 +179,7 @@ const game: GameModule = {
   function eraseSelected(){if(paused||selected<0)return;finish();const before=copyPaths(state.paths);state.paths[selected]=[];say(`Erased ${palette[selected].letter}.`);record(before)}
   function changePuzzle(index:number){if(paused)return;finish();state.level=index;state.paths=emptyPaths(level());state.history=[];state.moves=state.assists=0;active=selected=-1;focusCell=0;say('New puzzle. Connect every pair and fill every cell.');rebuild();save()}
   picker.addEventListener('change',()=>changePuzzle(Number(picker.value)),{signal});
+  next.addEventListener('click',()=>{if(!paused&&isWon(level(),state.paths))changePuzzle((state.level+1)%LEVELS.length)},{signal});
 
   rebuild();
   return {
@@ -191,7 +189,7 @@ const game: GameModule = {
    restart(){if(disposed)return;finish();state={...state,paths:emptyPaths(level()),moves:0,history:[],assists:0};selected=active=-1;focusCell=0;say('Fresh start. Connect every pair and fill every cell.');rebuild();save()},
    serialize(){return snapshot()},
    restore(data:unknown){if(disposed)return;const restored=restoreSnapshot(data);if(!restored)return;finish();state=restored;selected=active=-1;focusCell=0;feedback='Saved puzzle restored.';rebuild()},
-   dispose(){if(disposed)return;finish();disposed=true;abort.abort();sheet.dispose();pauseSheet.dispose();hud.dispose();root.remove()},
+   dispose(){if(disposed)return;finish();disposed=true;abort.abort();hud.dispose();root.remove()},
   };
  }
 };

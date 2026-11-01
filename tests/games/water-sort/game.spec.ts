@@ -33,12 +33,12 @@ test('real illegal pour, winning hints, undo, next level and restart', async({pa
   const solved=await readBoard(page);
   expect(solved.every(t=>new Set(t).size<=1)).toBe(true);
   expect(solved.every(t=>t.length===0||t.length===4)).toBe(true);
-  await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+  await expect(page.locator('.ws-victory')).toBeVisible();
   await page.getByRole('button',{name:'Undo',exact:true}).click();
   await expect(root(page)).toHaveAttribute('data-phase','ready');
   await hintPour(page);
   await expect(root(page)).toHaveAttribute('data-phase','won');
-  await page.getByRole('button',{name:'Play again',exact:true}).click();
+  await page.getByRole('button',{name:'Next level',exact:true}).click();
   await expect(page.locator('.ws-level')).toHaveValue('1');
   await gameOption(page,'Level','0');
   await hintPour(page);

@@ -14,3 +14,8 @@ Research read 2026-10-19:
 - https://github.com/w3c/aria-practices/blob/main/content/patterns/grid/grid-pattern.html: directional grid navigation and one tab stop.
 
 Acceptance evidence is recorded separately in TEST_RESULTS.md. Cover artwork is owned by the parent under the current task override.
+
+
+### Original menus restored — Charlie 10:18
+
+Start, pause and result UI use the original `0297ed4` game design. Only Slither uses the shared minimal game sheet. The removed controls, larger play area and compact shared-dock HUD remain.

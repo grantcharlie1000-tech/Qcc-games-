@@ -13,3 +13,9 @@
 
 /* No footer: fit the square puzzle into the available play surface. */
 .sl-game .sl-board{flex:none;width:min(100%,calc(100cqh - 16px));max-height:calc(100% - 16px);margin:auto}
+
+/* Original result UI; removed play controls stay absent. */
+.sl-overlay{position:absolute;inset:0;background:#080811b8;display:grid;place-items:center}.sl-overlay[hidden]{display:none}.sl-overlay .game-panel{text-align:center}.sl-overlay .game-message{margin:0 0 18px}
+
+/* Preserve the original card while meeting the minimum touch target. */
+.sl-overlay .sl-action{min-height:44px}

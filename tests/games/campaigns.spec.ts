@@ -9,7 +9,7 @@ test.afterEach(async({page},info)=>{
   progress:document.querySelector('.cc-progress')?.textContent,
   pairs:document.querySelector('.cc-pairs')?.textContent,
   moves:document.querySelector('.cc-moves')?.textContent,
-  winHidden:(document.querySelector('.game-sheet[data-state="game-over"]') as HTMLElement|null)?.hidden,
+  winHidden:(document.querySelector('.cc-win') as HTMLElement|null)?.hidden,
   saved:JSON.parse(localStorage.getItem('pocket-arcade:v1:save:color-connect')||'null')?.data?.paths,
   layout:{rows:getComputedStyle(document.querySelector('.cc-grid')!).gridTemplateRows,focus:(document.activeElement as HTMLElement)?.dataset.ccCell},
  }))));
@@ -33,7 +33,7 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
    expect(Math.abs(logical[0]-(cell%9+.5))).toBeLessThan(.05);expect(Math.abs(logical[1]-(Math.floor(cell/9)+.5))).toBeLessThan(.05);
    await page.mouse.move(box.x+box.width/2,box.y+box.height/2);if(i===0)await page.mouse.down();
   }
-  if(path===result.paths.at(-1))await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+  if(path===result.paths.at(-1))await expect(page.locator('.cc-win')).toBeVisible();
   await page.mouse.up();
   // The SVG and input mapper use equal squares; native button focus must not
   // resize an implicit CSS grid row and move its hit area away from the art.
@@ -45,8 +45,8 @@ test('the final 9×9 connection puzzle is selectable, playable, saved and wraps 
    }));
   }),{message:'Every hit cell stays aligned with its drawn square after focus changes'}).toBeLessThan(1);
  }
- await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+ await expect(page.locator('.cc-win')).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await page.reload();await expect(page.locator('.cc-picker')).toHaveValue('31');await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
- await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.cc-picker')).toHaveValue('0');
+ await page.reload();await expect(page.locator('.cc-picker')).toHaveValue('31');await expect(page.locator('.cc-win')).toBeVisible();
+ await page.getByRole('button',{name:'Play first puzzle',exact:true}).click();await expect(page.locator('.cc-picker')).toHaveValue('0');
 });
