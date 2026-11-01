@@ -88,6 +88,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let best = Math.max(0, Math.floor(context.highScore) || 0), bestAtStart = best, announcedBest = false, warned = false;
   let reportedScore = -1, reportedAt = -Infinity, scorePending = false, reportedRow = -1, nextBell = 0;
   let quality: Quality = 'high', fpsTime = 0, fpsFrames = 0, fps = 0;
+  /** Development builds only: a moving average of the main-thread milliseconds one frame takes (simulation plus render submission). */
+  let cpuMs = 0;
   /** Train passes already rumbled, by rail row. */
   const rumbled = new Map<number, number>();
   const frame: SceneFrame = { state: run, pose: pose(run), world, dt: 0, reducedMotion: false, colorBlind: false, ufoWarn: false };
@@ -104,10 +106,12 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     const dt = last ? Math.min((now - last) / 1000, 0.1) : 0;
     last = now;
     frames++;
+    const begun = import.meta.env.DEV ? performance.now() : 0;
     if (import.meta.env.DEV) (window as unknown as { __hopwayFrames?: number }).__hopwayFrames = ((window as unknown as { __hopwayFrames?: number }).__hopwayFrames ?? 0) + 1;
     measure(dt);
     if (!frozen) advance(dt);
     draw(dt);
+    if (import.meta.env.DEV) { const spent = performance.now() - begun; cpuMs = cpuMs ? cpuMs * 0.95 + spent * 0.05 : spent; }
     if (run.phase !== 'over' && active()) frameId = requestAnimationFrame(loop);
   }
 
@@ -364,6 +368,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     quality: () => quality,
     setQuality,
     fps: () => fps,
+    cpuMs: () => cpuMs,
     frames: () => frames,
     looping: () => frameId !== 0,
   });

@@ -22,6 +22,8 @@ export interface HookHost {
   quality(): Quality;
   setQuality(quality: Quality): void;
   fps(): number;
+  /** Moving average of the main-thread milliseconds per frame. */
+  cpuMs(): number;
   frames(): number;
   looping(): boolean;
 }
@@ -34,7 +36,7 @@ export interface HopwayTestApi {
   state(): HookState;
   lanes(from: number, to: number): Lane[];
   forceLanes(lanes: Lane[]): void;
-  stats(): { quality: Quality; fps: number; frames: number; looping: boolean; calls: number; triangles: number; geometries: number; textures: number; programs: number };
+  stats(): { quality: Quality; fps: number; cpuMs: number; frames: number; looping: boolean; calls: number; triangles: number; geometries: number; textures: number; programs: number };
   setQuality(quality: Quality): void;
 }
 
@@ -76,7 +78,7 @@ export function installTestHook(host: HookHost): () => void {
     forceLanes(lanes) { host.world().override(copy(lanes)); host.redraw(); },
     stats() {
       const stats = host.scene().stats;
-      return { quality: host.quality(), fps: host.fps(), frames: host.frames(), looping: host.looping(), calls: stats.calls, triangles: stats.triangles, geometries: stats.geometries, textures: stats.textures, programs: stats.programs };
+      return { quality: host.quality(), fps: host.fps(), cpuMs: host.cpuMs(), frames: host.frames(), looping: host.looping(), calls: stats.calls, triangles: stats.triangles, geometries: stats.geometries, textures: stats.textures, programs: stats.programs };
     },
     setQuality: quality => host.setQuality(quality),
   };
