@@ -13,10 +13,19 @@ export function ufoFlight(age: number, reduced = false) {
     forward: -0.12 - 9 * drop - 10 * away,
     sideways: 1.4 * drop + 1.2 * away,
     beam: age < 0.24 ? 0 : (1 - clamp((age - 0.4) / 0.1, 0, 1)),
-    birdLift: 1.02 * pickup + 18 * away,
-    birdForward: -0.12 * pickup - 10 * away,
+    birdLift: 0.8 * pickup + 18 * away,
+    birdForward: 0.30 * pickup - 10 * away,
     birdScale: lerp(1, 0.9, pickup),
     birdAlpha: 1,
     visible: age < 0.68,
   };
+}
+
+/** Settle a collision pose onto the impacted roadway before the pancake holds.
+ * Hop-in hits begin at their visible front-face contact; side hits stay in the lane. */
+export function carImpact(age: number, fromRow: number, roadRow: number, height: number, hopIn: boolean) {
+  const settle = 1 - (1 - clamp(age / 0.09, 0, 1)) ** 3;
+  const flat = clamp(age / 0.06, 0, 1);
+  return {row: lerp(fromRow, roadRow, settle), height: lerp(height, 0.012, settle),
+    slide: (hopIn ? 0.06 : 0.14) * settle, sy: lerp(1, 0.12, flat), sx: lerp(1, 1.10, flat)};
 }

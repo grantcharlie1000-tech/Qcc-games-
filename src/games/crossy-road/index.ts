@@ -404,7 +404,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       const restored = restoreRun(value);
       if (!restored || disposed) return;
       cancel();
-      world = new World(restored.seed);
+      world = new World(restored.seed, restored.worldVersion ?? 1);
       // Rows far behind are never kept, however far the saved run went (restore caps it at MAX_ROW).
       world.prune(restored.maxRow - BEHIND_ROWS);
       world.ensure(restored.maxRow + AHEAD_ROWS);

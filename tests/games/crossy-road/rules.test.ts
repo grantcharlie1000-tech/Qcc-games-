@@ -71,7 +71,7 @@ function hop(s: RunState, dir: Dir, world: LaneSource): void {
 describe('createRun', () => {
   it('starts pristine on row 0, column 4, with the seed as an unsigned 32-bit integer', () => {
     expect(createRun(7)).toEqual({
-      v: 1, seed: 7, t: 0, phase: 'ready', row: 0, x: 4, fromRow: 0, fromX: 4, hop: -1, hopDir: 'up', facing: 'up', queued: null,
+      v: 1, worldVersion: 2, seed: 7, t: 0, phase: 'ready', row: 0, x: 4, fromRow: 0, fromX: 4, hop: -1, hopDir: 'up', facing: 'up', queued: null,
       maxRow: 0, lastProgress: 0, safeLine: 0, started: false, bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: null,
     });
     expect(createRun(-1).seed).toBe(4294967295);
@@ -292,7 +292,7 @@ describe('D1: car', () => {
     const { before, events } = stepUntilDeath(s, world);
     expect(before).toBeLessThanOrEqual(tHit); // alive at the last step that ended at or before the overlap
     expect(s.phase).toBe('dying');
-    expect(s.death).toEqual({ cause: 'car', t: s.t, row: 1, x: 4, dir: lane.dir });
+    expect(s.death).toMatchObject({ cause: 'car', t: s.t, row: 1, x: 4, dir: lane.dir });
     expect(s.death!.t).toBeGreaterThan(tHit);
     expect(s.death!.t - tHit).toBeLessThanOrEqual(STEP + 1e-9);
     expect(events.died).toBe('car');
@@ -399,7 +399,7 @@ describe('D2: train', () => {
     }
     expect(before).toBeLessThanOrEqual(tHit);
     expect(s.phase).toBe('dying');
-    expect(s.death).toEqual({ cause: 'train', t: s.t, row: 1, x, dir: lane.dir });
+    expect(s.death).toMatchObject({ cause: 'train', t: s.t, row: 1, x, dir: lane.dir });
     expect(s.death!.t).toBeGreaterThan(tHit);
     expect(s.death!.t - tHit).toBeLessThanOrEqual(STEP + 1e-9);
     expect(lightOn).not.toBeNull();
@@ -460,7 +460,7 @@ describe('D3: water', () => {
     expect(events).toMatchObject({ landed: true, died: 'water' });
     expect(s.phase).toBe('dying');
     expect(s.hop).toBe(-1);
-    expect(s.death).toEqual({ cause: 'water', t: s.t, row: 1, x: 4, dir: 1 });
+    expect(s.death).toMatchObject({ cause: 'water', t: s.t, row: 1, x: 4, dir: 1 });
     expect(s.death!.t).toBeCloseTo(HOP_TIME, 9);
   });
 
@@ -562,7 +562,7 @@ describe('D4: swept off a log', () => {
     expect(events.died).toBe('swept');
     expect(s.death!.t).toBeGreaterThan(tCross);
     expect(s.death!.t - tCross).toBeLessThanOrEqual(STEP + 1e-9);
-    expect(s.death).toEqual({ cause: 'swept', t: s.t, row: 1, x: s.x, dir });
+    expect(s.death).toMatchObject({ cause: 'swept', t: s.t, row: 1, x: s.x, dir });
     expect(s.x).toBeCloseTo(x0 + dir * speed * s.t, 9); // x += dir·speed·dt, summed over the steps
     expect(Math.abs(s.x - 4)).toBeGreaterThan(4.5);     // outside [−0.5, 8.5]
   });
@@ -696,7 +696,7 @@ describe('D6: UFO behind', () => {
     const events = step(s, STEP, world);
     expect(events.died).toBe('ufo-behind');
     expect(s.phase).toBe('dying');
-    expect(s.death).toEqual({ cause: 'ufo-behind', t: s.t, row: max - BACK_LIMIT, x: 4, dir: 1 });
+    expect(s.death).toMatchObject({ cause: 'ufo-behind', t: s.t, row: max - BACK_LIMIT, x: 4, dir: 1 });
     expect(s.hop).toBeCloseTo(STEP, 9); // taken in mid-air
   });
 
@@ -761,7 +761,7 @@ describe('D5: UFO idle', () => {
     expect(s.phase).toBe('dying');
     expect(s.death!.t - t0).toBeGreaterThanOrEqual(IDLE_LIMIT - 1e-9);
     expect(s.death!.t - t0).toBeLessThan(IDLE_LIMIT + STEP + 1e-9);
-    expect(s.death).toEqual({ cause: 'ufo-idle', t: s.t, row: 0, x: 3, dir: 1 });
+    expect(s.death).toMatchObject({ cause: 'ufo-idle', t: s.t, row: 0, x: 3, dir: 1 });
   });
 
   it('sideways and backward hops and bonks never reset the idle clock', () => {
@@ -1098,7 +1098,7 @@ describe('serialize and restore', () => {
     s.bonkAt = 3; s.landedAt = 2;
     const snapshot = serialize(s);
     expect(Object.keys(snapshot).sort()).toEqual(
-      ['death', 'facing', 'fromRow', 'fromX', 'hop', 'hopDir', 'lastProgress', 'maxRow', 'phase', 'queued', 'row', 'safeLine', 'seed', 'started', 't', 'v', 'x'],
+      ['death', 'facing', 'fromRow', 'fromX', 'hop', 'hopDir', 'lastProgress', 'maxRow', 'phase', 'queued', 'row', 'safeLine', 'seed', 'started', 't', 'v', 'worldVersion', 'x'],
     );
     expect(snapshot).toMatchObject({ v: 1, seed: 5, phase: 'running', row: 1, fromRow: 0, queued: 'left', started: true, death: null });
     expect(JSON.parse(JSON.stringify(snapshot))).toEqual(snapshot);
@@ -1111,7 +1111,7 @@ describe('serialize and restore', () => {
       maxRow: 8, lastProgress: 9.25, safeLine: 6.5, started: true, bonkAt: 11, bonkDir: 'down', landedAt: 12,
     });
     expect(serialize(s)).toEqual({
-      v: 1, seed: 1234, t: 12.5, phase: 'running', row: 7, x: 5.5, fromRow: 6, fromX: 4.5, hop: 0.07, hopDir: 'right', facing: 'left', queued: 'down',
+      v: 1, worldVersion: 2, seed: 1234, t: 12.5, phase: 'running', row: 7, x: 5.5, fromRow: 6, fromX: 4.5, hop: 0.07, hopDir: 'right', facing: 'left', queued: 'down',
       maxRow: 8, lastProgress: 9.25, safeLine: 6.5, started: true, death: null,
     });
     s.phase = 'ready'; s.started = false;
@@ -1197,7 +1197,7 @@ describe('restore accepts valid snapshots, boundaries included', () => {
 
   it('restores every field of a valid snapshot', () => {
     expect(restore({ ...running(), hop: 0.05, queued: 'left', hopDir: 'right', facing: 'down', fromRow: 4, fromX: 3.5 })).toEqual({
-      v: 1, seed: 7, t: 10, phase: 'running', row: 5, x: 4, fromRow: 4, fromX: 3.5, hop: 0.05, hopDir: 'right', facing: 'down', queued: 'left',
+      v: 1, worldVersion: 1, seed: 7, t: 10, phase: 'running', row: 5, x: 4, fromRow: 4, fromX: 3.5, hop: 0.05, hopDir: 'right', facing: 'down', queued: 'left',
       maxRow: 5, lastProgress: 8, safeLine: 3, started: true, bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: null,
     });
   });

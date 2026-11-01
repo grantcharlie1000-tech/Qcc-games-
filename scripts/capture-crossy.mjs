@@ -11,7 +11,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const base = new URL(process.env.ARCADE_URL || 'http://127.0.0.1:4190');
-if (['4173', '4174'].includes(base.port)) throw new Error('Ports 4173 and 4174 belong to another worktree. Use 4190.');
+if (['4173', '4174', '4175'].includes(base.port)) throw new Error('Ports 4173–4175 belong to another worktree. Use 4190.');
 const round = process.env.ROUND || '1';
 if (!/^\d+$/.test(round)) throw new Error('ROUND must be an integer.');
 const out = `/workspace/qcc-crossy-review/r${round}`;
@@ -86,14 +86,14 @@ async function seek(page, seed, row, x = 4, t = 3, maxRow = row) {
 async function discover(page) {
   return page.evaluate(async () => {
     const {World} = await import('/src/games/crossy-road/world.ts');
-    // Prefer an early composition containing a full 3-row river with lily pads,
-    // cars/trucks and a railway, all within the landscape camera's range.
-    for (let seed = 1; seed <= 1000; seed++) {
+    // Keep the r4 seed for comparison; find a natural nearby crossing under
+    // the versioned generator and the tighter fourteen-cell desktop framing.
+    for (const seed of [7]) {
       const world = new World(seed);
-      for (let row = 3; row < 50; row++) {
+      for (let row = 3; row < 2000; row++) {
         const home = world.lane(row);
         if (home.kind !== 'grass' || home.blocked[4]) continue;
-        const lanes = Array.from({length: 12}, (_, i) => world.lane(row - 2 + i));
+        const lanes = Array.from({length: 10}, (_, i) => world.lane(row - 3 + i));
         const kinds = lanes.map(l => l.kind);
         if (!['road', 'river', 'lily', 'rail'].every(k => kinds.includes(k))) continue;
         const rail = lanes.find(l => l.kind === 'rail');
@@ -109,8 +109,8 @@ async function discover(page) {
 
 function road(row, t, vehicle = 'car') {
   // The left edge passes through x=3.7 at t. A real hop at x=4 triggers D1.
-  return {kind: 'road', row, dir: 1, speed: 1.8, vehicle, cycle: 9, phase: 3.7 - 1.8 * t,
-    movers: [{offset: 0, len: vehicle === 'truck' ? 2.5 : 1.5, color: 0}]};
+  return {kind: 'road', row, dir: 1, speed: 1.8, vehicle, ...(vehicle === 'car' ? {style: 'sedan'} : {}), cycle: 9, phase: 3.7 - 1.8 * t,
+    movers: [{offset: 0, len: vehicle === 'truck' ? 3 : 1.8, color: 0}]};
 }
 
 async function death(page, view, mixed, cause) {

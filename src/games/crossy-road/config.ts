@@ -18,13 +18,14 @@ export interface GrassLane {
   shade: 0 | 1;
   /** Columns 0..8. A tree or rock blocks its column: `blocked[c] === (obstacles[c] !== null)`. */
   blocked: boolean[]; obstacles: Obstacle[];
-  /** Visual variant 0..2 per column (tree height, rock shape). */
+  /** Visual variant 0..2 (tree height, rock shape), or 3 for a short tree stump. */
   variant: number[];
   /** Decorative obstacles outside the band (never stepped on): indices 0..5 are x = −6..−1, 6..11 are x = 9..14. */
   edge: Obstacle[];
 }
+export type CarStyle = 'compact' | 'sedan' | 'taxi';
 /** Vehicles: one type and one direction per lane. `movers` repeat every `cycle` tiles. */
-export interface RoadLane { kind: 'road'; row: number; dir: -1 | 1; speed: number; vehicle: 'car' | 'truck'; cycle: number; phase: number; movers: Mover[] }
+export interface RoadLane { kind: 'road'; row: number; dir: -1 | 1; speed: number; vehicle: 'car' | 'truck'; style?: CarStyle; cycle: number; phase: number; movers: Mover[] }
 /** Logs: they carry the player at `dir·speed` tiles/s. */
 export interface RiverLane { kind: 'river'; row: number; dir: -1 | 1; speed: number; cycle: number; phase: number; movers: Mover[] }
 /** Static lily pads on columns 0..8; the rest of the row is water. */
@@ -37,12 +38,17 @@ export type MovingLane = RoadLane | RiverLane;
 /** Anything that answers "which lane is row r": the World, or a hand-built map in tests. */
 export interface LaneSource { lane(row: number): Lane }
 
-export interface Death { cause: DeathCause; t: number; row: number; x: number; dir: -1 | 1 }
+export interface Death { cause: DeathCause; t: number; row: number; x: number; dir: -1 | 1;
+  /** Presentation at impact; optional for saves from before the fidelity pass. */
+  contact?: {row: number; z: number; lift: number; mode: 'side' | 'hop-in'};
+}
 
 /** The whole run. Plain JSON-safe data so it can be serialized; rules.ts owns every transition. */
 export interface RunState {
   v: 1;
   seed: number;
+  /** Old saves without a revision replay the original generator. */
+  worldVersion?: 1 | 2;
   /** World time in seconds; hazards are pure functions of it. */
   t: number;
   phase: Phase;

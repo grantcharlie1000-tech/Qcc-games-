@@ -10,6 +10,7 @@
  * the same transform. Side faces get a slightly darker bottom edge (a cheap ambient occlusion)
  * that tints along with the instance colour. */
 import * as THREE from 'three';
+import type {CarStyle} from './config';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /** A linear RGB triple; components may exceed 1 (used to keep a fixed colour under an instance tint). */
@@ -20,9 +21,10 @@ export type Rgb = readonly [r: number, g: number, b: number];
 export type Part = readonly [x: number, y: number, z: number, w: number, h: number, d: number, color: number | Rgb, rotZ?: number, rotX?: number, side?: number | Rgb];
 
 /** Palettes shared with the renderer so instance tints and baked colours agree. */
-export const VEHICLE_COLORS: readonly number[] = [0xe64732, 0x229acc, 0xf2cf47, 0x8250da, 0x88be43, 0x4269b2];
+export const VEHICLE_COLORS: readonly number[] = [0xe43135, 0x23c6ed, 0xf4d33e, 0x9a4adb, 0x85bd42, 0x3f75bc];
+export const TRUCK_COLORS: readonly number[] = [0xbd163c, 0x13bfdc, 0xbd163c, 0x8a3e92, 0x477db3, 0x18bdd8];
 export const TRAIN_COLORS: readonly number[] = [0xe94f64, 0x3a86ff, 0x2bb673, 0xf4a259];
-export const LOG_COLORS: readonly number[] = [0x733b39, 0x82413e, 0x683333];
+export const LOG_COLORS: readonly number[] = [0x733e46, 0x7b424d, 0x6a3745];
 
 const WHITE = 0xffffff;
 const scratch = new THREE.Color();
@@ -164,30 +166,32 @@ export function chickenGeometry(): THREE.BufferGeometry {
 /** The result for tinted vehicles: draw `body` with an instance tint and `detail` untinted. */
 export interface VehicleParts { body: THREE.BufferGeometry; detail: THREE.BufferGeometry }
 
-/** Car geometry is authored at unit length and instanced to the mover's exact
- * collision span. A broad white cabin and black wheels keep the chunky silhouette. */
-export function carBodyGeometry(): THREE.BufferGeometry {
-  return voxel([[0, 0.1, 0, 1, 0.27, 0.66, WHITE]]);
-}
-
-export function carDetailGeometry(): THREE.BufferGeometry {
-  const cabin = 0xf8f9ff, glass = 0x20283b, wheel = 0x151923, hub = 0xa6adbc;
-  return voxel([
-    [-0.05, 0.37, 0, 0.64, 0.27, 0.51, cabin],
-    [-0.05, 0.425, 0.26, 0.53, 0.15, 0.02, glass], [-0.05, 0.425, -0.26, 0.53, 0.15, 0.02, glass],
-    [0.275, 0.425, 0, 0.02, 0.15, 0.43, glass], [-0.375, 0.425, 0, 0.02, 0.15, 0.43, glass],
-    [-0.08, 0.42, 0.27, 0.045, 0.17, 0.02, cabin], [-0.08, 0.42, -0.27, 0.045, 0.17, 0.02, cabin],
-    [0.49, 0.18, 0.21, 0.025, 0.07, 0.11, 0xffedbb], [0.49, 0.18, -0.21, 0.025, 0.07, 0.11, 0xffedbb],
-    [-0.49, 0.18, 0.22, 0.025, 0.07, 0.1, 0xc8383b], [-0.49, 0.18, -0.22, 0.025, 0.07, 0.1, 0xc8383b],
-    [0.29, 0, 0.32, 0.22, 0.22, 0.11, wheel], [0.29, 0, -0.32, 0.22, 0.22, 0.11, wheel],
-    [-0.29, 0, 0.32, 0.22, 0.22, 0.11, wheel], [-0.29, 0, -0.32, 0.22, 0.22, 0.11, wheel],
-    [0.29, 0.065, 0.379, 0.08, 0.08, 0.012, hub], [-0.29, 0.065, 0.379, 0.08, 0.08, 0.012, hub],
-    [0.29, 0.065, -0.379, 0.08, 0.08, 0.012, hub], [-0.29, 0.065, -0.379, 0.08, 0.08, 0.012, hub],
-  ]);
+/** Lane-specific bodies are authored at their collision length. Wheels and windows
+ * keep their physical dimensions; compact cars are not stretched sedans. */
+export function carGeometry(style: CarStyle): VehicleParts {
+  const len = style === 'compact' ? 1.2 : 1.8, e = len / 2;
+  const cabinLen = style === 'compact' ? 0.70 : style === 'taxi' ? 0.80 : 0.87;
+  const cx = style === 'compact' ? -0.04 : -0.13, h = style === 'compact' ? 0.28 : 0.24;
+  const cabin = 0xf4f5ff, glass = 0x202637, wheel = 0x161923, hub = 0xf0edee;
+  const parts: Part[] = [
+    [cx, 0.35, 0, cabinLen, h, 0.51, cabin],
+    [cx, 0.395, 0.263, cabinLen - 0.12, h - 0.10, 0.018, glass],
+    [cx, 0.395, -0.263, cabinLen - 0.12, h - 0.10, 0.018, glass],
+    [cx + cabinLen / 2 + 0.008, 0.395, 0, 0.018, h - 0.10, 0.43, glass],
+    [cx - cabinLen / 2 - 0.008, 0.395, 0, 0.018, h - 0.10, 0.43, glass],
+    [cx - 0.08, 0.39, 0.275, 0.045, h - 0.07, 0.02, cabin], [cx - 0.08, 0.39, -0.275, 0.045, h - 0.07, 0.02, cabin],
+    [e - 0.008, 0.17, 0.22, 0.024, 0.065, 0.10, 0xffedbb], [e - 0.008, 0.17, -0.22, 0.024, 0.065, 0.10, 0xffedbb],
+    [-e + 0.008, 0.17, 0.22, 0.024, 0.065, 0.10, 0xc8383b], [-e + 0.008, 0.17, -0.22, 0.024, 0.065, 0.10, 0xc8383b],
+  ];
+  for (const x of [-e + 0.25, e - 0.25]) for (const z of [-0.32, 0.32]) {
+    parts.push([x, 0, z, 0.23, 0.23, 0.115, wheel], [x, 0.07, z + Math.sign(z) * 0.06, 0.085, 0.085, 0.012, hub]);
+  }
+  if (style === 'taxi') parts.push([cx, 0.59, 0, 0.13, 0.075, 0.25, 0xf2d238]);
+  return {body: voxel([[0, 0.1, 0, len, 0.25, 0.66, WHITE]]), detail: voxel(parts)};
 }
 
 /** A truck of 2 or 3 tiles (x), 0.84 wide: a tall tinted cab and hood at the front (+x), then a long
- * light cargo box (`detail`) with a tinted stripe (`body`), a dark chassis and wheels. The cab is
+ * light cargo box (`detail`) with a coloured cab (`body`), a dark chassis and wheels. The cab is
  * 0.86 tall and the cargo 0.96. */
 export function truckGeometry(len: 2 | 3): VehicleParts {
   const e = len / 2, cab = 0.76, cargoLen = len - cab - 0.06, cargoX = -e + cargoLen / 2;
@@ -199,15 +203,14 @@ export function truckGeometry(len: 2 | 3): VehicleParts {
   if (len === 3) axle(-e + 1.0);
   return {
     body: voxel([
-      // cab, hood and the stripe along the cargo
+      // Coloured cab and short hood. The cargo stays cool white/lavender.
       [e - cab / 2 - 0.1, 0.16, 0, cab - 0.2, 0.7, 0.8, WHITE],
       [e - 0.1, 0.16, 0, 0.2, 0.36, 0.78, WHITE],
-      [cargoX, 0.4, 0.425, cargoLen - 0.04, 0.14, 0.03, WHITE], [cargoX, 0.4, -0.425, cargoLen - 0.04, 0.14, 0.03, WHITE],
-      [-e + 0.01, 0.4, 0, 0.03, 0.14, 0.78, WHITE],
     ]),
     detail: voxel([
       [0, 0.1, 0, len, 0.13, 0.7, chassis],
-      [cargoX, 0.22, 0, cargoLen, 0.74, 0.84, cargo],
+      [cargoX, 0.22, 0, cargoLen, 0.74, 0.84, cargo, 0, 0, 0xb8bfdf],
+      [e - 0.48, 0.86, 0, 0.14, 0.08, 0.55, 0xe6eafa, 0, 0, 0x8c94b3],
       // windscreen and side windows
       [e - 0.205, 0.52, 0, 0.05, 0.24, 0.62, glass],
       [e - 0.5, 0.52, 0.405, 0.34, 0.22, 0.03, glass], [e - 0.5, 0.52, -0.405, 0.34, 0.22, 0.03, glass],
@@ -268,54 +271,64 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
   };
 }
 
-/** A dark red-brown, broad voxel log. Low stepped ends and sparse bark patches
- * leave water visible on both sides; 2–4 tiles long with a 0.7-tile footprint. */
+/** Narrow reddish-purple logs, with irregular low bark steps rather than a frame. */
 export function logGeometry(len: 2 | 3 | 4): THREE.BufferGeometry {
-  const bark: Rgb = [0.76, 0.72, 0.72], patch: Rgb = [1.12, 1.05, 1.03];
-  const parts: Part[] = [
-    [0, 0, 0, len, 0.19, 0.7, WHITE],
-    [0, 0.19, 0, len - 0.12, 0.07, 0.59, WHITE],
-    [0, 0.07, 0.353, len - 0.12, 0.035, 0.012, bark],
-    [0, 0.07, -0.353, len - 0.12, 0.035, 0.012, bark],
-  ];
-  for (let i = 0; i < len * 2; i++) {
-    const x = -len / 2 + 0.28 + i * 0.48;
-    parts.push([x, 0.26, i % 2 ? -0.12 : 0.1, 0.25, 0.008, 0.12, i % 3 ? bark : patch]);
+  const dark: Rgb = [0.69, 0.64, 0.71], light: Rgb = [1.10, 1.06, 1.10];
+  const parts: Part[] = [[0, 0, 0, len, 0.18, 0.48, WHITE], [0.035, 0.18, -0.012, len - 0.18, 0.06, 0.40, WHITE]];
+  // A local integer hash gives each length a stable, uneven bark pattern without world RNG draws.
+  for (let i=0; i<len+1; i++) {
+    const h = (Math.imul(i+len*13, 0x45d9f3b) >>> 0);
+    const x = -len/2 + 0.19 + (i + (h % 67) / 90) * (len - 0.5) / (len+1);
+    parts.push([x, 0.24, ((h>>>9)%3-1)*0.075, 0.16 + ((h>>>14)%5)*0.05, 0.009, 0.10 + ((h>>>19)%3)*0.04, i&1?dark:light]);
   }
-  return voxel(parts, 0.86);
+  return voxel(parts, 0.87);
 }
 
-/** A small, stepped lily pad, with a dark notch. Safe support still uses its
- * whole grid cell; the smaller silhouette lets the water show around it. */
+/** Thin stepped pads, with one shallow notch. The whole cell remains safe support. */
 export function lilyGeometry(): THREE.BufferGeometry {
-  const pad = 0x35a751, top = 0x49bc61, notch = 0x277f40;
   return voxel([
-    [0, 0, 0, 0.56, 0.045, 0.38, pad],
-    [0, 0, 0, 0.38, 0.045, 0.56, pad],
-    [-0.02, 0.045, -0.02, 0.36, 0.03, 0.36, top],
-    [0.18, 0.045, 0, 0.2, 0.008, 0.07, notch],
-  ], 0.9);
+    [0, 0, 0, 0.49, 0.035, 0.34, 0x43b958], [0, 0, 0, 0.34, 0.035, 0.49, 0x43b958],
+    [-0.018, 0.035, -0.018, 0.33, 0.018, 0.33, 0x51c65f],
+    [0.19, 0.035, 0.035, 0.12, 0.005, 0.05, 0x3d9e50],
+  ], 0.93);
 }
 
-/** Tall olive/lime box trees: a visible brown trunk and one to three foliage
- * cubes with nearly constant footprint. Subtle side bands suggest stacked voxels. */
+/** Continuous foliage columns with broad side bands. Interior horizontal faces are
+ * omitted, so touching tiers cannot produce seams or self-shadow stair steps. */
 export function treeGeometry(variant: number): THREE.BufferGeometry {
-  const count = variant <= 0 ? 1 : variant === 1 ? 2 : 3, h = 0.55;
-  const parts: Part[] = [[0, 0, 0, 0.23, 0.42, 0.23, 0x694737]];
-  for (let i = 0; i < count; i++) {
-    const w = 0.66;
-    parts.push([0, 0.39 + i * h, 0, w, h, w, i === count - 1 ? 0xa0c632 : 0x8aaf2e, 0, 0, i & 1 ? 0x8daf32 : 0x86a630]);
+  if (variant === 3) return voxel([
+    [0, 0, 0, 0.35, 0.32, 0.35, 0x613d48, 0, 0, 0x4b2d3b],
+    [0, 0.32, 0, 0.25, 0.012, 0.25, 0x4b2d3b],
+  ], 0.9);
+  const count = variant <= 0 ? 1 : variant === 1 ? 2 : 3;
+  const parts: Part[] = [[0, 0, 0, 0.21, 0.46, 0.21, 0x4b2d3b]];
+  for(let i=0;i<count;i++) parts.push([0, 0.45+i*0.55, 0, 0.62, 0.55, 0.62, 0x9cc926, 0, 0, i&1?0x8fa72b:0x88a029]);
+  const g=voxel(parts,0.96), old=g.getIndex()!, keep: number[]=[];
+  for(let p=0;p<parts.length;p++) for(let f=0;f<6;f++) {
+    if(p>0 && ((f===2 && p!==parts.length-1)||(f===3 && p!==1))) continue;
+    for(let k=0;k<6;k++) keep.push(old.getX(p*36+f*6+k));
   }
-  return voxel(parts, 0.9);
+  g.setIndex(keep);
+  return g;
 }
 
-/** A lilac-grey rock, up to 0.8 wide. Variant 0 is a boulder with a cap (0.54 tall), 1 a tall pair
- * (0.54) and 2 a low cluster (0.5). Origin at the bottom centre. */
+/** Lavender notched boulders, split tops and low clusters. */
 export function rockGeometry(variant: number): THREE.BufferGeometry {
-  const base = 0x8981a4, lit = 0xa39aba, shade = 0x72698b;
-  if (variant <= 0) return voxel([[0, 0, 0, 0.74, 0.34, 0.62, base], [-0.04, 0.34, 0.02, 0.5, 0.2, 0.42, lit]], 0.9);
-  if (variant === 1) return voxel([[-0.14, 0, -0.04, 0.5, 0.42, 0.5, base], [0.22, 0, 0.1, 0.38, 0.26, 0.4, shade], [-0.14, 0.42, -0.04, 0.32, 0.12, 0.32, lit]], 0.9);
-  return voxel([[0, 0, 0, 0.8, 0.26, 0.7, shade], [0.1, 0.26, -0.05, 0.5, 0.24, 0.42, base], [-0.22, 0.26, 0.16, 0.26, 0.16, 0.26, lit]], 0.9);
+  const top=0xaa9ac9, side=0x756391;
+  if(variant<=0) return voxel([
+    [0,0,0,0.77,0.30,0.64,top,0,0,side],
+    [-0.10,0.30,-0.12,0.56,0.15,0.37,top,0,0,side],
+    [0.17,0.30,0.13,0.19,0.15,0.15,top,0,0,side],
+  ],0.91);
+  if(variant===1) return voxel([
+    [-0.16,0,-0.04,0.45,0.46,0.62,top,0,0,side],
+    [0.20,0,0.07,0.29,0.32,0.45,top,0,0,side],
+  ],0.91);
+  return voxel([
+    [0,0,0,0.80,0.25,0.70,top,0,0,side],
+    [-0.13,0.25,0.09,0.44,0.14,0.31,top,0,0,side],
+    [0.23,0.25,-0.06,0.17,0.14,0.40,top,0,0,side],
+  ],0.91);
 }
 
 /** A striped post with a wide black lamp box, red front bulb and white cap.
@@ -415,4 +428,9 @@ export function ufoShadowGeometry(): THREE.BufferGeometry {
  * 0.58) in the middle and fading to nothing at the rim; scale it to the bird's footprint. */
 export function dropShadowGeometry(): THREE.BufferGeometry {
   return radial([[0, 0.58], [0.5, 0.5], [1, 0]], 24, 0x0b1410);
+}
+
+/** A soft red ground spill; the small solid bulb is rendered separately. */
+export function signalGlowGeometry(): THREE.BufferGeometry {
+  return radial([[0, 0.34], [0.38, 0.24], [1, 0]], 24, 0xff1532);
 }

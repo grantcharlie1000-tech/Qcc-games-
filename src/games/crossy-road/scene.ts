@@ -8,41 +8,37 @@
  *
  * World: 1 unit = 1 tile, x = column, y = up, z = −row (forward is −z). Lanes are drawn across
  * x ∈ [RENDER_X_MIN − 0.5, RENDER_X_MAX + 0.5]; the playable band [BAND_MIN, BAND_MAX] is bright and
- * the zones outside it are darkened. Orthographic camera, pitched 58° and yawed 16° (lanes fall to
+ * the zones outside it are darkened. Orthographic camera, pitched 45° and yawed 20° (lanes fall to
  * the right on screen). */
 import * as THREE from 'three';
-import {ufoFlight} from './motion';
+import {carImpact, ufoFlight} from './motion';
 import {
   BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, EDGE_COLS, HOP_TIME, IDLE_LIMIT, IDLE_WARN, RENDER_X_MAX, RENDER_X_MIN, SAFE_LAG, SQUASH_TIME,
   TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, clamp, lerp,
-  type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
+  type CarStyle, type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
 } from './config';
 import { forEachMover, laneVelocity, platformAt, railWarning, trainSpan } from './lanes';
 import {
-  LOG_COLORS, TRAIN_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carBodyGeometry, carDetailGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
-  dropShadowGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry,
+  LOG_COLORS, TRAIN_COLORS, TRUCK_COLORS, VEHICLE_COLORS, beamGeometry, chickenGeometry, carGeometry, lampGeometry, lilyGeometry, logGeometry, rockGeometry,
+  dropShadowGeometry, signalGlowGeometry, signalPostGeometry, spotRingGeometry, trainGeometry, treeGeometry, truckGeometry, ufoGeometry, ufoShadowGeometry, unitBoxGeometry,
 } from './models';
 
 // Camera ---------------------------------------------------------------------
 
-const PITCH = (58 * Math.PI) / 180, YAW = (16 * Math.PI) / 180;
+const PITCH = (45 * Math.PI) / 180, YAW = (20 * Math.PI) / 180;
 const SIN_P = Math.sin(PITCH), COS_P = Math.cos(PITCH);
 /** The camera's right axis and its forward axis along the ground, in world x and z. */
 const RX = Math.cos(YAW), RZ = -Math.sin(YAW), FX = -Math.sin(YAW), FZ = -Math.cos(YAW);
 /** World x ends of the span fitted to a portrait screen, and the player's height share when grounded. */
-const SPAN_MIN = -0.75, SPAN_MAX = 8.75, PLAYER_SCREEN = 0.35;
+const PHONE_CELLS = 8, PC_CELLS = 14, PLAYER_SCREEN = 0.35;
 const CAMERA_DIST = 40;
 const SHAKE_TIME = 0.25, SHAKE_AMP = 0.12;
 
-/** Screen x (in tiles) of a ground point: the dot product with the camera's right axis. */
-const projectX = (x: number, z: number): number => x * RX + z * RZ;
-
-/** The fixed frustum for a viewport. Portrait (width ≤ height): the 9.5-tile span x ∈ [−0.75, 8.75] of the
- * focus row, projected through the yaw, fills the width exactly. Landscape: `max(42, height / 14)`
- * CSS px per tile. `halfWidth` and `halfHeight` are the frustum's half extents in tiles. Pure. */
+/** Eight ground cells across a phone and fourteen across a landscape viewport.
+ * The yaw is included in the fit, so the horizontal cell pitch is width / cells. */
 export function cameraFit(width: number, height: number): { tilePx: number; halfWidth: number; halfHeight: number } {
   const w = Math.max(1, width), h = Math.max(1, height);
-  const tilePx = w <= h ? w / (projectX(SPAN_MAX, 0) - projectX(SPAN_MIN, 0)) : Math.max(42, h / 14);
+  const tilePx = w / ((w <= h ? PHONE_CELLS : PC_CELLS) * RX);
   return { tilePx, halfWidth: w / tilePx / 2, halfHeight: h / tilePx / 2 };
 }
 
@@ -62,21 +58,22 @@ export function focusRowTarget(playerRow: number, safeLine: number, maxRow: numb
   return Math.max(playerRow, started ? safeLine + Math.min(SAFE_LAG, maxRow) : 0);
 }
 
-/** The focus x target `lerp(4, playerX, 0.6)`, clamped so the whole band [−0.5, 8.5] stays on screen at
- * the focus row (a frustum `halfWidth` wide shows `halfWidth / cos(yaw)` tiles each side of the focus).
- * When the band cannot fit, the camera centres on x = 4. */
+/** A modest lateral follow. Phones crop a cell of the nine-cell band and pan by
+ * at most a cell, keeping the player visible without pulling the whole world sideways. */
 export function focusXTarget(playerX: number, halfWidth: number): number {
-  const visible = halfWidth / RX, lo = BAND_MAX - visible, hi = BAND_MIN + visible;
-  return lo <= hi ? clamp(lerp(4, playerX, 0.6), lo, hi) : 4;
+  const cropped = 2 * halfWidth / RX < COLS;
+  return clamp(lerp(4, playerX, 0.6), cropped ? 3 : 1.6, cropped ? 5 : 6.4);
 }
 
 // Palette --------------------------------------------------------------------
 
 const COLORS: number[] = [];
 const reg = (...hex: number[]): number => { const i = COLORS.length; COLORS.push(...hex); return i; };
-const C_WHITE = reg(0xffffff), C_GRASS = reg(0xa0dc50, 0x96d448), C_ROAD = reg(0x434856), C_WATER = reg(0x56c9f3), C_BALLAST = reg(0x535664);
-const C_DASH = reg(0xf2f2ea), C_SLEEPER = reg(0x6d4e4b), C_STEEL = reg(0x9595ab), C_FOAM = reg(0xf5fcff), C_RIPPLE = reg(0xb8f1ff);
-const C_DIRT = reg(0xa57a52);
+const C_WHITE = reg(0xffffff), C_GRASS = reg(0xa6e85b, 0x9fde54), C_ROAD = reg(0x434856), C_WATER = reg(0x74e4fc), C_BALLAST = reg(0x343a48);
+const C_DASH = reg(0x686e82), C_SLEEPER = reg(0x563342), C_STEEL = reg(0x807ba3), C_FOAM = reg(0xf5fcff), C_RIPPLE = reg(0xb8f1ff);
+const C_WATER_EDGE = reg(0x59c4fc);
+const C_DIRT = reg(0x633642);
+const C_TRUCK = reg(...TRUCK_COLORS);
 const C_VEHICLE = reg(...VEHICLE_COLORS), C_TRAIN = reg(...TRAIN_COLORS), C_LOG = reg(...LOG_COLORS);
 const C_LAMP_ON = reg(0xff2a2a), C_LAMP_OFF = reg(0x4a1a22), C_SPLASH = reg(0xffffff, 0xbfeaff), C_FLUFF = reg(0xfff4dc, 0xffffff);
 /** Linear RGB triples, indexed by the constants above (times 3). */
@@ -87,7 +84,7 @@ const PAL = (() => {
 })();
 
 /** Lane colour multiplier for the zones outside the band, and for decor standing in them. */
-const DARK = 0.55, EDGE_SHADE = 0.67;
+const DARK = 0.78, EDGE_SHADE = 0.85;
 /** The darker zones either side of the band run out to the render span's edges, so no view (even one following a player
  * swept to the band's edge on a wide screen) reaches the end of a lane. */
 const LEFT_ZONE_W = BAND_MIN - (RENDER_X_MIN - 0.5), LEFT_ZONE_X = (RENDER_X_MIN - 0.5 + BAND_MIN) / 2;
@@ -96,7 +93,7 @@ const CLEAR_COLOR = 0x27342c;
 
 // Geometry constants -----------------------------------------------------------
 
-const WATER_Y = -0.3, LOG_TOP = -0.06, PAD_TOP = -0.22, LOG_BASE = -0.32, PAD_BASE = -0.29, TRAIN_Y = 0.09;
+const WATER_Y = -0.18, LOG_TOP = -0.02, PAD_TOP = -0.132, LOG_BASE = -0.26, PAD_BASE = -0.185, TRAIN_Y = 0.09;
 const NOSE_LEN = 2, CARRIAGE_LEN = 2;
 /** x range, beyond the visible window, in which objects are still placed (tiles). */
 const MARGIN = 2;
@@ -107,14 +104,14 @@ const DIR_X: Readonly<Record<Dir, number>> = { up: 0, down: 0, left: -1, right: 
 const DIR_Z: Readonly<Record<Dir, number>> = { up: -1, down: 1, left: 0, right: 0 };
 
 // Light: from the upper left and the front, so the faces the camera sees (top, front, left) are lit.
-const SUN_X = -0.65, SUN_Y = 0.9, SUN_Z = -0.35;
+const SUN_X = -0.85, SUN_Y = 0.9, SUN_Z = 0;
 const SUN_LEN = Math.hypot(SUN_X, SUN_Y, SUN_Z);
 const SUN_DIR = { x: SUN_X / SUN_LEN, y: SUN_Y / SUN_LEN, z: SUN_Z / SUN_LEN };
 /** The shadow camera's right and up axes (horizontal right, and up in its image plane), for texel snapping. */
 const SHADOW_RIGHT_LEN = Math.hypot(SUN_DIR.x, SUN_DIR.z);
 const SR = { x: SUN_DIR.z / SHADOW_RIGHT_LEN, z: -SUN_DIR.x / SHADOW_RIGHT_LEN };
 const SU = { x: SUN_DIR.y * SR.z, y: SUN_DIR.z * SR.x - SUN_DIR.x * SR.z, z: -SUN_DIR.y * SR.x };
-const SHADOW_DIST = 40, SHADOW_MAP = 2048, SHADOW_MAX_RADIUS = 20, SHADOW_PAD = 1.5;
+const SHADOW_DIST = 40, SHADOW_MAP = 4096, SHADOW_MAX_RADIUS = 20, SHADOW_PAD = 1.5;
 
 const ease = { out: (k: number): number => 1 - (1 - k) * (1 - k) * (1 - k), in: (k: number): number => k * k * k };
 
@@ -217,18 +214,18 @@ function keepRange(attribute: THREE.BufferAttribute, range: { start: number; cou
 export function createScene(canvas: HTMLCanvasElement, options: { quality?: Quality } = {}): CrossyRoadScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setClearColor(CLEAR_COLOR);
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.BasicShadowMap;
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 2 * CAMERA_DIST + 10);
   // The orientation never changes: look at the origin once, then only move the camera.
   camera.position.set(-FX * COS_P * CAMERA_DIST, SIN_P * CAMERA_DIST, -FZ * COS_P * CAMERA_DIST);
   camera.lookAt(0, 0, 0);
 
-  const hemisphere = new THREE.HemisphereLight(0xe3edff, 0x626748, 2.0);
-  const sun = new THREE.DirectionalLight(0xfff6df, 2.1);
+  const hemisphere = new THREE.HemisphereLight(0xbcb7e6, 0x50535f, 2.3);
+  const sun = new THREE.DirectionalLight(0xf9ffd5, 2.8);
   sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
-  sun.shadow.bias = -0.0006;
-  sun.shadow.normalBias = 0.02;
+  sun.shadow.bias = -0.00015;
+  sun.shadow.normalBias = 0.012;
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = SHADOW_DIST * 2;
   scene.add(hemisphere, sun, sun.target);
@@ -247,7 +244,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const lit = mat(new THREE.MeshLambertMaterial({ vertexColors: true }), true);
   const playerMaterial = mat(new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true }), true);
   const unlit = mat(new THREE.MeshBasicMaterial({ vertexColors: true }));
-  const haloMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false }));
+  const glowMaterial = mat(new THREE.MeshBasicMaterial({vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true}));
   const blobMaterial = mat(new THREE.MeshBasicMaterial({ color: 0x0b140e, transparent: true, opacity: 0.26, depthWrite: false }));
   // Transparent double-sided materials are single pass: three would otherwise draw them twice (back faces,
   // then front) and rebuild their program every frame.
@@ -257,14 +254,15 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const dropMaterial = mat(new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }));
 
   const box = geo(unitBoxGeometry());
-  const train = trainGeometry(), car = [carBodyGeometry(), carDetailGeometry()], trucks = [truckGeometry(2), truckGeometry(3)];
-  for (const g of [...car, train.nose.body, train.nose.detail, train.carriage.body, train.carriage.detail, ...trucks.flatMap(t => [t.body, t.detail])]) geo(g);
+  const carStyles: CarStyle[] = ['compact', 'sedan', 'taxi'];
+  const train = trainGeometry(), cars = carStyles.map(carGeometry), trucks = [truckGeometry(2), truckGeometry(3)];
+  for (const g of [...cars.flatMap(t => [t.body, t.detail]), train.nose.body, train.nose.detail, train.carriage.body, train.carriage.detail, ...trucks.flatMap(t => [t.body, t.detail])]) geo(g);
 
   // Pools: ground details first, then objects (casters), then the effects drawn last.
   const ground = pool(box, lit, 2600, false, true);
-  const trees = [0, 1, 2].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
+  const trees = [0, 1, 2, 3].map(v => pool(geo(treeGeometry(v)), lit, 320, true));
   const rocks = [0, 1, 2].map(v => pool(geo(rockGeometry(v)), lit, 160, true));
-  const carBody = pool(car[0], lit, 160, true), carDetail = pool(car[1], lit, 160, true);
+  const carBody = cars.map(t => pool(t.body, lit, 160, true)), carDetail = cars.map(t => pool(t.detail, lit, 160, true));
   const truckBody = trucks.map(t => pool(t.body, lit, 96, true)), truckDetail = trucks.map(t => pool(t.detail, lit, 96, true));
   const noseBody = pool(train.nose.body, lit, 16, true), noseDetail = pool(train.nose.detail, lit, 16, true);
   const carriageBody = pool(train.carriage.body, lit, 96, true), carriageDetail = pool(train.carriage.detail, lit, 96, true);
@@ -272,13 +270,13 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const lilies = pool(geo(lilyGeometry()), lit, 160);
   const posts = pool(geo(signalPostGeometry()), lit, 48, true);
   const lampGeo = geo(lampGeometry());
-  const lamps = pool(lampGeo, unlit, 48), halos = pool(lampGeo, haloMaterial, 48, false, false, 4);
+  const lamps = pool(lampGeo, unlit, 48), glows = pool(geo(signalGlowGeometry()), glowMaterial, 48, false, false, 3);
   const fx = pool(box, unlit, 96);
   const blobs = pool(box, blobMaterial, 640, false, false, 1);
 
   // The bird and the UFO are one-instance pools, so every shadow caster is instanced and the shared
   // depth material never switches program between instanced and plain meshes.
-  const playerPool = pool(geo(chickenGeometry()), playerMaterial, 1, true);
+  const playerPool = pool(geo(chickenGeometry().scale(0.78, 1, 0.78)), playerMaterial, 1, true);
   const ufoPool = pool(geo(ufoGeometry()), lit, 1, true);
   const beam = new THREE.Mesh(geo(beamGeometry()), beamMaterial);
   const spot = new THREE.Mesh(geo(spotRingGeometry()), spotMaterial);
@@ -404,10 +402,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Lane drawing --------------------------------------------------------------------
 
   /** A band across the whole lane: three boxes so the zones outside the band are darker. */
-  function band(ci: number, y: number, h: number, zc: number, depth: number): void {
-    ground.put(LEFT_ZONE_X, y, zc, LEFT_ZONE_W, h, depth, 0, ci, DARK);
+  function band(ci: number, y: number, h: number, zc: number, depth: number, edge = ci, shade = DARK): void {
+    ground.put(LEFT_ZONE_X, y, zc, LEFT_ZONE_W, h, depth, 0, edge, shade);
     ground.put((BAND_MIN + BAND_MAX) / 2, y, zc, BAND_MAX - BAND_MIN, h, depth, 0, ci, 1);
-    ground.put(RIGHT_ZONE_X, y, zc, RIGHT_ZONE_W, h, depth, 0, ci, DARK);
+    ground.put(RIGHT_ZONE_X, y, zc, RIGHT_ZONE_W, h, depth, 0, edge, shade);
   }
 
   /** A flat dark square under a thing (low quality): thrown a little to the right and back, like the sun's shadow. */
@@ -416,7 +414,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   }
 
   function putTree(x: number, variant: number, k: number): void {
-    trees[variant < 0 ? 0 : variant > 2 ? 2 : variant | 0].put(x, 0, curZ, 1, 1, 1, 0, C_WHITE, k);
+    trees[clamp(variant | 0, 0, 3)].put(x, 0, curZ, 1, 1, 1, 0, C_WHITE, k);
     if (low) blob(x, 0, curZ, 0.98, 0.96);
   }
 
@@ -433,7 +431,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       const rear = row < 0 ? hash(row, c) : 0;
       if (row < 0 && rear % 5 === 0) continue;
       const o = row < 0 && rear % 4 === 0 ? 'rock' : lane.obstacles[c];
-      if (o === 'tree') putTree(c, lane.variant[c], 1);
+      if (o === 'tree') putTree(c, row < 0 ? (rear % 13 === 1 ? 3 : hash(Math.floor(row/2), Math.floor(c/2) + 83) % 3) : lane.variant[c], 1);
       else if (o === 'rock') putRock(c, lane.variant[c], row, 1);
     }
     for (let i = 0; i < lane.edge.length; i++) {
@@ -441,7 +439,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       if (o === null) continue;
       const x = i < EDGE_COLS ? i - EDGE_COLS : i + 3;
       if (x < winLo || x > winHi || (low && (x < BAND_MIN - 3 || x > BAND_MAX + 3))) continue;
-      if (o === 'tree') putTree(x, hash(row, x + 100) % 3, EDGE_SHADE);
+      if (o === 'tree') putTree(x, hash(row, x + 100) % 12 === 0 ? 3 : hash(Math.floor(row / 2), Math.floor(x / 2) + 100) % 3, EDGE_SHADE);
       else putRock(x, hash(row, x + 100) % 3, row, EDGE_SHADE);
     }
   }
@@ -449,13 +447,14 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   const onVehicle = (x0: number, x1: number, mover: Mover): void => {
     const cx = (x0 + x1) * 0.5, len = x1 - x0, yaw = curDir > 0 ? 0 : Math.PI, tint = C_VEHICLE + (mover.color % VEHICLE_PALETTE);
     if (curRoad.vehicle === 'car') {
-      carBody.put(cx, 0, curZ, len, 1, 1, yaw, tint, 1);
-      carDetail.put(cx, 0, curZ, len, 1, 1, yaw, C_WHITE, 1);
-      if (mover.color % VEHICLE_PALETTE === 2) ground.put(cx - 0.05 * curDir, 0.64, curZ, 0.12, 0.08, 0.25, 0, tint, 1);
+      const style = curRoad.style ?? (mover.color % VEHICLE_PALETTE === 2 ? 'taxi' : 'sedan');
+      const i = carStyles.indexOf(style), size = style === 'compact' ? 1.2 : 1.8;
+      carBody[i].put(cx, 0, curZ, len / size, 1, 1, yaw, tint, 1);
+      carDetail[i].put(cx, 0, curZ, len / size, 1, 1, yaw, C_WHITE, 1);
       if (low) blob(cx, 0, curZ, len + 0.3, 0.92);
     } else {
       const i = len > 2.5 ? 1 : 0, s = len / (i + 2);
-      truckBody[i].put(cx, 0, curZ, s, 1, 1, yaw, tint, 1);
+      truckBody[i].put(cx, 0, curZ, s, 1, 1, yaw, C_TRUCK + (mover.color % VEHICLE_PALETTE), 1);
       truckDetail[i].put(cx, 0, curZ, s, 1, 1, yaw, C_WHITE, 1);
       if (low) blob(cx, 0, curZ, len + 0.3, 0.98);
     }
@@ -464,9 +463,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   function drawRoad(lane: RoadLane, ahead: Lane): void {
     band(C_ROAD, -0.5, 0.5, curZ, 1);
     if (ahead.kind === 'road') {
-      // White dashes on the boundary between two road rows.
+      // Muted, one-tile dashes on a two-tile repeat, only between road lanes.
       const zb = curZ - 0.5;
-      for (let k = Math.ceil(winLo); k <= winHi; k++) ground.put(k, 0, zb, 0.46, 0.012, 0.065, 0, C_DASH, k < BAND_MIN || k > BAND_MAX ? DARK : 1);
+      for (let k = Math.ceil(winLo / 2) * 2; k <= winHi; k += 2) ground.put(k, 0, zb, 0.98, 0.012, 0.065, 0, C_DASH, k < BAND_MIN || k > BAND_MAX ? DARK : 1);
     }
     curRoad = lane;
     curDir = lane.dir;
@@ -479,34 +478,34 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   };
 
   function drawWater(lane: RiverLane | LilyLane, row: number, ahead: Lane, behind: Lane): void {
-    band(C_WATER, WATER_Y - 0.6, 0.6, curZ, 1);
+    band(C_WATER, WATER_Y - 0.6, 0.6, curZ, 1, C_WATER_EDGE, 1);
     // Banks: a soil wall under the land ahead with a thin line of foam at its foot, and a thin foam line along the
     // near bank. Kept narrow so the gaps between logs read as open water, not as pale glass.
     if (!isWater(ahead)) {
-      band(C_DIRT, WATER_Y - 0.02, 0.319, curZ - 0.498, 0.004);
+      band(C_DIRT, WATER_Y - 0.02, -WATER_Y + 0.019, curZ - 0.498, 0.004);
       band(C_RIPPLE, WATER_Y, 0.009, curZ - 0.46, 0.045);
     }
     if (!isWater(behind)) band(C_RIPPLE, WATER_Y, 0.009, curZ + 0.46, 0.045);
     // A few light ripples drifting slowly, repeating every 14 tiles.
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < 1; k++) {
       const h = hash(row, 200 + k), len = 0.5 + 0.7 * ((h >>> 19) & 63) / 63, zz = curZ + (((h >>> 25) & 31) / 31 - 0.5) * 0.52;
       const speed = (0.1 + 0.18 * ((h >>> 10) & 255) / 255) * ((h >>> 18) & 1 ? -1 : 1);
       const at = ((((h & 1023) / 1024) * 14 + speed * anim) % 14 + 14) % 14;
       for (let x = at + Math.ceil((winLo - len - at) / 14) * 14; x <= winHi + len; x += 14)
-        ground.put(x, WATER_Y, zz, len, 0.012, 0.07, 0, C_RIPPLE, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
+        ground.put(x, WATER_Y, zz, len, 0.008, 0.035, 0, C_RIPPLE, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
     }
     const flow = lane.kind === 'river' ? lane.dir * 0.35 : 0.12;
-    const foamAt = (hash(row, 823) % 90) / 10 + anim * flow;
+    const foamAt = (hash(Math.floor(row / 2), 823) % 90) / 10 + anim * flow;
     for (let x = foamAt + Math.ceil((winLo - foamAt) / 9) * 9; x <= winHi; x += 9) {
       const k = x < BAND_MIN || x > BAND_MAX ? DARK : 1;
-      ground.put(x, WATER_Y + 0.002, curZ - 0.27, 0.32, 0.012, 0.24, 0, C_FOAM, k);
-      ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02, 0.42, 0.012, 0.27, 0, C_FOAM, k);
-      ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24, 0.28, 0.012, 0.26, 0, C_FOAM, k);
+      ground.put(x, WATER_Y + 0.002, curZ - 0.27, 0.65, 0.012, 0.28, 0, C_FOAM, k);
+      ground.put(x - 0.12, WATER_Y + 0.002, curZ - 0.02, 0.80, 0.012, 0.32, 0, C_FOAM, k);
+      ground.put(x + 0.07, WATER_Y + 0.002, curZ + 0.24, 0.52, 0.012, 0.24, 0, C_FOAM, k);
     }
     if (lane.kind === 'river') {
       forEachMover(lane, now, winLo, winHi, onLog);
     } else {
-      for (let c = 0; c < COLS; c++) if (lane.pads[c] && c >= winLo && c <= winHi) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, Math.PI / 4, C_WHITE, 1);
+      for (let c = 0; c < COLS; c++) if (lane.pads[c] && c >= winLo && c <= winHi) lilies.put(c, PAD_BASE, curZ, 1, 1, 1, ((hash(row, c) % 7) - 3) * 0.035, C_WHITE, 1);
     }
   }
 
@@ -515,9 +514,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     // Beside the track, on the near edge, so a passing train never clips it.
     const z = curZ + 0.46;
     posts.put(x, 0, z, 1, 1, 1, 0, C_WHITE, 1);
-    const s = on ? (lit ? 1.45 : 1) + (colorBlind ? 0.2 : 0) : 0.85;
+    const s = on ? (lit ? 1.1 : 1) + (colorBlind ? 0.2 : 0) : 0.85;
     lamps.put(x, 1.27, z + 0.1, s, s, s, 0, lit ? C_LAMP_ON : C_LAMP_OFF, 1);
-    if (lit) halos.put(x, 1.27, z + 0.12, 2.4, 2.4, 2.4, 0, C_LAMP_ON, 1);
+    if (lit) glows.put(x, 0.112, z, 1.05, 1, 1.05, 0, C_WHITE, 1);
   }
 
   function drawTrain(lane: RailLane, x0: number, x1: number): void {
@@ -539,9 +538,8 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function drawRail(lane: RailLane): void {
     band(C_BALLAST, -0.5, 0.5, curZ, 1);
-    for (let k = Math.ceil(winLo * 2); k <= winHi * 2; k++) {
-      const x = k * 0.5;
-      ground.put(x, 0, curZ, 0.15, 0.045, 0.88, 0, C_SLEEPER, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
+    for (let x = Math.ceil(winLo); x <= winHi; x++) {
+      ground.put(x, 0, curZ, 0.11, 0.045, 0.88, 0, C_SLEEPER, x < BAND_MIN || x > BAND_MAX ? DARK : 1);
     }
     band(C_STEEL, 0.045, 0.06, curZ - 0.25, 0.07);
     band(C_STEEL, 0.045, 0.06, curZ + 0.25, 0.07);
@@ -594,7 +592,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   // Player and deaths ------------------------------------------------------------------
 
   function alive(frame: SceneFrame): void {
-    const state = frame.state, pose = frame.pose, world = frame.world, t = state.t, hopping = state.hop >= 0;
+    const state = frame.state, pose = frame.pose, world = frame.world, t = state.death?.t ?? state.t, hopping = state.hop >= 0;
     // Hop progress from the state's own clock, so the squash and the surface follow the hop whatever pose.progress means.
     const p = hopping ? clamp(state.hop / HOP_TIME, 0, 1) : 1;
     if (hopping) groundY = lerp(surfaceAt(world.lane(state.fromRow), state.fromX, t - state.hop), surfaceAt(world.lane(state.row), state.x, t), p);
@@ -627,11 +625,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     pX = anchorX; pY = anchorY; pZ = anchorZ; pYaw = anchorYaw;
     switch (death.cause) {
       case 'car': {
-        // Flattened and shoved a little way along the car; stays that way.
-        const flat = reduced ? 1 : clamp(age / 0.05, 0, 1), slide = reduced ? 0.4 : 0.4 * ease.out(clamp(age / 0.2, 0, 1));
-        pX += dir * slide;
-        pSY = lerp(1, 0.15, flat); pSX = pSZ = lerp(1, 1.35, flat);
-        if (!reduced) burst(anchorX, 0.12, anchorZ, age, 8, 1.4, 1.6, 0.1, 11, C_FLUFF);
+        const contact = carImpact(reduced ? 0.15 : age, -anchorZ, death.row, anchorY, death.contact?.mode === 'hop-in');
+        pX += dir * contact.slide; pZ = -contact.row; pY = contact.height;
+        pSY = contact.sy; pSX = pSZ = contact.sx;
+        if (!reduced) burst(anchorX, 0.12, -death.row, age, 8, 1.4, 1.6, 0.1, 11, C_FLUFF);
         break;
       }
       case 'train': {
@@ -702,7 +699,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         // First frame of this death: remember where the bird was, so the animation is anchored there.
         deathT = death.t;
         alive(frame);
-        anchorX = pX; anchorZ = pZ; anchorY = groundY; anchorYaw = pYaw; anchorDrop = dropY;
+        anchorX = pX; anchorZ = pZ; anchorY = pY; anchorYaw = pYaw; anchorDrop = dropY;
         pSX = pSY = pSZ = 1;
       }
       dying(frame, death, Math.max(0, state.t - death.t));
@@ -728,10 +725,10 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       proxy.updateMatrix();
       ufoPool.putMatrix(proxy.matrix, C_WHITE, 1);
     }
-    // A soft dark ellipse on the ground under the bird, in both quality tiers: it stays on the surface
+    // Low quality alone uses a small contact ellipse: it stays on the surface
     // while the bird is in the air and shrinks and fades a little with height, so a hop reads even when
     // the real shadow is tiny or off.
-    let dropOn = pShow, dropScale = 1, dropAlpha = 1, dropAt = dropY;
+    let dropOn = low && pShow, dropScale = 1, dropAlpha = 1, dropAt = dropY;
     if (death === null) {
       const lift = frame.pose.lift;
       dropScale = 1 - 0.5 * lift;
@@ -745,7 +742,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       dropAlpha = pAlpha * Math.max(0, 1 - lift / 1.6);
       dropAt = anchorDrop;
     } else dropOn = false;
-    drop.visible = dropOn && dropAlpha > 0.02;
+    drop.visible = low && dropOn && dropAlpha > 0.02;
     dropMaterial.opacity = dropAlpha;
     drop.position.set(pX, dropAt, pZ);
     drop.scale.set(0.38 * dropScale, 1, 0.4 * dropScale);

@@ -146,7 +146,7 @@ function gapsOf(lane: MovingLane): number[] {
 
 function checkMovers(S: Sweep, bad: Bad, at: string, lane: MovingLane, palette: number, label: string): void {
   if (lane.dir !== 1 && lane.dir !== -1) bad.add(`${at}: dir ${lane.dir}`);
-  if (lane.movers.length !== MOVERS) bad.add(`${at}: ${lane.movers.length} movers`);
+  if (lane.kind === 'river' ? lane.movers.length !== MOVERS : lane.movers.length < 2 || lane.movers.length > 5) bad.add(`${at}: ${lane.movers.length} movers`);
   if (!(lane.cycle > 0) || !(lane.phase >= 0 && lane.phase < lane.cycle)) bad.add(`${at}: cycle ${lane.cycle} phase ${lane.phase}`);
   let previous = -Infinity;
   for (const m of lane.movers) {
@@ -169,7 +169,7 @@ function checkGrass(S: Sweep, at: string, lane: GrassLane, r: number): void {
     if (o !== null && o !== 'tree' && o !== 'rock') S.shapes.add(`${at}: obstacle ${String(o)}`);
     if (lane.blocked[c] !== (o !== null)) S.shapes.add(`${at}: blocked[${c}] disagrees with obstacles[${c}]`);
     const v = lane.variant[c];
-    if (v !== 0 && v !== 1 && v !== 2) S.shapes.add(`${at}: variant ${v}`);
+    if (v !== 0 && v !== 1 && v !== 2 && v !== 3) S.shapes.add(`${at}: variant ${v}`);
     if (o !== null) { blocked++; note(S, 'tree', o === 'tree' ? 1 : 0); }
     if (r < 5 && (c < 2 || c > 6)) note(S, 'startEdge', o !== null ? 1 : 0);
     note(S, 'variantTwo', v === 2 ? 1 : 0);
@@ -193,7 +193,7 @@ function checkRoad(S: Sweep, at: string, lane: RoadLane, r: number): void {
   const truck = lane.vehicle === 'truck';
   if (!truck && lane.vehicle !== 'car') S.shapes.add(`${at}: vehicle ${String(lane.vehicle)}`);
   if (truck) count(S, 'truck');
-  for (const m of lane.movers) if (truck ? !(m.len === 2 || m.len === 3) : m.len !== 1.5) S.shapes.add(`${at}: ${lane.vehicle} of length ${m.len}`);
+  for (const m of lane.movers) if (truck ? !(m.len === 2 || m.len === 3) : m.len !== (lane.style === 'compact' ? 1.2 : 1.8)) S.shapes.add(`${at}: ${lane.vehicle} of length ${m.len}`);
   const min = roadGapMin(lane.speed);
   for (const gap of gapsOf(lane)) {
     if (gap < min - EPS || gap < 3 - EPS) S.f3.add(`${at}: road gap ${gap} below ${min}`);
@@ -264,7 +264,7 @@ function checkLane(S: Sweep, seed: number, lanes: readonly Lane[], r: number): v
       if (n < 3 || n > 5) S.f7.add(`${at}: ${n} pads`);
       note(S, 'pads', n);
       pads.forEach((on, c) => { if (on) note(S, 'padColumn', c); });
-      if (lanes[r - 1]?.kind !== 'river' || lanes[r + 1]?.kind !== 'river') S.f7.add(`${at}: lily between ${lanes[r - 1]?.kind} and ${lanes[r + 1]?.kind}`);
+      if (lanes[r - 1]?.kind !== 'river' || lanes[r + 1]?.kind === 'lily') S.f7.add(`${at}: lily between ${lanes[r - 1]?.kind} and ${lanes[r + 1]?.kind}`);
       break;
     }
   }
@@ -295,7 +295,7 @@ function checkRuns(S: Sweep, seed: number, lanes: readonly Lane[]): void {
     while (end + 1 < lanes.length && family(lanes[end + 1].kind) === fam) end++;
     const len = end - start + 1, at = `seed ${seed} ${fam} run rows ${start}..${end}`;
     if (fam === 'rail') {
-      if (len !== 1 && !(len === 2 && start >= 120)) S.runs.add(`${at}: ${len} tracks`);
+      if (len < 1 || len > 3) S.runs.add(`${at}: ${len} tracks`);
       if (start >= 120) { note(S, 'doubleRail', len === 2 ? 1 : 0); if (len === 2) count(S, 'doubleRail'); }
     } else if (fam === 'road') {
       if (len > (start < 20 ? 2 : 4)) S.runs.add(`${at}: ${len} rows`);
@@ -311,7 +311,7 @@ function checkRuns(S: Sweep, seed: number, lanes: readonly Lane[]): void {
         const lane = lanes[r];
         if (lane.kind === 'lily') {
           lilies++;
-          if (r === start || r === end) S.runs.add(`${at}: lily at row ${r} is first or last`);
+          if (r === start || (r === end && len !== 2)) S.runs.add(`${at}: lily at row ${r} is neither inside a three-row river nor last in a log/lily pair`);
         } else if (lane.kind === 'river') {
           if (lastLog !== null && lane.dir !== -lastLog.dir) S.runs.add(`${at}: log rows ${lastLog.row} and ${r} do not alternate`);
           if (lastLog === null) note(S, 'logFirstDir', lane.dir === 1 ? 1 : 0);
@@ -372,7 +372,7 @@ function checkChunks(S: Sweep, seed: number, lanes: readonly Lane[], reaches: re
       const ok = kind === 'grass' ? n >= 1 && n <= (start < 20 ? 5 : 3)
         : kind === 'road' ? n >= 1 && n <= (start < 20 ? 2 : 4)
           : kind === 'river' ? n >= 1 && n <= 3
-            : n === 1 || (n === 2 && start >= 120);
+            : n >= 1 && n <= 3;
       if (!ok) S.chunks.add(`${at}: thickness ${n}`);
     }
     // The state's reach must equal the independent BFS of the chunk's last row.
@@ -523,7 +523,7 @@ describe('mix and chunkRng', () => {
 describe('initialState', () => {
   it('starts at row 0, chunk 0, after grass, with only the start column reachable', () => {
     expect(initialState(7)).toEqual({
-      seed: 7, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0,
+      seed: 7, version: 2, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0,
       reach: [false, false, false, false, true, false, false, false, false],
     });
   });
@@ -1081,8 +1081,8 @@ describe('World', () => {
 });
 
 describe('the world a seed produces stays the same', () => {
-  // Crossy Road starts its own save namespace. These first-release pins include
-  // the 1.5-tile car silhouette; saves under any previous game id are not imported.
+  // Revision one retains the release world and its 1.5-tile cars.
+  // New runs store worldVersion=2; saves without that field replay these exact pins.
   // GOLDEN MASTER. A saved run stores only its seed and rebuilds its world from it. Rows 0-59 of seeds 1 and 2024 are pinned to
   // a fingerprint of the generator as it is now. If this fails, "changing this means saved runs replay a different world: bump
   // the save version or migrate" (and only then update the constants below).
@@ -1110,10 +1110,16 @@ describe('the world a seed produces stays the same', () => {
 
   for (const [seed, expected] of GOLDEN) {
     it(`seed ${seed}: rows 0-59 are the world saved runs expect`, () => {
-      const lanes = generate(initialState(seed), 60).lanes.slice(0, 60);
+      const lanes = generate(initialState(seed, 1), 60).lanes.slice(0, 60);
       expect(lanes).toHaveLength(60);
       const actual = fingerprint(lanes);
       expect(actual, `seed ${seed} now builds a different world (fingerprint ${actual}): changing this means saved runs replay a different world: bump the save version or migrate`).toBe(expected);
+    });
+  }
+
+  for (const [seed, expected] of [[1,'28cbfb20'],[7,'628133a6'],[11,'5ab591bf']] as const) {
+    it(`revision two seed ${seed}: pins the new world independently of legacy saves`, () => {
+      expect(fingerprint(generate(initialState(seed,2),60).lanes.slice(0,60))).toBe(expected);
     });
   }
 
@@ -1156,10 +1162,10 @@ describe('F6 determinism: hazards', () => {
   });
 });
 
-it('generated cars have the longer 1.5-tile reference silhouette with matching collision spans', () => {
+it('generated car models have matching 1.2/1.8 tile collision spans', () => {
   const cars = lanesOf(7).filter((l): l is RoadLane => l.kind === 'road' && l.vehicle === 'car');
   expect(cars.length).toBeGreaterThan(0);
-  for (const lane of cars) for (const mover of lane.movers) expect(mover.len).toBe(1.5);
+  for (const lane of cars) for (const mover of lane.movers) expect(mover.len).toBe(lane.style === 'compact' ? 1.2 : 1.8);
 });
 
 describe(`CrossyRoad worlds over ${SEEDS} seeds x ${ROWS} rows`, () => {
@@ -1204,7 +1210,7 @@ describe(`CrossyRoad worlds over ${SEEDS} seeds x ${ROWS} rows`, () => {
     expectNone(S.f5);
   });
 
-  it('F7: every lily row has 9 pad flags with 3-5 pads and river rows on both sides', () => {
+  it('F7: every lily row has 9 pad flags with 3-5 pads and a preceding log row', () => {
     expect(S.seen.lily).toBeGreaterThan(1_000);
     expectNone(S.f7);
   });
@@ -1250,21 +1256,21 @@ describe(`CrossyRoad worlds over ${SEEDS} seeds x ${ROWS} rows`, () => {
     expect(mean(S, 'roadFirstDir')).toBeLessThan(0.53);
     expect(mean(S, 'lilyInThree')).toBeGreaterThan(0.26); // a three-row river has a lily row with p 0.3
     expect(mean(S, 'lilyInThree')).toBeLessThan(0.34);
-    expect(mean(S, 'doubleRail')).toBeGreaterThan(0.21); // from row 120 a rail chunk has two tracks with p 0.25
+    expect(mean(S, 'doubleRail')).toBeGreaterThan(0.21); // two tracks have p 0.25 at every difficulty; triple tracks p 0.12
     expect(mean(S, 'doubleRail')).toBeLessThan(0.29);
   });
 
   it('parameters follow the brief: gaps, log lengths, decoration, pads and thickness have the stated distributions', () => {
-    // Road gaps before row 20: lerp(6, 3, d) * (0.85 + 0.6 u) with d about 0.04, never clamped there: mean about 5.88 * 1.15.
-    near(mean(S, 'roadGap.early'), 6.76, 0.1, 'early road gap');
+    // Road gaps before row 20: lerp(4.2, 3, d) * (0.85 + 0.6 u) with d about 0.04, never clamped there: mean about 4.15 * 1.15.
+    near(mean(S, 'roadGap.early'), 4.77, 0.1, 'early road gap');
     // River gaps: clamp(lerp(2, 4, d) * jitter, 2, max). Early (d about 0.04) the clamp at 2 lifts the mean to about 2.12; at d = 1
     // the cap at 4 gives 0.5 * 3.7 + 0.5 * 4 = 3.85.
     near(mean(S, 'riverGap.early'), 2.12, 0.05, 'early river gap');
     near(mean(S, 'riverGap.late'), 3.85, 0.05, 'late river gap');
-    // Log lengths 2/3/4 with weights (lerp(.1,.6,d), .3, lerp(.6,.1,d)): mean 3.5 - d.
-    near(mean(S, 'logLen.early'), 3.46, 0.07, 'early log length');
+    // Log lengths 2/3/4 with weights (.2,.6,.2) early, (.6,.3,.1) late: mean 3 - .5d.
+    near(mean(S, 'logLen.early'), 2.98, 0.07, 'early log length');
     near(mean(S, 'logLen.late'), 2.5, 0.03, 'late log length');
-    near(mean(S, 'variantTwo'), 1 / 3, 0.01, 'share of variant 2');
+    near(mean(S, 'variantTwo'), 0.31, 0.01, 'share of variant 2');
     near(mean(S, 'edgeDecor'), 0.45, 0.005, 'edge decoration density');
     near(mean(S, 'edgeTree'), 0.7, 0.005, 'edge decoration tree share');
     near(mean(S, 'pads'), 4, 0.06, 'pads per lily row'); // uniform on 3, 4, 5

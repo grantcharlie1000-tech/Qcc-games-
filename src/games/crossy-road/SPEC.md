@@ -60,13 +60,13 @@ A death sets the phase to `dying` for 0.9 s (0.3 s with reduced motion), then to
 
 ## Lane generation
 
-Each chunk has its own PRNG, `mulberry32(mix(seed, k))`, so chunk `k` does not depend on how many rows were requested. Difficulty is `d = clamp(row / 300, 0, 1)`. Hazard positions are pure functions of the lane and `t`. Rows below 0 form a fully blocked grass lane.
+New runs store `worldVersion=2`; saves without the field replay revision one unchanged. Each chunk has its own PRNG, `mulberry32(mix(seed, k))`, so chunk `k` does not depend on how many rows were requested. Difficulty is `d = clamp(row / 300, 0, 1)`. Hazard positions are pure functions of the lane and `t`. Rows below 0 form a fully blocked grass lane.
 
 - Chunk 0 (rows 0–4) is grass with columns 2–6 clear.
 - Chunk weights, lerped by `d`: grass 0.40 → 0.22, road 0.32 → 0.38, river 0.16 → 0.22, rail 0.12 → 0.18. A pick equal to the previous chunk kind becomes grass (or road after grass). Hazard chunks in a row: at most 2 before row 60, then at most 3; otherwise grass is forced.
-- Thickness: grass 1–5 before row 20, else 1–3; road 1–2 before row 20, else 1–4; river 1–3, with at most one lily row per river chunk, never first or last; rail 1, or 2 adjacent tracks after row 120 (p = 0.25).
-- Road: speed `lerp(1.5, 4.5, d)` ±15 %; truck lanes with p `lerp(0.2, 0.4, d)` (trucks 2–3 tiles, cars 1.5); 3 movers per pattern; each gap is `max(gapMin(speed), lerp(6, 3, d)·(0.85 + 0.6·r))`, with `gapMin(s) = max(3, 0.4 + s·(3·HOP_TIME + 0.25))` and `r` a PRNG draw in [0, 1); adjacent road rows take the opposite direction with p 0.7.
-- River: speed `lerp(1.0, 2.6, d)` ±15 %; log lengths 2, 3 or 4 with weights `lerp(0.1, 0.6, d)`, 0.3 and `lerp(0.6, 0.1, d)`; gaps `clamp(lerp(2, 4, d)·jitter, 2, min(4, 2·PLATFORM_GRACE + 2.5·speed))`; adjacent river rows alternate direction; lily rows have 3–5 static pads.
+- Thickness: grass 1–5 before row 20, else 1–3; road 1–2 before row 20, else 1–4; river 1/2/3 with probabilities 20/60/20 %, with an optional lily as the second row of a pair or middle row of three (p = 0.3); rail 1/2/3 with probabilities 63/25/12 % from the start.
+- Road: speed `lerp(1.5, 4.5, d)` ±15 %; truck lanes with p `lerp(0.2, 0.4, d)` (trucks 2–3 tiles, compact cars 1.2, sedans/taxis 1.8); 2–5 movers per road pattern; each gap is `max(gapMin(speed), lerp(4.2, 3, d)·(0.85 + 0.6·r))`, with `gapMin(s) = max(3, 0.4 + s·(3·HOP_TIME + 0.25))` and `r` a PRNG draw in [0, 1); adjacent road rows take the opposite direction with p 0.7.
+- River: speed `lerp(1.0, 2.6, d)` ±15 %; log lengths 2, 3 or 4 with weights .2/.6/.2 initially, lerped to .6/.3/.1; gaps `clamp(lerp(2, 4, d)·jitter, 2, min(4, 2·PLATFORM_GRACE + 2.5·speed))`; adjacent river rows alternate direction; lily rows have 3–5 static pads.
 - Rail: train speed 18, length 12–20 tiles; period `max(5, lerp(9, 5, d)·jitter)` with a random phase; warning lead `WARN_LEAD = 1.1 s`, never below 1.0 s.
 - Grass: obstacle density `lerp(0.10, 0.30, d)` per column (70 % trees, 30 % rocks); shade alternates by row parity; decorative edge obstacles at x −6 to −1 and 9 to 14, outside the band.
 - Repair (deterministic): the generator tracks `reach`, the columns reachable from the row before. A grass row with no column that is both reachable and open clears the reachable column nearest the centre. A grass row with fewer than 3 open columns clears the columns nearest the centre until 3 are open. Hazard rows count as fully reachable; lily rows reach their pads.
@@ -80,14 +80,14 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 - F4 River to river: every 3 s window contains a log-to-log hop, with x covered by both rows at `t` and by the next row at `t + HOP_TIME`; coverage per passing log is `(len + 2·PLATFORM_GRACE)/(vA + vB)`, at least 0.4 s.
 - F5 Rail warning: the light is on at least 1.0 s before the train front reaches the band.
 - F6 Determinism: the same seed gives deep-equal lanes, independent of batch sizes, and identical hazard positions at identical `t`.
-- F7 Lily rows: each has at least 3 pads in columns 0–8 and lies between two log rows, so every pad is reachable.
+- F7 Lily rows: each has at least 3 pads in columns 0–8 and follows a log row. It may finish a two-row river or lie inside a three-row river; static pads remain reachable from a moving log.
 
 ## Camera
 
-- Orthographic, pitched 58° down and yawed 16°, so lanes fall slightly to the right.
-- Portrait: the x range [−0.75, 8.75] at the focus row is fitted to the width. Landscape: tile size is `max(42, height/14)` CSS px.
+- Orthographic, pitched 45° down and yawed 20°, so lanes fall slightly to the right.
+- Portrait: eight ground cells span the width (48.75 CSS px horizontal pitch at 390 wide). Landscape: fourteen cells span the width, keeping the nine-column playable band dominant. This full-width adaptation trades vertical coverage for scale.
 - Focus row target is `max(renderRow, safeLine + min(SAFE_LAG, maxRow))` after starting, with `SAFE_LAG = 2`, so it never moves backward. The bird sits about 35 % up from the bottom.
-- Focus x target is `lerp(4, pose.x, 0.6)`, clamped so the band stays on screen.
+- Focus x target is `lerp(4, pose.x, 0.6)`, clamped to centre ±1 cell on a cropped phone, or ±2.4 cells on desktop.
 - Smoothing factor is `1 − 0.9^(dt·60)`.
 - Auto-scroll: after the first hop, `safeLine += lerp(0.35, 0.9, d)·dt` and `safeLine = max(safeLine, maxRow − SAFE_LAG)`. The safe line never decreases.
 
@@ -102,7 +102,7 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 
 ## Persistence
 
-- `serialize()` stores `version`, `seed`, `t`, `phase`, the position (`row`, `x`), the hop state and queued input, the best row (`maxRow`), the idle and safe-line state (`lastProgress`, `safeLine`) and any death. Nothing personal is stored.
+- `serialize()` stores `version`, `seed`, `t`, `phase`, the position (`row`, `x`), the hop state and queued input, the best row (`maxRow`), the idle and safe-line state (`lastProgress`, `safeLine`) and any death (including the visible contact pose). Nothing personal is stored.
 - `restore()` validates every field (rows are capped at `MAX_ROW` = 50,000 so a tampered save cannot make the game regenerate an absurd number of rows). An invalid or incompatible snapshot starts a fresh run.
 - A snapshot taken mid-hop or on a log resumes exactly. A Continue overlay waits for input before play resumes.
 - The shell saves every five seconds and on pause, leaving the game and `pagehide`.
@@ -115,8 +115,8 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 - Target 60 fps. School Chromebooks at 1366×768 must never drop below 45 fps.
 - `renderer.setPixelRatio(Math.min(devicePixelRatio, 3))` with antialiasing enabled.
 - Low quality starts automatically when the 2 s rolling average falls below 50 fps. It uses pixel ratio capped at 1.5, no shadow map, blob decals in place of shadows, and less decor.
-- High quality uses a 2048-square PCF shadow map and a tight, texel-snapped shadow camera following the visible ground; every vehicle, tree, rock, log and the bird casts a shadow. Darker base vertices provide baked ambient shading.
-- At most about 120 draw calls per frame (15–28 in final captures): every repeated thing (lane strips, markings, trees, rocks, vehicles, train segments, logs, pads, signals, particles) is an instanced mesh, and each voxel model is one merged geometry.
+- High quality uses a 4096-square hard shadow map and a tight, texel-snapped shadow camera following the visible ground; every vehicle, tree, rock, log and the bird casts a shadow. Darker base vertices provide baked ambient shading.
+- At most about 120 draw calls per frame (under 40 in r5 captures): every repeated thing (lane strips, markings, trees, rocks, vehicles, train segments, logs, pads, signals, particles) is an instanced mesh, and each voxel model is one merged geometry.
 - No per-frame allocation in the hot loop; geometries and materials are reused.
 - The render loop stops on pause and when the tab is hidden.
 - `dispose()` frees every geometry, material and render target, the renderer, the animation frame, timers, observers and listeners.
@@ -125,11 +125,11 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 ## Deviations from REFERENCE.md
 
 - Charlie keeps the UFO in place of the eagle: warning at 5 seconds, swoop at 7 seconds without a new furthest row, or immediately at 3 rows back/behind. The saucer grabs and carries the bird off the top within 0.7 seconds.
-- Charlie requests High rendering at device pixel ratio capped at 3, with antialiasing and 2048-square real shadow maps (overriding the pack's caps). The full-screen canvas paints behind the translucent shared shell bar.
+- Charlie requests High rendering at device pixel ratio capped at 3, with antialiasing and crisp real shadow maps (overriding the pack's caps). The full-screen canvas paints behind the translucent shared shell bar.
 - Outcome and Continue cards use shared `ui-glass-sheet`, `arcade-sheet`, and `game-button` classes; no live HUD is drawn by the game.
-- Car spans are 1.5 tiles to match Charlie’s requested proportions, overriding the pack’s 1-tile cars. Rendered body and collision spans agree; the generator still adds the same minimum free gap after each vehicle. The renamed id has its own save namespace.
-- Each moving lane uses a 3-mover pattern with varied gaps instead of one fixed spacing; the gap base is 6 → 3 tiles rather than 7 → 4.
-- Lily-pad rows appear only between two log rows.
+- Compact car spans are 1.2 tiles; sedans and taxis are 1.8, overriding the pack’s 1-tile cars. Rendered body and collision spans agree; the generator still adds the same minimum free gap after each vehicle. The renamed id has its own save namespace.
+- Road lanes use 2–5 movers per pattern; log lanes use three. The road gap base is 4.2 → 3 tiles, bounded by the same minimum crossing window.
+- Lily-pad rows follow a log row, including log/lily pairs. Early triple rail crossings are supported; each track retains its own warning and quiet period.
 - Logs and pads accept landings up to `PLATFORM_GRACE` = 0.2 tiles beyond their ends.
 - The safe line is pulled up to within 2 rows of the best row, so the camera visibly creeps forward when the bird idles.
 - River gaps are also capped by speed, so no column is uncovered for more than 2.5 s.

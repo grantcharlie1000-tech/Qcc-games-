@@ -11,7 +11,7 @@ import { laneVelocity, platformAt, trainHit, vehicleHit } from './lanes';
 /** A fresh run: row 0, column 4, not started. `seed` is stored as an unsigned 32-bit integer. */
 export function createRun(seed: number): RunState {
   return {
-    v: 1, seed: seed >>> 0, t: 0, phase: 'ready', row: 0, x: START_COL, fromRow: 0, fromX: START_COL, hop: -1, hopDir: 'up', facing: 'up',
+    v: 1, worldVersion: 2, seed: seed >>> 0, t: 0, phase: 'ready', row: 0, x: START_COL, fromRow: 0, fromX: START_COL, hop: -1, hopDir: 'up', facing: 'up',
     queued: null, maxRow: 0, lastProgress: 0, safeLine: 0, started: false, bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: null,
   };
 }
@@ -83,7 +83,9 @@ export function input(s: RunState, dir: Dir, world: LaneSource): 'hop' | 'queued
 /** Ends the run: the hop (if any) is frozen where it was, so the pose is the death pose. */
 function die(s: RunState, events: StepEvents, cause: DeathCause, lane: Lane): void {
   s.phase = 'dying'; s.queued = null;
-  s.death = { cause, t: s.t, row: s.row, x: renderX(s), dir: lane.kind === 'road' || lane.kind === 'rail' || lane.kind === 'river' ? lane.dir : 1 };
+  const at = pose(s);
+  s.death = { cause, t: s.t, row: s.row, x: at.x, dir: lane.kind === 'road' || lane.kind === 'rail' || lane.kind === 'river' ? lane.dir : 1,
+    contact: {row: s.row, z: at.z, lift: at.lift, mode: s.hop >= 0 && s.fromRow !== s.row ? 'hop-in' : 'side'} };
   events.died = cause;
 }
 
@@ -166,7 +168,7 @@ export function pose(s: RunState): PlayerPose {
 /** The persisted form of a run: exactly the state that decides what happens next. Visual-only fields (`bonkAt`, `bonkDir`,
  * `landedAt`) are left out, and a `dying` run is written as `over` so that a restored run shows its card at once. */
 export interface Snapshot {
-  v: 1; seed: number; t: number; phase: 'ready' | 'running' | 'over';
+  v: 1; worldVersion?: 1 | 2; seed: number; t: number; phase: 'ready' | 'running' | 'over';
   row: number; x: number; fromRow: number; fromX: number; hop: number; hopDir: Dir; facing: Dir; queued: Dir | null;
   maxRow: number; lastProgress: number; safeLine: number; started: boolean; death: Death | null;
 }
@@ -174,10 +176,10 @@ export interface Snapshot {
 /** A JSON-safe copy of the run. Never changes `s`. */
 export function serialize(s: RunState): Snapshot {
   return {
-    v: 1, seed: s.seed, t: s.t, phase: s.phase === 'dying' ? 'over' : s.phase,
+    v: 1, worldVersion: s.worldVersion ?? 1, seed: s.seed, t: s.t, phase: s.phase === 'dying' ? 'over' : s.phase,
     row: s.row, x: s.x, fromRow: s.fromRow, fromX: s.fromX, hop: s.hop, hopDir: s.hopDir, facing: s.facing, queued: s.queued,
     maxRow: s.maxRow, lastProgress: s.lastProgress, safeLine: s.safeLine, started: s.started,
-    death: s.death === null ? null : { cause: s.death.cause, t: s.death.t, row: s.death.row, x: s.death.x, dir: s.death.dir },
+    death: s.death === null ? null : { cause: s.death.cause, t: s.death.t, row: s.death.row, x: s.death.x, dir: s.death.dir, ...(s.death.contact ? {contact: {...s.death.contact}} : {}) },
   };
 }
 
@@ -195,6 +197,8 @@ export function restore(data: unknown): RunState | null {
   try {
     if (!isRecord(data)) return null;
     const { v, seed, t, phase, row, x, fromRow, fromX, hop, hopDir, facing, queued, maxRow, lastProgress, safeLine, started, death } = data;
+    const worldVersion = data.worldVersion === undefined ? 1 : data.worldVersion;
+    if (worldVersion !== 1 && worldVersion !== 2) return null;
     if (v !== 1 || !isInt(seed, 0, 4294967295) || !isNum(t, 0, 1e7)) return null;
     if (phase !== 'ready' && phase !== 'running' && phase !== 'over') return null;
     if (!isInt(row, 0, MAX_ROW) || !isInt(maxRow, 0, MAX_ROW) || !isInt(fromRow, 0, MAX_ROW)) return null;
@@ -212,10 +216,16 @@ export function restore(data: unknown): RunState | null {
       // die() records the row the run is in, so a death on any other row is not a real save.
       if (!isRecord(death) || !isCause(death.cause) || !isNum(death.t, 0, t) || !isInt(death.row, 0, MAX_ROW) || death.row !== row) return null;
       if (!isNum(death.x, -Infinity, Infinity) || (death.dir !== -1 && death.dir !== 1)) return null;
-      restored = { cause: death.cause, t: death.t, row: death.row, x: death.x, dir: death.dir };
+      let contact: Death['contact'];
+      if (death.contact !== undefined) {
+        const c = death.contact;
+        if (!isRecord(c) || c.row !== row || !isNum(c.z, row - 1, row + 1) || !isNum(c.lift, 0, HOP_HEIGHT) || (c.mode !== 'side' && c.mode !== 'hop-in')) return null;
+        contact = {row, z: c.z, lift: c.lift, mode: c.mode};
+      }
+      restored = { cause: death.cause, t: death.t, row: death.row, x: death.x, dir: death.dir, ...(contact ? {contact} : {}) };
     }
     return {
-      v: 1, seed, t, phase, row, x, fromRow, fromX, hop, hopDir, facing, queued, maxRow, lastProgress, safeLine, started,
+      v: 1, worldVersion, seed, t, phase, row, x, fromRow, fromX, hop, hopDir, facing, queued, maxRow, lastProgress, safeLine, started,
       bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: restored,
     };
   } catch {
