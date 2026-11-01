@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame} from '../../game-menu';
 import {test, expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
 import {advance, carDeath, expectDeathCard, frames, hook, hop, openGame, SEED, shot, showCard, state} from './helpers';
@@ -55,7 +56,7 @@ test('the shell Restart button turns a running run into a fresh ready run', asyn
   await hop(page, 'ArrowUp');
   const before = await state(page);
   expect(before).toMatchObject({row: 2, score: 2, phase: 'running'});
-  await page.locator('#restart-game').click();
+  await gameAction(page,'Restart game');
   await expect(page.locator('.crossy-road')).toHaveAttribute('data-phase', 'ready');
   const after = await state(page);
   expect(after).toMatchObject({phase: 'ready', row: 0, col: 4, score: 0, maxRow: 0, started: false, alive: true, t: 0});
@@ -90,10 +91,10 @@ test('Play again after a death starts a fresh run', async ({page}) => {
 test('Restart works while the game is paused', async ({page}) => {
   const errors = await openGame(page);
   await hop(page, 'ArrowUp');
-  await page.locator('#pause-game').click();
+  await pauseGame(page);
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label', 'Resume game');
   await expect(page.locator('#pause-overlay')).toBeVisible();
-  await page.locator('#restart-game').click();
+  await gameAction(page,'Restart game');
   await expect(page.locator('.crossy-road')).toHaveAttribute('data-phase', 'ready');
   // Restarting resumes: the pause overlay is gone and the button offers Pause again.
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label', 'Pause game');
@@ -142,7 +143,7 @@ test('a session of hops, a death, restarts and resizes logs no errors', async ({
   await hop(page, 'ArrowRight');
   await page.setViewportSize({width: 1366, height: 768});
   await frames(page, 4);
-  await page.locator('#restart-game').click();
+  await gameAction(page,'Restart game');
   await expect(page.locator('.crossy-road')).toHaveAttribute('data-phase', 'ready');
   await page.setViewportSize({width: 366, height: 700});
   await frames(page, 4);
@@ -160,7 +161,7 @@ test('leaving the game stops its loop and removes the test hook', async ({page})
   await frames(page, 6);
   const second = await counter();
   expect(second, 'the frame counter rises while the game is on screen').toBeGreaterThan(first);
-  await page.getByRole('link', {name: 'Back to game library'}).click();
+  await backToGames(page);
   await expect(page.locator('.crossy-road')).toHaveCount(0);
   await page.waitForTimeout(300);
   const stopped = await counter();
@@ -172,15 +173,15 @@ test('leaving the game stops its loop and removes the test hook', async ({page})
 
 test('every new best reaches the shell at once, even when the game is paused straight after', async ({page}) => {
   const errors = await openGame(page);
-  // Two quick hops (the second buffered during the first), their landing, and the pause all happen in one synchronous task,
-  // so no animation frame can run in between: whatever the shell shows afterwards was reported at once, not later.
+  // Two quick hops (the second buffered) and their landing are synchronous.
+  // Open the visible shared Menu to pause; the frozen simulation cannot advance in between.
   await page.evaluate(() => {
     const test = window.__crossyRoadTest!;
     test.hop('up');
     test.hop('up');
     test.advance(0.3);
-    document.querySelector<HTMLButtonElement>('#pause-game')!.click();
   });
+  await pauseGame(page);
   expect((await state(page)).maxRow).toBe(2);
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label', 'Resume game');
   await expect(page.locator('#game-score strong')).toHaveText('2');
@@ -194,7 +195,7 @@ async function reloadWithSavedRun(page: Page): Promise<string[]> {
   const errors = await openGame(page);
   await hop(page, 'ArrowUp');
   await hop(page, 'ArrowUp');
-  await page.locator('#pause-game').click(); // pausing saves the run
+  await pauseGame(page); // pausing saves the run
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label', 'Resume game');
   await page.reload();
   await page.waitForFunction(() => window.__crossyRoadTest !== undefined);

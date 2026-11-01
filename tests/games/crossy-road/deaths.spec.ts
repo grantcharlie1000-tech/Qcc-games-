@@ -216,7 +216,7 @@ test('shared Menu opens the Crossy Road leaderboard from game over without a dup
   await expect(page.locator('.crossy-road .hw-rankings')).toHaveCount(0);
   await expect(page.locator('.hw-over')).toHaveClass(/ui-glass-sheet/);
   await page.locator('#game-menu').click();
-  await page.locator('#open-leaderboards').click();
+  await page.locator('#game-rankings').click();
   const dialog = page.locator('dialog[open]');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('heading', {name: 'Leaderboards'})).toBeVisible();

@@ -40,7 +40,7 @@ async function open(view) {
   try { await page.waitForFunction(() => window.__crossyRoadTest); }
   catch (error) { throw new Error(`${error.message}\n${errors.join('\n')}\n${(await page.locator('body').innerText()).slice(0, 3000)}`); }
   // Both the visible shell title and the renderer marker must belong to this pass.
-  if ((await page.locator('#game-title').textContent()) !== 'Crossy Road' ||
+  if ((await page.locator('#game-title').evaluate(e => e.firstChild.textContent.trim())) !== 'Crossy Road' ||
       (await page.locator('.crossy-road').getAttribute('data-render-version')) !== 'fidelity-1')
     throw new Error('This is not the Crossy Road fidelity worktree. Refusing evidence.');
   await page.evaluate(() => {const h = window.__crossyRoadTest; h.freeze(true); h.setSeed(11); h.setQuality('high');});
@@ -140,7 +140,7 @@ async function death(page, view, mixed, cause) {
       phase: 6.6 + 1.2 * (t + 0.12), movers: [{offset: 0, len: 2, color: 0}]};
     await page.evaluate(lane => {window.__crossyRoadTest.forceLanes([lane]); window.__crossyRoadTest.hop('up');}, lane);
     // Capture the squash, knock or splash before the card covers it.
-    await page.evaluate(seconds => window.__crossyRoadTest.advance(seconds), cause === 'train' ? 0.12 : cause === 'water' ? 0.24 : 0.2);
+    await page.evaluate(seconds => window.__crossyRoadTest.advance(seconds), cause === 'train' ? 0.12 : cause === 'water' ? 0.24 : 0.35);
   }
   const state = await page.evaluate(() => window.__crossyRoadTest.state());
   const expected = cause === 'truck' ? 'car' : cause;
