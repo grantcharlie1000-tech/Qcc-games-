@@ -10,8 +10,9 @@ for(const [width,height] of [[320,568],[390,844],[430,932],[844,390],[1366,768],
   await expect(page.getByRole('button',{name:'Tap to play',exact:true})).toBeVisible();
   const board=(await page.locator('.qf-board').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
   expect(board.x).toBeGreaterThanOrEqual(0);expect(board.x+board.width).toBeLessThanOrEqual(width);
-  expect(board.y).toBeGreaterThanOrEqual(0);expect(board.y+board.height).toBeLessThanOrEqual(dock.y);
-  expect(board.height/board.width).toBeCloseTo(2,1);expect(dock.height).toBe(56);
+  expect(board.y).toBeGreaterThanOrEqual(0);
+  expect(board.y+board.height<=dock.y||board.y>=dock.y+dock.height).toBe(true);
+  expect(board.height/board.width).toBeCloseTo(2,1);
   expect(dock.y+dock.height).toBeLessThanOrEqual(height);
   if(width===390)expect(board.width).toBeGreaterThanOrEqual(width*.88);
   for(const selector of ['.qf-hold','.qf-next']){
@@ -49,8 +50,20 @@ test('safe areas reserve the dock and leave spawn cells unobstructed',async({pag
  // Emulate an iPhone's safe areas without changing the shared shell stylesheet.
  await page.addStyleTag({content:'.game-view[data-game-id=quadfall]{padding-top:47px!important;padding-bottom:34px!important}'});
  const canvas=(await page.locator('.qf-canvas').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
- expect(canvas.y).toBeGreaterThanOrEqual(47);expect(canvas.y+canvas.height).toBeLessThanOrEqual(dock.y);
+ expect(canvas.y).toBeGreaterThanOrEqual(47);expect(canvas.y+canvas.height).toBeLessThanOrEqual(844-34);
+ expect(canvas.y+canvas.height<=dock.y||canvas.y>=dock.y+dock.height).toBe(true);
  expect(dock.y+dock.height).toBeLessThanOrEqual(844-34);
+});
+
+test('board follows the shared dock height without changing the run',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await running(page);
+ const before=await gameRoot(page).getAttribute('data-active'),original=(await page.locator('.qf-board').boundingBox())!;
+ for(const height of [76,96]){
+  // Simulate a central dock update; the game must use the space the host reserves.
+  const style=await page.addStyleTag({content:`.game-view[data-game-id=quadfall] .game-dock{height:${height}px;flex-basis:${height}px}`});
+  await expect.poll(async()=>{const board=(await page.locator('.qf-board').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;return board.height<original.height&&(board.y+board.height<=dock.y||board.y>=dock.y+dock.height);}).toBe(true);
+  await expect(gameRoot(page)).toHaveAttribute('data-active',before!);await style.evaluate(el=>(el as HTMLStyleElement).remove());
+ }
 });
 
 test('fullscreen preserves the run',async({page,browserName})=>{

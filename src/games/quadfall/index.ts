@@ -21,12 +21,12 @@ const game:GameModule={
    <div class="qf-board">
     <canvas class="qf-canvas" aria-label="Tetris board" aria-description="Tap to rotate. Drag to move or soft drop. Flick down to hard drop. Swipe up to hold." tabindex="0"></canvas>
     <button class="qf-start arcade-glass-mini" type="button">Tap to play</button>
+   </div>
     <dialog class="qf-over ui-glass-sheet" aria-labelledby="qf-over-title">
      <div class="dialog-head"><h2 id="qf-over-title">Game over</h2><button class="qf-dismiss icon-button" type="button" aria-label="Close results">${uiIcon('close')}</button></div>
      <dl class="qf-result"><div><dt>Score</dt><dd data-result="score">0</dd></div><div><dt>Best</dt><dd data-result="best">0</dd></div></dl>
      <button class="qf-replay game-button" type="button" autofocus>Play again</button>
     </dialog>
-   </div>
   </div>`;
   const root=container.querySelector<HTMLElement>('.qf-game')!,canvas=root.querySelector<HTMLCanvasElement>('.qf-canvas')!;
   const start=root.querySelector<HTMLButtonElement>('.qf-start')!,holdChip=root.querySelector<HTMLButtonElement>('.qf-hold')!;
