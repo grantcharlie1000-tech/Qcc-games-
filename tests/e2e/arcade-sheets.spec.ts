@@ -11,11 +11,11 @@ for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
     await expect(menu).toHaveAttribute('data-glass-tone',tone);
     const material=await menu.evaluate(e=>{
       const s=getComputedStyle(e),group=getComputedStyle(e.querySelector('.game-menu-actions')!);
-      return {filter:s.backdropFilter,radius:parseFloat(s.borderRadius),padding:parseFloat(s.paddingLeft),groupRadius:parseFloat(group.borderRadius),grabber:getComputedStyle(e,'::before').content};
+      return {filter:s.backdropFilter,radius:parseFloat(s.borderRadius),padding:parseFloat(s.paddingLeft),groupRadius:parseFloat(group.borderRadius),grabber:e.querySelector('.sheet-grabber')!==null};
     });
     expect(material.filter).toContain('blur(0.3px)');
     expect(material.radius).toBe(material.groupRadius+material.padding);
-    expect(material.grabber).toBe('""');
+    expect(material.grabber).toBe(true);
     // The paused game's artwork remains visible behind the sheet. Its state is still paused.
     await expect(page.locator('#pause-overlay')).toHaveCSS('opacity','0');
     await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');

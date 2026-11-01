@@ -76,10 +76,10 @@
 
 **Interface:** retain `openSheet(dialog, trigger)` and native dialog close/cancel callbacks; install one enhancement for every sheet that presents a grab handle.
 
-- [ ] Record `sheets/drag-before.webm` and add failing native pointer tests for distance/velocity dismissal, snap-back, scrolled-content refusal, pointer cancellation and game resume.
-- [ ] Track downward drag1:1 from handle/header or top-scrolled content; resist upward handle movement. Fade the existing backdrop proportionally without changing its recipe.
-- [ ] Dismiss past about30% distance or sufficient velocity through the same close path as X/Keep playing; otherwise spring back. Support touch, pen and mouse, with immediate settling under reduced motion.
-- [ ] Preserve native content scrolling/form interaction and focus through nested sheets. Capture `drag-after.webm`, run sheet/Movies/game-menu checks, review and commit separately.
+- [x] Record `sheets/drag-before.webm` and add failing native pointer tests for distance/velocity dismissal, snap-back, scrolled-content refusal, pointer cancellation and game resume.
+- [x] Track downward drag1:1 from handle/header or top-scrolled content; resist upward handle movement. Fade the existing backdrop proportionally without changing its recipe.
+- [x] Dismiss past about30% distance or sufficient velocity through the same close path as X/Keep playing; otherwise spring back. Support touch, pen and mouse, with immediate settling under reduced motion.
+- [x] Preserve native content scrolling/form interaction and focus through nested sheets. Capture `drag-after.webm`, run sheet/Movies/game-menu checks, review and commit separately.
 
 ### Task 6: Compact typed game dock (step 9 and addenda)
 
