@@ -71,6 +71,23 @@ const seekIsland=(page:Page,ms:number)=>page.evaluate(time=>{
   }
   return paused;
 },ms);
+// Capture the real CSS transitions in the same renderer turn as the scroll
+// state change. A remote attribute poll can otherwise outlast the 300 ms morph.
+const scrollAndHoldIsland=(page:Page,y:number)=>page.evaluate(top=>new Promise<number>(resolve=>{
+  const bar=document.querySelector('.app-tabbar')!;
+  const observer=new MutationObserver(async()=>{
+    observer.disconnect();
+    const animations=document.getAnimations().filter(animation=>{
+      const target=(animation.effect as KeyframeEffect|null)?.target;
+      return animation instanceof CSSTransition&&target instanceof Element&&!!target.closest('.app-tabbar,.ui-tabbar-mini');
+    });
+    for(const animation of animations){animation.pause();animation.currentTime=0;}
+    await Promise.all(animations.map(animation=>animation.ready));
+    resolve(animations.length);
+  });
+  observer.observe(bar,{attributes:true,attributeFilter:['data-minimized']});
+  window.scrollTo(0,top);
+}),y);
 // The island's and the capsule's boxes, once no transition runs on either.
 async function settledBoxes(page:Page){
   const bar=page.locator('.app-tabbar'),capsule=page.locator('.ui-tabbar-mini');
@@ -279,7 +296,7 @@ test('the minimize morph has no blank frame: at every moment the island or its c
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  await page.evaluate(()=>window.scrollTo(0,400));
+  expect(await scrollAndHoldIsland(page,400)).toBeGreaterThan(0);
   await expect(bar).toHaveAttribute('data-minimized','true');
   const frames:number[]=[];
   for(let ms=0;ms<=300;ms+=20){
@@ -300,7 +317,7 @@ test('the expand morph has no blank frame either',async({page})=>{
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
-  await page.evaluate(()=>window.scrollTo(0,368));
+  expect(await scrollAndHoldIsland(page,368)).toBeGreaterThan(0);
   await expect(bar).not.toHaveAttribute('data-minimized');
   const frames:number[]=[];
   for(let ms=0;ms<=300;ms+=20){
