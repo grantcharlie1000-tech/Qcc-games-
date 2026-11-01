@@ -659,14 +659,16 @@ test('the glass adds no request to an empty URL',async({page,browserName})=>{
   expect(await page.evaluate(()=>performance.getEntriesByType('resource').filter(entry=>!entry.name).length)).toBe(0);
 });
 
-test('leaving Movies removes the filter the Movies island added',async({page,browserName})=>{
+test('leaving Movies removes its navigation and floating header filters',async({page,browserName})=>{
   test.skip(browserName!=='chromium','the SVG displacement filter renders only in Chromium');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const filters=()=>page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length);
   await expect.poll(filters).toBe(2);
   await page.goto('/#/movies');
-  await expect.poll(filters).toBe(4);
+  // Two app filters remain mounted; Movies adds its island, Menu and the
+  // two visible floating header groups. Its desktop-only group has no map.
+  await expect.poll(filters).toBe(6);
   await page.goto('/#/collection');
   await expect.poll(filters).toBe(2);
 });
