@@ -19,7 +19,7 @@ const fields:Record<GameId,Field[]>={
   'corn-clicker':[{label:'Kernels',source:'.cc-kernels-num'},{label:'Per second',source:'.cc-cps'}],
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
   'crossy-road':[score,{label:'Row',source:'#game-level',stripPrefix:'Row '},{label:'Best',source:'#game-best strong'}],
-  quadfall:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}],
+  quadfall:[score,{label:'Level',source:'.qf-game',attribute:'data-level'},{label:'Lines',source:'.qf-game',attribute:'data-lines'}], fivefold:[{label:'',source:'.ff-puzzle'}],
   shooter:[]
 };
 
