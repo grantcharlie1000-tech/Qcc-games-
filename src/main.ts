@@ -295,7 +295,7 @@ async function route(){
     <p id="game-status" role="status"${id==='pool'?' aria-hidden="true"':''}></p></section>`;
   gameMenu=document.querySelector<HTMLDialogElement>('#game-options')!;
   const currentMenu=gameMenu,view=document.querySelector<HTMLElement>('.game-view')!;
-  const dock=createGameDock({backHref:collectionHash,backIcon:icon('back'),menuIcon:icon('pause')});
+  const dock=createGameDock({backHref:collectionHash,backIcon:icon('back'),menuIcon:icon('pause'),pointerLock:id==='blockcraft'});
   view.querySelector('.game-surface')!.after(dock.root);
   const menuButton=dock.menu;
   const closeGameMenu=()=>{menuButton.setAttribute('aria-expanded','false');currentMenu.close();};
