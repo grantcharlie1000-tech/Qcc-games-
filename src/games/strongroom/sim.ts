@@ -17,7 +17,7 @@ export interface SimWorld{
 }
 export const GUNS=[{id:'m4a1',name:'TC-5 Carbine',damage:34,rpm:720,mag:30,reserve:150,reload:2.6},{id:'usp',name:'S-45 Suppressed',damage:33,rpm:360,mag:12,reserve:72,reload:2}] as const;
 export function move(e:Entity,i:InputFrame,dt:number,world:SimWorld){
- e.yaw=i.yaw;e.pitch=i.pitch;e.crouch=!!(i.buttons&BUTTON.CROUCH);
+ e.yaw=Math.atan2(Math.sin(i.yaw),Math.cos(i.yaw));e.pitch=i.pitch;e.crouch=!!(i.buttons&BUTTON.CROUCH);
  if(e.hp<=0)return;
  const length=Math.max(127,Math.hypot(i.x,i.z)),speed=e.crouch?1.6:i.buttons&BUTTON.WALK?2:4.2;
  const mult=i.buttons&BUTTON.ADS?.7:1,x=i.x/length*speed*mult,z=i.z/length*speed*mult;
