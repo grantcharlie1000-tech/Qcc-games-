@@ -241,7 +241,9 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(box&&!pressing)placedLeft=box.left;
   };
   // Nothing re-places the pill under a finger that is still down.
-  const sync=(animate:boolean)=>{if(!press)place(current(),animate);};
+  // Standalone controls/HUDs have no selection pill. Score text mutations must
+  // not force a synchronous layout just to place an invisible pill.
+  const sync=(animate:boolean)=>{if(!standalone&&!press)place(current(),animate);};
 
   // A press moves the pill under the finger and swells it. Keyboard activation sends no pointer events, so it never swells.
   // The release can land anywhere on the page, so the press listens on the document until it ends. Only the pointer that

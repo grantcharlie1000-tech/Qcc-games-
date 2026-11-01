@@ -213,7 +213,7 @@ function checkRiver(S: Sweep, at: string, lane: RiverLane, before: Lane | undefi
     note(S, `logLen.${phase(r)}`, m.len);
   }
   for (const gap of gapsOf(lane)) {
-    if (!inRange(gap, 2, 4)) S.shapes.add(`${at}: river gap ${gap}`);
+    if (!inRange(gap, 0.55, 0.85)) S.shapes.add(`${at}: river gap ${gap}`);
     note(S, `riverGap.${phase(r)}`, gap);
     // F4 (every log row, so also every land to river entry): a fixed column is never without a log for more than RIVER_WAIT seconds.
     if ((gap - 2 * PLATFORM_GRACE) / lane.speed > RIVER_WAIT + EPS) S.f4.add(`${at}: column uncovered for ${(gap - 0.4) / lane.speed} s`);
@@ -523,7 +523,7 @@ describe('mix and chunkRng', () => {
 describe('initialState', () => {
   it('starts at row 0, chunk 0, after grass, with only the start column reachable', () => {
     expect(initialState(7)).toEqual({
-      seed: 7, version: 3, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0,
+      seed: 7, version: 4, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0,
       reach: [false, false, false, false, true, false, false, false, false],
     });
   });
@@ -1129,6 +1129,12 @@ describe('the world a seed produces stays the same', () => {
     });
   }
 
+  for (const [seed, expected] of [[1,'882b6054'],[7,'9e1f2ff9'],[11,'9239b0c6']] as const) {
+    it(`revision four seed ${seed}: pins dense logs and lane paint without changing older revisions`, () => {
+      expect(fingerprint(generate(initialState(seed,4),60).lanes.slice(0,60))).toBe(expected);
+    });
+  }
+
   it('the fingerprint hash is FNV-1a: it reproduces the published 32-bit test vectors', () => {
     expect(fnv1a('')).toBe('811c9dc5');
     expect(fnv1a('a')).toBe('e40c292c');
@@ -1288,13 +1294,12 @@ describe(`CrossyRoad worlds over ${SEEDS} seeds x ${ROWS} rows`, () => {
   it('parameters follow the brief: gaps, log lengths, decoration, pads and thickness have the stated distributions', () => {
     // Road gaps before row 20: lerp(4.2, 3, d) * (0.85 + 0.6 u) with d about 0.04, never clamped there: mean about 4.15 * 1.15.
     near(mean(S, 'roadGap.early'), 4.77, 0.1, 'early road gap');
-    // River gaps: clamp(lerp(2, 4, d) * jitter, 2, max). Early (d about 0.04) the clamp at 2 lifts the mean to about 2.12; at d = 1
-    // the cap at 4 gives 0.5 * 3.7 + 0.5 * 4 = 3.85.
-    near(mean(S, 'riverGap.early'), 2.12, 0.05, 'early river gap');
-    near(mean(S, 'riverGap.late'), 3.85, 0.05, 'late river gap');
-    // Log lengths 2/3/4 with weights (.2,.6,.2) early, (.6,.3,.1) late: mean 3 - .5d.
-    near(mean(S, 'logLen.early'), 2.98, 0.07, 'early log length');
-    near(mean(S, 'logLen.late'), 2.5, 0.03, 'late log length');
+    // Revision four keeps long logs throughout the run: 2/3/4 with weights .25/.5/.25,
+    // with small .55–.85-cell gaps. Coverage stays above 70% even in an all-short row.
+    near(mean(S, 'riverGap.early'), 0.7, 0.02, 'early river gap');
+    near(mean(S, 'riverGap.late'), 0.7, 0.02, 'late river gap');
+    near(mean(S, 'logLen.early'), 3, 0.07, 'early log length');
+    near(mean(S, 'logLen.late'), 3, 0.03, 'late log length');
     near(mean(S, 'variantTwo'), 0.31, 0.01, 'share of variant 2');
     near(mean(S, 'edgeDecor'), 0.45, 0.005, 'edge decoration density');
     near(mean(S, 'edgeTree'), 0.7, 0.005, 'edge decoration tree share');

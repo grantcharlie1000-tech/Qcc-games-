@@ -1,6 +1,6 @@
 /** Deterministic visual review. Start this worktree with:
  * npm run dev -- --port 4190 --strictPort
- * ROUND=7 node scripts/capture-crossy.mjs
+ * ROUND=8 node scripts/capture-crossy.mjs
  * Optional iteration filters: CAPTURE_VIEW=phone-dsf3 CAPTURE_ONLY=start,mixed
  * On a busy host, run each CAPTURE_VIEW separately; matching complete view
  * manifests are merged into manifest.json, with progress saved after every shot.
@@ -10,7 +10,7 @@
  */
 import {chromium} from '@playwright/test';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
-import {createHash} from 'node:crypto';
+import {crossySourceHash} from './crossy-source.mjs';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
@@ -26,10 +26,9 @@ const browser = await chromium.launch({executablePath: '/usr/bin/chromium', args
   '--no-sandbox', '--enable-webgl', '--use-gl=angle', '--use-angle=swiftshader',
   '--enable-unsafe-swiftshader', '--renderer-process-limit=1',
 ]});
-const sourceDiff = execFileSync('git', ['diff', 'HEAD', '--', 'src', 'scripts/capture-crossy.mjs'], {cwd: repo, encoding: 'utf8'});
 const only = process.env.CAPTURE_ONLY?.split(',');
 const wanted = name => !only || only.includes(name);
-const manifest = {sourceDiffHash: createHash('sha256').update(sourceDiff).digest('hex'), round: Number(round), commit, base: base.origin, source: repo, views: []};
+const manifest = {sourceHash: await crossySourceHash(), round: Number(round), commit, base: base.origin, source: repo, views: []};
 const viewSpecs = [
   {name:'phone',viewport:{width:390,height:844},dsf:2},
   {name:'phone-dsf3',viewport:{width:390,height:844},dsf:3},
@@ -47,7 +46,7 @@ async function mergeCompletedViews() {
     let saved;
     try {saved=JSON.parse(await readFile(`${out}/manifest-${view.name}.json`,'utf8'));}
     catch(error) {if(error.code==='ENOENT')continue;throw error;}
-    if(!saved.complete || saved.commit!==commit || saved.sourceDiffHash!==manifest.sourceDiffHash || saved.base!==manifest.base || saved.round!==manifest.round || saved.source!==repo)continue;
+    if(!saved.complete || saved.commit!==commit || saved.sourceHash!==manifest.sourceHash || saved.base!==manifest.base || saved.round!==manifest.round || saved.source!==repo)continue;
     completed.push(view.name);
     for(const frame of saved.views) if(!files.has(frame.file))files.set(frame.file,frame);
   }
@@ -73,7 +72,7 @@ async function open(view) {
   catch (error) { throw new Error(`${error.message}\n${errors.join('\n')}\n${(await page.locator('body').innerText()).slice(0, 3000)}`); }
   // Both the visible shell title and the renderer marker must belong to this pass.
   if ((await page.locator('#game-title').evaluate(e => e.firstChild.textContent.trim())) !== 'Crossy Road' ||
-      (await page.locator('.crossy-road').getAttribute('data-render-version')) !== 'fidelity-7')
+      (await page.locator('.crossy-road').getAttribute('data-render-version')) !== 'fidelity-8')
     throw new Error('This is not the Crossy Road fidelity worktree. Refusing evidence.');
   await page.evaluate(() => {const h = window.__crossyRoadTest; h.freeze(true); h.setSeed(11); h.setQuality('high');});
   return {context, page, errors};
@@ -93,8 +92,21 @@ async function shot(page, view, name, extra = {}) {
   if (!wanted(name)) return;
   await settle(page);
   const source = await page.request.get('/src/games/crossy-road/index.ts');
-  if (!source.ok() || !(await source.text()).includes('fidelity-7')) throw new Error('The worktree dev server is no longer serving this pass.');
+  if (!source.ok() || !(await source.text()).includes('fidelity-8')) throw new Error('The worktree dev server is no longer serving this pass.');
   const state = await page.evaluate(() => window.__crossyRoadTest.state());
+  // Inspect beyond both frame edges so a cropped block cannot hide a bad bank.
+  const banks=await page.evaluate(row=>{
+    const h=window.__crossyRoadTest,lo=Math.max(0,row-20),hi=row+30;
+    const lanes=h.lanes(lo-1,hi+1),water=l=>l.kind==='river'||l.kind==='lily';
+    const blocks=[];
+    for(let i=1;i<lanes.length-1;i++) {
+      if(!water(lanes[i])) continue;
+      if(!water(lanes[i-1]) && lanes[i-1].kind!=='grass') throw new Error(`River ${lanes[i].row} has no near grass bank`);
+      if(!water(lanes[i+1]) && lanes[i+1].kind!=='grass') throw new Error(`River ${lanes[i].row} has no far grass bank`);
+      if(!water(lanes[i-1])) blocks.push(lanes[i].row);
+    }
+    return {checked:[lo,hi],blocks};
+  },state.row);
   const stats = await page.evaluate(() => window.__crossyRoadTest.stats());
   const buffer = await page.locator('.hw-canvas').evaluate(c => ({width: c.width, height: c.height, x: c.getBoundingClientRect().x, y: c.getBoundingClientRect().y,
     cssWidth: c.clientWidth, cssHeight: c.clientHeight, antialias: c.getContext('webgl2').getContextAttributes().antialias}));
@@ -112,7 +124,7 @@ async function shot(page, view, name, extra = {}) {
   const file = `${view.name}-${name}.png`;
   await page.screenshot({path: `${out}/${file}`,animations:'disabled'});
   manifest.views.push({file, viewport: view.viewport, dsf: view.dsf, seed: state.seed, row: state.row,
-    x: state.x, t: state.t, phase: state.phase, hopping: state.hopping, cause: state.deathCause, stats, buffer, projection, ...extra});
+    x: state.x, t: state.t, phase: state.phase, hopping: state.hopping, cause: state.deathCause, stats, buffer, projection, banks, ...extra});
   await checkpoint(view);
   console.log(`${file}: seed ${state.seed}, row ${state.row}, t=${state.t.toFixed(3)}, ${state.phase}${state.deathCause ? ` / ${state.deathCause}` : ''}, ${buffer.width}×${buffer.height}, ${stats.calls} calls`);
 }
@@ -167,9 +179,13 @@ function grass(row) {
 }
 
 async function death(page, view, mixed, cause) {
-  // High-row scroll can trigger behind before the idle timer. Seed 7 row 24 is
-  // early open grass: its real scroll leaves enough time for the idle swoop.
-  const row = cause === 'ufo-idle' ? 24 : mixed.row, t = mixed.t;
+  // Idle must use an early, naturally open row so the real scroll leash does
+  // not win the race against the seven-second timer. Check the current revision.
+  const row = cause === 'ufo-idle' ? await page.evaluate(async seed=>{
+    const {World}=await import('/src/games/crossy-road/world.ts');const w=new World(seed);
+    for(let r=5;r<=30;r++){const l=w.lane(r);if(l.kind==='grass'&&!l.blocked[4])return r;}
+    throw new Error('No early idle clearing');
+  },mixed.seed) : mixed.row, t = mixed.t;
   if (cause === 'ufo-idle' || cause === 'ufo-behind') {
     await seek(page, mixed.seed, row, 4, t, cause === 'ufo-behind' ? row + 3 : row);
     // Three rows back triggers immediately; idle uses the same 7-second rule as play.
@@ -208,16 +224,16 @@ async function death(page, view, mixed, cause) {
 // without relying on a passing truck to uncover every part of a natural river.
 async function details(page, view, mixed) {
   const row = mixed.row, t = mixed.t;
-  const log = r => ({kind:'river',row:r,dir:1,speed:1.2,cycle:7,phase:0.4-1.2*t,movers:[{offset:0,len:3,color:0}]});
+  const log = r => ({kind:'river',row:r,dir:1,speed:1.2,cycle:3.7,phase:0.4-1.2*t,movers:[{offset:0,len:3,color:0}]});
   if (wanted('lane-junctions')) {
     await seek(page,7,row,4,t);
     await page.evaluate(({row,t,land,water}) => {
       const h=window.__crossyRoadTest;
       const track=r=>({kind:'rail',row:r,dir:1,speed:18,length:16,period:9,phase:t+0.5,color:0});
       const asphalt=(r,vehicle='car')=>({kind:'road',row:r,dir:1,speed:1.8,vehicle,...(vehicle==='car'?{style:'sedan'}:{}),cycle:9,phase:0.4-1.8*t,movers:[{offset:0,len:vehicle==='truck'?3:1.8,color:0}]});
-      h.forceLanes([land[0],water[0],track(row+2),asphalt(row+3,'truck'),water[1],water[2],land[1],asphalt(row+7)]);
-    }, {row,t,land:[grass(row),grass(row+6)],water:[log(row+1),log(row+4),log(row+5)]});
-    await shot(page,view,'lane-junctions',{setup:'legacy adjacency stress: forced grass/river, river/rail, rail/road and road/river; new worlds instead have grass banks'});
+      h.forceLanes([land[0],water[0],water[1],land[1],track(row+4),asphalt(row+5,'truck'),land[2],water[2],{kind:'lily',row:row+8,pads:[false,true,false,true,true,false,true,false,false]},land[3],asphalt(row+10),land[4]]);
+    }, {row,t,land:[grass(row),grass(row+3),grass(row+6),grass(row+9),grass(row+11)],water:[log(row+1),log(row+2),log(row+7)]});
+    await shot(page,view,'lane-junctions',{setup:'clean one-row junctions: double log crossing, grass banks, rail/road, box truck, and banked log/lily pair'});
   }
   if (wanted('river-banks')) {
     await seek(page,7,row,4,t);
@@ -237,13 +253,13 @@ async function details(page, view, mixed) {
   }
   if (wanted('traffic-models')) {
     await seek(page,7,row,4,t);
-    await page.evaluate(({row,t})=>{
+    await page.evaluate(({row,t,land})=>{
       const styles=['compact','sedan','taxi'];
       const lanes=styles.map((style,i)=>({kind:'road',row:row+i+1,dir:i%2?-1:1,speed:1.8,vehicle:'car',style,cycle:7,
         phase:1-(i%2?-1:1)*1.8*t,movers:[{offset:0,len:style==='compact'?1.2:1.8,color:i===0?1:i===1?0:2}]}));
       lanes.push({kind:'road',row:row+4,dir:1,speed:1.8,vehicle:'truck',cycle:8,phase:1-1.8*t,movers:[{offset:0,len:3,color:0}]});
-      window.__crossyRoadTest.forceLanes(lanes);
-    },{row,t});
+      window.__crossyRoadTest.forceLanes([land[0],...lanes,land[1]]);
+    },{row,t,land:[grass(row),grass(row+5)]});
     await shot(page,view,'traffic-models',{setup:'authored compact, sedan, taxi and box truck; exact collision lengths'});
   }
   if (wanted('triple-rail')) {

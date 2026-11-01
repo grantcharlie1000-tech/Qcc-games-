@@ -40,7 +40,7 @@ export function chunkRng(seed: number, chunk: number): () => number {
  * be stood on by a player who started at (row 0, START_COL) and never died. */
 export interface GenState {
   seed: number;
-  version?: 1 | 2 | 3;
+  version?: 1 | 2 | 3 | 4;
   /** Index of the next row to generate. */
   nextRow: number;
   /** Index of the next chunk to generate. */
@@ -52,7 +52,7 @@ export interface GenState {
   reach: boolean[];
 }
 
-export function initialState(seed: number, version: 1 | 2 | 3 = 3): GenState {
+export function initialState(seed: number, version: 1 | 2 | 3 | 4 = 4): GenState {
   const reach = new Array<boolean>(COLS).fill(false);
   reach[START_COL] = true;
   return { seed: seed >>> 0, version, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0, reach };
@@ -120,7 +120,7 @@ export function repairGrass(obstacles: Obstacle[], reach: readonly boolean[]): b
 }
 
 /** Chunk 0 keeps columns 2-6 clear and puts an obstacle on each of columns 0, 1, 7, 8 with p 0.35. */
-function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: 1 | 2 | 3): { lane: GrassLane; reach: boolean[] } {
+function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: 1 | 2 | 3 | 4): { lane: GrassLane; reach: boolean[] } {
   const density = lerp(0.10, 0.30, difficulty(row));
   const obstacles = new Array<Obstacle>(COLS), variant = new Array<number>(COLS);
   for (let c = 0; c < COLS; c++) {
@@ -154,19 +154,22 @@ function layout(lens: readonly number[], gaps: readonly number[], colors: readon
   return { movers, cycle };
 }
 
-function roadRow(row: number, rng: Rng, dir: Heading, version: 1 | 2 | 3): RoadLane {
+function roadRow(row: number, rng: Rng, dir: Heading, version: 1 | 2 | 3 | 4): RoadLane {
   const d = difficulty(row);
   const speed = lerp(1.5, 4.5, d) * jitter(rng);
   const truck = rng() < lerp(0.2, 0.4, d);
   const style = version === 1 || truck ? undefined : (['compact', 'sedan', 'taxi'] as const)[Math.floor(rng() * 3)];
   const count = version === 1 ? MOVERS : 2 + Math.floor(rng() * 4);
+  // Revisions 1–3 keep their original six-colour random stream. Revision four
+  // paints a whole lane alike, with yellow reserved for taxis and orange added.
+  const paint = version >= 4 ? (style === 'taxi' ? 2 : [0, 1, 3, 4, 5, 6][Math.floor(rng() * 6)]) : -1;
   const lens: number[] = [], gaps: number[] = [], colors: number[] = [];
   const gapMin = roadGapMin(speed), gapScale = lerp(version === 1 ? 6 : 4.2, 3, d);
   for (let i = 0; i < count; i++) {
     lens.push(truck ? (rng() < 0.5 ? 2 : 3) : version === 1 ? CAR_LENGTH : style === 'compact' ? 1.2 : 1.8);
     gaps.push(Math.max(gapMin, gapScale * (0.85 + 0.6 * rng())));
-    const color = Math.floor(rng() * VEHICLE_PALETTE);
-    colors.push(style === 'taxi' ? 2 : color);
+    const color = Math.floor(rng() * (version >= 4 ? VEHICLE_PALETTE : 6));
+    colors.push(version >= 4 ? paint : style === 'taxi' ? 2 : color);
   }
   const { movers, cycle } = layout(lens, gaps, colors);
   return { kind: 'road', row, dir, speed, vehicle: truck ? 'truck' : 'car', ...(style ? {style} : {}), cycle, phase: rng() * cycle, movers };
@@ -175,6 +178,8 @@ function roadRow(row: number, rng: Rng, dir: Heading, version: 1 | 2 | 3): RoadL
 /** Everything about a log row except its direction, row and phase. */
 export interface LogShape {
   speed: number;
+  /** Fallback gap for this generation revision; absent in legacy shapes. */
+  minGap?: number;
   lens: readonly number[];
   gaps: readonly number[];
   colors: readonly number[];
@@ -182,18 +187,18 @@ export interface LogShape {
 
 const MIN_LOG_GAP = 2;
 
-function drawLogShape(rng: Rng, d: number, version: 1 | 2 | 3): LogShape {
+function drawLogShape(rng: Rng, d: number, version: 1 | 2 | 3 | 4): LogShape {
   const speed = lerp(1.0, 2.6, d) * jitter(rng);
-  const w2 = lerp(version === 1 ? 0.1 : 0.2, 0.6, d), w3 = version === 1 ? 0.3 : lerp(0.6, 0.3, d), w4 = version === 1 ? lerp(0.6, 0.1, d) : 1 - w2 - w3;
+  const w2 = version >= 4 ? 0.25 : lerp(version === 1 ? 0.1 : 0.2, 0.6, d), w3 = version >= 4 ? 0.5 : version === 1 ? 0.3 : lerp(0.6, 0.3, d), w4 = version === 1 ? lerp(0.6, 0.1, d) : 1 - w2 - w3;
   const gapScale = lerp(2, 4, d), gapMax = riverGapMax(speed);
   const lens: number[] = [], gaps: number[] = [], colors: number[] = [];
   for (let i = 0; i < MOVERS; i++) {
     const u = rng() * (w2 + w3 + w4);
     lens.push(u < w2 ? 2 : u < w2 + w3 ? 3 : 4);
-    gaps.push(clamp(gapScale * jitter(rng), MIN_LOG_GAP, gapMax));
+    gaps.push(version >= 4 ? 0.55 + 0.3 * rng() : clamp(gapScale * jitter(rng), MIN_LOG_GAP, gapMax));
     colors.push(Math.floor(rng() * LOG_PALETTE));
   }
-  return { speed, lens, gaps, colors };
+  return { speed, lens, gaps, colors, ...(version >= 4 ? {minGap:0.55} : {}) };
 }
 
 function logLane(shape: LogShape, row: number, dir: Heading, phase: number): RiverLane {
@@ -249,7 +254,7 @@ export function fitLogRow(shape: LogShape, row: number, dir: Heading, below: Riv
     lane.phase = rng() * lane.cycle;
     if (ok(below, lane)) return lane;
   }
-  lane = logLane({ ...shape, gaps: shape.gaps.map(() => MIN_LOG_GAP) }, row, dir, rng());
+  lane = logLane({ ...shape, gaps: shape.gaps.map(() => shape.minGap ?? MIN_LOG_GAP) }, row, dir, rng());
   if (ok(below, lane)) return lane;
   for (let tries = 0; tries < PHASE_TRIES; tries++) {
     lane.phase = rng() * lane.cycle;
@@ -299,12 +304,12 @@ function chooseKind(rng: Rng, state: GenState): Family {
   const prev = family(state.prevKind);
   if (kind === prev) kind = prev === 'grass' ? 'road' : 'grass';
   // Revision three adds grass banks without changing either released RNG stream.
-  if ((state.version ?? 3) >= 3 && (prev === 'river' || (kind === 'river' && prev !== 'grass'))) kind = 'grass';
+  if ((state.version ?? 4) >= 3 && (prev === 'river' || (kind === 'river' && prev !== 'grass'))) kind = 'grass';
   if (kind !== 'grass' && state.hazardRun >= (start < 60 ? 2 : 3)) kind = 'grass';
   return kind;
 }
 
-function chooseThickness(rng: Rng, kind: Family, start: number, version: 1 | 2 | 3): number {
+function chooseThickness(rng: Rng, kind: Family, start: number, version: 1 | 2 | 3 | 4): number {
   switch (kind) {
     case 'grass': return 1 + Math.floor(rng() * (start < 20 ? 5 : 3));
     case 'road': return 1 + Math.floor(rng() * (start < 20 ? 2 : 4));
@@ -322,7 +327,7 @@ const passable = (reach: readonly boolean[]): boolean[] => new Array<boolean>(CO
 /** Generates exactly one chunk. The input state is never modified, and the returned state shares no array with it. */
 export function generateChunk(state: GenState): { lanes: Lane[]; state: GenState } {
   const rng = chunkRng(state.seed, state.chunk);
-  const start = state.nextRow, version = state.version ?? 3;
+  const start = state.nextRow, version = state.version ?? 4;
   const safe = state.chunk === 0;
   const kind = safe ? 'grass' : chooseKind(rng, state);
   const n = safe ? SAFE_ROWS : chooseThickness(rng, kind, start, version);

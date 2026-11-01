@@ -71,7 +71,7 @@ function hop(s: RunState, dir: Dir, world: LaneSource): void {
 describe('createRun', () => {
   it('starts pristine on row 0, column 4, with the seed as an unsigned 32-bit integer', () => {
     expect(createRun(7)).toEqual({
-      v: 1, worldVersion: 3, seed: 7, t: 0, phase: 'ready', row: 0, x: 4, fromRow: 0, fromX: 4, hop: -1, hopDir: 'up', facing: 'up', queued: null,
+      v: 1, worldVersion: 4, seed: 7, t: 0, phase: 'ready', row: 0, x: 4, fromRow: 0, fromX: 4, hop: -1, hopDir: 'up', facing: 'up', queued: null,
       maxRow: 0, lastProgress: 0, safeLine: 0, started: false, bonkAt: -1e9, bonkDir: 'up', landedAt: -1e9, death: null,
     });
     expect(createRun(-1).seed).toBe(4294967295);
@@ -1111,7 +1111,7 @@ describe('serialize and restore', () => {
       maxRow: 8, lastProgress: 9.25, safeLine: 6.5, started: true, bonkAt: 11, bonkDir: 'down', landedAt: 12,
     });
     expect(serialize(s)).toEqual({
-      v: 1, worldVersion: 3, seed: 1234, t: 12.5, phase: 'running', row: 7, x: 5.5, fromRow: 6, fromX: 4.5, hop: 0.07, hopDir: 'right', facing: 'left', queued: 'down',
+      v: 1, worldVersion: 4, seed: 1234, t: 12.5, phase: 'running', row: 7, x: 5.5, fromRow: 6, fromX: 4.5, hop: 0.07, hopDir: 'right', facing: 'left', queued: 'down',
       maxRow: 8, lastProgress: 9.25, safeLine: 6.5, started: true, death: null,
     });
     s.phase = 'ready'; s.started = false;

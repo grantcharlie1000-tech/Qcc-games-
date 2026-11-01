@@ -341,6 +341,24 @@ describe('attachInput: pointer', () => {
   const start = { clientX: 200, clientY: 300 };
   const release = (dx: number, dy: number) => ({ clientX: 200 + dx, clientY: 300 + dy });
 
+  it('starts press feedback on pointerdown and clears it when a contact is cancelled', () => {
+    const onPress=vi.fn(), {fire}=setup({onPress});
+    fire('pointerdown', start);
+    expect(onPress).toHaveBeenLastCalledWith(true);
+    fire('pointercancel', start);
+    expect(onPress).toHaveBeenLastCalledWith(false);
+  });
+
+  it('commits a clear swipe before release, with exactly one hop for the gesture', () => {
+    const {fire,calls}=setup();
+    fire('pointerdown', start);
+    fire('pointermove', release(-30,3));
+    expect(calls).toEqual(['dir:left']);
+    fire('pointermove', release(-80,5));
+    fire('pointerup', release(-100,5));
+    expect(calls).toEqual(['dir:left']);
+  });
+
   it('hops forward on a tap, decided on release rather than on press', () => {
     const { fire, calls } = setup();
     fire('pointerdown', start);
@@ -366,10 +384,11 @@ describe('attachInput: pointer', () => {
     expect(calls).toEqual(['dir:left', 'dir:right']);
   });
 
-  it('does not hop while the pointer moves, only when it is released', () => {
+  it('waits for a direction while travel is short or diagonally ambiguous', () => {
     const { fire, calls } = setup();
     fire('pointerdown', start);
-    fire('pointermove', release(-100, 0));
+    fire('pointermove', release(-10, 0));
+    fire('pointermove', release(-30, 30));
     expect(calls).toEqual([]);
     fire('pointerup', release(-100, 0));
     expect(calls).toEqual(['dir:left']);

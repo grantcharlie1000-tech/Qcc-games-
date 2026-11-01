@@ -1,9 +1,19 @@
 import {describe,expect,it} from 'vitest';
-import {carGeometry,truckGeometry,trainGeometry,logGeometry,lilyGeometry,signalPostGeometry,lampGeometry,treeGeometry} from '../../../src/games/crossy-road/models';
+import {carGeometry,truckGeometry,trainGeometry,logGeometry,lilyGeometry,signalPostGeometry,lampGeometry,treeGeometry,mergeVehicle} from '../../../src/games/crossy-road/models';
 import type {BufferGeometry} from 'three';
 import {ROW_DEPTH,TRAFFIC_ROW_Z,TRAIN_BASE_Y} from '../../../src/games/crossy-road/config';
 
 function bounds(g:BufferGeometry) {g.computeBoundingBox();return g.boundingBox!;}
+it('merges vehicle paint and fixed details into one draw without tinting windows or wheels',()=>{
+  const parts=carGeometry('sedan'), bodyCount=parts.body.getAttribute('position').count;
+  const total=bodyCount+parts.detail.getAttribute('position').count;
+  const merged=mergeVehicle(parts), paint=merged.getAttribute('paint');
+  expect(merged.getAttribute('position').count).toBe(total);
+  expect(merged.groups).toHaveLength(0);
+  for(let i=0;i<total;i++) expect(paint.getX(i)).toBe(i<bodyCount?1:0);
+  expect(merged.getAttribute('color').getX(bodyCount)).toBe(parts.detail.getAttribute('color').getX(0));
+  merged.dispose();parts.body.dispose();parts.detail.dispose();
+});
 describe('objects remain within one row of ground',()=>{
   it('both directions of every vehicle silhouette project entirely inside their lane',()=>{
     const train=trainGeometry();

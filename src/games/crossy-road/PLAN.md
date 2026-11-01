@@ -1,6 +1,6 @@
 # Crossy Road implementation guide
 
-The active fidelity-pass plan and execution record are in [2026-11-01-crossy-road-fidelity.md](../../../docs/superpowers/plans/2026-11-01-crossy-road-fidelity.md). Charlie's request overrides older art choices and the external pack where they conflict. The current contract is [SPEC.md](SPEC.md).
+The active fidelity-pass execution record is [r7 review](../../../docs/superpowers/plans/2026-11-01-crossy-road-r7-review.md), following the [original plan](../../../docs/superpowers/plans/2026-11-01-crossy-road-fidelity.md). Charlie's request overrides older art choices and the external pack where they conflict. The current contract is [SPEC.md](SPEC.md).
 
 ## Scope
 
@@ -9,7 +9,7 @@ The active fidelity-pass plan and execution record are in [2026-11-01-crossy-roa
 - Match the supplied frames in camera, zoom, palette, box trees/rocks, chunky traffic, multi-carriage trains and full water rows with logs and lily pads. Author all geometry in code.
 - Leave `public/game-art/crossy-road/cover.svg` to the separate designer.
 - Use shared shell Score/Row/Best/Menu and shared glass classes for Continue/game-over cards. No duplicate HUD or rankings button.
-- High: antialiasing, pixel ratio `min(devicePixelRatio,3)`, tight real directional shadows, baked base shading. Low: capped at 1.5, blob shadows and less decor. Full-screen native canvas size, no CSS scaling.
+- High: antialiasing, pixel ratio `min(devicePixelRatio,3)`, pooled projected directional shadows and baked base shading. Sustained load adapts through DPR2.5 and 2; automatic Low can reach 1.5 with less distant decor. Eight good seconds per recovery step; shadows keep their directional silhouette at every tier. Full-screen native canvas size, no CSS scaling.
 - UFO warning at 5 s, idle swoop at 7 s; sideways/back moves do not reset it. Immediate swoop at 3 rows back or behind. Grab and depart off the top within 0.7 s. Normal death card at 0.9 s, reduced-motion card at 0.3 s.
 
 ## Module boundaries

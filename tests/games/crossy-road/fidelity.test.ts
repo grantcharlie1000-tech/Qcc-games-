@@ -5,6 +5,32 @@ import {createRun, input, pose, restore, serialize, step} from '../../../src/gam
 import type {RoadLane} from '../../../src/games/crossy-road/config';
 
 describe('reference generation revision', () => {
+  it('keeps rivers densely covered by 2–4-cell logs, including at late difficulty', () => {
+    for(let seed=0;seed<40;seed++) for(const lane of generate(initialState(seed),400).lanes) {
+      if(lane.kind!=='river') continue;
+      const coverage=lane.movers.reduce((n,m)=>n+m.len,0)/lane.cycle;
+      expect(coverage).toBeGreaterThan(0.7);
+      for(let i=0;i<lane.movers.length;i++) {
+        const mover=lane.movers[i], next=lane.movers[i+1]?.offset??lane.cycle;
+        expect([2,3,4]).toContain(mover.len);
+        expect(next-mover.offset-mover.len).toBeGreaterThanOrEqual(0.55-1e-9);
+        expect(next-mover.offset-mover.len).toBeLessThanOrEqual(1.1+1e-9);
+      }
+    }
+  });
+
+  it('gives each traffic lane one paint, with all reference colours and yellow taxis', () => {
+    const colours=new Set<number>();
+    for(let seed=0;seed<40;seed++) for(const lane of generate(initialState(seed),100).lanes) {
+      if(lane.kind!=='road') continue;
+      expect(new Set(lane.movers.map(m=>m.color)).size).toBe(1);
+      if(lane.vehicle==='car') {
+        if(lane.style==='taxi') expect(lane.movers[0].color).toBe(2);
+        else colours.add(lane.movers[0].color);
+      }
+    }
+    expect(colours).toEqual(new Set([0,1,3,4,5,6]));
+  });
   it('adds compact, sedan and taxi lanes with matching physical lengths and varying repeat counts', () => {
     const lanes=Array.from({length:40},(_,i)=>generate(initialState(i),80).lanes).flat();
     const roads=lanes.filter((l): l is RoadLane=>l.kind==='road');
@@ -31,12 +57,12 @@ describe('reference generation revision', () => {
 
   it('stores the generation revision and accepts legacy saves as revision one', () => {
     const save=serialize(createRun(7));
-    expect(save.worldVersion).toBe(3);
-    expect(restore(save)?.worldVersion).toBe(3);
-    for (const worldVersion of [1,2]) expect(restore({...save,worldVersion})?.worldVersion).toBe(worldVersion);
+    expect(save.worldVersion).toBe(4);
+    expect(restore(save)?.worldVersion).toBe(4);
+    for (const worldVersion of [1,2,3]) expect(restore({...save,worldVersion})?.worldVersion).toBe(worldVersion);
     delete save.worldVersion;
     expect(restore(save)?.worldVersion).toBe(1);
-    expect(restore({...save,worldVersion:4})).toBeNull();
+    expect(restore({...save,worldVersion:5})).toBeNull();
     expect(generate(initialState(7,1),60).lanes).not.toEqual(generate(initialState(7,2),60).lanes);
   });
 });

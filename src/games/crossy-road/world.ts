@@ -40,7 +40,7 @@ export class World implements LaneSource {
   /** Rows below this were pruned. It only rises. */
   private floor = 0;
 
-  constructor(seed: number, version: 1 | 2 | 3 = 3) {
+  constructor(seed: number, version: 1 | 2 | 3 | 4 = 4) {
     this.state = initialState(seed, version);
     this.seed = this.state.seed;
   }

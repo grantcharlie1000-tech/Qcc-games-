@@ -5,9 +5,9 @@
  * bottom centre of the model (x and z centred, y = 0 at the base) and vehicles face +x, so a
  * renderer turns a vehicle by a yaw of π to face −x. The bird faces −z (forward).
  *
- * Tinted models come in two geometries: a `body` in white, which the renderer tints with a
- * per-instance colour, and a `detail` with fixed colours (windows, wheels, cargo). Draw both at
- * the same transform. Side faces get a slightly darker bottom edge (a cheap ambient occlusion)
+ * Tinted builders return a white `body` and fixed-colour `detail` (windows, wheels, cargo).
+ * The renderer merges them with a paint mask for one instanced draw at the same transform.
+ * Side faces get a slightly darker bottom edge (a cheap ambient occlusion)
  * that tints along with the instance colour. */
 import * as THREE from 'three';
 import type {CarStyle} from './config';
@@ -21,8 +21,8 @@ export type Rgb = readonly [r: number, g: number, b: number];
 export type Part = readonly [x: number, y: number, z: number, w: number, h: number, d: number, color: number | Rgb, rotZ?: number, rotX?: number, side?: number | Rgb];
 
 /** Palettes shared with the renderer so instance tints and baked colours agree. */
-export const VEHICLE_COLORS: readonly number[] = [0xe43135, 0x23c6ed, 0xf4d33e, 0x9a4adb, 0x85bd42, 0x3f75bc];
-export const TRUCK_COLORS: readonly number[] = [0xbd163c, 0x13bfdc, 0xbd163c, 0x8a3e92, 0x477db3, 0x18bdd8];
+export const VEHICLE_COLORS: readonly number[] = [0xe43135, 0x23c6ed, 0xf4d33e, 0x9a4adb, 0x85bd42, 0x3f75bc, 0xf18a32];
+export const TRUCK_COLORS: readonly number[] = [0xbd163c, 0x13bfdc, 0xbd163c, 0x8a3e92, 0x477db3, 0x18bdd8, 0xe67c2c];
 export const TRAIN_COLORS: readonly number[] = [0xe94f64, 0x3a86ff, 0x2bb673, 0xf4a259];
 export const LOG_COLORS: readonly number[] = [0x743e46, 0x7c424d, 0x6b3745];
 
@@ -165,6 +165,16 @@ export function chickenGeometry(): THREE.BufferGeometry {
 
 /** The result for tinted vehicles: draw `body` with an instance tint and `detail` untinted. */
 export interface VehicleParts { body: THREE.BufferGeometry; detail: THREE.BufferGeometry }
+
+/** One instanced draw for both paint and fixed details. The paint mask keeps
+ * windows, cargo and wheels unchanged when the body receives a lane colour.
+ * The caller retains ownership of the two input geometries. */
+export function mergeVehicle(parts: VehicleParts): THREE.BufferGeometry {
+  for (const [geometry, paint] of [[parts.body, 1], [parts.detail, 0]] as const) {
+    geometry.setAttribute('paint', new THREE.BufferAttribute(new Float32Array(geometry.getAttribute('position').count).fill(paint), 1));
+  }
+  return mergeGeometries([parts.body, parts.detail]);
+}
 
 /** Keep complete roofs and wheels inside the projected lane, as well as its ground footprint.
  * Length stays equal to the collision span; body and details receive the same proportions. */
