@@ -11,7 +11,7 @@ async function navigationContrast(page:Page,scope:string){
   const boxes=await nav.evaluate(n=>{
     const b=n.getBoundingClientRect();
     return [...n.querySelectorAll('.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
-      const r=e.getBoundingClientRect();return {x:(r.x-b.x)*devicePixelRatio,y:(r.y-b.y)*devicePixelRatio,w:r.width*devicePixelRatio,h:r.height*devicePixelRatio,color:getComputedStyle(e).color};
+      const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
     }).filter(r=>r.w>0&&r.h>0);
   });
   const hide=await page.addStyleTag({content:`${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:transparent!important}`});
@@ -20,7 +20,7 @@ async function navigationContrast(page:Page,scope:string){
   const maskStyle=await page.addStyleTag({content:`html,body{background:#000!important}#content{visibility:hidden}${scope}{visibility:visible!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
   const mask=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   await maskStyle.evaluate(e=>(e as Element).remove());
-  return glyphContrast(page,shot,mask,boxes);
+  return glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
 }
 
 for(const fallback of [false,true])test(`adaptive ink stays legible while real game artwork scrolls behind it (${fallback?'fallback':'native'})`,async({page})=>{
@@ -144,7 +144,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
     const boxes=await nav.evaluate(n=>{
       const b=n.getBoundingClientRect();
       return [...n.querySelectorAll('.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
-        const r=e.getBoundingClientRect();return {x:(r.x-b.x)*devicePixelRatio,y:(r.y-b.y)*devicePixelRatio,w:r.width*devicePixelRatio,h:r.height*devicePixelRatio,color:getComputedStyle(e).color};
+        const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
       }).filter(r=>r.w>0&&r.h>0);
     });
     const hide=await page.addStyleTag({content:`${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:transparent!important}`});
@@ -153,7 +153,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
     const maskStyle=await page.addStyleTag({content:`html,body{background:#000!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
     const mask=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
     await maskStyle.evaluate(e=>(e as Element).remove());
-    const ratios=await glyphContrast(page,shot,mask,boxes);
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
     expect(ratios.length).toBeGreaterThanOrEqual(11);
     expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
     await backdrop.evaluate(e=>(e as Element).remove());

@@ -115,7 +115,7 @@ test('assistive activation, keyboard reveal and shared fullscreen remain dependa
  await page.getByRole('button',{name:'Flag mode',exact:true}).click();await cell(page,0).dispatchEvent('click',{detail:0});await expect(cell(page,0)).toHaveAttribute('data-state','flagged');
  await cell(page,0).focus();await page.keyboard.press('Enter');await expect(cell(page,0)).toHaveAttribute('data-state','flagged');await page.keyboard.press('f');await page.keyboard.press('Space');await expect(cell(page,0)).toHaveAttribute('data-state','open');
  const count=await page.locator('.ms-tile[data-state=flagged]').count();await openGameMenu(page);await page.locator('#game-options').getByLabel('Difficulty',{exact:true}).focus();await page.keyboard.press('f');expect(await page.locator('.ms-tile[data-state=flagged]').count()).toBe(count);
- await settings(page);await gameAction(page,'Enter full screen');await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','true');await settings(page);await gameAction(page,'Exit full screen');
+ await settings(page);await gameAction(page,'Enter full screen');await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','true');await settings(page);await gameAction(page,/^Exit full screen(?:$|\. This browser keeps its own controls)/);
  await settings(page);await gameAction(page,'Game rules');await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
 });
 

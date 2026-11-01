@@ -3,10 +3,10 @@ import {advance,createState,start,enqueue} from '../../../src/games/snake/model'
 import {seedStudyTopic} from '../../fixtures';
 import { test, expect } from '../../fixtures';
 const saved=async(page:import('@playwright/test').Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:snake')!).data);
-async function waitForPhoneControls(page:import('@playwright/test').Page){
+async function waitForPhoneReady(page:import('@playwright/test').Page){
  await expect(page.locator('.snake-canvas')).toBeVisible();
  await expect(page.getByRole('button',{name:'Start slithering',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Turn left',exact:true})).toBeVisible();
+ await expect(page.locator('.snake-pad,[data-direction]')).toHaveCount(0);
 }
 test('keyboard eating, turning, loss, replay, pause and saved continuation',async({page})=>{
  test.setTimeout(60000);
@@ -32,14 +32,13 @@ test('keyboard eating, turning, loss, replay, pause and saved continuation',asyn
  await appSettings(page);await page.locator('#search').fill('');await page.getByRole('button',{name:'Close menu'}).click();await page.getByRole('link',{name:'Play Snake',exact:true}).click();await gameAction(page,'Restart game');
  await page.getByRole('button',{name:'Start slithering'}).click();await page.clock.runFor(170);await page.screenshot({path:'tests/games/snake/evidence/desktop.png',fullPage:true});expect(errors).toEqual([]);
 });
-test('pointer swipe and touch direction buttons fit a phone',async({browser,browserName})=>{
+test('two native swipes turn the snake and fit a phone without a D-pad',async({browser,browserName})=>{
  const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});await seedStudyTopic(context);const page=await context.newPage();await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));await page.goto('/#/game/snake');
- await waitForPhoneControls(page);
+ await waitForPhoneReady(page);
  await page.evaluate(()=>{
   const times:Record<string,number>={};(window as unknown as {snakeTouchTimes:Record<string,number>}).snakeTouchTimes=times;
   document.addEventListener('click',event=>{const target=(event.target as HTMLElement).closest('button');if(target?.classList.contains('snake-start'))times.start=performance.now();if(target?.id==='game-menu')times.pause=performance.now();},true);
-  document.querySelector('canvas')!.addEventListener('pointerup',()=>{times.swipe=performance.now();},true);
-  document.querySelector('[data-direction=left]')!.addEventListener('pointerdown',()=>{times.left=performance.now();},true);
+  document.querySelector('canvas')!.addEventListener('pointerup',()=>{times[times.swipe===undefined?'swipe':'left']=performance.now();},true);
  });
  await page.getByRole('button',{name:'Start slithering'}).tap();await page.clock.runFor(170);
  const box=(await page.locator('.snake-canvas').boundingBox())!;
@@ -51,11 +50,14 @@ test('pointer swipe and touch direction buttons fit a phone',async({browser,brow
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  }else{
   // CDP is Chromium-only. WebKit exercises the same captured pointer gesture
-  // with native mouse events, then the real touchscreen direction buttons below.
+  // with native captured pointer events.
   await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y-65,{steps:4});await page.mouse.up();
  }
  await page.clock.runFor(170);
- await page.getByRole('button',{name:'Turn left',exact:true}).tap();await page.clock.runFor(170);
+ if(browserName==='chromium'){
+  const cdp=await context.newCDPSession(page);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-65,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ }else{await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x-65,y,{steps:4});await page.mouse.up();}
+ await page.clock.runFor(170);
  await pauseGame(page);const state=await saved(page);expect(state.direction).toBe('left');
  const times=await page.evaluate(()=>(window as unknown as {snakeTouchTimes:Record<string,number>}).snakeTouchTimes);
  const reference=createState();start(reference);advance(reference,times.swipe-times.start);enqueue(reference,'up');advance(reference,times.left-times.swipe);enqueue(reference,'left');advance(reference,times.pause-times.left);
@@ -66,14 +68,14 @@ test('pointer swipe and touch direction buttons fit a phone',async({browser,brow
 
 test.describe('touch import readiness',()=>{
  test.use({hasTouch:true});
- test('phone instrumentation waits for the actual controls while the lazy Snake import is held',async({page})=>{
+ test('phone instrumentation waits for the canvas and start control while the lazy Snake import is held',async({page})=>{
  let release!:()=>void,requested!:()=>void;
  const gate=new Promise<void>(resolve=>{release=resolve;}),held=new Promise<void>(resolve=>{requested=resolve;});
  await page.route('**/src/games/snake/index.ts*',async route=>{requested();await gate;await route.continue();});
  const navigation=page.goto('/#/game/snake');
  try{
   await held;await expect(page.locator('#game-stage .loading')).toBeVisible();
-  let ready=false;const controls=waitForPhoneControls(page).then(()=>{ready=true;});
+  let ready=false;const controls=waitForPhoneReady(page).then(()=>{ready=true;});
   expect(await page.locator('.snake-canvas').count()).toBe(0);expect(ready).toBe(false);
   release();await navigation;await controls;
   expect(ready).toBe(true);

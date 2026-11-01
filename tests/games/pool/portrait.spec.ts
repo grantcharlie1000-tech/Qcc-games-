@@ -30,8 +30,11 @@ test('portrait ball-in-hand uses screen axes and native placement',async({page})
   await page.reload();
   // Restore a fresh hand through the existing save path, not a production test setter.
   await page.evaluate(data=>localStorage.setItem('pocket-arcade:v1:save:pool',JSON.stringify({version:1,data})),saved);await page.reload();await page.locator('.pool-table').hover();
-  const p=await point(page,100,300);await page.touchscreen.tap(p.x,p.y);
-  const cue=(await state(page)).balls.find(b=>b.id===0)!;expect(cue.x).toBeCloseTo(100,0);expect(cue.y).toBeCloseTo(300,0);expect((await state(page)).ballInHand).toBe(false);
+  const p=await point(page,100,300),b=(await page.locator('.pool-table').boundingBox())!;
+  // WebKit quantizes native touch coordinates. Assert the unchanged mapping
+  // from an integral screen point, rather than an unrepresentable fraction.
+  const tap={x:Math.round(p.x),y:Math.round(p.y)};await page.touchscreen.tap(tap.x,tap.y);
+  const cue=(await state(page)).balls.find(b=>b.id===0)!;expect(cue.x).toBeCloseTo((tap.x-b.x)*440/b.width,5);expect(cue.y).toBeCloseTo((tap.y-b.y)*840/b.height,5);expect((await state(page)).ballInHand).toBe(false);
 });
 
 test('rotating the viewport cancels a held pull without changing the rack',async({page})=>{

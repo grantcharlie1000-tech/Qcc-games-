@@ -8,6 +8,7 @@ import {uiIcon} from './ui/icons';
 import {autoHideTabbar} from './ui/tabbar';
 import {bindGlass} from './ui/glass';
 import {createSectionNavigation} from './ui/navigation';
+import {suppressNavigationUnderSheets} from './ui/modal-navigation';
 import {bindGameChrome} from './ui/game-chrome';
 import {openSheet} from './ui/sheet';
 import {trackInputMode} from './ui/focus';
@@ -41,6 +42,7 @@ app.innerHTML=`<main id="content"></main>
 const navigation=createSectionNavigation('app');
 navigation.bar.innerHTML=`<a class="ui-tab" href="#/collection" aria-current="page">${uiIcon('grid')}<span>Games</span></a><a class="ui-tab" href="#/movies/browse/movie">${uiIcon('film')}<span>Movies</span></a><a class="ui-tab" href="#/movies/browse/tv">${uiIcon('tv')}<span>TV Shows</span></a><a class="ui-tab" href="#/movies/list">${uiIcon('bookmark')}<span>My list</span></a><button class="ui-tab" data-action="study">${uiIcon('study')}<span>Study</span></button>`;
 app.prepend(navigation.root);
+suppressNavigationUnderSheets();
 const content=document.querySelector<HTMLElement>('#content')!;
 const menu=document.querySelector<HTMLDialogElement>('#menu')!;
 const rulesDialog=document.querySelector<HTMLDialogElement>('#rules-dialog')!;
@@ -131,7 +133,9 @@ watchUpdates(import.meta.url,status=>{
   if(newlyReady)announce('An update is ready. Open the menu, or use Reload to update in Study, when you are ready.');
 });
 function setChromeInert(value:boolean):void{
-  document.querySelector<HTMLElement>('.app-navigation')!.inert=value;
+  const chrome=document.querySelector<HTMLElement>('.app-navigation')!;
+  chrome.toggleAttribute('data-view-hidden',value);
+  chrome.inert=value||chrome.hasAttribute('data-sheet-hidden');
 }
 function leave(saveProgress=true){
   movies?.dispose();movies=undefined;
@@ -289,7 +293,7 @@ async function route(){
         <button id="game-rankings" class="game-menu-action">${icon('star')}<span>Leaderboards</span></button>
         <button id="game-local-options" class="game-menu-action" hidden>Game options</button>
       </div>
-      <label class="game-touch-setting" hidden><span>Show touch controls</span><input id="game-touch-controls" type="checkbox"></label>
+      ${['maze-muncher','quadfall'].includes(id)?'<label class="game-touch-setting" hidden><span>Show touch controls</span><input id="game-touch-controls" type="checkbox"></label>':''}
     </dialog>
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
     <p id="game-status" role="status"${id==='pool'?' aria-hidden="true"':''}></p></section>`;
@@ -365,7 +369,7 @@ async function route(){
       if(resume)setPaused(false);
       instance?.openMenu?.();
     });
-    if(['snake','maze-muncher','quadfall'].includes(id)){
+    if(['maze-muncher','quadfall'].includes(id)){
       const touch=currentMenu.querySelector<HTMLInputElement>('#game-touch-controls')!;
       touch.parentElement!.hidden=false;touch.checked=matchMedia('(any-pointer:coarse)').matches;
       view.dataset.touchControls=String(touch.checked);
@@ -466,7 +470,7 @@ window.addEventListener('keydown',event=>{
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
-  if(event.key==='Escape'&&(menu.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open))return;
+  if(event.key==='Escape'&&document.querySelector('dialog[open]'))return;
   if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;

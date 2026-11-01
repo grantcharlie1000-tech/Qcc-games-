@@ -122,7 +122,7 @@ for(const view of ['home','accounts','snake','fruit-merge']){
     await hide.evaluate(e=>e.parentNode?.removeChild(e));
     await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important}`});
     const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
-    const ratios=await glyphContrast(page,shot,mask,boxes);
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!);
     expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
   });
 }
