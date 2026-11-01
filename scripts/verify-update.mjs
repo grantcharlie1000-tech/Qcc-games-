@@ -35,14 +35,12 @@ async function version(page){return await bounded(page.evaluate(()=>new Promise(
 })),3000,'worker version RPC (Node deadline)').catch(error=>{if(error.message.includes('version RPC')){console.log('TRANSIENT VERSION OBSERVATION',error.message);return undefined;}throw error;});}
 async function home(page,base){await page.goto(base);await page.locator('#accounts-dialog[open],[data-study-topic],.game-card').first().waitFor();if(await page.locator('#accounts-dialog[open]').count())await page.getByRole('button',{name:'Play as guest',exact:true}).click();await page.locator('[data-study-topic],.game-card').first().waitFor();if(await page.locator('[data-study-topic]').count()){const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.count())await accept.click();await page.locator('[data-study-topic="close-reading"]').click();}}
 async function menu(page){
- const options=page.locator('#game-options');
- if(!await options.isVisible()){
-  const floating=page.getByRole('button',{name:'Menu',exact:true});
-  if(await floating.isVisible())await floating.click();
-  else await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ if(await page.locator('#menu[open]').count())return;
+ if(!await page.locator('#game-options[open]').count()){
+  const game=page.locator('#game-menu').or(page.getByRole('button',{name:'Menu',exact:true})).first();
+  if(await game.isVisible())await game.click();else await page.getByRole('button',{name:'Open menu',exact:true}).click();
  }
- if(await options.isVisible())await options.getByRole('button',{name:'Settings',exact:true}).click();
- await page.locator('#menu').waitFor({state:'visible'});
+ if(await page.locator('#game-options[open]').count())await page.locator('#game-options').getByRole('button',{name:'Settings',exact:true}).click();
 }
 async function pause(page){if(await page.locator('#game-options').count())await page.locator('#game-menu').click();else await page.getByRole('button',{name:'Pause game',exact:true}).click();}
 // The glass sheet animates out after the click, so wait until #menu is hidden.

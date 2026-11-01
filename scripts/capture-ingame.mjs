@@ -71,7 +71,8 @@ try{
       }
       await page.locator('#game-stage > *').first().waitFor({state:'visible'});
       await page.locator('.loading').waitFor({state:'detached'});
-      await page.locator('.game-hud strong').first().waitFor({state:'visible'});
+      // Blockcraft's start dialog intentionally suppresses shell controls.
+      await page.locator('.game-hud strong').first().waitFor({state:id==='blockcraft'?'attached':'visible'});
       await page.evaluate(()=>document.fonts.ready);
       // Let native ResizeObservers settle the play surface before freezing timed games.
       await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
@@ -107,6 +108,7 @@ try{
           await page.waitForFunction(()=>document.querySelector('.blockcraft')?.getAttribute('data-ready')==='true',null,{timeout:60000});
           await click(page.getByRole('button',{name:'Play',exact:true}));
           await page.waitForFunction(()=>document.querySelector('.blockcraft')?.getAttribute('data-phase')==='playing');
+          await page.locator('.game-hud strong').first().waitFor({state:'visible'});
           // Look down using the real controls so terrain, rather than uniform
           // sky, crosses the top dock and exposes its edge refraction.
           if(mobile){

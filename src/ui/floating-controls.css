@@ -1,0 +1,6 @@
+.floating-glass-group{position:relative;z-index:1;--glass-radius:24px;border-radius:var(--glass-radius);background:none;border:0;box-shadow:none}
+.floating-glass-group>:not(.ui-glass-lens,.ui-glass-glow){position:relative;z-index:3}
+.floating-glass-group>.ui-glass-lens{border-radius:inherit;overflow:hidden}
+:root[data-input=keyboard] .floating-glass-group:focus-visible,
+:root[data-input=keyboard] .floating-glass-group :focus-visible{outline:2px solid var(--glass-ink);outline-offset:2px}
+:root[data-input=keyboard] .floating-glass-group:focus-visible{outline-offset:-4px}

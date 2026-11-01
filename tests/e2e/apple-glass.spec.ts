@@ -1,6 +1,13 @@
 import {test,expect} from '../fixtures';
 import {glyphContrast} from '../glass-contrast';
 
+const forcedFallback=process.env.ARCADE_GLASS_FALLBACK==='1';
+test.beforeEach(async({page})=>{
+  if(forcedFallback)await page.addInitScript(()=>{
+    const url=new URL(location.href);url.searchParams.set('glass','fallback');history.replaceState(null,'',url);
+  });
+});
+
 for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contrast over a card-row gap at ${scroll}px`,async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const nav=page.locator('.app-navigation'),bar=page.locator('.app-tabbar');
@@ -22,7 +29,7 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
     const mask=(await nav.screenshot({animations:'disabled'})).toString('base64');
     await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
-    const ratios=await glyphContrast(page,shot,mask,boxes);
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
     expect(Math.min(...ratios),`${name}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
   }
 });
@@ -178,7 +185,8 @@ test('pointer press lifts the individual button and reduced motion removes the l
   await button.hover();await page.mouse.down();
   await expect(button).toHaveAttribute('data-pressing','');
   await expect.poll(()=>button.evaluate(e=>parseFloat(getComputedStyle(e).scale))).toBeGreaterThanOrEqual(1.08);
-  await expect(button.locator('.ui-glass-lens')).toHaveCSS('backdrop-filter',/blur\(1px\)/);
+  const filter=await button.getAttribute('data-glass')==='frost'?button:button.locator('.ui-glass-lens');
+  await expect(filter).toHaveCSS('backdrop-filter',/blur\(1px\)/);
   await page.mouse.move(1,1);await page.mouse.up();
   await expect(button).not.toHaveAttribute('data-pressing');
   await page.emulateMedia({reducedMotion:'reduce'});
@@ -234,9 +242,11 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
 for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','snake','neon-coil','quadfall','maze-muncher','ball-run','blockcraft']){
   test(`${id} dock glyphs retain 4.5:1 contrast over their rendered surface`,async({page,browserName})=>{
     await page.setViewportSize({width:390,height:844});await page.goto(`/#/game/${id}`);
+    // The shell is intentionally absent behind game-owned modal menus.
+    if(id==='blockcraft')await page.getByRole('button',{name:'Play',exact:true}).click();
     const dock=page.locator('.game-dock');
     await expect(dock.locator('.game-hud strong').first()).toBeVisible();
-    await expect(dock.locator(`.game-glass[data-glass=${browserName==='chromium'?'backdrop':'frost'}]`)).toHaveCount(3);
+    await expect(dock.locator(`.game-glass[data-glass=${browserName==='chromium'&&!forcedFallback?'backdrop':'frost'}]`)).toHaveCount(3);
     if(id==='ball-run'){
       await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+100));
       await page.locator('.br-play').click();await page.clock.runFor(600);
@@ -244,7 +254,7 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     if(id==='blockcraft'){
       // A cave or night sky may be entirely dark. The light regular variant must
       // still support its dark glyphs on that darkest background.
-      await page.addStyleTag({content:'.blockcraft canvas{visibility:hidden!important}.blockcraft{background:#000!important}'});
+      await page.addStyleTag({content:'.blockcraft canvas{opacity:0!important}.blockcraft{background:#000!important}'});
     }
     const boxes=await dock.evaluate(el=>{
       const d=el.getBoundingClientRect();
@@ -260,7 +270,7 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     await hideInk.evaluate(e=>e.parentNode?.removeChild(e));
     await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
     const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    const ratios=await glyphContrast(page,shot,mask,boxes);
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
     expect(Math.min(...ratios),`${id}: ${ratios.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
   });
 }

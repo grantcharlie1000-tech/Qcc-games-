@@ -1,6 +1,6 @@
 /* The visual viewport comes from play-surface.ts, including browser toolbar changes. */
 html.game-viewport,html.game-viewport body{height:100%;overflow:hidden;overscroll-behavior:none}
-body.in-game .game-view{position:fixed;top:var(--play-top,0px);left:var(--play-left,0px);width:var(--play-width,100%);height:var(--play-height,100dvh);max-width:none;margin:0;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:8px;overflow:hidden;background:#191d1c;touch-action:manipulation}
+body.in-game .game-view{position:fixed;top:var(--play-top,0px);left:var(--play-left,0px);width:var(--play-width,100%);height:var(--play-height,100dvh);max-width:none;margin:0;padding:env(safe-area-inset-top,0px) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:8px;overflow:hidden;background:#191d1c;touch-action:manipulation}
 body.in-game .stage-wrap{order:1;flex:1 1 auto;min-height:0;width:100%;display:grid;place-items:center}
 body.in-game #game-stage{min-height:0;width:100%;max-height:100%;outline:none}
 body.in-game #game-stage.viewport-fitted{position:absolute;left:50%;top:50%;max-height:none;transform-origin:center;overflow:visible}
@@ -20,7 +20,7 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-view[data-game-id=minesweeper]{--game-surface:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
 /* Native full-bleed canvas scenes already paint behind their top dock. */
 .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=shooter]) .game-surface{background:transparent}
-.game-dock{position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;justify-content:center;gap:10px;z-index:30;font-family:var(--font-sans)}
+.game-dock{background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;justify-content:center;gap:10px;z-index:30;font-family:var(--font-sans)}
 .game-dock>.game-glass{position:relative;border-radius:999px;height:52px;min-height:52px;min-width:0}
 .game-dock>.ui-tab{flex:0 0 52px;min-width:52px;display:flex;flex-direction:row;gap:8px;padding:0;font-size:14px;font-weight:550}
 .game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:none}
@@ -51,7 +51,7 @@ body.in-game #pause-overlay{border-radius:16px}
    fruit game's cream surface, so use the game's brown ink. */
 .game-view[data-game-id=fruit-merge] :is(.fm-eyebrow,.fm-next-name,.fm-count){color:#694b38}
 .game-view[data-game-id=tower] .tower-feedback{text-shadow:0 1px #5a496f}
-.game-view:is([data-game-id=quadfall],[data-game-id=fivefold]) .game-dock{order:0}
+.game-view:is([data-game-id=quadfall],[data-game-id=fivefold]) .game-dock{order:0;margin-top:8px}
 /* These scenes already reserve their top HUD area. Keep their canvas/input mapping intact. */
 .game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(var(--play-height,100dvh) * .54));--scene-bg:#55c3ec}
 .game-view[data-game-id=water-sort]{--scene-width:min(100%,1100px);--scene-bg:#221b2e}
@@ -79,7 +79,7 @@ body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}
 .game-touch-setting{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 0;font:13px/1.4 var(--font-sans)}
 .game-menu-source{display:none!important}
 @media(hover:hover) and (pointer:fine){.game-menu-action:hover{background:#ffffff18}.game-menu-action#pause-game:hover{background:#fff}}
-@media(max-height:480px){body.in-game .game-view{padding-block:max(4px,env(safe-area-inset-top)) max(4px,env(safe-area-inset-bottom));gap:4px}}
+@media(max-height:480px){body.in-game .game-view{padding-block:env(safe-area-inset-top,0px) max(4px,env(safe-area-inset-bottom));gap:4px}}
 
 /* Playing: no double-tap zoom. Pinch is also cancelled in script. Text fields stay selectable. */
 html.play-locked,html.play-locked body{touch-action:manipulation;-webkit-text-size-adjust:100%}

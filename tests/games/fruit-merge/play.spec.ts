@@ -7,9 +7,12 @@ test('mouse aim, real drops and merge, pause, keyboard, saved return and restart
  await page.goto('/#/game/fruit-merge');const basket=page.getByRole('img',{name:/Fruit basket/});await expect(basket).toBeVisible();
  await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('equal');await page.getByRole('button',{name:'Let’s play'}).click();
  const box=await basket.boundingBox();if(!box)throw Error('No basket bounds');
- await page.mouse.move(box.x+box.width*.3,box.y+box.height*.5);await page.mouse.click(box.x+box.width*.3,box.y+box.height*.5);
+ // Native WebKit mouse coordinates are integral CSS pixels. Pick an exact
+ // native point and retain the strict mapping assertion at the real scale.
+ const aim={x:Math.round(box.x+box.width*.3),y:Math.round(box.y+box.height*.5)};
+ await page.mouse.move(aim.x,aim.y);await page.mouse.click(aim.x,aim.y);
  await expect(page.locator('.fm-count')).toHaveText('1 fruit in basket');
- const first=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data.fruits[0]);expect(first.x).toBeCloseTo(108,0);
+ const first=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data.fruits[0]);expect(first.x).toBeCloseTo((aim.x-box.x)*360/box.width,5);
  await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeEnabled();
  await basket.focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');await expect(page.locator('.fm-count')).toHaveText('2 fruits in basket');
  await pauseGame(page);await expect(page.locator('#pause-overlay h2')).toBeVisible();
