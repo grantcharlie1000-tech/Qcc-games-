@@ -32,3 +32,68 @@ it('kicks a regular piece at a wall',()=>{const s=createState(1);s.active={id:'T
 it('lands exactly at the ghost and scores two per hard-drop row',()=>{const s=createState(5),a={...s.active},y=ghost(s);hardDrop(s);expect(s.score).toBe((y-a.y)*2);expect(s.board.flat().filter(Boolean)).toHaveLength(4);for(const [x,row] of cells({...a,y}))expect(s.board[row][x]).toBe(a.id);});
 
 it('resets on rotation reaching a new lowest occupied row',()=>{const s=createState(1);s.active={id:'T',x:3,y:10,r:0};s.lowest=11;s.lock=200;s.resets=15;expect(rotate(s,1)).toBe(true);expect(s.lowest).toBe(12);expect(s.lock).toBe(0);expect(s.resets).toBe(0);});
+
+import {PieceGesture,RepeatInput} from '../../../src/games/quadfall/input';
+
+describe('mobile piece gestures',()=>{
+ it('rotates exactly once on a tap and never after finishing',()=>{
+  const g=new PieceGesture(100,100,0,30);
+  expect(g.finish(102,103,90)).toEqual(['cw']);
+  expect(g.finish(102,103,100)).toEqual([]);
+ });
+ it('tracks whole cells and reverses with the finger without rotating',()=>{
+  const g=new PieceGesture(100,100,0,30);
+  expect(g.move(189,102,150)).toEqual(['right','right']);
+  expect(g.move(191,102,170)).toEqual(['right']);
+  expect(g.move(130,102,210)).toEqual(['left','left']);
+  expect(g.finish(130,102,250)).toEqual([]);
+ });
+ it('soft drops a slow downward drag one cell at a time',()=>{
+  const g=new PieceGesture(100,100,0,30);
+  expect(g.move(102,161,220)).toEqual(['soft','soft']);
+  expect(g.move(102,191,320)).toEqual(['soft']);
+  expect(g.finish(102,191,400)).toEqual([]);
+ });
+ it('hard drops a fast downward flick with no soft-drop points or rotation',()=>{
+  const g=new PieceGesture(100,100,0,30);
+  expect(g.move(101,160,35)).toEqual([]);
+  expect(g.move(101,220,65)).toEqual([]);
+  expect(g.finish(101,250,90)).toEqual(['hard']);
+ });
+ it('commits a slow drop and never promotes it to a hard drop',()=>{
+  const g=new PieceGesture(100,100,0,30);
+  expect(g.move(100,130,100)).toEqual(['soft']);
+  expect(g.finish(100,250,180)).toEqual(['soft','soft','soft','soft']);
+ });
+ it('holds on an upward swipe without also moving or dropping',()=>{
+  const g=new PieceGesture(100,150,0,30);
+  expect(g.move(102,110,100)).toEqual([]);
+  expect(g.finish(103,70,200)).toEqual(['hold']);
+ });
+ it('does not turn a cancelled gesture or a long press into an action',()=>{
+  const g=new PieceGesture(100,100,0,30);g.cancel();
+  expect(g.finish(100,200,50)).toEqual([]);
+  expect(new PieceGesture(100,100,0,30).finish(100,100,600)).toEqual([]);
+ });
+});
+
+describe('keyboard repeat timing',()=>{
+ it('moves immediately, waits 133 ms, then repeats every 33 ms',()=>{
+  const keys=new RepeatInput();expect(keys.press('ArrowLeft','left',0)).toEqual(['left']);
+  expect(keys.tick(132)).toEqual([]);expect(keys.tick(133)).toEqual(['left']);
+  expect(keys.tick(165)).toEqual([]);expect(keys.tick(199)).toEqual(['left','left']);
+  expect(keys.press('ArrowLeft','left',200)).toEqual([]);
+  keys.release('ArrowLeft',210);expect(keys.tick(1000)).toEqual([]);
+ });
+ it('speeds soft drop up immediately without DAS',()=>{
+  const keys=new RepeatInput();expect(keys.press('ArrowDown','soft',10)).toEqual(['soft']);
+  expect(keys.tick(42)).toEqual([]);expect(keys.tick(43)).toEqual(['soft']);
+  expect(keys.tick(109)).toEqual(['soft','soft']);
+ });
+ it('gives the latest horizontal key priority and clears on pause',()=>{
+  const keys=new RepeatInput();keys.press('ArrowLeft','left',0);keys.press('ArrowRight','right',50);
+  expect(keys.tick(183)).toEqual(['right']);keys.release('ArrowRight',190);
+  expect(keys.tick(322)).toEqual([]);expect(keys.tick(323)).toEqual(['left']);
+  keys.clear();expect(keys.tick(1000)).toEqual([]);
+ });
+});

@@ -1,7 +1,7 @@
 import type {TopicStorageFailure} from './session';
 export const READING_CHOICE_KEY='pocket-arcade:study:v1:reading-choice';
 type Choice='accept'|'reject';
-const explanation='No tracking or advertising scripts run. This choice controls optional storage of your reading topic and current article.';
+const explanation='This choice controls optional storage of your reading topic and current article.';
 
 export class ReadingPrivacy {
   readonly host=document.createElement('div');

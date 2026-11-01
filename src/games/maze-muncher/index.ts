@@ -1,39 +1,42 @@
 import type {GameModule} from '../../core/types';
 import {createState, restoreState, start, steer, step, tileOf, TICKS_PER_SECOND, type Dir, type GameEvent} from './model';
 import {createBoard} from './art';
+import {bindGamePauseSheet,createGameSheet} from '../../ui/game-sheet';
 import './style.css';
 
 const TICK_MS = 1000 / TICKS_PER_SECOND;
 const module: GameModule = {
   id: 'maze-muncher', title: 'Pac-Man', cover: 'game-art/maze-muncher/cover.svg',
-  rules: 'Independent browser adaptation. Steer Nib through the maze with the arrow keys, WASD, a swipe on the board or the direction buttons. A turn you press early is saved and taken at the next opening. Eat every dot (10 points) to clear the maze. The four glowing power berries (50 points) frighten the chasers for a few seconds: they turn blue, slow down and can be eaten for 200, 400, 800 and 1,600 points. They flash just before they recover. Rook chases you directly, Vex aims ahead of you, Drift works with Rook to cut you off, and Mope gives up when it gets close. Every so often they all scatter to their own corners and turn around. A bonus treat appears under the house twice per maze. The side tunnel wraps around and slows the chasers. You start with three lives and earn one more at 10,000 points. Each new maze is faster and frightens the chasers for less time.',
+  rules: 'Independent browser adaptation. Tap Play or press Enter. Steer Nib through the maze with the arrow keys, WASD or a short swipe anywhere in the play area. A turn you press early stays queued until the next opening or until you choose another direction. Escape pauses; the shared menu has pause and restart. Eat every dot (10 points) to clear the maze. The four glowing power berries (50 points) frighten the chasers for a few seconds: they turn blue, slow down and can be eaten for 200, 400, 800 and 1,600 points. They flash just before they recover. Rook chases you directly, Vex aims ahead of you, Drift works with Rook to cut you off, and Mope gives up when it gets close. Every so often they all scatter to their own corners and turn around. A bonus treat appears under the house twice per maze. The side tunnel wraps around and slows the chasers. You start with three lives and earn one more at 10,000 points. Each new maze is faster and frightens the chasers for less time.',
   mount(container, context) {
-    container.innerHTML = `<div class="mm-game"><div class="mm-frame"><div class="mm-card"><strong>Pac-Man</strong><p>Clear every dot. Power berries turn the tables.</p><button class="game-button mm-start">Start game</button></div></div><div class="mm-controls"><p class="mm-help"><span>Arrows / WASD</span><span>Swipe to steer</span></p><div class="mm-pad" role="group" aria-label="Directions"><button data-dir="up" aria-label="Go up">↑</button><button data-dir="left" aria-label="Go left">←</button><button data-dir="down" aria-label="Go down">↓</button><button data-dir="right" aria-label="Go right">→</button></div></div></div>`;
-    const root = container.querySelector<HTMLElement>('.mm-game')!, frame = root.querySelector<HTMLElement>('.mm-frame')!, controls = root.querySelector<HTMLElement>('.mm-controls')!;
-    const card = root.querySelector<HTMLElement>('.mm-card')!, heading = card.querySelector('strong')!, message = card.querySelector('p')!, startButton = card.querySelector('button')!;
-    const pad = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-dir]'));
+    container.innerHTML = `<div class="mm-game"><div class="mm-frame"></div></div>`;
+    const root = container.querySelector<HTMLElement>('.mm-game')!, frame = root.querySelector<HTMLElement>('.mm-frame')!;
+    const controls = {touch: 'Swipe to steer.', keyboard: 'Arrow keys or WASD to steer.'};
+    const sheet = createGameSheet(frame, {title: 'Pac-Man', controls, buttonClass: 'mm-start', onPlay() {begin(); board.svg.focus({preventScroll: true});}});
+    const pauseSheet = bindGamePauseSheet(container, {title: 'Pac-Man', controls});
+    // Extend the existing shared glass HUD; the shell still owns its dock and actions.
+    const lives = document.createElement('span');
+    lives.className = 'game-hud-item mm-lives';
+    lives.innerHTML = '<small>Lives</small><strong>3</strong>';
+    container.closest('.game-view')?.querySelector('.game-hud')?.append(lives);
     const board = createBoard();
     board.svg.setAttribute('tabindex', '0');
     frame.prepend(board.svg);
     const available = container.parentElement!;
     const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
     const events = new AbortController();
-    let state = createState(Date.now() | 0), paused = false, disposed = false, frameId: number | null = null, last: number | null = null, carry = 0;
+    let state = createState(Date.now() | 0), paused = false, disposed = false, frameId: number | null = null, last: number | null = null, carry = 0, best = context.highScore;
     let gesture: {x: number; y: number; id: number} | null = null, label = '';
     const reduced = () => context.settings.reducedMotion || motionQuery.matches;
 
     function resize() {
       if (disposed) return;
-      const width = available.clientWidth, height = available.clientHeight, ratio = 266 / 224, pad = 12;
-      root.classList.remove('mm-sideways');
-      const below = Math.min(width - pad, (height - controls.offsetHeight - 10) / ratio - pad);
-      const beside = Math.min(width - 204 - pad, height / ratio - pad);
-      const sideways = width >= 520 && beside > below + 24;
-      root.classList.toggle('mm-sideways', sideways);
-      root.style.setProperty('--mm-w', `${Math.max(120, Math.floor(Math.min(560, sideways ? beside : below)))}px`);
+      const width = Math.max(12, Math.min(available.clientWidth, (available.clientHeight - 12) * 224 / 266 + 12));
+      root.style.setProperty('--mm-w', `${width}px`);
+      root.style.setProperty('--mm-h', `${(width - 12) * 266 / 224 + 12}px`);
     }
     const observer = new ResizeObserver(resize);
-    observer.observe(available); observer.observe(controls);
+    observer.observe(available);
 
     function describe() {
       const p = tileOf(state.player);
@@ -46,15 +49,14 @@ const module: GameModule = {
       describe();
     }
     function update() {
+      best = Math.max(best, state.score);
       context.setScore(state.score);
       context.setLevel(`Level ${state.level}`);
-      const showCard = state.phase === 'ready' || state.phase === 'over';
-      card.hidden = !showCard;
-      if (state.phase === 'over') {heading.textContent = 'Game over'; message.textContent = `${state.score.toLocaleString()} points, reached level ${state.level}.`; startButton.textContent = 'Play again';}
-      else if (state.phase === 'ready') {heading.textContent = 'Pac-Man'; message.textContent = 'Clear every dot. Power berries turn the tables.'; startButton.textContent = 'Start game';}
-      startButton.disabled = paused;
-      pad.forEach(b => b.disabled = paused || state.phase === 'over');
-      context.setStatus(paused ? 'Paused' : state.phase === 'over' ? 'Game over. Play again for a new run.' : state.phase === 'ready' ? 'Press Start or any direction to begin.' : state.fright > 0 ? 'Power berry! Eat the blue chasers.' : 'Eat every dot and dodge the chasers.');
+      if (state.phase === 'ready' || state.phase === 'over') sheet.show(state.phase === 'over' ? 'game-over' : 'start', {...(state.phase === 'over' ? {score: state.score.toLocaleString()} : {}), best: best.toLocaleString()});
+      else sheet.hide();
+      lives.querySelector('strong')!.textContent = String(state.phase === 'over' ? 0 : state.lives + 1);
+      sheet.button.disabled = paused;
+      context.setStatus(paused ? 'Paused' : state.phase === 'over' ? 'Game over. Play again for a new run.' : state.phase === 'ready' ? 'Press Play or any direction to begin.' : state.fright > 0 ? 'Power berry! Eat the blue chasers.' : 'Eat every dot and dodge the chasers.');
     }
     const persist = () => context.save(JSON.parse(JSON.stringify(state)));
     function react(list: GameEvent[]) {
@@ -74,9 +76,9 @@ const module: GameModule = {
       if (last === null) {last = now; return;}
       carry = Math.min(carry + now - last, TICK_MS * 10);
       last = now;
-      const score = state.score, fright = state.fright > 0, level = state.level;
+      const score = state.score, fright = state.fright > 0, level = state.level, spareLives = state.lives;
       while (carry >= TICK_MS) {carry -= TICK_MS; react(step(state));}
-      if (state.score !== score || (state.fright > 0) !== fright || state.level !== level) update();
+      if (state.score !== score || (state.fright > 0) !== fright || state.level !== level || state.lives !== spareLives) update();
     }
     function loop(now: number) {
       if (disposed) return;
@@ -99,32 +101,31 @@ const module: GameModule = {
       const dir = keys[event.key] ?? keys[event.key.toLowerCase()];
       if (dir) {event.preventDefault(); action(dir);}
     }, {signal: events.signal});
-    pad.forEach(button => {
-      button.addEventListener('pointerdown', event => {if (event.isPrimary && event.button === 0) {event.preventDefault(); action(button.dataset.dir as Dir);}}, {signal: events.signal});
-      button.addEventListener('click', event => {if (event.detail === 0) action(button.dataset.dir as Dir);}, {signal: events.signal});
-    });
-    startButton.addEventListener('click', () => {begin(); board.svg.focus({preventScroll: true});}, {signal: events.signal});
-    board.svg.addEventListener('pointerdown', event => {
-      if (paused || !event.isPrimary) return;
+    root.addEventListener('pointerdown', event => {
+      if (paused || !event.isPrimary || event.button !== 0 || (event.target instanceof Element && event.target.closest('button')) || document.querySelector('dialog[open]')) return;
+      event.preventDefault();
       gesture = {x: event.clientX, y: event.clientY, id: event.pointerId};
-      board.svg.setPointerCapture(event.pointerId);
+      root.setPointerCapture(event.pointerId);
     }, {signal: events.signal});
-    board.svg.addEventListener('pointermove', event => {
+    root.addEventListener('pointermove', event => {
       // Steer as soon as the swipe is clear, so a held finger can chain turns.
       if (!gesture || gesture.id !== event.pointerId) return;
       const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < 16) return;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < 12) return;
       action(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
       gesture = {x: event.clientX, y: event.clientY, id: event.pointerId};
     }, {signal: events.signal});
-    const endGesture = () => {gesture = null;};
-    board.svg.addEventListener('pointerup', endGesture, {signal: events.signal});
-    board.svg.addEventListener('pointercancel', endGesture, {signal: events.signal});
-    board.svg.addEventListener('lostpointercapture', endGesture, {signal: events.signal});
+    const endGesture = (event: PointerEvent) => {if (gesture?.id === event.pointerId) gesture = null;};
+    root.addEventListener('pointerup', endGesture, {signal: events.signal});
+    root.addEventListener('pointercancel', endGesture, {signal: events.signal});
+    root.addEventListener('lostpointercapture', endGesture, {signal: events.signal});
 
     update(); resize(); render();
     frameId = requestAnimationFrame(loop);
     return {
+      // The shell offers this hook before Escape opens Study, and on backgrounding.
+      // Pause idempotently through the shell so its overlay and saved state agree.
+      dismissMenu() {context.setPaused?.(true); return true;},
       pause() {paused = true; last = null; gesture = null; update(); render();},
       resume() {paused = false; last = null; update();},
       restart() {state = createState(Date.now() | 0); last = null; carry = 0; update(); render(); persist();},
@@ -136,7 +137,7 @@ const module: GameModule = {
         if (valid.phase === 'playing') {valid.phase = 'intro'; valid.timer = 120;}
         state = valid; last = null; carry = 0; update(); render();
       },
-      dispose() {disposed = true; events.abort(); observer.disconnect(); if (frameId !== null) cancelAnimationFrame(frameId); container.replaceChildren();}
+      dispose() {disposed = true; events.abort(); observer.disconnect(); lives.remove(); sheet.dispose(); pauseSheet.dispose(); if (frameId !== null) cancelAnimationFrame(frameId); container.replaceChildren();}
     };
   }
 };

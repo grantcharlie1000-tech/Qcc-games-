@@ -82,10 +82,3 @@ export const readingNotes: Record<string, readonly [string,string]> = {
     'To evaluate a proposed group, consider whose participation its design makes possible. A free activity may still exclude someone if the time conflicts with responsibilities, the venue is inaccessible or the environment feels culturally unsafe. Ask how participants could help shape the response and how their feedback would be heard. These questions connect individual experience with interpersonal support and wider conditions. They help you explain the model in context without prescribing one activity as a universal solution.'
   ]
 };
-
-export const contributors=[
-  {name:'Ari Rowan',portrait:'ari-rowan',note:'A fictional voice for looking closely at words and ideas.'},
-  {name:'Mina Vale',portrait:'mina-vale',note:'A fictional voice for working through patterns, one step at a time.'},
-  {name:'Leo Finch',portrait:'leo-finch',note:'A fictional voice for asking how a model explains the world.'},
-  {name:'Nell Moss',portrait:'nell-moss',note:'A fictional voice for connecting evidence, people and places.'}
-];

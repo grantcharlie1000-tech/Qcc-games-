@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import {seedStudyTopic} from '../../fixtures';
 import { test, expect, type Page } from '../../fixtures';
 import { deal, type State } from '../../../src/games/solitaire/model';
@@ -15,12 +16,12 @@ test('stock draw, hint, undo, restart, pause and save restore operate through th
  await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.locator('[data-source="waste"]')).toHaveCount(0);await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();
  await page.getByRole('button',{name:'Hint',exact:true}).click();await expect(page.locator('.sol-message')).toContainText('Hint:');await expect(page.locator('.sol-hint')).toHaveCount(1);
  await page.getByRole('button',{name:'Draw from stock, 24 cards'}).click();const before=await saved(page);
- await page.getByRole('button',{name:'Pause game',exact:true}).click();await expect(page.locator('.solitaire button:not(:disabled)')).toHaveCount(0);await expect(page.getByRole('heading',{name:'Paused',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Keep playing',exact:true}).click();await page.reload();await expect(page.locator('[data-source="waste"]')).toBeVisible();expect((await saved(page)).state).toEqual(before.state);
- await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeDisabled();
- await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(page.locator('#pause-overlay')).toBeHidden();await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeEnabled();
- await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('Unlimited recycles');await page.locator('.rules-done').click();
- await page.getByRole('link',{name:'Back to game library'}).click();await page.goto('/#/game/solitaire');await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();expect(errors).toEqual([]);
+ await pauseGame(page);await expect(page.locator('.solitaire button:not(:disabled)')).toHaveCount(0);await expect(page.locator('#pause-overlay h2')).toBeVisible();
+ await resumeGame(page);await page.reload();await expect(page.locator('[data-source="waste"]')).toBeVisible();expect((await saved(page)).state).toEqual(before.state);
+ await gameAction(page,'Restart game');await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeDisabled();
+ await pauseGame(page);await gameAction(page,'Restart game');await expect(page.locator('#pause-overlay')).toBeHidden();await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeEnabled();
+ await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('Unlimited recycles');await page.locator('.rules-done').click();
+ await backToGames(page);await page.goto('/#/game/solitaire');await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();expect(errors).toEqual([]);
 });
 test('click and keyboard move real cards and undo restores a revealed card',async({page})=>{
  await open(page,state());const six=page.getByRole('button',{name:'6 of hearts, column 2',exact:true});await six.click();await expect(six).toHaveAttribute('aria-pressed','true');await page.getByRole('button',{name:'7 of clubs, column 1',exact:true}).click();await expect(page.getByRole('button',{name:'6 of hearts, column 1',exact:true})).toBeVisible();expect((await saved(page)).state.tableau[0].map((c:{id:number})=>c.id)).toEqual([6,18]);
@@ -38,8 +39,8 @@ test('phone layout remains readable and fits, with actual screenshot evidence',a
  await page.setViewportSize({width:390,height:844});await open(page);await expect(page.locator('.sol-tableau')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:'tests/games/solitaire/evidence/chromium.png',fullPage:true});
 });
 test('complete legal foundations show a win; invalid saves safely start fresh',async({page})=>{
- const s=deal(1);s.tableau=[[],[],[],[],[],[],[]];s.stock=[];s.foundations=Array.from({length:4},(_,suit)=>Array.from({length:13},(_,r)=>suit*13+r));s.foundations[0].pop();s.waste=[12];await open(page,s);await expect(page.locator('.solitaire')).not.toHaveClass(/sol-won/);await page.getByRole('button',{name:'King of clubs, Waste',exact:true}).click();await page.getByRole('button',{name:'Queen of clubs, foundation',exact:true}).click();await expect(page.locator('.solitaire')).toHaveClass(/sol-won/);await expect(page.locator('.sol-message')).toContainText('Perfect finish');await expect(page.locator('#game-score strong')).toHaveText('2999');
- await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.locator('.solitaire')).toHaveCount(0);await page.evaluate(key=>{localStorage.setItem(key,JSON.stringify({version:1,data:{version:1,state:{stock:[1,1]},history:[]}}));},key);await page.goto('/#/game/solitaire');await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();
+ const s=deal(1);s.tableau=[[],[],[],[],[],[],[]];s.stock=[];s.foundations=Array.from({length:4},(_,suit)=>Array.from({length:13},(_,r)=>suit*13+r));s.foundations[0].pop();s.waste=[12];await open(page,s);await expect(page.locator('.solitaire')).not.toHaveClass(/sol-won/);await page.getByRole('button',{name:'King of clubs, Waste',exact:true}).click();await page.getByRole('button',{name:'Queen of clubs, foundation',exact:true}).click();await expect(page.locator('.solitaire')).toHaveClass(/sol-won/);await expect(page.locator('.sol-message')).toContainText('All four foundations complete');await expect(page.locator('#game-score strong')).toHaveText('2999');const result=page.locator('.game-sheet[data-state="game-over"]');await expect(result).toBeVisible();await expect(result.locator('.game-sheet-stats')).toContainText('Score2999');await result.getByRole('button',{name:'Play again',exact:true}).click();await expect(result).toBeHidden();await expect(page.locator('.solitaire')).not.toHaveClass(/sol-won/);
+ await backToGames(page);await expect(page.locator('.solitaire')).toHaveCount(0);await page.evaluate(key=>{localStorage.setItem(key,JSON.stringify({version:1,data:{version:1,state:{stock:[1,1]},history:[]}}));},key);await page.goto('/#/game/solitaire');await expect(page.getByRole('button',{name:'Draw from stock, 24 cards'})).toBeVisible();
 });
 
 test('touch pointer drag uses the same legal move path on a phone',async({browser,browserName})=>{

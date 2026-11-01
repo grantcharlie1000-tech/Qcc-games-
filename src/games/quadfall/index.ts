@@ -1,47 +1,158 @@
 import type {GameModule} from '../../core/types';
-import {createState,restoreState,advance,cells,ghost,move,rotate,softDrop,hardDrop,hold,level,COLUMNS,ROWS,HIDDEN_ROWS,VISIBLE_ROWS,type State,type Piece} from './model';
+import {createState,restoreState,advance,cells,ghost,move,rotate,softDrop,hardDrop,hold,level,ROWS,type State} from './model';
+import {PieceGesture,RepeatInput,type Action} from './input';
+import {createRenderer,type ClearEffect} from './renderer';
+import {uiIcon} from '../../ui/icons';
 import './style.css';
-const colors:Record<Piece,string>={I:'#53d9ed',O:'#ffd461',T:'#c88cff',S:'#71e8a4',Z:'#ff7e91',J:'#799dff',L:'#ffa35d'};
-const marks:Record<Piece,string>={I:'━',O:'●',T:'▲',S:'/',Z:'\\',J:'◆',L:'■'};
-const game:GameModule={id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cover.svg',rules:'Independent browser adaptation. Fit falling pieces together and clear complete horizontal lines. Clear lines to raise your level. Arrow keys or A/D move, Down or S soft drops, Up/W/X rotates, Z rotates the other way, Space hard drops, and C or Shift holds a piece once per drop. Drag on the board to move or soft drop, tap to rotate, and flick up to hard drop.',mount(container,context){
- let state=createState(),paused=false,disposed=false,last:number|null=null,frame=0,best=context.highScore,flash=0,awaitingContinue=false;let flashBoard:(Piece|null)[][]|null=null,flashRows:number[]=[];const events=new AbortController();
- container.innerHTML=`<div class="qf-game"><div class="qf-layout">
-  <div class="qf-hold qf-panel"><b>HOLD</b><canvas aria-label="Held piece"></canvas><span class="qf-empty">Empty</span><kbd class="qf-shortcut">C / Shift</kbd></div>
-  <div class="qf-guide"><span>Move <kbd>← ↓ →</kbd></span><span>Rotate <kbd>↑ / Z</kbd></span><span>Drop <kbd>Space</kbd></span><span>Hold <kbd>C</kbd></span></div>
-  <div class="qf-board"><canvas class="qf-canvas" aria-label="Tetris board" tabindex="0"></canvas><div class="qf-card"><span class="qf-card-label">FALLING BLOCKS</span><strong>Tetris</strong><p>Fit pieces together and clear lines.</p><button class="game-button" type="button">Start</button></div></div>
-  <div class="qf-side"><div class="qf-panel qf-next"><b>NEXT</b><canvas aria-label="Next pieces"></canvas></div><div class="qf-panel qf-stats"><span class="sr-only">Score <strong data-stat="score">0</strong></span><span><b>LINES</b><strong data-stat="lines">0</strong></span><span class="qf-level"><b>LEVEL</b><strong data-stat="level">1</strong></span></div></div>
- </div><div class="qf-pad" role="group" aria-label="Tetris touch controls">
- <button aria-label="Left" data-action="left"><span aria-hidden="true">←</span><small>Move</small></button><button aria-label="Right" data-action="right"><span aria-hidden="true">→</span><small>Move</small></button><button aria-label="Rotate" data-action="cw"><span aria-hidden="true">↻</span><small>Rotate</small></button><button aria-label="Rotate other way" data-action="ccw"><span aria-hidden="true">↺</span><small>Rotate</small></button><button aria-label="Soft drop" data-action="soft"><span aria-hidden="true">↓</span><small>Soft drop</small></button><button aria-label="Hard drop" data-action="hard"><span aria-hidden="true">⇩</span><small>Hard drop</small></button><button aria-label="Hold" data-action="hold"><span aria-hidden="true">▣</span><small>Hold</small></button>
- </div></div>`;
- const root=container.querySelector<HTMLElement>('.qf-game')!,canvas=root.querySelector<HTMLCanvasElement>('.qf-canvas')!,card=root.querySelector<HTMLElement>('.qf-card')!,button=card.querySelector<HTMLButtonElement>('button')!,holdCanvas=root.querySelector<HTMLCanvasElement>('.qf-hold canvas')!,nextCanvas=root.querySelector<HTMLCanvasElement>('.qf-next canvas')!;
- let reportedScore=-1,reportedLevel=-1,reportedStatus='';
- const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
- function setup(c:HTMLCanvasElement,w:number,h:number){const d=Math.min(2,window.devicePixelRatio||1);if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d);}const g=c.getContext('2d')!;g.setTransform(d,0,0,d,0,0);return g;}
- function block(g:CanvasRenderingContext2D,x:number,y:number,size:number,id:Piece,outline=false){
-  const gap=Math.max(1,size*.055),edge=Math.max(1,size*.09);
-  if(outline){g.globalAlpha=.12;g.fillStyle=colors[id];g.fillRect(x+gap,y+gap,size-gap*2,size-gap*2);g.globalAlpha=.85;g.strokeStyle='#dceaff';g.lineWidth=Math.max(1,size*.045);g.setLineDash([size*.18,size*.11]);g.strokeRect(x+gap+1,y+gap+1,size-gap*2-2,size-gap*2-2);g.setLineDash([]);}
-  else{g.globalAlpha=1;g.fillStyle=colors[id];g.fillRect(x+gap,y+gap,size-gap*2,size-gap*2);g.fillStyle='#ffffff66';g.fillRect(x+gap,y+gap,size-gap*2,edge);g.fillStyle='#ffffff22';g.fillRect(x+gap,y+gap,edge,size-gap*2);g.fillStyle='#060b284d';g.fillRect(x+gap,y+size-gap-edge,size-gap*2,edge);
-   if(context.settings.colorBlind){g.fillStyle='#101631';g.font=`bold ${Math.max(8,size*.43)}px system-ui`;g.textAlign='center';g.textBaseline='middle';g.fillText(marks[id],x+size/2,y+size*.55);}
-  }g.globalAlpha=1;
- }
- function mini(c:HTMLCanvasElement,ids:Piece[]){
-  const w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;const g=setup(c,w,h);g.clearRect(0,0,w,h);if(!ids.length)return;
-  const across=w>h*1.6,slotW=across?w/ids.length:w,slotH=across?h:h/ids.length,unit=Math.min((slotW-8)/4,(slotH-8)/2);
-  ids.forEach((id,i)=>{const shape=cells({id,x:0,y:0,r:0}),xs=shape.map(p=>p[0]),ys=shape.map(p=>p[1]),minX=Math.min(...xs),minY=Math.min(...ys),width=Math.max(...xs)-minX+1,height=Math.max(...ys)-minY+1;
-   const left=(across?i*slotW:0)+(slotW-width*unit)/2,top=(across?0:i*slotH)+(slotH-height*unit)/2;
-   for(const [x,y] of shape)block(g,left+(x-minX)*unit,top+(y-minY)*unit,unit,id);
+
+const keys:Record<string,Action>={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowDown:'soft',s:'soft',ArrowUp:'cw',w:'cw',x:'cw',z:'ccw',' ':'hard',c:'hold',Shift:'hold'};
+const game:GameModule={
+ id:'quadfall',title:'Tetris',cover:'game-art/quadfall/cover.svg',
+ rules:'Fit falling pieces together and clear complete horizontal lines. A ghost shows where your piece will land. Clear lines to raise your level. On phones: tap to rotate; drag horizontally to move by whole cells; drag down to soft drop; use a fast downward flick to hard drop; swipe up or tap Hold to hold a piece once per drop. Keyboard: Left/Right or A/D move, Down or S soft drops, Up/X/W rotates clockwise, Z rotates counterclockwise, Space hard drops, and C or Shift holds. Enter or Space starts a game. Escape opens the pause menu.',
+ mount(container,context){
+  let state=createState(),paused=false,disposed=false,awaitingContinue=false,resultsDismissed=false,last:number|null=null,frame=0,best=context.highScore,dirty=true;
+  let effect:ClearEffect|null=null,gesture:{id:number;input:PieceGesture}|null=null;
+  const events=new AbortController(),repeat=new RepeatInput(),consumedKeys=new Set<string>();
+  container.innerHTML=`<div class="qf-game">
+   <div class="qf-previews">
+    <button class="qf-hold qf-chip arcade-glass-mini" type="button" aria-label="Hold"><span>Hold</span><canvas aria-label="Held piece"></canvas><span class="qf-empty" aria-hidden="true">—</span></button>
+    <div class="qf-next qf-chip arcade-glass-mini"><span>Next</span><canvas aria-label="Next two pieces"></canvas></div>
+   </div>
+   <div class="qf-board">
+    <canvas class="qf-canvas" aria-label="Tetris board" aria-description="Tap to rotate. Drag to move or soft drop. Flick down to hard drop. Swipe up to hold." tabindex="0"></canvas>
+    <button class="qf-start arcade-glass-mini" type="button">Tap to play</button>
+   </div>
+    <dialog class="qf-over ui-glass-sheet" aria-labelledby="qf-over-title">
+     <div class="dialog-head"><h2 id="qf-over-title">Game over</h2><button class="qf-dismiss icon-button" type="button" aria-label="Close results">${uiIcon('close')}</button></div>
+     <dl class="qf-result"><div><dt>Score</dt><dd data-result="score">0</dd></div><div><dt>Best</dt><dd data-result="best">0</dd></div></dl>
+     <button class="qf-replay game-button" type="button" autofocus>Play again</button>
+    </dialog>
+  </div>`;
+  const root=container.querySelector<HTMLElement>('.qf-game')!,canvas=root.querySelector<HTMLCanvasElement>('.qf-canvas')!;
+  const start=root.querySelector<HTMLButtonElement>('.qf-start')!,holdChip=root.querySelector<HTMLButtonElement>('.qf-hold')!;
+  const over=root.querySelector<HTMLDialogElement>('.qf-over')!,again=over.querySelector<HTMLButtonElement>('.qf-replay')!;
+  const empty=root.querySelector<HTMLElement>('.qf-empty')!,resultScore=root.querySelector<HTMLElement>('[data-result=score]')!,resultBest=root.querySelector<HTMLElement>('[data-result=best]')!;
+  const renderer=createRenderer(canvas,holdChip.querySelector('canvas')!,root.querySelector('.qf-next canvas')!,context.settings,()=>{dirty=true;});
+  let reportedScore=-1,reportedLevel=-1,reportedStatus='';
+  const reduced=()=>context.settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function resetInput(){repeat.clear();gesture?.input.cancel();gesture=null;}
+  const layout=new ResizeObserver(([entry])=>{
+   root.dataset.previewLayout=entry.contentRect.width>=entry.contentRect.height/2+340?'corners':'band';
+   resetInput();dirty=true;
   });
+  layout.observe(root);
+  function playable(){return !paused&&!awaitingContinue&&!effect&&state.phase==='running';}
+  function attribute(name:string,value:string){if(root.getAttribute(name)!==value)root.setAttribute(name,value);}
+  function update(){
+   attribute('data-phase',state.phase);attribute('data-score',String(state.score));attribute('data-lines',String(state.lines));attribute('data-level',String(level(state)));
+   attribute('data-active',JSON.stringify(state.active));attribute('data-hold',state.held??'');attribute('data-locks',String(state.locks));attribute('data-ghost',String(ghost(state)));attribute('data-clearing',String(!!effect));
+   empty.hidden=!!state.held;holdChip.disabled=!playable()||state.holdUsed;
+   best=Math.max(best,state.score);
+   if(reportedScore!==state.score){reportedScore=state.score;context.setScore(state.score);}
+   if(reportedLevel!==level(state)){reportedLevel=level(state);context.setLevel(`Level ${reportedLevel}`);}
+   const status=state.phase==='lost'?'Game over':state.phase==='ready'?'Ready':'Playing';
+   if(status!==reportedStatus){reportedStatus=status;context.setStatus(status);}
+   start.hidden=state.phase!=='ready'&&!awaitingContinue;start.textContent=awaitingContinue?'Continue':'Tap to play';
+   if(state.phase==='lost'){
+    resultScore.textContent=String(state.score);resultBest.textContent=String(best);
+    if(!over.open&&!resultsDismissed)over.show();
+   }else if(over.open)over.close();
+   dirty=true;
+  }
+  function lockedBoard(hard=false){
+   const board=state.board.map(row=>[...row]);
+   for(const [x,y] of cells({...state.active,y:hard?ghost(state):state.active.y}))if(y>=0&&y<ROWS)board[y][x]=state.active.id;
+   return board;
+  }
+  function afterLock(locks:number,lines:number,phase:State['phase'],board:State['board']|null){
+   const locked=state.locks!==locks,ended=state.phase!==phase;
+   if(locked||ended){resetInput();context.save(state);context.sound(state.phase==='lost'?'lose':'tap');}
+   const count=state.lines-lines;
+   if(count&&board){
+    context.announce(`${['','Single','Double','Triple','Quad'][count]} clear`);context.sound('success');
+    const gentle=reduced();effect={board,rows:board.flatMap((row,y)=>row.every(Boolean)?[y]:[]),remaining:150,duration:150,reduced:gentle};
+    if(!gentle&&typeof navigator.vibrate==='function')navigator.vibrate(12);
+   }
+  }
+  function action(a:Action){
+   if(!playable()||document.querySelector('dialog[open]'))return;
+   const locks=state.locks,lines=state.lines,phase=state.phase,board=a==='hard'?lockedBoard(true):null;
+   switch(a){
+    case 'left':move(state,-1);break;case 'right':move(state,1);break;
+    case 'cw':rotate(state,1);break;case 'ccw':rotate(state,-1);break;
+    case 'soft':softDrop(state);break;case 'hard':hardDrop(state);break;
+    case 'hold':if(hold(state)){resetInput();context.save(state);}break;
+   }
+   afterLock(locks,lines,phase,board);update();
+  }
+  function play(){
+   if(paused)return;
+   if(state.phase==='lost')state=createState();
+   awaitingContinue=false;resultsDismissed=false;state.phase='running';last=null;effect=null;resetInput();
+   context.save(state);update();canvas.focus({preventScroll:true});
+  }
+  start.addEventListener('click',play,{signal:events.signal});again.addEventListener('click',play,{signal:events.signal});
+  over.querySelector('.qf-dismiss')!.addEventListener('click',()=>{resultsDismissed=true;over.close();canvas.focus({preventScroll:true});},{signal:events.signal});
+  holdChip.addEventListener('click',()=>{action('hold');canvas.focus({preventScroll:true});},{signal:events.signal});
+  window.addEventListener('keydown',e=>{
+   const key=e.key.length===1?e.key.toLowerCase():e.key;
+   // A hard drop can focus replay before keyup. Its held Space still belongs to play.
+   if(e.repeat){if(consumedKeys.has(key))e.preventDefault();return;}
+   if(paused||e.ctrlKey||e.altKey||e.metaKey||document.querySelector('dialog[open]:not(.qf-over)')||(e.target instanceof HTMLElement&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)))return;
+   // Native buttons own Enter/Space, including the replay button focused by the sheet.
+   if(e.target instanceof HTMLElement&&e.target.closest('button,a')&&(key===' '||key==='Enter'))return;
+   if((state.phase!=='running'||awaitingContinue)&&(key===' '||key==='Enter')){e.preventDefault();consumedKeys.add(key);play();return;}
+   const a=keys[key];if(!a||!playable())return;e.preventDefault();consumedKeys.add(key);
+   if(a==='left'||a==='right'||a==='soft')for(const next of repeat.press(key,a,performance.now()))action(next);
+   else action(a);
+  },{signal:events.signal});
+  window.addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCase():e.key;repeat.release(key,performance.now());consumedKeys.delete(key);},{signal:events.signal});
+  window.addEventListener('blur',()=>{resetInput();consumedKeys.clear();},{signal:events.signal});
+  canvas.addEventListener('pointerdown',e=>{
+   if(!e.isPrimary||e.button!==0||gesture||!playable()||!renderer.cellSize())return;
+   e.preventDefault();canvas.focus({preventScroll:true});
+   gesture={id:e.pointerId,input:new PieceGesture(e.clientX,e.clientY,performance.now(),renderer.cellSize())};
+   canvas.setPointerCapture(e.pointerId);
+  },{signal:events.signal});
+  canvas.addEventListener('pointermove',e=>{
+   if(!gesture||gesture.id!==e.pointerId)return;e.preventDefault();
+   for(const a of gesture.input.move(e.clientX,e.clientY,performance.now())){if(!gesture)break;action(a);}
+  },{signal:events.signal});
+  canvas.addEventListener('pointerup',e=>{
+   if(!gesture||gesture.id!==e.pointerId)return;e.preventDefault();
+   const input=gesture.input;gesture=null;
+   for(const a of input.finish(e.clientX,e.clientY,performance.now()))action(a);
+  },{signal:events.signal});
+  for(const event of ['pointercancel','lostpointercapture'] as const)canvas.addEventListener(event,e=>{
+   if(gesture?.id===e.pointerId){gesture.input.cancel();gesture=null;}
+  },{signal:events.signal});
+  function loop(now:number){
+   if(disposed)return;
+   const dt=last===null?0:Math.min(50,Math.max(0,now-last));last=now;
+   if(!paused&&!awaitingContinue&&state.phase==='running'){
+    if(effect){
+     effect.remaining-=dt;dirty=true;
+     if(effect.remaining<=0){effect=null;update();}
+    }else{
+     const locks=state.locks,lines=state.lines,phase=state.phase,y=state.active.y;
+     const board=state.lock+dt>=500?lockedBoard():null;
+     advance(state,dt);afterLock(locks,lines,phase,board);
+     if(state.active.y!==y||state.locks!==locks||state.phase!==phase)update();
+     for(const a of repeat.tick(now))action(a);
+    }
+   }
+   if(dirty){renderer.draw(state,effect);dirty=false;}
+   frame=requestAnimationFrame(loop);
+  }
+  update();frame=requestAnimationFrame(loop);
+  return {
+   pause(){paused=true;last=null;resetInput();update();},
+   resume(){paused=false;last=null;update();},
+   restart(){state=createState();awaitingContinue=false;resultsDismissed=false;last=null;effect=null;resetInput();context.save(state);update();},
+   serialize(){return structuredClone(state);},
+   restore(value){const restored=restoreState(value);if(restored){state=restored;awaitingContinue=state.phase==='running';resultsDismissed=false;last=null;effect=null;resetInput();update();}},
+   dispose(){disposed=true;events.abort();layout.disconnect();renderer.dispose();cancelAnimationFrame(frame);if(over.open)over.close();container.replaceChildren();}
+  };
  }
- function render(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;const g=setup(canvas,w,h),size=w/COLUMNS;g.fillStyle='#0b1028';g.fillRect(0,0,w,h);g.strokeStyle='#86a6d51c';g.lineWidth=1;for(let x=0;x<=COLUMNS;x++){g.beginPath();g.moveTo(x*size,0);g.lineTo(x*size,h);g.stroke();}for(let y=0;y<=VISIBLE_ROWS;y++){g.beginPath();g.moveTo(0,y*size);g.lineTo(w,y*size);g.stroke();}(flash>0&&flashBoard?flashBoard:state.board).forEach((row,y)=>row.forEach((id,x)=>{if(id&&y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,id);}));if(flash>0)for(const y of flashRows)if(y>=HIDDEN_ROWS){g.fillStyle='#ffffff88';g.fillRect(0,(y-HIDDEN_ROWS)*size,w,size);}if(state.phase!=='lost'){for(const [x,y] of cells({...state.active,y:ghost(state)}))if(y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,state.active.id,true);for(const [x,y] of cells(state.active))if(y>=HIDDEN_ROWS)block(g,x*size,(y-HIDDEN_ROWS)*size,size,state.active.id);}mini(holdCanvas,state.held?[state.held]:[]);mini(nextCanvas,state.queue.slice(0,matchMedia('(max-width: 599px)').matches?2:3));}
- function update(){root.dataset.phase=state.phase;root.dataset.score=String(state.score);root.dataset.lines=String(state.lines);root.dataset.level=String(level(state));root.dataset.active=JSON.stringify(state.active);root.dataset.hold=state.held??'';root.querySelector<HTMLElement>('.qf-empty')!.hidden=!!state.held;root.dataset.ghost=String(ghost(state));root.querySelector('[data-stat=score]')!.textContent=String(state.score);root.querySelector('[data-stat=lines]')!.textContent=String(state.lines);root.querySelector('[data-stat=level]')!.textContent=String(level(state));best=Math.max(best,state.score);if(reportedScore!==state.score){reportedScore=state.score;context.setScore(state.score);}if(reportedLevel!==level(state)){reportedLevel=level(state);context.setLevel(`Level ${reportedLevel}`);}const status=state.phase==='lost'?'Game over':state.phase==='ready'?'Ready':'Playing';if(status!==reportedStatus){reportedStatus=status;context.setStatus(status);}card.hidden=state.phase==='running'&&!awaitingContinue;if(awaitingContinue){card.querySelector('strong')!.textContent='Welcome back';card.querySelector('p')!.textContent='Your game is ready to continue.';button.textContent='Continue';}else if(state.phase==='lost'){card.querySelector('strong')!.textContent='Game over';card.querySelector('p')!.textContent=`Score ${state.score} · Lines ${state.lines} · Level ${level(state)} · Best ${best}`;button.textContent='Play again';}else{card.querySelector('strong')!.textContent='Tetris';card.querySelector('p')!.textContent='Fit pieces together and clear lines.';button.textContent='Start';}render();}
- function feedback(before:State,lines:number){const count=state.lines-lines;if(!count)return;context.announce(`${['','Single','Double','Triple','Quad'][count]} clear`);context.sound('success');if(!reduced()){flashBoard=before.board.map(row=>[...row]);for(const [x,y] of cells({...before.active,y:ghost(before)}))if(y>=0&&y<ROWS)flashBoard[y][x]=before.active.id;flashRows=flashBoard.flatMap((row,y)=>row.every(Boolean)?[y]:[]);flash=150;}}
- function action(a:string){if(paused||awaitingContinue||state.phase!=='running'||document.querySelector('dialog[open]'))return;const locks=state.locks,lines=state.lines,phase=state.phase,before=structuredClone(state);switch(a){case 'left':move(state,-1);break;case 'right':move(state,1);break;case 'cw':rotate(state,1);break;case 'ccw':rotate(state,-1);break;case 'soft':softDrop(state);break;case 'hard':hardDrop(state);break;case 'hold':if(hold(state))context.save(state);break;}if(state.locks!==locks||state.phase!==phase){context.save(state);context.sound((state as State).phase==='lost'?'lose':'tap');}feedback(before,lines);update();}
- button.addEventListener('click',()=>{if(paused)return;if(state.phase==='lost')state=createState();awaitingContinue=false;state.phase='running';last=null;context.save(state);update();canvas.focus({preventScroll:true});},{signal:events.signal});
- let pointerRepeat:{id:number;action:string;next:number}|null=null;
- root.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(b=>{b.addEventListener('pointerdown',e=>{if(!e.isPrimary||e.button!==0||paused||awaitingContinue)return;e.preventDefault();b.setPointerCapture(e.pointerId);const a=b.dataset.action!;action(a);if(['left','right','soft'].includes(a))pointerRepeat={id:e.pointerId,action:a,next:performance.now()+170};},{signal:events.signal});for(const name of ['pointerup','pointercancel','lostpointercapture'] as const)b.addEventListener(name,e=>{if(pointerRepeat?.id===e.pointerId)pointerRepeat=null;},{signal:events.signal});b.addEventListener('click',e=>{if(e.detail===0)action(b.dataset.action!);},{signal:events.signal});});
- const held=new Map<string,{action:string;next:number}>();const keys:Record<string,string>={ArrowLeft:'left',a:'left',ArrowRight:'right',d:'right',ArrowDown:'soft',s:'soft',ArrowUp:'cw',w:'cw',x:'cw',z:'ccw',' ':'hard',c:'hold',Shift:'hold'};
- window.addEventListener('keydown',e=>{if(paused||e.ctrlKey||e.altKey||e.metaKey||e.repeat||document.querySelector('dialog[open]')||(e.target instanceof HTMLElement&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)))return;const key=e.key.length===1?e.key.toLowerCase():e.key,a=keys[key];if((state.phase==='ready'||state.phase==='lost'||awaitingContinue)&&(key===' '||key==='Enter')&&!(e.target instanceof HTMLButtonElement)){e.preventDefault();button.click();return;}if(!a||state.phase!=='running'||awaitingContinue||(e.target instanceof HTMLButtonElement&&(key===' '||key==='Enter')))return;e.preventDefault();action(a);if(['left','right','soft'].includes(a))held.set(key,{action:a,next:performance.now()+170});},{signal:events.signal});window.addEventListener('keyup',e=>held.delete(e.key.length===1?e.key.toLowerCase():e.key),{signal:events.signal});
- let gesture:{id:number;x:number;y:number;startX:number;startY:number;time:number}|null=null;canvas.addEventListener('pointerdown',e=>{if(!e.isPrimary||e.pointerType==='mouse'||paused||state.phase!=='running')return;gesture={id:e.pointerId,x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,time:performance.now()};canvas.setPointerCapture(e.pointerId);},{signal:events.signal});canvas.addEventListener('pointermove',e=>{if(!gesture||gesture.id!==e.pointerId)return;const unit=canvas.clientWidth/COLUMNS;while(Math.abs(e.clientX-gesture.x)>=unit){const d=e.clientX>gesture.x?1:-1;action(d>0?'right':'left');gesture.x+=d*unit;}while(e.clientY-gesture.y>=unit){action('soft');gesture.y+=unit;}},{signal:events.signal});canvas.addEventListener('pointerup',e=>{if(!gesture||gesture.id!==e.pointerId)return;const dx=e.clientX-gesture.startX,dy=e.clientY-gesture.startY,dt=performance.now()-gesture.time;gesture=null;if(dy< -40&&dt<350)action('hard');else if(Math.hypot(dx,dy)<10&&dt<250)action('cw');},{signal:events.signal});canvas.addEventListener('pointercancel',()=>{gesture=null;},{signal:events.signal});
- const observer=new ResizeObserver(render);observer.observe(canvas);observer.observe(holdCanvas);observer.observe(nextCanvas);function loop(now:number){if(disposed)return;if(!paused&&!awaitingContinue&&state.phase==='running'){const locks=state.locks,lines=state.lines,phase=state.phase,before=structuredClone(state);if(last!==null)advance(state,Math.min(1000,now-last));for(const item of held.values())if(now>=item.next){action(item.action);item.next=now+50;}if(pointerRepeat&&now>=pointerRepeat.next){action(pointerRepeat.action);pointerRepeat.next=now+50;}if(state.locks!==locks||state.phase!==phase)context.save(state);feedback(before,lines);if(last!==null)flash=Math.max(0,flash-(now-last));update();}last=now;frame=requestAnimationFrame(loop);}update();frame=requestAnimationFrame(loop);
- return {pause(){paused=true;last=null;held.clear();pointerRepeat=null;gesture=null;},resume(){paused=false;last=null;},restart(){state=createState();awaitingContinue=false;last=null;held.clear();pointerRepeat=null;context.save(state);update();},serialize(){return JSON.parse(JSON.stringify(state)) as State;},restore(v){const s=restoreState(v);if(s){state=s;awaitingContinue=s.phase==='running';last=null;update();}},dispose(){disposed=true;events.abort();observer.disconnect();cancelAnimationFrame(frame);container.replaceChildren();}};
-}};export default game;
+};
+export default game;

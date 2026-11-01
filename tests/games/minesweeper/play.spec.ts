@@ -1,3 +1,4 @@
+import {backToGames,gameAction,gameOption,openGameMenu,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect,seedStudyTopic,type Page} from '../../fixtures';
 import {create,reveal,neighbors,type Board} from '../../../src/games/minesweeper/model';
 import {emptyStats,hint} from '../../../src/games/minesweeper/practice';
@@ -8,8 +9,9 @@ async function fixture(page:Page,board=create('beginner',7),extra={}){
  await page.goto(url);await expect(cell(page,0)).toBeVisible();return board;
 }
 const saved=(page:Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:minesweeper')!).data);
-async function settings(page:Page){if(!await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Open menu',exact:true}).click();}
-async function closeSettings(page:Page){if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Close game options'}).click();}
+// A closed native sheet remains painted briefly during its exit transition.
+async function settings(page:Page){if(!await page.locator('.ms-settings[open]').count())await gameAction(page,'Game options');}
+async function closeSettings(page:Page){if(await page.locator('.ms-settings[open]').count())await page.getByRole('button',{name:'Close game options'}).click();}
 async function win(page:Page,b:Board){for(let i=0;i<b.cells.length;i++)if(b.cells[i]!==-1&&await cell(page,i).getAttribute('data-state')!=='open')await cell(page,i).click();}
 
 test('mouse, scoped keyboard, exact save, hidden pause and confirmed restart',async({page})=>{
@@ -20,15 +22,15 @@ test('mouse, scoped keyboard, exact save, hidden pause and confirmed restart',as
  expect((await saved(page)).cells).toEqual(b.cells);expect(b.cells[40]).toBe(0);
  const hidden=b.revealed.findIndex(v=>!v);await cell(page,hidden).focus();await page.keyboard.press('f');await expect(cell(page,hidden)).toHaveAttribute('data-state','flagged');
  await page.keyboard.press('ArrowRight');await expect(cell(page,hidden+1)).toBeFocused();
- await settings(page);await page.getByRole('button',{name:'Pause game',exact:true}).click();await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
+ await settings(page);await closeSettings(page);await pauseGame(page);await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
  const time=await page.locator('.ms-time').textContent();await page.waitForTimeout(1100);await expect(page.locator('.ms-time')).toHaveText(time!);
  await cell(page,0).dispatchEvent('click');await expect(cell(page,40)).toHaveAttribute('data-state','open');
- await page.getByRole('button',{name:'Keep playing',exact:true}).click();
- const before=await saved(page);await page.getByRole('link',{name:'Back to game library'}).click();await page.goto(url);
+ await resumeGame(page);
+ const before=await saved(page);await backToGames(page);await page.goto(url);
  await expect(cell(page,40)).toHaveAttribute('data-state','open');await expect(cell(page,hidden)).toHaveAttribute('data-state','flagged');expect((await saved(page)).cells).toEqual(before.cells);
- page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(cell(page,40)).toHaveAttribute('data-state','open');
- page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(page.locator('.ms-tile[data-state=open]')).toHaveCount(0);await expect(page.locator('.ms-time')).toHaveText('00:00');
- await settings(page);await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('Incorrect flags');expect(errors).toEqual([]);
+ page.once('dialog',d=>d.dismiss());await gameAction(page,'Restart game');await expect(cell(page,40)).toHaveAttribute('data-state','open');
+ page.once('dialog',d=>d.accept());await gameAction(page,'Restart game');await expect(page.locator('.ms-tile[data-state=open]')).toHaveCount(0);await expect(page.locator('.ms-time')).toHaveText('00:00');
+ await settings(page);await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('Incorrect flags');expect(errors).toEqual([]);
 });
 
 test('correct chord, win without all flags, terminal timer and per-difficulty record',async({page})=>{
@@ -37,13 +39,13 @@ test('correct chord, win without all flags, terminal timer and per-difficulty re
  await cell(page,i).click();await expect(page.locator('.ms-outcome')).not.toHaveText('Mine found!');
  for(const j of neighbors(b,i))if(b.cells[j]===-1)await cell(page,j).click({button:'right'});
  await cell(page,i).click();for(const j of neighbors(b,i))if(b.cells[j]!==-1)await expect(cell(page,j)).toHaveAttribute('data-state','open');
- await win(page,b);await expect(page.locator('.ms-outcome')).toHaveText('Field cleared!');await expect(page.getByRole('region',{name:'Game result'})).toBeVisible();
- await expect(page.locator('.ms-result-title')).toContainText('Score ');await expect(page.locator('.ms-result-detail')).toContainText('Easy 0 + speed');await expect(page.locator('.ms-result-detail')).toContainText('Best score');await expect(page.locator('.ms-time')).toBeVisible();
+ await win(page,b);await expect(page.locator('.ms-outcome')).toHaveText('Field cleared!');await expect(page.locator('.game-sheet[data-state="game-over"]')).toBeVisible();
+ await expect(page.locator('.game-sheet[data-state="game-over"] .game-sheet-stats')).toContainText('Score');await expect(page.locator('.game-sheet[data-state="game-over"] .game-sheet-stats')).toContainText('Best');await expect(page.locator('.game-hud-item').filter({hasText:'Time'})).toBeVisible();
  const result=await saved(page);expect(result.stats.beginner.played).toBe(1);expect(result.stats.beginner.wins).toBe(1);expect(result.flags.filter(Boolean).length).toBeLessThan(10);
  expect(await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:best:minesweeper-easy'))).not.toBeNull();
  const elapsed=result.elapsedMs;await page.waitForTimeout(1100);expect((await saved(page)).elapsedMs).toBe(elapsed);
- await page.getByRole('button',{name:'Score rankings'}).click();await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-score');await page.getByRole('button',{name:'Close leaderboards'}).click();
- await page.getByRole('button',{name:'New game',exact:true}).click();await expect(page.locator('.ms-time')).toHaveText('00:00');
+ await gameAction(page,'Leaderboards');await expect(page.locator('#leaderboard-game')).toHaveValue('minesweeper-score');await page.getByRole('button',{name:'Close leaderboards'}).click();
+ await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.ms-time')).toHaveText('00:00');
 });
 
 test('incorrect chord distinguishes triggered mine, other mines and wrong flags',async({page})=>{
@@ -75,11 +77,11 @@ for(const viewport of [{width:1366,height:768},{width:390,height:844},{width:320
  expect(await cell(page,40).evaluate(e=>e.getBoundingClientRect().width)).toBeGreaterThanOrEqual(32);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 
- page.once('dialog',d=>d.accept());await page.locator('.ms-level').selectOption('expert');await expect(page.locator('.ms-tile')).toHaveCount(480);
+ page.once('dialog',d=>d.accept());await gameOption(page,'Difficulty','expert');await expect(page.locator('.ms-tile')).toHaveCount(480);
  const before=await cell(page,0).boundingBox();await settings(page);await page.getByRole('button',{name:'Zoom in',exact:true}).click();await closeSettings(page);expect((await cell(page,0).boundingBox())!.width).toBeGreaterThan(before!.width);
  expect(await page.locator('.ms-scroll').evaluate(el=>el.scrollWidth>el.clientWidth)).toBe(true);
 
- await page.locator('.ms-level').selectOption('intermediate');await expect(page.locator('.ms-tile')).toHaveCount(256);
+ await gameOption(page,'Difficulty','intermediate');await expect(page.locator('.ms-tile')).toHaveCount(256);
 });
 
 test('real touch tap, long hold, pan and pinch never double-activate or reveal accidentally',async({browser,browserName})=>{
@@ -90,7 +92,7 @@ test('real touch tap, long hold, pan and pinch never double-activate or reveal a
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[p]});await expect(cell(page,0)).toHaveAttribute('data-state','flagged');await page.waitForTimeout(1700);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(cell(page,0)).toHaveAttribute('data-state','flagged');
  await page.getByRole('button',{name:'Flag mode',exact:true}).tap();await cell(page,0).tap();await expect(cell(page,0)).toHaveAttribute('data-state','hidden');
  await page.locator('.ms-reveal-mode').tap();await cell(page,40).tap();await expect(cell(page,40)).toHaveAttribute('data-state','open');
- page.once('dialog',d=>d.accept());await page.locator('.ms-level').selectOption('expert');
+ page.once('dialog',d=>d.accept());await gameOption(page,'Difficulty','expert');
  p=await point(1);await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[p]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:p.x-60,y:p.y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(page.locator('.ms-tile[data-state=open]')).toHaveCount(0);
  const box=(await page.locator('.ms-scroll').boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2,size=await cell(page,40).evaluate(e=>e.getBoundingClientRect().width);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:x-35,y},{id:2,x:x+35,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:1,x:x-65,y},{id:2,x:x+65,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
@@ -104,7 +106,7 @@ test('background pauses with the board hidden, and returning does not resume imp
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
  await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');const time=await page.locator('.ms-time').textContent();await page.waitForTimeout(1100);
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});await expect(page.locator('.ms-time')).toHaveText(time!);await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
- await page.getByRole('button',{name:'Keep playing',exact:true}).click();await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
+ await resumeGame(page);await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
 });
 
 test('assistive activation, keyboard reveal and shared fullscreen remain dependable',async({page})=>{
@@ -112,9 +114,9 @@ test('assistive activation, keyboard reveal and shared fullscreen remain dependa
  await settings(page);await expect(page.locator('.ms-sound')).not.toBeChecked();await closeSettings(page);
  await page.getByRole('button',{name:'Flag mode',exact:true}).click();await cell(page,0).dispatchEvent('click',{detail:0});await expect(cell(page,0)).toHaveAttribute('data-state','flagged');
  await cell(page,0).focus();await page.keyboard.press('Enter');await expect(cell(page,0)).toHaveAttribute('data-state','flagged');await page.keyboard.press('f');await page.keyboard.press('Space');await expect(cell(page,0)).toHaveAttribute('data-state','open');
- const count=await page.locator('.ms-tile[data-state=flagged]').count();await page.locator('.ms-level').focus();await page.keyboard.press('f');expect(await page.locator('.ms-tile[data-state=flagged]').count()).toBe(count);
- await settings(page);await page.getByRole('button',{name:'Enter full screen',exact:true}).click();await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','true');await settings(page);await page.getByRole('button',{name:'Exit full screen',exact:true}).click();
- await settings(page);await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
+ const count=await page.locator('.ms-tile[data-state=flagged]').count();await openGameMenu(page);await page.locator('#game-options').getByLabel('Difficulty',{exact:true}).focus();await page.keyboard.press('f');expect(await page.locator('.ms-tile[data-state=flagged]').count()).toBe(count);
+ await settings(page);await gameAction(page,'Enter full screen');await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed','true');await settings(page);await closeSettings(page);await gameAction(page,/^Exit full screen(?:$|\. This browser keeps its own controls)/);
+ await settings(page);await gameAction(page,'Game rules');await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
 });
 
 test('reduced motion opens the field immediately without tile animations',async({page})=>{
@@ -124,10 +126,10 @@ test('reduced motion opens the field immediately without tile animations',async(
 test('timer remains visible and advances across phone, landscape, desktop and full screen',async({page})=>{
  await page.setViewportSize({width:390,height:844});await fixture(page);await cell(page,40).click();
  for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:768}]){
-  await page.setViewportSize(viewport);const timer=page.locator('.ms-time');await expect(timer).toBeVisible();
+  await page.setViewportSize(viewport);const timer=page.locator('.game-hud-item').filter({hasText:'Time'}).locator('strong');await expect(timer).toBeVisible();
   const box=await timer.boundingBox();expect(box!.x).toBeGreaterThanOrEqual(0);expect(box!.x+box!.width).toBeLessThanOrEqual(viewport.width);
   const before=await timer.textContent();await page.waitForTimeout(1200);await expect(timer).not.toHaveText(before!);
  }
- await settings(page);await page.getByRole('button',{name:'Enter full screen'}).click();await expect(page.locator('.ms-time')).toBeVisible();
+ await settings(page);await gameAction(page,'Enter full screen');await expect(page.locator('.game-hud-item').filter({hasText:'Time'})).toBeVisible();
  const before=await page.locator('.ms-time').textContent();await page.waitForTimeout(1200);await expect(page.locator('.ms-time')).not.toHaveText(before!);
 });

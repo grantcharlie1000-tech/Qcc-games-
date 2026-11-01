@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame} from '../../game-menu';
 import { test, expect, type Page } from '../../fixtures';
 import { generateLevel, solve } from '../../../src/games/block-fill/logic';
 
@@ -31,14 +32,14 @@ test.beforeEach(async({page})=>{await page.goto('/#/game/block-fill');await expe
 test('fast actual drag fills every square and unlocks the larger next garden',async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await drag(page,generateLevel(0).solution,true);
-  await expect(board(page)).toHaveAttribute('data-covered','9');await expect(page.getByRole('button',{name:'Next garden'})).toBeVisible();
+  await expect(board(page)).toHaveAttribute('data-covered','9');await expect(page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true})).toBeVisible();
   await expect(page.locator('#game-score')).toContainText('1800');
-  await page.getByRole('button',{name:'Reset path',exact:true}).click();
+  await gameAction(page,'Restart game');
   await expect(page.locator('#game-score')).toContainText('1800');
   await page.reload();await expect(page.locator('#game-score')).toContainText('1800');
   await drag(page,generateLevel(0).solution,true);
   await expect(board(page)).toHaveAttribute('data-covered','9');
-  await page.getByRole('button',{name:'Next garden'}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
+  await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
   await expect(page.locator('#game-level')).toContainText('2 / 32');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
 });
@@ -47,14 +48,16 @@ test('keyboard, legal current-state hints, undo, reset, pause, restart and reloa
   await keyboardPath(page,solution.slice(0,4),level.size);await expect(board(page)).toHaveAttribute('data-covered','4');
   await page.keyboard.press('Backspace');await expect(board(page)).toHaveAttribute('data-covered','3');
   await page.getByRole('button',{name:'Hint',exact:true}).click();await expect(page.locator('.bf-message')).toContainText('marked square');
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
+  await pauseGame(page);
   await board(page).dispatchEvent('keydown',{key:'ArrowRight'});await expect(board(page)).toHaveAttribute('data-covered','3');
   await page.reload();await expect(board(page)).toHaveAttribute('data-covered','3');
   await page.getByRole('button',{name:'Reset path',exact:true}).click();await expect(board(page)).toHaveAttribute('data-covered','1');
   await keyboardPath(page,solution.slice(0,3),level.size);
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();
-  await expect(board(page)).toHaveAttribute('data-covered','1');await expect(page.getByRole('button',{name:'Pause game',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('exactly once');await page.getByRole('button',{name:'Let’s play'}).click();await expect(page.locator('#rules-dialog')).not.toBeVisible();await expect(page.getByRole('button',{name:'Pause game',exact:true})).toBeVisible();
+  await pauseGame(page);await gameAction(page,'Restart game');
+  await expect(board(page)).toHaveAttribute('data-covered','1');await expect(page.locator('#game-menu')).toBeVisible();
+  await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('exactly once');await page.getByRole('button',{name:'Let’s play'}).click();await expect(page.locator('#rules-dialog')).not.toBeVisible();await expect(page.locator('#game-menu')).toBeVisible();
+  // The native dialog close event resumes the game after the dialog is hidden.
+  await expect(page.locator('#pause-overlay')).toBeHidden();
   await keyboardPath(page,solution,level.size);await expect(board(page)).toHaveAttribute('data-covered','9');
 });
 test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',async({page,context,browserName})=>{
@@ -67,7 +70,7 @@ test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',a
   await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(board(page)).toHaveAttribute('data-covered','4');
   await drag(page,[path[3]!,path[2]!]);await expect(board(page)).toHaveAttribute('data-covered','3');
   await page.getByRole('button',{name:'Reset path',exact:true}).click();
-  await drag(page,level.solution,true);await page.getByRole('button',{name:'Next garden'}).click();
+  await drag(page,level.solution,true);await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();
   const trapLevel=generateLevel(1);
   // Independently enumerate a legal trapped prefix on this actual board.
   const explore=(p:number[]):number[]|null=>{if(p.length>2&&!solve(trapLevel,p))return p;for(const c of trapLevel.cells){const h=p.at(-1)!;if(!p.includes(c)&&Math.abs(c%trapLevel.size-h%trapLevel.size)+Math.abs(Math.floor(c/trapLevel.size)-Math.floor(h/trapLevel.size))===1){const found=explore([...p,c]);if(found)return found;}}return null;};
@@ -79,7 +82,7 @@ test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',a
 });
 test('re-entry preserves progress and captures original golden trail art',async({page})=>{
   await drag(page,generateLevel(0).solution.slice(0,6),true);await expect(board(page)).toHaveAttribute('data-covered','6');
-  await page.getByRole('link',{name:'Back to game library'}).click();await page.goto('/#/game/block-fill');await expect(board(page)).toHaveAttribute('data-covered','6');
+  await backToGames(page);await page.goto('/#/game/block-fill');await expect(board(page)).toHaveAttribute('data-covered','6');
   await board(page).focus();await page.keyboard.press('Backspace');await expect(board(page)).toHaveAttribute('data-covered','5');
   // Re-entry can expose the restored SVG before its stage fit is painted.
   // Wait for the board to settle before calculating a native click coordinate.
@@ -93,12 +96,12 @@ test('all thirty-two gardens are playable to the final win using real pointer in
   for(let i=0;i<32;i++){
     const level=generateLevel(i);await drag(page,level.solution,true);
     await expect(board(page)).toHaveAttribute('data-covered',String(level.cells.length));
-    if(i<31)await page.getByRole('button',{name:'Next garden'}).click();
+    if(i<31)await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();
   }
   await expect(page.locator('.bf-message')).toContainText('All gardens filled');
 });
 test('invalid persisted snapshots are ignored safely',async({page})=>{
-  await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Block Fill',exact:true})).toBeVisible();
+  await backToGames(page);await expect(page.getByRole('link',{name:'Play Block Fill',exact:true})).toBeVisible();
   await page.evaluate(()=>localStorage.setItem('pocket-arcade:v1:save:block-fill',JSON.stringify({version:1,data:{version:1,level:0,path:[0,8]}})));
   await page.getByRole('link',{name:'Play Block Fill',exact:true}).click();await expect(board(page)).toHaveAttribute('data-covered','1');
   await page.getByRole('button',{name:'Hint',exact:true}).click();await expect(page.locator('.bf-message')).toContainText('marked square');

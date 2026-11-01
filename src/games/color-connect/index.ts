@@ -1,6 +1,8 @@
 import type { GameModule, GameContext } from '../../core/types';
-import { LEVELS, copyPaths, emptyPaths, endpoint, connected, begin, extend, isWon, hint, traverse, restoreSnapshot, recordWin, campaignScore } from './model';
+import { LEVELS, copyPaths, emptyPaths, endpoint, connected, begin, extend, isWon, traverse, restoreSnapshot, recordWin, campaignScore } from './model';
 import type { Paths, Point, Snapshot } from './model';
+import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
+import {mountCompactHud} from '../../ui/game-controls-adapter';
 import './style.css';
 
 const palette = [
@@ -12,8 +14,6 @@ const palette = [
   {name:'rose',color:'#fa8dd3',light:'#ffdcf3',dark:'#b34691',shape:'star',letter:'F',dash:'22 8'},
   {name:'sky',color:'#6da9ff',light:'#c8e5ff',dark:'#3568be',shape:'hexagon',letter:'G',dash:'5 12'},
 ];
-const icons = { undo:'<path d="M9 5 3 11l6 6M3 11h10a7 7 0 0 1 0 14" transform="translate(2 -3) scale(.85)"/>', hint:'<path d="M9 19h6m-6 3h6M8 14a7 7 0 1 1 8 0c-1 1-1 2-1 3H9c0-1 0-2-1-3Z"/>', erase:'<path d="m4 14 9-10a2 2 0 0 1 3 0l5 5a2 2 0 0 1 0 3l-9 10H9Zm5-5 9 9M12 22h10"/>' };
-const icon = (name:keyof typeof icons) => `<svg viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
 function shape(color:number,x:number,y:number):string {
  const radius=31, polygon=(sides:number,rotation:number) => Array.from({length:sides},(_,i)=>`${x+Math.cos(rotation+i*Math.PI*2/sides)*radius},${y+Math.sin(rotation+i*Math.PI*2/sides)*radius}`).join(' ');
  if(color===0)return `<circle cx="${x}" cy="${y}" r="31"/>`;
@@ -27,18 +27,21 @@ function shape(color:number,x:number,y:number):string {
 let instanceSequence=0;
 const game: GameModule = {
  id:'color-connect', title:'Flow Free', cover:'game-art/color-connect/cover.svg',
- rules:'Independent browser adaptation. Connect every pair of matching letters and shapes by drawing through neighbouring cells. Move only up, down, left or right. Paths cannot cross, share cells or enter another pair’s endpoint. To win, connect ALL pairs AND fill the ENTIRE board. Drag from a peg to redraw its colour, or grab a trail to trim it. Undo reverses a gesture. Erase selected removes its trail. Hint checks the current board: it adds one safe step or explains when you must backtrack. Keyboard: Tab into the board, arrows to move, Space or Enter to start/stop drawing, arrows to draw, Backspace to trim, Delete to erase. Thirty-two puzzles grow from 4×4 to 9×9.',
+ rules:'Independent browser adaptation. Connect every pair of matching letters and shapes by drawing through neighbouring cells. Move only up, down, left or right. Paths cannot cross, share cells or enter another pair’s endpoint. To win, connect ALL pairs AND fill the ENTIRE board. Drag from a peg to redraw its colour, or grab a trail to trim it. Matching letters and shapes identify each pair: A is a circle, B a diamond, C a square; later puzzles add more pairs. Redraw from a peg or drag backwards along a trail to correct it. Keyboard: Tab into the board, arrows to move, Space or Enter to start/stop drawing, arrows to draw, Backspace to trim, Delete to erase. Thirty-two puzzles grow from 4×4 to 9×9.',
  mount(container:HTMLElement, context:GameContext) {
   const abort = new AbortController(), signal=abort.signal, svgPrefix=`cc-${++instanceSequence}`;
   let state:Snapshot={version:1,level:0,paths:emptyPaths(LEVELS[0]),completed:[],moves:0,history:[],assists:0,best:{}};
   let paused=false,disposed=false,selected=-1,active=-1,focusCell=0,pointerId:number|null=null,lastPoint:Point|null=null,gesture:Paths|null=null,keyboardDrawing=false;
   let feedback='Start at any matching peg. Fill every cell.';
   const root=document.createElement('section');root.className='cc-game';
-  root.innerHTML=`<div class="cc-heading"><div><span class="cc-eyebrow">THREAD THE COLOURS</span><h2 class="cc-puzzle-name"></h2></div><label class="cc-picker-label"><span class="sr-only">Choose puzzle</span><select class="game-select cc-picker" aria-label="Choose puzzle"></select></label></div><div class="cc-stats"><span class="cc-progress"></span><span class="cc-pairs"></span><span class="cc-moves"></span></div><div class="cc-frame"><div class="cc-playfield"><svg class="cc-art" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg><div class="cc-grid" role="grid" aria-label="Flow Free board" aria-describedby="${svgPrefix}-help"></div></div></div><div class="cc-legend" aria-label="Pair legend"></div><div class="cc-actions"><button type="button" class="game-button secondary cc-undo">${icon('undo')}<span>Undo</span></button><button type="button" class="game-button cc-hint">${icon('hint')}<span>Hint</span></button><button type="button" class="game-button secondary cc-erase" aria-label="Erase selected">${icon('erase')}<span>Erase</span></button></div><p class="cc-feedback" role="status"></p><div class="cc-win" hidden><strong>Beautifully connected!</strong><span>Every pair. Every cell.</span><button type="button" class="game-button cc-next">Next puzzle</button></div><p id="${svgPrefix}-help" class="cc-help">Drag from a peg • Cover the whole board<br>Keyboard: arrows to move, Space to draw, Delete to erase.</p>`;
+  root.innerHTML=`<div class="cc-heading"><div><span class="cc-eyebrow">THREAD THE COLOURS</span><h2 class="cc-puzzle-name"></h2></div><label class="cc-picker-label"><span class="sr-only">Choose puzzle</span><select class="game-select cc-picker" aria-label="Choose puzzle"></select></label></div><div class="cc-stats"><span class="cc-progress"></span><span class="cc-pairs"></span><span class="cc-moves"></span></div><div class="cc-frame"><div class="cc-playfield"><svg class="cc-art" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg><div class="cc-grid" role="grid" aria-label="Flow Free board" aria-describedby="${svgPrefix}-help"></div></div></div><p class="cc-feedback" role="status"></p><p id="${svgPrefix}-help" class="cc-help sr-only">Drag from a peg • Cover the whole board<br>Keyboard: arrows to move, Space to draw, Delete to erase.</p>`;
   container.append(root);
   const find=<T extends Element>(selector:string)=>root.querySelector<T>(selector)!;
   const grid=find<HTMLElement>('.cc-grid'), art=find<SVGSVGElement>('.cc-art'), picker=find<HTMLSelectElement>('.cc-picker');
-  const undo=find<HTMLButtonElement>('.cc-undo'),hintButton=find<HTMLButtonElement>('.cc-hint'),erase=find<HTMLButtonElement>('.cc-erase'),next=find<HTMLButtonElement>('.cc-next');
+  const controls={touch:'Drag between matching pegs · Fill every cell.',keyboard:'Arrows to move · Space to draw.'};
+  const pauseSheet=bindGamePauseSheet(container,{title:'Flow Free',controls});
+  const sheet=createGameSheet(root,{title:'Flow Free',controls,buttonClass:'cc-next',onPlay(){if(!paused&&isWon(level(),state.paths))changePuzzle((state.level+1)%LEVELS.length)}});
+  const hud=mountCompactHud(container);
   LEVELS.forEach((level,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=`${i+1} / ${LEVELS.length} · ${level.size}×${level.size}`;picker.append(option)});
   let buttons:HTMLButtonElement[]=[];
   const level=()=>LEVELS[state.level];
@@ -80,9 +83,9 @@ const game: GameModule = {
    context.setLevel(`${state.level+1} / ${LEVELS.length} · ${n}×${n}`);context.setScore(campaignScore(state.best));
    context.setStatus(won?'All pairs connected · Board completely filled':`${pairs} of ${current.pairs.length} pairs · ${percent}% covered`);
    find<HTMLElement>('.cc-feedback').textContent=feedback;
-   find<HTMLElement>('.cc-win').hidden=!won;
-   next.textContent=state.level===LEVELS.length-1?'Play first puzzle':'Next puzzle';
-   undo.disabled=paused||!state.history.length;hintButton.disabled=paused||won;erase.disabled=paused||selected<0||!state.paths[selected]?.length;picker.disabled=paused;next.disabled=paused;
+   hud.set(`${pairs} / ${current.pairs.length} pairs · ${percent}% covered`);
+   if(won)sheet.show('game-over',{score:campaignScore(state.best),best:Math.max(context.highScore,campaignScore(state.best))});else sheet.hide();
+   picker.disabled=paused;
    root.dataset.paused=String(paused);grid.setAttribute('aria-disabled',String(paused));
    buttons.forEach((button,cell)=>{
     const peg=endpoint(current,cell),trail=state.paths.findIndex(path=>path.includes(cell)),color=peg===-1?trail:peg;
@@ -108,7 +111,7 @@ const game: GameModule = {
     if(connected(current,state.paths[color],color))drawing+=`<circle cx="${x+24}" cy="${y-24}" r="10" fill="#f2ffe7" stroke="#10213a" stroke-width="2"/><path d="m${x+19} ${y-24} 4 4 7-8" fill="none" stroke="#20633c" stroke-width="3"/>`;
    }));
    art.setAttribute('viewBox',`0 0 ${n*100} ${n*100}`);art.innerHTML=drawing.replaceAll('id="cc-',`id="${svgPrefix}-`).replaceAll('url(#cc-',`url(#${svgPrefix}-`);
-   find<HTMLElement>('.cc-legend').innerHTML=current.pairs.map((_,i)=>`<span class="${selected===i?'cc-legend-selected':''}" style="--cc-color:${palette[i].color}"><b>${palette[i].letter}</b>${palette[i].shape}</span>`).join('');
+
   }
   function record(before:Paths){
    if(JSON.stringify(before)===JSON.stringify(state.paths))return;
@@ -177,17 +180,9 @@ const game: GameModule = {
   },{signal});
   grid.addEventListener('focusout',event=>{if(keyboardDrawing&&!grid.contains(event.relatedTarget as Node|null))finish()},{signal});
   function eraseSelected(){if(paused||selected<0)return;finish();const before=copyPaths(state.paths);state.paths[selected]=[];say(`Erased ${palette[selected].letter}.`);record(before)}
-  erase.addEventListener('click',eraseSelected,{signal});
-  undo.addEventListener('click',()=>{if(paused)return;finish();const previous=state.history.pop();if(!previous)return;state.paths=previous;state.moves=Math.max(0,state.moves-1);state.assists++;say('Last gesture undone.');render();save()},{signal});
-  hintButton.addEventListener('click',()=>{
-   if(paused)return;finish();const result=hint(level(),state.paths);if(result.kind!=='complete')state.assists++;
-   if(result.kind==='step'){const before=copyPaths(state.paths);state.paths=result.paths;selected=result.color;focusCell=result.cell;say(`Hint: extend ${palette[result.color].letter} to row ${Math.floor(result.cell/level().size)+1}, column ${result.cell%level().size+1}.`);record(before)}
-   else if(result.kind==='backtrack'){if(result.color===undefined)say('This layout cannot fill the board. At least one path must be shortened or erased.');else{selected=result.color;say(`A backtrack is needed. Erase or redraw ${palette[result.color].letter}; clearing it makes a complete solution possible.`)}render()}
-   else if(result.kind==='limit'){say('This layout needs a longer search. No safe hint found yet; try shortening a path.');render()}
-  },{signal});
   function changePuzzle(index:number){if(paused)return;finish();state.level=index;state.paths=emptyPaths(level());state.history=[];state.moves=state.assists=0;active=selected=-1;focusCell=0;say('New puzzle. Connect every pair and fill every cell.');rebuild();save()}
   picker.addEventListener('change',()=>changePuzzle(Number(picker.value)),{signal});
-  next.addEventListener('click',()=>{if(!paused&&isWon(level(),state.paths))changePuzzle((state.level+1)%LEVELS.length)},{signal});
+
   rebuild();
   return {
    pause(){if(disposed)return;finish();paused=true;render()},
@@ -196,7 +191,7 @@ const game: GameModule = {
    restart(){if(disposed)return;finish();state={...state,paths:emptyPaths(level()),moves:0,history:[],assists:0};selected=active=-1;focusCell=0;say('Fresh start. Connect every pair and fill every cell.');rebuild();save()},
    serialize(){return snapshot()},
    restore(data:unknown){if(disposed)return;const restored=restoreSnapshot(data);if(!restored)return;finish();state=restored;selected=active=-1;focusCell=0;feedback='Saved puzzle restored.';rebuild()},
-   dispose(){if(disposed)return;finish();disposed=true;abort.abort();root.remove()},
+   dispose(){if(disposed)return;finish();disposed=true;abort.abort();sheet.dispose();pauseSheet.dispose();hud.dispose();root.remove()},
   };
  }
 };

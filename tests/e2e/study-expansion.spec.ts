@@ -1,3 +1,4 @@
+import {appSettings} from '../game-menu';
 import {guestTest as test,expect,seedGuest} from '../fixtures';
 import {mkdir} from 'node:fs/promises';
 
@@ -12,7 +13,7 @@ async function seed(page:import('@playwright/test').Page,id='close-reading',reme
 
 test('Escape changes styles without changing topic, dismisses privacy and menus first, and preserves a game across reload',async({page})=>{
   await seed(page);await page.goto('/#/game/fruit-merge');
-  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  await page.locator('.fm-board').click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
   let saved:unknown;
   let previous='qcc';
   for(let i=0;i<16;i++){
@@ -27,7 +28,7 @@ test('Escape changes styles without changing topic, dismisses privacy and menus 
   await expect(dialog).not.toBeVisible();expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe(selected);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data)).toEqual(saved);
   await page.getByRole('link',{name:'Games',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
   await page.keyboard.press('Escape');await expect(page.locator('#menu')).not.toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
   let current=await page.evaluate(key=>sessionStorage.getItem(key)!,key);expect(styleOf(current)).not.toBe(previous);previous=styleOf(current);
@@ -45,7 +46,7 @@ test('without consent article choice stays in memory and reload returns to the p
 });
 
 test('a newly blocked article write is explained on entry and while already reading',async({page})=>{
-  await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
+  await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-board')).toBeVisible();
   await page.evaluate(()=>{const original=Storage.prototype.setItem;(window as any).restoreStudyWrite=()=>{Storage.prototype.setItem=original;};Storage.prototype.setItem=function(key,value){if(key==='pocket-arcade:study:v1:topic')throw new DOMException('Quota','QuotaExceededError');return original.call(this,key,value);};});
   await page.keyboard.press('Escape');const dialog=page.getByRole('dialog',{name:'Reading storage choices'});
   await expect(dialog.getByRole('status')).toContainText('could not be remembered');
@@ -59,7 +60,7 @@ test('a newly blocked article write is explained on entry and while already read
 
 test('a browser-consumed fullscreen Escape dismisses a menu first and then advances the article',async({page})=>{
   await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-count')).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
   await page.evaluate(()=>document.dispatchEvent(new Event('fullscreenchange')));
   await expect(page.locator('#menu')).not.toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
   expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe('close-reading');
@@ -73,8 +74,8 @@ test('touch readers can advance through each new style without seeding article I
   const page=await context.newPage();
   try{
     await page.goto('/#/game/fruit-merge');await page.getByRole('button',{name:'Reject All',exact:true}).tap();await page.locator('[data-study-topic="forces"]').tap();
-    await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Open menu',exact:true}).tap();await page.getByRole('button',{name:'Study Mode',exact:true}).tap();
+    await expect(page.locator('.fm-board')).toBeVisible();
+    await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).tap();
     await page.evaluate(()=>{let i=0;const values=[0,.5,.99];Math.random=()=>values[i++%values.length];});
     for(const style of ['quanta','aeon','essay']){
       const next=page.getByRole('button',{name:'Next article',exact:true});await next.scrollIntoViewIfNeeded();await next.tap();
@@ -85,8 +86,8 @@ test('touch readers can advance through each new style without seeding article I
 
 test('Quanta mobile paragraphs retain a clear line of separation',async({page})=>{
   await page.setViewportSize({width:390,height:844});await seed(page,'quanta:close-reading');await page.goto('/#/game/fruit-merge');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
-  const spacing=await page.locator('.variant-prose > p').evaluateAll(ps=>{const first=ps[0],second=ps[1];return {gap:second.getBoundingClientRect().top-first.getBoundingClientRect().bottom,lineHeight:parseFloat(getComputedStyle(first).lineHeight)};});
+  await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  const spacing=await page.locator('.variant-text-section').first().locator(':scope > p').evaluateAll(ps=>{const first=ps[0],second=ps[1];return {gap:second.getBoundingClientRect().top-first.getBoundingClientRect().bottom,lineHeight:parseFloat(getComputedStyle(first).lineHeight)};});
   expect(spacing.gap).toBeGreaterThanOrEqual(spacing.lineHeight-1);
 });
 
@@ -97,8 +98,8 @@ test('changing article during a delayed update cancels the pending reload even a
     export async function cacheAll(){return 0;}
     export function activateUpdate(){return new Promise(resolve=>{window.finishStudyActivation=resolve;});}
   `}));
-  await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-board')).toBeVisible();
+  await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   await page.evaluate(()=>{(window as any).studyDocumentMarker='original';Math.random=()=>0;});
   await page.getByRole('button',{name:'Reload to update',exact:true}).click();
   await expect(page.locator('[data-study-update]')).toContainText('starting the update');
@@ -113,8 +114,8 @@ for(const viewport of [{name:'desktop',width:1180,height:900},{name:'mobile',wid
   for(const style of ['qcc','quanta','aeon','essay'])test(`${style} layout is readable and captured on ${viewport.name}`,async({page})=>{
     await page.setViewportSize({width:viewport.width,height:viewport.height});
     await seed(page,style==='qcc'?'close-reading':`${style}:close-reading`);await page.goto('/#/game/fruit-merge');
-    await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+    await expect(page.locator('.fm-board')).toBeVisible();
+    await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
     await expect(page.locator('#study-title')).toBeVisible();
     if(style==='qcc')await expect(page.locator('#study-view')).not.toHaveAttribute('data-style',/./);else await expect(page.locator('#study-view')).toHaveAttribute('data-style',style);
     await page.evaluate(()=>window.scrollTo(0,0));await page.locator('#study-view img').evaluateAll(images=>Promise.all(images.map(image=>{(image as HTMLImageElement).loading='eager';return (image as HTMLImageElement).decode();})));

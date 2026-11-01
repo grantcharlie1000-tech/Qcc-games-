@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect} from '../../fixtures';
 import type {Page} from '../../fixtures';
 import {blockId} from '../../../src/games/blockcraft/data/blocks';
@@ -21,7 +22,7 @@ test('boots, plays, opens the inventory, switches mode, pauses for Study and res
   const root=page.locator('.blockcraft');
   expect(await num(page,'workers')).toBeGreaterThan(0);
   await expect.poll(()=>num(page,'meshes'),{timeout:30000}).toBeGreaterThan(40);
-  await page.getByRole('button',{name:'Game mode'}).click();await expect(root).toHaveAttribute('data-mode','creative');
+  if(await page.locator('.bc-world-config').getAttribute('open')===null)await page.locator('.bc-world-config > summary').click();await page.getByRole('button',{name:'Game mode'}).click();await expect(root).toHaveAttribute('data-mode','creative');
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(root).toHaveAttribute('data-phase','playing');
   // Without pointer lock (headless WebKit) the same steps run on the drag-to-look and click fallback.
@@ -65,7 +66,7 @@ test('boots, plays, opens the inventory, switches mode, pauses for Study and res
   await expect(root).toHaveAttribute('data-mode','creative');
   expect(Math.abs(await num(page,'x')-reloadSnapshot.systems.player.x)).toBeLessThan(.01);
   await page.evaluate(()=>{(window as unknown as {oldCanvas:HTMLCanvasElement}).oldCanvas=document.querySelector('.blockcraft canvas')!;});
-  await page.getByRole('link',{name:'Back to game library'}).click();await expect(root).toHaveCount(0);
+  await backToGames(page);await expect(root).toHaveCount(0);
   expect(await page.evaluate(()=>(window as unknown as {oldCanvas:HTMLCanvasElement}).oldCanvas.getContext('webgl2')!.isContextLost())).toBe(true);
   expect(errors).toEqual([]);
 });
@@ -120,10 +121,10 @@ test('a world saved on the death screen loads back onto it, without a second dea
     {timeout:15000}).toBe(true);
   await page.reload();await ready(page);
   await expect(root).toHaveAttribute('data-phase','dead');
-  await expect(page.getByRole('heading',{name:'You died!'})).toBeVisible();
-  await expect(page.locator('.bc-menu')).toContainText('You fell from a high place');
+  await expect(page.locator('.bc-menu .game-sheet-state').filter({hasText:'Game over'})).toBeVisible();
+  await expect(page.locator('.bc-menu .game-sheet-state')).toHaveText('Game over');await expect(page.locator('.bc-menu > .game-sheet')).toHaveAttribute('aria-description','You fell from a high place');
   expect(await num(page,'health')).toBe(0);expect(await deaths()).toBe(1);
-  await page.getByRole('button',{name:'Respawn'}).click();
+  await page.getByRole('button',{name:'Play again',exact:true}).click();
   await expect.poll(()=>data(page,'phase'),{timeout:20000}).not.toBe('dead');
   await expect.poll(()=>num(page,'health')).toBe(20);
   expect(errors).toEqual([]);
@@ -159,8 +160,8 @@ test('without WebGL 2 the saved world is kept, not replaced by the fallback scre
   await expect(page.getByRole('heading',{name:'3D graphics unavailable'})).toBeVisible();
   // Past the shell's 5 s autosave, then a pause and leaving, which save again.
   await page.waitForTimeout(6000);
-  await page.getByRole('button',{name:'Pause game'}).click();
-  await page.getByRole('link',{name:'Back to game library'}).click();
+  await pauseGame(page);
+  await backToGames(page);
   await expect(page.locator('.bc-fallback')).toHaveCount(0);
   expect(await saved(page)).toEqual(world);
 });
@@ -175,8 +176,8 @@ test.describe('shell buttons on a landscape phone',()=>{
     const seed=()=>page.evaluate(()=>(window as unknown as {blockcraft:{seed:number}}).blockcraft.seed);
     await page.getByRole('button',{name:'Play',exact:true}).tap();await expect(root).toHaveAttribute('data-phase','playing');
     // One tap on the shell's Keep playing is enough: Minecraft's own Game Menu does not wait behind it.
-    await page.getByRole('button',{name:'Pause game'}).tap();await expect(root).toHaveAttribute('data-phase','paused');
-    await page.getByRole('button',{name:'Keep playing'}).tap();
+    await pauseGame(page);await expect(root).toHaveAttribute('data-phase','paused');
+    await resumeGame(page);
     await expect(root).toHaveAttribute('data-phase','playing');await expect(page.locator('.bc-menu')).toBeHidden();
     // An edit to keep, saved by the next pause.
     const stone=blockId('stone');
@@ -185,11 +186,11 @@ test.describe('shell buttons on a landscape phone',()=>{
       const p=g.player.state,x=Math.floor(p.x)+2,y=Math.floor(p.y)+3,z=Math.floor(p.z);g.world.set(x,y,z,id);return{x,y,z};
     },stone);
     const before=await seed();
-    await page.getByRole('button',{name:'Pause game'}).tap();
+    await pauseGame(page);
     const kept=(await saved(page))!;expect(kept.seed).toBe(before);expect(kept.edits.length).toBeGreaterThan(0);
-    await page.getByRole('button',{name:'Keep playing'}).tap();await expect(root).toHaveAttribute('data-phase','playing');
+    await resumeGame(page);await expect(root).toHaveAttribute('data-phase','playing');
     // Restart asks first; the world and its save stay as they were until Create New World.
-    await page.getByRole('button',{name:'Restart game'}).tap();
+    await gameAction(page,'Restart game');
     await expect(page.getByRole('heading',{name:'Create a new world?'})).toBeVisible();
     await expect(page.getByRole('button',{name:'Cancel'})).toBeFocused();
     expect(await root.getAttribute('data-phase')).toBe('paused');
@@ -197,10 +198,12 @@ test.describe('shell buttons on a landscape phone',()=>{
     const asked=(await saved(page))!;
     expect(await seed()).toBe(before);expect(asked.seed).toBe(before);expect(asked.edits.length).toBeGreaterThanOrEqual(kept.edits.length);
     await page.getByRole('button',{name:'Cancel'}).tap();
-    await expect(page.getByRole('heading',{name:'Game Menu'})).toBeVisible();
-    await page.getByRole('button',{name:'Resume',exact:true}).tap();await expect(root).toHaveAttribute('data-phase','playing');
+    await expect(page.getByRole('heading',{name:'Minecraft',exact:true})).toBeVisible();
+    await expect(page.locator('.game-dock')).not.toHaveAttribute('data-sheet-hidden','');
+    await page.getByRole('button',{name:'Play',exact:true}).tap();await expect(root).toHaveAttribute('data-phase','playing');
+    await expect(page.locator('.game-dock')).toHaveJSProperty('inert',false);
     expect(await page.evaluate(p=>(window as unknown as {blockcraft:{world:{get(x:number,y:number,z:number):number}}}).blockcraft.world.get(p.x,p.y,p.z),at)).toBe(stone);
-    await page.getByRole('button',{name:'Restart game'}).tap();
+    await gameAction(page,'Restart game');
     await page.getByRole('button',{name:'Create New World'}).tap();
     await expect.poll(seed).not.toBe(before);
     await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();

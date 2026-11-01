@@ -1,16 +1,18 @@
 import type {GameModule} from '../../core/types';
 import {create,reveal,flag,chord,restore as restoreBoard,LEVELS,type Board,type Level} from './model';
-import {LABELS,emptyStats,readStats,recordStart,recordWin,competitiveScore,winScore,SCORE_TIERS,rankingKey,formatTime,hint} from './practice';
+import {LABELS,emptyStats,readStats,recordStart,recordWin,competitiveScore,winScore,rankingKey,formatTime,hint} from './practice';
 import {read,write} from '../../core/storage';
 import {playSound} from '../../core/audio';
+import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
 import './style.css';
+const controls={touch:'Tap to reveal · Choose Flag to mark.',keyboard:'Click reveals · Right-click flags'};
 const art=new URL('game-art/minesweeper/',new URL(import.meta.env.BASE_URL,document.baseURI)).href;
 const image=(name:string)=>`<img src="${art}${name}.svg" alt="" draggable="false">`;
 const game:GameModule={
  id:'minesweeper',title:'Minesweeper',cover:'game-art/minesweeper/cover.svg',
  rules:'Reveal all safe cells to clear the field. Numbers count mines in the eight surrounding cells. Empty areas open automatically. Your first reveal and its neighbours are always mine-free. Flags left means mine total minus placed flags, not confirmed safe information. You can win without placing any flags.\n\nMouse: left-click to reveal, right-click to flag. Click a revealed number to chord when its adjacent flag count matches. Incorrect flags can cause a loss.\n\nTouch: choose Reveal or Flag, then tap. Optionally hold to flag. Drag to pan a large board; pinch or use − / + to zoom. Moving or using two fingers cancels the tap.\n\nKeyboard: focus a tile, use arrows or Home/End to move; Enter/Space reveals or chords, F flags, C chords. Shortcuts apply only to the focused board.\n\nThe timer starts on the first reveal. Pause and background tabs stop the timer and hide the board. Returning to a saved game excludes time away. Only unassisted wins enter personal bests and online rankings. The score board awards 0, 10,000 or 20,000 base points for Easy, Medium or Hard, plus speed points based on elapsed time. Faster wins score more. Separate Easy, Medium and Hard boards rank fastest times. Practice gives visible-information hints and undo; it never enters competitive records. Sound is optional and starts off.',
  mount(container,context){
-  let board=create('beginner',newSeed()),stats=emptyStats(),paused=false,disposed=false,assisted=false,practice=false,flagMode=false,focus=0,size=matchMedia('(max-width: 480px)').matches?Math.max(32,Math.min(44,Math.floor((innerWidth-32)/9))):44;
+  let board=create('beginner',newSeed()),stats=emptyStats(),paused=false,disposed=false,assisted=false,practice=false,flagMode=false,focus=0,size=matchMedia('(max-width: 480px)').matches?Math.max(32,Math.min(44,Math.floor((innerWidth-32)/9))):58;
   let sound=false,longPress=true,last=performance.now(),history:Board[]=[],hinted:number|null=null;
   const events=new AbortController();
   const root=document.createElement('section');root.className='ms';root.setAttribute('aria-label','Minefield');
@@ -19,23 +21,19 @@ const game:GameModule={
    <div class="ms-frame"><div class="ms-scroll" tabindex="-1" aria-label="Minefield: drag to pan, pinch to zoom"><div class="ms-board" role="grid" aria-label="Minesweeper board" aria-describedby="ms-instructions"></div></div></div>
    <div class="ms-underboard"><p class="ms-outcome" role="status">Your first move is safe.</p><span class="ms-badge" hidden>Practice · assisted</span></div>
    <p class="ms-hint-message" role="status" hidden></p>
-   <section class="ms-result" aria-label="Game result" hidden><div><strong class="ms-result-title"></strong><p class="ms-result-detail"></p></div><div class="ms-result-actions"><button type="button" class="ms-result-rankings">Score rankings</button><button type="button" class="ms-new">New game</button></div></section>
    <div class="ms-bottom"><div class="ms-mode-switch" role="group" aria-label="Touch action"><button type="button" class="ms-reveal-mode" aria-pressed="true">Reveal</button><button type="button" class="ms-mode" aria-label="Flag mode" aria-pressed="false">${image('flag')}<span>Flag</span></button></div><p class="ms-instructions" id="ms-instructions">Click to reveal · Right-click to flag</p></div>
    <dialog class="ms-settings" aria-labelledby="ms-options-title"><header class="ms-menu-heading"><div><h2 id="ms-options-title">Game options</h2><p class="ms-menu-subtitle"></p></div><button type="button" class="ms-close" aria-label="Close game options">×</button></header>
-    <div class="ms-menu-actions"><button type="button" class="ms-pause">Pause game</button><button type="button" class="ms-rankings">Rankings</button></div>
     <section class="ms-menu-section"><h3>Preferences</h3><label class="ms-setting-row"><span>Sound</span><input type="checkbox" class="ms-sound"></label><label class="ms-setting-row"><span>Hold to flag</span><input type="checkbox" class="ms-longpress" checked></label><div class="ms-setting-row"><span>Tile size</span><div class="ms-zoom"><button type="button" class="ms-minus" aria-label="Zoom out">−</button><output class="ms-scale" aria-label="Tile size"></output><button type="button" class="ms-plus" aria-label="Zoom in">+</button></div></div></section>
     <section class="ms-menu-section"><label class="ms-setting-row"><span><strong>Practice</strong><small>Hints and undo. Excluded from records.</small></span><input type="checkbox" class="ms-practice"></label><div class="ms-practice-tools" hidden><button type="button" class="ms-hint">Explain a hint</button><button type="button" class="ms-undo">Undo</button></div></section>
     <section class="ms-menu-section"><h3>Statistics</h3><p class="ms-statistics"></p></section>
-    <footer class="ms-menu-footer"><button type="button" class="ms-app-settings">Account & app settings</button><button type="button" class="ms-return">Return to game</button></footer>
+    <footer class="ms-menu-footer"><button type="button" class="ms-return">Return to game</button></footer>
    </dialog>`;
   container.append(root);
   const $=<T extends HTMLElement=HTMLElement>(s:string)=>root.querySelector<T>(s)!;
   const grid=$('.ms-board'),scroll=$('.ms-scroll'),levelSelect=$<HTMLSelectElement>('.ms-level'),menu=$<HTMLDialogElement>('.ms-settings');
   let resumeAfterMenu=false;
-  // Place QCC's shared controls in the toolbar/menu while retaining their shell handlers.
-  const moved:{node:HTMLElement;marker:Comment}[]=[];
-  for(const id of ['restart-game','fullscreen-game','rules-game','pause-overlay']){const node=document.getElementById(id);if(node){const marker=document.createComment(id);node.before(marker);moved.push({node,marker});$(id==='pause-overlay'?'.ms-frame':id==='restart-game'?'.ms-tools':'.ms-menu-actions').append(node);
-    if(id==='fullscreen-game'||id==='rules-game')node.addEventListener('click',()=>closeMenu(),{capture:true,signal:events.signal});}}
+  const pauseSheet=bindGamePauseSheet(container,{title:'Minesweeper',controls});
+  const resultSheet=createGameSheet(container,{title:'Minesweeper',controls,onPlay:()=>restart()});
   let buttons:HTMLButtonElement[]=[];
   function newSeed(){return crypto.getRandomValues(new Uint32Array(1))[0];}
   function syncTime(){const now=performance.now();if(!paused&&board.status==='playing')board.elapsedMs=Math.min(31536000000,board.elapsedMs+Math.max(0,now-last));last=now;}
@@ -67,9 +65,8 @@ const game:GameModule={
    root.dataset.status=board.status;root.dataset.paused=String(paused);grid.inert=paused;scroll.setAttribute('aria-hidden',String(paused));
    $('.ms-count').textContent=String(mines-board.flags.filter(Boolean).length);
    $('.ms-outcome').textContent=board.status==='won'?'Field cleared!':board.status==='lost'?'Mine found!':board.status==='ready'?'Your first move is safe.':`${safe} / ${total} safe tiles`;
-   $('.ms-result').hidden=!ended;$('.ms-hint-message').hidden=!$('.ms-hint-message').textContent;$('.ms-practice-tools').hidden=!practice;
+   if(ended&&!paused)resultSheet.show('game-over',{score:winScore(board,assisted),best:read<number>('best:minesweeper-score',0)});else resultSheet.hide();$('.ms-hint-message').hidden=!$('.ms-hint-message').textContent;$('.ms-practice-tools').hidden=!practice;
    $('.ms-menu-subtitle').textContent=`${LABELS[board.level]} · ${LEVELS[board.level].mines} mines${assisted?' · Assisted':''}`;
-   if(ended){const score=winScore(board,assisted),base=SCORE_TIERS[board.level].base;$('.ms-result-title').textContent=score?`Score ${score.toLocaleString()}`:board.status==='won'?'Unranked win':'A little wiser for the next field.';$('.ms-result-detail').textContent=score?`${LABELS[board.level]} ${base.toLocaleString()} + speed ${(score-base).toLocaleString()} · ${formatTime(Math.ceil(board.elapsedMs),true)} · Best score ${read<number>('best:minesweeper-score',0).toLocaleString()}`:`${LABELS[board.level]} · ${formatTime(Math.ceil(board.elapsedMs),true)}${assisted?' · Assisted':''}`;}
    const s=stats[board.level];$('.ms-statistics').textContent=`${LABELS[board.level]} · ${s.played} played · ${s.wins} wins · ${s.played?Math.round(s.wins/s.played*100):0}% win rate · Best ${s.bestMs===null?'—':formatTime(s.bestMs,true)}`;
    $('.ms-badge').hidden=!assisted;$('.ms-badge').textContent=practice?'Practice · assisted':'Assisted · restored field';$<HTMLInputElement>('.ms-practice').checked=practice;$<HTMLInputElement>('.ms-sound').checked=sound;$<HTMLInputElement>('.ms-longpress').checked=longPress;
    $<HTMLButtonElement>('.ms-hint').disabled=!practice||board.status!=='playing';$<HTMLButtonElement>('.ms-undo').disabled=!practice||!history.length;
@@ -139,17 +136,14 @@ const game:GameModule={
   function fresh(level=board.level,nextPractice=practice){cancelGestures();board=create(level,newSeed());practice=nextPractice;assisted=practice;history=[];hinted=null;flagMode=false;last=performance.now();$('.ms-hint-message').textContent='';build();render();save();}
   function confirmDiscard(){syncTime();return board.status!=='playing'||window.confirm('Discard this active field and start a new game? Your statistics keep this attempt.');}
   function restart(){if(!confirmDiscard())return false;fresh();return true;}
-  $('.ms-new').addEventListener('click',restart,{signal:events.signal});
   levelSelect.addEventListener('change',()=>{const level=levelSelect.value as Level;if(confirmDiscard())fresh(level);else levelSelect.value=board.level;},{signal:events.signal});
   $('.ms-practice').addEventListener('change',()=>{const next=$<HTMLInputElement>('.ms-practice').checked;if(confirmDiscard())fresh(board.level,next);else render();},{signal:events.signal});
   $('.ms-hint').addEventListener('click',()=>{if(!practice||board.status!=='playing')return;closeMenu();const result=hint(board);hinted=result?.index??null;$('.ms-hint-message').textContent=result?result.explanation+(board.flags[result.index]?' Remove the flag before revealing it.':' The outlined tile is safe to reveal.'):'No safe move established from visible numbers. This solver uses direct and subset deductions; it will not guess.';if(result)setFocus(result.index,true);render();save();},{signal:events.signal});
   $('.ms-undo').addEventListener('click',()=>{if(!practice||!history.length)return;closeMenu();syncTime();const elapsed=board.elapsedMs;board=history.pop()!;board.elapsedMs=elapsed;hinted=null;$('.ms-hint-message').textContent='';last=performance.now();render();save();},{signal:events.signal});
-  $('.ms-rankings').addEventListener('click',()=>{closeMenu();context.openRankings?.('minesweeper-score');},{signal:events.signal});
-  $('.ms-result-rankings').addEventListener('click',()=>context.openRankings?.('minesweeper-score'),{signal:events.signal});
   $('.ms-sound').addEventListener('change',()=>{sound=$<HTMLInputElement>('.ms-sound').checked;playSound(sound);save();},{signal:events.signal});$('.ms-longpress').addEventListener('change',()=>{longPress=$<HTMLInputElement>('.ms-longpress').checked;cancelGestures();save();},{signal:events.signal});
   $('.ms-dismiss').addEventListener('click',()=>{$('.ms-intro').hidden=true;write('minesweeper:intro',true);},{signal:events.signal});
   function openMenu(){
-   if(menu.open)return;resumeAfterMenu=!paused;context.setPaused?.(true);$('.ms-pause').hidden=!resumeAfterMenu;menu.showModal();
+   if(menu.open)return;resumeAfterMenu=!paused;context.setPaused?.(true);menu.showModal();
   }
   function finishMenu(){
    const resume=resumeAfterMenu;resumeAfterMenu=false;if(resume&&!document.hidden)context.setPaused?.(false);
@@ -161,13 +155,11 @@ const game:GameModule={
   menu.addEventListener('cancel',event=>{event.preventDefault();closeMenu();},{signal:events.signal});
   menu.addEventListener('click',event=>{if(event.target===menu){const rect=menu.getBoundingClientRect(),e=event as MouseEvent;if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)closeMenu();}},{signal:events.signal});
   $('.ms-close').addEventListener('click',()=>closeMenu(),{signal:events.signal});$('.ms-return').addEventListener('click',()=>closeMenu(),{signal:events.signal});
-  $('.ms-pause').addEventListener('click',()=>closeMenu(false),{signal:events.signal});
-  $('.ms-app-settings').addEventListener('click',()=>{closeMenu();context.openAppMenu?.();},{signal:events.signal});
   const ticker=window.setInterval(()=>{if(!disposed){syncTime();clock();}},200);
   build();render();
   return {openMenu,dismissMenu:()=>closeMenu(),pause(){syncTime();paused=true;cancelGestures();render();},resume(){paused=false;last=performance.now();render();},restart,serialize:snapshot,
    restore(data){const restored=restoreBoard(data);if(!restored)return;board=restored;const saved=data as {cellSize?:number;practice?:boolean;assisted?:boolean;stats?:unknown;sound?:boolean;longPress?:boolean};practice=saved.practice===true;assisted=practice||saved.assisted===true||(restored.first!==null&&saved.assisted!==false);stats=readStats(saved.stats);sound=saved.sound===true;longPress=saved.longPress!==false;if(typeof saved.cellSize==='number'&&Number.isFinite(saved.cellSize))size=Math.max(32,Math.min(64,saved.cellSize));history=[];hinted=null;last=performance.now();build();render();},
-   dispose(){disposed=true;closeMenu(false);events.abort();cancelGestures();clearInterval(ticker);for(const {node,marker} of moved)marker.replaceWith(node);root.remove();}
+   dispose(){disposed=true;closeMenu(false);events.abort();cancelGestures();clearInterval(ticker);resultSheet.dispose();pauseSheet.dispose();root.remove();}
   };
  }
 };

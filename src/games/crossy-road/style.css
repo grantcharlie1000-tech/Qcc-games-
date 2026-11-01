@@ -1,0 +1,36 @@
+/* CrossyRoad. Everything is scoped to .crossy-road / .hw-*. The playfield fills #game-stage (fillGames). */
+.crossy-road{position:relative;width:100%;height:100%;min-width:0;min-height:0;overflow:hidden;isolation:isolate;background:#27342c;color:#faf6e9;font:15px/1.4 var(--font-sans);-webkit-user-select:none;user-select:none}
+/* touch-action:none only on the playfield, so page gestures outside the stage are untouched. */
+.hw-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+:root[data-input="keyboard"] .hw-canvas:focus-visible{outline:2px solid #ffe0a4;outline-offset:-2px}
+
+/* Start hint: a quiet pill that fades once the first hop lands. */
+.hw-hint{position:absolute;left:50%;bottom:max(20px,env(safe-area-inset-bottom));z-index:2;max-width:calc(100% - 24px);margin:0;padding:7px 12px;transform:translateX(-50%);border:1px solid #ffffff70;border-radius:999px;background:#ffffffbd;color:#293d22;font:600 12px/1.3 var(--font-sans);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;transition:opacity 200ms var(--ease-out)}
+.hw-hint[data-gone=true]{opacity:0}
+
+/* Shared QCC sheet material and buttons. Only placement/entry is game-owned;
+   the sheet tokens (and PR #80's arcade-sheet) supply glass and its fallbacks. */
+.hw-layer{position:absolute;inset:0;z-index:3;display:grid;justify-items:center;align-items:start;padding:max(104px,12%) 16px 16px;background:linear-gradient(#11161966,#11161919 70%);pointer-events:none}
+.hw-layer[hidden]{display:none}
+.hw-card.ui-glass-sheet{pointer-events:auto;width:min(320px,100%);max-height:100%;margin:0;padding:20px 18px 18px;text-align:center;opacity:1;scale:1;translate:0 0;transform:none;transition:opacity 200ms var(--ease-out),scale 240ms var(--ease-out)}
+.hw-card[hidden]{display:none}
+@starting-style{.hw-card.ui-glass-sheet:not([hidden]){opacity:0;scale:.97}}
+.hw-title{margin:0;font:650 22px/1.2 var(--font-sans);color:var(--sheet-ink);letter-spacing:-.02em;outline:none}
+.hw-cause{margin:8px 0 0;font:15px/1.45 system-ui,sans-serif;color:var(--sheet-muted);text-wrap:balance}
+.hw-stats{display:flex;justify-content:center;gap:28px;margin:16px 0 0}
+.hw-stats div{min-width:72px}
+.hw-stats dt{font:700 11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--sheet-muted)}
+.hw-stats dd{margin:6px 0 0;font:650 32px/1 var(--font-sans);color:var(--sheet-ink);font-variant-numeric:tabular-nums}
+.hw-best{color:var(--sheet-ink)}
+.hw-new{margin:10px 0 0;font:650 14px/1.2 var(--font-sans);color:var(--sheet-ink);letter-spacing:.06em}
+.hw-new[hidden]{display:none}
+.hw-actions{display:flex;justify-content:center;gap:10px;margin-top:18px}
+.hw-actions .game-button{flex:1 1 0;max-width:150px;min-height:48px;font-size:16px}
+.hw-fallback{display:grid;place-items:center;align-content:center;gap:8px;height:100%;padding:24px;text-align:center}
+.hw-fallback h2{margin:0;font:800 24px/1.2 Arcade,sans-serif;color:#ffe0a4}
+.hw-fallback p{margin:0 0 8px;max-width:300px;color:#d8d6cc}
+
+@media (max-width:380px){.hw-card{padding:18px 14px 16px}.hw-stats{gap:18px}.hw-actions .game-button{font-size:15px;padding-inline:10px}}
+/* Reduced motion: the card still fades in, but nothing moves. */
+@media (prefers-reduced-motion:reduce){.hw-card.ui-glass-sheet{transition:opacity 200ms var(--ease-out)}}
+.reduce-motion .hw-card.ui-glass-sheet{transition:opacity 200ms var(--ease-out)}

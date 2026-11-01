@@ -1,4 +1,5 @@
 import type { GameModule } from '../../core/types';
+import { bindGamePauseSheet, createGameSheet } from '../../ui/game-sheet';
 import { advanceArena, BOT_COUNT, createArena, MIN_MASS, ranking, restoreArena, snapshot, STEP, type Arena } from './model';
 import { createRenderer } from './render';
 import { skinFor } from './skin';
@@ -6,24 +7,24 @@ import './style.css';
 
 const module: GameModule = {
   id: 'neon-coil', title: 'Slither.io', cover: 'game-art/neon-coil/cover.svg',
-  rules: 'Independent browser adaptation. A continuous arena against 18 named LOCAL BOTS. Move your mouse or trackpad pointer to steer; no click is needed. On touchscreens, drag anywhere on the arena. Arrows or WASD also steer. You always move forward and turn in a curve.\n\nEat glowing pellets to gain mass and grow your real following body. Keep eating to grow beyond 600; very large coils gain length more gradually. Hold Space or the Boost button for 1.7× speed, spending 6 mass per second and leaving collectible food behind. Boost stops at 20 mass.\n\nYour head touching another snake’s body or the glowing arena rim ends your run. Head-on collisions defeat both snakes, regardless of size. Crossing your own body is safe. Defeated snakes leave their mass as collectible pellet trails. Bots eat, grow, avoid hazards, die and respawn away from you. Ranking uses actual current mass.\n\nP pauses. Escape opens your study chapter through the arcade. Pause freezes the whole arena. Saved runs wait for Continue arena. Restart begins a fresh run; your best mass stays on this device. No networking or online players.',
+  rules: 'Independent browser adaptation. A continuous arena against 18 named LOCAL BOTS. Move your mouse or trackpad pointer to steer; no click is needed. On touchscreens, drag anywhere on the arena. Arrows or WASD also steer. You always move forward and turn in a curve.\n\nEat glowing pellets to gain mass and grow your real following body. Keep eating to grow beyond 600; very large coils gain length more gradually. Hold Space or the Boost button for 1.7× speed, spending 6 mass per second and leaving collectible food behind. Boost stops at 20 mass.\n\nYour head touching another snake’s body or the glowing arena rim ends your run. Head-on collisions defeat both snakes, regardless of size. Crossing your own body is safe. Defeated snakes leave their mass as collectible pellet trails. Bots eat, grow, avoid hazards, die and respawn away from you. Ranking uses actual current mass.\n\nP pauses. Escape opens your study chapter through the arcade. Pause freezes the whole arena. Saved runs wait for Play. Restart begins a fresh run; your best mass stays on this device. No networking or online players.',
   mount(container, context) {
     const root = document.createElement('div'); root.className = 'nc-game';
     root.innerHTML = `<canvas class="nc-canvas" tabindex="0" role="img" aria-label="Slither.io arena. Move the pointer without clicking, drag on touch, or use arrows and WASD to steer. Hold Space to boost. P pauses."></canvas>
       <div class="nc-score" aria-label="Current mass in Classic mode"><span class="nc-difficulty">CLASSIC</span><strong class="nc-mass">30</strong></div>
       <aside class="nc-ranking" aria-label="Live arena ranking"><h2>LIVE RANKING</h2><ol></ol><div class="nc-you" hidden></div></aside>
-      <div class="nc-bottom"><p class="nc-hint">Move pointer to steer <span>·</span> Arrows / WASD <span>·</span> P pause</p><button class="nc-boost" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold SPACE · spends mass</small></button></div>
-      <div class="nc-overlay"><section class="nc-card" aria-labelledby="nc-heading"><p class="nc-eyebrow">A LITTLE LIGHT. A LONG WAY.</p><h2 id="nc-heading">Slither.io<span>Find your flow.</span></h2><p class="nc-copy">Follow your pointer. Gather the glow.<br>Outmaneuver 18 local bots in a living arena.</p><div class="nc-guide"><span><b>01</b> Move pointer or drag to steer</span><span><b>02</b> Eat pellets to grow</span><span><b>03</b> Hold Space to boost · costs mass</span></div><p class="nc-result" hidden></p><button class="game-button nc-start">Enter arena <span aria-hidden="true">↗</span></button><p class="nc-footnote">Arrows / WASD also steer · P pause · Esc study<br>Heads hit other bodies. Your own coils are safe.</p></section></div>`;
+      <div class="nc-bottom"><button class="nc-boost" aria-label="Hold to boost" aria-pressed="false"><span class="nc-chevrons" aria-hidden="true"><i></i><i></i><i></i></span><small class="nc-boost-note">Hold to boost · spends mass</small></button></div>`;
     container.append(root);
     const canvas = root.querySelector<HTMLCanvasElement>('canvas')!, renderer = createRenderer(canvas);
-    const overlay = root.querySelector<HTMLElement>('.nc-overlay')!, heading = root.querySelector<HTMLElement>('#nc-heading')!;
-    const copy = root.querySelector<HTMLElement>('.nc-copy')!, guide = root.querySelector<HTMLElement>('.nc-guide')!;
-    const result = root.querySelector<HTMLElement>('.nc-result')!, start = root.querySelector<HTMLButtonElement>('.nc-start')!;
+    const controlsCopy = { touch: 'Drag steers · Hold Boost', keyboard: 'Pointer steers · Space boosts' };
+    const pauseSheet = bindGamePauseSheet(container, { title: 'Slither.io', controls: controlsCopy });
+    const sheet = createGameSheet(root, { title: 'Slither.io', controls: controlsCopy, onPlay: begin, buttonClass: 'nc-start' });
+    const start = sheet.button;
     const mass = root.querySelector<HTMLElement>('.nc-mass')!, board = root.querySelector<HTMLOListElement>('.nc-ranking ol')!;
+    const rankPanel = root.querySelector<HTMLElement>('.nc-ranking')!;
     const you = root.querySelector<HTMLElement>('.nc-you')!, boost = root.querySelector<HTMLButtonElement>('.nc-boost')!;
     const boostNote = root.querySelector<HTMLElement>('.nc-boost-note')!;
     const touchInput = matchMedia('(pointer: coarse)').matches;
-    if (touchInput) root.querySelector<HTMLElement>('.nc-hint')!.textContent = 'Drag anywhere to steer · Hold BOOST with a second finger';
     const events = new AbortController(), signal = events.signal;
     let state = createArena(), paused = false, disposed = false, savedRun = false, frame = 0, last: number | null = null;
     let uiAt = -Infinity, lastScore = -1, lastPhase = '', seed = state.seed, keyBoost = false, buttonBoost = false;
@@ -42,11 +43,25 @@ const module: GameModule = {
       boostId = null; keys.clear(); keyBoost = buttonBoost = false; touchId = null; pointer = null; keyboardAngle = undefined; state.snakes[0].boosting = false; }
     function resize() {
       const rect = root.getBoundingClientRect(); renderer.resize(rect.width, rect.height);
+      placeRanking();
       // Layout-dependent HUD must follow the canvas even when simulation is stopped.
       uiAt = -Infinity; update(performance.now());
       renderer.draw(state, 1, context.settings.reducedMotion);
     }
+    // Measure the shared dock instead of assuming a toolbar height. A future compact
+    // top-left dock leaves the leaderboard level with it; a broad dock puts it below.
+    function placeRanking() {
+      const bounds = root.getBoundingClientRect(), dock = container.closest('.game-view')?.querySelector<HTMLElement>('.game-dock');
+      const dockBounds = dock?.getBoundingClientRect(), panelBounds = rankPanel.getBoundingClientRect();
+      const styles = getComputedStyle(root), inset = Math.max(16, parseFloat(styles.getPropertyValue('--nc-safe-top')) || 0);
+      const aligned = Math.max(inset, dockBounds ? dockBounds.top - bounds.top : inset);
+      const overlaps = dockBounds && dockBounds.right + 12 > panelBounds.left && dockBounds.left < panelBounds.right;
+      rankPanel.style.top = `${overlaps ? Math.max(aligned, dockBounds.bottom - bounds.top + 12) : aligned}px`;
+      root.dataset.rankingPlacement = overlaps ? 'below-dock' : 'level-with-dock';
+    }
     const observer = new ResizeObserver(resize); observer.observe(root);
+    const dock = container.closest('.game-view')?.querySelector<HTMLElement>('.game-dock');
+    if (dock) observer.observe(dock);
     window.addEventListener('resize', resize, { signal });
     function persist() { context.save(snapshot(state)); }
     function update(now = 0, force = false) {
@@ -67,21 +82,12 @@ const module: GameModule = {
       root.dataset.rank = String(place); root.dataset.eaten = String(state.eaten); root.dataset.defeated = String(state.defeated);
       boost.disabled = paused || state.phase !== 'running'; boost.setAttribute('aria-pressed', String(player.boosting));
       boostNote.textContent = player.mass <= MIN_MASS + 1e-6 ? 'Eat more glow to boost' : player.boosting ? '1.7× SPEED · −6 MASS / SEC' : touchInput ? 'Hold here · spends mass' : 'Hold SPACE · spends mass';
-      overlay.hidden = state.phase === 'running'; start.disabled = paused;
+      start.disabled = paused;
       if (lastPhase !== state.phase || force) {
         lastPhase = state.phase;
-        guide.hidden = state.phase === 'dead' || savedRun; result.hidden = state.phase !== 'dead';
-        if (state.phase === 'dead') {
-          heading.innerHTML = 'A bright run.<span>Another little light?</span>';
-          copy.textContent = state.cause;
-          result.textContent = `${score} mass · ${Math.floor(state.ticks * STEP)}s survived · ${player.kills} outmaneuvered · Best ${Math.floor(best)}`;
-          start.textContent = 'Play again';
-          context.announce(`${state.cause} ${score} mass. Play again when ready.`);
-        } else {
-          heading.innerHTML = savedRun ? 'Welcome back.<span>Your glow is waiting.</span>' : 'Slither.io<span>Find your flow.</span>';
-          copy.innerHTML = savedRun ? `${score} mass · ${Math.floor(state.ticks * STEP)}s survived.<br>Continue your saved local arena.` : 'Follow your pointer. Gather the glow.<br>Outmaneuver 18 local bots in a living arena.';
-          start.textContent = savedRun ? 'Continue arena' : 'Enter arena';
-        }
+        if (state.phase === 'running') sheet.hide();
+        else sheet.show(state.phase === 'dead' ? 'game-over' : 'start', { score: savedRun || state.phase === 'dead' ? score : undefined, best: Math.floor(best) });
+        if (state.phase === 'dead') context.announce(`${state.cause} ${score} mass. Play again when ready.`);
       }
       context.setStatus(paused ? 'Arena paused.' : state.phase === 'dead' ? `${state.cause} Play again to start a fresh arena.` : state.phase === 'ready' ? 'Local bots only. Move your pointer to steer, Space to boost.' : `${score} mass. Rank ${place}. Local bots only. Avoid other bodies and the rim.`);
     }
@@ -91,7 +97,6 @@ const module: GameModule = {
       if (state.phase === 'dead') reset();
       state.phase = 'running'; savedRun = false; last = null; clearInput(); update(0, true); persist(); context.sound('tap'); canvas.focus({ preventScroll: true });
     }
-    start.addEventListener('click', begin, { signal });
     function setPointer(event: PointerEvent) { const rect = canvas.getBoundingClientRect(); pointer = { x: event.clientX - rect.left, y: event.clientY - rect.top }; steering = 'pointer'; }
     canvas.addEventListener('pointermove', event => {
       if (paused || state.phase !== 'running') return;
@@ -157,7 +162,7 @@ const module: GameModule = {
         state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
         if (savedRun) state.phase = 'ready'; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion);
       },
-      dispose() { disposed = true; clearInput(); events.abort(); observer.disconnect(); cancelAnimationFrame(frame); root.remove(); }
+      dispose() { disposed = true; clearInput(); events.abort(); observer.disconnect(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
     };
   }
 };

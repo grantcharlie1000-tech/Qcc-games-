@@ -1,3 +1,4 @@
+import {appSettings,backToGames,gameAction,gameOption} from '../game-menu';
 import {GAME_IDS} from '../../src/core/types';
 import {test,expect} from '../fixtures';
 import {deal} from '../../src/games/solitaire/model';
@@ -28,8 +29,9 @@ for(const size of [{width:390,height:844},{width:844,height:390}]){
           const box=await page.locator('#game-stage > *').first().boundingBox();
           return !!box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=size.width+1&&box.y+box.height<=size.height+1;
         },{message:`${id}: the entire game, including controls, must fit`}).toBe(true);
-        const names:Record<string,string|RegExp>={'fruit-merge':'Drop fruit',tower:'Drop block',snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','color-connect':'Hint','flappy-bird':'Flap',globle:'Guess','maze-muncher':'Start game','corn-clicker':/^Harvest the cob/,slipline:'Use hint',quadfall:'Start',fivefold:'Stats'};
-        const control=id==='pool'?page.locator('.pool-table'):page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
+        const boards:Record<string,string>={'fruit-merge':'.fm-board',tower:'.tower-canvas','color-connect':'.cc-grid',slipline:'.sl-board',pool:'.pool-table'};
+        const names:Record<string,string|RegExp>={snake:'Play',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','flappy-bird':'Play',globle:'Guess','maze-muncher':'Play','corn-clicker':/^Harvest the cob/,quadfall:/^(Start|Tap to play)$/,fivefold:'A'};
+        const control=boards[id]?page.locator(boards[id]):page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
         await expect.poll(()=>control.evaluate(button=>{
           const r=button.getBoundingClientRect(),under=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
           return !!under&&(under===button||button.contains(under));
@@ -49,7 +51,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   expect(libraryY).toBeGreaterThan(0);
   await page.getByRole('link',{name:'Play Pool',exact:true}).click();
   await expect(page.locator('.pool-game')).toBeVisible();
-  const root=await page.locator('#game-stage > *').elementHandle();
+  const root=await page.locator('#game-stage > *').first().elementHandle();
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
   await page.keyboard.press('Escape');
   await expect(page.locator('#study-view')).toBeVisible();
@@ -65,7 +67,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
   await expect(page.locator('.game-view')).toHaveCSS('position','fixed');
-  await page.getByRole('link',{name:'Back to game library',exact:true}).click();
+  await backToGames(page);
   await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(libraryY);
   await page.mouse.wheel(0,-1600);
@@ -94,8 +96,8 @@ test('legacy fit follows a growing Solitaire pile and preserves real card hits',
 
 test('Minesweeper keeps its intentional board scrolling inside the responsive game',async({page})=>{
   await page.setViewportSize({width:844,height:390});await page.goto('/#/game/minesweeper');
-  await page.getByLabel('Difficulty',{exact:true}).selectOption('expert');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await gameOption(page,'Difficulty','expert');
+  await gameAction(page,'Game options');
   await page.getByRole('button',{name:'Zoom in',exact:true}).click();await page.getByRole('button',{name:'Zoom in',exact:true}).click();
   await page.getByRole('button',{name:'Close game options',exact:true}).click();
   const first=page.locator('.ms-tile[data-index="0"]');await first.click({button:'right'});
@@ -113,10 +115,10 @@ test('Minesweeper keeps its intentional board scrolling inside the responsive ga
 test('the toolbar and game menu remain reachable at the supported 320px width',async({page})=>{
   await page.setViewportSize({width:320,height:568});await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms')).toBeVisible();
-  for(const control of await page.locator('.game-toolbar button:visible,.game-toolbar a:visible').all()){
+  for(const control of await page.locator('.game-dock button,.game-dock a').all()){
     const box=(await control.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(320);
     expect(await control.evaluate(element=>{const r=element.getBoundingClientRect();return element.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
   }
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('.ms-settings')).toBeVisible();
-  await page.getByRole('button',{name:'Account & app settings',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await gameAction(page,'Game options');await expect(page.locator('.ms-settings')).toBeVisible();
+  await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
 });

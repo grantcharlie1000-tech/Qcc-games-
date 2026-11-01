@@ -7,7 +7,7 @@ import type {Page} from '@playwright/test';
  *  never overwrites them. */
 export function evidencePath(file:string):string{
   const info=test.info();
-  return info.project.name==='chromium'?`tests/games/blockcraft/evidence/${file}`:info.outputPath(file);
+  return process.env.BLOCKCRAFT_EVIDENCE_DIR?`${process.env.BLOCKCRAFT_EVIDENCE_DIR}/${info.project.name}-${file}`:info.project.name==='chromium'?`tests/games/blockcraft/evidence/${file}`:info.outputPath(file);
 }
 
 /** Headless Playwright WebKit rejects every requestPointerLock() with pointerlockerror (Safari itself grants it). After two

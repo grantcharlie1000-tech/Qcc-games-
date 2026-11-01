@@ -1,0 +1,54 @@
+/* One material and one painted surface through every navigation state/route.
+   The mini button supplies only an icon and a hit target over the same pill. */
+.section-navigation>.arcade-glass,.section-navigation>.arcade-glass-mini,.floating-glass-group.arcade-glass[data-glass-tone=light]{
+  --glass-tint:rgb(255 255 255 / .38);--glass-frost:blur(4px);
+  --glass-tone:saturate(.08) contrast(.22) brightness(1.65);
+  --glass-ink:#0b1015;--glass-solid:#f1f3f5;--glass-pill:rgb(0 0 0 / .09);
+  --glass-lift:0 10px 28px -6px rgb(0 0 0 / .16),0 2px 6px rgb(0 0 0 / .06);
+}
+.section-navigation>.arcade-glass:is([data-glass=frost],[data-glass=backdrop]){
+  background:none;border:0;box-shadow:none;
+}
+.section-navigation>.arcade-glass[data-glass=backdrop]{-webkit-backdrop-filter:none;backdrop-filter:none}
+/* Some WebKit compositors omit backdrop colour filters. The single neutral
+   veil must support dark ink even then, on the pill and companion alike. */
+.section-navigation>.arcade-glass[data-glass=frost]{--glass-tint:rgb(255 255 255 / .5)}
+.section-navigation>.arcade-glass>.ui-glass-lens{
+  border-radius:inherit;overflow:hidden;
+  -webkit-backdrop-filter:var(--glass-frost-body);backdrop-filter:var(--glass-frost-body);
+}
+.section-navigation>.arcade-glass.is-refracting>.ui-glass-lens{
+  -webkit-backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
+  backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);
+}
+.section-navigation>.section-tabbar.ui-tabbar{
+  width:min(calc(100vw - var(--home-inset) - var(--home-inset) - var(--home-action) - var(--home-gap)),calc(440px - var(--home-action) - var(--home-gap)));
+  right:auto;height:var(--tabbar-h);min-height:var(--tabbar-h);
+  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+}
+.section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){
+  left:calc(12px + env(safe-area-inset-left));width:56px;height:48px;min-height:48px;
+  --glass-radius:24px;translate:0 0;scale:1;opacity:1;pointer-events:none;
+  transition:width 300ms var(--ease-drawer),height 300ms var(--ease-drawer),min-height 300ms var(--ease-drawer),left 300ms var(--ease-drawer),opacity 150ms var(--ease),translate 180ms var(--ease-out);
+}
+.section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true])::before,
+.section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]) :is(.ui-glass-lens,.ui-glass-glow){opacity:1;transition:none}
+.section-navigation>.ui-tabbar-mini{
+  background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
+  left:max(var(--home-inset),calc((100vw - 440px)/2));
+  translate:0 0;scale:1;color:var(--glass-ink);
+  transition:left 300ms var(--ease-drawer),opacity 120ms var(--ease),translate 180ms var(--ease-out);
+}
+.section-navigation:not(:has(:focus-visible))>.section-tabbar[data-minimized=true]:not([data-hidden=true])~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left));transition:left 300ms var(--ease-drawer),opacity 180ms var(--ease) 80ms,translate 180ms var(--ease-out)}
+.section-navigation>.section-tabbar[data-minimized=true]~.ui-tabbar-mini{left:calc(12px + env(safe-area-inset-left))}
+/* Hidden companions have no filtered box for WebKit to leave on its compositor. */
+.section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu{width:0;height:0;min-width:0;min-height:0;overflow:hidden}
+.section-navigation:has(.section-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible))>.section-menu>.ui-glass-lens{display:none}
+.section-navigation>.section-tabbar[data-hidden=true]:not(:has(:focus-visible))>.ui-glass-lens{display:none}
+.section-navigation>.section-tabbar[data-hidden=true]:not(:has(:focus-visible)){-webkit-backdrop-filter:none;backdrop-filter:none}
+@media(prefers-reduced-motion:reduce){
+  .section-navigation>.section-tabbar.ui-tabbar,
+  .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){translate:none;scale:none;transition:opacity 150ms var(--ease)!important}
+}
+.reduce-motion .section-navigation>.section-tabbar.ui-tabbar,
+.reduce-motion .section-navigation:not(:has(:focus-visible))>.section-tabbar.ui-tabbar[data-minimized=true]:not([data-hidden=true]){translate:none;scale:none;transition:opacity 150ms var(--ease)!important}

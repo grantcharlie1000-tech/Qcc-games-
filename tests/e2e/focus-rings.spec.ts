@@ -7,6 +7,7 @@ const PHONE={width:390,height:844};
 const DESKTOP={width:1440,height:900};
 const BRIGHT_BORDER='rgba(255, 255, 255, 0.55)';
 const WHITE_RING={style:'solid',width:'2px',colour:'rgb(255, 255, 255)',offset:'2px'};
+const GLASS_RING={...WHITE_RING,colour:'rgb(11, 16, 21)'};
 const INNER_RING='rgba(255, 255, 255, 0.7) 0px 0px 0px 1px inset';
 const TITLE='/#/movies/tv-19885/season/1/episode/1/play';
 
@@ -20,6 +21,7 @@ const press=(page:Page)=>page.evaluate(()=>window.dispatchEvent(new PointerEvent
 // Neither the page's ring nor the browser's own shows: the outline is off, whatever the element is focused by.
 async function expectNoOutline(locator:Locator){const o=await outline(locator);expect(o.style==='none'||o.width==='0px',`outline ${JSON.stringify(o)}`).toBe(true);}
 async function expectWhiteRing(locator:Locator){expect(await outline(locator)).toEqual(WHITE_RING);}
+async function expectGlassRing(locator:Locator){expect(await outline(locator)).toEqual(GLASS_RING);}
 // A field has no outline and no outer ring, and keyboard use draws its inner ring on the rounded edge.
 async function expectInnerRing(locator:Locator){await expectNoOutline(locator);expect(await boxShadow(locator)).toContain(INNER_RING);}
 async function expectNoInnerRing(locator:Locator){expect(await boxShadow(locator)).not.toContain(INNER_RING);}
@@ -37,7 +39,7 @@ async function tabTo(page:Page,target:Locator){
 async function telemetry(page:Page,currentTime=100,duration=100){await page.frame({url:/framextv/})!.evaluate(({currentTime,duration})=>parent.postMessage({event:'frameXTV:timeupdate',currentTime,duration},'*'),{currentTime,duration});}
 const upNext=(page:Page)=>page.getByRole('dialog',{name:'Up next'});
 // Movies replaces the shell's island with its own, whose tabs are buttons.
-const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
+const island=(page:Page)=>page.locator('.movies-mobile-nav.ui-tabbar');
 async function ended(page:Page){await page.clock.pauseAt(await page.evaluate(()=>Date.now()+1000));await telemetry(page);await expect(upNext(page)).toBeVisible();}
 
 test.beforeEach(async({page})=>{
@@ -100,7 +102,7 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
 
  test('a mouse click draws no ring on the menu button, nor on the menu sheet\'s search field',async({page})=>{
   await page.goto('/');
-  const menu=page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true});
+  const menu=page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true});
   await menu.click();
   await expect(page.locator('#menu')).toBeVisible();
   await expectNoOutline(menu);
@@ -112,14 +114,19 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
   await expectNoInnerRing(search);
  });
 
- test('Tab shows the white ring on an island tab and on a Movies button',async({page})=>{
+ test('Tab shows contrasting rings on an island tab and on a Movies button',async({page})=>{
   await page.goto('/#/movies');
   const tab=island(page).getByRole('button',{name:'Movies',exact:true});
   await tabTo(page,tab);
-  await expectWhiteRing(tab);
+  await expectGlassRing(tab);
   await openWatch(page);
   const fullscreen=page.getByRole('button',{name:'Full screen',exact:true});
-  await tabTo(page,fullscreen);
+  // Enter from the adjacent app control, after the asynchronous provider has
+  // mounted. Sweeping Tab through its document races the iframe's own focus.
+  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+  await page.getByRole('button',{name:'Reload player',exact:true}).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(fullscreen).toBeFocused();
   await expectWhiteRing(fullscreen);
  });
 
@@ -140,12 +147,12 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
   await page.goto('/#/movies');
   const tab=island(page).getByRole('button',{name:'Movies',exact:true});
   await tabTo(page,tab);
-  await expectWhiteRing(tab);
+  await expectGlassRing(tab);
   await press(page);
   expect(await inputMode(page)).toBe('pointer');
   await expectNoOutline(tab);
   await keyboardMode(page);
-  await expectWhiteRing(tab);
+  await expectGlassRing(tab);
  });
 
  test('a press takes the inner ring off a field that keeps keyboard focus, and the next key brings it back',async({page})=>{

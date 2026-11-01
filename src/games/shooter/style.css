@@ -1,0 +1,33 @@
+/* QCC's play surface owns the viewport; game visuals stay inside it. */
+.shooter-game{position:absolute;inset:0;isolation:isolate;overflow:hidden;background:#04070a;color:#d6e5b8;font-family:system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+.shooter-game>canvas{width:100%;height:100%;display:block;touch-action:none;outline:none}
+.shooter-game #hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10}
+.shooter-game #hud [hidden]{display:none!important}
+.shooter-game .qcc-shooter-credit{font-size:11px;color:#aabd8c;text-align:center;line-height:1.4}
+.shooter-game .mn-title{font-size:clamp(30px,5vw,64px)}
+.shooter-game #hud-menu{padding-top:60px}
+.shooter-game #hud-radar{top:60px}
+/* Disabled upstream panels have no service or active control. */
+.shooter-game :is(#hud-career,#hud-online-open,#hud-leaderboard-open,#hud-leaderboard,#hud-end-leaderboard,#hud-end-rewards,#hud-end-rank,#hud-progress-details,#hud-progression-toasts){display:none!important}
+body.in-game .game-view:has(.shooter-game){--scene-width:var(--play-width,100vw);--scene-bg:#04070a;padding:0;display:block}
+body.in-game .game-view:has(.shooter-game) .game-metrics{display:none}
+body.in-game .game-view:has(.shooter-game) .game-toolbar{top:max(8px,env(safe-area-inset-top));left:0;width:100%;height:36px;padding:0 8px}
+body.in-game .game-view:has(.shooter-game) .game-toolbar .icon-button{position:absolute;top:0;bottom:auto;width:32px;height:32px;min-width:32px;min-height:32px;padding:6px;background:#0008}
+body.in-game .game-view:has(.shooter-game) .game-toolbar .icon-button svg{width:20px;height:20px}
+body.in-game .game-view:has(.shooter-game) .game-toolbar button:is(#pause-game,#fullscreen-game,#game-menu,#rules-game,#restart-game,#favourite-game){position:absolute;top:0;bottom:auto;width:32px;height:32px;min-width:32px;min-height:32px;padding:6px;background:#0008}
+body.in-game .game-view:has(.shooter-game) .game-toolbar>a{left:max(8px,env(safe-area-inset-left))}
+body.in-game .game-view:has(.shooter-game) #pause-game{right:max(8px,env(safe-area-inset-right));margin:0}
+body.in-game .game-view:has(.shooter-game) #fullscreen-game{right:calc(max(8px,env(safe-area-inset-right)) + 36px)}
+body.in-game .game-view:has(.shooter-game) #game-menu{right:calc(max(8px,env(safe-area-inset-right)) + 72px)}
+body.in-game .game-view:has(.shooter-game) #rules-game{right:calc(max(8px,env(safe-area-inset-right)) + 108px)}
+body.in-game .game-view:has(.shooter-game) #restart-game{right:calc(max(8px,env(safe-area-inset-right)) + 144px)}
+body.in-game .game-view:has(.shooter-game) #favourite-game{right:calc(max(8px,env(safe-area-inset-right)) + 180px)}
+.game-view .shooter-game.touch-device #hud-menu{padding-top:50px}
+.game-view .shooter-game.touch-device #hud-radar{top:52px;width:100px;height:100px}
+.game-view .shooter-game.touch-device #hud-radar-canvas{width:94px;height:94px}
+.game-view .shooter-game.touch-device .tc-utilities{top:calc(var(--safe-t) + 48px)}
+.game-view .shooter-game.touch-device #hud-ammo{top:calc(env(safe-area-inset-top,0px) + 100px)}
+.game-view .shooter-game.touch-device #hud-killfeed{top:158px}
+.game-view .shooter-game.touch-device .mn-map-art{height:38px}
+@media(prefers-reduced-motion:reduce){.shooter-game *,.shooter-game *::before,.shooter-game *::after{animation:none!important;transition:none!important}}
+.reduce-motion .shooter-game *,.reduce-motion .shooter-game *::before,.reduce-motion .shooter-game *::after{animation:none!important;transition:none!important}

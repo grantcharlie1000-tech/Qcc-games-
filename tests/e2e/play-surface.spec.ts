@@ -1,3 +1,4 @@
+import {appSettings,backToGames,gameAction,gameOption,openGameMenu} from '../game-menu';
 import {mkdirSync} from 'node:fs';
 import {devices} from '@playwright/test';
 import {test, expect, seedStudyTopic} from '../fixtures';
@@ -47,7 +48,7 @@ test('a game fills the visual viewport, locks gestures, and reading zoom comes b
     scroll: {height: 390},
   });
 
-  await page.getByRole('link', {name: 'Back to game library', exact: true}).click();
+  await backToGames(page);
   await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   expect(await meta(page)).toBe(READING_VIEWPORT);
   await expect(page.locator('html')).not.toHaveClass(/play-locked/);
@@ -57,12 +58,10 @@ test('a game fills the visual viewport, locks gestures, and reading zoom comes b
 test('Fullscreen API, the immersive fallback, and Escape still opens Study', async ({page}) => {
   await page.setViewportSize({width: 1366, height: 768});
   await page.goto('/#/game/tower');
-  const button = page.getByRole('button', {name: 'Enter full screen', exact: true});
-  await expect(button).toBeVisible();
-  await button.click();
-  await expect(page.getByRole('button', {name: 'Exit full screen', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  await gameAction(page,'Enter full screen');
+  await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed', 'true');
   expect(await page.evaluate(() => document.fullscreenElement === document.documentElement)).toBe(true);
-  await page.getByRole('button', {name: 'Open menu', exact: true}).click();
+  await appSettings(page);
   await expect(page.locator('#menu')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu')).not.toBeVisible();
@@ -80,8 +79,8 @@ test('a rejected Fullscreen API falls back without taking over Escape', async ({
     Element.prototype.requestFullscreen = () => Promise.reject(new Error('not allowed'));
   });
   await page.goto('/#/game/flappy-bird');
-  await page.getByRole('button', {name: 'Enter full screen', exact: true}).click();
-  const button = page.getByRole('button', {name: /Exit full screen/});
+  await gameAction(page,'Enter full screen');
+  const button = page.locator('#fullscreen-game');
   await expect(button).toHaveAttribute('aria-pressed', 'true');
   await expect(button).toHaveAttribute('title', 'This browser keeps its own controls. The game fills the screen.');
   await expect(page.locator('html')).toHaveClass(/play-immersive/);
@@ -103,32 +102,27 @@ test('a fullscreen request that finishes after leaving does not capture the libr
     Document.prototype.exitFullscreen = () => {active = false; return Promise.resolve();};
   });
   await page.goto('/#/game/tower');
-  await page.getByRole('button', {name: 'Enter full screen', exact: true}).click();
-  await page.getByRole('link', {name: 'Back to game library', exact: true}).click();
+  await gameAction(page,'Enter full screen');
+  await backToGames(page);
   await expect(page.locator('.game-card').first()).toBeVisible();
   await page.evaluate(() => (window as unknown as {__finishFullscreen:()=>void}).__finishFullscreen());
   await expect.poll(() => page.evaluate(() => document.fullscreenElement)).toBeNull();
   await expect(page.locator('html')).not.toHaveClass(/play-immersive|play-locked/);
 });
 
-test('the fullscreen control stays off the score on a short reference-game scene', async ({page}) => {
-  await page.setViewportSize({width: 844, height: 390});
-  for (const id of ['animal-stack', 'color-blocks', 'water-sort']) {
-    await page.goto(`/#/game/${id}`);
-    await expect(page.locator('#fullscreen-game')).toBeVisible();
-    await expect(page.locator('#game-stage > *').first()).toBeVisible();
-    await expect(page.locator(id === 'water-sort' ? '.ws-level-name' : '#game-best')).toBeVisible();
-    const overlap = await page.evaluate(game => {
-      const button = document.querySelector('#fullscreen-game')!.getBoundingClientRect();
-      const title = document.querySelector(game === 'water-sort' ? '.ws-level-name' : '#game-best')!.getBoundingClientRect();
-      const hits = button.width > 0 && button.x >= 0 && button.x + button.width <= innerWidth && button.y + button.height <= innerHeight;
-      const covers = button.left < title.right && title.left < button.right && button.top < title.bottom && title.top < button.bottom;
-      return {hits, covers, titleWidth: title.width};
-    }, id);
-    expect(overlap.titleWidth, id).toBeGreaterThan(10);
-    expect(overlap.hits, id).toBe(true);
-    expect(overlap.covers, id).toBe(false);
+test('dock and menu controls stay clear of game information on a short scene', async ({page}) => {
+ await page.setViewportSize({width:844,height:390});
+ for(const id of ['animal-stack','color-blocks','water-sort']){
+  await page.goto(`/#/game/${id}`);await expect(page.locator('.game-hud strong,.game-compact-hud').filter({visible:true}).first()).toBeVisible();
+  for(const [button,metric] of [['#game-menu','.game-hud'],['#fullscreen-game','#game-best']]){
+   if(button==='#fullscreen-game')await openGameMenu(page);
+   const control=page.locator(button);await control.scrollIntoViewIfNeeded();
+   const a=(await control.boundingBox())!,b=(await page.locator(metric).boundingBox())!;
+   expect(a.x,id).toBeGreaterThanOrEqual(0);expect(a.x+a.width,id).toBeLessThanOrEqual(844);
+   expect(a.y+a.height,id).toBeLessThanOrEqual(390);
+   expect(a.x<b.x+b.width&&b.x<a.x+a.width&&a.y<b.y+b.height&&b.y<a.y+a.height,id).toBe(false);
   }
+ }
 });
 
 test('pinch is cancelled, a control and an overflowing board still receive a single finger', async ({page, browserName}) => {
@@ -152,8 +146,8 @@ test('pinch is cancelled, a control and an overflowing board still receive a sin
   await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms-tile').first()).toBeVisible();
 
-  await page.getByLabel('Difficulty', {exact: true}).selectOption('expert');
-  await page.getByRole('button', {name:'Open menu',exact:true}).click();
+  await gameOption(page,'Difficulty','expert');
+  await gameAction(page,'Game options');
   await page.getByRole('button', {name:'Zoom in',exact:true}).click();await page.getByRole('button', {name:'Zoom in',exact:true}).click();
   await page.getByRole('button', {name:'Close game options',exact:true}).click();
   await expect.poll(() => page.locator('.ms-scroll').evaluate(element => element.scrollWidth > element.clientWidth + 1)).toBe(true);
@@ -186,7 +180,7 @@ test('phone and desktop shots of every game', async ({browser}) => {
       await page.screenshot({path: `${shots}/${name}-${id}.png`});
     }
     await page.goto('/#/game/tower');
-    await page.getByRole('button', {name: 'Enter full screen', exact: true}).click();
+    await gameAction(page,'Enter full screen');
     await expect(page.locator('#fullscreen-game')).toHaveAttribute('aria-pressed', 'true');
     await page.screenshot({path: `${shots}/${name}-tower-fullscreen.png`});
     await context.close();

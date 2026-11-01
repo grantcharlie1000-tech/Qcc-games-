@@ -171,7 +171,7 @@ test('Enter on the Auto next switch does not play Up next',async({page})=>{
  await expect(overlay(page)).toBeVisible();await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
 });
 
-const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
+const island=(page:Page)=>page.locator('.movies-mobile-nav.ui-tabbar');
 // How visible the island is. With a glass lens the bar keeps its own opacity at 1 while its lens, top layer and tabs fade; without one the
 // bar itself fades. So what shows is the bar's own opacity times the most opaque layer it paints.
 // The island and its capsule count together: the shown state is the more visible of the two.
@@ -180,7 +180,7 @@ const islandShown=(page:Page)=>island(page).evaluate(bar=>{
  const capsule=bar.parentElement?.querySelector(':scope > .ui-tabbar-mini');
  return Math.max(Number(getComputedStyle(bar).opacity)*Math.max(...layers.map(Number)),capsule?Number(getComputedStyle(capsule).opacity):0);
 });
-const capsuleShown=(page:Page)=>page.locator('.movies-view > .ui-tabbar-mini').evaluate(el=>Number(getComputedStyle(el).opacity));
+const capsuleShown=(page:Page)=>page.locator('.movies-navigation > .ui-tabbar-mini').evaluate(el=>Number(getComputedStyle(el).opacity));
 test('Up next hides the island at 1440px until Cancel brings it back',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await expect.poll(()=>islandShown(page)).toBe(1);
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
@@ -196,30 +196,45 @@ test('Up next hides a frost island until Cancel brings it back',async({page})=>{
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
  await expect(island(page)).not.toHaveAttribute('data-hidden');await expect.poll(()=>islandShown(page)).toBe(1);
 });
-// Up next takes a minimized island and its capsule away together. Cancel brings the island back, expanded, since the travel count restarts.
-test('Up next hides a minimized island and its capsule, and Cancel brings the island back expanded',async({page})=>{
+// Up next takes both controls away; Cancel preserves the reader's collapse state.
+test('Up next hides a minimized island and Cancel restores its collapsed state',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  // The single-provider player is shorter; keep this scroll outside the bottom zone that expands the island.
  await page.locator('.movies-view').evaluate(e=>e.scrollTo(0,180));
  await expect(island(page)).toHaveAttribute('data-minimized','true');await expect.poll(()=>capsuleShown(page)).toBe(1);
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
- await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).not.toHaveAttribute('data-minimized');
- await expect.poll(()=>islandShown(page)).toBe(1);await expect.poll(()=>capsuleShown(page)).toBe(0);
+ await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).toHaveAttribute('data-minimized','true');
+ await expect.poll(()=>islandShown(page)).toBe(1);await expect.poll(()=>capsuleShown(page)).toBe(1);
 });
-test('keyboard focus in the island keeps it visible while Up next shows',async({page})=>{
+test('keyboard focus moves from the island into Up next and returns after Cancel',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
- await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(tab).toBeFocused();
- // A hide would fade over about 380 ms, so the island is read once no transition on it or its layers is running.
- await expect.poll(()=>island(page).evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);expect(await islandShown(page)).toBe(1);
+ await ended(page);await page.clock.runFor(450);await expect(island(page)).toHaveAttribute('data-hidden','true');
+ await expect(page.locator('.movies-navigation')).toHaveAttribute('inert');await expect(page.locator('.movies-navigation')).toHaveCSS('visibility','hidden');
+ await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeFocused();await page.keyboard.press('Enter');await page.clock.runFor(200);
+ await expect(tab).toBeFocused();await expect(page.locator('.movies-navigation')).not.toHaveAttribute('inert');
 });
 test('pointer focus in the island does not keep it visible, so Up next moves focus to Play now',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  const tab=island(page).locator('[data-kind="movie"]');await page.locator('.movies-player>h2').click();await tab.evaluate(e=>(e as HTMLElement).focus());await expect(tab).toBeFocused();expect(await tab.evaluate(e=>e.matches(':focus-visible'))).toBe(false);
  // A click on a non-focusable heading, then a script focus, is not keyboard focus.
- await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
+ // ended() pauses animation frames too; advance the hide transition before
+ // reading its final opacity instead of waiting on a frozen frame.
+ await page.clock.runFor(450);await expect.poll(()=>islandShown(page)).toBe(0);
  await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
+});
+test('keyboard focus moves from the separate Menu into Up next and returns after Cancel',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);
+ await island(page).locator('[data-action="study"]').focus();await page.keyboard.press('Tab');
+ const menu=page.locator('.movies-menu');await expect(menu).toBeFocused();
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
+ await page.clock.runFor(450);await expect(page.locator('.movies-navigation')).toHaveAttribute('inert');await expect(page.locator('.movies-navigation')).toHaveCSS('visibility','hidden');
+ await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeFocused();await page.keyboard.press('Enter');await page.clock.runFor(200);
+ await expect(menu).toBeFocused();await expect(menu).toHaveCSS('opacity','1');await expect(page.locator('.movies-navigation')).not.toHaveAttribute('inert');
 });
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);
