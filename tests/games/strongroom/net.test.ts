@@ -36,3 +36,7 @@ test('capsule history interpolates posture, retains a second, and caps rewind at
  const h=new CapsuleHistory(),e=make().entities[1];for(let t=0;t<=1200;t+=100)h.record(t,[{...e,x:t/100,y:0,crouch:t>=1100}]);
  expect(h.sample(1,950,1200)?.x).toBe(10);expect(h.sample(1,1150,1200)?.x).toBe(11.5);expect(h.sample(1,1150,1200)?.height).toBe(1.25);expect(h.size).toBeLessThanOrEqual(12);
 });
+test('a bot directly above its target still produces a valid snapshot',()=>{
+ const sim=make();Object.assign(sim.entities[1],{bot:true,x:0,y:0,z:0});sim.step(1/30);
+ expect(unpackSnapshot(packSnapshot(sim,7),sim.entities)).not.toBeNull();
+});

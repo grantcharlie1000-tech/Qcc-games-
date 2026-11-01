@@ -17,7 +17,7 @@ export interface SimWorld{
 }
 export const GUNS=[{id:'m4a1',name:'TC-5 Carbine',damage:34,rpm:720,mag:30,reserve:150,reload:2.6},{id:'usp',name:'S-45 Suppressed',damage:33,rpm:360,mag:12,reserve:72,reload:2}] as const;
 export function move(e:Entity,i:InputFrame,dt:number,world:SimWorld){
- e.yaw=Math.atan2(Math.sin(i.yaw),Math.cos(i.yaw));e.pitch=i.pitch;e.crouch=!!(i.buttons&BUTTON.CROUCH);
+ e.yaw=Math.atan2(Math.sin(i.yaw),Math.cos(i.yaw));e.pitch=Math.max(-1.45,Math.min(1.45,i.pitch));e.crouch=!!(i.buttons&BUTTON.CROUCH);
  if(e.hp<=0)return;
  const length=Math.max(127,Math.hypot(i.x,i.z)),speed=e.crouch?1.6:i.buttons&BUTTON.WALK?2:4.2;
  const mult=i.buttons&BUTTON.ADS?.7:1,x=i.x/length*speed*mult,z=i.z/length*speed*mult;
@@ -58,7 +58,7 @@ export class Simulation{
   this.events.push({type:'phase',seat:0,phase:this.phase,round:this.round});
  }
  applyInput(seat:number,input:InputFrame){const e=this.entities.find(e=>e.seat===seat);if(!e||e.bot||e.away!==null||input.seq<=e.ack)return false;this.inputs.set(seat,input);this.inputAt.set(seat,this.time);return true;}
- setAway(seat:number,on:boolean){const e=this.entities.find(e=>e.seat===seat);if(!e)return;e.away=on?this.time:null;if(!on)e.bot=false;this.inputs.delete(seat);}
+ setAway(seat:number,on:boolean){const e=this.entities.find(e=>e.seat===seat);if(!e)return;e.away=on?this.time:null;if(!on){if(e.bot)e.ack=0;e.bot=false;}this.inputs.delete(seat);}
  disconnect(seat:number){const e=this.entities.find(e=>e.seat===seat);if(e){e.bot=true;delete e.peer;this.inputs.delete(seat);}}
  step(dt:number){
   if(this.paused||this.phase==='menu'||this.phase==='gameEnd')return;
@@ -70,7 +70,7 @@ export class Simulation{
    if(e.hp<=0)continue;
    let input=e.bot?this.botInput(e):this.inputs.get(e.seat);
    if(!e.bot&&(e.away!==null||this.time-(this.inputAt.get(e.seat)??-Infinity)>200))input=undefined;
-   const i=input??{...neutralInput(e.ack),yaw:e.yaw,pitch:e.pitch};
+   const i=input??{...neutralInput(e.ack),yaw:e.yaw,pitch:e.pitch,weapon:e.weapon,buttons:e.crouch?BUTTON.CROUCH:0};
    move(e,i,dt,this.world);if(input)e.ack=Math.max(e.ack,input.seq);
    if(i.weapon!==e.weapon){e.mags[e.weapon]=e.ammo;e.reserves[e.weapon]=e.reserve;e.weapon=i.weapon;e.ammo=e.mags[e.weapon];e.reserve=e.reserves[e.weapon];e.reload=0;}
    if(e.reload>0){e.reload=Math.max(0,e.reload-dt);if(e.reload===0){const n=Math.min(GUNS[e.weapon].mag-e.ammo,e.reserve);e.ammo+=n;e.reserve-=n;}}

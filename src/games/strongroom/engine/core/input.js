@@ -475,6 +475,8 @@ export default class Input {
       return;
     }
 
+    if(this.game.paused || e.target?.closest?.('input,textarea,select,[contenteditable]')) return;
+
     // Cmd/Meta shortcuts belong to the browser/OS and never double as game
     // actions. Ctrl remains a gameplay modifier (crouch), so its combinations
     // are handled below and suppressed while locked.
@@ -554,6 +556,7 @@ export default class Input {
   // -------------------------------------------------------------------------
 
   _onMouseDown(e) {
+    if (e.target?.closest?.('button,input,select,textarea,dialog')) return;
     // Touch UI buttons can emit compatibility mouse events after their
     // pointer events. They are already represented by the virtual controls;
     // allowing the compatibility event through can double-toggle scope or

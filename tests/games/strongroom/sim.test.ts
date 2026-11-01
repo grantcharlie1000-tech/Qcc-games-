@@ -34,3 +34,8 @@ test('switching weapons cannot refill ammunition',()=>{
  sim.applyInput(0,{...neutralInput(2),weapon:0});sim.step(1/30);
  expect(e.ammo).toBe(7);expect(e.reserve).toBe(150);
 });
+test('returning from an Away bot takeover immediately accepts human input again',()=>{
+ const sim=new Simulation(world,seats,2);sim.start();sim.phase='action';const e=sim.entities[1];
+ sim.setAway(1,true);sim.time=60001;sim.tick=2000;sim.step(1/30);expect(e.bot).toBe(true);
+ sim.setAway(1,false);expect(sim.applyInput(1,{...neutralInput(10),x:127})).toBe(true);sim.step(1/30);expect(e.x).toBeGreaterThan(0);
+});

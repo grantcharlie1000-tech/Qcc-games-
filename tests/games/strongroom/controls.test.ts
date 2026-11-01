@@ -9,3 +9,8 @@ test('browser Escape cannot become an action and remapping swaps occupied keys',
  expect(s.get('reload')).toBe('c');expect(s.resolveInputKey('r')).toBe('c');
  expect(s.resolveInputKey('Escape')).toBe(null);
 });
+test('hold/toggle preferences, volume and a keyboard fire binding survive a new mount',()=>{
+ const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
+ const settings=new Settings(null,storage);settings.setMode('ads','toggle');settings.setMode('walk','toggle');settings.setVolume(.35);settings.rebind('fire','h');
+ const restored=new Settings(null,storage);expect(restored.modes.ads).toBe('toggle');expect(restored.modes.walk).toBe('toggle');expect(restored.volume).toBe(.35);expect(restored.get('fire')).toBe('h');expect(restored.setMode('ads','invalid')).toBe(false);
+});

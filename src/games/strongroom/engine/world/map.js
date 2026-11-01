@@ -540,7 +540,8 @@ export default class World {
     const previous = new Set(this.environment.children);
     const result = dressMap(this, { quality: 'high' });
     // Build the same collision proxies on every tier; discard only visual dressing.
-    if (this.game.quality.dressing === 'off') {
+    if (this.game.quality.dressing !== 'full') {
+      for(const proxy of this.solids.children)if(proxy.userData.dressingCollider)proxy.visible=true;
       for (const object of [...this.environment.children]) if (!previous.has(object)) {
         this.environment.remove(object);
         object.traverse(child => {if(child.geometry && child.geometry !== this._unitBox && child.geometry !== this._cylGeo)child.geometry.dispose();});

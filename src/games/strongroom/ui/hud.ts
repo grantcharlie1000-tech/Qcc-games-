@@ -1,5 +1,6 @@
 import {bindGlass} from '../../../ui/glass';
 import {openSheet} from '../../../ui/sheet';
+import {uiIcon} from '../../../ui/icons';
 import {TIERS,type Tier} from '../quality';
 import {GUNS,type Entity,type Phase} from '../sim';
 // @ts-expect-error -- licensed input preference facade.
@@ -7,7 +8,7 @@ import {KEY_BINDING_DEFINITIONS} from '../engine/core/settings.js';
 export interface MatchOptions{teamSize:3|5;difficulty:'easy'|'normal'|'hard';quick:boolean}
 export interface HudHooks{start(options:MatchOptions):void;play():void;home():void;sheet(open:boolean):void;quality(tier:Tier|null):void;settings:any;remap(action:string,done:()=>void):void;maxTeam():number;currentTier():Tier;online?():void}
 export class HUD{
- readonly root=document.createElement('div');private dialogs:HTMLDialogElement[]=[];private glass:{dispose():void}[]=[];private stats:HTMLDialogElement|null=null;private menu:HTMLDialogElement|null=null;
+ readonly root=document.createElement('div');private dialogs:HTMLDialogElement[]=[];private glass=new Map<HTMLElement,{dispose():void}>();private stats:HTMLDialogElement|null=null;private menu:HTMLDialogElement|null=null;
  private home:HTMLElement;private score:HTMLElement;private health:HTMLElement;private ammo:HTMLButtonElement;private status:HTMLElement;private lock:HTMLButtonElement;private feed:HTMLElement;private controls:HTMLElement;private timers=new Set<ReturnType<typeof setTimeout>>();
  constructor(private host:HTMLElement,readonly hooks:HudHooks,touch:boolean){
   const r=this.root;r.className='sr-hud';r.dataset.glassTone='light';r.innerHTML=`<div class="sr-home"><p class="sr-eyebrow">HARBOR · TEAM ELIMINATION</p><h1>Strongroom</h1><p>Read the room. Hold your ground.</p><div class="sr-home-actions"><button class="ui-tab arcade-glass glass-control sr-pill" data-do="solo"><span>Play vs bots</span></button><button class="ui-tab arcade-glass glass-control sr-pill" data-do="online"><span>Play online</span></button><button class="ui-tab arcade-glass glass-control sr-pill" data-do="rules"><span>How to play</span></button></div><p class="sr-credit">Tiny Strike · Guy Zyskind · ISC<br>Quaternius characters · CC0</p></div>
@@ -18,12 +19,13 @@ export class HUD{
  }
  get touchRoot(){return this.controls;}
  private text(el:HTMLElement,text:string){const span=el.querySelector('span')??el;if(span.textContent!==text)span.textContent=text;}
- restGlass(){for(const g of this.glass)g.dispose();this.glass=[];const cheap=['potato','low'].includes(this.hooks.currentTier());for(const el of this.root.querySelectorAll<HTMLElement>('.arcade-glass')){if(cheap)el.dataset.glass='frost';else this.glass.push(bindGlass(el));}}
- decorate(root:HTMLElement){for(const b of root.querySelectorAll<HTMLElement>('button')){b.classList.add('ui-tab','arcade-glass','glass-control','sr-pill');b.classList.remove('game-button','secondary');if(['potato','low'].includes(this.hooks.currentTier()))b.dataset.glass='frost';else this.glass.push(bindGlass(b));}}
+ restGlass(){for(const g of this.glass.values())g.dispose();this.glass.clear();const cheap=['potato','low'].includes(this.hooks.currentTier());for(const el of this.host.querySelectorAll<HTMLElement>('.arcade-glass')){if(cheap)el.dataset.glass='frost';else this.glass.set(el,bindGlass(el));}}
+ releaseGlass(root:HTMLElement){for(const el of [root,...root.querySelectorAll<HTMLElement>('.arcade-glass')]){this.glass.get(el)?.dispose();this.glass.delete(el);}}
+ decorate(root:HTMLElement){for(const b of root.querySelectorAll<HTMLElement>('button')){b.classList.add('ui-tab','arcade-glass','glass-control','sr-pill');b.classList.remove('game-button','secondary');if(['potato','low'].includes(this.hooks.currentTier()))b.dataset.glass='frost';else if(!this.glass.has(b))this.glass.set(b,bindGlass(b));}}
  sheet(title:string,build:(body:HTMLElement,dialog:HTMLDialogElement)=>void){
-  this.hooks.sheet(true);const d=document.createElement('dialog');d.className='ui-glass-sheet sr-sheet';d.setAttribute('aria-label',title);d.innerHTML='<div class="dialog-head"><h2></h2><button class="icon-button" aria-label="Close '+title+'">×</button></div><div class="sr-sheet-body"></div>';
+  this.hooks.sheet(true);const d=document.createElement('dialog');d.className='ui-glass-sheet sr-sheet';d.setAttribute('aria-label',title);d.innerHTML='<div class="dialog-head"><h2></h2><button class="icon-button" aria-label="Close '+title+'">'+uiIcon('close')+'</button></div><div class="sr-sheet-body"></div>';
   d.querySelector('h2')!.textContent=title;d.querySelector('button')!.addEventListener('click',()=>d.close());this.host.append(d);this.dialogs.push(d);
-  d.addEventListener('close',()=>{this.dialogs=this.dialogs.filter(x=>x!==d);d.remove();if(this.menu===d)this.menu=null;if(this.stats===d)this.stats=null;this.hooks.sheet(this.dialogs.length>0);},{once:true});
+  d.addEventListener('close',()=>{this.dialogs=this.dialogs.filter(x=>x!==d);this.releaseGlass(d);d.remove();if(this.menu===d)this.menu=null;if(this.stats===d)this.stats=null;this.hooks.sheet(this.dialogs.length>0);},{once:true});
   build(d.querySelector('.sr-sheet-body')!,d);this.decorate(d);openSheet(d,document.activeElement);return d;
  }
  setup(){this.sheet('Play vs bots',(body,d)=>{
@@ -32,8 +34,10 @@ export class HUD{
   body.querySelector('.sr-start')!.addEventListener('click',()=>{const options:MatchOptions={teamSize:Number(size.value) as 3|5,difficulty:body.querySelector<HTMLSelectElement>('[aria-label="Bot difficulty"]')!.value as MatchOptions['difficulty'],quick:body.querySelector<HTMLSelectElement>('[aria-label="Match length"]')!.value==='quick'};d.close();this.hooks.start(options);});
  });}
  settings(){this.sheet('Strongroom settings',body=>{
-  body.innerHTML='<label>Quality<select aria-label="Quality"><option value="auto">Automatic</option>'+TIERS.map(t=>`<option value="${t}">${t[0].toUpperCase()+t.slice(1)}</option>`).join('')+'</select></label><label>Look sensitivity<input aria-label="Look sensitivity" type="range" min=".25" max="3" step=".05"></label><div class="sr-bindings"></div><p class="muted" role="status">Escape opens Study and cannot be assigned.</p>';
+  body.innerHTML='<label>Quality<select aria-label="Quality"><option value="auto">Automatic</option>'+TIERS.map(t=>`<option value="${t}">${t[0].toUpperCase()+t.slice(1)}</option>`).join('')+'</select></label><label>Look sensitivity<input aria-label="Look sensitivity" type="range" min=".25" max="3" step=".05"></label><div class="sr-modes"></div><label>Volume<input aria-label="Volume" type="range" min="0" max="1" step=".05"></label><div class="sr-bindings"></div><p class="muted" role="status">Escape opens Study and cannot be assigned.</p>';
   const select=body.querySelector<HTMLSelectElement>('select')!;select.value=this.hooks.currentTier();select.addEventListener('change',()=>this.hooks.quality(select.value==='auto'?null:select.value as Tier));const sensitivity=body.querySelector<HTMLInputElement>('input')!;sensitivity.value=String(this.hooks.settings.lookSensitivity);sensitivity.addEventListener('input',()=>this.hooks.settings.setLookSensitivity(sensitivity.value));
+  const volume=body.querySelector<HTMLInputElement>('[aria-label=Volume]')!;volume.value=String(this.hooks.settings.volume);volume.addEventListener('input',()=>this.hooks.settings.setVolume(volume.value));
+  const modes=body.querySelector('.sr-modes')!;for(const [action,label] of [['ads','Aim down sights'],['lean','Lean'],['crouch','Crouch'],['walk','Walk']]){const row=document.createElement('label'),select=document.createElement('select');row.textContent=label;select.setAttribute('aria-label',label+' mode');select.innerHTML='<option value=hold>Hold</option><option value=toggle>Toggle</option>';select.value=this.hooks.settings.modes[action];select.addEventListener('change',()=>this.hooks.settings.setMode(action,select.value));row.append(select);modes.append(row);}
   const list=body.querySelector('.sr-bindings')!;for(const a of KEY_BINDING_DEFINITIONS){const row=document.createElement('div'),label=document.createElement('span'),button=document.createElement('button');row.className='sr-binding';label.textContent=a.label;button.textContent=this.hooks.settings.getLabel(a.id);button.setAttribute('aria-label','Remap '+a.label);button.addEventListener('click',()=>{button.textContent='Press a key…';this.hooks.remap(a.id,()=>{for(const [i,b] of [...list.querySelectorAll('button')].entries())b.textContent=this.hooks.settings.getLabel(KEY_BINDING_DEFINITIONS[i].id);});});row.append(label,button);list.append(row);}
  });}
  rules(){this.sheet('How to play',body=>{body.innerHTML='<p>Harbor training: eliminate the opposing team. One life per round. First to four rounds wins; Quick is first to three.</p><p>WASD or arrow keys move. Mouse aims, left click fires, right click aims down sights. C crouches, Shift walks, Space jumps, R reloads, 1/2 switch weapons. Hold Tab for scores. P opens the game menu. Escape opens Study.</p><p>Online: the room host starts and controls the match. Bots fill empty seats. If the host leaves, the match ends.</p><p class="muted">Gameplay requires sight, hearing and precise input and is not screen-reader playable. Keyboard controls can be remapped in Settings.</p>';});}
@@ -41,7 +45,7 @@ export class HUD{
  dismiss(){const d=this.dialogs.at(-1);if(!d)return false;d.close();return true;}
  closeAll(){for(const d of [...this.dialogs])d.close();}
  scoreboard(entities:Entity[],on:boolean){if(!on){this.stats?.close();return;}if(this.stats)return;this.stats=this.sheet('Scoreboard',body=>{const table=document.createElement('table');table.innerHTML='<thead><tr><th>Player</th><th>Team</th><th>Eliminations</th><th>Deaths</th></tr></thead><tbody></tbody>';for(const e of entities){const tr=document.createElement('tr');for(const v of [e.name,e.team===0?'Defend':'Attack',e.kills,e.deaths]){const td=document.createElement('td');td.textContent=String(v);tr.append(td);}table.querySelector('tbody')!.append(tr);}body.append(table);});}
- end(title:string,entities:Entity[],rematch:()=>void){this.sheet(title,(body,d)=>{const p=document.createElement('p');p.textContent=entities.map(e=>`${e.name}: ${e.kills} eliminations`).join(' · ');body.append(p);for(const [text,fn] of [['Rematch',()=>{d.close();rematch();}],['Back to home',()=>{d.close();this.hooks.home();}]] as const){const b=document.createElement('button');b.textContent=text;b.addEventListener('click',fn);body.append(b);}});}
+ end(title:string,entities:Entity[],rematch:(()=>void)|null){this.sheet(title,(body,d)=>{const p=document.createElement('p');p.textContent=entities.map(e=>`${e.name}: ${e.kills} eliminations`).join(' · ');body.append(p);for(const [text,fn] of [...(rematch?[['Rematch',()=>{d.close();rematch();}] as const]:[]),['Back to home',()=>{d.close();this.hooks.home();}] as const]){const b=document.createElement('button');b.textContent=text;b.addEventListener('click',fn);body.append(b);}});}
  notice(text:string){this.text(this.status,text);this.status.hidden=!text;}
  private delay(fn:()=>void,ms:number){const id=setTimeout(()=>{this.timers.delete(id);fn();},ms);this.timers.add(id);}
  hit(){this.root.classList.add('sr-hit');this.delay(()=>this.root.classList.remove('sr-hit'),120);}
@@ -50,5 +54,5 @@ export class HUD{
   const home=state.phase==='menu',e=entities.find(e=>e.seat===local),alive=[entities.filter(e=>e.team===0&&e.hp>0).length,entities.filter(e=>e.team===1&&e.hp>0).length];this.home.hidden=!home;for(const el of [this.score,this.health,this.ammo])el.hidden=home;this.root.classList.toggle('sr-playing',!home);this.lock.hidden=home||locked||this.dialogs.length>0;
   if(!home){this.text(this.score,`■ DEF ${state.scores[0]} · ${alive[0]}   ${Math.floor(state.timer/60)}:${String(Math.ceil(state.timer)%60).padStart(2,'0')}   ${alive[1]} · ${state.scores[1]} ATK ◆`);if(e){this.text(this.health,`${e.hp} HP`);this.text(this.ammo,`${GUNS[e.weapon].name}   ${e.ammo} | ${e.reserve}${e.reload>0?' · Reloading':''}`);}}this.controls.hidden=home||!e||e.hp<=0;
  }
- dispose(){this.closeAll();for(const id of this.timers)clearTimeout(id);for(const g of this.glass)g.dispose();this.root.remove();}
+ dispose(){this.closeAll();for(const id of this.timers)clearTimeout(id);for(const g of this.glass.values())g.dispose();this.glass.clear();this.root.remove();}
 }

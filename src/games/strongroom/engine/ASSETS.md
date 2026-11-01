@@ -16,6 +16,7 @@ URL; the existing offline manifest includes every file in `public/`.
 | --- | --- | --- |
 | `models/soldier_ct.glb` | Tiny Strike `assets/models/soldier_ct.glb`, processed/exported from Quaternius Toon Shooter Game Kit | CC0 1.0 |
 | `models/soldier_t.glb` | Tiny Strike `assets/models/soldier_t.glb`, processed/exported from Quaternius Toon Shooter Game Kit | CC0 1.0 |
+| `models/viewmodels/m4a1.glb`, `usp.glb` | Unchanged Tiny Strike low-poly procedural weapon exports, 1,500 / 1,318 triangles | ISC |
 | `models/viewmodels/npc-arms-ct.glb` | Tiny Strike `assets/models/viewmodels/npc-arms-ct.glb`, body-stripped derivative of the CT soldier | CC0 1.0 |
 | `models/viewmodels/knife.glb` | Tiny Strike original procedural weapon design, authored/exported for Tiny Strike | ISC |
 | `models/viewmodels/hegrenade.glb` | Tiny Strike original equipment design, authored/exported for Tiny Strike | ISC |
@@ -48,9 +49,7 @@ Thanks to Quaternius; attribution is voluntary under CC0.
 
 ## Deliberately excluded
 
-The client explicitly skips `ak47.glb`, `awp.glb`, `deagle.glb`, `glock.glb`,
-`m4a1.glb`, `mp5.glb`, and `usp.glb`: all firearms use procedural `gfx/weapons/`
-geometry, so these unused ISC files were not copied. No videos, trailer or
+The client uses the original m4a1/usp low-poly exports plus the existing 696-triangle arm, keeping each complete viewmodel below 3,000 triangles. Other firearm exports are not loaded. The existing grip poses and finger-closing helper are extracted unchanged into `engine/viewmodel-arms.js` (ISC). No videos, trailer or
 asset-authoring tools, standalone HTML, source package/dependencies,
 `server.mjs`, `src/server/`, `worker/`, Wrangler config, WebSocket transport,
 room directory, leaderboard client, or leaderboard/room service core is imported.

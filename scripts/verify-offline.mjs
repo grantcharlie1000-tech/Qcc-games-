@@ -28,9 +28,9 @@ async function action(page,id){
  if(id==='strongroom'){
   const root=page.locator('.strongroom-game');await root.locator('canvas').first().waitFor({timeout:120000});
   await page.waitForFunction(()=>document.querySelector('.strongroom-game')?.getAttribute('data-ready')==='true',{},{timeout:120000});
-  const start=page.locator('#hud-start');if(await start.isVisible())await start.click();
-  await waitFor(async()=>['freeze','live','planted','roundEnd'].includes(await root.getAttribute('data-phase')),'offline Shooter bot match');
-  assert.ok(Number(await page.locator('#hud-health-num').textContent())>0,'offline Shooter health HUD');
+  const start=page.getByRole('button',{name:'Play vs bots',exact:true});if(await start.isVisible()){await start.click();await page.getByRole('button',{name:'Start match',exact:true}).click();}
+  await waitFor(async()=>['prep','action','roundEnd'].includes(await root.getAttribute('data-phase')),'offline Strongroom bot match');
+  assert.ok(parseInt(await root.locator('.sr-health').textContent(),10)>0,'offline Strongroom health HUD');
   await page.evaluate(()=>document.exitPointerLock?.());
  }
  else if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.qf-game').getAttribute('data-score'))>0,'offline Tetris hard drop');}
@@ -124,7 +124,7 @@ try{
   for(const id of ids){
    // Material baking can take longer with software WebGL.
    page.setDefaultTimeout(id==='strongroom'?120000:30000);
-   await page.goto(base+(id==='strongroom'?'?post=off':'')+'#/game/'+id);await page.locator('.game-hud strong').first().waitFor();await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('.game-view').getAttribute('aria-label'),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
+   await page.goto(base+(id==='strongroom'?'?post=off':'')+'#/game/'+id);if(id==='strongroom')await page.locator('.strongroom-game[data-ready=true]').waitFor({timeout:120000});else await page.locator('.game-hud strong').first().waitFor();await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('.game-view').getAttribute('aria-label'),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
 
    await action(page,id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),id+' horizontal overflow');
    const frames=await page.evaluate(()=>new Promise(resolve=>{const values=[];let prev;const tick=t=>{if(prev!==undefined)values.push(t-prev);prev=t;if(values.length===45)resolve(values);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));frames.sort((a,b)=>a-b);

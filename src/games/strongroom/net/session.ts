@@ -23,7 +23,7 @@ function readLobby(v:unknown):Lobby|null{
 export class OnlineSession{
  state:Simulation;localSeat=0;lobby:Lobby;readonly transport:SessionTransport;readonly history=new CapsuleHistory();readonly interpolation=new Interpolation();
  readonly errors:number[]=[];private off:()=>void;private timer:ReturnType<typeof setInterval>;private disposed=false;private buffers=new Map<string,InputBuffer>();private assignments=new Map<string,number>();
- private seq=0;private pending:InputFrame[]=[];private redundant:InputFrame[]=[];private last=performance.now();private accumulator=0;private inputAccumulator=0;private snapshotAccumulator=0;private lastSnapshot=-1;private eventSeq=0;private lastEvent=0;private away=false;private clock={time:0,arrival:0};private lastRound=0;private correction={x:0,y:0,z:0};
+ private seq=0;private pending:InputFrame[]=[];private redundant:InputFrame[]=[];private last=performance.now();private accumulator=0;private inputAccumulator=0;private snapshotAccumulator=0;private lastSnapshot=-1;private eventSeq=0;private lastEvent=0;private away=false;private clock={time:0,arrival:0};private lastRound=0;private correction={x:0,y:0,z:0};private previous:Entity[]=[];private previousLocal:Entity|null=null;
  constructor(readonly room:Room,world:SimWorld,private hooks:SessionHooks,seed=1,impair=false){
   this.transport=new SessionTransport(room,impair);this.state=new Simulation(world,[],seed);const rates=hooks.rates();
   this.lobby={rev:0,seed:seed>>>0,settings:{teamSize:3,difficulty:'normal',quick:false},seats:[],tickHz:rates.tickHz,snapshotHz:rates.snapshotHz,epoch:0,started:false};
@@ -32,10 +32,12 @@ export class OnlineSession{
  }
  get role(){return this.room.role;}
  get started(){return this.lobby.started;}
+ updateRates(){if(this.role!=='host')return;const rates=this.hooks.rates();this.lobby.tickHz=rates.tickHz;this.lobby.snapshotHz=rates.snapshotHz;this.broadcastLobby();}
  get renderEntities(){
-  if(this.role==='host')return this.state.entities;
+  if(this.state.paused)return this.state.entities;
+  if(this.role==='host'){const alpha=Math.min(1,this.accumulator*this.lobby.tickHz);return this.state.entities.map(e=>{const p=this.previous.find(p=>p.seat===e.seat)??e;return{...e,x:p.x+(e.x-p.x)*alpha,y:p.y+(e.y-p.y)*alpha,z:p.z+(e.z-p.z)*alpha};});}
   const others=this.interpolation.sample(performance.now()),local=this.state.entities.find(e=>e.seat===this.localSeat);const weight=.8;this.correction.x*=weight;this.correction.y*=weight;this.correction.z*=weight;
-  return this.state.entities.map(e=>e.seat===this.localSeat&&local?{...local,x:local.x+this.correction.x,y:local.y+this.correction.y,z:local.z+this.correction.z}:others.find(o=>o.seat===e.seat)??e);
+  return this.state.entities.map(e=>e.seat===this.localSeat&&local?{...local,x:(this.previousLocal?.x??local.x)+(local.x-(this.previousLocal?.x??local.x))*Math.min(1,this.inputAccumulator*30)+this.correction.x,y:(this.previousLocal?.y??local.y)+(local.y-(this.previousLocal?.y??local.y))*Math.min(1,this.inputAccumulator*30)+this.correction.y,z:(this.previousLocal?.z??local.z)+(local.z-(this.previousLocal?.z??local.z))*Math.min(1,this.inputAccumulator*30)+this.correction.z}:others.find(o=>o.seat===e.seat)??e);
  }
  private refreshPlayers(){
   const size=this.lobby.settings.teamSize,players=this.room.players;
@@ -45,7 +47,7 @@ export class OnlineSession{
   this.lobby.seats=seats;this.localSeat=this.assignments.get(this.room.id)??0;this.broadcastLobby();
  }
  private broadcastLobby(to?:string){this.lobby.rev++;this.hooks.lobby(this.lobby);this.transport.send(['lobby',this.lobby],true,to);}
- configure(settings:MatchOptions){if(this.role!=='host'||this.started)return false;const size=Math.min(settings.teamSize,this.hooks.rates().maxTeam) as 3|5;if(this.room.players.length>size*2)return false;this.lobby.settings={teamSize:size,difficulty:settings.difficulty,quick:settings.quick};this.assignments.clear();this.refreshPlayers();return true;}
+ configure(settings:MatchOptions){if(this.role!=='host'||this.started)return false;const size=Math.min(settings.teamSize,this.hooks.rates().maxTeam) as 3|5;if(this.room.players.length>size*2)return false;if(!this.room.setMaxPlayers(size*2))return false;this.lobby.settings={teamSize:size,difficulty:settings.difficulty,quick:settings.quick};this.assignments.clear();this.refreshPlayers();return true;}
  chooseSeat(seat:number,peer=this.room.id){
   if(this.started||!isInt(seat,0,this.lobby.settings.teamSize*2-1))return false;
   if(this.role==='guest'){this.transport.send(['seat',seat],true);return true;}
@@ -54,13 +56,13 @@ export class OnlineSession{
  }
  start(){
   if(this.role!=='host'||!this.room.players.length)return false;
-  this.room.setPaused(false);const rates=this.hooks.rates();this.lobby.tickHz=rates.tickHz;this.lobby.snapshotHz=rates.snapshotHz;this.lobby.epoch=Math.max(Date.now(),this.lobby.epoch+1);this.lobby.started=true;
+  this.away=false;this.room.setPaused(false);const rates=this.hooks.rates();this.lobby.tickHz=rates.tickHz;this.lobby.snapshotHz=rates.snapshotHz;this.lobby.epoch=Math.max(Date.now(),this.lobby.epoch+1);this.lobby.started=true;
   this.state=new Simulation(this.state.world,this.lobby.seats.map(s=>({...s})),this.lobby.seed,this.lobby.settings.quick);this.state.difficulty=this.lobby.settings.difficulty;this.state.thinkHz=this.hooks.think();this.state.rewind=(seat,view)=>this.history.sample(seat,view,this.state.time);this.state.start();this.resetRound();
   this.hooks.state(this.state,this.localSeat);this.transport.send(['start',this.lobby,packSnapshot(this.state,this.lobby.epoch)],true);this.broadcastLobby();this.last=performance.now();return true;
  }
  toLobby(){if(this.role!=='host')return false;this.lobby.started=false;this.state.phase='menu';this.broadcastLobby();return true;}
- setAway(on:boolean){if(this.away===on)return;this.away=on;if(this.role==='guest')this.transport.send(['away',on?1:0],true);else this.room.setPaused(on);if(on){this.pending=[];this.redundant=[];}}
- private resetRound(){this.seq=0;this.pending=[];this.redundant=[];this.buffers.clear();this.history.clear();this.interpolation.clear();this.lastRound=this.state.round;this.accumulator=0;this.inputAccumulator=0;this.snapshotAccumulator=0;this.correction={x:0,y:0,z:0};}
+ setAway(on:boolean){if(this.disposed)return;if(this.away===on)return;this.away=on;if(this.role==='guest')this.transport.send(['away',on?1:0],true);else this.room.setPaused(on);if(on){this.pending=[];this.redundant=[];}}
+ private resetRound(){this.previous=[];this.previousLocal=null;this.seq=0;this.pending=[];this.redundant=[];this.buffers.clear();this.history.clear();this.interpolation.clear();this.lastRound=this.state.round;this.accumulator=0;this.inputAccumulator=0;this.snapshotAccumulator=0;this.correction={x:0,y:0,z:0};}
  private onRoom(event:RoomEvent){
   if(this.disposed)return;
   if(event.type==='closed'){this.state.paused=true;this.lobby.started=false;this.hooks.closed(event.reason==='kicked'?'Removed from room':'Host left');this.dispose();return;}
@@ -74,7 +76,7 @@ export class OnlineSession{
    if(data[0]==='sync'){this.transport.send(['lobby',this.lobby],true,event.from.id);if(this.started)this.transport.send(['start',this.lobby,packSnapshot(this.state,this.lobby.epoch)],true,event.from.id);return;}
    if(data[0]==='seat'&&data.length===2){this.chooseSeat(data[1],event.from.id);return;}
    const seat=this.assignments.get(event.from.id);if(seat===undefined)return;
-   if(data[0]==='away'&&data.length===2&&(data[1]===0||data[1]===1)){this.state.setAway(seat,data[1]===1);return;}
+   if(data[0]==='away'&&data.length===2&&(data[1]===0||data[1]===1)){const actor=this.state.entities.find(e=>e.seat===seat);if(actor?.peer===event.from.id)this.state.setAway(seat,data[1]===1);return;}
    if(!this.started||this.state.paused)return;const packet=unpackInputs(data);if(!packet||packet.epoch!==this.lobby.epoch||packet.round!==this.state.round)return;
    let buffer=this.buffers.get(event.from.id);if(!buffer){buffer=new InputBuffer();this.buffers.set(event.from.id,buffer);}
    buffer.push(packet.frames.filter(i=>i.at<=this.state.time+250&&i.at>=this.state.time-1000));return;
@@ -113,14 +115,14 @@ export class OnlineSession{
    if(this.role==='host'){
     const frame=this.localInput(now);if(!this.away)this.state.applyInput(this.localSeat,frame);
     for(const [id,buffer] of this.buffers){const frame=buffer.take(),seat=this.assignments.get(id);if(frame&&seat!==undefined)this.state.applyInput(seat,frame);}
-   }else if(!this.away){const frame=this.localInput(now),e=this.state.entities.find(e=>e.seat===this.localSeat);if(e&&e.hp>0){this.pending.push(frame);if(this.pending.length>120)this.pending.shift();if(this.state.phase==='action')move(e,frame,1/30,this.state.world);}this.redundant.push(frame);if(this.redundant.length>3)this.redundant.shift();this.transport.send(packInputs(this.lobby.epoch,this.state.round,this.redundant),false);}
+   }else if(!this.away){const frame=this.localInput(now),e=this.state.entities.find(e=>e.seat===this.localSeat);if(e&&e.hp>0){this.pending.push(frame);if(this.pending.length>120)this.pending.shift();if(this.state.phase==='action'){this.previousLocal={...e};move(e,frame,1/30,this.state.world);}}this.redundant.push(frame);if(this.redundant.length>3)this.redundant.shift();this.transport.send(packInputs(this.lobby.epoch,this.state.round,this.redundant),false);}
   }
   if(this.role==='guest')return;
   this.accumulator=Math.min(.25,this.accumulator+dt);const step=1/this.lobby.tickHz;
   while(this.accumulator>=step){
-   const at=performance.now();this.state.thinkHz=this.hooks.think();this.history.record(this.state.time,this.state.entities);this.state.step(step);this.hooks.tick?.(performance.now()-at);this.accumulator-=step;
+   const at=performance.now();this.state.thinkHz=this.hooks.think();this.history.record(this.state.time,this.state.entities);this.previous=this.state.entities.map(e=>({...e}));this.state.step(step);this.hooks.tick?.(performance.now()-at);this.accumulator-=step;
    if(this.state.round!==this.lastRound){this.resetRound();for(const e of this.state.entities){const live=this.lobby.seats.find(s=>s.seat===e.seat);if(live?.peer){e.peer=live.peer;e.bot=false;}}}
-   const events=this.state.events.splice(0);if(events.length){this.hooks.events(events);const important=events.filter(e=>e.type!=='shot');if(important.length)this.transport.send(['events',this.lobby.epoch,++this.eventSeq,important,important.some(e=>e.type==='phase')?packSnapshot(this.state,this.lobby.epoch):null],true);}
+   const events=this.state.events.splice(0);if(events.length){this.hooks.events(events);const important=events;if(important.length)this.transport.send(['events',this.lobby.epoch,++this.eventSeq,important,important.some(e=>e.type==='phase')?packSnapshot(this.state,this.lobby.epoch):null],true);}
    this.snapshotAccumulator+=step;if(this.snapshotAccumulator>=1/this.lobby.snapshotHz){this.snapshotAccumulator-=1/this.lobby.snapshotHz;this.transport.send(packSnapshot(this.state,this.lobby.epoch),false);}
   }
  }

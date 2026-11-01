@@ -39,3 +39,12 @@ it('retries without raw input while the same game is still active',async()=>{
   doc.pointerLockElement=canvas;resolveRequest();doc.dispatchEvent(new Event('pointerlockchange'));
   expect(input.locked).toBe(true);
 });
+it('a glass control click never captures the mouse or fires through the control',()=>{
+ game.debug=true;input._onMouseDown({button:0,target:{closest:()=>({tagName:'BUTTON'})}});
+ expect(input.locked).toBe(false);expect(input.firing).toBe(false);
+});
+it.each(['paused','text field'])('typing P in %s never opens a gameplay menu',state=>{
+ let actions=0;game.events.on('input:keydown',()=>actions++);game.paused=state==='paused';
+ input._onKeyDown({key:'p',target:state==='text field'?{closest:()=>({tagName:'INPUT'})}:null});
+ expect(actions).toBe(0);expect(input.isDown('p')).toBe(false);
+});

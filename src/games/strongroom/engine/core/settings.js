@@ -10,6 +10,8 @@ export const SETTINGS_LIMITS = Object.freeze({
 });
 
 export const KEY_BINDING_DEFINITIONS = Object.freeze([
+  Object.freeze({id:'fire',label:'Fire',canonicalKey:'mouse0',defaultKey:'mouse0'}),
+  Object.freeze({id:'ads',label:'Aim down sights',canonicalKey:'mouse2',defaultKey:'mouse2'}),
   Object.freeze({id:'moveForward',label:'Move forward',canonicalKey:'w',defaultKey:'w'}),
   Object.freeze({id:'moveBackward',label:'Move backward',canonicalKey:'s',defaultKey:'s'}),
   Object.freeze({id:'moveLeft',label:'Move left',canonicalKey:'a',defaultKey:'a'}),
@@ -71,7 +73,7 @@ export function canBindPhysicalKey(value) {
 export function formatKeyLabel(value) {
   const key = normalizePhysicalKey(value);
   if (!key) return 'UNBOUND';
-  const labels = {
+  const labels = {mouse0:'LMB',mouse2:'RMB',
     ' ': 'SPACE',
     control: 'CTRL',
     shift: 'SHIFT',
@@ -137,11 +139,15 @@ export default class GameSettings {
     this.storage = storage;
     this.lookSensitivity = SETTINGS_LIMITS.lookSensitivity.default;
     this.brightnessEv = SETTINGS_LIMITS.brightnessEv.default;
+    this.modes = {ads:'hold',lean:'hold',crouch:'toggle',walk:'hold'};this.volume=.5;
     this.bindings = defaultBindings();
     this._physicalToCanonical = new Map();
     this._load();
     this._rebuildLookup();
   }
+
+  setMode(action,value){if(!Object.hasOwn(this.modes,action)||!['hold','toggle'].includes(value))return false;this.modes[action]=value;this._commit('modes');return true;}
+  setVolume(value){const number=Number(value);if(!Number.isFinite(number))return;this.volume=Math.max(0,Math.min(1,number));this._commit('volume');}
 
   get(actionId) {
     return this.bindings[String(actionId || '')] ?? null;
@@ -218,6 +224,7 @@ export default class GameSettings {
   reset() {
     this.lookSensitivity = SETTINGS_LIMITS.lookSensitivity.default;
     this.brightnessEv = SETTINGS_LIMITS.brightnessEv.default;
+    this.modes = {ads:'hold',lean:'hold',crouch:'toggle',walk:'hold'};this.volume=.5;
     this.bindings = defaultBindings();
     this._rebuildLookup();
     this._commit('reset');
@@ -225,7 +232,7 @@ export default class GameSettings {
 
   snapshot() {
     return Object.freeze({
-      lookSensitivity: this.lookSensitivity,
+      modes:{...this.modes},volume:this.volume,lookSensitivity: this.lookSensitivity,
       brightnessEv: this.brightnessEv,
       bindings: Object.freeze({ ...this.bindings }),
     });
@@ -244,6 +251,8 @@ export default class GameSettings {
       );
       this.brightnessEv = clampStep(parsed.brightnessEv, SETTINGS_LIMITS.brightnessEv);
       this.bindings = sanitizeBindings(parsed.bindings);
+      for(const action of Object.keys(this.modes))if(['hold','toggle'].includes(parsed.modes?.[action]))this.modes[action]=parsed.modes[action];
+      if(Number.isFinite(parsed.volume))this.volume=Math.max(0,Math.min(1,parsed.volume));
     } catch {
       // Privacy modes and corrupted JSON both fall back to safe defaults.
     }
@@ -261,7 +270,7 @@ export default class GameSettings {
     if (canStore(this.storage)) {
       try {
         this.storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({
-          lookSensitivity: this.lookSensitivity,
+          modes:{...this.modes},volume:this.volume,lookSensitivity: this.lookSensitivity,
           brightnessEv: this.brightnessEv,
           bindings: this.bindings,
         }));

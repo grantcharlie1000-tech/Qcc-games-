@@ -40,7 +40,7 @@ export class HostGuard{
  constructor(hz:number){this.thinkHz=hz;}
  sample(ms:number,now:number){
   this.sum+=ms;this.count++;if(now-this.since<5000)return;
-  if(this.sum/this.count>6){if(this.stage===0)this.thinkHz=Math.max(4,this.thinkHz/2);else this.farAnimationHz=10;this.stage++;}
+  if(this.sum/this.count>6){if(this.stage===0){this.thinkHz=Math.max(4,this.thinkHz/2);console.info('Strongroom: reduced bot thinking to keep host simulation within budget.');}else this.farAnimationHz=10;this.stage++;}
   this.sum=0;this.count=0;this.since=now;
  }
 }
