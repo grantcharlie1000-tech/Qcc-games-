@@ -65,6 +65,12 @@ for(const fallback of [false,true]){
     for(const route of ['movies/browse/movie','movies/browse/tv','movies/list','collection']){
       await page.evaluate(route=>location.hash='#/'+route,route);
       const movie=route.startsWith('movies'),bar=movie?'.movies-mobile-nav':'.app-tabbar',menu=movie?'.movies-menu':'.app-menu';
+      const section=route==='collection'?'games':route.endsWith('/tv')?'tv':route.endsWith('/list')?'list':'movies';
+      // Visibility alone no longer establishes route completion: this is the
+      // same persistent node throughout every section transition.
+      await expect(page.locator(`.section-tabbar [data-section=${section}]`)).toHaveAttribute('aria-current','page');
+      await expect(page.locator(movie?'.movies-view':'.game-card').first()).toBeVisible();
+      if(movie)await expect(page.locator('.movies-page-head h1')).toHaveText(section==='tv'?'TV Shows':section==='list'?'My list':'Movies');
       await expect(page.locator(bar)).toBeVisible();
       if(!fallback&&browserName==='chromium')for(const selector of [bar,menu])await expect(page.locator(selector)).toHaveClass(/is-refracting/);
       expect(await material(page,bar),route).toEqual(initial);

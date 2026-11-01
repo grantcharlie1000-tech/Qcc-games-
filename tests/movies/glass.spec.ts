@@ -383,8 +383,7 @@ test('forced colours give the Movies island its pill outline and underline the c
  await expect(bar).toBeVisible();
  const system=await systemColours(page,['CanvasText']);
  expect(await bar.evaluate(el=>{const s=getComputedStyle(el,'::after');return [s.outlineStyle,s.outlineWidth,s.outlineColor];})).toEqual(['solid','2px',system.CanvasText]);
- // The island re-renders, so the current tab is read through a fresh locator that waits for it, not through a handle taken earlier.
- await expect(bar.locator('.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]').first()).toHaveCSS('text-decoration-line','underline');
+ await expect(bar.locator('[data-section="movies"][aria-current="page"]')).toHaveCSS('text-decoration-line','underline');
 });
 
 // The episode drawer's text, measured over the frame behind it. The frames are the watch page's dark fixture (a dark ground with bright shapes,

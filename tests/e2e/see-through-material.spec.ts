@@ -11,6 +11,10 @@ test('bars, buttons and sheets add almost no fill to their live backdrop',async(
   await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   for(const route of ['collection','study','movies/browse/movie','game/snake']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
+    if(route.startsWith('movies')){
+      await expect(page.locator('.movies-view')).toBeVisible();
+      await expect(page.locator('.movies-page-head h1')).toHaveText('Movies');
+    }
     if(route==='study'){
       await page.locator('.app-tabbar [data-action=study]').click();
       await expect(page.locator('#study-view')).toBeVisible();

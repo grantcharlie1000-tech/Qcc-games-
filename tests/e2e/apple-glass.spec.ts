@@ -63,6 +63,9 @@ for(const width of [320,390,1366]){
     expect(b.width).toBe(b.height);expect(b.width).toBeGreaterThanOrEqual(48);
     await bar.getByRole('button',{name:'Study',exact:true}).focus();
     await page.keyboard.press('Tab');await expect(menu).toBeFocused();
+    await page.keyboard.press('Tab');await expect(page.locator('.section-header .ui-brand')).toBeFocused();
+    await page.keyboard.press('Tab');await expect(page.locator('.section-header [data-shell-action=search]')).toBeFocused();
+    await page.keyboard.press('Tab');await expect(page.locator('.section-header [data-shell-action=study]')).toBeFocused();
     await page.keyboard.press('Tab');await expect(page.locator('.game-card').first()).toBeFocused();
   });
 }

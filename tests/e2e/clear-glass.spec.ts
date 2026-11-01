@@ -5,6 +5,11 @@ import type {Page} from '@playwright/test';
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 test.beforeEach(async({page})=>{await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));});
 
+async function moviesReady(page:Page,route:string){
+  await expect(page.locator('.movies-view')).toBeVisible();
+  await expect(page.locator('.movies-page-head h1')).toHaveText(route.endsWith('/tv')?'TV Shows':route.endsWith('/list')?'My list':'Movies');
+}
+
 async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)'){
   const nav=page.locator(scope);
   await nav.screenshot({animations:'disabled',scale:'device'});
@@ -47,7 +52,7 @@ for(const width of [390,1366])test(`floating Movies header keeps the clear recip
   await expect(header.locator('.glass-label').first()).toBeVisible();
   const veils=await header.locator('.floating-glass-group').evaluateAll(es=>es.map(e=>getComputedStyle(e,'::before').backgroundColor));
   expect(veils).toEqual(Array(3).fill('rgba(184, 184, 184, 0.02)'));
-  await page.addStyleTag({content:'.movies-view{background:transparent!important}.movies-view>:not(.movies-top){visibility:hidden}'});
+  await page.addStyleTag({content:'.movies-view{background:transparent!important}.movies-view>*{visibility:hidden}'});
   for(const background of ['#fff','#000','#909090','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)','canvas']){
     const style=await page.addStyleTag({content:`html,body{background:${background==='canvas'?'#000':background}!important}`});
     if(background==='canvas')await page.evaluate(()=>{
@@ -94,6 +99,7 @@ test('clear glass keyboard focus has both light and dark edges',async({page})=>{
 
 test('caption edge strokes keep contrast above unreadable dark media',async({page})=>{
   await page.goto('/#/movies/browse/movie');
+  await moviesReady(page,'movies/browse/movie');
   await page.addStyleTag({content:'#content,.movies-top,.movies-main,.movies-footer{visibility:hidden}.movies-view{background:transparent!important}.section-navigation{visibility:visible!important}'});
   // Canvas/video and tainted images have an unknown colour range. A dark
   // canvas exercises the glyph-local outline at the left edge of the capital T.
@@ -128,6 +134,7 @@ test('a touch-focused tab still adapts the visible mini after scrolling',async({
 test('Games and Movies sheet closes use the same clear material and release it on close',async({page,browserName})=>{
   for(const route of ['collection','movies/browse/movie','game/snake']){
     await page.goto(`/#/${route}`);
+    if(route.startsWith('movies'))await moviesReady(page,route);
     const trigger=page.locator(route==='collection'?'.app-menu':route.startsWith('movies')?'.movies-menu':'#game-menu');
     await trigger.click();
     const dialog=page.locator(route.startsWith('game')?'#game-options':'#menu');
@@ -199,11 +206,11 @@ test('navigation, companion and game controls share the same clear optical recip
   let reference:unknown;
   for(const route of ['collection','study','movies/browse/movie','movies/browse/tv','movies/list','game/fruit-merge','game/snake','game/blockcraft']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
+    if(route.startsWith('movies'))await moviesReady(page,route);
     if(route==='study'){
       await page.locator('.app-tabbar [data-action=study]').click();
       await expect(page.locator('#study-view')).toBeVisible();
-      // Material harness only: Study keeps its existing distraction-free view.
-      await page.evaluate(()=>document.body.append(document.querySelector('.app-navigation')!));
+      await expect(page.locator('.section-navigation')).toBeVisible();
     }
     const scope=route.startsWith('game/')?'.game-dock':route.startsWith('movies')?'.movies-navigation':'.app-navigation';
     await expect(page.locator(scope)).toBeVisible();
@@ -219,6 +226,7 @@ test('navigation, companion and game controls share the same clear optical recip
 
 for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: adaptive glyphs retain 4.5:1 on light, dark and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
+  if(route.startsWith('movies'))await moviesReady(page,route);
   const scope=route==='collection'?'.app-navigation':'.movies-navigation';
   const nav=page.locator(scope);await expect(nav).toBeVisible();
   await page.addStyleTag({content:`#content,.movies-top,.movies-main,.movies-footer{visibility:hidden}body{background:#fff!important}.movies-view{background:transparent!important}.section-navigation{visibility:visible!important}`});
