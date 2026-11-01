@@ -181,9 +181,33 @@ export class MaterialSystem {
       let texture=this._simpleTextures.get(name);
       if(!texture){
         const size=this._quality===.25?256:512,canvas=document.createElement('canvas');canvas.width=canvas.height=size;const ctx=canvas.getContext('2d'),data=ctx.createImageData(size,size);let seed=17;for(const c of name)seed=Math.imul(seed,31)+c.charCodeAt(0);
-        for(let n=0;n<data.data.length;n+=4){seed=(Math.imul(seed,1664525)+1013904223)|0;const value=225+((seed>>>24)&15);data.data[n]=data.data[n+1]=data.data[n+2]=value;data.data[n+3]=255;}ctx.putImageData(data,0,0);texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;this._simpleTextures.set(name,texture);
+        // The cheap path bakes a surface's characteristic grain and seams once.
+        // World-space sampling below keeps those features the same size on a
+        // crate and on a long wall. No normal/ORM textures or extra passes.
+        const wood=/wood|crate|plank/.test(name),metal=/metal|corrugated/.test(name),floor=/floor|asphalt|ground/.test(name),brick=/brick|stone/.test(name);
+        for(let n=0;n<data.data.length;n+=4){
+          seed=(Math.imul(seed,1664525)+1013904223)|0;const x=(n/4)%size,y=Math.floor(n/4/size),noise=((seed>>>24)&31)-15;
+          const seam=wood?(x%(size/5)<2||y%(size/2)<2):metal?x%(size/12)<2:brick?(y%(size/8)<2||(x+(Math.floor(y/(size/8))%2)*size/8)%(size/4)<2):floor?(x<2||y<2):y%(size/4)<1;
+          const grain=wood?Math.sin(x*.85+Math.sin(y*.06)*2)*12:metal?Math.cos(x*Math.PI*24/size)*12:Math.sin(x*.04)*Math.cos(y*.04)*6;
+          const value=Math.max(0,Math.min(255,218+noise+grain-(seam?48:0)));data.data[n]=data.data[n+1]=data.data[n+2]=value;data.data[n+3]=255;
+        }ctx.putImageData(data,0,0);texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;this._simpleTextures.set(name,texture);
       }
+      color.lerp(new THREE.Color(0xffffff),.12);
       const material=new THREE.MeshLambertMaterial({color,map:texture,side:opts.three?.side??THREE.FrontSide,vertexColors:!!opts.vertexColors});
+      const tile=Number(opts.scale)||2;
+      material.onBeforeCompile=shader=>{
+        shader.uniforms.srTile={value:tile};
+        shader.vertexShader='varying vec3 srWorld;varying vec3 srNormal;\n'+shader.vertexShader;
+        shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>',`#include <worldpos_vertex>
+          vec4 srPosition=vec4(transformed,1.0);
+          #ifdef USE_INSTANCING
+            srPosition=instanceMatrix*srPosition;
+          #endif
+          srWorld=(modelMatrix*srPosition).xyz;srNormal=normalize(mat3(modelMatrix)*objectNormal);`);
+        shader.fragmentShader='varying vec3 srWorld;varying vec3 srNormal;uniform float srTile;\n'+shader.fragmentShader;
+        shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`vec3 srN=abs(srNormal);vec2 srUV=srN.y>.5?srWorld.xz:srN.x>.5?srWorld.zy:srWorld.xy;diffuseColor*=texture2D(map,srUV/srTile);`);
+      };
+      material.customProgramCacheKey=()=>`sr-albedo-world-${tile}`;
       material.userData.surface=this.surfaceOf(name);this._materials.set(key,material);return material;
     }
 
@@ -228,6 +252,7 @@ export class MaterialSystem {
     if (p.vertexMasks) mat.vertexColors = true;
     applyProps(mat, threeProps);
 
+    if(p.tint){const lifted=new THREE.Color(p.tint);lifted.multiplyScalar(1.16);p.tint=lifted;}
     if (set) extendMaterial(mat, p, this._shared);
 
     // Shared and cached for the whole session: whoever asked for it must not

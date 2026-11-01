@@ -25,21 +25,22 @@ export function deviceGPU(){
 export class View{
  readonly renderer:THREE.WebGLRenderer;readonly scene=new THREE.Scene();readonly camera=new THREE.PerspectiveCamera(74,1,.05,80);
  world:any;materials:any;private avatars=new Map<number,Avatar>();private templates=new Map<Team,THREE.Group>();private clips=new Map<Team,THREE.AnimationClip[]>();
- private owned=new Set<THREE.Material>();private disposed=false;private sun=new THREE.DirectionalLight(0xffe8ce,2);private weapon:WeaponView;private benchTarget:THREE.WebGLRenderTarget|null=null;farAnimationCap=Infinity;private composer:EffectComposer|null=null;private fxaa:ShaderPass|null=null;
+ private owned=new Set<THREE.Material>();private disposed=false;private sun=new THREE.DirectionalLight(0xfff1dc,3.4);private weapon:WeaponView;private benchTarget:THREE.WebGLRenderTarget|null=null;farAnimationCap=Infinity;private composer:EffectComposer|null=null;private fxaa:ShaderPass|null=null;
  private warm=0;private time=0;private width=1;private height=1;
  readonly collision:SimWorld;
  constructor(readonly root:HTMLElement,public tier:Tier){
   const q=QUALITY[tier];this.renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
-  this.renderer.info.autoReset=false;this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.1;
+  this.renderer.info.autoReset=false;this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.45;
   this.renderer.shadowMap.type=THREE.PCFShadowMap;this.renderer.shadowMap.enabled=!!q.shadows;
   this.camera.rotation.order='YXZ';this.scene.add(this.camera);root.prepend(this.renderer.domElement);
   this.renderer.domElement.setAttribute('aria-label','Strongroom first person play surface');this.renderer.domElement.tabIndex=0;
   this.materials=new MaterialSystem({renderer:this.renderer,quality:tier,anisotropy:tier==='potato'?1:4});
-  const game={renderer:this.renderer,scene:this.scene,camera:this.camera,materials:this.materials,gfxQuality:tier,quality:q,selectedMapId:'harbor',state:{phase:'menu'},config:{PLAYER:{STEP_HEIGHT:.55}},events:{on:()=>()=>{},emit:()=>{}},buildSimpleSky:(world:any)=>this.simpleSky(world)};
+  const game={renderer:this.renderer,scene:this.scene,camera:this.camera,materials:this.materials,gfxQuality:tier,quality:q,selectedMapId:'harbor',settings:{brightnessEv:.5},state:{phase:'menu'},config:{PLAYER:{STEP_HEIGHT:.55}},events:{on:()=>()=>{},emit:()=>{}},buildSimpleSky:(world:any)=>this.simpleSky(world)};
   this.world=new World(game);
   if(tier==='high')this.sun=this.world.sun??this.sun;this.sun.position.set(35,48,-30);this.sun.castShadow=!!q.shadows;this.sun.shadow.mapSize.set(q.shadows||512,q.shadows||512);Object.assign(this.sun.shadow.camera,{left:-18,right:18,top:18,bottom:-18,near:1,far:120});
-  if(tier!=='high'){this.scene.add(this.sun,new THREE.HemisphereLight(0xb6dce8,0x59685e,1.8),new THREE.AmbientLight(0x84979c,.55));}
-  this.scene.fog=new THREE.Fog(0x9bb7be,q.fog*.55,q.fog);this.camera.far=q.far;this.camera.updateProjectionMatrix();
+  if(tier!=='high')this.scene.add(this.sun);
+  const fill=new THREE.HemisphereLight(0xd7efff,0xb9ac93,tier==='high'?3.2:2.4);fill.name='daylight-fill';this.scene.add(fill,new THREE.AmbientLight(0xd9e6ec,tier==='high'?2.6:.9));
+  this.scene.fog=new THREE.Fog(0xd5e7ed,q.fog*.8,q.fog*1.22);this.camera.far=q.far;this.camera.updateProjectionMatrix();
   let lights=0;this.scene.traverse(o=>{if(o instanceof THREE.PointLight){o.visible=lights++<q.lights;}});
   this.weapon=new WeaponView(this.camera,tier);
   this.makePost();
@@ -50,13 +51,11 @@ export class View{
    path:(from,to)=>{a.set(from.x,from.y,from.z);b.set(to.x,to.y,to.z);return this.world.findPath(a,b)?.map((p:THREE.Vector3)=>({x:p.x,y:p.y,z:p.z}))??[];}};
  }
  private simpleSky(world:any){
-  if(this.tier==='potato'){
-   const mat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,uniforms:{top:{value:new THREE.Color(0x6697b0)},bottom:{value:new THREE.Color(0xc0d1d3)}},vertexShader:'varying float h;void main(){h=normalize(position).y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);gl_Position.z=gl_Position.w;}',fragmentShader:'uniform vec3 top;uniform vec3 bottom;varying float h;void main(){gl_FragColor=vec4(mix(bottom,top,smoothstep(-.05,.8,h)),1.);}'});
-   const mesh=new THREE.Mesh(new THREE.SphereGeometry(250,12,6),mat);mesh.frustumCulled=false;this.scene.add(mesh);
-  }else{
-   // A static equirectangular sky; no atmosphere LUTs or per-frame cloud passes.
-   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;const ctx=canvas.getContext('2d')!;const g=ctx.createLinearGradient(0,0,0,256);g.addColorStop(0,'#5d91ad');g.addColorStop(.5,'#bfd1d5');g.addColorStop(1,'#859a96');ctx.fillStyle=g;ctx.fillRect(0,0,512,256);const texture=new THREE.CanvasTexture(canvas);texture.mapping=THREE.EquirectangularReflectionMapping;texture.colorSpace=THREE.SRGBColorSpace;this.scene.background=texture;
-  }
+  // The sky is a background texture, so it cannot be clipped by the camera's
+  // short potato far plane. It adds no scene draw or post-processing pass.
+  const canvas=document.createElement('canvas');canvas.width=this.tier==='potato'?128:512;canvas.height=canvas.width/2;
+  const ctx=canvas.getContext('2d')!,g=ctx.createLinearGradient(0,0,0,canvas.height);g.addColorStop(0,'#78b8eb');g.addColorStop(.5,'#d9edf5');g.addColorStop(1,'#b8c6bd');ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  const texture=new THREE.CanvasTexture(canvas);texture.mapping=THREE.EquirectangularReflectionMapping;texture.colorSpace=THREE.SRGBColorSpace;this.scene.background=texture;
   world.sky=null;
  }
  private makePost(){
@@ -101,6 +100,7 @@ export class View{
  }
  draw(entities:Entity[],local:number|null,phase:string,dt:number,home:boolean,reduced:boolean){
   this.time+=dt;this.world.update(dt);this.materials.update?.(dt);
+  this.sun.position.set(30,58,-22);this.sun.intensity=Math.max(3.4,this.sun.intensity);this.sun.color.set(0xfff1dc);
   for(const e of entities){if(e.seat===local)continue;const a=this.avatar(e);if(!a)continue;a.root.visible=true;a.root.position.set(e.x,e.y,e.z);a.root.rotation.y=e.yaw;const cheap=this.tier==='potato'||this.tier==='low';if(!cheap){const rifle=a.root.getObjectByName('AK'),pistol=a.root.getObjectByName('Pistol');if(rifle)rifle.visible=e.weapon===0;if(pistol)pistol.visible=e.weapon===1;}
    const distance=this.camera.position.distanceTo(a.root.position),hz=distance>20?Math.min(QUALITY[this.tier].animationHz,this.farAnimationCap):60;a.at+=dt;
    const desired=e.hp<=0?'Death':e.crouch?'Duck':Math.hypot(e.vx,e.vz)>1?'Run':'Idle';const name=[...a.clips.keys()].find(n=>n.toLowerCase()===desired.toLowerCase())??[...a.clips.keys()].find(n=>n.toLowerCase().includes(desired.toLowerCase()))??'';
