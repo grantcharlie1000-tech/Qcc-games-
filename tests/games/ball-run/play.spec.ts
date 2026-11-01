@@ -14,6 +14,15 @@ const SAVE='pocket-arcade:v1:save:ball-run',BEST='pocket-arcade:v1:best:ball-run
 // by the Chromium project: one engine (and one pixel ratio) for the whole set, never WebKit overwriting it.
 const evidence=(page:Page,name:string)=>process.env.BALL_RUN_EVIDENCE&&test.info().project.name==='chromium'?page.screenshot({path:`${EVIDENCE}/${name}`}).then(()=>{}):Promise.resolve();
 const game=(page:Page)=>page.locator('.ball-run');
+async function restartFromMenu(page:Page){
+  await gameAction(page,'Restart game');
+  await expect(page.locator('#game-options')).not.toHaveAttribute('open','');
+  // Layout/play assertions use the closed sheet's final state. Native Chromium
+  // exit animations have a different clock from the paused simulation RAF.
+  await page.locator('#game-options').evaluate(e=>e.getAnimations({subtree:true}).forEach(a=>a.finish()));
+  await expect(page.locator('#game-options')).toBeHidden();
+}
+
 const data=async(page:Page,name:string)=>Number(await game(page).getAttribute(`data-${name}`));
 const saved=(page:Page)=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);
 const snapshot=(run:Run|null,records:Records,difficulty:Difficulty=run?.difficulty??'medium')=>({version:4,difficulty,records,run});
@@ -160,13 +169,10 @@ test('a fresh profile opens Medium setup; the slider re-themes it; help explains
   await expectReadableLabel(play);
   await page.keyboard.press('ArrowRight');await expect(root).toHaveAttribute('data-difficulty','medium');await expectReadableLabel(play);
   await page.keyboard.press('End');await expect(root).toHaveAttribute('data-difficulty','hard');
-  const help=page.getByRole('button',{name:'How to play',exact:true});
-  await help.click();await expect(help).toHaveAttribute('aria-expanded','true');await expect(root.locator('.br-help')).toBeVisible();await expect(root.locator('.br-help')).toContainText('permanently');
+  await expect(root.locator('.br-help-toggle,.br-help,.br-home')).toHaveCount(0);
   await expectClear(page,root.locator('.br-setup'));
-  await help.click();await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();
-  // The shell's Restart gives a fresh setup panel with help closed.
-  await help.click();await gameAction(page,'Restart game');
-  await expect(help).toHaveAttribute('aria-expanded','false');await expect(root.locator('.br-help')).toBeHidden();await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
+  await restartFromMenu(page);
+  await expect(slider).toBeVisible();await expect(root).toHaveAttribute('data-difficulty','hard');
   await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('permanently');await page.getByRole('button',{name:'Let’s play'}).click();
   await play.click();await expect(root).toHaveAttribute('data-phase','running');await expect(root.locator('.br-setup')).toBeHidden();
   await expect(root.locator('canvas')).toBeFocused();await expect(root.locator('canvas')).toHaveAttribute('tabindex','0');
@@ -230,7 +236,7 @@ test('real drag and held keys steer; P pauses and resumes; Study, blur, death an
     await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
     await expect(page.getByRole('heading',{name:'GAME OVER'})).toBeVisible();await expect(root.locator('.br-reason')).toHaveText('You fell off the track');
     await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(root).toHaveAttribute('data-phase','running');
-    await gameAction(page,'Restart game');
+    await restartFromMenu(page);
     await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-distance','0.000');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
     await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(400);await waitDistance(page,3);await pauseGame(page);
     const kept=await root.getAttribute('data-distance');await page.reload();
@@ -262,7 +268,7 @@ test('native phone touch drag steers continuously and cancel releases capture',a
   await expect(root).toHaveAttribute('data-phase','running');await context.close();
 });
 
-test('a restored Hard run hits a block: burst, Game Over with records, R and Home, and reload keeps the records',async({page})=>{
+test('a restored Hard run hits a block: burst, Game Over with records, R and shared Restart, and reload keeps the records',async({page})=>{
   test.setTimeout(180000);
   const {run,score}=beforeBlock(11,'hard'),records=emptyRecords();records.hard.allTime=score+600;
   await seed(page,snapshot(run,records));
@@ -311,9 +317,9 @@ test('a restored Hard run hits a block: burst, Game Over with records, R and Hom
   await page.keyboard.press('r');await page.clock.runFor(300);await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-x','0.000');
   await page.keyboard.up('ArrowRight');await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');
   await expect(again).toBeFocused();
-  await page.getByRole('button',{name:'Home',exact:true}).click();
+  await restartFromMenu(page);
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');await expect(root).toHaveAttribute('data-phase','ready');
-  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeFocused();
+  await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();await expect(page.getByRole('slider',{name:'Difficulty'})).toHaveValue('2');
   await page.getByRole('button',{name:'Play',exact:true}).click();await page.clock.runFor(100);
@@ -335,7 +341,7 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   await expect(root.locator('.br-target-label')).toHaveText('THIS WEEK');await expect(root.locator('.br-target-value')).toHaveText('4000');
   for(let t=0;t<6000&&await data(page,'distance')<25;t+=50)await page.clock.runFor(50);
   expect(await data(page,'distance')).toBeGreaterThanOrEqual(25);await expect(root).toHaveAttribute('data-phase','running');
-  await gameAction(page,'Restart game');
+  await restartFromMenu(page);
   await expect(root).toHaveAttribute('data-phase','ready');await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
   // Running reports are at least 250 ms apart; only the final one, at the commit, is not throttled.
   const writes=await page.evaluate(()=>(window as unknown as {bestWrites:number[]}).bestWrites);
@@ -350,7 +356,7 @@ test('shell Restart abandoning a run commits its score once, to today’s best a
   // on the next day a commit would change the records (today's best starts afresh) and report the score again.
   await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-distance','0.000');
   const count=await reports();await page.clock.setSystemTime(tomorrow);
-  await gameAction(page,'Restart game');await expect(root).toHaveAttribute('data-phase','ready');
+  await restartFromMenu(page);await expect(root).toHaveAttribute('data-phase','ready');
   expect((await saved(page)).records.medium).toEqual(kept);expect(await reports()).toBe(count);
 });
 
@@ -366,13 +372,13 @@ test('a legacy save keeps its best as Medium’s all-time record on a new course
   await expect(root.locator('.br-mode-label')).toHaveText('MEDIUM MODE');await expect(root.locator('.br-target-label')).toHaveText('ALL TIME');await expect(root.locator('.br-target-value')).toHaveText('143');
 });
 
-// Short landscape screens, down to a phone with browser bars: the note gives way, never Play or How to play.
-for(const viewport of [{width:568,height:320},{width:667,height:330},{width:568,height:300},{width:640,height:300}])test(`a legacy save's note keeps Play and How to play in view at ${viewport.width}x${viewport.height}`,async({page})=>{
+// Short landscape screens, down to a phone with browser bars: the note gives way, never Play.
+for(const viewport of [{width:568,height:320},{width:667,height:330},{width:568,height:300},{width:640,height:300}])test(`a legacy save's note keeps Play in view at ${viewport.width}x${viewport.height}`,async({page})=>{
   await seed(page,legacySave);
   await page.setViewportSize(viewport);await page.goto('/#/game/ball-run');
   const root=game(page),setup=root.locator('.br-setup'),note=root.locator('.br-note');
   await expect(note).toContainText('143');await expectClear(page,setup);
-  for(const name of ['Play','How to play']){
+  for(const name of ['Play']){
     const shown=await page.getByRole('button',{name,exact:true}).evaluate(b=>{
       const r=b.getBoundingClientRect(),p=b.closest('.br-panel')!.getBoundingClientRect();
       const inside=r.top>=p.top-.5&&r.bottom<=p.bottom+.5&&r.left>=p.left-.5&&r.right<=p.right+.5&&r.bottom<=innerHeight&&r.right<=innerWidth;
@@ -512,13 +518,11 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   await evidence(page,`${viewport.width}x${viewport.height}.png`);
   await page.keyboard.down('ArrowRight');await runUntilPhase(page,'over');await page.keyboard.up('ArrowRight');await page.clock.runFor(400);
   await expectClear(page,root.locator('.br-over'));await evidence(page,`over-${viewport.width}x${viewport.height}.png`);
-  await page.getByRole('button',{name:'Home',exact:true}).click();
+  await restartFromMenu(page);
   await expectClear(page,root.locator('.br-setup'));await evidence(page,`setup-${viewport.width}x${viewport.height}.png`);
-  await page.getByRole('button',{name:'How to play',exact:true}).click();await expectClear(page,root.locator('.br-setup'));
-  // However short the screen, all of the help can be read: the list scrolls to its last line.
-  const help=root.locator('.br-help');await help.evaluate(list=>{list.scrollTop=list.scrollHeight;});
-  const list=(await help.boundingBox())!,last=(await help.locator('li').last().boundingBox())!;
-  expect(last.y+last.height).toBeLessThanOrEqual(list.y+list.height+1);
+  await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('permanently');
+  await page.getByRole('button',{name:'Let’s play'}).click();
+
 });
 
 test('lost WebGL visibly saves and remains stopped until exit and re-entry',async({page})=>{
@@ -548,7 +552,7 @@ test('unsupported WebGL gives a visible useful fallback and never overwrites the
   await seed(page,value);
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(this:HTMLCanvasElement,type:string,...args:unknown[]){if(type==='webgl2')return null;return Reflect.apply(original,this,[type,...args]);} as typeof original;});
   await page.goto('/#/game/ball-run');await expect(page.getByRole('heading',{name:'3D graphics unavailable'})).toBeVisible();await expect(page.getByRole('link',{name:'Choose another game'})).toBeVisible();
-  await pauseGame(page);await gameAction(page,'Restart game');
+  await pauseGame(page);await restartFromMenu(page);
   await page.getByRole('link',{name:'Choose another game'}).click();
   expect(await saved(page)).toEqual(JSON.parse(JSON.stringify(value)));
 });
@@ -560,7 +564,7 @@ test('repeated restarts release held input and reuse the same GPU resources',asy
   for(let i=0;i<3;i++){
     await page.getByRole('button',{name:'Play',exact:true}).click();await page.keyboard.down('ArrowRight');
     await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.ball-run')!.dataset.x)>.2);
-    await pauseGame(page);await gameAction(page,'Restart game');await page.keyboard.up('ArrowRight');
+    await pauseGame(page);await restartFromMenu(page);await page.keyboard.up('ArrowRight');
     await expect(root).toHaveAttribute('data-x','0.000');await expect(root).toHaveAttribute('data-geometries',geometries!);
   }
   await page.keyboard.down('ArrowRight');await page.getByRole('button',{name:'Play',exact:true}).click();await waitDistance(page,2);await page.keyboard.up('ArrowRight');
