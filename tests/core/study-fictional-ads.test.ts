@@ -1,36 +1,31 @@
-import {afterEach,describe,expect,it,vi} from 'vitest';
+import {afterEach,expect,it,vi} from 'vitest';
+import {existsSync} from 'node:fs';
 import {studyArticles} from '../../src/study/articles';
 import {studyTopics} from '../../src/study/topics';
+import {readingNotes} from '../../src/study/editorial';
 import {renderVariant} from '../../src/study/variant-view';
-import {fictionalAds,selectFictionalAd,renderFictionalAd} from '../../src/study/fictional-ads';
-import {existsSync,statSync} from 'node:fs';
 
+const clutter=/\bfictional\b|\bdemo\b|sponsored|sponsor block|advertisement|invented (?:example|scene|passage|story|fragment)|Ari Rowan|Mina Vale|Leo Finch|Nell Moss/i;
 afterEach(()=>vi.unstubAllGlobals());
-it('serves 50 distinct generated creatives with all five formats from local lightweight assets',()=>{
-  expect(fictionalAds).toHaveLength(50);
-  expect(new Set(fictionalAds.map(a=>a.file)).size).toBe(50);
-  for(const format of ['banner','square','portrait','tall','landscape'])expect(fictionalAds.filter(a=>a.format===format)).toHaveLength(10);
-  let bytes=0;
-  for(const ad of fictionalAds){const path=`public/study/fictional-ads/${ad.file}`;expect(existsSync(path)).toBe(true);bytes+=statSync(path).size;expect(ad.width).toBeGreaterThan(0);expect(ad.height).toBeGreaterThan(0);}
-  expect(bytes).toBeLessThan(6_000_000);
+
+it('removes the fake advertising and contributor asset pipelines',()=>{
+  for(const path of ['src/study/fictional-ads.ts','src/study/fictional-ads.css','src/study/fictional-ads-manifest.json','public/study/fictional-ads','public/study/contributors'])expect(existsSync(path),path).toBe(false);
 });
-it('uses stable article-local selections and distinct slots without consulting user storage',()=>{
-  vi.stubGlobal('window',new Proxy({},{get(){throw Error('No user storage or browser state permitted');}}));
-  expect(selectFictionalAd('forces',0,'banner')).toEqual(selectFictionalAd('forces',0,'banner'));
-  expect(new Set(Array.from({length:10},(_,i)=>selectFictionalAd('forces',i,'banner').id)).size).toBe(10);
-  const rendered=renderFictionalAd('forces',0,'banner');
-  expect(rendered).toContain('width="');expect(rendered).toContain('height="');
-  expect(rendered).not.toMatch(/<a\b|<button\b|https?:|onclick|iframe|script/);
+
+it.each(studyTopics)('$id has substantive study content without fiction or disclaimer labels',topic=>{
+  const content=[topic.title,topic.subtitle,topic.objective,...topic.sections.flatMap(section=>[section.heading,...section.paragraphs]),...readingNotes[topic.id],topic.example.title,topic.example.question,...topic.example.steps,topic.example.result,topic.check.question,topic.check.answer].join(' ');
+  expect(content).not.toMatch(clutter);
+  expect([topic.title,...topic.sections.map(section=>section.heading),topic.example.title].join(' ')).not.toMatch(/\b(?:example|demo|ad)\b/i);
 });
-describe('fictional adverts in article variants',()=>{
-  for(const style of ['quanta','aeon','essay']) it(`${style} includes labelled local image ads without external ad scripts`,()=>{
-    vi.stubGlobal('window',{location:{hash:'#/'}});
-    const article=studyArticles.find(a=>a.style===style)!;
-    const topic=studyTopics.find(t=>t.id===article.topicId)!;
-    const markup=renderVariant(article,topic,'');
-    expect((markup.match(/class="fictional-ad /g)||[]).length).toBeGreaterThanOrEqual(5);
-    expect(markup).toContain('Fictional advertisement');
-    expect(markup).toContain('loading="lazy"');
-    expect(markup).not.toMatch(/<iframe|<script/i);
-  });
+
+it.each(studyArticles.filter(article=>article.style!=='qcc'))('$id renders a neutral, sectioned reference article without ads or fake identity',article=>{
+  vi.stubGlobal('window',{location:{hash:'#/'}});
+  const topic=studyTopics.find(topic=>topic.id===article.topicId)!;
+  const markup=renderVariant(article,topic,'');
+  expect(markup).not.toMatch(clutter);
+  expect(markup).not.toMatch(/fictional-ad|ad-rail|inline-ad|<iframe|<script|contributors\//i);
+  expect(markup).toContain('Mauri Study Notes');
+  expect(markup).toMatch(/<article\b[^>]*aria-labelledby="study-title"/);
+  expect((markup.match(/class="variant-text-section"/g)??[])).toHaveLength(3);
+  for(const paragraph of article.paragraphs)expect(markup).toContain(paragraph.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!)));
 });

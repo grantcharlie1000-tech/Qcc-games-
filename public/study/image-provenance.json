@@ -1,40 +1,8 @@
 {
   "version": 1,
   "generation": "AI-generated with GPT Image; resized and compressed to WebP.",
-  "disclosure": "Contributor portraits depict fictional adults, not real authors or credentialed experts. Article photos are illustrative generated scenes, not documentary evidence of specific people, places, experiments or events.",
+  "disclosure": "Article illustrations are generated scenes, not documentary evidence of specific people, places, experiments or events.",
   "assets": [
-    {
-      "path": "contributors/ari-rowan.webp",
-      "sha256": "c99e524d7bb1c0056315617c3f3e1f7b6ef135a05b689e6b3543d8f14f60bd8d",
-      "bytes": 21264,
-      "width": 512,
-      "height": 512,
-      "kind": "fictional-contributor-portrait"
-    },
-    {
-      "path": "contributors/mina-vale.webp",
-      "sha256": "cdf5781c615e579169034a8de9d116a5044f500d06028e1f02541694e57725f3",
-      "bytes": 17642,
-      "width": 512,
-      "height": 512,
-      "kind": "fictional-contributor-portrait"
-    },
-    {
-      "path": "contributors/leo-finch.webp",
-      "sha256": "1a9541d061756dd3aa93bc723a91d35225afe997a3768bddc0dae59d8d697fcc",
-      "bytes": 20536,
-      "width": 512,
-      "height": 512,
-      "kind": "fictional-contributor-portrait"
-    },
-    {
-      "path": "contributors/nell-moss.webp",
-      "sha256": "f252c02bfc755f90ac0366881c976a46fa9a1d9968fdc63c26018d96b9bd7411",
-      "bytes": 27258,
-      "width": 512,
-      "height": 512,
-      "kind": "fictional-contributor-portrait"
-    },
     {
       "path": "photos/reading-writing.webp",
       "sha256": "8a80ec7ad374ad37db811c929912d4ddbee9c565811594b6ba65947b0d2c0e84",
