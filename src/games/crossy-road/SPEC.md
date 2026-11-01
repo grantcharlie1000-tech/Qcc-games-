@@ -86,7 +86,9 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 ## Camera
 
 - Orthographic, pitched 45° down and yawed 20°, so lanes fall slightly to the right.
-- Portrait: eight ground cells span the width (48.75 CSS px horizontal pitch at 390 wide). Landscape: fourteen central cells plus a dim edge cell on either side span the width, keeping the nine-column playable band dominant. This full-width adaptation trades vertical coverage for scale.
+- Portrait: eight ground cells span the width (48.75 CSS px horizontal pitch at 390 wide). Every rendered row has depth 1.38 column units: about 53.9 CSS px per row at a fixed screen x, or a row-to-cell ratio of 1.105, measured from the road boundaries in t047/t119. Road, water, grass and gravel all occupy the same full row depth, with bank rims and sleepers inside their boundaries.
+- Landscape fits sixteen camera units vertically, independent of width. At 1366×768, column scale is 48 CSS px (45.1 horizontal pitch), with about 15.4 rows visible. Phone 390×844 has about 15.7 rows. The nine-column band stays centred, with subtle dimming outside it.
+- Traffic keeps its collision length but uses narrower depth and matched body/detail height. Vehicles sit towards the near part of their row, and the complete elevated silhouette of both directions fits between the projected lane edges. Rails and sleepers follow the train's ground centre; water is recessed by only 0.12 units.
 - Focus row target is `max(renderRow, safeLine + min(SAFE_LAG, maxRow))` after starting, with `SAFE_LAG = 2`, so it never moves backward. The bird sits about 35 % up from the bottom.
 - Focus x target is `lerp(4, pose.x, 0.6)`, clamped to centre ±1 cell on a cropped phone, or ±2.4 cells on desktop.
 - Smoothing factor is `1 − 0.9^(dt·60)`.

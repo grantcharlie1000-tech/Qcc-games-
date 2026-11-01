@@ -55,7 +55,7 @@ type Layer = 'over' | 'continue' | 'lost' | null;
 function mount(container: HTMLElement, context: GameContext): GameInstance {
   const root = document.createElement('div');
   root.className = 'crossy-road';
-  root.dataset.renderVersion = 'fidelity-6';
+  root.dataset.renderVersion = 'fidelity-7';
   root.innerHTML = TEMPLATE;
   container.append(root);
   const canvas = root.querySelector<HTMLCanvasElement>('.hw-canvas')!;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cameraFit, focusRowTarget, focusXTarget, smoothing, stepFocusRow } from '../../../src/games/crossy-road/scene';
+import {ROW_DEPTH} from '../../../src/games/crossy-road/config';
 
 /** The brief's camera: pitched 45° down and yawed 20° about +y. Screen x of a ground point is its
  * dot product with the camera's right axis (cos yaw, 0, −sin yaw), derived here independently of scene.ts. */
@@ -31,17 +32,32 @@ describe('cameraFit portrait', () => {
 });
 
 describe('cameraFit landscape', () => {
-  it('fits fourteen central cells and two dim edge cells across landscape screens', () => {
+  it('keeps 15–17 rows visible instead of enlarging cells with desktop width', () => {
     for (const [w,h] of [[1366,768], [1920,1080], [800,400]]) {
-      expect(cameraFit(w,h).tilePx * Math.cos(YAW) * 16).toBeCloseTo(w, 6);
+      const fit=cameraFit(w,h);
+      const rowPitch=fit.tilePx*ROW_DEPTH*Math.sin(Math.PI/4)/Math.cos(YAW);
+      expect(h/rowPitch).toBeGreaterThan(15);
+      expect(h/rowPitch).toBeLessThan(17);
     }
+    expect(cameraFit(1366,768).tilePx).toBeGreaterThanOrEqual(45);
+    expect(cameraFit(1366,768).tilePx).toBeLessThanOrEqual(50);
+    expect(cameraFit(1800,768).tilePx).toBe(cameraFit(1366,768).tilePx);
   });
 
   it('uses the portrait fit on square and taller screens', () => {
     const square = cameraFit(500, 500), portrait = cameraFit(500, 501);
     expect(square.tilePx).toBeCloseTo(portrait.tilePx, 9);
-    expect(cameraFit(501, 500).tilePx * Math.cos(YAW) * 16).toBeCloseTo(501, 6);
+    expect(cameraFit(501, 500).tilePx).toBeCloseTo(500/16, 6);
   });
+});
+
+it('matches the measured 1.1 row-to-cell pitch of t047/t119 at a fixed screen x',()=>{
+  const fit=cameraFit(390,844), cell=fit.tilePx*Math.cos(YAW);
+  const pitch=fit.tilePx*ROW_DEPTH*Math.sin(Math.PI/4)/Math.cos(YAW);
+  expect(pitch/cell).toBeGreaterThan(1.08);
+  expect(pitch/cell).toBeLessThan(1.13);
+  expect(844/pitch).toBeGreaterThan(15);
+  expect(844/pitch).toBeLessThan(17);
 });
 
 describe('cameraFit extents', () => {
