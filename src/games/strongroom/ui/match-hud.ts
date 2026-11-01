@@ -4,7 +4,7 @@ import './match-hud.css';
 
 export interface MatchPresentation{
  phase:string;round:number;scores:[number,number];timer:number;
- objective?:{site?:string;revealed?:boolean;carrier?:number|null;planted?:boolean;progress?:number;actor?:number|null;disabled?:boolean};
+ objective?:{site?:string|null;revealed?:boolean;carrier?:number|null;planted?:boolean;progress?:number;actor?:number|null;disabled?:boolean};
 }
 /** DOM reads are cached at construction. Values are only written when changed. */
 export class MatchHUD{
