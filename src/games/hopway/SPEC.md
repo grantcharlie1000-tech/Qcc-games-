@@ -103,10 +103,10 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 ## Persistence
 
 - `serialize()` stores `version`, `seed`, `t`, `phase`, the position (`row`, `x`), the hop state and queued input, the best row (`maxRow`), the idle and safe-line state (`lastProgress`, `safeLine`) and any death. Nothing personal is stored.
-- `restore()` validates every field. An invalid or incompatible snapshot starts a fresh run.
+- `restore()` validates every field (rows are capped at `MAX_ROW` = 50,000 so a tampered save cannot make the game regenerate an absurd number of rows). An invalid or incompatible snapshot starts a fresh run.
 - A snapshot taken mid-hop or on a log resumes exactly. A Continue overlay waits for input before play resumes.
 - The shell saves every five seconds and on pause, leaving the game and `pagehide`.
-- The furthest row goes to `ctx.setScore`. Signed-in players' bests are queued for the shared leaderboard by the shell; guests keep local bests only.
+- Each new furthest row goes to `ctx.setScore` at once (a hop takes 120 ms, so there is nothing to throttle). Signed-in players' bests are queued for the shared leaderboard by the shell; guests keep local bests only.
 - Scores are integers from 1 to 2147483647. A score of 0 is not submitted.
 - Server-side ranking of `hopway` needs the migration `netlify/database/migrations/20261031120000_hopway_score.sql`, which needs owner approval.
 
@@ -115,7 +115,7 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 - Target 60 fps. School Chromebooks at 1366×768 must never drop below 45 fps.
 - `renderer.setPixelRatio(Math.min(devicePixelRatio, 2))`.
 - Low quality starts automatically when the 2 s rolling average falls below 50 fps. It uses pixel ratio 1, no shadow map, blob decals in place of shadows, and less decor.
-- At most about 120 draw calls per frame, from instancing repeated models and merging static geometry per chunk.
+- At most about 120 draw calls per frame (measured 17–29): every repeated thing (lane strips, markings, trees, rocks, vehicles, train segments, logs, pads, signals, particles) is an instanced mesh, and each voxel model is one merged geometry.
 - No per-frame allocation in the hot loop; geometries and materials are reused.
 - The render loop stops on pause and when the tab is hidden.
 - `dispose()` frees every geometry, material and render target, the renderer, the animation frame, timers, observers and listeners.
@@ -134,3 +134,4 @@ Fairness invariants, unit-tested over 2,000 seeds × 400 rows (time-invariant ga
 - The rail warning never drops below 1.0 s; the reference allows 0.9 s at maximum difficulty.
 - Generation stays at least 40 rows ahead of the best row. Rows are pruned 20 rows behind the best row, not 12 behind the camera, because landscape views show more rows.
 - `?seed=` works only in development builds.
+- The rail lamp alternates at 2.5 Hz rather than faster, staying under the three-flashes-a-second photosensitivity limit for saturated red; it also swells and rings, so the warning stays obvious.
