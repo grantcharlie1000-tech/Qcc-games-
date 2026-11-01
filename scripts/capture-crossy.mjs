@@ -2,12 +2,14 @@
  * npm run dev -- --port 4190 --strictPort
  * ROUND=7 node scripts/capture-crossy.mjs
  * Optional iteration filters: CAPTURE_VIEW=phone-dsf3 CAPTURE_ONLY=start,mixed
+ * On a busy host, run each CAPTURE_VIEW separately; matching complete view
+ * manifests are merged into manifest.json, with progress saved after every shot.
  * PNGs and a manifest stay outside git in /workspace/qcc-crossy-review/rN.
  * The mixed view uses an unmodified generated world. Death setups replace only
  * the lane under the bird, then use the real rules, hop and clock to trigger it.
  */
 import {chromium} from '@playwright/test';
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -28,6 +30,31 @@ const sourceDiff = execFileSync('git', ['diff', 'HEAD', '--', 'src', 'scripts/ca
 const only = process.env.CAPTURE_ONLY?.split(',');
 const wanted = name => !only || only.includes(name);
 const manifest = {sourceDiffHash: createHash('sha256').update(sourceDiff).digest('hex'), round: Number(round), commit, base: base.origin, source: repo, views: []};
+const viewSpecs = [
+  {name:'phone',viewport:{width:390,height:844},dsf:2},
+  {name:'phone-dsf3',viewport:{width:390,height:844},dsf:3},
+  {name:'pc',viewport:{width:1366,height:768},dsf:1},
+];
+
+async function checkpoint(view, complete=false) {
+  const views=manifest.views.filter(v=>v.dsf===view.dsf && v.file.startsWith(`${view.name}-`));
+  await writeFile(`${out}/manifest-${view.name}${only?'-calibration':''}.json`,JSON.stringify({...manifest,views,complete},null,2)+'\n');
+}
+
+async function mergeCompletedViews() {
+  const files=new Map(manifest.views.map(v=>[v.file,v])), completed=[];
+  for(const view of viewSpecs) {
+    let saved;
+    try {saved=JSON.parse(await readFile(`${out}/manifest-${view.name}.json`,'utf8'));}
+    catch(error) {if(error.code==='ENOENT')continue;throw error;}
+    if(!saved.complete || saved.commit!==commit || saved.sourceDiffHash!==manifest.sourceDiffHash || saved.base!==manifest.base || saved.round!==manifest.round || saved.source!==repo)continue;
+    completed.push(view.name);
+    for(const frame of saved.views) if(!files.has(frame.file))files.set(frame.file,frame);
+  }
+  manifest.views=[...files.values()];
+  manifest.completedViews=completed;
+  manifest.complete=completed.length===viewSpecs.length;
+}
 
 async function open(view) {
   console.log(`Opening ${view.name} at ${base.origin} ...`);
@@ -54,7 +81,9 @@ async function open(view) {
 
 async function settle(page) {
   await page.evaluate(() => new Promise(resolve => {
-    let n = 16;
+    // State is frozen. Four compositor frames settle resize/glass/render work;
+    // spending sixteen full shadow renders per step needlessly stalls SwiftShader.
+    let n = 4;
     const frame = () => --n <= 0 ? resolve() : requestAnimationFrame(frame);
     requestAnimationFrame(frame);
   }));
@@ -81,9 +110,10 @@ async function shot(page, view, name, extra = {}) {
     return {tilePx,cellPx,rowPitch,rowToCell:rowPitch/cellPx,visibleRows:height/rowPitch};
   },view.viewport);
   const file = `${view.name}-${name}.png`;
-  await page.screenshot({path: `${out}/${file}`});
+  await page.screenshot({path: `${out}/${file}`,animations:'disabled'});
   manifest.views.push({file, viewport: view.viewport, dsf: view.dsf, seed: state.seed, row: state.row,
     x: state.x, t: state.t, phase: state.phase, hopping: state.hopping, cause: state.deathCause, stats, buffer, projection, ...extra});
+  await checkpoint(view);
   console.log(`${file}: seed ${state.seed}, row ${state.row}, t=${state.t.toFixed(3)}, ${state.phase}${state.deathCause ? ` / ${state.deathCause}` : ''}, ${buffer.width}×${buffer.height}, ${stats.calls} calls`);
 }
 
@@ -245,11 +275,7 @@ async function details(page, view, mixed) {
 }
 
 try {
-  for (const view of [
-    {name: 'phone', viewport: {width: 390, height: 844}, dsf: 2},
-    {name: 'phone-dsf3', viewport: {width: 390, height: 844}, dsf: 3},
-    {name: 'pc', viewport: {width: 1366, height: 768}, dsf: 1},
-  ]) {
+  for (const view of viewSpecs) {
     if (process.env.CAPTURE_VIEW && view.name !== process.env.CAPTURE_VIEW) continue;
     const {context, page, errors} = await open(view);
     try {
@@ -270,7 +296,7 @@ try {
       await shot(page, view, 'mid-hop');
       if (view.dsf === 3 && wanted('mid-hop')) {
         // Native-resolution 100% crop: no resampling, 420×480 device pixels.
-        await page.screenshot({path: `${out}/phone-dsf3-edges-100-percent.png`, clip: {x: 125, y: 410, width: 140, height: 160}});
+        await page.screenshot({path: `${out}/phone-dsf3-edges-100-percent.png`, animations:'disabled', clip: {x: 125, y: 410, width: 140, height: 160}});
       }
       for (const cause of ['car', 'truck', 'train', 'water', 'swept', 'ufo-idle', 'ufo-behind'])
         if (wanted(`death-${cause}`) || (cause === 'ufo-behind' && wanted('game-over'))) await death(page, view, mixed, cause);
@@ -281,9 +307,11 @@ try {
       }
       await details(page,view,mixed);
       if (errors.length) throw new Error(errors.join('\n'));
+      if(!only)await checkpoint(view,true);
     } finally { await context.close(); }
   }
 } finally {
+  await mergeCompletedViews();
   await writeFile(`${out}/manifest.json`, JSON.stringify(manifest, null, 2) + '\n');
   await browser.close();
 }
