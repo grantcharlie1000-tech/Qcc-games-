@@ -40,3 +40,8 @@ test('a bot directly above its target still produces a valid snapshot',()=>{
  const sim=make();Object.assign(sim.entities[1],{bot:true,x:0,y:0,z:0});sim.step(1/30);
  expect(unpackSnapshot(packSnapshot(sim,7),sim.entities)).not.toBeNull();
 });
+test('reconciliation preserves an already-held jump across snapshots',()=>{
+ const sim=make(),auth=sim.entities[0];auth.jumpHeld=true;auth.ground=true;auth.ack=1;
+ const packed=unpackSnapshot(packSnapshot(sim,7),sim.entities)!;const result=reconcile(auth,packed.entities[0],[{...neutralInput(2),buttons:4}],world);
+ expect(result.entity.y).toBe(0);expect(result.entity.jumpHeld).toBe(true);
+});
