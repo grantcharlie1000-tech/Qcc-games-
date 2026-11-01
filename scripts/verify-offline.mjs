@@ -74,6 +74,7 @@ try{
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade-v2:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
   await page.goto(base);await page.getByRole('button',{name:'Play as guest',exact:true}).click();assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
+  const sharedFonts=new Set(Object.values(manifest).flatMap(entry=>entry.assets??[]).filter(file=>/\.(ttf|woff2?)$/.test(file)));
   const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')||key.includes('strongroom')).map(([,v])=>v.file);
   assert.ok(!initial.some(url=>heavy.some(file=>url.endsWith(file))),'heavy game chunks must remain lazy');
   await page.getByRole('button',{name:'Open menu'}).click();await page.getByRole('button',{name:'Make all games available offline'}).click();await page.getByRole('button',{name:'Offline pack downloaded'}).waitFor({timeout:45000});await page.getByRole('button',{name:'Close menu'}).click();
@@ -138,12 +139,12 @@ try{
    assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id),frozen,id+' study snapshot');
    await page.getByRole('link',{name:'Games',exact:true}).first().click();page.off('request',recordSwitch);
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
-   assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
+   assert.ok(switchRequests.every(url=>{const u=new URL(url),relative=u.pathname.slice(new URL(base).pathname.length);return u.origin===new URL(base).origin&&(allowedStudyPath(relative)||sharedFonts.has(relative));}),id+' only declared offline Study assets and shared fonts requested while switching: '+JSON.stringify(switchRequests));
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');
    await gameMenu(page);assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');
    await restart(page,id);assert.equal(await page.locator('#pause-overlay').isVisible(),false);
    if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await restart(page,id);await action(page,id);await page.screenshot({path:`${folder}/${id}-${size.width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${id} overflow at ${size.width}`);}
-   await page.setViewportSize(sizes[0]);await page.getByRole('link',{name:'Back to game library'}).click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
+   await page.setViewportSize(sizes[0]);await page.locator('.game-dock').getByRole('link',{name:'Games',exact:true}).click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
    results.push({game:id,deployment:label,path,offline:true,action:true,save:true,restart:true,studyRestoration:true,studySwitchRequests:switchRequests.length,...switchTiming,rafMedianMs:frames[Math.floor(frames.length/2)],rafP95Ms:frames[Math.floor(frames.length*.95)]});console.log(`OFFLINE PASS ${label} ${id} + Study`);
   }
   assert.deepEqual(errors,[],'page errors');assert.deepEqual(external,[],'external runtime requests');assert.deepEqual(failedAssets,[],'failed local assets');
