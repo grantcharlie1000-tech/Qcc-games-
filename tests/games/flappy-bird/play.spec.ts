@@ -26,23 +26,23 @@ test('keyboard and mouse flap, pause and Study freeze, restore waits, restart an
   await page.waitForFunction(()=>Number(document.querySelector<HTMLElement>('.flappy-bird')!.dataset.tick)>12);
   await observePointerFlap(page);await root.locator('canvas').click({position:{x:170,y:240}});await expectPointerFlap(page);const saved=await snapshot(page);
   await root.locator('canvas').focus();await page.keyboard.press('Space');await frames(page);expect(await root.getAttribute('data-tick')).toBe(String(saved.tick));
-  await page.reload();await expect(page.getByRole('button',{name:'Continue flight',exact:true})).toBeVisible();const tick=await root.getAttribute('data-tick');await frames(page);expect(await root.getAttribute('data-tick')).toBe(tick);
-  await page.getByRole('button',{name:'Continue flight',exact:true}).click();await page.keyboard.press('Escape');const studyTick=await root.getAttribute('data-tick');await page.keyboard.press('Space');await frames(page);expect(await root.getAttribute('data-tick')).toBe(studyTick);
+  await page.reload();await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();const tick=await root.getAttribute('data-tick');await frames(page);expect(await root.getAttribute('data-tick')).toBe(tick);
+  await page.getByRole('button',{name:'Play',exact:true}).click();await page.keyboard.press('Escape');const studyTick=await root.getAttribute('data-tick');await page.keyboard.press('Space');await frames(page);expect(await root.getAttribute('data-tick')).toBe(studyTick);
   await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();await gameAction(page,'Restart game');await expect(root).toHaveAttribute('data-phase','ready');await expect(root).toHaveAttribute('data-tick','0');
   await page.locator('.fb-start').click();await expect(root).toHaveAttribute('data-phase','running');await expect(root).toHaveAttribute('data-phase','over');
-  await page.getByRole('button',{name:'Fly again',exact:true}).click();await expect(root).toHaveAttribute('data-phase','running');
-  await backToGames(page);await expect(root).toHaveCount(0);await page.keyboard.press('Space');await page.getByRole('link',{name:'Play Flappy Bird',exact:true}).click();await expect(page.getByRole('button',{name:'Continue flight',exact:true})).toBeVisible();expect(errors).toEqual([]);
+  await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(root).toHaveAttribute('data-phase','running');
+  await backToGames(page);await expect(root).toHaveCount(0);await page.keyboard.press('Space');await page.getByRole('link',{name:'Play Flappy Bird',exact:true}).click();await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
 
-test('a real scored flight persists its record and ignores held repeat and dialog keys',async({page})=>{
+test('a real scored flight persists its record and ignores held repeat and dialog keys',async({page},testInfo)=>{
   await page.clock.install();await page.goto('/#/game/flappy-bird');await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','ready');await page.clock.pauseAt(new Date(Date.now()+1000));
-  await page.getByRole('button',{name:'Take flight',exact:true}).click({force:true});
+  await page.getByRole('button',{name:'Play',exact:true}).click({force:true});
   for(let i=0;i<80;i++){
     const state=await page.locator('.flappy-bird').evaluate(el=>({y:Number((el as HTMLElement).dataset.y),vy:Number((el as HTMLElement).dataset.vy),target:Number((el as HTMLElement).dataset.target)}));
     if(state.y>state.target+15&&state.vy>0)await page.keyboard.press('Space');
     await page.clock.runFor(50);
   }
-  await expect(page.locator('#game-score strong')).toHaveText(/^[1-9]/);const best=await page.locator('#game-best strong').textContent();await page.screenshot({path:'tests/games/flappy-bird/evidence/gameplay.png'});
+  await expect(page.locator('#game-score strong')).toHaveText(/^[1-9]/);const best=await page.locator('#game-best strong').textContent();await page.screenshot({path:testInfo.outputPath('gameplay.png')});
   await page.keyboard.down('Space');await page.clock.runFor(200);const velocity=await page.locator('.flappy-bird').getAttribute('data-vy');await page.keyboard.down('Space');expect(await page.locator('.flappy-bird').getAttribute('data-vy')).toBe(velocity);await page.keyboard.up('Space');
   await appSettings(page);const tick=await page.locator('.flappy-bird').getAttribute('data-tick');await page.getByLabel('Reduce motion',{exact:true}).focus();await page.keyboard.press('Space');await page.clock.runFor(200);expect(await page.locator('.flappy-bird').getAttribute('data-tick')).toBe(tick);
   await page.getByRole('button',{name:'Close menu'}).click({force:true});await gameAction(page,'Restart game');await expect(page.locator('#game-score strong')).toHaveText('0');await expect(page.locator('#game-best strong')).toHaveText(best!);
@@ -50,7 +50,7 @@ test('a real scored flight persists its record and ignores held repeat and dialo
 });
 
 test('native phone touch is a single flap and pointer cancellation does not leave input held',async({browser,browserName})=>{
-  test.skip(browserName!=='chromium','Native CDP touch uses Chromium');const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});await seedStudyTopic(context);const page=await context.newPage();await page.goto('/#/game/flappy-bird');await page.getByRole('button',{name:'Take flight',exact:true}).tap();
+  test.skip(browserName!=='chromium','Native CDP touch uses Chromium');const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3});await seedStudyTopic(context);const page=await context.newPage();await page.goto('/#/game/flappy-bird');await page.getByRole('button',{name:'Play',exact:true}).tap();
   await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('width','720');await expect(page.locator('.flappy-bird canvas')).toHaveAttribute('height','1080');
   const canvas=page.locator('.flappy-bird canvas'),box=(await canvas.boundingBox())!,cdp=await context.newCDPSession(page);
   await observePointerFlap(page);
@@ -58,14 +58,14 @@ test('native phone touch is a single flap and pointer cancellation does not leav
   await expectPointerFlap(page);await snapshot(page);await resumeGame(page);await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','over');await context.close();
 });
 
-for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`original scene and controls fit ${size.width}x${size.height}`,async({page})=>{
+for(const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`original scene and controls fit ${size.width}x${size.height}`,async({page},testInfo)=>{
   await page.setViewportSize(size);await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/#/game/flappy-bird');await expect(page.locator('.flappy-bird canvas')).toBeVisible();await expect(page.locator('#game-stage')).toHaveAttribute('data-viewport-scale',/./);
   // Native actionability waits for the stage's asynchronous fit before the
   // strict bounds and hit-target measurements below.
-  await page.getByRole('button',{name:'Take flight',exact:true}).hover();
+  await page.getByRole('button',{name:'Play',exact:true}).hover();
   for(const control of await page.locator('.flappy-bird button,.game-dock button,.game-dock a').all()){
     if(!await control.isVisible())continue;const box=(await control.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(-1);expect(box.y).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(size.width+1);expect(box.y+box.height).toBeLessThanOrEqual(size.height+1);if(await control.evaluate(el=>!!el.closest('.flappy-bird')))expect(box.height).toBeGreaterThanOrEqual(43.9);
     expect(await control.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
   }
-  await page.screenshot({path:`tests/games/flappy-bird/evidence/${size.width}x${size.height}.png`});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
+  await page.screenshot({path:testInfo.outputPath(`${size.width}x${size.height}.png`)});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
 });

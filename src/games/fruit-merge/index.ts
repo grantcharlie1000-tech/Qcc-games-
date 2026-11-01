@@ -1,34 +1,40 @@
 import type {GameModule,GameContext,GameInstance} from '../../core/types';
 import {FruitEngine,TIERS,WIDTH,HEIGHT,LEFT,RIGHT,FLOOR,DANGER,STEP} from './engine';
 import {drawFruit} from './art';
+import {bindGamePauseSheet,createGameSheet} from '../../ui/game-sheet';
 import './style.css';
 interface Spark {x:number;y:number;vx:number;vy:number;life:number;color:string}
 const module:GameModule={
  id:'fruit-merge',title:'Suika Game',cover:'game-art/fruit-merge/cover.svg',
  rules:'Independent browser adaptation. Aim with the pointer or Left and Right arrow keys, then click, tap, press Space or Enter. Two equal fruits touching merge into the next larger fruit. Chain merges within 0.8 seconds earn a combo bonus, up to ×4. Only the four smallest fruits enter the balanced drop queue. The next fruit is shown beside the basket. Reach the watermelon and keep building your score; watermelons do not merge further. Keep the pile below the dashed line. A fruit ends the run only after it has had time to settle and then stays nearly still above the line for 2 seconds. Falling and newly dropped fruit are protected. Pause saves your basket; restart starts a fresh run.',
  mount(container:HTMLElement,context:GameContext):GameInstance{
-  container.innerHTML=`<div class="fm"><div class="fm-top"><div class="fm-next"><canvas width="104" height="104" aria-hidden="true"></canvas><div><span class="fm-eyebrow">UP NEXT</span><span class="fm-next-name"></span></div></div><div class="fm-goal">A little fruit, a big dream<strong>Make a watermelon</strong></div></div><canvas class="fm-board" role="img" tabindex="0" aria-label="Fruit basket. Aim with Left and Right arrows; drop with Space or Enter." width="720" height="1020"></canvas><span class="fm-count sr-only" aria-live="polite">0 fruits in basket</span><div class="fm-banner" role="status"></div><div class="fm-evolution" aria-label="Fruit evolution">${TIERS.map((t,i)=>`<span title="${i+1}. ${t.name}" style="background:${t.color}">${i+1}</span>`).join('')}</div><p class="game-help">Aim &amp; tap to drop · ← → to aim · Space to drop<br>Match a pair. Grow something wonderful.</p></div>`;
+  container.innerHTML=`<div class="fm"><div class="fm-top"><div class="fm-next"><canvas width="104" height="104" aria-hidden="true"></canvas><div><span class="fm-eyebrow">UP NEXT</span><span class="fm-next-name"></span></div></div></div><canvas class="fm-board" role="img" tabindex="0" aria-label="Fruit basket. Aim with Left and Right arrows; drop with Space or Enter." width="720" height="1020"></canvas><span class="fm-count sr-only" aria-live="polite">0 fruits in basket</span><div class="fm-banner" role="status"></div></div>`;
   const root=container.querySelector<HTMLDivElement>('.fm')!,canvas=root.querySelector<HTMLCanvasElement>('.fm-board')!,c=canvas.getContext('2d')!;
   const preview=root.querySelector<HTMLCanvasElement>('.fm-next canvas')!,pc=preview.getContext('2d')!,nextLabel=root.querySelector<HTMLElement>('.fm-next-name')!,count=root.querySelector<HTMLElement>('.fm-count')!,banner=root.querySelector<HTMLElement>('.fm-banner')!;
-  const physics=new FruitEngine();let paused=false,disposed=false,raf=0,last=0,accumulator=0,previousScore=-1,previousNext=-1,previousCount=-1,previousStatus='',previousLevel=-1,didLose=false,dirty=false;
+  const physics=new FruitEngine();let paused=false,disposed=false,raf=0,last=0,accumulator=0,previousScore=-1,previousNext=-1,previousCount=-1,previousStatus='',previousLevel=-1,didLose=false,dirty=false,best=context.highScore;
+  const controls={touch:'Aim and release to drop.',keyboard:'← → to aim. Space or Enter to drop.'};
+  const sheet=createGameSheet(root,{title:'Suika Game',controls,onPlay(){restart();canvas.focus({preventScroll:true});}});
+  const pauseSheet=bindGamePauseSheet(container,{title:'Suika Game',controls});
   let sparks:Spark[]=[];let flash:{x:number;y:number;text:string;life:number}|undefined;
   const available=container.parentElement!;
   function resize(){
-   // The loss/warning banner can wrap in landscape. Reserve its measured height.
+   // Reserve the measured height of the in-play danger warning.
    const chrome=root.querySelector<HTMLElement>('.fm-top')!.offsetHeight+banner.offsetHeight;
    const width=Math.max(1,Math.min(available.clientWidth,(available.clientHeight-chrome)*WIDTH/HEIGHT));
    root.style.setProperty('--fm-width',`${width}px`);
   }
   const observer=new ResizeObserver(resize);observer.observe(available);observer.observe(banner);
   const report=()=>{
+   best=Math.max(best,physics.score);
    if(previousScore!==physics.score){previousScore=physics.score;context.setScore(physics.score);}
    if(previousNext!==physics.next){previousNext=physics.next;nextLabel.textContent=TIERS[physics.next].name;pc.clearRect(0,0,104,104);drawFruit(pc,physics.next,52,57,35,0,true);}
    if(previousCount!==physics.fruits.size){previousCount=physics.fruits.size;count.textContent=`${physics.fruits.size} fruit${physics.fruits.size===1?'':'s'} in basket`;}
    let highest=0,danger=0;for(const f of physics.fruits.values()){highest=Math.max(highest,f.tier);danger=Math.max(danger,f.danger);}
    if(previousLevel!==highest){previousLevel=highest;context.setLevel(TIERS[highest].name);}
-   const status=physics.lost?'Basket full! Restart for another fresh batch.':danger>200?'Pile too high — a merge could save it!':`Drop a ${TIERS[physics.current].name.toLowerCase()}. Match two of a kind.`;
+   const status=physics.lost?'Basket full. Play again for a new basket.':danger>200?'Pile too high — a merge could save it!':`Drop a ${TIERS[physics.current].name.toLowerCase()}. Match two of a kind.`;
    if(previousStatus!==status){previousStatus=status;context.setStatus(status);}
-   banner.textContent=physics.lost?'Basket full — a fresh start awaits!':danger>200?`Careful! ${Math.max(0,(2000-danger)/1000).toFixed(1)}s to clear the line`:'';
+   banner.textContent=!physics.lost&&danger>200?`Careful! ${Math.max(0,(2000-danger)/1000).toFixed(1)}s to clear the line`:'';
+   if(physics.lost){if(sheet.element.hidden)sheet.show('game-over',{score:physics.score.toLocaleString(),best:best.toLocaleString()});}else sheet.hide();
    canvas.setAttribute('aria-busy',String(!physics.ready&&!physics.lost));
    canvas.setAttribute('aria-disabled',String(paused||physics.lost));
    if(physics.lost&&!didLose){didLose=true;context.sound('lose');context.announce(`Basket full. Final score ${physics.score}.`);context.save(physics.snapshot());}
@@ -70,14 +76,15 @@ const module:GameModule={
   const pointerCancel=()=>{pointer=undefined;};
   const key=(event:KeyboardEvent)=>{if(paused||disposed)return;if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();physics.setAim(physics.aim+(event.key==='ArrowLeft'?-12:12));draw();}if((event.code==='Space'||event.key==='Enter')&&!event.repeat){event.preventDefault();doDrop();}};
   canvas.addEventListener('pointerdown',pointerDown);canvas.addEventListener('pointermove',pointerMove);canvas.addEventListener('pointerup',pointerUp);canvas.addEventListener('pointercancel',pointerCancel);canvas.addEventListener('keydown',key);
+  function restart(){physics.restart();sparks=[];flash=undefined;didLose=false;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();context.save(physics.snapshot());}
   report();resize();draw();raf=requestAnimationFrame(frame);
   return {
    pause(){if(paused||disposed)return;paused=true;cancelAnimationFrame(raf);raf=0;pointer=undefined;last=0;accumulator=0;report();},
    resume(){if(!paused||disposed)return;paused=false;last=0;accumulator=0;report();raf=requestAnimationFrame(frame);},
-   restart(){physics.restart();sparks=[];flash=undefined;didLose=false;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();context.save(physics.snapshot());},
+   restart,
    serialize(){return physics.snapshot();},
-   restore(data:unknown){if(physics.restore(data)){sparks=[];flash=undefined;didLose=physics.lost;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();}},
-   dispose(){if(disposed)return;disposed=true;observer.disconnect();cancelAnimationFrame(raf);canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',pointerCancel);canvas.removeEventListener('keydown',key);physics.dispose();sparks=[];root.remove();}
+   restore(data:unknown){if(physics.restore(data)){sparks=[];flash=undefined;didLose=physics.lost;dirty=false;last=0;accumulator=0;previousNext=-1;sheet.hide();report();draw();}},
+   dispose(){if(disposed)return;disposed=true;observer.disconnect();cancelAnimationFrame(raf);canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',pointerCancel);canvas.removeEventListener('keydown',key);sheet.dispose();pauseSheet.dispose();physics.dispose();sparks=[];root.remove();}
   };
  }
 };
