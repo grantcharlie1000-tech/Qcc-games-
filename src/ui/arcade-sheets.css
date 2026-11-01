@@ -1,9 +1,12 @@
-/* Arcade regular glass. The sheet is the sole filtered surface; rows are plain
-   inset fills. Movies keeps the legacy .ui-glass-sheet tokens in theme.css. */
+/* Arcade regular glass. Rows are plain inset fills; floating closes use the
+   shared clear material. Movies keeps its .ui-glass-sheet tokens in theme.css.
+   Carry the old linear brightness/contrast contribution in the veil so text
+   stays legible even when a renderer omits backdrop colour filters. */
 :is(.arcade-sheet,body.in-game .mp-card){
   --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
-  --sheet-veil:rgb(255 255 255 / .06);
-  --sheet-optics:blur(8px) saturate(.35) contrast(.7) brightness(.44);
+  /* Equivalent to white/.06 over contrast(.7) brightness(.44). */
+  --sheet-veil:rgb(43.802 43.802 43.802 / .71048);
+  --sheet-optics:blur(8px) saturate(.35);
   --sheet-group:rgb(255 255 255 / .03);--sheet-control:rgb(255 255 255 / .06);
   --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
   --sheet-radius:32px;--sheet-padding:16px;--sheet-group-radius:calc(var(--sheet-radius) - var(--sheet-padding));
@@ -15,9 +18,10 @@
   font:400 17px/1.45 var(--font-sans);text-shadow:none;
 }
 html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
-  --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#25282d;
-  --sheet-veil:rgb(255 255 255 / .38);
-  --sheet-optics:blur(8px) saturate(.35) contrast(.55) brightness(1.35);
+  --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#22252a;
+  /* Equivalent to white/.38 over contrast(.55) brightness(1.35). */
+  --sheet-veil:rgb(255 255 255 / .568325);
+  --sheet-optics:blur(8px) saturate(.35) brightness(1.066428);
   --sheet-group:rgb(0 0 0 / .035);--sheet-control:rgb(0 0 0 / .055);
   --sheet-line:rgb(0 0 0 / .12);--sheet-focus:#111316;color-scheme:light;
 }

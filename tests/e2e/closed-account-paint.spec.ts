@@ -24,13 +24,45 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     await expect(dialog).not.toHaveAttribute('open');
     // Hold the exit half way through: an inactive native sheet must not retain
     // a filtered/composited rectangle while entry rerenders the games grid.
-    await page.evaluate(()=>{for(const a of document.getAnimations()){a.pause();a.currentTime=90;}});
+    await page.evaluate(async()=>{
+      const held=[];
+      for(const a of document.getAnimations()){
+        const target=(a.effect as KeyframeEffect|null)?.target;
+        if(target instanceof Element&&target.closest('#accounts-dialog')){a.pause();a.currentTime=90;held.push(a.ready);}
+        else a.finish();
+      }
+      // Keep the account exit at its midpoint, but settle unrelated navigation
+      // restoration and queued focus before comparing the same rendered area.
+      await Promise.all(held);await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
+    });
     await expect(dialog).toBeHidden();await expect(dialog).toHaveCSS('backdrop-filter','none');
     expect(await page.evaluate(()=>[310,512,720].some(x=>!!document.elementFromPoint(x,574)?.closest('#accounts-dialog')))).toBe(false);
+    await page.evaluate(async()=>{
+      // Guest entry can replace the grid. Decode its current art before
+      // comparing pixels viewed through the now-clear navigation.
+      await document.fonts.ready;
+      await Promise.all([...document.querySelectorAll<HTMLImageElement>('.game-card img')].map(image=>image.decode()));
+      await new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve())));
+    });
+    await expect(page.getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
+    await expect.poll(()=>page.evaluate(()=>document.getAnimations().filter(a=>{
+      const target=(a.effect as KeyframeEffect|null)?.target;
+      return !(target instanceof Element&&target.closest('#accounts-dialog'))&&(a.pending||a.playState==='running');
+    }).length)).toBe(0);
     const options={clip:{x:305,y:550,width:420,height:27},animations:'allow' as const};
-    const actual=await page.screenshot(options);
+    const stableShot=async()=>{
+      let previous:Buffer|undefined;
+      await expect.poll(async()=>{
+        const next=await page.screenshot(options),same=previous?.equals(next)??false;
+        previous=next;return same;
+      },{message:'navigation pixels settle while the account exit stays paused'}).toBe(true);
+      return previous!;
+    };
+    // Backdrop rasterization can settle after DOM/style and animations do.
+    // Capture stable pixels before hiding anything, preserving any stray paint.
+    const actual=await stableShot();
     const hidden=await page.addStyleTag({content:'#accounts-dialog,#accounts-dialog::backdrop{display:none!important}'});
-    const without=await page.screenshot(options);await hidden.evaluate(e=>e.parentNode?.removeChild(e));
+    const without=await stableShot();await hidden.evaluate(e=>e.parentNode?.removeChild(e));
     expect(actual.equals(without),'closed account tree adds no pixels to the reported white-rectangle region').toBe(true);
     await page.evaluate(()=>{for(const a of document.getAnimations())a.finish();});
     await page.reload();await expect(page.locator('.game-card').first()).toBeVisible();await expect(dialog).toBeHidden();

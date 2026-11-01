@@ -93,14 +93,17 @@ for(const feature of ['prefers-reduced-transparency','prefers-contrast','forced-
   });
 }
 
-for(const view of ['home','accounts','snake','fruit-merge']){
-  test(`${view} sheet text keeps 4.5:1 contrast over the rendered backdrop`,async({page})=>{
+for(const [view,black] of [['home',false],['accounts',false],['snake',false],['fruit-merge',false],['home',true]] as const){
+  test(`${view}${black?' over black artwork':''} sheet text keeps 4.5:1 contrast over the rendered backdrop`,async({page})=>{
     await page.setViewportSize({width:390,height:844});
     const home=['home','accounts'].includes(view);
     await page.goto(home?'/#/collection':`/#/game/${view}`);
     if(home)await page.getByRole('button',{name:'Open menu',exact:true}).click();
     else await openGameMenu(page);
     if(view==='accounts')await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
+    if(black)await page.evaluate(()=>{
+      const artwork=document.createElement('div');artwork.style.cssText='position:fixed;inset:0;background:#000;z-index:9999';document.body.append(artwork);
+    });
     const selector=view==='accounts'?'#accounts-dialog':home?'#menu':'#game-options',panel=page.locator(selector);
     await expect.poll(()=>panel.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     await panel.evaluate(e=>{e.scrollTop=0;});
