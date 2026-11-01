@@ -45,6 +45,23 @@ test('an unchanged frame reuses instance buffers instead of uploading every stat
   expect(uploads).toBe(0);
 });
 
+test('projected closed voxel casters cull redundant back faces',async({page})=>{
+  await openGame(page);
+  await hook(page).setQuality('high');
+  const casters=await page.evaluate(()=>{
+    const h=window.__crossyRoadTest!,gl=document.querySelector<HTMLCanvasElement>('.hw-canvas')!.getContext('webgl2')!;
+    const original=gl.drawElementsInstanced.bind(gl),states:boolean[]=[];
+    gl.drawElementsInstanced=(...args:Parameters<typeof gl.drawElementsInstanced>)=>{
+      const program=gl.getParameter(gl.CURRENT_PROGRAM) as WebGLProgram;
+      if(gl.getUniformLocation(program,'uFloor')!==null)states.push(gl.isEnabled(gl.CULL_FACE));
+      return original(...args);
+    };
+    try{h.forceLanes([]);return states;}finally{gl.drawElementsInstanced=original;}
+  });
+  expect(casters.length).toBeGreaterThan(0);
+  expect(casters.every(Boolean)).toBe(true);
+});
+
 test.describe('mobile adaptive resolution',()=>{
   test.use({deviceScaleFactor:3});
   test('applies a sustained budget reduction during an uninterrupted buffered-hop sequence',async({page})=>{

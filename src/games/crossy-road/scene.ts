@@ -268,7 +268,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`,
-    transparent:true,depthWrite:false,side:THREE.DoubleSide,forceSinglePass:true,
+    // Light-facing faces of each closed voxel already cover its full projected
+    // silhouette. Back faces add fragment/stencil work with no visible detail.
+    transparent:true,depthWrite:false,side:THREE.FrontSide,
     stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp,
   }));
   const pool = (geometry: THREE.BufferGeometry, material: THREE.Material, cap: number, cast = false, _receive = false, order = 0, floor = 0): Pool => {

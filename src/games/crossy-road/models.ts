@@ -5,9 +5,9 @@
  * bottom centre of the model (x and z centred, y = 0 at the base) and vehicles face +x, so a
  * renderer turns a vehicle by a yaw of π to face −x. The bird faces −z (forward).
  *
- * Tinted models come in two geometries: a `body` in white, which the renderer tints with a
- * per-instance colour, and a `detail` with fixed colours (windows, wheels, cargo). Draw both at
- * the same transform. Side faces get a slightly darker bottom edge (a cheap ambient occlusion)
+ * Tinted builders return a white `body` and fixed-colour `detail` (windows, wheels, cargo).
+ * The renderer merges them with a paint mask for one instanced draw at the same transform.
+ * Side faces get a slightly darker bottom edge (a cheap ambient occlusion)
  * that tints along with the instance colour. */
 import * as THREE from 'three';
 import type {CarStyle} from './config';
