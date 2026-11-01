@@ -4,6 +4,12 @@ Arrange seven four-cell pieces in a ten-column well with two hidden rows. Comple
 
 A one, two, three or four-line clear scores 100, 300, 500 or 800 times the current level. Soft drop adds one point per cell; hard drop adds two. Level is 1 plus completed lines divided by 10, rounded down. Gravity is `max(50, 1000 * 0.82 ** (level - 1))` milliseconds per row.
 
-Left/right or A/D move; Down/S soft drops; Up/W/X and Z rotate; Space hard drops; C/Shift holds. Touch controls offer the same actions; left, right and soft drop repeat while held. Narrow screens show two next pieces. Cleared rows flash briefly unless reduced motion is enabled. Drag horizontally or down on the board, tap to rotate, or flick up to hard drop. Escape opens Study through the host. The host stores the versioned run and local best; signed-in accounts sync both.
+The host's shared Liquid Glass dock shows Score, Level and Lines. It reserves its own space below the board; no custom header or touch button grid is used. Hold and the next two pieces appear in compact glass chips above the board on phones and outside its upper corners on wide screens. The board fills the available height while keeping square cells and all twenty rows visible, with a ghost marking the landing position.
 
-A restored running game waits for Continue; returning from Study resumes the current game without that prompt.
+Tap to rotate clockwise. Drag horizontally in cell-sized steps to move, drag down to soft drop, use a fast downward flick to hard drop, or swipe up to hold. The Hold chip also holds. One pointer sequence has one intent: a fast flick does not also soft drop or rotate. Pointer cancellation, pausing, focus loss, a hold or a piece lock cancels pending input. Gestures do not scroll or zoom the page.
+
+Left/right or A/D move; Down/S soft drops; Up/W/X rotates clockwise; Z rotates counterclockwise; Space hard drops; C/Shift holds. Movement repeats after 133 ms (DAS), then every 33 ms (ARR). Soft drop repeats every 33 ms. Native key repeats are ignored. Escape opens the shared game menu and pauses; closing it resumes according to the host's pause state.
+
+A fresh game has one Tap to play button; Enter/Space also starts. A restored running game waits for Continue. A lost game shows a glass sheet with Score, Best and Play again. The host stores the versioned run and local best; signed-in accounts sync both. Scoring and leaderboard reporting remain with the existing model and context API.
+
+Rendering uses requestAnimationFrame and device-pixel-ratio canvas backing stores, with layout sizes cached by ResizeObserver and DOM reports updated only when state changes. A line clear flashes and collapses over 150 ms, with a 12 ms vibration where supported. Reduced motion uses a gentle static flash without collapse or vibration.

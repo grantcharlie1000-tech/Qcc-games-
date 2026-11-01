@@ -18,7 +18,7 @@ const fields:Record<GameId,Field[]>={
   blockcraft:[level], 'maze-muncher':[score,level],
   'corn-clicker':[{label:'Kernels',source:'.cc-kernels-num'},{label:'Per second',source:'.cc-cps'}],
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
-  quadfall:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}]
+  quadfall:[score,{label:'Level',source:'.qf-game',attribute:'data-level'},{label:'Lines',source:'.qf-game',attribute:'data-lines'}], fivefold:[{label:'',source:'.ff-puzzle'}]
 };
 
 type Choice={selector:string;label?:string};
