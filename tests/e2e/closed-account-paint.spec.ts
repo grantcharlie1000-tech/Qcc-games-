@@ -38,6 +38,7 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     // The old dialog click can sit over a restored tab. Move it away after
     // holding the exit, so a newly acquired hover fill cannot change the crop.
     await page.mouse.move(0,0);
+    await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-sheet-hidden');
     await expect(dialog).toBeHidden();await expect(dialog).toHaveCSS('backdrop-filter','none');
     expect(await page.evaluate(()=>[310,512,720].some(x=>!!document.elementFromPoint(x,574)?.closest('#accounts-dialog')))).toBe(false);
     await page.evaluate(async()=>{
