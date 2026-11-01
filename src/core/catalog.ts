@@ -1,8 +1,8 @@
 import type { GameId, GameModule } from './types';
 import {SHOOTER} from '../games/shooter/meta';
-export interface GameInfo { id: GameId; title: string; color: string; ink: string; accent: string }
+export interface GameInfo { id: GameId; title: string; color: string; ink: string; accent: string; hidden?: boolean }
 export const games: GameInfo[] = [
-{id:SHOOTER.id,title:SHOOTER.title,color:'#182326',ink:'#d6e5b8',accent:'#a9c48c'},
+{id:SHOOTER.id,title:SHOOTER.title,color:'#182326',ink:'#d6e5b8',accent:'#a9c48c',hidden:true},
 {id:'color-blocks',title:'Block Blast',color:'#382841',ink:'#ffd04c',accent:'#ffca3a'},
 {id:'water-sort',title:'Water Sort',color:'#594263',ink:'#e4b5f7',accent:'#dca8ed'},
 {id:'fruit-merge',title:'Suika Game',color:'#ffe7ac',ink:'#d34c37',accent:'#df4e37'},
