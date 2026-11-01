@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPoolShot} from './pool-verifier-shot.mjs';
-const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle'};
+const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle',shooter:'Shooter (WIP)'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
@@ -14,6 +14,7 @@ const localAdPaths=new Set(fictionalMedia.assets.map(ad=>'study/fictional-ads/'+
 const allowedStudyPath=path=>/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(path)||localAdPaths.has(path);
 studyMedia.assets.push(...fictionalMedia.assets.map(ad=>({path:'fictional-ads/'+ad.file,width:ad.width,height:ad.height})));
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
+let activePage;
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
 async function restart(page,id){
@@ -23,7 +24,15 @@ async function restart(page,id){
  finally{if(id==='minesweeper')page.off('dialog',confirm);}
 }
 async function action(page,id){
- if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.qf-game').getAttribute('data-score'))>0,'offline Tetris hard drop');}
+ if(id==='shooter'){
+  const root=page.locator('.shooter-game');await root.locator('canvas').first().waitFor({timeout:120000});
+  await page.waitForFunction(()=>document.querySelector('.shooter-game')?.getAttribute('data-ready')==='true',{},{timeout:120000});
+  const start=page.locator('#hud-start');if(await start.isVisible())await start.click();
+  await waitFor(async()=>['freeze','live','planted','roundEnd'].includes(await root.getAttribute('data-phase')),'offline Shooter bot match');
+  assert.ok(Number(await page.locator('#hud-health-num').textContent())>0,'offline Shooter health HUD');
+  await page.evaluate(()=>document.exitPointerLock?.());
+ }
+ else if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');await waitFor(async()=>Number(await page.locator('.qf-game').getAttribute('data-score'))>0,'offline Tetris hard drop');}
  else if(id==='neon-coil'){await page.getByRole('button',{name:/Enter arena|Continue arena/}).click();await page.mouse.move(240,300);await waitFor(async()=>Number(await page.locator('.nc-game').getAttribute('data-tick'))>10,'offline Slither.io continuous movement');}
  else if(id==='fruit-merge'){await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await page.waitForTimeout(650);}
  else if(id==='water-sort'){await page.getByRole('button',{name:'Hint',exact:true}).click();const from=await page.locator('.ws-hint-from').getAttribute('data-tube'),to=await page.locator('.ws-hint-to').getAttribute('data-tube');await page.locator(`[data-tube="${from}"]`).click();await page.locator(`[data-tube="${to}"]`).click();await waitFor(async()=>await page.locator('.ws-game').getAttribute('data-phase')!=='pouring','pour');}
@@ -59,12 +68,12 @@ try{
  for(const [label,path,port] of [['root','/',4275],['subpath','/Qcc-games-/',4276]]){
   const server=spawn('node',['scripts/serve-built.mjs'],{env:{...process.env,PORT:String(port),ARCADE_BASE:path},stdio:'ignore',detached:true});servers.push(server);
   const base=`http://127.0.0.1:${port}${path}`;await waitFor(async()=>{try{return (await fetch(base)).ok;}catch{return false;}},'built server');
-  const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[],movieArtworkRequests=[],movieArtworkFailures=[];
+  const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=activePage=await context.newPage();const errors=[],external=[],failedAssets=[],movieArtworkRequests=[],movieArtworkFailures=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.status()>=400)(isLibraryMovieArtwork(response.url())?movieArtworkFailures:failedAssets).push({url:response.url(),status:response.status()});});page.on('requestfailed',request=>(isLibraryMovieArtwork(request.url())?movieArtworkFailures:failedAssets).push({url:request.url(),failure:request.failure()?.errorText}));page.on('request',r=>{if(isLibraryMovieArtwork(r.url()))movieArtworkRequests.push(r.url());else if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade-v2:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
   await page.goto(base);await page.getByRole('button',{name:'Play as guest',exact:true}).click();assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
-  const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')).map(([,v])=>v.file);
+  const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')||key.includes('shooter')).map(([,v])=>v.file);
   assert.ok(!initial.some(url=>heavy.some(file=>url.endsWith(file))),'heavy game chunks must remain lazy');
   await page.getByRole('button',{name:'Open menu'}).click();await page.getByRole('button',{name:'Make all games available offline'}).click();await page.getByRole('button',{name:'Offline pack downloaded'}).waitFor({timeout:45000});await page.getByRole('button',{name:'Close menu'}).click();
   await waitFor(()=>page.evaluate(()=>navigator.serviceWorker.controller!==null),'service worker control');
@@ -112,7 +121,10 @@ try{
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
   await page.setViewportSize(sizes[0]);
   for(const id of ids){
-   await page.goto(base+'#/game/'+id);await page.locator('#game-title').waitFor();await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('#game-title').textContent(),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
+   // Tiny Strike bakes its material library and procedural weapons on first
+   // mount. Software WebGL can occupy the main thread beyond the normal wait.
+   page.setDefaultTimeout(id==='shooter'?120000:30000);
+   await page.goto(base+(id==='shooter'?'?post=off':'')+'#/game/'+id);await page.locator('#game-title').waitFor({state:'attached'});await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('#game-title').textContent(),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
    await action(page,id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),id+' horizontal overflow');
    const frames=await page.evaluate(()=>new Promise(resolve=>{const values=[];let prev;const tick=t=>{if(prev!==undefined)values.push(t-prev);prev=t;if(values.length===45)resolve(values);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));frames.sort((a,b)=>a-b);
    await page.screenshot({path:`${folder}/${id}-${label}-390.png`,fullPage:true});
@@ -138,4 +150,7 @@ try{
   results.push({deployment:label,cacheNames,externalRequests:external,movieArtworkRequests,movieArtworkFailures,pageErrors:errors,failedAssets,initialResourceCount:initial.length,heavyChunksLazy:true});await context.close();
  }
  await writeFile(folder+'/offline-results.json',JSON.stringify({recordedAt:new Date().toISOString(),browser:'Chromium',browserVersion:browser.version(),physicalHardware:false,softwareWebGL:true,rafSamplesPerGame:45,gameCount:ids.length,results},null,2));console.log(`Verified ${ids.length} games offline at both root and repository subpath.`);
+}catch(error){
+ if(activePage)console.error('Offline verifier page:',await activePage.evaluate(()=>({url:location.href,body:document.body.innerText.slice(0,1500)})).catch(()=>null));
+ throw error;
 }finally{await browser.close();for(const server of servers)try{process.kill(-server.pid,'SIGTERM');}catch{}}

@@ -34,10 +34,10 @@
 
 **Interfaces:** Existing `send(text:string)` / `onData(cb)` unchanged. Optional `sendUnreliable?(message:string|ArrayBuffer):void` and `onUnreliable?(cb:(message:string|ArrayBuffer)=>void):void` on Link. PeerJS creates negotiated channel id 7, unordered, zero retransmits on both sides.
 
-- [ ] Install existing lockfile dependencies if missing; run baseline check/tests/build and record initial entry bytes outside git.
-- [ ] Write and run failing tests using a fake paired RTCPeerConnection and mocked PeerJS signaling. Assert second-channel options, bidirectional text/binary, fallback before open/unsupported/send error, callback separation, late PC availability, and closure.
-- [ ] Implement the optional channel and tagged binary fallback; leave Room and existing Links untouched.
-- [ ] Run transport tests, full unit tests, and check; commit the transport change.
+- [x] Install existing lockfile dependencies if missing; run baseline check/tests/build and record initial entry bytes outside git.
+- [x] Write and run failing tests using a fake paired RTCPeerConnection and mocked PeerJS signaling. Assert second-channel options, bidirectional text/binary, fallback before open/unsupported/send error, callback separation, late PC availability, and closure.
+- [x] Implement the optional channel and tagged binary fallback; leave Room and existing Links untouched.
+- [x] Run transport tests, full unit tests, and check; commit the transport change.
 
 ### Task 2: Client import, assets, and arcade integration
 
@@ -45,12 +45,12 @@
 
 **Interfaces:** A `GameModule` matching Blockcraft/Pool, with mount returning `GameInstance`. Shared metadata provides id/title/cover; the existing glob remains the lazy-loading boundary. Import declarations are scoped to this game rather than weakening TypeScript globally.
 
-- [ ] Write browser tests for library entry, rendered bot game, full drawing-buffer DPR, pointer lock, movement/shooting, P/menu, Escape/Study, resume, disposal/reentry, touch drag/stick/fire, offline assets and no online UI/requests. Run the initial missing-game test to demonstrate failure.
-- [ ] Copy only client dependencies and runtime assets; preserve both license files; write an explicit ASSETS inventory and credit in rules/menu.
-- [ ] Replace the page bootstrap with a mount function and lifecycle ownership; use playBox from the shared play surface, abortable listeners, scoped CSS, full DPR, safe pause/resume/disposal and asset URLs.
-- [ ] Disable upstream online/leaderboard/career UI and remove its network implementations. Retain bots, maps, weapons, profile appearance, and gameplay settings.
-- [ ] Add metadata, catalog/type registration, full surface styling and a simple SVG placeholder using the SVG skill. Add no score callbacks.
-- [ ] Run check, build, new game browser tests; inspect desktop and phone screenshots; commit the import/integration.
+- [x] Write browser tests for library entry, rendered bot game, full drawing-buffer DPR, pointer lock, movement/shooting, P/menu, Escape/Study, resume, disposal/reentry, touch drag/stick/fire, offline assets and no online UI/requests. Run the initial missing-game test to demonstrate failure.
+- [x] Copy only client dependencies and runtime assets; preserve both license files; write an explicit ASSETS inventory and credit in rules/menu.
+- [x] Replace the page bootstrap with a mount function and lifecycle ownership; use playBox from the shared play surface, abortable listeners, scoped CSS, full DPR, safe pause/resume/disposal and asset URLs.
+- [x] Disable upstream online/leaderboard/career UI and remove its network implementations. Retain bots, maps, weapons, profile appearance, and gameplay settings.
+- [x] Add metadata, catalog/type registration, full surface styling and a simple SVG placeholder using the SVG skill. Add no score callbacks.
+- [x] Run check, build, new game browser tests; inspect desktop and phone screenshots; commit the import/integration.
 
 ### Task 3: Regression, review, report
 
@@ -58,8 +58,8 @@
 
 **Interfaces:** Existing Playwright suites remain authoritative for Pool and Blockcraft online behavior. All evidence files remain outside git.
 
-- [ ] Run `npm run check`, `npm test`, `npm run build`; record test counts and chunk/asset bytes against baseline.
-- [ ] Run both online suites, all Pool suites, and feasible Blockcraft/play-surface suites against this worktree on a private local port; record passed/failed/skipped counts and any external blockers honestly.
-- [ ] Verify models and licenses in offline pack, no prohibited files/requests, and lazy initial loading; capture 1440x900 desktop and 844x390 DSF3 touch screenshots.
-- [ ] Request independent review of the branch; reproduce and fix important findings with focused tests; rerun affected checks.
-- [ ] Write Round 1 report covering imports/drops, licenses, integration, transport API, counts, sizes, known issues; commit remaining code fixes in logical commits. Leave branch clean, unpushed.
+- [x] Run `npm run check`, `npm test`, `npm run build`; record test counts and chunk/asset bytes against baseline.
+- [x] Run both online suites, all Pool suites, and feasible Blockcraft/play-surface suites against this worktree on a private local port; record passed/failed/skipped counts and any external blockers honestly.
+- [x] Verify models and licenses in offline pack, no prohibited files/requests, and lazy initial loading; capture 1440x900 desktop and 844x390 DSF3 touch screenshots.
+- [x] Request independent review of the branch; reproduce and fix important findings with focused tests; rerun affected checks.
+- [x] Write Round 1 report covering imports/drops, licenses, integration, transport API, counts, sizes, known issues; commit remaining code fixes in logical commits. Leave branch clean, unpushed.
