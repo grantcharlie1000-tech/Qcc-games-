@@ -170,7 +170,7 @@ export async function expectDeathCard(page: Page, cause: DeathCause, text: strin
   await expect(page.getByRole('button', {name: 'Play again', exact: true})).toBeFocused();
 }
 
-/** Writes `tests/games/crossy-road/evidence/<name>.png`. Only the Chromium project writes: one engine for the whole set. */
+/** Writes `/workspace/qcc-crossy-review/test-evidence/<name>.png`. Only the Chromium project writes: one engine for the whole set. */
 export async function shot(page: Page, name: string): Promise<void> {
   if (test.info().project.name === 'chromium') await page.screenshot({path: `${EVIDENCE}/${name}.png`});
 }
