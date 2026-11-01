@@ -126,7 +126,6 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
  await page.setViewportSize({width:1440,height:1200});await setup(page);
  await page.keyboard.press('ArrowUp');await page.clock.runFor(240);
  const before=await pause(page);
- await page.getByLabel('Show touch controls').check();
  const garden=await page.locator('.snake-garden').boundingBox();
  expect(garden!.width).toBeCloseTo(728,0);
  const canvas=await page.locator('canvas').boundingBox();expect(canvas!.width).toBeCloseTo(694.4,0);
@@ -134,7 +133,7 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
   const cdp=await context.newCDPSession(page);
   const metrics={width:1366,height:768,mobile:false};
   await cdp.send('Emulation.setDeviceMetricsOverride',{...metrics,deviceScaleFactor:2});
-  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.snake-game').evaluate(root=>root.classList.contains('snake-sideways'));}).toBe(true);
+  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.snake-garden').evaluate(root=>{const r=root.getBoundingClientRect(),s=document.querySelector('.stage-wrap')!.getBoundingClientRect();return r.bottom<=s.bottom&&Math.abs(r.x+r.width/2-innerWidth/2)<1;});}).toBe(true);
   await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('canvas').evaluate((c:HTMLCanvasElement)=>c.width===Math.round(c.getBoundingClientRect().width*devicePixelRatio));}).toBe(true);
   const beforeDpr=await page.locator('canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
   await cdp.send('Emulation.setDeviceMetricsOverride',{...metrics,deviceScaleFactor:3});
@@ -153,29 +152,29 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
   await expect.poll(async()=>{
    await page.clock.runFor(32);
    const measured=await page.evaluate(()=>{
-    const c=document.querySelector('canvas') as HTMLCanvasElement,p=document.querySelector('.snake-pad')!.getBoundingClientRect(),r=c.getBoundingClientRect();
-    return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,canvas:r.width,backing:c.width,padBottom:p.bottom,padRight:p.right};
+    const c=document.querySelector('canvas') as HTMLCanvasElement,p=document.querySelector('.snake-garden')!.getBoundingClientRect(),r=c.getBoundingClientRect();
+    return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,canvas:r.width,backing:c.width,boardBottom:p.bottom,boardRight:p.right};
    });
-   const coherent=measured.width===viewport.width&&measured.height===viewport.height&&measured.backing===Math.round(measured.canvas*measured.dpr)&&measured.padBottom<viewport.height&&measured.padRight<viewport.width;
+   const coherent=measured.width===viewport.width&&measured.height===viewport.height&&measured.backing===Math.round(measured.canvas*measured.dpr)&&measured.boardBottom<viewport.height&&measured.boardRight<viewport.width;
    const current=JSON.stringify(measured);stable=coherent&&current===previous?stable+1:0;previous=current;
    return stable;
   }).toBeGreaterThanOrEqual(2); // Await complete viewport, CSS, DPR, backing and control coherence after CDP reset.
 
   expect(await saved(page)).toEqual(before);
   const measurements=await page.evaluate(()=>{
-   const canvas=document.querySelector('canvas')!,pad=document.querySelector('.snake-pad')!;
-   const c=canvas.getBoundingClientRect(),p=pad.getBoundingClientRect();
+   const canvas=document.querySelector('canvas')!,garden=document.querySelector('.snake-garden')!;
+   const c=canvas.getBoundingClientRect(),p=garden.getBoundingClientRect();
    const radius=getComputedStyle(canvas).borderTopLeftRadius;
    const values=[...radius.matchAll(/([\d.]+)(px|%)/g)].map(match=>Number(match[1])*(match[2]==='%'?c.width/100:1));
    const corner=Math.min(...values);
    const rim=getComputedStyle(document.querySelector('.snake-garden')!,'::after').display;
-   return {width:c.width,height:c.height,backing:canvas.width,dpr:devicePixelRatio,corner,rim,padBottom:p.bottom,padRight:p.right,overflow:document.documentElement.scrollWidth>innerWidth,
-    targets:[...pad.querySelectorAll('button')].map(b=>{const r=b.getBoundingClientRect();return {width:r.width,height:r.height};})};
+   return {width:c.width,height:c.height,backing:canvas.width,dpr:devicePixelRatio,corner,rim,boardBottom:p.bottom,boardRight:p.right,overflow:document.documentElement.scrollWidth>innerWidth,
+    dpad:document.querySelectorAll('.snake-pad,[data-direction]').length};
   });
   expect(measurements.width).toBeCloseTo(measurements.height,0);expect(measurements.corner).toBeLessThanOrEqual(measurements.width/32+1e-6);expect(measurements.rim).toBe('none');
   expect(Math.abs(measurements.backing-Math.round(measurements.width*measurements.dpr))).toBeLessThanOrEqual(1);
-  expect(measurements.padBottom).toBeLessThan(viewport.height);expect(measurements.padRight).toBeLessThan(viewport.width);
-  expect(measurements.overflow).toBe(false);for(const target of measurements.targets){expect(target.width).toBeGreaterThanOrEqual(48);expect(target.height).toBeGreaterThanOrEqual(48);}
+  expect(measurements.boardBottom).toBeLessThan(viewport.height);expect(measurements.boardRight).toBeLessThan(viewport.width);
+  expect(measurements.overflow).toBe(false);expect(measurements.dpad).toBe(0);
  }
 });
 

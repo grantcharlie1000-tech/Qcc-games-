@@ -6,7 +6,7 @@
 
 /* Glass island tab bar (theme.css .ui-tabbar): where it shows, and the room it needs at the bottom. */
 body.in-game .app-navigation,body.movies-active .app-navigation{display:none}
-.app-navigation[inert]{display:none}
+.app-navigation[data-view-hidden]{display:none}
 body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 
