@@ -1,7 +1,6 @@
 // Liquid Glass for the island: the selection pill, the jelly press, and the material behind the bar. Chromium bends its backdrop with an
 // SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
-// In the frost, phones also get a scroll edge behind the bar. tabbar.ts calls bindGlass from autoHideTabbar, so the arcade bar and the Movies
-// bar both get it.
+// Legacy unmarked frost bars retain a scroll edge. autoHideTabbar binds this controller for both Games and Movies.
 export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
 export type GlassMode='backdrop'|'frost'|'off';
@@ -19,7 +18,7 @@ export const LENS_CAP=0.5;
 export const REFRACTION_SCALE=2*LENS_BEND;
 export const LENS_MARGIN=LENS_BEND+4;
 // The arcade's clear material has a narrower, lower-power bezel. Keep these
-// separate from the legacy Movies map and its displacement scale.
+// separate from the legacy unmarked-bar map and its displacement scale.
 export const ARCADE_LENS_BEVEL=12;
 export const ARCADE_LENS_BEND=6;
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
@@ -194,7 +193,8 @@ function makeFilter(id:string){
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
   const standalone=bar.matches('.game-glass,.glass-control');
-  const brands=(navigator as NavigatorWithBrands).userAgentData?.brands;
+  const forceFallback=new URLSearchParams(location.search).get('glass')==='fallback';
+  const brands=forceFallback?undefined:(navigator as NavigatorWithBrands).userAgentData?.brands;
   const queries=[matchMedia('(prefers-reduced-transparency: reduce)'),matchMedia('(prefers-contrast: more)'),matchMedia('(forced-colors: active)')];
   const id=`ui-glass-${++filterSeq}`;
   const {svg,filter,image,displace}=makeFilter(id);
@@ -338,7 +338,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const keepEdge=()=>{
     const parent=bar.parentNode;
     if(parent!==watched){parentWatch.disconnect();watched=parent;if(parent)parentWatch.observe(parent,{childList:true});}
-    if(!parent||mode!=='frost'||standalone){edge.remove();return;}
+    if(!parent||mode!=='frost'||standalone||arcade){edge.remove();return;}
     if(bar.nextSibling!==edge)bar.after(edge);
     edge.hidden=!bar.offsetWidth;
   };

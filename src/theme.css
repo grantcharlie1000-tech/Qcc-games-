@@ -360,7 +360,7 @@
 .reduce-motion :not(#game-stage *,.ui-tabbar,.ui-tabbar-mini),.reduce-motion :not(#game-stage *)::before,.reduce-motion :not(#game-stage *)::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 .reduce-motion :is(.ui-card-img,.ui-card-play,.ui-btn,.ui-tab,.ui-card){transform:none!important}
 
-/* Arcade Liquid Glass. Opt-in only: Movies keeps the legacy tokens and lens.
+/* Shared navigation and arcade Liquid Glass. Other Movies controls keep their material.
    A clear centre, a 12px convex bezel and two thin specular arcs carry the depth. */
 .arcade-glass,.arcade-glass-mini{
   --glass-tint:rgb(255 255 255 / .06);
@@ -388,9 +388,9 @@
   --glass-pill:rgb(0 0 0 / .10);
   --glass-lift:0 10px 28px -6px rgb(0 0 0 / .16),0 2px 6px rgb(0 0 0 / .06);
 }
-.app-navigation>.arcade-glass,.arcade-glass-mini[data-glass-tone=light]{--glass-tint:rgb(255 255 255 / .38);--glass-frost:blur(4px);--glass-tone:saturate(.08) contrast(.22) brightness(1.65);--glass-pill:rgb(0 0 0 / .09)}
-.app-tabbar.arcade-glass{--glass-radius:32px}
-.app-menu.arcade-glass{--glass-radius:calc(var(--home-action)/2)}
+.section-navigation>.arcade-glass[data-glass-tone=light],.arcade-glass-mini[data-glass-tone=light]{--glass-tint:rgb(255 255 255 / .38);--glass-frost:blur(4px);--glass-tone:saturate(.08) contrast(.22) brightness(1.65);--glass-pill:rgb(0 0 0 / .09)}
+.section-tabbar.arcade-glass{--glass-radius:32px}
+.section-menu.arcade-glass{--glass-radius:calc(var(--home-action)/2)}
 /* Regular home glass compresses backdrop luminance uniformly: a dark gap in
    the card grid becomes a soft tonal change, not a sharply divided material.
    The clear game variant retains finer detail. Both share the same bezel/rim. */
@@ -419,7 +419,7 @@
 :is(.game-glass,.glass-control)>:not(.ui-glass-lens,.ui-glass-glow){position:relative;z-index:1}
 :is(.game-glass,.glass-control).ui-tab:active{transform:none}
 :root[data-input=keyboard] :is(.game-glass,.glass-control):focus-visible{outline:2px solid var(--glass-ink);outline-offset:3px}
-:root[data-input=keyboard] .app-tabbar.arcade-glass .ui-tab:focus-visible{outline-color:var(--glass-ink)}
+:root[data-input=keyboard] .section-tabbar.arcade-glass .ui-tab:focus-visible{outline-color:var(--glass-ink)}
 :is(.game-glass,.glass-control)[data-pressing]{scale:1.1;translate:0 -1px;transition:scale 140ms var(--ease-out),translate 140ms var(--ease-out)}
 .arcade-glass[data-pressing]{--glass-frost:blur(1px);--glass-tone:saturate(.45) brightness(1.24)}
 :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .16)}
@@ -430,7 +430,7 @@
 .game-view[data-game-id=ball-run] :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .08)}
 /* A press clears and illuminates regular glass while preserving its luminance
    floor. Card-row gaps must never make black navigation glyphs disappear. */
-.app-navigation>.arcade-glass[data-pressing]{--glass-frost:blur(2.5px);--glass-tone:saturate(.08) contrast(.22) brightness(1.75);--glass-tint:rgb(255 255 255 / .5)}
+.section-navigation>.arcade-glass[data-glass-tone=light][data-pressing]{--glass-frost:blur(2.5px);--glass-tone:saturate(.08) contrast(.22) brightness(1.75);--glass-tint:rgb(255 255 255 / .5)}
 @media(hover:hover) and (pointer:fine){:is(.game-glass,.glass-control).ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink);background:var(--glass-hover-surface,transparent)}:is(.game-glass,.glass-control).ui-tab:hover::before{box-shadow:var(--glass-rim-edge),inset 0 0 12px rgb(255 255 255 / .12),var(--glass-lift)}.arcade-glass .ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink)}}
 .arcade-glass-mini{background:var(--glass-tint);box-shadow:var(--glass-rim-edge),var(--glass-glow),var(--glass-lift);color:var(--glass-ink)}
 /* Accessibility variants are real opaque surfaces, including the separate
@@ -443,3 +443,8 @@
 @media(prefers-reduced-motion:reduce){:is(.game-glass,.glass-control),:is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}.arcade-glass .ui-tab:active{transform:none}}
 .reduce-motion :is(.game-glass,.glass-control),.reduce-motion :is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}
 .reduce-motion .arcade-glass .ui-tab:active{transform:none}
+
+/* Dark regular navigation retains white ink over moving poster art. A neutral
+   exposure curve bounds luminance; the only fill is the shared faint white veil. */
+.section-navigation>:is(.arcade-glass,.arcade-glass-mini)[data-glass-tone=dark]{--glass-frost:blur(4px);--glass-tone:saturate(.35) contrast(.55) brightness(.4);--glass-radius:32px}
+.section-navigation>.section-menu[data-glass-tone=dark]{--glass-radius:calc(var(--home-action)/2)}

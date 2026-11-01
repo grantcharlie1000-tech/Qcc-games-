@@ -247,37 +247,24 @@ test.describe('frost, in every browser but Chromium',()=>{
     expect(await glow.evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
   });
 
-  test('a phone gets a scroll edge behind the frost bar, and a tap at its centre is not taken by it',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
+  test('the phone fallback companion has no blur overlay and receives its own click',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/');
     await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass','frost');
-    const edge=page.locator('.ui-scroll-edge');
-    await expect(edge).toHaveCount(1);
-    expect(await edge.getAttribute('aria-hidden')).toBe('true');
-    expect(await edge.evaluate(el=>getComputedStyle(el).pointerEvents)).toBe('none');
-    const box=(await edge.boundingBox())!;
-    const onEdge=(x:number,y:number)=>page.evaluate(([px,py])=>!!document.elementFromPoint(px,py)?.closest('.ui-scroll-edge'),[x,y]);
-    expect(await onEdge(box.x+box.width/2,box.y+box.height/2)).toBe(false);
-    expect(await onEdge(box.x+box.width/2,box.y+4)).toBe(false);
+    const menu=page.locator('.app-menu');await expect(menu).toHaveAttribute('data-glass','frost');
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+    await expect(menu.locator('.ui-icon')).toHaveCSS('filter','none');
+    await menu.click();await expect(page.locator('#menu')).toBeVisible();
   });
 
-  test('the scroll edge stays while the island is minimized, and fades only with the full hide',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
-    const bar=page.locator('.app-tabbar');
-    const edge=page.locator('.ui-scroll-edge');
-    await expect(edge).toHaveCount(1);
-    await page.evaluate(()=>window.scrollTo(0,400));
-    await expect(bar).toHaveAttribute('data-minimized','true');
-    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-    expect(await edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
-    // Only the full hide, which Up next sets, fades the edge with the island.
-    await page.evaluate(()=>document.querySelector('.app-tabbar')!.setAttribute('data-hidden','true'));
-    await expect.poll(()=>edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
-    await page.evaluate(()=>document.querySelector('.app-tabbar')!.removeAttribute('data-hidden'));
-    await expect.poll(()=>edge.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+  test('the fallback companion minimizes with the bar and full hide also removes the mini',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/');
+    const bar=page.locator('.app-tabbar'),menu=page.locator('.app-menu'),mini=page.locator('.app-navigation .ui-tabbar-mini');
+    await page.evaluate(()=>window.scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
+    await expect(menu).toHaveCSS('opacity','0');await expect(mini).toHaveCSS('opacity','1');
+    await bar.evaluate(e=>e.setAttribute('data-hidden','true'));await expect(mini).toHaveCSS('opacity','0');
+    await bar.evaluate(e=>e.removeAttribute('data-hidden'));await expect(mini).toHaveCSS('opacity','1');
+    await page.evaluate(()=>window.scrollTo(0,0));await expect(menu).toHaveCSS('opacity','1');
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
   });
 
   test('the frost bar fades its own opacity when it minimizes, and reduced motion still fades it',async({page})=>{
@@ -298,56 +285,44 @@ test.describe('frost, in every browser but Chromium',()=>{
     expect(await bar.evaluate(el=>getComputedStyle(el).translate)).toBe('none');
   });
 
-  test('the scroll edge is phone only: a desktop island has one, and it is not shown',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:1440,height:900});
-    await page.goto('/');
-    await expect(page.locator('.app-tabbar')).toHaveAttribute('data-glass','frost');
-    await expect(page.locator('.ui-scroll-edge')).toHaveCount(1);
-    await expect(page.locator('.ui-scroll-edge')).toBeHidden();
+  test('desktop fallback gives each glass object one filtered surface',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:1440,height:900});await page.goto('/');
+    await expect(page.locator('.app-navigation [data-glass=frost]')).toHaveCount(2);
+    await expect(page.locator('.ui-scroll-edge,.app-navigation .ui-glass-lens')).toHaveCount(0);
+    for(const selector of ['.app-tabbar','.app-menu'])expect(await page.locator(selector).evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(4px)');
   });
 
-  test('the Movies island keeps its scroll edge right after it, through a re-render',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/#/movies/browse/movie');
-    const movies=page.locator('nav.movies-mobile-nav.ui-tabbar');
-    await expect(movies).toHaveAttribute('data-glass','frost');
-    const edgeAfterIsland=()=>movies.evaluate(el=>el.nextElementSibling?.classList.contains('ui-scroll-edge')??false);
-    await expect.poll(edgeAfterIsland).toBe(true);
+  test('Movies preserves its separate fallback companion through a re-render',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/#/movies/browse/movie');
+    const bar=page.locator('.movies-mobile-nav'),menu=page.locator('.movies-menu');
+    await expect(menu).toHaveAttribute('data-glass','frost');const original=await menu.elementHandle();
     await page.locator('#movies-search').fill('in');
-    await expect.poll(edgeAfterIsland).toBe(true);
-    await expect(page.locator('nav.movies-mobile-nav.ui-tabbar+.ui-scroll-edge')).toHaveCount(1);
-  });
-
-  test('leaving Movies removes the Movies scroll edge and keeps the arcade one',async({page})=>{
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
-    const edges=()=>page.evaluate(()=>document.querySelectorAll('.ui-scroll-edge').length);
-    await expect.poll(edges).toBe(1);
-    await page.goto('/#/movies');
-    await expect(page.locator('nav.movies-mobile-nav.ui-tabbar')).toHaveAttribute('data-glass','frost');
-    await expect.poll(edges).toBe(2);
-    await page.goto('/#/collection');
-    await expect.poll(edges).toBe(1);
-  });
-
-  test('reduced transparency takes the frost and the scroll edge out, and puts them back when that ends',async({page,browserName})=>{
-    test.skip(browserName!=='chromium','Playwright emulates reduced transparency through the Chromium protocol only');
-    await asFrost(page);
-    await page.setViewportSize({width:390,height:844});
-    await page.goto('/');
-    const bar=page.locator('.app-tabbar');
-    await expect(bar).toHaveAttribute('data-glass','frost');
-    await expect(page.locator('.ui-scroll-edge')).toHaveCount(1);
-    const cdp=await page.context().newCDPSession(page);
-    await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
-    await expect(bar).toHaveAttribute('data-glass','off');
+    await expect(bar).toHaveAttribute('data-glass','frost');await expect(menu).toHaveAttribute('data-glass','frost');
+    expect(await original!.evaluate(e=>e.isConnected)).toBe(true);
+    expect(await bar.evaluate(e=>e.parentElement===document.querySelector('.movies-menu')!.parentElement)).toBe(true);
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
-    expect(await bar.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('none');
-    await cdp.send('Emulation.setEmulatedMedia',{features:[]});
-    await expect(bar).toHaveAttribute('data-glass','frost');
-    await expect(page.locator('.ui-scroll-edge')).toHaveCount(1);
   });
+
+  test('leaving Movies disposes its companion and restores the Games fallback',async({page})=>{
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/#/movies');
+    const menu=page.locator('.movies-menu');await expect(menu).toHaveAttribute('data-glass','frost');const original=await menu.elementHandle();
+    await page.goto('/#/collection');await expect(page.locator('.movies-navigation')).toHaveCount(0);
+    expect(await original!.evaluate(e=>e.isConnected)).toBe(false);
+    await expect(page.locator('.app-menu')).toBeVisible();await expect(page.locator('.app-menu')).toHaveAttribute('data-glass','frost');
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+  });
+
+  test('reduced transparency switches both fallback lenses to opaque surfaces and back',async({page,browserName})=>{
+    test.skip(browserName!=='chromium','CDP reduced-transparency emulation');
+    await asFrost(page);await page.setViewportSize({width:390,height:844});await page.goto('/');
+    const cdp=await page.context().newCDPSession(page);
+    for(const reduce of [true,false]){
+      await cdp.send('Emulation.setEmulatedMedia',{features:reduce?[{name:'prefers-reduced-transparency',value:'reduce'}]:[]});
+      for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveAttribute('data-glass',reduce?'off':'frost');
+      await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+      if(reduce)for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter','none');
+    }
+    await cdp.detach();
+  });
+
 });

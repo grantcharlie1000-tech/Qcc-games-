@@ -22,6 +22,8 @@ for(const viewport of [{width:1366,height:768},{width:390,height:844},{width:320
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const toolbar=await page.locator('.game-dock').boundingBox();expect(toolbar!.height).toBeLessThan(76);
  await gameAction(page,'Game options');const menu=page.getByRole('dialog',{name:'Game options'});await expect(menu).toBeVisible();
+ // Measure the resting touch targets after the glass sheet's entrance scale settles.
+ await expect.poll(()=>menu.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
  expect(await menu.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);
  for(const target of ['.ms-close','.ms-plus','.ms-return']){const button=menu.locator(target);await button.scrollIntoViewIfNeeded();const box=(await button.boundingBox())!;expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(viewport.width);}
  await menu.evaluate(e=>e.scrollTop=0);

@@ -4,6 +4,9 @@ import {bindRails,updateRails} from '../ui/rails';
 import {markImages,watchImages} from '../ui/images';
 import {openSheet} from '../ui/sheet';
 import {autoHideTabbar} from '../ui/tabbar';
+import {bindGlass} from '../ui/glass';
+import {createSectionNavigation} from '../ui/navigation';
+import {loadWithDeadline} from '../ui/load-deadline';
 import mauriMark from '../assets/mauri-mark.svg?raw';
 import {frameSource,FRAME_SANDBOX,FRAME_ALLOW,STREAM_PROVIDERS,START_THRESHOLD,streamProvider,providerSignal} from './provider';
 import type {StreamProviderId} from './provider';
@@ -196,7 +199,9 @@ export class MoviesView {
  private readonly disposeImages:()=>void;
  private onVisibility=()=>{if(document.hidden)this.pause();};
  // The island is one element that survives renders: render() swaps the page around it and refreshes its items.
- private readonly tabbar=Object.assign(document.createElement('nav'),{className:'movies-mobile-nav ui-tabbar'});
+ private readonly navigation=createSectionNavigation('movies','dark');
+ private readonly tabbar=this.navigation.bar;
+ private readonly menuGlass=bindGlass(this.navigation.menu);
  private readonly disposeRails:()=>void;
  private readonly hideTabbar:{reset():void;dispose():void};
  // Up next takes the island away while it shows. The island's scroll logic never touches data-hidden, so this only mirrors the overlay.
@@ -204,7 +209,7 @@ export class MoviesView {
   if(this.root.querySelector('.movies-next:not([hidden])'))this.tabbar.setAttribute('data-hidden','true');
   else this.tabbar.removeAttribute('data-hidden');
  });
- constructor(container:HTMLElement,private storage:MovieStorage,private study:(advance?:boolean)=>void,private reducedMotion:boolean,private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}}){
+ constructor(container:HTMLElement,private storage:MovieStorage,private study:(advance?:boolean)=>void,private reducedMotion:boolean|(()=>boolean),private preferences:PlaybackPreferences={autoNext:()=>true,setAutoNext:()=>{}},private openMenu:(trigger:HTMLElement)=>void=()=>{}){
   this.root.className='movies-view';this.root.setAttribute('aria-label','Movies and TV');this.root.tabIndex=-1;
   container.replaceChildren(this.root);document.body.classList.add('movies-active');
   this.root.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement){const failed=image.getAttribute('src');if(failed)this.failedImages.add(failed);const rest=(JSON.parse(image.dataset.fallbacks||'[]') as string[]).filter(url=>!this.failedImages.has(url)),next=rest.shift();if(next){image.dataset.fallbacks=JSON.stringify(rest);image.src=next;}else if(image.classList.contains('movies-detail-art')){image.closest('.movies-detail-inner')?.classList.add('movies-detail-bare');image.remove();}else image.style.opacity='0';}},{capture:true});
@@ -222,8 +227,8 @@ export class MoviesView {
   this.root.addEventListener('keydown',this.keydown);
   this.root.addEventListener('focusin',this.revealFocus);
   this.disposeImages=watchImages(this.root);
-  this.tabbar.setAttribute('aria-label','Sections');
-  this.disposeRails=bindRails(this.root,()=>this.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches);
+  this.navigation.menu.addEventListener('click',()=>this.openMenu(this.navigation.menu));
+  this.disposeRails=bindRails(this.root,()=>(typeof this.reducedMotion==='function'?this.reducedMotion():this.reducedMotion)||document.documentElement.classList.contains('reduce-motion')||matchMedia('(prefers-reduced-motion: reduce)').matches);
   // Movies scrolls inside its own overlay, so the island's minimize-on-scroll follows that scroller rather than the window.
   this.hideTabbar=autoHideTabbar(this.tabbar,this.root);this.yieldGuard.observe(this.root,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
   document.addEventListener('fullscreenchange',this.fullscreenChange);document.addEventListener('webkitfullscreenchange',this.fullscreenChange);
@@ -237,11 +242,11 @@ export class MoviesView {
   // Each state the collection passes through replaces the header and the island, so a control that has focus keeps it.
   this.failed=false;this.loadError='';this.ready=false;this.renderKeepingFocus();
   try{
-   this.catalog=parseCatalog(await movieJson(asset('movies/catalog.json'),this.abort.signal));
+   this.catalog=parseCatalog(await loadWithDeadline(signal=>movieJson(asset('movies/catalog.json'),signal),this.abort.signal,20000,()=>new MovieNetworkError('timeout')));
    if(!this.catalog.titles.length)throw new Error('Empty catalog');
    this.bundledIds=new Set(this.catalog.titles.map(t=>t.id));
    // An unavailable optional registry disables local media, never discovery.
-   try {this.licenses=await movieJson(asset('movies/licenses.json'),this.abort.signal,5000);}catch{this.licenses=[];}
+   try {this.licenses=await loadWithDeadline(signal=>movieJson(asset('movies/licenses.json'),signal,5000),this.abort.signal,5000,()=>new MovieNetworkError('timeout'));}catch{this.licenses=[];}
    if(this.abort.signal.aborted)return;
    this.ready=true;
    // As in applyRoute, a route whose details are not loaded is pending before the page renders.
@@ -518,7 +523,7 @@ export class MoviesView {
   const header=this.root.querySelector('.movies-top'),browse=this.root.querySelector<HTMLElement>('.movies-browse'),results=browse?.querySelector<HTMLElement>('#movies-results');
   if(!header||!browse||!results){this.render();return;}
   const scrolls=this.railScrolls(),{head,body}=this.browseParts();
-  for(const node of [...this.root.children])if(node!==header&&node!==browse&&node!==this.tabbar)node.remove();
+  for(const node of [...this.root.children])if(node!==header&&node!==browse&&node!==this.navigation.root)node.remove();
   browse.insertAdjacentHTML('beforebegin',head);
   this.patchResults(results,body);
   this.refreshGenres();this.restoreRailScrolls(scrolls);markImages(this.root);this.footerAttribution();updateRails(this.root);
@@ -978,7 +983,7 @@ export class MoviesView {
   // picked on a title page redraws the same page, so the season and episode at the end of its address do not count.
   const page=location.hash.replace(/\/season\/\d+(\/episode\/\d+)?$/,''),scrolls=page===this.railPage?this.railScrolls():new Map<string,number>();
   // A title whose details are pending shows the loading text, never a not-found message. A play route builds its player once the details have loaded.
-  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button class="ui-btn secondary" data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1 tabindex="-1">That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return this.pendingTitle&&(this.route.play||!t)?LOADING_TITLE:t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1 tabindex="-1">Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.root.querySelector('.movies-top')?.after(this.tabbar);
+  this.root.innerHTML=this.header()+(!this.ready?`<div class="movies-empty"><h1 tabindex="-1">${this.failed?'The collection is unavailable':'Opening the collection…'}</h1><p>${this.failed?escape(this.loadError||'Connect to this site and try again. Movies are separate from the games offline pack.'):'Your next story is on its way.'}</p>${this.failed?'<button class="ui-btn secondary" data-action="retry">Try again</button>':''}</div>`:this.notFound?`<div class="movies-empty"><h1 tabindex="-1">That page could not be found.</h1><a href="#/movies">Back to browsing</a></div>`:this.route.id?(()=>{const t=this.catalog.titles.find(t=>t.id===this.route.id);return this.pendingTitle&&(this.route.play||!t)?LOADING_TITLE:t?(this.route.play?this.player(t):this.detail(t)):'<div class="movies-empty"><h1 tabindex="-1">Title not found</h1><p>This title is not in the catalog snapshot.</p><a href="#/movies">Browse the collection</a></div>';})():this.browse());this.tabbar.innerHTML=this.mobileNav();this.navigation.root.prepend(this.tabbar);this.root.querySelector('.movies-top')?.after(this.navigation.root);
   markImages(this.root);
   this.renderDetailError();
   this.footerAttribution();
@@ -1254,7 +1259,7 @@ export class MoviesView {
    overlay.innerHTML=`<h2>${escape(label)}</h2><p class="movies-next-countdown">Playing in 10</p><div class="movies-next-actions"><button class="ui-btn primary" data-action="play-next">Play now</button><button class="ui-btn secondary" data-action="cancel-next">Cancel</button></div><div class="movies-next-bar" aria-hidden="true"><span style="width: 100%"></span></div>`;overlay.hidden=false;
    const announcement=this.root.querySelector('.movies-next-announcement');if(announcement)announcement.textContent=label+'. Playing in 10 seconds.';
    // The island stays shown only while a keyboard focus is inside it. Any other focus there would sit on a hidden tab.
-   if(!this.tabbar.querySelector(':focus-visible')){const before=document.activeElement;this.nextReturn=before===this.root||before===document.body?undefined:before;overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});}
+   if(!this.navigation.root.querySelector(':focus-visible')){const before=document.activeElement;this.nextReturn=before===this.root||before===document.body?undefined:before;overlay.querySelector<HTMLElement>('[data-action="play-next"]')?.focus({preventScroll:true});}
    let seconds=10;this.countdown=setInterval(()=>{if(!this.preferences.autoNext()){this.cancelNext();return;}seconds--;if(seconds<=0)this.playNext();else {const count=overlay.querySelector('.movies-next-countdown');if(count)count.textContent='Playing in '+seconds;const bar=overlay.querySelector<HTMLElement>('.movies-next-bar>span');if(bar)bar.style.width=`${seconds*10}%`;}},1000);
   };
   if(this.fullscreenElement()&&(this.fullscreenElement()===this.frame||this.fullscreenElement()===this.video))void this.exitFullscreen().then(show);else show();
@@ -1295,5 +1300,5 @@ export class MoviesView {
  // It leaves the playback session running: a new title or episode ends the session through stopVideo on navigation.
  private releaseMedia(){this.cancelNext();this.clearResumePill();if(this.frame&&this.frameReported)this.saveProgress(this.frameTime);this.frame?.remove();this.frame=undefined;if(this.video){const video=this.video;if(this.videoPlayed(video))this.saveProgress(video.currentTime);this.video=undefined;video.pause();video.removeAttribute('src');video.load();}}
  private endSession(){this.supervisor?.stop();this.supervisor=undefined;this.supervisorKey='';}
- dispose(){this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
+ dispose(){this.dismissWarning();this.disposed=true;this.disposeRails();this.disposeImages();this.hideTabbar.dispose();this.menuGlass.dispose();this.yieldGuard.disconnect();this.abort.abort();this.railsRequest++;this.railsAbort?.abort();for(const section of Object.values(this.sectionRails)){section.request++;section.abort?.abort();}this.metadataAbort?.abort();this.detailAbort?.abort();this.searchRequest++;this.detailRequest++;this.drawerRequest++;this.drawerAbort?.abort();clearTimeout(this.searchTimer);this.stopVideo();document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.fullscreenChange);document.removeEventListener('webkitfullscreenchange',this.fullscreenChange);window.removeEventListener('message',this.providerMessage);window.removeEventListener('storage',this.onStorage);document.removeEventListener('securitypolicyviolation',this.violation);this.root.remove();document.body.classList.remove('movies-active');}
 }

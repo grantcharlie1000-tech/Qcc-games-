@@ -93,7 +93,7 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
   await page.setViewportSize({width,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
@@ -102,7 +102,7 @@ for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}
 test('the Movies pill slides to the section chosen',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   await tv.click();
@@ -113,7 +113,7 @@ test('the Movies pill slides to the section chosen',async({page})=>{
 test('the Movies pill survives a re-render of the page',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies/browse/movie');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const movie=bar.locator('[data-kind="movie"]');
   await expect(movie).toHaveAttribute('aria-pressed','true');
   const before=await movie.elementHandle();
@@ -154,7 +154,7 @@ test('the pill appears under the current tab on load without sliding in from the
 test('a press moves the pill under the finger and swells it, and release takes the swell away',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   const box=await boxOf(tv);
@@ -174,7 +174,7 @@ test('a press moves the pill under the finger and swells it, and release takes t
 test('a press that slides off the tab springs the pill back and selects nothing',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   const tv=bar.locator('[data-kind="tv"]');
   const box=await boxOf(tv);
@@ -192,13 +192,13 @@ test('a press that slides off the tab springs the pill back and selects nothing'
 test('keyboard activation moves the pill but never swells it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expect(bar).toBeVisible();
   await page.evaluate(()=>{
     const w=window as Window&{__sawPressing?:boolean};
     w.__sawPressing=false;
-    const nav=document.querySelector('nav.movies-mobile-nav')!;
+    const nav=document.querySelector('.movies-mobile-nav')!;
     new MutationObserver(()=>{if(nav.hasAttribute('data-pressing'))w.__sawPressing=true;}).observe(nav,{attributes:true,attributeFilter:['data-pressing']});
   });
   await tv.focus();
@@ -511,7 +511,7 @@ test('keyboard focus expands a minimized island, and the capsule steps aside',as
 test('a pill move stretches the pill with a web animation',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   await tv.click();
@@ -556,7 +556,7 @@ test('reduced motion does not swell the pill under a press',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   const box=await boxOf(tv);
@@ -573,7 +573,7 @@ test('reduced motion moves the pill at once and never stretches it',async({page}
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   await tv.click();
@@ -609,8 +609,8 @@ test('Chromium refracts the island through a filter that belongs to that bar',as
   // The Movies island has its own filter with its own id.
   await page.goto('/#/movies');
   // The Movies bar refracts once it has a size, so its filter is referenced from the first layout onwards.
-  await expect(page.locator('nav.movies-mobile-nav.ui-tabbar')).toHaveClass(/is-refracting/);
-  const movies=await glass(page.locator('nav.movies-mobile-nav.ui-tabbar'));
+  await expect(page.locator('.movies-mobile-nav.ui-tabbar')).toHaveClass(/is-refracting/);
+  const movies=await glass(page.locator('.movies-mobile-nav.ui-tabbar'));
   expect(movies.isFilter).toBe(true);
   expect(movies.id).not.toBe(home.id);
 });
@@ -671,7 +671,7 @@ test('the glass adds no request to an empty URL',async({page,browserName})=>{
   await page.goto('/');
   await expect(page.locator('.app-tabbar')).toHaveClass(/is-refracting/);
   await page.goto('/#/movies');
-  await expect(page.locator('nav.movies-mobile-nav.ui-tabbar')).toHaveClass(/is-refracting/);
+  await expect(page.locator('.movies-mobile-nav.ui-tabbar')).toHaveClass(/is-refracting/);
   expect(await page.evaluate(()=>performance.getEntriesByType('resource').filter(entry=>!entry.name).length)).toBe(0);
 });
 
@@ -682,7 +682,7 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
   const filters=()=>page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length);
   await expect.poll(filters).toBe(2);
   await page.goto('/#/movies');
-  await expect.poll(filters).toBe(3);
+  await expect.poll(filters).toBe(4);
   await page.goto('/#/collection');
   await expect.poll(filters).toBe(2);
 });
@@ -701,7 +701,7 @@ test('the arcade light island uses dark ink and a bold current tab',async({page}
 test('the Movies island tabs are 90% white, and the current tab is solid bold white',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   // The failed rails draw the starter line, and that draw rebuilds the nav, so the tabs are read once the line is there.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
@@ -765,10 +765,10 @@ test('more contrast makes the arcade island opaque with dark ink, while Movies r
   expect(await bar.evaluate(el=>getComputedStyle(el).borderTopColor)).toBe('rgb(11, 16, 21)');
   expect(await tabInk(bar.getByRole('link',{name:'Movies',exact:true}))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
   await page.goto('/#/movies');
-  const movies=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const movies=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(movies).toBeVisible();
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  expect(await movies.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(18, 18, 20, 0.96)');
+  expect(await movies.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(32, 38, 43)');
   await expect.poll(()=>tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
 });
 
@@ -809,7 +809,7 @@ test('the reduced-transparency and no-backdrop-filter fallbacks set the pill to 
 test('a press ends only with the pointer that began it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   const box=await boxOf(tv);
@@ -829,7 +829,7 @@ test('a press ends only with the pointer that began it',async({page})=>{
 test('losing the window ends a press, so the pill goes back to the current tab',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,home);
@@ -849,7 +849,7 @@ test('losing the window ends a press, so the pill goes back to the current tab',
 test('a hidden page ends a press, but a visibility change while the page stays visible does not',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   const tv=bar.locator('[data-kind="tv"]');
   const box=await boxOf(tv);
@@ -872,7 +872,7 @@ test('a hidden page ends a press, but a visibility change while the page stays v
 test('a pointer cancel ends a press, springs the pill back and selects nothing',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,home);
@@ -893,7 +893,7 @@ test('a pointer cancel ends a press, springs the pill back and selects nothing',
 test('a new press ends a press whose pointer-up never arrived, and the pill follows the tap',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   const tv=bar.locator('[data-kind="tv"]');
   const movie=bar.locator('[data-kind="movie"]');
@@ -919,7 +919,7 @@ test('a touch press shows the press, and lifting on the tab selects it',async({p
   test.skip(browserName!=='chromium','touch input is sent through the Chromium DevTools protocol');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,bar.locator('[aria-pressed="true"]'));
   const box=await boxOf(tv);
@@ -937,7 +937,7 @@ test('a touch that slides off the tab springs the pill back and selects nothing'
   test.skip(browserName!=='chromium','touch input is sent through the Chromium DevTools protocol');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   const tv=bar.locator('[data-kind="tv"]');
   await expectPillUnder(bar,home);
@@ -960,10 +960,10 @@ test('a tap that selects nothing puts the pill back under the current tab',async
   await page.goto('/#/movies');
   // The failed rails draw the starter line last. That draw rebuilds the nav, so it must finish before the change below, or it would undo it.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   const home=bar.locator('[data-kind="all"]');
   await page.evaluate(()=>{
-    const tab=document.querySelector('nav.movies-mobile-nav [data-action="study"]')!;
+    const tab=document.querySelector('.movies-mobile-nav [data-action="study"]')!;
     tab.removeAttribute('data-action');
     tab.setAttribute('aria-pressed','false');
   });
@@ -987,12 +987,12 @@ test('leaving Movies removes the SVG filter the island added (Chromium only)',as
   test.skip(browserName!=='chromium','the SVG displacement filter renders only in Chromium');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+  const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toHaveClass(/is-refracting/);
   // Keep the filter's <svg>, to check it after Movies has gone.
   await page.evaluate(()=>{
     const w=window as Window&{__filterSvg?:Element|null};
-    const island=document.querySelector<HTMLElement>('nav.movies-mobile-nav')!;
+    const island=document.querySelector<HTMLElement>('.movies-mobile-nav')!;
     const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(island.querySelector('.ui-glass-lens')!).backdropFilter)?.[1]??'';
     w.__filterSvg=document.getElementById(id)?.closest('svg')??null;
   });
@@ -1006,9 +1006,9 @@ test('leaving Movies removes the SVG filter the island added (Chromium only)',as
 test('a press on the island that Movies left behind does nothing',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
-  await expect(page.locator('nav.movies-mobile-nav.ui-tabbar')).toBeVisible();
+  await expect(page.locator('.movies-mobile-nav.ui-tabbar')).toBeVisible();
   // Keep the island, to press it after Movies has gone.
-  await page.evaluate(()=>{(window as Window&{__island?:HTMLElement}).__island=document.querySelector<HTMLElement>('nav.movies-mobile-nav')!;});
+  await page.evaluate(()=>{(window as Window&{__island?:HTMLElement}).__island=document.querySelector<HTMLElement>('.movies-mobile-nav')!;});
   await page.goto('/#/collection');
   await expect(page.locator('.game-grid')).toBeVisible();
   // The state is read during the press, before the release, so a listener left on the old island would show.
