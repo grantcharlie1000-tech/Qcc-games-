@@ -700,7 +700,7 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   expect(tint).toBeGreaterThanOrEqual(.10);expect(tint).toBeLessThanOrEqual(.18);
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.08);
   const frost=await frostFilter(bar);
-  expect(frost).toContain('blur(4px)');
+  expect(frost).toContain('blur(3px)');
   expect(frost).toContain('saturate(1)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
@@ -756,9 +756,9 @@ test('more contrast gives Games and Movies the same opaque surface and dark ink'
   await expect.poll(()=>tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
 });
 
-// A pale regular lens uses a subtly darker selection. Opaque accessibility
+// Clear glass uses a subtle neutral highlight for selection. Opaque accessibility
 // surfaces keep the stronger legacy selection fill.
-test('the arcade pill has a grey selection and keeps its stronger opaque fallback',async({page})=>{
+test('the arcade pill has a neutral selection and keeps its stronger opaque fallback',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');

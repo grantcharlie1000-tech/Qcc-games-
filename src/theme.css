@@ -364,17 +364,17 @@
    A clear centre, a 12px convex bezel and two thin specular arcs carry the depth. */
 .arcade-glass,.arcade-glass-mini{
   --glass-tint:rgb(184 184 184 / .14);
-  --glass-frost:blur(4px);
+  --glass-frost:blur(3px);
   --glass-tone:saturate(1);
   --glass-body:var(--glass-frost) var(--glass-tone);
   --glass-frost-body:var(--glass-frost) var(--glass-tone);
   --glass-ink:#fff;
   --glass-solid:#20262b;
-  --glass-pill:rgb(128 128 128 / .12);
+  --glass-pill:rgb(255 255 255 / .08);
   --glass-rim-edge:inset 0 1px 0 rgb(255 255 255 / .12),inset 0 -1px 0 rgb(255 255 255 / .10),0 0 0 .5px rgb(0 0 0 / .08);
   --glass-glow:inset 0 3px 8px -3px rgb(255 255 255 / .09),inset 0 -3px 8px -3px rgb(255 255 255 / .09);
   --glass-radius:26px;
-  --glass-lift:0 2px 16px -4px rgb(0 0 0 / .10),0 1px 2px rgb(0 0 0 / .025);
+  --glass-lift:0 2px 24px -2px rgb(0 0 0 / .08),0 1px 2px rgb(0 0 0 / .02);
   --glass-glyph:none;--glass-glyph-icon:none;
   color:var(--glass-ink);text-shadow:none;
 }
@@ -403,7 +403,7 @@
   color:var(--glass-adaptive-ink,var(--glass-ink));border-radius:5px;
   background:var(--glass-local-scrim,transparent);box-shadow:0 0 3px 2px var(--glass-local-scrim,transparent);
 }
-.arcade-glass :is(span,small,strong).glass-ink{border-radius:2px}
+.arcade-glass :is(span,small,strong).glass-ink{border-radius:1px}
 .arcade-glass[data-glass=off] .glass-ink,.section-tabbar[data-glass=off]~.ui-tabbar-mini .glass-ink{color:var(--glass-ink);background:none;box-shadow:none}
 .arcade-glass.ui-tabbar::after{box-shadow:inset 0 1px 0 rgb(255 255 255 / .25),0 2px 5px rgb(0 0 0 / .04)}
 :is(.game-glass,.glass-control){background:none;box-shadow:none;z-index:1;transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease)}
@@ -417,6 +417,9 @@
 .arcade-glass[data-pressing]{--glass-frost:blur(2.5px)}
 @media(hover:hover) and (pointer:fine){:is(.game-glass,.glass-control).ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink);background:var(--glass-hover-surface,transparent)}:is(.game-glass,.glass-control).ui-tab:hover::before{box-shadow:var(--glass-rim-edge),inset 0 0 12px rgb(255 255 255 / .12),var(--glass-lift)}.arcade-glass .ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink)}}
 .arcade-glass-mini{background:var(--glass-tint);box-shadow:var(--glass-rim-edge),var(--glass-glow),var(--glass-lift);color:var(--glass-ink)}
+dialog.ui-glass-sheet .icon-button.sheet-close-glass{--glass-radius:22px;flex:0 0 44px;background:transparent;box-shadow:none;color:var(--glass-ink)}
+dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:var(--glass-solid)}
+.sheet-close-glass .glass-ink{border-radius:50%}
 /* Accessibility variants are real opaque surfaces, including the separate
    buttons. An outline inside each surface leaves their geometry unchanged. */
 .arcade-glass[data-glass=off]{--glass-hover-surface:var(--glass-solid);background:var(--glass-solid);border:1px solid var(--glass-ink);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}

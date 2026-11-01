@@ -49,6 +49,20 @@ test('clear glass keyboard focus has both light and dark edges',async({page})=>{
   expect(focus.shadow).toContain('rgb(0, 0, 0)');
 });
 
+test('caption edge strokes keep contrast above unreadable dark media',async({page})=>{
+  await page.goto('/#/movies/browse/movie');
+  await page.addStyleTag({content:'#content,.movies-top,.movies-main,.movies-footer{visibility:hidden}.movies-view{background:transparent!important}.section-navigation{visibility:visible!important}'});
+  // Canvas/video and tainted images have an unknown colour range. A dark
+  // canvas exercises the light backing at the left edge of the capital T.
+  await page.evaluate(()=>{
+    const canvas=document.createElement('canvas');canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:1';
+    canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
+  });
+  await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(255, 255, 255, 0.48)');
+  const ratios=await navigationContrast(page,'.movies-navigation');
+  expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
+});
+
 test('an unavailable displacement map keeps the transparent CSS fallback',async({page,browserName})=>{
   test.skip(browserName!=='chromium','Only Chromium builds a displacement map');
   await page.addInitScript(()=>{HTMLCanvasElement.prototype.toDataURL=()=>{throw new Error('unavailable canvas export');};});
@@ -68,6 +82,30 @@ test('a touch-focused tab still adapts the visible mini after scrolling',async({
   await expect(mini.locator('svg')).toHaveCSS('color','rgb(255, 255, 255)');
 });
 
+test('Games and Movies sheet closes use the same clear material and release it on close',async({page,browserName})=>{
+  for(const route of ['collection','movies/browse/movie','game/snake']){
+    await page.goto(`/#/${route}`);
+    const trigger=page.locator(route==='collection'?'.app-menu':route.startsWith('movies')?'.movies-menu':'#game-menu');
+    await trigger.click();
+    const dialog=page.locator(route.startsWith('game')?'#game-options':'#menu');
+    const close=dialog.locator('.dialog-head .icon-button');
+    await expect(close).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
+    const veil=await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor);
+    expect(veil).toBe('rgba(184, 184, 184, 0.14)');
+    await expect(close).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+    await close.screenshot({animations:'disabled'});
+    const boxes=await close.evaluate(e=>{const b=e.getBoundingClientRect(),svg=e.querySelector('svg')!,r=svg.getBoundingClientRect();return [{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(svg).color}];});
+    const hide=await page.addStyleTag({content:'.sheet-close-glass>svg{color:transparent!important}'});
+    const shot=(await close.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
+    const maskStyle=await page.addStyleTag({content:'.sheet-close-glass{background:#000!important;backdrop-filter:none!important}.sheet-close-glass::before,.sheet-close-glass>.ui-glass-lens,.sheet-close-glass>.ui-glass-glow{visibility:hidden!important}.sheet-close-glass>svg{color:#fff!important;background:none!important;box-shadow:none!important}'});
+    const mask=(await close.screenshot({animations:'disabled'})).toString('base64');await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
+    expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!))).toBeGreaterThanOrEqual(4.5);
+    await close.click();await expect(dialog).not.toBeVisible();
+    await expect(close).not.toHaveAttribute('data-glass');
+    await expect(close.locator('.glass-ink')).toHaveCount(0);
+  }
+});
+
 // These bounds come from paired blank patches of Apple's official light/dark
 // Music tab-bar images. The fit is a model, not a claim about Apple's shader:
 // O = (1-alpha)B + alpha*T gives alpha .133-.157 for RGB-neutral T.
@@ -78,8 +116,8 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   const veil=await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor.match(/[\d.]+/g)!.map(Number));
-  expect(veil[3]??1).toBeGreaterThanOrEqual(.1);
-  expect(veil[3]??1).toBeLessThanOrEqual(.18);
+  expect(veil[3]??1).toBeGreaterThanOrEqual(.133);
+  expect(veil[3]??1).toBeLessThanOrEqual(.157);
   expect(Math.max(...veil.slice(0,3))-Math.min(...veil.slice(0,3))).toBeLessThanOrEqual(1);
   await page.addStyleTag({content:'#content{visibility:hidden}body{background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   const png=(await bar.screenshot({animations:'disabled',scale:'css'})).toString('base64');
@@ -101,7 +139,7 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
     // Some Linux WebKit builds omit backdrop diffusion even on plain HTML.
     // Verify that independently; never classify that as working app blur.
     const reference=await page.context().newPage();
-    await reference.setContent('<body style="margin:0;background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)"><div style="position:fixed;top:100px;left:0;width:390px;height:64px;background:rgba(184,184,184,.14);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)"></div></body>');
+    await reference.setContent('<body style="margin:0;background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)"><div style="position:fixed;top:100px;left:0;width:390px;height:64px;background:rgba(184,184,184,.14);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)"></div></body>');
     const png=(await reference.locator('div').screenshot({scale:'css'})).toString('base64');
     const hasBlur=await reference.evaluate(async png=>{
       const img=new Image();img.src='data:image/png;base64,'+png;await img.decode();
@@ -118,7 +156,7 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
 
 test('navigation, companion and game controls share the same clear optical recipe',async({page})=>{
   let reference:unknown;
-  for(const route of ['collection','movies/browse/movie','movies/browse/tv','movies/list','game/fruit-merge','game/snake','game/blockcraft']){
+  for(const route of ['collection','study','movies/browse/movie','movies/browse/tv','movies/list','game/fruit-merge','game/snake','game/blockcraft']){
     await page.goto(`/#/${route}`);
     const scope=route.startsWith('game/')?'.game-dock':route.startsWith('movies')?'.movies-navigation':'.app-navigation';
     await expect(page.locator(scope)).toBeVisible();
@@ -137,7 +175,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
   const scope=route==='collection'?'.app-navigation':'.movies-navigation';
   const nav=page.locator(scope);await expect(nav).toBeVisible();
   await page.addStyleTag({content:`#content,.movies-top,.movies-main,.movies-footer{visibility:hidden}body{background:#fff!important}.movies-view{background:transparent!important}.section-navigation{visibility:visible!important}`});
-  for(const background of ['#fff','#000','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)']){
+  for(const background of ['#fff','#000','#606060','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)']){
     const backdrop=await page.addStyleTag({content:`html,body{background:${background}!important}`});
     await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
     await nav.screenshot({animations:'disabled',scale:'device'});

@@ -231,7 +231,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-    expect(frost).toContain('blur(4px)');
+    expect(frost).toContain('blur(3px)');
     expect(frost).toContain('saturate(1)');
   });
 
@@ -292,7 +292,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation [data-glass=frost]')).toHaveCount(2);
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
-    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(4px\)/);
+    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(3px\)/);
   });
 
   test('Movies preserves its separate fallback companion through a re-render',async({page})=>{

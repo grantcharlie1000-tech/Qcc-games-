@@ -17,8 +17,13 @@ const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
 
 /** The optical veil is shared with theme.css: neutral RGB184 at 14% opacity.
  * Choose ink before adding any scrim. Margin covers the feathered glyph edge. */
-export function glassInk(samples:readonly RGB[]):{color:string;scrim:string}{
-  const backgrounds=bounds(samples.length?samples:[[25,29,28]]).map(rgb=>mix(rgb,[184,184,184],.14));
+export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection=false):{color:string;scrim:string}{
+  const backgrounds=bounds(samples.length?samples:[[25,29,28]]).flatMap(rgb=>{
+    const glass=mix(rgb,[184,184,184],.14);
+    // The white 8% selection can move under any tab during a press. Include
+    // both positions so ink stays legible throughout that motion.
+    return selection?[glass,mix(glass,[255,255,255],.08)]:[glass];
+  });
   const candidates=[{ink:INK,color:'#0b1015',veil:[255,255,255] as RGB},{ink:[255,255,255] as RGB,color:'#fff',veil:[0,0,0] as RGB}];
   const scored=candidates.map(candidate=>{
     const fg=luminance(candidate.ink);
@@ -33,7 +38,9 @@ export function glassInk(samples:readonly RGB[]):{color:string;scrim:string}{
     }
     return {...candidate,alpha:Math.ceil(high*100)/100};
   }).sort((a,b)=>a.alpha-b.alpha);
-  const best=scored[0];
+  // Preserve a modal's established ink when its hidden backdrop requires a
+  // scrim either way. A zero-scrim choice always takes priority.
+  const best=preferred&&scored.every(c=>c.alpha>0)?scored.find(c=>c.color===(preferred==='light'?'#fff':'#0b1015'))!:scored[0];
   return {color:best.color,scrim:`rgb(${best.veil.join(' ')} / ${best.alpha})`};
 }
 
@@ -105,7 +112,8 @@ function sampler(){
 
   function sample(glyph:Element):RGB[]{
     const r=rect(glyph);
-    // 3-sigma of the 4px frost, plus the edge lens's small displacement.
+    const ownerDialog=glyph.closest('dialog');
+    // The 3px frost and edge lens sample the surrounding artwork.
     const area=new DOMRect(r.x-16,r.y-16,r.width+32,r.height+32);
     const ranges=new Map<HTMLImageElement,RGB[]>();
     const stacks=new Set<string>();
@@ -113,7 +121,7 @@ function sampler(){
     for(const u of [0,.5,1])for(const v of [0,.5,1]){
       const x=Math.max(0,Math.min(innerWidth-1,area.x+area.width*u));
       const y=Math.max(0,Math.min(innerHeight-1,area.y+area.height*v));
-      const stack=document.elementsFromPoint(x,y).filter(e=>!e.closest('.arcade-glass,.section-navigation,.ui-tabbar-mini,dialog'));
+      const stack=document.elementsFromPoint(x,y).filter(e=>!e.closest('.arcade-glass,.section-navigation,.ui-tabbar-mini')&&(!e.closest('dialog')||e.closest('dialog')===ownerDialog));
       const view=stack.find(e=>e.classList.contains('game-view'));
       const surface=view?.querySelector('.game-surface');
       if(surface&&within(rect(surface),x,y))stack.splice(stack.indexOf(view!),0,surface);
@@ -121,6 +129,9 @@ function sampler(){
       const key=stack.map(id).join(',');if(stacks.has(key))continue;stacks.add(key);
       let result:RGB[]=[[0,0,0]];
       for(const element of stack.reverse()){
+        // Top-layer hit testing cannot reveal the artwork behind a dialog.
+        // Its translucent paint bounds the unknown backdrop conservatively.
+        if(element instanceof HTMLDialogElement)result=UNKNOWN;
         const s=style(element),color=paint(s.backgroundColor);
         result=result.map(rgb=>mix(rgb,color.rgb,color.alpha));
         if(s.backgroundImage.includes('gradient(')){
@@ -172,7 +183,9 @@ function update(){
       const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong')].filter(e=>!e.querySelector('small,strong'));
       for(const glyph of glyphs){
         const r=rect(glyph);if(!r.width||!r.height)continue;
-        changes.push({glyph,ink:bar.dataset.glass==='off'?null:glassInk(sample(glyph))});
+        const modal=bar.closest('dialog');
+        const preference=modal?(luminance(paint(style(modal).color).rgb)>.5?'light':'dark'):undefined;
+        changes.push({glyph,ink:bar.dataset.glass==='off'?null:glassInk(sample(glyph),preference,bar.classList.contains('ui-tabbar'))});
       }
     }
   }

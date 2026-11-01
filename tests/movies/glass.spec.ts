@@ -8,6 +8,9 @@ const DESKTOP={width:1440,height:900};
 const ACCESSIBILITY_NOTE='Reduce Transparency is emulated through CDP, which only Chromium offers.';
 const DRAWER={name:'Select episode',exact:true} as const;
 const TRIGGER={name:'S1 · E1',exact:true} as const;
+// These optical tests intercept the catalog and provider. WebKit can let a
+// registered service worker bypass page.route, even for an uncached API URL.
+test.use({serviceWorkers:'block'});
 
 test.beforeEach(async({page})=>{
  // Existing playback coverage accepts each fresh third-party playback warning.
@@ -150,9 +153,9 @@ test('forced colours give the drawer the system Canvas, CanvasText and a 2 px bo
  expect(await drawer.evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,border:s.borderTopColor,width:s.borderTopWidth};})).toEqual({background:system.Canvas,border:system.CanvasText,width:'2px'});
 });
 
-test('the idle season pill is a translucent fill, and only the sheet has a backdrop filter',async({page})=>{
+test('season pills stay flat while the sheet and its close have bounded glass',async({page})=>{
  const drawer=await openDrawer(page,PHONE);
- expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').length)).toBe(0);
+ expect(await drawer.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none'&&!child.closest('.sheet-close-glass')).length)).toBe(0);
  const pill=drawer.getByRole('button',{name:'Season 2',exact:true});
  const fill=await pill.evaluate(el=>getComputedStyle(el).backgroundColor);
  const alpha=parseFloat(/rgba\(\d+, \d+, \d+, ([\d.]+)\)/.exec(fill)?.[1]??'1');
@@ -190,9 +193,17 @@ test('the close button is the sheet\'s icon button, and the heading is the sheet
  const drawer=await openDrawer(page,PHONE);
  const close=drawer.getByRole('button',{name:'Close episode list',exact:true});
  await expect(close).toHaveClass(/\bicon-button\b/);
+ await expect(close).toHaveClass(/\barcade-glass\b/);
+ expect(await close.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.14)');
  expect(await close.evaluate(el=>{const s=getComputedStyle(el);return [s.width,s.height,s.borderTopLeftRadius];})).toEqual(['44px','44px','50%']);
  const heading=drawer.getByRole('heading',{name:'Episodes',exact:true});
  expect(await heading.evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.fontWeight,s.color,s.letterSpacing];})).toEqual(['20px','600','rgb(255, 255, 255)','-0.2px']);
+ const original=await close.elementHandle();
+ await drawer.locator('[data-drawer-season]').last().click();
+ await expect(close).toHaveClass(/\barcade-glass\b/);
+ await expect.poll(()=>original!.evaluate(e=>e.isConnected)).toBe(false);
+ expect(await original!.evaluate(e=>e.hasAttribute('data-glass'))).toBe(false);
+ expect(await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.14)');
 });
 
 test('on open, focus goes to the current episode row',async({page})=>{

@@ -19,4 +19,11 @@ describe('clear glass contrast',()=>{
   it('accounts for darker mixtures between two saturated gradient stops',()=>{
     expect(glassInk([[255,0,255],[0,165,0]]).scrim).not.toBe('rgb(255 255 255 / 0)');
   });
+  it('keeps a dark modal’s light ink when both choices need a local scrim',()=>{
+    expect(glassInk([[0,0,0],[255,255,255]],'light').color).toBe('#fff');
+    expect(glassInk([[255,255,255]],'light').scrim).toBe('rgb(255 255 255 / 0)');
+  });
+  it('includes a moving selected-tab highlight over a mid-gray backdrop',()=>{
+    expect(glassInk([[96,96,96]],undefined,true).scrim).not.toBe('rgb(0 0 0 / 0)');
+  });
 });
