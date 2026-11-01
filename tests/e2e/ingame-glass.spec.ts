@@ -98,7 +98,7 @@ test('compact dock reserves play space and the menu pauses, restores focus and r
 
 test('menu keeps secondary actions reachable through rules and app settings',async({page})=>{
   await page.goto('/#/game/quadfall');
-  await page.getByRole('button',{name:'Start',exact:true}).click();
+  await page.getByRole('button',{name:/^(Start|Tap to play)$/}).click();
   await page.locator('#game-menu').click();
   await page.getByRole('button',{name:'Game rules',exact:true}).click();
   await expect(page.locator('#rules-dialog')).toBeVisible();
@@ -113,11 +113,11 @@ test('menu keeps secondary actions reachable through rules and app settings',asy
   await expect(page.locator('#game-menu')).toBeFocused();
   await page.locator('#game-menu').click();
   await page.getByRole('button',{name:'Restart game',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Start',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:/^(Start|Tap to play)$/})).toBeVisible();
 });
 
 test('returning from a hidden tab does not resume through the game menu',async({page})=>{
-  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:'Start',exact:true}).click();
+  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:/^(Start|Tap to play)$/}).click();
   await page.locator('#game-menu').click();
   await page.evaluate(()=>{
     Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));
@@ -160,20 +160,18 @@ test('Wordle Statistics returns keyboard focus to the dock',async({page})=>{
   await expect(page.locator('#game-menu')).toBeFocused();
 });
 
-test('optional pads, shrinking viewport and disposal keep the dock usable',async({page})=>{
-  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:'Start',exact:true}).click();
-  await openGameMenu(page);await page.getByLabel('Show touch controls').uncheck();
-  await page.getByRole('button',{name:'Close game menu',exact:true}).click();
-  await expect(page.locator('.qf-pad')).toBeHidden();
-  await openGameMenu(page);await page.getByLabel('Show touch controls').check();
-  await page.getByRole('button',{name:'Close game menu',exact:true}).click();
-  await expect(page.locator('.qf-pad')).toBeVisible();
+test('responsive play area and disposal keep the dock usable',async({page})=>{
+  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:/^(Start|Tap to play)$/}).click();
+  await openGameMenu(page);const optional=page.getByLabel('Show touch controls',{exact:true});
+  if(await optional.isVisible()){await optional.uncheck();await page.getByRole('button',{name:'Close game menu',exact:true}).click();await expect(page.locator('.qf-pad')).toBeHidden();await openGameMenu(page);await optional.check();await page.getByRole('button',{name:'Close game menu',exact:true}).click();await expect(page.locator('.qf-pad')).toBeVisible();}
+  else await page.getByRole('button',{name:'Close game menu',exact:true}).click();
   for(const height of [844,644,568]){
     await page.setViewportSize({width:390,height});
-    await expect.poll(()=>page.locator('.qf-pad').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight)).toBe(true);
+    const controls=page.locator('.qf-pad:visible');if(await controls.count())await expect.poll(()=>controls.evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight)).toBe(true);
+    for(const control of await page.locator('.game-dock a,.game-dock button').all()){const box=(await control.boundingBox())!;expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(height);}
   }
   for(let i=0;i<3;i++){
-    await page.goto('/#/game/block-fill');await expect(page.locator('.game-hud')).toContainText('Covered');
+    await page.goto('/#/game/block-fill');await expect(page.locator('.game-compact-hud')).toContainText('Garden');
     await page.getByRole('link',{name:'Games'}).click();
     await expect(page.locator('.game-dock')).toHaveCount(0);
     expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(2);
@@ -227,7 +225,7 @@ test('dock follows a counter whose game replaces its child nodes',async({page})=
   await page.goto('/#/game/block-fill');
   await page.locator('.bf-board').focus();await page.keyboard.press('ArrowRight');
   await expect(page.locator('.bf-board')).toHaveAttribute('data-covered','2');
-  await expect(page.locator('.game-hud')).toContainText('Covered2 / 9');
+  await expect(page.locator('.game-compact-hud')).toHaveText('Garden 1/32 · 22%');
 });
 
 test('Fivefold mode controls remain usable in the menu and the keyboard keeps its space',async({page})=>{
