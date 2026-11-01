@@ -1,0 +1,13 @@
+import {test,expect,seedStudyTopic} from '../../fixtures';
+for(const device of [{width:1440,height:900,scale:1,touch:false},{width:844,height:390,scale:3,touch:true},{width:667,height:375,scale:2,touch:true}])test(`outline live HUD has no glass and stays at the edges at ${device.width}`,async({browser})=>{
+ test.setTimeout(180000);const context=await browser.newContext({viewport:{width:device.width,height:device.height},deviceScaleFactor:device.scale,isMobile:device.touch,hasTouch:device.touch});await seedStudyTopic(context);const page=await context.newPage();
+ try{await page.goto('/?quality=potato&test&seed=42#/game/strongroom');await expect(page.locator('.strongroom-game')).toHaveAttribute('data-models','true',{timeout:120000});await page.evaluate(()=>{const g=(window as any).__game;g.start({teamSize:3,difficulty:'easy',quick:false});g.state.phase='action';g.state.paused=true;Object.assign(g.player,{hp:71,ammo:19,reserve:83});});
+ const hud=page.locator('.sr-match-hud');await expect(hud).toBeVisible();await expect(hud.locator('#hp-value')).toHaveText('71');await expect(hud.locator('#ammo-value')).toHaveText('19');await expect(hud.locator('#reserve-value')).toHaveText('83');
+ expect(await hud.evaluate(el=>[el,...el.querySelectorAll('*')].filter(n=>{const s=getComputedStyle(n);return s.backdropFilter!=='none'||n.classList.contains('arcade-glass');}).length)).toBe(0);
+ await expect(hud.getByRole('button',{name:'Open match menu'})).toBeVisible();
+ if(device.touch){for(const name of ['Move','Fire','Reload','Crouch','Aim','Jump']){const button=hud.getByRole('button',{name,exact:true});await expect(button).toBeVisible();await expect(button).toHaveText('');const b=(await button.boundingBox())!;expect(b.width).toBeGreaterThanOrEqual(44);expect(b.height).toBeGreaterThanOrEqual(44);expect(b.x).toBeGreaterThanOrEqual(0);expect(b.x+b.width).toBeLessThanOrEqual(device.width);expect(b.y+b.height).toBeLessThanOrEqual(device.height);}expect(await hud.locator('.stick').evaluate(el=>getComputedStyle(el).opacity)).toBe('0');}
+ else await expect(hud.locator('.touch-controls')).toBeHidden();
+ const overflow=await hud.evaluate(el=>[...el.querySelectorAll<HTMLElement>('.vitals,.weapon,.objective,.round-bar')].filter(n=>{const b=n.getBoundingClientRect();return b.left<0||b.right>innerWidth||b.top<0||b.bottom>innerHeight;}).map(n=>n.className));expect(overflow).toEqual([]);
+ await page.evaluate(()=>(window as any).__game.view.root.querySelector('.sr-match-hud .menu-button').click());await expect(page.getByRole('dialog',{name:'Strongroom menu'})).toBeVisible();await expect(page.getByRole('button',{name:'Scores',exact:true})).toBeVisible();
+ }finally{await context.close();}
+});

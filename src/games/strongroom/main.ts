@@ -15,7 +15,7 @@ import {bindTouch} from './touch';
 import {Audio} from './audio';
 export function mount(container:HTMLElement,context:GameContext):GameInstance{
  const root=document.createElement('div');root.className='strongroom-game';root.dataset.ready='false';container.append(root);
- const abort=new AbortController(),signal=abort.signal,touch=matchMedia('(any-pointer:coarse)').matches||navigator.maxTouchPoints>0;
+ const abort=new AbortController(),signal=abort.signal,touch=matchMedia('(pointer:coarse)').matches;
  const params=new URLSearchParams(location.search),seed=Number(params.get('seed'))||1;
  let savedTier:Tier|null=null;try{const t=localStorage.getItem('strongroom:quality');if(isTier(t))savedTier=t;}catch{}
  const detected=defaultTier({touch,cores:navigator.hardwareConcurrency,memory:(navigator as Navigator&{deviceMemory?:number}).deviceMemory,ua:navigator.userAgent,gpu:deviceGPU()});

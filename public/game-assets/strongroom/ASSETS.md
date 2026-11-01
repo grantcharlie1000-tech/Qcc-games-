@@ -62,3 +62,8 @@ rendering uses Lambert albedo only; high rendering retains the licensed PBR
 and atmosphere. The canvas pixel ratio follows the selected quality tier.
 Strongroom never calls QCC score or leaderboard submission APIs. Networking
 uses QCC Room; no Tiny Strike services are imported. Three is QCC's r180.
+
+| File | Source | Licence |
+| --- | --- | --- |
+| `fonts/BarlowCondensed-SemiBold.ttf`, `fonts/BarlowCondensed-Bold.ttf` | Barlow Project Authors, Google Fonts; supplied in the approved HUD mock | SIL Open Font License 1.1, bundled `fonts/OFL.txt` |
+| Original HUD SVG symbols (`ui/hud-markup.ts`) | Strongroom / QCC Games, approved direction B | Project licence |

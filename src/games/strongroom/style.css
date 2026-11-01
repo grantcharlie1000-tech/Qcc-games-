@@ -1,4 +1,4 @@
-/* Layout only. All control, pill and sheet materials come from QCC's shared glass. */
+/* Shell, home and shared sheets. The match overlay is scoped in ui/match-hud.css. */
 body.in-game .game-view[data-game-id=strongroom]{padding:0;display:block;background:#141922}
 body.in-game .game-view[data-game-id=strongroom] :is(.stage-wrap,#game-stage){position:absolute;inset:0;width:100%;height:100%;max-height:none;display:block}
 .game-view[data-game-id=strongroom] .game-surface{background:transparent}
@@ -15,27 +15,18 @@ body.in-game .game-view[data-game-id=strongroom] :is(.stage-wrap,#game-stage){po
 .sr-home{position:absolute;top:50%;left:50%;width:min(600px,calc(100% - 32px));text-align:center;transform:translate(-50%,-42%);text-shadow:0 2px 8px #000}
 .sr-home h1{margin:12px 0;font-size:clamp(34px,7vw,76px);line-height:1;letter-spacing:-.05em}
 .sr-home p{margin:12px 0;font-size:16px}.sr-home .sr-eyebrow{font-size:12px;letter-spacing:.16em}.sr-home-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:28px}.sr-home .sr-credit{font-size:12px;line-height:1.5;margin-top:24px;color:#e2e4e8}
-.sr-settings{position:absolute;right:max(12px,env(safe-area-inset-right));top:80px}
-.sr-score{position:absolute;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);max-width:calc(100% - 260px);font-size:16px}
-.sr-health{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom));left:calc(16px + env(safe-area-inset-left))}
-.sr-ammo{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom));right:calc(16px + env(safe-area-inset-right))}
-.sr-status{position:absolute;top:76px;left:50%;max-width:calc(100% - 260px);white-space:normal;text-align:center;transform:translateX(-50%);font-size:14px;pointer-events:none}
-.sr-lock{position:absolute;left:50%;top:58%;margin-left:-70px;width:140px;transform:none}
-.sr-crosshair{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;text-shadow:0 1px 2px #000}
-.sr-playing .sr-crosshair{display:block}.sr-hit .sr-crosshair{color:#FF8A1F;font-size:32px}
-.sr-feed{position:absolute;right:16px;top:148px;display:grid;gap:6px;max-width:260px;font-size:14px}.sr-feed .sr-pill{font-size:14px;min-height:32px;padding:7px 14px}
 .sr-sheet.ui-glass-sheet{font-family:var(--font-sans);width:min(620px,calc(100% - 24px));max-height:calc(var(--play-height,100dvh) - 24px);padding:20px;color:#fff}
 .sr-sheet .dialog-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.sr-sheet .dialog-head button{width:48px;height:48px;padding:0;flex-shrink:0;font-size:22px}
 .sr-sheet-body{display:flex;flex-direction:column;gap:14px;min-width:0}.sr-sheet-body p{margin:0;line-height:1.5}.sr-sheet-body label{display:grid;grid-template-columns:1fr minmax(100px,55%);align-items:center;gap:12px;font-size:16px}.sr-sheet select option{color:#fff;background:#23272d}
 .sr-binding{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}.sr-binding button{min-width:104px;min-height:48px}.sr-sheet table{border-collapse:collapse;width:100%;font-size:14px}.sr-sheet td,.sr-sheet th{text-align:left;padding:10px 5px;border-bottom:1px solid #ffffff20}.sr-sheet th{font-size:12px;white-space:normal}
-.sr-touch{display:none;position:absolute;inset:0;pointer-events:none;touch-action:none}.sr-touch-mode .sr-touch{display:block}.sr-touch button{pointer-events:auto}.sr-look-zone{position:absolute;inset:25% 0 0 40%;pointer-events:auto}
-.sr-stick{position:absolute;left:calc(18px + env(safe-area-inset-left));bottom:calc(18px + env(safe-area-inset-bottom));width:112px;height:112px;min-width:112px;border-radius:50%;border:0;font-size:12px;padding:0}
-.sr-touch-button{position:absolute;display:grid;place-items:center;width:52px;height:52px;min-width:48px;min-height:48px;border-radius:50%;border:0;padding:0;font-size:12px}.sr-fire{right:calc(18px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:76px;height:76px}.sr-aim{right:106px;bottom:70px;width:60px;height:60px}.sr-reload{right:174px;bottom:82px}.sr-crouch{right:116px;bottom:10px}.sr-jump{right:184px;bottom:10px}.sr-scores{top:82px;right:120px;border-radius:999px;width:70px}
-.sr-touch-mode .sr-health{top:80px;bottom:auto}.sr-touch-mode .sr-ammo{bottom:150px;left:18px;right:auto;font-size:14px}.sr-touch-mode .sr-score{font-size:14px;min-height:40px;max-width:calc(100% - 150px);padding:8px 14px}.sr-touch-mode .sr-settings{font-size:14px}.sr-touch-mode .sr-feed{top:142px;max-width:230px}.sr-touch-mode .sr-feed .sr-pill:nth-child(n+3){display:none}
 .sr-orientation{position:absolute;inset:0;width:100%;max-width:none;max-height:none;margin:0;border-radius:0!important;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;text-align:center;padding:24px}.sr-orientation p{font-size:56px}.sr-orientation h2{max-width:280px}
 @media(max-height:480px){.sr-home{transform:translate(-50%,-36%)}.sr-home h1{font-size:40px}.sr-home-actions{margin-top:18px}.sr-home .sr-credit{margin-top:14px}.sr-home p{margin:8px 0}.sr-home .sr-eyebrow{font-size:10px}.sr-sheet.ui-glass-sheet{padding:16px;max-height:calc(100dvh - 16px)}.sr-sheet .dialog-head{margin-bottom:8px}.sr-sheet-body{gap:10px}}
-@media(max-width:699px){.sr-score{max-width:calc(100% - 148px);font-size:14px}.sr-status{max-width:calc(100% - 240px)}.sr-sheet td,.sr-sheet th{padding:8px 3px}}
-@media(prefers-reduced-motion:reduce){.strongroom-game *{animation:none!important;transition:none!important}}
-.reduce-motion .strongroom-game *{animation:none!important;transition:none!important}
+@media(max-width:699px){.sr-sheet td,.sr-sheet th{padding:8px 3px}}
 .sr-seats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.sr-seats h3{margin:4px 0 8px;font-size:15px}.sr-seat{display:flex;gap:6px;margin-top:8px;min-width:0}.sr-seat>button:first-child{flex:1;overflow:hidden;text-overflow:ellipsis;min-width:0}.sr-seat>button{font-size:14px;padding-inline:12px}.sr-lobby-options{display:flex;gap:8px;flex-wrap:wrap}.sr-lobby-options .muted{flex-basis:100%}.sr-sheet .mp-panel{border:0;background:none;padding:0;box-shadow:none}.sr-sheet .mp-panel .mp-title{display:none}.sr-sheet .mp-panel .mp-players{display:none}.sr-sheet .mp-panel .mp-buttons{gap:8px;flex-wrap:wrap}.sr-sheet .mp-panel .mp-field input{font-size:17px;min-height:48px}.sr-sheet .mp-join{display:flex;gap:8px;align-items:end}.sr-sheet .mp-join .mp-field{flex:1}.sr-sheet .mp-status,.sr-sheet .mp-help,.sr-sheet .mp-link{font-size:14px;line-height:1.4}.sr-sheet .mp-free{display:none}
 @media(max-width:420px){.sr-seat{flex-wrap:wrap}.sr-sheet .mp-join{flex-direction:column;align-items:stretch}.sr-seat>button:first-child{flex-basis:100%}}
+/* Shared glass remains on home/sheets. Match UI owns its flat outline material. */
+.game-view[data-game-id=strongroom]:has(.sr-playing) .game-dock{visibility:hidden}
+.strongroom-game .sr-lock{background:#09121bea;color:#f5f8fb;border:1px solid #becbd580;border-radius:0;font:600 14px/1 Barlow,sans-serif;padding:12px;min-height:44px;top:auto;bottom:100px;left:50%;margin-left:-70px}
+.sr-sheet .dialog-head .icon-button{flex:0 0 48px;border-radius:50%;padding:0;min-width:48px}
+.sr-match-hud .touch-controls{position:absolute;inset:0;pointer-events:none}
+.sr-settings{position:absolute;right:max(24px,env(safe-area-inset-right));top:80px}
