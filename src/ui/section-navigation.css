@@ -10,6 +10,9 @@
   background:none;border:0;box-shadow:none;
 }
 .section-navigation>.arcade-glass[data-glass=backdrop]{-webkit-backdrop-filter:none;backdrop-filter:none}
+/* Some WebKit compositors omit backdrop colour filters. The single neutral
+   veil must support dark ink even then, on the pill and companion alike. */
+.section-navigation>.arcade-glass[data-glass=frost]{--glass-tint:rgb(255 255 255 / .5)}
 .section-navigation>.arcade-glass>.ui-glass-lens{
   border-radius:inherit;overflow:hidden;
   -webkit-backdrop-filter:var(--glass-frost-body);backdrop-filter:var(--glass-frost-body);

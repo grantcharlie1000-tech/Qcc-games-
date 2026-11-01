@@ -428,6 +428,11 @@
 .game-view[data-game-id=blockcraft] :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .52)}
 .game-view[data-game-id=solitaire] :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .12)}
 .game-view[data-game-id=ball-run] :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .08)}
+/* Bright wireframe lines can cross any Ball Run control. In the CSS fallback,
+   regular light glass keeps ink legible even without backdrop colour filters. */
+.game-view[data-game-id=ball-run] .arcade-glass[data-glass=frost]{--glass-tint:rgb(255 255 255 / .5);--glass-ink:#0b1015;--glass-solid:#f1f3f5;--glass-tone:saturate(.45) brightness(1.04)}
+.game-view[data-game-id=ball-run] .game-hud[data-glass=frost] :is(small,strong){text-shadow:none}
+.game-view[data-game-id=ball-run] :is(.game-glass,.glass-control)[data-glass=frost][data-pressing]::before{background:var(--glass-tint)}
 /* A press clears and illuminates regular glass while preserving its luminance
    floor. Card-row gaps must never make black navigation glyphs disappear. */
 .section-navigation>.arcade-glass[data-glass-tone=light][data-pressing]{--glass-frost:blur(2.5px);--glass-tone:saturate(.08) contrast(.22) brightness(1.75);--glass-tint:rgb(255 255 255 / .5)}

@@ -55,6 +55,9 @@ body.in-game #pause-overlay{border-radius:16px}
 /* These scenes already reserve their top HUD area. Keep their canvas/input mapping intact. */
 .game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(var(--play-height,100dvh) * .54));--scene-bg:#55c3ec}
 .game-view[data-game-id=water-sort]{--scene-width:min(100%,1100px);--scene-bg:#221b2e}
+/* The travelling glass needs its original headroom above a receiving tube.
+   Keep this inside the scene; the full surface behind it remains uninterrupted. */
+.game-view[data-game-id=water-sort] .stage-wrap{margin-top:8px}
 .game-view[data-game-id=color-blocks]{--scene-width:min(100%,calc(var(--play-height,100dvh) * .85));--scene-bg:#30223b}
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=shooter]){padding:0;display:block;background:var(--scene-bg,#101a25)}
 body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road],[data-game-id=shooter]) .stage-wrap,

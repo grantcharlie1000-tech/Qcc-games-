@@ -53,7 +53,7 @@ for(const route of ['movies','movies/browse/tv'])test(`${route} canvas covers to
 for(const width of [390,1366])test(`Movies shares navigation geometry, actions and companion focus at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/#/movies/browse/tv');await expect(page.locator('.movies-poster').first()).toBeVisible();
  const nav=page.locator('.movies-navigation'),bar=nav.locator('.section-tabbar'),menu=nav.getByRole('button',{name:'Open menu',exact:true});
- await expect(bar.locator('.ui-tab')).toHaveText(['Home','Movies','TV Shows','My list','Study']);await expect(bar).toHaveAttribute('data-glass-tone','dark');
+ await expect(bar.locator('.ui-tab')).toHaveText(['Home','Movies','TV Shows','My list','Study']);await expect(bar).toHaveAttribute('data-glass-tone','light');
  const gap=await nav.evaluate(e=>{const b=e.querySelector('.section-tabbar')!.getBoundingClientRect(),m=e.querySelector('.section-menu')!.getBoundingClientRect();return m.left-b.right;});expect(gap).toBeGreaterThanOrEqual(8);
  await bar.getByRole('button',{name:'Study',exact:true}).focus();await page.keyboard.press('Tab');await expect(menu).toBeFocused();
  await page.keyboard.press('Enter');await expect(page.locator('#menu')).toBeVisible();await expect(page.locator('#menu')).toHaveAttribute('data-glass-tone','dark');

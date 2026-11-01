@@ -25,6 +25,11 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     // Hold the exit half way through: an inactive native sheet must not retain
     // a filtered/composited rectangle while entry rerenders the games grid.
     await page.evaluate(()=>{for(const a of document.getAnimations()){a.pause();a.currentTime=90;}});
+    await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+    await expect(page.locator('.app-navigation')).not.toHaveAttribute('data-sheet-hidden');
+    // Finish only the unrelated navigation restoration. Its fade must not
+    // change pixels between the two account-paint observations.
+    await page.locator('.app-navigation').evaluate(e=>e.getAnimations({subtree:true}).forEach(a=>a.finish()));
     await expect(dialog).toBeHidden();await expect(dialog).toHaveCSS('backdrop-filter','none');
     expect(await page.evaluate(()=>[310,512,720].some(x=>!!document.elementFromPoint(x,574)?.closest('#accounts-dialog')))).toBe(false);
     const options={clip:{x:305,y:550,width:420,height:27},animations:'allow' as const};
