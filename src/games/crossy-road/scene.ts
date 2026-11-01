@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import {ufoFlight} from './motion';
 import {
-  BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, EDGE_COLS, HOP_TIME, IDLE_LIMIT, IDLE_WARN, RENDER_X_MAX, RENDER_X_MIN, SQUASH_TIME,
+  BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, EDGE_COLS, HOP_TIME, IDLE_LIMIT, IDLE_WARN, RENDER_X_MAX, RENDER_X_MIN, SAFE_LAG, SQUASH_TIME,
   TRAIN_PALETTE, VEHICLE_PALETTE, LOG_PALETTE, clamp, lerp,
   type Death, type Dir, type GrassLane, type CrossyRoadScene, type Lane, type LilyLane, type Mover, type Quality, type RailLane, type RiverLane, type RoadLane, type SceneFrame, type SceneStats,
 } from './config';
@@ -56,6 +56,12 @@ export function stepFocusRow(current: number, target: number, dt: number): numbe
   return target > current ? current + (target - current) * smoothing(dt) : current;
 }
 
+/** Forward camera leash. Kept separate from smoothing so auto-scroll does not
+ * wait for the safe line to catch a stationary player's row. */
+export function focusRowTarget(playerRow: number, safeLine: number, maxRow: number, started: boolean): number {
+  return Math.max(playerRow, started ? safeLine + Math.min(SAFE_LAG, maxRow) : 0);
+}
+
 /** The focus x target `lerp(4, playerX, 0.6)`, clamped so the whole band [−0.5, 8.5] stays on screen at
  * the focus row (a frustum `halfWidth` wide shows `halfWidth / cos(yaw)` tiles each side of the focus).
  * When the band cannot fit, the camera centres on x = 4. */
@@ -70,7 +76,7 @@ const COLORS: number[] = [];
 const reg = (...hex: number[]): number => { const i = COLORS.length; COLORS.push(...hex); return i; };
 const C_WHITE = reg(0xffffff), C_GRASS = reg(0xa0dc50, 0x96d448), C_ROAD = reg(0x434856), C_WATER = reg(0x56c9f3), C_BALLAST = reg(0x535664);
 const C_DASH = reg(0xf2f2ea), C_SLEEPER = reg(0x6d4e4b), C_STEEL = reg(0x9595ab), C_FOAM = reg(0xf5fcff), C_RIPPLE = reg(0xb8f1ff);
-const C_DIRT = reg(0xa57a52), C_FLOWER = reg(0xfff4dc, 0xffb3c7, 0xffd461);
+const C_DIRT = reg(0xa57a52);
 const C_VEHICLE = reg(...VEHICLE_COLORS), C_TRAIN = reg(...TRAIN_COLORS), C_LOG = reg(...LOG_COLORS);
 const C_LAMP_ON = reg(0xff2a2a), C_LAMP_OFF = reg(0x4a1a22), C_SPLASH = reg(0xffffff, 0xbfeaff), C_FLUFF = reg(0xfff4dc, 0xffffff);
 /** Linear RGB triples, indexed by the constants above (times 3). */
@@ -353,7 +359,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
   /** Moves the focus toward the player (never backward), places the camera and finds the rows on screen. */
   function aim(frame: SceneFrame): void {
     const state = frame.state, pose = frame.pose;
-    const targetRow = Math.max(pose.z, state.safeLine), targetX = focusXTarget(pose.x, fit.halfWidth);
+    const targetRow = focusRowTarget(pose.z, state.safeLine, state.maxRow, state.started), targetX = focusXTarget(pose.x, fit.halfWidth);
     if (snap) { focusRow = targetRow; focusX = targetX; snap = false; } else {
       focusRow = stepFocusRow(focusRow, targetRow, frame.dt);
       focusX += (targetX - focusX) * smoothing(frame.dt);
@@ -438,18 +444,6 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
       if (o === 'tree') putTree(x, hash(row, x + 100) % 3, EDGE_SHADE);
       else putRock(x, hash(row, x + 100) % 3, row, EDGE_SHADE);
     }
-    if (low) return;
-    // Flowers: a hash of (row, x) picks the tiles (about one in seven), their spot and colour; obstacles keep their tile.
-    for (let x = Math.max(Math.ceil(winLo), RENDER_X_MIN); x <= winHi && x <= RENDER_X_MAX; x++) {
-      const h = hash(row, x);
-      if ((h & 1023) >= 150) continue;
-      const taken = x >= 0 && x < COLS ? lane.obstacles[x] !== null
-        : x < 0 && x >= -EDGE_COLS ? lane.edge[x + EDGE_COLS] !== null
-        : x > COLS - 1 && x <= COLS - 1 + EDGE_COLS ? lane.edge[x - 3] !== null : false;
-      if (taken) continue;
-      const dx = ((h >>> 10) & 255) / 255 - 0.5, dz = ((h >>> 18) & 63) / 63 - 0.5;
-      ground.put(x + dx * 0.6, 0, curZ + dz * 0.6, 0.09, 0.1, 0.09, 0, C_FLOWER + ((h >>> 24) % 3), x < BAND_MIN || x > BAND_MAX ? DARK : 1);
-    }
   }
 
   const onVehicle = (x0: number, x1: number, mover: Mover): void => {
@@ -467,7 +461,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     }
   };
 
-  function drawRoad(lane: RoadLane, ahead: Lane, behind: Lane): void {
+  function drawRoad(lane: RoadLane, ahead: Lane): void {
     band(C_ROAD, -0.5, 0.5, curZ, 1);
     if (ahead.kind === 'road') {
       // White dashes on the boundary between two road rows.
@@ -564,7 +558,7 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     windowFor(row);
     switch (lane.kind) {
       case 'grass': drawGrass(lane, row); break;
-      case 'road': drawRoad(lane, ahead, behind); break;
+      case 'road': drawRoad(lane, ahead); break;
       case 'river': case 'lily': drawWater(lane, row, ahead, behind); break;
       case 'rail': drawRail(lane); break;
     }

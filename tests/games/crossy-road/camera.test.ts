@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cameraFit, focusXTarget, smoothing, stepFocusRow } from '../../../src/games/crossy-road/scene';
+import { cameraFit, focusRowTarget, focusXTarget, smoothing, stepFocusRow } from '../../../src/games/crossy-road/scene';
 
 /** The brief's camera: pitched 58° down and yawed 16° about +y. Screen x of a ground point is its
  * dot product with the camera's right axis (cos yaw, 0, −sin yaw), derived here independently of scene.ts. */
@@ -74,6 +74,13 @@ describe('cameraFit extents', () => {
 });
 
 describe('camera focus', () => {
+  it('starts at the bird, then creeps immediately after the first hop or any new furthest row', () => {
+    expect(focusRowTarget(0, 0, 0, false)).toBe(0);
+    expect(focusRowTarget(1, 0, 1, true)).toBe(1);
+    expect(focusRowTarget(1, 0.35, 1, true)).toBeCloseTo(1.35);
+    expect(focusRowTarget(5, 3.35, 5, true)).toBeCloseTo(5.35);
+    expect(focusRowTarget(4, 3.35, 5, true)).toBeCloseTo(5.35);
+  });
   it('smoothing is 1 − 0.9^(dt·60): zero for no time, about 0.1 for a 60 fps frame', () => {
     expect(smoothing(0)).toBe(0);
     expect(smoothing(1 / 60)).toBeCloseTo(0.1, 9);
