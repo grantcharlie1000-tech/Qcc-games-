@@ -1,3 +1,4 @@
+import {apiUrl} from '../core/api';
 import * as store from '../core/storage';
 import {contentHash,stableText} from '../core/content';
 import {mergeSaves} from './merge';
@@ -10,7 +11,7 @@ export interface AccountStorage {
 }
 export const SYNC_BATCH_MS=3*60*1000;
 export const SYNC_STALE_MS=3*60*1000;
-const endpoint='/.netlify/functions/accounts',sessionKey='accounts:session';
+const endpoint=apiUrl('accounts'),sessionKey='accounts:session';
 interface SyncState {cursor:string;revisions:SaveRevisions;hashes:Record<string,string>;pending:string[];batchAt:number;attempt:number;retryAt:number;lastPull:number;blocked:boolean}
 const emptyState=():SyncState=>({cursor:'0',revisions:{},hashes:{},pending:[],batchAt:0,attempt:0,retryAt:0,lastPull:0,blocked:false});
 const hidden=()=>typeof document!=='undefined'&&document.hidden;

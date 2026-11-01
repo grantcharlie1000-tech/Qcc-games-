@@ -27,3 +27,4 @@ dist-pages/
 
 .vite-cache/
 .cache/
+dist-server/

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "npm run check:server && npm run build:server",
+  "outputDirectory": "server/public",
+  "functions": {
+    "api/[route].js": {
+      "maxDuration": 10,
+      "includeFiles": "dist-server/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/.netlify/functions/:route",
+      "destination": "/api/:route"
+    }
+  ]
+}

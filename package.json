@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "node scripts/movies-validate.mjs && tsc --noEmit && vite build && node scripts/offline-manifest.mjs && node scripts/check-client-db-boundary.mjs",
+    "build": "node scripts/movies-validate.mjs && tsc --noEmit && vite build && node scripts/offline-manifest.mjs && node scripts/check-client-db-boundary.mjs && node scripts/pages-headers.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:e2e": "playwright test",
@@ -15,7 +15,10 @@
     "dev:online": "node scripts/leaderboard-dev.mjs",
     "movies:import": "node scripts/movies-import.mjs",
     "db:migrate": "node scripts/db-migrate.mjs",
-    "db:status": "node scripts/db-migrate.mjs --status"
+    "db:status": "node scripts/db-migrate.mjs --status",
+    "build:server": "esbuild server/node.ts server/vercel.ts --bundle --platform=node --format=esm --target=node22 --packages=external --outdir=dist-server --out-extension:.js=.mjs",
+    "start:server": "node dist-server/node.mjs",
+    "check:server": "tsc --noEmit -p server/tsconfig.json"
   },
   "dependencies": {
     "@netlify/functions": "6.0.3",

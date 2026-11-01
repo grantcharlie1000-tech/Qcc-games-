@@ -1,3 +1,4 @@
+import {apiUrl} from '../core/api';
 import * as store from '../core/storage';
 import {validUsername} from '../accounts/shared';
 import {scoredGame,validScore,readBoard,type Board} from './shared';
@@ -13,7 +14,7 @@ export class LeaderboardSync {
  onSynced(listener:(game:string)=>void){this.listeners.add(listener);return ()=>{this.listeners.delete(listener);};}
  private pending:Record<string,number>={};private sent:Record<string,number>={};
  private timer:ReturnType<typeof setTimeout>|undefined;private inFlight:Promise<void>|null=null;
- readonly endpoint='/.netlify/functions/leaderboard';
+ readonly endpoint=apiUrl('leaderboard');
  constructor(private storage:Storage=store,private fetcher:typeof fetch=globalThis.fetch.bind(globalThis)){
   this.refreshIdentity();
   if(typeof document!=='undefined')document.addEventListener('visibilitychange',this.visibility);

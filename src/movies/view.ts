@@ -1,3 +1,5 @@
+import {apiUrl} from '../core/api';
+const MOVIES_API=apiUrl('movies');
 import './style.css';
 import {uiIcon} from '../ui/icons';
 import {bindRails,updateRails} from '../ui/rails';
@@ -280,7 +282,7 @@ export class MoviesView {
   this.metadataAbort?.abort();const controller=this.metadataAbort=new AbortController();
   this.remoteLoading=true;this.remoteError='';this.renderBrowseState();
   try{
-   const {data}=await cachedJson('/api/movies?'+new URLSearchParams({...request.params,page:String(page)}),controller.signal,{staleTime:SEARCH_STALE});
+   const {data}=await cachedJson(MOVIES_API+'?'+new URLSearchParams({...request.params,page:String(page)}),controller.signal,{staleTime:SEARCH_STALE});
    if(id!==this.searchRequest||!answersRequest(this.remoteRequest()?.key,request.key))return;
    const parsed=parseCatalog({titles:data.titles,source:'tmdb'},true);
    this.remoteTitles=parsed.titles;this.remoteKey=request.key;
@@ -306,7 +308,7 @@ export class MoviesView {
   this.railsRequested=true;const request=++this.railsRequest;
   this.railsAbort?.abort();const controller=this.railsAbort=new AbortController();
   try{
-   const {data}=await cachedJson('/api/movies?rails=home',controller.signal);
+   const {data}=await cachedJson(MOVIES_API+'?rails=home',controller.signal);
    if(request!==this.railsRequest)return;
    const rails=parseRails(data);
    this.rails=rails;this.railsError=rails.length===0;
@@ -322,7 +324,7 @@ export class MoviesView {
   state.requested=true;const request=++state.request;
   state.abort?.abort();const controller=state.abort=new AbortController();
   try{
-   const {data}=await cachedJson('/api/movies?rails='+kind,controller.signal);
+   const {data}=await cachedJson(MOVIES_API+'?rails='+kind,controller.signal);
    if(request!==state.request)return;
    const rails=parseRails(data);
    state.rails=rails;state.error=false;state.empty=rails.length===0;
@@ -347,7 +349,7 @@ export class MoviesView {
   const resting=document.activeElement;
   try{
    const params=new URLSearchParams({id});if(season)params.set('season',String(season));
-   const {data}=await cachedJson('/api/movies?'+params,controller.signal);const parsed=parseCatalog({titles:[data.title],source:'tmdb'},true);const title=parsed.titles[0];
+   const {data}=await cachedJson(MOVIES_API+'?'+params,controller.signal);const parsed=parseCatalog({titles:[data.title],source:'tmdb'},true);const title=parsed.titles[0];
    if(request!==this.detailRequest||this.route.id!==id)return;
    if(!title||title.id!==id)throw new Error('Title details are unavailable.');
    this.storeTitle(id,title,season);
@@ -380,7 +382,7 @@ export class MoviesView {
   if(this.askedBuiltIn.has(id)||!this.bundledIds.has(id))return;
   this.askedBuiltIn.add(id);
   try{
-   const {data}=await cachedJson('/api/movies?'+new URLSearchParams({id}),this.abort.signal);
+   const {data}=await cachedJson(MOVIES_API+'?'+new URLSearchParams({id}),this.abort.signal);
    const detail=parseCatalog({titles:[data.title],source:'tmdb'},true).titles[0];
    // An answer for another title's id changes nothing here.
    if(!detail||detail.id!==id||this.abort.signal.aborted)return;
@@ -931,7 +933,7 @@ export class MoviesView {
   const request=++this.drawerRequest;this.drawerAbort?.abort();const controller=this.drawerAbort=new AbortController();
   this.drawerLoading=number;this.drawerError=undefined;this.refreshDrawer();
   try{
-   const {data}=await cachedJson('/api/movies?'+new URLSearchParams({id,season:String(number)}),controller.signal);
+   const {data}=await cachedJson(MOVIES_API+'?'+new URLSearchParams({id,season:String(number)}),controller.signal);
    const title=parseCatalog({titles:[data.title],source:'tmdb'},true).titles[0];
    if(request!==this.drawerRequest||this.route.id!==id)return;
    if(!title||title.id!==id)throw new Error('Episode details are unavailable.');

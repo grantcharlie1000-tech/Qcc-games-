@@ -1,7 +1,8 @@
+import {apiUrl} from '../core/api';
 // ICE servers for a room: STUN always, plus short-lived Cloudflare TURN credentials from our Netlify Function when it is
 // configured. Without them, PeerJS's free public relay is used instead (best effort, shared and rate-limited), because
 // many networks (school and guest Wi-Fi with client isolation, mobile data against Wi-Fi) never allow a direct path.
-export const TURN_ENDPOINT='/.netlify/functions/turn';
+export const TURN_ENDPOINT=apiUrl('turn');
 export const STUN_SERVERS:RTCIceServer[]=[{urls:['stun:stun.cloudflare.com:3478','stun:stun.l.google.com:19302']}];
 /** The relay PeerJS Cloud itself offers by default (its built-in configuration), used when Cloudflare TURN is not set up. */
 export const PUBLIC_RELAY:RTCIceServer[]=[{urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'}];
