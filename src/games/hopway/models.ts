@@ -293,7 +293,7 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
   };
 }
 
-/** A floating log of 2, 3 or 4 tiles along x, 0.76 wide and 0.37 tall with a narrower rounded top,
+/** A floating log of 2, 3 or 4 tiles along x, 0.64 wide and 0.37 tall with a narrower rounded top,
  * bark lines and pale end rings. Origin at the bottom centre. The body is white (tinted with one of
  * LOG_COLORS) and the ring colours are stored relative to the first log colour (so they may exceed
  * 1), which keeps them pale under every tint. */
@@ -302,17 +302,20 @@ export function logGeometry(len: 2 | 3 | 4): THREE.BufferGeometry {
   const br = scratch.r, bg = scratch.g, bb = scratch.b;
   const ratio = (hex: number): Rgb => { scratch.set(hex); return [scratch.r / br, scratch.g / bg, scratch.b / bb]; };
   const ring = ratio(0xd9b38c), heart = ratio(0xb98a5f), bark = [0.8, 0.8, 0.8] as const, e = len / 2;
+  // 0.64 deep in a 1-deep lane, so a margin of water shows along each log and it reads as floating, not as a path.
   const parts: Part[] = [
-    [0, 0, 0, len, 0.26, 0.76, WHITE],
-    [0, 0.26, 0, len, 0.11, 0.58, WHITE],
-    [0, 0.07, 0.385, len - 0.12, 0.035, 0.01, bark], [0, 0.07, -0.385, len - 0.12, 0.035, 0.01, bark],
-    [0, 0.16, 0.385, len - 0.3, 0.035, 0.01, bark], [0, 0.16, -0.385, len - 0.3, 0.035, 0.01, bark],
+    [0, 0, 0, len, 0.26, 0.64, WHITE],
+    [0, 0.26, 0, len, 0.11, 0.48, WHITE],
+    [0, 0.07, 0.325, len - 0.12, 0.035, 0.01, bark], [0, 0.07, -0.325, len - 0.12, 0.035, 0.01, bark],
+    [0, 0.16, 0.325, len - 0.3, 0.035, 0.01, bark], [0, 0.16, -0.325, len - 0.3, 0.035, 0.01, bark],
+    // Bark grain along the top.
+    [0, 0.37, 0.11, len - 0.4, 0.006, 0.035, bark], [0, 0.37, -0.11, len - 0.7, 0.006, 0.035, bark],
   ];
   for (const s of [-1, 1]) {
     parts.push(
-      [s * (e - 0.01), 0.005, 0, 0.03, 0.245, 0.68, ring],
-      [s * (e - 0.01), 0.26, 0, 0.03, 0.105, 0.52, ring],
-      [s * (e + 0.0), 0.07, 0, 0.016, 0.15, 0.3, heart],
+      [s * (e - 0.01), 0.005, 0, 0.03, 0.245, 0.56, ring],
+      [s * (e - 0.01), 0.26, 0, 0.03, 0.105, 0.42, ring],
+      [s * (e + 0.0), 0.07, 0, 0.016, 0.15, 0.26, heart],
     );
   }
   return voxel(parts);

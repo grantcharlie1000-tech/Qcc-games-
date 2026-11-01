@@ -484,12 +484,13 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   function drawWater(lane: RiverLane | LilyLane, row: number, ahead: Lane, behind: Lane): void {
     band(C_WATER, WATER_Y - 0.6, 0.6, curZ, 1);
-    // Banks: a soil wall under the land ahead with foam at its foot, and foam along the near bank.
+    // Banks: a soil wall under the land ahead with a thin line of foam at its foot, and a thin foam line along the
+    // near bank. Kept narrow so the gaps between logs read as open water, not as pale glass.
     if (!isWater(ahead)) {
       band(C_DIRT, WATER_Y - 0.02, 0.319, curZ - 0.498, 0.004);
-      band(C_FOAM, WATER_Y, 0.014, curZ - 0.37, 0.26);
+      band(C_FOAM, WATER_Y, 0.014, curZ - 0.45, 0.1);
     }
-    if (!isWater(behind)) band(C_FOAM, WATER_Y, 0.014, curZ + 0.29, 0.42);
+    if (!isWater(behind)) band(C_FOAM, WATER_Y, 0.014, curZ + 0.44, 0.12);
     // A few light ripples drifting slowly, repeating every 14 tiles.
     for (let k = 0; k < 3; k++) {
       const h = hash(row, 200 + k), len = 0.5 + 0.7 * ((h >>> 19) & 63) / 63, zz = curZ + (((h >>> 25) & 31) / 31 - 0.5) * 0.52;
