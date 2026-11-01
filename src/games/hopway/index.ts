@@ -2,7 +2,7 @@
  * game over) and the wiring between the pure rules over the seeded World and the Three.js scene.
  * All gameplay lives in rules.ts; this file decides when to step, draw, report and announce. */
 import type { GameContext, GameInstance, GameModule } from '../../core/types';
-import { AHEAD_ROWS, BEHIND_ROWS, STEP, type DeathCause, type Dir, type HopwayScene, type Quality, type RunState, type SceneFrame } from './config';
+import { AHEAD_ROWS, BEHIND_ROWS, DEATH_TIME, STEP, type DeathCause, type Dir, type HopwayScene, type Quality, type RunState, type SceneFrame } from './config';
 import { railWarning, trainEntry } from './lanes';
 import { createRun, input as hop, pose, restore as restoreRun, serialize, step, ufoWarning } from './rules';
 import { World } from './world';
@@ -75,7 +75,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const continueRow = q('.hw-continue-row'), lostTitle = q('.hw-lost .hw-title');
   rankings.hidden = !context.openRankings;
 
-  const reduced = () => context.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // One query object for the visit: reduced() runs every simulation step.
+  const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
+  const reduced = () => context.settings.reducedMotion || motionQuery.matches;
   const sfx = createSfx(() => context.settings.sound);
   const abort = new AbortController(), signal = abort.signal;
 
@@ -86,7 +88,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   let paused = false, held = false, frozen = false, disposed = false, lost = false;
   let frameId = 0, last = 0, acc = 0, frames = 0, shown: Layer = null;
   let best = Math.max(0, Math.floor(context.highScore) || 0), bestAtStart = best, announcedBest = false, warned = false;
-  let reportedScore = -1, reportedAt = -Infinity, scorePending = false, reportedRow = -1, nextBell = 0;
+  let reportedScore = -1, reportedRow = -1, nextBell = 0;
   let quality: Quality = 'high', fpsTime = 0, fpsFrames = 0, fps = 0;
   /** Development builds only: a moving average of the main-thread milliseconds one frame takes (simulation plus render submission). */
   let cpuMs = 0;
@@ -167,16 +169,12 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     report();
   }
 
-  /** The shell's score at most every 250 ms (each call writes storage); deaths report at once. */
-  function report(force = false) {
-    const score = run.maxRow;
-    if (score === reportedScore) { scorePending = false; return; }
-    const now = performance.now();
-    if (!force && now - reportedAt < 250) { scorePending = true; return; }
-    reportedScore = score;
-    reportedAt = now;
-    scorePending = false;
-    context.setScore(score);
+  /** Every new best row goes to the shell at once, so a pause, restart or leave can never drop one. A hop takes 120 ms,
+   * so this is at most a few small storage writes a second. */
+  function report() {
+    if (run.maxRow === reportedScore) return;
+    reportedScore = run.maxRow;
+    context.setScore(run.maxRow);
   }
 
   function causeText(cause: DeathCause, row: number): string {
@@ -185,7 +183,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }
 
   function died(cause: DeathCause) {
-    report(true);
+    report();
     if (cause === 'car' || cause === 'train') sfx.hit();
     else if (cause === 'water' || cause === 'swept') sfx.splash();
     else sfx.beam();
@@ -231,7 +229,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     frame.colorBlind = context.settings.colorBlind;
     frame.ufoWarn = ufoWarning(run);
     scene.render(frame);
-    if (scorePending) report();
     if (run.row !== reportedRow) { reportedRow = run.row; context.setLevel(`Row ${run.row}`); }
     setData('phase', run.phase);
     setData('row', String(run.row));
@@ -299,7 +296,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     show(null);
     setHint(true);
     reportedScore = 0;
-    scorePending = false;
     context.setScore(0);
     reportedRow = -1;
     context.setStatus(START_STATUS);
@@ -321,7 +317,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     signal,
     enabled: () => !paused && !disposed && !lost && (held || run.phase === 'ready' || run.phase === 'running'),
     onDir: dir => { if (held) proceed(); else move(dir); },
-    onPause: () => document.querySelector<HTMLButtonElement>('#pause-game')?.click(),
+    // P toggles the shell's own pause (its button, overlay and save), exactly like the toolbar's pause button.
+    onPause: () => { if (context.setPaused) context.setPaused(!paused); else document.querySelector<HTMLButtonElement>('#pause-game')?.click(); },
     onAgain: playAgain,
   });
 
@@ -408,7 +405,11 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       if (!restored || disposed) return;
       cancel();
       world = new World(restored.seed);
+      // Rows far behind are never kept, however far the saved run went (restore caps it at MAX_ROW).
+      world.prune(restored.maxRow - BEHIND_ROWS);
       world.ensure(restored.maxRow + AHEAD_ROWS);
+      // A run saved part-way through its death animation shows the animation's last frame under the card.
+      if (restored.phase === 'over' && restored.death) restored.t = Math.max(restored.t, restored.death.t + DEATH_TIME);
       run = restored;
       acc = 0;
       warned = false;
@@ -420,7 +421,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       scene.reset();
       held = run.phase === 'running';
       reportedScore = run.maxRow;
-      scorePending = false;
       if (run.maxRow > 0) context.setScore(run.maxRow);
       reportedRow = -1;
       setHint(run.phase === 'ready');

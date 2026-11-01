@@ -170,6 +170,25 @@ test('leaving the game stops its loop and removes the test hook', async ({page})
   expect(errors).toEqual([]);
 });
 
+test('every new best reaches the shell at once, even when the game is paused straight after', async ({page}) => {
+  const errors = await openGame(page);
+  // Two quick hops (the second buffered during the first), their landing, and the pause all happen in one synchronous task,
+  // so no animation frame can run in between: whatever the shell shows afterwards was reported at once, not later.
+  await page.evaluate(() => {
+    const test = window.__hopwayTest!;
+    test.hop('up');
+    test.hop('up');
+    test.advance(0.3);
+    document.querySelector<HTMLButtonElement>('#pause-game')!.click();
+  });
+  expect((await state(page)).maxRow).toBe(2);
+  await expect(page.locator('#pause-game')).toHaveAttribute('aria-label', 'Resume game');
+  await expect(page.locator('#game-score strong')).toHaveText('2');
+  await expect(page.locator('#game-best strong')).toHaveText('2');
+  expect(await page.evaluate(() => localStorage.getItem('pocket-arcade:v1:best:hopway'))).toBe('2');
+  expect(errors).toEqual([]);
+});
+
 /** A run saved by pausing (two hops in, on the start seed), then the page reloaded: the game restores it behind Continue. */
 async function reloadWithSavedRun(page: Page): Promise<string[]> {
   const errors = await openGame(page);
@@ -199,9 +218,8 @@ test('a paused run is saved and comes back behind Continue after a reload', asyn
   expect(errors).toEqual([]);
 });
 
-// KNOWN PRODUCT BUG, kept failing on purpose (see task-10-report.md): restore() focuses the Continue button, but the shell calls
-// stage.focus() right after restore() and takes the focus back, so keyboard focus ends on #game-stage and Enter or Space do
-// nothing. index.ts has focusAgain() for exactly this on a restored Game Over card, and no equivalent for the Continue card.
+// The shell calls stage.focus() right after restore(); the restored card has to take keyboard focus back (fixed in 24ae183,
+// which this test caught), or Enter and Space would do nothing.
 test('the restored Continue card takes keyboard focus, so Enter continues', async ({page}) => {
   const errors = await reloadWithSavedRun(page);
   await expect(page.getByRole('button', {name: 'Continue', exact: true})).toBeFocused();
