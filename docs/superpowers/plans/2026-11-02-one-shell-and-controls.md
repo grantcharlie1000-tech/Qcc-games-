@@ -31,12 +31,12 @@
 
 **Files:** `scripts/verify-offline.mjs`, `scripts/verify-update.mjs`, contrast/browser helpers and the failing specs only. Existing `a466f16` contains the full-suite shell corrections.
 
-- [ ] Read every supplied CI failure and map it to existing corrections or a reproducible remaining issue.
-- [ ] Add a regression for partially rasterized contrast masks; retain low-contrast and missing-ink rejection. Fix readiness/measurement without reducing4.5:1.
-- [ ] Use canonical Games back control in verify:offline, including native-menu/pointer-lock readiness. Replace its removed Snake D-pad interaction with a real keyboard turn and verify the saved direction/queue.
-- [ ] Retry the existing natural online discovery event when an in-flight update check coalesces a menu discovery. Exact build identity, explicit activation, offline retention and quota assertions remain unchanged.
-- [ ] Prove build plus full verify:offline, update scenarios and affected specs. For any alleged environment-only online failure, retain earlier-baseline evidence; change no online implementation.
-- [ ] Restore generated evidence, audit the staged paths and commit CI fixes. Confirm `8a68e52` already landed the paint-free/floating-header work.
+- [x] Read every supplied CI failure and map it to existing corrections or a reproducible remaining issue.
+- [x] Add a regression for partially rasterized contrast masks; retain low-contrast and missing-ink rejection. Fix readiness/measurement without reducing4.5:1.
+- [x] Use canonical Games back control in verify:offline, including native-menu/pointer-lock readiness. Replace its removed Snake D-pad interaction with a real keyboard turn and verify the saved direction/queue.
+- [x] Retry the existing natural online discovery event when an in-flight update check coalesces a menu discovery. Exact build identity, explicit activation, offline retention and quota assertions remain unchanged.
+- [x] Prove build plus full verify:offline, update scenarios and affected specs. For any alleged environment-only online failure, retain earlier-baseline evidence; change no online implementation.
+- [x] Restore generated evidence, audit the staged paths and commit CI fixes. Confirm `8a68e52` already landed the paint-free/floating-header work.
 
 ### Task 2: Matching Menu geometry (step 5)
 

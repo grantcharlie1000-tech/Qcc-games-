@@ -38,7 +38,7 @@ async function menu(page){
  if(await page.locator('#menu[open]').count())return;
  if(!await page.locator('#game-options[open]').count()){
   const game=page.locator('#game-menu');
-  if(await game.isVisible())await game.click();else await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  if(await game.count())await game.click();else await page.getByRole('button',{name:'Open menu',exact:true}).click();
  }
  if(await page.locator('#game-options[open]').count())await page.locator('#game-options').getByRole('button',{name:'Settings',exact:true}).click();
 }
@@ -82,12 +82,17 @@ async function diagnostic(page){return await bounded(page.evaluate(async()=>{
 }),5000,'worker/ledger diagnostic (Node deadline)').catch(error=>({unavailable:error.message}));}
 async function cacheKeys(page){return await page.evaluate(()=>caches.keys());}
 async function settleGate(){gate?.writeHead(200,{'Cache-Control':'no-store'});gate?.end('continue');gate=undefined;}
+function onlineDiscovery(page){
+ let next=0;
+ return async()=>{if(Date.now()>=next){next=Date.now()+1000;await page.evaluate(()=>window.dispatchEvent(new Event('online')));}};
+}
 async function delayedNavigation(context,base,discover,expected){
  const delayed=await context.newPage();const navigation=delayed.goto(base+'?delayed-navigation=1');navigation.catch(()=>{});
  await poll(()=>!!gate,'old navigation response held before document commit');
  await discover();
+ const page=context.pages().find(page=>page!==delayed&&page.url().startsWith(base)),retryDiscovery=onlineDiscovery(page);
  let discoveryDeferred=false;try{await poll(async()=>{
- const page=context.pages().find(page=>page!==delayed&&page.url().startsWith(base));
+ if(expected)await retryDiscovery();
  if(expected)return await bounded(page.evaluate(expected=>new Promise(resolve=>{
  const query=worker=>{if(!worker){resolve(false);return;}const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();channel.port2.close();resolve(false);},3000);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();channel.port2.close();resolve(event.data.version===expected);};worker.postMessage({type:'ARCADE_VERSION'},[channel.port2]);};
  navigator.serviceWorker.getRegistration().then(r=>query(r?.waiting?.state==='installed'?r.waiting:r?.active));
@@ -101,7 +106,14 @@ async function delayedNavigation(context,base,discover,expected){
  console.log('DELAYED NAVIGATION OBSERVED',JSON.stringify({state,discoveryDeferred}));return {delayed,state,discoveryDeferred};
 }
 async function acceptVersion(page,target){
- await poll(async()=>await version(page)===target.version||await page.evaluate(async expected=>{const r=await navigator.serviceWorker.getRegistration();if(r?.waiting?.state!=='installed')return false;return await new Promise(resolve=>{const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();resolve(false);},1000);c.port1.onmessage=e=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(e.data.version===expected);};r.waiting.postMessage({type:'ARCADE_VERSION'},[c.port2]);});},target.version),'expected active or installed waiting '+target.label);
+ const retryDiscovery=onlineDiscovery(page);
+ await poll(async()=>{
+  // Menu entry can coalesce with the preceding build's in-flight check. Retry
+  // the same production online entry point after it settles; never force a
+  // worker update or activation, and still require the exact offered build.
+  await retryDiscovery();
+  return await version(page)===target.version||await page.evaluate(async expected=>{const r=await navigator.serviceWorker.getRegistration();if(r?.waiting?.state!=='installed')return false;return await new Promise(resolve=>{const c=new MessageChannel(),t=setTimeout(()=>{c.port1.close();c.port2.close();resolve(false);},1000);c.port1.onmessage=e=>{clearTimeout(t);c.port1.close();c.port2.close();resolve(e.data.version===expected);};r.waiting.postMessage({type:'ARCADE_VERSION'},[c.port2]);});},target.version);
+ },'expected active or installed waiting '+target.label);
  if(await version(page)!==target.version){
   if(!await page.getByRole('button',{name:'Close menu',exact:true}).isVisible())await menu(page);
   const button=page.getByRole('button',{name:'Reload to update',exact:true});await button.waitFor();await button.click();
@@ -201,6 +213,7 @@ try{
   if(process.env.ARCADE_UPDATE_CASE==='legacy-transition'){await legacyWaitingCase(path,base,true);results.push({scope:path,legacyWaitingActivatedDuringInstall:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='legacy-waiting'){await legacyWaitingCase(path,base);results.push({scope:path,legacyAlreadyWaitingMigration:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='waiting'){await controlledWaitingCase(path,base);results.push({scope:path,controlledWaiting:true});continue;}
+  if(process.env.ARCADE_UPDATE_CASE==='cancelled'){await cancelledCase(path,base);results.push({scope:path,cancelledReservationAllowsLaterGc:true});continue;}
   if(!process.env.ARCADE_UPDATE_CASE){await legacyWaitingCase(path,base);await legacyWaitingCase(path,base,true);deployed=A;}
   console.log('SEED LEGACY',path);let context=await launch(profile),a=primaryPage(context);await home(a,base);await download(a);await poll(()=>a.evaluate(()=>!!navigator.serviceWorker.controller),'legacy control');assert.equal(await version(a),A.version);
   await a.evaluate(()=>{localStorage.setItem('pocket-arcade:v1:best:fruit-merge','1234');localStorage.setItem('pocket-arcade:v1:settings',JSON.stringify({sound:false,reducedMotion:true,colorBlind:true}));document.cookie='retainedCookie=unchanged; path=/';});await context.close();
