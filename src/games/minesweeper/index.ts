@@ -10,7 +10,7 @@ const game:GameModule={
  id:'minesweeper',title:'Minesweeper',cover:'game-art/minesweeper/cover.svg',
  rules:'Reveal all safe cells to clear the field. Numbers count mines in the eight surrounding cells. Empty areas open automatically. Your first reveal and its neighbours are always mine-free. Flags left means mine total minus placed flags, not confirmed safe information. You can win without placing any flags.\n\nMouse: left-click to reveal, right-click to flag. Click a revealed number to chord when its adjacent flag count matches. Incorrect flags can cause a loss.\n\nTouch: choose Reveal or Flag, then tap. Optionally hold to flag. Drag to pan a large board; pinch or use − / + to zoom. Moving or using two fingers cancels the tap.\n\nKeyboard: focus a tile, use arrows or Home/End to move; Enter/Space reveals or chords, F flags, C chords. Shortcuts apply only to the focused board.\n\nThe timer starts on the first reveal. Pause and background tabs stop the timer and hide the board. Returning to a saved game excludes time away. Only unassisted wins enter personal bests and online rankings. The score board awards 0, 10,000 or 20,000 base points for Easy, Medium or Hard, plus speed points based on elapsed time. Faster wins score more. Separate Easy, Medium and Hard boards rank fastest times. Practice gives visible-information hints and undo; it never enters competitive records. Sound is optional and starts off.',
  mount(container,context){
-  let board=create('beginner',newSeed()),stats=emptyStats(),paused=false,disposed=false,assisted=false,practice=false,flagMode=false,focus=0,size=matchMedia('(max-width: 480px)').matches?Math.max(32,Math.min(44,Math.floor((innerWidth-32)/9))):44;
+  let board=create('beginner',newSeed()),stats=emptyStats(),paused=false,disposed=false,assisted=false,practice=false,flagMode=false,focus=0,size=matchMedia('(max-width: 480px)').matches?Math.max(32,Math.min(44,Math.floor((innerWidth-32)/9))):58;
   let sound=false,longPress=true,last=performance.now(),history:Board[]=[],hinted:number|null=null;
   const events=new AbortController();
   const root=document.createElement('section');root.className='ms';root.setAttribute('aria-label','Minefield');
@@ -32,10 +32,10 @@ const game:GameModule={
   const $=<T extends HTMLElement=HTMLElement>(s:string)=>root.querySelector<T>(s)!;
   const grid=$('.ms-board'),scroll=$('.ms-scroll'),levelSelect=$<HTMLSelectElement>('.ms-level'),menu=$<HTMLDialogElement>('.ms-settings');
   let resumeAfterMenu=false;
-  // Place QCC's shared controls in the toolbar/menu while retaining their shell handlers.
+  // Keep the shared pause overlay inside the minefield's scrolling frame.
   const moved:{node:HTMLElement;marker:Comment}[]=[];
-  for(const id of ['restart-game','fullscreen-game','rules-game','pause-overlay']){const node=document.getElementById(id);if(node){const marker=document.createComment(id);node.before(marker);moved.push({node,marker});$(id==='pause-overlay'?'.ms-frame':id==='restart-game'?'.ms-tools':'.ms-menu-actions').append(node);
-    if(id==='fullscreen-game'||id==='rules-game')node.addEventListener('click',()=>closeMenu(),{capture:true,signal:events.signal});}}
+  const overlay=document.getElementById('pause-overlay');
+  if(overlay){const marker=document.createComment('pause-overlay');overlay.before(marker);moved.push({node:overlay,marker});$('.ms-frame').append(overlay);}
   let buttons:HTMLButtonElement[]=[];
   function newSeed(){return crypto.getRandomValues(new Uint32Array(1))[0];}
   function syncTime(){const now=performance.now();if(!paused&&board.status==='playing')board.elapsedMs=Math.min(31536000000,board.elapsedMs+Math.max(0,now-last));last=now;}

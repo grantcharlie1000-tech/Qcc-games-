@@ -100,7 +100,7 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
 
  test('a mouse click draws no ring on the menu button, nor on the menu sheet\'s search field',async({page})=>{
   await page.goto('/');
-  const menu=page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true});
+  const menu=page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true});
   await menu.click();
   await expect(page.locator('#menu')).toBeVisible();
   await expectNoOutline(menu);
@@ -119,7 +119,12 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
   await expectWhiteRing(tab);
   await openWatch(page);
   const fullscreen=page.getByRole('button',{name:'Full screen',exact:true});
-  await tabTo(page,fullscreen);
+  // Enter from the adjacent app control, after the asynchronous provider has
+  // mounted. Sweeping Tab through its document races the iframe's own focus.
+  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+  await page.getByRole('button',{name:'Reload player',exact:true}).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(fullscreen).toBeFocused();
   await expectWhiteRing(fullscreen);
  });
 

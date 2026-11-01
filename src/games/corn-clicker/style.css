@@ -310,3 +310,6 @@
 /* Reduced motion: keep state changes, drop decorative movement. */
 .cc-calm *,.cc-calm *::before,.cc-calm *::after{animation:none!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){.cc-root *,.cc-root *::before,.cc-root *::after{animation:none!important;transition-duration:.01ms!important}}
+
+/* Resource totals are always readable in the shared dock, including on Shop/Farm tabs. */
+.cc-root .cc-hud,.cc-root .cc-kernels,.cc-root .cc-rates>span:first-child{display:none}

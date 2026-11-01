@@ -1,3 +1,4 @@
+import {appSettings,gameAction,pauseGame,resumeGame} from '../game-menu';
 import {GAME_IDS} from '../../src/core/types';
 import {guestTest as test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';
@@ -31,7 +32,7 @@ const waitForReadingScroll=async(page:Page)=>{
 };
 const snapshot=(page:Page,id:string)=>page.evaluate(id=>JSON.parse(localStorage.getItem(`pocket-arcade:v1:save:${id}`)!).data,id);
 
-async function gameAction(page:Page,id:string){
+async function playGameAction(page:Page,id:string){
   if(id==='fruit-merge')await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
   if(id==='water-sort'){
     await page.getByRole('button',{name:'Hint',exact:true}).click();
@@ -158,7 +159,7 @@ test.describe('all retained game instances',()=>{
       await page.goto(`/#/game/${id}`);await choose(page,'forces');
       await expect(page.locator('.loading')).toHaveCount(0);
       await expect(page.locator('.game-error')).toHaveCount(0);
-      await gameAction(page,id);
+      await playGameAction(page,id);
       const root=await page.locator('#game-stage > *').first().elementHandle();
       await page.keyboard.press('Escape');
       await expect(page.locator('#study-topic')).toHaveValue('forces');
@@ -192,7 +193,7 @@ for(const modal of ['menu','rules']){
   test(`Escape dismisses the ${modal} before opening the chapter`,async({page})=>{
     await page.goto('/#/game/fruit-merge');await choose(page);
     await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
-    await page.getByRole('button',{name:modal==='menu'?'Open menu':'Game rules',exact:true}).click();
+    if(modal==='menu')await appSettings(page);else await gameAction(page,'Game rules');
     if(modal==='menu')await page.getByRole('searchbox').focus();
     await page.keyboard.press('Escape');
     await expect(page.locator('dialog[open]')).toHaveCount(0);
@@ -215,15 +216,15 @@ for(const modal of ['menu','rules']){
 test('manual pause survives Study and topic navigation keeps the game route intact',async({page})=>{
   await page.goto('/#/game/minesweeper');await choose(page);
   await page.getByRole('gridcell').first().click();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
+  await gameAction(page,'Game options');
+  await pauseGame(page);
   await page.keyboard.press('Escape');
   await page.getByLabel('Study topic',{exact:true}).selectOption('probability');
   expect(new URL(page.url()).hash).toBe('#/collection/10');
   await waitForReadingScroll(page);
   await returnToGame(page);
   await expect(page.locator('#pause-overlay')).toBeVisible();
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await resumeGame(page);
   await expect(page.locator('#pause-overlay')).toBeHidden();
 });
 
@@ -274,7 +275,7 @@ test('library menu keeps cards and requests only approved study images',async({p
   await page.goto('/');await choose(page);
   await page.locator('.game-card img').last().evaluate((image:HTMLImageElement)=>image.decode());
   const card=await page.locator('.game-card').first().elementHandle();
-  await page.getByRole('button',{name:'Open menu'}).click();
+  await appSettings(page);
   const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
   await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   await expect(page.locator('#study-title')).toBeVisible();
@@ -316,7 +317,7 @@ test('returning while the page is hidden leaves the game safely paused',async({p
   await expect(page.locator('#pause-overlay')).toBeVisible();
   await page.evaluate(()=>{Reflect.deleteProperty(document,'hidden');document.dispatchEvent(new Event('visibilitychange'));});
   await expect(page.locator('#pause-overlay')).toBeVisible();
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await resumeGame(page);
   await expect(page.locator('#pause-overlay')).toBeHidden();
 });
 
@@ -324,7 +325,7 @@ for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,he
   test(`topic picker and textbook at ${size.width}`,async({page})=>{
     await page.setViewportSize(size);await page.goto('/');
     await page.screenshot({path:`docs/evidence/article-reading-layout/picker-${size.width}.png`,fullPage:true});
-    await choose(page,'inheritance');await page.getByRole('button',{name:'Open menu'}).click();
+    await choose(page,'inheritance');await appSettings(page);
     await page.getByRole('button',{name:'Study Mode',exact:true}).click();
     await expect(page.locator('#study-title')).toHaveText('From DNA to inherited variation');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
@@ -337,7 +338,7 @@ for(const size of [{width:390,height:844},{width:768,height:1024},{width:1366,he
 }
 
 test('all twenty articles contain substantial readable prose without sidebar or SVG diagrams',async({page})=>{
-  await page.goto('/');await choose(page);await page.getByRole('button',{name:'Open menu'}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  await page.goto('/');await choose(page);await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   const topics=await page.locator('#study-topic option').evaluateAll(options=>options.map(o=>(o as HTMLOptionElement).value));expect(topics).toHaveLength(20);
   for(const id of topics){await page.getByLabel('Study topic',{exact:true}).selectOption(id);await expect(page.locator('.study-text-section')).toHaveCount(6);await expect(page.locator('.study-sidebar,.study-diagram,.study-chapter svg')).toHaveCount(0);const words=(await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length;expect(words).toBeGreaterThanOrEqual(900);expect(await page.locator('.study-example ol li').count()).toBeGreaterThanOrEqual(2);}
 });

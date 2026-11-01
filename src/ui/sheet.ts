@@ -14,6 +14,11 @@ export function sheetOrigin(trigger:Box,sheet:Box):string{
 // Opens the dialog as a modal, then sets where it grows from. The sheet's box comes from its offset values, which ignore
 // the transform of the entry animation, so the origin is measured against the layout the sheet settles into.
 export function openSheet(dialog:HTMLDialogElement,trigger?:Element|null):void{
+  // Only arcade-owned dialogs opt in. Movies uses openSheet too and retains its material.
+  if(['menu','game-options','rules-dialog','accounts-dialog','leaderboard-dialog'].includes(dialog.id)){
+    dialog.classList.add('arcade-sheet');
+    dialog.dataset.glassTone=document.querySelector<HTMLElement>('.game-view')?.dataset.glassTone??'light';
+  }
   dialog.showModal();
   if(!trigger){dialog.style.removeProperty('--sheet-origin');return;}
   const sheet={left:dialog.offsetLeft,top:dialog.offsetTop,width:dialog.offsetWidth,height:dialog.offsetHeight};

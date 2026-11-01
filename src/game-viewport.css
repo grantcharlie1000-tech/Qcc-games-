@@ -1,156 +1,87 @@
-/* A browser viewport layer, independent of native fullscreen. */
+/* The visual viewport comes from play-surface.ts, including browser toolbar changes. */
 html.game-viewport,html.game-viewport body{height:100%;overflow:hidden;overscroll-behavior:none}
-body.in-game .game-view{position:fixed;top:var(--play-top,0px);left:var(--play-left,0px);width:var(--play-width,100%);height:var(--play-height,100dvh);max-width:none;margin:0;padding:8px 12px;display:flex;flex-direction:column;overflow:hidden;background:#191d1c;touch-action:manipulation}
-body.in-game .game-toolbar{flex:0 0 46px;min-height:0;gap:5px;max-width:1080px;width:100%;margin:0 auto}
-body.in-game .game-toolbar h1{font-size:21px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-body.in-game .game-toolbar .icon-button{min-width:34px;min-height:36px;padding:5px}
-body.in-game .game-toolbar .icon-button svg{width:24px;height:24px}
-body.in-game .game-menu-button{margin-left:2px}
-body.in-game .game-metrics{flex:0 0 34px;min-height:0;width:min(100%,1080px);margin:2px auto 7px;padding:5px 10px;font-size:12px;align-items:center}
-body.in-game .game-metrics strong{font-size:18px}
-.record-crown{display:none}
-body.in-game .stage-wrap{flex:1 1 auto;min-height:0;width:100%;display:grid;place-items:center}
+body.in-game .game-view{position:fixed;top:var(--play-top,0px);left:var(--play-left,0px);width:var(--play-width,100%);height:var(--play-height,100dvh);max-width:none;margin:0;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:8px;overflow:hidden;background:#191d1c;touch-action:manipulation}
+body.in-game .stage-wrap{order:1;flex:1 1 auto;min-height:0;width:100%;display:grid;place-items:center}
 body.in-game #game-stage{min-height:0;width:100%;max-height:100%;outline:none}
 body.in-game #game-stage.viewport-fitted{position:absolute;left:50%;top:50%;max-height:none;transform-origin:center;overflow:visible}
-body.in-game #game-status{flex:0 0 auto;min-height:0;max-height:32px;overflow:hidden;font:12px/1.3 system-ui,sans-serif;margin:6px auto 0}
-body.in-game #pause-overlay{border-radius:0}
+body.in-game #game-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+body.in-game #pause-overlay{border-radius:16px}
+/* The play area keeps its reserved space; the game's background continues under
+   the three floating controls. The nav itself paints nothing. */
+.game-surface{position:absolute;inset:0;pointer-events:none;background:var(--game-surface,#191d1c)}
+.game-view[data-game-id=fruit-merge]{--game-surface:#fff2ca}
+.game-view[data-game-id=tower]{--game-surface:#cda1d2 url('/game-art/tower/skyline.svg') center/cover}
+.game-view[data-game-id=flappy-bird]{--game-surface:#f9d9a7}
+.game-view[data-game-id=snake]{--game-surface:#19251f}
+.game-view[data-game-id=maze-muncher]{--game-surface:#090e25}
+.game-view[data-game-id=globle]{--game-surface:#0d1726}
+.game-view[data-game-id=pool]{--game-surface:#162621}
+.game-view[data-game-id=corn-clicker]{--game-surface:#242617}
+.game-view[data-game-id=minesweeper]{--game-surface:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
+/* Native full-bleed canvas scenes already paint behind their top dock. */
+.game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road]) .game-surface{background:transparent}
+.game-dock{position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;justify-content:center;gap:10px;z-index:30;font-family:var(--font-sans)}
+.game-dock>.game-glass{position:relative;border-radius:999px;height:52px;min-height:52px;min-width:0}
+.game-dock>.ui-tab{flex:0 0 52px;min-width:52px;display:flex;flex-direction:row;gap:8px;padding:0;font-size:14px;font-weight:550}
+.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:none}
+.game-dock>.ui-tab svg{width:24px;height:24px;flex:none}
+.game-hud{display:flex;justify-content:center;align-items:center;gap:18px;flex:0 1 auto;min-width:96px;max-width:calc(100% - 124px);padding:0 20px;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
+.game-dock>.game-hud{min-width:96px}
+.game-hud-item{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;text-align:center;line-height:1.2}
+.game-hud small{font-size:12px;color:inherit;white-space:nowrap}
+.game-hud small:empty{display:none}
+.game-hud strong{font-size:18px;font-weight:650;line-height:1.25;text-wrap:balance}
+/* The lens and rim are siblings too; count HUD fields, not decorative layers. */
+.game-hud:not(:has(.game-hud-item~.game-hud-item)) strong{font-size:20px}
+.game-view[data-game-id=block-fill] .game-hud-item:last-child{flex-shrink:0}
+@media(min-width:700px){
+  .game-dock>.ui-tab{flex-basis:108px;padding:0 18px}
+  .game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:inline}
+  .game-dock>.ui-tab svg{width:28px;height:28px}
+  .game-hud{max-width:calc(100% - 236px)}
+  .game-hud small{font-size:14px}
+  .game-hud strong{font-size:20px}
+  .game-hud:not(:has(.game-hud-item~.game-hud-item)) strong{font-size:22px}
+}
+@media(max-width:359px){.game-dock{gap:8px}.game-hud{gap:10px;padding-inline:10px}.game-hud:not(:has(.game-hud-item~.game-hud-item)) strong{font-size:18px}}
+/* Blockcraft's status icons share the phone's upper corner with the dock.
+   Leave room for the 52px control and its press lift, including a safe inset. */
+@media(max-width:699px){.game-view[data-game-id=blockcraft] .bc-effects{top:max(72px,calc(env(safe-area-inset-top,0px) + 64px))}}
+/* These captions were drawn on the page's dark surround; they now sit on the
+   fruit game's cream surface, so use the game's brown ink. */
+.game-view[data-game-id=fruit-merge] :is(.fm-eyebrow,.fm-next-name,.fm-count){color:#694b38}
+.game-view[data-game-id=tower] .tower-feedback{text-shadow:0 1px #5a496f}
+.game-view:is([data-game-id=quadfall],[data-game-id=fivefold]) .game-dock{order:0}
+/* These scenes already reserve their top HUD area. Keep their canvas/input mapping intact. */
+.game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(var(--play-height,100dvh) * .54));--scene-bg:#55c3ec}
+.game-view[data-game-id=water-sort]{--scene-width:min(100%,1100px);--scene-bg:#221b2e}
+.game-view[data-game-id=color-blocks]{--scene-width:min(100%,calc(var(--play-height,100dvh) * .85));--scene-bg:#30223b}
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road]){padding:0;display:block;background:var(--scene-bg,#101a25)}
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road]) .stage-wrap,
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road]) #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
+body.in-game .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft],[data-game-id=crossy-road]) .game-dock{position:absolute;left:50%;top:max(8px,env(safe-area-inset-top));transform:translateX(-50%);width:min(calc(100% - 24px),560px);margin:0}
+body.in-game .game-view:is([data-game-id=globle],[data-game-id=corn-clicker],[data-game-id=minesweeper],[data-game-id=slipline],[data-game-id=quadfall],[data-game-id=fivefold],[data-game-id=water-sort],[data-game-id=color-blocks],[data-game-id=pool]) #game-stage{height:100%;max-height:none;min-height:0}
+body.in-game .game-view[data-game-id=corn-clicker] #game-stage{container-type:inline-size}
+body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}
+.game-chrome-menu .dialog-head h1{font-size:26px;line-height:1.15;margin:0}
+.game-menu-eyebrow{font:700 10px/1.3 var(--font-sans);letter-spacing:.16em;color:#b9bcc5;margin:0 0 4px}
+.game-chrome-menu.ui-glass-sheet{font-family:var(--font-sans);width:min(420px,calc(100% - 24px));max-height:calc(var(--play-height,100dvh) - 24px);padding:20px}
+.game-chrome-menu .game-metrics{display:flex;flex-wrap:wrap;gap:8px 16px;margin:0 0 16px;padding:12px;background:#ffffff09;border:1px solid var(--line);border-radius:16px;font:12px/1.4 var(--font-sans)}
+.game-chrome-menu .game-metrics strong{font:700 16px/1.4 var(--font-sans);margin-left:6px;color:#fff}
+.game-menu-actions,.game-menu-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.game-menu-options{margin-bottom:16px}
+.game-menu-action{min-height:48px;min-width:0;display:flex;align-items:center;justify-content:flex-start;gap:9px;padding:12px;border:1px solid var(--line-strong);border-radius:14px;background:#ffffff09;color:#f4f4f5;text-align:left;font:600 13px/1.3 var(--font-sans)}
+.game-menu-action svg{width:20px;height:20px;flex:none}
+.game-menu-action[aria-pressed=true]{background:var(--glass-pill);border-color:#ffffff60}
+.game-menu-action#pause-game{grid-column:1/-1;background:#f4f4f5;color:#18181b;justify-content:center}
+.game-menu-choice{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;font:600 13px/1.4 var(--font-sans)}
+.game-menu-choice select{min-width:0;width:65%;min-height:44px;padding:8px;border:1px solid var(--line-strong);border-radius:12px;background:#27272a;color:#fff}
+.game-touch-setting{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 0;font:13px/1.4 var(--font-sans)}
+.game-menu-source{display:none!important}
+@media(hover:hover) and (pointer:fine){.game-menu-action:hover{background:#ffffff18}.game-menu-action#pause-game:hover{background:#fff}}
+@media(max-height:480px){body.in-game .game-view{padding-block:max(4px,env(safe-area-inset-top)) max(4px,env(safe-area-inset-bottom));gap:4px}}
 
-/* Referenced games reserve their whole surface; the compact HUD overlays it. */
-.game-view[data-game-id=animal-stack]{--scene-width:min(var(--play-width,100vw),calc(100dvh * .54));--scene-bg:#55c3ec}
-.game-view[data-game-id=water-sort]{--scene-width:min(var(--play-width,100vw),calc(100dvh * .58));--scene-bg:#221b2e}
-.game-view[data-game-id=color-blocks]{--scene-width:min(var(--play-width,100vw),calc(100dvh * .72));--scene-bg:#30223b}
-.game-view[data-game-id=ball-run]{--scene-width:var(--play-width,100vw);--scene-bg:#000}
-.game-view[data-game-id=blockcraft]{--scene-width:var(--play-width,100vw);--scene-bg:#9fd3ff}
-body.in-game .game-view[data-reference-game=true]{padding:0;background:var(--scene-bg);display:block}
-body.in-game .game-view[data-reference-game=true] .stage-wrap,
-body.in-game .game-view[data-reference-game=true] #game-stage{position:absolute;inset:0;width:100%;height:100%;max-height:none;display:grid;place-items:center}
-body.in-game .game-view[data-reference-game=true] .game-toolbar{position:absolute;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:var(--scene-width);height:40px;padding:0 12px;display:flex;justify-content:space-between;z-index:25;pointer-events:none}
-body.in-game .game-view[data-reference-game=true] .game-toolbar .icon-button{pointer-events:auto;width:36px;height:36px;min-height:36px;min-width:36px;border-radius:50%;background:#0003;color:white;padding:7px}
-body.in-game .game-view[data-reference-game=true] .game-toolbar .icon-button svg{width:25px;height:25px}
-.game-view[data-reference-game=true] #game-title,
-.game-view[data-reference-game=true] #game-level,
-.game-view[data-reference-game=true] #game-status{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important}
-body.in-game .game-view[data-reference-game=true] .game-metrics{position:absolute;top:max(15px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:24;margin:0;padding:0;display:flex;justify-content:center;gap:12px;background:none;width:calc(var(--scene-width) - 116px);height:34px;pointer-events:none}
-.game-view[data-reference-game=true] #game-score,
-.game-view[data-reference-game=true] #game-best{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;width:85px;max-width:calc(50% - 4px);height:34px;border-radius:4px;background:#0004;font-family:Arcade,sans-serif;line-height:1}
-.game-view[data-reference-game=true] .metric-label{font-size:clamp(8px,1.3dvh,10px);font-weight:800;color:white;white-space:nowrap}
-body.in-game .game-view[data-reference-game=true] .game-metrics strong{font:800 clamp(13px,2.2dvh,18px)/1 Arcade,sans-serif;color:#fff;margin:2px 0 0}
-.game-view[data-reference-game=true] #game-best .metric-label,
-body.in-game .game-view[data-reference-game=true] #game-best strong{color:#37e2b3}
-.game-view[data-reference-game=true] .record-crown{position:absolute;width:30px;height:13px;display:block;top:-9px;left:calc(50% - 15px);color:#0004}
-/* Secondary shared controls stay small and away from the central game action. */
-body.in-game .game-view[data-reference-game=true] #pause-game,
-body.in-game .game-view[data-reference-game=true] #rules-game,
-body.in-game .game-view[data-reference-game=true] #favourite-game,
-body.in-game .game-view[data-reference-game=true] #game-menu{position:fixed;top:auto;bottom:max(7px,env(safe-area-inset-bottom));width:28px;height:28px;min-width:28px;min-height:28px;padding:5px;background:#0002;color:#ffffffc9}
-body.in-game .game-view[data-reference-game=true] #game-menu{right:10px;margin:0}
-body.in-game .game-view[data-reference-game=true] #rules-game{right:44px}
-body.in-game .game-view[data-reference-game=true] #pause-game{right:78px}
-body.in-game .game-view[data-reference-game=true] #favourite-game{right:112px}
-body.in-game .game-view[data-reference-game=true] #pause-game svg,
-body.in-game .game-view[data-reference-game=true] #rules-game svg,
-body.in-game .game-view[data-reference-game=true] #favourite-game svg,
-body.in-game .game-view[data-reference-game=true] #game-menu svg{width:18px;height:18px}
-/* Fixed descendants must not use the transformed header as their containing block. */
-body.in-game .game-view[data-reference-game=true] .game-toolbar{transform:none;left:calc((var(--play-width,100vw) - var(--scene-width)) / 2)}
-body.in-game .game-view[data-game-id=water-sort] .game-metrics,
-body.in-game .game-view[data-game-id=ball-run] .game-metrics,
-body.in-game .game-view[data-game-id=blockcraft] .game-metrics{display:none}
-body.in-game .game-view[data-game-id=ball-run] #pause-game,
-body.in-game .game-view[data-game-id=blockcraft] #pause-game{position:static;width:36px;height:36px;min-width:36px;min-height:36px;margin-left:auto;background:#0003}
-body.in-game .game-view[data-game-id=ball-run] #pause-game svg,
-body.in-game .game-view[data-game-id=blockcraft] #pause-game svg{width:25px;height:25px}
-body.in-game .game-view[data-game-id=ball-run] #restart-game,
-body.in-game .game-view[data-game-id=blockcraft] #restart-game{position:fixed;bottom:7px;right:78px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px}
-body.in-game .game-view[data-game-id=ball-run] #restart-game svg,
-body.in-game .game-view[data-game-id=blockcraft] #restart-game svg{width:18px;height:18px}
-/* Full screen sits in the top bar, clear of the in-flow corner control, and does not change that control's flex place. */
-body.in-game .game-view[data-reference-game=true] #fullscreen-game{position:absolute;top:2px;right:56px;z-index:2;margin:0}
-body.in-game .game-view[data-game-id=neon-coil] #fullscreen-game{top:max(20px,env(safe-area-inset-top));right:calc(max(22px,env(safe-area-inset-right)) + 52px);left:auto;bottom:auto;width:42px;height:42px;min-width:42px;min-height:42px}
-/* Animal Stack, Color Blocks and Water Sort keep a centred title under the top bar. Ball Run's score sits in that same row, measured against Back and Pause, so full screen joins the bottom cluster there too. */
-body.in-game .game-view[data-game-id=animal-stack] #fullscreen-game,
-body.in-game .game-view[data-game-id=color-blocks] #fullscreen-game,
-body.in-game .game-view[data-game-id=water-sort] #fullscreen-game,
-body.in-game .game-view[data-game-id=ball-run] #fullscreen-game{position:fixed;top:auto;bottom:max(7px,env(safe-area-inset-bottom));right:146px;width:28px;height:28px;min-width:28px;min-height:28px;padding:5px;background:#0002;color:#ffffffc9}
-body.in-game .game-view[data-game-id=animal-stack] #fullscreen-game svg,
-body.in-game .game-view[data-game-id=color-blocks] #fullscreen-game svg,
-body.in-game .game-view[data-game-id=water-sort] #fullscreen-game svg,
-body.in-game .game-view[data-game-id=ball-run] #fullscreen-game svg{width:18px;height:18px}
-/* Globle lays itself out responsively inside the whole stage. */
-body.in-game .game-view[data-game-id=globle] .stage-wrap{display:block}
-body.in-game .game-view[data-game-id=globle] #game-stage{height:100%;max-height:none;min-height:0}
-body.in-game .game-view[data-game-id=globle] .game-metrics{display:none}
-/* Corn Clicker fills the whole viewport below the toolbar and lays out its own panels. */
-body.in-game .game-view[data-game-id=corn-clicker] .stage-wrap{display:block}
-body.in-game .game-view[data-game-id=corn-clicker] #game-stage{height:100%;max-height:none;min-height:0;container-type:inline-size}
-body.in-game .game-view[data-game-id=corn-clicker] .game-metrics,
-body.in-game .game-view[data-game-id=corn-clicker] #game-status{display:none}
-@media(max-height:480px){body.in-game .game-view:not([data-reference-game=true]){padding:3px 10px}body.in-game .game-view:not([data-reference-game=true]) .game-toolbar{flex-basis:38px}body.in-game .game-view:not([data-reference-game=true]) .game-metrics{margin:0 auto 3px;flex-basis:28px}body.in-game .game-view:not([data-reference-game=true]) #game-status{font-size:10px;max-height:15px;margin-top:3px}}
-
-/* Rankings float over the page and never take layout space from the game. Collapsed is a small pill. */
-.lb-sidebar{position:fixed;left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));z-index:26;font:14px/1.4 system-ui,sans-serif;color:#f1eee5}
-.lb-sidebar[hidden],.lb-sidebar [hidden]{display:none}
-.lb-toggle{display:flex;align-items:center;gap:7px;height:38px;padding:0 14px 0 11px;border:1px solid #ffffff2b;border-radius:999px;background:#202426e6;color:#ffe0a4;font:800 14px/1 Arcade,sans-serif;letter-spacing:.03em;white-space:nowrap;box-shadow:0 6px 18px #0006;backdrop-filter:blur(6px);transition:transform 160ms var(--ease-out),background-color 160ms}
-.lb-toggle svg{width:19px;height:19px;flex:none}
-.lb-toggle:active{transform:scale(.96)}
-.lb-panel{width:min(310px,calc(100vw - 24px));max-height:min(520px,calc(100dvh - 24px));display:flex;flex-direction:column;padding:12px 12px 12px 14px;background:#202426f2;border:1px solid #ffffff24;border-radius:16px;box-shadow:0 14px 40px #000a;backdrop-filter:blur(8px);transform-origin:bottom left;animation:lb-in 180ms var(--ease-out)}
-@keyframes lb-in{from{opacity:0;transform:translateY(6px) scale(.97)}}
-.lb-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
-.lb-head h2{flex:1;min-width:0;margin:0;display:flex;flex-direction:column;line-height:1.1}
-.lb-head h2 span{font:800 17px/1.15 Arcade,sans-serif;color:#ffe0a4;white-space:nowrap}
-.lb-head h2 small{font:13px/1.3 system-ui,sans-serif;color:#bfc6c3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lb-head .icon-button{min-width:34px;min-height:34px;padding:5px;flex:none}
-.lb-head .icon-button svg{width:22px;height:22px}
-.lb-sidebar .lb-status{min-height:0;margin:6px 0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lb-scroll{flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0 -4px;padding:0 4px}
-.lb-sidebar .lb-table{table-layout:fixed;font-size:14px}
-.lb-sidebar .lb-table th,.lb-sidebar .lb-table td{padding:6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
-.lb-sidebar .lb-table th{font-size:11px}
-.lb-sidebar .lb-table th:first-child{width:34px}
-.lb-sidebar .lb-table th:last-child{width:84px}
-.lb-sidebar .lb-table td:first-child{color:#bfc6c3}
-.lb-sidebar .lb-table tr:nth-child(-n+3) td:first-child{color:#ffe0a4;font-weight:700}
-/* Corn Clicker fills the viewport to its bottom edge, so its rankings sit in the empty middle of the toolbar instead. */
-body.in-game .game-view[data-game-id=corn-clicker]~.lb-sidebar{top:max(12px,env(safe-area-inset-top));bottom:auto;left:50%;transform:translateX(-50%)}
-body.in-game .game-view[data-game-id=corn-clicker]~.lb-sidebar .lb-panel{transform-origin:top center}
-.lb-actions{display:flex;gap:8px;margin-top:10px}
-.lb-actions .game-button{flex:1 1 auto;min-height:36px;padding:6px 10px;font-size:14px;white-space:nowrap;margin:0;width:auto}
-.lb-actions .lb-refresh{flex:0 0 auto}
-@media(hover:hover) and (pointer:fine){.lb-toggle:hover{background:#2c3134f0}}
-@media(prefers-reduced-motion:reduce){.lb-panel{animation:none}}
-.reduce-motion .lb-panel{animation:none}
 /* Playing: no double-tap zoom. Pinch is also cancelled in script. Text fields stay selectable. */
 html.play-locked,html.play-locked body{touch-action:manipulation;-webkit-text-size-adjust:100%}
 html.play-locked body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html.play-locked input,html.play-locked textarea,html.play-locked select,html.play-locked [contenteditable]{-webkit-user-select:text;user-select:text;touch-action:manipulation}
-@media(max-width:1099px){.lb-toggle{width:40px;height:40px;padding:0;justify-content:center}.lb-toggle span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}}
-
-body.in-game .game-view[data-game-id=slipline] #game-stage{height:100%;container-type:size}
-body.in-game .game-view[data-game-id=quadfall] #game-stage{height:100%}
-/* Fivefold sizes its board and keyboard to the available stage. */
-body.in-game .game-view[data-game-id=fivefold] .stage-wrap{display:block}
-body.in-game .game-view[data-game-id=fivefold] #game-stage{height:100%;max-height:none;min-height:0}
-/* Crossy Road paints behind the shared shell controls. No stage fit/transform:
-   the WebGL drawing buffer follows its actual CSS size, including on rotation.
-   These header rules are scoped to the current toolbar; PR #80's shared dock
-   can replace it without a second HUD or game-owned navigation. */
-body.in-game .game-view[data-game-id=crossy-road]{padding:0;background:#96d84d}
-body.in-game .game-view[data-game-id=crossy-road] .stage-wrap{position:absolute;inset:0;display:block;width:100%;height:100%}
-body.in-game .game-view[data-game-id=crossy-road] #game-stage{height:100%;max-height:none;min-height:0}
-body.in-game .game-view[data-game-id=crossy-road] .game-toolbar{position:absolute;inset:env(safe-area-inset-top,0px) 0 auto;z-index:25;height:48px;padding:4px 10px;max-width:none;background:rgb(24 29 27 / .24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-body.in-game .game-view[data-game-id=crossy-road] .game-toolbar h1{font:600 16px/1.2 var(--font-sans)}
-body.in-game .game-view[data-game-id=crossy-road] .game-metrics{position:absolute;top:calc(48px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:24;width:min(340px,calc(100% - 24px));height:34px;margin:6px 0;padding:5px 12px;border-radius:999px;background:rgb(24 29 27 / .3);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);pointer-events:none}
-body.in-game .game-view[data-game-id=crossy-road] #game-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
-
-/* Keep renamed titles readable above the shared controls on narrow phones. */
-@media(max-width:420px){
- body.in-game .game-view:is([data-game-id=maze-muncher],[data-game-id=fivefold],[data-game-id=fruit-merge],[data-game-id=tower],[data-game-id=color-connect]) .game-toolbar{
-  display:grid;grid-template-columns:repeat(7,minmax(34px,1fr));grid-template-rows:20px 40px;gap:4px 0;flex-basis:64px;
- }
- body.in-game .game-view:is([data-game-id=maze-muncher],[data-game-id=fivefold],[data-game-id=fruit-merge],[data-game-id=tower],[data-game-id=color-connect]) .game-toolbar h1{
-  grid-column:1/-1;grid-row:1;margin:0;text-align:center;font-size:17px;line-height:20px;overflow:visible;text-overflow:clip;
- }
- body.in-game .game-view:is([data-game-id=maze-muncher],[data-game-id=fivefold],[data-game-id=fruit-merge],[data-game-id=tower],[data-game-id=color-connect]) .game-toolbar .icon-button{
-  justify-self:center;min-height:40px;margin:0;
- }
-}
