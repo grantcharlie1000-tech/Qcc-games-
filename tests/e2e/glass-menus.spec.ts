@@ -27,7 +27,7 @@ async function originOf(sheet:Locator){
 }
 async function expectGlassSheet(dialog:Locator){
   await expect(dialog).toHaveClass(/\bui-glass-sheet\b/);
-  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(28px)');
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(8px)');
   const family=await dialog.locator('h2').first().evaluate(el=>getComputedStyle(el).fontFamily);
   expect(family).toContain('-apple-system');
   expect(family).not.toContain('Arcade');
@@ -192,14 +192,14 @@ test('a failed update check keeps the offline download tinted',async({page})=>{
   expect(await tintedMenuActions(page)).toEqual(['Make all games available offline']);
 });
 
-test('the one tinted action in the rules is cream with dark ink in a 48 px capsule',async({page})=>{
+test('the primary rules action uses contrasting neutral ink in a 48 px capsule',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/fruit-merge');
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
   await gameAction(page,'Game rules');
   const done=page.getByRole('button',{name:'Let’s play',exact:true});
-  expect(await done.evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.color,s.borderTopLeftRadius,s.minHeight];})).toEqual(['rgb(255, 224, 164)','rgb(42, 42, 46)','999px','48px']);
-  expect(await page.locator('#rules-text').evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.color];})).toEqual(['17px','rgba(255, 255, 255, 0.72)']);
+  expect(await done.evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.color,s.borderTopLeftRadius,s.minHeight];})).toEqual(['rgb(17, 19, 22)','rgb(255, 255, 255)','999px','48px']);
+  expect(await page.locator('#rules-text').evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.color];})).toEqual(['17px','rgb(17, 19, 22)']);
 });
 
 test('the sheet dims the page with a plain backdrop, and no control inside it has a backdrop filter of its own',async({page})=>{
@@ -208,12 +208,12 @@ test('the sheet dims the page with a plain backdrop, and no control inside it ha
   await openMenuFromIsland(page);
   const menu=page.locator('#menu');
   // The dim fades in over 220 ms, so its colour is read once it has arrived.
-  await expect.poll(()=>menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.32)');
+  await expect.poll(()=>menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.16)');
   expect(await menu.evaluate(el=>getComputedStyle(el,'::backdrop').backdropFilter)).toBe('none');
   expect(await menu.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').length)).toBe(0);
 });
 
-test('a keyboard focus ring is a 2 px white outline on the sheet\'s buttons, and its search field takes an inner ring',async({page})=>{
+test('a keyboard focus ring is a 2 px contrasting outline on the sheet\'s buttons, and its search field takes an inner ring',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
@@ -221,12 +221,12 @@ test('a keyboard focus ring is a 2 px white outline on the sheet\'s buttons, and
   await page.keyboard.press('Tab');
   const search=page.getByRole('searchbox');
   await expect(search).toBeFocused();
-  expect(await search.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).boxShadow])).toEqual(['none',expect.stringContaining('rgba(255, 255, 255, 0.7) 0px 0px 0px 1px inset')]);
+  expect(await search.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).boxShadow])).toEqual(['none',expect.stringContaining('rgb(17, 19, 22) 0px 0px 0px 1px inset')]);
   // Shift+Tab returns to the close button, which keeps the white outline.
   await page.keyboard.press('Shift+Tab');
   const close=page.getByRole('button',{name:'Close menu',exact:true});
   await expect(close).toBeFocused();
-  expect(await close.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineColor,getComputedStyle(el).outlineOffset])).toEqual(['solid','2px','rgb(255, 255, 255)','2px']);
+  expect(await close.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineColor,getComputedStyle(el).outlineOffset])).toEqual(['solid','2px','rgb(17, 19, 22)','2px']);
 });
 
 test('Reduce Transparency gives an opaque sheet with no blur (Chromium only)',async({page,browserName})=>{
@@ -357,25 +357,25 @@ test('the accounts and leaderboard dialogs use glass fields and hairlines',async
   await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
   const username=page.locator('#account-username');
   await expect(username).toBeVisible();
-  expect(await username.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(255, 255, 255, 0.1)');
+  expect(await username.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.055)');
   await page.getByRole('button',{name:'Play as guest',exact:true}).click();
   await openMenuFromIsland(page);
   await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
   await expect(page.locator('#leaderboard-dialog')).toBeVisible();
-  expect(await page.locator('#leaderboard-game').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(255, 255, 255, 0.1)');
-  expect(await page.locator('#leaderboard-dialog thead th').first().evaluate(el=>getComputedStyle(el).borderBottomColor)).toBe('rgba(255, 255, 255, 0.12)');
+  expect(await page.locator('#leaderboard-game').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.055)');
+  expect(await page.locator('#leaderboard-dialog thead th').first().evaluate(el=>getComputedStyle(el).borderBottomColor)).toBe('rgba(0, 0, 0, 0.12)');
 });
 
-// Games and Study keep their own look. The generic dialog rules that the sheets replace must not reach their panels.
-test('Minesweeper options and the Study privacy dialog keep their own look',async({page})=>{
+// Game-owned menu panels opt into arcade glass; Study remains separate.
+test('Minesweeper options use arcade glass while Study privacy keeps its own look',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms-board')).toBeVisible();
   await gameAction(page,'Game options');
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
-  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgb(35, 49, 40)','18px']);
-  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toMatch(/^rgba\(11, 19, 15, 0\.9/);
+  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(255, 255, 255, 0.06)','32px']);
+  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.16)');
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
 

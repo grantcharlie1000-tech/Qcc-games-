@@ -9,8 +9,9 @@ async function fixture(page:Page,board=create('beginner',7),extra={}){
  await page.goto(url);await expect(cell(page,0)).toBeVisible();return board;
 }
 const saved=(page:Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:minesweeper')!).data);
-async function settings(page:Page){if(!await page.locator('.ms-settings').isVisible())await gameAction(page,'Game options');}
-async function closeSettings(page:Page){if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Close game options'}).click();}
+// A closed native sheet remains painted briefly during its exit transition.
+async function settings(page:Page){if(!await page.locator('.ms-settings[open]').count())await gameAction(page,'Game options');}
+async function closeSettings(page:Page){if(await page.locator('.ms-settings[open]').count())await page.getByRole('button',{name:'Close game options'}).click();}
 async function win(page:Page,b:Board){for(let i=0;i<b.cells.length;i++)if(b.cells[i]!==-1&&await cell(page,i).getAttribute('data-state')!=='open')await cell(page,i).click();}
 
 test('mouse, scoped keyboard, exact save, hidden pause and confirmed restart',async({page})=>{

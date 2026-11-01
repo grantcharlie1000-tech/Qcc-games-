@@ -119,7 +119,12 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
   await expectWhiteRing(tab);
   await openWatch(page);
   const fullscreen=page.getByRole('button',{name:'Full screen',exact:true});
-  await tabTo(page,fullscreen);
+  // Enter from the adjacent app control, after the asynchronous provider has
+  // mounted. Sweeping Tab through its document races the iframe's own focus.
+  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+  await page.getByRole('button',{name:'Reload player',exact:true}).focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(fullscreen).toBeFocused();
   await expectWhiteRing(fullscreen);
  });
 

@@ -11,11 +11,12 @@ return page.evaluate(async({shot,mask,boxes})=>{
       const inkMask=context.getImageData(0,0,c.width,c.height).data;
       const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
       return boxes.map(b=>{
-        const ink=lum(b.color.match(/[\d.]+/g)!.slice(0,3).map(Number));let worst=Infinity;
+        const color=b.color.match(/[\d.]+/g)!.map(Number),alpha=color[3]??1;let worst=Infinity;
         for(let y=Math.max(0,Math.ceil(b.y));y<Math.min(c.height,Math.floor(b.y+b.h));y++)for(let x=Math.max(0,Math.ceil(b.x));x<Math.min(c.width,Math.floor(b.x+b.w));x++){
           const i=(y*c.width+x)*4;
           if(Math.min(inkMask[i],inkMask[i+1],inkMask[i+2])<245)continue;
-          const bg=lum([data[i],data[i+1],data[i+2]]);
+          const backdrop=[data[i],data[i+1],data[i+2]],bg=lum(backdrop);
+          const ink=lum(color.slice(0,3).map((v,c)=>v*alpha+backdrop[c]*(1-alpha)));
           worst=Math.min(worst,(Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05));
         }
         return Number.isFinite(worst)?worst:0;

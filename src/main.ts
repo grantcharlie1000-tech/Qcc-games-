@@ -12,6 +12,7 @@ import {openSheet} from './ui/sheet';
 import {trackInputMode} from './ui/focus';
 import './style.css';
 import './game-viewport.css';
+import './ui/arcade-sheets.css';
 import {games, artUrl, loadGame} from './core/catalog';
 import type {GameId, GameInstance} from './core/types';
 import * as store from './core/storage';

@@ -45,6 +45,12 @@ export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLEle
   const dock=view.querySelector<HTMLElement>('.game-dock')!;
   const hud=dock.querySelector<HTMLElement>('.game-hud')!;
   view.dataset.glassTone=lightSurfaces.has(id)?'light':'dark';
+  // Presentation only: the games retain their native dialog lifecycle and actions.
+  for(const panel of view.querySelectorAll<HTMLElement>('.ms-settings,.ff-dialog')){
+    panel.classList.add('arcade-sheet');
+    panel.dataset.glassTone=view.dataset.glassTone;
+    if(panel instanceof HTMLDialogElement)panel.classList.add('ui-glass-sheet');
+  }
   const surface=view.querySelector<HTMLElement>('.game-surface')!;
   const source=surfaceSources[id]?view.querySelector(surfaceSources[id]!):null;
   if(source){
