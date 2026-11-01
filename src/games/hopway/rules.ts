@@ -2,7 +2,7 @@
  * persistence live here and nowhere else. Pure: no DOM, no Three.js, no clock and no randomness, so a run can be replayed,
  * saved and tested at any time. Hazards are functions of the world time `t` (lanes.ts). */
 import {
-  BACK_LIMIT, BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, DIRS, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, SAFE_LAG,
+  BACK_LIMIT, BAND_MAX, BAND_MIN, COLS, DEATH_TIME, DEATH_TIME_REDUCED, DIRS, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, MAX_ROW, SAFE_LAG,
   START_COL, lerp, scrollRate,
   type Death, type DeathCause, type Dir, type Lane, type LaneSource, type PlayerPose, type RunState, type StepEvents,
 } from './config';
@@ -197,7 +197,7 @@ export function restore(data: unknown): RunState | null {
     const { v, seed, t, phase, row, x, fromRow, fromX, hop, hopDir, facing, queued, maxRow, lastProgress, safeLine, started, death } = data;
     if (v !== 1 || !isInt(seed, 0, 4294967295) || !isNum(t, 0, 1e7)) return null;
     if (phase !== 'ready' && phase !== 'running' && phase !== 'over') return null;
-    if (!isInt(row, 0, 1e6) || !isInt(maxRow, 0, 1e6) || !isInt(fromRow, 0, 1e6)) return null;
+    if (!isInt(row, 0, MAX_ROW) || !isInt(maxRow, 0, MAX_ROW) || !isInt(fromRow, 0, MAX_ROW)) return null;
     if (maxRow - row < 0 || maxRow - row > BACK_LIMIT || Math.abs(fromRow - row) > 1) return null;
     if (!isNum(x, BAND_MIN - 1, BAND_MAX + 1) || !isNum(fromX, BAND_MIN - 1, BAND_MAX + 1)) return null;
     if (typeof hop !== 'number' || !(hop === -1 || (hop >= 0 && hop < HOP_TIME))) return null;
@@ -209,7 +209,7 @@ export function restore(data: unknown): RunState | null {
     if (phase === 'running' && (!started || death !== null)) return null;
     let restored: Death | null = null;
     if (phase === 'over') {
-      if (!isRecord(death) || !isCause(death.cause) || !isNum(death.t, 0, t) || !isInt(death.row, 0, 1e6)) return null;
+      if (!isRecord(death) || !isCause(death.cause) || !isNum(death.t, 0, t) || !isInt(death.row, 0, MAX_ROW)) return null;
       if (!isNum(death.x, -Infinity, Infinity) || (death.dir !== -1 && death.dir !== 1)) return null;
       restored = { cause: death.cause, t: death.t, row: death.row, x: death.x, dir: death.dir };
     }

@@ -129,6 +129,9 @@ export const SAFE_ROWS = 5;
 export const AHEAD_ROWS = 40;
 export const BEHIND_ROWS = 20;
 export const MOVERS = 3;
+/** The furthest row a saved run may claim. Restoring regenerates every row up to it, so the cap keeps a tampered save
+ * from freezing the tab; at about three rows a second it is hours beyond any real run. */
+export const MAX_ROW = 50_000;
 /** Every road gap leaves a standing player clear for at least this long (s). */
 export const CROSS_WINDOW = 3 * HOP_TIME + 0.25;
 /** A fixed column is never without a log for longer than this (s). */

@@ -543,8 +543,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
     band(C_STEEL, 0.045, 0.06, curZ + 0.25, 0.07);
     const s = trainSpan(lane, now, span);
     if (s !== null) drawTrain(lane, s.x0, s.x1);
-    // The warning: the lamp alternates bright and dark at 4 Hz and swells while it is bright.
-    const on = railWarning(lane, now), lit = on && (now * 4) % 1 < 0.5;
+    // The warning: the lamp alternates bright and dark at 2.5 Hz (under the three-flashes-a-second photosensitivity limit
+    // for saturated red) and swells while it is bright.
+    const on = railWarning(lane, now), lit = on && (now * 2.5) % 1 < 0.5;
     signal(-1.2, on, lit);
     signal(9.2, on, lit);
   }

@@ -5,7 +5,7 @@
  * supports centres within 0.2 of its ends; the band is [−0.5, 8.5]. */
 import { describe, expect, it } from 'vitest';
 import {
-  BACK_LIMIT, COLS, DEATH_TIME, DEATH_TIME_REDUCED, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, SAFE_LAG, STEP, scrollRate,
+  BACK_LIMIT, COLS, DEATH_TIME, DEATH_TIME_REDUCED, HOP_HEIGHT, HOP_TIME, IDLE_LIMIT, IDLE_WARN, MAX_ROW, SAFE_LAG, STEP, scrollRate,
   type Dir, type GrassLane, type Lane, type LaneSource, type LilyLane, type Mover, type RailLane, type RiverLane, type RoadLane, type RunState, type StepEvents,
 } from '../../../src/games/hopway/config';
 import { railWarning, trainEntry } from '../../../src/games/hopway/lanes';
@@ -1173,7 +1173,7 @@ describe('restore accepts valid snapshots, boundaries included', () => {
     ['t = 0', { ...running(), t: 0, lastProgress: 0 }],
     ['t = 1e7', { ...running(), t: 1e7, lastProgress: 1e7 }],
     ['lastProgress = t', { ...running(), lastProgress: 10 }],
-    ['row = maxRow = fromRow = 1e6', { ...running(), row: 1e6, maxRow: 1e6, fromRow: 1e6 }],
+    ['row = maxRow = fromRow = MAX_ROW', { ...running(), row: MAX_ROW, maxRow: MAX_ROW, fromRow: MAX_ROW }],
     ['three rows behind the best row', { ...running(), row: 2, fromRow: 2 }],
     ['a hop one row long', { ...running(), fromRow: 4 }],
     ['x at the band edge plus one: 9.5', { ...running(), x: 9.5, fromX: 9.5 }],
@@ -1219,8 +1219,10 @@ describe('restore rejects anything that is off, and never throws', () => {
     ['a negative fromRow', { ...running(), row: 0, maxRow: 0, fromRow: -1, safeLine: 0 }],
     ['a fractional maxRow', { ...running(), maxRow: 5.5 }],
     ['a string row', { ...running(), row: '5' }],
-    ['a maxRow above 1e6', { ...running(), maxRow: 1e6 + 1, row: 1e6, fromRow: 1e6, safeLine: 0 }],
-    ['a fromRow above 1e6', { ...running(), fromRow: 1e6 + 1, row: 1e6, maxRow: 1e6, safeLine: 0 }],
+    // A save is rebuilt by generating every row up to it, so an absurd row from a tampered save must not freeze the tab.
+    ['a maxRow above MAX_ROW', { ...running(), maxRow: MAX_ROW + 1, row: MAX_ROW, fromRow: MAX_ROW, safeLine: 0 }],
+    ['a fromRow above MAX_ROW', { ...running(), fromRow: MAX_ROW + 1, row: MAX_ROW, maxRow: MAX_ROW, safeLine: 0 }],
+    ['a row of a million', { ...running(), row: 1e6, maxRow: 1e6, fromRow: 1e6, safeLine: 0 }],
     ['a row above the best row', { ...running(), row: 6 }],
     ['maxRow − row = 4', { ...running(), row: 1, fromRow: 1 }],
     ['a hop two rows long', { ...running(), fromRow: 3 }],
