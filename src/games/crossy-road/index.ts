@@ -344,8 +344,9 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     onDir: dir => { if (held) proceed(); else move(dir); },
     onPress: pressed => {
       frame.pressed=pressed && active() && !held && (run.phase==='ready'||run.phase==='running');
-      // Submit the squash in this input task, even before the next animation frame.
-      if(frame.pressed) draw(0);
+      // Begin the squash in this task; the pending frame presents it. Forcing
+      // another full GL render here would hold up the subsequent touch events.
+      if(frame.pressed&&!frameId) draw(0);
     },
     // P toggles the shell's own pause (its button, overlay and save), exactly like the toolbar's pause button.
     onPause: () => { if (context.setPaused) context.setPaused(!paused); else document.querySelector<HTMLButtonElement>('#pause-game')?.click(); },
