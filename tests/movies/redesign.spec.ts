@@ -142,7 +142,7 @@ test('a heading focused by script shows no ring',async({page})=>{
 for(const width of [1440,390])test(`the Movies island is visible at ${width}px, with 5 items`,async({page})=>{
  await page.setViewportSize({width,height:900});
  await page.goto('/#/movies');
- const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const bar=page.locator('.movies-mobile-nav.ui-tabbar');
  await expect(bar).toBeVisible();
  await expect(bar.locator('.ui-tab')).toHaveCount(5);
 });
@@ -151,7 +151,7 @@ for(const width of [1440,390])test(`the Movies island is visible at ${width}px, 
 for(const width of [390,1440])test(`the Movies island minimizes on scroll down and expands on scroll up at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/#/movies');
- const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const bar=page.locator('.movies-mobile-nav.ui-tabbar');
  const view=page.locator('.movies-view');
  await expect(bar).toBeVisible();
  // The page must be scrollable first: wait for the catalog's rails, which render after the loading state.
@@ -174,7 +174,7 @@ test('a late animation frame never moves the Movies page after the reader scroll
  });
  await page.setViewportSize({width:390,height:844});
  await page.goto('/#/movies');
- const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const bar=page.locator('.movies-mobile-nav.ui-tabbar');
  const view=page.locator('.movies-view');
  await expect(page.locator('[data-rail]').first()).toBeVisible();
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
@@ -194,7 +194,7 @@ test('a late animation frame never moves the Movies page after the reader scroll
 test('the Movies island is expanded again after a section change while it is minimized',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
- const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const bar=page.locator('.movies-mobile-nav.ui-tabbar');
  const view=page.locator('.movies-view');
  await expect(page.locator('[data-rail]').first()).toBeVisible();
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
@@ -209,7 +209,7 @@ test('the Movies island is expanded again after a section change while it is min
 test('typing in the Movies search field never minimizes the island',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/#/movies');
- const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const bar=page.locator('.movies-mobile-nav.ui-tabbar');
  const view=page.locator('.movies-view');
  await expect(page.locator('[data-rail]').first()).toBeVisible();
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
@@ -232,9 +232,9 @@ test('the Movies capsule shows the current section icon, and follows a section c
  // The header's section buttons show from 640 px, so the section change is made at a desktop width.
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
- const bar=page.locator('nav.movies-mobile-nav.ui-tabbar');
+ const bar=page.locator('.movies-mobile-nav.ui-tabbar');
  const view=page.locator('.movies-view');
- const capsule=page.locator('.movies-view > .ui-tabbar-mini');
+ const capsule=page.locator('.movies-navigation > .ui-tabbar-mini');
  await expect(page.locator('[data-rail]').first()).toBeVisible();
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
  await view.evaluate(e=>e.scrollTo(0,400));
@@ -1839,7 +1839,7 @@ for(const setting of ['media query','class'] as const)test(`reduced motion (${se
   const animations=await page.evaluate(()=>document.getAnimations().map(animation=>{
    const effect=animation.effect as KeyframeEffect|null;
    const properties=[...new Set((effect?.getKeyframes()??[]).flatMap(frame=>Object.keys(frame)))].filter(key=>!['offset','easing','composite','computedOffset'].includes(key));
-   return {pseudo:effect?.pseudoElement??'',dialog:effect?.target instanceof HTMLDialogElement&&effect.target.open,properties,island:effect?.target instanceof Element&&effect.target.matches('.movies-mobile-nav,.movies-view > .ui-tabbar-mini'),duration:effect?.getTiming().duration};
+   return {pseudo:effect?.pseudoElement??'',dialog:effect?.target instanceof HTMLDialogElement&&effect.target.open,properties,island:effect?.target instanceof Element&&effect.target.matches('.movies-mobile-nav,.movies-navigation > .ui-tabbar-mini'),duration:effect?.getTiming().duration};
   }));
   const islandFade=(a:typeof animations[number])=>a.island&&a.pseudo===''&&a.duration===150&&a.properties.length===1&&a.properties[0]==='opacity';
   expect(animations.filter(animation=>!backdropFade(animation)&&!islandFade(animation)),'animations other than the backdrop and island opacity fades').toEqual([]);
@@ -2364,10 +2364,11 @@ test('an episode still that fails walks the backdrop and then the poster',async(
 test('the Movies island follows the header and comes before the page content',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/#/movies');
- await expect(page.locator('nav.movies-mobile-nav')).toBeVisible();
- expect(await page.evaluate(()=>document.querySelector('.movies-top')!.nextElementSibling===document.querySelector('nav.movies-mobile-nav'))).toBe(true);
- expect(await page.evaluate(()=>{const bar=document.querySelector('nav.movies-mobile-nav')!,main=document.querySelector('.movies-browse')!;return !!(bar.compareDocumentPosition(main)&Node.DOCUMENT_POSITION_FOLLOWING);})).toBe(true);
- await expect(page.locator('nav.movies-mobile-nav')).toHaveAttribute('aria-label','Sections');
+ await expect(page.locator('.movies-mobile-nav')).toBeVisible();
+ await expect(page.locator('.movies-browse')).toBeVisible();
+ expect(await page.evaluate(()=>document.querySelector('.movies-top')!.nextElementSibling===document.querySelector('.movies-navigation'))).toBe(true);
+ expect(await page.evaluate(()=>{const bar=document.querySelector('.movies-mobile-nav')!,main=document.querySelector('.movies-browse')!;return !!(bar.compareDocumentPosition(main)&Node.DOCUMENT_POSITION_FOLLOWING);})).toBe(true);
+ await expect(page.locator('.movies-navigation')).toHaveAttribute('aria-label','Sections');
 });
 
 // A rail's scroll is settled when three reads, spaced by the poll, agree. Smooth scrolling moves a rail over several frames, and a read

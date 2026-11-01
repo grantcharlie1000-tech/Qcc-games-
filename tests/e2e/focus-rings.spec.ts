@@ -37,7 +37,7 @@ async function tabTo(page:Page,target:Locator){
 async function telemetry(page:Page,currentTime=100,duration=100){await page.frame({url:/framextv/})!.evaluate(({currentTime,duration})=>parent.postMessage({event:'frameXTV:timeupdate',currentTime,duration},'*'),{currentTime,duration});}
 const upNext=(page:Page)=>page.getByRole('dialog',{name:'Up next'});
 // Movies replaces the shell's island with its own, whose tabs are buttons.
-const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
+const island=(page:Page)=>page.locator('.movies-mobile-nav.ui-tabbar');
 async function ended(page:Page){await page.clock.pauseAt(await page.evaluate(()=>Date.now()+1000));await telemetry(page);await expect(upNext(page)).toBeVisible();}
 
 test.beforeEach(async({page})=>{

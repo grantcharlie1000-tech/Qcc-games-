@@ -392,7 +392,7 @@ test('forced colours give the Movies island its pill outline and underline the c
  await page.emulateMedia({forcedColors:'active'});
  await page.setViewportSize(PHONE);
  await page.goto('/#/movies');
- const bar=page.locator('.movies-view nav.ui-tabbar').first();
+ const bar=page.locator('.movies-view .section-tabbar').first();
  await expect(bar).toBeVisible();
  const system=await systemColours(page,['CanvasText']);
  expect(await bar.evaluate(el=>{const s=getComputedStyle(el,'::after');return [s.outlineStyle,s.outlineWidth,s.outlineColor];})).toEqual(['solid','2px',system.CanvasText]);
@@ -487,13 +487,14 @@ async function expectDrawerText(page:Page,items:{name:string;selector:string}[],
 for(const frame of ['dark','white'] as const)for(const width of [390,1440])test(`the episode drawer's text keeps 4.5:1 over a ${frame} frame at ${width} px`,async({page})=>{
  await page.setViewportSize({width,height:width>800?900:844});
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:frame==='dark'?DARK_FRAME:WHITE_FRAME}));
- // The first request for season 2 is held, so the loading line can be read; the next answers as a failure, so the error line and its retry show.
+ // Hold season 2 for the loading sample, then use a non-retried service error
+ // for the error sample. Network backoff is covered in network-recovery.spec.ts.
  const held:Route[]=[];
  await page.route('**/api/movies?*',route=>{
   const url=new URL(route.request().url());
   if(!url.searchParams.has('id'))return route.fulfill({status:503,json:{error:'catalog_not_configured'}});
   const season=Number(url.searchParams.get('season')||1);
-  if(season===2){if(!held.length){held.push(route);return;}return route.fulfill({status:502,json:{error:'metadata_unavailable'}});}
+  if(season===2){if(!held.length){held.push(route);return;}return route.fulfill({status:503,json:{error:'metadata_unavailable'}});}
   return route.fulfill({json:{title:DRAWER_TITLE(season)}});
  });
  await page.goto('/#/movies/tv-90300/season/1/episode/1/play');
@@ -506,7 +507,7 @@ for(const frame of ['dark','white'] as const)for(const width of [390,1440])test(
  await drawer.getByRole('button',{name:'Season 2',exact:true}).click();
  await expect(drawer.getByRole('status')).toContainText('Loading');
  await expectDrawerText(page,DRAWER_LOADING,'loading');
- await held[0].fulfill({status:502,json:{error:'metadata_unavailable'}});
+ await held[0].fulfill({status:503,json:{error:'metadata_unavailable'}});
  await expect(drawer.getByRole('status')).toContainText('temporarily unavailable');
  await expectDrawerText(page,DRAWER_ERROR,'error');
 });

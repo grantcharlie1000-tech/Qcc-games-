@@ -171,7 +171,7 @@ test('Enter on the Auto next switch does not play Up next',async({page})=>{
  await expect(overlay(page)).toBeVisible();await expect(page).toHaveURL(/season\/1\/episode\/2\/play$/);
 });
 
-const island=(page:Page)=>page.locator('nav.movies-mobile-nav.ui-tabbar');
+const island=(page:Page)=>page.locator('.movies-mobile-nav.ui-tabbar');
 // How visible the island is. With a glass lens the bar keeps its own opacity at 1 while its lens, top layer and tabs fade; without one the
 // bar itself fades. So what shows is the bar's own opacity times the most opaque layer it paints.
 // The island and its capsule count together: the shown state is the more visible of the two.
@@ -180,7 +180,7 @@ const islandShown=(page:Page)=>island(page).evaluate(bar=>{
  const capsule=bar.parentElement?.querySelector(':scope > .ui-tabbar-mini');
  return Math.max(Number(getComputedStyle(bar).opacity)*Math.max(...layers.map(Number)),capsule?Number(getComputedStyle(capsule).opacity):0);
 });
-const capsuleShown=(page:Page)=>page.locator('.movies-view > .ui-tabbar-mini').evaluate(el=>Number(getComputedStyle(el).opacity));
+const capsuleShown=(page:Page)=>page.locator('.movies-navigation > .ui-tabbar-mini').evaluate(el=>Number(getComputedStyle(el).opacity));
 test('Up next hides the island at 1440px until Cancel brings it back',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await expect.poll(()=>islandShown(page)).toBe(1);
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
@@ -218,8 +218,18 @@ test('pointer focus in the island does not keep it visible, so Up next moves foc
  await page.setViewportSize({width:1440,height:900});await open(page);
  const tab=island(page).locator('[data-kind="movie"]');await page.locator('.movies-player>h2').click();await tab.evaluate(e=>(e as HTMLElement).focus());await expect(tab).toBeFocused();expect(await tab.evaluate(e=>e.matches(':focus-visible'))).toBe(false);
  // A click on a non-focusable heading, then a script focus, is not keyboard focus.
- await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
+ // ended() pauses animation frames too; advance the hide transition before
+ // reading its final opacity instead of waiting on a frozen frame.
+ await page.clock.runFor(450);await expect.poll(()=>islandShown(page)).toBe(0);
  await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
+});
+test('keyboard focus in the separate Menu keeps the navigation visible during Up next',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});await open(page);
+ await island(page).locator('[data-action="study"]').focus();await page.keyboard.press('Tab');
+ const menu=page.locator('.movies-menu');await expect(menu).toBeFocused();
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
+ await expect(menu).toBeFocused();await expect(menu).toHaveCSS('opacity','1');expect(await islandShown(page)).toBe(1);
 });
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);
