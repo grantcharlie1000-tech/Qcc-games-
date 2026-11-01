@@ -120,7 +120,7 @@ for(const width of [390,1366]){
     for(const b of boxes){expect(b.width).toBeGreaterThanOrEqual(44);expect(b.height).toBeGreaterThanOrEqual(48);}
     const surface=(await page.locator('.game-surface').boundingBox())!;
     for(const b of boxes){expect(b.y).toBeGreaterThanOrEqual(surface.y);expect(b.bottom).toBeLessThanOrEqual(surface.y+surface.height);}
-    const drop=(await page.locator('.fm-drop').boundingBox())!;
+    const drop=(await page.locator('.fm-board').boundingBox())!;await expect(page.locator('.fm-drop')).toHaveCount(0);
     expect(drop.y+drop.height).toBeLessThanOrEqual(boxes[0].y-8);
     await expect(page.locator('.game-view')).toHaveAttribute('data-glass-tone','light');
     for(const object of await objects.all())await expect(object).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
@@ -245,7 +245,7 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     // The shell is intentionally absent behind game-owned modal menus.
     if(id==='blockcraft')await page.getByRole('button',{name:'Play',exact:true}).click();
     const dock=page.locator('.game-dock');
-    await expect(dock.locator('.game-hud strong').first()).toBeVisible();
+    await expect(dock.locator('.game-hud strong,.game-compact-hud').filter({visible:true}).first()).toBeVisible();
     await expect(dock.locator(`.game-glass[data-glass=${browserName==='chromium'&&!forcedFallback?'backdrop':'frost'}]`)).toHaveCount(3);
     if(id==='ball-run'){
       await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+100));
@@ -258,17 +258,17 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
     }
     const boxes=await dock.evaluate(el=>{
       const d=el.getBoundingClientRect();
-      return [...el.querySelectorAll('.game-hud small,.game-hud strong,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
+      return [...el.querySelectorAll('.game-hud small,.game-hud strong,.game-compact-hud,.ui-tab > svg,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
         const r=e.getBoundingClientRect();
         return {x:r.x-d.x,y:r.y-d.y,w:r.width,h:r.height,color:getComputedStyle(e).color};
       }).filter(r=>r.w>0&&r.h>0);
     });
-    const hideInk=await page.addStyleTag({content:'.game-hud small,.game-hud strong{color:transparent!important}.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}'});
+    const hideInk=await page.addStyleTag({content:'.game-hud small,.game-hud strong,.game-compact-hud{color:transparent!important}.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}'});
     const shot=(await dock.screenshot({animations:'disabled'})).toString('base64');
     // Keep the real text shadow in the background shot. An opaque ink mask
     // restricts contrast to actual glyph cores, rather than spaces in their boxes.
     await hideInk.evaluate(e=>e.parentNode?.removeChild(e));
-    await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
+    await page.addStyleTag({content:'.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-compact-hud,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important}.game-dock>.ui-tab>svg{filter:none!important}'});
     const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
     const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
     expect(Math.min(...ratios),`${id}: ${ratios.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);

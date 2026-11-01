@@ -21,14 +21,13 @@ test('Pool PC status and pocket choice have readable rendered text',async({page}
   }
 });
 
-test('Flappy portrait flight and Flap use the available height',async({page})=>{
+test('Flappy portrait flight fills the board without a Flap footer',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.clock.install();await page.goto('/#/game/flappy-bird');
-  await page.clock.pauseAt(new Date(Date.now()+1000));await page.getByRole('button',{name:'Take flight',exact:true}).click();
+  await page.clock.pauseAt(new Date(Date.now()+1000));await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','running');
-  const scene=(await page.locator('.fb-scene').boundingBox())!,flap=(await page.locator('.fb-flap').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
+  const scene=(await page.locator('.fb-scene').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;await expect(page.locator('.fb-flap')).toHaveCount(0);
   expect(scene.height).toBeGreaterThanOrEqual(640);expect(scene.y).toBeLessThan(32);
-  expect(flap.y).toBeGreaterThanOrEqual(scene.y+scene.height);expect(flap.height).toBeGreaterThanOrEqual(44);
-  expect(dock.y-flap.y-flap.height).toBeLessThan(32);
+  expect(scene.height).toBeGreaterThanOrEqual(768);expect(dock.y-scene.y-scene.height).toBeLessThan(32);
 });
 
 test('Water Sort uses a broad single row and grouped actions on PC',async({page})=>{
@@ -38,7 +37,7 @@ test('Water Sort uses a broad single row and grouped actions on PC',async({page}
   expect(tubes).toHaveLength(4);expect(Math.max(...tubes.map(t=>t.y))-Math.min(...tubes.map(t=>t.y))).toBeLessThan(2);
   expect(Math.min(...tubes.map(t=>t.width))).toBeGreaterThanOrEqual(100);
   const undo=(await page.getByRole('button',{name:'Undo',exact:true}).boundingBox())!,hint=(await page.getByRole('button',{name:'Hint',exact:true}).boundingBox())!;
-  expect(hint.x-undo.x-undo.width).toBeLessThanOrEqual(120);
+  expect(Math.abs(hint.y-undo.y)).toBeLessThanOrEqual(1);await expect(page.locator('.game-dock').getByRole('button',{name:'Undo',exact:true})).toBeVisible();
   await page.locator('.ws-tube').first().click();await page.locator('.ws-tube').last().click();
   await expect(page.locator('.ws-game')).toHaveAttribute('data-moves','1');
 });

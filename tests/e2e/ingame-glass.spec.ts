@@ -18,21 +18,18 @@ for(const viewport of [{width:390,height:844},{width:1366,height:768}]){
   });
 }
 
-test('Slipline keeps Hint next to the centred puzzle on a phone',async({page})=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/slipline');
-  const board=(await page.locator('.sl-board').boundingBox())!,hint=(await page.locator('.sl-hint').boundingBox())!;
-  expect(hint.y-(board.y+board.height)).toBeGreaterThanOrEqual(0);
-  expect(hint.y-(board.y+board.height)).toBeLessThanOrEqual(24);
+test('Slipline uses the board and a compact single-line HUD',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.goto('/#/game/slipline');await expect(page.locator('.sl-hint')).toHaveCount(0);await expect(page.locator('.game-compact-hud')).toHaveAttribute('aria-label','Level 1, 3 of 3 hearts left');const board=(await page.locator('.sl-board').boundingBox())!;expect(board.width).toBeGreaterThanOrEqual(368);
 });
 
 test('late Block Fill counters stay inside the dock on a narrow phone',async({page})=>{
   await page.setViewportSize({width:320,height:568});
   await page.addInitScript(path=>localStorage.setItem('pocket-arcade:v1:save:block-fill',JSON.stringify({version:1,data:{version:1,level:31,path,rewarded:false,steps:48,hints:0,best:{}}})),generateLevel(31).solution.slice(0,49));
   await page.goto('/#/game/block-fill');
-  await expect(page.locator('.game-hud')).toContainText('49 / 56');
+  await expect(page.locator('.game-compact-hud')).toHaveAttribute('aria-label','Garden 32 of 32, 49 of 56 squares covered');
   const bounds=await page.locator('.game-dock').evaluate(dock=>{
     const bar=dock.getBoundingClientRect();
-    const text=[...dock.querySelectorAll('.game-hud small,.game-hud strong')].filter(e=>e.textContent).map(e=>{const range=document.createRange();range.selectNodeContents(e);const box=range.getBoundingClientRect();return {top:box.top,bottom:box.bottom};});
+    const text=[...dock.querySelectorAll('.game-compact-hud')].filter(e=>e.textContent).map(e=>{const range=document.createRange();range.selectNodeContents(e);const box=range.getBoundingClientRect();return {top:box.top,bottom:box.bottom};});
     return {top:bar.top,bottom:bar.bottom,text};
   });
   for(const text of bounds.text){
@@ -45,10 +42,10 @@ test('multi-stat captions fit their compact capsules on a 320px phone',async({pa
   await page.setViewportSize({width:320,height:568});
   for(const id of ['slipline','color-connect','block-fill','ball-run']){
     await page.goto(`/#/game/${id}`);
-    const hud=page.locator('.game-hud');await expect(hud.locator('strong').first()).toBeVisible();
+    const hud=page.locator('.game-hud');await expect(hud.locator('.game-compact-hud,strong').filter({visible:true}).first()).toBeVisible();
     const failures=await hud.evaluate(h=>{
       const box=h.getBoundingClientRect();
-      return [...h.querySelectorAll('small,strong')].filter(e=>e.textContent).flatMap(e=>{
+      return [...h.querySelectorAll('small,strong,.game-compact-hud')].filter(e=>e.textContent&&e.getClientRects().length).flatMap(e=>{
         const range=document.createRange();range.selectNodeContents(e);const r=range.getBoundingClientRect();
         return r.left<box.left+2||r.right>box.right-2||r.top<box.top+2||r.bottom>box.bottom-2?[e.textContent]:[];
       });
@@ -79,7 +76,7 @@ for(const viewport of [{width:1366,height:768},{width:390,height:644},{width:320
 test('compact dock reserves play space and the menu pauses, restores focus and resumes',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/game/snake');
-  await page.getByRole('button',{name:'Start slithering'}).click();
+  await page.getByRole('button',{name:'Play'}).click();
   const dock=page.getByRole('navigation',{name:'Game controls'});
   await expect(dock).toBeVisible();
   await expect(dock.locator('.game-hud')).toHaveText('Score0');
@@ -128,13 +125,13 @@ test('returning from a hidden tab does not resume through the game menu',async({
   });
   await page.getByRole('button',{name:'Close game menu',exact:true}).click();
   await expect(page.locator('#pause-overlay')).toBeVisible();
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await page.locator('#resume-game').click();
   await expect(page.locator('#pause-overlay')).toBeHidden();
 });
 
-test('Minesweeper local options preserve an explicitly paused game',async({page})=>{
+test('Minesweeper local options preserve a background pause',async({page})=>{
   await page.goto('/#/game/minesweeper');
-  await gameAction(page,'Game options');await page.locator('.ms-pause').click();
+  await gameAction(page,'Game options');await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});});
   await expect(page.locator('#pause-overlay')).toBeVisible();
   await gameAction(page,'Game options');await page.getByRole('button',{name:'Close game options',exact:true}).click();
   await expect(page.locator('#pause-overlay')).toBeVisible();

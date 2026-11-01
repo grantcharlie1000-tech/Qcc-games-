@@ -52,7 +52,7 @@ test('host, guest and a late joiner share one world',async()=>{
     // ---- Host creates a room: the shared world is a separate world.
     step('Host creates a room: the shared world is a separate world.');
     const canvas=await host.page.locator('.blockcraft canvas').boundingBox();
-    await host.page.getByRole('button',{name:'Multiplayer'}).click({timeout:20000});
+    await host.page.locator('.bc-world-config > summary').click();await host.page.getByRole('button',{name:'Multiplayer'}).click({timeout:20000});
     await expect(host.page.getByRole('dialog',{name:'Minecraft multiplayer'})).toBeVisible();
     expect(await host.page.locator('.blockcraft canvas').boundingBox()).toEqual(canvas);
     await host.page.getByRole('button',{name:'Create room'}).click({timeout:20000});
@@ -94,6 +94,8 @@ test('host, guest and a late joiner share one world',async()=>{
     // ---- The guest mines with real input; the host rolls the drop, and the guest picks it up.
     step('The guest mines with real input; the host rolls the drop, and the guest picks it up.');
     const target=at(0,-1,-3);
+    // Settle the pointer before aiming: the shared Play button is elsewhere.
+    await guest.page.mouse.move(512,320);
     await ev(guest.page,(bc,a:{p:V;t:V})=>{
       bc.player.teleport(a.p.x+.5,a.p.y,a.p.z-1.5);
       const s=bc.player.state,e=bc.player.eye(),dx=a.t.x+.5-e.x,dy=a.t.y+1-e.y,dz=a.t.z+.5-e.z;
@@ -102,7 +104,7 @@ test('host, guest and a late joiner share one world',async()=>{
     await expect.poll(()=>data(guest.page,'target'),{timeout:20000}).toBe(`${target.x},${target.y},${target.z}`);
     const cobbleBefore=await ev(guest.page,bc=>bc.inventory.count('cobblestone'));
     await ev(guest.page,bc=>{const inv=bc.inventory;inv.setSlot(inv.selected,{id:'stone_pickaxe',count:1});});
-    await guest.page.mouse.move(512,320);await guest.page.mouse.down();
+    await guest.page.mouse.down();
     await expect.poll(()=>get(guest.page,target),{timeout:30000}).toBe(ids.air);
     await guest.page.mouse.up();
     await expect.poll(()=>get(host.page,target),{timeout:15000}).toBe(ids.air);

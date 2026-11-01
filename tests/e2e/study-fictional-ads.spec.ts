@@ -9,7 +9,7 @@ for(const style of ['qcc','quanta','aeon','essay']){
       sessionStorage.setItem('pocket-arcade:study:v1:topic',style==='qcc'?'close-reading':`${style}:close-reading`);
     },style);
     await page.goto('/#/game/fruit-merge');
-    await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
+    await expect(page.locator('.fm-board')).toBeVisible();
     await appSettings(page);
     await page.getByRole('button',{name:'Study Mode',exact:true}).click();
     const view=page.locator('#study-view');

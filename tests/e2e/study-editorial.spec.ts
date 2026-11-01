@@ -31,7 +31,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
 test('modified Games clicks reach the browser without returning the retained game',async({page,context})=>{
  await page.goto('/#/game/minesweeper');await page.locator('[data-study-topic="close-reading"]').click();
  await expect(page.locator('.ms')).toBeVisible();
- const retained=await page.locator('#game-stage > *').elementHandle();
+ const retained=await page.locator('#game-stage > *').first().elementHandle();
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
  // Observe after Study's delegated handler without cancelling the browser action.
  // Browser/platform choices of a tab, window or download are deliberately native.

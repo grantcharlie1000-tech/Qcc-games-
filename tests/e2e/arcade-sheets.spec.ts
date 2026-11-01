@@ -62,11 +62,11 @@ test('home sheets are light and game-owned submenus share the glass surface',asy
 
 test('desktop actions have comfortable hit areas without enlarging board cells',async({page})=>{
   await page.setViewportSize({width:1366,height:768});
-  for(const [id,selector] of [['block-fill','[data-action="undo"]'],['color-connect','.cc-undo'],['slipline','.sl-hint'],['solitaire','[data-action="undo"]']]){
+  for(const [id,selector] of [['block-fill','[data-action="undo"]'],['solitaire','[data-action="undo"]']]){
     await page.goto(`/#/game/${id}`);
     const action=page.locator(selector);await expect(action).toBeVisible();
     const size=await action.evaluate(e=>({height:e.getBoundingClientRect().height,font:parseFloat(getComputedStyle(e).fontSize)}));
-    expect(size.height,id).toBeGreaterThanOrEqual(40);
+    expect(size.height,id).toBeGreaterThanOrEqual(44);
     expect(size.font,id).toBeGreaterThanOrEqual(14);
   }
 });
@@ -85,7 +85,7 @@ for(const feature of ['prefers-reduced-transparency','prefers-contrast','forced-
     expect(material.fill).toMatch(/^rgb\(/);
     expect(material.border).toBeGreaterThanOrEqual(1);
     if(feature==='forced-colors'){
-      for(const selector of ['.ms-sound','.ms-pause','.ms-close']){
+      for(const selector of ['.ms-sound','.ms-close']){
         expect(await page.locator(selector).evaluate(e=>getComputedStyle(e).borderTopWidth),selector).toBe('2px');
       }
     }
