@@ -372,8 +372,8 @@
   --glass-frost-body:var(--glass-frost) var(--glass-tone);
   --glass-ink:#fff;
   --glass-solid:#20262b;
-  --glass-pill:linear-gradient(180deg,rgb(0 0 0 / .016),transparent 65%),rgb(255 255 255 / .005);
-  --glass-rim-edge:inset 0 1px 0 rgb(255 255 255 / .12),inset 0 -1px 0 rgb(255 255 255 / .10),0 0 0 .5px rgb(0 0 0 / .136);
+  --glass-pill:linear-gradient(180deg,rgb(0 0 0 / .014),rgb(0 0 0 / .006) 40%),rgb(255 255 255 / .005);
+  --glass-rim-edge:inset 0 1px 0 rgb(255 255 255 / .196),inset 0 -1px 0 rgb(255 255 255 / .195),0 0 0 .5px rgb(0 0 0 / .144);
   --glass-glow:inset 0 3px 8px -3px rgb(255 255 255 / .09),inset 0 -3px 8px -3px rgb(255 255 255 / .09);
   --glass-radius:26px;
   --glass-lift:0 2px 60px -2px rgb(0 0 0 / .04);

@@ -23,7 +23,8 @@ describe('clear glass contrast',()=>{
     expect(glassInk([[0,0,0],[255,255,255]],'light').color).toBe('#fff');
     expect(glassInk([[255,255,255]],'light').halo).toBe('rgb(255 255 255 / 0)');
   });
-  it('includes a moving selected-tab highlight over a mid-gray backdrop',()=>{
-    expect(glassInk([[107,107,107]],undefined,true).halo).not.toBe('rgb(0 0 0 / 0)');
+  it('includes the selected-tab gradient over a mid-gray backdrop',()=>{
+    expect(glassInk([[133,133,133]]).halo).toBe('rgb(255 255 255 / 0)');
+    expect(glassInk([[133,133,133]],undefined,true).halo).not.toBe('rgb(255 255 255 / 0)');
   });
 });

@@ -163,7 +163,7 @@ test('season pills stay flat while the sheet and its close have bounded glass',a
  expect(alpha).toBeLessThan(1);
 });
 
-test('the current episode row is a white 700 title on a 16% rose fill, with a rose bar on its leading edge',async({page})=>{
+test('the current episode row preserves clear material with a bold title and rose leading edge',async({page})=>{
  // The series from the drawer text fixture is used, since its episodes carry the runtime that draws the meta line.
  await page.setViewportSize(PHONE);
  await page.route('**/api/movies?*',route=>{
@@ -179,7 +179,7 @@ test('the current episode row is a white 700 title on a 16% rose fill, with a ro
  const current=drawer.locator('[aria-current="true"]');
  await expect(current.locator('small')).toBeVisible();
  expect(await current.locator('strong').evaluate(el=>{const s=getComputedStyle(el);return [s.color,s.fontWeight];})).toEqual(['rgb(255, 255, 255)','700']);
- expect(await current.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(255, 32, 86, 0.16)');
+ expect(await current.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
  // The bar is an inset shadow on the leading edge, so the row's content does not move.
  expect(await current.evaluate(el=>getComputedStyle(el).boxShadow)).toMatch(/rgb\(255, 32, 86\) 3px 0px 0px 0px inset/);
  expect(await current.locator('small').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(228, 228, 231)');

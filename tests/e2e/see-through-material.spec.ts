@@ -39,6 +39,7 @@ test('native start/end cards and floating Boost share the clear optical tokens',
     ['snake','.snake-card',''],['quadfall','.qf-card',''],['maze-muncher','.mm-card',''],
     ['neon-coil','.nc-card','.nc-overlay'],['neon-coil','.nc-boost',''],
     ['flappy-bird','.fb-card',''],['ball-run','.br-setup','.br-layer'],
+    ['minesweeper','.ms-hint-message',''],
     ['tower','.tower-end-card','.tower-end'],['slipline','.sl-overlay .game-panel','.sl-overlay']
   ]){
     await page.goto(`/#/game/${game}`);await expect(page.locator(selector).first()).toBeAttached();
@@ -58,6 +59,59 @@ test('Corn guidance adds no second material inside its clear column',async({page
   const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeAttached();
   expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgba(0, 0, 0, 0)',filter:'none',shadow:'none'});
   await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-color','rgba(184, 184, 184, 0.02)');
+  const action=tip.locator('.cc-btn');await expect(action).toHaveCSS('color','rgb(255, 255, 255)');
+  await expect(action).toBeVisible();
+  const visible=(await action.screenshot({animations:'disabled'})).toString('base64');
+  const box=(await action.boundingBox())!;
+  await page.addStyleTag({content:'.cc-tip .cc-btn{background:#000!important;color:#fff!important;-webkit-text-stroke:0!important;text-shadow:none!important;border-color:transparent!important}'});
+  const mask=(await action.screenshot({animations:'disabled'})).toString('base64');
+  const edges=await glyphContrast(page,visible,mask,[{x:0,y:0,w:box.width,h:box.height,color:'rgb(255, 255, 255)'}],box,true);
+  expect(Math.min(...edges)).toBeGreaterThanOrEqual(4.5);
+});
+
+test('Blockcraft Controls and Advancements keep clear content and one readable label',async({page})=>{
+  await page.goto('/#/game/blockcraft');
+  await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
+  await page.locator('.bc-menu [data-act=controls]').click();
+  const controls=page.locator('.bc-menu [data-panel=controls]');await expect(controls).toBeVisible();
+  const boxes=await controls.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('dt,dd')].slice(0,2).concat([...e.querySelectorAll('.bc-btn')]).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
+  const visible=(await controls.screenshot({animations:'disabled'})).toString('base64');
+  const style=await page.addStyleTag({content:'.bc-menu [data-panel=controls],.bc-menu [data-panel=controls] *{background:#000!important;color:#fff!important;-webkit-text-stroke:0!important;text-shadow:none!important;border-color:transparent!important}'});
+  const mask=(await controls.screenshot({animations:'disabled'})).toString('base64');
+  const edges=await glyphContrast(page,visible,mask,boxes,(await controls.boundingBox())!,true);
+  expect(Math.min(...edges),JSON.stringify(edges)).toBeGreaterThanOrEqual(4.5);
+  await style.evaluate(e=>(e as Element).remove());
+  await page.locator('.bc-menu [data-panel=controls] [data-act=back]').click();
+  await page.locator('.bc-menu [data-act=advancements]').click();
+  const empty=page.locator('.bc-adv-empty');await expect(empty).toBeVisible();
+  expect(await empty.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};})).toEqual({fill:'rgba(0, 0, 0, 0)',image:'none',filter:'none'});
+  for(const selector of ['.bc-title .bc-px','.bc-adv-empty .bc-px','.bc-adv-summary .bc-px']){
+    const art=page.locator(selector).first();await expect(art).toBeVisible();
+    const paint=await art.evaluate(e=>{const s=getComputedStyle(e);return{color:s.color,stroke:s.webkitTextStrokeWidth,shadow:s.textShadow,image:s.backgroundImage,filter:s.filter};});
+    expect(paint.color).toBe('rgba(0, 0, 0, 0)');expect(paint.stroke).toBe('0px');expect(paint.shadow).toBe('none');
+    expect(paint.image).not.toBe('none');expect(paint.filter).toContain('drop-shadow');
+    const bounds=(await art.boundingBox())!;
+    const visible=(await art.screenshot({animations:'disabled'})).toString('base64');
+    const maskArt=await art.evaluate(e=>{
+      const url=getComputedStyle(e).backgroundImage.match(/^url\(["']?(.*?)["']?\)$/)![1];
+      const doc=new DOMParser().parseFromString(decodeURIComponent(url.slice('data:image/svg+xml,'.length)),'image/svg+xml');
+      const swatch=document.createElement('span');swatch.style.color=doc.querySelector('[fill]')!.getAttribute('fill')!;document.body.append(swatch);
+      const color=getComputedStyle(swatch).color;swatch.remove();
+      for(const n of doc.querySelectorAll('[fill]'))if(n.getAttribute('fill')!=='none')n.setAttribute('fill','#fff');
+      return{color,url:'data:image/svg+xml,'+encodeURIComponent(new XMLSerializer().serializeToString(doc))};
+    });
+    // A stylesheet follows the periodically refreshed summary node. An inline
+    // mask on its old span can disappear during a screenshot and prove nothing.
+    // Keep the same image filter/raster grid: removing it moves some scaled
+    // pixel-font edges in WebKit. Black glyph shadows disappear into the black
+    // panel, leaving only the white foreground alpha in the mask.
+    const maskStyle=await page.addStyleTag({content:`.bc-panel{background:#000!important}${selector}{background-image:url("${maskArt.url}")!important;--pixel-glass-halo:#000!important}`});
+    const mask=(await art.screenshot({animations:'disabled'})).toString('base64');
+    const edges=await glyphContrast(page,visible,mask,[{x:0,y:0,w:bounds.width,h:bounds.height,color:maskArt.color}],bounds,true);
+    await test.info().attach('pixel-glyph-contrast',{body:JSON.stringify({selector,edges}),contentType:'application/json'});
+    await maskStyle.evaluate(e=>(e as Element).remove());
+    expect(Math.min(...edges),`${selector}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
+  }
 });
 
 for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} preserves the rendered background with near-zero added white`,async({page})=>{

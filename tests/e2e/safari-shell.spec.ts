@@ -168,7 +168,7 @@ for(const press of [false,true])test(`dark selected tab retains 4.5:1 over white
  const boxes=await tab.evaluate(e=>{const box=e.getBoundingClientRect();return [...e.querySelectorAll('.ui-icon,span')].map(child=>{const b=child.getBoundingClientRect();return {x:(b.x-box.x),y:(b.y-box.y),w:b.width,h:b.height,color:getComputedStyle(child).color};});});
  const hide=await page.addStyleTag({content:'.contrast-target>*{color:transparent!important}'});
  const backdrop=(await tab.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
- await page.addStyleTag({content:'.glass-vector-halo{display:none!important}.contrast-target{color:white!important;background:black!important;text-shadow:none!important}.contrast-target>*{color:white!important;filter:none!important;background:none!important;box-shadow:none!important}'});
+ await page.addStyleTag({content:'.glass-vector-halo{display:none!important}.contrast-target{color:white!important;background:black!important;text-shadow:none!important;-webkit-text-stroke:0!important}.contrast-target>*{color:white!important;filter:none!important;background:none!important;box-shadow:none!important;-webkit-text-stroke:0!important}'});
  const mask=(await tab.screenshot({animations:'disabled'})).toString('base64');
  const ratios=await glyphContrast(page,backdrop,mask,boxes,(await tab.boundingBox())!);
  if(press){await page.mouse.move(0,0);await page.mouse.up();}

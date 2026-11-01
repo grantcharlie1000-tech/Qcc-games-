@@ -20,9 +20,11 @@ const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
 export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false):{color:string;halo:string}{
   const backgrounds=bounds(samples.length?samples:[[25,29,28]]).flatMap(rgb=>{
     const glass=mix(rgb,[184,184,184],.02);
-    // Include the moving white 0.5% tab lens or the floating header's black
-    // 9% selection, as well as the unselected state.
-    return selection?[glass,mix(glass,selection==='dark'?[0,0,0]:[255,255,255],selection==='dark'?.09:.005)]:[glass];
+    // Bound both ends of the tab lens's slight vertical gradient, or the
+    // floating header's 9% black selection, as well as the unselected state.
+    if(selection==='dark')return [glass,mix(glass,[0,0,0],.09)];
+    const lens=mix(glass,[255,255,255],.005);
+    return selection?[glass,mix(lens,[0,0,0],.014),mix(lens,[0,0,0],.006)]:[glass];
   });
   const candidates=[{ink:INK,color:'#0b1015',veil:[255,255,255] as RGB},{ink:[255,255,255] as RGB,color:'#fff',veil:[0,0,0] as RGB}];
   const scored=candidates.map(candidate=>{

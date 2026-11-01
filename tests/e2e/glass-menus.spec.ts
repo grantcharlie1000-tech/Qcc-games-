@@ -27,15 +27,31 @@ async function originOf(sheet:Locator){
 }
 async function expectGlassSheet(dialog:Locator){
   await expect(dialog).toHaveClass(/\bui-glass-sheet\b/);
-  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(8px)');
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(0.3px)');
   const family=await dialog.locator('h2').first().evaluate(el=>getComputedStyle(el).fontFamily);
   expect(family).toContain('-apple-system');
   expect(family).not.toContain('Arcade');
 }
-// The update module is replaced, so a test can show a ready update and then clear it. window.notifyUpdate sends the page a status.
+// Development imports can be replaced directly. Preview bundles use the real
+// update protocol with a local service-worker double, so the same UI assertions
+// also run against the production build without downloading/installing a worker.
 async function routeUpdateStatus(page:Page){
+  await page.addInitScript(()=>{
+    let failed=false;
+    const worker=Object.assign(new EventTarget(),{scriptURL:new URL('/sw.js',location.href).href,state:'installed',postMessage:(message:{type:string},ports:MessagePort[])=>{
+      if(message.type==='ARCADE_VERSION')ports[0].postMessage({version:'test-next',entry:new URL('/assets/test-next.js',location.href).href});
+    }});
+    const registration=Object.assign(new EventTarget(),{scope:new URL('/',location.href).href,waiting:worker as typeof worker|undefined,update:async()=>{if(failed)throw new Error('Test update check failure');}});
+    const serviceWorker=Object.assign(new EventTarget(),{controller:null,getRegistration:async()=>registration,register:async()=>registration,ready:Promise.resolve(registration)});
+    Object.defineProperty(navigator,'serviceWorker',{configurable:true,value:serviceWorker});
+    (window as any).notifyUpdate=(status:{available:boolean;message:string})=>{
+      registration.waiting=status.available?worker:undefined;failed=!status.available&&!!status.message;
+      window.dispatchEvent(new Event('online'));
+    };
+  });
   await page.route('**/src/core/offline.ts*',route=>route.fulfill({contentType:'text/javascript',body:`
     export function watchUpdates(_entry, notify){window.notifyUpdate=notify;notify({available:true,message:'An update is ready.'});}
+    export async function registerOffline(){}
     export async function checkForUpdates(){}
     export async function cacheAll(){return 0;}
     export function activateUpdate(){return new Promise(()=>{});}
@@ -202,15 +218,15 @@ test('the primary rules action uses contrasting neutral ink in a 48 px capsule',
   expect(await page.locator('#rules-text').evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.color];})).toEqual(['17px','rgb(17, 19, 22)']);
 });
 
-test('the sheet dims the page with a plain backdrop, and no control inside it has a backdrop filter of its own',async({page})=>{
+test('the sheet keeps its backdrop clear and only the close owns a bounded nested filter',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
   const menu=page.locator('#menu');
-  // The dim fades in over 220 ms, so its colour is read once it has arrived.
-  await expect.poll(()=>menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.16)');
+  // The page remains recognisable behind the sheet.
+  await expect.poll(()=>menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   expect(await menu.evaluate(el=>getComputedStyle(el,'::backdrop').backdropFilter)).toBe('none');
-  expect(await menu.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').length)).toBe(0);
+  expect(await menu.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none'&&!child.closest('.sheet-close-glass')).length)).toBe(0);
 });
 
 test('a keyboard focus ring is a 2 px contrasting outline on the sheet\'s buttons, and its search field takes an inner ring',async({page})=>{
@@ -222,11 +238,11 @@ test('a keyboard focus ring is a 2 px contrasting outline on the sheet\'s button
   const search=page.getByRole('searchbox');
   await expect(search).toBeFocused();
   expect(await search.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).boxShadow])).toEqual(['none',expect.stringContaining('rgb(17, 19, 22) 0px 0px 0px 1px inset')]);
-  // Shift+Tab returns to the close button, which keeps the white outline.
+  // Shift+Tab returns to the close button, whose dual-tone focus ring stays visible.
   await page.keyboard.press('Shift+Tab');
   const close=page.getByRole('button',{name:'Close menu',exact:true});
   await expect(close).toBeFocused();
-  expect(await close.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineColor,getComputedStyle(el).outlineOffset])).toEqual(['solid','2px','rgb(17, 19, 22)','2px']);
+  expect(await close.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineColor,getComputedStyle(el).outlineOffset])).toEqual(['solid','2px','rgb(255, 255, 255)','2px']);
 });
 
 test('Reduce Transparency gives an opaque sheet with no blur (Chromium only)',async({page,browserName})=>{
@@ -357,25 +373,25 @@ test('the accounts and leaderboard dialogs use glass fields and hairlines',async
   await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
   const username=page.locator('#account-username');
   await expect(username).toBeVisible();
-  expect(await username.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.055)');
+  expect(await username.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.03)');
   await page.getByRole('button',{name:'Play as guest',exact:true}).click();
   await openMenuFromIsland(page);
   await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
   await expect(page.locator('#leaderboard-dialog')).toBeVisible();
-  expect(await page.locator('#leaderboard-game').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.055)');
+  expect(await page.locator('#leaderboard-game').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.03)');
   expect(await page.locator('#leaderboard-dialog thead th').first().evaluate(el=>getComputedStyle(el).borderBottomColor)).toBe('rgba(0, 0, 0, 0.12)');
 });
 
-// Game-owned menu panels opt into arcade glass; Study remains separate.
-test('Minesweeper options use arcade glass while Study privacy keeps its own look',async({page})=>{
+// Game and Study panels share clear optics while preserving their own geometry.
+test('Minesweeper and Study privacy share clear glass while preserving their geometry',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms-board')).toBeVisible();
   await gameAction(page,'Game options');
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
-  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(255, 255, 255, 0.06)','32px']);
-  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.16)');
+  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(184, 184, 184, 0.02)','32px']);
+  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
 
