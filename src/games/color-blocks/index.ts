@@ -2,9 +2,7 @@ import type {GameModule} from '../../core/types';
 import {createGame,place,canPlace,hasMove,SHAPES,NAMES,colorOf,restoreGame,SIZE} from './model';
 import {gem,blockSvg,COLOR_NAMES} from './art';
 import {mapDrag,grabCell,type Point,type Bounds} from './input';
-import {createGameSheet,bindGamePauseSheet} from '../../ui/game-sheet';
 import './style.css';
-const controls={touch:'Drag pieces onto the board.',keyboard:'1–3 select · Arrows aim · Enter places'};
 const freshGame=()=>createGame(crypto.getRandomValues(new Uint32Array(1))[0]);
 const module:GameModule={
  id:'color-blocks',title:'Block Blast',cover:'game-art/color-blocks/cover.svg',
@@ -18,9 +16,6 @@ const module:GameModule={
   const root=document.createElement('section');root.className='cb-game';root.setAttribute('aria-label','Block Blast puzzle');
   root.innerHTML=`<div class="cb-board-frame"><div class="cb-board" role="grid" aria-label="8 by 8 placement board" aria-describedby="cb-instructions"></div><div class="cb-effects" aria-hidden="true"></div></div><div class="cb-tray" role="group" aria-label="Three-piece tray"></div><div class="cb-feedback" role="status">Pick a piece and find its place</div><p class="cb-instructions" id="cb-instructions">Drag to place, or select a piece then tap the board. Touch pieces lift above your finger. Keyboard: 1, 2 or 3 select, arrows aim, Enter places, Esc pauses and opens Study Mode.</p><svg class="cb-drag-art" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" hidden></svg>`;
   container.replaceChildren(root);
-  let best=context.highScore;
-  const pauseSheet=bindGamePauseSheet(container,{title:'Block Blast',controls});
-  const resultSheet=createGameSheet(container,{title:'Block Blast',controls,onPlay(){restart();board.focus({preventScroll:true});}});
   const board=root.querySelector<HTMLElement>('.cb-board')!,tray=root.querySelector<HTMLElement>('.cb-tray')!,feedback=root.querySelector<HTMLElement>('.cb-feedback')!;
   const floating=root.querySelector<SVGSVGElement>('.cb-drag-art')!,effects=root.querySelector<HTMLElement>('.cb-effects')!;
   const rows=Array.from({length:SIZE},()=>{const row=document.createElement('div');row.className='cb-row';row.setAttribute('role','row');board.append(row);return row;});
@@ -47,8 +42,6 @@ const module:GameModule={
     const cell=board.getBoundingClientRect().width/SIZE*.5;
     b.innerHTML=`<svg class="cb-piece-art" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w*32} ${h*32}" width="${w*cell}" height="${h*cell}" aria-hidden="true">${shape.map(([x,y])=>gem(colorOf(p),x*32,y*32)).join('')}</svg>`;
    }
-   best=Math.max(best,state.score);
-   if(!hasMove(state)&&!paused)resultSheet.show('game-over',{score:state.score,best});else resultSheet.hide();
    if(state.score!==publishedScore){context.setScore(state.score);publishedScore=state.score;}
    if(state.lines!==publishedLines){context.setLevel(`${state.lines} lines`);publishedLines=state.lines;}
    const status=paused?'Paused':hasMove(state)?`${state.moves} ${state.moves===1?'piece':'pieces'} placed · ${state.tray.filter(p=>p!==null).length} left in tray`:'No pieces fit. Restart for another run.';
@@ -159,9 +152,8 @@ const module:GameModule={
   const resize=new ResizeObserver(()=>{const width=board.getBoundingClientRect().width,height=root.getBoundingClientRect().height;if(width!==lastWidth||height!==lastHeight){lastWidth=width;lastHeight=height;cancel();draw();}});resize.observe(board);resize.observe(root);
   // Grid owns keyboard focus while aiming; cells expose precise accessible labels.
   board.tabIndex=0;
-  function restart(){cancel();state=freshGame();selected=null;cursor={x:0,y:0};feedback.textContent='New board.';draw();context.save(state);}
   draw();
-  return {pause(){paused=true;cancel();draw();},resume(){paused=false;draw();},restart,serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();state=restored;selected=null;feedback.textContent='Your puzzle is ready to continue';draw();},dispose(){disposed=true;cancel();resize.disconnect();abort.abort();resultSheet.dispose();pauseSheet.dispose();root.remove();}};
+  return {pause(){paused=true;cancel();draw();},resume(){paused=false;draw();},restart(){cancel();state=freshGame();selected=null;cursor={x:0,y:0};feedback.textContent='Fresh board · find your flow';draw();context.save(state);board.focus({preventScroll:true});},serialize(){return structuredClone(state);},restore(data){const restored=restoreGame(data);if(!restored)return;cancel();state=restored;selected=null;feedback.textContent='Your puzzle is ready to continue';draw();},dispose(){disposed=true;cancel();resize.disconnect();abort.abort();root.remove();}};
  }
 };
 export default module;

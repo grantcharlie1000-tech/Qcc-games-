@@ -32,14 +32,14 @@ test.beforeEach(async({page})=>{await page.goto('/#/game/block-fill');await expe
 test('fast actual drag fills every square and unlocks the larger next garden',async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await drag(page,generateLevel(0).solution,true);
-  await expect(board(page)).toHaveAttribute('data-covered','9');await expect(page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true})).toBeVisible();
+  await expect(board(page)).toHaveAttribute('data-covered','9');await expect(page.getByRole('button',{name:'Next garden'})).toBeVisible();
   await expect(page.locator('#game-score')).toContainText('1800');
-  await gameAction(page,'Restart game');
+  await page.getByRole('button',{name:'Reset path',exact:true}).click();
   await expect(page.locator('#game-score')).toContainText('1800');
   await page.reload();await expect(page.locator('#game-score')).toContainText('1800');
   await drag(page,generateLevel(0).solution,true);
   await expect(board(page)).toHaveAttribute('data-covered','9');
-  await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
+  await page.getByRole('button',{name:'Next garden'}).click();await expect(board(page)).toHaveAttribute('data-total','14');await expect(board(page)).toHaveAttribute('data-covered','1');
   await expect(page.locator('#game-level')).toContainText('2 / 32');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
 });
@@ -70,7 +70,7 @@ test('touch trace, deliberate reverse drag and genuine dead-end recovery hint',a
   await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await expect(board(page)).toHaveAttribute('data-covered','4');
   await drag(page,[path[3]!,path[2]!]);await expect(board(page)).toHaveAttribute('data-covered','3');
   await page.getByRole('button',{name:'Reset path',exact:true}).click();
-  await drag(page,level.solution,true);await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();
+  await drag(page,level.solution,true);await page.getByRole('button',{name:'Next garden'}).click();
   const trapLevel=generateLevel(1);
   // Independently enumerate a legal trapped prefix on this actual board.
   const explore=(p:number[]):number[]|null=>{if(p.length>2&&!solve(trapLevel,p))return p;for(const c of trapLevel.cells){const h=p.at(-1)!;if(!p.includes(c)&&Math.abs(c%trapLevel.size-h%trapLevel.size)+Math.abs(Math.floor(c/trapLevel.size)-Math.floor(h/trapLevel.size))===1){const found=explore([...p,c]);if(found)return found;}}return null;};
@@ -96,7 +96,7 @@ test('all thirty-two gardens are playable to the final win using real pointer in
   for(let i=0;i<32;i++){
     const level=generateLevel(i);await drag(page,level.solution,true);
     await expect(board(page)).toHaveAttribute('data-covered',String(level.cells.length));
-    if(i<31)await page.locator('.game-sheet[data-state="game-over"]').getByRole('button',{name:'Play again',exact:true}).click();
+    if(i<31)await page.getByRole('button',{name:'Next garden'}).click();
   }
   await expect(page.locator('.bf-message')).toContainText('All gardens filled');
 });

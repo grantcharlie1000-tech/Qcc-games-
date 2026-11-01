@@ -3,7 +3,6 @@
  * and cross-tab ownership. Rules live in model.ts; content lives in data.ts.
  */
 import type {GameContext} from '../../core/types';
-import {bindGamePauseSheet} from '../../ui/game-sheet';
 import {canRetain} from '../../core/storage';
 import {cobArt,producerArt,sceneArt,goldenArt,pestArt,scarecrowArt,kernelArt,kernelUrl,seedArt,butterArt,mouseArt,sparkleArt} from './art';
 import {Big,format,type NumberStyle} from './big';
@@ -39,7 +38,6 @@ const TIPS:Tip[]=[
 export class CornClicker {
   private game:CornGame;
   private readonly root:HTMLElement;
-  private readonly pauseSheet:{dispose():void};
   private readonly sfx=new Sfx();
   private readonly guard:TabGuard;
   private paused=false;private passive=false;private disposed=false;private pausedAt=0;
@@ -70,7 +68,6 @@ export class CornClicker {
     this.root.className='cc-root';this.root.dataset.top=this.top;
     this.root.innerHTML=this.template();
     container.append(this.root);
-    this.pauseSheet=bindGamePauseSheet(container,{title:'Corn Clicker',controls:{touch:'Tap the cob to harvest.',keyboard:'Click, Space or Enter harvests.'}});
     const q=(s:string)=>this.root.querySelector<HTMLElement>(s)!;
     this.el={kernels:q('.cc-kernels-num'),cps:q('.cc-cps'),cpc:q('.cc-cpc'),hudK:q('.cc-hud-k'),hudC:q('.cc-hud-c'),buffs:q('.cc-buffs'),cob:q('.cc-cob'),fx:q('.cc-fx'),pests:q('.cc-pests'),
       tip:q('.cc-tip'),goal:q('.cc-goal-main'),unlock:q('.cc-goal-unlock'),saved:q('.cc-saved'),ticker:q('.cc-ticker'),news:q('.cc-news'),scene:q('.cc-scene'),farmBar:q('.cc-farm-bar'),
@@ -194,7 +191,7 @@ export class CornClicker {
     this.disposed=true;this.stop();clearTimeout(this.saveTimer);
     this.guard.dispose();this.sfx.dispose();this.garden.dispose();
     removeEventListener('keydown',this.onKey);removeEventListener('resize',this.hideTooltip);
-    this.pauseSheet.dispose();this.root.remove();
+    this.root.remove();
   }
 
   // ───────────────────────── Multiple tabs ─────────────────────────
