@@ -63,7 +63,7 @@ let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
-const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool']);
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','crossy-road']);
 
 function syncViewportLock(){
   const playing=!!activeId&&!document.body.classList.contains('study-active');
@@ -269,6 +269,7 @@ async function route(){
     <nav class="game-dock" aria-label="Game controls">
       <a class="ui-tab arcade-glass game-glass" href="${collectionHash}" aria-label="Games">${icon('back')}<span>Games</span></a>
       <div class="game-hud arcade-glass game-glass" aria-label="Game information"></div>
+      ${id==='crossy-road'?`<button id="game-quick-rankings" class="ui-tab arcade-glass game-glass glass-control" type="button" aria-label="Top scores" title="Top scores">${icon('star')}<span>Top scores</span></button>`:''}
       <button id="game-menu" class="ui-tab arcade-glass game-glass" type="button" aria-label="Menu" aria-haspopup="dialog" aria-expanded="false">${icon('pause')}<span>Menu</span></button>
     </nav>
     <dialog id="game-options" class="ui-glass-sheet game-chrome-menu" aria-labelledby="game-title">
@@ -304,6 +305,10 @@ async function route(){
   });
   document.querySelector('#game-settings')!.addEventListener('click',()=>transferDialog(()=>openMenu(menuButton)));
   document.querySelector('#game-rankings')!.addEventListener('click',()=>transferDialog(()=>leaderboards.open(id==='minesweeper'?'minesweeper-score':id)));
+  // Optional direct access uses the same shell glass binding and ranking dialog.
+  document.querySelector('#game-quick-rankings')?.addEventListener('click',()=>{
+    pausedForDialog=!paused;setPaused(true);leaderboards.open(id);
+  });
   const fullscreenButton=document.querySelector<HTMLButtonElement>('#fullscreen-game')!;
   detachFullscreen=attachFullscreen(fullscreenButton,state=>{
     fullscreenButton.setAttribute('aria-pressed',String(state.expanded));

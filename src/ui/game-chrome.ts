@@ -1,7 +1,7 @@
 import type {GameId} from '../core/types';
 import {bindGlass} from './glass';
 
-type Field={label:string;source:string;attribute?:string;labelSource?:string};
+type Field={label:string;source:string;attribute?:string;labelSource?:string;stripPrefix?:string};
 const score:Field={label:'Score',source:'#game-score strong'};
 const level:Field={label:'',source:'#game-level'};
 /** Read the game's existing presentation. Models and the frozen context API remain the owners of state. */
@@ -18,6 +18,7 @@ const fields:Record<GameId,Field[]>={
   blockcraft:[level], 'maze-muncher':[score,level],
   'corn-clicker':[{label:'Kernels',source:'.cc-kernels-num'},{label:'Per second',source:'.cc-cps'}],
   slipline:[{label:'',source:'.sl-level'},{label:'',source:'.sl-hearts',attribute:'aria-label'}],
+  'crossy-road':[score,{label:'Row',source:'#game-level',stripPrefix:'Row '},{label:'Best',source:'#game-best strong'}],
   quadfall:[score,level], fivefold:[{label:'',source:'.ff-puzzle'}]
 };
 
@@ -39,14 +40,14 @@ const surfaceSources:Partial<Record<GameId,string>>={
   'color-connect':'.cc-game','water-sort':'.ws-game','color-blocks':'.cb-game',
   fivefold:'.ff',quadfall:'.qf-game',slipline:'.sl-game'
 };
-const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft']);
+const lightSurfaces=new Set<GameId>(['fruit-merge','tower','flappy-bird','animal-stack','blockcraft','crossy-road']);
 
 export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLElement,activate:(action:()=>void)=>void):void;dispose():void}{
   const dock=view.querySelector<HTMLElement>('.game-dock')!;
   const hud=dock.querySelector<HTMLElement>('.game-hud')!;
   view.dataset.glassTone=lightSurfaces.has(id)?'light':'dark';
   // Presentation only: the games retain their native dialog lifecycle and actions.
-  for(const panel of view.querySelectorAll<HTMLElement>('.ms-settings,.ff-dialog')){
+  for(const panel of view.querySelectorAll<HTMLElement>('.ms-settings,.ff-dialog,.hw-card')){
     panel.classList.add('arcade-sheet');
     panel.dataset.glassTone=view.dataset.glassTone;
     if(panel instanceof HTMLDialogElement)panel.classList.add('ui-glass-sheet');
@@ -85,7 +86,8 @@ export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLEle
     const sync=()=>{
       // Some games replace the value element on each render (for example Block Fill).
       const current=view.querySelector<HTMLElement>(field.source);
-      const next=(field.attribute?current?.getAttribute(field.attribute):current?.textContent)?.trim()??'';
+      const raw=(field.attribute?current?.getAttribute(field.attribute):current?.textContent)?.trim()??'';
+      const next=field.stripPrefix&&raw.startsWith(field.stripPrefix)?raw.slice(field.stripPrefix.length):raw;
       const nextLabel=field.labelSource?view.querySelector(field.labelSource)?.textContent?.trim()||field.label:field.label;
       if(label.textContent!==nextLabel)label.textContent=nextLabel;
       if(value.textContent!==next)value.textContent=next;
