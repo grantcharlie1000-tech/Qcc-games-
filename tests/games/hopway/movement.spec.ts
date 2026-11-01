@@ -171,7 +171,7 @@ test('the score counts only a new furthest row', async ({page}) => {
   }
   expect(scores).toEqual([1, 2, 2, 2, 3]);
   expect(await state(page)).toMatchObject({row: 3, maxRow: 3, score: 3});
-  // The shell's HUD follows (its score report is throttled to 250 ms of real time, so wait for it).
+  // The shell's HUD follows: every new best is reported to it at once.
   await expect(page.locator('#game-score strong')).toHaveText('3');
   await expect(page.locator('#game-level')).toHaveText('Row 3');
   await expect(page.locator('.hopway')).toHaveAttribute('data-score', '3');

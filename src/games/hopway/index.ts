@@ -170,7 +170,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   }
 
   /** Every new best row goes to the shell at once, so a pause, restart or leave can never drop one. A hop takes 120 ms,
-   * so this is at most a few small storage writes a second. */
+   * so this is at most about eight small storage writes a second (three to five in normal play). */
   function report() {
     if (run.maxRow === reportedScore) return;
     reportedScore = run.maxRow;

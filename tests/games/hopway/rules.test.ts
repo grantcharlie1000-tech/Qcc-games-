@@ -1249,6 +1249,9 @@ describe('restore rejects anything that is off, and never throws', () => {
     ['a running state that has not started', { ...running(), started: false }],
     ['a running state with a death', { ...running(), death: over().death }],
     ['an over state without a death', { ...over(), death: null }],
+    // A run dies on the row it is in, so a death elsewhere is a hand-edited save (and could make restore build far rows).
+    ['a death on a different row from the run', deathWith({ row: 4 })],
+    ['a death far beyond the run', deathWith({ row: MAX_ROW })],
     ['an over state with no death key', (() => { const o: Partial<Snapshot> = over(); delete o.death; return o; })()],
     ['a death that is not an object', { ...over(), death: 'car' }], ['a death that is an array', { ...over(), death: [] }],
     ['a death that is an array carrying every field', { ...over(), death: Object.assign([], over().death) }],

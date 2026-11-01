@@ -209,7 +209,8 @@ export function restore(data: unknown): RunState | null {
     if (phase === 'running' && (!started || death !== null)) return null;
     let restored: Death | null = null;
     if (phase === 'over') {
-      if (!isRecord(death) || !isCause(death.cause) || !isNum(death.t, 0, t) || !isInt(death.row, 0, MAX_ROW)) return null;
+      // die() records the row the run is in, so a death on any other row is not a real save.
+      if (!isRecord(death) || !isCause(death.cause) || !isNum(death.t, 0, t) || !isInt(death.row, 0, MAX_ROW) || death.row !== row) return null;
       if (!isNum(death.x, -Infinity, Infinity) || (death.dir !== -1 && death.dir !== 1)) return null;
       restored = { cause: death.cause, t: death.t, row: death.row, x: death.x, dir: death.dir };
     }
