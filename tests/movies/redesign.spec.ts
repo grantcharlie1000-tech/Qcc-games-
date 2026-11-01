@@ -554,6 +554,9 @@ test('keyboard focus stays on Next when the next page of results renders',async(
  });
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
+ // The initial catalog replaces the search field. Its fixture rails failure
+ // marks the completed mount, so typing cannot race that replacement.
+ await expect(page.locator('.movies-rails-status')).toBeVisible();
  await page.locator('#movies-search').fill('star');
  const next=page.getByRole('button',{name:'Next',exact:true});
  await expect(next).toBeVisible();
@@ -1826,8 +1829,9 @@ for(const reduced of [false,true] as const)test(`the Up next card sits in the sc
 // WebKit reports a sheet's ::backdrop fade with no pseudo-element, on the open dialog itself. The dialog's own transitions never
 // include background-color, so an animation of nothing but background-color on an open dialog is that fade.
 const backdropFade=(animation:{pseudo:string;dialog:boolean;properties:string[]})=>animation.pseudo==='::backdrop'||(animation.pseudo===''&&animation.dialog&&animation.properties.every(key=>key==='backgroundColor'));
-// Reduced motion leaves one animation, the sheet's ::backdrop colour fade. Every other animation, pseudo-elements included, must be gone, and the
-// backdrop may change opacity or background colour only, never a transform, translate or scale.
+// Reduced motion keeps the sheet backdrop and the island's intentional 150ms
+// opacity cross-fade. Card/rail/drawer motion must be absent even while either
+// allowed fade is in flight; do not race them with an immediate empty-array check.
 for(const setting of ['media query','class'] as const)test(`reduced motion (${setting}) stops card, rail and drawer animations`,async({page})=>{
  if(setting==='media query')await page.emulateMedia({reducedMotion:'reduce'});
  await page.setViewportSize({width:1440,height:900});
@@ -1835,9 +1839,10 @@ for(const setting of ['media query','class'] as const)test(`reduced motion (${se
   const animations=await page.evaluate(()=>document.getAnimations().map(animation=>{
    const effect=animation.effect as KeyframeEffect|null;
    const properties=[...new Set((effect?.getKeyframes()??[]).flatMap(frame=>Object.keys(frame)))].filter(key=>!['offset','easing','composite','computedOffset'].includes(key));
-   return {pseudo:effect?.pseudoElement??'',dialog:effect?.target instanceof HTMLDialogElement&&effect.target.open,properties};
+   return {pseudo:effect?.pseudoElement??'',dialog:effect?.target instanceof HTMLDialogElement&&effect.target.open,properties,island:effect?.target instanceof Element&&effect.target.matches('.movies-mobile-nav,.movies-view > .ui-tabbar-mini'),duration:effect?.getTiming().duration};
   }));
-  expect(animations.filter(animation=>!backdropFade(animation)),'animations other than the backdrop fade').toEqual([]);
+  const islandFade=(a:typeof animations[number])=>a.island&&a.pseudo===''&&a.duration===150&&a.properties.length===1&&a.properties[0]==='opacity';
+  expect(animations.filter(animation=>!backdropFade(animation)&&!islandFade(animation)),'animations other than the backdrop and island opacity fades').toEqual([]);
   for(const animation of animations)expect(animation.properties.every(key=>key==='opacity'||key==='backgroundColor'),`${animation.pseudo||'element'} animates ${animation.properties.join(', ')}`).toBe(true);
  };
  await page.goto('/#/movies');

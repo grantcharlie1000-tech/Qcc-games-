@@ -1,3 +1,4 @@
+import {appSettings,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect,type Page} from '../../fixtures';
 import {advance,createState,enqueue,type SnakeState} from '../../../src/games/snake/model';
 import type {savePresentation} from '../../../src/games/snake/presentation';
@@ -12,12 +13,12 @@ async function setup(page:Page){
  await page.evaluate(()=>document.addEventListener('click',event=>{
   const button=(event.target as HTMLElement).closest('button');
   if(button?.classList.contains('snake-start'))(window as unknown as {snakeTestStart:number}).snakeTestStart=performance.now();
-  if(button?.id==='pause-game')(window as unknown as {snakeTestPause:number}).snakeTestPause=performance.now();
+  if(button?.id==='game-menu')(window as unknown as {snakeTestPause:number}).snakeTestPause=performance.now();
  },true));
  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
  await page.clock.runFor(20); // Establish the RAF timestamp; no simulation tick yet.
 }
-async function pause(page:Page){await page.getByRole('button',{name:'Pause game',exact:true}).click();return saved(page);}
+async function pause(page:Page){await pauseGame(page);return saved(page);}
 
 test('continuous authoritative travel, junction-buffered turn, frozen v2 save and growth reload',async({page})=>{
  await setup(page);await page.clock.runFor(80);
@@ -29,20 +30,20 @@ test('continuous authoritative travel, junction-buffered turn, frozen v2 save an
  expect(snapshot.direction).toBe('right');expect(snapshot.queue).toEqual(['up','left']);expect(snapshot.elapsed).toBeGreaterThan(0);
  const frozen=await pixels(page);await page.clock.runFor(1000);expect(await pixels(page)).toBe(frozen);
  await page.reload();expect(await pixels(page)).toBe(frozen);
- await page.getByRole('button',{name:'Pause game',exact:true}).click();
+ await pauseGame(page);
  expect(await saved(page)).toEqual(snapshot);
  const restoredFrozen=await pixels(page);await page.clock.runFor(1000);expect(await pixels(page)).toBe(restoredFrozen);
- await page.getByRole('button',{name:'Resume game',exact:true}).click();
+ await resumeGame(page);
  await page.clock.runFor(180-snapshot.elapsed);
  const turned=await pause(page);expect(turned.direction).toBe('up');expect(turned.queue).toEqual(['left']);
  expect(turned.body[0].x).toBe(6);expect(turned.body[0].y).toBeLessThan(6);expect(turned.body[0].y).toBeGreaterThan(5);expect(await pixels(page)).not.toBe(restoredFrozen);
  // Save inside the apple/growth interval, including the active 200 ms feedback.
- await page.getByRole('button',{name:'Restart game',exact:true}).click();
+ await gameAction(page,'Restart game');
  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
  await page.clock.runFor(620);const grown=await pause(page);
  expect(grown.score).toBe(10);expect(grown.segments).toBe(4);
  const growingPixels=await pixels(page);await page.reload();expect(await pixels(page)).toBe(growingPixels);
- await page.getByRole('button',{name:'Pause game',exact:true}).click();expect(await saved(page)).toEqual(grown);
+ await pauseGame(page);expect(await saved(page)).toEqual(grown);
 });
 
 test('raw legacy effect ages import once and time-zero v2 held/lost reload preserves exact state and pixels',async({page})=>{
@@ -57,7 +58,7 @@ test('raw legacy effect ages import once and time-zero v2 held/lost reload prese
 
 test('a dropped RAF catches up to the same final grid and committed edge',async({page,browser})=>{
  async function scenario(target:Page,droppedFrame:boolean){
-  await setup(target);await target.getByRole('button',{name:'Restart game',exact:true}).click();
+  await setup(target);await gameAction(target,'Restart game');
   // This independent RAF observer shares the game's delivered timestamps, without naming its callback.
   await target.evaluate(()=>{
    const times:number[]=[];(window as unknown as {snakeTestFrames:number[]}).snakeTestFrames=times;
@@ -124,7 +125,9 @@ test('real input after stalled RAF cannot retarget a past junction or escape an 
 test('resize during a turn preserves the grid and renders at the actual high-DPI display size',async({page,context,browserName})=>{
  await page.setViewportSize({width:1440,height:1200});await setup(page);
  await page.keyboard.press('ArrowUp');await page.clock.runFor(240);
- const before=await pause(page);const garden=await page.locator('.snake-garden').boundingBox();
+ const before=await pause(page);
+ await page.getByLabel('Show touch controls').check();
+ const garden=await page.locator('.snake-garden').boundingBox();
  expect(garden!.width).toBeCloseTo(728,0);
  const canvas=await page.locator('canvas').boundingBox();expect(canvas!.width).toBeCloseTo(694.4,0);
  if(browserName==='chromium'){
@@ -219,7 +222,7 @@ test('OS and app reduced motion change the presentation live; cancelled swipes n
  console.info(`Snake capture cancellation ${JSON.stringify({browserName,pointer,got:await canvas.getAttribute('data-test-gotpointercapture'),lost:await canvas.getAttribute('data-test-lostpointercapture')})}`);
  await page.mouse.move(x,y-60);await page.mouse.up();
  const snapshot=await pause(page);expect(snapshot.queue).toEqual([]);expect(snapshot.direction).toBe('right');
- await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await appSettings(page);
  await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();
  await page.clock.runFor(32);await expect(page.locator('.snake-game')).toHaveAttribute('data-reduced-motion','true');
  expect(errors).toEqual([]);

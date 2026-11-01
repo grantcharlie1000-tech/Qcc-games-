@@ -1,5 +1,5 @@
 import {expect,test,vi} from 'vitest';
-import {glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
+import {ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
 
 // The island is 366 by 64 px at a 390 px viewport (12 px from each screen edge), and its lens field covers it plus the margin.
 const W=366,H=64;
@@ -7,6 +7,73 @@ const WIDTH=W+2*LENS_MARGIN,HEIGHT=H+2*LENS_MARGIN;
 const DENSITIES=[1,2,3];
 // One channel step, in CSS px of shift: the 8-bit channel spans the scale in 255 steps.
 const STEP=REFRACTION_SCALE/255;
+
+for(const density of [1,2,3])test(`arcade bezel magnifies a broad band without folding at density ${density}`,()=>{
+  const width=240+2*LENS_MARGIN,height=56+2*LENS_MARGIN;
+  const data=lensField(width,height,LENS_MARGIN,ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,1,density,'convex');
+  const shift=(depth:number)=>{
+    const y=Math.floor((LENS_MARGIN+depth)*density),x=Math.floor(width/2*density);
+    return 2*ARCADE_LENS_BEND*(data[(y*width*density+x)*4+1]/255-.5);
+  };
+  expect(shift(0)).toBeGreaterThan(3);
+  expect(shift(0)).toBeLessThan(5.5);
+  expect(shift(4)).toBeGreaterThan(2);
+  expect(Math.abs(shift(14))).toBeLessThan(.1);
+  // Read the sampled backdrop coordinate, not just the displacement: reversal
+  // means the same detail folds back over itself in the outer band.
+  let previous=-Infinity;
+  for(let i=0;i<28*density;i++){
+    const depth=i/density,sample=depth+shift(depth);
+    expect(sample).toBeGreaterThan(previous);
+    previous=sample;
+  }
+});
+
+for(const density of [1,2,3])test(`convex caps preserve area through bilinear sampling at density ${density}`,()=>{
+  for(const [w,h] of [[48,48],[52,52],[64,64],[240,56],[366,64]]){
+    const width=w+2*LENS_MARGIN,height=h+2*LENS_MARGIN,pw=width*density,ph=height*density;
+    const data=lensField(width,height,LENS_MARGIN,ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,1,density,'convex');
+    const scale=2*ARCADE_LENS_BEND*density/255;
+    let minimum=Infinity;
+    for(let y=0;y<ph-1;y++)for(let x=0;x<pw-1;x++){
+      const a=(y*pw+x)*4,b=a+4,c=a+pw*4,d=c+4;
+      // A bilinear map can fold diagonally even when its axis derivatives are
+      // positive. Its Jacobian determinant must be positive at all four cell
+      // corners; these bound the interior as well.
+      for(const [left,right] of [[a,b],[c,d]])for(const [top,bottom] of [[a,c],[b,d]]){
+        const xx=1+(data[right]-data[left])*scale,xy=(data[bottom]-data[top])*scale;
+        const yx=(data[right+1]-data[left+1])*scale,yy=1+(data[bottom+1]-data[top+1])*scale;
+        minimum=Math.min(minimum,xx*yy-xy*yx);
+      }
+    }
+    expect(minimum,`${w}×${h} capsule`).toBeGreaterThan(.25);
+  }
+});
+
+test('the arcade convex bezel samples inward at both circle edges and leaves the centre clear',()=>{
+  const width=48+2*LENS_MARGIN;
+  const data=lensField(width,width,LENS_MARGIN,12,LENS_BEND,1,2,'convex');
+  const shift=(x:number,y:number)=>{
+    const i=(Math.floor((y+LENS_MARGIN)*2)*width*2+Math.floor((x+LENS_MARGIN)*2))*4;
+    return [REFRACTION_SCALE*(data[i]/255-.5),REFRACTION_SCALE*(data[i+1]/255-.5)];
+  };
+  expect(shift(1,24)[0]).toBeGreaterThan(2);
+  expect(shift(46,24)[0]).toBeLessThan(-2);
+  expect(shift(24,1)[1]).toBeGreaterThan(2);
+  expect(shift(24,46)[1]).toBeLessThan(-2);
+  for(const v of shift(24,24))expect(Math.abs(v)).toBeLessThan(.1);
+  for(const v of shift(14,24))expect(Math.abs(v)).toBeLessThan(.1);
+});
+
+test('the convex capsule preserves an undistorted centre between its two 12px bezels',()=>{
+  const width=240+2*LENS_MARGIN,height=56+2*LENS_MARGIN;
+  const data=lensField(width,height,LENS_MARGIN,12,LENS_BEND,1,1,'convex');
+  for(let y=13;y<43;y++)for(let x=28;x<212;x++){
+    const i=((y+LENS_MARGIN)*width+x+LENS_MARGIN)*4;
+    expect(Math.abs(data[i]-127.5)).toBeLessThanOrEqual(.5);
+    expect(Math.abs(data[i+1]-127.5)).toBeLessThanOrEqual(.5);
+  }
+});
 // The lens map at a pixel density: round(size * density) pixels a side, each sampling the same field in CSS px. The shift the lens applies
 // at a map pixel is read as the SVG filter reads it (channel/255 - 1/2, times the scale), in CSS px. inBar takes a point in the bar's own
 // CSS px and reads the map pixel that covers it.

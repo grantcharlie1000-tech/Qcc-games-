@@ -21,7 +21,8 @@ export const games: GameInfo[] = [
 {id:'corn-clicker',title:'Corn Clicker',color:'#2f5d1e',ink:'#ffe14d',accent:'#ffd447'},
 {id:'slipline',title:'Slipline',color:'#202032',ink:'#eee7ff',accent:'#5cddbb'},
 {id:'quadfall',title:'Tetris',color:'#101631',ink:'#7ee0ff',accent:'#ff9f43'},
-{id:'fivefold',title:'Wordle',color:'#1d2b24',ink:'#f4e9c8',accent:'#6fbf73'}
+{id:'fivefold',title:'Wordle',color:'#1d2b24',ink:'#f4e9c8',accent:'#6fbf73'},
+{id:'crossy-road',title:'Crossy Road',color:'#16303d',ink:'#fff5df',accent:'#f3bb45'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {

@@ -68,3 +68,5 @@
 }
 .globle.gl-keyboard .gl-side{max-height:30%}
 .globle.gl-keyboard .gl-legend,.globle.gl-keyboard .gl-more,.globle.gl-keyboard .gl-hint{display:none}
+
+.gl-modes,.gl-round,.gl-summary>span:nth-child(2){display:none}

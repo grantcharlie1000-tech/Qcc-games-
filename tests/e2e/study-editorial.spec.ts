@@ -1,3 +1,4 @@
+import {appSettings} from '../game-menu';
 import adManifest from '../../src/study/fictional-ads-manifest.json' with {type:'json'};
 const localAdPaths=new Set(adManifest.map(ad=>'/study/fictional-ads/'+ad.file));
 import {GAME_IDS} from '../../src/core/types';
@@ -6,7 +7,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  await page.setViewportSize(viewport);await page.goto('/');await expect(page.locator('[data-study-topic]')).toHaveCount(20);await expect(page.locator('.fictional-ad')).toHaveCount(0);
  await page.getByRole('button',{name:'Accept All',exact:true}).click();
  await page.locator('.study-chapter img').evaluateAll(images=>Promise.all(images.map(image=>{(image as HTMLImageElement).loading='eager';return (image as HTMLImageElement).decode();})));await page.screenshot({path:`docs/evidence/article-reading-layout/with-photos/picker-${viewport.width}.png`,fullPage:true});
- await page.locator('[data-study-topic="close-reading"]').click();await expect(page.locator('.fictional-ad')).toHaveCount(0);await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.locator('[data-study-topic="close-reading"]').click();await expect(page.locator('.fictional-ad')).toHaveCount(0);await appSettings(page);
  const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});

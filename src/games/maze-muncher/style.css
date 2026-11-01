@@ -56,3 +56,6 @@ body.in-game .game-view[data-game-id=maze-muncher] #game-stage.viewport-fitted{p
 .mm-sideways .mm-help span+span::before{display:none}
 @media (prefers-reduced-motion:reduce){.mm-card,.mm-card[hidden]{transform:none}.mm-pad button{transition:none}.mm-pad button:active{transform:none}}
 @media(max-height:600px){.mm-game:not(.mm-sideways) .mm-help{display:none}}
+
+.mm-help{display:none}
+.game-view[data-touch-controls=false] .mm-controls{display:none}
