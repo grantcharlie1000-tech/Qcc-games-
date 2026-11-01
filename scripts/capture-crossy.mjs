@@ -137,7 +137,9 @@ function grass(row) {
 }
 
 async function death(page, view, mixed, cause) {
-  const row = mixed.row, t = mixed.t;
+  // High-row scroll can trigger behind before the idle timer. Seed 7 row 24 is
+  // early open grass: its real scroll leaves enough time for the idle swoop.
+  const row = cause === 'ufo-idle' ? 24 : mixed.row, t = mixed.t;
   if (cause === 'ufo-idle' || cause === 'ufo-behind') {
     await seek(page, mixed.seed, row, 4, t, cause === 'ufo-behind' ? row + 3 : row);
     // Three rows back triggers immediately; idle uses the same 7-second rule as play.
