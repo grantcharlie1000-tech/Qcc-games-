@@ -149,9 +149,10 @@ export const DEATH_TIME = 0.9;
 export const DEATH_TIME_REDUCED = 0.3;
 export const STEP = 1 / 60;
 
-// Render span for lanes and hazards (tiles). No camera shows beyond it.
-export const RENDER_X_MIN = -16;
-export const RENDER_X_MAX = 24;
+// Render span for lanes and hazards (tiles). No camera shows beyond it, even at the band's edge on a 1366 px landscape
+// view with the camera's yaw; only what is inside the camera's window is drawn, so a wider span costs nothing.
+export const RENDER_X_MIN = -40;
+export const RENDER_X_MAX = 48;
 export const VEHICLE_PALETTE = 6;
 export const TRAIN_PALETTE = 4;
 export const LOG_PALETTE = 3;

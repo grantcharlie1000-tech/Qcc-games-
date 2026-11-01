@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GrassLane, LilyLane, RailLane, RiverLane, RoadLane } from '../../../src/games/hopway/config';
+import { RENDER_X_MAX, RENDER_X_MIN, type GrassLane, type LilyLane, type RailLane, type RiverLane, type RoadLane } from '../../../src/games/hopway/config';
 import {
   forEachMover, laneVelocity, mod, moverBase, platformAt, railWarning, trainClear, trainEntry, trainHit, trainSpan, vehicleHit,
 } from '../../../src/games/hopway/lanes';
@@ -279,12 +279,23 @@ describe('rail timeline', () => {
     expect(railWarning(left, 0.89)).toBe(false);
   });
 
-  it('returns null when the whole train is outside the render span, on either side', () => {
-    expect(trainSpan(lane, 0.9)).toBeNull(); // x1 = -20.3 < -16
+  it('returns null once the whole train has left the render span on its far side', () => {
+    // Heading right the front is at -0.5 + 18u (u = t - 2), so x0 = front - 12 passes RENDER_X_MAX at u = (RENDER_X_MAX + 12.5) / 18.
+    const atWarning = trainSpan(lane, 0.9)!; // the warning starts with the train already inside the render span
+    expect(atWarning.x0).toBeCloseTo(-32.3, 9);
+    expect(atWarning.x1).toBeCloseTo(-20.3, 9);
     expect(trainSpan(lane, 1.5)).toEqual({ x0: -21.5, x1: -9.5 });
     expect(trainSpan(lane, 4)).toEqual({ x0: 23.5, x1: 35.5 });
-    expect(trainSpan(lane, 4.05)).toBeNull(); // x0 = 24.4 > 24
-    expect(trainSpan(rail({ dir: -1 }), 0.9)).toBeNull(); // x0 = 28.3 > 24
+    const rightOut = 2 + (RENDER_X_MAX + 12.5) / 18;
+    expect(trainSpan(lane, rightOut - 0.01)).not.toBeNull();
+    expect(trainSpan(lane, rightOut + 0.01)).toBeNull();
+    // Heading left the front is at 8.5 - 18u and x1 = front + 12 passes RENDER_X_MIN at u = (8.5 + 12 - RENDER_X_MIN) / 18.
+    const left = rail({ dir: -1 }), leftOut = 2 + (20.5 - RENDER_X_MIN) / 18;
+    const leftAtWarning = trainSpan(left, 0.9)!;
+    expect(leftAtWarning.x0).toBeCloseTo(28.3, 9);
+    expect(leftAtWarning.x1).toBeCloseTo(40.3, 9);
+    expect(trainSpan(left, leftOut - 0.01)).not.toBeNull();
+    expect(trainSpan(left, leftOut + 0.01)).toBeNull();
   });
 
   it('writes into the supplied object and returns it, and allocates a fresh one otherwise', () => {

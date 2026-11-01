@@ -81,6 +81,10 @@ const PAL = (() => {
 
 /** Lane colour multiplier for the zones outside the band, and for decor standing in them. */
 const DARK = 0.65, EDGE_SHADE = 0.88;
+/** The darker zones either side of the band run out to the render span's edges, so no view (even one following a player
+ * swept to the band's edge on a wide screen) reaches the end of a lane. */
+const LEFT_ZONE_W = BAND_MIN - (RENDER_X_MIN - 0.5), LEFT_ZONE_X = (RENDER_X_MIN - 0.5 + BAND_MIN) / 2;
+const RIGHT_ZONE_W = RENDER_X_MAX + 0.5 - BAND_MAX, RIGHT_ZONE_X = (BAND_MAX + RENDER_X_MAX + 0.5) / 2;
 const CLEAR_COLOR = 0x27342c;
 
 // Geometry constants -----------------------------------------------------------
@@ -395,9 +399,9 @@ export function createScene(canvas: HTMLCanvasElement, options: { quality?: Qual
 
   /** A band across the whole lane: three boxes so the zones outside the band are darker. */
   function band(ci: number, y: number, h: number, zc: number, depth: number): void {
-    ground.put(-8.5, y, zc, 16, h, depth, 0, ci, DARK);
-    ground.put(4, y, zc, 9, h, depth, 0, ci, 1);
-    ground.put(16.5, y, zc, 16, h, depth, 0, ci, DARK);
+    ground.put(LEFT_ZONE_X, y, zc, LEFT_ZONE_W, h, depth, 0, ci, DARK);
+    ground.put((BAND_MIN + BAND_MAX) / 2, y, zc, BAND_MAX - BAND_MIN, h, depth, 0, ci, 1);
+    ground.put(RIGHT_ZONE_X, y, zc, RIGHT_ZONE_W, h, depth, 0, ci, DARK);
   }
 
   /** A flat dark square under a thing (low quality): thrown a little to the right and back, like the sun's shadow. */
