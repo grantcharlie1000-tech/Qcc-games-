@@ -19,6 +19,7 @@ import * as store from './core/storage';
 import {playSound} from './core/audio';
 import {activateUpdate, cacheAll, checkForUpdates, watchUpdates} from './core/offline';
 import {StudyView} from './study/view';
+import {SHOOTER} from './games/shooter/meta';
 import {reloadAfterActivation} from './core/update';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
@@ -61,7 +62,7 @@ let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft',SHOOTER.id]);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
 const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','crossy-road']);
 
