@@ -1,3 +1,4 @@
+import {backToGames,gameAction,gameOption,pauseGame} from '../../game-menu';
 import { test, expect, type Page } from '../../fixtures';
 const errorsByPage=new WeakMap<Page,string[]>();
 const board = (page:Page) => page.locator('.cc-grid');
@@ -16,11 +17,11 @@ test('draw, erase, undo, pause, restart and reload saved paths',async({page})=>{
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
  await page.getByRole('button',{name:'Hint',exact:true}).click();
  const progress=await page.locator('.cc-progress').textContent();
- await page.getByRole('button',{name:'Pause game',exact:true}).click();
+ await pauseGame(page);
  await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeDisabled();
  await page.reload();
  await expect(page.locator('.cc-progress')).toHaveText(progress!);
- await page.getByRole('button',{name:'Restart game',exact:true}).click();
+ await gameAction(page,'Restart game');
  await expect(page.locator('.cc-grid [data-path]')).toHaveCount(0);
  await expect(page.locator('.cc-progress')).toHaveText(start!);
 });
@@ -59,14 +60,14 @@ test('responsive board and genuine touch path',async({page,browserName})=>{
  await draw(page,[9,5,6,10,11,15]);
  await draw(page,[14,12]);
  if(browserName==='chromium')await page.screenshot({path:'tests/games/color-connect/evidence/chromium.png',fullPage:true});
- await page.getByRole('combobox',{name:'Choose puzzle'}).selectOption('11');
+ await gameOption(page,'Choose puzzle','11');
  await expect(page.locator('[data-cc-cell]')).toHaveCount(49);
  const smallCell=await page.locator('[data-cc-cell="0"]').boundingBox();
  expect(smallCell!.width).toBeGreaterThanOrEqual(44);
  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
- await page.getByRole('combobox',{name:'Choose puzzle'}).selectOption('0');
+ await gameOption(page,'Choose puzzle','0');
  if(browserName!=='chromium')return;
- await page.getByRole('button',{name:'Restart game',exact:true}).click();
+ await gameAction(page,'Restart game');
  const session=await page.context().newCDPSession(page);
  const points=await Promise.all([9,5].map(cell=>center(page,cell)));
  await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...points[0],id:1}]});
@@ -104,13 +105,13 @@ test('module lifecycle rejects corrupted snapshots, gates paused input, restarts
   return {pausedUnchanged,restarted:restarted.paths.every((p:number[])=>p.length===0)&&restarted.moves===0&&restarted.completed.length===0,disabledAfterRestart,restored,rejected,disposed,score};
  });
  expect(result).toEqual({pausedUnchanged:true,restarted:true,disabledAfterRestart:true,restored:true,rejected:true,disposed:true,score:0});
- await page.getByRole('link',{name:'Back to game library'}).click();
+ await backToGames(page);
  await page.getByRole('link',{name:'Play Flow Free',exact:true}).click();
  await expect(board(page)).toBeVisible();
 });
 
 test('rules explain full coverage and returning from the dialog resumes play',async({page})=>{
- await page.getByRole('button',{name:'Game rules',exact:true}).click();
+ await gameAction(page,'Game rules');
  await expect(page.locator('#rules-dialog')).toBeVisible();
  await expect(page.locator('#rules-text')).toContainText('fill the ENTIRE board');
  await page.getByRole('button',{name:'Let’s play',exact:true}).click();
@@ -123,7 +124,7 @@ test('current-board hint respects an alternative completed path and truthfully r
  await page.getByRole('button',{name:'Hint',exact:true}).click();
  await expect(page.locator('[data-path="A"]')).toHaveCount(4);
  await expect(page.locator('[data-path="B"]')).toHaveCount(2);
- await page.getByRole('button',{name:'Restart game',exact:true}).click();
+ await gameAction(page,'Restart game');
  await draw(page,[9,13]);
  await page.getByRole('button',{name:'Hint',exact:true}).click();
  await expect(page.locator('.cc-feedback')).toContainText('backtrack is needed');

@@ -1,3 +1,4 @@
+import {gameAction,pauseGame} from '../../game-menu';
 import {test,expect} from '../../fixtures';
 const saved=async(page:import('@playwright/test').Page)=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:maze-muncher')!).data);
 const label=(page:import('@playwright/test').Page)=>page.locator('.mm-svg').getAttribute('aria-label');
@@ -16,13 +17,13 @@ test('start, eat dots, turn, pause freezes play and a reload resumes the run',as
  await expect.poll(async()=>Number(await page.locator('#game-score strong').textContent())).toBeGreaterThanOrEqual(30);
  await page.keyboard.press('ArrowUp');await page.clock.runFor(700);
  expect(await label(page)).toMatch(/heading up/);
- await page.getByRole('button',{name:'Pause game',exact:true}).click();
+ await pauseGame(page);
  const before=await saved(page);await page.clock.runFor(1500);expect(await saved(page)).toEqual(before);
  await page.screenshot({path:'tests/games/maze-muncher/evidence/desktop.png'});
  await page.reload();
  await expect(page.locator('#game-score strong')).toHaveText(String(before.score));
  await expect(page.locator('.mm-dot:visible')).toHaveCount(before.dots.split('').filter((c:string)=>c==='.').length);
- await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('power berries');
+ await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('power berries');
  expect(errors).toEqual([]);
 });
 

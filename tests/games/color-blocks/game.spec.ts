@@ -1,3 +1,4 @@
+import {appSettings,backToGames,gameAction,pauseGame} from '../../game-menu';
 import {test,expect,type Page} from '../../fixtures';
 import {createGame,type State} from '../../../src/games/color-blocks/model';
 const SAVE='pocket-arcade:v1:save:color-blocks';
@@ -31,14 +32,14 @@ test('grab offset is maintained and invalid overlap or off-board drop cannot pla
 test('keyboard aims, places and shows rules; pause blocks input, save reloads, restart resets',async({page})=>{
  await open(page);await page.locator('#game-stage').focus();await page.keyboard.press('1');await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
  expect(await occupied(page)).toEqual([9,10,17,18]);await expect(page.locator('#game-score')).toContainText('4');
- await page.getByRole('button',{name:'Pause game',exact:true}).click();await expect(page.locator('#pause-overlay')).toBeVisible();
+ await pauseGame(page);await expect(page.locator('#pause-overlay')).toBeVisible();
  await page.keyboard.press('2');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');
  const saved=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)!).data,SAVE);expect(saved.moves).toBe(1);
  // Remove init script's reset by navigating in the same document; route exit saves and disposes.
- await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');expect(await occupied(page)).toEqual([9,10,17,18]);
+ await backToGames(page);await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');expect(await occupied(page)).toEqual([9,10,17,18]);
  await page.reload();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');expect(await occupied(page)).toEqual([9,10,17,18]);
- await page.getByRole('button',{name:'Game rules',exact:true}).click();await expect(page.locator('#rules-text')).toContainText('No rotation');await page.getByRole('button',{name:'Let’s play'}).click();
- await page.getByRole('button',{name:'Pause game',exact:true}).click();await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');expect(await occupied(page)).toEqual([]);
+ await gameAction(page,'Game rules');await expect(page.locator('#rules-text')).toContainText('No rotation');await page.getByRole('button',{name:'Let’s play'}).click();
+ await pauseGame(page);await gameAction(page,'Restart game');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');expect(await occupied(page)).toEqual([]);
 });
 test('line crossing clears together and the board survives when a later tray piece fits',async({page})=>{
  const s=fixture();s.tray=[0,1,2];for(let x=1;x<8;x++)s.board[x]=1;for(let y=1;y<8;y++)s.board[y*8]=2;await open(page,s);
@@ -49,8 +50,8 @@ test('a blocked first piece does not end the run; a genuinely blocked tray does'
  await page.locator('#game-stage').focus();await page.keyboard.press('3');await page.keyboard.press('ArrowRight');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','1');await expect(page.locator('.cb-game')).toHaveClass(/cb-over/);await expect(page.locator('#game-status')).toContainText('No pieces fit');
 });
 test('colourblind patterns, reduced motion and malformed save are handled through the shell',async({page})=>{
- await open(page);await page.getByRole('button',{name:'Open menu'}).click();await page.locator('#colour').check();await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();await expect(page.locator('.cb-game')).toHaveClass(/cb-patterns/);await expect(page.locator('.cb-game')).toHaveClass(/cb-reduced/);
- await page.getByRole('link',{name:'Back to game library'}).click();await expect(page.getByRole('link',{name:'Play Block Blast',exact:true})).toBeVisible();await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({version:1,data:{board:['broken']}})),SAVE);await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-cell')).toHaveCount(64);
+ await open(page);await appSettings(page);await page.locator('#colour').check();await page.locator('#motion').check();await page.getByRole('button',{name:'Close menu',exact:true}).click();await expect(page.locator('.cb-game')).toHaveClass(/cb-patterns/);await expect(page.locator('.cb-game')).toHaveClass(/cb-reduced/);
+ await backToGames(page);await expect(page.getByRole('link',{name:'Play Block Blast',exact:true})).toBeVisible();await page.evaluate(key=>localStorage.setItem(key,JSON.stringify({version:1,data:{board:['broken']}})),SAVE);await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','0');await expect(page.locator('.cb-cell')).toHaveCount(64);
 });
 test.describe('touch input',()=>{
  test.use({hasTouch:true,viewport:{width:390,height:844}});
@@ -73,7 +74,7 @@ test('mid-run artwork, lifecycle cleanup and measured browser frame intervals',a
  const frames=await page.evaluate(()=>new Promise<number[]>(resolve=>{const intervals:number[]=[];let prev=0;const tick=(t:number)=>{if(prev)intervals.push(t-prev);prev=t;if(intervals.length===45)resolve(intervals);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));
  frames.sort((a,b)=>a-b);console.log(`Block Blast headless Chromium: 45 idle RAF intervals; median ${frames[22].toFixed(2)} ms, p95 ${frames[42].toFixed(2)} ms.`);
  for(let i=0;i<3;i++){
-  await page.getByRole('link',{name:'Back to game library'}).click();await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveCount(1);await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','19');
+  await backToGames(page);await page.getByRole('link',{name:'Play Block Blast',exact:true}).click();await expect(page.locator('.cb-game')).toHaveCount(1);await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','19');
  }
  await page.locator('#game-stage').focus();await page.keyboard.press('3');await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');await expect(page.locator('.cb-game')).toHaveAttribute('data-moves','20');expect(errors).toEqual([]);
 });

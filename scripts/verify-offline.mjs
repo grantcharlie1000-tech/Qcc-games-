@@ -16,10 +16,11 @@ studyMedia.assets.push(...fictionalMedia.assets.map(ad=>({path:'fictional-ads/'+
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
+async function gameMenu(page){if(!await page.locator('#game-options[open]').count())await page.locator('#game-menu').click();await page.locator('#game-options').waitFor();}
 async function restart(page,id){
  const confirm=async dialog=>{assert.equal(dialog.type(),'confirm');assert.match(dialog.message(),/Discard this active field/);await dialog.accept();};
  if(id==='minesweeper')page.on('dialog',confirm);
- try{await page.getByRole('button',{name:'Restart game',exact:true}).click();}
+ try{await gameMenu(page);await page.getByRole('button',{name:'Restart game',exact:true}).click();}
  finally{if(id==='minesweeper')page.off('dialog',confirm);}
 }
 async function action(page,id){
@@ -29,7 +30,7 @@ async function action(page,id){
  else if(id==='water-sort'){await page.getByRole('button',{name:'Hint',exact:true}).click();const from=await page.locator('.ws-hint-from').getAttribute('data-tube'),to=await page.locator('.ws-hint-to').getAttribute('data-tube');await page.locator(`[data-tube="${from}"]`).click();await page.locator(`[data-tube="${to}"]`).click();await waitFor(async()=>await page.locator('.ws-game').getAttribute('data-phase')!=='pouring','pour');}
  else if(id==='color-blocks'){await page.locator('.cb-cell').first().focus();await page.keyboard.press('1');await page.keyboard.press('Enter');assert.equal(await page.locator('.cb-game').getAttribute('data-moves'),'1');}
  else if(id==='tower'){await page.waitForTimeout(1100);await page.getByRole('button',{name:'Drop block',exact:true}).click();}
- else if(id==='snake'){await page.getByRole('button',{name:'Start slithering',exact:true}).click();await page.waitForTimeout(700);await page.getByRole('button',{name:'Turn up',exact:true}).click();}
+ else if(id==='snake'){if(!await page.getByRole('button',{name:'Turn up',exact:true}).isVisible()){await gameMenu(page);await page.getByLabel('Show touch controls',{exact:true}).check();await page.getByRole('button',{name:'Close game menu',exact:true}).click();}await page.getByRole('button',{name:'Start slithering',exact:true}).click();await page.waitForTimeout(700);await page.getByRole('button',{name:'Turn up',exact:true}).click();}
  else if(id==='minesweeper'){await page.getByRole('gridcell').first().click();}
  else if(id==='solitaire'){await page.getByRole('button',{name:/^Draw from stock/}).click();}
  else if(id==='block-fill'){await page.getByRole('button',{name:'Hint',exact:true}).click();const text=await page.locator('.bf-message').textContent();const match=text.match(/row (\d+), column (\d+)/);assert.ok(match,`offline Block Fill hint: ${text}`);const svg=page.locator('.bf-board');await svg.focus();const head=await svg.getAttribute('aria-label');const h=head.match(/Head row (\d+), column (\d+)/);assert.ok(h);const dr=Number(match[1])-Number(h[1]),dc=Number(match[2])-Number(h[2]);await page.keyboard.press(dr===1?'ArrowDown':dr===-1?'ArrowUp':dc===1?'ArrowRight':'ArrowLeft');assert.equal(await svg.getAttribute('data-covered'),'2');}
@@ -112,7 +113,7 @@ try{
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
   await page.setViewportSize(sizes[0]);
   for(const id of ids){
-   await page.goto(base+'#/game/'+id);await page.locator('#game-title').waitFor();await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('#game-title').textContent(),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
+   await page.goto(base+'#/game/'+id);await page.locator('.game-hud strong').first().waitFor();await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('.game-view').getAttribute('aria-label'),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
    await action(page,id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),id+' horizontal overflow');
    const frames=await page.evaluate(()=>new Promise(resolve=>{const values=[];let prev;const tick=t=>{if(prev!==undefined)values.push(t-prev);prev=t;if(values.length===45)resolve(values);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));frames.sort((a,b)=>a-b);
    await page.screenshot({path:`${folder}/${id}-${label}-390.png`,fullPage:true});
@@ -127,8 +128,7 @@ try{
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
    assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');
-   if(id==='minesweeper')await page.getByRole('button',{name:'Open menu',exact:true}).click();
-   await page.getByRole('button',{name:'Pause game',exact:true}).click();assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');
+   await gameMenu(page);assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');
    await restart(page,id);assert.equal(await page.locator('#pause-overlay').isVisible(),false);
    if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await restart(page,id);await action(page,id);await page.screenshot({path:`${folder}/${id}-${size.width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${id} overflow at ${size.width}`);}
    await page.setViewportSize(sizes[0]);await page.getByRole('link',{name:'Back to game library'}).click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);

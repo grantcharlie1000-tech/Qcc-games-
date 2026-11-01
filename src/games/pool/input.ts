@@ -2,8 +2,9 @@ import {FIELD} from './model';
 import {VIEW_WIDTH,VIEW_HEIGHT} from './view';
 export interface Point{x:number;y:number}
 export interface Drag{kind:'aim'|'pull';start:Point;angle:number;power:number;deadzone:number}
-/** Canvas is a clockwise rotation of the unchanged, persisted physics table. */
-export function tablePoint(clientX:number,clientY:number,rect:{left:number;top:number;width:number;height:number}):Point{
+/** Invert the display projection; persisted and network table coordinates never rotate. */
+export function tablePoint(clientX:number,clientY:number,rect:{left:number;top:number;width:number;height:number},portrait=false):Point{
+ if(portrait)return {x:(clientX-rect.left)*VIEW_HEIGHT/rect.width,y:(clientY-rect.top)*VIEW_WIDTH/rect.height};
  return {x:(clientY-rect.top)*VIEW_HEIGHT/rect.height,y:VIEW_WIDTH-(clientX-rect.left)*VIEW_WIDTH/rect.width};
 }
 export function onFelt(p:Point){return p.x>=FIELD.left&&p.x<=FIELD.right&&p.y>=FIELD.top&&p.y<=FIELD.bottom;}

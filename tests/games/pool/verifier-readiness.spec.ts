@@ -1,3 +1,4 @@
+import {gameAction} from '../../game-menu';
 import assert from 'node:assert/strict';
 import {test,expect,type Page} from '../../fixtures';
 import {preparePoolShot,verifyPoolShot,settledPoolGeometry} from '../../../scripts/pool-verifier-shot.mjs';
@@ -27,7 +28,7 @@ test('stale coordinates aim, while settled actual geometry produces one native p
  },{name:'AssertionError',actual:'0',expected:'1'});
  const staleEvents=await page.evaluate(()=>(window as unknown as {verifierNativeEvents:{type:string;gesture:string;trusted:boolean}[]}).verifierNativeEvents);
  expect(staleEvents.find(e=>e.type==='pointerdown')).toMatchObject({gesture:'aim',trusted:true});
- await page.getByRole('button',{name:'Restart game',exact:true}).click();
+ await gameAction(page,'Restart game');
  await canvas.evaluate(canvas=>{
   for(const animation of canvas.getAnimations())animation.cancel();
   canvas.animate([{transform:'translate(0,0) scale(1)'},{transform:'translate(95px,-27px) scale(.79)'}],{duration:160,fill:'forwards'});

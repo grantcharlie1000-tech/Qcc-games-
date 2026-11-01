@@ -3,13 +3,13 @@ import type {Drag} from './input';
 import {ballColor} from './appearance';
 import {VIEW_WIDTH,VIEW_HEIGHT} from './view';
 const backdrops=new WeakMap<HTMLCanvasElement,HTMLCanvasElement>();
-export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y:number;valid:boolean}|null,paused:boolean,drag:Drag|null=null,names:[string,string]|null=null){
- const ratio=Math.min(2,window.devicePixelRatio||1),width=VIEW_WIDTH,height=VIEW_HEIGHT;
+export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y:number;valid:boolean}|null,paused:boolean,drag:Drag|null=null,names:[string,string]|null=null,portrait=false){
+ const ratio=Math.min(2,window.devicePixelRatio||1),width=portrait?VIEW_HEIGHT:VIEW_WIDTH,height=portrait?VIEW_WIDTH:VIEW_HEIGHT;
  if(canvas.width!==width*ratio||canvas.height!==height*ratio){canvas.width=width*ratio;canvas.height=height*ratio;}
  const c=canvas.getContext('2d')!;c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,width,height);
  // Rotate the view, keeping all physics and saved positions in their original units.
- const rotated=()=>c.setTransform(0,ratio,-ratio,0,VIEW_WIDTH*ratio,0);
- const text=(value:string,x:number,y:number)=>{c.save();c.translate(x,y);c.rotate(-Math.PI/2);c.fillText(value,0,0);c.restore();};
+ const rotated=()=>portrait?c.setTransform(ratio,0,0,ratio,0,0):c.setTransform(0,ratio,-ratio,0,VIEW_WIDTH*ratio,0);
+ const text=(value:string,x:number,y:number)=>{c.save();c.translate(x,y);c.rotate(portrait?0:-Math.PI/2);c.fillText(value,0,0);c.restore();};
 
  function round(x:number,y:number,w:number,h:number,r:number,fill:string){c.fillStyle=fill;c.beginPath();c.roundRect(x,y,w,h,r);c.fill();}
  const cached=backdrops.get(canvas);if(cached&&cached.width===canvas.width&&cached.height===canvas.height){c.drawImage(cached,0,0,width,height);rotated();}else{rotated();
@@ -78,10 +78,10 @@ export function drawTable(canvas:HTMLCanvasElement,s:PoolState,ghost:{x:number;y
  for(const b of s.balls){if(b.pocketed||b.id===0&&s.ballInHand)continue;const color=ballColor(b.id);c.save();c.translate(b.x,b.y);c.shadowColor='#00192faa';c.shadowBlur=3;c.shadowOffsetY=2;c.fillStyle=b.id>8?'#fff8e5':color;c.beginPath();c.arc(0,0,R,0,Math.PI*2);c.fill();c.shadowBlur=0;c.shadowOffsetY=0;
   if(b.id>8){c.save();c.beginPath();c.arc(0,0,R,0,Math.PI*2);c.clip();c.fillStyle=color;c.fillRect(-R,-4.6,R*2,9.2);c.restore();}
   const shine=c.createRadialGradient(-3,-4,.1,0,0,R);shine.addColorStop(0,'#ffffff66');shine.addColorStop(.4,'#ffffff00');shine.addColorStop(1,'#00000044');c.fillStyle=shine;c.beginPath();c.arc(0,0,R,0,Math.PI*2);c.fill();
-  if(b.id){c.fillStyle='#fffbed';c.beginPath();c.arc(0,0,4.9,0,Math.PI*2);c.fill();c.fillStyle='#142a31';c.font=`bold ${b.id>9?6.5:8}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.rotate(-Math.PI/2);c.fillText(String(b.id),0,.4);}c.restore();
+  if(b.id){c.fillStyle='#fffbed';c.beginPath();c.arc(0,0,4.9,0,Math.PI*2);c.fill();c.fillStyle='#142a31';c.font=`bold ${b.id>9?6.5:8}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.rotate(portrait?0:-Math.PI/2);c.fillText(String(b.id),0,.4);}c.restore();
  }
  if(s.ballInHand&&ghost){c.save();c.globalAlpha=.75;c.fillStyle=ghost.valid?'#fff7de':'#ff816b';c.beginPath();c.arc(ghost.x,ghost.y,R,0,Math.PI*2);c.fill();c.strokeStyle=ghost.valid?'#fff8c9':'#ff816b';c.lineWidth=2;c.setLineDash([4,4]);c.beginPath();c.arc(ghost.x,ghost.y,R+6,0,Math.PI*2);c.stroke();c.restore();}
  if(s.phase==='over'){
-  c.setTransform(ratio,0,0,ratio,0,0);c.fillStyle='#082840dd';c.fillRect(235,150,370,130);c.fillStyle='#fce5a2';c.textAlign='center';c.font='bold 25px system-ui';c.fillText(`${names?`${names[s.winner!]} wins`:s.mode==='ai'?(s.winner===0?'You win':'Computer wins'):`Player ${s.winner!+1} wins`}`,420,205);c.font='14px system-ui';c.fillText('Use Restart for a fresh rack',420,239);
+  c.setTransform(ratio,0,0,ratio,0,0);c.fillStyle='#082840dd';c.fillRect(width/2-185,height/2-70,370,130);c.fillStyle='#fce5a2';c.textAlign='center';c.font='bold 25px system-ui';c.fillText(`${names?`${names[s.winner!]} wins`:s.mode==='ai'?(s.winner===0?'You win':'Computer wins'):`Player ${s.winner!+1} wins`}`,width/2,height/2-15,338);c.font='14px system-ui';c.fillText('Use Restart for a fresh rack',width/2,height/2+19);
  }
 }

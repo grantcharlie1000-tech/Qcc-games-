@@ -1,3 +1,4 @@
+import {backToGames,pauseGame,resumeGame} from '../../game-menu';
 import {test,expect} from '@playwright/test';
 
 declare global {
@@ -34,12 +35,12 @@ test('shared pause stops Suika Game drawing and repeated resumes keep one physic
   return JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data as {time:number};
  });
  for(let cycle=0;cycle<3;cycle++){
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Paused',exact:true})).toBeVisible();
+  await pauseGame(page);
+  await expect(page.locator('#pause-overlay h2')).toBeVisible();
   const paused=await snapshot();
   expect(await page.evaluate(()=>window.__fruitRenders.sample(20))).toEqual({draws:0,maxPerFrame:0});
   expect((await snapshot()).time).toBe(paused.time);
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await resumeGame(page);
   // The shell can call resume again; its public callback must remain idempotent.
   await page.locator('#resume-game').dispatchEvent('click');
   await page.locator('#resume-game').dispatchEvent('click');
@@ -48,7 +49,7 @@ test('shared pause stops Suika Game drawing and repeated resumes keep one physic
   expect(active.maxPerFrame).toBe(1);
   expect((await snapshot()).time).toBeGreaterThan(paused.time);
  }
- await page.getByRole('link',{name:'Back to game library',exact:true}).click();
+ await backToGames(page);
  await expect(page.locator('.fm-board')).toHaveCount(0);
  expect(await page.evaluate(()=>window.__fruitRenders.sample(10))).toEqual({draws:0,maxPerFrame:0});
 });
