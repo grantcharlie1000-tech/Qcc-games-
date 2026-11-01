@@ -361,18 +361,19 @@
 .reduce-motion :is(.ui-card-img,.ui-card-play,.ui-btn,.ui-tab,.ui-card){transform:none!important}
 
 /* Arcade Liquid Glass. Opt-in only: Movies keeps the legacy tokens and lens.
-   A clear centre, a 14px convex bezel and two thin specular arcs carry the depth. */
+   A clear centre, a 12px convex bezel and two thin specular arcs carry the depth. */
 .arcade-glass,.arcade-glass-mini{
-  --glass-tint:rgb(255 255 255 / .10);
-  --glass-frost:blur(2.5px);
-  --glass-tone:saturate(1.65) brightness(1.24);
+  --glass-tint:rgb(255 255 255 / .06);
+  --glass-frost:blur(1.5px);
+  --glass-tone:saturate(.45) brightness(1.18);
   --glass-body:var(--glass-frost) var(--glass-tone);
   --glass-frost-body:var(--glass-frost) var(--glass-tone);
   --glass-ink:#fff;
   --glass-solid:#20262b;
   --glass-pill:rgb(255 255 255 / .14);
-  --glass-rim-edge:inset 0 0 0 1px rgb(255 255 255 / .12),inset 0 0 0 2px rgb(255 255 255 / .07);
-  --glass-glow:inset 0 0 14px rgb(255 255 255 / .16),inset 0 -2px 6px rgb(255 255 255 / .08);
+  --glass-rim-edge:inset 0 0 0 1px rgb(255 255 255 / .08),inset 0 0 0 2px rgb(255 255 255 / .08);
+  --glass-glow:inset 0 0 10px rgb(255 255 255 / .15),inset 0 -2px 5px rgb(255 255 255 / .08);
+  --glass-radius:26px;
   --glass-lift:0 8px 24px -8px rgb(0 0 0 / .18),0 2px 5px rgb(0 0 0 / .06);
   --glass-glyph:none;--glass-glyph-icon:none;
   color:var(--glass-ink);text-shadow:none;
@@ -381,43 +382,56 @@
   --glass-tint:rgb(255 255 255 / .42);
   /* Pale art already gathers light: preserve its highlights instead of
      clipping them to white before the neutral veil is composited. */
-  --glass-tone:saturate(1.4) brightness(1.02);
+  --glass-tone:saturate(.45) brightness(1.04);
   --glass-ink:#0b1015;
   --glass-solid:#f1f3f5;
-  --glass-pill:rgb(48 56 64 / .14);
-  --glass-lift:0 10px 28px -6px rgb(28 39 49 / .18),0 2px 6px rgb(28 39 49 / .07);
+  --glass-pill:rgb(0 0 0 / .10);
+  --glass-lift:0 10px 28px -6px rgb(0 0 0 / .16),0 2px 6px rgb(0 0 0 / .06);
 }
-.app-tabbar.arcade-glass,.arcade-glass-mini[data-glass-tone=light]{--glass-tint:rgb(255 255 255 / .52);--glass-pill:rgb(48 56 64 / .09)}
+.app-navigation>.arcade-glass,.arcade-glass-mini[data-glass-tone=light]{--glass-tint:rgb(255 255 255 / .38);--glass-frost:blur(4px);--glass-tone:saturate(.08) contrast(.22) brightness(1.65);--glass-pill:rgb(0 0 0 / .09)}
+.app-tabbar.arcade-glass{--glass-radius:32px}
+.app-menu.arcade-glass{--glass-radius:calc(var(--home-action)/2)}
+/* Regular home glass compresses backdrop luminance uniformly: a dark gap in
+   the card grid becomes a soft tonal change, not a sharply divided material.
+   The clear game variant retains finer detail. Both share the same bezel/rim. */
 /* Blockcraft's daylight can become a dark cave: regular glass keeps its dark
    ink readable even over black. Other pale scenes use the clearer variant. */
 .game-view[data-game-id=blockcraft] .arcade-glass{--glass-tint:rgb(255 255 255 / .5)}
-.game-view[data-game-id=ball-run] .arcade-glass{--glass-tint:rgb(0 0 0 / .16)}
+
 /* These mid-tone green/violet surfaces need a lower exposure for white glyphs.
    Keep their neutral veil and edge light; no game-coloured tint is added. */
-.game-view:is([data-game-id=solitaire],[data-game-id=ball-run]) .arcade-glass{--glass-tone:saturate(1.65) brightness(1.15)}
+.game-view:is([data-game-id=solitaire],[data-game-id=ball-run]) .arcade-glass{--glass-tone:saturate(.45) brightness(1.05)}
 .arcade-glass::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:var(--glass-tint);box-shadow:var(--glass-rim-edge),var(--glass-glow),var(--glass-lift);transition:opacity 100ms var(--ease)}
+/* Wireframe lines may cross Ball Run captions. A tight neutral glyph shadow
+   supplies local contrast without darkening or colouring the entire lens. */
+.game-view[data-game-id=ball-run] .game-hud :is(small,strong){text-shadow:0 0 1px rgb(0 0 0 / .85),0 1px 1px rgb(0 0 0 / .3)}
 /* Mask just the one-pixel edge. Never blend the parent: that would isolate the
    Chromium backdrop and stop its child lens from seeing the game. */
-.arcade-glass>.ui-glass-glow{z-index:2;padding:1px;background:conic-gradient(from 90deg,rgb(255 255 255 / .38) 0deg,rgb(255 255 255 / .9) 48deg,rgb(255 255 255 / .4) 100deg,rgb(255 255 255 / .35) 175deg,rgb(255 255 255 / .9) 228deg,rgb(255 255 255 / .4) 285deg,rgb(255 255 255 / .38) 360deg);box-shadow:none;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;mix-blend-mode:normal}
+/* Specular arcs follow each cap's local normal. One gradient around the whole
+   rectangle misplaced the highlights on long HUDs and made their ends flat. */
+.arcade-glass>.ui-glass-glow{z-index:2;padding:1px;background:conic-gradient(from 90deg at 100% 50%,rgb(255 255 255 / .35) 160deg,rgb(255 255 255 / .98) 228deg,rgb(255 255 255 / .35) 295deg) left center/var(--glass-radius) 100% no-repeat,conic-gradient(from 90deg at 0% 50%,rgb(255 255 255 / .35) 0deg,rgb(255 255 255 / .98) 48deg,rgb(255 255 255 / .35) 115deg) right center/var(--glass-radius) 100% no-repeat,linear-gradient(rgb(255 255 255 / .45),rgb(255 255 255 / .35));box-shadow:none;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;mix-blend-mode:normal}
 .arcade-glass.is-refracting>.ui-glass-lens{-webkit-backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone);backdrop-filter:var(--glass-frost) var(--ui-glass-filter) var(--glass-tone)}
 .arcade-glass[data-glass=frost]{-webkit-backdrop-filter:var(--glass-frost-body);backdrop-filter:var(--glass-frost-body)}
-.arcade-glass .ui-tab,.arcade-glass .ui-tab:is([aria-current=page],[aria-pressed=true]),.game-glass.ui-tab{color:var(--glass-ink);text-shadow:none}
-.arcade-glass .ui-icon,.game-glass>svg{filter:none}
+.arcade-glass .ui-tab,.arcade-glass .ui-tab:is([aria-current=page],[aria-pressed=true]),:is(.game-glass,.glass-control).ui-tab{color:var(--glass-ink);text-shadow:none}
+.arcade-glass .ui-icon,:is(.game-glass,.glass-control)>svg{filter:none}
 .arcade-glass.ui-tabbar::after{box-shadow:inset 0 1px 0 rgb(255 255 255 / .25),0 2px 5px rgb(0 0 0 / .04)}
-.game-glass{background:none;box-shadow:none;z-index:1;transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass)}
-.game-glass>:not(.ui-glass-lens,.ui-glass-glow){position:relative;z-index:1}
-.game-glass.ui-tab:active{transform:none}
-:root[data-input=keyboard] .game-glass:focus-visible{outline:2px solid var(--glass-ink);outline-offset:3px}
+:is(.game-glass,.glass-control){background:none;box-shadow:none;z-index:1;transition:scale 260ms var(--ease-glass),translate 260ms var(--ease-glass),opacity 120ms var(--ease)}
+:is(.game-glass,.glass-control)>:not(.ui-glass-lens,.ui-glass-glow){position:relative;z-index:1}
+:is(.game-glass,.glass-control).ui-tab:active{transform:none}
+:root[data-input=keyboard] :is(.game-glass,.glass-control):focus-visible{outline:2px solid var(--glass-ink);outline-offset:3px}
 :root[data-input=keyboard] .app-tabbar.arcade-glass .ui-tab:focus-visible{outline-color:var(--glass-ink)}
-.game-glass[data-pressing]{scale:1.1;translate:0 -1px;transition:scale 140ms var(--ease-out),translate 140ms var(--ease-out)}
-.arcade-glass[data-pressing]{--glass-frost:blur(1.5px);--glass-tone:saturate(1.65) brightness(1.3)}
-.game-glass[data-pressing]::before{background:rgb(255 255 255 / .16)}
-[data-glass-tone=light] .game-glass[data-pressing]{--glass-tone:saturate(1.4) brightness(1.04)}
-[data-glass-tone=light] .game-glass[data-pressing]::before{background:rgb(255 255 255 / .46)}
-.game-view[data-game-id=blockcraft] .game-glass[data-pressing]::before{background:rgb(255 255 255 / .52)}
-.game-view[data-game-id=solitaire] .game-glass[data-pressing]::before{background:rgb(255 255 255 / .12)}
-.game-view[data-game-id=ball-run] .game-glass[data-pressing]::before{background:rgb(0 0 0 / .14)}
-@media(hover:hover) and (pointer:fine){.game-glass.ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink);background:var(--glass-hover-surface,transparent)}.game-glass.ui-tab:hover::before{box-shadow:var(--glass-rim-edge),inset 0 0 12px rgb(255 255 255 / .12),var(--glass-lift)}.arcade-glass .ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink)}}
+:is(.game-glass,.glass-control)[data-pressing]{scale:1.1;translate:0 -1px;transition:scale 140ms var(--ease-out),translate 140ms var(--ease-out)}
+.arcade-glass[data-pressing]{--glass-frost:blur(1px);--glass-tone:saturate(.45) brightness(1.24)}
+:is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .16)}
+:is([data-glass-tone=light] .game-glass,.glass-control[data-glass-tone=light])[data-pressing]{--glass-tone:saturate(.45) brightness(1.06)}
+:is([data-glass-tone=light] .game-glass,.glass-control[data-glass-tone=light])[data-pressing]::before{background:rgb(255 255 255 / .50)}
+.game-view[data-game-id=blockcraft] :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .52)}
+.game-view[data-game-id=solitaire] :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .12)}
+.game-view[data-game-id=ball-run] :is(.game-glass,.glass-control)[data-pressing]::before{background:rgb(255 255 255 / .08)}
+/* A press clears and illuminates regular glass while preserving its luminance
+   floor. Card-row gaps must never make black navigation glyphs disappear. */
+.app-navigation>.arcade-glass[data-pressing]{--glass-frost:blur(2.5px);--glass-tone:saturate(.08) contrast(.22) brightness(1.75);--glass-tint:rgb(255 255 255 / .5)}
+@media(hover:hover) and (pointer:fine){:is(.game-glass,.glass-control).ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink);background:var(--glass-hover-surface,transparent)}:is(.game-glass,.glass-control).ui-tab:hover::before{box-shadow:var(--glass-rim-edge),inset 0 0 12px rgb(255 255 255 / .12),var(--glass-lift)}.arcade-glass .ui-tab:not([aria-current=page]):not([aria-pressed=true]):hover{color:var(--glass-ink)}}
 .arcade-glass-mini{background:var(--glass-tint);box-shadow:var(--glass-rim-edge),var(--glass-glow),var(--glass-lift);color:var(--glass-ink)}
 /* Accessibility variants are real opaque surfaces, including the separate
    buttons. An outline inside each surface leaves their geometry unchanged. */
@@ -426,6 +440,6 @@
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.arcade-glass,.arcade-glass-mini{--glass-hover-surface:var(--glass-solid);background:var(--glass-solid);border:1px solid var(--glass-ink)}.arcade-glass::before{display:none}}
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){.arcade-glass,.arcade-glass-mini{background:var(--glass-solid);border:1px solid var(--glass-ink);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}.arcade-glass::before{display:none}}
 @media(forced-colors:active){.arcade-glass,.arcade-glass-mini,.arcade-glass[data-glass=off]{--glass-ink:CanvasText;--glass-solid:Canvas;background:Canvas;border:1px solid CanvasText;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}.arcade-glass::before{display:none}}
-@media(prefers-reduced-motion:reduce){.game-glass,.game-glass[data-pressing]{scale:none;translate:none;transition:none}.arcade-glass .ui-tab:active{transform:none}}
-.reduce-motion .game-glass,.reduce-motion .game-glass[data-pressing]{scale:none;translate:none;transition:none}
+@media(prefers-reduced-motion:reduce){:is(.game-glass,.glass-control),:is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}.arcade-glass .ui-tab:active{transform:none}}
+.reduce-motion :is(.game-glass,.glass-control),.reduce-motion :is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}
 .reduce-motion .arcade-glass .ui-tab:active{transform:none}

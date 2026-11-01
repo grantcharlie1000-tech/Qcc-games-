@@ -30,7 +30,7 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
     image.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none';
     document.body.append(image);
   },stripes(orientation));
-  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
+  await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }
 
@@ -43,10 +43,12 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
 async function bend(page:Page,bar:Locator,orientation:'v'|'h'){
   const settle=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const shot=async()=>{await settle();return (await bar.screenshot({animations:'disabled'})).toString('base64');};
-  const scale=await page.evaluate(()=>document.querySelector('filter[id^="ui-glass-"] feDisplacementMap')!.getAttribute('scale'));
+  const filterId=await bar.evaluate(e=>e.style.getPropertyValue('--ui-glass-filter').match(/#([^)]*)/)![1]);
+  const displacement=page.locator(`filter[id="${filterId}"] feDisplacementMap`);
+  const scale=await displacement.getAttribute('scale');
   // The bands and the centre are in CSS px, so the device pixel ratio scales them to the screenshot's pixels.
   const dpr=await page.evaluate(()=>window.devicePixelRatio);
-  const setScale=(value:string)=>page.evaluate(v=>document.querySelector('filter[id^="ui-glass-"] feDisplacementMap')!.setAttribute('scale',v),value);
+  const setScale=(value:string)=>displacement.evaluate((e,v)=>e.setAttribute('scale',v),value);
   const bent=await shot();
   await setScale('0');
   const flat=await shot();
@@ -150,11 +152,13 @@ test('the frost survives the island\'s fade: with its lens at half opacity, the 
 // pixel density, so the pixel size is the box times the density.
 async function mapSize(page:Page){
   return page.evaluate(async()=>{
-    const href=document.querySelector('filter[id^="ui-glass-"] feImage')!.getAttribute('href')!;
+    const bar=document.querySelector<HTMLElement>('.app-tabbar')!;
+    const id=bar.style.getPropertyValue('--ui-glass-filter').match(/#([^)]*)/)![1];
+    const href=document.getElementById(id)!.querySelector('feImage')!.getAttribute('href')!;
     const image=new Image();
     image.src=href;
     await image.decode();
-    const lens=document.querySelector('.ui-glass-lens')!.getBoundingClientRect();
+    const lens=bar.querySelector('.ui-glass-lens')!.getBoundingClientRect();
     return {pixels:[image.naturalWidth,image.naturalHeight],css:[lens.width,lens.height],dpr:window.devicePixelRatio};
   });
 }
@@ -227,8 +231,8 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-    expect(frost).toContain('blur(2.5px)');
-    expect(frost).toContain('saturate(1.4)');
+    expect(frost).toContain('blur(4px)');
+    expect(frost).toContain('saturate(0.08)');
   });
 
   test('frost has a glow layer on the bar\'s edge, hidden from assistive technology',async({page})=>{

@@ -18,6 +18,10 @@ export const LENS_BEND=10;
 export const LENS_CAP=0.5;
 export const REFRACTION_SCALE=2*LENS_BEND;
 export const LENS_MARGIN=LENS_BEND+4;
+// The arcade's clear material has a narrower, lower-power bezel. Keep these
+// separate from the legacy Movies map and its displacement scale.
+export const ARCADE_LENS_BEVEL=12;
+export const ARCADE_LENS_BEND=6;
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
 const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
@@ -37,11 +41,11 @@ function convexProfile(bevel:number,bend:number):number[]{
   });
   // Give the ray field a wider optical depth, then bound its radial derivative.
   // A sampled coordinate is depth + displacement: its derivative must stay
-  // positive or the texture folds. .62 leaves room for 8-bit quantisation and
-  // bilinear interpolation around curved caps even at DPR 3. Integrating back
+  // positive or the texture folds. .42 also limits magnification, preventing
+  // thin terrain/wireframe lines from stretching into streaks. Integrating back
   // from the clear centre also removes the caustic
   // spike at the rim, without changing the legacy Movies field.
-  const step=bevel/128*.62;
+  const step=bevel/128*.42;
   for(let i=127;i>=0;i--)rays[i]=Math.min(rays[i],rays[i+1]+step);
   for(let i=1;i<=128;i++)rays[i]=Math.min(rays[i],rays[i-1]);
   return rays.map(ray=>-ray);
@@ -96,7 +100,7 @@ export function lensPng(width:number,height:number,density=1,arcade=false):strin
   canvas.width=pixelWidth;canvas.height=pixelHeight;
   const context=canvas.getContext('2d');
   if(!context)return '';
-  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,arcade?14:LENS_BEVEL,LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
+  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,arcade?ARCADE_LENS_BEVEL:LENS_BEVEL,arcade?ARCADE_LENS_BEND:LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
   return canvas.toDataURL('image/png');
 }
 // The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.
@@ -189,11 +193,16 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
-  const standalone=bar.classList.contains('game-glass');
+  const standalone=bar.matches('.game-glass,.glass-control');
   const brands=(navigator as NavigatorWithBrands).userAgentData?.brands;
   const queries=[matchMedia('(prefers-reduced-transparency: reduce)'),matchMedia('(prefers-contrast: more)'),matchMedia('(forced-colors: active)')];
   const id=`ui-glass-${++filterSeq}`;
   const {svg,filter,image,displace}=makeFilter(id);
+  if(arcade){
+    filter.setAttribute('filterUnits','userSpaceOnUse');
+    filter.setAttribute('primitiveUnits','userSpaceOnUse');
+    displace.setAttribute('scale',String(2*ARCADE_LENS_BEND));
+  }
   const lens=makeLens(),glow=makeGlow();
   const edge=document.createElement('div');
   edge.className='ui-scroll-edge';
@@ -298,6 +307,9 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     const probe=new Image();
     probe.onload=()=>{
       if(token!==mapSeq||disposed)return;
+      // Match the filter region and the map exactly. Percent/object-box filter
+      // regions can rescale the field when a content-sized capsule resizes.
+      if(arcade){filter.setAttribute('width',String(width));filter.setAttribute('height',String(height));}
       image.setAttribute('width',String(width));
       image.setAttribute('height',String(height));
       image.setAttribute('href',url);

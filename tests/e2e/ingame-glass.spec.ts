@@ -41,6 +41,22 @@ test('late Block Fill counters stay inside the dock on a narrow phone',async({pa
   }
 });
 
+test('multi-stat captions fit their compact capsules on a 320px phone',async({page})=>{
+  await page.setViewportSize({width:320,height:568});
+  for(const id of ['slipline','color-connect','block-fill','ball-run']){
+    await page.goto(`/#/game/${id}`);
+    const hud=page.locator('.game-hud');await expect(hud.locator('strong').first()).toBeVisible();
+    const failures=await hud.evaluate(h=>{
+      const box=h.getBoundingClientRect();
+      return [...h.querySelectorAll('small,strong')].filter(e=>e.textContent).flatMap(e=>{
+        const range=document.createRange();range.selectNodeContents(e);const r=range.getBoundingClientRect();
+        return r.left<box.left+2||r.right>box.right-2||r.top<box.top+2||r.bottom>box.bottom-2?[e.textContent]:[];
+      });
+    });
+    expect(failures,`${id} text outside capsule`).toEqual([]);
+  }
+});
+
 test('Pool keeps shot status clear of all six pockets',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/pool');
   await page.locator('.pool-table').focus();await page.keyboard.press('ArrowUp');await page.keyboard.press('Enter');
@@ -163,7 +179,7 @@ test('optional pads, shrinking viewport and disposal keep the dock usable',async
     await page.goto('/#/game/block-fill');await expect(page.locator('.game-hud')).toContainText('Covered');
     await page.getByRole('link',{name:'Games'}).click();
     await expect(page.locator('.game-dock')).toHaveCount(0);
-    expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(1);
+    expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(2);
   }
 });
 

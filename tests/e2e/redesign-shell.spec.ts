@@ -19,11 +19,11 @@ async function menuSettled(page:Page){
 test('the games home is back in its original style',async({page})=>{
  await page.setViewportSize({width:1366,height:900});
  await page.goto('/');
- // The arcade top bar is gone. Its brand, count and favourites moved into the menu, and its menu button is now the island's sixth tab.
+ // The arcade top bar is gone. Its brand, count and favourites moved into the menu, and its Menu is a separate circular lens beside the island.
  await expect(page.locator('#app > header')).toHaveCount(0);
  await expect(page.locator('.topbar')).toHaveCount(0);
  await expect(page.locator('.count-pill,.favourites-pill,.hamburger')).toHaveCount(0);
- await expect(page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true})).toBeVisible();
+ await expect(page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true})).toBeVisible();
  const grid=page.locator('.game-grid');
  expect(await grid.evaluate(element=>element.firstElementChild?.classList.contains('game-card')??false)).toBe(true);
  await expect(page.locator('.movies-launch')).toHaveCount(0);
@@ -41,18 +41,18 @@ test('the games home is back in its original style',async({page})=>{
  expect(await card.evaluate(element=>getComputedStyle(element).outlineColor)).toBe('rgb(255, 224, 164)');
 });
 
-// Six tabs fit the island: each is a 44 px target, its label sits inside it without clipping, and the bar and page stay on screen.
+// Five tabs and the separate Menu fit the navigation group: each is a 44 px target, its label sits inside it without clipping, and the bar and page stay on screen.
 async function expectIslandFits(page:Page){
- const report=await page.locator('.app-tabbar').evaluate(bar=>{
+ const report=await page.locator('.app-navigation').evaluate(bar=>{
   const box=(element:Element)=>{const rect=element.getBoundingClientRect();return {left:rect.left,right:rect.right,width:rect.width,height:rect.height};};
   return {
    bar:box(bar),
    viewport:innerWidth,
    pageFits:document.documentElement.scrollWidth<=innerWidth,
-   tabs:[...bar.querySelectorAll<HTMLElement>('.ui-tab')].map(tab=>({name:tab.textContent?.trim(),tab:box(tab),label:box(tab.querySelector('span')!),overflows:tab.scrollWidth>tab.clientWidth}))
+   tabs:[...bar.querySelectorAll<HTMLElement>('.ui-tab')].map(tab=>({name:tab.getAttribute('aria-label')??tab.textContent?.trim(),tab:box(tab),label:box(tab.querySelector('span:not(.ui-glass-lens,.ui-glass-glow)')??tab.querySelector('svg')!),overflows:!tab.matches('.arcade-glass')&&tab.scrollWidth>tab.clientWidth}))
   };
  });
- expect(report.tabs.map(tab=>tab.name)).toEqual(['Games','Movies','TV Shows','My list','Study','Menu']);
+ expect(report.tabs.map(tab=>tab.name)).toEqual(['Games','Movies','TV Shows','My list','Study','Open menu']);
  for(const {name,tab,label,overflows} of report.tabs){
   expect(tab.width,`${name} width`).toBeGreaterThanOrEqual(44);
   expect(tab.height,`${name} height`).toBeGreaterThanOrEqual(44);
@@ -65,15 +65,15 @@ async function expectIslandFits(page:Page){
  expect(report.pageFits).toBe(true);
 }
 
-for(const width of [320,360,390]) test(`the phone island holds six tabs at least 44 px across and tall at ${width}px`,async({page})=>{
+for(const width of [320,360,390]) test(`the phone navigation holds six controls at least 44 px across and tall at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});
  await page.goto('/');
  await expect(page.locator('.app-tabbar')).toBeVisible();
  await expectIslandFits(page);
- // The sixth tab is the menu. Its accessible name stays "Open menu", and it is the only one on the games screen.
+ // The sixth control is the separate Menu lens. Its accessible name stays "Open menu", and it is the only one on the games screen.
  const menu=page.getByRole('button',{name:'Open menu',exact:true});
  await expect(menu).toHaveCount(1);
- expect(await menu.evaluate(element=>!!element.closest('.app-tabbar'))).toBe(true);
+ expect(await menu.evaluate(element=>!!element.closest('.app-navigation'))).toBe(true);
 });
 
 test('the island fits at 1366px too',async({page})=>{
@@ -86,7 +86,7 @@ test('the island fits at 1366px too',async({page})=>{
 for(const [width,height] of [[390,844],[1366,900]]) test(`the island's Menu opens the menu, and Escape returns focus to it at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height});
  await page.goto('/');
- const menu=page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true});
+ const menu=page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true});
  await expect(menu).toHaveAttribute('aria-haspopup','dialog');
  await menu.click();
  await expect(page.locator('#menu')).toBeVisible();
@@ -98,13 +98,13 @@ for(const [width,height] of [[390,844],[1366,900]]) test(`the island's Menu open
 test('closing Study opened from the menu returns focus to the island Menu',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
- await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
  await menuSettled(page);
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  await expect(page.locator('#study-view')).toBeVisible();
  await page.locator('#study-view a[data-study-return][aria-label="Games"]').click();
  await expect(page.locator('#study-view')).toBeHidden();
- await expect(page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
+ await expect(page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
 });
 
 test('Favourites only in the menu shows a notice, and Show all games clears it',async({page})=>{

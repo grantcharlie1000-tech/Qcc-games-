@@ -24,7 +24,7 @@ export async function gameAction(page:Page,name:string|RegExp){
 }
 export async function appSettings(page:Page){
   if(await page.locator('#game-menu').isVisible())await gameAction(page,'Settings');
-  else await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).click();
+  else await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
   await expect(page.locator('#menu')).toBeVisible();
 }
 export async function gameOption(page:Page,label:string,value:string){

@@ -100,7 +100,7 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
 
  test('a mouse click draws no ring on the menu button, nor on the menu sheet\'s search field',async({page})=>{
   await page.goto('/');
-  const menu=page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true});
+  const menu=page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true});
   await menu.click();
   await expect(page.locator('#menu')).toBeVisible();
   await expectNoOutline(menu);

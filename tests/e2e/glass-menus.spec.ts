@@ -9,7 +9,7 @@ const ACCESSIBILITY_NOTE='Reduce Transparency and forced colours are emulated th
 
 // The island's Menu tab opens the menu, as a visitor does.
 async function openMenuFromIsland(page:Page){
-  await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).click();
+  await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
   await expect(page.locator('#menu')).toBeVisible();
 }
 // A sheet's box once its entry has finished, so the box is the layout box and not a point mid-transition.
@@ -110,12 +110,12 @@ test('the menu grows from the control that opened it in the island and in-game d
   await page.setViewportSize(PHONE);
   await page.goto('/');
   const menu=page.locator('#menu');
-  const tab=await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).boundingBox();
+  const tab=await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).boundingBox();
   if(!tab)throw new Error('The island Menu tab has no box');
   await openMenuFromIsland(page);
   const box=await settledBox(menu);
   const fromIsland=await originOf(menu);
-  // The origin is the tab's centre measured from the sheet's corner. The island's Menu is its sixth tab, so this is the bottom right.
+  // The origin is the tab's centre measured from the sheet's corner. The companion Menu sits beside the five-tab island, at the bottom right.
   expect(Math.abs(fromIsland.x-(tab.x+tab.width/2-box.x))).toBeLessThanOrEqual(1);
   expect(Math.abs(fromIsland.y-(tab.y+tab.height/2-box.y))).toBeLessThanOrEqual(1);
   expect(fromIsland.x).toBeGreaterThan(box.width*0.75);
@@ -131,12 +131,12 @@ test('the menu grows from the control that opened it in the island and in-game d
   const gameSheet=page.locator('#game-options');
   const gameBox=await settledBox(gameSheet);
   const fromGame=await originOf(gameSheet);
-  // The game dock and home island both anchor the sheet near its bottom-right corner.
+  // The compact game group anchors the sheet at the actual Menu centre.
   const expectedX=Math.min(Math.max(gameMenu.x+gameMenu.width/2-gameBox.x,0),gameBox.width);
   const expectedY=Math.min(Math.max(gameMenu.y+gameMenu.height/2-gameBox.y,0),gameBox.height);
   expect(Math.abs(fromGame.x-expectedX)).toBeLessThanOrEqual(1);
   expect(Math.abs(fromGame.y-expectedY)).toBeLessThanOrEqual(1);
-  expect(fromGame.x).toBeGreaterThan(gameBox.width*0.75);
+  expect(fromGame.x).toBeGreaterThan(gameBox.width*0.5);
   expect(fromGame.y).toBeGreaterThan(gameBox.height*0.75);
 });
 
@@ -306,7 +306,7 @@ test('the sheet enters from just inside its place by scale, translate and opacit
   await page.goto('/');
   // Each read happens in the same task as the open or close, so the transitions it reports are still running.
   const entry=await page.evaluate<SheetTransition[]>(()=>{
-    document.querySelector<HTMLElement>('.app-tabbar [data-action="menu"]')!.click();
+    document.querySelector<HTMLElement>('.app-navigation [data-action="menu"]')!.click();
     return document.getAnimations().flatMap(animation=>{
       const effect=animation.effect as KeyframeEffect|null;
       if(effect?.target!==document.getElementById('menu')||effect.pseudoElement)return [];
@@ -347,7 +347,7 @@ test('Escape closes the menu and returns focus to the island Menu',async({page})
   await openMenuFromIsland(page);
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu')).toBeHidden();
-  await expect(page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
+  await expect(page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
 });
 
 test('the accounts and leaderboard dialogs use glass fields and hairlines',async({page})=>{

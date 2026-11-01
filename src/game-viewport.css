@@ -20,12 +20,13 @@ body.in-game #pause-overlay{border-radius:16px}
 .game-view[data-game-id=minesweeper]{--game-surface:radial-gradient(ellipse at 50% 35%,#29352e,#191f1d 70%)}
 /* Native full-bleed canvas scenes already paint behind their top dock. */
 .game-view:is([data-game-id=animal-stack],[data-game-id=ball-run],[data-game-id=neon-coil],[data-game-id=blockcraft]) .game-surface{background:transparent}
-.game-dock{position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;gap:10px;z-index:30;font-family:var(--font-sans)}
+.game-dock{position:relative;order:2;flex:0 0 56px;width:min(100%,560px);height:56px;margin:0 auto;padding:2px;display:flex;align-items:center;justify-content:center;gap:10px;z-index:30;font-family:var(--font-sans)}
 .game-dock>.game-glass{position:relative;border-radius:999px;height:52px;min-height:52px;min-width:0}
 .game-dock>.ui-tab{flex:0 0 52px;min-width:52px;display:flex;flex-direction:row;gap:8px;padding:0;font-size:14px;font-weight:550}
 .game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:none}
 .game-dock>.ui-tab svg{width:24px;height:24px;flex:none}
-.game-hud{display:flex;justify-content:center;align-items:center;gap:18px;flex:1;min-width:0;padding:0 14px;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
+.game-hud{display:flex;justify-content:center;align-items:center;gap:18px;flex:0 1 auto;min-width:96px;max-width:calc(100% - 124px);padding:0 20px;font-family:var(--font-sans);font-variant-numeric:tabular-nums}
+.game-dock>.game-hud{min-width:96px}
 .game-hud-item{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:0;text-align:center;line-height:1.2}
 .game-hud small{font-size:12px;color:inherit;white-space:nowrap}
 .game-hud small:empty{display:none}
@@ -37,6 +38,7 @@ body.in-game #pause-overlay{border-radius:16px}
   .game-dock>.ui-tab{flex-basis:108px;padding:0 18px}
   .game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:inline}
   .game-dock>.ui-tab svg{width:28px;height:28px}
+  .game-hud{max-width:calc(100% - 236px)}
   .game-hud small{font-size:14px}
   .game-hud strong{font-size:20px}
   .game-hud:not(:has(.game-hud-item~.game-hud-item)) strong{font-size:22px}

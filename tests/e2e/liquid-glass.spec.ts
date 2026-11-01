@@ -87,7 +87,7 @@ for(const width of [390,1440]) test(`the arcade pill sits under Games at ${width
   await expect(bar).toBeVisible();
   await expectPillUnder(bar,bar.locator('[aria-current="page"]'));
   // The lens and the glow are the bar's layers, so the tabs are the children that are neither.
-  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(6);
+  expect(await bar.evaluate(el=>[...el.children].filter(child=>!child.classList.contains('ui-glass-lens')&&!child.classList.contains('ui-glass-glow')).length)).toBe(5);
 });
 
 for(const width of [390,1440]) test(`the Movies pill sits under Home at ${width}px, and the bar holds only its tabs`,async({page})=>{
@@ -680,11 +680,11 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const filters=()=>page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length);
-  await expect.poll(filters).toBe(1);
-  await page.goto('/#/movies');
   await expect.poll(filters).toBe(2);
+  await page.goto('/#/movies');
+  await expect.poll(filters).toBe(3);
   await page.goto('/#/collection');
-  await expect.poll(filters).toBe(1);
+  await expect.poll(filters).toBe(2);
 });
 
 // A tab's computed colour and weight.
@@ -716,8 +716,8 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   expect(tint).toBeGreaterThanOrEqual(.35);expect(tint).toBeLessThanOrEqual(.55);
   expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.08);
   const frost=await frostFilter(bar);
-  expect(frost).toContain('blur(2.5px)');
-  expect(frost).toContain('saturate(1.4) brightness(1.02)');expect(frost).not.toContain('contrast(');
+  expect(frost).toContain('blur(4px)');
+  expect(frost).toContain('saturate(0.08) contrast(0.22) brightness(1.65)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');
   expect(await movies.locator('.ui-icon').evaluate(el=>getComputedStyle(el).filter)).toBe('none');
@@ -999,7 +999,7 @@ test('leaving Movies removes the SVG filter the island added (Chromium only)',as
   await page.goto('/#/collection');
   await expect(page.locator('.game-grid')).toBeVisible();
   expect(await page.evaluate(()=>(window as Window&{__filterSvg?:Element|null}).__filterSvg?.isConnected)).toBe(false);
-  expect(await page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length)).toBe(1);
+  expect(await page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length)).toBe(2);
 });
 
 // Leaving Movies disposes the island, so a press on the old island is ignored. This runs in every browser: it checks listeners, not the filter.

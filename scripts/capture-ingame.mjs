@@ -11,9 +11,19 @@ await mkdir(directory,{recursive:true});
 const browser=await chromium.launch({channel:'chromium',executablePath:process.env.CHROMIUM_PATH??(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const results=[];
 async function capture(page,id,format,errors){
+  if(id!=='home'){
+    const clipped=await page.locator('.game-hud').evaluate(hud=>{
+      const box=hud.getBoundingClientRect();
+      return [...hud.querySelectorAll('small,strong')].filter(e=>e.textContent?.trim()).flatMap(e=>{
+        const range=document.createRange();range.selectNodeContents(e);const r=range.getBoundingClientRect();
+        return r.left<box.left+2||r.right>box.right-2||r.top<box.top+2||r.bottom>box.bottom-2?[e.textContent]:[];
+      });
+    });
+    if(clipped.length)throw new Error(`HUD text escapes its capsule: ${clipped.join(', ')}`);
+  }
   const geometry=await page.evaluate(home=>{
     const box=selector=>{const e=document.querySelector(selector);if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};};
-    return {dock:box(home?'.app-tabbar':'.game-dock'),stage:box('.stage-wrap'),root:box('#game-stage > :first-child'),tone:document.querySelector(home?'.app-tabbar':'.game-view')?.getAttribute('data-glass-tone'),scroll:{x:scrollX,y:scrollY,width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight}};
+    return {dock:box(home?'.app-navigation':'.game-dock'),stage:box('.stage-wrap'),root:box('#game-stage > :first-child'),tone:document.querySelector(home?'.app-tabbar':'.game-view')?.getAttribute('data-glass-tone'),scroll:{x:scrollX,y:scrollY,width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight}};
   },id==='home');
   const path=`${directory}/${id}-${format}.png`,dockPath=`${directory}/${id}-${format}-dock.png`;
   await page.screenshot({path,animations:'disabled'});
@@ -54,6 +64,7 @@ try{
       if(id==='home'){
         await page.locator('.game-card').first().waitFor({state:'visible'});
         await page.locator('.app-tabbar.is-refracting').waitFor({state:'visible'});
+        await page.locator('.app-menu.is-refracting').waitFor({state:'visible'});
         await page.evaluate(()=>document.fonts.ready);
         await capture(page,id,format,errors);
         continue;

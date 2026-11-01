@@ -5,14 +5,26 @@
 .dialog-head h2{min-width:0;overflow-wrap:break-word}
 
 /* Glass island tab bar (theme.css .ui-tabbar): where it shows, and the room it needs at the bottom. */
-body.in-game .app-tabbar,body.movies-active .app-tabbar{display:none}
-.app-tabbar[inert]{display:none}
+body.in-game .app-navigation,body.movies-active .app-navigation{display:none}
+.app-navigation[inert]{display:none}
 body:not(.in-game):not(.movies-active) #content{padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 html:has(body:not(.in-game):not(.movies-active)){scroll-padding-bottom:calc(var(--tabbar-h) + 2*var(--tabbar-gap) + env(safe-area-inset-bottom))}
 
-/* Games without a top bar: the island's Menu is its sixth tab, so six tabs fit a 320 px phone with no clipped label. */
-.app-tabbar.ui-tabbar .ui-tab{min-width:0;white-space:nowrap}
-@media(max-width:359px){.app-tabbar.ui-tabbar{left:8px;right:8px;gap:0}.app-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}}
+/* Five destinations share a lens. Menu is a sibling lens, so a frosted fallback
+   never traps its backdrop inside the tab bar's backdrop root. */
+.app-navigation{--home-inset:12px;--home-action:52px;--home-gap:12px;position:fixed;left:var(--home-inset);right:var(--home-inset);bottom:calc(var(--tabbar-gap) + env(safe-area-inset-bottom));max-width:440px;height:var(--tabbar-h);margin-inline:auto;z-index:50;pointer-events:none}
+.app-tabbar.ui-tabbar{left:max(var(--home-inset),calc((100vw - 440px)/2));right:calc(max(var(--home-inset),calc((100vw - 440px)/2)) + var(--home-action) + var(--home-gap));max-width:none;margin:0;pointer-events:auto}
+.app-tabbar.ui-tabbar .ui-tab{min-width:44px;white-space:nowrap}
+.app-menu{position:absolute;right:0;top:50%;margin-top:calc(var(--home-action)/-2);width:var(--home-action);height:var(--home-action);min-width:var(--home-action);padding:0;pointer-events:auto;font-family:var(--font-sans)}
+.app-menu>.ui-icon{width:24px;height:24px}
+@media(max-width:359px){.app-navigation{--home-inset:8px;--home-action:48px;--home-gap:8px}.app-tabbar.ui-tabbar .ui-tab{font-size:9px;padding-inline:1px}}
+/* The companion follows the existing island controller. Focus in either lens
+   reveals the group; pointer focus does not pin it open while scrolling. */
+.app-navigation:has(.app-tabbar:is([data-minimized=true],[data-hidden=true])):not(:has(:focus-visible)) .app-menu{opacity:0;pointer-events:none}
+.app-navigation:has(.app-menu:focus-visible)>.app-tabbar.ui-tabbar[data-glass]{translate:0 0;scale:1;opacity:1;pointer-events:auto}
+.app-navigation:has(.app-menu:focus-visible)>.app-tabbar.ui-tabbar[data-glass] :is(.ui-glass-lens,.ui-glass-glow,.ui-tab),.app-navigation:has(.app-menu:focus-visible)>.app-tabbar.ui-tabbar[data-glass]::before{opacity:1}
+.app-navigation:has(.app-menu:focus-visible)>.app-tabbar.ui-tabbar[data-glass]::after{opacity:var(--ui-pill-on,0)}
+.app-navigation:has(.app-menu:focus-visible)>.ui-tabbar-mini{opacity:0;pointer-events:none}
 /* The notch insets clear the top row of the library and both of its sides. Game screens and Movies & TV keep their own layout. */
 body:not(.in-game):not(.movies-active) #content{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 /* The filter notice is page content: it lines up with the grid's padding and width, and wraps at 320 px. */

@@ -1,5 +1,5 @@
 import {expect,test,vi} from 'vitest';
-import {glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
+import {ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,glassMode,isChromiumBrands,LENS_BEND,LENS_BEVEL,LENS_CAP,LENS_MARGIN,lensDensity,lensField,lensPng,pillVars,REFRACTION_SCALE} from '../../src/ui/glass';
 
 // The island is 366 by 64 px at a 390 px viewport (12 px from each screen edge), and its lens field covers it plus the margin.
 const W=366,H=64;
@@ -10,13 +10,14 @@ const STEP=REFRACTION_SCALE/255;
 
 for(const density of [1,2,3])test(`arcade bezel magnifies a broad band without folding at density ${density}`,()=>{
   const width=240+2*LENS_MARGIN,height=56+2*LENS_MARGIN;
-  const data=lensField(width,height,LENS_MARGIN,14,LENS_BEND,1,density,'convex');
+  const data=lensField(width,height,LENS_MARGIN,ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,1,density,'convex');
   const shift=(depth:number)=>{
     const y=Math.floor((LENS_MARGIN+depth)*density),x=Math.floor(width/2*density);
-    return REFRACTION_SCALE*(data[(y*width*density+x)*4+1]/255-.5);
+    return 2*ARCADE_LENS_BEND*(data[(y*width*density+x)*4+1]/255-.5);
   };
-  expect(shift(0)).toBeGreaterThan(6);
-  expect(shift(4)).toBeGreaterThan(3);
+  expect(shift(0)).toBeGreaterThan(3);
+  expect(shift(0)).toBeLessThan(5.5);
+  expect(shift(4)).toBeGreaterThan(2);
   expect(Math.abs(shift(14))).toBeLessThan(.1);
   // Read the sampled backdrop coordinate, not just the displacement: reversal
   // means the same detail folds back over itself in the outer band.
@@ -31,8 +32,8 @@ for(const density of [1,2,3])test(`arcade bezel magnifies a broad band without f
 for(const density of [1,2,3])test(`convex caps preserve area through bilinear sampling at density ${density}`,()=>{
   for(const [w,h] of [[48,48],[52,52],[64,64],[240,56],[366,64]]){
     const width=w+2*LENS_MARGIN,height=h+2*LENS_MARGIN,pw=width*density,ph=height*density;
-    const data=lensField(width,height,LENS_MARGIN,14,LENS_BEND,1,density,'convex');
-    const scale=REFRACTION_SCALE*density/255;
+    const data=lensField(width,height,LENS_MARGIN,ARCADE_LENS_BEVEL,ARCADE_LENS_BEND,1,density,'convex');
+    const scale=2*ARCADE_LENS_BEND*density/255;
     let minimum=Infinity;
     for(let y=0;y<ph-1;y++)for(let x=0;x<pw-1;x++){
       const a=(y*pw+x)*4,b=a+4,c=a+pw*4,d=c+4;
@@ -45,7 +46,7 @@ for(const density of [1,2,3])test(`convex caps preserve area through bilinear sa
         minimum=Math.min(minimum,xx*yy-xy*yx);
       }
     }
-    expect(minimum,`${w}×${h} capsule`).toBeGreaterThan(0);
+    expect(minimum,`${w}×${h} capsule`).toBeGreaterThan(.25);
   }
 });
 
