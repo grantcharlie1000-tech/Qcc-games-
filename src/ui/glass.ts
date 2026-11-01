@@ -195,7 +195,7 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
-  const bounded=bar.matches('.section-tabbar,.section-menu');
+  const bounded=bar.matches('.section-tabbar,.section-menu,.floating-glass-group');
   const margin=bounded?0:LENS_MARGIN;
   const standalone=bar.matches('.game-glass,.glass-control');
   const forceFallback=new URLSearchParams(location.search).get('glass')==='fallback';

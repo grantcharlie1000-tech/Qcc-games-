@@ -13,6 +13,26 @@ async function hiddenChrome(page:Page,selector:string){
     const r=el.getBoundingClientRect();return !root.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));
   }))).toBe(true);
 }
+
+for(const fallback of [false,true])test(`Up next restores collapsed navigation, fallback=${fallback}`,async({page})=>{
+  await page.setViewportSize({width:1366,height:600});
+  await page.route('**/api/movies?*',route=>route.fulfill({status:503,json:{error:'catalog_not_configured'}}));
+  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
+  await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>dialog.getByRole('button',{name:'Continue',exact:true}).click());
+  await page.goto(`/${fallback?'?glass=fallback':''}#/movies/tv-19885/season/1/episode/1/play`);
+  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
+  await page.evaluate(()=>new Promise<void>(resolve=>{
+    (document.activeElement as HTMLElement)?.blur();const view=document.querySelector('.movies-view')!;
+    view.addEventListener('scroll',()=>resolve(),{once:true});view.scrollTop=180;
+  }));
+  await page.clock.runFor(500);const bar=page.locator('.movies-mobile-nav');await expect(bar).toHaveAttribute('data-minimized','true');
+  await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
+  await page.clock.runFor(200);await hiddenChrome(page,'.movies-navigation');
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();await page.clock.runFor(200);
+  await expect(page.locator('.movies-navigation')).not.toHaveAttribute('inert');
+  await expect(bar).toHaveAttribute('data-minimized','true');
+});
 for(const fallback of [false,true]){
   const url=(route='collection')=>`/${fallback?'?glass=fallback':''}#/${route}`;
   test(`sheets remove section navigation paint and restore focus, fallback=${fallback}`,async({page})=>{
@@ -55,7 +75,7 @@ for(const fallback of [false,true]){
     await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
     await page.addLocatorHandler(page.getByRole('dialog',{name:'Before you watch'}),async dialog=>dialog.getByRole('button',{name:'Continue',exact:true}).click());
     await page.getByRole('button',{name:'S1 · E1',exact:true}).click();
-    await hiddenChrome(page,'.movies-navigation');await page.keyboard.press('Escape');
+    await hiddenChrome(page,'.movies-navigation');await page.getByRole('button',{name:'Close episode list',exact:true}).click();
     await expect(page.locator('.movies-navigation')).not.toHaveAttribute('inert');
     await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
     await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));

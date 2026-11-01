@@ -73,6 +73,9 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   const sync=()=>{
     frame=0;
     const {y,max}=position(scroller);
+    // Sheet focus can scroll the page behind it. Keep the reader's navigation
+    // state, and rebase travel so those programmatic moves never count later.
+    if(bar.closest('[data-sheet-hidden]')){state={...state,lastY:y,travel:0};return;}
     state=nextTabbarState(state,y,max,typing());
     apply(state.minimized);
   };

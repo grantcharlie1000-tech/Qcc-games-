@@ -9,6 +9,7 @@ import {autoHideTabbar} from './ui/tabbar';
 import {bindGlass} from './ui/glass';
 import {createSectionNavigation} from './ui/navigation';
 import {suppressNavigationUnderSheets} from './ui/modal-navigation';
+import {createGameDock} from './ui/floating-controls';
 import {bindGameChrome} from './ui/game-chrome';
 import {openSheet} from './ui/sheet';
 import {trackInputMode} from './ui/focus';
@@ -274,11 +275,6 @@ async function route(){
   const info=games.find(g=>g.id===id)!;activeId=id;document.body.classList.add('in-game');syncViewportLock();window.scrollTo(0,0);
   content.innerHTML=`<section class="game-view" data-game-id="${id}" data-reference-game="${referenceGames.has(id)}" aria-label="${info.title}">
     <div class="game-surface" aria-hidden="true"></div>
-    <nav class="game-dock" aria-label="Game controls">
-      <a class="ui-tab arcade-glass game-glass" href="${collectionHash}" aria-label="Games">${icon('back')}<span>Games</span></a>
-      <div class="game-hud arcade-glass game-glass" aria-label="Game information"></div>
-      <button id="game-menu" class="ui-tab arcade-glass game-glass" type="button" aria-label="Menu" aria-haspopup="dialog" aria-expanded="false">${icon('pause')}<span>Menu</span></button>
-    </nav>
     <dialog id="game-options" class="ui-glass-sheet game-chrome-menu" aria-labelledby="game-title">
       <form method="dialog" class="dialog-head"><div><p class="game-menu-eyebrow">GAME MENU</p><h1 id="game-title">${info.title}<span class="sr-only"> menu</span></h1></div><button class="icon-button" aria-label="Close game menu">${icon('close')}</button></form>
       <div class="game-metrics"><span id="game-score"><span class="metric-label">Score</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">Best</span><strong>${store.highScore(id)}</strong></span></div>
@@ -298,7 +294,10 @@ async function route(){
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
     <p id="game-status" role="status"${id==='pool'?' aria-hidden="true"':''}></p></section>`;
   gameMenu=document.querySelector<HTMLDialogElement>('#game-options')!;
-  const currentMenu=gameMenu,view=document.querySelector<HTMLElement>('.game-view')!,menuButton=document.querySelector<HTMLButtonElement>('#game-menu')!;
+  const currentMenu=gameMenu,view=document.querySelector<HTMLElement>('.game-view')!;
+  const dock=createGameDock({backHref:collectionHash,backIcon:icon('back'),menuIcon:icon('pause')});
+  view.querySelector('.game-surface')!.after(dock.root);
+  const menuButton=dock.menu;
   const closeGameMenu=()=>{menuButton.setAttribute('aria-expanded','false');currentMenu.close();};
   const transferDialog=(open:()=>void)=>{const resume=pausedForDialog;pausedForDialog=false;closeGameMenu();open();pausedForDialog=resume;};
   const activateOption=(action:()=>void)=>{
@@ -470,7 +469,7 @@ window.addEventListener('keydown',event=>{
   // Stop their handlers while preserving native reading/keyboard defaults.
   if(accountView.root.open||document.querySelector('dialog.movies-warning[open]'))return;
   if(study.isOpen&&event.key==='Escape'&&study.dismissPrivacy()){event.preventDefault();event.stopImmediatePropagation();return;}
-  if(event.key==='Escape'&&document.querySelector('dialog[open]'))return;
+  if(event.key==='Escape'&&(menu.open||rulesDialog.open||gameMenu?.open||leaderboards.root.open))return;
   if(!study.isOpen&&event.key==='Escape'&&instance?.dismissMenu?.()){event.preventDefault();event.stopImmediatePropagation();return;}
   if(study.isOpen&&event.key!=='Escape'){event.stopImmediatePropagation();return;}
   if(event.key!=='Escape'||(!activeId&&!movies&&!study.isOpen))return;

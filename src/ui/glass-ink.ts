@@ -17,12 +17,12 @@ const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
 
 /** The optical veil is shared with theme.css: neutral RGB184 at 14% opacity.
  * Choose ink before adding any scrim. Margin covers the feathered glyph edge. */
-export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection=false):{color:string;scrim:string}{
+export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false):{color:string;scrim:string}{
   const backgrounds=bounds(samples.length?samples:[[25,29,28]]).flatMap(rgb=>{
     const glass=mix(rgb,[184,184,184],.14);
-    // The white 8% selection can move under any tab during a press. Include
-    // both positions so ink stays legible throughout that motion.
-    return selection?[glass,mix(glass,[255,255,255],.08)]:[glass];
+    // Include the moving white 8% tab lens or the floating header's black
+    // 9% selection, as well as the unselected state.
+    return selection?[glass,mix(glass,selection==='dark'?[0,0,0]:[255,255,255],selection==='dark'?.09:.08)]:[glass];
   });
   const candidates=[{ink:INK,color:'#0b1015',veil:[255,255,255] as RGB},{ink:[255,255,255] as RGB,color:'#fff',veil:[0,0,0] as RGB}];
   const scored=candidates.map(candidate=>{
@@ -177,15 +177,16 @@ function update(){
     const box=rect(bar);if(!box.width||!box.height||style(bar).visibility==='hidden')continue;
     const mini=bar.parentElement?.querySelector<HTMLElement>('.ui-tabbar-mini');
     const minimized=bar.hasAttribute('data-minimized')&&!bar.parentElement?.matches(':has(:focus-visible)');
-    const targets=minimized?(mini?[mini]:[]):bar.matches('.ui-tab')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
+    const targets=minimized?(mini?[mini]:[]):bar.matches('.ui-tab,.floating-glass-group')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
     for(const target of targets){
       if(style(target).visibility==='hidden'||style(target).opacity==='0')continue;
-      const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong')].filter(e=>!e.querySelector('small,strong'));
+      const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')].filter(e=>!e.querySelector('svg,span,small,strong,kbd')&&!e.closest('.ui-brand-tile'));
       for(const glyph of glyphs){
-        const r=rect(glyph);if(!r.width||!r.height)continue;
+        const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
         const modal=bar.closest('dialog');
         const preference=modal?(luminance(paint(style(modal).color).rgb)>.5?'light':'dark'):undefined;
-        changes.push({glyph,ink:bar.dataset.glass==='off'?null:glassInk(sample(glyph),preference,bar.classList.contains('ui-tabbar'))});
+        const selection=bar.classList.contains('ui-tabbar')?true:bar.classList.contains('floating-glass-group')?'dark':false;
+        changes.push({glyph,ink:bar.dataset.glass==='off'?null:glassInk(sample(glyph),preference,selection)});
       }
     }
   }

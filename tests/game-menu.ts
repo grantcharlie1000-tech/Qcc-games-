@@ -33,5 +33,13 @@ export async function gameOption(page:Page,label:string,value:string){
 }
 export async function backToGames(page:Page){
   if(await page.locator('#game-options[open]').count())await page.getByRole('button',{name:'Close game menu',exact:true}).click();
-  await page.getByRole('link',{name:'Games',exact:true}).click();
+  // Game-owned menus now suppress the dock too. Close the start/pause menu
+  // through its real primary action before using the floating Games link.
+  const blockcraftMenu=page.locator('.bc-menu:not([hidden]) [data-panel="main"] [data-act="primary"]');
+  if(await blockcraftMenu.isVisible())await blockcraftMenu.click();
+  const games=page.getByRole('link',{name:'Games',exact:true});
+  // Play can capture the pointer. Keyboard activation remains a real accessible
+  // route out; a native pointer click would be retargeted into the world.
+  if(await page.evaluate(()=>!!document.pointerLockElement)){await games.focus();await games.press('Enter');}
+  else await games.click();
 }

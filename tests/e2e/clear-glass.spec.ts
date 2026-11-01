@@ -5,23 +5,49 @@ import type {Page} from '@playwright/test';
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 test.beforeEach(async({page})=>{await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));});
 
-async function navigationContrast(page:Page,scope:string){
+async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)'){
   const nav=page.locator(scope);
   await nav.screenshot({animations:'disabled',scale:'device'});
-  const boxes=await nav.evaluate(n=>{
+  const boxes=await nav.evaluate((n,glyphs)=>{
     const b=n.getBoundingClientRect();
-    return [...n.querySelectorAll('.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
+    return [...n.querySelectorAll(glyphs)].filter(e=>getComputedStyle(e).clip==='auto').map(e=>{
       const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
     }).filter(r=>r.w>0&&r.h>0);
-  });
-  const hide=await page.addStyleTag({content:`${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:transparent!important}`});
+  },glyphs);
+  const hide=await page.addStyleTag({content:`${scope} :is(${glyphs}){color:transparent!important}`});
   const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   await hide.evaluate(e=>(e as Element).remove());
-  const maskStyle=await page.addStyleTag({content:`html,body{background:#000!important}#content{visibility:hidden}${scope}{visibility:visible!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
+  const maskStyle=await page.addStyleTag({content:`html,body{background:#000!important}#content{visibility:hidden}${scope}{visibility:visible!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} :is(${glyphs}){color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
   const mask=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   await maskStyle.evaluate(e=>(e as Element).remove());
   return glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
 }
+
+for(const width of [390,1366])test(`floating Movies header keeps the clear recipe and glyph contrast at ${width}px`,async({page})=>{
+  await page.setViewportSize({width,height:844});await page.goto('/#/movies/browse/movie');
+  await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
+  const header=page.locator('.movies-top');await expect(header).toBeVisible();
+  await expect(header.locator('.glass-label').first()).toBeVisible();
+  const veils=await header.locator('.floating-glass-group').evaluateAll(es=>es.map(e=>getComputedStyle(e,'::before').backgroundColor));
+  expect(veils).toEqual(Array(3).fill('rgba(184, 184, 184, 0.14)'));
+  await page.addStyleTag({content:'.movies-view{background:transparent!important}.movies-view>:not(.movies-top){visibility:hidden}'});
+  for(const background of ['#fff','#000','#909090','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)','canvas']){
+    const style=await page.addStyleTag({content:`html,body{background:${background==='canvas'?'#000':background}!important}`});
+    if(background==='canvas')await page.evaluate(()=>{
+      const canvas=document.createElement('canvas');canvas.id='unknown-header-art';canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:1';
+      canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
+    });
+    await page.evaluate(()=>dispatchEvent(new Event('resize')));await page.waitForTimeout(100);
+    const ratios=await navigationContrast(page,'.movies-top','svg:not(.ui-brand-tile svg),.glass-label,.ui-label,kbd,.ui-wordmark>span');
+    expect(ratios.length).toBeGreaterThan(3);
+    expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    await style.evaluate(e=>(e as Element).remove());
+    await page.evaluate(()=>document.getElementById('unknown-header-art')?.remove());
+  }
+  await page.keyboard.press('Tab');await header.locator('.movies-search-toggle').focus();
+  const focus=await header.locator('.movies-search-toggle').evaluate(e=>({outline:getComputedStyle(e).outlineColor,shadow:getComputedStyle(e).boxShadow}));
+  expect(focus.outline).toBe('rgb(255, 255, 255)');expect(focus.shadow).toContain('rgb(0, 0, 0)');
+});
 
 for(const fallback of [false,true])test(`adaptive ink stays legible while real game artwork scrolls behind it (${fallback?'fallback':'native'})`,async({page})=>{
   test.setTimeout(60000);
