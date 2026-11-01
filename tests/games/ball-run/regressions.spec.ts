@@ -31,7 +31,7 @@ async function open(page: Page, run: Run) {
   await page.goto('/#/game/ball-run');
   await expect(game(page)).toBeVisible();
   await frames(page, 20, 1000 / 60);
-  await page.getByRole('button', { name: 'Play', exact: true }).click({ force: true });
+  await page.getByRole('button', { name: run.phase === 'ready' ? 'Play' : 'Continue', exact: true }).click({ force: true });
   await frames(page, 1, 1);
 }
 

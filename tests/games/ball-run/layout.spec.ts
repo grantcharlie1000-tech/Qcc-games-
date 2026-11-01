@@ -10,11 +10,14 @@ for(const viewport of [{width:390,height:844},{width:1366,height:768}])test(`Bal
  const box=(await page.locator('.br-viewport canvas').boundingBox())!;expect(box.width).toBe(viewport.width);expect(box.height).toBe(viewport.height);
 });
 
-for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`one lifecycle title and current-input controls at ${viewport.width}x${viewport.height}`,async({page})=>{
+for(const viewport of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}])test(`original setup and difficulty action at ${viewport.width}x${viewport.height}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/#/game/ball-run');
- const sheet=page.locator('.ball-run > .game-sheet');await expect(sheet).toBeVisible();await expect(sheet.locator('h2')).toHaveText('Ball Run');
- await expect(sheet.locator('.game-sheet-controls')).toHaveCount(1);await expect(sheet.getByRole('button')).toHaveCount(1);
- const panel=(await sheet.locator('.game-sheet-panel').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
- expect(panel.y).toBeGreaterThanOrEqual(dock.y+dock.height);expect(panel.y+panel.height).toBeLessThanOrEqual(viewport.height);
- await sheet.getByRole('button',{name:'Play',exact:true}).click();await expect(sheet).toBeHidden();await expect(page.locator('.ball-run')).toHaveAttribute('data-phase','running');
+ const setup=page.getByRole('region',{name:'Ball Run setup'});await expect(setup).toBeVisible();
+ await expect(setup.getByRole('heading',{name:'BALL RUN',exact:true})).toBeVisible();await expect(setup).toContainText('Avoid the blocks and stay on the track');
+ const slider=setup.getByRole('slider',{name:'Difficulty'});await slider.focus();await page.keyboard.press('End');await expect(slider).toHaveAttribute('aria-valuetext','Hard');
+ await expect(setup.locator('.br-level')).toHaveText('Hard');
+ const button=setup.getByRole('button',{name:'Play',exact:true}),panel=(await setup.boundingBox())!;
+ expect(panel.x).toBeGreaterThanOrEqual(0);expect(panel.y).toBeGreaterThanOrEqual(0);expect(panel.x+panel.width).toBeLessThanOrEqual(viewport.width);expect(panel.y+panel.height).toBeLessThanOrEqual(viewport.height);
+ expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ await button.click();await expect(setup).toBeHidden();await expect(page.locator('.ball-run')).toHaveAttribute('data-phase','running');await expect(page.locator('.ball-run')).toHaveAttribute('data-difficulty','hard');
 });

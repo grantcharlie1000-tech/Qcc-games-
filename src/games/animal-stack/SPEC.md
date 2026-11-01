@@ -12,4 +12,4 @@ Official source references and actual applied skill paths/provenance are in `SKI
 
 Tall-stack camera framing preserves native scale and world release relationships. A rendered cutout including stroke must stay below84px, beyond the shared76px HUD reserve, even on the first frame after rotation/restore/resize. Camera interpolation is clamped to this safety floor; it may follow the top tower while the platform/lower tower leaves framing. This changes neither physics nor saved state.
 
-The existing instant-ready start is unchanged. Finished and completed runs use the shared lifecycle sheet with score/best and Play again; that action calls the existing restart path. The shell pause surface uses the same shared title and one input-specific controls line. DROP remains a gameplay action: releasing must be deliberate and separate from aiming and tap rotation.
+Play starts immediately. Finished and completed runs keep their original status message; the shell owns pause and Restart. The compact HUD shows score and the balanced-animal count. DROP remains a gameplay action: releasing must be deliberate and separate from aiming and tap rotation.
