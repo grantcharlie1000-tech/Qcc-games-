@@ -13,7 +13,7 @@ test('a legacy 600-mass save eats, grows, renders and persists beyond 9,000',asy
  // Only runFor advances the arena; host/CI delays must not change the sampled mass.
  await page.clock.install({time:new Date('2026-10-20T10:00:00Z')});
  await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));await page.goto('/#/game/neon-coil');
- await page.getByRole('button',{name:'Continue arena',exact:true}).click();
+ await page.getByRole('button',{name:'Play',exact:true}).click();
  await page.keyboard.down('ArrowRight');await page.clock.runFor(1200);await page.keyboard.up('ArrowRight');
  await expect(page.locator('.nc-mass')).toHaveText('9600');
  await expect(page.locator('#game-score')).toContainText('9600');
@@ -22,7 +22,7 @@ test('a legacy 600-mass save eats, grows, renders and persists beyond 9,000',asy
  const state=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:neon-coil')!).data);
  expect(state.snakes[0].mass).toBe(9600);expect(state.snakes[0].pathLength).toBeGreaterThan(2000);
  expect(state.eaten).toBe(30);expect(state.snakes[0].body.length).toBeLessThanOrEqual(2048);
- await page.reload();await expect(page.getByRole('button',{name:'Continue arena',exact:true})).toBeVisible();
+ await page.reload();await expect(page.getByRole('button',{name:'Play',exact:true})).toBeVisible();
  await expect(page.locator('.nc-mass')).toHaveText('9600');
  expect(errors).toEqual([]);
 });

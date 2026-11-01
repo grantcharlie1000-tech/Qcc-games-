@@ -15,4 +15,10 @@
 #pause-overlay.game-sheet{z-index:20;background:rgb(0 0 0 / .18);-webkit-backdrop-filter:none;backdrop-filter:none;pointer-events:auto}
 #pause-overlay.game-sheet h2{margin:0;font-size:24px}
 @media(max-height:440px){.game-sheet{padding:10px}.game-sheet>.game-sheet-panel.ui-glass-sheet{gap:12px;padding:18px}.game-sheet .game-sheet-panel>h2{font-size:21px}.game-sheet .game-sheet-controls{font-size:14px}.game-sheet-stats dd{font-size:21px}}
+@media(max-height:360px){
+  .game-sheet>.game-sheet-panel.ui-glass-sheet{gap:10px;padding:16px}
+  .game-sheet .game-sheet-controls,.game-sheet .game-sheet-state{display:none}
+  .game-sheet-stats>div{flex-direction:row;align-items:baseline;gap:8px}
+}
+@media(max-height:440px){#pause-overlay.game-sheet h2{font-size:21px}}
 @media(prefers-reduced-motion:reduce){.game-sheet>.game-sheet-panel.ui-glass-sheet{transition:none}}

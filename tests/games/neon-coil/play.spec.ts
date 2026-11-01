@@ -11,7 +11,7 @@ async function open(page: Page) {
   await page.clock.install({ time: new Date('2026-10-20T10:00:00Z') });
   await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
   await page.goto('/#/game/neon-coil');
-  await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
 }
 test('pointer movement without click, earned growth, Space boost, P pause, keyboard and restart', async ({ page }) => {
   // Allow 60s cumulatively for this ~180-frame software-rendered flow, while
@@ -21,7 +21,7 @@ test('pointer movement without click, earned growth, Space boost, P pause, keybo
   page.setDefaultNavigationTimeout(30_000);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 900 }); await open(page);
-  await page.getByRole('button', { name: 'Enter arena', exact: true }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.mouse.move(1050, 450); await page.clock.runFor(900);
   expect(Number(await game(page).getAttribute('data-x'))).toBeGreaterThan(100);
   expect(Number(await game(page).getAttribute('data-mass'))).toBeGreaterThan(30);
@@ -41,7 +41,7 @@ test('pointer movement without click, earned growth, Space boost, P pause, keybo
   await page.keyboard.press('ArrowDown'); await page.clock.runFor(450);
   expect(Number(await game(page).getAttribute('data-angle'))).toBeGreaterThan(1);
   await gameAction(page,'Restart game');
-  await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); expect(errors).toEqual([]);
 });
 test('rim death creates real food, exposes death reason, and replay has one loop', async ({ page }) => {
@@ -53,7 +53,7 @@ test('rim death creates real food, exposes death reason, and replay has one loop
   for (let n = 0; n < 44; n++) await page.clock.fastForward(250);
   await page.keyboard.up('ArrowLeft');
   await expect(game(page)).toHaveAttribute('data-phase', 'dead');
-  await expect(page.locator('.nc-copy')).toContainText(/rim|body|Head-on/);
+  await expect(page.locator('#game-status')).toContainText(/rim|body|Head-on/);
   expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
   await expect(page.getByRole('button', { name: 'Play again', exact: true })).toBeVisible();
   await page.screenshot({ path: `${evidence}/death-browser.png` });
@@ -66,7 +66,7 @@ test('real hover steering into a local bot body causes death and collectible pel
   await page.mouse.move(640, 180); // Pure pointer motion, without clicking or setting game state.
   for (let n = 0; n < 24; n++) await page.clock.fastForward(250);
   await expect(game(page)).toHaveAttribute('data-phase', 'dead');
-  await expect(page.locator('.nc-copy')).toContainText('body');
+  await expect(page.locator('#game-status')).toContainText('body');
   expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
   await page.screenshot({ path: `${evidence}/body-collision-browser.png` });
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
@@ -81,9 +81,9 @@ test('Escape preserves host study, saves exactly, and saved continuation waits f
   await page.locator('.study-article-body').getByRole('link', { name: 'Games', exact: true }).click(); await page.clock.runFor(150);
   expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(before.ticks);
   await pauseGame(page); const paused = await saved(page);
-  await page.reload(); await expect(page.getByRole('button', { name: 'Continue arena', exact: true })).toBeVisible();
+  await page.reload(); await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await page.clock.runFor(800); await expect(game(page)).toHaveAttribute('data-tick', String(paused.ticks));
-  await page.getByRole('button', { name: 'Continue arena', exact: true }).click(); await page.clock.runFor(200);
+  await page.getByRole('button', { name: 'Play', exact: true }).click(); await page.clock.runFor(200);
   expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(paused.ticks);
 });
 test('resize, high DPI, reduced motion and controls fit desktop, ultrawide and touch widths', async ({ browser }) => {
@@ -128,7 +128,7 @@ test('touch drag and a second finger on the boost control steer without scrollin
 test('focusable boost, lost focus, frame stalls, disposal and invalid saves recover safely', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message)); await open(page);
   for (let run = 0; run < 3; run++) {
-    await page.getByRole('button', { name: 'Enter arena', exact: true }).click(); await page.locator('.nc-boost').focus();
+    await page.getByRole('button', { name: 'Play', exact: true }).click(); await page.locator('.nc-boost').focus();
     await page.keyboard.down('Enter'); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-boosting', 'true');
     await page.keyboard.up('Enter'); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-boosting', 'false');
     if (run === 0) {
@@ -153,13 +153,13 @@ test('the library retains original grid Snake and opens Slither.io separately', 
   await expect(page.locator('.game-card')).toHaveCount(GAME_IDS.length);
   await expect(page.getByRole('link', { name: 'Play Snake', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Play Snake', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Start slithering', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await page.keyboard.press('ArrowRight'); await page.clock.runFor(690);
   await expect(page.locator('#game-score strong')).toHaveText('10');
   await expect(page.locator('.snake-game')).toHaveCount(1); await expect(game(page)).toHaveCount(0);
   await backToGames(page);
   await page.getByRole('link', { name: 'Play Slither.io', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); await expect(page.locator('.snake-game')).toHaveCount(0);
 });
 
@@ -204,7 +204,7 @@ for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { 
     // The shell commits visual-viewport changes on RAF, which this test freezes.
     await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.nc-game').evaluate(e=>e.getBoundingClientRect().height);}).toBe(size.height);
     const bounds = async (selector: string) => (await page.locator(selector).boundingBox())!;
-    const card = await bounds('.nc-card'), enter = await bounds('.nc-start');
+    const card = await bounds('.nc-game .game-sheet-panel'), enter = await bounds('.nc-start');
     const dock = await bounds('.game-dock');
     await page.screenshot({ path: `${evidence}/intro-${size.width}.png` });
     expect.soft(card.x).toBeGreaterThanOrEqual(0);
@@ -240,7 +240,7 @@ for (const size of [{ width: 844, height: 390 }, { width: 740, height: 360 }, { 
 }
 test('short narrow viewport keeps intro and Boost within the supported 320px width', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 }); await open(page);
-  for (const selector of ['.nc-card', '.nc-start', '.nc-boost']) {
+  for (const selector of ['.nc-game .game-sheet-panel', '.nc-start', '.nc-boost']) {
     const box = (await page.locator(selector).boundingBox())!;
     expect.soft(box.x, selector).toBeGreaterThanOrEqual(0);
     expect.soft(box.x + box.width, selector).toBeLessThanOrEqual(320);
@@ -298,4 +298,18 @@ for (const lifecycle of ['ready', 'paused', 'dead', 'running'] as const) {
       expect(Number(await game(page).getAttribute('data-tick'))).toBeGreaterThan(before.ticks);
     }
   });
+}
+
+for (const size of [{width:320,height:568},{width:390,height:844},{width:844,height:390},{width:1366,height:768}]) {
+ test(`compact ranking clears the real shared dock at ${size.width}x${size.height}`,async({page})=>{
+  await page.setViewportSize(size);await open(page);await page.locator('.nc-start').click();await page.clock.runFor(100);
+  const board=page.locator('.nc-ranking');await expect(board).toBeVisible();
+  await expect.poll(async()=>{
+   const a=(await board.boundingBox())!,b=(await page.locator('.game-dock').boundingBox())!;
+   return a.x>=b.x+b.width||a.x+a.width<=b.x||a.y>=b.y+b.height||a.y+a.height<=b.y;
+  }).toBe(true);
+  const box=(await board.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(size.width/2);expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height);
+  expect(await board.locator('li').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(12);
+  await expect(page.locator('.nc-guide,.nc-eyebrow,.nc-copy,.nc-footnote')).toHaveCount(0);
+ });
 }

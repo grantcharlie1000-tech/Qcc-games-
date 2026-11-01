@@ -1,5 +1,7 @@
 import Matter from 'matter-js';
 import type { GameModule } from '../../core/types';
+import { bindGamePauseSheet, createGameSheet } from '../../ui/game-sheet';
+import {mountCompactHud} from '../../ui/game-controls-adapter';
 import { AnimalWorld, ANIMALS, KINDS, WIDTH, HEIGHT, FLOOR, createAnimal, TAP_ROTATION_RADIANS } from './model';
 import type { Animal, Kind } from './model';
 import { animalSvg, artBox } from './art';
@@ -12,6 +14,11 @@ const module:GameModule={
  mount(container,context){
   container.innerHTML='<div class="animal-stack"><canvas tabindex="0" aria-label="Animal Stack. Drag the waiting animal horizontally; tap to rotate 45°. Press DROP or Space to release."></canvas><div class="animal-stack__bubble" hidden aria-hidden="true"></div><button class="animal-stack__drop" data-drop>DROP</button><p class="animal-stack__status" role="status"></p></div>';
   const root=container.firstElementChild as HTMLElement,canvas=root.querySelector('canvas')!,draw=canvas.getContext('2d')!,dropButton=root.querySelector<HTMLButtonElement>('[data-drop]')!,bubble=root.querySelector<HTMLElement>('.animal-stack__bubble')!,status=root.querySelector<HTMLElement>('.animal-stack__status')!;
+  const controls={touch:'Drag aims · Tap turns · DROP',keyboard:'←/→ aim · Q/E turn · Space drops'};
+  const hud=mountCompactHud(container);
+  const pauseSheet=bindGamePauseSheet(container,{title:'Animal Stack',controls});
+  const sheet=createGameSheet(root,{title:'Animal Stack',controls,onPlay(){restart();canvas.focus({preventScroll:true});}});
+  let best=context.highScore;
   let world=new AnimalWorld(),paused=false,disposed=false,raf:number|null=null,last=0,accumulator=0,camera=0,previousScore=-1,previousEnd=false,lastUI='',bubbleUntil=0,heldAimAt=0;
   let preview=createAnimal(world.nextKind,world.aimX,world.spawnY);
   const gesture=new AnimalGesture(),keys=new Set<string>();
@@ -26,7 +33,10 @@ const module:GameModule={
    const signature=[world.animals.length,world.supportedCount,world.height,world.ready,world.aimX,world.rotation,world.score,world.over,world.complete,paused,world.nextKind,colliderOverlay].join('|');if(signature===lastUI)return;lastUI=signature;
    Object.assign(root.dataset,{count:String(world.animals.length),balanced:String(world.supportedCount),ready:String(world.ready),aim:String(Math.round(world.aimX)),angle:String(world.rotation),over:String(world.over),next:world.nextKind,colliders:String(colliderOverlay),rotationAdaptation:'45deg'});
    dropButton.disabled=paused||!world.ready;dropButton.textContent='DROP';dropButton.setAttribute('aria-label',`Drop ${ANIMALS[world.nextKind].name}`);
-   status.textContent=world.over?'The stack tumbled. Restart to try again.':world.complete?'All 40 animals balanced!':'';
+   status.textContent=world.over?'The stack tumbled.':world.complete?'All 40 animals balanced!':'';
+   best=Math.max(best,world.score,world.legacyScore??0);
+   if(world.over||world.complete)sheet.show('game-over',{score:world.score,best});else sheet.hide();
+   hud.set(`Score ${world.score} · ${world.supportedCount}/40`,`Score ${world.score}, ${world.supportedCount} of 40 animals balanced`);
    context.setLevel(`${world.supportedCount}/40 animals`);
    if(previousScore!==world.score){if(previousScore>=0&&world.score>previousScore){context.sound('success');context.announce(`${world.supportedCount} animals balanced. Height ${world.height} centimetres.`);bubbleUntil=performance.now()+600;}context.setScore(world.score);previousScore=world.score;}
    if((world.over||world.complete)&&!previousEnd){context.sound(world.over?'lose':'success');context.announce(status.textContent);context.save(world.snapshot());}previousEnd=world.over||world.complete;
@@ -70,14 +80,15 @@ const module:GameModule={
    if(world.ready&&time>=heldAimAt){const direction=Number(keys.has('arrowright')||keys.has('d'))-Number(keys.has('arrowleft')||keys.has('a'));if(direction)world.aim(world.aimX+direction*elapsed*.13);}
    accumulator+=elapsed;while(accumulator>=1000/60){world.step();accumulator-=1000/60;}sync();render();schedule();
   }
+  function restart(){clearInput();world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;lastUI='';bubbleUntil=0;sync();if(paused)render();context.save(world.snapshot());}
   const observer=new ResizeObserver(resize);observer.observe(root);resize();sync();schedule();
   return {
    pause(){if(disposed||paused)return;paused=true;clearInput();accumulator=0;last=0;if(raf!==null){cancelAnimationFrame(raf);raf=null;}sync();},
    resume(){if(disposed||!paused)return;paused=false;last=0;accumulator=0;sync();schedule();},
-   restart(){clearInput();world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;lastUI='';bubbleUntil=0;sync();if(paused)render();context.save(world.snapshot());},
+   restart,
    serialize(){return world.snapshot();},
    restore(data){clearInput();if(world.restore(data)){if(world.legacyScore!==null)context.setScore(world.legacyScore);camera=Math.max(0,220-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();if(data&&typeof data==='object'&&(data as {version?:number}).version===1){status.textContent='New shapes reset the stack. Score kept in Record.';context.announce(status.textContent);context.save(world.snapshot());}}},
-   dispose(){disposed=true;clearInput();if(raf!==null)cancelAnimationFrame(raf);observer.disconnect();controller.abort();world.dispose();container.replaceChildren();},
+   dispose(){disposed=true;clearInput();if(raf!==null)cancelAnimationFrame(raf);observer.disconnect();controller.abort();sheet.dispose();pauseSheet.dispose();hud.dispose();world.dispose();container.replaceChildren();},
   };
  },
 };

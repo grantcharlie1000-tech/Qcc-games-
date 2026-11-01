@@ -63,7 +63,7 @@ test('sky, fog, hand and overlays at noon, dusk, midnight and underwater',async(
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   await page.setViewportSize({width:960,height:600});
   await page.goto('/#/game/blockcraft');await ready(page);
-  await page.getByRole('button',{name:'Game mode'}).click();
+  if(await page.locator('.bc-world-config').getAttribute('open')===null)await page.locator('.bc-world-config > summary').click();await page.getByRole('button',{name:'Game mode'}).click();
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
   // Freeze the clock, clear weather, hover a little above the ground in creative flight.
@@ -124,7 +124,7 @@ test('first-person hand, held items, selection, breaking crack, screen overlays,
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
   await page.setViewportSize({width:960,height:600});
   await page.goto('/#/game/blockcraft');await ready(page);
-  await page.getByRole('button',{name:'Game mode'}).click();
+  if(await page.locator('.bc-world-config').getAttribute('open')===null)await page.locator('.bc-world-config > summary').click();await page.getByRole('button',{name:'Game mode'}).click();
   await page.getByRole('button',{name:'Play',exact:true}).click();
   await expect(page.locator('.blockcraft')).toHaveAttribute('data-phase','playing');
   await page.evaluate(()=>{
