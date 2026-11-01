@@ -413,6 +413,8 @@
   -webkit-text-stroke:1.4px var(--glass-local-halo,transparent);paint-order:stroke fill;
   text-shadow:0 0 0 var(--glass-local-halo,transparent),0 0 .65px var(--glass-local-halo,transparent),0 .5px .65px var(--glass-local-halo,transparent);
 }
+/* A full exterior pixel keeps the adaptive outline legible at desktop DPR 1. */
+@media(max-resolution:1.5dppx){.arcade-glass .glass-ink,.ui-tabbar-mini .glass-ink{-webkit-text-stroke-width:2px}}
 .glass-vector-halo{color:var(--glass-local-halo,var(--sheet-halo,transparent));stroke-width:3.2;pointer-events:none;filter:drop-shadow(0 0 .4px var(--glass-local-halo,var(--sheet-halo,transparent)))}
 .arcade-glass[data-glass=off] .glass-ink,.section-tabbar[data-glass=off]~.ui-tabbar-mini .glass-ink{color:var(--glass-ink);background:none;box-shadow:none;text-shadow:none;-webkit-text-stroke:0}
 .arcade-glass[data-glass=off] .glass-vector-halo,.section-tabbar[data-glass=off]~.ui-tabbar-mini .glass-vector-halo{display:none}

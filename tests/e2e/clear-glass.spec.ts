@@ -1,5 +1,5 @@
 import {test,expect} from '../fixtures';
-import {glyphContrast,glyphFillMask} from '../glass-contrast';
+import {glyphContrast,glyphContrastSamples,glyphFillMask} from '../glass-contrast';
 import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
@@ -23,7 +23,9 @@ async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui
       const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
     }).filter(r=>r.w>0&&r.h>0);
   },glyphs);
-  const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!,true);
+  const samples=await glyphContrastSamples(page,shot,mask,boxes,(await nav.boundingBox())!,true);
+  const ratios=samples.map(sample=>sample.worst);
+  if(samples.some(sample=>sample.diagonalCount))await test.info().attach('diagonal-contour-samples',{body:JSON.stringify({boxes,samples}),contentType:'application/json'});
   if(ratios.some(ratio=>ratio<4.5)){
     await test.info().attach('visible-glyphs',{body:Buffer.from(shot,'base64'),contentType:'image/png'});
     await test.info().attach('foreground-mask',{body:Buffer.from(mask,'base64'),contentType:'image/png'});
@@ -45,7 +47,10 @@ test('visible label outlines retain 4.5:1 beside real mixed game art',async({pag
   expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);
 });
 
-for(const width of [390,1366])test(`floating Movies header keeps the clear recipe and glyph contrast at ${width}px`,async({page})=>{
+async function headerContrast(page:Page,width:number){
+  // Five backdrops, each with a white/black foreground mask and restored shot.
+  // Software-renderer capture time is separate from the measured frame timing.
+  test.setTimeout(90000);
   await page.setViewportSize({width,height:844});await page.goto('/#/movies/browse/movie');
   await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
   const header=page.locator('.movies-top');await expect(header).toBeVisible();
@@ -69,6 +74,11 @@ for(const width of [390,1366])test(`floating Movies header keeps the clear recip
   await page.keyboard.press('Tab');await header.locator('.movies-search-toggle').focus();
   const focus=await header.locator('.movies-search-toggle').evaluate(e=>({outline:getComputedStyle(e).outlineColor,shadow:getComputedStyle(e).boxShadow}));
   expect(focus.outline).toBe('rgb(255, 255, 255)');expect(focus.shadow).toContain('rgb(0, 0, 0)');
+}
+for(const width of [390,1366])test(`floating Movies header keeps the clear recipe and glyph contrast at ${width}px`,async({page})=>headerContrast(page,width));
+test.describe('desktop header at DPR1',()=>{
+  test.use({deviceScaleFactor:1,isMobile:false,hasTouch:false});
+  for(const width of [1024,1366])test(`visible header glyphs retain 4.5:1 at ${width}px`,async({page})=>headerContrast(page,width));
 });
 
 for(const fallback of [false,true])test(`adaptive ink stays legible while real game artwork scrolls behind it (${fallback?'fallback':'native'})`,async({page})=>{
@@ -225,6 +235,7 @@ test('navigation, companion and game controls share the same clear optical recip
 });
 
 for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: adaptive glyphs retain 4.5:1 on light, dark and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
+  test.setTimeout(90000);
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
   if(route.startsWith('movies'))await moviesReady(page,route);
   const scope=route==='collection'?'.app-navigation':'.movies-navigation';

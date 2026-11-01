@@ -1,6 +1,6 @@
 import type {Locator,Page} from '@playwright/test';
 export interface GlyphBox{x:number;y:number;w:number;h:number;color:string}
-export interface GlyphSample{worst:number;typical:number;count:number}
+export interface GlyphSample{worst:number;typical:number;count:number;diagonalCount?:number}
 /** Isolate foreground alpha without changing the panel's compositing path.
  * Making a translucent ancestor opaque can move Chromium's glyph raster grid
  * by a device pixel. Keep its background, stroke and shadow, varying only fill. */
@@ -49,13 +49,19 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
       const inkMask=context.getImageData(0,0,c.width,c.height).data;
       const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
       return boxes.map(b=>{
-        const color=b.color.match(/[\d.]+/g)!.map(Number),alpha=color[3]??1;let worst=Infinity,total=0,count=0;
+        const color=b.color.match(/[\d.]+/g)!.map(Number),alpha=color[3]??1;let worst=Infinity,total=0,count=0,diagonalCount=0;
         const left=Math.max(0,Math.ceil(b.x*sx)),right=Math.min(c.width,Math.floor((b.x+b.w)*sx)),top=Math.max(0,Math.ceil(b.y*sy)),bottom=Math.min(c.height,Math.floor((b.y+b.h)*sy));
         let peak=0;
         for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
           const i=(y*c.width+x)*4;peak=Math.max(peak,Math.min(inkMask[i],inkMask[i+1],inkMask[i+2])/255);
         }
         if(!peak)return {worst:0,typical:0,count:0};
+        // Thin DPR1 curves may have only diagonal exterior neighbours; their
+        // axial neighbours are still antialiased foreground. Use that contour
+        // only when the ordinary axial contour supplies no samples at all.
+        for(const diagonal of visibleEdges?[false,true]:[false]){
+        if(count)break;
+        const neighbours=diagonal?[[1,1],[-1,1],[1,-1],[-1,-1]]:Array.from({length:edgeDistance},(_,i)=>{const d=i+1;return [[d,0],[-d,0],[0,d],[0,-d]];}).flat();
         for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
           const i=(y*c.width+x)*4;
           if(visibleEdges){
@@ -64,7 +70,7 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
             // is the nearest two device pixels (2/3 CSS px) along either axis.
             if(Math.max(inkMask[i],inkMask[i+1],inkMask[i+2])>12)continue;
             let adjacent=false;
-            for(let distance=1;distance<=edgeDistance;distance++)for(const [dx,dy] of [[distance,0],[-distance,0],[0,distance],[0,-distance]]){
+            for(const [dx,dy] of neighbours){
               const xx=x+dx,yy=y+dy;
               if(xx<0||xx>=c.width||yy<0||yy>=c.height)continue;
               const j=(yy*c.width+xx)*4;
@@ -77,7 +83,9 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
           const contrast=(Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05);
           worst=Math.min(worst,contrast);total+=contrast;count++;
         }
-        return {worst:Number.isFinite(worst)?worst:0,typical:count?total/count:0,count};
+        if(diagonal)diagonalCount=count;
+        }
+        return {worst:Number.isFinite(worst)?worst:0,typical:count?total/count:0,count,...(diagonalCount?{diagonalCount}:{})};
       });
     },{shot,mask,boxes,bounds,visibleEdges});
 }

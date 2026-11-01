@@ -179,15 +179,24 @@ function sampler(){
 const bindings=new Set<HTMLElement>();
 let frame=0;
 let observer:MutationObserver|undefined;
+let density:MediaQueryList|undefined;
 function vectorHalo(glyph:Element):void{
-  if(!(glyph instanceof SVGSVGElement)||glyph.querySelector(':scope > .glass-vector-halo'))return;
+  if(!(glyph instanceof SVGSVGElement))return;
+  // Coarse curved strokes need a complete exterior pixel at diagonal edges.
+  // Rebuild only if moving between display densities changes that allowance.
+  density??=window.matchMedia('(max-resolution: 1.5dppx)');
+  const expansion=density.matches?2.8:1.8;
+  const previous=glyph.querySelector<SVGGElement>(':scope > .glass-vector-halo');
+  if(previous?.dataset.expansion===String(expansion))return;
+  previous?.remove();
   // A vector outline follows the live icon, without a rectangular backing or
   // a captured image. Keep it separate from currentColor so contrast can be
   // measured with the foreground hidden, just like a text shadow.
   const halo=document.createElementNS('http://www.w3.org/2000/svg','g');
   halo.classList.add('glass-vector-halo');halo.setAttribute('aria-hidden','true');
+  halo.dataset.expansion=String(expansion);
   const width=glyph.getBoundingClientRect().width||24;
-  const outline=1.8*(glyph.viewBox.baseVal.width||width)/width;
+  const outline=expansion*(glyph.viewBox.baseVal.width||width)/width;
   for(const child of [...glyph.children])if(!child.matches('defs,title,desc')){
     const copy=child.cloneNode(true) as Element;
     copy.removeAttribute('id');for(const e of copy.querySelectorAll('[id]'))e.removeAttribute('id');
@@ -259,6 +268,8 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     document.addEventListener('focusin',schedule,true);
     document.addEventListener('focusout',schedule,true);
     window.addEventListener('resize',schedule,{passive:true});
+    density??=window.matchMedia('(max-resolution: 1.5dppx)');
+    density.addEventListener('change',schedule);
     observer=new MutationObserver(records=>{
       const liveGame=!!document.querySelector('#game-stage canvas,#game-stage svg');
       if(records.some(r=>{
@@ -286,6 +297,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     }
     if(!bindings.size){
       observer?.disconnect();observer=undefined;
+      density?.removeEventListener('change',schedule);density=undefined;
       document.removeEventListener('scroll',schedule,true);document.removeEventListener('load',schedule,true);document.removeEventListener('transitionend',schedule,true);document.removeEventListener('focusin',schedule,true);document.removeEventListener('focusout',schedule,true);window.removeEventListener('resize',schedule);
       cancelAnimationFrame(frame);frame=0;
     }
