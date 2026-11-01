@@ -1,6 +1,6 @@
 # Crossy Road implementation guide
 
-The active fidelity-pass plan and execution record are in [2026-11-01-crossy-road-fidelity.md](../../../docs/superpowers/plans/2026-11-01-crossy-road-fidelity.md). Charlie's request overrides older art choices and the external pack where they conflict. The current contract is [SPEC.md](SPEC.md).
+The active fidelity-pass execution record is [r7 review](../../../docs/superpowers/plans/2026-11-01-crossy-road-r7-review.md), following the [original plan](../../../docs/superpowers/plans/2026-11-01-crossy-road-fidelity.md). Charlie's request overrides older art choices and the external pack where they conflict. The current contract is [SPEC.md](SPEC.md).
 
 ## Scope
 
