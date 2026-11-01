@@ -118,3 +118,21 @@ describe('Room',()=>{
     const host=await Room.create(opts(net,'Hana'));expect(calls).toBe(2);expect(host.code).toHaveLength(6);
   });
 });
+
+describe('Room ephemeral updates',()=>{
+ beforeEach(()=>vi.useFakeTimers());afterEach(()=>vi.useRealTimers());
+ it('delivers unreliable updates only to admitted peers without changing reliable messages',async()=>{
+  const net=new FakeNetwork(),host=await Room.create(opts(net,'Hana')),guest=await joined(net,host,'Tama');
+  const got:RoomEvent[]=[],back:RoomEvent[]=[];guest.on(e=>got.push(e));host.on(e=>back.push(e));
+  host.sendUnreliable(['snapshot',1,2]);guest.sendUnreliable(['input',3]);host.send({event:'round'});await settle();
+  expect(got.filter(e=>e.type==='message')).toEqual([expect.objectContaining({data:['snapshot',1,2],unreliable:true}),expect.objectContaining({data:{event:'round'}})]);
+  expect(back.find(e=>e.type==='message')).toMatchObject({from:{name:'Tama'},data:['input',3],unreliable:true});
+  host.sendUnreliable('x'.repeat(20000));await settle();expect(got.filter(e=>e.type==='message')).toHaveLength(2);
+  host.close();await settle(400);
+ });
+ it('host kick ends only the selected guest session',async()=>{
+  const net=new FakeNetwork(),host=await Room.create(opts(net,'Hana',{maxPlayers:3})),guest=await joined(net,host,'Tama'),other=await joined(net,host,'Rua');
+  const events:RoomEvent[]=[];guest.on(e=>events.push(e));host.kick(guest.id);await settle(500);
+  expect(events.find(e=>e.type==='closed')).toMatchObject({reason:'kicked'});expect(other.closed).toBe(false);expect(host.players.map(p=>p.name)).toEqual(['Hana','Rua']);host.close();await settle(400);
+ });
+});

@@ -15,7 +15,7 @@ export type RoomEvent=
   |{type:'players';players:readonly RosterEntry[]}
   |{type:'joined';player:RosterEntry}
   |{type:'left';player:RosterEntry;reason:'left'|'lost'|'timeout'}
-  |{type:'message';from:RosterEntry;data:unknown}
+  |{type:'message';from:RosterEntry;data:unknown;unreliable?:boolean}
   |{type:'paused';paused:boolean}
   |{type:'link';id:string;kind:LinkKind}
   |{type:'signalling';connected:boolean}
@@ -131,6 +131,28 @@ export class Room{
     if(to){const p=this.peers.get(to);if(p?.entry)this.write(p,message);return;}
     this.broadcastEnvelope(message);
   }
+  /** Small ephemeral game updates. Uses the negotiated unordered RTC channel, with Link's reliable fallback. */
+  sendUnreliable(data:unknown,to?:string){
+    if(this.closedState)return;
+    let text:string;try{text=JSON.stringify({t:'game',d:data});}catch{return;}
+    if(text.length>16384)return;
+    const peers=this.role==='guest'?[...this.peers.values()].slice(0,1):to?[this.peers.get(to)]:[...this.peers.values()];
+    for(const peer of peers)if(peer?.entry){if(peer.link.sendUnreliable)peer.link.sendUnreliable(text);else peer.link.send(text);}
+  }
+  private fast(peer:Peer){
+    peer.link.onUnreliable?.(text=>{
+      if(this.closedState||!peer.entry||!this.roster.length||this.peers.get(peer.link.peer)!==peer||typeof text!=='string'||text.length>16384)return;
+      let envelope:Envelope|null;try{envelope=parseEnvelope(JSON.parse(text));}catch{return;}
+      if(envelope?.t!=='game')return;
+      peer.seen=Date.now();this.emit({type:'message',from:peer.entry,data:envelope.d,unreliable:true});
+    });
+  }
+  /** Host only: remove one guest without closing the room. */
+  kick(id:string){
+    if(this.role!=='host'||this.closedState)return;
+    const peer=this.peers.get(id);if(!peer?.entry)return;
+    this.write(peer,{t:'bye',reason:'kicked'});setTimeout(()=>this.drop(peer,'left'),100);
+  }
   broadcast(data:unknown,except?:string){if(!this.closedState&&this.role==='host')this.broadcastEnvelope({t:'game',d:data},except);}
   private broadcastEnvelope(message:Envelope,except?:string){
     // Frame once for every guest.
@@ -177,7 +199,7 @@ export class Room{
     // The same peer connecting again replaces its old connection (and frees its seat).
     const old=this.peers.get(link.peer);if(old)this.drop(old,'lost');
     const peer:Peer={entry:null,link,reader:new Reassembler(HELLO_CHARS),seen:Date.now(),bad:0,rtt:NaN,kind:'unknown',hello:undefined};
-    this.peers.set(link.peer,peer);
+    this.peers.set(link.peer,peer);this.fast(peer);
     peer.hello=setTimeout(()=>{if(!peer.entry)this.drop(peer,'timeout');},HELLO_MS);
     link.onData(text=>this.receiveHost(peer,text));
     link.onClose(()=>this.drop(peer,'lost'));
@@ -257,7 +279,7 @@ export class Room{
       const fail=(error:RoomError)=>{if(settled)return;settled=true;clearTimeout(timer);reject(error);};
       const link=this.endpoint.connect(hostId);
       const peer:Peer={entry:{id:hostId,seat:0,name:'Host',host:true},link,reader:new Reassembler(),seen:Date.now(),bad:0,rtt:NaN,kind:'unknown',hello:undefined};
-      this.peers.set(hostId,peer);
+      this.peers.set(hostId,peer);this.fast(peer);
       const timer=setTimeout(()=>fail(new RoomError('timeout',ice.turn
         ?'Could not connect to the host. Check both devices are online. Some networks block device-to-device connections: try both on the same Wi-Fi or both on mobile data.'
         :'Could not reach the host. This network may block direct connections, and relay fallback is unavailable.')),JOIN_MS);
@@ -291,7 +313,7 @@ export class Room{
           case 'pause':if(m.paused!==this.pausedState){this.pausedState=m.paused;this.emit({type:'paused',paused:m.paused});}break;
           case 'ping':this.write(peer,{t:'pong',at:m.at});break;
           case 'pong':peer.rtt=Date.now()-m.at;break;
-          case 'bye':this.drop(peer,'left');break;
+          case 'bye':if(m.reason==='kicked')this.finish('kicked','The host removed you from the room.');else this.drop(peer,'left');break;
         }
       });
     });

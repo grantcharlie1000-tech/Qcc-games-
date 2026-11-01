@@ -1,4 +1,4 @@
-import type {Endpoint,EndpointFactory,Link,TransportError} from '../../src/multiplayer/transport';
+import type {Endpoint,EndpointFactory,Link,TransportError,UnreliableMessage} from '../../src/multiplayer/transport';
 
 /** An in-memory signalling network: ordered, asynchronous delivery like a reliable data channel. */
 export class FakeNetwork{
@@ -14,9 +14,12 @@ export class FakeNetwork{
 type Fn<T=void>=(v:T)=>void;
 export class FakeLink implements Link{
   other!:FakeLink;open=false;closed=false;sent:string[]=[];
+  private fastCb:Fn<UnreliableMessage>[]=[];
   private openCb:Fn[]=[];private dataCb:Fn<string>[]=[];private closeCb:Fn[]=[];private errorCb:Fn<TransportError>[]=[];
   constructor(readonly peer:string){}
   send(text:string){if(!this.open||this.closed)return;this.sent.push(text);const o=this.other;setTimeout(()=>{if(!o.closed)for(const cb of o.dataCb)cb(text);},0);}
+  sendUnreliable(message:UnreliableMessage){if(!this.open||this.closed)return;const other=this.other;setTimeout(()=>{if(!other.closed)for(const cb of other.fastCb)cb(message);},0);}
+  onUnreliable(cb:Fn<UnreliableMessage>){this.fastCb.push(cb);}
   close(){if(this.closed)return;this.closed=true;for(const cb of this.closeCb)cb();setTimeout(()=>this.other.close(),0);}
   onOpen(cb:Fn){if(this.open)queueMicrotask(cb);else this.openCb.push(cb);}
   onData(cb:Fn<string>){this.dataCb.push(cb);}
