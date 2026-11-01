@@ -3,6 +3,7 @@ import { bindGamePauseSheet, createGameSheet } from '../../ui/game-sheet';
 import { advanceArena, BOT_COUNT, createArena, MIN_MASS, ranking, restoreArena, snapshot, STEP, type Arena } from './model';
 import { createRenderer } from './render';
 import { skinFor } from './skin';
+import {compactMass,mountDockRanking} from './dock-ranking';
 import './style.css';
 
 const module: GameModule = {
@@ -22,6 +23,7 @@ const module: GameModule = {
     const start = sheet.button;
     const mass = root.querySelector<HTMLElement>('.nc-mass')!, board = root.querySelector<HTMLOListElement>('.nc-ranking ol')!;
     const rankPanel = root.querySelector<HTMLElement>('.nc-ranking')!;
+    const rankingLayout=mountDockRanking(root,container,rankPanel);
     const you = root.querySelector<HTMLElement>('.nc-you')!, boost = root.querySelector<HTMLButtonElement>('.nc-boost')!;
     const boostNote = root.querySelector<HTMLElement>('.nc-boost-note')!;
     const touchInput = matchMedia('(pointer: coarse)').matches;
@@ -48,31 +50,25 @@ const module: GameModule = {
       uiAt = -Infinity; update(performance.now());
       renderer.draw(state, 1, context.settings.reducedMotion);
     }
-    // Measure the shared dock instead of assuming a toolbar height. A future compact
-    // top-left dock leaves the leaderboard level with it; a broad dock puts it below.
     function placeRanking() {
-      const bounds = root.getBoundingClientRect(), dock = container.closest('.game-view')?.querySelector<HTMLElement>('.game-dock');
-      const dockBounds = dock?.getBoundingClientRect(), panelBounds = rankPanel.getBoundingClientRect();
-      const styles = getComputedStyle(root), inset = Math.max(16, parseFloat(styles.getPropertyValue('--nc-safe-top')) || 0);
-      const aligned = Math.max(inset, dockBounds ? dockBounds.top - bounds.top : inset);
-      const overlaps = dockBounds && dockBounds.right + 12 > panelBounds.left && dockBounds.left < panelBounds.right;
-      rankPanel.style.top = `${overlaps ? Math.max(aligned, dockBounds.bottom - bounds.top + 12) : aligned}px`;
-      root.dataset.rankingPlacement = overlaps ? 'below-dock' : 'level-with-dock';
+      rankingLayout.fit();
     }
     const observer = new ResizeObserver(resize); observer.observe(root);
     const dock = container.closest('.game-view')?.querySelector<HTMLElement>('.game-dock');
     if (dock) observer.observe(dock);
+    if (rankingLayout.hud) observer.observe(rankingLayout.hud);
     window.addEventListener('resize', resize, { signal });
     function persist() { context.save(snapshot(state)); }
     function update(now = 0, force = false) {
       if (!force && now - uiAt < 100) return; uiAt = now;
       const player = state.snakes[0], score = Math.floor(player.mass + 1e-6), ranks = ranking(state), place = ranks.findIndex(snake => snake.id === 0) + 1;
-      best = Math.max(best, score); mass.textContent = String(score);
+      best = Math.max(best, score); mass.textContent = String(score);rankingLayout.setMass(score);
       if (score !== lastScore) { context.setScore(score); lastScore = score; }
       context.setLevel(`Classic · #${place} · ${BOT_COUNT} local bots`);
       const limit = renderer.view.width < 600 || renderer.view.height < 600 ? 5 : 10;
+      rankPanel.hidden=state.phase!=='running';
       const entries = ranks.slice(0, limit);
-      const row = (name: string, value: number, rank: number, color: string) => `<span class="nc-place">${rank}</span><i style="background:${color}" aria-hidden="true"></i><span class="nc-name">${name}</span><strong>${Math.floor(value)}</strong>`;
+      const row = (name: string, value: number, rank: number, color: string) => `<span class="nc-place">${rank}</span><i style="background:${color}" aria-hidden="true"></i><span class="nc-name">${name}</span><strong aria-label="${Math.floor(value)}" title="${Math.floor(value)}">${compactMass(value)}</strong>`;
       // Names and colors are fixed local constants, never data from storage or the network.
       board.innerHTML = entries.map((snake, i) => `<li style="color:${skinFor(snake.id,snake.color).primary}"${snake.id === 0 ? ' class="is-you"' : ''}>${row(snake.name, snake.mass, i + 1, skinFor(snake.id,snake.color).primary)}</li>`).join('');
       you.hidden = place <= limit; you.innerHTML = row('YOU', player.mass, place, skinFor(0,player.color).primary);
@@ -162,7 +158,7 @@ const module: GameModule = {
         state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
         if (savedRun) state.phase = 'ready'; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion);
       },
-      dispose() { disposed = true; clearInput(); events.abort(); observer.disconnect(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
+      dispose() { disposed = true; clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
     };
   }
 };

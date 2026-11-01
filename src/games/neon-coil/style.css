@@ -3,16 +3,22 @@
 .nc-canvas:focus-visible{outline:2px solid #bbf66d;outline-offset:-3px}
 /* Source for the shared Mass readout. */
 .nc-score{display:none}
-/* The upper-left stays free for the shared dock. index.ts measures its real
-   bounds so this board can align with a compact dock without colliding with it. */
-.nc-ranking{position:absolute;right:max(16px,env(safe-area-inset-right));top:max(16px,env(safe-area-inset-top));width:min(188px,44vw);padding:10px 12px;border-radius:12px;background:#07111fc9;pointer-events:none;text-shadow:0 1px 2px #080d17}
+/* Narrow layouts use available row content beside the unchanged shared controls. */
+.nc-ranking{position:absolute;right:max(16px,env(safe-area-inset-right));top:max(16px,env(safe-area-inset-top));width:min(188px,44vw);padding:10px 12px;border-radius:12px;background:#07111fc9;color:#e7f0fa;font:14px/1.4 system-ui,-apple-system,sans-serif;pointer-events:none;text-shadow:0 1px 2px #080d17}
+.nc-ranking[data-dock-slot]{position:relative;align-self:flex-start;flex:none}
+.nc-ranking-space{flex:1 1 0;min-width:0;pointer-events:none}
+/* Bright pellets can pass under the white Mass digits; protect the ink only. */
+.game-hud .nc-dock-mass{text-shadow:0 0 1px rgb(0 0 0 / .9),0 1px 1px rgb(0 0 0 / .4)}
+.nc-ranking[data-compact]{padding:8px 6px}
+.nc-ranking[data-compact] h2{letter-spacing:.04em;white-space:nowrap}
+.nc-ranking[data-compact] :is(li,.nc-you){grid-template-columns:14px minmax(0,1fr) auto;gap:3px}
+.nc-ranking[data-compact] i{display:none}
 .nc-ranking h2{margin:0 0 6px;font:700 10px/1.5 system-ui,sans-serif;letter-spacing:.08em;color:#d1d9e5}
 .nc-ranking ol{list-style:none;padding:0;margin:0}
 .nc-ranking li,.nc-you{display:grid;grid-template-columns:18px 5px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:23px;font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
 .nc-ranking i,.nc-you i{width:4px;height:4px;border-radius:50%}
 .nc-ranking strong{font-weight:750;color:inherit}.nc-place{font-size:inherit;color:inherit}.nc-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nc-ranking .is-you,.nc-you{color:#22d3ee}.nc-you{margin-top:5px;padding-top:5px;border-top:1px solid #ffffff24}.nc-you[hidden]{display:none}
-.nc-game:has(>.game-sheet:not([hidden])) .nc-ranking{visibility:hidden}
 .nc-bottom{position:absolute;inset:0;pointer-events:none}
 /* Boost must remain available while a second finger steers on the arena. */
 .nc-boost{position:absolute;left:max(20px,env(safe-area-inset-left));bottom:max(20px,env(safe-area-inset-bottom));display:grid;place-items:center;width:60px;height:60px;min-width:60px;min-height:60px;padding:12px;border:1px solid #ffffff36;border-radius:17px;background:#ffffff1f;color:#e4eaf2;font:700 11px/1.4 system-ui,sans-serif;touch-action:none;pointer-events:auto}

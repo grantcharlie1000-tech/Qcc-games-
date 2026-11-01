@@ -37,7 +37,7 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
 for(const width of [320,390,1366]){
   test(`short HUDs hug content and stay centered at ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:844});
-    await page.goto('/#/game/neon-coil');
+    await page.goto('/#/game/snake');
     const hud=page.locator('.game-hud');await expect(hud.locator('strong')).toBeVisible();
     const box=(await hud.boundingBox())!;
     expect(box.width).toBeGreaterThanOrEqual(88);
@@ -131,7 +131,7 @@ for(const width of [390,1366]){
 for(const width of [390,1366]){
   test(`decorative lenses preserve single-value text size at ${width}px`,async({page})=>{
     await page.setViewportSize({width,height:844});
-    await page.goto('/#/game/neon-coil');
+    await page.goto('/#/game/snake');
     const value=page.locator('.game-hud strong');
     const size=await value.evaluate(e=>parseFloat(getComputedStyle(e).fontSize));
     expect(size).toBeGreaterThanOrEqual(width===390?20:22);

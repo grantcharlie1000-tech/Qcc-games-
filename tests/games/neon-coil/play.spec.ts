@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { test, expect, seedStudyTopic, type Page } from '../../fixtures';
 import { GAME_IDS } from '../../../src/core/types';
+import {createArena,restoreArena} from '../../../src/games/neon-coil/model';
 const evidence = process.env.NEON_COIL_EVIDENCE_DIR || 'docs/evidence/neon-coil';
 const game = (page: Page) => page.locator('.nc-game');
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pocket-arcade:v1:save:neon-coil')!).data);
@@ -305,11 +306,26 @@ for (const size of [{width:320,height:568},{width:390,height:844},{width:844,hei
   await page.setViewportSize(size);await open(page);await page.locator('.nc-start').click();await page.clock.runFor(100);
   const board=page.locator('.nc-ranking');await expect(board).toBeVisible();
   await expect.poll(async()=>{
-   const a=(await board.boundingBox())!,b=(await page.locator('.game-dock').boundingBox())!;
-   return a.x>=b.x+b.width||a.x+a.width<=b.x||a.y>=b.y+b.height||a.y+a.height<=b.y;
+   const a=(await board.boundingBox())!;
+   const controls=await page.locator('.game-dock > .game-glass').all();
+   for(const control of controls){const b=(await control.boundingBox())!;if(!(a.x>=b.x+b.width||a.x+a.width<=b.x||a.y>=b.y+b.height||a.y+a.height<=b.y))return false;}
+   return true;
   }).toBe(true);
-  const box=(await board.boundingBox())!;expect(box.x).toBeGreaterThanOrEqual(size.width/2);expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height);
+  const cluster=(await page.locator('.game-dock').boundingBox())!;
+  const box=(await board.boundingBox())!;expect(Math.abs(box.y-cluster.y)).toBeLessThanOrEqual(8);expect(box.x).toBeGreaterThanOrEqual(size.width/2);expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height);
   expect(await board.locator('li').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(12);
   await expect(page.locator('.nc-guide,.nc-eyebrow,.nc-copy,.nc-footnote')).toHaveCount(0);
  });
 }
+
+for(const mass of [100000,999999,Number.MAX_SAFE_INTEGER])test(`320px ranking and Mass keep large values readable: ${mass}`,async({page})=>{
+ const state=createArena();state.phase='running';state.snakes[0].mass=mass;expect(restoreArena(state)).not.toBeNull();
+ await page.addInitScript(s=>localStorage.setItem('pocket-arcade:v1:save:neon-coil',JSON.stringify({version:1,data:s})),state);
+ await page.setViewportSize({width:320,height:568});await open(page);await page.locator('.nc-start').click();await page.clock.runFor(32);
+ const full=Math.floor(Number(await game(page).getAttribute('data-mass'))).toString();
+ await expect(page.locator('.game-hud strong')).toHaveAttribute('aria-label',full);
+ await expect(page.locator('.nc-ranking .is-you strong')).toHaveAttribute('aria-label',full);
+ expect(await page.locator('.game-hud strong,.game-hud small,.nc-ranking strong,.nc-ranking h2').evaluateAll(nodes=>nodes.every(e=>{const r=document.createRange();r.selectNodeContents(e);const t=r.getBoundingClientRect(),b=e.getBoundingClientRect();return e.scrollWidth<=e.clientWidth+1&&t.left>=b.left-1&&t.right<=b.right+1;}))).toBe(true);
+ const panel=(await page.locator('.nc-ranking').boundingBox())!,menu=(await page.locator('#game-menu').boundingBox())!;expect(panel.x).toBeGreaterThanOrEqual(menu.x+menu.width+8);
+ await pauseGame(page);expect((await saved(page)).snakes[0].mass).toBe(Number(full));
+});

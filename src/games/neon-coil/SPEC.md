@@ -38,7 +38,7 @@ Full world snapshots (food, bot histories, RNG, ticks and mass) are persisted th
 
 Lifecycle start, saved continuation, game over and the adopted shell pause surface use the common game sheet: one Slither.io title, one short controls line for the current input, score/best where relevant and one Play / Play again action. The previous slogan, numbered guide and neon CTA are removed. Boost remains because a touch player must hold it while another finger steers.
 
-The compact ranking stays at the top right with readable 12–13 px rows and safe-area insets. It measures the actual shared dock bounds through ResizeObserver: when that dock overlaps its horizontal span the board moves below it; a compact top-left dock lets it align at the top. The game leaves the upper-left free and does not restyle the shared dock. Desktop 1366×768 aligns the ranking; the current broad dock requires placement below it on 320×568, 390×844 and 844×390.
+The compact LIVE RANKING stays at the top right, level with the shared controls at 320×568, 390×844, 844×390 and 1366×768. A game-local adapter uses existing dock-row content on narrow screens and leaves the shared dock renderer, position, control size and glass untouched. Wider screens align to painted controls rather than empty wrapper bounds. Mass HUD padding is compact; large values have compact visual notation with full accessible values, while raw scores, ranking order and snapshots remain exact. Resize, restore, pause, game over and disposal retain this layout without advancing the world.
 
 ## Performance and verification boundaries
 
