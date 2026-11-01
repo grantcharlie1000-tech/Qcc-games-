@@ -72,7 +72,7 @@ async function shot(page, view, name, extra = {}) {
   const file = `${view.name}-${name}.png`;
   await page.screenshot({path: `${out}/${file}`});
   manifest.views.push({file, viewport: view.viewport, dsf: view.dsf, seed: state.seed, row: state.row,
-    x: state.x, t: state.t, phase: state.phase, cause: state.deathCause, stats, buffer, ...extra});
+    x: state.x, t: state.t, phase: state.phase, hopping: state.hopping, cause: state.deathCause, stats, buffer, ...extra});
   console.log(`${file}: seed ${state.seed}, row ${state.row}, t=${state.t.toFixed(3)}, ${state.phase}${state.deathCause ? ` / ${state.deathCause}` : ''}, ${buffer.width}×${buffer.height}, ${stats.calls} calls`);
 }
 
@@ -224,12 +224,15 @@ try {
       console.log('Mixed composition', mixed);
       await seek(page, mixed.seed, mixed.row, 4, mixed.t);
       await shot(page, view, 'mixed', {setup: 'natural world, validated restore', composition: mixed});
-      // A sideways hop into an open neighbour; logical move and scoring stay real.
+      // Prefer an open side step; boxed-in grass uses a forward hop. Validate
+      // the actual in-air state so a blocked bonk can never masquerade as hop evidence.
       const direction = await page.evaluate(() => {
         const h = window.__crossyRoadTest, s = h.state(), lane = h.lanes(s.row, s.row)[0];
-        return !lane.blocked[5] ? 'right' : 'left';
+        return !lane.blocked[5] ? 'right' : !lane.blocked[3] ? 'left' : 'up';
       });
       await page.evaluate(dir => {const h = window.__crossyRoadTest; h.hop(dir); h.advance(0.06);}, direction);
+      const inAir = await page.evaluate(() => window.__crossyRoadTest.state());
+      if (!inAir.hopping || inAir.phase !== 'running') throw new Error('Mid-hop evidence did not reach a live in-air pose.');
       await shot(page, view, 'mid-hop');
       if (view.dsf === 3 && wanted('mid-hop')) {
         // Native-resolution 100% crop: no resampling, 420×480 device pixels.
