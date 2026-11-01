@@ -8,14 +8,19 @@ test.beforeEach(async({page})=>{
   });
 });
 
-for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contrast over a card-row gap at ${scroll}px`,async({page})=>{
+for(const font of ['system','Arial'])for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contrast over a card-row gap at ${scroll}px${font==='system'?'':' with Arial fallback'}`,async({page})=>{
+  if(font==='Arial')await page.addInitScript(()=>addEventListener('DOMContentLoaded',()=>document.documentElement.style.setProperty('--font-sans','Arial')));
   await page.setViewportSize({width:390,height:844});await page.goto('/');
+  await page.evaluate(()=>document.fonts.ready);
   const nav=page.locator('.app-navigation'),bar=page.locator('.app-tabbar');
   await page.evaluate(y=>scrollTo(0,y),scroll);await expect(bar).toHaveAttribute('data-minimized','true');
   await page.locator('.ui-tabbar-mini').click();await expect(bar).not.toHaveAttribute('data-minimized');
+  await expect.poll(()=>nav.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
   for(const name of ['Study','Open menu']){
     const button=nav.getByRole('button',{name,exact:true});await button.hover();await page.mouse.down();
-    await button.screenshot({animations:'disabled'});
+    await expect(name==='Study'?bar:button).toHaveAttribute('data-pressing');
+    await expect.poll(()=>nav.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
+    const bounds=(await nav.boundingBox())!;
     const boxes=await nav.evaluate(n=>{
       const b=n.getBoundingClientRect();
       return [...n.querySelectorAll('.ui-tab > .ui-icon,.ui-tab > span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
@@ -29,7 +34,7 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
     const mask=(await nav.screenshot({animations:'disabled'})).toString('base64');
     await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
+    const ratios=await glyphContrast(page,shot,mask,boxes,bounds);
     expect(Math.min(...ratios),`${name}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
   }
 });
