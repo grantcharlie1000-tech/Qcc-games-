@@ -71,7 +71,10 @@ body.movies-active.study-active{overflow:auto}
 @media (min-width:640px) and (max-width:699px){.movies-view .ui-nav .ui-pill{padding:6px 8px}.movies-view .ui-header-inner{gap:8px}}
 /* 640-767 px: the wordmark steps down to 16 px for room. If a wider font still runs out of room, the wordmark truncates with an ellipsis rather than running into the nav. */
 @media (min-width:640px) and (max-width:767px){.movies-view .ui-wordmark{font-size:16px}}
-.movies-brand .ui-wordmark{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* Preserve the ellipsis while leaving room for descender outlines. The inline
+   line box can be shorter than WebKit's glyph ink; symmetric padding keeps the
+   baseline centered and prevents overflow clipping the bottom of “Study”. */
+.movies-brand .ui-wordmark{min-width:0;overflow:hidden;text-overflow:ellipsis;padding-block:1px}
 
 .movies-view .ui-header-actions .ui-icon-btn{min-height:36px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r-lg);background:#09090bcc;color:var(--c-200);font-size:12px;font-weight:500;line-height:1.2;cursor:pointer}
 @media (min-width:768px){.movies-view .ui-header-actions .ui-icon-btn{padding:0 12px}}

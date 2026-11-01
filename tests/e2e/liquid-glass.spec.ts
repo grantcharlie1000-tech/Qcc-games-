@@ -9,6 +9,12 @@ async function frostFilter(bar:Locator):Promise<string>{
 
 // The alpha of a computed rgba colour. The pill is at least 12% white, so the tests read its alpha and not one exact value.
 const alphaOf=(rgba:string)=>{const parts=rgba.match(/[\d.]+/g)?.map(Number)??[];return parts.length===4?parts[3]:(parts.length===3?1:0);};
+// Chromium serializes the .005 alpha as its nearest 8-bit value, .004.
+// Compare exact browser paint, so a missing/transparent selection cannot pass.
+const clearSelectionPaint=(page:Page)=>page.evaluate(()=>{
+  const probe=document.createElement('span');probe.style.backgroundColor='rgb(255 255 255 / .005)';
+  document.body.append(probe);const paint=getComputedStyle(probe).backgroundColor;probe.remove();return paint;
+});
 
 // The island as Liquid Glass: the selection pill, the press, the Chromium refraction and the liquid exit and entry.
 test.beforeEach(async({page})=>{
@@ -497,6 +503,7 @@ test('keyboard focus expands a minimized island, and the capsule steps aside',as
   const bar=page.locator('.app-tabbar');
   const games=bar.getByRole('link',{name:'Games',exact:true});
   await expect(bar).toBeVisible();
+  const expandedWidth=(await bar.boundingBox())!.width;
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
@@ -504,7 +511,7 @@ test('keyboard focus expands a minimized island, and the capsule steps aside',as
   await page.keyboard.press('Tab');
   await expect(games).toBeFocused();
   await expect.poll(()=>capsuleShown(page)).toBe(0);
-  await expect.poll(async()=>(await bar.boundingBox())!.width).toBeGreaterThan(300);
+  await expect.poll(async()=>(await bar.boundingBox())!.width).toBeCloseTo(expandedWidth,1);
 });
 
 test('a pill move stretches the pill with a web animation',async({page})=>{
@@ -716,8 +723,8 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
-  expect(tint).toBeGreaterThanOrEqual(.10);expect(tint).toBeLessThanOrEqual(.18);
-  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.08);
+  expect(tint).toBeCloseTo(.02,3);
+  expect(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe(await clearSelectionPaint(page));
   const frost=await frostFilter(bar);
   expect(frost).toContain('blur(0.3px)');
   expect(frost).toContain('saturate(1)');
@@ -783,11 +790,12 @@ test('the arcade pill has a neutral selection and keeps its stronger opaque fall
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   const pill=()=>bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
-  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.08);
+  const clear=await clearSelectionPaint(page);
+  await expect.poll(pill).toBe(clear);
   await page.emulateMedia({contrast:'more'});
   await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
   await page.emulateMedia({contrast:null});
-  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.08);
+  await expect.poll(pill).toBe(clear);
 });
 
 // Playwright cannot emulate reduced transparency, and every test browser supports backdrop-filter, so both rules are read from the stylesheet.

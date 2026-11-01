@@ -1,5 +1,6 @@
 import {test,expect,keyboardMode} from '../fixtures';
 import type {Locator,Page,Route} from '@playwright/test';
+import {glyphFillMask,glyphContrastSamples} from '../glass-contrast';
 
 // The Movies menus are Liquid Glass. The episode drawer is a glass sheet, the Up next card takes the sheet's surface, and the
 // genre select is a glass capsule whose open list stays native. The Movies island and forced colours are checked alongside them.
@@ -40,13 +41,17 @@ async function openDrawer(page:Page,viewport=DESKTOP){
  return drawer;
 }
 // Plays the provider fixture's end of playback, which shows the Up next card for the next episode.
-async function showUpNext(page:Page,viewport=DESKTOP){
+async function showUpNext(page:Page,viewport=DESKTOP,freezeCountdown=false){
  await page.setViewportSize(viewport);
  await page.goto('/#/movies/tv-19885/season/1/episode/1/play');
  await expect(page.frameLocator('.movies-provider-frame').getByRole('button',{name:'Play stream'})).toBeVisible();
+ if(freezeCountdown)await page.clock.install();
  await page.frame({url:/framextv/})!.evaluate(()=>parent.postMessage({event:'frameXTV:timeupdate',currentTime:100,duration:100},'*'));
  const overlay=page.getByRole('dialog',{name:'Up next'});
  await expect(overlay).toBeVisible();
+ // Keep the real countdown glyph identical across white/black/restored shots.
+ // Its timer behavior is covered independently by auto-next.spec.ts.
+ if(freezeCountdown)await page.clock.pauseAt(await page.evaluate(()=>Date.now()+100));
  return overlay;
 }
 // The computed value of each system colour, read from a probe, so an expectation never hard-codes a palette.
@@ -319,11 +324,11 @@ test('Reduce Transparency makes the Up next card opaque with no blur (Chromium o
  expect(await overlay.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).backdropFilter])).toEqual(['rgb(28, 28, 32)','none']);
 });
 
-// Contrast is evaluated at actual glyph cores, including the local stroke shadow.
+// Contrast is evaluated at visible glyph edges, including their local outline.
 // Whitespace between letters is intentionally see-through.
 for(const viewport of [DESKTOP,PHONE])test(`white text on the Up next card keeps 4.5:1 over a bright white frame at ${viewport.width} px`,async({page})=>{
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><body style="margin:0;background:#fff"><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
- await showUpNext(page,viewport);
+ await showUpNext(page,viewport,true);
  const results=await glyphContrast(page,'.movies-next',[
   {name:'title',selector:'h2'},
   {name:'countdown',selector:'.movies-next-countdown'},
@@ -383,8 +388,8 @@ test('forced colours give the Movies island its pill outline and underline the c
 });
 
 // The episode drawer's text, measured over the frame behind it. The frames are the watch page's dark fixture (a dark ground with bright shapes,
-// so the glass has something to blur) and a white frame. Each item's text is read, then hidden, and the brightest pixel under its glyph boxes
-// is the worst case, which is how the Up next card's labels are measured.
+// so the glass has something to blur) and a white frame. A foreground-only mask identifies each glyph;
+// its visible exterior outline supplies the measured backdrop, as on the Up next card.
 const DARK_FRAME='<!doctype html><html><head><meta charset="utf-8"><title>Provider fixture</title><style>html,body{margin:0;height:100%;overflow:hidden;color:#fff;font:600 28px Arial,sans-serif}body{background:radial-gradient(circle at 18% 28%,#ff6b6b 0 9%,transparent 10%),radial-gradient(circle at 74% 34%,#4cc9f0 0 13%,transparent 14%),radial-gradient(circle at 36% 78%,#ffd166 0 11%,transparent 12%),repeating-linear-gradient(60deg,#0b1320 0 38px,#1d3557 38px 76px),#0b1320}.label{position:absolute;left:6%;top:54%;text-shadow:0 2px 8px #000}button{position:absolute;left:6%;bottom:6%;padding:10px 16px;font:600 16px Arial;background:#fff;color:#000;border:0;border-radius:6px}</style></head><body><div class="label">Provider fixture</div><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>';
 const WHITE_FRAME='<!doctype html><html><head><meta charset="utf-8"><title>Provider fixture</title><style>html,body{margin:0;height:100%;background:#fff;overflow:hidden}button{position:absolute;left:6%;bottom:6%;padding:10px 16px;font:600 16px Arial;background:#fff;color:#000;border:0}</style></head><body><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>';
 const DRAWER_EPISODES=[
@@ -411,7 +416,7 @@ const DRAWER_TITLE=(season:number)=>({id:'tv-90300',kind:'tv',name:'Contrast Ser
  {number:1,name:'Season 1',episodes:season===1?[{number:1,name:'Pilot',overview:'The first episode.',runtime:42,airDate:'2024-01-01'},{number:2,name:'Second Episode',overview:'Still the first season.',runtime:44,airDate:'2024-01-08'}]:[]},
  {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.',runtime:50,airDate:'2025-01-01'}]:[]}
 ]});
-// Measure the ink cores rather than the empty space in each text rectangle.
+// Measure actual visible glyph outlines, retaining the translucent panel paint.
 // The clear material leaves that whitespace transparent; contrast follows the glyph.
 type DrawerItem={name:string;missing:boolean;colour:string;worst:number;typical:number;count:number};
 // An item whose selector is not on the page comes back missing, with no pixels, so it fails the check rather than dropping out of it.
@@ -426,42 +431,17 @@ async function glyphContrast(page:Page,container:string,items:{name:string;selec
   return {name:item.name,selector:item.selector,missing:false,colour:getComputedStyle(el).color,rects};
  }),items);
  const present=read.filter(item=>!item.missing);
- const style=await page.addStyleTag({content:present.map(item=>`${container} ${item.selector}{color:transparent!important}`).join('')});
- const png=(await page.screenshot({clip:box,type:'png'})).toString('base64');
- await style.evaluate(node=>(node as Element).remove());
- const maskStyle=await page.addStyleTag({content:`${container},${container} *{background:#000!important;color:#000!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}.glass-vector-halo{display:none!important}`+present.map(item=>`${container} ${item.selector}{color:#fff!important}`).join('')});
- const mask=(await page.screenshot({clip:box,type:'png'})).toString('base64');
- await maskStyle.evaluate(e=>(e as Element).remove());
- const measured=await page.evaluate(async({png,mask,present,box})=>{
-  const bytes=Uint8Array.from(atob(png),c=>c.charCodeAt(0));
-  const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
-  const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
-  const context=canvas.getContext('2d',{willReadFrequently:true})!;context.drawImage(bitmap,0,0);
-  const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;
-  const maskImage=await createImageBitmap(new Blob([Uint8Array.from(atob(mask),c=>c.charCodeAt(0))],{type:'image/png'}));
-  context.drawImage(maskImage,0,0);
-  const cores=context.getImageData(0,0,canvas.width,canvas.height).data;
-  const linear=(c:number)=>{c/=255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;};
-  const luminance=(r:number,g:number,b:number)=>0.2126*linear(r)+0.7152*linear(g)+0.0722*linear(b);
-  // The screenshot holds the container at the device scale, so its width over the container's CSS width is the scale each rectangle is sampled at.
-  const scale=bitmap.width/box.width;
-  return present.map(item=>{
-   const color=(item.colour.match(/[\d.]+/g)??['255','255','255']).map(Number),alpha=color[3]??1;
-   let worst=Infinity,total=0,count=0;
-   for(const [x,y,w,h] of item.rects){
-    for(let sy=Math.max(0,Math.ceil((y-box.y)*scale));sy<Math.min(canvas.height,Math.floor((y+h-box.y)*scale));sy++)
-     for(let sx=Math.max(0,Math.ceil((x-box.x)*scale));sx<Math.min(canvas.width,Math.floor((x+w-box.x)*scale));sx++){
-      const i=(sy*canvas.width+sx)*4;
-      if(Math.min(cores[i],cores[i+1],cores[i+2])<245)continue;
-      const bg=[pixels[i],pixels[i+1],pixels[i+2]],foreground=color.slice(0,3).map((v,c)=>v*alpha+bg[c]*(1-alpha));
-      const a=luminance(...bg as [number,number,number]),b=luminance(...foreground as [number,number,number]);
-      const contrast=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
-      worst=Math.min(worst,contrast);total+=contrast;count++;
-     }
-   }
-   return {name:item.name,colour:item.colour,worst:count?worst:0,typical:count?total/count:0,count};
-  });
- },{png,mask,present,box});
+ const panel=page.locator(container);
+ const selectors=present.map(item=>`${container} ${item.selector},${container} ${item.selector} *`).join(',');
+ const mask=await glyphFillMask(page,panel,selectors);
+ const png=(await panel.screenshot({animations:'disabled'})).toString('base64');
+ const measured:Omit<DrawerItem,'missing'>[]=[];
+ for(const item of present){
+  const samples=await glyphContrastSamples(page,png,mask,item.rects.map(([x,y,w,h])=>({x:x-box.x,y:y-box.y,w,h,color:item.colour})),box,true);
+  const count=samples.reduce((sum,sample)=>sum+sample.count,0);
+  measured.push({name:item.name,colour:item.colour,worst:count?Math.min(...samples.filter(sample=>sample.count>0).map(sample=>sample.worst)):0,typical:count?samples.reduce((sum,sample)=>sum+sample.typical*sample.count,0)/count:0,count});
+ }
+
  return read.map(item=>{
   const found=measured.find(result=>result.name===item.name);
   return found?{...found,missing:false}:{name:item.name,missing:true,colour:'',worst:0,typical:0,count:0};

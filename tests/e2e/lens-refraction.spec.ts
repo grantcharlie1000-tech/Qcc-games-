@@ -13,14 +13,17 @@ test.beforeEach(async({page})=>{
 // Chromium takes the frost path, which is the path every other engine takes.
 const asFrost=(page:Page)=>page.addInitScript(()=>{Object.defineProperty(navigator,'userAgentData',{get:()=>undefined,configurable:true});});
 
-// Black and white stripes, 16 px each. Vertical stripes show a bend at the left and right ends, and horizontal stripes a bend at the
-// top and bottom rims. Both are sharp edges, so any shift of the rim shows as a change in the pixels.
-const stripes=(orientation:'v'|'h')=>'data:image/svg+xml,'+encodeURIComponent(orientation==='v'
-  ?'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="16" height="32" fill="#000"/><rect x="16" width="16" height="32" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>'
+// Black and white transitions aligned inside both capsule ends, or horizontal
+// 16 px stripes through its top and bottom rims. A shift changes the edge pixels.
+const stripes=(orientation:'v'|'h',bar:{x:number;width:number})=>'data:image/svg+xml,'+encodeURIComponent(orientation==='v'
+  // Align both transitions eight pixels inside the measured capsule. Fixed
+  // viewport stripes can miss one rim when the Menu circle changes bar width.
+  ?`<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="16" height="32" fill="#000"/><rect x="16" width="16" height="32" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="#000"/><rect x="${bar.x+8}" width="${bar.width-16}" height="844" fill="#fff"/><rect x="${bar.x+32}" width="${bar.width-64}" height="844" fill="url(#s)"/></svg>`
   :'<svg xmlns="http://www.w3.org/2000/svg" width="390" height="844" viewBox="0 0 390 844"><defs><pattern id="s" y="8" width="32" height="32" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#000"/><rect y="16" width="32" height="16" fill="#fff"/></pattern></defs><rect width="390" height="844" fill="url(#s)"/></svg>');
 
 // Puts the stripes behind the island, and hides the covers and the tabs, so the pixels are the stripes only.
 async function stage(page:Page,orientation:'v'|'h'='v'){
+  const box=(await page.locator('.app-tabbar').boundingBox())!;
   await page.evaluate(src=>{
     document.getElementById('content')!.style.visibility='hidden';
     const image=document.createElement('img');
@@ -29,7 +32,7 @@ async function stage(page:Page,orientation:'v'|'h'='v'){
     image.src=src;
     image.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;pointer-events:none';
     document.body.append(image);
-  },stripes(orientation));
+  },stripes(orientation,box));
   await page.addStyleTag({content:'.app-tabbar{--glass-tint:transparent!important;--glass-tone:saturate(1)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   await page.waitForFunction(()=>(document.querySelector('img[data-t28]') as HTMLImageElement|null)?.complete===true);
 }

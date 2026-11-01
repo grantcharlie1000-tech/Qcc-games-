@@ -1,5 +1,5 @@
 import {test,expect} from '../fixtures';
-import {glyphContrast} from '../glass-contrast';
+import {glyphContrast,glyphFillMask} from '../glass-contrast';
 
 // Resolve opaque cores in small captions on both browser rasterizers.
 test.use({deviceScaleFactor:3});
@@ -29,14 +29,10 @@ for(const font of ['system','Arial'])for(const scroll of [150,170])test(`pressed
         const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
       });
     });
-    const hidden=await page.addStyleTag({content:'.app-navigation .ui-tab,.app-navigation .ui-tab :is(svg,span){color:transparent!important}'});
+    const mask=await glyphFillMask(page,nav,'.app-navigation .ui-tab>:is(svg,span):not(.ui-glass-lens,.ui-glass-glow)',true);
     const shot=(await nav.screenshot({animations:'disabled'})).toString('base64');
-    await hidden.evaluate(e=>e.parentNode?.removeChild(e));
-    const maskStyle=await page.addStyleTag({content:'.glass-vector-halo{display:none!important}body{background:#000!important}#content{visibility:hidden!important}.app-navigation .arcade-glass{background:transparent!important;backdrop-filter:none!important}.app-navigation .arcade-glass::before,.app-navigation .arcade-glass::after,.app-navigation .ui-glass-lens,.app-navigation .ui-glass-glow{visibility:hidden!important}.app-navigation .ui-tab,.app-navigation .ui-tab :is(svg,span){color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;-webkit-text-stroke:0!important}'});
-    const mask=(await nav.screenshot({animations:'disabled'})).toString('base64');
-    await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     await page.mouse.move(0,0);await page.mouse.up();
-    const ratios=await glyphContrast(page,shot,mask,boxes,bounds);
+    const ratios=await glyphContrast(page,shot,mask,boxes,bounds,true);
     expect(Math.min(...ratios),`${name}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
   }
 });

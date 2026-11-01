@@ -16,7 +16,7 @@ test('bars, buttons and sheets add almost no fill to their live backdrop',async(
       await expect(page.locator('#study-view')).toBeVisible();
       // Study normally hides arcade navigation. Test the real reading backdrop
       // with the existing material, without changing that product behaviour.
-      await page.evaluate(()=>document.body.append(document.querySelector('.app-navigation')!));
+      await stageArticleNavigation(page);
     }
     const scope=route.startsWith('game')?'.game-dock':route.startsWith('movies')?'.movies-navigation':'.app-navigation';
     await expect(page.locator(scope)).toBeVisible();
@@ -157,7 +157,7 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} pre
   if(surface==='bar'||surface==='menu'){
     await page.locator('.app-tabbar [data-action=study]').click();
     await expect(page.locator('#study-view')).toBeVisible();
-    await page.evaluate(()=>document.body.append(document.querySelector('.app-navigation')!));
+    await stageArticleNavigation(page);
   }
   if(surface==='sheet')await openGameMenu(page);
   const selector={bar:'.app-tabbar',menu:'.app-menu',dock:'.game-hud',sheet:'#game-options'}[surface];
@@ -200,6 +200,21 @@ for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} pre
   expect(measured.lift,JSON.stringify(measured)).toBeLessThanOrEqual(2);
   if(measured.retention!==null)expect(measured.retention,JSON.stringify(measured)).toBeGreaterThanOrEqual(.95);
 });
+
+async function stageArticleNavigation(page:Page){
+  await page.keyboard.press('Tab');
+  await page.evaluate(()=>{
+    const nav=document.querySelector('.app-navigation')!,bar=nav.querySelector('.section-tabbar')!;
+    document.body.append(nav);
+    // Study deliberately hides the arcade navigation. Restore both expanded
+    // bounds in this optical fixture, including its sibling Menu circle.
+    bar.removeAttribute('data-hidden');bar.removeAttribute('data-minimized');
+    // Keyboard focus pins the real expanded state while screenshot clipping
+    // scrolls the article. Focus stays on the button when its icon is hidden.
+    nav.querySelector<HTMLButtonElement>('.section-menu')!.focus({preventScroll:true});
+    for(const animation of nav.getAnimations({subtree:true}))animation.finish();
+  });
+}
 
 test('a sheet uses the same clear transfer at five heights across a light/dark boundary',async({page})=>{
   await page.goto('/#/game/snake');await openGameMenu(page);

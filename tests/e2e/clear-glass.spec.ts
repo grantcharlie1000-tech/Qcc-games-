@@ -1,26 +1,30 @@
 import {test,expect} from '../fixtures';
-import {glyphContrast} from '../glass-contrast';
+import {glyphContrast,glyphFillMask} from '../glass-contrast';
 import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 test.beforeEach(async({page})=>{await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));});
 
-async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)',visibleEdges=false){
+async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)'){
   const nav=page.locator(scope);
   await nav.screenshot({animations:'disabled',scale:'device'});
+  // Preserve the real filter, outline and raster path. SVG halo groups have
+  // their own color variable, so only the original currentColor shape varies.
+  const mask=await glyphFillMask(page,nav,`${scope} :is(${glyphs})`,true);
+  const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   const boxes=await nav.evaluate((n,glyphs)=>{
     const b=n.getBoundingClientRect();
     return [...n.querySelectorAll(glyphs)].filter(e=>getComputedStyle(e).clip==='auto').map(e=>{
       const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
     }).filter(r=>r.w>0&&r.h>0);
   },glyphs);
-  const hide=visibleEdges?null:await page.addStyleTag({content:`${scope} :is(${glyphs}){color:transparent!important}`});
-  const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
-  await hide?.evaluate(e=>(e as Element).remove());
-  const maskStyle=await page.addStyleTag({content:`.glass-vector-halo{display:none!important}html,body{background:#000!important}#content{visibility:hidden}${scope}{visibility:visible!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} :is(${glyphs}){color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;-webkit-text-stroke:0!important;filter:none!important}`});
-  const mask=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
-  await maskStyle.evaluate(e=>(e as Element).remove());
-  return glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!,visibleEdges);
+  const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!,true);
+  if(ratios.some(ratio=>ratio<4.5)){
+    await test.info().attach('visible-glyphs',{body:Buffer.from(shot,'base64'),contentType:'image/png'});
+    await test.info().attach('foreground-mask',{body:Buffer.from(mask,'base64'),contentType:'image/png'});
+    await test.info().attach('glyph-boxes',{body:JSON.stringify({boxes,ratios,glyphs:await nav.locator(glyphs).evaluateAll(es=>es.map(e=>({html:e.outerHTML,stroke:getComputedStyle(e).webkitTextStroke,shadow:getComputedStyle(e).textShadow})))}),contentType:'application/json'});
+  }
+  return ratios;
 }
 
 test('visible label outlines retain 4.5:1 beside real mixed game art',async({page})=>{
@@ -30,7 +34,7 @@ test('visible label outlines retain 4.5:1 beside real mixed game art',async({pag
   await page.waitForTimeout(200);
   // Keep the foreground in this shot. Compare exterior pixels beside solid
   // glyph cores; a shadow hidden underneath the letter cannot satisfy this.
-  const ratios=await navigationContrast(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)',true);
+  const ratios=await navigationContrast(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)');
   await test.info().attach('visible-label-edge-contrast',{body:JSON.stringify(ratios),contentType:'application/json'});
   expect(ratios).toHaveLength(5);
   expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);
@@ -134,11 +138,9 @@ test('Games and Movies sheet closes use the same clear material and release it o
     await expect(close).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
     await close.screenshot({animations:'disabled'});
     const boxes=await close.evaluate(e=>{const b=e.getBoundingClientRect(),svg=e.querySelector('svg')!,r=svg.getBoundingClientRect();return [{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(svg).color}];});
-    const hide=await page.addStyleTag({content:'.sheet-close-glass>svg{color:transparent!important}'});
-    const shot=(await close.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
-    const maskStyle=await page.addStyleTag({content:'.glass-vector-halo{display:none!important}.sheet-close-glass{background:#000!important;backdrop-filter:none!important}.sheet-close-glass::before,.sheet-close-glass>.ui-glass-lens,.sheet-close-glass>.ui-glass-glow{visibility:hidden!important}.sheet-close-glass>svg{color:#fff!important;background:none!important;box-shadow:none!important}'});
-    const mask=(await close.screenshot({animations:'disabled'})).toString('base64');await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
-    expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!))).toBeGreaterThanOrEqual(4.5);
+    const mask=await glyphFillMask(page,close,'.sheet-close-glass>svg',true);
+    const shot=(await close.screenshot({animations:'disabled'})).toString('base64');
+    expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!,true))).toBeGreaterThanOrEqual(4.5);
     await close.click();await expect(dialog).not.toBeVisible();
     await expect(close).not.toHaveAttribute('data-glass');
     await expect(close.locator('.glass-ink')).toHaveCount(0);
@@ -223,20 +225,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
   for(const background of ['#fff','#000','#606060','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)']){
     const backdrop=await page.addStyleTag({content:`html,body{background:${background}!important}`});
     await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
-    await nav.screenshot({animations:'disabled',scale:'device'});
-    const boxes=await nav.evaluate(n=>{
-      const b=n.getBoundingClientRect();
-      return [...n.querySelectorAll('.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)')].map(e=>{
-        const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
-      }).filter(r=>r.w>0&&r.h>0);
-    });
-    const hide=await page.addStyleTag({content:`${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:transparent!important}`});
-    const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
-    await hide.evaluate(e=>(e as Element).remove());
-    const maskStyle=await page.addStyleTag({content:`.glass-vector-halo{display:none!important}html,body{background:#000!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;-webkit-text-stroke:0!important;filter:none!important}`});
-    const mask=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
-    await maskStyle.evaluate(e=>(e as Element).remove());
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
+    const ratios=await navigationContrast(page,scope);
     expect(ratios.length).toBeGreaterThanOrEqual(11);
     expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
     await backdrop.evaluate(e=>(e as Element).remove());

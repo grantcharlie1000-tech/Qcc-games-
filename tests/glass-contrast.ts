@@ -1,10 +1,11 @@
 import type {Locator,Page} from '@playwright/test';
 export interface GlyphBox{x:number;y:number;w:number;h:number;color:string}
+export interface GlyphSample{worst:number;typical:number;count:number}
 /** Isolate foreground alpha without changing the panel's compositing path.
  * Making a translucent ancestor opaque can move Chromium's glyph raster grid
  * by a device pixel. Keep its background, stroke and shadow, varying only fill. */
-export async function textFillMask(page:Page,panel:Locator,selector:string):Promise<string>{
-  const rule=(fill:string)=>`${selector},${selector} *{-webkit-text-fill-color:${fill}!important}`;
+export async function glyphFillMask(page:Page,panel:Locator,selector:string,svg=false):Promise<string>{
+  const rule=(fill:string)=>`${selector}{-webkit-text-fill-color:${fill}!important;${svg?`color:${fill}!important`:''}}`;
   const style=await page.addStyleTag({content:rule('#fff')});
   try{
     const white=(await panel.screenshot({animations:'disabled'})).toString('base64');
@@ -30,6 +31,9 @@ export async function textFillMask(page:Page,panel:Locator,selector:string):Prom
 // mode instead measures the actual exterior outline with foreground retained.
 // https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum
 export async function glyphContrast(page:Page,shot:string,mask:string,boxes:GlyphBox[],bounds:{width:number;height:number},visibleEdges=false):Promise<number[]>{
+  return (await glyphContrastSamples(page,shot,mask,boxes,bounds,visibleEdges)).map(sample=>sample.worst);
+}
+export async function glyphContrastSamples(page:Page,shot:string,mask:string,boxes:GlyphBox[],bounds:{width:number;height:number},visibleEdges=false):Promise<GlyphSample[]>{
 return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
       const image=new Image();image.src='data:image/png;base64,'+shot;await image.decode();
       const c=document.createElement('canvas');c.width=image.width;c.height=image.height;
@@ -45,13 +49,13 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
       const inkMask=context.getImageData(0,0,c.width,c.height).data;
       const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
       return boxes.map(b=>{
-        const color=b.color.match(/[\d.]+/g)!.map(Number),alpha=color[3]??1;let worst=Infinity;
+        const color=b.color.match(/[\d.]+/g)!.map(Number),alpha=color[3]??1;let worst=Infinity,total=0,count=0;
         const left=Math.max(0,Math.ceil(b.x*sx)),right=Math.min(c.width,Math.floor((b.x+b.w)*sx)),top=Math.max(0,Math.ceil(b.y*sy)),bottom=Math.min(c.height,Math.floor((b.y+b.h)*sy));
         let peak=0;
         for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
           const i=(y*c.width+x)*4;peak=Math.max(peak,Math.min(inkMask[i],inkMask[i+1],inkMask[i+2])/255);
         }
-        if(!peak)return 0;
+        if(!peak)return {worst:0,typical:0,count:0};
         for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
           const i=(y*c.width+x)*4;
           if(visibleEdges){
@@ -70,9 +74,10 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
           }else if(Math.min(inkMask[i],inkMask[i+1],inkMask[i+2])/255<peak*(245/255))continue;
           const backdrop=[data[i],data[i+1],data[i+2]],bg=lum(backdrop);
           const ink=lum(color.slice(0,3).map((v,c)=>v*alpha+backdrop[c]*(1-alpha)));
-          worst=Math.min(worst,(Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05));
+          const contrast=(Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05);
+          worst=Math.min(worst,contrast);total+=contrast;count++;
         }
-        return Number.isFinite(worst)?worst:0;
+        return {worst:Number.isFinite(worst)?worst:0,typical:count?total/count:0,count};
       });
     },{shot,mask,boxes,bounds,visibleEdges});
 }

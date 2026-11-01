@@ -275,6 +275,9 @@
 /* The glass surface: the frosted backdrop, the dimmed tint, the sheen and the inset highlight. The sheets and the Up next card share this rule, so the
    material is declared once. The card overrides only the tint it needs (style.css), and the fallbacks below name both. */
 .ui-glass-sheet,.movies-view .movies-next{-webkit-text-stroke:1.4px var(--sheet-halo);paint-order:stroke fill;--sheet-halo:rgb(0 0 0 / .82);text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);border:1px solid var(--glass-sheet-edge);background:var(--glass-sheet-sheen),var(--glass-sheet-fill);-webkit-backdrop-filter:var(--glass-sheet-body);backdrop-filter:var(--glass-sheet-body);box-shadow:var(--glass-sheet-rim),var(--glass-sheet-lift)}
+/* One exterior device pixel keeps the same glyph contrast at desktop density;
+   the panel itself remains clear. Phones retain the finer 0.7px outline. */
+@media(max-resolution:1.5dppx){.ui-glass-sheet,.movies-view .movies-next{-webkit-text-stroke-width:2px}}
 .ui-glass-sheet{
   --ease-out:cubic-bezier(.23,1,.32,1);
   --sheet-from-scale:.98;--sheet-from-lift:28px;

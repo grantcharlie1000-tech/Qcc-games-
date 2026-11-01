@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
-import {glyphContrast,textFillMask} from '../glass-contrast';
+import {glyphContrast,glyphFillMask} from '../glass-contrast';
 
 for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
   test(`${id} menu and its submenus use a neutral glass sheet and retain modal focus`,async({page})=>{
@@ -120,7 +120,7 @@ for(const [view,black] of [['home',false],['accounts',false],['snake',false],['f
       return boxes;
     });
     expect(boxes.length).toBeGreaterThan(8);
-    const mask=await textFillMask(page,panel,selector);
+    const mask=await glyphFillMask(page,panel,`${selector},${selector} *`);
     // Capture the restored original paint on the same raster path as the mask.
     // Chromium can retain a fractional-baseline texture from the entry scale
     // animation until text first repaints, even after the animation finishes.
