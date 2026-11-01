@@ -11,12 +11,12 @@
   ],
   "properties": {
     "disclosure": {
-      "const": "Contributor portraits depict fictional adults, not real authors or credentialed experts. Article photos are illustrative generated scenes, not documentary evidence of specific people, places, experiments or events."
+      "const": "Article illustrations are generated scenes, not documentary evidence of specific people, places, experiments or events."
     },
     "assets": {
       "type": "array",
-      "minItems": 12,
-      "maxItems": 12,
+      "minItems": 8,
+      "maxItems": 8,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -31,10 +31,6 @@
         "properties": {
           "path": {
             "enum": [
-              "contributors/ari-rowan.webp",
-              "contributors/mina-vale.webp",
-              "contributors/leo-finch.webp",
-              "contributors/nell-moss.webp",
               "photos/reading-writing.webp",
               "photos/film-making.webp",
               "photos/field-measurement.webp",
@@ -66,7 +62,6 @@
           },
           "kind": {
             "enum": [
-              "fictional-contributor-portrait",
               "illustrative-photo"
             ]
           }

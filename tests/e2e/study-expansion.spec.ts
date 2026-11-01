@@ -87,7 +87,7 @@ test('touch readers can advance through each new style without seeding article I
 test('Quanta mobile paragraphs retain a clear line of separation',async({page})=>{
   await page.setViewportSize({width:390,height:844});await seed(page,'quanta:close-reading');await page.goto('/#/game/fruit-merge');
   await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
-  const spacing=await page.locator('.variant-prose > p').evaluateAll(ps=>{const first=ps[0],second=ps[1];return {gap:second.getBoundingClientRect().top-first.getBoundingClientRect().bottom,lineHeight:parseFloat(getComputedStyle(first).lineHeight)};});
+  const spacing=await page.locator('.variant-text-section').first().locator(':scope > p').evaluateAll(ps=>{const first=ps[0],second=ps[1];return {gap:second.getBoundingClientRect().top-first.getBoundingClientRect().bottom,lineHeight:parseFloat(getComputedStyle(first).lineHeight)};});
   expect(spacing.gap).toBeGreaterThanOrEqual(spacing.lineHeight-1);
 });
 

@@ -7,7 +7,6 @@ import {directShot} from '../games/pool/helpers';
 
 const studyImagePaths=new Set<string>([
   ...JSON.parse(readFileSync('public/study/image-provenance.json','utf8')).assets.map((asset:{path:string})=>`/study/${asset.path}`),
-  ...JSON.parse(readFileSync('public/study/fictional-ads/provenance.json','utf8')).assets.map((asset:{file:string})=>`/study/fictional-ads/${asset.file}`),
 ]);
 const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of requests){const url=new URL(request);expect(url.origin).toBe(new URL(page.url()).origin);expect(studyImagePaths.has(url.pathname)).toBe(true);}};
 const topicKey='pocket-arcade:study:v1:topic';

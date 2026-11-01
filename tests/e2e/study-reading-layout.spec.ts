@@ -1,16 +1,16 @@
 import {appSettings} from '../game-menu';
-import adManifest from '../../src/study/fictional-ads-manifest.json' with {type:'json'};
-const localAdPaths=new Set(adManifest.map(ad=>'/study/fictional-ads/'+ad.file));
+import {expectCleanStudy} from '../study-article-assertions';
 import {guestTest as test,expect,seedGuest} from '../fixtures';
 
-test('article opens without a top bar and has inline games navigation, footer controls and bilateral fictional advertisements',async({page})=>{
+test('article opens without a top bar and has inline games navigation, footer controls and a clean article column',async({page})=>{
  await page.setViewportSize({width:1600,height:1000});await page.goto('/');
  await page.getByRole('button',{name:'Reject All',exact:true}).click();
  await page.locator('[data-study-topic="close-reading"]').click();await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  await expect(page.locator('.study-sidebar')).toHaveCount(0);await expect(page.getByText('Your reading desk',{exact:true})).toHaveCount(0);await expect(page.getByRole('navigation',{name:'Chapter contents'})).toHaveCount(0);
  await expect(page.locator('.study-diagram,.study-byline svg')).toHaveCount(0);
  await expect(page.locator('#study-view > .study-header, #study-view > .study-utility')).toHaveCount(0);await expect(page.locator('.study-chapter-footer').getByLabel('Study topic',{exact:true})).toBeVisible();const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});await expect(games).toHaveText('games');await expect(games).toBeVisible();
- for(const side of ['left','right']){const slots=page.locator(`[data-ad-rail="${side}"] .fictional-ad`);expect(await slots.count()).toBeGreaterThanOrEqual(3);const boxes=await slots.evaluateAll(es=>es.map(e=>({y:e.getBoundingClientRect().top,height:e.getBoundingClientRect().height})));expect(boxes.at(-1)!.y-boxes[0].y).toBeGreaterThan(1000);}
+ await expectCleanStudy(page.locator('#study-view'));
+ const measure=await page.locator('.study-article-body').evaluate(el=>el.getBoundingClientRect().width);expect(measure).toBeLessThanOrEqual(760);expect(measure).toBeGreaterThan(600);
  const words=(await page.locator('.study-chapter article').innerText()).trim().split(/\s+/).length;expect(words).toBeGreaterThanOrEqual(900);await expect(page.locator('iframe')).toHaveCount(0);
 });
 
@@ -70,8 +70,8 @@ for(const viewport of [{width:320,height:568},{width:390,height:844},{width:768,
 test('all twenty articles expose useful visible prose and consistent reading structure',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Reject All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  const ids=await page.locator('#study-topic option').evaluateAll(es=>es.map(e=>(e as HTMLOptionElement).value)),counts=[];const requests:string[]=[];page.on('request',r=>requests.push(r.url()));
- for(const id of ids){await page.getByLabel('Study topic',{exact:true}).selectOption(id);const visibleWords=(await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length;expect(visibleWords).toBeGreaterThanOrEqual(900);expect(visibleWords).toBeLessThanOrEqual(1300);expect(await page.locator('.study-text-section').count()).toBe(6);expect(await page.locator('.study-example ol li').count()).toBeGreaterThanOrEqual(2);counts.push({id,visibleWords,sections:6,structuredWorkedExamples:1,additionalTopicSections:3,readingMinutes:await page.locator('.study-reading-time').innerText()});}
- expect(requests.filter(url=>new URL(url).origin!==new URL(page.url()).origin||(!/^\/study\/(contributors|photos)\/[a-z-]+\.webp$/.test(new URL(url).pathname)&&!localAdPaths.has(new URL(url).pathname)))).toEqual([]);
+ for(const id of ids){await page.getByLabel('Study topic',{exact:true}).selectOption(id);await expectCleanStudy(page.locator('#study-view'));const visibleWords=(await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length;expect(visibleWords).toBeGreaterThanOrEqual(900);expect(visibleWords).toBeLessThanOrEqual(1300);expect(await page.locator('.study-text-section').count()).toBe(6);expect(await page.locator('.study-example ol li').count()).toBeGreaterThanOrEqual(2);counts.push({id,visibleWords,sections:6,structuredWorkedExamples:1,additionalTopicSections:3,readingMinutes:await page.locator('.study-reading-time').innerText()});}
+ expect(requests.filter(url=>new URL(url).origin!==new URL(page.url()).origin||!/^\/study\/photos\/[a-z-]+\.webp$/.test(new URL(url).pathname))).toEqual([]);
  const {mkdir,writeFile}=await import('node:fs/promises');await mkdir('docs/evidence/article-reading-layout',{recursive:true});await writeFile('docs/evidence/article-reading-layout/visible-prose-counts.json',JSON.stringify({scope:'Visible article body, including headings and examples; closed answer explanations, header, navigation, rails and contributor footer excluded.',articles:counts},null,2));
 });
 
