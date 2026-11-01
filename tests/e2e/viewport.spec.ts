@@ -62,7 +62,7 @@ test('Study restores normal reading scroll and returns to the retained fixed gam
   // Under load the root scroller can take more than two frames to accept a key scroll after the lock is released, so press until the page moves.
   await expect(async()=>{await page.keyboard.press('PageDown');await expect.poll(()=>page.evaluate(()=>scrollY),{timeout:1000}).toBeGreaterThan(0);}).toPass({timeout:10000});
   await expect(page.locator('html')).toHaveAttribute('data-study-page-down-prevented','false');
-  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+  await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
   expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
   await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(0);
   await expect(page.locator('.game-view')).toHaveCSS('position','fixed');

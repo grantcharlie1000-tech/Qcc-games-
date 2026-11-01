@@ -1,5 +1,6 @@
-export type UiIcon='grid'|'film'|'tv'|'bookmark'|'search'|'menu'|'study'|'play'|'info'|'plus'|'check'|'chevron-left'|'chevron-right'|'back'|'close'|'image';
+export type UiIcon='grid'|'film'|'tv'|'bookmark'|'search'|'menu'|'study'|'play'|'info'|'plus'|'check'|'chevron-left'|'chevron-right'|'back'|'close'|'image'|'trophy';
 const paths:Record<UiIcon,string>={
+trophy:'<path d="M8 3h8v5a4 4 0 0 1-8 0V3ZM8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M12 12v6M8 21h8M9 18h6v3"/>',
 grid:'<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
 film:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
 tv:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="m8 3 4 4 4-4"/>',

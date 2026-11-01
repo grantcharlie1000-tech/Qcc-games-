@@ -85,7 +85,7 @@ async function action(page,id){
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');
   // The shell's Restart asks before it replaces the world.
   const create=page.getByRole('button',{name:'Create New World',exact:true});if(await create.isVisible())await create.click();
-  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Minecraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Minecraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).first().click();
+  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Minecraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Minecraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();
   // Back from Study the game plays on and captures the mouse (the lock arrives a moment later): let it go (Minecraft
   // pauses on its Game Menu), so the shell's buttons take the clicks that follow.
   for(let i=0;i<40&&await root.getAttribute('data-locked')!=='true';i++)await page.waitForTimeout(50);
@@ -143,7 +143,7 @@ try{
    }
   }finally{await page.evaluate(()=>{Math.random=window.originalStudyQaRandom;delete window.originalStudyQaRandom;});}
   assert.equal(decodedStudyImages.size,studyMedia.assets.length,'Every declared Study image must decode offline');
-  await page.getByRole('link',{name:'Games',exact:true}).first().click();page.off('request',recordReading);assert.ok(readingRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),'Study may request only first-party offline study photographs');
+  await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();page.off('request',recordReading);assert.ok(readingRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),'Study may request only first-party offline study photographs');
   results.push({deployment:label,studyArticlesOffline:topics.length*4,studyImagesOffline:[...decodedStudyImages.values()],studySwitchRequests:readingRequests});
   await page.screenshot({path:`${folder}/home-${label}-390.png`,fullPage:true});
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
@@ -160,7 +160,7 @@ try{
    const frozen=await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id);
    await page.getByLabel('Study topic',{exact:true}).selectOption('quadratics');
    assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id),frozen,id+' study snapshot');
-   await page.getByRole('link',{name:'Games',exact:true}).first().click();page.off('request',recordSwitch);
+   await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();page.off('request',recordSwitch);
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
    assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');

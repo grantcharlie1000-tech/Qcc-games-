@@ -379,7 +379,7 @@ test('forced colours give the Movies island its pill outline and underline the c
  await page.emulateMedia({forcedColors:'active'});
  await page.setViewportSize(PHONE);
  await page.goto('/#/movies');
- const bar=page.locator('.movies-view .section-tabbar').first();
+ const bar=page.locator('.section-navigation .section-tabbar').first();
  await expect(bar).toBeVisible();
  const system=await systemColours(page,['CanvasText']);
  expect(await bar.evaluate(el=>{const s=getComputedStyle(el,'::after');return [s.outlineStyle,s.outlineWidth,s.outlineColor];})).toEqual(['solid','2px',system.CanvasText]);

@@ -234,7 +234,7 @@ function update(){
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
         const modal=bar.closest('dialog');
         const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
-        const selection=bar.classList.contains('ui-tabbar')?true:bar.classList.contains('floating-glass-group')?'dark':false;
+        const selection=bar.matches('.ui-tabbar,.floating-glass-group');
         changes.push({glyph,ink:bar.dataset.glass==='off'?null:glassInk(sample(glyph),preference,selection)});
       }
     }

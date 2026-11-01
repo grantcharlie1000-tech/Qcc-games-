@@ -1,5 +1,6 @@
 import type {GameId} from '../core/types';
 import {bindGlass} from './glass';
+import {extraStats,statElement} from './stats';
 
 type Field={label:string;source:string;attribute?:string;labelSource?:string};
 const score:Field={label:'Score',source:'#game-score strong'};
@@ -77,6 +78,12 @@ export function bindGameChrome(view:HTMLElement,id:GameId):{options(host:HTMLEle
   alignSurface();
   const glass=[...dock.querySelectorAll<HTMLElement>('.arcade-glass')].map(bindGlass);
   const observers:MutationObserver[]=[];
+  const caption=view.querySelector<HTMLElement>('#game-level')!;
+  const metrics=document.createElement('span');metrics.className='game-extra-stats';caption.after(metrics);
+  caption.hidden=true;caption.setAttribute('aria-hidden','true');
+  const syncMetrics=()=>metrics.replaceChildren(...extraStats(id,caption.textContent??'').map(stat=>statElement(stat,'game-metric')));
+  syncMetrics();
+  const metricObserver=new MutationObserver(syncMetrics);metricObserver.observe(caption,{childList:true,subtree:true,characterData:true});observers.push(metricObserver);
   for(const field of fields[id]){
     const source=view.querySelector<HTMLElement>(field.source);
     if(!source)continue;

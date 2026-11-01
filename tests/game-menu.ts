@@ -10,7 +10,9 @@ export async function openGameMenu(page:Page){
     const close=local.getByRole('button',{name:/^Close\b/}).first();
     if(await close.count())await close.click();else await page.keyboard.press('Escape');
   }
-  await page.locator('#game-menu').click();
+  const menu=page.locator('#game-menu');
+  if(await page.evaluate(()=>!!document.pointerLockElement)){await menu.focus();await menu.press('Space');}
+  else await menu.click();
   await expect(page.locator('#game-options')).toBeVisible();
 }
 export async function pauseGame(page:Page){

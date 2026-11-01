@@ -54,7 +54,7 @@ for(const route of ['movies','movies/browse/tv'])test(`${route} canvas covers to
 for(const width of [390,1366])test(`Movies shares navigation geometry, actions and companion focus at ${width}px`,async({page})=>{
  await page.setViewportSize({width,height:844});await page.goto('/#/movies/browse/tv');await expect(page.locator('.movies-poster').first()).toBeVisible();
  const nav=page.locator('.movies-navigation'),bar=nav.locator('.section-tabbar'),menu=nav.getByRole('button',{name:'Open menu',exact:true});
- await expect(bar.locator('.ui-tab')).toHaveText(['Home','Movies','TV Shows','My list','Study']);await expect(bar).toHaveAttribute('data-glass-tone','light');
+ await expect(bar.locator('.ui-tab')).toHaveText(['Games','Movies','TV Shows','My list','Study']);await expect(bar).toHaveAttribute('data-glass-tone','light');
  const gap=await nav.evaluate(e=>{const b=e.querySelector('.section-tabbar')!.getBoundingClientRect(),m=e.querySelector('.section-menu')!.getBoundingClientRect();return m.left-b.right;});expect(gap).toBeGreaterThanOrEqual(8);
  await bar.getByRole('button',{name:'Study',exact:true}).focus();await page.keyboard.press('Tab');await expect(menu).toBeFocused();
  await page.keyboard.press('Enter');await expect(page.locator('#menu')).toBeVisible();await expect(page.locator('#menu')).toHaveAttribute('data-glass-tone','dark');
@@ -98,7 +98,7 @@ for(const stuck of ['fetch','body','restore'])test(`a stalled catalog ${stuck} r
   };
  },{stuck,catalog});
  await page.goto('/#/movies');await expect(page.getByRole('heading',{name:'Opening the collection…'})).toBeVisible();
- await page.locator('.movies-mobile-nav').getByRole('button',{name:'TV Shows',exact:true}).click();
+ await page.locator('.movies-mobile-nav').getByRole('link',{name:'TV Shows',exact:true}).click();
  if(stuck==='restore'){
   await page.clock.setSystemTime(new Date(Date.now()+30000));
   await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true})));
@@ -137,7 +137,7 @@ for(const route of ['collection','movies'])test(`${route} fallback Menu ink reta
 test('Study opened from the Movies Menu returns focus to its visible companion',async({page})=>{
  await page.goto('/#/movies');await expect(page.locator('.movies-hero')).toBeVisible();
  const menu=page.locator('.movies-menu');await menu.click();await page.locator('#menu').getByRole('button',{name:'Study Mode',exact:true}).click();
- await expect(page.locator('#study-title')).toBeVisible();await page.getByRole('link',{name:'Games',exact:true}).click();
+ await expect(page.locator('#study-title')).toBeVisible();await page.locator('#study-view').getByRole('link',{name:'Return to previous view',exact:true}).click();
  await expect(menu).toBeFocused();await expect(page.locator('.movies-view')).toBeVisible();
 });
 
@@ -162,7 +162,7 @@ test.describe('live Movies motion preference',()=>{
 for(const press of [false,true])test(`dark selected tab retains 4.5:1 over white artwork${press?' while pressed':''}`,async({page})=>{
  await page.goto('/?glass=fallback#/movies');await expect(page.locator('.movies-hero')).toBeVisible();
  await page.evaluate(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none;background:white';document.querySelector('.movies-view')!.append(art);});
- const tab=page.locator('.movies-mobile-nav [aria-pressed=true]');await tab.evaluate(e=>e.classList.add('contrast-target'));
+ const tab=page.locator('.movies-mobile-nav [aria-current=page]');await tab.evaluate(e=>e.classList.add('contrast-target'));
  if(press){await tab.hover();await page.mouse.down();}
  await tab.screenshot({animations:'disabled'});
  const boxes=await tab.evaluate(e=>{const box=e.getBoundingClientRect();return [...e.querySelectorAll('.ui-icon,span')].map(child=>{const b=child.getBoundingClientRect();return {x:(b.x-box.x),y:(b.y-box.y),w:b.width,h:b.height,color:getComputedStyle(child).color};});});

@@ -54,21 +54,21 @@
 
 **Interfaces:** one app-owned navigation controller exposes current section and active scroller; the five stable destinations are Games, Movies, TV Shows, My list and Study. Movies is the entry to Movies home. Owners borrow the controller, never append/recreate its node.
 
-- [ ] Write `one-shell/AUDIT.md` with every DOM, CSS, state, event, focus, sheet and top-control fork, including exact locations and ownership risks. Independent read-only review informs the audit.
-- [ ] Capture before switching/collapse videos and Charlie's Games→Movies→first-slot repro before modifying ownership.
-- [ ] Add failing identity/button-order/route tests including Study→Games, equal bounding boxes/material styles and equal scrolling behavior on each tab.
-- [ ] Move navigation lifetime to the app outside route roots and Study's inert app content; select/rebase one scroll source and preserve collapse state. Remove Movies-only navigation construction/styles/controllers and route-dependent button actions.
-- [ ] Share top-control presentation and sheet lifecycle while retaining each section's contextual actions. Update legitimate descendant/label locators.
-- [ ] Capture/open `ONE_SHELL_BEFORE_AFTER.jpg`, `REPRO_BEFORE_AFTER.jpg` and before/after switching/repro recordings. Run targeted shell/Movies/Study/focus/update/offline selector smoke checks, review and commit separately.
+- [x] Write `one-shell/AUDIT.md` with every DOM, CSS, state, event, focus, sheet and top-control fork, including exact locations and ownership risks. Independent read-only review informs the audit.
+- [x] Capture before switching/collapse videos and Charlie's Games→Movies→first-slot repro before modifying ownership.
+- [x] Add failing identity/button-order/route tests including Study→Games, equal bounding boxes/material styles and equal scrolling behavior on each tab.
+- [x] Move navigation lifetime to the app outside route roots and Study's inert app content; select/rebase one scroll source and preserve collapse state. Remove Movies-only navigation construction/styles/controllers and route-dependent button actions.
+- [x] Share top-control presentation and sheet lifecycle while retaining each section's contextual actions. Update legitimate descendant/label locators.
+- [x] Capture/open `ONE_SHELL_BEFORE_AFTER.jpg`, `REPRO_BEFORE_AFTER.jpg` and before/after switching/repro recordings. Run targeted shell/Movies/Study/focus/update/offline selector smoke checks, review and commit separately.
 
 ### Task 4: Menu stats, icons and material structure (step 7)
 
 **Files:** `src/main.ts`, shared game-chrome/stats presentation, shell icons and nonmaterial sheet layout CSS.
 
-- [ ] Open Charlie's Snake menu shot; measure label/value fonts and baselines across all21 game menus. Add failing stats and distinct-icon assertions.
-- [ ] Render extra stats using the same label/value component as Score/Best without changing game-owned values or callbacks. Use a trophy/podium for Leaderboards, retaining Favourite's star.
-- [ ] Sample five sheet heights and inspect nested groups/backdrop boundaries. Remove an accidental nested material structurally; if the remaining difference requires Astra's recipe values, document the exact cause and requested fix instead of editing them.
-- [ ] Capture before/after evidence, verify menu actions/accessibility, review and commit separately.
+- [x] Open Charlie's Snake menu shot; measure label/value fonts and baselines across all21 game menus. Add failing stats and distinct-icon assertions.
+- [x] Render extra stats using the same label/value component as Score/Best without changing game-owned values or callbacks. Use a trophy/podium for Leaderboards, retaining Favourite's star.
+- [x] Sample five sheet heights and inspect nested groups/backdrop boundaries. Remove an accidental nested material structurally; if the remaining difference requires Astra's recipe values, document the exact cause and requested fix instead of editing them.
+- [x] Capture before/after evidence, verify menu actions/accessibility, review and commit separately.
 
 ### Task 5: Shared interactive sheet dismissal (step 8)
 

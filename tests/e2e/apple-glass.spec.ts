@@ -15,7 +15,8 @@ for(const font of ['system','Arial'])for(const scroll of [150,170])test(`pressed
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   await page.evaluate(()=>document.fonts.ready);
   const nav=page.locator('.app-navigation'),bar=page.locator('.app-tabbar');
-  await page.evaluate(y=>scrollTo(0,y),scroll);await expect(bar).toHaveAttribute('data-minimized','true');
+  // Preserve the same card-row gap after the shared utilities add top clearance.
+  await page.evaluate(y=>scrollTo(0,y+parseFloat(getComputedStyle(document.querySelector('#content')!).paddingTop)),scroll);await expect(bar).toHaveAttribute('data-minimized','true');
   await page.locator('.ui-tabbar-mini').click();await expect(bar).not.toHaveAttribute('data-minimized');
   await expect.poll(()=>nav.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
   for(const name of ['Study','Open menu']){

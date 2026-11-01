@@ -46,12 +46,12 @@ for(const width of [390,1366])test(`Movies/TV header floats as bounded glass gro
   for(const route of ['movie','tv']){
     await page.goto(`/#/movies/browse/${route}`);
     const header=page.locator('.movies-top');await expect(header).toBeVisible();
-    // Catalog completion replaces this header. Read its paint and all group
-    // geometry together, so a replacement cannot detach a measured handle.
+    // The persistent shell sits outside the catalog root. Read its bounded
+    // material and the separate content heading in the same frame.
     await expect.poll(()=>header.evaluate((h,width)=>{
       if(!h.isConnected)return null;
       const s=getComputedStyle(h),groups=[...h.querySelectorAll('.floating-glass-group')];
-      const head=h.closest('.movies-view')?.querySelector('.movies-page-head')?.getBoundingClientRect();
+      const head=document.querySelector('.movies-view .movies-page-head')?.getBoundingClientRect();
       return{paint:[s.backgroundColor,s.backdropFilter,s.borderBottomWidth],count:groups.length,
         visible:groups.flatMap(group=>{
           const box=group.getBoundingClientRect();

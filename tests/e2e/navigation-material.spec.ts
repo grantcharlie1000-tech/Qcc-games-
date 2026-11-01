@@ -42,6 +42,7 @@ for(const fallback of [false,true]){
     }
     const box=(await bar.boundingBox())!;expect(box.width).toBeLessThanOrEqual(57);expect(box.height).toBeLessThanOrEqual(49);
     await page.keyboard.press('Tab');
+    await page.locator('.app-tabbar .ui-tab').first().focus();
     await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBeGreaterThan(200);
     await page.locator('.app-tabbar .ui-tab').first().blur();
     await page.evaluate(()=>scrollTo(0,80));await expect(bar).not.toHaveAttribute('data-minimized','true');

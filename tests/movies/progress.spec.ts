@@ -109,9 +109,9 @@ test('a title added while storage refuses writes stays in My list after leaving 
  await page.goto('/#/movies/movie-157336');await expect(page.getByRole('button',{name:'Add to my list',exact:true})).toBeVisible();
  await page.evaluate(()=>{Storage.prototype.setItem=function(){throw new Error('QuotaExceededError');};});
  await page.getByRole('button',{name:'Add to my list',exact:true}).click();await expect(page.getByRole('button',{name:'In my list',exact:true})).toBeVisible();
- await page.locator('.movies-top').getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.game-card').first()).toBeVisible();
+ await page.locator('.section-navigation').getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('.game-card').first()).toBeVisible();
  await page.locator('.app-tabbar').getByRole('link',{name:'Movies',exact:true}).click();await expect(page.locator('#movies-search')).toBeVisible();
- await page.locator('.movies-top').getByRole('button',{name:'My list',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'Saved',exact:true}).click();
  // The catalog also lists this title on the Movies page, so the list is checked only once its own header pill is pressed, as the render sets it.
  await expect(page.locator('.movies-top [data-kind="list"][aria-pressed="true"]')).toHaveCount(1);
  await expect(page.locator('.movies-results-grid .movies-poster[data-title="movie-157336"]')).toHaveCount(1);

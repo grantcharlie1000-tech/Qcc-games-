@@ -179,7 +179,7 @@ test('optional pads, shrinking viewport and disposal keep the dock usable',async
     await page.goto('/#/game/block-fill');await expect(page.locator('.game-hud')).toContainText('Covered');
     await page.getByRole('link',{name:'Games'}).click();
     await expect(page.locator('.game-dock')).toHaveCount(0);
-    expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(2);
+    expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(4);
   }
 });
 

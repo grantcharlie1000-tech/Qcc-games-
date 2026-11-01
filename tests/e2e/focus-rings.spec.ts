@@ -38,7 +38,7 @@ async function tabTo(page:Page,target:Locator){
 // The provider fixture reports the end of playback, which shows Up next. The clock is paused first so the countdown starts after the check.
 async function telemetry(page:Page,currentTime=100,duration=100){await page.frame({url:/framextv/})!.evaluate(({currentTime,duration})=>parent.postMessage({event:'frameXTV:timeupdate',currentTime,duration},'*'),{currentTime,duration});}
 const upNext=(page:Page)=>page.getByRole('dialog',{name:'Up next'});
-// Movies replaces the shell's island with its own, whose tabs are buttons.
+// Movies uses the app-owned island; destinations are links.
 const island=(page:Page)=>page.locator('.movies-mobile-nav.ui-tabbar');
 async function ended(page:Page){await page.clock.pauseAt(await page.evaluate(()=>Date.now()+1000));await telemetry(page);await expect(upNext(page)).toBeVisible();}
 
@@ -88,10 +88,10 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
 
  test('a mouse click draws no ring on an island tab or a Movies button',async({page})=>{
   await page.goto('/#/movies');
-  const tab=island(page).getByRole('button',{name:'TV Shows',exact:true});
-  // The click navigates and the island redraws, so the tab that replaces the clicked one must show no ring.
+  const tab=island(page).getByRole('link',{name:'TV Shows',exact:true});
+  // The shared link keeps its identity through navigation and must show no ring after a pointer activation.
   await tab.click();
-  await expect(tab).toHaveAttribute('aria-pressed','true');
+  await expect(tab).toHaveAttribute('aria-current','page');
   await expectNoOutline(tab);
   await openWatch(page);
   const fullscreen=page.getByRole('button',{name:'Full screen',exact:true});
@@ -116,7 +116,7 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
 
  test('Tab shows contrasting rings on an island tab and on a Movies button',async({page})=>{
   await page.goto('/#/movies');
-  const tab=island(page).getByRole('button',{name:'Movies',exact:true});
+  const tab=island(page).getByRole('link',{name:'Movies',exact:true});
   await tabTo(page,tab);
   await expectGlassRing(tab);
   await openWatch(page);
@@ -145,7 +145,7 @@ for(const viewport of [PHONE,DESKTOP])test.describe(`at ${viewport.width} px`,()
 
  test('a press takes the ring off a control that keeps keyboard focus, and the next key brings it back',async({page})=>{
   await page.goto('/#/movies');
-  const tab=island(page).getByRole('button',{name:'Movies',exact:true});
+  const tab=island(page).getByRole('link',{name:'Movies',exact:true});
   await tabTo(page,tab);
   await expectGlassRing(tab);
   await press(page);
@@ -219,7 +219,7 @@ test('forced colours keep a visible keyboard ring on an island tab and on a fiel
  await page.goto('/#/movies');
  // The system colours, read from a probe, so the expectations do not hard-code a palette.
  const system=await page.evaluate(()=>{const colours:Record<string,string>={};for(const name of ['CanvasText','Highlight']){const probe=document.createElement('span');probe.style.color=name;document.body.append(probe);colours[name]=getComputedStyle(probe).color;probe.remove();}return colours;});
- const tab=island(page).getByRole('button',{name:'Movies',exact:true});
+ const tab=island(page).getByRole('link',{name:'Movies',exact:true});
  await tabTo(page,tab);
  const ring=await outline(tab);
  expect(ring.style).toBe('solid');
@@ -238,7 +238,7 @@ test('forced colours keep a visible keyboard ring on an island tab and on a fiel
 test('the not-found heading shows its ring after keyboard use',async({page})=>{
  await page.setViewportSize(DESKTOP);
  await page.goto('/#/movies');
- await tabTo(page,island(page).getByRole('button',{name:'Movies',exact:true}));
+ await tabTo(page,island(page).getByRole('link',{name:'Movies',exact:true}));
  await page.evaluate(()=>{location.hash='#/movies/tv-404/season/1/episode/1/play';});
  const heading=page.locator('.movies-empty h1');
  await expect(heading).toBeFocused();
