@@ -1,3 +1,4 @@
+import {gameAction} from '../../game-menu';
 import {test,expect} from '../../fixtures';
 test.use({hasTouch:true});
 
@@ -6,7 +7,8 @@ test.describe('tablet layout boundary',()=>{
  for(const [width,height] of [[600,900],[620,900],[600,650],[650,650]])test(`previews stay beside the board at ${width}x${height}`,async({page})=>{
   await page.setViewportSize({width,height});await page.goto('/#/game/quadfall');
   const board=(await page.locator('.qf-board').boundingBox())!;
-  for(const selector of ['.qf-hold','.qf-next','.qf-stats']){
+  await expect(page.locator('.game-hud')).toContainText('Score0');
+  for(const selector of ['.qf-hold','.qf-next']){
    const panel=(await page.locator(selector).boundingBox())!;
    expect(panel.x>=board.x+board.width||panel.x+panel.width<=board.x).toBe(true);
    expect(panel.x).toBeGreaterThanOrEqual(0);expect(panel.x+panel.width).toBeLessThanOrEqual(width);
@@ -43,8 +45,8 @@ test('repeated resize and fullscreen preserve the run and refresh the canvas',as
   expect(await page.locator('.qf-game').evaluate(el=>[el.getAttribute('data-active'),el.getAttribute('data-score'),el.getAttribute('data-hold')])).toEqual(state);
  }
  for(let i=0;i<2;i++){
-  await page.getByRole('button',{name:'Enter full screen',exact:true}).click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);
-  await page.getByRole('button',{name:'Exit full screen',exact:true}).click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(false);
+  await gameAction(page,'Enter full screen');await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);
+  await gameAction(page,'Exit full screen');await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(false);
  }
  expect(await page.locator('.qf-game').evaluate(el=>[el.getAttribute('data-active'),el.getAttribute('data-score'),el.getAttribute('data-hold')])).toEqual(state);
 });

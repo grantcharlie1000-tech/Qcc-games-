@@ -1,4 +1,5 @@
 import type { GameId, GameModule } from './types';
+import {STRONGROOM} from '../games/strongroom/meta';
 export interface GameInfo { id: GameId; title: string; color: string; ink: string; accent: string }
 export const games: GameInfo[] = [
 {id:'color-blocks',title:'Block Blast',color:'#382841',ink:'#ffd04c',accent:'#ffca3a'},
@@ -21,7 +22,8 @@ export const games: GameInfo[] = [
 {id:'corn-clicker',title:'Corn Clicker',color:'#2f5d1e',ink:'#ffe14d',accent:'#ffd447'},
 {id:'slipline',title:'Slipline',color:'#202032',ink:'#eee7ff',accent:'#5cddbb'},
 {id:'quadfall',title:'Tetris',color:'#101631',ink:'#7ee0ff',accent:'#ff9f43'},
-{id:'fivefold',title:'Wordle',color:'#1d2b24',ink:'#f4e9c8',accent:'#6fbf73'}
+{id:'fivefold',title:'Wordle',color:'#1d2b24',ink:'#f4e9c8',accent:'#6fbf73'},
+{id:STRONGROOM.id,title:STRONGROOM.title,color:'#141922',ink:'#FF8A1F',accent:'#3D9BFF'}
 ];
 const modules = import.meta.glob<{default:GameModule}>('../games/*/index.ts');
 export async function loadGame(id:GameId):Promise<GameModule> {

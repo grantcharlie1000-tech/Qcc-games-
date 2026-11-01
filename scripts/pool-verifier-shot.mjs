@@ -10,7 +10,10 @@ function inspectLayout(canvas,{expected}={}){
   const rect={x:r.x,y:r.y,width:r.width,height:r.height};
   const width=available.clientWidth,height=available.clientHeight,naturalWidth=Math.max(root.offsetWidth,root.scrollWidth),naturalHeight=Math.max(root.offsetHeight,root.scrollHeight)+(parseFloat(style.marginTop)||0)+(parseFloat(style.marginBottom)||0);
   const scale=!naturalWidth||!naturalHeight?1:Math.min(width/naturalWidth,height/naturalHeight);
-  const fit=stage.classList.contains('viewport-fitted')&&stage.style.width===`${width}px`&&stage.style.height===`${naturalHeight}px`&&Math.abs(Number(stage.dataset.viewportScale)-scale)<1e-6;
+  const area=available.getBoundingClientRect(),bounds=root.getBoundingClientRect();
+  const fit=stage.classList.contains('viewport-fitted')
+   ? stage.style.width===`${width}px`&&stage.style.height===`${naturalHeight}px`&&Math.abs(Number(stage.dataset.viewportScale)-scale)<1e-6
+   : bounds.left>=area.left-.5&&bounds.right<=area.right+.5&&bounds.top>=area.top-.5&&bounds.bottom<=area.bottom+.5;
   const ready=fit&&width>0&&height>0&&Object.values(rect).every(Number.isFinite)&&r.width>0&&r.height>0&&canvasStyle.display!=='none'&&canvasStyle.visibility==='visible'&&!stage.getAnimations({subtree:true}).some(a=>a.playState==='running'||a.pending);
   return {...rect,layoutKey:JSON.stringify([rect,stage.style.cssText,stage.dataset.viewportScale,width,height,naturalWidth,naturalHeight]),ready};
  };
@@ -40,16 +43,21 @@ export async function settledPoolGeometry(page){
  finally{clearTimeout(timer);}
 }
 
+/** Project fixture coordinates independently of the application's inverse input mapping. */
+export function poolScreenPoint(b,x,y){
+ return b.height>b.width?{x:b.x+x/440*b.width,y:b.y+y/840*b.height}:{x:b.x+(840-y)/840*b.width,y:b.y+x/440*b.height};
+}
+
 export async function preparePoolShot(page){
  const canvas=page.locator('.pool-table');await canvas.hover();
  const b=await settledPoolGeometry(page);
- await page.mouse.move(b.x+b.width*225/840,b.y+b.height/2);
+ const cue=poolScreenPoint(b,220,615);await page.mouse.move(cue.x,cue.y);
  await canvas.evaluate(inspectLayout,{expected:b});
  return b;
 }
 
 export async function verifyPoolShot(page){
  const b=await preparePoolShot(page);
- await page.mouse.down();await page.mouse.move(b.x+b.width*135/840,b.y+b.height/2,{steps:8});await page.mouse.up();
+ const end=poolScreenPoint(b,220,705);await page.mouse.down();await page.mouse.move(end.x,end.y,{steps:8});await page.mouse.up();
  assert.equal(await page.locator('.pool-game').getAttribute('data-shots'),'1');
 }

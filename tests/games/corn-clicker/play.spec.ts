@@ -1,3 +1,4 @@
+import {gameAction} from '../../game-menu';
 import {test,expect,type Page} from '../../fixtures';
 
 const KEY='pocket-arcade:v1:save:corn-clicker';
@@ -121,7 +122,8 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await expect(thumbs).toBeVisible();
   await thumbs.tap();
   await expect(thumbs).toHaveCount(0);
-  await expect(page.locator('.cc-hud-c')).toBeVisible();
+  await expect(page.locator('.game-hud')).toBeVisible();
+  await expect(page.locator('.game-hud')).toContainText('Per second');
   await tabs.getByRole('tab',{name:'Farm'}).tap();
   await expect(page.locator('.cc-lot[data-lot=farmhand]')).toBeVisible();
   const golden=page.getByRole('button',{name:/^Golden cob/});
@@ -198,10 +200,10 @@ test('export, import, damaged-save recovery from backup and confirmed restart',a
   expect(code).toMatch(/^CORNCLICKER\./);
   await page.getByRole('button',{name:'Done'}).click();
   // Restart asks first; cancelling keeps the farm.
-  await page.getByRole('button',{name:'Restart game'}).click();
+  await gameAction(page,'Restart game');
   await page.getByRole('dialog',{name:'Start a brand-new farm?'}).getByRole('button',{name:'Cancel'}).click();
   expect(await kernels(page)).toBeGreaterThanOrEqual(777);
-  await page.getByRole('button',{name:'Restart game'}).click();
+  await gameAction(page,'Restart game');
   await page.getByRole('button',{name:'Erase everything'}).click();
   await expect(page.locator('.cc-kernels-num')).toHaveText('0');
   // Import the code back.
@@ -228,11 +230,11 @@ test('export, import, damaged-save recovery from backup and confirmed restart',a
 
 test('corn is the default and the face texture can be switched on, saved and switched off',async({page})=>{
  await page.goto('/#/game/corn-clicker');await expect(cob(page)).toBeVisible();
- const toggle=page.getByRole('button',{name:'Use face texture'});const art=cob(page).locator('img');
+ const toggle=page.locator('.cc-face-toggle');const art=cob(page).locator('img');
  await expect(toggle).toHaveAttribute('aria-pressed','false');await expect(art).toHaveAttribute('src',/^data:image\/png/);
- await toggle.click();await expect(toggle).toHaveAttribute('aria-pressed','true');await expect(art).toHaveAttribute('src',/face\.webp$/);
+ await gameAction(page,'Use face texture');await expect(toggle).toHaveAttribute('aria-pressed','true');await expect(art).toHaveAttribute('src',/face\.webp$/);
  await cob(page).click();await expect(page.locator('.cc-kernels-num')).toHaveText('1');
  await expect.poll(()=>page.evaluate(k=>{const raw=localStorage.getItem(k);return raw?JSON.parse(raw).data.options?.faceTexture:false;},KEY)).toBe(true);
  await page.reload();await expect(toggle).toHaveAttribute('aria-pressed','true');await expect(art).toHaveAttribute('src',/face\.webp$/);
- await toggle.click();await expect(toggle).toHaveAttribute('aria-pressed','false');await expect(art).toHaveAttribute('src',/^data:image\/png/);
+ await gameAction(page,'Use face texture');await expect(toggle).toHaveAttribute('aria-pressed','false');await expect(art).toHaveAttribute('src',/^data:image\/png/);
 });

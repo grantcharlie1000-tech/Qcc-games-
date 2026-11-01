@@ -19,7 +19,7 @@ async function boxes(page:Page,selector:string):Promise<Box[]>{
     .map(e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};}));
 }
 const HUD_PARTS='.bc-hotbar-bg,.bc-offhand,.bc-xp,.bc-level,.bc-hearts .bc-icon,.bc-food .bc-icon,.bc-armor .bc-icon,.bc-air .bc-icon,.bc-readouts[data-place=right] .bc-dial,.bc-held-name,.bc-effect';
-const SHELL='.game-toolbar a,.game-toolbar button';
+const SHELL='.game-dock a,.game-dock button';
 /** Sets survival values through the live service (test-only overrides of its getters). */
 async function setSurvival(page:Page,values:Record<string,number>,armor?:number){
   await page.evaluate(([v,a])=>{
@@ -39,7 +39,7 @@ async function give(page:Page){
 async function shellOnTop(page:Page){
   const hits=await page.locator(SHELL).evaluateAll(els=>els.filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&getComputedStyle(e).visibility!=='hidden';})
     .map(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{id:e.id||e.getAttribute('aria-label'),ok:!!hit&&e.contains(hit)};}));
-  expect(hits.length).toBeGreaterThan(2);
+  expect(hits.length).toBe(2);
   for(const h of hits)expect(h.ok,`shell control ${h.id} is covered`).toBe(true);
 }
 /** A CSS variable the HUD publishes on the game root, in px. */

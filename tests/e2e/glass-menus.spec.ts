@@ -1,3 +1,4 @@
+import {appSettings,gameAction} from '../game-menu';
 import {test,expect} from '../fixtures';
 import type {Locator,Page} from '@playwright/test';
 
@@ -8,7 +9,7 @@ const ACCESSIBILITY_NOTE='Reduce Transparency and forced colours are emulated th
 
 // The island's Menu tab opens the menu, as a visitor does.
 async function openMenuFromIsland(page:Page){
-  await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).click();
+  await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).click();
   await expect(page.locator('#menu')).toBeVisible();
 }
 // A sheet's box once its entry has finished, so the box is the layout box and not a point mid-transition.
@@ -57,7 +58,7 @@ test('the four shell dialogs are glass sheets with the blur and the system font'
   await page.getByRole('button',{name:'Close leaderboards',exact:true}).click();
   await page.goto('/#/game/fruit-merge');
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await gameAction(page,'Game rules');
   await expectGlassSheet(page.locator('#rules-dialog'));
 });
 
@@ -70,7 +71,7 @@ test('the menu and the rules sheet are named by their headings',async({page})=>{
   await page.keyboard.press('Escape');
   await page.goto('/#/game/fruit-merge');
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await gameAction(page,'Game rules');
   await expect(page.getByRole('dialog',{name:'How to play',exact:true})).toBeVisible();
 });
 
@@ -105,16 +106,16 @@ test('at 1366 px the menu is a centred panel at most 440 px wide, with a 28 px r
   expect(await menu.evaluate(el=>getComputedStyle(el).borderTopLeftRadius)).toBe('28px');
 });
 
-test('the menu grows from the control that opened it, the island Menu at the bottom and the game menu at the top',async({page})=>{
+test('the menu grows from the control that opened it in the island and in-game dock',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   const menu=page.locator('#menu');
-  const tab=await page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true}).boundingBox();
+  const tab=await page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true}).boundingBox();
   if(!tab)throw new Error('The island Menu tab has no box');
   await openMenuFromIsland(page);
   const box=await settledBox(menu);
   const fromIsland=await originOf(menu);
-  // The origin is the tab's centre measured from the sheet's corner. The island's Menu is its sixth tab, so this is the bottom right.
+  // The origin is the tab's centre measured from the sheet's corner. The companion Menu sits beside the five-tab island, at the bottom right.
   expect(Math.abs(fromIsland.x-(tab.x+tab.width/2-box.x))).toBeLessThanOrEqual(1);
   expect(Math.abs(fromIsland.y-(tab.y+tab.height/2-box.y))).toBeLessThanOrEqual(1);
   expect(fromIsland.x).toBeGreaterThan(box.width*0.75);
@@ -127,15 +128,16 @@ test('the menu grows from the control that opened it, the island Menu at the bot
   const gameMenu=await page.locator('#game-menu').boundingBox();
   if(!gameMenu)throw new Error('The game menu button has no box');
   await page.locator('#game-menu').click();
-  const gameBox=await settledBox(menu);
-  const fromGame=await originOf(menu);
-  // The game's menu button sits above a bottom sheet, so its y clamps to the sheet's top edge.
+  const gameSheet=page.locator('#game-options');
+  const gameBox=await settledBox(gameSheet);
+  const fromGame=await originOf(gameSheet);
+  // The compact game group anchors the sheet at the actual Menu centre.
   const expectedX=Math.min(Math.max(gameMenu.x+gameMenu.width/2-gameBox.x,0),gameBox.width);
   const expectedY=Math.min(Math.max(gameMenu.y+gameMenu.height/2-gameBox.y,0),gameBox.height);
   expect(Math.abs(fromGame.x-expectedX)).toBeLessThanOrEqual(1);
   expect(Math.abs(fromGame.y-expectedY)).toBeLessThanOrEqual(1);
-  expect(fromGame.x).toBeGreaterThan(gameBox.width*0.75);
-  expect(fromGame.y).toBeLessThan(gameBox.height*0.25);
+  expect(fromGame.x).toBeGreaterThan(gameBox.width*0.5);
+  expect(fromGame.y).toBeGreaterThan(gameBox.height*0.75);
 });
 
 test('the settings are still native checkboxes: a click and Space toggle them, and the track is green when on',async({page})=>{
@@ -194,7 +196,7 @@ test('the one tinted action in the rules is cream with dark ink in a 48 px capsu
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/fruit-merge');
   await expect(page.getByRole('img',{name:/Fruit basket/})).toBeVisible();
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await gameAction(page,'Game rules');
   const done=page.getByRole('button',{name:'Let’s play',exact:true});
   expect(await done.evaluate(el=>{const s=getComputedStyle(el);return [s.backgroundColor,s.color,s.borderTopLeftRadius,s.minHeight];})).toEqual(['rgb(255, 224, 164)','rgb(42, 42, 46)','999px','48px']);
   expect(await page.locator('#rules-text').evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.color];})).toEqual(['17px','rgba(255, 255, 255, 0.72)']);
@@ -304,7 +306,7 @@ test('the sheet enters from just inside its place by scale, translate and opacit
   await page.goto('/');
   // Each read happens in the same task as the open or close, so the transitions it reports are still running.
   const entry=await page.evaluate<SheetTransition[]>(()=>{
-    document.querySelector<HTMLElement>('.app-tabbar [data-action="menu"]')!.click();
+    document.querySelector<HTMLElement>('.app-navigation [data-action="menu"]')!.click();
     return document.getAnimations().flatMap(animation=>{
       const effect=animation.effect as KeyframeEffect|null;
       if(effect?.target!==document.getElementById('menu')||effect.pseudoElement)return [];
@@ -345,7 +347,7 @@ test('Escape closes the menu and returns focus to the island Menu',async({page})
   await openMenuFromIsland(page);
   await page.keyboard.press('Escape');
   await expect(page.locator('#menu')).toBeHidden();
-  await expect(page.locator('.app-tabbar').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
+  await expect(page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
 });
 
 test('the accounts and leaderboard dialogs use glass fields and hairlines',async({page})=>{
@@ -369,7 +371,7 @@ test('Minesweeper options and the Study privacy dialog keep their own look',asyn
   await page.setViewportSize(PHONE);
   await page.goto('/#/game/minesweeper');
   await expect(page.locator('.ms-board')).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await gameAction(page,'Game options');
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
   expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgb(35, 49, 40)','18px']);

@@ -1,4 +1,5 @@
 import {guestTest as test,expect} from '../fixtures';
+import {appSettings} from '../game-menu';
 
 for(const style of ['qcc','quanta','aeon','essay']){
   test(`${style} displays fictional image ads without covering reading text`,async({page})=>{
@@ -9,7 +10,7 @@ for(const style of ['qcc','quanta','aeon','essay']){
     },style);
     await page.goto('/#/game/fruit-merge');
     await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Open menu',exact:true}).click();
+    await appSettings(page);
     await page.getByRole('button',{name:'Study Mode',exact:true}).click();
     const view=page.locator('#study-view');
     await expect(view).toBeVisible();
@@ -54,7 +55,7 @@ test('essay ads preserve a text-first desktop opening and the compact reading la
     sessionStorage.setItem('pocket-arcade:study:v1:topic','essay:close-reading');
   });
   await page.goto('/#/game/fruit-merge');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  await appSettings(page);
   await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   const inspect=()=>page.evaluate(()=>{
     const body=document.querySelector('.essay-article .variant-prose')!;

@@ -7,14 +7,10 @@
 .ball-run button{font:inherit;border:0;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ball-run button:focus-visible,.br-slider:focus-visible{outline:3px solid #ffe0a4;outline-offset:3px}
 
-/* HUD: mode and score beside the next record, in the toolbar row between back and pause, centred over the
- * track (the middle of the canvas) with the speed beneath. The shell's toolbar runs from x=0 and stops at
- * 1080 px, its pause button 12 px inside the end (1032–1068 px on wider screens, 48 px from the right edge on
- * narrower ones). The grid's third column (as wide as the first unless that is too narrow) therefore keeps
- * the HUD's right edge at 1020 px or less, and 60 px from the right edge: always 12 px clear of pause. */
-.br-top{position:absolute;top:var(--br-top);left:0;right:0;z-index:4;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(max(60px,100% - 1020px),1fr);pointer-events:none}
+/* The dock mirrors the native mode, score and next record; speed stays beneath it. */
+.br-top{position:absolute;top:var(--br-top);left:0;right:0;z-index:4;display:grid;grid-template-columns:1fr auto 1fr;pointer-events:none}
 .br-hud,.br-speed{grid-column:2;justify-self:center}
-.br-hud{height:40px;display:flex;align-items:center;gap:clamp(20px,7vw,48px);white-space:nowrap;text-shadow:0 1px 3px #000d}
+.br-hud{visibility:hidden;height:56px;display:flex;align-items:center;gap:clamp(20px,7vw,48px);white-space:nowrap;text-shadow:0 1px 3px #000d}
 .br-stat{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:64px;line-height:1}
 .br-stat small{font-size:10px;letter-spacing:.04em}
 .br-stat strong{font-size:20px;font-weight:800}
@@ -152,7 +148,7 @@
 }
 /* Landscape phones with browser bars (down to about 300 px of height): everything a step smaller. */
 @media(max-height:360px) and (min-width:480px){
-  .br-layer{padding-top:calc(var(--br-top) + 42px)}
+  .br-layer{padding-top:calc(max(8px,env(safe-area-inset-top)) + 64px);padding-bottom:max(12px,env(safe-area-inset-bottom))}
   .br-title{font-size:21px}
   .br-copy{font-size:13px;line-height:1.28}
   .br-head{padding:14px 16px;gap:8px}
@@ -189,5 +185,5 @@
 }
 @media(max-width:360px){.br-head,.br-body{padding-left:14px;padding-right:14px}.br-button{min-width:128px}.br-hud{gap:14px}}
 /* Large screens: the same layouts, a size up. */
-/* Only the HUD itself is zoomed: its grid (and the 1020 px limit) stays in unzoomed px. */
+/* Preserve the larger panel and speed treatment on desktop. */
 @media(min-width:900px) and (min-height:640px){.br-panel,.br-hud{zoom:1.2}.br-speed{font-size:12px}}
