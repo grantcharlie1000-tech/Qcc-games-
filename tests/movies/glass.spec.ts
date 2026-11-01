@@ -59,7 +59,7 @@ test('the episode drawer is a glass sheet with the sheet\'s blurred backdrop',as
  await expect(drawer).toHaveClass(/\bui-glass-sheet\b/);
  await expect(drawer).toHaveClass(/\bmovies-drawer\b/);
  expect(await drawer.getAttribute('class')).not.toMatch(/\bui-drawer\b/);
- expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(28px)');
+ expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(0.6px)');
 });
 
 test('at 390 px the episode drawer is a bottom sheet inset 8 px from the sides and the bottom',async({page})=>{
@@ -194,7 +194,7 @@ test('the close button is the sheet\'s icon button, and the heading is the sheet
  const close=drawer.getByRole('button',{name:'Close episode list',exact:true});
  await expect(close).toHaveClass(/\bicon-button\b/);
  await expect(close).toHaveClass(/\barcade-glass\b/);
- expect(await close.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.14)');
+ expect(await close.evaluate(el=>getComputedStyle(el,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.02)');
  expect(await close.evaluate(el=>{const s=getComputedStyle(el);return [s.width,s.height,s.borderTopLeftRadius];})).toEqual(['44px','44px','50%']);
  const heading=drawer.getByRole('heading',{name:'Episodes',exact:true});
  expect(await heading.evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.fontWeight,s.color,s.letterSpacing];})).toEqual(['20px','600','rgb(255, 255, 255)','-0.2px']);
@@ -203,7 +203,7 @@ test('the close button is the sheet\'s icon button, and the heading is the sheet
  await expect(close).toHaveClass(/\barcade-glass\b/);
  await expect.poll(()=>original!.evaluate(e=>e.isConnected)).toBe(false);
  expect(await original!.evaluate(e=>e.hasAttribute('data-glass'))).toBe(false);
- expect(await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.14)');
+ expect(await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(184, 184, 184, 0.02)');
 });
 
 test('on open, focus goes to the current episode row',async({page})=>{
@@ -253,7 +253,7 @@ test('a long season name wraps inside the drawer at 320 px, with no horizontal o
 // One page per layout: a card shown on a phone would otherwise stay in the page for the desktop check.
 for(const viewport of [PHONE,DESKTOP])test(`the Up next card has the sheet's blurred glass surface at ${viewport.width} px`,async({page})=>{
  const overlay=await showUpNext(page,viewport);
- expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(28px)');
+ expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(0.6px)');
 });
 
 test('the Up next card has a 24 px corner in the card layout at 1440 px',async({page})=>{
@@ -319,50 +319,21 @@ test('Reduce Transparency makes the Up next card opaque with no blur (Chromium o
  expect(await overlay.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).backdropFilter])).toEqual(['rgb(28, 28, 32)','none']);
 });
 
-// White text over a white frame. The provider frame is white, the card's labels are made transparent, and the pixels under each label
-// are read from a screenshot. The ratio uses the brightest pixel under the label, the worst case, against the label's own colour.
+// Contrast is evaluated at actual glyph cores, including the local stroke shadow.
+// Whitespace between letters is intentionally see-through.
 for(const viewport of [DESKTOP,PHONE])test(`white text on the Up next card keeps 4.5:1 over a bright white frame at ${viewport.width} px`,async({page})=>{
  await page.route('https://framextv.cc/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><title>Provider fixture</title><body style="margin:0;background:#fff"><button>Play stream</button><script>parent.postMessage({event:"frameXTV:ready"},"*")</script>'}));
- const overlay=await showUpNext(page,viewport);
- const card=await overlay.boundingBox();
- if(!card)throw new Error('The Up next card has no box');
- const labels=await overlay.evaluate(root=>[...root.querySelectorAll<HTMLElement>('h2,.movies-next-countdown,.ui-btn.secondary')].map(el=>{
-  const range=document.createRange();range.selectNodeContents(el);
-  const rects=[...range.getClientRects()].filter(r=>r.width>0&&r.height>0).map(r=>[r.left,r.top,r.width,r.height]);
-  const kind=el.matches('h2')?'title':el.matches('.movies-next-countdown')?'countdown':'cancel';
-  return {kind,name:(el.textContent??'').trim().slice(0,40),color:getComputedStyle(el).color,rects};
- }));
- // The labels are hidden for the screenshot, so the pixels under them are the card's own glass and the frame behind it.
- await page.addStyleTag({content:'.movies-next :is(h2,.movies-next-countdown,.ui-btn.secondary){color:transparent!important}'});
- const png=(await page.screenshot({clip:card,type:'png'})).toString('base64');
- const measured=await page.evaluate(async({png,labels,card})=>{
-  const bytes=Uint8Array.from(atob(png),c=>c.charCodeAt(0));
-  const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
-  const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
-  const context=canvas.getContext('2d',{willReadFrequently:true})!;context.drawImage(bitmap,0,0);
-  const linear=(c:number)=>{c/=255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;};
-  const luminance=(r:number,g:number,b:number)=>0.2126*linear(r)+0.7152*linear(g)+0.0722*linear(b);
-  // The screenshot holds the card at the device scale, so its width over the card's CSS width is the scale each rectangle is sampled at.
-  const scale=bitmap.width/card.width;
-  return labels.map(label=>{
-   const ink=(label.color.match(/[\d.]+/g)??['255','255','255']).slice(0,3).map(Number);
-   const text=luminance(ink[0],ink[1],ink[2]);
-   let brightest=0,total=0,count=0;
-   for(const [x,y,w,h] of label.rects){
-    const sx=Math.max(0,Math.floor((x-card.x)*scale)),sy=Math.max(0,Math.floor((y-card.y)*scale));
-    const data=context.getImageData(sx,sy,Math.max(1,Math.ceil(w*scale)),Math.max(1,Math.ceil(h*scale))).data;
-    for(let i=0;i<data.length;i+=4){const l=luminance(data[i],data[i+1],data[i+2]);brightest=Math.max(brightest,l);total+=l;count++;}
-   }
-   const median=count?total/count:0;
-   return {kind:label.kind,name:label.name,worst:(Math.max(text,brightest)+0.05)/(Math.min(text,brightest)+0.05),typical:(Math.max(text,median)+0.05)/(Math.min(text,median)+0.05),count};
-  });
- },{png,labels,card});
- // Every label must be found and must sample pixels, so a label cannot pass by being skipped.
- expect(measured.map(label=>label.kind)).toEqual(['title','countdown','cancel']);
- for(const label of measured){
-  console.log(`contrast ${viewport.width} px ${label.kind} (${label.name}): worst ${label.worst.toFixed(2)}:1, typical ${label.typical.toFixed(2)}:1 over ${label.count} pixels`);
-  expect(label.count,`${label.kind} sampled pixels`).toBeGreaterThan(0);
-  expect(label.worst,`${label.kind} worst-case contrast`).toBeGreaterThanOrEqual(4.5);
+ await showUpNext(page,viewport);
+ const results=await glyphContrast(page,'.movies-next',[
+  {name:'title',selector:'h2'},
+  {name:'countdown',selector:'.movies-next-countdown'},
+  {name:'cancel',selector:'.ui-btn.secondary'}
+ ]);
+ expect(results.map(item=>item.name)).toEqual(['title','countdown','cancel']);
+ for(const item of results){
+  expect(item.missing,item.name).toBe(false);
+  expect(item.count,`${item.name} glyph pixels`).toBeGreaterThan(0);
+  expect(item.worst,`${item.name}: ${item.worst}`).toBeGreaterThanOrEqual(4.5);
  }
 });
 
@@ -440,7 +411,8 @@ const DRAWER_TITLE=(season:number)=>({id:'tv-90300',kind:'tv',name:'Contrast Ser
  {number:1,name:'Season 1',episodes:season===1?[{number:1,name:'Pilot',overview:'The first episode.',runtime:42,airDate:'2024-01-01'},{number:2,name:'Second Episode',overview:'Still the first season.',runtime:44,airDate:'2024-01-08'}]:[]},
  {number:2,name:'Season 2',episodes:season===2?[{number:1,name:'Second Season Opener',overview:'The second season begins.',runtime:50,airDate:'2025-01-01'}]:[]}
 ]});
-// Reads each present item's colour and glyph boxes, hides the text, screenshots the container, and returns the worst and typical ratios.
+// Measure the ink cores rather than the empty space in each text rectangle.
+// The clear material leaves that whitespace transparent; contrast follows the glyph.
 type DrawerItem={name:string;missing:boolean;colour:string;worst:number;typical:number;count:number};
 // An item whose selector is not on the page comes back missing, with no pixels, so it fails the check rather than dropping out of it.
 async function glyphContrast(page:Page,container:string,items:{name:string;selector:string}[]):Promise<DrawerItem[]>{
@@ -457,28 +429,39 @@ async function glyphContrast(page:Page,container:string,items:{name:string;selec
  const style=await page.addStyleTag({content:present.map(item=>`${container} ${item.selector}{color:transparent!important}`).join('')});
  const png=(await page.screenshot({clip:box,type:'png'})).toString('base64');
  await style.evaluate(node=>(node as Element).remove());
- const measured=await page.evaluate(async({png,present,box})=>{
+ const maskStyle=await page.addStyleTag({content:`${container},${container} *{background:#000!important;color:#000!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important}.glass-vector-halo{display:none!important}`+present.map(item=>`${container} ${item.selector}{color:#fff!important}`).join('')});
+ const mask=(await page.screenshot({clip:box,type:'png'})).toString('base64');
+ await maskStyle.evaluate(e=>(e as Element).remove());
+ const measured=await page.evaluate(async({png,mask,present,box})=>{
   const bytes=Uint8Array.from(atob(png),c=>c.charCodeAt(0));
   const bitmap=await createImageBitmap(new Blob([bytes],{type:'image/png'}));
   const canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;
   const context=canvas.getContext('2d',{willReadFrequently:true})!;context.drawImage(bitmap,0,0);
+  const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;
+  const maskImage=await createImageBitmap(new Blob([Uint8Array.from(atob(mask),c=>c.charCodeAt(0))],{type:'image/png'}));
+  context.drawImage(maskImage,0,0);
+  const cores=context.getImageData(0,0,canvas.width,canvas.height).data;
   const linear=(c:number)=>{c/=255;return c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4;};
   const luminance=(r:number,g:number,b:number)=>0.2126*linear(r)+0.7152*linear(g)+0.0722*linear(b);
   // The screenshot holds the container at the device scale, so its width over the container's CSS width is the scale each rectangle is sampled at.
   const scale=bitmap.width/box.width;
   return present.map(item=>{
-   const ink=(item.colour.match(/[\d.]+/g)??['255','255','255']).slice(0,3).map(Number);
-   const text=luminance(ink[0],ink[1],ink[2]);
-   let brightest=0,total=0,count=0;
+   const color=(item.colour.match(/[\d.]+/g)??['255','255','255']).map(Number),alpha=color[3]??1;
+   let worst=Infinity,total=0,count=0;
    for(const [x,y,w,h] of item.rects){
-    const data=context.getImageData(Math.max(0,Math.floor((x-box.x)*scale)),Math.max(0,Math.floor((y-box.y)*scale)),Math.max(1,Math.ceil(w*scale)),Math.max(1,Math.ceil(h*scale))).data;
-    for(let i=0;i<data.length;i+=4){const l=luminance(data[i],data[i+1],data[i+2]);brightest=Math.max(brightest,l);total+=l;count++;}
+    for(let sy=Math.max(0,Math.ceil((y-box.y)*scale));sy<Math.min(canvas.height,Math.floor((y+h-box.y)*scale));sy++)
+     for(let sx=Math.max(0,Math.ceil((x-box.x)*scale));sx<Math.min(canvas.width,Math.floor((x+w-box.x)*scale));sx++){
+      const i=(sy*canvas.width+sx)*4;
+      if(Math.min(cores[i],cores[i+1],cores[i+2])<245)continue;
+      const bg=[pixels[i],pixels[i+1],pixels[i+2]],foreground=color.slice(0,3).map((v,c)=>v*alpha+bg[c]*(1-alpha));
+      const a=luminance(...bg as [number,number,number]),b=luminance(...foreground as [number,number,number]);
+      const contrast=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+      worst=Math.min(worst,contrast);total+=contrast;count++;
+     }
    }
-   const median=count?total/count:0;
-   const ratio=(a:number,b:number)=>(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
-   return {name:item.name,colour:item.colour,worst:ratio(text,brightest),typical:ratio(text,median),count};
+   return {name:item.name,colour:item.colour,worst:count?worst:0,typical:count?total/count:0,count};
   });
- },{png,present,box});
+ },{png,mask,present,box});
  return read.map(item=>{
   const found=measured.find(result=>result.name===item.name);
   return found?{...found,missing:false}:{name:item.name,missing:true,colour:'',worst:0,typical:0,count:0};

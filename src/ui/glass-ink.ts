@@ -9,7 +9,7 @@ type ImageRange={min:Uint8ClampedArray;max:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
 // Component bounds are conservative even when blur mixes differently coloured
-// pixels. Only the glyph footprint receives the resulting feathered scrim.
+// pixels. Only the glyph stroke receives the resulting contrast outline.
 const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
   [0,1,2].map(i=>Math.min(...colors.map(c=>c[i]))) as [number,number,number],
   [0,1,2].map(i=>Math.max(...colors.map(c=>c[i]))) as [number,number,number]
@@ -39,7 +39,7 @@ export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',select
     return {...candidate,alpha:Math.ceil(high*100)/100};
   }).sort((a,b)=>a.alpha-b.alpha);
   // Preserve a modal's established ink when its hidden backdrop requires a
-  // scrim either way. A zero-scrim choice always takes priority.
+  // outline either way. An unoutlined choice always takes priority.
   const best=preferred&&scored.every(c=>c.alpha>0)?scored.find(c=>c.color===(preferred==='light'?'#fff':'#0b1015'))!:scored[0];
   return {color:best.color,halo:`rgb(${best.veil.join(' ')} / ${best.alpha})`};
 }
@@ -113,7 +113,7 @@ function sampler(){
   function sample(glyph:Element):RGB[]{
     const r=rect(glyph);
     const ownerDialog=glyph.closest('dialog');
-    // The 3px frost and edge lens sample the surrounding artwork.
+    // The edge lens can sample artwork beyond the glyph footprint.
     const area=new DOMRect(r.x-16,r.y-16,r.width+32,r.height+32);
     const ranges=new Map<HTMLImageElement,RGB[]>();
     const stacks=new Set<string>();
@@ -169,7 +169,7 @@ function sampler(){
 const bindings=new Set<HTMLElement>();
 let frame=0;
 let observer:MutationObserver|undefined;
-function vectorHalo(glyph:HTMLElement):void{
+function vectorHalo(glyph:Element):void{
   if(!(glyph instanceof SVGSVGElement)||glyph.querySelector(':scope > .glass-vector-halo'))return;
   // A vector outline follows the live icon, without a rectangular backing or
   // a captured image. Keep it separate from currentColor so contrast can be
@@ -182,6 +182,15 @@ function vectorHalo(glyph:HTMLElement):void{
     halo.append(copy);
   }
   glyph.prepend(halo);
+}
+
+/** Sheet actions keep their own colour; their outline follows --sheet-halo.
+ * These are vector strokes, never a rectangular backing or captured backdrop. */
+export function syncSheetIconInk(sheet:HTMLElement):void{
+  for(const svg of sheet.querySelectorAll('svg')){
+    if(svg.closest('.arcade-glass')||svg.closest('.glass-vector-halo'))continue;
+    vectorHalo(svg);
+  }
 }
 function update(){
   frame=0;
@@ -225,7 +234,15 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     document.addEventListener('focusout',schedule,true);
     window.addEventListener('resize',schedule,{passive:true});
     observer=new MutationObserver(records=>{
-      if(records.some(r=>!(r.target instanceof Element)||!r.target.closest('.arcade-glass,.ui-tabbar-mini')||r.attributeName==='data-minimized'||r.attributeName==='data-glass'||(r.type==='childList'&&[...r.addedNodes,...r.removedNodes].some(n=>n instanceof Element&&!n.matches('.ui-glass-contrast,.ui-glass-glow,.ui-glass-lens')))))schedule();
+      if(records.some(r=>{
+        // Several games render unchanged HUD text every animation frame. Equal
+        // replacements have no new paint to sample. The compositor still reads
+        // the live canvas backdrop every frame; this only avoids redundant DOM
+        // hit-testing for label colours.
+        if(r.type==='childList'&&r.addedNodes.length===r.removedNodes.length&&
+          [...r.addedNodes].every((node,i)=>node.isEqualNode(r.removedNodes[i])))return false;
+        return !(r.target instanceof Element)||!r.target.closest('.arcade-glass,.ui-tabbar-mini')||r.attributeName==='data-minimized'||r.attributeName==='data-glass'||(r.type==='childList'&&[...r.addedNodes,...r.removedNodes].some(n=>n instanceof Element&&!n.matches('.ui-glass-contrast,.ui-glass-glow,.ui-glass-lens')));
+      }))schedule();
     });
     observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','data-minimized','data-glass']});
   }

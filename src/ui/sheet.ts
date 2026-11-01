@@ -2,12 +2,14 @@
 // tests cover. openSheet opens a dialog and points its transform origin at the control that opened it, so the sheet
 // grows from there (the .ui-glass-sheet rules in theme.css).
 import {bindGlass} from './glass';
+import {syncSheetIconInk} from './glass-ink';
 const closeControls=new WeakMap<HTMLDialogElement,()=>void>();
 
 function bindCloseControls(dialog:HTMLDialogElement):void{
   closeControls.get(dialog)?.();
   const disposers=new Map<HTMLElement,()=>void>();
   const sync=()=>{
+    syncSheetIconInk(dialog);
     const controls=new Set(dialog.querySelectorAll<HTMLElement>('.dialog-head .icon-button,.movies-drawer-head [data-action=close-drawer]'));
     for(const [button,dispose] of disposers)if(!controls.has(button)){dispose();disposers.delete(button);}
     for(const button of controls)if(!disposers.has(button)){

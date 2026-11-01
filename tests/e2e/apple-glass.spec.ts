@@ -234,8 +234,8 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
     await page.goto('/#/game/neon-coil');
     await expect(page.locator('#game-menu')).toHaveClass(/is-refracting/);
     const gameBlur=await page.locator('#game-menu .ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
-    expect(homeBlur).toBe('blur(3px)');
-    expect(gameBlur).toBe('blur(3px)');
+    expect(homeBlur).toBe('blur(0.6px)');
+    expect(gameBlur).toBe('blur(0.6px)');
   });
 });
 

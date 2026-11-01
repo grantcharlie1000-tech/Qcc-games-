@@ -174,8 +174,9 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
     expect(hasBlur,'App and independent CSS reference must have the same diffusion capability').toBe(false);
     test.info().annotations.push({type:'renderer limitation',description:'Linux WebKit omits backdrop blur in both app and independent CSS reference. Physical iOS blur remains unverified.'});
     await reference.close();
-  }else expect(patches.spread).toBeGreaterThanOrEqual(6);
-  expect(patches.spread).toBeLessThanOrEqual(15);
+  }else expect(patches.spread).toBeGreaterThanOrEqual(1);
+  // The clear variant uses only subpixel diffusion in its centre.
+  expect(patches.spread).toBeLessThanOrEqual(3);
 });
 
 test('navigation, companion and game controls share the same clear optical recipe',async({page})=>{

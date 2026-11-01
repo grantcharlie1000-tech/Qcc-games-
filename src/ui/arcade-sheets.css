@@ -3,8 +3,8 @@
 :is(.arcade-sheet,body.in-game .mp-card){
   --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
   /* One clear optical transfer across the entire sheet. */
-  --sheet-veil:rgb(184 184 184 / .02);--sheet-halo:rgb(0 0 0 / .82);
-  --sheet-optics:blur(2px) saturate(1);
+  --sheet-veil:var(--glass-clear-fill);--sheet-halo:rgb(0 0 0 / .82);
+  --sheet-optics:var(--glass-clear-blur) saturate(1);
   --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
   --sheet-radius:32px;--sheet-padding:16px;--sheet-group-radius:calc(var(--sheet-radius) - var(--sheet-padding));
@@ -18,8 +18,8 @@
 html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
   --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#22252a;
   /* Ink adapts to the presentation; the sheet material stays the same. */
-  --sheet-veil:rgb(184 184 184 / .02);--sheet-halo:rgb(255 255 255 / .62);
-  --sheet-optics:blur(2px) saturate(1);
+  --sheet-veil:var(--glass-clear-fill);--sheet-halo:rgb(255 255 255 / .62);
+  --sheet-optics:var(--glass-clear-blur) saturate(1);
   --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(0 0 0 / .12);--sheet-focus:#111316;color-scheme:light;
 }
@@ -43,7 +43,7 @@ body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .arcade-sheet .game-button:not(.secondary){background:var(--sheet-ink);color:var(--sheet-action-ink);box-shadow:none}
 /* Form controls reset inherited text shadows in browser stylesheets. Keep
    the stroke-local contrast on transparent controls; solid actions need none. */
-.arcade-sheet :is(button:not(.game-button),.game-button.secondary,input,select){text-shadow:inherit}
+:is(.arcade-sheet,body.in-game .mp-card) :is(button:not(.game-button),.game-button.secondary,input,select){text-shadow:inherit}
 .arcade-sheet :is(input:not([type=checkbox]),select){background:var(--sheet-control);color:var(--sheet-ink)}
 .arcade-sheet input::placeholder{color:var(--sheet-ink);opacity:1}
 #accounts-dialog.arcade-sheet label{color:var(--sheet-muted)}
@@ -93,7 +93,7 @@ body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .game-view .arcade-sheet :is(.ms-close,.ms-menu-actions button,.ms-menu-footer button,.ms-zoom button,.ms-practice-tools button){min-height:44px;min-width:44px;border:0;border-radius:12px;background:var(--sheet-control);color:var(--sheet-ink);font:500 16px var(--font-sans);box-shadow:none}
 .game-view .arcade-sheet button.ms-close{border-radius:50%;font-size:24px;margin:0}
 .arcade-sheet .ms-menu-footer{margin-bottom:0}
-.game-view .ff-overlay,body.in-game .mp-overlay{background:rgb(0 0 0 / .16)}
+.game-view .ff-overlay,body.in-game .mp-overlay{background:transparent}
 .game-view .ff-dialog{width:min(390px,100%)}
 .arcade-sheet.ff-dialog :is(h2,h3){font-family:var(--font-sans)}
 .arcade-sheet .ff-close{color:var(--sheet-ink)!important;background:var(--sheet-control);border-radius:50%;width:44px;height:44px;top:12px;right:12px}
@@ -126,7 +126,7 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 @media(max-width:639px){body.in-game .mp-overlay{align-items:end;padding:8px}body.in-game .mp-card{width:100%}.game-view .ff-overlay{align-items:end;padding:8px}.arcade-sheet .ff-close,body.in-game .mp-card .mp-close{top:30px}}
 
 /* Opaque accessibility fallbacks deliberately retain the established dark palette. */
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:#1c1c20;--sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:#eee;--sheet-control:#ffffff1a;--sheet-group:#ffffff0f;--sheet-line:#ffffff40;--sheet-focus:#fff;color-scheme:dark}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-optics:none}}
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
   :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:#1c1c20;--sheet-optics:none;--sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .9);--sheet-control:#ffffff1a;--sheet-group:#ffffff0f;--sheet-line:#ffffff40;--sheet-focus:#fff;color-scheme:dark;border:1px solid #ffffffb3}
 }
