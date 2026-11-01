@@ -1,0 +1,21 @@
+import {afterEach,beforeEach,expect,test,vi} from 'vitest';
+import {Room} from '../../../src/multiplayer/room';
+import {FakeNetwork,noIce} from '../../multiplayer/fake-transport';
+import {OnlineSession} from '../../../src/games/strongroom/net/session';
+import {neutralInput,type Entity} from '../../../src/games/strongroom/sim';
+beforeEach(()=>vi.useFakeTimers());afterEach(()=>vi.useRealTimers());
+const world=()=>({spawns:[[0,0,0],[0,0,-8]] as [number,number,number][],blocked:()=>true,collide:(e:Entity,dx:number,dy:number,dz:number)=>({x:e.x+dx,y:Math.max(0,e.y+dy),z:e.z+dz,ground:true})});
+const hooks=(x=0)=>({input:()=>({...neutralInput(),x}),state:()=>{},events:()=>{},lobby:()=>{},paused:()=>{},closed:()=>{},rates:()=>({tickHz:60,snapshotHz:20,maxTeam:3}),think:()=>5});
+test('two real Room sessions start 1v1 plus bots and host alone decides damage, pause and round results',async()=>{
+ const net=new FakeNetwork(),opts={game:'strongroom',version:'test',maxPlayers:6,endpoint:net.factory,ice:noIce};
+ const hostRoom=await Room.create({...opts,name:'Hana'}),host=new OnlineSession(hostRoom,world(),hooks(),1);
+ const joining=Room.join({...opts,name:'Tama'},hostRoom.code);await vi.advanceTimersByTimeAsync(60);const guestRoom=await joining,guest=new OnlineSession(guestRoom,world(),hooks(127),1);
+ await vi.advanceTimersByTimeAsync(100);expect(host.lobby.seats.filter(s=>!s.bot)).toHaveLength(2);host.start();await vi.advanceTimersByTimeAsync(4000);
+ expect(host.state.entities).toHaveLength(6);expect(guest.state.phase).toBe('action');expect(guest.localSeat).toBe(3);
+ expect(host.state.entities.find(e=>e.seat===3)!.x).toBeGreaterThan(0);expect(guest.state.entities.find(e=>e.seat===3)!.x).toBeGreaterThan(0);
+ const before=host.state.entities[0].hp;guestRoom.send(['damage',0,0]);await vi.advanceTimersByTimeAsync(100);expect(host.state.entities[0].hp).toBe(before);
+ hostRoom.setPaused(true);await vi.advanceTimersByTimeAsync(100);const timer=host.state.timer;await vi.advanceTimersByTimeAsync(500);expect(host.state.timer).toBe(timer);expect(guest.state.paused).toBe(true);
+ hostRoom.setPaused(false);await vi.advanceTimersByTimeAsync(100);host.state.entities.filter(e=>e.team===1).forEach(e=>e.hp=0);await vi.advanceTimersByTimeAsync(150);expect(guest.state.phase).toBe('roundEnd');expect(guest.state.scores).toEqual(host.state.scores);
+ const seat=host.state.entities.find(e=>e.peer===guestRoom.id)!.seat;guestRoom.close();await vi.advanceTimersByTimeAsync(400);expect(host.state.entities.find(e=>e.seat===seat)!.bot).toBe(true);
+ host.dispose();guest.dispose();hostRoom.close();await vi.advanceTimersByTimeAsync(400);
+});
