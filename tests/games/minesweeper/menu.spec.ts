@@ -12,16 +12,16 @@ test('quiet surface and one accessible game menu preserve pause and navigation',
  await page.keyboard.press('Escape');await expect(page.locator('.ms-settings')).not.toBeVisible();await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');await expect(page.locator('#game-menu')).toBeFocused();await expect(page.locator('#study-view')).not.toBeVisible();
  await gameAction(page,'Game options');await gameAction(page,'Game rules');await expect(page.locator('#rules-dialog')).toBeVisible();await expect(page.locator('.ms-settings')).not.toBeVisible();
  await page.locator('.rules-done').click();await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
- await gameAction(page,'Game options');await pauseGame(page);await expect(page.locator('.ms-settings')).not.toBeVisible();await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
+ await gameAction(page,'Game options');await page.keyboard.press('Escape');await pauseGame(page);await expect(page.locator('.ms-settings')).not.toBeVisible();await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
  await resumeGame(page);await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');
- await gameAction(page,'Game options');await page.getByRole('button',{name:'Account & app settings',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();await expect(page.locator('.ms-settings')).not.toBeVisible();
+ await gameAction(page,'Game options');await gameAction(page,'Settings');await expect(page.locator('#menu')).toBeVisible();await expect(page.locator('.ms-settings')).not.toBeVisible();
 });
 
 for(const viewport of [{width:1366,height:768},{width:390,height:844},{width:320,height:700},{width:844,height:390}])test(`clean controls and scrollable options at ${viewport.width}x${viewport.height}`,async({page})=>{
  await page.setViewportSize(viewport);await page.goto('/#/game/minesweeper');await page.locator('.ms-tile[data-index="40"]').click();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  const toolbar=await page.locator('.game-dock').boundingBox();expect(toolbar!.height).toBeLessThan(76);
- await gameAction(page,'Game options');const menu=page.getByRole('dialog',{name:'Game options'});await expect(menu).toBeVisible();
+ await gameAction(page,'Game options');const menu=page.getByRole('dialog',{name:'Game options'});await expect(menu).toBeVisible();await expect(page.locator('.ms-menu-actions,.ms-pause,.ms-rankings,.ms-app-settings,.ms-result-rankings')).toHaveCount(0);await expect(page.locator('.game-dock')).toHaveCount(1);
  // Measure the resting touch targets after the glass sheet's entrance scale settles.
  await expect.poll(()=>menu.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
  expect(await menu.evaluate(e=>e.scrollWidth<=e.clientWidth)).toBe(true);

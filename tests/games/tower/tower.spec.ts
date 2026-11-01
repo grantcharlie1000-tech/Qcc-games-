@@ -4,7 +4,7 @@ import { test, expect } from '../../fixtures';
 const fixed=new Date('2026-01-01T12:00:00Z');
 async function start(page:import('@playwright/test').Page){
   await page.clock.install({time:fixed});await page.clock.pauseAt(fixed);
-  await page.goto('/#/game/tower');await expect(page.getByRole('button',{name:'Drop block',exact:true})).toBeVisible();
+  await page.goto('/#/game/tower');await expect(page.locator('.tower-canvas')).toBeVisible();
 }
 test('timed mouse and keyboard build a real tower, pause freezes it, save restores and restart resets',async({page})=>{
   await page.setViewportSize({width:390,height:844});await start(page);
@@ -30,9 +30,10 @@ test('timed mouse and keyboard build a real tower, pause freezes it, save restor
 test('a complete keyboard miss ends the run and the play-again action resets it',async({page})=>{
   await start(page);await page.keyboard.press('Enter');
   await expect(page.getByRole('heading',{name:'One more floor?'})).toBeVisible();
+  expect((await page.locator('.tower-again').boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await expect(page.locator('.tower-game')).toHaveAttribute('data-phase','over');
   await page.getByRole('button',{name:'Build again'}).click();await expect(page.locator('.tower-height')).toHaveText('0');
-  await page.clock.runFor(1526);await page.getByRole('button',{name:'Drop block',exact:true}).click();
+  await page.clock.runFor(1526);await page.locator('.tower-canvas').click();
   await expect(page.locator('.tower-height')).toHaveText('1');await expect(page.locator('.tower-combo')).toHaveText('1');
 });
 test('touch input drops a slab on a phone and leaving releases input',async({browser})=>{

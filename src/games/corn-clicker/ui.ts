@@ -905,7 +905,7 @@ export class CornClicker {
         <p class="cc-muted">The farm saves itself every few seconds and after big purchases. Export a save code to keep a copy or move it to another browser.</p>
         <div class="cc-row"><button type="button" class="cc-btn" data-act="save">Save now</button><button type="button" class="cc-btn cc-btn-quiet" data-act="export">Export save</button><button type="button" class="cc-btn cc-btn-quiet" data-act="import">Import save</button></div>
         <h3 class="cc-h3">Backups</h3><div class="cc-backups"></div>
-        <h3 class="cc-h3">Help</h3><div class="cc-row"><button type="button" class="cc-btn cc-btn-quiet" data-act="tutorial">Show tips again</button><button type="button" class="cc-btn cc-btn-danger" data-act="reset">Start a new farm…</button></div>`;
+        <h3 class="cc-h3">Help</h3><div class="cc-row"><button type="button" class="cc-btn cc-btn-quiet" data-act="tutorial">Show tips again</button></div>`;
     }
     for(const input of this.el.options.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-opt]')){
       if(document.activeElement===input)continue;
@@ -963,7 +963,6 @@ export class CornClicker {
       if(act==='export')this.showExport();
       if(act==='import')this.showImport();
       if(act==='tutorial'){this.game.s.tutorial.clear();this.toast('Tips will appear again as they become relevant.','info');this.requestSave();}
-      if(act==='reset')this.restart();
       if(backup){
         const b=listBackups()[Number(backup.dataset.backup)];if(!b)return;
         this.confirm('Restore this backup?',`${b.reason}, saved ${new Date(b.at).toLocaleString()}. Your current farm is backed up first, so you can switch back.`,'Restore backup',()=>{

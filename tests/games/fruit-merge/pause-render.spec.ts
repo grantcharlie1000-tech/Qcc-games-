@@ -28,7 +28,7 @@ test('shared pause stops Suika Game drawing and repeated resumes keep one physic
  });
  await page.goto('/#/game/fruit-merge');
  await expect(page.locator('.fm-board')).toBeVisible();
- await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+ await page.locator('.fm-board').click();
  await expect(page.locator('.fm-count')).toHaveText('1 fruit in basket');
  const snapshot=()=>page.evaluate(()=>{
   window.dispatchEvent(new Event('pagehide'));

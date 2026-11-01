@@ -19,14 +19,13 @@ const game:GameModule={
    <div class="ms-frame"><div class="ms-scroll" tabindex="-1" aria-label="Minefield: drag to pan, pinch to zoom"><div class="ms-board" role="grid" aria-label="Minesweeper board" aria-describedby="ms-instructions"></div></div></div>
    <div class="ms-underboard"><p class="ms-outcome" role="status">Your first move is safe.</p><span class="ms-badge" hidden>Practice · assisted</span></div>
    <p class="ms-hint-message" role="status" hidden></p>
-   <section class="ms-result" aria-label="Game result" hidden><div><strong class="ms-result-title"></strong><p class="ms-result-detail"></p></div><div class="ms-result-actions"><button type="button" class="ms-result-rankings">Score rankings</button><button type="button" class="ms-new">New game</button></div></section>
+   <section class="ms-result" aria-label="Game result" hidden><div><strong class="ms-result-title"></strong><p class="ms-result-detail"></p></div><div class="ms-result-actions"><button type="button" class="ms-new">New game</button></div></section>
    <div class="ms-bottom"><div class="ms-mode-switch" role="group" aria-label="Touch action"><button type="button" class="ms-reveal-mode" aria-pressed="true">Reveal</button><button type="button" class="ms-mode" aria-label="Flag mode" aria-pressed="false">${image('flag')}<span>Flag</span></button></div><p class="ms-instructions" id="ms-instructions">Click to reveal · Right-click to flag</p></div>
    <dialog class="ms-settings" aria-labelledby="ms-options-title"><header class="ms-menu-heading"><div><h2 id="ms-options-title">Game options</h2><p class="ms-menu-subtitle"></p></div><button type="button" class="ms-close" aria-label="Close game options">×</button></header>
-    <div class="ms-menu-actions"><button type="button" class="ms-pause">Pause game</button><button type="button" class="ms-rankings">Rankings</button></div>
     <section class="ms-menu-section"><h3>Preferences</h3><label class="ms-setting-row"><span>Sound</span><input type="checkbox" class="ms-sound"></label><label class="ms-setting-row"><span>Hold to flag</span><input type="checkbox" class="ms-longpress" checked></label><div class="ms-setting-row"><span>Tile size</span><div class="ms-zoom"><button type="button" class="ms-minus" aria-label="Zoom out">−</button><output class="ms-scale" aria-label="Tile size"></output><button type="button" class="ms-plus" aria-label="Zoom in">+</button></div></div></section>
     <section class="ms-menu-section"><label class="ms-setting-row"><span><strong>Practice</strong><small>Hints and undo. Excluded from records.</small></span><input type="checkbox" class="ms-practice"></label><div class="ms-practice-tools" hidden><button type="button" class="ms-hint">Explain a hint</button><button type="button" class="ms-undo">Undo</button></div></section>
     <section class="ms-menu-section"><h3>Statistics</h3><p class="ms-statistics"></p></section>
-    <footer class="ms-menu-footer"><button type="button" class="ms-app-settings">Account & app settings</button><button type="button" class="ms-return">Return to game</button></footer>
+    <footer class="ms-menu-footer"><button type="button" class="ms-return">Return to game</button></footer>
    </dialog>`;
   container.append(root);
   const $=<T extends HTMLElement=HTMLElement>(s:string)=>root.querySelector<T>(s)!;
@@ -144,12 +143,10 @@ const game:GameModule={
   $('.ms-practice').addEventListener('change',()=>{const next=$<HTMLInputElement>('.ms-practice').checked;if(confirmDiscard())fresh(board.level,next);else render();},{signal:events.signal});
   $('.ms-hint').addEventListener('click',()=>{if(!practice||board.status!=='playing')return;closeMenu();const result=hint(board);hinted=result?.index??null;$('.ms-hint-message').textContent=result?result.explanation+(board.flags[result.index]?' Remove the flag before revealing it.':' The outlined tile is safe to reveal.'):'No safe move established from visible numbers. This solver uses direct and subset deductions; it will not guess.';if(result)setFocus(result.index,true);render();save();},{signal:events.signal});
   $('.ms-undo').addEventListener('click',()=>{if(!practice||!history.length)return;closeMenu();syncTime();const elapsed=board.elapsedMs;board=history.pop()!;board.elapsedMs=elapsed;hinted=null;$('.ms-hint-message').textContent='';last=performance.now();render();save();},{signal:events.signal});
-  $('.ms-rankings').addEventListener('click',()=>{closeMenu();context.openRankings?.('minesweeper-score');},{signal:events.signal});
-  $('.ms-result-rankings').addEventListener('click',()=>context.openRankings?.('minesweeper-score'),{signal:events.signal});
   $('.ms-sound').addEventListener('change',()=>{sound=$<HTMLInputElement>('.ms-sound').checked;playSound(sound);save();},{signal:events.signal});$('.ms-longpress').addEventListener('change',()=>{longPress=$<HTMLInputElement>('.ms-longpress').checked;cancelGestures();save();},{signal:events.signal});
   $('.ms-dismiss').addEventListener('click',()=>{$('.ms-intro').hidden=true;write('minesweeper:intro',true);},{signal:events.signal});
   function openMenu(){
-   if(menu.open)return;resumeAfterMenu=!paused;context.setPaused?.(true);$('.ms-pause').hidden=!resumeAfterMenu;menu.showModal();
+   if(menu.open)return;resumeAfterMenu=!paused;context.setPaused?.(true);menu.showModal();
   }
   function finishMenu(){
    const resume=resumeAfterMenu;resumeAfterMenu=false;if(resume&&!document.hidden)context.setPaused?.(false);
@@ -161,8 +158,6 @@ const game:GameModule={
   menu.addEventListener('cancel',event=>{event.preventDefault();closeMenu();},{signal:events.signal});
   menu.addEventListener('click',event=>{if(event.target===menu){const rect=menu.getBoundingClientRect(),e=event as MouseEvent;if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom)closeMenu();}},{signal:events.signal});
   $('.ms-close').addEventListener('click',()=>closeMenu(),{signal:events.signal});$('.ms-return').addEventListener('click',()=>closeMenu(),{signal:events.signal});
-  $('.ms-pause').addEventListener('click',()=>closeMenu(false),{signal:events.signal});
-  $('.ms-app-settings').addEventListener('click',()=>{closeMenu();context.openAppMenu?.();},{signal:events.signal});
   const ticker=window.setInterval(()=>{if(!disposed){syncTime();clock();}},200);
   build();render();
   return {openMenu,dismissMenu:()=>closeMenu(),pause(){syncTime();paused=true;cancelGestures();render();},resume(){paused=false;last=performance.now();render();},restart,serialize:snapshot,

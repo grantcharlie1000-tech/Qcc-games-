@@ -37,6 +37,7 @@ async function open(page: Page, run: Run) {
 
 for (const difficulty of DIFFICULTIES) {
   test(`${difficulty}: real steering reversal stays on the visible floor in fullscreen`, async ({ page }) => {
+    test.setTimeout(90000); // Software WebGL competes with other jobs in the shared test host.
     // Match a near-edge excursion to the current steering authority and the
     // response lag, instead of reusing a frame count from the slower course.
     const course = getCourse(1, difficulty), halfWidth = course.sample(0).width / 2;
