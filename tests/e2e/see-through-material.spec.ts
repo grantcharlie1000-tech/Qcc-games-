@@ -1,5 +1,5 @@
 import {test,expect} from '../fixtures';
-import {openGameMenu} from '../game-menu';
+import {gameAction,openGameMenu} from '../game-menu';
 import {glyphContrast} from '../glass-contrast';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
@@ -9,12 +9,20 @@ test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasT
 test('bars, buttons and sheets add almost no fill to their live backdrop',async({page})=>{
   await page.route('**/api/movies?*',r=>r.fulfill({status:503,json:{error:'catalog_not_configured'}}));
   for(const route of ['collection','study','movies/browse/movie','game/snake']){
-    await page.goto(`/#/${route}`);
+    await page.goto(`/#/${route==='study'?'collection':route}`);
+    if(route==='study'){
+      await page.locator('.app-tabbar [data-action=study]').click();
+      await expect(page.locator('#study-view')).toBeVisible();
+      // Study normally hides arcade navigation. Test the real reading backdrop
+      // with the existing material, without changing that product behaviour.
+      await page.evaluate(()=>document.body.append(document.querySelector('.app-navigation')!));
+    }
     const scope=route.startsWith('game')?'.game-dock':route.startsWith('movies')?'.movies-navigation':'.app-navigation';
     await expect(page.locator(scope)).toBeVisible();
     const veils=await page.locator(`${scope} .arcade-glass`).evaluateAll(elements=>elements.map(e=>getComputedStyle(e,'::before').backgroundColor));
     for(const veil of veils)expect(Number(veil.match(/[\d.]+/g)?.[3]??1),`${route}: ${veil}`).toBeLessThanOrEqual(.02);
     if(route==='game/snake')await openGameMenu(page);
+    else if(route==='study')await page.locator('#study-view [data-reading-choices]').first().click();
     else await page.locator(`${scope} .section-menu`).click();
     const dialog=page.locator('dialog[open]');await expect(dialog).toBeVisible();
     const material=await dialog.evaluate(e=>({fill:getComputedStyle(e).backgroundColor,filter:getComputedStyle(e).backdropFilter}));
@@ -26,8 +34,39 @@ test('bars, buttons and sheets add almost no fill to their live backdrop',async(
   }
 });
 
+test('native start/end cards and floating Boost share the clear optical tokens',async({page})=>{
+  for(const [game,selector,dimmer] of [
+    ['snake','.snake-card',''],['quadfall','.qf-card',''],['maze-muncher','.mm-card',''],
+    ['neon-coil','.nc-card','.nc-overlay'],['neon-coil','.nc-boost',''],
+    ['flappy-bird','.fb-card',''],['ball-run','.br-setup','.br-layer'],
+    ['tower','.tower-end-card','.tower-end'],['slipline','.sl-overlay .game-panel','.sl-overlay']
+  ]){
+    await page.goto(`/#/game/${game}`);await expect(page.locator(selector).first()).toBeAttached();
+    const paint=await page.locator(selector).first().evaluate(e=>{const s=getComputedStyle(e);return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};});
+    expect(paint.fill,game).toBe('rgba(184, 184, 184, 0.02)');
+    expect(paint.image,game).toBe('none');
+    expect(paint.filter,game).toContain('blur(0.3px)');
+    if(dimmer){
+      const veil=await page.locator(dimmer).evaluate(e=>{const s=getComputedStyle(e);return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};});
+      expect(veil,game).toEqual({fill:'rgba(0, 0, 0, 0)',image:'none',filter:'none'});
+    }
+  }
+});
+
+test('Corn guidance adds no second material inside its clear column',async({page})=>{
+  await page.goto('/#/game/corn-clicker');
+  const tip=page.locator('.cc-col .cc-tip');await expect(tip).toBeAttached();
+  expect(await tip.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,filter:s.backdropFilter,shadow:s.boxShadow};})).toEqual({fill:'rgba(0, 0, 0, 0)',filter:'none',shadow:'none'});
+  await expect(page.locator('.cc-col.cc-left')).toHaveCSS('background-color','rgba(184, 184, 184, 0.02)');
+});
+
 for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} preserves the rendered background with near-zero added white`,async({page})=>{
-  await page.goto(surface==='bar'||surface==='menu'?'/#/study':'/#/game/snake');
+  await page.goto(surface==='bar'||surface==='menu'?'/#/collection':'/#/game/snake');
+  if(surface==='bar'||surface==='menu'){
+    await page.locator('.app-tabbar [data-action=study]').click();
+    await expect(page.locator('#study-view')).toBeVisible();
+    await page.evaluate(()=>document.body.append(document.querySelector('.app-navigation')!));
+  }
   if(surface==='sheet')await openGameMenu(page);
   const selector={bar:'.app-tabbar',menu:'.app-menu',dock:'.game-hud',sheet:'#game-options'}[surface];
   const panel=page.locator(selector);await expect(panel).toBeVisible();
@@ -91,18 +130,22 @@ test('a sheet uses the same clear transfer at five heights across a light/dark b
   }
 });
 
-for(const tone of ['dark','light'] as const)test(`${tone} sheet action icons retain 4.5:1 without backing rectangles`,async({page})=>{
-  await page.goto(tone==='dark'?'/#/game/snake':'/#/game/fruit-merge');
-  await openGameMenu(page);
-  const selector='#game-options',panel=page.locator(selector);
-  await page.evaluate(tone=>{const art=document.createElement('div');art.style.cssText=`position:fixed;inset:0;z-index:9999;background:${tone==='dark'?'white':'black'}`;document.body.append(art);},tone);
+for(const surface of ['dark','light','multiplayer'] as const)test(`${surface} sheet action icons retain 4.5:1 without backing rectangles`,async({page})=>{
+  await page.goto(surface==='multiplayer'?'/#/game/pool':surface==='dark'?'/#/game/snake':'/#/game/fruit-merge');
+  if(surface==='multiplayer')await gameAction(page,'Multiplayer');else await openGameMenu(page);
+  const selector=surface==='multiplayer'?'.mp-card':'#game-options',panel=page.locator(selector);
+  await page.evaluate(surface=>{const art=document.createElement('div');art.style.cssText=`position:fixed;inset:0;z-index:${surface==='multiplayer'?59:9999};background:${surface==='light'?'black':'white'}`;document.body.append(art);},surface);
   await panel.screenshot({animations:'disabled'});
   const boxes=await panel.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('svg')].filter(s=>s.getBoundingClientRect().width>0).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
-  expect(boxes.length).toBeGreaterThan(1);
+  expect(boxes.length).toBeGreaterThanOrEqual(surface==='multiplayer'?1:2);
+  const visible=(await panel.screenshot({animations:'disabled'})).toString('base64');
   const hide=await page.addStyleTag({content:`${selector} svg{color:transparent!important}`});
   const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>(e as Element).remove());
-  await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important}${selector} svg{color:#fff!important}.glass-vector-halo{display:none!important}`});
+  await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}${selector} svg{color:#fff!important}.glass-vector-halo{display:none!important}`});
   const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
   const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!);
   expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);
+  const edges=await glyphContrast(page,visible,mask,boxes,(await panel.boundingBox())!,true);
+  await test.info().attach('visible-edge-contrast',{body:JSON.stringify({surface,ratios,edges}),contentType:'application/json'});
+  expect(Math.min(...edges),JSON.stringify(edges)).toBeGreaterThanOrEqual(4.5);
 });

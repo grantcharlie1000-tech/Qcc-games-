@@ -429,7 +429,7 @@ async function glyphContrast(page:Page,container:string,items:{name:string;selec
  const style=await page.addStyleTag({content:present.map(item=>`${container} ${item.selector}{color:transparent!important}`).join('')});
  const png=(await page.screenshot({clip:box,type:'png'})).toString('base64');
  await style.evaluate(node=>(node as Element).remove());
- const maskStyle=await page.addStyleTag({content:`${container},${container} *{background:#000!important;color:#000!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important}.glass-vector-halo{display:none!important}`+present.map(item=>`${container} ${item.selector}{color:#fff!important}`).join('')});
+ const maskStyle=await page.addStyleTag({content:`${container},${container} *{background:#000!important;color:#000!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}.glass-vector-halo{display:none!important}`+present.map(item=>`${container} ${item.selector}{color:#fff!important}`).join('')});
  const mask=(await page.screenshot({clip:box,type:'png'})).toString('base64');
  await maskStyle.evaluate(e=>(e as Element).remove());
  const measured=await page.evaluate(async({png,mask,present,box})=>{

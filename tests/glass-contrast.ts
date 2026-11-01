@@ -1,8 +1,8 @@
 import type {Page} from '@playwright/test';
 export interface GlyphBox{x:number;y:number;w:number;h:number;color:string}
 // Compare actual ink cores with the rendered backdrop, including any local text shadow.
-export async function glyphContrast(page:Page,shot:string,mask:string,boxes:GlyphBox[],bounds:{width:number;height:number}):Promise<number[]>{
-return page.evaluate(async({shot,mask,boxes,bounds})=>{
+export async function glyphContrast(page:Page,shot:string,mask:string,boxes:GlyphBox[],bounds:{width:number;height:number},visibleEdges=false):Promise<number[]>{
+return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
       const image=new Image();image.src='data:image/png;base64,'+shot;await image.decode();
       const c=document.createElement('canvas');c.width=image.width;c.height=image.height;
       const context=c.getContext('2d')!;context.drawImage(image,0,0);
@@ -17,12 +17,25 @@ return page.evaluate(async({shot,mask,boxes,bounds})=>{
         const color=b.color.match(/[\d.]+/g)!.map(Number),alpha=color[3]??1;let worst=Infinity;
         for(let y=Math.max(0,Math.ceil(b.y*sy));y<Math.min(c.height,Math.floor((b.y+b.h)*sy));y++)for(let x=Math.max(0,Math.ceil(b.x*sx));x<Math.min(c.width,Math.floor((b.x+b.w)*sx));x++){
           const i=(y*c.width+x)*4;
-          if(Math.min(inkMask[i],inkMask[i+1],inkMask[i+2])<245)continue;
+          if(visibleEdges){
+            // Inspect the actual visible outline just outside opaque glyph
+            // cores, not a shadow hidden beneath the foreground. At DPR3 this
+            // is the nearest two device pixels (2/3 CSS px) along either axis.
+            if(Math.max(inkMask[i],inkMask[i+1],inkMask[i+2])>12)continue;
+            let adjacent=false;
+            for(let distance=1;distance<=Math.ceil(sx*2/3);distance++)for(const [dx,dy] of [[distance,0],[-distance,0],[0,distance],[0,-distance]]){
+              const xx=x+dx,yy=y+dy;
+              if(xx<0||xx>=c.width||yy<0||yy>=c.height)continue;
+              const j=(yy*c.width+xx)*4;
+              if(Math.min(inkMask[j],inkMask[j+1],inkMask[j+2])>=242)adjacent=true;
+            }
+            if(!adjacent)continue;
+          }else if(Math.min(inkMask[i],inkMask[i+1],inkMask[i+2])<245)continue;
           const backdrop=[data[i],data[i+1],data[i+2]],bg=lum(backdrop);
           const ink=lum(color.slice(0,3).map((v,c)=>v*alpha+backdrop[c]*(1-alpha)));
           worst=Math.min(worst,(Math.max(ink,bg)+.05)/(Math.min(ink,bg)+.05));
         }
         return Number.isFinite(worst)?worst:0;
       });
-    },{shot,mask,boxes,bounds});
+    },{shot,mask,boxes,bounds,visibleEdges});
 }

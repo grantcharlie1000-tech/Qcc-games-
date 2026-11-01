@@ -16,6 +16,7 @@
   -webkit-backdrop-filter:var(--sheet-optics);backdrop-filter:var(--sheet-optics);
   box-shadow:inset .5px .5px 0 rgb(255 255 255 / .7),inset -.5px -.5px 0 rgb(255 255 255 / .55),inset 0 0 12px rgb(255 255 255 / .1),0 16px 52px -12px rgb(0 0 0 / .2),0 3px 12px rgb(0 0 0 / .08);
   font:400 17px/1.45 var(--font-sans);text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
+  -webkit-text-stroke:1.4px var(--sheet-halo);paint-order:stroke fill;
 }
 html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
   --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#22252a;
@@ -130,11 +131,11 @@ body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);col
 /* Opaque accessibility fallbacks deliberately retain the established dark palette. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-optics:none}}
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
-  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:#1c1c20;--sheet-optics:none;--sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .9);--sheet-control:#ffffff1a;--sheet-group:#ffffff0f;--sheet-line:#ffffff40;--sheet-focus:#fff;color-scheme:dark;border:1px solid #ffffffb3}
+  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){-webkit-text-stroke:0;--sheet-veil:#1c1c20;--sheet-optics:none;--sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .9);--sheet-control:#ffffff1a;--sheet-group:#ffffff0f;--sheet-line:#ffffff40;--sheet-focus:#fff;color-scheme:dark;border:1px solid #ffffffb3}
 }
 @media(prefers-contrast:more){:is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:#121214;border-width:2px}}
 @media(forced-colors:active){
-  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){--sheet-veil:Canvas;--sheet-optics:none;--sheet-ink:CanvasText;--sheet-muted:CanvasText;--sheet-control:Canvas;--sheet-group:Canvas;--sheet-line:CanvasText;--sheet-focus:Highlight;background:Canvas;color:CanvasText;border:2px solid CanvasText;box-shadow:none}
+  :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card){-webkit-text-stroke:0;--sheet-veil:Canvas;--sheet-optics:none;--sheet-ink:CanvasText;--sheet-muted:CanvasText;--sheet-control:Canvas;--sheet-group:Canvas;--sheet-line:CanvasText;--sheet-focus:Highlight;background:Canvas;color:CanvasText;border:2px solid CanvasText;box-shadow:none}
   :is(.arcade-sheet[data-glass-tone],body.in-game .mp-card) :is(button,input,select,textarea){border:2px solid ButtonText}
   .game-view .arcade-sheet.ms-settings :is(button,input,select,textarea){border:2px solid ButtonText}
   .arcade-sheet :is(.ms-setting-row,.game-touch-setting) input[type=checkbox]{border:2px solid CanvasText}

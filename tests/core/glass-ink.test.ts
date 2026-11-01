@@ -24,6 +24,6 @@ describe('clear glass contrast',()=>{
     expect(glassInk([[255,255,255]],'light').halo).toBe('rgb(255 255 255 / 0)');
   });
   it('includes a moving selected-tab highlight over a mid-gray backdrop',()=>{
-    expect(glassInk([[106,106,106]],undefined,true).halo).not.toBe('rgb(0 0 0 / 0)');
+    expect(glassInk([[107,107,107]],undefined,true).halo).not.toBe('rgb(0 0 0 / 0)');
   });
 });

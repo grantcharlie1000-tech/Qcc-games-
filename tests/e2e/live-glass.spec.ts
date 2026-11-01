@@ -46,7 +46,12 @@ test('unchanged game text does not trigger a new backdrop colour scan each frame
   });
   await page.goto('/#/game/snake');await expect(page.locator('.snake-start')).toBeVisible();
   await page.evaluate(()=>{const probe=document.createElement('span');probe.id='unchanged-hud';probe.textContent='Ready';probe.style.cssText='position:fixed;left:-1000px';document.querySelector('#game-stage')!.append(probe);});
-  await page.waitForTimeout(200);
+  await expect(page.locator('#game-menu')).toHaveAttribute('data-glass',/backdrop|frost/);
+  await page.evaluate(()=>document.fonts.ready);
+  await page.locator('.game-dock').screenshot({animations:'disabled'});
+  // Do not count initial font/map decoding and viewport settlement as work
+  // caused by a game replacing an unchanged text node during play.
+  await page.waitForTimeout(1000);
   const scanned=await page.evaluate(()=>new Promise<{before:number;after:number}>(resolve=>{
     const counter=(window as unknown as {inkScanCounter:{hits:number}}).inkScanCounter;
     const before=counter.hits;let frame=0;

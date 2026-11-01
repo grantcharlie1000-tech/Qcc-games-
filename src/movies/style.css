@@ -288,7 +288,7 @@ body.movies-active.study-active{overflow:auto}
 /* Live, clear player controls use the same optical tokens as the navigation. */
 .movies-view :is(.movies-fullscreen,.movies-resume-pill,.movies-connecting){
  background:var(--glass-clear-fill);-webkit-backdrop-filter:var(--glass-clear-blur);backdrop-filter:var(--glass-clear-blur);
- --sheet-halo:rgb(0 0 0 / .82);color:#fff;
+ --sheet-halo:rgb(0 0 0 / .82);color:#fff;-webkit-text-stroke:1.4px var(--sheet-halo);paint-order:stroke fill;
  text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
  box-shadow:inset 0 1px 0 rgb(255 255 255 / .4),0 2px 16px rgb(0 0 0 / .08);
 }
@@ -321,7 +321,7 @@ body.movies-active.study-active{overflow:auto}
 /* The season pills are plain translucent fills on the sheet. A long season name wraps inside its pill, as the title page's pills do. An idle
    pill's label is white: WebKit renders a bright frame lighter through the glass, and a grey label fell below 4.5:1 over a white frame there. */
 .movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgb(255 255 255 / .1);color:#fff;font-size:13px;font-weight:500;line-height:1.2;white-space:normal;max-width:100%;cursor:pointer}
-.movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700;text-shadow:none}
+.movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700;text-shadow:none;-webkit-text-stroke:0}
 @media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:rgb(255 255 255 / .18);color:#fff}}
 .movies-view .movies-drawer-list{display:grid;gap:4px}
 .movies-view .movies-drawer-row{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:12px;min-height:56px;padding:6px;border-radius:12px;color:var(--c-200)}

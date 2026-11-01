@@ -20,9 +20,9 @@ const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
 export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false):{color:string;halo:string}{
   const backgrounds=bounds(samples.length?samples:[[25,29,28]]).flatMap(rgb=>{
     const glass=mix(rgb,[184,184,184],.02);
-    // Include the moving white 1% tab lens or the floating header's black
+    // Include the moving white 0.5% tab lens or the floating header's black
     // 9% selection, as well as the unselected state.
-    return selection?[glass,mix(glass,selection==='dark'?[0,0,0]:[255,255,255],selection==='dark'?.09:.01)]:[glass];
+    return selection?[glass,mix(glass,selection==='dark'?[0,0,0]:[255,255,255],selection==='dark'?.09:.005)]:[glass];
   });
   const candidates=[{ink:INK,color:'#0b1015',veil:[255,255,255] as RGB},{ink:[255,255,255] as RGB,color:'#fff',veil:[0,0,0] as RGB}];
   const scored=candidates.map(candidate=>{
@@ -38,7 +38,7 @@ export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',select
     }
     return {...candidate,alpha:Math.ceil(high*100)/100};
   }).sort((a,b)=>a.alpha-b.alpha);
-  // Preserve a modal's established ink when its hidden backdrop requires a
+  // Preserve the surface's established ink when a mixed backdrop requires an
   // outline either way. An unoutlined choice always takes priority.
   const best=preferred&&scored.every(c=>c.alpha>0)?scored.find(c=>c.color===(preferred==='light'?'#fff':'#0b1015'))!:scored[0];
   return {color:best.color,halo:`rgb(${best.veil.join(' ')} / ${best.alpha})`};
@@ -79,6 +79,7 @@ const overlaps=(a:DOMRect,b:DOMRect)=>a.left<b.right&&a.right>b.left&&a.top<b.bo
 /** All layout/style reads are cached for one update, before any ink writes. */
 function sampler(){
   const styles=new Map<Element,CSSStyleDeclaration>(),rects=new Map<Element,DOMRect>();
+  const liveGame=!!document.querySelector('#game-stage canvas,#game-stage svg');
   const ids=new Map<Element,number>();
   const id=(e:Element)=>{let value=ids.get(e);if(value===undefined){value=ids.size;ids.set(e,value);}return value;};
   const style=(e:Element)=>{let s=styles.get(e);if(!s){s=getComputedStyle(e);styles.set(e,s);}return s;};
@@ -111,6 +112,10 @@ function sampler(){
   }
 
   function sample(glyph:Element):RGB[]{
+    // Canvas/SVG gameplay can change on every compositor frame without a DOM
+    // mutation. Bound its whole colour range once; a glyph outline handles
+    // that range without pixel readbacks or repeated layout/hit-test scans.
+    if(liveGame&&glyph.closest('.game-dock'))return UNKNOWN;
     const r=rect(glyph);
     const ownerDialog=glyph.closest('dialog');
     // The edge lens can sample artwork beyond the glyph footprint.
@@ -176,12 +181,19 @@ function vectorHalo(glyph:Element):void{
   // measured with the foreground hidden, just like a text shadow.
   const halo=document.createElementNS('http://www.w3.org/2000/svg','g');
   halo.classList.add('glass-vector-halo');halo.setAttribute('aria-hidden','true');
+  const width=glyph.getBoundingClientRect().width||24;
+  const outline=1.8*(glyph.viewBox.baseVal.width||width)/width;
   for(const child of [...glyph.children])if(!child.matches('defs,title,desc')){
     const copy=child.cloneNode(true) as Element;
     copy.removeAttribute('id');for(const e of copy.querySelectorAll('[id]'))e.removeAttribute('id');
-    for(const shape of [copy,...copy.querySelectorAll('*')]){
-      if(shape.getAttribute('stroke')==='none'&&shape.getAttribute('fill')!=='none'){
-        shape.setAttribute('stroke','currentColor');shape.setAttribute('stroke-width','1.2');
+    const originals=[child,...child.querySelectorAll('*')];
+    for(const [i,shape] of [copy,...copy.querySelectorAll('*')].entries()){
+      if(shape.matches('path,rect,circle,ellipse,line,polyline,polygon,use')){
+        // Expand each actual stroke, including the thicker native close icon.
+        // A fixed group width could disappear beneath an explicit child stroke.
+        const style=getComputedStyle(originals[i]);
+        shape.setAttribute('stroke','currentColor');
+        shape.setAttribute('stroke-width',String((style.stroke==='none'?0:parseFloat(style.strokeWidth)||0)+outline));
       }
       if(shape.hasAttribute('fill')&&shape.getAttribute('fill')!=='none')shape.setAttribute('fill','currentColor');
     }
@@ -216,7 +228,7 @@ function update(){
       for(const glyph of glyphs){
         const r=rect(glyph);if(!r.width||!r.height||style(glyph).clip!=='auto')continue;
         const modal=bar.closest('dialog');
-        const preference=modal?(luminance(paint(style(modal).color).rgb)>.5?'light':'dark'):undefined;
+        const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
         const selection=bar.classList.contains('ui-tabbar')?true:bar.classList.contains('floating-glass-group')?'dark':false;
         changes.push({glyph,ink:bar.dataset.glass==='off'?null:glassInk(sample(glyph),preference,selection)});
       }
@@ -243,7 +255,12 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     document.addEventListener('focusout',schedule,true);
     window.addEventListener('resize',schedule,{passive:true});
     observer=new MutationObserver(records=>{
+      const liveGame=!!document.querySelector('#game-stage canvas,#game-stage svg');
       if(records.some(r=>{
+        // Gameplay is covered by the conservative range above. Canvas pixels
+        // still update through backdrop-filter; DOM animation cannot make the
+        // fixed ink/outline pair less legible.
+        if(liveGame&&r.target instanceof Element&&r.target.closest('#game-stage'))return false;
         // Several games render unchanged HUD text every animation frame. Equal
         // replacements have no new paint to sample. The compositor still reads
         // the live canvas backdrop every frame; this only avoids redundant DOM

@@ -123,7 +123,7 @@ for(const [view,black] of [['home',false],['accounts',false],['snake',false],['f
     const hide=await page.addStyleTag({content:`${selector} *{color:transparent!important}`});
     const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
     await hide.evaluate(e=>e.parentNode?.removeChild(e));
-    await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important}`});
+    await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
     const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
     const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!);
     expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
