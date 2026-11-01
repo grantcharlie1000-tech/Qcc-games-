@@ -199,7 +199,7 @@ export class MoviesView {
  private readonly disposeImages:()=>void;
  private onVisibility=()=>{if(document.hidden)this.pause();};
  // The island is one element that survives renders: render() swaps the page around it and refreshes its items.
- private readonly navigation=createSectionNavigation('movies','dark');
+ private readonly navigation=createSectionNavigation('movies');
  private readonly tabbar=this.navigation.bar;
  private readonly menuGlass=bindGlass(this.navigation.menu);
  private readonly disposeRails:()=>void;

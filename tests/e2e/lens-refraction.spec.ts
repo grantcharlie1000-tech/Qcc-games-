@@ -221,14 +221,14 @@ test('the lens map follows a change of pixel density, and is built again for eac
 
 // Frost is the bar's own backdrop filter. It needs no copy of the page, so it cannot lag a scroll, and it runs in every engine.
 test.describe('frost, in every browser but Chromium',()=>{
-  test('frost blurs the bar itself, with no lens, no SVG filter and no map',async({page})=>{
+  test('frost filters each visible shape directly, with no SVG filter or map',async({page})=>{
     await asFrost(page);
     await page.setViewportSize({width:390,height:844});
     await page.goto('/');
     const bar=page.locator('.app-tabbar');
     await expect(bar).toHaveAttribute('data-glass','frost');
     await expect(bar).not.toHaveClass(/is-refracting/);
-    await expect(page.locator('.ui-glass-lens')).toHaveCount(0);
+    await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
     expect(frost).toContain('blur(4px)');
@@ -267,29 +267,32 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
   });
 
-  test('the frost bar fades its own opacity when it minimizes, and reduced motion still fades it',async({page})=>{
+  test('the same frost surface remains inside the minimized pill, including reduced motion',async({page})=>{
     await asFrost(page);
     await page.setViewportSize({width:390,height:844});
     await page.goto('/');
     const bar=page.locator('.app-tabbar');
     await page.evaluate(()=>window.scrollTo(0,400));
     await expect(bar).toHaveAttribute('data-minimized','true');
-    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
+    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
     await page.emulateMedia({reducedMotion:'reduce'});
     await page.evaluate(()=>window.scrollTo(0,368));
     await expect(bar).not.toHaveAttribute('data-minimized');
     // 64 px of downward travel from 368 minimizes the island again.
     await page.evaluate(()=>window.scrollTo(0,432));
     await expect(bar).toHaveAttribute('data-minimized','true');
-    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('0');
+    await expect.poll(()=>bar.evaluate(el=>getComputedStyle(el).opacity)).toBe('1');
+    await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
     expect(await bar.evaluate(el=>getComputedStyle(el).translate)).toBe('none');
   });
 
   test('desktop fallback gives each glass object one filtered surface',async({page})=>{
     await asFrost(page);await page.setViewportSize({width:1440,height:900});await page.goto('/');
     await expect(page.locator('.app-navigation [data-glass=frost]')).toHaveCount(2);
-    await expect(page.locator('.ui-scroll-edge,.app-navigation .ui-glass-lens')).toHaveCount(0);
-    for(const selector of ['.app-tabbar','.app-menu'])expect(await page.locator(selector).evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(4px)');
+    await expect(page.locator('.ui-scroll-edge')).toHaveCount(0);
+    await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
+    for(const selector of ['.app-tabbar','.app-menu'])await expect(page.locator(selector)).toHaveCSS('backdrop-filter',/blur\(4px\)/);
   });
 
   test('Movies preserves its separate fallback companion through a re-render',async({page})=>{

@@ -290,7 +290,7 @@ test('a tapped tab does not pin the bar open',async({page})=>{
  await expect.poll(async()=>(await bar.boundingBox())!.width).toBeLessThanOrEqual(56);
 });
 
-test('reduced motion only fades the minimized tab bar, with no slide or scale',async({page})=>{
+test('reduced motion changes the minimized pill bounds without slide or scale',async({page})=>{
  await page.emulateMedia({reducedMotion:'reduce'});
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
@@ -301,11 +301,12 @@ test('reduced motion only fades the minimized tab bar, with no slide or scale',a
  // The liquid exit moves with translate and scale, so reduced motion must clear both as well.
  await expect(bar).toHaveCSS('translate','none');
  await expect(bar).toHaveCSS('scale','none');
- await expect(bar).toHaveCSS('opacity','0');
+ await expect(bar).toHaveCSS('opacity','1');
+ await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
  await expect(bar).toHaveCSS('pointer-events','none');
 });
 
-test('the app reduce-motion setting only fades the minimized tab bar',async({page})=>{
+test('the app reduce-motion setting changes pill bounds without motion',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');
  await page.evaluate(()=>document.documentElement.classList.add('reduce-motion'));
@@ -315,7 +316,8 @@ test('the app reduce-motion setting only fades the minimized tab bar',async({pag
  await expect(bar).toHaveCSS('transform','none');
  await expect(bar).toHaveCSS('translate','none');
  await expect(bar).toHaveCSS('scale','none');
- await expect(bar).toHaveCSS('opacity','0');
+ await expect(bar).toHaveCSS('opacity','1');
+ await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
 });
 
 test('the island floats and minimizes on scroll on desktop too',async({page})=>{
