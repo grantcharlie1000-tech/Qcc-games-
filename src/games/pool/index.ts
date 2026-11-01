@@ -15,11 +15,19 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  let state=createGame(),paused=false,disposed=false,frame=0,last=0,accumulator=0,aiPlan:ReturnType<typeof chooseAI>|null=null;
  let ghost:{x:number;y:number;valid:boolean}|null=null;
  const abort=new AbortController(),root=document.createElement('div');root.className='pool-game';
- root.innerHTML=`<div class="pool-players" role="group" aria-label="Ball groups and potted balls"><section class="pool-player"></section><section class="pool-player"></section></div><p class="pool-open-table"></p><div class="pool-table-area"><div class="pool-cue-meter"><span>POWER</span><div aria-hidden="true"><i></i></div><output class="pool-power-value" aria-live="off">0%</output></div><div class="pool-table-wrap"><div class="mp-waiting" hidden>Waiting for host<small>The host has paused the game.</small></div><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Drag felt to aim; pull white ball back and release to shoot. Arrow keys aim and change power; Enter shoots; C cancels." aria-describedby="pool-tip" width="${VIEW_WIDTH}" height="${VIEW_HEIGHT}"></canvas><p class="pool-message" role="status"></p></div></div><div class="pool-inhand" hidden>Ball-in-hand: tap or drag to a clear spot and release. Keyboard: arrows to move, Enter to place.</div><div class="pool-under"><label class="pool-mode">Players <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option></select></label><button type="button" class="pool-multiplayer" aria-haspopup="dialog">Multiplayer</button><label class="pool-mode">AI <select aria-label="AI difficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((_,i)=>`<option value="${i}">${i+1} · ${['Top right','Bottom right','Top middle','Bottom middle','Top left','Bottom left'][i]}</option>`).join('')}</select></div><span class="pool-shot-count">0 shots</span></div><p class="pool-gesture-label" role="status">Drag felt to aim · pull white ball back to shoot</p><details class="pool-help"><summary>How to play</summary><p class="pool-tip" id="pool-tip">Drag the felt to aim. Pull back from the white ball, then release to shoot. Cancel: return to your starting point, add a second finger, or press C. Keyboard: ← → aim · ↑ ↓ power · Enter shoot. The top trays fill with your numbered balls as they are potted.</p></details><p class="pool-live"></p>`;
+ root.innerHTML=`<div class="pool-players" role="group" aria-label="Ball groups and potted balls"><section class="pool-player"></section><section class="pool-player"></section></div><p class="pool-open-table"></p><div class="pool-table-area"><div class="pool-cue-meter"><span>POWER</span><div aria-hidden="true"><i></i></div><output class="pool-power-value" aria-live="off">0%</output></div><div class="pool-table-wrap"><div class="mp-waiting" hidden>Waiting for host<small>The host has paused the game.</small></div><canvas class="pool-table" tabindex="0" role="img" aria-label="Billiards table. Drag felt to aim; pull white ball back and release to shoot. Arrow keys aim and change power; Enter shoots; C cancels." aria-describedby="pool-tip" width="${VIEW_WIDTH}" height="${VIEW_HEIGHT}"></canvas></div></div><div class="pool-inhand" hidden>Ball-in-hand: tap or drag to a clear spot and release. Keyboard: arrows to move, Enter to place.</div><div class="pool-under"><p class="pool-message" role="status"></p><label class="pool-mode">Players <select aria-label="Players"><option value="ai">You vs computer</option><option value="two">Two people</option></select></label><button type="button" class="pool-multiplayer" aria-haspopup="dialog">Multiplayer</button><label class="pool-mode">AI <select aria-label="AI difficulty"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label><div class="pool-pocket-row"><label for="pool-pocket">8-ball pocket</label><select id="pool-pocket" aria-label="8-ball pocket">${POCKETS.map((_,i)=>`<option value="${i}">${i+1}</option>`).join('')}</select></div><span class="pool-shot-count">0 shots</span></div><p class="pool-gesture-label" role="status">Drag felt to aim · pull white ball back to shoot</p><details class="pool-help"><summary>How to play</summary><p class="pool-tip" id="pool-tip">Drag the felt to aim. Pull back from the white ball, then release to shoot. Cancel: return to your starting point, add a second finger, or press C. Keyboard: ← → aim · ↑ ↓ power · Enter shoot. The top trays fill with your numbered balls as they are potted.</p></details><p class="pool-live"></p>`;
  container.append(root);
  const $=<T extends HTMLElement>(selector:string)=>root.querySelector<T>(selector)!;
  const canvas=$<HTMLCanvasElement>('.pool-table'),pocket=$<HTMLSelectElement>('#pool-pocket'),mode=$<HTMLSelectElement>('[aria-label="Players"]');
  const difficulty=$<HTMLSelectElement>('[aria-label="AI difficulty"]');
+ const portraitMedia=matchMedia('(max-width:600px) and (orientation:portrait)');
+ let portrait=portraitMedia.matches;
+ function orientTable(){
+  root.dataset.portrait=String(portrait);
+  const positions=portrait?['Top left','Top right','Middle left','Middle right','Bottom left','Bottom right']:['Top right','Bottom right','Top middle','Bottom middle','Top left','Bottom left'];
+  Array.from(pocket.options).forEach((option,i)=>{option.textContent=`${i+1} · ${positions[i]}`;});
+ }
+ orientTable();
  let drag:Drag|null=null,pointer:number|null=null,placing=false,keyboardPower=false;
  let dragRect:DOMRect|null=null;
  const contacts=new Set<number>();
@@ -44,13 +52,13 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   for(let i=0;i<2;i++){
    const el=root.querySelectorAll<HTMLElement>('.pool-player')[i],group=state.groups[i],ids=group?Array.from({length:7},(_,n)=>n+(group==='solids'?1:9)):[],potted=ids.filter(id=>state.balls.find(b=>b.id===id)?.pocketed),onEight=!!group&&potted.length===7,current=state.turn===i&&state.phase!=='over';
    el.classList.toggle('pool-current',current);el.setAttribute('aria-label',`${escapeHtml(name(i))}: ${group??'group unassigned'}. ${potted.length} potted${current?'. Current player':''}`);
-   el.innerHTML=`<div class="pool-player-heading"><div class="pool-group-symbol" aria-hidden="true">${group?ballMarkup(onEight?8:group==='solids'?1:9):'<span class="pool-unassigned-ball">?</span>'}</div><div class="pool-player-identity"><strong>${escapeHtml(name(i))}<span class="pool-turn-label">${current?(i===0&&state.mode==='ai'?'Your turn':'To play'):''}</span></strong><span class="pool-group-label">${onEight?'ON THE 8':group==='solids'?'SOLIDS · 1–7':group==='stripes'?'STRIPES · 9–15':'GROUP UNASSIGNED'}</span></div></div><div class="pool-pot-tray" aria-label="${escapeHtml(name(i))} potted balls">${Array.from({length:7},(_,n)=>{const id=ids[n],down=id!==undefined&&potted.includes(id);return `<span class="pool-pot-slot ${down?'pool-pot-filled':''}" ${id!==undefined?`data-ball="${id}"`:''} aria-label="${id===undefined?'Unassigned slot':`Ball ${id}: ${down?'potted':'on table'}`}">${down?ballMarkup(id):`<span class="pool-empty-number">${id??''}</span>`}</span>`;}).join('')}</div><small class="pool-pot-count">${group?`${potted.length} POTTED · ${7-potted.length} LEFT`:'POTTED BALLS'}</small>`;
+   el.innerHTML=`<div class="pool-player-heading"><div class="pool-group-symbol" aria-hidden="true">${group?ballMarkup(onEight?8:group==='solids'?1:9):'<span class="pool-unassigned-ball">?</span>'}</div><div class="pool-player-identity"><strong><span class="pool-player-name" title="${escapeHtml(name(i))}">${escapeHtml(name(i))}</span><span class="pool-turn-label">${current?(i===0&&state.mode==='ai'?'Your turn':'To play'):''}</span></strong><span class="pool-group-label">${onEight?'ON THE 8':group==='solids'?'SOLIDS · 1–7':group==='stripes'?'STRIPES · 9–15':'GROUP UNASSIGNED'}</span></div></div><div class="pool-pot-tray" aria-label="${escapeHtml(name(i))} potted balls">${Array.from({length:7},(_,n)=>{const id=ids[n],down=id!==undefined&&potted.includes(id);return `<span class="pool-pot-slot ${down?'pool-pot-filled':''}" ${id!==undefined?`data-ball="${id}"`:''} aria-label="${id===undefined?'Unassigned slot':`Ball ${id}: ${down?'potted':'on table'}`}">${down?ballMarkup(id):`<span class="pool-empty-number">${id??''}</span>`}</span>`;}).join('')}</div><small class="pool-pot-count">${group?`${potted.length} POTTED · ${7-potted.length} LEFT`:'POTTED BALLS'}</small>`;
   }
   const open=root.querySelector<HTMLElement>('.pool-open-table')!;
   const down=state.balls.filter(b=>b.pocketed&&b.id!==0&&b.id!==8);
   open.innerHTML=state.groups[0]?`<span class="pool-tray-key">The top trays show potted balls</span>`:`<span>OPEN TABLE · Pot a ball after the break to claim your group</span>${down.length?`<span class="pool-open-pots" aria-label="Potted before groups were assigned">${down.map(b=>ballMarkup(b.id)).join('')}</span>`:''}`;
  }
- function draw(){playerHud();root.dataset.table=state.balls.map(b=>`${b.id}:${b.x.toFixed(2)},${b.y.toFixed(2)},${b.pocketed?1:0}`).join(';');drawTable(canvas,state,ghost,paused,drag,onlineNames());}
+ function draw(){playerHud();root.dataset.table=state.balls.map(b=>`${b.id}:${b.x.toFixed(2)},${b.y.toFixed(2)},${b.pocketed?1:0}`).join(';');drawTable(canvas,state,ghost,paused,drag,onlineNames(),portrait);}
  function refresh(announce=false){
   root.dataset.phase=state.phase;root.dataset.shots=String(state.shots);root.dataset.turn=String(state.turn);root.dataset.table=state.balls.map(b=>`${b.id}:${b.x.toFixed(2)},${b.y.toFixed(2)},${b.pocketed?1:0}`).join(';');root.setAttribute('aria-busy',String(state.phase==='moving'));
 
@@ -67,7 +75,7 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   const gestureText=drag?.kind==='pull'?(drag.power>=.08?'Release to shoot · return to start to cancel':'Pull away from the aim line to build power'):drag?'Release to set aim · then pull white ball back':keyboardPower?`Aim ${Math.round(((state.angle+Math.PI/2)*180/Math.PI+360)%360)}° · ${Math.round(state.power*100)}% power · Enter to shoot`:'Drag felt to aim · pull white ball back to shoot';
   setText('.pool-gesture-label',gestureText);
   const inHand=state.ballInHand&&human()&&state.phase==='aim'&&onlineReady();$('.pool-inhand').hidden=!inHand;
-  const liveText=online&&!(online.host?online.host.opponent:online.guest.state)?`Waiting for an opponent to join room ${online.room.code}.`:online?.roomPaused?'Waiting for host.':online?.guest?.pending!=null?'Sent to the host…':online&&state.phase==='aim'&&!human()?`Waiting for ${name(state.turn)}…`:state.phase==='over'?(online?.guest?'The host can start a new rack with Restart.':'Restart in the top toolbar to play again.'):state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';setText('.pool-live',liveText);
+  const liveText=online&&!(online.host?online.host.opponent:online.guest.state)?`Waiting for an opponent to join room ${online.room.code}.`:online?.roomPaused?'Waiting for host.':online?.guest?.pending!=null?'Sent to the host…':online&&state.phase==='aim'&&!human()?`Waiting for ${name(state.turn)}…`:state.phase==='over'?(online?.guest?'The host can start a new rack with Restart.':'Open Menu and choose Restart to play again.'):state.ballInHand?'Ball-in-hand · place the white cue ball.':!human()&&state.phase==='aim'?'Computer is choosing a shot locally…':legalTargets(state).some(b=>b.id===8)?'Your group is clear. Select the 8-ball pocket before shooting.':'';setText('.pool-live',liveText);
   if(!online)context.setScore(state.balls.filter(b=>b.id!==0&&!b.pocketed).length===15?0:state.balls.filter(b=>b.id!==0&&b.id!==8&&b.pocketed).length*100+(state.phase==='over'&&state.winner===0?1000:0));context.setLevel(state.phase==='over'?'Rack complete':`Shot ${state.shots+1}`);if(lastStatus!==text){context.setStatus(text);lastStatus=text;}if(announce)context.announce(text);
   draw();
  }
@@ -166,16 +174,16 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  }) as EventListener,true);
  on(canvas,'pointerdown',((event:PointerEvent)=>{
   if(pointer!==null||contacts.size>1||event.isPrimary===false||event.button!==0||paused||disposed||state.phase!=='aim'||!human()||!onlineReady())return;
-  const rect=canvas.getBoundingClientRect(),p=tablePoint(event.clientX,event.clientY,rect);
+  const rect=canvas.getBoundingClientRect(),p=tablePoint(event.clientX,event.clientY,rect,portrait);
   if(!onFelt(p))return;
   if(state.ballInHand){placing=true;ghost={...p,valid:validCuePosition(state,p.x,p.y)};}
-  else {drag=beginDrag(p,cue(),state.angle,Math.min(55,Math.max(18,22*VIEW_WIDTH/rect.width)));if(!drag)return;state.angle=drag.angle;keyboardPower=false;}
+  else {drag=beginDrag(p,cue(),state.angle,Math.min(55,Math.max(18,22*(portrait?VIEW_HEIGHT:VIEW_WIDTH)/rect.width)));if(!drag)return;state.angle=drag.angle;keyboardPower=false;}
   pointer=event.pointerId;dragRect=rect;canvas.setPointerCapture(pointer);canvas.focus({preventScroll:true});event.preventDefault();refresh();
  }) as EventListener);
  on(canvas,'pointermove',((event:PointerEvent)=>{
   if(event.pointerId!==pointer)return;
   event.preventDefault();if(!sameLayout()){changedLayout();return;}
-  const p=tablePoint(event.clientX,event.clientY,canvas.getBoundingClientRect());
+  const p=tablePoint(event.clientX,event.clientY,canvas.getBoundingClientRect(),portrait);
   if(placing)ghost={...p,valid:validCuePosition(state,p.x,p.y)};
   else if(drag){moveDrag(drag,p,cue());state.angle=drag.angle;sendAim();}
   refresh();
@@ -183,13 +191,14 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
  on(canvas,'pointerup',((event:PointerEvent)=>{
   if(event.pointerId!==pointer)return;
   event.preventDefault();if(!sameLayout()){changedLayout();return;}
-  const p=tablePoint(event.clientX,event.clientY,canvas.getBoundingClientRect());
+  const p=tablePoint(event.clientX,event.clientY,canvas.getBoundingClientRect(),portrait);
   if(placing){const valid=onFelt(p)&&validCuePosition(state,p.x,p.y);cancelDrag();if(valid&&onlineReady())tryPlace(p.x,p.y);else updated();return;}
   if(drag)moveDrag(drag,p,cue());const shot=drag?releaseDrag(drag):null;cancelDrag();
   if(shot&&canAim()){state.angle=shot.angle;state.power=shot.power;doShoot();}else updated();
  }) as EventListener);
  for(const event of ['pointercancel','lostpointercapture'])on(canvas,event,((e:PointerEvent)=>{if(e.pointerId===pointer){cancelDrag();refresh();}}) as EventListener);
  for(const event of ['pointerup','pointercancel'])on(window,event,((e:PointerEvent)=>{contacts.delete(e.pointerId);}) as EventListener,true);
+ on(portraitMedia,'change',()=>{cancelDrag();portrait=portraitMedia.matches;orientTable();refresh();});
  on(window,'resize',changedLayout);on(window,'blur',()=>{contacts.clear();changedLayout();});
  if(window.visualViewport){on(window.visualViewport,'resize',changedLayout);on(window.visualViewport,'scroll',changedLayout);}
  const resizeObserver=new ResizeObserver(changedLayout);resizeObserver.observe(canvas);
@@ -207,9 +216,9 @@ const module:GameModule={id:'pool',title:'Pool',cover:'game-art/pool/cover.svg',
   if(state.ballInHand){
    if(event.key==='Enter'&&ghost?.valid){tryPlace(ghost.x,ghost.y);return;}
    ghost=ghost||{x:cue().x,y:cue().y,valid:validCuePosition(state,cue().x,cue().y)};
-   // Screen axes are the clockwise rotation of model axes.
-   ghost.y+=event.key==='ArrowLeft'?8:event.key==='ArrowRight'?-8:0;
-   ghost.x+=event.key==='ArrowUp'?-8:event.key==='ArrowDown'?8:0;
+   // Map arrow directions through the same view as pointer placement.
+   const horizontal=event.key==='ArrowLeft'?-8:event.key==='ArrowRight'?8:0,vertical=event.key==='ArrowUp'?-8:event.key==='ArrowDown'?8:0;
+   ghost.x+=portrait?horizontal:vertical;ghost.y+=portrait?vertical:-horizontal;
    ghost.valid=validCuePosition(state,ghost.x,ghost.y);refresh();return;
   }
   if(event.key===' '||event.key==='Enter')doShoot();

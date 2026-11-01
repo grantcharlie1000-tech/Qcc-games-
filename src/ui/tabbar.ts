@@ -51,6 +51,10 @@ export function autoHideTabbar(bar:HTMLElement,scroller:Window|HTMLElement):{res
   const mini=document.createElement('button');
   mini.type='button';
   mini.className='ui-tabbar-mini';
+  if(bar.classList.contains('arcade-glass')){
+    mini.classList.add('arcade-glass-mini');
+    mini.dataset.glassTone=bar.dataset.glassTone??'dark';
+  }
   mini.tabIndex=-1;
   mini.setAttribute('aria-hidden','true');
   let state:TabbarScroll={minimized:false,lastY:position(scroller).y,travel:0};

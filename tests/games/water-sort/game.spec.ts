@@ -1,3 +1,4 @@
+import {appSettings,backToGames,gameAction,gameOption,openGameMenu,pauseGame,resumeGame} from '../../game-menu';
 import {seedStudyTopic} from '../../fixtures';
 import { test, expect } from '../../fixtures';
 import type { Page } from '@playwright/test';
@@ -38,10 +39,10 @@ test('real illegal pour, winning hints, undo, next level and restart', async({pa
   await hintPour(page);
   await expect(root(page)).toHaveAttribute('data-phase','won');
   await page.getByRole('button',{name:'Next level',exact:true}).click();
-  await expect(page.getByRole('combobox',{name:'Level',exact:true})).toHaveValue('1');
-  await page.getByRole('combobox',{name:'Level',exact:true}).selectOption('0');
+  await expect(page.locator('.ws-level')).toHaveValue('1');
+  await gameOption(page,'Level','0');
   await hintPour(page);
-  await page.getByRole('button',{name:'Restart game',exact:true}).click();
+  await gameAction(page,'Restart game');
   await expect(root(page)).toHaveAttribute('data-moves','0');
   expect(await readBoard(page)).toEqual(initial);
 });
@@ -54,12 +55,12 @@ test('pending animation freezes under pause and commits only once on resume',asy
   await tube(page,0).click(); await tube(page,2).click();
   await expect(root(page)).toHaveAttribute('data-phase','pouring');
   await expect(root(page)).toHaveAttribute('data-moves','0');
-  await page.getByRole('button',{name:'Pause game',exact:true}).click();
+  await pauseGame(page);
   await expect(root(page)).toHaveAttribute('data-phase','paused');
   await page.clock.runFor(1000);
   expect(await readBoard(page)).toEqual(initial);
   await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeDisabled();
-  await page.getByRole('button',{name:'Keep playing',exact:true}).click();
+  await resumeGame(page);
   await page.clock.runFor(1500);
   await expect(root(page)).toHaveAttribute('data-moves','1');
   await expect(root(page)).toHaveAttribute('data-phase','ready');
@@ -72,18 +73,18 @@ test('legal progress and undo history survive reload and repeated navigation',as
   const errors:string[]=[];
   page.on('pageerror',error=>errors.push(error.message));
   await open(page);
-  await page.getByRole('combobox',{name:'Level',exact:true}).selectOption('7');
+  await gameOption(page,'Level','7');
   const initial=await readBoard(page);
   await hintPour(page);
   const progressed=await readBoard(page);
   await page.reload();
   await expect(root(page)).toHaveAttribute('data-moves','1');
-  await expect(page.getByRole('combobox',{name:'Level',exact:true})).toHaveValue('7');
+  await expect(page.locator('.ws-level')).toHaveValue('7');
   expect(await readBoard(page)).toEqual(progressed);
   await page.getByRole('button',{name:'Undo',exact:true}).click();
   expect(await readBoard(page)).toEqual(initial);
   for(let i=0;i<3;i++){
-    await page.getByRole('link',{name:'Back to game library',exact:true}).click();
+    await backToGames(page);
     await page.getByRole('link',{name:'Play Water Sort',exact:true}).click();
     await expect(root(page)).toHaveCount(1);
   }
@@ -94,11 +95,11 @@ test('legal progress and undo history survive reload and repeated navigation',as
 
 test('all level controls and rules work, keyboard can select and pour',async({page})=>{
   await open(page);
-  await page.getByRole('combobox',{name:'Difficulty',exact:true}).selectOption('Deep');
-  await expect(page.getByRole('combobox',{name:'Level',exact:true})).toHaveValue('6');
-  await page.getByRole('combobox',{name:'Difficulty',exact:true}).selectOption('Flow');
-  await expect(page.getByRole('combobox',{name:'Level',exact:true})).toHaveValue('3');
-  await page.getByRole('combobox',{name:'Difficulty',exact:true}).selectOption('Gentle');
+  await gameOption(page,'Difficulty','Deep');
+  await expect(page.locator('.ws-level')).toHaveValue('6');
+  await gameOption(page,'Difficulty','Flow');
+  await expect(page.locator('.ws-level')).toHaveValue('3');
+  await gameOption(page,'Difficulty','Gentle');
   await tube(page,0).focus();
   await page.keyboard.press('Enter');
   await page.keyboard.press('ArrowRight');
@@ -106,7 +107,7 @@ test('all level controls and rules work, keyboard can select and pour',async({pa
   await expect(tube(page,2)).toBeFocused();
   await page.keyboard.press('Space');
   await expect(root(page)).toHaveAttribute('data-moves','1');
-  await page.getByRole('button',{name:'Game rules',exact:true}).click();
+  await gameAction(page,'Game rules');
   await expect(page.locator('#rules-dialog')).toBeVisible();
   await expect(page.locator('#rules-text')).toContainText('four bands');
   await expect(root(page)).toHaveAttribute('data-phase','paused');
@@ -131,12 +132,12 @@ test('touch, colour labels, patterns, phone fit and screenshot',async({browser})
   await open(page);
   await tube(page,0).tap(); await tube(page,2).tap();
   await expect(root(page)).toHaveAttribute('data-moves','1');
-  await page.getByRole('button',{name:'Open menu',exact:true}).tap();
+  await appSettings(page);
   await page.getByLabel('Colour-blind patterns').check();
   await page.getByRole('button',{name:'Close menu',exact:true}).tap();
   await expect(root(page)).toHaveAttribute('data-patterns','true');
   await expect(page.locator('.ws-pattern').first()).toBeVisible();
-  await page.getByRole('combobox',{name:'Level',exact:true}).selectOption('4');
+  await gameOption(page,'Level','4');
   await page.getByRole('button',{name:'Hint',exact:true}).tap();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect(await root(page).evaluate(el=>el.getBoundingClientRect().width)).toBeLessThanOrEqual(390);
@@ -147,10 +148,10 @@ test('touch, colour labels, patterns, phone fit and screenshot',async({browser})
 
 test('all 77 levels are selectable and the final added level wins, restores and wraps to level 1',async({page})=>{
  test.setTimeout(90000);await page.emulateMedia({reducedMotion:'reduce'});await open(page);
- const levels=page.getByRole('combobox',{name:'Level',exact:true});await expect(levels.locator('option')).toHaveCount(77);
+ await openGameMenu(page);const levels=page.locator('#game-options').getByRole('combobox',{name:'Level',exact:true});await expect(levels.locator('option')).toHaveCount(77);
  await levels.selectOption('76');await expect(page.locator('.ws-level-name')).toHaveText('Level 77');
- await page.reload();await expect(levels).toHaveValue('76');
+ await page.reload();await expect(page.locator('.ws-level')).toHaveValue('76');
  for(let i=0;i<40&&await root(page).getAttribute('data-phase')!=='won';i++)await hintPour(page);
  await expect(root(page)).toHaveAttribute('data-phase','won');
- await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(levels).toHaveValue('0');
+ await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('.ws-level')).toHaveValue('0');
 });

@@ -1,3 +1,4 @@
+import {appSettings} from '../game-menu';
 import {guestTest as test,expect,seedGuest} from '../fixtures';
 import {mkdir} from 'node:fs/promises';
 
@@ -27,7 +28,7 @@ test('Escape changes styles without changing topic, dismisses privacy and menus 
   await expect(dialog).not.toBeVisible();expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe(selected);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data)).toEqual(saved);
   await page.getByRole('link',{name:'Games',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
   await page.keyboard.press('Escape');await expect(page.locator('#menu')).not.toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
   let current=await page.evaluate(key=>sessionStorage.getItem(key)!,key);expect(styleOf(current)).not.toBe(previous);previous=styleOf(current);
@@ -59,7 +60,7 @@ test('a newly blocked article write is explained on entry and while already read
 
 test('a browser-consumed fullscreen Escape dismisses a menu first and then advances the article',async({page})=>{
   await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-count')).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await expect(page.locator('#menu')).toBeVisible();
+  await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
   await page.evaluate(()=>document.dispatchEvent(new Event('fullscreenchange')));
   await expect(page.locator('#menu')).not.toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
   expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe('close-reading');
@@ -74,7 +75,7 @@ test('touch readers can advance through each new style without seeding article I
   try{
     await page.goto('/#/game/fruit-merge');await page.getByRole('button',{name:'Reject All',exact:true}).tap();await page.locator('[data-study-topic="forces"]').tap();
     await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Open menu',exact:true}).tap();await page.getByRole('button',{name:'Study Mode',exact:true}).tap();
+    await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).tap();
     await page.evaluate(()=>{let i=0;const values=[0,.5,.99];Math.random=()=>values[i++%values.length];});
     for(const style of ['quanta','aeon','essay']){
       const next=page.getByRole('button',{name:'Next article',exact:true});await next.scrollIntoViewIfNeeded();await next.tap();
@@ -85,7 +86,7 @@ test('touch readers can advance through each new style without seeding article I
 
 test('Quanta mobile paragraphs retain a clear line of separation',async({page})=>{
   await page.setViewportSize({width:390,height:844});await seed(page,'quanta:close-reading');await page.goto('/#/game/fruit-merge');
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   const spacing=await page.locator('.variant-prose > p').evaluateAll(ps=>{const first=ps[0],second=ps[1];return {gap:second.getBoundingClientRect().top-first.getBoundingClientRect().bottom,lineHeight:parseFloat(getComputedStyle(first).lineHeight)};});
   expect(spacing.gap).toBeGreaterThanOrEqual(spacing.lineHeight-1);
 });
@@ -98,7 +99,7 @@ test('changing article during a delayed update cancels the pending reload even a
     export function activateUpdate(){return new Promise(resolve=>{window.finishStudyActivation=resolve;});}
   `}));
   await seed(page);await page.goto('/#/game/fruit-merge');await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+  await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
   await page.evaluate(()=>{(window as any).studyDocumentMarker='original';Math.random=()=>0;});
   await page.getByRole('button',{name:'Reload to update',exact:true}).click();
   await expect(page.locator('[data-study-update]')).toContainText('starting the update');
@@ -114,7 +115,7 @@ for(const viewport of [{name:'desktop',width:1180,height:900},{name:'mobile',wid
     await page.setViewportSize({width:viewport.width,height:viewport.height});
     await seed(page,style==='qcc'?'close-reading':`${style}:close-reading`);await page.goto('/#/game/fruit-merge');
     await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Open menu',exact:true}).click();await page.getByRole('button',{name:'Study Mode',exact:true}).click();
+    await appSettings(page);await page.getByRole('button',{name:'Study Mode',exact:true}).click();
     await expect(page.locator('#study-title')).toBeVisible();
     if(style==='qcc')await expect(page.locator('#study-view')).not.toHaveAttribute('data-style',/./);else await expect(page.locator('#study-view')).toHaveAttribute('data-style',style);
     await page.evaluate(()=>window.scrollTo(0,0));await page.locator('#study-view img').evaluateAll(images=>Promise.all(images.map(image=>{(image as HTMLImageElement).loading='eager';return (image as HTMLImageElement).decode();})));

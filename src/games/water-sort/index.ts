@@ -36,8 +36,11 @@ const module:GameModule={
     }
     function fit(){
       if(disposed)return;
-      const columns=Math.ceil(session.state.tubes.length/2),rect=field.getBoundingClientRect();
-      const width=Math.max(20,Math.min(92,(rect.width-12)/(columns+.45),(rect.height*.77-16)/6.4));
+      const count=session.state.tubes.length,rect=field.getBoundingClientRect();
+      const single=rect.width>=700&&rect.height>=300&&count<=7;
+      root.dataset.layout=single?'single':'rows';
+      const columns=Math.ceil(count/2);
+      const width=single?Math.min(144,(rect.width-32-(count-1)*40)/count,rect.height*.84/3.2):Math.max(20,Math.min(92,(rect.width-12)/(columns+.45),(rect.height*.77-16)/6.4));
       root.style.setProperty('--ws-tube-width',`${width}px`);
       if(session.pending)paintPour();
     }
@@ -98,10 +101,11 @@ const module:GameModule={
       const lip=rotatePoint({x:direction>0?61:19,y:26},angle);
       const desiredX=b.x+b.width/2-box.x-(lip.x-40)*scale;
       const clearance=Math.max(70,Math.cos(Math.abs(angle)*Math.PI/180)*215+6)*scale;
-      const desiredY=Math.max(76-box.y+30*scale,b.y-box.y+24*scale-clearance);
+      const safeTop=Math.max(8,box.top);
+      const desiredY=Math.max(safeTop-box.y+30*scale,b.y-box.y+24*scale-clearance);
       const dx=(desiredX-(a.x-box.x+40*scale))*f.travel;
       const lift=f.phase==='travel'?Math.sin(Math.min(1,progress/.18)*Math.PI)*48*scale:0;
-      const dy=Math.max(76+30*scale-(a.y+24*scale),(desiredY-(a.y-box.y+24*scale))*f.travel-lift);
+      const dy=Math.max(safeTop+30*scale-(a.y+24*scale),(desiredY-(a.y-box.y+24*scale))*f.travel-lift);
       const glass=from.querySelector<SVGSVGElement>('.ws-glass')!;
       glass.style.transform=gentle?'none':`translate(${dx}px, ${dy}px) rotate(${angle}deg)`;
       glass.dataset.angle=String(angle);from.style.zIndex='4';
@@ -170,7 +174,7 @@ const module:GameModule={
       if(event.repeat&&(event.key==='Enter'||event.key===' ')){event.preventDefault();return;}
       if(session.paused||session.pending)return;
       if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
-        event.preventDefault();const cols=Math.ceil(session.state.tubes.length/2),delta=event.key==='ArrowLeft'?-1:event.key==='ArrowRight'?1:event.key==='ArrowUp'?-cols:cols;
+        event.preventDefault();const cols=root.dataset.layout==='single'?session.state.tubes.length:Math.ceil(session.state.tubes.length/2),delta=event.key==='ArrowLeft'?-1:event.key==='ArrowRight'?1:event.key==='ArrowUp'?-cols:cols;
         const index=(Number(button.dataset.tube)+delta+session.state.tubes.length)%session.state.tubes.length;
         tubes.querySelector<HTMLButtonElement>(`[data-tube="${index}"]`)?.focus();
       }

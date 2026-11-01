@@ -1,3 +1,4 @@
+import {backToGames,gameAction,pauseGame,resumeGame} from '../../game-menu';
 import { test, expect, seedStudyTopic } from '../../fixtures';
 import type {Page} from '@playwright/test';
 import {AnimalWorld, FLOOR, HEIGHT, WIDTH, TAP_ROTATION_RADIANS} from '../../../src/games/animal-stack/model';
@@ -12,11 +13,11 @@ test('only deliberate DROP/Space release; drag, tap, keyboard repeat, save and r
  // A canvas tap outside the waiting animal cannot act on dropped bodies or the scene.
  await page.mouse.click(p.x,p.y+180*p.scale);await expect(game(page)).toHaveAttribute('data-count','0');
  await page.mouse.click(p.x+40*p.scale,p.y);await expect(game(page)).toHaveAttribute('data-count','0');if(TAP_ROTATION_RADIANS===null)await expect(game(page)).toHaveAttribute('data-angle','0');else await expect(game(page)).toHaveAttribute('data-angle',String(TAP_ROTATION_RADIANS));
- const canvas=game(page).locator('canvas');await canvas.focus();for(let i=0;i<4;i++)await page.keyboard.press('a');await expect(game(page)).toHaveAttribute('data-aim','180');await page.getByRole('button',{name:'Restart game',exact:true}).click();await canvas.focus();
+ const canvas=game(page).locator('canvas');await canvas.focus();for(let i=0;i<4;i++)await page.keyboard.press('a');await expect(game(page)).toHaveAttribute('data-aim','180');await gameAction(page,'Restart game');await canvas.focus();
  await page.keyboard.down('Space');await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');await page.keyboard.down('Space');await expect(game(page)).toHaveAttribute('data-count','1');await page.keyboard.up('Space');
- await page.getByRole('button',{name:'Pause game',exact:true}).click();const tick=await game(page).getAttribute('data-tick');await page.keyboard.press('ArrowRight');await page.waitForTimeout(250);await expect(game(page)).toHaveAttribute('data-tick',tick!);await page.getByRole('button',{name:'Keep playing',exact:true}).click();
- await page.getByRole('link',{name:'Back to game library',exact:true}).click();await page.goto(route);await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');
- await page.getByRole('button',{name:'Restart game',exact:true}).click();await expect(game(page)).toHaveAttribute('data-count','0');await expect(page.locator('#game-score strong')).toHaveText('0');expect(errors).toEqual([]);
+ await pauseGame(page);const tick=await game(page).getAttribute('data-tick');await page.keyboard.press('ArrowRight');await page.waitForTimeout(250);await expect(game(page)).toHaveAttribute('data-tick',tick!);await resumeGame(page);
+ await backToGames(page);await page.goto(route);await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');
+ await gameAction(page,'Restart game');await expect(game(page)).toHaveAttribute('data-count','0');await expect(page.locator('#game-score strong')).toHaveText('0');expect(errors).toEqual([]);
 });
 
 test('real CDP touch drag/cancel never drops; DROP button releases',async({browser,browserName})=>{
@@ -27,7 +28,7 @@ test('real CDP touch drag/cancel never drops; DROP button releases',async({brows
  await page.getByRole('button',{name:/^Drop /}).tap();await expect(game(page)).toHaveAttribute('data-count','1');await expect(game(page)).toHaveAttribute('data-balanced','1');const aim=await game(page).getAttribute('data-aim');const box=(await game(page).locator('canvas').boundingBox())!;const groundY=box.y+box.height*.73-30*p.scale;await page.touchscreen.tap(p.x+45*p.scale,groundY);await expect(game(page)).toHaveAttribute('data-aim',aim!);await expect(game(page)).toHaveAttribute('data-count','1');await context.close();
 });
 
-test('pause cancels a captured gesture without rotation or drop',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const p=await waitingPoint(page),canvas=game(page).locator('canvas');await canvas.evaluate(e=>e.addEventListener('pointerdown',event=>e.setAttribute('data-test-pointer',String((event as PointerEvent).pointerId))));await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+5,p.y);await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#pause-game')!.click());const pointer=Number(await canvas.getAttribute('data-test-pointer'));expect(await canvas.evaluate((e,id)=>e.hasPointerCapture(id),pointer)).toBe(false);await page.mouse.up();await expect(game(page)).toHaveAttribute('data-count','0');await expect(game(page)).toHaveAttribute('data-angle','0');await page.getByRole('button',{name:'Keep playing',exact:true}).click();await expect(game(page)).toHaveAttribute('data-ready','true');});
+test('pause cancels a captured gesture without rotation or drop',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto(route);await expect(game(page)).toHaveAttribute('data-ready','true');const p=await waitingPoint(page),canvas=game(page).locator('canvas');await canvas.evaluate(e=>e.addEventListener('pointerdown',event=>e.setAttribute('data-test-pointer',String((event as PointerEvent).pointerId))));await page.mouse.move(p.x,p.y);await page.mouse.down();await page.mouse.move(p.x+5,p.y);await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#pause-game')!.click());const pointer=Number(await canvas.getAttribute('data-test-pointer'));expect(await canvas.evaluate((e,id)=>e.hasPointerCapture(id),pointer)).toBe(false);await page.mouse.up();await expect(game(page)).toHaveAttribute('data-count','0');await expect(game(page)).toHaveAttribute('data-angle','0');await resumeGame(page);await expect(game(page)).toHaveAttribute('data-ready','true');});
 
 test('neck-first restored pose really pivots, stable pose earns support, edge fall ends',async({page})=>{
  await page.setViewportSize({width:390,height:844});await loadPose(page,210);await expect(game(page)).toHaveAttribute('data-angle',String(-Math.PI/2));
@@ -66,6 +67,6 @@ test('held directional keys continue through resize and focus loss stops them',a
  await page.setViewportSize({width:1200,height:800});await page.clock.runFor(500);await page.keyboard.up('d');
  const right=Number(await game(page).getAttribute('data-aim'));expect(right).toBeGreaterThan(210);
  await page.keyboard.down('ArrowLeft');await page.clock.runFor(300);expect(Number(await game(page).getAttribute('data-aim'))).toBeLessThan(right);
- await page.getByRole('button',{name:'Game rules',exact:true}).focus();const frozen=await game(page).getAttribute('data-aim');
+ await page.locator('#game-menu').focus();const frozen=await game(page).getAttribute('data-aim');
  await page.clock.runFor(250);await expect(game(page)).toHaveAttribute('data-aim',frozen!);await page.keyboard.up('ArrowLeft');
 });
