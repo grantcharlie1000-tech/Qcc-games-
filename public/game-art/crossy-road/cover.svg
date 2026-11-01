@@ -1,66 +1,84 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="title desc">
-<title id="title">Crossy Road</title>
-<desc id="desc">An original cream bunny in a mint scarf mid-hop over a road, with grass, a river and a railway lane.</desc>
-<defs><linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="230"><stop stop-color="#8fd3f5"/><stop offset="1" stop-color="#e2f8ff"/></linearGradient><radialGradient id="glow"><stop stop-color="#ff6b6b" stop-opacity=".9"/><stop offset="1" stop-color="#ff6b6b" stop-opacity="0"/></radialGradient><g id="tree"><ellipse cx="-33" cy="408" rx="24" ry="7" fill="#173a2a" opacity=".18" transform="rotate(-9 -33 408)"/><path d="M-39.4 416.6L-32.2 415.4L-32.2 401.4L-39.4 402.6Z" fill="#8d5a3b"/><path d="M-32.2 415.4L-26.6 399.4L-26.6 385.4L-32.2 401.4Z" fill="#6e4329"/><path d="M-39.4 402.6L-32.2 401.4L-26.6 385.4L-33.8 386.6Z" fill="#b0764a"/><path d="M-57 414.2L-19.6 408.2L-19.6 392.2L-57 398.2Z" fill="#2fb374"/><path d="M-19.6 408.2L-9 377.8L-9 361.8L-19.6 392.2Z" fill="#1f8a5a"/><path d="M-57 398.2L-19.6 392.2L-9 361.8L-46.4 367.8Z" fill="#4fcf8a"/><path d="M-51.2 394.2L-23.2 389.8L-23.2 375.8L-51.2 380.2Z" fill="#2fb374"/><path d="M-23.2 389.8L-14.8 365.8L-14.8 351.8L-23.2 375.8Z" fill="#1f8a5a"/><path d="M-51.2 380.2L-23.2 375.8L-14.8 351.8L-42.8 356.2Z" fill="#4fcf8a"/><path d="M-43.6 375.2L-28 372.8L-28 362.8L-43.6 365.2Z" fill="#2fb374"/><path d="M-28 372.8L-22.4 356.8L-22.4 346.8L-28 362.8Z" fill="#1f8a5a"/><path d="M-43.6 365.2L-28 362.8L-22.4 346.8L-38 349.2Z" fill="#4fcf8a"/></g><g id="rock"><ellipse cx="-33" cy="408" rx="22" ry="6" fill="#173a2a" opacity=".18" transform="rotate(-9 -33 408)"/><path d="M-53.9 425.7L-22.7 420.7L-22.7 400.7L-53.9 405.7Z" fill="#aaa3cf"/><path d="M-22.7 420.7L-12.1 390.3L-12.1 370.3L-22.7 400.7Z" fill="#8a84b5"/><path d="M-53.9 405.7L-22.7 400.7L-12.1 370.3L-43.3 375.3Z" fill="#d6d1ec"/><path d="M-46.3 400.7L-26.5 397.5L-26.5 385.5L-46.3 388.7Z" fill="#aaa3cf"/><path d="M-26.5 397.5L-19.5 377.5L-19.5 365.5L-26.5 385.5Z" fill="#8a84b5"/><path d="M-46.3 388.7L-26.5 385.5L-19.5 365.5L-39.3 368.7Z" fill="#d6d1ec"/></g><g id="log"><path d="M-40 428L22.4 418L22.4 409L-40 419Z" fill="#8d5a3b"/><path d="M22.4 418L30.1 396L30.1 387L22.4 409Z" fill="#6e4329"/><path d="M-40 419L22.4 409L30.1 387L-32.3 397Z" fill="#a4704a"/><ellipse cx="26.3" cy="402.5" rx="3.2" ry="4.2" fill="#d9a46b"/><ellipse cx="26.3" cy="402.5" rx="1.4" ry="2" fill="#8d5a3b"/></g><g id="sl"><path d="M14 260.8L21.3 259.6L32 229.2L24.7 230.4Z" fill="#a4734a"/><path d="M14 263.8L21.3 262.6L21.3 259.6L14 260.8Z" fill="#7d4f2e"/></g><g id="carS"><path d="M-40 425L38 412.5L38 397.5L-40 410Z" fill="#ffd461"/><path d="M38 412.5L47.1 386.5L47.1 371.5L38 397.5Z" fill="#e2ac3b"/><path d="M-40 410L38 397.5L47.1 371.5L-30.9 384Z" fill="#ffe38a"/><path d="M-17.5 401.9L18.9 396L18.9 382L-17.5 387.9Z" fill="#eef2f6"/><path d="M18.9 396L24.5 380L24.5 366L18.9 382Z" fill="#d2dae4"/><path d="M-17.5 387.9L18.9 382L24.5 366L-11.9 371.9Z" fill="#fbfcfe"/><path d="M-14.4 398.4L15.8 393.5L15.8 384.5L-14.4 389.4Z" fill="#2a3446"/><path d="M20 389.8L23.4 380.2L23.4 372.2L20 381.8Z" fill="#2a3446"/><path d="M-29.6 426.3L-18.2 424.5L-18.2 419.5L-29.6 421.3Z" fill="#262b35"/><path d="M16.2 419L27.6 417.2L27.6 412.2L16.2 414Z" fill="#262b35"/><path d="M40.8 401.5L42.8 395.9L42.8 390.9L40.8 396.5Z" fill="#fff3a0"/></g><g id="carC"><path d="M-40 425L38 412.5L38 397.5L-40 410Z" fill="#ff7e91"/><path d="M38 412.5L47.1 386.5L47.1 371.5L38 397.5Z" fill="#e0637a"/><path d="M-40 410L38 397.5L47.1 371.5L-30.9 384Z" fill="#ffa3b0"/><path d="M-17.5 401.9L18.9 396L18.9 382L-17.5 387.9Z" fill="#eef2f6"/><path d="M18.9 396L24.5 380L24.5 366L18.9 382Z" fill="#d2dae4"/><path d="M-17.5 387.9L18.9 382L24.5 366L-11.9 371.9Z" fill="#fbfcfe"/><path d="M-14.4 398.4L15.8 393.5L15.8 384.5L-14.4 389.4Z" fill="#2a3446"/><path d="M20 389.8L23.4 380.2L23.4 372.2L20 381.8Z" fill="#2a3446"/><path d="M-29.6 426.3L-18.2 424.5L-18.2 419.5L-29.6 421.3Z" fill="#262b35"/><path d="M16.2 419L27.6 417.2L27.6 412.2L16.2 414Z" fill="#262b35"/><path d="M40.8 401.5L42.8 395.9L42.8 390.9L40.8 396.5Z" fill="#fff3a0"/></g><g id="carK"><path d="M-40 425L38 412.5L38 397.5L-40 410Z" fill="#53d9ed"/><path d="M38 412.5L47.1 386.5L47.1 371.5L38 397.5Z" fill="#36b3ca"/><path d="M-40 410L38 397.5L47.1 371.5L-30.9 384Z" fill="#9beef9"/><path d="M-17.5 401.9L18.9 396L18.9 382L-17.5 387.9Z" fill="#eef2f6"/><path d="M18.9 396L24.5 380L24.5 366L18.9 382Z" fill="#d2dae4"/><path d="M-17.5 387.9L18.9 382L24.5 366L-11.9 371.9Z" fill="#fbfcfe"/><path d="M-14.4 398.4L15.8 393.5L15.8 384.5L-14.4 389.4Z" fill="#2a3446"/><path d="M20 389.8L23.4 380.2L23.4 372.2L20 381.8Z" fill="#2a3446"/><path d="M-29.6 426.3L-18.2 424.5L-18.2 419.5L-29.6 421.3Z" fill="#262b35"/><path d="M16.2 419L27.6 417.2L27.6 412.2L16.2 414Z" fill="#262b35"/><path d="M40.8 401.5L42.8 395.9L42.8 390.9L40.8 396.5Z" fill="#fff3a0"/></g></defs>
-<rect width="320" height="410" fill="url(#sky)"/>
-<g><ellipse cx="58" cy="134" rx="30" ry="12" fill="#fff"/><ellipse cx="84" cy="126" rx="22" ry="14" fill="#fff"/><ellipse cx="36" cy="131" rx="18" ry="10" fill="#fff"/></g>
-<g><ellipse cx="270" cy="114" rx="8" ry="6.5" fill="#f5efff"/><ellipse cx="270" cy="121" rx="17" ry="5" fill="#c59bd2"/><ellipse cx="270" cy="123.5" rx="10" ry="2.4" fill="#a983c0"/><ellipse cx="266.5" cy="112" rx="2.2" ry="1.8" fill="#ffffff"/></g>
-<path d="M-248 461.3L428 353.1L428 443.1L-248 551.3Z" fill="#8a5f3e"/>
-<path d="M-178 261.3L498 153.1L512 113.1L-164 221.3Z" fill="#8fd14f"/>
-<path d="M-171 241.3L505 133.1" fill="none" stroke="#a9e474" stroke-width="1.2" stroke-dasharray="3 14" opacity=".8"/>
-<use href="#tree" x="87.4" y="-221.7"/>
-<use href="#tree" x="253.1" y="-246.3"/>
-<path d="M-192 301.3L484 193.1L498 153.1L-178 261.3Z" fill="#cbc1ad"/>
-<use href="#sl" x="-52" y="8.3"/>
-<use href="#sl" x="-33.3" y="5.3"/>
-<use href="#sl" x="-14.6" y="2.3"/>
-<use href="#sl" x="4.2" y="-0.7"/>
-<use href="#sl" x="22.9" y="-3.7"/>
-<use href="#sl" x="41.6" y="-6.7"/>
-<use href="#sl" x="60.3" y="-9.7"/>
-<use href="#sl" x="79" y="-12.6"/>
-<use href="#sl" x="97.8" y="-15.6"/>
-<use href="#sl" x="116.5" y="-18.6"/>
-<use href="#sl" x="135.2" y="-21.6"/>
-<use href="#sl" x="153.9" y="-24.6"/>
-<use href="#sl" x="172.6" y="-27.6"/>
-<use href="#sl" x="191.4" y="-30.6"/>
-<use href="#sl" x="210.1" y="-33.6"/>
-<use href="#sl" x="228.8" y="-36.6"/>
-<use href="#sl" x="247.5" y="-39.6"/>
-<use href="#sl" x="266.2" y="-42.6"/>
-<use href="#sl" x="285" y="-45.6"/>
-<use href="#sl" x="303.7" y="-48.6"/>
-<use href="#sl" x="322.4" y="-51.6"/>
-<path d="M-187.8 289.3L488.2 181.1" fill="none" stroke="#8c99a6" stroke-width="3.4"/>
-<path d="M-182.2 273.3L493.8 165.1" fill="none" stroke="#8c99a6" stroke-width="3.4"/>
-<path d="M-187.8 289.3L488.2 181.1" fill="none" stroke="#e6edf3" stroke-width="1.6"/>
-<path d="M-182.2 273.3L493.8 165.1" fill="none" stroke="#e6edf3" stroke-width="1.6"/>
-<ellipse cx="277.8" cy="161.2" rx="17" ry="17" fill="url(#glow)"/>
-<path d="M275.7 209.1L278.8 208.6L278.8 168.6L275.7 169.1Z" fill="#eef1f6"/><path d="M278.8 208.6L279.9 205.4L279.9 165.4L278.8 168.6Z" fill="#c9d2de"/><path d="M275.7 169.1L278.8 168.6L279.9 165.4L276.8 165.9Z" fill="#fbfcff"/>
-<path d="M272.5 171.1L280.8 169.8L280.8 160.8L272.5 162.1Z" fill="#ff4d5e"/><path d="M280.8 169.8L283.1 163.4L283.1 154.4L280.8 160.8Z" fill="#c62e44"/><path d="M272.5 162.1L280.8 160.8L283.1 154.4L274.8 155.7Z" fill="#ff8a8a"/>
-<path d="M-206 341.3L470 233.1L484 193.1L-192 301.3Z" fill="#4fc3f7"/>
-<path d="M-205.4 339.7L470.6 231.5" fill="none" stroke="#e9fbff" stroke-width="3"/>
-<path d="M-192.6 302.9L483.4 194.7" fill="none" stroke="#e9fbff" stroke-width="3"/>
-<path d="M-201.1 327.3L474.9 219.1" fill="none" stroke="#9be6ff" stroke-width="1.6" stroke-dasharray="10 18"/>
-<path d="M-196.8 314.9L479.2 206.7" fill="none" stroke="#9be6ff" stroke-width="1.6" stroke-dasharray="6 22"/>
-<use href="#log" x="71.5" y="-134.2"/>
-<use href="#log" x="175.5" y="-150.8"/>
-<use href="#log" x="274.3" y="-166.6"/>
-<path d="M-220 381.3L456 273.1L470 233.1L-206 341.3Z" fill="#86c946"/>
-<path d="M-213 361.3L463 253.1" fill="none" stroke="#a9e474" stroke-width="1.2" stroke-dasharray="3 14" opacity=".8"/>
-<use href="#tree" x="287.7" y="-134.8"/>
-<use href="#rock" x="89.4" y="-101.2"/>
-<path d="M-234 421.3L442 313.1L456 273.1L-220 381.3Z" fill="#4b4f58"/>
-<path d="M-227 401.3L449 293.1" fill="none" stroke="#f4f6fa" stroke-width="2" stroke-dasharray="12 12"/>
-<use href="#carS" x="62.9" y="-53.5"/>
-<use href="#carC" x="229.3" y="-80.1"/>
-<use href="#carK" x="322.9" y="-95.1"/>
-<path d="M-248 461.3L428 353.1L442 313.1L-234 421.3Z" fill="#8fd14f"/>
-<path d="M-241 441.3L435 333.1" fill="none" stroke="#a9e474" stroke-width="1.2" stroke-dasharray="3 14" opacity=".8"/>
-<ellipse cx="144" cy="323" rx="26" ry="9" fill="#173a2a" opacity=".16" transform="rotate(-9 144 323)"/>
-<ellipse cx="144" cy="323" rx="16" ry="5.5" fill="#173a2a" opacity=".2" transform="rotate(-9 144 323)"/>
-<path d="M128.5 346.3Q144 219 159.5 299.8" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="4 5" opacity=".9"/>
-<g stroke="#2e3d4b" stroke-width="1" stroke-linejoin="round"><path d="M126.9 295.8L136 294.4L136 284.4L126.9 285.8Z" fill="#fff4dc"/><path d="M136 294.4L138.8 286.4L138.8 276.4L136 284.4Z" fill="#ead4a2"/><path d="M126.9 285.8L136 284.4L138.8 276.4L129.7 277.8Z" fill="#fff8ea"/><path d="M146.4 292.7L155.5 291.3L155.5 281.3L146.4 282.7Z" fill="#fff4dc"/><path d="M155.5 291.3L158.3 283.3L158.3 273.3L155.5 281.3Z" fill="#ead4a2"/><path d="M146.4 282.7L155.5 281.3L158.3 273.3L149.2 274.7Z" fill="#fff8ea"/><path d="M125.3 287.6L157.8 282.4L157.8 249.9L125.3 255.1Z" fill="#fff4dc"/><path d="M157.8 282.4L162.7 268.4L162.7 235.9L157.8 249.9Z" fill="#ead4a2"/><path d="M125.3 255.1L157.8 249.9L162.7 235.9L130.2 241.1Z" fill="#fff8ea"/><path d="M118.5 265.5L161.4 258.6L161.4 243.6L118.5 250.5Z" fill="#37e2b3"/><path d="M161.4 258.6L169.7 235.1L169.7 220.1L161.4 243.6Z" fill="#22b98f"/><path d="M118.5 250.5L161.4 243.6L169.7 220.1L126.7 227Z" fill="#7ef0cf"/><path d="M121 248.7L160 242.4L160 207.4L121 213.7Z" fill="#fff4dc"/><path d="M160 242.4L166.7 223.4L166.7 188.4L160 207.4Z" fill="#ead4a2"/><path d="M121 213.7L160 207.4L166.7 188.4L127.7 194.7Z" fill="#fff8ea"/><path d="M127.6 211.3L135.4 210.1L135.4 162.6L127.6 163.8Z" fill="#fff4dc"/><path d="M135.4 210.1L138.9 200.1L138.9 152.6L135.4 162.6Z" fill="#ead4a2"/><path d="M127.6 163.8L135.4 162.6L138.9 152.6L131.1 153.8Z" fill="#fff8ea"/><path d="M148.4 208L156.2 206.8L156.2 159.3L148.4 160.5Z" fill="#fff4dc"/><path d="M156.2 206.8L159.7 196.8L159.7 149.3L156.2 159.3Z" fill="#ead4a2"/><path d="M148.4 160.5L156.2 159.3L159.7 149.3L151.9 150.5Z" fill="#fff8ea"/><path d="M129.6 203.5L133.5 202.9L133.5 170.4L129.6 171Z" fill="#ffb3c7"/><path d="M150.4 200.2L154.3 199.6L154.3 167.1L150.4 167.7Z" fill="#ffb3c7"/><ellipse cx="132" cy="226.9" rx="3" ry="4" fill="#2a2238"/><ellipse cx="149" cy="224.2" rx="3" ry="4" fill="#2a2238"/><ellipse cx="127.5" cy="240.1" rx="3.8" ry="2.5" fill="#ffb3c7"/><ellipse cx="153.5" cy="236" rx="3.8" ry="2.5" fill="#ffb3c7"/><ellipse cx="140.5" cy="238" rx="3.8" ry="2.8" fill="#ff8fab"/><path d="M161.3 261.8L169.1 260.6L169.1 240.6L161.3 241.8Z" fill="#37e2b3"/><path d="M169.1 260.6L172.6 250.6L172.6 230.6L169.1 240.6Z" fill="#22b98f"/><path d="M161.3 241.8L169.1 240.6L172.6 230.6L164.8 231.8Z" fill="#7ef0cf"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 410" role="img" aria-labelledby="cr-title cr-desc">
+<title id="cr-title">Crossy Road chicken mid-hop</title><desc id="cr-desc">A white voxel chicken hops over an isometric strip of grass, road and river, with a red car and a floating log.</desc>
+<path fill="#16303d" d="M0 0h320v410H0z"/>
+<!-- lane strip: grass, road, river, grass -->
+<path fill="#86c23a" d="M115.9 246.6 283.9 330.6 283.9 309.6 115.9 225.6Z"/>
+<path fill="#5f9428" d="M307 319 283.9 330.6 283.9 309.6 307 298Z"/>
+<path fill="#a6e04a" d="M139 214 307 298 283.9 309.6 115.9 225.6Z"/>
+<path fill="#4b5162" d="M67.6 270.7 235.6 354.7 235.6 333.7 67.6 249.7Z"/>
+<path fill="#383d4c" d="M283.9 330.6 235.6 354.7 235.6 333.7 283.9 309.6Z"/>
+<path fill="#5d6475" d="M115.9 225.6 283.9 309.6 235.6 333.7 67.6 249.7Z"/>
+<path fill="#5fb6e0" d="M31.9 288.6 199.9 372.5 199.9 355.7 31.9 271.8Z"/>
+<path fill="#3f8fbf" d="M235.6 354.7 199.9 372.5 199.9 355.7 235.6 337.9Z"/>
+<path fill="#7fd3f5" d="M67.6 253.9 235.6 337.9 199.9 355.7 31.9 271.8Z"/>
+<path fill="#86c23a" d="M13 298 181 382 181 361 13 277Z"/>
+<path fill="#5f9428" d="M199.9 372.5 181 382 181 361 199.9 351.5Z"/>
+<path fill="#a6e04a" d="M31.9 267.6 199.9 351.5 181 361 13 277Z"/>
+<path fill="#7d8496" d="M99.1 240.2 124.3 252.8 120.1 254.9 94.9 242.3Z"/>
+<path fill="#7d8496" d="M147.4 264.4 172.6 277 168.4 279.1 143.2 266.5Z"/>
+<path fill="#7d8496" d="M195.7 288.6 220.9 301.1 216.7 303.2 191.5 290.6Z"/>
+<path fill="#7d8496" d="M244 312.7 269.2 325.3 265 327.4 239.8 314.8Z"/>
+<path fill="#b4e8fb" d="M50.8 270.7 71.8 281.2 68.4 282.9 47.4 272.4Z"/>
+<path fill="#b4e8fb" d="M204.1 345.2 220.9 353.7 217.5 355.3 200.7 346.9Z"/>
+<!-- red car on the road -->
+<path fill="#1d1f2a" d="M186.2 299.6 198.8 305.9 198.8 297.5 186.2 291.2Z"/>
+<path fill="#14151d" d="M200.9 304.8 198.8 305.9 198.8 297.5 200.9 296.4Z"/>
+<path fill="#1d1f2a" d="M188.3 290.1 200.9 296.4 198.8 297.5 186.2 291.2Z"/>
+<path fill="#1d1f2a" d="M221.9 317.4 234.5 323.7 234.5 315.3 221.9 309Z"/>
+<path fill="#14151d" d="M236.6 322.7 234.5 323.7 234.5 315.3 236.6 314.3Z"/>
+<path fill="#1d1f2a" d="M224 308 236.6 314.3 234.5 315.3 221.9 309Z"/>
+<path fill="#e84450" d="M181 291.1 241.9 321.5 241.9 303.7 181 273.2Z"/>
+<path fill="#b8303e" d="M273.4 305.8 241.9 321.5 241.9 303.7 273.4 287.9Z"/>
+<path fill="#ff5a5f" d="M212.5 257.5 273.4 287.9 241.9 303.7 181 273.2Z"/>
+<path fill="#e6e9f1" d="M200.9 280 233.5 296.3 233.5 282.7 200.9 266.4Z"/>
+<path fill="#c4c9d8" d="M258.7 283.7 233.5 296.3 233.5 282.7 258.7 270.1Z"/>
+<path fill="#ffffff" d="M226.1 253.8 258.7 270.1 233.5 282.7 200.9 266.4Z"/>
+<path fill="#2d3142" d="M204.1 279.1 230.3 292.2 230.3 283.8 204.1 270.7Z"/>
+<path fill="#3a3f52" d="M256 282.6 236.2 292.4 236.2 284 256 274.2Z"/>
+<path fill="#ff9a8a" d="M270.2 298.5 263.9 301.7 263.9 297.1 270.2 293.9Z"/>
+<path fill="#ff9a8a" d="M251.3 308 245.1 311.1 245.1 306.5 251.3 303.4Z"/>
+<!-- log on the river, with the chicken shadow -->
+<path fill="#9a6038" d="M54 280.7 171.6 339.5 171.6 323.7 54 264.9Z"/>
+<path fill="#7a4727" d="M196.8 326.9 171.6 339.5 171.6 323.7 196.8 311.1Z"/>
+<path fill="#b77a4b" d="M79.2 252.3 196.8 311.1 171.6 323.7 54 264.9Z"/>
+<path fill="#c98d5c" d="M80.2 262.3 107.5 276 104.6 277.4 77.3 263.8Z"/>
+<path fill="#e0b07a" d="M193.6 325.9 174.7 335.4 174.7 324.9 193.6 315.4Z"/>
+<path fill="#c98d5c" d="M188.8 325.6 179.5 330.2 179.5 325.2 188.8 320.6Z"/>
+<path fill="#6e3f22" d="M145.3 285.4 183.1 304.3 157.9 316.9 120.1 298Z"/>
+<!-- chicken mid-hop: legs, tail, body, wing, comb, beak, wattle, eyes -->
+<path fill="#f39a2a" d="M128.1 257.3 136.9 261.7 136.9 240.7 128.1 236.3Z"/>
+<path fill="#c9761a" d="M145.7 257.3 136.9 261.7 136.9 240.7 145.7 236.3Z"/>
+<path fill="#ffb347" d="M136.9 231.9 145.7 236.3 136.9 240.7 128.1 236.3Z"/>
+<path fill="#f39a2a" d="M114.4 265.8 128.3 272.7 128.3 267.7 114.4 260.7Z"/>
+<path fill="#c9761a" d="M148.2 262.7 128.3 272.7 128.3 267.7 148.2 257.7Z"/>
+<path fill="#ffb347" d="M134.4 250.7 148.2 257.7 128.3 267.7 114.4 260.7Z"/>
+<path fill="#f39a2a" d="M154.3 270.4 163.2 274.8 163.2 253.8 154.3 249.4Z"/>
+<path fill="#c9761a" d="M172 270.4 163.2 274.8 163.2 253.8 172 249.4Z"/>
+<path fill="#ffb347" d="M163.2 245 172 249.4 163.2 253.8 154.3 249.4Z"/>
+<path fill="#f39a2a" d="M140.7 278.9 154.5 285.8 154.5 280.8 140.7 273.8Z"/>
+<path fill="#c9761a" d="M174.5 275.8 154.5 285.8 154.5 280.8 174.5 270.8Z"/>
+<path fill="#ffb347" d="M160.6 263.9 174.5 270.8 154.5 280.8 140.7 273.8Z"/>
+<path fill="#e6e9f1" d="M170.5 167.8 195.7 180.4 195.7 163.6 170.5 151Z"/>
+<path fill="#c4c9d8" d="M206.2 175.2 195.7 180.4 195.7 163.6 206.2 158.4Z"/>
+<path fill="#ffffff" d="M181 145.8 206.2 158.4 195.7 163.6 170.5 151Z"/>
+<path fill="#e6e9f1" d="M91.8 241.8 152.6 272.3 152.6 188.3 91.8 157.8Z"/>
+<path fill="#c4c9d8" d="M213.6 241.8 152.6 272.3 152.6 188.3 213.6 157.8Z"/>
+<path fill="#ffffff" d="M152.7 127.4 213.6 157.8 152.6 188.3 91.8 157.8Z"/>
+<path fill="#e6e9f1" d="M164.2 239.2 171.6 242.9 171.6 219.8 164.2 216.1Z"/>
+<path fill="#b9bfcf" d="M203 227.1 171.6 242.9 171.6 219.8 203 204Z"/>
+<path fill="#ffffff" d="M195.7 200.3 203 204 171.6 219.8 164.2 216.1Z"/>
+<path fill="#e84450" d="M125.3 164.1 140 171.5 140 158.9 125.3 151.5Z"/>
+<path fill="#b8303e" d="M177.8 152.6 140 171.5 140 158.9 177.8 140Z"/>
+<path fill="#ff5a5f" d="M163.2 132.6 177.8 140 140 158.9 125.3 151.5Z"/>
+<path fill="#e84450" d="M131.6 148.4 146.3 155.7 146.3 147.7 131.6 140.4Z"/>
+<path fill="#b8303e" d="M161.1 148.4 146.3 155.7 146.3 147.7 161.1 140.4Z"/>
+<path fill="#ff5a5f" d="M146.3 133 161.1 140.4 146.3 147.7 131.6 140.4Z"/>
+<path fill="#f39a2a" d="M97 210.8 113.8 219.3 113.8 206.7 97 198.2Z"/>
+<path fill="#c9761a" d="M130.6 210.8 113.8 219.3 113.8 206.7 130.6 198.2Z"/>
+<path fill="#ffb347" d="M113.8 189.9 130.6 198.2 113.8 206.7 97 198.2Z"/>
+<path fill="#e84450" d="M109.6 222.4 120.1 227.7 120.1 212.9 109.6 207.7Z"/>
+<path fill="#b8303e" d="M127.4 224 120.1 227.7 120.1 212.9 127.4 209.3Z"/>
+<path fill="#ff5a5f" d="M116.9 204 127.4 209.3 120.1 212.9 109.6 207.7Z"/>
+<path fill="#1a1b26" d="M100.6 184.3 108.5 188.3 108.5 177.8 100.6 173.8Z"/>
+<path fill="#1a1b26" d="M135.8 201.9 143.8 205.9 143.8 195.4 135.8 191.4Z"/>
 </svg>
