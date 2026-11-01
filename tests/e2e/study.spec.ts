@@ -12,10 +12,16 @@ const studyImagePaths=new Set<string>([
 const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of requests){const url=new URL(request);expect(url.origin).toBe(new URL(page.url()).origin);expect(studyImagePaths.has(url.pathname)).toBe(true);}};
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>{const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.isVisible())await accept.click();await page.locator(`[data-study-topic="${id}"]`).click();};
-const returnToGame=async(page:Page)=>{
+const returnToGame=async(page:Page,keyboard=false)=>{
   const studyView=page.locator('#study-view'),games=page.getByRole('link',{name:'Games',exact:true}).first();
   await expect(async()=>{
-    if(await studyView.isVisible())await games.click({timeout:1000});
+    if(await studyView.isVisible()){
+      if(keyboard){
+        // Clocked retention checks freeze animation frames. Use the real keyboard
+        // link path instead of waiting for pointer stability across those frames.
+        await games.focus();await expect(games).toBeFocused();await page.keyboard.press('Enter');
+      }else await games.click({timeout:1000});
+    }
     await expect(studyView).toBeHidden({timeout:1000});
   }).toPass({timeout:7000});
   await expect(page.locator('#study-view')).toBeHidden();
@@ -176,14 +182,14 @@ test.describe('all retained game instances',()=>{
       await page.keyboard.down('Escape');await page.keyboard.down('Escape');await page.keyboard.up('Escape');
       expect(await snapshot(page,id)).toEqual(saved);
       await waitForReadingScroll(page);
-      await returnToGame(page);
+      await returnToGame(page,true);
       expect(await root!.evaluate(node=>node===document.querySelector('#game-stage > *'))).toBe(true);
       await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
       await page.keyboard.press('Escape');
       // Corn Clicker is an idle game: time spent away, reading included, keeps the farm growing
       // once play resumes (its own tests cover those rules), so only the frozen autosave applies.
       if(id!=='corn-clicker')expect(await snapshot(page,id)).toEqual(saved);
-      await returnToGame(page);
+      await returnToGame(page,true);
       expect(errors).toEqual([]);
     });
   }

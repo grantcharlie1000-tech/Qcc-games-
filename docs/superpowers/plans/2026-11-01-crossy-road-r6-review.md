@@ -50,8 +50,21 @@ The animation appendix is also addressed: train/UFO anchors retain rendered hop 
 
 ## Validation
 
-Pending final capture inspection and combined Chromium run. Independent read-only code and preflight visual reviews completed; their cargo-side and light-sheet-caption findings were applied.
+- `npm run check`: passed.
+- `npm test`: 169 files / 3,856 tests passed, including the 2,000-seed sweep and both generator revisions' pins.
+- Complete capture: 45 manifest views plus the 420×480 native crop (46 PNGs). Capture commit `d5ffc06`, clean source diff hash. All frames use High, antialiasing and exact CSS size × DSF drawing buffers; maximum 29 draw calls.
+- Main output modes: grass **#a6e95c / #9fdf55**, road **#424856**, road edge **#3b414d**, water **#74e4fb** (reference #74e4fc), rail bed **#343a48**. Cargo review pixels **#8488c2–#8589c4** (reference about #8489c3). The grounded bird is **89×133 native pixels at DSF3**, approximately **29.7×44.3 CSS px** (reference about 29×44).
+- Capture asserts an actual live in-air pose; the mixed seed has blocked side neighbours and therefore uses a forward hop. Every requested cause is mid-animation in all three viewports.
+- Independent read-only code reviews covered generator revision routing, fairness, impact serialization, DPR cleanup, pause restoration, shared material usage and lane containment. Their light-sheet-caption finding was corrected.
+- Independent final visual review inspected 26 regenerated r6 images and found no further significant fidelity defects after the cargo correction. The implementer also opened the final phone/DSF3/PC views, all death types, menus/cards, junctions and native crop against the original frames.
+- Combined Chromium game / online leaderboard / Study / viewport and merged glass/chrome specs: pending.
+
+The later compatibility-only adjustment keeps revision one's original `lerp(.6,.1,d)` evaluation for its four-tile-log weight rather than recomputing it by subtraction. This avoids even floating-point-boundary changes for old saves and has no effect on revision-two capture worlds.
 
 ## Limits of comparison
 
 No original landscape frame was supplied, so desktop framing is an adaptation rather than a measured original landscape camera. Exact death cadence and full train-body details cannot be established from the supplied stills; the brief's supported timing and behaviours are retained. World layouts differ by seed, and the UFO and QCC glass UI are deliberate differences.
+
+## R7 steering at 19:00
+
+Charlie’s side-by-side review supersedes the r6 visual acceptance: desktop must use phone-like vertical coverage, and lane spacing/vehicle occlusion need a fresh measurement pass. The isolated Crossy Road Study case passed with one worker (11.9 s); following Charlie’s instruction, no further Study investigation is planned. The uncommitted keyboard-return test path keeps all state, focus, pause and retention assertions.

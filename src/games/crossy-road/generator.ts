@@ -184,7 +184,7 @@ const MIN_LOG_GAP = 2;
 
 function drawLogShape(rng: Rng, d: number, version: 1 | 2): LogShape {
   const speed = lerp(1.0, 2.6, d) * jitter(rng);
-  const w2 = lerp(version === 1 ? 0.1 : 0.2, 0.6, d), w3 = version === 1 ? 0.3 : lerp(0.6, 0.3, d), w4 = 1 - w2 - w3;
+  const w2 = lerp(version === 1 ? 0.1 : 0.2, 0.6, d), w3 = version === 1 ? 0.3 : lerp(0.6, 0.3, d), w4 = version === 1 ? lerp(0.6, 0.1, d) : 1 - w2 - w3;
   const gapScale = lerp(2, 4, d), gapMax = riverGapMax(speed);
   const lens: number[] = [], gaps: number[] = [], colors: number[] = [];
   for (let i = 0; i < MOVERS; i++) {
