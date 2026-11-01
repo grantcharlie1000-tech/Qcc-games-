@@ -9,9 +9,9 @@ Base: `9c560e5`. Charlie's phone performance feedback takes priority alongside t
 - [x] Reduce GPU/CPU work based on the profile: directional shadows, instance uploads, resize guards, adaptive DPR hysteresis, allocation reuse, pooling and disposal. Keep 120 ms hops and check visible shadows against r7.
 - [x] Keep one hop per gesture: pointerdown begins the take-off squash on the next presentable frame; a clear swipe commits on pointermove, a tap on release. No second forward hop is inserted before a sideways swipe. Logical forward movement remains release-based; this is an explicit limit against the literal pointerdown-hop request.
 - [x] Introduce a new generation revision for denser 2–4-cell logs and lane paint variety, retaining revisions one through three unchanged. Keep grass banks and the full 2,000-seed fairness sweep.
-- [ ] Make every r8 capture fixture obey river grass banks; capture all three viewports, deaths, menus and details, and inspect against r7 and t047/t105/t119.
-- [ ] Run type-check, full unit tests, full Chromium browser suite, targeted Crossy/online/viewport, isolated Crossy Study, update verification and WebKit Crossy sanity if installable. Restore generated evidence before each local commit.
-- [ ] Independent read-only review, final measurements and short report.
+- [x] Make every r8 capture fixture obey river grass banks; capture all three viewports, deaths, menus and details, and inspect against r7 and t047/t105/t119.
+- [x] Run type-check, full unit tests, full Chromium browser suite, targeted Crossy/online/viewport, isolated Crossy Study, update verification and WebKit Crossy sanity if installable. Restore generated evidence before each local commit.
+- [x] Independent read-only review, final measurements and short report.
 
 ## Baseline
 
@@ -34,3 +34,41 @@ Revision four restores lane paint (red/cyan/purple/green/blue/orange, yellow tax
 Independent read-only review found and prompted fixes for queued-hop adaptation starvation, ignored alternating slow frames, mismatched benchmark generation revisions, and untracked-file hash omissions. The final review reports no remaining important findings. Comparative probes now pin revision three / seed 7, disclose actual attempted inputs and active DPR, and fingerprint tracked plus untracked source contents. Chromium SwiftShader / CPU4 results cannot certify physical-iPhone 60fps.
 
 The full Chromium suite on `7976c47` completed **1,050 passed / 1 opt-in screenshot case skipped** in 25.5 minutes. No assertions were weakened. Following the one-sided shadow optimisation, all **70 Crossy/online/viewport** cases and the isolated Crossy Study case pass on Chromium. A DSF3 pixel comparison of redundant-face culling changes only 25 of 2,962,440 pixels, with maximum channel delta 7 at antialiased edges; the GPU regression fails before the change and passes after.
+
+## Final measurements
+
+Runtime/capture source: `8bc9f1c`. Files are outside git under `/workspace/qcc-crossy-review/perf/`: unchanged `before.json` / `before.cpuprofile`, and final `after.json` / `after.cpuprofile`. Both natural runs use revision-three seed 7, mobile 390×844 / DSF3 / touch / CPU4, and the same bot policy; both attempted 44 hops, restarted three times and reached row 11. Scheduling is measured, not forced to match timestamps. The regression retention phase separately uses revision four.
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| Recorded duration | 26,649 ms | 20,119.6 ms |
+| Frame p50 / p95 / max | 33.3 / 66.7 / 6,583 ms | 33.3 / 66.8 / 216.7 ms |
+| Long tasks: count / total / max | 1 / 202 / 202 ms | 5 / 435 / 154 ms |
+| Pointerdown → hop p50 / p95 | 45.7 / 101.4 ms | 50.1 / 139.3 ms |
+| JS heap start → end (bytes) | 8,728,208 → 9,405,604 | 9,772,200 → 9,746,852 |
+| Maximum calls / triangles | 26 / 7,608 | 33 / 12,780 |
+| Maximum geometries / textures | 35 / 0 | 18 / 0 |
+
+The baseline renderer had already dropped to Low/DPR1.5 at every recorded sample. The after run retains High/DPR2.5 and 2 before the sustained-load Low/DPR1.5 fallback, preserving directional shadows throughout. Calls and triangles therefore include more visible shadow/detail work than the baseline Low samples. These results show removal of the multi-second stall and bounded memory, **not** a demonstrated 60fps or lower input p95. The CPU4 software probe still has frame drops; real mid-iPhone 60fps needs device testing. Taps retain release commitment to preserve one directional move per gesture; press feedback begins on pointerdown and swipes commit before release.
+
+`PERF_LABEL=after PERF_HOPS=300 npm run perf:crossy -- --check` passes the draw-call, tolerant CI frame-time and retained-resource budgets. After 300 forced hops and GC, heap grows **156,860 bytes / 0.150 MB**, from 8,319,248 to 8,476,108 bytes, with bounded geometry count. Final native-DPR captures have at most **42 draw calls**, including projected shadows.
+
+## Final captures and visual review
+
+`/workspace/qcc-crossy-review/r8/manifest.json` is complete, containing 48 views plus the separate native 420×480-device-pixel DSF3 crop. Phone buffers are 780×1688 (DSF2) and 1170×2532 (DSF3); PC is 1366×768. Every view asserts full-screen placement, antialiasing, native High DPR, the Crossy Road worktree title/marker and grass immediately around nearby river blocks. Capture and performance content hashes agree, including new source files.
+
+The comparison seeds remain **11** for start and **7** for mixed/details/deaths. The natural mixed scene is row **418**, with grass 418, log river 419, lily 420 and grass 421; the triple crossing is rows **25–27** viewed from row 24. Idle UFO uses naturally open row **6**, avoiding the scroll leash beating its real seven-second timer. All car/truck/train/water/swept/UFO-idle/UFO-behind captures reach their asserted live death animation.
+
+Viewed the final phone views, PC start/mixed, native DSF3 edge crop and reference t047/t105/t119/t050, alongside r7. Long logs now cover most of their row with small water gaps; red, blue, orange, purple, green, cyan and yellow traffic are supported instead of forced cyan compacts; the natural scene and junction fixtures expose full grass banks. Truck silhouettes stay inside their road, and the row pitch/framing, floating shared glass and UFO presentation remain intact. Native voxel edges are sharp at 100%. The projected shadows keep the rightward rectangular silhouette and contrast; raised-surface self-shadowing remains an approximation of the earlier shadow map.
+
+## Final checks
+
+- `npm run check`: pass on final runtime.
+- `npm test`: **171 files / 3,878 tests passed**, including 2,000-seed fairness and revision 1–4 pins.
+- Full `ARCADE_URL=http://127.0.0.1:4190 npx playwright test --project=chromium`: **1,050 passed, 1 existing opt-in screenshot test skipped** on `7976c47` (25.5 min). The subsequent caster-culling change is verified by the final scoped run below, including its new regression.
+- `ARCADE_URL=http://127.0.0.1:4190 npx playwright test tests/games/crossy-road tests/leaderboard/online.spec.ts tests/e2e/viewport.spec.ts --project=chromium --workers=2`: **70 passed** on final runtime.
+- Crossy Study case alone, Chromium / workers 1: **1 passed**. No assertion was relaxed for load.
+- `npm run build`: pass; offline pack 183 files, version `ab0eaacee258`.
+- `ARCADE_UPDATE_EVIDENCE_DIR=/workspace/qcc-crossy-review/r8-ci/final npm run verify:update`: pass, both root and subpath scenarios, retaining the existing ownership/update assertions. Its own loopback fixture uses 4181; the game/dev/capture server remains 4190 and protected ports were never used.
+- WebKit install attempted, then host-dependency install attempted: unavailable. The browser dependency validator reports missing libraries; the Debian mirror returns HTTP 500 during installation. No WebKit pass is claimed.
+- All evidence PNGs stay outside git; regenerated tracked/untracked evidence from the full suite is restored/removed before commits. Poster and migration are unchanged. No push, merge, deploy or database action.
