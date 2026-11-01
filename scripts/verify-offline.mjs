@@ -9,10 +9,7 @@ const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
-const fictionalMedia=JSON.parse(await readFile('dist/study/fictional-ads/provenance.json','utf8'));
-const localAdPaths=new Set(fictionalMedia.assets.map(ad=>'study/fictional-ads/'+ad.file));
-const allowedStudyPath=path=>/^study\/(contributors|photos)\/[a-z-]+\.webp$/.test(path)||localAdPaths.has(path);
-studyMedia.assets.push(...fictionalMedia.assets.map(ad=>({path:'fictional-ads/'+ad.file,width:ad.width,height:ad.height})));
+const allowedStudyPath=path=>/^study\/photos\/[a-z-]+\.webp$/.test(path);
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
@@ -94,7 +91,7 @@ try{
     assert.equal(await page.locator('.study-chapter svg, .study-sidebar').count(),0);
     assert.equal(await page.locator('.study-text-section').count(),6);
     assert.ok((await page.locator('.study-article-body').innerText()).trim().split(/\s+/).length>=900);
-    assert.equal(await page.locator('.study-byline img').count(),1);
+    assert.equal(await page.locator('.study-byline,.fictional-ad,[data-ad-rail]').count(),0);
     await decodeReadingImages();
     for(const style of ['quanta','aeon','essay','qcc']){
      const current=await page.locator('#study-view').getAttribute('data-style')||'qcc';

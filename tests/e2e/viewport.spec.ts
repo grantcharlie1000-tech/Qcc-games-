@@ -29,8 +29,8 @@ for(const size of [{width:390,height:844},{width:844,height:390}]){
           const box=await page.locator('#game-stage > *').first().boundingBox();
           return !!box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=size.width+1&&box.y+box.height<=size.height+1;
         },{message:`${id}: the entire game, including controls, must fit`}).toBe(true);
-        const names:Record<string,string|RegExp>={'fruit-merge':'Drop fruit',tower:'Drop block',snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','color-connect':'Hint','flappy-bird':'Flap',globle:'Guess','maze-muncher':'Start game','corn-clicker':/^Harvest the cob/,slipline:'Use hint',quadfall:'Start',fivefold:'A'};
-        const control=id==='pool'?page.locator('.pool-table'):id==='crossy-road'?page.locator('.hw-canvas'):page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
+        const names:Record<string,string|RegExp>={snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','color-connect':'Hint','flappy-bird':'Take flight',globle:'Guess','maze-muncher':'Start','corn-clicker':/^Harvest the cob/,slipline:'Use hint',quadfall:'Tap to play',fivefold:'A'};
+        const control=id==='pool'?page.locator('.pool-table'):id==='fruit-merge'?page.locator('.fm-board'):id==='tower'?page.locator('.tower-canvas'):id==='crossy-road'?page.locator('.hw-canvas'):page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
         await expect.poll(()=>control.evaluate(button=>{
           const r=button.getBoundingClientRect(),under=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
           return !!under&&(under===button||button.contains(under));

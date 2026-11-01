@@ -38,14 +38,14 @@ const waitForReadingScroll=async(page:Page)=>{
 const snapshot=(page:Page,id:string)=>page.evaluate(id=>JSON.parse(localStorage.getItem(`pocket-arcade:v1:save:${id}`)!).data,id);
 
 async function playGameAction(page:Page,id:string){
-  if(id==='fruit-merge')await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  if(id==='fruit-merge')await page.locator('.fm-board').click();
   if(id==='water-sort'){
     await page.getByRole('button',{name:'Hint',exact:true}).click();
     const from=await page.locator('.ws-hint-from').getAttribute('data-tube'),to=await page.locator('.ws-hint-to').getAttribute('data-tube');
     await page.locator(`[data-tube="${from}"]`).click();await page.locator(`[data-tube="${to}"]`).click();
   }
   if(id==='color-blocks'){await page.locator('.cb-cell').first().focus();await page.keyboard.press('1');await page.keyboard.press('Enter');}
-  if(id==='tower'){await page.clock.runFor(900);await page.getByRole('button',{name:'Drop block',exact:true}).click();}
+  if(id==='tower'){await page.clock.runFor(900);await page.locator('.tower-canvas').click();}
   if(id==='snake')await page.getByRole('button',{name:'Start slithering',exact:true}).click();
   if(id==='minesweeper')await page.getByRole('gridcell').first().click();
   if(id==='solitaire')await page.getByRole('button',{name:/^Draw from stock/}).click();
@@ -59,9 +59,9 @@ async function playGameAction(page:Page,id:string){
   }
   if(id==='color-connect')await page.getByRole('button',{name:'Hint',exact:true}).click();
   if(id==='ball-run'){await page.getByRole('button',{name:/^(Play|Continue)$/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
-  if(id==='maze-muncher')await page.getByRole('button',{name:'Start game',exact:true}).click();
+  if(id==='maze-muncher')await page.getByRole('button',{name:'Start',exact:true}).click();
   if(id==='slipline'){const p=await page.locator('.sl-board g[data-free="true"] polyline').first().evaluate((node:SVGPolylineElement)=>{const point=node.getPointAtLength(node.getTotalLength()/2),m=node.getScreenCTM()!;return {x:point.x*m.a+point.y*m.c+m.e,y:point.x*m.b+point.y*m.d+m.f}});await page.mouse.click(p.x,p.y);}
-  if(id==='quadfall'){await page.getByRole('button',{name:'Start',exact:true}).click();await page.keyboard.press('Space');}
+  if(id==='quadfall'){await page.getByRole('button',{name:'Tap to play',exact:true}).click();await page.keyboard.press('Space');}
   if(id==='corn-clicker')await page.getByRole('button',{name:/^Harvest the cob/}).click();
   if(id==='flappy-bird'){await page.getByRole('button',{name:'Take flight',exact:true}).click();await page.keyboard.press('Space');}
   if(id==='pool'){
@@ -104,7 +104,7 @@ test('reading keeps native Space scrolling and keyboard controls isolated from T
     if(event.code==='Space')setTimeout(()=>{document.documentElement.dataset.studySpacePrevented=String(event.defaultPrevented);},0);
   },{capture:true}));
   await page.goto('/#/game/tower');await choose(page);
-  await expect(page.getByRole('button',{name:'Drop block',exact:true})).toBeVisible();
+  await expect(page.locator('.tower-canvas')).toBeVisible();
   await page.keyboard.press('Escape');
   // Native scrolling needs browser focus, which another parallel page can take.
   // Re-focus and perform the real input; a game preventing Space still fails.
@@ -125,7 +125,7 @@ test('reading keeps native Space scrolling and keyboard controls isolated from T
 
 test('Escape immediately saves and pauses; article changes never load or replace the game',async({page})=>{
   await page.goto('/#/game/fruit-merge');await choose(page);
-  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  await page.locator('.fm-board').click();
   await expect(page.locator('.fm-count')).toContainText('1 fruit');
   await page.evaluate(()=>{(window as unknown as {retainedStage:Element|null}).retainedStage=document.querySelector('#game-stage > *');});
   const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
@@ -197,7 +197,7 @@ test.describe('all retained game instances',()=>{
 for(const modal of ['menu','rules']){
   test(`Escape dismisses the ${modal} before opening the chapter`,async({page})=>{
     await page.goto('/#/game/fruit-merge');await choose(page);
-    await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+    await page.locator('.fm-board').click();
     if(modal==='menu')await appSettings(page);else await gameAction(page,'Game rules');
     if(modal==='menu')await page.getByRole('searchbox').focus();
     await page.keyboard.press('Escape');
@@ -213,7 +213,7 @@ for(const modal of ['menu','rules']){
     await waitForReadingScroll(page);
     await returnToGame(page);
     await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Pause game');
-    await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+    await page.locator('.fm-board').click();
     await expect(page.locator('.fm-count')).toContainText('2 fruits');
   });
 }
@@ -246,7 +246,7 @@ test('Escape during a delayed import opens instantly and the late game mounts pa
   await expect(page.locator('#pause-game')).toHaveAttribute('aria-label','Resume game');
   expect((await snapshot(page,'fruit-merge')).fruits).toHaveLength(0);
   await returnToGame(page);
-  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  await page.locator('.fm-board').click();
   await expect(page.locator('.fm-count')).toContainText('1 fruit');
 });
 
@@ -315,7 +315,7 @@ test('return restores keyboard focus even when a card game re-renders its contro
 
 test('returning while the page is hidden leaves the game safely paused',async({page})=>{
   await page.goto('/#/game/fruit-merge');await choose(page);
-  await page.getByRole('button',{name:'Drop fruit',exact:true}).click();
+  await page.locator('.fm-board').click();
   await page.keyboard.press('Escape');
   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));});
   await returnToGame(page);

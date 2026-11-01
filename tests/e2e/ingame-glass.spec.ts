@@ -101,7 +101,7 @@ test('compact dock reserves play space and the menu pauses, restores focus and r
 
 test('menu keeps secondary actions reachable through rules and app settings',async({page})=>{
   await page.goto('/#/game/quadfall');
-  await page.getByRole('button',{name:'Start',exact:true}).click();
+  await page.getByRole('button',{name:'Tap to play',exact:true}).click();
   await page.locator('#game-menu').click();
   await page.getByRole('button',{name:'Game rules',exact:true}).click();
   await expect(page.locator('#rules-dialog')).toBeVisible();
@@ -116,11 +116,11 @@ test('menu keeps secondary actions reachable through rules and app settings',asy
   await expect(page.locator('#game-menu')).toBeFocused();
   await page.locator('#game-menu').click();
   await page.getByRole('button',{name:'Restart game',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Start',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Tap to play',exact:true})).toBeVisible();
 });
 
 test('returning from a hidden tab does not resume through the game menu',async({page})=>{
-  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:'Start',exact:true}).click();
+  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:'Tap to play',exact:true}).click();
   await page.locator('#game-menu').click();
   await page.evaluate(()=>{
     Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));
@@ -164,7 +164,7 @@ test('Wordle Statistics returns keyboard focus to the dock',async({page})=>{
 });
 
 test('optional pads, shrinking viewport and disposal keep the dock usable',async({page})=>{
-  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:'Start',exact:true}).click();
+  await page.goto('/#/game/quadfall');await page.getByRole('button',{name:'Tap to play',exact:true}).click();
   await openGameMenu(page);await page.getByLabel('Show touch controls').uncheck();
   await page.getByRole('button',{name:'Close game menu',exact:true}).click();
   await expect(page.locator('.qf-pad')).toBeHidden();
