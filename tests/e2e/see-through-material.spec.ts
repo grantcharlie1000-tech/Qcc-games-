@@ -76,6 +76,7 @@ test('Blockcraft Controls and Advancements keep clear content and one readable l
   const controls=page.locator('.bc-menu [data-panel=controls]');await expect(controls).toBeVisible();
   const boxes=await controls.evaluate(e=>{const b=e.getBoundingClientRect();return [...e.querySelectorAll('dt,dd')].slice(0,2).concat([...e.querySelectorAll('.bc-btn')]).map(s=>{const r=s.getBoundingClientRect();return{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(s).color};});});
   const visible=(await controls.screenshot({animations:'disabled'})).toString('base64');
+  await test.info().attach('blockcraft-clear-controls',{body:Buffer.from(visible,'base64'),contentType:'image/png'});
   const style=await page.addStyleTag({content:'.bc-menu [data-panel=controls],.bc-menu [data-panel=controls] *{background:#000!important;color:#fff!important;-webkit-text-stroke:0!important;text-shadow:none!important;border-color:transparent!important}'});
   const mask=(await controls.screenshot({animations:'disabled'})).toString('base64');
   const edges=await glyphContrast(page,visible,mask,boxes,(await controls.boundingBox())!,true);
@@ -84,6 +85,7 @@ test('Blockcraft Controls and Advancements keep clear content and one readable l
   await page.locator('.bc-menu [data-panel=controls] [data-act=back]').click();
   await page.locator('.bc-menu [data-act=advancements]').click();
   const empty=page.locator('.bc-adv-empty');await expect(empty).toBeVisible();
+  await test.info().attach('blockcraft-clear-advancements',{body:await page.locator('.bc-panel').screenshot({animations:'disabled'}),contentType:'image/png'});
   expect(await empty.evaluate(e=>{const s=getComputedStyle(e);return{fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};})).toEqual({fill:'rgba(0, 0, 0, 0)',image:'none',filter:'none'});
   for(const selector of ['.bc-title .bc-px','.bc-adv-empty .bc-px','.bc-adv-summary .bc-px']){
     const art=page.locator(selector).first();await expect(art).toBeVisible();
