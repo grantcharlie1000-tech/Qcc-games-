@@ -172,6 +172,10 @@ test('garden by tap and by drag, harvest, then Replant keeps discoveries and buy
   await expect(page.locator('.cc-toasts')).toContainText(/Harvested Golden Sweetcorn: \+/);
   await expect(page.locator('.cc-book .cc-book-item').first()).toContainText('Golden Sweetcorn');
   // Replant: shows what resets and survives, the reward and the next-seed progress.
+  // Production changes the progress meter's HTML while the native pointer
+  // gesture is delivered. Hold simulation time so WebKit clicks one stable
+  // button instead of a replacement between pointerdown and pointerup.
+  await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+100));
   await page.getByRole('tab',{name:'Replant'}).click();
   const panel=page.locator('#cc-sub-replant');
   await expect(panel).toContainText('+2 seeds');
