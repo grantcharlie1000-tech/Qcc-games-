@@ -10,7 +10,7 @@ describe('clear glass contrast',()=>{
     const result=glassInk([[0,0,0],[255,255,255]]);
     expect(result.color).toBe('#0b1015');
     const alpha=Number(result.halo.match(/\/ ([\d.]+)/)![1]);
-    expect(alpha).toBeGreaterThan(.4);expect(alpha).toBeLessThan(.55);
+    expect(alpha).toBeGreaterThan(.55);expect(alpha).toBeLessThan(.65);
   });
   it('handles a saturated bright surface without desaturating its glass',()=>{
     expect(glassInk([[255,220,90],[210,240,160]]).color).toBe('#0b1015');

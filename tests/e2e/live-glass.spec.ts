@@ -6,6 +6,12 @@ for(const id of ['snake','quadfall','maze-muncher','neon-coil'])test(`${id} glas
   await page.goto(`/#/game/${id}`);
   const control=page.locator('#game-menu');await expect(control).toBeVisible();
   await control.screenshot({animations:'disabled'});
+  if(await control.getAttribute('data-glass')==='backdrop'){
+    const bounds=(await control.boundingBox())!,lens=(await control.locator('.ui-glass-lens').boundingBox())!;
+    // An inward lens never needs to filter an invisible 14px margin around
+    // every live control. Keep the sampled compositor area inside its shape.
+    for(const key of ['x','y','width','height'] as const)expect(lens[key],`${id} lens ${key}`).toBeCloseTo(bounds[key],2);
+  }
   // The production docks reserve space outside some boards. This optical
   // fixture puts live canvas pixels behind their actual controls without
   // changing board geometry, input, game models, scores or saves.

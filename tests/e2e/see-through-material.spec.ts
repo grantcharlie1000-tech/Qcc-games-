@@ -1,6 +1,7 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
 import {glyphContrast} from '../glass-contrast';
+import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
 
@@ -114,7 +115,42 @@ test('Blockcraft Controls and Advancements keep clear content and one readable l
     await maskStyle.evaluate(e=>(e as Element).remove());
     expect(Math.min(...edges),`${selector}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
   }
+  // The visible book tab opens Statistics without starting or changing a world.
+  await statisticsContrast(page);
 });
+
+test.describe('desktop Statistics glyphs',()=>{
+  test.use({viewport:{width:1366,height:768},deviceScaleFactor:1,isMobile:false,hasTouch:false});
+  test('Blockcraft Statistics stay legible at DPR1 over light and dark content',async({page})=>{
+    await page.goto('/#/game/blockcraft');
+    await expect(page.locator('.bc-menu [data-act=primary]')).toBeEnabled({timeout:30000});
+    await page.locator('.bc-menu [data-act=advancements]').click();
+    await statisticsContrast(page);
+  });
+});
+
+async function statisticsContrast(page:Page){
+  await page.locator('.bc-adv-tab[id$="-statistics"]').click();
+  await expect(page.locator('.bc-adv-stats')).toBeVisible();
+  await expect(page.locator('.bc-adv-stat-row').first()).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
+  for(const backdrop of ['#000','#fff']){
+    const source=await page.addStyleTag({content:`.bc-screen{background:${backdrop}!important}`});
+    for(const selector of ['.bc-adv-stat-name','.bc-adv-stat-empty']){
+      const text=page.locator(selector).first();await text.scrollIntoViewIfNeeded();
+      // Whole-panel clips preserve WebKit's fractional glyph raster alignment.
+      const panel=page.locator('.bc-adv-stats'),bounds=(await panel.boundingBox())!,r=(await text.boundingBox())!;
+      const color=await text.evaluate(e=>getComputedStyle(e).color);
+      const visible=(await panel.screenshot({animations:'disabled'})).toString('base64');
+      const style=await page.addStyleTag({content:'.bc-adv-stats,.bc-adv-stats *{color:#fff!important;-webkit-text-fill-color:#fff!important;background:#000!important;text-shadow:none!important;-webkit-text-stroke:0!important;border-color:transparent!important}'});
+      const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
+      const edges=await glyphContrast(page,visible,mask,[{x:r.x-bounds.x,y:r.y-bounds.y,w:r.width,h:r.height,color}],bounds,true);
+      await style.evaluate(e=>(e as Element).remove());
+      await test.info().attach('statistics-glyph-contrast',{body:JSON.stringify({selector,backdrop,edges}),contentType:'application/json'});
+      expect(Math.min(...edges),`${selector} over ${backdrop}: ${JSON.stringify(edges)}`).toBeGreaterThanOrEqual(4.5);
+    }
+    await source.evaluate(e=>(e as Element).remove());
+  }
+}
 
 for(const surface of ['bar','menu','dock','sheet'] as const)test(`${surface} preserves the rendered background with near-zero added white`,async({page})=>{
   await page.goto(surface==='bar'||surface==='menu'?'/#/collection':'/#/game/snake');

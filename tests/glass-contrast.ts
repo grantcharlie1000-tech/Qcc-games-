@@ -1,5 +1,30 @@
-import type {Page} from '@playwright/test';
+import type {Locator,Page} from '@playwright/test';
 export interface GlyphBox{x:number;y:number;w:number;h:number;color:string}
+/** Isolate foreground alpha without changing the panel's compositing path.
+ * Making a translucent ancestor opaque can move Chromium's glyph raster grid
+ * by a device pixel. Keep its background, stroke and shadow, varying only fill. */
+export async function textFillMask(page:Page,panel:Locator,selector:string):Promise<string>{
+  const rule=(fill:string)=>`${selector},${selector} *{-webkit-text-fill-color:${fill}!important}`;
+  const style=await page.addStyleTag({content:rule('#fff')});
+  try{
+    const white=(await panel.screenshot({animations:'disabled'})).toString('base64');
+    await style.evaluate((e,css)=>e.textContent=css,rule('#000'));
+    const black=(await panel.screenshot({animations:'disabled'})).toString('base64');
+    return await page.evaluate(async({white,black})=>{
+      const image=new Image(),canvas=document.createElement('canvas');
+      image.src='data:image/png;base64,'+white;await image.decode();
+      canvas.width=image.width;canvas.height=image.height;const ctx=canvas.getContext('2d')!;
+      ctx.drawImage(image,0,0);const light=ctx.getImageData(0,0,canvas.width,canvas.height);
+      image.src='data:image/png;base64,'+black;await image.decode();ctx.drawImage(image,0,0);
+      const dark=ctx.getImageData(0,0,canvas.width,canvas.height);
+      for(let i=0;i<light.data.length;i+=4){
+        const alpha=Math.max(...[0,1,2].map(c=>Math.abs(light.data[i+c]-dark.data[i+c])));
+        light.data[i]=light.data[i+1]=light.data[i+2]=alpha;light.data[i+3]=255;
+      }
+      ctx.putImageData(light,0,0);return canvas.toDataURL('image/png').split(',')[1];
+    },{white,black});
+  }finally{await style.evaluate(e=>e.parentNode?.removeChild(e));}
+}
 // Locate rasterized ink cores, then compare specified ink with its backdrop.
 // The relative mask peak also supports small antialiased fonts. Visible-edge
 // mode instead measures the actual exterior outline with foreground retained.
@@ -13,6 +38,9 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
       // Element geometry is in CSS pixels; PNGs use device pixels (and may
       // round a fractional clip). Derive both scales from the actual images.
       const sx=c.width/bounds.width,sy=c.height/bounds.height;
+      // A fractional CSS clip can round its PNG width up. That coordinate
+      // scale must not turn the intended two DPR3 edge pixels into three.
+      const edgeDistance=Math.max(1,Math.floor(window.devicePixelRatio*2/3));
       image.src='data:image/png;base64,'+mask;await image.decode();context.drawImage(image,0,0);
       const inkMask=context.getImageData(0,0,c.width,c.height).data;
       const lum=(rgb:number[])=>rgb.reduce((l,v,i)=>{const s=v/255;return l+(s<=.04045?s/12.92:((s+.055)/1.055)**2.4)*[.2126,.7152,.0722][i];},0);
@@ -32,7 +60,7 @@ return page.evaluate(async({shot,mask,boxes,bounds,visibleEdges})=>{
             // is the nearest two device pixels (2/3 CSS px) along either axis.
             if(Math.max(inkMask[i],inkMask[i+1],inkMask[i+2])>12)continue;
             let adjacent=false;
-            for(let distance=1;distance<=Math.ceil(sx*2/3);distance++)for(const [dx,dy] of [[distance,0],[-distance,0],[0,distance],[0,-distance]]){
+            for(let distance=1;distance<=edgeDistance;distance++)for(const [dx,dy] of [[distance,0],[-distance,0],[0,distance],[0,-distance]]){
               const xx=x+dx,yy=y+dy;
               if(xx<0||xx>=c.width||yy<0||yy>=c.height)continue;
               const j=(yy*c.width+xx)*4;

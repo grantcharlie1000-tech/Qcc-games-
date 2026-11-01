@@ -197,7 +197,10 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
-  const bounded=bar.matches('.section-tabbar,.section-menu,.floating-glass-group');
+  // Convex arcade lenses sample inward, so their compositor surface needs no
+  // legacy outward margin. This also bounds live canvas controls to their own
+  // area instead of filtering an extra 14px on all four sides every frame.
+  const bounded=arcade||bar.matches('.section-tabbar,.section-menu,.floating-glass-group');
   const margin=bounded?0:LENS_MARGIN;
   const standalone=bar.matches('.game-glass,.glass-control');
   const forceFallback=new URLSearchParams(location.search).get('glass')==='fallback';

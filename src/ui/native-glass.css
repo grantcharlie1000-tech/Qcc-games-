@@ -34,6 +34,7 @@ body.in-game #game-stage :is(
   .br-panel .br-head,.br-panel .br-records,.br-panel .br-row,
   .gl-side .gl-win,.gl-side .gl-guess,.bc-menu .bc-controls,.bc-panel .bc-adv-stats,
   .bc-panel .bc-adv-empty,.bc-panel .bc-adv-tree,.bc-panel .bc-adv-canvas,
+  .bc-panel .bc-adv-stat-row,.bc-panel .bc-adv-stat-item,
   .bc-adv-tip .bc-adv-tip-bar,.bc-adv-tip .bc-adv-tip-body,
   .cc-root .cc-subs,.cc-root .cc-farm-bar,.cc-root .cc-ticker,
   .cc-root .cc-chip-info,.cc-root .cc-crow-option,.cc-root .cc-garden-locked,
@@ -48,6 +49,8 @@ body.in-game #game-stage .bc-panel::before{border-image:none;background:transpar
 body.in-game #game-stage .bc-panel :is(.bc-adv-empty,.bc-adv-tree){box-shadow:none}
 body.in-game #game-stage .bc-adv-tip{filter:none}
 body.in-game #game-stage .bc-menu .bc-controls :is(dt,dd){color:var(--native-glass-ink);text-shadow:inherit}
+body.in-game #game-stage .bc-panel :is(.bc-adv-stat-name,.bc-adv-stat-label,.bc-adv-stat-val,.bc-adv-stat-num,.bc-adv-stat-empty){color:var(--native-glass-ink);text-shadow:inherit}
+body.in-game #game-stage .bc-adv-stats{-webkit-text-stroke:1.8px var(--native-glass-halo)}
 /* Pixel typography is foreground art, with transparent accessible text behind
    it. Outline the actual image alpha, never reveal a second system-font label.
    Keep the original pixel colours and geometry, including its baked shadow.

@@ -193,7 +193,7 @@ test('pointer press lifts the individual button and reduced motion removes the l
   await expect(button).toHaveAttribute('data-pressing','');
   await expect.poll(()=>button.evaluate(e=>parseFloat(getComputedStyle(e).scale))).toBeGreaterThanOrEqual(1.08);
   const filter=await button.getAttribute('data-glass')==='frost'?button:button.locator('.ui-glass-lens');
-  await expect(filter).toHaveCSS('backdrop-filter',/blur\(2.5px\)/);
+  await expect(filter).toHaveCSS('backdrop-filter',/blur\(0.3px\)/);
   await page.mouse.move(1,1);await page.mouse.up();
   await expect(button).not.toHaveAttribute('data-pressing');
   await page.emulateMedia({reducedMotion:'reduce'});
@@ -244,8 +244,8 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
   });
 });
 
-// Read the actual rendered background under the glyph boxes with the glyphs
-// hidden. This catches an adaptive tone that looks clear but loses its labels.
+// Measure the actual visible outline adjacent to each foreground glyph. This
+// catches an adaptive tone that looks clear but loses its labels.
 for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','snake','neon-coil','quadfall','maze-muncher','ball-run','blockcraft']){
   test(`${id} dock glyphs retain 4.5:1 contrast over their rendered surface`,async({page,browserName})=>{
     await page.setViewportSize({width:390,height:844});await page.goto(`/#/game/${id}`);
@@ -259,8 +259,8 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
       await page.locator('.br-play').click();await page.clock.runFor(600);
     }
     if(id==='blockcraft'){
-      // A cave or night sky may be entirely dark. The light regular variant must
-      // still support its dark glyphs on that darkest background.
+      // A cave or night sky may be entirely dark. Clear glass must still
+      // support its dark glyphs on that darkest background.
       await page.addStyleTag({content:'.blockcraft canvas{opacity:0!important}.blockcraft{background:#000!important}'});
     }
     await dock.screenshot({animations:'disabled'});
@@ -271,14 +271,12 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
         return {x:(r.x-d.x),y:(r.y-d.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
       }).filter(r=>r.w>0&&r.h>0);
     });
-    const hideInk=await page.addStyleTag({content:'.game-hud small,.game-hud strong,.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){color:transparent!important}'});
     const shot=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    // Keep the real text shadow in the background shot. An opaque ink mask
-    // restricts contrast to actual glyph cores, rather than spaces in their boxes.
-    await hideInk.evaluate(e=>e.parentNode?.removeChild(e));
-    await page.addStyleTag({content:'.glass-vector-halo{display:none!important}.game-view{background:#000!important}.game-surface,.stage-wrap{visibility:hidden!important}.game-glass{background:transparent!important;backdrop-filter:none!important;border-color:transparent!important}.game-glass::before,.game-glass>.ui-glass-lens,.game-glass>.ui-glass-glow{visibility:hidden!important}.game-hud small,.game-hud strong,.game-dock>.ui-tab{color:#fff!important;text-shadow:none!important;-webkit-text-stroke:0!important}.game-dock>.ui-tab>svg{filter:none!important}.game-dock :is(svg,span,small,strong){color:#fff!important;background:none!important;box-shadow:none!important}'});
+    // Persistent styles follow refreshed HUD nodes; retain filter geometry so
+    // the mask uses the same raster grid as the visible screenshot.
+    await page.addStyleTag({content:'.game-dock,.game-dock *{background:#000!important;color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:none!important;-webkit-text-stroke:0!important;box-shadow:none!important;border-color:transparent!important}.game-dock .glass-vector-halo{visibility:hidden!important}'});
     const mask=(await dock.screenshot({animations:'disabled'})).toString('base64');
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!);
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await dock.boundingBox())!,true);
     expect(Math.min(...ratios),`${id}: ${ratios.map(r=>r.toFixed(2)).join(', ')}`).toBeGreaterThanOrEqual(4.5);
   });
 }

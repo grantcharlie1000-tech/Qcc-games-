@@ -38,7 +38,10 @@ export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',select
       high=.8;
       for(let i=0;i<7;i++){const mid=(low+high)/2;if(contrast(mid)<5.2)low=mid;else high=mid;}
     }
-    return {...candidate,alpha:Math.ceil(high*100)/100};
+    // Exterior glyph pixels have fractional raster coverage. Reserve 10% for
+    // that coverage loss (verified on the visible WebKit/Chromium outline),
+    // instead of treating the fully covered, hidden glyph core as contrast.
+    return {...candidate,alpha:Math.min(1,Math.ceil(high/.9*100)/100)};
   }).sort((a,b)=>a.alpha-b.alpha);
   // Preserve the surface's established ink when a mixed backdrop requires an
   // outline either way. An unoutlined choice always takes priority.

@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
-import {glyphContrast} from '../glass-contrast';
+import {glyphContrast,textFillMask} from '../glass-contrast';
 
 for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
   test(`${id} menu and its submenus use a neutral glass sheet and retain modal focus`,async({page})=>{
@@ -114,18 +114,19 @@ for(const [view,black] of [['home',false],['accounts',false],['snake',false],['f
         if(!node.textContent?.trim()||parent.closest('.sr-only')||getComputedStyle(parent).visibility==='hidden')continue;
         const range=document.createRange();range.selectNodeContents(node);
         for(const r of range.getClientRects())if(r.width&&r.top>=outer.top+2&&r.bottom<=outer.bottom-2){
-          boxes.push({x:r.x-outer.x,y:r.y-outer.y,w:r.width,h:r.height,color:getComputedStyle(parent).color});
+          boxes.push({x:r.x-outer.x,y:r.y-outer.y,w:r.width,h:r.height,color:getComputedStyle(parent).color,text:node.textContent});
         }
       }
       return boxes;
     });
     expect(boxes.length).toBeGreaterThan(8);
-    const hide=await page.addStyleTag({content:`${selector} *{color:transparent!important}`});
+    const mask=await textFillMask(page,panel,selector);
+    // Capture the restored original paint on the same raster path as the mask.
+    // Chromium can retain a fractional-baseline texture from the entry scale
+    // animation until text first repaints, even after the animation finishes.
     const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
-    await hide.evaluate(e=>e.parentNode?.removeChild(e));
-    await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
-    const mask=(await panel.screenshot({animations:'disabled'})).toString('base64');
-    const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!);
+    const ratios=await glyphContrast(page,shot,mask,boxes,(await panel.boundingBox())!,true);
+    await test.info().attach('sheet-visible-contrast',{body:JSON.stringify(boxes.map((box,i)=>({...box,contrast:ratios[i]}))),contentType:'application/json'});
     expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
   });
 }

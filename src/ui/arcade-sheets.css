@@ -26,6 +26,9 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
   --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(0 0 0 / .12);--sheet-focus:#111316;color-scheme:light;
 }
+/* A DPR1 exterior pixel needs a full CSS pixel of glyph outline.
+   Higher-density screens keep the finer 0.7px outward stroke above. */
+@media(max-resolution:1.5dppx){:is(.arcade-sheet,body.in-game .mp-card){-webkit-text-stroke-width:2px}}
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card){--sheet-radius:28px}}
 .arcade-sheet.ui-glass-sheet{padding:var(--sheet-padding)}
 /* The tiny handle is decoration, not a false drag affordance or tab stop. */
@@ -44,6 +47,7 @@ body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .arcade-sheet .game-menu-eyebrow{font-size:11px;letter-spacing:.08em;font-weight:550}
 .arcade-sheet :is(.icon-button,.game-button.secondary){background:var(--sheet-control);color:var(--sheet-ink);box-shadow:none}
 .arcade-sheet .game-button:not(.secondary){background:var(--sheet-ink);color:var(--sheet-action-ink);box-shadow:none}
+:is(.arcade-sheet,body.in-game .mp-card) .game-button:not(.secondary){text-shadow:none;-webkit-text-stroke:0}
 /* Form controls reset inherited text shadows in browser stylesheets. Keep
    the stroke-local contrast on transparent controls; solid actions need none. */
 :is(.arcade-sheet,body.in-game .mp-card) :is(button:not(.game-button),.game-button.secondary,input,select){text-shadow:inherit}
