@@ -75,7 +75,8 @@ export function mount(container, context) {
     camera.aspect = width / height;camera.updateProjectionMatrix();game.post?.setSize();
   }
   function releaseInput() {
-    game.input?.cancelKeyCapture('pause');game.touchControls?._releaseGameplayInputs();game.input?._releaseAll(true);
+    game.input?.cancelLockRequest();game.input?.cancelKeyCapture('pause');
+    game.touchControls?._releaseGameplayInputs();game.input?._releaseAll(true);
     if (game.input) {game.input.locked = false;game.input._virtualLock = false;}
     game.events.emit('input:unlock');setGameplayGestureGuard(false, root);
     if (document.pointerLockElement === game.canvas) document.exitPointerLock?.();
@@ -109,7 +110,7 @@ export function mount(container, context) {
     },
     restart() {
       if (game.disposed) return;
-      releaseInput();game.events.emit('ui:start');if (touch) game.input.requestLock();
+      releaseInput();game.events.emit('ui:restart');if (touch) game.input.requestLock();
     },
     serialize() {return {version:1,mapId:game.selectedMapId};},
     restore(data) {
@@ -150,7 +151,7 @@ export function mount(container, context) {
     game.listen(window,'resize',resize,{passive:true});game.listen(window.visualViewport,'resize',resize,{passive:true});
     resizeObserver = new ResizeObserver(resize);resizeObserver.observe(root);
     game.listen(window,'keydown',event => {
-      if (event.repeat || event.key.toLowerCase() !== 'p' || event.target?.closest?.('input,textarea,select')) return;
+      if (event.defaultPrevented || event.repeat || event.key.toLowerCase() !== 'p' || event.target?.closest?.('input,textarea,select')) return;
       if (game.state.phase === 'menu' || game.state.phase === 'gameEnd') return;
       event.preventDefault();if (game.hud.buyOpen) game.hud._setBuyOpen(false);else context.setPaused?.(true);
     });

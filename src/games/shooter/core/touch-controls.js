@@ -569,23 +569,23 @@ export default class TouchControls {
 
 function touchCss() {
   return `
-.shooter-game.touch-device { --touch-stick-size:clamp(112px,17vmin,154px); --touch-fire-size:clamp(72px,11vmin,98px); }
-.shooter-game.touch-device,.shooter-game.touch-device body { overscroll-behavior:none; }
-.shooter-game.touch-device body,.shooter-game.touch-device #app { width:var(--layout-width,100%); height:var(--layout-height,100dvh); -webkit-touch-callout:none; }
-.shooter-game.touch-device #hud { left:var(--app-left,0); top:var(--app-top,0); width:var(--app-width,100%); height:var(--app-height,100dvh); }
-.shooter-game.touch-device #hud-menu,.shooter-game.touch-device #hud-leaderboard,
-.shooter-game.touch-device #hud-profile,.shooter-game.touch-device #hud-end,
-.shooter-game.touch-device #hud-buy .buy-panel,.shooter-game.touch-device #hud-scoreboard .sb-panel {
+:scope.touch-device { --touch-stick-size:clamp(112px,17vmin,154px); --touch-fire-size:clamp(72px,11vmin,98px); }
+:scope.touch-device,:scope.touch-device body { overscroll-behavior:none; }
+:scope.touch-device body,:scope.touch-device #app { width:var(--layout-width,100%); height:var(--layout-height,100dvh); -webkit-touch-callout:none; }
+:scope.touch-device #hud { left:var(--app-left,0); top:var(--app-top,0); width:var(--app-width,100%); height:var(--app-height,100dvh); }
+:scope.touch-device #hud-menu,:scope.touch-device #hud-leaderboard,
+:scope.touch-device #hud-profile,:scope.touch-device #hud-end,
+:scope.touch-device #hud-buy .buy-panel,:scope.touch-device #hud-scoreboard .sb-panel {
   -webkit-overflow-scrolling:touch;
 }
-.shooter-game.touch-device #hud-menu,.shooter-game.touch-device #hud-leaderboard,
-.shooter-game.touch-device #hud-profile,.shooter-game.touch-device #hud-end,
-.shooter-game.touch-device #hud-buy .buy-panel,.shooter-game.touch-device #hud-scoreboard .sb-panel,
-.shooter-game.touch-device #hud-buy-cats { touch-action:manipulation; }
-.shooter-game.touch-device #hud button,.shooter-game.touch-device #hud input,.shooter-game.touch-device #hud select,
-.shooter-game.touch-device #hud summary,.shooter-game.touch-device #hud [role="button"] { touch-action:manipulation; }
-.shooter-game.touch-device #touch-controls,.shooter-game.touch-device #touch-controls button { touch-action:none; }
-.shooter-game.touch-gameplay,.shooter-game.touch-gameplay body,.shooter-game.touch-gameplay #app,.shooter-game.touch-gameplay #hud { touch-action:none; }
+:scope.touch-device #hud-menu,:scope.touch-device #hud-leaderboard,
+:scope.touch-device #hud-profile,:scope.touch-device #hud-end,
+:scope.touch-device #hud-buy .buy-panel,:scope.touch-device #hud-scoreboard .sb-panel,
+:scope.touch-device #hud-buy-cats { touch-action:manipulation; }
+:scope.touch-device #hud button,:scope.touch-device #hud input,:scope.touch-device #hud select,
+:scope.touch-device #hud summary,:scope.touch-device #hud [role="button"] { touch-action:manipulation; }
+:scope.touch-device #touch-controls,:scope.touch-device #touch-controls button { touch-action:none; }
+:scope.touch-gameplay,:scope.touch-gameplay body,:scope.touch-gameplay #app,:scope.touch-gameplay #hud { touch-action:none; }
 
 #touch-controls { position:absolute; inset:0; z-index:22; display:none; pointer-events:none;
   --safe-t:env(safe-area-inset-top,0px); --safe-r:env(safe-area-inset-right,0px);
@@ -665,66 +665,66 @@ function touchCss() {
   padding:9px 14px; border:1px solid rgba(154,178,107,.24); color:#aabd8c; background:rgba(6,10,5,.55);
   text-align:center; font-size:11px; font-weight:800; letter-spacing:.14em;
 }
-.shooter-game.touch-device .mn-bindings-section,.shooter-game.touch-device .mn-settings-mouse { display:none; }
+:scope.touch-device .mn-bindings-section,:scope.touch-device .mn-settings-mouse { display:none; }
 /* Touchscreen laptops/tablets with a real mouse still need keyboard remapping. */
 @media (any-pointer:fine) {
-  .shooter-game.touch-device .mn-bindings-section { display:grid; }
-  .shooter-game.touch-device .mn-settings-mouse { display:inline; }
+  :scope.touch-device .mn-bindings-section { display:grid; }
+  :scope.touch-device .mn-settings-mouse { display:inline; }
 }
-.shooter-game.touch-device .mn-touch-help { display:flex; }
-.shooter-game.touch-device #hud-menu { padding-top:max(12px,env(safe-area-inset-top)); padding-right:max(14px,env(safe-area-inset-right));
+:scope.touch-device .mn-touch-help { display:flex; }
+:scope.touch-device #hud-menu { padding-top:max(12px,env(safe-area-inset-top)); padding-right:max(14px,env(safe-area-inset-right));
   padding-bottom:max(18px,env(safe-area-inset-bottom)); padding-left:max(14px,env(safe-area-inset-left)); }
-.shooter-game.touch-device .mn-map-picker { width:100%; max-width:1120px; }
-.shooter-game.touch-device .mn-career { width:100%; max-width:1120px; }
-.shooter-game.touch-device .mn-actions { width:100%; max-width:820px; }
-.shooter-game.touch-device #hud #mp-panel { width:100%; max-width:920px; }
-.shooter-game.touch-device #hud button,.shooter-game.touch-device #hud input,.shooter-game.touch-device #hud select { -webkit-tap-highlight-color:transparent; }
-.shooter-game.touch-device #mp-panel input,.shooter-game.touch-device #mp-panel select { font-size:16px!important; }
-.shooter-game.touch-device #mp-panel input,.shooter-game.touch-device #mp-panel select,.shooter-game.touch-device #mp-panel button { min-height:48px; }
-.shooter-game.touch-device #mp-panel #mp-refresh { flex-basis:48px!important; width:48px!important; height:48px!important; }
-.shooter-game.touch-device .mp-player { min-height:36px; align-items:center; }
-.shooter-game.touch-device #mp-roster { max-height:230px; overflow:auto; }
-.shooter-game.touch-device #hud-profile-name { font-family:inherit; font-size:18px; font-weight:900; }
-.shooter-game.touch-device .profile-actions button,.shooter-game.touch-device .lb-profile-edit,
-.shooter-game.touch-device .lb-tabs button,.shooter-game.touch-device #hud-leaderboard-refresh { min-height:48px; }
-.shooter-game.touch-device .lb-desktop-hint { display:none; }
+:scope.touch-device .mn-map-picker { width:100%; max-width:1120px; }
+:scope.touch-device .mn-career { width:100%; max-width:1120px; }
+:scope.touch-device .mn-actions { width:100%; max-width:820px; }
+:scope.touch-device #hud #mp-panel { width:100%; max-width:920px; }
+:scope.touch-device #hud button,:scope.touch-device #hud input,:scope.touch-device #hud select { -webkit-tap-highlight-color:transparent; }
+:scope.touch-device #mp-panel input,:scope.touch-device #mp-panel select { font-size:16px!important; }
+:scope.touch-device #mp-panel input,:scope.touch-device #mp-panel select,:scope.touch-device #mp-panel button { min-height:48px; }
+:scope.touch-device #mp-panel #mp-refresh { flex-basis:48px!important; width:48px!important; height:48px!important; }
+:scope.touch-device .mp-player { min-height:36px; align-items:center; }
+:scope.touch-device #mp-roster { max-height:230px; overflow:auto; }
+:scope.touch-device #hud-profile-name { font-family:inherit; font-size:18px; font-weight:900; }
+:scope.touch-device .profile-actions button,:scope.touch-device .lb-profile-edit,
+:scope.touch-device .lb-tabs button,:scope.touch-device #hud-leaderboard-refresh { min-height:48px; }
+:scope.touch-device .lb-desktop-hint { display:none; }
 
-.shooter-game.touch-device #hud-status { left:max(10px,env(safe-area-inset-left)); bottom:calc(env(safe-area-inset-bottom) + var(--touch-stick-size) + 25px); gap:5px; }
-.shooter-game.touch-device .stat-box { padding:5px 10px 6px 8px; gap:6px; }
-.shooter-game.touch-device .stat-num { min-width:35px; font-size:24px; }
-.shooter-game.touch-device .stat-ico svg { width:18px; height:18px; }
-.shooter-game.touch-device #hud-money { left:50%; bottom:calc(env(safe-area-inset-bottom) + 66px); transform:translateX(-50%); padding:6px 10px; font-size:18px; }
-.shooter-game.touch-device #hud-ammo { right:max(10px,env(safe-area-inset-right)); top:calc(env(safe-area-inset-top) + 72px); bottom:auto; min-width:112px; padding:5px 10px 7px; }
-.shooter-game.touch-device #hud-ammo-mag { font-size:29px; }
-.shooter-game.touch-device #hud-ammo-reserve { font-size:15px; }
-.shooter-game.touch-device #hud-weapon-name { font-size:9px; }
-.shooter-game.touch-device #hud-top { top:max(8px,env(safe-area-inset-top)); padding:5px 18px 6px; min-width:154px; }
-.shooter-game.touch-device #hud-timer-num { font-size:23px; }
-.shooter-game.touch-device #hud-round { font-size:8px; }
-.shooter-game.touch-device #hud-radar { top:max(8px,env(safe-area-inset-top)); left:max(8px,env(safe-area-inset-left)); width:112px; height:112px; padding:2px; }
-.shooter-game.touch-device #hud-radar-canvas { width:106px; height:106px; }
-.shooter-game.touch-device #hud-killfeed { top:calc(max(8px,env(safe-area-inset-top)) + 124px); right:max(8px,env(safe-area-inset-right)); max-width:48vw; gap:3px; }
-.shooter-game.touch-device .kf-entry { gap:6px; padding:4px 8px; font-size:14px; }
-.shooter-game.touch-device .kf-weap,.shooter-game.touch-device .kf-hs { font-size:8px; padding:2px 4px; }
-.shooter-game.touch-device #hud-usehint { display:none!important; }
-.shooter-game.touch-device #hud-death { top:18%; bottom:auto; width:min(500px,58vw); }
-.shooter-game.touch-device .death-inner { padding:9px 13px; }
-.shooter-game.touch-device .death-sub { white-space:normal; }
-.shooter-game.touch-device #hud-msg { top:20%; }
-.shooter-game.touch-device #hud-msg-main { font-size:clamp(22px,5vw,34px); }
-.shooter-game.touch-device #hud-msg-sub { font-size:10px; }
+:scope.touch-device #hud-status { left:max(10px,env(safe-area-inset-left)); bottom:calc(env(safe-area-inset-bottom) + var(--touch-stick-size) + 25px); gap:5px; }
+:scope.touch-device .stat-box { padding:5px 10px 6px 8px; gap:6px; }
+:scope.touch-device .stat-num { min-width:35px; font-size:24px; }
+:scope.touch-device .stat-ico svg { width:18px; height:18px; }
+:scope.touch-device #hud-money { left:50%; bottom:calc(env(safe-area-inset-bottom) + 66px); transform:translateX(-50%); padding:6px 10px; font-size:18px; }
+:scope.touch-device #hud-ammo { right:max(10px,env(safe-area-inset-right)); top:calc(env(safe-area-inset-top) + 72px); bottom:auto; min-width:112px; padding:5px 10px 7px; }
+:scope.touch-device #hud-ammo-mag { font-size:29px; }
+:scope.touch-device #hud-ammo-reserve { font-size:15px; }
+:scope.touch-device #hud-weapon-name { font-size:9px; }
+:scope.touch-device #hud-top { top:max(8px,env(safe-area-inset-top)); padding:5px 18px 6px; min-width:154px; }
+:scope.touch-device #hud-timer-num { font-size:23px; }
+:scope.touch-device #hud-round { font-size:8px; }
+:scope.touch-device #hud-radar { top:max(8px,env(safe-area-inset-top)); left:max(8px,env(safe-area-inset-left)); width:112px; height:112px; padding:2px; }
+:scope.touch-device #hud-radar-canvas { width:106px; height:106px; }
+:scope.touch-device #hud-killfeed { top:calc(max(8px,env(safe-area-inset-top)) + 124px); right:max(8px,env(safe-area-inset-right)); max-width:48vw; gap:3px; }
+:scope.touch-device .kf-entry { gap:6px; padding:4px 8px; font-size:14px; }
+:scope.touch-device .kf-weap,:scope.touch-device .kf-hs { font-size:8px; padding:2px 4px; }
+:scope.touch-device #hud-usehint { display:none!important; }
+:scope.touch-device #hud-death { top:18%; bottom:auto; width:min(500px,58vw); }
+:scope.touch-device .death-inner { padding:9px 13px; }
+:scope.touch-device .death-sub { white-space:normal; }
+:scope.touch-device #hud-msg { top:20%; }
+:scope.touch-device #hud-msg-main { font-size:clamp(22px,5vw,34px); }
+:scope.touch-device #hud-msg-sub { font-size:10px; }
 
-.shooter-game.touch-device #hud-buy,.shooter-game.touch-device #hud-scoreboard { padding:max(7px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
-.shooter-game.touch-device .buy-panel,.shooter-game.touch-device .sb-panel { clip-path:none; }
-.shooter-game.touch-device .buy-item { min-height:72px; }
-.shooter-game.touch-device .buy-foot kbd { display:none; }
-.shooter-game.touch-device .buy-desktop-hint { display:none; }
-.shooter-game.touch-device .buy-close { display:grid; place-items:center; }
-.shooter-game.touch-device #hud-leaderboard,.shooter-game.touch-device #hud-profile { padding:max(7px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
-.shooter-game.touch-device #hud-end { overflow:auto; padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+:scope.touch-device #hud-buy,:scope.touch-device #hud-scoreboard { padding:max(7px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
+:scope.touch-device .buy-panel,:scope.touch-device .sb-panel { clip-path:none; }
+:scope.touch-device .buy-item { min-height:72px; }
+:scope.touch-device .buy-foot kbd { display:none; }
+:scope.touch-device .buy-desktop-hint { display:none; }
+:scope.touch-device .buy-close { display:grid; place-items:center; }
+:scope.touch-device #hud-leaderboard,:scope.touch-device #hud-profile { padding:max(7px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
+:scope.touch-device #hud-end { overflow:auto; padding:max(10px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
 
 @media (orientation:landscape) and (max-height:500px) {
-  .shooter-game.touch-device { --touch-stick-size:112px; --touch-fire-size:74px; }
+  :scope.touch-device { --touch-stick-size:112px; --touch-fire-size:74px; }
   .tc-utilities { top:calc(var(--safe-t) + 7px); right:calc(var(--safe-r) + 8px); gap:5px; }
   .tc-utilities .tc-button { min-width:49px; min-height:44px; padding-inline:5px; font-size:9.5px; letter-spacing:.035em; }
   .tc-weapons { bottom:calc(var(--safe-b) + 7px); }
@@ -733,122 +733,122 @@ function touchCss() {
   .tc-jump { right:calc(var(--safe-r) + 98px); bottom:calc(var(--safe-b) + 12px); }
   .tc-crouch { right:calc(var(--safe-r) + 91px); bottom:calc(var(--safe-b) + 67px); }
   .tc-use { right:calc(var(--safe-r) + 12px); bottom:calc(var(--safe-b) + 97px); }
-  .shooter-game.touch-device #hud-menu { gap:8px; }
-  .shooter-game.touch-device .mn-title { font-size:38px; }
-  .shooter-game.touch-device .mn-op,.shooter-game.touch-device .mn-sub { font-size:8px; }
-  .shooter-game.touch-device .mn-map-picker { padding:7px; }
-  .shooter-game.touch-device .mn-career { grid-template-columns:1.08fr .92fr 1fr; }
-  .shooter-game.touch-device .mn-career-main,.shooter-game.touch-device .mn-career-board,.shooter-game.touch-device .mn-daily { padding:7px 8px 6px; }
-  .shooter-game.touch-device .mn-career-id strong { font-size:16px; }
-  .shooter-game.touch-device .mn-career-id span { font-size:7.5px; }
-  .shooter-game.touch-device .mn-career-stats { margin-top:5px; gap:3px; }
-  .shooter-game.touch-device .mn-career-stats > span { padding:3px 4px; }
-  .shooter-game.touch-device .mn-career-stats small { font-size:6.5px; }
-  .shooter-game.touch-device .mn-career-stats b { font-size:11px; }
-  .shooter-game.touch-device .mn-career-sync,.shooter-game.touch-device .mn-daily p,.shooter-game.touch-device .mn-career-board header small { display:none; }
-  .shooter-game.touch-device .mn-xp { margin-top:4px; }
-  .shooter-game.touch-device .mn-xp small { font-size:6.5px; }
-  .shooter-game.touch-device .mn-podium { min-height:42px; margin:3px 0; }
-  .shooter-game.touch-device .mn-podium > span { padding:1px 4px; font-size:8px; }
-  .shooter-game.touch-device .mn-daily > strong { margin-top:5px; font-size:7px; }
-  .shooter-game.touch-device .mn-daily-track { margin:5px 0; }
-  .shooter-game.touch-device #hud-career-leaderboard,.shooter-game.touch-device #hud-bot-cta { min-height:44px; }
-  .shooter-game.touch-device .mn-map-art { height:46px; }
-  .shooter-game.touch-device .mn-map-copy { padding-block:5px; }
-  .shooter-game.touch-device .mn-map-copy small { display:none; }
-  .shooter-game.touch-device .mn-actions { width:100%; max-width:820px; gap:7px; }
-  .shooter-game.touch-device #hud-start,.shooter-game.touch-device #hud-leaderboard-open,.shooter-game.touch-device #hud-profile-menu-open { flex:1 1 0; min-width:0; padding:9px 8px; }
-  .shooter-game.touch-device #hud-start .btn-main,.shooter-game.touch-device #hud-leaderboard-open .btn-main,.shooter-game.touch-device #hud-profile-menu-open .btn-main { font-size:14px; letter-spacing:.18em; text-indent:.18em; white-space:nowrap; }
-  .shooter-game.touch-device #hud-start .btn-sub,.shooter-game.touch-device #hud-leaderboard-open .btn-sub,.shooter-game.touch-device #hud-profile-menu-open .btn-sub { font-size:9px; letter-spacing:.18em; text-indent:.18em; white-space:nowrap; }
-  .shooter-game.touch-device #hud #mp-panel { padding:10px 12px; }
-  .shooter-game.touch-device #hud-leaderboard { padding:5px max(7px,env(safe-area-inset-right)) 5px max(7px,env(safe-area-inset-left)); }
-  .shooter-game.touch-device .lb-panel { height:100%; min-height:0; clip-path:none; }
-  .shooter-game.touch-device .lb-top { padding:7px 12px 6px; }
-  .shooter-game.touch-device .lb-top small,.shooter-game.touch-device .lb-meta,.shooter-game.touch-device .lb-foot { display:none; }
-  .shooter-game.touch-device .lb-top h2 { font-size:19px; }
-  .shooter-game.touch-device #hud-leaderboard-close { width:48px; height:44px; }
-  .shooter-game.touch-device .lb-toolbar { grid-template-columns:1fr auto; padding:5px 11px; gap:6px; }
-  .shooter-game.touch-device .lb-identity { grid-column:1 / -1; min-height:36px; gap:8px; }
-  .shooter-game.touch-device .lb-avatar { width:34px; height:34px; }
-  .shooter-game.touch-device .lb-identity-copy small,.shooter-game.touch-device .lb-profile-edit { display:none; }
-  .shooter-game.touch-device .lb-self-card { grid-template-columns:repeat(4,minmax(0,1fr)); margin:0 8px 5px; }
-  .shooter-game.touch-device .lb-self-card > span { padding:5px 7px; }
-  .shooter-game.touch-device .lb-self-card small { font-size:6.5px; }
-  .shooter-game.touch-device .lb-self-card strong { margin-top:1px; font-size:13px; }
-  .shooter-game.touch-device .lb-tabs { grid-row:auto; grid-column:auto; height:44px; }
-  .shooter-game.touch-device #hud-leaderboard-refresh { grid-row:auto; grid-column:auto; height:44px; }
-  .shooter-game.touch-device #hud-leaderboard-body { padding:0 8px 5px; }
-  .shooter-game.touch-device .lb-row { min-width:0; min-height:40px; padding-inline:8px; grid-template-columns:50px minmax(120px,1fr) 84px 54px; font-size:13px; }
-  .shooter-game.touch-device .lb-row > span:nth-child(5),.shooter-game.touch-device .lb-row > span:nth-child(6) { display:none; }
-  .shooter-game.touch-device .lb-head { min-height:34px; font-size:10.5px; }
-  .shooter-game.touch-device .lb-player,.shooter-game.touch-device .lb-score { font-size:14px; }
-  .shooter-game.touch-device .lb-scoring summary { min-height:44px; padding-inline:12px; }
-  .shooter-game.touch-device #hud-leaderboard-rules { max-height:70px; overflow:auto; padding:2px 12px 8px; font-size:11px; }
-  .shooter-game.touch-device #hud-profile { padding:5px max(7px,env(safe-area-inset-right)) 5px max(7px,env(safe-area-inset-left)); }
-  .shooter-game.touch-device .profile-panel { max-height:100%; clip-path:none; }
-  .shooter-game.touch-device .profile-top { padding:9px 14px 7px; }
-  .shooter-game.touch-device .profile-top small { display:none; }
-  .shooter-game.touch-device .profile-top h2 { font-size:19px; }
-  .shooter-game.touch-device #hud-profile-form { padding:10px 14px 13px; }
-  .shooter-game.touch-device #hud-profile-name { height:46px; }
-  .shooter-game.touch-device #hud-profile-form fieldset { margin-top:10px; }
-  .shooter-game.touch-device .profile-characters { grid-template-columns:repeat(4,minmax(0,1fr)); }
-  .shooter-game.touch-device .profile-character { min-height:126px; }
-  .shooter-game.touch-device .profile-portrait { width:52px; height:55px; margin-bottom:4px; }
-  .shooter-game.touch-device .profile-note { display:none; }
-  .shooter-game.touch-device .profile-actions { margin-top:10px; padding-top:9px; }
-  .shooter-game.touch-device .sb-titlebar { padding:9px 16px 8px; }
-  .shooter-game.touch-device .sb-title { font-size:14px; }
-  .shooter-game.touch-device .sb-sub { margin:7px 0 2px; font-size:19px; }
-  .shooter-game.touch-device .sb-team { margin:7px 12px 0; }
-  .shooter-game.touch-device .sb-team-h { padding:5px 10px; font-size:11px; }
-  .shooter-game.touch-device .sb-team th { padding:4px 5px; font-size:9.5px; }
-  .shooter-game.touch-device .sb-team td { padding:3px 5px; font-size:13px; }
-  .shooter-game.touch-device .sb-team td.sb-s { font-size:9.5px; }
-  .shooter-game.touch-device .sb-name-wrap { gap:5px; }
-  .shooter-game.touch-device .sb-self-tag { padding:2px 5px; font-size:8px; letter-spacing:.1em; }
-  .shooter-game.touch-device .buy-head { padding:9px 13px 8px; margin-bottom:8px; }
-  .shooter-game.touch-device .buy-title { font-size:15px; }
-  .shooter-game.touch-device #hud-buy-cats { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding-inline:9px; }
-  .shooter-game.touch-device .buy-item { min-height:60px; padding:6px; }
-  .shooter-game.touch-device .bi-icon { flex-basis:52px; width:52px; height:32px; }
-  .shooter-game.touch-device .bi-bars { display:none; }
-  .shooter-game.touch-device .buy-foot { min-height:32px; margin:7px 10px 0; padding:7px 9px 0; font-size:11.5px; letter-spacing:.1em; }
-  .shooter-game.touch-device #hud-end { justify-content:flex-start; }
-  .shooter-game.touch-device .end-inner { width:min(640px,100%); max-height:none; gap:7px; margin:auto 0; padding:13px 20px 12px; clip-path:none; }
-  .shooter-game.touch-device #hud-end-title { font-size:32px; line-height:1.05; }
-  .shooter-game.touch-device #hud-end-sub { font-size:10px; letter-spacing:.24em; }
-  .shooter-game.touch-device #hud-end-score { font-size:27px; }
-  .shooter-game.touch-device #hud-end-kd { font-size:10px; margin-bottom:0; }
-  .shooter-game.touch-device #hud-end-rank { min-height:12px; font-size:9px; }
-  .shooter-game.touch-device .end-rewards { width:100%; padding:7px 9px; }
-  .shooter-game.touch-device .end-reward-grid > span { padding:3px 6px; }
-  .shooter-game.touch-device .end-reward-grid small { font-size:6.5px; }
-  .shooter-game.touch-device .end-reward-grid strong { font-size:13px; }
-  .shooter-game.touch-device .end-xp { padding-top:4px; }
-  .shooter-game.touch-device .end-unlocks { min-height:20px; padding-top:4px; }
-  .shooter-game.touch-device .end-unlocks span { padding:2px 5px; font-size:7px; }
-  .shooter-game.touch-device #hud-progression-toasts { top:124px; left:max(8px,env(safe-area-inset-left)); width:min(285px,45vw); gap:5px; }
-  .shooter-game.touch-device .progress-toast { min-height:54px; gap:8px; padding:7px 9px; }
-  .shooter-game.touch-device .progress-toast-mark { flex-basis:32px; width:32px; height:32px; font-size:17px; }
-  .shooter-game.touch-device .progress-toast-copy strong { font-size:14px; }
-  .shooter-game.touch-device .progress-toast-copy em { font-size:8px; }
-  .shooter-game.touch-device .end-actions { width:100%; flex-direction:row; gap:7px; }
-  .shooter-game.touch-device #hud-restart,.shooter-game.touch-device #hud-end-leaderboard { flex:1 1 0; min-width:0; min-height:48px; padding:8px 10px; }
-  .shooter-game.touch-device #hud-restart .btn-main,.shooter-game.touch-device #hud-end-leaderboard .btn-main { font-size:14px; white-space:nowrap; }
-  .shooter-game.touch-device #hud-restart .btn-sub,.shooter-game.touch-device #hud-end-leaderboard .btn-sub { font-size:9px; letter-spacing:.2em; white-space:nowrap; }
+  :scope.touch-device #hud-menu { gap:8px; }
+  :scope.touch-device .mn-title { font-size:38px; }
+  :scope.touch-device .mn-op,:scope.touch-device .mn-sub { font-size:8px; }
+  :scope.touch-device .mn-map-picker { padding:7px; }
+  :scope.touch-device .mn-career { grid-template-columns:1.08fr .92fr 1fr; }
+  :scope.touch-device .mn-career-main,:scope.touch-device .mn-career-board,:scope.touch-device .mn-daily { padding:7px 8px 6px; }
+  :scope.touch-device .mn-career-id strong { font-size:16px; }
+  :scope.touch-device .mn-career-id span { font-size:7.5px; }
+  :scope.touch-device .mn-career-stats { margin-top:5px; gap:3px; }
+  :scope.touch-device .mn-career-stats > span { padding:3px 4px; }
+  :scope.touch-device .mn-career-stats small { font-size:6.5px; }
+  :scope.touch-device .mn-career-stats b { font-size:11px; }
+  :scope.touch-device .mn-career-sync,:scope.touch-device .mn-daily p,:scope.touch-device .mn-career-board header small { display:none; }
+  :scope.touch-device .mn-xp { margin-top:4px; }
+  :scope.touch-device .mn-xp small { font-size:6.5px; }
+  :scope.touch-device .mn-podium { min-height:42px; margin:3px 0; }
+  :scope.touch-device .mn-podium > span { padding:1px 4px; font-size:8px; }
+  :scope.touch-device .mn-daily > strong { margin-top:5px; font-size:7px; }
+  :scope.touch-device .mn-daily-track { margin:5px 0; }
+  :scope.touch-device #hud-career-leaderboard,:scope.touch-device #hud-bot-cta { min-height:44px; }
+  :scope.touch-device .mn-map-art { height:46px; }
+  :scope.touch-device .mn-map-copy { padding-block:5px; }
+  :scope.touch-device .mn-map-copy small { display:none; }
+  :scope.touch-device .mn-actions { width:100%; max-width:820px; gap:7px; }
+  :scope.touch-device #hud-start,:scope.touch-device #hud-leaderboard-open,:scope.touch-device #hud-profile-menu-open { flex:1 1 0; min-width:0; padding:9px 8px; }
+  :scope.touch-device #hud-start .btn-main,:scope.touch-device #hud-leaderboard-open .btn-main,:scope.touch-device #hud-profile-menu-open .btn-main { font-size:14px; letter-spacing:.18em; text-indent:.18em; white-space:nowrap; }
+  :scope.touch-device #hud-start .btn-sub,:scope.touch-device #hud-leaderboard-open .btn-sub,:scope.touch-device #hud-profile-menu-open .btn-sub { font-size:9px; letter-spacing:.18em; text-indent:.18em; white-space:nowrap; }
+  :scope.touch-device #hud #mp-panel { padding:10px 12px; }
+  :scope.touch-device #hud-leaderboard { padding:5px max(7px,env(safe-area-inset-right)) 5px max(7px,env(safe-area-inset-left)); }
+  :scope.touch-device .lb-panel { height:100%; min-height:0; clip-path:none; }
+  :scope.touch-device .lb-top { padding:7px 12px 6px; }
+  :scope.touch-device .lb-top small,:scope.touch-device .lb-meta,:scope.touch-device .lb-foot { display:none; }
+  :scope.touch-device .lb-top h2 { font-size:19px; }
+  :scope.touch-device #hud-leaderboard-close { width:48px; height:44px; }
+  :scope.touch-device .lb-toolbar { grid-template-columns:1fr auto; padding:5px 11px; gap:6px; }
+  :scope.touch-device .lb-identity { grid-column:1 / -1; min-height:36px; gap:8px; }
+  :scope.touch-device .lb-avatar { width:34px; height:34px; }
+  :scope.touch-device .lb-identity-copy small,:scope.touch-device .lb-profile-edit { display:none; }
+  :scope.touch-device .lb-self-card { grid-template-columns:repeat(4,minmax(0,1fr)); margin:0 8px 5px; }
+  :scope.touch-device .lb-self-card > span { padding:5px 7px; }
+  :scope.touch-device .lb-self-card small { font-size:6.5px; }
+  :scope.touch-device .lb-self-card strong { margin-top:1px; font-size:13px; }
+  :scope.touch-device .lb-tabs { grid-row:auto; grid-column:auto; height:44px; }
+  :scope.touch-device #hud-leaderboard-refresh { grid-row:auto; grid-column:auto; height:44px; }
+  :scope.touch-device #hud-leaderboard-body { padding:0 8px 5px; }
+  :scope.touch-device .lb-row { min-width:0; min-height:40px; padding-inline:8px; grid-template-columns:50px minmax(120px,1fr) 84px 54px; font-size:13px; }
+  :scope.touch-device .lb-row > span:nth-child(5),:scope.touch-device .lb-row > span:nth-child(6) { display:none; }
+  :scope.touch-device .lb-head { min-height:34px; font-size:10.5px; }
+  :scope.touch-device .lb-player,:scope.touch-device .lb-score { font-size:14px; }
+  :scope.touch-device .lb-scoring summary { min-height:44px; padding-inline:12px; }
+  :scope.touch-device #hud-leaderboard-rules { max-height:70px; overflow:auto; padding:2px 12px 8px; font-size:11px; }
+  :scope.touch-device #hud-profile { padding:5px max(7px,env(safe-area-inset-right)) 5px max(7px,env(safe-area-inset-left)); }
+  :scope.touch-device .profile-panel { max-height:100%; clip-path:none; }
+  :scope.touch-device .profile-top { padding:9px 14px 7px; }
+  :scope.touch-device .profile-top small { display:none; }
+  :scope.touch-device .profile-top h2 { font-size:19px; }
+  :scope.touch-device #hud-profile-form { padding:10px 14px 13px; }
+  :scope.touch-device #hud-profile-name { height:46px; }
+  :scope.touch-device #hud-profile-form fieldset { margin-top:10px; }
+  :scope.touch-device .profile-characters { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  :scope.touch-device .profile-character { min-height:126px; }
+  :scope.touch-device .profile-portrait { width:52px; height:55px; margin-bottom:4px; }
+  :scope.touch-device .profile-note { display:none; }
+  :scope.touch-device .profile-actions { margin-top:10px; padding-top:9px; }
+  :scope.touch-device .sb-titlebar { padding:9px 16px 8px; }
+  :scope.touch-device .sb-title { font-size:14px; }
+  :scope.touch-device .sb-sub { margin:7px 0 2px; font-size:19px; }
+  :scope.touch-device .sb-team { margin:7px 12px 0; }
+  :scope.touch-device .sb-team-h { padding:5px 10px; font-size:11px; }
+  :scope.touch-device .sb-team th { padding:4px 5px; font-size:9.5px; }
+  :scope.touch-device .sb-team td { padding:3px 5px; font-size:13px; }
+  :scope.touch-device .sb-team td.sb-s { font-size:9.5px; }
+  :scope.touch-device .sb-name-wrap { gap:5px; }
+  :scope.touch-device .sb-self-tag { padding:2px 5px; font-size:8px; letter-spacing:.1em; }
+  :scope.touch-device .buy-head { padding:9px 13px 8px; margin-bottom:8px; }
+  :scope.touch-device .buy-title { font-size:15px; }
+  :scope.touch-device #hud-buy-cats { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding-inline:9px; }
+  :scope.touch-device .buy-item { min-height:60px; padding:6px; }
+  :scope.touch-device .bi-icon { flex-basis:52px; width:52px; height:32px; }
+  :scope.touch-device .bi-bars { display:none; }
+  :scope.touch-device .buy-foot { min-height:32px; margin:7px 10px 0; padding:7px 9px 0; font-size:11.5px; letter-spacing:.1em; }
+  :scope.touch-device #hud-end { justify-content:flex-start; }
+  :scope.touch-device .end-inner { width:min(640px,100%); max-height:none; gap:7px; margin:auto 0; padding:13px 20px 12px; clip-path:none; }
+  :scope.touch-device #hud-end-title { font-size:32px; line-height:1.05; }
+  :scope.touch-device #hud-end-sub { font-size:10px; letter-spacing:.24em; }
+  :scope.touch-device #hud-end-score { font-size:27px; }
+  :scope.touch-device #hud-end-kd { font-size:10px; margin-bottom:0; }
+  :scope.touch-device #hud-end-rank { min-height:12px; font-size:9px; }
+  :scope.touch-device .end-rewards { width:100%; padding:7px 9px; }
+  :scope.touch-device .end-reward-grid > span { padding:3px 6px; }
+  :scope.touch-device .end-reward-grid small { font-size:6.5px; }
+  :scope.touch-device .end-reward-grid strong { font-size:13px; }
+  :scope.touch-device .end-xp { padding-top:4px; }
+  :scope.touch-device .end-unlocks { min-height:20px; padding-top:4px; }
+  :scope.touch-device .end-unlocks span { padding:2px 5px; font-size:7px; }
+  :scope.touch-device #hud-progression-toasts { top:124px; left:max(8px,env(safe-area-inset-left)); width:min(285px,45vw); gap:5px; }
+  :scope.touch-device .progress-toast { min-height:54px; gap:8px; padding:7px 9px; }
+  :scope.touch-device .progress-toast-mark { flex-basis:32px; width:32px; height:32px; font-size:17px; }
+  :scope.touch-device .progress-toast-copy strong { font-size:14px; }
+  :scope.touch-device .progress-toast-copy em { font-size:8px; }
+  :scope.touch-device .end-actions { width:100%; flex-direction:row; gap:7px; }
+  :scope.touch-device #hud-restart,:scope.touch-device #hud-end-leaderboard { flex:1 1 0; min-width:0; min-height:48px; padding:8px 10px; }
+  :scope.touch-device #hud-restart .btn-main,:scope.touch-device #hud-end-leaderboard .btn-main { font-size:14px; white-space:nowrap; }
+  :scope.touch-device #hud-restart .btn-sub,:scope.touch-device #hud-end-leaderboard .btn-sub { font-size:9px; letter-spacing:.2em; white-space:nowrap; }
 }
 
 @media (orientation:landscape) and (min-height:501px) and (min-width:760px) {
-  .shooter-game.touch-device { --touch-stick-size:146px; --touch-fire-size:94px; }
+  :scope.touch-device { --touch-stick-size:146px; --touch-fire-size:94px; }
   .tc-utilities .tc-button { min-width:62px; min-height:54px; font-size:11px; }
   .tc-jump,.tc-crouch,.tc-use { width:66px; height:66px; }
   .tc-slot { width:61px; min-height:54px; }
-  .shooter-game.touch-device #hud-radar { width:140px; height:140px; }
-  .shooter-game.touch-device #hud-radar-canvas { width:134px; height:134px; }
-  .shooter-game.touch-device #hud-ammo { top:calc(env(safe-area-inset-top) + 78px); }
-  .shooter-game.touch-device #hud-ammo-mag { font-size:33px; }
-  .shooter-game.touch-device #hud-killfeed { top:calc(max(8px,env(safe-area-inset-top)) + 142px); }
+  :scope.touch-device #hud-radar { width:140px; height:140px; }
+  :scope.touch-device #hud-radar-canvas { width:134px; height:134px; }
+  :scope.touch-device #hud-ammo { top:calc(env(safe-area-inset-top) + 78px); }
+  :scope.touch-device #hud-ammo-mag { font-size:33px; }
+  :scope.touch-device #hud-killfeed { top:calc(max(8px,env(safe-area-inset-top)) + 142px); }
 }
 
 @media (orientation:landscape) and (max-width:720px) {

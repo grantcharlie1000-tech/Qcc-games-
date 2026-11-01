@@ -1,20 +1,31 @@
 import {test,expect,type Page} from '../../fixtures';
 import {mkdir} from 'node:fs/promises';
 
-test.setTimeout(180_000);
-const route='/#/game/shooter';
+test.setTimeout(360_000);
+// The default HDR path is booted by the catalog test. Exercise input using the
+// upstream direct-render option on our software WebGL test machine.
+const route='/?post=off#/game/shooter';
 const root=(page:Page)=>page.locator('.shooter-game');
 async function ready(page:Page){
   await page.goto(route);
   await expect(root(page)).toHaveAttribute('data-ready','true',{timeout:120_000});
+  // Keep the real loop, bots, DOM HUD and native input running. A full DSF3
+  // software frame is expensive; draw explicitly for visual checks below.
+  await page.evaluate(()=>{const g=(window as any).__shooter;(window as any).__shooterDraw=g.renderFrame;g.renderFrame=()=>{};});
 }
 async function deploy(page:Page){
+  // Shorten the buy freeze in the fixture; native input and the real update loop
+  // still drive play, including on this machine's software WebGL renderer.
+  await page.evaluate(()=>(window as any).__shooter.config.MATCH.FREEZE_TIME=.1);
   await page.locator('#hud-start').click();
   await expect.poll(()=>page.evaluate(()=>(window as any).__shooter.state.phase),{timeout:60_000}).toBe('live');
+  // The fixture's short freeze can finish before the starting pistol equips.
+  await expect.poll(()=>page.evaluate(()=>(window as any).__shooter.weapons._state),{timeout:20_000}).toBe('idle');
 }
 async function screenshot(page:Page,name:string){
   if(!process.env.SHOOTER_SHOTS)return;
   await mkdir(process.env.SHOOTER_SHOTS,{recursive:true});
+  await page.evaluate(()=>(window as any).__shooterDraw());
   await page.screenshot({path:`${process.env.SHOOTER_SHOTS}/${name}.png`,timeout:120_000});
 }
 
@@ -34,20 +45,42 @@ test('catalog lazily opens Shooter with credit, full surface, and no online UI',
   expect(loaded.filter(url=>/workers\.dev|wss?:|\/games\/shooter\/(network|leaderboard)\/|\/\.netlify\/functions\/leaderboard/.test(url))).toEqual([]);
 });
 
-test('desktop bots, pointer lock, combat, P pause, Escape Study, resume, and reentry',async({page})=>{
+test('P closes the buy panel without also pausing the arcade',async({page,browserName})=>{
+  test.skip(browserName!=='chromium','Headless WebKit rejects native pointer lock.');
+  await ready(page);await deploy(page);
+  await page.keyboard.press('b');await expect(page.locator('#hud-buy')).toBeVisible();
+  await page.keyboard.press('p');await expect(page.locator('#hud-buy')).toBeHidden();
+  await expect(root(page)).toHaveAttribute('data-paused','false');
+});
+
+test('arcade Restart resets an active match',async({page,browserName})=>{
+  test.skip(browserName!=='chromium','Native pointer-lock gameplay fixture uses Chromium.');
+  await ready(page);await deploy(page);
+  await page.evaluate(()=>{const s=(window as any).__shooter.state;s.scores={ct:2,t:1};s.round=4;s.money=50;});
+  await page.keyboard.press('p');await expect(root(page)).toHaveAttribute('data-paused','true');
+  await page.getByRole('button',{name:'Restart game',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>({round:(window as any).__shooter.state.round,scores:(window as any).__shooter.state.scores}))).toEqual({round:1,scores:{ct:0,t:0}});
+});
+
+test('desktop bots, pointer lock, combat, P pause, Escape Study, resume, and reentry',async({page,browserName})=>{
+  test.skip(browserName!=='chromium','Headless WebKit rejects native pointer lock.');
   await page.setViewportSize({width:1440,height:900});
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
   await ready(page);await deploy(page);
   expect(await page.evaluate(()=>document.pointerLockElement===(window as any).__shooter.canvas)).toBe(true);
   const bots=await page.evaluate(()=>(window as any).__shooter.bots.all.length);
   expect(bots).toBeGreaterThan(0);
   const start=await page.evaluate(()=>({x:(window as any).__shooter.player.position.x,z:(window as any).__shooter.player.position.z}));
-  await page.keyboard.down('w');await page.waitForTimeout(800);await page.keyboard.up('w');
+  await page.keyboard.down('w');
+  try{await expect.poll(()=>page.evaluate(start=>Math.hypot((window as any).__shooter.player.position.x-start.x,(window as any).__shooter.player.position.z-start.z),start),{timeout:20_000}).toBeGreaterThan(.1);}
+  finally{await page.keyboard.up('w');}
   const end=await page.evaluate(()=>({x:(window as any).__shooter.player.position.x,z:(window as any).__shooter.player.position.z}));
   expect(Math.hypot(start.x-end.x,start.z-end.z)).toBeGreaterThan(.1);
   const ammo=await page.locator('#hud-ammo-mag').textContent();
-  await page.mouse.down();await page.waitForTimeout(400);await page.mouse.up();
-  await expect(page.locator('#hud-ammo-mag')).not.toHaveText(ammo!);
+  await page.mouse.down();
+  try{await expect(page.locator('#hud-ammo-mag')).not.toHaveText(ammo!,{timeout:20_000});}
+  finally{await page.mouse.up();}
   await screenshot(page,'desktop-1440x900');
   await page.keyboard.press('p');await expect(root(page)).toHaveAttribute('data-paused','true');
   const frozen=await page.evaluate(()=>(window as any).__shooter.state.timer);
@@ -59,6 +92,7 @@ test('desktop bots, pointer lock, combat, P pause, Escape Study, resume, and ree
   await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
   await expect(root(page)).toHaveAttribute('data-paused','false');
   await page.getByRole('link',{name:'Back to game library'}).click();
+  await expect(root(page)).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).__shooter)).toBeUndefined();
   await ready(page);await page.locator('#hud-start').click();
   await expect(root(page)).toHaveAttribute('data-phase',/freeze|live/);
@@ -76,11 +110,12 @@ test('phone landscape uses full DSF3, touch movement, aim, fire, and Study',asyn
     await expect(page.getByRole('button',{name:'Fire weapon and drag to aim'})).toBeVisible();
     const touch=await context.newCDPSession(page);
     const stick=(await page.locator('.tc-stick').boundingBox())!;
+    expect(stick.width).toBeGreaterThanOrEqual(100);expect(stick.height).toBeGreaterThanOrEqual(100);
     const sx=stick.x+stick.width/2,sy=stick.y+stick.height/2;
     const start=await page.evaluate(()=>(window as any).__shooter.player.position.clone());
     await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy,id:1}]});
     await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:sx,y:sy-42,id:1}]});
-    await page.waitForTimeout(700);
+    await expect.poll(()=>page.evaluate(start=>Math.hypot((window as any).__shooter.player.position.x-start.x,(window as any).__shooter.player.position.z-start.z),start),{timeout:20_000}).toBeGreaterThan(.1);
     await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     const end=await page.evaluate(()=>(window as any).__shooter.player.position.clone());
     expect(Math.hypot(start.x-end.x,start.z-end.z)).toBeGreaterThan(.1);
@@ -90,10 +125,11 @@ test('phone landscape uses full DSF3, touch movement, aim, fire, and Study',asyn
     await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     await expect.poll(()=>page.evaluate(()=>(window as any).__shooter.player.yaw)).not.toBe(yaw);
     const fire=(await page.getByRole('button',{name:'Fire weapon and drag to aim'}).boundingBox())!;
+    expect(fire.width).toBeGreaterThanOrEqual(72);expect(fire.height).toBeGreaterThanOrEqual(72);
     const ammo=await page.locator('#hud-ammo-mag').textContent();
     await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:fire.x+fire.width/2,y:fire.y+fire.height/2,id:3}]});
-    await page.waitForTimeout(300);await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    await expect(page.locator('#hud-ammo-mag')).not.toHaveText(ammo!);
+    await expect(page.locator('#hud-ammo-mag')).not.toHaveText(ammo!,{timeout:20_000});
+    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     await screenshot(page,'phone-landscape-844x390-dsf3');
     await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
     await expect(root(page)).toHaveAttribute('data-paused','true');

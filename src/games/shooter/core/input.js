@@ -386,26 +386,46 @@ export default class Input {
     const canvas = this._canvas();
     if (!canvas || typeof canvas.requestPointerLock !== 'function') return;
 
-    // Prefer raw (unadjusted) movement for accel-free FPS aim; retry plain
-    // if the browser rejects the option. Both paths swallow rejections —
-    // Chrome throttles relock attempts right after an Escape-unlock and we
-    // do not want an unhandled promise rejection for that.
-    try {
-      const p = canvas.requestPointerLock({ unadjustedMovement: true });
-      if (p && typeof p.catch === 'function') {
-        p.catch(() => {
-          try {
-            const p2 = canvas.requestPointerLock();
-            if (p2 && typeof p2.catch === 'function') p2.catch(() => {});
-          } catch (_) { /* ignored */ }
-        });
+    this._lockWanted = true;
+    const generation = this._lockGeneration = (this._lockGeneration || 0) + 1;
+    const available = () => !this.game.paused && !this.game.disposed && canvas.isConnected !== false;
+    const current = () => available() && this._lockWanted && generation === this._lockGeneration;
+    const cleanup = () => {
+      document.removeEventListener('pointerlockchange', changed);
+      document.removeEventListener('pointerlockerror', failed);
+    };
+    const finish = () => {
+      if (document.pointerLockElement !== canvas) return;
+      cleanup();
+      if (!available() || !this._lockWanted) {
+        this._releaseAll(true);this.locked = false;this._virtualLock = false;
+        document.exitPointerLock?.();
       }
-    } catch (_) {
+    };
+    const changed = () => finish();
+    const failed = () => cleanup();
+    // Temporary guards outlive mount disposal until the browser settles the
+    // request. Older browsers return void and report success only by event.
+    document.addEventListener('pointerlockchange', changed);
+    document.addEventListener('pointerlockerror', failed);
+    const request = raw => {
+      if (!current()) {cleanup();return;}
       try {
-        const p2 = canvas.requestPointerLock();
-        if (p2 && typeof p2.catch === 'function') p2.catch(() => {});
-      } catch (_2) { /* ignored */ }
-    }
+        const result = canvas.requestPointerLock(raw ? {unadjustedMovement:true} : undefined);
+        result?.then?.(finish, () => {
+          if (raw && current()) request(false);else cleanup();
+        });
+      } catch {
+        if (raw && current()) request(false);else cleanup();
+      }
+    };
+    request(true);
+  }
+
+  /** Cancel intent as well as held state; a pending native request may settle later. */
+  cancelLockRequest() {
+    this._lockWanted = false;
+    this._lockGeneration = (this._lockGeneration || 0) + 1;
   }
 
   /** Runs last in the frame loop — clears one-frame state. */
@@ -445,7 +465,7 @@ export default class Input {
         (e.altKey && physicalKey !== 'alt') ||
         (e.shiftKey && physicalKey !== 'shift');
       if (chord || !canBindPhysicalKey(physicalKey)) {
-        this._keyCapture.invalid?.('PRESS ONE KEY — ESC CANCELS');
+        this._keyCapture.invalid?.('PRESS ONE KEY — P CANCELS');
         return;
       }
 
@@ -648,6 +668,10 @@ export default class Input {
 
     const canvas = this._canvas();
     const nowLocked = !!canvas && document.pointerLockElement === canvas;
+    if (nowLocked && (this.game.paused || this.game.disposed || this._lockWanted === false)) {
+      this._releaseAll(true);this.locked = false;this._virtualLock = false;
+      document.exitPointerLock?.();return;
+    }
     if (nowLocked) {
       const wasLocked = this.locked;
       this._virtualLock = false;
