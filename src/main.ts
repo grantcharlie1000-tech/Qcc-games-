@@ -289,7 +289,7 @@ async function route(){
         <button id="game-rankings" class="game-menu-action">${icon('star')}<span>Leaderboards</span></button>
         <button id="game-local-options" class="game-menu-action" hidden>Game options</button>
       </div>
-      <label class="game-touch-setting" hidden><span>Show touch controls</span><input id="game-touch-controls" type="checkbox"></label>
+      ${['maze-muncher','quadfall'].includes(id)?'<label class="game-touch-setting" hidden><span>Show touch controls</span><input id="game-touch-controls" type="checkbox"></label>':''}
     </dialog>
     <div class="stage-wrap"><div id="game-stage" tabindex="-1"><p class="loading">Getting your game ready…</p></div><div id="pause-overlay" hidden><div><h2>Paused</h2><button id="resume-game" class="game-button">Keep playing</button></div></div></div>
     <p id="game-status" role="status"${id==='pool'?' aria-hidden="true"':''}></p></section>`;
@@ -365,7 +365,7 @@ async function route(){
       if(resume)setPaused(false);
       instance?.openMenu?.();
     });
-    if(['snake','maze-muncher','quadfall'].includes(id)){
+    if(['maze-muncher','quadfall'].includes(id)){
       const touch=currentMenu.querySelector<HTMLInputElement>('#game-touch-controls')!;
       touch.parentElement!.hidden=false;touch.checked=matchMedia('(any-pointer:coarse)').matches;
       view.dataset.touchControls=String(touch.checked);
