@@ -1,5 +1,5 @@
 /* Replace the decorative pseudo-handle with one shared gesture surface. */
-.arcade-sheet[data-sheet-gestures]::before,body.in-game .mp-card[data-sheet-gestures]::before{display:none}
+:is(.arcade-sheet,body.in-game .mp-card)[data-sheet-gestures]::before{display:none}
 .sheet-grabber{touch-action:none;cursor:grab}
 .sheet-grabber:not(.ui-drawer-handle){display:block;width:100%;height:18px}
 .sheet-grabber:not(.ui-drawer-handle)::before{content:'';display:block;width:36px;height:4px;margin:0 auto;border-radius:999px;background:currentColor;opacity:.28}
