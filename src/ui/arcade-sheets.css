@@ -1,3 +1,5 @@
+@import './native-glass.css';
+
 /* Clear sheet material. Background detail stays live and recognisable;
    text contrast belongs to the glyph strokes rather than a panel-wide veil. */
 :is(.arcade-sheet,body.in-game .mp-card){

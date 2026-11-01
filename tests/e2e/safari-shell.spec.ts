@@ -72,7 +72,7 @@ for(const mode of ['flag','WebKit brands'])test(`${mode} selects one fallback su
  await expect(bar).toHaveAttribute('data-glass','frost');await expect(menu).toHaveAttribute('data-glass','frost');
  await expect(page.locator('.app-navigation .ui-scroll-edge')).toHaveCount(0);await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
  for(const object of [bar,menu]){
-  expect(await object.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(0.6px)');
+  expect(await object.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(0.3px)');
   expect(await object.locator('.ui-glass-glow').evaluate(e=>getComputedStyle(e).maskComposite.split(',').every(value=>value.trim()==='exclude'))).toBe(true);
  }
 });

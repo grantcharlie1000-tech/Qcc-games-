@@ -58,7 +58,7 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-top .ui-header-actions{gap:0}
 .movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn){min-height:36px;color:inherit;background:none;border:0;border-radius:20px}
 .movies-view .movies-top .floating-glass-group .ui-pill[aria-pressed=true]{background:rgb(0 0 0 / .09);color:inherit;box-shadow:none}
-.movies-view .movies-top .ui-kbd{background:var(--glass-local-scrim,rgb(0 0 0 / .05));color:var(--glass-adaptive-ink,inherit);border-color:rgb(0 0 0 / .15)}
+.movies-view .movies-top .ui-kbd{background:none;color:var(--glass-adaptive-ink,inherit);border-color:rgb(0 0 0 / .15)}
 @media(hover:hover) and (pointer:fine){.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn):hover{background:rgb(0 0 0 / .07);color:inherit}}
 .movies-view>.movies-page-head{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view>.movies-page-title{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
@@ -258,9 +258,9 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-connecting p{font-size:14px;color:var(--c-200)}
 .movies-view .movies-spinner{width:28px;height:28px;border:3px solid var(--c-700);border-top-color:#fff;border-radius:50%;animation:movies-spin 900ms linear infinite}
 @keyframes movies-spin{to{transform:rotate(360deg)}}
-/* Up next: a card in the screen's bottom-right corner, and a full-width overlay below 640 px. Its glass is the sheet's surface (theme.css). Its tint is
-   denser than the sheet's, so white text keeps 4.5:1 over a bright frame. Its bar drains a tenth each second. */
-.movies-view .movies-next{--glass-sheet-fill:rgb(28 28 32 / .74);position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:clamp(16px,4vw,32px);overflow:auto;color:var(--c-100)}
+/* Up next shares the clear sheet material. Label strokes carry contrast over
+   bright frames. Its progress bar drains a tenth each second. */
+.movies-view .movies-next{--glass-sheet-fill:var(--glass-clear-fill);position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:clamp(16px,4vw,32px);overflow:auto;color:var(--c-100)}
 .movies-view .movies-next[hidden]{display:none}
 /* From 640 px the card sits above the tab island (z-index 50), so the island cannot cover its buttons while the countdown runs. */
 @media (min-width:640px){.movies-view .movies-next{inset:auto 12px 12px auto;z-index:60;width:min(380px,calc(100% - 24px));justify-content:flex-start;padding:16px 18px;border-radius:24px}}
@@ -285,6 +285,13 @@ body.movies-active.study-active{overflow:auto}
 /* The resume pill names the position a stream starts from. It sits top left and clears the Full screen button. */
 .movies-view .movies-resume-pill{position:absolute;left:12px;top:12px;z-index:2;max-width:calc(100% - 150px);padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:#000000b3;color:#fff;font-family:var(--font-mono);font-size:12px;line-height:1.4;pointer-events:none;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .movies-view .movies-resume-pill[hidden]{display:none}
+/* Live, clear player controls use the same optical tokens as the navigation. */
+.movies-view :is(.movies-fullscreen,.movies-resume-pill,.movies-connecting){
+ background:var(--glass-clear-fill);-webkit-backdrop-filter:var(--glass-clear-blur);backdrop-filter:var(--glass-clear-blur);
+ --sheet-halo:rgb(0 0 0 / .82);color:#fff;
+ text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
+ box-shadow:inset 0 1px 0 rgb(255 255 255 / .4),0 2px 16px rgb(0 0 0 / .08);
+}
 /* The single-provider player keeps its reload control below the screen. */
 .movies-view .movies-player-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
 .movies-view .movies-player-controls .ui-btn.small{min-height:44px;padding:0 14px}
@@ -314,7 +321,7 @@ body.movies-active.study-active{overflow:auto}
 /* The season pills are plain translucent fills on the sheet. A long season name wraps inside its pill, as the title page's pills do. An idle
    pill's label is white: WebKit renders a bright frame lighter through the glass, and a grey label fell below 4.5:1 over a white frame there. */
 .movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgb(255 255 255 / .1);color:#fff;font-size:13px;font-weight:500;line-height:1.2;white-space:normal;max-width:100%;cursor:pointer}
-.movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700}
+.movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700;text-shadow:none}
 @media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:rgb(255 255 255 / .18);color:#fff}}
 .movies-view .movies-drawer-list{display:grid;gap:4px}
 .movies-view .movies-drawer-row{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:12px;min-height:56px;padding:6px;border-radius:12px;color:var(--c-200)}

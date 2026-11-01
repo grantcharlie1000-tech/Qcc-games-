@@ -13,7 +13,7 @@ for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
       const s=getComputedStyle(e),group=getComputedStyle(e.querySelector('.game-menu-actions')!);
       return {filter:s.backdropFilter,radius:parseFloat(s.borderRadius),padding:parseFloat(s.paddingLeft),groupRadius:parseFloat(group.borderRadius),grabber:getComputedStyle(e,'::before').content};
     });
-    expect(material.filter).toContain('blur(0.6px)');
+    expect(material.filter).toContain('blur(0.3px)');
     expect(material.radius).toBe(material.groupRadius+material.padding);
     expect(material.grabber).toBe('""');
     // The paused game's artwork remains visible behind the sheet. Its state is still paused.
@@ -51,7 +51,7 @@ test('home sheets are light and game-owned submenus share the glass surface',asy
     await expect(page.locator('#game-stage .game-menu-source').first()).toBeAttached();
     await gameAction(page,action);
     const panel=page.locator(selector);await expect(panel).toBeVisible();
-    expect(await panel.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(0.6px)');
+    expect(await panel.evaluate(e=>getComputedStyle(e).backdropFilter)).toContain('blur(0.3px)');
     await expect.poll(()=>panel.evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);
     const targets=await panel.locator('button').evaluateAll(buttons=>buttons.map(b=>b.getBoundingClientRect().height).filter(h=>h>0));
     expect(Math.min(...targets),`${id} submenu touch targets`).toBeGreaterThanOrEqual(44);

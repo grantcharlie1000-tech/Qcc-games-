@@ -21,7 +21,9 @@ export const LENS_MARGIN=LENS_BEND+4;
 // The arcade's clear material has a narrower, lower-power bezel. Keep these
 // separate from the legacy unmarked-bar map and its displacement scale.
 export const ARCADE_LENS_BEVEL=12;
-export const ARCADE_LENS_BEND=6;
+// The actual convex profile peaks below 5px. A tight encoding range avoids
+// wasting 8-bit displacement precision, especially on DPR3 circular controls.
+export const ARCADE_LENS_BEND=5;
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
 const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
@@ -41,11 +43,11 @@ function convexProfile(bevel:number,bend:number):number[]{
   });
   // Give the ray field a wider optical depth, then bound its radial derivative.
   // A sampled coordinate is depth + displacement: its derivative must stay
-  // positive or the texture folds. .42 also limits magnification, preventing
+  // positive or the texture folds. .5 also limits magnification, preventing
   // thin terrain/wireframe lines from stretching into streaks. Integrating back
   // from the clear centre also removes the caustic
   // spike at the rim, without changing the legacy Movies field.
-  const step=bevel/128*.42;
+  const step=bevel/128*.5;
   for(let i=127;i>=0;i--)rays[i]=Math.min(rays[i],rays[i+1]+step);
   for(let i=1;i<=128;i++)rays[i]=Math.min(rays[i],rays[i-1]);
   return rays.map(ray=>-ray);

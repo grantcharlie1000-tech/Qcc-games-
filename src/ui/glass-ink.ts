@@ -179,6 +179,12 @@ function vectorHalo(glyph:Element):void{
   for(const child of [...glyph.children])if(!child.matches('defs,title,desc')){
     const copy=child.cloneNode(true) as Element;
     copy.removeAttribute('id');for(const e of copy.querySelectorAll('[id]'))e.removeAttribute('id');
+    for(const shape of [copy,...copy.querySelectorAll('*')]){
+      if(shape.getAttribute('stroke')==='none'&&shape.getAttribute('fill')!=='none'){
+        shape.setAttribute('stroke','currentColor');shape.setAttribute('stroke-width','1.2');
+      }
+      if(shape.hasAttribute('fill')&&shape.getAttribute('fill')!=='none')shape.setAttribute('fill','currentColor');
+    }
     halo.append(copy);
   }
   glyph.prepend(halo);
@@ -194,6 +200,9 @@ export function syncSheetIconInk(sheet:HTMLElement):void{
 }
 function update(){
   frame=0;
+  // Native multiplayer and player overlays bypass openSheet. This decorates
+  // their existing SVGs without changing any control or dialog lifecycle.
+  for(const sheet of document.querySelectorAll<HTMLElement>('.mp-card,.movies-resume-pill,.movies-fullscreen'))syncSheetIconInk(sheet);
   const {style,rect,sample}=sampler();
   const changes:{glyph:HTMLElement;ink:ReturnType<typeof glassInk>|null}[]=[];
   for(const bar of bindings){
