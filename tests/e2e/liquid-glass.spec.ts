@@ -208,51 +208,33 @@ test('keyboard activation moves the pill but never swells it',async({page})=>{
   expect(await page.evaluate(()=>(window as Window&{__sawPressing?:boolean}).__sawPressing)).toBe(false);
 });
 
-test('the island shrinks in 300 ms on the drawer curve, its glass fades from 120 to 240 ms, and its tabs fade in the first 80 ms',async({page,browserName})=>{
-  await page.setViewportSize({width:390,height:844});
-  await page.goto('/');
-  const bar=page.locator('.app-tabbar');
-  const tab=bar.locator('[aria-current="page"]');
-  const capsule=page.locator('.ui-tabbar-mini');
-  const icon=capsule.locator('.ui-icon');
+test('one glass surface shrinks in 300 ms while its labels fade in the first 80 ms',async({page})=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');
+  const bar=page.locator('.app-tabbar'),tab=bar.locator('[aria-current="page"]'),capsule=page.locator('.ui-tabbar-mini');
   await expect(bar).toBeVisible();
-  // At rest the island is expanded, and these are the transitions it runs when it expands: its glass returns in the first 100 ms.
-  expect(await transitionOf(bar,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(bar,'scale')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(bar,'opacity')).toMatchObject({duration:'0.1s',delay:'0s'});
+  for(const property of ['width','height','left'])expect(await transitionOf(bar,property)).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
   expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.16s',delay:'0.14s'});
-  // The capsule fades out in 120 ms, riding the island's leading edge, and takes its stretched size only once it is gone. Its icon holds until then.
-  expect(await transitionOf(capsule,'opacity')).toMatchObject({duration:'0.12s',delay:'0s'});
-  expect(await transitionOf(capsule,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(capsule,'scale')).toMatchObject({duration:'0s',delay:'0.12s'});
-  expect(await transitionOf(icon,'opacity')).toMatchObject({duration:'0s',delay:'0.12s'});
-  await page.evaluate(()=>window.scrollTo(0,400));
-  await expect(bar).toHaveAttribute('data-minimized','true');
-  // Minimized, these are the transitions it runs on the way down.
-  expect(await transitionOf(bar,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(bar,'scale')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(bar,'opacity')).toMatchObject({duration:'0.12s',delay:'0.12s'});
+  await page.evaluate(()=>scrollTo(0,400));await expect(bar).toHaveAttribute('data-minimized','true');
   expect(await transitionOf(tab,'opacity')).toMatchObject({duration:'0.08s',delay:'0s'});
-  // In Chromium the lens fades in the first 80 ms, before the bar narrows.
-  if(browserName==='chromium')expect(await transitionOf(bar.locator('.ui-glass-lens'),'opacity')).toMatchObject({duration:'0.08s',delay:'0s'});
-  // The capsule travels the same 300 ms and fades in from 80 to 260 ms. Its icon shows from 160 ms, once the capsule is nearly round.
-  expect(await transitionOf(capsule,'translate')).toEqual({duration:'0.3s',delay:'0s',curve:'cubic-bezier(0.32, 0.72, 0, 1)'});
-  expect(await transitionOf(capsule,'opacity')).toMatchObject({duration:'0.18s',delay:'0.08s'});
-  expect(await transitionOf(icon,'opacity')).toMatchObject({duration:'0.12s',delay:'0.16s'});
+  await expect(bar).toHaveCSS('opacity','1');
+  await expect.poll(async()=>Math.round((await bar.boundingBox())!.width)).toBe(56);
+  await expect(capsule).toHaveCSS('backdrop-filter','none');
+  await expect(capsule).toHaveCSS('box-shadow','none');
+  await expect(capsule.locator('.ui-icon')).toHaveCSS('opacity','1');
 });
 
-test('the capsule and the island share one box: the island lands exactly on the capsule, and the capsule starts exactly on the island',async({page})=>{
+test('the transparent mini stays small, and the single glass surface lands exactly beneath it',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   const expanded=await settledBoxes(page);
-  // The capsule starts where the island is, so the morph begins as one shape.
+  // The mini has no material to leave behind, and never stretches over the bar.
   const start=expanded.capsule;
   expect(Math.abs(start.x-expanded.bar.x)).toBeLessThan(1);
-  expect(Math.abs(start.y-expanded.bar.y)).toBeLessThan(1);
-  expect(Math.abs(start.width-expanded.bar.width)).toBeLessThan(1);
-  expect(Math.abs(start.height-expanded.bar.height)).toBeLessThan(1);
+  expect(start.width).toBe(56);expect(start.height).toBe(48);
+  expect(expanded.bar.width).toBeGreaterThan(200);
+  await expect(page.locator('.ui-tabbar-mini')).toHaveCSS('backdrop-filter','none');
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
@@ -264,7 +246,7 @@ test('the capsule and the island share one box: the island lands exactly on the 
   expect(Math.abs(settled.bar.height-settled.capsule.height)).toBeLessThan(1);
 });
 
-test('the morph is a CSS transition of transform and opacity only, with no script animation',async({page})=>{
+test('the bounded morph uses CSS geometry and opacity transitions, with no script animation',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const bar=page.locator('.app-tabbar');
@@ -287,7 +269,7 @@ test('the morph is a CSS transition of transform and opacity only, with no scrip
     }).length,
   }));
   expect(runs.length).toBeGreaterThan(0);
-  for(const property of runs)expect(['translate','scale','opacity']).toContain(property);
+  for(const property of runs)expect(['width','height','min-height','left','opacity']).toContain(property);
   expect(scripted).toBe(0);
 });
 
@@ -523,7 +505,7 @@ test('a pill move stretches the pill with a web animation',async({page})=>{
   }))).toBe(true);
 });
 
-for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) only cross-fades the island and its capsule`,async({page})=>{
+for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) changes the pill bounds immediately and fades only the icon`,async({page})=>{
   if(mode==='media')await page.emulateMedia({reducedMotion:'reduce'});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
@@ -532,9 +514,10 @@ for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) onl
   const capsule=page.locator('.ui-tabbar-mini');
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
-  await expect.poll(()=>barShown(bar)).toBe(0);
+  await expect.poll(()=>barShown(bar)).toBe(1);
+  expect((await bar.boundingBox())!.width).toBe(56);
   await expect.poll(()=>capsuleShown(page)).toBe(1);
-  // Nothing moves or scales, and the cross-fade is the only transition.
+  // The material remains; geometry changes at once, without slide or scale.
   for(const element of [bar,capsule]){
     await expect(element).toHaveCSS('translate','none');
     await expect(element).toHaveCSS('scale','none');
@@ -542,7 +525,7 @@ for(const mode of ['media','class'] as const) test(`reduced motion (${mode}) onl
     await expect(element).toHaveCSS('transition-property','opacity');
     await expect(element).toHaveCSS('transition-duration','0.15s');
   }
-  // A minimized island is gone: it takes no taps, and the capsule does.
+  // Only the transparent mini accepts pointer input while minimized.
   await expect(bar).toHaveCSS('pointer-events','none');
   await expect(capsule).toHaveCSS('pointer-events','auto');
   // Both states are reachable: scrolling up brings the island back by the same fade.
@@ -628,6 +611,7 @@ for(const fallback of ['reduced transparency','more contrast','forced colours'] 
   expect(parseFloat(await bar.evaluate(el=>getComputedStyle(el).borderTopWidth))).toBeGreaterThanOrEqual(1);
   await page.evaluate(()=>window.scrollTo(0,400));
   await expect(bar).toHaveAttribute('data-minimized','true');
+  await bar.evaluate(e=>e.setAttribute('data-hidden','true'));
   await expect(bar).toHaveCSS('opacity','0');
 });
 
@@ -655,8 +639,8 @@ test('the displacement map is sized to the bar and follows a resize',async({page
     const id=/url\("?#([^")]+)"?\)/.exec(getComputedStyle(el.querySelector('.ui-glass-lens')!).backdropFilter)?.[1]??'';
     const image=document.getElementById(id)?.getElementsByTagName('feImage')[0];
     const bar=el as HTMLElement;
-    // The map covers the bar and the lens margin, 14 px on each side (LENS_MARGIN in src/ui/glass.ts), so 28 px is taken off to compare it with the bar.
-    return {mapW:Number(image?.getAttribute('width'))-28,mapH:Number(image?.getAttribute('height'))-28,barW:bar.offsetWidth,barH:bar.offsetHeight};
+    // Shared navigation maps fit the visible shape with no oversized filter layer.
+    return {mapW:Number(image?.getAttribute('width')),mapH:Number(image?.getAttribute('height')),barW:bar.offsetWidth,barH:bar.offsetHeight};
   });
   await expect.poll(async()=>{const s=await sizes();return s.mapW===s.barW&&s.mapH===s.barH&&s.barW>0;}).toBe(true);
   const before=(await sizes()).barW;
@@ -698,15 +682,15 @@ test('the arcade light island uses dark ink and a bold current tab',async({page}
   expect(await tabInk(bar.getByRole('link',{name:'Games',exact:true}))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
 });
 
-test('the Movies island tabs are 90% white, and the current tab is solid bold white',async({page})=>{
+test('the Movies island uses the same dark ink and bold selection as Games',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/movies');
   const bar=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(bar).toBeVisible();
   // The failed rails draw the starter line, and that draw rebuilds the nav, so the tabs are read once the line is there.
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgba(255, 255, 255, 0.9)',weight:'500'});
-  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'700'});
+  await expect.poll(()=>tabInk(bar.locator('[data-kind="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
+  await expect.poll(()=>tabInk(bar.locator('[aria-pressed="true"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'700'});
 });
 
 test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',async({page})=>{
@@ -754,7 +738,7 @@ test('the island frost has no contrast(), and blurs by at most 6 px in the lens 
   }
 });
 
-test('more contrast makes the arcade island opaque with dark ink, while Movies retains white ink',async({page})=>{
+test('more contrast gives Games and Movies the same opaque surface and dark ink',async({page})=>{
   await page.emulateMedia({contrast:'more'});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
@@ -768,8 +752,8 @@ test('more contrast makes the arcade island opaque with dark ink, while Movies r
   const movies=page.locator('.movies-mobile-nav.ui-tabbar');
   await expect(movies).toBeVisible();
   await expect(page.locator('.movies-rails-status')).toBeVisible();
-  expect(await movies.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(32, 38, 43)');
-  await expect.poll(()=>tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(255, 255, 255)',weight:'500'});
+  expect(await movies.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(241, 243, 245)');
+  await expect.poll(()=>tabInk(movies.locator('[data-kind="tv"]'))).toEqual({color:'rgb(11, 16, 21)',weight:'500'});
 });
 
 // A pale regular lens uses a subtly darker selection. Opaque accessibility

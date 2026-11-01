@@ -63,9 +63,9 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .ui-tabbar .ui-tab{min-height:44px;padding:4px 2px;border:0;border-radius:999px;background:none;font-size:10px;font-weight:500;line-height:1.2;cursor:pointer}
 /* The generic .movies-view button rule paints every button white, and the rule above sets a weight of 500 for all of them. These win:
    the idle tabs are 90% white, and the current tab is solid bold white. More contrast makes every tab solid white. */
-.movies-view .ui-tabbar .ui-tab{color:rgb(255 255 255 / .9)}
-.movies-view .ui-tabbar .ui-tab[aria-pressed="true"],.movies-view .ui-tabbar .ui-tab[aria-current="page"]{color:#fff;font-weight:700}
-@media (prefers-contrast:more){.movies-view .ui-tabbar .ui-tab{color:#fff}}
+.movies-view .ui-tabbar .ui-tab{color:var(--glass-ink,#fff)}
+.movies-view .ui-tabbar .ui-tab[aria-pressed="true"],.movies-view .ui-tabbar .ui-tab[aria-current="page"]{color:var(--glass-ink,#fff);font-weight:700}
+@media (prefers-contrast:more){.movies-view .ui-tabbar .ui-tab{color:var(--glass-ink,#fff)}}
 /* A page heading focused by script keeps no ring. The heading of an empty state (loading, not found) takes the keyboard ring, as its Retry button does. */
 .movies-view h1[tabindex="-1"]:focus:not(.movies-empty h1){outline:none}
 .movies-view .ui-rail{margin:24px 0 32px}

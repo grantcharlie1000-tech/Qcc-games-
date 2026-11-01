@@ -93,13 +93,13 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
 // more than one device pixel per CSS px the bend is as fine as the screen. The feImage stretches it over the box either way. Only a browser
 // can encode the PNG, so this is outside the unit tests. With no 2D context there is no map, and the empty string tells the caller to leave
 // the lens out, rather than bend with an all-zero map.
-export function lensPng(width:number,height:number,density=1,arcade=false):string{
+export function lensPng(width:number,height:number,density=1,arcade=false,margin=LENS_MARGIN):string{
   const canvas=document.createElement('canvas');
   const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
   canvas.width=pixelWidth;canvas.height=pixelHeight;
   const context=canvas.getContext('2d');
   if(!context)return '';
-  context.putImageData(new ImageData(lensField(width,height,LENS_MARGIN,arcade?ARCADE_LENS_BEVEL:LENS_BEVEL,arcade?ARCADE_LENS_BEND:LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
+  context.putImageData(new ImageData(lensField(width,height,margin,arcade?ARCADE_LENS_BEVEL:LENS_BEVEL,arcade?ARCADE_LENS_BEND:LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
   return canvas.toDataURL('image/png');
 }
 // The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.
@@ -139,12 +139,12 @@ function canStretch(target:Element):boolean{
 // The lens is the bar's first child in the backdrop, and it sits under everything else in the bar. It is grown by LENS_MARGIN on every
 // side, so the rim can sample past the bar, and its clip-path cuts it back to the capsule. Its frost is its own backdrop, which Chromium
 // bends with the filter.
-function makeLens():HTMLElement{
+function makeLens(margin=LENS_MARGIN):HTMLElement{
   const lens=document.createElement('span');
   lens.className='ui-glass-lens';
   lens.setAttribute('aria-hidden','true');
-  lens.style.inset=`-${LENS_MARGIN}px`;
-  lens.style.clipPath=`inset(${LENS_MARGIN}px round 999px)`;
+  lens.style.inset=`-${margin}px`;
+  lens.style.clipPath=`inset(${margin}px round 999px)`;
   return lens;
 }
 // The glow is the bar's edge light. Its inset shadow brightens the rim, and plus-lighter lets that light add to what shows through the bar.
@@ -192,6 +192,8 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
+  const bounded=bar.matches('.section-tabbar,.section-menu');
+  const margin=bounded?0:LENS_MARGIN;
   const standalone=bar.matches('.game-glass,.glass-control');
   const forceFallback=new URLSearchParams(location.search).get('glass')==='fallback';
   const brands=forceFallback?undefined:(navigator as NavigatorWithBrands).userAgentData?.brands;
@@ -203,7 +205,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     filter.setAttribute('primitiveUnits','userSpaceOnUse');
     displace.setAttribute('scale',String(2*ARCADE_LENS_BEND));
   }
-  const lens=makeLens(),glow=makeGlow();
+  const lens=makeLens(margin),glow=makeGlow();
   const edge=document.createElement('div');
   edge.className='ui-scroll-edge';
   edge.setAttribute('aria-hidden','true');
@@ -295,13 +297,13 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
   // keeps its last map. Only the backdrop has a map.
   const rebuild=()=>{
-    const width=bar.offsetWidth+2*LENS_MARGIN,height=bar.offsetHeight+2*LENS_MARGIN,density=lensDensity(window.devicePixelRatio);
+    const width=bar.offsetWidth+2*margin,height=bar.offsetHeight+2*margin,density=lensDensity(window.devicePixelRatio);
     if(mode!=='backdrop'||!bar.offsetWidth||!bar.offsetHeight||(width===mapWidth&&height===mapHeight&&density===mapDensity))return;
     mapWidth=width;
     mapHeight=height;
     mapDensity=density;
     const token=++mapSeq;
-    const url=lensPng(width,height,density,arcade);
+    const url=lensPng(width,height,density,arcade,margin);
     // A lens without its map would shift everything by the full scale, so without one the lens is left out.
     if(!url){lensless=true;applyMode();return;}
     const probe=new Image();
