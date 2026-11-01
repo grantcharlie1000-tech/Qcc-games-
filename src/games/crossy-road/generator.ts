@@ -40,7 +40,7 @@ export function chunkRng(seed: number, chunk: number): () => number {
  * be stood on by a player who started at (row 0, START_COL) and never died. */
 export interface GenState {
   seed: number;
-  version?: 1 | 2;
+  version?: 1 | 2 | 3;
   /** Index of the next row to generate. */
   nextRow: number;
   /** Index of the next chunk to generate. */
@@ -52,7 +52,7 @@ export interface GenState {
   reach: boolean[];
 }
 
-export function initialState(seed: number, version: 1 | 2 = 2): GenState {
+export function initialState(seed: number, version: 1 | 2 | 3 = 3): GenState {
   const reach = new Array<boolean>(COLS).fill(false);
   reach[START_COL] = true;
   return { seed: seed >>> 0, version, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0, reach };
@@ -120,7 +120,7 @@ export function repairGrass(obstacles: Obstacle[], reach: readonly boolean[]): b
 }
 
 /** Chunk 0 keeps columns 2-6 clear and puts an obstacle on each of columns 0, 1, 7, 8 with p 0.35. */
-function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: 1 | 2): { lane: GrassLane; reach: boolean[] } {
+function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[], version: 1 | 2 | 3): { lane: GrassLane; reach: boolean[] } {
   const density = lerp(0.10, 0.30, difficulty(row));
   const obstacles = new Array<Obstacle>(COLS), variant = new Array<number>(COLS);
   for (let c = 0; c < COLS; c++) {
@@ -128,7 +128,7 @@ function grassRow(row: number, rng: Rng, safe: boolean, reach: readonly boolean[
     const hit = rng() < p, tree = rng() < 0.7;
     obstacles[c] = obstacle(hit, tree);
     const v = rng();
-    variant[c] = version === 2 && tree && v < 0.10 ? 3 : Math.floor((version === 2 && tree ? (v - 0.10) / 0.90 : v) * 3);
+    variant[c] = version >= 2 && tree && v < 0.10 ? 3 : Math.floor((version >= 2 && tree ? (v - 0.10) / 0.90 : v) * 3);
   }
   const edge = new Array<Obstacle>(2 * EDGE_COLS);
   for (let i = 0; i < edge.length; i++) {
@@ -154,7 +154,7 @@ function layout(lens: readonly number[], gaps: readonly number[], colors: readon
   return { movers, cycle };
 }
 
-function roadRow(row: number, rng: Rng, dir: Heading, version: 1 | 2): RoadLane {
+function roadRow(row: number, rng: Rng, dir: Heading, version: 1 | 2 | 3): RoadLane {
   const d = difficulty(row);
   const speed = lerp(1.5, 4.5, d) * jitter(rng);
   const truck = rng() < lerp(0.2, 0.4, d);
@@ -182,7 +182,7 @@ export interface LogShape {
 
 const MIN_LOG_GAP = 2;
 
-function drawLogShape(rng: Rng, d: number, version: 1 | 2): LogShape {
+function drawLogShape(rng: Rng, d: number, version: 1 | 2 | 3): LogShape {
   const speed = lerp(1.0, 2.6, d) * jitter(rng);
   const w2 = lerp(version === 1 ? 0.1 : 0.2, 0.6, d), w3 = version === 1 ? 0.3 : lerp(0.6, 0.3, d), w4 = version === 1 ? lerp(0.6, 0.1, d) : 1 - w2 - w3;
   const gapScale = lerp(2, 4, d), gapMax = riverGapMax(speed);
@@ -298,11 +298,13 @@ function chooseKind(rng: Rng, state: GenState): Family {
   }
   const prev = family(state.prevKind);
   if (kind === prev) kind = prev === 'grass' ? 'road' : 'grass';
+  // Revision three adds grass banks without changing either released RNG stream.
+  if ((state.version ?? 3) >= 3 && (prev === 'river' || (kind === 'river' && prev !== 'grass'))) kind = 'grass';
   if (kind !== 'grass' && state.hazardRun >= (start < 60 ? 2 : 3)) kind = 'grass';
   return kind;
 }
 
-function chooseThickness(rng: Rng, kind: Family, start: number, version: 1 | 2): number {
+function chooseThickness(rng: Rng, kind: Family, start: number, version: 1 | 2 | 3): number {
   switch (kind) {
     case 'grass': return 1 + Math.floor(rng() * (start < 20 ? 5 : 3));
     case 'road': return 1 + Math.floor(rng() * (start < 20 ? 2 : 4));
@@ -320,7 +322,7 @@ const passable = (reach: readonly boolean[]): boolean[] => new Array<boolean>(CO
 /** Generates exactly one chunk. The input state is never modified, and the returned state shares no array with it. */
 export function generateChunk(state: GenState): { lanes: Lane[]; state: GenState } {
   const rng = chunkRng(state.seed, state.chunk);
-  const start = state.nextRow, version = state.version ?? 2;
+  const start = state.nextRow, version = state.version ?? 3;
   const safe = state.chunk === 0;
   const kind = safe ? 'grass' : chooseKind(rng, state);
   const n = safe ? SAFE_ROWS : chooseThickness(rng, kind, start, version);

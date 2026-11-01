@@ -523,7 +523,7 @@ describe('mix and chunkRng', () => {
 describe('initialState', () => {
   it('starts at row 0, chunk 0, after grass, with only the start column reachable', () => {
     expect(initialState(7)).toEqual({
-      seed: 7, version: 2, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0,
+      seed: 7, version: 3, nextRow: 0, chunk: 0, prevKind: 'grass', hazardRun: 0,
       reach: [false, false, false, false, true, false, false, false, false],
     });
   });
@@ -1082,7 +1082,7 @@ describe('World', () => {
 
 describe('the world a seed produces stays the same', () => {
   // Revision one retains the release world and its 1.5-tile cars.
-  // New runs store worldVersion=2; saves without that field replay these exact pins.
+  // New runs store worldVersion=3; saves without that field replay these exact pins.
   // GOLDEN MASTER. A saved run stores only its seed and rebuilds its world from it. Rows 0-59 of seeds 1 and 2024 are pinned to
   // a fingerprint of the generator as it is now. If this fails, "changing this means saved runs replay a different world: bump
   // the save version or migrate" (and only then update the constants below).
@@ -1120,6 +1120,12 @@ describe('the world a seed produces stays the same', () => {
   for (const [seed, expected] of [[1,'28cbfb20'],[7,'628133a6'],[11,'5ab591bf']] as const) {
     it(`revision two seed ${seed}: pins the new world independently of legacy saves`, () => {
       expect(fingerprint(generate(initialState(seed,2),60).lanes.slice(0,60))).toBe(expected);
+    });
+  }
+
+  for (const [seed, expected] of [[1,'d80fdb14'],[7,'030e3e64'],[11,'c4aad9eb']] as const) {
+    it(`revision three seed ${seed}: pins grass-banked seed-only saves`, () => {
+      expect(fingerprint(generate(initialState(seed,3),60).lanes.slice(0,60))).toBe(expected);
     });
   }
 
@@ -1171,6 +1177,25 @@ it('generated car models have matching 1.2/1.8 tile collision spans', () => {
 describe(`CrossyRoad worlds over ${SEEDS} seeds x ${ROWS} rows`, () => {
   let S!: Sweep;
   beforeAll(() => { S = sweep(); });
+
+  it('every river block has grass immediately before and after it across all 2,000 seeds', () => {
+    const bad = new Bad();
+    let blocks = 0;
+    const water = (lane: Lane) => lane.kind === 'river' || lane.kind === 'lily';
+    for (let seed = 1; seed <= SEEDS; seed++) {
+      const lanes = lanesOf(seed);
+      for (let r = 0; r < lanes.length; r++) {
+        if (!water(lanes[r])) continue;
+        const before = lanes[r - 1];
+        if (!before || (!water(before) && before.kind !== 'grass')) bad.add(`seed ${seed} row ${r}: missing grass bank before river`);
+        if (before && !water(before)) blocks++;
+        const after = lanes[r + 1] ?? new World(seed).lane(r + 1);
+        if (!water(after) && after.kind !== 'grass') bad.add(`seed ${seed} row ${r}: missing grass bank after river`);
+      }
+    }
+    expect(blocks).toBeGreaterThan(10_000);
+    expectNone(bad);
+  });
 
   it('generates every seed without throwing, and every sweep rule was exercised many times', () => {
     expectNone(S.crash);
@@ -1296,12 +1321,13 @@ describe(`CrossyRoad worlds over ${SEEDS} seeds x ${ROWS} rows`, () => {
     near(first('river'), 0.161, 0.04, 'chunk 1 river');
     near(first('rail'), 0.121, 0.04, 'chunk 1 rail');
     // From row 300 the weights are grass .22, road .38, river .22, rail .18; a pick equal to the previous kind becomes
-    // grass (road after grass). Chunks forced to grass by the hazard cap are not counted.
+    // grass (road after grass). Revision three also converts a river pick after road/rail
+    // to grass, and always chooses grass after river. Hazard-cap-forced chunks are not counted.
     const late: Record<string, Record<string, number>> = {
       grass: { grass: 0, road: 0.6, river: 0.22, rail: 0.18 },
-      road: { grass: 0.6, road: 0, river: 0.22, rail: 0.18 },
-      river: { grass: 0.44, road: 0.38, river: 0, rail: 0.18 },
-      rail: { grass: 0.4, road: 0.38, river: 0.22, rail: 0 },
+      road: { grass: 0.82, road: 0, river: 0, rail: 0.18 },
+      river: { grass: 1, road: 0, river: 0, rail: 0 },
+      rail: { grass: 0.62, road: 0.38, river: 0, rail: 0 },
     };
     for (const [from, row] of Object.entries(late)) {
       expect(S.seen[`from.${from}`] ?? 0, `chunks after ${from}`).toBeGreaterThan(3_000);
