@@ -13,7 +13,7 @@ test('mouse aim, real drops and merge, pause, keyboard, saved return and restart
  await page.mouse.move(aim.x,aim.y);await page.mouse.click(aim.x,aim.y);
  await expect(page.locator('.fm-count')).toHaveText('1 fruit in basket');
  const first=await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data.fruits[0]);expect(first.x).toBeCloseTo((aim.x-box.x)*360/box.width,5);
- await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeEnabled();
+ await expect(basket).toHaveAttribute('aria-busy','false');
  await basket.focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('Space');await expect(page.locator('.fm-count')).toHaveText('2 fruits in basket');
  await pauseGame(page);await expect(page.locator('#pause-overlay h2')).toBeVisible();
  const saved=await page.evaluate(()=>localStorage.getItem('pocket-arcade:v1:save:fruit-merge'));expect(saved).toBeTruthy();
@@ -24,13 +24,13 @@ test('mouse aim, real drops and merge, pause, keyboard, saved return and restart
  await resumeGame(page);await backToGames(page);
  await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();await expect(basket).toBeVisible();await expect(page.locator('.fm-count')).not.toHaveText('0 fruits in basket');
  await pauseGame(page);await gameAction(page,'Restart game');await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');
- await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeEnabled();expect(errors).toEqual([]);
+ await expect(basket).toHaveAttribute('aria-busy','false');expect(errors).toEqual([]);
 });
 test('responsive touch aim, accessible fruit tiers and a real merge',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/#/game/fruit-merge');const basket=page.getByRole('img',{name:/Fruit basket/});await expect(basket).toBeVisible();
  const box=await basket.boundingBox();if(!box)throw Error('No basket');
  for(let n=0;n<8;n++){
-  await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeEnabled();
+  await expect(basket).toHaveAttribute('aria-busy','false');
   await page.touchscreen.tap(box.x+box.width*.5,box.y+box.height*.45);
  }
  await expect.poll(async()=>Number(await page.locator('#game-score strong').textContent())).toBeGreaterThan(0);
@@ -47,8 +47,8 @@ test('responsive touch aim, accessible fruit tiers and a real merge',async({page
 test('invalid saved data is ignored and navigation disposes stale controls',async({page})=>{
  await page.goto('/');await page.evaluate(()=>localStorage.setItem('pocket-arcade:v1:save:fruit-merge',JSON.stringify({version:1,data:{version:1,fruits:'broken'}})));
  await page.goto('/#/game/fruit-merge');await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');
- for(let n=0;n<3;n++){await backToGames(page);await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');}
- await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await expect(page.locator('.fm-count')).toHaveText('1 fruit in basket');
+ for(let n=0;n<3;n++){await backToGames(page);await expect(page.locator('.fm-board')).toHaveCount(0);await page.getByRole('link',{name:'Play Suika Game',exact:true}).click();await expect(page.locator('.fm-board')).toBeVisible();await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');}
+ await page.locator('.fm-board').click();await expect(page.locator('.fm-count')).toHaveText('1 fruit in basket');
 });
 
 test('restores a full supported pile, ends after settled grace, and restarts',async({page})=>{
@@ -58,6 +58,6 @@ test('restores a full supported pile, ends after settled grace, and restarts',as
   localStorage.setItem('pocket-arcade:v1:save:fruit-merge',JSON.stringify({version:1,data}));
  });
  await page.goto('/#/game/fruit-merge');await expect(page.locator('#game-score strong')).toHaveText('123');
- await expect(page.locator('.fm-banner')).toContainText('Basket full');await expect(page.getByRole('button',{name:'Drop fruit',exact:true})).toBeDisabled();
+ await expect(page.locator('.fm-banner')).toContainText('Basket full');await expect(page.locator('.fm-board')).toHaveAttribute('aria-disabled','true');
  await gameAction(page,'Restart game');await expect(page.locator('.fm-count')).toHaveText('0 fruits in basket');await expect(page.locator('#game-score strong')).toHaveText('0');await expect(page.locator('#game-best strong')).toHaveText('123');
 });
