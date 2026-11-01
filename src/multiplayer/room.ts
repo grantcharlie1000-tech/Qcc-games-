@@ -108,6 +108,8 @@ export class Room{
   }
 
   get id(){return this.selfId;}
+  /** Host lobby options may grow a room; shrinking never removes an admitted player. */
+  setMaxPlayers(max:number){if(this.role!=='host'||this.closedState||!Number.isInteger(max)||max<this.roster.length||max<1||max>10)return false;this.options.maxPlayers=max;return true;}
   get players():readonly RosterEntry[]{return this.roster;}
   get self():RosterEntry|undefined{return this.roster.find(p=>p.id===this.selfId);}
   get paused(){return this.pausedState;}

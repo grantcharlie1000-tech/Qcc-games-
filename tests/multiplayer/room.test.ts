@@ -136,3 +136,11 @@ describe('Room ephemeral updates',()=>{
   expect(events.find(e=>e.type==='closed')).toMatchObject({reason:'kicked'});expect(other.closed).toBe(false);expect(host.players.map(p=>p.name)).toEqual(['Hana','Rua']);host.close();await settle(400);
  });
 });
+
+describe('Room lobby capacity',()=>{
+ beforeEach(()=>vi.useFakeTimers());afterEach(()=>vi.useRealTimers());
+ it('host can expand before admitting a third player and cannot evict players by shrinking capacity',async()=>{
+  const net=new FakeNetwork(),host=await Room.create(opts(net,'Hana')),guest=await joined(net,host,'Tama');
+  expect(host.setMaxPlayers(3)).toBe(true);const third=await joined(net,host,'Rua');expect(host.players).toHaveLength(3);expect(host.setMaxPlayers(2)).toBe(false);expect(guest.setMaxPlayers(5)).toBe(false);expect(third.closed).toBe(false);host.close();await settle(400);
+ });
+});
