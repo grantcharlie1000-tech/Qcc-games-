@@ -17,7 +17,7 @@ async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui
   const hide=await page.addStyleTag({content:`${scope} :is(${glyphs}){color:transparent!important}`});
   const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   await hide.evaluate(e=>(e as Element).remove());
-  const maskStyle=await page.addStyleTag({content:`html,body{background:#000!important}#content{visibility:hidden}${scope}{visibility:visible!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} :is(${glyphs}){color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
+  const maskStyle=await page.addStyleTag({content:`.glass-vector-halo{display:none!important}html,body{background:#000!important}#content{visibility:hidden}${scope}{visibility:visible!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} :is(${glyphs}){color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
   const mask=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   await maskStyle.evaluate(e=>(e as Element).remove());
   return glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);
@@ -29,7 +29,7 @@ for(const width of [390,1366])test(`floating Movies header keeps the clear recip
   const header=page.locator('.movies-top');await expect(header).toBeVisible();
   await expect(header.locator('.glass-label').first()).toBeVisible();
   const veils=await header.locator('.floating-glass-group').evaluateAll(es=>es.map(e=>getComputedStyle(e,'::before').backgroundColor));
-  expect(veils).toEqual(Array(3).fill('rgba(184, 184, 184, 0.14)'));
+  expect(veils).toEqual(Array(3).fill('rgba(184, 184, 184, 0.02)'));
   await page.addStyleTag({content:'.movies-view{background:transparent!important}.movies-view>:not(.movies-top){visibility:hidden}'});
   for(const background of ['#fff','#000','#909090','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)','canvas']){
     const style=await page.addStyleTag({content:`html,body{background:${background==='canvas'?'#000':background}!important}`});
@@ -84,7 +84,7 @@ test('caption edge strokes keep contrast above unreadable dark media',async({pag
     const canvas=document.createElement('canvas');canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:1';
     canvas.getContext('2d')!.fillRect(0,0,canvas.width,canvas.height);document.body.append(canvas);
   });
-  await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(255, 255, 255, 0.48)');
+  await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
   const ratios=await navigationContrast(page,'.movies-navigation');
   expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
 });
@@ -117,13 +117,13 @@ test('Games and Movies sheet closes use the same clear material and release it o
     const close=dialog.locator('.dialog-head .icon-button');
     await expect(close).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
     const veil=await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor);
-    expect(veil).toBe('rgba(184, 184, 184, 0.14)');
+    expect(veil).toBe('rgba(184, 184, 184, 0.02)');
     await expect(close).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
     await close.screenshot({animations:'disabled'});
     const boxes=await close.evaluate(e=>{const b=e.getBoundingClientRect(),svg=e.querySelector('svg')!,r=svg.getBoundingClientRect();return [{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(svg).color}];});
     const hide=await page.addStyleTag({content:'.sheet-close-glass>svg{color:transparent!important}'});
     const shot=(await close.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
-    const maskStyle=await page.addStyleTag({content:'.sheet-close-glass{background:#000!important;backdrop-filter:none!important}.sheet-close-glass::before,.sheet-close-glass>.ui-glass-lens,.sheet-close-glass>.ui-glass-glow{visibility:hidden!important}.sheet-close-glass>svg{color:#fff!important;background:none!important;box-shadow:none!important}'});
+    const maskStyle=await page.addStyleTag({content:'.glass-vector-halo{display:none!important}.sheet-close-glass{background:#000!important;backdrop-filter:none!important}.sheet-close-glass::before,.sheet-close-glass>.ui-glass-lens,.sheet-close-glass>.ui-glass-glow{visibility:hidden!important}.sheet-close-glass>svg{color:#fff!important;background:none!important;box-shadow:none!important}'});
     const mask=(await close.screenshot({animations:'disabled'})).toString('base64');await maskStyle.evaluate(e=>e.parentNode?.removeChild(e));
     expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!))).toBeGreaterThanOrEqual(4.5);
     await close.click();await expect(dialog).not.toBeVisible();
@@ -132,18 +132,16 @@ test('Games and Movies sheet closes use the same clear material and release it o
   }
 });
 
-// These bounds come from paired blank patches of Apple's official light/dark
-// Music tab-bar images. The fit is a model, not a claim about Apple's shader:
-// O = (1-alpha)B + alpha*T gives alpha .133-.157 for RGB-neutral T.
-// Catch both a heavy veil and a filter that hides the backdrop despite low alpha.
+// The clear-variant acceptance supersedes the earlier regular-HIG alpha fit.
+// Rendered dark/chroma checks still reject hidden luminance compression.
 for(const fallback of [false,true])test(`clear glass retains the backdrop instead of whitening it (${fallback?'fallback':'native'})`,async({page,browserName})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   const veil=await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor.match(/[\d.]+/g)!.map(Number));
-  expect(veil[3]??1).toBeGreaterThanOrEqual(.133);
-  expect(veil[3]??1).toBeLessThanOrEqual(.157);
+  expect(veil[3]??1).toBeGreaterThanOrEqual(0);
+  expect(veil[3]??1).toBeLessThanOrEqual(.02);
   expect(Math.max(...veil.slice(0,3))-Math.min(...veil.slice(0,3))).toBeLessThanOrEqual(1);
   await page.addStyleTag({content:'#content{visibility:hidden}body{background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   const png=(await bar.screenshot({animations:'disabled',scale:'css'})).toString('base64');
@@ -214,7 +212,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
     const hide=await page.addStyleTag({content:`${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:transparent!important}`});
     const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
     await hide.evaluate(e=>(e as Element).remove());
-    const maskStyle=await page.addStyleTag({content:`html,body{background:#000!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
+    const maskStyle=await page.addStyleTag({content:`.glass-vector-halo{display:none!important}html,body{background:#000!important}.arcade-glass{background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.arcade-glass::before,.arcade-glass::after,.ui-glass-lens,.ui-glass-glow{visibility:hidden!important}${scope} .ui-tab,${scope} .ui-tab>svg,${scope} .ui-tab>span{color:#fff!important;background:none!important;box-shadow:none!important;text-shadow:none!important;filter:none!important}`});
     const mask=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
     await maskStyle.evaluate(e=>(e as Element).remove());
     const ratios=await glyphContrast(page,shot,mask,boxes,(await nav.boundingBox())!);

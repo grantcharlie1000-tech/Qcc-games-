@@ -116,7 +116,7 @@ for(const route of ['collection','movies'])test(`${route} fallback Menu ink reta
  const actual=(await menu.screenshot({animations:'disabled'})).toString('base64');
  const hide=await page.addStyleTag({content:'.section-menu>.ui-icon{color:transparent!important}'});
  const backdrop=(await menu.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
- await page.addStyleTag({content:'.section-menu,.section-menu::before{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important}.section-menu .ui-glass-glow,.section-menu .ui-glass-lens{display:none!important}.section-menu>.ui-icon{color:#fff!important;background:none!important;box-shadow:none!important}'});
+ await page.addStyleTag({content:'.glass-vector-halo{display:none!important}.section-menu,.section-menu::before{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important}.section-menu .ui-glass-glow,.section-menu .ui-glass-lens{display:none!important}.section-menu>.ui-icon{color:#fff!important;background:none!important;box-shadow:none!important}'});
  const mask=(await menu.screenshot({animations:'disabled'})).toString('base64');
  const result=await page.evaluate(async({actual,backdrop,mask})=>{
   const decode=async(source:string)=>{const image=new Image();image.src='data:image/png;base64,'+source;await image.decode();const c=document.createElement('canvas');c.width=image.width;c.height=image.height;const ctx=c.getContext('2d')!;ctx.drawImage(image,0,0);return {data:ctx.getImageData(0,0,c.width,c.height).data,width:c.width,height:c.height};};
@@ -168,7 +168,7 @@ for(const press of [false,true])test(`dark selected tab retains 4.5:1 over white
  const boxes=await tab.evaluate(e=>{const box=e.getBoundingClientRect();return [...e.querySelectorAll('.ui-icon,span')].map(child=>{const b=child.getBoundingClientRect();return {x:(b.x-box.x),y:(b.y-box.y),w:b.width,h:b.height,color:getComputedStyle(child).color};});});
  const hide=await page.addStyleTag({content:'.contrast-target>*{color:transparent!important}'});
  const backdrop=(await tab.screenshot({animations:'disabled'})).toString('base64');await hide.evaluate(e=>e.parentNode?.removeChild(e));
- await page.addStyleTag({content:'.contrast-target{color:white!important;background:black!important;text-shadow:none!important}.contrast-target>*{color:white!important;filter:none!important;background:none!important;box-shadow:none!important}'});
+ await page.addStyleTag({content:'.glass-vector-halo{display:none!important}.contrast-target{color:white!important;background:black!important;text-shadow:none!important}.contrast-target>*{color:white!important;filter:none!important;background:none!important;box-shadow:none!important}'});
  const mask=(await tab.screenshot({animations:'disabled'})).toString('base64');
  const ratios=await glyphContrast(page,backdrop,mask,boxes,(await tab.boundingBox())!);
  if(press){await page.mouse.move(0,0);await page.mouse.up();}

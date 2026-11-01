@@ -15,14 +15,14 @@ const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
   [0,1,2].map(i=>Math.max(...colors.map(c=>c[i]))) as [number,number,number]
 ];
 
-/** The optical veil is shared with theme.css: neutral RGB184 at 14% opacity.
- * Choose ink before adding any scrim. Margin covers the feathered glyph edge. */
-export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false):{color:string;scrim:string}{
+/** The clear veil is shared with theme.css: neutral RGB184 at 2% opacity.
+ * Choose ink first. Any remaining contrast lives on the glyph's outline. */
+export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false):{color:string;halo:string}{
   const backgrounds=bounds(samples.length?samples:[[25,29,28]]).flatMap(rgb=>{
-    const glass=mix(rgb,[184,184,184],.14);
-    // Include the moving white 8% tab lens or the floating header's black
+    const glass=mix(rgb,[184,184,184],.02);
+    // Include the moving white 1% tab lens or the floating header's black
     // 9% selection, as well as the unselected state.
-    return selection?[glass,mix(glass,selection==='dark'?[0,0,0]:[255,255,255],selection==='dark'?.09:.08)]:[glass];
+    return selection?[glass,mix(glass,selection==='dark'?[0,0,0]:[255,255,255],selection==='dark'?.09:.01)]:[glass];
   });
   const candidates=[{ink:INK,color:'#0b1015',veil:[255,255,255] as RGB},{ink:[255,255,255] as RGB,color:'#fff',veil:[0,0,0] as RGB}];
   const scored=candidates.map(candidate=>{
@@ -41,7 +41,7 @@ export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',select
   // Preserve a modal's established ink when its hidden backdrop requires a
   // scrim either way. A zero-scrim choice always takes priority.
   const best=preferred&&scored.every(c=>c.alpha>0)?scored.find(c=>c.color===(preferred==='light'?'#fff':'#0b1015'))!:scored[0];
-  return {color:best.color,scrim:`rgb(${best.veil.join(' ')} / ${best.alpha})`};
+  return {color:best.color,halo:`rgb(${best.veil.join(' ')} / ${best.alpha})`};
 }
 
 // Cache one small image readback per source, never per sample or scroll frame.
@@ -169,6 +169,20 @@ function sampler(){
 const bindings=new Set<HTMLElement>();
 let frame=0;
 let observer:MutationObserver|undefined;
+function vectorHalo(glyph:HTMLElement):void{
+  if(!(glyph instanceof SVGSVGElement)||glyph.querySelector(':scope > .glass-vector-halo'))return;
+  // A vector outline follows the live icon, without a rectangular backing or
+  // a captured image. Keep it separate from currentColor so contrast can be
+  // measured with the foreground hidden, just like a text shadow.
+  const halo=document.createElementNS('http://www.w3.org/2000/svg','g');
+  halo.classList.add('glass-vector-halo');halo.setAttribute('aria-hidden','true');
+  for(const child of [...glyph.children])if(!child.matches('defs,title,desc')){
+    const copy=child.cloneNode(true) as Element;
+    copy.removeAttribute('id');for(const e of copy.querySelectorAll('[id]'))e.removeAttribute('id');
+    halo.append(copy);
+  }
+  glyph.prepend(halo);
+}
 function update(){
   frame=0;
   const {style,rect,sample}=sampler();
@@ -191,10 +205,11 @@ function update(){
     }
   }
   for(const {glyph,ink} of changes){
-    if(!ink){glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-scrim');continue;}
+    if(!ink){glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-halo');glyph.querySelector(':scope > .glass-vector-halo')?.remove();continue;}
     if(!glyph.classList.contains('glass-ink'))glyph.classList.add('glass-ink');
     if(glyph.style.getPropertyValue('--glass-adaptive-ink')!==ink.color)glyph.style.setProperty('--glass-adaptive-ink',ink.color);
-    if(glyph.style.getPropertyValue('--glass-local-scrim')!==ink.scrim)glyph.style.setProperty('--glass-local-scrim',ink.scrim);
+    if(glyph.style.getPropertyValue('--glass-local-halo')!==ink.halo)glyph.style.setProperty('--glass-local-halo',ink.halo);
+    vectorHalo(glyph);
   }
 }
 const schedule=()=>{if(!frame&&!document.hidden)frame=requestAnimationFrame(update);};
@@ -219,7 +234,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     bindings.delete(bar);
     const mini=bar.parentElement?.querySelector('.ui-tabbar-mini');
     for(const target of [...bar.querySelectorAll<HTMLElement>('.glass-ink'),...mini?.querySelectorAll<HTMLElement>('.glass-ink')??[]]){
-      target.style.removeProperty('--glass-adaptive-ink');target.style.removeProperty('--glass-local-scrim');target.classList.remove('glass-ink');
+      target.style.removeProperty('--glass-adaptive-ink');target.style.removeProperty('--glass-local-halo');target.querySelector(':scope > .glass-vector-halo')?.remove();target.classList.remove('glass-ink');
     }
     if(!bindings.size){
       observer?.disconnect();observer=undefined;

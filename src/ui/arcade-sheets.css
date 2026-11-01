@@ -1,13 +1,11 @@
-/* Arcade regular glass. Rows are plain inset fills; floating closes use the
-   shared clear material. Movies keeps its .ui-glass-sheet tokens in theme.css.
-   Carry the old linear brightness/contrast contribution in the veil so text
-   stays legible even when a renderer omits backdrop colour filters. */
+/* Clear sheet material. Background detail stays live and recognisable;
+   text contrast belongs to the glyph strokes rather than a panel-wide veil. */
 :is(.arcade-sheet,body.in-game .mp-card){
   --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
-  /* Equivalent to white/.06 over contrast(.7) brightness(.44). */
-  --sheet-veil:rgb(43.802 43.802 43.802 / .71048);
-  --sheet-optics:blur(8px) saturate(.35);
-  --sheet-group:rgb(255 255 255 / .03);--sheet-control:rgb(255 255 255 / .06);
+  /* One clear optical transfer across the entire sheet. */
+  --sheet-veil:rgb(184 184 184 / .02);--sheet-halo:rgb(0 0 0 / .82);
+  --sheet-optics:blur(2px) saturate(1);
+  --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
   --sheet-radius:32px;--sheet-padding:16px;--sheet-group-radius:calc(var(--sheet-radius) - var(--sheet-padding));
   box-sizing:border-box;padding:var(--sheet-padding);border-radius:var(--sheet-radius);
@@ -15,14 +13,14 @@
   background:var(--sheet-veil);color:var(--sheet-ink);color-scheme:dark;
   -webkit-backdrop-filter:var(--sheet-optics);backdrop-filter:var(--sheet-optics);
   box-shadow:inset .5px .5px 0 rgb(255 255 255 / .7),inset -.5px -.5px 0 rgb(255 255 255 / .55),inset 0 0 12px rgb(255 255 255 / .1),0 16px 52px -12px rgb(0 0 0 / .2),0 3px 12px rgb(0 0 0 / .08);
-  font:400 17px/1.45 var(--font-sans);text-shadow:none;
+  font:400 17px/1.45 var(--font-sans);text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
 }
 html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
   --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#22252a;
-  /* Equivalent to white/.38 over contrast(.55) brightness(1.35). */
-  --sheet-veil:rgb(255 255 255 / .568325);
-  --sheet-optics:blur(8px) saturate(.35) brightness(1.066428);
-  --sheet-group:rgb(0 0 0 / .035);--sheet-control:rgb(0 0 0 / .055);
+  /* Ink adapts to the presentation; the sheet material stays the same. */
+  --sheet-veil:rgb(184 184 184 / .02);--sheet-halo:rgb(255 255 255 / .62);
+  --sheet-optics:blur(2px) saturate(1);
+  --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(0 0 0 / .12);--sheet-focus:#111316;color-scheme:light;
 }
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card){--sheet-radius:28px}}
@@ -33,7 +31,7 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
 .arcade-sheet.ui-glass-sheet{--sheet-from-scale:.98;--sheet-from-lift:18px}
 @media(min-width:640px){.arcade-sheet.ui-glass-sheet{--sheet-from-scale:.96;--sheet-from-lift:8px}}
 .arcade-sheet.ui-glass-sheet[open]{transition-duration:160ms,320ms,320ms,320ms,320ms}
-.arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:rgb(0 0 0 / .16)}
+.arcade-sheet.ui-glass-sheet[open]::backdrop{background-color:transparent}
 /* Keep the paused artwork visible; this does not resume the game or alter its state. */
 body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .arcade-sheet :is(h1,h2,h3,.dialog-head h2,.game-metrics strong){color:var(--sheet-ink);font-family:var(--font-sans);letter-spacing:-.02em}
@@ -43,6 +41,9 @@ body:has(.arcade-sheet[open]) #pause-overlay{opacity:0;pointer-events:none}
 .arcade-sheet .game-menu-eyebrow{font-size:11px;letter-spacing:.08em;font-weight:550}
 .arcade-sheet :is(.icon-button,.game-button.secondary){background:var(--sheet-control);color:var(--sheet-ink);box-shadow:none}
 .arcade-sheet .game-button:not(.secondary){background:var(--sheet-ink);color:var(--sheet-action-ink);box-shadow:none}
+/* Form controls reset inherited text shadows in browser stylesheets. Keep
+   the stroke-local contrast on transparent controls; solid actions need none. */
+.arcade-sheet :is(button:not(.game-button),.game-button.secondary,input,select){text-shadow:inherit}
 .arcade-sheet :is(input:not([type=checkbox]),select){background:var(--sheet-control);color:var(--sheet-ink)}
 .arcade-sheet input::placeholder{color:var(--sheet-ink);opacity:1}
 #accounts-dialog.arcade-sheet label{color:var(--sheet-muted)}
