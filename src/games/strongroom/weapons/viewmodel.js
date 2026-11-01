@@ -212,7 +212,7 @@ export const GLB_POSES = {
 //      the muzzle visible. Anything closer and the barrel leaves the top-left.
 // ---------------------------------------------------------------------------
 //   4. `scale` is the viewmodel-FOV stand-in. A real 880 mm AK held 375 mm from
-//      a 74-degree eye is enormous — correct, and unusable: every shooter draws
+//      a 74-degree eye is enormous — correct, and unusable: every strongroom draws
 //      its viewmodel with a narrower field of view than the world (typically
 //      55-65 degrees against 74-90) so the weapon reads at arm's length instead
 //      of pressed against the lens. We render the viewmodel in the world scene

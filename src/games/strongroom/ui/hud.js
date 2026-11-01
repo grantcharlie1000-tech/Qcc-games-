@@ -360,7 +360,7 @@ export default class HUD {
 
     const style = document.createElement('style');
     style.id = 'hud-style';
-    style.textContent = '@scope (.shooter-game) {' + this._css() + '}';
+    style.textContent = '@scope (.strongroom-game) {' + this._css() + '}';
     root.appendChild(style);
 
     root.insertAdjacentHTML('beforeend', this._html());
@@ -3245,7 +3245,7 @@ export default class HUD {
       '<button id="hud-start"><span class="btn-main">PLAY VS BOTS</span>' +
       '<span class="btn-sub" id="hud-start-sub">INSTANT SOLO MATCH</span></button>' +
       '</div>' +
-      '<p class="qcc-shooter-credit">Based on Tiny Strike by Guy Zyskind (ISC)</p>' +
+      '<p class="qcc-strongroom-credit">Based on Tiny Strike by Guy Zyskind (ISC)</p>' +
       '<div class="mn-quick" role="group" aria-label="More options">' +
       '<button id="hud-online-open" type="button" aria-expanded="false">PLAY ONLINE<b class="mn-chev" aria-hidden="true">+</b></button>' +
       '<button id="hud-leaderboard-open" type="button">LEADERBOARDS</button>' +

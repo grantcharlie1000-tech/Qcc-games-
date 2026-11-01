@@ -8,7 +8,7 @@ Copyright (c) 2026 Guy Zyskind.
 
 ## Runtime models
 
-Paths below are under `public/game-assets/shooter/`. Each model is copied
+Paths below are under `public/game-assets/strongroom/`. Each model is copied
 unchanged from Tiny Strike's matching `assets/` path. URLs use Vite's base
 URL; the existing offline manifest includes every file in `public/`.
 
@@ -22,7 +22,7 @@ URL; the existing offline manifest includes every file in `public/`.
 | `models/viewmodels/flashbang.glb` | Tiny Strike original equipment design, authored/exported for Tiny Strike | ISC |
 | `models/viewmodels/smokegrenade.glb` | Tiny Strike original equipment design, authored/exported for Tiny Strike | ISC |
 
-Quaternius source: [Toon Shooter Game Kit](https://quaternius.com/packs/toonshootergamekit.html),
+Quaternius source: [Toon Shooter Game Kit](https://quaternius.com/packs/toonstrongroomgamekit.html),
 released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
 Thanks to Quaternius; attribution is voluntary under CC0.
 
@@ -40,7 +40,7 @@ Thanks to Quaternius; attribution is voluntary under CC0.
   `world/`) come from the corresponding Tiny Strike `src/` directories,
   **ISC**. Their generated world textures, effects, HUD SVG silhouettes,
   maps and synthesized Web Audio are covered by the project notice.
-- `public/game-art/shooter/cover.svg` is a new QCC placeholder vector poster,
+- `public/game-art/strongroom/cover.svg` is a new QCC placeholder vector poster,
   drawn for this integration; it contains no third-party art.
 - The mounted menu and arcade Game rules display the Tiny Strike credit.
   Copies of both code notices and this inventory are also shipped beside

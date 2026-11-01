@@ -2,7 +2,7 @@
 // QCC lifecycle adapter for Tiny Strike. The original ISC notice is in LICENSE.
 import * as THREE from 'three';
 import {playBox} from '../../core/play-surface';
-import {SHOOTER} from './meta';
+import {STRONGROOM} from './meta';
 import {EventBus} from './shared/events.js';
 import {CONFIG} from './shared/config.js';
 import Input from './core/input.js';
@@ -27,7 +27,7 @@ import {disposeObject} from './resources.js';
 
 export function mount(container, context) {
   const root = document.createElement('div');
-  root.className = 'shooter-game';root.dataset.ready = 'false';root.dataset.paused = 'false';
+  root.className = 'strongroom-game';root.dataset.ready = 'false';root.dataset.paused = 'false';
   root.innerHTML = '<div id="hud"></div>';container.append(root);
   const abort = new AbortController(), frames = new Set(), timers = new Set();
   const touch = shouldEnableTouchControls();
@@ -35,17 +35,17 @@ export function mount(container, context) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(CONFIG.PLAYER.FOV, 1, 0.05, 400);
   scene.add(camera);root.prepend(renderer.domElement);
-  renderer.domElement.setAttribute('aria-label', `${SHOOTER.title} first person play surface`);
+  renderer.domElement.setAttribute('aria-label', `${STRONGROOM.title} first person play surface`);
   renderer.domElement.tabIndex = 0;
   const search = new URLSearchParams(location.search);
   let savedMap;
   try { savedMap = localStorage.getItem('tiny-strike-map'); } catch { /* private storage */ }
   const game = {
-    title:SHOOTER.title, config:CONFIG, context, root, scene, camera, renderer,
+    title:STRONGROOM.title, config:CONFIG, context, root, scene, camera, renderer,
     canvas:renderer.domElement, hudRoot:root.querySelector('#hud'), events:new EventBus(),
     debug:false, sessionMode:'solo', paused:false, disposed:false, fps:60,
     gfxQuality:touch ? 'low' : 'high',selectedMapId:normalizeMapId(savedMap || DEFAULT_MAP_ID),
-    asset:path => `${import.meta.env.BASE_URL}game-assets/${SHOOTER.id}/${path}`,disposeObject,
+    asset:path => `${import.meta.env.BASE_URL}game-assets/${STRONGROOM.id}/${path}`,disposeObject,
     state:{phase:'menu',round:0,scores:{ct:0,t:0},timer:0,money:CONFIG.ECON.START_MONEY,
       bomb:{planted:false,site:null,pos:null,defusingBy:null,defuseProgress:0,carrierId:null},canBuy:false,buyOpen:false},
     listen(target, type, handler, options = {}) {
@@ -130,7 +130,7 @@ export function mount(container, context) {
       for (const model of Object.values(game.viewmodel?._models || {})) disposeObject(model, seen);
       disposeObject(game.viewmodel?._npcArmsSource, seen);disposeWeaponTemplates(game.materials);
       game.materials?.dispose();renderer.dispose();renderer.forceContextLoss();root.remove();
-      if (import.meta.env.DEV && window.__shooter === game) delete window.__shooter;
+      if (import.meta.env.DEV && window.__strongroom === game) delete window.__strongroom;
     },
   };
   try {
@@ -156,7 +156,7 @@ export function mount(container, context) {
       event.preventDefault();if (game.hud.buyOpen) game.hud._setBuyOpen(false);else context.setPaused?.(true);
     });
     root.dataset.ready = 'true';root.dataset.phase = game.state.phase;
-    if (import.meta.env.DEV) window.__shooter = game;
+    if (import.meta.env.DEV) window.__strongroom = game;
     context.setStatus('Choose a battleground, then Play vs bots. P pauses; Escape opens Study.');
     clock.getDelta();renderer.setAnimationLoop(frame);return instance;
   } catch (error) {instance.dispose();throw error;}

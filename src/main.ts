@@ -16,7 +16,7 @@ import * as store from './core/storage';
 import {playSound} from './core/audio';
 import {activateUpdate, cacheAll, checkForUpdates, watchUpdates} from './core/offline';
 import {StudyView} from './study/view';
-import {SHOOTER} from './games/shooter/meta';
+import {STRONGROOM} from './games/strongroom/meta';
 import {reloadAfterActivation} from './core/update';
 import {fitGameStage} from './core/viewport-fit';
 import {attachFullscreen,syncPlaySurface} from './core/play-surface';
@@ -58,7 +58,7 @@ let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft',SHOOTER.id]);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft',STRONGROOM.id]);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
 const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold']);
 

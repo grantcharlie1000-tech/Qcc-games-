@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPoolShot} from './pool-verifier-shot.mjs';
-const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle',shooter:'Shooter (WIP)'};
+const titles={'neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle',strongroom:'Strongroom'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
@@ -24,9 +24,9 @@ async function restart(page,id){
  finally{if(id==='minesweeper')page.off('dialog',confirm);}
 }
 async function action(page,id){
- if(id==='shooter'){
-  const root=page.locator('.shooter-game');await root.locator('canvas').first().waitFor({timeout:120000});
-  await page.waitForFunction(()=>document.querySelector('.shooter-game')?.getAttribute('data-ready')==='true',{},{timeout:120000});
+ if(id==='strongroom'){
+  const root=page.locator('.strongroom-game');await root.locator('canvas').first().waitFor({timeout:120000});
+  await page.waitForFunction(()=>document.querySelector('.strongroom-game')?.getAttribute('data-ready')==='true',{},{timeout:120000});
   const start=page.locator('#hud-start');if(await start.isVisible())await start.click();
   await waitFor(async()=>['freeze','live','planted','roundEnd'].includes(await root.getAttribute('data-phase')),'offline Shooter bot match');
   assert.ok(Number(await page.locator('#hud-health-num').textContent())>0,'offline Shooter health HUD');
@@ -73,7 +73,7 @@ try{
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade-v2:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
   await page.goto(base);await page.getByRole('button',{name:'Play as guest',exact:true}).click();assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
-  const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')||key.includes('shooter')).map(([,v])=>v.file);
+  const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')||key.includes('strongroom')).map(([,v])=>v.file);
   assert.ok(!initial.some(url=>heavy.some(file=>url.endsWith(file))),'heavy game chunks must remain lazy');
   await page.getByRole('button',{name:'Open menu'}).click();await page.getByRole('button',{name:'Make all games available offline'}).click();await page.getByRole('button',{name:'Offline pack downloaded'}).waitFor({timeout:45000});await page.getByRole('button',{name:'Close menu'}).click();
   await waitFor(()=>page.evaluate(()=>navigator.serviceWorker.controller!==null),'service worker control');
@@ -123,8 +123,8 @@ try{
   for(const id of ids){
    // Tiny Strike bakes its material library and procedural weapons on first
    // mount. Software WebGL can occupy the main thread beyond the normal wait.
-   page.setDefaultTimeout(id==='shooter'?120000:30000);
-   await page.goto(base+(id==='shooter'?'?post=off':'')+'#/game/'+id);await page.locator('#game-title').waitFor({state:'attached'});await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('#game-title').textContent(),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
+   page.setDefaultTimeout(id==='strongroom'?120000:30000);
+   await page.goto(base+(id==='strongroom'?'?post=off':'')+'#/game/'+id);await page.locator('#game-title').waitFor({state:'attached'});await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('#game-title').textContent(),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
    await action(page,id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),id+' horizontal overflow');
    const frames=await page.evaluate(()=>new Promise(resolve=>{const values=[];let prev;const tick=t=>{if(prev!==undefined)values.push(t-prev);prev=t;if(values.length===45)resolve(values);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));frames.sort((a,b)=>a-b);
    await page.screenshot({path:`${folder}/${id}-${label}-390.png`,fullPage:true});

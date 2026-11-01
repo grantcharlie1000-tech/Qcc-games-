@@ -188,7 +188,7 @@ export default class TouchControls {
   _build() {
     const style = document.createElement('style');
     style.id = 'touch-controls-style';
-    style.textContent = '@scope (.shooter-game) {' + touchCss() + '}';
+    style.textContent = '@scope (.strongroom-game) {' + touchCss() + '}';
     this.game.hudRoot.appendChild(style);
 
     const root = document.createElement('section');

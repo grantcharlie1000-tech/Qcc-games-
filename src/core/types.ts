@@ -1,5 +1,5 @@
-import {SHOOTER} from '../games/shooter/meta';
-export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold',SHOOTER.id] as const;
+import {STRONGROOM} from '../games/strongroom/meta';
+export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snake','neon-coil','minesweeper','solitaire','block-fill','color-connect','ball-run','pool','animal-stack','flappy-bird','globle','blockcraft','maze-muncher','corn-clicker','slipline','quadfall','fivefold',STRONGROOM.id] as const;
 export type GameId = typeof GAME_IDS[number];
 export interface Settings { sound: boolean; reducedMotion: boolean; colorBlind: boolean; autoNextEpisode: boolean }
 export interface GameContext {
