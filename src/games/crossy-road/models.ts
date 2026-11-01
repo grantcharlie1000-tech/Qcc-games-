@@ -3,7 +3,7 @@
  *
  * Units are tiles (1 unit = 1 lane = 1 column). Unless a builder says otherwise the origin is the
  * bottom centre of the model (x and z centred, y = 0 at the base) and vehicles face +x, so a
- * renderer turns a vehicle by a yaw of π to face −x. The bunny faces −z (forward).
+ * renderer turns a vehicle by a yaw of π to face −x. The bird faces −z (forward).
  *
  * Tinted models come in two geometries: a `body` in white, which the renderer tints with a
  * per-instance colour, and a `detail` with fixed colours (windows, wheels, cargo). Draw both at
@@ -20,9 +20,9 @@ export type Rgb = readonly [r: number, g: number, b: number];
 export type Part = readonly [x: number, y: number, z: number, w: number, h: number, d: number, color: number | Rgb, rotZ?: number, rotX?: number, side?: number | Rgb];
 
 /** Palettes shared with the renderer so instance tints and baked colours agree. */
-export const VEHICLE_COLORS: readonly number[] = [0xff7e91, 0x53d9ed, 0xffd461, 0xc88cff, 0x71e8a4, 0xffa35d];
+export const VEHICLE_COLORS: readonly number[] = [0xe64732, 0x229acc, 0xf2cf47, 0x8250da, 0x88be43, 0x4269b2];
 export const TRAIN_COLORS: readonly number[] = [0xe94f64, 0x3a86ff, 0x2bb673, 0xf4a259];
-export const LOG_COLORS: readonly number[] = [0x8d5a3b, 0x7d4f33, 0x9a6644];
+export const LOG_COLORS: readonly number[] = [0x733b39, 0x82413e, 0x683333];
 
 const WHITE = 0xffffff;
 const scratch = new THREE.Color();
@@ -135,57 +135,30 @@ export function unitBoxGeometry(): THREE.BufferGeometry {
   return voxel([[0, 0, 0, 1, 1, 1, WHITE]], 0.9);
 }
 
-/** The hero: a cream voxel bunny, 0.72 wide at the haunches (a 0.6 wide body), 1.03 long (nose to tail
- * puff) and 0.9 tall to the ear tips, big enough to read as the hero at about 40 px a tile. Faces −z;
- * origin at the bottom centre of the body. Cream tops with darker cream sides and underside (so it
- * stands out from light grass), a head block with a white muzzle, blush and pink nose, a dark eye on
- * each side of the head, two tall ears splayed in a V and cocked a little forward (pink insides and
- * pink tips), a mint scarf with a short tail end hanging down the back and a white puff tail. */
-export function bunnyGeometry(): THREE.BufferGeometry {
-  const cream = 0xfff4dc, side = 0xe9d6b0, belly = 0xe0cba2, earTone = 0xf8e9cb, earSide = 0xdcc59c, pink = 0xffb3c7, nose = 0xff7fa5, blush = 0xffc2d2;
-  const eye = 0x2b2b33, scarf = 0x37e2b3, scarfSide = 0x2fd1a4, puff = 0xffffff, puffSide = 0xeee6d8, muzzle = 0xfffaf0, muzzleSide = 0xf1e4c9;
-  // Authored at about 0.64 tall, then widened by `kx` (x and z) and stretched by `ky` (y).
-  const kx = 1.31, ky = 1.4;
-  const body: Part[] = [
-    // hind haunches, the chunky bunny shape seen from behind
-    [-0.2, 0, 0.1, 0.15, 0.18, 0.3, cream, 0, 0, side], [0.2, 0, 0.1, 0.15, 0.18, 0.3, cream, 0, 0, side],
-    // underside and front feet
-    [0, 0, 0.04, 0.38, 0.07, 0.46, belly],
-    [-0.13, 0, -0.19, 0.13, 0.06, 0.13, belly], [0.13, 0, -0.19, 0.13, 0.06, 0.13, belly],
-    // body
-    [0, 0.06, 0.05, 0.46, 0.2, 0.46, cream, 0, 0, side],
-    // head, muzzle, blush and nose
-    [0, 0.12, -0.14, 0.5, 0.24, 0.4, cream, 0, 0, side],
-    [0, 0.15, -0.345, 0.22, 0.11, 0.04, muzzle, 0, 0, muzzleSide],
-    [-0.245, 0.15, -0.27, 0.03, 0.05, 0.08, blush], [0.245, 0.15, -0.27, 0.03, 0.05, 0.08, blush],
-    [0, 0.23, -0.37, 0.08, 0.055, 0.03, nose],
-    // eyes: wrap the head's front corners so they show from the front and from the side
-    [-0.195, 0.21, -0.325, 0.12, 0.085, 0.08, eye], [0.195, 0.21, -0.325, 0.12, 0.085, 0.08, eye],
-    // scarf: collar, a trailing end and the strip hanging down the back
-    [0, 0.165, -0.04, 0.54, 0.1, 0.4, scarf, 0, 0, scarfSide],
-    [0.14, 0.16, 0.2, 0.09, 0.055, 0.16, scarf],
-    [0.14, 0.085, 0.265, 0.09, 0.14, 0.04, scarf],
-    // tail puff
-    [0, 0.07, 0.33, 0.2, 0.2, 0.14, puff, 0, 0, puffSide],
-  ];
-  const parts: Part[] = body.map(([x, y, z, w, h, d, c, a, b, e]) => [x * kx, y * ky, z * kx, w * kx, h * ky, d * kx, c, a, b, e] as Part);
-  // Ears: a box with a pink inside on its front face and a pink cap on its tip, all turned together
-  // about the ear's centre (a V outward and a lean forward), so offsets are rotated into place.
-  const rz = 0.2, rx = -0.25, cx = Math.cos(rx), sx = Math.sin(rx), length = 0.28 * ky, width = 0.125 * kx, depth = 0.08 * kx;
-  for (const sideSign of [-1, 1]) {
-    const tz = -sideSign * rz, ctz = Math.cos(tz), stz = Math.sin(tz);
-    // The ear's axis from base to tip, and its centre half a length along it from the base on the head.
-    const ax = -cx * stz, ay = cx * ctz, az = sx;
-    const centre = [sideSign * 0.13 * kx + (ax * length) / 2, 0.34 * ky + (ay * length) / 2, -0.07 * kx + (az * length) / 2] as const;
-    const put = (ox: number, oy: number, oz: number, w: number, h: number, d: number, color: number, sideColor: number): void => {
-      const y1 = oy * cx - oz * sx, z1 = oy * sx + oz * cx, x2 = ox * ctz - y1 * stz, y2 = ox * stz + y1 * ctz;
-      parts.push([centre[0] + x2, centre[1] + y2 - h / 2, centre[2] + z1, w, h, d, color, tz, rx, sideColor]);
-    };
-    put(0, 0, 0, width, length, depth, earTone, earSide);
-    put(0, -0.014, -(depth / 2 + 0.006), 0.07 * kx, 0.2 * ky, 0.012, pink, pink);
-    put(0, length / 2 - 0.035, 0, width * 1.08, 0.11, depth * 1.12, pink, pink);
-  }
-  return voxel(parts, 0.9);
+/** A white voxel bird, facing −z. The 0.68-tile footprint includes the small wings;
+ * the orange feet, raised head, red comb and short tail keep the silhouette readable in a hop. */
+export function chickenGeometry(): THREE.BufferGeometry {
+  const white = 0xffffff, flank = 0xdce1ef, wing = 0xf3f4fb, orange = 0xf28a25, red = 0xcf3041, eye = 0x202535;
+  return voxel([
+    // Two orange legs and forward-pointing feet.
+    [-0.14, 0, -0.035, 0.105, 0.13, 0.12, orange], [0.14, 0, -0.035, 0.105, 0.13, 0.12, orange],
+    [-0.14, 0, -0.11, 0.13, 0.055, 0.25, orange], [0.14, 0, -0.11, 0.13, 0.055, 0.25, orange],
+    // Body, breast and the upright head.
+    [0, 0.12, 0.035, 0.48, 0.34, 0.48, white, 0, 0, flank],
+    [0, 0.31, -0.135, 0.38, 0.41, 0.34, white, 0, 0, flank],
+    // Small wing blocks and a stepped tail.
+    [-0.285, 0.23, 0.04, 0.105, 0.18, 0.32, wing, 0, 0, 0xc4ccdf],
+    [0.285, 0.23, 0.04, 0.105, 0.18, 0.32, wing, 0, 0, 0xc4ccdf],
+    [0, 0.29, 0.285, 0.26, 0.12, 0.14, white, 0, 0, flank],
+    // Comb: three connected red voxels along the crown, not a texture.
+    [0, 0.72, -0.14, 0.115, 0.09, 0.28, red],
+    [0, 0.79, -0.22, 0.115, 0.065, 0.09, red], [0, 0.79, -0.055, 0.115, 0.045, 0.09, red],
+    // Beak, red wattle, and eyes on both sides of the head.
+    [0, 0.48, -0.365, 0.18, 0.105, 0.16, orange],
+    [0, 0.39, -0.31, 0.085, 0.1, 0.085, red],
+    [-0.195, 0.585, -0.23, 0.025, 0.065, 0.065, eye],
+    [0.195, 0.585, -0.23, 0.025, 0.065, 0.065, eye],
+  ], 0.88);
 }
 
 /** The result for tinted vehicles: draw `body` with an instance tint and `detail` untinted. */
@@ -193,7 +166,7 @@ export interface VehicleParts { body: THREE.BufferGeometry; detail: THREE.Buffer
 
 /** Car body, white (tinted per instance): 1.0 long (x), 0.74 wide, y 0.1 to 0.36. Front at +x. */
 export function carBodyGeometry(): THREE.BufferGeometry {
-  return voxel([[0, 0.1, 0, 1, 0.26, 0.74, WHITE]]);
+  return voxel([[0, 0.1, 0, 1, 0.3, 0.78, WHITE]]);
 }
 
 /** Car details: pale cabin, dark window band, headlights, tail lights and four dark wheels. The
@@ -201,9 +174,10 @@ export function carBodyGeometry(): THREE.BufferGeometry {
 export function carDetailGeometry(): THREE.BufferGeometry {
   const cabin = 0xf4f1ea, glass = 0x2b3040, wheel = 0x20232b;
   return voxel([
-    [-0.07, 0.36, 0, 0.56, 0.26, 0.66, cabin],
-    [-0.07, 0.43, 0.335, 0.46, 0.13, 0.04, glass], [-0.07, 0.43, -0.335, 0.46, 0.13, 0.04, glass],
-    [0.215, 0.43, 0, 0.04, 0.13, 0.5, glass], [-0.355, 0.43, 0, 0.04, 0.13, 0.5, glass],
+    [-0.07, 0.4, 0, 0.58, 0.31, 0.68, cabin],
+    [-0.07, 0.46, 0.345, 0.46, 0.16, 0.025, glass], [-0.07, 0.46, -0.345, 0.46, 0.16, 0.025, glass],
+    [0.225, 0.46, 0, 0.025, 0.16, 0.52, glass], [-0.365, 0.46, 0, 0.025, 0.16, 0.52, glass],
+    [-0.1, 0.455, 0.355, 0.045, 0.18, 0.025, cabin], [-0.1, 0.455, -0.355, 0.045, 0.18, 0.025, cabin],
     [0.49, 0.18, 0.2, 0.03, 0.08, 0.13, 0xffe08a], [0.49, 0.18, -0.2, 0.03, 0.08, 0.13, 0xffe08a],
     [-0.49, 0.18, 0.25, 0.03, 0.08, 0.11, 0xff5a5a], [-0.49, 0.18, -0.25, 0.03, 0.08, 0.11, 0xff5a5a],
     [0.29, 0, 0.35, 0.22, 0.22, 0.11, wheel], [0.29, 0, -0.35, 0.22, 0.22, 0.11, wheel],
@@ -293,32 +267,21 @@ export function trainGeometry(): { nose: VehicleParts; carriage: VehicleParts } 
   };
 }
 
-/** A floating log of 2, 3 or 4 tiles along x, 0.64 wide and 0.37 tall with a narrower rounded top,
- * bark lines and pale end rings. Origin at the bottom centre. The body is white (tinted with one of
- * LOG_COLORS) and the ring colours are stored relative to the first log colour (so they may exceed
- * 1), which keeps them pale under every tint. */
+/** A dark red-brown, broad voxel log. Low stepped ends and sparse bark patches
+ * leave water visible on both sides; 2–4 tiles long with a 0.7-tile footprint. */
 export function logGeometry(len: 2 | 3 | 4): THREE.BufferGeometry {
-  scratch.set(LOG_COLORS[0]);
-  const br = scratch.r, bg = scratch.g, bb = scratch.b;
-  const ratio = (hex: number): Rgb => { scratch.set(hex); return [scratch.r / br, scratch.g / bg, scratch.b / bb]; };
-  const ring = ratio(0xd9b38c), heart = ratio(0xb98a5f), bark = [0.8, 0.8, 0.8] as const, e = len / 2;
-  // 0.64 deep in a 1-deep lane, so a margin of water shows along each log and it reads as floating, not as a path.
+  const bark: Rgb = [0.76, 0.72, 0.72], patch: Rgb = [1.12, 1.05, 1.03];
   const parts: Part[] = [
-    [0, 0, 0, len, 0.26, 0.64, WHITE],
-    [0, 0.26, 0, len, 0.11, 0.48, WHITE],
-    [0, 0.07, 0.325, len - 0.12, 0.035, 0.01, bark], [0, 0.07, -0.325, len - 0.12, 0.035, 0.01, bark],
-    [0, 0.16, 0.325, len - 0.3, 0.035, 0.01, bark], [0, 0.16, -0.325, len - 0.3, 0.035, 0.01, bark],
-    // Bark grain along the top.
-    [0, 0.37, 0.11, len - 0.4, 0.006, 0.035, bark], [0, 0.37, -0.11, len - 0.7, 0.006, 0.035, bark],
+    [0, 0, 0, len, 0.19, 0.7, WHITE],
+    [0, 0.19, 0, len - 0.12, 0.07, 0.59, WHITE],
+    [0, 0.07, 0.353, len - 0.12, 0.035, 0.012, bark],
+    [0, 0.07, -0.353, len - 0.12, 0.035, 0.012, bark],
   ];
-  for (const s of [-1, 1]) {
-    parts.push(
-      [s * (e - 0.01), 0.005, 0, 0.03, 0.245, 0.56, ring],
-      [s * (e - 0.01), 0.26, 0, 0.03, 0.105, 0.42, ring],
-      [s * (e + 0.0), 0.07, 0, 0.016, 0.15, 0.26, heart],
-    );
+  for (let i = 0; i < len * 2; i++) {
+    const x = -len / 2 + 0.28 + i * 0.48;
+    parts.push([x, 0.26, i % 2 ? -0.12 : 0.1, 0.25, 0.008, 0.12, i % 3 ? bark : patch]);
   }
-  return voxel(parts);
+  return voxel(parts, 0.86);
 }
 
 /** A lily pad, 0.8 × 0.8 (x, z) and 0.07 thick with rounded corners and a dark notch. Origin at the
@@ -333,19 +296,22 @@ export function lilyGeometry(): THREE.BufferGeometry {
   ], 0.9);
 }
 
-/** A tree, 0.78 wide at most: a trunk and a round canopy of stacked boxes. Variant 0 is short
- * (0.76 tall, two boxes), 1 medium (1.08, three) and 2 tall (1.4, three). Origin at the bottom centre. */
+/** Tall olive/lime box trees: a visible brown trunk and one to three foliage
+ * cubes with nearly constant footprint. Subtle side bands suggest stacked voxels. */
 export function treeGeometry(variant: number): THREE.BufferGeometry {
-  const trunk = 0x7a5236, dark = 0x4fa63f, mid = 0x5dbb4a, light = 0x6bc955;
-  if (variant <= 0) return voxel([[0, 0, 0, 0.2, 0.26, 0.2, trunk], [0, 0.2, 0, 0.74, 0.3, 0.74, dark], [0, 0.5, 0, 0.52, 0.26, 0.52, mid]]);
-  if (variant === 1) return voxel([[0, 0, 0, 0.2, 0.34, 0.2, trunk], [0, 0.28, 0, 0.76, 0.3, 0.76, dark], [0, 0.58, 0, 0.58, 0.28, 0.58, mid], [0, 0.86, 0, 0.38, 0.22, 0.38, light]]);
-  return voxel([[0, 0, 0, 0.2, 0.5, 0.2, trunk], [0, 0.44, 0, 0.78, 0.34, 0.78, dark], [0, 0.78, 0, 0.62, 0.32, 0.62, mid], [0, 1.1, 0, 0.42, 0.28, 0.42, light]]);
+  const count = variant <= 0 ? 1 : variant === 1 ? 2 : 3, h = 0.55;
+  const parts: Part[] = [[0, 0, 0, 0.23, 0.34, 0.23, 0x694737]];
+  for (let i = 0; i < count; i++) {
+    const w = i === count - 1 ? 0.64 : 0.67;
+    parts.push([0, 0.27 + i * h, 0, w, h, w, i === count - 1 ? 0xa0c632 : 0x8aaf2e, 0, 0, i & 1 ? 0x739828 : 0x6e9127]);
+  }
+  return voxel(parts, 0.9);
 }
 
 /** A lilac-grey rock, up to 0.8 wide. Variant 0 is a boulder with a cap (0.54 tall), 1 a tall pair
  * (0.54) and 2 a low cluster (0.5). Origin at the bottom centre. */
 export function rockGeometry(variant: number): THREE.BufferGeometry {
-  const base = 0xb3aec4, lit = 0xc6c2d6, shade = 0x9e99b3;
+  const base = 0x8981a4, lit = 0xa39aba, shade = 0x72698b;
   if (variant <= 0) return voxel([[0, 0, 0, 0.74, 0.34, 0.62, base], [-0.04, 0.34, 0.02, 0.5, 0.2, 0.42, lit]], 0.9);
   if (variant === 1) return voxel([[-0.14, 0, -0.04, 0.5, 0.42, 0.5, base], [0.22, 0, 0.1, 0.38, 0.26, 0.4, shade], [-0.14, 0.42, -0.04, 0.32, 0.12, 0.32, lit]], 0.9);
   return voxel([[0, 0, 0, 0.8, 0.26, 0.7, shade], [0.1, 0.26, -0.05, 0.5, 0.24, 0.42, base], [-0.22, 0.26, 0.16, 0.26, 0.16, 0.26, lit]], 0.9);
@@ -445,8 +411,8 @@ export function ufoShadowGeometry(): THREE.BufferGeometry {
   return radial([[0, 0.42], [0.55, 0.34], [1, 0]], 28, 0x0b1410);
 }
 
-/** The soft dark ellipse under the bunny: a disc of radius 1 in the xz plane at y = 0, darkest (alpha
- * 0.58) in the middle and fading to nothing at the rim; scale it to the bunny's footprint. */
+/** The soft dark ellipse under the bird: a disc of radius 1 in the xz plane at y = 0, darkest (alpha
+ * 0.58) in the middle and fading to nothing at the rim; scale it to the bird's footprint. */
 export function dropShadowGeometry(): THREE.BufferGeometry {
   return radial([[0, 0.58], [0.5, 0.5], [1, 0]], 24, 0x0b1410);
 }

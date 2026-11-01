@@ -32,19 +32,19 @@ function devSeed(): number | null {
 const TEMPLATE = `<canvas class="hw-canvas" tabindex="0" aria-label="Crossy Road playfield. Arrow keys or W A S D hop one tile. Tap to hop forward, or swipe to hop that way."></canvas>
 <p class="hw-hint">Tap or swipe to hop <span aria-hidden="true">·</span> arrow keys or WASD</p>
 <div class="hw-layer" hidden>
-  <section class="hw-card hw-over" aria-labelledby="hw-over-title" hidden>
+  <section class="hw-card ui-glass-sheet arcade-sheet hw-over" aria-labelledby="hw-over-title" hidden>
     <h2 class="hw-title" id="hw-over-title">Game over</h2>
     <p class="hw-cause"></p>
     <dl class="hw-stats"><div><dt>Score</dt><dd class="hw-score">0</dd></div><div><dt>Best</dt><dd class="hw-best">0</dd></div></dl>
     <p class="hw-new" hidden>New best!</p>
-    <div class="hw-actions"><button type="button" class="game-button hw-again">Play again</button><button type="button" class="game-button secondary hw-rankings">Rankings</button></div>
+    <div class="hw-actions"><button type="button" class="game-button hw-again">Play again</button></div>
   </section>
-  <section class="hw-card hw-continue" aria-labelledby="hw-continue-title" hidden>
+  <section class="hw-card ui-glass-sheet arcade-sheet hw-continue" aria-labelledby="hw-continue-title" hidden>
     <h2 class="hw-title" id="hw-continue-title">Your run is waiting</h2>
     <p class="hw-cause">Row <span class="hw-continue-row">0</span>. Continue when you are ready.</p>
     <div class="hw-actions"><button type="button" class="game-button hw-resume">Continue</button></div>
   </section>
-  <section class="hw-card hw-lost" aria-labelledby="hw-lost-title" hidden>
+  <section class="hw-card ui-glass-sheet arcade-sheet hw-lost" aria-labelledby="hw-lost-title" hidden>
     <h2 class="hw-title" id="hw-lost-title" tabindex="-1">Graphics interrupted</h2>
     <p class="hw-cause">Your run is saved. Leave and reopen Crossy Road to restore the graphics.</p>
   </section>
@@ -55,6 +55,7 @@ type Layer = 'over' | 'continue' | 'lost' | null;
 function mount(container: HTMLElement, context: GameContext): GameInstance {
   const root = document.createElement('div');
   root.className = 'crossy-road';
+  root.dataset.renderVersion = 'fidelity-1';
   root.innerHTML = TEMPLATE;
   container.append(root);
   const canvas = root.querySelector<HTMLCanvasElement>('.hw-canvas')!;
@@ -71,9 +72,8 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   const hint = q('.hw-hint'), layer = q('.hw-layer');
   const cards: Record<Exclude<Layer, null>, HTMLElement> = { over: q('.hw-over'), continue: q('.hw-continue'), lost: q('.hw-lost') };
   const overTitle = q('.hw-over .hw-title'), overCause = q('.hw-over .hw-cause'), overScore = q('.hw-score'), overBest = q('.hw-best'), overNew = q('.hw-new');
-  const again = q<HTMLButtonElement>('.hw-again'), rankings = q<HTMLButtonElement>('.hw-rankings'), resumeButton = q<HTMLButtonElement>('.hw-resume');
+  const again = q<HTMLButtonElement>('.hw-again'), resumeButton = q<HTMLButtonElement>('.hw-resume');
   const continueRow = q('.hw-continue-row'), lostTitle = q('.hw-lost .hw-title');
-  rankings.hidden = !context.openRankings;
 
   // One query object for the visit: reduced() runs every simulation step.
   const motionQuery = matchMedia('(prefers-reduced-motion: reduce)');
@@ -310,7 +310,6 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     return true;
   };
   again.addEventListener('click', playAgain, { signal });
-  rankings.addEventListener('click', () => context.openRankings?.(ID), { signal });
   resumeButton.addEventListener('click', proceed, { signal });
   attachInput({
     target: canvas,
@@ -361,6 +360,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
     world: () => world,
     scene: () => scene,
     setSeed: seed => fresh(seed >>> 0),
+    restore: snapshot => instance.restore(snapshot),
     freeze: on => { frozen = on; acc = 0; if (!on) schedule(); },
     advance: seconds => { if (disposed) return; advance(seconds); draw(0); },
     redraw: () => draw(0),
@@ -382,7 +382,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
   draw(0);
   schedule();
 
-  return {
+  const instance: GameInstance = {
     pause() {
       if (disposed || paused) return;
       paused = true;
@@ -454,6 +454,7 @@ function mount(container: HTMLElement, context: GameContext): GameInstance {
       root.remove();
     },
   };
+  return instance;
 }
 
 const game: GameModule = Object.freeze({

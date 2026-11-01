@@ -208,12 +208,15 @@ test('R starts a new run even when focus is not on the Play again button', async
   expect(errors).toEqual([]);
 });
 
-test('Rankings opens the shell leaderboard dialog, and its close button closes it', async ({page}) => {
+test('shared Menu opens the Crossy Road leaderboard from game over without a duplicate game button', async ({page}) => {
   const errors = await openGame(page);
   await carDeath(page);
   await advance(page, 1);
   await expectDeathCard(page, 'car', 'Hit by a car');
-  await page.getByRole('button', {name: 'Rankings', exact: true}).click();
+  await expect(page.locator('.crossy-road .hw-rankings')).toHaveCount(0);
+  await expect(page.locator('.hw-over')).toHaveClass(/ui-glass-sheet/);
+  await page.locator('#game-menu').click();
+  await page.locator('#open-leaderboards').click();
   const dialog = page.locator('dialog[open]');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('heading', {name: 'Leaderboards'})).toBeVisible();

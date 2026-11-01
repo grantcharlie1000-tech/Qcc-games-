@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { cameraFit, focusXTarget, smoothing, stepFocusRow } from '../../../src/games/crossy-road/scene';
 
-/** The brief's camera: pitched 58° down and yawed −16° about +y. Screen x of a ground point is its
+/** The brief's camera: pitched 58° down and yawed 16° about +y. Screen x of a ground point is its
  * dot product with the camera's right axis (cos yaw, 0, −sin yaw), derived here independently of scene.ts. */
-const YAW = (-16 * Math.PI) / 180;
+const YAW = (16 * Math.PI) / 180;
 const screenX = (x: number, z: number): number => x * Math.cos(YAW) - z * Math.sin(YAW);
 
-/** Pixels the 11-tile span x ∈ [−1.5, 9.5] covers on screen at the focus row (any row: z is shared). */
-const projectedSpanPx = (tilePx: number, z = 0): number => (screenX(9.5, z) - screenX(-1.5, z)) * tilePx;
+/** Pixels the 9.5-tile span x ∈ [−0.75, 8.75] covers on screen at the focus row (any row: z is shared). */
+const projectedSpanPx = (tilePx: number, z = 0): number => (screenX(8.75, z) - screenX(-0.75, z)) * tilePx;
 
 describe('cameraFit portrait', () => {
   for (const [width, height] of [[390, 700], [366, 650], [390, 844], [320, 568], [600, 600]]) {
-    it(`${width}×${height}: the projected 11-tile span equals the width (within 1 %)`, () => {
+    it(`${width}×${height}: the projected 9.5-tile span equals the width (within 1 %)`, () => {
       const { tilePx } = cameraFit(width, height);
       expect(projectedSpanPx(tilePx)).toBeGreaterThan(width * 0.99);
       expect(projectedSpanPx(tilePx)).toBeLessThan(width * 1.01);
@@ -25,27 +25,27 @@ describe('cameraFit portrait', () => {
     expect(b.halfHeight).toBeGreaterThan(a.halfHeight);
   });
 
-  it('a 390 px wide phone gets about 37 px tiles', () => {
-    expect(cameraFit(390, 700).tilePx).toBeGreaterThan(36);
-    expect(cameraFit(390, 700).tilePx).toBeLessThan(38);
+  it('a 390 px wide phone gets about 43 px tiles', () => {
+    expect(cameraFit(390, 700).tilePx).toBeGreaterThan(42);
+    expect(cameraFit(390, 700).tilePx).toBeLessThan(44);
   });
 });
 
 describe('cameraFit landscape', () => {
-  it('uses height / 16 once that is at least 36 px', () => {
-    expect(cameraFit(1342, 640).tilePx).toBeCloseTo(40, 9);
-    expect(cameraFit(1920, 1080).tilePx).toBeCloseTo(67.5, 9);
+  it('uses height / 14 once that is at least 42 px', () => {
+    expect(cameraFit(1342, 640).tilePx).toBeCloseTo(640 / 14, 9);
+    expect(cameraFit(1920, 1080).tilePx).toBeCloseTo(1080 / 14, 9);
   });
 
-  it('never goes below 36 px a tile', () => {
-    expect(cameraFit(800, 400).tilePx).toBe(36);
-    expect(cameraFit(700, 300).tilePx).toBe(36);
+  it('never goes below 42 px a tile', () => {
+    expect(cameraFit(800, 400).tilePx).toBe(42);
+    expect(cameraFit(700, 300).tilePx).toBe(42);
   });
 
   it('switches to the portrait fit when the width does not exceed the height', () => {
     const square = cameraFit(500, 500), portrait = cameraFit(500, 501), landscape = cameraFit(501, 500);
     expect(square.tilePx).toBeCloseTo(portrait.tilePx, 9);
-    expect(landscape.tilePx).toBe(36);
+    expect(landscape.tilePx).toBe(42);
   });
 });
 
@@ -60,8 +60,8 @@ describe('cameraFit extents', () => {
 
   it('shows the whole band on a portrait phone but not on every landscape row count', () => {
     const { halfWidth } = cameraFit(390, 700);
-    // The band is 9 tiles wide; a portrait frustum shows 11 tiles of the focus row.
-    expect(2 * halfWidth / Math.cos(YAW)).toBeCloseTo(11, 9);
+    // The band is 9 tiles wide; a portrait frustum shows 9.5 tiles of the focus row.
+    expect(2 * halfWidth / Math.cos(YAW)).toBeCloseTo(9.5, 9);
   });
 
   it('survives zero and tiny viewports without NaN', () => {
@@ -103,9 +103,9 @@ describe('camera focus', () => {
     expect(focusXTarget(4, wide)).toBeCloseTo(4, 9);
     expect(focusXTarget(0, wide)).toBeCloseTo(4 + 0.6 * (0 - 4), 9);
     expect(focusXTarget(8, wide)).toBeCloseTo(4 + 0.6 * (8 - 4), 9);
-    // A phone shows 11 tiles of the focus row, so the focus can only slide 1 tile either side of the centre.
-    expect(focusXTarget(0, phone)).toBeCloseTo(3, 6);
-    expect(focusXTarget(8, phone)).toBeCloseTo(5, 6);
+    // A phone shows 9.5 tiles of the focus row, so the focus can only slide 0.25 tiles either side of the centre.
+    expect(focusXTarget(0, phone)).toBeCloseTo(3.75, 6);
+    expect(focusXTarget(8, phone)).toBeCloseTo(4.25, 6);
     for (let x = -0.5; x <= 8.5; x += 0.5) {
       const f = focusXTarget(x, phone), visible = phone / Math.cos(YAW);
       expect(f - visible).toBeLessThanOrEqual(-0.5 + 1e-9);

@@ -12,6 +12,8 @@ export interface HookHost {
   scene(): CrossyRoadScene;
   /** A new run on this seed, in the ready phase. */
   setSeed(seed: number): void;
+  /** Uses the game's validated restore path, including its Continue card. */
+  restore(snapshot: unknown): void;
   /** While frozen, real time no longer advances the simulation (the loop keeps drawing). */
   freeze(on: boolean): void;
   /** Steps the simulation by `seconds` in fixed steps, then draws. */
@@ -30,6 +32,7 @@ export interface HookHost {
 
 export interface CrossyRoadTestApi {
   setSeed(seed: number): void;
+  restore(snapshot: unknown): void;
   freeze(on: boolean): void;
   advance(seconds: number): void;
   hop(dir: Dir): void;
@@ -60,6 +63,7 @@ export function installTestHook(host: HookHost): () => void {
   };
   const api: CrossyRoadTestApi = {
     setSeed: seed => host.setSeed(seed),
+    restore: snapshot => host.restore(snapshot),
     freeze: on => host.freeze(on),
     advance: seconds => { if (Number.isFinite(seconds) && seconds > 0) host.advance(seconds); },
     hop: dir => host.move(dir),

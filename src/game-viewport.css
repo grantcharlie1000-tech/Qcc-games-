@@ -130,9 +130,17 @@ body.in-game .game-view[data-game-id=quadfall] #game-stage{height:100%}
 /* Fivefold sizes its board and keyboard to the available stage. */
 body.in-game .game-view[data-game-id=fivefold] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=fivefold] #game-stage{height:100%;max-height:none;min-height:0}
-/* CrossyRoad fills the stage with its WebGL playfield; no scale transform. */
-body.in-game .game-view[data-game-id=crossy-road] .stage-wrap{display:block}
+/* Crossy Road paints behind the shared shell controls. No stage fit/transform:
+   the WebGL drawing buffer follows its actual CSS size, including on rotation.
+   These header rules are scoped to the current toolbar; PR #80's shared dock
+   can replace it without a second HUD or game-owned navigation. */
+body.in-game .game-view[data-game-id=crossy-road]{padding:0;background:#96d84d}
+body.in-game .game-view[data-game-id=crossy-road] .stage-wrap{position:absolute;inset:0;display:block;width:100%;height:100%}
 body.in-game .game-view[data-game-id=crossy-road] #game-stage{height:100%;max-height:none;min-height:0}
+body.in-game .game-view[data-game-id=crossy-road] .game-toolbar{position:absolute;inset:env(safe-area-inset-top,0px) 0 auto;z-index:25;height:48px;padding:4px 10px;max-width:none;background:rgb(24 29 27 / .24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+body.in-game .game-view[data-game-id=crossy-road] .game-toolbar h1{font:600 16px/1.2 var(--font-sans)}
+body.in-game .game-view[data-game-id=crossy-road] .game-metrics{position:absolute;top:calc(48px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:24;width:min(340px,calc(100% - 24px));height:34px;margin:6px 0;padding:5px 12px;border-radius:999px;background:rgb(24 29 27 / .3);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);pointer-events:none}
+body.in-game .game-view[data-game-id=crossy-road] #game-status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;margin:0}
 
 /* Keep renamed titles readable above the shared controls on narrow phones. */
 @media(max-width:420px){
