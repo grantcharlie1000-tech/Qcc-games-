@@ -14,6 +14,7 @@ const A=release(legacy,'A'),L=release(legacy,'L'),B=release(current,'B'),C=relea
 const evidence=process.env.ARCADE_UPDATE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(evidence,{recursive:true});
 const nativeTraceEnabled=process.env.ARCADE_UPDATE_NATIVE_TRACE==='1';
 const nativeTrace=nativeTraceEnabled?createUpdateNativeTrace({enabled:true,directory:evidence+'/native-trace'}):undefined;
+const port=Number(process.env.ARCADE_UPDATE_PORT||4181);
 let deployed=A,scope='/',gate,holdManifest=false,manifestGate;
 const requests=[],contexts=[],profiles=[],results=[],startupInventories=[],retainedPageEvidence=[];const primaryPages=new WeakMap();
 const mime={js:'application/javascript',html:'text/html',css:'text/css',json:'application/json',svg:'image/svg+xml',ttf:'font/ttf',webmanifest:'application/manifest+json'};
@@ -24,7 +25,7 @@ const server=http.createServer((req,res)=>{
  if(file==='/test-navigation-gate'){gate=res;return;}
  if(holdManifest&&file==='/offline-manifest.json'){manifestGate=res;return;}
  const data=deployed.map.get(file),headers={'Content-Type':mime[file.split('.').at(-1)]||'application/octet-stream','Cache-Control':'no-store'};if(file.endsWith('.html'))headers['Content-Security-Policy']=contentSecurityPolicy;res.writeHead(data?200:404,headers);res.end(data);
-});await new Promise(resolve=>server.listen(4181,'127.0.0.1',resolve));
+});await new Promise(resolve=>server.listen(port,'127.0.0.1',resolve));
 async function bounded(task,milliseconds,label){let timer;try{return await Promise.race([task,new Promise((_,reject)=>timer=setTimeout(()=>reject(new Error('Timed out: '+label)),milliseconds))]);}finally{clearTimeout(timer);}}
 const poll=(fn,label)=>bounded((async()=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+label);})(),15000,label);
 async function version(page){return await bounded(page.evaluate(()=>new Promise((resolve,reject)=>{
@@ -65,14 +66,21 @@ async function launch(profile){
  context.on('page',page=>page.on('response',response=>{if(response.status()>=400&&response.url().includes('/assets/')){console.error('ASSET FAILURE',JSON.stringify({url:response.url(),status:response.status(),fromServiceWorker:response.fromServiceWorker()}));void diagnostic(page).then(value=>console.error('ASSET FAILURE STATE',JSON.stringify(value))).catch(()=>{});}}));
  await context.tracing.start({screenshots:true,snapshots:true});
  const initial=context.pages();for(const page of initial)await page.waitForLoadState('load',{timeout:15000});
- const base=`http://127.0.0.1:4181${scope}`,appPages=initial.filter(page=>page.url().startsWith(base));
+ const base=`http://127.0.0.1:${port}${scope}`,appPages=initial.filter(page=>page.url().startsWith(base));
  assert.ok(initial.every(page=>page.url()==='about:blank'||appPages.includes(page)),'persistent test profile contains only owned pages');
  const primary=appPages[0]||initial[0];assert.ok(primary,'persistent context has a primary page');primaryPages.set(context,primary);
  const inventory={scope,initial:await Promise.all(initial.map(async page=>({url:page.url(),primary:page===primary,client:appPages.includes(page)?await sourceClient(page):undefined}))),closedUnusedBlankPages:0};
  if(appPages.length)for(const page of initial)if(page!==primary&&page.url()==='about:blank'){await page.close();inventory.closedUnusedBlankPages++;}
  startupInventories.push(inventory);console.log('STARTUP PAGE INVENTORY',JSON.stringify(inventory));return context;
 }
-async function drop(page,count){await page.bringToFront();const box=await page.locator('.fm-board').boundingBox();if(box)await page.mouse.move(box.x+box.width*(count===1?.2:count===2?.8:.5),box.y+20);await page.getByRole('button',{name:'Drop fruit',exact:true}).click();await page.locator('.fm-count').filter({hasText:count===1?'1 fruit':`${count} fruits`}).waitFor();}
+async function drop(page,count){
+ await page.bringToFront();
+ const board=page.locator('.fm-board[aria-busy="false"][aria-disabled="false"]');await board.waitFor();
+ const box=await board.boundingBox();assert.ok(box,'fruit basket is visible');
+ await page.mouse.move(box.x+box.width*(count===1?.2:count===2?.8:.5),box.y+20);
+ await page.mouse.down();await page.mouse.up();
+ await page.locator('.fm-count').filter({hasText:count===1?'1 fruit':`${count} fruits`}).waitFor();
+}
 async function data(page){return await page.evaluate(()=>({score:localStorage.getItem('pocket-arcade:v1:best:fruit-merge'),settings:localStorage.getItem('pocket-arcade:v1:settings'),cookie:document.cookie}));}
 async function diagnostic(page){return await bounded(page.evaluate(async()=>{
  const r=await navigator.serviceWorker.getRegistration();
@@ -161,7 +169,7 @@ async function controlledWaitingCase(path,base){
  console.log('CONTROLLED RESUME CANCELLATION PASS',path);await c.reload();deployed=Y;await menu(c);await closeMenu(c);await menu(a);await a.getByRole('button',{name:'Reload to update',exact:true}).waitFor();const savedProgress=await progress(a);await holdActivation(a,Y);await a.getByRole('button',{name:'Reload to update',exact:true}).click();await poll(()=>a.evaluate(()=>window.activationHeld),'explicit Y activation held after first durable save');
  assert.ok(await fillQuota(a)>1_000_000);await a.locator('#motion').uncheck();assert.equal(JSON.parse((await data(a)).settings).reducedMotion,true);await releaseActivation(a);
  await a.locator('#update-status').filter({hasText:'could not be saved'}).waitFor();assert.equal(await a.evaluate(()=>window.retainedDocument),'waiting-B','late preference failure refuses the actual reload');
- await a.evaluate(()=>localStorage.removeItem('update-test-quota'));await a.getByRole('button',{name:'Reload to update',exact:true}).click();await a.locator('.fm-count').filter({hasText:savedProgress.fruits.length===1?'1 fruit':`${savedProgress.fruits.length} fruits`}).waitFor();await pause(a);assert.deepEqual(await progress(a),savedProgress,'the mounted game restores the saved basket and sequence');assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'Y');assert.equal(JSON.parse((await data(a)).settings).reducedMotion,false);
+ await a.evaluate(()=>localStorage.removeItem('update-test-quota'));await reloadGameDocument(a);await a.locator('.fm-count').filter({hasText:savedProgress.fruits.length===1?'1 fruit':`${savedProgress.fruits.length} fruits`}).waitFor();await pause(a);assert.deepEqual(await progress(a),savedProgress,'the mounted game restores the saved basket and sequence');assert.equal(await a.locator('meta[name="arcade-release"]').getAttribute('content'),'Y');assert.equal(JSON.parse((await data(a)).settings).reducedMotion,false);
  await context.tracing.stop({path:`${evidence}/update-controlled-waiting-${path==='/'?'root':'subpath'}.zip`});await context.close();console.log('CONTROLLED WAITING PASS',path);
 }
 async function legacyWaitingCase(path,base,transition=false){
@@ -197,7 +205,7 @@ async function legacyNavigationCase(path,base){
 }
 try{
  for(const path of (process.env.ARCADE_UPDATE_SCOPE?[process.env.ARCADE_UPDATE_SCOPE]:['/','/Qcc-games-/'])){
-  scope=path;deployed=A;holdManifest=false;const tag=path==='/'?'root':'subpath',base=`http://127.0.0.1:4181${path}`,profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);
+  scope=path;deployed=A;holdManifest=false;const tag=path==='/'?'root':'subpath',base=`http://127.0.0.1:${port}${path}`,profile=await mkdtemp('/tmp/qcc-update-profile-');profiles.push(profile);
   if(process.env.ARCADE_UPDATE_CASE==='legacy-transition'){await legacyWaitingCase(path,base,true);results.push({scope:path,legacyWaitingActivatedDuringInstall:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='legacy-waiting'){await legacyWaitingCase(path,base);results.push({scope:path,legacyAlreadyWaitingMigration:true});continue;}
   if(process.env.ARCADE_UPDATE_CASE==='waiting'){await controlledWaitingCase(path,base);results.push({scope:path,controlledWaiting:true});continue;}
