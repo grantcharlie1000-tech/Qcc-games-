@@ -1,6 +1,6 @@
 # Hopway test results
 
-Recorded on 1 November 2026 at commit `24ae153` on branch `game/crossy-road`, in a Linux cloud container: Node v22.23.4, Vitest 3.2.7, Playwright 1.64.1 with Chromium 153.0.8010.12 (Chrome for Testing, `/opt/pw-browsers/chromium`), three 0.180.0. WebGL ran in software (SwiftShader, `--use-gl=angle --use-angle=swiftshader`); there is no GPU here. **WebKit was not available and was not tested. No physical Chromebook or phone was tested.**
+Recorded on 1 November 2026 at commit `6e0854f` on branch `game/crossy-road` (the screenshots in section 5 were taken at `24ae153`; nothing visual changed after it), in a Linux cloud container: Node v22.23.4, Vitest 3.2.7, Playwright 1.64.1 with Chromium 153.0.8010.12 (Chrome for Testing, `/opt/pw-browsers/chromium`), three 0.180.0. WebGL ran in software (SwiftShader, `--use-gl=angle --use-angle=swiftshader`); there is no GPU here. **WebKit was not available and was not tested. No physical Chromebook or phone was tested.**
 
 ## 1. Typecheck — `npm run check`
 
@@ -14,19 +14,19 @@ Exit 0, no output: 0 errors (strict TypeScript; the repo's `check` script is the
 
 ```
  Test Files  166 passed (166)
-      Tests  3828 passed (3828)
-   Duration  127.24s
+      Tests  3830 passed (3830)
+   Duration  146.22s
 ```
 
 Hopway's own suites (all in that run):
 
 ```
- ✓ tests/games/hopway/generator.test.ts (82 tests) 26773ms
- ✓ tests/games/hopway/rules.test.ts (286 tests) 471ms
- ✓ tests/games/hopway/input.test.ts (129 tests) 48ms
- ✓ tests/games/hopway/lanes.test.ts (36 tests) 15ms
- ✓ tests/games/hopway/audio.test.ts (11 tests) 23ms
- ✓ tests/games/hopway/camera.test.ts (22 tests) 9ms
+ ✓ tests/games/hopway/generator.test.ts (82 tests) 28723ms
+ ✓ tests/games/hopway/rules.test.ts (288 tests) 572ms
+ ✓ tests/games/hopway/input.test.ts (129 tests) 73ms
+ ✓ tests/games/hopway/audio.test.ts (11 tests) 27ms
+ ✓ tests/games/hopway/lanes.test.ts (36 tests) 24ms
+ ✓ tests/games/hopway/camera.test.ts (22 tests) 16ms
 ```
 
 | Requirement | Where | What runs |
@@ -37,17 +37,17 @@ Hopway's own suites (all in that run):
 | Input buffer, key repeat | rules.test.ts, input.test.ts | Max one queued hop starting at the exact landing time, extras dropped; `e.repeat` ignored for every action. |
 | Blocked moves | rules.test.ts | Tree, rock, band edges, hedge: bonk with no move, no death, no idle reset. |
 | Score = max row | rules.test.ts | Up, up, down, up only reaches 2. |
-| Serialize/restore | rules.test.ts | Round trip mid-hop over water and while riding a log, then identical play; every invalid field rejected (incl. rows above `MAX_ROW`); `dying` saves as `over`. |
+| Serialize/restore | rules.test.ts | Round trip mid-hop over water and while riding a log, then identical play; every invalid field rejected (incl. rows above `MAX_ROW` and a death on another row); `dying` saves as `over`. |
 | Leaderboard + migration (local DB) | tests/leaderboard/server.test.ts, tests/accounts/server.test.ts | "ranks Hopway scores and retains each player's best" and `best:hopway` / `save:hopway` sync, against the in-process `@netlify/database-dev` Postgres with all committed migrations applied. |
 
 ## 3. Build and offline check
 
 `npm run build`:
 ```
-✓ built in 11.71s
-Offline pack: 183 files, version 219c81e2533d
+✓ built in 13.65s
+Offline pack: 183 files, version b2cc92b782b2
 ```
-The Hopway chunk `assets/index-qerD2g_8.js` is 51,241 bytes raw and **20,927 bytes gzip** (budget 60 KB), plus the `three` chunk other games already share. `grep -l '__hopwayTest\|__hopwayFrames\|installTestHook' dist/assets/*.js` finds **0** files: the test hook is not in production.
+The Hopway chunk `assets/index-C2GVteTA.js` is 51,252 bytes raw and **20,932 bytes gzip** (budget 60 KB), plus the `three` chunk other games already share. `grep -l '__hopwayTest\|__hopwayFrames\|installTestHook' dist/assets/*.js` finds **0** files: the test hook is not in production.
 
 `ARCADE_GAMES=hopway ARCADE_EVIDENCE_DIR=<scratch> CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/verify-offline.mjs` (the repo's offline check, limited to Hopway so the committed release evidence is untouched):
 ```
@@ -61,7 +61,7 @@ That run downloads the offline pack, reloads offline, plays a hop, switches to S
 
 Dev server: `npm run dev -- --port 4317 --strictPort`. Each run used `--workers=1` and a private `--output` directory (concurrent Playwright runs share `test-results/` and wipe each other's traces otherwise).
 
-`CHROMIUM_PATH=/opt/pw-browsers/chromium ARCADE_URL=http://127.0.0.1:4317 npx playwright test tests/games/hopway --project=chromium --workers=1` — **51 passed (3.6 m)**:
+`CHROMIUM_PATH=/opt/pw-browsers/chromium ARCADE_URL=http://127.0.0.1:4317 npx playwright test tests/games/hopway --project=chromium --workers=1` — **51 passed (4.0 m)**:
 
 ```
 deaths.spec.ts › a car squashes the player: car
@@ -108,7 +108,7 @@ movement.spec.ts › the score counts only a new furthest row
 
 The train test records the first time the light is on and the death time on the frozen game clock: the warning preceded the hit by **≥ 1.0 s** (the light comes on 1.1 s before the train's front even reaches the band, then the train still has to reach the player's column), and both times agree with `lanes.ts` to within one 0.05 s slice. The "no frames after leaving" test reads a development-only frame counter: it rises while the game is open and stays constant after navigating back to the library.
 
-`npx playwright test tests/e2e/viewport.spec.ts tests/e2e/study.spec.ts --project=chromium --workers=1` — **43 passed (3.5 m)**, including "all games fill 390×844 / 844×390 without scrolling the document" (Hopway's canvas receives a real hit at its centre) and "hopway: gameplay, Escape, frozen autosave and exact return".
+`npx playwright test tests/e2e/viewport.spec.ts tests/e2e/study.spec.ts --project=chromium --workers=1` — **43 passed (4.1 m)**, including "all games fill 390×844 / 844×390 without scrolling the document" (Hopway's canvas receives a real hit at its centre) and "hopway: gameplay, Escape, frozen autosave and exact return".
 
 ## 5. Screenshots (committed, all looked at)
 
