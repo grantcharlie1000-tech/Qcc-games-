@@ -76,7 +76,7 @@ for(const viewport of [{width:1366,height:768},{width:390,height:644},{width:320
 test('compact dock reserves play space and the menu pauses, restores focus and resumes',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/game/snake');
-  await page.getByRole('button',{name:'Play'}).click();
+  await page.getByRole('button',{name:'Start slithering',exact:true}).click();
   const dock=page.getByRole('navigation',{name:'Game controls'});
   await expect(dock).toBeVisible();
   await expect(dock.locator('.game-hud')).toHaveText('Score0');

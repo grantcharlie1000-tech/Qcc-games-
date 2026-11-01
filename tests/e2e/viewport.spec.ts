@@ -30,7 +30,7 @@ for(const size of [{width:390,height:844},{width:844,height:390}]){
           return !!box&&box.x>=-1&&box.y>=-1&&box.x+box.width<=size.width+1&&box.y+box.height<=size.height+1;
         },{message:`${id}: the entire game, including controls, must fit`}).toBe(true);
         const boards:Record<string,string>={'fruit-merge':'.fm-board',tower:'.tower-canvas','color-connect':'.cc-grid',slipline:'.sl-board',pool:'.pool-table'};
-        const names:Record<string,string|RegExp>={snake:'Play',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','flappy-bird':'Play',globle:'Guess','maze-muncher':'Play','corn-clicker':/^Harvest the cob/,quadfall:/^(Start|Tap to play)$/,fivefold:'A'};
+        const names:Record<string,string|RegExp>={snake:'Start slithering',minesweeper:'Flag mode',solitaire:/^Draw from stock/,'block-fill':'Hint','flappy-bird':'Take flight',globle:'Guess','maze-muncher':'Start','corn-clicker':/^Harvest the cob/,quadfall:/^(Start|Tap to play)$/,fivefold:'A'};
         const control=boards[id]?page.locator(boards[id]):page.getByRole('button',{name:names[id],exact:typeof names[id]==='string'}).first();
         await expect.poll(()=>control.evaluate(button=>{
           const r=button.getBoundingClientRect(),under=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);

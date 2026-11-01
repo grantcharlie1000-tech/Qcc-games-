@@ -1,5 +1,11 @@
 import {expect,type Page} from '@playwright/test';
 
+/** Start through each game's original menu; Slither alone uses the minimal shared sheet. */
+export async function startGame(page:Page,id:string){
+  const names:Record<string,string>={snake:'Start slithering','maze-muncher':'Start','flappy-bird':'Take flight','ball-run':'Play',blockcraft:'Play','neon-coil':'Play'};
+  const name=names[id];if(name)await page.getByRole('button',{name,exact:true}).click();
+}
+
 /** Exercise the same visible menu path as a player; never click a hidden legacy control. */
 export async function openGameMenu(page:Page){
   if(await page.locator('#game-options[open]').count())return;

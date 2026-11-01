@@ -23,7 +23,7 @@ test('Pool PC status and pocket choice have readable rendered text',async({page}
 
 test('Flappy portrait flight fills the board without a Flap footer',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.clock.install();await page.goto('/#/game/flappy-bird');
-  await page.clock.pauseAt(new Date(Date.now()+1000));await page.getByRole('button',{name:'Play',exact:true}).click();
+  await page.clock.pauseAt(new Date(Date.now()+1000));await page.getByRole('button',{name:'Take flight',exact:true}).click();
   await expect(page.locator('.flappy-bird')).toHaveAttribute('data-phase','running');
   const scene=(await page.locator('.fb-scene').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;await expect(page.locator('.fb-flap')).toHaveCount(0);
   expect(scene.height).toBeGreaterThanOrEqual(640);expect(scene.y).toBeLessThan(32);

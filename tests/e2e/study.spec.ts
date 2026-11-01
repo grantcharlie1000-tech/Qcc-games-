@@ -1,4 +1,4 @@
-import {appSettings,gameAction,pauseGame,resumeGame} from '../game-menu';
+import {appSettings,gameAction,pauseGame,resumeGame,startGame} from '../game-menu';
 import {GAME_IDS} from '../../src/core/types';
 import {guestTest as test,expect} from '../fixtures';
 import type {Page} from '@playwright/test';
@@ -41,7 +41,7 @@ async function playGameAction(page:Page,id:string){
   }
   if(id==='color-blocks'){await page.locator('.cb-cell').first().focus();await page.keyboard.press('1');await page.keyboard.press('Enter');}
   if(id==='tower'){await page.clock.runFor(900);await page.locator('.tower-canvas').click();}
-  if(id==='snake')await page.getByRole('button',{name:'Play',exact:true}).click();
+  if(id==='snake')await startGame(page,id);
   if(id==='minesweeper')await page.getByRole('gridcell').first().click();
   if(id==='solitaire')await page.getByRole('button',{name:/^Draw from stock/}).click();
   if(id==='block-fill'){
@@ -54,11 +54,11 @@ async function playGameAction(page:Page,id:string){
   }
   if(id==='color-connect'){await page.locator('[data-cc-cell="9"]').focus();await page.keyboard.press('Space');await page.keyboard.press('ArrowUp');await page.keyboard.press('Space');}
   if(id==='ball-run'){await page.getByRole('button',{name:/^(Play|Continue)$/}).click();await page.keyboard.down('ArrowRight');await page.clock.runFor(120);await page.keyboard.up('ArrowRight');}
-  if(id==='maze-muncher')await page.getByRole('button',{name:'Play',exact:true}).click();
+  if(id==='maze-muncher')await startGame(page,id);
   if(id==='slipline'){const p=await page.locator('.sl-board g[data-free="true"] polyline').first().evaluate((node:SVGPolylineElement)=>{const point=node.getPointAtLength(node.getTotalLength()/2),m=node.getScreenCTM()!;return {x:point.x*m.a+point.y*m.c+m.e,y:point.x*m.b+point.y*m.d+m.f}});await page.mouse.click(p.x,p.y);}
   if(id==='quadfall'){await page.getByRole('button',{name:/^(Start|Tap to play)$/}).click();await page.keyboard.press('Space');}
   if(id==='corn-clicker')await page.getByRole('button',{name:/^Harvest the cob/}).click();
-  if(id==='flappy-bird'){await page.getByRole('button',{name:'Play',exact:true}).click();await page.keyboard.press('Space');}
+  if(id==='flappy-bird'){await startGame(page,id);await page.keyboard.press('Space');}
   if(id==='pool'){
     await expect(page.locator('.pool-game')).toHaveAttribute('data-shots','0');
     await directShot(page);
