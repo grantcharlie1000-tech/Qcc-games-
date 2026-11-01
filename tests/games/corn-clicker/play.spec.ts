@@ -106,6 +106,7 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await context.addInitScript(()=>{localStorage.setItem('pocket-arcade:v1:accounts:guest','true');localStorage.setItem('pocket-arcade:study:v1:reading-choice','accept');sessionStorage.setItem('pocket-arcade:study:v1:topic','close-reading');});
   const page=await context.newPage();
   const errors=errorsOf(page);
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+100));
   await seed(page,{kernels:'114',run:{clicks:20},life:{clicks:20},golden:{next:0.4}});
   await cob(page).tap();
   await expect(page.locator('.cc-kernels-num')).toHaveText('115');
@@ -115,22 +116,30 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await expect(page.locator('#cc-pane-cob')).toBeHidden();
   await page.locator('[data-producer=farmhand]').tap();
   await expect(page.locator('[data-producer=farmhand] .cc-prod-owned')).toHaveText('1');
+  await page.clock.runFor(150);
   // Touch: the first tap on an upgrade explains it, the second buys it.
   const thumbs=page.locator('[data-upgrade=click-1]');
   await thumbs.tap();
   await expect(page.locator('.cc-tooltip')).toContainText('Tap again to buy.');
   await expect(thumbs).toBeVisible();
+  await page.clock.runFor(16);
   await thumbs.tap();
   await expect(thumbs).toHaveCount(0);
   await expect(page.locator('.game-hud')).toBeVisible();
   await expect(page.locator('.game-hud')).toContainText('Per second');
   await tabs.getByRole('tab',{name:'Farm'}).tap();
   await expect(page.locator('.cc-lot[data-lot=farmhand]')).toBeVisible();
+  // Spawn deliberately, then hold its model lifetime while real touch input
+  // runs. A slow browser must not expire the event before the collection check.
+  await page.clock.runFor(500);
   const golden=page.getByRole('button',{name:/^Golden cob/});
   await expect(golden).toBeVisible();
   const box=(await golden.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(390);
-  await golden.tap();
+  // The glint rotates/scales forever. Its centre is stationary and hit-testable;
+  // use a native touch there instead of waiting for the animation to stop.
+  expect(await golden.evaluate(el=>{const r=el.getBoundingClientRect();return el.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
+  await page.touchscreen.tap(box.x+box.width/2,box.y+box.height/2);
   await expect(page.locator('.cc-toasts')).toContainText(/Lucky!|Bumper Crop|Kernel Storm/);
   await tabs.getByRole('tab',{name:'Cob'}).tap();
   const layout=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth<=innerWidth,stage:document.querySelector('.cc-root')!.getBoundingClientRect().bottom<=innerHeight+1}));

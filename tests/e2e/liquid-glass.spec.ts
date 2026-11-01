@@ -659,15 +659,17 @@ test('the glass adds no request to an empty URL',async({page,browserName})=>{
   expect(await page.evaluate(()=>performance.getEntriesByType('resource').filter(entry=>!entry.name).length)).toBe(0);
 });
 
-test('leaving Movies removes the filter the Movies island added',async({page,browserName})=>{
+test('leaving Movies disposes the filters its floating controls added',async({page,browserName})=>{
   test.skip(browserName!=='chromium','the SVG displacement filter renders only in Chromium');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/');
   const filters=()=>page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length);
   await expect.poll(filters).toBe(2);
   await page.goto('/#/movies');
-  await expect.poll(filters).toBe(4);
-  await page.goto('/#/collection');
+  // Phone Movies adds its bottom pill/Menu and the two visible floating
+  // header groups (brand/actions); the desktop section group stays hidden.
+  await expect.poll(filters).toBe(6);
+  await page.getByRole('link',{name:'Games',exact:true}).click();
   await expect.poll(filters).toBe(2);
 });
 
