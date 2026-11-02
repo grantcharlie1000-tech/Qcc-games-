@@ -1,12 +1,17 @@
 /* Shell, home and shared sheets. The match overlay is scoped in ui/match-hud.css. */
-body.in-game .game-view[data-game-id=strongroom]{padding:0;display:block;background:#141922}
-body.in-game .game-view[data-game-id=strongroom] :is(.stage-wrap,#game-stage){position:absolute;inset:0;width:100%;height:100%;max-height:none;display:block}
+/* The CSS viewport owns the playfield. Safari can briefly report an inset,
+   stale visualViewport while its toolbar moves; never offset the whole game.
+   The shared pixel height remains the fallback on browsers without svh/dvh. */
+body.in-game .game-view[data-game-id=strongroom]{top:0;left:0;width:100vw;height:var(--play-height,100vh);min-width:0;min-height:0;max-width:none;max-height:none;aspect-ratio:auto;margin:0;padding:0;display:block;background:#141922}
+@supports(height:100svh){body.in-game .game-view[data-game-id=strongroom]{--play-height:100svh;height:100svh}}
+@supports(height:100dvh){body.in-game .game-view[data-game-id=strongroom]{--play-height:100dvh;height:100dvh}}
+body.in-game .game-view[data-game-id=strongroom] :is(.stage-wrap,#game-stage){position:absolute;inset:0;width:100%;height:100%;min-width:0;min-height:0;max-width:none;max-height:none;aspect-ratio:auto;display:block}
 .game-view[data-game-id=strongroom] .game-surface{background:transparent}
-.game-view[data-game-id=strongroom] .game-dock{position:absolute;inset:max(8px,env(safe-area-inset-top)) 12px auto;width:auto;margin:0;justify-content:space-between;pointer-events:none}
+.game-view[data-game-id=strongroom] .game-dock{position:absolute;inset:max(8px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) auto max(12px,env(safe-area-inset-left));width:auto;margin:0;justify-content:space-between;pointer-events:none}
 .game-view[data-game-id=strongroom] .game-dock>.ui-tab{pointer-events:auto}
 .game-view[data-game-id=strongroom] .game-hud{display:none}
 .strongroom-game{position:absolute;inset:0;overflow:hidden;isolation:isolate;background:#141922;color:#fff;font-family:var(--font-sans);user-select:none;-webkit-user-select:none;touch-action:none}
-.strongroom-game>canvas{display:block;width:100%;height:100%;outline:none;touch-action:none}
+.strongroom-game>canvas{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;aspect-ratio:auto;margin:0;outline:none;touch-action:none}
 .strongroom-game [hidden]{display:none!important}
 .sr-hud{position:absolute;inset:0;pointer-events:none;z-index:10;font-variant-numeric:tabular-nums}
 .sr-hud button,.sr-sheet{pointer-events:auto}

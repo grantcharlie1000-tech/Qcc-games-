@@ -31,22 +31,24 @@ export function deviceGPU(){
 export class View{
  readonly renderer:THREE.WebGLRenderer;readonly scene=new THREE.Scene();readonly camera=new THREE.PerspectiveCamera(74,1,.05,80);
  world:any;materials:any;private avatars=new Map<number,Avatar>();private operators:Operators;
- private disposed=false;private sun=new THREE.DirectionalLight(0xfff1dc,3.4);private weapon:WeaponView;private benchTarget:THREE.WebGLRenderTarget|null=null;farAnimationCap=Infinity;private composer:EffectComposer|null=null;private fxaa:ShaderPass|null=null;private post:any=null;private adapter:CollisionAdapter;private wallView:WallRenderer|null=null;private props:TacticalProps;
- private warm=0;private time=0;private width=1;private height=1;
+ private disposed=false;private sun=new THREE.DirectionalLight(0xfff1dc,2.8);private weapon:WeaponView;private benchTarget:THREE.WebGLRenderTarget|null=null;farAnimationCap=Infinity;private composer:EffectComposer|null=null;private fxaa:ShaderPass|null=null;private post:any=null;private adapter:CollisionAdapter;private wallView:WallRenderer|null=null;private props:TacticalProps;
+ private warm=0;private time=0;private width=1;private height=1;private pixelRatio=0;
  readonly collision:SimWorld;
  constructor(readonly root:HTMLElement,public tier:Tier){
   const q=QUALITY[tier];this.renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
-  this.renderer.info.autoReset=false;this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.45;
+  this.renderer.info.autoReset=false;this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1;
   this.renderer.shadowMap.type=THREE.PCFShadowMap;this.renderer.shadowMap.enabled=!!q.shadows;
   this.camera.rotation.order='YXZ';this.scene.add(this.camera);root.prepend(this.renderer.domElement);
   this.renderer.domElement.setAttribute('aria-label','Strongroom first person play surface');this.renderer.domElement.tabIndex=0;
   this.materials=new MaterialSystem({renderer:this.renderer,quality:tier,anisotropy:tier==='potato'?1:4});
-  const game={renderer:this.renderer,scene:this.scene,camera:this.camera,materials:this.materials,gfxQuality:tier,quality:q,selectedMapId:import.meta.env.DEV&&new URLSearchParams(location.search).get('map')==='harbor'?'harbor':'customs-house',settings:{brightnessEv:.5},state:{phase:'menu'},config:{PLAYER:{STEP_HEIGHT:.55}},events:{on:()=>()=>{},emit:()=>{}},buildSimpleSky:(world:any)=>this.simpleSky(world)};
+  const game={renderer:this.renderer,scene:this.scene,camera:this.camera,materials:this.materials,gfxQuality:tier,quality:q,selectedMapId:import.meta.env.DEV&&new URLSearchParams(location.search).get('map')==='harbor'?'harbor':'customs-house',settings:{brightnessEv:0},state:{phase:'menu'},config:{PLAYER:{STEP_HEIGHT:.55}},events:{on:()=>()=>{},emit:()=>{}},buildSimpleSky:(world:any)=>this.simpleSky(world)};
   this.world=new World(game);
   if(tier==='high')this.sun=this.world.sun??this.sun;this.sun.position.set(35,48,-30);this.sun.castShadow=!!q.shadows;this.sun.shadow.mapSize.set(q.shadows||512,q.shadows||512);Object.assign(this.sun.shadow.camera,{left:-18,right:18,top:18,bottom:-18,near:1,far:120});
   if(tier!=='high')this.scene.add(this.sun);
-  const fill=new THREE.HemisphereLight(0xd7efff,0xb9ac93,tier==='high'?2.2:2.4);fill.name='daylight-fill';this.scene.add(fill,new THREE.AmbientLight(0xd9e6ec,tier==='high'?1:.9));
-  this.scene.fog=new THREE.Fog(0xd5e7ed,q.fog*.8,q.fog*1.22);this.camera.far=q.far;this.camera.updateProjectionMatrix();
+  // High already has sky IBL, bounce and interior fill. Keep cheap tiers lit
+  // without flattening their textured surfaces into the ACES shoulder.
+  const fill=new THREE.HemisphereLight(0xd7efff,0xb9ac93,tier==='high'?.6:1);fill.name='daylight-fill';this.scene.add(fill,new THREE.AmbientLight(0xd9e6ec,tier==='high'?.12:.18));
+  this.scene.fog=new THREE.Fog(0xbdd5e1,q.far*.95,q.far*2.6);this.camera.far=q.far;this.camera.updateProjectionMatrix();
   let lights=0;this.scene.traverse(o=>{if(o instanceof THREE.PointLight){o.visible=lights++<q.lights;}});
   this.weapon=new WeaponView(this.camera,tier,this.materials);this.operators=new Operators(tier);
   this.makePost();
@@ -67,7 +69,7 @@ export class View{
   if(this.tier==='high'&&PostChain.supported(this.renderer)){
    const gl=this.renderer.getContext(),debug=gl.getExtension('WEBGL_debug_renderer_info'),gpu=debug?String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)):'';
    const ssao=matchMedia('(pointer:fine)').matches&&/NVIDIA|GeForce|Radeon|RTX/i.test(gpu);
-   this.post=new PostChain({renderer:this.renderer,scene:this.scene,camera:this.camera,world:this.world},{aa:'auto',ssao});this.post.bloomStrength=.09;return;
+   this.post=new PostChain({renderer:this.renderer,scene:this.scene,camera:this.camera,world:this.world},{aa:'auto',ssao});this.post.bloomStrength=.025;return;
   }
   this.composer=new EffectComposer(this.renderer);this.composer.addPass(new RenderPass(this.scene,this.camera));this.composer.addPass(new OutputPass());
   this.fxaa=new ShaderPass(FXAAShader);this.composer.addPass(this.fxaa);
@@ -75,7 +77,7 @@ export class View{
  setWalls(store:WallStore){if(this.wallView?.store===store)return;this.wallView?.dispose();this.adapter.bind(store);this.wallView=new WallRenderer(this.scene,store,this.tier,this.materials);this.wallView.sync();}
  setWallShot(fn:((cell:number)=>void)|null){this.adapter.onWallShot=fn;}
  get walls(){return this.wallView;}
- resize(width:number,height:number,scale:number){this.width=width;this.height=height;const ratio=Math.min(devicePixelRatio||1,QUALITY[this.tier].dpr)*scale;this.renderer.setPixelRatio(ratio);this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.composer?.setPixelRatio(ratio);this.composer?.setSize(width,height);this.fxaa?.uniforms.resolution.value.set(1/(width*ratio),1/(height*ratio));this.post?.setSize();}
+ resize(width:number,height:number,scale:number){const ratio=Math.min(devicePixelRatio||1,QUALITY[this.tier].dpr)*scale;if(width===this.width&&height===this.height&&ratio===this.pixelRatio)return;this.width=width;this.height=height;if(ratio!==this.pixelRatio){this.pixelRatio=ratio;this.renderer.setPixelRatio(ratio);this.composer?.setPixelRatio(ratio);}this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.composer?.setSize(width,height);this.fxaa?.uniforms.resolution.value.set(1/(width*ratio),1/(height*ratio));this.post?.setSize();}
  private compile(root:THREE.Object3D){
   const previous=this.renderer.getRenderTarget();
   // Program variants depend on the output target. Restore it before yielding
@@ -96,9 +98,9 @@ export class View{
  }
  draw(entities:Entity[],local:number|null,phase:string,dt:number,home:boolean,reduced:boolean,state?:import('./sim').Simulation){
   this.time+=dt;this.world.update(reduced?0:dt);this.materials.update?.(dt);
-  this.sun.position.set(30,58,-22);this.sun.intensity=3.4;this.sun.color.set(0xfff1dc);
-  // Keep the brighter daylight exposure bounded after the donor sky's meter.
-  this.renderer.toneMappingExposure=1.45;if(this.world.sky){this.world.sky.exposure=1.45;this.world.sky.shared.uOutputExposure.value=1.45;}
+  this.sun.position.set(30,58,-22);this.sun.intensity=2.8;this.sun.color.set(0xfff1dc);
+  // Use the same bounded exposure for the direct path, HDR composite and sky.
+  this.renderer.toneMappingExposure=1;if(this.world.sky){this.world.sky.exposure=1;this.world.sky.shared.uOutputExposure.value=1;}
   this.operators.setExposure(this.renderer.toneMappingExposure);
   if(this.wallView){this.wallView.reducedMotion=reduced;this.wallView.sync();this.wallView.update(dt);}
   const viewer=entities.find(e=>e.seat===local),follow=viewer&&viewer.hp<=0?entities.find(e=>e.team===viewer.team&&e.hp>0)??viewer:viewer,viewSeat=follow?.seat??local;
