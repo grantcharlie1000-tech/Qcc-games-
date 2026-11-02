@@ -38,9 +38,14 @@ test('pointer movement without click, earned growth, Space boost, P pause, keybo
   await page.keyboard.down('ArrowRight'); await page.clock.runFor(700); await page.keyboard.up('ArrowRight');
   expect(Math.abs(Number(await game(page).getAttribute('data-angle')))).toBeLessThan(.1);
   // Keys are hold-to-turn: holding Down turns smoothly toward it; release keeps the heading.
+  // Read the simulated heading, not data-angle: the HUD mirror refreshes every 100 ms, so right
+  // after keyup it can still show a heading from several held (still turning) ticks earlier.
+  const simulated = async () => { await page.evaluate(() => window.dispatchEvent(new Event('pagehide'))); return (await saved(page)).snakes[0] as { angle: number; target: number }; };
   await page.keyboard.down('ArrowDown'); await page.clock.runFor(450); await page.keyboard.up('ArrowDown');
-  const heading = Number(await game(page).getAttribute('data-angle')); expect(heading).toBeGreaterThan(1);
-  await page.clock.runFor(300); expect(Number(await game(page).getAttribute('data-angle'))).toBeCloseTo(heading, 2);
+  const heading = (await simulated()).angle; expect(heading).toBeGreaterThan(1);
+  await page.clock.runFor(300);
+  const after = await simulated(); expect(after.angle).toBe(heading); expect(after.target).toBe(heading);
+  await expect(game(page)).toHaveAttribute('data-angle', heading.toFixed(4));
   await page.getByRole('button', { name: 'Restart game', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Enter arena', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); expect(errors).toEqual([]);
