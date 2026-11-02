@@ -127,6 +127,7 @@ html.play-locked input,html.play-locked textarea,html.play-locked select,html.pl
 
 body.in-game .game-view[data-game-id=slipline] #game-stage{height:100%;container-type:size}
 body.in-game .game-view[data-game-id=quadfall] #game-stage{height:100%}
+body.in-game .game-view[data-game-id=claimline] #game-stage{height:100%;min-height:0;touch-action:none;overscroll-behavior:none}
 /* Fivefold sizes its board and keyboard to the available stage. */
 body.in-game .game-view[data-game-id=fivefold] .stage-wrap{display:block}
 body.in-game .game-view[data-game-id=fivefold] #game-stage{height:100%;max-height:none;min-height:0}
