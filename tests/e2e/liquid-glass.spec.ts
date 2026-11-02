@@ -725,7 +725,7 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   expect(tint).toBeCloseTo(.02,3);
   expect(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor)).toBe(await clearSelectionPaint(page));
   const frost=await frostFilter(bar);
-  expect(frost).toContain('blur(0.3px)');
+  expect(frost).toContain('blur(3px)');
   expect(frost).toContain('saturate(1)');
   const movies=bar.getByRole('link',{name:'Movies',exact:true});
   expect(await movies.evaluate(el=>getComputedStyle(el).textShadow)).toBe('none');

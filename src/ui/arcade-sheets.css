@@ -1,7 +1,7 @@
 @import './native-glass.css';
 
 /* Clear sheet material. Background detail stays live and recognisable;
-   text contrast belongs to the glyph strokes rather than a panel-wide veil. */
+   soft blur keeps text readable without a panel-wide veil. */
 :is(.arcade-sheet,body.in-game .mp-card){
   --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
   /* One clear optical transfer across the entire sheet. */
@@ -11,12 +11,12 @@
   --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
   --sheet-radius:32px;--sheet-padding:16px;--sheet-group-radius:calc(var(--sheet-radius) - var(--sheet-padding));
   box-sizing:border-box;padding:var(--sheet-padding);border-radius:var(--sheet-radius);
-  border:1px solid rgb(255 255 255 / .48);
+  border:1px solid rgb(255 255 255 / .16);
   background:var(--sheet-veil);color:var(--sheet-ink);color-scheme:dark;
   -webkit-backdrop-filter:var(--sheet-optics);backdrop-filter:var(--sheet-optics);
-  box-shadow:inset .5px .5px 0 rgb(255 255 255 / .7),inset -.5px -.5px 0 rgb(255 255 255 / .55),inset 0 0 12px rgb(255 255 255 / .1),0 16px 52px -12px rgb(0 0 0 / .2),0 3px 12px rgb(0 0 0 / .08);
-  font:400 17px/1.45 var(--font-sans);text-shadow:0 0 0 var(--sheet-halo),0 0 .65px var(--sheet-halo),0 .5px .65px var(--sheet-halo);
-  -webkit-text-stroke:1.4px var(--sheet-halo);paint-order:stroke fill;
+  box-shadow:var(--glass-sheet-rim),0 6px 24px -6px rgb(0 0 0 / .14);
+  font:400 17px/1.45 var(--font-sans);text-shadow:none;
+  -webkit-text-stroke:0;paint-order:stroke fill;
 }
 html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
   --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#22252a;
@@ -26,9 +26,8 @@ html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[dat
   --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(0 0 0 / .12);--sheet-focus:#111316;color-scheme:light;
 }
-/* A DPR1 exterior pixel needs a full CSS pixel of glyph outline.
-   Higher-density screens keep the finer 0.7px outward stroke above. */
-@media(max-resolution:1.5dppx){:is(.arcade-sheet,body.in-game .mp-card){-webkit-text-stroke-width:2px}}
+/* Plain typography at every display density. */
+@media(max-resolution:1.5dppx){:is(.arcade-sheet,body.in-game .mp-card){-webkit-text-stroke-width:0}}
 @media(min-width:640px){:is(.arcade-sheet,body.in-game .mp-card){--sheet-radius:28px}}
 .arcade-sheet.ui-glass-sheet{padding:var(--sheet-padding)}
 /* The tiny handle is decoration, not a false drag affordance or tab stop. */

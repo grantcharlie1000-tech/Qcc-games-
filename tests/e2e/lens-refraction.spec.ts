@@ -234,7 +234,7 @@ test.describe('frost, in every browser but Chromium',()=>{
     await expect(page.locator('.app-navigation .ui-glass-lens')).toHaveCount(0);
     await expect(page.locator('filter[id^="ui-glass-"]')).toHaveCount(0);
     const frost=await bar.evaluate(el=>getComputedStyle(el).backdropFilter);
-    expect(frost).toContain('blur(0.3px)');
+    expect(frost).toContain('blur(3px)');
     expect(frost).toContain('saturate(1)');
   });
 

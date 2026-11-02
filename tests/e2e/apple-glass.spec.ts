@@ -195,7 +195,7 @@ test('pointer press lifts the individual button and reduced motion removes the l
   await expect(button).toHaveAttribute('data-pressing','');
   await expect.poll(()=>button.evaluate(e=>parseFloat(getComputedStyle(e).scale))).toBeGreaterThanOrEqual(1.08);
   const filter=await button.getAttribute('data-glass')==='frost'?button:button.locator('.ui-glass-lens');
-  await expect(filter).toHaveCSS('backdrop-filter',/blur\(0.3px\)/);
+  await expect(filter).toHaveCSS('backdrop-filter',/blur\(3px\)/);
   await page.mouse.move(1,1);await page.mouse.up();
   await expect(button).not.toHaveAttribute('data-pressing');
   await page.emulateMedia({reducedMotion:'reduce'});
@@ -241,8 +241,8 @@ for(const density of [1,2])test.describe(`uniform arcade optics at DSF ${density
     await page.goto('/#/game/neon-coil');
     await expect(page.locator('#game-menu')).toHaveClass(/is-refracting/);
     const gameBlur=await page.locator('#game-menu .ui-glass-lens').evaluate(e=>getComputedStyle(e).backdropFilter.match(/blur\([^)]+\)/)![0]);
-    expect(homeBlur).toBe('blur(0.3px)');
-    expect(gameBlur).toBe('blur(0.3px)');
+    expect(homeBlur).toBe('blur(3px)');
+    expect(gameBlur).toBe('blur(3px)');
   });
 });
 

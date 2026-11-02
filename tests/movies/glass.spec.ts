@@ -64,7 +64,7 @@ test('the episode drawer is a glass sheet with the sheet\'s blurred backdrop',as
  await expect(drawer).toHaveClass(/\bui-glass-sheet\b/);
  await expect(drawer).toHaveClass(/\bmovies-drawer\b/);
  expect(await drawer.getAttribute('class')).not.toMatch(/\bui-drawer\b/);
- expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(0.3px)');
+ expect(await drawer.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(3px)');
 });
 
 test('at 390 px the episode drawer is a bottom sheet inset 8 px from the sides and the bottom',async({page})=>{
@@ -258,7 +258,7 @@ test('a long season name wraps inside the drawer at 320 px, with no horizontal o
 // One page per layout: a card shown on a phone would otherwise stay in the page for the desktop check.
 for(const viewport of [PHONE,DESKTOP])test(`the Up next card has the sheet's blurred glass surface at ${viewport.width} px`,async({page})=>{
  const overlay=await showUpNext(page,viewport);
- expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(0.3px)');
+ expect(await overlay.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(3px)');
 });
 
 test('the Up next card has a 24 px corner in the card layout at 1440 px',async({page})=>{

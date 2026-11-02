@@ -32,7 +32,7 @@ test('bars, buttons and sheets add almost no fill to their live backdrop',async(
     expect(Number(material.fill.match(/[\d.]+/g)?.[3]??1),`${route}: sheet ${material.fill}`).toBeLessThanOrEqual(.02);
     expect(material.filter).not.toMatch(/brightness|contrast|saturate\((?!1\))/);
     const blur=Number(material.filter.match(/blur\(([\d.]+)px\)/)?.[1]??0);
-    expect(blur).toBeLessThanOrEqual(.6);
+    expect(blur).toBeGreaterThanOrEqual(2);expect(blur).toBeLessThanOrEqual(4);
     await page.keyboard.press('Escape');
   }
 });
@@ -49,7 +49,7 @@ test('native start/end cards and floating Boost share the clear optical tokens',
     const paint=await page.locator(selector).first().evaluate(e=>{const s=getComputedStyle(e);return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};});
     expect(paint.fill,game).toBe('rgba(184, 184, 184, 0.02)');
     expect(paint.image,game).toBe('none');
-    expect(paint.filter,game).toContain('blur(0.3px)');
+    expect(paint.filter,game).toContain('blur(3px)');
     if(dimmer){
       const veil=await page.locator(dimmer).evaluate(e=>{const s=getComputedStyle(e);return {fill:s.backgroundColor,image:s.backgroundImage,filter:s.backdropFilter};});
       expect(veil,game).toEqual({fill:'rgba(0, 0, 0, 0)',image:'none',filter:'none'});
@@ -80,7 +80,7 @@ test('native Minesweeper pause keeps the shared clear material and the board hid
   await expect(pause).toBeVisible();
   await expect(page.locator('.ms-board')).toHaveCSS('visibility','hidden');
   await expect(pause).toHaveCSS('background-color','rgba(184, 184, 184, 0.02)');
-  await expect(pause).toHaveCSS('backdrop-filter','blur(0.3px) saturate(1)');
+  await expect(pause).toHaveCSS('backdrop-filter','blur(3px) saturate(1)');
   await page.locator('#resume-game').click();
   await expect(pause).toBeHidden();
   await expect(page.locator('.ms-board')).toHaveCSS('visibility','visible');

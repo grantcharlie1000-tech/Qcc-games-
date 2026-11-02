@@ -27,7 +27,7 @@ async function originOf(sheet:Locator){
 }
 async function expectGlassSheet(dialog:Locator){
   await expect(dialog).toHaveClass(/\bui-glass-sheet\b/);
-  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(0.3px)');
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(3px)');
   const family=await dialog.locator('h2').first().evaluate(el=>getComputedStyle(el).fontFamily);
   expect(family).toContain('-apple-system');
   expect(family).not.toContain('Arcade');
