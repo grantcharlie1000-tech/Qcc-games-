@@ -1,6 +1,7 @@
 import {isLibraryMovieArtwork} from './movies-network-policy.mjs';
 import {chromium} from 'playwright';
 import {spawn} from 'node:child_process';
+import {createServer} from 'node:net';
 import {existsSync} from 'node:fs';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
@@ -16,12 +17,41 @@ studyMedia.assets.push(...fictionalMedia.assets.map(ad=>({path:'fictional-ads/'+
 const results=[];const servers=[];const folder=process.env.ARCADE_EVIDENCE_DIR||'docs/evidence/release';await mkdir(folder,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':undefined),args:['--no-sandbox','--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 const waitFor=async(fn,description)=>{for(let i=0;i<150;i++){if(await fn())return;await new Promise(r=>setTimeout(r,100));}throw new Error('Timed out: '+description);};
-async function gameMenu(page){
- if(!await page.locator('#game-options[open]').count()){
-  const menu=page.locator('#game-menu');
-  if(await page.evaluate(()=>!!document.pointerLockElement)){await menu.focus();await menu.press('Enter');}else await menu.click();
+async function startBuiltServer(path){
+ // Concurrent worktrees must not silently verify another process's fixed port.
+ const reservation=createServer();await new Promise(resolve=>reservation.listen(0,'127.0.0.1',resolve));
+ const port=reservation.address().port;await new Promise(resolve=>reservation.close(resolve));
+ const server=spawn('node',['scripts/serve-built.mjs'],{env:{...process.env,PORT:String(port),ARCADE_BASE:path},stdio:['ignore','pipe','ignore'],detached:true});servers.push(server);
+ await new Promise((resolve,reject)=>{
+  const timer=setTimeout(()=>reject(new Error('Built server startup timed out')),15000);let output='';
+  const fail=error=>{clearTimeout(timer);reject(error);};server.once('error',fail);server.once('exit',code=>fail(new Error('Built server exited before verification: '+code)));
+  server.stdout.on('data',chunk=>{output+=chunk;if(output.includes(`Built arcade at http://127.0.0.1:${port}${path}`)){clearTimeout(timer);resolve();}});
+ });
+ return `http://127.0.0.1:${port}${path}`;
+}
+async function leaveGamePanels(page){
+ const farm=page.getByRole('dialog',{name:'Start a brand-new farm?',exact:true});
+ if(await farm.isVisible())await farm.getByRole('button',{name:'Cancel',exact:true}).click();
+ const cancel=page.locator('.bc-menu:not([hidden]) [data-panel="restart"] [data-act="cancel"]');
+ if(await cancel.isVisible())await cancel.click();
+ const native=page.locator('.bc-menu:not([hidden]) [data-panel="main"] [data-act="primary"]');
+ if(await native.isVisible())await native.click();
+}
+async function activateShellControl(page,control){
+ // Pointer lock can arrive just after Play returns. Keyboard activation avoids
+ // retargeting a native click into the world without bypassing the control.
+ try{await control.waitFor({state:'visible'});}catch(error){
+  console.error('SHELL CONTROL READINESS',JSON.stringify(await page.evaluate(()=>({body:document.body.className,appInert:document.querySelector('#app')?.inert,studyHidden:document.querySelector('#study-view')?.hidden,dock:document.querySelector('.game-dock')?.outerHTML.slice(0,300),dialogs:[...document.querySelectorAll('dialog,[role=dialog]')].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({id:e.id,class:e.className,open:e.hasAttribute('open'),title:e.querySelector('h1,h2')?.textContent})),native:[...document.querySelectorAll('.bc-menu-page')].filter(e=>!e.hidden).map(e=>({panel:e.dataset.panel,buttons:[...e.querySelectorAll('button')].map(b=>({action:b.dataset.act,disabled:b.disabled,text:b.textContent}))}))}))));
+  await page.screenshot({path:`${folder}/shell-control-readiness.png`});throw error;
  }
- await page.locator('#game-options').waitFor();
+ await waitFor(()=>control.evaluate(e=>!e.closest('[inert]')&&!e.matches(':disabled')),'interactive shell control after sheet exit');
+ if(await page.locator('.blockcraft').count()||await page.evaluate(()=>!!document.pointerLockElement)){await control.focus();await waitFor(()=>control.evaluate(e=>document.activeElement===e),'shell keyboard focus');await control.press(await control.evaluate(e=>e.tagName==='BUTTON')?'Space':'Enter');}else await control.click();
+}
+async function gameMenu(page){if(!await page.locator('#game-options[open]').count()){await leaveGamePanels(page);await activateShellControl(page,page.locator('#game-menu'));}await page.locator('#game-options').waitFor();}
+async function backToLibrary(page){
+ await leaveGamePanels(page);
+ const back=page.getByRole('navigation',{name:'Game controls'}).getByRole('link',{name:'Games',exact:true});
+ await activateShellControl(page,back);
 }
 async function restart(page,id){
  const confirm=async dialog=>{assert.equal(dialog.type(),'confirm');assert.match(dialog.message(),/Discard this active field/);await dialog.accept();};
@@ -65,7 +95,7 @@ async function action(page,id){
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');
   // The shell's Restart asks before it replaces the world.
   const create=page.getByRole('button',{name:'Create New World',exact:true});if(await create.isVisible())await create.click();
-  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Minecraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Minecraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Games',exact:true}).first().click();
+  await waitFor(async()=>await root.getAttribute('data-ready')==='true','offline Minecraft terrain');await page.getByRole('button',{name:/^(Play|Resume|Continue)$/}).click();const z=Number(await root.getAttribute('data-z'));await page.keyboard.down('KeyW');try{await waitFor(async()=>Math.abs(Number(await root.getAttribute('data-z'))-z)>.3,'offline Minecraft walking');}finally{await page.keyboard.up('KeyW');}await page.keyboard.press('Escape');await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();
   // Back from Study the game plays on and captures the mouse (the lock arrives a moment later): let it go (Minecraft
   // pauses on its Game Menu), so the shell's buttons take the clicks that follow.
   for(let i=0;i<40&&await root.getAttribute('data-locked')!=='true';i++)await page.waitForTimeout(50);
@@ -73,13 +103,13 @@ async function action(page,id){
  else if(id==='animal-stack'){await page.getByRole('button',{name:/^Drop /}).click();await page.waitForTimeout(650);}
 }
 try{
- for(const [label,path,port] of [['root','/',Number(process.env.ARCADE_ROOT_PORT||4275)],['subpath','/Qcc-games-/',Number(process.env.ARCADE_SUBPATH_PORT||4276)]]){
-  const server=spawn('node',['scripts/serve-built.mjs'],{env:{...process.env,PORT:String(port),ARCADE_BASE:path},stdio:'ignore',detached:true});servers.push(server);
-  const base=`http://127.0.0.1:${port}${path}`;await waitFor(async()=>{try{return (await fetch(base)).ok;}catch{return false;}},'built server');
+ const deployments=[['root','/'],['subpath','/Qcc-games-/']].filter(([label,path])=>!process.env.ARCADE_OFFLINE_SCOPE||[label,path].includes(process.env.ARCADE_OFFLINE_SCOPE));assert.ok(deployments.length,'known offline deployment scope');
+ for(const [label,path] of deployments){
+  const base=await startBuiltServer(path);await waitFor(async()=>{try{return (await fetch(base)).ok;}catch{return false;}},'built server');
   const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[],movieArtworkRequests=[],movieArtworkFailures=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('response',response=>{if(response.status()>=400)(isLibraryMovieArtwork(response.url())?movieArtworkFailures:failedAssets).push({url:response.url(),status:response.status()});});page.on('requestfailed',request=>(isLibraryMovieArtwork(request.url())?movieArtworkFailures:failedAssets).push({url:request.url(),failure:request.failure()?.errorText}));page.on('request',r=>{if(isLibraryMovieArtwork(r.url()))movieArtworkRequests.push(r.url());else if(r.url().startsWith('http')&&new URL(r.url()).origin!==new URL(base).origin)external.push(r.url());});
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade-v2:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
-  await page.goto(base);await page.getByRole('button',{name:'Play as guest',exact:true}).click();assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
+  await page.goto(base);try{await page.getByRole('button',{name:'Play as guest',exact:true}).click();}catch(error){console.error('OFFLINE ENTRY READINESS',JSON.stringify({deployment:label,errors:errors.map(e=>e.replace(/[A-Za-z0-9_-]{24,}/g,'[redacted]')),failedAssets:failedAssets.map(r=>({path:new URL(r.url).pathname,status:r.status})),ui:await page.evaluate(()=>({body:document.body.className,accountPresent:!!document.querySelector('#accounts-dialog'),accountOpen:document.querySelector('#accounts-dialog')?.open,studyPresent:!!document.querySelector('#study-view'),gameCards:document.querySelectorAll('.game-card').length}))}));await page.screenshot({path:`${folder}/entry-${label}-failure.png`});throw error;}assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
   const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')).map(([,v])=>v.file);
   assert.ok(!initial.some(url=>heavy.some(file=>url.endsWith(file))),'heavy game chunks must remain lazy');
@@ -123,7 +153,7 @@ try{
    }
   }finally{await page.evaluate(()=>{Math.random=window.originalStudyQaRandom;delete window.originalStudyQaRandom;});}
   assert.equal(decodedStudyImages.size,studyMedia.assets.length,'Every declared Study image must decode offline');
-  await page.getByRole('link',{name:'Games',exact:true}).first().click();page.off('request',recordReading);assert.ok(readingRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),'Study may request only first-party offline study photographs');
+  await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();page.off('request',recordReading);assert.ok(readingRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),'Study may request only first-party offline study photographs');
   results.push({deployment:label,studyArticlesOffline:topics.length*4,studyImagesOffline:[...decodedStudyImages.values()],studySwitchRequests:readingRequests});
   await page.screenshot({path:`${folder}/home-${label}-390.png`,fullPage:true});
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
@@ -142,18 +172,18 @@ try{
    const frozen=await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id);
    await page.getByLabel('Study topic',{exact:true}).selectOption('quadratics');
    assert.deepEqual(await page.evaluate(id=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:'+id)).data,id),frozen,id+' study snapshot');
-   await page.getByRole('link',{name:'Games',exact:true}).first().click();page.off('request',recordSwitch);
+   await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();page.off('request',recordSwitch);
    assert.equal(await retained.evaluate(node=>node===document.querySelector('#game-stage > *')),true,id+' same retained game instance');
    assert.ok(switchRequests.every(url=>new URL(url).origin===new URL(base).origin&&allowedStudyPath(new URL(url).pathname.slice(new URL(base).pathname.length))),id+' only offline study photographs requested while switching');
    assert.equal(await page.locator('#pause-game').getAttribute('aria-label'),'Pause game');
    await gameMenu(page);assert.equal(await page.locator('#pause-overlay').isVisible(),true);const snapshot=await page.evaluate(id=>localStorage.getItem('pocket-arcade:v1:save:'+id),id);assert.ok(snapshot,id+' snapshot');
    await restart(page,id);assert.equal(await page.locator('#pause-overlay').isVisible(),false);
    if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await restart(page,id);await action(page,id);await page.screenshot({path:`${folder}/${id}-${size.width}.png`,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${id} overflow at ${size.width}`);}
-   await page.setViewportSize(sizes[0]);await page.locator('.game-dock').getByRole('link',{name:'Games',exact:true}).click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
+   await page.setViewportSize(sizes[0]);await backToLibrary(page);await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
    results.push({game:id,deployment:label,path,offline:true,action:true,save:true,restart:true,studyRestoration:true,studySwitchRequests:switchRequests.length,...switchTiming,rafMedianMs:frames[Math.floor(frames.length/2)],rafP95Ms:frames[Math.floor(frames.length*.95)]});console.log(`OFFLINE PASS ${label} ${id} + Study`);
   }
   assert.deepEqual(errors,[],'page errors');assert.deepEqual(external,[],'external runtime requests');assert.deepEqual(failedAssets,[],'failed local assets');
   results.push({deployment:label,cacheNames,externalRequests:external,movieArtworkRequests,movieArtworkFailures,pageErrors:errors,failedAssets,initialResourceCount:initial.length,heavyChunksLazy:true});await context.close();
  }
- await writeFile(folder+'/offline-results.json',JSON.stringify({recordedAt:new Date().toISOString(),browser:'Chromium',browserVersion:browser.version(),physicalHardware:false,softwareWebGL:true,rafSamplesPerGame:45,gameCount:ids.length,results},null,2));console.log(`Verified ${ids.length} games offline at both root and repository subpath.`);
+ await writeFile(folder+'/offline-results.json',JSON.stringify({recordedAt:new Date().toISOString(),browser:'Chromium',browserVersion:browser.version(),physicalHardware:false,softwareWebGL:true,rafSamplesPerGame:45,gameCount:ids.length,results},null,2));console.log(`Verified ${ids.length} games offline at ${deployments.map(([label])=>label).join(' and ')}.`);
 }finally{await browser.close();for(const server of servers)try{process.kill(-server.pid,'SIGTERM');}catch{}}

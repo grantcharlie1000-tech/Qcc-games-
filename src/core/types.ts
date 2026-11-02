@@ -2,6 +2,8 @@ export const GAME_IDS = ['fruit-merge','water-sort','color-blocks','tower','snak
 export type GameId = typeof GAME_IDS[number];
 export interface Settings { sound: boolean; reducedMotion: boolean; colorBlind: boolean; autoNextEpisode: boolean }
 export interface GameContext {
+  /** Optional shared presentation controls. Existing game contexts stay valid. */
+  readonly dock?:import('../ui/floating-controls').GameDockApi;
   readonly id: GameId;
   readonly settings: Readonly<Settings>;
   readonly highScore: number;

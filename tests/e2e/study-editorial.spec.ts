@@ -10,7 +10,7 @@ for(const viewport of [{width:320,height:568},{width:768,height:1024},{width:136
  await page.locator('[data-study-topic="close-reading"]').click();await expect(page.locator('.fictional-ad')).toHaveCount(0);await appSettings(page);
  const requests:string[]=[];page.on('request',request=>requests.push(request.url()));
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
- const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});
+ const games=page.locator('.study-article-body p').getByRole('link',{name:'Return to previous view',exact:true});
  await expect(games).toBeVisible();await expect(page.locator('.study-byline')).not.toContainText('Fictional contributor');await expect(page.locator('.study-byline img')).toBeVisible();await expect(page.locator('.study-hero img')).toBeVisible();
  await expect(page.locator('.fictional-ad').first()).toContainText('Fictional advertisement');const adSource=new URL(await page.locator('.fictional-ad').first().locator('img').evaluate((img:HTMLImageElement)=>img.src));expect(adSource.origin).toBe(new URL(page.url()).origin);expect(adSource.pathname).toMatch(/\/study\/fictional-ads\/[^/]+\.webp$/);
  await expect(page.locator('iframe')).toHaveCount(0);const formats=new Set<string>(),authors=new Set<string>();
@@ -42,7 +42,7 @@ test('modified Games clicks reach the browser without returning the retained gam
  }));
  const closeOpenedPage=(opened:import('@playwright/test').Page)=>{void opened.close();};
  context.on('page',closeOpenedPage);
- const games=page.locator('.study-article-body p').getByRole('link',{name:'Games',exact:true});
+ const games=page.locator('.study-article-body p').getByRole('link',{name:'Return to previous view',exact:true});
  for(const modifier of ['Control','Meta','Shift','Alt'] as const){
   await games.click({modifiers:[modifier]});
   await expect(page.locator('html')).toHaveAttribute('data-games-click-trusted','true');

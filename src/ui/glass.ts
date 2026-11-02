@@ -1,6 +1,7 @@
 // Liquid Glass for the island: the selection pill, the jelly press, and the material behind the bar. Chromium bends its backdrop with an
 // SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
 // Legacy unmarked frost bars retain a scroll edge. autoHideTabbar binds this controller for both Games and Movies.
+import {bindGlassInk} from './glass-ink';
 export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
 export type GlassMode='backdrop'|'frost'|'off';
@@ -20,7 +21,9 @@ export const LENS_MARGIN=LENS_BEND+4;
 // The arcade's clear material has a narrower, lower-power bezel. Keep these
 // separate from the legacy unmarked-bar map and its displacement scale.
 export const ARCADE_LENS_BEVEL=12;
-export const ARCADE_LENS_BEND=6;
+// The actual convex profile peaks below 5px. A tight encoding range avoids
+// wasting 8-bit displacement precision, especially on DPR3 circular controls.
+export const ARCADE_LENS_BEND=5;
 const CURRENT='.ui-tab[aria-current="page"],.ui-tab[aria-pressed="true"]';
 const PILL_VARS=['--ui-pill-x','--ui-pill-w','--ui-pill-on'];
 let filterSeq=0;
@@ -40,11 +43,11 @@ function convexProfile(bevel:number,bend:number):number[]{
   });
   // Give the ray field a wider optical depth, then bound its radial derivative.
   // A sampled coordinate is depth + displacement: its derivative must stay
-  // positive or the texture folds. .42 also limits magnification, preventing
+  // positive or the texture folds. .5 also limits magnification, preventing
   // thin terrain/wireframe lines from stretching into streaks. Integrating back
   // from the clear centre also removes the caustic
   // spike at the rim, without changing the legacy Movies field.
-  const step=bevel/128*.42;
+  const step=bevel/128*.5;
   for(let i=127;i>=0;i--)rays[i]=Math.min(rays[i],rays[i+1]+step);
   for(let i=1;i<=128;i++)rays[i]=Math.min(rays[i],rays[i-1]);
   return rays.map(ray=>-ray);
@@ -94,6 +97,7 @@ export function lensField(width:number,height:number,margin=LENS_MARGIN,bevel=LE
 // can encode the PNG, so this is outside the unit tests. With no 2D context there is no map, and the empty string tells the caller to leave
 // the lens out, rather than bend with an all-zero map.
 export function lensPng(width:number,height:number,density=1,arcade=false,margin=LENS_MARGIN):string{
+  try{
   const canvas=document.createElement('canvas');
   const pixelWidth=Math.round(width*density),pixelHeight=Math.round(height*density);
   canvas.width=pixelWidth;canvas.height=pixelHeight;
@@ -101,6 +105,7 @@ export function lensPng(width:number,height:number,density=1,arcade=false,margin
   if(!context)return '';
   context.putImageData(new ImageData(lensField(width,height,margin,arcade?ARCADE_LENS_BEVEL:LENS_BEVEL,arcade?ARCADE_LENS_BEND:LENS_BEND,arcade?1:LENS_CAP,density,arcade?'convex':'legacy'),pixelWidth,pixelHeight),0,0);
   return canvas.toDataURL('image/png');
+  }catch{return '';}
 }
 // The density the map is built at: the screen's device pixel ratio, but at least 1 and at most 3. A missing or odd ratio gives 1.
 export function lensDensity(devicePixelRatio:number):number{
@@ -192,7 +197,10 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
-  const bounded=bar.matches('.section-tabbar,.section-menu,.floating-glass-group');
+  // Convex arcade lenses sample inward, so their compositor surface needs no
+  // legacy outward margin. This also bounds live canvas controls to their own
+  // area instead of filtering an extra 14px on all four sides every frame.
+  const bounded=arcade||bar.matches('.section-tabbar,.section-menu,.floating-glass-group');
   const margin=bounded?0:LENS_MARGIN;
   const standalone=bar.matches('.game-glass,.glass-control');
   const forceFallback=new URLSearchParams(location.search).get('glass')==='fallback';
@@ -355,7 +363,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   };
   // A change of mode takes out what the new mode does not draw, and draws what it does.
   const applyMode=()=>{
-    const next=lensless?'off':glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
+    const preferred=glassMode(brands,{reducedTransparency:queries[0].matches,moreContrast:queries[1].matches,forcedColours:queries[2].matches});
+    const next=lensless&&preferred==='backdrop'?'frost':preferred;
     if(next===mode)return;
     mode=next;
     bar.dataset.glass=mode;
@@ -381,11 +390,13 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
 
   applyMode();
   sync(false);
+  const disposeInk=arcade?bindGlassInk(bar):undefined;
 
   return{
     dispose(){
       if(disposed)return;
       disposed=true;
+      disposeInk?.();
       observer.disconnect();
       resize?.disconnect();
       parentWatch.disconnect();

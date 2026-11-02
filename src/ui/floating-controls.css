@@ -4,3 +4,5 @@
 :root[data-input=keyboard] .floating-glass-group:focus-visible,
 :root[data-input=keyboard] .floating-glass-group :focus-visible{outline:2px solid var(--glass-ink);outline-offset:2px}
 :root[data-input=keyboard] .floating-glass-group:focus-visible{outline-offset:-4px}
+:root[data-input=keyboard] .floating-glass-group:not([data-glass=off]):focus-visible,
+:root[data-input=keyboard] .floating-glass-group:not([data-glass=off]) :focus-visible{outline:2px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px #000}

@@ -1,12 +1,17 @@
 /* Do not transform the navigation wrapper: its children are viewport-fixed. */
-:is(.section-navigation,.game-dock){transition:opacity 150ms var(--ease-out),visibility 0s;visibility:visible}
-:is(.section-navigation,.game-dock)[data-sheet-hidden]{opacity:0!important;visibility:hidden;pointer-events:none!important;transition:opacity 150ms var(--ease-out),visibility 0s 150ms,translate 180ms var(--ease-out)}
-:is(.section-navigation,.game-dock)[data-sheet-hidden] *{pointer-events:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-.section-navigation[data-sheet-hidden]>.arcade-glass,.game-dock[data-sheet-hidden]>.arcade-glass{background:transparent!important;box-shadow:none!important;border-color:transparent!important}
-:is(.section-navigation,.game-dock)[data-sheet-hidden] :is(.ui-glass-lens,.ui-glass-glow){display:none!important}
-:is(.section-navigation,.game-dock)[data-sheet-hidden] *::before,
-:is(.section-navigation,.game-dock)[data-sheet-hidden] *::after{display:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-.section-navigation[data-sheet-hidden]>*,.game-dock[data-sheet-hidden]{translate:0 12px!important}
+:is(.section-navigation,.section-header,.game-dock){transition:opacity 150ms var(--ease-out),visibility 0s;visibility:visible}
+:is(.section-navigation,.section-header,.game-dock)[data-sheet-hidden]{opacity:0!important;visibility:hidden;pointer-events:none!important;transition:opacity 150ms var(--ease-out),visibility 0s 150ms,translate 180ms var(--ease-out)}
+:is(.section-navigation,.section-header,.game-dock)[data-sheet-hidden] *{pointer-events:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.section-navigation[data-sheet-hidden]>.arcade-glass,.game-dock[data-sheet-hidden]>.arcade-glass,.section-header[data-sheet-hidden] .arcade-glass{background:transparent!important;box-shadow:none!important;border-color:transparent!important}
+:is(.section-navigation,.section-header,.game-dock)[data-sheet-hidden] :is(.ui-glass-lens,.ui-glass-glow){display:none!important}
+:is(.section-navigation,.section-header,.game-dock)[data-sheet-hidden] *::before,
+:is(.section-navigation,.section-header,.game-dock)[data-sheet-hidden] *::after{display:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.section-navigation[data-sheet-hidden]>*,.section-header[data-sheet-hidden]>*,.game-dock[data-sheet-hidden]{translate:0 12px!important}
 .game-dock{transition:opacity 150ms var(--ease-out),visibility 0s,translate 180ms var(--ease-out)}
-@media(prefers-reduced-motion:reduce){.section-navigation[data-sheet-hidden]>*,.game-dock[data-sheet-hidden]{translate:none!important}}
+@media(prefers-reduced-motion:reduce){.section-navigation[data-sheet-hidden]>*,.section-header[data-sheet-hidden]>*,.game-dock[data-sheet-hidden]{translate:none!important}}
 .reduce-motion .section-navigation[data-sheet-hidden]>*,.reduce-motion .game-dock[data-sheet-hidden]{translate:none!important}
+
+.section-header[data-sheet-hidden]{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.section-header>.ui-header-inner{transition:translate 180ms var(--ease-out)}
+/* The paused overlay is hidden while a sheet owns the dimming/filter layer. */
+body.in-game[data-sheet-open] #pause-overlay{-webkit-backdrop-filter:none;backdrop-filter:none}

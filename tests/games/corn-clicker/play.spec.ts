@@ -124,6 +124,7 @@ test('phone: tabs, touch harvesting, shop, farm and a golden cob',async({browser
   await thumbs.tap();
   await expect(page.locator('.cc-tooltip')).toContainText('Tap again to buy.');
   await expect(thumbs).toBeVisible();
+  await page.clock.runFor(16);
   await thumbs.tap();
   await expect(thumbs).toHaveCount(0);
   await expect(page.locator('.game-hud')).toBeVisible();

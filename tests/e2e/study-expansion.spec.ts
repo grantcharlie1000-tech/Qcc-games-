@@ -27,14 +27,14 @@ test('Escape changes styles without changing topic, dismisses privacy and menus 
   const selected=await page.evaluate(key=>sessionStorage.getItem(key),key);await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();expect(await page.evaluate(key=>sessionStorage.getItem(key),key)).toBe(selected);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:fruit-merge')!).data)).toEqual(saved);
-  await page.getByRole('link',{name:'Games',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
   await appSettings(page);await expect(page.locator('#menu')).toBeVisible();
   await page.keyboard.press('Escape');await expect(page.locator('#menu')).not.toBeVisible();await expect(page.locator('#study-view')).toBeHidden();
   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
   let current=await page.evaluate(key=>sessionStorage.getItem(key)!,key);expect(styleOf(current)).not.toBe(previous);previous=styleOf(current);
   await page.reload();await expect(page.locator('.fm-count')).toContainText('1 fruit');
   await page.keyboard.press('Escape');current=await page.evaluate(key=>sessionStorage.getItem(key)!,key);expect(styleOf(current)).not.toBe(previous);
-  await page.getByRole('link',{name:'Games',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
+  await page.getByRole('link',{name:'Return to previous view',exact:true}).first().click();await expect(page.locator('.fm-count')).toContainText('1 fruit');
 });
 
 test('without consent article choice stays in memory and reload returns to the picker',async({page})=>{
@@ -124,7 +124,7 @@ for(const viewport of [{name:'desktop',width:1180,height:900},{name:'mobile',wid
     await page.screenshot({path:`docs/evidence/article-expansion/${style}-${viewport.name}-opening.png`});
     const body=page.locator('.study-article-body');await body.evaluate(element=>window.scrollTo(0,Math.max(0,element.getBoundingClientRect().top+window.scrollY-40)));
     await page.screenshot({path:`docs/evidence/article-expansion/${style}-${viewport.name}-reading.png`});
-    await expect(body.getByRole('link',{name:'Games',exact:true})).toBeVisible();
-    await body.getByRole('link',{name:'Games',exact:true}).click();await expect(page.locator('#study-view')).toBeHidden();
+    await expect(body.getByRole('link',{name:'Return to previous view',exact:true})).toBeVisible();
+    await body.getByRole('link',{name:'Return to previous view',exact:true}).click();await expect(page.locator('#study-view')).toBeHidden();
   });
 }

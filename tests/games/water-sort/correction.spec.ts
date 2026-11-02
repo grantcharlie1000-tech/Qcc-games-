@@ -74,10 +74,12 @@ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366
   test(`open scene and all seven tubes fit ${viewport.width}x${viewport.height}`,async({page})=>{
     await page.setViewportSize(viewport);await open(page);
     await gameOption(page,'Level','7');
+    await expect(page.locator('.game-dock')).not.toHaveAttribute('data-sheet-hidden');
+    await expect.poll(()=>page.locator('.game-dock').evaluate(e=>e.getAnimations().length)).toBe(0);
     await expect(page.locator('.ws-tube')).toHaveCount(7);
     const boxes=await page.locator('.ws-tube').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};}));
     const stage=(await page.locator('.stage-wrap').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
-    for(const box of boxes){expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(stage.y);expect(box.right).toBeLessThanOrEqual(viewport.width);expect(box.bottom).toBeLessThanOrEqual(dock.y);}
+    for(const box of boxes){expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(stage.y);expect(box.right).toBeLessThanOrEqual(viewport.width);expect(box.bottom).toBeLessThanOrEqual(stage.y+stage.height);expect(box.right<=dock.x||box.x>=dock.x+dock.width||box.bottom<=dock.y||box.y>=dock.y+dock.height).toBe(true);}
     expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight)).toBe(true);
     await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Hint',exact:true})).toBeVisible();
     await page.screenshot({path:`tests/games/water-sort/evidence/correction-${viewport.width}x${viewport.height}.png`});
@@ -100,7 +102,7 @@ test('Study retains a partially transferred pour and resumes the same game insta
   await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
   await page.clock.runFor(5000);
   expect(await volume(page,2)).toBeCloseTo(before,4);
-  await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+  await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
   expect(await retained!.evaluate(node=>node===document.querySelector('.ws-game'))).toBe(true);
   await page.clock.runFor(1000);await expect(root(page)).toHaveAttribute('data-moves','1');
 });

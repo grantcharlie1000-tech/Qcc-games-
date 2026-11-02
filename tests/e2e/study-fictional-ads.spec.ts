@@ -43,7 +43,7 @@ for(const style of ['qcc','quanta','aeon','essay']){
         }
       }
     }
-    await view.getByRole('link',{name:'Games',exact:true}).first().click();
+    await view.getByRole('link',{name:'Return to previous view',exact:true}).first().click();
     await expect(page.locator('.fictional-ad')).toHaveCount(0);
   });
 }

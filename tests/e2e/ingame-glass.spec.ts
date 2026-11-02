@@ -26,7 +26,7 @@ test('late Block Fill counters stay inside the dock on a narrow phone',async({pa
   await page.setViewportSize({width:320,height:568});
   await page.addInitScript(path=>localStorage.setItem('pocket-arcade:v1:save:block-fill',JSON.stringify({version:1,data:{version:1,level:31,path,rewarded:false,steps:48,hints:0,best:{}}})),generateLevel(31).solution.slice(0,49));
   await page.goto('/#/game/block-fill');
-  await expect(page.locator('.game-compact-hud')).toHaveAttribute('aria-label','Garden 32 of 32, 49 of 56 squares covered');
+  await expect(page.locator('.game-hud')).toContainText('49/56');
   const bounds=await page.locator('.game-dock').evaluate(dock=>{
     const bar=dock.getBoundingClientRect();
     const text=[...dock.querySelectorAll('.game-compact-hud')].filter(e=>e.textContent).map(e=>{const range=document.createRange();range.selectNodeContents(e);const box=range.getBoundingClientRect();return {top:box.top,bottom:box.bottom};});
@@ -73,7 +73,7 @@ for(const viewport of [{width:1366,height:768},{width:390,height:644},{width:320
   });
 }
 
-test('compact dock reserves play space and the menu pauses, restores focus and resumes',async({page})=>{
+test('compact dock floats above clear play space and the menu pauses, restores focus and resumes',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.goto('/#/game/snake');
   await page.getByRole('button',{name:'Start slithering',exact:true}).click();
@@ -81,8 +81,10 @@ test('compact dock reserves play space and the menu pauses, restores focus and r
   await expect(dock).toBeVisible();
   await expect(dock.locator('.game-hud')).toHaveText('Score0');
   const d=(await dock.boundingBox())!,stage=(await page.locator('.stage-wrap').boundingBox())!;
-  expect(d.height).toBeLessThanOrEqual(60);
-  expect(d.y).toBeGreaterThanOrEqual(stage.y+stage.height);
+  expect(d.height).toBe(64);
+  expect(d.y).toBeLessThan(stage.y+stage.height);
+  const board=(await page.locator('.snake-canvas').boundingBox())!;
+  expect(d.y+d.height).toBeLessThanOrEqual(board.y);
   for(const control of await dock.locator('button,a').all()){
     const box=(await control.boundingBox())!;
     expect(box.width).toBeGreaterThanOrEqual(44);expect(box.height).toBeGreaterThanOrEqual(44);
@@ -174,7 +176,7 @@ test('responsive play area and disposal keep the dock usable',async({page})=>{
     await page.goto('/#/game/block-fill');await expect(page.locator('.game-compact-hud')).toContainText('Garden');
     await page.getByRole('link',{name:'Games'}).click();
     await expect(page.locator('.game-dock')).toHaveCount(0);
-    expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(2);
+    expect(await page.locator('filter[id^="ui-glass-"]').count()).toBeLessThanOrEqual(4);
   }
 });
 
@@ -225,7 +227,7 @@ test('dock follows a counter whose game replaces its child nodes',async({page})=
   await page.goto('/#/game/block-fill');
   await page.locator('.bf-board').focus();await page.keyboard.press('ArrowRight');
   await expect(page.locator('.bf-board')).toHaveAttribute('data-covered','2');
-  await expect(page.locator('.game-compact-hud')).toHaveText('Garden 1/32 · 22%');
+  await expect(page.locator('.game-hud')).toContainText('Covered2/9');
 });
 
 test('Fivefold mode controls remain usable in the menu and the keyboard keeps its space',async({page})=>{

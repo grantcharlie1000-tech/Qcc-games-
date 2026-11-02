@@ -27,14 +27,14 @@ const railsDown=(page:Page)=>page.route('**/api/movies?rails=*',route=>route.ful
 test('section buttons change the address and survive reload',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
- await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'Series',exact:true}).click();
  await expect(page).toHaveURL(/#\/movies\/browse\/tv$/);
- await expect(page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.movies-top').getByRole('button',{name:'Series',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.reload();
- await expect(page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.movies-top').getByRole('button',{name:'Series',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.goBack();
  await expect(page).toHaveURL(/#\/movies$/);
- await expect(page.locator('.movies-top').getByRole('button',{name:'Home',exact:true})).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('.movies-top').getByRole('button',{name:'All titles',exact:true})).toHaveAttribute('aria-pressed','true');
 });
 
 for(const width of [320,390])test(`the phone tab bar replaces the section buttons at ${width}px`,async({page})=>{
@@ -51,7 +51,7 @@ for(const width of [320,390])test(`the phone tab bar replaces the section button
 test('focus is visible on header controls and cards',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
- const home=page.locator('.movies-top').getByRole('button',{name:'Home',exact:true});
+ const home=page.locator('.movies-top').getByRole('button',{name:'All titles',exact:true});
  await tabTo(page,home);
  const header=await outline(home);
  expect(header.style).toBe('solid');
@@ -200,9 +200,9 @@ test('the Movies island is expanded again after a section change while it is min
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
  await view.evaluate(e=>e.scrollTo(0,400));
  await expect(bar).toHaveAttribute('data-minimized','true');
- await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'Series',exact:true}).click();
  await expect(bar).not.toHaveAttribute('data-minimized');
- await expect(bar.locator('[data-kind="tv"]')).toHaveAttribute('aria-pressed','true');
+ await expect(bar.locator('[data-section="tv"]')).toHaveAttribute('aria-current','page');
 });
 
 // Typing holds the island where it is, so a scroll while the search field has focus does not minimize it.
@@ -239,9 +239,9 @@ test('the Movies capsule shows the current section icon, and follows a section c
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(424);
  await view.evaluate(e=>e.scrollTo(0,400));
  await expect(bar).toHaveAttribute('data-minimized','true');
- await expect.poll(()=>capsule.locator('svg').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-pressed="true"] svg').evaluate(el=>el.innerHTML));
- await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
- await expect(bar.locator('[data-kind="tv"]')).toHaveAttribute('aria-pressed','true');
+ await expect.poll(()=>capsule.locator('svg').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg').evaluate(el=>el.innerHTML));
+ await page.locator('.movies-top').getByRole('button',{name:'Series',exact:true}).click();
+ await expect(bar.locator('[data-section="tv"]')).toHaveAttribute('aria-current','page');
  await expect(bar).not.toHaveAttribute('data-minimized');
  // The TV page is shorter than the home page at this height, so the second half scrolls to 300 px, clear of the end zone.
  await expect.poll(()=>view.evaluate(e=>e.scrollHeight-e.clientHeight)).toBeGreaterThan(330);
@@ -249,7 +249,7 @@ test('the Movies capsule shows the current section icon, and follows a section c
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  await view.evaluate(e=>e.scrollTo(0,300));
  await expect(bar).toHaveAttribute('data-minimized','true');
- await expect.poll(()=>capsule.locator('svg').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-pressed="true"] svg').evaluate(el=>el.innerHTML));
+ await expect.poll(()=>capsule.locator('svg').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg').evaluate(el=>el.innerHTML));
 });
 
 // Content and keyboard focus clear the island at every width.
@@ -381,7 +381,7 @@ test('home rails load when Home is first shown after a title opened',async({page
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336');
  await expect(page.locator('.movies-detail h1')).toHaveText('Interstellar');
- await page.locator('.movies-top').getByRole('button',{name:'Home',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'All titles',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Fixture rail',exact:true})).toBeVisible();
  expect(requests).toHaveLength(1);
 });
@@ -604,7 +604,7 @@ test('a page heading keeps focus when a failed rails request renders the home',a
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/movie-157336');
  await expect(page.locator('.movies-detail h1')).toHaveText('Interstellar');
- await page.locator('.movies-top').getByRole('button',{name:'Home',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'All titles',exact:true}).click();
  const heading=page.locator('.movies-hero h1');
  await expect(heading).toBeFocused();
  release();
@@ -620,7 +620,7 @@ test('a header link keeps focus when a failed rails request renders the home',as
  await page.goto('/#/movies');
  // The catalog's first render replaces the page, so the link is focused after that render.
  await expect(page.locator('.movies-hero')).toBeVisible();
- const games=page.locator('.movies-top a.movies-back');
+ const games=page.locator('.section-navigation [data-section=games]');
  await games.focus();
  await expect(games).toBeFocused();
  release();
@@ -672,7 +672,7 @@ test('TV Shows shows TV rails and asks the server for a genre',async({page})=>{
  });
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies');
- await page.locator('.movies-top').getByRole('button',{name:'TV Shows',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'Series',exact:true}).click();
  await expect(page.getByRole('heading',{name:'TV Shows',exact:true,level:1})).toBeVisible();
  await expect(page.locator('.movies-page-head p')).toHaveText('Series to start tonight and seasons to catch up on.');
  await expect(page.getByRole('heading',{name:'Fixture TV rail',exact:true})).toBeVisible();
@@ -921,7 +921,7 @@ test('going back to TV from Movies resets the genre that Movies had set',async({
  await page.setViewportSize({width:1440,height:900});
  await page.goto('/#/movies/browse/tv');
  await expect(page.getByRole('heading',{name:'Fixture TV rail',exact:true})).toBeVisible();
- await page.locator('.movies-top').getByRole('button',{name:'Movies',exact:true}).click();
+ await page.locator('.movies-top').getByRole('button',{name:'Films',exact:true}).click();
  await expect(page).toHaveURL(/#\/movies\/browse\/movie$/);
  // The address changes before the page renders Movies, so the genre is chosen once its heading shows.
  await expect(page.getByRole('heading',{name:'Movies',exact:true,level:1})).toBeVisible();
@@ -1687,7 +1687,7 @@ test('the episode drawer lists the season and closes for Study',async({page})=>{
  await expect(page.locator('#study-view')).toBeVisible();
  // The watch page is hidden while Study is open, so the drawer is read by its element rather than by role.
  await expect(page.locator('dialog.movies-drawer')).toHaveJSProperty('open',false);
- await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+ await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
  await expect(page.getByRole('button',{name:'Resume stream'})).toBeVisible();
 });
 
@@ -2361,13 +2361,13 @@ test('an episode still that fails walks the backdrop and then the poster',async(
 });
 
 // The island follows the header in the page, so its tabs come before the content they navigate to. It is labelled as the games' island is.
-test('the Movies island follows the header and comes before the page content',async({page})=>{
+test('the shared island lives outside the Movies redraw root',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/#/movies');
  await expect(page.locator('.movies-mobile-nav')).toBeVisible();
  await expect(page.locator('.movies-browse')).toBeVisible();
- expect(await page.evaluate(()=>document.querySelector('.movies-top')!.nextElementSibling===document.querySelector('.movies-navigation'))).toBe(true);
- expect(await page.evaluate(()=>{const bar=document.querySelector('.movies-mobile-nav')!,main=document.querySelector('.movies-browse')!;return !!(bar.compareDocumentPosition(main)&Node.DOCUMENT_POSITION_FOLLOWING);})).toBe(true);
+ expect(await page.evaluate(()=>document.querySelector('.section-navigation')!.parentElement===document.body)).toBe(true);
+ expect(await page.evaluate(()=>!document.querySelector('.movies-view')!.contains(document.querySelector('.section-navigation')))).toBe(true);
  await expect(page.locator('.movies-navigation')).toHaveAttribute('aria-label','Sections');
 });
 

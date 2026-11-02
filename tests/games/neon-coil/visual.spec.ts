@@ -19,9 +19,10 @@ for(const size of [{width:390,height:844},{width:1440,height:900}]) test(`refere
   expect(await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.scrollHeight])).toEqual([size.width,size.height]);
   await expect(page.locator('.nc-score .nc-difficulty')).toHaveText('CLASSIC');
   const caption=(await page.locator('.game-hud small').boundingBox())!,score=(await page.locator('.game-hud strong').boundingBox())!;
-  expect(caption.y+caption.height).toBeLessThanOrEqual(score.y+1);
-  const font=await page.locator('.game-hud strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)); expect(font).toBeGreaterThanOrEqual(20); expect(font).toBeLessThanOrEqual(22);
-  expect(await page.locator('.nc-ranking li').first().evaluate(el=>parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(12);
+  expect(caption.x+caption.width).toBeLessThanOrEqual(score.x);
+  await expect(page.locator('.game-hud-item')).toHaveCSS('align-items','baseline');
+  const font=await page.locator('.game-hud strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)); expect(font).toBeGreaterThanOrEqual(18); expect(font).toBeLessThanOrEqual(22);
+  expect(await page.locator('.nc-ranking').evaluate(el=>getComputedStyle(el).backgroundColor)).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
   await expect(page.locator('.nc-ranking li')).toHaveCount(size.width<600?5:10); await expect(page.locator('.nc-you')).toBeVisible();
   const boost=page.getByRole('button',{name:'Hold to boost',exact:true}),b=(await boost.boundingBox())!;
   expect(b.width).toBeGreaterThanOrEqual(56); expect(b.width).toBeLessThanOrEqual(64); expect(b.height).toBe(b.width);

@@ -1,14 +1,14 @@
 import {test,expect} from '../fixtures';
 
-test('portrait Pool uses the height between player cards and dock',async({page})=>{
+test('portrait Pool keeps its table and player cards clear of the edge controls',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/#/game/pool');
   await page.locator('.pool-table').hover();
   const table=(await page.locator('.pool-table').boundingBox())!,players=(await page.locator('.pool-players').boundingBox())!,dock=(await page.locator('.game-dock').boundingBox())!;
   expect(table.height).toBeGreaterThanOrEqual(440);expect(table.height/table.width).toBeCloseTo(840/440,2);
-  expect(players.y).toBeLessThan(32);expect(table.y).toBeGreaterThanOrEqual(players.y+players.height);
-  const footer=(await page.locator('.pool-under').boundingBox())!;
-  expect(footer.y).toBeGreaterThanOrEqual(table.y+table.height);expect(footer.y+footer.height).toBeLessThanOrEqual(dock.y-4);
-  expect(dock.y-footer.y-footer.height).toBeLessThan(24);
+  expect(players.y).toBeGreaterThanOrEqual(dock.y+dock.height);expect(table.y).toBeGreaterThanOrEqual(players.y+players.height);
+  const footer=(await page.locator('.pool-under').boundingBox())!,stage=(await page.locator('.stage-wrap').boundingBox())!;
+  expect(footer.y).toBeGreaterThanOrEqual(table.y+table.height);expect(footer.y+footer.height).toBeLessThanOrEqual(stage.y+stage.height);
+  expect(stage.y+stage.height-footer.y-footer.height).toBeLessThan(24);
 });
 
 test('Pool PC status and pocket choice have readable rendered text',async({page})=>{

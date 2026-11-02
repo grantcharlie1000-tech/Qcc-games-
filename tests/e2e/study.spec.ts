@@ -13,7 +13,7 @@ const expectOnlyStudyImages=(requests:string[],page:Page)=>{for(const request of
 const topicKey='pocket-arcade:study:v1:topic';
 const choose=async(page:import('@playwright/test').Page,id='close-reading')=>{const accept=page.getByRole('button',{name:'Accept All',exact:true});if(await accept.isVisible())await accept.click();await page.locator(`[data-study-topic="${id}"]`).click();};
 const returnToGame=async(page:Page)=>{
-  const studyView=page.locator('#study-view'),games=page.getByRole('link',{name:'Games',exact:true}).first();
+  const studyView=page.locator('#study-view'),games=page.getByRole('link',{name:'Return to previous view',exact:true}).first();
   await expect(async()=>{
     if(await studyView.isVisible())await games.click({timeout:1000});
     await expect(studyView).toBeHidden({timeout:1000});
