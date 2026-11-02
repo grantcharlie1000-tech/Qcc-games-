@@ -47,14 +47,22 @@ test('bars, buttons and sheets share the one clear fill over their live backdrop
   }
 });
 
-test('native start/end cards and Boost retain their original game palettes',async({page})=>{
+test('Slither Boost wears the shared clear glass instead of its old milky fill',async({page})=>{
+  // Brief for #86: the new games' controls get the clear glass material and lens,
+  // keeping Boost's spot and size from the joystick PR.
+  await page.goto('/#/game/neon-coil');const boost=page.locator('.nc-boost');await expect(boost).toBeAttached();
+  await expect(boost).toHaveClass(/\barcade-glass\b/);await expect(boost).toHaveClass(/\bgame-glass\b/);
+  const paint=await boost.evaluate(e=>{const s=getComputedStyle(e);return {fill:s.backgroundColor,border:s.borderTopStyle,radius:s.borderTopLeftRadius};});
+  expect(paint.fill).toBe('rgba(0, 0, 0, 0)');expect(paint.border).toBe('none');expect(paint.radius).toBe('17px');
+});
+
+test('native start/end cards retain their original game palettes',async({page})=>{
   // These fills come from the original game styles at 0f3d109. Shared glass
   // belongs to the shell and Slither sheet, not to the original native art.
   for(const [game,selector,fill] of [
     ['snake','.snake-card','rgba(20, 55, 38, 0.59)'],
     ['quadfall','.qf-card','rgba(23, 34, 57, 0.96)'],
     ['maze-muncher','.mm-card','rgba(5, 7, 26, 0.816)'],
-    ['neon-coil','.nc-boost','rgba(255, 255, 255, 0.12)'],
     ['flappy-bird','.fb-card','rgba(255, 243, 217, 0.96)'],
     ['ball-run','.br-setup','rgba(29, 29, 34, 0.95)'],
     ['minesweeper','.ms-hint-message','rgba(201, 220, 159, 0.03)'],
