@@ -56,7 +56,8 @@ test.describe('Claimline phone', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 
-  test('dragging shows the floating stick, steers, and releasing keeps the heading moving', async ({ page }) => {
+  test('dragging shows the floating stick, steers, and releasing keeps the heading moving', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'CDP touch emulation requires Chromium');
     await start(page);
     const p = await pad(page);
     await touch(page, 'touchStart', [p]);
@@ -83,7 +84,8 @@ test.describe('Claimline phone', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   });
 
-  test('touchCancel clears the stick and leaves no stuck input', async ({ page }) => {
+  test('touchCancel clears the stick and leaves no stuck input', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'CDP touch emulation requires Chromium');
     await start(page);
     const p = await pad(page);
     await touch(page, 'touchStart', [p]);
@@ -99,7 +101,8 @@ test.describe('Claimline phone', () => {
     await noScroll(page);
   });
 
-  test('a second finger does not steal the steering touch', async ({ page }) => {
+  test('a second finger does not steal the steering touch', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'CDP touch emulation requires Chromium');
     await start(page);
     const p = await pad(page);
     await touch(page, 'touchStart', [p]);
