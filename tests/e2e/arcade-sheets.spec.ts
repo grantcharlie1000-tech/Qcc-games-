@@ -1,6 +1,6 @@
 import {test,expect} from '../fixtures';
 import {gameAction,openGameMenu} from '../game-menu';
-import {glyphContrast,settleGlassInk} from '../glass-contrast';
+import {HIDDEN_INK,glyphContrast,settleGlassInk} from '../glass-contrast';
 
 for(const [id,tone] of [['snake','dark'],['fruit-merge','light']] as const){
   test(`${id} menu and its submenus use a neutral glass sheet and retain modal focus`,async({page})=>{
@@ -120,7 +120,7 @@ for(const view of ['home','accounts','snake','fruit-merge']){
       return boxes;
     });
     expect(boxes.length).toBeGreaterThan(8);
-    const hide=await page.addStyleTag({content:`${selector} *{color:transparent!important}`});
+    const hide=await page.addStyleTag({content:`${selector} *{color:${HIDDEN_INK}!important}`});
     const shot=(await panel.screenshot({animations:'disabled'})).toString('base64');
     await hide.evaluate(e=>e.parentNode?.removeChild(e));
     await page.addStyleTag({content:`${selector},${selector} *{background:#000!important;color:#fff!important;backdrop-filter:none!important;box-shadow:none!important;border-color:transparent!important;text-shadow:none!important}`});

@@ -27,7 +27,8 @@ async function originOf(sheet:Locator){
 }
 async function expectGlassSheet(dialog:Locator){
   await expect(dialog).toHaveClass(/\bui-glass-sheet\b/);
-  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toContain('blur(8px)');
+  // The approved clear sheet: --glass-clear-blur with a slight saturation.
+  expect(await dialog.evaluate(el=>getComputedStyle(el).backdropFilter)).toBe('blur(1.5px) saturate(1.08)');
   const family=await dialog.locator('h2').first().evaluate(el=>getComputedStyle(el).fontFamily);
   expect(family).toContain('-apple-system');
   expect(family).not.toContain('Arcade');
@@ -202,15 +203,22 @@ test('the primary rules action uses contrasting neutral ink in a 48 px capsule',
   expect(await page.locator('#rules-text').evaluate(el=>{const s=getComputedStyle(el);return [s.fontSize,s.color];})).toEqual(['17px','rgb(17, 19, 22)']);
 });
 
-test('the sheet dims the page with a plain backdrop, and no control inside it has a backdrop filter of its own',async({page})=>{
+test('the sheet leaves the page undimmed behind a plain backdrop, and no control inside it has a backdrop filter of its own',async({page})=>{
   await page.setViewportSize(PHONE);
   await page.goto('/');
   await openMenuFromIsland(page);
   const menu=page.locator('#menu');
-  // The dim fades in over 220 ms, so its colour is read once it has arrived.
-  await expect.poll(()=>menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.16)');
+  // The clear material keeps the page behind it undimmed: the ::backdrop
+  // transition settles on a transparent colour, not a dark scrim.
+  await expect(menu).toBeVisible();await expect.poll(()=>menu.evaluate(el=>el.getAnimations().length)).toBe(0);
+  expect(await menu.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   expect(await menu.evaluate(el=>getComputedStyle(el,'::backdrop').backdropFilter)).toBe('none');
-  expect(await menu.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').length)).toBe(0);
+  // The only nested filter is the close button's own clear-glass lens (or, in
+  // WebKit's frost mode, the button itself: the
+  // shared control material); no row, field or button has one.
+  const nested=await menu.evaluate(el=>[...el.querySelectorAll('*')].filter(child=>getComputedStyle(child).backdropFilter!=='none').map(child=>({lens:child.matches('.sheet-close-glass,.sheet-close-glass>.ui-glass-lens'),filter:getComputedStyle(child).backdropFilter})));
+  expect(nested.map(n=>n.lens)).toEqual([true]);
+  expect(nested[0].filter).toMatch(/^blur\(1\.5px\) (url\("#ui-glass-\d+"\) )?saturate\(1\.08\)$/);
 });
 
 test('a keyboard focus ring is a 2 px contrasting outline on the sheet\'s buttons, and its search field takes an inner ring',async({page})=>{
@@ -222,11 +230,13 @@ test('a keyboard focus ring is a 2 px contrasting outline on the sheet\'s button
   const search=page.getByRole('searchbox');
   await expect(search).toBeFocused();
   expect(await search.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).boxShadow])).toEqual(['none',expect.stringContaining('rgb(17, 19, 22) 0px 0px 0px 1px inset')]);
-  // Shift+Tab returns to the close button, which keeps the white outline.
+  // Shift+Tab returns to the close button. As a clear glass control it takes the
+  // shared white outline with a 6px black ring, contrasting over any backdrop.
   await page.keyboard.press('Shift+Tab');
   const close=page.getByRole('button',{name:'Close menu',exact:true});
   await expect(close).toBeFocused();
-  expect(await close.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineColor,getComputedStyle(el).outlineOffset])).toEqual(['solid','2px','rgb(17, 19, 22)','2px']);
+  expect(await close.evaluate(el=>[getComputedStyle(el).outlineStyle,getComputedStyle(el).outlineWidth,getComputedStyle(el).outlineColor,getComputedStyle(el).outlineOffset])).toEqual(['solid','2px','rgb(255, 255, 255)','2px']);
+  expect(await close.evaluate(el=>getComputedStyle(el).boxShadow)).toBe('rgb(0, 0, 0) 0px 0px 0px 6px');
 });
 
 test('Reduce Transparency gives an opaque sheet with no blur (Chromium only)',async({page,browserName})=>{
@@ -357,12 +367,13 @@ test('the accounts and leaderboard dialogs use glass fields and hairlines',async
   await page.getByRole('button',{name:'Log in / Sign up',exact:true}).click();
   const username=page.locator('#account-username');
   await expect(username).toBeVisible();
-  expect(await username.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.055)');
+  // Fields use the shared --sheet-control fill.
+  expect(await username.evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.13)');
   await page.getByRole('button',{name:'Play as guest',exact:true}).click();
   await openMenuFromIsland(page);
   await page.getByRole('button',{name:'Leaderboards',exact:true}).click();
   await expect(page.locator('#leaderboard-dialog')).toBeVisible();
-  expect(await page.locator('#leaderboard-game').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.055)');
+  expect(await page.locator('#leaderboard-game').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0.13)');
   expect(await page.locator('#leaderboard-dialog thead th').first().evaluate(el=>getComputedStyle(el).borderBottomColor)).toBe('rgba(0, 0, 0, 0.12)');
 });
 
@@ -374,8 +385,8 @@ test('Minesweeper options use arcade glass while Study privacy keeps its own loo
   await gameAction(page,'Game options');
   const settings=page.locator('.ms-settings');
   await expect(settings).toBeVisible();
-  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(255, 255, 255, 0.06)','32px']);
-  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0.16)');
+  expect(await settings.evaluate(el=>[getComputedStyle(el).backgroundColor,getComputedStyle(el).borderTopLeftRadius])).toEqual(['rgba(8, 12, 18, 0.2)','32px']);
+  expect(await settings.evaluate(el=>getComputedStyle(el,'::backdrop').backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   await page.keyboard.press('Escape');
   await expect(settings).toBeHidden();
 

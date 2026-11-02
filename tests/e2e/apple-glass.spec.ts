@@ -1,5 +1,5 @@
 import {test,expect} from '../fixtures';
-import {glyphContrast,settleGlassInk} from '../glass-contrast';
+import {HIDDEN_INK,glyphContrast,settleGlassInk} from '../glass-contrast';
 
 const forcedFallback=process.env.ARCADE_GLASS_FALLBACK==='1';
 test.beforeEach(async({page})=>{
@@ -25,7 +25,7 @@ for(const scroll of [150,170])test(`pressed home lenses keep 4.5:1 glyph contras
     });
     const visible=(await nav.screenshot({animations:'disabled'})).toString('base64');
     // Adaptive ink colours each .glass-ink glyph itself, so hide the glyphs, not just the tab.
-    const hidden=await page.addStyleTag({content:'.app-navigation .ui-tab,.app-navigation .ui-tab *{color:transparent!important}'});
+    const hidden=await page.addStyleTag({content:`.app-navigation .ui-tab,.app-navigation .ui-tab *{color:${HIDDEN_INK}!important}`});
     const shot=(await nav.screenshot({animations:'disabled'})).toString('base64');
     await hidden.evaluate(e=>e.parentNode?.removeChild(e));
     const maskStyle=await page.addStyleTag({content:'body{background:#000!important}#content{visibility:hidden!important}.app-navigation .arcade-glass{background:transparent!important;backdrop-filter:none!important}.app-navigation .arcade-glass::before,.app-navigation .arcade-glass::after,.app-navigation .ui-glass-lens,.app-navigation .ui-glass-glow{visibility:hidden!important}.app-navigation .ui-tab,.app-navigation .ui-tab *{color:#fff!important;background:none!important;text-shadow:none!important;filter:none!important}'});
@@ -282,7 +282,7 @@ for(const id of ['fruit-merge','solitaire','block-fill','fivefold','globle','sna
         return {x:r.x-d.x,y:r.y-d.y,w:r.width,h:r.height,color:getComputedStyle(e).color,icon:e instanceof SVGElement};
       }).filter(r=>r.w>0&&r.h>0);
     });
-    const hideInk=await page.addStyleTag({content:'.game-hud small,.game-hud strong,.game-compact-hud{color:transparent!important}.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}'});
+    const hideInk=await page.addStyleTag({content:`.game-hud small,.game-hud strong,.game-compact-hud{color:${HIDDEN_INK}!important}.game-dock>.ui-tab>svg,.game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){visibility:hidden!important}`});
     const shot=(await dock.screenshot({animations:'disabled'})).toString('base64');
     // Keep the real text shadow in the background shot. An opaque ink mask
     // restricts contrast to actual glyph cores, rather than spaces in their boxes.
