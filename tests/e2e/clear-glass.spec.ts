@@ -1,5 +1,5 @@
 import {test,expect} from '../fixtures';
-import {glyphContrast,glyphContrastSamples,glyphFillMask} from '../glass-contrast';
+import {HIDDEN_INK,glyphContrast,glyphContrastSamples,glyphFillMask,settleGlassInk} from '../glass-contrast';
 import type {Page} from '@playwright/test';
 
 test.use({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
@@ -10,49 +10,55 @@ async function moviesReady(page:Page,route:string){
   await expect(page.locator('.movies-page-head h1')).toHaveText(route.endsWith('/tv')?'TV Shows':route.endsWith('/list')?'My list':'Movies');
 }
 
-async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)',mixed=false){
+type GlyphRatio={ratio:number;icon:boolean};
+// Text glyphs are measured at their cores over the rendered backdrop, keeping
+// any adaptive halo (glass-ink.ts) in the shot: WCAG 1.4.3, 4.5:1. Icons are
+// non-text: WCAG 1.4.11 compares them with their adjacent colours, i.e. the
+// visible exterior outline with the icon retained, at 3:1. Neither may use a
+// stroke or a duplicated vector outline.
+async function navigationContrast(page:Page,scope:string,glyphs='.ui-tab>svg,.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)',mixed=false):Promise<GlyphRatio[]>{
   const nav=page.locator(scope);
   await nav.screenshot({animations:'disabled',scale:'device'});
-  // Resolve the original foreground cores on the real filter/raster path,
-  // then remove only that foreground to sample the backdrop underneath it.
+  await settleGlassInk(nav);
+  // Resolve the original foreground cores on the real filter/raster path.
   const mask=await glyphFillMask(page,nav,`${scope} :is(${glyphs})`,true);
   const boxes=await nav.evaluate((n,glyphs)=>{
     const b=n.getBoundingClientRect();
     return [...n.querySelectorAll(glyphs)].filter(e=>getComputedStyle(e).clip==='auto').map(e=>{
-      const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color};
+      const r=e.getBoundingClientRect();return {x:(r.x-b.x),y:(r.y-b.y),w:r.width,h:r.height,color:getComputedStyle(e).color,icon:e instanceof SVGElement};
     }).filter(r=>r.w>0&&r.h>0);
   },glyphs);
-  const hide=await page.addStyleTag({content:`${scope} :is(${glyphs}){color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}`});
+  const bounds=(await nav.boundingBox())!;
+  const visible=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
+  const hide=await page.addStyleTag({content:`${scope} :is(${glyphs}){color:${HIDDEN_INK}!important;-webkit-text-fill-color:${HIDDEN_INK}!important}`});
   const shot=(await nav.screenshot({animations:'disabled',scale:'device'})).toString('base64');
   await hide.evaluate(e=>e.parentNode?.removeChild(e));
-  const samples=await glyphContrastSamples(page,shot,mask,boxes,(await nav.boundingBox())!);
-  const ratios=samples.map(sample=>sample.worst);
+  const samples=await glyphContrastSamples(page,shot,mask,boxes,bounds);
+  const edges=await glyphContrast(page,visible,mask,boxes,bounds,true);
+  const ratios=boxes.map((box,i)=>({ratio:box.icon?edges[i]:samples[i].worst,icon:box.icon}));
+  const decoration=await nav.locator(glyphs).evaluateAll(es=>es.map(e=>getComputedStyle(e).webkitTextStrokeWidth||'0px'));
+  expect(decoration.every(stroke=>stroke==='0px')).toBe(true);
+  await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
   if(mixed){
-    // A single plain foreground cannot reach 4.5 at every core when the same
-    // glyph crosses light and dark stripes. Measure the best of the two inks
-    // instead of reinstating an outline or pretending that limitation passes.
-    const bounds=(await nav.boundingBox())!;
+    // A single plain ink cannot reach 4.5 where one glyph crosses light and
+    // dark stripes; the adaptive halo is what keeps it legible there.
     const dark=await glyphContrast(page,shot,mask,boxes.map(box=>({...box,color:'rgb(11, 16, 21)'})),bounds);
-    const light=await glyphContrast(page,shot,mask,boxes.map(box=>({...box,color:'rgb(255, 255, 255)'})),bounds);
-    const best=ratios.map((_,i)=>Math.max(dark[i],light[i]));
-    await test.info().attach('mixed-content-plain-ink-limit',{body:JSON.stringify({ratios,best}),contentType:'application/json'});
-    expect(best.some(ratio=>ratio<4.5),'The fixture must actually cross both luminance ranges within a glyph').toBe(true);
-    for(let i=0;i<ratios.length;i++){
-      if(best[i]>=4.5)expect(ratios[i],`resolvable glyph ${i}: selected ${ratios[i]}, available ${best[i]}`).toBeGreaterThanOrEqual(4.5);
-      else expect(ratios[i],`crossed glyph ${i} must still contain visible foreground cores`).toBeGreaterThan(1);
-      expect(['rgb(11, 16, 21)','rgb(255, 255, 255)']).toContain(boxes[i].color);
-    }
-    await expect(nav.locator('.glass-vector-halo')).toHaveCount(0);
-    const decoration=await nav.locator(glyphs).evaluateAll(es=>es.map(e=>{const s=getComputedStyle(e);return {stroke:s.webkitTextStrokeWidth,shadow:s.textShadow,filter:s.filter};}));
-    for(const glyph of decoration)expect(glyph).toEqual({stroke:'0px',shadow:'none',filter:'none'});
+    await test.info().attach('mixed-content',{body:JSON.stringify({ratios,dark}),contentType:'application/json'});
+    for(const box of boxes)expect(['rgb(11, 16, 21)','rgb(255, 255, 255)']).toContain(box.color);
   }
   if(samples.some(sample=>sample.diagonalCount))await test.info().attach('diagonal-contour-samples',{body:JSON.stringify({boxes,samples}),contentType:'application/json'});
-  if(!mixed&&ratios.some(ratio=>ratio<4.5)){
+  if(!legible(ratios)){
     await test.info().attach('sampled-backdrop',{body:Buffer.from(shot,'base64'),contentType:'image/png'});
     await test.info().attach('foreground-mask',{body:Buffer.from(mask,'base64'),contentType:'image/png'});
-    await test.info().attach('glyph-boxes',{body:JSON.stringify({boxes,ratios,glyphs:await nav.locator(glyphs).evaluateAll(es=>es.map(e=>({html:e.outerHTML,stroke:getComputedStyle(e).webkitTextStroke,shadow:getComputedStyle(e).textShadow})))}),contentType:'application/json'});
+    await test.info().attach('glyph-boxes',{body:JSON.stringify({boxes,ratios}),contentType:'application/json'});
   }
   return ratios;
+}
+const legible=(ratios:GlyphRatio[])=>ratios.every(({ratio,icon})=>ratio>=(icon?3:4.5));
+function expectLegible(ratios:GlyphRatio[],label:string){
+  const describe=ratios.map(({ratio,icon})=>`${icon?'icon ':''}${ratio.toFixed(2)}`).join(', ');
+  expect(ratios.filter(r=>!r.icon).every(r=>r.ratio>=4.5),`${label} text (4.5:1): ${describe}`).toBe(true);
+  expect(ratios.filter(r=>r.icon).every(r=>r.ratio>=3),`${label} icons (3:1): ${describe}`).toBe(true);
 }
 
 test('plain label cores retain 4.5:1 beside real mixed game art',async({page})=>{
@@ -63,7 +69,7 @@ test('plain label cores retain 4.5:1 beside real mixed game art',async({page})=>
   const ratios=await navigationContrast(page,'.app-navigation','.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow)');
   await test.info().attach('plain-label-core-contrast',{body:JSON.stringify(ratios),contentType:'application/json'});
   expect(ratios).toHaveLength(5);
-  expect(Math.min(...ratios),JSON.stringify(ratios)).toBeGreaterThanOrEqual(4.5);
+  expectLegible(ratios,'labels');
 });
 
 async function headerContrast(page:Page,width:number){
@@ -73,10 +79,10 @@ async function headerContrast(page:Page,width:number){
   await page.setViewportSize({width,height:844});await page.goto('/#/movies/browse/movie');
   await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
   const header=page.locator('.movies-top');await expect(header).toBeVisible();
-  await expect(header.locator('.glass-label').first()).toBeVisible();
+  await expect(header.locator('.ui-label').first()).toBeVisible();
   const veils=await header.locator('.floating-glass-group').evaluateAll(es=>es.map(e=>getComputedStyle(e,'::before').backgroundColor));
-  expect(veils).toEqual(Array(3).fill('rgba(184, 184, 184, 0.02)'));
-  await page.addStyleTag({content:'.movies-view{background:transparent!important}.movies-view>*{visibility:hidden}'});
+  expect(veils).toEqual(Array(3).fill('rgba(8, 12, 18, 0.2)'));
+  await page.addStyleTag({content:'.movies-view{background:transparent!important}.movies-view>*:not(.movies-top){visibility:hidden}'});
   for(const background of ['#fff','#000','#909090','repeating-linear-gradient(90deg,#faf0d0 0 18px,#102030 18px 36px)','canvas']){
     const style=await page.addStyleTag({content:`html,body{background:${background==='canvas'?'#000':background}!important}`});
     if(background==='canvas')await page.evaluate(()=>{
@@ -85,9 +91,10 @@ async function headerContrast(page:Page,width:number){
     });
     await page.evaluate(()=>dispatchEvent(new Event('resize')));await page.waitForTimeout(100);
     const mixed=background.startsWith('repeating-');
-    const ratios=await navigationContrast(page,'.movies-top','svg:not(.ui-brand-tile svg),.glass-label,.ui-label,kbd,.ui-wordmark>span',mixed);
-    expect(ratios.length).toBeGreaterThan(3);
-    if(!mixed)expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    const ratios=await navigationContrast(page,'.movies-top','svg:not(.ui-brand-tile svg),.ui-label,kbd,.ui-wordmark>span',mixed);
+    // Phones show the wordmark and two icon buttons; wider headers add labels and the shortcut key.
+    expect(ratios.length).toBe(width<640?3:7);
+    expectLegible(ratios,background);
     await style.evaluate(e=>(e as Element).remove());
     await page.evaluate(()=>document.getElementById('unknown-header-art')?.remove());
   }
@@ -111,7 +118,7 @@ for(const fallback of [false,true])test(`adaptive ink stays legible while real g
     await page.waitForTimeout(180);
     const ratios=await navigationContrast(page,'.app-navigation');
     expect(ratios.length).toBeGreaterThanOrEqual(11);
-    expect(Math.min(...ratios),`scroll ${y}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    expectLegible(ratios,`scroll ${y}`);
   }
 });
 
@@ -127,7 +134,7 @@ test('clear glass keyboard focus has both light and dark edges',async({page})=>{
   expect(focus.shadow).toContain('rgb(0, 0, 0)');
 });
 
-test('plain captions adapt to dark canvas media without a glyph halo',async({page})=>{
+test('captions adapt to dark canvas media without a stroke or vector halo',async({page})=>{
   await page.goto('/#/movies/browse/movie');
   await moviesReady(page,'movies/browse/movie');
   await page.addStyleTag({content:'#content,.movies-top,.movies-main,.movies-footer{visibility:hidden}.movies-view{background:transparent!important}.section-navigation{visibility:visible!important}'});
@@ -139,7 +146,7 @@ test('plain captions adapt to dark canvas media without a glyph halo',async({pag
   });
   await expect(page.locator('.movies-mobile-nav .ui-tab').nth(2).locator('span')).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
   const ratios=await navigationContrast(page,'.movies-navigation');
-  expect(Math.min(...ratios),ratios.map(r=>r.toFixed(2)).join(', ')).toBeGreaterThanOrEqual(4.5);
+  expectLegible(ratios,'dark canvas');
 });
 
 test('an unavailable displacement map keeps the transparent CSS fallback',async({page,browserName})=>{
@@ -171,15 +178,15 @@ test('Games and Movies sheet closes use the same clear material and release it o
     const close=dialog.locator('.dialog-head .icon-button');
     await expect(close).toHaveAttribute('data-glass',browserName==='chromium'?'backdrop':'frost');
     const veil=await close.evaluate(e=>getComputedStyle(e,'::before').backgroundColor);
-    expect(veil).toBe('rgba(184, 184, 184, 0.02)');
+    expect(veil).toBe('rgba(8, 12, 18, 0.2)');
     await expect(close).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
     await close.screenshot({animations:'disabled'});
+    await settleGlassInk(dialog);
     const boxes=await close.evaluate(e=>{const b=e.getBoundingClientRect(),svg=e.querySelector('svg')!,r=svg.getBoundingClientRect();return [{x:r.x-b.x,y:r.y-b.y,w:r.width,h:r.height,color:getComputedStyle(svg).color}];});
     const mask=await glyphFillMask(page,close,'.sheet-close-glass>svg',true);
-    const hide=await page.addStyleTag({content:'.sheet-close-glass>svg{color:transparent!important}'});
+    // The close glyph is an icon: WCAG 1.4.11's 3:1 against its adjacent colours.
     const shot=(await close.screenshot({animations:'disabled'})).toString('base64');
-    await hide.evaluate(e=>e.parentNode?.removeChild(e));
-    expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!))).toBeGreaterThanOrEqual(4.5);
+    expect(Math.min(...await glyphContrast(page,shot,mask,boxes,(await close.boundingBox())!,true))).toBeGreaterThanOrEqual(3);
     await close.click();await expect(dialog).not.toBeVisible();
     await expect(close).not.toHaveAttribute('data-glass');
     await expect(close.locator('.glass-ink')).toHaveCount(0);
@@ -193,10 +200,8 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
   await page.goto(`/${fallback?'?glass=fallback':''}#/collection`);
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
-  const veil=await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor.match(/[\d.]+/g)!.map(Number));
-  expect(veil[3]??1).toBeGreaterThanOrEqual(0);
-  expect(veil[3]??1).toBeLessThanOrEqual(.02);
-  expect(Math.max(...veil.slice(0,3))-Math.min(...veil.slice(0,3))).toBeLessThanOrEqual(1);
+  // The approved clear fill: a dark, near-neutral 20% veil, never a white one.
+  expect(await bar.evaluate(e=>getComputedStyle(e,'::before').backgroundColor)).toBe('rgba(8, 12, 18, 0.2)');
   await page.addStyleTag({content:'#content{visibility:hidden}body{background:linear-gradient(90deg,#102030 50%,#f5ddb0 50%)!important}.app-tabbar .ui-tab{visibility:hidden}.app-tabbar::after{display:none}'});
   const png=(await bar.screenshot({animations:'disabled',scale:'css'})).toString('base64');
   const patches=await page.evaluate(async png=>{
@@ -235,7 +240,10 @@ for(const fallback of [false,true])test(`clear glass retains the backdrop instea
 });
 
 test('navigation, companion and game controls share the same clear optical recipe',async({page})=>{
-  let reference:unknown;
+  // One fill, rim and pill everywhere. Navigation (with its companion Menu)
+  // softens art with its own 3px frost and tone (section-navigation.css);
+  // every game control uses the --glass-clear-blur recipe.
+  const references:Record<string,Record<string,string>>={};
   for(const route of ['collection','study','movies/browse/movie','movies/browse/tv','movies/list','game/fruit-merge','game/snake','game/blockcraft']){
     await page.goto(`/#/${route==='study'?'collection':route}`);
     if(route.startsWith('movies'))await moviesReady(page,route);
@@ -251,12 +259,17 @@ test('navigation, companion and game controls share the same clear optical recip
       return {veil:v.backgroundColor,blur:s.getPropertyValue('--glass-frost').trim(),tone:s.getPropertyValue('--glass-tone').trim(),shadow:v.boxShadow,pill:s.getPropertyValue('--glass-pill').trim()};
     }));
     expect(materials.length).toBeGreaterThanOrEqual(2);
-    reference??=materials[0];
-    for(const material of materials)expect(material,route).toEqual(reference);
+    const group=route.startsWith('game/')?'game':'navigation';
+    references[group]??=materials[0];
+    for(const material of materials)expect(material,route).toEqual(references[group]);
+    expect(materials[0].veil,route).toBe('rgba(8, 12, 18, 0.2)');
   }
+  expect({...references.navigation,blur:'',tone:''}).toEqual({...references.game,blur:'',tone:''});
+  expect([references.navigation.blur,references.navigation.tone]).toEqual(['blur(3px)','saturate(1.05) brightness(.9) contrast(.85)']);
+  expect([references.game.blur,references.game.tone]).toEqual(['blur(1.5px)','saturate(1.08)']);
 });
 
-for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: plain ink keeps 4.5:1 on uniform content and measures its mixed-content limit (${fallback?'fallback':'native'})`,async({page})=>{
+for(const fallback of [false,true])for(const route of ['collection','movies/browse/movie'])test(`${route}: adaptive ink keeps 4.5:1 on uniform and mixed content (${fallback?'fallback':'native'})`,async({page})=>{
   test.setTimeout(90000);
   await page.goto(`/${fallback?'?glass=fallback':''}#/${route}`);
   if(route.startsWith('movies'))await moviesReady(page,route);
@@ -269,7 +282,7 @@ for(const fallback of [false,true])for(const route of ['collection','movies/brow
     const mixed=background.startsWith('repeating-');
     const ratios=await navigationContrast(page,scope,undefined,mixed);
     expect(ratios.length).toBeGreaterThanOrEqual(11);
-    if(!mixed)expect(Math.min(...ratios),`${background}: ${ratios.map(r=>r.toFixed(2))}`).toBeGreaterThanOrEqual(4.5);
+    expectLegible(ratios,background);
     await backdrop.evaluate(e=>(e as Element).remove());
   }
 });

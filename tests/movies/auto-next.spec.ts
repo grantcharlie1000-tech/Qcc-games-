@@ -197,22 +197,28 @@ test('Up next hides a frost island until Cancel brings it back',async({page})=>{
  await expect(island(page)).not.toHaveAttribute('data-hidden');await expect.poll(()=>islandShown(page)).toBe(1);
 });
 // Up next takes a minimized island and its capsule away together. Cancel brings the island back, expanded, since the travel count restarts.
-test('Up next hides a minimized island and its capsule, and Cancel brings the island back expanded',async({page})=>{
+// Up next takes a minimized island and its capsule away together. The shared navigation keeps the reader's scroll state while a sheet covers it,
+// so Cancel brings the island back as it was: minimized, with its capsule showing.
+test('Up next hides a minimized island and its capsule, and Cancel brings them back as they were',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  // The single-provider player is shorter; keep this scroll outside the bottom zone that expands the island.
  await page.locator('.movies-view').evaluate(e=>e.scrollTo(0,180));
  await expect(island(page)).toHaveAttribute('data-minimized','true');await expect.poll(()=>capsuleShown(page)).toBe(1);
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect.poll(()=>islandShown(page)).toBe(0);
  await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();
- await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).not.toHaveAttribute('data-minimized');
- await expect.poll(()=>islandShown(page)).toBe(1);await expect.poll(()=>capsuleShown(page)).toBe(0);
+ await expect(island(page)).not.toHaveAttribute('data-hidden');await expect(island(page)).toHaveAttribute('data-minimized','true');
+ await expect.poll(()=>capsuleShown(page)).toBe(1);
 });
-test('keyboard focus in the island keeps it visible while Up next shows',async({page})=>{
+// The navigation is a lower layer than Up next: with keyboard focus on a tab, the dialog takes focus (Play now), the navigation is hidden and
+// inert, and Cancel gives focus back to the tab that had it.
+test('keyboard focus in the island moves to Up next, which hides the island; Cancel returns focus to the tab',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
- const tab=island(page).locator('[data-kind="movie"]');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
- await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');await expect(tab).toBeFocused();
- // A hide would fade over about 380 ms, so the island is read once no transition on it or its layers is running.
- await expect.poll(()=>island(page).evaluate(e=>e.getAnimations({subtree:true}).length)).toBe(0);expect(await islandShown(page)).toBe(1);
+ const tab=island(page).locator('[data-kind="movie"]'),nav=page.locator('.movies-navigation');await tab.focus();await page.keyboard.press('Shift+Tab');await page.keyboard.press('Tab');await expect(tab).toBeFocused();
+ await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
+ await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();await expect(nav).toHaveAttribute('data-sheet-hidden','');await expect(nav).toHaveJSProperty('inert',true);
+ await page.clock.runFor(450);await expect.poll(()=>islandShown(page)).toBe(0);
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();await page.clock.runFor(50);
+ await expect(nav).not.toHaveAttribute('data-sheet-hidden');await expect(tab).toBeFocused();
 });
 test('pointer focus in the island does not keep it visible, so Up next moves focus to Play now',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
@@ -224,12 +230,14 @@ test('pointer focus in the island does not keep it visible, so Up next moves foc
  await page.clock.runFor(450);await expect.poll(()=>islandShown(page)).toBe(0);
  await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();
 });
-test('keyboard focus in the separate Menu keeps the navigation visible during Up next',async({page})=>{
+test('keyboard focus in the separate Menu moves to Up next, which hides the navigation; Cancel returns focus to Menu',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);
  await island(page).locator('[data-action="study"]').focus();await page.keyboard.press('Tab');
- const menu=page.locator('.movies-menu');await expect(menu).toBeFocused();
+ const menu=page.locator('.movies-menu'),nav=page.locator('.movies-navigation');await expect(menu).toBeFocused();
  await ended(page);await expect(island(page)).toHaveAttribute('data-hidden','true');
- await expect(menu).toBeFocused();await expect(menu).toHaveCSS('opacity','1');expect(await islandShown(page)).toBe(1);
+ await expect(page.getByRole('button',{name:'Play now',exact:true})).toBeFocused();await expect(nav).toHaveAttribute('data-sheet-hidden','');await expect(nav).toHaveJSProperty('inert',true);
+ await page.getByRole('button',{name:'Cancel',exact:true}).click();await expect(overlay(page)).toBeHidden();await page.clock.runFor(50);
+ await expect(nav).not.toHaveAttribute('data-sheet-hidden');await expect(menu).toBeFocused();
 });
 test('scrolling the page while Up next shows keeps the island hidden',async({page})=>{
  await page.setViewportSize({width:1440,height:900});await open(page);await ended(page);
