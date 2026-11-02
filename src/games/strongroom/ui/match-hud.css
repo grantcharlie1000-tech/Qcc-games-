@@ -70,3 +70,5 @@
 .sr-match-hud .reticle[data-eliminated=true] .hit-strokes{transform:scale(1.2);transform-origin:center}
 .sr-match-hud .sr-spotted-marker{position:absolute;width:13px;height:13px;border:2px solid var(--enemy);background:#09121be6;transform:translate(-50%,-50%) rotate(45deg);box-shadow:0 0 0 1px #09121b;pointer-events:none}
 @media(pointer:coarse){.sr-match-hud .sr-round-result{padding:14px 24px}.sr-match-hud .sr-round-result strong{font-size:27px}}
+
+.sr-match-hud .sr-cracker-marker{position:absolute;display:flex;align-items:center;gap:5px;transform:translate(-50%,-50%);padding:4px 6px;background:#09121be6;color:var(--white);font:600 11px/1 Barlow,sans-serif;letter-spacing:.08em;white-space:nowrap;border-bottom:1px solid var(--ally);pointer-events:none}.sr-match-hud .sr-cracker-marker .icon{width:16px;height:16px;color:var(--ally)}.sr-match-hud .sr-cracker-marker.is-edge>span{display:none}@media(pointer:coarse){.sr-match-hud .sr-cracker-marker{font-size:9px;padding:3px 5px}}

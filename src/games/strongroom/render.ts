@@ -19,6 +19,7 @@ import {MaterialSystem} from './engine/gfx/materials/index.js';
 import {disposeObject} from './engine/resources.js';
 import {gunFor} from './loadouts';
 import {TacticalProps} from './tactical-props';
+import {hudMarkers} from './hud-markers';
 import {QUALITY,type Tier} from './quality';
 import {type Entity,type Point,type SimWorld,type Team} from './sim';
 
@@ -88,7 +89,7 @@ export class View{
   if(a.held)a.held.visible=e.hp>0&&distance<28;
  }
  draw(entities:Entity[],local:number|null,phase:string,dt:number,home:boolean,reduced:boolean,state?:import('./sim').Simulation){
-  this.time+=dt;this.world.update(dt);this.materials.update?.(dt);
+  this.time+=dt;this.world.update(reduced?0:dt);this.materials.update?.(dt);
   this.sun.position.set(30,58,-22);this.sun.intensity=Math.max(3.4,this.sun.intensity);this.sun.color.set(0xfff1dc);
   if(this.wallView){this.wallView.reducedMotion=reduced;this.wallView.sync();this.wallView.update(dt);}
   const viewer=entities.find(e=>e.seat===local),follow=viewer&&viewer.hp<=0?entities.find(e=>e.team===viewer.team&&e.hp>0)??viewer:viewer,viewSeat=follow?.seat??local;
@@ -115,13 +116,6 @@ export class View{
  }
  endBenchmark(){this.benchTarget?.dispose();this.benchTarget=null;this.clearAvatars();}
  clearAvatars(){for(const a of this.avatars.values())this.operators.release(a);this.avatars.clear();}
- spotMarkers(entities:Entity[],local:number|null,time:number){
-  const viewer=entities.find(e=>e.seat===local);if(!viewer)return [];
-  const p=new THREE.Vector3(),forward=new THREE.Vector3();this.camera.getWorldDirection(forward);
-  return entities.filter(e=>e.team!==viewer.team&&e.hp>0&&e.spottedUntil>time).flatMap(e=>{
-   p.set(e.x,e.y+2.15,e.z);if(p.clone().sub(this.camera.position).dot(forward)<=0)return [];
-   p.project(this.camera);return Math.abs(p.x)<.92&&Math.abs(p.y)<.8?[{seat:e.seat,x:(p.x+1)*50,y:(1-p.y)*50}]:[];
-  });
- }
+ spotMarkers(entities:Entity[],local:number|null,time:number,state?:import('./sim').Simulation){return hudMarkers(this.camera,entities,local,time,state);}
  dispose(){if(this.disposed)return;this.disposed=true;this.endBenchmark();this.wallView?.dispose();this.props.dispose();this.post?.dispose();this.weapon.dispose();this.world.sky?.dispose();this.composer?.passes.forEach(p=>p.dispose());this.composer?.dispose();const seen=disposeObject(this.scene);disposeObject(this.world.solids,seen);disposeObject(this.world.environment,seen);this.operators.dispose();this.materials.dispose();if(this.scene.background instanceof THREE.Texture)this.scene.background.dispose();this.renderer.dispose();this.renderer.forceContextLoss();this.renderer.domElement.remove();}
 }
