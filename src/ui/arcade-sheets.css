@@ -119,6 +119,9 @@ body.in-game .mp-card input::placeholder{color:var(--sheet-ink);opacity:1}
 body.in-game .mp-card :is(.mp-offline,.mp-online){padding:14px;background:var(--sheet-group);border-radius:var(--sheet-group-radius);grid-template-columns:1fr}
 body.in-game .mp-card .mp-help{font-size:14px}
 body.in-game .mp-card .mp-close{top:16px;right:16px;color:var(--sheet-ink);background:var(--sheet-control);border-radius:50%}
+/* The native multiplayer card is not adaptive-inked. Its close icon keeps the
+   sheet's opposite-tone halo as a thin outline so it holds 3:1 over any art. */
+body.in-game .mp-card .mp-close svg{filter:drop-shadow(1px 0 0 var(--sheet-halo)) drop-shadow(-1px 0 0 var(--sheet-halo)) drop-shadow(0 1px 0 var(--sheet-halo)) drop-shadow(0 -1px 0 var(--sheet-halo))}
 body.in-game .mp-card .game-button{font:600 15px var(--font-sans);box-shadow:none;border-radius:999px}
 body.in-game .mp-card .game-button:not(.secondary){background:var(--sheet-ink);color:var(--sheet-action-ink)}
 body.in-game .mp-card .game-button.secondary{background:var(--sheet-control);color:var(--sheet-ink)}

@@ -55,12 +55,14 @@ body.movies-active.study-active{overflow:auto}
    so its ink is light; the old light-tone pill fill no longer exists. */
 .movies-view .movies-top .floating-glass-group{--glass-ink:#fff;pointer-events:auto;color:var(--glass-ink);padding:4px;min-height:44px}
 .movies-view .movies-top .movies-brand{padding:4px 10px 4px 6px;flex-shrink:1}
-.movies-view .movies-top .ui-wordmark span{color:inherit}
+/* Glyphs that glass-ink.ts inks keep their adaptive colour (shared with icons). */
+.movies-view .movies-top .ui-wordmark span:not(.glass-ink){color:inherit}
 .movies-view .movies-top .ui-nav{gap:0}
 .movies-view .movies-top .ui-header-actions{gap:0}
 .movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn){min-height:36px;color:inherit;background:none;border:0;border-radius:20px}
 .movies-view .movies-top .floating-glass-group .ui-pill[aria-pressed=true]{background:rgb(255 255 255 / .14);color:inherit;box-shadow:none}
-.movies-view .movies-top .ui-kbd{background:rgb(255 255 255 / .06);color:inherit;border-color:rgb(255 255 255 / .22)}
+.movies-view .movies-top .ui-kbd{background:rgb(255 255 255 / .06);border-color:rgb(255 255 255 / .22)}
+.movies-view .movies-top .ui-kbd:not(.glass-ink){color:inherit}
 @media(hover:hover) and (pointer:fine){.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn):hover{background:rgb(255 255 255 / .1);color:inherit}}
 .movies-view>.movies-page-head{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view>.movies-page-title{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
@@ -317,6 +319,9 @@ body.movies-active.study-active{overflow:auto}
    pill's label is white: WebKit renders a bright frame lighter through the glass, and a grey label fell below 4.5:1 over a white frame there. */
 .movies-view .movies-drawer .ui-pill{min-height:44px;margin:0;padding:8px 14px;border:1px solid var(--line-strong);border-radius:999px;background:rgb(255 255 255 / .1);color:#fff;font-size:13px;font-weight:500;line-height:1.2;white-space:normal;max-width:100%;cursor:pointer}
 .movies-view .movies-drawer .ui-pill[aria-pressed="true"]{border-color:#fff;background:#fff;color:#000;font-weight:700}
+/* The pressed pill is an opaque white chip: its label keeps the chip's own ink,
+   not the adaptive glass ink sampled from the page behind the sheet. */
+.movies-view .movies-drawer .ui-pill[aria-pressed="true"] .glass-ink{color:#000;text-shadow:none}
 @media (hover:hover) and (pointer:fine){.movies-view .movies-drawer .ui-pill:not([aria-pressed="true"]):hover{background:rgb(255 255 255 / .18);color:#fff}}
 .movies-view .movies-drawer-list{display:grid;gap:4px}
 .movies-view .movies-drawer-row{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:12px;min-height:56px;padding:6px;border-radius:12px;color:var(--c-200)}
