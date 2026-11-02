@@ -157,10 +157,13 @@ export class WallStore{
   }
   this.commit(changed,events);return removed;
  }
- reinforce(panelId:number):boolean{
+ canReinforce(panelId:number):boolean{
   const panel=this.byId.get(panelId);if(!panel||panel.material!=='drywall'||panel.flags&PANEL_FLAG.REINFORCED)return false;
   let present=0;for(let i=panel.firstCell;i<panel.firstCell+panel.cellCount;i++)if(this.states[i]!==3)present++;
-  if(present*5<panel.cellCount*4)return false;
+  return present*5>=panel.cellCount*4;
+ }
+ reinforce(panelId:number):boolean{
+  if(!this.canReinforce(panelId))return false;const panel=this.byId.get(panelId)!;
   const changed:number[]=[];
   for(let i=panel.firstCell;i<panel.firstCell+panel.cellCount;i++){
    this.hp[i]=120;if(this.states[i]!==0){this.states[i]=0;changed.push(i);}

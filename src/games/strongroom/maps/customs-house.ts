@@ -63,8 +63,8 @@ box('A','table',-11,-5.3,1.6,.8,.9);
 box('Lobby','reception',-1.1,-6.5,3,.8,1.1);box('Lobby','bench-0',-1.2,-9.5,2,.5,.5);box('Lobby','bench-1',4.3,-7.8,2,.5,.5);
 for(const [n,[x,z]] of [[8,-9],[11,-9],[8,-4.3],[11,-4.3]].entries())box('Office',`desk-${n}`,x,z,1.4,.7,.75);
 box('Office','cabinet',13,-8.4,1,.5,1.8,'metal');box('Corridor','vending',5,-.5,.9,.8,1.9,'metal');
-for(const [n,x] of [-12.5,-8.5,-7].entries())box('Server',`rack-${n}`,x,6,.6,3,2,'metalDark');
-box('B','counter',-1,4.6,4,.7,1.1);box('B','trolley-0',-4.5,7,.8,.6,.9,'metal');box('B','trolley-1',2.5,7,.8,.6,.9,'metal');
+for(const [n,x] of [-12.5,-11,-8.5].entries())box('Server',`rack-${n}`,x,6,.6,3,2,'metalDark');
+box('B','counter',-1,4.6,4,.7,1.1);box('B','trolley-0',-4.5,7.8,.8,.6,.9,'metal');box('B','trolley-1',2.5,7,.8,.6,.9,'metal');
 const props:({kind:string;x:number;y?:number;z:number;w?:number;h?:number;d?:number;size?:number;mat?:string;room?:string})[]=[
  {kind:'crate',x:6,z:3,size:1.2,room:'Loading'}, {kind:'crate',x:10.7,z:3.4,size:1.4,room:'Loading'},
  {kind:'crate',x:6.5,z:5.5,size:1.3,room:'Loading'}, {kind:'crate',x:12,z:9.3,size:1.2,room:'Loading'},

@@ -88,3 +88,9 @@ test('all tactics and spawn references survive the real vendor geometry and navi
  expect(()=>{buildDefinitionGeometry(world,m);buildDefinitionNavigation(world,m);}).not.toThrow();
  expect(world.spawns.ct).toHaveLength(6);expect(world.spawns.t).toHaveLength(6);expect(world.bombSites).toHaveLength(2);expect(world.botTactics.attackRoutes.A[0].points).toHaveLength(4);
 });
+
+test('every authored opening keeps a walkable endpoint on both sides of its wall',()=>{
+ const m=CUSTOMS_HOUSE,missing=m.openings.flatMap(o=>[`${o.id}-minus`,`${o.id}-plus`]).filter(id=>!m.navigation.nodes[id]);
+ expect(missing).toEqual([]);
+ for(const edge of m.navigation.vaultEdges){expect(m.navigation.nodes[edge.a]).toBeDefined();expect(m.navigation.nodes[edge.b]).toBeDefined();}
+});
