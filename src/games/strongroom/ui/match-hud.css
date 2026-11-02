@@ -57,6 +57,8 @@
 .sr-match-hud .touch-controls .gadget{display:grid}
 .sr-match-hud .objective{color:var(--white);text-align:left;box-shadow:none;border-radius:0;pointer-events:auto;font:inherit}
 .sr-match-hud .objective:disabled{opacity:1;cursor:default;pointer-events:none}
+/* Interactive readouts must receive touches above the full-screen look plane. */
+.sr-match-hud .objective,.sr-match-hud .weapon{z-index:1}
 .sr-match-hud[data-phase=pick] :is(.vitals,.weapon,.objective,.reticle){display:none}
 @media(pointer:fine){.sr-match-hud .objective{pointer-events:none}}
 .sr-match-hud .weapon{color:var(--white);text-align:left;font:inherit;box-shadow:none;border-radius:0}
