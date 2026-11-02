@@ -27,8 +27,8 @@ test('the games home is back in its original style',async({page})=>{
  const grid=page.locator('.game-grid');
  expect(await grid.evaluate(element=>element.firstElementChild?.classList.contains('game-card')??false)).toBe(true);
  await expect(page.locator('.movies-launch')).toHaveCount(0);
- await expect(grid.locator('.game-card')).toHaveCount(21);
- await expect(grid.locator('.game-card:has(h2):has(.title-line)')).toHaveCount(21);
+ await expect(grid.locator('.game-card')).toHaveCount(22);
+ await expect(grid.locator('.game-card:has(h2):has(.title-line)')).toHaveCount(22);
  expect(await page.locator('.game-card h2').first().evaluate(element=>getComputedStyle(element).fontFamily)).toMatch(/^"?Arcade/);
  expect(await page.locator('html').evaluate(element=>getComputedStyle(element).backgroundColor)).toBe('rgb(25, 29, 28)');
  // The island comes first in the page order, so the first Tab reaches its Games tab. Keep tabbing through the island until the first game card has focus.
@@ -117,7 +117,7 @@ test('Favourites only in the menu shows a notice, and Show all games clears it',
  await expect(page.locator('.empty-library')).toContainText('Your favourites');
  await expect(page.locator('.library-filter-text')).toHaveText('Showing your favourites');
  await page.getByRole('button',{name:'Show all games',exact:true}).click();
- await expect(page.locator('.game-card')).toHaveCount(21);
+ await expect(page.locator('.game-card')).toHaveCount(22);
  await expect(page.locator('.library-filter')).toHaveCount(0);
  await expect(page.locator('#favourites-only')).not.toBeChecked();
  await expect(page.locator('.game-card').first()).toBeFocused();
@@ -450,7 +450,7 @@ test('the Movies loading state keeps a way back to games',async({page})=>{
  const loadingBox=await back.boundingBox();
  expect(Math.abs(loadingBox!.x+loadingBox!.width/2-page.viewportSize()!.width/2)).toBeLessThan(2);
  await back.click();
- await expect(page.locator('.game-card')).toHaveCount(21);
+ await expect(page.locator('.game-card')).toHaveCount(22);
  release();
 });
 

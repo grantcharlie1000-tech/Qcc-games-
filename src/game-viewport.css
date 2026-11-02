@@ -89,3 +89,4 @@ body.in-game .game-view[data-game-id=slipline] #game-stage{container-type:size}
 html.play-locked,html.play-locked body{touch-action:manipulation;-webkit-text-size-adjust:100%}
 html.play-locked body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 html.play-locked input,html.play-locked textarea,html.play-locked select,html.play-locked [contenteditable]{-webkit-user-select:text;user-select:text;touch-action:manipulation}
+body.in-game .game-view[data-game-id=claimline] #game-stage{height:100%;min-height:0;touch-action:none;overscroll-behavior:none}

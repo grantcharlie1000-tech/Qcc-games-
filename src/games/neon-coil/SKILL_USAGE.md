@@ -10,3 +10,5 @@
 - Applied the connected Library skill's supported materialization instructions. Its required transfer helper resource returned `skill package is not available`; the parent-provided inspected textual reference was used without a download workaround.
 
 No third-party runtime assets, copied reference screenshots, new packages, paid APIs or secrets were used. Subsequent draft PR publication automatically deployed a Netlify preview; that side effect and the resulting hold on further writes are recorded under R3.
+
+Gameplay remake (2 November 2026): used `using-superpowers` with the delegated brief as the approved design, `test-driven-development` and `systematic-debugging` (baseline comparison for failing browser specs, and profiling a simulation slowdown back to the bot planner), `game-development` (fixed-step simulation, shared input actions, mobile thumb controls), `animate` (reduced-motion-aware stick return; colour-only immunity fade), `verification-before-completion` and `requesting-code-review`.

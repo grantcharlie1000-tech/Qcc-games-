@@ -1,16 +1,481 @@
 {
-  "recordedAt": "2026-10-19T19:09:41.883Z",
+  "recordedAt": "2026-11-02T09:50:13.089Z",
   "browser": "Chromium",
-  "browserVersion": "154.0.8037.57",
+  "browserVersion": "156.0.8078.4",
   "physicalHardware": false,
   "softwareWebGL": true,
   "rafSamplesPerGame": 45,
-  "gameCount": 12,
+  "gameCount": 22,
   "results": [
     {
       "deployment": "root",
-      "studyArticlesOffline": 20,
-      "studySwitchRequests": []
+      "studyArticlesOffline": 80,
+      "studyImagesOffline": [
+        {
+          "path": "study/fictional-ads/19-wayfarer-works.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/23-prism-frames.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/27-tin-rocket.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/34-acorn-games.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/contributors/ari-rowan.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/photos/reading-writing.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/fictional-ads/21-bluebird-tea.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/31-morning-tide.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/41-raincheck-reads.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/38-harbour-blanket.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/42-brightside-pins.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/49-skyward-strings.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/03-tideglass.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/07-northstar-paper.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/05-orbit-arcade.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/06-daybreak-bikes.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/15-mirth-puzzles.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/18-mooncrumb.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/22-sprout-club.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/29-meadow-threads.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/24-sunday-canvas.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/28-softlanding.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/32-clover-cameras.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/30-oddly-useful.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/40-velvet-fig.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/50-good-company.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/01-moss-morrow.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/10-sundial-socks.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/44-wild-current.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/48-driftwood-studio.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/02-paper-finch.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/09-fernline.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/contributors/mina-vale.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/fictional-ads/36-open-window.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/46-sunroom-seeds.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/14-fieldnote-bags.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/20-wildflower-press.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/33-puddle-jump.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/37-fold-flow.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/39-happy-trails.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/43-mallow-house.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/47-tempo-totes.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/45-pocket-planet.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/16-kindred-kites.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/25-coastline-boards.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/13-afterglow-lamps.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/17-hushwood.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/contributors/leo-finch.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/contributors/nell-moss.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/photos/film-making.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/fictional-ads/11-little-harbour.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/08-pebble-audio.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/12-ramble-maps.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/35-copperleaf.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/04-cloudberry-studio.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/26-lumen-desk.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/photos/forces-energy.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/seedlings-ecology.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/field-measurement.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/river-catchment.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/produce-market.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/community-wellbeing.webp",
+          "width": 1280,
+          "height": 853
+        }
+      ],
+      "studySwitchRequests": [
+        "http://127.0.0.1:4275/study/contributors/ari-rowan.webp",
+        "http://127.0.0.1:4275/study/photos/reading-writing.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/21-bluebird-tea.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/31-morning-tide.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/41-raincheck-reads.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/19-wayfarer-works.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/23-prism-frames.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/27-tin-rocket.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/34-acorn-games.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/38-harbour-blanket.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/42-brightside-pins.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/49-skyward-strings.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/03-tideglass.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/05-orbit-arcade.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/06-daybreak-bikes.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/07-northstar-paper.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/15-mirth-puzzles.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/18-mooncrumb.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/22-sprout-club.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/29-meadow-threads.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/30-oddly-useful.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/40-velvet-fig.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/24-sunday-canvas.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/28-softlanding.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/32-clover-cameras.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/50-good-company.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/01-moss-morrow.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/10-sundial-socks.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/44-wild-current.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/48-driftwood-studio.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/02-paper-finch.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/09-fernline.webp",
+        "http://127.0.0.1:4275/study/contributors/ari-rowan.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/21-bluebird-tea.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/41-raincheck-reads.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/19-wayfarer-works.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/23-prism-frames.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/27-tin-rocket.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/34-acorn-games.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/38-harbour-blanket.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/42-brightside-pins.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/49-skyward-strings.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/03-tideglass.webp",
+        "http://127.0.0.1:4275/study/contributors/mina-vale.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/36-open-window.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/46-sunroom-seeds.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/06-daybreak-bikes.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/07-northstar-paper.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/14-fieldnote-bags.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/18-mooncrumb.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/20-wildflower-press.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/22-sprout-club.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/33-puddle-jump.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/37-fold-flow.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/45-pocket-planet.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/05-orbit-arcade.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/39-happy-trails.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/43-mallow-house.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/47-tempo-totes.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/15-mirth-puzzles.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/16-kindred-kites.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/25-coastline-boards.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/13-afterglow-lamps.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/17-hushwood.webp",
+        "http://127.0.0.1:4275/study/contributors/leo-finch.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/29-meadow-threads.webp",
+        "http://127.0.0.1:4275/study/contributors/nell-moss.webp",
+        "http://127.0.0.1:4275/study/photos/film-making.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/11-little-harbour.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/45-pocket-planet.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/46-sunroom-seeds.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/47-tempo-totes.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/05-orbit-arcade.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/08-pebble-audio.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/12-ramble-maps.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/19-wayfarer-works.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/20-wildflower-press.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/30-oddly-useful.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/14-fieldnote-bags.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/18-mooncrumb.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/22-sprout-club.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/40-velvet-fig.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/41-raincheck-reads.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/50-good-company.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/34-acorn-games.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/38-harbour-blanket.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/42-brightside-pins.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/49-skyward-strings.webp",
+        "http://127.0.0.1:4275/study/contributors/ari-rowan.webp",
+        "http://127.0.0.1:4275/study/photos/reading-writing.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/06-daybreak-bikes.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/15-mirth-puzzles.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/03-tideglass.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/07-northstar-paper.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/29-meadow-threads.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/01-moss-morrow.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/10-sundial-socks.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/44-wild-current.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/48-driftwood-studio.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/02-paper-finch.webp",
+        "http://127.0.0.1:4275/study/contributors/mina-vale.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/33-puddle-jump.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/35-copperleaf.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/36-open-window.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/37-fold-flow.webp",
+        "http://127.0.0.1:4275/study/contributors/leo-finch.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/04-cloudberry-studio.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/23-prism-frames.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/27-tin-rocket.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/25-coastline-boards.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/26-lumen-desk.webp",
+        "http://127.0.0.1:4275/study/photos/forces-energy.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/16-kindred-kites.webp",
+        "http://127.0.0.1:4275/study/photos/seedlings-ecology.webp",
+        "http://127.0.0.1:4275/study/photos/field-measurement.webp",
+        "http://127.0.0.1:4275/study/photos/river-catchment.webp",
+        "http://127.0.0.1:4275/study/contributors/mina-vale.webp",
+        "http://127.0.0.1:4275/study/photos/produce-market.webp",
+        "http://127.0.0.1:4275/study/fictional-ads/47-tempo-totes.webp",
+        "http://127.0.0.1:4275/study/photos/community-wellbeing.webp"
+      ]
+    },
+    {
+      "game": "claimline",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 12.700000017881393,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 166.70000000000073
+    },
+    {
+      "game": "neon-coil",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 36.29999998211861,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 33.29999999999927
     },
     {
       "game": "fruit-merge",
@@ -21,12 +486,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 20.300000000279397,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 30.099999994039536,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 33.29999999999927,
-      "rafP95Ms": 83.39999999999964
+      "rafMedianMs": 50,
+      "rafP95Ms": 116.69999999999709
     },
     {
       "game": "water-sort",
@@ -37,12 +502,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 16.399999999906868,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 22.19999998807907,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 16.700000000000728
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 33.299999999995634
     },
     {
       "game": "color-blocks",
@@ -53,12 +518,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 16.5,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 22.700000017881393,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.799999999999272
+      "rafP95Ms": 50.099999999998545
     },
     {
       "game": "tower",
@@ -69,12 +534,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 12.299999999813735,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 12.399999976158142,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.799999999999272
+      "rafMedianMs": 16.700000000004366,
+      "rafP95Ms": 33.400000000001455
     },
     {
       "game": "snake",
@@ -85,12 +550,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 8,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 19.599999994039536,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.799999999999272
+      "rafMedianMs": 16.700000000004366,
+      "rafP95Ms": 149.89999999999418
     },
     {
       "game": "minesweeper",
@@ -101,12 +566,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 20.5,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 12.300000011920929,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 66.59999999999854
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 33.30000000000291
     },
     {
       "game": "solitaire",
@@ -117,12 +582,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 26.899999999906868,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 23,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.799999999995634
+      "rafP95Ms": 16.80000000000291
     },
     {
       "game": "block-fill",
@@ -133,12 +598,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 13.700000000186265,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 15.300000011920929,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 49.89999999999418
+      "rafP95Ms": 66.69999999999709
     },
     {
       "game": "color-connect",
@@ -149,12 +614,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 15.699999999720603,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 14.699999988079071,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 166.6999999999971
+      "rafP95Ms": 100
     },
     {
       "game": "ball-run",
@@ -165,12 +630,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 9,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 11.900000005960464,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 66.70000000000437,
-      "rafP95Ms": 116.69999999999709
+      "rafMedianMs": 66.69999999999709,
+      "rafP95Ms": 150
     },
     {
       "game": "pool",
@@ -181,12 +646,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 15.200000000186265,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 16.799999982118607,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.80000000000291
+      "rafP95Ms": 49.90000000000873
     },
     {
       "game": "animal-stack",
@@ -197,29 +662,589 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
+      "studySwitchRequests": 2,
+      "synchronousHandlerMs": 8.399999976158142,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 133.1999999999971
+    },
+    {
+      "game": "flappy-bird",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 29.399999976158142,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 50.10000000000582
+    },
+    {
+      "game": "globle",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 18.799999982118607,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 150.09999999999127
+    },
+    {
+      "game": "blockcraft",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 22.799999982118607,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 66.69999999999709
+    },
+    {
+      "game": "maze-muncher",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 8.800000000279397,
+      "synchronousHandlerMs": 26.900000005960464,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.79999999998836
+    },
+    {
+      "game": "corn-clicker",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 18.200000017881393,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.80000000000291
     },
     {
+      "game": "slipline",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 10.700000017881393,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.80000000000291
+    },
+    {
+      "game": "quadfall",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 10.100000023841858,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 66.69999999999709
+    },
+    {
+      "game": "fivefold",
+      "deployment": "root",
+      "path": "/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 27,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.699999999982538,
+      "rafP95Ms": 16.79999999998836
+    },
+    {
       "deployment": "root",
       "cacheNames": [
-        "pocket-arcade:/:d1b885f03c1f:shell",
-        "pocket-arcade:/:d1b885f03c1f:pack"
+        "pocket-arcade-v2:/:49991b6dd4a2:shell",
+        "pocket-arcade-v2:/:49991b6dd4a2:pack"
       ],
       "externalRequests": [],
+      "movieArtworkRequests": [],
+      "movieArtworkFailures": [],
       "pageErrors": [],
       "failedAssets": [],
-      "initialResourceCount": 16,
+      "initialResourceCount": 27,
       "heavyChunksLazy": true
     },
     {
       "deployment": "subpath",
-      "studyArticlesOffline": 20,
-      "studySwitchRequests": []
+      "studyArticlesOffline": 80,
+      "studyImagesOffline": [
+        {
+          "path": "study/fictional-ads/19-wayfarer-works.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/23-prism-frames.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/27-tin-rocket.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/34-acorn-games.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/contributors/ari-rowan.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/photos/reading-writing.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/fictional-ads/21-bluebird-tea.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/31-morning-tide.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/41-raincheck-reads.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/38-harbour-blanket.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/42-brightside-pins.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/49-skyward-strings.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/03-tideglass.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/07-northstar-paper.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/05-orbit-arcade.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/06-daybreak-bikes.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/15-mirth-puzzles.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/18-mooncrumb.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/22-sprout-club.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/29-meadow-threads.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/24-sunday-canvas.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/28-softlanding.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/32-clover-cameras.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/30-oddly-useful.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/40-velvet-fig.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/50-good-company.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/01-moss-morrow.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/10-sundial-socks.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/44-wild-current.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/48-driftwood-studio.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/02-paper-finch.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/09-fernline.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/contributors/mina-vale.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/fictional-ads/36-open-window.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/46-sunroom-seeds.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/14-fieldnote-bags.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/20-wildflower-press.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/33-puddle-jump.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/37-fold-flow.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/39-happy-trails.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/43-mallow-house.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/47-tempo-totes.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/45-pocket-planet.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/16-kindred-kites.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/25-coastline-boards.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/13-afterglow-lamps.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/17-hushwood.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/contributors/leo-finch.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/contributors/nell-moss.webp",
+          "width": 512,
+          "height": 512
+        },
+        {
+          "path": "study/photos/film-making.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/fictional-ads/11-little-harbour.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/fictional-ads/08-pebble-audio.webp",
+          "width": 800,
+          "height": 1000
+        },
+        {
+          "path": "study/fictional-ads/12-ramble-maps.webp",
+          "width": 800,
+          "height": 800
+        },
+        {
+          "path": "study/fictional-ads/35-copperleaf.webp",
+          "width": 800,
+          "height": 533
+        },
+        {
+          "path": "study/fictional-ads/04-cloudberry-studio.webp",
+          "width": 640,
+          "height": 1280
+        },
+        {
+          "path": "study/fictional-ads/26-lumen-desk.webp",
+          "width": 1200,
+          "height": 400
+        },
+        {
+          "path": "study/photos/forces-energy.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/seedlings-ecology.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/field-measurement.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/river-catchment.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/produce-market.webp",
+          "width": 1280,
+          "height": 853
+        },
+        {
+          "path": "study/photos/community-wellbeing.webp",
+          "width": 1280,
+          "height": 853
+        }
+      ],
+      "studySwitchRequests": [
+        "http://127.0.0.1:4276/Qcc-games-/study/contributors/ari-rowan.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/reading-writing.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/21-bluebird-tea.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/31-morning-tide.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/41-raincheck-reads.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/19-wayfarer-works.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/23-prism-frames.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/27-tin-rocket.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/34-acorn-games.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/38-harbour-blanket.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/42-brightside-pins.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/49-skyward-strings.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/03-tideglass.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/05-orbit-arcade.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/06-daybreak-bikes.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/07-northstar-paper.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/15-mirth-puzzles.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/18-mooncrumb.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/22-sprout-club.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/29-meadow-threads.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/24-sunday-canvas.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/28-softlanding.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/32-clover-cameras.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/30-oddly-useful.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/40-velvet-fig.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/50-good-company.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/01-moss-morrow.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/10-sundial-socks.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/44-wild-current.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/48-driftwood-studio.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/02-paper-finch.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/09-fernline.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/contributors/mina-vale.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/36-open-window.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/46-sunroom-seeds.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/14-fieldnote-bags.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/20-wildflower-press.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/21-bluebird-tea.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/22-sprout-club.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/30-oddly-useful.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/33-puddle-jump.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/37-fold-flow.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/44-wild-current.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/45-pocket-planet.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/05-orbit-arcade.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/39-happy-trails.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/43-mallow-house.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/47-tempo-totes.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/15-mirth-puzzles.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/16-kindred-kites.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/25-coastline-boards.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/09-fernline.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/13-afterglow-lamps.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/17-hushwood.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/24-sunday-canvas.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/contributors/leo-finch.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/31-morning-tide.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/41-raincheck-reads.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/01-moss-morrow.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/29-meadow-threads.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/48-driftwood-studio.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/02-paper-finch.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/28-softlanding.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/32-clover-cameras.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/40-velvet-fig.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/50-good-company.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/contributors/nell-moss.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/film-making.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/11-little-harbour.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/08-pebble-audio.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/12-ramble-maps.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/19-wayfarer-works.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/contributors/ari-rowan.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/10-sundial-socks.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/35-copperleaf.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/04-cloudberry-studio.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/23-prism-frames.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/27-tin-rocket.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/fictional-ads/26-lumen-desk.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/forces-energy.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/seedlings-ecology.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/field-measurement.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/river-catchment.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/produce-market.webp",
+        "http://127.0.0.1:4276/Qcc-games-/study/photos/community-wellbeing.webp"
+      ]
+    },
+    {
+      "game": "claimline",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 7,
+      "synchronousHandlerMs": 17.80000001192093,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999891,
+      "rafP95Ms": 50
+    },
+    {
+      "game": "neon-coil",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 59.80000001192093,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 33.400000000001455
     },
     {
       "game": "fruit-merge",
@@ -230,12 +1255,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 11.900000000372529,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 17.200000017881393,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.700000000000273,
-      "rafP95Ms": 33.40000000000009
+      "rafMedianMs": 49.899999999999636,
+      "rafP95Ms": 83.40000000000146
     },
     {
       "game": "water-sort",
@@ -246,11 +1271,11 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 17.399999999906868,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 28.899999976158142,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.699999999999818,
+      "rafMedianMs": 16.700000000000728,
       "rafP95Ms": 16.799999999999272
     },
     {
@@ -262,12 +1287,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 17.699999999720603,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 17.900000005960464,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.699999999999818,
-      "rafP95Ms": 100
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 33.19999999999709
     },
     {
       "game": "tower",
@@ -279,11 +1304,11 @@
       "restart": true,
       "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 15,
+      "synchronousHandlerMs": 11.200000017881393,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 16.700000000000728
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 33.39999999999782
     },
     {
       "game": "snake",
@@ -294,12 +1319,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 7.699999999720603,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 8.199999988079071,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.69999999999891,
-      "rafP95Ms": 16.799999999999272
+      "rafMedianMs": 16.700000000000728,
+      "rafP95Ms": 83.29999999999927
     },
     {
       "game": "minesweeper",
@@ -310,12 +1335,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 19,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 9.5,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 50.100000000000364
+      "rafP95Ms": 16.80000000000291
     },
     {
       "game": "solitaire",
@@ -327,10 +1352,10 @@
       "restart": true,
       "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 29.399999999906868,
+      "synchronousHandlerMs": 21.799999982118607,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.69999999999891,
+      "rafMedianMs": 16.69999999999709,
       "rafP95Ms": 16.799999999999272
     },
     {
@@ -342,12 +1367,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 8.899999999906868,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 9.599999994039536,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 50
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 66.60000000000582
     },
     {
       "game": "color-connect",
@@ -358,12 +1383,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 17,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 16.5,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 16.799999999999272
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 116.69999999999709
     },
     {
       "game": "ball-run",
@@ -375,11 +1400,11 @@
       "restart": true,
       "studyRestoration": true,
       "studySwitchRequests": 0,
-      "synchronousHandlerMs": 24.799999999813735,
+      "synchronousHandlerMs": 5.899999976158142,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 66.69999999999709,
-      "rafP95Ms": 83.40000000000146
+      "rafMedianMs": 100,
+      "rafP95Ms": 183.29999999999563
     },
     {
       "game": "pool",
@@ -390,12 +1415,12 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 14.100000000093132,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 18.099999994039536,
       "articleVisible": true,
       "arcadeInert": true,
       "rafMedianMs": 16.69999999999709,
-      "rafP95Ms": 16.700000000000728
+      "rafP95Ms": 33.30000000000291
     },
     {
       "game": "animal-stack",
@@ -406,23 +1431,153 @@
       "save": true,
       "restart": true,
       "studyRestoration": true,
-      "studySwitchRequests": 0,
-      "synchronousHandlerMs": 7.7000000001862645,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 8.099999994039536,
       "articleVisible": true,
       "arcadeInert": true,
-      "rafMedianMs": 16.700000000000728,
-      "rafP95Ms": 66.70000000000073
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 50
+    },
+    {
+      "game": "flappy-bird",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 8.900000005960464,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.700000000004366,
+      "rafP95Ms": 49.900000000001455
+    },
+    {
+      "game": "globle",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 14,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.700000000004366,
+      "rafP95Ms": 100
+    },
+    {
+      "game": "blockcraft",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 15.400000005960464,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 66.59999999999854
+    },
+    {
+      "game": "maze-muncher",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 32.19999998807907,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.700000000004366
+    },
+    {
+      "game": "corn-clicker",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 3,
+      "synchronousHandlerMs": 11,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.80000000000291
+    },
+    {
+      "game": "slipline",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 18.400000005960464,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.700000000004366
+    },
+    {
+      "game": "quadfall",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 0,
+      "synchronousHandlerMs": 13.300000011920929,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 33.400000000001455
+    },
+    {
+      "game": "fivefold",
+      "deployment": "subpath",
+      "path": "/Qcc-games-/",
+      "offline": true,
+      "action": true,
+      "save": true,
+      "restart": true,
+      "studyRestoration": true,
+      "studySwitchRequests": 4,
+      "synchronousHandlerMs": 35.5,
+      "articleVisible": true,
+      "arcadeInert": true,
+      "rafMedianMs": 16.69999999999709,
+      "rafP95Ms": 16.79999999998836
     },
     {
       "deployment": "subpath",
       "cacheNames": [
-        "pocket-arcade:/Qcc-games-/:d1b885f03c1f:shell",
-        "pocket-arcade:/Qcc-games-/:d1b885f03c1f:pack"
+        "pocket-arcade-v2:/Qcc-games-/:49991b6dd4a2:shell",
+        "pocket-arcade-v2:/Qcc-games-/:49991b6dd4a2:pack"
       ],
       "externalRequests": [],
+      "movieArtworkRequests": [],
+      "movieArtworkFailures": [],
       "pageErrors": [],
       "failedAssets": [],
-      "initialResourceCount": 16,
+      "initialResourceCount": 27,
       "heavyChunksLazy": true
     }
   ]

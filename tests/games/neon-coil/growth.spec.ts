@@ -1,6 +1,6 @@
 import {pauseGame} from '../../game-menu';
 import { test, expect } from '../../fixtures';
-import { createArena } from '../../../src/games/neon-coil/model';
+import { createArena, FOOD_TARGET } from '../../../src/games/neon-coil/model';
 
 test('a legacy 600-mass save eats, grows, renders and persists beyond 9,000',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -8,7 +8,9 @@ test('a legacy 600-mass save eats, grows, renders and persists beyond 9,000',asy
  p.body=Array.from({length:388},(_,i)=>({x:-250*Math.sin(i*5/250),y:250-250*Math.cos(i*5/250)}));
  p.pathLength=p.body.reduce((sum,b,i)=>sum+(i?Math.hypot(b.x-p.body[i-1].x,b.y-p.body[i-1].y):0),0);
  saved.snakes.slice(1).forEach(b=>{b.alive=false;b.body=[];b.pathLength=0;b.diedAt=0});
- saved.food=Array.from({length:30},(_,i)=>({id:i+1,x:3,y:0,value:300,color:0,trail:false}));saved.nextFood=31;
+ saved.food=Array.from({length:30},(_,i)=>({id:i+1,x:3,y:0,value:300,color:0,trail:false}));
+ // Hold the arena at its food target with distant pellets, so no seeded refill lands inside the hoover radius.
+ for(let i=30;i<FOOD_TARGET;i++)saved.food.push({id:i+1,x:-1200+(i%40)*5,y:-900,value:1,color:0,trail:false});saved.nextFood=FOOD_TARGET+1;
  await page.addInitScript(s=>{if(!localStorage.getItem('qcc-growth-seeded')){localStorage.setItem('pocket-arcade:v1:save:neon-coil',JSON.stringify({version:1,data:s}));localStorage.setItem('qcc-growth-seeded','1');}},saved);
  // Only runFor advances the arena; host/CI delays must not change the sampled mass.
  await page.clock.install({time:new Date('2026-10-20T10:00:00Z')});

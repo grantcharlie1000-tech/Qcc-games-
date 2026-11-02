@@ -39,8 +39,15 @@ test('pointer movement without click, earned growth, Space boost, P pause, keybo
   await expect(game(page)).toHaveAttribute('data-boosting', 'false');
   await page.keyboard.down('ArrowRight'); await page.clock.runFor(700); await page.keyboard.up('ArrowRight');
   expect(Math.abs(Number(await game(page).getAttribute('data-angle')))).toBeLessThan(.1);
-  await page.keyboard.press('ArrowDown'); await page.clock.runFor(450);
-  expect(Number(await game(page).getAttribute('data-angle'))).toBeGreaterThan(1);
+  // Keys are hold-to-turn: holding Down turns smoothly toward it; release keeps the heading.
+  // Read the simulated heading, not data-angle: the HUD mirror refreshes every 100 ms, so right
+  // after keyup it can still show a heading from several held (still turning) ticks earlier.
+  const simulated = async () => { await page.evaluate(() => window.dispatchEvent(new Event('pagehide'))); return (await saved(page)).snakes[0] as { angle: number; target: number }; };
+  await page.keyboard.down('ArrowDown'); await page.clock.runFor(450); await page.keyboard.up('ArrowDown');
+  const heading = (await simulated()).angle; expect(heading).toBeGreaterThan(1);
+  await page.clock.runFor(300);
+  const after = await simulated(); expect(after.angle).toBe(heading); expect(after.target).toBe(heading);
+  await expect(game(page)).toHaveAttribute('data-angle', heading.toFixed(4));
   await gameAction(page,'Restart game');
   await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
   await expect(game(page)).toHaveAttribute('data-tick', '0'); expect(errors).toEqual([]);
@@ -65,7 +72,8 @@ test('rim death creates real food, exposes death reason, and replay has one loop
 test('real hover steering into a local bot body causes death and collectible pellets', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 }); await open(page); await page.locator('.nc-start').click();
   await page.mouse.move(640, 180); // Pure pointer motion, without clicking or setting game state.
-  for (let n = 0; n < 24; n++) await page.clock.fastForward(250);
+  // 8 s: the 3 s spawn immunity and the 20% larger arena put the first body (Echo) ~7 s straight up.
+  for (let n = 0; n < 32; n++) await page.clock.fastForward(250);
   await expect(game(page)).toHaveAttribute('data-phase', 'dead');
   await expect(page.locator('#game-status')).toContainText('body');
   expect(Number(await game(page).getAttribute('data-trails'))).toBeGreaterThan(5);
@@ -328,4 +336,85 @@ for(const mass of [100000,999999,Number.MAX_SAFE_INTEGER])test(`320px ranking an
  expect(await page.locator('.game-hud strong,.game-hud small,.nc-ranking strong,.nc-ranking h2').evaluateAll(nodes=>nodes.every(e=>{const r=document.createRange();r.selectNodeContents(e);const t=r.getBoundingClientRect(),b=e.getBoundingClientRect();return e.scrollWidth<=e.clientWidth+1&&t.left>=b.left-1&&t.right<=b.right+1;}))).toBe(true);
  const panel=(await page.locator('.nc-ranking').boundingBox())!,menu=(await page.locator('#game-menu').boundingBox())!;expect(panel.x).toBeGreaterThanOrEqual(menu.x+menu.width+8);
  await pauseGame(page);expect((await saved(page)).snakes[0].mass).toBe(Number(full));
+
+// Thumb joystick (touch phones): visible, comfortable, analogue, independent of Boost, and clear of the HUD.
+async function phone(browser: import('@playwright/test').Browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await seedStudyTopic(context); const page = await context.newPage(); await open(page); await page.locator('.nc-start').tap();
+  const cdp = await context.newCDPSession(page);
+  const send = (type: 'touchStart' | 'touchMove' | 'touchEnd' | 'touchCancel', touchPoints: { x: number; y: number; id: number }[]) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+  return { context, page, send };
+}
+const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+test('touch phone shows a thumb joystick that steers in any direction and holds heading on release', async ({ browser, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Native multi-touch requires Chromium CDP.');
+  const { context, page, send } = await phone(browser);
+  try {
+    const stick = page.locator('.nc-stick'); await expect(stick).toBeVisible(); await expect(game(page)).toHaveAttribute('data-stick', 'idle');
+    const rest = (await stick.boundingBox())!;
+    expect(rest.width).toBeGreaterThanOrEqual(120); expect(rest.height).toBe(rest.width);
+    expect(rest.x).toBeGreaterThanOrEqual(0); expect(rest.y + rest.height).toBeLessThanOrEqual(844); expect(rest.x + rest.width / 2).toBeLessThan(195);
+    for (const selector of ['.nc-ranking', '.nc-boost', '.game-dock > a.game-glass', '.game-hud', '#game-menu'])
+      expect(overlaps(rest, (await page.locator(selector).boundingBox())!), `stick overlaps ${selector}`).toBe(false);
+    // Spawn protection is live and visible to the HUD.
+    expect(Number(await game(page).getAttribute('data-immune'))).toBeGreaterThan(0);
+    // Touching down in the corner (below and left of the resting ring) never steers by itself.
+    await send('touchStart', [{ x: 40, y: 820, id: 9 }]); await page.clock.runFor(300);
+    expect(Math.abs(Number(await game(page).getAttribute('data-angle')))).toBeLessThan(.01);
+    await send('touchEnd', [{ x: 40, y: 820, id: 9 }]); await page.clock.runFor(150);
+    // The thumb lands in the lower-left zone; the ring appears under it and the knob clamps to the ring.
+    const thumb = { x: 120, y: 690, id: 1 };
+    await send('touchStart', [thumb]); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-stick', 'active');
+    const ring = (await stick.boundingBox())!; expect(ring.x + ring.width / 2).toBeCloseTo(120, 0); expect(ring.y + ring.height / 2).toBeCloseTo(690, 0);
+    await send('touchMove', [{ ...thumb, x: 120, y: 400 }]);
+    const knob = (await page.locator('.nc-stick-knob').boundingBox())!;
+    expect(Math.hypot(knob.x + knob.width / 2 - 120, knob.y + knob.height / 2 - 690)).toBeLessThanOrEqual(ring.width / 2);
+    await page.clock.runFor(600); expect(Number(await game(page).getAttribute('data-angle'))).toBeCloseTo(-Math.PI / 2, 1);
+    // Analogue: a shallow down-left deflection steers to that exact angle, not an 8-way snap.
+    const target = Math.atan2(31, -17);
+    await send('touchMove', [{ ...thumb, x: 120 - 17, y: 690 + 31 }]); await page.clock.runFor(900);
+    expect(Number(await game(page).getAttribute('data-angle'))).toBeCloseTo(target, 1);
+    await send('touchEnd', [thumb]); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-stick', 'idle');
+    const held = Number(await game(page).getAttribute('data-angle')); await page.clock.runFor(400);
+    expect(Number(await game(page).getAttribute('data-angle'))).toBeCloseTo(held, 2);
+    // A touch outside the zone (upper right) does not grab steering.
+    await send('touchStart', [{ x: 300, y: 300, id: 2 }]); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-stick', 'idle'); await send('touchEnd', [{ x: 300, y: 300, id: 2 }]);
+    expect(await page.evaluate(() => [scrollX, scrollY])).toEqual([0, 0]);
+  } finally { await context.close(); }
+});
+test('Boost works while the joystick is held, either finger first, and Escape still opens Study Mode', async ({ browser, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Native multi-touch requires Chromium CDP.');
+  const { context, page, send } = await phone(browser);
+  try {
+    const b = (await page.locator('.nc-boost').boundingBox())!, boost = { x: b.x + b.width / 2, y: b.y + b.height / 2, id: 1 }, thumb = { x: 100, y: 700, id: 2 };
+    expect(boost.x).toBeGreaterThan(195); // Right thumb.
+    await send('touchStart', [thumb]); await send('touchMove', [{ ...thumb, x: 160 }]);
+    await send('touchStart', [{ ...thumb, x: 160 }, boost]); await page.clock.runFor(300);
+    await expect(game(page)).toHaveAttribute('data-boosting', 'true'); await expect(game(page)).toHaveAttribute('data-stick', 'active');
+    expect(Math.abs(Number(await game(page).getAttribute('data-angle')))).toBeLessThan(.2);
+    await send('touchEnd', [boost]); await page.clock.runFor(150);
+    await expect(game(page)).toHaveAttribute('data-boosting', 'false'); await expect(game(page)).toHaveAttribute('data-stick', 'active');
+    await send('touchCancel', []); await page.clock.runFor(150); await expect(game(page)).toHaveAttribute('data-stick', 'idle');
+    await page.keyboard.press('Escape'); await expect(page.locator('#study-view')).toBeVisible();
+  } finally { await context.close(); }
+});
+test('desktop keeps pointer steering and the original Boost spot, with no joystick', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 }); await open(page); await page.locator('.nc-start').click();
+  await expect(page.locator('.nc-stick')).toBeHidden(); await expect(game(page)).not.toHaveAttribute('data-touch', 'true');
+  const b = (await page.locator('.nc-boost').boundingBox())!; expect(b.x).toBeLessThan(100);
+  await page.mouse.move(640, 600); await page.clock.runFor(600);
+  expect(Number(await game(page).getAttribute('data-angle'))).toBeCloseTo(Math.PI / 2, 1);
+});
+for (const viewport of [{ width: 1024, height: 768 }, { width: 844, height: 390 }]) test(`touch ${viewport.width}x${viewport.height}: thumb stick clears Boost, ranking and the glass dock`, async ({ browser }) => {
+  const context = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
+  await seedStudyTopic(context); const page = await context.newPage();
+  try {
+    await open(page); await page.locator('.nc-start').tap(); await page.clock.runFor(150);
+    const stick = (await page.locator('.nc-stick').boundingBox())!; expect(stick.width).toBeGreaterThanOrEqual(120);
+    expect(stick.y + stick.height).toBeLessThanOrEqual(viewport.height); expect(stick.y).toBeGreaterThanOrEqual(0);
+    for (const selector of ['.nc-ranking', '.nc-you', '.nc-boost', '.game-dock > a.game-glass', '.game-hud', '#game-menu']) {
+      const box = await page.locator(selector).boundingBox(); if (box) expect(overlaps(stick, box), `stick overlaps ${selector}`).toBe(false);
+    }
+    const boost = (await page.locator('.nc-boost').boundingBox())!; expect(boost.x).toBeGreaterThan(viewport.width / 2);
+  } finally { await context.close(); }
 });

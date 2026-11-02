@@ -29,6 +29,7 @@ import {AccountsClient} from './accounts/client';
 import {AccountsView} from './accounts/view';
 import {LeaderboardView} from './leaderboard/view';
 import {SCORED_GAMES,MINESWEEPER_RANKINGS,scoredGame} from './leaderboard/shared';
+import {formatScore} from './leaderboard/format';
 
 const icon=(name:string)=>{
   const paths:Record<string,string>={menu:'<path d="M4 9.5h16M4 14.5h10"/>',back:'<path d="m12 5-7 7 7 7M5 12h14"/>',star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',pause:'<path d="M8 5v14M16 5v14"/>',play:'<path d="m8 4 12 8-12 8z"/>',restart:'<path d="M4 5v6h6M4 11a8 8 0 1 1 1 7"/>',rules:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',fullscreen:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',exitfs:'<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>'};
@@ -70,7 +71,9 @@ let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
 const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
 // Responsive layouts fill the standard stage; scaling their whole UI would shrink labels and controls.
-const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool']);
+const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','pool','claimline']);
+// Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.
+const metricText=(id:GameId,score:number)=>id==='claimline'?formatScore(id,score):String(Math.floor(score));
 
 function syncViewportLock(){
   const playing=!!activeId&&!document.body.classList.contains('study-active');
@@ -277,7 +280,7 @@ async function route(){
     <div class="game-surface" aria-hidden="true"></div>
     <dialog id="game-options" class="ui-glass-sheet game-chrome-menu" aria-labelledby="game-title">
       <form method="dialog" class="dialog-head"><div><p class="game-menu-eyebrow">GAME MENU</p><h1 id="game-title">${info.title}<span class="sr-only"> menu</span></h1></div><button class="icon-button" aria-label="Close game menu">${icon('close')}</button></form>
-      <div class="game-metrics"><span id="game-score"><span class="metric-label">Score</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">Best</span><strong>${store.highScore(id)}</strong></span></div>
+      <div class="game-metrics"><span id="game-score"><span class="metric-label">Score</span><strong>0</strong></span><span id="game-level"></span><span id="game-best"><span class="metric-label">Best</span><strong>${metricText(id,store.highScore(id))}</strong></span></div>
       <div class="game-menu-options"></div>
       <div class="game-menu-actions">
         <button id="pause-game" class="game-menu-action" aria-label="Pause game">${icon('pause')}<span>Pause game</span></button>
@@ -338,11 +341,11 @@ async function route(){
       id,settings:preferences,highScore:store.highScore(id),
       setScore(score){
         if(token!==generation)return;
-        document.querySelector('#game-score strong')!.textContent=String(Math.floor(score));
+        document.querySelector('#game-score strong')!.textContent=metricText(id,score);
         const previous=store.highScore(id),next=id==='minesweeper'?0:store.recordScore(id,score);
         leaderboards.sync.queue(id,Math.floor(next));
         if(next>previous&&!newRecordFlushed){newRecordFlushed=true;flushMilestone();}
-        document.querySelector('#game-best strong')!.textContent=String(Math.floor(next));
+        document.querySelector('#game-best strong')!.textContent=metricText(id,next);
       },
       submitRecord(key,score){
         if(token!==generation||id!=='minesweeper'||!MINESWEEPER_RANKINGS.includes(key as typeof MINESWEEPER_RANKINGS[number])||!Number.isInteger(score)||score<=0)return;
