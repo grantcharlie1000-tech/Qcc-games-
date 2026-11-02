@@ -26,7 +26,9 @@ export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',select
   // Point samples of images, canvases and gradients can miss detail that the
   // light blur still shows under a glyph, so textured backdrops always keep the
   // halo. Over art the ink already suits, the opposite-tone halo is unobtrusive.
-  const legible=!textured&&Math.max(darkContrast,lightContrast)>=4.5;
+  // Flat backdrops keep a small margin (4.75 for 4.5:1) for what this model
+  // omits: navigation's tone curve and faint control fills under a glyph.
+  const legible=!textured&&Math.max(darkContrast,lightContrast)>=4.75;
   if(!legible){
     const unknown=colors.length===2&&colors[0].every(v=>v===0)&&colors[1].every(v=>v===255);
     if(unknown&&preferred)color=preferred==='light'?'#fff':'#0b1015';
@@ -81,6 +83,11 @@ function sampler(){
     const s=style(e);
     return (s.backgroundImage!=='none'||paint(s.backgroundColor).alpha>0||e.matches('img,canvas,video,iframe')||parseFloat(s.borderTopWidth)>0)&&rect(e).width>0;
   });
+  // Under a modal, top-layer hit testing cannot see the page, so elements that
+  // paint their own text are found by rectangle. Built once per update, on demand.
+  const paintsText=(e:Element)=>[...e.childNodes].some(n=>n.nodeType===Node.TEXT_NODE&&!!n.textContent?.trim());
+  let textElements:Element[]|undefined;
+  const texts=()=>textElements??=[...document.querySelectorAll('body *')].filter(e=>!excluded(e)&&paintsText(e)&&visible(e)&&rect(e).width>0);
   const keys=new Map<Element,Array<{node:Element;z:number}>>();
   const key=(element:Element)=>{
     let value=keys.get(element);if(value)return value;
@@ -119,12 +126,18 @@ function sampler(){
       const x=Math.max(0,Math.min(innerWidth-1,r.x+r.width*u)),y=Math.max(0,Math.min(innerHeight-1,r.y+r.height*v));
       const stack=new Set((modal?candidates:document.elementsFromPoint(x,y)).filter(e=>!excluded(e)&&visible(e)&&within(rect(e),x,y)));
       for(const e of candidates)if(within(rect(e),x,y))stack.add(e);
+      // Under a modal, top-layer hit testing cannot see the page's text.
+      if(modal)for(const e of texts())if(within(rect(e),x,y))stack.add(e);
+      // Text, images, media and gradients left visible behind clear glass (not
+      // painted over by an opaque layer) are detail point samples can miss.
+      let textureBehind=false;
       let result:RGB[]=[[0,0,0]];
       const apply=(color:Paint,opacity=1)=>{result=result.map(rgb=>mix(rgb,color.rgb,color.alpha*opacity));};
       for(const element of [...stack].sort(order)){
         const s=style(element),box=rect(element),opacity=Number(s.opacity);
-        apply(paint(s.backgroundColor),opacity);
-        if(s.backgroundImage!=='none'||element.matches('img,canvas,video,iframe'))samples.textured=true;
+        const fill=paint(s.backgroundColor);apply(fill,opacity);
+        if(fill.alpha*opacity>=.99)textureBehind=false;
+        if(opacity>0&&(paintsText(element)||s.backgroundImage!=='none'||element.matches('img,canvas,video,iframe')))textureBehind=true;
         if(s.backgroundImage!=='none'){
           const background=backgroundPaint(s,box,x,y);if(background)apply(background,opacity);else result=UNKNOWN;
         }
@@ -139,6 +152,7 @@ function sampler(){
           [s.borderBottomWidth,s.borderBottomColor,new DOMRect(box.x,box.bottom-parseFloat(s.borderBottomWidth),box.width,parseFloat(s.borderBottomWidth))]
         ] as const)if(parseFloat(width)>0&&within(edge,x,y))apply(paint(color),opacity);
       }
+      if(textureBehind)samples.textured=true;
       if(result.length>1&&result.some(color=>color.some((value,c)=>value!==result[0][c])))return Object.assign([...UNKNOWN],{textured:true});
       samples.push(result[0]);
     }
