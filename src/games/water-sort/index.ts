@@ -7,8 +7,8 @@ import { liquidLayers, pourFrame, rotatePoint, spillAngle } from './geometry';
 import {mountCompactHud,mountDockActions} from '../../ui/game-controls-adapter';
 import './style.css';
 
-const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5-6 5 6 5M3 10h10a6 6 0 0 1 0 12H6"/></svg>';
-const hintIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6m-5 3h4M8 13a6 6 0 1 1 8 0l-1 3H9zM12 1V0M3 5 1 4m20 0-2 1M2 13H0m24 0h-2"/></svg>';
+const undoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 3.5-6 5 6 5M4 8.5h10a6 6 0 0 1 0 12H7"/></svg>';
+const hintIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 19.5h6m-5 3h4M8 14.5a6 6 0 1 1 8 0l-1 3H9zM12 2.5v-1M3.5 6.5l-2-1m21 0-2 1M2.5 14.5H1m22 0h-1.5"/></svg>';
 const module:GameModule={
   id:'water-sort',title:'Water Sort',cover:'game-art/water-sort/cover.svg',
   rules:'Sort the liquids so each colour fills its own tube. A colour split between two tubes is not sorted yet. Tap a source tube, then an empty tube or one with the same top colour. The entire matching top run pours, stopping when the destination is full. Each tube holds four bands. Use Tab or arrow keys to focus and Enter or Space to select. Colour-blind mode adds letters to the bands. Undo reverses a completed pour; Hint shows a winning next pour or how many pours to undo if stuck. The compact difficulty and Level controls select any of 77 verified-soluble levels. Restart resets the current level.',

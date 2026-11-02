@@ -51,15 +51,17 @@ body.movies-active.study-active{overflow:auto}
 .movies-view .movies-top.ui-header{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;border:0;pointer-events:none}
 .movies-view .movies-top .ui-header-inner{padding-block:6px;gap:8px;padding-inline:max(var(--floating-gutter,12px),env(safe-area-inset-left,0px)) max(var(--floating-gutter,12px),env(safe-area-inset-right,0px))}
 @media(min-width:640px){.movies-view .movies-top{--floating-gutter:24px}}
-.movies-view .movies-top .floating-glass-group{pointer-events:auto;color:var(--glass-ink);padding:4px;min-height:44px}
+/* The header floats over the dark hero on the clear (dark-tinted) material,
+   so its ink is light; the old light-tone pill fill no longer exists. */
+.movies-view .movies-top .floating-glass-group{--glass-ink:#fff;pointer-events:auto;color:var(--glass-ink);padding:4px;min-height:44px}
 .movies-view .movies-top .movies-brand{padding:4px 10px 4px 6px;flex-shrink:1}
 .movies-view .movies-top .ui-wordmark span{color:inherit}
 .movies-view .movies-top .ui-nav{gap:0}
 .movies-view .movies-top .ui-header-actions{gap:0}
 .movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn){min-height:36px;color:inherit;background:none;border:0;border-radius:20px}
-.movies-view .movies-top .floating-glass-group .ui-pill[aria-pressed=true]{background:rgb(0 0 0 / .09);color:inherit;box-shadow:none}
-.movies-view .movies-top .ui-kbd{background:rgb(0 0 0 / .05);color:inherit;border-color:rgb(0 0 0 / .15)}
-@media(hover:hover) and (pointer:fine){.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn):hover{background:rgb(0 0 0 / .07);color:inherit}}
+.movies-view .movies-top .floating-glass-group .ui-pill[aria-pressed=true]{background:rgb(255 255 255 / .14);color:inherit;box-shadow:none}
+.movies-view .movies-top .ui-kbd{background:rgb(255 255 255 / .06);color:inherit;border-color:rgb(255 255 255 / .22)}
+@media(hover:hover) and (pointer:fine){.movies-view .movies-top .floating-glass-group :is(.ui-pill,.ui-icon-btn):hover{background:rgb(255 255 255 / .1);color:inherit}}
 .movies-view>.movies-page-head{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view>.movies-page-title{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}
 .movies-view .movies-player.movies-player{padding-top:calc(var(--header-h) + env(safe-area-inset-top,0px))}

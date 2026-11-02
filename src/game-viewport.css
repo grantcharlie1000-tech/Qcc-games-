@@ -38,6 +38,10 @@ body.in-game #pause-overlay{border-radius:16px}
   .game-dock>.ui-tab{flex-basis:108px;padding:0 18px}
   .game-dock>.ui-tab>span:not(.ui-glass-lens,.ui-glass-glow){display:inline}
   .game-dock>.ui-tab svg{width:28px;height:28px}
+  /* Optical centring of icon+label: the icons' empty side bearing would push
+     the visible ink right. A transform moves the glyphs only, never the pill. */
+  .game-dock>a.ui-tab>:is(svg,span:not(.ui-glass-lens,.ui-glass-glow)){translate:-3px 0}
+  .game-dock>#game-menu>:is(svg,span:not(.ui-glass-lens,.ui-glass-glow)){translate:-4.5px 0}
   .game-hud{max-width:calc(100% - 236px)}
   .game-hud small{font-size:14px}
   .game-hud strong{font-size:20px}
