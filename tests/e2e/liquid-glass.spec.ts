@@ -370,9 +370,9 @@ test('the minimized island leaves a capsule with the current tab icon, at the bo
   await expect(bar).toHaveAttribute('data-minimized','true');
   await expect.poll(()=>capsuleShown(page)).toBe(1);
   expect(await capsule.evaluate(el=>[el.tagName,el.getAttribute('aria-hidden'),el.getAttribute('tabindex'),getComputedStyle(el).borderRadius])).toEqual(['BUTTON','true','-1','999px']);
-  // The icon is a copy of the current tab's icon, centred with dark ink on pale glass.
+  // The icon is a copy of the current tab's icon, centred in the adaptive glass ink: white or #0b1015.
   expect(await capsule.locator('svg.ui-icon').evaluate(el=>el.innerHTML)).toBe(await bar.locator('[aria-current="page"] svg.ui-icon').evaluate(el=>el.innerHTML));
-  expect(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color)).toBe('rgb(11, 16, 21)');
+  expect(['rgb(255, 255, 255)','rgb(11, 16, 21)']).toContain(await capsule.locator('svg.ui-icon').evaluate(el=>getComputedStyle(el).color));
   const box=(await capsule.boundingBox())!;
   const icon=(await capsule.locator('svg.ui-icon').boundingBox())!;
   expect(box.width).toBeCloseTo(56,0);
@@ -666,7 +666,8 @@ test('leaving Movies removes the filter the Movies island added',async({page,bro
   const filters=()=>page.evaluate(()=>document.querySelectorAll('filter[id^="ui-glass-"]').length);
   await expect.poll(filters).toBe(2);
   await page.goto('/#/movies');
-  await expect.poll(filters).toBe(4);
+  // The Movies shell adds its own glass controls (navigation, menu, top bar) on top of the island's two.
+  await expect.poll(filters).toBe(6);
   await page.goto('/#/collection');
   await expect.poll(filters).toBe(2);
 });
@@ -697,8 +698,10 @@ test('the arcade glass keeps a clear backdrop, a pale tint and clean glyphs',asy
   await page.setViewportSize({width:390,height:844});await page.goto('/');
   const bar=page.locator('.app-tabbar');await expect(bar).toBeVisible();
   const tint=alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::before').backgroundColor));
-  expect(tint).toBeGreaterThanOrEqual(.35);expect(tint).toBeLessThanOrEqual(.55);
-  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeGreaterThanOrEqual(.08);
+  // The clear fill is rgb(8 12 18 / .20); the selection pill is near-transparent and drawn by its rim.
+  expect(tint).toBeCloseTo(.2,2);
+  expect(alphaOf(await bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor))).toBeLessThanOrEqual(.02);
+  expect(await bar.evaluate(el=>getComputedStyle(el,'::after').boxShadow)).not.toBe('none');
   const frost=await frostFilter(bar);
   expect(frost).toContain('blur(4px)');
   expect(frost).toContain('saturate(0.08) contrast(0.22) brightness(1.65)');
@@ -764,11 +767,12 @@ test('the arcade pill has a grey selection and keeps its stronger opaque fallbac
   const bar=page.locator('.app-tabbar');
   await expect(bar).toBeVisible();
   const pill=()=>bar.evaluate(el=>getComputedStyle(el,'::after').backgroundColor);
-  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.08);
+  // The clear pill is near-transparent (its rim is a box-shadow); 'contrast: more' swaps in the stronger opaque fallback.
+  await expect.poll(async()=>alphaOf(await pill())).toBeLessThanOrEqual(0.02);
   await page.emulateMedia({contrast:'more'});
   await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.12);
   await page.emulateMedia({contrast:null});
-  await expect.poll(async()=>alphaOf(await pill())).toBeGreaterThanOrEqual(0.08);
+  await expect.poll(async()=>alphaOf(await pill())).toBeLessThanOrEqual(0.02);
 });
 
 // Playwright cannot emulate reduced transparency, and every test browser supports backdrop-filter, so both rules are read from the stylesheet.
@@ -1016,8 +1020,9 @@ test('the arcade rim has two directional specular arcs around a clear centre',as
   const style=await rim.evaluate(el=>{const s=getComputedStyle(el);return {image:s.backgroundImage,mask:s.maskComposite,padding:s.paddingTop};});
   expect(style.image).toContain('conic-gradient');
   const alphas=[...style.image.matchAll(/rgba\(255, 255, 255, ([\d.]+)\)/g)].map(match=>Number(match[1]));
-  expect(Math.min(...alphas)).toBeGreaterThanOrEqual(.35);
-  expect(alphas.filter(alpha=>alpha>=.85)).toHaveLength(2);
+  // Faint rim (.035-.065 base, .06 arc ends) with exactly two brighter .24 arcs.
+  expect(Math.min(...alphas)).toBeGreaterThanOrEqual(.03);
+  expect(alphas.filter(alpha=>alpha>=.2)).toHaveLength(2);
   expect(style.mask).toContain('exclude');expect(parseFloat(style.padding)).toBeLessThanOrEqual(1);
 });
 

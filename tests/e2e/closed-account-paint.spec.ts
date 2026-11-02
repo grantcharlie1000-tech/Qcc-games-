@@ -31,7 +31,17 @@ for(const fallback of [false,true])for(const close of ['guest','escape'] as cons
     const actual=await page.screenshot(options);
     const hidden=await page.addStyleTag({content:'#accounts-dialog,#accounts-dialog::backdrop{display:none!important}'});
     const without=await page.screenshot(options);await hidden.evaluate(e=>e.parentNode?.removeChild(e));
-    expect(actual.equals(without),'closed account tree adds no pixels to the reported white-rectangle region').toBe(true);
+    // The live glass under the tab bar re-rasterises with a few levels of dither between any two screenshots,
+    // so compare with a tolerance far below what a retained white rectangle would add.
+    const strayPixels=await page.evaluate(async([a,b])=>{
+      const load=async(data:string)=>{const image=new Image();image.src='data:image/png;base64,'+data;await image.decode();
+        const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+        const ctx=canvas.getContext('2d')!;ctx.drawImage(image,0,0);return ctx.getImageData(0,0,canvas.width,canvas.height).data;};
+      const [first,second]=[await load(a),await load(b)];let stray=first.length===second.length?0:Infinity;
+      for(let i=0;i<first.length&&stray!==Infinity;i+=4)if(Math.max(Math.abs(first[i]-second[i]),Math.abs(first[i+1]-second[i+1]),Math.abs(first[i+2]-second[i+2]))>24)stray++;
+      return stray;
+    },[actual.toString('base64'),without.toString('base64')]);
+    expect(strayPixels,'closed account tree adds no pixels to the reported white-rectangle region').toBe(0);
     await page.evaluate(()=>{for(const a of document.getAnimations())a.finish();});
     await page.reload();await expect(page.locator('.game-card').first()).toBeVisible();await expect(dialog).toBeHidden();
     await expect(dialog).toHaveCSS('backdrop-filter','none');

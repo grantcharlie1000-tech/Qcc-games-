@@ -370,7 +370,8 @@ test('a fine pointer lights up a tab and leaves the current lozenge alone',async
  await games.hover();
  // The current tab keeps no lozenge of its own: the pill carries the highlight, and a hover leaves it alone.
  expect(await alpha(games)).toBe(0);
- expect(await bar.evaluate(element=>{const match=getComputedStyle(element,'::after').backgroundColor.match(/[\d.]+(?=\)$)/);return match?Number(match[0]):0;})).toBeGreaterThanOrEqual(0.08);
+ // The clear material's pill is a near-transparent lens (--glass-pill) whose rim and drop shadow mark the selection.
+ expect(await bar.evaluate(element=>{const s=getComputedStyle(element,'::after');return {fill:s.backgroundColor,shadow:s.boxShadow!=='none',on:s.opacity};})).toEqual({fill:'rgba(255, 255, 255, 0.004)',shadow:true,on:'1'});
 });
 
 test('the island shows again after returning from Study',async({page})=>{
