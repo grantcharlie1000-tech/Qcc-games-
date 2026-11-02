@@ -70,3 +70,5 @@ The JavaScript decoder is copied from `meshoptimizer/meshopt_decoder_reference.j
 | `MESHOPT-LICENSE.md` | meshoptimizer 0.22 decoder and offline simplification tooling copyright/permission notice | MIT |
 
 Round 3 low-tier weapons are baked LODs of the same real procedural guns, not the old exported stand-ins. First-person arms retain their embedded side palette; ordinary embedded images load through Three TextureLoader under the existing policy. The decoder/simplifier's permission notice is shipped above and alongside the canonical source. No runtime Wasm exemption or remote asset host is required.
+
+The application keeps the supplied team-swatches emissive mask and protects those swatches from overexposed daylight in its operator shader adapter. HDR uses a bounded nonnegative ACES fit; cloth, skin and original kits keep normal scene lighting. No model or designer kit geometry is changed by that adaptation.

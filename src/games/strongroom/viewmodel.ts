@@ -30,6 +30,6 @@ export class WeaponView{
   if(!reduced)selected.position.y+=Math.sin(time*10)*Math.min(.003,Math.hypot(e.vx,e.vz)*.001);
   if(e.reload>0){const phase=(time%2.6)/2.6;selected.rotation.z=-.25*Math.sin(phase*Math.PI);selected.position.y-=.08;}
  }
- async warm(renderer:THREE.WebGLRenderer,scene:THREE.Scene){for(const model of this.models.values())await renderer.compileAsync(model,this.camera,scene);}
+ async warm(compile:(model:THREE.Object3D)=>Promise<unknown>){for(const model of this.models.values())await compile(model);}
  dispose(){if(this.disposed)return;this.disposed=true;const skeletons=new Set<THREE.Skeleton>();for(const m of this.models.values()){m.removeFromParent();m.traverse(o=>{if(o instanceof THREE.SkinnedMesh&&!skeletons.has(o.skeleton)){skeletons.add(o.skeleton);o.skeleton.dispose();}});}const seen=new Set();for(const arms of this.arms.values())disposeObject(arms,seen);for(const root of [...this.low.values(),...this.proxies.values()])disposeObject(root,seen);this.lowMaterial.dispose();this.proxyMaterial.dispose();this.low.clear();this.proxies.clear();this.models.clear();this.arms.clear();disposeWeaponTemplates(this.materials);}
 }

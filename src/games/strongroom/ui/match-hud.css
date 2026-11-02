@@ -72,3 +72,6 @@
 @media(pointer:coarse){.sr-match-hud .sr-round-result{padding:14px 24px}.sr-match-hud .sr-round-result strong{font-size:27px}}
 
 .sr-match-hud .sr-cracker-marker{position:absolute;display:flex;align-items:center;gap:5px;transform:translate(-50%,-50%);padding:4px 6px;background:#09121be6;color:var(--white);font:600 11px/1 Barlow,sans-serif;letter-spacing:.08em;white-space:nowrap;border-bottom:1px solid var(--ally);pointer-events:none}.sr-match-hud .sr-cracker-marker .icon{width:16px;height:16px;color:var(--ally)}.sr-match-hud .sr-cracker-marker.is-edge>span{display:none}@media(pointer:coarse){.sr-match-hud .sr-cracker-marker{font-size:9px;padding:3px 5px}}
+
+/* Long public names keep all four rows above the touch arc, without ellipses. */
+@media(pointer:coarse) and (orientation:landscape){.sr-match-hud .kill-feed.wide{top:calc(var(--edge-t) + 56px);right:calc(var(--edge-r) + 100px);min-width:0;width:max-content;max-width:calc(100% - var(--edge-l) - var(--edge-r) - 116px);gap:2px}.sr-match-hud .kill-feed.wide li{min-height:13px;padding:2px 5px;font-size:9px;line-height:1;grid-template-columns:minmax(0,1fr) 16px minmax(0,1fr)}.sr-match-hud .kill-feed.wide li>span{white-space:nowrap}.sr-match-hud .kill-feed.wide .icon{width:16px;height:9px}}

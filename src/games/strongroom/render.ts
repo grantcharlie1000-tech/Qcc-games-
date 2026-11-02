@@ -45,7 +45,7 @@ export class View{
   this.world=new World(game);
   if(tier==='high')this.sun=this.world.sun??this.sun;this.sun.position.set(35,48,-30);this.sun.castShadow=!!q.shadows;this.sun.shadow.mapSize.set(q.shadows||512,q.shadows||512);Object.assign(this.sun.shadow.camera,{left:-18,right:18,top:18,bottom:-18,near:1,far:120});
   if(tier!=='high')this.scene.add(this.sun);
-  const fill=new THREE.HemisphereLight(0xd7efff,0xb9ac93,tier==='high'?3.2:2.4);fill.name='daylight-fill';this.scene.add(fill,new THREE.AmbientLight(0xd9e6ec,tier==='high'?2.6:.9));
+  const fill=new THREE.HemisphereLight(0xd7efff,0xb9ac93,tier==='high'?2.2:2.4);fill.name='daylight-fill';this.scene.add(fill,new THREE.AmbientLight(0xd9e6ec,tier==='high'?1:.9));
   this.scene.fog=new THREE.Fog(0xd5e7ed,q.fog*.8,q.fog*1.22);this.camera.far=q.far;this.camera.updateProjectionMatrix();
   let lights=0;this.scene.traverse(o=>{if(o instanceof THREE.PointLight){o.visible=lights++<q.lights;}});
   this.weapon=new WeaponView(this.camera,tier,this.materials);this.operators=new Operators(tier);
@@ -76,10 +76,16 @@ export class View{
  setWallShot(fn:((cell:number)=>void)|null){this.adapter.onWallShot=fn;}
  get walls(){return this.wallView;}
  resize(width:number,height:number,scale:number){this.width=width;this.height=height;const ratio=Math.min(devicePixelRatio||1,QUALITY[this.tier].dpr)*scale;this.renderer.setPixelRatio(ratio);this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.composer?.setPixelRatio(ratio);this.composer?.setSize(width,height);this.fxaa?.uniforms.resolution.value.set(1/(width*ratio),1/(height*ratio));this.post?.setSize();}
+ private compile(root:THREE.Object3D){
+  const previous=this.renderer.getRenderTarget();
+  // Program variants depend on the output target. Restore it before yielding
+  // so an async shader compile cannot redirect the normal render loop.
+  try{this.renderer.setRenderTarget(this.post?.sceneRt??this.composer?.readBuffer??null);return this.renderer.compileAsync(root,this.camera,this.scene);}finally{this.renderer.setRenderTarget(previous);}
+ }
  async loadCharacters(){
   await Promise.all([this.weapon.load(),this.operators.load()]);if(this.disposed)return;
-  await this.renderer.compileAsync(this.scene,this.camera,this.scene);await this.weapon.warm(this.renderer,this.scene);
-  for(const root of this.operators.warmRoots()){if(!this.disposed)await this.renderer.compileAsync(root,this.camera,this.scene);const skeletons=new Set<THREE.Skeleton>();root.traverse(o=>{if(o instanceof THREE.SkinnedMesh&&!skeletons.has(o.skeleton)){skeletons.add(o.skeleton);o.skeleton.dispose();}});}
+  await this.compile(this.scene);await this.weapon.warm(root=>this.compile(root));
+  for(const root of this.operators.warmRoots()){if(!this.disposed)await this.compile(root);const skeletons=new Set<THREE.Skeleton>();root.traverse(o=>{if(o instanceof THREE.SkinnedMesh&&!skeletons.has(o.skeleton)){skeletons.add(o.skeleton);o.skeleton.dispose();}});}
  }
  private avatar(e:Entity):Avatar|null{
   const old=this.avatars.get(e.seat);if(old?.key===this.operators.key(e))return old;if(old)this.operators.release(old);
@@ -90,7 +96,10 @@ export class View{
  }
  draw(entities:Entity[],local:number|null,phase:string,dt:number,home:boolean,reduced:boolean,state?:import('./sim').Simulation){
   this.time+=dt;this.world.update(reduced?0:dt);this.materials.update?.(dt);
-  this.sun.position.set(30,58,-22);this.sun.intensity=Math.max(3.4,this.sun.intensity);this.sun.color.set(0xfff1dc);
+  this.sun.position.set(30,58,-22);this.sun.intensity=3.4;this.sun.color.set(0xfff1dc);
+  // Keep the brighter daylight exposure bounded after the donor sky's meter.
+  this.renderer.toneMappingExposure=1.45;if(this.world.sky){this.world.sky.exposure=1.45;this.world.sky.shared.uOutputExposure.value=1.45;}
+  this.operators.setExposure(this.renderer.toneMappingExposure);
   if(this.wallView){this.wallView.reducedMotion=reduced;this.wallView.sync();this.wallView.update(dt);}
   const viewer=entities.find(e=>e.seat===local),follow=viewer&&viewer.hp<=0?entities.find(e=>e.team===viewer.team&&e.hp>0)??viewer:viewer,viewSeat=follow?.seat??local;
   if(state)this.props.update(state,viewSeat??0,this.time,reduced);
@@ -103,7 +112,7 @@ export class View{
   for(const [seat,a] of this.avatars)if(!entities.some(e=>e.seat===seat&&e.seat!==viewSeat))a.root.visible=false;
   const e=entities.find(e=>e.seat===local);
   this.weapon.update(e,home||phase==='pick'||phase==='gameEnd',!!this.camera.userData.ads,this.time,reduced);
-  if(home){const angle=reduced?0:this.time*.025;this.camera.position.set(Math.sin(angle)*31,19,Math.cos(angle)*31);this.camera.lookAt(0,1,0);}
+  if(home||phase==='pick'){const angle=reduced?0:this.time*.025;this.camera.position.set(Math.sin(angle)*31,19,Math.cos(angle)*31);this.camera.lookAt(0,1,0);}
   else if(follow){this.camera.position.set(follow.x,follow.y+(follow.hp<=0?.55:follow.crouch?1.08:1.62),follow.z);this.camera.rotation.set(follow.pitch,follow.yaw,0,'YXZ');this.camera.fov=this.camera.userData.ads?gunFor(follow).adsFov:74;this.camera.updateProjectionMatrix();}
   this.sun.shadow.autoUpdate=this.tier!=='medium'||this.warm++%2===0;
   this.renderer.info.reset();if(this.post)this.post.render(this.scene,this.camera);else if(this.composer)this.composer.render(dt);else this.renderer.render(this.scene,this.camera);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type {GLTF} from 'three/addons/loaders/GLTFLoader.js';
 import {modelLoader} from './model-loader';
+import {teamTone} from './operator-tone';
 import {clone as cloneSkeleton} from 'three/addons/utils/SkeletonUtils.js';
 // @ts-expect-error -- original designer's JavaScript kit, bundled with provenance.
 import {bodyFor,buildKit,mergeKitIntoBody,operatorMaterial,ENGINE_BODY_HEIGHT} from './engine/gfx/operators/attachments.js';
@@ -15,17 +16,35 @@ const sideOf=(e:Entity):Side=>((e as Entity&{attacking?:boolean}).attacking??e.t
 const opOf=(e:Entity):Op=>(e as Entity&{operator?:Op}).operator??'cadet';
 /** Designer outputs are already merged. Never merge their two LOD meshes together. */
 export class Operators{
- private templates=new Map<Body,GLTF>();private geometries=new Map<string,THREE.BufferGeometry>();private materials=new Map<string,THREE.Material>();private disposed=false;
+ private templates=new Map<Body,GLTF>();private geometries=new Map<string,THREE.BufferGeometry>();private materials=new Map<string,THREE.Material>();private disposed=false;private tintExposure={value:1.45};
  constructor(private tier:Tier){}
  async load(){
   const loader=modelLoader();
   await Promise.all((['ct','t'] as Body[]).map(async body=>{const g=await loader.loadAsync(`${import.meta.env.BASE_URL}game-assets/strongroom/models/soldier_${body}.glb`);if(this.disposed){disposeObject(g.scene);return;}g.scene.updateMatrixWorld(true);this.templates.set(body,g);}));
   if(this.disposed)return;
-  for(const side of ['attack','defend'] as Side[])for(const tint of ['ally','enemy'])this.materials.set(`${side}/${tint}`,operatorMaterial({side,tint,lambert:this.tier==='potato'||this.tier==='low'}));
+  for(const side of ['attack','defend'] as Side[])for(const tint of ['ally','enemy']){
+   const material=operatorMaterial({side,tint,lambert:this.tier==='potato'||this.tier==='low'}),tone=teamTone(tint==='ally'?'#3D9BFF':'#FF8A1F');
+   // The authored emissive mask already selects all four team swatches. Keep
+   // those saturated under daylight; ordinary cloth/skin retains scene lighting.
+   material.onBeforeCompile=(shader:THREE.WebGLProgramParametersWithUniforms)=>{
+    shader.uniforms.srTeamLinear={value:new THREE.Vector3(...tone.linear)};shader.uniforms.srTeamHDR={value:new THREE.Vector3(...tone.hdr)};shader.uniforms.srTeamExposure=this.tintExposure;
+    shader.fragmentShader='uniform vec3 srTeamLinear;\nuniform vec3 srTeamHDR;\nuniform float srTeamExposure;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <colorspace_fragment>',`
+#ifdef USE_EMISSIVEMAP
+ #ifdef TONE_MAPPING
+  gl_FragColor.rgb=mix(gl_FragColor.rgb,srTeamLinear,step(0.5,emissiveColor.r));
+ #else
+  gl_FragColor.rgb=mix(gl_FragColor.rgb,srTeamHDR/max(0.1,srTeamExposure),step(0.5,emissiveColor.r));
+ #endif
+#endif
+#include <colorspace_fragment>`);
+   };material.customProgramCacheKey=()=>'strongroom-team-swatches-v1';this.materials.set(`${side}/${tint}`,material);
+  }
   for(const [op,body] of [['cinder','ct'],['wren','t'],['hush','ct'],['latch','t'],['cadet','ct'],['cadet','t']] as [Op,Body][]){const template=this.templates.get(body)!;
    for(const lod of [0,1]){const mesh=template.scene.getObjectByName(`Body_LOD${lod}`) as THREE.SkinnedMesh,kit=buildKit(op,{body,lod,skeleton:mesh.skeleton});this.geometries.set(`${op}/${body}/${lod}`,mergeKitIntoBody(mesh.geometry,kit.geometry));kit.geometry.dispose();}
   }
  }
+ setExposure(value:number){this.tintExposure.value=value;}
  key(e:Entity){return `${opOf(e)}/${bodyFor(opOf(e),sideOf(e))}`;}
  create(e:Entity):OperatorAvatar|null{
   const op=opOf(e),body=bodyFor(op,sideOf(e)) as Body,template=this.templates.get(body);if(!template)return null;
@@ -34,7 +53,7 @@ export class Operators{
   return {root,meshes,mixer:new THREE.AnimationMixer(root),clips:new Map(template.animations.map(c=>[c.name,c])),current:'',at:0,key:this.key(e)};
  }
  style(a:OperatorAvatar,e:Entity,viewer:Entity|undefined,distance:number){const lod=this.tier==='potato'||distance>=QUALITY[this.tier].lod?1:0,material=this.materials.get(`${sideOf(e)}/${viewer?.team===e.team?'ally':'enemy'}`)!;for(let i=0;i<a.meshes.length;i++){a.meshes[i].visible=i===lod;a.meshes[i].material=material;}a.root.userData.lod=lod;a.root.userData.operator=opOf(e);a.root.userData.side=sideOf(e);}
- warmRoots(){const roots:THREE.Group[]=[];const template=this.templates.get('ct');if(template)for(const material of this.materials.values()){const root=cloneSkeleton(template.scene) as THREE.Group;root.traverse(o=>{if(o instanceof THREE.SkinnedMesh){o.visible=true;o.material=material;}});roots.push(root);}return roots;}
+ warmRoots(){const roots:THREE.Group[]=[];const template=this.templates.get('ct');if(template)for(const material of this.materials.values()){const root=cloneSkeleton(template.scene) as THREE.Group;root.traverse(o=>{if(o instanceof THREE.SkinnedMesh){o.visible=true;o.material=material;o.geometry=this.geometries.get(`cadet/ct/${o.name==='Body_LOD0'?0:1}`)!;o.castShadow=!!QUALITY[this.tier].shadows;o.receiveShadow=true;}});roots.push(root);}return roots;}
  release(a:OperatorAvatar){a.mixer.stopAllAction();a.mixer.uncacheRoot(a.root);a.root.removeFromParent();const seen=new Set<THREE.Skeleton>();a.root.traverse(o=>{if(o instanceof THREE.SkinnedMesh&&!seen.has(o.skeleton)){seen.add(o.skeleton);o.skeleton.dispose();}});}
  dispose(){if(this.disposed)return;this.disposed=true;const seen=new Set();for(const g of this.templates.values())disposeObject(g.scene,seen);for(const geometry of this.geometries.values())geometry.dispose();for(const material of this.materials.values()){const m=material as THREE.MeshStandardMaterial;m.map?.dispose();m.emissiveMap?.dispose();material.dispose();}this.templates.clear();this.geometries.clear();this.materials.clear();}
 }

@@ -16,5 +16,6 @@ for(const device of [{width:844,height:390,scale:3},{width:667,height:375,scale:
  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();
  try{await expect.poll(()=>page.evaluate(()=>(window as any).__game.player.crouch)).toBe(true);await expect(crouch).toHaveAttribute('aria-pressed','true');}finally{await page.mouse.up();}
  await expect.poll(()=>page.evaluate(()=>(window as any).__game.player.crouch)).toBe(false);await expect(crouch).toHaveAttribute('aria-pressed','false');
+ await page.setViewportSize({width:390,height:844});await expect(page.locator('.sr-orientation')).toBeVisible();await expect(page.locator('.sr-orientation')).toHaveCSS('opacity','1');await expect(page.locator('.sr-orientation')).toContainText('Turn your phone sideways');
  }finally{await context.close();}
 });

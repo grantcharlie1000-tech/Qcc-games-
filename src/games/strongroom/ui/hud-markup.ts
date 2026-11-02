@@ -56,6 +56,7 @@ export const hudSymbols=`<svg xmlns="http://www.w3.org/2000/svg" class="sr-symbo
   <symbol id="sr-i-health" viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/></symbol>
   <symbol id="sr-i-armour" viewBox="0 0 24 24"><path d="m5 3 7 2 7-2 2 6-3 3v9H6v-9L3 9Z"/><path d="M9 10h6v7H9Z"/></symbol>
   <symbol id="sr-i-rifle" viewBox="0 0 64 24"><path d="M2 10h10l5-5h21v3h9v2h15v3H44l-2 3H29l3 6h-6l-5-6h-7l-3 4H3v-5H1v-5ZM20 5V2h11v3M47 8v7M35 8v5"/></symbol>
+  <symbol id="sr-i-pistol" viewBox="0 0 64 24"><path d="M12 4h31v9H29l-3 9H16l4-9h-8ZM43 7h8v4h-8M23 7h12M27 13l-2 6M16 10h9"/></symbol>
   <symbol id="sr-i-mag" viewBox="0 0 24 24"><path d="M5 3h11l3 17H8ZM9 7h5M10 11h5M11 15h5"/></symbol>
   <symbol id="sr-i-gadget" viewBox="0 0 24 24"><path d="M5 7h14v14H5ZM9 7V3h6v4M8 11h8v4H8ZM9 18h1M14 18h1M19 10h3M19 17h3"/></symbol>
   <symbol id="sr-i-fire" viewBox="0 0 24 24"><path d="M9 15V6c0-2 3-5 3-5s3 3 3 5v9ZM9 18h6M10 21h4M3 5l3 3M21 5l-3 3M2 13h3M19 13h3"/></symbol>
