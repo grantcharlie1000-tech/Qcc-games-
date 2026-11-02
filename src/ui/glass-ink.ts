@@ -8,6 +8,7 @@ const IMAGE_SIZE=256;
 const isUnknown=(samples:readonly RGB[])=>samples.length===2&&samples[0].every(v=>v===0)&&samples[1].every(v=>v===255);
 type ImagePixels={data:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
+const CLEAR_FILL:RGB=[8,12,18];
 const HALO_DARK='rgb(0 0 0 / .8)',HALO_LIGHT='rgb(255 255 255 / .75)';
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
 /** Choose plain foreground ink for the clear material. Blur softens detail;
@@ -16,7 +17,8 @@ const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,nu
  * glyph gets a soft opposite-tone halo; over even art it stays transparent. */
 export function glassInk(samples:readonly RGB[],preferred?:'light'|'dark',selection:boolean|'dark'=false,textured=false):{color:string;halo:string}{
   const colors=samples.length?samples:[[25,29,28] as RGB];
-  const backgrounds=colors.map(rgb=>luminance(mix(rgb,[184,184,184],.02))*(selection==='dark'?.91:selection?.99:1));
+  // Model the approved clear fill (--glass-clear-fill, rgb(8 12 18 / .20)).
+  const backgrounds=colors.map(rgb=>luminance(mix(rgb,CLEAR_FILL,.2))*(selection==='dark'?.91:selection?.99:1));
   const dark=luminance(INK);
   const darkContrast=Math.min(...backgrounds.map(bg=>(Math.max(bg,dark)+.05)/(Math.min(bg,dark)+.05)));
   const lightContrast=Math.min(...backgrounds.map(bg=>1.05/(bg+.05)));
@@ -77,7 +79,7 @@ function sampler(){
   const candidates=[...document.querySelectorAll(modal?'html,body,body *':'html,body,body > *, .movies-view > *, .game-view > *, img')].filter(e=>{
     if(excluded(e)||!visible(e))return false;
     const s=style(e);
-    return (s.backgroundImage!=='none'||paint(s.backgroundColor).alpha>0||e.matches('img,canvas,video')||parseFloat(s.borderTopWidth)>0)&&rect(e).width>0;
+    return (s.backgroundImage!=='none'||paint(s.backgroundColor).alpha>0||e.matches('img,canvas,video,iframe')||parseFloat(s.borderTopWidth)>0)&&rect(e).width>0;
   });
   const keys=new Map<Element,Array<{node:Element;z:number}>>();
   const key=(element:Element)=>{
@@ -122,14 +124,14 @@ function sampler(){
       for(const element of [...stack].sort(order)){
         const s=style(element),box=rect(element),opacity=Number(s.opacity);
         apply(paint(s.backgroundColor),opacity);
-        if(s.backgroundImage!=='none'||element.matches('img,canvas,video'))samples.textured=true;
+        if(s.backgroundImage!=='none'||element.matches('img,canvas,video,iframe'))samples.textured=true;
         if(s.backgroundImage!=='none'){
           const background=backgroundPaint(s,box,x,y);if(background)apply(background,opacity);else result=UNKNOWN;
         }
         if(element instanceof HTMLImageElement){const color=imageAt(element,x,y);if(color)apply(color,opacity);else result=UNKNOWN;}
         if(element instanceof HTMLCanvasElement){
           const colors=canvasInk(new DOMRect(x,y,1,1),element);if(colors)result=colors;else result=UNKNOWN;
-        }else if(element instanceof HTMLVideoElement)result=UNKNOWN;
+        }else if(element instanceof HTMLVideoElement||element instanceof HTMLIFrameElement)result=UNKNOWN; // embedded players cannot be read
         for(const [width,color,edge] of [
           [s.borderLeftWidth,s.borderLeftColor,new DOMRect(box.x,box.y,parseFloat(s.borderLeftWidth),box.height)],
           [s.borderRightWidth,s.borderRightColor,new DOMRect(box.right-parseFloat(s.borderRightWidth),box.y,parseFloat(s.borderRightWidth),box.height)],

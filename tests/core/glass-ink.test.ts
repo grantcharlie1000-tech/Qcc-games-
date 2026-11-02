@@ -28,6 +28,14 @@ describe('clear glass contrast',()=>{
     expect(glassInk([[255,255,255]],'light').color).toBe('#0b1015');
   });
   it('keeps selected mid-gray tabs readable without a stroke',()=>{
-    expect(glassInk([[133,133,133]],undefined,true)).toEqual({color:'#0b1015',halo:'transparent'});
+    // Through the 20% dark clear fill, mid-grey renders near rgb(117): white
+    // reaches 4.5:1 there, dark ink does not.
+    expect(glassInk([[133,133,133]],undefined,true)).toEqual({color:'#fff',halo:'transparent'});
+  });
+  it('models the dark clear fill rather than a light veil',()=>{
+    // Darkened by the fill, a pale grey still suits dark ink without a halo.
+    expect(glassInk([[200,200,200]])).toEqual({color:'#0b1015',halo:'transparent'});
+    // A grey that neither ink clears through the fill gets the halo.
+    expect(glassInk([[150,150,150]]).halo).not.toBe('transparent');
   });
 });
