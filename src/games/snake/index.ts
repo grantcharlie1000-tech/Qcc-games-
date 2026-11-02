@@ -2,6 +2,7 @@ import type {GameModule} from '../../core/types';
 import {createState,enqueue,start as startRun,restoreState,type Direction} from './model';
 import {drawGarden} from './art';
 import {advancePresentation,createPresentation,restorePresentation,savePresentation} from './presentation';
+import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
 const module:GameModule={
  id:'snake',title:'Snake',cover:'game-art/snake/cover.svg',
@@ -22,6 +23,7 @@ const module:GameModule={
    const reduce=reduced();lastReduced=reduce;lastDpr=window.devicePixelRatio||1;dirty=false;
    root.dataset.reducedMotion=String(reduce);
    drawGarden(canvas,state,view,reduce);
+   notifyGlassFrame(canvas);
    const h=state.body[0],format=(n:number)=>Number(n.toFixed(3));
    canvas.setAttribute('aria-label',`Snake garden. Head column ${format(h.x+1)}, row ${format(h.y+1)}. Length ${state.segments}. ${state.food?`Apple column ${state.food.x+1}, row ${state.food.y+1}.`:''} Turns apply at the next square’s center. Use arrows, WASD or swipe.`);
   }
@@ -32,6 +34,8 @@ const module:GameModule={
    dirty=true;render();
   }
   const observer=new ResizeObserver(resize);observer.observe(available);
+  // The shared glass lens samples each drawn frame; repaint draws the current state only.
+  const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)render();});
   function update(){
    context.setScore(state.score);context.setLevel(`Length ${state.segments}`);
    const finished=state.phase==='lost'||state.phase==='won';
@@ -109,7 +113,7 @@ const module:GameModule={
     const valid=restoreState(data);
     if(valid){state=valid;view=restorePresentation(state,(data as {presentation?:unknown}).presentation,(data as {version?:unknown}).version===1);last=state.phase==='running'&&!state.migration?.held?performance.now():null;gesture=null;update();render();}
    },
-   dispose(){disposed=true;events.abort();observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);container.replaceChildren();}
+   dispose(){disposed=true;releaseGlass();events.abort();observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);container.replaceChildren();}
   };
  }
 };

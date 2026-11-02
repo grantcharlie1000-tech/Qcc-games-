@@ -1,0 +1,18 @@
+/* Glass rendering modes, selected one at a time on the surface:
+   data-glass-mode="webgl"  shared WebGL lens over a live game canvas (all browsers)
+   data-glass-mode="svg"    Chromium backdrop-filter:url() over DOM pages
+   data-glass-mode="blur"   plain backdrop blur fallback
+   data-glass-mode="off"    accessibility solids
+   Never combine blur() and url() in one chain outside the Chromium svg mode. */
+.ui-glass-gl{position:absolute!important;inset:0;z-index:-1!important;display:block;border-radius:inherit;overflow:hidden;pointer-events:none!important;visibility:hidden}
+.ui-glass-gl>canvas{display:block;width:100%;height:100%}
+/* The lens is opaque inside its shape; the tint is a separate CSS layer above it. */
+.ui-glass-gl::after{content:'';position:absolute;inset:0;background:var(--glass-lens-tint,transparent)}
+[data-glass-mode=webgl]{isolation:isolate;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+[data-glass-mode=webgl]>.ui-glass-gl{visibility:visible}
+[data-glass-mode=webgl]>.ui-glass-lens{display:none!important}
+/* Arcade pills already tint above the lens with their ::before. */
+.arcade-glass{--glass-lens-tint:transparent}
+/* Sheets paint their tint under their children, so it moves onto the lens. */
+.ui-glass-sheet[data-glass-mode=webgl]{--glass-lens-tint:var(--glass-sheet-fill,rgb(8 12 18 / .10));background-color:transparent!important}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){.ui-glass-gl{display:none!important}}

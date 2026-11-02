@@ -1,5 +1,5 @@
 import './game-sheet.css';
-import {bindFallbackCanvasGlass} from './live-canvas-glass';
+import {bindSheetLens} from './webgl-glass';
 
 export type GameSheetState='start'|'paused'|'game-over';
 export interface GameSheetControls{touch:string;keyboard:string}
@@ -36,7 +36,7 @@ function populate(element:HTMLDivElement,options:GameSheetOptions,existingButton
     const top=overlaps&&controls.top<area.top+area.height/2?Math.max(0,controls.bottom-area.top+8):0;
     element.style.insetBlockStart=`${top}px`;
   }
-  const disposeLens=bindFallbackCanvasGlass(panel);
+  const disposeLens=bindSheetLens(panel);
   const resize=new ResizeObserver(fit);if(host)resize.observe(host);if(dock)resize.observe(dock);fit();
   window.addEventListener('resize',fit,{signal});
   // A nonmodal play-area overlay leaves the shared navigation and menu usable.

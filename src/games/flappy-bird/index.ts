@@ -1,6 +1,7 @@
 import type {GameModule} from '../../core/types';
 import {createFlight,flap,advance,restoreFlight,visibleGates,BIRD_X,GATE_WIDTH,WIDTH,HEIGHT,type Flight} from './model';
 import {drawFlight} from './art';
+import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
 const game:GameModule={id:'flappy-bird',title:'Flappy Bird',cover:'game-art/flappy-bird/cover.svg',rules:'Guide our marsh swift through the reed gates. Press Space, Up arrow or W, click or tap the scene to flap. Each press gives one upward beat; holding a key does not repeat. Gravity pulls you down. Clear a whole gate to earn one point. Touching a reed, the sky edge or the water ends the flight. The first gates are wider, then the opening gradually narrows. Pause freezes the flight. Continue flight resumes a saved run when you choose. Fly again starts a new seeded route; your best score stays saved on this device.',mount(container,context){
   const root=document.createElement('div');root.className='flappy-bird';
@@ -16,7 +17,10 @@ const game:GameModule={id:'flappy-bird',title:'Flappy Bird',cover:'game-art/flap
     ctx.setTransform(w/WIDTH,0,0,h/HEIGHT,0,0);drawFlight(ctx,state,context.settings.reducedMotion);
     root.dataset.phase=state.phase;root.dataset.tick=String(state.tick);root.dataset.y=state.y.toFixed(3);root.dataset.vy=state.vy.toFixed(3);
     root.dataset.target=String(visibleGates(state).find(g=>g.x+GATE_WIDTH>=BIRD_X-12)?.center??260);
+    notifyGlassFrame(canvas);
   }
+  // The shared glass lens samples each drawn frame; repaint redraws the current state only.
+  const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)draw();});
   function report(){
     if(reported!==state.score){reported=state.score;context.setScore(state.score);context.setLevel('Reed flight');}
   }
@@ -62,7 +66,7 @@ const game:GameModule={id:'flappy-bird',title:'Flappy Bird',cover:'game-art/flap
     restart:reset,
     serialize:()=>({...state}),
     restore(value){const restored=restoreFlight(value);if(!restored)return;stop();state=restored;state.best=Math.max(state.best,context.highScore);waiting=state.phase==='running';reported=-1;screen();context.setStatus(waiting?'Saved flight ready. Continue flight when you are ready.':'Space, Up arrow, W, click or tap to flap.');},
-    dispose(){if(disposed)return;disposed=true;stop();events.abort();root.remove();}
+    dispose(){if(disposed)return;disposed=true;releaseGlass();stop();events.abort();root.remove();}
   };
 }};
 export default game;

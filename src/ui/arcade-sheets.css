@@ -6,23 +6,23 @@
   --sheet-ink:#fff;--sheet-action-ink:#111316;--sheet-muted:rgb(255 255 255 / .92);
   /* One clear optical transfer across the entire sheet. */
   --sheet-veil:var(--glass-clear-fill);--sheet-halo:rgb(0 0 0 / .82);
-  --sheet-optics:var(--glass-clear-blur) saturate(1);
+  --sheet-optics:var(--glass-clear-blur) saturate(1.08);
   --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(255 255 255 / .16);--sheet-focus:#fff;
   --sheet-radius:32px;--sheet-padding:16px;--sheet-group-radius:calc(var(--sheet-radius) - var(--sheet-padding));
   box-sizing:border-box;padding:var(--sheet-padding);border-radius:var(--sheet-radius);
-  border:1px solid rgb(255 255 255 / .16);
+  border:1px solid var(--glass-sheet-edge);
   background:var(--sheet-veil);color:var(--sheet-ink);color-scheme:dark;
   -webkit-backdrop-filter:var(--sheet-optics);backdrop-filter:var(--sheet-optics);
-  box-shadow:var(--glass-sheet-rim),0 6px 24px -6px rgb(0 0 0 / .14);
+  box-shadow:var(--glass-sheet-rim),var(--glass-sheet-lift);
   font:400 17px/1.45 var(--font-sans);text-shadow:none;
   -webkit-text-stroke:0;paint-order:stroke fill;
 }
 html .arcade-sheet[data-glass-tone=light],body.in-game:where(:has(.game-view[data-glass-tone=light])) .mp-card{
   --sheet-ink:#111316;--sheet-action-ink:#fff;--sheet-muted:#22252a;
   /* Ink adapts to the presentation; the sheet material stays the same. */
-  --sheet-veil:var(--glass-clear-fill);--sheet-halo:rgb(255 255 255 / .62);
-  --sheet-optics:var(--glass-clear-blur) saturate(1);
+  --sheet-veil:rgb(255 255 255 / .03);--sheet-halo:rgb(255 255 255 / .62);
+  --sheet-optics:var(--glass-clear-blur) saturate(1.08);
   --sheet-group:transparent;--sheet-control:rgb(0 0 0 / .03);
   --sheet-line:rgb(0 0 0 / .12);--sheet-focus:#111316;color-scheme:light;
 }

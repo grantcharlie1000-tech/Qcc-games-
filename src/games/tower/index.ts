@@ -1,6 +1,7 @@
 import type { GameModule } from '../../core/types';
 import { advance, createTower, drop, restoreTower } from './model';
 import { renderTower } from './renderer';
+import { notifyGlassFrame, registerGlassFrameSource } from '../../ui/glass-frame-source';
 import './style.css';
 
 const game:GameModule={
@@ -12,7 +13,9 @@ const game:GameModule={
     container.querySelector<HTMLElement>('.tower-viewport')!.style.backgroundImage=`url("${import.meta.env.BASE_URL}game-art/tower/skyline.svg")`;
     let state=createTower(),paused=false,disposed=false,raf:number|null=null,lastTick=performance.now(),feedbackText='';
     function reduced(){return context.settings.reducedMotion;}
-    function draw(){renderTower(canvas,state,reduced(),paused);const fresh=state.last&&state.time-state.last.time<.9;feedback.textContent=fresh&&state.last!.kind==='perfect'?`PERFECT${state.combo>1?' ×'+state.combo:''}`:'';}
+    function draw(){renderTower(canvas,state,reduced(),paused);const fresh=state.last&&state.time-state.last.time<.9;feedback.textContent=fresh&&state.last!.kind==='perfect'?`PERFECT${state.combo>1?' ×'+state.combo:''}`:'';notifyGlassFrame(canvas);}
+    // The shared glass lens samples each drawn frame; repaint redraws the current state only.
+    const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)draw();});
     function update(){
       root.dataset.phase=state.phase;
       root.querySelector('.tower-height')!.textContent=String(state.blocks.length-1);root.querySelector('.tower-combo')!.textContent=String(state.combo);
@@ -49,7 +52,7 @@ const game:GameModule={
       restart,
       serialize(){if(!paused&&!disposed){const phase=state.phase;tick(performance.now());if(state.phase!==phase)update();}return JSON.parse(JSON.stringify(state)) as unknown;},
       restore(data){const restored=restoreTower(data);if(!restored||disposed)return;state=restored;lastTick=performance.now();update();schedule();},
-      dispose(){if(disposed)return;disposed=true;stop();observer.disconnect();canvas.removeEventListener('pointerdown',pointer);document.removeEventListener('keydown',key);again.removeEventListener('click',restart);container.replaceChildren();}
+      dispose(){if(disposed)return;disposed=true;releaseGlass();stop();observer.disconnect();canvas.removeEventListener('pointerdown',pointer);document.removeEventListener('keydown',key);again.removeEventListener('click',restart);container.replaceChildren();}
     };
   }
 };

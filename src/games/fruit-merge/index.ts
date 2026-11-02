@@ -1,6 +1,7 @@
 import type {GameModule,GameContext,GameInstance} from '../../core/types';
 import {FruitEngine,TIERS,WIDTH,HEIGHT,LEFT,RIGHT,FLOOR,DANGER,STEP} from './engine';
 import {drawFruit} from './art';
+import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
 interface Spark {x:number;y:number;vx:number;vy:number;life:number;color:string}
 const module:GameModule={
@@ -55,7 +56,10 @@ const module:GameModule={
    if(context.settings.reducedMotion){sparks=[];flash=undefined;}
    for(const p of sparks){c.globalAlpha=p.life/450;c.fillStyle=p.color;c.beginPath();c.arc(p.x,p.y,2.6,0,Math.PI*2);c.fill();}c.globalAlpha=1;
    if(flash){c.globalAlpha=Math.min(1,flash.life/200);c.font='bold 21px sans-serif';c.textAlign='center';c.strokeStyle='#fff9e8';c.lineWidth=5;c.strokeText(flash.text,flash.x,flash.y);c.fillStyle='#975c39';c.fillText(flash.text,flash.x,flash.y);c.globalAlpha=1;}
+   notifyGlassFrame(canvas);
   }
+  // The shared glass lens samples each drawn frame; repaint redraws the current state only.
+  const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)draw();});
   function frame(now:number){
    raf=0;if(disposed||paused)return;if(!last)last=now;const elapsed=Math.min(100,Math.max(0,now-last));last=now;
    if(!paused){accumulator+=elapsed;while(accumulator>=STEP){physics.step();for(const p of sparks){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=STEP;}sparks=sparks.filter(p=>p.life>0);if(flash){flash.life-=STEP;flash.y-=.35;if(flash.life<=0)flash=undefined;}accumulator-=STEP;}report();if(dirty){dirty=false;context.save(physics.snapshot());}}
@@ -77,7 +81,7 @@ const module:GameModule={
    restart(){physics.restart();sparks=[];flash=undefined;didLose=false;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();context.save(physics.snapshot());},
    serialize(){return physics.snapshot();},
    restore(data:unknown){if(physics.restore(data)){sparks=[];flash=undefined;didLose=physics.lost;dirty=false;last=0;accumulator=0;previousNext=-1;report();draw();}},
-   dispose(){if(disposed)return;disposed=true;observer.disconnect();cancelAnimationFrame(raf);canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',pointerCancel);canvas.removeEventListener('keydown',key);physics.dispose();sparks=[];root.remove();}
+   dispose(){if(disposed)return;disposed=true;releaseGlass();observer.disconnect();cancelAnimationFrame(raf);canvas.removeEventListener('pointerdown',pointerDown);canvas.removeEventListener('pointermove',pointerMove);canvas.removeEventListener('pointerup',pointerUp);canvas.removeEventListener('pointercancel',pointerCancel);canvas.removeEventListener('keydown',key);physics.dispose();sparks=[];root.remove();}
   };
  }
 };

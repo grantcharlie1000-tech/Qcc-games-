@@ -6,6 +6,7 @@ import type { Animal, Kind } from './model';
 import { animalSvg, artBox } from './art';
 import { AnimalGesture } from './input';
 import { frameCamera } from './framing';
+import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
 const module:GameModule={
  id:'animal-stack',title:'Animal Stack',cover:'game-art/animal-stack/cover.svg',
@@ -39,17 +40,21 @@ const module:GameModule={
    if(colliderOverlay){draw.save();draw.strokeStyle='#ed176b';draw.fillStyle='#ff1c6422';draw.lineWidth=.8;for(const part of b.parts.slice(1)){draw.beginPath();part.vertices.forEach((v,i)=>i?draw.lineTo(v.x,v.y):draw.moveTo(v.x,v.y));draw.closePath();draw.fill();draw.stroke();}draw.strokeStyle='#fff';draw.lineWidth=1.3;draw.beginPath();draw.moveTo(b.position.x-4,b.position.y);draw.lineTo(b.position.x+4,b.position.y);draw.moveTo(b.position.x,b.position.y-4);draw.lineTo(b.position.x,b.position.y+4);draw.stroke();draw.restore();}
   }
   function preparePreview(){if(preview.kind!==world.nextKind)preview=createAnimal(world.nextKind,world.aimX,world.spawnY);Matter.Body.setPosition(preview.body,{x:world.aimX,y:world.spawnY});Matter.Body.setAngle(preview.body,world.rotation);}
-  function render(){
+  // advance=false repaints the current frame without easing the camera (used by the glass lens).
+  function render(advance=true){
    draw.setTransform(ratio,0,0,ratio,0,0);draw.fillStyle='#55c3ec';draw.fillRect(0,0,canvas.width/ratio,canvas.height/ratio);draw.save();draw.translate(left,top);draw.scale(scale,scale);
    if(world.ready)preparePreview();
    const current=world.ready?preview:world.active!==null?world.animals[world.active]:null;
-   camera=frameCamera({previous:camera,stackTop:world.cameraTop,cutoutTop:current?.body.bounds.min.y??Infinity,top,scale,immediate:context.settings.reducedMotion});
+   if(advance)camera=frameCamera({previous:camera,stackTop:world.cameraTop,cutoutTop:current?.body.bounds.min.y??Infinity,top,scale,immediate:context.settings.reducedMotion});
    draw.save();draw.translate(0,camera);
    draw.fillStyle='#779b25';draw.strokeStyle='#161719';draw.lineWidth=3;draw.beginPath();draw.roundRect(18,FLOOR,324,10,1);draw.fill();draw.stroke();draw.fillStyle='#a0cf31';draw.fillRect(20,FLOOR+1,320,5);
    for(const a of world.animals)drawAnimal(a);if(world.ready)drawAnimal(preview);draw.restore();draw.restore();
    // The platform camera can rise with a very tall tower; the release button remains fixed.
    bubble.hidden=performance.now()>=bubbleUntil;const active=world.animals.at(-1);if(active){bubble.style.left=`${(left+active.body.position.x*scale)/(canvas.width/ratio)*100}%`;bubble.style.top=`${(top+(active.body.bounds.min.y+camera-10)*scale)/(canvas.height/ratio)*100}%`;}
+   notifyGlassFrame(canvas);
   }
+  // The shared glass lens samples each drawn frame; repaint redraws the current state only.
+  const releaseGlass=registerGlassFrameSource(canvas,()=>{if(!disposed)render(false);});
   function clearPointer(){const id=gesture.pointer;gesture.clear();if(id!==null&&canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);}
   // Layout changes cancel pointer coordinates but keep physically held keys.
   // Blur, pause, restart and disposal still release every input source.
@@ -80,7 +85,7 @@ const module:GameModule={
    restart(){clearInput();world.dispose();world=new AnimalWorld();camera=0;accumulator=0;last=0;previousScore=-1;previousEnd=false;lastUI='';bubbleUntil=0;sync();if(paused)render();context.save(world.snapshot());},
    serialize(){return world.snapshot();},
    restore(data){clearInput();if(world.restore(data)){if(world.legacyScore!==null)context.setScore(world.legacyScore);camera=Math.max(0,220-world.cameraTop);accumulator=0;previousScore=-1;previousEnd=world.over||world.complete;lastUI='';sync();if(paused)render();if(data&&typeof data==='object'&&(data as {version?:number}).version===1){status.textContent='New shapes reset the stack. Score kept in Record.';context.announce(status.textContent);context.save(world.snapshot());}}},
-   dispose(){disposed=true;clearInput();if(raf!==null)cancelAnimationFrame(raf);observer.disconnect();controller.abort();hud.dispose();world.dispose();container.replaceChildren();},
+   dispose(){disposed=true;releaseGlass();clearInput();if(raf!==null)cancelAnimationFrame(raf);observer.disconnect();controller.abort();hud.dispose();world.dispose();container.replaceChildren();},
   };
  },
 };

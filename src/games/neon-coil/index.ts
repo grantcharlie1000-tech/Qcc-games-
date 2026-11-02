@@ -4,6 +4,7 @@ import { advanceArena, BOT_COUNT, createArena, MIN_MASS, ranking, restoreArena, 
 import { createRenderer } from './render';
 import { skinFor } from './skin';
 import {compactMass,mountDockRanking} from './dock-ranking';
+import {notifyGlassFrame,registerGlassFrameSource} from '../../ui/glass-frame-source';
 import './style.css';
 
 const module: GameModule = {
@@ -124,6 +125,10 @@ const module: GameModule = {
     }, { signal });
     window.addEventListener('keyup', event => { const key = event.key.length === 1 ? event.key.toLowerCase() : event.key; keys.delete(key); keyboardTarget(); if (key === ' ') { if (keyBoost) event.preventDefault(); keyBoost = false; } }, { signal });
     window.addEventListener('blur', clearInput, { signal });
+    // Publish each finished frame to the shared glass lens; repaint redraws the current state only.
+    const drawArena = renderer.draw; let drawnAlpha = 1;
+    renderer.draw = (s, alpha = 1, reduced = false) => { drawnAlpha = alpha; drawArena(s, alpha, reduced); notifyGlassFrame(canvas); };
+    const releaseGlass = registerGlassFrameSource(canvas, () => { if (!disposed) renderer.draw(state, drawnAlpha, context.settings.reducedMotion); });
     function controls() {
       let angle: number | undefined;
       if (steering === 'pointer' && pointer) {
@@ -159,7 +164,7 @@ const module: GameModule = {
         state = restored; seed = state.seed; savedRun = state.phase === 'running' || (state.phase === 'ready' && state.ticks > 0);
         if (savedRun) state.phase = 'ready'; last = null; clearInput(); update(0, true); renderer.draw(state, 1, context.settings.reducedMotion);
       },
-      dispose() { disposed = true; clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
+      dispose() { disposed = true; releaseGlass(); clearInput(); events.abort(); observer.disconnect(); rankingLayout.dispose(); sheet.dispose(); pauseSheet.dispose(); cancelAnimationFrame(frame); root.remove(); }
     };
   }
 };

@@ -2,7 +2,7 @@
 // SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
 // Legacy unmarked frost bars retain a scroll edge. autoHideTabbar binds this controller for both Games and Movies.
 import {bindGlassInk} from './glass-ink';
-import {bindLiveCanvasGlass} from './live-canvas-glass';
+import {bindWebglLens} from './webgl-glass';
 export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
 export type GlassMode='backdrop'|'frost'|'off';
@@ -198,7 +198,6 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
-  const live=bindLiveCanvasGlass(bar);
   // Convex arcade lenses sample inward, so their compositor surface needs no
   // legacy outward margin. This also bounds live canvas controls to their own
   // area instead of filtering an extra 14px on all four sides every frame.
@@ -222,7 +221,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   const stretchable=canStretch(bar);
   let mode:GlassMode|undefined;
   // True once the map has decoded and the filter is in the document. Until then nothing refers to the filter.
-  let ready=false,disposed=false;
+  let ready=false,disposed=false,webgl=false;
   let mapWidth=0,mapHeight=0,mapDensity=0,mapSeq=0;
   // Set when the browser cannot make the map (no 2D canvas context, or a map that fails to decode). Such a bar has no lens at all.
   let lensless=false;
@@ -299,11 +298,16 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
   bar.addEventListener('pointerdown',down);
 
   // Chromium's bar is refracting when the lens reads the filter. The class and the variable are what the stylesheet reads.
+  // One rendering mode at a time: the WebGL lens over a live game canvas, else
+  // Chromium's SVG backdrop, else plain blur. A blur() url() chain is never the fallback.
   const paint=()=>{
-    bar.classList.toggle('is-refracting',mode==='backdrop'&&ready);
-    if(mode==='backdrop'&&ready)bar.style.setProperty('--ui-glass-filter',`url(#${id})`);
+    const svgMode=mode==='backdrop'&&ready&&!webgl;
+    bar.dataset.glassMode=mode===undefined||mode==='off'?'off':webgl?'webgl':svgMode?'svg':'blur';
+    bar.classList.toggle('is-refracting',svgMode);
+    if(svgMode)bar.style.setProperty('--ui-glass-filter',`url(#${id})`);
     else bar.style.removeProperty('--ui-glass-filter');
   };
+  const live=bindWebglLens(bar,active=>{if(disposed)return;webgl=active;paint();});
   // The map is rebuilt when the bar changes size or the screen's pixel density changes. A detached or hidden bar has no size, so it
   // keeps its last map. Only the backdrop has a map.
   const rebuild=()=>{
@@ -370,7 +374,8 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(next===mode)return;
     mode=next;
     bar.dataset.glass=mode;
-    live.setEnabled(mode==='frost');
+    // Controls inside a glass sheet keep a thin fill; a second refracting layer would sample the game, not the sheet.
+    live.setEnabled(mode!=='off'&&!bar.parentElement?.closest('.ui-glass-sheet,dialog'));
     if(mode!=='backdrop'){lens.remove();svg.remove();ready=false;mapSeq++;mapWidth=mapHeight=mapDensity=0;}
     if(mode==='off')glow.remove();
     else{ensureLayers();rebuild();}
@@ -418,7 +423,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       mode='off';
       bar.classList.remove('is-refracting');
       bar.style.removeProperty('--ui-glass-filter');
-      delete bar.dataset.glass;
+      delete bar.dataset.glass;delete bar.dataset.glassMode;
       bar.removeAttribute('data-pressing');
       bar.removeAttribute('data-pill-ready');
       for(const name of PILL_VARS)bar.style.removeProperty(name);
