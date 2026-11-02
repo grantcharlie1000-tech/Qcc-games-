@@ -1,7 +1,6 @@
 /** Approved direction B. Original QCC SVG marks; no third-party icon artwork. */
 export const matchMarkup=`<div class="sr-match-hud" data-direction="B" aria-label="Strongroom match HUD">
   
-  <div class="edge-scrim" aria-hidden="true"></div>
   <nav class="navigation" aria-label="Match menu"><button class="menu-button" aria-label="Open match menu" aria-keyshortcuts="P" data-action="menu"><svg class="icon"><use href="#sr-i-menu"/></svg></button><div class="location"><span class="eyebrow">HARBOR</span><span class="location-name">QUAYSIDE</span></div></nav>
   <section class="round-bar plate" aria-label="Round 4. Allies 2, enemies 1. 1 minute 48 seconds remaining.">
     <div class="team ally"><svg class="team-mark icon"><use href="#sr-i-shield"/></svg><div class="operators" role="list" aria-label="Allies">
