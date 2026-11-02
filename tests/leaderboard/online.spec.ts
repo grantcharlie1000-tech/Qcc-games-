@@ -20,7 +20,7 @@ async function connect(context:BrowserContext,score:number,username?:string){
 async function appMenu(page:Page){await page.getByRole('button',{name:'Open menu',exact:true}).click();if(await page.locator('.ms-settings').isVisible())await page.getByRole('button',{name:'Account & app settings',exact:true}).click();}
 async function join(page:Page,name:string){
  await page.goto('/#/');await appMenu(page);await page.locator('#menu').getByRole('button',{name:'Leaderboards',exact:true}).click();
- await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(20);
+ await expect(page.getByLabel('Game',{exact:true}).locator('option')).toHaveCount(21);
  await page.getByLabel('Game',{exact:true}).selectOption('snake');
  await expect(page.locator('.lb-table tbody')).toContainText(name);
 }

@@ -58,7 +58,7 @@ let movieStorage:MovieStorage|undefined;
 let movieScroll={x:0,y:0};
 let stopFitting:(()=>void)|undefined;
 let detachFullscreen:(()=>void)|undefined;
-const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft']);
+const referenceGames=new Set<GameId>(['animal-stack','water-sort','color-blocks','ball-run','neon-coil','blockcraft','crossy-road']);
 // Responsive WebGL layouts fill the standard stage; a scale transform would break pointer mapping.
 const fillGames=new Set<GameId>(['minesweeper','globle','corn-clicker','slipline','quadfall','fivefold','claimline']);
 // Shell score/best text; Claimline's integer score is its peak share in hundredths of a percent.

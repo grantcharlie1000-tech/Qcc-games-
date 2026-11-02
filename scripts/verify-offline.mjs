@@ -5,7 +5,7 @@ import {existsSync} from 'node:fs';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {verifyPoolShot} from './pool-verifier-shot.mjs';
-const titles={claimline:'Claimline','neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle'};
+const titles={claimline:'Claimline','neon-coil':'Slither.io','fruit-merge':'Suika Game','water-sort':'Water Sort','color-blocks':'Block Blast',tower:'Stack',snake:'Snake',minesweeper:'Minesweeper',solitaire:'Solitaire','block-fill':'Block Fill','color-connect':'Flow Free','ball-run':'Ball Run',pool:'Pool','animal-stack':'Animal Stack','flappy-bird':'Flappy Bird',globle:'Globle',blockcraft:'Minecraft','maze-muncher':'Pac-Man','corn-clicker':'Corn Clicker',slipline:'Slipline',quadfall:'Tetris',fivefold:'Wordle','crossy-road':'Crossy Road'};
 const ids=process.env.ARCADE_GAMES?.split(',')||Object.keys(titles);
 const sizes=[{width:390,height:844},{width:768,height:1024},{width:1366,height:768}];
 const studyMedia=JSON.parse(await readFile('dist/study/image-provenance.json','utf8'));
@@ -44,6 +44,7 @@ async function action(page,id){
  else if(id==='slipline'){await page.getByRole('button',{name:'Use hint'}).click();}
  else if(id==='pool'){await verifyPoolShot(page);}
  else if(id==='fivefold'){await page.keyboard.press('Backspace');await page.keyboard.type('a');await page.locator('.ff-tile.ff-filled').waitFor();}
+ else if(id==='crossy-road'){await page.keyboard.press('ArrowUp');await waitFor(async()=>Number(await page.locator('.crossy-road').getAttribute('data-row'))>=1,'offline Crossy Road hop');}
  else if(id==='globle'){await page.getByRole('textbox',{name:'Country name'}).fill('Kenya');await page.keyboard.press('Enter');await page.locator('.gl-guess[data-id=KEN]').waitFor();}
  else if(id==='blockcraft'){const root=page.locator('.blockcraft');
   // The shell's Restart asks before it replaces the world.
@@ -56,7 +57,7 @@ async function action(page,id){
  else if(id==='animal-stack'){await page.getByRole('button',{name:/^Drop /}).click();await page.waitForTimeout(650);}
 }
 try{
- for(const [label,path,port] of [['root','/',4275],['subpath','/Qcc-games-/',4276]]){
+ for(const [label,path,port] of [['root','/',4696],['subpath','/Qcc-games-/',4697]]){
   const server=spawn('node',['scripts/serve-built.mjs'],{env:{...process.env,PORT:String(port),ARCADE_BASE:path},stdio:'ignore',detached:true});servers.push(server);
   const base=`http://127.0.0.1:${port}${path}`;await waitFor(async()=>{try{return (await fetch(base)).ok;}catch{return false;}},'built server');
   const context=await browser.newContext({viewport:sizes[0],reducedMotion:'reduce'});const page=await context.newPage();const errors=[],external=[],failedAssets=[],movieArtworkRequests=[],movieArtworkFailures=[];
@@ -64,7 +65,7 @@ try{
   await page.goto(base+'icon.svg');await page.evaluate(async path=>{await caches.open('pocket-arcade-v2:'+path+':stale:pack');localStorage.setItem('pocket-arcade:v1:best:fruit-merge','4321');},path);
   await page.goto(base);await page.getByRole('button',{name:'Play as guest',exact:true}).click();assert.equal(await page.locator('[data-study-topic]').count(),20);await page.getByRole('button',{name:'Accept All',exact:true}).click();await page.locator('[data-study-topic="close-reading"]').click();await page.locator('.game-card').last().waitFor();assert.equal(await page.locator('.game-card').count(),Object.keys(titles).length);
   const initial=await page.evaluate(()=>performance.getEntriesByType('resource').map(e=>e.name));const manifest=await(await fetch(base+'.vite/manifest.json')).json();
-  const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')).map(([,v])=>v.file);
+  const heavy=Object.entries(manifest).filter(([key])=>key.includes('ball-run')||key.includes('fruit-merge')||key.includes('animal-stack')||key.includes('globle')||key.includes('blockcraft')||key.includes('crossy-road')).map(([,v])=>v.file);
   assert.ok(!initial.some(url=>heavy.some(file=>url.endsWith(file))),'heavy game chunks must remain lazy');
   await page.getByRole('button',{name:'Open menu'}).click();await page.getByRole('button',{name:'Make all games available offline'}).click();await page.getByRole('button',{name:'Offline pack downloaded'}).waitFor({timeout:45000});await page.getByRole('button',{name:'Close menu'}).click();
   await waitFor(()=>page.evaluate(()=>navigator.serviceWorker.controller!==null),'service worker control');
