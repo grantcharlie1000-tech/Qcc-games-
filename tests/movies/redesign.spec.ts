@@ -1687,7 +1687,7 @@ test('the episode drawer lists the season and closes for Study',async({page})=>{
  await expect(page.locator('#study-view')).toBeVisible();
  // The watch page is hidden while Study is open, so the drawer is read by its element rather than by role.
  await expect(page.locator('dialog.movies-drawer')).toHaveJSProperty('open',false);
- await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+ await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
  await expect(page.getByRole('button',{name:'Resume stream'})).toBeVisible();
 });
 

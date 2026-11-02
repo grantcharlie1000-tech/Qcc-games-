@@ -19,8 +19,8 @@ test('keyboard eating, turning, loss, replay, pause and saved continuation',asyn
  await pauseGame(page);
  const before=await saved(page);expect(before.direction).toBe('up');expect(before.body[0].y).toBeLessThan(6);expect(before.body[0].y).toBeGreaterThan(5);
  await page.keyboard.press('ArrowLeft');await page.clock.runFor(1000);
- const frozen=await saved(page);expect(frozen).toEqual(before);await expect(page.locator('canvas')).toHaveAttribute('aria-label',new RegExp(`Head column ${Number((before.body[0].x+1).toFixed(3))}, row ${Number((before.body[0].y+1).toFixed(3))}`));
- await page.reload();await expect(page.locator('#game-score strong')).toHaveText('10');await expect(page.locator('canvas')).toHaveAttribute('aria-label',new RegExp(`Head column ${Number((before.body[0].x+1).toFixed(3))}, row ${Number((before.body[0].y+1).toFixed(3))}`));
+ const frozen=await saved(page);expect(frozen).toEqual(before);await expect(page.locator('canvas.snake-canvas')).toHaveAttribute('aria-label',new RegExp(`Head column ${Number((before.body[0].x+1).toFixed(3))}, row ${Number((before.body[0].y+1).toFixed(3))}`));
+ await page.reload();await expect(page.locator('#game-score strong')).toHaveText('10');await expect(page.locator('canvas.snake-canvas')).toHaveAttribute('aria-label',new RegExp(`Head column ${Number((before.body[0].x+1).toFixed(3))}, row ${Number((before.body[0].y+1).toFixed(3))}`));
  await page.clock.runFor(1050);await expect(page.getByRole('button',{name:'Play again',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Play again',exact:true}).click();await expect(page.locator('#game-score strong')).toHaveText('0');
  await page.keyboard.press('d');await page.clock.runFor(170);await page.keyboard.press('s');await page.clock.runFor(170);
@@ -89,7 +89,7 @@ test('invalid saves recover and repeated exit/reentry has no stale controls',asy
  await page.clock.install({time:new Date('2026-10-19T09:00:00Z')});await page.clock.pauseAt(new Date('2026-10-19T09:00:01Z'));
  await page.goto('/');await page.evaluate(()=>localStorage.setItem('pocket-arcade:v1:save:snake',JSON.stringify({version:1,data:{version:1,body:'broken'}})));
  for(let n=0;n<3;n++){
-  await page.goto('/#/game/snake');await expect(page.locator('canvas')).toHaveCount(1);
+  await page.goto('/#/game/snake');await expect(page.locator('canvas.snake-canvas')).toHaveCount(1);
   await gameAction(page,'Restart game');await page.keyboard.press('ArrowRight');await page.clock.runFor(190);
   await pauseGame(page);const s=await saved(page);expect(s.ticks).toBe(1);expect(s.body[0].x).toBeGreaterThan(6);expect(s.body[0].x).toBeLessThan(6.3);expect(s.body[0].y).toBe(6);
   await backToGames(page);await page.clock.runFor(1000);await expect(page.locator('.snake-game')).toHaveCount(0);

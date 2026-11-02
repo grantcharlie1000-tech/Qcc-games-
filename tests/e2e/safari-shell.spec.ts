@@ -136,7 +136,7 @@ for(const route of ['collection','movies'])test(`${route} fallback Menu ink reta
 test('Study opened from the Movies Menu returns focus to its visible companion',async({page})=>{
  await page.goto('/#/movies');await expect(page.locator('.movies-hero')).toBeVisible();
  const menu=page.locator('.movies-menu');await menu.click();await page.locator('#menu').getByRole('button',{name:'Study Mode',exact:true}).click();
- await expect(page.locator('#study-title')).toBeVisible();await page.getByRole('link',{name:'Games',exact:true}).click();
+ await expect(page.locator('#study-title')).toBeVisible();await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
  await expect(menu).toBeFocused();await expect(page.locator('.movies-view')).toBeVisible();
 });
 

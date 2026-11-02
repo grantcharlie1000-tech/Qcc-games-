@@ -5,7 +5,7 @@ import type {savePresentation} from '../../../src/games/snake/presentation';
 
 type Snapshot=SnakeState&{presentation:ReturnType<typeof savePresentation>};
 const saved=async(page:Page):Promise<Snapshot>=>page.evaluate(()=>JSON.parse(localStorage.getItem('pocket-arcade:v1:save:snake')!).data);
-const pixels=(page:Page)=>page.locator('canvas').evaluate((canvas:HTMLCanvasElement)=>canvas.toDataURL());
+const pixels=(page:Page)=>page.locator('canvas.snake-canvas').evaluate((canvas:HTMLCanvasElement)=>canvas.toDataURL());
 async function setup(page:Page){
  await page.clock.install({time:new Date('2026-10-20T10:00:00Z')});
  await page.clock.pauseAt(new Date('2026-10-20T10:00:01Z'));
@@ -128,17 +128,17 @@ test('resize during a turn preserves the grid and renders at the actual high-DPI
  const before=await pause(page);
  const garden=await page.locator('.snake-garden').boundingBox();
  expect(garden!.width).toBeCloseTo(728,0);
- const canvas=await page.locator('canvas').boundingBox();expect(canvas!.width).toBeCloseTo(694.4,0);
+ const canvas=await page.locator('canvas.snake-canvas').boundingBox();expect(canvas!.width).toBeCloseTo(694.4,0);
  if(browserName==='chromium'){
   const cdp=await context.newCDPSession(page);
   const metrics={width:1366,height:768,mobile:false};
   await cdp.send('Emulation.setDeviceMetricsOverride',{...metrics,deviceScaleFactor:2});
   await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('.snake-garden').evaluate(root=>{const r=root.getBoundingClientRect(),s=document.querySelector('.stage-wrap')!.getBoundingClientRect();return r.bottom<=s.bottom&&Math.abs(r.x+r.width/2-innerWidth/2)<1;});}).toBe(true);
-  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('canvas').evaluate((c:HTMLCanvasElement)=>c.width===Math.round(c.getBoundingClientRect().width*devicePixelRatio));}).toBe(true);
-  const beforeDpr=await page.locator('canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
+  await expect.poll(async()=>{await page.clock.runFor(32);return page.locator('canvas.snake-canvas').evaluate((c:HTMLCanvasElement)=>c.width===Math.round(c.getBoundingClientRect().width*devicePixelRatio));}).toBe(true);
+  const beforeDpr=await page.locator('canvas.snake-canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
   await cdp.send('Emulation.setDeviceMetricsOverride',{...metrics,deviceScaleFactor:3});
   await page.clock.runFor(32);
-  const afterDpr=await page.locator('canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
+  const afterDpr=await page.locator('canvas.snake-canvas').evaluate((c:HTMLCanvasElement)=>({width:c.getBoundingClientRect().width,height:c.getBoundingClientRect().height,backing:c.width,label:c.getAttribute('aria-label')}));
   expect(afterDpr.width).toBe(beforeDpr.width);expect(afterDpr.height).toBe(beforeDpr.height);expect(afterDpr.label).toBe(beforeDpr.label);
   expect(beforeDpr.backing).toBe(Math.round(beforeDpr.width*2));expect(afterDpr.backing).toBe(Math.round(afterDpr.width*3));
   await page.clock.runFor(5000); // Include a real shell autosave while the high-DPI canvas remains paused.
@@ -198,7 +198,7 @@ test('OS and app reduced motion change the presentation live; cancelled swipes n
   }
  }
  await emulateMotion('reduce');await emulateMotion('no-preference');
- const canvas=page.locator('canvas'),box=(await canvas.boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
+ const canvas=page.locator('canvas.snake-canvas'),box=(await canvas.boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2;
  if(browserName==='chromium'){
   const cdp=await context.newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});

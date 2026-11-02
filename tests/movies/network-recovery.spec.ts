@@ -209,7 +209,7 @@ test('Resume stream moves keyboard focus to the player heading once the stream i
  await page.goto('/#/movies/movie-157336/play');
  await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();
  await page.keyboard.press('Escape');await expect(page.locator('#study-view')).toBeVisible();
- await page.locator('.study-article-body').getByRole('link',{name:'Games',exact:true}).click();
+ await page.locator('.study-article-body').getByRole('link',{name:'Return to previous view',exact:true}).click();
  const resume=page.getByRole('button',{name:'Resume stream',exact:true});
  await resume.focus();await page.keyboard.press('Enter');
  await expect(page.locator('iframe.movies-provider-frame')).toBeVisible();

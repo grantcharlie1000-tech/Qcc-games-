@@ -102,7 +102,7 @@ test('closing Study opened from the menu returns focus to the island Menu',async
  await menuSettled(page);
  await page.getByRole('button',{name:'Study Mode',exact:true}).click();
  await expect(page.locator('#study-view')).toBeVisible();
- await page.locator('#study-view a[data-study-return][aria-label="Games"]').click();
+ await page.locator('#study-view a[data-study-return][aria-label="Return to previous view"]').click();
  await expect(page.locator('#study-view')).toBeHidden();
  await expect(page.locator('.app-navigation').getByRole('button',{name:'Open menu',exact:true})).toBeFocused();
 });
@@ -388,7 +388,7 @@ test('the island shows again after returning from Study',async({page})=>{
  // Reading moves the page. Returning restores the old position, and that restore must not count as a scroll down.
  await page.evaluate(()=>window.scrollTo(0,100));
  // The Games link in the article text returns to the arcade. It is dispatched, not clicked, so the link is not scrolled into view.
- await page.locator('#study-view a[data-study-return][aria-label="Games"]').dispatchEvent('click');
+ await page.locator('#study-view a[data-study-return][aria-label="Return to previous view"]').dispatchEvent('click');
  await expect(page.locator('#study-view')).toBeHidden();
  await expect.poll(()=>page.evaluate(()=>scrollY)).toBe(880);
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
