@@ -443,3 +443,11 @@ dialog.ui-glass-sheet .icon-button.sheet-close-glass[data-glass=off]{background:
 @media(prefers-reduced-motion:reduce){:is(.game-glass,.glass-control),:is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}.arcade-glass .ui-tab:active{transform:none}}
 .reduce-motion :is(.game-glass,.glass-control),.reduce-motion :is(.game-glass,.glass-control)[data-pressing]{scale:none;translate:none;transition:none}
 .reduce-motion .arcade-glass .ui-tab:active{transform:none}
+
+/* Only the rim is copied and bent; the clear centre keeps its live CSS blur. */
+.ui-glass-live{position:absolute!important;inset:0;width:100%;height:100%;z-index:0!important;border-radius:inherit;pointer-events:none!important;
+  -webkit-mask:linear-gradient(#fff 0 0) center/calc(100% - 20px) calc(100% - 20px) no-repeat,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) center/calc(100% - 20px) calc(100% - 20px) no-repeat,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.ui-glass-live[hidden]{display:none!important}
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){.ui-glass-live{display:none!important}}
+
+.ui-glass-sheet .glass-ink{color:var(--glass-adaptive-ink,inherit);-webkit-text-stroke:0;text-shadow:none}

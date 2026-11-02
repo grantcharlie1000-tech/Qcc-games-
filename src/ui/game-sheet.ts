@@ -1,4 +1,5 @@
 import './game-sheet.css';
+import {bindFallbackCanvasGlass} from './live-canvas-glass';
 
 export type GameSheetState='start'|'paused'|'game-over';
 export interface GameSheetControls{touch:string;keyboard:string}
@@ -35,6 +36,7 @@ function populate(element:HTMLDivElement,options:GameSheetOptions,existingButton
     const top=overlaps&&controls.top<area.top+area.height/2?Math.max(0,controls.bottom-area.top+8):0;
     element.style.insetBlockStart=`${top}px`;
   }
+  const disposeLens=bindFallbackCanvasGlass(panel);
   const resize=new ResizeObserver(fit);if(host)resize.observe(host);if(dock)resize.observe(dock);fit();
   window.addEventListener('resize',fit,{signal});
   // A nonmodal play-area overlay leaves the shared navigation and menu usable.
@@ -80,7 +82,7 @@ function populate(element:HTMLDivElement,options:GameSheetOptions,existingButton
     const focused=element.contains(document.activeElement);element.hidden=true;
     if(focused&&previousFocus.value?.isConnected)previousFocus.value.focus({preventScroll:true});
   }
-  return{element,button,show,hide,dispose(){abort.abort();resize.disconnect();pauseObserver.disconnect();element.remove();}};
+  return{element,button,show,hide,dispose(){abort.abort();disposeLens();resize.disconnect();pauseObserver.disconnect();element.remove();}};
 }
 
 /** Presentation and input only. Each game retains its phases, scores and saves. */

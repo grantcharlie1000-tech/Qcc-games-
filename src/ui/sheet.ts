@@ -2,12 +2,15 @@
 // tests cover. openSheet opens a dialog and points its transform origin at the control that opened it, so the sheet
 // grows from there (the .ui-glass-sheet rules in theme.css).
 import {bindGlass} from './glass';
-import {syncSheetIconInk} from './glass-ink';
+import {bindFallbackCanvasGlass} from './live-canvas-glass';
+import {syncSheetIconInk,bindGlassInk} from './glass-ink';
 const closeControls=new WeakMap<HTMLDialogElement,()=>void>();
 
 function bindCloseControls(dialog:HTMLDialogElement):void{
   closeControls.get(dialog)?.();
   const disposers=new Map<HTMLElement,()=>void>();
+  const disposeInk=bindGlassInk(dialog);
+  const disposeLens=bindFallbackCanvasGlass(dialog);
   const sync=()=>{
     syncSheetIconInk(dialog);
     const controls=new Set(dialog.querySelectorAll<HTMLElement>('.dialog-head .icon-button,.movies-drawer-head [data-action=close-drawer]'));
@@ -18,7 +21,7 @@ function bindCloseControls(dialog:HTMLDialogElement):void{
     }
   };
   const dispose=()=>{
-    observer.disconnect();dialog.removeEventListener('close',dispose);
+    observer.disconnect();disposeInk();disposeLens();dialog.removeEventListener('close',dispose);
     disposers.forEach(dispose=>dispose());disposers.clear();closeControls.delete(dialog);
   };
   // A Movies re-render can detach an open drawer without firing close.

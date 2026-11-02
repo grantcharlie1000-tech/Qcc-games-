@@ -1,3 +1,4 @@
+import {canvasInk} from './canvas-ink';
 type RGB=readonly [number,number,number];
 type Paint={rgb:RGB;alpha:number};
 const INK:RGB=[11,16,21];
@@ -5,11 +6,11 @@ const UNKNOWN:RGB[]=[[0,0,0],[255,255,255]];
 const IMAGE_SIZE=256;
 const TILE_SIZE=8;
 const GRID_SIZE=IMAGE_SIZE/TILE_SIZE;
-type ImageRange={min:Uint8ClampedArray;max:Uint8ClampedArray};
+type ImageRange={mean:Uint8ClampedArray};
 const luminance=(rgb:RGB)=>rgb.reduce((sum,v,i)=>sum+(v/255<=.04045?v/3294.6:((v/255+.055)/1.055)**2.4)*[.2126,.7152,.0722][i],0);
 const mix=(a:RGB,b:RGB,t:number):RGB=>a.map((v,i)=>v*(1-t)+b[i]*t) as [number,number,number];
-// Component bounds are conservative even when blur mixes differently coloured
-// pixels. Only the glyph stroke receives the resulting contrast outline.
+// Bound CSS gradient stops; image tiles and live canvases use local averages
+// matching the softened backdrop rather than the old outline's extrema.
 const bounds=(colors:readonly RGB[]):RGB[]=>colors.length<2?[...colors]:[
   [0,1,2].map(i=>Math.min(...colors.map(c=>c[i]))) as [number,number,number],
   [0,1,2].map(i=>Math.max(...colors.map(c=>c[i]))) as [number,number,number]
@@ -40,14 +41,15 @@ function imagePixels(image:HTMLImageElement):ImageRange|null{
     try{
       const ctx=canvas.getContext('2d',{willReadFrequently:true})!;ctx.drawImage(image,0,0,IMAGE_SIZE,IMAGE_SIZE);
       const data=ctx.getImageData(0,0,IMAGE_SIZE,IMAGE_SIZE).data;
-      const min=new Uint8ClampedArray(GRID_SIZE*GRID_SIZE*3).fill(255),max=new Uint8ClampedArray(min.length);
+      const sums=new Uint32Array(GRID_SIZE*GRID_SIZE*3);
       let opaque=true;
       for(let y=0;y<IMAGE_SIZE;y++)for(let x=0;x<IMAGE_SIZE;x++){
         const pixel=(y*IMAGE_SIZE+x)*4,tile=(Math.floor(y/TILE_SIZE)*GRID_SIZE+Math.floor(x/TILE_SIZE))*3;
         if(data[pixel+3]<250)opaque=false;
-        for(let i=0;i<3;i++){min[tile+i]=Math.min(min[tile+i],data[pixel+i]);max[tile+i]=Math.max(max[tile+i],data[pixel+i]);}
+        for(let i=0;i<3;i++)sums[tile+i]+=data[pixel+i];
       }
-      cached={src:image.currentSrc,pixels:opaque?{min,max}:null};
+      const mean=new Uint8ClampedArray(sums.length);for(let i=0;i<sums.length;i++)mean[i]=Math.round(sums[i]/(TILE_SIZE*TILE_SIZE));
+      cached={src:image.currentSrc,pixels:opaque?{mean}:null};
     }
     catch{cached={src:image.currentSrc,pixels:null};}
     images.set(image,cached);
@@ -64,7 +66,7 @@ const overlaps=(a:DOMRect,b:DOMRect)=>a.left<b.right&&a.right>b.left&&a.top<b.bo
 /** All layout/style reads are cached for one update, before any ink writes. */
 function sampler(){
   const styles=new Map<Element,CSSStyleDeclaration>(),rects=new Map<Element,DOMRect>();
-  const liveGame=!!document.querySelector('#game-stage canvas,#game-stage svg');
+  const liveCanvas=document.querySelector<HTMLCanvasElement>('#game-stage canvas:not(.ui-glass-live)');
   const ids=new Map<Element,number>();
   const id=(e:Element)=>{let value=ids.get(e);if(value===undefined){value=ids.size;ids.set(e,value);}return value;};
   const style=(e:Element)=>{let s=styles.get(e);if(!s){s=getComputedStyle(e);styles.set(e,s);}return s;};
@@ -88,30 +90,33 @@ function sampler(){
     const left=r.x+(r.width-w)/2,top=r.y+(r.height-h)/2;
     const x0=Math.max(0,Math.floor((area.left-left)/w*GRID_SIZE)),x1=Math.min(GRID_SIZE-1,Math.floor((area.right-left)/w*GRID_SIZE));
     const y0=Math.max(0,Math.floor((area.top-top)/h*GRID_SIZE)),y1=Math.min(GRID_SIZE-1,Math.floor((area.bottom-top)/h*GRID_SIZE));
-    const min:[number,number,number]=[255,255,255],max:[number,number,number]=[0,0,0];
+    const total:[number,number,number]=[0,0,0];let count=0;
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
       const offset=(y*GRID_SIZE+x)*3;
-      for(let i=0;i<3;i++){min[i]=Math.min(min[i],pixels.min[offset+i]);max[i]=Math.max(max[i],pixels.max[offset+i]);}
+      for(let i=0;i<3;i++)total[i]+=pixels.mean[offset+i];count++;
     }
-    return x1<x0||y1<y0?[]:[min,max];
+    return count?[total.map(n=>Math.round(n/count)) as [number,number,number]]:[];
   }
 
+  // Modal hit testing exposes only the top layer. Traverse the visible
+  // underlying presentation geometrically instead, without closing the dialog.
+  const modalUnderlay=document.querySelector('dialog[open]')?[...document.querySelectorAll('#content,#content *,#study-view,#study-view *,.movies-view,.movies-view *,.game-view,.game-view *')].filter(e=>{
+    if(e.closest('dialog,.arcade-glass,.section-navigation,.game-sheet,[hidden]'))return false;
+    const s=style(e);return s.display!=='none'&&s.visibility!=='hidden'&&s.opacity!=='0'&&rect(e).width>0;
+  }):[];
   function sample(glyph:Element):RGB[]{
-    // Canvas/SVG gameplay can change on every compositor frame without a DOM
-    // mutation. Bound its whole colour range once; a glyph outline handles
-    // that range without pixel readbacks or repeated layout/hit-test scans.
-    if(liveGame&&glyph.closest('.game-dock'))return UNKNOWN;
     const r=rect(glyph);
+    const live=liveCanvas?canvasInk(r,liveCanvas):null;if(live)return live;
     const ownerDialog=glyph.closest('dialog');
     // The edge lens can sample artwork beyond the glyph footprint.
-    const area=new DOMRect(r.x-16,r.y-16,r.width+32,r.height+32);
+    const area=new DOMRect(r.x-6,r.y-6,r.width+12,r.height+12);
     const ranges=new Map<HTMLImageElement,RGB[]>();
     const stacks=new Set<string>();
     const samples:RGB[]=[];
     for(const u of [0,.5,1])for(const v of [0,.5,1]){
       const x=Math.max(0,Math.min(innerWidth-1,area.x+area.width*u));
       const y=Math.max(0,Math.min(innerHeight-1,area.y+area.height*v));
-      const stack=document.elementsFromPoint(x,y).filter(e=>!e.closest('.arcade-glass,.section-navigation,.ui-tabbar-mini')&&(!e.closest('dialog')||e.closest('dialog')===ownerDialog));
+      const stack=(ownerDialog?modalUnderlay.filter(e=>within(rect(e),x,y)).reverse():document.elementsFromPoint(x,y)).filter(e=>!e.closest('.arcade-glass,.section-navigation,.ui-tabbar-mini')&&!e.closest('dialog'));
       const view=stack.find(e=>e.classList.contains('game-view'));
       const surface=view?.querySelector('.game-surface');
       if(surface&&within(rect(surface),x,y))stack.splice(stack.indexOf(view!),0,surface);
@@ -121,7 +126,7 @@ function sampler(){
       for(const element of stack.reverse()){
         // Top-layer hit testing cannot reveal the artwork behind a dialog.
         // Its translucent paint bounds the unknown backdrop conservatively.
-        if(element instanceof HTMLDialogElement)result=UNKNOWN;
+        if(element instanceof HTMLDialogElement)continue;
         const s=style(element),color=paint(s.backgroundColor);
         result=result.map(rgb=>mix(rgb,color.rgb,color.alpha));
         if(s.backgroundImage.includes('gradient(')){
@@ -134,11 +139,6 @@ function sampler(){
           let range=ranges.get(image);if(!range){range=imageRange(image,area);ranges.set(image,range);}
           if(range.length)result=range;
         }
-        // Card captions sit over their image and can enter the blur footprint
-        // without landing on a hit-test point. Include their foreground ink.
-        const text=[element,...element.querySelectorAll(':scope > h2,:scope > span')].filter(e=>
-          overlaps(rect(e),area)&&style(e).visibility==='visible'&&[...e.childNodes].some(n=>n.nodeType===Node.TEXT_NODE&&n.textContent?.trim()));
-        for(const e of text)result=bounds([...result,paint(style(e).color).rgb]);
         const box=rect(element);
         for(const [width,color,edge] of [
           [s.borderLeftWidth,s.borderLeftColor,new DOMRect(box.x,box.y,parseFloat(s.borderLeftWidth),box.height)],
@@ -158,6 +158,8 @@ function sampler(){
 
 const bindings=new Set<HTMLElement>();
 let frame=0;
+let liveTimer:ReturnType<typeof setTimeout>|undefined;
+const pendingInk=new WeakMap<HTMLElement,{color:string;count:number}>();
 let observer:MutationObserver|undefined;
 let density:MediaQueryList|undefined;
 /** Retained for existing sheet callers; icons now use their original strokes. */
@@ -166,6 +168,14 @@ export function syncSheetIconInk(sheet:HTMLElement):void{
 }
 function update(){
   frame=0;
+  for(const sheet of bindings)if(sheet.matches('.ui-glass-sheet')){
+    for(const parent of sheet.querySelectorAll<HTMLElement>('h1,h2,h3,p,label,a,button,small,strong,span,td,th,dt,dd')){
+      if(parent.closest('.arcade-glass,.glass-label,svg,.game-button:not(.secondary)'))continue;
+      for(const node of [...parent.childNodes])if(node.nodeType===Node.TEXT_NODE&&node.textContent?.trim()){
+        const label=document.createElement('span');label.className='glass-label';node.replaceWith(label);label.append(node);
+      }
+    }
+  }
   // Native multiplayer and player overlays bypass openSheet. This decorates
   // their existing SVGs without changing any control or dialog lifecycle.
   for(const sheet of document.querySelectorAll<HTMLElement>('.mp-card,.movies-resume-pill,.movies-fullscreen'))syncSheetIconInk(sheet);
@@ -175,7 +185,7 @@ function update(){
     const box=rect(bar);if(!box.width||!box.height||style(bar).visibility==='hidden')continue;
     const mini=bar.parentElement?.querySelector<HTMLElement>('.ui-tabbar-mini');
     const minimized=bar.hasAttribute('data-minimized')&&!bar.parentElement?.matches(':has(:focus-visible)');
-    const targets=minimized?(mini?[mini]:[]):bar.matches('.ui-tab,.floating-glass-group')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
+    const targets=bar.matches('.ui-glass-sheet')?[bar]:minimized?(mini?[mini]:[]):bar.matches('.ui-tab,.floating-glass-group')?[bar]:[...bar.querySelectorAll<HTMLElement>('.ui-tab,.game-hud-item')];
     for(const target of targets){
       if(style(target).visibility==='hidden'||style(target).opacity==='0')continue;
       const glyphs=[...target.querySelectorAll<HTMLElement>('svg,span:not(.ui-glass-lens,.ui-glass-glow),small,strong,kbd')].filter(e=>!e.querySelector('svg,span,small,strong,kbd')&&!e.closest('.ui-brand-tile'));
@@ -184,17 +194,25 @@ function update(){
         const modal=bar.closest('dialog');
         const preference=bar.closest('.section-navigation')?'light':luminance(paint(style(modal??bar).color).rgb)>.5?'light':'dark';
         const selection=bar.matches('.ui-tabbar,.floating-glass-group');
-        changes.push({glyph,ink:bar.dataset.glass==='off'?null:glassInk(sample(glyph),preference,selection)});
+        if(glyph.closest('.game-button:not(.secondary)')&&!glyph.closest('.arcade-glass'))continue;
+        const accessible=matchMedia('(prefers-contrast: more)').matches||matchMedia('(forced-colors: active)').matches||matchMedia('(prefers-reduced-transparency: reduce)').matches;
+        changes.push({glyph,ink:bar.dataset.glass==='off'||accessible?null:glassInk(sample(glyph),preference,selection)});
       }
     }
   }
   for(const {glyph,ink} of changes){
     if(!ink){glyph.style.removeProperty('--glass-adaptive-ink');glyph.style.removeProperty('--glass-local-halo');glyph.querySelector(':scope > .glass-vector-halo')?.remove();continue;}
     if(!glyph.classList.contains('glass-ink'))glyph.classList.add('glass-ink');
-    if(glyph.style.getPropertyValue('--glass-adaptive-ink')!==ink.color)glyph.style.setProperty('--glass-adaptive-ink',ink.color);
+    const previous=glyph.style.getPropertyValue('--glass-adaptive-ink');
+    if(previous&&previous!==ink.color&&glyph.closest('.game-view')){
+      const pending=pendingInk.get(glyph);if(pending?.color!==ink.color){pendingInk.set(glyph,{color:ink.color,count:1});continue;}
+    }else pendingInk.delete(glyph);
+    if(previous!==ink.color)glyph.style.setProperty('--glass-adaptive-ink',ink.color);
     if(glyph.style.getPropertyValue('--glass-local-halo')!==ink.halo)glyph.style.setProperty('--glass-local-halo',ink.halo);
     glyph.querySelector(':scope > .glass-vector-halo')?.remove();
   }
+  clearTimeout(liveTimer);
+  if(bindings.size&&!document.hidden&&document.querySelector('#game-stage canvas:not(.ui-glass-live)'))liveTimer=setTimeout(schedule,140);
 }
 const schedule=()=>{if(!frame&&!document.hidden)frame=requestAnimationFrame(update);};
 
@@ -204,6 +222,7 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
   if(bindings.size===1){
     document.addEventListener('scroll',schedule,{capture:true,passive:true});
     document.addEventListener('load',schedule,true);
+    document.addEventListener('visibilitychange',schedule);
     document.addEventListener('transitionend',schedule,true);
     document.addEventListener('focusin',schedule,true);
     document.addEventListener('focusout',schedule,true);
@@ -213,9 +232,8 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     observer=new MutationObserver(records=>{
       const liveGame=!!document.querySelector('#game-stage canvas,#game-stage svg');
       if(records.some(r=>{
-        // Gameplay is covered by the conservative range above. Canvas pixels
-        // still update through backdrop-filter; DOM animation cannot make the
-        // fixed ink/outline pair less legible.
+        // Live canvas ink is refreshed by the bounded sampling timer.
+        // Ignore simulation-only DOM churn between those samples.
         if(liveGame&&r.target instanceof Element&&r.target.closest('#game-stage'))return false;
         // Several games render unchanged HUD text every animation frame. Equal
         // replacements have no new paint to sample. The compositor still reads
@@ -238,8 +256,8 @@ export function bindGlassInk(bar:HTMLElement):()=>void{
     if(!bindings.size){
       observer?.disconnect();observer=undefined;
       density?.removeEventListener('change',schedule);density=undefined;
-      document.removeEventListener('scroll',schedule,true);document.removeEventListener('load',schedule,true);document.removeEventListener('transitionend',schedule,true);document.removeEventListener('focusin',schedule,true);document.removeEventListener('focusout',schedule,true);window.removeEventListener('resize',schedule);
-      cancelAnimationFrame(frame);frame=0;
+      document.removeEventListener('scroll',schedule,true);document.removeEventListener('load',schedule,true);document.removeEventListener('visibilitychange',schedule);document.removeEventListener('transitionend',schedule,true);document.removeEventListener('focusin',schedule,true);document.removeEventListener('focusout',schedule,true);window.removeEventListener('resize',schedule);
+      cancelAnimationFrame(frame);frame=0;clearTimeout(liveTimer);
     }
   };
 }

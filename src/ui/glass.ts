@@ -2,6 +2,7 @@
 // SVG filter. Every other browser frosts the bar with its own backdrop filter, which needs no copy of the page and so cannot lag a scroll.
 // Legacy unmarked frost bars retain a scroll edge. autoHideTabbar binds this controller for both Games and Movies.
 import {bindGlassInk} from './glass-ink';
+import {bindLiveCanvasGlass} from './live-canvas-glass';
 export interface Brand{brand:string;version?:string}
 type NavigatorWithBrands=Navigator&{userAgentData?:{brands?:Brand[]}};
 export type GlassMode='backdrop'|'frost'|'off';
@@ -197,6 +198,7 @@ function makeFilter(id:string){
 // Nothing here writes to the bar's children except the layers, and the observer ignores changes inside them, so no write loops back in.
 export function bindGlass(bar:HTMLElement):{dispose():void}{
   const arcade=bar.classList.contains('arcade-glass');
+  const live=bindLiveCanvasGlass(bar);
   // Convex arcade lenses sample inward, so their compositor surface needs no
   // legacy outward margin. This also bounds live canvas controls to their own
   // area instead of filtering an extra 14px on all four sides every frame.
@@ -368,6 +370,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
     if(next===mode)return;
     mode=next;
     bar.dataset.glass=mode;
+    live.setEnabled(mode==='frost');
     if(mode!=='backdrop'){lens.remove();svg.remove();ready=false;mapSeq++;mapWidth=mapHeight=mapDensity=0;}
     if(mode==='off')glow.remove();
     else{ensureLayers();rebuild();}
@@ -407,6 +410,7 @@ export function bindGlass(bar:HTMLElement):{dispose():void}{
       stopListening();
       press=null;
       stretch?.cancel();
+      live.dispose();
       lens.remove();
       glow.remove();
       edge.remove();

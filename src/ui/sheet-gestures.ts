@@ -104,7 +104,7 @@ function enhance(sheet:HTMLElement):void{
   };
   sheet.addEventListener('pointerup',event=>release(event));
   sheet.addEventListener('pointercancel',event=>release(event,true));
-  sheet.addEventListener('lostpointercapture',event=>{if(pull?.active)release(event,true);});
+  sheet.addEventListener('lostpointercapture',event=>{if(event.target===sheet&&pull?.active)release(event,true);});
   sheet.addEventListener('click',event=>{if(blockClick&&!ownerClosing){event.preventDefault();event.stopImmediatePropagation();} },true);
   sheet.addEventListener('close',clear);
   // Owners may close/hide a panel during a drag, or reopen the same DOM node.
