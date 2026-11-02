@@ -159,7 +159,8 @@ try{
   if(label==='root')for(const size of sizes.slice(1)){await page.setViewportSize(size);await page.screenshot({path:`${folder}/home-root-${size.width}.png`,fullPage:true});}
   await page.setViewportSize(sizes[0]);
   for(const id of ids){
-   await page.goto(base+'#/game/'+id);await page.locator('.game-hud strong,.game-compact-hud').filter({visible:true}).first().waitFor();await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('.game-view').getAttribute('aria-label'),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
+   await page.goto(base+'#/game/'+id);// A game's own start sheet (e.g. Minecraft's title menu) hides the dock until play.
+   await waitFor(async()=>await page.locator('.game-hud strong,.game-compact-hud').filter({visible:true}).count()>0||await page.locator('.game-dock[data-sheet-hidden] .game-hud :is(strong,.game-compact-hud)').count()>0,id+' HUD');await waitFor(async()=>{const stage=page.locator('#game-stage');return (await stage.textContent())?.includes('Getting your game ready')===false;},id+' mount');assert.equal(await page.locator('.game-view').getAttribute('aria-label'),titles[id]);assert.equal(await page.locator('.game-error').count(),0);
    await action(page,id);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),id+' horizontal overflow');
    const frames=await page.evaluate(()=>new Promise(resolve=>{const values=[];let prev;const tick=t=>{if(prev!==undefined)values.push(t-prev);prev=t;if(values.length===45)resolve(values);else requestAnimationFrame(tick);};requestAnimationFrame(tick);}));frames.sort((a,b)=>a-b);
    await page.screenshot({path:`${folder}/${id}-${label}-390.png`,fullPage:true});
