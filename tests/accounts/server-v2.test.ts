@@ -19,6 +19,85 @@ beforeAll(async()=>{const connectionString=await local.start();await local.apply
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{vi.unstubAllEnvs();await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});
 describe('incremental accounts sync against Postgres',()=>{
+ it('accepts exactly 1 MiB of streamed JSON and rejects the next byte and oversized Content-Length',async()=>{
+  const {token}=await signup(),json=JSON.stringify({cursor:'0',bases:{},saves:{'best:snake':{value:1,updated:1}}});
+  const send=(body:string,extra:Record<string,string>={})=>handle(new Request(endpoint+'?action=sync',{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json','X-QCC-Sync':'2',...extra},body}));
+  expect((await send(json+' '.repeat(1048576-Buffer.byteLength(json)))).status).toBe(200);
+  expect((await send(json+' '.repeat(1048577-Buffer.byteLength(json)))).status).toBe(413);
+  expect((await send(json,{'Content-Length':'1048577'})).status).toBe(413);
+  const unicode=JSON.stringify({cursor:'0',bases:{},saves:{'save:snake':snapshot('é'.repeat(524288))}});
+  expect(unicode.length).toBeLessThan(1048576);expect((await send(unicode)).status).toBe(413);
+ });
+ it.each([false,true])('bounds cumulative storage across batches and rolls back the entire rejected v2=%s upload',async v2=>{
+  const {token}=await signup();
+  for(const key of ['save:snake','save:tower'])expect((await request('sync',token,v2?{cursor:'0',bases:{},saves:{[key]:snapshot('x'.repeat(700000))}}:{saves:{[key]:snapshot('x'.repeat(700000))}},v2)).status).toBe(200);
+  const before=(await request('sync',token,undefined,true));const state=await before.json();
+  const saves={'best:snake':{value:99,updated:1},'save:pool':snapshot('x'.repeat(700000))};
+  const response=await request('sync',token,v2?{cursor:state.cursor,bases:{},saves}:{saves},v2);
+  expect(response.status).toBe(413);expect(response.headers.get('Cache-Control')).toBe('no-store');
+  expect(await response.json()).toMatchObject({error:expect.stringContaining('2 MiB')});
+  const after=await(await request('sync',token,undefined,true)).json();
+  expect(after.cursor).toBe(state.cursor);expect(after.saves).toEqual(state.saves);
+  const other=await request('signup',undefined,{username:'Other_User',password:'secret password'});expect(other.status).toBe(201);
+  const otherToken=(await other.json()).token;expect((await request('sync',otherToken,{saves:{'save:pool':snapshot('y'.repeat(700000))}})).status).toBe(200);
+ });
+ it('accepts exactly 2 MiB per account, counts replacement bytes and rejects one additional byte',async()=>{
+  const {token}=await signup(),saves={'save:snake':snapshot('x'.repeat(700000)),'save:tower':snapshot('x'.repeat(700000)),'save:pool':snapshot('')};
+  saves['save:pool']=snapshot('x'.repeat(2097152-Buffer.byteLength(JSON.stringify(saves))));
+  expect(Buffer.byteLength(JSON.stringify(saves))).toBe(2097152);
+  for(const [key,record] of Object.entries(saves))await sync(token,{[key]:record});
+  const replacement=snapshot((saves['save:pool'].value.data as string)+'y',2);
+  expect((await request('sync',token,{cursor:'0',bases:{},saves:{'save:pool':replacement}},true)).status).toBe(413);
+  await sync(token,{'save:pool':snapshot('smaller',3)});
+  expect((await(await request('sync',token)).json()).saves['save:pool'].value.data).toBe('smaller');
+ });
+ it('checks merge winners and semantic no-ops before applying the storage quota',async()=>{
+  const {token}=await signup();
+  for(const key of ['save:snake','save:tower'])await sync(token,{[key]:snapshot('x'.repeat(800000),10)});
+  // The stale replacement is smaller, but loses to the stored 800 kB record.
+  const response=await request('sync',token,{cursor:'0',bases:{},saves:{'save:snake':snapshot('stale',1),'save:pool':snapshot('x'.repeat(500000))}},true);
+  expect(response.status).toBe(413);
+  const retry=await sync(token,{'save:snake':snapshot('x'.repeat(800000),99)});
+  expect(retry.conflicts['save:snake'].updated).toBe(10);
+ });
+ it('serializes concurrent requests so independent new keys cannot exceed the account quota',async()=>{
+  const {token}=await signup();await sync(token,{'save:snake':snapshot('x'.repeat(900000))});
+  const statuses=await Promise.all(['save:tower','save:pool'].map(async key=>(await request('sync',token,{cursor:'0',bases:{},saves:{[key]:snapshot('x'.repeat(700000))}},true)).status));
+  expect(statuses.sort()).toEqual([200,413]);
+  expect(Object.keys((await(await request('sync',token)).json()).saves)).toHaveLength(2);
+ });
+ it.each([false,true])('lets a shrinking later batch free quota for an earlier pending save, initially blocked=%s',async initiallyBlocked=>{
+  const {token}=await signup();
+  for(const [key,size] of [['save:snake',700000],['save:tower',700000],['save:pool',600000]] as const)await sync(token,{[key]:snapshot('x'.repeat(size))});
+  const values=new Map<string,unknown>();
+  const storage:AccountStorage={read:<T>(key:string,fallback:T)=>(values.get(key)??fallback) as T,write:(key,value)=>{values.set(key,structuredClone(value));return true;},remove:key=>values.delete(key)};
+  const statuses:number[]=[];const client=new AccountsClient(storage,async(input,init)=>{
+   const response=await handle(new Request(new URL(String(input),'https://arcade.test'),init));
+   if(init?.method==='PUT')statuses.push(response.status);return response;
+  });
+  try{
+   await client.authenticate('login','Sync_User','secret password');
+   storage.write('save:snake',snapshot('x'.repeat(900000),2).value);
+   if(initiallyBlocked){await expect(client.flush()).rejects.toThrow('2 MiB');expect(storage.read<any>('accounts:sync:sync_user',{}).blocked).toBe(true);statuses.length=0;}
+   storage.write('save:pool',snapshot('x'.repeat(300000),2).value);
+   await client.flush();
+   expect(statuses).toEqual([413,200,200]);
+   const remote=(await(await request('sync',token)).json()).saves;
+   expect(remote['save:snake'].value.data.length).toBe(900000);expect(remote['save:pool'].value.data.length).toBe(300000);
+   expect(storage.read<any>('accounts:sync:sync_user',{})).toMatchObject({blocked:false,pending:[]});
+   expect(values.has('accounts:pending:sync_user')).toBe(false);
+  }finally{client.dispose();}
+ });
+ it('keeps over-quota legacy data readable and permits non-growing updates without deleting saves',async()=>{
+  const {token}=await signup(),account=(await pool.query('SELECT id FROM accounts')).rows[0].id;
+  for(const key of ['save:snake','save:tower','save:pool'])await pool.query('INSERT INTO account_saves(account_id,key,value,updated) VALUES($1,$2,$3::jsonb,1)',[account,key,JSON.stringify(snapshot('x'.repeat(800000)).value)]);
+  expect((await request('sync',token,undefined,true)).status).toBe(200);
+  // Still above the quota after this reduction, but progress toward it is allowed.
+  await sync(token,{'save:snake':snapshot('y'.repeat(700000),2)});
+  expect((await request('sync',token,{saves:{'best:snake':{value:1,updated:1}}})).status).toBe(413);
+  const saved=(await(await request('sync',token)).json()).saves;
+  expect(Object.keys(saved).sort()).toEqual(['save:pool','save:snake','save:tower']);expect(saved['save:snake'].value.data.length).toBe(700000);
+ });
  it('releases the account lock when acquiring a database connection fails',async()=>{
   const {token}=await signup();let fail=true;
   const flaky=createAccountsHandler({query:pool.query.bind(pool),connect:async()=>{if(fail){fail=false;throw Error('temporary connection failure');}return pool.connect();}});
@@ -91,7 +170,8 @@ describe('incremental accounts sync against Postgres',()=>{
  it('rejects malformed cursors and bases while preserving the write record cap',async()=>{
   const {token}=await signup();
   for(const cursor of ['-1','1e2','01','9007199254740992000000000000000000000000'])expect((await request('sync',token,undefined,true,cursor)).status).toBe(400);
-  for(const body of [{cursor:0,bases:{},saves:{}},{cursor:'0',bases:{favourites:0},saves:{}},{cursor:'0',bases:{bad:'1'},saves:{}},{cursor:'0',bases:{},saves:{'save:blockcraft':snapshot({world:'x'.repeat(1100000)})}}])expect((await request('sync',token,body,true)).status).toBe(400);
+  for(const body of [{cursor:0,bases:{},saves:{}},{cursor:'0',bases:{favourites:0},saves:{}},{cursor:'0',bases:{bad:'1'},saves:{}}])expect((await request('sync',token,body,true)).status).toBe(400);
+  expect((await request('sync',token,{cursor:'0',bases:{},saves:{'save:blockcraft':snapshot({world:'x'.repeat(1100000)})}},true)).status).toBe(413);
  });
  it('throttles last_used writes but checks revocation and expiry on every read',async()=>{
   const {token}=await signup(),hash=createHash('sha256').update(token).digest('hex');

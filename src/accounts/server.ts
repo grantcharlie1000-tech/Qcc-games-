@@ -1,6 +1,6 @@
 import {createHash,randomBytes,randomUUID,scrypt,timingSafeEqual} from 'node:crypto';
 import type {Database} from '../leaderboard/server';
-import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
+import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,MAX_AUTH_BODY_BYTES,MAX_USER_BYTES,jsonBytes,SAVE_KEYS,validRevision,type Saves,type SyncV2Response} from './shared';
 import {mergeSaves} from './merge';
 import {stableText} from '../core/content';
 import {writeFrozen,readOnlyResponse} from './write-freeze';
@@ -77,7 +77,7 @@ export function createAccountsHandler(db:Database){
    if(request.method!=='GET'){
     const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)return respond({error:'This request is not allowed.'},403);
     if(!/^application\/json(?:\s*;|$)/i.test(request.headers.get('content-type')??''))return respond({error:'Send JSON.'},415);
-    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:2048);}catch(error){throw error===413?413:400;}
+    try{data=await readJson(request,action==='sync'?MAX_BODY_BYTES:MAX_AUTH_BODY_BYTES);}catch(error){throw error===413?413:400;}
    }
    if(action==='signup'||action==='login'){
     const ip=request.headers.get('x-nf-client-connection-ip')?.trim()||'unknown';
@@ -148,12 +148,21 @@ export function createAccountsHandler(db:Database){
     const submitted:Saves=request.method==='PUT'?data.saves:{};
     const keys=Object.keys(submitted);
     if(keys.length){
-     const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1 AND key=ANY($2::text[])',[account.id,keys]) as {rows:any[]};
+     // Account row lock above serializes quota checks across processes and v1/v2
+     // uploads. Count untouched keys too, and validate before writing any rows.
+     const previous=await client.query('SELECT key,value,updated FROM account_saves WHERE account_id=$1',[account.id]) as {rows:any[]};
      const old=savesFrom(previous.rows),saves=mergeSaves(old,submitted);
      for(const key of keys){
-      let record=saves[key]!;const before=old[key];
+      const before=old[key];
       // Keep semantic no-ops from manufacturing timestamps (including snapshot envelopes).
-      if(before&&(key.startsWith('best:')?(submitted[key]!.value as number)<=(before.value as number):sameContent(key,before.value,submitted[key]!.value)))record=before;
+      if(before&&(key.startsWith('best:')?(submitted[key]!.value as number)<=(before.value as number):sameContent(key,before.value,submitted[key]!.value)))saves[key]=before;
+     }
+     const size=jsonBytes(saves);
+     // Preserve legacy over-quota accounts and permit updates that do not grow
+     // them; reads never enforce a write quota or delete existing progress.
+     if(size>MAX_USER_BYTES&&size>jsonBytes(old))throw 'storage_quota';
+     for(const key of keys){
+      const record=saves[key]!,before=old[key];
       if(before&&sameRecord(before,record))continue;
       await client.query(`INSERT INTO account_saves(account_id,key,value,updated) VALUES ($1,$2,$3::jsonb,$4)
        ON CONFLICT(account_id,key) DO UPDATE SET value=excluded.value,updated=excluded.updated`,[account.id,key,JSON.stringify(record.value),record.updated]);
@@ -180,6 +189,7 @@ export function createAccountsHandler(db:Database){
     await client.query('COMMIT');return respond(result);
    }catch(error){if(client)await client.query('ROLLBACK');throw error;}finally{client?.release();release();}
   }catch(error){
+   if(error==='storage_quota')return respond({error:'Account storage exceeds 2 MiB. Your progress stays on this device. Save a smaller world and sync again.'},413);
    if(error===413)return respond({error:'Request too large.'},413);
    if(error===400)return respond({error:'Invalid JSON.'},400);
    return respond({error:'Accounts are temporarily unavailable. Your progress stays on this device.'},503);

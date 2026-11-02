@@ -142,7 +142,8 @@ describe('optional accounts with real Postgres',()=>{
   const merged=await (await request('sync',{saves:second},a.token,'PUT')).json();expect(merged.saves['best:snake'].value).toBe(200);expect(merged.saves.favourites.value).toEqual(['tower']);expect(merged.saves.settings.value.sound).toBe(true);expect(merged.saves.settings.value.autoNextEpisode).toBe(false);expect(merged.saves['save:snake'].value.data.score).toBe(9);
   expect(merged.saves['best:quadfall'].value).toBe(1200);expect(merged.saves['save:quadfall']).toEqual({value:{version:1,data:{phase:'running'},updated:1},updated:1});
   expect((await (await request('sync',undefined,a.token)).json()).saves).toEqual(merged.saves);expect((await (await request('sync',undefined,b.token)).json()).saves).toEqual({});
-  for(const saves of [{'account:token':{value:'secret',updated:1}},{'best:snake':{value:-1,updated:1}},{'save:not-a-game':{value:{version:1,data:{},updated:1},updated:1}},{'save:corn-clicker':{value:'x',updated:1}},{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
+  for(const saves of [{'account:token':{value:'secret',updated:1}},{'best:snake':{value:-1,updated:1}},{'save:not-a-game':{value:{version:1,data:{},updated:1},updated:1}},{'save:corn-clicker':{value:'x',updated:1}}])expect((await request('sync',{saves},a.token,'PUT')).status).toBe(400);
+  expect((await request('sync',{saves:{'save:blockcraft':{value:{version:1,data:{text:'x'.repeat(1050000)},updated:1},updated:1}}},a.token,'PUT')).status).toBe(413);
  });
  it('serializes concurrent save merges so updates from separate devices are retained',async()=>{
   const a=await signup();await Promise.all([request('sync',{saves:{'best:snake':{value:200,updated:1}}},a.token,'PUT'),request('sync',{saves:{'best:tower':{value:300,updated:1}}},a.token,'PUT')]);
