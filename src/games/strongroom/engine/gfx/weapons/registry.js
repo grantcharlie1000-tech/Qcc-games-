@@ -40,7 +40,7 @@ export function disposeWeaponTemplates(materialLibrary) {
       }
     });
   }
-  templates.clear();thirdPerson.clear();materials = null;library = null;
+  materials?.dispose();templates.clear();thirdPerson.clear();materials = null;library = null;
 }
 
 function ensureMaterials(materialLibrary) {

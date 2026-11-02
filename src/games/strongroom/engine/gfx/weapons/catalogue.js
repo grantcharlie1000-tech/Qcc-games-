@@ -15,6 +15,7 @@ import { buildRifle } from './models/rifle.js';
 import { buildPistol } from './models/pistol.js';
 import { buildAK } from './models/ak.js';
 import { buildSniper } from './models/sniper.js';
+import { buildSmg } from './models/smg.js';
 import { buildMP5 } from './models/mp5.js';
 import { buildDeagle } from './models/deagle.js';
 
@@ -30,6 +31,7 @@ export const WEAPON_MODELS = {
   // Roller-delayed 9 mm: slim cocking tube down the LEFT of the handguard, the
   // rotary drum rear sight, and the A2 fixed stock (models/mp5.js).
   mp5: () => buildMP5(),
+  smg: () => buildSmg(),
 
   // Bolt action in a thumbhole chassis, 196 mm scope tube in two split rings
   // over an adjustable cheek riser (models/sniper.js).

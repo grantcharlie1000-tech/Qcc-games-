@@ -62,3 +62,6 @@ rendering uses Lambert albedo only; high rendering retains the licensed PBR
 and atmosphere. The canvas pixel ratio follows the selected quality tier.
 Strongroom never calls QCC score or leaderboard submission APIs. Networking
 uses QCC Room; no Tiny Strike services are imported. Three is QCC's r180.
+
+
+Round 3 integrates the supplied CC0-derived palette/LOD/meshopt operators and arms, the original QCC procedural operator kits and bundled Barlow Condensed (SIL OFL). The current runtime inventory is `public/game-assets/strongroom/ASSETS.md`; retained weapon/material/sky source keeps the original notices above.
