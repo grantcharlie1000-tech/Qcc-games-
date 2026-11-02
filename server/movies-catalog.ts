@@ -198,7 +198,7 @@ export async function handleMoviesCatalog(req:Request,token:string,fetcher:Fetch
 
 async function fetchTmdb(path:string,token:string,fetcher:Fetcher){
   try{
-    const result=await fetcher(`${TMDB}/${path}`,{headers:{Authorization:`Bearer ${token}`,Accept:"application/json"},redirect:"error",signal:AbortSignal.timeout(8000)});
+    const result=await fetcher(`${TMDB}/${path}`,{headers:{Authorization:`Bearer ${token}`,Accept:"application/json"},redirect:"manual",signal:AbortSignal.timeout(8000)});
     if(!result.ok)return response({error:result.status===404?"title_unavailable":"metadata_unavailable"},result.status===404?404:502);
     const data=await result.json();
     if(!data||typeof data!=="object"||Array.isArray(data))return response({error:"invalid_metadata"},502);

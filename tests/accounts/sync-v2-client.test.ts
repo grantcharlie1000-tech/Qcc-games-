@@ -26,6 +26,31 @@ function fixture(){
 const clients:AccountsClient[]=[];const client=(f:ReturnType<typeof fixture>,fetcher=f.fetcher)=>{const c=new AccountsClient(f.storage,fetcher);clients.push(c);return c;};
 afterEach(()=>{for(const c of clients)c.dispose();clients.length=0;vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();});
 describe('v2 durable sync scheduling',()=>{
+ it('shows the storage-full message, retains the local save and durable pending data, then recovers after reload',async()=>{
+  vi.useFakeTimers();const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');
+  const save={version:1,data:{checkpoint:'keep me'},updated:1};f.storage.write('save:snake',save);const changed=vi.fn();c.onChange(changed);
+  f.fail(Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}));
+  await expect(c.flush()).rejects.toThrow('Storage is full right now. Your progress is kept on this device.');
+  expect(c.message).toBe('Storage is full right now. Your progress is kept on this device.');expect(changed).toHaveBeenCalled();
+  expect(f.storage.read('save:snake',null)).toEqual(save);expect(f.remote()['save:snake']).toBeUndefined();
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:snake'].value).toEqual(save);
+  c.dispose();const count=f.calls.length,reloaded=client(f);await reloaded.flush();expect(f.calls).toHaveLength(count);
+  await vi.advanceTimersByTimeAsync(2000);await reloaded.flush();expect(f.remote()['save:snake']!.value).toEqual(save);expect(reloaded.message).toBe('Progress synced.');
+ });
+ it('preserves the storage-full notice when the first signup sync fails',async()=>{
+  const f=fixture();const save={version:1,data:{checkpoint:'guest progress'},updated:1};f.storage.write('save:blockcraft',save);
+  const c=client(f,(async(input,init)=>init?.method==='PUT'?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):f.fetcher(input,init)) as typeof fetch);
+  await c.authenticate('signup','Ada','password1');expect(c.session()?.username).toBe('Ada');
+  expect(c.message).toBe('Storage is full right now. Your progress is kept on this device.');expect(f.storage.read('save:blockcraft',null)).toEqual(save);
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:blockcraft'].value).toEqual(save);
+ });
+ it('keeps unsent saves staged and the storage-full notice when sign-out cannot reach the database',async()=>{
+  const f=fixture();let full=false;
+  const c=client(f,(async(input,init)=>full?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):f.fetcher(input,init)) as typeof fetch);
+  await c.authenticate('signup','Ada','password1');const save={version:1,data:{checkpoint:'account progress'},updated:1};f.storage.write('save:snake',save);full=true;
+  await c.logout();expect(c.session()).toBeNull();expect(c.message).toBe('Storage is full right now. Your progress is kept on this device.');
+  expect(f.storage.read<any>('accounts:pending:ada',{})['save:snake'].value).toEqual(save);expect(f.storage.read<string[]>('accounts:revocations',[])).toHaveLength(1);
+ });
  it('splits large account data into requests of at most 1 MiB including the v2 envelope',async()=>{
   const f=fixture(),c=client(f);await c.authenticate('signup','Ada','password1');f.calls.length=0;
   for(const key of ['save:snake','save:tower','save:pool'])f.storage.write(key,{version:1,data:'é'.repeat(300000),updated:1});

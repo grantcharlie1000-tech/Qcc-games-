@@ -1,4 +1,5 @@
 import * as store from '../core/storage';
+import {STORAGE_FULL_MESSAGE} from '../core/storage-full';
 import {contentHash,stableText} from '../core/content';
 import {mergeSaves} from './merge';
 import {scoredGame} from '../leaderboard/shared';
@@ -103,10 +104,10 @@ export class AccountsClient {
  private async response(action:string,method:string,body:unknown,token?:string,keepalive=false){
   const response=await this.fetcher(`${endpoint}?action=${action}`,{method,headers:{...(action.startsWith('sync')?{'X-QCC-Sync':'2'}:{}),...(token?{Authorization:`Bearer ${token}`}:{}) ,...(body!==undefined?{'Content-Type':'application/json'}:{})},...(body!==undefined?{body:JSON.stringify(body)}:{}),cache:'no-store',signal:AbortSignal.timeout(8000),keepalive});
   if(!response.ok){
-   let text='Accounts are unavailable. Your progress stays on this browser.';try{const data=await response.json();if(typeof data.error==='string')text=data.error==='read_only'?'Cloud saves are temporarily read only. Your progress is queued on this browser.':data.error;}catch{}
+   let text=response.status===507?STORAGE_FULL_MESSAGE:'Accounts are unavailable. Your progress stays on this browser.';try{const data=await response.json();if(response.status===507||data.error==='storage_full')text=STORAGE_FULL_MESSAGE;else if(typeof data.error==='string')text=data.error==='read_only'?'Cloud saves are temporarily read only. Your progress is queued on this browser.':data.error;}catch{}
    const retry=response.headers.get('Retry-After'),seconds=retry!==null?Number(retry):NaN;
    const retryAt=retry===null?0:Number.isFinite(seconds)?Date.now()+Math.max(0,seconds)*1000:Math.max(0,Date.parse(retry)||0);
-   throw new AccountRequestError(text,[429,502,503].includes(response.status),retryAt,response.status);
+   throw new AccountRequestError(text,[429,502,503,507].includes(response.status),retryAt,response.status);
   }
   return response;
  }
@@ -127,7 +128,7 @@ export class AccountsClient {
   if(initial)this.reconcile(initial,{});
   this.apply(mergeSaves(this.collect(),mergeSaves(imported,staged)));this.track();
   this.storage.write('accounts:guest',true);this.message='';this.emit();
-  try{await this.flush(false,false);}catch{this.message='Signed in. Playing locally until your saves can sync.';this.emit();}
+  try{await this.flush(false,false);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Signed in. Playing locally until your saves can sync.';this.emit();}
  }
  private staged(value:unknown):Saves {
   const result:Saves={};if(!value||typeof value!=='object'||Array.isArray(value))return result;
@@ -158,7 +159,7 @@ export class AccountsClient {
   try{await this.flush(false,false);}catch{/* Durable pending progress is staged before clearing this identity. */}
   if(epoch!==this.epoch||this.session()?.token!==session.token)return;
   this.beforeIdentityChange();this.stage(session.username);this.epoch++;clearTimeout(this.timer);this.clear();this.remove(sessionKey);this.knownToken=null;this.state=emptyState();this.restoreGuest();this.guest();this.message='';this.emit();
-  try{await this.revoke(session.token);}catch{this.message='Logged out on this browser. Server sign-out will retry when online.';this.emit();}
+  try{await this.revoke(session.token);}catch(error){this.message=error instanceof AccountRequestError&&error.status===507?error.message:'Logged out on this browser. Server sign-out will retry when online.';this.emit();}
  }
  /** Manual calls pull too; scheduled/lifecycle callers explicitly request dirty-only work. */
  flush(keepalive=false,pull=true):Promise<void>{

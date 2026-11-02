@@ -1,192 +1,210 @@
 # Cloudflare Pages → Vercel API
 
-The browser continues to call same-origin `/.netlify/functions/accounts`,
-`/.netlify/functions/leaderboard` and `/.netlify/functions/turn`. Pages proxies
-those three routes to the Vercel backend without changing frontend endpoints.
+The browser calls same-origin `/.netlify/functions/accounts`,
+`/.netlify/functions/leaderboard` and `/.netlify/functions/turn`. Root
+`functions/_middleware.ts` proxies exactly those three paths. It does not depend
+on a `functions/.netlify` dot-folder. Unknown or deeper legacy paths return 404.
+`/api/movies` runs `functions/api/movies.ts` and `server/movies-catalog.ts` on
+Pages, through the middleware's `next()`.
 
-In **Cloudflare Pages project settings → Variables and Secrets**, set
-`QCC_API_ORIGIN=https://qcc-games-api.vercel.app` for **Production and Preview**.
-Use the actual backend origin, with no trailing slash or path; redeploy after
-changing it. This is a server runtime variable, with no `VITE_` prefix. A preview
-can use a different backend origin when its database is isolated appropriately.
-Build command: `npm run build`; output directory: `dist`.
+In **Cloudflare Pages project `nceastudy` → Settings → Variables and Secrets**,
+configure **both Production and Preview**, then redeploy:
 
-`functions/_middleware.ts` gates on `/.netlify/functions/` and rejects every route
-outside the three-name allowlist with 404. Root middleware avoids depending on
-undocumented handling of a `.netlify` function directory. The committed
-`public/_routes.json` is copied unchanged to `dist/_routes.json` by Vite. Its only
-include is `/.netlify/functions/*`; `exclude: []` means everything outside that
-include bypasses Functions. Do not add `exclude: ["/*"]`, which would also disable
-the API. Neither main nor this branch has `functions/api`, so `/api/*` is omitted.
-Static HTML, assets and offline files do not consume Function invocations.
-See Cloudflare's [routing](https://developers.cloudflare.com/pages/functions/routing/)
+| Runtime binding | Value |
+| --- | --- |
+| `QCC_API_ORIGIN` | Actual backend origin, for example `https://qcc-games-api.vercel.app`; no path, query, credentials or fragment |
+| `QCC_PROXY_SECRET` | Server-only secret shared with the backend; use a secret binding, never a `VITE_` variable |
+| `TMDB_READ_TOKEN` | Server-only TMDB read token for the native Pages movies Function |
+
+There is **no default backend origin or proxy secret**. Missing/blank origin or
+secret returns no-store JSON 503 `{"error":"backend not configured"}` without
+fetching. Invalid origins and upstream failures/timeouts return no-store JSON
+502 `{"error":"backend unavailable"}`. The proxy never logs the secret, headers
+or request bodies. Build command: `npm run build`; output directory: `dist`.
+Preview can use a separate backend and secret when its database is isolated.
+
+`public/_routes.json` is copied unchanged to `dist/_routes.json`:
+
+```json
+{"version":1,"include":["/.netlify/functions/*","/api/*"],"exclude":[]}
+```
+
+These are the only invocation prefixes. Static HTML, assets and retired-worker
+files bypass Functions. Do not add `exclude: ["/*"]`: it would disable both
+APIs. See Cloudflare's [routing](https://developers.cloudflare.com/pages/functions/routing/)
 and [middleware](https://developers.cloudflare.com/pages/functions/middleware/) docs.
 
-The proxy streams request/response bodies, preserves method, query, authorization,
-cookies, Origin and sync headers, and removes Host on requests and hop-by-hop
-headers in both directions, including names nominated by Connection. Redirects
-are returned without following them with visitor credentials. The upstream fetch
-has a 10-second abort deadline. An unset origin returns 503
-`{"error":"backend not configured"}`; fetch/configuration failures return 502
-`{"error":"backend unavailable"}`. Local errors use `Cache-Control: no-store`.
-It logs neither bodies nor authentication headers. After response headers have
-been streamed, a later upstream stream failure cannot change the HTTP status.
+The proxy preserves method, raw query and streaming body. It forwards only
+`Authorization`, `Content-Type`, `X-QCC-Sync` and `Accept` from the visitor. It
+sets `X-QCC-Client-IP` from Cloudflare's `CF-Connecting-IP` when present and
+`X-QCC-Proxy-Secret` from the runtime binding. Visitor-supplied QCC proxy/IP
+headers are discarded. It sends no `Origin`, cookies, forwarding chains or
+legacy Netlify IP header. It returns the upstream status/body and only
+`Content-Type`, `Retry-After`, `Cache-Control`, `ETag` and `Vary` headers. The
+upstream fetch uses manual redirects and a 10-second deadline; credentials and
+the secret are never followed to a redirect destination. A later failure after
+a response stream begins cannot change its status.
 
-## Hosting Lead / PR deployment notes
+The movies fetch also uses `redirect: 'manual'`. Workers implements only
+`follow` and `manual`; `error` throws before making the request. Every non-2xx,
+including redirects, fails metadata retrieval (404 keeps the existing
+`title_unavailable` response; other failures return 502). See the
+[Workers Request API](https://developers.cloudflare.com/workers/runtime-apis/request/#properties).
 
-Read-only audit: `origin/infra/backend-move` at
-`56628e66b5569ab0575b98b0b570336c0c43ceff`. That branch was not edited.
+## Physical database capacity
 
-- Vercel `vercel.json` already rewrites `/.netlify/functions/:route` to `/api/:route`.
-  Point Pages at the reachable Vercel production hostname, not an authenticated
-  deployment-protection/login page. If protection is enabled, Hosting Lead must
-  configure access for the Pages server request before using that origin.
-- Set Vercel **`QCC_ALLOWED_ORIGINS`** to the exact Pages production/custom origins
-  and the preview pattern, for example
-  `https://qcc-games.pages.dev,https://*.qcc-games.pages.dev,https://your-custom-domain.example`.
-  Substitute the real names. Its wildcard matches one subdomain label; it does
-  not include the bare project hostname. The proxy preserves browser Origin.
-  `server/app.ts` checks this allowlist, then removes an approved cross-origin
-  Origin before invoking the inner accounts/leaderboard handlers. Without the
-  allowlist, writes from Pages return 403. This remains same-origin to browsers;
-  no frontend CORS setup is needed.
-- Existing server variables still apply: **`DATABASE_URL`** (pooled Neon URL),
-  **`CLOUDFLARE_TURN_KEY_ID`**, **`CLOUDFLARE_TURN_API_TOKEN`**. No database secret
-  belongs in Pages or the browser. `TMDB_READ_TOKEN` is for the separate movies
-  backend; this proxy does not expose it or add a movies route.
-- `server/app.ts` maps `VERCEL_ENV=production` to the production database marker
-  and `preview` to the preview marker through `deploy-preview`. The
-  `netlify/lib/runtime.mts` guard requires an existing, matching `qcc_environment`
-  row. Set optional **`QCC_DEPLOY_CONTEXT`** / **`QCC_DB_EXPECTED_ENV`** only to
-  the intended existing environment; mismatches return 503. A Pages Preview
-  pointing to the production Vercel deployment uses that deployment's production
-  context and database. **`QCC_WRITE_FREEZE`** or a database write freeze also
-  rejects writes with 503; do not bypass these guards.
-- The proxy replaces `X-Forwarded-For`, `X-Real-IP` and the legacy
-  **`X-Nf-Client-Connection-Ip`** with `CF-Connecting-IP`, rather than appending
-  untrusted visitor headers. The legacy header is necessary because
-  `src/accounts/server.ts` reads it for persistent signup/login throttling.
-  `server/app.ts` itself takes its IP as a function argument;
-  **`server/vercel.ts`** supplies `X-Real-IP` first, then the first X-Forwarded-For
-  entry. `server/node.ts` uses socket IP unless `QCC_TRUST_PROXY=1` enables XFF.
-  Vercel documents that it overwrites X-Forwarded-For from external proxies, and
-  X-Real-IP reflects that platform IP. Therefore forwarding these headers alone
-  cannot guarantee visitor IPs at the outer per-IP limiter on Hobby. Hosting Lead
-  must verify deployed behavior and, if rewritten, have the backend adapter use
-  the preserved Cloudflare/legacy IP **only after authenticating the trusted
-  Pages proxy** (for example a server-only shared-secret check), or configure a
-  supported trusted proxy. Simply trusting a public custom header allows spoofing.
-  No Hobby environment variable enables Vercel's Enterprise Trusted Proxy feature.
-  This backend adapter/trust change is outside this branch. See
-  [Vercel request headers](https://vercel.com/docs/headers/request-headers).
+`server/storage-full.ts` recognizes Postgres SQLSTATE **53100** (`disk_full`),
+**53400** (`configuration_limit_exceeded`), Neon project-size-limit messages,
+and wrapped causes/pool errors. It returns exactly:
 
-## Save/storage/body limit audit
+```http
+HTTP/1.1 507 Insufficient Storage
+Content-Type: application/json
+Cache-Control: no-store
 
-The starting values below are from main at `0221bed` and the backend ref above.
-Account shared/server code has the same limits in both; the backend client only
-differs in how it chooses an API base. Main has no `server/` directory. Backend
-`server/` routing and Netlify function wrappers add no account storage/body cap.
+{"error":"storage_full","message":"Storage is full right now. Your progress is kept on this device."}
+```
 
-| Limit / enforcement | Before | This branch |
+Accounts (including save sync v1/v2 and authentication), leaderboards, the
+runtime environment/flags guard, and both Netlify adapter initialization catches
+use this contract. Transaction cleanup retains the original capacity error.
+Failed writes/commits roll back saves, scores and revisions. No data is deleted
+to reclaim space, and driver messages/SQL/connection strings are not returned.
+Unrelated service failures, environment mismatches and write freezes retain
+their existing 503 behavior. Logical per-account/request quotas still return
+413; they are separate from the shared **0.5 GB Neon Free** physical budget.
+
+The browser displays the shared human-readable message instead of the error
+code in account sync/login/sign-out and leaderboard dialog/sidebar statuses. A rejected
+background score upload keeps its notice even if a subsequent ranking read
+succeeds. Local saves, durable account staging and queued scores remain intact;
+507 uses the existing persisted retry backoff and clears on successful recovery.
+Signup's initial failed sync also retains the capacity notice.
+
+## Save/body limit audit retained from the preceding branch change
+
+| Limit | Backend ref before mirroring | This branch |
 | --- | --- | --- |
-| `src/accounts/shared.ts`: `MAX_KEY_BYTES`, UTF-8 JSON transfer record | 1,048,576 bytes (1 MiB) | unchanged |
-| `MAX_BODY_BYTES`, streamed account sync PUT incl. envelope and Content-Length check | 2,097,152 bytes (2 MiB) | 1,048,576 bytes (1 MiB) |
-| All stored keys for one account | no aggregate cap | `MAX_USER_BYTES`: 2,097,152 bytes (2 MiB) |
-| `src/accounts/client.ts` ordinary upload batch | less than 2 MiB − 2,048 bytes | less than 1 MiB − `SYNC_BATCH_HEADROOM_BYTES` (2,048 bytes) |
-| Client pagehide/keepalive batch | less than 60,000 bytes | unchanged; named `MAX_KEEPALIVE_BODY_BYTES` |
-| Signup/login/logout JSON body | 2,048 bytes | unchanged; named `MAX_AUTH_BODY_BYTES` |
-| `scripts/leaderboard-dev.mjs` account body buffer | hardcoded 2,097,152 bytes | shared `MAX_BODY_BYTES` |
-| Account save rows: database `octet_length(value::text)` per row | 2,097,152 bytes of JSONB text | unchanged; no schema/migration edits |
-| Save-key allowlist / count, `SAVE_KEYS` | main 50, backend 48; settings, favourites, game saves/bests and four Minesweeper bests | unchanged; one record per key |
-| Favourites count | at most `GAME_IDS.length` (main 22, backend 21) | unchanged |
-| Snapshot JSON shape | version 1 shell, matching nonnegative safe-integer timestamps, depth at most 64, safe keys and finite numbers | unchanged |
-| `src/core/storage.ts` local data | browser localStorage quota; memory fallback on quota failure; no application byte cap | unchanged |
-| Account count | no application-wide account count cap | unchanged |
+| `MAX_KEY_BYTES`, UTF-8 JSON transfer record | 1 MiB | 1 MiB |
+| `MAX_BODY_BYTES`, full streamed sync request | 2 MiB | 1 MiB |
+| All keys stored for one account | Unbounded | `MAX_USER_BYTES=2 MiB` |
+| Ordinary client batch, including cursor/revisions | Below 2 MiB − 2,048 bytes | Below 1 MiB − `SYNC_BATCH_HEADROOM_BYTES=2048` |
+| Keepalive request | Below 60,000 bytes | `MAX_KEEPALIVE_BODY_BYTES=60000` |
+| Auth JSON body | 2,048 bytes | `MAX_AUTH_BODY_BYTES=2048` |
+| Save row JSONB text constraint | 2 MiB | Unchanged |
+| Leaderboard JSON body | 2,048 bytes | Unchanged |
 
-The database row limit is in
-`netlify/database/migrations/20261026090000_optional_accounts.sql` on main, and
-`db/migrations/20261026090000_optional_accounts.sql` on the backend branch.
-JSONB text formatting, row/index overhead and other tables consume space beyond
-the logical account quota; 2 MiB is not a reservation or a physical disk cap.
-The quota counts compact UTF-8 JSON of the complete `{key:{value,updated}}` map,
-including keys and envelopes. It is checked after merges and semantic no-ops,
-under the existing account row lock, before any writes. Both protocol versions
-are covered, including concurrent uploads and replacements of existing keys.
-An over-quota growing upload returns 413 atomically; it does not advance revisions.
+The account quota counts compact UTF-8 JSON of the entire merged
+`{key:{value,updated}}` map, including untouched keys and semantic no-ops. It is
+checked under the account row lock before writing. Existing over-quota saves
+remain readable; non-growing/shrinking updates remain allowed. A growing
+rejection is atomic and does not advance revisions. Snapshots are indivisible;
+a record near 1 MiB may not fit its request envelope and stays local. The client
+attempts later shrinking batches and makes at most one extra pass over logical
+quota rejections after progress, then retains any failures without a retry loop.
+These are logical limits, not reserved physical capacity: rows, indexes,
+sessions, authentication attempts and leaderboards share the database budget.
 
-**These requested targets tighten the limits discovered on main:** requests were
-already allowed 2 MiB and total account data was unbounded. There was no smaller
-per-user cap to raise. The 1 MiB record validator remains, but request envelope
-and batching headroom mean a record near that boundary stays local. Snapshots
-are indivisible; they are not split across requests. Multiple smaller records
-can use the full 2 MiB quota over separate requests. A populated Blockcraft
-world can still exceed the single-request cap. Browser queues/staging retain
-unsent progress and report the reason. A quota rejection suspends automatic
-uploads until manual sync or reauthentication, using existing error handling.
-Quota-rejected batches do not prevent later shrinking batches from freeing
-space. After any successful batch the client makes at most one additional pass
-over rejected batches, then stages any remaining failures without a retry loop.
-Proxy 502 responses use the existing network backoff, with integer deadlines
-that survive reloads.
+Usernames, password requirements, fixed 60-day sessions and abuse limits remain:
+60 signups/IP/hour; failed logins 100/IP and 10/username/15 minutes. Netlify and
+the backend router retain accounts 600, leaderboard 300, TURN 20 requests/IP/minute;
+TURN additionally allows 6 credential requests/client/minute. No schema,
+migration, game-save model cap or live database was changed.
 
-Existing data stays readable, including legacy records/accounts over new write
-caps. Over-quota accounts may make non-growing or shrinking updates, even before
-they get below the cap; nothing is removed to reclaim space. A newer, smaller
-snapshot can free quota. Physical free-tier capacity remains shared by accounts,
-sessions, attempts and leaderboards. Limits use the task's conservative **0.5 GB
-Neon budget** and stay below Vercel's documented
-[4.5 MB payload ceiling](https://vercel.com/docs/errors/function_payload_too_large).
-They do not guarantee an unlimited number of accounts at full quota.
+## Exact equivalent change on `origin/infra/backend-move`
 
-Other account restrictions remain: usernames 3–24 allowed characters, passwords
-8–128 characters, fixed 60-day sessions; 60 signup attempts/IP/hour; failed logins
-100/IP and 10/normalized username per 15 minutes. Netlify wrappers keep accounts
-600, leaderboard 300 and TURN 20 requests/IP/minute; `server/app.ts` uses those
-same per-instance rate windows on Vercel. TURN additionally allows 6 credential
-requests/client/minute. Leaderboard JSON bodies stay at 2,048 bytes. No abuse
-protection was relaxed. Game-specific model caps (for example Blockcraft's
-200,000 edits) are independent of account storage and unchanged.
+Read-only comparison ref: **`56628e66b5569ab0575b98b0b570336c0c43ceff`**. That
+branch was not checked out, modified or pushed. Deploying this Pages branch
+alone does not update the Vercel handlers. Apply the following in a separate
+backend change; do not wholesale merge the frontend/game history.
 
-## Exact backend mirror checklist
+1. Add **`src/core/storage-full.ts`** and **`server/storage-full.ts`** unchanged.
+   Port the capacity checks before generic catches in **`src/accounts/server.ts`**,
+   **`src/leaderboard/server.ts`**, **`netlify/lib/runtime.mts`**,
+   **`netlify/functions/accounts.mts`**, and **`netlify/functions/leaderboard.mts`**.
+   Port the rollback/error-preservation and authentication COMMIT cleanup changes.
+   Preserve the backend's existing game list and migration layout.
+2. **`server/app.ts`** has an additional lazy database/factory catch in `build()`
+   absent from this Pages checkout. Import
+   `isStorageFullError, storageFullResponse` from `./storage-full`; change that
+   `catch` to `catch(error)` and return `storageFullResponse()` when classification
+   matches, before its existing generic 503. Do the same in **`server/node.ts`**'s
+   outer catch before its existing 500 fallback, writing the response status,
+   headers and JSON body. Vercel delegates to `createApp`; **`server/vercel.ts`**
+   needs no separate capacity catch.
+3. Port the account-client 507 parsing/retry, initial-signup and sign-out notices in
+   **`src/accounts/client.ts`**; preserve its `apiUrl('accounts')` endpoint/import.
+   Port 507 handling, status notifications and notice recovery in
+   **`src/leaderboard/client.ts`**; preserve `apiUrl('leaderboard')`. Port the
+   status rendering/subscription changes in **`src/leaderboard/view.ts`** and
+   **`src/leaderboard/sidebar.ts`**. Do not import Claimline's unrelated behavior
+   when transferring these hunks.
+4. That backend ref still implements `fetchTmdb` inside
+   **`netlify/functions/movies-search.mts`**. Change its `redirect: 'error'` to
+   `redirect: 'manual'` and retain `if (!result.ok)` before JSON parsing. This is
+   equivalent to this branch's **`server/movies-catalog.ts`** change; no Pages
+   movies adapter is needed on the backend.
+5. Mirror the preceding quota change too: **`src/accounts/shared.ts`** gets
+   `MAX_BODY_BYTES=1024*1024`, `MAX_USER_BYTES=2*1024*1024`,
+   `MAX_AUTH_BODY_BYTES=2048`, `MAX_KEEPALIVE_BODY_BYTES=60000`,
+   `SYNC_BATCH_HEADROOM_BYTES=2048` and `jsonBytes`; keep `MAX_KEY_BYTES=1024*1024`.
+   Port **`src/accounts/server.ts`**'s locked all-key merge/quota/no-op check and
+   legacy non-growing allowance. Port **`src/accounts/client.ts`**'s batching,
+   unsendable-record notice, 502 retry, integer retry deadlines and bounded 413
+   recovery. **`scripts/leaderboard-dev.mjs`** must use the shared cap while
+   preserving its backend-specific environment setup. Update **`docs/ACCOUNTS.md`**
+   and **`docs/SYNC.md`** to the current limits.
+6. Port the capacity regressions from **`tests/database/storage-full.test.ts`**,
+   **`tests/accounts/server.test.ts`**, **`tests/accounts/sync-v2-client.test.ts`**,
+   **`tests/accounts/storage-full.spec.ts`**, **`tests/leaderboard/server.test.ts`**
+   and **`tests/leaderboard/client.test.ts`**. Keep backend fixture migrations at
+   `db/migrations` (this branch uses `netlify/database/migrations`). Also port
+   the preceding quota/server-v2 regressions and 413 expectation. Add equivalent
+   manual-redirect/non-2xx tests in **`tests/movies/catalog-api.test.ts`** against
+   its existing movies handler; omit the Pages-only middleware/adapter import.
+   Extend **`tests/server/app.test.ts`** to cover a database-factory capacity
+   exception, matching environment/flags failures, and the trusted-IP cases below.
 
-Before the live backend receives these limits, mirror these files onto
-`infra/backend-move` in a separate change:
+### Required backend handling of the new trusted-IP headers
 
-1. **`src/accounts/shared.ts`**: set `MAX_BODY_BYTES=1024*1024`, add
-   `MAX_USER_BYTES=2*1024*1024`, `MAX_AUTH_BODY_BYTES=2048`,
-   `MAX_KEEPALIVE_BODY_BYTES=60000`, `SYNC_BATCH_HEADROOM_BYTES=2048`, `jsonBytes`
-   and the free-tier comment; retain `MAX_KEY_BYTES=1024*1024`.
-2. **`src/accounts/server.ts`**: shared auth/body constants and the locked,
-   all-key, post-merge aggregate check with non-growing legacy allowance and 413.
-3. **`src/accounts/client.ts`**: shared batching constants, the notice when
-   an individual record cannot fit a request, retryable 502 handling, integer
-   retry deadlines and bounded quota-recovery passes. Preserve that branch's `apiUrl`
-   import/endpoint choice rather than overwriting it with this branch's file.
-4. **`scripts/leaderboard-dev.mjs`**: replace the hardcoded account buffer cap
-   with the shared SSR-loaded constant; preserve its host-neutral environment setup.
-5. **`tests/accounts/server-v2.test.ts`**, **`tests/accounts/server.test.ts`** and
-   **`tests/accounts/sync-v2-client.test.ts`**: new boundaries, quota, concurrent
-   upload, quota-recovery batching, 502 retry, staging and legacy-data regressions
-   and oversized-body 413 assertions. Preserve their backend-specific migration
-   fixture paths (`db/migrations` rather than main's `netlify/database/migrations`).
-   Update current-limit sections in **`docs/ACCOUNTS.md`** and **`docs/SYNC.md`**.
+Set the same server-only **`QCC_PROXY_SECRET`** on the Vercel backend's matching
+Production and Preview environments. The Pages IP header must be authenticated
+before either the outer router or account auth limiter trusts it. The backend
+ref currently ignores `X-QCC-Client-IP` and reads a different, spoofable legacy
+header for account throttling. Make this precise change in **`server/app.ts`**:
 
-No size constant needs changing in **`server/app.ts`**, **`server/vercel.ts`**,
-**`server/node.ts`**, **`netlify/functions/accounts.mts`**,
-**`netlify/functions/leaderboard.mts`**, **`netlify/functions/turn.mts`** or
-**`vercel.json`**: they delegate account body/storage validation to the shared
-handler. The separate trusted-IP adapter follow-up above remains necessary if
-Vercel rewrites the IP headers. Deploying this Pages branch alone does not change
-live Vercel storage enforcement. Keep the Paper.io/Claimline leaderboard off;
-do not mirror main's Claimline migration or add a leaderboard table for this task.
+- Import `timingSafeEqual` from `node:crypto` and `isIP` from `node:net`. Accept
+  `request.headers.get('X-QCC-Client-IP')` only when `isIP(value)` is nonzero and
+  a nonempty configured `env.QCC_PROXY_SECRET` equals `X-QCC-Proxy-Secret` using
+  equal-length buffers and `timingSafeEqual`. Never log either secret.
+- Before the `limited()` call, choose `ip = authenticatedProxyIp || clientIp ||
+  'unknown'`. Use this IP for both the existing router limiter and TURN handler.
+- Before invoking the inner handler, clone the headers. Remove
+  `X-QCC-Proxy-Secret`, `X-QCC-Client-IP` and visitor `X-Nf-Client-Connection-Ip`.
+  Set `X-Nf-Client-Connection-Ip` to the chosen IP for the unchanged account
+  signup/login limiter. Preserve the existing approved-Origin removal for
+  direct cross-origin requests; Pages itself sends no Origin.
+- Test valid/missing/wrong secret, malformed/comma-separated IP, forged legacy
+  headers, IPv4/IPv6, separate visitors' rate-limit buckets and direct requests'
+  platform-IP fallback. Unauthenticated custom headers must never change a
+  rate-limit subject. **`server/vercel.ts`** and **`server/node.ts`** can retain
+  their platform/socket IP arguments: the shared router selects the trusted IP.
 
-## Verification on this branch
+Vercel's existing `vercel.json` rewrite from `/.netlify/functions/:route` to
+`/api/:route` remains. Use a reachable production origin without an intervening
+login/protection redirect. Keep backend `DATABASE_URL`, TURN credentials,
+strict database environment markers and optional `QCC_WRITE_FREEZE` controls.
+`QCC_ALLOWED_ORIGINS` remains relevant for browsers using that branch's explicit
+API base directly; Pages server requests have no Origin and do not need a CORS
+allowlist entry. Keep the Paper.io/Claimline leaderboard migration off that
+backend; do not add its table/constraint change as part of this work.
 
-- `npm run check`: passed.
-- `npm test -- --maxWorkers=2 --reporter=dot`: 166 files, 3,374 tests passed.
-- `npm run build`: passed; existing Vite chunk-size warning only.
-- `dist/_routes.json` equals `public/_routes.json` and includes only the API prefix.
-- Independent review's two recovery findings were reproduced and fixed with
-  regressions for 502 retries across reload and quota-releasing later batches.
-- No Playwright run or live deployment/database check; no UI, style, service
-  worker source, schema or migration changes.
+## Verification
+
+Local regression tests exercise the real handlers with isolated local Postgres,
+capacity errors injected at writes/commits, runtime/adapter failures, browser
+notices/retained progress, proxy headers/streams and the Pages movies route.
+Typecheck, full Vitest, production build, built routing-manifest comparison and
+independent code review are recorded in the follow-up implementation plan.
+Live Pages/Vercel configuration, trusted-IP backend deployment and the live Neon
+project were not changed or claimed verified.

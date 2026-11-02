@@ -21,6 +21,7 @@ export class LeaderboardView {
    <button class="game-button secondary lb-refresh" type="button">Refresh scores</button>
    <section class="lb-login"><p class="muted">Log in to share scores. Guest games and progress stay on this device.</p><button class="game-button" type="button">Log in / Sign up</button></section>`;
   document.body.append(this.root);
+  this.sync.onStatus(message=>{if(this.root.open)this.status(message);});
   if(!document.hidden&&navigator.onLine)void this.sync.flush().catch(()=>{});
   this.select.addEventListener('change',()=>void this.refresh());
   this.root.querySelector('.lb-refresh')!.addEventListener('click',()=>void this.refresh());
@@ -55,12 +56,12 @@ export class LeaderboardView {
   try{
    const board=await this.sync.load(game);if(id!==this.request||!this.root.open)return;this.paint(board,game);
    this.root.querySelector<HTMLElement>('.lb-login')!.hidden=!!this.sync.profile()&&!this.sync.needsLogin;
-   this.status(this.sync.needsLogin?'Log in again to share your scores. Your progress stays on this device.':pending?'Your scores are waiting to sync. Showing the latest shared scores.':board.entries.length?'Updated from the online leaderboard.':'No scores yet. Be the first to play!');
+   this.status(this.sync.message||(this.sync.needsLogin?'Log in again to share your scores. Your progress stays on this device.':pending?'Your scores are waiting to sync. Showing the latest shared scores.':board.entries.length?'Updated from the online leaderboard.':'No scores yet. Be the first to play!'));
   }catch(error){
    if(id!==this.request||!this.root.open)return;
    const cached=this.sync.cached(game);this.paint(cached,game);
    this.root.querySelector<HTMLElement>('.lb-login')!.hidden=!!this.sync.profile()&&!this.sync.needsLogin;
-   this.status(this.sync.needsLogin&&error instanceof Error?error.message:cached?'Offline or unavailable · showing previously loaded scores. Your scores will sync when connected.':'Online leaderboard unavailable. You can keep playing; your scores are saved on this device.');
+   this.status(this.sync.message||(this.sync.needsLogin&&error instanceof Error?error.message:cached?'Offline or unavailable · showing previously loaded scores. Your scores will sync when connected.':'Online leaderboard unavailable. You can keep playing; your scores are saved on this device.'));
   }
  }
 }

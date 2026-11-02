@@ -5,6 +5,7 @@ import {NetlifyDB} from '@netlify/database-dev';
 import {getDatabase} from '@netlify/database';
 import {createAccountsHandler,verifyPassword} from '../../src/accounts/server';
 import {createLeaderboardHandler} from '../../src/leaderboard/server';
+import type {Database} from '../../src/leaderboard/server';
 const local=new NetlifyDB({logger:()=>{}});let pool:ReturnType<typeof getDatabase>['pool'];
 let handle:ReturnType<typeof createAccountsHandler>;
 const endpoint='https://arcade.test/.netlify/functions/accounts';
@@ -12,6 +13,46 @@ function request(action:string,body?:unknown,token?:string,method=body===undefin
  return handle(new Request(endpoint+'?action='+action,{method,headers:{'Content-Type':'application/json',Origin:'https://arcade.test',...(token?{Authorization:`Bearer ${token}`}:{ } ),...extra},body:body===undefined?undefined:JSON.stringify(body)}));
 }
 const signup=async(username='Player_One',guestToken?:string)=>{const response=await request('signup',{username,password:'secret password',...(guestToken?{guestToken}:{})});expect(response.status).toBe(201);return response.json();};
+const capacityBody={error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'};
+for(const protocol of ['1','2'])it.each([{code:'53100'},{code:'53400'},new Error('Neon: project size limit exceeded')])(`v${protocol} sync returns 507 and rolls back all writes on capacity failure: %j`,async error=>{
+ const {token}=await signup();
+ await request('sync',{'saves':{'best:snake':{value:5,updated:1}}},token,'PUT');
+ const snapshot=async()=>({saves:(await pool.query('SELECT key,value,updated,revision FROM account_saves ORDER BY key')).rows,accounts:(await pool.query('SELECT sync_revision FROM accounts')).rows});
+ const before=await snapshot();let released=false;
+ const db:Database={query:pool.query.bind(pool),connect:async()=>{const client=await pool.connect();return {
+  query:async(sql,values)=>{if(sql.includes('INSERT INTO account_saves')&&values?.[1]==='best:tower')throw error;return client.query(sql,values);},
+  release:()=>{released=true;client.release();}
+ };}};
+ const saves={'best:snake':{value:100,updated:2},'best:tower':{value:10,updated:2}};
+ const response=await createAccountsHandler(db)(new Request(endpoint+'?action=sync',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-QCC-Sync':protocol},body:JSON.stringify(protocol==='2'?{cursor:'0',bases:{},saves}:{saves})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);expect(response.headers.get('Cache-Control')).toBe('no-store');
+ expect(released).toBe(true);expect(await snapshot()).toEqual(before);
+});
+it('keeps the capacity error when an account commit and subsequent rollback both fail',async()=>{
+ const {token}=await signup();const db:Database={query:pool.query.bind(pool),connect:async()=>{const client=await pool.connect();return {
+  query:async(sql,values)=>{if(sql==='COMMIT')throw {code:'53100'};if(sql==='ROLLBACK'){await client.query(sql);throw new Error('connection lost during cleanup');}return client.query(sql,values);},release:()=>client.release()
+ };}};
+ const response=await createAccountsHandler(db)(new Request(endpoint+'?action=sync',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({saves:{'best:snake':{value:100,updated:1}}})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);expect((await pool.query('SELECT * FROM account_saves')).rows).toEqual([]);
+});
+it.each(['signup','login'])('returns 507 when %s cannot write authentication records',async action=>{
+ const db:Database={query:async(sql,values)=>{if(sql.includes('DELETE FROM account_sessions'))throw {code:'53400'};return pool.query(sql,values);},connect:()=>pool.connect()};
+ const response=await createAccountsHandler(db)(new Request(endpoint+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'Test_Player',password:'secret password'})}));
+ expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);
+});
+it.each(['signup','login'])('rolls back %s authentication if COMMIT runs out of space',async action=>{
+ await signup();const before=(await pool.query('SELECT token_hash FROM account_sessions ORDER BY token_hash')).rows;
+ let transaction:Awaited<ReturnType<typeof pool.connect>>|undefined,rolledBack=false,released=false;
+ const db:Database={query:pool.query.bind(pool),connect:async()=>{
+  transaction=await pool.connect();const client=transaction;
+  return {query:async(sql,values)=>{if(sql==='COMMIT')throw {code:'53100'};if(sql==='ROLLBACK')rolledBack=true;return client.query(sql,values);},release:()=>{released=true;}};
+ }};
+ try{
+  const response=await createAccountsHandler(db)(new Request(endpoint+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:action==='signup'?'Commit_New':'Player_One',password:'secret password'})}));
+  expect(response.status).toBe(507);expect(await response.json()).toEqual(capacityBody);expect(rolledBack).toBe(true);expect(released).toBe(true);
+  expect((await pool.query('SELECT token_hash FROM account_sessions ORDER BY token_hash')).rows).toEqual(before);
+ }finally{if(transaction){await transaction.query('ROLLBACK');transaction.release();}}
+});
 beforeAll(async()=>{const connectionString=await local.start();await local.applyMigrations('netlify/database/migrations');pool=getDatabase({connectionString}).pool;handle=createAccountsHandler(pool);},30000);
 afterAll(async()=>{await pool?.end();await local.stop();});
 beforeEach(async()=>{await pool.query('TRUNCATE arcade_players,account_attempts CASCADE');});

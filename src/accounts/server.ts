@@ -4,6 +4,7 @@ import {validUsername,validPassword,validSaves,MAX_BODY_BYTES,MAX_AUTH_BODY_BYTE
 import {mergeSaves} from './merge';
 import {stableText} from '../core/content';
 import {writeFrozen,readOnlyResponse} from './write-freeze';
+import {isStorageFullError,storageFullResponse} from '../../server/storage-full';
 const sha=(value:string)=>createHash('sha256').update(value).digest('hex');
 const DUMMY='scrypt$16384$8$1$00000000000000000000000000000000$'+'00'.repeat(64);
 const derive=(password:string,salt:Buffer,N:number,r:number,p:number)=>new Promise<Buffer>((resolve,reject)=>scrypt(password,salt,64,{N,r,p,maxmem:64*1024*1024},(error,key)=>error?reject(error):resolve(key)));
@@ -117,9 +118,9 @@ export function createAccountsHandler(db:Database){
      await client.query('INSERT INTO accounts(id,username,password_hash,player_id) VALUES ($1,$2,$3,$4)',[id,data.username,passwordHash,playerId]);
      // Legacy guestToken is accepted for compatibility, but guest scores stay separate.
      const token=await session(client.query.bind(client),id);await client.query('RELEASE SAVEPOINT signup');return respond({token,username:data.username},201);
-    }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup');if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
-    }catch(error){failed=true;if(auth)await auth.query('ROLLBACK');throw error;}
-    finally{try{if(auth&&!failed)await auth.query('COMMIT');}finally{auth?.release();for(const release of releases.reverse())release();}}
+    }catch(error){await client.query('ROLLBACK TO SAVEPOINT signup').catch(()=>{});if((error as {code?:string}).code==='23505')return respond({error:'That username is already taken.'},409);throw error;}
+    }catch(error){failed=true;if(auth)await auth.query('ROLLBACK').catch(()=>{});throw error;}
+    finally{try{if(auth&&!failed)try{await auth.query('COMMIT');}catch(error){await auth.query('ROLLBACK').catch(()=>{});throw error;}}finally{auth?.release();for(const release of releases.reverse())release();}}
    }
    if(action==='logout'){
     if(!data||typeof data!=='object'||Array.isArray(data))return respond({error:'Invalid logout request.'},400);
@@ -187,8 +188,9 @@ export function createAccountsHandler(db:Database){
      }
     }
     await client.query('COMMIT');return respond(result);
-   }catch(error){if(client)await client.query('ROLLBACK');throw error;}finally{client?.release();release();}
+   }catch(error){if(client)await client.query('ROLLBACK').catch(()=>{});throw error;}finally{client?.release();release();}
   }catch(error){
+   if(isStorageFullError(error))return storageFullResponse();
    if(error==='storage_quota')return respond({error:'Account storage exceeds 2 MiB. Your progress stays on this device. Save a smaller world and sync again.'},413);
    if(error===413)return respond({error:'Request too large.'},413);
    if(error===400)return respond({error:'Invalid JSON.'},400);

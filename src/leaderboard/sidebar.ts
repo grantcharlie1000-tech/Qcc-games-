@@ -11,7 +11,7 @@ const trophy='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v2h3v3
 export class LeaderboardSidebar {
  readonly root=document.createElement('aside');
  private readonly wide=matchMedia('(min-width: 720px)');
- private disposed=false;private request=0;private busy=false;private refreshPending=false;private lastLoaded=0;private unsubscribe:()=>void;
+ private disposed=false;private request=0;private busy=false;private refreshPending=false;private lastLoaded=0;private unsubscribe:()=>void;private unsubscribeStatus:()=>void;
  private readonly game:LeaderboardKey;
  constructor(game:GameId,title:string,private sync:LeaderboardSync,open:()=>void){
   this.game=game==='minesweeper'?'minesweeper-score':game;
@@ -34,6 +34,7 @@ export class LeaderboardSidebar {
   document.querySelector('.game-view')!.after(this.root);
   this.wide.addEventListener('change',this.visibility);window.addEventListener('online',this.online);
   this.unsubscribe=sync.onSynced(game=>{if(game===this.game)void this.refresh();});
+  this.unsubscribeStatus=sync.onStatus(message=>this.status(message));
   document.addEventListener('visibilitychange',this.visibility);window.addEventListener('offline',this.visibility);
   this.setExpanded(store.read<boolean>('leaderboard:panel-open',false)===true,false);
  }
@@ -68,10 +69,10 @@ export class LeaderboardSidebar {
   this.busy=true;
   if(!this.root.querySelector('tbody')!.childElementCount)this.status('Loading…');
   try{const board=await this.sync.load(this.game);if(this.disposed||request!==this.request)return;this.paint(board);this.lastLoaded=Date.now();
-   const mine=board.player;this.status(mine?`You: #${mine.rank} · ${formatScore(this.game,mine.score)}`:board.entries.length?'Best score per player.':'No scores yet. Be the first!');}
-  catch{if(this.disposed||request!==this.request)return;const cached=this.sync.cached(this.game);this.paint(cached);this.status(cached?'Offline · showing saved rankings.':'Rankings unavailable right now.');}
+   const mine=board.player;this.status(this.sync.message||(mine?`You: #${mine.rank} · ${formatScore(this.game,mine.score)}`:board.entries.length?'Best score per player.':'No scores yet. Be the first!'));}
+  catch{if(this.disposed||request!==this.request)return;const cached=this.sync.cached(this.game);this.paint(cached);this.status(this.sync.message||(cached?'Offline · showing saved rankings.':'Rankings unavailable right now.'));}
   finally{this.busy=false;if(this.refreshPending){this.refreshPending=false;void this.refresh();}}
  }
- dispose(){this.unsubscribe();document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('offline',this.visibility);this.disposed=true;this.request++;this.wide.removeEventListener('change',this.visibility);window.removeEventListener('online',this.online);this.root.remove();}
+ dispose(){this.unsubscribe();this.unsubscribeStatus();document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('offline',this.visibility);this.disposed=true;this.request++;this.wide.removeEventListener('change',this.visibility);window.removeEventListener('online',this.online);this.root.remove();}
  static supports(game:GameId){return scoredGame(game)&&game!=='pool';}
 }

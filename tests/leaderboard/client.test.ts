@@ -3,6 +3,27 @@ beforeEach(()=>vi.useFakeTimers());afterEach(()=>vi.useRealTimers());
 import {LeaderboardSync,NOT_OPEN_RETRY_MS} from '../../src/leaderboard/client';
 import {LEADERBOARD_NOT_OPEN} from '../../src/leaderboard/shared';
 function memory(account=true){const map=new Map<string,unknown>();if(account)map.set('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Ada'});return {read:<T>(key:string,fallback:T)=>(map.get(key)??fallback) as T,write:(key:string,value:unknown)=>{map.set(key,structuredClone(value));return true;}};}
+it('exposes storage-full errors and retains queued scores across reload until a successful retry',async()=>{
+ const storage=memory();let full=true;const fetcher=vi.fn(async()=>full?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):Response.json({}));
+ const sync=new LeaderboardSync(storage,fetcher as typeof fetch);sync.queue('snake',100);
+ await expect(sync.flush()).rejects.toThrow('Storage is full right now. Your progress is kept on this device.');
+ expect(sync.message).toBe('Storage is full right now. Your progress is kept on this device.');
+ expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({snake:100});expect(storage.read('leaderboard:sent:account:ada',{})).toEqual({});sync.dispose();
+ full=false;const restored=new LeaderboardSync(storage,fetcher as typeof fetch);await restored.flush();expect(fetcher).toHaveBeenCalledTimes(1);
+ await vi.advanceTimersByTimeAsync(60000);expect(storage.read('leaderboard:pending:account:ada',{})).toEqual({});expect(storage.read('leaderboard:sent:account:ada',{})).toEqual({snake:100});restored.dispose();
+});
+it.each(['public','personal'])('surfaces the storage-full message when a %s leaderboard read fails',async view=>{
+ const storage=memory();storage.write('leaderboard:cache:snake:account:ada',{entries:[],player:null});
+ const sync=new LeaderboardSync(storage,(async url=>String(url).includes('view='+view)?Response.json({error:'storage_full',message:'Storage is full right now. Your progress is kept on this device.'},{status:507}):Response.json({entries:[],player:null})) as typeof fetch);
+ await expect(sync.load('snake')).rejects.toThrow('Storage is full right now. Your progress is kept on this device.');expect(sync.cached('snake')).toEqual({entries:[],player:null});sync.dispose();
+});
+it('notifies status consumers of capacity failures and clears the notice for another identity',async()=>{
+ const storage=memory(),sync=new LeaderboardSync(storage,(async()=>Response.json({error:'storage_full'},{status:507})) as typeof fetch),status=vi.fn();
+ const unsubscribe=sync.onStatus(status);sync.queue('snake',100);await expect(sync.flush()).rejects.toThrow('Storage is full');
+ expect(status).toHaveBeenCalledWith('Storage is full right now. Your progress is kept on this device.');
+ storage.write('accounts:session',{token:'acct_'+'b'.repeat(64),username:'Bobby'});sync.profile();expect(sync.message).toBe('');expect(status).toHaveBeenLastCalledWith('');
+ unsubscribe();sync.queue('snake',200);await expect(sync.flush()).rejects.toThrow('Storage is full');expect(status).toHaveBeenCalledTimes(2);sync.dispose();
+});
 it('keeps account bests queued through an outage and sends each once',async()=>{const storage=memory();let available=false;const sent:any[]=[];const fetcher=vi.fn(async(_url:any,options:any)=>{if(!available)throw Error('offline');sent.push(JSON.parse(options.body));return Response.json({});});const sync=new LeaderboardSync(storage,fetcher as typeof fetch);sync.queue('snake',100);sync.queue('snake',30);sync.queue('tower',9);await expect(sync.flush()).rejects.toThrow();sync.dispose();available=true;vi.setSystemTime(Date.now()+60000);const restored=new LeaderboardSync(storage,fetcher as typeof fetch);await restored.flush();await restored.flush();expect(sent.map(s=>[s.game,s.score,s.name])).toEqual([['snake',100,'Ada'],['tower',9,'Ada']]);restored.dispose();});
 it('never publishes guest scores or replays legacy guest pending scores on login',async()=>{const storage=memory(false);storage.write('leaderboard:profile',{token:'b'.repeat(64),name:'Guest'});storage.write('leaderboard:pending',{snake:900});const fetcher=vi.fn(async()=>Response.json({}));const sync=new LeaderboardSync(storage,fetcher as typeof fetch);expect(sync.profile()).toBeNull();sync.queue('snake',1000);await sync.flush();expect(fetcher).not.toHaveBeenCalled();storage.write('accounts:session',{token:'acct_'+'a'.repeat(64),username:'Ada'});await sync.flush();expect(fetcher).not.toHaveBeenCalled();sync.queue('snake',10);await sync.flush();expect(JSON.parse((fetcher.mock.calls[0] as any)[1].body).score).toBe(10);sync.dispose();});
 it('rejects invalid scores and unsupported games locally',async()=>{const fetcher=vi.fn(async()=>Response.json({}));const sync=new LeaderboardSync(memory(),fetcher as typeof fetch);for(const score of [Infinity,0,-1])sync.queue('snake',score);sync.queue('globle',20);await sync.flush();expect(fetcher).not.toHaveBeenCalled();sync.dispose();});

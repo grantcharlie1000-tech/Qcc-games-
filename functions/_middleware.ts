@@ -1,46 +1,44 @@
 interface ProxyContext {
  request:Request;
- env:{QCC_API_ORIGIN?:string};
+ env:{QCC_API_ORIGIN?:string;QCC_PROXY_SECRET?:string};
  next:()=>Promise<Response>;
 }
 
 const PREFIX='/.netlify/functions/';
 const ROUTES=new Set(['accounts','leaderboard','turn']);
 const UPSTREAM_TIMEOUT_MS=10_000;
-const HOP_HEADERS=['connection','keep-alive','proxy-authenticate','proxy-authorization','proxy-connection','te','trailer','transfer-encoding','upgrade'];
+const REQUEST_HEADERS=['Authorization','Content-Type','X-QCC-Sync','Accept'];
+const RESPONSE_HEADERS=['Content-Type','Retry-After','Cache-Control','ETag','Vary'];
 
-function endToEndHeaders(source:Headers):Headers {
- const headers=new Headers(source);
- // Connection can nominate additional hop-by-hop headers, regardless of case.
- for(const name of (source.get('connection')??'').split(','))if(name.trim())headers.delete(name.trim());
- for(const name of HOP_HEADERS)headers.delete(name);
+function allowedHeaders(source:Headers,names:string[]):Headers {
+ const headers=new Headers();
+ for(const name of names){const value=source.get(name);if(value!==null)headers.set(name,value);}
  return headers;
 }
 const error=(message:string,status:number)=>Response.json({error:message},{status,headers:{'Cache-Control':'no-store'}});
 
 // Root middleware avoids relying on Pages discovering a `.netlify` directory.
-// public/_routes.json limits invocations to PREFIX, so static requests stay free.
+// public/_routes.json invokes this middleware for PREFIX and native /api routes;
+// next() leaves /api/movies to its own Function and static requests stay free.
 export async function onRequest({request,env,next}:ProxyContext):Promise<Response> {
  const url=new URL(request.url);
  if(!url.pathname.startsWith(PREFIX))return next();
  if(!ROUTES.has(url.pathname.slice(PREFIX.length)))return error('not found',404);
- const configured=env.QCC_API_ORIGIN?.trim();
- if(!configured)return error('backend not configured',503);
+ const configured=env.QCC_API_ORIGIN?.trim(),secret=env.QCC_PROXY_SECRET?.trim();
+ if(!configured||!secret)return error('backend not configured',503);
  try{
   const origin=new URL(configured);
   if(!['https:','http:'].includes(origin.protocol)||origin.username||origin.password||origin.pathname!=='/'||origin.search||origin.hash)throw new Error('Invalid backend origin');
-  const headers=endToEndHeaders(request.headers);headers.delete('host');
-  // Cloudflare sets CF-Connecting-IP. Replace visitor-supplied forwarding chains.
-  // The account auth limiter still reads the legacy Netlify client-IP header.
+  const headers=allowedHeaders(request.headers,REQUEST_HEADERS);
+  // Only Cloudflare's visitor IP and the server binding may populate these.
   const ip=request.headers.get('CF-Connecting-IP')?.trim();
-  for(const name of ['X-Forwarded-For','X-Real-IP','X-Nf-Client-Connection-Ip']){
-   headers.delete(name);if(ip)headers.set(name,ip);
-  }
+  if(ip)headers.set('X-QCC-Client-IP',ip);
+  headers.set('X-QCC-Proxy-Secret',secret);
   const upstream=await fetch(new Request(origin.origin+url.pathname+url.search,{
    method:request.method,headers,body:request.body,redirect:'manual',signal:AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
    // Node's Web Request requires this for streams; the Workers runtime ignores it.
    duplex:'half'
   } as RequestInit));
-  return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:endToEndHeaders(upstream.headers)});
+  return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers:allowedHeaders(upstream.headers,RESPONSE_HEADERS)});
  }catch{return error('backend unavailable',502);}
 }

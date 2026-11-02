@@ -13,6 +13,26 @@ const railResponse=(url:string)=>{
 };
 
 describe("full catalog metadata endpoint",()=>{
+ it("uses a Workers-supported manual redirect mode through the Pages middleware and movies adapter",async()=>{
+  const {onRequest:middleware}=await import('../../functions/_middleware');
+  const {onRequest:movies}=await import('../../functions/api/movies');
+  const fetcher=vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{
+   if(init?.redirect!=="manual")throw new TypeError('Invalid redirect value, must be one of follow or manual');
+   return tmdb([{id:7,media_type:"movie",title:"Pages Film"}]);
+  });vi.stubGlobal('fetch',fetcher);
+  const req=request('?q=pages');
+  const result=await middleware({request:req,env:{},next:()=>movies({request:req,env:{TMDB_READ_TOKEN:'server-token'}})});
+  expect(result.status).toBe(200);expect((await result.json()).titles[0].name).toBe('Pages Film');
+  expect(fetcher).toHaveBeenCalledOnce();
+ });
+ it.each([301,302,303,307,308,400,401,429,500,503])("rejects TMDB non-2xx status %i without following it",async status=>{
+  const fetcher=vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{
+   return new Response(JSON.stringify({results:[]}),{status,headers:{Location:'https://untrusted.test/'}});
+  });
+  const result=await handleMoviesCatalog(request('?q=pages'),'server-token',fetcher);
+  expect(result.status).toBe(502);expect(await result.json()).toEqual({error:'metadata_unavailable'});
+  expect(fetcher).toHaveBeenCalledOnce();expect(fetcher.mock.calls[0]![1]?.redirect).toBe('manual');expect(result.headers.has('location')).toBe(false);
+ });
  it("keeps the Netlify adapter reading its server-side runtime binding",async()=>{
   const token=crypto.randomUUID();
   const get=vi.fn(()=>token);
