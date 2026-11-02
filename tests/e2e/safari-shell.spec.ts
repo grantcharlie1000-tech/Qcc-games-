@@ -112,6 +112,8 @@ for(const stuck of ['fetch','body','restore'])test(`a stalled catalog ${stuck} r
 for(const route of ['collection','movies'])test(`${route} fallback Menu ink retains 4.5:1 on black/white patterned content`,async({page})=>{
  await page.goto(`/?glass=fallback#/${route}`);const menu=page.locator(route==='collection'?'.app-menu':'.movies-menu');
  await expect(menu).toHaveAttribute('data-glass','frost');
+ // Movies redraws its view once the catalog request settles; inject the art after that, or the redraw drops it.
+ if(route==='movies')await expect(page.locator('.movies-rails-status,.movies-catalog-status').first()).toBeVisible();
  // The Menu icon keeps one adaptive ink (no outline), so a single glyph cannot clear 4.5:1 across both black and white at once. Black and white
  // fills are therefore measured in turn, which still exercises both ends of backdrop luminance; the ink has to adapt to each.
  const art=await page.evaluateHandle(()=>{const art=document.createElement('div');art.style.cssText='position:fixed;inset:0;z-index:49;pointer-events:none';(document.querySelector('.section-navigation:not(.app-navigation)')?.parentElement??document.body).append(art);return art;});
